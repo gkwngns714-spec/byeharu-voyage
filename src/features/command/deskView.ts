@@ -7,11 +7,13 @@
 // Invest and Profit join this table with their slices (D5, D6, D7). The ORDER is the strip's.
 
 import { create } from 'zustand'
+import type { PortFace } from '../../live/cityFaces'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 export const DESK_FACES = [
   { id: 'markets', label: 'Markets' },
   { id: 'plans', label: 'Plans' },
+  { id: 'city', label: 'City' },
 ] as const
 
 export type DeskFace = (typeof DESK_FACES)[number]['id']
@@ -33,7 +35,10 @@ export interface DeskViewState {
   filter: DeskFilter
   sort: DeskSort
   search: string
+  /** The City face's building (live/cityFaces.ts); one that the city lacks falls back to its first. */
+  cityFace: PortFace
   turnTo: (face: DeskFace) => void
+  setCityFace: (face: PortFace) => void
   setFilter: (filter: DeskFilter) => void
   setSort: (sort: DeskSort) => void
   setSearch: (search: string) => void
@@ -46,7 +51,9 @@ export const useDeskView = create<DeskViewState>()(
       filter: 'all',
       sort: 'name',
       search: '',
+      cityFace: 'market',
       turnTo: (face) => set({ face }),
+      setCityFace: (cityFace) => set({ cityFace }),
       setFilter: (filter) => set({ filter }),
       setSort: (sort) => set({ sort }),
       setSearch: (search) => set({ search }),
@@ -54,7 +61,7 @@ export const useDeskView = create<DeskViewState>()(
     {
       name: 'byeharu-voyage.desk.v1',
       storage: createJSONStorage(() => sessionStorage),
-      partialize: (s) => ({ face: s.face, filter: s.filter, sort: s.sort }),
+      partialize: (s) => ({ face: s.face, filter: s.filter, sort: s.sort, cityFace: s.cityFace }),
       // A stale or corrupt byte opens a face that EXISTS.
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<DeskViewState>
@@ -63,6 +70,7 @@ export const useDeskView = create<DeskViewState>()(
           face: DESK_FACES.some((f) => f.id === p.face) ? (p.face as DeskFace) : 'markets',
           filter: typeof p.filter === 'string' ? (p.filter as DeskFilter) : 'all',
           sort: DESK_SORTS.some((s) => s.id === p.sort) ? (p.sort as DeskSort) : 'name',
+          cityFace: typeof p.cityFace === 'string' ? p.cityFace : 'market',
         }
       },
     },

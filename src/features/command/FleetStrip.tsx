@@ -1,5 +1,6 @@
 import { Bar, Chip, Figure } from '../../components/ui'
-import { fleetHoldTotal, fleetHoldUsed, whereabouts, whereLine } from '../../domain/fleet'
+import { fleetHoldTotal, fleetHoldUsed, fleetPortCode, whereabouts, whereLine } from '../../domain/fleet'
+import { PortFlag } from '../../live/PortFlag'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
@@ -28,6 +29,7 @@ export function FleetStrip({
       <div className="-mx-gutter flex gap-2 overflow-x-auto px-gutter pb-1">
         {fleets.map((f) => (
           <Chip key={f.id} on={f.id === fleetId} onClick={() => onSelect(f.id)} className="shrink-0 whitespace-nowrap">
+            {fleetPortCode(f) && <PortFlag code={fleetPortCode(f) as string} />}
             {f.name} · {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))}
           </Chip>
         ))}

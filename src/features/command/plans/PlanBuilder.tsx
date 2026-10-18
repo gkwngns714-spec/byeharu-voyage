@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Chip, Field, Figure, Hint, Note, Row, Skeleton, Tray, type TrayDetent } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
+import { PortFlag } from '../../../live/PortFlag'
 import { usePress } from '../../../live/usePress'
 import { useGoodBoard } from '../../../live/useDesk'
 import { portNameOf, useWorld } from '../../../live/worldStore'
@@ -130,6 +131,7 @@ export function PlanBuilder({
         )}
         {(b?.buy ?? []).map((r) => (
           <Chip key={r.port} on={plan.buyAt === r.port} onClick={() => set({ buyAt: r.port })} className="shrink-0 whitespace-nowrap">
+            <PortFlag code={r.port} />
             {name(r.port)}
           </Chip>
         ))}
@@ -163,6 +165,7 @@ export function PlanBuilder({
       <div className="-mx-gutter mt-1 flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Sell at">
         {sellChoices.map((c) => (
           <Chip key={c} on={plan.sellAt === c} onClick={() => set({ sellAt: c })} className="shrink-0 whitespace-nowrap">
+            <PortFlag code={c} />
             {name(c)}
           </Chip>
         ))}

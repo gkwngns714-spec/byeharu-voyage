@@ -32,9 +32,9 @@
 // clears the view, the thread does not draw, and the verb's own refusal states the reason if
 // they press anyway.
 
-import { worldHaggleState, type HaggleState } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
-import { useWorld } from '../../live/worldStore'
+import { worldHaggleState, type HaggleState } from '../lib/rpc'
+import { useServedRead } from './useServedRead'
+import { useWorld } from './worldStore'
 
 export interface HaggleStateRead {
   /** The last answer for this (fleet, good), or null before the first one (or after a refusal). */

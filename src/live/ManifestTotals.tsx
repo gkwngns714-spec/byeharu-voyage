@@ -1,6 +1,6 @@
-import { deltaTone, Figure, Row } from '../../components/ui'
-import { formatDucats, formatDucatsDelta } from '../../lib/format'
-import type { ManifestReceipt } from '../../lib/rpc'
+import { deltaTone, Figure, Row } from '../components/ui'
+import { formatDucats, formatDucatsDelta } from '../lib/format'
+import type { ManifestReceipt } from '../lib/rpc'
 
 // THE TOTALS BLOCK — what a basket comes to, in five rows, spelt ONCE for its two readers.
 //

@@ -101,7 +101,9 @@ test('the stepped question has one home — the three building faces', () => {
   // tests/sections.spec.ts forbids MAP importing a PORT file. So this reads src/live as well as the
   // screens, and names the composers by FILE — the Inn, the Shipyard, the quay — which is tighter
   // than the folder it replaced: a fourth face composing a verb fails here wherever it is put.
-  const HOMES = ['live/PortInn.tsx', 'features/port/PortShipyard.tsx', 'features/port/PortTrade.tsx']
+  // 2026-10-18 (docs/COMMAND_DESK.md D5): the Shipyard and the quay moved to src/live with every building face,
+  // so PORT (until D8) and the desk's City face compose ONE copy of each.
+  const HOMES = ['live/PortInn.tsx', 'live/PortShipyard.tsx', 'live/PortTrade.tsx']
   const importers: string[] = []
   for (const f of [...files(path.join(SRC, 'features')), ...files(path.join(SRC, 'live'))]) {
     const text = readFileSync(f, 'utf8')
@@ -120,4 +122,23 @@ test('the stepped question has one home — the three building faces', () => {
       `REPAIR and PROVISION each have ONE doorway; a second composer is a second ` +
       `\`checked\`/\`issuing\` pair for the same verb.\n` + outside.join('\n'),
   ).toEqual([])
+})
+
+// 2026-10-18 — EVERY VERB PORT CARRIED HAS A HOME ON COMMAND (docs/COMMAND_DESK.md §2.2, D5; the gate D8 deletes
+// PORT behind). The owner: *"delete port tab, and focus on command tab"*. Each building face is ONE component in
+// src/live, and the desk's City face composes every one of them, so PORT's folder holds no face of its own:
+//   Trade (buy · sell · bargain · basket · requests · resupply) PortTrade · Town PortTown · Town Hall (invest,
+//   donate, the purse) CityTownHall · Storage PortStorage · Craft PortWorkstation · Inn (hire, dismiss, resupply,
+//   captains) PortInn · Build PortYard · Repair PortShipyard · Skills PortAcademy · the fair QuayFair · a tow TowNote.
+test("every building face is one component in src/live, and the desk's City face composes each one", () => {
+  const FACES = ['PortTrade', 'PortTown', 'CityTownHall', 'PortStorage', 'PortWorkstation', 'PortInn', 'PortYard',
+    'PortShipyard', 'PortAcademy', 'QuayFair', 'TowNote']
+  const city = readFileSync(path.join(SRC, 'features', 'command', 'city', 'City.tsx'), 'utf8')
+  const missing = FACES.filter((name) => !city.includes(`import { ${name} } from '../../../live/`))
+  expect(missing, `the desk's City face does not compose: ${missing.join(', ')}`).toEqual([])
+  // and no screen keeps a building face of its own (PORT's folder is its screen and its chrome)
+  const portFaces = files(path.join(SRC, 'features')).filter((f) =>
+    /\/(Port(Trade|Town|Storage|Workstation|Yard|Shipyard|Academy|Fair)|CityTownHall|TownHallInfluence)\.tsx$/.test(f.split(path.sep).join('/')),
+  )
+  expect(portFaces.map(rel), 'a building face lives in a screen again').toEqual([])
 })

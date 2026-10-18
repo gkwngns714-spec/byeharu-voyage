@@ -8,7 +8,7 @@ import type { FleetView, SnapshotPort } from '../../lib/rpc'
 import { PortInn } from '../../live/PortInn'
 import { PortPrices } from '../../live/PortPrices'
 import { CITY_TABS, useCityTab } from './cityTab'
-import { CityTownHall } from './CityTownHall'
+import { CityTownHall } from '../../live/CityTownHall'
 import { TowNote } from '../../live/TowNote'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

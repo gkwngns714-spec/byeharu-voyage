@@ -10,11 +10,11 @@ import {
   TileField,
   Tray,
   type TrayDetent,
-} from '../../components/ui'
-import { useWorkstation } from '../../live/useWorkstation'
-import { useWorld } from '../../live/worldStore'
-import { formatInt } from '../../lib/format'
-import type { FleetView, Refusal, WorkstationItem } from '../../lib/rpc'
+} from '../components/ui'
+import { useWorkstation } from './useWorkstation'
+import { useWorld } from './worldStore'
+import { formatInt } from '../lib/format'
+import type { FleetView, Refusal, WorkstationItem } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CRAFT — where trade goods become a fitting (0068), as a field of tiles.

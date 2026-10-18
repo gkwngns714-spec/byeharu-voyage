@@ -13,11 +13,11 @@ import {
   Tray,
   useReaskAtEdge,
   type TrayDetent,
-} from '../../components/ui'
-import { useShellState } from '../../app/shellState'
-import { formatDucats, formatRealDuration } from '../../lib/format'
-import { useWorld } from '../../live/worldStore'
-import type { Skill, SkillBook } from '../../lib/rpc'
+} from '../components/ui'
+import { useShellState } from '../app/shellState'
+import { formatDucats, formatRealDuration } from '../lib/format'
+import { useWorld } from './worldStore'
+import type { Skill, SkillBook } from '../lib/rpc'
 
 // THE ACADEMY → SKILLS (0016; re-made by 0131, docs/SHIPS_AND_SKILLS.md §5): the skills in their
 // groups, and the training QUEUE with a timer on every entry. A skill is ENROLLED once where it is

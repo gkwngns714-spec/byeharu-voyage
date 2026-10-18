@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Figure, Note, Row } from '../../components/ui'
-import { StepQuestion } from '../../live/StepQuestion'
-import { useStepOrder } from '../../live/useStepOrder'
-import { worstHullFraction } from '../../domain/fleet'
-import { formatPct } from '../../lib/format'
-import type { FleetView, SnapshotPort } from '../../lib/rpc'
+import { Figure, Note, Row } from '../components/ui'
+import { StepQuestion } from './StepQuestion'
+import { useStepOrder } from './useStepOrder'
+import { worstHullFraction } from '../domain/fleet'
+import { formatPct } from '../lib/format'
+import type { FleetView, SnapshotPort } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // REPAIR — the face of the building 0067 calls a shipyard, named for the ACT (owner row 86).

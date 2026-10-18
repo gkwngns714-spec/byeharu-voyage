@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { Button, CargoBar, Figure, Icon, Note, Row, Tray, useWide, type TrayDetent } from '../../components/ui'
+import { Button, CargoBar, Figure, Icon, Note, Row, Tray, useWide, type TrayDetent } from '../components/ui'
 import { ManifestTotals } from './ManifestTotals'
 import { OnBoard } from './OnBoard'
 import { ReceiptFace } from './ReceiptFace'
-import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
-import { formatClock, formatDucats, formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../../lib/format'
-import { lineDelta, type FleetView, type ManifestLine, type MarketGood, type Refusal, type SnapshotPort } from '../../lib/rpc'
-import type { ManifestPreviewState } from '../../live/useManifestPreview'
-import { useWorld } from '../../live/worldStore'
-import { linesFor, receiptFor, useManifest } from '../../store/manifest'
+import { fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
+import { formatClock, formatDucats, formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../lib/format'
+import { lineDelta, type FleetView, type ManifestLine, type MarketGood, type Refusal, type SnapshotPort } from '../lib/rpc'
+import type { ManifestPreviewState } from './useManifestPreview'
+import { useWorld } from './worldStore'
+import { linesFor, receiptFor, useManifest } from '../store/manifest'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BASKET — the centre of the reference the owner pointed at, as the ONE panel beside the goods.

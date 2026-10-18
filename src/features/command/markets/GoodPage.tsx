@@ -14,6 +14,7 @@ import {
 } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { useGoodBoard, usePriceOutlook } from '../../../live/useDesk'
+import { PortFlag } from '../../../live/PortFlag'
 import { usePortHistory } from '../../../live/usePortHistory'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import {
@@ -143,6 +144,7 @@ export function GoodPage({
         <div className="-mx-gutter mt-3 flex gap-2 overflow-x-auto px-gutter pb-1" role="group" aria-label="Chart city">
           {chips.map((c) => (
             <Chip key={c} on={c === focus} onClick={() => setFocus(c)} className="shrink-0 whitespace-nowrap">
+              <PortFlag code={c} />
               {portNameOf(portByCode, c)}
             </Chip>
           ))}
@@ -286,7 +288,7 @@ function BuyAt({
             >
               <span className="min-w-0 flex-1">
                 <span className={`block truncate text-t-body ${r.here ? 'text-accent' : 'text-ink'}`}>
-                  {portName(r.port)}
+                  <PortFlag code={r.port} /> {portName(r.port)}
                 </span>
                 <span className="block truncate text-t-caption text-ink-faint">
                   {formatUnits(r.stock)} · {away(r, r.port === docked)}
@@ -364,7 +366,7 @@ function SellAt({
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-t-body text-ink">
-                    {portName(r.port)}
+                    <PortFlag code={r.port} /> {portName(r.port)}
                     {r.request ? (
                       <span className="ml-2 text-t-caption text-warning">
                         wanted · +{formatInt(r.request.premium_pct)}%

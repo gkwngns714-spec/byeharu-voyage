@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { Button, CargoBar, Figure, Note, Row, Tray, type TrayDetent } from '../../components/ui'
+import { Button, CargoBar, Figure, Note, Row, Tray, type TrayDetent } from '../components/ui'
 import { ManifestTotals } from './ManifestTotals'
-import { useShellState } from '../../app/shellState'
-import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
-import { formatDucats, formatOfTotal, formatPctDelta, formatRelative, formatUnitPrice, formatUnits } from '../../lib/format'
-import type { FleetView, ManifestReceipt, Refusal, TradeRequest } from '../../lib/rpc'
-import { useFulfilPreview } from '../../live/useFulfilPreview'
-import { useWorld } from '../../live/worldStore'
+import { useShellState } from '../app/shellState'
+import { fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
+import { formatDucats, formatOfTotal, formatPctDelta, formatRelative, formatUnitPrice, formatUnits } from '../lib/format'
+import type { FleetView, ManifestReceipt, Refusal, TradeRequest } from '../lib/rpc'
+import { useFulfilPreview } from './useFulfilPreview'
+import { useWorld } from './worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DELIVERY — a request, unfolded: the served preview of meeting it, and ONE button.

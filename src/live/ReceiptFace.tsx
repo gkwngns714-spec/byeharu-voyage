@@ -1,7 +1,7 @@
-import { deltaTone, Figure, Row } from '../../components/ui'
+import { deltaTone, Figure, Row } from '../components/ui'
 import { ManifestTotals } from './ManifestTotals'
-import { COIN, formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../../lib/format'
-import { lineDelta, type ManifestReceipt } from '../../lib/rpc'
+import { COIN, formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../lib/format'
+import { lineDelta, type ManifestReceipt } from '../lib/rpc'
 
 // THE RECEIPT — the settlement, after the basket has landed. docs/QUAY_LEDGER.md §3 E (owner row
 // 76, slice 2): per-line settled figures, the totals block, ducats before → after, `Trading +N xp`.
