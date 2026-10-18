@@ -95,3 +95,51 @@ test('nothing is drawn below two points, without a cadence, or with a point that
   expect(flat.yTicks.map((t) => t.label)).toEqual(['100'])
   expect(flat.points.every((p) => Math.abs(p.y - (flat.plot.y + flat.plot.h / 2)) < 1e-6)).toBe(true)
 })
+
+// ── 2026-10-18: THE ESTIMATE (docs/COMMAND_DESK.md §5.4) ─────────────────────────────────────────
+// The served outlook is drawn to the right of now: the axis runs on to its last instant (`+Nh`), the
+// dashed path and the band are its own points, the best time and the arrival are marks — and the
+// y scale takes the band in, with decimals that follow the span (prices run ~1 to ~100,000 a unit).
+
+function outlook(values: number[], width: number, nowMs: number, slotSeconds: number) {
+  return values.map((v, k) => ({
+    at: new Date(nowMs + k * slotSeconds * 1000).toISOString(),
+    value: v,
+    lo: v - width * k,
+    hi: v + width * k,
+  }))
+}
+
+test('the estimate runs on from now: +Nh at the edge, the band in the scale, the best time and the arrival marked', () => {
+  const pts = outlook([110, 112, 114, 115, 115], 2, NOW, 900)
+  const m = priceChartModel(series([100, 120, 90, 130, 110], 600, NOW), 600, NOW, {
+    points: pts,
+    bestAt: pts[3].at,
+    arriveMs: NOW + 1800_000,
+  })!
+  expect(m.outlook).not.toBeNull()
+  expect(m.xTicks.map((t) => t.label)).toEqual([`${MINUS}0.8h`, 'now', '+1h'])
+  // a record too short for its own label beside now is labelled at now alone
+  const short = priceChartModel(series([100, 101], 900, NOW), 900, NOW, { points: outlook(Array(25).fill(100), 1, NOW, 900) })!
+  expect(short.xTicks.map((t) => t.label)).toEqual(['now', '+6h'])
+  // now stands between the record and the estimate, and the estimate ends at the right edge
+  expect(m.outlook!.nowX).toBeGreaterThan(m.plot.x)
+  expect(m.outlook!.nowX).toBeLessThan(m.plot.x + m.plot.w)
+  expect(m.outlook!.line.split(' L')).toHaveLength(5)
+  expect(m.outlook!.band.endsWith('Z')).toBe(true)
+  // the scale takes the band in: the top label is the band's top (115 + 2×4 = 123 < 130, so the record's 130)
+  expect(m.yTicks.map((t) => t.label)).toEqual(['90', '110', '130'])
+  expect(m.outlook!.best!.value).toBe(115)
+  expect(m.outlook!.arriveX).not.toBeNull()
+  expect(m.outlook!.arriveX!).toBeGreaterThan(m.outlook!.nowX)
+})
+
+test('an estimate with no record still draws, from now; and small or large prices keep their meaning', () => {
+  const small = priceChartModel([], 900, NOW, { points: outlook([1.2, 1.25, 1.3], 0.05, NOW, 900) })!
+  expect(small).not.toBeNull()
+  expect(small.points).toHaveLength(0)
+  expect(small.xTicks[0].label).toBe('now')
+  expect(small.yTicks.map((t) => t.label)).toEqual(['1.20', '1.30', '1.40'])
+  const large = priceChartModel([], 900, NOW, { points: outlook([98_000, 99_000, 100_000], 0, NOW, 900) })!
+  expect(large.yTicks.map((t) => t.label)).toEqual(['98,000', '99,000', '100,000'])
+})

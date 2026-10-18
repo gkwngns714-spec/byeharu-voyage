@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent, type TrayMode } from '../components/ui'
 import { formatInt, formatMiles } from '../lib/format'
 import type { MarketGood } from '../lib/rpc'
+import { useDeskGood } from '../store/deskGood'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
 // alongside. MOVED 2026-09-11 from features/market/ with the MARKET tab, which folded into PORT
@@ -36,6 +38,10 @@ export function PriceTray({
   onClose: () => void
 }) {
   const [detent, setDetent] = useState<TrayDetent>('half')
+  // THE HAND-OFF (docs/COMMAND_DESK.md §3.3, D8): the map reads a place; the desk is where you act. A
+  // good read here opens on COMMAND — every city's price for it, the estimate, where to sell.
+  const openOnDesk = useDeskGood((s) => s.open)
+  const navigate = useNavigate()
   return (
     <Tray
       detent={detent}
@@ -47,6 +53,15 @@ export function PriceTray({
       <Row label="Buy" value={<Figure value={formatInt(good.buy)} size="figure" />} />
       <Row label="Sell" value={<Figure value={formatInt(good.sell)} size="figure" />} />
       <PriceRows good={good} trend={trend} />
+      <Row
+        label="Open in Command"
+        chevron
+        onClick={() => {
+          openOnDesk(good.code)
+          navigate('/command')
+        }}
+        data-testid="price-tray-desk"
+      />
       {passage !== null && (
         <Row
           label="Distance"

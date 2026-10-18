@@ -8,6 +8,7 @@
     "chart.ink.spec.ts": 7,
     "db.image.spec.ts": 358,
     "db.prefixCache.spec.ts": 8,
+    "desk.layout.spec.ts": 120,
     "duplication.spec.ts": 1,
     "firstRead.empty.spec.ts": 13,
     "flicker.spec.ts": 32,

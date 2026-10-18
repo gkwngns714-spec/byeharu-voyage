@@ -464,6 +464,31 @@ export const RPCS = {
       { name: 'p_nation_code', type: 'text' },
     ],
   },
+  // 0170 / 0171 — THE COMMAND DESK's three reads (docs/COMMAND_DESK.md §7). A good's estimated price
+  // at one city (the server's path and band; the client draws it and multiplies nothing), one good at
+  // every city for your fleet (the money through world.quote), and every good once (the watchlist).
+  // Asked when the desk opens a good or the list, and at the market's edge — never on the beat.
+  worldPriceOutlook: {
+    schema: 'world',
+    fn: 'price_outlook',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_slots', type: 'int' },
+      { name: 'p_side', type: 'text' },
+    ],
+  },
+  worldGoodBoard: {
+    schema: 'world',
+    fn: 'good_board',
+    args: [
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_from', type: 'uuid' },
+      { name: 'p_qty', type: 'numeric' },
+    ],
+  },
+  worldWatchlist: { schema: 'world', fn: 'watchlist', args: [{ name: 'p_fleet', type: 'uuid' }] },
 } as const satisfies Record<string, RpcSpec>
 
 export type RpcName = keyof typeof RPCS

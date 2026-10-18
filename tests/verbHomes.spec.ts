@@ -56,8 +56,15 @@ test('COMMAND composes no verb — it keeps whose orders, and her queue', () => 
     /\borderText\(/,
     /\bpreview\(/,
   ]
+  // 2026-10-18 — THE OWNER REVERSED ROW 73 (docs/COMMAND_DESK.md, the table at its head): *"delete port
+  // tab, and focus on command tab"*. The desk's ONE trade doorway — the good page's Buy / Sell cell for the
+  // city the fleet is docked at — composes THE trade tray (features/command/markets/DeskTrade.tsx), the
+  // same tray and the same door PORT's board uses. That file is the exception, by name; every other file
+  // under features/command still composes no verb. D5 rewrites this rule to COMMAND_DESK §2.2.
+  const DOORWAYS = new Set(['features/command/markets/DeskTrade.tsx'])
   const offenders: string[] = []
   for (const f of files(path.join(SRC, 'features', 'command'))) {
+    if (DOORWAYS.has(rel(f))) continue
     const text = readFileSync(f, 'utf8')
     for (const re of COMPOSING) {
       if (re.test(text)) offenders.push(`${rel(f)}  ${re.source}`)

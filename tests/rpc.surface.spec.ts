@@ -1555,6 +1555,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // E_NOT_YOUR_SHIP otherwise), the item, the perk and the rank; no player id. Only docked at a level 3
       // workshop. Landed WITH the face that presses it (src/live/ShipAugments.tsx, the ship panel's Perks).
       'cmdAugmentFitting',
+      // Pin moved deliberately 2026-10-18 with migrations 0170 / 0171 (docs/COMMAND_DESK.md, D1–D3): THE
+      // DESK's three reads — a good's estimate at one city, one good at every city for your fleet, and
+      // every good once. All READS, no player id (the board refuses a fleet that is not yours
+      // E_NOT_YOURS). Landed WITH the face that reads them (features/command/markets).
+      'worldPriceOutlook', 'worldGoodBoard', 'worldWatchlist',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

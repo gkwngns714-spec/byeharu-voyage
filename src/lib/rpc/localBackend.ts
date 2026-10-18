@@ -15,8 +15,31 @@
 // (every read of theirs settles them first). The cloud backend does nothing of the kind, because
 // the job does.
 
+//
+// AND THE PRICE RECORD (2026-10-18, the COMMAND desk). On Supabase the snapshot job records every
+// offered price each drift slot (public.tick_price_snapshot, pg_cron); in this tab nothing does, and a
+// fresh world's only record was 0061's self-assert snapshot at now() + 1 hour — a row on no present
+// slot, which 0170 removed with the rest of its kind. So before a read of the RECORD (world.price_history,
+// world.watchlist) this backend runs the SAME function the job runs: at most once in RECORD_EVERY_MS,
+// idempotent per slot (the first sample in a slot is the sample). A world with nothing in the present
+// window starts its record at the previous slot boundary and now — the market as it stands, the two
+// points a line needs — exactly as the job's first two runs would have. The cloud backend does nothing
+// of the kind, because the job does.
+
 import { RPCS, localSql, rpcLabel, type RpcName } from './catalog'
 import type { RpcBackend } from './backend'
+
+/** How often this tab may play the snapshot job — a slot is 15 minutes; a re-ask within this is a no-op. */
+const RECORD_EVERY_MS = 30_000
+
+/** The snapshot job, as this tab plays it: the present slot, and — when the window holds nothing yet — the
+ *  previous boundary first, so a fresh record has a line to draw. */
+const RECORD_SQL = `select case
+    when exists (select 1 from public.price_history where slot >= public.drift_slot_of(now()) - 1)
+      then public.tick_price_snapshot(now())
+    else public.tick_price_snapshot(now() - make_interval(secs => public.wc_num('drift_slot_seconds')::double precision))
+         || public.tick_price_snapshot(now())
+  end as result`
 
 /** The slice of LocalDb this needs — structural, so a spec can hand in its own engine. */
 export interface LocalCaller {
@@ -26,6 +49,7 @@ export interface LocalCaller {
 }
 
 export function createLocalBackend(db: LocalCaller): RpcBackend {
+  let recordedAt = 0
   return {
     kind: 'local',
     describe: `PGlite in this tab · chain ${db.fingerprint} · captain ${db.authUid}`,
@@ -35,10 +59,15 @@ export function createLocalBackend(db: LocalCaller): RpcBackend {
       // absent, not to one that is present and null — and every optional parameter in this chain
       // defaults to null, so a padded null is the identical call.
       const params = RPCS[name].args.map((_, i) => values[i] ?? null)
+      const record = name === 'worldPriceHistory' || name === 'worldWatchlist'
+      const due = record && Date.now() - recordedAt >= RECORD_EVERY_MS
+      if (due) recordedAt = Date.now()
       const clock =
         name === 'worldSeaRoster' || name === 'worldPortMerchants'
           ? db.callAs<unknown>('select public.tick_arrivals(now()) as result')
-          : Promise.resolve(null)
+          : due
+            ? db.callAs<unknown>(RECORD_SQL)
+            : Promise.resolve(null)
       return clock.then(() => db.callAs<unknown>(localSql(name), params)).catch((err: unknown) => {
         if (err instanceof Error) err.message = `${err.message} (in ${rpcLabel(name)})`
         throw err

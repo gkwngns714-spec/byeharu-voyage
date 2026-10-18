@@ -1,13 +1,28 @@
-import { useEffect, useMemo } from 'react'
-import { Bar, Chip, Figure, Note, Row, Sheet, SheetSection } from '../../components/ui'
-import { Queue } from './Queue'
-import { RouteFold } from './RouteFold'
+import { useEffect, useMemo, useState } from 'react'
+import { Note, Row, Segmented, Sheet } from '../../components/ui'
 import { useCommandDraft } from '../../domain/order'
-import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
-import { fleetHoldTotal, fleetHoldUsed, whereabouts, whereLine } from '../../domain/fleet'
-import { portNameOf, useWorld } from '../../live/worldStore'
-import type { FleetView } from '../../lib/rpc'
+import { useWorld } from '../../live/worldStore'
+import { useDeskGood } from '../../store/deskGood'
+import { DESK_FACES, useDeskView, type DeskFace } from './deskView'
+import { FleetStrip } from './FleetStrip'
+import { DeskTrade } from './markets/DeskTrade'
+import { GoodPage } from './markets/GoodPage'
+import { Markets } from './markets/Markets'
+import { Plans } from './plans/Plans'
 
+// COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). The owner, 2026-10-17: *"i want you to delete
+// port tab, and focus on command tab. it will be like stock trading screen, with buy and sell plans,
+// seeing charts of each trade goods that i click, setting up trade routes for my fleet, investing, and
+// all … stylish - modern - sophisticated yet concise simple."*
+//
+// THE SHELL: the fleet strip (which fleet, where it is, its two figures), the faces (deskView.ts — the
+// ones built: Markets · Plans), and the face. A good pressed on Markets opens its page in ONE slot (a
+// tray; beside the column on a wide glass); the page's Buy / Sell cell turns that slot over to THE trade
+// tray, and closing it returns to the page. One state says which stands, as PORT's board keeps its own.
+//
+// What follows is this screen's history before the desk. The rule it records still holds: a verb that
+// happens at a place is offered only where the fleet is docked (§2.1).
+//
 // COMMAND — whose orders, and what she has been told. Nothing here composes a verb any more.
 //
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -42,14 +57,19 @@ export function CommandScreen() {
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
   const fleets = useWorld((s) => s.fleets)
-  const portByCode = useWorld((s) => s.portByCode)
-  const readAt = useWorld((s) => s.readAt)
+  const goodByCode = useWorld((s) => s.goodByCode)
   const open = useWorld((s) => s.open)
-  const cancel = useWorld((s) => s.cancel)
-  const clearQueue = useWorld((s) => s.clear)
 
   const fleetId = useCommandDraft((s) => s.fleetId)
   const selectFleet = useCommandDraft((s) => s.selectFleet)
+  const face = useDeskView((s) => s.face)
+  const turnTo = useDeskView((s) => s.turnTo)
+  const goodCode = useDeskGood((s) => s.code)
+  // WHICH TRAY STANDS IN THE SLOT: the good's page, or the trade tray it handed over to.
+  const [trading, setTrading] = useState<{
+    code: string
+    intent: 'buy' | 'sell'
+  } | null>(null)
 
   useEffect(() => {
     void open()
@@ -65,7 +85,9 @@ export function CommandScreen() {
   if (phase === 'failed' && fatal) {
     return (
       <Sheet title="Command">
-        <Note tone="danger" code={fatal.code}>{fatal.sentence}</Note>
+        <Note tone="danger" code={fatal.code}>
+          {fatal.sentence}
+        </Note>
       </Sheet>
     )
   }
@@ -84,74 +106,35 @@ export function CommandScreen() {
     )
   }
 
+  const good = goodCode ? (goodByCode[goodCode] ?? null) : null
+  const tradingHere = trading && fleet && fleet.status === 'DOCKED' && trading.code === goodCode ? trading : null
+
   return (
     <Sheet title="Command" data-testid="command">
-      {/* WHOSE ORDERS — fleet chips scroll sideways; pressing one SELECTS it and moves nothing. */}
-      <div className="-mx-gutter flex gap-2 overflow-x-auto px-gutter pb-1">
-        {fleets.map((f) => (
-          <Chip key={f.id} on={f.id === fleetId} onClick={() => selectFleet(f.id)} className="shrink-0 whitespace-nowrap">
-            {f.name} · {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))}
-          </Chip>
-        ))}
-      </div>
+      <FleetStrip fleets={fleets} fleetId={fleetId} onSelect={selectFleet} fleet={fleet ?? null} />
+      {/* THE FACES (deskView.ts): one row in the body, not in the sticky title bar — a 44-px control
+          there makes the bar taller, and a taller sticky bar covers what a press lands on below it. */}
+      <Segmented<DeskFace>
+        segments={DESK_FACES}
+        value={face}
+        onChange={turnTo}
+        label="Desk faces"
+        fill
+        className="mb-3 mt-2"
+      />
+      {fleet && (face === 'plans' ? <Plans fleet={fleet} /> : <Markets fleet={fleet} />)}
 
-      {fleet && (
-        <>
-          {/* ITS TWO FIGURES: how long it can sail, and its cargo — each with what it is out of
-              (docs/WORDS.md law 2). They were ONE SENTENCE (`Supplies 15.0 days · Cargo 4 / 60
-              tons`) until 2026-10-01, when the owner said the game "is like a text game": two
-              numbers that decide the next order are figures, not prose, and cargo is a share, so
-              it is also a bar. */}
-          <FleetFigures fleet={fleet} />
-          {/* 0092: HER ROUTE, one row above her queue — the standing order that writes the queue when
-              it runs dry in port (RouteFold.tsx). It folds in place; the queue moves down. */}
-          <RouteFold fleet={fleet} />
-          {/* The queue's ✕ and Clear are busy only while their own press is on the wire (Queue.tsx
-              wears the one `usePress`), so the verbs hand their promise down rather than a
-              world-read flag — a background read never greys a control (owner, 2026-09-30). */}
-          <SheetSection heading="Orders" surface data-testid="command-queue">
-            <Queue
-              fleet={fleet}
-              readAt={readAt}
-              onCancel={(seq) => cancel(fleet.id, seq)}
-              onClear={() => clearQueue(fleet.id)}
-            />
-          </SheetSection>
-        </>
+      {fleet && good && !tradingHere && (
+        <GoodPage
+          key={`${good.code}:${fleet.id}`}
+          fleet={fleet}
+          good={good}
+          onTrade={(intent) => setTrading({ code: good.code, intent })}
+        />
+      )}
+      {fleet && tradingHere && (
+        <DeskTrade fleet={fleet} code={tradingHere.code} intent={tradingHere.intent} onClose={() => setTrading(null)} />
       )}
     </Sheet>
-  )
-}
-
-/** The fleet's two deciding figures, side by side — a caption over each, the cargo share drawn as a
- *  bar beside its figure (warning once the served free hold is gone).
- *
- *  EXACTLY THE ROW'S 52px, ON THE SHEET, NOT ON A PANEL. A first cut seated these on a `surface`
- *  panel with the figures at `t-figure` over a bar: 56px taller, and that was enough to push the
- *  route editor's port chips out of the glass, so a press there scrolled the sheet and the stops
- *  under the finger moved (tests/route.stopface.spec.ts, owner row 15). Caption 16 + figure 28 +
- *  8 of padding is the 52 the sentence stood in, so nothing below it moved by one pixel. */
-function FleetFigures({ fleet }: { fleet: FleetView }) {
-  const used = fleetHoldUsed(fleet)
-  const total = fleetHoldTotal(fleet)
-  return (
-    <div className="grid min-h-row grid-cols-2 gap-4 py-1" data-testid="command-line">
-      <div>
-        <span className="block text-t-caption text-ink-faint">Supplies</span>
-        <Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />
-      </div>
-      <div className="min-w-0">
-        <span className="block text-t-caption text-ink-faint">Cargo</span>
-        <span className="flex items-center gap-2">
-          <Figure value={formatOfTotal(used, total)} unit={tonsWord(total)} size="figure" />
-          <Bar
-            pct={total > 0 ? (used / total) * 100 : 0}
-            tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
-            label={`cargo, ${formatOfTotal(used, total)} ${tonsWord(total)}`}
-            className="min-w-0 flex-1"
-          />
-        </span>
-      </div>
-    </div>
   )
 }
