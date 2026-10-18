@@ -16,7 +16,7 @@
 // OFF) there are no merchant hulls and no "Merchants in port". Screenshots land in docs/npc-traders/.
 
 import { test, expect, type Locator, type Page } from '@playwright/test'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { RESTING_AT_PORTO, RESTING_PORT_CODE, serveNpcOn } from './npcOn.fixture'
@@ -37,6 +37,11 @@ import type { MerchantDoing, PortMerchant, TrafficFleet } from '../src/lib/rpc'
 import { project, type ViewBox } from '../src/lib/geo'
 import { REAL_PORTS, portAt } from './mapWorld.fixture'
 import { harbourSides, merchantsSummary } from '../src/live/merchantGroups'
+
+// the skills every company's sheet shows whether or not she holds them (data/skills.json, enrol "none")
+const ALWAYS_SHOWN_SKILLS = (JSON.parse(readFileSync(path.join(process.cwd(), 'data/skills.json'), 'utf8')) as {
+  skills: { code: string; enrol: string }[]
+}).skills.filter((k) => k.enrol === 'none').map((k) => k.code)
 
 const SHOTS = path.resolve('docs', 'npc-traders')
 
@@ -544,7 +549,19 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
   // full: ships, officers, Skills
   await expect(page.getByTestId('merchant-ship-tile').first()).toBeAttached()
   expect(await page.getByTestId('merchant-ship-tile').count()).toBeGreaterThanOrEqual(1)
-  await expect(page.locator('[data-testid^="skill-"]')).toHaveCount(4)
+  // HER SKILLS, as world.npc_fleet_card serves them: the four every company is shown (the skills that need no
+  // enrolment, data/skills.json `enrol: none`) plus every skill she HOLDS — S18 (0167) fixed hull-line
+  // skills for the English and French houses, so a merchant of those flags shows more than four. Derived
+  // from the data and the served levels, never a pinned count (the sheet does not read skills_bite).
+  for (const code of ALWAYS_SHOWN_SKILLS) await expect(sheet.getByTestId(`skill-${code}`)).toBeAttached()
+  const tiles = sheet.locator('[data-testid^="skill-"]')
+  expect(await tiles.count()).toBeGreaterThanOrEqual(ALWAYS_SHOWN_SKILLS.length)
+  for (const t of await tiles.all()) {
+    const code = ((await t.getAttribute('data-testid')) ?? '').replace(/^skill-/, '')
+    if (ALWAYS_SHOWN_SKILLS.includes(code)) continue
+    const label = (await t.locator('[aria-label]').first().getAttribute('aria-label')) ?? ''
+    expect(label, `${code} is shown though she does not hold it`).toMatch(/level [1-9]d* of/)
+  }
   await expect(sheet.getByText('Skills', { exact: true })).toBeAttached()
   await expect(sheet.getByText('Captains', { exact: true })).toBeAttached()
   // READ-ONLY: the tray's own buttons (its handle and its close), and since 2026-10-15 openers of

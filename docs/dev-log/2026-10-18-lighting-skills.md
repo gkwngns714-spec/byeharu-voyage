@@ -243,3 +243,60 @@ No table changes here, so nothing written lit is unreadable dark.
 - Cached-prefix `npm run build` (with `tsc -b`): 170/171 restored, 0179 applied, world guard ok. Exit 0.
 - `eslint .`: 0. `db:check-versions`: 171 distinct, ok.
 - `tests/ship.cabins.spec.ts` on a local PGlite preview (`localhost:4247`): 1 passed, 0 skipped.
+
+### #208 round 2 — proof 6 red, and the merchant sheet spec
+
+**Proof 6 red** (`pglite-gate (the rest)`, run 39096990249):
+
+```
+PROOF 6 FAILED: with a 25 per cent purser and a 0.75 concession the executed spread is 0.005… and the floor is 0.004…; the floor did not hold
+```
+
+- **The cause, from the code:** it is (a), the intended lit rule. It is not a defect.
+  - Lit, `public.crew_terms` counts a captain through the traits she USES, joining `public.captain_active` (D15 / §4.2:
+    she knows 4–10 traits and uses 2–5).
+  - Dark, it reads her job alone.
+  - Proof 6 authors its 25 % purser by hand (officers + profile + traits + signing + seat) and never writes a
+    `captain_active` row. So lit she uses no trait and gives 0 %. That is why the spread stayed at the
+    concession-only 0.005, above the floor.
+- **No real path writes a signing without active traits.** `sign_officer` makes her first traits active (K5). On
+  prod, every one of the 512 signings (511 merchant, 1 player) has an active row.
+- **The fix is in the proof:** it now states the precondition itself (`captain_active (signing, 'PURSER')`). She sits in
+  the Captain's cabin (100 %), has no home clock (never homesick), and is at her birth grade. So dark and lit she
+  gives the same 25 %, and the floor assertion is unchanged.
+- **The whole class:** the only other hand-authored signing is in `03_grant_lockdown.sql:393`. It passed in CI, because
+  it tests a grant, not a bonus. No spec inserts `player_officers`.
+- **Why my checks missed it:** the cached-prefix `npm run build` applies migrations and runs their self-asserts. It
+  does not run `scripts/db/proofs/*` — that is `npm run db:proof`, which I never ran for 0178 or 0179. My checklist
+  had build, tsc, eslint and the one changed spec, but not the proof suite. A migration that flips a switch changes
+  the world every proof runs in, so the proof suite belongs in the checklist for every switch-flip.
+
+**`tests/map.merchants.spec.ts`**: "… a tap opens a read-only sheet" expected 4 `skill-*` tiles and got 6.
+
+- **The sheet is right.** `world.npc_fleet_card` serves the four skills that need no enrolment plus every skill the
+  house HOLDS, and it does not read `skills_bite`. S18 (0167) fixed hull-line skills for the English and French
+  houses. On prod, 764 merchant houses' cards serve 4 tiles, 14 serve 5 and 43 serve 6, whatever the switch says.
+- **The pinned 4 was an ambient-default assertion.** It held only while the merchant the spec happens to open was a
+  four-skill house. My inference, not proven: lit speed changed which merchant that was.
+- **The spec now derives the truth:**
+  - every `enrol: "none"` skill of `data/skills.json` has its tile;
+  - there are at least that many tiles;
+  - every other tile is a skill she holds (its bar reads level ≥ 1).
+- It lands in #208, because it is the same lit-world class.
+
+**Round-2 checks (once):**
+
+- **The whole proof set on the 0179 chain: 12/12 files green, every declared marker.**
+  - World: the cached BROWSER world image (origin/main + 0179). Fixtures: `proof-courses` and `market-fixture`
+    installed as `proof.mjs` installs them. Each file ran in begin … rollback, judged by its own `@pass` markers.
+    Runner: a scratchpad copy of `proof.mjs`'s rule. Wall clock: 8 m 52 s.
+  - Results: 01 6/6, 02 6/6, 03 12/12, 04 9/9, 05 5/5, 06 10/10, 07 6/6, 08 6/6, 09 4/4, 10 10/10, 11 5/5, 12 6/6.
+- **`npm run db:proof` itself (the preamble variant) could not build a world here, and that is a separate finding.**
+  - This machine had no preamble prefix past 0128. From zero (33 min), and again from the 0128 snapshot it wrote, it
+    fails in **0137**: `0137 self-assert FAIL: the quay probe priced 4 / 4 of 4 harbour(s), or one served no goods`.
+  - It failed the same way twice. CI passes only because it restores a prefix past 0137.
+  - That is an old migration whose self-assert does not reproduce on a fresh apply today. The nightly from-zero run
+    (`23 18 * * *`) may meet it too. Not caused by 0178 / 0179; reported.
+- `tests/map.merchants.spec.ts` "… a tap opens a read-only sheet" on a local PGlite preview (`localhost:4248`):
+  1 passed. The tapped merchant's tile count is not printed, so this run does not show whether the >4 branch ran.
+- `eslint tests/map.merchants.spec.ts` and `tsc -b`: 0.

@@ -201,6 +201,11 @@ begin
   insert into public.player_officers (player_id, officer_id)
   values (v_player, v_officer)
   returning id into v_signing;
+  -- 0179 (crew_bite lit): a captain counts only through the traits she USES (public.captain_active —
+  -- what a hire through sign_officer writes, her first traits). This signing is authored by hand, so the
+  -- proof states that precondition itself: her one trait, PURSER, in use. Dark (her job alone) and lit
+  -- (her active traits, Captain's cabin rate 100 %, never homesick: no home clock) she gives the same 25 %.
+  insert into public.captain_active (player_officer_id, trait) values (v_signing, 'PURSER');
   -- 0157: a captain counts where she SITS — in the Captain's cabin of the flagship, through the one seat core
   perform public.captain_seat_put(v_signing,
     (select s.id from public.ships s where s.fleet_id = v_fleet order by s.is_flagship desc, s.id limit 1), 1);
