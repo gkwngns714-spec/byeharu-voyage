@@ -1,3 +1,4 @@
+import { Flag } from '../components/ui'
 import type { PortAllegiance } from '../lib/rpc'
 import { nationNameOf, useWorld } from './worldStore'
 
@@ -7,15 +8,32 @@ import { nationNameOf, useWorld } from './worldStore'
 // line prints the words only — one flag per city on the tray, not two. The fact is `portNationOf`
 // (worldStore), which is `world.allegiance`, which is `public.port_nation`. Words: docs/WORDS.md
 // (Home city / Contested / No country).
+//
+// GP1 (0187, docs/GREAT_POWERS.md §4): a city founded by one of the thirteen minor nations names its
+// LOCAL RULER after the words — `No country · ruled by Venice` — with the ruler's flag at caption
+// size. The ruler holds no influence; the great power's flag stays the one beside the name
+// (PortFlag). The ruler is the server's (`allegiance.ruler`, `public.port_ruler`); nothing is
+// derived here.
 
 /** The title line's part. The caller passes the allegiance it read with `portNationOf`, so a city
  *  whose flag has not been read yet prints nothing here — never a guessed country. */
 export function CityFlag({ allegiance }: { allegiance: PortAllegiance }) {
   const nationByCode = useWorld((s) => s.nationByCode)
-  if (allegiance.nation === null) return <span data-testid="city-flag">No country</span>
+  const words =
+    allegiance.nation === null
+      ? 'No country'
+      : `${nationNameOf(nationByCode, allegiance.nation)} · ${allegiance.home ? 'Home city' : 'Contested'}`
+  const ruler = allegiance.ruler ?? null
   return (
     <span data-testid="city-flag">
-      {`${nationNameOf(nationByCode, allegiance.nation)} · ${allegiance.home ? 'Home city' : 'Contested'}`}
+      {words}
+      {ruler && (
+        <span data-testid="city-ruler">
+          {' · ruled by '}
+          <Flag code={ruler} name={nationNameOf(nationByCode, ruler)} size="caption" />{' '}
+          {nationNameOf(nationByCode, ruler)}
+        </span>
+      )}
     </span>
   )
 }

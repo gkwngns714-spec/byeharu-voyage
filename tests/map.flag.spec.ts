@@ -85,6 +85,8 @@ test('the city title line prints the flag it flies: Lisbon, Portugal, Home city'
   await expect(flag).toBeVisible({ timeout: 30_000 })
   await expect(flag).toContainText('Portugal')
   await expect(flag).toContainText('Home city')
+  // 0187: a great power's home names no local ruler (a ruler's city does: greatPowers.spec.ts)
+  await expect(page.getByTestId('city-ruler')).toHaveCount(0)
 })
 
 test('Profile changes the company\'s country once, then says when the next change opens', async ({ page, request, baseURL }) => {

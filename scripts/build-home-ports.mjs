@@ -7,12 +7,13 @@
 //
 // THE RULE (D1), computed once from the applied chain's sailed distances (public.sea_reaches, the
 // miles the SAIL picker uses), then AUTHORED: data/home-ports.json is the one list, the owner may
-// edit it, and migration 0143 + the world guard hold the database equal to it.
-//   1. Each country takes its capital, then its own harbours in order of sailed miles from the
-//      capital (ties: port code).
-//   2. It keeps 4 if it holds 4 or more harbours, otherwise 3.
-//   3. A country left short takes the nearest FREE (stateless) harbours — shortest distance first
-//      across the whole world, so no harbour is home to two countries and nobody loses a city.
+// edit it, and migrations 0143 / 0187 + the world guard hold the database equal to it.
+// Since GP1 (0187, docs/GREAT_POWERS.md) only the TEN GREAT POWERS have homes:
+//   1. Each great power takes its capital, then the harbours it FOUNDED in order of sailed miles from
+//      the capital (ties: port code), up to 4.
+//   2. A power left short takes the nearest harbours no great power founded (free, or founded by one
+//      of the thirteen local rulers) — shortest distance first across the whole world, so no harbour
+//      is home to two powers and no great power loses a city. (Mughal India: Surat, Khambhat.)
 //
 // Usage:
 //   node scripts/build-home-ports.mjs           write data/home-ports.json and print the table
@@ -24,6 +25,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { applyWithPrefixCache } from './db/prefix-cache.mjs'
 import { BROWSER_VARIANT, IMAGE_CACHE_DIR, chainAndFingerprint } from './db/build-image.mjs'
+import { GREAT_POWERS } from './lib/world-derive.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.resolve(HERE, '..', 'data', 'home-ports.json')
@@ -35,7 +37,9 @@ const { db } = await applyWithPrefixCache({
 })
 const q = async (s) => (await db.query(s)).rows
 
-const nations = await q(`select n.code, n.name, n.capital_port_code as capital from public.nations n order by n.code`)
+const great = new Set(GREAT_POWERS)
+const nations = (await q(`select n.code, n.name, n.capital_port_code as capital from public.nations n order by n.code`))
+  .filter((n) => great.has(n.code))
 const harbours = await q(`select p.code, p.name, n.code as nation from public.ports p
                             left join public.nations n on n.id = p.nation_id where p.kind = 'HARBOUR'`)
 const reaches = new Map((await q(`select code, reaches from public.sea_reaches`)).map((r) => [r.code, r.reaches]))
@@ -49,10 +53,10 @@ for (const n of nations) {
   if (!own.some((h) => h.code === n.capital)) throw new Error(`${n.code}: its capital ${n.capital} is not one of its harbours`)
   own.sort((a, b) => (a.code === n.capital ? -1 : b.code === n.capital ? 1 : 0)
     || miles(n.capital, a.code) - miles(n.capital, b.code) || a.code.localeCompare(b.code))
-  want[n.code] = own.length >= 4 ? 4 : 3
+  want[n.code] = 4
   homes[n.code] = own.slice(0, want[n.code]).map((h) => h.code)
 }
-const free = harbours.filter((h) => h.nation === null)
+const free = harbours.filter((h) => h.nation === null || !great.has(h.nation))
 const offers = []
 for (const n of nations) {
   if (homes[n.code].length >= want[n.code]) continue
@@ -70,7 +74,8 @@ for (const n of nations) {
 }
 
 const table = nations.map((n) => `${n.code}  ${homes[n.code].map((c) => {
-  const top = harbours.find((h) => h.code === c).nation === null ? ' (free today)' : ''
+  const founder = harbours.find((h) => h.code === c).nation
+  const top = founder === n.code ? '' : founder === null ? ' (free)' : ` (founded by ${founder})`
   return `${nameOf.get(c)} ${Math.round(miles(n.capital, c))}${top}`
 }).join(' · ')}`).join('\n')
 
@@ -81,7 +86,7 @@ if (check) {
   for (const n of diffs) console.log(`home-ports --check: ${n.code} file ${JSON.stringify(file[n.code] ?? [])} vs rule ${JSON.stringify(homes[n.code])}`)
 } else {
   writeFileSync(OUT, JSON.stringify({
-    _comment: 'Every country\'s home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Migration 0143 seeds public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.',
+    _comment: 'Every country\'s home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the ten great powers have homes (docs/GREAT_POWERS.md, 0187). Migrations 0143 and 0187 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.',
     homes,
   }, null, 2) + '\n')
   console.log(table)
