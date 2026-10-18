@@ -489,6 +489,9 @@ export const RPCS = {
     ],
   },
   worldWatchlist: { schema: 'world', fn: 'watchlist', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  // 0176 — WHAT YOU HOLD, in every city: the share register's rows, a share's price there now, the dividends
+  // collected (docs/COMMAND_DESK.md §3.7). No arguments: the company is the caller's.
+  worldHoldings: { schema: 'world', fn: 'holdings', args: [] },
   // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
   // queued by the one enqueuer, all or none. The plan builder's "Queue it once".
   cmdIssueLines: {

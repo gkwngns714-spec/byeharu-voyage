@@ -14,6 +14,7 @@ export const DESK_FACES = [
   { id: 'markets', label: 'Markets' },
   { id: 'plans', label: 'Plans' },
   { id: 'city', label: 'City' },
+  { id: 'invest', label: 'Invest' },
 ] as const
 
 export type DeskFace = (typeof DESK_FACES)[number]['id']

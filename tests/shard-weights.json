@@ -39,6 +39,7 @@
     "route.stopface.spec.ts": 114,
     "rpc.firstSession.spec.ts": 4,
     "rpc.goodBoard.spec.ts": 20,
+    "rpc.holdings.spec.ts": 20,
     "rpc.issueLines.spec.ts": 20,
     "rpc.outlook.spec.ts": 20,
     "rpc.surface.spec.ts": 13,

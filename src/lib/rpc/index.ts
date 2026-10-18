@@ -75,6 +75,7 @@ import type {
   GoodBoard,
   Watchlist,
   PlanLine,
+  Holdings,
   IssueLinesResult,
   InvestReceipt,
   TowReceipt,
@@ -666,6 +667,11 @@ export function cmdIssueLines(
   expectedVersion: number | null = null,
 ): Promise<RpcResult<IssueLinesResult>> {
   return call<IssueLinesResult>('cmdIssueLines', [fleetId, lines, expectedVersion])
+}
+
+/** What your company holds in every city (0176): the register's rows, a share's price now, the dividends. */
+export function worldHoldings(): Promise<RpcResult<Holdings>> {
+  return call<Holdings>('worldHoldings')
 }
 
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */
