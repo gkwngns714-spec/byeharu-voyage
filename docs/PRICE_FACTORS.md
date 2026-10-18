@@ -1,6 +1,6 @@
 # PRICE FACTORS — what else moves a price, and where each factor lives in the one price
 
-**Status: DESIGN, 2026-10-18; slice P1 LIVE (0185); P2 built in 0190; P4 built in 0195 (tariffs by relation, §3.2)** (faith tastes, `world.price_why`, the good
+**Status: DESIGN, 2026-10-18; slice P1 LIVE (0185); P2 built in 0190; P4 built in 0196 (tariffs by relation, §3.2)** (faith tastes, `world.price_why`, the good
 page's "Why this price"; not yet on prod). Every DEFAULT is listed in the table below for the owner to confirm.
 
 **The owner, 2026-10-18, verbatim:**
@@ -266,7 +266,7 @@ panel shows the city's flag and your stance with it.
 **The 10 great powers.** This IS the powers' interaction with prices. Merchants (who carry
 `players.nation_id`) pay it too, so a war between two powers really moves their merchants' routes.
 
-**Built in 0195 (P4).** `data/relations.json` holds 13 pairs of the ten great powers (5 allies, 6 rivals, 2 wars,
+**Built in 0196 (P4).** `data/relations.json` holds 13 pairs of the ten great powers (5 allies, 6 rivals, 2 wars,
 1580 – 1640, each with its line of why; **NOT the owner's — confirm every row**); `public.power_relations` keeps
 them, the world guard holds the table equal to the file, and `public.power_stance` is its one reader. In
 `world.tax_rate`, with the race on, a company at home keeps 0147's citizen cut and anywhere else pays
@@ -388,7 +388,7 @@ product of the lines is the middle, so the page never shows a number the server 
 | **P1 · 0185** | **Faith tastes** (§3.1) + **"Why this price"** (§5): data files, three tables, `world.demand_for` re-cut, re-derive of `port_goods.demand`, `world.price_why`, the good page's lines | the owner's "religion"; every later factor shows up through the same reader | low: no pricing function changes signature; the quote path reads the same column | — |
 | **P2 · 0190** | **Volume line** (§3.4's visible half): "312 t sold here in a day by 9 houses" in `price_why` | the owner's "merchants", seen | low: one aggregate over today's flows for one (port, good) | P1 |
 | **P3 · 0191** | **Investor shave** (§3.3) | rewards giving, per company | low: one precomputed rank table, one hunk in `spread_effective` | I1–I6 live |
-| **P4 · 0195** | **Tariffs by relation** (§3.2) | the owner's "relationship with other countries" | medium: a relation table, one hunk in `world.tax_rate` | the 10 great powers |
+| **P4 · 0196** | **Tariffs by relation** (§3.2) | the owner's "relationship with other countries" | medium: a relation table, one hunk in `world.tax_rate` | the 10 great powers |
 | **P5 · 0194** | **Glut** (§3.4's price half) | crowding felt | medium: `mid_from_terms` 13 → 14 arguments and four callers re-cut, two UPDATEs | P2 measured |
 
 ## 7. Later candidates — one line each

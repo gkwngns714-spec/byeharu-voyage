@@ -27,7 +27,7 @@ export function stakeLine(why: PriceWhy): string | null {
     : `Your company is #${s.rank} among this city's givers`
 }
 
-/** 0195: the company's own profit tax here and the relation that moves it (world.price_why `tariff`). The
+/** 0196: the company's own profit tax here and the relation that moves it (world.price_why `tariff`). The
  *  stance is named only when it moves the rate (the race off, every company pays the city's rate); the
  *  multiplier is the served rate over the served base, never a rule re-derived here. */
 export function tariffLine(why: PriceWhy): { label: string; value: string } | null {

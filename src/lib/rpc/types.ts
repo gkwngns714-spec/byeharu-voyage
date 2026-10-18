@@ -2591,7 +2591,7 @@ export interface PriceWhy {
   /** 0191: the signed-in company's own standing here — its rank among the city's givers and the share of
    *  the spread it is spared (0 past rank 5 or while the race is off); null with no points here. */
   stake?: { rank: number; shave: number } | null
-  /** 0195: the signed-in company's own profit tax here — the city's rate (`base`), the company's (`rate`, both
+  /** 0196: the signed-in company's own profit tax here — the city's rate (`base`), the company's (`rate`, both
    *  world.tax_rate), how its power stands with the city's holder and the holder's flag (null for a free city).
    *  Null with no company signed in, or while the city's purse is dark. */
   tariff?: {

@@ -154,7 +154,7 @@ test('0194: a glutted market remembers — the glut is its own term, and it is p
   await db.pg.query('update public.port_goods set glut = 0 where port_id = $1 and good_id = $2', [r.port_id, r.good_id])
 })
 
-test("0195: a rival pays the tariff — the profit tax by how the company's power stands with the city's holder", async () => {
+test("0196: a rival pays the tariff — the profit tax by how the company's power stands with the city's holder", async () => {
   await db.pg.query(`update public.world_config set value = 'true'::jsonb where key in ('influence_enabled', 'city_treasury_enabled')`)
   const pid = await myCompany()
   const nation = (await db.pg.query<{ code: string }>(
