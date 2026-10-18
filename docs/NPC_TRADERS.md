@@ -574,7 +574,7 @@ order, `for update nowait`, §4.5), skipping routes paused `error` or `laid_up` 
    paused `laid_up` for this hour and tried again next hour.
 
 The queue fits by construction: ≤ k SELL expansions + ≤ 2 cut-loss SELLs + PROVISION + REPAIR +
-HIRE + k BUY + SAIL = 12 = `order_queue_max` at k = 3; the renderer's existing overflow rule
+HIRE + k BUY + SAIL = 12 at k = 3 — the whole of `order_queue_max` when it was 12, a quarter of it since 0193 raised the cap to 48; the renderer's existing overflow rule
 (trailing SELLs dropped with `E_QUEUE_FULL` noted, 0092:690) covers the rest.
 
 **Deterministic where it matters.** The STOPS and COURSES are authored (`data/npc-houses.json`)

@@ -735,7 +735,7 @@ except `cmd.issue_lines`, which is a verb (§7.4).
 
 `p_lines = [{text, path}]` (path = a SAIL's proposed course). One savepoint: `cmd.parse` each line,
 `cmd.enqueue` each, version check once, `cmd.advance` once at the end — **all queued or none** (a parse
-or queue-full refusal names the line). Cap: the existing `order_queue_max` (12). No new executor, no
+or queue-full refusal names the line). Cap: the existing `order_queue_max` (12 until 0193, 48 since — a long passage is a chain of legs). No new executor, no
 new grammar. Dark switch: none needed (it can only do what N separate `cmd.issue` calls already do);
 it is registered like `cmd.issue`.
 

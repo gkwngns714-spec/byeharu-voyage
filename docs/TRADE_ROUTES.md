@@ -59,7 +59,7 @@ file slice 1 touches, and the decisions only the owner can make.
 |---|---|---|
 | Per-fleet order queue `public.orders` (`seq`, `raw_text`, `verb`, `args`, status `pending/active/done/failed/cancelled/skipped`) | `…0007…:81-98`. The status check at `:90` already allows `'skipped'`, which nothing sets today | Holds a route's generated orders like any other order |
 | The one grammar `cmd.parse(player, fleet, text)` | Live body (dump `cmd.parse`). SAIL takes one port token or `lat,lon`. BUY/SELL take `n / ALL / HALF / n%` plus an optional `AT [<=\|>=] price` limit | The route renders each stop line to text and parses it here, so there is no second parser |
-| The only mutating entry `cmd.issue(fleet, text, version, path)` | `…0008…:453`, re-cut `…0047…:825` and `…0050…:551`. Enqueue steps are inline: queue cap (`order_queue_max` = 12, `…0001…:162`), `seq = max+1`, INSERT, `version+1`, `cmd.advance` | Its enqueue hunk is sliced out into `cmd.enqueue`, and both `cmd.issue` and the route call that (§4.1) |
+| The only mutating entry `cmd.issue(fleet, text, version, path)` | `…0008…:453`, re-cut `…0047…:825` and `…0050…:551`. Enqueue steps are inline: queue cap (`order_queue_max` — 12 at `…0001…:162`, **48 since 0193**), `seq = max+1`, INSERT, `version+1`, `cmd.advance` | Its enqueue hunk is sliced out into `cmd.enqueue`, and both `cmd.issue` and the route call that (§4.1) |
 | Queue runner `cmd.advance(fleet, now)` | `…0007…:812-866`. The halt rule is `:839` ("a failed order now blocks the fleet until the player clears it"), and the queue-dry exit is `:857`. Re-cut `…0047…:725` so it also runs when ANCHORED | **The hook** (§4.2) |
 | Dispatcher `cmd.execute_order` | Live arms SAIL, BUY, SELL, PROVISION, HIRE, DISMISS, REPAIR, MAKE, STORE, TAKE, BUILD, FIT, UNFIT. Every error becomes `status='failed'` through `cmd.refusal_caught` | Unchanged |
 | SAIL needs a course | `cmd.do_sail` (live) verifies a proposed polyline against the server raster. With no course attached it tries the straight line and refuses `E_NO_COURSE` if land is in the way | Each route leg **stores its proposed course**. The course is authored by the client's one course author, `proposeCourse` (`src/domain/passage/index.ts:160`), and re-verified by `do_sail` on every departure |
@@ -170,7 +170,7 @@ fleet to null, which detaches it.
 
 **Stop and line caps** are table triggers in the 0034 shape (`…0034…:161-176`), so every future
 writer inherits them. `standing_route_stop_max` (**8** since 0101, owner row 122) and per-stop lines are bounded so that
-`lines + SELL-everything expansion + PROVISION + REPAIR + SAIL ≤ order_queue_max` (12). When the
+`lines + SELL-everything expansion + PROVISION + REPAIR + SAIL ≤ order_queue_max` (12 until 0193, 48 since). When the
 expansion would overflow, the generator drops the trailing SELL lines and records them in
 `skipped` with code `E_QUEUE_FULL`, the existing code.
 
