@@ -218,3 +218,35 @@ merchants on.
   | pglite-gate (the rest) | pass (6 m 15 s) |
   | pglite-gate (merchants) | pass (3 m 19 s) |
   | pglite-gate (ledger) | pass (9 m 37 s) |
+
+## 7. The prod push failed, and the fix (0180 edited in place; it is applied nowhere live)
+
+- **What happened.** `db push` of 0180 failed its self-assert and rolled back whole, so prod stayed at 0179. #211 had
+  been merged anyway, so main carried a 0180 that prod did not. The error:
+  `0180 self-assert FAIL: the ceiling pass gave for 74 house(s) (want 1)`.
+- **The cause: whole-world counts in the probe.** The probe ran `npc_give_above_ceiling` over every house and then
+  asserted on world-wide counts. On prod, 74 real houses stood above 3× capital; in the image, none did.
+- **Two more assertions of the same class**, found by running each probe's selection read-only on prod:
+  - The (a) probe's house (Casa da Índia) had already given 40,000 on prod that day, so the absolute
+    `day_given = 0` check would have failed next.
+  - The (d) probe picked a fleet that happens to be docked at a yard. On prod that fleet (Casa da Guiné, LIS) is
+    SAILING, and on another day there may be no docked candidate at all.
+  - Separately, "the world's money unchanged" summed every purse and flow across statements, while other sessions
+    commit in between.
+- **The fix (own state only):**
+  - `npc_give_above_ceiling(p_now, p_player default null)`: the probe passes its own house. The hourly caller
+    passes none.
+  - Every flow count and money check is scoped to `player_id` = the probe house: her purse plus her flows since the
+    probe began.
+  - Influence is checked as a delta from before the pass.
+  - The (d) probe chooses its house by the roster: one hull, and a home whose yard builds her line hull. It then lays
+    her fleet at her home quay itself, aborting any SAILING voyage inside the rolled-back block.
+- **Proved locally** (scratch `prodlike-apply.mjs`: prod's purses and stocks, lit treasury, routes on):
+  - the merged 0180 fails exactly as prod did ("gave for 57 house(s)");
+  - the fixed file passes on the fresh image, on the prod-shaped world, on it with every merchant fleet anchored away,
+    and with every merchant fleet SAILING on a voyage.
+- **Read-only on prod:** the new selections found 257 merchant fleets homed at a yard, with candidate houses
+  (LIS / LON / MRS, all SAILING). The (a) house has 3 loop harbours. 0 MERCHANT_SURPLUS flows and 0 PROBE_0180 rows
+  exist. Head is 0179.
+- **Client:** the Town Hall row reads `hall.day.in.MERCHANT_SURPLUS ?? 0`, and the DayBook hides every row that is
+  0. With the server kind absent, the row is simply not drawn.
