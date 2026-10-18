@@ -265,6 +265,27 @@ export function payloadLines(payload: Record<string, unknown>): string[] {
   return Array.isArray(v) ? v.filter((line): line is string => typeof line === 'string') : []
 }
 
+/** 0189: THE BATTLE REPORTS of a VOYAGE_REPORT — `payload.fights`, one per day a raid was fought in
+ *  rounds: `line` is the index into `payload.lines` of that day's sentence ("Day 4. Sail sighted…"),
+ *  `rounds` the fight in words, composed server-side by `voyage.fight_resolve`. The client neither
+ *  re-words nor re-orders them; it only hangs each fight under its day. Absent on a report with no
+ *  fight (and on every report while `combat_bite` is off): an empty list. */
+export interface ReportFight {
+  line: number
+  rounds: string[]
+}
+export function payloadFights(payload: Record<string, unknown>): ReportFight[] {
+  const v = payload['fights']
+  if (!Array.isArray(v)) return []
+  return v.flatMap((f): ReportFight[] => {
+    if (f === null || typeof f !== 'object') return []
+    const line = (f as Record<string, unknown>)['line']
+    const rounds = (f as Record<string, unknown>)['rounds']
+    if (typeof line !== 'number' || !Array.isArray(rounds)) return []
+    return [{ line, rounds: rounds.filter((r): r is string => typeof r === 'string') }]
+  })
+}
+
 /** A whole-number count reads as a count; a fractional one keeps its tenth. */
 function formatQty(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1)
