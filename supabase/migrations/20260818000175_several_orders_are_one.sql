@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0174 — SEVERAL ORDERS ARE ONE  (COMMAND DESK slice D4: a plan is queued whole, or not at all)
+-- 0175 — SEVERAL ORDERS ARE ONE  (COMMAND DESK slice D4: a plan is queued whole, or not at all)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY ─────────────────────────────────────────────────────────────────────────────────────────
@@ -34,7 +34,7 @@
 --     docked fleet's first line runs (cmd.advance), as after cmd.issue; (f) registry +1 (authenticated,
 --     not anon); the walls.
 -- ROLLBACK: drop the function and reverse the registry's hunk.
--- VERSION: 0174 PROVISIONAL — prod head 0173 when written (2026-10-18). Every pre-image is read live.
+-- VERSION: 0175 PROVISIONAL — prod head 0174 (the city-circulation fix) when renumbered (2026-10-18). Every pre-image is read live.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -43,13 +43,13 @@ begin
   perform set_config('lock_timeout', '5s', true);
 end $guard$;
 
-create or replace function pg_temp.occurs_0174(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0175(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
-create temp table before_0174 on commit drop as
+create temp table before_0175 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        to_regprocedure('cmd.issue_lines(uuid, jsonb, integer)') is not null as already,
        replace(pg_get_functiondef('public.client_rpc_entry_points()'::regprocedure), E'\r', '') as def,
@@ -57,8 +57,8 @@ select (select count(*) from public.client_rpc_entry_points()) as entry_points,
 
 do $$
 begin
-  if (select already from before_0174) then
-    raise exception '0174 self-assert FAIL: cmd.issue_lines already exists';
+  if (select already from before_0175) then
+    raise exception '0175 self-assert FAIL: cmd.issue_lines already exists';
   end if;
 end $$;
 
@@ -69,7 +69,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0174: SEVERAL ORDERS AS ONE (docs/COMMAND_DESK.md §7.4). Every line parsed (cmd.parse) before any is
+-- 0175: SEVERAL ORDERS AS ONE (docs/COMMAND_DESK.md §7.4). Every line parsed (cmd.parse) before any is
 -- queued; every line queued (cmd.enqueue, the one enqueuer) or none; cmd.advance once. The refusal shape
 -- is cmd.issue's, plus `line` — the 1-based line that refused.
 declare
@@ -182,30 +182,30 @@ declare
   v_old text := $h$      ('world',       'watchlist',             'uuid')
 $h$;
   v_new text := $h$      ('world',       'watchlist',             'uuid'),
-      -- 0174: a plan's lines, queued together or not at all (docs/COMMAND_DESK.md §7.4, D4).
+      -- 0175: a plan's lines, queued together or not at all (docs/COMMAND_DESK.md §7.4, D4).
       ('cmd',         'issue_lines',           'uuid, jsonb, int')
 $h$;
   v_rev text;
 begin
-  select * into b from before_0174;
-  if pg_temp.occurs_0174(b.def, v_old) <> 1 then
-    raise exception '0174 self-assert FAIL: the registry''s last row occurs % time(s), not once — the deployed body is not what this file was written against',
-      pg_temp.occurs_0174(b.def, v_old);
+  select * into b from before_0175;
+  if pg_temp.occurs_0175(b.def, v_old) <> 1 then
+    raise exception '0175 self-assert FAIL: the registry''s last row occurs % time(s), not once — the deployed body is not what this file was written against',
+      pg_temp.occurs_0175(b.def, v_old);
   end if;
   execute replace(b.def, v_old, v_new);
   v_rev := replace(pg_get_functiondef('public.client_rpc_entry_points()'::regprocedure), E'\r', '');
-  if pg_temp.occurs_0174(v_rev, v_new) <> 1 or replace(v_rev, v_new, v_old) <> b.def then
-    raise exception '0174 self-assert FAIL: the registry does not reverse to its pre-image';
+  if pg_temp.occurs_0175(v_rev, v_new) <> 1 or replace(v_rev, v_new, v_old) <> b.def then
+    raise exception '0175 self-assert FAIL: the registry does not reverse to its pre-image';
   end if;
   if coalesce((select p.proacl::text from pg_proc p where p.oid = 'public.client_rpc_entry_points()'::regprocedure), '') <> b.acl then
-    raise exception '0174 self-assert FAIL: the registry''s ACL moved';
+    raise exception '0175 self-assert FAIL: the registry''s ACL moved';
   end if;
 end $$;
 
 -- ── 3. THE PROOF ──────────────────────────────────────────────────────────────────────────────
 do $$
 declare
-  c_uid  constant uuid := '00000000-0174-4000-8000-000000000001';
+  c_uid  constant uuid := '00000000-0175-4000-8000-000000000001';
   c_nil  constant uuid := '00000000-0000-0000-0000-000000000000';
   v_p    uuid;
   v_pf   uuid;
@@ -220,9 +220,9 @@ declare
   v_state text;
 begin
   begin
-    v_p := public.new_house(c_uid, 'Casa do Plano 0174', 'PRT', 'LIS');
+    v_p := public.new_house(c_uid, 'Casa do Plano 0175', 'PRT', 'LIS');
     select id into v_pf from public.fleets where player_id = v_p;
-    perform public.credit(v_p, 'PROBE_0174', 1000000);
+    perform public.credit(v_p, 'PROBE_0175', 1000000);
     perform cmd.assume_identity(c_uid);
     select g.code into v_good from public.goods g
      where public.port_offers((select id from public.ports where code = 'LIS'), g.id) order by g.code limit 1;
@@ -235,34 +235,34 @@ begin
       jsonb_build_object('text', 'SAIL CAD', 'path', v_path)));
     if (v_r->>'ok')::boolean or (v_r->>'line')::int <> 3 or v_r->>'error_message' not like 'Line 3 (SELL nosuchgood ALL):%'
        or exists (select 1 from public.orders where fleet_id = v_pf) then
-      raise exception '0174 self-assert FAIL: a bad third line was not refused whole, by name: %', v_r;
+      raise exception '0175 self-assert FAIL: a bad third line was not refused whole, by name: %', v_r;
     end if;
 
     -- (d) a queue act, an empty plan, a stale version, another company's fleet
     v_r := cmd.issue_lines(v_pf, jsonb_build_array(jsonb_build_object('text', 'CLEAR')));
     if (v_r->>'ok')::boolean or v_r->>'error_code' <> 'E_PARSE' then
-      raise exception '0174 self-assert FAIL: a CLEAR line was queued: %', v_r;
+      raise exception '0175 self-assert FAIL: a CLEAR line was queued: %', v_r;
     end if;
     v_r := cmd.issue_lines(v_pf, '[]'::jsonb);
     if (v_r->>'ok')::boolean then
-      raise exception '0174 self-assert FAIL: an empty plan was accepted';
+      raise exception '0175 self-assert FAIL: an empty plan was accepted';
     end if;
     v_ver := (select version from public.fleets where id = v_pf);
     v_r := cmd.issue_lines(v_pf, jsonb_build_array(jsonb_build_object('text', format('BUY %s 10', v_good))), v_ver + 7);
     if v_r->>'error_code' <> 'E_STALE' then
-      raise exception '0174 self-assert FAIL: a stale version was not refused E_STALE: %', v_r;
+      raise exception '0175 self-assert FAIL: a stale version was not refused E_STALE: %', v_r;
     end if;
     v_r := cmd.issue_lines((select f.id from public.fleets f where f.player_id <> v_p limit 1),
                            jsonb_build_array(jsonb_build_object('text', format('BUY %s 10', v_good))));
     if v_r->>'error_code' <> 'E_NO_SUCH_FLEET' then
-      raise exception '0174 self-assert FAIL: another company''s fleet was not refused: %', v_r;
+      raise exception '0175 self-assert FAIL: another company''s fleet was not refused: %', v_r;
     end if;
 
     -- (c) a plan larger than the room refuses whole
     select jsonb_agg(jsonb_build_object('text', format('BUY %s 1', v_good))) into v_lines from generate_series(1, v_max + 1);
     v_r := cmd.issue_lines(v_pf, v_lines);
     if v_r->>'error_code' <> 'E_QUEUE_FULL' or exists (select 1 from public.orders where fleet_id = v_pf) then
-      raise exception '0174 self-assert FAIL: an oversized plan was not refused whole: %', v_r;
+      raise exception '0175 self-assert FAIL: an oversized plan was not refused whole: %', v_r;
     end if;
 
     -- (a) + (e) four lines, together, in order, each exactly cmd.parse's; the docked fleet starts at once
@@ -274,7 +274,7 @@ begin
       jsonb_build_object('text', format('SELL %s ALL AT >= 1', v_good)));
     v_r := cmd.issue_lines(v_pf, v_lines, v_ver);
     if not (v_r->>'ok')::boolean or jsonb_array_length(v_r->'orders') <> 4 then
-      raise exception '0174 self-assert FAIL: four lines were not queued: %', v_r;
+      raise exception '0175 self-assert FAIL: four lines were not queued: %', v_r;
     end if;
     select count(*) into v_n
       from public.orders o
@@ -285,19 +285,19 @@ begin
        and o.args = case when x.l ? 'path' then jsonb_set(cmd.parse(v_p, v_pf, x.l->>'text')->'args', '{path}', x.l->'path')
                          else cmd.parse(v_p, v_pf, x.l->>'text')->'args' end;
     if v_n < 4 then
-      raise exception '0174 self-assert FAIL: % of the 4 queued rows are not cmd.parse''s own: %', v_n,
+      raise exception '0175 self-assert FAIL: % of the 4 queued rows are not cmd.parse''s own: %', v_n,
         (select jsonb_agg(jsonb_build_object('t', raw_text, 'v', verb, 'a', args) order by seq) from public.orders where fleet_id = v_pf);
     end if;
     if (select array_agg(raw_text order by seq) from public.orders where fleet_id = v_pf)
          <> (select array_agg(btrim(l->>'text') order by i) from jsonb_array_elements(v_lines) with ordinality x(l, i)) then
-      raise exception '0174 self-assert FAIL: the lines were not queued in their order';
+      raise exception '0175 self-assert FAIL: the lines were not queued in their order';
     end if;
     if (select version from public.fleets where id = v_pf) < v_ver + 4 then
-      raise exception '0174 self-assert FAIL: the version did not move once a line';
+      raise exception '0175 self-assert FAIL: the version did not move once a line';
     end if;
     -- (e) cmd.advance ran: the first line is no longer pending
     if (select status from public.orders where fleet_id = v_pf order by seq limit 1) = 'pending' then
-      raise exception '0174 self-assert FAIL: the docked fleet did not start on its first line';
+      raise exception '0175 self-assert FAIL: the docked fleet did not start on its first line';
     end if;
 
     raise exception using errcode = 'ZX174', message = jsonb_build_object('good', v_good,
@@ -307,19 +307,19 @@ begin
   end;
   perform cmd.assume_identity(c_nil);
   if exists (select 1 from public.players where id = v_p) then
-    raise exception '0174 self-assert FAIL: the probe company survived its rollback';
+    raise exception '0175 self-assert FAIL: the probe company survived its rollback';
   end if;
 
   -- (f) the receipt
-  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0174) + 1
+  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0175) + 1
      or not has_function_privilege('authenticated', 'cmd.issue_lines(uuid, jsonb, integer)', 'execute')
      or has_function_privilege('anon', 'cmd.issue_lines(uuid, jsonb, integer)', 'execute')
      or (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0174 self-assert FAIL: the registry, the grant wall or the read wall moved';
+    raise exception '0175 self-assert FAIL: the registry, the grant wall or the read wall moved';
   end if;
 
-  raise notice '0174 self-assert ok: SEVERAL ORDERS ARE ONE. cmd.issue_lines (registered; authenticated only): a bad third line queued none and was named; a CLEAR line, an empty plan, a stale version and another company''s fleet refused; % lines past the room refused whole; four lines (%) queued in order, each cmd.parse''s own verb and args (the SAIL with its path), the version once a line, the docked fleet started at once (%). Registry +1, reverses to its pre-image.',
+  raise notice '0175 self-assert ok: SEVERAL ORDERS ARE ONE. cmd.issue_lines (registered; authenticated only): a bad third line queued none and was named; a CLEAR line, an empty plan, a stale version and another company''s fleet refused; % lines past the room refused whole; four lines (%) queued in order, each cmd.parse''s own verb and args (the SAIL with its path), the version once a line, the docked fleet started at once (%). Registry +1, reverses to its pre-image.',
     v_max + 1, v_out->>'good', v_out->'statuses';
 end $$;

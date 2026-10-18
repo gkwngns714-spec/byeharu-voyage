@@ -291,7 +291,7 @@ export interface LiveWorld {
    *  string a keyboard would. A SAIL also carries its PROPOSED course (0039), which the server
    *  verifies and measures itself. Refreshes on success so the queue and purse are never stale. */
   issue: (fleetId: string, text: string, path?: [number, number][] | null) => Promise<boolean>
-  /** A PLAN (0174): several lines queued together or not at all — the desk's "Queue it once". A refusal
+  /** A PLAN (0175): several lines queued together or not at all — the desk's "Queue it once". A refusal
    *  (naming its line) lands in `refusal` as every verb's does; the world is read back as after `issue`. */
   issueLines: (fleetId: string, lines: readonly PlanLine[]) => Promise<boolean>
   /** THE MANIFEST (0083): several buy and sell lines at the quay she lies at, landing together or

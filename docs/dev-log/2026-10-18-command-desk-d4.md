@@ -1,7 +1,7 @@
-# 2026-10-18 — 0174: COMMAND DESK D4, several orders are one, and the plan builder — `osn-desk-d4`
+# 2026-10-18 — 0175: COMMAND DESK D4, several orders are one, and the plan builder — `osn-desk-d4`
 
 `docs/COMMAND_DESK.md` §3.5, §7.4, §10 row D4. The owner, 2026-10-17: *"buy and sell plans … setting up trade
-routes for my fleet"*. **Not deployed.** The number 0174 is provisional: prod head was 0173 (distance pricing) when
+routes for my fleet"*. **Not deployed.** The number 0175 is provisional (renumbered from 0174: the city-circulation fix took 0174): prod head was 0174 when
 written. Re-read the head and take head + 1 at the push.
 
 ## Server — `cmd.issue_lines(fleet, lines, expected_version)`
@@ -74,7 +74,7 @@ passes. I did not find why the field arrived undefined; the merge makes it irrel
 
 ## Verify (once)
 
-- Build on the cached prefix: 163 restored, then 0172, 0173 and 0174 applied. `tsc -b` and `eslint .` are clean.
+- Build on the cached prefix: 165 restored (through 0173), then 0174 (the city fix) and 0175 applied — after the renumber; the 0175 receipt is the 0174 one, word for word. `tsc -b` and `eslint .` are clean.
 - `rpc.issueLines.spec` (new): 4 passed.
 - `desk.plan.spec` (new, 390): good → Plan → builder → sell city pressed (the estimate does not move) → Queue it
   once → Plans shows `Buy Aniseed · All that fit`, `Sail Tokyo`, `Sell Aniseed · All` (the first SAIL already ran):

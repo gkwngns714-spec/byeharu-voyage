@@ -489,7 +489,7 @@ export const RPCS = {
     ],
   },
   worldWatchlist: { schema: 'world', fn: 'watchlist', args: [{ name: 'p_fleet', type: 'uuid' }] },
-  // 0174 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
+  // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
   // queued by the one enqueuer, all or none. The plan builder's "Queue it once".
   cmdIssueLines: {
     schema: 'cmd',

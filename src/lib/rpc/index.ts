@@ -658,7 +658,7 @@ export function worldGoodBoard(
   return call<GoodBoard>('worldGoodBoard', [goodId, fleetId, fromPortId, qty])
 }
 
-/** A PLAN, queued whole or not at all (0174): each line parsed by the one grammar, each queued by the
+/** A PLAN, queued whole or not at all (0175): each line parsed by the one grammar, each queued by the
  *  one enqueuer, then the queue advanced once — what N `cmdIssue` calls would do, without half a plan. */
 export function cmdIssueLines(
   fleetId: string,

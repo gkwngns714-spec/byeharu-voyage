@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A PLAN IS QUEUED WHOLE — cmd.issue_lines (0174, docs/COMMAND_DESK.md §7.4, D4)
+// A PLAN IS QUEUED WHOLE — cmd.issue_lines (0175, docs/COMMAND_DESK.md §7.4, D4)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The plan builder's "Queue it once" sends every line of a plan in one call. This spec reads the verb back

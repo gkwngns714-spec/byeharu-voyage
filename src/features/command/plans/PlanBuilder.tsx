@@ -22,7 +22,7 @@ import { planLines, planRoute } from './planLines'
 // wages), the arrival. Nothing is added up here. It is labelled Estimate because the real check is the
 // order itself when it runs (a plan does not wait — COMMAND_DESK D6).
 //
-// QUEUE IT ONCE: the lines (planLines.ts) go to cmd.issue_lines (0174), all queued or none; the desk then
+// QUEUE IT ONCE: the lines (planLines.ts) go to cmd.issue_lines (0175), all queued or none; the desk then
 // turns to Plans, where they stand in the queue. MAKE IT A ROUTE: the route editor's own draft is seeded
 // (planDraft.ts) and the editor opens on it on Plans.
 //
