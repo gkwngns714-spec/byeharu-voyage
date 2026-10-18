@@ -817,11 +817,13 @@ async function growthFacts(db: PrefixDb): Promise<GrowthFacts> {
 }
 
 test('the world grows under a live house: player rows survive the growth to the ducat', async () => {
-  // Cold (no snapshot): one pre-growth build plus the whole growth — 30-80 min in CI, which no budget
-  // can honestly hold; warm: a restore plus the files main has merged since. The budget is the warm
-  // path's; a cold run is still bounded by the job's own timeout, and a timeout cannot fire inside a
-  // wasm statement anyway (the cold run above it was 1.2 h under a 360 s budget).
-  test.setTimeout(360_000)
+  // Cold (no snapshot): one pre-growth build plus the whole growth — 32-78 min in CI; warm: a
+  // restore plus the files main has merged since (minutes). The budget must hold the COLD path, which
+  // every new chain machinery or engine version takes once: the old 360 s only "held" it because a
+  // timer cannot fire inside a wasm statement (1.2 h under it on run 39092641268), and once the cache
+  // writes gave the event loop turns it fired at 6.2 min on the first cold run (39107062920) and
+  // threw that run's progress away. 100 min sits under the db job's 120.
+  test.setTimeout(6_000_000)
   const files = await loadChain()
   const before = beforeGrowth(files)
   const growth = files.filter((f) => f.name.slice(0, 14) >= GROWTH_SPLIT)
