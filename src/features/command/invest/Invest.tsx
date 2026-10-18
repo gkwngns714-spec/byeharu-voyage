@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Figure, Hint, Note, SheetSection, Skeleton } from '../../../components/ui'
+import { Figure, Hint, Note, Row, SheetSection, Skeleton } from '../../../components/ui'
 import { fleetPortCode } from '../../../domain/fleet'
 import { CityTownHall } from '../../../live/CityTownHall'
 import { WORK_NAME } from '../../../live/workNames'
@@ -62,33 +62,29 @@ export function Invest({ fleet }: { fleet: FleetView }) {
               </Note>
             ) : (
               h.rows.map((r) => (
-                <button
+                <Row
                   key={`${r.port}:${r.kind}`}
-                  type="button"
                   onClick={() => setPicked(r.port)}
-                  aria-pressed={r.port === hallCode}
-                  className={`flex min-h-row w-full items-center gap-3 border-b border-edge py-2 text-left`}
+                  tone={r.port === hallCode ? 'accent' : 'default'}
+                  mark={<PortFlag code={r.port} />}
+                  label={`${r.name} · ${WORK_NAME[r.kind]}`}
+                  value={
+                    <span className="flex flex-col items-end">
+                      <span className="whitespace-nowrap tabular-nums">{formatDucats(r.paid)}</span>
+                      {r.owed > 0 && (
+                        <span className="whitespace-nowrap text-t-caption tabular-nums text-success">
+                          {formatDucatsDelta(r.owed)} owed
+                        </span>
+                      )}
+                    </span>
+                  }
                   data-testid="holding-row"
                 >
-                  <span className="min-w-0 flex-1">
-                    <span className={`flex items-center gap-2 truncate text-t-body ${r.port === hallCode ? 'text-accent' : 'text-ink'}`}>
-                      <PortFlag code={r.port} />
-                      {r.name} · {WORK_NAME[r.kind]}
-                    </span>
-                    <span className="block truncate text-t-caption text-ink-faint">
-                      {formatInt(r.shares)} {r.shares === 1 ? 'share' : 'shares'} · level {r.level} / {r.level_max}
-                      {r.share_price !== null ? ` · ${formatDucats(r.share_price)} a share now` : ''}
-                    </span>
+                  <span className="block truncate text-t-caption text-ink-faint">
+                    {formatInt(r.shares)} {r.shares === 1 ? 'share' : 'shares'} · level {r.level} / {r.level_max}
+                    {r.share_price !== null ? ` · ${formatDucats(r.share_price)} a share now` : ''}
                   </span>
-                  <span className="flex shrink-0 flex-col items-end">
-                    <span className="whitespace-nowrap text-t-body tabular-nums text-ink">{formatDucats(r.paid)}</span>
-                    {r.owed > 0 && (
-                      <span className="whitespace-nowrap text-t-caption tabular-nums text-success">
-                        {formatDucatsDelta(r.owed)} owed
-                      </span>
-                    )}
-                  </span>
-                </button>
+                </Row>
               ))
             )}
           </>

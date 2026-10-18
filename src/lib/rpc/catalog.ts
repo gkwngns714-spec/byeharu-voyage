@@ -492,6 +492,9 @@ export const RPCS = {
   // 0176 — WHAT YOU HOLD, in every city: the share register's rows, a share's price there now, the dividends
   // collected (docs/COMMAND_DESK.md §3.7). No arguments: the company is the caller's.
   worldHoldings: { schema: 'world', fn: 'holdings', args: [] },
+  // 0177 — THE BOOKS: the ledger by game day and kind, each kind under its one word, each day's net
+  // (docs/COMMAND_DESK.md §3.8). The window in game days, 1..30.
+  worldBooks: { schema: 'world', fn: 'books', args: [{ name: 'p_days', type: 'int' }] },
   // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
   // queued by the one enqueuer, all or none. The plan builder's "Queue it once".
   cmdIssueLines: {

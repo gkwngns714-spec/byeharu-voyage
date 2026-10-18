@@ -2672,3 +2672,20 @@ export interface Holdings {
   paid: { today: number; yesterday: number }
   game_day: number
 }
+
+/** One line of a day's books (0177): a ledger kind, its one player word, and its sum. */
+export interface BookLine {
+  kind: string
+  word: string
+  ducats: number
+}
+
+/** `world.books(days)` (0177) — the company's ledger, newest game day first. */
+export interface Books {
+  game_day: number
+  days: number
+  /** Today's net, and the window's. */
+  today: number
+  window: number
+  books: { game_day: number; net: number; lines: BookLine[] }[]
+}
