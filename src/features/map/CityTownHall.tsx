@@ -187,6 +187,8 @@ function DayBook({ hall }: { hall: TownHallView }) {
   const rows: [string, number][] = [
     ['Trade in', hall.day.in.BUY ?? 0],
     ['Trade out', hall.day.out.SELL ?? 0],
+    // 0174: of what it paid for cargo, the part its people paid (the distance premium).
+    ['Paid by its people', hall.day.in.IMPORT_DEMAND ?? 0],
     ['Tax', hall.day.in.TAX ?? 0],
     ['Wages', hall.day.in.WAGES ?? 0],
     ['Shares', hall.day.in.SHARE ?? 0],
