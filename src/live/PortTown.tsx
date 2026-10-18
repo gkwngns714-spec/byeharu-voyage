@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
-import { Figure, Row } from '../../components/ui'
-import { buildingsOf } from '../../domain/port'
-import { formatPct } from '../../lib/format'
-import { useWorld } from '../../live/worldStore'
-import type { SnapshotPort } from '../../lib/rpc'
-import { PORT_FACES, type PortFace } from './portView'
+import { Figure, Row } from '../components/ui'
+import { buildingsOf } from '../domain/port'
+import { formatPct } from '../lib/format'
+import { useWorld } from './worldStore'
+import type { SnapshotPort } from '../lib/rpc'
+import { PORT_FACES, type PortFace } from './cityFaces'
 
 // THE TOWN — what this city costs you, and what it keeps. §6: *"Town face = rows: Tax 3 %, Port's
 // cut 2 %, … then building rows"*.

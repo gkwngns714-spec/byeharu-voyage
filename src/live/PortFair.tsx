@@ -1,9 +1,9 @@
 import { useEffect } from 'react'
-import { Figure, Icon, Row } from '../../components/ui'
-import { formatPctPoints, formatRelative, instantMs } from '../../lib/format'
-import { useWorld } from '../../live/worldStore'
-import { useShellState } from '../../app/shellState'
-import type { BuffsView } from '../../lib/rpc'
+import { Figure, Icon, Row } from '../components/ui'
+import { formatPctPoints, formatRelative, instantMs } from '../lib/format'
+import { useWorld } from './worldStore'
+import { useShellState } from '../app/shellState'
+import type { BuffsView } from '../lib/rpc'
 
 // WHAT IS ON AT THE QUAY — the visible half of 0026, in one row.
 //

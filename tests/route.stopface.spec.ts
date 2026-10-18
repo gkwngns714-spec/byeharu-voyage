@@ -195,6 +195,13 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
         queue: top('[data-testid="command-queue"]'),
       }
     })
+  // THE CHIP IS BROUGHT INTO VIEW FIRST (2026-10-18): Playwright's click scrolls an off-glass target into
+  // view, and that scroll is the DRIVER moving the page, not the press. Since the flags (#198) the editor
+  // stands taller and the pick of the second stop left the first stop's chips above the glass, so the
+  // driver's own scroll read as "the press moved the page" (main went red on it). Measured after the
+  // chip is in view, the claim is the owner's again: the PRESS moves nothing.
+  await stops.nth(0).getByTestId('route-buy-good').first().scrollIntoViewIfNeeded()
+  await page.waitForTimeout(300)
   const before = await below()
   await shot(page, 'route-editor-390.png', info)
   await stops.nth(0).getByTestId('route-buy-good').first().click()

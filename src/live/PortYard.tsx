@@ -11,13 +11,13 @@ import {
   TileField,
   Tray,
   type TrayDetent,
-} from '../../components/ui'
-import { HullCountry } from '../../live/HullCountry'
-import { HullTech } from '../../live/HullTech'
-import { useBuildingYard } from '../../live/useBuildingYard'
-import { useWorld } from '../../live/worldStore'
-import { formatDucats, formatInt, formatTons } from '../../lib/format'
-import type { FleetView, HullMaterial, Refusal, YardHull } from '../../lib/rpc'
+} from '../components/ui'
+import { HullCountry } from './HullCountry'
+import { HullTech } from './HullTech'
+import { useBuildingYard } from './useBuildingYard'
+import { useWorld } from './worldStore'
+import { formatDucats, formatInt, formatTons } from '../lib/format'
+import type { FleetView, HullMaterial, Refusal, YardHull } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE YARD — where a hull is laid down (0072), as a field of tiles.

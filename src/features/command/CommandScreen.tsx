@@ -9,6 +9,7 @@ import { DeskTrade } from './markets/DeskTrade'
 import { GoodPage } from './markets/GoodPage'
 import { Markets } from './markets/Markets'
 import { Plans } from './plans/Plans'
+import { City } from './city/City'
 import { PlanBuilder } from './plans/PlanBuilder'
 import { useDeskPlan } from './plans/planDraft'
 
@@ -126,10 +127,11 @@ export function CommandScreen() {
         fill
         className="mb-3 mt-2"
       />
-      {fleet && (face === 'plans' ? <Plans fleet={fleet} /> : <Markets fleet={fleet} />)}
+      {fleet && (face === 'plans' ? <Plans fleet={fleet} /> : face === 'city' ? <City fleet={fleet} /> : <Markets fleet={fleet} />)}
 
-      {/* THE SLOT — one tray at a time: the plan builder, else the trade tray, else the good's page */}
-      {fleet && plan && goodByCode[plan.good] ? (
+      {/* THE SLOT — one tray at a time: the plan builder, else the trade tray, else the good's page. Not on
+          City: there the slot is the city's own (the Trade face's basket stands in it on a wide glass). */}
+      {face === 'city' ? null : fleet && plan && goodByCode[plan.good] ? (
         <PlanBuilder
           key={`${plan.good}:${fleet.id}`}
           fleet={fleet}

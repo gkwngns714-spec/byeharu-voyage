@@ -1,11 +1,11 @@
 import { useState } from 'react'
-import { Button, Figure, Note, Row, Skeleton, Stepper, Tray, type TrayDetent, type TrayMode } from '../../components/ui'
-import { useServedRead } from '../../live/useServedRead'
-import { useSettled } from '../../live/useSettled'
-import { useWorld } from '../../live/worldStore'
-import { cmdInvest, cmdPreviewInvest, ok, worldTownHall } from '../../lib/rpc'
-import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView, WorkKind } from '../../lib/rpc'
-import { formatDucats, formatInt, formatPct } from '../../lib/format'
+import { Button, Figure, Note, Row, Skeleton, Stepper, Tray, type TrayDetent, type TrayMode } from '../components/ui'
+import { useServedRead } from './useServedRead'
+import { useSettled } from './useSettled'
+import { useWorld } from './worldStore'
+import { cmdInvest, cmdPreviewInvest, ok, worldTownHall } from '../lib/rpc'
+import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView, WorkKind } from '../lib/rpc'
+import { formatDucats, formatInt, formatPct } from '../lib/format'
 import { TownHallInfluence } from './TownHallInfluence'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

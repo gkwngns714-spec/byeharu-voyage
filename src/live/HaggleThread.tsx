@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Bar, Button, Figure, Note, Row, type TradeAct } from '../../components/ui'
+import { Bar, Button, Figure, Note, Row, type TradeAct } from '../components/ui'
 import { useHaggleState } from './useHaggleState'
-import { formatDucats, formatOfTotal, formatPct, formatPctPoints, formatUnitPrice } from '../../lib/format'
-import { useWorld } from '../../live/worldStore'
-import type { MarketGood, Refusal } from '../../lib/rpc'
+import { formatDucats, formatOfTotal, formatPct, formatPctPoints, formatUnitPrice } from '../lib/format'
+import { useWorld } from './worldStore'
+import type { MarketGood, Refusal } from '../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE HAGGLE, AS A THREAD — inside the trade tray, on BOTH sides (docs/QUAY_LEDGER.md §3 D and
