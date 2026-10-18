@@ -205,5 +205,16 @@ merchants on.
 - **Cached-prefix build** (`BYEHARU_PREFIX_CACHE=required npm run build`):
   - restored 171/172, applied 1 (0180), world-guard ok;
   - tsc + vite built in 19.7 s.
-- **tsc -b / eslint / db:check-versions / proofs on the built image:** see the PR body.
-- **Prod head re-read at push:** see the PR body.
+- **tsc -b** clean, **eslint .** clean, **db:check-versions** 172 distinct, no collisions.
+- **Proofs on the built image** (scratch ): 12/12 green, proof 12 (merchants) included.
+- **Prod head re-read at push:** , so this file is 0180.
+- **PR #211 CI** (run 39104305593, about 10 min wall-clock):
+
+  | check | result |
+  |---|---|
+  | select | pass (8 s) |
+  | build | pass (1 m 2 s) |
+  | disposable-chain | pass (2 m 25 s) |
+  | pglite-gate (the rest) | pass (6 m 15 s) |
+  | pglite-gate (merchants) | pass (3 m 19 s) |
+  | pglite-gate (ledger) | pass (9 m 37 s) |
