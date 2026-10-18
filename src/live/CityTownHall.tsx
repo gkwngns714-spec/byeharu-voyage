@@ -188,8 +188,6 @@ function DayBook({ hall }: { hall: TownHallView }) {
     ['Wages', hall.day.in.WAGES ?? 0],
     ['Shares', hall.day.in.SHARE ?? 0],
     ['Gifts', hall.day.in.DONATION ?? 0],
-    // 0180: what merchants above their purse ceiling gave the cities of their loop.
-    ["Merchants' surplus", hall.day.in.MERCHANT_SURPLUS ?? 0],
     ['Coupons', hall.day.out.DIVIDEND ?? 0],
     // 0172: the grant, the city's own earnings, and what passes between it and its capital.
     ['Grant', hall.day.in.GRANT ?? 0],

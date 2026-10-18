@@ -409,6 +409,10 @@ export interface YardHull {
    *  ("Golden Hind is a famous ship, and a company keeps only one of each: yours is the Pelican."), served only
    *  where it applies; `buildable` already folds it in. Printed as served. */
   famous_held?: string
+  /** 0184 — a hull a part of which no workshop makes (a famous ship while her famous gear waits on the owner):
+   *  cmd.do_build's own E_NOT_BUILDABLE sentence (public.hull_unmade), served only where it applies;
+   *  `buildable` already folds it in. Printed as served. */
+  unmade?: string
   goods: HullMaterial[]
   items: HullMaterial[]
 }

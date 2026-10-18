@@ -10584,7 +10584,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "san-martin-tercio",
@@ -10644,7 +10645,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "batavia-double-planking",
@@ -10708,7 +10710,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "drakes-culverins",
@@ -10776,7 +10779,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "couronne-battery",
@@ -10840,7 +10844,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "duodo-bow-guns",
@@ -10908,7 +10913,8 @@
      "skill": "LONG_GUNS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "turgut-reis-swivels",
@@ -10972,7 +10978,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "rahimi-pilgrim-holds",
@@ -11032,7 +11039,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "zheng-he-bulkheads",
@@ -11096,7 +11104,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "date-masamune-charts",
@@ -11156,7 +11165,8 @@
      "skill": "FAMOUS_SHIPS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   },
   {
    "code": "dragon-head-cannon",
@@ -11224,7 +11234,8 @@
      "skill": "SHORT_GUNS",
      "level": 1
     }
-   ]
+   ],
+   "made": false
   }
  ],
  "use": [
