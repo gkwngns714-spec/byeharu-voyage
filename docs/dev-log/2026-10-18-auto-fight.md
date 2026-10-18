@@ -264,8 +264,8 @@ it is in 0188's 30-minute after-check.
 
 ## Verification (once each; worktree off origin/main, real `npm ci`, warm `node_modules/.cache`, no `.env.local`)
 
-- Cached-prefix `npm run build` (with `tsc -b`): 176/178 restored, 0186 and 0187 applied, the world guard
-  ok. Exit 0.
+- Cached-prefix `npm run build` (with `tsc -b`) on main at 004b906: 176/179 restored; main's 0185 (faith)
+  and 0186, then 0187, applied; the world guard ok. Exit 0.
 - `eslint .`: 0. `db:check-versions`: 178 distinct.
 - `tests/ledger.fights.spec.ts` (new; the seam, node-side on the built image): 2 passed.
   - Lit: every raid day is fought in rounds, and `payloadFights` finds each fight under its "Day N. Sail
