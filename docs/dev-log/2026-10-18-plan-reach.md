@@ -63,3 +63,57 @@ is not client-executable; the walls hold.
 
 **Spec:** `rpc.issueLines.spec` +1 test (execution-time refusal cancels the rest with the reason, the fleet is free,
 the ✕ by position dismisses, CLEAR empties) — 5 passed.
+
+**CI, PR #226 (slice 1):** the first run went red only on numbering: main took 0182–0184 under the branch. It was renumbered to 0186 and rebased. The re-run was green on all checks: build, disposable-chain, pglite-gate (ledger, merchants, the rest), select. The local full-proof run (`proof.mjs`, a cold prefix for the node variant) was stopped unfinished. The pglite-gate shards ran the proofs on CI.
+
+**Drive (local PGlite build, 1440×731, DPR 2):**
+- A plan with an impossible BUY limit was queued.
+- The ✕ on its last row cancelled exactly that row.
+- On arrival the BUY was refused. The note read *"Order 2 was refused: Aniseed opened above your limit of 0.01 and nothing was bought. Anything that depended on it was cancelled; Gaivota is free."* The SAIL behind it was cancelled, and one refused row stayed.
+- *Clear all orders* emptied the queue.
+
+## Slice 2 — 0188 `the_desk_plans_only_what_she_can_sail` (provisional; on top of 0186)
+
+- **One formula.** `public.passage_reach_at(level)` is now the arithmetic that `passage_gate` reads, through one hunk. These read it too:
+  - `passage_reach_nm(player)`: null for a merchant;
+  - `passage_reach(player)`: `{navigation, reach_nm}`;
+  - `passage_needs(player, nm)`: the least Navigation that sails a leg, with that level's reach. Navigation is null past `skill_max_level`.
+- **`voyage.reach_passage(player, from)`.** Dijkstra over `public.sea_reaches` (the one pathfinder's sailed miles). A leg counts only when it is ≤ her reach and its harbour passes `passage_gate`'s region check. It returns, per harbour: `nm` (null if unreachable), `direct_nm`, `stops` and `max_leg_nm`. The arrays are float8 for O(1) subscripts.
+- **`world.good_board`** (10 hunks on the post-0183 body):
+  - The `reach`/`reach2` CTEs read `reach_passage`. Miles, days, arrival, wages, net and the net ranking are now the reachable passage's.
+  - The dearest **reachable** cities are the ones priced in full. Unreachable ones rank last.
+  - Every buy and sell row carries:
+    - `stops`: string[], or null when unreachable;
+    - `needs`: `{navigation, reach_nm}` for a direct leg past her reach, or null;
+    - `sailable`: boolean. Every leg must be within reach and within her stores: `voyage.endurance_days` ≥ the leg's days × `endurance_margin`, sail_refusal's rule. Her present stores are the floor, and she can provision at every stop;
+    - `longest_leg`: `{miles, days}`.
+  - The board carries `reach` and `supplies` `{days, margin}`.
+  - At anchor, 0183's nearest harbour is the first stop, and the lead counts as a leg.
+- **`cmd.issue_lines`.** Every SAIL is asked of `passage_gate` at plan time, from where the line before leaves her. The distance is the course measured by `voyage.segments_from_course` (as `do_sail` measures it), or else the sailed miles between harbours. A leg she cannot sail refuses the whole plan, naming the line: `Line 1 (SAIL MTY): that leg is …`.
+- Every hunk occurs once in the live prod body (prod head 0185, read-only). Each reverses to its pre-image, and the ACLs are unchanged.
+
+**Client.**
+- `planLines` sails through the board's stops.
+- `PROVISION FULL` is written only where her casks would not cover the next leg. Each leg's days are the proposed course's length at the board's speed, times the margin. At the buy city the provisioning goes before the BUY, so a full hold never refuses the casks.
+- `PlanBuilder`:
+  - shows `via …`;
+  - refuses to queue an unsailable city, saying why: *"… cannot be reached in legs of 1,700 nm — needs Navigation 5 (reach 27,200 nm)"*, or the stores sentence.
+- The types carry the new fields.
+- The terminal's Best-trade card (`GoodTicket.tsx`, the terminal agent's file) is untouched. Its figures are the server's, so they are already the reachable passage's. The terminal agent reads `sailable`.
+
+**Proof in the migration** (probe at Lisbon, NAVIGATION 0):
+- A harbour beyond her reach is reached through stops. Every leg is ≤ 1,700 nm, and the legs sum to the passage.
+- A plan sailing straight there is refused up front at line 1, and at line 2.
+- The board's reach is 1,700. A far sell row carries stops, `needs`, a boolean `sailable` and the passage's miles, counted from the city it would be bought at.
+- The passage through the stops is accepted whole.
+- A merchant has no reach, and the walls hold.
+
+**Specs:**
+- `rpc.issueLines.spec` +1 (far: `LUA 3990 nm via SAI, CAP; needs Navigation 3`).
+- `rpc.goodBoard.spec` updated: an unreachable dearest city has no net and ranks after the reachable ones.
+- `desk.plan.spec` passes. Its queued plan: `Resupply to full · Buy Aniseed · Sail Tangier · Resupply · Sail Saint-Louis · Resupply · Sail Cape Coast · Resupply · Sail Soyo · Sell Aniseed`.
+- 12 passed.
+
+**Known limits:**
+- The queue holds 12 lines (`order_queue_max`). A very long passage needing more refuses `E_QUEUE_FULL` when queued, whole and named. Korea → London in 1,700 nm legs will hit it.
+- The anchor lead is the great circle (0183's estimate).
