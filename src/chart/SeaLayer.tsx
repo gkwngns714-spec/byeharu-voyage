@@ -46,8 +46,21 @@ import { GLYPH } from './glyphs'
 // ±180° (the continuous chart) draws its meridians at 195°, 210°… exactly as at 15°: there is no
 // seam line, because there is no seam.
 
-/** THE GROUND AND ITS DEPTH — the night sea, memoised on the box. */
-export const SeaLayer = memo(function SeaLayer({ box }: { box: ViewBox }) {
+// ── THE SEA DOES NOT MOVE (2026-10-18, owner: "when i move map, it blinks too much") ───────────
+// Both seas are the SAME PICTURE at every pan and zoom — a flat ground and a vignette keyed to the
+// glass — so they are drawn in the GLASS's own unit square (`SEA_VIEWBOX`, stretched to the glass by
+// `preserveAspectRatio="none"`), not in chart units. Keyed to the view's box, each re-rasterised a
+// whole glass of identical pixels on every frame of a drag — the night one with the page itself,
+// the day one on its layer under the Sun's mask — which is part of what ran the GPU out of tile
+// memory (ChartCanvas's CoastSheet says what that looked like). The ellipse is unchanged: the
+// gradient was already in the rect's bounding box, and the rect is still the whole glass. The svg
+// whose viewBox IS the view is now the marks' (`map-view`), not the sea's.
+
+/** The viewBox of a sea's svg: the glass as a unit square, with `preserveAspectRatio="none"`. */
+export const SEA_VIEWBOX = '0 0 1 1'
+
+/** THE GROUND AND ITS DEPTH — the night sea. */
+export const SeaLayer = memo(function SeaLayer() {
   const gradientId = useId()
   return (
     <g pointerEvents="none">
@@ -58,25 +71,18 @@ export const SeaLayer = memo(function SeaLayer({ box }: { box: ViewBox }) {
           <stop offset="100%" style={{ stopColor: 'var(--color-chart-deep)', stopOpacity: 0.62 }} />
         </radialGradient>
       </defs>
-      {/* THE GROUND — the whole viewBox, so it moves with the paper and there is never an
-          unpainted edge mid-pan. Flat, in the pinned token. */}
-      <rect x={box.x} y={box.y} width={box.width} height={box.height} className="fill-chart-sea" data-testid="map-sea" />
+      {/* THE GROUND — the whole glass, so there is never an unpainted edge mid-pan. Flat, in the
+          pinned token. */}
+      <rect x={0} y={0} width={1} height={1} className="fill-chart-sea" data-testid="map-sea" />
       {/* THE DEPTH — open water darkens toward the frame's edge. */}
-      <rect
-        x={box.x}
-        y={box.y}
-        width={box.width}
-        height={box.height}
-        fill={`url(#${gradientId})`}
-        data-testid="map-sea-depth"
-      />
+      <rect x={0} y={0} width={1} height={1} fill={`url(#${gradientId})`} data-testid="map-sea-depth" />
     </g>
   )
 })
 
 /** THE DAY SEA — the water by day, with its own deep vignette. Painted whole: ChartCanvas lays it
  *  in a `DaylightSheet`, which is what shows it only where the Sun is up. */
-export const DaySeaLayer = memo(function DaySeaLayer({ box }: { box: ViewBox }) {
+export const DaySeaLayer = memo(function DaySeaLayer() {
   const dayGradientId = useId()
   return (
     <g pointerEvents="none" data-testid="map-sea-day">
@@ -88,14 +94,15 @@ export const DaySeaLayer = memo(function DaySeaLayer({ box }: { box: ViewBox }) 
           <stop offset="100%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0.7 }} />
         </radialGradient>
       </defs>
-      <rect x={box.x} y={box.y} width={box.width} height={box.height} className="fill-chart-day-sea" />
-      <rect x={box.x} y={box.y} width={box.width} height={box.height} fill={`url(#${dayGradientId})`} />
+      <rect x={0} y={0} width={1} height={1} className="fill-chart-day-sea" />
+      <rect x={0} y={0} width={1} height={1} fill={`url(#${dayGradientId})`} />
     </g>
   )
 })
 
 /** THE GRATICULE — one path, hairline, quieter than the coast; over the day sea, under the coast.
- *  A pure function of the view. */
+ *  A pure function of the box it is drawn over — the coast's PAPER (ChartCanvas's CoastSheet), so a
+ *  pan moves it with the coast instead of redrawing it. */
 export const GraticuleLayer = memo(function GraticuleLayer({ box }: { box: ViewBox }) {
   const step = GLYPH.graticuleStepDeg
   let grid = ''

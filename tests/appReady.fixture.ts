@@ -88,7 +88,8 @@ export async function ready(page: import('@playwright/test').Page) {
 export async function zoomStepMs(page: import('@playwright/test').Page): Promise<number> {
   return page.evaluate(async () => {
     const chart = document.querySelector('[data-testid="map-chart"]') as HTMLElement
-    const svg = chart.querySelector('svg') as SVGSVGElement
+    // THE VIEW SHEET (src/chart/ChartCanvas.tsx): the one svg whose viewBox is the view.
+    const svg = chart.querySelector('[data-testid="map-view"]') as SVGSVGElement
     const rect = chart.getBoundingClientRect()
     const frame = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
     const step = async (deltaY: number) => {

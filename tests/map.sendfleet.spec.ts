@@ -225,7 +225,7 @@ test.describe('the whole send, driven on a phone', () => {
     // to "is this spot land". Nothing in this measurement comes from the app's own arithmetic.
     const grid = await chart.evaluate((svg) => {
       const path = svg.querySelector('[data-testid="map-coastline"]') as SVGGeometryElement | null
-      const box = (svg.querySelector('svg') as SVGSVGElement).viewBox.baseVal
+      const box = (svg.querySelector('[data-testid="map-view"]') as SVGSVGElement).viewBox.baseVal
       if (!path || box.width <= 0) return { samples: 0, land: 0 }
       const step = 24
       let samples = 0

@@ -96,7 +96,7 @@ async function openMap(page: Page) {
 async function sheets(page: Page) {
   return page.evaluate(() => {
     const chart = document.querySelector('[data-testid="map-chart"]')!
-    const view = chart.querySelector('svg')!.getAttribute('viewBox')
+    const view = chart.querySelector('[data-testid="map-view"]')!.getAttribute('viewBox')
     const sheet = chart.querySelector('[data-testid="map-coast-sheet"]') as HTMLElement
     const paper = sheet.querySelector('svg')!.getAttribute('viewBox')
     const g = chart.getBoundingClientRect()
@@ -133,21 +133,18 @@ for (const viewport of [
         const sheet = document.querySelector('[data-testid="map-coast-sheet"]')!
         const w = window as unknown as { __coastMut: { d: number; other: number; sun: number }; __coastMo: MutationObserver }
         w.__coastMut = { d: 0, other: 0, sun: 0 }
-        // THE SUN'S SLIDE IS NOT THE PAN'S. Since PR #113 (owner, 2026-10-15: "right now the light
-        // zone moves rigid. make it soft" — and kept at the owner's insistence when it was reverted)
-        // the day picture is shown through the Sun's raster, slid to the game clock's Sun on every
-        // animation frame whether or not anything is dragged. Since 2026-10-17 that is a CSS mask
-        // on the day coast's own sheet (src/chart/DaylightSheet.tsx): ONE `style` write (its
-        // `mask-position`) per frame on that sheet's element, and the raster's re-draw on its own
-        // timer (src/chart/useSunlight.ts, SUN_REFRESH_MS) re-points its `mask-image` there too.
-        // Both are counted apart, and only those exact writes are set apart: any other attribute,
-        // or a style write anywhere else in the sheet, still counts against the pan.
+        // THE SUN'S SLIDE IS NOT THE PAN'S, and since 2026-10-18 it is not in this sheet at all: the
+        // day coast is a sheet of its own under a mask of the glass (src/chart/ChartCanvas.tsx,
+        // CoastSheet — a mask riding this sheet's translate was what made a fast pan blink). So
+        // `sun` must stay 0. THE GRATICULE rides this sheet too since then: its path is redrawn at a
+        // re-base, with the viewBox, and is counted with it rather than as coast path data.
         w.__coastMo = new MutationObserver((list) => {
           for (const m of list) {
             if (m.target === sheet) continue // the sheet's own translate — the one thing a pan changes
-            const daylight = m.target instanceof Element && m.target.matches('[data-testid="map-daylight-mask"]')
-            if (m.attributeName === 'd') w.__coastMut.d += 1
-            else if (daylight && m.attributeName === 'style') w.__coastMut.sun += 1
+            const daylight = m.target instanceof Element && m.target.closest('[data-testid="map-daylight-mask"]') !== null
+            const grid = m.target instanceof Element && m.target.matches('[data-testid="map-graticule"]')
+            if (daylight) w.__coastMut.sun += 1
+            else if (m.attributeName === 'd' && !grid) w.__coastMut.d += 1
             else w.__coastMut.other += 1
           }
         })
@@ -180,8 +177,9 @@ for (const viewport of [
       expect(views.size, 'the view itself moved on (nearly) every step').toBeGreaterThanOrEqual(15)
       expect(papers.size, 'the coast sheet was re-based more than once in a fifth of a glass').toBeLessThanOrEqual(2)
       expect(mut.d, 'a pan rewrote the coast path data').toBe(0)
-      // At most one re-base: the viewBox of the sheet's two pictures (the night coast and, since
-      // 2026-10-17, the day coast on its own sheet over it), and nothing else inside the sheet.
+      expect(mut.sun, 'a daylight mask is inside the moving coast sheet').toBe(0)
+      // At most one re-base: the viewBox of the sheet's picture and the graticule's path on it, and
+      // nothing else inside the sheet.
       expect(mut.other).toBeLessThanOrEqual(2)
 
       // A zoom draws the coast over the view alone, then settles to the wide sheet.
@@ -204,7 +202,7 @@ for (const viewport of [
           const g = chart.getBoundingClientRect()
           const r = sheet.getBoundingClientRect()
           w.__zoomFrames.push({
-            view: chart.querySelector('svg')!.getAttribute('viewBox'),
+            view: chart.querySelector('[data-testid="map-view"]')!.getAttribute('viewBox'),
             paper: sheet.querySelector('svg')!.getAttribute('viewBox'),
             covered: r.left <= g.left + 0.5 && r.top <= g.top + 0.5 && r.right >= g.right - 0.5 && r.bottom >= g.bottom - 0.5,
           })
@@ -220,7 +218,7 @@ for (const viewport of [
       // have moved off the pre-press view: the wide sheet it sees is the settle AFTER the zoom.
       await page.waitForFunction((before) => {
         const chart = document.querySelector('[data-testid="map-chart"]')!
-        const svg = chart.querySelector('svg')!
+        const svg = chart.querySelector('[data-testid="map-view"]') as SVGSVGElement
         const view = svg.viewBox.baseVal
         const paper = chart.querySelector('[data-testid="map-coast-sheet"] svg') as SVGSVGElement
         return svg.getAttribute('viewBox') !== before && paper.viewBox.baseVal.width > view.width * 1.4

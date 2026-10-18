@@ -23,6 +23,7 @@
     "map.lag.spec.ts": 26,
     "map.landfall.spec.ts": 23,
     "map.marks.spec.ts": 41,
+    "map.noblink.spec.ts": 25,
     "map.merchants.spec.ts": 700,
     "map.night.spec.ts": 600,
     "map.regions.spec.ts": 47,

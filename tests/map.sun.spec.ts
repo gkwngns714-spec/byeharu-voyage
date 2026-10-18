@@ -247,7 +247,7 @@ async function sunOnTheGlass(page: Page) {
     const chart = document.querySelector('[data-testid="map-chart"]')
     // Null-safe: before the world has opened there is no chart, and the poll reads an empty sheet.
     const root = chart?.querySelector('[data-sun-at]') ?? null
-    const svg = chart?.querySelector('svg') ?? null
+    const svg = chart?.querySelector('[data-testid="map-view"]') ?? null
     const vb = svg?.getAttribute('viewBox')?.split(/\s+/).map(Number) ?? []
     const unitsPerPx = vb.length === 4 && svg ? vb[2] / (svg as SVGSVGElement).clientWidth : Number.NaN
     const lights = [...document.querySelectorAll('[data-port-mark]')].map((g) => {

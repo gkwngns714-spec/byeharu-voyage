@@ -186,7 +186,7 @@ for (const scheme of ['dark', 'light'] as const) {
         const box = (await page.locator('[data-testid="map-chart"]').boundingBox())!
         for (let i = 0; i < 40; i++) {
           const svgBox = await page.evaluate(() => {
-            const svg = document.querySelector('[data-testid="map-chart"] svg')!
+            const svg = document.querySelector('[data-testid="map-view"]')!
             const [x, y, w, h] = svg.getAttribute('viewBox')!.split(' ').map(Number)
             return { x, y, w, h }
           })
