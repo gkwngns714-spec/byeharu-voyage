@@ -1500,7 +1500,9 @@ floor the first proof sent the Carreira da Índia's nau to Porto (77,836/h on a 
 cannot repeat). She changes loop when the best beats her present one by `npc_route_switch_pct`
 (10 %); if her present loop pays nothing, any paying loop wins. Nothing pays anywhere: with cargo
 aboard she keeps her loop and sails it in ballast (0115); empty-handed she waits in port, laid up,
-and the hourly tend re-plans her until a loop pays (0181). Her stop 0 — home — is where every loop starts and ends:
+and she is re-planned until a loop pays (0181) — in turn, a few a sweep, by the arrivals sweep, 45–58
+minutes after her last ask (0182: `public.npc_ask_waiting`; the hourly reconcile asks only one overdue
+past `npc_replan_within_minutes`). Her stop 0 — home — is where every loop starts and ends:
 she chooses where to go, not where to live.
 
 **Deterministic**: ties fall to the port id; the same world plans the same loop.
