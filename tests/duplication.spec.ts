@@ -394,7 +394,12 @@ test('a migration that re-cuts an existing function declares the supersede in it
     // forces CI's from-zero rebuild, and prod already carries the original), so the accepted
     // spelling widens to "re-cut" alongside "supersede". Nothing else loosens: a re-cutting
     // migration whose header says neither still fails here.
-    if (recut.size > 0 && !/supersed|re-?cut/i.test(header)) {
+    // 0183 (applied on production, 2026-10-18) declares its four re-definitions as "CREATE OR REPLACE
+    // FUNCTION ×4 by hunks sliced from the LIVE bodies (… asserted to occur exactly once and to
+    // reverse to its pre-image, ACL unchanged)" — the same declaration as 0160/0161's, in a third
+    // spelling, so "hunks sliced" joins the accepted words. Still nothing loosens for a header that
+    // names no re-definition at all.
+    if (recut.size > 0 && !/supersed|re-?cut|hunks? sliced/i.test(header)) {
       offenders.push(`${m.file}\n    re-cuts: ${[...recut].sort().join(', ')}`)
     }
   }

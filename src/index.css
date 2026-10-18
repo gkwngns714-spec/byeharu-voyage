@@ -848,3 +848,30 @@ body {
   }
 }
 
+
+/* ── SCROLLBARS ON THE DESK (2026-10-18; the owner's screen showed the platform's native bars) ──────
+   `.bv-scroll`: a pane that scrolls vertically draws a 6-px thumb in the ink-faint tone on no track,
+   and only the thumb. `.bv-scroll-x`: a sideways chip row draws no bar at all — the clipped chip at
+   the edge says there is more, as a phone's chip rows do. Both on every engine (the standard
+   `scrollbar-*` properties, and WebKit's pseudo-elements for Safari). */
+.bv-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-ink-faint) 45%, transparent) transparent;
+}
+.bv-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.bv-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.bv-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-ink-faint) 45%, transparent);
+}
+.bv-scroll-x {
+  scrollbar-width: none;
+}
+.bv-scroll-x::-webkit-scrollbar {
+  display: none;
+}

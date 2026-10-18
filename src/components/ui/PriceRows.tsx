@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar } from './Bar'
+import { StockGauge } from './StockGauge'
 import { Figure } from './Figure'
 import { PriceChart } from './PriceChart'
 import { Row } from './Row'
@@ -90,13 +90,7 @@ export function PriceRows({
         value={<Figure value={formatOfTotal(good.stock, good.stock_target)} unit="units" />}
         data-testid="quay-stock"
       >
-        <Bar
-          value={good.stock_band}
-          of={6}
-          tone={good.stock_band <= 1 ? 'warning' : 'neutral'}
-          label={`${good.name} in stock`}
-          className="mt-1"
-        />
+        <StockGauge stock={good.stock} target={good.stock_target} label={good.name} showFigure={false} className="mt-1" />
       </Row>
     </>
   )

@@ -57,7 +57,7 @@ export function Sheet({
         const next = (e.currentTarget.scrollTop ?? 0) > 26
         if (next !== pinned) setPinned(next)
       }}
-      className={`h-full overflow-y-auto ${className}`}
+      className={`bv-scroll h-full overflow-y-auto ${className}`}
       {...rest}
     >
       <header

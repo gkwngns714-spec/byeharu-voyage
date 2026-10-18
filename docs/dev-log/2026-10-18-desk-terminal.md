@@ -1,11 +1,11 @@
-# 2026-10-18 — the COMMAND desk as a trading terminal (0184 + the client)
+# 2026-10-18 — the COMMAND desk as a trading terminal (0183 + the client)
 
 The owner, 2026-10-17: *"delete port tab, and focus on command tab. it will be like stock trading screen …
 stylish — modern — sophisticated yet concise simple."* On 2026-10-18, on his Chrome (DPR 2, 1440×731),
 the desk read as a phone list in a 750-px column. A fleet at anchor showed "—" for net per ton and
 arrival on every Sell at row. Then: *"i don't see stock of the trade goods so there needs fixing"*.
 
-## Part 1: migration 0184, `the_desk_reads_stock_and_the_anchor` (server, deploys first)
+## Part 1: migration 0183, `the_desk_reads_stock_and_the_anchor` (server, deploys first)
 
 **Why the rows were bare.** `world.good_board` (0171) measures distances from the fleet's berth, or
 from the port she is bound for. An ANCHORED fleet has neither, so `voyage.reach_from(null)` returns
@@ -34,8 +34,54 @@ Lisbon and then anchored off the Tagus bar, and is rolled back whole.
   normal level. All 555 watchlist goods carry it. Outlook point 0 = the city's stock (673, normal 670).
 - All four bodies reverse to their pre-images, and the ACLs are unchanged.
 
-**Number.** 0184, after #220 (0182) and #219 (0183), which are in flight. Neither touches these
+**Number.** 0183, after #220 (0182) and #219 (0183), which are in flight. Neither touches these
 four functions.
 
 **Not the owner's, to confirm.** The lead from an anchorage is a great circle, not a sailed course.
 It is an estimate's figure.
+
+## Part 2: the client, the trading terminal (merges only after 0183 is live)
+
+The design is in `docs/COMMAND_DESK.md` §3.9.
+
+**Wide (≥ 1024 px).** The Markets face is three panes that use the whole glass:
+- **Watchlist** on the left: search, filter chips, sort, and rows with mark, stock gauge, sparkline, price and move.
+- **Chart** in the centre: a big chart with the good, the city (flag), the price, its move and the stock. It has
+  city chips with flags and a 1 h / 6 h / 12 h window. The plot shows the record, the estimate, the band,
+  ◆ best and the arrival, with a **stock strip** under it (the normal level dashed). Under the chart,
+  the best time and the likely range.
+- **Ticket** on the right: the Best trade card (buy A for X, sell B for Y, net per ton and for the hold,
+  days at sea, arrival, best time to sell, then Buy here / Plan this trade), and the Buy at and Sell at
+  ladders below it. The plan builder and the trade tray stand in this pane (`Tray mode="pane"`).
+
+Fleet, figures and faces sit on one header line. Each pane scrolls on its own with a thin bar
+(`.bv-scroll`), and chip rows draw no bar (`.bv-scroll-x`). With nothing chosen, the list's first
+good is shown.
+
+**Phone.** The same Sheet. The good's tray holds the chart, then the ticket.
+
+**Stock: one component.** `StockGauge` shows `240 / 300` and a thin bar whose tick is normal. Low
+stock reads danger, high reads success. It is drawn on:
+- the watchlist rows and the ladders;
+- `TradeRow`, which is both the City face's trade board and the map city panel's Market tab (it
+  replaces the tide-in-range bar);
+- `PriceRows` "In stock".
+
+**Shared reads.** `useGoodDesk` reads the good once for both halves. `useMarketRows` reads the list once
+for the list and the terminal's default.
+
+**Not built:** the best-margin watchlist column. It needs every good's dearest buyer, about 132k mids
+a read (12.5 s measured on PGlite), so it needs a precompute at the market tick. That is its own slice.
+
+**Verified once (local canary build, localhost:4330):**
+- `tsc -b` and eslint are clean.
+- Playwright: desk.terminal (new), desk.layout, desk.plan, priceChart, layout, wide.layout and
+  trade.ceiling. **43 passed, 0 skipped, 0 failed (7.9 min); after the fixes, duplication + sections + the desk specs 29 passed, then desk.terminal + desk.layout + wide.layout 13 passed.**
+
+**Screenshots** (DPR 2) are in `2026-10-18-desk-terminal/`:
+- before: `before-1440-*`
+- after, at 1440×731: markets, good, plan, queued, city (the City face's trade board with the stock gauge)
+- after, at 390×844: markets, good, plan, queued
+
+The local world has a one-slot record and stock at its normal level, so the stock strip is flat
+there. Prod's record has 12 h.

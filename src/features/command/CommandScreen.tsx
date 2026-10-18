@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Note, Row, Segmented, Sheet } from '../../components/ui'
+import { Note, Row, Segmented, Sheet, sheetBodyClass, sheetColumnClass, useWide } from '../../components/ui'
 import { useCommandDraft } from '../../domain/order'
 import { useWorld } from '../../live/worldStore'
+import type { FleetView } from '../../lib/rpc'
 import { useDeskGood } from '../../store/deskGood'
 import { DESK_FACES, useDeskView, type DeskFace } from './deskView'
 import { FleetStrip } from './FleetStrip'
 import { DeskTrade } from './markets/DeskTrade'
 import { GoodPage } from './markets/GoodPage'
 import { Markets } from './markets/Markets'
+import { Terminal } from './markets/Terminal'
 import { Plans } from './plans/Plans'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
@@ -15,7 +17,12 @@ import { Profit } from './profit/Profit'
 import { PlanBuilder } from './plans/PlanBuilder'
 import { useDeskPlan } from './plans/planDraft'
 
-// COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). The owner, 2026-10-17: *"i want you to delete
+// COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
+// (≥ 1024 px, WIDE_QUERY) the desk is a TRADING TERMINAL — the fleet and the faces on one header line,
+// and the Markets face as three panes (watchlist · chart · ticket, markets/Terminal.tsx) using the whole
+// glass; on a phone it is the Sheet below, the good's page a tray. Which good is open, which tray stands
+// in the slot and which face is up are the same state in both.
+// The owner, 2026-10-17: *"i want you to delete
 // port tab, and focus on command tab. it will be like stock trading screen, with buy and sell plans,
 // seeing charts of each trade goods that i click, setting up trade routes for my fleet, investing, and
 // all … stylish - modern - sophisticated yet concise simple."*
@@ -89,6 +96,8 @@ export function CommandScreen() {
     if (first) selectFleet(first.id)
   }, [fleet, fleets, selectFleet])
 
+  const wide = useWide()
+
   if (phase === 'failed' && fatal) {
     return (
       <Sheet title="Command">
@@ -114,7 +123,91 @@ export function CommandScreen() {
   }
 
   const good = goodCode ? (goodByCode[goodCode] ?? null) : null
-  const tradingHere = trading && fleet && fleet.status === 'DOCKED' && trading.code === goodCode ? trading : null
+  // A trade tray stands only for the good open (a good pressed is a new page; on the wide desk with
+  // nothing chosen yet, the list's first good is the one shown, and the tray was opened for it).
+  const tradingHere =
+    trading && fleet && fleet.status === 'DOCKED' && (goodCode === null || trading.code === goodCode) ? trading : null
+
+  const faceBody = (f: FleetView) =>
+    face === 'plans' ? (
+      <Plans fleet={f} />
+    ) : face === 'city' ? (
+      <City fleet={f} />
+    ) : face === 'invest' ? (
+      <Invest fleet={f} />
+    ) : face === 'profit' ? (
+      <Profit />
+    ) : (
+      <Markets fleet={f} />
+    )
+
+  if (wide) {
+    // THE TICKET PANE'S SLOT on the Markets face: the plan builder, else the trade tray, else the ticket.
+    const paneSlot =
+      fleet && plan && goodByCode[plan.good] ? (
+        <PlanBuilder
+          key={`${plan.good}:${fleet.id}`}
+          mode="pane"
+          fleet={fleet}
+          good={goodByCode[plan.good]}
+          plan={plan}
+          onQueued={() => turnTo('plans')}
+          onRoute={() => turnTo('plans')}
+        />
+      ) : fleet && tradingHere ? (
+        <DeskTrade
+          mode="pane"
+          fleet={fleet}
+          code={tradingHere.code}
+          intent={tradingHere.intent}
+          onClose={() => setTrading(null)}
+        />
+      ) : null
+    return (
+      <div className="flex h-full min-h-0 flex-col" data-testid="command" data-desk="terminal">
+        {/* THE HEADER spans the glass on the terminal; on the other faces it stands over the column, so
+            the side tray those faces dock (City's basket, the plan builder) never covers the faces. */}
+        <header
+          className={
+            face === 'markets'
+              ? 'flex shrink-0 items-center gap-6 border-b border-edge px-6 py-2'
+              : `flex shrink-0 flex-col gap-2 px-gutter pb-1 pt-3 ${sheetColumnClass()}`
+          }
+          data-testid="desk-header"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-6">
+            <h1 className="shrink-0 text-t-body font-semibold text-ink">Command</h1>
+            <FleetStrip fleets={fleets} fleetId={fleetId} onSelect={selectFleet} fleet={fleet ?? null} inline />
+          </div>
+          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label="Desk faces" className="shrink-0" fill={face !== 'markets'} />
+        </header>
+        {fleet && face === 'markets' ? (
+          <Terminal
+            fleet={fleet}
+            code={goodCode}
+            slot={paneSlot}
+            onTrade={(code, intent) => setTrading({ code, intent })}
+            onPlan={openPlan}
+          />
+        ) : (
+          <div className="bv-scroll min-h-0 flex-1 overflow-y-auto">
+            <div className={`${sheetBodyClass()} pt-2`}>{fleet && faceBody(fleet)}</div>
+            {/* Plans: the plan builder stands beside the column, as a side tray */}
+            {face === 'plans' && fleet && plan && goodByCode[plan.good] && (
+              <PlanBuilder
+                key={`${plan.good}:${fleet.id}`}
+                fleet={fleet}
+                good={goodByCode[plan.good]}
+                plan={plan}
+                onQueued={() => turnTo('plans')}
+                onRoute={() => turnTo('plans')}
+              />
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
     <Sheet title="Command" data-testid="command">
@@ -129,18 +222,7 @@ export function CommandScreen() {
         fill
         className="mb-3 mt-2"
       />
-      {fleet &&
-        (face === 'plans' ? (
-          <Plans fleet={fleet} />
-        ) : face === 'city' ? (
-          <City fleet={fleet} />
-        ) : face === 'invest' ? (
-          <Invest fleet={fleet} />
-        ) : face === 'profit' ? (
-          <Profit />
-        ) : (
-          <Markets fleet={fleet} />
-        ))}
+      {fleet && faceBody(fleet)}
 
       {/* THE SLOT — one tray at a time: the plan builder, else the trade tray, else the good's page. Not on
           City: there the slot is the city's own (the Trade face's basket stands in it on a wide glass). */}
@@ -153,7 +235,7 @@ export function CommandScreen() {
           onQueued={() => turnTo('plans')}
           onRoute={() => turnTo('plans')}
         />
-      ) : fleet && tradingHere ? (
+      ) : fleet && tradingHere && tradingHere.code === goodCode ? (
         <DeskTrade fleet={fleet} code={tradingHere.code} intent={tradingHere.intent} onClose={() => setTrading(null)} />
       ) : fleet && good ? (
         <GoodPage

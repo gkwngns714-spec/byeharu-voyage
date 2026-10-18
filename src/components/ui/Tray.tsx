@@ -61,8 +61,10 @@ import { useWide } from './useWide'
 
 export type { TrayDetent } from './trayDetents'
 
-/** Where a tray stands. 'side-next' slides out beside an open 'side' panel (the map's drill-down). */
-export type TrayMode = 'docked' | 'inline' | 'side' | 'side-next'
+/** Where a tray stands. 'side-next' slides out beside an open 'side' panel (the map's drill-down).
+ *  'pane' fills a pane its caller already laid out (the COMMAND desk's ticket column, 2026-10-18): in
+ *  flow, its parent's full height, no handle and no shadow — the pane is the slot, the tray its content. */
+export type TrayMode = 'docked' | 'inline' | 'side' | 'side-next' | 'pane'
 
 const HEIGHT: Record<Exclude<TrayDetent, 'closed'>, string> = {
   peek: `${TRAY_PEEK}px`,
@@ -104,7 +106,7 @@ export function Tray({
   // beside the column at full height, so the detent ladder — a bottom-edge idea — does not apply.
   // `detent` still says open or closed; the height is the panel's.
   const wide = useWide()
-  const side = mode === 'side' || mode === 'side-next' || (wide && mode === 'docked')
+  const side = mode === 'side' || mode === 'side-next' || mode === 'pane' || (wide && mode === 'docked')
 
   if (detent === 'closed') return null
 
@@ -152,7 +154,9 @@ export function Tray({
         // and unpressable (2026-10-18, every phone). Closing it gives the first panel back as it
         // stood. tests/map.shipPanel.spec.ts asks the browser which panel a finger lands on.
         mode === 'side-next' ? 'z-50 lg:z-30' : 'z-40',
-        'flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
+        mode === 'pane'
+          ? 'flex flex-col overflow-hidden bg-surface'
+          : 'flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
         'transition-[height] duration-sheet ease-sheet',
         mode === 'side-next'
           ? traySideNextClass()
@@ -160,7 +164,9 @@ export function Tray({
           ? traySideEdgeClass()
           : mode === 'docked'
             ? `fixed inset-x-0 bottom-0 ${trayDockWideClass()}`
-            : 'relative w-full',
+            : mode === 'pane'
+              ? 'relative h-full w-full'
+              : 'relative w-full',
         className,
       ].join(' ')}
       {...rest}
@@ -212,7 +218,7 @@ export function Tray({
 
       {/* The one scrolling region. The action below it never enters this box, per §6's sketch:
           "the ONE primary button, always at the bottom edge, never in the scroll". */}
-      <div className="min-h-0 flex-1 overflow-y-auto px-gutter pb-2">{children}</div>
+      <div className="bv-scroll min-h-0 flex-1 overflow-y-auto px-gutter pb-2">{children}</div>
 
       {action !== undefined && <div className="shrink-0 px-gutter pb-4 pt-2">{action}</div>}
     </section>

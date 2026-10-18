@@ -1,4 +1,4 @@
-import { Icon, RarityMark, Sparkline, goodIcon } from '../../../components/ui'
+import { Icon, RarityMark, Sparkline, StockGauge, goodIcon } from '../../../components/ui'
 import { formatInt, formatPctChange, formatPrice } from '../../../lib/format'
 import type { SnapshotGood, WatchGood } from '../../../lib/rpc'
 
@@ -30,6 +30,10 @@ export function WatchRow({
 }) {
   const best = watch?.best ?? null
   const change = watch?.change_pct ?? null
+  const stock =
+    best && typeof best.stock === 'number' && typeof best.stock_target === 'number'
+      ? { stock: best.stock, target: best.stock_target }
+      : null
   const facts = [
     watch ? `${formatInt(watch.sellers)} ${watch.sellers === 1 ? 'city' : 'cities'}` : null,
     watch && watch.on_board > 0 ? `${formatInt(watch.on_board)} on board` : null,
@@ -44,7 +48,7 @@ export function WatchRow({
         onClick={onOpen}
         aria-pressed={on}
         className={[
-          'flex min-h-row w-full items-center gap-3 px-2 py-2 text-left transition',
+          'flex min-h-row w-full items-center gap-3 rounded-control px-2 py-2 text-left transition',
           on ? 'bg-accent-soft' : 'hover:bg-surface-2',
         ].join(' ')}
         data-testid="watch-row"
@@ -56,7 +60,13 @@ export function WatchRow({
             <span className="truncate">{good.name}</span>
             <RarityMark rarity={good.rarity} />
           </span>
-          <span className="block truncate text-t-caption text-ink-faint">{facts.join(' · ') || 'Sold nowhere'}</span>
+          {/* THE CHEAPEST SELLER'S STOCK against its normal level (owner, 2026-10-18), then the facts */}
+          <span className="flex min-w-0 items-center gap-2">
+            {stock && best && (
+              <StockGauge stock={stock.stock} target={stock.target} label={`${good.name} at ${portName(best.port)}`} />
+            )}
+            <span className="truncate text-t-caption text-ink-faint">{facts.join(' · ') || 'Sold nowhere'}</span>
+          </span>
         </span>
         <Sparkline
           values={watch?.spark ?? []}
@@ -66,7 +76,7 @@ export function WatchRow({
           label={`${good.name}, the last hours at ${best ? portName(best.port) : 'no city'}`}
           className="hidden shrink-0 min-[360px]:inline-block"
         />
-        <span className="flex min-w-24 shrink-0 flex-col items-end">
+        <span className="flex min-w-20 shrink-0 flex-col items-end">
           <span className="whitespace-nowrap text-t-body tabular-nums text-ink">{best ? formatPrice(best.mid) : '—'}</span>
           {change !== null && (
             <span
