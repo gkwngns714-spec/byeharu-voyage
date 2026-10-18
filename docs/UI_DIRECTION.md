@@ -409,6 +409,8 @@ A tapped merchant hull opens a `Tray` with `CHART_CHROME`, exactly as yours does
 ### Shell
 TopBar becomes a 32-px status strip: purse `Figure` on the right, the market countdown on the left when on a trade screen, nothing else — no wordmark, no dot. `RebuildNotice` becomes one `Note`: `The world was rebuilt from the first migration. [OK]`. The Nav keeps six cells; labels drop uppercase; Cabin opens a `Tray` of four rows.
 
+**The new-version toast (2026-10-19, `src/app/NewVersionToast.tsx`).** The one thing the shell says from outside the world: a newer build is published. It is §4.3's floating corner glass (72 %-alpha `surface`, 16-px blur, `--shadow-float`, radius 12), `fixed` top-right under the status strip, one line of `t-label` — `New version — tap to refresh` — and a 44-px ✕. It is the only toast in the game and it is not a toast that withdraws: it stands until tapped or dismissed. Because it is fixed it is outside the flow and moves nothing (the rule that a press never restructures the page). Mounted over every route, the sign-in page included. Nothing else may be announced this way; news about the world is a `Note` in the sheet.
+
 ## 7. Migration order — never half-redesigned in an ugly way
 
 The trick is that tokens and primitives can land under the old screens without changing their layout, and each screen is then swapped whole. The app is never a mix of two skins on one screen.

@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
@@ -87,7 +88,76 @@ function worldImage(): Plugin {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE BUILD ID — which build a tab is running, and which one is published (2026-10-19)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// WHY. The owner kept a tab open across deploys, played an old build, and reported a defect that
+// had already been fixed. Nothing in the app could tell him a newer build was live, because
+// nothing in the app knew which build it was. So every build gets ONE id — the commit it was
+// built from plus the moment it was built — written in TWO places by this plugin from the SAME
+// value: into the bundle as the constant `__BUILD_ID__` (src/lib/version.ts reads it), and into
+// `dist/version.json` beside index.html. A running tab fetches version.json and compares; when
+// the two ids differ, a newer build is published and src/app/NewVersionToast.tsx says so.
+//
+// ONE VALUE, COMPUTED ONCE. The id is taken when the config loads, not per hook, so the constant
+// the bundle carries and the file beside it cannot disagree within one build. `GITHUB_SHA` is the
+// commit on a runner (actions/checkout leaves a full clone, but the variable is the cheaper and
+// the surer read); `git rev-parse` is the commit on a dev machine. Neither available means the
+// build cannot be named, and a build that cannot be named cannot be told apart from the next one
+// — so that THROWS rather than stamping `unknown` (docs/NO_SPAGHETTI.md §7C: a fallback that hands
+// over a different thing is not a fallback).
+//
+// WHY A SEPARATE FILE AND NOT THE BUNDLE'S OWN HASH. The tab needs to learn the PUBLISHED id
+// without downloading the published bundle, and it needs an answer the CDN will not serve stale.
+// GitHub Pages serves everything with `max-age=600`, so the client fetches version.json with
+// `cache: 'no-store'` AND a cache-busting query (`?t=<now>`), which makes every check a distinct
+// URL at the edge. The file is 60 bytes; the bundle is not.
+//
+// IN `vite dev` the same id is served from memory so the toast's code path runs there too; in
+// `vite preview` dist/version.json is served like any other file.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+export const VERSION_FILE = 'version.json'
+
+function buildId(): string {
+  const sha =
+    process.env.GITHUB_SHA ??
+    (() => {
+      try {
+        return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+      } catch {
+        return ''
+      }
+    })()
+  if (!/^[0-9a-f]{40}$/.test(sha)) {
+    throw new Error(
+      'build id: no commit to name this build after (GITHUB_SHA is unset and `git rev-parse HEAD` gave nothing)',
+    )
+  }
+  return `${sha.slice(0, 7)}+${new Date().toISOString()}`
+}
+
+function buildVersion(): Plugin {
+  const id = buildId()
+  const body = JSON.stringify({ id })
+  return {
+    name: 'byeharu:build-version',
+    config: () => ({ define: { __BUILD_ID__: JSON.stringify(id) } }),
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: VERSION_FILE, source: body })
+    },
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if ((req.url ?? '').split('?')[0] !== `${server.config.base}${VERSION_FILE}`) return next()
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Cache-Control', 'no-store')
+        res.end(body)
+      })
+    },
+  }
+}
+
 export default defineConfig({
   base: '/byeharu-voyage/',
-  plugins: [react(), tailwindcss(), worldImage()],
+  plugins: [react(), tailwindcss(), worldImage(), buildVersion()],
 })

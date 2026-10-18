@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { RequireAuth } from './RequireAuth'
 import { AppShell } from './AppShell'
+import { NewVersionToast } from './NewVersionToast'
 import { HOME_TAB } from './navTabs'
 import { AuthPage } from '../features/auth/AuthPage'
 import { GalleryScreen } from '../features/gallery/GalleryScreen'
@@ -32,6 +33,11 @@ export function App() {
 
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>
+      {/* A NEWER BUILD IS LIVE — one fixed corner toast, over every route: the sign-in page and the
+          gallery as much as the shell, because a stale tab is stale wherever it is parked. It is
+          outside RequireAuth and AppShell on purpose, and it reads nothing from the world
+          (src/app/NewVersionToast.tsx). */}
+      <NewVersionToast />
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         {/* THE DESIGN-SYSTEM GALLERY (docs/UI_DIRECTION.md §7 step 2). Outside RequireAuth and
