@@ -1,4 +1,4 @@
-import { Note, Row, SheetSection, Skeleton } from '../../../components/ui'
+import { Hint, Note, Row, SheetSection, Skeleton } from '../../../components/ui'
 import { formatPrice } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
 import { volumeLine, whyLines } from './whyLines'
@@ -36,9 +36,9 @@ export function WhyThisPrice({ why, loading }: { why: PriceWhy | null; loading: 
         ))
       )}
       {volume && (
-        <p className="mt-1 text-t-caption text-ink-faint" data-testid="why-volume">
+        <Hint className="mt-1" data-testid="why-volume">
           {volume}
-        </p>
+        </Hint>
       )}
     </SheetSection>
   )
