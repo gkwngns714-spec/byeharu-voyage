@@ -85,3 +85,25 @@ a read (12.5 s measured on PGlite), so it needs a precompute at the market tick.
 
 The local world has a one-slot record and stock at its normal level, so the stock strip is flat
 there. Prod's record has 12 h.
+
+## Part 3 (2026-10-19): on the owner's 1280×707 glass
+
+The coordinator found two layout defects on the live terminal. This PR fixes both.
+
+1. **Stock text overprinted in the watchlist.** It rendered as "1205 / 268". The gauge was `min-w-0`,
+   so a narrow row squeezed it under its own figure, and the figure was drawn over the bar and the
+   facts beside it. `StockGauge` is now `shrink-0`: it keeps its width, and the text beside it
+   truncates instead.
+2. **Names truncated** ("Abalone …", "Adire Cl…"). A watchlist name now wraps to two lines at most
+   and never truncates. The sparkline is 40×18. The list pane is 19–23 rem and the ticket pane
+   20–24 rem.
+
+**Spec.** `desk.terminal.spec.ts` runs at 1280×707, 1440×731 and 390×844. In the first 12 rows no
+gauge part runs past the gauge, nothing beside it starts before it ends, no name is clipped, and the
+page has no sideways scroll. Locally, desk.terminal, desk.layout, wide.layout and duplication:
+**26 passed, 0 skipped.**
+
+**Screenshots** (DPR 2): `fix-1280-*`, `fix-1440-*`, `fix-390-markets`.
+
+**Best trade must be sailable (fix 3)** waits for `osn-plan-reach-2`'s served `sailable`, `stops`,
+`needs` and `supplies`. It ships in its own PR once those fields are live.
