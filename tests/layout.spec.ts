@@ -217,7 +217,6 @@ test('the desk puts complete priced goods above the fold, per K.1 — Markets, a
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
 
   // THE GOODS WERE TILES from 2026-08-23 ("make trade goods in blocks") to 2026-09-11, when the
   // owner's row 76 approved the Quay Ledger: ONE ROW per good — name, rarity mark, `N t aboard`,
@@ -412,7 +411,6 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
 
   const shape = await page.evaluate(MEASURE_FIELD, 'trade-row')
   const cellReport = await page.evaluate(() => {
@@ -721,7 +719,6 @@ test(`PORT: a line staged onto the basket docks the one tray at peek, moves noth
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
 
   const rows = page.locator('[data-testid="trade-row"]')
   expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
@@ -833,7 +830,6 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
 
   const rows = page.locator('[data-testid="trade-row"]')
   expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
@@ -990,7 +986,6 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
 
   const rows = page.locator('[data-testid="trade-row"]')
   const n = await rows.count()
@@ -1076,7 +1071,6 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
 
   // The three faces stand in one strip, Buy up first, and the ledger is under it.
   const faces = page.getByRole('tablist', { name: 'Trade faces' })
@@ -1183,7 +1177,6 @@ test(`PORT › Storage: a cell opens the one tray with a stepper, moves nothing 
   await page.goto('command')
   await ready(page)
   await openCityFace(page)
-  await page.waitForTimeout(1200)
 
   // SOMETHING ON BOARD: buy the first live good through the trade tray, and wait for the world to
   // be read back (the ledger row says what is on board).

@@ -23,6 +23,7 @@
 
 import { expect, type Page } from '@playwright/test'
 import { ZOOM_STEP } from '../src/chart'
+import { WORLD_BOOT_MS } from './appReady.fixture'
 
 /** A region of the chart, as insets in CSS px from the chart's own edges. */
 export interface GlassZone {
@@ -53,9 +54,13 @@ const VIEW_SHEET = '[data-testid="map-view"]'
  * of the twenty-two reads over the next 22 s said "0 merchants, NaN °/px", the screencast at 22.9 s
  * still read "opening the chart…", and the chart was open by the time the failure screenshot was
  * taken four seconds later. The budget is `ready()`'s world-boot budget, because it is the same boot.
+ *
+ * Since 2026-10-18 `ready()` itself waits for the store's load phase (the shell's `data-world`), so
+ * the boot is behind every spec on every route before it gets here; what stays is this helper's own
+ * precondition — the view sheet it reads is on the glass.
  */
 export async function chartOpen(page: Page): Promise<void> {
-  await page.locator(VIEW_SHEET).waitFor({ state: 'attached', timeout: 300_000 })
+  await page.locator(VIEW_SHEET).waitFor({ state: 'attached', timeout: WORLD_BOOT_MS })
 }
 
 /** How many merchant marks have their centre inside `zone`, and the chart's degrees per pixel.
