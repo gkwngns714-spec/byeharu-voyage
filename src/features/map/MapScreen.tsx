@@ -248,8 +248,10 @@ function Chart({
 
   // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
   const regionsOn = useRegionsFilter()
-  // 0143 (D14): with Regions on, each harbour's name carries the flag it flies.
-  const portFlags = usePortFlags(regionsOn)
+  // 0143 (D14) asked for the flags with Regions on only. The owner, 2026-10-18: "beside the name show
+  // flag that are influenced by" — every harbour's name carries the bundled flag of the nation that
+  // holds it, at every zoom; measured legible and clean at 1440×900 and 390×844 (PR screenshots).
+  const portFlags = usePortFlags(true)
   const allegiance = useWorld((s) => s.allegiance)
   const loadAllegiance = useWorld((s) => s.loadAllegiance)
   const openPort = selection?.kind === 'port' ? selection.code : null

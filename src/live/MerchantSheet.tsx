@@ -110,7 +110,7 @@ export function MerchantSheet({
               <>
                 {/* 0143 (owner, 2026-10-17): every merchant shows the flag of her company's country. */}
                 <span className="inline-flex items-center gap-1" data-testid="merchant-sheet-flag">
-                  <HullCountry nation={card.company.nation_code} compact />
+                  <HullCountry nation={card.company.nation_code} compact size="caption" />
                 </span>{' '}
                 {card.company.name}
                 {line ? <> · {line}</> : null}

@@ -415,7 +415,7 @@ export function ShipPanel({
       title={
         nation ? (
           <span className="inline-flex items-center gap-1.5" data-testid="ship-panel-flag">
-            <HullCountry nation={nation} compact />
+            <HullCountry nation={nation} compact size="title" />
             {ship.name}
           </span>
         ) : (

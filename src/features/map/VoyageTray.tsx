@@ -24,6 +24,8 @@ import { fleetParts } from './fleetLine'
 import { useWorld } from '../../live/worldStore'
 import type { FleetShip } from '../../lib/rpc'
 import { ShipPanel } from '../../live/ShipPanel'
+import { HullCountry } from '../../live/HullCountry'
+import { PortFlag } from '../../live/PortFlag'
 import { CrewBonuses } from '../../live/CrewBonuses'
 import { TradeHistoryPanel, type TradePick } from '../../live/TradeHistoryPanel'
 
@@ -232,6 +234,9 @@ export function VoyageTray({
   }, [roster, loadOfficers])
   const [openShipId, setOpenShipId] = useState<string | null>(null)
   const openShip = ships?.find((s) => s.id === openShipId) ?? null
+  // 2026-10-18 (the owner: "when pressing a ship … also show flag"): your fleet sails under your
+  // company's country — the house's served nation code, the one Profile → Country changes.
+  const houseNation = useWorld((s) => s.player?.nation ?? null)
   // HER ROUTE'S LAPS, if she sails one — the company's routes book the shell already holds, so
   // nothing is asked to decide whether to show them. A press opens her trading beside this tray
   // (owner, 2026-10-15), in the slot a ship's panel uses: one of the two at a time.
@@ -254,7 +259,12 @@ export function VoyageTray({
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={
         <TrayTitle
-          name={<GoToLink to={{ kind: 'fleet', id: fleet.fleet.id }}>{fleet.fleet.name}</GoToLink>}
+          name={
+            <span className="inline-flex max-w-full items-center gap-1.5" data-testid="fleet-tray-flag">
+              <HullCountry nation={houseNation} compact size="title" />
+              <GoToLink to={{ kind: 'fleet', id: fleet.fleet.id }}>{fleet.fleet.name}</GoToLink>
+            </span>
+          }
           line={<PlaceLine parts={fleetParts(fleet, portsByCode, nowMs)} />}
         />
       }
@@ -284,7 +294,7 @@ export function VoyageTray({
           the height and let the eye take them in as a block. */}
       <dl className="grid grid-cols-2 gap-x-gutter gap-y-2 py-2">
         {fleet.fleet.kind === 'anchored' && <Fact label="Anchored" value={<GoToLink to={{ kind: 'point', at: fleet.at }}>{pointLabel(fleet.at)}</GoToLink>} />}
-        {fleet.fleet.kind === 'docked' && <Fact label="In port" value={<GoToLink to={{ kind: 'port', code: fleet.fleet.portCode }}>{nameOf(fleet.fleet.portCode)}</GoToLink>} />}
+        {fleet.fleet.kind === 'docked' && <Fact label="In port" value={<span className="inline-flex items-center gap-1.5"><PortFlag code={fleet.fleet.portCode} /><GoToLink to={{ kind: 'port', code: fleet.fleet.portCode }}>{nameOf(fleet.fleet.portCode)}</GoToLink></span>} />}
         {voyage && (
           <>
             {/* 0039: a destination is a port, or a pinpointed spot of open water. */}
@@ -292,7 +302,10 @@ export function VoyageTray({
               label="Bound for"
               value={
                 voyage.destinationCode ? (
-                  <GoToLink to={{ kind: 'port', code: voyage.destinationCode }}>{nameOf(voyage.destinationCode)}</GoToLink>
+                  <span className="inline-flex items-center gap-1.5">
+                    <PortFlag code={voyage.destinationCode} />
+                    <GoToLink to={{ kind: 'port', code: voyage.destinationCode }}>{nameOf(voyage.destinationCode)}</GoToLink>
+                  </span>
                 ) : voyage.destPoint ? (
                   <GoToLink to={{ kind: 'point', at: voyage.destPoint }}>{pointLabel(voyage.destPoint)}</GoToLink>
                 ) : (
@@ -335,6 +348,7 @@ export function VoyageTray({
       <ShipPanel
         key={openShip.id}
         ship={openShip}
+        nation={houseNation}
         onClose={() => setOpenShipId(null)}
         seating={{ shipId: openShip.id, docked: own?.status === 'DOCKED', captains: kept }}
       />

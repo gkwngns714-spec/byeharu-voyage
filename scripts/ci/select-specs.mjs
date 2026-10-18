@@ -30,7 +30,10 @@
 //   T  TREE SCANNERS: a spec that walks a directory (`readdirSync`) is selected whenever src/,
 //      scripts/, data/ or supabase/migrations/ changed — its input is the tree, not an import.
 //   A  APP SHELL: src/app/**, src/index.css, src/components/ui/**, public/** → every browser spec
-//      (a spec that opens `page`): every face is drawn inside them.
+//      (a spec that opens `page`): every face is drawn inside them. EXCEPT public/flags/** (2026-10-18):
+//      a nation's flag picture is drawn only by the design system's Flag and the chart's names, and
+//      the spec that reads that folder (tests/flags.spec.ts, `'public', 'flags'`) is the one it
+//      selects; a change to Flag.tsx itself is still rule A.
 //   I  TEST IDS: a browser spec that names a data-testid which a changed (or rule-S-affected) src
 //      file declares, or declared before the change.
 //   L  FACES: a changed .tsx/.css under src/features, src/live or src/components → layout.spec and
@@ -247,7 +250,8 @@ const GROWTH_RULES = [
   // db.image) are still selected by rule G through apply-chain / build-image.
   /^src\/lib\/db\//, /^tests\/frozenChain\.ts$/, /^scripts\/db\/(?!world-guard\.mjs$|proofs\/)/, /^package(-lock)?\.json$/, /^vite\.config\.ts$/,
 ]
-const SHELL_RE = /^(src\/app\/|src\/index\.css$|src\/components\/ui\/|public\/)/
+const SHELL_RE = /^(src\/app\/|src\/index\.css$|src\/components\/ui\/|public\/(?!flags\/))/
+const FLAGS_RE = /^public\/flags\//
 const FACE_RE = /^src\/(features|live|components)\/.*\.(tsx|css)$/
 const SCANNED_RE = /^(src|scripts|data|supabase\/migrations)\//
 const MIGRATION_RE = /^supabase\/migrations\/.*\.sql$/
@@ -393,6 +397,7 @@ export function select({ base, head, full = false }) {
     for (const [f, why] of affected) {
       const tag = why === 'changed' ? '' : ` (${why})`
       if (SHELL_RE.test(f) && why === 'changed') for (const s of browser) pick(s, `A: ${f} is the app shell every face is drawn in`)
+      if (FLAGS_RE.test(f)) for (const [s, t] of text) if (t.includes("'public', 'flags'")) pick(s, `A: ${f} is a flag picture this spec holds to the nations`)
       if (FACE_RE.test(f)) for (const s of ['tests/layout.spec.ts', 'tests/wide.layout.spec.ts']) if (text.has(s)) pick(s, `L: ${f} is a face this spec measures${tag}`)
       if (!/^src\/.*\.(tsx?|mjs)$/.test(f)) continue
       const ids = new Set()
