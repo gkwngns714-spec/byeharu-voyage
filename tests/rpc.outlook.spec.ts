@@ -60,9 +60,9 @@ test.beforeAll(async () => {
       join public.goods g on g.id = pg.good_id
      cross join lateral world.mid_terms(pg.port_id, pg.good_id) t
      where p.code = 'LIS'
-       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_target, t.m_target / 2, 0.2, t.m_season, t.m_dev,
+       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_glut, t.m_target, t.m_target / 2, 0.2, t.m_season, t.m_dev,
                                 t.m_elasticity, t.m_dev_discount, t.m_band_lo, t.m_band_hi) < t.m_band_hi * t.m_base * t.m_haul * 0.99
-       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_target, t.m_target * 2, -0.2, t.m_season, t.m_dev,
+       and world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_glut, t.m_target, t.m_target * 2, -0.2, t.m_season, t.m_dev,
                                 t.m_elasticity, t.m_dev_discount, t.m_band_lo, t.m_band_hi) > t.m_band_lo * t.m_base * t.m_haul * 1.01
      order by g.code limit 1`)
   expect(r.rows, 'no Lisbon row sits inside the band').toHaveLength(1)

@@ -139,6 +139,17 @@ test('0191: a city\'s best friends trade cheaper — rank 1 among its givers is 
   expect(stakeLine(w)).toBe("Your company is #1 among this city's givers: 10% off the port's spread")
 })
 
+test('0194: a glutted market remembers — the glut is its own term, and it is printed', async () => {
+  const r = await row('coffee', 'islamic')
+  await db.pg.query('update public.port_goods set glut = 0.15 where port_id = $1 and good_id = $2', [r.port_id, r.good_id])
+  const w = await why(r.port_id, r.good_id)
+  expect(Number(w.terms.find((t) => t.key === 'glut')!.mult)).toBe(0.85)
+  const product = Number(w.base) * w.terms.reduce((acc, t) => acc * Number(t.mult), 1)
+  expect(Math.abs(product - Number(w.mid))).toBeLessThanOrEqual(Math.max(0.0005 * Number(w.mid), 0.0002))
+  expect(whyLines(w).find((l) => l.key === 'glut')).toMatchObject({ label: 'Sold heavily here lately', effect: '−15.0%' })
+  await db.pg.query('update public.port_goods set glut = 0 where port_id = $1 and good_id = $2', [r.port_id, r.good_id])
+})
+
 test('it refuses what it cannot answer', async () => {
   const r = await row('coffee', 'islamic')
   await expect(why(r.port_id, '00000000-0000-0000-0000-000000000000')).rejects.toThrow(/E_NO_SUCH_GOOD/)

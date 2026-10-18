@@ -72,6 +72,9 @@ export function whyLines(why: PriceWhy): WhyLine[] {
       case 'band':
         add('band', t.mult < 1 ? 'Held at the price ceiling' : 'Held at the price floor', t.mult)
         break
+      case 'glut': // 0194: recent heavy selling here, fading by half each game day
+        add('glut', 'Sold heavily here lately', t.mult)
+        break
     }
   }
   return out.sort((a, b) => Math.abs(Math.log(b.mult)) - Math.abs(Math.log(a.mult)))
