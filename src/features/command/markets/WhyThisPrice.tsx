@@ -1,4 +1,4 @@
-import { Note, SheetSection, Skeleton } from '../../../components/ui'
+import { Note, Row, SheetSection, Skeleton } from '../../../components/ui'
 import { formatPrice } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
 import { whyLines } from './whyLines'
@@ -26,14 +26,12 @@ export function WhyThisPrice({ why, loading }: { why: PriceWhy | null; loading: 
         <Note tone="neutral">Nothing moves it: it sells at its base.</Note>
       ) : (
         lines.map((l) => (
-          <div
+          <Row
             key={l.key}
-            className="flex min-h-row items-center justify-between gap-3 border-b border-edge py-1"
+            label={l.label}
+            value={<span className="whitespace-nowrap tabular-nums">{l.effect}</span>}
             data-testid="why-line"
-          >
-            <span className="min-w-0 truncate text-t-body text-ink">{l.label}</span>
-            <span className="shrink-0 whitespace-nowrap text-t-body tabular-nums text-ink">{l.effect}</span>
-          </div>
+          />
         ))
       )}
     </SheetSection>
