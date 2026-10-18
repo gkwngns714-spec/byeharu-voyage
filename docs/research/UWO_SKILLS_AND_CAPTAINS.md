@@ -1,6 +1,11 @@
 # Uncharted Waters Origin — skills, captains and mates (research)
 
 **Research date:** 2026-10-17. **Researcher:** Claude (Fable 5.1), on request of the owner.
+**Audited 2026-10-18** against every cited URL — see `docs/research/AUDIT_2026-10-18.md`. Corrections are marked
+`[audit 2026-10-18]` inline. The main defect found: the four example kits (§3.13 1–4), the job→effect skeleton (§3.2),
+the Employees row (§2) and the Counselor "Homesickness Relieve 3.3 %" (§3.10) were all cited to the Sep 2025 patch
+note; they are in the **Dec 6 2024 patch note** (https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1733294207241009126).
+The numbers themselves are correct.
 **Purpose:** ground the captain/officer and skill work of byeharu-voyage (`docs/SHIPS_AND_SKILLS.md`,
 `docs/DESIGN_V1.md` §7, migrations 0015 / 0073 / 0119 / 0127 / 0131 / 0133) in what *Uncharted Waters
 Origin* (대항해시대 오리진, LINE Games / Motif / Koei Tecmo, 2022 KR, 2023 global) actually does with its
@@ -45,7 +50,8 @@ still served at research time.
    1–2 active *naval combat skills* (artillery / ram / melee / repair / medicine / seal variants) and a
    duel skill, each levelled 1–10 with published per-level tables; up to **4 effects** can be
    *activated* at once (5 after transcendence, 6 with a paid memoir). §4.3–4.4.
-8. **Effects stack by count.** Two mates on one ship with the same skill or effect raise its level;
+8. **Skills stack by count.** Two mates on one ship with the same skill raise its strength (official); for
+   *effects* this is unsupported (`[audit 2026-10-18]`);
    fleet expertise is a sum over every assigned mate. This is the game's only "set bonus" between
    people; real set bonuses are mate *collections* (e.g. +0.1 % per tier) and ship engravings. §3.5, §4.7.
 9. **Languages are a hard region gate carried by people, not by the player.** 36 languages, LV 1–5,
@@ -86,8 +92,11 @@ still served at research time.
   **[F]** https://namu.wiki/w/대항해시대%20오리진/게임%20관련%20정보 (1–7 ships a fleet, 4 fleets).
 - The **Admiral** is a mate too, structurally: an S-grade character with stats about 20–30 % above a
   normal S mate, a unique job title, unique skills, a Chronicle (story) and Admiral's Orders. Five
-  starters are free; from Pietro Conti on they cost 5,000 red gems (or, since late 2024, a voucher),
-  and the first extra admiral can instead be bought for 100 million ducats after Company LV 25.
+  starters are free; from Pietro Conti on they cost 5,000 gems (namu says red, the MMORPG.com post says blue —
+  `[audit 2026-10-18]` DISPUTED; the official admiral page names no price; the "20–30 % above an S mate" figure
+  is on no page read — the official page says only "generally have higher stats than other Mates you recruit
+  in the early phase") or, since late 2024, a voucher, and the first extra admiral can instead be bought for
+  100 million ducats after Company LV 25.
   **[O]** https://guide.floor.line.games/UWO/en_US/detail/1111111111111111111 ·
   **[F]** https://namu.wiki/w/대항해시대%20오리진/게임%20관련%20정보 ·
   https://forums.mmorpg.com/discussion/500581/the-business-model-for-uncharted-waters-origin ·
@@ -110,7 +119,7 @@ still served at research time.
 | **Failed negotiation cooldown** | by grade | S 360 min · A 180 · B 30 · C 10 | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1653441748014014523 |
 | **Who is in which inn** | each mate appears at a short list of "party ports" / "hire ports" (5–7 cities, usually her language area); the inn can be filtered by language | e.g. Catalina de Erauso: Valparaíso, Caracas, Copiapó, Tumbes, Palma, Gijón, Soda Is. | **[F]** https://uwo.inven.co.kr/db/character/chabbb058 · **[O]** every "New Mates" notice, e.g. https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471 |
 | **Chronicles** | an admiral's story hands over 1–3 mates (reward or inn-unlock) | e.g. Louise de Beaujoyeulx after Helen Raspberry's chronicle; Francis Drake after Otto's | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471 · **[F]** namu (above) |
-| **Employees (종업원)** | unique tavern NPCs hired after Friendship LV 4 | e.g. Malinalli (Panama), Ulloriaq (Cohasset) | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1757321858140028621 (Sep 2025 notice) |
+| **Employees (종업원)** | unique tavern NPCs; at Friendship LV 4 the mate (or her shop package) becomes available — "여관에서는 고용할 수 없습니다" | e.g. Malinalli (Panama), Ulloriaq (Cohasset) | **[O]** https://uwo.floor.line.games/kr/bbs/guide/61/detail/1731564352462014258 (2024-11-20) · https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1733294207241009126 (Dec 6 2024) — `[audit 2026-10-18]` was wrongly cited to the Sep 2025 notice |
 | **Shop / Step-up (paid)** | some S mates are shop purchases | e.g. Valentina Morel, Giacomo Decampania | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471 |
 | **Investment Season shop** | seasonal mates for seasonal deeds | deeds expire with the season | **[O]** https://uwo.floor.line.games/us/bbs/community/community_us/1/detail/1734056399615031473 |
 | **Gacha (removed)** | "Superior Mate" chests, 4,000 red gems / 10; duplicates gave 30 contracts | ended 6 Nov 2024 (global) | **[F]** https://forums.mmorpg.com/discussion/500581/the-business-model-for-uncharted-waters-origin · **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1729660250450018684 |
@@ -134,8 +143,9 @@ who you can sign (the thing 0073 derives for us); (b) the same inn later sells t
 - A fifth tier **SS** exists only as a *training* destination (§3.9). **[F]**
   https://steamcommunity.com/sharedfiles/filedetails/?id=3075729949
 - Player sentiment: S and A mates are the game; C mates are "almost never used" except a handful
-  with a specific trade effect. **[F]** Inven board summary in search of
-  https://www.inven.co.kr/board/uwo/5715/274 · https://www.inven.co.kr/board/uwo/5715/258
+  with a specific trade effect. **[F]** `[audit 2026-10-18]` UNSUPPORTED — the two Inven posts cited
+  (5715/274, 5715/258) are screenshot-only; the sentence came from a search summary. The Steam promotions
+  guide argues the opposite ("free players can train up C-grade mates to be stronger than natural S-grade").
 
 ### 3.2 Focus and job (계열 · 직업)
 
@@ -152,7 +162,8 @@ Combat: 대사수 / 함포수 (gunners), 유탄수 (grenadier), 백병대 / 타�
 
 The job decides which **job effects** she unlocks by level (e.g. a Food Trader gets "Food Trade
 Specialization", "Food Discount"; a Marine gets Melee crit and attack), so the job *is* the kit's
-skeleton. **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1757321858140028621
+skeleton. **[O]** https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1733294207241009126 (Dec 6 2024
+patch note; `[audit 2026-10-18]` previously cited to the Sep 2025 notice, which has no kits)
 
 A fan-made job recommendation chart exists (image only). **[F]**
 https://trees.gamemeca.com/view.php?gid=1685443
@@ -165,7 +176,10 @@ https://trees.gamemeca.com/view.php?gid=1685443
   https://www.khitc.com/wp/ddon/origin5/ · **[O]** (unassigned mates do nothing)
   https://guide.floor.line.games/UWO/en_US/detail/1167031174330200447
 - EXP from a cabin: a cabin with a focus pays 100 % EXP for that focus and 50 % for the others; the
-  Captain's Cabin pays 100 % for all three; commissions (dispatch) pay 100 % regardless. **[F]**
+  Captain's Cabin pays 100 % for all three (Steam: "full experience for the type for which his cabin has a 100%
+  stat rate, but only half experience for other types … ship captains gain full experience of all types"; khitc
+  phrases it as trait cabin 100 % / trait-less cabin 50 %); 依頼 (quests), not dispatch, pay 100 % regardless
+  (`[audit 2026-10-18]` this line said "commissions (dispatch)"; khitc says 依頼). **[F]**
   https://www.khitc.com/wp/ddon/origin5/ ·
   https://steamcommunity.com/sharedfiles/filedetails/?id=2955998460
 - **Cap = Company LV** (fan reports), raised by the publisher: Company 105 / Mate 145 (Dec 2025),
@@ -176,7 +190,8 @@ https://trees.gamemeca.com/view.php?gid=1685443
   https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471
 - Catch-up: Company "growth speed support" multipliers by level band (1,500 % for LV 1–25 down to
   nothing at 91–100 in Sep 2025; retuned May 2026), mate **EXP potions** that jump straight to a
-  chosen level, and since Aug 2026 a *new* mate joins already at a level matching your Company LV.
+  chosen level, and since Aug 2026 a *new* mate joins "already grown to a certain level in line with" your
+  Company LV (`[audit 2026-10-18]` not "matching" it — the notice does not say equal).
   **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1758517759446022860 ·
   https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471
 
@@ -209,7 +224,7 @@ Sep 2025 with LV 3→4 costing 1,557 (was 1,950) and LV 11→12 13,146 (was 6,84
 to every expertise cap. **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1757321858140028621 ·
 https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471
 
-An actual sheet, for scale (B-grade Spanish grenadier Catalina de Erauso): Artillery 73, Ramming 27,
+An actual sheet, for scale (Spanish grenadier Catalina de Erauso; grade not shown on the sheet — `[audit 2026-10-18]`): Artillery 73, Ramming 27,
 Support 20, Melee 32 · Nature 35, Aesthetics 20, Scouting 27, Supply 32 · Purchasing 7, Sales 19,
 Negotiation 14, Trade 12; Spanish LV 2, Quechua LV 1. **[F]**
 https://uwo.inven.co.kr/db/character/chabbb058
@@ -253,8 +268,10 @@ https://uwo.inven.co.kr/db/character/chabbb058
   page: a melee mate at 9,136 reads 10,049 in a melee lab (+10 %), 10,323 in marine barracks (+13 %),
   and 8,222 in a lookout post. **[F]**
   https://gall.dcinside.com/mgallery/board/view/?id=bigtimeofnavigation&no=349152
-- **Stacking.** Two or more mates on one ship with the same skill or effect raise that skill's level
-  (officially) and also its action-point (mobility) cost (fan). **[O]**
+- **Stacking.** Two or more mates on one ship with the same **skill** raise that skill's strength (officially:
+  "Assigning multiple Mates with the same skill to a single ship increases the strength of that skill"); that the
+  same holds for *effects* is NOT on the official page (`[audit 2026-10-18]` — UNSUPPORTED); the mobility-cost rise
+  is fan. **[O]**
   https://guide.floor.line.games/UWO/en_US/detail/1167031313761600028 · **[F]** namu (above)
 - **Two special cabins everyone is told about**: an **Aide's Cabin on the flagship** lets the aide
   auto-use tools to end fleet disasters; an **Accounting Room somewhere in the fleet** (on the flagship,
@@ -266,7 +283,8 @@ https://uwo.inven.co.kr/db/character/chabbb058
   ship of that class you own or build** (schooners excepted). **[O]**
   https://guide.floor.line.games/UWO/en_US/detail/1111111111111111114 · **[F]**
   https://steamcommunity.com/sharedfiles/filedetails/?id=2955998460
-- **Dispatch (파견)** uses fleets 2–4 (2 free slots, 3rd and 4th bought) on timed adventure / trade /
+- **Dispatch (파견)** uses fleets 2–4 (Fleet 2 by default, Fleets 3 and 4 "재화를 사용하여 … 추가 활성화" —
+  `[audit 2026-10-18]` this line said "2 free slots"; the KR guide gives one) on timed adventure / trade /
   combat missions with a fleet-LV band per region and a shown success chance; rewards include
   promotion materials and contracts. Example gate: Eastern Pacific dispatch needs LV 85, Trade
   expertise LV 17, Seaworthiness 150, Momentum 120. **[O]**
@@ -286,7 +304,9 @@ https://uwo.floor.line.games/us/bbs/community/community_us/1/detail/173405639961
 What *does* still gate: sea areas by fleet-average **Seaworthiness / Momentum / Ice Breaking / Rowing**
 and Company LV (e.g. a chronicle at Company 40, Seaworthiness 130, Momentum 60; a route at Company 40,
 Seaworthiness 210, Ice Breaking 160), languages (§4.6), and land exploration by **Combat Power /
-Observation / Gathering Power** (e.g. 620 / 650 / 620). **[O]**
+Observation / Gathering Power** (e.g. 620 / 650 / 620). (`[audit 2026-10-18]` the 40/130/60 chronicle gate is on
+the Aug 2026 notice; the "210 / 160" route and "620 / 650 / 620" examples are on none of the three pages cited —
+UNSUPPORTED as numbers.) **[O]**
 https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471 ·
 https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1778492589963011795 ·
 https://guide.floor.line.games/UWO/en_US/detail/1167031265223600324
@@ -305,7 +325,8 @@ https://guide.floor.line.games/UWO/en_US/detail/1167031265223600324
 - **Materials** (fan table, 2023; still the shape players quote): contracts 10 / 20 / 40 / 80 for
   ranks 2–5 regardless of grade; astrolabes = appointment certificates, by grade:
   C 20/30/40/50 · B 30/40/60/80 · A 40/60/90/120 · S 50/80/120/160, in material grades D / C / B / A;
-  ducats are minor. Appointment certificates are split by focus (adventure / trade / combat).
+  ducats are minor. (`[audit 2026-10-18]` the Steam table is as written; Inven 5714/1182's totals imply
+  B 20/40/60/80 and A 30/60/90/120 instead — the two fan tables disagree on the B and A first steps.) Appointment certificates are split by focus (adventure / trade / combat).
   **[F]** https://steamcommunity.com/sharedfiles/filedetails/?id=3075729949 ; an Inven tally gives
   totals per grade over promotion plus training (e.g. an S mate needs about 260 contracts in all).
   **[F]** https://www.inven.co.kr/board/uwo/5714/1182
@@ -362,8 +383,11 @@ So Origin's "awakening/limit-break" is *not* a stat multiplier; it is +1 slot an
   https://guide.floor.line.games/UWO/ko_KR/detail/1167031174330200447 ·
   https://uwo.floor.line.games/us/bbsCmn/detail/1653441748014014523
 - Two **fleet morale** states live beside it: **Homesickness** and **Anxiety / Quarreling** are
-  fleet-wide afflictions that some mates' job effects relieve (e.g. a Counselor's "Homesickness Relieve
-  3.3 %", "Mental Therapy 3.3 %"). **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1757321858140028621
+  fleet-wide afflictions that some mates' job effects relieve (Ulloriaq, Counselor: "Homesickness Relieve LV 1:
+  3.3% chance to relieve Homesickness status of the fleet", "Quarreling Relieve LV 1: 3.3 %", "Mental Therapy LV 1:
+  3.3% chance to prevent Anxiety"). **[O]** https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1733294207241009126
+  (Dec 6 2024 patch note; `[audit 2026-10-18]` previously cited to the Sep 2025 notice). Note the 3.3 % is a per-turn
+  CHANCE to relieve the state, not a 3.3 % reduction of a penalty.
   — the owner's "homesick captains" idea (`docs/DESIGN_V1.md` §7.2) has a direct precedent.
 
 ### 3.11 Gear and appearance
@@ -376,9 +400,10 @@ https://uwo.floor.line.games/us/bbsCmn/detail/1757321858140028621
 
 ### 3.12 How many people per ship and per fleet
 
-- 2–6 assignable cabins per ship by grade (§3.5), ~7 ships in Fleet 1 at Company 55, so a full
-  main fleet carries on the order of **25–40 assigned mates**; four fleets in all; the mate roster
-  itself is unbounded (collections of 150+ S mates exist). **[F]**
+- 2–6 assignable cabins per ship by grade (§3.5, Steam), ~7 ships in Fleet 1 at Company 55 (official), so a
+  full main fleet carries on the order of **25–40 assigned mates** (`[audit 2026-10-18]` an INFERENCE from the
+  two sourced numbers, not a published count); four fleets in all; the mate roster itself is unbounded
+  ("collections of 150+ S mates" is UNSUPPORTED). **[F]**
   https://steamcommunity.com/sharedfiles/filedetails/?id=2955998460 · namu (above) · **[O]**
   https://guide.floor.line.games/UWO/en_US/detail/1111111111111111114
 
@@ -388,13 +413,15 @@ Format: *grade · focus · job · expertise · languages* → natural effect; jo
 effects; potential effects; skills. All LV 1 unless stated.
 
 1. **Sophie Rosaline Vidocq** — S · Trade · Jewel Trader · Negotiation · French 5, German 3 →
-   natural: Metal sale surcharge +0.2 %; job: Ram Attack +41, Jewelry trade specialisation +5.6 %
+   natural: Metal sale surcharge +0.2 %; job: Ram Attack +41 % (`[audit 2026-10-18]` was "+41"), Jewelry trade specialisation +5.6 %
    purchase qty, Metal +5.6 %, Jewelry discount 1 %; character: Enchanted Ability (−1 % goods used in
    barter), Elusiveness (18 % chance +7.5 % all attack at turn start), Advanced Medical at Start
    (35.2 % chance, +6.1 % crew HP), Jewelry Sales Surcharge LV2 +2.5 %; potential: Jewelry Sales
    Expert +2.5 %, Metal Trade Expert +13 % qty; skills: Seal Skill LV1 (26.3 % chance, 2 turns),
    Enhanced Ram Strength LV2 (+26 % ram attack to allies in range, 3 turns). **[O]**
-   https://uwo.floor.line.games/us/bbsCmn/detail/1757321858140028621
+   https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1733294207241009126 (Dec 6 2024 patch note —
+   `[audit 2026-10-18]` kits 1–4 were cited to the Sep 2025 notice, which does not contain them; every number
+   re-read on the Dec 2024 page and confirmed)
 2. **Beatrice Elena** — S · Trade · Food Trader · Purchasing · Latin 5, Greek 3 → Food sale
    surcharge +0.2 %; Medical recovery +13, Food +5.6 % qty, Seasoning +5.6 % qty, Food discount 1 %;
    Charming Offer (−1.1 % amity in barter quantity talks), Artillery crit resist +5 %, Ram crit damage
@@ -413,7 +440,8 @@ effects; potential effects; skills. All LV 1 unless stated.
    Therapy 3.3 %; Sweet Talker (−0.4 % profit standard for Trade Points), melee crit resists, Deep Sea
    Salvage +1; potential: Scrupulous Explorer +7 % loot, Unknown Strength (learned over time); skills:
    Enhanced Ram Strength LV1 (+18 %), Seal Action LV1. **[O]** same.
-5. **Catalina de Erauso** (B, Spain, grenadier, Artillery) — see §3.4 for expertise; natural: Unknown
+5. **Catalina de Erauso** (Spain, grenadier, Artillery; `[audit 2026-10-18]` her grade is NOT on the Inven sheet —
+   the Steam promotions guide lists her among the natural B/C gacha mates, so B or C) — see §3.4 for expertise; natural: Unknown
    Strength; job: artillery attack +2 %; effects by unlock level: LV 10 Artillery crit +35→+375 and
    Amplify crit +5 %→+90 %; LV 30 Techniques of Bargaining 1→10 % and Artillery counter +5.3→75 %;
    LV 70 Artillery attack +41→+500 and crit damage +2.3→12.5 %; LV 90 Treasure Hunter 0.1→1 % and
@@ -453,7 +481,7 @@ effects; potential effects; skills. All LV 1 unless stated.
 | **Admiral** (player) | unique naval-combat skills by level, duel skills, **Admiral's Orders**, three levels, three fames, titles; **Company Research** points | the only progression that is "the player's own" |
 | **Mate** | 1–2 naval combat skills (LV 1–10), a duel skill, natural + job + character + potential **effects** (4 activated, +1 per transcendence stage, +1 memoir), 12 expertise, languages | §3 |
 | **Ship** | a **trait** (Fixed Artillery, Ranged Charge, Rapid Melee, Formidable Support, Area Support…), a specialisation (Adventure / Trade / Combat), a combat type (Artillery / Ram / Melee / Support) in a rock-paper-scissors (Charging > Assault > Artillery > Charging), a **Captain's Cabin bonus** stat per hull, **Parts** (cannon, sail, figurehead, armour, ram, anchor, special), **cabins**, and for golden hulls **engravings** | **[O]** https://guide.floor.line.games/UWO/en_US/detail/1111111111111111113 · https://uwo.floor.line.games/us/bbsCmn/detail/1786095022818002471 · **[F]** https://steamcommunity.com/sharedfiles/filedetails/?id=2955998460 |
-| **Company / Guild / Pet / Collection** | Company Research effects; guild effects (e.g. +3 %…15 % vs a named enemy); pet effects (always on since Aug 2026); mate collections (+0.1 % per tier) | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1772088386191015429 · https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1778492589963011795 |
+| **Company / Guild / Pet / Collection** | Company Research effects; guild effects (e.g. "Holy Alliance Fleet Spy LV 1~5 … 3%~15%", May 2026 notice); pet effects (always on since Aug 2026); mate collections (+0.1 % per tier craft-goods sale markup, Dec 2025; +20 medical recovery per tier, May 2026) | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1772088386191015429 · https://uwo.floor.line.games/us/bbs/guide/guide_us/1/detail/1778492589963011795 |
 
 Origin therefore has **no player skill tree** in the EVE / UW Online sense. What `docs/SHIPS_AND_SKILLS.md`
 builds (92 house skills, I–V, trained in real time) has no Origin counterpart; the nearest thing is
@@ -559,8 +587,9 @@ magnitudes (e.g. "Jewelry Discount LV1 1 %", "Food Trade Specialization +5.6 %")
   them, never a sum; an admiral speaks her mother tongue at LV 4 and one other at LV 2; new S mates
   ship with LV 5 + LV 3. **[O]** same · notices above.
 - Without the port's language only Supply, Repair and Recruit Crew work; fan pages add that LV 1
-  allows exchange-shop trade only, LV 2 unlocks quests, and LV 5 is worth about 5 % on prices and more
-  on hiring and shipbuilding. **[O]** same · **[F]**
+  allows ordinary market (교역소) trade only ("언어를 1레벨만 보유하면 교역소 거래만 가능하고" — `[audit 2026-10-18]`
+  this said "exchange-shop trade", a mistranslation), LV 2 unlocks quests (의뢰), and LV 5 is worth about 5 % on
+  prices and more on hiring and shipbuilding. **[O]** same · **[F]**
   https://namu.wiki/w/대항해시대%20오리진/게임%20관련%20정보
 - Criticised for historical nonsense (Cervantes at Spanish LV 2; Park Yeon's Korean LV 1 below
   Hamel's). **[F]** https://namu.wiki/w/대항해시대%20오리진/평가
@@ -591,7 +620,8 @@ magnitudes (e.g. "Jewelry Discount LV1 1 %", "Food Trade Specialization +5.6 %")
 
 ### 4.8 Company Research (the one player "skill tree")
 
-Launched Feb 2025: Research Points from Admiral Chronicles and other content, spent on Adventure /
+Launched Feb 2025 (`[audit 2026-10-18]` launch date UNSUPPORTED — the line.games news link redirects to a login
+page; the Feb 2026 letter confirms the mechanics only): Research Points from Admiral Chronicles and other content, spent on Adventure /
 Trade / Combat effects; originally 70 points shared, redesigned (2026) to 70 points *per branch* with
 sub-trees (Trade → General Trade / Barter / Smuggling) because players reset constantly once they
 played more than one branch. **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1772088386191015429
@@ -645,9 +675,9 @@ https://steamcommunity.com/sharedfiles/filedetails/?id=2955998460
 | Mar 2023 | new mates are B or above; C pirates promoted to B | **[F]** namu 게임 관련 정보 |
 | 2023 | per-mate contracts seen as the pay wall; contracts repurposed from level-cap to effect slots | **[F]** https://steamcommunity.com/app/1574360/discussions/0/3781373416983732223/ |
 | 2023 | auto-assign puts the highest Combat LV mate in the Captain's Cabin, so trained Cs displace S mates | **[F]** https://namu.wiki/w/대항해시대%20오리진/평가 |
-| 2023 | "Supply" (보급법) partly unimplemented, "Trade/Exchange strategy" useless (until barter); min-crew rising with hull level felt backwards | **[F]** same |
-| 2023 | ship homogenisation: blueprint level + operation conditions push everyone to the same hulls; Sep 7 patch unified seaworthiness, worsening it | **[F]** same |
-| Oct–Nov 2024 | **gacha removed** (6 Nov 2024); gacha mates moved to inns, contracts to Black Market + Fortune Teller; 5,000 blue gems, 3 grade-20 ships, an admiral voucher, 200 EXP potions as gifts; reason stated: global grew slower than KR | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1729660250450018684 · **[F]** https://steamcommunity.com/app/1574360/discussions/0/4630356482652668850/ |
+| 2023 | "Supply" (보급법) partly unimplemented, "Trade/Exchange strategy" useless (until barter); min-crew rising with blueprint proficiency (숙련도 — `[audit 2026-10-18]` this said "hull level") felt backwards | **[F]** same |
+| 2023 | ship homogenisation: blueprint level (the 평가 page blames 설계도 레벨, not 운용 조건 — `[audit 2026-10-18]`) pushes everyone to the same hulls; Sep 7 patch unified 내파 (= Seaworthiness) across hulls, worsening it | **[F]** same |
+| Oct–Nov 2024 | **gacha removed** (no new chests after 6 Nov 2024; existing ones ran to ~January); gacha mates moved to inns, contracts to Black Market + Fortune Teller; 5,000 blue gems, 3 grade-20 ships, an admiral voucher, 200 EXP potions as gifts; reason stated: the Global-only gacha "creates a difference in growth difficulty" against the KR/JP build (`[audit 2026-10-18]` this said "global grew slower than KR", which the notice does not say) | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1729660250450018684 · **[F]** https://steamcommunity.com/app/1574360/discussions/0/4630356482652668850/ |
 | Dec 2024 | **operation conditions → LV 1, penalty removed; Build LV → 50 % time discount**; investment seasons; ~40 admirals making 50 bn ducats a week named as the reason | **[O]** https://uwo.floor.line.games/us/bbs/community/community_us/1/detail/1734056399615031473 |
 | Feb 2025 | Company Research added; redesigned 2026 after reset spam | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1772088386191015429 |
 | Sep 2025 | LV 50 / LV 70 effects moved one promotion earlier; red-gem effects → special manuals; old mates' hire prerequisites removed; Combat expertise 15 → 20 with a re-curved EXP table; 2nd transcendence (+40); Fleet LV 100 | **[O]** https://uwo.floor.line.games/us/bbsCmn/detail/1757321858140028621 · https://uwo.floor.line.games/us/bbsCmn/detail/1758517759446022860 |

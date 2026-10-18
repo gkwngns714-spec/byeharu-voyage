@@ -17,6 +17,9 @@ below is either from a cited page or from that ESI pull; the few I computed myse
 
 **Citations are at the end (§8), numbered; `[n]` in the text.**
 
+**Audited 2026-10-18** against the cited pages — see `docs/research/AUDIT_2026-10-18.md`. Everything 0131 / 0151 copied
+(the SP table, 1,800 SP/h, ranks, the III ladder, the queue history) held. Corrections are marked `[audit 2026-10-18]`.
+
 ---
 
 ## 0. The twelve findings that matter most for us
@@ -155,7 +158,9 @@ that never replenish. EVE Uni's rule of thumb: plan a remap for ~4 months of one
   Augmentation, Neural Boost (Willpower), Cybernetic Subprocessor (Intelligence), Social Adaptation
   Chip (Charisma); +1 Limited, +2 Limited-Beta, +3 Basic, +4 Standard, +5 Improved; the +4 needs
   Cybernetics IV and the +5 Cybernetics V (Cybernetics is rank 3, needs Science III); pirate sets
-  give +2 / +3 / +4 by grade plus a set bonus [19][20]. Lost with the pod.
+  give +2 / +3 / +4 by grade plus a set bonus [19][20]. (`[audit 2026-10-18]` "lost with the pod" is not what the
+  Implants page says today — it speaks of implants "preserved as a backup when your pod is destroyed during PvP";
+  treat the loss rule as DISPUTED.)
 - **Skill hardwirings**, slots 6–10: +1 % … +6 % to one specific thing (e.g. turret damage), the
   larger ones gated by Cybernetics II–V [20].
 - **Cerebral accelerators**: temporary +all-attribute boosters, e.g. +9 for 14 days = 272,160 extra SP,
@@ -170,7 +175,7 @@ that never replenish. EVE Uni's rule of thumb: plan a remap for ~4 months of one
 |---|---|---|
 | 2003–2009 | no queue; one skill at a time; idle time lost | — |
 | Apocrypha, Mar 2009 | up to **50** entries, each must **start within 24 h** | "EVE is a social game and we want you exposed to other players… a long abstinence would ruin this for us" (CCP Eris Discordia) [10] |
-| Phoebe, Nov 2014 | 24-hour window removed; **10-year** window; 50 entries kept "as a temporary safety measure"; trial accounts keep 24 h | players have busy lives and plan around them [11] |
+| Phoebe, Nov 2014 | 24-hour window removed; **10-year** window; 50 entries kept "for the time being" (`[audit 2026-10-18]` the earlier quotation "as a temporary safety measure" is not on the page); trial accounts keep 24 h | not stated as a reason on the page (`[audit 2026-10-18]`) [11] |
 | Nov 2016 (Alpha clones) | Alphas inherit the trial accounts' 24-hour start window | [11][12] |
 | Sep 2021 | **150** entries for Alpha and Omega; Alpha 24-hour rule removed; **Skill Plans** (10 personal plans, 5 milestones each, one-click buy-and-queue, shareable); Certified Skill Plans per career | so a certified plan longer than 50 levels fits [12] |
 
@@ -195,8 +200,9 @@ their rarity survives [15][1].
 
 - **Skill Extractor** (sold for PLEX, ≈ 468 M ISK average on 2026-10-17 by ESI): pulls **500,000 SP**
   out of trained skills on a character with **more than 5,500,000 SP**, docked, no active ship;
-  prerequisites of still-trained skills and a few skills (Cybernetics, Infomorph Psychology…) cannot
-  be extracted [13].
+  prerequisites of still-trained skills cannot be extracted [13]. (`[audit 2026-10-18]` the release-1.0 block on
+  Cybernetics, Infomorph Psychology etc. was lifted in the same release's 1.4 notes — "no longer completely
+  restricted from extraction".)
 - **Large Skill Injector** (≈ 739 M ISK): gives unallocated SP by the receiver's total —
   **500 k below 5 M, 400 k from 5 to 50 M, 300 k from 50 to 80 M, 150 k above 80 M** [14][16].
 - **Small Skill Injector** (2017; a large splits into five): 100 k / 80 k / 60 k / 30 k on the same
@@ -211,17 +217,20 @@ their rarity survives [15][1].
 Unallocated SP is a pool on the character sheet (from injectors, rewards, refunds) applied to any
 queued skill or spread across the queue; it counts toward total SP and toward the Alpha 5 M cap [1].
 Sources today: **AIR Career Program** ≈ 750 k SP per account (4 × 100 k per career graduation + 50 / 75 /
-100 / 125 k at career-point milestones) [24]; **AIR Daily Goals** 10,000 SP for two of four goals a
-day [25]; **Omega weekly** 15,000 SP in the store (since Jul 2024) [1]; before Jun 2024 the login
+100 / 125 k at career-point milestones) [24]; **AIR Daily Goals** 10,000 SP for two of the daily goals (four
+at write time; five since 2025-08-12 — `[audit 2026-10-18]`) [25]; **Omega weekly** 15,000 SP in the store (since Jul 2024) [1]; before Jun 2024 the login
 calendar gave Alphas ≈ 50 k and Omegas ≈ 150 k a month [26]; **referral** 1,000,000 SP for a new
-account [16]; starter packs 50 k – 1.75 M SP plus accelerators [16]. **Expert Systems** (Mar 2021):
+account [16]; starter packs 50 k – 500 k SP plus accelerators and Omega time [16] (`[audit 2026-10-18]` was
+"50 k – 1.75 M"; EVE Ref lists 50,000 / 250,000 / 500,000 / 500,000 — the larger figures on that page are
+"total Omega SP" including training time). **Expert Systems** (Mar 2021):
 rented skill sets for 7 days (T1 exploration frigate, mining barge, core flying skills), character-bound,
 removed on expiry; the community reaction was strongly negative [27].
 
 ### 1.10 Alpha vs Omega
 
 Alpha (free, since Nov 2016; widened Dec 2017): trains at **half speed**; free training stops at
-**5,000,000 SP** (unallocated counts); the Alpha set is **175 skills / 19.67 M SP** with level caps
+**5,000,000 SP** (unallocated counts); the Alpha set is **≈ 174 skills / 20,443,989 SP** (CCP, 2017-11-02;
+`[audit 2026-10-18]` this said "175 skills / 19.67 M", which no source gives) with level caps
 (e.g. racial Destroyer and Cruiser max IV, turret specialisations max III, Large turrets max IV);
 battleships yes, T2 ships no, T2 large weapons no; injectors can take an Alpha to ≈ 20 M in Alpha
 skills [21][28][3][9]. CCP's reasoning for the cap: "giving away more free training would reduce the
