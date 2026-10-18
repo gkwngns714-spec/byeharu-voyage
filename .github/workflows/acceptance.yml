@@ -95,6 +95,16 @@ on:
 # A newer push to a PR cancels the older run; a push to MAIN never cancels one (2026-10-15). With
 # cancelling on main, every merge cancelled the run before it — the last 15 main runs on 10-14/15
 # were ALL cancelled, so main had no finished acceptance verdict at all. Main runs now queue.
+#
+# KEPT, AND MEASURED AGAIN (2026-10-18, docs/dev-log/2026-10-18-ci-db-shard.md). Over 30 h of main
+# (10-17 00:00 → 10-18 06:54) 68 pushes made 68 runs: 21 finished, 45 were cancelled — and EVERY
+# cancelled one had run ZERO jobs. GitHub keeps one PENDING run per group and a newer push replaces
+# it, so nothing finished was ever thrown away; what lost the verdicts was the 48-119 min run length
+# (median 78) — the db shard's growth test, 95 % of it. With that test on its snapshot path the run is
+# minutes, and the push gaps (median 13.6 min, p25 5.2, 21 of 67 under 8 min) mean most pushes now get
+# their own verdict, and the newest one always gets the next. cancel-in-progress on main would kill a
+# nearly finished run on each of those 21 close pushes — losing the verdict for the commit that had
+# almost earned it, and in a burst (p10 1.3 min) every verdict but the last.
 concurrency:
   group: acceptance-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -133,8 +143,11 @@ permissions:
 # verdict now requires all six shards' counts to sum to `playwright test --list`.
 #
 #
-# THE GROWTH TEST (stated, not hidden): db.chain's "the world grows under a live house" re-applies
-# the whole chain from 0041 and proves a live house survives it (45-65 min). Since 2026-10-17 a PR
+# THE GROWTH TEST (stated, not hidden): db.chain's "the world grows under a live house" applies the
+# whole growth (0041 → the head) under a live house and proves the house survives it. Applied from
+# scratch it was 32-78 min — 95 % of the db shard (measured: runs 39092641268, 39095043069) — so since
+# 2026-10-18 it applies through the prefix cache on its own snapshots (the growth-house-* cache,
+# .github/actions/acceptance-pool): only the files no earlier run applied on that house run here. Since 2026-10-17 a PR
 # runs it only when the CHAIN MACHINERY changed — src/lib/db/**, tests/frozenChain.ts, scripts/db/**,
 # package(-lock).json, vite.config.ts, an edited (not added) migration, or tests/db.chain.spec.ts
 # (since 2026-10-17 it reads the chain's end off the directory, so a migration PR does not touch

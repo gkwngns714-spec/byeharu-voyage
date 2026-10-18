@@ -13,6 +13,7 @@
 //   database. Those are the failure modes that cannot be seen from the SQL side at all.
 
 import { test, expect } from '@playwright/test'
+import { createHash } from 'node:crypto'
 import os from 'node:os'
 import path from 'node:path'
 import {
@@ -33,6 +34,8 @@ import {
   removeScratchDataDir,
   scratchDataDir,
 } from '../src/lib/db/chainSource.node.mjs'
+import { applyWithPrefixCache, chainCacheKey, type PrefixDb } from '../scripts/db/prefix-cache.mjs'
+import { REPO_ROOT } from '../scripts/db/build-image.mjs'
 
 const FIRST = '20260818000001_the_world_is_read_only_to_everyone_but_the_server.sql'
 // Moved deliberately 2026-08-22 with 0019 (the quay names the port that pays) and 0020 (the verbs
@@ -691,39 +694,85 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 //
 // GROWTH_SPLIT is the frozen production baseline (tests/frozenChain.ts says why it never moves).
 
-test('the world grows under a live house: player rows survive the growth to the ducat', async () => {
-  // One full pre-growth build (~2 min) plus the growth itself. Sized like the cold-boot test.
-  test.setTimeout(360_000)
-  const files = await loadChain()
-  const before = beforeGrowth(files)
-  const growth = files.filter((f) => f.name.slice(0, 14) >= GROWTH_SPLIT)
-  expect(growth.length).toBeGreaterThanOrEqual(1)
+//
+// ── SAVED WHEN CHECKED (2026-10-18; the owner: "save everything when you checked so that CI becomes
+// always faster") ──────────────────────────────────────────────────────────────────────────────
+// This test applied every growth file (0041 → the head, 140 of them) to a fresh database on every
+// run: 31.7 min on run 39095043069, 1.2 h on run 39092641268 — 95 % of the db shard, and the one
+// reason main's acceptance took 50-80 minutes. Yet after file N commits, the house-bearing database
+// is a pure function of (the base below, growth files 1..N): exactly what scripts/db/prefix-cache.mjs
+// is built for. So the growth runs THROUGH the prefix cache, as its own variant (`growth-house`):
+//   * the BASE is this test's own setup — the frozen pre-growth chain, the house founded through
+//     new_house, ten of a real good bought on the quay. Its identity (baseId) hashes create()'s own
+//     source and the frozen chain's key, so any edit to the setup is a different variant and misses;
+//   * every growth file after the longest cached prefix runs HERE, on the live house, through the
+//     same applier, with its self-assert; the restored files' receipts come from the manifest that
+//     recorded them when they ran — on this same house, in an earlier run;
+//   * the restored database is digested against its manifest on load (prefix-cache.mjs), and every
+//     assertion below runs on the END state, every run, cached or not. A cache cannot turn a red
+//     green: a house the growth broke is broken in the snapshot too.
+// What the base RECORDED about itself — the pre-growth world counts and the house as it stood before
+// the growth — cannot be re-read once the growth has landed, so it travels INSIDE the snapshot, as a
+// database-level setting (`byeharu_growth.base` in pg_db_role_setting): no schema, table or row a
+// migration can see is added, and it is in every byte of every snapshot of that base, so a snapshot
+// and its facts can never come from two different runs. Production is this path too: each migration
+// lands on houses that every earlier migration already landed on.
+// CI keeps the snapshots between runs (acceptance-pool: the `growth-house-*` cache, saved even when a
+// run is cancelled); BYEHARU_PREFIX_CACHE=off (or deleting node_modules/.cache/byeharu-growth-house)
+// forces the from-scratch path.
 
-  const { PGlite } = await import('@electric-sql/pglite')
-  const db = await PGlite.create()
-  try {
-    await applyChain(db, before)
+const GROWTH_UID = '00000000-0000-4000-8000-000000000041'
+const GROWTH_CACHE_DIR = path.join(REPO_ROOT, 'node_modules', '.cache', 'byeharu-growth-house')
 
-    // The world production actually holds below the split: the ORIGINAL 0003. These two literals
-    // are safe to pin because the pre-split chain is frozen history — if they ever fail, an
-    // applied migration was edited, which is the exact disease this file exists to catch.
-    const w0 = await db.query<{ goods: number; harbours: number }>(
-      `select (select count(*) from public.goods)::int as goods,
-              (select count(*) from public.ports where kind = 'HARBOUR')::int as harbours`,
-    )
-    expect(w0.rows[0]).toMatchObject({ goods: 70, harbours: 214 })
+type GrowthFacts = {
+  w0: { goods: number; harbours: number }
+  fleetId: string
+  port: string
+  good: string
+  lived: Record<string, unknown>
+}
+
+/** The house as the growth must leave it — one row, read the same way before and after. */
+const houseSnapshot = async (db: PrefixDb) =>
+  (await db.query<Record<string, unknown>>(
+    `select p.ducats::int as ducats, p.company_name,
+            coalesce((select sum(l.ducats_delta) from public.ledger l where l.player_id = p.id), 0)::int as ledger_sum,
+            (select count(*)::int from public.ships s where s.player_id = p.id) as ships,
+            (select jsonb_agg(s.cargo order by s.id) from public.ships s where s.player_id = p.id) as cargo,
+            f.status as fleet_status, pt.code as fleet_port
+       from public.players p
+       join public.fleets f on f.player_id = p.id
+       join public.ports pt on pt.id = f.port_id
+      where p.auth_uid = $1`,
+    [GROWTH_UID],
+  )).rows[0]
+
+const GROWTH_HOUSE_VARIANT = {
+  name: 'growth-house',
+  baseId: '', // set below from create()'s own source and the frozen chain's key
+  async create(): Promise<PrefixDb> {
+    const { PGlite } = await import('@electric-sql/pglite')
+    const db = await PGlite.create()
+    await applyChain(db, beforeGrowth(await loadChain()))
+
+    // The world production actually holds below the split: the ORIGINAL 0003.
+    const w0 = (
+      await db.query<{ goods: number; harbours: number }>(
+        `select (select count(*) from public.goods)::int as goods,
+                (select count(*) from public.ports where kind = 'HARBOUR')::int as harbours`,
+      )
+    ).rows[0]
 
     // A real house, through the chain's own door, holding real cargo bought on the quay.
-    const uid = '00000000-0000-4000-8000-000000000041'
-    await db.query(`select public.new_house($1, $2, $3)`, [uid, 'Casa Prova', 'PRT'])
+    await db.query(`select public.new_house($1, $2, $3)`, [GROWTH_UID, 'Casa Prova', 'PRT'])
     const fleet = await db.query<{ id: string; port: string }>(
       `select f.id, pt.code as port from public.fleets f
          join public.players p on p.id = f.player_id
          join public.ports pt on pt.id = f.port_id
         where p.auth_uid = $1`,
-      [uid],
+      [GROWTH_UID],
     )
-    expect(fleet.rows).toHaveLength(1)
+    if (fleet.rows.length !== 1) throw new Error(`growth base: the new house has ${fleet.rows.length} fleet(s), not 1`)
     const good = await db.query<{ code: string }>(
       `select g.code from public.port_specialties s
          join public.goods g on g.id = s.good_id
@@ -733,37 +782,83 @@ test('the world grows under a live house: player rows survive the growth to the 
     )
     await db.exec(`
       begin;
-      select cmd.assume_identity('${uid}');
+      select cmd.assume_identity('${GROWTH_UID}');
       select cmd.issue('${fleet.rows[0].id}'::uuid, 'BUY ${good.rows[0].code} 10');
       commit;
     `)
+    const facts: GrowthFacts = {
+      w0,
+      fleetId: fleet.rows[0].id,
+      port: fleet.rows[0].port,
+      good: good.rows[0].code,
+      lived: await houseSnapshot(db),
+    }
+    const stmt = await db.query<{ sql: string }>(
+      `select format('alter database %I set "byeharu_growth.base" to %L', current_database(), $1::text) as sql`,
+      [JSON.stringify(facts)],
+    )
+    await db.exec(stmt.rows[0].sql)
+    return db
+  },
+}
 
-    const snapshot = async () =>
-      (await db.query<Record<string, unknown>>(
-        `select p.ducats::int as ducats, p.company_name,
-                coalesce((select sum(l.ducats_delta) from public.ledger l where l.player_id = p.id), 0)::int as ledger_sum,
-                (select count(*)::int from public.ships s where s.player_id = p.id) as ships,
-                (select jsonb_agg(s.cargo order by s.id) from public.ships s where s.player_id = p.id) as cargo,
-                f.status as fleet_status, pt.code as fleet_port
-           from public.players p
-           join public.fleets f on f.player_id = p.id
-           join public.ports pt on pt.id = f.port_id
-          where p.auth_uid = $1`,
-        [uid],
-      )).rows[0]
+/** What the base recorded, read back out of whichever database the cache handed over. */
+async function growthFacts(db: PrefixDb): Promise<GrowthFacts> {
+  const r = await db.query<{ v: string }>(
+    `select substr(s, length('byeharu_growth.base=') + 1) as v
+       from pg_db_role_setting d, unnest(d.setconfig) s
+      where d.setdatabase = (select oid from pg_database where datname = current_database())
+        and d.setrole = 0 and s like 'byeharu_growth.base=%'`,
+  )
+  if (r.rows.length !== 1) {
+    throw new Error('growth: the database carries no record of the house it was founded with — refusing to judge it')
+  }
+  return JSON.parse(r.rows[0].v) as GrowthFacts
+}
 
-    const lived = await snapshot()
+test('the world grows under a live house: player rows survive the growth to the ducat', async () => {
+  // Cold (no snapshot): one pre-growth build plus the whole growth — 30-80 min in CI, which no budget
+  // can honestly hold; warm: a restore plus the files main has merged since. The budget is the warm
+  // path's; a cold run is still bounded by the job's own timeout, and a timeout cannot fire inside a
+  // wasm statement anyway (the cold run above it was 1.2 h under a 360 s budget).
+  test.setTimeout(360_000)
+  const files = await loadChain()
+  const before = beforeGrowth(files)
+  const growth = files.filter((f) => f.name.slice(0, 14) >= GROWTH_SPLIT)
+  expect(growth.length).toBeGreaterThanOrEqual(1)
+
+  GROWTH_HOUSE_VARIANT.baseId = createHash('sha256')
+    .update(`${GROWTH_HOUSE_VARIANT.create.toString()}\0${houseSnapshot.toString()}\0${chainCacheKey(before)}`)
+    .digest('hex')
+
+  // ── THE GROWTH LANDS ON THEM ─────────────────────────────────────────────────────────────────
+  const grown = await applyWithPrefixCache({
+    variant: GROWTH_HOUSE_VARIANT,
+    files: growth,
+    cacheDir: GROWTH_CACHE_DIR,
+    log: (...a: unknown[]) => console.log(...a),
+  })
+  const db = grown.db
+  try {
+    console.log(
+      `growth: ${grown.restored}/${growth.length} growth file(s) restored (${grown.restoredFrom ?? 'nothing cached'}), ` +
+        `${growth.length - grown.restored} applied here in ${(grown.applyMs / 1000).toFixed(1)} s; ` +
+        `restore ${(grown.restoreMs / 1000).toFixed(1)} s, snapshots ${(grown.snapshotMs / 1000).toFixed(1)} s, total ${(grown.ms / 1000).toFixed(1)} s`,
+    )
+    expect(grown.receipts).toBe(growth.length)
+    const facts = await growthFacts(db)
+
+    // These two literals are safe to pin because the pre-split chain is frozen history — if they
+    // ever fail, an applied migration was edited, which is the exact disease this file exists to catch.
+    expect(facts.w0).toMatchObject({ goods: 70, harbours: 214 })
     // The buy LANDED — a rehearsal over an empty hold rehearses nothing.
-    expect(JSON.stringify(lived.cargo)).toContain(good.rows[0].code)
+    const lived = facts.lived
+    expect(JSON.stringify(lived.cargo)).toContain(facts.good)
     expect(Number(lived.ducats)).toBeLessThan(8000)
     expect(lived.ducats).toBe(lived.ledger_sum)
 
-    // ── THE GROWTH LANDS ON THEM ───────────────────────────────────────────────────────────────
-    const grown = await applyChain(db, growth)
-    expect(grown.receipts).toBe(growth.length)
-
     // The house did not move by one ducat, one tun, or one ship.
-    const after = await snapshot()
+    const after = await houseSnapshot(db)
     expect(after).toEqual(lived)
 
     // The world around them grew, and the market covers ALL of it — including their own port and
@@ -773,15 +868,15 @@ test('the world grows under a live house: player rows survive the growth to the 
               (select count(*) from public.ports where kind = 'HARBOUR')::int as harbours,
               (select count(*) from public.port_goods)::int as market`,
     )
-    expect(w1.rows[0].goods).toBeGreaterThan(w0.rows[0].goods)
-    expect(w1.rows[0].harbours).toBeGreaterThan(w0.rows[0].harbours)
+    expect(w1.rows[0].goods).toBeGreaterThan(facts.w0.goods)
+    expect(w1.rows[0].harbours).toBeGreaterThan(facts.w0.harbours)
     expect(w1.rows[0].market).toBe(w1.rows[0].goods * w1.rows[0].harbours)
     const quote = await db.query<{ ask: string; bid: string }>(
       `select q.ask::text, q.bid::text
          from public.ports p, public.goods g,
               lateral world.price(p.id, g.id) q
         where p.code = $1 and g.code = $2`,
-      [fleet.rows[0].port, good.rows[0].code],
+      [facts.port, facts.good],
     )
     expect(Number(quote.rows[0].ask)).toBeGreaterThan(0)
     expect(Number(quote.rows[0].bid)).toBeGreaterThan(0)

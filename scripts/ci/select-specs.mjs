@@ -295,6 +295,7 @@ export function select({ base, head, full = false }) {
   const baseNewest = !full && base
     ? git(['ls-tree', '--name-only', base, '--', 'supabase/migrations/']).split('\n').map(versionOf).filter(Boolean).sort().pop()
     : undefined
+  const testWhy = []
   for (const c of changed) {
     if (GROWTH_RULES.some((re) => re.test(c.path))) out.growth.why.push(`${c.path} is chain machinery`)
     if (MIGRATION_RE.test(c.path) && c.status !== 'A') out.growth.why.push(`${c.path}: an existing migration changed`)
@@ -306,11 +307,19 @@ export function select({ base, head, full = false }) {
       // disk); the exemption stays only so the control commits below keep their known answer.
       const lines = fileDiff(base, head, c.path).split('\n').filter((l) => /^[+-]/.test(l) && !/^(\+\+\+|---)/.test(l))
       const routine = lines.every((l) => /^[+-](\/\/ And to |const LAST = )/.test(l))
-      if (!routine) out.growth.why.push('tests/db.chain.spec.ts changed beyond the routine chain-end bump')
+      // The growth test LIVES in this file, so an edit to it runs the test — but the file is in no
+      // snapshot's key (those hash the migrations, the preamble and the config), so it is NOT chain
+      // machinery and never lifts the law: `growth.run` (read as `cold` by build.yml,
+      // acceptance.yml and migrations-apply-proof.yml) stays false for it (2026-10-18; before, a
+      // spec edit sent main's disposable-chain from zero for ~50 min).
+      if (!routine) testWhy.push('tests/db.chain.spec.ts changed beyond the routine chain-end bump (the growth test lives there)')
     }
   }
   out.growth.run = out.growth.why.length > 0
-  out.growth.grepInvert = out.growth.run ? '' : GROWTH_TITLE
+  // `test`: does the growth TEST run on this diff — whenever the machinery changed, or its own file did.
+  out.growth.test = out.growth.run || testWhy.length > 0
+  out.growth.testWhy = testWhy
+  out.growth.grepInvert = out.growth.test ? '' : GROWTH_TITLE
 
   if (out.mode === 'full') {
     for (const s of specs) pick(s, 'FULL: ' + out.fullReasons[0])
@@ -450,7 +459,8 @@ export function report(sel) {
     if (sel.mode !== 'full' && s.why.length > 8) L.push(`      … and ${s.why.length - 8} more reason(s)`)
   }
   if (sel.specs.length === 0) L.push('  (none — no spec can reach what this diff changed)')
-  L.push(`growth test: ${sel.growth.run ? 'RUNS' : 'deferred to main'} — ${sel.growth.why.join('; ') || 'no chain machinery changed (a new migration alone does not run it)'}`)
+  L.push(`growth test: ${sel.growth.test ? 'RUNS' : 'deferred to main'} — ${[...sel.growth.why, ...(sel.growth.testWhy ?? [])].join('; ') || 'no chain machinery changed (a new migration alone does not run it)'}`)
+  L.push(`from zero allowed (cold): ${sel.growth.run ? 'yes' : 'no'}${sel.growth.run ? '' : ' — nothing in a snapshot key changed'}`)
   L.push(`merchants-on world: ${sel.npcWorld.run ? 'BUILT' : 'not built'} — ${sel.npcWorld.why}`)
   for (const [leg, why] of Object.entries(sel.pglite)) L.push(`pglite-gate (${leg}): ${why.length ? 'RUNS — ' + why.join('; ') : 'skipped — no added migration names what its proof names'}`)
   return L.join('\n')
@@ -468,7 +478,7 @@ const CONTROLS = [
     check: (s) => [
       [s.mode === 'scoped', 'scoped'],
       [s.specs.length === 0, `0 specs (got ${s.specs.length})`],
-      [!s.growth.run && !s.npcWorld.run, 'no growth test, no merchants-on world'],
+      [!s.growth.test && !s.npcWorld.run, 'no growth test, no merchants-on world'],
       [s.pglite.ledger.length === 0 && s.pglite.merchants.length === 0, 'pglite ledger + merchants legs skipped'],
     ],
   },
@@ -479,7 +489,7 @@ const CONTROLS = [
       [s.mode === 'scoped', 'scoped'],
       [has('rpc.surface.spec.ts') && has('db.chain.spec.ts') && has('db.image.spec.ts'), 'rpc.surface + db.chain + db.image selected'],
       [!has('layout.spec.ts') && !has('map.hulls.spec.ts') && !has('map.merchants.spec.ts'), 'no layout / npc-pool spec'],
-      [!s.growth.run && s.growth.grepInvert === GROWTH_TITLE, 'growth test deferred (a new migration + the routine LAST bump)'],
+      [!s.growth.test && s.growth.grepInvert === GROWTH_TITLE, 'growth test deferred (a new migration + the routine LAST bump)'],
       [!s.npcWorld.run, 'no merchants-on world'],
       [s.pglite.merchants.length > 0 && s.pglite.ledger.length === 0, 'merchants leg runs (proof 12 names port_offers), ledger leg skipped'],
     ],
@@ -490,7 +500,7 @@ const CONTROLS = [
     check: (s) => [
       [s.mode === 'scoped', 'scoped (a helper fixture reaches only its importers)'],
       [JSON.stringify(s.specs.map((x) => x.file)) === JSON.stringify(['map.goto.spec.ts', 'map.hulls.spec.ts', 'map.merchants.spec.ts']), `exactly map.goto/hulls/merchants (got ${s.specs.map((x) => x.file).join(', ')})`],
-      [s.npcWorld.run && !s.growth.run, 'merchants-on world built, growth deferred'],
+      [s.npcWorld.run && !s.growth.test, 'merchants-on world built, growth deferred'],
     ],
   },
   {
@@ -505,14 +515,14 @@ const CONTROLS = [
     name: "a world-guard edit + a new migration (da37072: 0143) → growth deferred (the guard is in no snapshot's key)",
     sha: 'da37072',
     check: (s) => [
-      [!s.growth.run, `growth test deferred (got: ${s.growth.why.join('; ') || 'none'})`],
+      [!s.growth.test, `growth test deferred (got: ${s.growth.why.join('; ') || 'none'})`],
     ],
   },
   {
     name: 'a proof edit (c4f364a: proofs/06_haggle.sql + client) → growth deferred (a proof is in no snapshot key)',
     sha: 'c4f364a',
     check: (s) => [
-      [!s.growth.run, `growth test deferred (got: ${s.growth.why.join('; ') || 'none'})`],
+      [!s.growth.test, `growth test deferred (got: ${s.growth.why.join('; ') || 'none'})`],
     ],
   },
   {
