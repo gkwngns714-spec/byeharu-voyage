@@ -159,3 +159,17 @@ arms with each other, not with prod.
   - no `npc_waiting_queue`, `npc_ask_waiting`, `npc_fleets.asked_at` or replan knob yet;
   - the probe merchant is Carreira da Índia (2 stops, LIS, 3 hulls, SAILING: the probe docks her itself);
   - `npc_buyers_per_good` 3 and both switches true.
+
+## 7. PR #220 CI (runs 39134471372 + 39134471422, ~12 min wall-clock)
+
+| check | result |
+|---|---|
+| select | pass (6 s), SCOPED |
+| build | pass (1 m 16 s) |
+| disposable-chain | pass (2 m 24 s) |
+| pglite-gate (merchants) | pass (2 m 57 s) |
+| pglite-gate (the rest) | pass (2 m 58 s) |
+| pglite-gate (ledger) | pass (11 m 19 s) |
+
+**Not merged and not pushed to the database.** Deploy with `~/bin/bv-deploy.sh 220`. Prod head must still be 0181. Then
+watch `:reconcile` (≤ 20 s), `:arrivals` (avg ≤ 3 s, p95 < 5 s) and the oldest last ask among the laid-up routes.
