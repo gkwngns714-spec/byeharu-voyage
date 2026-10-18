@@ -235,10 +235,17 @@ apply on prod. The callers of `mid_from_terms` on prod are the same four.
 - `npx tsc -b` and `npx eslint .` both clean.
 - `tests/rpc.outlook.spec.ts` (touched: its band row-picker passes `m_haul` and scales the band by it): 4 of 4
   passed (`npx playwright test`, node-side, no browser page).
-- `node scripts/db/proof.mjs` (all proofs, the preamble variant, from zero locally): running at the first push; result in the next commit.
+- The proofs. On PR #195's last CI run, `the rest` (01, 03–11) and `ledger` (02) passed. `merchants` (12) was red:
+  `PROOF 12 FAILED: the probe merchant closed no profitable lap: net -9`. It went on failing on main after the merge
+  (39084523607 and every later run). The cause was in the proof: on the image's clock-dealt market, the
+  merchant buyer cap had already taken her ware's Lisbon places, so she was planned in ballast.
+  It was fixed in #203 (`docs/dev-log/2026-10-18-proof12-clock.md`). On that
+  branch, which is this migration plus the fix, the whole set passed locally (12 files, 85/85 PASS markers), and CI's
+  `merchants` leg passed proof 12 6/6.
 - **Push time:** estimated at about 10–30 s on prod. It is one UPDATE of every market row (each row is locked
   until commit, so a trade waits that long) plus the comparisons. Deploy with the clock unwound.
-- **CI wall-clock:** recorded after the run.
+- **CI wall-clock:** PR #195's last run took 6 m 42 s (00:46:06 → 00:52:48 UTC): `build` 1 m 25 s, `disposable-chain`
+  2 m 50 s, `the rest` 6 m 30 s, `ledger` 6 m 32 s, and `merchants` 2 m 51 s (red, above).
 
 ## Not done
 
