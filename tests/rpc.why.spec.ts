@@ -19,7 +19,7 @@ import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
-import { whyLines } from '../src/features/command/markets/whyLines'
+import { volumeLine, whyLines } from '../src/features/command/markets/whyLines'
 import type { PriceWhy } from '../src/lib/rpc/types'
 
 let db: LocalDb
@@ -88,6 +88,27 @@ test('a faith wants what it wants: coffee dear and sherry cheap in an Islamic ci
   for (let i = 1; i < lines.length; i++) {
     expect(Math.abs(Math.log(lines[i - 1].mult))).toBeGreaterThanOrEqual(Math.abs(Math.log(lines[i].mult)))
   }
+})
+
+test('0188: a busy quay is seen — what changed hands here today, and by how many companies', async () => {
+  const r = await row('coffee', 'islamic')
+  const before = await why(r.port_id, r.good_id)
+  const players = (await db.pg.query<{ id: string }>('select id from public.players order by id limit 2')).rows
+  expect(players.length, 'the built world has no company to trade').toBeGreaterThanOrEqual(1)
+  const day = (await db.pg.query<{ d: number }>('select world.game_day() as d')).rows[0].d
+  await db.pg.query(
+    `insert into public.trade_daily (player_id, port_id, good_id, game_day, qty) values ($1, $2, $3, $4 - 1, 1000)
+     on conflict (player_id, port_id, good_id, game_day) do update set qty = public.trade_daily.qty + excluded.qty`,
+    [players[0].id, r.port_id, r.good_id, day])
+  await db.pg.query(
+    `insert into public.trade_daily (player_id, port_id, good_id, game_day, qty) values ($1, $2, $3, $4, 37)
+     on conflict (player_id, port_id, good_id, game_day) do update set qty = public.trade_daily.qty + excluded.qty`,
+    [players[0].id, r.port_id, r.good_id, day])
+  const after = await why(r.port_id, r.good_id)
+  expect(Number(after.volume!.units) - Number(before.volume!.units)).toBe(37)
+  expect(after.volume!.houses).toBeGreaterThanOrEqual(1)
+  expect(volumeLine(after)).toMatch(/^Traded here today: [\d,]+ units by \d+ compan(y|ies)$/)
+  expect(volumeLine({ ...after, volume: { game_day: day, units: 0, houses: 0 } })).toBe('Nobody has traded it here today.')
 })
 
 test('it refuses what it cannot answer', async () => {

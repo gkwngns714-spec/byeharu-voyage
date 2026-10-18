@@ -2590,6 +2590,8 @@ export interface PriceWhy {
   region: string | null
   terms: PriceTerm[]
   fee: { spread: number; tax: number; bid_factor: number; profit_tax: number }
+  /** 0188: what changed hands here in the current game day (bought + sold) and by how many companies. */
+  volume?: { game_day: number; units: number; houses: number }
   clock: { now: string; next_change_at: string }
 }
 
