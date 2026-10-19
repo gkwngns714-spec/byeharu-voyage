@@ -823,8 +823,13 @@ async function readCityList(page: Page, city: string) {
     expect(rows.length, `${city}: the ${g.heading} group is printed with nobody in it`).toBeGreaterThanOrEqual(1)
     await expect(section.locator('h2')).toHaveText(g.heading)
     // the heading counts every row in it — your own fleets (map-harbour-own) and the merchants
-    const own = await section.getByTestId('map-harbour-own').count()
-    await expect(section.getByTestId('map-harbour-count')).toHaveText(String(rows.length + own))
+    // ONE READ OF THE SECTION: its heading and the rows under it, together. The merchants sail while
+    // this runs, so a count read after the rows above could see one more (main, 2026-10-19 05:2x: 5 against 4).
+    const [shown, under] = await section.evaluate((el) => [
+      el.querySelector('[data-testid="map-harbour-count"]')?.textContent ?? '',
+      el.querySelectorAll('[data-testid="merchant-row"], [data-testid="map-harbour-own"]').length,
+    ])
+    expect(shown, `${city}: the ${g.heading} heading counts every row under it`).toBe(String(under))
     for (const r of rows) {
       expect(r.level, `${city}: the level of ${r.name}`).toMatch(/^\d+$/)
       expect(g.words as readonly string[], `${city}: "${r.doing}" on ${r.name} is not a ${g.heading} word`).toContain(r.doing)
