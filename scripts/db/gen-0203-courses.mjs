@@ -1,4 +1,4 @@
-// gen-0202-courses.mjs <world-image.tar.gz> — the seed of migration 0202's public.npc_courses: every directed leg of
+// gen-0203-courses.mjs <world-image.tar.gz> — the seed of migration 0203's public.npc_courses: every directed leg of
 // the merchant roster's loops as the chain founds them (a fresh world image, built by `npm run db:image` at 0199),
 // one course per (from, to) — the fewest points, then the text — as [from_code, to_code, course], sorted.
 // The migration embeds this output verbatim between its $seed$ quotes; re-run to reproduce it.
@@ -7,7 +7,7 @@ import { gunzipSync } from 'node:zlib'
 import { PGlite } from '@electric-sql/pglite'
 
 const image = process.argv[2]
-if (!image) throw new Error('usage: node scripts/db/gen-0202-courses.mjs <world-image.tar.gz>')
+if (!image) throw new Error('usage: node scripts/db/gen-0203-courses.mjs <world-image.tar.gz>')
 const db = await PGlite.create({ loadDataDir: new Blob([gunzipSync(await readFile(image))], { type: 'application/x-tar' }) })
 const { rows } = await db.query(`
   with ms as (select s.port_id, s.course, lead(s.port_id) over w nxt, first_value(s.port_id) over w first_port

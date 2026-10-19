@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0202 — A MERCHANT'S LOOP IS ONE SHE CAN SAIL, PAY FOR AND REMEMBER  (one endurance authority for the
+-- 0203 — A MERCHANT'S LOOP IS ONE SHE CAN SAIL, PAY FOR AND REMEMBER  (one endurance authority for the
 --        sail door and the planner; a refound judges what she is worth, not what is in her purse; the
 --        courses the world has held are not forgotten)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -78,7 +78,7 @@
 -- public.item_not_made.
 -- ROLLBACK: a forward slice restores the eleven bodies (each hunk's OLD text is here verbatim); the new
 -- functions and public.npc_courses are then unread and may be dropped.
--- VERSION: 0202.
+-- VERSION: 0203.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -88,7 +88,7 @@ begin
 end $guard$;
 
 -- ── 0. HELPERS (pg_temp, gone at commit) ───────────────────────────────────────────────────────
-create or replace function pg_temp.occurs_0202(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0203(p_hay text, p_needle text)
 returns int
 language sql
 immutable
@@ -96,7 +96,7 @@ as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_n
 
 -- A MERCHANT AT HER LAP START (her own rows, rolled back with the rest): the routes and merchants on, her
 -- fleet docked at her stop 0 between laps, nothing aboard, no order.
-create or replace function pg_temp.at_lap_start_0202(p_fleet uuid, p_route uuid)
+create or replace function pg_temp.at_lap_start_0203(p_fleet uuid, p_route uuid)
 returns void
 language plpgsql
 as $$
@@ -116,7 +116,7 @@ end $$;
 -- the one provisioning rule), every leg's course measured as cmd.do_sail measures it
 -- (voyage.segments_from_course) and judged at the full hold's speed by the door's measure against
 -- voyage.endurance_days. And the net of a lap (0142's, the planner's own leg planner).
-create or replace function pg_temp.loop_door_0202(p_route uuid)
+create or replace function pg_temp.loop_door_0203(p_route uuid)
 returns jsonb
 language plpgsql
 as $$
@@ -187,7 +187,7 @@ begin
 end $$;
 
 -- ── 1. THE PRE-IMAGES ──────────────────────────────────────────────────────────────────────────
-create temp table defs_before_0202 on commit drop as
+create temp table defs_before_0203 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl
@@ -205,14 +205,14 @@ select f.fn,
 
 do $$
 begin
-  if (select count(*) from defs_before_0202 where def is not null) <> 11 then
-    raise exception '0202 self-assert FAIL: % of the 11 bodies found', (select count(*) from defs_before_0202 where def is not null);
+  if (select count(*) from defs_before_0203 where def is not null) <> 11 then
+    raise exception '0203 self-assert FAIL: % of the 11 bodies found', (select count(*) from defs_before_0203 where def is not null);
   end if;
   if to_regclass('public.npc_courses') is not null then
-    raise exception '0202 self-assert FAIL: public.npc_courses exists already';
+    raise exception '0203 self-assert FAIL: public.npc_courses exists already';
   end if;
   if public.wc_int('npc_route_review_laps') is distinct from 3 then
-    raise exception '0202 self-assert FAIL: npc_route_review_laps is %, not the 3 this file was written against', public.wc_int('npc_route_review_laps');
+    raise exception '0203 self-assert FAIL: npc_route_review_laps is %, not the 3 this file was written against', public.wc_int('npc_route_review_laps');
   end if;
 end $$;
 
@@ -221,16 +221,16 @@ do $$
 declare
   d record;
 begin
-  for d in select * from defs_before_0202 where fn in ('voyage.ship_speed(uuid)', 'voyage.fleet_speed(uuid)',
+  for d in select * from defs_before_0203 where fn in ('voyage.ship_speed(uuid)', 'voyage.fleet_speed(uuid)',
                                                        'voyage.endurance_days(uuid)', 'voyage.sail_refusal(uuid,uuid,jsonb,numeric)') loop
     execute replace(d.def, 'CREATE OR REPLACE FUNCTION voyage.' || split_part(split_part(d.fn, '.', 2), '(', 1) || '(',
-                    'CREATE OR REPLACE FUNCTION pg_temp.' || split_part(split_part(d.fn, '.', 2), '(', 1) || '_old_0202(');
+                    'CREATE OR REPLACE FUNCTION pg_temp.' || split_part(split_part(d.fn, '.', 2), '(', 1) || '_old_0203(');
   end loop;
 end $$;
 
 -- THE LEG GRAPH BEFORE: merchants whose home harbour knows one leg or none
-create temp table graph_0202 (k text primary key, v jsonb) on commit drop;
-insert into graph_0202
+create temp table graph_0203 (k text primary key, v jsonb) on commit drop;
+insert into graph_0203
 select 'before', jsonb_build_object(
   'homes_single', (select count(*) from public.npc_fleets nf join public.standing_route_stops s0 on s0.route_id = nf.route_id and s0.ord = 0
                     where (select count(*) from public.npc_known_legs(s0.port_id)) <= 1),
@@ -245,7 +245,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0202: THE DAYS OF STORES A PASSAGE OF p_nm AT p_speed ASKS — its days at sea at endurance_margin. The
+  -- 0203: THE DAYS OF STORES A PASSAGE OF p_nm AT p_speed ASKS — its days at sea at endurance_margin. The
   -- sail door (voyage.sail_refusal: E_ENDURANCE when her casks hold fewer), the desk (world.good_board's
   -- `sailable`) and the planner (public.npc_leg_days) read it; there is no other copy.
   select ((p_nm / p_speed) / 24) * public.wc_num('endurance_margin')
@@ -260,7 +260,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0202: the days of stores a merchant is provisioned for a leg of p_nm at p_speed: the door's measure
+  -- 0203: the days of stores a merchant is provisioned for a leg of p_nm at p_speed: the door's measure
   -- (voyage.stores_need_days) rounded up, plus one day. Read by public.npc_feasible_legs (which legs she may
   -- be offered), public.npc_plan (the preset her loop raises) and public.npc_casks_blocked.
   select ceil(voyage.stores_need_days(coalesce(p_nm, 0), greatest(coalesce(p_speed, 0), 0.1)))::int + 1
@@ -270,16 +270,16 @@ revoke all on function public.npc_leg_days(numeric, numeric) from public, anon, 
 -- (2) THE SPEED AT A FILL — voyage.ship_speed's formula with the fill as an argument (built from its live body).
 do $$
 declare
-  v_def text := (select def from defs_before_0202 where fn = 'voyage.ship_speed(uuid)');
+  v_def text := (select def from defs_before_0203 where fn = 'voyage.ship_speed(uuid)');
   v_sig text := 'CREATE OR REPLACE FUNCTION voyage.ship_speed(p_ship uuid)';
   v_fil text := $f$  v_fill := least(1.0, (v_cargo_t + s.water_t + s.food_t) / world.ship_stat(p_ship, 'hold'));$f$;
 begin
-  if pg_temp.occurs_0202(v_def, v_sig) <> 1 or pg_temp.occurs_0202(v_def, v_fil) <> 1 then
-    raise exception '0202 self-assert FAIL: voyage.ship_speed is not the body this file was written against';
+  if pg_temp.occurs_0203(v_def, v_sig) <> 1 or pg_temp.occurs_0203(v_def, v_fil) <> 1 then
+    raise exception '0203 self-assert FAIL: voyage.ship_speed is not the body this file was written against';
   end if;
   v_def := replace(v_def, v_sig, 'CREATE OR REPLACE FUNCTION voyage.ship_speed_at(p_ship uuid, p_fill numeric)');
   v_def := replace(v_def, v_fil,
-    $f$  -- 0202: THE FILL ASKED (p_fill: 1 = her hold full, the slowest she leaves at), or, null, the fill she
+    $f$  -- 0203: THE FILL ASKED (p_fill: 1 = her hold full, the slowest she leaves at), or, null, the fill she
   -- carries now. voyage.ship_speed is this with null.
   v_fill := case when p_fill is null then least(1.0, (v_cargo_t + s.water_t + s.food_t) / world.ship_stat(p_ship, 'hold'))
                 else least(1.0, greatest(0.0, p_fill)) end;$f$);
@@ -289,15 +289,15 @@ revoke all on function voyage.ship_speed_at(uuid, numeric) from public, anon, au
 
 do $$
 declare
-  v_def text := (select def from defs_before_0202 where fn = 'voyage.fleet_speed(uuid)');
+  v_def text := (select def from defs_before_0203 where fn = 'voyage.fleet_speed(uuid)');
   v_sig text := 'CREATE OR REPLACE FUNCTION voyage.fleet_speed(p_fleet uuid)';
   v_min text := 'select min(voyage.ship_speed(s.id)), count(*) into v_min, v_ships';
 begin
-  if pg_temp.occurs_0202(v_def, v_sig) <> 1 or pg_temp.occurs_0202(v_def, v_min) <> 1 then
-    raise exception '0202 self-assert FAIL: voyage.fleet_speed is not the body this file was written against';
+  if pg_temp.occurs_0203(v_def, v_sig) <> 1 or pg_temp.occurs_0203(v_def, v_min) <> 1 then
+    raise exception '0203 self-assert FAIL: voyage.fleet_speed is not the body this file was written against';
   end if;
   v_def := replace(v_def, v_sig, 'CREATE OR REPLACE FUNCTION voyage.fleet_speed_at(p_fleet uuid, p_fill numeric)');
-  v_def := replace(v_def, v_min, 'select min(voyage.ship_speed_at(s.id, p_fill)), count(*) into v_min, v_ships   -- 0202: at the fill asked');
+  v_def := replace(v_def, v_min, 'select min(voyage.ship_speed_at(s.id, p_fill)), count(*) into v_min, v_ships   -- 0203: at the fill asked');
   execute v_def;
 end $$;
 revoke all on function voyage.fleet_speed_at(uuid, numeric) from public, anon, authenticated;
@@ -315,7 +315,7 @@ declare
   v_skill  numeric := 0;
   v_crew   numeric;
 begin
-  -- 0202: what her house's ENDURANCE skill and the Provisioners seated in her fleet (0161, K7; 0 while
+  -- 0203: what her house's ENDURANCE skill and the Provisioners seated in her fleet (0161, K7; 0 while
   -- crew_bite is off) multiply her stores' days by — voyage.endurance_days' multiplier, lifted out so the
   -- planner (public.npc_provision_for) reads the very one the door reads.
   select f.player_id into v_player from public.fleets f where f.id = p_fleet;
@@ -338,7 +338,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0202: PROVISION DAYS p_days, as cmd.do_provision places it at a stop once her SELLs have run (her hold
+  -- 0203: PROVISION DAYS p_days, as cmd.do_provision places it at a stop once her SELLs have run (her hold
   -- clear of cargo): every hull topped up by public.stores_topup (the one top-up: the shorter store first,
   -- never past her hold),
   -- the days she then holds as voyage.endurance_days reads them (the shortest hull, times
@@ -362,7 +362,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0202: her purse and the cargo in her merchants' holds at what it cost (public.fleet_stock_at_cost, the
+  -- 0203: her purse and the cargo in her merchants' holds at what it cost (public.fleet_stock_at_cost, the
   -- basis her BUY budget counts as hers: public.npc_buy_budget). Read by public.npc_tend_houses: a house is
   -- refounded when THIS is under her floor, never because she has just bought her parcels.
   select coalesce((select pl.ducats from public.players pl where pl.id = p_player), 0)
@@ -372,7 +372,7 @@ revoke all on function public.npc_worth(uuid) from public, anon, authenticated;
 
 -- THE REVIEW, every sixth lap (header (6)).
 update public.world_config set value = to_jsonb(6),
-       description = description || ' 0202: every 6th lap (her harbour knows three times the legs; a review prices twice the loops).'
+       description = description || ' 0203: every 6th lap (her harbour knows three times the legs; a review prices twice the loops).'
  where key = 'npc_route_review_laps';
 
 -- (5) THE COURSES THE WORLD HAS HELD.
@@ -385,8 +385,8 @@ create table public.npc_courses (
   check (from_port <> to_port)
 );
 comment on table public.npc_courses is
-  '0202: every directed leg''s course a merchant loop has held — the roster as the chain founds it and every merchant '
-  'leg at 0202''s deploy — read by public.npc_known_legs beside the loops as they stand, so a leg nobody sails today '
+  '0203: every directed leg''s course a merchant loop has held — the roster as the chain founds it and every merchant '
+  'leg at 0203''s deploy — read by public.npc_known_legs beside the loops as they stand, so a leg nobody sails today '
   'stays on offer. A migration that founds merchants on new courses adds them here.';
 create index npc_courses_to on public.npc_courses (to_port);
 alter table public.npc_courses enable row level security;
@@ -414,9 +414,9 @@ select pa.id, pb.id, x->2, (select sum((q->>'nm')::numeric) from jsonb_array_ele
  where not exists (select 1 from public.npc_courses c where c.from_port = pa.id and c.to_port = pb.id);
 
 -- ── 3. THE HUNKS (sliced from the live bodies; each occurs once; each body reverses; ACL unchanged)
-create temporary table hunks_0202 (fn text not null, n int not null, old text not null, new text not null,
+create temporary table hunks_0203 (fn text not null, n int not null, old text not null, new text not null,
                                    primary key (fn, n)) on commit drop;
-insert into hunks_0202 values
+insert into hunks_0203 values
 -- voyage.ship_speed: THE formula now lives in voyage.ship_speed_at; this answers at the fill she carries.
 ('voyage.ship_speed(uuid)', 1,
 $h$declare
@@ -450,7 +450,7 @@ begin
   return round(world.ship_stat(p_ship, 'speed') * v_hull * v_load * v_crew * public.wc_num('wind_mult_v0'), 4);
 end $h$,
 $h$begin
-  -- 0202: THE SPEED of one hull at the fill she carries now — voyage.ship_speed_at, the one formula
+  -- 0203: THE SPEED of one hull at the fill she carries now — voyage.ship_speed_at, the one formula
   -- (the planner asks it at a full hold).
   return voyage.ship_speed_at(p_ship, null);
 end $h$),
@@ -484,7 +484,7 @@ begin
   return round(v_min * v_form * (1 + v_nav) * (1 + v_skill), 4);
 end $h$,
 $h$begin
-  -- 0202: THE SPEED of her fleet at the fill her hulls carry now — voyage.fleet_speed_at, the one formula
+  -- 0203: THE SPEED of her fleet at the fill her hulls carry now — voyage.fleet_speed_at, the one formula
   -- (the planner asks it at a full hold).
   return voyage.fleet_speed_at(p_fleet, null);
 end $h$),
@@ -501,7 +501,7 @@ $h$  select f.player_id into v_player from public.fleets f where f.id = p_fleet;
     return v_base * (1 + v_skill) * (1 + v_crew);
   end if;
   return v_base * (1 + v_skill);$h$,
-$h$  -- 0161 (K7) / 0202: the house's ENDURANCE skill and the Provisioners seated in her fleet multiply it —
+$h$  -- 0161 (K7) / 0203: the house's ENDURANCE skill and the Provisioners seated in her fleet multiply it —
   -- voyage.endurance_mult, the one multiplier (public.npc_provision_for reads it too).
   return v_base * voyage.endurance_mult(p_fleet);$h$),
 -- voyage.sail_refusal: the stores gate through voyage.stores_need_days.
@@ -516,7 +516,7 @@ $h$  v_days := ((p_nm + coalesce(v_back, 0)) / v_speed) / 24;
     end if;
     return cmd.refusal('E_ENDURANCE', 'the passage is longer than her casks',
       cmd.figures(v_end, v_days * public.wc_num('endurance_margin'), 'days'));$h$,
-$h$  -- 0202: THE DAYS OF STORES THE PASSAGE ASKS — voyage.stores_need_days, the one measure (the desk and
+$h$  -- 0203: THE DAYS OF STORES THE PASSAGE ASKS — voyage.stores_need_days, the one measure (the desk and
   -- the merchants' planner read it too: world.good_board, public.npc_leg_days).
   v_days := voyage.stores_need_days(p_nm + coalesce(v_back, 0), v_speed);
   if v_end < v_days then
@@ -531,39 +531,39 @@ $h$  -- 0202: THE DAYS OF STORES THE PASSAGE ASKS — voyage.stores_need_days, t
 -- world.good_board: the desk's `sailable` through the same measure.
 ('world.good_board(uuid,uuid,uuid,numeric)', 1,
 $h$x.max_leg / v_speed / 24 * v_margin <= v_end$h$,
-$h$voyage.stores_need_days(x.max_leg, v_speed) /* 0202 */ <= v_end$h$),
+$h$voyage.stores_need_days(x.max_leg, v_speed) /* 0203 */ <= v_end$h$),
 ('world.good_board(uuid,uuid,uuid,numeric)', 2,
 $h$r.max_leg / v_speed / 24 * v_margin <= v_end$h$,
-$h$voyage.stores_need_days(r.max_leg, v_speed) /* 0202 */ <= v_end$h$),
+$h$voyage.stores_need_days(r.max_leg, v_speed) /* 0203 */ <= v_end$h$),
 -- public.npc_feasible_legs
 ('public.npc_feasible_legs(uuid,numeric,integer)', 1,
 $h$     and ceil(l.nm / (greatest(p_speed, 0.1) * 24) * public.wc_num('endurance_margin'))::int + 1 <= p_days$h$,
-$h$     and public.npc_leg_days(l.nm, p_speed) <= p_days   -- 0202: the door's measure (voyage.stores_need_days), one day spare$h$),
+$h$     and public.npc_leg_days(l.nm, p_speed) <= p_days   -- 0203: the door's measure (voyage.stores_need_days), one day spare$h$),
 -- public.npc_casks_blocked
 ('public.npc_casks_blocked(uuid,uuid,numeric,numeric)', 1,
 $h$  v_d := greatest(v_d, ceil(coalesce(p_nm, 0) / (greatest(coalesce(p_speed, 0), 0.1) * 24)
                             * public.wc_num('endurance_margin'))::int + 1);$h$,
-$h$  v_d := greatest(v_d, public.npc_leg_days(p_nm, p_speed));   -- 0202: the planner's one measure$h$),
+$h$  v_d := greatest(v_d, public.npc_leg_days(p_nm, p_speed));   -- 0203: the planner's one measure$h$),
 -- public.npc_plan
 ('public.npc_plan(timestamp with time zone,uuid)', 1,
 $h$  v_emargin numeric := public.wc_num('endurance_margin');
 $h$,
-$h$  -- 0202: (endurance_margin is read by the leg's one measure, public.npc_leg_days)
+$h$  -- 0203: (endurance_margin is read by the leg's one measure, public.npc_leg_days)
 $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 2,
 $h$  v_pays    boolean;       -- 0186: the loop she will sail leaves her more than nothing a lap
 $h$,
 $h$  v_pays    boolean;       -- 0186: the loop she will sail leaves her more than nothing a lap
-  v_unsail  boolean;       -- 0202: this loop cannot be sailed with what the plan's PROVISION loads, or paid for
-  v_cur_uns boolean;       -- 0202
-  v_best_uns boolean;      -- 0202
-  v_purse   numeric;       -- 0202: her purse and her cargo at cost (npc_buy_budget's working capital)
-  v_pdays   int;           -- 0202: her preset's days at the plan
+  v_unsail  boolean;       -- 0203: this loop cannot be sailed with what the plan's PROVISION loads, or paid for
+  v_cur_uns boolean;       -- 0203
+  v_best_uns boolean;      -- 0203
+  v_purse   numeric;       -- 0203: her purse and her cargo at cost (npc_buy_budget's working capital)
+  v_pdays   int;           -- 0203: her preset's days at the plan
 $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 3,
 $h$      v_speed := greatest(coalesce(voyage.fleet_speed(r.fleet_id), 0), 0.1);
 $h$,
-$h$      -- 0202: THE SPEED SHE SAILS AT, LADEN — voyage.fleet_speed_at(fleet, 1), her hold full as the loop
+$h$      -- 0203: THE SPEED SHE SAILS AT, LADEN — voyage.fleet_speed_at(fleet, 1), her hold full as the loop
       -- she is planned fills it: the slowest she leaves at. The door judges the speed she leaves at, so days
       -- planned at this one are never fewer than it asks (0197's trade loops, planned at her empty speed,
       -- were refused E_ENDURANCE by the quarter a full hold costs her).
@@ -574,7 +574,7 @@ $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 4,
 $h$        v_tier := public.npc_loop_tier(v_rep, v_net, i = 0 and v_off);
 $h$,
-$h$        -- 0202: SHE CAN SAIL IT AND PAY FOR IT. What she will carry after the plan's own PROVISION — her
+$h$        -- 0203: SHE CAN SAIL IT AND PAY FOR IT. What she will carry after the plan's own PROVISION — her
         -- preset raised to the loop's longest leg (public.npc_leg_days), every hull topped up as
         -- cmd.do_provision tops it, the endurance as voyage.endurance_days reads it
         -- (public.npc_provision_for) — must cover that leg at the door's measure (voyage.stores_need_days),
@@ -590,7 +590,7 @@ $h$),
 $h$          v_cur_tier := v_tier; v_best_tier := v_tier;   -- 0152
 $h$,
 $h$          v_cur_tier := v_tier; v_best_tier := v_tier;   -- 0152
-          v_cur_uns := v_unsail; v_best_uns := v_unsail;   -- 0202
+          v_cur_uns := v_unsail; v_best_uns := v_unsail;   -- 0203
 $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 6,
 $h$
@@ -598,32 +598,32 @@ $h$
 $h$,
 $h$
           v_best_tier := v_tier;   -- 0152
-          v_best_uns := v_unsail;  -- 0202
+          v_best_uns := v_unsail;  -- 0203
 $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 7,
 $h$        v_days := ceil((case when v_best_i <> 0 then v_best_maxnm else v_cur_maxnm end)
                        / (v_speed * 24) * v_emargin)::int + 1;
 $h$,
-$h$        -- 0202: the preset the longest leg asks, by the door's measure at her laden speed (public.npc_leg_days).
+$h$        -- 0203: the preset the longest leg asks, by the door's measure at her laden speed (public.npc_leg_days).
         v_days := public.npc_leg_days(case when v_best_i <> 0 then v_best_maxnm else v_cur_maxnm end, v_speed);
 $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 9,
 $h$      select jsonb_agg(jsonb_build_object('port_id', s.port_id, 'code', p.code, 'course', s.course) order by s.ord)
 $h$,
 $h$      select jsonb_agg(jsonb_build_object('port_id', s.port_id, 'code', p.code, 'course', s.course,
-                                          'nm', s.course_nm) order by s.ord)   -- 0202: the course's own measure
+                                          'nm', s.course_nm) order by s.ord)   -- 0203: the course's own measure
 $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 10,
 $h$          v_maxnm  := greatest(v_maxnm, coalesce((v_leg->>'nm')::numeric, 0));
 $h$,
-$h$          -- 0202: THE LONGEST LEG BY ITS COURSE, as the door measures it (the stop's nm: course_nm, or the
+$h$          -- 0203: THE LONGEST LEG BY ITS COURSE, as the door measures it (the stop's nm: course_nm, or the
           -- known leg's — npc_known_legs), the reach table's only where none is stored.
           v_maxnm  := greatest(v_maxnm, coalesce((v_loop->j->>'nm')::numeric, (v_leg->>'nm')::numeric, 0));
 $h$),
 ('public.npc_plan(timestamp with time zone,uuid)', 8,
 $h$      v_pays := coalesce(case when v_best_i <> 0 then v_best_net else v_cur_net end, 0) > 0;
 $h$,
-$h$      -- 0202: AND SHE CAN SAIL IT AND PAY FOR ITS STORES (v_unsail above): a loop she cannot finish is not
+$h$      -- 0203: AND SHE CAN SAIL IT AND PAY FOR ITS STORES (v_unsail above): a loop she cannot finish is not
       -- bought into.
       v_pays := coalesce(case when v_best_i <> 0 then v_best_net else v_cur_net end, 0) > 0
                 and not coalesce(case when v_best_i <> 0 then v_best_uns else v_cur_uns end, true);
@@ -664,8 +664,8 @@ $h$  with ms as (
      where s.route_id in (select t.route_id from public.standing_route_stops t where t.port_id = p_from)),
   legs as (
     select m.port_id as a, coalesce(m.nxt, m.first_port) as b, m.course, m.course_nm as nm from ms m
-    -- 0202: AND EVERY COURSE THE WORLD HAS HELD out of or into p_from (public.npc_courses: the roster as
-    -- founded, and every merchant leg at 0202's deploy) — a leg nobody sails today is not forgotten; the
+    -- 0203: AND EVERY COURSE THE WORLD HAS HELD out of or into p_from (public.npc_courses: the roster as
+    -- founded, and every merchant leg at 0203's deploy) — a leg nobody sails today is not forgotten; the
     -- loops as they stand could only ever lose legs (Le Havre: seven in a fresh world, one on prod).
     union all
     select c.from_port, c.to_port, c.course, c.nm from public.npc_courses c where c.from_port = p_from
@@ -677,7 +677,7 @@ $h$  with ms as (
     select l.a, (select jsonb_agg(t.x order by t.i desc)
                    from jsonb_array_elements(l.course) with ordinality t(x, i)), l.nm, true
       from legs l where l.b = p_from)
-  -- 0202: THE LEG'S MILES ARE ITS COURSE'S, as cmd.do_sail measures it (voyage.segments_from_course, stored
+  -- 0203: THE LEG'S MILES ARE ITS COURSE'S, as cmd.do_sail measures it (voyage.segments_from_course, stored
   -- course_nm / npc_courses.nm) — the door judges that figure, and the reach table's can be 6 % short of
   -- it (Macau-Acapulco 7,794 against 8,303). The reach table's only where no measure is stored.
   select distinct on (w.to_port) w.to_port, p.code, w.course, coalesce(w.nm, r.nm), w.reversed
@@ -690,7 +690,7 @@ $h$    for hh in select h.player_id, h.capital, pl.ducats, pl.company_name, h.ho
                 from public.npc_houses h join public.players pl on pl.id = h.player_id and pl.is_npc
                where pl.ducats < h.capital * public.wc_num('npc_purse_floor_pct')
                order by h.roster_ord loop$h$,
-$h$    -- 0202: WHAT SHE IS WORTH, NOT WHAT IS IN HER PURSE — public.npc_worth (her purse and her cargo at
+$h$    -- 0203: WHAT SHE IS WORTH, NOT WHAT IS IN HER PURSE — public.npc_worth (her purse and her cargo at
     -- cost). Her BUYs spend 90 % of both (npc_buy_budget), so a house that has just bought her parcels
     -- held a tenth in coin and was "refounded" from her city while worth her capital (0197's long laps
     -- kept the parcels aboard for hours: 83 refounds in two hours, none of them broke). `ducats` below is
@@ -709,7 +709,7 @@ $h$  select coalesce(
     (select format('%s is not made in any workshop yet', k.name)
        from public.item_unmade u join public.item_kinds k on k.code = u.item_code
       where u.item_code = p_item),
-    -- 0202: AN ITEM OF A KIND NO WORKSHOP MAKES — a promotion (the sea chart, the trade seal, the battle
+    -- 0203: AN ITEM OF A KIND NO WORKSHOP MAKES — a promotion (the sea chart, the trade seal, the battle
     -- honour) is earned, never made; it has no recipe, so cmd.do_make made it for nothing.
     (select format('%s is not made in any workshop — it is earned', k.name)
        from public.item_kinds k where k.code = p_item and k.kind <> 'fitting'))$h$);
@@ -721,39 +721,39 @@ declare
   v_def text;
   v_rev text;
 begin
-  for d in select * from defs_before_0202 order by fn loop
+  for d in select * from defs_before_0203 order by fn loop
     v_def := d.def;
-    for h in select * from hunks_0202 where fn = d.fn order by n loop
-      if pg_temp.occurs_0202(v_def, h.old) <> 1 then
-        raise exception '0202 self-assert FAIL: hunk % of % occurs % time(s), not once — the deployed body is not what this file was written against',
-          h.n, d.fn, pg_temp.occurs_0202(v_def, h.old);
+    for h in select * from hunks_0203 where fn = d.fn order by n loop
+      if pg_temp.occurs_0203(v_def, h.old) <> 1 then
+        raise exception '0203 self-assert FAIL: hunk % of % occurs % time(s), not once — the deployed body is not what this file was written against',
+          h.n, d.fn, pg_temp.occurs_0203(v_def, h.old);
       end if;
       v_def := replace(v_def, h.old, h.new);
     end loop;
     if v_def = d.def then
-      raise exception '0202 self-assert FAIL: no hunk for %', d.fn;
+      raise exception '0203 self-assert FAIL: no hunk for %', d.fn;
     end if;
     execute v_def;
     v_rev := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
-    for h in select * from hunks_0202 where fn = d.fn order by n desc loop
-      if pg_temp.occurs_0202(v_rev, h.new) <> 1 then
-        raise exception '0202 self-assert FAIL: hunk % of % is not in the new body once', h.n, d.fn;
+    for h in select * from hunks_0203 where fn = d.fn order by n desc loop
+      if pg_temp.occurs_0203(v_rev, h.new) <> 1 then
+        raise exception '0203 self-assert FAIL: hunk % of % is not in the new body once', h.n, d.fn;
       end if;
     end loop;
-    for h in select * from hunks_0202 where fn = d.fn order by n desc loop
+    for h in select * from hunks_0203 where fn = d.fn order by n desc loop
       v_rev := replace(v_rev, h.new, h.old);
     end loop;
     if v_rev <> d.def then
-      raise exception '0202 self-assert FAIL: % does not reverse to its pre-image', d.fn;
+      raise exception '0203 self-assert FAIL: % does not reverse to its pre-image', d.fn;
     end if;
     if coalesce((select p.proacl::text from pg_proc p where p.oid = d.fn::regprocedure), '') <> d.acl then
-      raise exception '0202 self-assert FAIL: the ACL of % moved', d.fn;
+      raise exception '0203 self-assert FAIL: the ACL of % moved', d.fn;
     end if;
   end loop;
 end $$;
 
 -- ── 4. THE PROBES (their own merchants' rows; every one rolled back whole) ─────────────────────
-create temp table probe_0202 (k text primary key, j jsonb) on commit drop;
+create temp table probe_0203 (k text primary key, j jsonb) on commit drop;
 
 -- (i) THE ANSWERS DID NOT MOVE where nothing was meant to: ship and fleet speed, endurance and the sail
 -- door, old body against new, for every merchant fleet (and the door at four passages each).
@@ -763,17 +763,17 @@ declare
 begin
   select jsonb_build_object(
     'fleets', count(*),
-    'speed', count(*) filter (where voyage.fleet_speed(nf.fleet_id) is distinct from pg_temp.fleet_speed_old_0202(nf.fleet_id)),
+    'speed', count(*) filter (where voyage.fleet_speed(nf.fleet_id) is distinct from pg_temp.fleet_speed_old_0203(nf.fleet_id)),
     'ship_speed', (select count(*) from public.ships s join public.npc_fleets n2 on n2.fleet_id = s.fleet_id
-                    where voyage.ship_speed(s.id) is distinct from pg_temp.ship_speed_old_0202(s.id)),
-    'endurance', count(*) filter (where voyage.endurance_days(nf.fleet_id) is distinct from pg_temp.endurance_days_old_0202(nf.fleet_id)),
+                    where voyage.ship_speed(s.id) is distinct from pg_temp.ship_speed_old_0203(s.id)),
+    'endurance', count(*) filter (where voyage.endurance_days(nf.fleet_id) is distinct from pg_temp.endurance_days_old_0203(nf.fleet_id)),
     'door', (select count(*) from public.npc_fleets n3 cross join (values (100::numeric), (1000), (3000), (8000)) v(nm)
               where voyage.sail_refusal(n3.fleet_id, null, null, v.nm)
-                    is distinct from pg_temp.sail_refusal_old_0202(n3.fleet_id, null, null, v.nm)),
+                    is distinct from pg_temp.sail_refusal_old_0203(n3.fleet_id, null, null, v.nm)),
     'door_refusals', (select count(*) from public.npc_fleets n3 cross join (values (100::numeric), (1000), (3000), (8000)) v(nm)
                        where voyage.sail_refusal(n3.fleet_id, null, null, v.nm) is not null))
     into v_bad from public.npc_fleets nf;
-  insert into probe_0202 values ('same', v_bad);
+  insert into probe_0203 values ('same', v_bad);
 end $$;
 
 -- (ii) THE ROSTER'S 40 MERCHANTS ON THE LONGEST LEGS (her loop's longest course; on prod 0197's trade loops), each at her lap start in turn: the loop the planner writes is sailable after
@@ -795,12 +795,12 @@ begin
               where (select count(*) from public.standing_route_stops s where s.route_id = nf.route_id) >= 2
               order by (select max(s.course_nm) from public.standing_route_stops s where s.route_id = nf.route_id) desc nulls last,
                        nf.roster_ord limit 40 loop
-      perform pg_temp.at_lap_start_0202(r.fleet_id, r.route_id);
+      perform pg_temp.at_lap_start_0203(r.fleet_id, r.route_id);
       v_t0 := clock_timestamp();
       v_r := public.npc_plan(now(), r.route_id);
       v_out := jsonb_set(v_out, '{ms}', to_jsonb((v_out->>'ms')::numeric + extract(epoch from clock_timestamp() - v_t0) * 1000));
       continue when coalesce((v_r->>'planned')::int, 0) = 0;
-      v_w := pg_temp.loop_door_0202(r.route_id);
+      v_w := pg_temp.loop_door_0203(r.route_id);
       v_out := jsonb_set(v_out, '{n}', to_jsonb((v_out->>'n')::int + 1));
       if v_w->>'reason' = 'laid_up' then
         v_out := jsonb_set(v_out, '{laid}', to_jsonb((v_out->>'laid')::int + 1));
@@ -821,10 +821,10 @@ begin
         end if;
       end if;
     end loop;
-    raise exception 'PROBE_ROLLBACK_0202:%', v_out::text;
+    raise exception 'PROBE_ROLLBACK_0203:%', v_out::text;
   exception when others then
-    if sqlerrm not like 'PROBE_ROLLBACK_0202:%' then raise; end if;
-    insert into probe_0202 values ('roster', substr(sqlerrm, length('PROBE_ROLLBACK_0202:') + 1)::jsonb);
+    if sqlerrm not like 'PROBE_ROLLBACK_0203:%' then raise; end if;
+    insert into probe_0203 values ('roster', substr(sqlerrm, length('PROBE_ROLLBACK_0203:') + 1)::jsonb);
   end;
 end $$;
 
@@ -845,27 +845,29 @@ begin
       join public.fleets f on f.id = nf.fleet_id
      order by nf.roster_ord limit 1;
     if v_f.fleet_id is null then
-      raise exception '0202 self-assert FAIL: the roster holds no Comptoir Chastellain — the probe is named for her';
+      raise exception '0203 self-assert FAIL: the roster holds no Comptoir Chastellain — the probe is named for her';
     end if;
     v_out := jsonb_build_object('fleet', v_f.name,
                'home_legs', (select count(*) from public.npc_known_legs((select s.port_id from public.standing_route_stops s where s.route_id = v_f.route_id and s.ord = 0))),
                'from', (select string_agg(p.code, '-' order by s.ord) from public.standing_route_stops s join public.ports p on p.id = s.port_id where s.route_id = v_f.route_id));
-    perform pg_temp.at_lap_start_0202(v_f.fleet_id, v_f.route_id);
+    perform pg_temp.at_lap_start_0203(v_f.fleet_id, v_f.route_id);
     v_t0 := clock_timestamp();
     v_r := public.npc_plan(now(), v_f.route_id);
     v_out := v_out || jsonb_build_object('plan', v_r - 'notes', 'notes', v_r->'notes', 'ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000),
-                                         'wrote', pg_temp.loop_door_0202(v_f.route_id));
-    raise exception 'PROBE_ROLLBACK_0202:%', v_out::text;
+                                         'wrote', pg_temp.loop_door_0203(v_f.route_id));
+    raise exception 'PROBE_ROLLBACK_0203:%', v_out::text;
   exception when others then
-    if sqlerrm not like 'PROBE_ROLLBACK_0202:%' then raise; end if;
-    insert into probe_0202 values ('chas', substr(sqlerrm, length('PROBE_ROLLBACK_0202:') + 1)::jsonb);
+    if sqlerrm not like 'PROBE_ROLLBACK_0203:%' then raise; end if;
+    insert into probe_0203 values ('chas', substr(sqlerrm, length('PROBE_ROLLBACK_0203:') + 1)::jsonb);
   end;
 end $$;
 
 -- (iv) A REFOUND JUDGES WHAT SHE IS WORTH. Comptoir Chastellain's house, her purse set to a tenth of her
 -- capital (under the floor): (a) with her parcels aboard at cost worth her capital, the houses' tend does
 -- NOT refound her; (b) POSITIVE CONTROL, the same with an empty hold: it does. Treasuries dark in-block,
--- so a refound is a credit (her city's surplus does not decide); only her own events are counted.
+-- so a refound is a credit (her city's surplus does not decide); only her own events of this block are counted
+-- (created_at ≥ the transaction's now()). Nothing is deleted: events and ledger are append-only, and every row
+-- this block writes is undone by its sentinel exception (PROBE_ROLLBACK_0203).
 do $$
 declare
   v_p    uuid := (select pl.id from public.players pl where pl.company_name = 'Comptoir Chastellain' and pl.is_npc);
@@ -883,7 +885,9 @@ begin
     begin
       update public.world_config set value = 'true'::jsonb where key in ('standing_routes_enabled', 'npc_traders_enabled');
       update public.world_config set value = 'false'::jsonb where key = 'city_treasury_enabled';
-      delete from public.events where player_id = v_p and kind = 'NPC_REFOUNDED';
+      -- her refound cooldown off in this block (events is append-only: a past refound is never deleted, it is
+      -- simply not counted — the cooldown reads it, so the cooldown is set to 0 here, rolled back)
+      update public.world_config set value = to_jsonb(0) where key = 'npc_refound_cooldown_game_days';
       update public.ships set cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb where fleet_id in (select nf.fleet_id from public.npc_fleets nf where nf.player_id = v_p);
       perform public.credit(v_p, 'PROBE', (v_cap / 10) - (select ducats from public.players where id = v_p));
       if k = 1 then
@@ -892,18 +896,18 @@ begin
       end if;
       v_t0 := clock_timestamp();
       perform public.npc_tend_houses(now());
-      raise exception 'PROBE_ROLLBACK_0202:%', jsonb_build_object('purse', v_cap / 10, 'capital', v_cap, 'worth_before', public.npc_worth(v_p),
-        'refounded', (select count(*) from public.events where player_id = v_p and kind = 'NPC_REFOUNDED'),
+      raise exception 'PROBE_ROLLBACK_0203:%', jsonb_build_object('purse', v_cap / 10, 'capital', v_cap, 'worth_before', public.npc_worth(v_p),
+        'refounded', (select count(*) from public.events where player_id = v_p and kind = 'NPC_REFOUNDED' and created_at >= now()),
         'ms', round(extract(epoch from clock_timestamp() - v_t0) * 1000))::text;
     exception when others then
-      if sqlerrm not like 'PROBE_ROLLBACK_0202:%' then raise; end if;
-      v_out := v_out || jsonb_build_object(case k when 1 then 'cargo' else 'empty' end, substr(sqlerrm, length('PROBE_ROLLBACK_0202:') + 1)::jsonb);
+      if sqlerrm not like 'PROBE_ROLLBACK_0203:%' then raise; end if;
+      v_out := v_out || jsonb_build_object(case k when 1 then 'cargo' else 'empty' end, substr(sqlerrm, length('PROBE_ROLLBACK_0203:') + 1)::jsonb);
     end;
   end loop;
-  insert into probe_0202 values ('refound', v_out);
+  insert into probe_0203 values ('refound', v_out);
 end $$;
 
-insert into graph_0202
+insert into graph_0203
 select 'after', jsonb_build_object(
   'homes_single', (select count(*) from public.npc_fleets nf join public.standing_route_stops s0 on s0.route_id = nf.route_id and s0.ord = 0
                     where (select count(*) from public.npc_known_legs(s0.port_id)) <= 1),
@@ -913,12 +917,12 @@ select 'after', jsonb_build_object(
 -- ── 5. THE SELF-ASSERT ──────────────────────────────────────────────────────────────────────────
 do $$
 declare
-  sm jsonb := (select j from probe_0202 where k = 'same');
-  r  jsonb := (select j from probe_0202 where k = 'roster');
-  c  jsonb := (select j from probe_0202 where k = 'chas');
-  rf jsonb := (select j from probe_0202 where k = 'refound');
-  gb jsonb := (select v from graph_0202 where k = 'before');
-  ga jsonb := (select v from graph_0202 where k = 'after');
+  sm jsonb := (select j from probe_0203 where k = 'same');
+  r  jsonb := (select j from probe_0203 where k = 'roster');
+  c  jsonb := (select j from probe_0203 where k = 'chas');
+  rf jsonb := (select j from probe_0203 where k = 'refound');
+  gb jsonb := (select v from graph_0203 where k = 'before');
+  ga jsonb := (select v from graph_0203 where k = 'after');
   v_copies jsonb;
 begin
   -- ONE MEASURE: no live body but voyage.stores_need_days applies endurance_margin (world.snapshot serves the
@@ -929,39 +933,39 @@ begin
      and p.prosrc ~ '\*\s*(v_margin|v_emargin|public\.wc_num\(''endurance_margin''\))'
      and p.proname <> 'stores_need_days';
   if v_copies is not null then
-    raise exception '0202 self-assert FAIL: a copy of the stores measure is left in %', v_copies;
+    raise exception '0203 self-assert FAIL: a copy of the stores measure is left in %', v_copies;
   end if;
   -- the answers that were not meant to move
   if public.wc_int('npc_route_review_laps') <> 6 then
-    raise exception '0202 self-assert FAIL: npc_route_review_laps did not land';
+    raise exception '0203 self-assert FAIL: npc_route_review_laps did not land';
   end if;
   if (sm->>'speed')::int <> 0 or (sm->>'ship_speed')::int <> 0 or (sm->>'endurance')::int <> 0 or (sm->>'door')::int <> 0 then
-    raise exception '0202 self-assert FAIL: speed, endurance or the sail door moved: %', sm;
+    raise exception '0203 self-assert FAIL: speed, endurance or the sail door moved: %', sm;
   end if;
   -- (ii) every loop written is sailable after its PROVISION at a full hold; the old measure was short for some
   if (r->>'n')::int < 20 or (r->>'refused')::int <> 0 then
-    raise exception '0202 self-assert FAIL: of % merchants planned, % were written a loop the door refuses at a full hold after its PROVISION: %',
+    raise exception '0203 self-assert FAIL: of % merchants planned, % were written a loop the door refuses at a full hold after its PROVISION: %',
       r->>'n', r->>'refused', r->'bad_list';
   end if;
   if (r->>'old_short')::int < 1 then
-    raise exception '0202 self-assert FAIL: the positive control cannot see the defect — the pre-image''s preset was short for none of %: %', r->>'sailing', r->'long';
+    raise exception '0203 self-assert FAIL: the positive control cannot see the defect — the pre-image''s preset was short for none of %: %', r->>'sailing', r->'long';
   end if;
   -- (iii) the owner's case
   if (c->>'home_legs')::int < 2 then
-    raise exception '0202 self-assert FAIL: Comptoir Chastellain''s home knows % leg(s): %', c->>'home_legs', c;
+    raise exception '0203 self-assert FAIL: Comptoir Chastellain''s home knows % leg(s): %', c->>'home_legs', c;
   end if;
   if not ((c->'wrote'->>'net')::numeric > 0 and c->'wrote'->>'reason' is null and (c->'wrote'->>'legs_refused')::int = 0) then
-    raise exception '0202 self-assert FAIL: Comptoir Chastellain was written % — net % a lap, % leg(s) refused, %: %',
+    raise exception '0203 self-assert FAIL: Comptoir Chastellain was written % — net % a lap, % leg(s) refused, %: %',
       c->'wrote'->>'stops', c->'wrote'->>'net', c->'wrote'->>'legs_refused', coalesce(c->'wrote'->>'reason', 'sailing'), c;
   end if;
   -- (iv) the refound
   if (rf->'cargo'->>'refounded')::int <> 0 or (rf->'empty'->>'refounded')::int <> 1 then
-    raise exception '0202 self-assert FAIL: the refound test — with her parcels aboard % refound(s) (want 0), with an empty hold % (want 1): %',
+    raise exception '0203 self-assert FAIL: the refound test — with her parcels aboard % refound(s) (want 0), with an empty hold % (want 1): %',
       rf->'cargo'->>'refounded', rf->'empty'->>'refounded', rf;
   end if;
   -- (v) the leg graph
   if (ga->>'homes_single')::int > (gb->>'homes_single')::int or (ga->>'leh')::int < 5 then
-    raise exception '0202 self-assert FAIL: the leg graph — homes knowing one leg or none % → %, Le Havre % → %',
+    raise exception '0203 self-assert FAIL: the leg graph — homes knowing one leg or none % → %, Le Havre % → %',
       gb->>'homes_single', ga->>'homes_single', gb->>'leh', ga->>'leh';
   end if;
   -- (vi) a promotion is not made; a fitting is as before
@@ -969,10 +973,10 @@ begin
      or (select count(*) from public.item_kinds k where public.item_not_made(k.code) is not null)
         <> (select count(*) from public.item_unmade) + (select count(*) from public.item_kinds k where k.kind <> 'fitting'
                                                          and not exists (select 1 from public.item_unmade u where u.item_code = k.code)) then
-    raise exception '0202 self-assert FAIL: item_not_made does not answer for exactly the items made nowhere and the promotions';
+    raise exception '0203 self-assert FAIL: item_not_made does not answer for exactly the items made nowhere and the promotions';
   end if;
 
-  raise notice '0202 self-assert ok: A MERCHANT''S LOOP IS ONE SHE CAN SAIL, PAY FOR AND REMEMBER. ONE MEASURE (voyage.stores_need_days; no copy left); speed, endurance and the door unchanged for % fleets (% door readings refused, as before). THE ROSTER''S % LONGEST-LEGGED: % planned — % sailing (% pay), % waiting; 0 written a loop the door refuses at a full hold after its PROVISION; the pre-image''s preset was short for % of them; % ms of planning. COMPTOIR CHASTELLAIN (%; home knows % legs): % → % — net % a lap over % nm, longest leg % nm, stores % / % days, % BUY. REFOUND: purse % of capital %, parcels aboard → % refound(s); empty hold → %. LEG GRAPH: % courses kept; homes knowing ≤ 1 leg % → %; Le Havre % → % legs. npc_route_review_laps 6. Promotions are not made. Bodies reverse, ACLs unchanged.',
+  raise notice '0203 self-assert ok: A MERCHANT''S LOOP IS ONE SHE CAN SAIL, PAY FOR AND REMEMBER. ONE MEASURE (voyage.stores_need_days; no copy left); speed, endurance and the door unchanged for % fleets (% door readings refused, as before). THE ROSTER''S % LONGEST-LEGGED: % planned — % sailing (% pay), % waiting; 0 written a loop the door refuses at a full hold after its PROVISION; the pre-image''s preset was short for % of them; % ms of planning. COMPTOIR CHASTELLAIN (%; home knows % legs): % → % — net % a lap over % nm, longest leg % nm, stores % / % days, % BUY. REFOUND: purse % of capital %, parcels aboard → % refound(s); empty hold → %. LEG GRAPH: % courses kept; homes knowing ≤ 1 leg % → %; Le Havre % → % legs. npc_route_review_laps 6. Promotions are not made. Bodies reverse, ACLs unchanged.',
     sm->>'fleets', sm->>'door_refusals',
     40, r->>'n', r->>'sailing', r->>'pays', r->>'laid', r->>'old_short', round((r->>'ms')::numeric),
     c->>'fleet', c->>'home_legs', c->>'from', c->'wrote'->>'stops', c->'wrote'->>'net', c->'wrote'->>'nm', c->'wrote'->>'max_leg',
