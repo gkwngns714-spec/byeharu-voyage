@@ -8,6 +8,11 @@ Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the p
 
 Prod head: **0208**. (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trade ×10 05:19 UTC, 2026-10-19).
 
+## RESUMED 2026-10-19 ~23:30 UTC (PC 디폴리스)
+Prod head 0208 (checked). Nothing moved during the 15 h gap.
+- #267 shard 3/3: READ. Root cause: 0209 drops `npc_buy_ceiling(uuid,uuid,numeric)` and recreates it with 7 args, while `tests/rpc.surface.spec.ts:1650` still named the old signature. Test fixed, hold note lifted (8968c83); CI re-running, then deploy as 0209.
+- Agents running: running-costs 0210 (finish proof 07 + sim, PR, no deploy) · insurance 0211 (finish, PR, no deploy) · NEW `osn-same-port-flip` (the buy-then-sell-same-port bug, at the price authority; must land before live prices are lit).
+
 ## HAND-OFF #2: the owner moved PCs again, 2026-10-19 ~08:40 UTC (from PC 디폴리스)
 **Prod head 0208. Main is green** (Acceptance success on 3cf859f). Nothing is half-deployed. On the old PC, every agent was told to push its WIP plus a "## HAND-OFF" section in its dev-log, then stop; nothing runs there now.
 
