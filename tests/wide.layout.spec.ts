@@ -93,18 +93,19 @@ test.describe('wide glass', () => {
     )
     expect(after).toEqual(before)
 
-    // 3. THE TRAY IS A SIDE PANEL: to the right of the rows, no overlap, TRAY_REM wide, and it
-    //    reaches from under the status strip to the nav rather than rising from the bottom edge.
+    // 3. THE TRAY STANDS IN THE DESK'S RIGHT PANE (2026-10-19, DeskFrame.tsx — the owner: "no pop
+    //    ups"): to the right of the rows, no overlap, the pane's own x and width, and the pane's height
+    //    rather than rising from the bottom edge.
     const tray = page.locator('[data-testid="trade-tray"]')
     await expect(tray).toBeVisible()
     const trayBox = (await tray.boundingBox())!
+    const paneBox = (await page.getByTestId('desk-pane-ticket').boundingBox())!
     expect(trayBox.x, 'the tray overlaps the rows — it is not beside the column').toBeGreaterThanOrEqual(
       rowBox.x + rowBox.width,
     )
-    expect(Math.abs(trayBox.width - TRAY_REM * remPx)).toBeLessThanOrEqual(1)
-    expect(trayBox.height, 'the tray is a bottom sheet, not a side panel').toBeGreaterThan(WIDE.height * 0.7)
-    // The gap between column and tray is GAP_REM, not a gulf.
-    expect(Math.abs(trayBox.x - (rowBox.x + rowBox.width) - GAP_REM * remPx)).toBeLessThanOrEqual(2)
+    expect(Math.abs(trayBox.x - paneBox.x), 'the tray is not in the desk’s right pane').toBeLessThanOrEqual(2)
+    expect(Math.abs(trayBox.width - paneBox.width)).toBeLessThanOrEqual(2)
+    expect(trayBox.height, 'the tray is a bottom sheet, not the pane').toBeGreaterThan(WIDE.height * 0.7)
   })
 
   // ═════════════════════════════════════════════════════════════════════════════════════════════
@@ -132,7 +133,6 @@ test.describe('wide glass', () => {
 
     const rows = page.locator('[data-testid="trade-row"]')
     expect(await rows.count(), 'no trade rows — is a fleet docked with a market here?').toBeGreaterThan(1)
-    const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
     const offsets = () =>
       page.evaluate(() =>
         [...document.querySelectorAll('[data-testid="trade-row"]')].map((t) => {
@@ -148,8 +148,11 @@ test.describe('wide glass', () => {
     await expect(basket.locator('[data-testid="basket-empty"]')).toBeVisible()
     await expect(basket.locator('[data-testid="cargo-bar"]')).toContainText(/\d+ \/ \d+ tons?/)
     const basketBox = (await basket.boundingBox())!
-    expect(Math.abs(basketBox.width - TRAY_REM * remPx)).toBeLessThanOrEqual(1)
-    expect(basketBox.height, 'the basket is a bottom sheet, not a side panel').toBeGreaterThan(WIDE.height * 0.7)
+    // in the desk's right pane (2026-10-19, DeskFrame.tsx): its x and width, its height
+    const paneBox = (await page.getByTestId('desk-pane-ticket').boundingBox())!
+    expect(Math.abs(basketBox.x - paneBox.x), 'the basket is not in the desk’s right pane').toBeLessThanOrEqual(2)
+    expect(Math.abs(basketBox.width - paneBox.width)).toBeLessThanOrEqual(2)
+    expect(basketBox.height, 'the basket is a bottom sheet, not the pane').toBeGreaterThan(WIDE.height * 0.7)
     // No ✕ on a fixture: there is nothing to close it to.
     await expect(basket.locator('[data-testid="tray-close"]')).toHaveCount(0)
     // ROWS 81/82: what the ship carries stands under the basket, as board-shaped rows. The fixture
