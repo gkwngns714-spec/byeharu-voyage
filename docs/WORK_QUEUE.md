@@ -6,7 +6,23 @@ Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
 
 Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the push lands. Migrations deploy in strict number order.
 
-Prod head: **0208** (0208 economy 07:05); (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trade ×10 05:19 UTC, 2026-10-19).
+Prod head: **0208**. (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trade ×10 05:19 UTC, 2026-10-19).
+
+## HAND-OFF #2: the owner moved PCs again, 2026-10-19 ~08:40 UTC (from PC 디폴리스)
+**Prod head 0208. Main is green** (Acceptance success on 3cf859f). Nothing is half-deployed. On the old PC, every agent was told to push its WIP plus a "## HAND-OFF" section in its dev-log, then stop; nothing runs there now.
+
+Live today: #257/#260/#266 (main green again; the harbour-list test reads one DOM snapshot); #259 market words; 0205 good switch + 0206 force_custom_plan (board ~2 s steady); 0207 markets ×10; #262 Plans/City/Invest/Profit in place; **0208 economy** (holds ×3, goods prices ×0.2, haul premium ×0.5; after-check passed).
+
+Resume, in deploy order. Each is a branch; read its dev-log "## HAND-OFF" first and `gh pr list`:
+1. `osn-running-costs-d5`: supplies, repairs AND wages ÷5 (wages are a flat 1 ducat/crew/day, not a %; including them was decided by default). Owner said "supplies and repairs yes". Measure merchants, then deploy as head+1.
+2. `osn-insurance-v1`: the v1 above (10 % deductible, cargo only, NPC houses insure instead of the free refound). Price via a `voyage.risk_quote(...)` so pirates Z1 can swap the danger under it.
+3. `osn-live-prices`: a deterministic per-market tick (server = client), lands DARK (`price_tick_on`), then lit with a window.
+4. `osn-arrivals-cache`: per-sweep leg-price cache; ship only if plans are identical and the sweep is faster (re-measure on the post-0208 world).
+5. `osn-far-selling`: APPROVED by the owner: stale far prices, far-market saturation (one glut authority), perishables spoil; each lands dark; target long ≈1.3–1.5× short profit/day. Baseline first.
+6. **Pirates: PR #268** (docs/PIRATES_AND_HAVENS.md). Awaits the owner's answers to 12 questions (defaults in the doc). On "go with the defaults", build Z1→Z7.
+Numbers: each migration renumbers to prod head + 1 at push. Rename the tags/temp suffixes/probe ids inside too (duplication.spec checks them).
+
+Lessons from today: test a hot function with 6+ calls in ONE session (0205's generic-plan cliff); the bv-deploy scripts in `~/bin` on PC 디폴리스 were sed-repointed to `~/byeharu-voyage`.
 
 ## HAND-OFF: the owner moved to another PC, 2026-10-19 ~03:25 UTC
 On the old PC, every agent, timer and worktree was stopped. Nothing runs there. Prod head **0204**, with the fight lit and arrivals at ~2.8 s.
