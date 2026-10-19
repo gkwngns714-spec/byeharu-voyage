@@ -79,7 +79,7 @@
 -- No body is re-cut, no column altered, no grant moved. No top-level LOCK / SET LOCAL / BEGIN / SET ROLE.
 -- ROLLBACK (a forward migration): the same update with depth 1 / 10 — stock, stock_target,
 --   production_rate and price_history.stock ÷ 10 (stock rounded to the column), market_depth := 1.
--- VERSION: 0207 at writing (prod head 0205, the good switch; it applies on 0206, the good-board fix-forward, PR #264). It RENUMBERS
+-- VERSION: 0207 at writing (prod head 0206; applies on 0206, the good-board fix-forward, #264). It RENUMBERS
 --   to the prod head + 1 at push, as every migration does.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
