@@ -6,7 +6,7 @@ Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
 
 Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the push lands. Migrations deploy in strict number order.
 
-Prod head: **0206** (0205 good switch 04:55, 0206 custom plans 05:07 UTC, 2026-10-19).
+Prod head: **0207** (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trade ×10 05:19 UTC, 2026-10-19).
 
 ## HAND-OFF: the owner moved to another PC, 2026-10-19 ~03:25 UTC
 On the old PC, every agent, timer and worktree was stopped. Nothing runs there. Prod head **0204**, with the fight lit and arrivals at ~2.8 s.
@@ -29,8 +29,10 @@ Resume in this order:
 | Item | Owner's words | State |
 |---|---|---|
 | Market prices say whose they are; the out-of-reach note in simple words | "not sure if it is buying price or selling price"; "What does this mean? make it in simple words" | **LIVE** 2026-10-19 (#259, site build 351656e) |
-| Trade good quantities 10× for all. Decided by default: city stock, normal stock, and their refill/drain flows ×10, from one knob; prices unchanged | "make the trade good quantity 10 times larger for all" | PR **#263** green (renumbered back to **0207**: arrivals parked). Balance: a starter's best first voyage 19.4 → 21.1 % of the stake; the tray slider gets coarse at 10× stock |
+| Trade good quantities 10× for all. Decided by default: city stock, normal stock, and their refill/drain flows ×10, from one knob; prices unchanged | "make the trade good quantity 10 times larger for all" | **0207 LIVE 05:19 UTC** (#263). Checked on 30 prod markets: stock and normal ×10.000, mid price ×1.000. 30-min after-check to 05:50. Balance: a starter's best first voyage 19.4 → 21.1 % of the stake; the tray slider gets coarse at 10× stock |
 | Switching goods on the desk is slow | "it takes too long to load, any way to fix this?" | **0205 LIVE 04:55 UTC** (#261). After-check (prod, read-only, one session): the first boards ~1 s, then a generic plan decayed reach_passage 175 ms → 8 s and boards to 18 s. With custom plans forced, 2.0–2.9 s steady (was 4.3–6.1 s). **0206 LIVE 05:07 UTC** (#264, `force_custom_plan` on good_board + reach_passage). After-check, same six-board session with no forcing: 2.0–2.8 s each, reach_passage ~190 ms steady. DONE. New order: 0206 fix · 0207 trade ×10 (arrivals PARKED, below) |
+| **Economy package (0208):** ship cargo ×3, goods prices ÷5, the 0173 distance premium halved. Decided by default: only GOODS prices change (cash, purses, ship prices, wages, repairs unchanged). Expect each trip to earn ≈60 % or less of today against unchanged costs; balance measured before deploy | "in addition to the 10x goods quantities, enlarge the ships cargo by 3x. reduce the goods price by 5x. distance earning gold diminish by half" | agent building (`osn-economy-x3-d5-h2`) |
+| Arrivals: per-sweep leg-price cache (no merchant's choice changes) | (queue item: arrivals fast) | agent building (`osn-arrivals-cache`, **0209**) |
 | Plans / City / Invest swap in place on the COMMAND desk: no pop-ups, no new screen | "i want the screen of the original command tab to stay same … reloading on the same page" | agent building (`osn-command-in-place`) |
 
 ## In progress, in priority and deploy order
