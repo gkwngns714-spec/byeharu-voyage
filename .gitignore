@@ -32,3 +32,6 @@ scripts/db/.proof-courses.json
 
 # Agent worktrees: real git repos that live inside this one. Never commit them.
 .claude/worktrees/
+
+# The ops harness's working data (prod-state exports, sim worlds). Never commit it.
+.arrwork/
