@@ -539,6 +539,26 @@ const CONTROLS = [
       [s.pglite.ledger.length > 0 && s.pglite.merchants.length > 0, "ledger + merchants legs run (the gate's own code changed)"],
     ],
   },
+  // THE TWO PRs THAT TURNED MAIN'S ACCEPTANCE RED FOR 25 RUNS (2026-10-18). The selection DID pick
+  // their specs; no PR job ran them, because acceptance.yml had no `pull_request` trigger (#165).
+  // These hold the selection to the answer it gave, so a narrowing rule cannot drop it unnoticed.
+  {
+    name: 'map flags + day lamp (4319daa, #234: MapScreen, hitTest, index.css) → map.marks + map.noblink',
+    sha: '4319daa',
+    check: (s, has) => [
+      [s.mode === 'scoped', 'scoped'],
+      [has('map.marks.spec.ts'), 'map.marks selected (it reads MapScreen.tsx\'s hit test)'],
+      [has('map.noblink.spec.ts'), 'map.noblink selected (the chart\'s layers)'],
+    ],
+  },
+  {
+    name: 'the desk terminal (db7c956, #225: CommandScreen\'s wide shape) → route.stopface',
+    sha: 'db7c956',
+    check: (s, has) => [
+      [s.mode === 'scoped', 'scoped'],
+      [has('route.stopface.spec.ts'), 'route.stopface selected'],
+    ],
+  },
   {
     name: 'chain machinery (8c73c0f: src/lib/db, scripts/db) → full suite + growth test',
     sha: '8c73c0f',
