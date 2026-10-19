@@ -99,3 +99,14 @@ Pair 1 ran on the 0205 world, pair 2 on 0207 (×10 market depth), and pair 3 on 
 ## 5. Left
 - The ranking (`world.trade_routes`, 13.75 ms a leg on prod) is now the largest cost of a leg. It repeats across sweeps (58 %) but not within one (6 %).
 - `cmd.standing_route_lines` (the live renderer at each arrival) still asks `npc_affordable` and `npc_buy_ceiling` without terms. It could read them once a stop the same way.
+
+## HAND-OFF (2026-10-19 ~08:45 UTC, the owner moved PCs; agent stopped)
+- **Done:** migration 0209 built. Self-assert passes on the 0205, 0207 and 0208 worlds, and the negative control fails it. Three paired sims and the shadow run are in § 4. PR **#267** is open.
+- **Measured:** on the 0208 (prod head) world, sweep avg 3,220 → 2,550 ms and p95 10,057 → 6,269 ms. All 837 plans after the kickoff are identical. The shadow run found 0 differences in 13,822 legs. Lay-ups at the end 98 → 92, laps ≤ 0 32 → 33 %.
+- **CI on #267:** every check passed except `acceptance-shard (3/3)` and its `acceptance` roll-up (red). Its log was NOT read: the run was still in progress when logs were asked for.
+- **Next step:**
+  1. Read shard 3's log to its last error: `gh run view 39221616499 --job 117958077277 --log`.
+  2. If the red is unrelated (a UI spec; 0209 changes no client code), re-run it once as a diagnostic and record why.
+  3. Remove the NOT FOR DEPLOY line from the migration header.
+  4. Deploy with `~/bin/bv-deploy.sh 267` (renumber to the prod head + 1 if 0209 is taken).
+- `.arrwork/` (the prod export) is deleted.

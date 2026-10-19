@@ -44,6 +44,8 @@
 -- byte for byte, and some of them carry a parcel (else the proof is vacuous).
 -- ROLLBACK: a forward slice restores the three bodies (each hunk's OLD text is here verbatim) and drops the index.
 -- VERSION: 0209 (renumber to the prod head + 1 at push).
+-- NOT FOR DEPLOY YET (2026-10-19 hand-off): PR #267's acceptance-shard (3/3) is red and its log was not read.
+-- Read it to its last error first (docs/dev-log/2026-10-19-arrivals-cache.md § HAND-OFF).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
