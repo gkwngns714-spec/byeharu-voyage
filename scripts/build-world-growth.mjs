@@ -107,12 +107,12 @@ const hasDemand = await hasColumn('port_goods', 'demand')      // 0066
 const hasFurnish = (await db.query(
   `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'furnish_harbours'`,
 )).rows.length > 0                                             // 0089
-// 0208: a market row's normal stock and production are world.market_depth_at's (0005's arithmetic ×
+// 0207: a market row's normal stock and production are world.market_depth_at's (0005's arithmetic ×
 // market_depth). Against a baseline that has it, the seed and the assert COMPOSE it; against an older
 // baseline they restate 0005's arithmetic, which is what that baseline's rows were written with.
 const hasMarketDepth = (await db.query(
   `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'world' and p.proname = 'market_depth_at'`,
-)).rows.length > 0                                             // 0208
+)).rows.length > 0                                             // 0207
 const depthTarget = (tier, aff) => hasMarketDepth
   ? `(world.market_depth_at(${tier}, ${aff}, public.wc_num('market_depth'))).stock_target`
   : `greatest(60, round(200 * ${tier} * (1.60 - ${aff})))`

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0208 — EVERY MARKET IS TEN TIMES DEEPER  (every city's goods stock, its normal stock and its
+-- 0207 — EVERY MARKET IS TEN TIMES DEEPER  (every city's goods stock, its normal stock and its
 --        production × 10, from ONE knob, market_depth, read by ONE derivation, world.market_depth_at)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -79,7 +79,7 @@
 -- No body is re-cut, no column altered, no grant moved. No top-level LOCK / SET LOCAL / BEGIN / SET ROLE.
 -- ROLLBACK (a forward migration): the same update with depth 1 / 10 — stock, stock_target,
 --   production_rate and price_history.stock ÷ 10 (stock rounded to the column), market_depth := 1.
--- VERSION: 0208 at writing (prod head 0205, the good switch; 0206 = the good-board fix-forward, PR #264, and 0207 = osn-arrivals-fast deploy first). It RENUMBERS
+-- VERSION: 0207 at writing (prod head 0205, the good switch; it applies on 0206, the good-board fix-forward, PR #264). It RENUMBERS
 --   to the prod head + 1 at push, as every migration does.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -88,20 +88,20 @@ begin
   perform set_config('statement_timeout', '20min', true);
   perform set_config('lock_timeout', '5s', true);
   if exists (select 1 from public.world_config where key = 'market_depth') then
-    raise exception '0208 refuses: market_depth already exists — the markets have been rescaled once';
+    raise exception '0207 refuses: market_depth already exists — the markets have been rescaled once';
   end if;
   if not exists (select 1 from public.port_goods) then
-    raise exception '0208 refuses: no market rows';
+    raise exception '0207 refuses: no market rows';
   end if;
 end $guard$;
 
 -- ── 1. THE KNOB AND THE DERIVATION ──────────────────────────────────────────────────────────────
 insert into public.world_config (key, value, description) values
   ('market_depth', to_jsonb(10),
-   '0208 (owner, 2026-10-19: "make the trade good quantity 10 times larger for all"): how deep every city market is, '
+   '0207 (owner, 2026-10-19: "make the trade good quantity 10 times larger for all"): how deep every city market is, '
    'as a multiple of 0005''s seed depth. world.market_depth_at multiplies a row''s normal stock (stock_target) and its '
    'production_rate by this; the price reads stock / target, so the depth moves no price. Applied when rows are '
-   'WRITTEN (0208 wrote every row at 10): changing it alone moves nothing until a migration re-derives the rows.');
+   'WRITTEN (0207 wrote every row at 10): changing it alone moves nothing until a migration re-derives the rows.');
 
 create or replace function world.market_depth_at(
   p_size_tier int,
@@ -123,9 +123,9 @@ as $$
 $$;
 
 comment on function world.market_depth_at(int, numeric, numeric) is
-  '0208: THE derivation of a market row''s normal stock and production — 0005''s seed arithmetic × the depth '
+  '0207: THE derivation of a market row''s normal stock and production — 0005''s seed arithmetic × the depth '
   '(world_config market_depth). Argument-only and immutable, like world.affinity_at, so a seed inlines it. '
-  'Callers: 0208, scripts/build-world-growth.mjs, scripts/db/tune-balance.mjs. Server-only.';
+  'Callers: 0207, scripts/build-world-growth.mjs, scripts/db/tune-balance.mjs. Server-only.';
 
 revoke all on function world.market_depth_at(int, numeric, numeric) from public;
 
@@ -137,7 +137,7 @@ begin
   perform 1 from public.port_goods for update;
 end $lock$;
 
-create temp table pre_0208 on commit drop as
+create temp table pre_0207 on commit drop as
 select pg.port_id, pg.good_id, p.size_tier, pg.affinity, pg.stock, pg.stock_target, pg.production_rate
   from public.port_goods pg join public.ports p on p.id = pg.port_id;
 
@@ -146,15 +146,15 @@ declare
   v_n int;
 begin
   select count(*) into v_n
-    from pre_0208 r cross join lateral world.market_depth_at(r.size_tier, r.affinity, 1) d
+    from pre_0207 r cross join lateral world.market_depth_at(r.size_tier, r.affinity, 1) d
    where r.stock_target is distinct from d.stock_target or r.production_rate is distinct from d.production_rate;
   if v_n <> 0 then
-    raise exception '0208 self-assert FAIL: % market row(s) are not at 0005''s seed depth — × 10 would not be the same market, deeper', v_n;
+    raise exception '0207 self-assert FAIL: % market row(s) are not at 0005''s seed depth — × 10 would not be the same market, deeper', v_n;
   end if;
 end $pre$;
 
 -- THE PROBE SET — deterministic: every 7th row a quay offers, by port code then good code.
-create temp table probe_0208 on commit drop as
+create temp table probe_0207 on commit drop as
 select x.port_id, x.good_id, x.port_code, x.good_code
   from (select pg.port_id, pg.good_id, p.code as port_code, g.code as good_code,
                row_number() over (order by p.code, g.code) as rn
@@ -164,23 +164,23 @@ select x.port_id, x.good_id, x.port_code, x.good_code
          where public.port_offers(pg.port_id, pg.good_id)) x
  where x.rn % 7 = 1;
 
-create temp table quote_0208 (
+create temp table quote_0207 (
   phase text, port_id uuid, good_id uuid,
   mid numeric, ask numeric, bid numeric,
   b1 numeric, b10 numeric, b10_total bigint, s1 numeric, s10 numeric, s10_total bigint,
   b200_units numeric, b200 numeric, cap numeric
 ) on commit drop;
 
-create function pg_temp.quote_0208(p_phase text)
+create function pg_temp.quote_0207(p_phase text)
 returns void
 language sql
 as $$
-  insert into quote_0208
+  insert into quote_0207
   select p_phase, pr.port_id, pr.good_id, wp.mid, wp.ask, wp.bid,
          qb1.avg_price, qb10.avg_price, qb10.total, qs1.avg_price, qs10.avg_price, qs10.total,
          qb200.units, qb200.avg_price,
          world.daily_cap_remaining(null::uuid, pr.port_id, pr.good_id)
-    from probe_0208 pr
+    from probe_0207 pr
     cross join lateral world.price(pr.port_id, pr.good_id) wp
     cross join lateral world.quote(pr.port_id, pr.good_id, 1,   'buy',  null, null) qb1
     cross join lateral world.quote(pr.port_id, pr.good_id, 10,  'buy',  null, null) qb10
@@ -189,9 +189,9 @@ as $$
     cross join lateral world.quote(pr.port_id, pr.good_id, 200, 'buy',  null, null) qb200;
 $$;
 
-select pg_temp.quote_0208('before');
+select pg_temp.quote_0207('before');
 
-create temp table hist_0208 on commit drop as
+create temp table hist_0207 on commit drop as
 select port_id, good_id, slot, mid, stock from public.price_history;
 
 -- ── 3. THE MARKETS, TEN TIMES DEEPER ────────────────────────────────────────────────────────────
@@ -200,13 +200,13 @@ update public.port_goods pg
        production_rate = n.production_rate,
        stock           = round(pg.stock * public.wc_num('market_depth'), 2)
   from (select r.port_id, r.good_id, d.stock_target, d.production_rate
-          from pre_0208 r
+          from pre_0207 r
          cross join lateral world.market_depth_at(r.size_tier, r.affinity, public.wc_num('market_depth')) d) n
  where n.port_id = pg.port_id and n.good_id = pg.good_id;
 
 update public.price_history set stock = round(stock * public.wc_num('market_depth'), 2);
 
-select pg_temp.quote_0208('after');
+select pg_temp.quote_0207('after');
 
 -- ── 4. SELF-ASSERT ──────────────────────────────────────────────────────────────────────────────
 do $$
@@ -230,16 +230,16 @@ declare
   v_ok     text;
 begin
   if v_depth is distinct from 10 then
-    raise exception '0208 self-assert FAIL: market_depth reads %, not 10', v_depth;
+    raise exception '0207 self-assert FAIL: market_depth reads %, not 10', v_depth;
   end if;
 
   -- (a) every row × 10, and every row the derivation's answer
-  select count(*) into v_rows from pre_0208;
+  select count(*) into v_rows from pre_0207;
   if v_rows = 0 or v_rows <> (select count(*) from public.port_goods) then
-    raise exception '0208 self-assert FAIL: % pre-image rows against % market rows', v_rows, (select count(*) from public.port_goods);
+    raise exception '0207 self-assert FAIL: % pre-image rows against % market rows', v_rows, (select count(*) from public.port_goods);
   end if;
   select count(*) into v_n
-    from pre_0208 r
+    from pre_0207 r
     join public.port_goods pg on pg.port_id = r.port_id and pg.good_id = r.good_id
     cross join lateral world.market_depth_at(r.size_tier, pg.affinity, v_depth) d
    where pg.stock           <> r.stock * 10
@@ -249,58 +249,58 @@ begin
       or pg.production_rate <> d.production_rate
       or pg.affinity        <> r.affinity;
   if v_n <> 0 then
-    raise exception '0208 self-assert FAIL: % of % market row(s) are not exactly 10 × their pre-image at the derivation''s depth', v_n, v_rows;
+    raise exception '0207 self-assert FAIL: % of % market row(s) are not exactly 10 × their pre-image at the derivation''s depth', v_n, v_rows;
   end if;
 
   -- (b) THE PRICE IS UNCHANGED for a fixed small amount (1 unit, and one 10-unit step), both sides
-  select count(*) into v_probes from probe_0208;
+  select count(*) into v_probes from probe_0207;
   if v_probes < 100 then
-    raise exception '0208 self-assert FAIL: only % probe rows — the price check would be thin', v_probes;
+    raise exception '0207 self-assert FAIL: only % probe rows — the price check would be thin', v_probes;
   end if;
   select count(*) into v_price
-    from quote_0208 b join quote_0208 a on a.port_id = b.port_id and a.good_id = b.good_id
+    from quote_0207 b join quote_0207 a on a.port_id = b.port_id and a.good_id = b.good_id
    where b.phase = 'before' and a.phase = 'after'
      and b.mid is not null and b.b10 is not null and b.s10 is not null
      and a.mid = b.mid and a.ask = b.ask and a.bid = b.bid
      and a.b1 = b.b1 and a.b10 = b.b10 and a.b10_total = b.b10_total
      and a.s1 = b.s1 and a.s10 = b.s10 and a.s10_total = b.s10_total;
   if v_price <> v_probes then
-    raise exception '0208 self-assert FAIL: % of % probe rows quote the same price after × 10 (mid, ask, bid, 1 and 10 units buy and sell)', v_price, v_probes;
+    raise exception '0207 self-assert FAIL: % of % probe rows quote the same price after × 10 (mid, ask, bid, 1 and 10 units buy and sell)', v_price, v_probes;
   end if;
   -- … while the stock really is 10× (the positive control: a price read off the wrong row would also "match")
-  if exists (select 1 from probe_0208 pr
-               join pre_0208 r on r.port_id = pr.port_id and r.good_id = pr.good_id
+  if exists (select 1 from probe_0207 pr
+               join pre_0207 r on r.port_id = pr.port_id and r.good_id = pr.good_id
                join public.port_goods pg on pg.port_id = pr.port_id and pg.good_id = pr.good_id
               where pg.stock <> r.stock * 10 or r.stock <= 0) then
-    raise exception '0208 self-assert FAIL: a probe row''s stock is not 10 × a non-empty pre-image';
+    raise exception '0207 self-assert FAIL: a probe row''s stock is not 10 × a non-empty pre-image';
   end if;
 
   -- (c) the day cap × 10; a 200-unit buy never dearer, mostly cheaper
   select count(*) into v_n
-    from quote_0208 b join quote_0208 a on a.port_id = b.port_id and a.good_id = b.good_id
+    from quote_0207 b join quote_0207 a on a.port_id = b.port_id and a.good_id = b.good_id
    where b.phase = 'before' and a.phase = 'after' and (b.cap <= 0 or a.cap <> b.cap * 10);
   if v_n <> 0 then
-    raise exception '0208 self-assert FAIL: % probe row(s) whose day cap is not 10 × a positive pre-image', v_n;
+    raise exception '0207 self-assert FAIL: % probe row(s) whose day cap is not 10 × a positive pre-image', v_n;
   end if;
   select count(*) filter (where a.b200 > b.b200), count(*) filter (where a.b200 < b.b200), count(*)
     into v_dearer, v_cheaper, v_filled
-    from quote_0208 b join quote_0208 a on a.port_id = b.port_id and a.good_id = b.good_id
+    from quote_0207 b join quote_0207 a on a.port_id = b.port_id and a.good_id = b.good_id
    where b.phase = 'before' and a.phase = 'after' and b.b200_units = 200 and a.b200_units = 200;
   if v_filled = 0 or v_dearer <> 0 or v_cheaper * 2 < v_filled then
-    raise exception '0208 self-assert FAIL: of % probe rows filling 200 units, % buy dearer and only % cheaper after × 10', v_filled, v_dearer, v_cheaper;
+    raise exception '0207 self-assert FAIL: of % probe rows filling 200 units, % buy dearer and only % cheaper after × 10', v_filled, v_dearer, v_cheaper;
   end if;
 
   -- (d) RECOVERY SCALES — the rule, on the probe set with a planted production (prod has none) …
   select count(*) into v_n
-    from probe_0208 pr
-    join pre_0208 r on r.port_id = pr.port_id and r.good_id = pr.good_id
+    from probe_0207 pr
+    join pre_0207 r on r.port_id = pr.port_id and r.good_id = pr.good_id
    where abs(public.stock_after(r.stock * 10 / 2, r.stock_target * 10, v_rate, r.stock_target * 10 * 0.05, 3)
              - 10 * public.stock_after(r.stock / 2, r.stock_target, v_rate, r.stock_target * 0.05, 3)) > 0.000001;
   if v_n <> 0 then
-    raise exception '0208 self-assert FAIL: % probe row(s) where public.stock_after is not × 10 out for × 10 in', v_n;
+    raise exception '0207 self-assert FAIL: % probe row(s) where public.stock_after is not × 10 out for × 10 in', v_n;
   end if;
   -- … and the live tick, on the first probe market planted half empty a day back (rolled back)
-  select pr.port_id, pr.good_id into v_port, v_good from probe_0208 pr order by pr.port_code, pr.good_code limit 1;
+  select pr.port_id, pr.good_id into v_port, v_good from probe_0207 pr order by pr.port_code, pr.good_code limit 1;
   begin
     select pg.stock_target, pg.production_rate * public.works_factor(pg.port_id, 'production', 'production_per_level')
       into v_t, v_prod
@@ -311,26 +311,26 @@ begin
     select stock into v_got from public.port_goods where port_id = v_port and good_id = v_good;
     v_want := round(10 * public.stock_after(v_t / 20, v_t / 10, v_rate, v_prod / 10, 1), 2);   -- the old market's step, × 10
     if v_got is distinct from v_want or v_got <= v_t / 2 then
-      raise exception '0208 self-assert FAIL: one tick took a half-empty market (target %) to %, not % (10 × the old step)', v_t, v_got, v_want;
+      raise exception '0207 self-assert FAIL: one tick took a half-empty market (target %) to %, not % (10 × the old step)', v_t, v_got, v_want;
     end if;
     v_ok := format('target %s: %s → %s in one game day', v_t, v_t / 2, v_got);
-    raise exception using errcode = 'ZX208', message = v_ok;
-  exception when sqlstate 'ZX208' then
+    raise exception using errcode = 'ZX207', message = v_ok;
+  exception when sqlstate 'ZX207' then
     v_ok := sqlerrm;
   end;
-  if exists (select 1 from public.port_goods pg join pre_0208 r on r.port_id = pg.port_id and r.good_id = pg.good_id
+  if exists (select 1 from public.port_goods pg join pre_0207 r on r.port_id = pg.port_id and r.good_id = pg.good_id
               where pg.port_id = v_port and pg.good_id = v_good and pg.stock <> r.stock * 10) then
-    raise exception '0208 self-assert FAIL: the planted probe market survived its rollback';
+    raise exception '0207 self-assert FAIL: the planted probe market survived its rollback';
   end if;
 
   -- (e) the chart's stock line × 10, its price untouched
-  select count(*) into v_hist from hist_0208;
+  select count(*) into v_hist from hist_0207;
   select count(*) into v_n
-    from hist_0208 h
+    from hist_0207 h
     left join public.price_history ph on ph.port_id = h.port_id and ph.good_id = h.good_id and ph.slot = h.slot
    where ph.port_id is null or ph.stock <> round(h.stock * 10, 2) or ph.mid <> h.mid;
   if v_n <> 0 then
-    raise exception '0208 self-assert FAIL: % of % price_history row(s) are not 10 × their stock with their mid unmoved', v_n, v_hist;
+    raise exception '0207 self-assert FAIL: % of % price_history row(s) are not 10 × their stock with their mid unmoved', v_n, v_hist;
   end if;
 
   -- (f) the walls
@@ -339,12 +339,12 @@ begin
      or (select count(*) from public.caller_evaluated_functions()) <> 0
      or exists (select 1 from unnest(array['anon', 'authenticated']) rl(role)
                  where has_function_privilege(rl.role, 'world.market_depth_at(int, numeric, numeric)', 'execute')) then
-    raise exception '0208 self-assert FAIL: a wall moved, or a client can reach world.market_depth_at';
+    raise exception '0207 self-assert FAIL: a wall moved, or a client can reach world.market_depth_at';
   end if;
 
-  raise notice '0208 self-assert ok: EVERY MARKET IS TEN TIMES DEEPER. market_depth 10; world.market_depth_at = 0005''s seed × depth. % market rows: stock, stock_target, production_rate exactly 10 × (target %–% → %–%). PRICE UNCHANGED on % probe quays: mid / ask / bid and 1- and 10-unit quotes, buy and sell, equal to the cent while the stock is 10×. Day cap 10× on every probe. 200 units bought: % probe rows filled, % cheaper a unit, % dearer. Recovery: stock_after × 10 out for × 10 in; one tick %. price_history: % rows, stock × 10, mid unmoved.',
+  raise notice '0207 self-assert ok: EVERY MARKET IS TEN TIMES DEEPER. market_depth 10; world.market_depth_at = 0005''s seed × depth. % market rows: stock, stock_target, production_rate exactly 10 × (target %–% → %–%). PRICE UNCHANGED on % probe quays: mid / ask / bid and 1- and 10-unit quotes, buy and sell, equal to the cent while the stock is 10×. Day cap 10× on every probe. 200 units bought: % probe rows filled, % cheaper a unit, % dearer. Recovery: stock_after × 10 out for × 10 in; one tick %. price_history: % rows, stock × 10, mid unmoved.',
     v_rows,
-    (select min(stock_target) from pre_0208), (select max(stock_target) from pre_0208),
+    (select min(stock_target) from pre_0207), (select max(stock_target) from pre_0207),
     (select min(stock_target) from public.port_goods), (select max(stock_target) from public.port_goods),
     v_probes, v_filled, v_cheaper, v_dearer, v_ok, v_hist;
 end $$;

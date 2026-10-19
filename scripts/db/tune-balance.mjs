@@ -97,7 +97,7 @@ async function retune({ producer, home, span, reach, curve, amp }) {
     `update public.port_goods pg
         set affinity = world.affinity_for(pg.port_id, pg.good_id),
             drift = 0`)
-  // 0208: the normal stock is world.market_depth_at's (0005's arithmetic × market_depth) — the one
+  // 0207: the normal stock is world.market_depth_at's (0005's arithmetic × market_depth) — the one
   // derivation the chain writes rows with, never a copy of it here.
   await db.query(
     `update public.port_goods pg
