@@ -659,3 +659,5 @@ time on 16-raid windows. A longer window raises that.
 - The surrender rule; its band (the third of `fight_board_bands`, 0.3); and that a fight never ends STRIPPED.
 - The words of the surrender: "You surrender; they board and take what they can carry." and "We surrendered, and
   they took what they could carry."
+
+**CI on PR #253 (first push):** build 1m27s, disposable-chain 2m27s (restored from a kept snapshot, not from zero; 0203 recorded applied), pglite-gate the rest 2m50s / merchants 3m41s / ledger 3s, select 8s.
