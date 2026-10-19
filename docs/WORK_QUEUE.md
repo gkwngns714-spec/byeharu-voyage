@@ -8,11 +8,20 @@ Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the p
 
 Prod head: **0204**.
 
-## Deploy order (coordinator, 2026-10-19 03:20 UTC)
-**TOP: main's Acceptance has been RED since 2026-10-18 14:33.** Persistent failures: route.stopface:113 (Edit button gone, since the terminal db7c956); map.marks:56 + map.noblink:141 (8–9 layers > 7, since flags #234). Fixing on `fix-acceptance`.
-LIVE: … 0203 routes fix · 0204 fight lit (paired raid check PASSED). Arrivals fell back under 3 s on their own (2.6–2.8 s).
-Next: **0205** trade loops priced first, capped at 8 (`osn-arrivals-fast`); the knob-only version raised losing laps 33 → 51 %, so it was not shipped.
-Done 2026-10-19: #256 plan wording · #255 CI ledger leg 12m → 1.6m · #258 continue from any computer (queue, deploy script and harness in the repo; docs/NEW_COMPUTER.md).
+## HAND-OFF: the owner moved to another PC, 2026-10-19 ~03:25 UTC
+On the old PC, every agent, timer and worktree was stopped. Nothing runs there. Prod head **0204**, with the fight lit and arrivals at ~2.8 s.
+
+Resume in this order:
+1. **#257 `fix-acceptance`** (main's Acceptance has been red since 2026-10-18 14:33). The fixes are pushed:
+   - route.stopface (the Edit control in RouteFold/deskView);
+   - map.marks spec;
+   - map.noblink layers (index.css);
+   - select-specs;
+   - the flags screenshots.
+
+   It also brings back a `pull_request` trigger on acceptance.yml, ON PURPOSE: it runs only the selected specs and doesn't block, and it is the root-cause fix. The agent was stopped mid-step. Read ALL its checks, confirm `map.noblink` truly passes at ≤ 7 layers, then merge, then confirm main's Acceptance goes green.
+2. **0205 `osn-arrivals-fast`**, WIP pushed (f63df10) and NOT ready. Read `docs/dev-log/2026-10-19-arrivals-fast.md` § HAND-OFF. Knob-only 16 → 8 hurt the laps (33 → 51 % ≤ 0). Finish "trade loops first", re-run the paired sim, and ship only if both arrivals and laps hold.
+3. The owner decides: insurance (proposal below), and pirates / zones / dungeons.
 
 ## In progress, in priority and deploy order
 | # | Item | Owner's words | State |
