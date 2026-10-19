@@ -12,8 +12,9 @@ import {
   formatUnits,
   formatVoyageDays,
 } from '../../../lib/format'
-import type { BoardBuyRow, BoardPassage, BoardSellRow, GoodBoard, SnapshotGood } from '../../../lib/rpc'
+import type { BoardBuyRow, BoardSellRow, GoodBoard, SnapshotGood } from '../../../lib/rpc'
 import type { PlanDraft } from '../plans/planDraft'
+import { reachBoard, reachWords, viaWords } from '../plans/planLines'
 import type { GoodDesk } from './useGoodDesk'
 import { WhyThisPrice } from './WhyThisPrice'
 
@@ -153,7 +154,8 @@ function BestTrade({
     <p className="mt-2 text-t-caption text-warning" data-testid="best-trade-beyond">
       {sell ? 'Dearer, out of reach: ' : 'The best, '}
       <PortFlag code={passed.port} /> {name(passed.port)}
-      {passed.net_per_ton !== null ? ` (${formatPriceDelta(passed.net_per_ton)} / t)` : ''} — {whyNot(passed, board.supplies)}.
+      {passed.net_per_ton !== null ? ` (${formatPriceDelta(passed.net_per_ton)} per ton)` : ''} —{' '}
+      {reachWords(passed, reachBoard(board))}.
     </p>
   ) : null
   if (!sell && passed) {
@@ -234,9 +236,9 @@ function BestTrade({
           .filter(Boolean)
           .join(' · ')}
       </p>
-      {viaLine(sell, name) && (
+      {viaWords(sell.stops ?? [], name) && (
         <p className="mt-1 text-t-caption text-ink-muted" data-testid="best-trade-via">
-          {viaLine(sell, name)}
+          {viaWords(sell.stops ?? [], name)}
         </p>
       )}
       {beyond}
@@ -262,30 +264,6 @@ function BestTrade({
       </div>
     </section>
   )
-}
-
-/** The harbours a passage calls at between, in the server's order: "via Lisbon · Funchal". */
-function viaLine(row: BoardPassage, name: (c: string) => string): string | null {
-  return row.stops && row.stops.length > 0 ? `via ${row.stops.map(name).join(' · ')}` : null
-}
-
-/** Why a row cannot be sailed, from the server's own figures (0188): no passage within her reach —
- *  and the Navigation the direct leg would need — or a passage whose longest leg her stores do not
- *  carry. */
-function whyNot(row: BoardPassage & { miles: number | null }, supplies: { days: number } | undefined): string {
-  // No passage: no stops served, or (as 0188 serves a buy row it cannot reach) stops `[]` with no miles.
-  if (row.stops == null || row.miles === null) {
-    if (row.needs) {
-      return row.needs.navigation !== null
-        ? `needs Navigation ${row.needs.navigation} (reach ${formatInt(row.needs.reach_nm)} nm a leg)`
-        : 'no captain can sail it in one leg, and no passage through harbours is in reach'
-    }
-    return 'no passage within your reach'
-  }
-  if (row.longest_leg && row.longest_leg.days > 0 && supplies) {
-    return `its longest leg is ${formatVoyageDays(row.longest_leg.days)} at sea, more than your ${formatVoyageDays(supplies.days)} of supplies`
-  }
-  return 'not within your reach and stores'
 }
 
 function RowsSkeleton({ n }: { n: number }) {
@@ -351,8 +329,8 @@ function BuyAt({
                   <span className="text-t-caption text-ink-faint">{formatUnits(r.stock)}</span>
                 )}
                 <span className="truncate text-t-caption text-ink-faint">
-                  {r.sailable === false ? whyNot(r, board?.supplies) : away(r, r.port === docked)}
-                  {r.sailable !== false && viaLine(r, name) ? ` · ${viaLine(r, name)}` : ''}
+                  {r.sailable === false ? reachWords(r, reachBoard(board)) : away(r, r.port === docked)}
+                  {r.sailable !== false && viaWords(r.stops ?? [], name) ? ` · ${viaWords(r.stops ?? [], name)}` : ''}
                   {r.best ? ` · ◆ ${formatClock(Date.parse(r.best.at))} ${formatPctChange(-r.best.gain_pct)}` : ''}
                 </span>
               </span>
@@ -445,9 +423,9 @@ function SellAt({
                     )}
                     <span className="truncate text-t-caption text-ink-faint">
                       <span className={r.sailable === false ? 'text-warning' : undefined}>
-                        {r.sailable === false ? whyNot(r, board?.supplies) : away(r, r.port === docked)}
+                        {r.sailable === false ? reachWords(r, reachBoard(board)) : away(r, r.port === docked)}
                       </span>
-                      {r.sailable !== false && viaLine(r, name) ? ` · ${viaLine(r, name)}` : ''}
+                      {r.sailable !== false && viaWords(r.stops ?? [], name) ? ` · ${viaWords(r.stops ?? [], name)}` : ''}
                       {r.best ? ` · ◆ ${formatClock(Date.parse(r.best.at))} +${formatFixed(r.best.gain_pct, 1)}%` : ''}
                     </span>
                   </span>

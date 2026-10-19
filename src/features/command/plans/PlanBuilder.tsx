@@ -8,7 +8,7 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatClock, formatPrice, formatPriceDelta, formatUnits, formatVoyageDays } from '../../../lib/format'
 import type { FleetView, Refusal, SnapshotGood } from '../../../lib/rpc'
 import { useDeskPlan, type PlanDraft } from './planDraft'
-import { planLines, planRoute, reachWords, viaWords } from './planLines'
+import { planLines, planRoute, reachBoard, reachWords, viaWords } from './planLines'
 
 // THE PLAN BUILDER (docs/COMMAND_DESK.md §3.5) — the owner's coffee example as one tray:
 //
@@ -79,8 +79,10 @@ export function PlanBuilder({
 
   const sellChoices = b ? b.sell.filter((r) => r.quoted || r.port === plan.sellAt).map((r) => r.port) : []
   const buyRow = b && plan.buyAt ? (b.buy.find((r) => r.port === plan.buyAt) ?? null) : null
-  // the passage the board serves: through its stops; a city it cannot reach within her reach and stores is not planned
+  // the voyage the board serves: through its stops; a city beyond the captain's reach or the supplies is not planned
   const unreachable = [plan.buyAt ? buyRow : null, sellRow].find((r) => r && r.sailable === false) ?? null
+  const unreachableWords =
+    unreachable && b ? `${name(unreachable.port)} — ${reachWords(unreachable, reachBoard(b))}.` : null
 
   const queue = () =>
     press.run(async () => {
@@ -237,9 +239,9 @@ export function PlanBuilder({
           </>
         )}
       </div>
-      {unreachable && (
+      {unreachableWords && (
         <Note tone="danger" className="mt-3" data-testid="plan-unreachable">
-          {reachWords(unreachable, name, b?.reach?.reach_nm ?? null)}
+          {unreachableWords}
         </Note>
       )}
       {noCourse && (
