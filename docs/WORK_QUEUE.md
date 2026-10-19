@@ -25,6 +25,14 @@ Resume in this order:
 2. **0205 `osn-arrivals-fast`**, WIP pushed (f63df10) and NOT ready. Read `docs/dev-log/2026-10-19-arrivals-fast.md` § HAND-OFF. Knob-only 16 → 8 hurt the laps (33 → 51 % ≤ 0). Finish "trade loops first", re-run the paired sim, and ship only if both arrivals and laps hold.
 3. The owner decides: insurance (proposal below), and pirates / zones / dungeons.
 
+## New from the owner, 2026-10-19 (PC 디폴리스)
+| Item | Owner's words | State |
+|---|---|---|
+| Market prices say whose they are; the out-of-reach note in simple words | "not sure if it is buying price or selling price"; "What does this mean? make it in simple words" | PR **#259** (`osn-simple-words`), client only |
+| Trade good quantities 10× for all. Decided by default: city stock, normal stock, and their refill/drain flows ×10, from one knob; prices unchanged | "make the trade good quantity 10 times larger for all" | agent building (`osn-trade-qty-x10`, migration 0206 provisional) |
+| Switching goods on the desk is slow | "it takes too long to load, any way to fix this?" | agent measuring + fixing (`osn-good-switch-fast`) |
+| Plans / City / Invest swap in place on the COMMAND desk: no pop-ups, no new screen | "i want the screen of the original command tab to stay same … reloading on the same page" | agent building (`osn-command-in-place`) |
+
 ## In progress, in priority and deploy order
 | # | Item | Owner's words | State |
 |---|---|---|---|
