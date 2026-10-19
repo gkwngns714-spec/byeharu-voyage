@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } from './trayDetents'
@@ -107,19 +107,12 @@ export function Tray({
   // beside the column at full height, so the detent ladder — a bottom-edge idea — does not apply.
   // `detent` still says open or closed; the height is the panel's.
   const wide = useWide()
-  // INSIDE THE COMMAND DESK a docked tray is not a pop-up: it stands in the desk's slot, as a pane
-  // (trayContext.ts — the owner, 2026-10-19: "no pop ups or no new screen"). Only `docked` is
-  // redirected; a mode the caller named is kept.
+  // INSIDE THE COMMAND DESK, ON A WIDE GLASS, a docked tray is not a side panel over the glass: it
+  // stands in the desk's right pane, as a pane (trayContext.ts — the owner, 2026-10-19: "no pop ups or
+  // no new screen"). Only `docked` is redirected; a mode the caller named is kept.
   const slot = useTraySlot()
   const slotted = slot !== null && asked === 'docked'
   const mode: TrayMode = slotted ? 'pane' : asked
-  const own = useRef<HTMLElement | null>(null)
-  // A phone's slot is in flow, where the caller put the tray — possibly under a long list: bring it
-  // into view once when it opens (the page scrolls; nothing is moved or replaced).
-  const open = detent !== 'closed'
-  useEffect(() => {
-    if (slotted && slot.el === null && open) own.current?.scrollIntoView({ block: 'nearest' })
-  }, [slotted, slot, open])
   const side = mode === 'side' || mode === 'side-next' || mode === 'pane' || (wide && mode === 'docked')
 
   if (detent === 'closed') return null
@@ -152,11 +145,10 @@ export function Tray({
     // this `surface` is `surface-2`, so it has a shape.
     <InTray.Provider value={true}>
     <section
-      ref={own}
       // A pane (the desk's slot, the desk's ticket pane) is a region of the page, not a dialog over it.
       role={mode === 'pane' ? 'region' : 'dialog'}
       aria-modal={mode === 'pane' ? undefined : false}
-      data-tray-slotted={slotted ? (slot.el ? 'pane' : 'flow') : undefined}
+      data-tray-slotted={slotted ? '' : undefined}
       aria-label={typeof title === 'string' ? title : undefined}
       data-tray-mode={mode}
       data-tray-detent={detent}
@@ -241,5 +233,5 @@ export function Tray({
     </section>
     </InTray.Provider>
   )
-  return slotted && slot.el ? createPortal(tray, slot.el) : tray
+  return slotted ? createPortal(tray, slot.el) : tray
 }

@@ -1,9 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { DeskTraySlot, type TraySlot } from '../../components/ui'
 
-/** In flow, where the caller put it: the phone, and a wide face whose right pane is its own. */
-const FLOW: TraySlot = { el: null }
-
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DESK'S FRAME — ONE FRAME FOR EVERY FACE (2026-10-19)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -21,7 +18,9 @@ const FLOW: TraySlot = { el: null }
 //     its buildings open (a trade, a hire, an investment) is portalled there (trayContext.ts), and a
 //     one-line hint stands in it until one does.
 //   · PHONE: the Sheet the desk already is; the parts stand one under the other in the face's
-//     `order`, and any tray stands in flow inside them — never over the screen.
+//     `order`, in the same screen (the plan builder too, in flow on Plans). Pressing a face raises no
+//     tray. A press INSIDE a face on a price, a room or a job still raises the bottom tray that moves
+//     nothing: the owner's own rule for that press (rows 6/15/25/28/45, tests/layout.spec.ts).
 // A press on a face changes what is in the panes. Nothing about the frame moves.
 
 export interface DeskParts {
@@ -58,12 +57,12 @@ export function DeskPanes({
   panes?: ReactNode
 }) {
   // The right pane's slot element: trays opened inside the face stand in it. It is set in the commit
-  // that mounts it, before paint; until then (and on a face whose right pane is its own — the ticket,
-  // the plan builder) a tray stands in flow inside its pane. The panes never unmount for it.
+  // that mounts it, before paint. A face whose right pane is its own (the ticket, the plan builder)
+  // provides no slot; its other panes open no trays.
   const [slot, setSlot] = useState<HTMLElement | null>(null)
   const own = panes !== undefined || (side !== undefined && side !== null)
-  const pane = useMemo<TraySlot>(() => (slot ? { el: slot } : FLOW), [slot])
-  const value = own ? FLOW : pane
+  const pane = useMemo<TraySlot | null>(() => (slot ? { el: slot } : null), [slot])
+  const value = own ? null : pane
   return (
     <div
       className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,23rem)_minmax(0,1fr)_minmax(20rem,24rem)]"
@@ -119,16 +118,14 @@ export function DeskSidePane({ children }: { children?: ReactNode }) {
   )
 }
 
-/** The phone: the parts one under the other, trays in flow. */
+/** The phone: the parts one under the other, in the Sheet. */
 export function DeskStack({ testid, list, main, side, order = ['list', 'main', 'side'] }: DeskParts) {
   const parts = { list, main, side }
   return (
-    <DeskTraySlot.Provider value={FLOW}>
-      <div data-testid={testid}>
-        {order.map((k) => (
-          <div key={k}>{parts[k]}</div>
-        ))}
-      </div>
-    </DeskTraySlot.Provider>
+    <div data-testid={testid}>
+      {order.map((k) => (
+        <div key={k}>{parts[k]}</div>
+      ))}
+    </div>
   )
 }

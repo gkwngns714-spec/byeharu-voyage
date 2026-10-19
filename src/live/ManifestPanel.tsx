@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, CargoBar, Figure, Icon, Note, Row, Tray, useTraySlot, useWide, type TrayDetent } from '../components/ui'
+import { Button, CargoBar, Figure, Icon, Note, Row, Tray, useWide, type TrayDetent } from '../components/ui'
 import { ManifestTotals } from './ManifestTotals'
 import { OnBoard } from './OnBoard'
 import { ReceiptFace } from './ReceiptFace'
@@ -96,9 +96,6 @@ export function ManifestPanel({
   const issueManifest = useWorld((s) => s.issueManifest)
 
   const [detent, setDetent] = useState<TrayDetent>(receipt ? 'half' : 'peek')
-  // In the COMMAND desk's slot the panel stands in flow with no detents (trayContext.ts), so it is never
-  // at a bottom-edge peek: its button is always drawn.
-  const slotted = useTraySlot() !== null
   const [sending, setSending] = useState(false)
   // A trade's refusal belongs to the lines that earned it — keyed by the lines' identity, so a
   // changed basket starts clean without anything having to be cleared (useTrade's idiom).
@@ -110,7 +107,7 @@ export function ManifestPanel({
   const face = receipt ? 'receipt' : lines.length > 0 ? 'basket' : 'empty'
   // A phone docks a tray only when it has something to say; a wide glass keeps the slot filled.
   if (!wide && face === 'empty') return null
-  const atPeek = !wide && !slotted && detent === 'peek'
+  const atPeek = !wide && detent === 'peek'
 
   const send = () => {
     if (!estimate || sending || lines.length === 0) return

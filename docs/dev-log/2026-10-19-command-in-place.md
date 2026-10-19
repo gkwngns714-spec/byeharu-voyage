@@ -26,12 +26,20 @@ face; the three panes keep the same grid, widths and borders. A face hands the d
 | Invest | your holdings | the Town Hall | Invest / Donate |
 | Profit | today, 7 days, seven bars | the day-by-day books | a one-line hint |
 
-A tray opened inside a face no longer pops up: the desk provides a slot (`trayContext.ts`
-`DeskTraySlot`), read in one place (`Tray.tsx`). A `docked` tray under it becomes a `pane` — portalled
-into the right pane on a wide glass, in flow inside the face on a phone (scrolled into view when it
-opens). A pane is a `region`, not a `dialog`. ManifestPanel draws its button in the slot (no peek there).
-On a phone the parts stack (Plans: Plan, Route, Orders). Markets' good page on a phone is still a tray: it
-opens from a press on a good, not on a face.
+On a wide glass a tray opened inside a face no longer stands over the glass: the desk provides a slot
+(`trayContext.ts` `DeskTraySlot`), read in one place (`Tray.tsx`). A `docked` tray under it becomes a
+`pane`, portalled into the right pane. A pane is a `region`, not a `dialog`.
+
+On a phone the parts stack in the same Sheet (Plans: Plan, Route, Orders, with the plan builder in flow).
+Pressing a face raises no tray. A press INSIDE a face (a price, a room, a job; a good on Markets) still
+raises the bottom tray that moves nothing. Decided by default: that is the owner's own rule for that press
+(rows 6/15/25/28/45), and `tests/layout.spec.ts` pins it. A first cut put those trays in flow on the
+phone too; CI's layout.spec showed it moved the pressed row (the page scrolled to the act) and dropped the
+basket's peek, so it was taken back.
+
+Not covered: on a phone, a City › Trade basket that already holds lines (or a receipt) still stands as its
+peek tray when City is pressed, as it did before. A fresh company has an empty basket, so the spec does not
+exercise it.
 
 ## Proof (local build, `.env.local` absent in the worktree)
 

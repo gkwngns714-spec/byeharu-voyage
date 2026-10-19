@@ -36,7 +36,7 @@ import { useDeskView } from '../deskView'
 //
 // THE DESK LAYS IT OUT (DeskFrame.tsx, 2026-10-19): on a wide glass the city and its buildings stand in
 // the left pane, the building in the centre, and the act a building opens (a trade, the basket, a hire,
-// a job) in the right pane — the desk's slot; on a phone, one under the other, the act in flow.
+// a job) in the right pane — the desk's slot; on a phone, one under the other (an act pressed there rises as the bottom tray, which moves nothing).
 
 export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const fleets = useWorld((s) => s.fleets)

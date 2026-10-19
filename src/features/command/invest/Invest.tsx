@@ -24,7 +24,7 @@ import type { DeskLayout } from '../DeskFrame'
 //
 // THE DESK LAYS IT OUT (DeskFrame.tsx, 2026-10-19): on a wide glass the holdings stand in the left pane,
 // the Town Hall in the centre, and Invest / Donate (the hall's acts) in the right pane, the desk's slot;
-// on a phone, one under the other, the act in flow.
+// on a phone, one under the other (an act pressed there rises as the bottom tray, which moves nothing).
 
 export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const portByCode = useWorld((s) => s.portByCode)

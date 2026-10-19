@@ -486,10 +486,12 @@ trays over the right of the glass. Now a face hands the desk its parts and the d
 | Invest | your holdings | the Town Hall | Invest / Donate |
 | Profit | today, the window, seven bars | the day-by-day books | a one-line hint |
 
-A tray opened inside a face is not a pop-up: the desk provides a slot (`trayContext.ts` `DeskTraySlot`),
-and a docked tray under it stands there as a pane — portalled into the right pane on a wide glass, in flow
-inside the face on a phone. On a phone the faces stack (Plans: Plan, Route, Orders); only Markets' good page
-(a press on a good, not on a face) is still a tray. Pinned by `tests/desk.inplace.spec.ts`.
+On a wide glass a tray opened inside a face is not a side panel over the glass: the desk provides a slot
+(`trayContext.ts` `DeskTraySlot`, read once in `Tray.tsx`), and a docked tray under it is portalled into the
+right pane as a pane. On a phone the faces stack in the same Sheet (Plans: Plan, Route, Orders, the builder
+in flow); pressing a face raises no tray. A press INSIDE a face on a phone (a price, a room, a job; a good
+on Markets) still raises the bottom tray that moves nothing, the owner's rule for that press (§5.7,
+`tests/layout.spec.ts`). Pinned by `tests/desk.inplace.spec.ts`.
 
 **Phone (< 1024):** unchanged in shape: the Sheet, the list, and the good's page as a tray at full. The
 tray holds the chart first, then the ticket (Best trade, Buy at, Sell at), so the same two halves stack.
