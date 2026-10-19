@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Icon } from '../../../components/ui'
 import { useWorld } from '../../../live/worldStore'
 import type { FleetView, SnapshotGood } from '../../../lib/rpc'
+import { DeskMainPane, DeskPanes, DeskSidePane } from '../DeskFrame'
 import type { PlanDraft } from '../plans/planDraft'
 import { GoodChart } from './GoodChart'
 import { GoodTicket } from './GoodTicket'
@@ -54,33 +55,36 @@ export function Terminal({
   const shown = code ?? rows[0]?.code ?? null
   const good = shown ? (goodByCode[shown] ?? null) : null
 
+  // THE DESK'S FRAME (DeskFrame.tsx): the same three panes every face stands in.
   return (
-    <div
-      className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,23rem)_minmax(0,1fr)_minmax(20rem,24rem)]"
-      data-testid="desk-terminal"
-    >
-      <section className="bv-scroll min-h-0 overflow-y-auto border-r border-edge px-4 pb-6 pt-3" data-testid="desk-pane-list">
-        <Markets fleet={fleet} selected={shown} market={market} />
-      </section>
-      {good ? (
-        <GoodPanes
-          key={`${good.code}:${fleet.id}`}
-          fleet={fleet}
-          good={good}
-          cheapest={market.byCode[good.code]?.best?.port ?? null}
-          slot={slot}
-          onTrade={onTrade}
-          onPlan={onPlan}
-        />
-      ) : (
-        <>
-          <section className="flex min-h-0 items-center justify-center text-t-body text-ink-faint" data-testid="desk-pane-chart">
-            <Icon name="search" size={18} className="mr-2" /> No good matches the list.
-          </section>
-          <section className="min-h-0 border-l border-edge" data-testid="desk-pane-ticket" />
-        </>
-      )}
-    </div>
+    <DeskPanes
+      face="markets"
+      testid="desk-terminal"
+      list={<Markets fleet={fleet} selected={shown} market={market} />}
+      main={null}
+      panes={
+        good ? (
+          <GoodPanes
+            key={`${good.code}:${fleet.id}`}
+            fleet={fleet}
+            good={good}
+            cheapest={market.byCode[good.code]?.best?.port ?? null}
+            slot={slot}
+            onTrade={onTrade}
+            onPlan={onPlan}
+          />
+        ) : (
+          <>
+            <DeskMainPane scroll={false}>
+              <span className="flex flex-1 items-center justify-center text-t-body text-ink-faint">
+                <Icon name="search" size={18} className="mr-2" /> No good matches the list.
+              </span>
+            </DeskMainPane>
+            <DeskSidePane />
+          </>
+        )
+      }
+    />
   )
 }
 
@@ -103,16 +107,16 @@ function GoodPanes({
   const desk = useGoodDesk(fleet, good, cheapest)
   return (
     <>
-      <section className="flex min-h-0 flex-col px-6 pb-3 pt-4" data-testid="desk-pane-chart">
+      <DeskMainPane scroll={false}>
         <GoodChart good={good} desk={desk} fill />
-      </section>
-      <section className="min-h-0 border-l border-edge" data-testid="desk-pane-ticket">
+      </DeskMainPane>
+      <DeskSidePane>
         {slot ?? (
           <div className="bv-scroll h-full overflow-y-auto px-4 pb-6 pt-4" data-testid="good-page">
             <GoodTicket good={good} desk={desk} onTrade={(intent) => onTrade(good.code, intent)} onPlan={onPlan} />
           </div>
         )}
-      </section>
+      </DeskSidePane>
     </>
   )
 }

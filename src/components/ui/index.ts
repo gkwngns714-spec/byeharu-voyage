@@ -25,6 +25,8 @@ export { Sheet, SheetSection } from './Sheet'
 //    flow instead, for the half of the owner's rule that is still open. See Tray.tsx.
 export { Tray, type TrayMode } from './Tray'
 export { TrayTitle } from './TrayTitle'
+//    Inside the COMMAND desk a docked tray stands in the desk's own slot instead (trayContext.ts).
+export { DeskTraySlot, useTraySlot, type TraySlot } from './trayContext'
 export {
   TRAY_DETENTS,
   TRAY_PEEK,

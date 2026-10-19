@@ -23,3 +23,26 @@ export const InTray = createContext(false)
 export function useInTray(): boolean {
   return useContext(InTray)
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE DESK'S SLOT — where a tray stands when it is opened INSIDE the COMMAND desk (2026-10-19).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// The owner, 2026-10-19: *"when pressing plans, city, invest, i want the screen of the original command tab
+// to stay same, meaning no pop ups or no new screen, but reloading on the same page."* The desk's faces
+// compose the city's buildings, the Town Hall and the plan builder, and each of those opens its act as a
+// Tray — by default `docked`: fixed at the bottom edge of a phone, a side panel over the right of a wide
+// glass. On a wide glass that side panel stood over the desk's own right pane. So the desk PROVIDES a slot
+// there — `el`, the right pane — and a docked tray under it is portalled into it as a `pane` (no handle,
+// no shadow). On a phone the desk provides none: a press on a price or a room still raises the bottom tray
+// that moves nothing (the owner's rule, rows 6/15/25/28/45; tests/layout.spec.ts pins it).
+// Every tray composes `Tray`, so this is read in ONE place (Tray.tsx). No building learns about the desk.
+// A tray that names its own mode (the map's 'side-next', the desk's own 'pane') is not redirected.
+export interface TraySlot {
+  el: HTMLElement
+}
+export const DeskTraySlot = createContext<TraySlot | null>(null)
+
+/** The desk's slot, when this tray is opened inside the COMMAND desk; null elsewhere. */
+export function useTraySlot(): TraySlot | null {
+  return useContext(DeskTraySlot)
+}

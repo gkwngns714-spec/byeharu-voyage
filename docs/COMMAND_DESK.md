@@ -471,6 +471,28 @@ and an order ticket side by side, using the whole glass.
 - **At sea**: the board runs from the nearest harbour (0183). Sell at says so in one line (`At sea:
   reckoned from Lisbon, 20 miles off`), and no row is bare.
 
+**Every face in the one frame (2026-10-19)** [OWNER: *"at top right, when pressing plans, city, invest, i
+want the screen of the original command tab to stay same, meaning no pop ups or no new screen, but
+reloading on the same page"*]. Until then only Markets stood in the three panes; Plans, City, Invest and
+Profit swapped the glass for a phone column (the header re-flowed over it) and their acts rose as side
+trays over the right of the glass. Now a face hands the desk its parts and the desk lays them out
+(`src/features/command/DeskFrame.tsx`): the header and the three panes are the same on every face.
+
+| Face | left pane | centre pane | right pane (the slot) |
+|---|---|---|---|
+| Markets | watchlist | chart | ticket · trade tray · plan builder |
+| Plans | Orders (the queue) | Route | the plan builder (else a one-line hint) |
+| City | the city, its buildings | the building | the act a building opens: basket, trade, hire, job |
+| Invest | your holdings | the Town Hall | Invest / Donate |
+| Profit | today, the window, seven bars | the day-by-day books | a one-line hint |
+
+On a wide glass a tray opened inside a face is not a side panel over the glass: the desk provides a slot
+(`trayContext.ts` `DeskTraySlot`, read once in `Tray.tsx`), and a docked tray under it is portalled into the
+right pane as a pane. On a phone the faces stack in the same Sheet (Plans: Plan, Route, Orders, the builder
+in flow); pressing a face raises no tray. A press INSIDE a face on a phone (a price, a room, a job; a good
+on Markets) still raises the bottom tray that moves nothing, the owner's rule for that press (§5.7,
+`tests/layout.spec.ts`). Pinned by `tests/desk.inplace.spec.ts`.
+
 **Phone (< 1024):** unchanged in shape: the Sheet, the list, and the good's page as a tray at full. The
 tray holds the chart first, then the ticket (Best trade, Buy at, Sell at), so the same two halves stack.
 No sideways scroll.

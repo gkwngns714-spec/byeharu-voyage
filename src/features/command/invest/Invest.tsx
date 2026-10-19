@@ -8,6 +8,7 @@ import { useServedRead } from '../../../live/useServedRead'
 import { useWorld } from '../../../live/worldStore'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../../lib/format'
 import { worldHoldings, type FleetView, type Holdings } from '../../../lib/rpc'
+import type { DeskLayout } from '../DeskFrame'
 
 // INVEST — your money in the cities (docs/COMMAND_DESK.md §3.7, D6). The owner, 2026-10-17: *"… investing, and all"*.
 //
@@ -20,8 +21,12 @@ import { worldHoldings, type FleetView, type Holdings } from '../../../lib/rpc'
 //                   only for a fleet docked there (the server refuses E_NOT_DOCKED; the hall says so).
 //
 // A row press SELECTS the city whose hall stands below; nothing above it moves.
+//
+// THE DESK LAYS IT OUT (DeskFrame.tsx, 2026-10-19): on a wide glass the holdings stand in the left pane,
+// the Town Hall in the centre, and Invest / Donate (the hall's acts) in the right pane, the desk's slot;
+// on a phone, one under the other (an act pressed there rises as the bottom tray, which moves nothing).
 
-export function Invest({ fleet }: { fleet: FleetView }) {
+export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const portByCode = useWorld((s) => s.portByCode)
   const held = useServedRead<Holdings>('holdings', () => worldHoldings())
   const h = held.view
@@ -29,8 +34,10 @@ export function Invest({ fleet }: { fleet: FleetView }) {
   const hallCode = picked ?? fleetPortCode(fleet)
   const hall = hallCode ? (portByCode[hallCode] ?? null) : null
 
-  return (
-    <div data-testid="desk-invest">
+  return layout({
+    testid: 'desk-invest',
+    sideHint: "Press Invest on one of the Town Hall's works to buy its shares here.",
+    list: (
       <SheetSection heading="Your holdings" data-testid="invest-holdings">
         {held.loading && !h ? (
           <Skeleton className="h-[120px] w-full" />
@@ -90,8 +97,9 @@ export function Invest({ fleet }: { fleet: FleetView }) {
           </>
         )}
       </SheetSection>
-
-      {hall && hall.kind === 'HARBOUR' ? (
+    ),
+    main:
+      hall && hall.kind === 'HARBOUR' ? (
         <SheetSection
           heading={
             <span className="flex items-center gap-2">
@@ -107,7 +115,6 @@ export function Invest({ fleet }: { fleet: FleetView }) {
         <Note tone="neutral" className="mt-4">
           {fleet.name} is not at a city. Press a holding to read its Town Hall.
         </Note>
-      )}
-    </div>
-  )
+      ),
+  })
 }
