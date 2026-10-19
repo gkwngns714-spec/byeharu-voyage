@@ -515,7 +515,7 @@ waiting. Each arm then ran 300 sweeps, one every 15 s (75 game-minutes), from th
 - **Expected effect on the arrivals average:** −0.3 to −0.4 s, which would bring the dark ~3.0 s back to ~2.6–2.7 s.
   To be confirmed in the clean 30-minute window after it is live, before 0200.
 
-## 0203 — the raid balance: a crew that cannot hold the deck surrenders (DARK; `osn-raid-balance`)
+## 0202 — the raid balance: a crew that cannot hold the deck surrenders (DARK; `osn-raid-balance`)
 
 0200 lit the fight at 20:48 UTC. Its 30-minute after-check (20:50–21:20) broke two raid bounds: lost share
 43.8 % against 35.0 % dark, crew lost per raid 12.50 % against 6.43 %. Arrivals held at 2.42 s. 0201 rolls the
@@ -565,7 +565,7 @@ switches back. This section is what was measured after, and the one change made.
 | raiders sized to the prey, ≤ 1.5 × | 22.1 | 5.14 | 8.01 | 0.2 | — | 73 % |
 | outnumbered 5 : 1 at the boarding → RANSOM | 16.4 | 4.35 | 6.63 | 1.2 | — | 84 % |
 | gives up at sight (escort < 0.3 × raider) → RANSOM | 20.6 | 5.63 | 9.02 | 4.6 | — | 70 % |
-| **below the last band the crew surrenders → PLUNDERED (0203)** | **25.2** | **5.47** | **8.56** | **0** | **85 %** | **67 %** |
+| **below the last band the crew surrenders → PLUNDERED (0202)** | **25.2** | **5.47** | **8.56** | **0** | **85 %** | **67 %** |
 
 ("paired": 16 raids drawn, lit against the table on those same raids. "windowed": 16 lit against 19 other dark
 ones, as the after-check did. 4,000 draws each.)
@@ -573,7 +573,7 @@ ones, as the after-check did. 4,000 draws each.)
 **Why the surrender was chosen:**
 - It is the one rule that removes the measured harm, the 30 % crew loss at a hopeless boarding, and changes
   nothing else. The sighting, every round, the break-off and every fight above the last band are word for word
-  the same (0203's own probe asserts this on 960 days).
+  the same (0202's own probe asserts this on 960 days).
 - So range, accuracy and attack matter exactly as much as they did. The won column is identical to 0189's.
 - **It keeps crew meaningful**, as the measurements below show. Sizing the raiders to the prey does not: it fixes
   the boarding ratio of every capped fight, so extra hands buy less.
@@ -588,7 +588,7 @@ ones, as the after-check did. 4,000 draws each.)
 DESIGN B.6's crew −10 %. A lone small hull still loses 11 % of its hull per raid (dark 7.8 %): the rounds are
 unchanged, and the hull is not a bound.
 
-### Range and accuracy still decide (0203, the same 236 raids; every hull's figure set as shown)
+### Range and accuracy still decide (0202, the same 236 raids; every hull's figure set as shown)
 
 | every hull's | won | won, one hull ≤ 12 crew | lost | crew |
 |---|---|---|---|---|
@@ -604,7 +604,7 @@ unchanged, and the hull is not a bound.
 Reach works as a threshold, as 0189 built it: at LONG range a hull fires only if her reach is at least the other
 side's. All raiders are xebecs (reach 26), so every reach under 26 reads the same, and so does every reach over it.
 
-### The bounds on production's raid mix (0203 lit vs the dark table, the same raids)
+### The bounds on production's raid mix (0202 lit vs the dark table, the same raids)
 
 - **Lost share:** 25.2 % vs 27.1 % (bound ≤ 32.1). Holds.
 - **Crew lost per raid:** 5.47 % vs 6.48 % (bound ≤ 7.48). Holds, with 2.0 points to spare. For a lone small hull
@@ -614,7 +614,7 @@ side's. All raiders are xebecs (reach 26), so every reach under 26 reads the sam
   new read and no new loop. Replaying the 4,720 fights took 5.0 s by the old body and 4.4 s by the new on PGlite;
   the difference is noise. `voyage.fight` (the per-hull reads) is untouched.
 
-### 0203 itself
+### 0202 itself
 
 - **Four hunks on `voyage.fight_resolve`**, sliced from the live body (read-only on prod at head 0200: each
   occurs exactly once):
@@ -651,7 +651,7 @@ side's. All raiders are xebecs (reach 26), so every reach under 26 reads the sam
 The window-against-window check fails a correct engine about half the time at these sample sizes (above). The
 **paired** check compares each lit raid with DESIGN B.6's table on that same raid: `bv-harness/raid-scratch/paired.sql`,
 read-only, which takes the window as two timestamps. On 0200's window it reads lost 43.8 % vs 50.0 % and crew
-12.50 % vs 12.71 %: both bounds held there. For 0203, resampled, the paired check holds both bounds 85 % of the
+12.50 % vs 12.71 %: both bounds held there. For 0202, resampled, the paired check holds both bounds 85 % of the
 time on 16-raid windows. A longer window raises that.
 
 ### Not the owner's — confirm
@@ -660,4 +660,4 @@ time on 16-raid windows. A longer window raises that.
 - The words of the surrender: "You surrender; they board and take what they can carry." and "We surrendered, and
   they took what they could carry."
 
-**CI on PR #253 (first push):** build 1m27s, disposable-chain 2m27s (restored from a kept snapshot, not from zero; 0203 recorded applied), pglite-gate the rest 2m50s / merchants 3m41s / ledger 3s, select 8s.
+**CI on PR #253 (first push):** build 1m27s, disposable-chain 2m27s (restored from a kept snapshot, not from zero; 0202 recorded applied), pglite-gate the rest 2m50s / merchants 3m41s / ledger 3s, select 8s.
