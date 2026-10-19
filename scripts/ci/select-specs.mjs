@@ -52,7 +52,8 @@
 //
 // ── THE GROWTH TEST (db.chain's "the world grows under a live house", 45-65 min) ───────────────
 //   Runs on a PR only when the CHAIN MACHINERY changed: src/lib/db/**, tests/frozenChain.ts,
-//   scripts/db/** (not world-guard.mjs nor proofs/: in no snapshot key), package(-lock).json, vite.config.ts, an edited (not added) migration, a migration
+//   scripts/db/** (not world-guard.mjs, proofs/, nor the proof runner proof.mjs and its fixtures
+//   proof-courses.mjs / market-fixture.mjs: in no snapshot key), package(-lock).json, vite.config.ts, an edited (not added) migration, a migration
 //   added before the base chain's newest file (out of order: no kept snapshot is a prefix), or
 //   tests/db.chain.spec.ts (since 2026-10-17 it reads the chain's end off the directory, so a
 //   migration PR does not touch it; the `// And to 0NNN …` + `const LAST = …` bump every migration
@@ -244,11 +245,16 @@ const FULL_RULES = [
 const GROWTH_RULES = [
   // scripts/db/proofs/** is not machinery either (K5, 2026-10-18): a proof runs ON an applied world, in a
   // rolled-back transaction, and is in no snapshot's key; a changed proof selects its own pglite leg (below).
+  // Nor is the proof RUNNER, scripts/db/proof.mjs, nor the fixtures it installs after the apply
+  // (proof-courses.mjs, market-fixture.mjs) (2026-10-19): they read the world applyChainCached() built and
+  // write nothing a snapshot carries, so a kept snapshot fits exactly as before. Measured on 2613844 (a
+  // one-line header edit to proof.mjs): it sent the 45-65 min growth test and lifted the from-zero law for
+  // nothing. A change to any of them still runs EVERY pglite leg (below): they are the gate's own code.
   // scripts/db/world-guard.mjs is NOT machinery (K4, 2026-10-18): it certifies an applied world after the
   // fact and is in no snapshot's key (those hash the migrations, the preamble and the config), so a kept
   // snapshot fits a chain whose guard changed exactly as before. The specs that run it (db.chain,
   // db.image) are still selected by rule G through apply-chain / build-image.
-  /^src\/lib\/db\//, /^tests\/frozenChain\.ts$/, /^scripts\/db\/(?!world-guard\.mjs$|proofs\/)/, /^package(-lock)?\.json$/, /^vite\.config\.ts$/,
+  /^src\/lib\/db\//, /^tests\/frozenChain\.ts$/, /^scripts\/db\/(?!world-guard\.mjs$|proofs\/|proof\.mjs$|proof-courses\.mjs$|market-fixture\.mjs$)/, /^package(-lock)?\.json$/, /^vite\.config\.ts$/,
 ]
 const SHELL_RE = /^(src\/app\/|src\/index\.css$|src\/components\/ui\/|public\/(?!flags\/))/
 const FLAGS_RE = /^public\/flags\//
@@ -523,6 +529,14 @@ const CONTROLS = [
     sha: 'c4f364a',
     check: (s) => [
       [!s.growth.test, `growth test deferred (got: ${s.growth.why.join('; ') || 'none'})`],
+    ],
+  },
+  {
+    name: 'the proof runner alone (2613844: scripts/db/proof.mjs header) → growth deferred, every pglite leg runs (the runner is in no snapshot key)',
+    sha: '2613844',
+    check: (s) => [
+      [!s.growth.run, `from zero NOT allowed, growth deferred (got: ${s.growth.why.join('; ') || 'none'})`],
+      [s.pglite.ledger.length > 0 && s.pglite.merchants.length > 0, "ledger + merchants legs run (the gate's own code changed)"],
     ],
   },
   {
