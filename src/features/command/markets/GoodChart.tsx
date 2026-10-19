@@ -180,8 +180,10 @@ export function GoodChart({
         )}
       </div>
 
-      {/* THE FOOT: when, and how likely */}
-      <div className="mt-1 min-h-11 space-y-0.5">
+      {/* THE FOOT: when, and how likely. On a phone its two lines wrap to up to four (16 px each); the
+          room for all four is kept, so a city's estimate landing (at once, when it was asked ahead —
+          2026-10-19) never pushes the ticket below it down. */}
+      <div className="mt-1 min-h-[4.25rem] space-y-0.5 sm:min-h-11">
         {best ? (
           <p className="text-t-caption text-warning" data-testid="good-best-time">
             ◆ Best time to {sells ? 'sell' : 'buy'} at {focusPort?.name ?? 'this city'}: {formatClock(Date.parse(best.at))} ·{' '}
