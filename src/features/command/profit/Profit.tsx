@@ -2,6 +2,7 @@ import { Figure, Note, SheetSection, Skeleton } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta } from '../../../lib/format'
 import { worldBooks, type Books } from '../../../lib/rpc'
+import type { DeskLayout } from '../DeskFrame'
 
 // PROFIT — the running total (docs/COMMAND_DESK.md §3.8, D7). The owner, 2026-10-17: *"… for max profit"*.
 //
@@ -10,21 +11,31 @@ import { worldBooks, type Books } from '../../../lib/rpc'
 // window's; seven bars, one a day, green or red by sign, the zero line their only axis; then each day's lines. The
 // bars' heights are the served nets scaled to the tallest — presentation, not arithmetic about money.
 
-const DAYS = 7
+//
+// THE DESK LAYS IT OUT (DeskFrame.tsx, 2026-10-19): on a wide glass the head and the bars stand in the left
+// pane and the day-by-day books in the centre; on a phone, one under the other.
 
-export function Profit() {
+const DAYS = 7
+const HINT = 'One bar a game day: up for a gain, down for a loss. Each day’s net is the sum of its lines.'
+
+export function Profit({ layout }: { layout: DeskLayout }) {
   const read = useServedRead<Books>('books:7', () => worldBooks(DAYS))
   const b = read.view
 
   if (read.loading && !b) {
-    return (
-      <div data-testid="desk-profit">
-        <Skeleton className="h-[72px] w-full" />
-        <Skeleton className="mt-3 h-[96px] w-full" />
-      </div>
-    )
+    return layout({
+      testid: 'desk-profit',
+      sideHint: HINT,
+      list: (
+        <>
+          <Skeleton className="h-[72px] w-full" />
+          <Skeleton className="mt-3 h-[96px] w-full" />
+        </>
+      ),
+      main: null,
+    })
   }
-  if (!b) return <Note tone="danger">The books could not be read.</Note>
+  if (!b) return layout({ testid: 'desk-profit', list: <Note tone="danger">The books could not be read.</Note>, main: null })
 
   // oldest → newest across the bar row, a day with nothing in it standing at zero
   const byDay = new Map(b.books.map((d) => [d.game_day, d.net]))
@@ -34,8 +45,11 @@ export function Profit() {
   }))
   const top = Math.max(1, ...bars.map((x) => Math.abs(x.net)))
 
-  return (
-    <div data-testid="desk-profit">
+  return layout({
+    testid: 'desk-profit',
+    sideHint: HINT,
+    list: (
+    <>
       <div className="grid grid-cols-2 gap-4">
         <div className="min-w-0">
           <span className="block text-t-caption text-ink-faint">Today</span>
@@ -61,9 +75,11 @@ export function Profit() {
           </div>
         ))}
       </div>
-
-      {b.books.length === 0 ? (
-        <Note tone="neutral" className="mt-4">
+    </>
+    ),
+    main:
+      b.books.length === 0 ? (
+        <Note tone="neutral" className="mt-4 lg:mt-0">
           Nothing earned or spent in the last {b.days} days.
         </Note>
       ) : (
@@ -86,7 +102,6 @@ export function Profit() {
             ))}
           </SheetSection>
         ))
-      )}
-    </div>
-  )
+      ),
+  })
 }
