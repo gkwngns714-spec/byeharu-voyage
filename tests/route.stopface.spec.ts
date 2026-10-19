@@ -42,6 +42,8 @@ const PORTS = { LIS: { name: 'Lisbon' }, CAD: { name: 'Cádiz' } }
 const order = (text: string, verb: string): QueuedOrder =>
   ({ id: text, seq: 1, text, verb, status: 'pending', error_code: null, error_message: null, figures: null, result: null }) as QueuedOrder
 
+// Pins moved deliberately 2026-10-19 with 0208 (goods ÷ 5): a limit prints at priceDigits (14 → 14.0, 12.5 → 12.5,
+// which used to round to 13), as every price does.
 test('a trade line is said as side, amount and limit — never ALL, never >=', () => {
   expect(tradeLineWords({ kind: 'SELL', qty: null, price_limit: null, at_profit: false })).toEqual({
     side: 'Sell',
@@ -52,19 +54,19 @@ test('a trade line is said as side, amount and limit — never ALL, never >=', (
   expect(tradeLineWords({ kind: 'SELL', qty: 20, price_limit: 14, at_profit: false })).toEqual({
     side: 'Sell',
     amount: '20 units',
-    limit: 'Min 14 🪙 each',
+    limit: 'Min 14.0 🪙 each',
   })
   expect(tradeLineWords({ kind: 'BUY', qty: null, price_limit: 12, at_profit: false })).toEqual({
     side: 'Buy',
     amount: 'All that fit',
-    limit: 'Max 12 🪙 each',
+    limit: 'Max 12.0 🪙 each',
   })
 
   // The orders a route writes (0092 `cmd.standing_route_lines`), as the queue prints them.
   const words = (text: string, verb: string) => queuedOrderWords(order(text, verb), 'Gaivota', PORTS, GOODS)
-  expect(words('SELL iron ALL AT >= 12.5', 'SELL')).toBe('Sell Iron · All · Min 13 🪙 each')
+  expect(words('SELL iron ALL AT >= 12.5', 'SELL')).toBe('Sell Iron · All · Min 12.5 🪙 each')
   expect(words('SELL black-pepper 20', 'SELL')).toBe('Sell Pepper · 20 units · Any price')
-  expect(words('BUY iron ALL AT 12', 'BUY')).toBe('Buy Iron · All that fit · Max 12 🪙 each')
+  expect(words('BUY iron ALL AT 12', 'BUY')).toBe('Buy Iron · All that fit · Max 12.0 🪙 each')
   expect(words('PROVISION DAYS 5', 'PROVISION')).toBe('Resupply to 5 days')
   expect(words('SAIL Gaivota TO CAD', 'SAIL')).toBe('Sail Cádiz')
   for (const t of ['SELL iron ALL AT >= 12.5', 'BUY iron ALL', 'PROVISION DAYS 5']) {
@@ -86,9 +88,9 @@ test('a stop is its sell lines and its buy lines, apart', () => {
   const { sell, buy, quiet } = routeStopLines(stop, GOODS)
   expect(sell.map((l) => [l.name, l.amount, l.limit])).toEqual([
     ['Everything on board', 'All', 'Only sell above cost'],
-    ['Pepper', '20 units', 'Min 14 🪙 each'],
+    ['Pepper', '20 units', 'Min 14.0 🪙 each'],
   ])
-  expect(buy.map((l) => [l.name, l.amount, l.limit, l.category])).toEqual([['Iron', 'All that fit', 'Max 12 🪙 each', 'metal']])
+  expect(buy.map((l) => [l.name, l.amount, l.limit, l.category])).toEqual([['Iron', 'All that fit', 'Max 12.0 🪙 each', 'metal']])
   expect(quiet).toBe('Resupply if low · Repair')
 })
 

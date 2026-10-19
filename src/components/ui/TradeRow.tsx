@@ -5,7 +5,7 @@ import { goodIcon } from './goodIcons'
 import { RarityMark } from './Rarity'
 import { Row } from './Row'
 import { StockGauge } from './StockGauge'
-import { formatInt, formatUnits } from '../../lib/format'
+import { formatPriceFigure, formatUnits } from '../../lib/format'
 import type { MarketGood } from '../../lib/rpc'
 
 // THE LEDGER ROW — one good, its two prices as its two acts, and the tide. docs/QUAY_LEDGER.md §3
@@ -136,5 +136,5 @@ export function PriceCell({
   dead: string | null
   selected: boolean
 }) {
-  return <ActCell label={label} figure={<Figure value={formatInt(price)} />} onPress={onPress} dead={dead} selected={selected} />
+  return <ActCell label={label} figure={<Figure value={formatPriceFigure(price)} />} onPress={onPress} dead={dead} selected={selected} />
 }

@@ -486,6 +486,12 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
            perishable_pct_day::float8 perishable_pct_day, category, culture_mask,
            origin_regions, entrepot_ports
       from public.goods order by code`)).rows
+  // 0208: the two scales the database applies to the data when it writes the rows (world_config
+  // hold_scale, goods_price_level). A chain before 0208 has neither knob and its rows ARE the data's,
+  // so their absence reads 1 — the right answer there, not a fallback.
+  db_.scales = (await db.query(`
+    select coalesce((select (value #>> '{}')::float8 from public.world_config where key = 'hold_scale'), 1) as hold,
+           coalesce((select (value #>> '{}')::float8 from public.world_config where key = 'goods_price_level'), 1) as price`)).rows[0]
   db_.spec = (await db.query(`
     select p.code as port, g.code as good from public.port_specialties s
       join public.ports p on p.id = s.port_id join public.goods g on g.id = s.good_id`)).rows
@@ -707,6 +713,23 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     }
     const { people, cat } = captainInputs()
     want.captains = { people, cat, gen }
+  }
+
+  // 0208: THE DATA × THE TWO SCALES (the owner, 2026-10-19: "enlarge the ships cargo by 3x. reduce the
+  // goods price by 5x"). The data files keep the design figures; the database holds them × hold_scale
+  // (every hold quantity: a hull's rated hold, an item's hold delta, a flat hold perk or set bonus) and
+  // × goods_price_level (a good's base value). One place applies each scale to the wanted rows, here.
+  {
+    const k = db_.scales
+    const isHold = (stat) => stat === 'hold'
+    want.goods = want.goods.map((g) => ({ ...g, base_value: g.base_value * k.price }))
+    want.waveA = {
+      ...want.waveA,
+      classes: want.waveA.classes.map((c) => ({ ...c, hold: c.hold * k.hold })),
+      effects: want.waveA.effects.map((e) => (isHold(e.stat) ? { ...e, delta: e.delta * k.hold } : e)),
+    }
+    if (want.perks) want.perks = want.perks.map((x) => (isHold(x.stat) && x.mode === 'flat' ? { ...x, perRank: x.perRank * k.hold } : x))
+    if (want.setBonuses) want.setBonuses = want.setBonuses.map((b) => (isHold(b.stat) && b.flat !== 'null' ? { ...b, flat: String(Number(b.flat) * k.hold) } : b))
   }
 
   // ── POSITIVE CONTROL: the comparator must SEE a planted drift before it may certify zero ─────

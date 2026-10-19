@@ -63,9 +63,11 @@ export function formatDucatsDelta(n: number): string {
 
 /** A unit price: "7 🪙 each" — the figure a trader actually compares. PER UNIT, not per ton: a
  *  trade quantity is a COUNT of units (`qty`), and a unit of a good takes `bulk` tons of space —
- *  126 of 523 goods have bulk 1.0, so "per ton" was wrong for the other 397. */
+ *  126 of 523 goods have bulk 1.0, so "per ton" was wrong for the other 397.
+ *  0208 (goods ÷ 5, 2026-10-19): the figure follows `priceDigits`, as every other price does — a
+ *  unit at 2.40 no longer prints as "2", which hid a 20 % move. */
 export function formatUnitPrice(n: number): string {
-  return `${formatInt(n)}${NBSP}${COIN} each`
+  return `${formatPriceFigure(n)}${NBSP}${COIN} each`
 }
 
 /** A PRICE AT ANY SCALE (the COMMAND DESK, 2026-10-18): the game's prices run from about 1 to about

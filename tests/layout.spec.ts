@@ -907,7 +907,7 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
 
     // The stake, every figure served: the port's fee, the price for the quantity on the button.
     await expect(thread.locator('[data-testid="haggle-fee"]')).toHaveText(/\d+(\.\d)?%/)
-    await expect(thread.locator('[data-testid="haggle-price"]')).toHaveText(/\d[\d,]*\s🪙 each/, { timeout: 20_000 })
+    await expect(thread.locator('[data-testid="haggle-price"]')).toHaveText(/\d[\d,.]*\s🪙 each/, { timeout: 20_000 })
     await expect(thread.locator('[data-testid="haggle-odds"]')).toHaveText(/\d+%/)
     // Both buttons on the reach floor.
     const short = await thread.evaluate((el) =>

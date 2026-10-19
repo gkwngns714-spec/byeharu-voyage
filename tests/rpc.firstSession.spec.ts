@@ -139,34 +139,10 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   const buys = here.goods.filter((g) => buyableHere(g)).sort((a, b) => a.mid - b.mid)
   expect(buys.length).toBeGreaterThan(0)
 
-  // 0039: "one leg away" became "nearest by sailed water" — world.reach, the same distance
-  // table the endurance gate and the trade scan read.
-  //
-  // ── 0061: EIGHT WAS AN AMBIENT OF THE OLD WORLD, AND IT BROKE HERE ───────────────────────────
-  // This line used to take the EIGHT nearest, "like the old one-leg set" — a leftover from the
-  // leg graph that migration 0049 deleted. It survived because when every port sold all 243
-  // goods, any eight ports were certain to contain a profitable round trip.
-  //
-  // Under the owner's roster rule they are not. Measured on this chain: Lisboa's six nearest
-  // harbours are all Iberian and all carry the same short roster — wine, olive oil, dried fish,
-  // salt — so there is no gradient between them. The only profitable outbound legs were Setubal
-  // and Porto, and neither has anything worth carrying home; Cadiz, Sevilla, Sanlucar and Tanger
-  // all pay LESS than Lisboa for everything Lisboa marks cheap.
-  //
-  // That is not a defect. It is the instruction working: *"there should be a purpose to go to a
-  // city that is far away to get rare trade goods"* (docs/OWNER_REQUESTS.md row 48). The gradient
-  // moved OUT, so the first session has to look further than the old graph's one leg. Twenty-four
-  // is still the near field — Lisboa to Sevilla and back is inside it — and it is the smallest
-  // number that restores the round trip on the pinned market rather than a round one chosen to be
-  // safe. If a future world moves the gradient further out again, THIS is the line that should
-  // move, and the comment above it says why.
+  // 0039: the sailed distance table (world.reach) — the same one the endurance gate and the trade scan read;
+  // the voyage below is checked against it. (Until 2026-10-19 this spec also searched the 24 nearest harbours
+  // for its own cargo — 0061 moved that from eight to 24; 0208 replaced the search with world.trade_routes.)
   const reachHere = expectOk(await worldReach(lisboa.id)).reaches
-  const neighbours = Object.entries(reachHere)
-    .sort((a, b) => a[1] - b[1])
-    .slice(0, 24)
-    .map(([code]) => snapshot.ports.find((p) => p.code === code)!)
-    .filter((p) => p.kind === 'HARBOUR')
-  expect(neighbours.length).toBeGreaterThan(0)
 
 
   // A STARTER'S constraints are part of the choice, not a detail to work around afterwards: the
@@ -191,7 +167,11 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   // floored at 60 (0005's own greatest(60, …), re-asserted over every row by 0041) and the
   // fraction is 0.35 — their product floors every cap at 21. If either knob moves, this line
   // is the one to move with it.
-  const CAP_SAFE = 20
+  // Moved deliberately 2026-10-19 with 0208: 0207 made every market ten times deeper (market_depth 10, so
+  // the floor is 600 × 0.35 = 210 a day) and 0208 made goods a fifth the price. At 20 units the round trip's
+  // profit no longer covered the crew's wages (public.wages_from_profit takes a profit up to what is owed),
+  // and she came home with exactly her stake. 200 is under the new floor of 210, as 20 was under 21.
+  const CAP_SAFE = 200
   const tradeQty = (code: string) => Math.min(spaceFor(code), CAP_SAFE)
 
   // ── 0061: A FIRST SESSION NEEDS A PORT THAT TRADES BOTH WAYS ─────────────────────────────────
@@ -228,47 +208,39 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
       .filter((g) => buyableHere(g) && g.code !== except)
       .sort((a, b) => a.mid - b.mid)[0]
 
+  // 2026-10-19 (0208: goods a fifth the price, the distance premium halved, wages unchanged): THE OUTBOUND
+  // CARGO IS THE GAME'S OWN BEST TRADE, world.trade_routes — the read proof 05 measures the first voyage by —
+  // not this spec's own scan. The scan priced one unit's ask against one unit's bid at the cities whose ROSTER
+  // trades the good, so it only ever saw the thin gradient between makers (haul 1). At ÷ 5 that gradient no
+  // longer pays the crew: measured on this pinned market, the best it found was cork to Porto, quoted +4 on
+  // 82 units and sold −3 after the price walk, and at 20 units the profit went whole to the wages (she came
+  // home with exactly her stake). Priced with the walk at the real quantity, none of Lisboa's reachable
+  // harbours paid. The claim is unchanged and no weaker: she must still come home richer — on the trade the
+  // game shows her, whose every figure is world.quote's.
+  type Route = { code: string; to: { code: string }; qty: number; profit: number }
+  const routes = (await db.callAs<{ routes: Route[] }>(
+    'select world.trade_routes($1::uuid, $2::uuid, null, null) as result', [lisboa.id, fleet.id])).routes
+  expect(routes.length).toBeGreaterThan(0)
   let cargo = buys[0]
-  let destination = neighbours[0]
+  let destination = lisboa
   let bestGain = 0
-  // EVERY CHEAP GOOD, NOT THE TWELVE CHEAPEST. `buys.slice(0, 12)` was calibrated when every port
-  // sold all 243 goods, so the twelve best gradients out of Lisboa were certain to include
-  // something the destination also traded. Under 0061 a neighbour carries 4-10 goods, and the
-  // overlap between "Lisboa's twelve cheapest" and "Cadiz's ten" is very often empty — measured on
-  // this chain, the only outbound matches inside the old twelve were at Setubal and Porto, the two
-  // neighbours with nothing worth carrying home. The scan is cheap (the quays are read once each,
-  // above), so it now considers the whole cheap list and lets the two-leg test do the narrowing.
-  for (const candidate of buys) {
+  let routeQty = 0
+  for (const r of [...routes].sort((a, b) => b.profit - a.profit)) {
+    const good = here.goods.find((g) => g.code === r.code && buyableHere(g))
+    const port = snapshot.ports.find((p) => p.code === r.to.code && p.kind === 'HARBOUR')
+    if (!good || !port || r.profit <= 0) continue
+    // 0061: AND SHE MUST HAVE SOMETHING TO CARRY BACK (§K.1 is the ROUND TRIP)
+    if (!homewardFrom(await quayAt(port), good.code)) continue
     // Enough purse to overfill the hold — so the refusal beat below is about SPACE, which is what
     // it means to test, rather than about money.
-    if (candidate.buy * (spaceFor(candidate.code) + 20) >= opening) continue
-    for (const port of neighbours) {
-      // 0061: A DESTINATION NEED NOT TRADE WHAT SHE IS CARRYING. Since a city sells only the 4-10
-      // goods on its roster, `world.market(there)` carries a row for this good only if that city
-      // trades it — so `find` legitimately returns undefined and this is a candidate to skip, not
-      // a crash. (She could still SELL it there — cmd.do_sell is deliberately unrestricted — but
-      // the payload has no price to plan a profit from, and a first session plans from the read.)
-      const quay = await quayAt(port)
-      const there = quay.find((g) => g.code === candidate.code)
-      if (!there || !there.available) continue
-      // 0061: AND SHE MUST HAVE SOMETHING TO CARRY BACK. A 4-10 good roster means the port that
-      // pays best for this cargo may have nothing on its quay worth buying — a real shape of the
-      // owner's world, not a fault to route around. But §K.1 is the ROUND TRIP ("come home
-      // richer"), so the destination this spec picks has to support both legs. Choosing on the
-      // outbound gradient alone is exactly what made this spec red: it sailed to the best seller
-      // and then demanded a homeward cargo the roster had never promised.
-      if (!homewardFrom(quay)) continue
-      const gain = (there.sell - candidate.buy) * tradeQty(candidate.code)
-      if (gain > bestGain) {
-        bestGain = gain
-        cargo = candidate
-        destination = port
-      }
-    }
+    if (good.buy * (spaceFor(good.code) + 20) >= opening) continue
+    cargo = good
+    destination = port
+    bestGain = r.profit
+    routeQty = r.qty
+    break
   }
-  // 0071: the second line here read `cargo.pct_nbr! < 100` — the server's own comparison agreeing
-  // with the server's own choice of cargo. It is gone with the comparison, and nothing is lost:
-  // `bestGain > 0` is the claim, and it was measured by actually pricing the sale at the other end.
+  console.log(`first session: ${cargo.code} to ${destination.code}, ${routeQty} units quoted at +${bestGain}`)
   expect(bestGain).toBeGreaterThan(0)        // somewhere out there is worth sailing to
 
   // Water the casks. §F.2 refuses a voyage the stores cannot cover, and a captain fills them at
@@ -298,7 +270,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expectOk(await cmdClear(fleet.id))
 
   fleet = expectOk(await worldFleets())[0]
-  const qty = tradeQty(cargo.code)
+  const qty = Math.min(tradeQty(cargo.code), routeQty)
   const bought = expectOk(await cmdIssue(fleet.id, `BUY ${cargo.code} ${qty}`, fleet.version))
   expect(bought.order.status).toBe('done')
   const spent = Number(bought.order.result!.total)
