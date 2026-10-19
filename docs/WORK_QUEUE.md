@@ -8,10 +8,11 @@ Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the p
 
 Prod head: **0204**.
 
-## Deploy order (coordinator, 2026-10-19 02:25 UTC)
-**TOP: main's Acceptance has been RED since 2026-10-18 14:33** (unread by me; recorded mistake). Persistent: route.stopface:113 (an Edit button is gone, since the terminal db7c956); map.marks:56 + map.noblink:141 (8–9 layers > 7, since flags #234). Intermittent: map.daylight.raster:83, map.merchants. Fixing on `fix-acceptance`.
-LIVE: … 0203 routes fix · 0204 fight lit (paired raid check PASSED; arrivals 3.45 s FAILED, attributed to 0203's planner, now 2.9 s).
-Next: **0205** npc_route_candidates 16 → 8 (`osn-arrivals-fast`).
+## Deploy order (coordinator, 2026-10-19 03:20 UTC)
+**TOP: main's Acceptance has been RED since 2026-10-18 14:33.** Persistent failures: route.stopface:113 (Edit button gone, since the terminal db7c956); map.marks:56 + map.noblink:141 (8–9 layers > 7, since flags #234). Fixing on `fix-acceptance`.
+LIVE: … 0203 routes fix · 0204 fight lit (paired raid check PASSED). Arrivals fell back under 3 s on their own (2.6–2.8 s).
+Next: **0205** trade loops priced first, capped at 8 (`osn-arrivals-fast`); the knob-only version raised losing laps 33 → 51 %, so it was not shipped.
+Done 2026-10-19: #256 plan wording · #255 CI ledger leg 12m → 1.6m · #258 continue from any computer (queue, deploy script and harness in the repo; docs/NEW_COMPUTER.md).
 
 ## In progress, in priority and deploy order
 | # | Item | Owner's words | State |
