@@ -4,6 +4,7 @@ import type { FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
 import { DESK_SORTS, useDeskView, type DeskSort } from '../deskView'
 import { useMarketRows, type MarketRows } from './marketRows'
+import { prefetchGoodDesk } from './useGoodDesk'
 import { WatchRow } from './WatchRow'
 
 // MARKETS — every good once, like a broker's watchlist (docs/COMMAND_DESK.md §3.2). The owner,
@@ -18,6 +19,10 @@ import { WatchRow } from './WatchRow'
 // THE COLUMN HEAD SAYS "Market price" ONCE: the figure is the cheapest seller's mid — the chart's own
 // figure. What you would pay and what you would get are on the good's page, from the quote (§3.2's
 // DEFAULT, technical: the ask needs each city's spread, ~1 ms a city on prod).
+//
+// A ROW THE POINTER RESTS ON IS ASKED AHEAD (2026-10-19, owner: "when pressing a different trade goods, it
+// takes too long to load"): its good page's reads start on the rest, so the press finds them on the wire
+// or answered (useGoodDesk.prefetchGoodDesk; kept until the market's edge, servedMemo.ts).
 
 export function Markets({
   fleet,
@@ -42,7 +47,7 @@ function MarketsOwnRows({ fleet, selected }: { fleet: FleetView; selected: strin
   return <MarketsList fleet={fleet} selected={selected} market={market} />
 }
 
-function MarketsList({ selected, market }: { fleet: FleetView; selected: string | null; market: MarketRows }) {
+function MarketsList({ fleet, selected, market }: { fleet: FleetView; selected: string | null; market: MarketRows }) {
   const portByCode = useWorld((s) => s.portByCode)
   const { filter, sort, search, setFilter, setSort, setSearch } = useDeskView()
   const openGood = useDeskGood((s) => s.open)
@@ -94,6 +99,16 @@ function MarketsList({ selected, market }: { fleet: FleetView; selected: string 
               watch={byCode[g.code]}
               on={on === g.code}
               onOpen={() => openGood(g.code)}
+              onPrefetch={() =>
+                prefetchGoodDesk({
+                  fleetId: fleet.id,
+                  fleetVersion: fleet.version,
+                  docked: fleet.status === 'DOCKED' ? fleet.port : null,
+                  goodId: g.id,
+                  cheapest: byCode[g.code]?.best?.port ?? null,
+                  board: true,
+                })
+              }
               portName={(c) => portNameOf(portByCode, c)}
             />
           ))
