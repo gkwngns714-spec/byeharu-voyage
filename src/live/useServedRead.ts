@@ -61,6 +61,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { RpcResult } from '../lib/rpc'
+import { askServed, peekServed } from './servedMemo'
 import { useWorld } from './worldStore'
 
 export interface ServedRead<V> {
@@ -78,7 +79,7 @@ export interface ServedRead<V> {
 const IDLE = { view: null, loading: false, stale: false }
 const WAITING = { view: null, loading: true, stale: false }
 
-export interface ServedReadOptions {
+export interface ServedReadOptions<V = unknown> {
   /** What is ASKED, when that is finer than the subject (2026-09-14): the trade tray's dry run
    *  is FOR (fleet, side, good) but asks about a QUANTITY, and the owner will not have the sale's
    *  figures blink on every press of + — so a new question re-asks and the last answer for the
@@ -91,6 +92,11 @@ export interface ServedReadOptions {
    *  A read that costs a third of a second on prod (world.good_board) must not ride a 3-s beat.
    *  Absent: the world's beat, as every other read. */
   trigger?: number
+  /** REMEMBERED ANSWERS (2026-10-19, servedMemo.ts): the key the answer is kept under — the read's own
+   *  question, named for its RPC — and how long an answer stays fresh. A fresh kept answer is drawn at
+   *  once on a new mount or question and not asked again; an ask already on the wire (a prefetch) is
+   *  joined. The world's beat or the caller's trigger always asks. Absent: nothing is kept. */
+  memo?: { key: string; freshMs: (view: V) => number } | null
 }
 
 /**
@@ -103,16 +109,22 @@ export interface ServedReadOptions {
 export function useServedRead<V>(
   subject: string | null,
   ask: () => Promise<RpcResult<V>>,
-  { question = subject, trigger }: ServedReadOptions = {},
+  { question = subject, trigger, memo = null }: ServedReadOptions<V> = {},
 ): ServedRead<V> {
   // The world's read: a new one re-asks the same question — unless the caller names its own trigger.
   const worldBeat = useWorld((s) => s.readAt) ?? 0
   const beat = trigger ?? worldBeat
 
   const askRef = useRef(ask)
+  const memoRef = useRef(memo)
   useEffect(() => {
     askRef.current = ask
+    memoRef.current = memo
   })
+  const memoKey = memo?.key ?? null
+  // The question last asked by THIS mount: asking it again is the beat's (or the edge's) re-ask, which
+  // never takes a kept answer.
+  const askedRef = useRef<string | null>(null)
 
   const [answer, setAnswer] = useState<{
     subject: string
@@ -123,7 +135,12 @@ export function useServedRead<V>(
   useEffect(() => {
     if (subject === null || question === null) return
     let live = true
-    void askRef.current().then((r) => {
+    const asking = `${subject}${question}${memoKey ?? ''}`
+    const again = askedRef.current === asking
+    askedRef.current = asking
+    const m = memoRef.current
+    const answered = m && memoKey ? askServed<V>(memoKey, () => askRef.current(), m.freshMs, again) : askRef.current()
+    void answered.then((r) => {
       if (!live) return
       setAnswer({ subject, question, view: r.ok ? r.value : null })
     })
@@ -131,9 +148,16 @@ export function useServedRead<V>(
       live = false
     }
     // `beat` is not read in the body: it is here only so the world's read re-asks.
-  }, [subject, question, beat])
+  }, [subject, question, beat, memoKey])
 
   if (subject === null) return IDLE
+  // This very question answered on this mount: the answer, the beat's re-ask silent behind it.
+  if (answer !== null && answer.subject === subject && answer.question === question) {
+    return { view: answer.view, loading: false, stale: false }
+  }
+  // A fresh kept answer to this very question (servedMemo.ts): drawn at once, as if just answered.
+  const remembered = memoKey ? peekServed<V>(memoKey) : undefined
+  if (remembered !== undefined) return { view: remembered, loading: false, stale: false }
   // Nothing of THIS subject's has been answered yet: wait, and show none of another subject's.
   if (answer === null || answer.subject !== subject) return WAITING
   // The last answer stands while the next read of the same subject — the same question on the

@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { fleetCargoByCode } from '../../../domain/fleet'
-import { useGoodBoard, usePriceOutlook, usePriceWhy } from '../../../live/useDesk'
+import { prefetchDeskReads, useGoodBoard, usePriceOutlook, usePriceWhy } from '../../../live/useDesk'
 import { usePortHistory } from '../../../live/usePortHistory'
 import { useWorld } from '../../../live/worldStore'
 import type { BoardBuyRow, BoardSellRow, FleetView, SnapshotGood } from '../../../lib/rpc'
@@ -14,8 +14,45 @@ import { useDeskGood } from '../../../store/deskGood'
 //
 // THE FOCUS — which city the chart follows: the city tapped (useDeskGood), else the docked city when
 // it sells the good, else the cheapest seller, else the dearest buyer.
+//
+// THE FOCUS IS GUESSED WHILE THE BOARD IS ON THE WIRE (2026-10-19, owner: "when pressing a different trade
+// goods, it takes too long to load"): the chart's estimate and the ticket's breakdown are the focus city's,
+// and the focus is the board's — so they were asked only after the board landed, one wait after another.
+// Now the cities the focus is likely to be (the docked city; the watchlist's cheapest seller) are asked
+// beside the board (`prefetchGoodDesk`), and when the board names one of them its reads are already in.
 
-export function useGoodDesk(fleet: FleetView, good: SnapshotGood) {
+/** The chart's estimate (world.price_outlook): the market price, a day of slots ahead. */
+export const DESK_OUTLOOK = { side: 'mid', slots: 24 } as const
+
+/** Ask ahead what a good page will ask: the board (with `board`), and at the cities its chart is likely to
+ *  follow — the docked city, then `cheapest` (the watchlist's cheapest seller) — the estimate, the
+ *  breakdown and the price record. Nothing is shown from here; the panes find the answers kept. */
+export function prefetchGoodDesk({
+  fleetId,
+  fleetVersion,
+  docked,
+  goodId,
+  cheapest,
+  board,
+}: {
+  fleetId: string
+  fleetVersion: number | null
+  /** The port CODE she is docked at, or null. */
+  docked: string | null
+  goodId: string
+  /** The port CODE of the cheapest seller (world.watchlist's `best`), or null. */
+  cheapest: string | null
+  board: boolean
+}): void {
+  const { portByCode, history, loadHistory } = useWorld.getState()
+  const portIds = [...new Set([docked, cheapest])]
+    .map((code) => (code ? portByCode[code]?.id : undefined))
+    .filter((id): id is string => !!id)
+  prefetchDeskReads({ goodId, board: board ? { fleetId, fleetVersion } : null, outlook: DESK_OUTLOOK, portIds })
+  for (const id of portIds) if (history[id] === undefined) void loadHistory(id)
+}
+
+export function useGoodDesk(fleet: FleetView, good: SnapshotGood, cheapest: string | null = null) {
   const portByCode = useWorld((s) => s.portByCode)
   const focusCode = useDeskGood((s) => s.focus)
   const setFocus = useDeskGood((s) => s.setFocus)
@@ -25,11 +62,16 @@ export function useGoodDesk(fleet: FleetView, good: SnapshotGood) {
   const docked = fleet.status === 'DOCKED' ? fleet.port : null
   const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
 
+  // the likely focus cities' reads, beside the board's (the header's 2026-10-19 paragraph)
+  useEffect(() => {
+    prefetchGoodDesk({ fleetId: fleet.id, fleetVersion: fleet.version, docked, goodId: good.id, cheapest, board: false })
+  }, [fleet.id, fleet.version, docked, good.id, cheapest])
+
   const focus =
     focusCode ?? (b ? (b.buy.find((r) => r.here)?.port ?? b.buy[0]?.port ?? b.sell[0]?.port ?? null) : docked)
   const focusPort = focus ? (portByCode[focus] ?? null) : null
   const history = usePortHistory(focusPort?.id ?? '', focusPort ? good.code : null)
-  const outlook = usePriceOutlook(focusPort?.id ?? null, good.id, 'mid', 24)
+  const outlook = usePriceOutlook(focusPort?.id ?? null, good.id, DESK_OUTLOOK.side, DESK_OUTLOOK.slots)
   const why = usePriceWhy(focusPort?.id ?? null, good.id)
 
   const focusRow: BoardBuyRow | BoardSellRow | null =

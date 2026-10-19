@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { Icon, RarityMark, Sparkline, StockGauge, goodIcon } from '../../../components/ui'
 import { formatInt, formatPctChange, formatPrice } from '../../../lib/format'
 import type { SnapshotGood, WatchGood } from '../../../lib/rpc'
@@ -13,12 +14,19 @@ import type { SnapshotGood, WatchGood } from '../../../lib/rpc'
 // A PRESS SELECTS (the owner's law): the whole row is one button that opens the good's page in its own
 // slot (a tray; beside the column on a wide glass). The row takes the accent wash and nothing on the
 // list moves.
+//
+// A REST ASKS AHEAD (2026-10-19): the pointer resting on a row for PREFETCH_DWELL_MS, or the keyboard's
+// focus, calls `onPrefetch` — the good page's reads start before the press (Markets.tsx). A pointer only
+// passing over the list asks nothing.
+
+const PREFETCH_DWELL_MS = 150
 
 export function WatchRow({
   good,
   watch,
   on,
   onOpen,
+  onPrefetch,
   portName,
 }: {
   good: SnapshotGood
@@ -26,8 +34,27 @@ export function WatchRow({
   /** This good's page is open. */
   on: boolean
   onOpen: () => void
+  /** Ask the good page's reads ahead (a rest on the row, or its focus). */
+  onPrefetch?: () => void
   portName: (code: string) => string
 }) {
+  const dwell = useRef<number | null>(null)
+  const prefetchRef = useRef(onPrefetch)
+  useEffect(() => {
+    prefetchRef.current = onPrefetch
+  })
+  const rest = () => {
+    if (dwell.current !== null || !prefetchRef.current) return
+    dwell.current = window.setTimeout(() => {
+      dwell.current = null
+      prefetchRef.current?.()
+    }, PREFETCH_DWELL_MS)
+  }
+  const leave = () => {
+    if (dwell.current !== null) window.clearTimeout(dwell.current)
+    dwell.current = null
+  }
+  useEffect(() => leave, [])
   const best = watch?.best ?? null
   const change = watch?.change_pct ?? null
   const stock =
@@ -46,6 +73,9 @@ export function WatchRow({
       <button
         type="button"
         onClick={onOpen}
+        onPointerEnter={rest}
+        onPointerLeave={leave}
+        onFocus={() => onPrefetch?.()}
         aria-pressed={on}
         className={[
           'flex min-h-row w-full items-center gap-2.5 rounded-control px-2 py-2 text-left transition',

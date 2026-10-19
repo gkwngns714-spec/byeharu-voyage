@@ -63,7 +63,15 @@ export function Terminal({
         <Markets fleet={fleet} selected={shown} market={market} />
       </section>
       {good ? (
-        <GoodPanes key={`${good.code}:${fleet.id}`} fleet={fleet} good={good} slot={slot} onTrade={onTrade} onPlan={onPlan} />
+        <GoodPanes
+          key={`${good.code}:${fleet.id}`}
+          fleet={fleet}
+          good={good}
+          cheapest={market.byCode[good.code]?.best?.port ?? null}
+          slot={slot}
+          onTrade={onTrade}
+          onPlan={onPlan}
+        />
       ) : (
         <>
           <section className="flex min-h-0 items-center justify-center text-t-body text-ink-faint" data-testid="desk-pane-chart">
@@ -79,17 +87,20 @@ export function Terminal({
 function GoodPanes({
   fleet,
   good,
+  cheapest,
   slot,
   onTrade,
   onPlan,
 }: {
   fleet: FleetView
   good: SnapshotGood
+  /** The watchlist's cheapest seller (a port code): a city the chart is likely to follow, asked early. */
+  cheapest: string | null
   slot: ReactNode
   onTrade: (code: string, intent: 'buy' | 'sell') => void
   onPlan: (plan: PlanDraft) => void
 }) {
-  const desk = useGoodDesk(fleet, good)
+  const desk = useGoodDesk(fleet, good, cheapest)
   return (
     <>
       <section className="flex min-h-0 flex-col px-6 pb-3 pt-4" data-testid="desk-pane-chart">
