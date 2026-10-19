@@ -79,4 +79,75 @@ Voyage history adds almost nothing: 617 distinct port pairs, and Le Havre has on
 
 ## 3. Proof on prod-shaped data
 
-(the 60-minute side-by-side is running; its numbers land in the next commit)
+### The method
+
+- **Harness:** `redesign-scratch`'s fixed setup, which keys each loop by company and fleet. I refreshed it from prod at 20:34 UTC with stocks, purses, treasuries, all 837 loops and every knob.
+- **Start state:** every merchant docked at stop 0 at a lap start.
+- **Two runs side by side:**
+  - head 0199;
+  - head 0199 + this file, applied **after** the setup, as prod will apply it. Its self-assert then runs on prod's real graph.
+- **The run:** the kickoff, then real time for 60 minutes:
+  - the arrivals sweep every 15 s;
+  - the market drift every 10 min;
+  - `tick_reconcile` at +15 and +40 min.
+- **Caveat on wall-clock:** a first attempt was void because the PC slept mid-run. The build and the proofs (about 15 minutes) ran during the first part of this run, so both runs' wall-clock figures carry that load equally.
+
+The self-assert on prod's graph:
+
+> COMPTOIR CHASTELLAIN (Voyage Hamburg; home knows 7 legs): LEH-GDA → LEH-COP-LUB — net 4352 a lap over 1784 nm, longest leg 875 nm, stores 15.0 / 10.4 days, 4 BUY … LEG GRAPH: 1218 courses kept; homes knowing ≤ 1 leg 113 → 0; Le Havre 1 → 7 legs.
+
+### The results
+
+| 60 min, prod-shaped | head (0197–0199) | + 0203 |
+|---|---|---|
+| SAILs refused E_ENDURANCE (fleets) | **436 (333)** | **10 (10)** |
+| halt-law clears (all E_ENDURANCE) | 356 | 1 |
+| refounds (d.) | **324 (3.39 M)** | **76 (0.44 M), all at the first tend** ¹ |
+| reconcile (+15, +40 min) | 21.6 s · 10.5 s | **0.80 s · 0.68 s** |
+| laps closed | 476 | 357 |
+| laps ≤ 0 | 263 (55 %), median −5.5 | **130 (36 %), median +107** |
+| laps ≤ 0, last 30 min | 134 of 284 (47 %) | **58 of 192 (30 %)** |
+| routes whose laps summed ≤ 0 | 163 of 309 | 36 of 160 |
+| lay-ups, end | 66 | **37** |
+| sailing, end | 671 | 776 |
+| Comptoir Chastellain | LEH-GDA, 1 lap at −7 | **LEH-HAM, laps +1,235 · +1,242 · +107** |
+| failed orders at the end | 80 | 9 |
+| arrivals sweep, avg / p95 | 2.40 s / 6.2 s | **4.53 s / 10.0 s** |
+
+¹ The setup empties every hold but keeps prod's coin. A house that held its worth in cargo on prod is therefore
+genuinely under its floor at the first tend. The second tend refounded **0** (head: 76).
+
+### The arrivals sweep: NOT within the bar
+
+The sweep costs about twice as much, and that goes against the brief's "≤ 3 s". I profiled 12 minutes of sweeps on
+each world (`pg_stat_user_functions`, track_functions all, no other load):
+
+| over 48 sweeps | head | + 0203 |
+|---|---|---|
+| `tick_arrivals` total | 35.9 s (avg 749 ms) | 91.8 s (avg 1,915 ms) |
+| `cmd.advance` calls (arrivals handled) | 273 | **669** |
+| cost per arrival | 131 ms | 137 ms |
+| `voyage.settle` | 24.7 s (4,077 calls) | 54.7 s (5,808) |
+| … `voyage.delay_before_day` self | 11.3 s (59 k calls) | 34.5 s (101 k) |
+| `npc_plan` | 5.2 s (62 × 83 ms) | 18.4 s (82 × 224 ms) |
+| `npc_leg_lines` | 405 calls | 1,335 calls |
+| `npc_ask_waiting` (300 ms budget) | 4.9 s | 10.2 s |
+| `fleet_speed_at` / `ship_speed_at` / `npc_provision_for` | — | 3.2 / 2.1 / 1.3 s |
+
+**What the profile says:**
+- The cost per arrival did not move.
+- 2.5 times as many arrivals are handled, because the merchants are no longer refused at the quay or laid up.
+- `voyage.settle`, which runs per hull per sea-day through `delay_before_day`, scales with the hulls at sea.
+- The planner costs 2.7 times as much a call: a review now prices about 15 loops instead of 7, and a merchant whose loop leaves her nothing is reviewed every lap.
+
+**On prod:** prod already sails 698 merchants at 2.38 s (read at 00:5x UTC). This file's world ends at 776 sailing,
+with 37 lay-ups instead of 90. I have not measured what prod's sweep will read. A proportional estimate is
+2.38 s × (cost per hull at sea, 1.3) ≈ 3.1–3.4 s.
+
+**The levers are knobs:**
+- `npc_route_candidates` (16) and `npc_route_review_laps` (6, set by this file) bound the planner.
+- The settle cost is `voyage.settle`'s, outside this file.
+
+### Lever measured: npc_route_candidates
+
+Measured by 0205 (`docs/dev-log/2026-10-19-arrivals-fast.md`): 16 → 8 cuts a review from 291 to 189 ms and keeps 99.4 % of what the switches gain. 0205 sets it.
