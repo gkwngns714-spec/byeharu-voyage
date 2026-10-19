@@ -1,0 +1,82 @@
+# 2026-10-19 — a merchant's loop is one she can sail, pay for and remember (migration 0203, `osn-routes-fix`)
+
+**The order.** An urgent regression after 0197 ("a merchant's route always pays") went live on prod at 18:30 UTC on
+2026-10-18. A read-only watch from 18:30 to 20:35 UTC found three defects. The coordinator's brief was to fix their
+root causes in one migration:
+
+- one endurance authority;
+- the refound cause;
+- the sparse leg graph, with Comptoir Chastellain on a paying loop on prod's real graph.
+
+## 1. What prod showed (read-only)
+
+Every probe ran as `begin transaction read only; … commit;` through `supabase db query --linked`. Every function
+called on prod has provolatile `s` or `i`. The planner (`npc_plan`) and the leg planner (`npc_leg_lines`) are
+volatile, so they ran only in the prod-shaped PGlite world (§3).
+
+### E_ENDURANCE: the planner measured the leg at the wrong speed
+
+I read the 25 latest merchant SAILs refused `E_ENDURANCE` one by one. Each row gives the sailed course (nm), the
+reach-table distance (nm), and the stores in days: what she had, what the door needed, and her preset.
+
+| fleet | course | reach | have | need | preset |
+|---|---|---|---|---|---|
+| Sefer Antalya ALG→ | 2,339 | 2,338.8 | 22 | 23.6 | 22 |
+| Rota Sofala OSA→ | 6,241 | 6,241.2 | 66 | 78.3 | 66 |
+| Kurs Copenhagen RIG→ | 4,842 | 4,841.7 | 47 | 57.1 | 47 |
+| Hangxian Manila ZAN→ | 6,542 | 6,565.9 | 53 | 59.9 | 53 |
+
+The course matches the reach table, and her stores were exactly her preset, so the shortfall is the speed.
+
+- `npc_plan` measured the leg at `voyage.fleet_speed` at her lap start, with an empty hold.
+- The door measures the speed she leaves at, laden. `ship_speed`'s load term is `1 − load_speed_penalty (0.25) × fill`,
+  so a full hold sails up to a quarter slower and the passage needs up to a third more days.
+- 0197 offered long trade loops to every hull.
+- The hourly tend cleared each refusal and re-planned her.
+
+A second, smaller gap showed in the sim (§3). The door measures the course's own polyline
+(`voyage.segments_from_course`, the save door's stored `course_nm`), while the planner read the reach table. On long
+Pacific legs the reach table is short by up to 6 %: Macau–Acapulco is 7,794 nm in the reach table and 8,303 nm sailed.
+
+### Refounds: the test read the purse, not the worth
+
+There were 83 `NPC_REFOUNDED` since 18:30, against 8 to 14 an hour before 0197. I read 40 of them:
+
+- every one followed a `BOUGHT` within two hours;
+- `npc_buy_budget` spends 90 % of purse + cargo at cost, so after buying her parcels she holds a tenth of it in coin;
+- `npc_tend_houses` refounded when the **purse** is under 20 % of capital.
+
+For example, Lu Chuanhang had capital 5,000 and 982 in coin, and had bought 4,737 an hour before. She was refounded
+4,018 while worth about 5,700. Short hops sold the parcel within minutes. A long trade lap keeps it aboard for hours,
+so the hourly tend found her "broke" far more often.
+
+### The leg graph only shrinks
+
+`npc_known_legs` reads only the merchants' loops as they stand, and loops are re-planned only onto known legs. Once
+the last merchant sailing a leg gives it up, the leg is forgotten, and nothing ever adds one.
+
+| | fresh world (image at 0199) | prod (20:3x UTC) |
+|---|---|---|
+| harbours knowing 0 legs | 1 | 27 |
+| knowing 1 leg | 0 | 44 |
+| median | 8 | 2 |
+| Le Havre | 7 (LUB COP HAM GDA RIG SET SNL) | 1 (GDA) |
+| merchants whose home knows ≤ 1 leg | 0 | 113 |
+
+Voyage history adds almost nothing: 617 distinct port pairs, and Le Havre has only GDA and SET.
+
+## 2. What 0203 does
+
+| # | change | what it does |
+|---|---|---|
+| (1) | `voyage.stores_need_days(nm, speed)` | The door's stores measure, lifted out of `voyage.sail_refusal`. The door, the desk (`world.good_board`) and the planner (`public.npc_leg_days`, read by `npc_feasible_legs`, `npc_plan` and `npc_casks_blocked`) all read it. The self-assert proves no copy of the formula is left. |
+| (2) | `voyage.ship_speed_at` / `voyage.fleet_speed_at(…, fill)` | Hold THE speed formula. `ship_speed` and `fleet_speed` answer through them, with answers identical for every merchant fleet (asserted). `npc_plan` plans at `fleet_speed_at(fleet, 1)`, a full hold. |
+| (3) | `npc_known_legs` and `npc_plan` miles | A leg's miles are its course's (`course_nm`, `npc_courses.nm`), as the door measures them. |
+| (4) | `public.npc_provision_for(fleet, days)` | What she carries after the plan's own PROVISION: `stores_topup` per hull, × `voyage.endurance_mult` (lifted out of `endurance_days`), and what it costs (`stores_cost`). A loop is unsailable unless those days cover its longest leg and her purse plus cargo at cost covers the stores. An unsailable loop is never chosen, and is not sailed with a BUY. |
+| (5) | `public.npc_worth(player)` | Purse + cargo at cost. The refound tests this, not the purse. |
+| (6) | `public.npc_courses` | Keeps every merchant leg at deploy plus the fresh world's 995 roster legs (generated by `scripts/db/gen-0203-courses.mjs` from the 0199 image). `npc_known_legs` reads them beside the loops as they stand. |
+| (7) | `public.item_not_made` | Also answers for a kind no workshop makes. The three promotion items were free to make. |
+
+## 3. Proof on prod-shaped data
+
+(the 60-minute side-by-side is running; its numbers land in the next commit)
