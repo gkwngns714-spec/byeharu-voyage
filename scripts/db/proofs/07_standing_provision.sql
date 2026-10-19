@@ -265,6 +265,12 @@ begin
   -- ── 6. A REFUSAL THE PLAYER'S OWN LEDGER READ SERVES ─────────────────────────────────────────
   select ducats into v_purse from public.players where id = v_player;
   perform public.credit(v_player, 'PROOF_DRAIN', -(v_purse - 1));
+  -- The casks are run down to THREE DAYS of stores before she sails (the passage takes under two,
+  -- so nobody goes short), so the standing order has some forty days to buy on arrival. Set here,
+  -- not borrowed (moved deliberately 2026-10-20 with 0210, stores ÷ 5): until then the proof leaned
+  -- on a 1.6-day top-up costing more than her last ducat, and at a fifth of the price it cost
+  -- exactly 1 — the order bought, the purse read 0, and nothing was refused.
+  update public.ships set water_t = crew * v_wpd * 3, food_t = crew * v_fpd * 3 where fleet_id = v_fleet_a;
   perform proof.sail(v_fleet_a, 'LIS');
   for k in 1 .. 12 loop
     exit when (select status from public.fleets where id = v_fleet_a) <> 'SAILING';
