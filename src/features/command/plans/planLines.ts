@@ -149,24 +149,26 @@ function legWords(nm: number, speedKn: number): string {
 /** Why a city cannot be sailed to (0188), in plain words — THE ONE WORDING, read after the city's name and a
  *  dash by the plan builder's note and the best-trade card alike (docs/WORDS.md: no nm, no her, no passage):
  *
- *    farther than your navigator can plot in one leg (up to 9.4 days); Navigation 3 plots legs of up to 14.2 days
- *    farther than your navigator can plot in one leg (up to 9.4 days); no navigator plots one that long
- *      (28.1 days at the most), and no chain of ports gets there
- *    its longest leg is 21.3 days at sea, more than your 12.0 days of supplies
+ *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. A captain with
+ *      Navigation 3 could take you there
+ *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. No captain can plan
+ *      a trip that long, and there are no ports on the way to stop at
+ *    the longest stretch at sea is 21.3 days, but your supplies last only 12.0 days
+ *  (the owner, 2026-10-19: "What does this mean? make it in simple words")
  *
  *  No voyage: the board served no `stops` (or, as 0188 serves a buy row it cannot reach, `stops: []` with no
  *  miles). Otherwise the voyage exists and it is the supplies that fall short. */
 export function reachWords(row: BoardPassage & { miles: number | null }, board: ReachBoard): string {
   if (row.stops == null || row.miles === null) {
-    const own = `farther than your navigator can plot in one leg${board.reachNm !== null ? ` (up to ${legWords(board.reachNm, board.speedKn)})` : ''}`
+    const own = `too far to sail in one go${board.reachNm !== null ? `: your navigator can only plan ${legWords(board.reachNm, board.speedKn)} at sea without a stop` : ''}`
     const n = row.needs
-    if (n && n.navigation !== null) return `${own}; Navigation ${n.navigation} plots legs of up to ${legWords(n.reach_nm, board.speedKn)}`
-    if (n) return `${own}; no navigator plots one that long (${legWords(n.reach_nm, board.speedKn)} at the most), and no chain of ports gets there`
+    if (n && n.navigation !== null) return `${own}. A captain with Navigation ${n.navigation} could take you there`
+    if (n) return `${own}. No captain can plan a trip that long, and there are no ports on the way to stop at`
     return own
   }
   if (row.longest_leg && row.longest_leg.days > 0) {
-    const leg = `its longest leg is ${formatVoyageDays(row.longest_leg.days)} at sea`
-    return board.supplyDays !== null ? `${leg}, more than your ${formatVoyageDays(board.supplyDays)} of supplies` : `${leg}, more than your supplies carry`
+    const leg = `the longest stretch at sea is ${formatVoyageDays(row.longest_leg.days)}`
+    return board.supplyDays !== null ? `${leg}, but your supplies last only ${formatVoyageDays(board.supplyDays)}` : `${leg}, longer than your supplies last`
   }
-  return 'farther than your navigator can plot, or than your supplies carry'
+  return 'too far to sail in one go, or your supplies run out first'
 }

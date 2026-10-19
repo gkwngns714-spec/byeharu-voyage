@@ -300,7 +300,7 @@ function BuyAt({
   return (
     <SheetSection
       heading="Buy at"
-      trailing={<span className="text-t-caption text-ink-faint">price · stock · away</span>}
+      trailing={<span className="text-t-caption text-ink-faint">you pay each · stock · how far</span>}
       data-testid="buy-at"
     >
       {loading ? (
@@ -382,7 +382,7 @@ function SellAt({
   return (
     <SheetSection
       heading={board ? `Sell at · ${formatUnits(board.qty.units)}` : 'Sell at'}
-      trailing={<span className="text-t-caption text-ink-faint">you get · net / ton</span>}
+      trailing={<span className="text-t-caption text-ink-faint">you get each · profit per ton</span>}
       data-testid="sell-at"
     >
       {via && (

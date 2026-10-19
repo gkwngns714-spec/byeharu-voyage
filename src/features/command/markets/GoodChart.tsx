@@ -116,7 +116,7 @@ export function GoodChart({
           )}
           <span className="mt-0.5 flex items-center gap-1.5 truncate text-t-caption text-ink-faint">
             {focusPort && <PortFlag code={focusPort.code} />}
-            {focusPort ? `${focusPort.name} · market price` : 'Market price'}
+            {focusPort ? `${focusPort.name} · middle price (buying costs a little more, selling pays a little less)` : 'Market price'}
           </span>
           <span className="mt-1 flex items-baseline gap-3">
             {now !== null ? (
