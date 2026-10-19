@@ -1647,7 +1647,7 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.npc_compact(timestamptz)',
     'public.npc_traders_switch(boolean)',
     'public.route_earnings(uuid)',
-    'public.npc_buy_ceiling(uuid, uuid, numeric)',
+    'public.npc_buy_ceiling(uuid, uuid, numeric, numeric, numeric, numeric, numeric)',
     'public.fleet_crew_shortfall(uuid)',
     'world.voyage_view(uuid, boolean)',
     'public.tick_arrivals(timestamptz)',
