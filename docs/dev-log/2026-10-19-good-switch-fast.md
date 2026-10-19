@@ -1,4 +1,4 @@
-# 2026-10-19 — a good opens at once (migration 0207 + the desk's kept answers, `osn-good-switch-fast`)
+# 2026-10-19 — a good opens at once (migration 0205 + the desk's kept answers, `osn-good-switch-fast`)
 
 **The order.** The owner, 2026-10-19: *"when pressing a different trade goods, it takes too long to load, any way to
 fix this?"* — COMMAND → Markets: pressing a good loads the chart pane and the ticket (Best trade, Buy at, Sell at,
@@ -55,7 +55,7 @@ Why the three pieces cost what they do:
 
 ## 3. The change
 
-### Server — migration 0207 (`a_good_opens_at_once`; renumbers to the prod head + 1 at push)
+### Server — migration 0205 (`a_good_opens_at_once`; renumbers to the prod head + 1 at push)
 
 1. `voyage.reach_passage` reads each harbour's miles document into memory once (`sr.reaches || '{}'` in an
    `offset 0` lateral) and looks the cells up there. It asks `passage_gate` once per region, of the region's first
@@ -114,10 +114,10 @@ Not measured here, said plainly:
 - **The live client's network timings.** The game has no guest login. Making an account on the live game would write
   a real company to prod, so the client was not driven against the live site. The order of the calls is from the code
   (section 1). The server times are prod's.
-- **The board's after-time on prod** is an estimate until 0207 is pushed. Read it then with one read-only call.
+- **The board's after-time on prod** is an estimate until 0205 is pushed. Read it then with one read-only call.
 
 ## Verify (once)
 
 - `npx tsc -b` clean; `npx eslint` clean on the touched files.
 - `tests/servedMemo.spec.ts` (new, no browser): 3 passed.
-- 0207's self-assert: CI's pglite-gate and disposable-chain run it (the PR's checks).
+- 0205's self-assert: CI's pglite-gate and disposable-chain run it (the PR's checks).
