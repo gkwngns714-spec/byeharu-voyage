@@ -23,7 +23,8 @@
 --   raids are fewer than 30 events in the 50 minutes read.
 --
 -- ── WHAT THIS FILE DOES ─────────────────────────────────────────────────────────────────────────
--- (0) public.npc_loop_candidates, two hunks: THE TRADE LOOPS ARE OFFERED FIRST (up to
+-- (0) public.npc_loop_candidates RE-CUT, two hunks sliced from the LIVE body (each asserted to occur once
+--     and to reverse to its pre-image, ACL and STABLE kept): THE TRADE LOOPS ARE OFFERED FIRST (up to
 --     npc_route_trade_candidates, 6), then the nearest out-and-backs into the room left, then the three-stop
 --     loops. At 16 the same set is offered in another order (self-assert A, 120 merchants); at 8 every trade
 --     loop offered at 16 is still offered (self-assert B: 693 of 693 on the 0204 harness world).
