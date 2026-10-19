@@ -74,7 +74,10 @@ test('units print as the design document writes them', () => {
   expect(formatMiles(188.4)).toBe('188 miles')
   expect(formatMiles(11736)).toBe('11,736 miles')
   expect(formatKnots(3.5695)).toBe('3.6 knots')
-  expect(formatUnitPrice(7)).toBe(`7${C} each`)
+  // Pin moved deliberately 2026-10-19 with 0208 (goods ÷ 5): a unit price follows priceDigits, like every price.
+  expect(formatUnitPrice(7)).toBe(`7.00${C} each`)
+  expect(formatUnitPrice(12.5)).toBe(`12.5${C} each`)
+  expect(formatUnitPrice(1240)).toBe(`1,240${C} each`)
   expect(formatUnits(20)).toBe('20 units')
   expect(formatUnits(1)).toBe('1 unit')
   expect(formatOfTotal(98, 120)).toBe('98 / 120')

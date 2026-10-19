@@ -4,7 +4,7 @@ import { Figure } from './Figure'
 import { PriceChart } from './PriceChart'
 import { Row } from './Row'
 import { Sparkline } from './Sparkline'
-import { formatInt, formatOfTotal } from '../../lib/format'
+import { formatOfTotal, formatPriceFigure } from '../../lib/format'
 import type { MarketGood, PricePoint } from '../../lib/rpc'
 
 // WHAT A PRICE HAS BEEN, HOW FAR IT CAN GO, AND HOW MUCH IS THERE — the three rows under a good,
@@ -72,7 +72,7 @@ export function PriceRows({
             points={points}
             slotSeconds={trend.slotSeconds as number}
             nowMs={openedAt as number}
-            label={`${good.name}: ${mids.length} past prices, ${formatInt(Math.min(...mids))} to ${formatInt(Math.max(...mids))}, with an axis`}
+            label={`${good.name}: ${mids.length} past prices, ${formatPriceFigure(Math.min(...mids))} to ${formatPriceFigure(Math.max(...mids))}, with an axis`}
           />
         ) : (
           <Sparkline
@@ -80,11 +80,11 @@ export function PriceRows({
             width={320}
             height={40}
             className="mt-1 h-10 w-full"
-            label={`${good.name}: ${mids.length} past prices, ${formatInt(Math.min(...mids))} to ${formatInt(Math.max(...mids))}`}
+            label={`${good.name}: ${mids.length} past prices, ${formatPriceFigure(Math.min(...mids))} to ${formatPriceFigure(Math.max(...mids))}`}
           />
         )}
       </Row>
-      <Row label="Range" value={<Figure value={`${formatInt(good.range_lo)}–${formatInt(good.range_hi)}`} />} />
+      <Row label="Range" value={<Figure value={`${formatPriceFigure(good.range_lo)}–${formatPriceFigure(good.range_hi)}`} />} />
       <Row
         label="In stock"
         value={<Figure value={formatOfTotal(good.stock, good.stock_target)} unit="units" />}

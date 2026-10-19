@@ -1,7 +1,7 @@
 import { Bar, Figure, PriceCell, Row, SheetSection } from '../components/ui'
 import { fleetCargo, paidPerTun } from '../domain/fleet'
 import { buyableHere } from '../domain/market'
-import { formatDucatsDelta, formatInt, formatTons, formatUnits } from '../lib/format'
+import { formatPriceDelta, formatPriceFigure, formatTons, formatUnits } from '../lib/format'
 import type { FleetView, MarketGood } from '../lib/rpc'
 import { useWorld } from './worldStore'
 
@@ -122,17 +122,17 @@ function OnBoardRow({
       />
       {here && (
         <div className="flex items-center gap-2 pb-2" data-testid={`on-board-sale-${code}`}>
-          <span className="shrink-0 text-t-caption text-ink-faint">{paid === null ? 'cost unknown' : `bought ${formatInt(paid)}`}</span>
+          <span className="shrink-0 text-t-caption text-ink-faint">{paid === null ? 'cost unknown' : `bought ${formatPriceFigure(paid)}`}</span>
           <Bar
             pct={paid === null ? 100 : paidPct}
             pending={paid === null ? undefined : gapPct}
             tone="neutral"
             pendingTone={gain === false ? 'danger' : 'success'}
-            label={`${name}: bought at ${paid === null ? 'unknown' : formatInt(paid)}, sells at ${formatInt(here.sell)}`}
+            label={`${name}: bought at ${paid === null ? 'unknown' : formatPriceFigure(paid)}, sells at ${formatPriceFigure(here.sell)}`}
             className="min-w-0 flex-1"
           />
-          <span className="shrink-0 text-t-caption text-ink-faint">{`sells ${formatInt(here.sell)}`}</span>
-          {gap !== null && <Figure value={formatDucatsDelta(gap)} unit="each" tone={gain ? 'success' : 'danger'} />}
+          <span className="shrink-0 text-t-caption text-ink-faint">{`sells ${formatPriceFigure(here.sell)}`}</span>
+          {gap !== null && <Figure value={formatPriceDelta(gap)} unit="each" tone={gain ? 'success' : 'danger'} />}
         </div>
       )}
     </div>

@@ -160,7 +160,11 @@ test('world.snapshot() carries the whole static world, and not the world secret'
 
   const barca = snap.ship_classes.find((c) => c.code === 'barca')!
   expect(barca.name).toBe('Barca')
-  expect(barca.hold).toBe(60)
+  // Moved deliberately 2026-10-19 with 0208: the barca's design hold is 60 (data/hulls.json) and the database holds
+  // every hold quantity × hold_scale (3) — read from the knob, so the pin is the data's figure, not a copy of the scale.
+  const holdScale = Number((await db.pg.query<{ v: string }>("select public.wc_num('hold_scale')::text as v")).rows[0].v)
+  expect(holdScale).toBe(3)
+  expect(barca.hold).toBe(60 * holdScale)
   expect(isNum(barca.speed_kn) && isNum(barca.crew_required) && isNum(barca.crew_max)).toBe(true)
   expect(isNum(barca.durability) && isNum(barca.draft) && isNum(barca.tier)).toBe(true)
   expect(isStr(barca.rig) && isStr(barca.family)).toBe(true)
@@ -446,7 +450,8 @@ test('world.fleets() reports the fleet, its ships, its stores and its empty queu
   expect(s.name).toBe('Gaivota')
   expect(s.class).toBe('Barca')
   expect(s.is_flagship).toBe(true)
-  expect(s.hold).toBe(60)
+  // Moved deliberately 2026-10-19 with 0208 (hold_scale 3): the design 60 × the knob.
+  expect(s.hold).toBe(60 * Number((await db.pg.query<{ v: string }>("select public.wc_num('hold_scale')::text as v")).rows[0].v))
   expect(s.durability).toBe(s.max_durability)
   expect(s.crew).toBe(s.crew_required)
   expect(s.crew_max).toBeGreaterThanOrEqual(s.crew_required)
@@ -459,7 +464,7 @@ test('world.fleets() reports the fleet, its ships, its stores and its empty queu
   // The client deleted its own "how much fits in this hull" arithmetic in favour of these (three
   // copies, one of which had silently forgotten the stores). That trade is only safe while the
   // server keeps serving them under these names, which is what this asserts.
-  expect(s.hold_rated).toBe(60) // the shipwright's figure — never changes with an officer
+  expect(s.hold_rated).toBe(s.hold) // the shipwright's figure (60 × hold_scale since 0208) — never changes with an officer
   expect(typeof f.free_hold).toBe('number')
   expect(f.free_hold).toBeGreaterThan(0)
   // 0081: what the cargo COST is served on the fleet, code -> average ducats per tun, and a hull
@@ -1117,9 +1122,14 @@ test('cmd.haggle() spends an attempt whether it wins or loses, and a win really 
   const before = expectOk(await worldHaggleState(fleet.id, good.good_id))
   if (!before.docked) throw new Error('unreachable')
 
-  // WHAT TEN TUNS COST BEFORE ANY BARGAIN — the real quote, through the verb itself, rolled back.
+  // WHAT THE LOT COSTS BEFORE ANY BARGAIN — the real quote, through the verb itself, rolled back.
   const quoted = (r: Awaited<ReturnType<typeof cmdPreview>>) => Number(expectOk(r).estimate!.total)
-  const totalPlain = quoted(await cmdPreview(fleet.id, `BUY ${good.code} 10`))
+  // Moved deliberately 2026-10-19 with 0208 (goods a fifth the price): ten units cost ~158 and a 15 % shave of the
+  // half-spread is under one ducat, which the whole-ducat total can round away — 50 units (or what the hold takes)
+  // make the bargain several ducats, so "cheaper" is a fact of the total and not of the rounding.
+  const lot = Math.min(50, Math.floor(fleet.free_hold / expectOk(await worldSnapshot()).goods.find((g) => g.code === good.code)!.bulk))
+  expect(lot).toBeGreaterThanOrEqual(10)
+  const totalPlain = quoted(await cmdPreview(fleet.id, `BUY ${good.code} ${lot}`))
   expect(totalPlain).toBeGreaterThan(0)
 
   try {
@@ -1143,7 +1153,7 @@ test('cmd.haggle() spends an attempt whether it wins or loses, and a win really 
     expect(afterLoss.attempts_used).toBe(1)
     expect(afterLoss.wins).toBe(0)
     // …and it moved no money.
-    expect(quoted(await cmdPreview(fleet.id, `BUY ${good.code} 10`))).toBe(totalPlain)
+    expect(quoted(await cmdPreview(fleet.id, `BUY ${good.code} ${lot}`))).toBe(totalPlain)
 
     // ── A REFUSAL HARDENS THE NEXT ATTEMPT, and that is asserted AT THE SHIPPED KNOBS.
     // The first draft compared the odds while `haggle_base_success` was still forced to 0, which
@@ -1176,8 +1186,8 @@ test('cmd.haggle() spends an attempt whether it wins or loses, and a win really 
     expect(won.spread_effective).toBeCloseTo(won.spread_published * (1 - won.concession), 5)
     expect(won.spread_effective).toBeLessThan(won.spread_published)
 
-    // AND THE MONEY. The same ten tuns, through the same verb, cost less than they did.
-    const totalHaggled = quoted(await cmdPreview(fleet.id, `BUY ${good.code} 10`))
+    // AND THE MONEY. The same lot, through the same verb, cost less than they did.
+    const totalHaggled = quoted(await cmdPreview(fleet.id, `BUY ${good.code} ${lot}`))
     expect(totalHaggled).toBeLessThan(totalPlain)
 
     // ── FINITE. The third attempt is allowed; the fourth is refused, in the server's words.

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent, type TrayMode } from '../components/ui'
-import { formatInt, formatMiles } from '../lib/format'
+import { formatMiles, formatPriceFigure } from '../lib/format'
 import type { MarketGood } from '../lib/rpc'
 import { useDeskGood } from '../store/deskGood'
 
@@ -50,8 +50,8 @@ export function PriceTray({
       mode={mode}
       data-testid="price-tray"
     >
-      <Row label="Buy" value={<Figure value={formatInt(good.buy)} size="figure" />} />
-      <Row label="Sell" value={<Figure value={formatInt(good.sell)} size="figure" />} />
+      <Row label="Buy" value={<Figure value={formatPriceFigure(good.buy)} size="figure" />} />
+      <Row label="Sell" value={<Figure value={formatPriceFigure(good.sell)} size="figure" />} />
       <PriceRows good={good} trend={trend} />
       <Row
         label="Open in Command"
