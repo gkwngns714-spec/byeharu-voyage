@@ -20,6 +20,8 @@ Resume in this order:
    - the flags screenshots.
 
    It also brings back a `pull_request` trigger on acceptance.yml, ON PURPOSE: it runs only the selected specs and doesn't block, and it is the root-cause fix. The agent was stopped mid-step. Read ALL its checks, confirm `map.noblink` truly passes at ≤ 7 layers, then merge, then confirm main's Acceptance goes green.
+   - **2026-10-19 ~03:25 UTC (PC 디폴리스):** on #257's CI, main's 4 failures pass. ONE new failure: `map.merchants.spec.ts:918`, "port:LIS: rows outside every section" (13 against 12). The markup has no row outside a section, so this is the test racing the live npc clock (separate reads). Fixed in b3498db (one atomic DOM read); CI re-running.
+   - 0205 (item 2) is being built in parallel by an agent on this PC.
 2. **0205 `osn-arrivals-fast`**, WIP pushed (f63df10) and NOT ready. Read `docs/dev-log/2026-10-19-arrivals-fast.md` § HAND-OFF. Knob-only 16 → 8 hurt the laps (33 → 51 % ≤ 0). Finish "trade loops first", re-run the paired sim, and ship only if both arrivals and laps hold.
 3. The owner decides: insurance (proposal below), and pirates / zones / dungeons.
 
