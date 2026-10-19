@@ -15,7 +15,7 @@
 // Lisbon lists the merchant laid up there and opens the same sheet. With the shipped image (switch
 // OFF) there are no merchant hulls and no "Merchants in port". Screenshots land in docs/npc-traders/.
 
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
@@ -790,19 +790,8 @@ async function openPorto(page: Page): Promise<void> {
 }
 
 /** Every row of one group section as the things a player reads on it. */
-async function groupRows(section: Locator): Promise<{ name: string; level: string; doing: string; rest: string | null }[]> {
-  return section.evaluate((el) =>
-    [...el.querySelectorAll('[data-testid="merchant-row"]')].map((row) => {
-      const read = (id: string) => (row.querySelector(`[data-testid="${id}"]`)?.textContent ?? '').trim()
-      return {
-        name: read('merchant-row-name'),
-        level: read('merchant-row-level'),
-        doing: read('merchant-row-doing'),
-        rest: row.querySelector('[data-testid="merchant-row-rest"]') ? read('merchant-row-rest') : null,
-      }
-    }),
-  )
-}
+/** One merchant row as the list prints it. */
+type Row = { name: string; level: string; doing: string; rest: string | null }
 
 /**
  * THE LIST, READ BACK AS ITS CONTRACT: the groups that are printed stand in the server's rank with
@@ -815,16 +804,47 @@ async function groupRows(section: Locator): Promise<{ name: string; level: strin
 async function readCityList(page: Page, city: string) {
   const list = page.getByTestId('map-harbour')
   await expect(list).toBeVisible()
-  const printed: { heading: string; rows: Awaited<ReturnType<typeof groupRows>> }[] = []
-  for (const g of GROUPS) {
-    const section = page.getByTestId(g.id)
-    if ((await section.count()) === 0) continue
-    const rows = await groupRows(section)
+  // ONE SNAPSHOT OF THE WHOLE LIST, then every assertion on it. The npc clock is on, so the merchants sail
+  // while a test reads: any two reads taken apart can disagree (2026-10-19: rows outside a section 13 vs 12,
+  // a heading 5 vs 4, the head line's in-port count). The markup is one React commit; one synchronous read
+  // of the DOM sees one commit, so the contract is checked against a single moment.
+  const snap = await page.evaluate((ids: string[]) => {
+    const rowOf = (row: Element) => {
+      const read = (id: string) => (row.querySelector(`[data-testid="${id}"]`)?.textContent ?? '').trim()
+      return {
+        name: read('merchant-row-name'),
+        level: read('merchant-row-level'),
+        doing: read('merchant-row-doing'),
+        rest: row.querySelector('[data-testid="merchant-row-rest"]') ? read('merchant-row-rest') : null,
+      }
+    }
+    const listEl = document.querySelector('[data-testid="map-harbour"]')
+    return {
+      sections: ids.map((id) => {
+        const el = document.querySelector(`[data-testid="${id}"]`)
+        if (!el) return null
+        return {
+          id,
+          h2: (el.querySelector('h2')?.textContent ?? '').trim(),
+          count: (el.querySelector('[data-testid="map-harbour-count"]')?.textContent ?? '').trim(),
+          own: el.querySelectorAll('[data-testid="map-harbour-own"]').length,
+          rows: [...el.querySelectorAll('[data-testid="merchant-row"]')].map(rowOf),
+        }
+      }),
+      all: listEl ? listEl.querySelectorAll('[data-testid="merchant-row"]').length : 0,
+      line: (document.querySelector('[data-testid="map-place-name-line"]')?.textContent ?? '').trim(),
+    }
+  }, GROUPS.map((g) => g.id))
+
+  const printed: { heading: string; rows: Row[] }[] = []
+  for (const [i, g] of GROUPS.entries()) {
+    const sec = snap.sections[i]
+    if (!sec) continue
+    const rows = sec.rows
     expect(rows.length, `${city}: the ${g.heading} group is printed with nobody in it`).toBeGreaterThanOrEqual(1)
-    await expect(section.locator('h2')).toHaveText(g.heading)
+    expect(sec.h2).toBe(g.heading)
     // the heading counts every row in it — your own fleets (map-harbour-own) and the merchants
-    const own = await section.getByTestId('map-harbour-own').count()
-    await expect(section.getByTestId('map-harbour-count')).toHaveText(String(rows.length + own))
+    expect(sec.count, `${city}: the ${g.heading} heading counts every row under it`).toBe(String(rows.length + sec.own))
     for (const r of rows) {
       expect(r.level, `${city}: the level of ${r.name}`).toMatch(/^\d+$/)
       expect(g.words as readonly string[], `${city}: "${r.doing}" on ${r.name} is not a ${g.heading} word`).toContain(r.doing)
@@ -847,25 +867,13 @@ async function readCityList(page: Page, city: string) {
   // Every row stands in a section; the head line's in-port count is the In port section's — one
   // rule (`harbourSides`) for both. The head still counts every merchant the city concerns, the
   // ones away on their loops too, so it is at least the rows listed.
-  // ONE READ OF THE DOM, not one per section: the merchants sail while this runs (the npc clock is
-  // on), so a row that docks between the section reads above and a count taken after them was
-  // counted "outside every section" (2026-10-19, PR #257: Lisbon 13 against 12) though the markup
-  // (CityHarbour.tsx) has no row outside one.
-  const [all, inSections] = await list.evaluate(
-    (el, ids) => [
-      el.querySelectorAll('[data-testid="merchant-row"]').length,
-      el.querySelectorAll(ids.map((id) => `[data-testid="${id}"] [data-testid="merchant-row"]`).join(', ')).length,
-    ],
-    GROUPS.map((g) => g.id),
-  )
-  expect(all, `${city}: rows outside every section`).toBe(inSections)
-  expect(all, `${city}: a list with no rows`).toBeGreaterThanOrEqual(1)
+  expect(snap.all, `${city}: rows outside every section`).toBe(printed.reduce((n, p) => n + p.rows.length, 0))
+  expect(snap.all, `${city}: a list with no rows`).toBeGreaterThanOrEqual(1)
   const inPort = printed.find((p) => p.heading === 'In port')?.rows.length ?? 0
-  const line = page.getByTestId('map-place-name-line')
-  const head = Number(((await line.textContent()) ?? '').match(/(\d+) merchants?/)?.[1] ?? '0')
-  expect(head, `${city}: the head counts fewer merchants than the tab lists`).toBeGreaterThanOrEqual(all)
-  if (inPort > 0) await expect(line).toContainText(`· ${inPort} in port`)
-  else await expect(line).not.toContainText('in port')
+  const head = Number(snap.line.match(/(\d+) merchants?/)?.[1] ?? '0')
+  expect(head, `${city}: the head counts fewer merchants than the tab lists`).toBeGreaterThanOrEqual(snap.all)
+  if (inPort > 0) expect(snap.line).toContain(`· ${inPort} in port`)
+  else expect(snap.line).not.toContain('in port')
   return printed
 }
 
