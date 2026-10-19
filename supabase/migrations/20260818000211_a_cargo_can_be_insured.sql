@@ -1,4 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
+-- !!! NOT FOR DEPLOY — WIP, NOT PROVEN: the self-assert has not yet passed locally (see docs/dev-log/2026-10-19-insurance.md § HAND-OFF) !!!
 -- 0211 — A CARGO CAN BE INSURED  (port insurance for a voyage's cargo; merchants insure in place of the
 --        free refound; a plundered hold loses what the day's sentence always said it lost)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
