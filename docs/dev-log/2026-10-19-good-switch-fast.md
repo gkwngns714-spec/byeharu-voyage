@@ -93,11 +93,12 @@ figure is the self-assert's notice on CI, and a read-only timing after the push.
 - **A rest asks ahead.** The pointer resting 150 ms on a Markets row (or the row's keyboard focus) starts that good's
   reads, board included. A pointer only passing over the list asks nothing.
 - `loadHistory` joins a port's read already on the wire.
-- **The chart's foot keeps room for four lines on a phone** (`min-h-[4.25rem]`, `sm:min-h-11` as before). CI's first
-  run of this PR caught it: `desk.layout.spec.ts`, "pressing a chart city moved what is under the chart" (935 → 945
-  px). The chip pressed (Elmina) had been asked ahead, because the row rest names the cheapest seller. So its
-  estimate drew at once, and the likely-range line wrapped to two lines: 54 px in a 44-px foot. Main has the same
-  push. It comes when the estimate lands, after the test's 600 ms look. The foot now holds the most it can wrap to.
+- **The chart keeps room for what an estimate draws, on a phone.** CI caught this on the PR's first two runs:
+  `desk.layout.spec.ts`, "pressing a chart city moved what is under the chart" (+10 px). The chip pressed (Elmina)
+  had been asked ahead, because the row rest names the cheapest seller, so its estimate drew at once. Before, the test
+  looked while a skeleton stood there. The chart's legend (low, now, high, estimate, stock) wrapped to two lines, so
+  the 250-px box held 260 px. The foot's likely-range line wrapped too. Main has the same push, later, when the
+  estimate lands. The box now keeps 260 px on a phone, and the foot keeps three caption lines (`sm:` unchanged).
 
 Not changed: GoodTicket's section headings, GoodChart's head caption, planLines' reachWords.
 
