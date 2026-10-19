@@ -19,24 +19,24 @@ const noLeg = { stops: null, miles: null }
 
 test('a city no leg reaches names the Navigation that would, in days at sea', () => {
   const words = reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 } }, board)
-  expect(words).toBe('farther than your navigator can plot in one leg (up to 14.2 days); Navigation 3 plots legs of up to 21.7 days')
+  expect(words).toBe('too far to sail in one go: your navigator can only plan 14.2 days at sea without a stop. A captain with Navigation 3 could take you there')
 })
 
 test('a city no Navigation reaches says so, with the farthest any plots', () => {
   const words = reachWords({ ...noLeg, needs: { navigation: null, reach_nm: 4000 } }, board)
   expect(words).toBe(
-    'farther than your navigator can plot in one leg (up to 14.2 days); no navigator plots one that long (33.3 days at the most), and no chain of ports gets there',
+    'too far to sail in one go: your navigator can only plan 14.2 days at sea without a stop. No captain can plan a trip that long, and there are no ports on the way to stop at',
   )
 })
 
 test('a reachable city the supplies do not carry names its longest leg against them', () => {
   const words = reachWords({ stops: ['CEU'], miles: 3100, longest_leg: { miles: 2500, days: 20.8 } }, board)
-  expect(words).toBe('its longest leg is 20.8 days at sea, more than your 36.0 days of supplies')
+  expect(words).toBe('the longest stretch at sea is 20.8 days, but your supplies last only 36.0 days')
 })
 
 test('a board with no speed falls back to miles, spelled, never nm', () => {
   const slow = { ...board, speedKn: 0 }
-  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 } }, slow)).toContain('2,600 miles')
+  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 } }, slow)).toContain('1,700 miles')
 })
 
 test('no answer says nm, her, passage or stores', () => {
