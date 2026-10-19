@@ -39,8 +39,15 @@ export interface DeskViewState {
   search: string
   /** The City face's building (live/cityFaces.ts); one that the city lacks falls back to its first. */
   cityFace: PortFace
+  /** Plans: whether the route fold stands open. HERE, not in RouteFold's own state, because the desk
+   *  has TWO SHAPES (CommandScreen: the Sheet below 1024 px, the terminal above) and crossing that
+   *  width mounts the face anew — a fold's own `useState` folded the route shut on every turn of a
+   *  tablet or resize of a window (tests/route.stopface.spec.ts, red on main from #225). Not persisted:
+   *  an open fold is a glance, not a thing you are doing. */
+  routeOpen: boolean
   turnTo: (face: DeskFace) => void
   setCityFace: (face: PortFace) => void
+  setRouteOpen: (open: boolean | ((open: boolean) => boolean)) => void
   setFilter: (filter: DeskFilter) => void
   setSort: (sort: DeskSort) => void
   setSearch: (search: string) => void
@@ -54,8 +61,10 @@ export const useDeskView = create<DeskViewState>()(
       sort: 'name',
       search: '',
       cityFace: 'market',
+      routeOpen: false,
       turnTo: (face) => set({ face }),
       setCityFace: (cityFace) => set({ cityFace }),
+      setRouteOpen: (open) => set((s) => ({ routeOpen: typeof open === 'function' ? open(s.routeOpen) : open })),
       setFilter: (filter) => set({ filter }),
       setSort: (sort) => set({ sort }),
       setSearch: (search) => set({ search }),

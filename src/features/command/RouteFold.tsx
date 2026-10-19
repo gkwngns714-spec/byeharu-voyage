@@ -14,6 +14,7 @@ import type { FleetView, Refusal } from '../../lib/rpc'
 import { RouteEditor } from './RouteEditor'
 import { RouteStopFace } from './RouteStop'
 import { useDeskPlan } from './plans/planDraft'
+import { useDeskView } from './deskView'
 import type { RouteStopDraft } from './standingRouteDraft'
 
 // THE ROUTE, FOLDED ABOVE HER QUEUE — owner, 2026-09-30: *"i want this game to be a simulating
@@ -48,7 +49,10 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
   const assignRoute = useWorld((s) => s.assignRoute)
   const clearQueue = useWorld((s) => s.clear)
 
-  const [open, setOpen] = useState(false)
+  // Open or folded is the DESK's state (deskView.ts `routeOpen`), so it survives the desk's change of
+  // shape at 1024 px; which route the editor is on stays here.
+  const open = useDeskView((s) => s.routeOpen)
+  const setOpen = useDeskView((s) => s.setRouteOpen)
   // WHICH route the editor is open on: this fleet's own ('own'), a route no fleet runs (its id), a
   // new one ('new'), or none.
   const [editing, setEditing] = useState<string | null>(null)

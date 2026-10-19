@@ -772,24 +772,35 @@ body {
 /* THE CITY'S DAY LAMP (the owner, 2026-10-18: "give black light blink in cities like in night"):
    the daytime counterpart of the night's light — a dark glow round the harbour's dot that breathes
    slowly, out by night and in by day (`1 - --night`), each harbour on its own phase so the coast
-   breathes rather than pulsing in unison. Opacity only; reduced motion lands it on the 100 % stop
+   breathes rather than pulsing in unison. Fill-opacity only (below); reduced motion lands it on the 100 % stop
    (the §4.6 sweep at the bottom of this file). PortsLayer's HarbourLight draws it.
    STEPPED, AND THAT IS A FRAME-RATE DECISION: any animated mark repaints the whole chart sheet, and
    a smooth breath on 252 harbours repainted it every frame (measured at the world view, DPR 2: pan
    ~31 fps with the lamps still, ~20 with them breathing). `steps(12)` over 4.2 s changes the
    picture every 350 ms, and each harbour's phase is a whole number of steps (PortsLayer
-   `lampPhase`), so every lamp changes on the same beat: ~3 repaints a second, not 60. */
+   `lampPhase`), so every lamp changes on the same beat: ~3 repaints a second, not 60.
+   NOT `opacity`, AND THAT IS A LAYER DECISION (2026-10-19, tests/map.noblink.spec.ts): an `opacity`
+   animation is one the compositor runs, so Chrome gave the chart one more surface the size of the
+   glass (the harbour names, squashed apart by overlap): 7 → 8 at 1440×900, 7 → 9 at 390×844, and
+   the blink spec's bound is 7. The breath is a registered number (`--bv-lamp`) folded into the
+   shade's own `fill-opacity`: a paint the main thread does on the same 350 ms beat, which adds no
+   layer (measured 7 and 7). */
+@property --bv-lamp {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 1;
+}
 .bv-sun-shade {
   fill: var(--color-chart-day-mark);
-  fill-opacity: calc((1 - var(--night, 1)) * 0.38);
+  fill-opacity: calc((1 - var(--night, 1)) * 0.38 * var(--bv-lamp, 1));
 }
 @keyframes bv-day-lamp {
   0%,
   100% {
-    opacity: 1;
+    --bv-lamp: 1;
   }
   50% {
-    opacity: 0.25;
+    --bv-lamp: 0.25;
   }
 }
 .bv-day-lamp {
