@@ -10,6 +10,17 @@
 --   not choose its 500 orders — it draws them at random from every V0 verb, against three houses,
 --   with time jumping forward underneath them, and then asks the invariant to still be true.
 --
+-- WHERE THE MARKET MOVES UNDER THE SOAK (2026-10-19)
+--   Every 20 orders time jumps 40 minutes: voyages come home, the queues run on, and the market drifts
+--   and regenerates — AT THE QUAYS THE SOAK CAN SEE: where its three fleets lie or are bound. That is
+--   how the game itself moves a market since 0137: a quay drifts when someone reads it
+--   (world.market → tick_market_drift(now, p_port)); nobody in this proof reads the other ~230.
+--   Measured on run 39185351620 (PR #255) before this: the 500 orders took 0.9 s and the 25 jumps
+--   397 s of the proof's 401 — a 132,090-row rewind of port_goods (121 s, bloating with every pass:
+--   1.9 s → 6.9 s) and tick_market_drift over the whole world (276 s). Every marker below measures
+--   the same houses, the same orders and the same jumps; only the untouched quays stop being walked.
+--   A TIMING notice at the end says where the seconds went, so the next growth is read, not guessed.
+--
 -- HOW IT REFUSES TO PASS VACUOUSLY
 --   * Orders must actually have SUCCEEDED (a soak in which everything was rejected reconciles
 --     trivially: nothing moved).
@@ -55,10 +66,10 @@ declare
   r         record;
   t0        timestamptz;
   t1        timestamptz;
-  t_verb    jsonb := '{}'::jsonb;   -- TIMING (diagnostic): seconds per verb
+  t_verb    jsonb := '{}'::jsonb;   -- TIMING: seconds per verb
   n_verb    jsonb := '{}'::jsonb;
   t_clear   numeric := 0;
-  t_tick    numeric[] := array[0,0,0,0,0];  -- voyages, fleets, port_goods, arrivals, drift
+  t_tick    numeric[] := array[0,0,0,0,0];  -- a jump's steps: voyages, fleets, port_goods, arrivals, drift
   v_verb    text;
 begin
   select array_agg(code order by code) into v_ports from public.ports;
@@ -148,18 +159,18 @@ begin
       t1 := clock_timestamp(); t_tick[1] := t_tick[1] + extract(epoch from t1 - t0); t0 := t1;
       update public.fleets set busy_until = busy_until - interval '40 minutes' where busy_until is not null;
       t1 := clock_timestamp(); t_tick[2] := t_tick[2] + extract(epoch from t1 - t0); t0 := t1;
-      update public.port_goods set drift_slot = drift_slot - 1, last_regen_day = last_regen_day - 1;
+      -- The quays the soak can see: where a soak fleet lies (fleets.port_id) or is bound
+      -- (its SAILING voyage's dest_port_id). The rewind makes exactly those rows due; the tick
+      -- below steps a row only while its slot / day is behind (0010, keyed), so it walks them alone.
+      update public.port_goods pg set drift_slot = drift_slot - 1, last_regen_day = last_regen_day - 1
+       where pg.port_id in (select f.port_id from public.fleets f where f.id = any(v_fleets) and f.port_id is not null
+                            union
+                            select v.dest_port_id from public.voyages v where v.fleet_id = any(v_fleets) and v.status = 'SAILING');
       t1 := clock_timestamp(); t_tick[3] := t_tick[3] + extract(epoch from t1 - t0); t0 := t1;
       perform public.tick_arrivals();
       t1 := clock_timestamp(); t_tick[4] := t_tick[4] + extract(epoch from t1 - t0); t0 := t1;
       perform public.tick_market_drift();
       t1 := clock_timestamp(); t_tick[5] := t_tick[5] + extract(epoch from t1 - t0); t0 := t1;
-      raise notice 'TIMING: after % orders — verbs % (n %), clear % s, tick voyages/fleets/port_goods/arrivals/drift % s, SAILING voyages % (npc %), ledger rows %',
-        k, t_verb, n_verb, round(t_clear, 1), (select array_agg(round(x, 1)) from unnest(t_tick) x),
-        (select count(*) from public.voyages where status = 'SAILING'),
-        (select count(*) from public.voyages v join public.fleets f on f.id = v.fleet_id
-          where v.status = 'SAILING' and exists (select 1 from public.npc_houses nh where nh.player_id = f.player_id)),
-        (select count(*) from public.ledger);
     end if;
   end loop;
 
@@ -168,6 +179,11 @@ begin
    where status = 'SAILING';
   update public.fleets set busy_until = busy_until - interval '6 hours' where busy_until is not null;
   perform public.tick_arrivals();
+
+  -- Where the seconds went (proof.mjs prints TIMING lines): the orders by verb, the clears, and the
+  -- 25 jumps by step — voyages / fleets / port_goods rewinds, tick_arrivals, tick_market_drift.
+  raise notice 'TIMING: % orders — seconds by verb % (n %), clear % s; 25 jumps — voyages/fleets/port_goods/arrivals/drift % s',
+    v_issued, t_verb, n_verb, round(t_clear, 1), (select array_agg(round(x, 1)) from unnest(t_tick) x);
 
   if v_issued <> 500 then
     raise exception 'PROOF 2 FAILED: % orders were issued, not 500', v_issued;
