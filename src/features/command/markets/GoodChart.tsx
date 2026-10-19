@@ -116,7 +116,7 @@ export function GoodChart({
           )}
           <span className="mt-0.5 flex items-center gap-1.5 truncate text-t-caption text-ink-faint">
             {focusPort && <PortFlag code={focusPort.code} />}
-            {focusPort ? `${focusPort.name} · market price` : 'Market price'}
+            {focusPort ? `${focusPort.name} · middle price (buying costs a little more, selling pays a little less)` : 'Market price'}
           </span>
           <span className="mt-1 flex items-baseline gap-3">
             {now !== null ? (
@@ -157,10 +157,12 @@ export function GoodChart({
         <Segmented<WindowId> segments={WINDOWS} value={win} onChange={setWin} label="Chart window" className="shrink-0 self-start" />
       </div>
 
-      {/* THE CHART — fills the pane on a wide glass */}
+      {/* THE CHART — fills the pane on a wide glass. On a phone the box keeps room for the plot (220 px) and a
+          legend wrapped to two lines (2026-10-19: a city's estimate drawn at once, asked ahead, wrapped its
+          legend and pushed the ticket down 10 px; the skeleton it replaced had no legend). */}
       <div
         ref={box}
-        className={fill ? 'mt-3 min-h-[260px] flex-1' : 'mt-3 min-h-[250px]'}
+        className={fill ? 'mt-3 min-h-[260px] flex-1' : 'mt-3 min-h-[260px]'}
         data-testid="good-chart"
       >
         {o && size ? (
@@ -180,8 +182,10 @@ export function GoodChart({
         )}
       </div>
 
-      {/* THE FOOT: when, and how likely */}
-      <div className="mt-1 min-h-11 space-y-0.5">
+      {/* THE FOOT: when, and how likely. On a phone the likely line wraps to two (16 px each): room for
+          three lines is kept, so a city's estimate landing (at once, when it was asked ahead — 2026-10-19)
+          never pushes the ticket below it down. */}
+      <div className="mt-1 min-h-[3.25rem] space-y-0.5 sm:min-h-11">
         {best ? (
           <p className="text-t-caption text-warning" data-testid="good-best-time">
             ◆ Best time to {sells ? 'sell' : 'buy'} at {focusPort?.name ?? 'this city'}: {formatClock(Date.parse(best.at))} ·{' '}

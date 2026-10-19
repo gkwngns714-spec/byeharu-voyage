@@ -396,6 +396,8 @@ export function portNationOf(
 /** How often the beat re-reads the flags (0143). The daily count moves them once a day. */
 const ALLEGIANCE_ASK_EVERY_MS = 60 * 60_000
 let allegianceAskedAtMs = 0
+/** The price-history reads on the wire, by port (loadHistory). */
+const historyAsking = new Map<string, Promise<void>>()
 
 /** THE ROSTER'S CADENCE (0118). A delta asks from the last answer's instant LESS this overlap: a tick
  *  that started before that instant commits its rows dated earlier, after it (tick_arrivals runs for
@@ -762,8 +764,17 @@ export const useWorld = create<LiveWorld>((set, get) => {
   loadMarket: (portId) =>
     loader(worldMarket(portId), (v, s) => ({ markets: { ...s.markets, [portId]: v } }), { loud: true }),
 
-  loadHistory: (portId) =>
-    loader(worldPriceHistory(portId), (v, s) => ({ history: { ...s.history, [portId]: v } }), { loud: false }),
+  // ONE ASK A PORT AT A TIME (2026-10-19): the desk asks a good's likely city ahead of its chart, and the
+  // chart then asks the same port while that read is still on the wire — the second ask joins the first.
+  loadHistory: (portId) => {
+    const onWire = historyAsking.get(portId)
+    if (onWire) return onWire
+    const p = loader(worldPriceHistory(portId), (v, s) => ({ history: { ...s.history, [portId]: v } }), { loud: false }).finally(
+      () => historyAsking.delete(portId),
+    )
+    historyAsking.set(portId, p)
+    return p
+  },
 
   // A FAILED REACH READ IS SILENT, like history: the picker still lists every harbour, only
   // unordered by distance — a truthful, lesser answer (§7C's mirror), never a fabricated figure.

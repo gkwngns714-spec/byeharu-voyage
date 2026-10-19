@@ -127,7 +127,8 @@ jobs:
   #   * `the rest` (grant lockdown, offline equivalence, first session and seven more; minutes)
   #     ALWAYS runs. Every new migration's apply, its self-assert receipt and the world guard run
   #     inside every leg, so this one leg carries them on every PR.
-  #   * `ledger` (02, ~5 min) and `merchants` (12, ~11 min) run when an ADDED migration defines or
+  #   * `ledger` (02, ~30 s since 2026-10-19 — the leg ~1m40s; it was 11 min) and `merchants` (12,
+  #     ~3 min) run when an ADDED migration defines or
   #     mentions a qualified name (`public.port_offers`, `cmd.issue`, a table it writes) that the
   #     proof file names; when the proof file itself changed; or on any change to scripts/db/**,
   #     package(-lock).json or an edited (not added) migration. On main, and on dispatch: all three.
@@ -256,6 +257,14 @@ jobs:
   # added tomorrow lands in it BY CONSTRUCTION and nothing can fall between legs. Every leg builds
   # the same world through the same prefix cache, enforces the same receipts floor and world guard,
   # and fails on its own markers — a leg that matched no proof fails as vacuous (proof.mjs).
+  #
+  # 2026-10-19: the ledger leg had grown to the slowest of the three (12m16s on PR #254 against
+  # 2-6 min for the others). Timed inside the proof (run 39185351620): the 500 orders were 0.9 s;
+  # the 25 time-jumps 397 s of 401 — a rewind of all 132,090 port_goods rows and tick_market_drift
+  # over the whole world, 25 times. The soak now rewinds only the quays its fleets lie at or are
+  # bound for (how world.market itself drifts a quay since 0137); proof 02 is 28.9 s and the leg
+  # 1m36s (run 39186187514, PR #255) with the same six markers. proof.mjs prints each proof's wall
+  # time and the soak a TIMING line, so the next growth is read off the log.
   pglite-gate:
     name: pglite-gate (${{ matrix.leg }})
     needs: select

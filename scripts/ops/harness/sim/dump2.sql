@@ -1,0 +1,3 @@
+select string_agg('===== ' || p.oid::regprocedure::text || ' [' || p.provolatile::text || ']' || E'\n' || replace(pg_get_functiondef(p.oid), E'\r', ''), E'\n' order by p.proname)
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where (n.nspname, p.proname) in (('cmd','standing_route_save_for'),('cmd','do_sail'),('voyage','reach_from'),('world','trade_routes'),('world','quote'),('public','wages_from_profit'),('public','stores_cost'),('public','npc_buy_budget'),('public','profit_tax'),('public','crew_wages'),('public','running_cost_mult'),('world','affinity_at'),('world','haul_rows'),('public','npc_found'),('cmd','standing_route_lines'),('cmd','run_standing_route'),('public','npc_tend_route'),('public','npc_tend'),('cmd','advance'));

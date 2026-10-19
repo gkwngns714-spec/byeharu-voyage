@@ -192,6 +192,7 @@ for (const file of files) {
   const before = await digest(db)
   const notices = []
   let error = null
+  const started = Date.now()
 
   await db.exec('begin;')
   try {
@@ -224,8 +225,8 @@ for (const file of files) {
   const ok = !error && missing.length === 0 && undeclared.length === 0 && !leaked
 
   if (ok) {
-    console.log(`✓ ${file}  — ${declared.length}/${declared.length} PASS markers`)
-    for (const line of notices) if (/PASS:/.test(line)) console.log(`    ${line}`)
+    console.log(`✓ ${file}  — ${declared.length}/${declared.length} PASS markers in ${((Date.now() - started) / 1000).toFixed(1)} s`)
+    for (const line of notices) if (/PASS:|^TIMING:/.test(line)) console.log(`    ${line}`)
   } else {
     failed += 1
     console.error(`✗ ${file}  — ${declared.length - missing.length}/${declared.length} PASS markers`)

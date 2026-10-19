@@ -32,7 +32,7 @@ one scheduled run a day. So on a pull request:
      lookup and the wait).
 2. **The one exemption**: a PR whose diff changed the chain machinery or an old file — exactly the
    set that runs the growth test (`select-specs.mjs`, `growth.run`: `src/lib/db/**`, `scripts/db/**` but
-   not `scripts/db/world-guard.mjs` nor `scripts/db/proofs/**` — a certifier and the proofs, in no snapshot's key, 2026-10-18 —,
+   not `scripts/db/world-guard.mjs`, `scripts/db/proofs/**`, nor the proof runner `scripts/db/proof.mjs` and its fixtures `proof-courses.mjs` / `market-fixture.mjs` — certifiers and the proofs, in no snapshot's key, 2026-10-18/19 —,
    the preamble, `package(-lock).json`, `vite.config.ts`, `tests/frozenChain.ts`, an **edited,
    deleted or renamed** migration). No kept snapshot can be expected to fit such a chain, so a
    from-zero apply is allowed there and **logged as a warning**. `select` prints the reasons.

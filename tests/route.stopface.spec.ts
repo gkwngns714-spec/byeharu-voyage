@@ -241,6 +241,11 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   await page.waitForTimeout(600)
   const wideGroups = await groups('[data-testid="route-stop"]')
   console.log(`route face groups @${WIDE.width}px: ${JSON.stringify(wideGroups)}`)
+  // THE SAME FOLD, STILL OPEN, ON THE OTHER SHAPE (2026-10-19). From 1024 px the desk is the terminal
+  // (CommandScreen, #225), a different tree, and the fold's own state folded it shut there: this list
+  // was EMPTY, the loop below passed over nothing, and the Edit press waited out the whole 10-minute
+  // test (main's acceptance, red from db7c956). An empty list is a failure, said here and at once.
+  expect(wideGroups, 'the route fold folded when the desk changed shape at 1024 px').toHaveLength(2)
   for (const g of wideGroups) expect(g.sell!.bottom).toBeLessThanOrEqual(g.buy!.top)
   await shot(page, 'route-face-1440.png', info)
   await page.getByRole('button', { name: 'Edit' }).last().click()

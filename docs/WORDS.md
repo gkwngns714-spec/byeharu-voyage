@@ -41,6 +41,7 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | the offshore point a port is reached from | **anchorage** | the roads, roadstead |
 | a trip | **voyage** | passage |
 | distance | **miles** (`188 miles`) | nm, sea miles |
+| how far one leg can be (the captain's Navigation, 0188) | a city past it is **too far to sail in one go**; the figure is **days at sea** at the fleet's speed (`your navigator can only plan 14.2 days at sea without a stop. A captain with Navigation 3 could take you there`; `the longest stretch at sea is 21.3 days, but your supplies last only 12.0 days`; owner 2026-10-19: "make it in simple words") — `reachWords` in `src/features/command/plans/planLines.ts`, the one wording for the plan builder and the best-trade card | reach, her reach, `1,700 nm`, legs of N nm, passage |
 | speed | **knots** (`4.9 knots`) | kn |
 | the port's storage building | **storage** (tab: **Storage**; `In storage`) — ONE word for the building, the tab and the act (owner row 87, 2026-09-13: *"there is warehourse and there is store. unify."*) | warehouse, shed, store |
 | put cargo in it / take it out | **Put in storage** / **Take on board** (`Put 20 units in storage`) | Store here, Load onto ship, land it, take it aboard |

@@ -847,8 +847,18 @@ async function readCityList(page: Page, city: string) {
   // Every row stands in a section; the head line's in-port count is the In port section's — one
   // rule (`harbourSides`) for both. The head still counts every merchant the city concerns, the
   // ones away on their loops too, so it is at least the rows listed.
-  const all = await list.getByTestId('merchant-row').count()
-  expect(all, `${city}: rows outside every section`).toBe(printed.reduce((n, p) => n + p.rows.length, 0))
+  // ONE READ OF THE DOM, not one per section: the merchants sail while this runs (the npc clock is
+  // on), so a row that docks between the section reads above and a count taken after them was
+  // counted "outside every section" (2026-10-19, PR #257: Lisbon 13 against 12) though the markup
+  // (CityHarbour.tsx) has no row outside one.
+  const [all, inSections] = await list.evaluate(
+    (el, ids) => [
+      el.querySelectorAll('[data-testid="merchant-row"]').length,
+      el.querySelectorAll(ids.map((id) => `[data-testid="${id}"] [data-testid="merchant-row"]`).join(', ')).length,
+    ],
+    GROUPS.map((g) => g.id),
+  )
+  expect(all, `${city}: rows outside every section`).toBe(inSections)
   expect(all, `${city}: a list with no rows`).toBeGreaterThanOrEqual(1)
   const inPort = printed.find((p) => p.heading === 'In port')?.rows.length ?? 0
   const line = page.getByTestId('map-place-name-line')

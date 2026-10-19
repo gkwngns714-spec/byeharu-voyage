@@ -61,8 +61,12 @@ test.describe('every port is on the sheet; the zoom decides dot or mark', () => 
     const screen = readFileSync(path.join(process.cwd(), 'src', 'features', 'map', 'MapScreen.tsx'), 'utf8')
     expect(screen).toMatch(/const tappable = visiblePorts\(ports, model\.portRoles, view, minTier\)/)
     expect(screen).toMatch(/const dots = dotPorts\(ports, model\.portRoles, view, minTier\)/)
-    // …and, since 2026-10-14, the merchants the sheet actually DREW (shipMarks' thinning), last.
-    expect(screen).toMatch(/hitTest\(model, tappable, at, GLYPH\.hitRadius \* unitsPerPx, dots, GLYPH\.dotHitRadius \* unitsPerPx, drawn\.traffic\)/)
+    // …and, since 2026-10-14, the merchants the sheet actually DREW (shipMarks' thinning), then — since
+    // 2026-10-18 (#234, src/chart/placedNames.ts) — the harbour NAMES as drawn, which hitTest asks before
+    // any reach is weighed. A name box is a full mark's own name, so a dot still answers second.
+    expect(screen).toMatch(
+      /hitTest\(model, tappable, at, GLYPH\.hitRadius \* unitsPerPx, dots, GLYPH\.dotHitRadius \* unitsPerPx, drawn\.traffic, placedNames\(\)\)/,
+    )
     expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view, unitsPerPx\)/)
     expect(screen).not.toContain('portMarks(')
     // The two halves partition the sheet: no harbour in both, none in neither.
