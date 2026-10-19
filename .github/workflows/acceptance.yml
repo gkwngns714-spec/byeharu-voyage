@@ -87,9 +87,14 @@ on:
   push:
     branches: [main]
   # 2026-10-17 (owner: "always make CI fast"): acceptance is NOT a required check any more
-  # (required = build + disposable-chain), so it no longer runs on pull requests — it held GitHub
-  # runners that the required checks then queued behind. Main runs the full suite after every merge
-  # as the net; a red there is fixed before the next deploy. Run it on a PR by hand if needed.
+  # (required = build + disposable-chain), and that still holds.
+  # 2026-10-19: it RUNS on pull requests again, scoped to the specs the diff reaches (select-specs.mjs),
+  # as a check that reports but does not block. With the trigger removed (#165) no PR ran a single
+  # browser spec: select-specs.mjs picked map.marks + map.noblink for #234 and route.stopface for
+  # #225, and nothing ran them. Main's net went red on both and stayed red for 25 runs (39136528599 →
+  # 39186571906) because no PR showed it. A PR whose diff reaches no spec plans nothing and each
+  # shard skips its build ("no affected specs in this pool").
+  pull_request:
   workflow_dispatch:
 
 # A newer push to a PR cancels the older run; a push to MAIN never cancels one (2026-10-15). With

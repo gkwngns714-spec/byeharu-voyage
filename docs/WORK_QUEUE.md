@@ -20,10 +20,18 @@ Resume in this order:
    - the flags screenshots.
 
    It also brings back a `pull_request` trigger on acceptance.yml, ON PURPOSE: it runs only the selected specs and doesn't block, and it is the root-cause fix. The agent was stopped mid-step. Read ALL its checks, confirm `map.noblink` truly passes at ≤ 7 layers, then merge, then confirm main's Acceptance goes green.
-   - **2026-10-19 ~03:25 UTC (PC 디폴리스):** on #257's CI, main's 4 failures pass. ONE new failure: `map.merchants.spec.ts:918`, "port:LIS: rows outside every section" (13 against 12). The markup has no row outside a section, so this is the test racing the live npc clock (separate reads). Fixed in b3498db (one atomic DOM read); CI re-running.
+   - **2026-10-19 ~03:25 UTC (PC 디폴리스):** on #257's CI, main's 4 failures pass. ONE new failure: `map.merchants.spec.ts:918`, "port:LIS: rows outside every section" (13 against 12). The markup has no row outside a section, so this is the test racing the live npc clock (separate reads). Fixed in b3498db (one atomic DOM read). **#257 MERGED (88321e3).** Main then failed only `map.daylight.raster:83` (a late mask raster counted in the idle window); fix PR **#260** MERGED. **Main's Acceptance GREEN on f1444f6** (first since 10-18 14:33). Item 1 DONE.
    - 0205 (item 2) is being built in parallel by an agent on this PC.
 2. **0205 `osn-arrivals-fast`**, WIP pushed (f63df10) and NOT ready. Read `docs/dev-log/2026-10-19-arrivals-fast.md` § HAND-OFF. Knob-only 16 → 8 hurt the laps (33 → 51 % ≤ 0). Finish "trade loops first", re-run the paired sim, and ship only if both arrivals and laps hold.
 3. The owner decides: insurance (proposal below), and pirates / zones / dungeons.
+
+## New from the owner, 2026-10-19 (PC 디폴리스)
+| Item | Owner's words | State |
+|---|---|---|
+| Market prices say whose they are; the out-of-reach note in simple words | "not sure if it is buying price or selling price"; "What does this mean? make it in simple words" | **LIVE** 2026-10-19 (#259, site build 351656e) |
+| Trade good quantities 10× for all. Decided by default: city stock, normal stock, and their refill/drain flows ×10, from one knob; prices unchanged | "make the trade good quantity 10 times larger for all" | agent building (`osn-trade-qty-x10`, migration **0207**) |
+| Switching goods on the desk is slow | "it takes too long to load, any way to fix this?" | PR **#261** green. Measured: `world.good_board` 4.3–6.1 s on prod (reach_passage ×3 at ~1.2 s each). Fixed: one reach_passage per board, distances read once, region gate per region; client keeps answers + fetches in parallel. **Renumbered 0207 → 0205 and deploys NEXT** (decided by default: it is ready, the others are not). New order: 0205 good switch · 0206 arrivals · 0207 trade ×10 |
+| Plans / City / Invest swap in place on the COMMAND desk: no pop-ups, no new screen | "i want the screen of the original command tab to stay same … reloading on the same page" | agent building (`osn-command-in-place`) |
 
 ## In progress, in priority and deploy order
 | # | Item | Owner's words | State |

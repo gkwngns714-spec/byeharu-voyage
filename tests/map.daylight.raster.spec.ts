@@ -92,6 +92,13 @@ test.describe('the daylight mask at rest', () => {
     let t = await page.evaluate(() => Date.now())
     await page.clock.setFixedTime(t)
     await page.waitForTimeout(500)
+    // PLACED FOR THE HELD SUN, before anything is counted. The glide re-places the mask once the Sun
+    // has gone a step since its LAST placement (DaylightSheet.tsx), so the mask a running clock left
+    // may lag the held Sun by most of a step, and the half-pixel walk below then tipped it over: one
+    // placement, both masks, 2 paints (main, 2026-10-19 03:02). A degree's jump places it exactly.
+    t += 1 / ((360 * GAME_CLOCK_RATE) / MS_PER_DAY)
+    await page.clock.setFixedTime(t)
+    await page.waitForTimeout(500)
 
     // How far the Sun moves on the mask per real millisecond, in device pixels: one tile of the
     // mask (its `mask-size` width) is one turn of the world, one game day.
@@ -106,7 +113,16 @@ test.describe('the daylight mask at rest', () => {
 
     const cdp = await page.context().newCDPSession(page)
     const watch = await watchMasks(page, cdp)
-    const before = await watch.read()
+    // SETTLED, then counted: the placement for the held Sun (above) re-rasters a mask tens of thousands
+    // of pixels wide, and on a slow runner that paint can land after the wait (main, 2026-10-19 03:57:
+    // 2 paints counted in the idle window; the PR run, 0). Read until two reads half a second apart agree.
+    let before = await watch.read()
+    for (let i = 0; i < 20; i++) {
+      await page.waitForTimeout(500)
+      const again = await watch.read()
+      if (again.paints === before.paints) break
+      before = again
+    }
     expect(before.masks, 'both daylight masks are compositor layers').toBe(2)
 
     // 2 s, 20 steps, the Sun travelling half a device pixel in all. Each step moves it 0.0125 css
