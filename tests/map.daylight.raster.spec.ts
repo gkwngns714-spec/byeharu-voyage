@@ -92,6 +92,13 @@ test.describe('the daylight mask at rest', () => {
     let t = await page.evaluate(() => Date.now())
     await page.clock.setFixedTime(t)
     await page.waitForTimeout(500)
+    // PLACED FOR THE HELD SUN, before anything is counted. The glide re-places the mask once the Sun
+    // has gone a step since its LAST placement (DaylightSheet.tsx), so the mask a running clock left
+    // may lag the held Sun by most of a step, and the half-pixel walk below then tipped it over: one
+    // placement, both masks, 2 paints (main, 2026-10-19 03:02). A degree's jump places it exactly.
+    t += 1 / ((360 * GAME_CLOCK_RATE) / MS_PER_DAY)
+    await page.clock.setFixedTime(t)
+    await page.waitForTimeout(500)
 
     // How far the Sun moves on the mask per real millisecond, in device pixels: one tile of the
     // mask (its `mask-size` width) is one turn of the world, one game day.
