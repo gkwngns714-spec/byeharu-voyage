@@ -19,9 +19,9 @@
 
 import { proposeCourse, sailOrigin, sailTarget } from '../../../domain/passage'
 import { pathLengthNm } from '../../../lib/geo'
-import { formatInt, formatVoyageDays } from '../../../lib/format'
+import { formatMiles, formatVoyageDays } from '../../../lib/format'
 import type { SeaNav } from '../../../lib/sea'
-import type { FleetView, PlanLine, SnapshotPort } from '../../../lib/rpc'
+import type { BoardPassage, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
 import { emptyStop, type RouteStopDraft } from '../standingRouteDraft'
 import type { PlanDraft } from './planDraft'
 
@@ -30,6 +30,11 @@ export type PlanText = { ok: true; lines: PlanLine[] } | { ok: false; noCourseTo
 /** A number as the grammar reads it: no grouping, at most two decimals. */
 function num(n: number): string {
   return String(Math.round(n * 100) / 100)
+}
+
+/** Sailed miles as days at sea at this fleet's speed — the one arithmetic the plan and its words share. */
+function daysAt(nm: number, speedKn: number): number {
+  return nm / speedKn / 24
 }
 
 /** The harbours between, per leg, as world.good_board serves them (0188): to the buy city, then to the sell city. */
@@ -61,7 +66,7 @@ export function planLines(
     const course = from && to ? proposeCourse(nav, from, to) : null
     if (!course) return false
     if (stores && stores.speedKn > 0) {
-      const days = pathLengthNm(course.map(([lat, lon]) => ({ lat, lon }))) / stores.speedKn / 24
+      const days = daysAt(pathLengthNm(course.map(([lat, lon]) => ({ lat, lon }))), stores.speedKn)
       if (here !== null && casks < days * stores.margin) {
         if (buyLine !== null && here === plan.buyAt) lines.splice(buyLine, 0, { text: 'PROVISION FULL' })
         else lines.push({ text: 'PROVISION FULL' })
@@ -115,25 +120,53 @@ export function planRoute(plan: PlanDraft): RouteStopDraft[] {
   return stops
 }
 
-/** "via Ceuta, Angra" — the harbours the passage puts in at (0188), or null when it sails straight. */
+/** "via Ceuta, Angra" — the ports the voyage calls at between (0188), or null when it sails straight.
+ *  THE ONE WORDING: the plan builder's estimate line and the best-trade card both read it. */
 export function viaWords(stops: readonly string[], name: (code: string) => string): string | null {
   return stops.length > 0 ? `via ${stops.map(name).join(', ')}` : null
 }
 
-/** Why a city is not planned (0188): beyond her captain's reach through every harbour, or beyond her stores. */
-export function reachWords(
-  row: { port: string; stops?: string[] | null; needs?: { navigation: number | null; reach_nm: number } | null; longest_leg?: { days: number } | null },
-  name: (code: string) => string,
-  reachNm: number | null,
-): string {
-  if (row.stops === null || row.stops === undefined) {
+/** What the board served about the fleet reading a row (0188): its speed, the farthest one leg its captain
+ *  plots (null for a company sailing without one), and the days of supplies on board now (null when the
+ *  board did not say). */
+export interface ReachBoard {
+  speedKn: number
+  reachNm: number | null
+  supplyDays: number | null
+}
+
+/** That, read off a served `world.good_board`. */
+export function reachBoard(board: Pick<GoodBoard, 'fleet' | 'reach' | 'supplies'>): ReachBoard {
+  return { speedKn: board.fleet.speed_kn, reachNm: board.reach?.reach_nm ?? null, supplyDays: board.supplies?.days ?? null }
+}
+
+/** A leg's length as the player reads it: days at sea at this fleet's speed (docs/WORDS.md — a distance reads
+ *  as days of sailing); miles only when the board gave no speed to sail them at. */
+function legWords(nm: number, speedKn: number): string {
+  return speedKn > 0 ? formatVoyageDays(daysAt(nm, speedKn)) : formatMiles(nm)
+}
+
+/** Why a city cannot be sailed to (0188), in plain words — THE ONE WORDING, read after the city's name and a
+ *  dash by the plan builder's note and the best-trade card alike (docs/WORDS.md: no nm, no her, no passage):
+ *
+ *    farther than your navigator can plot in one leg (up to 9.4 days); Navigation 3 plots legs of up to 14.2 days
+ *    farther than your navigator can plot in one leg (up to 9.4 days); no navigator plots one that long
+ *      (28.1 days at the most), and no chain of ports gets there
+ *    its longest leg is 21.3 days at sea, more than your 12.0 days of supplies
+ *
+ *  No voyage: the board served no `stops` (or, as 0188 serves a buy row it cannot reach, `stops: []` with no
+ *  miles). Otherwise the voyage exists and it is the supplies that fall short. */
+export function reachWords(row: BoardPassage & { miles: number | null }, board: ReachBoard): string {
+  if (row.stops == null || row.miles === null) {
+    const own = `farther than your navigator can plot in one leg${board.reachNm !== null ? ` (up to ${legWords(board.reachNm, board.speedKn)})` : ''}`
     const n = row.needs
-    const need = n
-      ? n.navigation !== null
-        ? `needs Navigation ${n.navigation} (reach ${formatInt(n.reach_nm)} nm)`
-        : `no Navigation reaches it straight (${formatInt(n.reach_nm)} nm at the most)`
-      : null
-    return `${name(row.port)} cannot be reached in legs of ${reachNm !== null ? `${formatInt(reachNm)} nm` : 'her reach'}${need ? ` — ${need}` : ''}.`
+    if (n && n.navigation !== null) return `${own}; Navigation ${n.navigation} plots legs of up to ${legWords(n.reach_nm, board.speedKn)}`
+    if (n) return `${own}; no navigator plots one that long (${legWords(n.reach_nm, board.speedKn)} at the most), and no chain of ports gets there`
+    return own
   }
-  return `Supplies on board will not cover the voyage to ${name(row.port)}${row.longest_leg ? ` (its longest leg is ${formatVoyageDays(row.longest_leg.days)})` : ''} — resupply first.`
+  if (row.longest_leg && row.longest_leg.days > 0) {
+    const leg = `its longest leg is ${formatVoyageDays(row.longest_leg.days)} at sea`
+    return board.supplyDays !== null ? `${leg}, more than your ${formatVoyageDays(board.supplyDays)} of supplies` : `${leg}, more than your supplies carry`
+  }
+  return 'farther than your navigator can plot, or than your supplies carry'
 }

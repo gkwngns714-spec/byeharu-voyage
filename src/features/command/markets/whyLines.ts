@@ -1,4 +1,4 @@
-import { formatFixed, formatInt, formatPct, formatPctChange } from '../../../lib/format'
+import { formatFixed, formatInt, formatMiles, formatPct, formatPctChange } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
 
 // WHY THIS PRICE, AS LINES (docs/PRICE_FACTORS.md §5; migration 0185): world.price_why's served terms named
@@ -66,7 +66,7 @@ export function whyLines(why: PriceWhy): WhyLine[] {
   for (const t of why.terms) {
     switch (t.key) {
       case 'haul':
-        add('haul', t.nm ? `Far from where it is made · ${formatInt(t.nm)} nm` : 'Far from where it is made', t.mult)
+        add('haul', t.nm ? `Far from where it is made · ${formatMiles(t.nm)}` : 'Far from where it is made', t.mult)
         break
       case 'affinity':
         add('affinity', t.mult < 1 ? 'Made on this coast' : 'Scarce on this coast', t.mult)

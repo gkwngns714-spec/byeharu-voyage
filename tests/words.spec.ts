@@ -117,13 +117,16 @@ function stripComments(src: string): string {
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
 }
 
-/** Every string literal — '…', "…", `…` (with `${}` holes blanked) — and JSX text between tags. */
+/** Every string literal — '…', "…", `…` (with `${}` holes read as a figure) — and JSX text between tags.
+ *  A hole reads as `0`, not as a blank: `` `${formatInt(n)} nm` `` is the shape every unit abbreviation
+ *  actually ships in, and a blanked hole left no digit for `\d\s?nm\b` to see (2026-10-19: "nm" after a
+ *  hole on three faces, every one past this spec). */
 function literals(src: string): string[] {
   const out: string[] = []
   const code = stripComments(src)
   for (const m of code.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)) {
     const raw = m[1] ?? m[2] ?? m[3] ?? ''
-    out.push(raw.replace(/\$\{[^}]*\}/g, ' '))
+    out.push(raw.replace(/\$\{[^}]*\}/g, '0'))
   }
   // JSX text only: one line, no code characters — `=> (` and `) : (` between `>` and `<` are code.
   for (const m of code.matchAll(/>([^<>{}=();\n]*[A-Za-z]{2,}[^<>{}=();\n]*)</g)) out.push(m[1].trim())
