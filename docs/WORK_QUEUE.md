@@ -19,6 +19,8 @@ Resume, in deploy order. Each is a branch; read its dev-log "## HAND-OFF" first 
 3. `osn-live-prices`: a deterministic per-market tick (server = client), lands DARK (`price_tick_on`), then lit with a window.
 4. `osn-arrivals-cache`: per-sweep leg-price cache; ship only if plans are identical and the sweep is faster (re-measure on the post-0208 world).
 5. `osn-far-selling`: APPROVED by the owner: stale far prices, far-market saturation (one glut authority), perishables spoil; each lands dark; target long ≈1.3–1.5× short profit/day. Baseline first.
+   - live-prices WIP 37c8af5: migration 0212 written (NOT FOR DEPLOY), self-assert passed once locally; no client, no parity test, no perf, no PR. Owner decisions before lighting are in its dev-log HAND-OFF (the flutter is tiny at the thinnest spread; the big swings take hours).
+**BUG found (pre-existing, not from today's work):** buy 10 then sell in the SAME port prices the sale one stock step better (~5 ÷ stock, 0.8 % at stock 600). At the thinnest 0.2 % spread, a same-port flip can already pay. Fix before lighting live prices.
 6. **Pirates: PR #268** (docs/PIRATES_AND_HAVENS.md). Awaits the owner's answers to 12 questions (defaults in the doc). On "go with the defaults", build Z1→Z7.
 Numbers: each migration renumbers to prod head + 1 at push. Rename the tags/temp suffixes/probe ids inside too (duplication.spec checks them).
 
