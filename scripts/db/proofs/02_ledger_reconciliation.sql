@@ -53,6 +53,13 @@ declare
   v_sum     bigint;
   v_bites   boolean := false;
   r         record;
+  t0        timestamptz;
+  t1        timestamptz;
+  t_verb    jsonb := '{}'::jsonb;   -- TIMING (diagnostic): seconds per verb
+  n_verb    jsonb := '{}'::jsonb;
+  t_clear   numeric := 0;
+  t_tick    numeric[] := array[0,0,0,0,0];  -- voyages, fleets, port_goods, arrivals, drift
+  v_verb    text;
 begin
   select array_agg(code order by code) into v_ports from public.ports;
   select array_agg(code order by code) into v_goods from public.goods;
@@ -106,16 +113,21 @@ begin
     end;
 
     r := null;
+    v_verb := split_part(v_cmd, ' ', 1);
+    t0 := clock_timestamp();
     begin
       if (proof.issue(v_fleets[h], v_cmd)->>'ok')::boolean then
         v_done := v_done + 1;
+        t1 := clock_timestamp();
       else
         v_failed := v_failed + 1;
+        t1 := clock_timestamp();
         -- A refused order HALTS that fleet until it is cleared (0007's §F.3 rule), which is what a
         -- player does the moment they see the red line. Without this the soak would stop being a
         -- soak after the first refusal — 500 orders would move almost no money and the
         -- reconciliation would be proving nothing about a busy ledger.
         perform cmd.clear(v_fleets[h], false);
+        t_clear := t_clear + extract(epoch from clock_timestamp() - t1);
       end if;
     exception when others then
       -- An RPC that THREW rather than returning an envelope is itself a defect: cmd.issue owns the
@@ -123,17 +135,31 @@ begin
       raise exception 'PROOF 2 FAILED: cmd.issue("%") threw instead of returning a refusal: %', v_cmd, sqlerrm;
     end;
     v_issued := v_issued + 1;
+    t_verb := jsonb_set(t_verb, array[v_verb], to_jsonb(round(coalesce((t_verb->>v_verb)::numeric, 0) + extract(epoch from t1 - t0), 2)));
+    n_verb := jsonb_set(n_verb, array[v_verb], to_jsonb(coalesce((n_verb->>v_verb)::int, 0) + 1));
 
     -- Every 20 orders, jump time forward under the fleets: voyages complete, queues run on,
     -- markets drift and regenerate. This is where the interesting money movement happens.
     if k % 20 = 0 then
+      t0 := clock_timestamp();
       update public.voyages set departed_at = departed_at - interval '40 minutes',
                                 eta = eta - interval '40 minutes'
        where status = 'SAILING';
+      t1 := clock_timestamp(); t_tick[1] := t_tick[1] + extract(epoch from t1 - t0); t0 := t1;
       update public.fleets set busy_until = busy_until - interval '40 minutes' where busy_until is not null;
+      t1 := clock_timestamp(); t_tick[2] := t_tick[2] + extract(epoch from t1 - t0); t0 := t1;
       update public.port_goods set drift_slot = drift_slot - 1, last_regen_day = last_regen_day - 1;
+      t1 := clock_timestamp(); t_tick[3] := t_tick[3] + extract(epoch from t1 - t0); t0 := t1;
       perform public.tick_arrivals();
+      t1 := clock_timestamp(); t_tick[4] := t_tick[4] + extract(epoch from t1 - t0); t0 := t1;
       perform public.tick_market_drift();
+      t1 := clock_timestamp(); t_tick[5] := t_tick[5] + extract(epoch from t1 - t0); t0 := t1;
+      raise notice 'TIMING: after % orders — verbs % (n %), clear % s, tick voyages/fleets/port_goods/arrivals/drift % s, SAILING voyages % (npc %), ledger rows %',
+        k, t_verb, n_verb, round(t_clear, 1), (select array_agg(round(x, 1)) from unnest(t_tick) x),
+        (select count(*) from public.voyages where status = 'SAILING'),
+        (select count(*) from public.voyages v join public.fleets f on f.id = v.fleet_id
+          where v.status = 'SAILING' and exists (select 1 from public.npc_houses nh where nh.player_id = f.player_id)),
+        (select count(*) from public.ledger);
     end if;
   end loop;
 
