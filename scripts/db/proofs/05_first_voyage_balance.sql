@@ -181,8 +181,16 @@ declare
   -- `proof.pin_market` and every input to the number below is a pure function of the chain. The
   -- same bytes give the same figure to the digit, on any machine, at any hour. If this reddens,
   -- something in the chain changed.
-  c_median_lo constant numeric := 13.0;
-  c_median_hi constant numeric := 20.0;
+  --
+  -- Moved deliberately 2026-10-19 with 0207 (every market ten times deeper — the owner: "make the
+  -- trade good quantity 10 times larger for all"). Something in the chain DID change, and it is
+  -- this: the same stake now buys into a market ten times as deep, so its 10-unit steps walk the
+  -- price a tenth as far and the voyage keeps more of the gap. MEASURED through this very file on
+  -- the pinned market: 19.4 on main at 0204 (CI run 39184962583) → 21.1 with 0207 (per-market
+  -- {20.7,22.7,20.2}, PGlite 18.3, local). The band moves by that +1.7 and keeps its width (7.0),
+  -- so it still refuses the same quarter-sized error in drift_sigma either way.
+  c_median_lo constant numeric := 14.7;
+  c_median_hi constant numeric := 21.7;
 
   -- ── AND THE DESIGNED BAND, on the state the design actually governs ──────────────────────────
   -- 4-16 per cent, unchanged since this file was written: below it a voyage is not worth the

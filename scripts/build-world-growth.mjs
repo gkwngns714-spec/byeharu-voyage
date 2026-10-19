@@ -107,6 +107,20 @@ const hasDemand = await hasColumn('port_goods', 'demand')      // 0066
 const hasFurnish = (await db.query(
   `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'furnish_harbours'`,
 )).rows.length > 0                                             // 0089
+// 0207: a market row's normal stock and production are world.market_depth_at's (0005's arithmetic ×
+// market_depth). Against a baseline that has it, the seed and the assert COMPOSE it; against an older
+// baseline they restate 0005's arithmetic, which is what that baseline's rows were written with.
+const hasMarketDepth = (await db.query(
+  `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'world' and p.proname = 'market_depth_at'`,
+)).rows.length > 0                                             // 0207
+const depthTarget = (tier, aff) => hasMarketDepth
+  ? `(world.market_depth_at(${tier}, ${aff}, public.wc_num('market_depth'))).stock_target`
+  : `greatest(60, round(200 * ${tier} * (1.60 - ${aff})))`
+const depthProduction = (tier, aff) => hasMarketDepth
+  ? `(world.market_depth_at(${tier}, ${aff}, public.wc_num('market_depth'))).production_rate`
+  : `case when ${aff} < 0.80
+            then round(greatest(60, 200 * ${tier} * (1.60 - ${aff})) * 0.05, 2)
+            else 0 end`
 
 const base = {}
 base.ports = (await db.query(`
@@ -428,11 +442,9 @@ insert into public.port_goods (port_id, good_id, affinity, stock, stock_target, 
 select p.id,
        g.id,
        aff.affinity,
-       greatest(60, round(200 * p.size_tier * (1.60 - aff.affinity))),
-       greatest(60, round(200 * p.size_tier * (1.60 - aff.affinity))),
-       case when aff.affinity < 0.80
-            then round(greatest(60, 200 * p.size_tier * (1.60 - aff.affinity)) * 0.05, 2)
-            else 0 end${hasDemand ? `,
+       ${depthTarget('p.size_tier', 'aff.affinity')},
+       ${depthTarget('p.size_tier', 'aff.affinity')},
+       ${depthProduction('p.size_tier', 'aff.affinity')}${hasDemand ? `,
        -- 0066: a NEW pair learns what its city wants through the one derivation; an existing pair
        -- keeps its demand (the region and the category did not move, so neither did it)
        world.demand_for(p.id, g.id)` : ''}
@@ -807,11 +819,9 @@ ${hasOrigin ? `  --     0062's law: every offer is NATIVE (the port's region is 
   select count(*) into v_n
     from public.port_goods pg
     join public.ports p on p.id = pg.port_id
-   where pg.stock_target is distinct from greatest(60, round(200 * p.size_tier * (1.60 - pg.affinity)))
+   where pg.stock_target is distinct from ${depthTarget('p.size_tier', 'pg.affinity')}
       or pg.production_rate is distinct from
-         case when pg.affinity < 0.80
-              then round(greatest(60, 200 * p.size_tier * (1.60 - pg.affinity)) * 0.05, 2)
-              else 0 end;
+         ${depthProduction('p.size_tier', 'pg.affinity')};
   if v_n <> 0 then
     raise exception '${shortNo} self-assert FAIL: % port_goods row(s) break 0005''s stock_target/production_rate arithmetic', v_n;
   end if;
