@@ -97,10 +97,12 @@ async function retune({ producer, home, span, reach, curve, amp }) {
     `update public.port_goods pg
         set affinity = world.affinity_for(pg.port_id, pg.good_id),
             drift = 0`)
+  // 0207: the normal stock is world.market_depth_at's (0005's arithmetic × market_depth) — the one
+  // derivation the chain writes rows with, never a copy of it here.
   await db.query(
     `update public.port_goods pg
-        set stock_target = greatest(60, round(200 * p.size_tier * (1.60 - pg.affinity))),
-            stock        = greatest(60, round(200 * p.size_tier * (1.60 - pg.affinity)))
+        set stock_target = (world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).stock_target,
+            stock        = (world.market_depth_at(p.size_tier, pg.affinity, public.wc_num('market_depth'))).stock_target
        from public.ports p where p.id = pg.port_id`)
 }
 
