@@ -39,7 +39,7 @@ export function Plans({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
             onClear={() => clearQueue(fleet.id)}
           />
         </SheetSection>
-        {/* 0212: the insured voyages under way and what the insurance paid — only when there are any. */}
+        {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
         <InsuredVoyages />
       </>
     ),

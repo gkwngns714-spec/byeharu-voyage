@@ -279,7 +279,7 @@ function MerchantBody({
           label={
             <span className="block min-w-0">
               <span className="block">Fortune</span>
-              {/* 0212: THE REFOUND IS RETIRED. What stands behind her cargo is insurance: the losses it
+              {/* 0213: THE REFOUND IS RETIRED. What stands behind her cargo is insurance: the losses it
                   paid her, and what the insuring cities could not cover. Nothing until a claim. */}
               {card.company.insurance && card.company.insurance.claims > 0 && (
                 <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-insurance">

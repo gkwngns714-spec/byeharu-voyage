@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A CARGO CAN BE INSURED — 0212 (docs/dev-log/2026-10-19-insurance.md), the client's side of the contract
+// A CARGO CAN BE INSURED — 0213 (docs/dev-log/2026-10-19-insurance.md), the client's side of the contract
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // The server prices and charges the insurance (public.insure_voyage, called by cmd.do_sail); the client
 // only reads the quote off a SAIL's estimate (`sailEstimate(...).insurance`, the ONE reading), writes the
@@ -17,6 +17,7 @@ import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import { sailEstimate } from '../src/domain/order'
 import { planLines } from '../src/features/command/plans/planLines'
 import { headline } from '../src/features/ledger/headline'
+import { formatDucats } from '../src/lib/format'
 import {
   clearBackend,
   cmdIssue,
@@ -125,7 +126,8 @@ test('SAIL … INSURED charges the price once, Lisbon insures it, and the book a
   const insured = page.events.find((e) => e.kind === 'INSURED')
   expect(insured, 'no INSURED event in History').toBeTruthy()
   const name = (c: string) => portByCode[c]?.name ?? c
-  expect(headline(insured!, name)).toBe(`${fleet.name}'s cargo (1,000 🪙) insured at ${lis.name} for ${quote.price} 🪙.`)
+  // (the money mark is formatDucats' own — a narrow no-break space before 🪙 — so the expectation is built with it)
+  expect(headline(insured!, name)).toBe(`${fleet.name}'s cargo (${formatDucats(VALUE)}) insured at ${lis.name} for ${formatDucats(quote.price)}.`)
   // the payout's sentence, from a payload shaped as public.insurance_claim writes it
   const paid = headline(
     {
@@ -138,7 +140,7 @@ test('SAIL … INSURED charges the price once, Lisbon insures it, and the book a
     },
     name,
   )
-  expect(paid).toBe(`${lis.name}'s insurance paid ${fleet.name} 1,800 🪙 for cargo lost to pirates (worth 2,000 🪙).`)
+  expect(paid).toBe(`${lis.name}'s insurance paid ${fleet.name} ${formatDucats(1800)} for cargo lost to pirates (worth ${formatDucats(2000)}).`)
 })
 
 test('the plan builder writes INSURED on the laden legs alone, and only when asked', async () => {
@@ -153,7 +155,7 @@ test('the plan builder writes INSURED on the laden legs alone, and only when ask
   // selling what is on board: laden from the quay
   const sell = planLines({ ...base, buyAt: null, sellAt: 'FNC', insure: true }, docked, nav, portByCode)
   expect(sell.ok && sell.lines.map((l) => l.text)).toEqual(['SAIL FNC INSURED', 'SELL cloves ALL'])
-  // not asked (and a draft from before 0212, with no field at all): no word anywhere
+  // not asked (and a draft from before 0213, with no field at all): no word anywhere
   const plain = planLines({ ...base, buyAt: 'FNC', sellAt: 'LIS' }, docked, nav, portByCode)
   expect(plain.ok && plain.lines.map((l) => l.text).join(' ')).not.toContain('INSURED')
 })

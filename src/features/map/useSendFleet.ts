@@ -73,7 +73,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({})
   const [act, setAct] = useState<Act | null>(null)
   const [days, setDaysHeld] = useState<Record<string, number>>({})
-  // 0212: whether to insure her cargo on THIS passage. Off until pressed; the price is the dry run's
+  // 0213: whether to insure her cargo on THIS passage. Off until pressed; the price is the dry run's
   // (`sailEstimate(...).insurance`, quoted by the server on the unasked SAIL), never worked out here.
   const [insured, setInsured] = useState<Record<string, boolean>>({})
 
@@ -147,7 +147,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   }
 
   /** THE PRICE OF INSURING HER CARGO on this passage, from her row's dry run — the server's quote on
-   *  the unasked SAIL (0212). Null when the dry run has not answered, was refused, or quoted nothing
+   *  the unasked SAIL (0213). Null when the dry run has not answered, was refused, or quoted nothing
    *  (an empty hold). A fleet under way is never offered it: the cover is written in port. */
   const insuranceOf = (f: FleetView): SailInsurance | null => {
     if (f.voyage) return null
@@ -197,7 +197,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
       } else {
         const origin = sailOrigin(f, portByCode)
         const course = origin ? proposeCourse(seaNav, origin, target) : null
-        // 0212: `SAIL <dest> INSURED` when asked — the grammar's own word (cmd.verb_schema's `insurance`
+        // 0213: `SAIL <dest> INSURED` when asked — the grammar's own word (cmd.verb_schema's `insurance`
         // enum), written by the one line composer; the server prices and charges it at departure.
         const sailArgs = insureOf(f) ? { ...args, insurance: 'INSURED' } : args
         okay = await issue(f.id, orderText(spec, sailArgs, f.name), course)

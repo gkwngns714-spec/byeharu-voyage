@@ -80,7 +80,7 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\bNPCs?\b/, say: 'merchant' },
   { word: /\bbots?\b/i, say: 'merchant' },
   { word: /\bAI traders?\b/i, say: 'merchant' },
-  // 2026-10-19, 0212: the refound is retired; a merchant's cargo is INSURED and the insurance PAYS.
+  // 2026-10-19, 0213: the refound is retired; a merchant's cargo is INSURED and the insurance PAYS.
   { word: /\bbailed out\b/i, say: 'insurance paid' },
   { word: /\brefound(?:ed|s)?\b/i, say: 'insurance paid' },
   { word: /\bunderwriters?\b/i, say: 'Insurance / the city' },

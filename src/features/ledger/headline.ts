@@ -29,8 +29,8 @@ import type { LedgerEvent } from '../../lib/rpc'
 //   NATION_CHANGED {from, from_name, to, to_name}                 (0143 — codes and names)
 //   DONATED       {port, port_name, amount, nation}               (0144 — a gift to a city)
 //   FLAG_CHANGED  {port, port_name, from, from_name, to, to_name, share_to, share_from}  (0146)
-//   INSURED       {fleet, voyage_id, port, to, value, price, keep_pct}                      (0212 — port/to are CODES)
-//   INSURANCE_PAID {fleet, voyage_id, day, cause, port, lost, lost_value, keep_pct, owed, paid, short}  (0212)
+//   INSURED       {fleet, voyage_id, port, to, value, price, keep_pct}                      (0213 — port/to are CODES)
+//   INSURANCE_PAID {fleet, voyage_id, day, cause, port, lost, lost_value, keep_pct, owed, paid, short}  (0213)
 //
 // An unknown kind falls through to the kind itself rather than to an invented sentence — a new
 // migration's event shows up as a legible row on the day it lands, without lying about its content.
@@ -246,7 +246,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     case 'ROUTE_PAUSED':
       return routePausedEventWords(str(p, 'route') ?? 'A route', str(p, 'reason'), str(p, 'sentence'))
     case 'INSURED': {
-      // 0212: the cargo insured at the port she sailed from, for the price the city was paid.
+      // 0213: the cargo insured at the port she sailed from, for the price the city was paid.
       const port = str(p, 'port')
       const value = num(p, 'value')
       const price = num(p, 'price')
@@ -255,7 +255,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       }.`
     }
     case 'INSURANCE_PAID': {
-      // 0212: what the insuring city paid for the cargo pirates took — and what its purse could not.
+      // 0213: what the insuring city paid for the cargo pirates took — and what its purse could not.
       const port = str(p, 'port')
       const paid = num(p, 'paid')
       const lost = num(p, 'lost_value')

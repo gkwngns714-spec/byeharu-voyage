@@ -23,7 +23,7 @@ import type { SendFlow } from './useSendFleet'
 // THE `None` CHIP IS CUT. It sailed her under no standing order; with the days as the one control
 // there is nothing for it to set, and §6 cuts it. A fleet under no order is cleared on FLEETS.
 //
-// INSURE THE CARGO (0212): one more press under the keep, only when the dry run quoted a price — the
+// INSURE THE CARGO (0213): one more press under the keep, only when the dry run quoted a price — the
 // server's figure for THIS passage and the cargo on board (`sailEstimate(...).insurance`). Off by default;
 // on, the send writes `SAIL <dest> INSURED` and the port she sails from is paid the price at departure.
 export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFlow }) {

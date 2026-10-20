@@ -70,9 +70,9 @@ export interface SailEstimate {
   /** Voyage-days — game time, not the real-world wait. Divide by `config.time_compression` for
    *  that, and take the compression from the SERVER's snapshot, never from a constant. */
   days: number | null
-  /** 0212: INSURING THE CARGO on this voyage — `cmd.do_sail`'s own `insurance`: quoted on an unasked
+  /** 0213: INSURING THE CARGO on this voyage — `cmd.do_sail`'s own `insurance`: quoted on an unasked
    *  SAIL (`insured: false`, the price it WOULD cost), written on `SAIL … INSURED`. Null when the
-   *  server served none (a build before 0212) or the hold carries nothing worth insuring. */
+   *  server served none (a build before 0213) or the hold carries nothing worth insuring. */
   insurance: SailInsurance | null
 }
 

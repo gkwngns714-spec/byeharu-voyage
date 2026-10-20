@@ -200,7 +200,7 @@ export function PlanBuilder({
         data-testid="plan-min"
       />
 
-      {/* INSURE THE CARGO (0212): one press. The laden SAIL lines carry INSURED (planLines.ts); the price is
+      {/* INSURE THE CARGO (0213): one press. The laden SAIL lines carry INSURED (planLines.ts); the price is
           the server's when she sails, from the cargo then on board, so no figure is guessed here. */}
       <span className="mt-4 block text-t-caption text-ink-faint">Insurance</span>
       <ChipRow label="Insurance" className="mt-1">
