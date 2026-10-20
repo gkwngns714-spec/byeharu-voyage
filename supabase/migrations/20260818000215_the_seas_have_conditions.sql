@@ -67,8 +67,17 @@
 --   New tables (no lock on a live table); ALTER TABLE ship_classes ADD COLUMN (103 rows; ACCESS EXCLUSIVE for
 --   milliseconds), ALTER item_effects CHECK (606 rows), ALTER players DROP COLUMN (838 rows; the column is read by
 --   nothing after the re-cut). CREATE OR REPLACE ×5 by hunks. The zone raster (1,036,800 cells) and the 56,644
---   leg asks are computed here, set-based, seconds on prod (timed in the receipt). The probe company is made in a
---   sub-transaction rolled back whole.
+--   leg asks are computed here, set-based (timed in the receipt). The probe company is made in a sub-transaction
+--   rolled back whole.
+--   THE FIRST PUSH, 2026-10-20 ~08:55 UTC, FAILED: "Connection terminated unexpectedly At statement: 23" (the
+--   water-vs-zoned count, a 1,036,800-row cross join of get_byte pairs), and prod rolled back to 0213. The file was
+--   one long transaction doing per-cell and per-sample work: on native PostgreSQL 16 with the real 0040 raster and
+--   238 harbours, the raster 6.7 s (a plpgsql loop of 1,036,800 sub-queries), that count 3.6 s, the leg asks 71.6 s
+--   (voyage.lon_lerp is not inlinable: ~6 µs a call × 5 million samples, and the planner re-computed each pair's
+--   great circle per sample and sorted 4 million rows to disk). Re-cut: the raster by bands (0.85 s), the count as
+--   720 row-by-row water masks (0.2 s) plus every cell on a band cut re-asked of the boxes (~1 s), the leg asks with
+--   the pairs materialised and lon_lerp's arithmetic written out and held to it (2.3 s). Everything before the
+--   self-assert: 82 s → 4.8 s, the raster and the 56,644 rows byte-for-byte the same.
 --
 -- SUPERSEDES, by hunks sliced from the LIVE bodies (prod head 0211, LF-normalised, each asserted to occur
 -- exactly once and to reverse to its pre-image, ACL / volatility / definer / config unchanged):
@@ -369,38 +378,108 @@ select s.raster_ordinal as sea_ord, b.ord, z.ord as zone_ord,
   join public.sea_zones z on z.code = b.zone_code;
 create index on boxes_0215 (sea_ord, ord);
 
-do $$
-declare
-  r      record;
-  v      bytea;
-  v_lat  float8;
-begin
-  for r in select c.row_idx, c.seas from public.sea_cells c order by c.row_idx loop
-    v_lat := 90 - (r.row_idx + 0.5) * 0.25;   -- the cell's centre
-    select decode(string_agg(lpad(to_hex(coalesce(
-             (select b.zone_ord from boxes_0215 b
-               where b.sea_ord = get_byte(r.seas, g.col)
-                 and (b.lat_min is null or v_lat >= b.lat_min) and (b.lat_max is null or v_lat < b.lat_max)
-                 and (b.lon_min is null or (g.col + 0.5) * 0.25 - 180 >= b.lon_min)
-                 and (b.lon_max is null or (g.col + 0.5) * 0.25 - 180 < b.lon_max)
-               order by b.ord limit 1), 0)), 2, '0'), '' order by g.col), 'hex')
-      into v
-      from generate_series(0, 1439) g(col);
-    insert into public.sea_zone_cells (row_idx, zones) values (r.row_idx, v);
-  end loop;
-end $$;
+-- THE BUILD, ONE SET-BASED STATEMENT. A box's tests read a cell's CENTRE, so they can only change between two rows
+-- (a latitude bound) or two columns (a longitude bound): latitude L flips `lat >= L` / `lat < L` between row
+-- floor((90 − L)·4 − 0.5) and the next, longitude L flips between column ceil((L + 180)·4 − 0.5) − 1 and that one.
+-- Those rows and columns cut the chart into BANDS (each cut also taken ±1, which only cuts finer); inside a band
+-- every box test reads the same for every cell, so each (row band, column band, sea byte) is asked of the boxes ONCE,
+-- at the band's first cell, with the very tests the rule states. Each row band's answers are one dense int[] (zone =
+-- zm[column band · 256 + sea byte + 1], 0 for land and for a byte no box names), and a row is 1,440 array reads.
+-- (The first cut asked the boxes once per CELL — 1,036,800 sub-queries in a plpgsql loop; 6.7 s on native PostgreSQL
+-- 16, against 0.85 s for this. Both were compared byte for byte on the 0040 raster: all 720 rows equal.)
+-- The cells on and beside every cut are re-asked of the box rule after the build (below), cell by cell.
+create temp table bands_0215 on commit drop as
+with cut as (
+  select 'row' as axis, floor((90 - v) * 4 - 0.5)::int + 1 + d as at
+    from boxes_0215 b cross join lateral (values (b.lat_min), (b.lat_max)) t(v) cross join (values (-1), (0), (1)) dd(d)
+   where v is not null
+  union
+  select 'col', ceil((v + 180) * 4 - 0.5)::int + d
+    from boxes_0215 b cross join lateral (values (b.lon_min), (b.lon_max)) t(v) cross join (values (-1), (0), (1)) dd(d)
+   where v is not null)
+select x.axis, row_number() over (partition by x.axis order by x.at)::int - 1 as i, x.at as first
+  from (select 'row' as axis, 0 as at union select 'col', 0
+        union select c.axis, c.at from cut c where c.at > 0 and c.at < case c.axis when 'row' then 720 else 1440 end) x;
+
+insert into public.sea_zone_cells (row_idx, zones)
+with rband as (select i as ri, first as r0 from bands_0215 where axis = 'row'),
+cband as (select i as ci, first as c0 from bands_0215 where axis = 'col'),
+answer as (   -- every (row band, column band, sea of a box) asked of the boxes once, at the band's first cell
+  select r.ri, c.ci, s.sea_ord,
+         (select b.zone_ord from boxes_0215 b
+           where b.sea_ord = s.sea_ord
+             and (b.lat_min is null or 90 - (r.r0 + 0.5) * 0.25 >= b.lat_min) and (b.lat_max is null or 90 - (r.r0 + 0.5) * 0.25 < b.lat_max)
+             and (b.lon_min is null or (c.c0 + 0.5) * 0.25 - 180 >= b.lon_min) and (b.lon_max is null or (c.c0 + 0.5) * 0.25 - 180 < b.lon_max)
+           order by b.ord limit 1) as zone_ord
+    from rband r cross join cband c cross join (select distinct sea_ord from boxes_0215) s),
+zmap as materialized (   -- one dense lookup per row band
+  select r.ri, array_agg(coalesce(a.zone_ord, 0) order by c.ci, g.s) as zm
+    from rband r cross join cband c cross join generate_series(0, 255) g(s)
+    left join answer a on a.ri = r.ri and a.ci = c.ci and a.sea_ord = g.s
+   group by r.ri),
+colmap as materialized (select g.col, (select max(c.ci) from cband c where c.c0 <= g.col) * 256 + 1 as base from generate_series(0, 1439) g(col))
+select c.row_idx,
+       (select decode(string_agg(lpad(to_hex(z.zm[k.base + get_byte(c.seas, k.col)]), 2, '0'), '' order by k.col), 'hex') from colmap k)
+  from public.sea_cells c
+  join zmap z on z.ri = (select max(r.ri) from rband r where r.r0 <= c.row_idx);
+
+-- a byte's WATER flag as a bit string: the row's 11,520 bits, each byte's eight bits OR-ed into its first bit, the
+-- other seven masked off. Two rasters hold water in the same cells exactly when their masks are equal.
+create function pg_temp.water_mask_0215(p bytea)
+returns bit(11520)
+language sql
+immutable
+as $$
+  select (b | (b << 1) | (b << 2) | (b << 3) | (b << 4) | (b << 5) | (b << 6) | (b << 7)) & repeat('10000000', 1440)::bit(11520)
+    from (select ('x' || encode(p, 'hex'))::bit(11520) as b) x
+$$;
 
 do $$
-declare v_water bigint; v_zoned bigint; v_ms numeric;
+declare v_rows int; v_water bigint; v_zoned bigint; v_differ int; v_n int; v_bad int; v_ms numeric;
+  v_land bytea := decode(repeat('00', 1440), 'hex');
 begin
-  select count(*) filter (where get_byte(c.seas, g.col) > 0), count(*) filter (where get_byte(z.zones, g.col) > 0)
-    into v_water, v_zoned
-    from public.sea_cells c join public.sea_zone_cells z on z.row_idx = c.row_idx cross join generate_series(0, 1439) g(col);
-  if (select count(*) from public.sea_zone_cells) <> 720 or v_water = 0 or v_water <> v_zoned then
-    raise exception '0215 self-assert FAIL: % rows; % water cells, % zoned — a water cell answers no zone', (select count(*) from public.sea_zone_cells), v_water, v_zoned;
+  -- every water cell has a zone and no land cell has one: the two rasters' water masks are equal ROW BY ROW (720
+  -- bit-string comparisons — the first cut counted 1,036,800 get_byte pairs in one cross join, and the push of
+  -- 2026-10-20 lost its connection on that statement); the counts are the masks' bit counts
+  select count(*), sum(bit_count(pg_temp.water_mask_0215(c.seas))), sum(bit_count(pg_temp.water_mask_0215(z.zones))),
+         count(*) filter (where pg_temp.water_mask_0215(c.seas) <> pg_temp.water_mask_0215(z.zones))
+    into v_rows, v_water, v_zoned, v_differ
+    from public.sea_cells c join public.sea_zone_cells z on z.row_idx = c.row_idx;
+  if v_rows <> 720 or (select count(*) from public.sea_zone_cells) <> 720 or v_water = 0 or v_water <> v_zoned or v_differ <> 0 then
+    raise exception '0215 self-assert FAIL: % rows; % water cells, % zoned, % row(s) differ — a water cell answers no zone (or land answers one)',
+      (select count(*) from public.sea_zone_cells), v_water, v_zoned, v_differ;
+  end if;
+  -- the controls of the mask: a single water cell (first, last, a neighbour) is seen, and seen where it is
+  if pg_temp.water_mask_0215(set_byte(v_land, 0, 1)) = pg_temp.water_mask_0215(v_land)
+     or pg_temp.water_mask_0215(set_byte(v_land, 1439, 128)) = pg_temp.water_mask_0215(v_land)
+     or pg_temp.water_mask_0215(set_byte(v_land, 0, 1)) = pg_temp.water_mask_0215(set_byte(v_land, 1, 1))
+     or bit_count(pg_temp.water_mask_0215(set_byte(set_byte(set_byte(v_land, 0, 1), 1, 128), 700, 255))) <> 3
+     or bit_count(pg_temp.water_mask_0215(v_land)) <> 0 then
+    raise exception '0215 self-assert FAIL: the water mask does not see a single cell';
+  end if;
+  -- the bands hold: every cell ON and BESIDE a cut (where a band could be off by one) is re-asked of the box rule
+  select count(*), count(*) filter (where get_byte(z.zones, q.col) <> coalesce(
+           (select b.zone_ord from boxes_0215 b
+             where b.sea_ord = get_byte(c.seas, q.col)
+               and (b.lat_min is null or 90 - (q.row_idx + 0.5) * 0.25 >= b.lat_min) and (b.lat_max is null or 90 - (q.row_idx + 0.5) * 0.25 < b.lat_max)
+               and (b.lon_min is null or (q.col + 0.5) * 0.25 - 180 >= b.lon_min) and (b.lon_max is null or (q.col + 0.5) * 0.25 - 180 < b.lon_max)
+             order by b.ord limit 1), 0))
+    into v_n, v_bad
+    from (select r.row_idx, g.col from (select first as row_idx from bands_0215 where axis = 'row' and first > 0
+                                        union select first - 1 from bands_0215 where axis = 'row' and first > 0) r
+           cross join generate_series(0, 1439) g(col)
+          union
+          select g.row_idx, k.col from generate_series(0, 719) g(row_idx)
+           cross join (select first as col from bands_0215 where axis = 'col' and first > 0
+                       union select first - 1 from bands_0215 where axis = 'col' and first > 0) k) q
+    join public.sea_cells c on c.row_idx = q.row_idx
+    join public.sea_zone_cells z on z.row_idx = q.row_idx;
+  if v_n < 1440 or v_bad <> 0 then
+    raise exception '0215 self-assert FAIL: % of % cells on the band cuts disagree with the box rule', v_bad, v_n;
   end if;
   v_ms := extract(epoch from clock_timestamp() - (select t0 from t0_0215)) * 1000;
-  raise notice '0215: zone raster built — % water cells of 1,036,800, every one zoned (% ms since the file began)', v_water, round(v_ms);
+  raise notice '0215: zone raster built — % water cells of 1,036,800, every one zoned; % cells on the band cuts re-asked of the boxes (% ms since the file began)',
+    v_water, v_n, round(v_ms);
 end $$;
 
 -- ── 4. THE READINGS ────────────────────────────────────────────────────────────────────────────
@@ -483,43 +562,54 @@ set search_path = public, pg_temp
 as $$
   -- 0215: THE ONE DERIVATION of public.sea_leg_asks — for every ordered pair of harbours, the most any zone on the
   -- STRAIGHT line between the two roadsteads asks (sampled every sea_sample_nm, land ignored, the same rule as
-  -- public.course_zones) joined with what the destination's own zone asks. A harbour to itself asks its zone's.
+  -- public.course_zones) joined with what the destination's own zone asks. A harbour to itself asks its own zone's.
   -- With p_from: only the legs out of that harbour (a re-derivation check; the table is filled with none).
-  with knob as (select public.wc_num('sea_sample_nm') as step),
+  -- SPEED (the prod push of 2026-10-20 lost its connection minutes into this file): ~5 million samples, so each is
+  -- plain arithmetic. The longitude is voyage.lon_lerp's arithmetic WRITTEN OUT (the step the short way round, the
+  -- wrap by one turn, the endpoints as given): the planner cannot inline lon_lerp (its scalar sub-select), and a
+  -- call costs ~6 µs, 30 s of the first cut's 72 s on native PostgreSQL 16. The 0215 self-assert holds every sample
+  -- of every leg out of Lisbon to voyage.lon_lerp to the cell, and every one of those legs to public.course_zones.
+  -- The pairs are materialised (else the planner re-computes the great circle per sample) and each pair's zone
+  -- bytes are made distinct inside the pair (no 5-million-row sort). 2.3 s, the same 56,644 rows as the first cut.
+  with knob as materialized (select public.wc_num('sea_sample_nm')::float8 as step),
   -- the whole zone raster as ONE bytea (720 rows × 1,440 bytes), read once: a sample is one get_byte, no join
-  raster as (select string_agg(c.zones, ''::bytea order by c.row_idx) as cells from public.sea_zone_cells c),
-  h as (
-    select p.id, p.code, sr.roadstead_lat::float8 as lat, sr.roadstead_lon::float8 as lon, public.harbour_zone(p.id) as zone
+  raster as materialized (select string_agg(c.zones, ''::bytea order by c.row_idx) as cells from public.sea_zone_cells c),
+  h as materialized (
+    select row_number() over (order by p.code)::int as i, p.id, p.code,
+           sr.roadstead_lat::float8 as lat, sr.roadstead_lon::float8 as lon, public.harbour_zone(p.id) as zone
       from public.ports p join public.sea_reaches sr on sr.port_id = p.id
      where p.kind = 'HARBOUR'),
-  pairs as (
-    select a.id as a_id, b.id as b_id, a.lat as lat1, a.lon as lon1, b.lat as lat2, b.lon as lon2,
+  pairs as materialized (
+    select a.i as a_i, b.i as b_i, a.lat as lat1, a.lon as lon1, b.lat as lat2, b.lon as lon2,
+           (b.lon - a.lon) - 360 * round((b.lon - a.lon) / 360) as dlon,   -- voyage.lon_lerp's step, the short way round
            greatest(1, ceil(voyage.gc_distance_nm(a.lat, a.lon, b.lat, b.lon) / (select step from knob)))::int as n
       from h a join h b on a.code < b.code
      where p_from is null or a.id = p_from or b.id = p_from),
-  samples as (
-    select p.a_id, p.b_id,
-           get_byte((select cells from raster),
-                    public.sea_cell_row(p.lat1 + (p.lat2 - p.lat1) * k / p.n) * 1440
-                    + public.sea_cell_col(voyage.lon_lerp(p.lon1, p.lon2, k::float8 / p.n))) as z
-      from pairs p
-     cross join lateral generate_series(0, p.n) k),
   crossed as (
-    select s.a_id, s.b_id, max(z.wave_min) as wave_min, max(z.title_min) as title_min
-      from (select distinct a_id, b_id, z from samples where z > 0) s
-      join public.sea_zones z on z.ord = s.z
-     group by s.a_id, s.b_id),
+    select p.a_i, p.b_i, max(z.wave_min) as wave_min, max(z.title_min) as title_min
+      from pairs p
+     cross join lateral (
+       select distinct get_byte((select cells from raster),
+                                public.sea_cell_row(p.lat1 + (p.lat2 - p.lat1) * k / p.n) * 1440
+                                + public.sea_cell_col(case when k = 0 then p.lon1 when k = p.n then p.lon2
+                                                           else l.x + case when l.x > 180 then -360 when l.x < -180 then 360 else 0 end
+                                                      end)) as zb
+         from generate_series(0, p.n) k
+        cross join lateral (select p.lon1 + p.dlon * (k::float8 / p.n) as x) l) s
+      join public.sea_zones z on z.ord = s.zb   -- land (0) joins no zone
+     group by p.a_i, p.b_i),
   both_ways as (
-    select c.a_id as f, c.b_id as t, c.wave_min, c.title_min from crossed c
+    select c.a_i as f, c.b_i as t, c.wave_min, c.title_min from crossed c
     union all
-    select c.b_id, c.a_id, c.wave_min, c.title_min from crossed c
+    select c.b_i, c.a_i, c.wave_min, c.title_min from crossed c
     union all
-    select h.id, h.id, null::int, null::int from h)
-  select w.f, w.t, greatest(coalesce(w.wave_min, 0), z.wave_min)::int, greatest(coalesce(w.title_min, 1), z.title_min)::int
+    select h.i, h.i, null::int, null::int from h)
+  select hf.id, ht.id, greatest(coalesce(w.wave_min, 0), z.wave_min)::int, greatest(coalesce(w.title_min, 1), z.title_min)::int
     from both_ways w
-    join h on h.id = w.t
-    join public.sea_zones z on z.code = h.zone
-   where p_from is null or w.f = p_from
+    join h hf on hf.i = w.f
+    join h ht on ht.i = w.t
+    join public.sea_zones z on z.code = ht.zone
+   where p_from is null or hf.id = p_from
 $$;
 
 create table public.sea_leg_asks (
@@ -539,7 +629,8 @@ insert into public.sea_leg_asks (from_port, to_port, wave_min, title_min)
 select d.from_port, d.to_port, d.wave_min, d.title_min from public.sea_leg_asks_derive() d;
 -- the two references to the HOT `ports` table are added only now: a foreign key takes SHARE ROW EXCLUSIVE on the
 -- table it references until commit, and declared in the CREATE above it would have stopped every write to ports
--- (the inn's crew pool, a hire) for the whole derivation (measured locally: ~112 s of the file's ~136 s).
+-- (the inn's crew pool, a hire) for the whole derivation (measured in PGlite before the speed-up: ~112 s of the file's
+-- ~136 s; 2.3 s on native PostgreSQL 16 after it, and still taken only here).
 alter table public.sea_leg_asks
   add constraint sea_leg_asks_from_port_fkey foreign key (from_port) references public.ports(id),
   add constraint sea_leg_asks_to_port_fkey   foreign key (to_port)   references public.ports(id);
@@ -1108,6 +1199,26 @@ begin
    where coalesce(a.from_port, d.from_port) = v_lis;
   if v_i <> v_n or v_bad <> 0 then
     raise exception '0215 self-assert FAIL: % legs out of Lisbon re-derived (% expected), % differ from the stored asks', v_i, v_n, v_bad;
+  end if;
+  -- and THE SAME RULE AS public.course_zones (whose longitude is voyage.lon_lerp itself): every leg out of Lisbon, as a
+  -- two-vertex course drawn the way the derivation draws it (from the lower harbour code to the higher), asks what the
+  -- most demanding of its crossed zones and its destination's zone asks — the written-out longitude held to the authority
+  select count(*), count(*) filter (where q.wave is distinct from a.wave_min or q.title is distinct from a.title_min)
+    into v_i, v_bad
+    from public.sea_leg_asks a
+    join public.ports pf on pf.id = a.from_port
+    join public.ports pt on pt.id = a.to_port
+    join public.sea_reaches rf on rf.port_id = pf.id
+    join public.sea_reaches rt on rt.port_id = pt.id
+   cross join lateral (
+     select case when pf.id = pt.id then '{}'::text[] else public.course_zones(case when pf.code < pt.code
+              then jsonb_build_array(jsonb_build_array(rf.roadstead_lat, rf.roadstead_lon), jsonb_build_array(rt.roadstead_lat, rt.roadstead_lon))
+              else jsonb_build_array(jsonb_build_array(rt.roadstead_lat, rt.roadstead_lon), jsonb_build_array(rf.roadstead_lat, rf.roadstead_lon)) end)
+            end || public.harbour_zone(pt.id) as zones) cz
+   cross join lateral (select max(z.wave_min) as wave, max(z.title_min) as title from public.sea_zones z where z.code = any (cz.zones)) q
+   where a.from_port = v_lis;
+  if v_i <> v_n or v_bad <> 0 then
+    raise exception '0215 self-assert FAIL: % legs out of Lisbon asked of public.course_zones (% expected), % differ from the stored asks', v_i, v_n, v_bad;
   end if;
 
   -- (h) title_level = min of the two levels for every human, null for a merchant; fleet_wave of nau + 2 barcas = 21;

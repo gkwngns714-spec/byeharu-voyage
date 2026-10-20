@@ -154,7 +154,9 @@ board judges a lane by the destination's zone without the course.
 
 Run each block as written (`npx --yes supabase@2.120.0 db query --linked "<block>"`, or `-f` on a file). Every block is a
 `begin transaction read only … rollback`, SELECTs only. The only functions called are `pg_get_functiondef`,
-`to_regprocedure`, `to_regclass`, `replace` and `length` (all stable or immutable). No game function is called. Each was run
+`to_regprocedure`, `to_regclass`, `replace`, `length` and `current_setting` (all stable or immutable).
+**Changed after the failed push (§10):** the hunks (8a, 8c) and 8d are unchanged. 8b gains one row (the server version, for
+`bit_count`). The speed-up re-cut no function body that a hunk anchors on, so the 8a/8c results read on prod still hold. No game function is called. Each was run
 on the local world at the matching head, and every row came out as expected.
 
 ### 8a. Before pushing 0215 (prod head 0213): the hunks. Expect every row `occurs = 1` and `new_already_there = 0`.
@@ -276,6 +278,9 @@ select 'probe needs: SEAMANSHIP, classes barca + nau, new_house + commission_shi
        and exists (select 1 from pg_proc where proname = 'new_house' and pronamespace = 'public'::regnamespace)
        and exists (select 1 from pg_proc where proname = 'commission_ship' and pronamespace = 'public'::regnamespace),
        null
+union all
+select 'server is PostgreSQL 14+ (the water-mask check calls bit_count(bit))',
+       current_setting('server_version_num')::int >= 140000, current_setting('server_version_num')
 union all
 select 'no probe leftovers (auth uid 0215, Casa 0215)',
        not exists (select 1 from public.players where auth_uid = '00000000-0215-4000-8000-000000000001' or company_name like '%0215%'), null
@@ -478,3 +483,54 @@ rollback;
   PostgreSQL was not read (the log download was refused by the sandbox proxy). The two rpc specs did not finish locally (CI ran
   them). PGlite's wall-clock is wasm, not prod. The lock method cannot see locks inside the rolled-back probes (they are
   RowExclusive on probe rows only).
+
+## 10. The failed prod push, and the speed-up (2026-10-20, the cloud routine)
+
+**What happened.** ~08:55 UTC the main session pushed 0215 to prod (head 0213). Every §8 precheck had passed. The push
+failed with `DbPushApplyError: Error: Connection terminated unexpectedly  At statement: 23`. Statement 23 (0-based) is
+the DO block that counted water cells against zoned cells with a 1,036,800-row cross join of `get_byte` pairs. Prod
+rolled back to 0213. Nothing of 0215 is on prod.
+
+**The cause, as far as it can be seen from here.** The server closed the connection; it did not report a timeout or an
+error. So the exact trigger (a pooler or server limit on one long transaction, or memory) cannot be read from this
+container. What is certain is that the file did far too much per-cell and per-sample work in one transaction. Measured on
+native PostgreSQL 16 (local, below), the work before the self-assert took 82 s, and prod's compute is slower than this
+machine.
+
+**How it was measured.** A local PostgreSQL 16 cluster (no Supabase, nothing linked) with the REAL sea raster of 0040
+(720 rows, 647,226 water cells), the 51 seas with their raster ordinals, `voyage.gc_distance_nm` and `voyage.lon_lerp`
+copied from 0002 and 0088, and 238 harbours placed on random water cells (seeded). The world was not built from zero.
+0215 was run from its first statement through the `sea_leg_asks` fill in one transaction, statement by statement with
+`\timing`. (Later edits to the raster by 0046–0091 move a few cells. They do not change the cost.)
+
+| Step | Before | After | How |
+|---|---:|---:|---|
+| zone raster build | 6.7 s | 0.85 s | The old build asked the boxes once per CELL: 1,036,800 sub-queries in a plpgsql loop. The new one splits the chart into BANDS at every row and column where a box bound can change the answer (each cut ±1). It asks the boxes once per (row band, column band, sea), at the band's first cell, with the same tests. Each row is then 1,440 reads of one dense array. |
+| water vs zoned (statement 23) | 3.6 s | 0.2 s | 720 row-by-row comparisons of bit-string "water masks" (each byte's 8 bits OR-ed into one). This is stronger than the old check: it compares the POSITIONS, not just the totals. Controls: one cell zeroed, the last cell, a neighbour. |
+| band cuts re-asked | — | ~1 s | NEW: every cell on and beside a cut (98,400) is asked of the box rule directly. A band that is off by one fails here. |
+| `sea_leg_asks` derivation | 71.6 s | 2.3 s | `voyage.lon_lerp` cannot be inlined (its scalar sub-select costs ~6 µs a call × 5 million samples = 30 s). The planner also re-computed each pair's great circle per sample and sorted 4 million rows to disk. Now the pairs are materialised, the zone bytes are made distinct inside each pair, and lon_lerp's arithmetic is written out. The self-assert holds it to the authority: every leg out of Lisbon equals what `public.course_zones` (which calls `voyage.lon_lerp`) gives for the same two-vertex line. |
+| **everything up to the fill** | **82 s** | **4.8 s** | |
+
+**Same answers.** On the fixture, the new raster equals the old one byte for byte on all 720 rows, and the new 56,644
+leg asks equal the old derivation's rows exactly (md5 of the sorted dumps). Negative controls were run on the fixture.
+A cell flipped on a band cut fails "cells on the band cuts disagree". A water cell zeroed fails "a water cell answers no
+zone". A Lisbon leg's stored wave bumped by 1 fails "differ from the stored asks" against `course_zones`.
+
+**The rest of the file (estimated, not measured here).** The hunks, the 65 gear rows, the column changes and the
+self-assert took ~18 s in PGlite (§7). Native PostgreSQL should be a few seconds. The new Lisbon-vs-`course_zones` check
+adds ~1.5 s. **Estimate for the whole 0215 on prod: well under 60 s** if prod is up to ~3× slower than this machine. The
+prod receipt's timings are the measurement that counts.
+
+**Locks.** Nothing new touches a live table. The new statements write only `sea_zone_cells` (new) and temp tables. The
+`ports` foreign keys of `sea_leg_asks` are still added after the fill. Because the whole file is now ~20× shorter, every
+lock in §7 is held for seconds, not minutes.
+
+**Kept as it was.** `statement_timeout` 20 min and `lock_timeout` 5 s, set locally at the top, as 0207–0213 do. No new
+`set` was added. The hunks, the probe and every other self-assert line are unchanged.
+
+**0216 on top.** Its hunks anchor on seven bodies that 0215 does not re-cut, and it reads only `sea_leg_asks`, whose
+shape did not change. §8c/§8d are unchanged. `osn-sea-s2` was rebased onto the new S1.
+
+**For the next push.** Run §8a and §8b again (8b has the one new row), then push at a quiet moment. If the connection
+drops again on a file this short, the cause is the connection itself (the pooler or the network), not the migration's
+length. In that case the CLI's direct connection should be tried before anything else is changed.
