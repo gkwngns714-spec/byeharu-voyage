@@ -530,6 +530,90 @@
     --shadow-float: 0 8px 24px -12px rgb(16 24 40 / 0.22);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
+   THE MAP IS THE NIGHT MAP IN BOTH SCHEMES — the owner, row 171 (2026-10-20): *"The light mode
+   map color should be same as dark."*
+
+   The chart is a PICTURE of the sea, not a sheet of the app: the day sea was a second picture of
+   the same world, and the owner wants the one he knows. So every colour the chart draws with is
+   restated here, on the chart's own element, for the day scheme only — the page around it (its
+   sheets, its trays, the zoom column, the panel that slides in) keeps the scheme the player
+   chose, because those are paper and this is water.
+
+   ON THE ELEMENT, NOT THE ROOT, and that is the whole trick: a custom property is substituted
+   where it is USED, so `--color-chart-land` restated here mixes the night's `--color-ink-faint`
+   restated here, and nothing outside the chart sees either. Written as the night block's own
+   declarations, character for character, so tests/map.atmosphere.spec.ts can hold the two
+   together: retune the night map and the day map goes red until it is retuned with it.
+
+   THE DAY SIDE OF THE TERMINATOR IS UNTOUCHED (`--color-chart-day-*`): it is the same in both
+   schemes already, because daylight is the Sun's and not the scheme's.
+   ═══════════════════════════════════════════════════════════════════════════════════════════ */
+:root[data-theme='light'] .bv-chart-night {
+    /* The night's own ground and its three inks, because every mark, name and halo on this chart
+       is mixed from them: a day-scheme ink on the night's water is dark on dark. */
+    --color-sea-2: #070c14;
+    --color-edge: rgb(255 255 255 / 0.08);
+    --color-ink: #f3f5f8;
+    --color-ink-muted: #a9b3c0;
+    --color-ink-faint: #8b97a5;
+    --color-accent: #e2b45c;
+    --color-info: #6aa9f5;
+
+    /* The water, the land, the coast and the five of the picture — the night block's own
+       expressions, which mix the inks above. */
+    --color-chart-sea: var(--color-sea-2);
+    --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
+    --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 65%, var(--color-chart-sea));
+    --color-chart-deep: #03060b;
+    --color-chart-shallow: color-mix(in srgb, var(--color-info) 22%, var(--color-chart-sea));
+    --color-chart-relief: color-mix(in srgb, var(--color-chart-sea) 55%, var(--color-chart-land));
+    --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
+    --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
+
+    /* The two lamps and the trading merchant's hull. */
+    --color-harbour-light: #ffe9c2;
+    --color-ship-light: #8fd8ff;
+    --color-merchant: #2a5bb8;
+
+    /* The eight nation inks a hull is drawn in. */
+    --color-nation-prt: oklch(0.76 0.14 150);
+    --color-nation-esp: oklch(0.72 0.15 25);
+    --color-nation-nld: oklch(0.78 0.14 55);
+    --color-nation-eng: oklch(0.74 0.14 330);
+    --color-nation-han: oklch(0.74 0.12 250);
+    --color-nation-ita: oklch(0.78 0.11 200);
+    --color-nation-ott: oklch(0.8 0.14 118);
+    --color-nation-east: oklch(0.74 0.14 295);
+
+    /* The 25 region tints, for when the Regions filter is on. */
+    --color-chart-region-iberia: oklch(0.8 0.11 105);
+    --color-chart-region-atlantic-isles: oklch(0.64 0.11 255);
+    --color-chart-region-british-isles: oklch(0.64 0.11 295);
+    --color-chart-region-france-low-countries: oklch(0.8 0.11 255);
+    --color-chart-region-baltic: oklch(0.64 0.11 288);
+    --color-chart-region-scandinavia-arctic: oklch(0.64 0.11 55);
+    --color-chart-region-western-mediterranean: oklch(0.64 0.11 302);
+    --color-chart-region-adriatic-ionian: oklch(0.64 0.11 48);
+    --color-chart-region-aegean-anatolia: oklch(0.8 0.11 98);
+    --color-chart-region-levant: oklch(0.64 0.11 248);
+    --color-chart-region-maghreb: oklch(0.8 0.11 295);
+    --color-chart-region-west-africa: oklch(0.8 0.11 288);
+    --color-chart-region-east-africa: oklch(0.64 0.11 165);
+    --color-chart-region-arabia-gulf: oklch(0.8 0.11 248);
+    --color-chart-region-western-india: oklch(0.8 0.11 112);
+    --color-chart-region-eastern-india: oklch(0.64 0.11 20);
+    --color-chart-region-southeast-asia: oklch(0.8 0.11 262);
+    --color-chart-region-china-coast: oklch(0.64 0.11 262);
+    --color-chart-region-korea: oklch(0.8 0.11 20);
+    --color-chart-region-japan: oklch(0.64 0.11 105);
+    --color-chart-region-caribbean: oklch(0.64 0.11 98);
+    --color-chart-region-north-america-atlantic: oklch(0.8 0.11 165);
+    --color-chart-region-south-america-atlantic: oklch(0.8 0.11 55);
+    --color-chart-region-pacific-americas: oklch(0.64 0.11 241);
+    --color-chart-region-oceania: oklch(0.8 0.11 48);
+}
+
 html,
 body,
 #root {

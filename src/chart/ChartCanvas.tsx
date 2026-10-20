@@ -325,7 +325,11 @@ export function ChartCanvas({
   // zooms (docs/MAP_ATMOSPHERE.md §10).
   return (
     <div
-      className={className}
+      // `bv-chart-night` is the chart's own palette (src/index.css, owner row 171): the night map
+      // in both schemes. It says nothing in the dark scheme — there it is the colours this element
+      // already inherits — and in the light one it keeps the water, the land and every mark the
+      // colour the player knows, while the page around the chart stays the scheme they chose.
+      className={`bv-chart-night ${className ?? ''}`}
       role="img"
       aria-label={ariaLabel}
       data-sheet-copies={copies.join(' ')}
