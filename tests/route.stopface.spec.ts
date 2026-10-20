@@ -143,9 +143,14 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   const stops = page.getByTestId('route-editor-stop')
   await expect(stops).toHaveCount(2)
 
-  // Pick the second stop: the first harbour the port field offers that is not where she lies.
+  // Pick the second stop: the first harbour the port field offers that is not where she lies — ONCE the field's
+  // distances have landed. Before `world.reach` answers, every harbour is +Infinity away and the chips stand in
+  // alphabetical order, so "the first that is not home" was Acapulco (11,312 nm; the Start refused by the
+  // navigator's reach). Recorded 2026-10-20 (docs/dev-log/2026-10-20-fleet-picker.md) as a race under load;
+  // the list now says when it is measured (PortField.tsx, `data-reach`), and the pick waits for that.
   await page.getByTestId('port-field').click()
   const home = (await stops.nth(0).getByTestId('route-stop-port').innerText()).trim()
+  await expect(page.locator('[data-testid="port-chips"][data-reach="measured"]')).toBeVisible({ timeout: 60_000 })
   const chips = page.getByTestId('port-chip')
   await expect(chips.first()).toBeVisible()
   const n = await chips.count()

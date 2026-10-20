@@ -5,6 +5,7 @@ import type { DeskLayout } from '../DeskFrame'
 import { useDeskView } from '../deskView'
 import { Queue } from '../Queue'
 import { RouteFold } from '../RouteFold'
+import { InsuredVoyages } from './InsuredVoyages'
 import { PlanBuilder } from './PlanBuilder'
 import { useDeskPlan } from './planDraft'
 
@@ -29,14 +30,18 @@ export function Plans({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     testid: 'desk-plans',
     order: ['side', 'main', 'list'],
     list: (
-      <SheetSection heading="Orders" surface data-testid="command-queue">
-        <Queue
-          fleet={fleet}
-          readAt={readAt}
-          onCancel={(position) => cancel(fleet.id, position)}
-          onClear={() => clearQueue(fleet.id)}
-        />
-      </SheetSection>
+      <>
+        <SheetSection heading="Orders" surface data-testid="command-queue">
+          <Queue
+            fleet={fleet}
+            readAt={readAt}
+            onCancel={(position) => cancel(fleet.id, position)}
+            onClear={() => clearQueue(fleet.id)}
+          />
+        </SheetSection>
+        {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
+        <InsuredVoyages />
+      </>
     ),
     main: <RouteFold fleet={fleet} />,
     side:

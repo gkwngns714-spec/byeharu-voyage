@@ -16,6 +16,11 @@
 // endurance margin, voyage.sail_refusal's rule — the stores the board served are the floor after a PROVISION),
 // so a long passage spends as few of the queue's lines as it can. cmd.issue_lines asks passage_gate of every
 // SAIL before any is queued, and the SAIL itself is still the server's to refuse when it runs.
+//
+// INSURING THE CARGO (0213). `plan.insure` writes ` INSURED` on every LADEN SAIL — the legs after the BUY (or
+// every leg, when the plan sells what is already on board) — and on no empty leg: an empty hold insures nothing
+// and would be charged nothing, so the word there is noise. The price is the server's, set when she sails
+// (public.insure_voyage over the cargo then on board); nothing here guesses it.
 
 import { proposeCourse, sailOrigin, sailTarget } from '../../../domain/passage'
 import { pathLengthNm } from '../../../lib/geo'
@@ -60,6 +65,8 @@ export function planLines(
   let casks = stores?.days ?? Number.POSITIVE_INFINITY
   // where the BUY line stands: stores are taken on BEFORE the cargo, so a full hold never refuses the casks
   let buyLine: number | null = null
+  // 0213: laden from the start when the plan sells what is on board; otherwise from the BUY on
+  let laden = plan.buyAt === null
   /** A SAIL with its proposed course; at a harbour, PROVISION FULL first when her casks would not cover it. */
   const sail = (code: string): boolean => {
     const to = sailTarget({ dest: code }, portByCode)
@@ -74,7 +81,7 @@ export function planLines(
       }
       casks -= days
     }
-    lines.push({ text: `SAIL ${code}`, path: course })
+    lines.push({ text: `SAIL ${code}${plan.insure && laden ? ' INSURED' : ''}`, path: course })
     from = to
     here = code
     return true
@@ -97,6 +104,7 @@ export function planLines(
     lines.push({
       text: `BUY ${plan.good} ${plan.units !== null && plan.units > 0 ? num(plan.units) : 'ALL'}${plan.max !== null ? ` AT <= ${num(plan.max)}` : ''}`,
     })
+    laden = true
   }
   if (plan.sellAt) {
     if (plan.sellAt !== here) {

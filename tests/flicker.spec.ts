@@ -129,6 +129,8 @@ test('COMMAND: no button greys and Start route never leaves across three beats',
   await expect(stops).toHaveCount(2)
   await page.getByTestId('port-field').click()
   const home = (await stops.nth(0).getByTestId('route-stop-port').innerText()).trim()
+  // the pick waits for the field's distances (route.stopface.spec.ts says why: alphabetical order picks Acapulco)
+  await expect(page.locator('[data-testid="port-chips"][data-reach="measured"]')).toBeVisible({ timeout: 60_000 })
   const chips = page.getByTestId('port-chip')
   await expect(chips.first()).toBeVisible()
   const n = await chips.count()

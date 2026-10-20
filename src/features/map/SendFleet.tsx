@@ -149,7 +149,7 @@ export function SendFleet({
             onClick={() => flow.send(picked)}
             data-testid="map-send-ratio-send"
           >
-            {`Send ${picked.name} · keep ${formatVoyageDays(flow.daysOf(picked), 0)}`}
+            {`Send ${picked.name} · keep ${formatVoyageDays(flow.daysOf(picked), 0)}${flow.insureOf(picked) ? ' · insured' : ''}`}
           </Button>
         ) : undefined
       }
