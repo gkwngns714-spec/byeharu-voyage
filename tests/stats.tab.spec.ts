@@ -6,6 +6,12 @@ import { PHONE, reachable, ready } from './appReady.fixture'
 // and the Cities face draws every harbour LOCKED for a company that has invested nowhere — the server sent no
 // figures to hide. The local world's backend plays the stats job before the first read (localBackend.ts), so
 // the faces have a row to show. It names StatsScreen.tsx so CI's rule N selects it.
+//
+// THE FACE (2026-10-20, owner requests 187 and 188 — "no visuals, no charts, no number moving around" and
+// "I want stats to be in real time, by seconds updated"): the RIGHT NOW band stands on every face with the
+// figures the world's own beat carries, and the rollup's figures are drawn as charts — a stacked bar for the
+// composition, bars from a zero line for each count, ranked bars for which of these is big. Pinned below:
+// the band is there with its purse, the band survives a change of face, and the Overview draws a chart.
 
 const WIDE = { width: 1280, height: 707 }
 
@@ -27,6 +33,11 @@ for (const vp of [PHONE, WIDE]) {
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     await expect(page.getByTestId('stats-holder')).toHaveCount(4)
     await expect(page.getByTestId('stats-updated')).toContainText('Updated')
+    // RIGHT NOW: the live band, with a purse that is a figure and not a dash
+    await expect(page.getByTestId('stats-live')).toBeVisible()
+    await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)
+    // and the rollup is DRAWN: the holders' stacked bar and at least one chart on the face
+    expect(await page.getByTestId('stats-overview').locator('[role="img"]').count()).toBeGreaterThan(0)
     await noSidewaysScroll(page)
 
     await page.getByRole('tab', { name: 'Markets', exact: true }).click()
@@ -53,6 +64,9 @@ for (const vp of [PHONE, WIDE]) {
     await page.getByRole('tab', { name: 'Me', exact: true }).click()
     await expect(page.getByTestId('stats-me')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('stats-leaderboard-you')).toBeVisible()
+    await expect(page.getByTestId('stats-me-bars')).toBeVisible()
+    // the live band belongs to the TAB, not to a face: it is still there on the fifth one
+    await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)
     await noSidewaysScroll(page)
   })
 }
