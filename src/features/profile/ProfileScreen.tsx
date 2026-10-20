@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { Bar, Button, Figure, Note, Row, Segmented, Sheet, SheetSection } from '../../components/ui'
+import { Bar, Button, Figure, LanguageSwitch, Note, Row, Segmented, Sheet, SheetSection } from '../../components/ui'
 import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
 import { NationPicker } from '../../live/NationPicker'
 import { useAuthStore } from '../../store/authStore'
 import { useWorld } from '../../live/worldStore'
-import { formatInt } from '../../lib/format'
+import { formatDate, formatInt } from '../../lib/format'
 import type { LevelTrack } from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
 import { APPEARANCES, readAppearance, writeAppearance, type Appearance } from './appearance'
+import { properName, useT, type TKey } from '../../lib/i18n'
 
 // PROFILE (in Cabin) — docs/UI_DIRECTION.md §6:
 //
@@ -41,6 +42,7 @@ import { APPEARANCES, readAppearance, writeAppearance, type Appearance } from '.
 // losing a save: this house lives in this browser and clearing its storage ends it.
 
 export function ProfileScreen() {
+  const t = useT()
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const player = useWorld((s) => s.player)
   const user = useAuthStore((s) => s.user)
@@ -56,7 +58,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <Sheet title="Profile" data-testid="profile">
+    <Sheet title={t('profile.title')} data-testid="profile">
       <SheetSection surface>
         {player ? (
           <Row
@@ -64,7 +66,11 @@ export function ProfileScreen() {
             hairline={false}
             label={
               <span className="text-t-body text-ink">
-                {[player.company_name, player.nation_name ?? player.nation, `since ${founded(player.founded_at, nowMs)}`]
+                {[
+                  player.company_name,
+                  player.nation ? properName('nation', player.nation, player.nation_name ?? player.nation) : player.nation_name,
+                  t('profile.since', { date: founded(player.founded_at, nowMs) }),
+                ]
                   .filter(Boolean)
                   .join(' · ')}
               </span>
@@ -72,7 +78,7 @@ export function ProfileScreen() {
           />
         ) : (
           <Row
-            label="No company yet. Start one to play."
+            label={t('profile.noCompany')}
             tone="muted"
             hairline={false}
           />
@@ -84,34 +90,38 @@ export function ProfileScreen() {
       )}
 
       {player && (
-        <SheetSection heading="Levels" surface data-testid="levels">
-          <Track name="Trading" track={player.levels.trading} />
-          <Track name="Exploration" track={player.levels.exploration} />
+        <SheetSection heading={t('profile.levels')} surface data-testid="levels">
+          <Track name={t('profile.trading')} track={player.levels.trading} />
+          <Track name={t('profile.exploration')} track={player.levels.exploration} />
           {/* COMBAT READS NOTHING AND IS NOT DRAWN AS A TRACK. 0069 serves it with `playable:
               false` on purpose — there is no fighting at sea in this game yet (0035) — and a bar
               at level 1 of an unbuilt track would make it look built. The server's flag decides:
               the day it flips, this row becomes the third bar with no edit here. Until then the
               row says what it waits on, once, in the player's words. */}
           {player.levels.combat.playable ? (
-            <Track name="Combat" track={player.levels.combat} last />
+            <Track name={t('profile.combat')} track={player.levels.combat} last />
           ) : (
             <Row
               data-testid="combat-waits"
-              label="Combat"
+              label={t('profile.combat')}
               tone="muted"
               hairline={false}
-              value={<span className="text-t-caption text-ink-faint">no fighting at sea yet</span>}
+              value={<span className="text-t-caption text-ink-faint">{t('profile.noFighting')}</span>}
             />
           )}
         </SheetSection>
       )}
 
-      <SheetSection heading="Appearance">
+      <SheetSection heading={t('profile.language')}>
+        <LanguageSwitch className="w-fit" />
+      </SheetSection>
+
+      <SheetSection heading={t('profile.appearance')}>
         <Segmented
-          segments={APPEARANCES}
+          segments={APPEARANCES.map((a) => ({ id: a.id, label: t(`profile.${a.label}` as TKey) }))}
           value={appearance}
           onChange={choose}
-          label="Appearance"
+          label={t('profile.appearance')}
           className="w-fit"
         />
       </SheetSection>
@@ -121,22 +131,22 @@ export function ProfileScreen() {
           <Row
             tone="muted"
             hairline={false}
-            label="Not signed in — this game lives in this browser, and clearing its storage ends it."
+            label={t('profile.localOnly')}
             value={
               <Button variant="secondary" disabled data-testid="sign-out">
-                Sign out
+                {t('profile.signOut')}
               </Button>
             }
           />
         ) : (
           <Row
             hairline={false}
-            label={<span className="text-ink-muted">{user?.email ?? 'Signed in'}</span>}
+            label={<span className="text-ink-muted">{user?.email ?? t('profile.signedIn')}</span>}
             value={
               <Button
                 variant="secondary"
                 busy={busy}
-                busyLabel="Signing out…"
+                busyLabel={t('profile.signingOut')}
                 data-testid="sign-out"
                 onClick={async () => {
                   setBusy(true)
@@ -144,7 +154,7 @@ export function ProfileScreen() {
                   setBusy(false)
                 }}
               >
-                Sign out
+                {t('profile.signOut')}
               </Button>
             }
           />
@@ -159,6 +169,7 @@ export function ProfileScreen() {
  *  — which decides (once every few days, `nation_change_at`) and whose refusal is printed as it
  *  arrives. After a change the house is read again; nothing here writes the store. */
 function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt: string | null; nowMs: number }) {
+  const t = useT()
   const refresh = useWorld((s) => s.refresh)
   const nationByCode = useWorld((s) => s.nationByCode)
   const [open, setOpen] = useState(false)
@@ -177,27 +188,27 @@ function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt:
     setBusy(false)
   }
   return (
-    <SheetSection heading="Country" surface data-testid="country">
+    <SheetSection heading={t('profile.country')} surface data-testid="country">
       <Row
         hairline={open}
         label={<HullCountry nation={nation} />}
         value={
           waiting ? (
             <span className="text-t-caption text-ink-faint" data-testid="country-next">
-              {`next change ${new Date(changeAt).toLocaleDateString('en', { month: 'short', day: 'numeric' })}`}
+              {t('profile.nextChange', { date: formatDate(Date.parse(changeAt), { month: 'short', day: 'numeric' }) })}
             </span>
           ) : (
             <Button variant="secondary" data-testid="country-change" onClick={() => setOpen((o) => !o)}>
-              {open ? 'Keep' : 'Change'}
+              {t(open ? 'profile.keep' : 'profile.change')}
             </Button>
           )
         }
       />
       {open && !waiting && (
         <div className="mt-3">
-          <NationPicker value={pick} onChange={setPick} label="Country" />
+          <NationPicker value={pick} onChange={setPick} label={t('profile.country')} />
           <p className="mt-2 text-t-caption text-ink-muted" data-testid="country-cost">
-            The influence your company has given stays with the country it leaves.
+            {t('profile.influenceStays')}
           </p>
           {refusal && (
             <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-3">
@@ -208,12 +219,12 @@ function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt:
             <Button
               variant="primary"
               busy={busy}
-              busyLabel="Changing…"
+              busyLabel={t('profile.changing')}
               disabled={pick === nation}
               data-testid="country-confirm"
               onClick={() => void change()}
             >
-              {`Sail for ${nationByCode[pick]?.name ?? pick}`}
+              {t('profile.sailFor', { nation: nationByCode[pick]?.name ?? pick })}
             </Button>
           </div>
         </div>
@@ -231,6 +242,7 @@ const LEVEL_CAP = 20
 /** One level track as §6 draws it: the name, the bar of the ladder, the level as the figure. A
  *  countable Bar (`of`) rather than a percentage: a level is a rung, not a proportion. */
 function Track({ name, track, last = false }: { name: string; track: LevelTrack; last?: boolean }) {
+  const t = useT()
   return (
     <Row
       data-testid="level-track"
@@ -238,7 +250,7 @@ function Track({ name, track, last = false }: { name: string; track: LevelTrack;
       value={<Figure value={formatInt(track.level)} />}
       hairline={!last}
     >
-      <Bar value={track.level} of={LEVEL_CAP} label={`${name} level`} className="mt-2" />
+      <Bar value={track.level} of={LEVEL_CAP} label={t('profile.levelOf', { name })} className="mt-2" />
     </Row>
   )
 }
@@ -249,5 +261,5 @@ function founded(iso: string, nowMs: number): string {
   const d = new Date(iso)
   if (!Number.isFinite(d.getTime())) return iso.slice(0, 10)
   const sameYear = d.getFullYear() === new Date(nowMs).getFullYear()
-  return d.toLocaleDateString('en', { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+  return formatDate(d.getTime(), { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
 }
