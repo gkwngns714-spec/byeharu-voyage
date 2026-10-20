@@ -1,5 +1,5 @@
 import { Button, Figure, Icon, Note, Row } from '../../components/ui'
-import { boundForLabel, voyageEtaMs, whereabouts } from '../../domain/fleet'
+import { boundForLabel, fleetRefusedOrder, voyageEtaMs, whereabouts } from '../../domain/fleet'
 import { queuedOrderWords, refusalOfOrder } from '../../domain/order'
 import { formatMiles, formatRealShort } from '../../lib/format'
 import { usePress } from '../../live/usePress'
@@ -46,7 +46,8 @@ export function Queue({
   const press = usePress()
 
   const orders = fleet.queue
-  const failed = orders.find((o) => o.status === 'failed')
+  // The refused row, read where the picker's "stuck" dot reads it (domain/fleet), so the two agree.
+  const failed = fleetRefusedOrder(fleet)
   const failedRefusal = failed ? refusalOfOrder(failed) : null
   const where = whereabouts(fleet)
   const eta = voyageEtaMs(fleet)

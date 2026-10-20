@@ -28,7 +28,7 @@ import { useDeskPlan } from './plans/planDraft'
 // seeing charts of each trade goods that i click, setting up trade routes for my fleet, investing, and
 // all … stylish - modern - sophisticated yet concise simple."*
 //
-// THE SHELL: the fleet strip (which fleet, where it is, its two figures), the faces (deskView.ts — the
+// THE SHELL: the fleet strip (which fleet — the picker, FleetPicker.tsx — and its two figures), the faces (deskView.ts — the
 // ones built: Markets · Plans), and the face. A good pressed on Markets opens its page in ONE slot (a
 // tray; beside the column on a wide glass); the page's Buy / Sell cell turns that slot over to THE trade
 // tray, and closing it returns to the page. One state says which stands, as PORT's board keeps its own.
@@ -176,7 +176,7 @@ export function CommandScreen() {
         <header className="flex shrink-0 items-center gap-6 border-b border-edge px-6 py-2" data-testid="desk-header">
           <div className="flex min-w-0 flex-1 items-center gap-6">
             <h1 className="shrink-0 text-t-body font-semibold text-ink">Command</h1>
-            <FleetStrip fleets={fleets} fleetId={fleetId} onSelect={selectFleet} fleet={fleet ?? null} inline />
+            <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} inline />
           </div>
           <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label="Desk faces" className="shrink-0" />
         </header>
@@ -197,7 +197,7 @@ export function CommandScreen() {
 
   return (
     <Sheet title="Command" data-testid="command">
-      <FleetStrip fleets={fleets} fleetId={fleetId} onSelect={selectFleet} fleet={fleet ?? null} />
+      <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} />
       {/* THE FACES (deskView.ts): one row in the body, not in the sticky title bar — a 44-px control
           there makes the bar taller, and a taller sticky bar covers what a press lands on below it. */}
       <Segmented<DeskFace>

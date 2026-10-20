@@ -1,43 +1,34 @@
-import { ChipRow, Bar, Chip, Figure } from '../../components/ui'
-import { fleetHoldTotal, fleetHoldUsed, fleetPortCode, whereabouts, whereLine } from '../../domain/fleet'
-import { PortFlag } from '../../live/PortFlag'
-import { portNameOf, useWorld } from '../../live/worldStore'
+import { Bar, Figure } from '../../components/ui'
+import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
 import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
+import { FleetPicker } from './FleetPicker'
 
-// THE FLEET STRIP (docs/COMMAND_DESK.md §3.1, §2.1) — which fleet the desk acts for, where it is, and
-// its two deciding figures. Every face reads the fleet named here; an act at a place is offered only
-// for the city it is docked at (the server refuses otherwise — the strip only says where it is).
+// THE FLEET STRIP (docs/COMMAND_DESK.md §3.1, §2.1) — which fleet the desk acts for, and her two
+// deciding figures. Every face reads the fleet named here; an act at a place is offered only for
+// the city she is docked at (the server refuses otherwise — the strip only names her).
 //
-// Fleet chips scroll sideways; pressing one SELECTS it and moves nothing. The where line is
-// domain/fleet's one rule (`whereabouts` / `whereLine`).
+// 2026-10-20: the fleet is ONE button, the picker (FleetPicker.tsx) — her flag, name, signal dot
+// and ▾, opening the list of your fleets — where it was a chip per fleet with her where line. A
+// press SELECTS and moves nothing; where she is now reads on the picker's rows. The figures stand
+// beside the picker on the wide header and under it on the phone, exactly as before.
 
 export function FleetStrip({
   fleets,
-  fleetId,
   onSelect,
   fleet,
   inline = false,
 }: {
   fleets: readonly FleetView[]
-  fleetId: string | null
   onSelect: (id: string) => void
   fleet: FleetView | null
-  /** The wide desk's header: the chips and the two figures on ONE line (docs/COMMAND_DESK.md §3.9). */
+  /** The wide desk's header: the picker and the two figures on ONE line (docs/COMMAND_DESK.md §3.9). */
   inline?: boolean
 }) {
-  const portByCode = useWorld((s) => s.portByCode)
   if (inline) {
     return (
       <div className="flex min-w-0 flex-1 items-center gap-6" data-testid="fleet-strip">
-        <div className="bv-scroll-x flex min-w-0 shrink gap-2 overflow-x-auto">
-          {fleets.map((f) => (
-            <Chip key={f.id} on={f.id === fleetId} onClick={() => onSelect(f.id)} className="shrink-0 whitespace-nowrap">
-              {fleetPortCode(f) && <PortFlag code={fleetPortCode(f) as string} />}
-              {f.name} · {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))}
-            </Chip>
-          ))}
-        </div>
+        <FleetPicker fleets={fleets} fleet={fleet} onSelect={onSelect} />
         {fleet && (
           <div className="flex shrink-0 items-center gap-6" data-testid="command-line">
             <span className="flex items-baseline gap-2">
@@ -61,14 +52,11 @@ export function FleetStrip({
   }
   return (
     <div data-testid="fleet-strip">
-      <ChipRow>
-        {fleets.map((f) => (
-          <Chip key={f.id} on={f.id === fleetId} onClick={() => onSelect(f.id)} className="shrink-0 whitespace-nowrap">
-            {fleetPortCode(f) && <PortFlag code={fleetPortCode(f) as string} />}
-            {f.name} · {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c))}
-          </Chip>
-        ))}
-      </ChipRow>
+      {/* The picker's own 16px of padding is pulled back to the gutter, so her name starts where the
+          chips used to. One row of the 44 floor; the figures' 52 follow it. */}
+      <div className="-ml-4 flex min-h-11 items-center">
+        <FleetPicker fleets={fleets} fleet={fleet} onSelect={onSelect} />
+      </div>
       {fleet && <FleetFigures fleet={fleet} />}
     </div>
   )

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Chip, Field } from '../components/ui'
+import { Chip, Field, useDismiss } from '../components/ui'
 import type { SnapshotPort } from '../lib/rpc'
 import { nearbyHarbours } from '../domain/port'
 import { useWorld } from './worldStore'
@@ -100,25 +100,11 @@ export function PortField({
     if (input && document.activeElement === input) input.blur()
   }, [])
 
-  // A press that lands OUTSIDE the pair closes the picker — after it has landed. `click` is the
-  // event that says a press completed on one element; a blur says only that focus moved, and it
-  // says so on the mousedown, with the mouseup still to come (see the head of this file). Escape
-  // is the keyboard's press-outside, and it works from wherever the focus has gone.
-  useEffect(() => {
-    if (!open) return
-    const onClick = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) leave()
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') leave()
-    }
-    document.addEventListener('click', onClick)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('click', onClick)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open, leave])
+  // A press that lands OUTSIDE the pair closes the picker — after it has landed — and Escape is the
+  // keyboard's press-outside, from wherever the focus has gone. The one dismissal, `useDismiss`
+  // (design system, 2026-10-20: the fleet picker's dropdown was its second caller); its header
+  // carries the click-not-blur reasoning the head of this file records.
+  useDismiss(open, box, leave)
   const choose = (code: string) => {
     onPick(code)
     leave()
