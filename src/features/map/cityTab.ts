@@ -6,13 +6,16 @@ import { create } from 'zustand'
 // along a coast taps city after city and stays on Market. Session chrome, never game state.
 
 // The fourth, Town Hall (0123, owner 2026-10-15): the city's purse, its works, Invest, who invested.
-export type CityTab = 'market' | 'port' | 'inn' | 'townhall'
+// The fifth, Info (owner row 174, 2026-10-20): the city itself in a handful of lines — its country,
+// what influences it, where it is, its market and, for a city you have invested in, its economy.
+export type CityTab = 'market' | 'port' | 'inn' | 'townhall' | 'info'
 
 export const CITY_TABS: readonly { id: CityTab; label: string }[] = [
   { id: 'market', label: 'Market' },
   { id: 'port', label: 'Port' },
   { id: 'inn', label: 'Inn' },
   { id: 'townhall', label: 'Town Hall' },
+  { id: 'info', label: 'Info' },
 ]
 
 export const useCityTab = create<{ tab: CityTab; turnTo: (tab: CityTab) => void }>((set) => ({

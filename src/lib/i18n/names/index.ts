@@ -5,9 +5,9 @@
 import { getLocale, type Locale } from '../locale'
 import { KO_PORTS } from './ports'
 import { KO_GOODS } from './goods'
-import { KO_CATEGORIES, KO_HULLS, KO_NATIONS, KO_REGIONS } from './realms'
+import { KO_CATEGORIES, KO_CULTURES, KO_HULLS, KO_NATIONS, KO_REGIONS } from './realms'
 
-export type NameKind = 'port' | 'nation' | 'region' | 'good' | 'category' | 'hull'
+export type NameKind = 'port' | 'nation' | 'region' | 'good' | 'category' | 'culture' | 'hull'
 
 const KO: Record<NameKind, Readonly<Record<string, string>>> = {
   port: KO_PORTS,
@@ -15,6 +15,7 @@ const KO: Record<NameKind, Readonly<Record<string, string>>> = {
   region: KO_REGIONS,
   good: KO_GOODS,
   category: KO_CATEGORIES,
+  culture: KO_CULTURES,
   hull: KO_HULLS,
 }
 
@@ -28,4 +29,5 @@ export const koPortName = (name: string) => KO_PORTS[name]
 export const koNationName = (code: string) => KO_NATIONS[code]
 export const koGoodName = (code: string) => KO_GOODS[code]
 export const koCategoryName = (code: string) => KO_CATEGORIES[code]
+export const koCultureName = (code: string) => KO_CULTURES[code]
 export const koRegionName = (code: string) => KO_REGIONS[code]

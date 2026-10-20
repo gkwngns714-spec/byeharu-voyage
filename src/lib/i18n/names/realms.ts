@@ -25,6 +25,14 @@ export const KO_CATEGORIES: Readonly<Record<string, string>> = {
   food: '식료품', drink: '주류', tobacco: '담배', dye: '염료', 'ship-supplies': '선박 자재',
 }
 
+// A HARBOUR'S CULTURE (`ports.culture`, served on every port; world.culture_faith names them).
+// Read by the city panel's Info tab (owner row 174). A culture with no entry prints as served.
+export const KO_CULTURES: Readonly<Record<string, string>> = {
+  latin: '라틴', anglo: '앵글로', germanic: '게르만', nordic: '노르드', islamic: '이슬람',
+  swahili: '스와힐리', malay: '말레이', indic: '인도', sinic: '중화', korean: '한국',
+  japanese: '일본', guinean: '기니', oceanic: '오세아니아',
+}
+
 export const KO_HULLS: Readonly<Record<string, string>> = {
   Hyeopseon: '협선', Sangseon: '상선', Byeongseon: '병선', Jounseon: '조운선', Panokseon: '판옥선',
   'Dae-panokseon': '대판옥선', Tamangseon: '탐망선', Bangpaeseon: '방패선', 'Geobukseon (turtle ship)': '거북선',
