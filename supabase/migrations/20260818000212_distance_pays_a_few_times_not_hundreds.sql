@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0213 — DISTANCE PAYS A FEW TIMES, NOT HUNDREDS
+-- 0212 — DISTANCE PAYS A FEW TIMES, NOT HUNDREDS
 --        (one knob moves: haul_max 600 → 3; the hauls are refilled from the one derivation, as 0208 did)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -64,7 +64,7 @@
 -- LOCKS: port_goods FOR UPDATE for the length of this file (a trade waits the seconds it takes: the refill
 --   of 132,090 rows and the probe quotes), then one UPDATE of price_history. No LOCK TABLE, no set role, no
 --   set local, no begin. Deploy with the clock unwound, as 0208 was.
--- VERSION: 0213 at writing (prod head 0211, live; 0212 is the insurance slice's number). It RENUMBERS to
+-- VERSION: 0212 (renumbered from 0213 at the main session's order, 2026-10-20: insurance has no PR, so this deploys first on prod head 0211). It RENUMBERS to
 --   the prod head + 1 at push.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -73,17 +73,17 @@ begin
   perform set_config('statement_timeout', '20min', true);
   perform set_config('lock_timeout', '5s', true);
   if public.wc_num('haul_max') is distinct from 600 then
-    raise exception '0213 refuses: haul_max reads %, not 600 — this has been applied once, or the world is not the one this file was cut for', public.wc_num('haul_max');
+    raise exception '0212 refuses: haul_max reads %, not 600 — this has been applied once, or the world is not the one this file was cut for', public.wc_num('haul_max');
   end if;
   if public.wc_num('haul_premium_share') is distinct from 0.5 or public.wc_num('haul_reach_nm') is distinct from 14500
      or public.wc_num('haul_curve') is distinct from 2.0 then
-    raise exception '0213 refuses: share / reach / curve read % / % / %, not 0.5 / 14500 / 2.0',
+    raise exception '0212 refuses: share / reach / curve read % / % / %, not 0.5 / 14500 / 2.0',
       public.wc_num('haul_premium_share'), public.wc_num('haul_reach_nm'), public.wc_num('haul_curve');
   end if;
   if to_regprocedure('world.haul_at(numeric, numeric, numeric, numeric, numeric)') is null
      or to_regprocedure('world.haul_rows()') is null
      or to_regprocedure('public.cargo_haul(uuid, uuid)') is null then
-    raise exception '0213 refuses: 0208''s haul_at, 0173''s haul_rows or 0174''s cargo_haul is not in this world';
+    raise exception '0212 refuses: 0208''s haul_at, 0173''s haul_rows or 0174''s cargo_haul is not in this world';
   end if;
 end $guard$;
 
@@ -93,17 +93,17 @@ begin
   perform 1 from public.port_goods for update;
 end $lock$;
 
-create temp table bodies_0213 on commit drop as
+create temp table bodies_0212 on commit drop as
 select f.fn, md5(replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '')) as h
   from (values ('cmd.do_sell(uuid, jsonb)'), ('public.cargo_haul(uuid, uuid)'),
                ('world.haul_at(numeric, numeric, numeric, numeric, numeric)'), ('world.haul_rows()')) f(fn);
 
-create temp table hauls_0213 on commit drop as select port_id, good_id, haul_nm, haul from public.port_goods;
-create temp table hist_0213 on commit drop as select port_id, good_id, slot, mid from public.price_history;
+create temp table hauls_0212 on commit drop as select port_id, good_id, haul_nm, haul from public.port_goods;
+create temp table hist_0212 on commit drop as select port_id, good_id, slot, mid from public.price_history;
 
 -- THE PRICE PROBE SET — deterministic (0208's): every 7th row a quay offers (haul 1 there), by port then
 -- good code; and the FAR set: every 211th row with a haul above 1, by port then good code.
-create temp table probe_0213 on commit drop as
+create temp table probe_0212 on commit drop as
 select x.port_id, x.good_id, x.port_code, x.good_code, 'quay'::text as kind
   from (select pg.port_id, pg.good_id, p.code as port_code, g.code as good_code,
                row_number() over (order by p.code, g.code) as rn
@@ -122,30 +122,30 @@ select x.port_id, x.good_id, x.port_code, x.good_code, 'far'
          where pg.haul > 1) x
  where x.rn % 211 = 1;
 
-create temp table quote_0213 (
+create temp table quote_0212 (
   phase text, port_id uuid, good_id uuid, mid numeric, ask numeric, bid numeric,
   b1 numeric, b10 numeric, s1 numeric, s10 numeric, stock numeric
 ) on commit drop;
 
-create function pg_temp.quote_0213(p_phase text) returns void language sql as $$
-  insert into quote_0213
+create function pg_temp.quote_0212(p_phase text) returns void language sql as $$
+  insert into quote_0212
   select p_phase, pr.port_id, pr.good_id, wp.mid, wp.ask, wp.bid,
          qb1.avg_price, qb10.avg_price, qs1.avg_price, qs10.avg_price,
          (select pg.stock from public.port_goods pg where pg.port_id = pr.port_id and pg.good_id = pr.good_id)
-    from probe_0213 pr
+    from probe_0212 pr
     cross join lateral world.price(pr.port_id, pr.good_id) wp
     cross join lateral world.quote(pr.port_id, pr.good_id, 1,  'buy',  null, null) qb1
     cross join lateral world.quote(pr.port_id, pr.good_id, 10, 'buy',  null, null) qb10
     cross join lateral world.quote(pr.port_id, pr.good_id, 1,  'sell', null, null) qs1
     cross join lateral world.quote(pr.port_id, pr.good_id, 10, 'sell', null, null) qs10;
 $$;
-select pg_temp.quote_0213('before');
+select pg_temp.quote_0212('before');
 
 -- ── 2. THE KNOB ─────────────────────────────────────────────────────────────────────────────────
 update public.world_config
    set value = to_jsonb(3),
        description = coalesce(description, '')
-         || ' 0213 (2026-10-20): 600 → 3. The far end now pays 1 + haul_premium_share × 2 = 2 × (was 300.5 ×). '
+         || ' 0212 (2026-10-20): 600 → 3. The far end now pays 1 + haul_premium_share × 2 = 2 × (was 300.5 ×). '
             'The premium was minted (0174''s IMPORT_DEMAND, ~57 % of every sale on prod); the owner''s target is a '
             'long route at ~1.3–1.5 × a short one''s profit per day. port_goods.haul is refilled from world.haul_rows() '
             'by the migration that moves this.'
@@ -161,12 +161,12 @@ update public.port_goods pg
 -- the chart follows the level (0208's statement, without the price level's factor)
 update public.price_history ph
    set mid = round(ph.mid * pg.haul / h.haul, 4)
-  from hauls_0213 h, public.port_goods pg
+  from hauls_0212 h, public.port_goods pg
  where h.port_id = ph.port_id and h.good_id = ph.good_id
    and pg.port_id = ph.port_id and pg.good_id = ph.good_id
    and pg.haul <> h.haul;
 
-select pg_temp.quote_0213('after');
+select pg_temp.quote_0212('after');
 
 -- ── 4. SELF-ASSERT ──────────────────────────────────────────────────────────────────────────────
 do $$
@@ -194,14 +194,14 @@ begin
   -- (a) THE KNOB, and the knobs that must not have moved
   if public.wc_num('haul_max') is distinct from c_max or public.wc_num('haul_premium_share') is distinct from 0.5
      or public.wc_num('haul_reach_nm') is distinct from 14500 or public.wc_num('haul_curve') is distinct from 2.0 then
-    raise exception '0213 self-assert FAIL: the haul knobs read max %, share %, reach %, curve %',
+    raise exception '0212 self-assert FAIL: the haul knobs read max %, share %, reach %, curve %',
       public.wc_num('haul_max'), public.wc_num('haul_premium_share'), public.wc_num('haul_reach_nm'), public.wc_num('haul_curve');
   end if;
 
   -- (b) EVERY ROW IS THE DERIVATION; makers untouched; every far row moved; monotone; the ceiling
-  select count(*) into v_rows from hauls_0213;
+  select count(*) into v_rows from hauls_0212;
   if v_rows = 0 or v_rows <> (select count(*) from public.port_goods) then
-    raise exception '0213 self-assert FAIL: % rows before, % after', v_rows, (select count(*) from public.port_goods);
+    raise exception '0212 self-assert FAIL: % rows before, % after', v_rows, (select count(*) from public.port_goods);
   end if;
   select count(*) filter (where h.port_id is null or pg.haul is distinct from h.haul or pg.haul_nm is distinct from h.haul_nm),
          count(*) filter (where pg.haul <> o.haul),
@@ -209,112 +209,112 @@ begin
          max(pg.haul)
     into v_n, v_moved, v_m, v_maxh
     from public.port_goods pg
-    join hauls_0213 o on o.port_id = pg.port_id and o.good_id = pg.good_id
+    join hauls_0212 o on o.port_id = pg.port_id and o.good_id = pg.good_id
     left join world.haul_rows() h on h.port_id = pg.port_id and h.good_id = pg.good_id;
   -- (a row whose premium rounded to 0 at 4 dp before — a few dozen nm from a maker — stays at 1; a row with
   --  any premium at all moves: 8's premium is under a third of 600's at every distance, so no 4-dp step holds)
   if v_n <> 0 or v_moved = 0 or v_m <> 0 then
-    raise exception '0213 self-assert FAIL: % market row(s) differ from world.haul_rows(); % moved; % row(s) with a premium did not move', v_n, v_moved, v_m;
+    raise exception '0212 self-assert FAIL: % market row(s) differ from world.haul_rows(); % moved; % row(s) with a premium did not move', v_n, v_moved, v_m;
   end if;
   select count(*), count(*) filter (where pg.haul <> 1 or pg.haul_nm is distinct from 0 or o.haul <> 1) into v_makers, v_n
     from public.ports p cross join lateral public.port_offered_goods(p.id) og
     join public.port_goods pg on pg.port_id = p.id and pg.good_id = og.good_id
-    join hauls_0213 o on o.port_id = pg.port_id and o.good_id = pg.good_id;
+    join hauls_0212 o on o.port_id = pg.port_id and o.good_id = pg.good_id;
   if v_makers = 0 or v_n <> 0 then
-    raise exception '0213 self-assert FAIL: % of % maker rows are not at haul 1 / 0 nm before and after', v_n, v_makers;
+    raise exception '0212 self-assert FAIL: % of % maker rows are not at haul 1 / 0 nm before and after', v_n, v_makers;
   end if;
   select count(*) into v_n from (
     select haul, lag(haul) over (order by haul_nm, haul) as prev from public.port_goods where haul_nm is not null) x
    where x.haul < x.prev;
   if v_n > 0 then
-    raise exception '0213 self-assert FAIL: the haul falls with distance on % row(s)', v_n;
+    raise exception '0212 self-assert FAIL: the haul falls with distance on % row(s)', v_n;
   end if;
   if v_maxh <> c_far then
-    raise exception '0213 self-assert FAIL: the largest haul in the world is %, not % (= 1 + 0.5 × (% − 1))', v_maxh, c_far, c_max;
+    raise exception '0212 self-assert FAIL: the largest haul in the world is %, not % (= 1 + 0.5 × (% − 1))', v_maxh, c_far, c_max;
   end if;
 
   -- (c) ONLY THE KNOB MOVED: the same arithmetic, the same other knobs, max c_max now and 600 before
   select count(*) into v_n
-    from public.port_goods pg join hauls_0213 o on o.port_id = pg.port_id and o.good_id = pg.good_id
+    from public.port_goods pg join hauls_0212 o on o.port_id = pg.port_id and o.good_id = pg.good_id
    where pg.haul is distinct from world.haul_at(pg.haul_nm, c_max, public.wc_num('haul_reach_nm'), public.wc_num('haul_curve'), public.wc_num('haul_premium_share'))
       or o.haul is distinct from world.haul_at(o.haul_nm, 600, public.wc_num('haul_reach_nm'), public.wc_num('haul_curve'), public.wc_num('haul_premium_share'))
       or pg.haul > o.haul;
   if v_n <> 0 then
-    raise exception '0213 self-assert FAIL: % row(s) whose haul is not world.haul_at at max % now and max 600 before (or rose)', v_n, c_max;
+    raise exception '0212 self-assert FAIL: % row(s) whose haul is not world.haul_at at max % now and max 600 before (or rose)', v_n, c_max;
   end if;
   select p.code as port, g.code as good, o.haul as old_h, pg.haul as new_h, pg.port_id, pg.good_id into v_pair
     from public.port_goods pg
-    join hauls_0213 o on o.port_id = pg.port_id and o.good_id = pg.good_id
+    join hauls_0212 o on o.port_id = pg.port_id and o.good_id = pg.good_id
     join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id
    where o.haul_nm >= public.wc_num('haul_reach_nm')
    order by p.code, g.code limit 1;
   if v_pair.port is null or v_pair.old_h <> 300.5 or v_pair.new_h <> c_far then
-    raise exception '0213 self-assert FAIL: the probe pair % / % beyond the reach reads % → %, not 300.5 → %',
+    raise exception '0212 self-assert FAIL: the probe pair % / % beyond the reach reads % → %, not 300.5 → %',
       v_pair.port, v_pair.good, v_pair.old_h, v_pair.new_h, c_far;
   end if;
 
   -- (d) PRICES: a maker's quay is untouched to the digit; a far row's mid follows its haul
-  select count(*) filter (where pr.kind = 'quay'), count(*) filter (where pr.kind = 'far') into v_quay, v_far from probe_0213 pr;
+  select count(*) filter (where pr.kind = 'quay'), count(*) filter (where pr.kind = 'far') into v_quay, v_far from probe_0212 pr;
   if v_quay < 100 or v_far < 100 then
-    raise exception '0213 self-assert FAIL: only % quay and % far probe rows — the price check would be thin', v_quay, v_far;
+    raise exception '0212 self-assert FAIL: only % quay and % far probe rows — the price check would be thin', v_quay, v_far;
   end if;
-  if exists (select 1 from probe_0213 pr join hauls_0213 h on h.port_id = pr.port_id and h.good_id = pr.good_id
+  if exists (select 1 from probe_0212 pr join hauls_0212 h on h.port_id = pr.port_id and h.good_id = pr.good_id
               where pr.kind = 'quay' and h.haul <> 1) then
-    raise exception '0213 self-assert FAIL: a quay probe row had a haul above 1';
+    raise exception '0212 self-assert FAIL: a quay probe row had a haul above 1';
   end if;
   select count(*) into v_n
-    from probe_0213 pr
-    join quote_0213 b on b.port_id = pr.port_id and b.good_id = pr.good_id and b.phase = 'before'
-    join quote_0213 a on a.port_id = pr.port_id and a.good_id = pr.good_id and a.phase = 'after'
+    from probe_0212 pr
+    join quote_0212 b on b.port_id = pr.port_id and b.good_id = pr.good_id and b.phase = 'before'
+    join quote_0212 a on a.port_id = pr.port_id and a.good_id = pr.good_id and a.phase = 'after'
    where pr.kind = 'quay' and b.mid is not null and b.b10 is not null and b.s10 is not null
      and (a.mid, a.ask, a.bid, a.b1, a.b10, a.s1, a.s10, a.stock) is not distinct from (b.mid, b.ask, b.bid, b.b1, b.b10, b.s1, b.s10, b.stock);
   if v_n <> v_quay then
-    raise exception '0213 self-assert FAIL: % of % quay probe rows quote the same to the digit (mid, ask, bid, 1 and 10 units buy and sell)', v_n, v_quay;
+    raise exception '0212 self-assert FAIL: % of % quay probe rows quote the same to the digit (mid, ask, bid, 1 and 10 units buy and sell)', v_n, v_quay;
   end if;
   select count(*) into v_n
-    from probe_0213 pr
-    join quote_0213 b on b.port_id = pr.port_id and b.good_id = pr.good_id and b.phase = 'before'
-    join quote_0213 a on a.port_id = pr.port_id and a.good_id = pr.good_id and a.phase = 'after'
-    join hauls_0213 h on h.port_id = pr.port_id and h.good_id = pr.good_id
+    from probe_0212 pr
+    join quote_0212 b on b.port_id = pr.port_id and b.good_id = pr.good_id and b.phase = 'before'
+    join quote_0212 a on a.port_id = pr.port_id and a.good_id = pr.good_id and a.phase = 'after'
+    join hauls_0212 h on h.port_id = pr.port_id and h.good_id = pr.good_id
     join public.port_goods pg on pg.port_id = pr.port_id and pg.good_id = pr.good_id
    where pr.kind = 'far' and a.stock = b.stock and pg.haul < h.haul and a.mid <= b.mid
      and abs(a.mid - b.mid * pg.haul / h.haul) <= 0.0003;   -- two 4-dp roundings: at most 0.0001 apart
   if v_n <> v_far then
-    raise exception '0213 self-assert FAIL: % of % far probe rows price at (new haul ÷ old haul) of their old mid, no higher, at the same stock', v_n, v_far;
+    raise exception '0212 self-assert FAIL: % of % far probe rows price at (new haul ÷ old haul) of their old mid, no higher, at the same stock', v_n, v_far;
   end if;
 
   -- (e) THE CHART
-  select count(*) into v_hist from hist_0213;
+  select count(*) into v_hist from hist_0212;
   select count(*) into v_n
-    from hist_0213 h0
-    join hauls_0213 o on o.port_id = h0.port_id and o.good_id = h0.good_id
+    from hist_0212 h0
+    join hauls_0212 o on o.port_id = h0.port_id and o.good_id = h0.good_id
     join public.port_goods pg on pg.port_id = h0.port_id and pg.good_id = h0.good_id
     left join public.price_history ph on ph.port_id = h0.port_id and ph.good_id = h0.good_id and ph.slot = h0.slot
    where ph.port_id is null or ph.mid <> round(h0.mid * pg.haul / o.haul, 4);
   if v_n <> 0 then
-    raise exception '0213 self-assert FAIL: % of % price_history row(s) are not (new haul ÷ old haul) of their mid', v_n, v_hist;
+    raise exception '0212 self-assert FAIL: % of % price_history row(s) are not (new haul ÷ old haul) of their mid', v_n, v_hist;
   end if;
 
   -- (f) 0174's READER reads the new haul; no body moved; the walls
   select count(*) into v_n
-    from probe_0213 pr join public.port_goods pg on pg.port_id = pr.port_id and pg.good_id = pr.good_id
+    from probe_0212 pr join public.port_goods pg on pg.port_id = pr.port_id and pg.good_id = pr.good_id
    where pr.kind = 'far' and public.cargo_haul(pr.port_id, pr.good_id) <> pg.haul;
   if v_n <> 0 then
-    raise exception '0213 self-assert FAIL: public.cargo_haul differs from the stored haul on % far probe row(s)', v_n;
+    raise exception '0212 self-assert FAIL: public.cargo_haul differs from the stored haul on % far probe row(s)', v_n;
   end if;
-  select count(*) into v_n from bodies_0213 b
+  select count(*) into v_n from bodies_0212 b
    where b.h <> md5(replace(pg_get_functiondef(b.fn::regprocedure), E'\r', ''));
   if v_n <> 0 then
-    raise exception '0213 self-assert FAIL: % of the 4 bodies (do_sell, cargo_haul, haul_at, haul_rows) changed — this file moves a knob, not a body', v_n;
+    raise exception '0212 self-assert FAIL: % of the 4 bodies (do_sell, cargo_haul, haul_at, haul_rows) changed — this file moves a knob, not a body', v_n;
   end if;
   if (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0213 self-assert FAIL: a wall moved';
+    raise exception '0212 self-assert FAIL: a wall moved';
   end if;
 
   -- (g) TIMINGS (notice only): no hot body changed; 8 calls each in this session
-  select pr.port_id, pr.good_id into v_port, v_good from probe_0213 pr where pr.kind = 'far' order by pr.port_code, pr.good_code limit 1;
+  select pr.port_id, pr.good_id into v_port, v_good from probe_0212 pr where pr.kind = 'far' order by pr.port_code, pr.good_code limit 1;
   for i in 1..8 loop
     v_t := clock_timestamp();
     perform * from world.quote(v_port, v_good, 50, 'sell', null, null);
@@ -329,11 +329,11 @@ begin
                            round(world.mid_price(pg.port_id, pg.good_id, pg.stock) * o.haul / pg.haul, 2),
                            round(world.mid_price(pg.port_id, pg.good_id, pg.stock), 2)), '; ' order by pg.haul_nm)
     into v_kimchi
-    from public.port_goods pg join hauls_0213 o on o.port_id = pg.port_id and o.good_id = pg.good_id
+    from public.port_goods pg join hauls_0212 o on o.port_id = pg.port_id and o.good_id = pg.good_id
     join public.goods g on g.id = pg.good_id join public.ports p on p.id = pg.port_id
    where g.code = 'kimchi' and p.code in ('MOK', 'NAG', 'MAL', 'GOA', 'ALE', 'LIS', 'LON');
 
-  raise notice '0213 self-assert ok: DISTANCE PAYS A FEW TIMES, NOT HUNDREDS. haul_max 600 → % (share 0.5, reach 14500, curve 2.0 kept): % market rows = world.haul_rows(), % moved, % maker rows at 1 untouched, monotone, largest haul % (pair %/% % → %, exact); every row = haul_at at % now and at 600 before. PRICES: % quay probes identical to the digit; % far probes at (new ÷ old haul) of their mid. CHART: % price_history rows follow. cargo_haul = the stored haul on every far probe; 4 bodies unmoved; walls 0. KIMCHI (mid before → after): %. world.quote(50 sell) ms %, world.price ms %.',
+  raise notice '0212 self-assert ok: DISTANCE PAYS A FEW TIMES, NOT HUNDREDS. haul_max 600 → % (share 0.5, reach 14500, curve 2.0 kept): % market rows = world.haul_rows(), % moved, % maker rows at 1 untouched, monotone, largest haul % (pair %/% % → %, exact); every row = haul_at at % now and at 600 before. PRICES: % quay probes identical to the digit; % far probes at (new ÷ old haul) of their mid. CHART: % price_history rows follow. cargo_haul = the stored haul on every far probe; 4 bodies unmoved; walls 0. KIMCHI (mid before → after): %. world.quote(50 sell) ms %, world.price ms %.',
     c_max, v_rows, v_moved, v_makers, v_maxh, v_pair.port, v_pair.good, v_pair.old_h, v_pair.new_h, c_max,
     v_quay, v_far, v_hist, v_kimchi, v_ms, v_pms;
 end $$;

@@ -20,7 +20,7 @@ const money = async () => (await q(`select json_build_object(
   'merchants', (select sum(pl.ducats) + coalesce(sum((select sum(public.fleet_stock_at_cost(nf.fleet_id)) from public.npc_fleets nf where nf.player_id = pl.id)), 0) from public.players pl where pl.is_npc),
   'cities', (select sum(public.treasury_balance(t.port_id)) from public.port_treasury t)) j`))[0].j
 const m0 = await money()
-// 2026-10-20 (0213): the city flows and the markets' shape over the run — IMPORT_DEMAND (the premium the
+// 2026-10-20 (0212): the city flows and the markets' shape over the run — IMPORT_DEMAND (the premium the
 // city's people mint, 0174) against SELL, and how many markets stand empty or over-full.
 const flow0 = (await q(`select coalesce(max(id), 0) m from public.treasury_flows`))[0].m
 const marketsSql = `select json_build_object('n', count(*), 'empty', count(*) filter (where stock = 0), 'under_tenth', count(*) filter (where stock < stock_target / 10),
@@ -43,7 +43,7 @@ const plans = Object.fromEntries((await q(`
              || '#' || coalesce(sr.paused_reason, '')) as h
     from public.npc_fleets nf join public.standing_routes sr on sr.id = nf.route_id
     join public.players pl on pl.id = nf.player_id join public.fleets f on f.id = nf.fleet_id`)).map((r) => [r.k, r.h]))
-// 2026-10-20 (0213): the loops the kickoff chose, by their length (the plan's bands), so a change to the
+// 2026-10-20 (0212): the loops the kickoff chose, by their length (the plan's bands), so a change to the
 // distance premium shows where the merchants went
 const bandSql = (nm) => `case when ${nm} < 1000 then '<1k' when ${nm} < 2500 then '1-2.5k' when ${nm} < 5000 then '2.5-5k' when ${nm} < 10000 then '5-10k' else '10k+' end`
 const loopsByBand = (await q(`select json_object_agg(b, n) j from (select ${bandSql('z.nm')} b, count(*) n
