@@ -1,4 +1,4 @@
-# 2026-10-19/20 — 0211: a cargo can be insured (insurance v1) — `osn-insurance-v1`
+# 2026-10-19/20 — 0212: a cargo can be insured (insurance v1) — `osn-insurance-v1`
 
 The owner asked "what about insurance" twice (2026-10-19). Built by default; every choice below is his to reverse.
 
@@ -35,14 +35,17 @@ The owner asked "what about insurance" twice (2026-10-19). Built by default; eve
 - Merchant sheet: `insurance paid twice, 1,800 🪙` in place of the refound line. WORDS.md rows added; never "premium".
 
 ## Measured
-### Prod, read-only (2026-10-20, head 0208)
-- All 16 hunks occur exactly once in the live bodies (11 functions); heads once; `insured_voyages` absent; the probe
-  ids and `Casa do Seguro 0211` free; LIS/FNC and their roadsteads present; 837 merchant fleets, 821 houses.
+### Prod, read-only (2026-10-20, head 0208, re-checked at head 0210 after 0209/0210 went live)
+- All 16 hunks occur exactly once in the live bodies (11 functions) at 0208 AND at 0210 (0210 changed only
+  `voyage.settle`'s `v_wages` declaration, outside every hunk); heads once; `insured_voyages` absent; the probe
+- The premium and the payout do not read running costs (cargo value × risk; the cargo's cost basis), so 0210's
+  cheaper stores, repairs and wages leave both figures as measured below; they only make a lap's net less negative.
+  ids and `Casa do Seguro 0212` free; LIS/FNC and their roadsteads present; 837 merchant fleets, 821 houses.
 - The only bodies naming the retired knobs / `npc_worth` are `npc_tend_houses` (the hunk removes them) and ONE
   stale comment line in `public.npc_tend` — re-cut by a 16th hunk, or the file's last assert would have failed on prod.
 - Raids with the fight lit: 348 in 211,909 sea-days (0.164 %/day) → expected loss 0.0138 % of cargo per sea-day.
 
-### The premium, over the merchants' 837 real voyages (sim world at 0208 + 0211; `insurance_margin` 0.10)
+### The premium, over the merchants' 837 real voyages (sim world at 0208 + 0212; `insurance_margin` 0.10)
 | route | n | avg nm | avg days | risk (avg) | price, % of cargo | price on 2,000 🪙 |
 |---|---|---|---|---|---|---|
 | < 500 nm | 142 | 377 | 3.6 | 0.042 % | **0.046 %** | 1 |
@@ -56,7 +59,7 @@ insurance is cheap — 1–12 🪙 on a 2,000 🪙 cargo. It becomes a real pric
 `risk_quote`: 3–12 ms on a 5-day voyage in the probe; 77 ms average over the 837 voyages (PGlite, loaded machine).
 
 ### The self-assert (local, the real applier)
-Whole chain 12.2 s with the prefix restore; 0211 alone ~1.5 s. Receipt: 2,000 insured LIS → FNC over 5 days at risk
+Whole chain 12.2 s with the prefix restore; 0212 alone ~1.5 s. Receipt: 2,000 insured LIS → FNC over 5 days at risk
 0.000597 for 2 🪙, charged once, preview quoted without charging, unasked SAIL identical to the pre-image but for the
 quote; PLUNDERED 5 days took its 25–50 % shares exactly as re-derived, paid 1,531 by Lisbon and none by Funchal;
 SHORT paid 50 of 1,396 and recorded 1,346 short; STRIPPED paid 1,800 of 2,000; the merchant insured herself for 1 and
@@ -74,8 +77,8 @@ _(filled in below when the arms finish)_
    day (~10,000 settled days). The same would have run at db push. Fixed: the weather passage is set back EIGHT
    voyage-lengths (≤ ~40 voyage-days of clock, whatever the rolls; 23 days, 147 ms) and is not asked to arrive; a
    second, hazard-free passage proves the arrival arm (LANDFALL, VOYAGE_REPORT) in 49 ms.
-2. **Four probes could never have passed.** P1, P5, P6 and the parse probe wrote their `probe_0211` row INSIDE the
-   block they then rolled back with `RB_0211`, so the asserts always saw no row. The rows are written after the block.
+2. **Four probes could never have passed.** P1, P5, P6 and the parse probe wrote their `probe_0212` row INSIDE the
+   block they then rolled back with `RB_0212`, so the asserts always saw no row. The rows are written after the block.
 3. `o->'q' - 'insurance'` parses as `o -> ('q' - 'insurance')` (`-` binds before `->`); parenthesised.
 4. The generator sources (`docs/dev-log/insurance-wip/`) were a second copy of the migration and were deleted; the
    migration file is the one source.

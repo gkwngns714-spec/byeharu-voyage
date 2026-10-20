@@ -17,7 +17,7 @@
 // so a long passage spends as few of the queue's lines as it can. cmd.issue_lines asks passage_gate of every
 // SAIL before any is queued, and the SAIL itself is still the server's to refuse when it runs.
 //
-// INSURING THE CARGO (0211). `plan.insure` writes ` INSURED` on every LADEN SAIL — the legs after the BUY (or
+// INSURING THE CARGO (0212). `plan.insure` writes ` INSURED` on every LADEN SAIL — the legs after the BUY (or
 // every leg, when the plan sells what is already on board) — and on no empty leg: an empty hold insures nothing
 // and would be charged nothing, so the word there is noise. The price is the server's, set when she sails
 // (public.insure_voyage over the cargo then on board); nothing here guesses it.
@@ -65,7 +65,7 @@ export function planLines(
   let casks = stores?.days ?? Number.POSITIVE_INFINITY
   // where the BUY line stands: stores are taken on BEFORE the cargo, so a full hold never refuses the casks
   let buyLine: number | null = null
-  // 0211: laden from the start when the plan sells what is on board; otherwise from the BUY on
+  // 0212: laden from the start when the plan sells what is on board; otherwise from the BUY on
   let laden = plan.buyAt === null
   /** A SAIL with its proposed course; at a harbour, PROVISION FULL first when her casks would not cover it. */
   const sail = (code: string): boolean => {

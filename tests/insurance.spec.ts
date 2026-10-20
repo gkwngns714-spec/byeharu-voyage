@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A CARGO CAN BE INSURED — 0211 (docs/dev-log/2026-10-19-insurance.md), the client's side of the contract
+// A CARGO CAN BE INSURED — 0212 (docs/dev-log/2026-10-19-insurance.md), the client's side of the contract
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // The server prices and charges the insurance (public.insure_voyage, called by cmd.do_sail); the client
 // only reads the quote off a SAIL's estimate (`sailEstimate(...).insurance`, the ONE reading), writes the
@@ -153,7 +153,7 @@ test('the plan builder writes INSURED on the laden legs alone, and only when ask
   // selling what is on board: laden from the quay
   const sell = planLines({ ...base, buyAt: null, sellAt: 'FNC', insure: true }, docked, nav, portByCode)
   expect(sell.ok && sell.lines.map((l) => l.text)).toEqual(['SAIL FNC INSURED', 'SELL cloves ALL'])
-  // not asked (and a draft from before 0211, with no field at all): no word anywhere
+  // not asked (and a draft from before 0212, with no field at all): no word anywhere
   const plain = planLines({ ...base, buyAt: 'FNC', sellAt: 'LIS' }, docked, nav, portByCode)
   expect(plain.ok && plain.lines.map((l) => l.text).join(' ')).not.toContain('INSURED')
 })

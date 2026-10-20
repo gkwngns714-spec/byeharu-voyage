@@ -786,7 +786,7 @@ Every entry: **shape · preconditions · cost · what it queues · failure.**
 ---
 
 **`SAIL <fleet> TO <port> [VIA <port> ...] [SPEED cruise|press] [INSURED]`**
-Sends a fleet to sea. `INSURED` (0211) insures the cargo on board for this voyage: the harbour she sails from
+Sends a fleet to sea. `INSURED` (0212) insures the cargo on board for this voyage: the harbour she sails from
 is paid `public.insurance_price(value, voyage.risk_quote(voyage))` at departure and pays back the cost basis of
 what a raid carries off, less `insurance_keep_pct` (10 %). Unasked, the SAIL's result still QUOTES the price
 (`insurance.insured = false`), so a preview shows it. Merchants insure every laden voyage.
@@ -799,7 +799,7 @@ what a raid carries off, less `insurance_keep_pct` (10 %). Unasked, the SAIL's r
 - **`SPEED press`:** +8% speed, +40% hull wear, +25% hazard. `cruise` is the default.
 - **Fails:** `E_NOT_DOCKED`, `E_NO_ROUTE`, `E_ENDURANCE`, `E_CREW_SHORT`, `E_PORT_CLOSED`,
   `E_FLAGSHIP_DISABLED`, `E_LANGUAGE`. (`E_DRAFT` — RETIRED by 0139: any hull enters any harbour.)
-  With `INSURED` (0211): `E_NO_INSURER` (asked from open water: cargo is insured in port), `E_INSUFFICIENT_FUNDS`
+  With `INSURED` (0212): `E_NO_INSURER` (asked from open water: cargo is insured in port), `E_INSUFFICIENT_FUNDS`
   (the price is more than the purse).
 
 **`DOCK <fleet>`**
@@ -1016,7 +1016,7 @@ E_HOLD_FULL
 `E_UNAVAILABLE`, `E_DAILY_CAP`, `E_PRICE_LIMIT`, `E_MIN_INVEST`, `E_WEEKLY_CAP`, `E_NO_PRESENCE`,
 `E_SEASON_CLOSED`, `E_FLEET_CAP`, `E_FLEET_SIZE`, `E_SHIP_CAP`, `E_LAST_SHIP`, `E_DIFFERENT_PORT`,
 `E_YARD_TIER`, `E_WRONG_YARD` (0130: a hull built outside its line's countries), `E_NO_YARD`, `E_NO_BLUEPRINT`, `E_MATERIALS`, `E_SCOUTING`, `E_ALREADY_EXPLORED`,
-`E_ALREADY_REPORTED`, `E_NO_ACADEMY`, `E_QUEUE_FULL`, `E_RANK_LOCKED`, `E_STALE`, `E_NO_INSURER` (0211: a SAIL
+`E_ALREADY_REPORTED`, `E_NO_ACADEMY`, `E_QUEUE_FULL`, `E_RANK_LOCKED`, `E_STALE`, `E_NO_INSURER` (0212: a SAIL
 asked INSURED from open water),
 and from 0131 (skills: enrolment + the training queue, docs/SHIPS_AND_SKILLS.md §5.1) `E_NOT_ENROLLED`
 (a level of a skill not yet enrolled), `E_ALREADY_ENROLLED`, `E_NOT_TAUGHT_HERE` (a line's hull skill

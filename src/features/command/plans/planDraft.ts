@@ -28,8 +28,8 @@ export interface PlanDraft {
   max: number | null
   /** The least to take a unit (SELL … AT >= min); null = any price. */
   min: number | null
-  /** 0211: insure the cargo — ` INSURED` on every laden SAIL line (planLines.ts). Absent on a draft
-   *  written before 0211, which reads as not asked. */
+  /** 0212: insure the cargo — ` INSURED` on every laden SAIL line (planLines.ts). Absent on a draft
+   *  written before 0212, which reads as not asked. */
   insure?: boolean
 }
 

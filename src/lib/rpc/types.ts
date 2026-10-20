@@ -2219,7 +2219,7 @@ export interface MerchantSkill {
   max: number
 }
 
-/** `world.insurance()` (0211) — the caller's insured voyages under way, and the last ten the insurance
+/** `world.insurance()` (0212) — the caller's insured voyages under way, and the last ten the insurance
  *  paid on. `keep_pct` is the share of a loss the owner keeps (the deductible): the insurance pays the rest. */
 export interface InsuranceView {
   keep_pct: number
@@ -2261,7 +2261,7 @@ export interface MerchantCard {
     master: string
     /** The company's purse. A merchant has no privacy; its fortune rising and falling is the show. */
     fortune: number
-    /** 0211: the refound is retired; her insurance stands behind her cargo — the losses it paid her
+    /** 0212: the refound is retired; her insurance stands behind her cargo — the losses it paid her
      *  (claims, ducats) and what the insuring cities could not cover (short). */
     insurance: { claims: number; paid: number; short: number }
     /** 0123: her stakes in cities, by harbour, largest first. Absent on a server before 0123. */

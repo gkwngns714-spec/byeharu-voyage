@@ -620,7 +620,7 @@ export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCa
   return call<MerchantCard>('worldNpcFleetCard', [fleetId])
 }
 
-/** INSURANCE (0211) — the caller's insured voyages under way and the last ones the insurance paid on.
+/** INSURANCE (0212) — the caller's insured voyages under way and the last ones the insurance paid on.
  *  Read at the Plans face, never on the beat. The price of insuring a SAIL is the SAIL's own estimate
  *  (`sailEstimate(...).insurance`, from cmd.preview), not a figure of this read. */
 export function worldInsurance(): Promise<RpcResult<InsuranceView>> {

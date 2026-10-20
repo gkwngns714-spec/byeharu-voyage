@@ -621,7 +621,7 @@ test('cmd.verb_schema() serves the fifteen verbs, argument by argument', async (
   expect(dest.required).toBe(true)
   expect(dest.keyword).toBe('TO')
   expect(sail.args.find((a) => a.name === 'via')).toBeUndefined()
-  // 0211: SAIL may end in INSURED — an optional enum with the one word, so the map's send and the plan
+  // 0212: SAIL may end in INSURED — an optional enum with the one word, so the map's send and the plan
   // builder write it through the one line composer (`orderText`) and nothing spells it by hand.
   const insurance = sail.args.find((a) => a.name === 'insurance')!
   expect(insurance.type).toBe('enum')
@@ -1601,7 +1601,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // PRICE — a good's market price at one city and each term it is made of. A READ, no player id. Landed
       // WITH the face that reads it (features/command/markets/GoodPage.tsx, "Why this price").
       'worldPriceWhy',
-      // Pin moved deliberately 2026-10-20 with migration 0211 (a cargo can be insured): INSURANCE — the
+      // Pin moved deliberately 2026-10-20 with migration 0212 (a cargo can be insured): INSURANCE — the
       // caller's insured voyages under way and what the insurance paid. A READ, no arguments. Landed WITH the
       // faces that read it (the desk's Plans; the SAIL's own estimate carries the price).
       'worldInsurance',
@@ -1631,7 +1631,7 @@ test('the registry and the client grants are one set, and the merchant cores are
   const names = await db.callAs<string[]>(`select jsonb_agg(function_name) as result from public.client_rpc_entry_points()`)
   expect(names).toContain('sea_traffic')
   expect(names).toContain('npc_fleet_card')
-  expect(names).toContain('insurance')   // 0211: the one client read of the insurance book
+  expect(names).toContain('insurance')   // 0212: the one client read of the insurance book
   expect(names).not.toContain('trade_routes')
   // 0102: THE REGISTRY NAMES THE ARGUMENT, AND THE 0-ARG FORM IS GONE. Two overloads, one with a
   // default, is an ambiguous call — a runtime 42725 for every caller that says `sea_traffic()` —
