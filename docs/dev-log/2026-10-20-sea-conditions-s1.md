@@ -534,6 +534,8 @@ shape did not change. §8c/§8d are unchanged. `osn-sea-s2` was rebased onto the
 **For the next push.** Run §8a and §8b again (8b has the one new row), then push at a quiet moment. If the connection
 drops again on a file this short, the cause is the connection itself (the pooler or the network), not the migration's
 length. In that case the CLI's direct connection should be tried before anything else is changed.
+<<<<<<< HEAD
+=======
 
 ## RE-SLICED ONTO 0214, 2026-10-20 ~14:20 UTC (cloud session)
 
@@ -564,3 +566,4 @@ main was also merged in (it was 6 behind, 4 ahead). Two conflicts, both the same
 **Still to do before this deploys:** CI must go green on the merge (the earlier `disposable-chain`
 pass was against a 0213 snapshot; it now has to apply 0215 on top of 0214), and §8a/§8b's prod
 checks should be re-read, since they were last run at 08:53 UTC against the old head.
+>>>>>>> origin/main

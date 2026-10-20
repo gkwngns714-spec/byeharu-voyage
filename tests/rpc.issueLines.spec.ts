@@ -160,8 +160,9 @@ test('a leg beyond her reach is refused up front; the board offers the passage t
     expect(await since(s0)).toBeNull()
   }
   const lisbonPassage = await db.callAs<string[] | null>(
-    `select to_jsonb(r.stops) as result from voyage.reach_passage(public.current_player_id(), (select id from public.ports where code = 'LIS')) r where r.code = $1`,
-    [far.port],
+    // 0216: reach_passage takes the fleet (the sea conditions read her wave); dark it changes nothing
+    `select to_jsonb(r.stops) as result from voyage.reach_passage(public.current_player_id(), $2::uuid, (select id from public.ports where code = 'LIS')) r where r.code = $1`,
+    [far.port, fleet],
   )
   expect(lisbonPassage).not.toBeNull()
   const through = await cmdIssueLines(fleet, [...lisbonPassage!, far.port].map((c) => ({ text: `SAIL ${c}` })))
