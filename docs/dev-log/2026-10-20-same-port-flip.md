@@ -1,12 +1,12 @@
-# 2026-10-20 — a round trip never pays (migration 0212 at writing, `osn-same-port-flip`)
+# 2026-10-20 — a round trip never pays (migration 0211 at writing, `osn-same-port-flip`)
 
 **The bug** (pre-existing; found 2026-10-19 while building the live-price tick, WORK_QUEUE HAND-OFF #2): buy 10 and
 sell those 10 in the SAME port, with no time passing, and the sale was priced one stock step BETTER than the buy
 (≈ 0.83 % at a 600-tun market). At a spread shaved to 0.4 % (purser + bargain + standing) the flip paid. It had to
 land before `price_tick_on` is lit.
 
-**Version.** 0212 at writing. Prod head was 0208 when cut, **0209 when checked read-only** (the hunks still occur
-exactly once on the live body at 0209). 0210 and 0211 are open branches; `osn-live-prices` also calls its file 0212.
+**Version.** 0211 at writing. Prod head was 0208 when cut, **0209 when checked read-only** (the hunks still occur
+exactly once on the live body at 0209). 0210 is live; deployed as 0211 (insurance moves to 0212, live prices after it).
 It renumbers to the prod head + 1 at push. Not deployed: this PR does not push or merge.
 
 ## 1. Root cause, in the one price authority
@@ -64,7 +64,7 @@ authority is not where it lives. Flagged for the live-prices owner decisions.
 
 ## 3. The self-assert — receipt (local PGlite, cached 0200 prefix, 19.5 s with the snapshot)
 
-> 0212 self-assert ok: A ROUND TRIP NEVER PAYS. world.quote_priced re-cut (3 hunks, reverses; ACL kept): a shelf of
+> 0211 self-assert ok: A ROUND TRIP NEVER PAYS. world.quote_priced re-cut (3 hunks, reverses; ACL kept): a shelf of
 > 10 tuns has one mid (its top), a buy's total is ceiled and a sale's floored. 68 probe rows (64 on a shelf boundary),
 > 544 buy-then-sell pairs (N 1–100): every sale mirrors its buy to the digit and returns ≤ what was paid (worst sell ÷
 > buy 0.923364); seven one-tun lots never beat the seven bought. The pre-image leaked on 536 of 544 pairs (its sale
@@ -73,7 +73,7 @@ authority is not where it lives. Flagged for the live-prices owner decisions.
 > {2,3,1,2,2,1,1,1}, world.price ms {2,1,1,1,1,1,1,1}.
 
 The planted sales run in blocks rolled back by their own sentinel (`ZX212`); the probe stock is asserted back after
-each row. The pre-image is kept under `pg_temp.quote_priced_old_0212` as the positive control.
+each row. The pre-image is kept under `pg_temp.quote_priced_old_0211` as the positive control.
 
 **Prod, read-only** (`begin transaction read only`, stable functions only), head 0209: the three hunks occur exactly
 once in the live body; the body does not yet carry the rule; 68 probe rows, 67 on a shelf boundary; the sample
@@ -105,13 +105,13 @@ pglite-gate (ledger) and (merchants) green; pglite-gate (the rest) red on two pr
 (total never fewer / bound `0.005·qty + 1.015`); not re-run for green — the two reds were read to their last error
 and each is the rounding change by construction. Prod re-checked read-only at head 0210: hunks occur once, rule absent.
 
-## 5. How `osn-live-prices` (37c8af5, its own "0212") rebases
+## 5. How `osn-live-prices` (37c8af5, its own "0211") rebases
 
 Its two `world.quote_priced` hunks (`exit when v_n <= 0;` + the buy-branch `v_mid := …(… v_stock …)` and `else` +
 the sell-branch `v_mid := …`) no longer occur: this file collapses the two `mid_from_terms` calls into ONE, after the
 shelf is chosen:
 
-    v_mid := world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_glut, t.m_target, v_top, t.m_drift,   -- 0134, 0173, 0194; 0212: the shelf's top
+    v_mid := world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_glut, t.m_target, v_top, t.m_drift,   -- 0134, 0173, 0194; 0211: the shelf's top
 
 So its re-slice is one hunk on that line (add `t.m_tick,` before `t.m_target`), cut from the live body after this
 deploys; its other 7 bodies (`mid_from_terms`, `mid_terms`, `mid_price`, `price_path`, `market`, `price_why`,

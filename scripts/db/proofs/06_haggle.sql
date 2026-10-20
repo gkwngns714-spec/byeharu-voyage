@@ -463,7 +463,7 @@ begin
 
   select * into v_q1 from world.quote(v_port, v_sgood, v_qty, 'sell', null, v_fleet);
   select mid, ask, bid into v_mid1, v_ask1, v_bid1 from world.price(v_port, v_sgood);
-  -- 0212 FLOORS a sale's total to the ducat (the house keeps the fraction), so on a ten-tun lot of a cheap
+  -- 0211 FLOORS a sale's total to the ducat (the house keeps the fraction), so on a ten-tun lot of a cheap
   -- good a bargain worth under a ducat shows in avg_price and haggle_saved, not in the total: the total
   -- is held to "never fewer ducats", the price a unit to "more".
   if v_q1.units <> v_q0.units or v_q1.total < v_q0.total or v_q1.avg_price <= v_q0.avg_price then

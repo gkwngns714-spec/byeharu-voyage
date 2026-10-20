@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0212 — A ROUND TRIP NEVER PAYS  (a shelf has one price, whichever way it is walked, and the house
+-- 0211 — A ROUND TRIP NEVER PAYS  (a shelf has one price, whichever way it is walked, and the house
 --        keeps the fraction)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -53,8 +53,7 @@
 --       total is ≤ the pre-image's (the largest fall of a 10-tun sale is reported).
 --   (d) a limit order still fills partially (one probe); timings for world.quote(50) and world.price (notice).
 -- ROLLBACK (a forward migration): reverse the three hunks (they reverse to the digit).
--- VERSION: 0212 at writing (prod head 0208, live; 0209–0211 are open branches). It RENUMBERS to the prod
---          head + 1 at push.
+-- VERSION: 0211 (written as 0212 at prod head 0208; renumbered at deploy, prod head 0210; insurance moves to 0212).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -64,26 +63,26 @@ begin
   if to_regprocedure('world.quote_priced(uuid, uuid, numeric, text, numeric, uuid, numeric, numeric, numeric, numeric)') is null
      or to_regprocedure('world.quote(uuid, uuid, numeric, text, numeric, uuid)') is null
      or to_regprocedure('world.mid_from_terms(numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, integer, numeric, numeric, numeric, numeric)') is null then
-    raise exception '0212 refuses: 0169''s world.quote_priced or 0194''s world.mid_from_terms is not in this world';
+    raise exception '0211 refuses: 0169''s world.quote_priced or 0194''s world.mid_from_terms is not in this world';
   end if;
   if not exists (select 1 from public.world_config where key = 'trade_step_tuns') then
-    raise exception '0212 refuses: trade_step_tuns is not in this world';
+    raise exception '0211 refuses: trade_step_tuns is not in this world';
   end if;
   if (select replace(pg_get_functiondef('world.quote_priced(uuid, uuid, numeric, text, numeric, uuid, numeric, numeric, numeric, numeric)'::regprocedure), E'\r', ''))
-     like '%0212: THE SHELF%' then
-    raise exception '0212 refuses: world.quote_priced already carries the shelf rule — this has been applied once';
+     like '%0211: THE SHELF%' then
+    raise exception '0211 refuses: world.quote_priced already carries the shelf rule — this has been applied once';
   end if;
 end $guard$;
 
 -- ── 0. HELPERS (pg_temp, gone at commit) ───────────────────────────────────────────────────────
-create or replace function pg_temp.occurs_0212(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0211(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
 -- ── 1. THE PRE-IMAGE (LF-normalised), and the old body kept under pg_temp as the positive control ──
-create temp table defs_before_0212 on commit drop as
+create temp table defs_before_0211 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -94,22 +93,22 @@ select f.fn,
 
 do $old$
 declare
-  v_def text := (select def from defs_before_0212 where fn like 'world.quote_priced(%');
+  v_def text := (select def from defs_before_0211 where fn like 'world.quote_priced(%');
 begin
-  if pg_temp.occurs_0212(v_def, 'FUNCTION world.quote_priced(') <> 1 then
-    raise exception '0212 self-assert FAIL: the live world.quote_priced header is not what this file was cut against';
+  if pg_temp.occurs_0211(v_def, 'FUNCTION world.quote_priced(') <> 1 then
+    raise exception '0211 self-assert FAIL: the live world.quote_priced header is not what this file was cut against';
   end if;
-  execute replace(v_def, 'FUNCTION world.quote_priced(', 'FUNCTION pg_temp.quote_priced_old_0212(');
+  execute replace(v_def, 'FUNCTION world.quote_priced(', 'FUNCTION pg_temp.quote_priced_old_0211(');
 end $old$;
 
 -- ── 2. THE HUNKS (old → new), sliced from the live body ────────────────────────────────────────
-create temp table hunks_0212 (fn text, n int, old text, new text) on commit drop;
-insert into hunks_0212 values
+create temp table hunks_0211 (fn text, n int, old text, new text) on commit drop;
+insert into hunks_0211 values
 ('world.quote_priced(uuid, uuid, numeric, text, numeric, uuid, numeric, numeric, numeric, numeric)', 1,
 $h$  v_unit   numeric;
 $h$,
 $h$  v_unit   numeric;
-  v_top    numeric;   -- 0212: the top of the shelf this step prices at
+  v_top    numeric;   -- 0211: the top of the shelf this step prices at
 $h$),
 ('world.quote_priced(uuid, uuid, numeric, text, numeric, uuid, numeric, numeric, numeric, numeric)', 2,
 $h$  while v_left > 0 loop
@@ -136,11 +135,11 @@ $h$  while v_left > 0 loop
       v_unit := round(v_mid * (1 - v_spread / 2) * (1 - v_tax) * v_bidf, 2);
 $h$,
 $h$  while v_left > 0 loop
-    -- 0212: THE SHELF. Stock is shelved in v_step tuns, the shelves (k·step, (k+1)·step]; a shelf has ONE
+    -- 0211: THE SHELF. Stock is shelved in v_step tuns, the shelves (k·step, (k+1)·step]; a shelf has ONE
     -- mid, the mid at its TOP (its full level), whichever way it is walked. A buy takes tuns off the shelf
     -- the stock stands in (ceil) and works down; a sale puts them onto the shelf above (floor + 1) and
     -- works up. So a buy of N and the sale of those N walk the same shelves at the same mids, in opposite
-    -- order, and only the spread separates the two totals: a round trip never pays. (Before 0212 each
+    -- order, and only the spread separates the two totals: a round trip never pays. (Before 0211 each
     -- step was priced at the stock it STARTED from, and a sale came out one shelf dearer than the buy.)
     if p_side = 'buy' then
       exit when v_stock <= 0;
@@ -150,7 +149,7 @@ $h$  while v_left > 0 loop
       v_top := (floor(greatest(v_stock, 0) / v_step) + 1) * v_step;
       v_n   := least(v_left, v_top - greatest(v_stock, 0));
     end if;
-    v_mid := world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_glut, t.m_target, v_top, t.m_drift,   -- 0134, 0173, 0194; 0212: the shelf's top
+    v_mid := world.mid_from_terms(t.m_base, t.m_affinity, t.m_demand, t.m_haul, t.m_glut, t.m_target, v_top, t.m_drift,   -- 0134, 0173, 0194; 0211: the shelf's top
                                   t.m_season, t.m_dev, t.m_elasticity, t.m_dev_discount, t.m_band_lo, t.m_band_hi);
     if p_side = 'buy' then
       v_unit := round(v_mid * (1 + v_tax + v_spread / 2), 2);
@@ -170,25 +169,25 @@ $h$),
 ('world.quote_priced(uuid, uuid, numeric, text, numeric, uuid, numeric, numeric, numeric, numeric)', 3,
 $h$  total     := round(v_total)::bigint;
 $h$,
-$h$  -- 0212: THE HOUSE KEEPS THE FRACTION — a buy's total ceiled to the ducat, a sale's floored (it was round()
+$h$  -- 0211: THE HOUSE KEEPS THE FRACTION — a buy's total ceiled to the ducat, a sale's floored (it was round()
   -- on both sides, which paid a cheap good's x.50 bid a ducat up on every one-tun lot). The parts below
   -- stay exact sums, as 0083 left them.
   total     := case when p_side = 'buy' then ceil(v_total) else floor(v_total) end::bigint;
 $h$);
 
-create or replace function pg_temp.recut_0212(p_fn text)
+create or replace function pg_temp.recut_0211(p_fn text)
 returns void
 language plpgsql
 as $$
 declare
-  v_def text := (select def from defs_before_0212 where fn = p_fn);
+  v_def text := (select def from defs_before_0211 where fn = p_fn);
   h     record;
   v_n   int;
 begin
-  for h in select * from hunks_0212 where fn = p_fn order by n loop
-    v_n := pg_temp.occurs_0212(v_def, h.old);
+  for h in select * from hunks_0211 where fn = p_fn order by n loop
+    v_n := pg_temp.occurs_0211(v_def, h.old);
     if v_n <> 1 then
-      raise exception '0212 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
+      raise exception '0211 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
         h.n, p_fn, v_n;
     end if;
     v_def := replace(v_def, h.old, h.new);
@@ -196,7 +195,7 @@ begin
   execute v_def;
 end $$;
 
-select pg_temp.recut_0212(fn) from defs_before_0212 order by fn;
+select pg_temp.recut_0211(fn) from defs_before_0211 order by fn;
 
 -- ── 3. THE SELF-ASSERT ──────────────────────────────────────────────────────────────────────────
 do $$
@@ -228,32 +227,32 @@ declare
   i        int;
 begin
   -- (a) THE RE-CUT reverses to its pre-image; ACL / volatility / definer / config unmoved
-  for v_d in select * from defs_before_0212 loop
+  for v_d in select * from defs_before_0211 loop
     v_def := replace(pg_get_functiondef(v_d.fn::regprocedure), E'\r', '');
-    for v_h in select * from hunks_0212 where fn = v_d.fn order by n desc loop
-      if pg_temp.occurs_0212(v_def, v_h.new) <> 1 then
-        raise exception '0212 self-assert FAIL: hunk % of % is not in the new body exactly once', v_h.n, v_d.fn;
+    for v_h in select * from hunks_0211 where fn = v_d.fn order by n desc loop
+      if pg_temp.occurs_0211(v_def, v_h.new) <> 1 then
+        raise exception '0211 self-assert FAIL: hunk % of % is not in the new body exactly once', v_h.n, v_d.fn;
       end if;
       v_def := replace(v_def, v_h.new, v_h.old);
     end loop;
     if v_def <> v_d.def then
-      raise exception '0212 self-assert FAIL: % does not reverse to its pre-image', v_d.fn;
+      raise exception '0211 self-assert FAIL: % does not reverse to its pre-image', v_d.fn;
     end if;
     select coalesce(p.proacl::text, '') as acl, p.provolatile as vol, p.prosecdef as secdef, coalesce(p.proconfig::text, '') as cfg
       into v_pp from pg_proc p where p.oid = v_d.fn::regprocedure;
     if v_pp.acl <> v_d.acl or v_pp.vol <> v_d.vol or v_pp.secdef <> v_d.secdef or v_pp.cfg <> v_d.cfg then
-      raise exception '0212 self-assert FAIL: % changed its ACL, volatility, definer or config', v_d.fn;
+      raise exception '0211 self-assert FAIL: % changed its ACL, volatility, definer or config', v_d.fn;
     end if;
   end loop;
   if (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0212 self-assert FAIL: a wall moved';
+    raise exception '0211 self-assert FAIL: a wall moved';
   end if;
 
   -- THE PROBE SET — deterministic: every 1,999th market row by port code then good code, plus the thinnest
   -- and the deepest stock (ties by the same order).
-  create temp table probe_0212 on commit drop as
+  create temp table probe_0211 on commit drop as
   with rows_ as (
     select pg.port_id, pg.good_id, pg.stock, p.code as port_code, g.code as good_code,
            row_number() over (order by p.code, g.code) as rn
@@ -267,39 +266,39 @@ begin
   (select port_id, good_id, stock, port_code, good_code from rows_ order by stock asc,  port_code, good_code limit 1)
   union
   (select port_id, good_id, stock, port_code, good_code from rows_ order by stock desc, port_code, good_code limit 1);
-  select count(*) into v_probes from probe_0212;
+  select count(*) into v_probes from probe_0211;
   if v_probes < 3 then
-    raise exception '0212 self-assert FAIL: only % probe row(s)', v_probes;
+    raise exception '0211 self-assert FAIL: only % probe row(s)', v_probes;
   end if;
 
   -- (b) THE THEOREM, and (c) the live figures, probe by probe. Each sale is quoted on a PLANTED stock (what
   --     the buy leaves) inside a block that is rolled back by its own sentinel.
-  for pr in select * from probe_0212 order by port_code, good_code loop
+  for pr in select * from probe_0211 order by port_code, good_code loop
     if ceil(pr.stock / v_step) * v_step = pr.stock then v_grid := v_grid + 1; end if;
     foreach v_n in array array[1, 3, 7, 10, 15, 20, 37, 100] loop
       select * into b  from world.quote_priced(pr.port_id, pr.good_id, v_n, 'buy', null, null, null, null, null, null);
-      select * into ob from pg_temp.quote_priced_old_0212(pr.port_id, pr.good_id, v_n, 'buy', null, null, null, null, null, null);
+      select * into ob from pg_temp.quote_priced_old_0211(pr.port_id, pr.good_id, v_n, 'buy', null, null, null, null, null, null);
       if b.units <= 0 then
-        raise exception '0212 self-assert FAIL: a buy of % at %/% (stock %) filled nothing', v_n, pr.port_code, pr.good_code, pr.stock;
+        raise exception '0211 self-assert FAIL: a buy of % at %/% (stock %) filled nothing', v_n, pr.port_code, pr.good_code, pr.stock;
       end if;
       -- (c) on a shelf boundary the buy is the pre-image's: same units, same mid, total within the ceiling
       if ceil(pr.stock / v_step) * v_step = pr.stock then
         if b.units <> ob.units or b.mid_total <> ob.mid_total or b.total < ob.total or b.total - ob.total > 1 then
-          raise exception '0212 self-assert FAIL: a buy of % at %/% (stock %) moved: units % → %, mid_total % → %, total % → %',
+          raise exception '0211 self-assert FAIL: a buy of % at %/% (stock %) moved: units % → %, mid_total % → %, total % → %',
             v_n, pr.port_code, pr.good_code, pr.stock, ob.units, b.units, ob.mid_total, b.mid_total, ob.total, b.total;
         end if;
       end if;
       begin
         update public.port_goods set stock = b.end_stock where port_id = pr.port_id and good_id = pr.good_id;
         select * into s  from world.quote_priced(pr.port_id, pr.good_id, b.units, 'sell', null, null, null, null, null, null);
-        select * into os from pg_temp.quote_priced_old_0212(pr.port_id, pr.good_id, b.units, 'sell', null, null, null, null, null, null);
+        select * into os from pg_temp.quote_priced_old_0211(pr.port_id, pr.good_id, b.units, 'sell', null, null, null, null, null, null);
         -- the theorem: the same shelves at the same mids, and the sale never returns more than was paid
         if s.units <> b.units or s.mid_total <> b.mid_total or s.end_stock <> pr.stock then
-          raise exception '0212 self-assert FAIL: the sale of % at %/% does not mirror the buy: units %/%, mid_total %/%, end stock % (was %)',
+          raise exception '0211 self-assert FAIL: the sale of % at %/% does not mirror the buy: units %/%, mid_total %/%, end stock % (was %)',
             b.units, pr.port_code, pr.good_code, s.units, b.units, s.mid_total, b.mid_total, s.end_stock, pr.stock;
         end if;
         if s.total > b.total then
-          raise exception '0212 self-assert FAIL: a round trip of % at %/% (stock %) PAYS: bought for %, sold for %',
+          raise exception '0211 self-assert FAIL: a round trip of % at %/% (stock %) PAYS: bought for %, sold for %',
             b.units, pr.port_code, pr.good_code, pr.stock, b.total, s.total;
         end if;
         if b.total > 0 then v_worst := greatest(v_worst, s.total::numeric / b.total); end if;
@@ -308,7 +307,7 @@ begin
         -- (c) the sale against the pre-image: never dearer (the fall is reported, not bounded: it is one shelf of
         --     the curve at the stock the buy left, 0.83 % at a 600-tun market, and a drained market is steeper)
         if s.total > os.total then
-          raise exception '0212 self-assert FAIL: the sale of % at %/% (stock %) is % against the pre-image''s %',
+          raise exception '0211 self-assert FAIL: the sale of % at %/% (stock %) is % against the pre-image''s %',
             b.units, pr.port_code, pr.good_code, pr.stock, s.total, os.total;
         end if;
         if v_n = 10 and os.total > 0 then v_drop := greatest(v_drop, 1 - s.total::numeric / os.total); end if;
@@ -321,7 +320,7 @@ begin
             update public.port_goods set stock = q.end_stock where port_id = pr.port_id and good_id = pr.good_id;
           end loop;
           if v_lots > b.total then
-            raise exception '0212 self-assert FAIL: seven one-tun lots at %/% (stock %) sold for %, more than the % the seven cost',
+            raise exception '0211 self-assert FAIL: seven one-tun lots at %/% (stock %) sold for %, more than the % the seven cost',
               pr.port_code, pr.good_code, pr.stock, v_lots, b.total;
           end if;
         end if;
@@ -332,22 +331,22 @@ begin
       end;
     end loop;
     if (select stock from public.port_goods where port_id = pr.port_id and good_id = pr.good_id) <> pr.stock then
-      raise exception '0212 self-assert FAIL: the planted stock at %/% survived its rollback', pr.port_code, pr.good_code;
+      raise exception '0211 self-assert FAIL: the planted stock at %/% survived its rollback', pr.port_code, pr.good_code;
     end if;
   end loop;
   if v_leaky = 0 then
-    raise exception '0212 self-assert FAIL: the pre-image showed no leak on any of % pairs — the positive control is dead', v_pairs;
+    raise exception '0211 self-assert FAIL: the pre-image showed no leak on any of % pairs — the positive control is dead', v_pairs;
   end if;
   if v_worst > 1 then
-    raise exception '0212 self-assert FAIL: worst round trip %', v_worst;
+    raise exception '0211 self-assert FAIL: worst round trip %', v_worst;
   end if;
 
   -- (d) a limit order still fills partially: the first probe, a buy of 100 limited to its own first-tun ask
-  select x.* into pr from probe_0212 x order by x.port_code, x.good_code limit 1;
+  select x.* into pr from probe_0211 x order by x.port_code, x.good_code limit 1;
   select * into b from world.quote_priced(pr.port_id, pr.good_id, 1, 'buy', null, null, null, null, null, null);
   select * into q from world.quote_priced(pr.port_id, pr.good_id, 100, 'buy', b.avg_price, null, null, null, null, null);
   if q.units <= 0 or q.units >= 100 or q.avg_price > b.avg_price then
-    raise exception '0212 self-assert FAIL: a buy of 100 limited to the first-tun ask % filled % at % (expected a partial fill under the limit)',
+    raise exception '0211 self-assert FAIL: a buy of 100 limited to the first-tun ask % filled % at % (expected a partial fill under the limit)',
       b.avg_price, q.units, q.avg_price;
   end if;
   v_lim := format('%s of 100 at ≤ %s', q.units, b.avg_price);
@@ -362,6 +361,6 @@ begin
     v_pms := v_pms || round(extract(epoch from clock_timestamp() - v_t) * 1000, 2);
   end loop;
 
-  raise notice '0212 self-assert ok: A ROUND TRIP NEVER PAYS. world.quote_priced re-cut (3 hunks, reverses; ACL kept): a shelf of % tuns has one mid (its top), a buy''s total is ceiled and a sale''s floored. % probe rows (% on a shelf boundary), % buy-then-sell pairs (N 1–100): every sale mirrors its buy to the digit and returns ≤ what was paid (worst sell ÷ buy %); seven one-tun lots never beat the seven bought. The pre-image leaked on % of % pairs (its sale dearer than its buy). On a shelf boundary the buy is the pre-image''s (units, mid; total within the ceiling); a 10-tun sale fell at most % against it. Limit: %. world.quote(50) ms %, world.price ms %.',
+  raise notice '0211 self-assert ok: A ROUND TRIP NEVER PAYS. world.quote_priced re-cut (3 hunks, reverses; ACL kept): a shelf of % tuns has one mid (its top), a buy''s total is ceiled and a sale''s floored. % probe rows (% on a shelf boundary), % buy-then-sell pairs (N 1–100): every sale mirrors its buy to the digit and returns ≤ what was paid (worst sell ÷ buy %); seven one-tun lots never beat the seven bought. The pre-image leaked on % of % pairs (its sale dearer than its buy). On a shelf boundary the buy is the pre-image''s (units, mid; total within the ceiling); a 10-tun sale fell at most % against it. Limit: %. world.quote(50) ms %, world.price ms %.',
     v_step, v_probes, v_grid, v_pairs, round(v_worst, 6), v_leaky, v_pairs, round(v_drop * 100, 3) || ' %', v_lim, v_ms, v_pms;
 end $$;

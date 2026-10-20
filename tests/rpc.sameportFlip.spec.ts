@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A ROUND TRIP NEVER PAYS — world.quote_priced's shelf rule and the house's rounding (0212)
+// A ROUND TRIP NEVER PAYS — world.quote_priced's shelf rule and the house's rounding (0211)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // THE BUG THIS GUARDS AGAINST (found 2026-10-19 while building the live-price tick): buy 10 and sell them
@@ -8,7 +8,7 @@
 // and the sale from S − 10 received mid(S − 10), the dearer mid. At a spread shaved to 0.4 % the flip paid.
 // A second leak: `total := round(v_total)` on both sides paid a cheap good's x.50 bid a ducat up per one-tun lot.
 //
-// 0212's rule: stock is shelved in trade_step_tuns; a shelf has ONE mid (its top), whichever way it is
+// 0211's rule: stock is shelved in trade_step_tuns; a shelf has ONE mid (its top), whichever way it is
 // walked; a buy's total is ceiled to the ducat and a sale's floored. This spec holds the ONE authority
 // (world.quote_priced, which world.quote and both doors cmd.do_buy / cmd.do_sell compose) to the theorem:
 //   * through the DOORS, a company that buys N and sells those N on the same quay, as one lot or as one-tun

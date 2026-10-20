@@ -361,7 +361,7 @@ begin
   -- ════════════════════════════════════════════════════════════════════════════════════════════
   -- The tolerance 0.005·qty + 1.015 is the proven bound derived at 0083's assert (i): per-tun
   -- unit rounding + the ducat rounding of total + the three 2-dp roundings of the parts. The ducat
-  -- term was 0.5 under round(); since 0212 a buy's total is CEILED and a sale's FLOORED, so it is 1.
+  -- term was 0.5 under round(); since 0211 a buy's total is CEILED and a sale's FLOORED, so it is 1.
   if abs((v_lb->>'mid_total')::numeric + (v_lb->>'tax_total')::numeric + (v_lb->>'spread_total')::numeric - (v_lb->>'total')::numeric)
        > 0.005 * (v_lb->>'qty')::numeric + 1.015
      or abs((v_la->>'mid_total')::numeric - (v_la->>'tax_total')::numeric - (v_la->>'spread_total')::numeric - (v_la->>'total')::numeric)
