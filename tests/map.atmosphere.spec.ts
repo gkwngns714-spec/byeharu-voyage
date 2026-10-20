@@ -364,9 +364,17 @@ test.describe('the ship is one hull, and the course points where it goes', () =>
     expect(minimap).not.toContain('fleetDotRadius')
     expect(GLYPH).not.toHaveProperty('fleetDotRadius')
     // The passage made is SOLID, the water ahead is dashed and ends in the arrow.
+    //
+    // PIN RE-SPELT 2026-10-20 with owner row 169 (the hull glides between models): the two halves
+    // and the arrowhead moved out of the layer's own loop into `Course`, one component per fleet,
+    // because ./underway.ts re-cuts them on a frame and that needs an element to write to. So the
+    // split is read off `track` rather than off `f.track`. The PROPERTY is untouched — one solid
+    // half, one dashed half, an arrowhead on the end — and that is what is asserted below.
     expect(fleets).toContain('arrowPath(GLYPH.arrowHalfWidth)')
-    expect(fleets).toMatch(/d=\{f\.track\.sailedD\}[\s\S]*?vectorEffect/)
-    expect(fleets.slice(fleets.indexOf('d={f.track.sailedD}'), fleets.indexOf('d={f.track.sailedD}') + 300)).not.toContain('strokeDasharray')
+    expect(fleets).toMatch(/d=\{track\.sailedD\}[\s\S]*?vectorEffect/)
+    expect(fleets.slice(fleets.indexOf('d={track.sailedD}'), fleets.indexOf('d={track.sailedD}') + 300)).not.toContain('strokeDasharray')
+    // …and the half that IS dashed is the water ahead of her.
+    expect(fleets).toMatch(/d=\{track\.aheadD\}[\s\S]*?strokeDasharray/)
   })
 })
 

@@ -1,5 +1,5 @@
-import type { CSSProperties, ReactNode } from 'react'
-import { project, type LatLon } from '../lib/geo'
+import { useRef, type CSSProperties, type ReactNode } from 'react'
+import { project, type LatLon, type Point } from '../lib/geo'
 import type { ChartModel, FleetOnChart, TrafficOnChart } from './chartModel'
 import {
   arrowPath,
@@ -10,7 +10,9 @@ import {
 } from './glyphs'
 import type { MerchantInk } from './mapTypes'
 import { useRegionsFilter } from './regionsFilter'
+import { buildTrack } from './route'
 import { nightStyle } from './sun'
+import { legOf, useUnderway } from './underway'
 
 // GLYPHS 2 AND 3 — THE FLEET AND ITS DESTINATION — plus the track between them.
 //
@@ -55,8 +57,16 @@ import { nightStyle } from './sun'
 // (`.bv-sun-merchant`, src/index.css).
 //
 // Everything here is a pure function of what it is handed, and that is a pure function of the last
-// read (./chartModel.ts). There is no animation state and no clock on this layer, so there is nothing
-// to drift — and no handler either: taps are resolved once, on the surface, by ./hitTest.ts.
+// read (./chartModel.ts) — and no handler either: taps are resolved once, on the surface, by
+// ./hitTest.ts.
+//
+// 2026-10-20 — SHE GLIDES (owner row 169: *"I want the ship movement to be smooth, not by ticks"*).
+// What this layer RENDERS is still exactly that pure function of the last model. What it does on top
+// is hand ./underway.ts an element and a brush: between two models, that file writes the one
+// `transform` that places a hull and the two `d` strings that split her course, on one animation
+// frame for the whole sheet, at ./drift.ts's own point for the frame's instant. The strings are
+// composed HERE (`hullFrame`, `arrowFrame`, `buildTrack`) and nowhere else, so the hull React draws
+// and the hull a frame moves are placed by the same arithmetic.
 
 /** The same eight inks as a STROKE, for row 125's lanes. Whole class names for the same reason the
  *  fills below are: Tailwind scans source text, and an assembled string is a class it never sees. */
@@ -96,6 +106,105 @@ const NATION_FILL: Record<MerchantInk, { readonly cls: string; readonly token: s
   ita: { cls: 'fill-nation-ita', token: 'var(--color-nation-ita)' },
   ott: { cls: 'fill-nation-ott', token: 'var(--color-nation-ott)' },
   east: { cls: 'fill-nation-east', token: 'var(--color-nation-east)' },
+}
+
+/**
+ * WHERE A HULL GROUP SITS AND WHICH WAY IT POINTS, as one transform: put her where she is, turn her
+ * onto her heading, and take the glyph out of pixels into chart units. Written once here because two
+ * things place a hull — React, from the model, and ./underway.ts, on a frame — and a second spelling
+ * of this string is a second answer to "where is she drawn".
+ */
+function hullFrame(at: LatLon, heading: number | null, unitsPerPx: number): string {
+  const { x, y } = project(at)
+  return `translate(${x} ${y}) rotate(${heading ?? 0}) scale(${unitsPerPx})`
+}
+
+/** The arrowhead's own frame: the course's last vertex, turned along its last segment. */
+function arrowFrame(end: Point, heading: number, unitsPerPx: number): string {
+  return `translate(${end.x} ${end.y}) rotate(${heading}) scale(${unitsPerPx})`
+}
+
+/**
+ * THE TWO INKS A COURSE IS DRAWN IN — yours (the accent, with the arrowhead at its far end) and the
+ * open merchant's (the faint ink, no arrow). Whole class names, so Tailwind sees every one.
+ */
+const COURSE_INK = {
+  fleet: {
+    ahead: 'fill-none stroke-accent/45',
+    sailed: 'fill-none stroke-accent/85',
+    /** The passage made is drawn a shade heavier than the water ahead. */
+    weight: 0.4,
+    arrow: true,
+    testId: undefined as string | undefined,
+  },
+  merchant: {
+    ahead: 'fill-none stroke-ink-faint/50',
+    sailed: 'fill-none stroke-ink-faint/70',
+    weight: 0,
+    arrow: false,
+    testId: 'map-merchant-track' as string | undefined,
+  },
+} as const
+
+type CourseInk = (typeof COURSE_INK)[keyof typeof COURSE_INK]
+
+/**
+ * ONE FLEET'S COURSE — the passage made, the water ahead, and (yours) the arrowhead at its end.
+ *
+ * The two halves meet AT HER, so when she glides between models the line has to be re-split or it
+ * would hang off her bow: ./underway.ts hands this component the frame's point and the course is cut
+ * there again, through the SAME `buildTrack` the model uses. It is a handful of fleets — yours, and
+ * the one merchant whose card is open — so re-cutting a polyline a frame is nothing; the hundreds of
+ * merchants on the glass are served no course and draw no line.
+ */
+function Course({ fleet, unitsPerPx, ink }: { fleet: FleetOnChart; unitsPerPx: number; ink: CourseInk }) {
+  const ahead = useRef<SVGPathElement | null>(null)
+  const sailed = useRef<SVGPathElement | null>(null)
+  const arrow = useRef<SVGPathElement | null>(null)
+  const track = fleet.track
+  useUnderway(track ? fleet.fleet.id : null, legOf(fleet), (at) => {
+    if (!fleet.voyage) return
+    const cut = at ? buildTrack(fleet.voyage.course, at, fleet.voyage.segIndex) : track
+    if (!cut) return
+    ahead.current?.setAttribute('d', cut.aheadD)
+    sailed.current?.setAttribute('d', cut.sailedD)
+    if (cut.endHeading !== null) arrow.current?.setAttribute('transform', arrowFrame(cut.end, cut.endHeading, unitsPerPx))
+  })
+  if (!track) return null
+  return (
+    <g data-testid={ink.testId}>
+      <path
+        ref={ahead}
+        d={track.aheadD}
+        className={ink.ahead}
+        strokeWidth={GLYPH.trackStroke}
+        strokeDasharray="5 4"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      <path
+        ref={sailed}
+        d={track.sailedD}
+        className={ink.sailed}
+        strokeWidth={GLYPH.trackStroke + ink.weight}
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+      {ink.arrow && track.endHeading !== null && (
+        <path
+          ref={arrow}
+          d={arrowPath(GLYPH.arrowHalfWidth)}
+          transform={arrowFrame(track.end, track.endHeading, unitsPerPx)}
+          className={ink.sailed}
+          strokeWidth={GLYPH.trackStroke + ink.weight}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+          data-testid="map-track-arrow"
+        />
+      )}
+    </g>
+  )
 }
 
 /** Tracks and destination rings — painted UNDER the port marks. */
@@ -153,37 +262,7 @@ export function TracksLayer({
           segment. Both halves are the served polyline (./route.ts); the arrow's tip and turn are
           two of its own points. The roadstead's `1 5` dot is no longer borrowed from here. */}
       {model.fleets.map((f) =>
-        f.track ? (
-          <g key={f.fleet.id}>
-            <path
-              d={f.track.aheadD}
-              className="fill-none stroke-accent/45"
-              strokeWidth={GLYPH.trackStroke}
-              strokeDasharray="5 4"
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-            <path
-              d={f.track.sailedD}
-              className="fill-none stroke-accent/85"
-              strokeWidth={GLYPH.trackStroke + 0.4}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-            {f.track.endHeading !== null && (
-              <path
-                d={arrowPath(GLYPH.arrowHalfWidth)}
-                transform={`translate(${f.track.end.x} ${f.track.end.y}) rotate(${f.track.endHeading}) scale(${unitsPerPx})`}
-                className="fill-none stroke-accent/85"
-                strokeWidth={GLYPH.trackStroke + 0.4}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                vectorEffect="non-scaling-stroke"
-                data-testid="map-track-arrow"
-              />
-            )}
-          </g>
-        ) : null,
+        f.track ? <Course key={f.fleet.id} fleet={f} unitsPerPx={unitsPerPx} ink={COURSE_INK.fleet} /> : null,
       )}
 
       {/* OWNER ROW 112 — THE OPEN MERCHANT'S WHOLE ROUTE: every leg of the loop she runs, drawn
@@ -209,23 +288,7 @@ export function TracksLayer({
           (her card is open), drawn faint through the same track paths, no arrow, no ring. */}
       {model.traffic.map((t) =>
         t.track ? (
-          <g key={`merchant-${t.fleet.id}`} data-testid="map-merchant-track">
-            <path
-              d={t.track.aheadD}
-              className="fill-none stroke-ink-faint/50"
-              strokeWidth={GLYPH.trackStroke}
-              strokeDasharray="5 4"
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-            <path
-              d={t.track.sailedD}
-              className="fill-none stroke-ink-faint/70"
-              strokeWidth={GLYPH.trackStroke}
-              strokeLinecap="round"
-              vectorEffect="non-scaling-stroke"
-            />
-          </g>
+          <Course key={`merchant-${t.fleet.id}`} fleet={t} unitsPerPx={unitsPerPx} ink={COURSE_INK.merchant} />
         ) : null,
       )}
 
@@ -305,12 +368,19 @@ function HullGroup({
   /** Where the Sun is overhead, for her `--night`. */
   sun: LatLon
 }) {
-  const { x, y } = project(fleet.at)
   const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx)
+  // SHE GLIDES BETWEEN MODELS (./underway.ts): the same transform, written on a frame instead of on
+  // a render, at ./drift.ts's point for that instant. Her `--night` is NOT rewritten with it — the
+  // Sun moves a quarter of a degree a minute, and the group's night value is the model's.
+  const group = useRef<SVGGElement | null>(null)
+  useUnderway(fleet.voyage ? fleet.fleet.id : null, legOf(fleet), (at) => {
+    group.current?.setAttribute('transform', hullFrame(at ?? fleet.at, fleet.heading, unitsPerPx))
+  })
 
   return (
     <g
-      transform={`translate(${x} ${y}) rotate(${fleet.heading ?? 0}) scale(${unitsPerPx})`}
+      ref={group}
+      transform={hullFrame(fleet.at, fleet.heading, unitsPerPx)}
       data-fleet-heading={fleet.heading ?? 0}
       data-hulls={marks.length}
       style={nightStyle(fleet.at, sun)}
