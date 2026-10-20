@@ -165,12 +165,14 @@ export { roadsteadMarks, type RoadsteadMark } from './roadsteads'
 export { driftedPoint, type Drift } from './drift'
 export {
   LABEL_PRIORITY,
+  LABEL_RINGS,
   LABEL_SIDES,
   mapLabelRequests,
   planLabels,
   type LabelRequest,
   type LabelSide,
   type LabelTone,
+  type Leader,
   type PlacedLabel,
   type Rect,
 } from './labels'
@@ -246,7 +248,7 @@ export { readRegionsFilter, REGIONS_FILTER_KEY, setRegionsFilter, useRegionsFilt
 // ── GO TO (owner, 2026-10-15) ──────────────────────────────────────────────────────────────────
 // The one way a panel asks the chart to show a place, and the one link every panel draws a place
 // with. ./goTo.ts carries the rule; MapScreen is the one taker.
-export { goTo, useGoTo, GOTO_MARK_MS, GOTO_MIN_CLEAR_PX, type GoToTarget } from './goTo'
+export { goTo, goToPoint, useGoTo, GOTO_MARK_MS, GOTO_MIN_CLEAR_PX, type GoToTarget, type GoToWorld } from './goTo'
 export { GoToLink, PlaceLine } from './GoToLink'
 export { GoToMarker } from './GoToMarker'
 export { GOTO_CLEAR_MIN_DEG, GOTO_SPAN_MAX_DEG, goToSpan } from './chartView'

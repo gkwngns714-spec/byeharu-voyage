@@ -2,6 +2,8 @@ import { test, expect, type Page } from '@playwright/test'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { serveNpcOn } from './npcOn.fixture'
 import { GOTO_CLEAR_MIN_DEG, GOTO_SPAN_MAX_DEG, goToSpan, MIN_SPAN_X, MAX_SPAN_X, zoomPercent } from '../src/chart/chartView'
+import { goToPoint, type GoToWorld } from '../src/chart/goTo'
+import { whereabouts } from '../src/domain/fleet'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // GO TO, DRIVEN (src/chart/goTo.ts) — owner, 2026-10-15: *"if i press a city, it will point me to
@@ -335,5 +337,72 @@ test.describe('a go-to link opens nothing (no trade history, no other panel)', (
       test.setTimeout(1_200_000)
       await pressEveryLinkInAMerchantSheet(page, PHONE, true)
     })
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// WHERE A TARGET IS — `goToPoint`, the one resolution, held to account without a browser.
+//
+// 2026-10-20, THE OWNER (request 184): *"I want to be able to click on npc name like location, and
+// then point me to that location like for cities."* Her name on a city's list was already a link
+// (src/live/MerchantRow.tsx) and it already asked for this — but the resolution behind it answered
+// for a merchant IN PORT and for one AT ANCHOR and had no answer at all for a merchant AT SEA
+// unless the chart happened to be drawing her, and the sea read is capped (`sea_traffic_max`), so
+// the merchants in a city's "Incoming" list usually are not drawn. Pressing those names did
+// nothing whatsoever. A sailing row carries the position the server placed her at, and that is now
+// the answer. These four tests are the four states of src/domain/fleet/where.ts, one each.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+test.describe('goToPoint: every row has a place, a merchant at sea included', () => {
+  const LISBON = { lat: 38.7, lon: -9.14 }
+  /** A world with one harbour, nothing drawn, and the rows the test hands it. */
+  const world = (rows: Record<string, Parameters<typeof whereabouts>[0]>): GoToWorld => ({
+    portAt: (code) => (code === 'LIS' ? LISBON : null),
+    drawnAt: () => null,
+    rowOf: (id) => rows[id] ?? null,
+  })
+  const sailing = (position: { lat: number; lon: number } | null, to: string | null = 'LIS') => ({
+    status: 'SAILING',
+    port: null,
+    anchor: null,
+    voyage: { to, dest_point: null, eta: '2026-10-20T12:00:00Z', position },
+  })
+
+  test('a merchant AT SEA: where the server placed her on her leg', () => {
+    const at = { lat: 36.2, lon: -8.1 }
+    const rows = { m1: sailing(at) }
+    expect(goToPoint({ kind: 'fleet', id: 'm1' }, world(rows))).toEqual(at)
+    // And through the `where` her row handed the link, which is how MerchantRow asks.
+    expect(goToPoint({ kind: 'fleet', id: 'm1', where: whereabouts(rows.m1) }, world({}))).toEqual(at)
+  })
+
+  test('a merchant at sea the read placed nowhere: where she is BOUND, never nothing', () => {
+    const rows = { m2: sailing(null) }
+    expect(goToPoint({ kind: 'fleet', id: 'm2' }, world(rows))).toEqual(LISBON)
+    // Bound for a bare point of water (0039), and placed nowhere: that point.
+    const point = { lat: 30, lon: -20 }
+    expect(
+      goToPoint(
+        { kind: 'fleet', id: 'm3', where: { kind: 'sailing', to: null, point, etaMs: null, at: null } },
+        world({}),
+      ),
+    ).toEqual(point)
+  })
+
+  test('a merchant IN PORT is her harbour; one AT ANCHOR is her anchor', () => {
+    const docked = { status: 'DOCKED', port: 'LIS', anchor: null, voyage: null }
+    const anchored = { status: 'ANCHORED', port: null, anchor: [35.5, -7.2] as [number, number], voyage: null }
+    expect(goToPoint({ kind: 'fleet', id: 'd' }, world({ d: docked }))).toEqual(LISBON)
+    expect(goToPoint({ kind: 'fleet', id: 'a' }, world({ a: anchored }))).toEqual({ lat: 35.5, lon: -7.2 })
+  })
+
+  test('a hull the chart DREW wins over her row, and a place is itself', () => {
+    const drawn = { lat: 10, lon: 10 }
+    const rows = { m1: sailing({ lat: 36.2, lon: -8.1 }) }
+    expect(goToPoint({ kind: 'fleet', id: 'm1' }, { ...world(rows), drawnAt: () => drawn })).toEqual(drawn)
+    expect(goToPoint({ kind: 'port', code: 'LIS' }, world({}))).toEqual(LISBON)
+    expect(goToPoint({ kind: 'point', at: { lat: 1, lon: 2 } }, world({}))).toEqual({ lat: 1, lon: 2 })
+    // A fleet no read holds is still an honest null — the chart simply does not move.
+    expect(goToPoint({ kind: 'fleet', id: 'nobody' }, world({}))).toBeNull()
   })
 })

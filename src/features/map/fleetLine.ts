@@ -32,6 +32,9 @@ function whereOnChart(f: FleetOnChart): Whereabouts {
         to: f.fleet.voyage.destinationCode,
         point: f.fleet.voyage.destPoint,
         etaMs: f.fleet.voyage.etaMs,
+        // Where the chart drew her — `f.at` is the one placement (chartModel `placeSailing`), so a
+        // link made from her row points at the hull the player can see.
+        at: f.at,
       }
   }
 }

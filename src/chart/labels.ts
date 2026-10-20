@@ -24,6 +24,30 @@
 //      chart, a fleet at sea — was boxed in on all four sides by the marks for Lisboa and Sevilla
 //      and dropped. Eight positions is what makes the priority table mean anything in a crowd.
 //
+//      2b. AND THEN IT STEPS OUT, ON A LEADER (2026-10-20, the owner: *"some cities aren't shown
+//      their names in certain zoom points. What is the reason? Any way to see the cities all?
+//      Without overlapping?"*). Those eight placements all sit one gap from the mark, so two
+//      harbours a few pixels apart have eight boxes between them and one of the names used to
+//      go. A name that cannot be set beside its mark is now tried again TWICE FURTHER OUT
+//      (`LABEL_RINGS`), and when it is set out there a hairline runs from the mark to the name so
+//      the reader can see whose it is — the chart-maker's leader line, and the only honest way to
+//      name a cluster. MEASURED on the real 214-harbour table: the Mediterranean coast at a phone's
+//      width named 11 of its 14 marks and now names all 14; Iberia 6 of 7 and now 7; the opening
+//      desktop frame 19 of 23 and now 20. The ring order is why nothing moves that fitted before:
+//      every label tries all eight of its snug placements before any label steps out.
+//
+//      WHAT THE RINGS CANNOT DO, said plainly because the owner asked whether all the cities can
+//      be shown. Pulled back to the WHOLE WORLD they gain nothing, and nothing could: of the 24
+//      placements each unnamed great harbour has there, 22 to 24 are already filled by a
+//      neighbour's name (measured one by one: Antwerp 23, Barcelona 24, Bordeaux 24, Lisbon 22,
+//      Lübeck 23, Marseille 24, Seville 23). Ten great harbours stand in Europe's corner of the
+//      globe with names wider than the gaps between their marks. One zoom step in and all of them
+//      are named — which is the honest answer to "any way to see the cities all".
+//
+//      THE LEADER IS HELD TO THE SAME PROMISE AS THE NAME. A hairline drawn through another
+//      harbour's mark or across another name is the overlap the owner asked us to remove, one
+//      line thinner, so a stepped-out placement is rejected if its leader crosses either.
+//
 //   3. KEEP OUT. A label may not be placed inside a rectangle the screen has declared opaque —
 //      its zoom column, its corner panels. THE DEFECT, measured at 390×844: the chart drew
 //      `Saint-Malo` from x=309 while the zoom buttons ran from x=334, so the player read `Sain`;
@@ -40,7 +64,7 @@
 //      "opaque chrome over the chart" is declared ONCE and both the gestures and the names read the
 //      same declaration.
 //
-//   4. DROP. If no side fits, the label is not drawn. It is never drawn badly. The glyph stays
+//   4. DROP. If no side fits on any ring, the label is not drawn. It is never drawn badly. The glyph stays
 //      exactly where it was and stays tappable, and the detail panel names it — so a dropped label
 //      costs a tap, never information. This is why keep-out binds even a FORCED label: a name
 //      printed under a button is not a name that was placed, it is a name that was hidden while the
@@ -80,12 +104,31 @@ export const LABEL_SIDES = [
  *  name sits on its anchor, and if that does not fit, it is not drawn. */
 export type LabelSide = (typeof LABEL_SIDES)[number] | 'centre'
 
+/**
+ * HOW FAR OUT A NAME MAY STEP, in multiples of the gap — the rings of the eight sides above, tried
+ * in this order (part 2b of the header). The first is the snug ring every name has always been set
+ * on; a name only reaches the second because all eight snug placements were taken, and it then
+ * carries a leader back to its mark. Two extra rings and not five: 2.3 and 3.8 gaps out is 21 px
+ * and 34 px at the chart's 9 px gap, still inside the mark's own touch reach (glyphs.ts
+ * `hitRadius`, 38 px), so a stepped-out name is a name you can still put your thumb on.
+ */
+export const LABEL_RINGS = [1, 2.3, 3.8] as const
+
 /** A rectangle in chart units. */
 export interface Rect {
   readonly x: number
   readonly y: number
   readonly width: number
   readonly height: number
+}
+
+/** The hairline from a mark to a name set away from it, in chart units: from the edge of the
+ *  glyph to the nearest point of the name's box. Planned here, drawn by LabelsLayer. */
+export interface Leader {
+  readonly x1: number
+  readonly y1: number
+  readonly x2: number
+  readonly y2: number
 }
 
 export interface LabelRequest {
@@ -152,6 +195,9 @@ export interface PlacedLabel {
   /** How it is set — carried through so the layer draws exactly the box that was planned. */
   readonly sizePx: number
   readonly spacingEm: number
+  /** Set when the name stepped out past its snug ring (`LABEL_RINGS`): the hairline back to its
+   *  mark, so the reader can see whose name it is. Absent for a name set beside its own glyph. */
+  readonly leader?: Leader
   /** The nation code whose flag stands at the name's outer end inside the box (see LabelRequest). */
   readonly flag?: string
 }
@@ -175,6 +221,12 @@ export interface LabelLayoutOptions {
    * KEEP-OUT note in this file's header for what these are and why they arrive as a parameter.
    */
   readonly keepOut?: readonly Rect[]
+  /**
+   * HOW FAR OUT A NAME MAY STEP, in multiples of the gap — `LABEL_RINGS` by default, and the only
+   * reason it is a parameter is that a spec pins it to `[1]` to prove the rule it used to be: the
+   * further rings may only ADD names, never move or lose one that fitted snug (tests/map.labels).
+   */
+  readonly rings?: readonly number[]
 }
 
 /**
@@ -234,6 +286,44 @@ function intersects(a: Rect, b: Rect): boolean {
   )
 }
 
+/**
+ * Does a hairline cross a rectangle? Liang–Barsky, the standard segment-against-box clip, kept to
+ * the question it is asked: a leader line may not run through another harbour's mark or across
+ * another name (part 2b of the header).
+ */
+function segmentHits(line: Leader, r: Rect): boolean {
+  const dx = line.x2 - line.x1
+  const dy = line.y2 - line.y1
+  let t0 = 0
+  let t1 = 1
+  for (const [p, q] of [
+    [-dx, line.x1 - r.x],
+    [dx, r.x + r.width - line.x1],
+    [-dy, line.y1 - r.y],
+    [dy, r.y + r.height - line.y1],
+  ]) {
+    if (p === 0) {
+      // Parallel to this edge: outside it means the segment can never be inside the box.
+      if (q < 0) return false
+      continue
+    }
+    const t = q / p
+    if (p < 0) {
+      if (t > t1) return false
+      if (t > t0) t0 = t
+    } else {
+      if (t < t0) return false
+      if (t < t1) t1 = t
+    }
+  }
+  return true
+}
+
+/** Is this point inside the rectangle? */
+function holds(r: Rect, x: number, y: number): boolean {
+  return x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height
+}
+
 function containedBy(inner: Rect, outer: Rect): boolean {
   return (
     inner.x >= outer.x &&
@@ -243,13 +333,35 @@ function containedBy(inner: Rect, outer: Rect): boolean {
   )
 }
 
+/** One candidate placement: where the text is set, the box it fills, and — on a stepped-out ring
+ *  — that it needs a leader back to its mark. */
+interface Candidate {
+  side: LabelSide
+  x: number
+  y: number
+  anchor: PlacedLabel['anchor']
+  box: Rect
+  /** Set on every ring but the snug one: the name is away from its glyph and must be joined to it. */
+  stepped?: boolean
+}
+
+/**
+ * Every placement a label may take, in the order they are tried: the eight sides snug against the
+ * glyph, then the same eight on each further ring (`LABEL_RINGS`, header part 2b). A whole ring is
+ * exhausted before the next is offered, so a name only steps out when it had nowhere to sit.
+ */
+function candidates(at: Point, width: number, height: number, gap: number, rings: readonly number[]): Candidate[] {
+  const out: Candidate[] = []
+  for (const [ring, step] of rings.entries()) {
+    for (const candidate of sides(at, width, height, gap * step)) {
+      out.push(ring === 0 ? candidate : { ...candidate, stepped: true })
+    }
+  }
+  return out
+}
+
 /** Where a label of this size would sit on each side of a glyph, in the order they are tried. */
-function candidates(
-  at: Point,
-  width: number,
-  height: number,
-  gap: number,
-): { side: LabelSide; x: number; y: number; anchor: PlacedLabel['anchor']; box: Rect }[] {
+function sides(at: Point, width: number, height: number, gap: number): Candidate[] {
   const half = height / 2
   const diagonal = gap * 0.7
   return [
@@ -361,17 +473,38 @@ export function planLabels(
   const taken: Rect[] = []
   const placed: PlacedLabel[] = []
 
-  for (const request of ordered) {
+  // ── TWO PASSES, AND THE REASON IT IS TWO ──────────────────────────────────────────────────────
+  // The snug ring is offered to EVERY label before any label is allowed to step out. Measured on
+  // the real table when it was one pass over all three rings: the globe named 29 of its 37 marks
+  // where the snug-only rule named 30 — a high-priority name stepping out took the water two
+  // lower ones needed, and the chart lost a name by gaining a ring. Two passes make the stepped
+  // rings strictly an ADDITION: whatever fitted beside its own mark is placed exactly where it
+  // was, and the rings only fill water no snug name wanted — the globe keeps its 30, and the coast
+  // views, where the owner was reading names, go to every mark on the glass.
+  const stranded: LabelRequest[] = []
+  for (const request of ordered) if (!set(request, false)) stranded.push(request)
+  for (const request of stranded) set(request, true)
+
+  return placed
+
+  /** Place one label, on its snug ring (`stepOut` false) or on the further rings only (true).
+   *  Returns whether it was placed. A CENTRED name (a sea's, a region's) has no rings: it is
+   *  tried once, in the first pass, on its anchor with its own give. */
+  function set(request: LabelRequest, stepOut: boolean): boolean {
+    const centredName = request.placement === 'centred'
+    if (centredName && stepOut) return false
     const sizePx = request.sizePx ?? options.fontSizePx ?? DEFAULTS.fontSizePx
     const spacingEm = request.spacingEm ?? 0
     const size = sizePx * u
     const width = request.text.length * (ADVANCE_EM + spacingEm) * size + (request.flag ? FLAG_ADVANCE_EM * size : 0)
-    const options_ =
-      request.placement === 'centred'
-        ? centredNear(request.at, width, size, request.slackLines ?? 0)
-        : candidates(request.at, width, size, gap)
+    const options_ = centredName
+      ? centredNear(request.at, width, size, request.slackLines ?? 0)
+      : candidates(request.at, width, size, gap, options.rings ?? LABEL_RINGS).filter(
+          (c) => (c.stepped ?? false) === stepOut,
+        )
 
     let chosen: (typeof options_)[number] | null = null
+    let leader: Leader | null = null
     for (const candidate of options_) {
       if (!containedBy(candidate.box, frame)) continue
       // Keep-out binds EVERY label, forced ones included: `force` overrides tidiness (two names
@@ -382,10 +515,23 @@ export function planLabels(
         if (glyphBoxes.some((g) => g.id !== request.id && intersects(candidate.box, g.rect))) continue
         if (taken.some((t) => intersects(candidate.box, t))) continue
       }
+      // A STEPPED-OUT NAME IS JOINED TO ITS MARK, and the join is held to the same promise as the
+      // name: a hairline through another harbour's mark or across another name is an overlap too.
+      const line = candidate.stepped ? leaderOf(request.at, candidate.box, glyph) : null
+      if (line && !request.force) {
+        // A MARK STANDING ON TOP OF THIS ONE IS NOT SOMETHING THE LEADER CAN AVOID, and it is the
+        // very case the rings are for: two harbours a few pixels apart. A mark whose box swallows
+        // the line's own starting point — the edge of this label's glyph — is therefore not counted
+        // against it; every other mark, and every name, is.
+        if (glyphBoxes.some((g) => g.id !== request.id && !holds(g.rect, line.x1, line.y1) && segmentHits(line, g.rect))) continue
+        if (taken.some((t) => segmentHits(line, t))) continue
+        if (keepOut.some((k) => segmentHits(line, k))) continue
+      }
       chosen = candidate
+      leader = line
       break
     }
-    if (!chosen) continue
+    if (!chosen) return false
 
     taken.push(chosen.box)
     placed.push({
@@ -400,15 +546,28 @@ export function planLabels(
       sizePx,
       spacingEm,
       ...(request.flag ? { flag: request.flag } : {}),
+      ...(leader ? { leader } : {}),
     })
+    return true
   }
+}
 
-  return placed
+/** The hairline from a mark to a name set away from it: from the glyph's edge to the nearest point
+ *  of the name's box, in chart units. Null when the box is so close that there is no line to draw
+ *  (nothing that would be hidden under the mark itself is ever drawn). */
+function leaderOf(at: Point, box: Rect, glyph: number): Leader | null {
+  const x = Math.min(Math.max(at.x, box.x), box.x + box.width)
+  const y = Math.min(Math.max(at.y, box.y), box.y + box.height)
+  const dx = x - at.x
+  const dy = y - at.y
+  const d = Math.sqrt(dx * dx + dy * dy)
+  if (d <= glyph) return null
+  return { x1: at.x + (dx / d) * glyph, y1: at.y + (dy / d) * glyph, x2: x, y2: y }
 }
 
 /** A centred label's placements: on its anchor, then — with `slackLines` of give — one line up,
  *  one down, two up, two down… each still centred on the anchor's x. */
-function centredNear(at: Point, width: number, height: number, slackLines: number) {
+function centredNear(at: Point, width: number, height: number, slackLines: number): Candidate[] {
   const out = [centred(at, width, height)]
   for (let n = 1; n <= slackLines; n++) {
     out.push(centred({ x: at.x, y: at.y - n * height * 1.2 }, width, height))
@@ -418,11 +577,7 @@ function centredNear(at: Point, width: number, height: number, slackLines: numbe
 }
 
 /** The one placement a centred label has without give: its box centred on the anchor. */
-function centred(
-  at: Point,
-  width: number,
-  height: number,
-): { side: LabelSide; x: number; y: number; anchor: PlacedLabel['anchor']; box: Rect } {
+function centred(at: Point, width: number, height: number): Candidate {
   return {
     side: 'centre',
     x: at.x,

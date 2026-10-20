@@ -48,6 +48,23 @@ const TONE: Record<LabelTone, string> = {
 
 function Name({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx: number; sun: LatLon }) {
   const size = label.sizePx * unitsPerPx
+  // A NAME THAT STEPPED OUT OF THE CROWD CARRIES A HAIRLINE BACK TO ITS MARK (2026-10-20, the
+  // owner: "Any way to see the cities all? Without overlapping?"). The planner decided the two
+  // ends and kept the line clear of every other mark and name (./labels.ts `leaderOf`); this draws
+  // it, under the letters, in the roads' own faint ink so it reads as chart furniture and never as
+  // a course. Non-scaling, so it is a hairline at every zoom.
+  const leader = label.leader && (
+    <line
+      x1={label.leader.x1}
+      y1={label.leader.y1}
+      x2={label.leader.x2}
+      y2={label.leader.y2}
+      className="bv-sun-road stroke-ink-faint/70"
+      strokeWidth={GLYPH.graticuleStroke}
+      vectorEffect="non-scaling-stroke"
+      data-testid="map-label-leader"
+    />
+  )
   const text = (
     <text
       x={label.flag ? label.box.x + FLAG_ADVANCE_EM * size : label.x}
@@ -68,10 +85,20 @@ function Name({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx: numb
       {label.text}
     </text>
   )
-  if (!label.flag) return text
+  if (!label.flag) {
+    return leader ? (
+      <g style={nightStyle(unproject({ x: label.x, y: label.y }), sun)}>
+        {leader}
+        {text}
+      </g>
+    ) : (
+      text
+    )
+  }
   const flagHeight = FLAG_HEIGHT_EM * size
   return (
-    <g data-label-flag={label.flag}>
+    <g data-label-flag={label.flag} style={nightStyle(unproject({ x: label.x, y: label.y }), sun)}>
+      {leader}
       {/* Drawn at a 30×20 box and scaled down to the label's size: the chart's units are tiny (a
           name is ~0.15 units tall), and Chrome rasterises a fraction of a unit to nothing. */}
       <use
