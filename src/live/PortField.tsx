@@ -132,7 +132,11 @@ export function PortField({
         data-testid="port-field"
       />
       {open && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        // THE LIST SAYS WHETHER ITS DISTANCES HAVE LANDED (2026-10-20). While `loadReach` is in flight every
+        // harbour is +Infinity away and the order falls to the alphabet (Acapulco first); a driver that picks
+        // "the first harbour that is not home" in that window picks a leg no navigator can plan. The attribute
+        // is the one honest reading of that state, for the specs and for anyone else who asks the markup.
+        <div className="mt-2 flex flex-wrap gap-2" data-testid="port-chips" data-reach={reach ? 'measured' : 'pending'}>
           {listed.map((p) => (
             <Chip key={p.id} on={p.code === current?.code} onClick={() => choose(p.code)} data-testid="port-chip">
               {p.name}
