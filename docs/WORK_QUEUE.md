@@ -23,7 +23,7 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 | 6b | **More conditions** (쇄빙 ice, 돌파 breakthrough as entry conditions; 조력 rowing as a calm-sea speed effect) | – | LATER: owner wants the base design first, then consider |
 | 7 | **Capital move** | A+B | after 6 |
 | 8 | **Live prices, wider spread** (owner said yes) | A+B | WIP `osn-live-prices`; after 6 |
-| 9 | **Far-selling extras** | A | re-measure after 2 and 6; maybe not needed |
+| 9 | **Far-selling extras** | – | **HELD BY OWNER** 10-20: "원거리 판매 기술은 아직 아냐" (not yet). Don't build; branch `osn-far-selling` stays parked |
 | 10 | **Hub design** (Tribal-Wars buildings and resources; ships never go home) | C | after 6's design |
 | – | Small: remove PROBE test money (82k) | A | slot in with any migration |
 | – | Decide after 2: merchant hoards / money outflow | – | owner decision later |
