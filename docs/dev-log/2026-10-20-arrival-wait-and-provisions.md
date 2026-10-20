@@ -219,8 +219,16 @@ with the shortfall, across the ship's specs rather than one of them.
 
 ## What was run
 
-`npm ci`, `npx tsc -b`, `npx eslint .`, `npm run build`, and the pure (non-world) specs. The PGlite world was **not**
-built from zero — the repo forbids it.
+`npm ci`, `npx tsc -b` (clean), `npx eslint .` (clean), and the pure (non-world) specs: `duplication` (10/10),
+`i18n.keys`, `format` — 36 passing.
+
+**`npm run build` was started and deliberately stopped.** Its `tsc -b` half completed clean, which is the half that
+judges this branch; its `vite build` half then began rebuilding the **PGlite world image** from the migration chain
+(207 migrations, 64 restored from the prefix cache, 143 to apply). That is the rebuild CLAUDE.md forbids in a sandbox,
+and it proves nothing about a client-only change to four `.tsx` files and a dictionary. CI builds it properly on the PR.
+
+Two `i18n.ko` specs failed on `browserType.launch: Executable doesn't exist` — chromium is not installed in this
+sandbox. Not this change; the pure `i18n.keys` spec, which is what validates the new dictionary entries, passed.
 
 ## Figures I did not read live
 
