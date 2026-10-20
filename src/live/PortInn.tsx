@@ -28,6 +28,7 @@ import {
   formatDucats,
   formatInt,
   formatOfTotal,
+  formatPrice,
   formatRealDuration,
   formatVoyageDays,
   instantMs,
@@ -263,11 +264,14 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
       )}
 
       {/* WHAT THE CHOSEN CREW WILL COST, PER DAY AT SEA — the server's one sum (0086), moving with
-          the stepper. 0128: it is owed per day at sea and paid only out of a sale's profit. */}
+          the stepper. 0128: it is owed per day at sea and paid only out of a sale's profit.
+          0210 (wages ÷ 5): the day is a fraction of a ducat for a small crew (3 hands: 0.60), and the
+          server owes the fraction rather than rounding it away — so it prints at a price's digits
+          (formatPrice), not as a whole ducat that would read "1" for 0.60 and "0" for 0.40. */}
       {cost.cost !== null ? (
         <Row
           label="Wages"
-          value={<Figure value={formatDucats(cost.cost.per_day)} unit="per day at sea, paid from profit" />}
+          value={<Figure value={formatPrice(cost.cost.per_day)} unit="per day at sea, paid from profit" />}
           hairline={false}
           data-testid="inn-crew-cost"
         />

@@ -1294,11 +1294,13 @@ test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and 
   await expect(stepper).toBeVisible()
   const cost = page.locator('[data-testid="inn-crew-cost"]')
   await expect(cost, 'the wages row never arrived — world.crew_cost did not answer').toBeVisible({ timeout: 20_000 })
-  await expect(cost).toContainText(/\d[\d,]*\s🪙\s*per day at sea/)
+  // Moved deliberately 2026-10-19 with 0210 (wages ÷ 5, the fraction owed): the day prints at a price's
+  // digits — "0.60 🪙" for 3 hands — so the figure may carry a decimal point, and the whole of it is read.
+  await expect(cost).toContainText(/(^|[^\d.,])\d[\d,]*(\.\d+)?\s🪙\s*per day at sea/)
   // THE FIGURE, not the row's text: `Figure` lays its value and unit out as sibling spans, so the
   // text content carries no space between them and the innerText does — comparing prose would
   // compare layout. The number is what the server served, and the number is what must move.
-  const figureOf = async () => (await cost.textContent())?.match(/([\d,]+)\s🪙/)?.[1] ?? null
+  const figureOf = async () => (await cost.textContent())?.match(/(\d[\d,]*(?:\.\d+)?)\s🪙/)?.[1] ?? null
   const costBefore = await figureOf()
   expect(costBefore).not.toBeNull()
   // 3. ONE BUTTON, dead while nothing has changed.

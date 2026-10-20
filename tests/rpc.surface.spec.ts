@@ -529,10 +529,17 @@ test('HIRE and DISMISS move the crew through the one door, and world.crew_cost()
   const purse0 = expectOk(await worldLedger()).ducats
   if (typeof purse0 !== 'number') throw new Error('the ledger served no purse; nothing below could measure a price')
 
-  // THE CAPTION'S FIGURE, for the crew aboard: the tick's arithmetic, within a ducat of rounding.
+  // THE CAPTION'S FIGURE, for the crew aboard: the tick's arithmetic.
+  // Moved deliberately 2026-10-19 with 0210 (stores, repairs and wages cost a fifth): the sum is
+  // crew × wage_per_crew_day × running_cost_level, and it is EXACT — the server owes the fraction of a
+  // ducat instead of rounding each day — so the figure is held to the exact product, not "within a
+  // ducat" (at 0.2 a man, a ducat of slack would have passed a wrong rate for any crew under 5).
+  const level = Number((await db.pg.query<{ v: string }>("select public.wc_num('running_cost_level') as v")).rows[0].v)
+  expect(level).toBeGreaterThan(0)
+  const rate = config.wage_per_crew_day * level
   const now = expectOk(await worldCrewCost(fleet.id))
   expect(now.crew).toBe(crew0)
-  expect(Math.abs(now.per_day - crew0 * config.wage_per_crew_day)).toBeLessThanOrEqual(1)
+  expect(now.per_day).toBeCloseTo(crew0 * rate, 6)
   expect(now.per_day_short_rations).toBeGreaterThanOrEqual(now.per_day)
   // …and for ANY count: monotone in n, never a fabricated figure.
   let prev = -1
@@ -540,7 +547,7 @@ test('HIRE and DISMISS move the crew through the one door, and world.crew_cost()
     const c = expectOk(await worldCrewCost(fleet.id, n))
     expect(c.crew).toBe(n)
     expect(c.per_day).toBeGreaterThanOrEqual(prev)
-    expect(Math.abs(c.per_day - n * config.wage_per_crew_day)).toBeLessThanOrEqual(1)
+    expect(c.per_day).toBeCloseTo(n * rate, 6)
     prev = c.per_day
   }
 
