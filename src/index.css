@@ -545,6 +545,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* KOREAN WRAPS BY WORD, NOT BY SYLLABLE (src/lib/i18n sets <html lang>). Without it a label breaks
+   mid-word (교역/품). Scoped to Korean so not one English line moves. */
+html:lang(ko) body {
+  word-break: keep-all;
+}
+
 /* ── COMPOSITIONS ────────────────────────────────────────────────────────────────────────────
    Tailwind's @theme gives us the tokens as utilities; what follows is the handful of things no
    single utility expresses. They live in `@layer components` so that a utility on the same

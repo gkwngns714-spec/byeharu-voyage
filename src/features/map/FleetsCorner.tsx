@@ -1,6 +1,7 @@
 import { Corner, Icon, Row } from '../../components/ui'
 import { CHART_CHROME, type ChartModel, type MapPort } from '../../chart'
 import { fleetLine } from './fleetLine'
+import { useT } from '../../lib/i18n'
 
 // THE FLEETS PILL, TOP-LEFT — `⛵ 1`, and a list when it is pressed.
 //
@@ -32,6 +33,7 @@ export function FleetsCorner({
   nowMs: number
   onSelect: (id: string) => void
 }) {
+  const t = useT()
   const fleets = model.fleets
   return (
     <Corner
@@ -43,7 +45,7 @@ export function FleetsCorner({
       {...CHART_CHROME}
     >
       {fleets.length === 0 ? (
-        <Row tone="muted" hairline={false} label="No fleets." />
+        <Row tone="muted" hairline={false} label={t('map.noFleets')} />
       ) : (
         fleets.map((f, i) => (
           <Row

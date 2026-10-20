@@ -17,6 +17,7 @@ import type { PlanDraft } from '../plans/planDraft'
 import { reachBoard, reachWords, viaWords } from '../plans/planLines'
 import type { GoodDesk } from './useGoodDesk'
 import { WhyThisPrice } from './WhyThisPrice'
+import { useT, t as tg } from '../../../lib/i18n'
 
 // THE TICKET — the right pane of the desk (docs/COMMAND_DESK.md §3.9): what a broker's order ticket is
 // to a stock. The owner, 2026-10-17: *"i will be able to see the estimated price movement so that i can
@@ -106,12 +107,12 @@ export function GoodTicket({
 
 /** Days and the clock time she would be there; `here` when she lies there now. */
 function away(row: { miles: number | null; days: number | null; arrive_at: string | null }, here: boolean): string {
-  if (here) return 'here'
+  if (here) return tg('markets.awayHere')
   const parts = [
-    row.days !== null ? formatVoyageDays(row.days) : row.miles !== null ? `${formatInt(row.miles)} miles` : null,
+    row.days !== null ? formatVoyageDays(row.days) : row.miles !== null ? tg('markets.miles', { n: formatInt(row.miles) }) : null,
     row.arrive_at ? formatClock(Date.parse(row.arrive_at)) : null,
   ].filter(Boolean)
-  return parts.length ? parts.join(' · ') : 'no course'
+  return parts.length ? parts.join(' · ') : tg('markets.noCourse')
 }
 
 function BestTrade({
@@ -133,6 +134,7 @@ function BestTrade({
   onPlan: (buyAt: string | null, sellAt: string | null) => void
   onFocus: (port: string) => void
 }) {
+  const t = useT()
   if (loading || !board) {
     return (
       <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade">
@@ -152,17 +154,17 @@ function BestTrade({
   const passed = quoted[0] && quoted[0].sailable === false ? quoted[0] : null
   const beyond = passed ? (
     <p className="mt-2 text-t-caption text-warning" data-testid="best-trade-beyond">
-      {sell ? 'Dearer, out of reach: ' : 'The best, '}
+      {t(sell ? 'markets.dearer' : 'markets.theBest')}
       <PortFlag code={passed.port} /> {name(passed.port)}
-      {passed.net_per_ton !== null ? ` (${formatPriceDelta(passed.net_per_ton)} per ton)` : ''} —{' '}
+      {passed.net_per_ton !== null ? t('markets.perTon', { price: formatPriceDelta(passed.net_per_ton) }) : ''} —{' '}
       {reachWords(passed, reachBoard(board))}.
     </p>
   ) : null
   if (!sell && passed) {
     return (
       <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade">
-        <span className="text-t-caption font-semibold uppercase tracking-wide text-ink-faint">Best trade</span>
-        <p className="mt-1 text-t-body text-ink">No buyer you can reach from here.</p>
+        <span className="text-t-caption font-semibold uppercase tracking-wide text-ink-faint">{t('markets.bestTrade')}</span>
+        <p className="mt-1 text-t-body text-ink">{t('markets.noBuyerReach')}</p>
         {beyond}
       </section>
     )
@@ -170,9 +172,9 @@ function BestTrade({
   if (!sell || (!onBoard && !buy)) {
     return (
       <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade">
-        <span className="block text-t-caption text-ink-faint">Best trade</span>
+        <span className="block text-t-caption text-ink-faint">{t('markets.bestTrade')}</span>
         <p className="mt-1 text-t-body text-ink-muted">
-          {!sell ? 'No city buys it within reach.' : 'No city sells it with stock to fill your hold.'}
+          {t(!sell ? 'markets.noCityBuys' : 'markets.noCityStock')}
         </p>
       </section>
     )
@@ -185,18 +187,18 @@ function BestTrade({
   return (
     <section className="rounded-tile bg-surface-2 p-4" data-testid="best-trade" data-sailable={sell.sailable === undefined ? "unserved" : String(sell.sailable)}>
       <div className="flex items-center justify-between">
-        <span className="text-t-caption font-semibold uppercase tracking-wide text-ink-faint">Best trade</span>
-        <span className="text-t-caption text-ink-faint">for {formatUnits(board.qty.units)}</span>
+        <span className="text-t-caption font-semibold uppercase tracking-wide text-ink-faint">{t('markets.bestTrade')}</span>
+        <span className="text-t-caption text-ink-faint">{t('markets.forUnits', { units: formatUnits(board.qty.units) })}</span>
       </div>
 
       <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1">
-        <span className="text-t-caption text-ink-faint">Buy</span>
+        <span className="text-t-caption text-ink-faint">{t('markets.buy')}</span>
         {buy ? (
           <button type="button" onClick={() => onFocus(buy.port)} className="min-h-11 min-w-0 truncate text-left text-t-body text-ink">
             <PortFlag code={buy.port} /> {name(buy.port)}
           </button>
         ) : (
-          <span className="text-t-body text-ink">On board</span>
+          <span className="text-t-body text-ink">{t('markets.onBoard')}</span>
         )}
         <span className="text-right text-t-body tabular-nums text-ink">
           {buy?.price_each != null
@@ -206,7 +208,7 @@ function BestTrade({
               : '—'}
         </span>
 
-        <span className="text-t-caption text-ink-faint">Sell</span>
+        <span className="text-t-caption text-ink-faint">{t('markets.sell')}</span>
         <button type="button" onClick={() => onFocus(sell.port)} className="min-h-11 min-w-0 truncate text-left text-t-body text-ink">
           <PortFlag code={sell.port} /> {name(sell.port)}
         </button>
@@ -217,21 +219,21 @@ function BestTrade({
 
       <div className="mt-3 flex items-end justify-between gap-3 border-t border-edge pt-3">
         <div className="min-w-0">
-          <span className="block text-t-caption text-ink-faint">Net per ton</span>
+          <span className="block text-t-caption text-ink-faint">{t('markets.netPerTon')}</span>
           <Figure value={perTon !== null ? formatPriceDelta(perTon) : '—'} tone={tone} size="figure" />
         </div>
         <div className="min-w-0 text-right">
-          <span className="block text-t-caption text-ink-faint">Net, the hold</span>
+          <span className="block text-t-caption text-ink-faint">{t('markets.netHold')}</span>
           <Figure value={net !== null ? formatPriceDelta(net) : '—'} tone={tone} />
         </div>
       </div>
       <p className="mt-2 text-t-caption text-ink-muted" data-testid="best-trade-when">
         {[
-          sell.days !== null ? `${formatVoyageDays(sell.days)} at sea` : null,
-          sell.arrive_at ? `arrive ${formatClock(Date.parse(sell.arrive_at))}` : null,
+          sell.days !== null ? t('markets.atSea', { days: formatVoyageDays(sell.days) }) : null,
+          sell.arrive_at ? t('markets.arrive', { time: formatClock(Date.parse(sell.arrive_at)) }) : null,
           sell.best
-            ? `best to sell ${formatClock(Date.parse(sell.best.at))} (+${formatFixed(sell.best.gain_pct, 1)} %)`
-            : 'sell on arrival',
+            ? t('markets.bestToSell', { time: formatClock(Date.parse(sell.best.at)), pct: formatFixed(sell.best.gain_pct, 1) })
+            : t('markets.sellOnArrival'),
         ]
           .filter(Boolean)
           .join(' · ')}
@@ -246,11 +248,11 @@ function BestTrade({
       <div className="mt-3 grid grid-cols-2 gap-2">
         {buyHere ? (
           <Button variant="primary" onClick={() => onTrade('buy')} data-testid="best-trade-buy">
-            Buy here
+            {t('markets.buyHere')}
           </Button>
         ) : sellHere ? (
           <Button variant="primary" onClick={() => onTrade('sell')} data-testid="best-trade-sell">
-            Sell here
+            {t('markets.sellHere')}
           </Button>
         ) : null}
         <Button
@@ -259,7 +261,7 @@ function BestTrade({
           className={buyHere || sellHere ? '' : 'col-span-2'}
           data-testid="best-trade-plan"
         >
-          Plan this trade
+          {t('markets.planTrade')}
         </Button>
       </div>
     </section>
@@ -297,16 +299,17 @@ function BuyAt({
   onTrade: () => void
   onPlan: (buyAt: string) => void
 }) {
+  const t = useT()
   return (
     <SheetSection
-      heading="Buy at"
-      trailing={<span className="text-t-caption text-ink-faint">you pay each · stock · how far</span>}
+      heading={t('markets.buyAt')}
+      trailing={<span className="text-t-caption text-ink-faint">{t('markets.buyCols')}</span>}
       data-testid="buy-at"
     >
       {loading ? (
         <RowsSkeleton n={2} />
       ) : !board || board.buy.length === 0 ? (
-        <Note tone="neutral">No city sells it.</Note>
+        <Note tone="neutral">{t('markets.noCitySells')}</Note>
       ) : (
         board.buy.map((r) => (
           <div key={r.port} className="flex min-h-row items-center gap-2 border-b border-edge py-1.5" data-testid="buy-row">
@@ -337,11 +340,11 @@ function BuyAt({
             </button>
             {r.port === docked ? (
               <Button variant="primary" onClick={onTrade} className="shrink-0" data-testid="desk-buy">
-                Buy
+                {t('markets.buy')}
               </Button>
             ) : (
               <Button variant="secondary" onClick={() => onPlan(r.port)} className="shrink-0" data-testid="desk-plan">
-                Plan
+                {t('markets.plan')}
               </Button>
             )}
           </div>
@@ -376,24 +379,25 @@ function SellAt({
   onFocus: (port: string) => void
   onTrade: () => void
 }) {
+  const t = useT()
   const rows = board ? (all ? board.sell : board.sell.filter((r) => r.quoted)) : []
   const rest = board ? board.sell.length - rows.length : 0
   const via = board?.fleet.where.kind === 'at_sea' ? (board.fleet.where.via ?? null) : null
   return (
     <SheetSection
-      heading={board ? `Sell at · ${formatUnits(board.qty.units)}` : 'Sell at'}
-      trailing={<span className="text-t-caption text-ink-faint">you get each · profit per ton</span>}
+      heading={board ? t('markets.sellAtN', { units: formatUnits(board.qty.units) }) : t('markets.sellAt')}
+      trailing={<span className="text-t-caption text-ink-faint">{t('markets.sellCols')}</span>}
       data-testid="sell-at"
     >
       {via && (
         <p className="mb-1 text-t-caption text-ink-faint" data-testid="sell-at-via">
-          At sea: reckoned from {name(via)}, {formatInt(board?.fleet.where.miles_left ?? 0)} miles off.
+          {t('markets.reckoned', { port: name(via), n: formatInt(board?.fleet.where.miles_left ?? 0) })}
         </p>
       )}
       {loading ? (
         <RowsSkeleton n={5} />
       ) : !board || board.sell.length === 0 ? (
-        <Note tone="neutral">No city buys it.</Note>
+        <Note tone="neutral">{t('markets.noCityBuysIt')}</Note>
       ) : (
         <>
           {rows.map((r) => (
@@ -408,7 +412,7 @@ function SellAt({
                   <span className="truncate text-t-body text-ink">
                     <PortFlag code={r.port} /> {name(r.port)}
                     {r.request ? (
-                      <span className="ml-1.5 text-t-caption text-warning">wanted +{formatInt(r.request.premium_pct)}%</span>
+                      <span className="ml-1.5 text-t-caption text-warning">{t('markets.wanted', { pct: formatInt(r.request.premium_pct) })}</span>
                     ) : null}
                   </span>
                   <Figure
@@ -436,20 +440,20 @@ function SellAt({
                       {formatPriceDelta(r.net_per_ton)} / t
                     </span>
                   ) : (
-                    <span className="shrink-0 text-t-caption text-ink-faint">{r.quoted ? 'cost unknown' : 'market price'}</span>
+                    <span className="shrink-0 text-t-caption text-ink-faint">{t(r.quoted ? 'markets.costUnknown' : 'markets.marketPriceLower')}</span>
                   )}
                 </span>
               </button>
               {r.port === docked && aboard > 0 && (
                 <Button variant="primary" onClick={onTrade} className="shrink-0" data-testid="desk-sell">
-                  Sell
+                  {t('markets.sell')}
                 </Button>
               )}
             </div>
           ))}
           {rest > 0 && (
             <Button variant="quiet" onClick={onAll} className="mt-2 w-full" data-testid="sell-all-cities">
-              All {formatInt(board.sell.length)} cities
+              {t('markets.allCities', { n: formatInt(board.sell.length) })}
             </Button>
           )}
         </>

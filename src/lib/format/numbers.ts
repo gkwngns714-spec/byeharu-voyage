@@ -16,7 +16,10 @@
 //     — and the second time is the rule: a unit a player has to decode is not a unit.
 //
 // Pure: no React, no DOM, no clock, no locale lookup (the separator is fixed, not Intl-derived —
-// a player's locale must not silently change what a shared leaderboard figure looks like).
+// a player's locale must not silently change what a shared leaderboard figure looks like). The
+// UNIT WORDS are the one thing that follows the viewer's language (src/lib/i18n, formatDict).
+
+import { t } from '../i18n'
 
 /** U+2212. Exported because a screen writing a literal '-' in front of a number is the bug. */
 export const MINUS = '\u2212'
@@ -111,23 +114,23 @@ export function formatPctChange(points: number): string {
  *  takes is `formatTons(qty * bulk)`, and the two are never confused (docs/WORDS.md law 2). */
 export function formatUnits(n: number): string {
   const rounded = Math.round(n)
-  return `${formatInt(rounded)} ${Math.abs(rounded) === 1 ? 'unit' : 'units'}`
+  return t('format.units', { n: formatInt(rounded), count: Math.abs(rounded) })
 }
 
 /** THE WORD FOR THE CARGO UNIT, pluralised — the one place it is spelled. 1 → "ton", else "tons". */
 export function tonsWord(n: number): string {
-  return Math.abs(n) === 1 ? 'ton' : 'tons'
+  return t('format.ton', { count: Math.abs(n) })
 }
 
 /** Cargo and supplies, in tons. 60 → "60 tons"; 1 → "1 ton"; 4.2 → "4.2 tons" with dp=1. */
 export function formatTons(n: number, dp = 0): string {
   const figure = dp > 0 ? formatFixed(n, dp) : formatInt(n)
-  return `${figure} ${tonsWord(dp > 0 ? n : Math.round(n))}`
+  return t('format.tons', { n: figure, word: tonsWord(dp > 0 ? n : Math.round(n)) })
 }
 
 /** Distance at sea: 188.4 → "188 miles". (Nautical miles — the word a player reads is "miles".) */
 export function formatMiles(n: number, dp = 0): string {
-  return `${dp > 0 ? formatFixed(n, dp) : formatInt(n)} miles`
+  return t('format.miles', { n: dp > 0 ? formatFixed(n, dp) : formatInt(n) })
 }
 
 /** How a water point reads on a screen: "33.0°N 15.0°W". The one wording, so the panel, the
@@ -135,14 +138,14 @@ export function formatMiles(n: number, dp = 0): string {
  *  `domain/fleet`'s where-she-is line can print a point without the two sections importing each
  *  other — it is a way of printing two numbers, which is this file's whole job.) */
 export function pointLabel(at: { readonly lat: number; readonly lon: number }): string {
-  const ns = at.lat >= 0 ? 'N' : 'S'
-  const ew = at.lon >= 0 ? 'E' : 'W'
+  const ns = t(at.lat >= 0 ? 'format.north' : 'format.south')
+  const ew = t(at.lon >= 0 ? 'format.east' : 'format.west')
   return `${Math.abs(at.lat).toFixed(1)}°${ns} ${Math.abs(at.lon).toFixed(1)}°${ew}`
 }
 
 /** Speed: 3.5695 → "3.6 knots". */
 export function formatKnots(n: number): string {
-  return `${formatFixed(n, 1)} knots`
+  return t('format.knots', { n: formatFixed(n, 1) })
 }
 
 /** A FRACTION (0.62) as a percentage: "62%". Use for shares, fills, hull condition. */

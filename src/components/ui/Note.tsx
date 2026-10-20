@@ -1,4 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
+import { translateMaybe, useLocale } from '../../lib/i18n'
+import { formatFixed, formatInt } from '../../lib/format'
 
 // THE NOTE — one line, a tone, and at most one action.
 //
@@ -41,6 +43,7 @@ export function Note({
   action,
   figure,
   code,
+  figures,
   children,
   className = '',
   ...rest
@@ -52,12 +55,16 @@ export function Note({
   figure?: ReactNode
   /** The server's code. Written to console.debug, never to the screen. */
   code?: string
+  /** The figures a refusal served beside its code (have / need / unit) — printed after the
+   *  Korean sentence, which is written per code and so cannot carry them itself. */
+  figures?: { have: number; need: number; unit: string }
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
   // In an effect, not in the render body: a component that writes to the console while React is
   // rendering it writes twice under StrictMode and once more on every re-render, and a log that
   // fires a different number of times depending on how the tree was drawn is not a log.
+  const locale = useLocale()
   useEffect(() => {
     if (code) console.debug('[note]', code)
   }, [code])
@@ -68,10 +75,25 @@ export function Note({
       {...rest}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-t-label">{children}</p>
+        <p className="text-t-label">{(code && localized(locale, code, figures)) || children}</p>
         {figure !== undefined && <div className="mt-1">{figure}</div>}
       </div>
       {action !== undefined && <div className="shrink-0">{action}</div>}
     </div>
   )
 }
+
+/** A REFUSAL IN THE VIEWER'S LANGUAGE. English is the server's own sentence (the children), always.
+ *  Korean is the code's entry in codesDict, with the served figures after it; a code with no entry
+ *  falls back to the server's English sentence rather than to nothing. */
+function localized(locale: 'en' | 'ko', code: string, figures: { have: number; need: number; unit: string } | undefined) {
+  if (locale === 'en') return null
+  const sentence = translateMaybe(locale, 'codes', code)
+  if (sentence === null) return null
+  if (!figures) return sentence
+  const unit = translateMaybe(locale, 'codes', `unit_${figures.unit}`) ?? figures.unit
+  const fig = translateMaybe(locale, 'codes', 'figures', { have: figure(figures.have), need: figure(figures.need), unit })
+  return `${sentence} (${fig})`
+}
+
+const figure = (n: number) => (Number.isInteger(n) ? formatInt(n) : formatFixed(n, 1))

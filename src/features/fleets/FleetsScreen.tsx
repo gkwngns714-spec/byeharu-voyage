@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Bar, CargoBar, IconDisc, Row, Sheet, type IconDiscTone } from '../../components/ui'
+import { Bar, CargoBar, FactsLine, IconDisc, Row, Sheet, type IconDiscTone } from '../../components/ui'
 import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -17,6 +17,7 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
 import { fleetDue } from './fleetLine'
 import { YourCaptains } from '../../live/YourCaptains'
+import { useT } from '../../lib/i18n'
 
 // FLEETS — what you own, one row each, redrawn to docs/UI_DIRECTION.md §6 (§7 step 7).
 //
@@ -59,21 +60,23 @@ import { YourCaptains } from '../../live/YourCaptains'
 // so a countdown past its instant says "due", never "arrived".
 
 export function FleetsScreen() {
+  const t = useT()
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
 
   if (phase === 'failed') {
-    return <WorldFailed title="Fleets" refusal={fatal} />
+    return <WorldFailed title={t('fleets.title')} refusal={fatal} />
   }
   if (phase !== 'ready' || !snapshot) {
-    return <WorldLoading title="Fleets" />
+    return <WorldLoading title={t('fleets.title')} />
   }
   return <FleetsBody />
 }
 
 function FleetsBody() {
+  const t = useT()
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
@@ -94,9 +97,9 @@ function FleetsBody() {
   const portName = (code: string) => portNameOf(portByCode, code)
 
   return (
-    <Sheet title="Fleets" data-testid="fleets">
+    <Sheet title={t('fleets.title')} data-testid="fleets">
       {fleets.length === 0 ? (
-        <Row label="No fleets yet." tone="muted" hairline={false} />
+        <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
       ) : (
         fleets.map((fleet, i) => {
           const open = unfolded.has(fleet.id)
@@ -152,6 +155,7 @@ function FleetRow({
   last: boolean
   onToggle: () => void
 }) {
+  const t = useT()
   const used = fleetHoldUsed(fleet)
   const total = fleetHoldTotal(fleet)
   const hull = worstHullFraction(fleet)
@@ -184,24 +188,24 @@ function FleetRow({
           `hull` (seen in the design pass's before-shot). On a phone the supplies figure takes its
           own line and each gauge keeps a floor — the width its word, a bar you can read and its
           figure need — so cargo and hull stack under it; from `sm` all three share one line. */}
-      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-t-caption text-ink-faint" data-testid="fleet-row-bars">
-        <span className="shrink-0 basis-full tabular-nums sm:basis-auto">{formatVoyageDays(fleet.endurance_days)} of supplies</span>
+      <FactsLine data-testid="fleet-row-bars">
+        <span className="shrink-0 basis-full tabular-nums sm:basis-auto">{t('fleets.ofSupplies', { days: formatVoyageDays(fleet.endurance_days) })}</span>
         {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
             with its staged change washed on. */}
         <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-48 flex-1" />
         {/* §4.4: a hull that is merely sound is NEUTRAL — green is for gain, and a whole fleet
             painted green spends the one colour that means "cheap" on a hull that is fine. */}
         <span className="flex min-w-32 flex-1 items-center gap-3">
-          <span className="shrink-0">hull</span>
+          <span className="shrink-0">{t('fleets.hull')}</span>
           <Bar
             pct={hull * 100}
             tone={hull < 0.4 ? 'danger' : hull < 0.75 ? 'warning' : 'neutral'}
-            label={`worst hull, ${formatPct(hull)}`}
+            label={t('fleets.worstHull', { pct: formatPct(hull) })}
             figure={<span className="tabular-nums">{formatPct(hull)}</span>}
             className="min-w-0 flex-1"
           />
         </span>
-      </span>
+      </FactsLine>
     </Row>
   )
 }

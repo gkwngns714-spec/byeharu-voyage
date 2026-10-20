@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { Tray } from './Tray'
 import type { TrayDetent } from './trayDetents'
+import { useT } from '../../lib/i18n'
 
 // THE HINT — the caption voice, on a budget, and the end of eighty-one ⓘ dots.
 //
@@ -42,6 +43,7 @@ export function Hint({
   moreTitle?: string
   className?: string
 } & { 'data-testid'?: string }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('closed')
   return (
     <>
@@ -53,12 +55,12 @@ export function Hint({
             onClick={() => setDetent('half')}
             className="ml-2 inline-flex min-h-11 min-w-11 items-center justify-center text-t-caption text-accent"
           >
-            More
+            {t('ui.more')}
           </button>
         )}
       </p>
       {more !== undefined && (
-        <Tray detent={detent} onDetentChange={setDetent} title={moreTitle ?? 'More'}>
+        <Tray detent={detent} onDetentChange={setDetent} title={moreTitle ?? t('ui.more')}>
           <p className="text-t-label text-ink-muted">{more}</p>
         </Tray>
       )}

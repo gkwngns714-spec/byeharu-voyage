@@ -3,6 +3,7 @@ import { priceChartModel, type ChartOutlookInput } from './priceChartModel'
 import { stockLevel } from './stockLevel'
 import { formatInt } from '../../lib/format'
 import type { PricePoint } from '../../lib/rpc'
+import { useT } from '../../lib/i18n'
 
 // THE PRICE CHART — the sparkline, unfolded: the same served line with an axis under it and a
 // scale beside it. docs/QUAY_LEDGER.md §3 F ("the 48-slot price history drawn with an axis") and
@@ -48,6 +49,7 @@ export function PriceChart({
   /** The city's normal stock (served, 0183): draws the stock strip under the price — why it moved. */
   stockTarget?: number | null
 }) {
+  const t = useT()
   const model = useMemo(
     () => priceChartModel(points, slotSeconds, nowMs, outlook, size, stockTarget),
     [points, slotSeconds, nowMs, outlook, size, stockTarget],
@@ -211,7 +213,7 @@ export function PriceChart({
                       : 'fill-ink-muted'
                 }
               >
-                <title>{`stock ${formatInt(model.stock.now.value)} · normal ${formatInt(model.stock.target)}`}</title>
+                <title>{t('ui.stockTitle', { stock: formatInt(model.stock.now.value), normal: formatInt(model.stock.target) })}</title>
               </circle>
             )}
           </g>

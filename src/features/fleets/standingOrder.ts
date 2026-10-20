@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView, ProvisionPreset, ProvisionPresetBook, Refusal } from '../../lib/rpc'
+import { t } from '../../lib/i18n'
 
 // THE STANDING ORDER, AS ONE NUMBER — "keep her at N days of stores".
 //
@@ -33,10 +34,10 @@ export type KeepPlan =
   | { kind: 'create'; name: string }
 
 /** "1 day", "15 days" — the one spelling of a keep level, on the button, the chips and the name. */
-export const keepDays = (days: number) => `${days} ${days === 1 ? 'day' : 'days'}`
+export const keepDays = (days: number) => t('fleets.days', { n: days })
 
 /** The name a written order gets. The player never types one now, so it says what it is. */
-const orderName = (days: number) => `Keep ${keepDays(days)}`
+const orderName = (days: number) => t('fleets.keepN', { days: keepDays(days) })
 
 /** The order this fleet sails under — the BOOK is the authority (the fleet points at a preset by
  *  reference on the server; the book serves that edge), so nothing here is a copy. */

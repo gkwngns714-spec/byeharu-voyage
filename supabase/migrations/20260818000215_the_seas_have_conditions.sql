@@ -79,11 +79,14 @@
 --   the pairs materialised and lon_lerp's arithmetic written out and held to it (2.3 s). Everything before the
 --   self-assert: 82 s → 4.8 s, the raster and the 56,644 rows byte-for-byte the same.
 --
--- SUPERSEDES, by hunks sliced from the LIVE bodies (prod head 0211, LF-normalised, each asserted to occur
--- exactly once and to reverse to its pre-image, ACL / volatility / definer / config unchanged):
+-- SUPERSEDES, by hunks sliced from the LIVE bodies (LF-normalised, each asserted to occur exactly once and
+-- to reverse to its pre-image, ACL / volatility / definer / config unchanged):
 --   world.ship_stats(uuid) (2 hunks: the 'wave' base row, both branches), world.ship_view(uuid) (1: `wave` per
 --   hull), world.fleets() (1: `wave` per fleet), world.player() (1: title_level derived + title_name),
 --   public.client_rpc_entry_points() (1: world.sea_conditions registered).
+--   The four world.* hunks were sliced at prod head 0211 and those bodies have not moved since. The REGISTRY
+--   hunk was re-sliced onto head 0214 (2026-10-20): 0214's six stats rows now close the list, so the old
+--   anchor — insurance as the last row — no longer occurs in the live body and the self-assert refused it.
 --
 -- SELF-ASSERT (docs/SEA_CONDITIONS_AND_REGIONS.md §6, S1): every class's wave equals the derivation; every item
 -- of the nine base types has a 'wave' row and no other item does (65); world.ship_stats of EVERY hull unchanged
@@ -100,8 +103,7 @@
 -- ROLLBACK (forward migration): reverse the five hunks (each OLD text is here verbatim), drop the new functions
 -- and tables, drop ship_classes.wave, delete the 65 rows and restore the CHECK; players.title_level is not
 -- restored (it was 1 for every house and read by nothing).
--- VERSION: 0215 (renumber to the prod head + 1 at push; 0212 insurance and 0213 haul cap are ahead, 0214 is the
--- stats tab).
+-- VERSION: 0215 = prod head 0214 (the stats tab, live 2026-10-20) + 1 — RENUMBER TO PROD HEAD + 1 AT PUSH.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -918,9 +920,9 @@ $h$      'title_level',   public.title_level(v_id),   -- 0215: DERIVED (the lowe
       'title_name',    (select t.name from public.title_names t where t.level = public.title_level(v_id)),
 $h$),
 ('public.client_rpc_entry_points()', 1,
-$h$      ('world',       'insurance',             '')
+$h$      ('world',       'stats_me',              '')
     ) as t(s, f, a)$h$,
-$h$      ('world',       'insurance',             ''),
+$h$      ('world',       'stats_me',              ''),
       -- 0215: the sea conditions — every zone's asks, the caller's title, her fleets' wave (docs/SEA_CONDITIONS_AND_REGIONS.md S1).
       ('world',       'sea_conditions',        '')
     ) as t(s, f, a)$h$);

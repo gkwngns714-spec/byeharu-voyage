@@ -8,6 +8,7 @@ import { useCityTab } from './cityTab'
 import { SendFleetRow } from './SendFleetRow'
 import { canGo, type SailDest } from './sendRules'
 import { useSendFleet } from './useSendFleet'
+import { useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PANEL — a tapped place: its three tabs, and the map's one act, as a panel at the right.
@@ -57,6 +58,7 @@ export function SendFleet({
   harbour: ReactNode
   onClose: () => void
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')
   const open = detent !== 'peek'
   const flow = useSendFleet(dest, open)
@@ -73,14 +75,14 @@ export function SendFleet({
   // HER FLEETS, each with the passage's verdict — once `Send fleet` is pressed: at the top of the
   // Port tab for a city, alone for a point of open sea.
   const sendSection = open && (
-    <SheetSection heading="Your fleets" data-testid="map-send-fleets">
+    <SheetSection heading={t('map.yourFleets')} data-testid="map-send-fleets">
       {/* WHY THE TRACK WILL NOT TOUCH THE QUAY (0076): the marker leaves the triangle for a point
           up to 67.7 nm out, and a player who was not told reads that as a bug. Said only where a
           passage is being chosen — above the tabs it was the first line of every city (2026-10-15,
           "stupid useless info"). The wording is domain/passage's. */}
       {flow.roads && <Hint data-testid="map-send-roads">{flow.roads}</Hint>}
       {fleets.length === 0 && (
-        <Row tone="muted" hairline={false} label="No fleets yet — start your company to get one." data-testid="map-send-none" />
+        <Row tone="muted" hairline={false} label={t('map.noFleetsYet')} data-testid="map-send-none" />
       )}
 
       {/* THE DEAD END, NAMED (OWNER_REQUESTS row 49: "i can't send a fleet in map"): a list in
@@ -91,8 +93,8 @@ export function SendFleet({
           tone="muted"
           label={
             fleets.every((f) => flow.standingOf(f) === 'lies')
-              ? `Nothing to send — ${fleets.length === 1 ? 'it is' : 'they are'} already at ${flow.destName}.`
-              : `Nothing to send — every fleet is at ${flow.destName} or heading there.`
+              ? t('map.nothingLies', { count: fleets.length, dest: flow.destName })
+              : t('map.nothingAll', { dest: flow.destName })
           }
           data-testid="map-send-nowhere"
         />
@@ -133,7 +135,7 @@ export function SendFleet({
                 }}
                 data-testid="map-send-fleet"
               >
-                Send fleet
+                {t('map.sendFleet')}
               </Button>
             )
           }
@@ -145,11 +147,15 @@ export function SendFleet({
             variant="primary"
             className="w-full"
             busy={busy}
-            busyLabel="Sending…"
+            busyLabel={t('map.sending')}
             onClick={() => flow.send(picked)}
             data-testid="map-send-ratio-send"
           >
-            {`Send ${picked.name} · keep ${formatVoyageDays(flow.daysOf(picked), 0)}${flow.insureOf(picked) ? ' · insured' : ''}`}
+            {t('map.sendLine', {
+              name: picked.name,
+              days: formatVoyageDays(flow.daysOf(picked), 0),
+              insured: flow.insureOf(picked) ? t('map.insuredTag') : '',
+            })}
           </Button>
         ) : undefined
       }

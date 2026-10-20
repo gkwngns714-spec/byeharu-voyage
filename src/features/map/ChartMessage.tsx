@@ -12,7 +12,7 @@ export function ChartMessage({ refusal }: { refusal: Refusal | null }) {
   return (
     <div className="bv-sea flex h-full w-full items-center justify-center p-gutter" data-testid="map-chart">
       {refusal ? (
-        <Note tone="danger" code={refusal.code} className="max-w-sm" data-testid="map-fatal">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="max-w-sm" data-testid="map-fatal">
           {refusal.sentence}
         </Note>
       ) : (

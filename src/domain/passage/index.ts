@@ -47,6 +47,7 @@ import {
 } from '../../lib/sea'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 import { whereabouts } from '../fleet'
+import { t } from '../../lib/i18n'
 
 /** One scratch for every search the app runs — three million-entry arrays, allocated once. */
 const SCRATCH: SearchScratch = {}
@@ -141,14 +142,14 @@ export function sailTarget(
  */
 export function roadsteadNote(nm: number): string | null {
   if (!(nm > 0)) return null
-  return `Ships anchor ${formatMiles(nm, 1)} offshore and are taken into port from there.`
+  return t('domain.roadstead', { miles: formatMiles(nm, 1) })
 }
 
 /** The same fact where an ORDER is being composed: why the track she is about to buy will not
  *  touch the quay. Shorter, because it sits under a destination's name on the chart's own glass. */
 export function roadsteadCourseNote(nm: number): string | null {
   if (!(nm > 0)) return null
-  return `The route ends at the anchorage, ${formatMiles(nm, 1)} offshore.`
+  return t('domain.roadsteadCourse', { miles: formatMiles(nm, 1) })
 }
 
 /** Where the fleet IS right now — for a DIVERT, which turns where she stands. The served

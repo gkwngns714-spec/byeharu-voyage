@@ -509,6 +509,16 @@ export const RPCS = {
       { name: 'p_good', type: 'uuid' },
     ],
   },
+  // 0214 — THE STATS TAB (docs/dev-log/2026-10-20-stats-tab.md): six READS over the rollup public.tick_stats
+  // writes every fifteen minutes. The world's money and what moved; every good across every market; every
+  // city at YOUR tier (the gate is the server's — a locked city arrives without figures); the merchants'
+  // day; your week and the leaderboard (rank and name only). None takes a player id.
+  worldStatsOverview: { schema: 'world', fn: 'stats_overview', args: [{ name: 'p_hours', type: 'int' }] },
+  worldStatsMarkets: { schema: 'world', fn: 'stats_markets', args: [] },
+  worldStatsCities: { schema: 'world', fn: 'stats_cities', args: [] },
+  worldStatsCity: { schema: 'world', fn: 'stats_city', args: [{ name: 'p_port', type: 'uuid' }] },
+  worldStatsMerchants: { schema: 'world', fn: 'stats_merchants', args: [] },
+  worldStatsMe: { schema: 'world', fn: 'stats_me', args: [] },
   // 0215 — THE SEA CONDITIONS (docs/SEA_CONDITIONS_AND_REGIONS.md): every zone with the title and the wave
   // resistance it asks, the caller's title, each of her fleets' wave, and whether the conditions bite yet. A
   // READ, no arguments (the company is the caller's). The Codex "Seas" face and the map's shading (C3) read it.

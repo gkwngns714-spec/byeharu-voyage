@@ -5,6 +5,7 @@ import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } f
 import { trayDockWideClass, traySideEdgeClass, traySideNextClass } from './screenLayout'
 import { InTray, useTraySlot } from './trayContext'
 import { useWide } from './useWide'
+import { useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TRAY — the load-bearing primitive of the whole direction
@@ -99,6 +100,7 @@ export function Tray({
   children?: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
+  const t = useT()
   // While a finger is on the handle the height is a number of pixels and the transition is off;
   // the rest of the time it is one of the three CSS stops above.
   const [dragHeight, setDragHeight] = useState<number | null>(null)
@@ -191,7 +193,7 @@ export function Tray({
         ) : (
           <button
             type="button"
-            aria-label="Resize"
+            aria-label={t('ui.resize')}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -213,7 +215,7 @@ export function Tray({
         {dismissible && (
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t('ui.close')}
             data-testid="tray-close"
             onClick={() => onDetentChange('closed')}
             className="flex h-11 w-11 items-center justify-center rounded-control text-ink-muted"

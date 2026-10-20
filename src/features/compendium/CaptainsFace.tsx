@@ -17,6 +17,7 @@ import type { Officer } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { NoAnswer } from './NoAnswer'
+import { useT, t as tNow } from '../../lib/i18n'
 
 // THE CAPTAINS FACE — every captain in the world, signed or not. Each is found in an Inn and hired
 // there (PORT's Inn); nothing here hires anyone.
@@ -51,12 +52,13 @@ function segmentsOf(
   }
   const ids = [...firstOf.keys()]
   if (order) ids.sort(order)
-  return [{ id: ALL, label: 'All' }, ...ids.map((v) => ({ id: v, label: label(firstOf.get(v)!) ?? v }))]
+  return [{ id: ALL, label: tNow('codex.all') }, ...ids.map((v) => ({ id: v, label: label(firstOf.get(v)!) ?? v }))]
 }
 
 const gradeOrd = (officers: readonly Officer[], grade: string) => officers.find((o) => o.grade === grade)?.grade_ord ?? 0
 
 export function CaptainsFace({ query, answered }: { query: string; answered: boolean }) {
+  const t = useT()
   const roster = useWorld((s) => s.officers)
   const portByCode = useWorld((s) => s.portByCode)
   const nationByCode = useWorld((s) => s.nationByCode)
@@ -96,7 +98,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
 
   if (officers === null) {
     return answered ? (
-      <Note tone="warning">Could not load the captains. Retrying shortly.</Note>
+      <Note tone="warning">{t('codex.captainsFailed')}</Note>
     ) : (
       <div className="space-y-2">
         <Skeleton className="h-28 w-full" />
@@ -111,7 +113,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
         facets[k].length > 2 ? (
           <Segmented
             key={k}
-            label={{ grade: 'Grade', focus: 'Role', job: 'Job' }[k]}
+            label={t(({ grade: 'codex.grade', focus: 'codex.role', job: 'codex.job' } as const)[k])}
             segments={facets[k]}
             value={filters[k]}
             onChange={(v) => setFilters((f) => ({ ...f, [k]: v }))}
@@ -163,7 +165,7 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
           title={open.name}
           data-testid="officer-tray"
         >
-          {open.grade && <Row label="Grade" value={open.grade} data-testid="captain-grade" />}
+          {open.grade && <Row label={t('codex.grade')} value={open.grade} data-testid="captain-grade" />}
           <Row
             label={open.job_word ? `${open.job_word} · ${open.focus_word ?? ''}` : open.specialty.toLowerCase()}
             value={
@@ -186,20 +188,20 @@ export function CaptainsFace({ query, answered }: { query: string; answered: boo
           ))}
           {open.speaks && <Row label={open.speaks} tone="muted" data-testid="captain-speaks" />}
           {/* "signs for" is the server's own phrase (0015's refusal says it word for word). */}
-          <Row label="Wage" value={<Figure value={formatInt(open.wage)} unit={`${COIN} per voyage`} />} />
+          <Row label={t('codex.wage')} value={<Figure value={formatInt(open.wage)} unit={t('codex.perVoyage', { coin: COIN })} />} />
           <Row
-            label="Port"
-            value={open.port === null ? 'none fixed' : portNameOf(portByCode, open.port)}
+            label={t('codex.port')}
+            value={open.port === null ? t('codex.noneFixed') : portNameOf(portByCode, open.port)}
             tone={open.port === null ? 'muted' : 'default'}
           />
-          {open.nation !== null && <Row label="Nation" value={nationNameOf(nationByCode, open.nation)} />}
+          {open.nation !== null && <Row label={t('codex.nation')} value={nationNameOf(nationByCode, open.nation)} />}
           {open.hired && (
-            <Row label="Working for" value={open.fleet ?? 'nobody'} tone="accent" hairline={false} />
+            <Row label={t('codex.workingFor')} value={open.fleet ?? t('codex.nobody')} tone="accent" hairline={false} />
           )}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {!open.takes_effect && (
             <Note tone="neutral" className="mt-2">
-              This job has no effect in the game yet. The bonus changes nothing.
+              {t('codex.noEffect')}
             </Note>
           )}
         </Tray>

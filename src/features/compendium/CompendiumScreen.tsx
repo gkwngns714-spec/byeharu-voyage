@@ -6,6 +6,7 @@ import { CaptainsFace } from './CaptainsFace'
 import { GoodsFace } from './GoodsFace'
 import { NationsFace } from './NationsFace'
 import { ShipsFace } from './ShipsFace'
+import { useT } from '../../lib/i18n'
 
 // CODEX — the 도감: everything that exists in this world, catalogued, whether or not you have met
 // it. The owner, 2026-08-23: "create a 도감, separate tab, showing all the trade goods, ships,
@@ -42,30 +43,32 @@ import { ShipsFace } from './ShipsFace'
 // Ports are deliberately NOT a face: MAP draws them all and MARKET lists them.
 
 const FACES = [
-  { id: 'goods', label: 'Goods', noun: 'goods' },
-  { id: 'ships', label: 'Ships', noun: 'ship classes' },
-  { id: 'captains', label: 'Captains', noun: 'captains' },
-  { id: 'nations', label: 'Nations', noun: 'nations' },
+  { id: 'goods', label: 'codex.goods', noun: 'codex.filter_goods' },
+  { id: 'ships', label: 'codex.ships', noun: 'codex.filter_ships' },
+  { id: 'captains', label: 'codex.captains', noun: 'codex.filter_captains' },
+  { id: 'nations', label: 'codex.nations', noun: 'codex.filter_nations' },
 ] as const
 type FaceId = (typeof FACES)[number]['id']
 
 export function CompendiumScreen() {
+  const t = useT()
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed title="Codex" refusal={fatal} />
+    return <WorldFailed title={t('codex.codex')} refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading title="Codex" />
+      <WorldLoading title={t('codex.codex')} />
     )
   }
   return <CompendiumBody />
 }
 
 function CompendiumBody() {
+  const t = useT()
   const loadOfficers = useWorld((s) => s.loadOfficers)
   const readAt = useWorld((s) => s.readAt)
 
@@ -88,13 +91,13 @@ function CompendiumBody() {
 
   const [face, setFace] = useState<FaceId>('goods')
   const [query, setQuery] = useState('')
-  const noun = FACES.find((f) => f.id === face)?.noun ?? 'entries'
+  const noun = FACES.find((f) => f.id === face)?.noun ?? 'codex.filter_goods'
 
   return (
-    <Sheet title="Codex" data-testid="codex">
+    <Sheet title={t('codex.codex')} data-testid="codex">
       <Segmented
-        label="Codex faces"
-        segments={FACES}
+        label={t('codex.faces')}
+        segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))}
         value={face}
         onChange={(next) => {
           // A filter belongs to the face it was typed against: "pepper" carried onto the ships
@@ -108,8 +111,8 @@ function CompendiumBody() {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onClear={() => setQuery('')}
-        aria-label={`Filter ${noun}`}
-        placeholder={`Filter ${noun}`}
+        aria-label={t(noun)}
+        placeholder={t(noun)}
         spellCheck={false}
         autoCorrect="off"
       />

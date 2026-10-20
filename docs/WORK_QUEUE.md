@@ -1,5 +1,41 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## THE OWNER'S NEW ORDER, 2026-10-20 ~14:35 UTC — THIS OUTRANKS "THE LIST" BELOW
+
+Owner: *"what i am saying now is what is important. change it."* Twenty requests arrived this
+afternoon (OWNER_REQUESTS rows **169–188**; the words are there verbatim). They outrank the
+10-20 04:00 list, which stays below as history. The lane rule still holds: **two builds + one
+design in flight**, Lane A = server, one migration at a time in strict number order.
+
+**First, because it is about what just shipped and the owner is unhappy with it:**
+
+| # | Row | Item | Lane | Note |
+|---|---|---|---|---|
+| 1 | 188 | **Stats tab: charts, moving numbers, modern** | B | 0214 shipped the server and a plain face. The rows are already there (one per 15 min, one per day beyond the fine window) — this is the face, no migration |
+| 2 | 187 | **Stats "real time, by seconds"** | B | CONFLICTS with 0214's 15-minute rollup. Decided by default: live reads tick client-side every few seconds; the rollup and the charts stay 15-minute. No per-second writes |
+| 3 | 185 | **Map labels: why hidden, show all without overlap** | B | Owner asked WHY — read the declutter rule and answer it, not just change it |
+| 4 | 184 | **Click an NPC's name → point me there** | B | Same affordance the city rows have |
+| 5 | 186 | **~8 new harbours**: 2 N-Russia, 2 Australia, 2 NZ, 2 N-USA | A+B | Real places, real coordinates; each needs a roadstead, a 0215 sea zone and a power. Check against the 0216 gate |
+
+**Then the morning's fifteen (rows 169–183), in the order they are worth doing:**
+
+| # | Row | Item | Lane | Note |
+|---|---|---|---|---|
+| 6 | 171, 172, 176, 181 | Light-map colour · coordinate on double press · full date clock · personal-info tab | B | Cheap client work, no migration; do them together |
+| 7 | 170 | The "arrives in (min)" wait | ? | READ first: which wait is it? The arrivals job's 15 s, the served ETA, or 0116's rest |
+| 8 | 179 | Provisions inside the hold, % breakdown, crew-scaled, minimum crew | A+B | Owner says *"I may be wrong"* — establish the current model before changing it |
+| 9 | 174, 178, 177 | City Info tab · both prices always + longer window + draggable chart · goods rarity and class | A+B | |
+| 10 | 173 | Weekly reset of investment and lap records + history | A+B | Must ROLL OVER and keep the old week. `events` and the ledger are append-only |
+| 11 | 169a | **Ship speed ×3** | A | Economy change, not cosmetic: laps get ~3× shorter, so earnings per real hour ~3× for players AND merchants. Paired sim before deploy, like 0208/0212 |
+| 12 | 169b | Smooth (non-tick) ship movement | B | Client interpolation between served endpoints; server keeps its 15 s tick |
+| 13 | 180 | Multiple fleets, 7 ships each, slots unlocked by gold and level | A+B | Large. Row 1 said 8 ships, this says 7 — unresolved. Gold slots are a new money sink; check against 0212 |
+| 14 | 183 | Plan tab: map, provisions, crew, restrictions | B+A | AFTER 0216 — its restrictions ARE the sea gate; building it first writes the rule twice |
+| — | 175 | **3× selling price by distance** | — | **BLOCKED ON THE OWNER.** It reverses 0212, which went live 04:27 UTC today to stop far selling printing money (far routes were ~89 % of profit; haul 600 → 3). Queue item 9 is also still HELD by the owner's own *"원거리 판매 기술은 아직 아냐"*. Read by default as "a long route should pay ~3× a short one per day" (today: 1.45×), a measured target, NOT a raw ×3 on price |
+
+**Still in flight from this morning (Lane A, finish before starting another server item):**
+0215 Sea S1 (#275) deploying · 0216 Sea S2 (#276, retarget its base to main first).
+
+
 Standing orders: keep working and never stop; never ask (decide, record it as "decided by default", and the owner may reverse it); give a 10-minute status; make it clean; CI fast and never from scratch; close finished shells and worktrees; use Fable where efficient.
 
 Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
@@ -7,6 +43,27 @@ Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
 Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the push lands. Migrations deploy in strict number order.
 
 Prod head: **0213** (0213 insurance LIVE 05:20 UTC, 0212 haul cap 04:27 UTC, 10-20). Earlier: **0211** (2026-10-20: 0209 arrivals 23:43, 0210 running costs 00:35, 0211 round trip 00:52 UTC; all after-checks passed).
+
+## HAND-OFF #3: the owner turned PC 디폴리스 off, 2026-10-20 ~09:00 UTC. START HERE (any PC, or the cloud)
+Owner 10-20: *"deploy and merge them if everything is finished, including korean"*, then *"make every procedure so that i can continue from other pc, or even cloud. then turn the pc off"*.
+
+**Live state at hand-off:** prod head **0213**, clock running (8/8 cron jobs active). **Korean (#278) MERGED** to main 08:58 UTC (b1887e1, client only); Pages publishes it. Nothing else landed today after 0213.
+
+**Open, in deploy order (strict number order: 0214 → 0215 → 0216):**
+1. **#277 Stats tab, 0214.** `db push` to prod at 08:49 UTC **failed its own self-assert and rolled back** (nothing landed, not merged): the probe city ACA has real trades on prod, so absolute checks (`sold_1d = 50`, `taxes_1d = 100`, SELL `-1234`) are wrong on a live world. Cloud routine `trig_01MnPGoVkQPm2SkiVnjNTGT6` (starts 09:05 UTC) makes them deltas and writes "PROD CHECKS FOR THE MAIN SESSION, 0214" in `docs/dev-log/2026-10-20-stats-tab.md`. Also: the red `acceptance-shard (npc 1/2)` is a flake ON MAIN (`tests/map.merchants.spec.ts:510`); cloud routine `trig_01CKaJUxg8fjL9a5BEtovqVW` fixes it on branch `osn-fix-merchants-flake` (own PR). Prod prechecks already run 08:45 and passed: every live flow kind has a word, goods names unique, registry hunk occurs once, 0214 not applied.
+2. **#275 Sea S1, 0215.** Prod prechecks (dev-log §8a + §8b) **all passed** 08:53 UTC. `db push` at ~08:55 **failed: "Connection terminated unexpectedly", at statement 23** (the 1,036,800-row `get_byte` cross-join check after the raster build). Rolled back, not merged. Cloud routine `trig_017qKVVUWsTSDDv7MF5JSPwk` (starts 09:06 UTC) makes 0215 fast (target < 60 s, no long hot-table locks), then rebases #276.
+3. **#276 Sea S2, 0216.** Stacked on #275 (base branch `osn-sea-s1`). After #275 merges, retarget its base to `main` (`gh pr edit 276 --base main`) before deploying.
+
+**EXACT DEPLOY PROCEDURE (any PC that has done `docs/NEW_COMPUTER.md`):**
+1. `cd ~/byeharu-voyage && git fetch && gh pr list` → read each PR's latest comment from its cloud routine; `gh pr checks <n>`; required = `build` + `disposable-chain` green.
+2. Prod head: `npx --yes supabase@2.120.0 db query --linked "select max(version) from supabase_migrations.schema_migrations"` (must be the number just below the PR's migration).
+3. Run the PR's dev-log "PROD CHECKS FOR THE MAIN SESSION" blocks read-only (`db query --linked -f <file>`); every row as expected. If one fails, do not push: send it back to a cloud routine.
+4. `~/bin/bv-deploy.sh <pr>`: it unwinds the clock, pushes, re-winds, and merges ONLY if `push_rc=0` and head = the PR's migration. On `NOT MERGING`, read `~/bv-push-logs/push-<version>.log` to its last error; never just re-run.
+5. After it lands: check the clock (`select count(*) filter (where active) from cron.job where jobname like 'byeharu-voyage:%'` = 8), the Pages deploy (`gh run list --workflow deploy-pages.yml -L 1`), then update this file and `~/bin/bv-queue-push.sh`.
+
+**FROM THE CLOUD (claude.ai/code, repo gkwngns714-spec/byeharu-voyage):** code, tests, PRs work today. **Deploys can't run from the cloud yet:** its environment has no `SUPABASE_ACCESS_TOKEN` (probe `trig_01Y4kboFF5vp35XEDAR7h9Bi`, 08:34: "not set"). One-time unblock (owner): supabase.com/dashboard/account/tokens → new token `claude-cloud`; claude.ai/code → environment selector → this environment's settings → Environment variables `SUPABASE_ACCESS_TOKEN=sbp_…`; Network access **Custom**: `api.supabase.com`, `supabase.co`, `*.supabase.co`, `supabase.com`, `*.supabase.com` + "include default package managers". Then re-run the probe; if it reads head 0213+, a cloud session can follow the procedure above with `bash scripts/ops/bv-deploy.sh <pr>` (repo path differs: edit `~/byeharu-voyage` in the script to the clone's path). Unverified: whether the DB connection (ports 5432/6543) passes the cloud proxy.
+
+**Cloud lessons (10-20):** routines created via the API did not show in the owner's claude.ai list; follow them on GitHub (branches and PR comments). A cloud sandbox builds the PGlite world from zero (~2.5 h): every routine brief says *no from-zero world build; tsc + eslint + build + pure specs; CI proves the chain*.
 
 ## THE LIST (tidied 2026-10-20 ~04:00 UTC: the ONE priority order; everything below it is history)
 Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize everything … build slowly step by step, but as efficient as possible."*
@@ -48,6 +105,14 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 - **Held:** pirates #268 (owner 10-20: "keep it as it is for now"). Famous gear sources: owner "later".
 - 0187 shipped TEN great powers: that follows the owner's own follow-up "in asia add korea, in europe add more" (OWNER_REQUESTS row 161). Not a mismatch.
 - The 10-18 "In progress" table below is STALE: all of it shipped (0186, 0188, 0197, 0199, 0183, #240, #227/#228, #225, #218, 0187).
+
+## BILLING NOTE 2026-10-20 ~06:00 UTC
+Owner: the WEEKLY allocation is still being used, not the cloud session credit (which expires 2026-11-05). Likely cause: the long LOCAL main session on PC 디폴리스 itself. Main session went quiet. Cloud routines (stats tab, sea S1+S2) run on. Next step, if confirmed: run the coordinator as a claude.ai/code cloud session. Also found: CROWN_AID 4.36M and EARNINGS 1.23M per 30 min after 0213 (maybe minted); trace it later (held).
+
+## CLOUD-FIRST (owner 2026-10-20: "use claude session credit first for all work … until it is exhausted")
+- 05:28 UTC every Fable 5.1 session (local agents AND the first cloud routine) stopped: "out of usage credits" (seven_day_overage_included, resets 2026-10-25 10:00 UTC). Opus still runs in the cloud.
+- Work moves to CLOUD ROUTINES on Opus (no parallel sub-agents). Code only; the main session on PC 디폴리스 runs the read-only prod checks and the deploys.
+- Running: `trig_012R2tAZnDaiCcqcVBcewJJ8` Stats tab finish (osn-stats-tab b054cee) · `trig_01RNBbPQDWzw78pE5cGJP37M` Sea S1+S2 rebase (osn-sea-s1 5278abe, osn-sea-s2). Korean (the first routine's work was lost, nothing pushed) restarts in the cloud after Stats merges.
 
 ## RESUMED 2026-10-19 ~23:30 UTC (PC 디폴리스)
 Prod head 0208 (checked). Nothing moved during the 15 h gap.

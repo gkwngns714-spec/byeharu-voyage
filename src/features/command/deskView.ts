@@ -9,13 +9,14 @@
 import { create } from 'zustand'
 import type { PortFace } from '../../live/cityFaces'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { t } from '../../lib/i18n'
 
 export const DESK_FACES = [
-  { id: 'markets', label: 'Markets' },
-  { id: 'plans', label: 'Plans' },
-  { id: 'city', label: 'City' },
-  { id: 'invest', label: 'Invest' },
-  { id: 'profit', label: 'Profit' },
+  { id: 'markets', get label() { return t('command.f_markets') } },
+  { id: 'plans', get label() { return t('command.f_plans') } },
+  { id: 'city', get label() { return t('command.f_city') } },
+  { id: 'invest', get label() { return t('command.f_invest') } },
+  { id: 'profit', get label() { return t('command.f_profit') } },
 ] as const
 
 export type DeskFace = (typeof DESK_FACES)[number]['id']
@@ -25,9 +26,9 @@ export type DeskFilter = 'all' | 'here' | 'on_board' | `cat:${string}`
 
 /** The list's sorts (§3.2): by name, by the move across the record, by the price. */
 export const DESK_SORTS = [
-  { id: 'name', label: 'Name' },
-  { id: 'change', label: 'Change' },
-  { id: 'price', label: 'Price' },
+  { id: 'name', get label() { return t('command.s_name') } },
+  { id: 'change', get label() { return t('command.s_change') } },
+  { id: 'price', get label() { return t('command.s_price') } },
 ] as const
 
 export type DeskSort = (typeof DESK_SORTS)[number]['id']

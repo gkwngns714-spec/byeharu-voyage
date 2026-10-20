@@ -11,6 +11,7 @@ import { CommandScreen } from '../features/command/CommandScreen'
 import { FleetsScreen } from '../features/fleets/FleetsScreen'
 import { useDeskView } from '../features/command/deskView'
 import { MapScreen } from '../features/map/MapScreen'
+import { StatsScreen } from '../features/stats/StatsScreen'
 import { LedgerScreen } from '../features/ledger/LedgerScreen'
 import { RankScreen } from '../features/rank/RankScreen'
 import { RoutesScreen } from '../features/routes/RoutesScreen'
@@ -59,6 +60,7 @@ export function App() {
               is gone; an old link to it opens the desk's City face, where every building it carried now is. */}
           <Route path="/port" element={<PortMovedToCity />} />
           <Route path="/map" element={<MapScreen />} />
+          <Route path="/stats" element={<StatsScreen />} />
           <Route path="/ledger" element={<LedgerScreen />} />
           <Route path="/rank" element={<RankScreen />} />
           <Route path="/routes" element={<RoutesScreen />} />

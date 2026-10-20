@@ -4,6 +4,7 @@ import { buyableHere } from '../domain/market'
 import { formatPriceDelta, formatPriceFigure, formatTons, formatUnits } from '../lib/format'
 import type { FleetView, MarketGood } from '../lib/rpc'
 import { useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // WHAT THE SHIP CARRIES — beside the basket, as rows shaped like the board, with the sale drawn.
@@ -40,12 +41,13 @@ export function OnBoard({
   onBuy: (good: MarketGood) => void
   onSell: (good: MarketGood) => void
 }) {
+  const t = useT()
   const goodByCode = useWorld((s) => s.goodByCode)
   const lines = fleetCargo(fleet)
   return (
-    <SheetSection heading="On board" data-testid="on-board">
+    <SheetSection heading={t('trade.onBoard')} data-testid="on-board">
       {lines.length === 0 ? (
-        <Row label="No cargo on board." tone="muted" hairline={false} />
+        <Row label={t('trade.noCargo')} tone="muted" hairline={false} />
       ) : (
         lines.map((line, i) => (
           <OnBoardRow
@@ -87,6 +89,7 @@ function OnBoardRow({
   onBuy: (good: MarketGood) => void
   onSell: (good: MarketGood) => void
 }) {
+  const t = useT()
   const paid = paidPerTun(fleet, code)
   // THE GAP FOR ONE UNIT: the two prices drawn on the bar, subtracted — nothing else.
   const gap = paid !== null && here ? here.sell - paid : null
@@ -111,28 +114,28 @@ function OnBoardRow({
         value={
           here ? (
             <span className="grid grid-cols-2 gap-1">
-              <PriceCell label="buy" price={here.buy} onPress={() => onBuy(here)} dead={buyableHere(here) ? null : 'not traded here'} selected={false} />
+              <PriceCell label="buy" price={here.buy} onPress={() => onBuy(here)} dead={buyableHere(here) ? null : t('trade.notTraded')} selected={false} />
               <PriceCell label="sell" price={here.sell} onPress={() => onSell(here)} dead={null} selected={false} />
             </span>
           ) : (
-            <span className="text-t-caption text-ink-faint">not traded here</span>
+            <span className="text-t-caption text-ink-faint">{t('trade.notTraded')}</span>
           )
         }
         hairline={false}
       />
       {here && (
         <div className="flex items-center gap-2 pb-2" data-testid={`on-board-sale-${code}`}>
-          <span className="shrink-0 text-t-caption text-ink-faint">{paid === null ? 'cost unknown' : `bought ${formatPriceFigure(paid)}`}</span>
+          <span className="shrink-0 text-t-caption text-ink-faint">{paid === null ? t('trade.costUnknown') : t('trade.boughtAt', { price: formatPriceFigure(paid) })}</span>
           <Bar
             pct={paid === null ? 100 : paidPct}
             pending={paid === null ? undefined : gapPct}
             tone="neutral"
             pendingTone={gain === false ? 'danger' : 'success'}
-            label={`${name}: bought at ${paid === null ? 'unknown' : formatPriceFigure(paid)}, sells at ${formatPriceFigure(here.sell)}`}
+            label={t('trade.saleLabel', { name, paid: paid === null ? t('trade.unknown') : formatPriceFigure(paid), sells: formatPriceFigure(here.sell) })}
             className="min-w-0 flex-1"
           />
-          <span className="shrink-0 text-t-caption text-ink-faint">{`sells ${formatPriceFigure(here.sell)}`}</span>
-          {gap !== null && <Figure value={formatPriceDelta(gap)} unit="each" tone={gain ? 'success' : 'danger'} />}
+          <span className="shrink-0 text-t-caption text-ink-faint">{t('trade.sellsAt', { price: formatPriceFigure(here.sell) })}</span>
+          {gap !== null && <Figure value={formatPriceDelta(gap)} unit={t('trade.each')} tone={gain ? 'success' : 'danger'} />}
         </div>
       )}
     </div>

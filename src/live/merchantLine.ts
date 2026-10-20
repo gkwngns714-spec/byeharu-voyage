@@ -1,6 +1,7 @@
 import { formatClock, instantMs } from '../lib/format'
 import { joinPieces, whereabouts, whereParts, type WherePiece } from '../domain/fleet'
 import type { TrafficFleet } from '../lib/rpc'
+import { t as tNow } from '../lib/i18n'
 
 /**
  * THE ONE LINE beside a merchant's name — at peek on MAP and on her row in PORT. WHERE she is is
@@ -30,5 +31,5 @@ export function merchantParts(t: MerchantLineFacts, portName: (code: string) => 
   const here = whereParts(where, portName, nowMs)
   if (where.kind === 'sailing') return here
   const next = instantMs(t.next_lap_at)
-  return next !== null ? [...here, ` · sails at ${formatClock(next)}`] : here
+  return next !== null ? [...here, tNow('town.sailsAt', { time: formatClock(next) })] : here
 }

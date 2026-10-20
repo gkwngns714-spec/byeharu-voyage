@@ -6,6 +6,7 @@ import { useWorld } from '../../../live/worldStore'
 import { fold, foldedMatch } from '../../../lib/text'
 import type { FleetView, SnapshotGood, WatchGood } from '../../../lib/rpc'
 import { useDeskView, type DeskFilter } from '../deskView'
+import { t } from '../../../lib/i18n'
 
 // THE MARKETS LIST'S ROWS — which goods stand on the watchlist, in what order (docs/COMMAND_DESK.md
 // §3.2). One reading for both readers: the list itself (Markets.tsx), and the wide desk, which opens the
@@ -54,9 +55,9 @@ export function useMarketRows(fleet: FleetView) {
   }, [snapshot, search, filter, sort, byCode, quay.market])
 
   const chips: { id: DeskFilter; label: string }[] = [
-    { id: 'all', label: 'All' },
-    ...(docked ? [{ id: 'here' as DeskFilter, label: 'Here' }] : []),
-    { id: 'on_board', label: 'On board' },
+    { id: 'all', label: t('markets.all') },
+    ...(docked ? [{ id: 'here' as DeskFilter, label: t('markets.here') }] : []),
+    { id: 'on_board', label: t('markets.onBoard') },
     ...categories.map((c) => {
       const word = categoryLabel(c)
       return {

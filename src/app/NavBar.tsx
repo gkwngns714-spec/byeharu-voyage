@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon, Nav, Row, Tray, type NavItem, type TrayDetent } from '../components/ui'
 import { NAV_CELLS, tabHref } from './navTabs'
+import { useT, translateMaybe, useLocale } from '../lib/i18n'
 
 // THE ONE navigation. Extracted from AppShell so it can be RENDERED AND MEASURED on its own at a
 // phone viewport without booting the shell — a number in a comment is not a measurement, and
@@ -46,6 +47,7 @@ import { NAV_CELLS, tabHref } from './navTabs'
 const CABIN_DETENT: TrayDetent = 'half'
 
 export function NavBar() {
+  const t = useT()
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
@@ -85,10 +87,13 @@ export function NavBar() {
 
   // A TAB'S CELL ID IS ITS ROUTE, which is what lets `onNavigate` hand back an item and this file
   // route on it without translating an href back into a path.
+  // A tab is named in navTabs.ts in English; its word on screen is the shell dictionary's.
+  const locale = useLocale()
+  const word = (label: string) => translateMaybe(locale, 'shell', `tab_${label}`) ?? label
   const items: NavItem[] = NAV_CELLS.map((c) =>
     c.kind === 'tab'
-      ? { id: c.to, label: c.label, icon: c.icon, href: tabHref(c.to) }
-      : { id: c.id, label: c.label, icon: c.icon },
+      ? { id: c.to, label: word(c.label), icon: c.icon, href: tabHref(c.to) }
+      : { id: c.id, label: word(c.label), icon: c.icon },
   )
 
   /** One spelling of "go there, and shut the tray on the way out" — for the six cells and the four
@@ -107,7 +112,7 @@ export function NavBar() {
               bar's own taps would be the collapse rule broken by another route. */}
           <button
             type="button"
-            aria-label={`Close ${openMembers.label}`}
+            aria-label={t('shell.closeGroup', { name: word(openMembers.label) })}
             onClick={closeGroup}
             tabIndex={-1}
             className="absolute inset-x-0 bottom-full z-10 h-screen cursor-default"
@@ -121,7 +126,7 @@ export function NavBar() {
                 if (next === 'closed') closeGroup()
                 else setOpened({ path: pathname, group: openMembers.id, detent: next })
               }}
-              title={openMembers.label}
+              title={word(openMembers.label)}
             >
               {openMembers.members.map((m, i) => (
                 <Row
@@ -133,7 +138,7 @@ export function NavBar() {
                     go(m.to)
                   }}
                   mark={<Icon name={m.icon} size={20} />}
-                  label={m.label}
+                  label={word(m.label)}
                   chevron
                   tone={m.to === pathname ? 'accent' : 'default'}
                   hairline={i < openMembers.members.length - 1}

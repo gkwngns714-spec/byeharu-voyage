@@ -8,6 +8,7 @@ import { RouteFold } from '../RouteFold'
 import { InsuredVoyages } from './InsuredVoyages'
 import { PlanBuilder } from './PlanBuilder'
 import { useDeskPlan } from './planDraft'
+import { useT } from '../../../lib/i18n'
 
 // PLANS — the fleet's plan, its route and its orders (docs/COMMAND_DESK.md §3.5): the standing route
 // (0092; it folds in place), the queue with its ✕ and Clear (busy only while their own press is on the
@@ -19,6 +20,7 @@ import { useDeskPlan } from './planDraft'
 // builder in flow (never a tray over the screen).
 
 export function Plans({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
+  const t = useT()
   const readAt = useWorld((s) => s.readAt)
   const cancel = useWorld((s) => s.cancel)
   const clearQueue = useWorld((s) => s.clear)
@@ -31,7 +33,7 @@ export function Plans({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     order: ['side', 'main', 'list'],
     list: (
       <>
-        <SheetSection heading="Orders" surface data-testid="command-queue">
+        <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
           <Queue
             fleet={fleet}
             readAt={readAt}
@@ -56,6 +58,6 @@ export function Plans({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           onRoute={() => turnTo('plans')}
         />
       ) : null,
-    sideHint: 'No plan open. On Markets, press Plan on a good to plan a buy and a sell; it stands here.',
+    sideHint: t('desk.planSide'),
   })
 }

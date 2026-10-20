@@ -4,6 +4,7 @@ import { useHaggleState } from './useHaggleState'
 import { formatDucats, formatOfTotal, formatPct, formatPctPoints, formatUnitPrice } from '../lib/format'
 import { useWorld } from './worldStore'
 import type { MarketGood, Refusal } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE HAGGLE, AS A THREAD — inside the trade tray, on BOTH sides (docs/QUAY_LEDGER.md §3 D and
@@ -63,6 +64,7 @@ export function HaggleThread({
   /** The tray's own dry run for the quantity on the button — `useTrade`'s one reading. */
   preview: TradeAct['preview']
 }) {
+  const t = useT()
   const haggle = useWorld((s) => s.haggle)
   const read = useHaggleState(fleetId, good.code)
   const [open, setOpen] = useState(false)
@@ -108,14 +110,14 @@ export function HaggleThread({
   return (
     <>
       <Row
-        label="Bargain"
+        label={t('trade.bargain')}
         chevron
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         data-testid="haggle-row"
         value={
           <span className="flex items-center gap-3">
-            <Figure value={formatOfTotal(quay.attempts_left, quay.attempts_max)} unit="tries left" tone={read.loading ? 'faint' : 'muted'} />
+            <Figure value={formatOfTotal(quay.attempts_left, quay.attempts_max)} unit={t('trade.triesLeft')} tone={read.loading ? 'faint' : 'muted'} />
             <Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={oddsTone} />
           </span>
         }
@@ -126,26 +128,26 @@ export function HaggleThread({
             <Row key={i} label={t.message} tone={t.won ? 'default' : 'muted'} hairline={false} data-testid="haggle-turn" />
           ))}
           {refusal && (
-            <Note tone="danger" code={refusal.code} data-testid="haggle-refusal">
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} data-testid="haggle-refusal">
               {refusal.sentence}
             </Note>
           )}
-          <Row label="Port fee" value={<Figure value={fee} />} data-testid="haggle-fee" />
+          <Row label={t('trade.portFee')} value={<Figure value={fee} />} data-testid="haggle-fee" />
           {price === null ? (
-            <Row label="Price" tone="muted" value="Loading…" data-testid="haggle-price" />
+            <Row label={t('trade.price')} tone="muted" value={t('trade.loading')} data-testid="haggle-price" />
           ) : (
-            <Row label="Price" value={<Figure value={price} />} data-testid="haggle-price" />
+            <Row label={t('trade.price')} value={<Figure value={price} />} data-testid="haggle-price" />
           )}
           {saved > 0 && (
-            <Row label="Bargain saved" value={<Figure value={formatDucats(saved)} tone="success" />} data-testid="haggle-saved" />
+            <Row label={t('trade.saved')} value={<Figure value={formatDucats(saved)} tone="success" />} data-testid="haggle-saved" />
           )}
-          <Row label="Tries" value={<Figure value={formatOfTotal(quay.attempts_left, quay.attempts_max)} unit="tries" />}>
-            <Bar value={quay.attempts_left} of={quay.attempts_max} tone="accent" label="tries left" className="mt-1" />
+          <Row label={t('trade.tries')} value={<Figure value={formatOfTotal(quay.attempts_left, quay.attempts_max)} unit={t('trade.triesUnit')} />}>
+            <Bar value={quay.attempts_left} of={quay.attempts_max} tone="accent" label={t('trade.triesLeft')} className="mt-1" />
           </Row>
           <Row
-            label="Next try"
+            label={t('trade.nextTry')}
             hairline={false}
-            value={<Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={oddsTone} unit={quay.at_floor ? 'at the floor' : undefined} />}
+            value={<Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={oddsTone} unit={quay.at_floor ? t('trade.atFloor') : undefined} />}
             data-testid="haggle-odds"
           >
             {/* 0161: the server's sentence when one of her captains speaks the port's language */}
@@ -153,10 +155,10 @@ export function HaggleThread({
           </Row>
           <div className="grid grid-cols-2 gap-2 py-2">
             <Button variant="secondary" className="w-full" onClick={() => setOpen(false)} data-testid="haggle-take">
-              Take it
+              {t('trade.takeIt')}
             </Button>
             <Button variant="primary" className="w-full" busy={busy} busyLabel="…" onClick={press} data-testid="haggle-press">
-              {turns.length === 0 ? 'Bargain' : 'Try again'}
+              {t(turns.length === 0 ? 'trade.bargain' : 'trade.tryAgain')}
             </Button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { formatRealDuration, instantMs } from '../lib/format'
 import type { MerchantDoing, PortMerchant } from '../lib/rpc'
+import { t, wordTable } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE WORDS A HARBOUR USES FOR A MERCHANT — spelled once, read by PORT's section and the MAP's
@@ -17,14 +18,14 @@ import type { MerchantDoing, PortMerchant } from '../lib/rpc'
 // three — started, resting, ending — are kept as the states they describe; `laid up` is WORDS.md's
 // standing row for a merchant that cannot sail on, and `away` is the plain word for "her loop
 // calls here and she is somewhere else on it".
-export const DOING_WORD: Record<MerchantDoing, string> = {
-  laid_up: 'Laid up',
-  resting: 'Resting',
-  starting: 'Starting',
-  ending: 'Ending',
-  passing: 'Passing',
-  away: 'Away',
-}
+export const DOING_WORD: Readonly<Record<MerchantDoing, string>> = wordTable({
+  laid_up: 'town.m_laid_up',
+  resting: 'town.m_resting',
+  starting: 'town.m_starting',
+  ending: 'town.m_ending',
+  passing: 'town.m_passing',
+  away: 'town.m_away',
+})
 
 /** The instant her rest ends, in ms — `next_lap_at`, the hold 0101 wrote — or null when she is
  *  not held (or the hold is a byte the server did not spell as a time). A LAID-UP merchant's hold
@@ -42,7 +43,7 @@ export function restEndsAt(m: Pick<PortMerchant, 'doing' | 'next_lap_at'>): numb
  */
 export function restLeft(endsAtMs: number, nowMs: number): string {
   const left = endsAtMs - nowMs
-  return left < 60_000 ? 'ends soon' : formatRealDuration(left)
+  return left < 60_000 ? t('town.endsSoon') : formatRealDuration(left)
 }
 
 /** Her level as the read serves it (0113): the company's four skills summed. A server that has not

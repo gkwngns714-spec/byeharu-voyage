@@ -20,6 +20,7 @@ import type { SnapshotGood } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { useWorld } from '../../live/worldStore'
 import { NoAnswer } from './NoAnswer'
+import { useT } from '../../lib/i18n'
 
 // THE GOODS FACE — every good this world trades, grouped under its kind, one figure a tile.
 //
@@ -35,6 +36,7 @@ import { NoAnswer } from './NoAnswer'
 const EMPTY: readonly SnapshotGood[] = []
 
 export function GoodsFace({ query }: { query: string }) {
+  const t = useT()
   const snapshot = useWorld((s) => s.snapshot)
   const goods = snapshot?.goods ?? EMPTY
   const [open, setOpen] = useState<SnapshotGood | null>(null)
@@ -90,27 +92,27 @@ export function GoodsFace({ query }: { query: string }) {
           title={open.name}
           data-testid="good-tray"
         >
-          <Row label="Kind" value={categoryLabel(open.category)} />
-          {open.rarity && <Row label="Rarity" value={<RarityLine rarity={open.rarity} />} />}
-          <Row label="Base" value={<Figure value={anchor(open.base_value)} unit={COIN} />} />
+          <Row label={t('codex.kind')} value={categoryLabel(open.category)} />
+          {open.rarity && <Row label={t('codex.rarity')} value={<RarityLine rarity={open.rarity} />} />}
+          <Row label={t('codex.base')} value={<Figure value={anchor(open.base_value)} unit={COIN} />} />
           <Row
-            label="Weight"
-            value={<Figure value={formatFixed(open.bulk, 1)} unit="tons" />}
+            label={t('codex.weight')}
+            value={<Figure value={formatFixed(open.bulk, 1)} unit={t('codex.tons')} />}
             hairline={open.perishable_pct_day > 0}
           />
           {open.perishable_pct_day > 0 && (
             <Row
-              label="Spoils"
-              value={<Figure value={formatPct(open.perishable_pct_day, 1)} unit="per day" tone="warning" />}
+              label={t('codex.spoils')}
+              value={<Figure value={formatPct(open.perishable_pct_day, 1)} unit={t('codex.perDay')} tone="warning" />}
               hairline={false}
             />
           )}
           {open.culture_mask.length > 0 && (
             // UNAVAILABLE IS SHOWN WITH ITS REASON: the cultures whose ports refuse this good
             // outright, in the server's own words (DESIGN B.4).
-            <Note tone="warning" className="mt-2">{`Not traded at ${open.culture_mask.join(', ')} ports.`}</Note>
+            <Note tone="warning" className="mt-2">{t('codex.notTradedAt', { cultures: open.culture_mask.join(', ') })}</Note>
           )}
-          <Hint className="mt-2">Base is a reference value, not a price. Prices differ per port.</Hint>
+          <Hint className="mt-2">{t('codex.baseHint')}</Hint>
         </Tray>
       )}
     </>

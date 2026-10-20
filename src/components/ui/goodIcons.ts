@@ -1,4 +1,5 @@
 import type { IconName } from './icons'
+import { properName } from '../../lib/i18n'
 
 // A MARK FOR A TRADE GOOD — the one mapping from a good to the glyph that stands for it.
 //
@@ -166,5 +167,5 @@ export function goodIcon(code: string, category: string): IconName {
  * naval stores with a hyphen because it is a code; a person reading a picker should not have to.
  */
 export function categoryLabel(category: string): string {
-  return category === 'ship-supplies' ? 'ship supplies' : category
+  return properName('category', category, category === 'ship-supplies' ? 'ship supplies' : category)
 }

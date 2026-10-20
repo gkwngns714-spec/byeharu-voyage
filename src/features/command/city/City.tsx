@@ -20,6 +20,7 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
 import type { DeskLayout } from '../DeskFrame'
 import { useDeskView } from '../deskView'
+import { useT } from '../../../lib/i18n'
 
 // CITY — every building of the city the fleet is at, on the desk (docs/COMMAND_DESK.md §2.1, §3.6, D5). The
 // owner, 2026-10-17: *"delete port tab, and focus on command tab … and all"*.
@@ -39,6 +40,7 @@ import { useDeskView } from '../deskView'
 // a job) in the right pane — the desk's slot; on a phone, one under the other (an act pressed there rises as the bottom tray, which moves nothing).
 
 export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
+  const t = useT()
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const face = useDeskView((s) => s.cityFace)
@@ -70,7 +72,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
 
   return layout({
     testid: 'desk-city',
-    sideHint: 'Press a price, a room or a job to act on it here.',
+    sideHint: t('desk.citySide'),
     list: (
     <>
       <h2 className="flex items-center gap-2 text-t-body font-semibold text-ink">
@@ -80,12 +82,12 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
       {!here && (
         <Note tone="neutral" className="mt-2" data-testid="desk-city-bound">
           {where.kind === 'sailing'
-            ? `${fleet.name} is sailing to ${boundForLabel(where, (c) => portNameOf(portByCode, c))}. Orders run when it arrives; until then this city is read only.`
-            : `${fleet.name} is not docked here; this city is read only.`}
+            ? t('desk.sailingRO', { fleet: fleet.name, place: boundForLabel(where, (c) => portNameOf(portByCode, c)) })
+            : t('desk.notDockedRO', { fleet: fleet.name })}
         </Note>
       )}
       <Segmented<PortFace>
-        label="City buildings"
+        label={t('desk.cityBuildings')}
         segments={offered.map((f) => ({ id: f.id, label: f.label }))}
         value={shown.id}
         onChange={setFace}
@@ -103,10 +105,10 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
             quay.refusal !== null ? (
               <Note
                 tone="danger"
-                code={quay.refusal.code}
+                code={quay.refusal.code} figures={quay.refusal.figures}
                 action={
                   <Button size="sm" onClick={quay.retry}>
-                    Try again
+                    {t('desk.tryAgain')}
                   </Button>
                 }
               >
