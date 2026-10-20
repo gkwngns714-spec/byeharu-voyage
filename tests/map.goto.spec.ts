@@ -21,18 +21,40 @@ import { whereabouts } from '../src/domain/fleet'
 
 const WIDE = { width: 1280, height: 800 }
 
-/** Press a harbour's name somewhere in the left part of the glass; returns its code. */
+/** Press a harbour in the left part of the glass — a named one, pressed ON ITS MARK; returns its
+ *  code.
+ *
+ *  THE MARK, NOT THE MIDDLE OF THE WORD (2026-10-20). A harbour is CHOSEN by its name, because a
+ *  name is what makes it a place a player can aim at, and then the press goes on the triangle the
+ *  name belongs to (`[data-port-mark][data-port-code=…]`, concentric about the harbour's own
+ *  point). The centre of a LONG word sits out on open water beside the mark, and since row 172 a
+ *  single press on open water opens NOTHING — the owner: *"I want to just move around"* — so such a
+ *  press would leave this helper waiting for a panel that is never coming. It used to be covered by
+ *  accident: open water wore the same `map-place-name` tray, so the assertion below passed on a
+ *  panel reading `28.1°N 13.9°W · Open sea` instead of a city (tests/map.merchants.spec.ts's
+ *  `openHarbour` carries that CI run). The word is still the fallback for a harbour with no mark on
+ *  the glass. */
 async function openACity(page: Page, maxX: number): Promise<string> {
   await page.locator('[data-label-id^="port:"]').first().waitFor({ state: 'attached', timeout: 120_000 })
   const pick = await page.evaluate((limit) => {
     const glass = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
+    const centre = (el: Element) => {
+      const r = el.getBoundingClientRect()
+      return r.width > 0 && r.height > 0 ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null
+    }
     for (const e of document.querySelectorAll('[data-label-id^="port:"]')) {
-      const r = e.getBoundingClientRect()
-      const x = r.x + r.width / 2
-      const y = r.y + r.height / 2
-      if (r.width > 0 && x > glass.x + 80 && x < limit && y > glass.y + 120 && y < glass.bottom - 140) {
-        return { id: e.getAttribute('data-label-id')!, x, y }
-      }
+      const word = centre(e)
+      if (!word || !(word.x > glass.x + 80 && word.x < limit && word.y > glass.y + 120 && word.y < glass.bottom - 140)) continue
+      const id = e.getAttribute('data-label-id')!
+      const code = id.slice('port:'.length)
+      // Her mark, on THIS copy of the sheet: the nearest one to her name (2026-10-14, the
+      // continuous chart draws a harbour once per copy).
+      const marks = [...document.querySelectorAll(`[data-port-mark][data-port-code="${code}"]`)]
+        .map(centre)
+        .filter((p): p is { x: number; y: number } => !!p && p.x > glass.x && p.x < glass.right && p.y > glass.y && p.y < glass.bottom)
+        .sort((a, b) => Math.hypot(a.x - word.x, a.y - word.y) - Math.hypot(b.x - word.x, b.y - word.y))
+      const at = marks[0] ?? word
+      return { id, x: at.x, y: at.y }
     }
     return null
   }, maxX)

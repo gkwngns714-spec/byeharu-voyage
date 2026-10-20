@@ -753,10 +753,22 @@ async function closeTray(page: Page): Promise<void> {
  *
  *   'listed'  the city's tray is at half with its merchant list on the glass
  *   'empty'   the city's tray is at half and no list came (nobody's loop calls here)
- *   'taken'   the tap never opened the CITY: a merchant hull drifting over the name, open water
- *             beside a long name, or one of your own fleets, won it by the chart's own tie rule (hitTest.ts) — three aims, a
- *             second apart, because a sailing hull moves on. Correct behaviour, not a defect, and
- *             it happened locally for Cadiz with `Flotte de Nantes` passing over the name.
+ *   'taken'   the tap never opened the CITY: a merchant hull drifting over her mark, or one of your
+ *             own fleets, won it by the chart's own tie rule (hitTest.ts) — three aims, a second
+ *             apart, because a sailing hull moves on. Correct behaviour, not a defect, and it
+ *             happened locally for Cadiz with `Flotte de Nantes` passing over the name.
+ *
+ * AIMED AT THE MARK, NOT AT THE MIDDLE OF THE WORD (2026-10-20). The press is on
+ * `[data-port-mark][data-port-code=…]`, the triangle itself, re-read before every aim; the label's
+ * box is the fallback for a harbour whose mark is not on the glass. The word was the target until
+ * today, and the centre of a LONG word sits out on open water beside the mark — which is how CI run
+ * 38776868688 opened "28.1°N 13.9°W · Open sea" off the Canaries for a city. That tap used to be
+ * rescued by accident: open water wore a tray, a tray is a `CHART_CHROME` box, the label planner
+ * keeps names out of those boxes (src/chart/useChartSurface.ts `useChromeBoxes`), so the miss MOVED
+ * the word and the next aim landed somewhere else. Row 172 (the owner: *"I want to just move
+ * around"*) made a single press on open water open nothing, which is right, and took that accident
+ * away with it: three aims at one patch of water are three misses. The mark is what the player
+ * presses and what hitTest.ts resolves, so it is what this drive presses.
  *
  * The caller decides what each means: for the fixture's harbour 'taken' and 'empty' are failures
  * it states; for a sweep they are a harbour that is not the city's to answer this second.
@@ -769,7 +781,48 @@ async function openHarbour(
   const send = page.getByTestId('map-send-fleet')
   for (let aim = 1; aim <= 3; aim++) {
     await closeTray(page)
-    await page.mouse.click(label.x, label.y)
+    // WHERE THE MARK IS NOW, every aim — the rule `tapHull` keeps for a drifting hull ("aim again
+    // at where she is NOW"), and the header says why it is the MARK and not the word. Re-read each
+    // time because the chart is alive: opening and closing a tray re-places every name through the
+    // chrome boxes, and a go-to or a resize moves the marks themselves, while `harbourLabels`
+    // measured its boxes once before the first tray was ever opened.
+    //
+    // THE COPY THE EYE IS ON (2026-10-14, the continuous chart): a harbour is drawn once per copy
+    // of the sheet, so there can be two marks with one code. Only the ones ON the glass are
+    // candidates, and of those the nearest to where her name was is hers.
+    const at = await page.evaluate(
+      ({ id, hint }: { id: string; hint: { x: number; y: number } }) => {
+        const glass = document.querySelector('[data-testid="map-chart"]')?.getBoundingClientRect()
+        if (!glass) return null
+        const centre = (el: Element) => {
+          const r = el.getBoundingClientRect()
+          return r.width > 0 && r.height > 0 ? { x: r.x + r.width / 2, y: r.y + r.height / 2 } : null
+        }
+        const onGlass = (p: { x: number; y: number } | null) =>
+          !!p && p.x > glass.left && p.x < glass.right && p.y > glass.top && p.y < glass.bottom
+        const code = id.slice('port:'.length)
+        // The mark's group is concentric about the harbour's own point — the halo, the triangle and
+        // the great-port ring are all drawn on it — so the box's centre IS the point.
+        const marks = [...document.querySelectorAll(`[data-port-mark][data-port-code="${code}"]`)]
+          .map(centre)
+          .filter(onGlass) as { x: number; y: number }[]
+        if (marks.length > 0) {
+          marks.sort((a, b) => Math.hypot(a.x - hint.x, a.y - hint.y) - Math.hypot(b.x - hint.x, b.y - hint.y))
+          return marks[0]
+        }
+        // No mark on the glass (she has been panned off, or is drawn as nothing at this zoom): the
+        // word is the only target left, which is what this helper aimed at before today.
+        const label = document.querySelector(`[data-label-id="${id}"]`)
+        const word = label ? centre(label) : null
+        return onGlass(word) ? word : null
+      },
+      { id: label.id, hint: { x: label.x, y: label.y } },
+    )
+    if (!at) {
+      await page.waitForTimeout(1_000)
+      continue
+    }
+    await page.mouse.click(at.x, at.y)
     // the city's tray, with its one control — anything else that opened took the tap
     // A CITY, NOT A POINT OF WATER (2026-10-16). Open sea wears the same tray and the same `Send
     // fleet` press, so those two alone took a tap that fell on WATER beside a long name (CI run
