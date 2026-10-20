@@ -2,6 +2,7 @@ import { CargoRows } from '../../components/ui'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
 import { fleetCargo } from '../../domain/fleet'
+import { FleetHold } from './FleetHold'
 // WHAT SHE CARRIES, AS ROWS.
 //
 // It was a three-column table (Good · Units · Bulk) with the name as a link and a `stowed` total
@@ -24,17 +25,25 @@ import { fleetCargo } from '../../domain/fleet'
 
 // THE ROWS THEMSELVES are the design system's `CargoRows` since 2026-10-08 (a merchant's sheet
 // prints the same rows); the names are resolved here, through the world's goods.
+// WHAT THE HOLD IS MADE OF rides UNDER the rows, not beside them (owner row 179). The rows answer
+// "which goods"; the breakdown answers "how much of the hold is goods at all" — the question the
+// closing tonnage row raises and does not settle, because provisions share that hold and are not a
+// cargo line. Mounted here rather than in the Supplies column because it is a reading of the HOLD,
+// and the hold is this column's subject; Supplies is about days of endurance.
 export function FleetCargo({ fleet }: { fleet: FleetView }) {
   const goodByCode = useWorld((s) => s.goodByCode)
   return (
-    <CargoRows
-      rows={fleetCargo(fleet).map((line) => ({
-        code: line.code,
-        name: goodByCode[line.code]?.name ?? line.code,
-        category: goodByCode[line.code]?.category ?? '',
-        qty: line.qty,
-      }))}
-      totalTons={fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0)}
-    />
+    <>
+      <CargoRows
+        rows={fleetCargo(fleet).map((line) => ({
+          code: line.code,
+          name: goodByCode[line.code]?.name ?? line.code,
+          category: goodByCode[line.code]?.category ?? '',
+          qty: line.qty,
+        }))}
+        totalTons={fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0)}
+      />
+      <FleetHold fleet={fleet} />
+    </>
   )
 }

@@ -1,7 +1,8 @@
 import { Button, Figure, Icon, Note, Row } from '../../components/ui'
 import { boundForLabel, fleetRefusedOrder, voyageEtaMs, whereabouts } from '../../domain/fleet'
 import { queuedOrderWords, refusalOfOrder } from '../../domain/order'
-import { formatMiles, formatRealShort } from '../../lib/format'
+import { formatCountdown, formatMiles } from '../../lib/format'
+import { useShellState } from '../../app/shellState'
 import { usePress } from '../../live/usePress'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
@@ -23,6 +24,29 @@ import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 // addresses its order by `seq` and awaits the read that renumbers them, so while one press is on
 // the wire no other ✕ may fire on a stale seq — and outside a press, nothing greys anything.
 //
+// THE ARRIVAL COUNTS DOWN ON THE ONE CLOCK (owner row 170, 2026-10-20):
+//
+//     "When arriving a city, why is there a waiting time? Arrives in (min)??? This should be gone,
+//      meaning it should arrive at city as soon as it reaches it."
+//
+// There is no wait at the quay to remove. A player's own fleet is docked by the READ that finds her
+// arrived — migration 0009's first law, "every read RPC that touches a fleet first calls
+// voyage.settle" — so the arrivals sweep never gates her, and the shell reads every 7.5 s at the
+// live clock (AppShell.tsx). What the owner was reading as a wait was THIS COUNTDOWN, drawn two
+// ways that both made a moving figure look like a stationary one:
+//
+//   * it counted against `readAt`, the LAST READ'S instant, not against the clock. Between two
+//     reads the figure did not move at all — the row said "arrives in 1m" and went on saying it;
+//   * it was drawn with `formatRealShort`, which rounds the seconds away (its own doc-comment says
+//     "a countdown drawn with it would only move once a minute and read as stuck"). So the last
+//     thing a player saw before she docked was a whole minute, standing still. Hence "(min)???".
+//
+// Both are gone. The countdown now rides the shell's one clock (shellState.ts: "this game is full
+// of 'arrives in 4h 12m': each of those is a countdown, and a countdown needs something to
+// re-render it") and is drawn with `formatCountdown` — `0:48`, ticking every second — which is what
+// MAP's voyage tray has always drawn. Past the instant the word is "due", never "arrived": the next
+// read is what lands her, and the client never decides an arrival on its own.
+//
 // A REFUSED ORDER NO LONGER STOPS HER (0186; the owner, 2026-10-18: "stopped at order 29 and will not skip
 // it"). The server cancels what depended on it — the rest of its plan, whatever stood behind a refused SAIL —
 // each with the reason, and runs the rest. The refused row stays as a record until it is dismissed, so every
@@ -31,18 +55,19 @@ import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 
 export function Queue({
   fleet,
-  readAt,
   onCancel,
   onClear,
 }: {
   fleet: FleetView
-  readAt: number | null
   /** The verbs, as promises: a press is busy until its own act settles (worldStore's cancel/clear).
    *  `onCancel` takes the row's 1-based position in `fleet.queue` — cmd.cancel_at's index (0186). */
   onCancel: (position: number) => Promise<boolean>
   onClear: () => Promise<boolean>
 }) {
   const t = useT()
+  // THE ONE CLOCK, not the last read's instant — see the header. A DISPLAY value only: whether she
+  // has arrived is the server's, decided by `voyage.settle` inside the read.
+  const { nowMs } = useShellState()
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
   const press = usePress()
@@ -53,7 +78,9 @@ export function Queue({
   const failedRefusal = failed ? refusalOfOrder(failed) : null
   const where = whereabouts(fleet)
   const eta = voyageEtaMs(fleet)
-  const etaMs = eta !== null && readAt !== null ? Math.max(0, eta - readAt) : null
+  // Null when nothing is counting; "due" once the instant has passed and the read that lands her
+  // has not come back yet — the same wording `fleetLine.ts`'s `fleetDue` uses, for the same reason.
+  const due = eta === null ? null : nowMs >= eta ? tNow('domain.due') : formatCountdown(eta - nowMs)
 
   return (
     <>
@@ -68,7 +95,7 @@ export function Queue({
         <Row
           mark={<Icon name="ship" size={18} className="text-info" />}
           label={t('command.sailingTo', { place: boundForLabel(where, (c) => portNameOf(portByCode, c)) })}
-          value={etaMs !== null ? <Figure value={formatRealShort(etaMs)} tone="info" /> : undefined}
+          value={due !== null ? <Figure value={due} tone="info" /> : undefined}
         >
           <span className="block text-t-caption text-ink-faint">
             {t('command.milesOf', { done: formatMiles(fleet.voyage.nm_done), total: formatMiles(fleet.voyage.total_nm) })}
@@ -108,8 +135,8 @@ export function Queue({
                 )
               }
             >
-              {order.status === 'active' && etaMs !== null && (
-                <span className="block text-t-caption text-accent">{t('command.arrivesIn', { t: formatRealShort(etaMs) })}</span>
+              {order.status === 'active' && due !== null && (
+                <span className="block text-t-caption text-accent">{t('command.arrivesIn', { t: due })}</span>
               )}
             </Row>
           )

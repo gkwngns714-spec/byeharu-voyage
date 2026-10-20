@@ -29,6 +29,14 @@ export const fleetsDict = defineDict({
     keepLabel: 'days of supplies to keep {name} at',
     belowKeep: 'Set to keep {days}, and currently below it.',
     toppedUp: 'Topped up to this at every port, charged to your money.',
+    // WHAT THE HOLD IS MADE OF (owner row 179). "Provisions" and not "supplies": the Supplies
+    // column next to it is about DAYS of endurance, and this one is about TUNS of the same hold.
+    holdMadeOf: 'Of her {total} {word} of hold:',
+    holdGoods: 'Trade goods',
+    holdProvisions: 'Provisions',
+    holdFree: 'Empty',
+    holdFigure: '{pct} · {tons} {word}',
+    holdShare: '{what}, {pct} of the hold',
     days: { one: '{n} day', other: '{n} days' },
   },
   ko: {
@@ -58,6 +66,12 @@ export const fleetsDict = defineDict({
     keepLabel: '{name}의 보급 유지 일수',
     belowKeep: '{days} 유지로 정했지만 지금은 그보다 적습니다.',
     toppedUp: '입항할 때마다 이만큼 채우며, 비용은 자금에서 나갑니다.',
+    holdMadeOf: '선창 {total}{word}의 구성:',
+    holdGoods: '교역품',
+    holdProvisions: '보급품',
+    holdFree: '빈 공간',
+    holdFigure: '{pct} · {tons}{word}',
+    holdShare: '{what}, 선창의 {pct}',
     days: { one: '{n}일', other: '{n}일' },
   },
 })
