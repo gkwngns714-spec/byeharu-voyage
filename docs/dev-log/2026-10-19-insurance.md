@@ -67,8 +67,27 @@ sailed uninsured when broke; the pre-image refounded the broke house once and th
 the pre-image refused it; a 23-hazard-day passage (CALM, FAIR_WIND, STORM) and a hazard-free passage to arrival settle
 to the byte the same under both bodies; readers one each; walls hold; 16 hunks reverse; ACLs unchanged.
 
-### Paired merchant sim (20 min, two arms side by side, prod's state of 2026-10-19 23:37 UTC)
-_(filled in below when the arms finish)_
+### Paired merchant sim (20 min, two arms side by side, prod's state of 2026-10-19 23:37 UTC, world at 0208)
+`scripts/ops/harness/arrfast` (0209's harness), the 0208 image + prod's knobs/stocks/purses/loops, 837 merchants
+kicked off together; the second arm applies 0212 after the setup, as prod will. Both arms on one loaded PC.
+
+| | 0208 | 0208 + insurance |
+|---|---|---|
+| laps closed · ≤ 0 | 120 · 47 (39 %) | 123 · 47 (38 %) |
+| Σ lap net · median | 154,644 · 34 | 157,330 · 36 |
+| Comptoir Chastellain's lap | +79 | +76 (her premium) |
+| lay-ups at 5 / 10 / 15 / 20 min | 81 / 87 / 78 / 65 | 81 / 87 / 78 / 71 |
+| plans after the kickoff | — | 837 of 837 identical |
+| merchants' money (purse + cargo at cost) | +350,985 | +239,600 |
+| cities' purses | +19.22 M | +19.39 M |
+| stranded (error / idle / failed orders) | 0 / 0 / 1 | 0 / 0 / 0 |
+| kickoff (837 departures) | 497.8 s | 507.1 s (+11 ms a departure: `insure_voyage`) |
+
+Laps ≤ 0 do not rise (the ship rule holds); the lay-up count is equal at three samples and +6 at the last (noise of
+the same order as the 0208 measurement's). The premiums move ~110 k from merchants to city purses in 20 min and no
+claim was paid (no raid in the window). Sweep averages (6.0 → 7.5 s) were taken while this PC also ran two image builds
+and a spec run, so they are not a clean read; prod's arrivals get the 30-minute after-check at deploy. NOT re-run on a
+0210 world (running costs ÷ 5): the premium and payout do not read running costs; a lap's net only improves.
 
 ## What went wrong on the way (2026-10-20), recorded
 1. **The first local apply ran 70 min in P7 and was killed.** P7 forced a hazard EVERY day with only STORM/CALM/
