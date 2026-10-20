@@ -20,6 +20,12 @@ const money = async () => (await q(`select json_build_object(
   'merchants', (select sum(pl.ducats) + coalesce(sum((select sum(public.fleet_stock_at_cost(nf.fleet_id)) from public.npc_fleets nf where nf.player_id = pl.id)), 0) from public.players pl where pl.is_npc),
   'cities', (select sum(public.treasury_balance(t.port_id)) from public.port_treasury t)) j`))[0].j
 const m0 = await money()
+// 2026-10-20 (0212): the city flows and the markets' shape over the run — IMPORT_DEMAND (the premium the
+// city's people mint, 0174) against SELL, and how many markets stand empty or over-full.
+const flow0 = (await q(`select coalesce(max(id), 0) m from public.treasury_flows`))[0].m
+const marketsSql = `select json_build_object('n', count(*), 'empty', count(*) filter (where stock = 0), 'under_tenth', count(*) filter (where stock < stock_target / 10),
+  'over_3x', count(*) filter (where stock > 3 * stock_target), 'over_10x', count(*) filter (where stock > 10 * stock_target)) j from public.port_goods`
+const markets0 = (await q(marketsSql))[0].j
 const t0iso = (await q(`select now()::text t`))[0].t
 let k0 = Date.now()
 const kick = await q(`select count(cmd.advance(nf.fleet_id, now())) n from public.npc_fleets nf`)
@@ -37,6 +43,12 @@ const plans = Object.fromEntries((await q(`
              || '#' || coalesce(sr.paused_reason, '')) as h
     from public.npc_fleets nf join public.standing_routes sr on sr.id = nf.route_id
     join public.players pl on pl.id = nf.player_id join public.fleets f on f.id = nf.fleet_id`)).map((r) => [r.k, r.h]))
+// 2026-10-20 (0212): the loops the kickoff chose, by their length (the plan's bands), so a change to the
+// distance premium shows where the merchants went
+const bandSql = (nm) => `case when ${nm} < 1000 then '<1k' when ${nm} < 2500 then '1-2.5k' when ${nm} < 5000 then '2.5-5k' when ${nm} < 10000 then '5-10k' else '10k+' end`
+const loopsByBand = (await q(`select json_object_agg(b, n) j from (select ${bandSql('z.nm')} b, count(*) n
+  from (select (select coalesce(sum(s.course_nm), 0) from public.standing_route_stops s where s.route_id = nf.route_id) nm from public.npc_fleets nf) z group by 1) y`))[0].j
+log('loops by band', JSON.stringify(loopsByBand))
 const T0 = Date.now(), end = T0 + Number(mins) * 60_000
 const sweeps = [], recs = [], laid = [], recTend = []
 const recAt = (process.env.RECAT ?? '20,45').split(',').map((m) => T0 + Number(m) * 60_000)
@@ -68,6 +80,11 @@ const laps = (await q(`
     'chastellain', (select json_agg(json_build_array(l2.lap_no, l2.net, l2.bought, l2.sold)) from l l2 where l2.company_name = 'Comptoir Chastellain'),
     'by_nm', (select json_object_agg(b, json_build_array(n, le0)) from (select case when nm < 2000 then 0 when nm < 4000 then 2000 when nm < 8000 then 4000 else 8000 end b, count(*) n, count(*) filter (where net <= 0) le0
                from (select l3.net, (select sum(s.course_nm) from public.standing_route_stops s where s.route_id = l3.route_id) nm from l l3) z group by 1) y),
+    'by_band', (select json_object_agg(b, json_build_object('n', n, 'le0', le0, 'median_net', med_net, 'median_net_per_day', med_day, 'sum_net', sum_net)) from (
+                 select ${bandSql('nm')} b, count(*) n, count(*) filter (where net <= 0) le0, percentile_cont(0.5) within group (order by net) med_net,
+                        round(percentile_cont(0.5) within group (order by net / greatest(days, 0.25))::numeric, 1) med_day, sum(net) sum_net
+                   from (select l3.net, extract(epoch from (l3.closed_at - l3.started_at)) / public.wc_num('game_day_seconds') days,
+                                (select coalesce(sum(s.course_nm), 0) from public.standing_route_stops s where s.route_id = l3.route_id) nm from l l3) z group by 1) y),
     'le0_sold0', (select count(*) from l l4 where l4.net <= 0 and l4.sold = 0),
     'le0_bought0_sold0', (select count(*) from l l4 where l4.net <= 0 and l4.sold = 0 and l4.bought = 0),
     'le0_traded', (select count(*) from l l4 where l4.net <= 0 and l4.sold > 0),
@@ -90,9 +107,15 @@ const stranded = (await q(`select json_build_object(
                     from public.npc_fleets nf join public.players pl on pl.id = nf.player_id and pl.company_name = 'Comptoir Chastellain'
                     join public.standing_routes sr on sr.id = nf.route_id join public.fleets f on f.id = nf.fleet_id)) j`))[0].j
 const m1 = await money()
+const flows = (await q(`select json_build_object('import_demand', coalesce(sum(ducats) filter (where kind = 'IMPORT_DEMAND'), 0),
+  'sell', coalesce(-sum(ducats) filter (where kind = 'SELL'), 0), 'buy', coalesce(sum(ducats) filter (where kind = 'BUY'), 0),
+  'demand_share_of_sell', round(100.0 * coalesce(sum(ducats) filter (where kind = 'IMPORT_DEMAND'), 0) / nullif(-sum(ducats) filter (where kind = 'SELL'), 0), 1),
+  'sells', count(*) filter (where kind = 'SELL')) j from public.treasury_flows where id > $1`, [flow0]))[0].j
+const markets1 = (await q(marketsSql))[0].j
 const st = (xs) => { const s = xs.slice().sort((a, b) => a - b); return { n: xs.length, avg: Math.round(xs.reduce((a, b) => a + b, 0) / xs.length), p95: s[Math.floor(s.length * 0.95)], max: s.at(-1) } }
 const out = { migs, mins: Number(mins), kick_ms: kickMs, sweeps: st(sweeps), sweeps_after_10: st(sweeps.slice(40)), reconcile_ms: recs, reconcile_tend: recTend, laps, routes, stranded,
   money: { merchants: Number(m1.merchants) - Number(m0.merchants), cities: Number(m1.cities) - Number(m0.cities) }, laid, end: (await q(shapeSql))[0].j,
+  flows, markets: { start: markets0, end: markets1 }, loops_by_band: loopsByBand,
   plans_after_kick: plans }
 writeFileSync(outf, JSON.stringify(out, null, 1))
 log(JSON.stringify({ ...out, laid: undefined, plans_after_kick: undefined }))
