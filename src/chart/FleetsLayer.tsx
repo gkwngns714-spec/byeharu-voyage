@@ -410,6 +410,9 @@ export function FleetsLayer({
               'data-testid': 'map-merchant',
               'data-merchant-id': t.fleet.id,
               'data-merchant-docked': t.merchant.docked ? 'true' : 'false',
+              // Her served arrival instant (epoch ms), copied; empty when she has no voyage. A spec
+              // that must watch her AT SEA for a while picks a hull with time left on her leg.
+              'data-merchant-eta': t.voyage ? String(t.voyage.etaMs) : '',
             }}
           />
         )
