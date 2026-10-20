@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Icon, RarityMark, Sparkline, StockGauge, goodIcon } from '../../../components/ui'
+import { Icon, RarityMark, Sparkline, StockGauge, categoryLabel, goodIcon } from '../../../components/ui'
 import { formatInt, formatPctChange, formatPrice } from '../../../lib/format'
 import type { SnapshotGood, WatchGood } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
@@ -64,6 +64,9 @@ export function WatchRow({
       ? { stock: best.stock, target: best.stock_target }
       : null
   const facts = [
+    // WHAT SORT OF GOOD IT IS, first (owner row 177, 2026-10-20): the served `category` through
+    // `categoryLabel`, the one reading of it. The rarity keeps its MARK beside the name above.
+    categoryLabel(good.category),
     watch ? t('markets.cities', { n: formatInt(watch.sellers), count: watch.sellers }) : null,
     watch && watch.on_board > 0 ? t('markets.onBoardN', { n: formatInt(watch.on_board) }) : null,
     watch && watch.wanted_at.length > 0 ? t('markets.wantedIn', { port: portName(watch.wanted_at[0]) }) : null,
