@@ -177,6 +177,60 @@ export function fleetHoldUsed(fleet: FleetView): number {
   return fleet.ships.reduce((n, s) => n + shipHoldUsed(s), 0)
 }
 
+/**
+ * WHAT THE HOLD IS MADE OF — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 179):
+ *
+ *     "show how much cargo is consist of. % of provision, % of trade goods and so on."
+ *
+ * There is nothing new to enforce here. Provisions have come out of the SAME hold as trade goods
+ * since migration 0007: `public.fleet_free_hold` subtracts `ship_cargo_tuns + water_t + food_t`
+ * from the stowed capacity, which is DESIGN C.3 — "every tun of water is a tun of pepper you did
+ * not carry". This fold only SPLITS the figure the hold gauge already prints as one number, so a
+ * player can see which half of a full hold is barrels and which half is pepper.
+ *
+ * THE THIRD SHARE IS NOT "ROOM FOR THE NEXT PARCEL". index.ts's standing rule holds: that question
+ * is answered once, by the server, and arrives as `FleetView.free_hold`. `free` here is the
+ * REMAINDER of the same `used / total` the gauge draws, so the three shares always add to the whole
+ * hold and the picture cannot contradict the bar beside it. The two agree to the tun except on a
+ * hull stowed past its capacity, where the served figure clamps per hull and this one does not —
+ * and `fleet.free_hold` stays the only figure anything may decide on.
+ */
+export interface HoldBreakdown {
+  /** Tuns of trade goods aboard — the served `cargo_tuns`, bulk already applied. */
+  goodsT: number
+  /** Tuns of water and food aboard — the stores that compete for the same hold. */
+  provisionsT: number
+  /** The rest of the stowed hold, in tuns. A SHARE for reading, never a room check. */
+  freeT: number
+  /** The stowed hold in total, `fleetHoldTotal`. Zero for a fleet with no hulls. */
+  totalT: number
+  /** The same three as fractions of `totalT`, adding to 1. All zero when there is no hold. */
+  goodsShare: number
+  provisionsShare: number
+  freeShare: number
+}
+
+export function fleetHoldBreakdown(fleet: FleetView): HoldBreakdown {
+  const totalT = fleetHoldTotal(fleet)
+  const goodsT = fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0)
+  const provisionsT = fleet.ships.reduce((n, s) => n + s.water_t + s.food_t, 0)
+  const freeT = Math.max(0, totalT - goodsT - provisionsT)
+  if (totalT <= 0) {
+    return { goodsT, provisionsT, freeT, totalT, goodsShare: 0, provisionsShare: 0, freeShare: 0 }
+  }
+  const goodsShare = Math.min(1, goodsT / totalT)
+  const provisionsShare = Math.min(1 - goodsShare, provisionsT / totalT)
+  return {
+    goodsT,
+    provisionsT,
+    freeT,
+    totalT,
+    goodsShare,
+    provisionsShare,
+    freeShare: Math.max(0, 1 - goodsShare - provisionsShare),
+  }
+}
+
 /** The worst hull in the fleet — what a REPAIR order is really about. 1 when there are no hulls. */
 export function worstHullFraction(fleet: FleetView): number {
   if (fleet.ships.length === 0) return 1

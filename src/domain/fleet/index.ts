@@ -26,6 +26,10 @@ export {
   fleetCargo,
   fleetCargoByCode,
   fleetCrew,
+  // WHAT THE HOLD IS MADE OF (owner row 179): the one split of the gauge's single figure into
+  // trade goods / provisions / the rest. It does not answer "is there room" — that stays
+  // `FleetView.free_hold`, as the rule above says.
+  fleetHoldBreakdown,
   fleetHoldTotal,
   fleetHoldUsed,
   // WHERE HER NEXT ORDER HAPPENS — the one answer, for the four places that spelt it out inline.
@@ -48,6 +52,7 @@ export {
   type CargoLine,
   type CrewCount,
   type FleetSignal,
+  type HoldBreakdown,
 } from './derive'
 
 // WHERE SHE IS — the one classification (at sea / in port / at anchor) and the one line about it,

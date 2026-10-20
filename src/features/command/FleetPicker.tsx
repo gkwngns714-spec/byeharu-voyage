@@ -9,6 +9,7 @@ import {
   whereLine,
   type FleetSignal,
 } from '../../domain/fleet'
+import { useShellState } from '../../app/shellState'
 import { PortFlag } from '../../live/PortFlag'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { formatOfTotal, tonsWord } from '../../lib/format'
@@ -27,7 +28,9 @@ import { useT, wordTable } from '../../lib/i18n'
 // nothing to press: no dot, no ▾, no list.
 //
 // WHAT A PRESS DOES: opens the list of your fleets, one row each — flag · name · where she is (the
-// one where-rule, `whereLine`, with the countdown off the last read) · cargo used / total. A press
+// one where-rule, `whereLine`, with the countdown on the shell's one clock — owner row 170, same
+// reason Queue.tsx's header gives: it used to count against the last READ'S instant, so between two
+// reads it stood still and read as a wait at the quay) · cargo used / total. A press
 // on a row SELECTS that fleet and closes the list; it moves nothing on the page (the owner's rule,
 // rows 6/15/25/28/45). On a wide glass the list is a `Popover` hung under the button; on a phone it
 // is the bottom `Tray` — the two shapes the design system already has, decided here once by
@@ -175,9 +178,10 @@ function FleetRows({
   onPick: (id: string) => void
 }) {
   const portByCode = useWorld((s) => s.portByCode)
-  // THE CLOCK a sailing row counts down against is the last read's instant — the queue's own
-  // (plans/Queue.tsx), so the two never show two different arrivals.
-  const readAt = useWorld((s) => s.readAt)
+  // THE CLOCK a sailing row counts down against is the shell's one clock — the queue's own
+  // (plans/Queue.tsx), so the two never show two different arrivals. It was the last read's
+  // instant in both places until owner row 170; Queue.tsx's header carries the whole argument.
+  const { nowMs } = useShellState()
   return (
     <>
       {fleets.map((f, i) => {
@@ -202,7 +206,7 @@ function FleetRows({
             data-testid="fleet-row"
           >
             <span className="block text-t-caption text-ink-faint">
-              {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c), readAt ?? undefined)}
+              {whereLine(whereabouts(f), (c) => portNameOf(portByCode, c), nowMs)}
             </span>
           </Row>
         )

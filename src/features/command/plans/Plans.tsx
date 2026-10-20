@@ -21,7 +21,6 @@ import { useT } from '../../../lib/i18n'
 
 export function Plans({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const t = useT()
-  const readAt = useWorld((s) => s.readAt)
   const cancel = useWorld((s) => s.cancel)
   const clearQueue = useWorld((s) => s.clear)
   const goodByCode = useWorld((s) => s.goodByCode)
@@ -36,7 +35,6 @@ export function Plans({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
         <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
           <Queue
             fleet={fleet}
-            readAt={readAt}
             onCancel={(position) => cancel(fleet.id, position)}
             onClear={() => clearQueue(fleet.id)}
           />
