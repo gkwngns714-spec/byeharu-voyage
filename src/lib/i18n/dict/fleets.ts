@@ -31,7 +31,7 @@ export const fleetsDict = defineDict({
     toppedUp: 'Topped up to this at every port, charged to your money.',
     // WHAT THE HOLD IS MADE OF (owner row 179). "Provisions" and not "supplies": the Supplies
     // column next to it is about DAYS of endurance, and this one is about TUNS of the same hold.
-    holdMadeOf: 'Her {total} {word} of hold hold:',
+    holdMadeOf: 'Of her {total} {word} of hold:',
     holdGoods: 'Trade goods',
     holdProvisions: 'Provisions',
     holdFree: 'Empty',
