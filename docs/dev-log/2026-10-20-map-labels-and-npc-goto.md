@@ -100,5 +100,8 @@ Proved in tests/map.goto.spec.ts without a browser, one test per state of `where
   rule, pinned for exactly this), a stepped name's leader starts on its mark and ends on its box and crosses no other
   name or mark, a sea's name never steps out, and the furthest ring stays inside `GLYPH.hitRadius`.
 - `tests/map.goto.spec.ts`: a pure describe for `goToPoint`, four states, no server needed.
-- Ran here: `npx tsc -b`, `npx eslint .`, `npm run build`, and the pure specs (map.labels 37, map.goto's pure 5,
-  map.atmosphere, map.coastline, sections, i18n.keys, servedMemo — 77 + 5 green). The world-backed specs are CI's.
+- Ran here: `npx tsc -b`, `npx eslint .` and the pure specs (map.labels 37, map.goto's pure 5, map.atmosphere,
+  map.coastline, sections, i18n.keys, servedMemo — 77 + 5 green). `npm run build` was started here and **stopped
+  unfinished** after half an hour: five other agents' builds were running on the same box. CI's `build` check is green
+  on the commit, and so is the whole acceptance suite (every shard, the npc shards included), which drives the real
+  chart in a browser — so the build is proved, just not by this machine.
