@@ -463,8 +463,11 @@ begin
 
   select * into v_q1 from world.quote(v_port, v_sgood, v_qty, 'sell', null, v_fleet);
   select mid, ask, bid into v_mid1, v_ask1, v_bid1 from world.price(v_port, v_sgood);
-  if v_q1.units <> v_q0.units or v_q1.total <= v_q0.total or v_q1.avg_price <= v_q0.avg_price then
-    raise exception 'PROOF 6 FAILED: a won SELL bargain did not raise what the quay pays — % units at % (% each) before, % units at % (% each) after',
+  -- 0211 FLOORS a sale's total to the ducat (the house keeps the fraction), so on a ten-tun lot of a cheap
+  -- good a bargain worth under a ducat shows in avg_price and haggle_saved, not in the total: the total
+  -- is held to "never fewer ducats", the price a unit to "more".
+  if v_q1.units <> v_q0.units or v_q1.total < v_q0.total or v_q1.avg_price <= v_q0.avg_price then
+    raise exception 'PROOF 6 FAILED: a won SELL bargain did not raise what the quay pays a unit — % units at % (% each) before, % units at % (% each) after',
       v_q0.units, v_q0.total, v_q0.avg_price, v_q1.units, v_q1.total, v_q1.avg_price;
   end if;
   if v_q1.haggle_saved <= 0 or abs(v_q1.haggle_saved - (v_q1.total - v_q0.total)) > 1 then
