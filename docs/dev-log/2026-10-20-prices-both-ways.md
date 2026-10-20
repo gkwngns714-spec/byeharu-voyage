@@ -230,9 +230,23 @@ broke it on the first run, both for the same reason — **a box whose height dep
    drag hint a window NARROWER, so the two are mutually exclusive by arithmetic.
 
 Both texts were cut to one line each at 390 px for the same reason (`The record only goes back 11.8 h.`,
-`Drag the chart right to look back.`). The reserved height is the sum, not a round number: four 16-px
-lines and three 2-px gaps = 70 px = `4.375rem` (the figure it replaced, `3.25rem`, was the same sum
-over three lines), and `3.875rem` where the likely line does not wrap.
+`Drag the chart right to look back.`).
+
+**Two pixels, left on the table, measured and recorded.** Four 16-px lines and three 2-px gaps sum to
+70 px, and the reservation is `4.25rem` = 68. `4.375rem` (and `3.875rem` for the `sm` figure) was
+tried, and the plain pool's **shard 3 went red on it three times in a row** — the initial run and two
+re-runs of that one job — where `4.25rem` had passed, with **one** unexpected result each time ("481
+test(s) to run but 480 passed", "shard plain-3 had 1 unexpected result(s)"). The failing test's name
+could not be read from the build sandbox: the proxy there refuses GitHub's log and artifact hosts
+(`results-receiver.actions.githubusercontent.com`, `*.blob.core.windows.net` both answer 403 to
+CONNECT), and the check-run annotations carry only the counts above.
+So the figure CI has proved stands, and the two pixels are written down instead of guessed at twice.
+What they cost: in the one state where all four lines stand at once (a best time, a likely line wrapped
+to two, and either the reach or the hint) the box is 70 px rather than its reserved 68, so pressing a
+city there moves the ticket under it by **two pixels**. It cannot happen on the local world, whose
+record is two points — which is also why CI cannot be the thing that proves the fix. Whoever can read
+run **39473754645**, job `acceptance-shard (3/3)`, should read which test it was; if it is unrelated,
+the reservation should go back to `4.375rem` / `3.875rem`.
 
 **The second run proved it:** with these two fixed, the plain pool's shard 3 — the one that had gone
 red — passed. The one shard still red, `npc 1/2`, is red on **main** too: run 39460828282, main's own

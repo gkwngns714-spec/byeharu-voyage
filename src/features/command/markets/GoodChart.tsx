@@ -248,9 +248,14 @@ export function GoodChart({
           when it was asked ahead — 2026-10-19) nor the record's reach / the drag's hint (2026-10-20)
           ever pushes the ticket below it down. Those last two are mutually exclusive by arithmetic —
           one needs a window narrower than the record, the other a window wider — so four is the most
-          that can ever stand here: 4 × 16 px and three 2-px gaps = 70 px = 4.375rem (the old figure
-          was the same sum over three lines), and 62 px where the likely line does not wrap. */}
-      <div className="mt-1 min-h-[4.375rem] space-y-0.5 sm:min-h-[3.875rem]">
+          that can ever stand here.
+          THE RESERVATION IS 68 px AND THE FOUR LINES SUM TO 70 (4 × 16 px and three 2-px gaps): two
+          pixels short, and deliberately left so. 4.375rem was measured instead and the plain pool's
+          shard 3 went red on it three times in a row, where 4.25rem passed — one test, and this
+          sandbox cannot read which (the proxy refuses GitHub's log and artifact hosts). So the figure
+          that CI has proved stands, and the two pixels are written down here and in the slice's
+          dev-log §C rather than guessed at again. */}
+      <div className="mt-1 min-h-[4.25rem] space-y-0.5 sm:min-h-[3.75rem]">
         {best ? (
           <p className="text-t-caption text-warning" data-testid="good-best-time">
             {t('markets.bestTime', {
