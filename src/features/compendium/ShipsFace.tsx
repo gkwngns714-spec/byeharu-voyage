@@ -143,8 +143,8 @@ export function ShipsFace({ query }: { query: string }) {
                 {[sizeWord(s.size), roleWord(s.role), `${s.family} · ${s.rig}`].filter(Boolean).join(' · ')}
               </>
             }
-            figure={<Figure value={formatInt(s.hold)} unit={t('quay.tonsUnit')} />}
-            second={<Figure value={formatFixed(s.speed_kn, 1)} unit={t('quay.knotsUnit')} />}
+            figure={<Figure value={formatInt(s.hold)} unit={t('trade.tonsUnit')} />}
+            second={<Figure value={formatFixed(s.speed_kn, 1)} unit={t('trade.knotsUnit')} />}
             tap="whole"
             onClick={() => {
               setDetent('half')

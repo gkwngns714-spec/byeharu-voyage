@@ -52,11 +52,11 @@ export function PriceTray({
       mode={mode}
       data-testid="price-tray"
     >
-      <Row label={t('quay.buy')} value={<Figure value={formatPriceFigure(good.buy)} size="figure" />} />
-      <Row label={t('quay.sell')} value={<Figure value={formatPriceFigure(good.sell)} size="figure" />} />
+      <Row label={t('trade.buy')} value={<Figure value={formatPriceFigure(good.buy)} size="figure" />} />
+      <Row label={t('trade.sell')} value={<Figure value={formatPriceFigure(good.sell)} size="figure" />} />
       <PriceRows good={good} trend={trend} />
       <Row
-        label={t('quay.openInCommand')}
+        label={t('trade.openInCommand')}
         chevron
         onClick={() => {
           openOnDesk(good.code)
@@ -66,7 +66,7 @@ export function PriceTray({
       />
       {passage !== null && (
         <Row
-          label={t('quay.distance')}
+          label={t('trade.distance')}
           value={<Figure value={formatMiles(passage)} />}
           hairline={false}
           data-testid="price-tray-passage"

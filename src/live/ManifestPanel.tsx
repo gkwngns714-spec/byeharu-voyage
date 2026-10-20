@@ -49,7 +49,7 @@ import { useT, t as tNow } from '../lib/i18n'
 // back — a ✕ that threw away three lines was PR #59's NIT). Closing the RECEIPT dismisses it.
 
 /** The count of lines, in words. */
-const count = (n: number) => tNow('quay.lines', { n: formatInt(n), count: n })
+const count = (n: number) => tNow('trade.lines', { n: formatInt(n), count: n })
 
 /** THE ONE BUTTON'S WORDS: the verb the basket is, and the figure it comes to. All buys → `Buy 3
  *  lines · 1,420 d.`; all sells → `Sell 2 lines · 980 d.`; mixed → `Trade 3 lines · +440 d.`, the
@@ -58,10 +58,10 @@ function buttonLabel(lines: readonly ManifestLine[], totals: { bought: number; s
   const n = count(lines.length)
   const sides = new Set(lines.map((l) => l.side))
   const side = sides.size === 1 ? (sides.has('buy') ? 'Buy' : 'Sell') : 'Trade'
-  const verb = tNow(`quay.${side}`)
-  if (!totals) return tNow('quay.verbN', { verb, n })
+  const verb = tNow(`trade.${side}`)
+  if (!totals) return tNow('trade.verbN', { verb, n })
   const figure = side === 'Buy' ? formatDucats(totals.bought) : side === 'Sell' ? formatDucats(totals.sold) : formatDucatsDelta(totals.net)
-  return tNow('quay.verbNFig', { verb, n, figure })
+  return tNow('trade.verbNFig', { verb, n, figure })
 }
 
 export function ManifestPanel({
@@ -165,9 +165,9 @@ export function ManifestPanel({
 
   if (face === 'empty') {
     return (
-      <Tray detent={detent} onDetentChange={setDetent} title={t('quay.basket')} dismissible={false} data-testid="basket-panel">
+      <Tray detent={detent} onDetentChange={setDetent} title={t('trade.basket')} dismissible={false} data-testid="basket-panel">
         {cargo}
-        <Row label={t('quay.basketEmpty')} tone="muted" hairline={false} data-testid="basket-empty" />
+        <Row label={t('trade.basketEmpty')} tone="muted" hairline={false} data-testid="basket-empty" />
         <OnBoard fleet={fleet} goods={goods} onBuy={onBuy} onSell={onSell} />
       </Tray>
     )
@@ -180,7 +180,7 @@ export function ManifestPanel({
       action={
         tradeRefusal && (tradeRefusal.code === 'E_BUSY' || tradeRefusal.code === 'E_STALE') ? (
           <Button size="sm" variant="quiet" onClick={send}>
-            {t('quay.tryAgain')}
+            {t('trade.tryAgain')}
           </Button>
         ) : undefined
       }
@@ -209,7 +209,7 @@ export function ManifestPanel({
             onClick={send}
             disabled={!estimate || sending}
             busy={sending}
-            busyLabel={t('quay.tradingBusy')}
+            busyLabel={t('trade.tradingBusy')}
             data-testid="basket-send"
           >
             {label}
@@ -235,15 +235,15 @@ export function ManifestPanel({
                 data-testid="basket-line"
               >
                 <span className="block text-t-caption text-ink-faint">
-                  {`${t(line.side === 'buy' ? 'quay.side_buy' : 'quay.side_sell')} · ${formatUnits(line.qty)}${served ? ` · ${formatUnitPrice(served.avg_price)}` : ''}`}
+                  {`${t(line.side === 'buy' ? 'trade.side_buy' : 'trade.side_sell')} · ${formatUnits(line.qty)}${served ? ` · ${formatUnitPrice(served.avg_price)}` : ''}`}
                 </span>
                 {served && line.side === 'sell' && (
                   <span className="block text-t-caption text-ink-faint">
-                    {served.profit === null ? t('quay.paidUnknown') : `${t(served.profit < 0 ? 'quay.loss' : 'quay.profit')} ${formatDucatsDelta(served.profit)}`}
+                    {served.profit === null ? t('trade.paidUnknown') : `${t(served.profit < 0 ? 'trade.loss' : 'trade.profit')} ${formatDucatsDelta(served.profit)}`}
                   </span>
                 )}
               </Row>
-              <Button size="icon" variant="quiet" aria-label={t('quay.remove', { name })} onClick={() => remove(line.good)}>
+              <Button size="icon" variant="quiet" aria-label={t('trade.remove', { name })} onClick={() => remove(line.good)}>
                 <Icon name="close" size={20} />
               </Button>
             </div>
@@ -253,7 +253,7 @@ export function ManifestPanel({
       })}
       {refusal && noteAt === null && note}
 
-      {preview.loading && !estimate && <Row label={t('quay.loading')} tone="muted" hairline={false} />}
+      {preview.loading && !estimate && <Row label={t('trade.loading')} tone="muted" hairline={false} />}
       {estimate && <ManifestTotals totals={estimate.totals} testId="basket-total" />}
       {/* Under the lines, not above them: the basket is what the press is about; the hold is what
           the next line may come from. */}

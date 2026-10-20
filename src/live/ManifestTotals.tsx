@@ -32,29 +32,29 @@ export function ManifestTotals({
   const t = useT()
   return (
     <>
-      <Row label={t('quay.marketTax')} value={<Figure value={formatDucats(totals.tax)} />} data-testid={testId} />
-      <Row label={t('quay.portFee')} value={<Figure value={formatDucats(totals.spread)} />} data-testid={testId} />
+      <Row label={t('trade.marketTax')} value={<Figure value={formatDucats(totals.tax)} />} data-testid={testId} />
+      <Row label={t('trade.portFee')} value={<Figure value={formatDucats(totals.spread)} />} data-testid={testId} />
       {totals.haggle_saved > 0 && (
-        <Row label={t('quay.saved')} value={<Figure value={formatDucats(totals.haggle_saved)} tone="success" />} data-testid={testId} />
+        <Row label={t('trade.saved')} value={<Figure value={formatDucats(totals.haggle_saved)} tone="success" />} data-testid={testId} />
       )}
       {/* 0087: a delivery's premium — the request board's own figure, paid as its own ledger
           movement — is its own row here, for the tray, the receipt and any basket that ever
           carries one. A basket's receipt serves 0 and draws nothing. */}
       {totals.premium > 0 && (
-        <Row label={t('quay.premium')} value={<Figure value={formatDucatsDelta(totals.premium)} tone="success" />} data-testid={testId} />
+        <Row label={t('trade.premium')} value={<Figure value={formatDucatsDelta(totals.premium)} tone="success" />} data-testid={testId} />
       )}
       {totals.sold > 0 &&
         (totals.profit !== null ? (
           <Row
-            label={t('quay.profitVs')}
+            label={t('trade.profitVs')}
             value={<Figure value={formatDucatsDelta(totals.profit)} tone={deltaTone(totals.profit)} />}
             data-testid={testId}
           />
         ) : (
-          <Row label={t('quay.profitVs')} tone="muted" value={t('quay.unknown')} data-testid={testId} />
+          <Row label={t('trade.profitVs')} tone="muted" value={t('trade.unknown')} data-testid={testId} />
         ))}
       <Row
-        label={t('quay.net')}
+        label={t('trade.net')}
         value={<Figure value={formatDucatsDelta(totals.net)} size="figure" tone={deltaTone(totals.net)} />}
         hairline={false}
         data-testid={testId}

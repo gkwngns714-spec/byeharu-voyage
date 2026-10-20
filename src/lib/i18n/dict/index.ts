@@ -17,12 +17,12 @@ import { mapDict } from './map'
 import { marketsDict } from './markets'
 import { portDict } from './port'
 import { profileDict } from './profile'
-import { quayDict } from './quay'
 import { rankDict } from './rank'
 import { routesDict } from './routes'
 import { shellDict } from './shell'
 import { shipDict } from './ship'
 import { townDict } from './town'
+import { tradeDict } from './trade'
 import { uiDict } from './ui'
 import { yardDict } from './yard'
 
@@ -44,12 +44,12 @@ export const DICT = {
   markets: marketsDict,
   port: portDict,
   profile: profileDict,
-  quay: quayDict,
   rank: rankDict,
   routes: routesDict,
   shell: shellDict,
   ship: shipDict,
   town: townDict,
+  trade: tradeDict,
   ui: uiDict,
   yard: yardDict,
 } as const

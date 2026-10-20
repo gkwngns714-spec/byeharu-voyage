@@ -84,10 +84,10 @@ export function FulfilTray({
           onClick={send}
           disabled={!estimate || sending}
           busy={sending}
-          busyLabel={t('quay.delivering')}
+          busyLabel={t('trade.delivering')}
           data-testid="fulfil-send"
         >
-          {estimate ? t('quay.fulfilAmount', { amount: formatDucats(estimate.totals.net) }) : t('quay.fulfil')}
+          {estimate ? t('trade.fulfilAmount', { amount: formatDucats(estimate.totals.net) }) : t('trade.fulfil')}
         </Button>
       }
     >
@@ -98,20 +98,20 @@ export function FulfilTray({
         after={estimate ? estimate.hold.free_after : null}
         className="py-2"
       />
-      <Row label={t('quay.requested')} value={<Figure value={formatUnits(request.qty)} size="figure" />} data-testid="fulfil-requested">
+      <Row label={t('trade.requested')} value={<Figure value={formatUnits(request.qty)} size="figure" />} data-testid="fulfil-requested">
         <span className="block text-t-caption text-ink-faint">{`ends ${formatRelative(Date.parse(request.expires_at), nowMs)}`}</span>
       </Row>
-      <Row label={t('quay.onBoard')} value={<Figure value={formatOfTotal(aboard, request.qty)} unit={t('quay.units')} />} data-testid="fulfil-aboard" />
-      <Row label={t('quay.premium')} value={<Figure value={formatPctDelta(request.premium_pct)} />} data-testid="fulfil-premium-pct">
-        <span className="block text-t-caption text-ink-faint">{t('quay.overMarket')}</span>
+      <Row label={t('trade.onBoard')} value={<Figure value={formatOfTotal(aboard, request.qty)} unit={t('trade.units')} />} data-testid="fulfil-aboard" />
+      <Row label={t('trade.premium')} value={<Figure value={formatPctDelta(request.premium_pct)} />} data-testid="fulfil-premium-pct">
+        <span className="block text-t-caption text-ink-faint">{t('trade.overMarket')}</span>
       </Row>
       {sale && (
-        <Row label={t('quay.youGet')} value={<Figure value={formatDucats(sale.total)} />} data-testid="fulfil-sale">
+        <Row label={t('trade.youGet')} value={<Figure value={formatDucats(sale.total)} />} data-testid="fulfil-sale">
           <span className="block text-t-caption text-ink-faint">{`${formatUnits(sale.qty)} · ${formatUnitPrice(sale.avg_price)}`}</span>
         </Row>
       )}
       {estimate && <ManifestTotals totals={estimate.totals} testId="fulfil-total" />}
-      {preview.loading && !estimate && !refusal && <Row label={t('quay.loading')} tone="muted" hairline={false} />}
+      {preview.loading && !estimate && !refusal && <Row label={t('trade.loading')} tone="muted" hairline={false} />}
       {refusal && (
         <Note
           tone="danger"
@@ -119,7 +119,7 @@ export function FulfilTray({
           action={
             actRefusal && (actRefusal.code === 'E_BUSY' || actRefusal.code === 'E_STALE') ? (
               <Button size="sm" variant="quiet" onClick={send}>
-                {t('quay.tryAgain')}
+                {t('trade.tryAgain')}
               </Button>
             ) : undefined
           }

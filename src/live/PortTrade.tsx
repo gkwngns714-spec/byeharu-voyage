@@ -169,7 +169,7 @@ export function PortTrade({
     <>
       {/* SUPPLIES — how many days it has, and the press that buys more. */}
       <Row
-        label={t('quay.supplies')}
+        label={t('trade.supplies')}
         value={<Figure value={formatVoyageDays(fleet.endurance_days)} />}
         chevron
         onClick={() => {
@@ -185,8 +185,8 @@ export function PortTrade({
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         onClear={() => setFilter('')}
-        aria-label={t('quay.filterGoods')}
-        placeholder={t('quay.filterGoods')}
+        aria-label={t('trade.filterGoods')}
+        placeholder={t('trade.filterGoods')}
         spellCheck={false}
         autoCorrect="off"
         className="mt-3"
@@ -212,7 +212,7 @@ export function PortTrade({
           onPick={open}
           empty={
             <Note tone="neutral" className="mt-3">
-              {t(face === 'sell' ? 'quay.noCargoSell' : 'quay.noMatch')}
+              {t(face === 'sell' ? 'trade.noCargoSell' : 'trade.noMatch')}
             </Note>
           }
         />

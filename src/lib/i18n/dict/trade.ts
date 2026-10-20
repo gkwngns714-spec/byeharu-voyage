@@ -1,7 +1,7 @@
 import { defineDict } from '../define'
 
 // Trading at the quay (src/live): the goods list, the basket, the receipt, haggling, requests.
-export const quayDict = defineDict({
+export const tradeDict = defineDict({
   en: {
     supplies: 'Supplies',
     filterGoods: 'Filter goods',

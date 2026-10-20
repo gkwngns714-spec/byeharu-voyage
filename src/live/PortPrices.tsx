@@ -94,7 +94,7 @@ export function PortPrices({
           onPick={(good, intent) => setPick({ good, intent })}
           empty={
             <Note tone="neutral" className="mt-3">
-              {t(face === 'sell' ? 'quay.noCargoSell' : 'quay.nothingTraded')}
+              {t(face === 'sell' ? 'trade.noCargoSell' : 'trade.nothingTraded')}
             </Note>
           }
         />

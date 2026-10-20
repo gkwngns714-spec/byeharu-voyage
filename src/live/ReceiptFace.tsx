@@ -37,19 +37,19 @@ export function ReceiptFace({ receipt }: { receipt: ManifestReceipt }) {
       ))}
       <ManifestTotals totals={totals} testId="receipt-row" />
       <Row
-        label={t('quay.ducats')}
+        label={t('trade.ducats')}
         value={<Figure value={`${formatInt(purse.before)} → ${formatInt(purse.after)}`} unit={COIN} />}
         data-testid="receipt-row"
       />
       {/* A small basket earns 0 xp, and 0 painted green would say "gain" about nothing — deltaTone
           (PR #59 review NIT 9). */}
       <Row
-        label={t('quay.trading')}
-        value={<Figure value={`${trading.delta > 0 ? '+' : ''}${formatInt(trading.delta)}`} unit={t('quay.xp')} tone={deltaTone(trading.delta)} />}
+        label={t('trade.trading')}
+        value={<Figure value={`${trading.delta > 0 ? '+' : ''}${formatInt(trading.delta)}`} unit={t('trade.xp')} tone={deltaTone(trading.delta)} />}
         hairline={false}
         data-testid="receipt-row"
       >
-        {levelled && <span className="block text-t-caption text-ink-faint">{t('quay.tradingLevel', { n: formatInt(trading.level_after) })}</span>}
+        {levelled && <span className="block text-t-caption text-ink-faint">{t('trade.tradingLevel', { n: formatInt(trading.level_after) })}</span>}
       </Row>
     </>
   )
