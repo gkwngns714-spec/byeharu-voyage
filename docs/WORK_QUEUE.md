@@ -1,5 +1,41 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## THE OWNER'S NEW ORDER, 2026-10-20 ~14:35 UTC — THIS OUTRANKS "THE LIST" BELOW
+
+Owner: *"what i am saying now is what is important. change it."* Twenty requests arrived this
+afternoon (OWNER_REQUESTS rows **169–188**; the words are there verbatim). They outrank the
+10-20 04:00 list, which stays below as history. The lane rule still holds: **two builds + one
+design in flight**, Lane A = server, one migration at a time in strict number order.
+
+**First, because it is about what just shipped and the owner is unhappy with it:**
+
+| # | Row | Item | Lane | Note |
+|---|---|---|---|---|
+| 1 | 188 | **Stats tab: charts, moving numbers, modern** | B | 0214 shipped the server and a plain face. The rows are already there (one per 15 min, one per day beyond the fine window) — this is the face, no migration |
+| 2 | 187 | **Stats "real time, by seconds"** | B | CONFLICTS with 0214's 15-minute rollup. Decided by default: live reads tick client-side every few seconds; the rollup and the charts stay 15-minute. No per-second writes |
+| 3 | 185 | **Map labels: why hidden, show all without overlap** | B | Owner asked WHY — read the declutter rule and answer it, not just change it |
+| 4 | 184 | **Click an NPC's name → point me there** | B | Same affordance the city rows have |
+| 5 | 186 | **~8 new harbours**: 2 N-Russia, 2 Australia, 2 NZ, 2 N-USA | A+B | Real places, real coordinates; each needs a roadstead, a 0215 sea zone and a power. Check against the 0216 gate |
+
+**Then the morning's fifteen (rows 169–183), in the order they are worth doing:**
+
+| # | Row | Item | Lane | Note |
+|---|---|---|---|---|
+| 6 | 171, 172, 176, 181 | Light-map colour · coordinate on double press · full date clock · personal-info tab | B | Cheap client work, no migration; do them together |
+| 7 | 170 | The "arrives in (min)" wait | ? | READ first: which wait is it? The arrivals job's 15 s, the served ETA, or 0116's rest |
+| 8 | 179 | Provisions inside the hold, % breakdown, crew-scaled, minimum crew | A+B | Owner says *"I may be wrong"* — establish the current model before changing it |
+| 9 | 174, 178, 177 | City Info tab · both prices always + longer window + draggable chart · goods rarity and class | A+B | |
+| 10 | 173 | Weekly reset of investment and lap records + history | A+B | Must ROLL OVER and keep the old week. `events` and the ledger are append-only |
+| 11 | 169a | **Ship speed ×3** | A | Economy change, not cosmetic: laps get ~3× shorter, so earnings per real hour ~3× for players AND merchants. Paired sim before deploy, like 0208/0212 |
+| 12 | 169b | Smooth (non-tick) ship movement | B | Client interpolation between served endpoints; server keeps its 15 s tick |
+| 13 | 180 | Multiple fleets, 7 ships each, slots unlocked by gold and level | A+B | Large. Row 1 said 8 ships, this says 7 — unresolved. Gold slots are a new money sink; check against 0212 |
+| 14 | 183 | Plan tab: map, provisions, crew, restrictions | B+A | AFTER 0216 — its restrictions ARE the sea gate; building it first writes the rule twice |
+| — | 175 | **3× selling price by distance** | — | **BLOCKED ON THE OWNER.** It reverses 0212, which went live 04:27 UTC today to stop far selling printing money (far routes were ~89 % of profit; haul 600 → 3). Queue item 9 is also still HELD by the owner's own *"원거리 판매 기술은 아직 아냐"*. Read by default as "a long route should pay ~3× a short one per day" (today: 1.45×), a measured target, NOT a raw ×3 on price |
+
+**Still in flight from this morning (Lane A, finish before starting another server item):**
+0215 Sea S1 (#275) deploying · 0216 Sea S2 (#276, retarget its base to main first).
+
+
 Standing orders: keep working and never stop; never ask (decide, record it as "decided by default", and the owner may reverse it); give a 10-minute status; make it clean; CI fast and never from scratch; close finished shells and worktrees; use Fable where efficient.
 
 Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
