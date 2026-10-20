@@ -8,6 +8,20 @@ Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the p
 
 Prod head: **0208**. (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trade ×10 05:19 UTC, 2026-10-19).
 
+## PLAN 2026-10-20 ~03:00 UTC (owner asked for every planned build; not started, awaiting "go")
+1. **Money printing fix** (urgent): far-sale distance premium is minted (IMPORT_DEMAND ≈ 57 % of sale value, ~500–600M/day vs 1.6B world stock; far routes = 89 % of profit). Cut far-end haul 300× → ~4.5× (`haul_max` 600 → 8, 0208's refill pattern). Sim first; after-check IMPORT_DEMAND/SELL.
+2. **Stats tab** (owner 10-20: "statistic tab along with command, map … world economy, npc economy, cities, trade good stocks … updated regularly"): 15-min snapshot job (read-only), 7 d at 15 min then daily forever; Overview / Markets / Cities / Merchants / Me (others' purses hidden, by default). Server first.
+3. **Insurance 0212**: PR pending (agent finishing specs).
+4. **Sea entry conditions, 오리진 style** (owner research request 10-20): per named sea a captain level (title, by default) + fleet AVERAGE wave resistance (ship class stat + gear); hard wall at plan time and departure; map shades closed seas. Navigation leg reach STAYS (owner's rule) and composes in passage_gate. NPCs under the same rule (option A) via the merchant planner's feasibility check (0203 npc_feasible_legs); at-sea fleets finish their trip; sim the no-open-loop count first.
+5. **Fleet picker** (owner: "good. we need that"): one button (flag, name, status dot, ▾) + dropdown; ← →; phone tray; one shared selection with the map.
+6. **Live prices**: owner 10-20 YES to a wider minimum spread for visible ticker moves. Target thinnest round trip ~2 %, flutter ±0.5–0.8 %, slow waves ±3–10 %. Re-cut onto 0211; settle 0194's sell-then-buy loophole here.
+7. **Far-selling extras** (saturation in the glut authority, stale far prices, spoilage): re-measure after 1 and 4.
+8. **Housekeeping**: remove PROBE_YARD/PROBE_INN credits (82,000); verify the audit's "no human trades since 09-27" (conflicts with the owner's Gaivota play).
+9. **Merchant hoards / money outflow**: decide after 1 (owner 10-18 "leave money growth for now").
+- **Held:** pirates #268 (owner 10-20: "keep it as it is for now"). Famous gear sources: owner "later".
+- **Ask the owner:** 0187 shipped TEN great powers; owner's 10-18 words were "make it 7 big power".
+- The 10-18 "In progress" table below is STALE: all of it shipped (0186, 0188, 0197, 0199, 0183, #240, #227/#228, #225, #218, 0187).
+
 ## RESUMED 2026-10-19 ~23:30 UTC (PC 디폴리스)
 Prod head 0208 (checked). Nothing moved during the 15 h gap.
 - #267 shard 3/3: READ. Root cause: 0209 drops `npc_buy_ceiling(uuid,uuid,numeric)` and recreates it with 7 args, while `tests/rpc.surface.spec.ts:1650` still named the old signature. Test fixed, hold note lifted (8968c83); **0209 LIVE 23:43 UTC** (#267 merged; Pages + main Acceptance green). 30-min after-check PASSED: 0 failed jobs (all jobs); arrivals avg 2.93 s both sides (before n=138, p50 2.85, max 6.3 · after n=131, p50 2.74, max 5.7). The sim's ×0.79 sweep gain does not show in the cron total (the job does more than the sweep), but nothing got worse.
