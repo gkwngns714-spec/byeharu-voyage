@@ -72,17 +72,19 @@
 --   (a) five tables, server-only; the three indexes; the knobs; the words table covers the live kinds.
 --   (b) one run writes a world row, a row per good, a row per harbour, the offered pairs and a merchants
 --       row; its sums equal the authorities recomputed inline; a second run in the same slot writes 0 rows.
---   (c) POSITIVE CONTROLS, BY AMOUNT: a probe company founded, one sale planted through emit_event +
---       treasury_post + credit (1,234 🪙 for 50 units, 100 tax) and 777 🪙 of IMPORT_DEMAND: the next row's
---       minted = 777 + the founding money, sold = 1,234, units = 50, trades = 1, players moved by exactly
---       the probe's purse; the city's row: sold 50, taxes 100, SELL −1,234; the city-good and good rows: 50.
+--   (c) POSITIVE CONTROLS, BY AMOUNT: a probe company founded before run 1 (its FOUNDING in run 1's period);
+--       then one sale planted as an event + its flows + credit (1,234 🪙 for 50 units, 100 tax), 5,000 🪙 SEED,
+--       777 🪙 IMPORT_DEMAND and a 300 🪙 INSURANCE premium (0213's kind, read from the flow like any other):
+--       the next row's minted 5,777, moved 1,634, sold 1,234, units 50, trades 1; players +834; cities +4,943;
+--       the city's row income 6,177 / spending 1,234 / taxes 100 / sold 50 / INSURANCE 300; the city-good and
+--       good rows 50; the overview's line "Insurance premiums" 300, moved.
 --   (d) THE GATE: at 0 🪙 the city is locked (no figures served); at stats_city_tier1 the overview and no
 --       detail; at stats_city_tier2 the detail with the probe good's 50 units.
 --   (e) compaction keeps one row per old day, per table, under each table's own knob.
 --   (f) registry +6 (authenticated, never anon); the three walls at 0; the job defined INACTIVE.
 -- ROLLBACK (forward): drop the five tables, the words table, the eight functions, the three indexes, the
 -- four knobs, the cron job; reverse the registry hunk.
--- VERSION: 0214 while 0212 (insurance) and 0213 (haul cap) are open — RENUMBER TO PROD HEAD + 1 AT PUSH
+-- VERSION: 0214 = prod head 0213 (insurance) + 1 at the time of writing — RENUMBER TO PROD HEAD + 1 AT PUSH
 -- (and the _0214 suffixes, the probe uuid and this header's tags with it).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -894,6 +896,16 @@ begin
               where g.table_schema = 'public' and g.table_name like 'stats\_%' and g.grantee in ('anon', 'authenticated', 'PUBLIC')) then
     raise exception '0214 self-assert FAIL: a client role holds a grant on a stats table';
   end if;
+  -- the words table names every kind the flows carry today (the amounts are read from the flows; a kind
+  -- missing here would still count as moved, but would wear a made-up word)
+  if exists (select 1 from (select distinct f.kind from public.treasury_flows f
+                            union select distinct d.kind from public.treasury_daybook d where d.kind <> 'CARRIED') k
+              where not exists (select 1 from public.stats_flow_words w where w.kind = k.kind)) then
+    raise exception '0214 self-assert FAIL: flow kind(s) % have no line in stats_flow_words',
+      (select string_agg(k.kind, ', ') from (select distinct f.kind from public.treasury_flows f
+                                            union select distinct d.kind from public.treasury_daybook d where d.kind <> 'CARRIED') k
+        where not exists (select 1 from public.stats_flow_words w where w.kind = k.kind));
+  end if;
   if (select count(*) from public.goods) <> (select count(distinct name) from public.goods) then
     raise exception '0214 self-assert FAIL: two goods share a name — the SOLD / BOUGHT events name the good, so the join would be ambiguous';
   end if;
@@ -960,31 +972,35 @@ begin
       (v_port, 'SEED',          5000, null, null, now() + interval '2 seconds'),
       (v_port, 'IMPORT_DEMAND',  777, null, null, now() + interval '2 seconds'),
       (v_port, 'SELL',         -1234, v_p,  v_ev, now() + interval '2 seconds'),
-      (v_port, 'TAX',            100, v_p,  v_ev, now() + interval '2 seconds');
+      (v_port, 'TAX',            100, v_p,  v_ev, now() + interval '2 seconds'),
+      -- 0213's insurance: a 300 🪙 premium paid to the city — read from the flow like every other kind
+      (v_port, 'INSURANCE',      300, v_p,  v_ev, now() + interval '2 seconds');
     perform public.credit(v_p, 'SELL', 1234, v_ev);
     perform public.credit(v_p, 'TAX', -100, v_ev);
+    perform public.credit(v_p, 'INSURANCE', -300, v_ev);
 
     v_r2 := public.tick_stats(v_t2);
     select * into w2 from public.stats_world where slot = public.drift_slot_of(v_t2);
     if w2.slot is null or (v_r2->>'world')::int <> 1 then
       raise exception '0214 self-assert FAIL: run 2 wrote no world row: %', v_r2;
     end if;
-    if w2.minted <> 5777 or w2.removed <> 0 or w2.moved <> 1334 or w2.sold <> 1234 or w2.bought <> 0 or w2.units <> 50 or w2.trades <> 1 then
-      raise exception '0214 self-assert FAIL: run 2''s period is minted % removed % moved % sold % bought % units % trades % (expected 5777 / 0 / 1334 / 1234 / 0 / 50 / 1): %',
+    if w2.minted <> 5777 or w2.removed <> 0 or w2.moved <> 1634 or w2.sold <> 1234 or w2.bought <> 0 or w2.units <> 50 or w2.trades <> 1 then
+      raise exception '0214 self-assert FAIL: run 2''s period is minted % removed % moved % sold % bought % units % trades % (expected 5777 / 0 / 1634 / 1234 / 0 / 50 / 1): %',
         w2.minted, w2.removed, w2.moved, w2.sold, w2.bought, w2.units, w2.trades, w2.period;
     end if;
-    if (w2.period->>'SEED')::bigint <> 5000 or (w2.period->>'IMPORT_DEMAND')::bigint <> 777 or (w2.period->>'SELL')::bigint <> -1234 or (w2.period->>'TAX')::bigint <> 100 then
+    if (w2.period->>'SEED')::bigint <> 5000 or (w2.period->>'IMPORT_DEMAND')::bigint <> 777 or (w2.period->>'SELL')::bigint <> -1234 or (w2.period->>'TAX')::bigint <> 100
+       or (w2.period->>'INSURANCE')::bigint <> 300 then
       raise exception '0214 self-assert FAIL: the period''s kinds are not the planted flows: %', w2.period;
     end if;
-    if w2.players - w1.players <> 1134 then
-      raise exception '0214 self-assert FAIL: the players'' money moved by %, the probe''s purse by 1134', w2.players - w1.players;
+    if w2.players - w1.players <> 834 then
+      raise exception '0214 self-assert FAIL: the players'' money moved by %, the probe''s purse by 834', w2.players - w1.players;
     end if;
-    if w2.cities - w1.cities <> 4643 then
-      raise exception '0214 self-assert FAIL: the cities'' money moved by %, the planted flows net 4643', w2.cities - w1.cities;
+    if w2.cities - w1.cities <> 4943 then
+      raise exception '0214 self-assert FAIL: the cities'' money moved by %, the planted flows net 4943', w2.cities - w1.cities;
     end if;
     select * into c2 from public.stats_city where port_id = v_port and slot = w2.slot;
-    if c2.income <> 5877 or c2.spending <> 1234 or c2.taxes <> 100 or c2.sold <> 50 or c2.bought <> 0
-       or (c2.flows->>'SELL')::bigint <> -1234 or c2.purse - c1.purse <> 4643 then
+    if c2.income <> 6177 or c2.spending <> 1234 or c2.taxes <> 100 or c2.sold <> 50 or c2.bought <> 0
+       or (c2.flows->>'SELL')::bigint <> -1234 or (c2.flows->>'INSURANCE')::bigint <> 300 or c2.purse - c1.purse <> 4943 then
       raise exception '0214 self-assert FAIL: the city row is income % spending % taxes % sold % bought % flows % purse Δ %',
         c2.income, c2.spending, c2.taxes, c2.sold, c2.bought, c2.flows, c2.purse - c1.purse;
     end if;
@@ -1036,7 +1052,9 @@ begin
     -- the public reads
     v_v := world.stats_overview(24);
     if jsonb_array_length(v_v->'series') <> 2 or (v_v->'period'->>'minted')::bigint <> 5777 or (v_v->'holders'->>'players')::bigint <> w2.players
-       or not exists (select 1 from jsonb_array_elements(v_v->'period'->'flows') f where f->>'kind' = 'IMPORT_DEMAND' and f->>'side' = 'minted' and (f->>'ducats')::bigint = 777) then
+       or not exists (select 1 from jsonb_array_elements(v_v->'period'->'flows') f where f->>'kind' = 'IMPORT_DEMAND' and f->>'side' = 'minted' and (f->>'ducats')::bigint = 777)
+       or not exists (select 1 from jsonb_array_elements(v_v->'period'->'flows') f where f->>'kind' = 'INSURANCE' and f->>'side' = 'moved'
+                        and f->>'word' = 'Insurance premiums' and (f->>'ducats')::bigint = 300) then
       raise exception '0214 self-assert FAIL: the overview does not serve the two rows: %', left(v_v::text, 600);
     end if;
     v_v := world.stats_markets();
@@ -1118,7 +1136,7 @@ begin
      and not exists (select 1 from public.clock_jobs() j where j.jobname = 'byeharu-voyage:stats' and not j.active) then
     raise exception '0214 self-assert FAIL: byeharu-voyage:stats is not defined inactive';
   end if;
-  raise notice '0214 self-assert ok: THE WORLD KEEPS ITS FIGURES. tick_stats wrote one world row, % goods, % harbours, % city-good rows (% offered pairs) and one merchants row in % ms, and 0 rows when run again in the same slot; the holders equal the authorities'' sums. Positive controls at % (%): a planted sale of 50 units for 1,234 🪙 with 100 tax, 5,000 SEED and 777 IMPORT_DEMAND gave the next row minted 5,777 / moved 1,334 / sold 1,234 / units 50 / trades 1, the players'' money +1,134, the cities'' +4,643, the city row income 5,877 / spending 1,234 / taxes 100 / sold 50, the good and city-good rows 50 — in % ms. THE GATE: nothing invested → locked, no figures served anywhere; % 🪙 → overview only (sold 50, taxes 100, SELL −1,234, the good on top); % 🪙 → the detail with the good''s 50 units. Compaction kept one row per old day under each table''s own knob (run 3: % ms). Registry +6 (authenticated, not anon); walls 0; the job defined inactive.',
+  raise notice '0214 self-assert ok: THE WORLD KEEPS ITS FIGURES. tick_stats wrote one world row, % goods, % harbours, % city-good rows (% offered pairs) and one merchants row in % ms, and 0 rows when run again in the same slot; the holders equal the authorities'' sums. Positive controls at % (%): a planted sale of 50 units for 1,234 🪙 with 100 tax, 5,000 SEED, 777 IMPORT_DEMAND and a 300 🪙 INSURANCE premium (0213) gave the next row minted 5,777 / moved 1,634 / sold 1,234 / units 50 / trades 1, the players'' money +834, the cities'' +4,943, the city row income 6,177 / spending 1,234 / taxes 100 / sold 50, the good and city-good rows 50 — in % ms. THE GATE: nothing invested → locked, no figures served anywhere; % 🪙 → overview only (sold 50, taxes 100, SELL −1,234, the good on top); % 🪙 → the detail with the good''s 50 units. Compaction kept one row per old day under each table''s own knob (run 3: % ms). Registry +6 (authenticated, not anon); walls 0; the job defined inactive.',
     v_out->'r1'->>'goods', v_out->'r1'->>'cities', v_out->'r1'->>'city_goods', v_out->>'offered', v_out->>'ms1',
     v_out->>'port', v_out->>'good', v_out->>'ms2',
     public.wc_num('stats_city_tier1')::bigint, public.wc_num('stats_city_tier2')::bigint, v_out->>'ms3';
