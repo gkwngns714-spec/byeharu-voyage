@@ -6,7 +6,7 @@ Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
 
 Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the push lands. Migrations deploy in strict number order.
 
-Prod head: **0212** (0212 haul cap LIVE 04:27 UTC 10-20). Earlier: **0211** (2026-10-20: 0209 arrivals 23:43, 0210 running costs 00:35, 0211 round trip 00:52 UTC; all after-checks passed).
+Prod head: **0213** (0213 insurance LIVE 05:20 UTC, 0212 haul cap 04:27 UTC, 10-20). Earlier: **0211** (2026-10-20: 0209 arrivals 23:43, 0210 running costs 00:35, 0211 round trip 00:52 UTC; all after-checks passed).
 
 ## THE LIST (tidied 2026-10-20 ~04:00 UTC: the ONE priority order; everything below it is history)
 Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize everything … build slowly step by step, but as efficient as possible."*
@@ -14,11 +14,11 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 
 | # | Item | Lane | State |
 |---|---|---|---|
-| 1 | **Insurance** (now 0213, PR #274) | A | rebasing on 0212 → CI → deploy |
+| 1 | **Insurance** (0213) | A | **LIVE 05:20 UTC** (#274): premium 0.05 % (<500 nm) → 0.56 % (4,000+ nm) of cargo, payout cost basis −10 % from the port's purse, cargo only, merchants always insure, no refound. Also fixed the route.stopface reach race. 30-min after-check running |
 | 2 | **Money printing fix** (0212) | A | **LIVE 04:27 UTC** (#273): `haul_max` 600 → 3, far end 300× → 2×; sim: far/short per day 190× → 1.45×, laps ≤ 0 36 → 26 %, lay-ups 11 → 1; prod IMPORT_DEMAND was 22 % of SELL (24 h). 30-min after-check running. Middle distances now earn less per day than short: re-measure with item 9 |
 | 3 | **Fleet picker** (screens only) | B | **LIVE 2026-10-20 ~04:50 UTC** (#272 merged 60aa938; Pages deployed) |
 | 4 | **Stats tab** + city-investment gating (owner rule) | A+B | RESUMED 10-20 (owner asked "what about the statistics?"); agent building on `osn-stats-tab` (0214, tiers 20k/100k); deploys after 0212/0213, before sea 0215/0216 |
-| 5 | **Korean language** | B (cloud) | RESUMED 10-20 as a CLOUD agent (owner: use the $250 cloud credit for repo-only work); every screen except command/stats first, then command; stats after it merges |
+| 5 | **Korean language** | cloud | RUNNING as a CLOUD ROUTINE (trig_01BnN4iumDDH5Gcoq11XF9Vv, session cse_019Ua4Ytkj7ZjCmcygzUdPHP) since 05:13 UTC; owner: cloud credit first for everything |
 | 6 | **Sea conditions + Europe-only start** (region unlock) | A+B | design MERGED (#271). Owner 10-20: "lets start by applying the design you've created first, then consider adding more" = all 7 defaults. Agent building S1 (0215, data, dark) + S2 (0216, passage gate behind `sea_conditions_bite`); deploys after 0212/0213. Then S3–S6, C1–C5 |
 | 6b | **More conditions** (쇄빙 ice, 돌파 breakthrough as entry conditions; 조력 rowing as a calm-sea speed effect) | – | LATER: owner wants the base design first, then consider |
 | 7 | **Capital move** | A+B | after 6 |
