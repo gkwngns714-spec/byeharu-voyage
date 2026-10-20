@@ -221,9 +221,10 @@ function Chart({
 
   // THE ONLY THING A TAP ON THE CHART DOES: a selection. Nearest glyph within reach wins (the
   // reach is src/chart/glyphs.ts's); the same thing again, or deep inland, clears it; open water
-  // SELECTS that water, snapped to the nearest sailable cell (0039) — water by construction.
+  // SELECTS that water, snapped to the nearest sailable cell (0039) — water by construction, and
+  // only on the SECOND press (row 172, below).
   const onTap = useCallback(
-    (at: Point, unitsPerPx: number, view: ViewBox) => {
+    (at: Point, unitsPerPx: number, view: ViewBox, presses: number) => {
       // The FULL marks answer at the full reach; the DOTS at half a touch, behind a mark as
       // near (row 104: a dot is the city it stands for — but never at a named harbour's
       // expense, the theft row 94 measured; chartModel.ts `portMarks`, hitTest.ts).
@@ -238,6 +239,18 @@ function Chart({
       if (hit?.kind === 'fleet') selectFleet(hit.id)
       if (hit) {
         setSelection((current) => toggleSelection(current, hit))
+        return
+      }
+      // A POINT OF OPEN WATER ANSWERS TO A DOUBLE PRESS (owner row 172, 2026-10-20: *"When I press
+      // a map, it shows the coordinate. But this is uncomfortable feature since I want to just move
+      // around. Show coordinate when pressed twice."*). A single press on the water therefore does
+      // what the owner asked the map to do when he touches it — nothing but what the hand did, a
+      // pan — except that it still CLEARS whatever was open, which is the dismiss gesture every
+      // map has and the one thing a player cannot do any other way on a phone. The count is the
+      // surface's (useChartSurface's `presses`), so the rule is written once and the chart's other
+      // targets are untouched: a harbour, a hull and a merchant all still answer the first press.
+      if (presses < 2) {
+        setSelection(null)
         return
       }
       const sea = snapSeaPoint(seaNav, unproject(at))
