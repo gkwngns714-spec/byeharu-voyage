@@ -1,5 +1,36 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## WHAT LANDED 2026-10-20 AFTERNOON (cloud session) — read this first
+
+Prod head **0216**, clock **9/9**, main green and published.
+
+| live | what |
+|---|---|
+| **0214** | the Stats tab's server: `tick_stats` every 15 min, six gated reads |
+| **0215** | the seas have conditions (S1) — dark, `sea_conditions_bite` false |
+| **0216** | the passage gate reads the sea (S2) — dark |
+| #279 | the npc-shard flake fix |
+| #280 | the arrival countdown ticks and says "due"; FLEETS gains a cargo breakdown |
+| #281 | light map = dark map · the full date in the strip · the YOU tab |
+| #282 | map label leader lines · an NPC's name takes you to her |
+| #283 | the Stats face: charts, counters that walk, a live band |
+
+After-check for the three migrations is in `docs/dev-log/2026-10-20-cloud-deploys.md`, with the four
+things that broke and must not be repeated. Arrivals pace flat (~3.2–3.4 s); 3 failed cron runs of
+232, all inside a deploy window, none since.
+
+**In flight now:** #284 double press (red twice on `acceptance-shard (npc 1/2)`, being fixed) ·
+`osn-smooth-sailing` (169b) · `osn-city-info` (174, 177) · `osn-prices-both-ways` (178).
+
+**Known CI trap:** a merge made with a session token triggers NO workflow — no Acceptance, no Pages
+deploy. Dispatch `deploy-pages.yml` and `acceptance.yml` by hand after any such merge (never
+`migrations-apply-proof.yml`: a dispatch sets FROM_ZERO there and rebuilds the world).
+
+**Reading a red CI run from a cloud container:** the job log and the Playwright report are on a
+blob host the network policy answers 403 to. The `acceptance` VERDICT job's annotations are
+readable and name the shard and the count:
+`gh api repos/gkwngns714-spec/byeharu-voyage/check-runs/<id>/annotations`.
+
 ## THE OWNER'S NEW ORDER, 2026-10-20 ~14:35 UTC — THIS OUTRANKS "THE LIST" BELOW
 
 Owner: *"what i am saying now is what is important. change it."* Twenty requests arrived this
@@ -27,7 +58,7 @@ design in flight**, Lane A = server, one migration at a time in strict number or
 | 9 | 174, 178, 177 | City Info tab · both prices always + longer window + draggable chart · goods rarity and class | A+B | |
 | 10 | 173 | Weekly reset of investment and lap records + history | A+B | Must ROLL OVER and keep the old week. `events` and the ledger are append-only |
 | 11 | 169a | **Ship speed ×3** | A | Economy change, not cosmetic: laps get ~3× shorter, so earnings per real hour ~3× for players AND merchants. Paired sim before deploy, like 0208/0212 |
-| 12 | 169b | Smooth (non-tick) ship movement | B | **BUILT — `osn-smooth-sailing`, client only, no migration.** What ticked was the MODEL (the shell's 1 s clock), not the read: `src/chart/underway.ts` moves hull, course and name on one animation frame, chasing the served place; stops at arrival; reduced motion unchanged. Dev log: 2026-10-20-smooth-sailing.md |
+| 12 | 169b | Smooth (non-tick) ship movement | B | **BUILT — PR #287, `osn-smooth-sailing`, client only, no migration.** What ticked was the MODEL (the shell's 1 s clock), not the read: `src/chart/underway.ts` moves hull, course and name on one animation frame, chasing the served place; stops at arrival; reduced motion unchanged. Dev log: 2026-10-20-smooth-sailing.md |
 | 13 | 180 | Multiple fleets, 7 ships each, slots unlocked by gold and level | A+B | Large. Row 1 said 8 ships, this says 7 — unresolved. Gold slots are a new money sink; check against 0212 |
 | 14 | 183 | Plan tab: map, provisions, crew, restrictions | B+A | AFTER 0216 — its restrictions ARE the sea gate; building it first writes the rule twice |
 | — | 175 | **3× selling price by distance** | — | **BLOCKED ON THE OWNER.** It reverses 0212, which went live 04:27 UTC today to stop far selling printing money (far routes were ~89 % of profit; haul 600 → 3). Queue item 9 is also still HELD by the owner's own *"원거리 판매 기술은 아직 아냐"*. Read by default as "a long route should pay ~3× a short one per day" (today: 1.45×), a measured target, NOT a raw ×3 on price |

@@ -33,6 +33,12 @@ import { useElementSize } from './useElementSize'
 // context menu, no click-to-sail. A TAP is handled outside this hook and does one thing: it
 // selects, which changes what the corner panel READS, and nothing else.
 //
+// A TAP NOW ARRIVES WITH ITS COUNT (owner row 172, 2026-10-20), and that is not a fourth gesture:
+// every tap is still delivered the instant the finger lifts, and nothing is held back to see
+// whether a second one follows. The count is a FACT ABOUT THE TAP, measured here beside the drag
+// slop because this is where a tap is decided — what a second press means belongs to the screen
+// (MapScreen: the second press is what names a point of open water).
+//
 // ── ONE IMPLEMENTATION, TWO POSTURES (2026-08-23) ──────────────────────────────────────────────
 // This hook is the only gesture implementation the game has, and it now serves two kinds of
 // surface. A FULL-TAB chart (the Map tab) owns every gesture on its glass: `touch-none`, and a
@@ -73,6 +79,15 @@ import { useElementSize } from './useElementSize'
 /** How far a pointer may travel and still count as a tap rather than a drag. Below the usual 10 px
  *  slop because this surface has no other gesture for it to be confused with. */
 const TAP_SLOP_PX = 5
+
+/** WHAT MAKES TWO TAPS ONE GESTURE (owner row 172, 2026-10-20) — the second tap lands within this
+ *  long of the first, and this near it. 400 ms is a little longer than a phone's own double-tap
+ *  window, because nothing here is waiting on the answer: a single tap has already done its work
+ *  (the caller decides what the count means), so a late second tap costs the player nothing. The
+ *  reach is a thumb's width rather than the 5 px of a tap, since two deliberate taps on the same
+ *  piece of water never land on the same pixel. */
+const DOUBLE_TAP_MS = 400
+const DOUBLE_TAP_SLOP_PX = 24
 
 /**
  * Chrome that sits INSIDE the chart box but is not the chart: the two corner panels and the view
@@ -261,8 +276,15 @@ export function useChartSurface(
    *                 — and passing the box is what lets the caller apply the SAME visibility rule
    *                 the render used, without a ref into render state and without depending on this
    *                 hook's own result to build the handler it is given.
+   *   `presses`     how many taps in a row this one is: 1 for a tap on its own, 2 for the second
+   *                 of a double tap, and so on (DOUBLE_TAP_MS / DOUBLE_TAP_SLOP_PX above). COUNTED
+   *                 HERE because it is a fact about the gesture, like the drag slop beside it, and
+   *                 every tap is still delivered the moment the finger lifts — nothing is held
+   *                 back waiting to see whether a second one arrives. What a second press MEANS is
+   *                 the caller's: on the map tab it is what shows a point of open water (owner
+   *                 row 172: *"I want to just move around. Show coordinate when pressed twice."*).
    */
-  onTap?: (at: Point, unitsPerPx: number, view: ViewBox) => void,
+  onTap?: (at: Point, unitsPerPx: number, view: ViewBox, presses: number) => void,
   options?: ChartSurfaceOptions,
 ): ChartSurface {
   /** True when the surrounding page owns the wheel and the vertical axis of a one-finger touch
@@ -279,6 +301,9 @@ export function useChartSurface(
 
   const pointers = useRef(new Map<number, { x: number; y: number }>())
   const travelled = useRef(0)
+  /** The last tap, for counting a double one: where it landed on the page, when, and what it was
+   *  counted as. */
+  const lastTap = useRef({ x: 0, y: 0, ms: 0, presses: 0 })
 
   const measured = size.width > 0 && size.height > 0
   const aspect = measured ? size.width / size.height : 1
@@ -501,6 +526,13 @@ export function useChartSurface(
       const rect = element.getBoundingClientRect()
       if (rect.width <= 0 || rect.height <= 0) return
       const box = viewBoxOf(view, rect.width / rect.height)
+      // HOW MANY TAPS IN A ROW THIS IS (see `onTap`'s contract): the clock and the distance are
+      // both the PAGE's, so a tap that pans nothing and a chart that has not moved are irrelevant
+      // to it — two taps on one piece of glass are one gesture whatever the view did between them.
+      const ms = performance.now()
+      const near = Math.hypot(event.clientX - lastTap.current.x, event.clientY - lastTap.current.y) <= DOUBLE_TAP_SLOP_PX
+      const presses = near && ms - lastTap.current.ms <= DOUBLE_TAP_MS ? lastTap.current.presses + 1 : 1
+      lastTap.current = { x: event.clientX, y: event.clientY, ms, presses }
       // A TAP IS A PLACE ON THE GLOBE, so its x is a longitude in [−180, 180] whatever copy of the
       // sheet the finger landed on (2026-10-14, the continuous chart): a view panned past the
       // antimeridian hands out boxes that run to 200°, and the harbours, the fleets and the sea
@@ -513,6 +545,7 @@ export function useChartSurface(
         },
         unitsPerPixel(view, rect.width),
         box,
+        presses,
       )
     },
     [ref, onTap, view],
