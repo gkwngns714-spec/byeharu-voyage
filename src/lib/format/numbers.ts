@@ -49,7 +49,9 @@ function group(digits: string): string {
 export const COIN = '🪙'
 /** A figure and its coin never part: the space between them is a no-break space, so a button or a
  *  ledger line wraps before the number, never between the number and its mark. */
-const NBSP = '\u00a0'
+/** The space a figure never breaks at. Exported since 2026-10-20: a screen that must keep a line's
+ *  height when it has nothing to say puts this in it, rather than spelling the escape again. */
+export const NBSP = '\u00a0'
 
 /** Money as the game writes it: 8180 → "8,180 🪙" */
 export function formatDucats(n: number): string {

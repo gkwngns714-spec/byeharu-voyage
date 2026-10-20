@@ -438,8 +438,15 @@ export function cmdFoundHouse(
  *
  * ONE CALL PER PORT, NOT PER GOOD. A market screen draws a line on every row it shows, and 70 goods
  * would otherwise be 70 round trips with the client deciding how many points a line has.
+ *
+ * `slots` IS WHAT THE WINDOW NEEDS, NOT WHAT THE RECORD KEEPS (2026-10-20, owner request 178: *"the
+ * price is shown max 12 hours, can you make this more longer? Like day? Week?"*). A caller asks for
+ * the slots its chosen window would fill; the server clamps the ask to what it actually keeps
+ * (`public.price_history_window`, 48 slots = 12 h on production today) and SAYS what it gave in the
+ * payload's `slots`. So the client is never the thing that limits the window — the day the retention
+ * law widens, the same chips draw more with no client change. Null asks for the server's own default.
  */
-export function worldPriceHistory(portId: string, slots = 48): Promise<RpcResult<PriceHistory>> {
+export function worldPriceHistory(portId: string, slots: number | null = null): Promise<RpcResult<PriceHistory>> {
   return call<PriceHistory>('worldPriceHistory', [portId, slots])
 }
 

@@ -9,6 +9,7 @@
 // the label must move with them.
 
 import { test, expect } from '@playwright/test'
+import { clampPan, panBackMs, panByDrag, panByKey, panView } from '../src/components/ui/chartPan'
 import { PRICE_CHART_H, PRICE_CHART_W, priceChartModel } from '../src/components/ui/priceChartModel'
 import { MINUS } from '../src/lib/format'
 import type { PricePoint } from '../src/lib/rpc'
@@ -142,4 +143,83 @@ test('an estimate with no record still draws, from now; and small or large price
   expect(small.yTicks.map((t) => t.label)).toEqual(['1.20', '1.30', '1.40'])
   const large = priceChartModel([], 900, NOW, { points: outlook([98_000, 99_000, 100_000], 0, NOW, 900) })!
   expect(large.yTicks.map((t) => t.label)).toEqual(['98,000', '99,000', '100,000'])
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE WINDOW AND THE DRAG — owner request 178, 2026-10-20: *"make the chart dragable to see the past
+// prices by swiping left?"*
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// The model takes a WINDOW (a from and a to) and draws that stretch: the axis spans it, x is no longer
+// clamped so a point outside it keeps its true place for the painter to clip, and the y band and the
+// marks are read from what is INSIDE it. `chartPan` turns a drag into that window and is pure, so the
+// gesture is proved here too — a pointer never enters this file.
+
+const H = 3_600_000
+
+test('a window draws that stretch and no other: the axis spans it, x is not clamped, the band is what is inside', () => {
+  // 8 h of record: a tall plateau for the first 6 h, then the last 2 h between 100 and 111.
+  const mids = Array.from({ length: 48 }, (_, i) => (i < 36 ? 1000 : 100 + (i - 36)))
+  const view = { fromMs: NOW - 2 * H, toMs: NOW }
+  const m = priceChartModel(series(mids, 600, NOW), 600, NOW, null, undefined, null, view)!
+  expect(m).not.toBeNull()
+  // the y band is the window's own: the plateau outside it is not in the scale
+  expect(m.yTicks[0].label).toBe('100')
+  expect(m.yTicks[2].label).toBe('111')
+  // the axis says where the window's edges are, in hours from now
+  expect(m.xTicks.map((t) => t.label)).toEqual([`${MINUS}2h`, `${MINUS}1h`, 'now'])
+  // a point 8 h back keeps its true place, off the plot's left edge, for the painter to clip
+  expect(m.points[0].x).toBeLessThan(m.plot.x)
+  expect(m.points[47].x).toBeCloseTo(m.plot.x + m.plot.w - m.plot.w / 12, 3)
+  // the marks are the window's own: the record's 1000 is not this chart's high
+  expect(m.low.mid).toBe(100)
+  expect(m.high.mid).toBe(111)
+})
+
+test('a window with the estimate in it labels `now` where it falls, not at the right edge', () => {
+  const view = { fromMs: NOW - 4 * H, toMs: NOW + 2 * H }
+  const m = priceChartModel(
+    series([100, 101, 102, 103], 900, NOW),
+    900,
+    NOW,
+    { points: outlook([103, 106, 109], 2, NOW, 900) },
+    undefined,
+    null,
+    view,
+  )!
+  expect(m.xTicks.map((t) => t.label)).toEqual([`${MINUS}4h`, 'now', '+2h'])
+  // now stands two hours in from the right edge of a six-hour window: a third of the plot back
+  expect(m.outlook!.nowX).toBeCloseTo(m.plot.x + m.plot.w * (4 / 6), 3)
+})
+
+test('a drag moves the window with the finger and cannot leave the record', () => {
+  const limits = { oldestMs: NOW - 8 * H, newestMs: NOW, spanMs: 2 * H }
+  expect(panBackMs(limits)).toBe(6 * H)
+  // dragging RIGHT by half the plot brings in an hour of earlier prices (half of a two-hour window)
+  expect(panByDrag(0, 170, 340, limits)).toBe(1 * H)
+  expect(panView(1 * H, limits)).toEqual({ fromMs: NOW - 3 * H, toMs: NOW - 1 * H })
+  // dragging LEFT from the right edge does nothing: there is nothing after now to look at
+  expect(panByDrag(0, -170, 340, limits)).toBe(0)
+  // and a long drag stops at the oldest point rather than running off it
+  expect(panByDrag(0, 3400, 340, limits)).toBe(6 * H)
+  expect(panView(99 * H, limits)).toEqual({ fromMs: NOW - 8 * H, toMs: NOW - 6 * H })
+  // a plot of no width cannot be dragged, and nonsense is nought
+  expect(panByDrag(2 * H, 100, 0, limits)).toBe(2 * H)
+  expect(clampPan(Number.NaN, limits)).toBe(0)
+})
+
+test('a window as wide as the record has nothing behind it, so there is nothing to drag', () => {
+  const limits = { oldestMs: NOW - 8 * H, newestMs: NOW, spanMs: 8 * H }
+  expect(panBackMs(limits)).toBe(0)
+  expect(panByDrag(0, 1000, 340, limits)).toBe(0)
+  expect(panByKey(0, true, limits)).toBe(0)
+  expect(panView(5 * H, limits)).toEqual({ fromMs: NOW - 8 * H, toMs: NOW })
+})
+
+test('the keyboard walks a quarter of a window, and the left arrow goes into the past', () => {
+  const limits = { oldestMs: NOW - 8 * H, newestMs: NOW, spanMs: 2 * H }
+  expect(panByKey(0, true, limits)).toBe(0.5 * H)
+  expect(panByKey(0.5 * H, true, limits)).toBe(1 * H)
+  expect(panByKey(1 * H, false, limits)).toBe(0.5 * H)
+  expect(panByKey(0, false, limits)).toBe(0)
 })

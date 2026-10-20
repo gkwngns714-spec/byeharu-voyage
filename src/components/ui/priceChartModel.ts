@@ -1,4 +1,5 @@
 import { MINUS, formatFixed, priceDigits } from '../../lib/format'
+import type { ChartWindow } from './chartPan'
 import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -32,6 +33,15 @@ import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 // `world.price_outlook`'s points, at their served instants, drawn as a dashed line from now, with
 // the band between lo and hi as one polygon. The model adds nothing to them: no smoothing, no
 // interpolation, no second guess.
+//
+// ── THE WINDOW, AND THE DRAG (owner request 178, 2026-10-20) ───────────────────────────────────
+// Given a `window` — a from and a to, which `chartPan` works out from the chosen width and how far
+// back it has been dragged — the axis spans THAT stretch instead of the record's own, and x is no
+// longer clamped to the plot: a point outside the window is given its true x and the PAINTER clips it
+// (`PriceChart`'s clip path). So the line enters and leaves the plot's edges instead of piling up on
+// them, and the y band, the x labels and the low / high marks are all read from what is INSIDE the
+// window — panning back rescales to the prices you are looking at, which is what a price chart does.
+// Without a window every line below behaves exactly as it did.
 //
 // ── WHAT IT REFUSES ────────────────────────────────────────────────────────────────────────────
 // Without an estimate: fewer than two points, a point whose `at` does not parse, or a non-positive
@@ -122,6 +132,12 @@ function hoursLabel(hours: number): string {
   return `${text}h`
 }
 
+/** An edge of a dragged window, as hours from now: `now` within a minute of it, else signed hours. */
+function edgeLabel(ms: number): string {
+  if (Math.abs(ms) < 60_000) return 'now'
+  return `${ms < 0 ? MINUS : '+'}${hoursLabel(Math.abs(ms) / 3_600_000)}`
+}
+
 /** The y labels' decimals: by the drawn SPAN, or by the price itself when nothing moved. */
 function axisDigits(lo: number, hi: number): number {
   const span = hi - lo
@@ -158,6 +174,8 @@ export function priceChartModel(
   },
   /** The city's normal stock for the good (served): draws the stock strip under the price. */
   stockTarget: number | null = null,
+  /** The stretch of time on the plane (`chartPan`'s `panView`). Null: the record's own span, as before. */
+  view: ChartWindow | null = null,
 ): PriceChartModel | null {
   const est = outlook && outlook.points.length >= 2 ? outlook.points : null
   if (!(slotSeconds > 0) || !Number.isFinite(nowMs)) return null
@@ -167,8 +185,16 @@ export function priceChartModel(
   const estAts = est ? est.map((p) => Date.parse(p.at)) : []
   if (estAts.some((t) => !Number.isFinite(t))) return null
 
+  // INSIDE THE WINDOW, when there is one: the y band is the prices on the plane, not every price ever
+  // served. A window that holds nothing falls back to all of them rather than dividing by nothing.
+  const inView = (t: number) => !view || (t >= view.fromMs && t <= view.toMs)
   const mids = points.map((p) => p.mid)
-  const drawn = [...mids, ...(est ? est.flatMap((p) => [p.lo, p.hi, p.value]) : [])]
+  const all = [...mids, ...(est ? est.flatMap((p) => [p.lo, p.hi, p.value]) : [])]
+  const shown = [
+    ...mids.filter((_, i) => inView(ats[i])),
+    ...(est ? est.filter((_, i) => inView(estAts[i])).flatMap((p) => [p.lo, p.hi, p.value]) : []),
+  ]
+  const drawn = shown.length ? shown : all
   const lo = Math.min(...drawn)
   const hi = Math.max(...drawn)
   const band = hi - lo
@@ -194,10 +220,14 @@ export function priceChartModel(
   const spanMs = points.length ? Math.max(nowMs - earliest, points.length * slotSeconds * 1000, 1) : 0
   const spanHours = spanMs / 3_600_000
   const endMs = est ? Math.max(nowMs, ...estAts) : nowMs
-  const totalMs = Math.max(spanMs + (endMs - nowMs), 1)
-  const startMs = nowMs - spanMs
+  const totalMs = view ? Math.max(1, view.toMs - view.fromMs) : Math.max(spanMs + (endMs - nowMs), 1)
+  const startMs = view ? view.fromMs : nowMs - spanMs
 
-  const xOf = (t: number) => plot.x + plot.w * Math.max(0, Math.min(1, (t - startMs) / totalMs))
+  // With a window, x is NOT clamped: a point outside it keeps its true place and the painter clips it.
+  const xOf = (t: number) => {
+    const f = (t - startMs) / totalMs
+    return plot.x + plot.w * (view ? f : Math.max(0, Math.min(1, f)))
+  }
   // A flat plane has no band to scale into: draw it through the middle rather than divide by zero,
   // because "it did not move" is a real answer (the sparkline's rule).
   const yOf = (v: number) => (band === 0 ? plot.y + plot.h / 2 : plot.y + plot.h - ((v - lo) / band) * plot.h)
@@ -207,12 +237,14 @@ export function priceChartModel(
   const floor = (plot.y + plot.h).toFixed(1)
   const area = xy.length ? `${line} L${xy[xy.length - 1].x.toFixed(1)} ${floor} L${xy[0].x.toFixed(1)} ${floor} Z` : ''
 
-  // Ties go to the LATEST occurrence: the mark says where the price IS at that level.
-  let lowI = 0
-  let highI = 0
+  // Ties go to the LATEST occurrence: the mark says where the price IS at that level. Only points on
+  // the plane are marked — a low dragged off the left edge is not this chart's low.
+  let lowI = -1
+  let highI = -1
   for (let i = 0; i < mids.length; i++) {
-    if (mids[i] <= mids[lowI]) lowI = i
-    if (mids[i] >= mids[highI]) highI = i
+    if (!inView(ats[i])) continue
+    if (lowI < 0 || mids[i] <= mids[lowI]) lowI = i
+    if (highI < 0 || mids[i] >= mids[highI]) highI = i
   }
   const nowValue = est ? est[0].value : mids[mids.length - 1]
   const mark = (i: number): ChartMark =>
@@ -236,7 +268,17 @@ export function priceChartModel(
   // Two labels never stand on each other: a record too short to give its own left label room beside
   // `now` (a fresh record of two slots against six hours of estimate) is labelled at now alone.
   const roomForLeft = nowX - plot.x >= 64
-  const xTicks = points.length && roomForLeft
+  const xTicks = view
+    ? // THE WINDOW'S OWN EDGES, in hours from now, with `now` in the middle where it has room to
+      // stand (the estimate puts it inside the window) and the window's midpoint where it does not.
+      [
+        { x: plot.x, label: edgeLabel(view.fromMs - nowMs) },
+        nowX - plot.x >= 48 && plot.x + plot.w - nowX >= 48
+          ? { x: nowX, label: 'now' }
+          : { x: plot.x + plot.w / 2, label: edgeLabel((view.fromMs + view.toMs) / 2 - nowMs) },
+        { x: plot.x + plot.w, label: edgeLabel(view.toMs - nowMs) },
+      ]
+    : points.length && roomForLeft
     ? [
         { x: plot.x, label: `${MINUS}${hoursLabel(spanHours)}` },
         ...(est
@@ -266,7 +308,7 @@ export function priceChartModel(
       .map(({ x, lo: l }) => `L${x.toFixed(1)} ${l.toFixed(1)}`)
       .join(' ')
     const endLabel = `+${hoursLabel((endMs - nowMs) / 3_600_000)}`
-    xTicks.push({ x: plot.x + plot.w, label: endLabel })
+    if (!view) xTicks.push({ x: plot.x + plot.w, label: endLabel })
     const bestMs = outlook?.bestAt ? Date.parse(outlook.bestAt) : NaN
     const bestI = Number.isFinite(bestMs) ? estAts.findIndex((t) => t === bestMs) : -1
     const arrive = outlook?.arriveMs

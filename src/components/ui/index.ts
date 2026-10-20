@@ -137,11 +137,20 @@ export { PriceCell, TradeRow } from './TradeRow'
 //     Trend row folds between the Sparkline and the PriceChart. `PriceTrend` is the shape the
 //     history hook hands both trays (points + the served cadence).
 export { PriceRows, type PriceTrend } from './PriceRows'
+//     PRICE PAIR — both sides of one price, each under its own word: what you pay here, what you get
+//     here (owner request 178, 2026-10-20). The desk's good page draws it in its head (the city in
+//     focus) and on every row of its two ladders, so a figure beside a city is never a side the
+//     reader has to guess. It derives nothing: a side the server did not price prints as a dash.
+export { PricePair } from './PricePair'
 //     PRICE CHART — the sparkline unfolded: the same served line with a three-figure scale, an
 //     axis in hours before now, and the low / high / now marks (owner row 76, slice 3). The
 //     geometry is `priceChartModel`, pure, so tests/priceChart.spec.ts proves the axis in Node.
 export { PriceChart } from './PriceChart'
 export { priceChartModel, PRICE_CHART_H, PRICE_CHART_W, type PriceChartModel } from './priceChartModel'
+//     DRAGGING A TIME AXIS (owner request 178, 2026-10-20) — a window and how far back it has been
+//     dragged, clamped to the data. Pure, and shared: `PriceChart` pans with it today and the series
+//     chart can take the same gesture the day its record is long enough to need one.
+export { panBackMs, clampPan, panView, panByDrag, panByKey, type ChartWindow, type PanLimits } from './chartPan'
 //     SERIES CHART — one figure over time, on its own scale: the Stats tab's small multiple (0214). Three
 //     faces draw it (the Overview's holders, a city's purse, the merchants' day), so it is the system's.
 //     The geometry is `seriesChartModel`, pure, so tests/seriesChart.spec.ts proves the axis in Node.
