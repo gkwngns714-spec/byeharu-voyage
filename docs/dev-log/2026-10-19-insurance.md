@@ -107,6 +107,13 @@ and a spec run, so they are not a clean read; prod's arrivals get the 30-minute 
 3. `o->'q' - 'insurance'` parses as `o -> ('q' - 'insurance')` (`-` binds before `->`); parenthesised.
 4. The generator sources (`docs/dev-log/insurance-wip/`) were a second copy of the migration and were deleted; the
    migration file is the one source.
+5. **CI's one red on the PR was a pre-existing spec race, not insurance.** `tests/route.stopface.spec.ts:115` picks
+   "the first harbour the port field offers that is not home"; before `world.reach` answers every harbour is +Infinity
+   away and the chips stand alphabetically, so the pick was Acapulco and the Start was refused by the navigator's
+   reach (recorded the same day in docs/dev-log/2026-10-20-fleet-picker.md; main's Acceptance passes it when the read
+   wins the race). Fixed properly here: the chip list says `data-reach="measured"` once the distances have landed
+   (PortField.tsx) and both specs that pick a chip (route.stopface, flicker) wait for it. The fixed spec passes against
+   the insurance build served locally (3/3): the route starts and the editor closes with insurance in.
 
 ## Decided by default (the owner may reverse each)
 - Cargo only; one voyage per policy; a turn at sea (DIVERT) ends the cover.
