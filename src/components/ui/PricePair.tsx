@@ -22,6 +22,12 @@ import { useT } from '../../lib/i18n'
 // its own word, so it is never read as a price one trader gets. A board prices the dearest
 // `good_board_quoted` cities in full and serves the middle price for the rest (0171), so that is the
 // ordinary state of a long sell ladder, not a fault.
+//
+// IN `block` FORM BOTH CELLS ARE ALWAYS DRAWN, dashed where nothing is served yet. A block head is
+// measured: the desk's law is that pressing a city changes the chart IN PLACE and moves nothing below
+// it (tests/desk.layout.spec.ts), and a pair that collapsed to one cell — or a skeleton of some other
+// height standing in for it while the new city's price is on the wire — would move the page by those
+// few pixels. The dash IS the waiting state, in the very markup the figure will take.
 
 /** The dash a figure the server did not price prints as — the one the ticket's rows already use. */
 const NO_FIGURE = '—'
@@ -48,7 +54,7 @@ export function PricePair({
 }) {
   const t = useT()
   const sides: { key: string; word: string; value: number | null; faint: boolean }[] =
-    pay === null && get === null
+    !block && pay === null && get === null
       ? [{ key: 'mid', word: t('ui.marketWord'), value: mid, faint: true }]
       : [
           { key: 'pay', word: t('ui.youPay'), value: pay, faint: false },

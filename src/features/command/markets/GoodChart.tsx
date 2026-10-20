@@ -173,11 +173,7 @@ export function GoodChart({
               here. The MIDDLE price keeps its own line under them, because the middle is what the
               chart's line and the record are made of. */}
           <div className="mt-1">
-            {why ? (
-              <PricePair pay={why.ask} get={why.bid} mid={why.mid} size="figure" block />
-            ) : (
-              <Skeleton className="h-[46px] w-56" />
-            )}
+            <PricePair pay={why?.ask ?? null} get={why?.bid ?? null} size="figure" block />
           </div>
           <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-t-caption text-ink-faint">
             {now !== null && <span className="tabular-nums">{t('markets.midPrice', { price: formatPrice(now) })}</span>}
@@ -247,10 +243,13 @@ export function GoodChart({
         )}
       </div>
 
-      {/* THE FOOT: when, and how likely. On a phone the likely line wraps to two (16 px each): room for
-          three lines is kept, so a city's estimate landing (at once, when it was asked ahead — 2026-10-19)
-          never pushes the ticket below it down. */}
-      <div className="mt-1 min-h-[3.25rem] space-y-0.5 sm:min-h-11">
+      {/* THE FOOT: when, how likely, and how far the chart can look. On a phone the likely line wraps to
+          two (16 px each): room for FOUR lines is kept, so neither a city's estimate landing (at once,
+          when it was asked ahead — 2026-10-19) nor the record's reach / the drag's hint (2026-10-20)
+          ever pushes the ticket below it down. Those last two are mutually exclusive by arithmetic —
+          one needs a window narrower than the record, the other a window wider — so four is the most
+          that can ever stand here. */}
+      <div className="mt-1 min-h-[4.25rem] space-y-0.5 sm:min-h-[3.75rem]">
         {best ? (
           <p className="text-t-caption text-warning" data-testid="good-best-time">
             {t('markets.bestTime', {

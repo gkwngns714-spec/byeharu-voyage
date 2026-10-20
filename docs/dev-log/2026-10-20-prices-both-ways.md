@@ -214,6 +214,24 @@ served point (an empty three-quarters of a plane is not a product), and the foot
 record truly reaches. The move beside the price is labelled with **its own** span and not with the chip,
 so a week-wide chip over a twelve-hour record still reads *+4.1 % · 11.8 h*.
 
+### Nothing on this page may move under a press — and the first CI run caught it
+
+The desk's law is that a press SELECTS: the chart changes in place and nothing below it moves
+(`tests/desk.layout.spec.ts` measures `buy-at`'s top across a city press). Two things in this slice
+broke it on the first run, both for the same reason — **a box whose height depends on a read landing**:
+
+1. **The head** drew a skeleton while the new city's `price_why` was on the wire and the pair once it
+   landed, and the two were not the same height to the pixel. Fixed by deleting the skeleton: in
+   `block` form `PricePair` always draws both cells, **dashed** where nothing is served yet, so the
+   waiting state is the very markup the figure will take.
+2. **The foot** gained a line (the record's reach, or the drag's hint) that appears only once the
+   estimate has landed, past the three lines it had room for. Fixed by reserving a fourth line. Four
+   is the most that can ever stand there: the reach line needs a window WIDER than the record and the
+   drag hint a window NARROWER, so the two are mutually exclusive by arithmetic.
+
+Both texts were cut to one line each at 390 px for the same reason (`The record only goes back 11.8 h.`,
+`Drag the chart right to look back.`).
+
 ### Decided by default
 
 - **The drag follows the content, not the owner's word order.** He wrote *"dragable to see the past
