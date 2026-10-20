@@ -5,6 +5,7 @@ import type { FleetView, Refusal, TowReceipt } from '../lib/rpc'
 import { formatDucats } from '../lib/format'
 import { useServedRead } from './useServedRead'
 import { useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TOW — a wrecked fleet of yours lying in this harbour, and the one press that moves it to a yard
@@ -46,6 +47,7 @@ interface Served {
 }
 
 function TowRow({ fleet }: { fleet: FleetView }) {
+  const t = useT()
   const refresh = useWorld((s) => s.refresh)
   const [sending, setSending] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
@@ -76,8 +78,8 @@ function TowRow({ fleet }: { fleet: FleetView }) {
           tone="warning"
           data-testid="tow-note"
           action={
-            <Button size="sm" busy={sending} busyLabel="Towing…" onClick={send} data-testid="tow-send">
-              {estimate.fee > 0 ? `Tow · ${formatDucats(estimate.fee)}` : 'Tow'}
+            <Button size="sm" busy={sending} busyLabel={t('ship.towing')} onClick={send} data-testid="tow-send">
+              {estimate.fee > 0 ? t('ship.towFee', { fee: formatDucats(estimate.fee) }) : t('ship.tow')}
             </Button>
           }
         >
