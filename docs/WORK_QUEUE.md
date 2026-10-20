@@ -16,10 +16,10 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 |---|---|---|---|
 | 1 | **Insurance** (0212) | A | agent finishing tests → PR → deploy |
 | 2 | **Money printing fix** (haul 300× → ~4.5×, 0213) | A | agent: sim + PR (branch `osn-haul-cap`); deploys right after 1, then 30-min check |
-| 3 | **Fleet picker** (screens only) | B | agent building (`osn-fleet-picker`) |
+| 3 | **Fleet picker** (screens only) | B | **LIVE 2026-10-20 ~04:50 UTC** (#272 merged 60aa938; Pages deployed) |
 | 4 | **Stats tab** + city-investment gating (owner rule) | A+B | PAUSED, WIP on `osn-stats-tab`, dev-log hand-off; resumes after 2 and 3 |
 | 5 | **Korean language** | B | PAUSED, WIP on `osn-korean`, dev-log hand-off; resumes after 4 so it translates every screen once |
-| 6 | **Sea conditions + Europe-only start** (region unlock) | C → A+B | design doc being written (`osn-sea-conditions-design`); the owner reads it, then build |
+| 6 | **Sea conditions + Europe-only start** (region unlock) | C → A+B | design DONE: PR #271 (docs/SEA_CONDITIONS_AND_REGIONS.md, 7 defaults); waiting for the owner, then slices S1–S6 + C1–C5 |
 | 7 | **Capital move** | A+B | after 6 |
 | 8 | **Live prices, wider spread** (owner said yes) | A+B | WIP `osn-live-prices`; after 6 |
 | 9 | **Far-selling extras** | A | re-measure after 2 and 6; maybe not needed |
