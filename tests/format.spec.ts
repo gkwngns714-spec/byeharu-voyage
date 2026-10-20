@@ -16,6 +16,7 @@ import {
   formatDucatsDelta,
   formatFixed,
   formatGameDate,
+  formatGameToday,
   formatInt,
   formatKnots,
   formatMiles,
@@ -31,7 +32,12 @@ import {
   formatUnitPrice,
   formatUnits,
   formatVoyageDays,
+  CALENDAR_EPOCH_MS,
+  CALENDAR_YEAR_0,
+  GAME_DAYS_PER_MONTH,
   gameDate,
+  gameDayOfMonth,
+  gameToday,
   realMsToVoyageDays,
   seasonOfMonth,
   voyageDaysToRealMs,
@@ -163,6 +169,39 @@ test('the LIVE clock and the countdown face tick by the second (0029)', () => {
   expect(formatCountdown(3_727_000)).toBe('1:02:07')
   // Never negative: a passed instant is the cue to RE-ASK the server, not to count up.
   expect(formatCountdown(-5_000)).toBe('0:00')
+})
+
+test('the world’s date is the CALENDAR clock’s, and its day turns when world.game_day does (row 176)', () => {
+  // The owner, 2026-10-20: *"I want to see the date, year, months and so on."* The date printed is
+  // the calendar clock's — one game month per real day — which makes a game day 2,880 real seconds,
+  // the server's own `world_config.game_day_seconds`. These hold the rate, the epoch and the ROLLOVER
+  // instant, so the printed day can never drift from the day `world.game_day()` counts.
+  const DAY_MS = 24 * 60 * 60 * 1000
+  const GAME_DAY_MS = DAY_MS / GAME_DAYS_PER_MONTH
+  expect(GAME_DAY_MS).toBe(2_880_000) // = game_day_seconds, the knob migration 0005 seeds
+  expect(formatGameToday(CALENDAR_EPOCH_MS)).toBe('1 January 1500')
+  expect(gameToday(CALENDAR_EPOCH_MS).year).toBe(CALENDAR_YEAR_0)
+
+  // A game day turns on the stroke of its 2,880th second, and not a millisecond before.
+  expect(gameDayOfMonth(gameToday(CALENDAR_EPOCH_MS + GAME_DAY_MS - 1))).toBe(1)
+  expect(gameDayOfMonth(gameToday(CALENDAR_EPOCH_MS + GAME_DAY_MS))).toBe(2)
+  expect(formatGameToday(CALENDAR_EPOCH_MS + GAME_DAY_MS)).toBe('2 January 1500')
+  // …and that is the same instant the server's counter turns: `floor(epoch_seconds / 2880)`.
+  const serverDay = (ms: number) => Math.floor(ms / GAME_DAY_MS)
+  for (const at of [CALENDAR_EPOCH_MS, CALENDAR_EPOCH_MS + GAME_DAY_MS - 1, CALENDAR_EPOCH_MS + GAME_DAY_MS, CALENDAR_EPOCH_MS + 97 * GAME_DAY_MS]) {
+    expect(serverDay(at) - serverDay(CALENDAR_EPOCH_MS), `game day at +${at - CALENDAR_EPOCH_MS} ms`).toBe(
+      (gameToday(at).year - CALENDAR_YEAR_0) * 12 * GAME_DAYS_PER_MONTH +
+        gameToday(at).monthIndex * GAME_DAYS_PER_MONTH +
+        gameDayOfMonth(gameToday(at)) -
+        1,
+    )
+  }
+
+  // The last day of a month is the 30th, never a 31st — the fraction is clamped.
+  expect(gameDayOfMonth(gameToday(CALENDAR_EPOCH_MS + DAY_MS - 1))).toBe(GAME_DAYS_PER_MONTH)
+  // One real day is one month; twelve are a year.
+  expect(formatGameToday(CALENDAR_EPOCH_MS + DAY_MS)).toBe('1 February 1500')
+  expect(gameToday(CALENDAR_EPOCH_MS + 12 * DAY_MS).year).toBe(CALENDAR_YEAR_0 + 1)
 })
 
 test('the calendar clock runs one game month per real day (D.1) and seasons follow B.4', () => {

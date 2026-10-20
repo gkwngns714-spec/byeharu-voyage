@@ -175,6 +175,61 @@ export function formatGameDate(d: GameDate): string {
   return t('format.gameDate', { month, year: d.year, season: t(`format.${d.season}`) })
 }
 
+// ══ THE WORLD'S DATE (owner row 176, 2026-10-20) ═══════════════════════════════════
+//
+// *"I want there to be a clock on command, map. There is one right now showing the time only, but
+//  I want to see the date, year, months and so on."*
+//
+// IT IS THE CALENDAR CLOCK, WHICH IS THE SERVER'S OWN DAY — not a new one. `gameDate` above runs
+// one game month per REAL day (D.1), so a game day is 86,400 / 30 = 2,880 real seconds, which is
+// exactly `world_config.game_day_seconds` and therefore exactly the day `world.game_day()` counts
+// (migration 0005). The date below rolls over at the same instants the server's day counter does,
+// so every `*_game_days` figure on the wire is counted in the unit this date is printed in. The
+// client reads no new thing to say it: the shell's ONE CLOCK is the server's (src/lib/serverClock.ts).
+//
+// THE HOUR HAND IS THE OTHER CLOCK, and that is deliberate (D.3: *"we separate them and say so out
+// loud in the UI"*). `gameTimeOfDayMs` below runs at GAME_CLOCK_RATE because the owner set that
+// rate for the Sun on 2026-10-15 (*"make the clock twice slower"*, then twice again), so the hour
+// comes round faster than the date turns. The two are printed side by side rather than one being
+// bent to the other: bending the date to the hour hand would print a day that no rule in the game
+// counts in — a season, an ice closure, a buff's duration and the daily trade cap are all in THIS
+// day — and that is the second authority this file exists to refuse.
+
+/** Game days to a game month: a game month is one REAL day (D.1) and a game day is
+ *  `world_config.game_day_seconds` = 2,880 real seconds, so 86,400 / 2,880 = 30. Mirrored for
+ *  DISPLAY ONLY, as TIME_COMPRESSION is — nothing is decided from it. */
+export const GAME_DAYS_PER_MONTH = 30
+
+/** WHERE THE WORLD'S CALENDAR STARTS: the real instant that is the first day of `CALENDAR_YEAR_0`.
+ *
+ *  The world was created on 2026-08-18 (the first migration of the chain), and the game is set in
+ *  1500–1650 (DESIGN §1.6), so the world's first day is 1 January 1500 and the era lasts twelve
+ *  real days a year. DECIDED BY DEFAULT, 2026-10-20: the server keeps no epoch, and the date has to
+ *  be the same for every player (the owner, 2026-10-15: *"every player logged in to this game will
+ *  share same clock and same vision"*), so it is a world constant and not a reading of the house.
+ *  The day it should be a served knob, this becomes its mirror. */
+export const CALENDAR_EPOCH_MS = Date.UTC(2026, 7, 18)
+export const CALENDAR_YEAR_0 = 1500
+
+/** The world's date NOW, on the calendar clock. */
+export function gameToday(nowMs: number): GameDate {
+  return gameDate(nowMs, CALENDAR_EPOCH_MS, CALENDAR_YEAR_0)
+}
+
+/** Which day of the game month it is, 1– GAME_DAYS_PER_MONTH, out of the fraction `gameDate`
+ *  reports. Clamped at the last day, so the final instant of a month is the 30th and never a 31st. */
+export function gameDayOfMonth(d: GameDate): number {
+  return Math.min(GAME_DAYS_PER_MONTH, Math.floor(d.monthFraction * GAME_DAYS_PER_MONTH) + 1)
+}
+
+/** The world's date as the top bar prints it: "12 March 1505". The season is NOT in it — the strip
+ *  is 32 px with a purse on the other end and a price countdown beside it on the desk, and a word
+ *  that changes once in three real days is not what that room is for. */
+export function formatGameToday(nowMs: number): string {
+  const d = gameToday(nowMs)
+  return t('format.gameToday', { day: gameDayOfMonth(d), month: t(`format.m${d.monthIndex}` as TKey), year: d.year })
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
 /** THE GAME CLOCK'S RATE — an EIGHTH of the voyage clock. The owner, 2026-10-15: *"make the clock

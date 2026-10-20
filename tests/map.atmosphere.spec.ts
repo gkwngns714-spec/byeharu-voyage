@@ -413,6 +413,43 @@ test('every --color-chart-* token the night sea defines, the day sea defines too
   }
 })
 
+/** Every `--color-*` declaration inside the block that starts at `opener`, token → value. */
+function declarationsIn(css: string, opener: string): Map<string, string> {
+  const start = css.indexOf(opener)
+  expect(start, `no "${opener}" block in src/index.css`).toBeGreaterThan(-1)
+  let depth = 0
+  let i = css.indexOf('{', start)
+  const from = i
+  for (; i < css.length; i++) {
+    if (css[i] === '{') depth++
+    else if (css[i] === '}' && --depth === 0) break
+  }
+  const out = new Map<string, string>()
+  for (const m of css.slice(from, i).matchAll(/^\s*(--color-[a-z0-9-]+)\s*:\s*(.+?);\s*$/gm)) out.set(m[1], m[2])
+  return out
+}
+
+test('the day map is the NIGHT map, declaration for declaration (owner row 171)', () => {
+  const css = read('src/index.css')
+  // The owner, 2026-10-20: *"The light mode map color should be same as dark."* The chart's own
+  // element restates the night palette for the day scheme (src/index.css, `.bv-chart-night`), and
+  // a copy drifts — so this holds every line of it against the night block it was copied from:
+  // retune the night map and the day map goes red until it is retuned with it.
+  const night = declarationsIn(css, '@theme')
+  const chart = declarationsIn(css, ":root[data-theme='light'] .bv-chart-night")
+  expect(chart.size, 'the chart rule restates nothing').toBeGreaterThanOrEqual(40)
+  for (const [token, value] of chart) {
+    expect(night.get(token), `${token} is restated for the day chart; the night sea does not define it`).toBe(value)
+  }
+  // …and it covers the whole picture: every chart ink, both lamps, the merchant and all eight
+  // nation inks, so nothing on the water is left wearing a day colour.
+  for (const token of night.keys()) {
+    if (/^--color-(chart-(?!day-)|nation-|harbour-light|ship-light|merchant)/.test(token)) {
+      expect(chart.has(token), `${token} is a map colour the day chart does not restate`).toBe(true)
+    }
+  }
+})
+
 // ── 5. THE NEW LAYER IS FURNITURE ──────────────────────────────────────────────────────────────
 
 test('SeaLayer is composed by ChartCanvas and reachable by nobody else', () => {

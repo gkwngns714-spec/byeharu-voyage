@@ -1,0 +1,35 @@
+import { defineDict } from '../define'
+
+// YOU (src/features/you): the three levels, every hull you own, and your captains. The level words
+// came from the Profile dictionary with the section itself (owner row 181, 2026-10-20) — one screen
+// prints a ladder, so one dictionary holds its words.
+export const youDict = defineDict({
+  en: {
+    title: 'You',
+    noCompany: 'You have not signed the book yet.',
+    levels: 'Levels',
+    trading: 'Trading',
+    exploration: 'Exploration',
+    combat: 'Combat',
+    noFighting: 'no fighting at sea yet',
+    levelOf: '{name} level',
+    ships: 'Your ships',
+    shipsCount: '{ships} in {fleets} fleets',
+    noShips: 'No ships yet.',
+    flagship: 'flagship',
+  },
+  ko: {
+    title: '나',
+    noCompany: '아직 명부에 서명하지 않았습니다.',
+    levels: '레벨',
+    trading: '교역',
+    exploration: '탐험',
+    combat: '전투',
+    noFighting: '아직 해전 없음',
+    levelOf: '{name} 레벨',
+    ships: '내 선박',
+    shipsCount: '선단 {fleets}개 · {ships}척',
+    noShips: '아직 선박이 없습니다.',
+    flagship: '기함',
+  },
+})
