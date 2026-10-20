@@ -4,6 +4,7 @@
 export {
   COIN,
   MINUS,
+  NBSP,
   formatInt,
   formatFixed,
   formatDucats,

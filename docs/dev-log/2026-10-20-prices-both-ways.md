@@ -242,21 +242,42 @@ broke it on the first run, both for the same reason — **a box whose height dep
 Both texts were cut to one line each at 390 px for the same reason (`The record only goes back 11.8 h.`,
 `Drag the chart right to look back.`).
 
-**Two pixels, left on the table, measured and recorded.** Four 16-px lines and three 2-px gaps sum to
-70 px, and the reservation is `4.25rem` = 68. `4.375rem` (and `3.875rem` for the `sm` figure) was
-tried, and the plain pool's **shard 3 went red on it three times in a row** — the initial run and two
-re-runs of that one job — where `4.25rem` had passed, with **one** unexpected result each time ("481
-test(s) to run but 480 passed", "shard plain-3 had 1 unexpected result(s)"). The failing test's name
-could not be read from the build sandbox: the proxy there refuses GitHub's log and artifact hosts
-(`results-receiver.actions.githubusercontent.com`, `*.blob.core.windows.net` both answer 403 to
-CONNECT), and the check-run annotations carry only the counts above.
-So the figure CI has proved stands, and the two pixels are written down instead of guessed at twice.
-What they cost: in the one state where all four lines stand at once (a best time, a likely line wrapped
-to two, and either the reach or the hint) the box is 70 px rather than its reserved 68, so pressing a
-city there moves the ticket under it by **two pixels**. It cannot happen on the local world, whose
-record is two points — which is also why CI cannot be the thing that proves the fix. Whoever can read
-run **39473754645**, job `acceptance-shard (3/3)`, should read which test it was; if it is unrelated,
-the reservation should go back to `4.375rem` / `3.875rem`.
+### The third box, and the real cause of the red that followed
+
+The two fixes above were not the whole of it, and chasing the reservation's figure up and down was the
+wrong search. `acceptance-shard (3/3)` stayed red — once with the reservation at 68 px, once at 70,
+once more after main was merged — and the thing it was catching was a **third** box of the same kind,
+one I had made with my own hand in part (a):
+
+The head's **middle-price line**. Splitting the hero figure into a pair above and a caption below left
+that caption holding only the middle price and its move — and **both of those come from the estimate**
+(`world.price_outlook`'s k = 0 point), which is null while a newly pressed city's estimate is on the
+wire. So the line had no words, a flex row with no words is 0 px tall, and the head lost a whole line
+**on a press** — the one moment the desk's law says nothing may move. Before the split that line WAS
+the hero figure's line and a skeleton of the same height stood in it, so it could never collapse.
+
+It is also why the shard went green once in four: the desk asks the likely focus cities' estimates
+**ahead** of the press (`prefetchGoodDesk` — the docked city and the watchlist's cheapest seller), so
+when the pressed city is one of those, the estimate is already in, the line never empties and the test
+passes. A prefetch hit or miss is exactly the sort of thing that reads as flakiness and is not.
+
+**The fix is the same law, applied three times over:** the caption line carries `min-h-4` — one
+t-caption line, the figure from `src/index.css` — so it keeps its line with nothing in it; and the
+foot's two conditional lines (the record's reach, the drag's hint) became **ONE line that is always
+drawn**, with a non-breaking space when it has nothing to say. This slice therefore adds exactly one
+line to the three the foot held before, never a line that comes and goes, and the reservation is the
+honest sum again: four lines at 16 px with three 2-px gaps = **70 px = `4.375rem`**, and three lines =
+**52 px = `3.25rem`** from the `sm` width up.
+
+**What this cost, written down so the next hand does not pay it again:** three CI cycles and one
+wrong revert. The failing test's NAME was never readable from the build sandbox — its proxy answers
+403 to CONNECT for `results-receiver.actions.githubusercontent.com` and `*.blob.core.windows.net`, so
+`gh run view --log` and every artifact are out, and the check-run annotations carry only *"481 test(s)
+to run but 480 passed"* and *"shard plain-3 had 1 unexpected result(s)"*. The way the cause was
+finally found was reading **one's own markup for boxes whose height depends on a read**, not reading
+the log. That list is short and worth keeping: the head's pair (constant by construction — both cells
+are always drawn, dashed), the head's caption line (`min-h-4`), the foot (one constant note, a
+reservation equal to its own maximum).
 
 **The second run proved it:** with these two fixed, the plain pool's shard 3 — the one that had gone
 red — passed. The one shard still red, `npc 1/2`, is red on **main** too: run 39460828282, main's own

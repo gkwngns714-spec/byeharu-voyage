@@ -16,7 +16,7 @@ import {
 } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
+import { NBSP, formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, PriceOutlook, PricePoint, SnapshotGood } from '../../../lib/rpc'
 import { DESK_WINDOW_HOURS, type GoodDesk } from './useGoodDesk'
 import { useT, t as tg } from '../../../lib/i18n'
@@ -175,7 +175,12 @@ export function GoodChart({
           <div className="mt-1">
             <PricePair pay={why?.ask ?? null} get={why?.bid ?? null} size="figure" block />
           </div>
-          <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-t-caption text-ink-faint">
+          {/* THE MIDDLE PRICE AND ITS MOVE, AND THE LINE THEY STAND ON. Both come from the ESTIMATE, so
+              both are absent while a pressed city's estimate is on the wire — and this line must keep
+              its height through that, or the head shrinks by a line and everything under the chart
+              moves on a press, which is the law the desk is measured against (tests/desk.layout.spec.ts
+              "a press … does not move"). `min-h-4` is one t-caption line, the figure in src/index.css. */}
+          <span className="mt-1 flex min-h-4 flex-wrap items-baseline gap-x-2 gap-y-1 text-t-caption text-ink-faint">
             {now !== null && <span className="tabular-nums">{t('markets.midPrice', { price: formatPrice(now) })}</span>}
             {move !== null && moveHours !== null && (
               <span
@@ -246,16 +251,12 @@ export function GoodChart({
       {/* THE FOOT: when, how likely, and how far the chart can look. On a phone the likely line wraps to
           two (16 px each): room for FOUR lines is kept, so neither a city's estimate landing (at once,
           when it was asked ahead — 2026-10-19) nor the record's reach / the drag's hint (2026-10-20)
-          ever pushes the ticket below it down. Those last two are mutually exclusive by arithmetic —
-          one needs a window narrower than the record, the other a window wider — so four is the most
-          that can ever stand here.
-          THE RESERVATION IS 68 px AND THE FOUR LINES SUM TO 70 (4 × 16 px and three 2-px gaps): two
-          pixels short, and deliberately left so. 4.375rem was measured instead and the plain pool's
-          shard 3 went red on it three times in a row, where 4.25rem passed — one test, and this
-          sandbox cannot read which (the proxy refuses GitHub's log and artifact hosts). So the figure
-          that CI has proved stands, and the two pixels are written down here and in the slice's
-          dev-log §C rather than guessed at again. */}
-      <div className="mt-1 min-h-[4.25rem] space-y-0.5 sm:min-h-[3.75rem]">
+          ever pushes the ticket below it down. The note below is ONE line and is always drawn, so this
+          slice adds exactly one line to the three this foot held before — never a line that comes and
+          goes. FOUR LINES, SUMMED: 4 × 16 px and three 2-px gaps = 70 px = 4.375rem, and three lines
+          (where the likely line does not wrap, from the `sm` width up) = 52 px = 3.25rem. Both are the
+          sum and not a round number, the way the 3.25rem this replaces was the sum over three. */}
+      <div className="mt-1 min-h-[4.375rem] space-y-0.5 sm:min-h-[3.25rem]">
         {best ? (
           <p className="text-t-caption text-warning" data-testid="good-best-time">
             {t('markets.bestTime', {
@@ -270,16 +271,17 @@ export function GoodChart({
           <p className="text-t-caption text-ink-faint">{t('markets.noBetter')}</p>
         ) : null}
         {likely && <Hint data-testid="good-likely">{likely}</Hint>}
-        {canPan && panMs === 0 && (
-          <p className="text-t-caption text-ink-faint" data-testid="good-drag-hint">
-            {t('markets.dragBack')}
-          </p>
-        )}
-        {shortRecord && recordHours !== null && (
-          <p className="text-t-caption text-ink-faint" data-testid="good-record-reach">
-            {t('markets.recordBackTo', { span: t('markets.hours', { n: formatFixed(recordHours, 1) }) })}
-          </p>
-        )}
+        {/* ONE LINE, ALWAYS THERE — how far the record reaches, else how to look back, else nothing but
+            the line itself. The two can never both apply (the first wants a window WIDER than the
+            record, the second narrower), and neither may come and go: a line that appears when a read
+            lands moves the ticket under it. So the slot is constant and only its words change. */}
+        <p className="text-t-caption text-ink-faint" data-testid="good-chart-note">
+          {shortRecord && recordHours !== null
+            ? t('markets.recordBackTo', { span: t('markets.hours', { n: formatFixed(recordHours, 1) }) })
+            : canPan && panMs === 0
+              ? t('markets.dragBack')
+              : NBSP}
+        </p>
       </div>
     </div>
   )
