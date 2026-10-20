@@ -148,6 +148,96 @@ test.describe('a frame’s arithmetic (underwayStep)', () => {
   })
 })
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// FOUR READS, SIXTY FRAMES A SECOND — the loop's own composition, walked here
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// `underway.ts`'s frame is three lines around two pure functions: the target is `driftedPoint`'s and
+// the drawn point is `underwayStep`'s. This walks exactly that pair, at 60 fps, over a passage read
+// four times — with the server's answer deliberately DISAGREEING with the chart's own pace by a
+// fraction of a mile each time, which is the disagreement that used to land as a jump.
+//
+// It is the arithmetic and not the file: there is no DOM here and no animation frame. What it holds
+// is the property the owner can see — she never jumps, and she stops on her destination.
+test.describe('four reads, sixty frames a second', () => {
+  /** 200 nm in an hour, one segment, read every 7.5 s (the live cadence). */
+  const TOTAL_NM = 200
+  const ETA = READ_AT + 3_600_000
+  const READ_EVERY_MS = 7_500
+  const FRAME_MS = 1000 / 60
+
+  /** What the server would serve at read `k` — her true progress by the frozen pace, pushed off it
+   *  by a fraction of a mile, alternating, so no read agrees exactly with the last extrapolation. */
+  const readAt = (k: number) => READ_AT + k * READ_EVERY_MS
+  const servedAt = (k: number) => {
+    const trueNm = (TOTAL_NM * (readAt(k) - READ_AT)) / (ETA - READ_AT)
+    const nm = Math.min(TOTAL_NM, Math.max(0, trueNm + (k % 2 === 0 ? 0.3 : -0.3)))
+    const [m] = mapFleetsOf([
+      sailingFleet({
+        id: 'steady',
+        name: 'Steady',
+        from: 'LIS',
+        to: 'CAD',
+        legFrac: nm / TOTAL_NM,
+        sailedNm: nm,
+        totalNm: TOTAL_NM,
+        segNm: TOTAL_NM,
+        etaMs: ETA,
+      }),
+    ])
+    if (m.kind !== 'sailing') throw new Error('fixture is not at sea')
+    return m.voyage
+  }
+
+  test('she never jumps, and she stops on her destination', () => {
+    // Every read of the whole passage, built once — the frame loop below runs 200 000 times.
+    const reads = Array.from({ length: Math.floor(3_600_000 / READ_EVERY_MS) + 1 }, (_, k) => servedAt(k))
+    const a = reads[0].course[0]
+    const b = reads[0].course[1]
+    const fracOf = (p: { lat: number }) => (p.lat - a.lat) / (b.lat - a.lat)
+    // The biggest step the SERVED point takes between two reads — what the eye used to see.
+    let servedStep = 0
+    for (let k = 1; k < reads.length; k++) {
+      servedStep = Math.max(servedStep, Math.abs(fracOf(reads[k].at) - fracOf(reads[k - 1].at)))
+    }
+
+    // The whole passage, frame by frame. The findings are collected and asserted AFTER the loop:
+    // 200 000 `expect` calls are minutes of Playwright's own bookkeeping for one claim.
+    let drawn: { lat: number; lon: number } | null = null
+    let move = 0
+    let back = 0
+    let lowest = 1
+    let highest = 0
+    for (let nowMs = READ_AT; nowMs <= ETA + 5_000; nowMs += FRAME_MS) {
+      const k = Math.min(Math.floor((nowMs - READ_AT) / READ_EVERY_MS), reads.length - 1)
+      const was = drawn === null ? null : fracOf(drawn)
+      drawn = underwayStep(
+        drawn,
+        driftedPoint(reads[k], { nowMs, readAtMs: readAt(k) }),
+        glideShare(nowMs, nowMs - FRAME_MS, UNDERWAY_GLIDE_MS),
+      )
+      const frac = fracOf(drawn)
+      lowest = Math.min(lowest, frac)
+      highest = Math.max(highest, frac)
+      if (was !== null) {
+        move = Math.max(move, Math.abs(frac - was))
+        back = Math.max(back, was - frac)
+      }
+    }
+    // NEVER PAST HER DESTINATION, and never behind her departure. The far vertex here IS the quay
+    // she is bound for.
+    expect(lowest).toBeGreaterThanOrEqual(0)
+    expect(highest).toBeLessThanOrEqual(1 + 1e-9)
+    // NO JUMP: the worst single frame moves her a small fraction of what one served step moved her.
+    expect(move).toBeLessThan(servedStep / 5)
+    // AND NO VISIBLE STEP BACKWARDS: a read behind the drawn point is eased, so the worst backward
+    // frame is a fraction of a nautical mile — 200 nm × this — rather than the whole disagreement.
+    expect(back * TOTAL_NM).toBeLessThan(0.05)
+    // SHE ARRIVES, EXACTLY: past the served eta she stands on the far vertex and stays there.
+    expect(fracOf(drawn!)).toBeCloseTo(1, 6)
+  })
+})
+
 test.describe('the model carries the instant her figures were true', () => {
   test('a fleet at sea carries the read’s instant; a fleet at a quay carries none', () => {
     const model = buildChartModel(mapFleetsOf([LONG_LEG, dockedFleet('gaivota', 'Gaivota', 'LIS')]), PORTS, [], {
