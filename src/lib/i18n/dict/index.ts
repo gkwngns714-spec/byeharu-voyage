@@ -13,6 +13,7 @@ import { foundDict } from './found'
 import { historyDict } from './history'
 import { innDict } from './inn'
 import { mapDict } from './map'
+import { marketsDict } from './markets'
 import { portDict } from './port'
 import { profileDict } from './profile'
 import { quayDict } from './quay'
@@ -38,6 +39,7 @@ export const DICT = {
   history: historyDict,
   inn: innDict,
   map: mapDict,
+  markets: marketsDict,
   port: portDict,
   profile: profileDict,
   quay: quayDict,
