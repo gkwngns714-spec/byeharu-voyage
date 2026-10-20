@@ -6,7 +6,8 @@ import { HullCountry } from './HullCountry'
 import { nationNameOf, useWorld } from './worldStore'
 import { cmdDonate, cmdPreviewDonate, cmdSetTax, ok } from '../lib/rpc'
 import type { CityInfluence, DonateReceipt, Refusal, SnapshotPort } from '../lib/rpc'
-import { formatDucats, formatInt, formatPct } from '../lib/format'
+import { formatDucats, formatInt, formatPct, formatDate } from '../lib/format'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TOWN HALL'S INFLUENCE (0144, docs/INFLUENCE.md I2 and §7.1)
@@ -39,6 +40,7 @@ export function TownHallInfluence({
   docked: boolean
   trayMode?: TrayMode
 }) {
+  const t = useT()
   const nationByCode = useWorld((s) => s.nationByCode)
   const [giving, setGiving] = useState(false)
   const shown = influence.shares.filter((s) => s.share >= SHOWN_SHARE)
@@ -53,26 +55,26 @@ export function TownHallInfluence({
           influence.holder ? (
             <HullCountry nation={influence.holder} />
           ) : (
-            <span>No country</span>
+            <span>{t('books.noCountry')}</span>
           )
         }
         value={
           <span className="text-t-caption text-ink-muted">
-            {influence.home ? 'Home city' : 'Contested'}
+            {t(influence.home ? 'books.homeCity' : 'books.contested')}
           </span>
         }
         data-testid="townhall-holder"
       />
       {influence.home && influence.holder && (
         <Row
-          label={`Home city of ${nationNameOf(nationByCode, influence.holder)}: it never changes country.`}
+          label={t('books.homeOf', { nation: nationNameOf(nationByCode, influence.holder) })}
           tone="muted"
           hairline={false}
           data-testid="townhall-home"
         />
       )}
       {shown.length === 0 ? (
-        <Row label="Nobody has given here yet." tone="muted" hairline={false} data-testid="townhall-influence-none" />
+        <Row label={t('books.nobodyGiven')} tone="muted" hairline={false} data-testid="townhall-influence-none" />
       ) : (
         shown.map((s) => (
           <Row key={s.nation} label={<HullCountry nation={s.nation} />} hairline={false} data-testid="townhall-influence-share">
@@ -83,10 +85,10 @@ export function TownHallInfluence({
       {/* 0147: the mayor — the holder's top giver who sails for it (D8) — and the rate they set. */}
       {influence.mayor && (
         <Row
-          label={`Mayor · ${influence.mayor.name}`}
+          label={t('books.mayor', { name: influence.mayor.name })}
           value={
             influence.mayor.tax_rate !== null ? (
-              <span className="text-t-caption text-ink-muted">{`Tax ${formatPct(influence.mayor.tax_rate, 1)}`}</span>
+              <span className="text-t-caption text-ink-muted">{t('books.tax', { pct: formatPct(influence.mayor.tax_rate, 1) })}</span>
             ) : undefined
           }
           tone="muted"
@@ -97,7 +99,10 @@ export function TownHallInfluence({
       {you && you.mayor && <MayorTax port={port} setAt={influence.mayor?.tax_set_at ?? null} />}
       {you && influence.open && (
         <Row
-          label={`Your tax here ${formatPct(you.tax_rate, 1)}${you.nation !== null && you.nation === influence.holder ? ' (half: your country holds this city)' : ''}`}
+          label={t('books.yourTax', {
+            pct: formatPct(you.tax_rate, 1),
+            half: you.nation !== null && you.nation === influence.holder ? t('books.half') : '',
+          })}
           tone="muted"
           hairline={false}
           data-testid="townhall-your-tax"
@@ -105,20 +110,22 @@ export function TownHallInfluence({
       )}
       {you && (
         <Row
-          label="Your influence"
+          label={t('books.yourInfluence')}
           value={<Figure value={formatInt(you.points)} />}
           data-testid="townhall-influence-you"
         >
           {influence.open && (
             <div className="text-t-caption tabular-nums text-ink-muted" data-testid="townhall-given-today">
-              {`${formatDucats(you.given_today)} / ${formatDucats(you.cap)} given today`}
+              {t('books.givenToday', { given: formatDucats(you.given_today), cap: formatDucats(you.cap) })}
             </div>
           )}
         </Row>
       )}
       {influence.next_count && (
         <Row
-          label={`Next count ${new Date(influence.next_count).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit', hour12: false })}`}
+          label={t('books.nextCount', {
+            time: formatDate(Date.parse(influence.next_count), { hour: '2-digit', minute: '2-digit', hour12: false }),
+          })}
           tone="muted"
           hairline={false}
           data-testid="townhall-next-count"
@@ -127,12 +134,12 @@ export function TownHallInfluence({
       {canGive ? (
         <div className="pt-2">
           <Button onClick={() => setGiving(true)} data-testid="townhall-donate">
-            Donate
+            {t('books.donate')}
           </Button>
         </div>
       ) : (
         <Row
-          label={!influence.open ? 'Not taking gifts yet.' : !docked ? 'Dock here to donate.' : 'You have given all you may today.'}
+          label={t(!influence.open ? 'books.notTaking' : !docked ? 'books.dockToDonate' : 'books.givenAll')}
           tone="muted"
           hairline={false}
           data-testid="townhall-donate-none"
@@ -147,6 +154,7 @@ export function TownHallInfluence({
 
 /** THE MAYOR'S TAX (0147): 0 to 20 %, once a day — the server refuses anything else and says why. */
 function MayorTax({ port, setAt }: { port: SnapshotPort; setAt: string | null }) {
+  const t = useT()
   const [pct, setPct] = useState(10)
   const [busy, setBusy] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
@@ -161,10 +169,10 @@ function MayorTax({ port, setAt }: { port: SnapshotPort; setAt: string | null })
   }
   return (
     <div className="py-2" data-testid="townhall-mayor-tax">
-      <Stepper value={pct} onChange={setPct} min={0} max={20} step={1} unit="%" label="the city's profit tax" />
+      <Stepper value={pct} onChange={setPct} min={0} max={20} step={1} unit="%" label={t('books.profitTax')} />
       <div className="mt-2">
-        <Button size="sm" busy={busy} busyLabel="Setting…" onClick={() => void send()} data-testid="townhall-mayor-tax-set">
-          {setAt ? `Set tax ${pct}% (once a day)` : `Set tax ${pct}%`}
+        <Button size="sm" busy={busy} busyLabel={t('books.setting')} onClick={() => void send()} data-testid="townhall-mayor-tax-set">
+          {t(setAt ? 'books.setTaxOnce' : 'books.setTax', { pct })}
         </Button>
       </div>
       {refusal && (
@@ -190,6 +198,7 @@ function DonateTray({
   mode?: TrayMode
   onClose: () => void
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('half')
   const [coin, setCoin] = useState(() => Math.min(room, Math.max(min, 1000)))
   const [sending, setSending] = useState(false)
@@ -226,7 +235,7 @@ function DonateTray({
     <Tray
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={`Donate to ${port.name}`}
+      title={t('books.donateTo', { port: port.name })}
       mode={mode}
       data-testid="townhall-donate-tray"
       action={
@@ -235,11 +244,11 @@ function DonateTray({
           className="w-full"
           disabled={estimate === null}
           busy={sending}
-          busyLabel="Donating…"
+          busyLabel={t('books.donating')}
           onClick={send}
           data-testid="townhall-donate-send"
         >
-          {`Donate ${formatDucats(coin)}`}
+          {t('books.donateN', { amount: formatDucats(coin) })}
         </Button>
       }
     >
@@ -250,15 +259,15 @@ function DonateTray({
           min={min}
           max={room}
           step={100}
-          unit="coin"
-          label="coin to give"
-          presets={[{ label: 'Max', value: room }]}
+          unit={t('books.coin')}
+          label={t('books.coinToGive')}
+          presets={[{ label: t('books.max'), value: room }]}
           data-testid="townhall-donate-stepper"
         />
       </div>
       {estimate && (
         <Row
-          label="Your influence after"
+          label={t('books.after')}
           value={<Figure value={formatInt(estimate.points)} />}
           hairline={false}
           data-testid="townhall-donate-points"

@@ -5,6 +5,7 @@ import type { Refusal, YourCaptain } from '../lib/rpc'
 import { formatInt } from '../lib/format'
 import { useServedRead } from './useServedRead'
 import { useWorld } from './worldStore'
+import { t as tl } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // YOUR CAPTAINS — levels, homesickness and the traits each one uses (0160, docs/SKILLS_AND_CAPTAINS.md K6).
@@ -29,9 +30,9 @@ export function YourCaptains() {
 
   return (
     <section className="pt-4" data-testid="your-captains">
-      <h3 className="pb-2 text-t-caption uppercase tracking-wider text-ink-faint">Captains</h3>
+      <h3 className="pb-2 text-t-caption uppercase tracking-wider text-ink-faint">{tl('books.captains')}</h3>
       {captains.length === 0 ? (
-        <Row label="No captains yet. Hire one at an inn." tone="muted" hairline={false} data-testid="your-captains-none" />
+        <Row label={tl('books.noCaptains')} tone="muted" hairline={false} data-testid="your-captains-none" />
       ) : (
         <TileField>
           {captains.map((c) => (
@@ -41,7 +42,7 @@ export function YourCaptains() {
               role={c.job_word ?? ''}
               grade={c.grade ?? null}
               bonusPct={c.traits?.[0]?.pct ?? 0}
-              homePort={c.ship ? `${c.ship} · ${c.cabin_word ?? ''}` : 'Ashore'}
+              homePort={c.ship ? `${c.ship} · ${c.cabin_word ?? ''}` : tl('books.ashore')}
               takesEffect={c.traits?.[0]?.in_use ?? false}
               onClick={() => {
                 setDetent('half')
@@ -90,9 +91,9 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
 
   return (
     <div data-testid="captain-sheet">
-      <Row label="Grade" value={captain.grade ?? ''} />
-      <Row label="Job" value={`${captain.job_word ?? ''} · ${captain.focus_word ?? ''}`} />
-      <Row label="Where" value={captain.ship ? `${captain.ship} · ${captain.cabin_word ?? ''}` : 'Ashore'} />
+      <Row label={tl('books.grade')} value={captain.grade ?? ''} />
+      <Row label={tl('books.job')} value={`${captain.job_word ?? ''} · ${captain.focus_word ?? ''}`} />
+      <Row label={tl('books.where')} value={captain.ship ? `${captain.ship} · ${captain.cabin_word ?? ''}` : tl('books.ashore')} />
       {captain.homesick && <Row label={captain.homesick.line} tone="accent" data-testid="captain-homesick" />}
 
       {captain.levels.map((l) => (
@@ -104,7 +105,7 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
 
       {captain.promote && <Promote captain={captain} />}
 
-      <h4 className="pb-1 pt-4 text-t-caption text-ink-faint">{`Traits · ${chosen.length} / ${slots} in use`}</h4>
+      <h4 className="pb-1 pt-4 text-t-caption text-ink-faint">{tl('books.traits', { n: chosen.length, slots })}</h4>
       {(captain.traits ?? []).map((t) => {
         const on = chosen.includes(t.code)
         return (
@@ -116,19 +117,19 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
             onClick={captain.can_change ? () => toggle(t.code) : undefined}
             data-testid={`captain-trait-${t.code}`}
           >
-            {on && <span className="block text-t-caption text-accent">In use</span>}
+            {on && <span className="block text-t-caption text-accent">{tl('books.inUse')}</span>}
           </Row>
         )
       })}
       {captain.can_change ? (
         <div className="pb-3 pt-2">
-          <Button variant="primary" className="w-full" disabled={!changed || busy} busy={busy} busyLabel="Saving…" onClick={save}
+          <Button variant="primary" className="w-full" disabled={!changed || busy} busy={busy} busyLabel={tl('books.saving')} onClick={save}
             data-testid="captain-traits-save">
-            Use these traits
+            {tl('books.useTraits')}
           </Button>
         </div>
       ) : (
-        <Row label="Her traits change only in port." tone="muted" hairline={false} />
+        <Row label={tl('books.traitsInPort')} tone="muted" hairline={false} />
       )}
       {refusal && (
         <Note tone="danger" code={refusal.code} figures={refusal.figures}>
@@ -159,10 +160,10 @@ function Promote({ captain }: { captain: YourCaptain }) {
   }
   return (
     <div className="pt-4" data-testid="captain-promote">
-      <Row label={p.line} value={p.items_here === null ? undefined : `${formatInt(p.items_here)} / ${formatInt(p.items_needed)} here`} />
-      <Button variant="secondary" className="w-full" disabled={busy} busy={busy} busyLabel="Promoting…" onClick={press}
+      <Row label={p.line} value={p.items_here === null ? undefined : tl('books.itemsHere', { n: formatInt(p.items_here), need: formatInt(p.items_needed) })} />
+      <Button variant="secondary" className="w-full" disabled={busy} busy={busy} busyLabel={tl('books.promoting')} onClick={press}
         data-testid="captain-promote-press">
-        {`Promote to ${p.to}`}
+        {tl('books.promote', { to: p.to })}
       </Button>
       {refusal && (
         <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">

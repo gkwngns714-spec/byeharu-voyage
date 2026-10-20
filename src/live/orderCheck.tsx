@@ -12,6 +12,7 @@ import {
 import { num, str } from '../lib/json'
 import { sailEstimate } from '../domain/order'
 import type { PreviewResult, Refusal } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // THE CHECK, COMPACT — the server's dry run, drawn as Rows and one Note.
 //
@@ -40,10 +41,11 @@ export function OrderCheck({
   check: CheckState
   timeCompression: number
 }) {
+  const t = useT()
   if (check.status === 'idle') return null
 
   if (check.status === 'checking') {
-    return <Row label="Checking…" tone="muted" hairline={false} />
+    return <Row label={t('books.checking')} tone="muted" hairline={false} />
   }
 
   if (check.status === 'refused') {
@@ -59,8 +61,8 @@ export function OrderCheck({
     return (
       <Note tone="info">
         {result.queued
-          ? 'The fleet is at sea, so this is queued and runs when it reaches port.'
-          : 'This runs right away.'}
+          ? t('books.queued')
+          : t('books.rightAway')}
       </Note>
     )
   }
@@ -85,6 +87,7 @@ function Estimate({
   estimate: Record<string, unknown> | undefined
   timeCompression: number
 }) {
+  const t = useT()
   if (!estimate) return null
 
   switch (verb) {
@@ -93,10 +96,10 @@ function Estimate({
       const realMs = days === null ? null : (days * 24 * 60 * 60 * 1000) / Math.max(timeCompression, 1)
       return (
         <>
-          {nm !== null && <Row label="Distance" value={<Figure value={formatMiles(nm)} />} />}
-          {days !== null && <Row label="Voyage" value={<Figure value={formatVoyageDays(days)} />} />}
+          {nm !== null && <Row label={t('books.distance')} value={<Figure value={formatMiles(nm)} />} />}
+          {days !== null && <Row label={t('books.voyage')} value={<Figure value={formatVoyageDays(days)} />} />}
           {realMs !== null && (
-            <Row label="Real time" value={<Figure value={formatRealShort(realMs)} />} hairline={false} />
+            <Row label={t('books.realTime')} value={<Figure value={formatRealShort(realMs)} />} hairline={false} />
           )}
         </>
       )
@@ -106,10 +109,10 @@ function Estimate({
       const endurance = num(estimate, 'endurance_days')
       return (
         <>
-          {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} />}
+          {cost !== null && <Row label={t('books.itCosts')} value={<Figure value={formatDucats(cost)} />} />}
           {endurance !== null && (
             <Row
-              label="Supplies after"
+              label={t('books.suppliesAfter')}
               value={<Figure value={formatVoyageDays(endurance)} tone="success" />}
               hairline={false}
             />
@@ -122,8 +125,8 @@ function Estimate({
       const cost = num(estimate, 'cost')
       return (
         <>
-          {hired !== null && <Row label="Hired" value={<Figure value={formatInt(hired)} />} />}
-          {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} hairline={false} />}
+          {hired !== null && <Row label={t('books.hired')} value={<Figure value={formatInt(hired)} />} />}
+          {cost !== null && <Row label={t('books.itCosts')} value={<Figure value={formatDucats(cost)} />} hairline={false} />}
         </>
       )
     }
@@ -131,7 +134,7 @@ function Estimate({
       // 0086: no money moves on a dismissal, so the only figure is who goes. What the crew that
       // stay will cost per day is the Inn's own caption (world.crew_cost), not the dry run's.
       const dismissed = num(estimate, 'dismissed')
-      return <>{dismissed !== null && <Row label="Dismissed" value={<Figure value={formatInt(dismissed)} />} hairline={false} />}</>
+      return <>{dismissed !== null && <Row label={t('books.dismissed')} value={<Figure value={formatInt(dismissed)} />} hairline={false} />}</>
     }
     case 'REPAIR': {
       const points = num(estimate, 'points')
@@ -139,10 +142,10 @@ function Estimate({
       const gear = gearOf(estimate)
       return (
         <>
-          {points !== null && <Row label="Hull repaired" value={<Figure value={formatFixed(points, 1)} />} />}
+          {points !== null && <Row label={t('books.hullRepaired')} value={<Figure value={formatFixed(points, 1)} />} />}
           {/* 0158 (S13): "Repair all" — the fleet's worn fittings go with the hull, in the server's words
               (public.gear_repair_quote); served only while gear wear bites and something is worn. */}
-          {gear !== null && <Row label="Fittings" value={gear.words} data-testid="repair-gear" />}
+          {gear !== null && <Row label={t('books.fittings')} value={gear.words} data-testid="repair-gear" />}
           {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} hairline={false} />}
         </>
       )
@@ -155,12 +158,12 @@ function Estimate({
       return (
         <>
           {qty !== null && (
-            <Row label={verb === 'BUY' ? 'Bought' : 'Sold'} value={<Figure value={formatUnits(qty)} />} />
+            <Row label={t(verb === 'BUY' ? 'books.bought' : 'books.sold')} value={<Figure value={formatUnits(qty)} />} />
           )}
-          {avg !== null && <Row label="Average" value={<Figure value={formatUnitPrice(avg)} />} />}
+          {avg !== null && <Row label={t('books.average')} value={<Figure value={formatUnitPrice(avg)} />} />}
           {total !== null && (
             <Row
-              label={verb === 'BUY' ? 'It costs' : 'You get'}
+              label={t(verb === 'BUY' ? 'books.itCosts' : 'books.youGet')}
               value={<Figure value={formatDucats(total)} />}
               hairline={false}
             />
@@ -171,7 +174,7 @@ function Estimate({
     default:
       return (
         <>
-          {str(estimate, 'good') && <Row label="Good" value={str(estimate, 'good')} hairline={false} />}
+          {str(estimate, 'good') && <Row label={t('books.goodLabel')} value={str(estimate, 'good')} hairline={false} />}
         </>
       )
   }

@@ -6,6 +6,7 @@ import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../
 import { worldFleetTrades, type FleetTrades, type TradeDay, type TradeLap, type TradeLine, type TradeStop } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
 import { useServedRead } from './useServedRead'
+import { t as tl } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE HISTORY — what a fleet bought and sold, lap by lap, and where (owner, 2026-10-15):
@@ -49,7 +50,7 @@ export function TradeHistoryPanel({
       mode="side-next"
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={<TrayTitle name="Trading" line={t?.route?.name ?? ''} testId="trade-history-name" />}
+      title={<TrayTitle name={tl('books.trading')} line={t?.route?.name ?? ''} testId="trade-history-name" />}
       data-testid="trade-history"
       {...CHART_CHROME}
     >
@@ -57,10 +58,10 @@ export function TradeHistoryPanel({
         read.loading ? (
           <Skeleton className="mt-2 h-40 w-full" />
         ) : (
-          <Empty className="mt-2">No trading to show for this fleet.</Empty>
+          <Empty className="mt-2">{tl('books.noTrading')}</Empty>
         )
       ) : !t.route ? (
-        <Empty className="mt-2">She sails no route, so she keeps no laps.</Empty>
+        <Empty className="mt-2">{tl('books.noRoute')}</Empty>
       ) : (
         <TradeBody t={t} pick={pick} onPick={onPick} />
       )}
@@ -75,8 +76,8 @@ function TradeBody({ t, pick, onPick }: { t: FleetTrades; pick: TradePick; onPic
       <PickStrip t={t} pick={pick} onPick={onPick} />
       {pick.kind === 'day' && t.day && <DayView day={t.day} />}
       {pick.kind === 'open' && t.open && <OpenView open={t.open} />}
-      {pick.kind === 'lap' && (lap ? <LapView lap={lap} /> : <Empty className="mt-2">That lap is no longer held.</Empty>)}
-      {pick.kind === 'open' && !t.open && <Empty className="mt-2">No lap is under way — she is resting at home.</Empty>}
+      {pick.kind === 'lap' && (lap ? <LapView lap={lap} /> : <Empty className="mt-2">{tl('books.lapGone')}</Empty>)}
+      {pick.kind === 'open' && !t.open && <Empty className="mt-2">{tl('books.noOpenLap')}</Empty>}
     </div>
   )
 }
@@ -93,14 +94,14 @@ function PickStrip({ t, pick, onPick }: { t: FleetTrades; pick: TradePick; onPic
       <div className="flex gap-1.5">
         {t.day && (
           <button type="button" className={chip(pick.kind === 'day')} onClick={() => onPick({ kind: 'day' })} data-testid="trade-pick-day">
-            <span className="text-t-caption text-ink-faint">{t.day.full ? 'A day' : 'So far'}</span>
+            <span className="text-t-caption text-ink-faint">{tl(t.day.full ? 'books.aDay' : 'books.soFar')}</span>
             <span className={`text-t-caption tabular-nums ${TONE_TEXT[deltaTone(t.day.net)]}`}>{formatDucatsDelta(t.day.net)}</span>
           </button>
         )}
         {t.open && (
           <button type="button" className={chip(pick.kind === 'open')} onClick={() => onPick({ kind: 'open' })} data-testid="trade-pick-open">
-            <span className="text-t-caption text-ink-faint">{`Lap ${formatInt(t.open.lap_no)}`}</span>
-            <span className="text-t-caption text-accent">under way</span>
+            <span className="text-t-caption text-ink-faint">{tl('books.lapN', { n: formatInt(t.open.lap_no) })}</span>
+            <span className="text-t-caption text-accent">{tl('books.underWay')}</span>
           </button>
         )}
         {t.laps.map((l, i) => (
@@ -111,7 +112,7 @@ function PickStrip({ t, pick, onPick }: { t: FleetTrades; pick: TradePick; onPic
             onClick={() => onPick({ kind: 'lap', index: i })}
             data-testid="trade-pick-lap"
           >
-            <span className="text-t-caption text-ink-faint">{`Lap ${formatInt(l.lap_no)}`}</span>
+            <span className="text-t-caption text-ink-faint">{tl('books.lapN', { n: formatInt(l.lap_no) })}</span>
             <span className={`text-t-caption tabular-nums ${TONE_TEXT[deltaTone(l.net)]}`}>{formatDucatsDelta(l.net)}</span>
           </button>
         ))}
@@ -134,17 +135,17 @@ function LapView({ lap }: { lap: TradeLap }) {
     <div data-testid="trade-lap">
       <Plate
         net={lap.net}
-        title={`Lap ${formatInt(lap.lap_no)}`}
-        caption={`closed ${formatRealShort(nowMs - Date.parse(lap.closed_at))} ago · took ${formatRealShort(took)}`}
+        title={tl('books.lapN', { n: formatInt(lap.lap_no) })}
+        caption={tl('books.closedAgo', { ago: formatRealShort(nowMs - Date.parse(lap.closed_at)), took: formatRealShort(took) })}
       />
       <Books b={lap} />
-      <Heading trailing={lap.stops && <Faint>{`${lap.stops.length} ${lap.stops.length === 1 ? 'stop' : 'stops'}`}</Faint>}>
-        Stops
+      <Heading trailing={lap.stops && <Faint>{tl('books.stops', { n: lap.stops.length })}</Faint>}>
+        {tl('books.stopsHead')}
       </Heading>
       {lap.stops ? (
         <Stops stops={lap.stops} />
       ) : (
-        <Empty className="mt-2">Only the newest seven laps keep what was traded. This lap keeps its books above.</Empty>
+        <Empty className="mt-2">{tl('books.onlySeven')}</Empty>
       )}
     </div>
   )
@@ -156,12 +157,12 @@ function OpenView({ open }: { open: NonNullable<FleetTrades['open']> }) {
   return (
     <div data-testid="trade-open">
       <div className="mt-2 rounded-sheet bg-gradient-to-br from-accent/15 via-surface-2 to-surface-2 p-4">
-        <div className="text-t-caption uppercase tracking-wider text-ink-faint">{`Lap ${formatInt(open.lap_no)} · under way`}</div>
-        <div className="mt-1 text-t-body text-ink">{`started ${formatRealShort(nowMs - Date.parse(open.started_at))} ago`}</div>
-        <div className="mt-1 text-t-caption text-ink-faint">Her books close when she is home again.</div>
+        <div className="text-t-caption uppercase tracking-wider text-ink-faint">{tl('books.lapUnderWay', { n: formatInt(open.lap_no) })}</div>
+        <div className="mt-1 text-t-body text-ink">{tl('books.startedAgo', { ago: formatRealShort(nowMs - Date.parse(open.started_at)) })}</div>
+        <div className="mt-1 text-t-caption text-ink-faint">{tl('books.booksClose')}</div>
       </div>
-      <Heading>So far</Heading>
-      {open.stops.length > 0 ? <Stops stops={open.stops} /> : <Empty className="mt-2">Nothing traded yet this lap.</Empty>}
+      <Heading>{tl('books.soFar')}</Heading>
+      {open.stops.length > 0 ? <Stops stops={open.stops} /> : <Empty className="mt-2">{tl('books.nothingYet')}</Empty>}
     </div>
   )
 }
@@ -172,10 +173,15 @@ function DayView({ day }: { day: TradeDay }) {
   const portByCode = useWorld((s) => s.portByCode)
   const caption =
     day.laps === 0
-      ? 'no lap closed yet'
-      : `${formatInt(day.laps)} ${day.laps === 1 ? 'lap' : 'laps'} ${
-          day.full ? 'in the last real day' : day.since ? `over the last ${formatRealShort(nowMs - Date.parse(day.since))}` : ''
-        }`
+      ? tl('books.noLap')
+      : tl('books.lapsCaption', {
+          laps: tl('books.laps', { n: formatInt(day.laps), count: day.laps }),
+          when: day.full
+            ? tl('books.lastDay')
+            : day.since
+              ? tl('books.overLast', { span: formatRealShort(nowMs - Date.parse(day.since)) })
+              : '',
+        })
   // GROUPED BY HARBOUR, in the server's order — a grouping, not a sum.
   const ports: { port: string; goods: TradeDay['goods'] }[] = []
   for (const g of day.goods) {
@@ -185,26 +191,26 @@ function DayView({ day }: { day: TradeDay }) {
   }
   return (
     <div data-testid="trade-day">
-      <Plate net={day.net} title={day.full ? 'A day' : 'So far'} caption={caption} />
+      <Plate net={day.net} title={tl(day.full ? 'books.aDay' : 'books.soFar')} caption={caption} />
       <Books b={day} />
       <Heading
         trailing={
-          day.laps_traded < day.laps && <Faint>{`from the newest ${formatInt(day.laps_traded)} of ${formatInt(day.laps)} laps`}</Faint>
+          day.laps_traded < day.laps && <Faint>{tl('books.fromNewest', { n: formatInt(day.laps_traded), of: formatInt(day.laps) })}</Faint>
         }
       >
-        Where she traded
+        {tl('books.whereTraded')}
       </Heading>
       {ports.length === 0 ? (
-        <Empty className="mt-2">No trades are held for these laps.</Empty>
+        <Empty className="mt-2">{tl('books.noTrades')}</Empty>
       ) : (
         <ol className="flex flex-col gap-2">
           {ports.map((p) => (
             <li key={p.port} className="rounded-control bg-surface-2 p-3" data-testid="trade-day-port">
               <PortHead code={p.port} name={portNameOf(portByCode, p.port)} />
               <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-1 text-t-caption">
-                <span className="text-ink-faint">Good</span>
-                <span className="text-right text-ink-faint">Sold</span>
-                <span className="text-right text-ink-faint">Bought</span>
+                <span className="text-ink-faint">{tl('books.good')}</span>
+                <span className="text-right text-ink-faint">{tl('books.sold')}</span>
+                <span className="text-right text-ink-faint">{tl('books.bought')}</span>
                 {p.goods.map((g) => (
                   <DayGoodRow key={g.good} g={g} />
                 ))}
@@ -259,17 +265,17 @@ function Books({
   b: Pick<TradeLap, 'sold' | 'bought' | 'supplies' | 'repairs' | 'wages' | 'stock_in' | 'stock_out' | 'net'>
 }) {
   const rows: { label: string; value: number; sign: 1 | -1; always?: boolean; hint?: string }[] = [
-    { label: 'Sold', value: b.sold, sign: 1, always: true },
-    { label: 'Bought', value: b.bought, sign: -1, always: true },
-    { label: 'Supplies', value: b.supplies, sign: -1 },
-    { label: 'Repairs', value: b.repairs, sign: -1 },
-    { label: 'Wages', value: b.wages, sign: -1, hint: 'paid from profit' },
-    { label: 'Cargo carried in', value: b.stock_in, sign: -1, hint: 'bought last lap, sold in this one' },
-    { label: 'Cargo carried out', value: b.stock_out, sign: 1, hint: 'on board at the close, sold next lap' },
+    { label: tl('books.sold'), value: b.sold, sign: 1, always: true },
+    { label: tl('books.bought'), value: b.bought, sign: -1, always: true },
+    { label: tl('books.supplies'), value: b.supplies, sign: -1 },
+    { label: tl('books.repairs'), value: b.repairs, sign: -1 },
+    { label: tl('books.wages'), value: b.wages, sign: -1, hint: tl('books.fromProfit') },
+    { label: tl('books.carriedIn'), value: b.stock_in, sign: -1, hint: tl('books.carriedInHint') },
+    { label: tl('books.carriedOut'), value: b.stock_out, sign: 1, hint: tl('books.carriedOutHint') },
   ]
   return (
     <section data-testid="trade-books">
-      <Heading>Books</Heading>
+      <Heading>{tl('books.booksHead')}</Heading>
       <dl className="rounded-control bg-surface-2 px-3 py-1">
         {rows
           .filter((r) => r.always || r.value !== 0)
@@ -285,7 +291,7 @@ function Books({
             </div>
           ))}
         <div className="flex items-baseline justify-between gap-3 py-2">
-          <dt className="text-t-body font-semibold text-ink">Net</dt>
+          <dt className="text-t-body font-semibold text-ink">{tl('books.net')}</dt>
           <dd className={`text-t-body font-semibold tabular-nums ${TONE_TEXT[deltaTone(b.net)]}`}>{formatDucatsDelta(b.net)}</dd>
         </div>
       </dl>
@@ -302,15 +308,15 @@ function Stops({ stops }: { stops: readonly TradeStop[] }) {
         <li key={`${s.port}-${i}`} className="rounded-control bg-surface-2 p-3" data-testid="trade-stop">
           <PortHead code={s.port} name={portNameOf(portByCode, s.port)} n={i + 1} />
           {s.sold.length === 0 && s.bought.length === 0 ? (
-            <p className="mt-1.5 text-t-caption text-ink-faint">Called here and traded nothing.</p>
+            <p className="mt-1.5 text-t-caption text-ink-faint">{tl('books.tradedNothing')}</p>
           ) : (
             <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-3 gap-y-1 text-t-caption">
-              <span className="text-ink-faint">Good</span>
-              <span className="text-right text-ink-faint">Qty</span>
-              <span className="text-right text-ink-faint">Price</span>
-              <span className="text-right text-ink-faint">Total</span>
-              <Side label="Sold" lines={s.sold} sign={1} />
-              <Side label="Bought" lines={s.bought} sign={-1} />
+              <span className="text-ink-faint">{tl('books.good')}</span>
+              <span className="text-right text-ink-faint">{tl('books.qty')}</span>
+              <span className="text-right text-ink-faint">{tl('books.price')}</span>
+              <span className="text-right text-ink-faint">{tl('books.total')}</span>
+              <Side label={tl('books.sold')} lines={s.sold} sign={1} />
+              <Side label={tl('books.bought')} lines={s.bought} sign={-1} />
             </div>
           )}
         </li>
