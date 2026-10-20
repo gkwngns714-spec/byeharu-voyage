@@ -93,13 +93,20 @@ once a second.
   target, and is gone inside a second; a gap past the snap is taken at once while one just inside it is
   eased; a correction at the antimeridian closes the short way and stays on the sheet; and the model
   carries the instant her figures were true (null for a quay, null with no clock asked for).
+- `tests/map.smooth.spec.ts` also walks **the loop's own composition**: four reads of a one-hour
+  passage at the live 7.5-second cadence, 216,000 frames at 60 fps, with the server's answer pushed
+  off the chart's own pace by a third of a mile each read — the disagreement that used to land as a
+  jump. The worst single frame moves her less than a fifth of what one served step moved her, the
+  worst backward frame is under a twentieth of a nautical mile, she is never drawn past her
+  destination, and past the served eta she stands exactly on it. (It is the arithmetic, not the file:
+  no DOM, no animation frame — the frame is three lines around these two pure functions.)
 - `tests/map.atmosphere.spec.ts`: the source pin on the solid/dashed halves was **re-spelt** (the
   halves moved into `Course`), with the reason recorded beside it, and tightened — it now also asserts
   that the dashed half is the water ahead.
 
 ## Run here
 
-`npm ci`, `npx tsc -b`, `npx eslint .` — all clean. Pure specs green: map.smooth 9, map.voyage 34,
+`npm ci`, `npx tsc -b`, `npx eslint .` — all clean. Pure specs green: map.smooth 10, map.voyage 34,
 map.atmosphere 17, duplication + sections 18, map.labels + the rest of the chart batch (marks, wrap,
 regions, flag, merchants, goto, dateline, lag, ink) — every pure test passed; **every browser test on
 this box fails at `browserType.launch` (no chromium in the sandbox image), so nothing that drives the
