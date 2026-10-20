@@ -89,6 +89,14 @@ once in the live body; the body does not yet carry the rule; 68 probe rows, 67 o
   side the round trip LOSES, not breaks even;
 - `world.price`: ask = a one-tun buy quote to the cent at stock 600; bid ≥ a one-tun sell quote; sell < ask.
 
+**The specs CI's rule S selects, run locally on the built world** (`rpc.outlook`, `rpc.why`, `rpc.firstSession`,
+`rpc.goodBoard`, `rpc.surface`, `db.image`): 54 of 55 green at first; `rpc.surface` "cmd.haggle(…, 'sell') moves
+the bid" asserted that a won sell-side bargain shows as MORE DUCATS on a ten-tun lot of a cheap good (138 → 138: the
+bargain is worth ~0.3 ducats there and the sale's total is now floored). It had passed on the luck of the fraction
+under `round()`. The claim is re-cut to "never fewer ducats, more per unit" (avg_price and haggle_saved carry the
+bargain, as they did); the buy-side test already made its bargain "several ducats, so cheaper is a fact of the total
+and not of the rounding".
+
 ## 5. How `osn-live-prices` (37c8af5, its own "0212") rebases
 
 Its two `world.quote_priced` hunks (`exit when v_n <= 0;` + the buy-branch `v_mid := …(… v_stock …)` and `else` +

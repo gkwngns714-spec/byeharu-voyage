@@ -1255,8 +1255,10 @@ test('cmd.haggle(…, "sell") moves the bid: a won sell-side bargain raises the 
 
     const after = est(await cmdPreview(fleet.id, sellLine))
     expect(after.qty).toBe(qty)
-    // THE BID MOVED, for this house, on this lot: more ducats and more per unit than before.
-    expect(after.total!).toBeGreaterThan(before.total!)
+    // THE BID MOVED, for this house, on this lot: more per unit than before, and never fewer ducats.
+    // 0212 FLOORS a sale's total to the ducat (the house keeps the fraction), so on a ten-tun lot of a
+    // cheap good a bargain worth under a ducat shows in avg_price and haggle_saved, not in the total.
+    expect(after.total!).toBeGreaterThanOrEqual(before.total!)
     expect(after.avg_price!).toBeGreaterThan(before.avg_price!)
     // …and `haggle_saved` says by how much, to the rounding the unit price carries (0083's own
     // tolerance for the same claim on the BUY side).
