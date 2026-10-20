@@ -17,14 +17,17 @@ import { useEffect } from 'react'
 import type { PriceTrend } from '../components/ui'
 import { useWorld } from './worldStore'
 
-/** Ensures the port's history is asked for once, and returns the trend for ONE good. */
-export function usePortHistory(portId: string, code: string | null): PriceTrend {
+/** Ensures the port's history is asked for once — and again when a WIDER window is wanted than the
+ *  one already asked (`slots`, 2026-10-20 owner request 178; the store holds that rule, loadHistory)
+ *  — and returns the trend for ONE good. */
+export function usePortHistory(portId: string, code: string | null, slots: number | null = null): PriceTrend {
   const known = useWorld((s) => s.history[portId] !== undefined)
   const loadHistory = useWorld((s) => s.loadHistory)
   useEffect(() => {
-    if (!known) void loadHistory(portId)
-  }, [portId, known, loadHistory])
+    if (!known || slots !== null) void loadHistory(portId, slots)
+  }, [portId, known, slots, loadHistory])
   const points = useWorld((s) => (code ? s.history[portId]?.goods[code] : undefined))
   const slotSeconds = useWorld((s) => s.history[portId]?.slot_seconds ?? null)
-  return { points, slotSeconds }
+  const served = useWorld((s) => s.history[portId]?.slots ?? null)
+  return { points, slotSeconds, slots: served }
 }

@@ -234,8 +234,9 @@ export interface LiveWorld {
   refresh: () => Promise<void>
   /** Fetch (and cache) one port's market. */
   loadMarket: (portId: string) => Promise<void>
-  /** Fetch (and cache) one port's remembered prices. */
-  loadHistory: (portId: string) => Promise<void>
+  /** Fetch (and cache) one port's remembered prices. `slots` is how many the asking window needs; the
+   *  server clamps it to what it keeps and says what it gave (worldPriceHistory). */
+  loadHistory: (portId: string, slots?: number | null) => Promise<void>
   /** Fetch (and cache) one place's sailed distances to everywhere (0039). */
   loadReach: (portId: string) => Promise<void>
   /** Fetch (and cache) where the goods of one port pay more. Naming the fleet lying there is what
@@ -421,6 +422,11 @@ const ALLEGIANCE_ASK_EVERY_MS = 60 * 60_000
 let allegianceAskedAtMs = 0
 /** The price-history reads on the wire, by port (loadHistory). */
 const historyAsking = new Map<string, Promise<void>>()
+/** THE WIDEST WINDOW ALREADY ASKED OF EACH PORT, in slots (loadHistory). A wider window asks again; a
+ *  narrower one draws what is already kept, because a payload for N slots holds every shorter window
+ *  inside it. It is kept beside the served `slots` and not instead of it: the server CLAMPS the ask to
+ *  what it retains, so a window the record cannot fill must not ask again every time it is chosen. */
+const historyAsked = new Map<string, number>()
 
 /** THE ROSTER'S CADENCE (0118). A delta asks from the last answer's instant LESS this overlap: a tick
  *  that started before that instant commits its rows dated earlier, after it (tick_arrivals runs for
@@ -784,12 +790,23 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   // ONE ASK A PORT AT A TIME (2026-10-19): the desk asks a good's likely city ahead of its chart, and the
   // chart then asks the same port while that read is still on the wire — the second ask joins the first.
-  loadHistory: (portId) => {
+  //
+  // A WIDER WINDOW ASKS AGAIN (2026-10-20, owner request 178): the chart's window chips are how many
+  // slots the chart wants, and a payload for N slots already contains every shorter window, so only an
+  // ask WIDER than the widest already made goes to the wire. The served payload replaces the kept one
+  // whole; its own `slots` field is what the server was willing to give, which the chart reads to say
+  // how far the record truly reaches.
+  loadHistory: (portId, slots = null) => {
+    const kept = get().history[portId]
+    const covered = Math.max(historyAsked.get(portId) ?? 0, kept?.slots ?? 0)
+    const wider = slots !== null && slots > covered
+    if (kept !== undefined && !wider) return Promise.resolve()
     const onWire = historyAsking.get(portId)
-    if (onWire) return onWire
-    const p = loader(worldPriceHistory(portId), (v, s) => ({ history: { ...s.history, [portId]: v } }), { loud: false }).finally(
-      () => historyAsking.delete(portId),
-    )
+    if (onWire && !wider) return onWire
+    if (slots !== null) historyAsked.set(portId, Math.max(covered, slots))
+    const p = loader(worldPriceHistory(portId, slots), (v, s) => ({ history: { ...s.history, [portId]: v } }), {
+      loud: false,
+    }).finally(() => historyAsking.delete(portId))
     historyAsking.set(portId, p)
     return p
   },

@@ -85,3 +85,87 @@ that slot says *profit unknown*, beside its neighbour *cost unknown*.
 city that only buys has no invented ask; an unquoted sell row keeps its middle price and no bid; a
 seller with no stock for the amount has **no** ask rather than a nought; an unnamed city and a board
 still on the wire read as the empty pair.
+
+---
+
+## B. A longer window than 12 hours — what limits it, and how far it opened
+
+### What limits it, read from the chain
+
+The 12 hours were **two** limits, one on each side of the wire, and only one of them was the client's.
+
+1. **The record itself.** `public.price_history_window()` (0057) is
+   `greatest(48, floor(629,145,600 / (pairs × 201)))` — a 600 MiB disk budget divided by the world's
+   (port, good) pairs and the measured 201 bytes a row costs, with a floor of 48 slots. Production has
+   **132,090** pairs in `public.port_goods`, so the derived figure is `floor(600 MiB / (132,090 × 201))`
+   = **23**, under the floor, and the floor wins: **48 slots × 900 s = exactly 12 h.** That one number
+   clamps BOTH ends — `world.price_history` clamps `p_slots` to it, and `public.tick_price_snapshot`
+   **deletes** every row older than it. So the older points do not exist to be read, and no client
+   change can find them.
+2. **The client.** `worldPriceHistory(portId, slots = 48)` hard-coded the ask, and the chart offered
+   three chips — 1 h, 6 h, 12 h — with 12 h as both the default and the ceiling. This half is the half
+   that moved.
+
+### What it does now
+
+- `worldPriceHistory(portId, slots)` asks for **the slots the chosen window would fill** (null asks for
+  the server's own default). The server clamps the ask to what it keeps and **says what it gave** in the
+  payload's `slots`, which the client now carries on `PriceTrend`.
+- `worldStore.loadHistory(portId, slots)` re-asks only when the window is **wider** than the widest
+  already covered (asked, or served) — a payload for N slots holds every shorter window inside it, and a
+  window the record cannot fill must not ask again every time it is chosen. One extra read per good page
+  when a longer window is pressed, and none at all for a shorter one.
+- The chips are **1 h · 6 h · 12 h · 1 day · 1 week** (`DESK_WINDOW_HOURS`). The slots each one needs are
+  derived from the **served** cadence (`slot_seconds`, the same `drift_slot_seconds` knob on both
+  payloads) — never from a literal 900 or 48.
+- When the record cannot fill the chosen window the chart's foot says so, in words, from the **served**
+  points: *"The record goes back 11.8 h — the game keeps no more than that yet."* It is derived from the
+  earliest point drawn, so it tells the truth at any retention.
+
+**So: today a week still draws 12 hours of line and one honest sentence.** The moment the server keeps
+more, these same chips draw it with no client change — which is the half of the request a client-only
+slice can land.
+
+### The migration this needs, and exactly what it would do [NOT WRITTEN — client-only slice]
+
+**Do not widen `price_history`.** A week at the fine cadence is 672 slots ×  132,090 pairs × 201 bytes =
+**17.8 GB**, against a 600 MiB budget and the 1.43 GB that once took the project read-only (0057's own
+header). The floor cannot simply be raised.
+
+**Serve the rollup that already keeps it.** 0214 (live today) writes `public.stats_city_good` every
+15 minutes — `(port_id, good_id, slot, at, mid, stock, stock_target, sold, bought, …)` for the offered
+pairs — keeps it fine for `stats_city_good_fine_hours` (48) and then **one row per UTC day forever**. A
+week of one city's good is therefore already stored: ~192 fine rows and 5 daily ones. What is missing is
+only a read:
+
+1. **A new read, `world.price_record(p_port uuid, p_good uuid, p_hours int)`**, returning points as
+   `{at, mid, cadence}` oldest first, plus `slot_seconds` and the window it actually covered. It UNIONS
+   `public.price_history` (the fine, recent half — the authority for a recorded mid, 0013) with
+   `public.stats_city_good` (the older half), **preferring `price_history` where both have a slot** so a
+   point is never served twice from two tables, and marking each point with the cadence it came from so
+   the client can draw a coarser stretch honestly rather than interpolating.
+2. **Public, like every other price.** `world.market` serves a city's prices to any signed-in company,
+   so a recorded mid is not intelligence; `world.stats_city`'s tier gate (0214) is for a city's **books**
+   — purse, income, taxes — and must not be extended over a price, or the chart would go blank for
+   everyone who holds no shares (no player holds one today).
+3. **Self-assert**, in its own transaction, on its own probe rows: the union's newest points equal
+   `world.price_history`'s to the cent; no slot appears twice; a window longer than the fine retention
+   returns the daily rows and marks them; a window of 0 or a missing port refuses; registered in
+   `public.client_rpc_entry_points`, granted to `authenticated`, refused to `anon`.
+4. **The client change it would need is one line**: `usePortHistory` asks `world.price_record` instead of
+   `world.price_history` and passes `winHours` straight through. The chips, the model and the drag need
+   nothing — they already read the served points and the served cadence.
+
+**Also stale, and worth correcting in that migration's header:** 0057's floor is justified by *"48 = THE
+FLOOR: `src/lib/rpc/index.ts:289`, `worldPriceHistory(portId, slots = 48)`, is the ONLY client caller
+and it never asks for more."* As of this commit the client asks for what its window needs and takes what
+it is given, so the floor's reasoning needs restating (the floor itself is still right: the chart must
+never be starved below the window the page opens on).
+
+### Decided by default
+
+- **The page still opens on 12 h**, because that is the whole record on production today — the most line
+  there is. The longer chips are a press away.
+- **No second store and no browser-side accumulation.** Keeping points in `localStorage` as the game runs
+  would be a second price record, drifting from the server's, unshared between devices, and empty for a
+  new player: the rollup already exists and is the server's own.

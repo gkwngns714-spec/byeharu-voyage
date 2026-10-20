@@ -39,6 +39,11 @@ export interface PriceTrend {
   points: readonly PricePoint[] | undefined
   /** `PriceHistory.slot_seconds`; null until the read lands. */
   slotSeconds: number | null
+  /** `PriceHistory.slots` — how many slots the SERVER was willing to serve, which is how far back the
+   *  record truly reaches (`public.price_history_window` clamps every ask to what it retains). Null
+   *  until the read lands; a caller that asks for one window and is given a shorter one says so rather
+   *  than drawing an empty stretch of axis (2026-10-20, owner request 178). */
+  slots?: number | null
 }
 
 export function PriceRows({

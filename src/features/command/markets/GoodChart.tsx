@@ -16,7 +16,7 @@ import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, PriceOutlook, SnapshotGood } from '../../../lib/rpc'
-import type { GoodDesk } from './useGoodDesk'
+import { DESK_WINDOW_HOURS, type GoodDesk } from './useGoodDesk'
 import { useT, t as tg } from '../../../lib/i18n'
 
 // THE GOOD'S CHART — the centre of the desk (docs/COMMAND_DESK.md §3.3, §3.9). The owner, 2026-10-17:
@@ -37,12 +37,12 @@ import { useT, t as tg } from '../../../lib/i18n'
 // SVG's units are screen pixels and its labels stand at their true size. On a phone it is the tray's
 // width and 220 px tall.
 
-const WINDOWS = [
-  { id: '1', get label() { return tg('markets.hours', { n: 1 }) } },
-  { id: '6', get label() { return tg('markets.hours', { n: 6 }) } },
-  { id: '12', get label() { return tg('markets.hours', { n: 12 }) } },
-] as const
-type WindowId = (typeof WINDOWS)[number]['id']
+/** How long a window reads, in the owner's words: hours up to a day, then days and weeks. */
+function windowWord(hours: number): string {
+  if (hours % (24 * 7) === 0) return tg('markets.weeks', { n: hours / (24 * 7) })
+  if (hours % 24 === 0) return tg('markets.days', { n: hours / 24 })
+  return tg('markets.hours', { n: hours })
+}
 
 function useBoxSize<T extends HTMLElement>() {
   const ref = useRef<T | null>(null)
@@ -81,17 +81,27 @@ export function GoodChart({
   const { b, focus, focusPort, setFocus, history, outlook, focusRow, chips, docked } = desk
   const o = outlook.view
   const why = desk.why.view
-  const [win, setWin] = useState<WindowId>('12')
+  const { winHours, setWinHours } = desk
   const [box, boxSize] = useBoxSize<HTMLDivElement>()
 
-  // THE WINDOW: the served record cut to its last N hours (the record is ≤ 12 h — price_history_window).
+  // THE WINDOW: the served record cut to its last N hours. The chips go to a week; how much of a
+  // chosen window the record can fill is the SERVER's answer (useGoodDesk asks for the slots the
+  // window needs and `world.price_history` clamps the ask to what it keeps), and when it cannot fill
+  // it the foot says so in words rather than drawing an empty stretch of axis.
   const nowMs = o ? Date.parse(o.now) : Number.NaN
   const points = useMemo(() => {
     const all = history.points ?? []
     if (!Number.isFinite(nowMs)) return all
-    const from = nowMs - Number(win) * 3_600_000
+    const from = nowMs - winHours * 3_600_000
     return all.filter((p) => Date.parse(p.at) >= from)
-  }, [history.points, nowMs, win])
+  }, [history.points, nowMs, winHours])
+
+  // HOW FAR BACK THE RECORD TRULY REACHES — derived from the served points, never from the window
+  // asked for. Said only when the window is more than one slot wider than the record.
+  const earliest = points.length ? Math.min(...points.map((p) => Date.parse(p.at))) : null
+  const recordHours = earliest !== null && Number.isFinite(nowMs) ? (nowMs - earliest) / 3_600_000 : null
+  const slotHours = o ? o.slot_seconds / 3600 : 0
+  const shortRecord = recordHours !== null && winHours - recordHours > slotHours
 
   const arriveMs = focusRow?.arrive_at ? Date.parse(focusRow.arrive_at) : null
   const now = o?.points[0]?.value ?? null
@@ -143,7 +153,7 @@ export function GoodChart({
                   move > 0 ? 'bg-success-soft text-success' : move < 0 ? 'bg-danger-soft text-danger' : 'text-ink-faint',
                 ].join(' ')}
               >
-                {formatPctChange(move)} · {t('markets.hours', { n: win })}
+                {formatPctChange(move)} · {windowWord(winHours)}
               </span>
             )}
           </span>
@@ -166,7 +176,13 @@ export function GoodChart({
             </Chip>
           ))}
         </div>
-        <Segmented<WindowId> segments={WINDOWS} value={win} onChange={setWin} label={t('markets.chartWindow')} className="shrink-0 self-start" />
+        <Segmented<string>
+          segments={DESK_WINDOW_HOURS.map((h) => ({ id: String(h), label: windowWord(h) }))}
+          value={String(winHours)}
+          onChange={(id) => setWinHours(Number(id))}
+          label={t('markets.chartWindow')}
+          className="shrink-0 self-start"
+        />
       </div>
 
       {/* THE CHART — fills the pane on a wide glass. On a phone the box keeps room for the plot (220 px) and a
@@ -212,6 +228,11 @@ export function GoodChart({
           <p className="text-t-caption text-ink-faint">{t('markets.noBetter')}</p>
         ) : null}
         {likely && <Hint data-testid="good-likely">{likely}</Hint>}
+        {shortRecord && recordHours !== null && (
+          <p className="text-t-caption text-ink-faint" data-testid="good-record-reach">
+            {t('markets.recordBackTo', { span: t('markets.hours', { n: formatFixed(recordHours, 1) }) })}
+          </p>
+        )}
       </div>
     </div>
   )
