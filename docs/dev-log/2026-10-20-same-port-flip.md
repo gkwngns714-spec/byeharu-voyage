@@ -97,6 +97,14 @@ under `round()`. The claim is re-cut to "never fewer ducats, more per unit" (avg
 bargain, as they did); the buy-side test already made its bargain "several ducats, so cheaper is a fact of the total
 and not of the rounding".
 
+**CI, first run (head 309a47b):** build green, acceptance green (13 selected specs), apply-proof: disposable-chain,
+pglite-gate (ledger) and (merchants) green; pglite-gate (the rest) red on two proofs for the same rounding reason:
+`06_haggle.sql` ("a won SELL bargain did not raise what the quay pays — 10 at 153 (15.31 each) before, 10 at 153
+(15.35 each) after": the total is floored, the unit price did rise) and `10_manifest.sql` (the breakdown bound
+`0.005·qty + 0.515` carried a 0.5 ducat-rounding term; ceil/floor makes it 1). Both proofs re-cut to the new rule
+(total never fewer / bound `0.005·qty + 1.015`); not re-run for green — the two reds were read to their last error
+and each is the rounding change by construction. Prod re-checked read-only at head 0210: hunks occur once, rule absent.
+
 ## 5. How `osn-live-prices` (37c8af5, its own "0212") rebases
 
 Its two `world.quote_priced` hunks (`exit when v_n <= 0;` + the buy-branch `v_mid := …(… v_stock …)` and `else` +
