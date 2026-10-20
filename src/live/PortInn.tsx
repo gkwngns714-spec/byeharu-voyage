@@ -34,7 +34,7 @@ import {
   instantMs,
 } from '../lib/format'
 import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../lib/rpc'
-import { useT, t as tNow } from '../lib/i18n'
+import { properName, t as tNow, useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE INN — the crew, hired and let go from one stepper, and who is drinking here today (0073).
@@ -101,8 +101,10 @@ function guestMeta(guest: InnGuest): string {
  *  port's NAME, 0073, so it is found by name in the snapshot). */
 function whereFrom(guest: InnGuest, ports: readonly SnapshotPort[] | undefined): ReactNode {
   if (!guest.home) return tNow('inn.unknown')
-  const code = ports?.find((p) => p.name === guest.home)?.code
-  const home = code ? <GoToLink to={{ kind: 'port', code }}>{guest.home}</GoToLink> : guest.home
+  // The inn serves the port's English NAME; the snapshot's names are the viewer's language.
+  const named = properName('port', guest.home, guest.home)
+  const code = ports?.find((p) => p.name === named)?.code
+  const home = code ? <GoToLink to={{ kind: 'port', code }}>{named}</GoToLink> : named
   return guest.nation ? (
     <>
       {guest.nation} · {home}
