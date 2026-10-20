@@ -8,6 +8,27 @@ Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the p
 
 Prod head: **0213** (0213 insurance LIVE 05:20 UTC, 0212 haul cap 04:27 UTC, 10-20). Earlier: **0211** (2026-10-20: 0209 arrivals 23:43, 0210 running costs 00:35, 0211 round trip 00:52 UTC; all after-checks passed).
 
+## HAND-OFF #3: the owner turned PC 디폴리스 off, 2026-10-20 ~09:00 UTC. START HERE (any PC, or the cloud)
+Owner 10-20: *"deploy and merge them if everything is finished, including korean"*, then *"make every procedure so that i can continue from other pc, or even cloud. then turn the pc off"*.
+
+**Live state at hand-off:** prod head **0213**, clock running (8/8 cron jobs active). **Korean (#278) MERGED** to main 08:58 UTC (b1887e1, client only); Pages publishes it. Nothing else landed today after 0213.
+
+**Open, in deploy order (strict number order: 0214 → 0215 → 0216):**
+1. **#277 Stats tab, 0214.** `db push` to prod at 08:49 UTC **failed its own self-assert and rolled back** (nothing landed, not merged): the probe city ACA has real trades on prod, so absolute checks (`sold_1d = 50`, `taxes_1d = 100`, SELL `-1234`) are wrong on a live world. Cloud routine `trig_01MnPGoVkQPm2SkiVnjNTGT6` (starts 09:05 UTC) makes them deltas and writes "PROD CHECKS FOR THE MAIN SESSION, 0214" in `docs/dev-log/2026-10-20-stats-tab.md`. Also: the red `acceptance-shard (npc 1/2)` is a flake ON MAIN (`tests/map.merchants.spec.ts:510`); cloud routine `trig_01CKaJUxg8fjL9a5BEtovqVW` fixes it on branch `osn-fix-merchants-flake` (own PR). Prod prechecks already run 08:45 and passed: every live flow kind has a word, goods names unique, registry hunk occurs once, 0214 not applied.
+2. **#275 Sea S1, 0215.** Prod prechecks (dev-log §8a + §8b) **all passed** 08:53 UTC. `db push` at ~08:55 **failed: "Connection terminated unexpectedly", at statement 23** (the 1,036,800-row `get_byte` cross-join check after the raster build). Rolled back, not merged. Cloud routine `trig_017qKVVUWsTSDDv7MF5JSPwk` (starts 09:06 UTC) makes 0215 fast (target < 60 s, no long hot-table locks), then rebases #276.
+3. **#276 Sea S2, 0216.** Stacked on #275 (base branch `osn-sea-s1`). After #275 merges, retarget its base to `main` (`gh pr edit 276 --base main`) before deploying.
+
+**EXACT DEPLOY PROCEDURE (any PC that has done `docs/NEW_COMPUTER.md`):**
+1. `cd ~/byeharu-voyage && git fetch && gh pr list` → read each PR's latest comment from its cloud routine; `gh pr checks <n>`; required = `build` + `disposable-chain` green.
+2. Prod head: `npx --yes supabase@2.120.0 db query --linked "select max(version) from supabase_migrations.schema_migrations"` (must be the number just below the PR's migration).
+3. Run the PR's dev-log "PROD CHECKS FOR THE MAIN SESSION" blocks read-only (`db query --linked -f <file>`); every row as expected. If one fails, do not push: send it back to a cloud routine.
+4. `~/bin/bv-deploy.sh <pr>`: it unwinds the clock, pushes, re-winds, and merges ONLY if `push_rc=0` and head = the PR's migration. On `NOT MERGING`, read `~/bv-push-logs/push-<version>.log` to its last error; never just re-run.
+5. After it lands: check the clock (`select count(*) filter (where active) from cron.job where jobname like 'byeharu-voyage:%'` = 8), the Pages deploy (`gh run list --workflow deploy-pages.yml -L 1`), then update this file and `~/bin/bv-queue-push.sh`.
+
+**FROM THE CLOUD (claude.ai/code, repo gkwngns714-spec/byeharu-voyage):** code, tests, PRs work today. **Deploys can't run from the cloud yet:** its environment has no `SUPABASE_ACCESS_TOKEN` (probe `trig_01Y4kboFF5vp35XEDAR7h9Bi`, 08:34: "not set"). One-time unblock (owner): supabase.com/dashboard/account/tokens → new token `claude-cloud`; claude.ai/code → environment selector → this environment's settings → Environment variables `SUPABASE_ACCESS_TOKEN=sbp_…`; Network access **Custom**: `api.supabase.com`, `supabase.co`, `*.supabase.co`, `supabase.com`, `*.supabase.com` + "include default package managers". Then re-run the probe; if it reads head 0213+, a cloud session can follow the procedure above with `bash scripts/ops/bv-deploy.sh <pr>` (repo path differs: edit `~/byeharu-voyage` in the script to the clone's path). Unverified: whether the DB connection (ports 5432/6543) passes the cloud proxy.
+
+**Cloud lessons (10-20):** routines created via the API did not show in the owner's claude.ai list; follow them on GitHub (branches and PR comments). A cloud sandbox builds the PGlite world from zero (~2.5 h): every routine brief says *no from-zero world build; tsc + eslint + build + pure specs; CI proves the chain*.
+
 ## THE LIST (tidied 2026-10-20 ~04:00 UTC: the ONE priority order; everything below it is history)
 Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize everything … build slowly step by step, but as efficient as possible."*
 **Rule: at most TWO builds + ONE design in flight.** Lane A = server (one migration at a time, strict number order). Lane B = screens. Lane C = one design doc. Next item starts only when its lane frees.
