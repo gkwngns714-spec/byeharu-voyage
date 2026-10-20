@@ -1,6 +1,7 @@
 import { busyUntilMs, voyageEtaMs } from '../../domain/fleet'
 import { formatRealShort } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
+import { t } from '../../lib/i18n'
 
 // WHEN SHE IS DUE — the countdown the fleet row and the fleet fold both print. WHERE she is, in
 // words, is `domain/fleet`'s `whereLine` (this file used to carry a second spelling of it).
@@ -16,5 +17,5 @@ import type { FleetView } from '../../lib/rpc'
 export function fleetDue(fleet: FleetView, nowMs: number): string | null {
   const at = voyageEtaMs(fleet) ?? busyUntilMs(fleet)
   if (at === null) return null
-  return nowMs >= at ? 'due' : formatRealShort(at - nowMs)
+  return nowMs >= at ? t('domain.due') : formatRealShort(at - nowMs)
 }

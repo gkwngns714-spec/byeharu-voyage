@@ -39,6 +39,7 @@
 
 import type { LatLon } from '../../lib/geo'
 import { formatRealShort, instantMs, pointLabel } from '../../lib/format'
+import { getLocale, t } from '../../lib/i18n'
 
 /** What the rule reads — structural, so `FleetView`, a merchant's `TrafficFleet` and a harbour's
  *  `PortMerchant` all satisfy it without either side knowing about the other's extra keys. */
@@ -109,7 +110,7 @@ export function boundForPiece(
 ): WherePiece {
   if (w.to) return { text: portName(w.to), port: w.to }
   if (w.point) return { text: pointLabel(w.point), at: w.point }
-  return 'open sea'
+  return t('domain.openSea')
 }
 
 /** Where a sailing fleet is bound, by name: the harbour, the point of water, or "open sea". */
@@ -126,9 +127,11 @@ export function whereParts(w: Whereabouts, portName: (code: string) => string, n
     case 'docked':
       return [{ text: portName(w.port), port: w.port }]
     case 'anchored':
-      return ['anchored · ', { text: pointLabel(w.at), at: w.at }]
+      return [t('domain.anchored'), { text: pointLabel(w.at), at: w.at }]
     case 'sailing': {
-      const to: WherePiece[] = ['to ', boundForPiece(w, portName)]
+      // English puts the word before the place (`to Lisbon`); Korean after it (`리스본행`).
+      const place = boundForPiece(w, portName)
+      const to: WherePiece[] = getLocale() === 'en' ? [t('domain.to'), place] : [place, t('domain.toSuffix')]
       if (nowMs === undefined) return to
       return [...to, ` · ${w.etaMs !== null ? formatRealShort(w.etaMs - nowMs) : '—'}`]
     }

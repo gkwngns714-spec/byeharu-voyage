@@ -31,7 +31,7 @@ export function ReceiptFace({ receipt }: { receipt: ManifestReceipt }) {
           data-testid="receipt-row"
         >
           <span className="block text-t-caption text-ink-faint">
-            {`${l.side === 'sell' ? 'sold' : 'bought'} · ${formatUnits(l.qty)} · ${formatUnitPrice(l.avg_price)}`}
+            {`${t(l.side === 'sell' ? 'domain.sold' : 'domain.bought')} · ${formatUnits(l.qty)} · ${formatUnitPrice(l.avg_price)}`}
           </span>
         </Row>
       ))}

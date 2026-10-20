@@ -146,7 +146,7 @@ function Estimate({
           {/* 0158 (S13): "Repair all" — the fleet's worn fittings go with the hull, in the server's words
               (public.gear_repair_quote); served only while gear wear bites and something is worn. */}
           {gear !== null && <Row label={t('books.fittings')} value={gear.words} data-testid="repair-gear" />}
-          {cost !== null && <Row label="It costs" value={<Figure value={formatDucats(cost)} />} hairline={false} />}
+          {cost !== null && <Row label={t('books.itCosts')} value={<Figure value={formatDucats(cost)} />} hairline={false} />}
         </>
       )
     }
