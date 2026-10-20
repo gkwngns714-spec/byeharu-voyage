@@ -163,6 +163,11 @@ export { buildTrack, sheetPieces, type TrackPaths } from './route'
 export { roadsteadMarks, type RoadsteadMark } from './roadsteads'
 // 0075 — where to draw her BETWEEN reads. Exported so the drive can assert the clamp directly.
 export { driftedPoint, type Drift } from './drift'
+// ROW 169 — where to draw her between one MODEL and the next: the frame's own arithmetic. The hook
+// is not exported (nothing outside the chart draws a hull); the arithmetic is, for the same reason
+// `driftedPoint` is — a spec can hold the chase and the snap to account without a browser.
+export { underwayStep, UNDERWAY_SNAP_DEG, type UnderwayLeg } from './underway'
+export { glideShare, UNDERWAY_GLIDE_MS } from './chartView'
 export {
   LABEL_PRIORITY,
   LABEL_RINGS,

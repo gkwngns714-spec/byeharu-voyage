@@ -26,6 +26,9 @@
 //   * It cannot leave the segment the server put her on. `legFrac` is clamped to 1 — the far
 //     vertex — so the furthest this file can ever draw her is a point the server itself is about
 //     to return. It cannot round a corner, skip a leg, or arrive.
+//   * It stops at the ARRIVAL INSTANT. The elapsed time is cut off at `etaMs` (2026-10-20, owner
+//     row 169), so a read that is late can never draw her past the moment the server says her
+//     passage ended.
 //   * It cannot move her backwards. `legFrac` is clamped below by the served value.
 //   * It measures nothing. The leg's length arrives on the wire (0075) and the two vertices are
 //     the served course's own. `src/lib/geo`'s great-circle helpers are deliberately NOT used:
@@ -77,7 +80,13 @@ export function driftedPoint(voyage: MapVoyage, drift: Drift | null): LatLon {
   const msLeft = etaMs - drift.readAtMs
   if (!(nmLeft > 0) || !(msLeft > 0)) return voyage.at
 
-  const elapsedMs = drift.nowMs - drift.readAtMs
+  // SHE STOPS WHEN SHE ARRIVES. The clock this file is allowed to read runs out at the server's own
+  // arrival instant: past it there is no passage left to interpolate, and a hull still sliding
+  // seaward from the quay she reached is a worse picture than a hull that steps (owner row 169).
+  // The clamp below also stops her, at the far vertex — but only on the leg she is on, so on a
+  // course with a corner still ahead of her the two are different instants, and this is the one
+  // that is about arriving.
+  const elapsedMs = Math.min(drift.nowMs, etaMs) - drift.readAtMs
   if (!(elapsedMs > 0)) return voyage.at
 
   const advanced = legFrac + ((nmLeft / msLeft) * elapsedMs) / segNm
