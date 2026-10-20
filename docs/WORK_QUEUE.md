@@ -49,6 +49,11 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 - 0187 shipped TEN great powers: that follows the owner's own follow-up "in asia add korea, in europe add more" (OWNER_REQUESTS row 161). Not a mismatch.
 - The 10-18 "In progress" table below is STALE: all of it shipped (0186, 0188, 0197, 0199, 0183, #240, #227/#228, #225, #218, 0187).
 
+## CLOUD-FIRST (owner 2026-10-20: "use claude session credit first for all work … until it is exhausted")
+- 05:28 UTC every Fable 5.1 session (local agents AND the first cloud routine) stopped: "out of usage credits" (seven_day_overage_included, resets 2026-10-25 10:00 UTC). Opus still runs in the cloud.
+- Work moves to CLOUD ROUTINES on Opus (no parallel sub-agents). Code only; the main session on PC 디폴리스 runs the read-only prod checks and the deploys.
+- Running: `trig_012R2tAZnDaiCcqcVBcewJJ8` Stats tab finish (osn-stats-tab b054cee) · `trig_01RNBbPQDWzw78pE5cGJP37M` Sea S1+S2 rebase (osn-sea-s1 5278abe, osn-sea-s2). Korean (the first routine's work was lost, nothing pushed) restarts in the cloud after Stats merges.
+
 ## RESUMED 2026-10-19 ~23:30 UTC (PC 디폴리스)
 Prod head 0208 (checked). Nothing moved during the 15 h gap.
 - #267 shard 3/3: READ. Root cause: 0209 drops `npc_buy_ceiling(uuid,uuid,numeric)` and recreates it with 7 args, while `tests/rpc.surface.spec.ts:1650` still named the old signature. Test fixed, hold note lifted (8968c83); **0209 LIVE 23:43 UTC** (#267 merged; Pages + main Acceptance green). 30-min after-check PASSED: 0 failed jobs (all jobs); arrivals avg 2.93 s both sides (before n=138, p50 2.85, max 6.3 · after n=131, p50 2.74, max 5.7). The sim's ×0.79 sweep gain does not show in the cron total (the job does more than the sweep), but nothing got worse.
