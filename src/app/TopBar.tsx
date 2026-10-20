@@ -3,7 +3,7 @@ import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
 import { isTradeRoute } from './navTabs'
 import { useShellState } from './shellState'
-import { COIN, formatGameClock, formatInt, instantMs } from '../lib/format'
+import { COIN, formatGameClock, formatGameToday, formatInt, instantMs } from '../lib/format'
 import { useT } from '../lib/i18n'
 
 // THE STATUS STRIP — 32px, two facts, and nothing that says the obvious.
@@ -65,8 +65,17 @@ export function TopBar() {
       {/* Left: how long the quay's prices stand. An empty span holds the slot when there is
           nothing true to say, so the purse does not slide across the bar between tabs. */}
       <span className="min-w-0 truncate text-t-caption text-ink-muted">
-        {/* THE GAME CLOCK — time only, no date (owner, 2026-10-15); the Sun runs on the same
-            hour (lib/format gameTimeOfDayMs). */}
+        {/* THE GAME CLOCK — the world's DATE and its hour (owner row 176, 2026-10-20: *"There is
+            one right now showing the time only, but I want to see the date, year, months and so
+            on."*). Two clocks, side by side and in that order, because they run at different rates
+            and lib/format/time.ts says why: the date is the calendar clock, which is the day
+            `world.game_day` counts and every served `*_game_days` figure is in; the hour is the
+            game clock the Sun stands on (gameTimeOfDayMs). Neither is read from anywhere new —
+            both are pure functions of THE ONE CLOCK. */}
+        <span data-testid="game-date" className="text-ink">
+          {formatGameToday(nowMs)}
+        </span>
+        {' · '}
         <span data-testid="game-clock" className="tabular-nums text-ink">
           {formatGameClock(nowMs)}
         </span>
