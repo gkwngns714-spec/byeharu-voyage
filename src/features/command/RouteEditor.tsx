@@ -8,6 +8,7 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, Refusal, StandingRoute } from '../../lib/rpc'
 import { draftOfRoute, emptyStop, routeName, routePayload, type RouteStopDraft } from './standingRouteDraft'
 import { RouteStopBlock, StopLineRow, StopPortRow } from './RouteStop'
+import { useT } from '../../lib/i18n'
 
 // THE ROUTE EDITOR — inside RouteFold, in place (docs/TRADE_ROUTES.md §7). Slice 1's scope, and
 // no more: two stops — where the fleet lies, and one port picked with THE port field (the same
@@ -36,6 +37,7 @@ export function RouteEditor({
   initial?: RouteStopDraft[] | null
   onDone: () => void
 }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
   const markets = useWorld((s) => s.markets)
@@ -70,7 +72,7 @@ export function RouteEditor({
   }, [portIds, markets, loadMarket])
 
   if (!home && !route) {
-    return <Note tone="neutral">Set up a route while {fleet.name} is in port.</Note>
+    return <Note tone="neutral">{t('command.inPortFirst', { fleet: fleet.name })}</Note>
   }
 
   const set = (i: number, patch: Partial<RouteStopDraft>) =>
@@ -131,7 +133,7 @@ export function RouteEditor({
                       data-testid="route-sell-all"
                     >
                       <Icon name="ship" size={16} />
-                      Everything on board
+                      {t('command.everything')}
                     </Chip>
                   </div>
                   {carried.sell.map((l) => (
@@ -168,8 +170,8 @@ export function RouteEditor({
                       <Field
                         icon={null}
                         inputMode="numeric"
-                        aria-label="Units to buy"
-                        placeholder="Units (blank: all that fit)"
+                        aria-label={t('command.unitsToBuy')}
+                        placeholder={t('command.unitsPh')}
                         disabled={!stop.buyGood}
                         value={stop.buyUnits === null ? '' : String(stop.buyUnits)}
                         onChange={(e) => set(i, { buyUnits: wholeOrNull(e.target.value) })}
@@ -178,8 +180,8 @@ export function RouteEditor({
                       <Field
                         icon={null}
                         inputMode="numeric"
-                        aria-label="Max price each"
-                        placeholder="Max each (blank: any)"
+                        aria-label={t('command.maxEach')}
+                        placeholder={t('command.maxPh')}
                         disabled={!stop.buyGood}
                         value={stop.buyMax === null ? '' : String(stop.buyMax)}
                         onChange={(e) => set(i, { buyMax: wholeOrNull(e.target.value) })}
@@ -195,10 +197,10 @@ export function RouteEditor({
         )
       })}
 
-      <Hint className="mt-3">The fleet sails this loop by itself, and History shows each lap.</Hint>
+      <Hint className="mt-3">{t('command.loopHint')}</Hint>
       {noCourse && (
         <Note tone="danger" className="mt-2">
-          No sea route from {portNameOf(portByCode, noCourse)} to the next stop.
+          {t('command.noCourse', { port: portNameOf(portByCode, noCourse) })}
         </Note>
       )}
       {refusal && (
@@ -215,10 +217,10 @@ export function RouteEditor({
           onClick={() => void press.run(start)}
           data-testid="route-start"
         >
-          {route?.fleet ? 'Save route' : 'Start route'}
+          {t(route?.fleet ? 'command.saveRoute' : 'command.startRoute')}
         </Button>
         <Button variant="quiet" className="flex-1" onClick={onDone}>
-          Cancel
+          {t('command.cancel')}
         </Button>
       </div>
     </div>

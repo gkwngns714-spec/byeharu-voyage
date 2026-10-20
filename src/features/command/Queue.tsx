@@ -5,6 +5,7 @@ import { formatMiles, formatRealShort } from '../../lib/format'
 import { usePress } from '../../live/usePress'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
+import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 
 // HER QUEUE, AS ROWS ON THE SHEET — the whole of what COMMAND shows about a fleet now.
 //
@@ -41,6 +42,7 @@ export function Queue({
   onCancel: (position: number) => Promise<boolean>
   onClear: () => Promise<boolean>
 }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
   const press = usePress()
@@ -65,17 +67,17 @@ export function Queue({
       {fleet.voyage && where.kind === 'sailing' && (
         <Row
           mark={<Icon name="ship" size={18} className="text-info" />}
-          label={`Sailing to ${boundForLabel(where, (c) => portNameOf(portByCode, c))}`}
+          label={t('command.sailingTo', { place: boundForLabel(where, (c) => portNameOf(portByCode, c)) })}
           value={etaMs !== null ? <Figure value={formatRealShort(etaMs)} tone="info" /> : undefined}
         >
           <span className="block text-t-caption text-ink-faint">
-            {formatMiles(fleet.voyage.nm_done)} of {formatMiles(fleet.voyage.total_nm)}
+            {t('command.milesOf', { done: formatMiles(fleet.voyage.nm_done), total: formatMiles(fleet.voyage.total_nm) })}
           </span>
         </Row>
       )}
 
       {orders.length === 0 ? (
-        <Row label="No orders queued." tone="muted" hairline={false} />
+        <Row label={t('command.noOrders')} tone="muted" hairline={false} />
       ) : (
         orders.map((order, i) => {
           const live = order.status === 'pending' || order.status === 'active'
@@ -95,7 +97,7 @@ export function Queue({
                       variant="quiet"
                       size="icon"
                       busy={press.pending}
-                      aria-label={refused ? `Dismiss refused order ${order.seq}` : `Cancel order ${order.seq}`}
+                      aria-label={t(refused ? 'command.dismissRefused' : 'command.cancelOrder', { n: order.seq })}
                       onClick={() => void press.run(() => onCancel(i + 1))}
                     >
                       <Icon name="close" size={18} />
@@ -107,7 +109,7 @@ export function Queue({
               }
             >
               {order.status === 'active' && etaMs !== null && (
-                <span className="block text-t-caption text-accent">arrives in {formatRealShort(etaMs)}</span>
+                <span className="block text-t-caption text-accent">{t('command.arrivesIn', { t: formatRealShort(etaMs) })}</span>
               )}
             </Row>
           )
@@ -122,7 +124,7 @@ export function Queue({
           onClick={() => void press.run(onClear)}
           data-testid="queue-clear"
         >
-          Clear all orders
+          {t('command.clearAll')}
         </Button>
       )}
     </>
@@ -132,10 +134,10 @@ export function Queue({
 function statusWord(status: QueuedOrder['status']): string {
   switch (status) {
     case 'done':
-      return 'done'
+      return tNow('command.st_done')
     case 'failed':
-      return 'refused'
+      return tNow('command.st_refused')
     default:
-      return status
+      return translateMaybe(getLocale(), 'command', `st_${status}`) ?? status
   }
 }

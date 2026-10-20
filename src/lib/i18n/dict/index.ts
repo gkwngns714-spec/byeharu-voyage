@@ -3,6 +3,7 @@
 import { booksDict } from './books'
 import { codesDict } from './codes'
 import { codexDict } from './codex'
+import { commandDict } from './command'
 import { commonDict } from './common'
 import { domainDict } from './domain'
 import { fleetsDict } from './fleets'
@@ -26,6 +27,7 @@ export const DICT = {
   books: booksDict,
   codes: codesDict,
   codex: codexDict,
+  command: commandDict,
   common: commonDict,
   domain: domainDict,
   fleets: fleetsDict,
