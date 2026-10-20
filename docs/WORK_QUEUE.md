@@ -11,7 +11,9 @@ Prod head: **0208**. (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trad
 ## RESUMED 2026-10-19 ~23:30 UTC (PC 디폴리스)
 Prod head 0208 (checked). Nothing moved during the 15 h gap.
 - #267 shard 3/3: READ. Root cause: 0209 drops `npc_buy_ceiling(uuid,uuid,numeric)` and recreates it with 7 args, while `tests/rpc.surface.spec.ts:1650` still named the old signature. Test fixed, hold note lifted (8968c83); **0209 LIVE 23:43 UTC** (#267 merged; Pages + main Acceptance green). 30-min after-check PASSED: 0 failed jobs (all jobs); arrivals avg 2.93 s both sides (before n=138, p50 2.85, max 6.3 · after n=131, p50 2.74, max 5.7). The sim's ×0.79 sweep gain does not show in the cron total (the job does more than the sweep), but nothing got worse.
-- Agents running: running-costs 0210 (finish proof 07 + sim, PR, no deploy) · insurance 0211 (finish, PR, no deploy) · NEW `osn-same-port-flip` (the buy-then-sell-same-port bug, at the price authority; must land before live prices are lit).
+- **0210 LIVE ~01:00 UTC** (#269 merged): stores, repairs, wages ×0.2 (`running_cost_level`; owed wages scaled exactly). CI 15/15; proof 07 fixed (the proof's top-up cost 1 at ÷5). Paired sim: lay-ups 83→29 at kickoff (61→11 at end), traded-and-lost laps 23→4, median lap net 38→65.5; starter's voyage 18.2 % unchanged. 30-min after-check running.
+- PR #270 `osn-same-port-flip` (0212): acceptance green, apply-proof pending.
+- Agents running: running-costs 0210 (DONE) (finish proof 07 + sim, PR, no deploy) · insurance 0211 (finish, PR, no deploy) · NEW `osn-same-port-flip` (the buy-then-sell-same-port bug, at the price authority; must land before live prices are lit).
 
 ## HAND-OFF #2: the owner moved PCs again, 2026-10-19 ~08:40 UTC (from PC 디폴리스)
 **Prod head 0208. Main is green** (Acceptance success on 3cf859f). Nothing is half-deployed. On the old PC, every agent was told to push its WIP plus a "## HAND-OFF" section in its dev-log, then stop; nothing runs there now.
