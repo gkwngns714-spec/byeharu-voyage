@@ -70,3 +70,36 @@ unwind killing a run mid-flight) and one `deadlock detected` on a `player` tuple
 clock restart. There were **0 failures in the six hours before** the first push and none since.
 Winding the clock back costs about one failed run per deploy; it is not a regression in any of the
 three migrations. Worth watching if it ever becomes more than one.
+
+## A test that aimed at a word, 2026-10-20 (row 172)
+
+Worth keeping, because it cost three CI runs and the cause was not where it looked.
+
+`tests/map.merchants.spec.ts` (`openHarbour`) and `tests/map.goto.spec.ts` (`openACity`) both opened a
+harbour by pressing the **centre of its printed name**. For a long name that centre is open water
+beside the mark, and `openHarbour`'s own header had carried the receipt since 2026-10-16 — a CI run
+that opened `28.1°N 13.9°W · Open sea` off the Canaries while aiming for a city.
+
+It only passed by **two accidents**:
+
+1. A press on open water opened a tray. A tray is a `CHART_CHROME` box, and the label planner keeps
+   names out of those (`useChromeBoxes`), so a missed aim **moved the word** and the next of the three
+   aims landed somewhere new.
+2. The open-sea panel carries the same `map-place-name` as a city, so `openACity`'s assertion passed
+   on a panel that was reading a coordinate rather than a city at all.
+
+Row 172 — a single press on open water opens nothing — removed both accidents, and three aims at one
+patch of water became three misses. The first fix attempted (re-read the name's box before every aim)
+could not work: the box had stopped moving, so a fresh read returned the same wrong point.
+
+**The fix is to aim at the thing the player aims at.** Both helpers now press
+`[data-port-mark][data-port-code=…]`, whose group is concentric about the harbour's own point, so the
+box centre is what `hitTest.ts` resolves. The harbour is still *chosen* by its name; the word is the
+fallback when no mark is on the glass.
+
+**Left alone deliberately:** `tests/map.goto.spec.ts:304` still presses a label box centre for Lisbon.
+"Lisbon" is short enough that its name centre falls inside the mark's 38 px reach, and the test is
+green. Convert it to a mark aim the next time anyone is in that file.
+
+**The general lesson:** when a drive helper passes because of what a *wrong* press happens to open, it
+is not testing what it claims to. Aim at the element the player aims at.
