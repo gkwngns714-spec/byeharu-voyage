@@ -92,7 +92,7 @@
 -- ledger. No top-level LOCK / SET LOCAL / BEGIN / SET ROLE. Timings are notices only.
 -- ROLLBACK (a forward migration): reverse the hunks (old text in hunks_0212), restore the two knobs
 -- (0.2 / 30) and public.npc_worth (0203's body); the new functions and the table are then unread.
--- VERSION: 0212 (prod head 0210 on 2026-10-20; the hunks re-checked against its live bodies: 0210 moved one
+-- VERSION: 0212 (prod head 0211 on 2026-10-20; the hunks re-checked against the live bodies at 0208, 0210 and 0211: 0210 moved one
 -- declaration in voyage.settle, outside every hunk here). It RENUMBERS to the prod head + 1 at push.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
