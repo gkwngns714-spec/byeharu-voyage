@@ -21,6 +21,8 @@ export const uiDict = defineDict({
     pastPricesAxis: '{name}: {n} past prices, {lo} to {hi}, with an axis',
     range: 'Range',
     inStock: 'In stock',
+    // Owner row 177: what sort a trade good is, and how rare its source is.
+    kind: 'Kind',
     stockLow: 'low, so the price is high',
     stockNormal: 'about normal',
     stockHigh: 'high, so the price is low',
@@ -103,6 +105,7 @@ export const uiDict = defineDict({
     pastPricesAxis: '{name}: 과거 시세 {n}개, {lo}~{hi}, 축 포함',
     range: '시세 폭',
     inStock: '재고',
+    kind: '분류',
     stockLow: '적어서 비쌈',
     stockNormal: '보통',
     stockHigh: '많아서 쌈',

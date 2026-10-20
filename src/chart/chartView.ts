@@ -87,6 +87,35 @@ export const ZOOM_GLIDE_MS = 70
 export const GOTO_GLIDE_MS = ZOOM_GLIDE_MS * 3
 
 /**
+ * THE HULL'S GLIDE (./underway.ts, owner row 169: *"I want the ship movement to be smooth, not by
+ * ticks"*) — how fast the ship drawn on the glass closes on the ship the served figures put there.
+ *
+ * It is a lag and a correction at once, which is why one number does both jobs. A hull chases her
+ * served place with this decay, so she trails it by about this much time — 200 ms of her own
+ * passage, which is a pixel at the tightest zoom this chart allows and nothing at all at the
+ * others — and a read that disagrees with where she was drawn is therefore absorbed over ~600 ms
+ * instead of landing as a jump. Shorter and a correction becomes a dart; longer and she swims
+ * behind her own position.
+ */
+export const UNDERWAY_GLIDE_MS = 200
+
+/**
+ * The share of what a glide still owes that ONE animation frame pays, for a decay of time constant
+ * `tau` ms — the zoom's notch, the go-to's flight and a hull's chase of her served place, which are
+ * three readings of one piece of arithmetic (./useChartSurface.ts, ./underway.ts).
+ *
+ * The elapsed time is floored at one frame: a rAF timestamp is the frame's START, which can be
+ * EARLIER than the `performance.now()` a wheel handler read moments before, and a negative elapsed
+ * made the first frame of a notch pay a NEGATIVE share — a zoom-in that first zoomed out, which at
+ * the world view (already fully out) clamped to no change at all: the wheel "did not zoom"
+ * (tests/map.marks.spec.ts, tests/map.perf.spec.ts, red on main 2026-10-16). Every frame of a glide
+ * moves toward where it is going, starting with the first.
+ */
+export function glideShare(t: number, last: number, tau: number): number {
+  return 1 - Math.exp(-Math.max(t - last, 1000 / 60) / tau)
+}
+
+/**
  * THE GO-TO'S READABLE BAND — how close a go-to (./goTo.ts) lands, decided HERE and nowhere else.
  *
  * The owner, on the live site after #128: the glide "zooms in too close — only water is visible".

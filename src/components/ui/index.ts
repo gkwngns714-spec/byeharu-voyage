@@ -199,6 +199,8 @@ export { chromeAsideTrayClass, chromeAsideSideTrayClass } from './screenLayout'
 // so the tier survives a colourblind player and a greyscale screenshot. §5 keeps the MARK.
 export { RarityMark } from './Rarity'
 export { rarityLabel, RARITY_TIERS } from './rarityTiers'
+// WHAT A GOOD IS, in its two served words — its kind and its rarity tier (owner row 177).
+export { GoodKind } from './GoodKind'
 // The served danger tier's words and thresholds (0040). The PIPS become a `<Bar of={…}>`; the
 // table is data and stays.
 export { dangerLabel, dangerPips, dangerTone, DANGER_PIPS, DANGER_TIERS } from './dangerTiers'

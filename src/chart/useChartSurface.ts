@@ -12,6 +12,7 @@ import {
   approachView,
   clampView,
   fitView,
+  glideShare,
   GOTO_GLIDE_MS,
   panBy,
   unitsPerPixel,
@@ -255,19 +256,6 @@ export interface ChartSurface {
     onPointerUp: (e: ReactPointerEvent<HTMLDivElement>) => void
     onPointerCancel: (e: ReactPointerEvent<HTMLDivElement>) => void
   }
-}
-
-/**
- * The share of what a glide still owes that one animation frame pays, for a decay of time constant
- * `tau` ms. The elapsed time is floored at one frame: a rAF timestamp is the frame's START, which
- * can be EARLIER than the `performance.now()` a wheel handler read moments before, and a negative
- * elapsed made the first frame of a notch pay a NEGATIVE share — a zoom-in that first zoomed out,
- * which at the world view (already fully out) clamped to no change at all: the wheel "did not
- * zoom" (tests/map.marks.spec.ts, tests/map.perf.spec.ts, red on main 2026-10-16). Every frame of
- * a glide moves toward where it is going, starting with the first.
- */
-function glideShare(t: number, last: number, tau: number): number {
-  return 1 - Math.exp(-Math.max(t - last, 1000 / 60) / tau)
 }
 
 export function useChartSurface(

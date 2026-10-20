@@ -12,7 +12,6 @@ import {
   Tray,
   categoryLabel,
   goodIcon,
-  rarityLabel,
   type TrayDetent,
 } from '../../components/ui'
 import { COIN, formatFixed, formatInt, formatPct } from '../../lib/format'
@@ -71,7 +70,7 @@ export function GoodsFace({ query }: { query: string }) {
                 key={g.code}
                 mark={<Icon name={goodIcon(g.code, g.category)} size={20} />}
                 name={g.name}
-                meta={<RarityLine rarity={g.rarity} />}
+                meta={g.rarity ? <RarityMark rarity={g.rarity} size={10} withWord /> : undefined}
                 figure={<Figure value={anchor(g.base_value)} unit={COIN} />}
                 tap="whole"
                 onClick={() => {
@@ -93,7 +92,7 @@ export function GoodsFace({ query }: { query: string }) {
           data-testid="good-tray"
         >
           <Row label={t('codex.kind')} value={categoryLabel(open.category)} />
-          {open.rarity && <Row label={t('codex.rarity')} value={<RarityLine rarity={open.rarity} />} />}
+          {open.rarity && <Row label={t('codex.rarity')} value={<RarityMark rarity={open.rarity} size={10} withWord />} />}
           <Row label={t('codex.base')} value={<Figure value={anchor(open.base_value)} unit={COIN} />} />
           <Row
             label={t('codex.weight')}
@@ -123,15 +122,4 @@ export function GoodsFace({ query }: { query: string }) {
  *  the halves keep one decimal and whole figures stay whole. */
 function anchor(value: number): string {
   return value % 1 === 0 ? formatInt(value) : formatFixed(value, 1)
-}
-
-/** The served rarity tier (0032) as its mark and its word. Absent renders nothing. */
-function RarityLine({ rarity }: { rarity: string | undefined }) {
-  if (!rarity) return null
-  return (
-    <span className="inline-flex items-center gap-1">
-      <RarityMark rarity={rarity} size={10} />
-      {rarityLabel(rarity)}
-    </span>
-  )
 }

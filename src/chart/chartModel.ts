@@ -14,6 +14,13 @@
 // Omit the argument and this module is exactly what the paragraph above describes — which is what
 // every caller but the Map tab does.
 //
+// AMENDED AGAIN 2026-10-20 (owner row 169: *"smooth, not by ticks"*), and narrower still: a fleet
+// under way now CARRIES the instant her figures were true (`FleetOnChart.readAtMs`), which was
+// already an input to this model and was simply not passed on. It is what lets ./underway.ts draw
+// her between two of these models, on an animation frame, at `./drift.ts`'s point for that instant.
+// Nothing about this file's own answer changed: the model is still the same pure function of the
+// same two arguments, and a caller that asks for no clock still gets the server's point and a null.
+//
 // It is also the ONE place that decides which ports are "in use", so the loud/quiet split (§E.5:
 // ports a fleet is not using are quieter) cannot be computed two different ways in two layers.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -46,6 +53,19 @@ export interface FleetOnChart {
   readonly destinationCode: string | null
   /** The port it lies in, if it lies in one. */
   readonly dockedAtCode: string | null
+  /**
+   * WHEN HER SERVED POSITION WAS TRUE — the instant the read that placed her answered
+   * (`worldStore.readAt`, or the merchants' own `trafficReadAt`), carried on the fleet rather than
+   * looked up beside the model. Null for a fleet that is not under way, and null for every caller
+   * that asks for no drift (`SmallChart`), which is also what "there is nothing to glide" means.
+   *
+   * It is here because ./underway.ts (owner row 169) draws her between the 1 Hz model and the next
+   * frame, and the instant her figures were true is half of that arithmetic — the other half is
+   * `voyage`, which is already on this interface. A layer that had to be handed the read's instant
+   * separately would be a second channel for the same read, and the merchants' instant is not the
+   * beat's.
+   */
+  readonly readAtMs: number | null
 }
 
 /**
@@ -218,6 +238,7 @@ export function buildChartModel(
         heading: null,
         destinationCode: null,
         dockedAtCode: fleet.portCode,
+        readAtMs: null,
       })
       continue
     }
@@ -234,6 +255,7 @@ export function buildChartModel(
         heading: null,
         destinationCode: null,
         dockedAtCode: null,
+        readAtMs: null,
       })
       continue
     }
@@ -295,6 +317,7 @@ export function buildChartModel(
         heading: null,
         destinationCode: null,
         dockedAtCode: null,
+        readAtMs: null,
         merchant: m,
         loopD,
         laneD,
@@ -350,6 +373,9 @@ function placeSailing(fleet: MapFleet, voyage: MapVoyage, drift: Drift | null, w
     heading: segFrom && segTo ? headingDeg(project(segFrom), project(segTo)) : null,
     destinationCode: voyage.destinationCode,
     dockedAtCode: null,
+    // The instant these figures were true, carried through for ./underway.ts. Null when no drift
+    // was asked for: a model with no clock has nothing to glide from.
+    readAtMs: drift?.readAtMs ?? null,
   }
 }
 
