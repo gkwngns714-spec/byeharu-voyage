@@ -54,6 +54,14 @@ export { Row, type RowTone } from './Row'
 export { Figure, type FigureSize, type FigureTone } from './Figure'
 //    The tone a SIGNED figure takes — gain, loss, or plain ink at zero. One rule for every delta.
 export { deltaTone } from './deltaTone'
+//    THE COUNTER — the same figure, WALKING to its new value when the server's answer changes
+//    (2026-10-20, owner request 188: "no number moving around"). The only motion §4.6 does not
+//    forbid, and `prefers-reduced-motion` turns it off; countUp.ts holds the arithmetic.
+export { Counter } from './Counter'
+export { COUNT_UP_MS, countUpEase, countUpValue } from './countUp'
+//    THE STAT CELL — a label, that one figure (counting), its move and its line. The dashboard
+//    tile the Stats tab had hand-written fourteen times; no box, because §4.3 allows none.
+export { StatCell } from './StatCell'
 
 // 6. TILE — the selectable block, and TileField, the CSS grid it stands in.
 export { Tile, TileField, type TileState } from './Tile'
@@ -67,6 +75,15 @@ export { SkillTile } from './SkillTile'
 
 // 7. BAR — one proportion, 4px, continuous or countable. Meter + Gauge + stockBar + pips, folded.
 export { Bar, type BarTone } from './Bar'
+//    THE STACKED BAR — one whole cut into the KINDS that make it up, with the legend that keeps
+//    colour from being the only channel (the world's money by holder; the merchants' fleets).
+export { StackedBar, type StackedPart } from './StackedBar'
+//    RANKED BARS — a short list in order, each row's bar measured against the biggest. Six places
+//    on the Stats tab asked "which of these is big" and five numbers do not answer it.
+export { RankBars, type RankRow } from './RankBars'
+//    SIGNED BARS — one bar a period, up for a gain and down for a loss from the one zero line.
+//    The COMMAND desk's Profit idiom, promoted when the Stats tab wanted it three more times.
+export { SignedBars } from './SignedBars'
 //    THE CARGO BAR — `51 / 60 tons` with a staged basket washed on. One recipe for FLEETS and the
 //    basket panel (PR #59 review SHOULD 4c: it had been hand-written twice).
 export { CargoBar } from './CargoBar'

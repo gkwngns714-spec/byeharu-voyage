@@ -1,29 +1,55 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Empty, FactsLine, Figure, Hint, Note, Row, Segmented, SheetSection, Skeleton, Sparkline, StockGauge, categoryLabel, deltaTone } from '../../components/ui'
+import {
+  Button,
+  Empty,
+  FactsLine,
+  Figure,
+  Hint,
+  Note,
+  RankBars,
+  Row,
+  Segmented,
+  SheetSection,
+  Skeleton,
+  Sparkline,
+  StatCell,
+  StockGauge,
+  categoryLabel,
+  deltaTone,
+  type RankRow,
+} from '../../components/ui'
 import { formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
 import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import type { FaceProps } from './StatsScreen'
 import { movePct } from './statsFaces'
+import { servedNow } from './statsPulse'
 
 // MARKETS — every good as a stock-market table: price, its move, what was bought and sold, stock against
-// normal, a line. Risers, fallers and the most traded on top. The figures are sums over EVERY market that
-// sells a good (public), so no city can be read out of them; a city's own rows are the Cities face's, at
-// your tier. Sorting is a view the player changes three times in ten seconds, so it is done here.
+// normal, a line. The day's movers on top as ranked bars, so which rose MOST is read before the digits.
+// The figures are sums over EVERY market that sells a good (public), so no city can be read out of them;
+// a city's own rows are the Cities face's, at your tier. Sorting is a view the player changes three times
+// in ten seconds, so it is done here.
 
 type Sort = 'movers' | 'traded' | 'name'
 type Window = '1h' | '1d' | '7d'
 const FIRST = 60
 
-export function MarketsFace({ beat, onAge }: FaceProps) {
+interface GoodRank {
+  g: StatsGood
+  move: number | null
+  traded: number
+}
+
+export function MarketsFace({ beat, onServed }: FaceProps) {
   const read = useServedRead<StatsMarkets>('stats:markets', () => worldStatsMarkets(), { trigger: beat })
   const v = read.view
-  useEffect(() => onAge(v?.age_seconds ?? null), [v, onAge])
+  useEffect(() => onServed(servedNow(v)), [v, onServed])
   const [sort, setSort] = useState<Sort>('movers')
   const [win, setWin] = useState<Window>('1d')
   const [all, setAll] = useState(false)
 
-  const rows = useMemo(() => {
+  const rows = useMemo<GoodRank[]>(() => {
     if (!v) return []
     const before = (g: StatsGood) => (win === '1h' ? g.mid_1h : win === '1d' ? g.mid_1d : g.mid_7d)
     const list = v.goods.map((g) => ({ g, move: movePct(g.mid, before(g)), traded: g.sold_1d + g.bought_1d }))
@@ -42,10 +68,20 @@ export function MarketsFace({ beat, onAge }: FaceProps) {
   const fallers = moved.filter((r) => (r.move ?? 0) < 0).sort((a, b) => (a.move ?? 0) - (b.move ?? 0)).slice(0, 3)
   const traded = rows.filter((r) => r.traded > 0).sort((a, b) => b.traded - a.traded).slice(0, 3)
   const shown = all ? rows : rows.slice(0, FIRST)
+  const unitsTraded = rows.reduce((n, r) => n + r.traded, 0)
 
   return (
     <div data-testid="stats-markets">
-      <div className="flex flex-wrap items-center gap-2">
+      <SheetSection heading="The day's market">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
+          <StatCell label="Goods traded, 24 h" value={rows.filter((r) => r.traded > 0).length} format={formatInt} />
+          <StatCell label="Units traded, 24 h" value={unitsTraded} format={formatInt} />
+          <StatCell label={`Rose, ${windowWord(win)}`} value={moved.filter((r) => (r.move ?? 0) > 0).length} format={formatInt} tone="success" />
+          <StatCell label={`Fell, ${windowWord(win)}`} value={moved.filter((r) => (r.move ?? 0) < 0).length} format={formatInt} tone="danger" />
+        </div>
+      </SheetSection>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <Segmented
           segments={[
             { id: 'movers', label: 'Movers' },
@@ -68,10 +104,20 @@ export function MarketsFace({ beat, onAge }: FaceProps) {
         />
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Top heading="Risers" rows={risers} testid="stats-risers" />
-        <Top heading="Fallers" rows={fallers} testid="stats-fallers" />
-        <Top heading="Most traded, 24 h" rows={traded} testid="stats-most-traded" units />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <SheetSection heading="Risers" surface data-testid="stats-risers">
+          <RankBars rows={movers(risers, 'success')} format={formatPctChange} empty="Nothing rose" />
+        </SheetSection>
+        <SheetSection heading="Fallers" surface data-testid="stats-fallers">
+          <RankBars rows={movers(fallers, 'danger')} format={formatPctChange} empty="Nothing fell" />
+        </SheetSection>
+        <SheetSection heading="Most traded, 24 h" surface data-testid="stats-most-traded">
+          <RankBars
+            rows={traded.map((r) => ({ id: r.g.code, label: r.g.name, value: r.traded, text: `${formatInt(r.traded)} units` }))}
+            format={formatInt}
+            empty="Nothing traded"
+          />
+        </SheetSection>
       </div>
 
       <SheetSection heading={`Every good · ${formatInt(v.goods.length)}`} surface data-testid="stats-goods">
@@ -91,29 +137,14 @@ export function MarketsFace({ beat, onAge }: FaceProps) {
   )
 }
 
-function Top({ heading, rows, testid, units = false }: { heading: string; rows: { g: StatsGood; move: number | null; traded: number }[]; testid: string; units?: boolean }) {
-  return (
-    <SheetSection heading={heading} surface data-testid={testid} className="mt-0 first:mt-0">
-      {rows.length === 0 ? (
-        <Row label="Nothing yet" tone="muted" hairline={false} />
-      ) : (
-        rows.map((r, i) => (
-          <Row
-            key={r.g.code}
-            label={r.g.name}
-            value={
-              units ? (
-                <Figure value={formatInt(r.traded)} unit="units" />
-              ) : (
-                <Figure value={formatPctChange(r.move ?? 0)} tone={deltaTone(r.move ?? 0)} />
-              )
-            }
-            hairline={i < rows.length - 1}
-          />
-        ))
-      )}
-    </SheetSection>
-  )
+/** The window the player chose, as the words that go after "Rose" and "Fell". */
+function windowWord(win: Window): string {
+  return win === '1h' ? 'last hour' : win === '1d' ? 'last day' : 'last 7 days'
+}
+
+/** A mover as a ranked row: the bar is the size of the move, the figure its percent. */
+function movers(rows: readonly GoodRank[], tone: 'success' | 'danger'): RankRow[] {
+  return rows.map((r) => ({ id: r.g.code, label: r.g.name, value: r.move ?? 0, tone }))
 }
 
 function GoodRow({ g, move, last }: { g: StatsGood; move: number | null; last: boolean }) {

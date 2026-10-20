@@ -1,4 +1,4 @@
-import { useMemo, useState, type PointerEvent } from 'react'
+import { useMemo, useState, type PointerEvent, type ReactNode } from 'react'
 import { nearestDot, seriesChartModel, type SeriesPoint } from './seriesChartModel'
 
 // ONE FIGURE OVER TIME — the small-multiple line the Stats tab is made of (seriesChartModel.ts says why
@@ -31,9 +31,10 @@ export function SeriesChart({
   label,
   tone = 'accent',
   size,
+  empty = null,
   className = '',
 }: {
-  /** Served instants and values; any order. Fewer than two and this renders nothing. */
+  /** Served instants and values; any order. Fewer than two and `empty` is drawn in its place. */
   points: readonly SeriesPoint[]
   /** How a value reads (formatDucats, formatInt…). */
   format: (v: number) => string
@@ -41,11 +42,17 @@ export function SeriesChart({
   label: string
   tone?: SeriesTone
   size?: { width: number; height: number }
+  /** WHAT STANDS WHERE THE LINE WOULD BE while the record is too short to draw one (2026-10-20,
+   *  owner request 188). A chart that renders NOTHING is read as a missing feature — the tab's
+   *  first hour has one row per figure, and the owner's words that day were "no charts". A caller
+   *  that can say why ("the line starts with the next count") passes that line here; a caller that
+   *  cannot leaves it null, which is the old behaviour exactly. */
+  empty?: ReactNode
   className?: string
 }) {
   const model = useMemo(() => seriesChartModel(points, size), [points, size])
   const [hover, setHover] = useState<number | null>(null)
-  if (!model) return null
+  if (!model) return <>{empty}</>
   const { plot } = model
   const floor = plot.y + plot.h
   const dot = hover === null ? null : nearestDot(model, hover)

@@ -1,4 +1,4 @@
-import { Figure, Note, SheetSection, Skeleton } from '../../../components/ui'
+import { Figure, Note, SheetSection, SignedBars, Skeleton } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta } from '../../../lib/format'
 import { worldBooks, type Books } from '../../../lib/rpc'
@@ -45,7 +45,6 @@ export function Profit({ layout }: { layout: DeskLayout }) {
     day,
     net: byDay.get(day) ?? 0,
   }))
-  const top = Math.max(1, ...bars.map((x) => Math.abs(x.net)))
 
   return layout({
     testid: 'desk-profit',
@@ -63,20 +62,16 @@ export function Profit({ layout }: { layout: DeskLayout }) {
         </div>
       </div>
 
-      {/* SEVEN BARS — one a game day, up for a gain and down for a loss from the one zero line */}
-      <div className="mt-4 grid h-24 grid-cols-7 gap-2" role="img" aria-label={t('desk.netByDay')} data-testid="profit-bars">
-        {bars.map((x) => (
-          <div key={x.day} className="relative h-full">
-            <div className="absolute inset-x-0 top-1/2 h-px bg-edge" />
-            {x.net !== 0 && (
-              <div
-                className={`absolute inset-x-0 rounded-t-[3px] ${x.net > 0 ? 'bottom-1/2 bg-success' : 'top-1/2 bg-danger'}`}
-                style={{ height: `${(Math.abs(x.net) / top) * 50}%` }}
-              />
-            )}
-          </div>
-        ))}
-      </div>
+      {/* SEVEN BARS — one a game day, up for a gain and down for a loss from the one zero line.
+          The shape is `SignedBars` since 2026-10-20: the Stats tab wanted the same row three more
+          times (your last days, the world's new money, a city's income), so it is a primitive and
+          this is one of its four callers. */}
+      <SignedBars
+        bars={bars.map((x) => ({ id: String(x.day), value: x.net }))}
+        label={t('desk.netByDay')}
+        className="mt-4"
+        data-testid="profit-bars"
+      />
     </>
     ),
     main:
