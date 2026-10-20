@@ -17,6 +17,7 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { COIN, formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, PriceOutlook, SnapshotGood } from '../../../lib/rpc'
 import type { GoodDesk } from './useGoodDesk'
+import { useT, t as tg } from '../../../lib/i18n'
 
 // THE GOOD'S CHART — the centre of the desk (docs/COMMAND_DESK.md §3.3, §3.9). The owner, 2026-10-17:
 // *"when i press coffee trade goods, it will show chart … at which time"*; 2026-10-18: *"i don't see
@@ -36,9 +37,9 @@ import type { GoodDesk } from './useGoodDesk'
 // width and 220 px tall.
 
 const WINDOWS = [
-  { id: '1', label: '1 h' },
-  { id: '6', label: '6 h' },
-  { id: '12', label: '12 h' },
+  { id: '1', get label() { return tg('markets.hours', { n: 1 }) } },
+  { id: '6', get label() { return tg('markets.hours', { n: 6 }) } },
+  { id: '12', get label() { return tg('markets.hours', { n: 12 }) } },
 ] as const
 type WindowId = (typeof WINDOWS)[number]['id']
 
@@ -74,6 +75,7 @@ export function GoodChart({
   /** Fill the pane's height (a wide glass); otherwise a fixed 220-px plane (a phone's tray). */
   fill?: boolean
 }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const { b, focus, focusPort, setFocus, history, outlook, focusRow, chips, docked } = desk
   const o = outlook.view
@@ -116,7 +118,7 @@ export function GoodChart({
           )}
           <span className="mt-0.5 flex items-center gap-1.5 truncate text-t-caption text-ink-faint">
             {focusPort && <PortFlag code={focusPort.code} />}
-            {focusPort ? `${focusPort.name} · middle price (buying costs a little more, selling pays a little less)` : 'Market price'}
+            {focusPort ? t('markets.midPrice', { port: focusPort.name }) : t('markets.marketPrice')}
           </span>
           <span className="mt-1 flex items-baseline gap-3">
             {now !== null ? (
@@ -131,22 +133,22 @@ export function GoodChart({
                   move > 0 ? 'bg-success-soft text-success' : move < 0 ? 'bg-danger-soft text-danger' : 'text-ink-faint',
                 ].join(' ')}
               >
-                {formatPctChange(move)} · {win} h
+                {formatPctChange(move)} · {t('markets.hours', { n: win })}
               </span>
             )}
           </span>
         </div>
         {stock && focusPort && (
           <div className="shrink-0 pt-1 text-right" data-testid="good-stock">
-            <span className="block text-t-caption text-ink-faint">Stock · normal</span>
-            <StockGauge stock={stock.stock} target={stock.target} label={`${good.name} at ${focusPort.name}`} />
+            <span className="block text-t-caption text-ink-faint">{t('markets.stockNormal')}</span>
+            <StockGauge stock={stock.stock} target={stock.target} label={t('markets.goodAt', { good: good.name, port: focusPort.name })} />
           </div>
         )}
       </div>
 
       {/* THE CITIES AND THE WINDOW — one row; a press selects, nothing moves */}
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-        <div className="bv-scroll-x flex min-w-0 flex-1 gap-2 overflow-x-auto" role="group" aria-label="Chart city">
+        <div className="bv-scroll-x flex min-w-0 flex-1 gap-2 overflow-x-auto" role="group" aria-label={t('markets.chartCity')}>
           {chips.map((c) => (
             <Chip key={c} on={c === focus} onClick={() => setFocus(c)} className="shrink-0 whitespace-nowrap">
               <PortFlag code={c} />
@@ -154,7 +156,7 @@ export function GoodChart({
             </Chip>
           ))}
         </div>
-        <Segmented<WindowId> segments={WINDOWS} value={win} onChange={setWin} label="Chart window" className="shrink-0 self-start" />
+        <Segmented<WindowId> segments={WINDOWS} value={win} onChange={setWin} label={t('markets.chartWindow')} className="shrink-0 self-start" />
       </div>
 
       {/* THE CHART — fills the pane on a wide glass. On a phone the box keeps room for the plot (220 px) and a
@@ -173,12 +175,12 @@ export function GoodChart({
             outlook={{ points: o.points, bestAt: o.best?.at ?? null, arriveMs }}
             size={size}
             stockTarget={o.stock_target ?? stock?.target ?? null}
-            label={`${good.name} at ${focusPort?.name ?? 'this city'}: the record, the estimate and the stock`}
+            label={t('markets.chartLabel', { good: good.name, port: focusPort?.name ?? t('markets.thisCity') })}
           />
         ) : outlook.loading || !size ? (
           <Skeleton className="h-[220px] w-full" />
         ) : (
-          <Note tone="neutral">No estimate for this city.</Note>
+          <Note tone="neutral">{t('markets.noEstimate')}</Note>
         )}
       </div>
 
@@ -188,12 +190,16 @@ export function GoodChart({
       <div className="mt-1 min-h-[3.25rem] space-y-0.5 sm:min-h-11">
         {best ? (
           <p className="text-t-caption text-warning" data-testid="good-best-time">
-            ◆ Best time to {sells ? 'sell' : 'buy'} at {focusPort?.name ?? 'this city'}: {formatClock(Date.parse(best.at))} ·{' '}
+            {t('markets.bestTime', {
+              act: t(sells ? 'markets.act_sell' : 'markets.act_buy'),
+              port: focusPort?.name ?? t('markets.thisCity'),
+              time: formatClock(Date.parse(best.at)),
+            })}
             {formatPrice(best.value)} ({sells ? '+' : '−'}
             {formatFixed(Math.abs(best.gain_pct), 1)} %)
           </p>
         ) : focusRow && b ? (
-          <p className="text-t-caption text-ink-faint">No better time ahead: it is as likely to fall as to rise.</p>
+          <p className="text-t-caption text-ink-faint">{t('markets.noBetter')}</p>
         ) : null}
         {likely && <Hint data-testid="good-likely">{likely}</Hint>}
       </div>
@@ -218,5 +224,5 @@ function likelyLine(o: PriceOutlook | null, row: BoardBuyRow | BoardSellRow | nu
   const at = here ? (o.best?.at ?? o.points[o.points.length - 1].at) : (row?.arrive_at ?? o.points[o.points.length - 1].at)
   const atMs = Date.parse(at)
   const p = o.points.find((x) => Date.parse(x.at) >= atMs) ?? o.points[o.points.length - 1]
-  return `${o.assumes}, the price is likely ${formatPriceFigure(p.lo)}–${formatPrice(p.hi)} at ${formatClock(Date.parse(p.at))}.`
+  return tg('markets.likely', { assumes: o.assumes, lo: formatPriceFigure(p.lo), hi: formatPrice(p.hi), time: formatClock(Date.parse(p.at)) })
 }

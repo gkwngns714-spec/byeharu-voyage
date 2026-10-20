@@ -3,6 +3,7 @@
 // table (PORT's face strip did too, until PORT was deleted in D8), so a building is named once and offered by one rule.
 
 import type { BuildingKind } from '../lib/rpc'
+import { t } from '../lib/i18n'
 
 /**
  * THE FACES OF ONE PLACE, EACH DESCRIBED ONCE. Not routes: a port is one screen, and these are its
@@ -36,22 +37,24 @@ export const PORT_FACES = [
     // harbour turns to it. A face that names a building is offered only where that building
     // STANDS — one rule, read from the rows, replacing PortScreen's hand-written academy check.
     building: 'market',
-    label: 'Trade',
+    get label() {
+      return t('town.f_market')
+    },
   },
-  { id: 'city', building: null, label: 'Town' },
+  { id: 'city', building: null, get label() { return t('town.f_city') } },
   // The id stays `warehouse` (it is the served building kind and a persisted byte); the player's
   // word is Storage — owner row 87.
-  { id: 'warehouse', building: 'warehouse', label: 'Storage' },
-  { id: 'workstation', building: 'workstation', label: 'Craft' },
-  { id: 'inn', building: 'inn', label: 'Inn' },
-  { id: 'building_yard', building: 'building_yard', label: 'Build' },
+  { id: 'warehouse', building: 'warehouse', get label() { return t('town.f_warehouse') } },
+  { id: 'workstation', building: 'workstation', get label() { return t('town.f_workstation') } },
+  { id: 'inn', building: 'inn', get label() { return t('town.f_inn') } },
+  { id: 'building_yard', building: 'building_yard', get label() { return t('town.f_building_yard') } },
   // 2026-09-09: REPAIR's doorway, moved off COMMAND's grid to the building whose act it is. The
   // label is the ACT, not the building's period name — owner row 86: *"wtf is shipyard"*. The id
   // stays `shipyard` (the served kind); one word, and not the Build face's word.
-  { id: 'shipyard', building: 'shipyard', label: 'Repair' },
+  { id: 'shipyard', building: 'shipyard', get label() { return t('town.f_shipyard') } },
   // 0131: the academy's face is the SKILLS screen (docs/SHIPS_AND_SKILLS.md §8 S9) — groups of
   // skills and the training queue; the label is what it shows, as Repair and Build are acts.
-  { id: 'academy', building: 'academy', label: 'Skills' },
+  { id: 'academy', building: 'academy', get label() { return t('town.f_academy') } },
 ] as const satisfies readonly {
   id: string
   /** 0067 — the building this face IS, or null for a face that is not one. */

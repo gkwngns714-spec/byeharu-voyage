@@ -6,6 +6,7 @@ import { DESK_SORTS, useDeskView, type DeskSort } from '../deskView'
 import { useMarketRows, type MarketRows } from './marketRows'
 import { prefetchGoodDesk } from './useGoodDesk'
 import { WatchRow } from './WatchRow'
+import { useT } from '../../../lib/i18n'
 
 // MARKETS — every good once, like a broker's watchlist (docs/COMMAND_DESK.md §3.2). The owner,
 // 2026-10-17: *"seeing charts of each trade goods that i click"*.
@@ -48,6 +49,7 @@ function MarketsOwnRows({ fleet, selected }: { fleet: FleetView; selected: strin
 }
 
 function MarketsList({ fleet, selected, market }: { fleet: FleetView; selected: string | null; market: MarketRows }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const { filter, sort, search, setFilter, setSort, setSearch } = useDeskView()
   const openGood = useDeskGood((s) => s.open)
@@ -63,13 +65,13 @@ function MarketsList({ fleet, selected, market }: { fleet: FleetView; selected: 
         onChange={(e) => setSearch(e.target.value)}
         onClear={() => setSearch('')}
         icon="search"
-        aria-label="Search goods"
-        placeholder="Search goods"
+        aria-label={t('markets.search')}
+        placeholder={t('markets.search')}
         spellCheck={false}
         autoCorrect="off"
       />
       {/* THE FILTERS — one scrolling row, one on at a time; a press selects and moves nothing. */}
-      <ChipRow label="Filter goods" className="mt-2">
+      <ChipRow label={t('markets.filter')} className="mt-2">
         {chips.map((c) => (
           <Chip key={c.id} on={filter === c.id} onClick={() => setFilter(c.id)} className="shrink-0 whitespace-nowrap">
             {c.label}
@@ -78,18 +80,18 @@ function MarketsList({ fleet, selected, market }: { fleet: FleetView; selected: 
       </ChipRow>
 
       <div className="mt-3 flex items-center justify-between gap-3">
-        <Segmented<DeskSort> segments={DESK_SORTS} value={sort} onChange={setSort} label="Sort goods" />
-        <span className="text-t-caption text-ink-faint">Market price</span>
+        <Segmented<DeskSort> segments={DESK_SORTS} value={sort} onChange={setSort} label={t('markets.sort')} />
+        <span className="text-t-caption text-ink-faint">{t('markets.marketPrice')}</span>
       </div>
 
       <div className="mt-2" data-testid="watch-list">
         {list.loading && !list.view ? (
           Array.from({ length: 10 }, (_, i) => <Skeleton key={i} className="my-1 h-[50px] w-full" />)
         ) : !list.view ? (
-          <Note tone="danger">The market list could not be read. It is asked again at the next price move.</Note>
+          <Note tone="danger">{t('markets.listFailed')}</Note>
         ) : rows.length === 0 ? (
           <Note tone="neutral" className="mt-2">
-            {filter === 'on_board' ? 'No cargo on board.' : 'No goods match.'}
+            {t(filter === 'on_board' ? 'markets.noCargo' : 'markets.noMatch')}
           </Note>
         ) : (
           rows.map((g) => (

@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../../store/authStore'
-import { Button, Field, Hint, Note } from '../../components/ui'
+import { Button, Field, Hint, LanguageSwitch, Note } from '../../components/ui'
 import { HOME_TAB } from '../../app/navTabs'
+import { useT } from '../../lib/i18n'
 
 // The sign-in / sign-up screen. Functionally identical to byeharu's: one form, two modes, the
 // auth store does the work and this file only renders.
@@ -15,6 +16,7 @@ import { HOME_TAB } from '../../app/navTabs'
 type Mode = 'signin' | 'signup'
 
 export function AuthPage() {
+  const t = useT()
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,7 +43,7 @@ export function AuthPage() {
       return
     }
     if (mode === 'signup') {
-      setNotice('Entered in the register. Confirm your email if asked, then sign in.')
+      setNotice(t('shell.signedUp'))
       setMode('signin')
       return
     }
@@ -54,11 +56,12 @@ export function AuthPage() {
        the same one the shell paints, so signing in and playing are visibly the same place. */
     <div className="bv-sea flex min-h-[100dvh] items-center justify-center px-4 py-8 text-ink">
       <section className="w-full max-w-sm rounded-tile bg-surface px-gutter py-6">
+        <LanguageSwitch className="mb-4" />
         <h1 className="text-t-title">Byeharu Voyage</h1>
         <Hint className="mt-1">
           {mode === 'signin'
-            ? 'Sign the book and take up your command.'
-            : 'Enter your name in the register and be given your first ship.'}
+            ? t('shell.signinHint')
+            : t('shell.signupHint')}
         </Hint>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -66,7 +69,7 @@ export function AuthPage() {
             icon={null}
             type="email"
             required
-            placeholder="Email"
+            placeholder={t('shell.email')}
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -76,7 +79,7 @@ export function AuthPage() {
             type="password"
             required
             minLength={6}
-            placeholder="Password"
+            placeholder={t('shell.password')}
             autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -85,8 +88,8 @@ export function AuthPage() {
           {error && <Note tone="danger">{error}</Note>}
           {notice && <Note tone="success">{notice}</Note>}
 
-          <Button type="submit" variant="primary" busy={busy} busyLabel="Working…" className="w-full">
-            {mode === 'signin' ? 'Sign in' : 'Create account'}
+          <Button type="submit" variant="primary" busy={busy} busyLabel={t('shell.working')} className="w-full">
+            {t(mode === 'signin' ? 'shell.signIn' : 'shell.createAccount')}
           </Button>
         </form>
 
@@ -100,7 +103,7 @@ export function AuthPage() {
             setNotice(null)
           }}
         >
-          {mode === 'signin' ? 'No account yet? Sign the register' : 'Already in the register? Sign in'}
+          {t(mode === 'signin' ? 'shell.toSignup' : 'shell.toSignin')}
         </Button>
       </section>
     </div>

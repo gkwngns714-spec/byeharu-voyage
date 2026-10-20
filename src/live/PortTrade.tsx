@@ -19,6 +19,7 @@ import { fold, foldedMatch } from '../lib/text'
 import { formatVoyageDays } from '../lib/format'
 import type { FleetView, ManifestLine, MarketGood, SnapshotPort, TradeRequest } from '../lib/rpc'
 import { linesFor, useManifest } from '../store/manifest'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE, AT THE PORT YOU ARE DOCKED IN — the Quay Ledger's board (owner row 76), on the face
@@ -100,6 +101,7 @@ export function PortTrade({
   /** This harbour — its culture, printed only where it refuses a good (§6). */
   port: SnapshotPort
 }) {
+  const t = useT()
   const [filter, setFilter] = useState('')
   const [slot, setSlot] = useState<Slot>(BASKET)
   // The quantity is this screen's; the tray owns the default and materialises it through
@@ -167,7 +169,7 @@ export function PortTrade({
     <>
       {/* SUPPLIES — how many days it has, and the press that buys more. */}
       <Row
-        label="Supplies"
+        label={t('trade.supplies')}
         value={<Figure value={formatVoyageDays(fleet.endurance_days)} />}
         chevron
         onClick={() => {
@@ -183,8 +185,8 @@ export function PortTrade({
         value={filter}
         onChange={(e) => setFilter(e.target.value)}
         onClear={() => setFilter('')}
-        aria-label="Filter goods"
-        placeholder="Filter goods"
+        aria-label={t('trade.filterGoods')}
+        placeholder={t('trade.filterGoods')}
         spellCheck={false}
         autoCorrect="off"
         className="mt-3"
@@ -210,7 +212,7 @@ export function PortTrade({
           onPick={open}
           empty={
             <Note tone="neutral" className="mt-3">
-              {face === 'sell' ? 'No cargo to sell.' : 'No goods match.'}
+              {t(face === 'sell' ? 'trade.noCargoSell' : 'trade.noMatch')}
             </Note>
           }
         />

@@ -18,6 +18,7 @@ import { HullCountry } from '../../live/HullCountry'
 import { HullTech } from '../../live/HullTech'
 import { useWorld } from '../../live/worldStore'
 import { NoAnswer } from './NoAnswer'
+import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 
 // THE SHIPS FACE — every class of hull, as the shipwright rates her.
 //
@@ -40,12 +41,11 @@ import { NoAnswer } from './NoAnswer'
 const EMPTY: readonly SnapshotShipClass[] = []
 
 /** The words for the served size (`class_profile.size`), role and tech. */
-const SIZE_WORD: Readonly<Record<number, string>> = { 1: 'Small', 2: 'Light', 3: 'Medium', 4: 'Heavy', 5: 'Capital', 6: 'Flagship' }
-const ROLE_WORD: Readonly<Record<string, string>> = { trade: 'Trade', combat: 'Combat', explorer: 'Explorer', support: 'Support' }
-const TECH_WORD: Readonly<Record<string, string>> = { T1: 'T1', T2: 'T2', F: 'Famous' }
-const sizeWord = (n: number | null | undefined) => (n == null ? null : (SIZE_WORD[n] ?? String(n)))
-const roleWord = (r: string | null | undefined) => (r == null ? null : (ROLE_WORD[r] ?? r))
-const techWord = (t: string | null | undefined) => (t == null ? null : (TECH_WORD[t] ?? t))
+// Keys in the codex dictionary (`size_3`, `role_trade`, `tech_F`); a value with no entry prints as served.
+const word = (key: string, served: string) => translateMaybe(getLocale(), 'codex', key) ?? served
+const sizeWord = (n: number | null | undefined) => (n == null ? null : word(`size_${n}`, String(n)))
+const roleWord = (r: string | null | undefined) => (r == null ? null : word(`role_${r}`, r))
+const techWord = (t: string | null | undefined) => (t == null ? null : word(`tech_${t}`, t))
 
 type Filters = { line: string; size: string; role: string; tech: string }
 const ALL = 'all'
@@ -64,12 +64,13 @@ function segmentsOf(
     if (v != null && !firstOf.has(v)) firstOf.set(v, s)
   }
   return [
-    { id: ALL, label: 'All' },
+    { id: ALL, label: tNow('codex.all') },
     ...[...firstOf.keys()].sort(order).map((v) => ({ id: v, label: label(v, firstOf.get(v)!) })),
   ]
 }
 
 export function ShipsFace({ query }: { query: string }) {
+  const t = useT()
   const snapshot = useWorld((s) => s.snapshot)
   const classes = snapshot?.ship_classes ?? EMPTY
   const [open, setOpen] = useState<SnapshotShipClass | null>(null)
@@ -106,7 +107,7 @@ export function ShipsFace({ query }: { query: string }) {
         facets[k].length > 2 ? (
           <Segmented
             key={k}
-            label={{ line: 'Country', size: 'Size', role: 'Role', tech: 'Tech' }[k]}
+            label={t(({ line: 'codex.country', size: 'codex.size', role: 'codex.role', tech: 'codex.tech' } as const)[k])}
             segments={facets[k]}
             value={filters[k]}
             onChange={(v) => setFilters((f) => ({ ...f, [k]: v }))}
@@ -142,8 +143,8 @@ export function ShipsFace({ query }: { query: string }) {
                 {[sizeWord(s.size), roleWord(s.role), `${s.family} · ${s.rig}`].filter(Boolean).join(' · ')}
               </>
             }
-            figure={<Figure value={formatInt(s.hold)} unit="tons" />}
-            second={<Figure value={formatFixed(s.speed_kn, 1)} unit="knots" />}
+            figure={<Figure value={formatInt(s.hold)} unit={t('trade.tonsUnit')} />}
+            second={<Figure value={formatFixed(s.speed_kn, 1)} unit={t('trade.knotsUnit')} />}
             tap="whole"
             onClick={() => {
               setDetent('half')
@@ -163,18 +164,18 @@ export function ShipsFace({ query }: { query: string }) {
           title={open.name}
           data-testid="ship-tray"
         >
-          {open.line_nation && <Row label="Country" value={<HullCountry nation={open.line_nation} />} />}
-          {open.size != null && <Row label="Size" value={sizeWord(open.size)} />}
-          {open.role && <Row label="Role" value={roleWord(open.role)} />}
-          {open.tech && <Row label="Tech" value={techWord(open.tech)} />}
-          <Row label="Cargo" value={<Figure value={formatInt(open.hold)} unit="tons" />} />
-          <Row label="Speed" value={<Figure value={formatFixed(open.speed_kn, 1)} unit="knots" />} />
+          {open.line_nation && <Row label={t('codex.country')} value={<HullCountry nation={open.line_nation} />} />}
+          {open.size != null && <Row label={t('codex.size')} value={sizeWord(open.size)} />}
+          {open.role && <Row label={t('codex.role')} value={roleWord(open.role)} />}
+          {open.tech && <Row label={t('codex.tech')} value={techWord(open.tech)} />}
+          <Row label={t('codex.cargo')} value={<Figure value={formatInt(open.hold)} unit={t('codex.tons')} />} />
+          <Row label={t('codex.speed')} value={<Figure value={formatFixed(open.speed_kn, 1)} unit={t('codex.knots')} />} />
           {/* crew she must have / berths she carries — two served figures, one pair. */}
-          <Row label="Crew (needed / max)" value={<Figure value={formatOfTotal(open.crew_required, open.crew_max)} />} />
-          <Row label="Draft" value={<Figure value={formatInt(open.draft)} />} />
-          <Row label="Hull" value={<Figure value={formatInt(open.durability)} />} />
-          <Row label="Class" value={<Figure value={formatInt(open.tier)} />} hairline={false} />
-          <Hint className="mt-2">Base figures, before any captain or skill bonus.</Hint>
+          <Row label={t('codex.crewNeeded')} value={<Figure value={formatOfTotal(open.crew_required, open.crew_max)} />} />
+          <Row label={t('codex.draft')} value={<Figure value={formatInt(open.draft)} />} />
+          <Row label={t('codex.hull')} value={<Figure value={formatInt(open.durability)} />} />
+          <Row label={t('codex.class')} value={<Figure value={formatInt(open.tier)} />} hairline={false} />
+          <Hint className="mt-2">{t('codex.baseFigures')}</Hint>
         </Tray>
       )}
     </>

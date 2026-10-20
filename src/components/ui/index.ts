@@ -73,6 +73,7 @@ export { CargoBar } from './CargoBar'
 
 // 8. CHIP / SEGMENTED — one token in a set; one set of faces.
 export { Chip, Segmented, type SegmentSpec } from './Chip'
+export { LanguageSwitch } from './LanguageSwitch'
 
 // 9. BUTTON — flat: primary / secondary / quiet / destructive, 44 and 36, icon.
 export { Button, type ButtonTone } from './Button'
@@ -89,6 +90,9 @@ export { Note, type NoteTone } from './Note'
 export { Hint } from './Hint'
 //     EMPTY — the empty-list well: one caption line on the quiet surface. Two panels had hand-written it.
 export { Empty } from './Empty'
+//     FACTS LINE — small facts under a row's label, wrapping. The fleet row and the Stats tab's rows had
+//     hand-written it three times (2026-10-20).
+export { FactsLine } from './FactsLine'
 
 //     NAV — the tab rail: six cells, one row, 22px icon, no uppercase. Step 3 repoints the shell.
 export { Nav, type NavItem } from './Nav'
@@ -121,6 +125,11 @@ export { PriceRows, type PriceTrend } from './PriceRows'
 //     geometry is `priceChartModel`, pure, so tests/priceChart.spec.ts proves the axis in Node.
 export { PriceChart } from './PriceChart'
 export { priceChartModel, PRICE_CHART_H, PRICE_CHART_W, type PriceChartModel } from './priceChartModel'
+//     SERIES CHART — one figure over time, on its own scale: the Stats tab's small multiple (0214). Three
+//     faces draw it (the Overview's holders, a city's purse, the merchants' day), so it is the system's.
+//     The geometry is `seriesChartModel`, pure, so tests/seriesChart.spec.ts proves the axis in Node.
+export { SeriesChart, type SeriesTone, type SeriesPoint } from './SeriesChart'
+export { seriesChartModel, agoLabel, nearestDot, SERIES_CHART_H, SERIES_CHART_W, type SeriesChartModel } from './seriesChartModel'
 //     TRADE TRAY — the row unfolded: trend, range, stock, paid, the ceiling, the stepper, and the
 //     ONE button at the bottom edge.
 export { TradeTray, type TradeAct, type TradeControls, type TradePick, type TradeQuay } from './TradeTray'

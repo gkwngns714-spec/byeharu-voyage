@@ -3,6 +3,7 @@ import { Button, Note } from '../components/ui'
 import { cmdSeatCaptain } from '../lib/rpc'
 import type { Officer, Refusal, ShipSeats } from '../lib/rpc'
 import { useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // HER CABINS — who sits where, and (in port) seating them (0157, docs/SKILLS_AND_CAPTAINS.md K5).
@@ -29,6 +30,7 @@ export interface Seating {
 }
 
 export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; seating?: Seating }) {
+  const t = useT()
   const refresh = useWorld((s) => s.refresh)
   const loadOfficers = useWorld((s) => s.loadOfficers)
   const [picking, setPicking] = useState<number | null>(null)
@@ -56,7 +58,7 @@ export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; s
   return (
     <section data-testid="ship-cabins">
       <div className="flex items-baseline justify-between pb-2 pt-4">
-        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">Cabins</h3>
+        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{t('yard.cabins')}</h3>
         {seats.note && <span className="text-t-caption text-ink-faint">{seats.note}</span>}
       </div>
       <ul className="flex flex-col gap-1">
@@ -70,25 +72,25 @@ export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; s
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 truncate text-t-label text-ink">
-                {s.captain ? `${s.captain.grade} · ${s.captain.name} · ${s.captain.job_word}` : 'Empty'}
+                {s.captain ? `${s.captain.grade} · ${s.captain.name} · ${s.captain.job_word}` : t('yard.empty')}
               </span>
               {canSeat && s.captain && (
                 <Button variant="quiet" size="sm" disabled={busy} onClick={() => seat(s.captain!.code, null, null)}
                   data-testid={`cabin-ashore-${s.seat}`}>
-                  Ashore
+                  {t('yard.ashore')}
                 </Button>
               )}
               {canSeat && !s.captain && (
                 <Button variant="quiet" size="sm" disabled={busy} onClick={() => setPicking(picking === s.seat ? null : s.seat)}
                   data-testid={`cabin-seat-${s.seat}`}>
-                  Seat
+                  {t('yard.seat')}
                 </Button>
               )}
             </div>
             {canSeat && picking === s.seat && (
               <div className="mt-2 flex flex-wrap gap-1" data-testid={`cabin-pick-${s.seat}`}>
                 {seating.captains.length === 0 ? (
-                  <span className="text-t-caption text-ink-faint">Hire a captain at an inn first.</span>
+                  <span className="text-t-caption text-ink-faint">{t('yard.hireFirst')}</span>
                 ) : (
                   seating.captains.map((c) => (
                     <Button key={c.code} variant="secondary" size="sm" disabled={busy}
@@ -103,7 +105,7 @@ export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; s
         ))}
       </ul>
       {refusal && (
-        <Note tone="danger" code={refusal.code} className="mt-2">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
           {refusal.sentence}
         </Note>
       )}

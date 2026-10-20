@@ -3,6 +3,7 @@ import { Figure, Icon, Row, goodIcon } from '../../components/ui'
 import { routeStopLines, type StopLine } from '../../domain/route'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { StandingRouteStop } from '../../lib/rpc'
+import { useT } from '../../lib/i18n'
 
 // ONE STOP OF A ROUTE — its port, what it SELLS, what it BUYS, and the quiet line under both.
 //
@@ -70,9 +71,10 @@ function SideGroup({
   divided?: boolean
   children: ReactNode
 } & { 'data-testid'?: string }) {
+  const t = useT()
   return (
     <div className={`flex gap-3 ${divided ? 'border-t border-edge' : ''}`} {...rest}>
-      <span className="flex min-h-row w-10 shrink-0 items-center text-t-caption text-ink-muted">{side}</span>
+      <span className="flex min-h-row w-10 shrink-0 items-center text-t-caption text-ink-muted">{t(side === 'Sell' ? 'command.side_Sell' : 'command.side_Buy')}</span>
       <div className="min-w-0 flex-1">{children}</div>
     </div>
   )
@@ -95,7 +97,8 @@ export function StopLineRow({ line }: { line: StopLine }) {
 
 /** A group with no line still stands, so a stop's shape never depends on what it trades. */
 export function NothingRow() {
-  return <Row label="Nothing" tone="muted" hairline={false} />
+  const t = useT()
+  return <Row label={t('command.nothing')} tone="muted" hairline={false} />
 }
 
 /** A group's read lines, or `Nothing`. */

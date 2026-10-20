@@ -15,6 +15,7 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { headline, payloadFights, payloadLines } from './headline'
+import { useT, type TKey } from '../../lib/i18n'
 
 // LEDGER — E.6. "The narrative organ of the game. This is where combat lives, as prose."
 //
@@ -53,11 +54,11 @@ import { headline, payloadFights, payloadLines } from './headline'
 
 type Face = 'all' | 'trade' | 'voyage' | 'crew'
 
-const FACES: readonly { id: Face; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'trade', label: 'Trade' },
-  { id: 'voyage', label: 'Voyage' },
-  { id: 'crew', label: 'Crew' },
+const FACES: readonly { id: Face; label: TKey }[] = [
+  { id: 'all', label: 'codex.all' },
+  { id: 'trade', label: 'codex.trade' },
+  { id: 'voyage', label: 'codex.voyage' },
+  { id: 'crew', label: 'codex.crew' },
 ]
 
 /** The server's kinds (emit_event, 0004/0007/0015/0016/0034) under the four faces. FOUNDED is the
@@ -97,23 +98,25 @@ const markOf = (kind: string): IconName => {
 }
 
 export function LedgerScreen() {
+  const t = useT()
   // FIELDS, NOT THE STORE (worldStore.ts rule 4). The Ledger is the screen that made the rule: it
   // is the longest list in the game and it re-rendered whole, twice, on every read.
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed title="History" refusal={fatal} />
+    return <WorldFailed title={t('codex.history')} refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading title="History" />
+      <WorldLoading title={t('codex.history')} />
     )
   }
   return <LedgerBody />
 }
 
 function LedgerBody() {
+  const t = useT()
   const events = useWorld((s) => s.events)
   const portByCode = useWorld((s) => s.portByCode)
   const [face, setFace] = useState<Face>('all')
@@ -135,14 +138,14 @@ function LedgerBody() {
 
   return (
     <Sheet
-      title="History"
+      title={t('codex.history')}
       data-testid="ledger"
-      trailing={<Segmented segments={FACES} value={face} onChange={setFace} label="History" />}
+      trailing={<Segmented segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))} value={face} onChange={setFace} label={t('codex.history')} />}
     >
       {events.length === 0 ? (
-        <Row label="Nothing has happened yet." tone="muted" hairline={false} />
+        <Row label={t('codex.nothingYet')} tone="muted" hairline={false} />
       ) : shown.length === 0 ? (
-        <Row label="Nothing here yet." tone="muted" hairline={false} />
+        <Row label={t('codex.nothingHere')} tone="muted" hairline={false} />
       ) : (
         // ONE PANEL, AND A MARK PER LINE (2026-10-01, owner: "it is like a text game"). Each entry
         // is led by what KIND of thing happened — coin, ship, crew — and the clock drops to the

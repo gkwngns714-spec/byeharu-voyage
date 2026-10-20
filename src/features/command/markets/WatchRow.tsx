@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Icon, RarityMark, Sparkline, StockGauge, goodIcon } from '../../../components/ui'
 import { formatInt, formatPctChange, formatPrice } from '../../../lib/format'
 import type { SnapshotGood, WatchGood } from '../../../lib/rpc'
+import { useT } from '../../../lib/i18n'
 
 // ONE GOOD ON THE MARKETS LIST (docs/COMMAND_DESK.md §3.2) — a broker's row: the mark and the name, a
 // sub-line of facts, the record's line, the price, and its move. 52 px, two lines, every figure tabular.
@@ -38,6 +39,7 @@ export function WatchRow({
   onPrefetch?: () => void
   portName: (code: string) => string
 }) {
+  const t = useT()
   const dwell = useRef<number | null>(null)
   const prefetchRef = useRef(onPrefetch)
   useEffect(() => {
@@ -62,9 +64,9 @@ export function WatchRow({
       ? { stock: best.stock, target: best.stock_target }
       : null
   const facts = [
-    watch ? `${formatInt(watch.sellers)} ${watch.sellers === 1 ? 'city' : 'cities'}` : null,
-    watch && watch.on_board > 0 ? `${formatInt(watch.on_board)} on board` : null,
-    watch && watch.wanted_at.length > 0 ? `Wanted in ${portName(watch.wanted_at[0])}` : null,
+    watch ? t('markets.cities', { n: formatInt(watch.sellers), count: watch.sellers }) : null,
+    watch && watch.on_board > 0 ? t('markets.onBoardN', { n: formatInt(watch.on_board) }) : null,
+    watch && watch.wanted_at.length > 0 ? t('markets.wantedIn', { port: portName(watch.wanted_at[0]) }) : null,
   ].filter(Boolean)
   // The hairline is the row's parting rule (an outer line); the wash is the press's (the button) — two
   // elements, so no className draws a surface with a border (tests/duplication.spec.ts).
@@ -94,9 +96,9 @@ export function WatchRow({
           {/* THE CHEAPEST SELLER'S STOCK against its normal level (owner, 2026-10-18), then the facts */}
           <span className="mt-0.5 flex min-w-0 items-center gap-2">
             {stock && best && (
-              <StockGauge stock={stock.stock} target={stock.target} label={`${good.name} at ${portName(best.port)}`} />
+              <StockGauge stock={stock.stock} target={stock.target} label={t('markets.goodAt', { good: good.name, port: portName(best.port) })} />
             )}
-            <span className="truncate text-t-caption text-ink-faint">{facts.join(' · ') || 'Sold nowhere'}</span>
+            <span className="truncate text-t-caption text-ink-faint">{facts.join(' · ') || t('markets.soldNowhere')}</span>
           </span>
         </span>
         <Sparkline
@@ -104,7 +106,7 @@ export function WatchRow({
           tone="even"
           width={40}
           height={18}
-          label={`${good.name}, the last hours at ${best ? portName(best.port) : 'no city'}`}
+          label={t('markets.lastHours', { good: good.name, port: best ? portName(best.port) : t('markets.noCity') })}
           className="hidden shrink-0 min-[360px]:inline-block"
         />
         <span className="flex shrink-0 flex-col items-end">

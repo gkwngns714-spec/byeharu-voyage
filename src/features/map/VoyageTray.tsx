@@ -31,6 +31,7 @@ import { TradeHistoryPanel, type TradePick } from '../../live/TradeHistoryPanel'
 
 
 import { WatersAhead } from './WatersAhead'
+import { useT, type TKey } from '../../lib/i18n'
 
 // THE FLEET TRAY — what the ship you tapped is doing, rising from the bottom edge.
 //
@@ -79,6 +80,7 @@ function Fact({ label, value }: { label: string; value: ReactNode }) {
  * does: the lesser answer may be lesser, never wrong.
  */
 function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
+  const t = useT()
   // 0167 (S18): a merchant sails her country's line hull now (a Crayer, a Caravelle normande), and a class
   // this map has no word for is said by the name the server serves for it (snapshot `ship_classes`),
   // never by its code.
@@ -109,8 +111,8 @@ function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
         {[...counted]
           .map(([cls, n]) => {
             const word = HULL_WORD[cls]
-            if (word) return `${n} ${word}${n > 1 ? 's' : ''}`
-            return `${n} ${classes?.find((c) => c.code === cls)?.name ?? cls}`
+            if (word) return t('map.hullCount', { n, word: t(word, { count: n }) })
+            return t('map.hullNamed', { n, name: classes?.find((c) => c.code === cls)?.name ?? cls })
           })
           .join(' · ')}
       </span>
@@ -121,6 +123,7 @@ function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
 /** THE FLEET'S SHIPS, one pressable row each (owner, 2026-10-15: *"name of the fleet, then
  *  ships"*); a press slides her own panel in over this one (./ShipPanel.tsx). */
 function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id: string) => void }) {
+  const t = useT()
   if (ships.length === 0) return null
   return (
     <ul className="flex flex-col gap-1 py-2" data-testid="tray-ships">
@@ -143,7 +146,7 @@ function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id:
             <span className="min-w-0 flex-1">
               <span className="block truncate text-t-body">{ship.name}</span>
               <span className="block truncate text-t-caption text-ink-faint">
-                {ship.is_flagship ? `${ship.class} · flagship` : ship.class}
+                {ship.is_flagship ? t('map.flagshipOf', { cls: ship.class }) : ship.class}
               </span>
             </span>
             <Icon name="chevron" size={18} className="shrink-0 text-ink-faint" />
@@ -168,19 +171,20 @@ function RouteLaps({
   underWay: boolean
   onOpen: (pick: TradePick) => void
 }) {
+  const t = useT()
   const pill = 'whitespace-nowrap rounded-chip px-2 py-0.5 text-t-caption leading-snug tabular-nums transition hover:ring-1 hover:ring-current'
   return (
     <section className="py-2" data-testid="tray-route-laps">
       <div className="flex items-baseline justify-between gap-2 pb-1.5">
-        <span className="min-w-0 truncate text-t-caption uppercase tracking-wider text-ink-faint">{`Trading · ${name}`}</span>
+        <span className="min-w-0 truncate text-t-caption uppercase tracking-wider text-ink-faint">{t('map.tradingOf', { name })}</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <button type="button" className={`${pill} bg-surface-2 text-ink`} onClick={() => onOpen({ kind: 'day' })} data-testid="tray-trades-day">
-          So far
+          {t('map.soFar')}
         </button>
         {underWay && (
           <button type="button" className={`${pill} bg-accent/15 text-accent`} onClick={() => onOpen({ kind: 'open' })} data-testid="tray-trades-open">
-            This lap
+            {t('map.thisLap')}
           </button>
         )}
         {laps.map((n, i) => (
@@ -200,11 +204,11 @@ function RouteLaps({
 }
 
 /** What a reader calls each class. The CODE is the server's word; this is the player's. */
-const HULL_WORD: Record<string, string> = {
-  barca: 'barca',
-  carlat: 'caravel',
-  nau: 'nau',
-  ship: 'ship',
+const HULL_WORD: Record<string, TKey> = {
+  barca: 'map.hull_barca',
+  carlat: 'map.hull_carlat',
+  nau: 'map.hull_nau',
+  ship: 'map.hull_ship',
 }
 
 export function VoyageTray({
@@ -218,6 +222,7 @@ export function VoyageTray({
   nowMs: number
   onClose: () => void
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')
   const nameOf = (code: string) => portsByCode.get(code)?.name ?? code
   const voyage = fleet.voyage
@@ -293,13 +298,13 @@ export function VoyageTray({
           sheet with five facts in it still reads as empty. Two columns put the same facts in half
           the height and let the eye take them in as a block. */}
       <dl className="grid grid-cols-2 gap-x-gutter gap-y-2 py-2">
-        {fleet.fleet.kind === 'anchored' && <Fact label="Anchored" value={<GoToLink to={{ kind: 'point', at: fleet.at }}>{pointLabel(fleet.at)}</GoToLink>} />}
-        {fleet.fleet.kind === 'docked' && <Fact label="In port" value={<span className="inline-flex items-center gap-1.5"><PortFlag code={fleet.fleet.portCode} /><GoToLink to={{ kind: 'port', code: fleet.fleet.portCode }}>{nameOf(fleet.fleet.portCode)}</GoToLink></span>} />}
+        {fleet.fleet.kind === 'anchored' && <Fact label={t('map.anchored')} value={<GoToLink to={{ kind: 'point', at: fleet.at }}>{pointLabel(fleet.at)}</GoToLink>} />}
+        {fleet.fleet.kind === 'docked' && <Fact label={t('map.inPort')} value={<span className="inline-flex items-center gap-1.5"><PortFlag code={fleet.fleet.portCode} /><GoToLink to={{ kind: 'port', code: fleet.fleet.portCode }}>{nameOf(fleet.fleet.portCode)}</GoToLink></span>} />}
         {voyage && (
           <>
             {/* 0039: a destination is a port, or a pinpointed spot of open water. */}
             <Fact
-              label="Bound for"
+              label={t('map.boundFor')}
               value={
                 voyage.destinationCode ? (
                   <span className="inline-flex items-center gap-1.5">
@@ -313,23 +318,23 @@ export function VoyageTray({
                 )
               }
             />
-            <Fact label="Arrives in" value={formatCountdown(voyage.etaMs - nowMs)} />
-            <Fact label="Sailed" value={`${formatInt(voyage.sailedNm)} / ${formatMiles(voyage.totalNm)}`} />
+            <Fact label={t('map.arrivesIn')} value={formatCountdown(voyage.etaMs - nowMs)} />
+            <Fact label={t('map.sailed')} value={`${formatInt(voyage.sailedNm)} / ${formatMiles(voyage.totalNm)}`} />
             {voyage.departedMs !== null && (
-              <Fact label="At sea" value={formatCountdown(nowMs - voyage.departedMs)} />
+              <Fact label={t('map.atSea')} value={formatCountdown(nowMs - voyage.departedMs)} />
             )}
           </>
         )}
       </dl>
 
-      <Row label="Supplies" value={<Figure value={formatFixed(stores, 1)} unit="days" />} hairline={false}>
+      <Row label={t('map.supplies')} value={<Figure value={formatFixed(stores, 1)} unit={t('map.unitDays')} />} hairline={false}>
         {voyage && daysToRun > 0 && Number.isFinite(stores) && (
           <Bar
             pct={Math.min(1, stores / daysToRun) * 100}
             tone={stores < daysToRun ? 'warning' : 'success'}
-            label="supplies against the voyage"
+            label={t('map.suppliesVsVoyage')}
             className="mt-1"
-            figure={<span className="text-t-caption text-ink-faint">{`${formatVoyageDays(daysToRun)} to run`}</span>}
+            figure={<span className="text-t-caption text-ink-faint">{t('map.toRun', { days: formatVoyageDays(daysToRun) })}</span>}
           />
         )}
       </Row>

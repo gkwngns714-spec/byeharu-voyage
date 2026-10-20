@@ -144,10 +144,14 @@ test(`nav: one row, every cell reachable, no label shaved at ${PHONE.width}px`, 
   //     (docs/COMMAND_DESK.md D8, the owner: "delete port tab, and focus on command tab") — Command ·
   //     Fleets · Map · Menu. A cell labelled Market or Port is an old tab coming back; a fifth cell of
   //     any name is a new destination that did not go through src/app/navTabs.ts's grouping argument.
+  //     Pin moved deliberately 2026-10-20 with 0214 (the owner: "a statistic tab along with command, map
+  //     etc."): FIVE — Command · Fleets · Map · Stats · Menu. Stats is ONE TAP by the owner's own sentence,
+  //     not a cabin member; 390 ÷ 5 = 78 px and 320 ÷ 5 = 64 px both clear the 44 px floor and the 46 px the
+  //     widest label needs, and the one-row assert below re-measures it.
   expect(report.cells.map((c) => c.label), 'a nav cell is labelled Market or Port — both went under COMMAND').not.toContain('Market')
   expect(report.cells.map((c) => c.label)).not.toContain('Port')
-  expect(report.cells.map((c) => c.label)).toEqual(['Command', 'Fleets', 'Map', 'Menu'])
-  expect(report.cells.length, `the bar draws ${report.cells.length} cells; four since PORT went under COMMAND`).toBe(4)
+  expect(report.cells.map((c) => c.label)).toEqual(['Command', 'Fleets', 'Map', 'Stats', 'Menu'])
+  expect(report.cells.length, `the bar draws ${report.cells.length} cells; five since STATS joined (0214)`).toBe(5)
 
   // 1. ONE ROW. The decision this file pins: at nine tabs the bar wrapped to 3×3 and ate 168px of
   //    an 844px screen. The cure was grouping, not a second row, so a second row is a failure.

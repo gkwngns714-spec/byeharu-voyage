@@ -16,6 +16,7 @@ import { RouteStopFace } from './RouteStop'
 import { useDeskPlan } from './plans/planDraft'
 import { useDeskView } from './deskView'
 import type { RouteStopDraft } from './standingRouteDraft'
+import { useT } from '../../lib/i18n'
 
 // THE ROUTE, FOLDED ABOVE HER QUEUE — owner, 2026-09-30: *"i want this game to be a simulating
 // based - meaning i set up route, trade routes - going back and forth, afk, running all the time"*.
@@ -42,6 +43,7 @@ import type { RouteStopDraft } from './standingRouteDraft'
 // while ITS OWN press is on the wire, and never on the beat.
 
 export function RouteFold({ fleet }: { fleet: FleetView }) {
+  const t = useT()
   const book = useWorld((s) => s.routes)
   const portByCode = useWorld((s) => s.portByCode)
   const pauseRoute = useWorld((s) => s.pauseRoute)
@@ -86,12 +88,12 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
 
   const lastLap = route?.laps[0] ?? null
   const label = !book
-    ? 'Route'
+    ? t('command.route')
     : !book.enabled
-      ? 'Route · Not open yet'
+      ? t('command.routeNotOpen')
       : route
-        ? `Route · ${routePorts(route, portByCode)} · Lap ${route.lap_no}`
-        : 'No route'
+        ? t('command.routeLine', { ports: routePorts(route, portByCode), n: route.lap_no })
+        : t('command.noRoute')
 
   return (
     <div data-testid="route-fold">
@@ -113,9 +115,9 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
       {(open || seed !== null) && (
         <div className="pb-3" data-testid="route-unfold">
           {!book ? (
-            <Row label="Loading…" tone="muted" hairline={false} />
+            <Row label={t('command.loading')} tone="muted" hairline={false} />
           ) : !book.enabled ? (
-            <Hint>Routes are not open yet. A fleet will sail a loop of ports and trade by itself.</Hint>
+            <Hint>{t('command.routesNotOpen')}</Hint>
           ) : editing || seed !== null ? (
             <RouteEditor
               key={seed !== null ? 'seed' : (editing ?? 'none')}
@@ -136,19 +138,19 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                   </Row>
                   <div className="flex gap-2">
                     <Button variant="secondary" size="sm" className="flex-1" busy={press.pending} onClick={() => void act(() => assignRoute(r.id, fleet.id))}>
-                      Start
+                      {t('command.start')}
                     </Button>
                     <Button variant="secondary" size="sm" className="flex-1" disabled={press.pending} onClick={() => setEditing(r.id)}>
-                      Edit
+                      {t('command.edit')}
                     </Button>
                     <Button variant="quiet" size="sm" className="flex-1" busy={press.pending} onClick={() => void act(() => deleteRoute(r.id))}>
-                      Delete
+                      {t('command.delete')}
                     </Button>
                   </div>
                 </div>
               ))}
               <Button variant="primary" className="mt-2 w-full" onClick={() => setEditing('new')} data-testid="route-setup">
-                Set up route
+                {t('command.setUpRoute')}
               </Button>
             </>
           ) : (
@@ -156,21 +158,21 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
               {route.state === 'stopped' && route.stopped && (
                 <Note
                   tone="danger"
-                  code={route.stopped.code}
+                  code={route.stopped.code} figures={route.stopped.figures}
                   action={
                     <Button variant="secondary" size="sm" busy={press.pending} onClick={() => void act(() => clearQueue(fleet.id))}>
-                      Clear
+                      {t('command.clear')}
                     </Button>
                   }
                   data-testid="route-stopped"
                 >
-                  {fleet.name} stopped. {route.stopped.sentence ?? ''}
+                  {t('command.fleetStopped', { fleet: fleet.name, sentence: route.stopped.sentence ?? '' })}
                 </Note>
               )}
               {route.state === 'paused' && <Note tone="neutral">{routePausedSentence(route.paused_reason)}</Note>}
               {route.state === 'blocked' && (
                 <Note tone="neutral" data-testid="route-blocked">
-                  {fleet.name} cannot sail on by itself. The route goes on once it is in port and fit to sail.
+                  {t('command.blockedNote', { fleet: fleet.name })}
                 </Note>
               )}
 
@@ -182,15 +184,20 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
               {route.laps.slice(0, 3).map((l) => (
                 <Row
                   key={l.lap_no}
-                  label={`Lap ${l.lap_no}`}
+                  label={t('command.lapN', { n: l.lap_no })}
                   value={<Figure value={formatDucatsDelta(l.net)} tone={deltaTone(l.net)} />}
                   hairline={false}
                   data-testid="route-lap"
                 >
                   <span className="block text-t-caption text-ink-faint">
-                    Sold {formatDucats(l.sold)} · Bought {formatDucats(l.bought)} · Supplies {formatDucats(l.supplies)}
-                    {l.repairs > 0 ? ` · Repairs ${formatDucats(l.repairs)}` : ''} · Wages from profit {formatDucats(l.wages)}
-                    {l.skipped.length > 0 ? ` · ${l.skipped.length} skipped` : ''}
+                    {t('command.lapLine', {
+                      sold: formatDucats(l.sold),
+                      bought: formatDucats(l.bought),
+                      supplies: formatDucats(l.supplies),
+                      repairs: l.repairs > 0 ? t('command.lapRepairs', { n: formatDucats(l.repairs) }) : '',
+                      wages: formatDucats(l.wages),
+                      skipped: l.skipped.length > 0 ? t('command.lapSkipped', { n: l.skipped.length }) : '',
+                    })}
                   </span>
                 </Row>
               ))}
@@ -203,19 +210,19 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
                   onClick={() => void act(() => pauseRoute(route.id, route.state !== 'paused'))}
                   data-testid="route-pause"
                 >
-                  {route.state === 'paused' ? 'Resume' : 'Pause'}
+                  {t(route.state === 'paused' ? 'command.resume' : 'command.pause')}
                 </Button>
                 <Button variant="secondary" className="flex-1" disabled={press.pending} onClick={() => setEditing('own')}>
-                  Edit
+                  {t('command.edit')}
                 </Button>
                 <Button variant="quiet" className="flex-1" busy={press.pending} onClick={() => void act(() => deleteRoute(route.id))}>
-                  Delete
+                  {t('command.delete')}
                 </Button>
               </div>
             </>
           )}
           {refusal && (
-            <Note tone="danger" code={refusal.code} className="mt-2">
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
               {refusal.sentence}
             </Note>
           )}

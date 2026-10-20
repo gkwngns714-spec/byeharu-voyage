@@ -534,3 +534,33 @@ shape did not change. §8c/§8d are unchanged. `osn-sea-s2` was rebased onto the
 **For the next push.** Run §8a and §8b again (8b has the one new row), then push at a quiet moment. If the connection
 drops again on a file this short, the cause is the connection itself (the pooler or the network), not the migration's
 length. In that case the CLI's direct connection should be tried before anything else is changed.
+
+## RE-SLICED ONTO 0214, 2026-10-20 ~14:20 UTC (cloud session)
+
+0214 (the stats tab) went live at 14:05 UTC, so the prod head moved 0213 → 0214 while this PR sat
+open. That broke the registry hunk, and the self-assert would have refused the push:
+
+- The hunk anchored on `('world', 'insurance', '')` as the LAST row of
+  `public.client_rpc_entry_points()`, immediately followed by `) as t(s, f, a)`.
+- 0214 appended six `stats_*` rows after insurance, so that text no longer occurs in the live body.
+  Checked read-only on prod: the old anchor occurred **0 times**.
+
+The hunk is now sliced onto 0214's last row instead (`('world', 'stats_me', '')`). Verified
+read-only against the deployed body, the same three things the migration asserts for itself:
+
+| | |
+|---|---|
+| the OLD anchor occurs in the live body | **1** (must be 1) |
+| the NEW text already present | **0** (must be 0) |
+| applying it reverses to the pre-image | **true** |
+
+Nothing else moved: the four `world.*` hunks (ship_stats ×2, ship_view, fleets, player) were sliced
+at head 0211 and those bodies have not changed since, so they still occur once each.
+
+main was also merged in (it was 6 behind, 4 ahead). Two conflicts, both the same shape — 0214 and
+0215 each append to the one RPC registry — resolved by keeping both, 0214's six rows first:
+`src/lib/rpc/catalog.ts` and `tests/rpc.surface.spec.ts`.
+
+**Still to do before this deploys:** CI must go green on the merge (the earlier `disposable-chain`
+pass was against a 0213 snapshot; it now has to apply 0215 on top of 0214), and §8a/§8b's prod
+checks should be re-read, since they were last run at 08:53 UTC against the old head.

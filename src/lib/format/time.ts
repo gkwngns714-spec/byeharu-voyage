@@ -17,6 +17,7 @@
 // see src/app/shellState.ts), so a spec can pin time and a countdown never disagrees with itself.
 
 import { formatFixed, formatInt } from './numbers'
+import { localeTag, t, type TKey } from '../i18n'
 
 /** DESIGN.md §D.1 / §L.1 — a server constant (world_config.time_compression, 0045), mirrored
  *  here for DISPLAY ONLY. tests/rpc.surface.spec.ts asserts the served knob EQUALS this mirror,
@@ -61,7 +62,7 @@ export function realMsToVoyageDays(ms: number): number {
  *  (docs/WORDS.md). */
 export function formatVoyageDays(days: number, dp = 1): string {
   if (!Number.isFinite(days)) return '—'
-  return `${formatFixed(days, dp)} days`
+  return t('format.days', { n: formatFixed(days, dp) })
 }
 
 /** A real-world span, long form — the shape §B.3's worked table uses.
@@ -69,12 +70,12 @@ export function formatVoyageDays(days: number, dp = 1): string {
 export function formatRealDuration(ms: number): string {
   if (!Number.isFinite(ms)) return '—'
   const s = Math.max(0, ms) / 1000
-  if (s < 60) return `${Math.max(1, Math.round(s))} s`
+  if (s < 60) return t('format.seconds', { n: Math.max(1, Math.round(s)) })
   const min = s / 60
-  if (min < 90) return `${formatFixed(min, 1)} min`
+  if (min < 90) return t('format.minutes', { n: formatFixed(min, 1) })
   const h = Math.floor(min / 60)
   const rem = Math.round(min - h * 60)
-  return rem === 0 ? `${h} h` : `${h} h ${rem} min`
+  return rem === 0 ? t('format.hours', { n: h }) : t('format.hoursMinutes', { h, m: rem })
 }
 
 /** A real-world span, COMPACT — the form the wireframes use inside a table cell where the column
@@ -82,12 +83,12 @@ export function formatRealDuration(ms: number): string {
 export function formatRealShort(ms: number): string {
   if (!Number.isFinite(ms)) return '—'
   const totalS = Math.max(0, Math.round(ms / 1000))
-  if (totalS < 60) return `${totalS}s`
+  if (totalS < 60) return t('format.shortS', { n: totalS })
   const totalMin = Math.round(totalS / 60)
-  if (totalMin < 60) return `${totalMin}m`
+  if (totalMin < 60) return t('format.shortM', { n: totalMin })
   const h = Math.floor(totalMin / 60)
   const m = totalMin - h * 60
-  return `${h}h${String(m).padStart(2, '0')}m`
+  return t('format.shortHM', { h, m: String(m).padStart(2, '0') })
 }
 
 /** A LIVE countdown's clock face: "4:12", "0:07", "1:02:07" (0029). Ticks legibly every second,
@@ -107,21 +108,24 @@ export function formatCountdown(ms: number): string {
 
 /** THE IDIOM that keeps the two clocks honest: "1.6 voyage-days · 4.7 min real". */
 export function formatTwoClocks(voyageDays: number): string {
-  return `${formatFixed(voyageDays, 1)} voyage-days · ${formatRealDuration(voyageDaysToRealMs(voyageDays))} real`
+  return t('format.twoClocks', {
+    days: formatFixed(voyageDays, 1),
+    real: formatRealDuration(voyageDaysToRealMs(voyageDays)),
+  })
 }
 
 /** Relative time against a supplied `now`. Future → "in 4.7 min"; past → "2 days ago". */
 export function formatRelative(atMs: number, nowMs: number): string {
   const delta = atMs - nowMs
   const abs = Math.abs(delta)
-  if (abs < 45_000) return 'just now'
+  if (abs < 45_000) return t('format.justNow')
   const body =
     abs < 60 * 60 * 1000
       ? formatRealDuration(abs)
       : abs < 24 * 60 * 60 * 1000
-        ? `${formatInt(abs / (60 * 60 * 1000))} h`
-        : `${formatFixed(abs / (24 * 60 * 60 * 1000), abs < 2 * 24 * 60 * 60 * 1000 ? 1 : 0)} days`
-  return delta >= 0 ? `in ${body}` : `${body} ago`
+        ? t('format.relHours', { n: formatInt(abs / (60 * 60 * 1000)) })
+        : t('format.relDays', { n: formatFixed(abs / (24 * 60 * 60 * 1000), abs < 2 * 24 * 60 * 60 * 1000 ? 1 : 0) })
+  return t(delta >= 0 ? 'format.inFuture' : 'format.inPast', { body })
 }
 
 /** Wall clock, 24 h, as the Ledger stamps a row: "14:22". Local time deliberately — the player
@@ -136,11 +140,6 @@ export function formatClock(atMs: number, withSeconds = false): string {
   return withSeconds ? `${hm}:${String(d.getSeconds()).padStart(2, '0')}` : hm
 }
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-] as const
-
 export type Season = 'Spring' | 'Summer' | 'Autumn' | 'Winter'
 
 /** §B.4 — seasons are game months, three apiece, Mar–May Spring. */
@@ -154,7 +153,7 @@ export function seasonOfMonth(monthIndex0: number): Season {
 
 export interface GameDate {
   year: number
-  /** 0-based, so it indexes MONTHS directly. */
+  /** 0-based: January is 0. */
   monthIndex: number
   season: Season
   /** How far through the game month we are, 0–1. One real day spans the whole month. */
@@ -172,7 +171,8 @@ export function gameDate(nowMs: number, epochMs: number, epochYear: number): Gam
 
 /** "March 1554 · Spring" */
 export function formatGameDate(d: GameDate): string {
-  return `${MONTHS[d.monthIndex]} ${d.year} · ${d.season}`
+  const month = t(`format.m${d.monthIndex}` as TKey)
+  return t('format.gameDate', { month, year: d.year, season: t(`format.${d.season}`) })
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
@@ -205,4 +205,11 @@ export function formatGameClock(nowMs: number): string {
  *  GAME CLOCK's hour (so the day and night turn at game speed). */
 export function gameSunInstantMs(nowMs: number): number {
   return nowMs - (((nowMs % MS_PER_DAY) + MS_PER_DAY) % MS_PER_DAY) + gameTimeOfDayMs(nowMs)
+}
+
+/** A CALENDAR DATE in the viewer's language — the one door to Intl for dates, so no screen spells
+ *  a locale of its own. `opts` are Intl.DateTimeFormat's ("Oct 20, 2026" · "2026년 10월 20일"). */
+export function formatDate(atMs: number, opts: Intl.DateTimeFormatOptions): string {
+  if (!Number.isFinite(atMs)) return '—'
+  return new Intl.DateTimeFormat(localeTag(), opts).format(atMs)
 }

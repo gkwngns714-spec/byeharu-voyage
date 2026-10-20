@@ -6,6 +6,7 @@ import { HullCountry } from './HullCountry'
 import type { ShipSet, ShipBonus, ShipBudget, ShipRack, ShipSeats } from '../lib/rpc'
 import { ShipCabins, type Seating } from './ShipCabins'
 import { ShipAugments } from './ShipAugments'
+import { useT, t as tNow, type TKey } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE SHIP, OPENED FROM HER FLEET'S PANEL — the owner, 2026-10-15:
@@ -111,15 +112,14 @@ function SlotGlyph({ kind, className = '' }: { kind: string; className?: string 
 
 /** The slot kinds in the order a reader looks down a ship — sail first, flourish last — and the
  *  word a player uses for each. The CODE is the server's (0074 `class_slots.slot`). */
-const SLOT_ORDER: readonly { code: string; word: string }[] = [
-  { code: 'rig', word: 'Sail' },
-  { code: 'weapon', word: 'Weapon' },
-  { code: 'ground-tackle', word: 'Anchor' },
-  { code: 'steering', word: 'Rudder' },
-  { code: 'hull', word: 'Hull' },
-  { code: 'lookout', word: 'Lookout' },
-  { code: 'flourish', word: 'Flourish' },
-]
+const SLOT_ORDER: readonly { code: string; readonly word: string }[] = (
+  ['rig', 'weapon', 'ground-tackle', 'steering', 'hull', 'lookout', 'flourish'] as const
+).map((code) => ({
+  code,
+  get word() {
+    return tNow(`ship.s_${code}` as TKey)
+  },
+}))
 
 interface SlotBox {
   key: string
@@ -142,7 +142,7 @@ function slotBoxes(ship: ShipView): SlotBox[] {
       Array.from({ length: f.qty }, (_, j) => ({
         key: `${i}-${j}`,
         kind: f.slot ?? 'flourish',
-        word: SLOT_ORDER.find((s) => s.code === f.slot)?.word ?? 'Fitted',
+        word: SLOT_ORDER.find((s) => s.code === f.slot)?.word ?? tNow('ship.fitted'),
         fitted: f.name,
         opensAt: null,
       })),
@@ -246,6 +246,7 @@ function rackBoxes(rack: ShipRack): SlotBox[] {
 /** 0132 — THE EQUIPMENT PAGE BY RACK: Deck and Hands bars (what is mounted costs, out of what the hull
  *  can carry), then one row of places per rack under its word and its `used / places`. */
 function RackEquipment({ ship, racks }: { ship: ShipView; racks: readonly ShipRack[] }) {
+  const t = useT()
   const filled = racks.reduce((n, r) => n + r.fitted.length, 0)
   const open = racks.reduce((n, r) => n + r.open, 0)
   const budget = ship.budget
@@ -253,16 +254,16 @@ function RackEquipment({ ship, racks }: { ship: ShipView; racks: readonly ShipRa
   return (
     <section data-testid="ship-equipment">
       <Heading trailing={<span className="text-t-caption tabular-nums text-ink-faint">{`${filled} / ${open}`}</span>}>
-        Equipment
+        {t('ship.equipment')}
       </Heading>
       {budget && (
         <div data-testid="ship-budget" className="mb-3 flex flex-col gap-2">
-          <Gauge label="Deck" now={budget.deck.used} max={budget.deck.max} tone={tone(budget.deck)} />
-          <Gauge label="Hands" now={budget.hands.used} max={budget.hands.max} tone={tone(budget.hands)} />
+          <Gauge label={t('ship.deck')} now={budget.deck.used} max={budget.deck.max} tone={tone(budget.deck)} />
+          <Gauge label={t('ship.hands')} now={budget.hands.used} max={budget.hands.max} tone={tone(budget.hands)} />
         </div>
       )}
       {racks.length === 0 ? (
-        <Empty>Nothing fitted.</Empty>
+        <Empty>{t('ship.nothingFitted')}</Empty>
       ) : (
         <div className="flex flex-col gap-3">
           {racks.map((rack) => (
@@ -287,6 +288,7 @@ function RackEquipment({ ship, racks }: { ship: ShipView; racks: readonly ShipRa
 /** THE EQUIPMENT PAGE — square slots in a grid, each with its kind's glyph; a fitted slot glows. A
  *  server from 0132 serves racks (drawn by RackEquipment); an older one, slots by kind (drawn here). */
 function EquipmentGrid({ ship }: { ship: ShipView }) {
+  const t = useT()
   if (ship.racks) return <RackEquipment ship={ship} racks={ship.racks} />
   const boxes = slotBoxes(ship)
   const filled = boxes.filter((b) => b.fitted !== null).length
@@ -300,10 +302,10 @@ function EquipmentGrid({ ship }: { ship: ShipView }) {
           )
         }
       >
-        Equipment
+        {t('ship.equipment')}
       </Heading>
       {boxes.length === 0 ? (
-        <Empty>Nothing fitted.</Empty>
+        <Empty>{t('ship.nothingFitted')}</Empty>
       ) : (
         <div className="grid grid-cols-4 gap-2">
           {boxes.map((b) => (
@@ -318,10 +320,11 @@ function EquipmentGrid({ ship }: { ship: ShipView }) {
 /** 0133 — SKILL BONUSES, BY SOURCE: one row per bonus, the skill and level on the left and the effect on
  *  the right, both exactly as the server words them. Drawn only when there is at least one. */
 function SkillBonuses({ bonuses }: { bonuses: readonly ShipBonus[] | undefined }) {
+  const t = useT()
   if (!bonuses || bonuses.length === 0) return null
   return (
     <section data-testid="ship-bonuses">
-      <Heading>Skill bonuses</Heading>
+      <Heading>{t('ship.skillBonuses')}</Heading>
       <BonusRows rows={bonuses.map((b) => ({ key: `${b.skill}-${b.stat}`, source: b.source, effect: b.effect }))} />
     </section>
   )
@@ -372,9 +375,10 @@ function Gauge({
 /** 0127 — her level chip's companion: the bar from where this level began to where the next does.
  *  `fixed` (a merchant's hull: her level never moves) draws no bar; the top level draws none. */
 function LevelBar({ ship, fixed }: { ship: ShipView; fixed: boolean }) {
+  const t = useT()
   if (fixed || ship.xp === undefined || ship.xp_from === undefined || ship.next_level_at == null) return null
   return (
-    <Gauge label="XP" now={ship.xp - ship.xp_from} max={ship.next_level_at - ship.xp_from} tone="accent" />
+    <Gauge label={t('ship.xp')} now={ship.xp - ship.xp_from} max={ship.next_level_at - ship.xp_from} tone="accent" />
   )
 }
 
@@ -394,16 +398,17 @@ export function ShipPanel({
   /** A merchant's hull: her level is fixed (0127), so no bar toward the next. */
   levelFixed?: boolean
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('half')
   const hullPct = ship.max_durability > 0 ? ship.durability / ship.max_durability : 1
   const crewShort = ship.crew_required !== undefined && ship.crew < ship.crew_required
   const combat: { label: string; value: number | undefined }[] = [
-    { label: 'Attack', value: ship.attack },
-    { label: 'Accuracy', value: ship.accuracy },
-    { label: 'Reach', value: ship.reach },
-    { label: 'Armour', value: ship.armour },
-    { label: 'Handling', value: ship.handling },
-    { label: 'Sighting', value: ship.sighting },
+    { label: t('ship.attack'), value: ship.attack },
+    { label: t('ship.accuracy'), value: ship.accuracy },
+    { label: t('ship.reach'), value: ship.reach },
+    { label: t('ship.armour'), value: ship.armour },
+    { label: t('ship.handling'), value: ship.handling },
+    { label: t('ship.sighting'), value: ship.sighting },
   ]
   const shownCombat = combat.filter((c) => c.value !== undefined)
 
@@ -444,20 +449,20 @@ export function ShipPanel({
               <span
                 data-testid="ship-level"
                 className="rounded-chip bg-surface px-2 py-0.5 text-t-caption tabular-nums text-ink"
-              >{`Lv ${ship.level}`}</span>
+              >{t('ship.level', { n: ship.level })}</span>
             )}
             {ship.is_flagship && (
-              <span className="rounded-chip bg-accent/20 px-2 py-0.5 text-t-caption text-accent">Flagship</span>
+              <span className="rounded-chip bg-accent/20 px-2 py-0.5 text-t-caption text-accent">{t('ship.flagship')}</span>
             )}
           </div>
           <div className="mt-3 flex flex-col gap-2">
             <Gauge
-              label="Hull"
+              label={t('ship.hull')}
               now={ship.durability}
               max={ship.max_durability}
               tone={hullPct < 0.4 ? 'danger' : hullPct < 0.75 ? 'warning' : 'success'}
             />
-            <Gauge label="Crew" now={ship.crew} max={ship.crew_max} tone={crewShort ? 'danger' : 'neutral'} />
+            <Gauge label={t('ship.crew')} now={ship.crew} max={ship.crew_max} tone={crewShort ? 'danger' : 'neutral'} />
             <LevelBar ship={ship} fixed={levelFixed} />
           </div>
         </div>
@@ -467,10 +472,10 @@ export function ShipPanel({
 
       {/* ── THE SPEC ─────────────────────────────────────────────────────────────────────────── */}
       <section data-testid="ship-stats">
-        <Heading>Spec</Heading>
+        <Heading>{t('ship.spec')}</Heading>
         <dl className="grid grid-cols-2 gap-2">
-          <Stat label="Speed" value={formatFixed(ship.speed, 1)} unit="knots" />
-          <Stat label="Cargo" value={`${formatInt(ship.cargo_tuns)} / ${formatInt(ship.hold)}`} unit="tons" />
+          <Stat label={t('ship.speed')} value={formatFixed(ship.speed, 1)} unit={t('ship.knots')} />
+          <Stat label={t('ship.cargo')} value={`${formatInt(ship.cargo_tuns)} / ${formatInt(ship.hold)}`} unit={t('ship.tons')} />
         </dl>
         {shownCombat.length > 0 && (
           <dl className="mt-2 grid grid-cols-3 gap-2">

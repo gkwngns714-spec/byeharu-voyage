@@ -26,6 +26,7 @@
 
 import { formatUnitPrice, formatUnits, formatVoyageDays } from '../../lib/format'
 import type { QueuedOrder, Refusal, VerbArg, VerbSpec } from '../../lib/rpc'
+import { t, translateMaybe, getLocale } from '../../lib/i18n'
 
 /**
  * CANCEL and CLEAR are served in the same schema as the other six, but their only argument is a
@@ -152,19 +153,8 @@ export function isComplete(spec: VerbSpec, args: Record<string, string>): boolea
  */
 export function verbWord(verb: string): string {
   // The server's verbs are period words; the player reads the modern one (docs/WORDS.md).
-  const PLAYER: Record<string, string> = {
-    PROVISION: 'Resupply',
-    HIRE: 'Hire crew',
-    DISMISS: 'Dismiss crew',
-    REPAIR: 'Repair',
-    MAKE: 'Craft',
-    BUILD: 'Build ship',
-    STORE: 'Put in storage',
-    TAKE: 'Take on board',
-    FIT: 'Fit',
-    UNFIT: 'Unfit',
-  }
-  return PLAYER[verb] ?? verb.charAt(0) + verb.slice(1).toLowerCase()
+  // The words are domainDict's `verb_<VERB>`; a verb with no entry is its own code, capitalised.
+  return translateMaybe(getLocale(), 'domain', `verb_${verb}`) ?? verb.charAt(0) + verb.slice(1).toLowerCase()
 }
 
 /**
@@ -320,13 +310,13 @@ export interface TradeLineWords {
 
 export function tradeLineWords(line: TradeLineInput): TradeLineWords {
   const sell = line.kind === 'SELL'
-  const amount = line.qty !== null ? formatUnits(line.qty) : sell ? 'All' : 'All that fit'
+  const amount = line.qty !== null ? formatUnits(line.qty) : t(sell ? 'domain.all' : 'domain.allThatFit')
   const limit =
     sell && line.at_profit
-      ? 'Only sell above cost'
+      ? t('domain.aboveCost')
       : line.price_limit === null
-        ? 'Any price'
-        : `${sell ? 'Min' : 'Max'} ${formatUnitPrice(line.price_limit)}`
+        ? t('domain.anyPrice')
+        : t(sell ? 'domain.min' : 'domain.max', { price: formatUnitPrice(line.price_limit) })
   return { side: sell ? 'Sell' : 'Buy', amount, limit }
 }
 
@@ -355,14 +345,15 @@ export function queuedOrderWords(
     const trade = tradeOfTokens(verb, tokens)
     if (trade) {
       const w = tradeLineWords(trade.line)
-      return [`${w.side} ${goodByCode[trade.good]?.name ?? trade.good}`, w.amount, w.limit].join(' · ')
+      const side = t(w.side === 'Sell' ? 'domain.Sell' : 'domain.Buy')
+      return [t('domain.sideGood', { side, good: goodByCode[trade.good]?.name ?? trade.good }), w.amount, w.limit].join(' · ')
     }
   }
   if (verb === 'PROVISION') {
     const mode = tokens[0]?.toUpperCase()
     const days = Number(tokens[1])
-    if (mode === 'DAYS' && Number.isFinite(days)) return `${verbWord(verb)} to ${formatVoyageDays(days, 0)}`
-    if (mode === 'FULL') return `${verbWord(verb)} to full`
+    if (mode === 'DAYS' && Number.isFinite(days)) return t('domain.toDays', { verb: verbWord(verb), days: formatVoyageDays(days, 0) })
+    if (mode === 'FULL') return t('domain.toFull', { verb: verbWord(verb) })
   }
 
   const KEYWORDS = new Set(['TO', 'AT', 'VIA', 'ON'])

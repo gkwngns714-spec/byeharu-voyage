@@ -30,6 +30,7 @@ import type {
   StandingRoutePausedReason,
   StandingRouteStop,
 } from '../../lib/rpc'
+import { t, translateMaybe, getLocale } from '../../lib/i18n'
 
 /** The route this fleet runs, if any. */
 export function routeOfFleet(book: StandingRouteBook | null, fleetId: string): StandingRoute | null {
@@ -49,13 +50,13 @@ export function routeCaption(route: StandingRoute | null): string | null {
     case 'sailing':
     case 'in_port':
     case 'waiting':
-      return 'On route'
+      return t('domain.onRoute')
     case 'stopped':
-      return 'Stopped'
+      return t('domain.stopped')
     case 'blocked':
-      return 'Blocked'
+      return t('domain.blocked')
     case 'paused':
-      return 'Paused'
+      return t('domain.paused')
     default:
       return null
   }
@@ -65,52 +66,36 @@ export function routeCaption(route: StandingRoute | null): string | null {
 export function routeStateWord(route: StandingRoute, portByCode: Record<string, SnapshotPort>): string {
   switch (route.state) {
     case 'paused':
-      return 'Paused'
+      return t('domain.paused')
     case 'stopped':
-      return 'Stopped'
+      return t('domain.stopped')
     case 'blocked':
-      return 'Blocked'
+      return t('domain.blocked')
     case 'waiting':
-      return route.next_lap_at ? `Next lap ${formatClock(Date.parse(route.next_lap_at))}` : 'Next lap soon'
+      return route.next_lap_at ? t('domain.nextLap', { time: formatClock(Date.parse(route.next_lap_at)) }) : t('domain.nextLapSoon')
     case 'sailing':
-      return route.heading_to ? `Sailing to ${portByCode[route.heading_to]?.name ?? route.heading_to}` : 'Sailing'
+      return route.heading_to
+        ? t('domain.sailingTo', { port: portByCode[route.heading_to]?.name ?? route.heading_to })
+        : t('domain.sailing')
     case 'in_port':
-      return 'In port'
+      return t('domain.inPort')
     case 'unassigned':
-      return 'No fleet'
+      return t('domain.noFleet')
     default:
-      return 'Routes are not open yet'
+      return t('domain.notOpen')
   }
 }
 
 /** Why a paused route is paused, as a clause. The reason is the server's; the words are here, and
  *  they carry no figure (docs/WORDS.md law 2: a bare number is never printed). */
 export function routePauseReason(reason: string | null): string {
-  switch (reason) {
-    case 'player':
-      return 'you paused it'
-    case 'reserve':
-      return 'your company has less than it keeps back'
-    case 'losing':
-      return 'the last laps lost money'
-    case 'off_route':
-      return 'the fleet is not at a stop of this route'
-    case 'edited':
-      return 'the fleet is not at a stop of the changed route'
-    case 'error':
-      return 'this route could not run. Change it and resume'
-    case 'dark':
-      return 'the merchants keep to port'
-    case 'laid_up':
-      return 'it is laid up'
-    default:
-      return 'it was paused'
-  }
+  // The served reason is the key (`r_reserve`); one the client has no words for is `it was paused`.
+  return (reason !== null && translateMaybe(getLocale(), 'domain', `r_${reason}`)) || t('domain.r_default')
 }
 
 /** Why a paused route is paused, in one sentence (the fold's note). */
 export function routePausedSentence(reason: StandingRoutePausedReason | null): string {
-  return reason === 'player' ? 'You paused this route.' : `Paused: ${routePauseReason(reason)}.`
+  return reason === 'player' ? t('domain.youPaused') : t('domain.pausedBecause', { why: routePauseReason(reason) })
 }
 
 /**
@@ -120,8 +105,8 @@ export function routePausedSentence(reason: StandingRoutePausedReason | null): s
  * player (docs/WORDS.md law 2).
  */
 export function routePausedEventWords(route: string, reason: string | null, sentence: string | null): string {
-  if (reason === 'error' && sentence) return `${route} paused. ${sentence}`
-  return `${route} paused: ${routePauseReason(reason)}.`
+  if (reason === 'error' && sentence) return t('domain.routePausedError', { route, sentence })
+  return t('domain.routePaused', { route, why: routePauseReason(reason) })
 }
 
 /** The ports of a route in order, joined by the loop mark: `Lisbon ⇄ Funchal`. */
@@ -150,7 +135,7 @@ export function stopLine(
     key: `${l.kind}-${l.ord}`,
     code: l.good,
     category: good?.category ?? null,
-    name: l.good ? (good?.name ?? l.good) : 'Everything on board',
+    name: l.good ? (good?.name ?? l.good) : t('domain.everything'),
     ...tradeLineWords(l),
   }
 }
@@ -177,7 +162,7 @@ export function routeStopLines(
 /** The quiet line under a stop's trade: resupply (every stop, when below the keep level) and repair
  *  (where the stop asks for it). One author, so the running face and the editor say it alike. */
 export function routeStopQuiet(repair: boolean): string {
-  return repair ? 'Resupply if low · Repair' : 'Resupply if low'
+  return t(repair ? 'domain.resupplyRepair' : 'domain.resupplyLow')
 }
 
 /**
@@ -192,23 +177,23 @@ export function skippedWords(
 ): string {
   const verb = (skip.verb ?? skip.line.split(/\s+/)[0] ?? '').toUpperCase()
   const word = skip.line.split(/\s+/)[1] ?? ''
-  const good = word && word.toUpperCase() !== 'ALL' ? goodName(word) : 'the cargo'
-  const at = skip.port ? ` at ${portName(skip.port)}` : ''
+  const good = word && word.toUpperCase() !== 'ALL' ? goodName(word) : t('domain.theCargo')
+  const at = skip.port ? t('domain.atPort', { port: portName(skip.port) }) : ''
   switch (skip.code) {
     case 'E_PRICE_LIMIT':
-      return verb === 'BUY' ? `${good} too dear${at}` : `${good} would not sell above cost${at}`
+      return t(verb === 'BUY' ? 'domain.tooDear' : 'domain.belowCost', { good, at })
     case 'E_DAILY_CAP':
-      return `no more ${good} today${at}`
+      return t('domain.noMoreToday', { good, at })
     case 'E_QUEUE_FULL':
-      return `${good} kept on board${at}`
+      return t('domain.keptOnBoard', { good, at })
     case 'E_NOT_ENOUGH_STOCK':
     case 'E_OUT_OF_STOCK':
-      return `no ${good} to be had${at}`
+      return t('domain.noneToHave', { good, at })
     // THE PLAIN FORM, for a code with no line of its own. "a sale of the cargo passed over at
     // Lisbon" was read by the owner (2026-10-08) as though a sale had been skipped over by
     // someone — it says the right thing in the wrong voice. What happened is simply that she did
     // not trade, so that is what it says.
     default:
-      return `${verb === 'BUY' ? 'did not buy' : 'did not sell'} ${good}${at}`
+      return t(verb === 'BUY' ? 'domain.didNotBuy' : 'domain.didNotSell', { good, at })
   }
 }
