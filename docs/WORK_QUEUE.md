@@ -19,7 +19,7 @@ Prod head: **0208**. (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trad
 8. **Housekeeping**: remove PROBE_YARD/PROBE_INN credits (82,000); verify the audit's "no human trades since 09-27" (conflicts with the owner's Gaivota play).
 9. **Merchant hoards / money outflow**: decide after 1 (owner 10-18 "leave money growth for now").
 - **Held:** pirates #268 (owner 10-20: "keep it as it is for now"). Famous gear sources: owner "later".
-- **Ask the owner:** 0187 shipped TEN great powers; owner's 10-18 words were "make it 7 big power".
+- 0187 shipped TEN great powers: that follows the owner's own follow-up "in asia add korea, in europe add more" (OWNER_REQUESTS row 161). Not a mismatch.
 - The 10-18 "In progress" table below is STALE: all of it shipped (0186, 0188, 0197, 0199, 0183, #240, #227/#228, #225, #218, 0187).
 
 ## RESUMED 2026-10-19 ~23:30 UTC (PC 디폴리스)
