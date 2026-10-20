@@ -60,9 +60,12 @@ export function RarityMark({
       {...(withWord ? {} : { role: 'img', 'aria-label': rarityLabel(rarity), title: rarityLabel(rarity) })}
     >
       <Icon name={known.icon} size={size} className="shrink-0" />
-      {withWord && (
-        <span className="font-mono text-[10px] uppercase tracking-wider">{rarityLabel(rarity)}</span>
-      )}
+      {/* THE WORD IN THE CALLER'S OWN VOICE (2026-10-20). It was `font-mono text-[10px] uppercase
+          tracking-wider` while nothing called `withWord`; the Codex's goods face kept its own
+          lowercase line instead, and owner row 177 wanted the word in a third place. One rendering
+          now, and it is the lowercase one the owner has already seen — docs/UI_DIRECTION.md §4.1
+          took the uppercase, letter-spaced label voice off every screen. */}
+      {withWord && <span>{rarityLabel(rarity)}</span>}
     </span>
   )
 }

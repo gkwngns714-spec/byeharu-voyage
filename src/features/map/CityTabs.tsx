@@ -8,6 +8,7 @@ import type { FleetView, SnapshotPort } from '../../lib/rpc'
 import { PortInn } from '../../live/PortInn'
 import { PortPrices } from '../../live/PortPrices'
 import { CITY_TABS, useCityTab } from './cityTab'
+import { CityInfo } from '../../live/CityInfo'
 import { CityTownHall } from '../../live/CityTownHall'
 import { TowNote } from '../../live/TowNote'
 import { useT, type TKey } from '../../lib/i18n'
@@ -37,6 +38,11 @@ import { useT, type TKey } from '../../lib/i18n'
 //           (PROVISION), both through `useStepOrder`'s dry run and one button.
 //   Town Hall `CityTownHall` (0123) — the city's purse, its works, Invest (`cmd.preview_invest` →
 //           `cmd.invest`, docked here only), and the investors by name (`world.town_hall`).
+//   Info    `CityInfo` (owner row 174, 2026-10-20) — the city itself, concise: the country that
+//           holds it, the countries whose influence is on it, the sea it sits on and how big it
+//           is, what its market trades, and — gated by your own stake, 0214's rule — its purse,
+//           its money in and out and the taxes it takes. Composed of reads the panel already
+//           makes; it decides nothing and is no city's second authority.
 //
 // Every second-level tray these faces open stands `side-next`, beside the panel — the pattern a
 // ship opened from a fleet panel already uses (src/live/ShipPanel.tsx).
@@ -65,6 +71,7 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
         {tab === 'market' && port && <CityMarket port={port} reader={acting} />}
         {tab === 'inn' && port && <PortInn port={port} alongside={docked[0] ?? null} trayMode="side-next" />}
         {tab === 'townhall' && port && <CityTownHall port={port} trayMode="side-next" />}
+        {tab === 'info' && port && <CityInfo port={port} />}
       </div>
     </div>
   )

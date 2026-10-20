@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Button, Figure, Note, Row, Skeleton, Stepper, Tray, type TrayDetent, type TrayMode } from '../components/ui'
 import { useServedRead } from './useServedRead'
 import { useSettled } from './useSettled'
+import { useTownHall } from './useTownHall'
 import { useWorld } from './worldStore'
-import { cmdInvest, cmdPreviewInvest, ok, worldTownHall } from '../lib/rpc'
+import { cmdInvest, cmdPreviewInvest, ok } from '../lib/rpc'
 import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView } from '../lib/rpc'
 import { formatDucats, formatInt, formatPct } from '../lib/format'
 import { TownHallInfluence } from './TownHallInfluence'
@@ -36,13 +37,6 @@ import { useT, t as tNow } from '../lib/i18n'
 interface Served<V> {
   view: V | null
   refusal: Refusal | null
-}
-
-function useTownHall(portId: string | null) {
-  return useServedRead<Served<TownHallView>>(portId, async () => {
-    const r = await worldTownHall(portId as string)
-    return ok(r.ok ? { view: r.value, refusal: null } : { view: null, refusal: r.refusal })
-  })
 }
 
 export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?: TrayMode }) {

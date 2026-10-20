@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { StockGauge } from './StockGauge'
 import { Figure } from './Figure'
+import { GoodKind } from './GoodKind'
 import { PriceChart } from './PriceChart'
 import { Row } from './Row'
 import { Sparkline } from './Sparkline'
@@ -8,8 +9,8 @@ import { formatOfTotal, formatPriceFigure } from '../../lib/format'
 import type { MarketGood, PricePoint } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 
-// WHAT A PRICE HAS BEEN, HOW FAR IT CAN GO, AND HOW MUCH IS THERE — the three rows under a good,
-// wherever it is read: Trend · Range · In stock.
+// WHAT A GOOD IS, WHAT ITS PRICE HAS BEEN, HOW FAR IT CAN GO, AND HOW MUCH IS THERE — the four
+// rows under a good, wherever it is read: Kind · Trend · Range · In stock.
 //
 // MOVED HERE 2026-09-11 from features/market/PriceTray.tsx (owner row 76, the Quay Ledger). Two
 // trays draw these rows: the design system's `TradeTray` (a row unfolded on the quay she lies at)
@@ -30,6 +31,11 @@ import { useT } from '../../lib/i18n'
 //
 // THE RANGE IS THIS QUAY'S, TODAY. `range_lo … range_hi` (0071) is how far this price can travel
 // here, at this reading — it is never a fortnight's low and high, and the label does not claim one.
+//
+// THE KIND ROW came first on 2026-10-20 (owner row 177: *"The trade goods should show rarity, and
+// what class?"*). Both words are served on the market row itself — `category` and the 0032 tier —
+// so this costs no read, and it lands in BOTH trays at once, which is why it was put here rather
+// than in either of them. `GoodKind` is the one composition of the two words.
 
 /** ONE good's remembered prices at ONE port, as `src/live/usePortHistory.ts` reads them: the served
  *  points (undefined until the read lands) and the served cadence the axis is labelled in. Declared
@@ -59,6 +65,8 @@ export function PriceRows({
 
   return (
     <>
+      {/* WHAT IT IS, before what it costs — the kind, then how rare a source is (owner row 177). */}
+      <Row label={t('ui.kind')} value={<GoodKind category={good.category} rarity={good.rarity} />} data-testid="good-kind-row" />
       <Row
         label={t('ui.trend')}
         tone={mids.length < 2 ? 'muted' : 'default'}
