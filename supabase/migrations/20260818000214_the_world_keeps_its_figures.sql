@@ -80,6 +80,12 @@
 --       good rows 50; the overview's line "Insurance premiums" 300, moved.
 --   (d) THE GATE: at 0 🪙 the city is locked (no figures served); at stats_city_tier1 the overview and no
 --       detail; at stats_city_tier2 the detail with the probe good's 50 units.
+--   THE LIVE WORLD: run 1's period is the real quarter-hour before the push, and every "last day" a read
+--   serves sums run 1's row with run 2's. So each served day-figure is asserted as run 1's own row PLUS the
+--   planted amount (a delta: right on CI's empty world and on prod's busy one alike); the leak checks stay
+--   absolute. Run 2's window opens after now() + 1 s, and the six tables it reads are share-locked (§2), so
+--   run 2's own rows hold the probe alone and keep their exact amounts. 2026-10-20 08:49 UTC: the first push
+--   asserted sold_1d = 50 at Acapulco and read 3,042 — the real day plus the probe's 50.
 --   (e) compaction keeps one row per old day, per table, under each table's own knob.
 --   (f) registry +6 (authenticated, never anon); the three walls at 0; the job defined INACTIVE.
 -- ROLLBACK (forward): drop the five tables, the words table, the eight functions, the three indexes, the
@@ -280,6 +286,13 @@ alter table public.stats_merchants  enable row level security;
 alter table public.stats_flow_words enable row level security;
 revoke all on table public.stats_world, public.stats_good, public.stats_city, public.stats_city_good,
                     public.stats_merchants, public.stats_flow_words from public, anon, authenticated;
+
+-- THE PROBE'S WINDOW HOLDS ONLY THE PROBE (§8): no other transaction may write a trade, a ledger line, a
+-- flow, a purse or a price record until this file commits or rolls back. The index builds below take this
+-- lock on events and ledger anyway; taking all six here, at once and first, closes the rest and keeps one
+-- lock order (lock_timeout 5 s: a busy table fails the push cleanly, it never waits on the live game).
+lock table public.events, public.ledger, public.treasury_flows, public.treasury_daybook, public.players,
+           public.price_history in share mode;
 
 -- the three windows the job reads, made index scans
 create index if not exists events_created_at on public.events (created_at);
@@ -882,6 +895,7 @@ declare
   v_t1ms numeric; v_t2ms numeric;
   v_old timestamptz; v_old_cg timestamptz; v_old_g timestamptz;
   v_out jsonb;
+  v_cg1 bigint;
 begin
   v_t2 := v_t1 + make_interval(secs => v_secs::double precision) + interval '19 seconds';
   v_t3 := v_t2 + make_interval(secs => v_secs::double precision);
@@ -917,6 +931,10 @@ begin
    where s.port_id = v_port order by g.code limit 1;
   if v_port is null or v_good is null then
     raise exception '0214 self-assert FAIL: no harbour sells anything — the probe has no subject';
+  end if;
+  -- the probe company is its own: no live company holds its id or its name
+  if exists (select 1 from public.players p where p.id = c_uid or p.auth_uid = c_uid or p.company_name = 'Casa das Contas 0214') then
+    raise exception '0214 self-assert FAIL: the probe company''s id or name is already taken in this world';
   end if;
 
   begin
@@ -959,6 +977,11 @@ begin
     select * into c1 from public.stats_city where port_id = v_port and slot = w1.slot;
     if c1.purse <> public.treasury_balance(v_port) then
       raise exception '0214 self-assert FAIL: the city row''s purse % is not treasury_balance %', c1.purse, public.treasury_balance(v_port);
+    end if;
+    -- run 1's row of the probe good at the city: the baseline every served day-figure of it is measured from
+    select x.sold into v_cg1 from public.stats_city_good x where x.port_id = v_port and x.good_id = v_good and x.slot = w1.slot;
+    if v_cg1 is null then
+      raise exception '0214 self-assert FAIL: run 1 wrote no city-good row for the probe''s own offered pair (%, %)', v_code, v_gname;
     end if;
 
     -- (c) THE POSITIVE CONTROLS: one sale at the subject city, planted at now()+2 s so it falls in run 2's
@@ -1032,20 +1055,26 @@ begin
     values (v_port, 'market', v_p, 1, public.wc_num('stats_city_tier1')::bigint, 0, world.game_day());
     v_v := world.stats_city(v_port);
     if (v_v->>'tier')::int <> 1 or not (v_v ? 'overview') or (v_v ? 'detail')
-       or (v_v->'overview'->>'sold_1d')::bigint <> 50 or (v_v->'overview'->>'taxes_1d')::bigint <> 100
-       or not exists (select 1 from jsonb_array_elements(v_v->'overview'->'flows_1d') f where f->>'kind' = 'SELL' and (f->>'ducats')::bigint = -1234)
-       or not exists (select 1 from jsonb_array_elements(v_v->'overview'->'top_sold') f where f->>'name' = v_gname and (f->>'units')::bigint = 50)
+       or (v_v->'overview'->>'sold_1d')::bigint <> c1.sold + 50 or (v_v->'overview'->>'taxes_1d')::bigint <> c1.taxes + 100
+       or not exists (select 1 from jsonb_array_elements(v_v->'overview'->'flows_1d') f
+                       where f->>'kind' = 'SELL' and (f->>'ducats')::bigint = coalesce((c1.flows->>'SELL')::bigint, 0) - 1234)
+       -- the good tops the list with run 1's units + 50, unless five goods outsold even that
+       or not (exists (select 1 from jsonb_array_elements(v_v->'overview'->'top_sold') f where f->>'name' = v_gname and (f->>'units')::bigint = v_cg1 + 50)
+               or (jsonb_array_length(v_v->'overview'->'top_sold') = 5
+                   and not exists (select 1 from jsonb_array_elements(v_v->'overview'->'top_sold') f where f->>'name' = v_gname)
+                   and (select min((f->>'units')::bigint) from jsonb_array_elements(v_v->'overview'->'top_sold') f) >= v_cg1 + 50))
        or (v_v->>'need')::bigint <> public.wc_num('stats_city_tier2')::bigint - public.wc_num('stats_city_tier1')::bigint then
-      raise exception '0214 self-assert FAIL: at tier 1 the overview is wrong or the detail leaked: %', v_v;
+      raise exception '0214 self-assert FAIL: at tier 1 the overview is wrong or the detail leaked (run 1 had sold %, taxes %, SELL %, the good %): %',
+        c1.sold, c1.taxes, c1.flows->>'SELL', v_cg1, left(v_v::text, 600);
     end if;
     select x into v_row from jsonb_array_elements(world.stats_cities()->'cities') x where x->>'code' = v_code;
-    if (v_row->>'tier')::int <> 1 or (v_row->>'purse')::bigint <> c2.purse or (v_row->>'taxes_1d')::bigint <> 100 then
-      raise exception '0214 self-assert FAIL: the tier-1 list row is wrong: %', v_row;
+    if (v_row->>'tier')::int <> 1 or (v_row->>'purse')::bigint <> c2.purse or (v_row->>'taxes_1d')::bigint <> c1.taxes + 100 then
+      raise exception '0214 self-assert FAIL: the tier-1 list row is wrong (run 1 had taxes %): %', c1.taxes, v_row;
     end if;
     update public.city_shares set paid = public.wc_num('stats_city_tier2')::bigint where port_id = v_port and player_id = v_p;
     v_v := world.stats_city(v_port);
     if (v_v->>'tier')::int <> 2 or not (v_v ? 'overview') or not (v_v ? 'detail') or (v_v->>'need') is not null
-       or not exists (select 1 from jsonb_array_elements(v_v->'detail'->'goods') g where g->>'name' = v_gname and (g->>'sold_1d')::bigint = 50 and (g->>'mid') is not null)
+       or not exists (select 1 from jsonb_array_elements(v_v->'detail'->'goods') g where g->>'name' = v_gname and (g->>'sold_1d')::bigint = v_cg1 + 50 and (g->>'mid') is not null)
        or jsonb_array_length(v_v->'detail'->'goods') < (select count(*) from public.port_specialties s where s.port_id = v_port) then
       raise exception '0214 self-assert FAIL: at tier 2 the detail is wrong: %', left(v_v::text, 600);
     end if;
@@ -1059,9 +1088,9 @@ begin
     end if;
     v_v := world.stats_markets();
     if jsonb_array_length(v_v->'goods') <> (select count(*) from public.goods)
-       or not exists (select 1 from jsonb_array_elements(v_v->'goods') g where g->>'name' = v_gname and (g->>'sold_1d')::bigint = 50 and (g->>'mid') is not null
+       or not exists (select 1 from jsonb_array_elements(v_v->'goods') g where g->>'name' = v_gname and (g->>'sold_1d')::bigint = g1.sold + 50 and (g->>'mid') is not null
                         and (g ? 'mid_1h') and jsonb_array_length(g->'spark') = 2) then
-      raise exception '0214 self-assert FAIL: the markets read does not serve every good with the probe''s sale: %', left(v_v::text, 400);
+      raise exception '0214 self-assert FAIL: the markets read does not serve every good with the probe''s sale (run 1 had % sold): %', g1.sold, left(v_v::text, 400);
     end if;
     v_v := world.stats_merchants();
     if (v_v->>'houses')::int <> (select count(*) from public.npc_houses) or jsonb_array_length(v_v->'series') <> 2 then
@@ -1136,7 +1165,7 @@ begin
      and not exists (select 1 from public.clock_jobs() j where j.jobname = 'byeharu-voyage:stats' and not j.active) then
     raise exception '0214 self-assert FAIL: byeharu-voyage:stats is not defined inactive';
   end if;
-  raise notice '0214 self-assert ok: THE WORLD KEEPS ITS FIGURES. tick_stats wrote one world row, % goods, % harbours, % city-good rows (% offered pairs) and one merchants row in % ms, and 0 rows when run again in the same slot; the holders equal the authorities'' sums. Positive controls at % (%): a planted sale of 50 units for 1,234 🪙 with 100 tax, 5,000 SEED, 777 IMPORT_DEMAND and a 300 🪙 INSURANCE premium (0213) gave the next row minted 5,777 / moved 1,634 / sold 1,234 / units 50 / trades 1, the players'' money +834, the cities'' +4,943, the city row income 6,177 / spending 1,234 / taxes 100 / sold 50, the good and city-good rows 50 — in % ms. THE GATE: nothing invested → locked, no figures served anywhere; % 🪙 → overview only (sold 50, taxes 100, SELL −1,234, the good on top); % 🪙 → the detail with the good''s 50 units. Compaction kept one row per old day under each table''s own knob (run 3: % ms). Registry +6 (authenticated, not anon); walls 0; the job defined inactive.',
+  raise notice '0214 self-assert ok: THE WORLD KEEPS ITS FIGURES. tick_stats wrote one world row, % goods, % harbours, % city-good rows (% offered pairs) and one merchants row in % ms, and 0 rows when run again in the same slot; the holders equal the authorities'' sums. Positive controls at % (%): a planted sale of 50 units for 1,234 🪙 with 100 tax, 5,000 SEED, 777 IMPORT_DEMAND and a 300 🪙 INSURANCE premium (0213) gave the next row minted 5,777 / moved 1,634 / sold 1,234 / units 50 / trades 1, the players'' money +834, the cities'' +4,943, the city row income 6,177 / spending 1,234 / taxes 100 / sold 50, the good and city-good rows 50 — in % ms. THE GATE: nothing invested → locked, no figures served anywhere; % 🪙 → overview only, its day-figures run 1''s own row + the probe''s (sold +50, taxes +100, SELL −1,234, the good +50 — a delta, so the live world''s real trades cannot move it); % 🪙 → the detail with the good''s +50 units. Compaction kept one row per old day under each table''s own knob (run 3: % ms). Registry +6 (authenticated, not anon); walls 0; the job defined inactive.',
     v_out->'r1'->>'goods', v_out->'r1'->>'cities', v_out->'r1'->>'city_goods', v_out->>'offered', v_out->>'ms1',
     v_out->>'port', v_out->>'good', v_out->>'ms2',
     public.wc_num('stats_city_tier1')::bigint, public.wc_num('stats_city_tier2')::bigint, v_out->>'ms3';
