@@ -37,9 +37,10 @@ export function MarketsFace({ beat, onAge }: FaceProps) {
   if (v.goods.length === 0) return <Empty data-testid="stats-empty">No figures yet. The first count is written within fifteen minutes.</Empty>
 
   const moved = rows.filter((r) => r.move !== null)
-  const risers = [...moved].sort((a, b) => (b.move ?? 0) - (a.move ?? 0)).slice(0, 3)
-  const fallers = [...moved].sort((a, b) => (a.move ?? 0) - (b.move ?? 0)).slice(0, 3)
-  const traded = [...rows].sort((a, b) => b.traded - a.traded).slice(0, 3)
+  // a riser rose, a faller fell, and the most traded traded: a flat or idle good is in none of the three
+  const risers = moved.filter((r) => (r.move ?? 0) > 0).sort((a, b) => (b.move ?? 0) - (a.move ?? 0)).slice(0, 3)
+  const fallers = moved.filter((r) => (r.move ?? 0) < 0).sort((a, b) => (a.move ?? 0) - (b.move ?? 0)).slice(0, 3)
+  const traded = rows.filter((r) => r.traded > 0).sort((a, b) => b.traded - a.traded).slice(0, 3)
   const shown = all ? rows : rows.slice(0, FIRST)
 
   return (

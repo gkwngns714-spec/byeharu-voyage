@@ -29,12 +29,12 @@ for (const vp of [PHONE, WIDE]) {
     await expect(page.getByTestId('stats-updated')).toContainText('Updated')
     await noSidewaysScroll(page)
 
-    await page.getByRole('tab', { name: 'Markets' }).click()
+    await page.getByRole('tab', { name: 'Markets', exact: true }).click()
     await expect(page.getByTestId('stats-markets')).toBeVisible({ timeout: 60_000 })
     expect(await page.getByTestId('stats-good').count()).toBeGreaterThan(10)
     await noSidewaysScroll(page)
 
-    await page.getByRole('tab', { name: 'Cities' }).click()
+    await page.getByRole('tab', { name: 'Cities', exact: true }).click()
     await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 60_000 })
     // nothing invested anywhere: every harbour is locked, and the first one says what to invest
     await expect(page.getByTestId('stats-city-open')).toHaveCount(0)
@@ -46,11 +46,11 @@ for (const vp of [PHONE, WIDE]) {
     await expect(page.getByTestId('stats-city-detail')).toHaveCount(0)
     await noSidewaysScroll(page)
 
-    await page.getByRole('tab', { name: 'Merchants' }).click()
+    await page.getByRole('tab', { name: 'Merchants', exact: true }).click()
     await expect(page.getByTestId('stats-merchants')).toBeVisible({ timeout: 60_000 })
     await noSidewaysScroll(page)
 
-    await page.getByRole('tab', { name: 'Me' }).click()
+    await page.getByRole('tab', { name: 'Me', exact: true }).click()
     await expect(page.getByTestId('stats-me')).toBeVisible({ timeout: 60_000 })
     await expect(page.getByTestId('stats-leaderboard-you')).toBeVisible()
     await noSidewaysScroll(page)
