@@ -49,6 +49,9 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 - 0187 shipped TEN great powers: that follows the owner's own follow-up "in asia add korea, in europe add more" (OWNER_REQUESTS row 161). Not a mismatch.
 - The 10-18 "In progress" table below is STALE: all of it shipped (0186, 0188, 0197, 0199, 0183, #240, #227/#228, #225, #218, 0187).
 
+## BILLING NOTE 2026-10-20 ~06:00 UTC
+Owner: the WEEKLY allocation is still being used, not the cloud session credit (which expires 2026-11-05). Likely cause: the long LOCAL main session on PC 디폴리스 itself. Main session went quiet. Cloud routines (stats tab, sea S1+S2) run on. Next step, if confirmed: run the coordinator as a claude.ai/code cloud session. Also found: CROWN_AID 4.36M and EARNINGS 1.23M per 30 min after 0213 (maybe minted); trace it later (held).
+
 ## CLOUD-FIRST (owner 2026-10-20: "use claude session credit first for all work … until it is exhausted")
 - 05:28 UTC every Fable 5.1 session (local agents AND the first cloud routine) stopped: "out of usage credits" (seven_day_overage_included, resets 2026-10-25 10:00 UTC). Opus still runs in the cloud.
 - Work moves to CLOUD ROUTINES on Opus (no parallel sub-agents). Code only; the main session on PC 디폴리스 runs the read-only prod checks and the deploys.
