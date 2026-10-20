@@ -104,14 +104,16 @@ export function MarketsFace({ beat, onServed }: FaceProps) {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SheetSection heading="Risers" surface data-testid="stats-risers">
+      {/* mt-0 on each: a section brings its own 24px of air, and three of them side by side in a
+          grid would otherwise start at two different heights (0214 wrote the same thing here) */}
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <SheetSection heading="Risers" surface data-testid="stats-risers" className="mt-0 first:mt-0">
           <RankBars rows={movers(risers, 'success')} format={formatPctChange} empty="Nothing rose" />
         </SheetSection>
-        <SheetSection heading="Fallers" surface data-testid="stats-fallers">
+        <SheetSection heading="Fallers" surface data-testid="stats-fallers" className="mt-0 first:mt-0">
           <RankBars rows={movers(fallers, 'danger')} format={formatPctChange} empty="Nothing fell" />
         </SheetSection>
-        <SheetSection heading="Most traded, 24 h" surface data-testid="stats-most-traded">
+        <SheetSection heading="Most traded, 24 h" surface data-testid="stats-most-traded" className="mt-0 first:mt-0">
           <RankBars
             rows={traded.map((r) => ({ id: r.g.code, label: r.g.name, value: r.traded, text: `${formatInt(r.traded)} units` }))}
             format={formatInt}
