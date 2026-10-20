@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Bar, CargoBar, IconDisc, Row, Sheet, type IconDiscTone } from '../../components/ui'
+import { Bar, CargoBar, FactsLine, IconDisc, Row, Sheet, type IconDiscTone } from '../../components/ui'
 import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -184,7 +184,7 @@ function FleetRow({
           `hull` (seen in the design pass's before-shot). On a phone the supplies figure takes its
           own line and each gauge keeps a floor — the width its word, a bar you can read and its
           figure need — so cargo and hull stack under it; from `sm` all three share one line. */}
-      <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-t-caption text-ink-faint" data-testid="fleet-row-bars">
+      <FactsLine data-testid="fleet-row-bars">
         <span className="shrink-0 basis-full tabular-nums sm:basis-auto">{formatVoyageDays(fleet.endurance_days)} of supplies</span>
         {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
             with its staged change washed on. */}
@@ -201,7 +201,7 @@ function FleetRow({
             className="min-w-0 flex-1"
           />
         </span>
-      </span>
+      </FactsLine>
     </Row>
   )
 }
