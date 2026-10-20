@@ -6,9 +6,29 @@ Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
 
 Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the push lands. Migrations deploy in strict number order.
 
-Prod head: **0208**. (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trade ×10 05:19 UTC, 2026-10-19).
+Prod head: **0211** (2026-10-20: 0209 arrivals 23:43, 0210 running costs 00:35, 0211 round trip 00:52 UTC; all after-checks passed).
 
-## PLAN 2026-10-20 ~03:00 UTC (owner asked for every planned build; not started, awaiting "go")
+## THE LIST (tidied 2026-10-20 ~04:00 UTC: the ONE priority order; everything below it is history)
+Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize everything … build slowly step by step, but as efficient as possible."*
+**Rule: at most TWO builds + ONE design in flight.** Lane A = server (one migration at a time, strict number order). Lane B = screens. Lane C = one design doc. Next item starts only when its lane frees.
+
+| # | Item | Lane | State |
+|---|---|---|---|
+| 1 | **Insurance** (0212) | A | agent finishing tests → PR → deploy |
+| 2 | **Money printing fix** (haul 300× → ~4.5×, 0213) | A | agent: sim + PR (branch `osn-haul-cap`); deploys right after 1, then 30-min check |
+| 3 | **Fleet picker** (screens only) | B | agent building (`osn-fleet-picker`) |
+| 4 | **Stats tab** + city-investment gating (owner rule) | A+B | PAUSED, WIP on `osn-stats-tab`, dev-log hand-off; resumes after 2 and 3 |
+| 5 | **Korean language** | B | PAUSED, WIP on `osn-korean`, dev-log hand-off; resumes after 4 so it translates every screen once |
+| 6 | **Sea conditions + Europe-only start** (region unlock) | C → A+B | design doc being written (`osn-sea-conditions-design`); the owner reads it, then build |
+| 7 | **Capital move** | A+B | after 6 |
+| 8 | **Live prices, wider spread** (owner said yes) | A+B | WIP `osn-live-prices`; after 6 |
+| 9 | **Far-selling extras** | A | re-measure after 2 and 6; maybe not needed |
+| 10 | **Hub design** (Tribal-Wars buildings and resources; ships never go home) | C | after 6's design |
+| – | Small: remove PROBE test money (82k) | A | slot in with any migration |
+| – | Decide after 2: merchant hoards / money outflow | – | owner decision later |
+| – | HELD: pirates #268 · famous gear sources | – | owner |
+
+## (superseded by THE LIST) PLAN 2026-10-20 ~03:00 UTC (owner asked for every planned build; not started, awaiting "go")
 1. **Money printing fix** (urgent): far-sale distance premium is minted (IMPORT_DEMAND ≈ 57 % of sale value, ~500–600M/day vs 1.6B world stock; far routes = 89 % of profit). Cut far-end haul 300× → ~4.5× (`haul_max` 600 → 8, 0208's refill pattern). Sim first; after-check IMPORT_DEMAND/SELL.
 2. **Stats tab** (owner 10-20: "statistic tab along with command, map … world economy, npc economy, cities, trade good stocks … updated regularly"): 15-min snapshot job (read-only), 7 d at 15 min then daily forever; Overview / Markets / Cities / Merchants / Me (others' purses hidden, by default). Server first.
 3. **Insurance 0212**: PR pending (agent finishing specs).
