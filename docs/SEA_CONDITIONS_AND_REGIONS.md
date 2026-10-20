@@ -484,3 +484,21 @@ restore every answer to its pre-image (asserted dark in S2 and S3).
 - **No hub.** One column and one function are the seam; everything else waits for its own design.
 - **No change to what a harbour sells, prices, or the distance premium.** The rings decide who may go,
   not what is there.
+
+---
+
+## 9. Corrections found while building (S1, 2026-10-20 — docs/dev-log/2026-10-20-sea-conditions-s1.md)
+
+- The §2 table has **64** zones (its prose said 61); the table is what was built.
+- Prod holds **103** ship classes (§3.1 said 101); every one derives.
+- The prod course **Bristol → Cape Coast never enters the Western Ocean**: it hugs the coast (never west of 17.6° W)
+  and its ten vertices already name every zone it crosses (European Atlantic, Macaronesia, the Doldrums, the Gulf of
+  Guinea). The §1 claim that vertex-only sampling misses the mid-Atlantic on it was wrong for that course. The
+  positive control S1 asserts instead is a two-vertex Lisbon → Havana line: its vertices name two zones, the 30 nm
+  sampling finds Macaronesia, the Western Ocean and the American shore between them.
+- Boxes live in a child table (`sea_zone_boxes`): three zones have two or three boxes and one spans two seas. The zone
+  raster (`sea_zone_cells`) is a derived materialisation of the boxes over the 0040 raster, so a course sample is one
+  byte read.
+- In S2 the 0107 region door stays as the DARK path and goes with its column in the slice after the switch is lit
+  (S2b): the owner's standing rule that a dark slice changes no answer outranks §6's "same slice", and the door refuses
+  real plans today (13 of 17 houses are refused Havana by it).

@@ -1605,6 +1605,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // caller's insured voyages under way and what the insurance paid. A READ, no arguments. Landed WITH the
       // faces that read it (the desk's Plans; the SAIL's own estimate carries the price).
       'worldInsurance',
+      // Pin moved deliberately 2026-10-20 with migration 0215 (docs/SEA_CONDITIONS_AND_REGIONS.md, S1): THE SEA
+      // CONDITIONS — every zone's title and wave asks, the caller's title, her fleets' wave, the switch. A READ, no
+      // arguments. Served dark (sea_conditions_bite false) ahead of the Codex "Seas" face and the map's shading (C3).
+      'worldSeaConditions',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

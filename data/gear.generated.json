@@ -2159,6 +2159,10 @@
     {
      "stat": "speed",
      "delta": -0.25
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -2205,6 +2209,10 @@
     {
      "stat": "speed",
      "delta": -0.25
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -2256,6 +2264,10 @@
     {
      "stat": "speed",
      "delta": -0.25
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -2307,6 +2319,10 @@
     {
      "stat": "speed",
      "delta": -0.25
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -2358,6 +2374,10 @@
     {
      "stat": "speed",
      "delta": -0.25
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -2831,6 +2851,10 @@
     {
      "stat": "hold",
      "delta": -8
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -2878,6 +2902,10 @@
     {
      "stat": "hold",
      "delta": -8
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -2925,6 +2953,10 @@
     {
      "stat": "hold",
      "delta": -8
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -2972,6 +3004,10 @@
     {
      "stat": "hold",
      "delta": -8
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -3023,6 +3059,10 @@
     {
      "stat": "hold",
      "delta": -10
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -3069,6 +3109,10 @@
     {
      "stat": "hold",
      "delta": -10
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -3120,6 +3164,10 @@
     {
      "stat": "hold",
      "delta": -10
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -3171,6 +3219,10 @@
     {
      "stat": "hold",
      "delta": -10
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -3222,6 +3274,10 @@
     {
      "stat": "hold",
      "delta": -10
+    },
+    {
+     "stat": "wave",
+     "delta": 6
     }
    ],
    "recipe": [
@@ -3977,6 +4033,10 @@
     {
      "stat": "speed",
      "delta": -0.4
+    },
+    {
+     "stat": "wave",
+     "delta": 1
     }
    ],
    "recipe": [
@@ -4024,6 +4084,10 @@
     {
      "stat": "speed",
      "delta": -0.4
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -4075,6 +4139,10 @@
     {
      "stat": "speed",
      "delta": -0.4
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -4126,6 +4194,10 @@
     {
      "stat": "speed",
      "delta": -0.4
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -4177,6 +4249,10 @@
     {
      "stat": "speed",
      "delta": -0.3
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -4228,6 +4304,10 @@
     {
      "stat": "speed",
      "delta": -0.3
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -4279,6 +4359,10 @@
     {
      "stat": "speed",
      "delta": -0.3
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -4334,6 +4418,10 @@
     {
      "stat": "speed",
      "delta": -0.3
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -4393,6 +4481,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -4447,6 +4539,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -4506,6 +4602,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -4565,6 +4665,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -4624,6 +4728,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 6
     }
    ],
    "recipe": [
@@ -4675,6 +4783,10 @@
     {
      "stat": "hold",
      "delta": -5
+    },
+    {
+     "stat": "wave",
+     "delta": 1
     }
    ],
    "recipe": [
@@ -4717,6 +4829,10 @@
     {
      "stat": "hold",
      "delta": -5
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -4768,6 +4884,10 @@
     {
      "stat": "hold",
      "delta": -5
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -4815,6 +4935,10 @@
     {
      "stat": "hold",
      "delta": -5
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -4862,6 +4986,10 @@
     {
      "stat": "hold",
      "delta": -5
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -5433,6 +5561,10 @@
     {
      "stat": "speed",
      "delta": -0.15
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -5476,6 +5608,10 @@
     {
      "stat": "speed",
      "delta": -0.2
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -5519,6 +5655,10 @@
     {
      "stat": "handling",
      "delta": -5
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -5562,6 +5702,10 @@
     {
      "stat": "handling",
      "delta": -6
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -6422,6 +6566,10 @@
     {
      "stat": "speed",
      "delta": -0.31
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -6591,6 +6739,10 @@
     {
      "stat": "hold",
      "delta": -10
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -6650,6 +6802,10 @@
     {
      "stat": "hold",
      "delta": -13
+    },
+    {
+     "stat": "wave",
+     "delta": 6
     }
    ],
    "recipe": [
@@ -6886,6 +7042,10 @@
     {
      "stat": "speed",
      "delta": -0.5
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -6945,6 +7105,10 @@
     {
      "stat": "speed",
      "delta": -0.38
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -7012,6 +7176,10 @@
     {
      "stat": "hold",
      "delta": -15
+    },
+    {
+     "stat": "wave",
+     "delta": 6
     }
    ],
    "recipe": [
@@ -7067,6 +7235,10 @@
     {
      "stat": "hold",
      "delta": -6
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -7298,6 +7470,10 @@
     {
      "stat": "hold",
      "delta": -8
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -7534,6 +7710,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -7710,6 +7890,10 @@
     {
      "stat": "speed",
      "delta": -0.3
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -7762,6 +7946,10 @@
     {
      "stat": "hold",
      "delta": -5
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -7818,6 +8006,10 @@
     {
      "stat": "speed",
      "delta": -0.4
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -8009,6 +8201,10 @@
     {
      "stat": "hold",
      "delta": 5
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -8171,6 +8367,10 @@
     {
      "stat": "armour",
      "delta": 4
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -8236,6 +8436,10 @@
     {
      "stat": "sighting",
      "delta": 2
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -8702,6 +8906,10 @@
     {
      "stat": "handling",
      "delta": 4
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -8925,6 +9133,10 @@
     {
      "stat": "handling",
      "delta": 4
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -9164,6 +9376,10 @@
     {
      "stat": "attack",
      "delta": 15
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -9334,6 +9550,10 @@
     {
      "stat": "durability",
      "delta": 40
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -9403,6 +9623,10 @@
     {
      "stat": "handling",
      "delta": 4
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -9634,6 +9858,10 @@
     {
      "stat": "hold",
      "delta": 6
+    },
+    {
+     "stat": "wave",
+     "delta": 3
     }
    ],
    "recipe": [
@@ -10039,6 +10267,10 @@
     {
      "stat": "accuracy",
      "delta": 6
+    },
+    {
+     "stat": "wave",
+     "delta": 4
     }
    ],
    "recipe": [
@@ -10104,6 +10336,10 @@
     {
      "stat": "accuracy",
      "delta": 6
+    },
+    {
+     "stat": "wave",
+     "delta": 2
     }
    ],
    "recipe": [
@@ -10331,6 +10567,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 5
     }
    ],
    "recipe": [
@@ -10681,6 +10921,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 6
     }
    ],
    "recipe": [
@@ -11075,6 +11319,10 @@
     {
      "stat": "hold",
      "delta": -12
+    },
+    {
+     "stat": "wave",
+     "delta": 6
     }
    ],
    "recipe": [

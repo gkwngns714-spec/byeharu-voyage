@@ -140,6 +140,10 @@
         {
           "stat": "hold",
           "delta": -8
+        },
+        {
+          "stat": "wave",
+          "delta": 2
         }
       ]
     },
@@ -174,6 +178,10 @@
         {
           "stat": "speed",
           "delta": -0.4
+        },
+        {
+          "stat": "wave",
+          "delta": 1
         }
       ]
     },
@@ -212,6 +220,10 @@
         {
           "stat": "speed",
           "delta": -0.3
+        },
+        {
+          "stat": "wave",
+          "delta": 2
         }
       ]
     },

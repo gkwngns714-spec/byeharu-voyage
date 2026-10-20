@@ -888,6 +888,10 @@ export interface FleetShip {
   accuracy: number
   reach: number
   sighting: number
+  /** 0215 — her WAVE RESISTANCE (docs/SEA_CONDITIONS_AND_REGIONS.md §3): the class's figure plus what is
+   *  mounted (anchors, planking, sheathing, …), `world.ship_stat(ship, 'wave')`. Optional for one release: a
+   *  server older than 0215 does not serve it. */
+  wave?: number
   /** What is mounted on her right now. */
   fittings: MountedFitting[]
   /** How many places she has in each gear RACK (0132: high · mid · low · refit · flourish; before
@@ -1135,6 +1139,10 @@ export interface FleetView {
   /** Formation speed in knots, slowest ship first (B.3). */
   speed_kn: number
   endurance_days: number
+  /** 0215 — the fleet's WAVE RESISTANCE, `public.fleet_wave(fleet)`: the floor of the average of her hulls'
+   *  `wave` (a nau and two barcas read 21). A zone whose `wave_min` is above it is closed to her once the sea
+   *  conditions bite (docs/SEA_CONDITIONS_AND_REGIONS.md). Null for a fleet with no hull; absent before 0215. */
+  wave?: number | null
   /**
    * ROOM FOR THE NEXT PARCEL, IN TUNS — `public.fleet_free_hold(fleet)` (0017:183), and THE ONE
    * ANSWER to it. It is the same reading `cmd.do_buy` checks against and `public.fleet_load`
@@ -1469,6 +1477,41 @@ export interface PlayerFame {
   turnover: number
 }
 
+/** 0215 — one zone of the sea conditions (`public.sea_zones` + its boxes on the sea raster). */
+export interface SeaZone {
+  code: string
+  name: string
+  /** The title a captain needs to enter it (1–8 today). */
+  title_min: number
+  /** The fleet wave resistance it asks (0 on home waters, 70 on the open Pacific). */
+  wave_min: number
+  /** Requirement order: the first zone that refuses, in this order, is the one named. */
+  ord: number
+  /** The boxes that cut it out of its raster sea(s); a box with no bounds is the rest of that sea. */
+  boxes: Array<{
+    sea: string
+    ord: number
+    lat_min: number | null
+    lat_max: number | null
+    lon_min: number | null
+    lon_max: number | null
+  }>
+}
+
+/** 0215 — `world.sea_conditions()`: the zones, the caller's title, her fleets' wave, and the switch. The client
+ *  prints these and derives none (docs/SEA_CONDITIONS_AND_REGIONS.md). */
+export interface SeaConditions {
+  /** Whether the conditions bite yet (`sea_conditions_bite`); false = the zones are a reading only. */
+  bite: boolean
+  /** The caller's title, or null for no company. */
+  title: { level: number; name: string | null; max: number } | null
+  titles: Array<{ level: number; name: string }>
+  zones: SeaZone[]
+  fleets: Array<{ id: string; name: string; wave: number | null }>
+  /** How often a course is sampled for the zones it crosses, in nautical miles (`sea_sample_nm`). */
+  sample_nm: number
+}
+
 /** The signed-in house, reading itself (0014). */
 export interface PlayerHouse {
   id: string
@@ -1477,7 +1520,11 @@ export interface PlayerHouse {
   nation_name: string | null
   ducats: number
   company_level: number
+  /** 0215 — THE TITLE, derived (`public.title_level`): the lower of her Trading and Exploration levels, capped at
+   *  `title_max` (11). Before 0215 this was a stored column nothing moved (always 1). */
   title_level: number
+  /** 0215 — the title's name (`public.title_names`), e.g. "Master" at 3. Absent before 0215. */
+  title_name?: string | null
   founded_at: string
   fleets: number
   ships: number

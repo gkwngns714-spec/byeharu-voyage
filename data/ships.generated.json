@@ -28,6 +28,7 @@
    "accuracy": 38,
    "reach": 30,
    "sighting": 11,
+   "waveResistance": 25,
    "deck": 28,
    "hands": 76,
    "racks": {
@@ -104,6 +105,7 @@
    "accuracy": 60,
    "reach": 78,
    "sighting": 14,
+   "waveResistance": 51,
    "deck": 82,
    "hands": 255,
    "racks": {
@@ -184,6 +186,7 @@
    "accuracy": 20,
    "reach": 29,
    "sighting": 10,
+   "waveResistance": 13,
    "deck": 14,
    "hands": 28,
    "racks": {
@@ -252,6 +255,7 @@
    "accuracy": 30,
    "reach": 44,
    "sighting": 10,
+   "waveResistance": 25,
    "deck": 22,
    "hands": 31,
    "racks": {
@@ -328,6 +332,7 @@
    "accuracy": 38,
    "reach": 34,
    "sighting": 11,
+   "waveResistance": 27,
    "deck": 28,
    "hands": 87,
    "racks": {
@@ -404,6 +409,7 @@
    "accuracy": 55,
    "reach": 74,
    "sighting": 14,
+   "waveResistance": 39,
    "deck": 56,
    "hands": 126,
    "racks": {
@@ -480,6 +486,7 @@
    "accuracy": 60,
    "reach": 82,
    "sighting": 14,
+   "waveResistance": 51,
    "deck": 82,
    "hands": 293,
    "racks": {
@@ -560,6 +567,7 @@
    "accuracy": 0,
    "reach": 20,
    "sighting": 10,
+   "waveResistance": 15,
    "deck": 11,
    "hands": 10,
    "racks": {
@@ -628,6 +636,7 @@
    "accuracy": 30,
    "reach": 40,
    "sighting": 10,
+   "waveResistance": 27,
    "deck": 22,
    "hands": 21,
    "racks": {
@@ -704,6 +713,7 @@
    "accuracy": 55,
    "reach": 70,
    "sighting": 14,
+   "waveResistance": 39,
    "deck": 56,
    "hands": 82,
    "racks": {
@@ -776,6 +786,7 @@
    "accuracy": 58,
    "reach": 72,
    "sighting": 14,
+   "waveResistance": 39,
    "deck": 62,
    "hands": 131,
    "racks": {
@@ -848,6 +859,7 @@
    "accuracy": 50,
    "reach": 65,
    "sighting": 13,
+   "waveResistance": 51,
    "deck": 72,
    "hands": 120,
    "racks": {
@@ -924,6 +936,7 @@
    "accuracy": 0,
    "reach": 28,
    "sighting": 10,
+   "waveResistance": 15,
    "deck": 11,
    "hands": 13,
    "racks": {
@@ -992,6 +1005,7 @@
    "accuracy": 0,
    "reach": 28,
    "sighting": 8,
+   "waveResistance": 15,
    "deck": 12,
    "hands": 16,
    "racks": {
@@ -1060,6 +1074,7 @@
    "accuracy": 48,
    "reach": 58,
    "sighting": 11,
+   "waveResistance": 25,
    "deck": 28,
    "hands": 50,
    "racks": {
@@ -1136,6 +1151,7 @@
    "accuracy": 63,
    "reach": 78,
    "sighting": 14,
+   "waveResistance": 39,
    "deck": 56,
    "hands": 110,
    "racks": {
@@ -1208,6 +1224,7 @@
    "accuracy": 68,
    "reach": 86,
    "sighting": 14,
+   "waveResistance": 51,
    "deck": 82,
    "hands": 255,
    "racks": {
@@ -1284,6 +1301,7 @@
    "accuracy": 0,
    "reach": 20,
    "sighting": 9,
+   "waveResistance": 13,
    "deck": 12,
    "hands": 16,
    "racks": {
@@ -1352,6 +1370,7 @@
    "accuracy": 44,
    "reach": 45,
    "sighting": 11,
+   "waveResistance": 26,
    "deck": 22,
    "hands": 24,
    "racks": {
@@ -1428,6 +1447,7 @@
    "accuracy": 59,
    "reach": 70,
    "sighting": 15,
+   "waveResistance": 39,
    "deck": 56,
    "hands": 110,
    "racks": {
@@ -1500,6 +1520,7 @@
    "accuracy": 62,
    "reach": 72,
    "sighting": 15,
+   "waveResistance": 30,
    "deck": 62,
    "hands": 175,
    "racks": {
@@ -1572,6 +1593,7 @@
    "accuracy": 64,
    "reach": 78,
    "sighting": 15,
+   "waveResistance": 51,
    "deck": 82,
    "hands": 255,
    "racks": {
@@ -1648,6 +1670,7 @@
    "accuracy": 32,
    "reach": 20,
    "sighting": 9,
+   "waveResistance": 6,
    "deck": 15,
    "hands": 44,
    "racks": {
@@ -1716,6 +1739,7 @@
    "accuracy": 32,
    "reach": 30,
    "sighting": 10,
+   "waveResistance": 27,
    "deck": 22,
    "hands": 36,
    "racks": {
@@ -1792,6 +1816,7 @@
    "accuracy": 40,
    "reach": 20,
    "sighting": 11,
+   "waveResistance": 18,
    "deck": 28,
    "hands": 103,
    "racks": {
@@ -1868,6 +1893,7 @@
    "accuracy": 57,
    "reach": 60,
    "sighting": 14,
+   "waveResistance": 30,
    "deck": 56,
    "hands": 148,
    "racks": {
@@ -1940,6 +1966,7 @@
    "accuracy": 52,
    "reach": 55,
    "sighting": 13,
+   "waveResistance": 51,
    "deck": 72,
    "hands": 216,
    "racks": {
@@ -2016,6 +2043,7 @@
    "accuracy": 0,
    "reach": 16,
    "sighting": 8,
+   "waveResistance": 12,
    "deck": 12,
    "hands": 20,
    "racks": {
@@ -2084,6 +2112,7 @@
    "accuracy": 38,
    "reach": 26,
    "sighting": 11,
+   "waveResistance": 24,
    "deck": 28,
    "hands": 94,
    "racks": {
@@ -2160,6 +2189,7 @@
    "accuracy": 55,
    "reach": 66,
    "sighting": 14,
+   "waveResistance": 36,
    "deck": 56,
    "hands": 137,
    "racks": {
@@ -2232,6 +2262,7 @@
    "accuracy": 58,
    "reach": 68,
    "sighting": 14,
+   "waveResistance": 30,
    "deck": 62,
    "hands": 219,
    "racks": {
@@ -2304,6 +2335,7 @@
    "accuracy": 60,
    "reach": 74,
    "sighting": 14,
+   "waveResistance": 42,
    "deck": 82,
    "hands": 319,
    "racks": {
@@ -2380,6 +2412,7 @@
    "accuracy": 0,
    "reach": 10,
    "sighting": 9,
+   "waveResistance": 12,
    "deck": 12,
    "hands": 13,
    "racks": {
@@ -2444,6 +2477,7 @@
    "accuracy": 0,
    "reach": 10,
    "sighting": 11,
+   "waveResistance": 14,
    "deck": 11,
    "hands": 11,
    "racks": {
@@ -2508,6 +2542,7 @@
    "accuracy": 28,
    "reach": 20,
    "sighting": 12,
+   "waveResistance": 24,
    "deck": 28,
    "hands": 64,
    "racks": {
@@ -2576,6 +2611,7 @@
    "accuracy": 45,
    "reach": 60,
    "sighting": 15,
+   "waveResistance": 36,
    "deck": 56,
    "hands": 93,
    "racks": {
@@ -2644,6 +2680,7 @@
    "accuracy": 40,
    "reach": 55,
    "sighting": 14,
+   "waveResistance": 49,
    "deck": 72,
    "hands": 136,
    "racks": {
@@ -2716,6 +2753,7 @@
    "accuracy": 0,
    "reach": 20,
    "sighting": 10,
+   "waveResistance": 14,
    "deck": 11,
    "hands": 13,
    "racks": {
@@ -2784,6 +2822,7 @@
    "accuracy": 26,
    "reach": 40,
    "sighting": 10,
+   "waveResistance": 24,
    "deck": 22,
    "hands": 27,
    "racks": {
@@ -2856,6 +2895,7 @@
    "accuracy": 34,
    "reach": 30,
    "sighting": 11,
+   "waveResistance": 24,
    "deck": 28,
    "hands": 76,
    "racks": {
@@ -2928,6 +2968,7 @@
    "accuracy": 51,
    "reach": 70,
    "sighting": 14,
+   "waveResistance": 36,
    "deck": 56,
    "hands": 110,
    "racks": {
@@ -2996,6 +3037,7 @@
    "accuracy": 56,
    "reach": 78,
    "sighting": 14,
+   "waveResistance": 48,
    "deck": 82,
    "hands": 255,
    "racks": {
@@ -3068,6 +3110,7 @@
    "accuracy": 36,
    "reach": 22,
    "sighting": 10,
+   "waveResistance": 6,
    "deck": 15,
    "hands": 38,
    "racks": {
@@ -3136,6 +3179,7 @@
    "accuracy": 0,
    "reach": 12,
    "sighting": 9,
+   "waveResistance": 15,
    "deck": 12,
    "hands": 18,
    "racks": {
@@ -3204,6 +3248,7 @@
    "accuracy": 44,
    "reach": 22,
    "sighting": 12,
+   "waveResistance": 18,
    "deck": 28,
    "hands": 87,
    "racks": {
@@ -3276,6 +3321,7 @@
    "accuracy": 61,
    "reach": 62,
    "sighting": 15,
+   "waveResistance": 39,
    "deck": 56,
    "hands": 126,
    "racks": {
@@ -3344,6 +3390,7 @@
    "accuracy": 66,
    "reach": 70,
    "sighting": 15,
+   "waveResistance": 42,
    "deck": 82,
    "hands": 293,
    "racks": {
@@ -3416,6 +3463,7 @@
    "accuracy": 0,
    "reach": 20,
    "sighting": 10,
+   "waveResistance": 8,
    "deck": 11,
    "hands": 14,
    "racks": {
@@ -3484,6 +3532,7 @@
    "accuracy": 34,
    "reach": 40,
    "sighting": 10,
+   "waveResistance": 24,
    "deck": 22,
    "hands": 29,
    "racks": {
@@ -3556,6 +3605,7 @@
    "accuracy": 42,
    "reach": 30,
    "sighting": 11,
+   "waveResistance": 18,
    "deck": 28,
    "hands": 83,
    "racks": {
@@ -3628,6 +3678,7 @@
    "accuracy": 59,
    "reach": 70,
    "sighting": 14,
+   "waveResistance": 36,
    "deck": 56,
    "hands": 121,
    "racks": {
@@ -3696,6 +3747,7 @@
    "accuracy": 64,
    "reach": 78,
    "sighting": 14,
+   "waveResistance": 42,
    "deck": 82,
    "hands": 280,
    "racks": {
@@ -3768,6 +3820,7 @@
    "accuracy": 50,
    "reach": 65,
    "sighting": 13,
+   "waveResistance": 63,
    "deck": 100,
    "hands": 240,
    "racks": {
@@ -3852,6 +3905,7 @@
    "accuracy": 50,
    "reach": 65,
    "sighting": 13,
+   "waveResistance": 75,
    "deck": 138,
    "hands": 400,
    "racks": {
@@ -3932,6 +3986,7 @@
    "accuracy": 50,
    "reach": 69,
    "sighting": 13,
+   "waveResistance": 63,
    "deck": 100,
    "hands": 276,
    "racks": {
@@ -4016,6 +4071,7 @@
    "accuracy": 64,
    "reach": 89,
    "sighting": 15,
+   "waveResistance": 75,
    "deck": 150,
    "hands": 678,
    "racks": {
@@ -4096,6 +4152,7 @@
    "accuracy": 50,
    "reach": 65,
    "sighting": 13,
+   "waveResistance": 63,
    "deck": 100,
    "hands": 180,
    "racks": {
@@ -4176,6 +4233,7 @@
    "accuracy": 58,
    "reach": 73,
    "sighting": 13,
+   "waveResistance": 63,
    "deck": 100,
    "hands": 240,
    "racks": {
@@ -4256,6 +4314,7 @@
    "accuracy": 72,
    "reach": 93,
    "sighting": 15,
+   "waveResistance": 75,
    "deck": 150,
    "hands": 590,
    "racks": {
@@ -4332,6 +4391,7 @@
    "accuracy": 66,
    "reach": 82,
    "sighting": 15,
+   "waveResistance": 63,
    "deck": 115,
    "hands": 380,
    "racks": {
@@ -4412,6 +4472,7 @@
    "accuracy": 64,
    "reach": 72,
    "sighting": 14,
+   "waveResistance": 54,
    "deck": 115,
    "hands": 513,
    "racks": {
@@ -4492,6 +4553,7 @@
    "accuracy": 62,
    "reach": 78,
    "sighting": 14,
+   "waveResistance": 63,
    "deck": 115,
    "hands": 475,
    "racks": {
@@ -4572,6 +4634,7 @@
    "accuracy": 64,
    "reach": 81,
    "sighting": 15,
+   "waveResistance": 66,
    "deck": 150,
    "hands": 738,
    "racks": {
@@ -4648,6 +4711,7 @@
    "accuracy": 40,
    "reach": 55,
    "sighting": 14,
+   "waveResistance": 61,
    "deck": 100,
    "hands": 204,
    "racks": {
@@ -4724,6 +4788,7 @@
    "accuracy": 46,
    "reach": 65,
    "sighting": 13,
+   "waveResistance": 60,
    "deck": 100,
    "hands": 240,
    "racks": {
@@ -4800,6 +4865,7 @@
    "accuracy": 68,
    "reach": 74,
    "sighting": 15,
+   "waveResistance": 54,
    "deck": 115,
    "hands": 437,
    "racks": {
@@ -4876,6 +4942,7 @@
    "accuracy": 66,
    "reach": 82,
    "sighting": 14,
+   "waveResistance": 54,
    "deck": 115,
    "hands": 418,
    "racks": {
@@ -4952,6 +5019,7 @@
    "accuracy": 42,
    "reach": 30,
    "sighting": 11,
+   "waveResistance": 25,
    "deck": 34,
    "hands": 76,
    "racks": {
@@ -5032,6 +5100,7 @@
    "accuracy": 55,
    "reach": 60,
    "sighting": 14,
+   "waveResistance": 39,
    "deck": 66,
    "hands": 145,
    "racks": {
@@ -5112,6 +5181,7 @@
    "accuracy": 50,
    "reach": 69,
    "sighting": 13,
+   "waveResistance": 51,
    "deck": 84,
    "hands": 184,
    "racks": {
@@ -5192,6 +5262,7 @@
    "accuracy": 42,
    "reach": 34,
    "sighting": 11,
+   "waveResistance": 27,
    "deck": 34,
    "hands": 87,
    "racks": {
@@ -5272,6 +5343,7 @@
    "accuracy": 55,
    "reach": 70,
    "sighting": 14,
+   "waveResistance": 39,
    "deck": 65,
    "hands": 82,
    "racks": {
@@ -5348,6 +5420,7 @@
    "accuracy": 42,
    "reach": 30,
    "sighting": 11,
+   "waveResistance": 27,
    "deck": 34,
    "hands": 57,
    "racks": {
@@ -5428,6 +5501,7 @@
    "accuracy": 0,
    "reach": 28,
    "sighting": 13,
+   "waveResistance": 15,
    "deck": 12,
    "hands": 13,
    "racks": {
@@ -5504,6 +5578,7 @@
    "accuracy": 63,
    "reach": 78,
    "sighting": 14,
+   "waveResistance": 39,
    "deck": 65,
    "hands": 110,
    "racks": {
@@ -5580,6 +5655,7 @@
    "accuracy": 46,
    "reach": 30,
    "sighting": 12,
+   "waveResistance": 27,
    "deck": 34,
    "hands": 76,
    "racks": {
@@ -5660,6 +5736,7 @@
    "accuracy": 59,
    "reach": 70,
    "sighting": 15,
+   "waveResistance": 39,
    "deck": 65,
    "hands": 110,
    "racks": {
@@ -5736,6 +5813,7 @@
    "accuracy": 64,
    "reach": 62,
    "sighting": 14,
+   "waveResistance": 30,
    "deck": 71,
    "hands": 236,
    "racks": {
@@ -5812,6 +5890,7 @@
    "accuracy": 52,
    "reach": 55,
    "sighting": 13,
+   "waveResistance": 51,
    "deck": 84,
    "hands": 216,
    "racks": {
@@ -5888,6 +5967,7 @@
    "accuracy": 42,
    "reach": 26,
    "sighting": 11,
+   "waveResistance": 24,
    "deck": 34,
    "hands": 94,
    "racks": {
@@ -5968,6 +6048,7 @@
    "accuracy": 60,
    "reach": 66,
    "sighting": 14,
+   "waveResistance": 42,
    "deck": 89,
    "hands": 262,
    "racks": {
@@ -6044,6 +6125,7 @@
    "accuracy": 0,
    "reach": 10,
    "sighting": 14,
+   "waveResistance": 14,
    "deck": 12,
    "hands": 11,
    "racks": {
@@ -6116,6 +6198,7 @@
    "accuracy": 32,
    "reach": 20,
    "sighting": 12,
+   "waveResistance": 24,
    "deck": 34,
    "hands": 64,
    "racks": {
@@ -6188,6 +6271,7 @@
    "accuracy": 58,
    "reach": 72,
    "sighting": 14,
+   "waveResistance": 36,
    "deck": 71,
    "hands": 175,
    "racks": {
@@ -6260,6 +6344,7 @@
    "accuracy": 46,
    "reach": 65,
    "sighting": 13,
+   "waveResistance": 48,
    "deck": 84,
    "hands": 160,
    "racks": {
@@ -6332,6 +6417,7 @@
    "accuracy": 40,
    "reach": 22,
    "sighting": 10,
+   "waveResistance": 6,
    "deck": 18,
    "hands": 38,
    "racks": {
@@ -6408,6 +6494,7 @@
    "accuracy": 61,
    "reach": 62,
    "sighting": 15,
+   "waveResistance": 39,
    "deck": 65,
    "hands": 126,
    "racks": {
@@ -6480,6 +6567,7 @@
    "accuracy": 0,
    "reach": 20,
    "sighting": 13,
+   "waveResistance": 8,
    "deck": 12,
    "hands": 14,
    "racks": {
@@ -6556,6 +6644,7 @@
    "accuracy": 66,
    "reach": 72,
    "sighting": 14,
+   "waveResistance": 30,
    "deck": 71,
    "hands": 192,
    "racks": {
@@ -6628,6 +6717,7 @@
    "accuracy": 50,
    "reach": 65,
    "sighting": 14,
+   "waveResistance": 75,
    "deck": 156,
    "hands": 400,
    "racks": {
@@ -6721,6 +6811,7 @@
    "accuracy": 72,
    "reach": 89,
    "sighting": 16,
+   "waveResistance": 75,
    "deck": 168,
    "hands": 678,
    "racks": {
@@ -6814,6 +6905,7 @@
    "accuracy": 50,
    "reach": 65,
    "sighting": 14,
+   "waveResistance": 51,
    "deck": 84,
    "hands": 120,
    "racks": {
@@ -6903,6 +6995,7 @@
    "accuracy": 52,
    "reach": 53,
    "sighting": 15,
+   "waveResistance": 27,
    "deck": 24,
    "hands": 24,
    "racks": {
@@ -6996,6 +7089,7 @@
    "accuracy": 74,
    "reach": 82,
    "sighting": 16,
+   "waveResistance": 63,
    "deck": 130,
    "hands": 380,
    "racks": {
@@ -7085,6 +7179,7 @@
    "accuracy": 72,
    "reach": 72,
    "sighting": 15,
+   "waveResistance": 54,
    "deck": 130,
    "hands": 513,
    "racks": {
@@ -7174,6 +7269,7 @@
    "accuracy": 66,
    "reach": 68,
    "sighting": 15,
+   "waveResistance": 30,
    "deck": 71,
    "hands": 219,
    "racks": {
@@ -7263,6 +7359,7 @@
    "accuracy": 40,
    "reach": 55,
    "sighting": 15,
+   "waveResistance": 73,
    "deck": 156,
    "hands": 340,
    "racks": {
@@ -7348,6 +7445,7 @@
    "accuracy": 46,
    "reach": 65,
    "sighting": 14,
+   "waveResistance": 72,
    "deck": 156,
    "hands": 400,
    "racks": {
@@ -7433,6 +7531,7 @@
    "accuracy": 60,
    "reach": 57,
    "sighting": 23,
+   "waveResistance": 53,
    "deck": 78,
    "hands": 167,
    "racks": {
@@ -7518,6 +7617,7 @@
    "accuracy": 70,
    "reach": 72,
    "sighting": 15,
+   "waveResistance": 30,
    "deck": 71,
    "hands": 192,
    "racks": {
