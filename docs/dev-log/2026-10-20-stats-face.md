@@ -19,7 +19,7 @@ The rollup stays at a count a quarter hour — that cadence is why it is cheap o
 snapshots would multiply a ~50 MB table by 900). The split:
 
 * **RIGHT NOW** (`src/features/stats/LiveNow.tsx`) — a band on every face, fed by the store the shell ALREADY
-  polls (AppShell's beat, 3 s at the current clock): your purse, your ships at sea, your ships in port, the
+  polls (AppShell's beat, 3 s at the current clock): your purse, your fleets at sea, your fleets in port, the
   cargo you carry, and the countdown to the next count. No read of its own, no second poller, no write.
 * **THE ROLLUP** (`statsPulse.ts`) — re-asked once a minute as before, AND at the edge of the next count
   (`useReaskAtEdge` on the served `age_seconds` + `slot_seconds`, with 20 s of grace because prod's job runs at

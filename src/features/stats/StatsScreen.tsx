@@ -21,7 +21,7 @@ import { useStatsPulse, type StatsServed } from './statsPulse'
 //
 // TWO CADENCES, AND THEY ARE BOTH THE OWNER'S (requests 187 and 188, 2026-10-20 — *"I want stats to be
 // in real time, by seconds updated"*, *"no visuals, no charts, no number moving around"*):
-//   · RIGHT NOW (LiveNow.tsx) is the world's own beat — your purse, your ships, your cargo, straight
+//   · RIGHT NOW (LiveNow.tsx) is the world's own beat — your purse, your fleets, your cargo, straight
 //     out of the store the shell polls every few seconds. No new read, no new write.
 //   · THE ROLLUP is re-asked once a minute AND at the edge of the next count (statsPulse.ts), so a
 //     fresh count reaches the screen within seconds of the server writing it. The age beside the

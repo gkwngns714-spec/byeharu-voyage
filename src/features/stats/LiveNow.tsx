@@ -23,8 +23,11 @@ export function LiveNow({ dueMs }: { dueMs: number | null }) {
   const ducats = useWorld((s) => s.ducats)
   const fleets = useWorld((s) => s.fleets)
 
-  const atSea = fleets.filter((f) => whereabouts(f).kind === 'sailing').length
-  const inPort = fleets.filter((f) => whereabouts(f).kind === 'docked').length
+  // ONE classification per fleet (domain/fleet's `whereabouts`, the authority every screen and the
+  // chart read), then counted. These are FLEETS, not hulls: a fleet is what sails.
+  const where = fleets.map((f) => whereabouts(f).kind)
+  const atSea = where.filter((k) => k === 'sailing').length
+  const inPort = where.filter((k) => k === 'docked').length
   const carried = fleets.reduce((n, f) => n + fleetHoldUsed(f), 0)
 
   return (
@@ -53,8 +56,8 @@ export function LiveNow({ dueMs }: { dueMs: number | null }) {
           text={ducats === null ? '—' : undefined}
           data-testid="stats-live-purse"
         />
-        <StatCell label="Your ships at sea" value={atSea} format={formatInt} />
-        <StatCell label="Your ships in port" value={inPort} format={formatInt} />
+        <StatCell label="Your fleets at sea" value={atSea} format={formatInt} />
+        <StatCell label="Your fleets in port" value={inPort} format={formatInt} />
         <StatCell label="Cargo you carry" value={carried} format={(v) => formatTons(v)} />
       </div>
       <Hint className="mt-2">These four come from the world itself and move every few seconds. The figures below are counted every fifteen minutes.</Hint>
