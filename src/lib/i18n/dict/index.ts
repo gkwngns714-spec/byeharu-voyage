@@ -8,6 +8,7 @@ import { formatDict } from './format'
 import { foundDict } from './found'
 import { historyDict } from './history'
 import { mapDict } from './map'
+import { portDict } from './port'
 import { profileDict } from './profile'
 import { quayDict } from './quay'
 import { rankDict } from './rank'
@@ -25,6 +26,7 @@ export const DICT = {
   found: foundDict,
   history: historyDict,
   map: mapDict,
+  port: portDict,
   profile: profileDict,
   quay: quayDict,
   rank: rankDict,

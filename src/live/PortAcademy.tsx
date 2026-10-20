@@ -18,6 +18,7 @@ import { useShellState } from '../app/shellState'
 import { formatDucats, formatRealDuration } from '../lib/format'
 import { useWorld } from './worldStore'
 import type { Skill, SkillBook } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // THE ACADEMY → SKILLS (0016; re-made by 0131, docs/SHIPS_AND_SKILLS.md §5): the skills in their
 // groups, and the training QUEUE with a timer on every entry. A skill is ENROLLED once where it is
@@ -31,6 +32,7 @@ import type { Skill, SkillBook } from '../lib/rpc'
 // not, whether a docked fleet can enrol and which one. A press composes the request (the queue as
 // served plus the served next level) and the server takes it whole or refuses it whole.
 export function PortAcademy() {
+  const t = useT()
   const book = useWorld((s) => s.skills)
   const loadSkills = useWorld((s) => s.loadSkills)
   const enrollSkill = useWorld((s) => s.enrollSkill)
@@ -77,21 +79,21 @@ export function PortAcademy() {
 
   return (
     <div data-testid="port-academy">
-      <SheetSection heading="Training" data-testid="skill-queue">
-        <Hint>Trains while you are away.</Hint>
+      <SheetSection heading={t('port.training')} data-testid="skill-queue">
+        <Hint>{t('port.trainsAway')}</Hint>
         {book.queue.length === 0 ? (
-          <Row label="Nothing is training." tone="muted" hairline={false} />
+          <Row label={t('port.nothingTraining')} tone="muted" hairline={false} />
         ) : (
           <>
             {book.queue.map((q, i) => (
               <Row
                 key={q.pos}
-                label={`${q.name} · level ${q.level}`}
+                label={t('port.queued', { name: q.name, level: q.level })}
                 value={
                   <span className="flex items-center gap-2">
-                    <Countdown untilMs={Date.parse(q.finishes_at)} nowMs={nowMs} dueText="Done" />
+                    <Countdown untilMs={Date.parse(q.finishes_at)} nowMs={nowMs} dueText={t('port.done')} />
                     <Button variant="quiet" size="sm" busy={busy} onClick={() => remove(q.pos)} data-testid={`unqueue-${q.pos}`}>
-                      Remove
+                      {t('port.remove')}
                     </Button>
                   </span>
                 }
@@ -101,8 +103,8 @@ export function PortAcademy() {
             ))}
             {book.eta && (
               <Row
-                label={`All done · ${book.queue.length} / ${book.queue_max} levels`}
-                value={<Countdown untilMs={Date.parse(book.eta)} nowMs={nowMs} dueText="Done" />}
+                label={t('port.allDone', { n: book.queue.length, max: book.queue_max })}
+                value={<Countdown untilMs={Date.parse(book.eta)} nowMs={nowMs} dueText={t('port.done')} />}
                 tone="muted"
                 hairline={false}
               />
@@ -137,11 +139,11 @@ export function PortAcademy() {
                 className="w-full"
                 disabled={!open.can_enrol}
                 busy={busy}
-                busyLabel="Enrolling…"
+                busyLabel={t('port.enrolling')}
                 onClick={() => enrol(open)}
                 data-testid={`enrol-${open.code}`}
               >
-                {`Enrol · ${formatDucats(open.enrol_cost ?? 0)}`}
+                {t('port.enrol', { cost: formatDucats(open.enrol_cost ?? 0) })}
               </Button>
             ) : (
               <Button
@@ -149,38 +151,38 @@ export function PortAcademy() {
                 className="w-full"
                 disabled={!open.can_queue}
                 busy={busy}
-                busyLabel="Adding…"
+                busyLabel={t('port.adding')}
                 onClick={() => train(open)}
                 data-testid={`study-${open.code}`}
               >
-                {`Train level ${open.next_level}`}
+                {t('port.trainLevel', { n: open.next_level })}
               </Button>
             )
           }
         >
-          <Row label="Level" value={<Figure value={`${open.level}`} unit={`/ ${book.max_level}`} />} />
+          <Row label={t('port.levelLabel')} value={<Figure value={`${open.level}`} unit={`/ ${book.max_level}`} />} />
           {open.next_level !== null && open.train_seconds !== null && (
             <Row
-              label={`Time to level ${open.next_level}`}
+              label={t('port.timeTo', { n: open.next_level })}
               value={<Figure value={formatRealDuration(open.train_seconds * 1000)} />}
             />
           )}
           {open.effect !== 'NONE' && (
             <Row
-              label="Per level"
+              label={t('port.perLevel')}
               value={<Figure value={`+${open.pct_per_level}%`} tone={open.takes_effect ? 'success' : 'faint'} />}
             />
           )}
           {open.prereqs.map((p) => (
             <Row
               key={p.code}
-              label={p.choice > 0 ? `Needs one of: ${p.name}` : `Needs ${p.name}`}
+              label={p.choice > 0 ? t('port.needsOneOf', { name: p.name }) : t('port.needs', { name: p.name })}
               value={<Figure value={`${p.level}`} tone={p.met ? 'success' : 'faint'} />}
             />
           ))}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {open.enrol_where && <Hint>{open.enrol_where}</Hint>}
-          {open.next_level === null && <Note tone="neutral">Max level reached.</Note>}
+          {open.next_level === null && <Note tone="neutral">{t('port.maxLevel')}</Note>}
           {open.enrol_refusal && (
             <Note tone="warning" code={open.enrol_refusal.code} figures={open.enrol_refusal.figures}>
               {open.enrol_refusal.sentence}
