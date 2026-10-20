@@ -2,6 +2,7 @@ import { Button, cornerSlotClass, Icon } from '../components/ui'
 import { zoomPercent } from './chartView'
 import { setRegionsFilter, useRegionsFilter } from './regionsFilter'
 import { CHART_CHROME, type ChartSurface } from './useChartSurface'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE VIEW CONTROLS — the one +/−/find column every chart surface wears.
@@ -56,6 +57,7 @@ export function ViewControls({
   findTestId?: string
   testId?: string
 }) {
+  const t = useT()
   const zoom = surface.view ? zoomPercent(surface.view.spanX) : 0
   return (
     <div
@@ -83,7 +85,7 @@ export function ViewControls({
       <Button
         variant="secondary"
         size="icon"
-        aria-label="Zoom in"
+        aria-label={t('chart.zoomIn')}
         onClick={surface.zoomIn}
         className="bg-surface/90 backdrop-blur"
       >
@@ -92,7 +94,7 @@ export function ViewControls({
       <Button
         variant="secondary"
         size="icon"
-        aria-label="Zoom out"
+        aria-label={t('chart.zoomOut')}
         onClick={surface.zoomOut}
         className="bg-surface/90 backdrop-blur"
       >
@@ -121,6 +123,7 @@ export function ViewControls({
 /** The regions filter's one button — its own component so the store subscription re-renders
  *  the button alone, not the column. */
 function RegionsToggle() {
+  const t = useT()
   const on = useRegionsFilter()
   return (
     <Button
@@ -132,7 +135,7 @@ function RegionsToggle() {
       data-testid="map-regions-toggle"
     >
       <Icon name="regions" size={16} />
-      Regions
+      {t('chart.regions')}
     </Button>
   )
 }

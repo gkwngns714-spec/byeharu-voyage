@@ -1,6 +1,7 @@
 // THE REGISTRY: every dictionary, under the section name its keys start with (`auth.title`).
 // One file per screen or domain, so two changes never fight over one file.
 import { booksDict } from './books'
+import { chartDict } from './chart'
 import { codesDict } from './codes'
 import { codexDict } from './codex'
 import { commandDict } from './command'
@@ -27,6 +28,7 @@ import { yardDict } from './yard'
 
 export const DICT = {
   books: booksDict,
+  chart: chartDict,
   codes: codesDict,
   codex: codexDict,
   command: commandDict,
