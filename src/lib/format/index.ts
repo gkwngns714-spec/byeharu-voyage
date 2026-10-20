@@ -39,6 +39,7 @@ export {
   formatTwoClocks,
   formatRelative,
   formatClock,
+  formatDate,
   seasonOfMonth,
   gameDate,
   formatGameDate,

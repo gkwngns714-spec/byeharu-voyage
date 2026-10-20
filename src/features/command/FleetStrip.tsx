@@ -3,6 +3,7 @@ import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
 import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 import { FleetPicker } from './FleetPicker'
+import { useT } from '../../lib/i18n'
 
 // THE FLEET STRIP (docs/COMMAND_DESK.md §3.1, §2.1) — which fleet the desk acts for, and her two
 // deciding figures. Every face reads the fleet named here; an act at a place is offered only for
@@ -25,6 +26,7 @@ export function FleetStrip({
   /** The wide desk's header: the picker and the two figures on ONE line (docs/COMMAND_DESK.md §3.9). */
   inline?: boolean
 }) {
+  const t = useT()
   if (inline) {
     return (
       <div className="flex min-w-0 flex-1 items-center gap-6" data-testid="fleet-strip">
@@ -32,16 +34,16 @@ export function FleetStrip({
         {fleet && (
           <div className="flex shrink-0 items-center gap-6" data-testid="command-line">
             <span className="flex items-baseline gap-2">
-              <span className="text-t-caption text-ink-faint">Supplies</span>
+              <span className="text-t-caption text-ink-faint">{t('command.supplies')}</span>
               <Figure value={formatVoyageDays(fleet.endurance_days)} />
             </span>
             <span className="flex items-center gap-2">
-              <span className="text-t-caption text-ink-faint">Cargo</span>
+              <span className="text-t-caption text-ink-faint">{t('command.cargo')}</span>
               <Figure value={formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} unit={tonsWord(fleetHoldTotal(fleet))} />
               <Bar
                 pct={fleetHoldTotal(fleet) > 0 ? (fleetHoldUsed(fleet) / fleetHoldTotal(fleet)) * 100 : 0}
                 tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}
-                label={`cargo, ${formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} ${tonsWord(fleetHoldTotal(fleet))}`}
+                label={t('command.cargoBar', { of: formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet)), word: tonsWord(fleetHoldTotal(fleet)) })}
                 className="w-24"
               />
             </span>
@@ -71,16 +73,17 @@ export function FleetStrip({
  *  under the finger moved (tests/route.stopface.spec.ts, owner row 15). Caption 16 + figure 28 +
  *  8 of padding is the 52 the sentence stood in, so nothing below it moved by one pixel. */
 function FleetFigures({ fleet }: { fleet: FleetView }) {
+  const t = useT()
   const used = fleetHoldUsed(fleet)
   const total = fleetHoldTotal(fleet)
   return (
     <div className="grid min-h-row grid-cols-2 gap-4 py-1" data-testid="command-line">
       <div>
-        <span className="block text-t-caption text-ink-faint">Supplies</span>
+        <span className="block text-t-caption text-ink-faint">{t('command.supplies')}</span>
         <Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />
       </div>
       <div className="min-w-0">
-        <span className="block text-t-caption text-ink-faint">Cargo</span>
+        <span className="block text-t-caption text-ink-faint">{t('command.cargo')}</span>
         <span className="flex items-center gap-2">
           <Figure value={formatOfTotal(used, total)} unit={tonsWord(total)} size="figure" />
           <Bar

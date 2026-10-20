@@ -1,6 +1,7 @@
 import { Bar, DANGER_PIPS, dangerLabel, dangerTone, Figure, Row, type BarTone } from '../../components/ui'
 import type { MapWater } from '../../chart'
 import { watersView } from './watersRows'
+import { useT } from '../../lib/i18n'
 
 // AHEAD — the waters a fleet at sea still has to cross, and how far off each one is.
 //
@@ -29,6 +30,7 @@ function barTone(tier: number): BarTone {
 }
 
 export function WatersAhead({ waters }: { waters: readonly MapWater[] }) {
+  const t = useT()
   const { rows, total, hidden } = watersView(waters)
   if (rows.length === 0) return null
   // A ROW'S IDENTITY IS ITS WATER, NEVER ITS FIGURE (2026-09-30). The key used to carry the
@@ -41,7 +43,7 @@ export function WatersAhead({ waters }: { waters: readonly MapWater[] }) {
 
   return (
     <div className="mt-6" data-testid="map-waters">
-      <Row label="Ahead" value={<Figure value={<span data-testid="map-waters-count">{total}</span>} />} />
+      <Row label={t('map.ahead')} value={<Figure value={<span data-testid="map-waters-count">{total}</span>} />} />
       {rows.map((row, i) => (
         <Row
           key={keys[i]}

@@ -9,6 +9,7 @@ import { formatClock, formatPrice, formatPriceDelta, formatUnits, formatVoyageDa
 import type { FleetView, Refusal, SnapshotGood } from '../../../lib/rpc'
 import { useDeskPlan, type PlanDraft } from './planDraft'
 import { planLines, planRoute, reachBoard, reachWords, viaWords } from './planLines'
+import { useT } from '../../../lib/i18n'
 
 // THE PLAN BUILDER (docs/COMMAND_DESK.md §3.5) — the owner's coffee example as one tray:
 //
@@ -58,6 +59,7 @@ export function PlanBuilder({
   /** The route editor has its seed: the desk turns to Plans. */
   onRoute: () => void
 }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
   const issueLines = useWorld((s) => s.issueLines)
@@ -111,7 +113,7 @@ export function PlanBuilder({
     <Tray
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? close() : setDetent(next))}
-      title={`Plan · ${good.name}`}
+      title={t('desk.planOf', { good: good.name })}
       mode={mode}
       data-testid="plan-builder"
       action={
@@ -120,11 +122,11 @@ export function PlanBuilder({
             variant="primary"
             onClick={queue}
             busy={press.pending}
-            busyLabel="Queueing…"
+            busyLabel={t('desk.queueing')}
             disabled={!plan.sellAt || !seaNav || (!plan.buyAt && aboard <= 0) || unreachable !== null}
             data-testid="plan-queue"
           >
-            Queue it once
+            {t('desk.queueOnce')}
           </Button>
           <Button
             variant="secondary"
@@ -135,16 +137,16 @@ export function PlanBuilder({
             disabled={!plan.sellAt || !plan.buyAt}
             data-testid="plan-route"
           >
-            Make it a route
+            {t('desk.makeRoute')}
           </Button>
         </div>
       }
     >
-      <span className="block text-t-caption text-ink-faint">Buy at</span>
-      <ChipRow label="Buy at" className="mt-1">
+      <span className="block text-t-caption text-ink-faint">{t('desk.buyAt')}</span>
+      <ChipRow label={t('desk.buyAt')} className="mt-1">
         {aboard > 0 && (
           <Chip on={plan.buyAt === null} onClick={() => set({ buyAt: null })} className="shrink-0 whitespace-nowrap">
-            {formatUnits(aboard)} on board
+            {t('desk.onBoardN', { units: formatUnits(aboard) })}
           </Chip>
         )}
         {(b?.buy ?? []).map((r) => (
@@ -162,8 +164,8 @@ export function PlanBuilder({
             value={units}
             onChange={(e) => setUnits(e.target.value)}
             onBlur={() => set({ units: asNumber(units) })}
-            placeholder="Units (blank: all that fit)"
-            aria-label="Units to buy"
+            placeholder={t('desk.unitsPh')}
+            aria-label={t('desk.unitsToBuy')}
             data-testid="plan-units"
           />
           <Field
@@ -172,15 +174,15 @@ export function PlanBuilder({
             value={max}
             onChange={(e) => setMax(e.target.value)}
             onBlur={() => set({ max: asNumber(max) })}
-            placeholder="Max each (blank: any price)"
-            aria-label="The most to pay a unit"
+            placeholder={t('desk.maxPh')}
+            aria-label={t('desk.maxLabel')}
             data-testid="plan-max"
           />
         </div>
       )}
 
-      <span className="mt-4 block text-t-caption text-ink-faint">Sell at</span>
-      <ChipRow label="Sell at" className="mt-1">
+      <span className="mt-4 block text-t-caption text-ink-faint">{t('desk.sellAt')}</span>
+      <ChipRow label={t('desk.sellAt')} className="mt-1">
         {sellChoices.map((c) => (
           <Chip key={c} on={plan.sellAt === c} onClick={() => set({ sellAt: c })} className="shrink-0 whitespace-nowrap">
             <PortFlag code={c} />
@@ -194,48 +196,48 @@ export function PlanBuilder({
         value={min}
         onChange={(e) => setMin(e.target.value)}
         onBlur={() => set({ min: asNumber(min) })}
-        placeholder="Min each (blank: any price)"
-        aria-label="The least to take a unit"
+        placeholder={t('desk.minPh')}
+        aria-label={t('desk.minLabel')}
         className="mt-2"
         data-testid="plan-min"
       />
 
       {/* INSURE THE CARGO (0213): one press. The laden SAIL lines carry INSURED (planLines.ts); the price is
           the server's when she sails, from the cargo then on board, so no figure is guessed here. */}
-      <span className="mt-4 block text-t-caption text-ink-faint">Insurance</span>
-      <ChipRow label="Insurance" className="mt-1">
+      <span className="mt-4 block text-t-caption text-ink-faint">{t('desk.insurance')}</span>
+      <ChipRow label={t('desk.insurance')} className="mt-1">
         <Chip
           on={plan.insure === true}
           onClick={() => set({ insure: !plan.insure })}
           className="shrink-0 whitespace-nowrap"
           data-testid="plan-insure"
         >
-          Insure the cargo
+          {t('desk.insure')}
         </Chip>
       </ChipRow>
       <Hint>
         {plan.insure
-          ? 'Priced when it sails, from the cargo on board. Pays most of what pirates take.'
-          : 'If pirates take the cargo, you carry the loss.'}
+          ? t('desk.insuredHint')
+          : t('desk.uninsuredHint')}
       </Hint>
 
       {/* THE ESTIMATE — the board's row for the chosen cities and amount, as served */}
       <div className="mt-4 min-h-[156px]" data-testid="plan-estimate">
-        <span className="block text-t-caption text-ink-faint">Estimate</span>
+        <span className="block text-t-caption text-ink-faint">{t('desk.estimate')}</span>
         {!sellRow ? (
           board.loading && !b ? (
             <Skeleton className="mt-1 h-[140px] w-full" />
           ) : (
-            <Hint>Pick where to sell it.</Hint>
+            <Hint>{t('desk.pickSell')}</Hint>
           )
         ) : !sellRow.quoted ? (
-          <Hint>{name(sellRow.port)} is not among the dearest cities; its price is {formatPrice(sellRow.mid)}.</Hint>
+          <Hint>{t('desk.notDearest', { port: name(sellRow.port), price: formatPrice(sellRow.mid) })}</Hint>
         ) : (
           <>
-            <Row label="Cost" value={<Figure value={sellRow.cost !== null ? formatPrice(sellRow.cost) : '—'} />} />
-            <Row label="You get" value={<Figure value={sellRow.proceeds !== null ? formatPrice(sellRow.proceeds) : '—'} />} />
+            <Row label={t('desk.cost')} value={<Figure value={sellRow.cost !== null ? formatPrice(sellRow.cost) : '—'} />} />
+            <Row label={t('desk.youGet')} value={<Figure value={sellRow.proceeds !== null ? formatPrice(sellRow.proceeds) : '—'} />} />
             <Row
-              label="Net"
+              label={t('desk.net')}
               value={
                 <Figure
                   value={sellRow.net !== null ? formatPriceDelta(sellRow.net) : '—'}
@@ -247,9 +249,9 @@ export function PlanBuilder({
             />
             <Hint>
               {[
-                b?.qty ? `for ${formatUnits(b.qty.units)}` : null,
+                b?.qty ? t('desk.forUnits', { units: formatUnits(b.qty.units) }) : null,
                 sellRow.days !== null ? formatVoyageDays(sellRow.days) : null,
-                sellRow.arrive_at ? `arrive ${formatClock(Date.parse(sellRow.arrive_at))}` : null,
+                sellRow.arrive_at ? t('desk.arrive', { time: formatClock(Date.parse(sellRow.arrive_at)) }) : null,
                 viaWords([...(buyRow?.stops ?? []), ...(plan.buyAt ? [plan.buyAt] : []), ...(sellRow.stops ?? [])], name),
               ]
                 .filter(Boolean)
@@ -265,11 +267,11 @@ export function PlanBuilder({
       )}
       {noCourse && (
         <Note tone="danger" className="mt-3">
-          No open water was found to {name(noCourse)}.
+          {t('desk.noWater', { port: name(noCourse) })}
         </Note>
       )}
       {refusal && (
-        <Note tone="danger" className="mt-3" code={refusal.code}>
+        <Note tone="danger" className="mt-3" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}
         </Note>
       )}

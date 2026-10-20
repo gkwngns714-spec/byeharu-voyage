@@ -7,6 +7,7 @@ import { Row } from './Row'
 import { StockGauge } from './StockGauge'
 import { formatPriceFigure, formatUnits } from '../../lib/format'
 import type { MarketGood } from '../../lib/rpc'
+import { useT } from '../../lib/i18n'
 
 // THE LEDGER ROW — one good, its two prices as its two acts, and the tide. docs/QUAY_LEDGER.md §3
 // screen A (owner row 76, 2026-09-11).
@@ -53,6 +54,7 @@ export function TradeRow({
   onBuy: () => void
   onSell: () => void
 }) {
+  const t = useT()
   return (
     <Row
       label={
@@ -76,7 +78,7 @@ export function TradeRow({
             {aboard > 0 && (
               <span className="text-t-caption text-ink-faint">
                 {' '}
-                {`·${NBSP}${formatUnits(aboard)} on board`}
+                {t('ui.onBoard', { nbsp: NBSP, units: formatUnits(aboard) })}
               </span>
             )}
           </span>
@@ -88,14 +90,14 @@ export function TradeRow({
             label="buy"
             price={good.buy}
             onPress={onBuy}
-            dead={canBuy ? null : 'not traded here'}
+            dead={canBuy ? null : t('ui.notTraded')}
             selected={selected === 'buy'}
           />
           <PriceCell
             label="sell"
             price={good.sell}
             onPress={onSell}
-            dead={aboard > 0 ? null : 'none on board'}
+            dead={aboard > 0 ? null : t('ui.noneOnBoard')}
             selected={selected === 'sell'}
           />
         </span>
@@ -136,5 +138,6 @@ export function PriceCell({
   dead: string | null
   selected: boolean
 }) {
-  return <ActCell label={label} figure={<Figure value={formatPriceFigure(price)} />} onPress={onPress} dead={dead} selected={selected} />
+  const t = useT()
+  return <ActCell label={t(label === 'buy' ? 'ui.buy' : 'ui.sell')} figure={<Figure value={formatPriceFigure(price)} />} onPress={onPress} dead={dead} selected={selected} />
 }

@@ -9,6 +9,7 @@ import { GoodTicket } from './GoodTicket'
 import { Markets } from './Markets'
 import { useMarketRows } from './marketRows'
 import { useGoodDesk } from './useGoodDesk'
+import { useT } from '../../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TRADING TERMINAL — the Markets face on a wide glass (docs/COMMAND_DESK.md §3.9, 2026-10-18)
@@ -49,6 +50,7 @@ export function Terminal({
   onTrade: (code: string, intent: 'buy' | 'sell') => void
   onPlan: (plan: PlanDraft) => void
 }) {
+  const t = useT()
   const goodByCode = useWorld((s) => s.goodByCode)
   const market = useMarketRows(fleet)
   const { rows } = market
@@ -77,7 +79,7 @@ export function Terminal({
           <>
             <DeskMainPane scroll={false}>
               <span className="flex flex-1 items-center justify-center text-t-body text-ink-faint">
-                <Icon name="search" size={18} className="mr-2" /> No good matches the list.
+                <Icon name="search" size={18} className="mr-2" /> {t('markets.noGood')}
               </span>
             </DeskMainPane>
             <DeskSidePane />

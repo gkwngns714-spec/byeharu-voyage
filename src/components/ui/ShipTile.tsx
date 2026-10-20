@@ -3,6 +3,7 @@ import { Bar } from './Bar'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
 import { Tile } from './Tile'
+import { useT } from '../../lib/i18n'
 
 // ONE HULL, AS A TILE — moved here from features/fleets/FleetShips.tsx (2026-10-08) because two
 // faces print it: your own fleet (FLEETS) and a merchant's (the merchant sheet, MAP and PORT,
@@ -41,20 +42,21 @@ export function ShipTile({
   fittings?: readonly { name: string; qty: number }[]
   testId?: string
 }) {
+  const t = useT()
   const short = crew < crewRequired
   return (
     <Tile
-      mark={flagship ? <Icon name="ship" size={20} className="text-accent" aria-label="flagship" /> : undefined}
+      mark={flagship ? <Icon name="ship" size={20} className="text-accent" aria-label={t('ui.flagship')} /> : undefined}
       name={name}
       // 0074: HER OWN SPEED, because a fitting moves one hull and not the rest.
       meta={`${className} · ${formatKnots(speedKn)}`}
-      figure={<Figure value={`${formatInt(crew)}/${formatInt(crewMax)}`} unit="crew" tone={short ? 'danger' : 'ink'} />}
-      second={<Figure value={formatOfTotal(holdUsed, holdTotal)} unit="tons" />}
+      figure={<Figure value={`${formatInt(crew)}/${formatInt(crewMax)}`} unit={t('ui.unitCrew')} tone={short ? 'danger' : 'ink'} />}
+      second={<Figure value={formatOfTotal(holdUsed, holdTotal)} unit={t('ui.unitTons')} />}
       bar={
         <Bar
           pct={hullPct * 100}
           tone={hullPct < 0.4 ? 'danger' : hullPct < 0.75 ? 'warning' : 'neutral'}
-          label={`${name} hull`}
+          label={t('ui.hullOf', { name })}
           figure={<span className="text-t-caption tabular-nums text-ink-muted">{formatPct(hullPct)}</span>}
         />
       }

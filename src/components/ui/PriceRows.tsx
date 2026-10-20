@@ -6,6 +6,7 @@ import { Row } from './Row'
 import { Sparkline } from './Sparkline'
 import { formatOfTotal, formatPriceFigure } from '../../lib/format'
 import type { MarketGood, PricePoint } from '../../lib/rpc'
+import { useT } from '../../lib/i18n'
 
 // WHAT A PRICE HAS BEEN, HOW FAR IT CAN GO, AND HOW MUCH IS THERE — the three rows under a good,
 // wherever it is read: Trend · Range · In stock.
@@ -48,6 +49,7 @@ export function PriceRows({
   /** The remembered mids for THIS good at THIS port, and their cadence. */
   trend: PriceTrend
 }) {
+  const t = useT()
   const points = trend.points ?? []
   const mids = points.map((pt) => pt.mid)
   const drawable = mids.length >= 2 && trend.slotSeconds !== null
@@ -58,7 +60,7 @@ export function PriceRows({
   return (
     <>
       <Row
-        label="Trend"
+        label={t('ui.trend')}
         tone={mids.length < 2 ? 'muted' : 'default'}
         chevron={drawable}
         onClick={drawable ? () => setOpenedAt(open ? null : Date.now()) : undefined}
@@ -66,13 +68,13 @@ export function PriceRows({
         data-testid="trend-row"
       >
         {mids.length < 2 ? (
-          <span className="block text-t-caption">No price history yet.</span>
+          <span className="block text-t-caption">{t('ui.noHistory')}</span>
         ) : open ? (
           <PriceChart
             points={points}
             slotSeconds={trend.slotSeconds as number}
             nowMs={openedAt as number}
-            label={`${good.name}: ${mids.length} past prices, ${formatPriceFigure(Math.min(...mids))} to ${formatPriceFigure(Math.max(...mids))}, with an axis`}
+            label={t('ui.pastPricesAxis', { name: good.name, n: mids.length, lo: formatPriceFigure(Math.min(...mids)), hi: formatPriceFigure(Math.max(...mids)) })}
           />
         ) : (
           <Sparkline
@@ -80,14 +82,14 @@ export function PriceRows({
             width={320}
             height={40}
             className="mt-1 h-10 w-full"
-            label={`${good.name}: ${mids.length} past prices, ${formatPriceFigure(Math.min(...mids))} to ${formatPriceFigure(Math.max(...mids))}`}
+            label={t('ui.pastPrices', { name: good.name, n: mids.length, lo: formatPriceFigure(Math.min(...mids)), hi: formatPriceFigure(Math.max(...mids)) })}
           />
         )}
       </Row>
-      <Row label="Range" value={<Figure value={`${formatPriceFigure(good.range_lo)}–${formatPriceFigure(good.range_hi)}`} />} />
+      <Row label={t('ui.range')} value={<Figure value={`${formatPriceFigure(good.range_lo)}–${formatPriceFigure(good.range_hi)}`} />} />
       <Row
-        label="In stock"
-        value={<Figure value={formatOfTotal(good.stock, good.stock_target)} unit="units" />}
+        label={t('ui.inStock')}
+        value={<Figure value={formatOfTotal(good.stock, good.stock_target)} unit={t('ui.unitUnits')} />}
         data-testid="quay-stock"
       >
         <StockGauge stock={good.stock} target={good.stock_target} label={good.name} showFigure={false} className="mt-1" />

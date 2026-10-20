@@ -15,12 +15,13 @@
 
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { t } from '../lib/i18n'
 
 /** The three faces, in the order the strip reads them. `label` is the player's word (docs/WORDS.md). */
 export const TRADE_FACES = [
-  { id: 'buy', label: 'Buy' },
-  { id: 'sell', label: 'Sell' },
-  { id: 'requests', label: 'Requests' },
+  { id: 'buy', get label() { return t('town.t_buy') } },
+  { id: 'sell', get label() { return t('town.t_sell') } },
+  { id: 'requests', get label() { return t('town.t_requests') } },
 ] as const satisfies readonly { id: string; label: string }[]
 
 export type TradeFace = (typeof TRADE_FACES)[number]['id']

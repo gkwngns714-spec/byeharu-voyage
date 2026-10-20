@@ -7,6 +7,7 @@ import { enumNaming } from '../domain/order'
 import { hasBuilding } from '../domain/port'
 import { formatInt, formatPct, formatVoyageDays } from '../lib/format'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
+import { useT, t } from '../lib/i18n'
 
 // REPAIR · PROVISION — the two verbs whose question is a single quantity asked in a tray. §6: "the
 // Stepper is the question; the tray shows the server's cost line and the button."
@@ -45,6 +46,7 @@ export function StepQuestion({
   mode?: TrayMode
   onClose: () => void
 }) {
+  const t = useT()
   const { spec, args, setArg, check, issuing, timeCompression } = step
   const [detent, setDetent] = useState<TrayDetent>('half')
   const numberArg = spec?.args.find((a) => a.type === 'number')
@@ -95,7 +97,7 @@ export function StepQuestion({
           className="w-full"
           disabled={issuing || refused || (bound !== null && bound.max <= 0)}
           busy={issuing}
-          busyLabel="Sending…"
+          busyLabel={t('ship.sending')}
           onClick={step.send}
           data-testid="step-send"
         >
@@ -127,12 +129,12 @@ export function StepQuestion({
 }
 
 function title(verb: string): string {
-  return verb === 'REPAIR' ? 'Repair ships' : 'Resupply'
+  return t(verb === 'REPAIR' ? 'ship.repairShips' : 'ship.resupply')
 }
 
 function actLabel(verb: string, value: number, provisionFull: boolean): string {
-  if (verb === 'REPAIR') return `Repair to ${formatInt(value)}%`
-  return provisionFull ? 'Fill up' : `Resupply ${formatInt(value)} days`
+  if (verb === 'REPAIR') return t('ship.repairTo', { n: formatInt(value) })
+  return provisionFull ? t('ship.fillUp') : t('ship.resupplyN', { n: formatInt(value) })
 }
 
 interface Bound {
@@ -149,26 +151,27 @@ interface Bound {
 function boundOf(name: string, fleet: FleetView): Bound {
   if (name === 'to_pct') {
     const now = Math.round(worstHullFraction(fleet) * 100)
-    return { min: Math.min(now + 1, 100), max: 100, step: 5, unit: '%', label: 'repair to', empty: 'No ship is damaged.' }
+    return { min: Math.min(now + 1, 100), max: 100, step: 5, unit: '%', label: t('ship.repairToLabel'), empty: t('ship.noDamage') }
   }
   // days — a floor of 0, not 1: nought days is FULL, and a floor of 1 would put "fill up"
   // out of reach of `−` the moment a day count had been chosen.
-  return { min: 0, max: 120, step: 5, unit: 'days', label: 'days of supplies', empty: '' }
+  return { min: 0, max: 120, step: 5, unit: t('ship.daysUnit'), label: t('ship.daysOf'), empty: '' }
 }
 
 /** The ship's state, in rows — the one figure this verb is a decision about, and the port fact it needs. */
 function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort | null; verb: string }) {
+  const t = useT()
   if (verb === 'REPAIR') {
     const worst = Math.round(worstHullFraction(fleet) * 100)
     const yard = port && hasBuilding(port, 'shipyard')
     return (
       <>
         {/* Row 86: damage TAKEN, as PortShipyard prints it — `13% damaged` is a reading; `87%` was a quiz. */}
-        <Row label="Damage" value={<Figure value={formatPct(1 - worst / 100, 0)} unit="damaged" tone={worst < 50 ? 'danger' : 'ink'} size="figure" />} />
+        <Row label={t('ship.damage')} value={<Figure value={formatPct(1 - worst / 100, 0)} unit={t('ship.damaged')} tone={worst < 50 ? 'danger' : 'ink'} size="figure" />} />
         <Row
-          label="Repair here"
+          label={t('ship.repairHere')}
           tone={yard ? 'default' : 'muted'}
-          value={port ? (yard ? 'yes' : 'no repair here') : 'at sea'}
+          value={port ? t(yard ? 'ship.yes' : 'ship.noRepair') : t('ship.atSea')}
           hairline={false}
         />
       </>
@@ -177,10 +180,10 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
   const stores = fleetStores(fleet)
   return (
     <>
-      <Row label="Supplies" value={<Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />} />
+      <Row label={t('ship.supplies')} value={<Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />} />
       <Row
-        label="On board"
-        value={<Figure value={`${stores.waterT.toFixed(0)} tons water · ${stores.foodT.toFixed(0)} tons food`} />}
+        label={t('ship.onBoard')}
+        value={<Figure value={t('ship.waterFood', { water: stores.waterT.toFixed(0), food: stores.foodT.toFixed(0) })} />}
         hairline={false}
       />
     </>

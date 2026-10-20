@@ -1,5 +1,6 @@
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import { Icon } from './Icon'
+import { useT } from '../../lib/i18n'
 
 // THE FIELD — one text input, with the leading mark and the clear the four copies never agreed on.
 //
@@ -30,6 +31,7 @@ export function Field({
   /** Given, and with a value present, draws the clear button. */
   onClear?: () => void
 }) {
+  const t = useT()
   const hasValue = typeof rest.value === 'string' ? rest.value.length > 0 : false
   return (
     <div className={`relative flex items-center ${className}`}>
@@ -49,7 +51,7 @@ export function Field({
       {onClear && hasValue && (
         <button
           type="button"
-          aria-label="Clear"
+          aria-label={t('ui.clear')}
           onClick={onClear}
           className="absolute right-0 flex h-11 w-11 items-center justify-center text-ink-faint"
         >

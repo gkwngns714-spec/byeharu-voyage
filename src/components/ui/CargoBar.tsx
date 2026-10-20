@@ -1,5 +1,6 @@
 import { Bar } from './Bar'
 import { formatInt, formatOfTotal, tonsWord } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 
 // THE CARGO BAR — how full the ship is, as `51 / 60 tons`, and what a staged basket would make it.
 //
@@ -41,6 +42,7 @@ export function CargoBar({
   after?: number | null
   className?: string
 }) {
+  const t = useT()
   const pct = total > 0 ? (used / total) * 100 : 0
   // The room after, as tons on board after: `total − free_after`. Same formatting arithmetic as
   // `used / total`, over a served figure — never `used + qty × bulk`.
@@ -48,16 +50,16 @@ export function CargoBar({
   const pending = usedAfter !== null && total > 0 ? ((usedAfter - used) / total) * 100 : undefined
   const figure =
     usedAfter !== null && Math.round(usedAfter) !== Math.round(used)
-      ? `${formatInt(used)} → ${formatOfTotal(usedAfter, total)} ${tonsWord(total)}`
-      : `${formatOfTotal(used, total)} ${tonsWord(total)}`
+      ? t('ui.cargoUsed', { used: formatInt(used), after: formatOfTotal(usedAfter, total), word: tonsWord(total) })
+      : t('ui.cargoOf', { of: formatOfTotal(used, total), word: tonsWord(total) })
   return (
     <span className={`flex items-center gap-3 text-t-caption text-ink-faint ${className}`} data-testid="cargo-bar">
-      <span className="shrink-0">cargo</span>
+      <span className="shrink-0">{t('ui.cargo')}</span>
       <Bar
         pct={pct}
         pending={pending}
         tone={free <= 0 ? 'warning' : 'accent'}
-        label={`cargo, ${figure}`}
+        label={t('ui.cargoLabel', { figure })}
         figure={<span className="tabular-nums">{figure}</span>}
         className="min-w-0 flex-1"
       />

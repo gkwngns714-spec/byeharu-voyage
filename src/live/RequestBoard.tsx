@@ -2,6 +2,7 @@ import { ActCell, Figure, RarityMark, Row } from '../components/ui'
 import { useShellState } from '../app/shellState'
 import { formatDucatsDelta, formatOfTotal, formatPctDelta, formatRelative, formatUnits } from '../lib/format'
 import type { TradeRequest } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE REQUEST BOARD — what this port asks for, one row per request, shaped like the ledger.
@@ -46,18 +47,19 @@ export function RequestBoard({
   pick: string | null
   onPick: (request: TradeRequest) => void
 }) {
+  const t = useT()
   const { nowMs } = useShellState()
   if (requests === null) {
-    return <Row label={loading ? 'Loading…' : 'No requests.'} tone="muted" hairline={false} className="mt-3" />
+    return <Row label={t(loading ? 'trade.loading' : 'trade.noRequests')} tone="muted" hairline={false} className="mt-3" />
   }
   if (requests.length === 0) {
-    return <Row label="This port is asking for nothing today." tone="muted" hairline={false} className="mt-3" data-testid="request-board-empty" />
+    return <Row label={t('trade.askingNothing')} tone="muted" hairline={false} className="mt-3" data-testid="request-board-empty" />
   }
   return (
     <div className="mt-3" data-testid="request-board">
       {requests.map((r) => {
         const have = aboard[r.good] ?? 0
-        const dead = !docked ? 'no ship here' : have < r.qty ? `${formatOfTotal(have, r.qty)} units on board` : null
+        const dead = !docked ? t('trade.noShipHere') : have < r.qty ? t('trade.unitsAboard', { of: formatOfTotal(have, r.qty) }) : null
         return (
           <Row
             key={r.id}
@@ -72,7 +74,7 @@ export function RequestBoard({
             }
             value={
               <ActCell
-                label="fulfil"
+                label={t('trade.fulfilCell')}
                 figure={<Figure value={formatDucatsDelta(r.premium_ducats)} tone="success" />}
                 onPress={() => onPick(r)}
                 dead={dead}
@@ -83,7 +85,7 @@ export function RequestBoard({
             data-testid="request-row"
           >
             <span className="block text-t-caption text-ink-faint">
-              {`${formatPctDelta(r.premium_pct)} over the market · ${formatOfTotal(have, r.qty)} units on board`}
+              {t('trade.premiumLine', { pct: formatPctDelta(r.premium_pct), of: formatOfTotal(have, r.qty) })}
             </span>
           </Row>
         )

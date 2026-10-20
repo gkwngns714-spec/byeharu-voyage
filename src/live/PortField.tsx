@@ -3,6 +3,7 @@ import { Chip, Field, useDismiss } from '../components/ui'
 import type { SnapshotPort } from '../lib/rpc'
 import { nearbyHarbours } from '../domain/port'
 import { useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // THE PORT FIELD — one line that names the harbour being read, and the ten nearest under it while
 // you type. docs/UI_DIRECTION.md §6: `[🔍 Lisbon ▾]  Porto · Cádiz · Seville`.
@@ -71,6 +72,7 @@ export function PortField({
   /** The pick is the caller's (the route editor's stop). */
   onPick: (code: string) => void
 }) {
+  const t = useT()
   const ports = useWorld((s) => s.snapshot?.ports)
   const portByCode = useWorld((s) => s.portByCode)
   const reaches = useWorld((s) => s.reaches)
@@ -123,9 +125,9 @@ export function PortField({
           if (e.key === 'Enter' && listed[0]) choose(listed[0].code)
         }}
         onClear={open ? () => setQuery('') : undefined}
-        aria-label="Find a port"
+        aria-label={t('port.findPort')}
         aria-expanded={open}
-        placeholder="Find a port"
+        placeholder={t('port.findPort')}
         spellCheck={false}
         autoCorrect="off"
         autoComplete="off"

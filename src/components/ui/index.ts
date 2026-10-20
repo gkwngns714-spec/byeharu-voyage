@@ -73,6 +73,7 @@ export { CargoBar } from './CargoBar'
 
 // 8. CHIP / SEGMENTED — one token in a set; one set of faces.
 export { Chip, Segmented, type SegmentSpec } from './Chip'
+export { LanguageSwitch } from './LanguageSwitch'
 
 // 9. BUTTON — flat: primary / secondary / quiet / destructive, 44 and 36, icon.
 export { Button, type ButtonTone } from './Button'

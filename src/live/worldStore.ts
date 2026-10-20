@@ -91,6 +91,8 @@ import { navFromServed, type SeaNav } from '../lib/sea'
 import { registerHullClasses } from '../chart'
 import { whereabouts } from '../domain/fleet'
 import { mergeRoster, readSavedRoster, rosterKey, savedRosterText, trafficRowAt } from './seaRoster'
+import { namedMarket, namedSnapshot } from './worldNames'
+import { getLocale, subscribeLocale } from '../lib/i18n'
 import type {
   FleetView,
   HaggleAttempt,
@@ -336,6 +338,27 @@ export interface LiveWorld {
 // not a concept that needs an authority, and "where does her next order happen" — the real
 // question the second one looked like it answered — turned out to be four different rules, one of
 // which was a bug; it now lives, once, in domain/fleet as fleetPortCode/housePortCode.
+
+/** THE SERVED COPIES, untouched (src/live/worldNames.ts): the store publishes them re-named for the
+ *  viewer's language, and re-derives from these on a switch — never from an already-named copy. */
+let servedSnapshot: WorldSnapshot | null = null
+const servedMarkets = new Map<string, MarketView>()
+
+/** The snapshot in the viewer's language, and the lookups built once from it. */
+function snapshotLookups(served: WorldSnapshot) {
+  const snapshot = namedSnapshot(served, getLocale())
+  const portByCode: Record<string, SnapshotPort> = {}
+  const portById: Record<string, SnapshotPort> = {}
+  for (const p of snapshot.ports) {
+    portByCode[p.code] = p
+    portById[p.id] = p
+  }
+  const goodByCode: Record<string, SnapshotGood> = {}
+  for (const g of snapshot.goods) goodByCode[g.code] = g
+  const nationByCode: Record<string, SnapshotNation> = {}
+  for (const nat of snapshot.nations) nationByCode[nat.code] = nat
+  return { snapshot, portByCode, portById, goodByCode, nationByCode }
+}
 
 /**
  * WHAT A PORT CODE IS CALLED — the one reading of it.
@@ -669,16 +692,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
       set({ phase: 'failed', fatal: sea.refusal, mode })
       return
     }
-    const portByCode: Record<string, SnapshotPort> = {}
-    const portById: Record<string, SnapshotPort> = {}
-    for (const p of snap.value.ports) {
-      portByCode[p.code] = p
-      portById[p.id] = p
-    }
-    const goodByCode: Record<string, SnapshotGood> = {}
-    for (const g of snap.value.goods) goodByCode[g.code] = g
-    const nationByCode: Record<string, SnapshotNation> = {}
-    for (const nat of snap.value.nations) nationByCode[nat.code] = nat
+    servedSnapshot = snap.value
+    const named = snapshotLookups(snap.value)
 
     // THE WORLD IS PUBLISHED WITH ITS FLEETS, IN ONE `set()` (2026-10-08). This used to publish the
     // snapshot first and THEN await the first read, so for the whole of that read the store said
@@ -696,12 +711,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
     registerHullClasses(snap.value.ship_classes)
     await get().refresh()
     set({
-      snapshot: snap.value,
+      ...named,
       seaNav,
-      portByCode,
-      portById,
-      goodByCode,
-      nationByCode,
       mode,
       // A world that answered snapshot() but not fleets() is still a world worth showing: the
       // failure is already in `fatal` (refresh set `phase: 'failed'`) and the screens render it.
@@ -762,7 +773,14 @@ export const useWorld = create<LiveWorld>((set, get) => {
   },
 
   loadMarket: (portId) =>
-    loader(worldMarket(portId), (v, s) => ({ markets: { ...s.markets, [portId]: v } }), { loud: true }),
+    loader(
+      worldMarket(portId),
+      (v, s) => {
+        servedMarkets.set(portId, v)
+        return { markets: { ...s.markets, [portId]: namedMarket(v, getLocale()) } }
+      },
+      { loud: true },
+    ),
 
   // ONE ASK A PORT AT A TIME (2026-10-19): the desk asks a good's likely city ahead of its chart, and the
   // chart then asks the same port while that read is still on the wire — the second ask joins the first.
@@ -958,4 +976,14 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   dismissRefusal: () => set({ refusal: null }),
   }
+})
+
+// A LANGUAGE SWITCH re-names the world in place: one `set()`, so every screen re-renders with the
+// new names and nothing is fetched again.
+subscribeLocale(() => {
+  if (!servedSnapshot) return
+  const locale = getLocale()
+  const markets: Record<string, MarketView> = {}
+  for (const [id, m] of servedMarkets) markets[id] = namedMarket(m, locale)
+  useWorld.setState({ ...snapshotLookups(servedSnapshot), markets })
 })

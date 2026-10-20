@@ -26,6 +26,7 @@ import { nationNameOf, portNameOf, useWorld } from './worldStore'
 import { ShipPanel } from './ShipPanel'
 import { HullCountry } from './HullCountry'
 import { TradeHistoryPanel, type TradePick } from './TradeHistoryPanel'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MERCHANT SHEET — one merchant fleet, READ-ONLY (owner rows 110-111, docs/NPC_TRADERS.md §8.3)
@@ -162,6 +163,7 @@ function MerchantBody({
   onOpenShip: (index: number) => void
   onOpenTrades: (pick: TradePick) => void
 }) {
+  const t = useT()
   // THE ONE CLOCK (src/app/shellState.ts): the Fortune line counts a span from it, never from a
   // Date.now() read during a render.
   const { nowMs } = useShellState()
@@ -186,8 +188,8 @@ function MerchantBody({
             A SPAN, NOT A CLOCK TIME: `day_since` can be up to 24 h old, and "since 13:05" read as
             this afternoon. */}
         <Tile
-          name={e && e.day_full ? 'A day' : 'So far'}
-          meta={e && e.day_full ? 'a real day of laps' : e && e.day_since ? `over the last ${formatRealShort(nowMs - Date.parse(e.day_since))}` : 'no lap closed yet'}
+          name={t(e && e.day_full ? 'port.aDay' : 'port.soFar')}
+          meta={e && e.day_full ? t('port.realDay') : e && e.day_since ? t('port.overLast', { span: formatRealShort(nowMs - Date.parse(e.day_since)) }) : t('port.noLap')}
           figure={<Figure size="figure" value={e ? `${e.day_full ? '≈ ' : ''}${formatDucats(e.day)}` : '—'} />}
           // A PRESS OPENS WHAT THE FIGURE IS MADE OF: the day's laps, totalled, and the goods she
           // traded at each harbour (TradeHistoryPanel).
@@ -201,13 +203,13 @@ function MerchantBody({
             derivation). While that is the case the tile says what is true. `laps_done` counts
             CLOSED laps, so `1` means her first lap is behind her and the second is under way. */}
         <Tile
-          name="A lap"
-          meta={e && e.lap !== null ? `over the last ${e.lap_basis} laps` : undefined}
+          name={t('port.aLap')}
+          meta={e && e.lap !== null ? t('port.overLaps', { n: e.lap_basis }) : undefined}
           figure={
             e && e.lap !== null ? (
               <Figure size="figure" value={`≈ ${formatDucats(e.lap)}`} />
             ) : (
-              <Figure value={e && e.laps_done > 0 ? 'one lap closed' : 'first lap under way'} tone="muted" />
+              <Figure value={t(e && e.laps_done > 0 ? 'port.oneLap' : 'port.firstLap')} tone="muted" />
             )
           }
           // A press opens her newest closed lap, stop by stop — or, before one has closed, the lap
@@ -235,7 +237,7 @@ function MerchantBody({
                 </span>
               </span>
             }
-            value={<Figure value={formatInt(e?.laps_done ?? 0)} unit={(e?.laps_done ?? 0) === 1 ? 'lap' : 'laps'} />}
+            value={<Figure value={formatInt(e?.laps_done ?? 0)} unit={t('port.laps', { count: e?.laps_done ?? 0 })} />}
             data-testid="merchant-route"
           />
         )}
@@ -244,8 +246,8 @@ function MerchantBody({
             mark={<IconDisc name="history" />}
             label={
               <span className="block min-w-0">
-                <span className="block">Last laps</span>
-                <span className="block text-t-caption text-ink-faint">newest first</span>
+                <span className="block">{t('port.lastLaps')}</span>
+                <span className="block text-t-caption text-ink-faint">{t('port.newestFirst')}</span>
               </span>
             }
           >
@@ -260,7 +262,7 @@ function MerchantBody({
                   key={i}
                   type="button"
                   onClick={() => onOpenTrades({ kind: 'lap', index: i })}
-                  aria-label={`Lap ${formatInt(e.laps_done - i)}: ${formatDucatsDelta(n)}`}
+                  aria-label={t('port.lapPill', { n: formatInt(e.laps_done - i), net: formatDucatsDelta(n) })}
                   className={[
                     'whitespace-nowrap rounded-chip px-2 py-0.5 text-t-caption leading-snug tabular-nums transition',
                     'hover:ring-1 hover:ring-current focus-visible:ring-1 focus-visible:ring-current',
@@ -278,20 +280,22 @@ function MerchantBody({
           mark={<IconDisc name="coin" />}
           label={
             <span className="block min-w-0">
-              <span className="block">Fortune</span>
+              <span className="block">{t('port.fortune')}</span>
               {/* 0213: THE REFOUND IS RETIRED. What stands behind her cargo is insurance: the losses it
                   paid her, and what the insuring cities could not cover. Nothing until a claim. */}
               {card.company.insurance && card.company.insurance.claims > 0 && (
                 <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-insurance">
-                  {`insurance paid ${card.company.insurance.claims === 1 ? 'once' : `${formatInt(card.company.insurance.claims)} times`}, ${formatDucats(card.company.insurance.paid)}${
-                    card.company.insurance.short > 0 ? `; ${formatDucats(card.company.insurance.short)} the cities could not pay` : ''
-                  }`}
+                  {t('port.insurancePaid', {
+                    times: card.company.insurance.claims === 1 ? t('port.once') : t('port.times', { n: formatInt(card.company.insurance.claims) }),
+                    paid: formatDucats(card.company.insurance.paid),
+                    short: card.company.insurance.short > 0 ? t('port.citiesShort', { amount: formatDucats(card.company.insurance.short) }) : '',
+                  })}
                 </span>
               )}
               {/* 0123: where her surplus went — her largest stake, and how many cities more. */}
               {card.company.invested && card.company.invested.length > 0 && (
                 <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-invested">
-                  {`Invested ${formatDucats(card.company.invested[0].paid)} at `}
+                  {t('port.investedAt', { amount: formatDucats(card.company.invested[0].paid) })}
                   <GoToLink to={{ kind: 'port', code: card.company.invested[0].port }}>{card.company.invested[0].name}</GoToLink>
                   {card.company.invested.length > 1 ? ` +${card.company.invested.length - 1}` : ''}
                 </span>
@@ -299,9 +303,9 @@ function MerchantBody({
               {/* 0145: where her country's race is — her largest influence, the city and the country. */}
               {card.company.influence && card.company.influence.length > 0 && (
                 <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-influence">
-                  {`Influence ${formatInt(card.company.influence[0].points)} at `}
+                  {t('port.influenceAt', { n: formatInt(card.company.influence[0].points) })}
                   <GoToLink to={{ kind: 'port', code: card.company.influence[0].port }}>{card.company.influence[0].name}</GoToLink>
-                  {` for ${nationNameOf(nationByCode, card.company.influence[0].nation)}`}
+                  {t('port.forNation', { nation: nationNameOf(nationByCode, card.company.influence[0].nation) })}
                 </span>
               )}
             </span>
@@ -314,7 +318,7 @@ function MerchantBody({
         {card.company.blurb}
       </Hint>
 
-      <SheetSection heading="Ships">
+      <SheetSection heading={t('port.ships')}>
         {/* ONE SHIP A ROW, full width: in the auto-fill tile grid her figures ran out of the box
             (owner, 2026-10-15: "words are outside the box"). */}
         <div className="flex flex-col gap-2">
@@ -347,13 +351,13 @@ function MerchantBody({
         </div>
       </SheetSection>
 
-      <SheetSection heading="Cargo" surface>
+      <SheetSection heading={t('port.cargo')} surface>
         <CargoRows rows={cargo} totalTons={card.ships.reduce((n, s) => n + s.cargo_tuns, 0)} testId="merchant-cargo-row" />
       </SheetSection>
 
-      <SheetSection heading="Captains" trailing={<span className="text-t-caption text-ink-muted">{`master ${card.company.master}`}</span>}>
+      <SheetSection heading={t('port.captains')} trailing={<span className="text-t-caption text-ink-muted">{t('port.master', { name: card.company.master })}</span>}>
         {card.officers.length === 0 ? (
-          <Row label={`No captains — ${card.company.master} keeps the ship himself.`} tone="muted" hairline={false} />
+          <Row label={t('port.noCaptains', { name: card.company.master })} tone="muted" hairline={false} />
         ) : (
           <TileField>
             {card.officers.map((o) => (
@@ -373,10 +377,10 @@ function MerchantBody({
       {/* THE COMPANY'S FOUR LEVELS (docs/WORDS.md: the word is Skills), and their sum beside the
           heading — the same number the city's list prints for her (0113). */}
       <SheetSection
-        heading="Skills"
+        heading={t('port.skills')}
         trailing={
           <span className="text-t-caption text-ink-muted" data-testid="merchant-level">
-            level <span className="text-t-body tabular-nums text-ink">{formatInt(level)}</span>
+            {t('port.level')} <span className="text-t-body tabular-nums text-ink">{formatInt(level)}</span>
           </span>
         }
       >
@@ -388,7 +392,7 @@ function MerchantBody({
       </SheetSection>
 
       {skipped.length > 0 && (
-        <SheetSection heading="Last lap" surface>
+        <SheetSection heading={t('port.lastLap')} surface>
           {skipped.map((s, i) => (
             <Row key={`${s.line}-${i}`} label={skippedWords(s, goodName, portName)} tone="muted" hairline={i < skipped.length - 1} />
           ))}

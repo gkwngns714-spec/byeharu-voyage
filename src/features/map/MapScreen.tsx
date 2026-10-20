@@ -62,6 +62,7 @@ import { SendFleet } from './SendFleet'
 import { CityHarbour } from './CityHarbour'
 import { merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
+import { useT, t as tNow } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // MAP — the chart is the ground, and the chrome hides until it is summoned.
@@ -133,8 +134,8 @@ function portLine(
   const parts: ReactNode[] = allegiance ? [<CityFlag allegiance={allegiance} />] : []
   const summary = merchantsSummary(merchants, port.code)
   if (summary) parts.push(summary)
-  if (here.length > 0) parts.push(<>{fleetLinks(here)} here</>)
-  else if (bound.length > 0) parts.push(<>{fleetLinks(bound)} heading here</>)
+  if (here.length > 0) parts.push(<>{fleetLinks(here)} {tNow('map.here')}</>)
+  else if (bound.length > 0) parts.push(<>{fleetLinks(bound)} {tNow('map.headingHere')}</>)
   return parts.map((p, i) => (
     <Fragment key={i}>
       {i > 0 && ' · '}
@@ -175,6 +176,7 @@ function Chart({
   /** When the merchants landed — their own drift instant (see `buildChartModel`). */
   trafficReadAt: number | null
 }) {
+  const t = useT()
   // THE ONE CLOCK (src/app/shellState.ts): it ticks a countdown's wording and 0075's drift.
   const { nowMs } = useShellState()
 
@@ -400,7 +402,7 @@ function Chart({
           // Every `CHART_CHROME` box, so no harbour's name prints under the pill, the zoom column,
           // the minimap or the tray.
           keepOut={surface.chromeBoxes}
-          ariaLabel="Chart of the world's harbours and the sea lanes between them, showing your fleets"
+          ariaLabel={t('map.chartLabel')}
           className="absolute inset-0 h-full w-full"
         />
       )}
@@ -435,14 +437,14 @@ function Chart({
 
         <ViewControls
           surface={surface}
-          findAriaLabel="Find your fleets"
+          findAriaLabel={t('map.findFleets')}
           findTestId="map-find"
           testId="map-view-controls"
         />
 
         {(zoomed || backdrop.error) && (
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
-            {backdrop.error && <p className="text-t-caption text-ink-faint">coastline unavailable</p>}
+            {backdrop.error && <p className="text-t-caption text-ink-faint">{t('map.noCoast')}</p>}
             {zoomed && (
               <Minimap
                 model={model}
@@ -450,7 +452,7 @@ function Chart({
                 coast={backdrop.coast}
                 viewport={box}
                 onJump={surface.centreOn}
-                ariaLabel="The whole world, your fleets marked on it, and the part of it this chart is showing. Tap a place to look there."
+                ariaLabel={t('map.overview')}
               />
             )}
           </div>
@@ -463,7 +465,7 @@ function Chart({
           type="button"
           {...CHART_CHROME}
           onClick={() => setFoldedFor(null)}
-          aria-label="Show the panel"
+          aria-label={t('map.showPanel')}
           data-testid="map-unfold"
           className="absolute right-0 top-1/2 z-20 flex h-14 w-8 -translate-y-1/2 items-center justify-center rounded-l-control bg-surface text-ink-muted shadow-sheet"
         >
@@ -494,7 +496,7 @@ function Chart({
         <SendFleet
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
-          line={place.port ? portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code)) : 'Open sea'}
+          line={place.port ? portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code)) : t('map.openSea')}
           harbour={
             place.port && (
               <CityHarbour

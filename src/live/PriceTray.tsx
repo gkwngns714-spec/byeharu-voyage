@@ -4,6 +4,7 @@ import { Figure, PriceRows, Row, Tray, type PriceTrend, type TrayDetent, type Tr
 import { formatMiles, formatPriceFigure } from '../lib/format'
 import type { MarketGood } from '../lib/rpc'
 import { useDeskGood } from '../store/deskGood'
+import { useT } from '../lib/i18n'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
 // alongside. MOVED 2026-09-11 from features/market/ with the MARKET tab, which folded into PORT
@@ -37,6 +38,7 @@ export function PriceTray({
   mode?: TrayMode
   onClose: () => void
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('half')
   // THE HAND-OFF (docs/COMMAND_DESK.md §3.3, D8): the map reads a place; the desk is where you act. A
   // good read here opens on COMMAND — every city's price for it, the estimate, where to sell.
@@ -50,11 +52,11 @@ export function PriceTray({
       mode={mode}
       data-testid="price-tray"
     >
-      <Row label="Buy" value={<Figure value={formatPriceFigure(good.buy)} size="figure" />} />
-      <Row label="Sell" value={<Figure value={formatPriceFigure(good.sell)} size="figure" />} />
+      <Row label={t('trade.buy')} value={<Figure value={formatPriceFigure(good.buy)} size="figure" />} />
+      <Row label={t('trade.sell')} value={<Figure value={formatPriceFigure(good.sell)} size="figure" />} />
       <PriceRows good={good} trend={trend} />
       <Row
-        label="Open in Command"
+        label={t('trade.openInCommand')}
         chevron
         onClick={() => {
           openOnDesk(good.code)
@@ -64,7 +66,7 @@ export function PriceTray({
       />
       {passage !== null && (
         <Row
-          label="Distance"
+          label={t('trade.distance')}
           value={<Figure value={formatMiles(passage)} />}
           hairline={false}
           data-testid="price-tray-passage"

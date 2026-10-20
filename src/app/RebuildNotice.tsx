@@ -1,6 +1,7 @@
 import { useSyncExternalStore, useState } from 'react'
 import { Button, Note } from '../components/ui'
 import { bootChannel } from '../lib/db/bootState'
+import { useT } from '../lib/i18n'
 
 // THE ONE PLACE THE GAME ADMITS IT RESET THE WORLD.
 //
@@ -42,6 +43,7 @@ function useBootState() {
 }
 
 export function RebuildNotice() {
+  const t = useT()
   const boot = useBootState()
   const [dismissed, setDismissed] = useState(false)
 
@@ -57,8 +59,8 @@ export function RebuildNotice() {
   // fault in the BUILD, and it goes to the log with its evidence attached.
   const rebuilt = boot.rebuilt
   const line = rebuilt
-    ? 'The game world was rebuilt from scratch.'
-    : 'A ready-made world that did not match this build was discarded, and the world was built here.'
+    ? t('shell.rebuilt')
+    : t('shell.imageRefused')
 
   return (
     <Note
@@ -77,7 +79,7 @@ export function RebuildNotice() {
         .join(' · ')}
       action={
         <Button variant="quiet" onClick={() => setDismissed(true)}>
-          OK
+          {t('shell.ok')}
         </Button>
       }
     >

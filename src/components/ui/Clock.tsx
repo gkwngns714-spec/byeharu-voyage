@@ -13,6 +13,7 @@
 // see MarketClock in src/lib/rpc/types.ts for why assuming is a second authority.
 
 import { formatClock, formatCountdown } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 
 /** The actual time, alive: "14:22:07". One authority for spelling it — `formatClock`. */
 export function WallClock({ nowMs, className }: { nowMs: number; className?: string }) {
@@ -36,7 +37,7 @@ export function WallClock({ nowMs, className }: { nowMs: number; className?: str
 export function Countdown({
   untilMs,
   nowMs,
-  dueText = 'due',
+  dueText,
   className,
 }: {
   /** The served instant, in ms (Date.parse of a served timestamptz). */
@@ -47,10 +48,11 @@ export function Countdown({
   dueText?: string
   className?: string
 }) {
+  const t = useT()
   const remaining = untilMs - nowMs
   return (
     <span className={className} data-testid="countdown" data-due={remaining <= 0 || undefined}>
-      {remaining <= 0 ? dueText : formatCountdown(remaining)}
+      {remaining <= 0 ? (dueText ?? t('ui.due')) : formatCountdown(remaining)}
     </span>
   )
 }

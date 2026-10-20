@@ -7,6 +7,7 @@ import { harbourSides } from '../../live/merchantGroups'
 import type { PortMerchant } from '../../lib/rpc'
 import { GoToLink, PlaceLine, type FleetOnChart, type MapPort } from '../../chart'
 import { fleetParts } from './fleetLine'
+import { useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PANEL'S PORT TAB — the ships lying here, and the ships bound here
@@ -60,6 +61,7 @@ export function CityHarbour({
   onOpenMerchant: (fleetId: string) => void
   onOpenFleet: (fleetId: string) => void
 }) {
+  const t = useT()
   const sides = useMemo(() => harbourSides(merchants, portCode), [merchants, portCode])
   const portName = (code: string) => portsByCode.get(code)?.name ?? code
 
@@ -68,13 +70,13 @@ export function CityHarbour({
 
   if (inPortCount + incomingCount === 0) {
     if (!landed) return <Skeleton className="h-11 w-full" data-testid="map-harbour-loading" />
-    return <Row label="No ships in port or bound here." tone="muted" hairline={false} data-testid="map-harbour-empty" />
+    return <Row label={t('map.noShips')} tone="muted" hairline={false} data-testid="map-harbour-empty" />
   }
 
   return (
     <div data-testid="map-harbour" data-landed={landed ? 'true' : 'false'}>
       {inPortCount > 0 && (
-        <Section heading="In port" count={inPortCount} testId="map-harbour-in-port">
+        <Section heading={t('map.inPort')} count={inPortCount} testId="map-harbour-in-port">
           {here.map((f, i) => (
             <OwnRow
               key={f.fleet.id}
@@ -97,7 +99,7 @@ export function CityHarbour({
         </Section>
       )}
       {incomingCount > 0 && (
-        <Section heading="Incoming" count={incomingCount} testId="map-harbour-incoming">
+        <Section heading={t('map.incoming')} count={incomingCount} testId="map-harbour-incoming">
           {bound.map((f, i) => (
             <OwnRow
               key={f.fleet.id}

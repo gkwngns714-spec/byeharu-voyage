@@ -19,6 +19,7 @@ import type { FleetView, Refusal, StoredGood, WarehouseView } from '../lib/rpc'
 import { useOrderPreview } from './useOrderPreview'
 import { useStorage } from './useStorage'
 import { useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // STORAGE — what this port is keeping for you (0070), drawn like the trade board.
@@ -99,11 +100,12 @@ export function PortStorage({
   /** A fleet of yours in this port, or null — storage is only reachable from a docked ship. */
   fleet: FleetView | null
 }) {
+  const t = useT()
   const { view, loading } = useStorage(portId, fleet?.id ?? null)
   const [held, setHeld] = useState<{ code: string; move: Move } | null>(null)
 
-  if (loading && !view) return <Note tone="neutral">Loading…</Note>
-  if (!view) return <Note tone="neutral">No storage in this port.</Note>
+  if (loading && !view) return <Note tone="neutral">{t('inn.loading')}</Note>
+  if (!view) return <Note tone="neutral">{t('inn.noStorage')}</Note>
 
   const free = Math.max(0, view.cap - view.used)
   const lines = linesOf(view)
@@ -117,7 +119,7 @@ export function PortStorage({
           reads badly — 340 of 450 means nothing until you see how much of the bar is left. The
           figure is the share WITH its whole (docs/WORDS.md law 2): "0 / 450 tons". */}
       <Row
-        label="Space"
+        label={t('inn.space')}
         value={<Figure value={formatOfTotal(view.used, view.cap)} unit="tons" size="figure" />}
         hairline={false}
         data-testid="storage-space"
@@ -125,14 +127,14 @@ export function PortStorage({
       <Bar
         pct={view.cap > 0 ? (view.used / view.cap) * 100 : 0}
         tone={free > 0 ? 'accent' : 'warning'}
-        label="how full the storage is"
-        figure={<Figure value={formatInt(free)} unit="tons free" />}
+        label={t('inn.howFull')}
+        figure={<Figure value={formatInt(free)} unit={t('inn.tonsFree')} />}
       />
 
-      <SheetSection heading="Your goods here">
+      <SheetSection heading={t('inn.yourGoods')}>
         {lines.length === 0 ? (
           <Row
-            label={fleet ? 'Nothing in storage, and no cargo on board.' : 'Nothing in storage.'}
+            label={t(fleet ? 'inn.nothingBoth' : 'inn.nothing')}
             tone="muted"
             hairline={false}
           />
@@ -171,11 +173,12 @@ function StorageRow({
   onPress: (move: Move) => void
   hairline: boolean
 }) {
+  const t = useT()
   const stored = line.stored ? Math.floor(line.stored.qty) : 0
   const aboard = line.aboard ? Math.floor(line.aboard.qty) : 0
   const caption = [
-    line.stored ? `${formatUnits(stored)} · ${formatTons(tonsOf(line.stored), 1)} in storage` : null,
-    line.aboard ? `${formatUnits(aboard)} · ${formatTons(tonsOf(line.aboard), 1)} on board` : null,
+    line.stored ? t('inn.inStorageLine', { units: formatUnits(stored), tons: formatTons(tonsOf(line.stored), 1) }) : null,
+    line.aboard ? t('inn.onBoardLine', { units: formatUnits(aboard), tons: formatTons(tonsOf(line.aboard), 1) }) : null,
   ]
     .filter(Boolean)
     .join(' · ')
@@ -185,18 +188,18 @@ function StorageRow({
       value={
         <span className="grid grid-cols-2 gap-1">
           <ActCell
-            label="Put in storage"
+            label={t('inn.put')}
             figure={<Figure value={formatUnits(aboard)} />}
             onPress={() => onPress('put')}
-            dead={!docked ? 'no ship here' : aboard > 0 ? null : 'none on board'}
+            dead={!docked ? t('inn.noShip') : aboard > 0 ? null : t('inn.noneOnBoard')}
             selected={selected === 'put'}
             data-testid={`storage-put-${line.code}`}
           />
           <ActCell
-            label="Take on board"
+            label={t('inn.take')}
             figure={<Figure value={formatUnits(stored)} />}
             onPress={() => onPress('take')}
-            dead={!docked ? 'no ship here' : stored > 0 ? null : 'none in storage'}
+            dead={!docked ? t('inn.noShip') : stored > 0 ? null : t('inn.noneStored')}
             selected={selected === 'take'}
             data-testid={`storage-take-${line.code}`}
           />
@@ -223,6 +226,7 @@ function MoveTray({
   fleet: FleetView
   onClose: () => void
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('half')
   const [qty, setQty] = useState<number | null>(null)
   const [sending, setSending] = useState(false)
@@ -267,17 +271,17 @@ function MoveTray({
           variant="primary"
           className="w-full"
           busy={sending}
-          busyLabel="Sending…"
+          busyLabel={t('inn.sending')}
           disabled={!live}
           onClick={send}
           data-testid="storage-act"
         >
-          {move === 'put' ? `Put ${formatUnits(chosen)} in storage` : `Take ${formatUnits(chosen)} on board`}
+          {move === 'put' ? t('inn.putN', { units: formatUnits(chosen) }) : t('inn.takeN', { units: formatUnits(chosen) })}
         </Button>
       }
     >
-      <Row label="In storage" value={<Figure value={formatUnits(line.stored ? Math.floor(line.stored.qty) : 0)} size="figure" />} />
-      <Row label="On board" value={<Figure value={formatUnits(line.aboard ? Math.floor(line.aboard.qty) : 0)} size="figure" />} />
+      <Row label={t('inn.inStorage')} value={<Figure value={formatUnits(line.stored ? Math.floor(line.stored.qty) : 0)} size="figure" />} />
+      <Row label={t('inn.onBoard')} value={<Figure value={formatUnits(line.aboard ? Math.floor(line.aboard.qty) : 0)} size="figure" />} />
 
       <div className="py-3">
         <Stepper
@@ -286,9 +290,9 @@ function MoveTray({
           max={there}
           min={there > 0 ? 1 : 0}
           step={1}
-          unit="units"
-          label={`units of ${line.name}`}
-          presets={there > 0 ? [{ label: 'All', value: there }] : undefined}
+          unit={t('trade.unitsUnit')}
+          label={t('inn.unitsOf', { name: line.name })}
+          presets={there > 0 ? [{ label: t('inn.all'), value: there }] : undefined}
           data-testid="storage-qty"
         />
       </div>
@@ -297,7 +301,7 @@ function MoveTray({
           under it. The bar carries no `after`: nothing serves it for a STORE or a TAKE (header). */}
       {chosen > 0 && (
         <Row
-          label="Cargo space"
+          label={t('inn.cargoSpace')}
           tone="muted"
           value={<Figure value={formatTons(chosen * line.bulk, 1)} />}
           hairline={false}
@@ -310,19 +314,19 @@ function MoveTray({
           leaves the rest in storage (0070: `fleet_load` returns what fitted) — said in units. */}
       {move === 'take' && est !== null && est.qty !== null && est.qty < chosen && (
         <Note tone="warning" data-testid="storage-fits">
-          {`Only ${formatUnits(est.qty)} fit on board. The rest stays in storage.`}
+          {t('inn.onlyFit', { units: formatUnits(est.qty) })}
         </Note>
       )}
       {preview.refusal && (
-        <Note tone="warning" code={preview.refusal.code} data-testid="storage-preview-refusal">
+        <Note tone="warning" code={preview.refusal.code} figures={preview.refusal.figures} data-testid="storage-preview-refusal">
           {preview.refusal.sentence}
         </Note>
       )}
 
       {/* The one rule a player must know about storage, said where it applies and nowhere else. */}
-      <Row label="Stored goods can only be picked up at this port." tone="muted" hairline={false} />
+      <Row label={t('inn.pickupHere')} tone="muted" hairline={false} />
       {refusal && (
-        <Note tone="danger" code={refusal.code}>
+        <Note tone="danger" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}
         </Note>
       )}

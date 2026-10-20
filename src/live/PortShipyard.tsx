@@ -5,6 +5,7 @@ import { useStepOrder } from './useStepOrder'
 import { worstHullFraction } from '../domain/fleet'
 import { formatPct } from '../lib/format'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // REPAIR — the face of the building 0067 calls a shipyard, named for the ACT (owner row 86).
@@ -40,14 +41,16 @@ export function PortShipyard({
   /** A fleet of yours docked here, or null — a ship is repaired in port. */
   fleet: FleetView | null
 }) {
+  const t = useT()
   if (!fleet) {
-    return <Note tone="neutral">None of your fleets are here. Ships are repaired in port.</Note>
+    return <Note tone="neutral">{t('inn.noneHere')}</Note>
   }
   return <Repair port={port} fleet={fleet} />
 }
 
 /** Split so the hook never runs for a yard with nobody alongside. */
 function Repair({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const step = useStepOrder(fleet, 'REPAIR', open, () => setOpen(false))
   const worst = worstHullFraction(fleet)
@@ -58,9 +61,9 @@ function Repair({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
           the worst ship, printed as `1 − worst hull fraction`: a formatting of the served hull,
           not a rule. `13% damaged` is a reading; `87%` was a quiz. */}
       <Row
-        label="Damage"
+        label={t('inn.damage')}
         value={
-          <Figure value={formatPct(1 - worst, 0)} unit="damaged" tone={worst < 0.5 ? 'danger' : 'ink'} size="figure" />
+          <Figure value={formatPct(1 - worst, 0)} unit={t('inn.damaged')} tone={worst < 0.5 ? 'danger' : 'ink'} size="figure" />
         }
         chevron
         onClick={() => setOpen(true)}

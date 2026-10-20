@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { Button, Field, Hint, Note, Row, Sheet, SheetSection } from '../../components/ui'
+import { Button, Field, Hint, LanguageSwitch, Note, Row, Sheet, SheetSection } from '../../components/ui'
 import { cmdFoundHouse } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { NationPicker } from '../../live/NationPicker'
+import { useT } from '../../lib/i18n'
 
 // SIGN THE BOOK — the first thing a captain on a real server ever sees, and until 2026-08-20 it
 // did not exist.
@@ -30,6 +31,7 @@ import { NationPicker } from '../../live/NationPicker'
 // the first time the constraint changes — so the button simply asks, and prints what comes back.
 
 export function SignTheBook() {
+  const t = useT()
   const refresh = useWorld((s) => s.refresh)
   const nationByCode = useWorld((s) => s.nationByCode)
   const portByCode = useWorld((s) => s.portByCode)
@@ -54,19 +56,20 @@ export function SignTheBook() {
   }
 
   return (
-    <Sheet title="Start your company">
+    <Sheet title={t('found.title')}>
+      <LanguageSwitch className="mb-3" />
       {/* WHAT IS SET FOR YOU is a standing explanation, so it is behind `Hint`'s tray rather than
           printed (it was `PageHeader`'s folded ⓘ); the subtitle stays printed, as it was. */}
       <Hint
-        more={`You start with one ship — Gaivota, a Barca — docked at ${capital ?? "your country's capital"}, and 8,000 ducats to trade with. The ship and the money are set by the game; the name and the country are yours.`}
-        moreTitle="How every captain begins"
+        more={t('found.more', { capital: capital ?? t('found.yourCapital') })}
+        moreTitle={t('found.moreTitle')}
       >
-        Every captain begins the same way.
+        {t('found.hint')}
       </Hint>
 
       <SheetSection>
         <label htmlFor="house-name" className="block text-t-label text-ink-muted">
-          What is your company called?
+          {t('found.nameQ')}
         </label>
         {/* The house's name is typed in the game's display face, not the UI face: this is the one
             field in the app that is a SIGNATURE. `Field` owns the chrome; the serif is this
@@ -84,26 +87,26 @@ export function SignTheBook() {
           autoFocus
           className="mt-2 font-serif"
         />
-        <Hint className="mt-2">Three to twenty-four letters, and no two houses may trade under the same name.</Hint>
+        <Hint className="mt-2">{t('found.nameRule')}</Hint>
 
-        <p className="mt-4 text-t-label text-ink-muted">Which country does it sail for?</p>
+        <p className="mt-4 text-t-label text-ink-muted">{t('found.countryQ')}</p>
         <div className="mt-2">
-          <NationPicker value={nation} onChange={setNation} label="Country" />
+          <NationPicker value={nation} onChange={setNation} label={t('found.country')} />
         </div>
-        {capital && <Hint className="mt-2">{`You start at ${capital}. You can change country later.`}</Hint>}
+        {capital && <Hint className="mt-2">{t('found.startAt', { capital })}</Hint>}
 
         {/* A refusal is DATA (DESIGN F.5): a sentence and at least one fix, printed as it arrives —
             this screen does not translate server errors into its own words. The code goes to
             console.debug (Note's own rule, the one WorldGate keeps), never to the screen. */}
         {refusal && (
-          <Note tone="danger" code={refusal.code} className="mt-3">
+          <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-3">
             {refusal.sentence}
           </Note>
         )}
       </SheetSection>
 
       {refusal && refusal.fixes.length > 0 && (
-        <SheetSection heading="Try">
+        <SheetSection heading={t('found.try')}>
           {refusal.fixes.slice(0, 4).map((fix, i, shown) => (
             <Row key={fix} label={fix} hairline={i < shown.length - 1} />
           ))}
@@ -112,7 +115,7 @@ export function SignTheBook() {
 
       <div className="mt-4">
         <Button variant="primary" disabled={busy || name.trim().length === 0} onClick={() => void sign()}>
-          {busy ? 'Starting…' : 'Start'}
+          {t(busy ? 'found.starting' : 'found.start')}
         </Button>
       </div>
     </Sheet>
