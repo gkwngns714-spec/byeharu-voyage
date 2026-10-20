@@ -6,9 +6,9 @@
 // WHAT THE ALLOW-LIST IS, AND WHY IT IS READ FROM DATA. A name the server serves and the client has
 // no Korean entry for prints as served (a truthful lesser answer, NO_SPAGHETTI §7C): ship classes,
 // captains, merchant companies and fleets, seas and regions, skills and fittings. Those words are
-// read from data/*.json here, never typed, so the list cannot quietly grow to cover a leaked UI
-// word: a word that is not a served name is a leak. The handful of fixed tokens below are named
-// one by one with their reason.
+// read from data/*.json here, never typed, and matched as WHOLE names; a served name that is also
+// an English UI string in the dictionaries is dropped, so the list cannot cover a leaked UI word.
+// Broken on purpose 2026-10-20 (Korean `command.title` set to `Command`) and watched red.
 //
 // SCOPE: chrome, not prose. A row's served content (a captain's blurb, a trait line, the server's
 // own sentences without a code) stays English in v1 and is out of this sweep by construction — the
@@ -18,6 +18,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, WORLD_BOOT_MS } from './appReady.fixture'
+import { DICT, type Msg } from '../src/lib/i18n'
 
 test.use({ locale: 'ko-KR' })
 
@@ -42,14 +43,25 @@ for (const f of [
 ])
   namesIn(read(f), SERVED)
 
-const WORD = /[A-Za-z][A-Za-z'’-]{2,}/g
-const ALLOWED = new Set<string>([...SERVED].flatMap((n) => n.match(WORD) ?? []))
-for (const w of [
-  'Byeharu', 'Voyage', // the game's own name, on the sign-in page and the tab title
-  'English', // the switch names each language in its own script
-  'Casa', 'Aveiro', 'Gaivota', 'Barca', // the local world's founding house and her ship (src/lib/db/localDb.ts)
-])
-  ALLOWED.add(w)
+/** Every English UI string the dictionaries hold. A served name that is ALSO one of these (a skill
+ *  called `Trade`, a word `Command`) is not allowed: on screen it cannot be told from a leak. */
+const UI_ENGLISH = new Set<string>()
+for (const d of Object.values(DICT as unknown as Record<string, { en: Record<string, Msg> }>))
+  for (const m of Object.values(d.en)) for (const v of typeof m === 'string' ? [m] : [m.one, m.other]) UI_ENGLISH.add(v.trim())
+
+/** The served names a Korean screen may still print, WHOLE — longest first, so `Casa de Aveiro` is
+ *  taken out before `Casa` would be. A name is matched as a phrase, never word by word: a word-level
+ *  list swallowed `Cargo` and `Port` (a ship class, a harbour) and passed a leaked heading. */
+const NAMES = [...SERVED, 'Byeharu Voyage', 'Casa de Aveiro', 'Gaivota', 'Barca']
+  .filter((n) => n.length >= 3 && !UI_ENGLISH.has(n))
+  // The switch names English in English on purpose (common.english), the one UI word excused.
+  .concat('English')
+  .sort((a, b) => b.length - a.length)
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const NAME_RE = new RegExp(NAMES.map(escape).join('|'), 'g')
+
+/** The Latin words left in a text once every served name in it is taken out. */
+const leftover = (text: string) => text.replace(NAME_RE, ' ').match(/[A-Za-z][A-Za-z'’-]{2,}/g) ?? []
 
 const ROUTES = ['command', 'fleets', 'map', 'ledger', 'rank', 'routes', 'compendium', 'profile'] as const
 
@@ -64,7 +76,7 @@ async function open(page: Page, route: string) {
 }
 
 /** The words the client itself put on screen: headings, buttons, tabs, labels, placeholders. */
-async function chromeWords(page: Page): Promise<string[]> {
+async function chromeTexts(page: Page): Promise<string[]> {
   const texts = await page.evaluate(() => {
     const out: string[] = []
     for (const el of document.querySelectorAll<HTMLElement>('h1, h2, h3, h4, button, [role="tab"], dt, label, th')) {
@@ -76,13 +88,14 @@ async function chromeWords(page: Page): Promise<string[]> {
     }
     return out
   })
-  return texts.flatMap((t) => t.match(/[A-Za-z][A-Za-z'’-]{2,}/g) ?? [])
+  return texts
 }
 
 test('in Korean, no tab shows an English UI word outside the served proper nouns', async ({ page, request, baseURL }) => {
   test.setTimeout(WORLD_BOOT_MS + 240_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  expect(ALLOWED.size, 'no served names were read — the data files moved').toBeGreaterThan(200)
+  expect(NAMES.length, 'no served names were read — the data files moved').toBeGreaterThan(200)
+  expect(leftover('Command'), 'a UI word is never excused as a served name').toEqual(['Command'])
   await page.setViewportSize(PHONE)
 
   const leaks: string[] = []
@@ -90,11 +103,11 @@ test('in Korean, no tab shows an English UI word outside the served proper nouns
   for (const route of ROUTES) {
     await open(page, route)
     expect(await page.evaluate(() => document.documentElement.lang), 'the browser said ko-KR').toBe('ko')
-    const found = await chromeWords(page)
+    const found = await chromeTexts(page)
     const korean = await page.evaluate(() => (document.body.innerText.match(/[가-힣]/g) ?? []).length)
     expect(korean, `${route} shows no Korean at all`).toBeGreaterThan(5)
     words += found.length + korean
-    for (const w of found) if (!ALLOWED.has(w)) leaks.push(`${route}: ${w}`)
+    for (const text of found) for (const w of leftover(text)) leaks.push(`${route}: ${w} (in "${text.slice(0, 60)}")`)
   }
   expect(words, 'nothing was read on any tab — the sweep measured an empty page').toBeGreaterThan(50)
   expect([...new Set(leaks)], 'English UI words in the Korean game').toEqual([])
