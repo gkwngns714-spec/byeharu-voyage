@@ -1,5 +1,7 @@
 # 2026-10-20 — both sides of every price, a longer window, and a chart you can drag (owner 178)
 
+**PR #286, branch `osn-prices-both-ways`. Client only, no migration; three commits, one per part.**
+
 **The owner, 2026-10-20, row 178 of `docs/OWNER_REQUESTS.md`, verbatim:**
 
 > *"in command, I press a city and it shows buying price, and selling price. But it is not known until
