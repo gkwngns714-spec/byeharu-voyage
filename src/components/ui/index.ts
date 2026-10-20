@@ -137,6 +137,11 @@ export { PriceCell, TradeRow } from './TradeRow'
 //     Trend row folds between the Sparkline and the PriceChart. `PriceTrend` is the shape the
 //     history hook hands both trays (points + the served cadence).
 export { PriceRows, type PriceTrend } from './PriceRows'
+//     PRICE PAIR — both sides of one price, each under its own word: what you pay here, what you get
+//     here (owner request 178, 2026-10-20). The desk's good page draws it in its head (the city in
+//     focus) and on every row of its two ladders, so a figure beside a city is never a side the
+//     reader has to guess. It derives nothing: a side the server did not price prints as a dash.
+export { PricePair } from './PricePair'
 //     PRICE CHART — the sparkline unfolded: the same served line with a three-figure scale, an
 //     axis in hours before now, and the low / high / now marks (owner row 76, slice 3). The
 //     geometry is `priceChartModel`, pure, so tests/priceChart.spec.ts proves the axis in Node.

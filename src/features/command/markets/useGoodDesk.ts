@@ -5,6 +5,7 @@ import { usePortHistory } from '../../../live/usePortHistory'
 import { useWorld } from '../../../live/worldStore'
 import type { BoardBuyRow, BoardSellRow, FleetView, SnapshotGood } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
+import { citySides } from './citySides'
 
 // ONE GOOD ON THE DESK, READ ONCE (docs/COMMAND_DESK.md §3.3, §3.9). Both halves of the good's page
 // stand on the same reads: the CHART (the centre pane on a wide glass, the top of the tray on a phone)
@@ -77,6 +78,10 @@ export function useGoodDesk(fleet: FleetView, good: SnapshotGood, cheapest: stri
   const focusRow: BoardBuyRow | BoardSellRow | null =
     (b && focus && (b.buy.find((r) => r.port === focus) ?? b.sell.find((r) => r.port === focus))) || null
 
+  // BOTH SIDES, CITY BY CITY (owner request 178): the board's two lists joined by city, so a row's
+  // figure never stands without the side it is. Nothing is priced here (citySides.ts).
+  const sides = useMemo(() => citySides(b), [b])
+
   // The chart's cities: every seller, then the city tapped when it only buys.
   const chips = useMemo(() => {
     const codes = (b?.buy ?? []).map((r) => r.port)
@@ -85,7 +90,7 @@ export function useGoodDesk(fleet: FleetView, good: SnapshotGood, cheapest: stri
     return codes
   }, [b, focus])
 
-  return { board, b, docked, aboard, focus, focusPort, setFocus, history, outlook, why, focusRow, chips }
+  return { board, b, docked, aboard, focus, focusPort, setFocus, history, outlook, why, focusRow, chips, sides }
 }
 
 export type GoodDesk = ReturnType<typeof useGoodDesk>

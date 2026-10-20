@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Figure, Note, SheetSection, Skeleton, StockGauge } from '../../../components/ui'
+import { Button, Figure, Note, PricePair, SheetSection, Skeleton, StockGauge } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import {
@@ -15,6 +15,7 @@ import {
 import type { BoardBuyRow, BoardSellRow, GoodBoard, SnapshotGood } from '../../../lib/rpc'
 import type { PlanDraft } from '../plans/planDraft'
 import { reachBoard, reachWords, viaWords } from '../plans/planLines'
+import { sidesAt, type CitySides } from './citySides'
 import type { GoodDesk } from './useGoodDesk'
 import { WhyThisPrice } from './WhyThisPrice'
 import { useT, t as tg } from '../../../lib/i18n'
@@ -28,9 +29,12 @@ import { useT, t as tg } from '../../../lib/i18n'
 //               priced the amount (`qty.bought_at`, or what is on board); B is the board's first sell
 //               row (it is SORTED by net, server-side). Nothing here ranks or adds — the card only
 //               picks the board's first answer and prints it.
-//   BUY AT      every city that sells it: the price for the amount, its stock against normal, how far.
-//   SELL AT     every harbour that buys it: what you get, net per ton, stock against normal, the
-//               arrival and the best time.
+//   BUY AT      every city that sells it: BOTH SIDES of its price (what you pay, what you get — the
+//               board's own two lists joined by city, citySides.ts), its stock against normal, how far.
+//   SELL AT     every harbour that buys it: both sides again, net per ton, stock against normal, the
+//               arrival and the best time. A side the board did not price prints as a dash and the
+//               middle price stands in its place, dim, under its own word — never as a trader's price
+//               (owner request 178, 2026-10-20: *"I want both for all cities"*).
 //   The acts    Buy / Sell here (the trade tray, docked only), Plan (the plan builder: queue it once,
 //               or make it a route).
 //
@@ -49,7 +53,7 @@ export function GoodTicket({
   onPlan: (plan: PlanDraft) => void
 }) {
   const portByCode = useWorld((s) => s.portByCode)
-  const { board, b, docked, aboard, focus, setFocus } = desk
+  const { board, b, docked, aboard, focus, setFocus, sides } = desk
   const [all, setAll] = useState(false)
   const name = (c: string) => portNameOf(portByCode, c)
   const loading = board.loading && !b
@@ -73,6 +77,7 @@ export function GoodTicket({
         loading={loading}
         docked={docked}
         focus={focus}
+        sides={sides}
         name={name}
         goodName={good.name}
         onFocus={setFocus}
@@ -94,6 +99,7 @@ export function GoodTicket({
         all={all}
         onAll={() => setAll(true)}
         focus={focus}
+        sides={sides}
         name={name}
         goodName={good.name}
         onFocus={setFocus}
@@ -283,6 +289,7 @@ function BuyAt({
   loading,
   docked,
   focus,
+  sides,
   name,
   goodName,
   onFocus,
@@ -293,6 +300,8 @@ function BuyAt({
   loading: boolean
   docked: string | null
   focus: string | null
+  /** Both sides of every city's price, as the board serves them (citySides.ts). */
+  sides: Record<string, CitySides>
   name: (code: string) => string
   goodName: string
   onFocus: (port: string) => void
@@ -323,7 +332,7 @@ function BuyAt({
                 <span className={`truncate text-t-body ${r.here ? 'text-accent' : 'text-ink'}`}>
                   <PortFlag code={r.port} /> {name(r.port)}
                 </span>
-                <Figure value={r.price_each !== null ? formatPrice(r.price_each) : '—'} className="shrink-0" />
+                <PricePair {...sidesAt(sides, r.port)} className="shrink-0" />
               </span>
               <span className="mt-0.5 flex items-center justify-between gap-2">
                 {typeof r.stock_target === 'number' ? (
@@ -362,6 +371,7 @@ function SellAt({
   all,
   onAll,
   focus,
+  sides,
   name,
   goodName,
   onFocus,
@@ -374,6 +384,8 @@ function SellAt({
   all: boolean
   onAll: () => void
   focus: string | null
+  /** Both sides of every city's price, as the board serves them (citySides.ts). */
+  sides: Record<string, CitySides>
   name: (code: string) => string
   goodName: string
   onFocus: (port: string) => void
@@ -415,10 +427,7 @@ function SellAt({
                       <span className="ml-1.5 text-t-caption text-warning">{t('markets.wanted', { pct: formatInt(r.request.premium_pct) })}</span>
                     ) : null}
                   </span>
-                  <Figure
-                    value={r.quoted && r.price_each !== null ? formatPrice(r.price_each) : formatPrice(r.mid)}
-                    className="shrink-0"
-                  />
+                  <PricePair {...sidesAt(sides, r.port)} className="shrink-0" />
                 </span>
                 <span className="mt-0.5 flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-2">

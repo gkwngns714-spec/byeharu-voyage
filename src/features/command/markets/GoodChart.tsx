@@ -1,11 +1,11 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Chip,
-  Figure,
   Hint,
   Icon,
   Note,
   PriceChart,
+  PricePair,
   RarityMark,
   Segmented,
   Skeleton,
@@ -14,7 +14,7 @@ import {
 } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { COIN, formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
+import { formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, PriceOutlook, SnapshotGood } from '../../../lib/rpc'
 import type { GoodDesk } from './useGoodDesk'
 import { useT, t as tg } from '../../../lib/i18n'
@@ -23,8 +23,9 @@ import { useT, t as tg } from '../../../lib/i18n'
 // *"when i press coffee trade goods, it will show chart … at which time"*; 2026-10-18: *"i don't see
 // stock of the trade goods"*.
 //
-//   the head     the good, the city the chart follows (its flag), the market price there now in the
-//                hero figure, its move across the window, and the city's stock against its normal level;
+//   the head     the good, the city the chart follows (its flag), BOTH SIDES of its price there now —
+//                what you pay, what you get, each under its own word (owner request 178, 2026-10-20) —
+//                the middle price with its move across the window, and the city's stock against normal;
 //   the cities   a chip per city (flag + name) — a press SELECTS: the chart's data changes in place;
 //   the window   1 h · 6 h · 12 h of the record (the served points, cut to the window — nothing derived);
 //   the chart    the record and the server's estimate with its band, the best time ◆ and the arrival
@@ -79,6 +80,7 @@ export function GoodChart({
   const portByCode = useWorld((s) => s.portByCode)
   const { b, focus, focusPort, setFocus, history, outlook, focusRow, chips, docked } = desk
   const o = outlook.view
+  const why = desk.why.view
   const [win, setWin] = useState<WindowId>('12')
   const [box, boxSize] = useBoxSize<HTMLDivElement>()
 
@@ -118,14 +120,22 @@ export function GoodChart({
           )}
           <span className="mt-0.5 flex items-center gap-1.5 truncate text-t-caption text-ink-faint">
             {focusPort && <PortFlag code={focusPort.code} />}
-            {focusPort ? t('markets.midPrice', { port: focusPort.name }) : t('markets.marketPrice')}
+            {focusPort ? t('markets.perUnitAt', { port: focusPort.name }) : t('markets.marketPrice')}
           </span>
-          <span className="mt-1 flex items-baseline gap-3">
-            {now !== null ? (
-              <Figure value={formatPriceFigure(now)} unit={COIN} size="hero" />
+          {/* BOTH SIDES OF THE PRESSED CITY'S PRICE (owner request 178). `world.price_why` serves the
+              ask and the bid for this city and this good — the one authority's own two sides — and the
+              page already asks it for the breakdown below, so there is no new read and no derivation
+              here. The MIDDLE price keeps its own line under them, because the middle is what the
+              chart's line and the record are made of. */}
+          <span className="mt-1 block">
+            {why ? (
+              <PricePair pay={why.ask} get={why.bid} mid={why.mid} size="figure" block />
             ) : (
-              <Skeleton className="h-[38px] w-40" />
+              <Skeleton className="h-[46px] w-56" />
             )}
+          </span>
+          <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-t-caption text-ink-faint">
+            {now !== null && <span className="tabular-nums">{t('markets.midPrice', { price: formatPrice(now) })}</span>}
             {move !== null && (
               <span
                 className={[
