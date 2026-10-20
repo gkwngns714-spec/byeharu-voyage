@@ -18,6 +18,10 @@ Prod head: **0208**. (0205 good switch 04:55, 0206 custom plans 05:07, 0207 trad
 7. **Far-selling extras** (saturation in the glut authority, stale far prices, spoilage): re-measure after 1 and 4.
 8. **Housekeeping**: remove PROBE_YARD/PROBE_INN credits (82,000); verify the audit's "no human trades since 09-27" (conflicts with the owner's Gaivota play).
 9. **Merchant hoards / money outflow**: decide after 1 (owner 10-18 "leave money growth for now").
+- **STARTED 2026-10-20 ~03:30 UTC** (owner: "now do what is necessary. start working"): agents on `osn-haul-cap` (build 1, 0213), `osn-stats-tab` (build 2, 0214), `osn-fleet-picker` (build 5), `osn-sea-conditions-design` (docs/SEA_CONDITIONS_AND_REGIONS.md), `osn-korean` (NEW, below). Insurance agent still on 0212.
+- **NEW 10-20: Korean language** (owner: "make language korean available, at least up till what we have made now"): one dictionary authority (en + ko, typed keys), switch in Profile and Sign-the-book, browser default, every existing screen; server refusal codes mapped, uncoded server sentences stay English v1. Branch `osn-korean`. New screens (stats, fleet picker, insurance) need ko keys after they merge.
+- **Owner 10-20, regions and hub:** everyone starts in Europe; regions unlock by progress (sea conditions ARE the unlock); the capital can be moved later; the capital becomes a Tribal-Wars-style hub with buildings and resources (LATER, design doc first). Owner-confirmed law: ships never go "home" to act; the hub is the economic base, not a parking spot.
+- Checked 10-20: no human trade since 09-27 (JOOHOON HA last ledger 09-27); 3 new accounts 10-14/15 unplayed. The live economy is NPC + cities only.
 - **Held:** pirates #268 (owner 10-20: "keep it as it is for now"). Famous gear sources: owner "later".
 - 0187 shipped TEN great powers: that follows the owner's own follow-up "in asia add korea, in europe add more" (OWNER_REQUESTS row 161). Not a mismatch.
 - The 10-18 "In progress" table below is STALE: all of it shipped (0186, 0188, 0197, 0199, 0183, #240, #227/#228, #225, #218, 0187).
