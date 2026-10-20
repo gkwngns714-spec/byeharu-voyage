@@ -16,6 +16,7 @@ import type { PlayerHouse, StandingsBoard } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CountriesBoard } from './CountriesBoard'
+import { useT } from '../../lib/i18n'
 
 // RANK — one list, and you are pinned to the top of it. docs/UI_DIRECTION.md §6 "RANK".
 //
@@ -46,22 +47,24 @@ import { CountriesBoard } from './CountriesBoard'
 // reason in 0025's header and is not restated here.
 
 export function RankScreen() {
+  const t = useT()
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed title="Rank" refusal={fatal} />
+    return <WorldFailed title={t('rank.title')} refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading title="Rank" />
+      <WorldLoading title={t('rank.title')} />
     )
   }
   return <RankBody />
 }
 
 function RankBody() {
+  const t = useT()
   const house = useWorld((s) => s.player)
   const board = useWorld((s) => s.standings)
   const loadStandings = useWorld((s) => s.loadStandings)
@@ -95,22 +98,22 @@ function RankBody() {
 
   return (
     <Sheet
-      title="Standings"
+      title={t('rank.standings')}
       data-testid="rank"
       trailing={
         settled === null ? undefined : (
-          <span className="text-t-caption text-ink-faint">{`settled ${settled}`}</span>
+          <span className="text-t-caption text-ink-faint">{t('rank.settled', { when: settled })}</span>
         )
       }
     >
       <Segmented
         segments={[
-          { id: 'captains', label: 'Captains' },
-          { id: 'countries', label: 'Countries' },
+          { id: 'captains', label: t('rank.captains') },
+          { id: 'countries', label: t('rank.countries') },
         ]}
         value={face}
         onChange={setFace}
-        label="Standings"
+        label={t('rank.standings')}
         className="mb-3 w-fit"
       />
       {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
@@ -135,12 +138,13 @@ function Board({
   /** YOUR name and flag, which the payload's `you` deliberately omits — `world.player()` owns them. */
   house: PlayerHouse | null
 }) {
+  const t = useT()
   const nationByCode = useWorld((s) => s.nationByCode)
   const [detent, setDetent] = useState<TrayDetent>('closed')
 
   if (!board) {
     return answered ? (
-      <Note tone="warning">Could not load the rankings. Retrying shortly.</Note>
+      <Note tone="warning">{t('rank.failed')}</Note>
     ) : (
       <div className="space-y-2">
         <Skeleton className="h-12 w-full" />
@@ -152,7 +156,7 @@ function Board({
   if (board.board.length === 0) {
     return (
       <Row
-        label={board.why ?? 'The rankings are empty, with no reason given.'}
+        label={board.why ?? t('rank.empty')}
         tone="muted"
         hairline={false}
       />
@@ -160,7 +164,7 @@ function Board({
   }
 
   const you = board.you
-  const yourName = house?.company_name ?? 'Your company'
+  const yourName = house?.company_name ?? t('rank.yourCompany')
   // YOUR LINE IS PINNED, so it is not drawn a second time in the list; a captain below the cut is
   // carried by `you` whether or not she placed, which is why 0025 serves it.
   const others = board.board.filter((r) => !r.is_you)
@@ -169,7 +173,7 @@ function Board({
   return (
     <>
       {you === null ? (
-        <Row label="You are not ranked yet — start a company to appear here." tone="muted" />
+        <Row label={t('rank.notRanked')} tone="muted" />
       ) : (
         // YOUR LINE ON ITS OWN PANEL, the board on another (2026-10-01): one tone step each, so
         // the pinned row reads as pinned rather than as the first line of a printout.
@@ -188,7 +192,7 @@ function Board({
         </SheetSection>
       )}
       {you !== null && !you.on_board && (
-        <Hint className="mt-2">{`The board shows the top ${formatInt(board.board_size)}. You are below it.`}</Hint>
+        <Hint className="mt-2">{t('rank.below', { n: formatInt(board.board_size) })}</Hint>
       )}
 
       <SheetSection surface>
@@ -202,7 +206,7 @@ function Board({
           >
             <Standing nation={flag(r.nation)} tied={r.tied} />
             {r.mayor_of && r.mayor_of.length > 0 && (
-              <span className="block text-t-caption text-ink-faint" data-testid="rank-mayor-of">{`Mayor of ${r.mayor_of.join(', ')}`}</span>
+              <span className="block text-t-caption text-ink-faint" data-testid="rank-mayor-of">{t('rank.mayorOf', { cities: r.mayor_of.join(', ') })}</span>
             )}
           </Row>
         ))}
@@ -210,12 +214,12 @@ function Board({
 
       {you !== null && (
         <Tray detent={detent} onDetentChange={setDetent} title={yourName} data-testid="fame-tray">
-          <Row label="Trade score" value={<Figure value={formatInt(you.trade_fame)} />} />
-          <Row label="Exploration score" value={<Figure value={formatInt(you.exploration_fame)} />} />
-          <Row label="Ports reached" value={<Figure value={formatInt(you.ports_reached)} />} />
-          <Row label="Total score" value={<Figure value={formatInt(you.total_fame)} tone="accent" />} hairline={false} />
+          <Row label={t('rank.trade')} value={<Figure value={formatInt(you.trade_fame)} />} />
+          <Row label={t('rank.exploration')} value={<Figure value={formatInt(you.exploration_fame)} />} />
+          <Row label={t('rank.ports')} value={<Figure value={formatInt(you.ports_reached)} />} />
+          <Row label={t('rank.total')} value={<Figure value={formatInt(you.total_fame)} tone="accent" />} hairline={false} />
           <Hint className="mt-2">
-            One point per 100 coin turned over or given to cities; 25 for each day as a mayor; 25 for each new port, and one per 100 sea miles.
+            {t('rank.howScored')}
           </Hint>
         </Tray>
       )}
@@ -232,7 +236,8 @@ function Place({ position, mine = false }: { position: number; mine?: boolean })
  *  so two houses level are BOTH second and the next is fourth — "tied" is what stops the missing
  *  number after them reading as a gap. */
 function Standing({ nation, tied }: { nation: string | null; tied: boolean }) {
-  const text = [nation, tied ? 'tied' : null].filter(Boolean).join(' · ')
+  const t = useT()
+  const text = [nation, tied ? t('rank.tied') : null].filter(Boolean).join(' · ')
   if (text === '') return null
   return <span className="block text-t-caption text-ink-faint">{text}</span>
 }

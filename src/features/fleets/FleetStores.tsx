@@ -3,6 +3,7 @@ import { formatFixed, formatInt, formatVoyageDays } from '../../lib/format'
 import type { FleetView, ProvisionPreset, ProvisionPresetBook, Refusal } from '../../lib/rpc'
 import { fleetCrew, fleetStores } from '../../domain/fleet'
 import { keepDays } from './standingOrder'
+import { useT } from '../../lib/i18n'
 
 // THE STORES, AND THE ORDER THAT KEEPS THEM — the galley face, as rows and one stepper.
 //
@@ -47,6 +48,7 @@ export function FleetStores({
   refusal: Refusal | null
   onDismissRefusal: () => void
 }) {
+  const t = useT()
   const stores = fleetStores(fleet)
   const crew = fleetCrew(fleet)
   // Docked under an order she no longer meets — the "hire 20 at Cádiz and her range collapses"
@@ -63,38 +65,38 @@ export function FleetStores({
           carry their own unit word; `Figure` sets the unit small and dim beside the value, so a
           Figure is given the number alone or the unit prints twice — measured ("15.0 days days"). */}
       <Row
-        label="Supplies"
-        value={<Figure value={formatFixed(fleet.endurance_days, 1)} unit="days" tone={short ? 'warning' : 'ink'} />}
+        label={t('fleets.supplies')}
+        value={<Figure value={formatFixed(fleet.endurance_days, 1)} unit={t('fleets.unitDays')} tone={short ? 'warning' : 'ink'} />}
         data-testid="fleet-stores-days"
       />
-      <Row label="Water" value={<Figure value={formatFixed(stores.waterT, 1)} unit="tons" />} />
-      <Row label="Food" value={<Figure value={formatFixed(stores.foodT, 1)} unit="tons" />} />
+      <Row label={t('fleets.water')} value={<Figure value={formatFixed(stores.waterT, 1)} unit={t('fleets.unitTons')} />} />
+      <Row label={t('fleets.food')} value={<Figure value={formatFixed(stores.foodT, 1)} unit={t('fleets.unitTons')} />} />
       <Row
-        label="Crew"
+        label={t('fleets.crew')}
         value={
           <Figure
             value={`${formatInt(crew.aboard)}/${formatInt(crew.max)}`}
-            unit="on board"
+            unit={t('fleets.onBoard')}
             tone={crew.short > 0 ? 'danger' : 'ink'}
           />
         }
         hairline={false}
       />
 
-      <SheetSection heading="Keep supplies at">
+      <SheetSection heading={t('fleets.keepAt')}>
         <Stepper
-          label={`days of supplies to keep ${fleet.name} at`}
+          label={t('fleets.keepLabel', { name: fleet.name })}
           value={days}
           onChange={onDays}
           max={KEEP_SCALE}
-          unit={days === 1 ? 'day' : 'days'}
+          unit={t(days === 1 ? 'fleets.unitDay' : 'fleets.unitDays')}
           presets={levels.map((d) => ({ label: keepDays(d), value: d }))}
           data-testid="fleet-keep-stepper"
         />
         <Hint className="mt-2">
           {short && order
-            ? `Set to keep ${formatVoyageDays(order.days)}, and currently below it.`
-            : 'Topped up to this at every port, charged to your money.'}
+            ? t('fleets.belowKeep', { days: formatVoyageDays(order.days) })
+            : t('fleets.toppedUp')}
         </Hint>
         {refusal && (
           <Note

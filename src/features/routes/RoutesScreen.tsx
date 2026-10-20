@@ -10,7 +10,6 @@ import {
   SheetSection,
   Skeleton,
   Tray,
-  type SegmentSpec,
   type TrayDetent,
 } from '../../components/ui'
 import { formatDucats, formatInt, formatMiles, formatRelative } from '../../lib/format'
@@ -19,6 +18,7 @@ import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { useRouteBoard } from '../../live/useRouteBoard'
 import { useShellState } from '../../app/shellState'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { t, useT, type TKey } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ROUTES — every lane the world sails, on one board (owner row 115, 2026-10-11).
@@ -55,24 +55,26 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function RoutesScreen() {
+  const t = useT()
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
 
-  if (phase === 'failed') return <WorldFailed title="Routes" refusal={fatal} />
-  if (phase !== 'ready') return <WorldLoading title="Routes" />
+  if (phase === 'failed') return <WorldFailed title={t('routes.title')} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={t('routes.title')} />
   return <RoutesBody />
 }
 
 type Order = 'nm' | 'earned' | 'calls'
 
-const ORDERS: readonly SegmentSpec<Order>[] = [
-  { id: 'nm', label: 'Distance' },
-  { id: 'earned', label: 'Earnings' },
-  { id: 'calls', label: 'Calls' },
-]
+const ORDERS: readonly { id: Order; label: TKey }[] = [
+  { id: 'nm', label: 'routes.distance' },
+  { id: 'earned', label: 'routes.earnings' },
+  { id: 'calls', label: 'routes.calls' },
+] as const
 
 function RoutesBody() {
+  const t = useT()
   // THE ONE CLOCK (src/app/shellState.ts), so the board's age ticks without this screen
   // keeping a second one.
   const { nowMs } = useShellState()
@@ -88,7 +90,7 @@ function RoutesBody() {
 
   return (
     <Sheet
-      title="Routes"
+      title={t('routes.title')}
       data-testid="routes"
       trailing={
         board === null ? undefined : (
@@ -99,8 +101,8 @@ function RoutesBody() {
           <span className="flex items-center gap-2 text-t-caption text-ink-faint">
             <span>
               {board.omitted > 0
-                ? `${formatInt(board.routes.length)} of ${formatInt(board.total)} lanes`
-                : `${formatInt(board.total)} ${board.total === 1 ? 'lane' : 'lanes'}`}
+                ? t('routes.someLanes', { n: formatInt(board.routes.length), total: formatInt(board.total) })
+                : t('routes.lanes', { n: formatInt(board.total), count: board.total })}
             </span>
             {readAt !== null && <span>{formatRelative(readAt, nowMs)}</span>}
             <Button
@@ -108,10 +110,10 @@ function RoutesBody() {
               size="sm"
               onClick={refresh}
               busy={refreshing}
-              busyLabel="Reading…"
+              busyLabel={t('routes.reading')}
               data-testid="routes-refresh"
             >
-              Read again
+              {t('routes.readAgain')}
             </Button>
           </span>
         )
@@ -125,16 +127,16 @@ function RoutesBody() {
             <Skeleton className="h-12 w-2/3" />
           </div>
         ) : (
-          <Note tone="warning">Could not load the routes. Retrying shortly.</Note>
+          <Note tone="warning">{t('routes.failed')}</Note>
         )
       ) : (
         <>
           {failed && (
             <Note tone="warning" className="mb-3">
-              The last read was refused — these are the figures from before it.
+              {t('routes.stale')}
             </Note>
           )}
-          <Segmented segments={ORDERS} value={order} onChange={setOrder} label="Rank routes by" className="mb-3" />
+          <Segmented segments={ORDERS.map((o) => ({ id: o.id, label: t(o.label) }))} value={order} onChange={setOrder} label={t('routes.rankBy')} className="mb-3" />
 
           {mine.length > 0 && (
             // HERS ON HER OWN PANEL, as RANK pins the captain's line: one tone step, so her lanes
@@ -160,8 +162,8 @@ function RoutesBody() {
             <Row
               label={
                 board.merchants
-                  ? 'No routes are sailing anywhere yet.'
-                  : 'You keep no routes yet, and the merchant companies are not abroad.'
+                  ? t('routes.noneAnywhere')
+                  : t('routes.noneYours')
               }
               tone="muted"
               hairline={false}
@@ -185,11 +187,11 @@ function RoutesBody() {
 
           {board.omitted > 0 && (
             <Hint className="mt-2">
-              {`${formatInt(board.omitted)} shorter ${board.omitted === 1 ? 'lane is' : 'lanes are'} not shown.`}
+              {t('routes.omitted', { n: formatInt(board.omitted), count: board.omitted })}
             </Hint>
           )}
           {!board.merchants && mine.length > 0 && (
-            <Hint className="mt-2">The merchant companies are not abroad yet, so only your own lanes are here.</Hint>
+            <Hint className="mt-2">{t('routes.onlyYours')}</Hint>
           )}
 
           {opened && <LaneTray route={opened} detent={detent} onDetentChange={setDetent} />}
@@ -261,11 +263,11 @@ function rankFigure(route: RouteBoardRow, order: Order): string {
  *  second-line is one reading and two numbers in it is a table. */
 function laneLine(route: RouteBoardRow, mine: boolean): string {
   return [
-    mine ? 'Yours' : route.company,
-    `${formatInt(route.stop_count)} ${route.stop_count === 1 ? 'call' : 'calls'}`,
-    route.regions > 1 ? `${formatInt(route.regions)} regions` : null,
+    mine ? t('routes.yours') : route.company,
+    t('routes.callsN', { n: formatInt(route.stop_count), count: route.stop_count }),
+    route.regions > 1 ? t('routes.regionsN', { n: formatInt(route.regions) }) : null,
     route.nm === null ? null : formatMiles(route.nm),
-    route.assigned ? null : 'no fleet',
+    route.assigned ? null : t('routes.noFleet'),
     route.closed ? shutBecause(route) : null,
   ]
     .filter(Boolean)
@@ -276,8 +278,8 @@ function laneLine(route: RouteBoardRow, mine: boolean): string {
  *  the one you can go and buy at the academy this afternoon, where exploration is sailed for. */
 function shutBecause(route: RouteBoardRow): string {
   return route.requires.navigation !== null && route.requires.navigation > 1
-    ? `needs navigation ${formatInt(route.requires.navigation)}`
-    : `needs exploration ${formatInt(route.requires.exploration)}`
+    ? t('routes.needsNav', { n: formatInt(route.requires.navigation) })
+    : t('routes.needsExp', { n: formatInt(route.requires.exploration) })
 }
 
 /** THE LANE, OPENED: where she calls, in order, and what the laps say. Every figure is the
@@ -291,6 +293,7 @@ function LaneTray({
   detent: TrayDetent
   onDetentChange: (d: TrayDetent) => void
 }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const nationByCode = useWorld((s) => s.nationByCode)
   const calls = route.stops.map((c) => portNameOf(portByCode, c))
@@ -303,16 +306,16 @@ function LaneTray({
           value={route.nation_code === null ? undefined : nationNameOf(nationByCode, route.nation_code)}
         />
       )}
-      <Row label="Calls at" value={<Figure value={formatInt(route.stop_count)} />}>
+      <Row label={t('routes.callsAt')} value={<Figure value={formatInt(route.stop_count)} />}>
         {/* The loop closes on its first harbour, so the arrow comes back to where it began — which
             is the owner's own shape for a route (row 122) and not a flourish. */}
         <span className="block text-t-caption text-ink-faint">{`${calls.join(' → ')} → ${calls[0] ?? '—'}`}</span>
       </Row>
       <Row
-        label="A lap sails"
+        label={t('routes.lapSails')}
         value={
           route.nm === null ? (
-            <span className="text-ink-faint">unmeasured</span>
+            <span className="text-ink-faint">{t('routes.unmeasured')}</span>
           ) : (
             <Figure value={formatMiles(route.nm)} />
           )
@@ -320,20 +323,19 @@ function LaneTray({
       >
         {route.nm === null && (
           <span className="block text-t-caption text-ink-faint">
-            One of this loop&apos;s legs runs over water the charts disagree about, so the server will not put a
-            distance on it.
+            {t('routes.noDistance')}
           </span>
         )}
       </Row>
-      {route.regions > 1 && <Row label="Regions touched" value={<Figure value={formatInt(route.regions)} />} />}
+      {route.regions > 1 && <Row label={t('routes.regions')} value={<Figure value={formatInt(route.regions)} />} />}
       <Row
-        label="Asks of you"
+        label={t('routes.asks')}
         value={
           route.requires.navigation === null ? (
-            <span className="text-ink-faint">unmeasured</span>
+            <span className="text-ink-faint">{t('routes.unmeasured')}</span>
           ) : (
             <Figure
-              value={`Nav ${formatInt(route.requires.navigation)} · Exp ${formatInt(route.requires.exploration)}`}
+              value={t('routes.navExp', { nav: formatInt(route.requires.navigation), exp: formatInt(route.requires.exploration) })}
               tone={route.closed ? 'warning' : undefined}
             />
           )
@@ -341,16 +343,16 @@ function LaneTray({
       >
         <span className="block text-t-caption text-ink-faint">
           {route.closed
-            ? 'The server would refuse this loop today — the longest leg, or the farthest region.'
-            : 'Within what you have earned.'}
+            ? t('routes.wouldRefuse')
+            : t('routes.within')}
         </span>
       </Row>
-      <Row label="Standing" value={route.state} />
+      <Row label={t('routes.standing')} value={route.state} />
       <Row
-        label="A lap earns"
+        label={t('routes.lapEarns')}
         value={
           route.earnings.lap === null ? (
-            <span className="text-ink-faint">not yet</span>
+            <span className="text-ink-faint">{t('routes.notYet')}</span>
           ) : (
             <Figure value={formatDucats(route.earnings.lap)} tone="accent" />
           )
@@ -358,16 +360,16 @@ function LaneTray({
       >
         <span className="block text-t-caption text-ink-faint">
           {route.earnings.lap === null
-            ? 'A lap buys at one call and sells at the next, so two laps have to close before the figure means anything.'
-            : `the mean of ${formatInt(route.earnings.lap_basis)} closed ${route.earnings.lap_basis === 1 ? 'lap' : 'laps'}`}
+            ? t('routes.twoLaps')
+            : t('routes.meanOf', { n: formatInt(route.earnings.lap_basis), count: route.earnings.lap_basis })}
         </span>
       </Row>
       <Row
-        label="Laps closed"
+        label={t('routes.lapsClosed')}
         value={<Figure value={formatInt(route.earnings.laps_done)} />}
         hairline={false}
       />
-      {!route.assigned && <Hint className="mt-2">No fleet is on this route, so it is a plan and not a lane.</Hint>}
+      {!route.assigned && <Hint className="mt-2">{t('routes.plan')}</Hint>}
     </Tray>
   )
 }
