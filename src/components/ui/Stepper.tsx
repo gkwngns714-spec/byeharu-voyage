@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Chip } from './Chip'
 import { Icon } from './Icon'
+import { useT } from '../../lib/i18n'
 
 // THE STEPPER — how much, and the gauge the owner asked for by name.
 //
@@ -85,6 +86,7 @@ export function Stepper({
   label: string
   className?: string
 } & { 'data-testid'?: string }) {
+  const t = useT()
   const ceiling = Math.min(cap ?? max, max)
   // A floor above the ceiling is a caller's arithmetic gone wrong, not a control's: the floor
   // yields, so the control can never demand more than may be taken.
@@ -128,7 +130,7 @@ export function Stepper({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          aria-label="Less"
+          aria-label={t('ui.less')}
           onClick={() => onChange(clamp(value - step))}
           disabled={value <= floor}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-surface-2 text-ink disabled:opacity-45"
@@ -140,7 +142,7 @@ export function Stepper({
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            aria-label={`${label}, typed`}
+            aria-label={t('ui.typed', { label })}
             value={draft ?? value.toLocaleString()}
             onFocus={(e) => {
               setDraft(String(value))
@@ -167,7 +169,7 @@ export function Stepper({
         </div>
         <button
           type="button"
-          aria-label="More"
+          aria-label={t('ui.more')}
           onClick={() => onChange(clamp(value + step))}
           disabled={value >= ceiling}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-surface-2 text-ink disabled:opacity-45"

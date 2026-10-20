@@ -3,6 +3,7 @@ import { Figure } from './Figure'
 import { goodIcon } from './goodIcons'
 import { Icon } from './Icon'
 import { Row } from './Row'
+import { useT } from '../../lib/i18n'
 
 // WHAT A FLEET CARRIES, AS ROWS — moved here from features/fleets/FleetCargo.tsx (2026-10-08) so
 // your fleet and a merchant's print one shape (docs/NPC_TRADERS.md §8.3). PURE PROPS: the caller
@@ -20,8 +21,9 @@ export function CargoRows({
   totalTons: number
   testId?: string
 }) {
+  const t = useT()
   if (rows.length === 0) {
-    return <Row label="No cargo on board." tone="muted" hairline={false} />
+    return <Row label={t('ui.noCargo')} tone="muted" hairline={false} />
   }
   return (
     <>
@@ -34,7 +36,7 @@ export function CargoRows({
           data-testid={testId}
         />
       ))}
-      <Row label="Total" tone="muted" value={<Figure value={formatFixed(totalTons, 1)} unit="tons" />} hairline={false} />
+      <Row label={t('ui.total')} tone="muted" value={<Figure value={formatFixed(totalTons, 1)} unit={t('ui.unitTons')} />} hairline={false} />
     </>
   )
 }

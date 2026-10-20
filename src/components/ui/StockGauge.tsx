@@ -1,5 +1,6 @@
 import { formatOfTotal } from '../../lib/format'
 import { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
+import { useT, type TKey } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A CITY'S STOCK AGAINST ITS NORMAL LEVEL — the one gauge every market row draws
@@ -33,11 +34,7 @@ const TEXT: Record<StockLevel, string> = {
   normal: 'text-ink-muted',
   high: 'text-success',
 }
-const WORD: Record<StockLevel, string> = {
-  low: 'low, so the price is high',
-  normal: 'about normal',
-  high: 'high, so the price is low',
-}
+const WORD = { low: 'ui.stockLow', normal: 'ui.stockNormal', high: 'ui.stockHigh' } as const satisfies Record<StockLevel, TKey>
 
 export function StockGauge({
   stock,
@@ -56,6 +53,7 @@ export function StockGauge({
   showFigure?: boolean
   className?: string
 }) {
+  const t = useT()
   const level = stockLevel(stock, target)
   const fill = stockFillPct(stock, target)
   return (
@@ -64,7 +62,7 @@ export function StockGauge({
       aria-valuemin={0}
       aria-valuemax={Math.round(target * 2)}
       aria-valuenow={Math.round(stock)}
-      aria-label={`${label} stock ${formatOfTotal(stock, target)} of normal, ${WORD[level]}`}
+      aria-label={t('ui.stockLabel', { label, figure: formatOfTotal(stock, target), word: t(WORD[level]) })}
       data-testid="stock-gauge"
       data-level={level}
       // NEVER SHRINKS (2026-10-19, the owner's 1280-px glass): with `min-w-0` a narrow row squeezed the

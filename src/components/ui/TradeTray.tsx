@@ -11,6 +11,7 @@ import type { TrayDetent } from './trayDetents'
 import { formatDucats, formatDucatsDelta, formatInt, formatPctDelta, formatTons, formatUnitPrice, formatUnits } from '../../lib/format'
 import type { MarketGood, Refusal } from '../../lib/rpc'
 import type { BuyCapacityState } from '../../lib/trade'
+import { t as tNow, useT, type TKey } from '../../lib/i18n'
 
 // THE TRADE TRAY — the ledger row, unfolded: where a price becomes a quantity, and the quantity
 // becomes an order. docs/QUAY_LEDGER.md §3 screen B (owner row 76).
@@ -168,6 +169,7 @@ export function TradeTray({
   /** The caller's own rows under the stepper — the bargain. */
   children?: ReactNode
 }) {
+  const t = useT()
   const { good, intent } = pick
   const { aboard, bulk, culture, history } = quay
   const { capacity, step, act } = trade
@@ -191,9 +193,9 @@ export function TradeTray({
   // A BUY matter: the sell face says nothing of it.
   const refusedBy =
     intent === 'buy' && good.available === false
-      ? `${culture} ports do not trade ${good.name.toLowerCase()}. You can sell it here, but not buy it.`
+      ? t('ui.cultureRefuses', { culture, good: good.name.toLowerCase() })
       : intent === 'buy' && good.offered === false
-        ? `This port does not sell ${good.name.toLowerCase()}. You can sell it here, but not buy it.`
+        ? t('ui.portRefuses', { good: good.name.toLowerCase() })
         : null
 
   // QUANTITY CHIPS: one lot and the ceiling — whichever of those are distinct and within reach. A
@@ -203,7 +205,7 @@ export function TradeTray({
     .sort((a, b) => a - b)
     .map((v) => ({ label: formatInt(v), value: v }))
 
-  const verb = intent === 'buy' ? 'Buy' : 'Sell'
+  const verb = t(intent === 'buy' ? 'ui.Buy' : 'ui.Sell')
   // THE ONE CONDITION for both acts: a line that cannot be traded cannot be staged either.
   const live = !act.sending && chosen > 0 && act.ready
 
@@ -228,8 +230,8 @@ export function TradeTray({
         min={ceiling > 0 ? 1 : 0}
         step={UNIT_STEP}
         lot={lot}
-        unit="units"
-        label={`units of ${good.name}`}
+        unit={t('ui.unitUnits')}
+        label={t('ui.unitsOf', { good: good.name })}
         presets={presets.length > 0 ? presets : undefined}
         data-testid="trade-tray-qty"
       />
@@ -247,7 +249,7 @@ export function TradeTray({
         <>
           {sale !== null && sale.profit !== null && (
             <Row
-              label={sale.profit < 0 ? 'Loss' : 'Profit'}
+              label={t(sale.profit < 0 ? 'ui.loss' : 'ui.profit')}
               value={
                 <Figure
                   value={`${formatDucatsDelta(sale.profit)}${gainShare !== null ? ` · ${formatPctDelta(gainShare)}` : ''}`}
@@ -266,7 +268,7 @@ export function TradeTray({
           <div className={act.stage ? 'grid grid-cols-[auto_1fr] gap-2' : ''}>
             {act.stage && (
               <Button variant="secondary" className="w-full" onClick={act.stage} disabled={!live} data-testid="trade-tray-stage">
-                Add to basket
+                {t('ui.addToBasket')}
               </Button>
             )}
             <Button
@@ -275,10 +277,10 @@ export function TradeTray({
               onClick={act.send}
               disabled={!live}
               busy={act.sending}
-              busyLabel="Sending…"
+              busyLabel={t('ui.sending')}
               data-testid="trade-tray-send"
             >
-              {`${verb} ${formatUnits(chosen)}`}
+              {t('ui.verbUnits', { verb, units: formatUnits(chosen) })}
               {act.total !== null ? ` · ${formatDucats(act.total)}` : ''}
             </Button>
           </div>
@@ -297,22 +299,22 @@ export function TradeTray({
               is on board is the stepper's end and its `All` chip. */}
           {stepper}
           {act.paid !== null ? (
-            <Row label="Bought at" value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
+            <Row label={t('ui.boughtAt')} value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
               {sale !== null && sale.cost !== null && sale.qty !== null && (
-                <span className="block text-t-caption text-ink-faint">{`${formatDucats(sale.cost)} for ${formatUnits(sale.qty)}`}</span>
+                <span className="block text-t-caption text-ink-faint">{t('ui.costFor', { cost: formatDucats(sale.cost), units: formatUnits(sale.qty) })}</span>
               )}
             </Row>
           ) : (
-            <Row label="Purchase price unknown" tone="muted" data-testid="trade-tray-paid-unknown" />
+            <Row label={t('ui.paidUnknown')} tone="muted" data-testid="trade-tray-paid-unknown" />
           )}
           {sale !== null && sale.avg_price !== null && (
-            <Row label="Sells at" value={<Figure value={formatUnitPrice(sale.avg_price)} tone={dim} />} data-testid="trade-tray-sells-at" />
+            <Row label={t('ui.sellsAt')} value={<Figure value={formatUnitPrice(sale.avg_price)} tone={dim} />} data-testid="trade-tray-sells-at" />
           )}
           {sale !== null && sale.total !== null && (
-            <Row label="You get" value={<Figure value={formatDucats(sale.total)} tone={dim} />} data-testid="trade-tray-fetches">
+            <Row label={t('ui.youGet')} value={<Figure value={formatDucats(sale.total)} tone={dim} />} data-testid="trade-tray-fetches">
               {gainShare !== null && (
                 <span className="block text-t-caption text-ink-faint" data-testid="trade-tray-gain-share">
-                  {`${formatPctDelta(gainShare)} on what it cost`}
+                  {t('ui.onCost', { pct: formatPctDelta(gainShare) })}
                 </span>
               )}
             </Row>
@@ -334,20 +336,20 @@ export function TradeTray({
               (useServedRead.ts, 2026-09-30), so an UNKNOWN ceiling below holds its words too
               instead of flipping to "Checking…" on every read (A2 adds tests/flicker.spec.ts). */}
           {capacity.bound ? (
-            <Row label="Max" value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />} data-testid="trade-tray-max">
+            <Row label={t('ui.max')} value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />} data-testid="trade-tray-max">
               {/* The ceiling in the ship's own measure — the owner, 2026-09-18: "Max limited by
                   cargo space. Just show cargo space of how much it is in max." When something
                   other than the hold binds (money, stock, the day's limit) that reason still
                   follows the figure, since the figure alone would read as free space. */}
               <span className="block text-t-caption text-ink-faint" data-testid="trade-tray-max-space">
                 {capacity.bound.binding === 'cargo space'
-                  ? `${formatTons(capacity.bound.max * bulk, 1)} of cargo space`
-                  : `${formatTons(capacity.bound.max * bulk, 1)} of cargo space · limited by ${capacity.bound.binding}`}
+                  ? t('ui.ofSpace', { tons: formatTons(capacity.bound.max * bulk, 1) })
+                  : t('ui.ofSpaceLimited', { tons: formatTons(capacity.bound.max * bulk, 1), by: boundWord(capacity.bound.binding) })}
               </span>
             </Row>
           ) : (
             <Row
-              label={capacity.loading ? 'Checking how much you can buy…' : 'Max amount unknown'}
+              label={t(capacity.loading ? 'ui.checkingMax' : 'ui.maxUnknown')}
               tone="muted"
               data-testid="trade-tray-max-unknown"
             />
@@ -359,7 +361,7 @@ export function TradeTray({
               is the line that lets "Buy 20 units" be read against "Cargo 51 / 60 tons" on COMMAND. */}
           {chosen > 0 && (
             <Row
-              label="Cargo space"
+              label={t('ui.cargoSpace')}
               tone="muted"
               value={<Figure value={formatTons(chosen * bulk, 1)} />}
               data-testid="trade-tray-space"
@@ -369,13 +371,13 @@ export function TradeTray({
           {/* What this good cost her, per unit, for what is on board — served, never remembered
               here. Always a row, so the eye finds the same line: the figure, or why there is none. */}
           {aboard === 0 ? (
-            <Row label="Bought at" tone="muted" value="none on board" data-testid="trade-tray-paid-none" />
+            <Row label={t('ui.boughtAt')} tone="muted" value={t('ui.noneOnBoard')} data-testid="trade-tray-paid-none" />
           ) : act.paid !== null ? (
-            <Row label="Bought at" value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
-              <span className="block text-t-caption text-ink-faint">{`for the ${formatUnits(aboard)} on board`}</span>
+            <Row label={t('ui.boughtAt')} value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
+              <span className="block text-t-caption text-ink-faint">{t('ui.forAboard', { units: formatUnits(aboard) })}</span>
             </Row>
           ) : (
-            <Row label="Purchase price unknown" tone="muted" data-testid="trade-tray-paid-unknown" />
+            <Row label={t('ui.paidUnknown')} tone="muted" data-testid="trade-tray-paid-unknown" />
           )}
 
           {/* THE MARKET'S CONTEXT — trend, range, stock — BELOW the decision, since 2026-09-14:
@@ -396,4 +398,19 @@ export function TradeTray({
       )}
     </Tray>
   )
+}
+
+const BOUND: Readonly<Record<string, TKey>> = {
+  hold: 'ui.boundHold',
+  stock: 'ui.boundStock',
+  'daily cap': 'ui.boundDaily',
+  purse: 'ui.boundPurse',
+  'at sea': 'ui.boundSea',
+  'cargo space': 'ui.boundSpace',
+}
+
+/** The server's word for what stops a buy, in the viewer's language; an unknown word as served. */
+function boundWord(binding: string): string {
+  const key = BOUND[binding]
+  return key ? tNow(key) : binding
 }

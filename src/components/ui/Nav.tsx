@@ -1,6 +1,7 @@
 import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react'
 import { Icon } from './Icon'
 import type { IconName } from './icons'
+import { useT } from '../../lib/i18n'
 
 // THE TAB RAIL — six cells, one row, and the group opens a tray.
 //
@@ -71,9 +72,10 @@ export function Nav({
   onNavigate?: (item: NavItem) => void
   className?: string
 } & { 'data-testid'?: string }) {
+  const t = useT()
   return (
     <nav
-      aria-label="Tabs"
+      aria-label={t('ui.tabs')}
       className={`flex shrink-0 items-stretch border-t border-edge bg-surface ${className}`}
       {...rest}
     >

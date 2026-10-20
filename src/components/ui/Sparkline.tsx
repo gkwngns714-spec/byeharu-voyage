@@ -1,3 +1,4 @@
+import { useT } from '../../lib/i18n'
 // THE PRICE LINE — the one thing a trade game must have and this one could not draw until 0013.
 //
 // It is deliberately austere: a path, no axes, no grid, no labels, no tooltip. EVE's full market
@@ -42,6 +43,7 @@ export function Sparkline({
   label?: string
   className?: string
 }) {
+  const t = useT()
   if (values.length < 2) {
     return (
       <span className={`inline-block font-mono text-[10px] text-ink-faint ${className}`}>—</span>
@@ -65,7 +67,7 @@ export function Sparkline({
       viewBox={`0 0 ${width} ${height}`}
       className={`inline-block align-middle ${className}`}
       role="img"
-      aria-label={label ?? `${values.length} readings, ${lo} to ${hi}`}
+      aria-label={label ?? t('ui.readings', { n: values.length, lo, hi })}
       preserveAspectRatio="none"
     >
       <path

@@ -3,6 +3,7 @@ import { formatPctPoints } from '../../lib/format'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
 import { Tile } from './Tile'
+import { useT } from '../../lib/i18n'
 
 // ONE OFFICER, AS A TILE — moved here from features/compendium/CaptainsFace.tsx (2026-10-08) so the
 // Codex and a merchant's sheet print one shape (docs/NPC_TRADERS.md §8.3). PURE PROPS; the caller
@@ -36,8 +37,9 @@ export function OfficerTile({
   onClick?: () => void
   testId?: string
 }) {
+  const t = useT()
   // The home port may be a go-to link (src/chart/GoToLink.tsx), so the line is joined as nodes.
-  const meta = [grade, role, signed ? 'signed' : null, level != null ? `Lv ${level}` : null, homePort]
+  const meta = [grade, role, signed ? t('ui.signed') : null, level != null ? t('ui.level', { n: level }) : null, homePort]
     .filter(Boolean)
     .map((part, i) => (
       <Fragment key={i}>

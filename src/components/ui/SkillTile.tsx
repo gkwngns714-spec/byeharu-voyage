@@ -1,6 +1,7 @@
 import { Bar } from './Bar'
 import { Figure } from './Figure'
 import { Tile } from './Tile'
+import { useT } from '../../lib/i18n'
 
 // ONE OF THE COMPANY'S FOUR SKILLS, AS A TILE WITH ITS LEVEL BAR — moved here from
 // features/port/PortAcademy.tsx (2026-10-08) so the Academy and a merchant's sheet print one shape
@@ -18,6 +19,7 @@ export function SkillTile({
   max: number
   onClick?: () => void
 }) {
+  const t = useT()
   return (
     <Tile
       name={name}
@@ -25,7 +27,7 @@ export function SkillTile({
       tap={onClick ? 'whole' : 'none'}
       onClick={onClick}
       figure={<Figure value={`${level}`} unit={`/ ${max}`} />}
-      bar={<Bar value={level} of={max} tone={level > 0 ? 'accent' : 'neutral'} label={`${name}, level ${level} of ${max}`} />}
+      bar={<Bar value={level} of={max} tone={level > 0 ? 'accent' : 'neutral'} label={t('ui.skillLevel', { name, level, max })} />}
       data-testid={`skill-${code}`}
     />
   )

@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n'
 // DANGER TIERS — the pure half of the tier rendering (the icons.ts / Icon.tsx split, applied
 // again, exactly as rarityTiers.ts / Rarity.tsx does it): the scale, the player's word, and the
 // tier → (how many pips, which tone) table, with no React, so the contract is data a test reads.
@@ -32,20 +33,20 @@ export function dangerPips(tier: number): boolean[] {
 export function dangerLabel(tier: number): string {
   switch (tier) {
     case 1:
-      return 'home waters'
+      return t('ui.homeWaters')
     case 2:
-      return 'quiet'
+      return t('ui.quiet')
     case 3:
-      return 'unsettled'
+      return t('ui.unsettled')
     case 4:
-      return 'dangerous'
+      return t('ui.dangerous')
     case 5:
-      return 'deadly'
+      return t('ui.deadly')
     default:
       // A tier this build has never heard of (a server newer than this client): say the number,
       // quietly. Truthful and lesser, never a crash and never a guess — docs/NO_SPAGHETTI.md §7C's
       // mirror rule, and the same arm RarityMark takes for an unknown rarity.
-      return `tier ${tier}`
+      return t('ui.tier', { n: tier })
   }
 }
 
