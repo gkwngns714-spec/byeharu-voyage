@@ -7,6 +7,7 @@ import { fleetsDict } from './fleets'
 import { formatDict } from './format'
 import { foundDict } from './found'
 import { historyDict } from './history'
+import { innDict } from './inn'
 import { mapDict } from './map'
 import { portDict } from './port'
 import { profileDict } from './profile'
@@ -25,6 +26,7 @@ export const DICT = {
   format: formatDict,
   found: foundDict,
   history: historyDict,
+  inn: innDict,
   map: mapDict,
   port: portDict,
   profile: profileDict,

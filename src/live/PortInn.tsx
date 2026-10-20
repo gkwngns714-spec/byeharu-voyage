@@ -34,6 +34,7 @@ import {
   instantMs,
 } from '../lib/format'
 import type { FleetView, InnGuest, Refusal, SnapshotPort } from '../lib/rpc'
+import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE INN — the crew, hired and let go from one stepper, and who is drinking here today (0073).
@@ -99,7 +100,7 @@ function guestMeta(guest: InnGuest): string {
 /** Her nation and home port — the port a go-to link when the world names it (the inn serves the
  *  port's NAME, 0073, so it is found by name in the snapshot). */
 function whereFrom(guest: InnGuest, ports: readonly SnapshotPort[] | undefined): ReactNode {
-  if (!guest.home) return 'Unknown'
+  if (!guest.home) return tNow('inn.unknown')
   const code = ports?.find((p) => p.name === guest.home)?.code
   const home = code ? <GoToLink to={{ kind: 'port', code }}>{guest.home}</GoToLink> : guest.home
   return guest.nation ? (
@@ -124,6 +125,7 @@ export function PortInn({
    *  slides them out beside itself (`side-next`). The same face, composed by a second caller. */
   trayMode?: TrayMode
 }) {
+  const t = useT()
   return (
     <div data-testid="port-inn">
       {alongside ? (
@@ -134,13 +136,13 @@ export function PortInn({
       ) : (
         <>
           <Row
-            label="Crew available"
-            value={<Figure value={formatInt(port.crew_pool)} unit="people" />}
+            label={t('inn.crewAvailable')}
+            value={<Figure value={formatInt(port.crew_pool)} unit={t('inn.people')} />}
             tone="muted"
             data-testid="inn-pool"
           />
           {/* WHY NOTHING HERE CAN BE PRESSED — one line, not a dead stepper. */}
-          <Row label="Dock a fleet here to hire crew or buy supplies." tone="muted" hairline={false} data-testid="inn-none-docked" />
+          <Row label={t('inn.dockToHire')} tone="muted" hairline={false} data-testid="inn-none-docked" />
         </>
       )}
       <Room port={port} fleet={alongside} trayMode={trayMode} />
@@ -156,12 +158,13 @@ export function PortInn({
  * server's, exactly as on the quay.
  */
 function Supplies({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView; trayMode?: TrayMode }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const step = useStepOrder(fleet, 'PROVISION', open, () => setOpen(false))
   return (
     <>
       <Row
-        label="Supplies"
+        label={t('inn.supplies')}
         value={<Figure value={formatVoyageDays(fleet.endurance_days)} />}
         chevron
         onClick={() => setOpen(true)}
@@ -190,12 +193,13 @@ function Supplies({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetV
 function presets(value: number, max: number) {
   if (max <= 0) return undefined
   const jumps = [10, 100].filter((n) => value + n < max).map((n) => ({ label: `+${n}`, value: value + n }))
-  return [...jumps, { label: 'Max', value: max }]
+  return [...jumps, { label: tNow('inn.max'), value: max }]
 }
 
 /** The crew, as Trade draws a good: the figure and its bar, the stepper, the served cost of the
  *  count chosen, the dry run of the line the button sends, and the ONE button. */
 function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
+  const t = useT()
   const crew = fleetCrew(fleet)
   // THE ASK FOLLOWS THE SHIP. What the stepper asks for is stored WITH the crew it was asked
   // against; when an order lands the world is read back, the crew aboard moves, and an ask made
@@ -219,14 +223,15 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
   const cost = useCrewCost(fleet.id, chosen)
 
   const refused = step.check.status === 'refused' || step.check.status === 'checking'
-  const label = delta > 0 ? `Hire ${formatInt(delta)}` : delta < 0 ? `Dismiss ${formatInt(-delta)}` : 'No change'
+  const label =
+    delta > 0 ? t('inn.hire', { n: formatInt(delta) }) : delta < 0 ? t('inn.dismiss', { n: formatInt(-delta) }) : t('inn.noChange')
   const range = crew.max > crew.required
 
   return (
     <div data-testid="inn-crew-face">
       <Row
-        label="Crew"
-        value={<Figure value={formatOfTotal(crew.aboard, crew.max)} unit="crew" size="figure" />}
+        label={t('inn.crew')}
+        value={<Figure value={formatOfTotal(crew.aboard, crew.max)} unit={t('inn.crewUnit')} size="figure" />}
         data-testid="inn-crew"
       >
         {/* THE BAR IS THE SHIP'S: what is aboard against the crew slots it has, and the change the
@@ -235,13 +240,13 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
           pct={crew.max > 0 ? (crew.aboard / crew.max) * 100 : 0}
           pending={crew.max > 0 && delta !== 0 ? (delta / crew.max) * 100 : undefined}
           tone={crew.short > 0 ? 'warning' : 'accent'}
-          label={`crew, ${formatOfTotal(chosen, crew.max)}`}
+          label={t('inn.crewBar', { of: formatOfTotal(chosen, crew.max) })}
           className="mt-1"
         />
       </Row>
       <Row
-        label="Crew available here"
-        value={<Figure value={formatInt(port.crew_pool)} unit="people" />}
+        label={t('inn.crewHere')}
+        value={<Figure value={formatInt(port.crew_pool)} unit={t('inn.people')} />}
         data-testid="inn-pool"
       />
 
@@ -253,14 +258,14 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
             min={crew.required}
             max={crew.max}
             step={1}
-            unit="crew"
-            label="crew on board"
+            unit={t('inn.crewUnit')}
+            label={t('inn.crewOnBoard')}
             presets={presets(chosen, crew.max)}
             data-testid="inn-crew-stepper"
           />
         </div>
       ) : (
-        <Note tone="neutral">These ships have no spare crew slots.</Note>
+        <Note tone="neutral">{t('inn.noSlots')}</Note>
       )}
 
       {/* WHAT THE CHOSEN CREW WILL COST, PER DAY AT SEA — the server's one sum (0086), moving with
@@ -270,13 +275,13 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
           (formatPrice), not as a whole ducat that would read "1" for 0.60 and "0" for 0.40. */}
       {cost.cost !== null ? (
         <Row
-          label="Wages"
-          value={<Figure value={formatPrice(cost.cost.per_day)} unit="per day at sea, paid from profit" />}
+          label={t('inn.wages')}
+          value={<Figure value={formatPrice(cost.cost.per_day)} unit={t('inn.perDayAtSea')} />}
           hairline={false}
           data-testid="inn-crew-cost"
         />
       ) : (
-        <Row label={cost.loading ? 'Checking the wages…' : 'Wages unknown'} tone="muted" hairline={false} />
+        <Row label={t(cost.loading ? 'inn.checkingWages' : 'inn.wagesUnknown')} tone="muted" hairline={false} />
       )}
 
       {/* THE DRY RUN of the exact line the button sends: what hiring costs today, or the reason. */}
@@ -288,7 +293,7 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
           className="w-full"
           disabled={delta === 0 || step.issuing || refused}
           busy={step.issuing}
-          busyLabel="Sending…"
+          busyLabel={t('inn.sending')}
           onClick={step.send}
           data-testid="inn-crew-send"
         >
@@ -301,6 +306,7 @@ function CrewFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
 
 /** This quarter hour's room — the read, the faces, and the hiring tray. */
 function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView | null; trayMode?: TrayMode }) {
+  const t = useT()
   const { view, loading } = useInn(port.id)
   // THE ONE CLOCK (src/app/shellState.ts) counts down to the served turn (0119 `turns_at`).
   const { nowMs } = useShellState()
@@ -330,24 +336,24 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral" className="mt-3">Loading…</Note>
-  if (!view || !view.has_inn) return <Note tone="neutral" className="mt-3">No inn in this port.</Note>
+  if (loading && !view) return <Note tone="neutral" className="mt-3">{t('inn.loading')}</Note>
+  if (!view || !view.has_inn) return <Note tone="neutral" className="mt-3">{t('inn.noInn')}</Note>
 
   return (
     <>
       {/* WHEN THE ROOM TURNS OVER (0119: every inn_captain_rotate_minutes REAL minutes). A server
           that has not applied 0119 serves no instant, and the line says only what is true. */}
       <div className="flex items-baseline justify-between pb-2 pt-4" data-testid="inn-room-head">
-        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">Captains here</h3>
+        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{t('inn.captainsHere')}</h3>
         {turnsAt !== null && (
           <span className="text-t-caption tabular-nums text-ink-faint" data-testid="inn-turns">
-            {turnsAt > nowMs ? `New faces in ${formatRealDuration(turnsAt - nowMs)}` : 'New faces arriving'}
+            {turnsAt > nowMs ? t('inn.newFacesIn', { span: formatRealDuration(turnsAt - nowMs) }) : t('inn.newFaces')}
           </span>
         )}
       </div>
 
       {view.present.length === 0 ? (
-        <Row label="Nobody in the inn right now." tone="muted" hairline={false} data-testid="inn-empty" />
+        <Row label={t('inn.nobody')} tone="muted" hairline={false} data-testid="inn-empty" />
       ) : (
         <TileField>
           {view.present.map((guest) => (
@@ -363,7 +369,7 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
                 setDetent('half')
                 setOpen(guest)
               }}
-              figure={<Figure value={formatDucats(guest.wage)} unit="per voyage" />}
+              figure={<Figure value={formatDucats(guest.wage)} unit={t('inn.perVoyage')} />}
               data-testid={`guest-${guest.code}`}
             />
           ))}
@@ -383,19 +389,19 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
                 variant="primary"
                 className="w-full"
                 busy={signing}
-                busyLabel="Hiring…"
+                busyLabel={t('inn.hiring')}
                 onClick={() => sign(open)}
                 data-testid={`sign-${open.code}`}
               >
-                {`Hire ${open.name.split(' ')[0]} for ${formatDucats(open.wage)}`}
+                {t('inn.hireFor', { name: open.name.split(' ')[0], wage: formatDucats(open.wage) })}
               </Button>
             )
           }
         >
           {open.grade && open.job_word ? (
             <>
-              <Row label="Grade" value={open.grade} data-testid="inn-grade" />
-              <Row label="Job" value={`${open.job_word} · ${open.focus_word ?? ''}`} data-testid="inn-job" />
+              <Row label={t('inn.grade')} value={open.grade} data-testid="inn-grade" />
+              <Row label={t('inn.job')} value={`${open.job_word} · ${open.focus_word ?? ''}`} data-testid="inn-job" />
               {(open.traits ?? []).map((t) => (
                 <Row
                   key={t.code}
@@ -410,14 +416,14 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
               {open.speaks && <Row label={open.speaks} tone="muted" data-testid="inn-speaks" />}
             </>
           ) : (
-            <Row label="Job" value={open.specialty.toLowerCase()} />
+            <Row label={t('inn.job')} value={open.specialty.toLowerCase()} />
           )}
-          <Row label="From" value={whereFrom(open, ports)} hairline={!open.signed} />
+          <Row label={t('inn.from')} value={whereFrom(open, ports)} hairline={!open.signed} />
           {/* 0157: where she will sit — the fleet docked here, by the server's picker; else ashore */}
           {!open.signed && (
-            <Row label={fleet ? `Joins ${fleet.name} on hiring` : 'Goes ashore on hiring'} tone="muted" data-testid="inn-joins" />
+            <Row label={fleet ? t('inn.joins', { fleet: fleet.name }) : t('inn.ashore')} tone="muted" data-testid="inn-joins" />
           )}
-          {open.signed && <Row label="Already working for you." tone="muted" hairline={false} />}
+          {open.signed && <Row label={t('inn.already')} tone="muted" hairline={false} />}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {refusal && (
             <Note tone="danger" code={refusal.code} figures={refusal.figures}>
