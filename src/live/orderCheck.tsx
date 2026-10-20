@@ -48,7 +48,7 @@ export function OrderCheck({
 
   if (check.status === 'refused') {
     return (
-      <Note tone="danger" code={check.refusal.code} data-testid="order-check-refusal">
+      <Note tone="danger" code={check.refusal.code} figures={check.refusal.figures} data-testid="order-check-refusal">
         {check.refusal.sentence}
       </Note>
     )

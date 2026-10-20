@@ -103,7 +103,7 @@ export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; s
         ))}
       </ul>
       {refusal && (
-        <Note tone="danger" code={refusal.code} className="mt-2">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
           {refusal.sentence}
         </Note>
       )}

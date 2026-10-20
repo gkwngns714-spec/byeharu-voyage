@@ -200,7 +200,7 @@ function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt:
             The influence your company has given stays with the country it leaves.
           </p>
           {refusal && (
-            <Note tone="danger" code={refusal.code} className="mt-3">
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-3">
               {refusal.sentence}
             </Note>
           )}

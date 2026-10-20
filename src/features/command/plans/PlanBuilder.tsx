@@ -269,7 +269,7 @@ export function PlanBuilder({
         </Note>
       )}
       {refusal && (
-        <Note tone="danger" className="mt-3" code={refusal.code}>
+        <Note tone="danger" className="mt-3" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}
         </Note>
       )}

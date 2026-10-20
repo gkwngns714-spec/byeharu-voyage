@@ -131,7 +131,7 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
         <Row label="Her traits change only in port." tone="muted" hairline={false} />
       )}
       {refusal && (
-        <Note tone="danger" code={refusal.code}>
+        <Note tone="danger" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}
         </Note>
       )}
@@ -165,7 +165,7 @@ function Promote({ captain }: { captain: YourCaptain }) {
         {`Promote to ${p.to}`}
       </Button>
       {refusal && (
-        <Note tone="danger" code={refusal.code} className="mt-2">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
           {refusal.sentence}
         </Note>
       )}

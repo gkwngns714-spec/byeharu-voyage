@@ -56,7 +56,7 @@ export function Queue({
   return (
     <>
       {failedRefusal && (
-        <Note tone="danger" code={failedRefusal.code} data-testid="queue-halt">
+        <Note tone="danger" code={failedRefusal.code} figures={failedRefusal.figures} data-testid="queue-halt">
           Order {failed?.seq} was refused: {failedRefusal.sentence.replace(/\.$/, '')}. Anything that depended on it was cancelled;
           {' '}{fleet.name} is free.
         </Note>

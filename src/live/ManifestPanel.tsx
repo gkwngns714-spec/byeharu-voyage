@@ -173,7 +173,7 @@ export function ManifestPanel({
   const note = (
     <Note
       tone="danger"
-      code={refusal?.code}
+      code={refusal?.code} figures={refusal?.figures}
       action={
         tradeRefusal && (tradeRefusal.code === 'E_BUSY' || tradeRefusal.code === 'E_STALE') ? (
           <Button size="sm" variant="quiet" onClick={send}>

@@ -126,7 +126,7 @@ export function HaggleThread({
             <Row key={i} label={t.message} tone={t.won ? 'default' : 'muted'} hairline={false} data-testid="haggle-turn" />
           ))}
           {refusal && (
-            <Note tone="danger" code={refusal.code} data-testid="haggle-refusal">
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} data-testid="haggle-refusal">
               {refusal.sentence}
             </Note>
           )}

@@ -77,7 +77,7 @@ function CityMarket({ port, reader }: { port: SnapshotPort; reader: FleetView | 
     return quay.refusal !== null ? (
       <Note
         tone="danger"
-        code={quay.refusal.code}
+        code={quay.refusal.code} figures={quay.refusal.figures}
         action={
           <Button size="sm" onClick={quay.retry}>
             Try again

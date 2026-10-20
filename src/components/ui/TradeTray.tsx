@@ -390,7 +390,7 @@ export function TradeTray({
       {/* The server's refusal, in the server's own sentence. The CODE goes to console.debug and
           never to the quay (§5's Note contract, and §2 item 13: a code is for a log). */}
       {act.refusal && (
-        <Note tone="danger" code={act.refusal.code} data-testid="trade-tray-refusal">
+        <Note tone="danger" code={act.refusal.code} figures={act.refusal.figures} data-testid="trade-tray-refusal">
           {act.refusal.sentence}
         </Note>
       )}

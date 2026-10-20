@@ -85,7 +85,7 @@ function TowRow({ fleet }: { fleet: FleetView }) {
         </Note>
       )}
       {shown && (
-        <Note tone="danger" code={shown.code} data-testid="tow-refusal">
+        <Note tone="danger" code={shown.code} figures={shown.figures} data-testid="tow-refusal">
           {shown.sentence}
         </Note>
       )}

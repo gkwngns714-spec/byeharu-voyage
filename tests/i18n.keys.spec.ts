@@ -41,7 +41,7 @@ test('no Korean entry is empty, left in English, or missing a placeholder', () =
       const [e, o] = [texts(en), texts(ko)]
       o.forEach((s, i) => {
         if (s.trim() === '') bad.push(`${id}: empty`)
-        if (s === e[i] && /[A-Za-z]{2}/.test(s) && !SAME_IN_BOTH.has(id)) bad.push(`${id}: still English — "${s}"`)
+        if (s === e[i] && /[A-Za-z]{2}/.test(s.replace(/\{\w+\}/g, '')) && !SAME_IN_BOTH.has(id)) bad.push(`${id}: still English — "${s}"`)
         if (holes(s).join() !== holes(e[i] ?? '').join())
           bad.push(`${id}: placeholders {${holes(e[i] ?? '')}} vs {${holes(s)}}`)
       })

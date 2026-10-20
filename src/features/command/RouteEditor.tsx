@@ -202,7 +202,7 @@ export function RouteEditor({
         </Note>
       )}
       {refusal && (
-        <Note tone="danger" code={refusal.code} className="mt-2" data-testid="route-refusal">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2" data-testid="route-refusal">
           {refusal.sentence}
         </Note>
       )}

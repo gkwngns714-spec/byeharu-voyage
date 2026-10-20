@@ -102,7 +102,7 @@ export function CommandScreen() {
   if (phase === 'failed' && fatal) {
     return (
       <Sheet title="Command">
-        <Note tone="danger" code={fatal.code}>
+        <Note tone="danger" code={fatal.code} figures={fatal.figures}>
           {fatal.sentence}
         </Note>
       </Sheet>

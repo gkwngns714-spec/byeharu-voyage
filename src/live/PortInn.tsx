@@ -420,7 +420,7 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
           {open.signed && <Row label="Already working for you." tone="muted" hairline={false} />}
           <p className="pt-2 text-t-label text-ink-muted">{open.blurb}</p>
           {refusal && (
-            <Note tone="danger" code={refusal.code}>
+            <Note tone="danger" code={refusal.code} figures={refusal.figures}>
               {refusal.sentence}
             </Note>
           )}

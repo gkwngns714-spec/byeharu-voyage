@@ -182,17 +182,17 @@ export function PortAcademy() {
           {open.enrol_where && <Hint>{open.enrol_where}</Hint>}
           {open.next_level === null && <Note tone="neutral">Max level reached.</Note>}
           {open.enrol_refusal && (
-            <Note tone="warning" code={open.enrol_refusal.code}>
+            <Note tone="warning" code={open.enrol_refusal.code} figures={open.enrol_refusal.figures}>
               {open.enrol_refusal.sentence}
             </Note>
           )}
           {open.queue_refusal && (
-            <Note tone="warning" code={open.queue_refusal.code}>
+            <Note tone="warning" code={open.queue_refusal.code} figures={open.queue_refusal.figures}>
               {open.queue_refusal.sentence}
             </Note>
           )}
           {refusal && (
-            <Note tone="danger" code={refusal.code}>
+            <Note tone="danger" code={refusal.code} figures={refusal.figures}>
               {refusal.sentence}
             </Note>
           )}

@@ -168,7 +168,7 @@ function MayorTax({ port, setAt }: { port: SnapshotPort; setAt: string | null })
         </Button>
       </div>
       {refusal && (
-        <Note tone="danger" code={refusal.code} className="mt-2">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
           {refusal.sentence}
         </Note>
       )}
@@ -265,7 +265,7 @@ function DonateTray({
         />
       )}
       {shown && (
-        <Note tone="danger" code={shown.code}>
+        <Note tone="danger" code={shown.code} figures={shown.figures}>
           {shown.sentence}
         </Note>
       )}

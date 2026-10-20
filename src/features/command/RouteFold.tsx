@@ -156,7 +156,7 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
               {route.state === 'stopped' && route.stopped && (
                 <Note
                   tone="danger"
-                  code={route.stopped.code}
+                  code={route.stopped.code} figures={route.stopped.figures}
                   action={
                     <Button variant="secondary" size="sm" busy={press.pending} onClick={() => void act(() => clearQueue(fleet.id))}>
                       Clear
@@ -215,7 +215,7 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
             </>
           )}
           {refusal && (
-            <Note tone="danger" code={refusal.code} className="mt-2">
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
               {refusal.sentence}
             </Note>
           )}

@@ -113,7 +113,7 @@ export function FulfilTray({
       {refusal && (
         <Note
           tone="danger"
-          code={refusal.code}
+          code={refusal.code} figures={refusal.figures}
           action={
             actRefusal && (actRefusal.code === 'E_BUSY' || actRefusal.code === 'E_STALE') ? (
               <Button size="sm" variant="quiet" onClick={send}>

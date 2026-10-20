@@ -209,7 +209,7 @@ export function PortWorkstation({
           )}
           {open.makeable && short !== null && <Note tone="warning">{`Missing: ${short}.`}</Note>}
           {refusal && (
-            <Note tone="danger" code={refusal.code}>
+            <Note tone="danger" code={refusal.code} figures={refusal.figures}>
               {refusal.sentence}
             </Note>
           )}

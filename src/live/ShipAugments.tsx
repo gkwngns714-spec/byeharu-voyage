@@ -118,7 +118,7 @@ export function ShipAugments({
       )}
       {done && <Note tone="success" className="mt-2">{done}</Note>}
       {refusal && (
-        <Note tone="danger" code={refusal.code} className="mt-2">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
           {refusal.sentence}
         </Note>
       )}

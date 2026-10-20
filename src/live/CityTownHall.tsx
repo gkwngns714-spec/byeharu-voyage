@@ -52,7 +52,7 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
   const hall = read.view?.view ?? null
   if (!hall) {
     return read.view?.refusal ? (
-      <Note tone="danger" code={read.view.refusal.code}>
+      <Note tone="danger" code={read.view.refusal.code} figures={read.view.refusal.figures}>
         {read.view.refusal.sentence}
       </Note>
     ) : (
@@ -299,7 +299,7 @@ function InvestTray({
         />
       )}
       {shown && (
-        <Note tone="danger" code={shown.code}>
+        <Note tone="danger" code={shown.code} figures={shown.figures}>
           {shown.sentence}
         </Note>
       )}

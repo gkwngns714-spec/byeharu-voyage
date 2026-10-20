@@ -99,7 +99,7 @@ export function FleetStores({
         {refusal && (
           <Note
             tone="danger"
-            code={refusal.code}
+            code={refusal.code} figures={refusal.figures}
             className="mt-2"
             action={
               <Button variant="quiet" size="sm" onClick={onDismissRefusal}>

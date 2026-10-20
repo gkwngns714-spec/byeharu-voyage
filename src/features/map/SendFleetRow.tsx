@@ -98,7 +98,7 @@ function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; t
     <div className="py-2">
       <Note
         tone="danger"
-        code={refusal.code}
+        code={refusal.code} figures={refusal.figures}
         data-testid={testId}
         figure={
           figures ? (

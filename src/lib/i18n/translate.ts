@@ -1,6 +1,7 @@
 // READING A STRING. `t('auth.title')` — the key is `<section>.<entry>`, typed from the registry in
 // ./dict, so a typo fails `tsc`. `{name}` placeholders take `vars`; a plural entry picks `one` when
-// `vars.n === 1`, else `other`.
+// `vars.count` (or, without one, `vars.n`) is 1, else `other` — `count` lets the printed figure
+// be formatted ("−1", "1,000") while the pick still reads the number.
 //
 // Pure code (lib/format, domain/*) calls `t` and reads the locale at call time. A component calls
 // `useT()` (./react) instead, so a switch re-renders it and a `useMemo` keyed on `t` recomputes.
@@ -26,7 +27,7 @@ function fill(text: string, vars: TVars | undefined): string {
 
 function pick(msg: Msg, vars: TVars | undefined): string {
   if (typeof msg === 'string') return msg
-  return vars?.n === 1 ? msg.one : msg.other
+  return String(vars?.count ?? vars?.n) === '1' ? msg.one : msg.other
 }
 
 function entry(locale: Locale, section: string, name: string): Msg | undefined {

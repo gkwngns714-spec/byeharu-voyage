@@ -96,7 +96,7 @@ export function SignTheBook() {
             this screen does not translate server errors into its own words. The code goes to
             console.debug (Note's own rule, the one WorldGate keeps), never to the screen. */}
         {refusal && (
-          <Note tone="danger" code={refusal.code} className="mt-3">
+          <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-3">
             {refusal.sentence}
           </Note>
         )}

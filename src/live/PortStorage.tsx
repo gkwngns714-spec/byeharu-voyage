@@ -314,7 +314,7 @@ function MoveTray({
         </Note>
       )}
       {preview.refusal && (
-        <Note tone="warning" code={preview.refusal.code} data-testid="storage-preview-refusal">
+        <Note tone="warning" code={preview.refusal.code} figures={preview.refusal.figures} data-testid="storage-preview-refusal">
           {preview.refusal.sentence}
         </Note>
       )}
@@ -322,7 +322,7 @@ function MoveTray({
       {/* The one rule a player must know about storage, said where it applies and nowhere else. */}
       <Row label="Stored goods can only be picked up at this port." tone="muted" hairline={false} />
       {refusal && (
-        <Note tone="danger" code={refusal.code}>
+        <Note tone="danger" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}
         </Note>
       )}
