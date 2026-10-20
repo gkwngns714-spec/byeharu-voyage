@@ -59,7 +59,9 @@ export function RankBars({
   if (rows.length === 0) {
     return <Row label={empty} tone="muted" hairline={false} className={className} {...rest} />
   }
-  const widest = Math.max(1, ...rows.map((r) => Math.abs(r.value)))
+  // The true widest row, and 1 only when every row is nought — flooring it at 1 would draw a list
+  // of half-percent movers as a row of stubs.
+  const widest = Math.max(...rows.map((r) => Math.abs(r.value))) || 1
 
   return (
     <div className={className} {...rest}>
