@@ -74,6 +74,7 @@ import type {
   TownHallView,
   PriceOutlook,
   PriceWhy,
+  SeaConditions,
   GoodBoard,
   Watchlist,
   PlanLine,
@@ -667,6 +668,13 @@ export function worldPriceOutlook(
 /** Why a good's market price at one city is what it is (0185): each term as its multiplier. */
 export function worldPriceWhy(portId: string, goodId: string): Promise<RpcResult<PriceWhy>> {
   return call<PriceWhy>('worldPriceWhy', [portId, goodId])
+}
+
+/** The sea conditions (0215, docs/SEA_CONDITIONS_AND_REGIONS.md): every zone with the title and wave
+ *  resistance it asks, the caller's title, each of her fleets' wave, and whether the conditions bite yet.
+ *  The client prints these figures and derives none of them. */
+export function worldSeaConditions(): Promise<RpcResult<SeaConditions>> {
+  return call<SeaConditions>('worldSeaConditions', [])
 }
 
 /** One good at every city, for your fleet (0171): where it is sold and what it costs, where it is

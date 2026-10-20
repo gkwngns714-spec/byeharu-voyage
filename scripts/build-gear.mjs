@@ -366,6 +366,37 @@ const REFIT_LEVELS = [
 ]
 const REFIT_COUNT = REFITS.length * REFIT_LEVELS.length
 
+/**
+ * 0215 (docs/SEA_CONDITIONS_AND_REGIONS.md §3.2): WHAT GEAR ADDS TO A HULL'S WAVE RESISTANCE — the one rule, by
+ * (base type, grade). Eight families keep a ship afloat in a sea: the anchors, the sheet anchors, the storm
+ * canvas, the planking, the sheathing, the pumps, the ballast and two refits (Doubled Frames, Raised
+ * Forecastle). Every member of a family — the live G1, the G2–G5, the T2 (grade 5), a Named, a Country (grade
+ * 4), a Famous (grade 5) — takes the figure of its grade; every other item adds nothing (wave is what keeps her
+ * afloat, not what makes her fast or armed). 0074's buys-one-spends-another rule is untouched: this is an extra
+ * buy on items that already spend. The live G1 rows (data/fittings.json: anchor-and-cable, ballast,
+ * copper-sheathing) carry their grade-1 figure in the data file, and generateGear() asserts it equals this
+ * table — the table is the rule, the file is held to it. The migration pastes `--sql-0215` (waveSql) and
+ * scripts/db/world-guard.mjs holds public.item_effects to the generator on every apply.
+ */
+export const WAVE_BY_BASE = {
+  'Anchor':            [2, 3, 3, 4, 5],
+  'Sheet Anchor':      [3, 4, 4, 5, 6],
+  'Storm Canvas':      [2, 3, 3, 4, 5],
+  'Planking':          [3, 4, 4, 5, 6],
+  'Sheathing':         [2, 2, 3, 3, 4],
+  'Bilge Pumps':       [1, 2, 2, 3, 3],
+  'Ballast':           [1, 1, 2, 2, 3],
+  'Doubled Frames':    [2, 3],
+  'Raised Forecastle': [2, 3],
+}
+/** The wave a piece of `base` at `grade` adds, or null when its family adds none. */
+export function waveDelta(base, grade) {
+  const ladder = WAVE_BY_BASE[base]
+  if (!ladder) return null
+  if (!(grade >= 1 && grade <= ladder.length)) throw new Error(`waveDelta: ${base} has no grade ${grade}`)
+  return ladder[grade - 1]
+}
+
 /** One effect at grade g: buys × the grade's multiplier (gentler for speed / hold), spends × 1. */
 export function gradedDelta(stat, delta, g) {
   if (delta < 0) return delta
@@ -609,7 +640,7 @@ export function generateGear() {
   const profiles = Object.fromEntries(readJson('data/gear.json').items.map((i) => [i.code, i]))
   const goods = new Set(readJson('data/goods.json').goods.map((g) => g.id))
   const skills = new Set(readJson('data/skills.json').skills.map((s) => s.code))
-  const STATS = new Set(['hold', 'speed', 'handling', 'draft', 'durability', 'armour', 'attack', 'accuracy', 'reach', 'sighting'])
+  const STATS = new Set(['hold', 'speed', 'handling', 'draft', 'durability', 'armour', 'attack', 'accuracy', 'reach', 'sighting', 'wave'])   // 0215: + wave
   const items = []
   const codes = new Set(Object.keys(fittings))
   const names = new Set(Object.values(fittings).map((f) => f.name.toLowerCase()))
@@ -641,8 +672,10 @@ export function generateGear() {
       const p = profiles[b.g1]
       if (!f || !p) throw new Error(`${b.base}: live G1 ${b.g1} is not in data/fittings.json + data/gear.json`)
       if (p.baseType !== b.base || p.rack !== b.rack || p.grade !== 1) throw new Error(`${b.base}: the live G1 ${b.g1} is profiled ${p.baseType} / ${p.rack} / G${p.grade}`)
+      // 0215: a live G1's `wave` row is NOT a G1 effect the ladder scales — every grade takes WAVE_BY_BASE's figure
+      // (applied to every item below); the file's row is asserted against the table there.
       g1 = { code: f.code, name: f.name, slot: f.slot, buys: f.buys, spends: f.spends, volume: f.volume, wsTier: f.ws_tier,
-        deck: p.deck, hands: p.hands, active: p.active, effects: (f.effects ?? []).map((e) => [e.stat, e.delta]), live: true }
+        deck: p.deck, hands: p.hands, active: p.active, effects: (f.effects ?? []).filter((e) => e.stat !== 'wave').map((e) => [e.stat, e.delta]), live: true }
     } else {
       g1 = { ...b.g1, live: false }
     }
@@ -912,6 +945,32 @@ export function generateGear() {
   expectFx('drakes-culverins', { attack: 180, reach: 45, accuracy: 12, hold: -20, handling: -6 })
   if (use.length !== items.length + Object.keys(profiles).length) throw new Error(`every item has one use row: ${use.length} for ${items.length} + ${Object.keys(profiles).length} live`)
 
+  // 0215 (docs/SEA_CONDITIONS_AND_REGIONS.md §3.2): WAVE RESISTANCE, by (base type, grade) — WAVE_BY_BASE, the one
+  // rule, applied LAST so no ladder, T2, Named, Country or Famous multiplier ever touches it. Every generated item
+  // of the eight families (and the two refits) gains the row of its grade; no other item has one. The live G1
+  // rows of data/fittings.json carry their grade-1 figure in the file and are held to the table here.
+  let nWave = 0
+  for (const i of items) {
+    if (i.effects.some((e) => e.stat === 'wave')) throw new Error(`${i.code}: a wave effect was derived by a ladder — wave is WAVE_BY_BASE's alone`)
+    const w = waveDelta(i.baseType, i.grade)
+    if (w !== null) { i.effects.push({ stat: 'wave', delta: w }); nWave += 1 }
+  }
+  for (const f of readJson('data/fittings.json').fittings) {
+    const w = waveDelta(profiles[f.code].baseType, profiles[f.code].grade)
+    const row = (f.effects ?? []).find((e) => e.stat === 'wave')
+    if ((row?.delta ?? null) !== w) throw new Error(`${f.code}: data/fittings.json says wave ${row?.delta ?? 'none'}; WAVE_BY_BASE says ${w ?? 'none'} for ${profiles[f.code].baseType} G${profiles[f.code].grade}`)
+    if (row) nWave += 1
+  }
+  // §3.2's figures: eight families × their grades on prod (2026-10-20, head 0211) = 65 items with a wave row
+  if (nWave !== 65) throw new Error(`§3.2: the eight wave families and two refits are 65 items; the rule reached ${nWave}`)
+  expectFx('deal-planking', { wave: 3 })
+  expectFx('sheet-anchor', { wave: 3 })
+  expectFx('storm-canvas', { wave: 2 })
+  expectFx('bilge-pumps', { wave: 1 })
+  expectFx('turtle-back-plating', { armour: 30, wave: 5 })
+  expectFx('ancla-de-la-esperanza', { wave: 5 })
+  expectFx('doubled-frames-2', { durability: 320, speed: -0.2, wave: 3 })
+
   use.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
   return {
     _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158; §6.2 T2 + Named, S15, migration 0159; §6.2 Country + §6.6 kits + §6.7 sets, S16, migration 0163; §6.2 Famous, S17, migration 0166).',
@@ -1014,6 +1073,16 @@ export function unmadeSql(gen = generateGear()) {
   return gen.items.filter((i) => i.made === false).map((i) => `  ('${i.code}')`).join(',' + NL)
 }
 
+/** The SQL VALUES migration 0215 loads (`--sql-0215`), pasted verbatim: every item's `wave` row of
+ *  public.item_effects — the generated items' (WAVE_BY_BASE by grade) and the live G1s' (data/fittings.json, held to
+ *  the same table), by item code. The world guard holds the database to generateGear() + the file on every apply. */
+export function waveSql(gen = generateGear()) {
+  const live = readJson('data/fittings.json').fittings.flatMap((f) => (f.effects ?? []).filter((e) => e.stat === 'wave').map((e) => [f.code, e.delta]))
+  const made = gen.items.flatMap((i) => i.effects.filter((e) => e.stat === 'wave').map((e) => [i.code, e.delta]))
+  const rows = [...live, ...made].sort((a, b) => (a[0] < b[0] ? -1 : 1))
+  return [`-- item_effects wave (${rows.length})`, rows.map(([code, d]) => `  (${q(code)}, 'wave', ${d})`).join(',' + NL)].join(NL)
+}
+
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-gear.mjs')) {
   const gen = generateGear()
   const text = JSON.stringify(gen, null, 1) + NL
@@ -1031,6 +1100,8 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/bui
     console.log(s17Sql(gen))
   } else if (process.argv.includes('--sql-0184')) {
     console.log(unmadeSql(gen))
+  } else if (process.argv.includes('--sql-0215')) {
+    console.log(waveSql(gen))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, GEAR_FILE), 'utf8')
     if (now !== text) { console.error(`${GEAR_FILE} is NOT what scripts/build-gear.mjs generates — re-run it.`); process.exit(1) }

@@ -95,6 +95,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { FAMOUS } from './build-gear.mjs'
+import { waveResistance } from './lib/world-derive.mjs'   // 0215: the one rule for a hull's wave resistance
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const readJson = (rel) => JSON.parse(readFileSync(join(ROOT, rel), 'utf8'))
@@ -482,6 +483,9 @@ export function generateShips() {
       hold: h.hold, crewRequired: h.crewRequired, crewMax: h.crewMax, speedKn: h.speedKn, durability: h.durability,
       guns: h.attack / 10, draft: h.draft, buildHours: SIZE_BUILD_HOURS[size], buildCost: ducats * 4,
       handling: h.handling, armour: h.armour, attack: h.attack, accuracy: h.accuracy, reach: h.reach, sighting: h.sighting,
+      // 0215: ship_classes.wave — DERIVED by the one rule (scripts/lib/world-derive.mjs waveResistance), never authored.
+      // `wave` above is this hull's generation wave (A–D); the sea stat is this key.
+      waveResistance: waveResistance(size, rig, role),
       deck: h.deck, hands: h.crewMax - Math.ceil(h.crewRequired / 2), racks: h.racks, cabins: SIZE_CABINS[size],
       yardTier: SIZE_YARD_TIER[size], ducats, shedLabour: shed.moved, tons: shed.tons, note, goods: goodsList, items, requirements,
     }

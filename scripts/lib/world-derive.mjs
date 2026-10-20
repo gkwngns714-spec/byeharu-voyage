@@ -408,6 +408,22 @@ export const NATIONS = [
  * with a migration that moves the table.
  */
 export const GREAT_POWERS = ['PRT', 'ESP', 'ENG', 'NLD', 'FRA', 'OTT', 'MUG', 'MNG', 'JOS', 'JPN']
+
+// ── 0215: A HULL'S WAVE RESISTANCE (docs/SEA_CONDITIONS_AND_REGIONS.md §3.1) ────────────────────
+// `ship_classes.wave` is DERIVED from what the class already is: 12 × size (class_profile.size, 1–6) + the
+// rig (square +3, mixed +1, lateen 0, oared −6: galleys do not keep the sea) + the role (explorer +2). The
+// migration derives the column with this same rule and asserts every class; scripts/db/world-guard.mjs
+// re-derives it on every apply (every class, the live three included); scripts/build-ships.mjs writes it
+// into data/ships.generated.json. One rule, three readers — a hand-set value is seen by all of them.
+export const WAVE_PER_SIZE = 12
+export const WAVE_RIG = { square: 3, mixed: 1, lateen: 0, oared: -6 }
+export const WAVE_ROLE = { explorer: 2, trade: 0, combat: 0, support: 0 }
+export function waveResistance(size, rig, role) {
+  if (!(size >= 1 && size <= 6)) throw new Error(`waveResistance: size ${size}`)
+  if (!(rig in WAVE_RIG)) throw new Error(`waveResistance: rig ${rig}`)
+  if (!(role in WAVE_ROLE)) throw new Error(`waveResistance: role ${role}`)
+  return WAVE_PER_SIZE * size + WAVE_RIG[rig] + WAVE_ROLE[role]
+}
 /** Modern country code → the 1550 power, where it is not in dispute. */
 const NATION_BY_COUNTRY = {
   PT: 'PRT', ES: 'ESP', FR: 'FRA', GB: 'ENG', IE: 'ENG', NL: 'NLD', BE: 'NLD',

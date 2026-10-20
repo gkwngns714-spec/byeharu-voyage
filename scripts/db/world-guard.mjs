@@ -93,7 +93,7 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { deriveWorld, GREAT_POWERS, REPO_ROOT, round2 } from '../lib/world-derive.mjs'
+import { deriveWorld, GREAT_POWERS, REPO_ROOT, round2, waveResistance } from '../lib/world-derive.mjs'
 import { generateShips, SHIPS_FILE } from '../build-ships.mjs'
 import { generateGear, GEAR_FILE } from '../build-gear.mjs'
 import { captainInputs, generateCaptains, CAPTAINS_FILE } from '../build-captains.mjs'
@@ -208,6 +208,44 @@ function drift(db_, want) {
   setCheck(db_.seas, want.seas, 'sea')
   setCheck(db_.regions, want.regions, 'region')
   setCheck(db_.nations, want.nations, 'nation')
+
+  // 0215: THE SEA CONDITIONS — public.sea_zones, public.sea_zone_boxes and public.title_names EQUAL
+  // data/sea-zones.json, both directions (requirement order = the array's; a box's bounds; a sea's one rest box)
+  if (want.seaZones && db_.seaZones) {
+    const SZ = 'data/sea-zones.json'
+    const nz = (v) => (v === null || v === undefined ? 'null' : String(v))
+    const wantZones = want.seaZones.zones.map((z, i) => ({ code: z.code, name: z.name, title_min: z.title, wave_min: z.wave, ord: i + 1 }))
+    const wantBoxes = want.seaZones.zones.flatMap((z) => z.boxes.map((b) => ({
+      key: `${b.sea}/${b.ord}`, zone: z.code, sea: b.sea, ord: b.ord,
+      lat_min: nz(b.lat_min), lat_max: nz(b.lat_max), lon_min: nz(b.lon_min), lon_max: nz(b.lon_max) })))
+    const dbBoxes = db_.seaZones.boxes.map((b) => ({ ...b, key: `${b.sea}/${b.ord}`,
+      lat_min: nz(b.lat_min), lat_max: nz(b.lat_max), lon_min: nz(b.lon_min), lon_max: nz(b.lon_max) }))
+    const eq = (what, dbRows, wantRows, key, cols) => {
+      const d = new Map(dbRows.map((r) => [key(r), r]))
+      const w = new Map(wantRows.map((r) => [key(r), r]))
+      for (const [k, r] of w) {
+        const x = d.get(k)
+        if (!x) { say(`${what} ${k} is in ${SZ} but absent from the database`); continue }
+        for (const c of cols) if (String(x[c]) !== String(r[c])) say(`${what} ${k}.${c}: database has ${x[c]}, ${SZ} says ${r[c]}`)
+      }
+      for (const k of d.keys()) if (!w.has(k)) say(`${what} ${k} is in the database but not in ${SZ}`)
+    }
+    eq('sea zone', db_.seaZones.zones, wantZones, (r) => r.code, ['name', 'title_min', 'wave_min', 'ord'])
+    eq('sea zone box', dbBoxes, wantBoxes, (r) => r.key, ['zone', 'lat_min', 'lat_max', 'lon_min', 'lon_max'])
+    eq('title', db_.seaZones.titles, want.seaZones.titles, (r) => String(r.level), ['name'])
+    // every raster sea has exactly ONE rest box (no bounds), so every water cell answers one zone
+    for (const s of want.seas) {
+      const rests = wantBoxes.filter((b) => b.sea === s.code && [b.lat_min, b.lat_max, b.lon_min, b.lon_max].every((v) => v === 'null'))
+      if (rests.length !== 1) say(`sea ${s.code} has ${rests.length} rest boxes in ${SZ}; every sea has exactly one`)
+    }
+  }
+  // 0215: every ship class's wave resistance IS the one derivation (world-derive.mjs waveResistance), the live three too
+  if (db_.waveA && db_.waveA.classWaves) {
+    for (const c of db_.waveA.classWaves) {
+      const w = waveResistance(c.size, c.rig, c.role)
+      if (Number(c.wave) !== w) say(`ship class ${c.code}.wave: database has ${c.wave}, the rule (12 × ${c.size} + ${c.rig} + ${c.role}) gives ${w}`)
+    }
+  }
   // 0130: a nation's flag and capital are derived too (world-derive.mjs NATIONS / CAPITALS)
   for (const n of want.nations) {
     const d = db_.nations.find((x) => x.code === n.code)
@@ -496,6 +534,15 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     select p.code as port, g.code as good from public.port_specialties s
       join public.ports p on p.id = s.port_id join public.goods g on g.id = s.good_id`)).rows
   db_.seas = (await db.query(`select code, name from public.seas`)).rows
+  // 0215: the sea conditions — every zone, its boxes and the title names (data/sea-zones.json)
+  db_.seaZones = {
+    zones: (await db.query(`select code, name, title_min, wave_min, ord from public.sea_zones`)).rows,
+    boxes: (await db.query(`
+      select b.zone_code as zone, s.code as sea, b.ord, b.lat_min::float8 as lat_min, b.lat_max::float8 as lat_max,
+             b.lon_min::float8 as lon_min, b.lon_max::float8 as lon_max
+        from public.sea_zone_boxes b join public.seas s on s.id = b.sea_id`)).rows,
+    titles: (await db.query(`select level, name from public.title_names`)).rows,
+  }
   db_.regions = (await db.query(`select code, name from public.regions`)).rows
   db_.nations = (await db.query(`select code, name, flag_char, capital_port_code from public.nations`)).rows
   // 0130: the eleven lines and every hull's profile (numeric jsonb values read back as numbers)
@@ -576,8 +623,11 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     classes: (await db.query(`
       select code, name, family, rig, hold, crew_required, crew_max, speed_kn::float8 as speed_kn, durability, guns, draft,
              build_hours::float8 as build_hours, build_cost::float8 as build_cost, tier, handling, armour, attack, accuracy,
-             reach, sighting::float8 as sighting
+             reach, sighting::float8 as sighting, wave
         from public.ship_classes`)).rows,
+    // 0215: every class's wave beside its profile, for the one-rule check (the live three included)
+    classWaves: (await db.query(`
+      select c.code, c.rig, c.wave, cp.size, cp.role from public.ship_classes c join public.class_profile cp on cp.class_code = c.code`)).rows,
     cabins: (await db.query(`select class_code, cabins from public.class_cabins`)).rows,
     recipes: (await db.query(`select class_code, yard_tier, ducats::float8 as ducats, note from public.hull_recipes`)).rows,
     recipeGoods: (await db.query(`
@@ -630,6 +680,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   }
   want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
   want.homes = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'home-ports.json'), 'utf8')).homes   // 0143
+  want.seaZones = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-zones.json'), 'utf8'))   // 0215: zones, boxes, titles
   want.great = [...GREAT_POWERS].sort()   // 0187 (GP1)
 
   // 0135: THE GENERATORS, RE-RUN. Their output must equal the committed files (a stale file is drift)
@@ -681,11 +732,12 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     want.waveA = {
       liveClasses: liveHulls.map((h) => h.class),
       classCols: ['name', 'family', 'rig', 'hold', 'crew_required', 'crew_max', 'speed_kn', 'durability', 'guns', 'draft',
-        'build_hours', 'build_cost', 'tier', 'handling', 'armour', 'attack', 'accuracy', 'reach', 'sighting'],
+        'build_hours', 'build_cost', 'tier', 'handling', 'armour', 'attack', 'accuracy', 'reach', 'sighting', 'wave'],   // 0215: + wave
       classes: ships.hulls.map((h) => ({
         code: h.class, name: h.name, family: h.family, rig: h.rig, hold: h.hold, crew_required: h.crewRequired, crew_max: h.crewMax,
         speed_kn: h.speedKn, durability: h.durability, guns: h.guns, draft: h.draft, build_hours: h.buildHours, build_cost: h.buildCost,
-        tier: h.tier, handling: h.handling, armour: h.armour, attack: h.attack, accuracy: h.accuracy, reach: h.reach, sighting: h.sighting })),
+        tier: h.tier, handling: h.handling, armour: h.armour, attack: h.attack, accuracy: h.accuracy, reach: h.reach, sighting: h.sighting,
+        wave: h.waveResistance })),   // 0215
       cabins: [...read('data/ship_stats.json').slots.map((s) => ({ class_code: s.class, cabins: s.cabins })),
         ...ships.hulls.map((h) => ({ class_code: h.class, cabins: h.cabins }))],
       recipes: [...liveHulls.map((h) => ({ class_code: h.class, yard_tier: h.yard_tier, ducats: h.ducats, note: h.note })),
