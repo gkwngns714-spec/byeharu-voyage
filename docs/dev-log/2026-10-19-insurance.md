@@ -56,6 +56,12 @@ The owner asked "what about insurance" twice (2026-10-19). Built by default; eve
 
 The quote matches the measured world (0.010–0.015 % per sea-day against prod's 0.0138 %): raids are rare today, so
 insurance is cheap — 1–12 🪙 on a 2,000 🪙 cargo. It becomes a real price when the pirates slices raise the danger.
+
+Re-measured with 0209–0212 applied over the same world (0212: `haul_max` 600 → 3, prod head at the PR): the share of
+cargo is IDENTICAL band by band (the quote reads no price). On the merchants' own holds in that world (bought under
+0208's hauls; a short first leg often sails empty) the average premium per voyage is 4.7 / 9.6 / 33 / 120 / 375 🪙 by
+band (median cargo at cost 0 / 0 / 104 / 5,349 / 22,922). With the haul capped at 3× the cost basis of far cargo falls,
+and the ducat premium falls with it; the share does not move.
 `risk_quote`: 3–12 ms on a 5-day voyage in the probe; 77 ms average over the 837 voyages (PGlite, loaded machine).
 
 ### The self-assert (local, the real applier)
