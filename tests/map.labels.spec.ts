@@ -5,6 +5,7 @@ import {
   GLYPH,
   GREAT_PORT_TIER,
   LABEL_PRIORITY,
+  LABEL_RINGS,
   LABEL_SPAN_LIMIT,
   fitView,
   mapFleetsOf,
@@ -16,8 +17,10 @@ import {
   unitsPerPixel,
   viewBoxOf,
   visiblePorts,
+  type Leader,
   type MapSelection,
   type PlacedLabel,
+  type Rect,
 } from '../src/chart'
 import { REAL_PORTS, REAL_PORT_COUNT, dockedFleet, sailingFleet } from './mapWorld.fixture'
 
@@ -181,7 +184,7 @@ test.describe('the zoom decides how much world is drawn', () => {
     expect(drawn.map((p) => p.code)).not.toContain('HAV') // Havana
   })
 
-  test('a crowded coast view stays legible: every name clean, and the rest dropped', () => {
+  test('a crowded coast view stays legible — and since the leaders, every mark on it is named', () => {
     // The Mediterranean at "a coast" zoom, where every tier is drawn: the densest thing the chart
     // can be asked to do. `unitsPerPx` is the 390 px phone's, so the labels are phone-sized.
     const viewBox: ViewBox = { x: 2, y: -45, width: 12, height: 26 }
@@ -208,6 +211,16 @@ test.describe('the zoom decides how much world is drawn', () => {
       ...MODEL.fleets.map((f) => `fleet:${f.fleet.id}`),
     ])
     for (const label of placed) expect(drawable.has(label.id)).toBe(true)
+
+    // AND NOTHING IS DROPPED HERE ANY MORE (2026-10-20, owner request 185: *"some cities aren't
+    // shown their names in certain zoom points … Any way to see the cities all? Without
+    // overlapping?"*). This test was written when it was 11 of these 14 marks: Venice, Naples and
+    // Valletta were boxed in by their neighbours' names and went. They are now set on a further
+    // ring with a leader back to their marks (labels.ts `LABEL_RINGS`), and the three-line check
+    // above still holds — so at a coast zoom the answer to the owner's question is simply "all of
+    // them". The globe is a different frame and still cannot name a cluster; see the test below.
+    const named = new Set(placed.map((l) => l.id))
+    for (const port of drawn) expect(named.has(`port:${port.code}`), port.name).toBe(true)
   })
 
   test('pulled back past LABEL_SPAN_LIMIT, only ports your fleets use — and the great harbours — ask for a name', () => {
@@ -593,5 +606,112 @@ test.describe('planLabels, the rule itself', () => {
         first.map((l) => `${l.id}:${l.side}`),
       )
     }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A NAME WITH NOWHERE SNUG STEPS OUT, ON A LEADER (2026-10-20, owner request 185: *"some cities
+// aren't shown their names in certain zoom points. What is the reason? Any way to see the cities
+// all? Without overlapping?"*)
+//
+// The rule it is held to here is the whole of the answer:
+//   · the further rings may only ADD names — whatever fitted beside its own mark is placed exactly
+//     where it was, same side, same box (this is what the two passes in `planLabels` are for);
+//   · a stepped-out name carries a hairline back to its own mark, from the mark's edge to the box;
+//   · that hairline crosses no other name and no other mark, because a line through a name is the
+//     same overlap one line thinner;
+//   · and a name never steps further out than the reach the chart already treats as that harbour
+//     (`GLYPH.hitRadius`), so the name you can read is a name you can put your thumb on.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** Does a hairline cross a rectangle? The spec's own copy, so the rule is checked and not trusted. */
+function crosses(line: Leader, r: Rect): boolean {
+  const steps = 400
+  for (let i = 0; i <= steps; i++) {
+    const x = line.x1 + ((line.x2 - line.x1) * i) / steps
+    const y = line.y1 + ((line.y2 - line.y1) * i) / steps
+    if (x > r.x && x < r.x + r.width && y > r.y && y < r.y + r.height) return true
+  }
+  return false
+}
+
+test.describe('the stepped-out rings', () => {
+  test('a name may not step further out than the mark’s own touch reach', () => {
+    const furthest = LABEL_RINGS[LABEL_RINGS.length - 1] * GLYPH.labelGapX
+    expect(LABEL_RINGS[0], 'the first ring IS the snug one — the rule as it was').toBe(1)
+    expect(furthest, 'a name stays inside the reach that already means "this harbour"').toBeLessThanOrEqual(
+      GLYPH.hitRadius,
+    )
+  })
+
+  test('the further rings only ADD: whatever fitted snug is in the same place, and more is named', () => {
+    // The Mediterranean at a coast zoom, at a phone's scale: the densest frame the chart has.
+    const viewBox = CROWDED
+    const options = crowdedOptions()
+    const requests = mapLabelRequests(MODEL, visiblePorts(PORTS, MODEL.portRoles, viewBox, minTierForSpan(viewBox.width)), null, true)
+    const snug = planLabels(requests, { ...options, rings: [1] })
+    const all = planLabels(requests, options)
+    expect(all.length, 'the rings name more than the snug rule did').toBeGreaterThan(snug.length)
+    for (const was of snug) {
+      const now = all.find((l) => l.id === was.id)
+      expect(now, `"${was.text}" fitted snug and is gone`).toBeTruthy()
+      expect(now!.side, was.text).toBe(was.side)
+      expect(now!.box, was.text).toEqual(was.box)
+      expect(now!.leader, `"${was.text}" fitted snug and should carry no leader`).toBeUndefined()
+    }
+    // Non-vacuous: some of the names it added really are out on a ring.
+    expect(all.filter((l) => l.leader).length).toBeGreaterThan(0)
+  })
+
+  test('a stepped-out name is joined to its mark, and the join crosses nothing', () => {
+    const options = crowdedOptions()
+    const drawn = visiblePorts(PORTS, MODEL.portRoles, CROWDED, minTierForSpan(CROWDED.width))
+    const requests = mapLabelRequests(MODEL, drawn, null, true)
+    const placed = planLabels(requests, options)
+    const glyph = GLYPH.fleetHaloRadius * options.unitsPerPx
+    const stepped = placed.filter((l) => l.leader)
+    expect(stepped.length, 'nothing stepped out — this would prove nothing').toBeGreaterThan(0)
+    for (const label of stepped) {
+      const line = label.leader!
+      const mark = requests.find((r) => r.id === label.id)!.at
+      // It starts at the edge of its OWN mark and ends on its own box.
+      const d = Math.hypot(line.x1 - mark.x, line.y1 - mark.y)
+      expect(d, `${label.text}: the leader starts at its mark`).toBeCloseTo(glyph, 6)
+      expect(line.x2, `${label.text}: the leader ends on its name`).toBeGreaterThanOrEqual(label.box.x - 1e-9)
+      expect(line.x2).toBeLessThanOrEqual(label.box.x + label.box.width + 1e-9)
+      expect(line.y2).toBeGreaterThanOrEqual(label.box.y - 1e-9)
+      expect(line.y2).toBeLessThanOrEqual(label.box.y + label.box.height + 1e-9)
+      // And it crosses no OTHER name, and no other harbour's mark.
+      for (const other of placed) {
+        if (other.id === label.id) continue
+        expect(crosses(line, other.box), `${label.text}: its leader crosses "${other.text}"`).toBe(false)
+      }
+      for (const other of requests) {
+        if (other.id === label.id) continue
+        const box = {
+          x: other.at.x - glyph,
+          y: other.at.y - glyph,
+          width: 2 * glyph,
+          height: 2 * glyph,
+        }
+        // A mark standing on top of this one cannot be avoided and is not counted (labels.ts).
+        if (box.x <= line.x1 && line.x1 <= box.x + box.width && box.y <= line.y1 && line.y1 <= box.y + box.height) continue
+        expect(crosses(line, box), `${label.text}: its leader crosses the mark for "${other.text}"`).toBe(false)
+      }
+    }
+  })
+
+  test('a sea’s name never steps out: ground is set where it belongs or not at all', () => {
+    // A centred request (a sea, a region) has no mark to lead back to, so it has no rings either.
+    const VIEW = { x: 0, y: 0, width: 100, height: 100 }
+    const placed = planLabels(
+      [
+        { id: 'port:A', text: 'Aa', at: { x: 50, y: 50 }, priority: 20, tone: 'port-quiet' },
+        { id: 'sea:X', text: 'Mare', at: { x: 50, y: 50 }, priority: 5, tone: 'sea', placement: 'centred' },
+      ],
+      { viewBox: VIEW, unitsPerPx: 1, fontSizePx: 10, gapPx: 5, glyphRadiusPx: 4, edgeInsetPx: 0 },
+    )
+    for (const label of placed) expect(label.leader, label.text).toBeUndefined()
+    expect(placed.find((l) => l.id === 'sea:X')?.side ?? 'centre').toBe('centre')
   })
 })

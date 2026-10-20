@@ -51,6 +51,9 @@ export interface WhereFacts {
     readonly to: string | null
     readonly dest_point?: readonly [number, number] | null
     readonly eta: string
+    /** Where the server placed her on this leg. Optional for the serve-order reason `dest_point`
+     *  is: a read that carries no position simply has no coordinate to offer. */
+    readonly position?: { readonly lat: number; readonly lon: number } | null
   } | null
 }
 
@@ -61,6 +64,19 @@ export type Whereabouts =
       readonly to: string | null
       readonly point: LatLon | null
       readonly etaMs: number | null
+      /**
+       * WHERE SHE IS NOW — the SERVED position on her leg (`voyage.position`), the same point the
+       * chart draws her at. Null only when the server did not place her.
+       *
+       * 2026-10-20 (the owner, request 184: *"I want to be able to click on npc name like location,
+       * and then point me to that location like for cities."*). A row's "where" was three words and
+       * no coordinate, so the map's go-to (src/chart/goTo.ts) could take you to a harbour she lies
+       * in and to an anchor she rides at, and did NOTHING for a merchant at sea unless the chart
+       * happened to be drawing her — and the sea window is capped, so the merchant in a city's
+       * "Incoming" list usually is not drawn. The classification now carries the one coordinate it
+       * always had in front of it.
+       */
+      readonly at: LatLon | null
     }
   | { readonly kind: 'docked'; readonly port: string }
   | { readonly kind: 'anchored'; readonly at: LatLon }
@@ -75,6 +91,7 @@ export function whereabouts(f: WhereFacts): Whereabouts {
       to: v.to,
       point: v.dest_point ? { lat: v.dest_point[0], lon: v.dest_point[1] } : null,
       etaMs: instantMs(v.eta),
+      at: v.position ? { lat: v.position.lat, lon: v.position.lon } : null,
     }
   }
   if (f.port) return { kind: 'docked', port: f.port }

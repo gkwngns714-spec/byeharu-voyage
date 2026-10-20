@@ -1,6 +1,5 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { unproject, type LatLon, type Point, type ViewBox } from '../../lib/geo'
-import { whereabouts } from '../../domain/fleet'
 import type { FleetView, PortAllegiance, PortMerchant, SnapshotPort, TrafficFleet } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
@@ -26,6 +25,7 @@ import {
   GLYPH,
   GoToLink,
   GoToMarker,
+  goToPoint,
   GOTO_MIN_CLEAR_PX,
   GOTO_MARK_MS,
   goToSpan,
@@ -303,10 +303,11 @@ function Chart({
   const panelOpen = selectedFleet !== null || selectedMerchant !== null || place !== null
 
   // ── GO TO (src/chart/goTo.ts) — this screen is the one taker ──────────────────────────────────
-  // A request is resolved to a coordinate through THIS chart's model: a harbour by its code; a
-  // fleet by the mark the chart drew for her, else by `whereabouts` over her served row (a
-  // merchant resting in a harbour is not drawn). Then the zoom glide carries the view there and the
-  // marker rings it. Nothing is selected or closed: the panel the link was in stays as it was —
+  // A request is resolved to a coordinate through THIS chart's model — `goToPoint`'s rule, handed
+  // the model and the served rows: a harbour by its code; a fleet or a merchant by the mark the
+  // chart drew for her, else by her own row (a merchant resting in a harbour is not drawn, and
+  // neither is one outside the capped sea window). Then the zoom glide carries the view there and
+  // the marker rings it. Nothing is selected or closed: the panel the link was in stays as it was —
   // unless the side panels leave too little clear glass (a phone), when they FOLD, still mounted,
   // until the tab at the edge or the next tap on the chart brings them back.
   const [mark, setMark] = useState<{ at: LatLon; seq: number } | null>(null)
@@ -318,17 +319,15 @@ function Chart({
       const p = portsByCode.get(code)
       return p ? { lat: p.lat, lon: p.lon } : null
     }
-    const resolve = (t: GoToTarget): LatLon | null => {
-      if (t.kind === 'point') return t.at
-      if (t.kind === 'port') return portAt(t.code)
-      const drawn = model.fleets.find((f) => f.fleet.id === t.id) ?? model.traffic.find((f) => f.fleet.id === t.id)
-      if (drawn) return drawn.at
-      const row = harbourRows.find((r) => r.id === t.id) ?? trafficRows.find((r) => r.id === t.id)
-      const w = t.where ?? (row ? whereabouts(row) : null)
-      if (w?.kind === 'docked') return portAt(w.port)
-      if (w?.kind === 'anchored') return w.at
-      return null
-    }
+    // THE RESOLUTION IS `goToPoint`'s (src/chart/goTo.ts), not this screen's: this hands it the
+    // three questions it may ask of the live chart and nothing else.
+    const resolve = (t: GoToTarget): LatLon | null =>
+      goToPoint(t, {
+        portAt,
+        drawnAt: (id) =>
+          (model.fleets.find((f) => f.fleet.id === id) ?? model.traffic.find((f) => f.fleet.id === id))?.at ?? null,
+        rowOf: (id) => harbourRows.find((r) => r.id === id) ?? trafficRows.find((r) => r.id === id) ?? null,
+      })
     take.current = (request) => {
       const at = resolve(request.target)
       const element = chartRef.current
