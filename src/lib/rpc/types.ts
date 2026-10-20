@@ -2837,3 +2837,203 @@ export interface Books {
   window: number
   books: { game_day: number; net: number; lines: BookLine[] }[]
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE STATS TAB (0214) — the world's figures, written every fifteen minutes by public.tick_stats
+// into its own tables and served by six reads. Every number here is a SUM of what an authority
+// already said (a purse, a flow, a trade, a recorded price); nothing is decided client-side.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** One money flow's kind, in the player's words: `side` says whether the world printed it
+ *  (`minted`), burned it (`removed`) or it changed hands (`moved`). */
+export interface StatsFlowLine {
+  kind: string
+  word: string
+  side: 'minted' | 'removed' | 'moved'
+  ducats: number
+}
+
+export interface StatsHolders {
+  players: number
+  merchants: number
+  cities: number
+  /** Request escrow and dividends set aside, not yet collected. */
+  set_aside: number
+  total: number
+}
+
+export interface StatsPeriod {
+  since: string | null
+  minted: number
+  removed: number
+  moved: number
+  sold: number
+  bought: number
+  units: number
+  trades: number
+  flows: StatsFlowLine[]
+}
+
+export interface StatsWorldPoint {
+  at: string
+  players: number
+  merchants: number
+  cities: number
+  set_aside: number
+  minted: number
+  removed: number
+  moved: number
+  sold: number
+  bought: number
+}
+
+/** `world.stats_overview(hours)`. `at` null = the job has not written a row yet. */
+export interface StatsOverview {
+  at: string | null
+  age_seconds: number | null
+  slot_seconds: number
+  hours: number
+  holders: StatsHolders | null
+  period: StatsPeriod | null
+  day: StatsPeriod | null
+  series: StatsWorldPoint[]
+}
+
+/** One good across every market that sells it (`world.stats_markets`). Mids are null for a good
+ *  no city sells; the `_1h/_1d/_7d` mids are null until the record is that old. */
+export interface StatsGood {
+  code: string
+  name: string
+  category: string
+  mid: number | null
+  markets: number
+  stock: number
+  stock_target: number
+  sold: number
+  bought: number
+  mid_1h: number | null
+  mid_1d: number | null
+  mid_7d: number | null
+  sold_1d: number
+  bought_1d: number
+  sold_ducats_1d: number
+  bought_ducats_1d: number
+  /** The newest 24 recorded mids, oldest first. */
+  spark: number[]
+}
+
+export interface StatsMarkets {
+  at: string | null
+  age_seconds: number | null
+  slot_seconds: number
+  goods: StatsGood[]
+}
+
+/** A harbour in `world.stats_cities`. The figures (`purse` onwards) exist ONLY at tier 1 or more —
+ *  the server never sends them otherwise; a locked city is name, flag, stake and what more it needs. */
+export interface StatsCityRow {
+  id: string
+  code: string
+  name: string
+  nation: string | null
+  tier: 0 | 1 | 2
+  paid: number
+  /** What more opens the next tier; null at the top. */
+  need: number | null
+  purse?: number
+  works?: number
+  income_1d?: number
+  spending_1d?: number
+  taxes_1d?: number
+  sold_1d?: number
+  bought_1d?: number
+}
+
+export interface StatsCities {
+  at: string | null
+  age_seconds: number | null
+  slot_seconds: number
+  tier1: number
+  tier2: number
+  cities: StatsCityRow[]
+}
+
+export interface StatsCityGood {
+  code: string
+  name: string
+  category: string
+  mid: number | null
+  stock: number | null
+  stock_target: number | null
+  mid_1d: number | null
+  sold_1d: number
+  bought_1d: number
+  spark: number[]
+}
+
+/** `world.stats_city(port)`: `overview` at tier 1+, `detail` at tier 2. */
+export interface StatsCity {
+  city: { id: string; code: string; name: string; nation: string | null }
+  at: string | null
+  age_seconds: number | null
+  slot_seconds: number
+  tier: 0 | 1 | 2
+  paid: number
+  need: number | null
+  tier1: number
+  tier2: number
+  overview?: {
+    purse: number
+    works: { kind: string; level: number }[]
+    income_1d: number
+    spending_1d: number
+    taxes_1d: number
+    sold_1d: number
+    bought_1d: number
+    flows_1d: StatsFlowLine[]
+    series: { at: string; purse: number; income: number; spending: number }[]
+    top_sold: { code: string; name: string; units: number; ducats: number }[]
+    top_bought: { code: string; name: string; units: number; ducats: number }[]
+  }
+  detail?: { goods: StatsCityGood[] }
+}
+
+export interface StatsMerchantHouse {
+  name: string
+  nation: string | null
+  day: number
+  laps: number
+}
+
+export interface StatsMerchants {
+  at: string | null
+  age_seconds: number | null
+  slot_seconds: number
+  houses?: number
+  fleets?: number
+  sailing?: number
+  docked?: number
+  repairing?: number
+  unable?: number
+  laid_up?: number
+  purse?: number
+  profit_day?: number
+  laps_day?: number
+  losing_pct?: number
+  top?: StatsMerchantHouse[]
+  bottom?: StatsMerchantHouse[]
+  series: { at: string; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
+}
+
+/** `world.stats_me()`: your week and the leaderboard — rank and name only, never a purse. */
+export interface StatsMe {
+  best_trades: { at: string; good: string; qty: number; total: number; profit: number; fleet: string }[]
+  trades_7d: number
+  sold_7d: number
+  bought_7d: number
+  leaderboard: {
+    players: number
+    you: number | null
+    board: { rank: number; name: string; nation: string | null; is_you: boolean }[]
+  }
+}

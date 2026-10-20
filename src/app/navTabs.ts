@@ -95,6 +95,12 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   { to: '/command', label: 'Command', icon: 'compass', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
+  // STATS (owner, 2026-10-20: *"a statistic tab along with command, map etc. where i can see the world
+  // economy, npc economy, cities, trade good stocks … updated regularly"*). ONE TAP, not the cabin: the
+  // owner named it beside Command and Map, and a trader reads the market's figures as often as the map.
+  // The bar draws FIVE cells: 390 ÷ 5 = 78 px and 320 ÷ 5 = 64 px, both clear of the 44 px reach floor
+  // and the 46 px the widest label needs; nav.geometry.spec re-measures the row.
+  { to: '/stats', label: 'Stats', icon: 'stats', enabled: true },
   { to: '/ledger', label: 'History', icon: 'ledger', enabled: true, group: 'cabin' },
   { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
   // ROUTES (owner row 115, 2026-10-11): every lane the world sails, ranked. In the CABIN for this

@@ -509,6 +509,16 @@ export const RPCS = {
       { name: 'p_good', type: 'uuid' },
     ],
   },
+  // 0214 — THE STATS TAB (docs/dev-log/2026-10-20-stats-tab.md): six READS over the rollup public.tick_stats
+  // writes every fifteen minutes. The world's money and what moved; every good across every market; every
+  // city at YOUR tier (the gate is the server's — a locked city arrives without figures); the merchants'
+  // day; your week and the leaderboard (rank and name only). None takes a player id.
+  worldStatsOverview: { schema: 'world', fn: 'stats_overview', args: [{ name: 'p_hours', type: 'int' }] },
+  worldStatsMarkets: { schema: 'world', fn: 'stats_markets', args: [] },
+  worldStatsCities: { schema: 'world', fn: 'stats_cities', args: [] },
+  worldStatsCity: { schema: 'world', fn: 'stats_city', args: [{ name: 'p_port', type: 'uuid' }] },
+  worldStatsMerchants: { schema: 'world', fn: 'stats_merchants', args: [] },
+  worldStatsMe: { schema: 'world', fn: 'stats_me', args: [] },
   // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
   // queued by the one enqueuer, all or none. The plan builder's "Queue it once".
   cmdIssueLines: {

@@ -79,6 +79,12 @@ import type {
   PlanLine,
   Holdings,
   Books,
+  StatsOverview,
+  StatsMarkets,
+  StatsCities,
+  StatsCity,
+  StatsMerchants,
+  StatsMe,
   IssueLinesResult,
   InvestReceipt,
   TowReceipt,
@@ -692,6 +698,33 @@ export function worldHoldings(): Promise<RpcResult<Holdings>> {
 /** The books (0177): the company's ledger by game day and kind, each day's net. */
 export function worldBooks(days: number | null = null): Promise<RpcResult<Books>> {
   return call<Books>('worldBooks', [days])
+}
+
+// ── THE STATS TAB (0214): six reads over the fifteen-minute rollup ──────────────────────────────
+/** The world's money by holder, this period's and the last day's minted / removed / moved and trade,
+ *  and the series over `hours` (1..720). */
+export function worldStatsOverview(hours: number | null = null): Promise<RpcResult<StatsOverview>> {
+  return call<StatsOverview>('worldStatsOverview', [hours])
+}
+/** Every good across every market that sells it: price and its moves, traded units, stock vs normal. */
+export function worldStatsMarkets(): Promise<RpcResult<StatsMarkets>> {
+  return call<StatsMarkets>('worldStatsMarkets')
+}
+/** Every harbour with YOUR tier there; figures only where you hold tier 1 or more (the server decides). */
+export function worldStatsCities(): Promise<RpcResult<StatsCities>> {
+  return call<StatsCities>('worldStatsCities')
+}
+/** One harbour at your tier: locked, the overview, or the full detail. */
+export function worldStatsCity(portId: string): Promise<RpcResult<StatsCity>> {
+  return call<StatsCity>('worldStatsCity', [portId])
+}
+/** The merchant companies' day: where their fleets are, what they earned, the best and the worst. */
+export function worldStatsMerchants(): Promise<RpcResult<StatsMerchants>> {
+  return call<StatsMerchants>('worldStatsMerchants')
+}
+/** Your week — best sales, how much traded — and the leaderboard by rank and name. */
+export function worldStatsMe(): Promise<RpcResult<StatsMe>> {
+  return call<StatsMe>('worldStatsMe')
 }
 
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */

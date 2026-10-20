@@ -1605,6 +1605,13 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // caller's insured voyages under way and what the insurance paid. A READ, no arguments. Landed WITH the
       // faces that read it (the desk's Plans; the SAIL's own estimate carries the price).
       'worldInsurance',
+      // Pin moved deliberately 2026-10-20 with migration 0214 (the owner: "a statistic tab along with command,
+      // map etc. … updated regularly"; "a statistic info of a city is added only when you invest certain
+      // amount"): THE STATS TAB's six reads over the fifteen-minute rollup. All READS, no player id; the
+      // city reads serve a city's figures only at the CALLER's tier (public.stats_city_tier, from
+      // city_shares.paid) — the gate is the server's, and tests/rpc.stats.spec.ts proves the three tiers.
+      // Landed WITH the faces that read them (features/stats).
+      'worldStatsOverview', 'worldStatsMarkets', 'worldStatsCities', 'worldStatsCity', 'worldStatsMerchants', 'worldStatsMe',
     ].sort(),
   )
   expect(JSON.stringify(RPCS)).not.toContain('new_house')

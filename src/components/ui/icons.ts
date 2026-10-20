@@ -15,6 +15,7 @@ export const ICON_NAMES = [
   'anchor',
   'compass',
   'chart',
+  'stats',
   'ship',
   'ledger',
   'wreath',
@@ -160,6 +161,9 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   compass: ['M12 2.5a9.5 9.5 0 1 0 0 19 9.5 9.5 0 0 0 0-19Z', 'm15.5 8.5-2 5-5 2 2-5 5-2Z'],
   // Folded chart — Map (a thing you read, not a thing you press).
   chart: ['M9 4 3.5 6v14L9 18l6 2 5.5-2V4L15 6 9 4Z', 'M9 4v14', 'M15 6v14'],
+  // Three bars rising on a baseline — Stats (the world's figures, 0214). Not the folded chart: that
+  // mark already means the Map tab, and a figure is not a place.
+  stats: ['M3.5 20.5h17', 'M6 17v-5', 'M12 17V7', 'M18 17v-8'],
   // Hull with a mast and sail — Fleets.
   ship: ['M3 17.5h18l-2 3.5H5l-2-3.5Z', 'M12 3v14.5', 'M12 5c3 1 5 2.5 6 4.5h-6', 'M12 8c-2 .8-3.5 1.5-4.5 3H12'],
   // Balance — Market.
