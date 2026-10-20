@@ -258,6 +258,18 @@ Every figure in the sketches below is illustrative; the real ones are served.
   fleets do not fit as chips at 390 px) and the where line (§2.1). On wide screens the two figures
   (cargo `51 / 60 tons`, supplies `14 days`) stand on the same line; on a phone they are in the chip's
   tray. Pressing the chip SELECTS a fleet in the tray; nothing on the page moves.
+  **Built 2026-10-20 as THE FLEET PICKER** (`FleetPicker.tsx`; the owner: *"when i have multiple
+  fleets, how should this change?"* → *"good. we need that"*): ONE button — her flag, her name, a dot
+  (green sailing · grey waiting for orders · red stuck: a refused order in her queue, or ADRIFT /
+  UNABLE_TO_SAIL — `domain/fleet` `fleetSignal`, which composes the queue's refused row and the status
+  tone) and ▾. If another fleet is stuck, a red dot after the ▾ says so. The press opens the list of
+  your fleets — flag · dot · name, where she is (§2.1's one where-rule, with the countdown) and cargo
+  used / total — as a `Popover` under the button on a wide glass and as the bottom `Tray` on a phone;
+  a row SELECTS and closes it, moving nothing. ← / → switch fleets on a wide glass (not while typing).
+  With ONE fleet it is her flag and her name, nothing to press. The selection is `useCommandDraft`'s
+  `selectFleet`, the same the map's tap writes; the where line moved off the header into the rows
+  (DEFAULT: the owner listed flag · name · dot · ▾ and "one line however many fleets"). Pinned by
+  `tests/desk.fleetpicker.spec.ts` on the shipped world and on a two-fleet copy of it.
 - **Faces** (`Segmented`, one row, 44 px): Markets · Plans · City · Invest · Profit (D1). The chosen
   face persists for the session (`deskView.ts`, PORT's `portView.ts` pattern).
 
@@ -783,7 +795,8 @@ slice 7 has landed), a hook through `useServedRead` (`useWatchlist`, `useGoodBoa
 src/features/command/
   CommandScreen.tsx      the desk shell: fleet strip, faces, the slot (≤ 250 lines)
   deskView.ts            which face; filters; sort (session store; PORT's portView pattern)
-  FleetStrip.tsx         the chip + where line + (wide) the two figures
+  FleetStrip.tsx         the fleet picker + the two figures (beside it on a wide glass, under it on a phone)
+  FleetPicker.tsx        ONE button (flag · name · signal dot · ▾) → the list of your fleets (Popover / Tray); ← →
   markets/
     Markets.tsx          the face: search, chips, sort, the list
     WatchRow.tsx         one good (name, sparkline, figure, change)  — `Row` + `Sparkline`

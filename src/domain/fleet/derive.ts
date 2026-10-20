@@ -34,7 +34,7 @@
 
 import { instantMs } from '../../lib/format'
 import { whereabouts } from './where'
-import type { FleetShip, FleetStatus, FleetView } from '../../lib/rpc'
+import type { FleetShip, FleetStatus, FleetView, QueuedOrder } from '../../lib/rpc'
 
 /**
  * WHAT A STATUS MEANS — good, in hand, wanting attention, or wrong.
@@ -66,6 +66,36 @@ export function fleetStatusTone(
     default:
       return 'neutral'
   }
+}
+
+/**
+ * THE REFUSED ORDER STANDING IN HER QUEUE, or null. Since 0186 a refused order no longer halts
+ * her — the server cancels what depended on it and runs the rest — but the refused row STAYS in
+ * the served queue as a record until the player dismisses it. COMMAND's queue prints it as the
+ * halt note; the fleet picker reads it as "stuck". One reading of `status === 'failed'`, here.
+ */
+export function fleetRefusedOrder(f: Pick<FleetView, 'queue'>): QueuedOrder | null {
+  return f.queue.find((o) => o.status === 'failed') ?? null
+}
+
+/**
+ * THE ONE-WORD SIGNAL a fleet shows at a glance (the owner, 2026-10-20, the fleet picker: "green =
+ * sailing, grey = docked waiting for orders, red = stuck (an order refused or blocked)").
+ *
+ *   stuck    a refused order stands in her queue (`fleetRefusedOrder`), or the server's status is
+ *            one `fleetStatusTone` already calls danger (ADRIFT, UNABLE_TO_SAIL — she cannot move
+ *            on by herself; the same reading 0093 gives a route's `blocked`)
+ *   sailing  `whereabouts` says a SAILING voyage row moves her
+ *   waiting  anything else: docked or anchored, with or without orders queued
+ *
+ * Nothing here is a new rule: it composes the queue's refused row, the status tone and the one
+ * where-rule, so a screen drawing a dot can never disagree with the queue's note or the map.
+ */
+export type FleetSignal = 'sailing' | 'waiting' | 'stuck'
+
+export function fleetSignal(f: FleetView): FleetSignal {
+  if (fleetRefusedOrder(f) !== null || fleetStatusTone(f.status) === 'danger') return 'stuck'
+  return whereabouts(f).kind === 'sailing' ? 'sailing' : 'waiting'
 }
 
 /**

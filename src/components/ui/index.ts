@@ -39,6 +39,13 @@ export {
 // 3. CORNER — corner-anchored floating glass, foldable, max two per screen, never the centre.
 export { Corner } from './Corner'
 export { cornerSlotClass, type CornerSlot } from './cornerSlots'
+//    POPOVER — the wide glass's small answer to "unfold under the press": a panel hung under its
+//    control, out of the flow, gone on a press outside or Escape (useDismiss, the one dismissal).
+//    The COMMAND desk's fleet picker (2026-10-20); on a phone the same caller mounts a Tray.
+export { Popover } from './Popover'
+export { useDismiss } from './useDismiss'
+//    DOT — one state as an 8-px disc of a tone, beside a name (a fleet's sailing · waiting · stuck).
+export { Dot, type DotTone } from './Dot'
 
 // 4. ROW — 52px: mark · label · Figure · chevron. What a table was.
 export { Row, type RowTone } from './Row'

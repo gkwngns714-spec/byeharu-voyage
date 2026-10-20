@@ -30,6 +30,10 @@ export {
   fleetHoldUsed,
   // WHERE HER NEXT ORDER HAPPENS — the one answer, for the four places that spelt it out inline.
   fleetPortCode,
+  // THE REFUSED ORDER IN HER QUEUE, and the one-word signal (sailing · waiting · stuck) a picker's
+  // dot draws — the queue's halt note and the dot read the same row.
+  fleetRefusedOrder,
+  fleetSignal,
   fleetStatusTone,
   fleetStores,
   housePortCode,
@@ -43,6 +47,7 @@ export {
   worstHullFraction,
   type CargoLine,
   type CrewCount,
+  type FleetSignal,
 } from './derive'
 
 // WHERE SHE IS — the one classification (at sea / in port / at anchor) and the one line about it,
