@@ -3,7 +3,7 @@ import type { IconName } from '../components/ui'
 // THE TAB TABLE — pure data + policy (no React), so the navigation contract can be pinned by a
 // spec instead of read out of JSX. NavBar renders EXACTLY this list; there is no second table.
 //
-// ── THE EIGHT DESTINATIONS, and why each is its own screen ──────────────────────────────────────
+// ── THE DESTINATIONS, and why each is its own screen — eight, and NINE since 2026-10-20 ────
 //   Command  whose orders, and what she has been told: her queue, the halt, cancel and clear.
 //            Since 2026-09-09 it composes NO verb — the owner: *"they should be located
 //            accordingly at different locations"* — every verb's doorway is on the face of the
@@ -21,6 +21,9 @@ import type { IconName } from '../components/ui'
 //   Rank     standings among captains.
 //   Codex    the compendium (도감): every good, hull, officer and flag the world serves, whether
 //            or not you have met it. A reference — it commands nothing.
+//   You      who you have become and who sails for you: the three levels, every hull you own,
+//            your captains (owner row 181, 2026-10-20). It is the figures ABOUT you; Profile is
+//            the account you are signed in as, and Fleets is where a fleet is right now.
 //   Profile  account, session, preferences.
 //
 // ── NINE DESTINATIONS, SIX CELLS (2026-08-25); EIGHT AND FIVE SINCE 2026-09-11 ─────────────────
@@ -113,6 +116,14 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   // "Codex", not "Compendium": both mean the 도감, and the shorter word is the one that must fit a
   // cell. The screen's own title spells it out in full.
   { to: '/compendium', label: 'Codex', icon: 'codex', enabled: true, group: 'cabin' },
+  // YOU (owner row 181, 2026-10-20: *"Create a tab for personal info, such as my level, my ships,
+  // captains, achievements, levels etc."*). What you have become and who sails for you: the three
+  // levels, every hull you own, your captains. IN THE CABIN for this group's own stated kind — it
+  // consults and commands nothing — and a group member costs the bar no cell, so the five measured
+  // cells of nav.geometry.spec.ts stand. The word is "You", which is how every heading in this game
+  // already addresses the player ("Your fleets", "Your week"); PROFILE stays the account beside it
+  // (the papers that say who you are signed in as), and nothing is printed on both.
+  { to: '/you', label: 'You', icon: 'crew', enabled: true, group: 'cabin' },
   { to: '/profile', label: 'Profile', icon: 'profile', enabled: true, group: 'cabin' },
 ]
 

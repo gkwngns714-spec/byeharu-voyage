@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { Bar, Button, Figure, LanguageSwitch, Note, Row, Segmented, Sheet, SheetSection } from '../../components/ui'
+import { Button, LanguageSwitch, Note, Row, Segmented, Sheet, SheetSection } from '../../components/ui'
 import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
 import { NationPicker } from '../../live/NationPicker'
 import { useAuthStore } from '../../store/authStore'
 import { useWorld } from '../../live/worldStore'
-import { formatDate, formatInt } from '../../lib/format'
-import type { LevelTrack } from '../../lib/rpc'
+import { formatDate } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { APPEARANCES, readAppearance, writeAppearance, type Appearance } from './appearance'
 import { properName, useT, type TKey } from '../../lib/i18n'
@@ -31,9 +30,11 @@ import { properName, useT, type TKey } from '../../lib/i18n'
 //   `The house` card (company, nation, level, founded, lying at)     → the one house line. "Lying
 //                at" is where her fleet is, and FLEETS says so; `company_level` is read by no
 //                rule and printed nowhere now.
-//   Rank's `Levels` card (the three tracks, 0069)                    → HERE, as Bars — the hand-off
-//                from the RANK rebuild (PR #44), which cut them because §6 sends them to this
-//                screen. A track that admits it is empty is not printed as a track: see `Track`.
+//   Rank's `Levels` card (the three tracks, 0069)                    → here as Bars, and SINCE
+//                2026-10-20 (owner row 181) on the YOU tab: the levels went to the first screen
+//                §6 had for them, and have now gone to the one the owner asked for by name.
+//                features/you/YouScreen.tsx carries them, and this screen prints no ladder — two
+//                screens drawing one is two answers to "what level am I".
 //
 // ── SIGN-OUT KEEPS ITS REASON ──────────────────────────────────────────────────────────────────
 // In local mode `authStore.signOut()` opens with `if (!supabase) return`, so the button used to be
@@ -87,29 +88,6 @@ export function ProfileScreen() {
 
       {player && player.nation && (
         <CountrySection nation={player.nation} changeAt={player.nation_change_at} nowMs={nowMs} />
-      )}
-
-      {player && (
-        <SheetSection heading={t('profile.levels')} surface data-testid="levels">
-          <Track name={t('profile.trading')} track={player.levels.trading} />
-          <Track name={t('profile.exploration')} track={player.levels.exploration} />
-          {/* COMBAT READS NOTHING AND IS NOT DRAWN AS A TRACK. 0069 serves it with `playable:
-              false` on purpose — there is no fighting at sea in this game yet (0035) — and a bar
-              at level 1 of an unbuilt track would make it look built. The server's flag decides:
-              the day it flips, this row becomes the third bar with no edit here. Until then the
-              row says what it waits on, once, in the player's words. */}
-          {player.levels.combat.playable ? (
-            <Track name={t('profile.combat')} track={player.levels.combat} last />
-          ) : (
-            <Row
-              data-testid="combat-waits"
-              label={t('profile.combat')}
-              tone="muted"
-              hairline={false}
-              value={<span className="text-t-caption text-ink-faint">{t('profile.noFighting')}</span>}
-            />
-          )}
-        </SheetSection>
       )}
 
       <SheetSection heading={t('profile.language')}>
@@ -230,28 +208,6 @@ function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt:
         </div>
       )}
     </SheetSection>
-  )
-}
-
-/** The cap of the ONE level curve, `public.level_from_points` (0069:111): floored at 1, capped at
- *  20. Mirrored here for DISPLAY ONLY, the way `TIME_COMPRESSION` mirrors a served knob in
- *  src/lib/format/time.ts — the server does not serve the cap, and a bar needs an end. When
- *  `world.snapshot().config` carries it, this constant goes and the bar reads the served value. */
-const LEVEL_CAP = 20
-
-/** One level track as §6 draws it: the name, the bar of the ladder, the level as the figure. A
- *  countable Bar (`of`) rather than a percentage: a level is a rung, not a proportion. */
-function Track({ name, track, last = false }: { name: string; track: LevelTrack; last?: boolean }) {
-  const t = useT()
-  return (
-    <Row
-      data-testid="level-track"
-      label={name}
-      value={<Figure value={formatInt(track.level)} />}
-      hairline={!last}
-    >
-      <Bar value={track.level} of={LEVEL_CAP} label={t('profile.levelOf', { name })} className="mt-2" />
-    </Row>
   )
 }
 

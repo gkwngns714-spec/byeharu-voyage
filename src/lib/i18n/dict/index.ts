@@ -25,6 +25,7 @@ import { townDict } from './town'
 import { tradeDict } from './trade'
 import { uiDict } from './ui'
 import { yardDict } from './yard'
+import { youDict } from './you'
 
 export const DICT = {
   books: booksDict,
@@ -52,4 +53,5 @@ export const DICT = {
   trade: tradeDict,
   ui: uiDict,
   yard: yardDict,
+  you: youDict,
 } as const

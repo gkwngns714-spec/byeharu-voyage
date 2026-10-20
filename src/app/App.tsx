@@ -17,6 +17,7 @@ import { RankScreen } from '../features/rank/RankScreen'
 import { RoutesScreen } from '../features/routes/RoutesScreen'
 import { CompendiumScreen } from '../features/compendium/CompendiumScreen'
 import { ProfileScreen } from '../features/profile/ProfileScreen'
+import { YouScreen } from '../features/you/YouScreen'
 
 // THE ROUTE TABLE. One destination per tab (src/app/navTabs.ts is the tab table; these are the
 // routes it names) under the ONE persistent shell. Everything authenticated sits inside
@@ -65,6 +66,7 @@ export function App() {
           <Route path="/rank" element={<RankScreen />} />
           <Route path="/routes" element={<RoutesScreen />} />
           <Route path="/compendium" element={<CompendiumScreen />} />
+          <Route path="/you" element={<YouScreen />} />
           <Route path="/profile" element={<ProfileScreen />} />
         </Route>
         <Route path="/" element={<Navigate to={HOME_TAB} replace />} />

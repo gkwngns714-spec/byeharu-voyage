@@ -1,16 +1,12 @@
 import { defineDict } from '../define'
 
-// Profile (src/features/profile): the company, its country, its levels, the look, signing out.
+// Profile (src/features/profile): the company, its country, the look, signing out. The LEVEL words
+// went with the levels to the You tab (dict/you.ts, owner row 181).
 export const profileDict = defineDict({
   en: {
     title: 'Profile',
     since: 'since {date}',
     noCompany: 'No company yet. Start one to play.',
-    levels: 'Levels',
-    trading: 'Trading',
-    exploration: 'Exploration',
-    combat: 'Combat',
-    noFighting: 'no fighting at sea yet',
     appearance: 'Appearance',
     Dark: 'Dark',
     Light: 'Light',
@@ -27,17 +23,11 @@ export const profileDict = defineDict({
     influenceStays: 'The influence your company has given stays with the country it leaves.',
     changing: 'Changing…',
     sailFor: 'Sail for {nation}',
-    levelOf: '{name} level',
   },
   ko: {
     title: '프로필',
     since: '{date} 설립',
     noCompany: '아직 상회가 없습니다. 상회를 세우고 시작하세요.',
-    levels: '레벨',
-    trading: '교역',
-    exploration: '탐험',
-    combat: '전투',
-    noFighting: '아직 해전 없음',
     appearance: '화면',
     Dark: '어둡게',
     Light: '밝게',
@@ -54,6 +44,5 @@ export const profileDict = defineDict({
     influenceStays: '상회가 쌓은 영향력은 떠나는 나라에 남습니다.',
     changing: '바꾸는 중…',
     sailFor: '{nation} 소속으로 항해',
-    levelOf: '{name} 레벨',
   },
 })

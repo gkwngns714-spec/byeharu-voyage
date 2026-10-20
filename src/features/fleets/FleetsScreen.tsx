@@ -16,7 +16,6 @@ import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
 import { fleetDue } from './fleetLine'
-import { YourCaptains } from '../../live/YourCaptains'
 import { useT } from '../../lib/i18n'
 
 // FLEETS — what you own, one row each, redrawn to docs/UI_DIRECTION.md §6 (§7 step 7).
@@ -43,6 +42,12 @@ import { useT } from '../../lib/i18n'
 // row up under the finger — the restructure-on-press the owner has refused three times. A press
 // therefore only ever adds or removes the region directly under its own row. The open set is by
 // ID, not by reference, because the store hands out a new FleetView every half minute.
+//
+// ── THE CAPTAINS MOVED TO THE YOU TAB (owner row 181, 2026-10-20) ─────────────────────────
+// 0160's roster stood at the foot of this screen until the owner asked for a personal tab and named
+// captains in it (features/you/YouScreen.tsx). It is the SAME one face (src/live/YourCaptains.tsx),
+// mounted there instead of here — not a copy, and not two places to read one list. This tab is what
+// you own and where it is; who sails it is next door.
 //
 // ── WHAT WENT, AND WHY ─────────────────────────────────────────────────────────────────────────
 // The header counts (limits are not assets; a refusal says so when one bites). The ≥640px table
@@ -122,8 +127,6 @@ function FleetsBody() {
           )
         })
       )}
-      {/* 0160: your captains — levels, homesickness, the traits each one uses (src/live/YourCaptains.tsx) */}
-      <YourCaptains />
     </Sheet>
   )
 }
