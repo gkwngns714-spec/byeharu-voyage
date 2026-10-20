@@ -821,9 +821,9 @@ $h$      'title_level',   public.title_level(v_id),   -- 0215: DERIVED (the lowe
       'title_name',    (select t.name from public.title_names t where t.level = public.title_level(v_id)),
 $h$),
 ('public.client_rpc_entry_points()', 1,
-$h$      ('world',       'price_why',             'uuid, uuid')
+$h$      ('world',       'insurance',             '')
     ) as t(s, f, a)$h$,
-$h$      ('world',       'price_why',             'uuid, uuid'),
+$h$      ('world',       'insurance',             ''),
       -- 0215: the sea conditions — every zone's asks, the caller's title, her fleets' wave (docs/SEA_CONDITIONS_AND_REGIONS.md S1).
       ('world',       'sea_conditions',        '')
     ) as t(s, f, a)$h$);
