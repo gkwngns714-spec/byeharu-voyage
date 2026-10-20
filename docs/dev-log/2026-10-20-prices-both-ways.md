@@ -230,7 +230,15 @@ broke it on the first run, both for the same reason — **a box whose height dep
    drag hint a window NARROWER, so the two are mutually exclusive by arithmetic.
 
 Both texts were cut to one line each at 390 px for the same reason (`The record only goes back 11.8 h.`,
-`Drag the chart right to look back.`).
+`Drag the chart right to look back.`). The reserved height is the sum, not a round number: four 16-px
+lines and three 2-px gaps = 70 px = `4.375rem` (the figure it replaced, `3.25rem`, was the same sum
+over three lines), and `3.875rem` where the likely line does not wrap.
+
+**The second run proved it:** with these two fixed, the plain pool's shard 3 — the one that had gone
+red — passed. The one shard still red, `npc 1/2`, is red on **main** too: run 39460828282, main's own
+full acceptance at 16:49 UTC on 7c2a4e2, before this branch existed, has exactly that shard failing and
+everything else green. Its last error could not be read from the build sandbox (the proxy refuses
+GitHub's log and artifact hosts), so it is handed back as a main-side red, not a finding of this slice.
 
 ### Decided by default
 

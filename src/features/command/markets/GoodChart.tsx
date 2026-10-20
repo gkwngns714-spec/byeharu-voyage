@@ -248,8 +248,9 @@ export function GoodChart({
           when it was asked ahead — 2026-10-19) nor the record's reach / the drag's hint (2026-10-20)
           ever pushes the ticket below it down. Those last two are mutually exclusive by arithmetic —
           one needs a window narrower than the record, the other a window wider — so four is the most
-          that can ever stand here. */}
-      <div className="mt-1 min-h-[4.25rem] space-y-0.5 sm:min-h-[3.75rem]">
+          that can ever stand here: 4 × 16 px and three 2-px gaps = 70 px = 4.375rem (the old figure
+          was the same sum over three lines), and 62 px where the likely line does not wrap. */}
+      <div className="mt-1 min-h-[4.375rem] space-y-0.5 sm:min-h-[3.875rem]">
         {best ? (
           <p className="text-t-caption text-warning" data-testid="good-best-time">
             {t('markets.bestTime', {
