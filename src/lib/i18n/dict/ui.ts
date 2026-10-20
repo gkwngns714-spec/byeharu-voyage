@@ -94,7 +94,7 @@ export const uiDict = defineDict({
     total: '합계',
     more: '더 보기',
     signed: '계약',
-    level: 'Lv {n}',
+    level: '레벨 {n}',
     trend: '추이',
     noHistory: '아직 시세 기록이 없습니다.',
     pastPrices: '{name}: 과거 시세 {n}개, {lo}~{hi}',

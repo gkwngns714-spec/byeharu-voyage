@@ -2,6 +2,7 @@ import { Bar, Button, Chip, Figure, Icon, Row } from '../../components/ui'
 import { formatDucats, formatFixed, formatVoyageDays } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 import type { SendFlow } from './useSendFleet'
+import { useT } from '../../lib/i18n'
 
 // KEEP — how many days of stores she sails under, drawn as a figure, a bar and two presses.
 //
@@ -27,6 +28,7 @@ import type { SendFlow } from './useSendFleet'
 // server's figure for THIS passage and the cargo on board (`sailEstimate(...).insurance`). Off by default;
 // on, the send writes `SAIL <dest> INSURED` and the port she sails from is paid the price at departure.
 export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFlow }) {
+  const t = useT()
   const keep = flow.daysOf(f)
   const have = f.endurance_days
   const presets = flow.presets
@@ -34,7 +36,7 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
   const insure = flow.insureOf(f)
 
   if (presets === null) {
-    return <Row tone="muted" hairline={false} label="Reading her standing orders…" data-testid="map-send-keep" />
+    return <Row tone="muted" hairline={false} label={t('map.readingOrders')} data-testid="map-send-keep" />
   }
 
   return (
@@ -58,8 +60,8 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
           hairline={false}
           label={
             <span className="flex items-baseline gap-2">
-              Keep
-              <Figure value={<span data-testid="map-send-ratio-figures">{keep}</span>} unit="days" size="figure" />
+              {t('map.keep')}
+              <Figure value={<span data-testid="map-send-ratio-figures">{keep}</span>} unit={t('map.unitDays')} size="figure" />
             </span>
           }
           value={
@@ -67,7 +69,7 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
               <Button
                 variant="secondary"
                 size="icon"
-                aria-label={`fewer days of supplies for ${f.name}`}
+                aria-label={t('map.fewerDays', { name: f.name })}
                 onClick={() => flow.nudge(f, -1)}
                 data-testid="map-send-ratio-less"
               >
@@ -76,7 +78,7 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
               <Button
                 variant="secondary"
                 size="icon"
-                aria-label={`more days of supplies for ${f.name}`}
+                aria-label={t('map.moreDays', { name: f.name })}
                 onClick={() => flow.nudge(f, 1)}
                 data-testid="map-send-ratio-more"
               >
@@ -88,9 +90,9 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
           <Bar
             pct={Math.min(1, have / keep) * 100}
             tone={have >= keep ? 'success' : 'accent'}
-            label={`supplies, ${formatFixed(have, 1)} of ${keep} days`}
+            label={t('map.suppliesOf', { have: formatFixed(have, 1), keep })}
             className="mt-1"
-            figure={<span className="text-t-caption text-ink-faint">{`${formatFixed(have, 1)} now`}</span>}
+            figure={<span className="text-t-caption text-ink-faint">{t('map.haveNow', { n: formatFixed(have, 1) })}</span>}
           />
         </Row>
       </div>
@@ -99,21 +101,21 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
           hairline={false}
           label={
             <span className="flex items-baseline gap-2">
-              Insurance
+              {t('map.insurance')}
               <Figure value={<span data-testid="map-send-insurance-price">{formatDucats(insurance.price)}</span>} size="figure" />
             </span>
           }
           value={
             <Chip on={insure} onClick={() => flow.setInsure(f, !insure)} data-testid="map-send-insure">
-              {insure ? 'Insured' : 'Insure the cargo'}
+              {t(insure ? 'map.insured' : 'map.insure')}
             </Chip>
           }
           data-testid="map-send-insurance"
         >
           <span className="block text-t-caption text-ink-faint">
             {insure
-              ? `Cargo worth ${formatDucats(insurance.value)} insured. Pays most of what pirates take.`
-              : `Cargo worth ${formatDucats(insurance.value)} on board. If pirates take it, you carry the loss.`}
+              ? t('map.insuredLine', { value: formatDucats(insurance.value) })
+              : t('map.uninsuredLine', { value: formatDucats(insurance.value) })}
           </span>
         </Row>
       )}

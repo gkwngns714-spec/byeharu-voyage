@@ -10,6 +10,7 @@ import { PortPrices } from '../../live/PortPrices'
 import { CITY_TABS, useCityTab } from './cityTab'
 import { CityTownHall } from '../../live/CityTownHall'
 import { TowNote } from '../../live/TowNote'
+import { useT, type TKey } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PANEL'S FOUR TABS — Market | Port | Inn | Town Hall
@@ -46,6 +47,7 @@ import { TowNote } from '../../live/TowNote'
 const NO_FLEETS: readonly FleetView[] = []
 
 export function CityTabs({ portCode, harbour }: { portCode: string; harbour: ReactNode }) {
+  const t = useT()
   const tab = useCityTab((s) => s.tab)
   const turnTo = useCityTab((s) => s.turnTo)
   const port = useWorld((s) => s.portByCode[portCode]) as SnapshotPort | undefined
@@ -57,7 +59,7 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
     <div data-testid="map-city-tabs">
       {/* 0152: a wreck of yours lying here, and its tow — whichever tab is up (src/live/TowNote.tsx). */}
       <TowNote docked={docked} />
-      <Segmented label="City" segments={CITY_TABS} value={tab} onChange={turnTo} fill className="sticky top-0 z-10 mb-1" />
+      <Segmented label={t('map.city')} segments={CITY_TABS.map((c) => ({ id: c.id, label: t(`map.${c.label}` as TKey) }))} value={tab} onChange={turnTo} fill className="sticky top-0 z-10 mb-1" />
       <div role="tabpanel" data-testid={`map-city-${tab}`}>
         {tab === 'port' && harbour}
         {tab === 'market' && port && <CityMarket port={port} reader={acting} />}
@@ -71,8 +73,9 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
 /** The market read for one harbour, and the ledger once it lands — PORT's own loading and
  *  refusal states, for a city that keeps a book. */
 function CityMarket({ port, reader }: { port: SnapshotPort; reader: FleetView | null }) {
+  const t = useT()
   const quay = usePortMarket(port.kind === 'HARBOUR' ? port.id : null)
-  if (port.kind !== 'HARBOUR') return <Note tone="neutral">No market here.</Note>
+  if (port.kind !== 'HARBOUR') return <Note tone="neutral">{t('map.noMarket')}</Note>
   if (quay.market === undefined) {
     return quay.refusal !== null ? (
       <Note
@@ -80,7 +83,7 @@ function CityMarket({ port, reader }: { port: SnapshotPort; reader: FleetView | 
         code={quay.refusal.code} figures={quay.refusal.figures}
         action={
           <Button size="sm" onClick={quay.retry}>
-            Try again
+            {t('map.tryAgain')}
           </Button>
         }
       >

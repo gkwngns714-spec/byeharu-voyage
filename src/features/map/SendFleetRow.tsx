@@ -8,6 +8,7 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import { KeepAndSend } from './KeepAndSend'
 import { canGo, type Fix } from './sendRules'
 import type { SendFlow } from './useSendFleet'
+import { useT } from '../../lib/i18n'
 
 // ONE FLEET ON THE PLACE TRAY — her row, its verdict, and what unfolds under it when pressed.
 //
@@ -18,6 +19,7 @@ import type { SendFlow } from './useSendFleet'
 // row, as a note instead of a press.
 
 export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendFlow }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const standing = flow.standingOf(f)
   const pressable = canGo(standing)
@@ -31,14 +33,14 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
 
   const line = !pressable
     ? standing === 'lies'
-      ? 'docked here'
+      ? t('map.dockedHere')
       : acted?.state === 'sent'
-        ? `Under way — sailing to ${flow.destName}.`
-        : 'already heading here'
+        ? t('map.underWay', { dest: flow.destName })
+        : t('map.alreadyHeading')
     : sailing
-      ? 'at sea — turns from where it is'
+      ? t('map.atSeaTurns')
       : v === undefined
-        ? <>{where} · checking the route…</>
+        ? <>{where} · {t('map.checkingRoute')}</>
         : where
   const passage = pressable && v?.kind === 'ok' ? passageOf(v.result) : null
 
@@ -71,7 +73,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
 
       {acted?.state === 'busy' && (
         <Note tone="neutral" data-testid="map-send-busy">
-          Issuing the order…
+          {t('map.issuing')}
         </Note>
       )}
       {/* A SENT fleet says so on her own row (`line`, above): the world flips her to `bound` on
@@ -83,7 +85,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
       {/* A REFUSAL THE SERVER DID NOT NAME still has to say she did not sail (row 49's silence). */}
       {acted?.state === 'refused' && !acted.refusal && (
         <Note tone="warning" data-testid="map-send-silent">
-          She did not sail, and the server gave no reason — try once more.
+          {t('map.silent')}
         </Note>
       )}
     </div>
@@ -93,6 +95,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
 /** The refusal form §5 names: the sentence, have against need as a `Bar` when the server serves
  *  figures, and the fixes as presses. The code goes to console.debug, never to the screen. */
 function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; testId: string }) {
+  const t = useT()
   const figures = refusal.figures
   return (
     <div className="py-2">
@@ -105,7 +108,7 @@ function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; t
             <Bar
               pct={figures.need > 0 ? (figures.have / figures.need) * 100 : 0}
               tone="danger"
-              label={`${figures.unit}, have / need`}
+              label={t('map.haveNeed', { unit: figures.unit })}
               figure={<Figure value={`${figures.have} / ${figures.need}`} unit={figures.unit} />}
             />
           ) : undefined

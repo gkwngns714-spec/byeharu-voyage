@@ -4,6 +4,7 @@ import { codesDict } from './codes'
 import { commonDict } from './common'
 import { formatDict } from './format'
 import { foundDict } from './found'
+import { mapDict } from './map'
 import { profileDict } from './profile'
 import { shellDict } from './shell'
 import { uiDict } from './ui'
@@ -13,6 +14,7 @@ export const DICT = {
   common: commonDict,
   format: formatDict,
   found: foundDict,
+  map: mapDict,
   profile: profileDict,
   shell: shellDict,
   ui: uiDict,
