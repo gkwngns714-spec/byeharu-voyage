@@ -1,4 +1,4 @@
-# 2026-10-19 — stores, repairs and wages cost a fifth (migration 0210, `osn-running-costs-d5`) — WIP, NOT FOR DEPLOY
+# 2026-10-19 — stores, repairs and wages cost a fifth (migration 0210, `osn-running-costs-d5`)
 
 **The order.** The owner, 2026-10-19, after 0208: "supplies and repairs yes" (÷ 5 like goods). On wages: "wages are in % so
 it will be same right?" They are not a percentage (crew × wage_per_crew_day × short-rations mult × running_cost_mult).
@@ -39,18 +39,62 @@ hire fee, officers' wages, ship prices, cash, purses, profit-tax rates, the 0208
   old-arithmetic copies equal the live bodies on all 675 gear, 98 stores and 802 crew grid rows; knob absent.
 - Proof 05 (a starter's best first voyage, % of stake): before **18.2** {15.5, 19.8, 19.1}, worst 11.2 / best 24.8;
   after **18.2** {15.2, 19.3, 19.5}, worst 10.9 / best 24.2. Band 14.7–21.7 not moved.
-- Proofs with 0210: 02 ledger ✓, 05 ✓, 11 standing route ✓, **07 standing provision ✗ (5/6 markers) — not read yet.**
+- Proofs with 0210: 02 ledger ✓, 05 ✓, 11 standing route ✓, 07 standing provision ✗ (5/6) — read and fixed 10-20, below.
 
-## HAND-OFF
+## 2026-10-20: finished (the hand-off's five items)
 
-**Done:** the migration (green self-assert locally), the client caption, the two spec repoints, the prod read-only check.
-**Not done / not verified:**
-1. **Proof 07 is red** with 0210 — read `node scripts/db/proof.mjs 07_` to its failing marker (likely a pinned
-   provisioning cost or owed figure that moved ÷ 5; fix the cause or move the pin deliberately).
-2. **The paired merchant sim was stopped** before it finished: no before/after lap numbers yet. Re-run per
-   origin/osn-arrivals-fast `scripts/ops/harness/arrfast/README.md` (state from prod read-only, `mkworld` on the
-   head-0208 image, then `sim.mjs world 25 out.json [0210.sql]` for each arm, side by side; `cmp.mjs`).
-3. Typecheck / lint / duplication / sections / db.chain specs were not run to completion. `tests/db.chain.spec.ts`
-   pins the chain's last migration and will need its pin moved to 0210.
-4. Break the owed-scaling and ACL-restore asserts on a world that has owed rows and Supabase ACLs (CI's apply-proof does).
-5. Then open the PR (branch `osn-running-costs-d5`), read every check, remove the NOT FOR DEPLOY line.
+**1. Proof 07's red, to its root cause.** One diagnostic run with a notice at the drained arrival: purse 0, and a sixth
+PROVISIONED event — the last top-up (1.280 t water, 0.960 t food, a 1.6-day passage) cost **1** ducat at a fifth of the
+price (old: 1.28 × 2 + 0.96 × 5 = 6.9 → 7, more than her last ducat). The order bought, and nothing was refused. The proof
+had BORROWED a precondition (that a short top-up costs more than a ducat) from the price level. Fixed in the proof, not
+the pin: before she sails, her casks are run down to three days of stores (the passage takes under two), so the standing
+order has some forty days to buy. 6/6 markers with 0210 in the chain (1.0 s).
+
+**2. The paired merchant sim**, on the post-0208 world (837 merchant fleets; prod's knobs, stocks, purses, treasuries,
+loops and lap counts read read-only 2026-10-19 23:33 UTC; `mkworld` on the head-0208 image; both arms 25 min side by
+side on one PC, the migration applied after the setup as prod will apply it; harness = PR #267's
+`scripts/ops/harness/arrfast`, local copy in `.arrwork/`). Sweeps ran slow on both arms alike (avg 7.1 / 7.2 s: the two
+arms and a spec shared the CPU), so the lap counts are small and the timings are not this measurement.
+
+| | before (0208) | after (0208 + 0210) |
+|---|---|---|
+| laps closed | 171 | 154 |
+| laps ≤ 0 | 59 (35 %) | 57 (37 %) |
+| …of which traded (sold > 0) and still lost | 23 | **4** |
+| …of which sold nothing (cargo bought, sold next lap) | 36 | 53 |
+| total lap net | 141,076 | 130,675 |
+| median lap net | 38 | **65.5** |
+| lay-ups at kickoff → end (of 837) | 83 → 61 | **29 → 11** |
+| sailing at the end | 760 | 807 |
+| routes with laps / all their laps ≤ 0 | 118 / 29 | 113 / 29 |
+| Comptoir Chastellain lap 239 net | 112 | 193 |
+| stranded (error / idle / failed orders) | 0 / 0 / 0 | 0 / 0 / 0 |
+
+Read: the lay-ups 0208 caused (26 → 84 of 837 in its paired sim) come back under the pre-0208 figure (11), and the
+laps that trade and still lose fall 23 → 4. The ≤ 0 share is flat (35 → 37 %) and is now mostly laps that bought and
+have not sold yet. The total lap net is 7 % lower on 10 % fewer laps (the median lap is 72 % higher): a 25-minute
+window closes only the shortest loops, so the sum is the noisier figure. Nothing stranded in either arm.
+
+**The starter's first voyage** (proof 05, % of the stake, the previous session's logs on this PC): before **18.2**
+{15.5, 19.8, 19.1}, worst 11.2 / best 24.8; after **18.2** {15.2, 19.3, 19.5}, worst 10.9 / best 24.2. Band 14.7–21.7
+not moved. CI's pglite-gate (the rest) re-runs proof 05 with 0210 on this PR.
+
+**3. Prod, read-only, 2026-10-20 at head 0208** (`begin transaction read only`; every function called is `provolatile`
+'s', checked first): knob absent; goods_price_level 0.2; `fleet_wages.owed` bigint; every one of the 12 hunks occurs
+exactly once in its live body (the new text 0 times); the old-arithmetic copies equal the live bodies on all 675 gear,
+98 stores and 802 crew grid rows (442 gear prices ≥ 25); the 12 kept knobs at their values; the three dropped-and-
+recreated functions' ACL `{postgres=X/postgres,service_role=X/postgres}`, owner postgres, stable / volatile-definer as
+expected; `owe_wages(uuid, numeric)` absent; the walls stable; hull_recipes 103 rows 8,498,500; probe uid free, LIS and
+FNC have reaches, LIS has a yard. Owed: **838 rows, 448,598 → 89,719.6** (827 non-zero, max 5,400; 215 rows get a
+fraction). `new_house` is the 0096 nine-argument form with defaults, so the probe's four-argument call resolves.
+
+**4. The two vacuous breaks, on a world that has what prod has:** the head-0208 image seeded with 850 owed rows
+(0–5,400) and prod's `service_role` EXECUTE on crew_wages / fleet_wage / owe_wages. Real file: owed 453,824.2 after
+(678 fractional rows), all three ACLs `{postgres=X/postgres,service_role=X/postgres}`. Break "owed not scaled": `850 of
+850 owed wage row(s) are not 0.2 × what was owed`. Break "ACL not restored": `public.crew_wages(integer, boolean) changed
+its ACL ({postgres=X/postgres,service_role=X/postgres} → {postgres=X/postgres})`. Each fails with its own message.
+
+**5. Locally:** `tsc --noEmit` on tsconfig.app and tsconfig.test: 0 errors. `tests/db.chain.spec.ts` 9 passed (5.3 min;
+the 55-minute growth test left to main, as CI's rule has it; it has no hard pin — LAST is read from disk).
+`tests/rpc.surface.spec.ts` did not finish locally in the window (no built image in the worktree, so its fixture applies
+the chain from zero, starved by the two sim arms): CI's selected run covers it. The NOT FOR DEPLOY header is removed.

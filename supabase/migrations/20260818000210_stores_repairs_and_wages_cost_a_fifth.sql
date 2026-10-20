@@ -1,5 +1,3 @@
--- NOT FOR DEPLOY (2026-10-19 hand-off): proof 07_standing_provision is red with this file (5/6 markers, not yet
--- read), and the paired merchant sim was stopped before it finished. See docs/dev-log/2026-10-19-running-costs-d5.md.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- 0210 — STORES, REPAIRS AND WAGES COST A FIFTH
 --        (one knob, running_cost_level 0.2, applied once in each cost's one authority)
