@@ -6,7 +6,7 @@ Owner 2026-10-18 ~13:55: **"so fix and do everything"**.
 
 Deploys go through `~/bin/bv-deploy.sh <pr>` only, which merges only after the push lands. Migrations deploy in strict number order.
 
-Prod head: **0211** (2026-10-20: 0209 arrivals 23:43, 0210 running costs 00:35, 0211 round trip 00:52 UTC; all after-checks passed).
+Prod head: **0212** (0212 haul cap LIVE 04:27 UTC 10-20). Earlier: **0211** (2026-10-20: 0209 arrivals 23:43, 0210 running costs 00:35, 0211 round trip 00:52 UTC; all after-checks passed).
 
 ## THE LIST (tidied 2026-10-20 ~04:00 UTC: the ONE priority order; everything below it is history)
 Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize everything … build slowly step by step, but as efficient as possible."*
@@ -14,8 +14,8 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 
 | # | Item | Lane | State |
 |---|---|---|---|
-| 1 | **Insurance** (0212) | A | agent finishing tests → PR → deploy |
-| 2 | **Money printing fix** (haul 300× → ~4.5×, 0213) | A | agent: sim + PR (branch `osn-haul-cap`); deploys right after 1, then 30-min check |
+| 1 | **Insurance** (now 0213, PR #274) | A | rebasing on 0212 → CI → deploy |
+| 2 | **Money printing fix** (0212) | A | **LIVE 04:27 UTC** (#273): `haul_max` 600 → 3, far end 300× → 2×; sim: far/short per day 190× → 1.45×, laps ≤ 0 36 → 26 %, lay-ups 11 → 1; prod IMPORT_DEMAND was 22 % of SELL (24 h). 30-min after-check running. Middle distances now earn less per day than short: re-measure with item 9 |
 | 3 | **Fleet picker** (screens only) | B | **LIVE 2026-10-20 ~04:50 UTC** (#272 merged 60aa938; Pages deployed) |
 | 4 | **Stats tab** + city-investment gating (owner rule) | A+B | RESUMED 10-20 (owner asked "what about the statistics?"); agent building on `osn-stats-tab` (0214, tiers 20k/100k); deploys after 0212/0213, before sea 0215/0216 |
 | 5 | **Korean language** | B (cloud) | RESUMED 10-20 as a CLOUD agent (owner: use the $250 cloud credit for repo-only work); every screen except command/stats first, then command; stats after it merges |
