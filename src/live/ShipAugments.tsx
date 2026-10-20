@@ -3,6 +3,7 @@ import { Button, Note } from '../components/ui'
 import { cmdAugmentFitting } from '../lib/rpc'
 import type { Refusal, ShipRack, ShipSet } from '../lib/rpc'
 import { useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // HER SETS AND HER PERKS (0163, docs/SHIPS_AND_SKILLS.md S16 — §6.6 perks, §6.7 sets).
@@ -29,6 +30,7 @@ export function ShipAugments({
   /** One of YOUR ships, docked: the picker is drawn. Omitted for a merchant's hull or at sea. */
   docked?: boolean
 }) {
+  const t = useT()
   const refresh = useWorld((s) => s.refresh)
   const [open, setOpen] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -61,13 +63,13 @@ export function ShipAugments({
       {(sets ?? []).map((s) => (
         <div key={s.line} className="pt-4" data-testid={`ship-set-${s.line}`}>
           <div className="flex items-baseline justify-between pb-1.5">
-            <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{`Set · ${s.name}`}</h3>
-            <span className="text-t-caption tabular-nums text-ink-faint">{`${s.pieces} / ${s.of} pieces`}</span>
+            <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{t('yard.set', { name: s.name })}</h3>
+            <span className="text-t-caption tabular-nums text-ink-faint">{t('yard.pieces', { n: s.pieces, of: s.of })}</span>
           </div>
           <ul className="flex flex-col gap-0.5">
             {s.bonuses.map((b) => (
               <li key={`${b.pieces}-${b.words}`} className={`text-t-label ${b.in_force ? 'text-accent' : 'text-ink-faint'}`}>
-                {`${b.pieces} pieces · ${b.words}`}
+                {t('yard.piecesBonus', { n: b.pieces, words: b.words })}
               </li>
             ))}
           </ul>
@@ -75,7 +77,7 @@ export function ShipAugments({
       ))}
       {units.length > 0 && (
         <div className="pt-4">
-          <h3 className="pb-2 text-t-caption uppercase tracking-wider text-ink-faint">Perks</h3>
+          <h3 className="pb-2 text-t-caption uppercase tracking-wider text-ink-faint">{t('yard.perks')}</h3>
           <ul className="flex flex-col gap-1.5">
             {units.map((u, i) => {
               const key = `${u.code}-${i}`
@@ -86,7 +88,7 @@ export function ShipAugments({
                     {canAugment && (u.perk_options?.length ?? 0) > 0 && (
                       <Button variant="quiet" size="sm" disabled={busy} onClick={() => setOpen(open === key ? null : key)}
                         data-testid={`perk-open-${u.code}`}>
-                        Augment
+                        {t('yard.augment')}
                       </Button>
                     )}
                   </div>

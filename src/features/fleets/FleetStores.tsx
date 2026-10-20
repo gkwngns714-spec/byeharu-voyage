@@ -105,7 +105,7 @@ export function FleetStores({
             className="mt-2"
             action={
               <Button variant="quiet" size="sm" onClick={onDismissRefusal}>
-                Dismiss
+                {t('yard.dismiss')}
               </Button>
             }
           >

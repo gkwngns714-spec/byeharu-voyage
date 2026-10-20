@@ -15,6 +15,7 @@ import { useWorkstation } from './useWorkstation'
 import { useWorld } from './worldStore'
 import { formatInt } from '../lib/format'
 import type { FleetView, Refusal, WorkstationItem } from '../lib/rpc'
+import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CRAFT — where trade goods become a fitting (0068), as a field of tiles.
@@ -81,6 +82,7 @@ export function PortWorkstation({
   /** This city's workstation tier, from the port's own building row. */
   tier: number
 }) {
+  const t = useT()
   const { view, loading } = useWorkstation(portId, fleet?.id ?? null)
   const [open, setOpen] = useState<WorkstationItem | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
@@ -101,8 +103,8 @@ export function PortWorkstation({
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral">Loading…</Note>
-  if (!view) return <Note tone="neutral">No workshop in this port.</Note>
+  if (loading && !view) return <Note tone="neutral">{t('yard.loading')}</Note>
+  if (!view) return <Note tone="neutral">{t('yard.noWorkshop')}</Note>
 
   const short = open && fleet ? shortfall(open) : null
   const ready = open !== null && open.makeable && fleet !== null && short === null
@@ -111,7 +113,7 @@ export function PortWorkstation({
     <div data-testid="port-workstation">
       {!fleet && (
         <Note tone="warning" className="mb-3">
-          None of your fleets are here. Crafting uses materials from your ship.
+          {t('yard.noFleetCraft')}
         </Note>
       )}
 
@@ -139,7 +141,7 @@ export function PortWorkstation({
                 figure={
                   <Figure
                     value={formatInt(item.owned_here)}
-                    unit="here"
+                    unit={t('yard.here')}
                     tone={item.owned_here > 0 ? 'ink' : 'faint'}
                   />
                 }
@@ -162,19 +164,19 @@ export function PortWorkstation({
                 variant="primary"
                 className="w-full"
                 busy={sending}
-                busyLabel="Crafting…"
+                busyLabel={t('yard.crafting')}
                 onClick={() => make(open)}
                 data-testid={`make-${open.code}`}
               >
-                {`Craft ${open.name}`}
+                {t('yard.craft', { name: open.name })}
               </Button>
             ) : undefined
           }
         >
           {/* DESIGN 1.3, where a player reads it: every fitting buys one stat and spends another,
               so the choice is a choice and not a shopping list. */}
-          <Row label="Gives" value={open.buys} />
-          <Row label="Uses" value={open.spends} />
+          <Row label={t('yard.gives')} value={open.buys} />
+          <Row label={t('yard.uses')} value={open.spends} />
           {open.recipe.map((r, i) => (
             <Row
               key={r.name}
@@ -182,7 +184,7 @@ export function PortWorkstation({
               value={
                 <Figure
                   value={formatInt(r.qty)}
-                  unit={r.aboard === null ? undefined : `· ${formatInt(r.aboard)} on board`}
+                  unit={r.aboard === null ? undefined : tNow('yard.onBoardN', { n: formatInt(r.aboard) })}
                   tone={r.aboard !== null && r.aboard < r.qty ? 'warning' : 'ink'}
                 />
               }
@@ -193,7 +195,7 @@ export function PortWorkstation({
               (`needs`, cmd.do_make's own E_NEEDS_SKILL sentence). Both are printed as served. */}
           {open.tier_ok === false && (
             <Note tone="warning">
-              {`Needs a level ${formatInt(open.ws_tier)} workshop. This one is level ${formatInt(tier)}.`}
+              {t('yard.needsWs', { need: formatInt(open.ws_tier), have: formatInt(tier) })}
             </Note>
           )}
           {open.needs && (

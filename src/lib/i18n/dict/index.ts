@@ -17,6 +17,7 @@ import { routesDict } from './routes'
 import { shellDict } from './shell'
 import { townDict } from './town'
 import { uiDict } from './ui'
+import { yardDict } from './yard'
 
 export const DICT = {
   codes: codesDict,
@@ -36,4 +37,5 @@ export const DICT = {
   shell: shellDict,
   town: townDict,
   ui: uiDict,
+  yard: yardDict,
 } as const

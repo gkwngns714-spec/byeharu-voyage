@@ -148,12 +148,12 @@ export function ManifestPanel({
       <Tray
         detent={detent}
         onDetentChange={(next) => (next === 'closed' ? done() : setDetent(next))}
-        title={`${receipt.kind === 'fulfil' ? 'Fulfilled' : 'Traded'} · ${Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}`}
+        title={`${t(receipt.kind === 'fulfil' ? 'yard.fulfilled' : 'yard.traded')} · ${Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}`}
         data-testid="receipt-panel"
         action={
           atPeek ? undefined : (
             <Button variant="secondary" className="w-full" onClick={done} data-testid="receipt-done">
-              Done
+              {t('yard.done')}
             </Button>
           )
         }

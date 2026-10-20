@@ -18,6 +18,7 @@ import { useBuildingYard } from './useBuildingYard'
 import { useWorld } from './worldStore'
 import { formatDucats, formatInt, formatTons } from '../lib/format'
 import type { FleetView, HullMaterial, Refusal, YardHull } from '../lib/rpc'
+import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE YARD — where a hull is laid down (0072), as a field of tiles.
@@ -75,6 +76,7 @@ export function PortYard({
   /** This city's building-yard tier, from the port's own building row. */
   tier: number
 }) {
+  const t = useT()
   const { view, loading } = useBuildingYard(portId)
   const [open, setOpen] = useState<YardHull | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
@@ -99,8 +101,8 @@ export function PortYard({
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral">Loading…</Note>
-  if (!view) return <Note tone="neutral">This port does not build ships.</Note>
+  if (loading && !view) return <Note tone="neutral">{t('yard.loading')}</Note>
+  if (!view) return <Note tone="neutral">{t('yard.noYard')}</Note>
 
   // 0135 — 55 hulls, most of them another country's: the ones THIS port's country builds first (the
   // server's own `wrong_yard` is null for them), the rest after, under one caption. A split of the
@@ -114,7 +116,7 @@ export function PortYard({
     <div data-testid="port-yard">
       {!fleet && (
         <Note tone="warning" className="mb-3">
-          None of your fleets are here. A new ship joins the fleet that orders it.
+          {t('yard.noFleetYard')}
         </Note>
       )}
 
@@ -125,7 +127,7 @@ export function PortYard({
             className={gi === 1 ? 'mt-4' : undefined}
             data-testid={gi === 0 ? 'yard-here' : 'yard-elsewhere'}
           >
-            {gi === 1 && <Hint className="mb-2">Built only in other countries</Hint>}
+            {gi === 1 && <Hint className="mb-2">{t('yard.elsewhere')}</Hint>}
             <TileField>
               {group.map((hull) => (
                 <Tile
@@ -147,7 +149,7 @@ export function PortYard({
                     setDetent('half')
                     setOpen(hull)
                   }}
-                  figure={<Figure value={formatDucats(hull.ducats)} unit="to build" />}
+                  figure={<Figure value={formatDucats(hull.ducats)} unit={t('yard.toBuild')} />}
                   data-testid={`hull-${hull.class}`}
                 />
               ))}
@@ -168,12 +170,12 @@ export function PortYard({
                 variant="primary"
                 className="w-full"
                 busy={sending}
-                busyLabel="Building…"
+                busyLabel={t('yard.building')}
                 disabled={name.trim().length < 3}
                 onClick={() => build(open)}
                 data-testid={`lay-down-${open.class}`}
               >
-                Lay her down
+                {t('yard.layDown')}
               </Button>
             ) : undefined
           }
@@ -184,12 +186,12 @@ export function PortYard({
               {open.note}
             </Hint>
           )}
-          {open.line_nation && <Row label="Country" value={<HullCountry nation={open.line_nation} />} />}
-          <Row label="Cargo" value={<Figure value={formatInt(open.hold)} unit="tons" />} />
-          <Row label="Speed" value={<Figure value={open.speed_kn} unit="knots" />} />
-          <Row label="Crew needed" value={<Figure value={formatInt(open.crew_required)} />} />
-          <Materials label="Materials" list={open.goods} />
-          <Materials label="Parts" list={open.items} />
+          {open.line_nation && <Row label={t('yard.country')} value={<HullCountry nation={open.line_nation} />} />}
+          <Row label={t('yard.cargo')} value={<Figure value={formatInt(open.hold)} unit={t('yard.tons')} />} />
+          <Row label={t('yard.speed')} value={<Figure value={open.speed_kn} unit={t('yard.knots')} />} />
+          <Row label={t('yard.crewNeeded')} value={<Figure value={formatInt(open.crew_required)} />} />
+          <Materials label={t('yard.materials')} list={open.goods} />
+          <Materials label={t('yard.parts')} list={open.items} />
 
           {open.wrong_yard && (
             <Note tone="warning" data-testid="yard-country">
@@ -213,11 +215,11 @@ export function PortYard({
           )}
           {open.tier_ok === false && (
             <Note tone="warning">
-              {`This port can build up to level ${formatInt(tier)}. This ship needs level ${formatInt(open.yard_tier)}.`}
+              {t('yard.yardTier', { have: formatInt(tier), need: formatInt(open.yard_tier) })}
             </Note>
           )}
           {open.buildable && short !== null && (
-            <Note tone="warning">{`Missing from storage: ${short}.`}</Note>
+            <Note tone="warning">{t('yard.missing', { list: short })}</Note>
           )}
 
           {ready && (
@@ -227,10 +229,10 @@ export function PortYard({
               icon={null}
               value={name}
               maxLength={24}
-              placeholder="Ship name"
+              placeholder={t('yard.shipName')}
               onChange={(e) => setName(e.target.value)}
               className="mt-3"
-              aria-label="Ship name"
+              aria-label={t('yard.shipName')}
               data-testid="yard-name"
             />
           )}
@@ -257,7 +259,7 @@ function Materials({ label, list }: { label: string; list: readonly HullMaterial
           value={
             <Figure
               value={formatInt(m.qty)}
-              unit={`· ${formatInt(m.have)} in storage`}
+              unit={tNow('yard.inStorageN', { n: formatInt(m.have) })}
               tone={m.have < m.qty ? 'warning' : 'ink'}
             />
           }
