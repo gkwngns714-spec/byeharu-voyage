@@ -18,7 +18,7 @@ Owner 10-20: *"everything is too much and could be messy … tidy up, prioritize
 | 2 | **Money printing fix** (haul 300× → ~4.5×, 0213) | A | agent: sim + PR (branch `osn-haul-cap`); deploys right after 1, then 30-min check |
 | 3 | **Fleet picker** (screens only) | B | **LIVE 2026-10-20 ~04:50 UTC** (#272 merged 60aa938; Pages deployed) |
 | 4 | **Stats tab** + city-investment gating (owner rule) | A+B | RESUMED 10-20 (owner asked "what about the statistics?"); agent building on `osn-stats-tab` (0214, tiers 20k/100k); deploys after 0212/0213, before sea 0215/0216 |
-| 5 | **Korean language** | B | PAUSED, WIP on `osn-korean`, dev-log hand-off; resumes after 4 so it translates every screen once |
+| 5 | **Korean language** | B (cloud) | RESUMED 10-20 as a CLOUD agent (owner: use the $250 cloud credit for repo-only work); every screen except command/stats first, then command; stats after it merges |
 | 6 | **Sea conditions + Europe-only start** (region unlock) | A+B | design MERGED (#271). Owner 10-20: "lets start by applying the design you've created first, then consider adding more" = all 7 defaults. Agent building S1 (0215, data, dark) + S2 (0216, passage gate behind `sea_conditions_bite`); deploys after 0212/0213. Then S3–S6, C1–C5 |
 | 6b | **More conditions** (쇄빙 ice, 돌파 breakthrough as entry conditions; 조력 rowing as a calm-sea speed effect) | – | LATER: owner wants the base design first, then consider |
 | 7 | **Capital move** | A+B | after 6 |
