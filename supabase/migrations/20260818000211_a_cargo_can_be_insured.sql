@@ -1,5 +1,4 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- !!! NOT FOR DEPLOY — WIP, NOT PROVEN: the self-assert has not yet passed locally (see docs/dev-log/2026-10-19-insurance.md § HAND-OFF) !!!
 -- 0211 — A CARGO CAN BE INSURED  (port insurance for a voyage's cargo; merchants insure in place of the
 --        free refound; a plundered hold loses what the day's sentence always said it lost)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -82,12 +81,13 @@
 --
 -- ── LOCKS AND TIME ──────────────────────────────────────────────────────────────────────────────
 -- CREATE TABLE ×1 (server-only), ALTER TABLE standing_route_laps ADD COLUMN (a default, metadata only),
--- world_config INSERT ×5 / DELETE ×2, CREATE FUNCTION ×7, DROP FUNCTION ×1, CREATE OR REPLACE FUNCTION ×10 by
+-- world_config INSERT ×5 / DELETE ×2, CREATE FUNCTION ×7, DROP FUNCTION ×1, CREATE OR REPLACE FUNCTION ×11 by
 -- hunks sliced from the LIVE bodies (prod head 0208, LF-normalised), each asserted to occur exactly once and to
 -- reverse to its pre-image, ACL / volatility / definer / config unchanged. SUPERSEDES: cmd.parse (0047…),
 -- cmd.verb_schema, cmd.do_sail (0076), voyage.settle (0189), public.npc_tend_houses (0203),
 -- public.npc_tend_sum (0181), cmd.standing_route_close_lap (0128), world.books (0177),
--- world.npc_fleet_card (0145), public.client_rpc_entry_points (0185). The probes run on their own company's rows
+-- world.npc_fleet_card (0145), public.client_rpc_entry_points (0185), public.npc_tend (0137: one comment line
+-- that still described the refound). The probes run on their own company's rows
 -- (probe ids carry 0211) inside sub-transactions rolled back whole; nothing is deleted from events or the
 -- ledger. No top-level LOCK / SET LOCAL / BEGIN / SET ROLE. Timings are notices only.
 -- ROLLBACK (a forward migration): reverse the hunks (old text in hunks_0211), restore the two knobs
@@ -127,7 +127,8 @@ select f.fn,
   from (values ('cmd.parse(uuid, uuid, text)'), ('cmd.verb_schema()'), ('cmd.do_sail(uuid, jsonb)'),
                ('voyage.settle(uuid, timestamp with time zone)'), ('public.npc_tend_houses(timestamp with time zone)'),
                ('public.npc_tend_sum(jsonb, jsonb)'), ('cmd.standing_route_close_lap(uuid, timestamp with time zone)'),
-               ('world.books(integer)'), ('world.npc_fleet_card(uuid)'), ('public.client_rpc_entry_points()')) f(fn);
+               ('world.books(integer)'), ('world.npc_fleet_card(uuid)'), ('public.client_rpc_entry_points()'),
+               ('public.npc_tend(timestamp with time zone, uuid)')) f(fn);
 
 -- the pre-images kept callable for the probes' old-against-new comparisons (renamed into pg_temp)
 do $$
@@ -600,6 +601,11 @@ $h$      -- 0211: the refound is retired; her insurance stands behind her cargo 
       'insurance', (select jsonb_build_object('claims', count(*), 'paid', coalesce(sum((e.payload->>'paid')::bigint), 0),
                                               'short', coalesce(sum((e.payload->>'short')::bigint), 0))
                       from public.events e where e.player_id = p.id and e.kind = 'INSURANCE_PAID'),$h$),
+-- public.npc_tend: its header still described the refound (the one other body naming its knob; the
+-- READERS assert below scans every body for the retired names, and a stale sentence is a stale rule).
+('public.npc_tend(timestamp with time zone, uuid)', 1,
+$h$-- Then per company: purse below capital × npc_purse_floor_pct -> refounded (NPC_REFOUND through$h$,
+$h$-- Then per company (0211: the refound that stood here is retired; public.insure_voyage stands behind her cargo).$h$),
 -- public.client_rpc_entry_points: the read, registered.
 ('public.client_rpc_entry_points()', 1,
 $h$      ('world',       'price_why',             'uuid, uuid')$h$,
@@ -847,9 +853,10 @@ begin
       'charged', (select coalesce(sum(l.ducats_delta), 0) from public.ledger l where l.player_id = v_p and l.kind = 'INSURANCE'),
       'lis_flows', (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.port_id = v_lis and t.kind = 'INSURANCE' and t.player_id = v_p),
       'insured_events', (select count(*) from public.events e where e.player_id = v_p and e.kind = 'INSURED'));
-    insert into probe_0211 values ('once', v_out);
     raise exception 'RB_0211';
   exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
+  -- written OUTSIDE the rolled-back block (a variable survives the sub-transaction; a row does not)
+  insert into probe_0211 values ('once', v_out);
 end $$;
 
 -- (P2) A PLUNDERED VOYAGE IS PAID FOR, BY THE CITY THAT INSURED IT. Lit, every day a raid her crew cannot hold:
@@ -947,9 +954,9 @@ begin
     v_out := jsonb_build_object('r', v_r->'insurance', 'broke', v_r2->'insurance', 'broke_charges', v_r2->'charges',
       'purse_delta', (select ducats from public.players where id = v_p) - v_d0,
       'policy', (select count(*) from public.insured_voyages i where i.voyage_id = (v_r->>'voyage_id')::uuid));
-    insert into probe_0211 values ('merchant', v_out);
     raise exception 'RB_0211';
   exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
+  insert into probe_0211 values ('merchant', v_out);
 end $$;
 
 -- (P6) THE REFOUND NO LONGER RUNS. The first merchant house of the roster, worth nothing (purse 0, holds empty),
@@ -981,22 +988,92 @@ begin
     v_new := v_new || jsonb_build_object('refounds', (select count(*) from public.events where player_id = v_p and kind = 'NPC_REFOUNDED') - v_n0,
                                          'purse_delta', (select ducats from public.players where id = v_p) - v_d0,
                                          'any_refound', (select count(*) from public.ledger l where l.kind = 'NPC_REFOUND' and l.created_at >= now()));
-    insert into probe_0211 values ('refound', jsonb_build_object('old', v_old, 'new', v_new));
     raise exception 'RB_0211';
   exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
+  insert into probe_0211 values ('refound', jsonb_build_object('old', v_old, 'new', v_new));
 end $$;
 
 -- (P7) THE WORD, AND WHAT DID NOT MOVE. cmd.parse reads INSURED and nothing else new; the pre-image parse refused
--- it (the change is seen). A voyage of storms, calms and fair winds (no raid) settles to the byte the same under the
--- old body and the new — the no-op proof for every arm this file did not mean to touch.
-do $$
+-- it (the change is seen). Then the no-op proof for every arm of voyage.settle this file did not mean to touch: a
+-- passage settled under the OLD body and under the NEW, from the same state, compared to the byte — twice:
+--   'weather': a hazard EVERY day with only STORM, CALM and FAIR_WIND in the mix (the delay arms, the hull arm).
+--     BOUNDED BY THE CLOCK, not by her arrival: a storm costs 36 h and a calm 24-96 h (voyage.day_delay_hours),
+--     so a hazard a day pushes the ETA away faster than the days are settled, and a voyage set back 30 days (as the
+--     raided ones are) settles some 10,000 days before the clock catches it — measured 2026-10-20: the first apply
+--     of this file ran 70 min in this block. She is set back EIGHT voyage-lengths instead, so settle stops at
+--     `day_ends_at > now` after at most ~40 voyage-days of clock, whatever the rolls; she is not asked to arrive.
+--   'calm': no hazard at all (hazard_mult 0 on every leg), set back 30 days: she ARRIVES in her own 5-odd days,
+--     so the arrival arm — LANDFALL and the VOYAGE_REPORT payload, which hunk 3 appends to — is settled by both
+--     bodies too. A raid is the one arm that may differ, and it is in neither passage.
+create or replace function pg_temp.noop_0211(p_weather boolean)
+returns jsonb
+language plpgsql
+as $$
 declare
   h     jsonb;
   v_f   uuid; v_p uuid;
   v_voy uuid;
   v_a   jsonb; v_b jsonb;
   v_out jsonb;
+begin
+  begin
+    h := pg_temp.house_0211();
+    v_f := (h->>'fleet')::uuid; v_p := (h->>'player')::uuid;
+    v_voy := (cmd.do_sail(v_f, jsonb_build_object('dest', h->>'fnc', 'path', h->'course', 'insured', true))->>'voyage_id')::uuid;
+    if p_weather then
+      update public.world_config set value = '1'::jsonb where key = 'hazard_p_max';
+      -- no raid: only STORM, CALM and FAIR_WIND in the mix (the rest out, with no band to land in)
+      update public.voyage_event_kinds set in_sea_mix = false, is_rolled = false, mix_base = null, mix_danger = null, mix_raiders = null
+       where in_sea_mix and code not in ('STORM', 'CALM', 'FAIR_WIND');
+      update public.voyages vo
+         set path = (select jsonb_agg(e || jsonb_build_object('hazard_mult', 1000) order by o) from jsonb_array_elements(vo.path) with ordinality t(e, o)),
+             departed_at = departed_at - (eta - departed_at) * 8, eta = eta - (eta - departed_at) * 8
+       where vo.id = v_voy;
+    else
+      update public.voyages vo
+         set path = (select jsonb_agg(e || jsonb_build_object('hazard_mult', 0) order by o) from jsonb_array_elements(vo.path) with ordinality t(e, o)),
+             departed_at = departed_at - interval '30 days', eta = eta - interval '30 days'
+       where vo.id = v_voy;
+    end if;
+    begin
+      perform pg_temp.settle_b0211(v_f, now());
+      v_a := pg_temp.paid_0211(v_voy, v_p, (h->>'lis')::uuid, (h->>'fnc')::uuid) - 'policy'
+             || jsonb_build_object('events', (select jsonb_agg(jsonb_build_array(ve.day_index, ve.kind, ve.payload, ve.resolved_at) order by ve.day_index)
+                                                from public.voyage_events ve where ve.voyage_id = v_voy),
+                                   'ships', (select jsonb_agg(jsonb_build_array(s.durability, s.crew, s.cargo, s.water_t, s.food_t) order by s.id) from public.ships s where s.fleet_id = v_f),
+                                   'ducats', (select ducats from public.players where id = v_p),
+                                   'report', (select e.payload - 'voyage_id' from public.events e where e.player_id = v_p and e.kind = 'VOYAGE_REPORT' and e.payload->>'voyage_id' = v_voy::text),
+                                   'eta', (select eta from public.voyages where id = v_voy));
+      raise exception 'RB_0211';
+    exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
+    begin
+      perform voyage.settle(v_f, now());
+      v_b := pg_temp.paid_0211(v_voy, v_p, (h->>'lis')::uuid, (h->>'fnc')::uuid) - 'policy'
+             || jsonb_build_object('events', (select jsonb_agg(jsonb_build_array(ve.day_index, ve.kind, ve.payload, ve.resolved_at) order by ve.day_index)
+                                                from public.voyage_events ve where ve.voyage_id = v_voy),
+                                   'ships', (select jsonb_agg(jsonb_build_array(s.durability, s.crew, s.cargo, s.water_t, s.food_t) order by s.id) from public.ships s where s.fleet_id = v_f),
+                                   'ducats', (select ducats from public.players where id = v_p),
+                                   'report', (select e.payload - 'voyage_id' from public.events e where e.player_id = v_p and e.kind = 'VOYAGE_REPORT' and e.payload->>'voyage_id' = v_voy::text),
+                                   'eta', (select eta from public.voyages where id = v_voy));
+      raise exception 'RB_0211';
+    exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
+    v_out := jsonb_build_object('same', v_a = v_b, 'days', jsonb_array_length(coalesce(v_a->'events', '[]'::jsonb)),
+                                'hazard_days', (select count(*) from jsonb_array_elements(coalesce(v_a->'events', '[]'::jsonb)) e where e->>1 <> 'QUIET' and e->>1 <> 'LANDFALL'),
+                                'kinds', (select jsonb_agg(distinct e->>1) from jsonb_array_elements(coalesce(v_a->'events', '[]'::jsonb)) e),
+                                'status', v_a->>'status', 'report', v_a->'report' is not null,
+                                'a', case when v_a = v_b then null else v_a end, 'b', case when v_a = v_b then null else v_b end);
+    raise exception 'RB_0211';
+  exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
+  return v_out;
+end $$;
+
+do $$
+declare
+  h     jsonb;
+  v_f   uuid; v_p uuid;
+  v_out jsonb;
   v_oldp text;
+  v_t   timestamptz;
 begin
   begin
     h := pg_temp.house_0211();
@@ -1011,39 +1088,13 @@ begin
       perform cmd.parse(v_p, v_f, 'SAIL FNC NOW');
       v_out := v_out || jsonb_build_object('bogus', 'accepted');
     exception when others then v_out := v_out || jsonb_build_object('bogus', sqlerrm); end;
-    v_voy := (cmd.do_sail(v_f, jsonb_build_object('dest', h->>'fnc', 'path', h->'course', 'insured', true))->>'voyage_id')::uuid;
-    update public.world_config set value = '1'::jsonb where key = 'hazard_p_max';
-    -- no raid: only STORM, CALM and FAIR_WIND in the mix (the rest out, with no band to land in)
-    update public.voyage_event_kinds set in_sea_mix = false, is_rolled = false, mix_base = null, mix_danger = null, mix_raiders = null
-     where in_sea_mix and code not in ('STORM', 'CALM', 'FAIR_WIND');
-    update public.voyages vo
-       set path = (select jsonb_agg(e || jsonb_build_object('hazard_mult', 1000) order by o) from jsonb_array_elements(vo.path) with ordinality t(e, o)),
-           departed_at = departed_at - interval '30 days', eta = eta - interval '30 days'
-     where vo.id = v_voy;
-    begin
-      perform pg_temp.settle_b0211(v_f, now());
-      v_a := pg_temp.paid_0211(v_voy, v_p, (h->>'lis')::uuid, (h->>'fnc')::uuid) - 'policy'
-             || jsonb_build_object('events', (select jsonb_agg(jsonb_build_array(ve.day_index, ve.kind, ve.payload, ve.resolved_at) order by ve.day_index)
-                                                from public.voyage_events ve where ve.voyage_id = v_voy),
-                                   'ships', (select jsonb_agg(jsonb_build_array(s.durability, s.crew, s.cargo, s.water_t, s.food_t) order by s.id) from public.ships s where s.fleet_id = v_f),
-                                   'ducats', (select ducats from public.players where id = v_p));
-      raise exception 'RB_0211';
-    exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
-    begin
-      perform voyage.settle(v_f, now());
-      v_b := pg_temp.paid_0211(v_voy, v_p, (h->>'lis')::uuid, (h->>'fnc')::uuid) - 'policy'
-             || jsonb_build_object('events', (select jsonb_agg(jsonb_build_array(ve.day_index, ve.kind, ve.payload, ve.resolved_at) order by ve.day_index)
-                                                from public.voyage_events ve where ve.voyage_id = v_voy),
-                                   'ships', (select jsonb_agg(jsonb_build_array(s.durability, s.crew, s.cargo, s.water_t, s.food_t) order by s.id) from public.ships s where s.fleet_id = v_f),
-                                   'ducats', (select ducats from public.players where id = v_p));
-      raise exception 'RB_0211';
-    exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
-    v_out := v_out || jsonb_build_object('same', v_a = v_b, 'hazard_days', jsonb_array_length(coalesce(v_a->'events', '[]'::jsonb)),
-                                         'status', v_a->>'status', 'a', case when v_a = v_b then null else v_a end,
-                                         'b', case when v_a = v_b then null else v_b end);
-    insert into probe_0211 values ('word', v_out);
     raise exception 'RB_0211';
   exception when others then if sqlerrm <> 'RB_0211' then raise; end if; end;
+  insert into probe_0211 values ('word', v_out);
+  v_t := clock_timestamp();
+  insert into probe_0211 values ('weather', pg_temp.noop_0211(true) || jsonb_build_object('ms', round(extract(epoch from clock_timestamp() - v_t) * 1000)));
+  v_t := clock_timestamp();
+  insert into probe_0211 values ('calm', pg_temp.noop_0211(false) || jsonb_build_object('ms', round(extract(epoch from clock_timestamp() - v_t) * 1000)));
 end $$;
 
 -- ── 7. THE ASSERTS ─────────────────────────────────────────────────────────────────────────────
@@ -1056,13 +1107,15 @@ declare
   m  jsonb := (select j from probe_0211 where k = 'merchant');
   rf jsonb := (select j from probe_0211 where k = 'refound');
   w  jsonb := (select j from probe_0211 where k = 'word');
+  we jsonb := (select j from probe_0211 where k = 'weather');
+  ca jsonb := (select j from probe_0211 where k = 'calm');
   v_price bigint;
   x  jsonb;
   v_readers text;
 begin
-  if o is null or pl is null or sh is null or st is null or m is null or rf is null or w is null then
-    raise exception '0211 self-assert FAIL: a probe wrote nothing (once % plunder % short % stripped % merchant % refound % word %)',
-      o is not null, pl is not null, sh is not null, st is not null, m is not null, rf is not null, w is not null;
+  if o is null or pl is null or sh is null or st is null or m is null or rf is null or w is null or we is null or ca is null then
+    raise exception '0211 self-assert FAIL: a probe wrote nothing (once % plunder % short % stripped % merchant % refound % word % weather % calm %)',
+      o is not null, pl is not null, sh is not null, st is not null, m is not null, rf is not null, w is not null, we is not null, ca is not null;
   end if;
 
   -- (P1) charged once, at the quoted price, to the city she sailed from
@@ -1091,7 +1144,7 @@ begin
   end if;
   if (o->'q'->'insurance'->>'insured')::boolean is not false or (o->'q'->'insurance'->>'price')::bigint <> v_price
      or (o->'q'->>'total_nm') is distinct from (o->'old'->>'total_nm') or (o->'q'->>'voyage_days') is distinct from (o->'old'->>'voyage_days')
-     or (o->'q' - 'insurance' - 'voyage_id') <> (o->'old' - 'voyage_id') then
+     or ((o->'q') - 'insurance' - 'voyage_id') <> ((o->'old') - 'voyage_id') then   -- (parenthesised: `-` binds before `->`)
     raise exception '0211 self-assert FAIL: an unasked SAIL did not sail as before and quote the price: new %, old %', o->'q', o->'old';
   end if;
 
@@ -1150,9 +1203,14 @@ begin
      or (w->>'old_insured') not like 'E_PARSE%' or (w->>'bogus') not like 'E_PARSE%' then
     raise exception '0211 self-assert FAIL: the INSURED word: %', w;
   end if;
-  if not (w->>'same')::boolean or (w->>'hazard_days')::int < 2 or (w->>'status') <> 'ARRIVED' then
-    raise exception '0211 self-assert FAIL: a voyage with no raid did not settle the same under the old body and the new (% days, %): % / %',
-      w->>'hazard_days', w->>'status', w->'a', w->'b';
+  -- the no-op: the delay and hull arms (a hazard a day, bounded by the clock), and the arrival arm (no hazard)
+  if not (we->>'same')::boolean or (we->>'hazard_days')::int < 5 or not (we->'kinds' ? 'STORM' or we->'kinds' ? 'CALM') then
+    raise exception '0211 self-assert FAIL: a passage of storms and calms did not settle the same under the old body and the new (% days, % hazard, kinds %, %): % / %',
+      we->>'days', we->>'hazard_days', we->'kinds', we->>'status', we->'a', we->'b';
+  end if;
+  if not (ca->>'same')::boolean or (ca->>'status') <> 'ARRIVED' or not (ca->>'report')::boolean then
+    raise exception '0211 self-assert FAIL: a passage with no hazard did not arrive the same under the old body and the new (%, report %): % / %',
+      ca->>'status', ca->>'report', ca->'a', ca->'b';
   end if;
 
   -- READERS: each new author has the one reader it was written for
@@ -1188,13 +1246,13 @@ begin
     raise exception '0211 self-assert FAIL: the knobs';
   end if;
 
-  raise notice '0211 probe timings: risk_quote % ms over % days; settle of a raided passage % / % / % ms (plunder / short / stripped)',
-    o->'quote_ms', o->>'days', pl->>'settle_ms', sh->>'settle_ms', st->>'settle_ms';
-  raise notice '0211 self-assert ok: A CARGO CAN BE INSURED. ONCE: 2,000 insured LIS → FNC over % days at risk % for % (re-derived %), purse −%, Lisbon +%, one charge to the end; the preview quoted it and charged nothing; an unasked SAIL quoted it, charged nothing, sailed as before. PLUNDERED % days: took % of %, paid % (basis less 10 %%) by Lisbon, none by Funchal. SHORT: owed %, Lisbon''s surplus 50 paid 50, % recorded short. STRIPPED: 2,000 lost, 1,800 paid. MERCHANT: insured by herself for %, uninsured when broke. REFOUND: pre-image refounded the broke house (%), the new body none. INSURED parses; the pre-image refused it; a raidless passage of % days settles to the byte as before. Readers one each; walls hold; % hunks reverse, ACLs unchanged.',
+  raise notice '0211 probe timings: risk_quote % ms over % days; settle of a raided passage % / % / % ms (plunder / short / stripped); the no-op passages % / % ms (weather % days / calm % days)',
+    o->'quote_ms', o->>'days', pl->>'settle_ms', sh->>'settle_ms', st->>'settle_ms', we->>'ms', ca->>'ms', we->>'days', ca->>'days';
+  raise notice '0211 self-assert ok: A CARGO CAN BE INSURED. ONCE: 2,000 insured LIS → FNC over % days at risk % for % (re-derived %), purse −%, Lisbon +%, one charge to the end; the preview quoted it and charged nothing; an unasked SAIL quoted it, charged nothing, sailed as before. PLUNDERED % days: took % of %, paid % (basis less 10 %%) by Lisbon, none by Funchal. SHORT: owed %, Lisbon''s surplus 50 paid 50, % recorded short. STRIPPED: 2,000 lost, 1,800 paid. MERCHANT: insured by herself for %, uninsured when broke. REFOUND: pre-image refounded the broke house (%), the new body none. INSURED parses; the pre-image refused it; a passage of % hazard days (%) and a hazard-free passage to arrival settle to the byte as before. Readers one each; walls hold; % hunks reverse, ACLs unchanged.',
     o->>'days', o->>'risk', v_price, o->>'want_price', v_price, v_price,
     pl->>'raids', pl->'want'->'days'->0->'taken', pl->'cargo0', pl->'want'->>'owed',
     sh->'want'->>'owed', (sh->'want'->>'owed')::bigint - 50,
-    m->'r'->>'price', rf->'old'->>'refounds', w->>'hazard_days', (select count(*) from hunks_0211);
+    m->'r'->>'price', rf->'old'->>'refounds', we->>'hazard_days', we->'kinds', (select count(*) from hunks_0211);
 end $$;
 
 -- THE REFOUND'S KNOBS AND npc_worth GO LAST (the probe's positive control read them through the pre-image)

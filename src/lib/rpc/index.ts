@@ -68,6 +68,7 @@ import type {
   StandingRouteBook,
   SeaRoster,
   MerchantCard,
+  InsuranceView,
   FleetTrades,
   PortMerchants,
   TownHallView,
@@ -617,6 +618,13 @@ export function worldSeaRoster(since: string | null): Promise<RpcResult<SeaRoste
  *  E_NOT_FOUND in the same words. */
 export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCard>> {
   return call<MerchantCard>('worldNpcFleetCard', [fleetId])
+}
+
+/** INSURANCE (0211) — the caller's insured voyages under way and the last ones the insurance paid on.
+ *  Read at the Plans face, never on the beat. The price of insuring a SAIL is the SAIL's own estimate
+ *  (`sailEstimate(...).insurance`, from cmd.preview), not a figure of this read. */
+export function worldInsurance(): Promise<RpcResult<InsuranceView>> {
+  return call<InsuranceView>('worldInsurance', [])
 }
 
 /** ONE FLEET'S TRADING (0121) — a merchant's or your own: her newest seven laps stop by stop, the

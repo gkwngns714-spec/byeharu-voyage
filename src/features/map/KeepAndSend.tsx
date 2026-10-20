@@ -1,5 +1,5 @@
 import { Bar, Button, Chip, Figure, Icon, Row } from '../../components/ui'
-import { formatFixed, formatVoyageDays } from '../../lib/format'
+import { formatDucats, formatFixed, formatVoyageDays } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 import type { SendFlow } from './useSendFleet'
 
@@ -22,10 +22,16 @@ import type { SendFlow } from './useSendFleet'
 //
 // THE `None` CHIP IS CUT. It sailed her under no standing order; with the days as the one control
 // there is nothing for it to set, and §6 cuts it. A fleet under no order is cleared on FLEETS.
+//
+// INSURE THE CARGO (0211): one more press under the keep, only when the dry run quoted a price — the
+// server's figure for THIS passage and the cargo on board (`sailEstimate(...).insurance`). Off by default;
+// on, the send writes `SAIL <dest> INSURED` and the port she sails from is paid the price at departure.
 export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFlow }) {
   const keep = flow.daysOf(f)
   const have = f.endurance_days
   const presets = flow.presets
+  const insurance = flow.insuranceOf(f)
+  const insure = flow.insureOf(f)
 
   if (presets === null) {
     return <Row tone="muted" hairline={false} label="Reading her standing orders…" data-testid="map-send-keep" />
@@ -88,6 +94,29 @@ export function KeepAndSend({ fleet: f, flow }: { fleet: FleetView; flow: SendFl
           />
         </Row>
       </div>
+      {insurance && (
+        <Row
+          hairline={false}
+          label={
+            <span className="flex items-baseline gap-2">
+              Insurance
+              <Figure value={<span data-testid="map-send-insurance-price">{formatDucats(insurance.price)}</span>} size="figure" />
+            </span>
+          }
+          value={
+            <Chip on={insure} onClick={() => flow.setInsure(f, !insure)} data-testid="map-send-insure">
+              {insure ? 'Insured' : 'Insure the cargo'}
+            </Chip>
+          }
+          data-testid="map-send-insurance"
+        >
+          <span className="block text-t-caption text-ink-faint">
+            {insure
+              ? `Cargo worth ${formatDucats(insurance.value)} insured. Pays most of what pirates take.`
+              : `Cargo worth ${formatDucats(insurance.value)} on board. If pirates take it, you carry the loss.`}
+          </span>
+        </Row>
+      )}
     </div>
   )
 }

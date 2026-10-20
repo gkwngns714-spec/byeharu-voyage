@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { formatVoyageDays } from '../../lib/format'
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
-import { findVerb, fixAction, isComplete, orderText, useCommandDraft, verbWord } from '../../domain/order'
+import { findVerb, fixAction, isComplete, orderText, sailEstimate, useCommandDraft, verbWord, type SailInsurance } from '../../domain/order'
 import { fleetNow, proposeCourse, roadsteadCourseNote, sailOrigin, sailTarget } from '../../domain/passage'
 import { useWorld } from '../../live/worldStore'
 import {
@@ -73,6 +73,9 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({})
   const [act, setAct] = useState<Act | null>(null)
   const [days, setDaysHeld] = useState<Record<string, number>>({})
+  // 0211: whether to insure her cargo on THIS passage. Off until pressed; the price is the dry run's
+  // (`sailEstimate(...).insurance`, quoted by the server on the unasked SAIL), never worked out here.
+  const [insured, setInsured] = useState<Record<string, boolean>>({})
 
   // WHERE THE PASSAGE ENDS, read off the intent's own tokens by the ONE authority
   // (domain/passage): for a harbour that is her ROADS (0076), not her quay.
@@ -143,6 +146,17 @@ export function useSendFleet(dest: SailDest, open: boolean) {
     setPicked((p) => (p === f.id ? null : f.id))
   }
 
+  /** THE PRICE OF INSURING HER CARGO on this passage, from her row's dry run — the server's quote on
+   *  the unasked SAIL (0211). Null when the dry run has not answered, was refused, or quoted nothing
+   *  (an empty hold). A fleet under way is never offered it: the cover is written in port. */
+  const insuranceOf = (f: FleetView): SailInsurance | null => {
+    if (f.voyage) return null
+    const v = verdicts[f.id]
+    return v?.kind === 'ok' ? sailEstimate(v.result.estimate).insurance : null
+  }
+  const insureOf = (f: FleetView): boolean => insured[f.id] === true && insuranceOf(f) !== null
+  const setInsure = (f: FleetView, on: boolean) => setInsured((d) => ({ ...d, [f.id]: on }))
+
   const busyOn = (f: FleetView) => act?.state === 'busy' && act.fleetId === f.id
   const fail = (f: FleetView) => setAct({ fleetId: f.id, state: 'refused', refusal: useWorld.getState().refusal })
 
@@ -183,7 +197,10 @@ export function useSendFleet(dest: SailDest, open: boolean) {
       } else {
         const origin = sailOrigin(f, portByCode)
         const course = origin ? proposeCourse(seaNav, origin, target) : null
-        okay = await issue(f.id, orderText(spec, args, f.name), course)
+        // 0211: `SAIL <dest> INSURED` when asked — the grammar's own word (cmd.verb_schema's `insurance`
+        // enum), written by the one line composer; the server prices and charges it at departure.
+        const sailArgs = insureOf(f) ? { ...args, insurance: 'INSURED' } : args
+        okay = await issue(f.id, orderText(spec, sailArgs, f.name), course)
       }
       if (!okay) return fail(f)
       setAct({ fleetId: f.id, state: 'sent', refusal: null })
@@ -253,6 +270,9 @@ export function useSendFleet(dest: SailDest, open: boolean) {
     daysOf,
     setDays,
     nudge,
+    insuranceOf,
+    insureOf,
+    setInsure,
     send,
     fixesOf,
     /** The house's standing orders; null until the book has been read. */

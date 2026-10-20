@@ -279,13 +279,12 @@ function MerchantBody({
           label={
             <span className="block min-w-0">
               <span className="block">Fortune</span>
-              {/* A CLOCK TIME IS ONLY HONEST WITHIN TODAY. A refound may be days old, and
-                  "last 14:32" read as though it had happened this afternoon. The span is the
-                  same form the rest of the sheet counts in. */}
-              {card.company.refounded > 0 && (
-                <span className="block truncate text-t-caption text-ink-faint">
-                  {`refounded ${card.company.refounded === 1 ? 'once' : `${card.company.refounded} times`}${
-                    card.company.refounded_at ? `, last ${formatRealShort(nowMs - Date.parse(card.company.refounded_at))} ago` : ''
+              {/* 0211: THE REFOUND IS RETIRED. What stands behind her cargo is insurance: the losses it
+                  paid her, and what the insuring cities could not cover. Nothing until a claim. */}
+              {card.company.insurance && card.company.insurance.claims > 0 && (
+                <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-insurance">
+                  {`insurance paid ${card.company.insurance.claims === 1 ? 'once' : `${formatInt(card.company.insurance.claims)} times`}, ${formatDucats(card.company.insurance.paid)}${
+                    card.company.insurance.short > 0 ? `; ${formatDucats(card.company.insurance.short)} the cities could not pay` : ''
                   }`}
                 </span>
               )}

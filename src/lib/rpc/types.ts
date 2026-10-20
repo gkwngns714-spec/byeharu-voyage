@@ -2219,6 +2219,38 @@ export interface MerchantSkill {
   max: number
 }
 
+/** `world.insurance()` (0211) — the caller's insured voyages under way, and the last ten the insurance
+ *  paid on. `keep_pct` is the share of a loss the owner keeps (the deductible): the insurance pays the rest. */
+export interface InsuranceView {
+  keep_pct: number
+  active: {
+    voyage_id: string
+    fleet_id: string
+    fleet: string
+    /** The insuring city's CODE: the harbour she sailed from. */
+    port: string
+    /** Where she is bound (a CODE), or null for a point of open sea. */
+    to: string | null
+    eta: string
+    /** {good code: units} insured. */
+    cargo: Record<string, number>
+    /** The cargo's worth (its cost basis) when insured, and what insuring it cost. */
+    value: number
+    price: number
+    paid: number
+    short: number
+  }[]
+  paid: {
+    voyage_id: string
+    fleet: string
+    port: string
+    lost_value: number
+    paid: number
+    short: number
+    at: string
+  }[]
+}
+
 /** `world.npc_fleet_card(fleet)` — everything a player may know about ONE merchant fleet. */
 export interface MerchantCard {
   company: {
@@ -2229,8 +2261,9 @@ export interface MerchantCard {
     master: string
     /** The company's purse. A merchant has no privacy; its fortune rising and falling is the show. */
     fortune: number
-    refounded: number
-    refounded_at: string | null
+    /** 0211: the refound is retired; her insurance stands behind her cargo — the losses it paid her
+     *  (claims, ducats) and what the insuring cities could not cover (short). */
+    insurance: { claims: number; paid: number; short: number }
     /** 0123: her stakes in cities, by harbour, largest first. Absent on a server before 0123. */
     invested?: { port: string; name: string; paid: number }[]
     /** 0145 — her influence, by city and the country it counts for, most first. */

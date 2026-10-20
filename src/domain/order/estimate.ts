@@ -70,10 +70,29 @@ export interface SailEstimate {
   /** Voyage-days — game time, not the real-world wait. Divide by `config.time_compression` for
    *  that, and take the compression from the SERVER's snapshot, never from a constant. */
   days: number | null
+  /** 0211: INSURING THE CARGO on this voyage — `cmd.do_sail`'s own `insurance`: quoted on an unasked
+   *  SAIL (`insured: false`, the price it WOULD cost), written on `SAIL … INSURED`. Null when the
+   *  server served none (a build before 0211) or the hold carries nothing worth insuring. */
+  insurance: SailInsurance | null
+}
+
+export interface SailInsurance {
+  insured: boolean
+  /** The cargo's worth (its cost basis) and what insuring it costs, in ducats — the server's figures. */
+  value: number
+  price: number
 }
 
 /** Read a SAIL estimate. Every field is nullable: a server that returned none says so, and a
  *  screen prints a shorter block rather than a fabricated number. */
 export function sailEstimate(estimate: Record<string, unknown> | undefined): SailEstimate {
-  return { nm: num(estimate, 'total_nm'), days: num(estimate, 'voyage_days') }
+  const raw = estimate?.['insurance']
+  const ins = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>) : undefined
+  const value = num(ins, 'value')
+  const price = num(ins, 'price')
+  return {
+    nm: num(estimate, 'total_nm'),
+    days: num(estimate, 'voyage_days'),
+    insurance: ins && value !== null && price !== null && value > 0 ? { insured: ins['insured'] === true, value, price } : null,
+  }
 }

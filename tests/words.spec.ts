@@ -80,7 +80,11 @@ const BANNED: { word: RegExp; say: string }[] = [
   { word: /\bNPCs?\b/, say: 'merchant' },
   { word: /\bbots?\b/i, say: 'merchant' },
   { word: /\bAI traders?\b/i, say: 'merchant' },
-  { word: /\bbailed out\b/i, say: 'refounded' },
+  // 2026-10-19, 0211: the refound is retired; a merchant's cargo is INSURED and the insurance PAYS.
+  { word: /\bbailed out\b/i, say: 'insurance paid' },
+  { word: /\brefound(?:ed|s)?\b/i, say: 'insurance paid' },
+  { word: /\bunderwriters?\b/i, say: 'Insurance / the city' },
+  { word: /\bdeductible\b/i, say: 'the share you carry' },
   { word: /\bfatigue\b/i, say: 'Next lap 14:32' },
   { word: /\bat profit\b/i, say: 'Only sell above cost' },
   // 2026-10-18, docs/SKILLS_AND_CAPTAINS.md K9: the people you hire are CAPTAINS (K4–K8); `officer` is the
