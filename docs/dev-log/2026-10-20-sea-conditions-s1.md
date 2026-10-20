@@ -83,3 +83,398 @@ is false; `public.sea_gate` answers null; no gate is re-cut here (S2).
 - CI's disposable-Supabase job is the first real PostgreSQL to run the raster derivation; PGlite's timing is the only
   measurement until then.
 - No browser build: no screen changed (the catalogue, types and a wrapper only). `tsc -b` passes.
+
+
+## 6. Re-verified on top of 0213 (2026-10-20, the cloud routine, after the rebase)
+
+**The branch.** `osn-sea-s1` contains `origin/main` (main's head `e681828` is a docs-only work-queue commit after
+`ca4fe6f`; nothing in `supabase/` differs). **The WIP commit `5278abe` is KEPT:** 0213 appended
+`('world', 'insurance', '')` as the last row of `public.client_rpc_entry_points()`, so 0215's hunk there had to re-anchor
+on that row instead of `price_why`. That is exactly what the WIP did, and it is right: on the chain applied through 0213 the new
+OLD text occurs once. None of the five bodies 0215 re-cuts (`world.ship_stats` ×2, `world.ship_view`, `world.fleets`,
+`world.player`, `public.client_rpc_entry_points`) is one 0212/0213 re-cut apart from the registry. 0215 touches no
+`voyage.settle`, raid body or `npc_tend`.
+
+**How it was checked.** The whole chain 0001 → 0213 was applied locally in PGlite (`scripts/db/apply-chain.mjs`, on disk, 93 min of
+wasm). On that world: every 0215 hunk occurs exactly once (the read-only query in §8, run as written), every 0216
+hunk occurs exactly once, and all the 0215 preconditions in §8 are true. Then 0215 and 0216 were applied statement by statement in one
+transaction each (§7). Both self-asserts printed their receipts:
+- `0215 self-assert ok: THE SEAS HAVE CONDITIONS (dark). 64 zones, 67 boxes, 11 titles; the zone raster and 56644 leg asks
+  derived; every class's wave is the derivation; 65 wave rows; 908 hulls: ten stats unchanged, wave = class + mounted (59
+  carry a wave piece); 238 harbours resolve a zone of their raster sea; Lisbon → Havana sampled crosses
+  {GCO,NOR-AM,NOR-EU,NOR-MAC,NOR-MID} …`
+- `0216 self-assert ok: THE PASSAGE GATE READS THE SEA (dark). Seven bodies re-cut and reversed (three re-signed, ACL and
+  config restored). DARK: 580 gate / door / sail answers equal their pre-images for the probe and 13 human(s) (140 refused
+  E_REGION_CLOSED, the dark door exercised); reach_passage from Lisbon equal 6 × 6, the humans' tables equal, the good
+  board's passages equal. LIT (rolled back): Funchal clear, Las Palmas E_SEA_CLOSED at Macaronesia …`
+
+**One change to 0215 (decided by default):** `public.sea_leg_asks` is now created WITHOUT its two foreign keys to `ports`.
+They are added by an `alter table` right after the fill, with the same names PostgreSQL would have given them
+(`sea_leg_asks_from_port_fkey`, `sea_leg_asks_to_port_fkey`). Declared in the CREATE, they took SHARE ROW EXCLUSIVE on
+the hot `ports` table before the ~112 s derivation, and held it to commit. Every write to `ports` (the inn's `crew_pool` tick, a
+crew hire) would have waited the whole time. Measured: 120 s → 7.6 s. Nothing else in the file moved; the self-assert
+is unchanged and passes.
+
+**Specs.** `tests/duplication.spec.ts` 10/10 (after the change). `tsc -b` clean on both branches. `tests/rpc.surface.spec.ts` /
+`tests/rpc.issueLines.spec.ts` were NOT finished locally: they build their own world from zero and the run was stopped at the
+30-minute limit. CI runs them (acceptance shards, green on `5278abe`).
+
+## 7. Locks on the hot tables (local PGlite, measured; native PostgreSQL is expected to be several times faster)
+
+Method: each file split into its top-level statements, run inside ONE transaction. After every statement the session's
+own `pg_locks` is read, and the first moment each (table, mode) appears is recorded. "Held" is from that moment to COMMIT.
+Locks taken inside the self-asserts' rolled-back probe sub-transactions (RowExclusive on the probe's own fleets / ships /
+voyages rows) are released when the probe rolls back. They are not visible here and last at most the probe's
+statement (§ below); RowExclusive never blocks another writer's DML.
+
+| Table | 0215 longest lock (after the fix) | blocks live play? | 0216 longest lock |
+|---|---|---|---|
+| fleets | AccessShare 7.5 s | no (blocks only DDL) | none |
+| voyages | none | — | none |
+| ships | AccessShare 7.6 s | no | none |
+| port_goods | none | — | none |
+| standing_route_* | none (read only if prod had no Bristol → Cape Coast course) | — | none |
+| **players** | **AccessExclusive 7.5 s** (`drop column title_level`, held through the self-assert) | **yes: every read of `players` waits** | AccessShare 23.0 s (no) |
+| ship_classes | AccessExclusive 7.6 s (`add column wave`) | yes, for readers of hull classes | none |
+| item_effects | AccessExclusive 7.5 s (the CHECK widened) | yes, for readers of gear effects | none |
+| ports | ShareRowExclusive 7.6 s (was **120 s** before the fix); AccessShare 129.5 s | writes wait 7.6 s | AccessShare 23.0 s (no) |
+| world_config | RowExclusive 145 s (the three new keys) | no (only DDL) | AccessShare 23.0 s (no) |
+
+Total: 0215 146 s (raster 16 s, `sea_leg_asks` derivation 112 s, self-assert 7.5 s); 0216 23.4 s (all of it its
+self-assert; no DML-blocking lock at all). The last ~7.5 s of 0215, with `players`, `ship_classes` and `item_effects`
+exclusively locked, is the only window players would feel. Both files set `lock_timeout` 5 s, so a busy table
+makes the push fail cleanly instead of queueing behind it. Push 0215 at a quiet moment and expect a short stall of every
+RPC. The prod receipt's timing is the measurement that counts.
+
+**Not breaking, noted for S2's lit window:** `world.trade_routes` calls `voyage.sail_refusal(p_fleet, port, null, nm)` with 4
+arguments. After 0216 that resolves to the new 5-argument signature through its default (checked locally: it answers). So lit, the trade
+board judges a lane by the destination's zone without the course.
+
+## 8. PROD CHECKS FOR THE MAIN SESSION
+
+Run each block as written (`npx --yes supabase@2.120.0 db query --linked "<block>"`, or `-f` on a file). Every block is a
+`begin transaction read only … rollback`, SELECTs only. The only functions called are `pg_get_functiondef`,
+`to_regprocedure`, `to_regclass`, `replace` and `length` (all stable or immutable). No game function is called. Each was run
+on the local world at the matching head, and every row came out as expected.
+
+### 8a. Before pushing 0215 (prod head 0213): the hunks. Expect every row `occurs = 1` and `new_already_there = 0`.
+
+```sql
+begin transaction read only;
+-- 0215: every OLD hunk must occur EXACTLY once in the live body (LF-normalised). Expect every row occurs = 1.
+with h(fn, n, old, new) as (values
+('world.ship_stats(uuid)', 1,
+$h$('sighting',   c.sighting::numeric)) b(stat, base)
+      left join d on d.stat = b.stat$h$,
+$h$('sighting',   c.sighting::numeric),
+                                ('wave',       c.wave::numeric)) b(stat, base)   -- 0215: + wave resistance, summed as the rest
+      left join d on d.stat = b.stat$h$),
+('world.ship_stats(uuid)', 2,
+$h$('sighting',   c.sighting::numeric)) b(stat, base)
+    left join d on d.stat = b.stat$h$,
+$h$('sighting',   c.sighting::numeric),
+                              ('wave',       c.wave::numeric)) b(stat, base)   -- 0215: + wave resistance, summed as the rest
+    left join d on d.stat = b.stat$h$),
+('world.ship_view(uuid)', 1,
+$h$           'sighting', x.st->'sighting',
+$h$,
+$h$           'sighting', x.st->'sighting',
+           'wave', x.st->'wave',   -- 0215: her wave resistance (world.ship_stats, the one computation)
+$h$),
+('world.fleets()', 1,
+$h$    'free_hold', public.fleet_free_hold(f.id),
+$h$,
+$h$    'free_hold', public.fleet_free_hold(f.id),
+    'wave', public.fleet_wave(f.id),   -- 0215: the fleet's wave resistance, the average of her hulls' (public.fleet_wave)
+$h$),
+('world.player()', 1,
+$h$      'title_level',   v_row.title_level,
+$h$,
+$h$      'title_level',   public.title_level(v_id),   -- 0215: DERIVED (the lower of Trading and Exploration, capped title_max); the column is gone
+      'title_name',    (select t.name from public.title_names t where t.level = public.title_level(v_id)),
+$h$),
+('public.client_rpc_entry_points()', 1,
+$h$      ('world',       'insurance',             '')
+    ) as t(s, f, a)$h$,
+$h$      ('world',       'insurance',             ''),
+      -- 0215: the sea conditions — every zone's asks, the caller's title, her fleets' wave (docs/SEA_CONDITIONS_AND_REGIONS.md S1).
+      ('world',       'sea_conditions',        '')
+    ) as t(s, f, a)$h$)
+)
+select h.fn, h.n,
+       (length(d.def) - length(replace(d.def, h.old, ''))) / length(h.old) as occurs,
+       (length(d.def) - length(replace(d.def, h.new, ''))) / length(h.new) as new_already_there
+  from h
+  cross join lateral (select replace(pg_get_functiondef(to_regprocedure(h.fn)), E'\r', '') as def) d
+ order by h.fn, h.n;
+rollback;
+```
+
+### 8b. Before pushing 0215: the self-assert's preconditions. Expect every row `ok = true`. The query sorts any false row first.
+
+```sql
+begin transaction read only;
+-- 0215 preconditions (run at prod head 0213). Every row's `ok` must be true.
+select * from (
+select 'head is 0213 (nothing landed since)', max(version) = '20260818000213', max(version)
+  from supabase_migrations.schema_migrations
+union all
+select 'no 0215 object exists yet', to_regclass('public.sea_zones') is null and to_regclass('public.sea_zone_boxes') is null
+       and to_regclass('public.sea_zone_cells') is null and to_regclass('public.sea_leg_asks') is null
+       and to_regclass('public.title_names') is null and to_regprocedure('public.sea_gate(uuid,uuid,uuid,jsonb)') is null,
+       null
+union all
+select 'knobs absent (sea_conditions_bite, sea_sample_nm, title_max)',
+       not exists (select 1 from public.world_config where key in ('sea_conditions_bite', 'sea_sample_nm', 'title_max')),
+       (select string_agg(key, ',') from public.world_config where key in ('sea_conditions_bite', 'sea_sample_nm', 'title_max'))
+union all
+select 'players.title_level exists; ship_classes.wave does not',
+       exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'players' and column_name = 'title_level')
+       and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ship_classes' and column_name = 'wave'),
+       null
+union all
+select 'players.title_level read by no view/index/constraint (drop column cannot cascade)',
+       not exists (select 1 from pg_depend d join pg_attribute a on a.attrelid = d.refobjid and a.attnum = d.refobjsubid
+                    where d.refobjid = 'public.players'::regclass and a.attname = 'title_level'
+                      and (d.classid in ('pg_rewrite'::regclass, 'pg_class'::regclass, 'pg_trigger'::regclass, 'pg_policy'::regclass)
+                           or (d.classid = 'pg_constraint'::regclass
+                               and (select c.conrelid <> 'public.players'::regclass or cardinality(c.conkey) <> 1
+                                      from pg_constraint c where c.oid = d.objid)))),
+       null
+union all
+select 'only world.player() names title_level in a function body (it is re-cut)',
+       (select array_agg(n.nspname || '.' || p.proname order by 1) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+         where p.prosrc like '%title_level%' and n.nspname in ('public', 'world', 'cmd', 'voyage')) = array['world.player'],
+       (select string_agg(n.nspname || '.' || p.proname, ',') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+         where p.prosrc like '%title_level%' and n.nspname in ('public', 'world', 'cmd', 'voyage'))
+union all
+select 'every class has a profile (103 at writing); barca/carlat/nau derive 12/26/39',
+       (select count(*) from public.ship_classes) = (select count(*) from public.ship_classes c join public.class_profile cp on cp.class_code = c.code)
+       and (select count(*) from public.ship_classes) >= 100
+       and (select string_agg((12 * cp.size + case c.rig when 'square' then 3 when 'mixed' then 1 when 'lateen' then 0 when 'oared' then -6 end
+                               + case cp.role when 'explorer' then 2 else 0 end)::text, '/' order by c.code)
+              from public.ship_classes c join public.class_profile cp on cp.class_code = c.code where c.code in ('barca', 'carlat', 'nau')) = '12/26/39',
+       (select count(*)::text from public.ship_classes)
+union all
+select 'the nine gear families hold exactly the 65 items 0215 inserts wave rows for; none has a wave row',
+       (select count(*) from public.item_profile where base_type in ('Anchor', 'Sheet Anchor', 'Storm Canvas', 'Planking', 'Sheathing', 'Bilge Pumps', 'Ballast', 'Doubled Frames', 'Raised Forecastle')) = 65
+       and not exists (select 1 from public.item_effects where stat = 'wave')
+       and exists (select 1 from pg_constraint where conname = 'item_effects_stat_check' and conrelid = 'public.item_effects'::regclass),
+       (select count(*)::text from public.item_profile where base_type in ('Anchor', 'Sheet Anchor', 'Storm Canvas', 'Planking', 'Sheathing', 'Bilge Pumps', 'Ballast', 'Doubled Frames', 'Raised Forecastle'))
+union all
+select 'harbours: >= 200, every one with a sea_reaches roadstead (238 at writing)',
+       (select count(*) from public.ports where kind = 'HARBOUR') >= 200
+       and not exists (select 1 from public.ports p where p.kind = 'HARBOUR' and not exists (select 1 from public.sea_reaches sr where sr.port_id = p.id)),
+       (select count(*)::text from public.ports where kind = 'HARBOUR')
+union all
+select 'the named harbours exist (LIS PON HAV CPT HNL HAG PAR BRS CAP OPO)',
+       (select count(*) from public.ports where code in ('LIS', 'PON', 'HAV', 'CPT', 'HNL', 'HAG', 'PAR', 'BRS', 'CAP', 'OPO')) = 10, null
+union all
+select 'probe needs: SEAMANSHIP, classes barca + nau, new_house + commission_ship',
+       exists (select 1 from public.skills where code = 'SEAMANSHIP')
+       and (select count(*) from public.ship_classes where code in ('barca', 'nau')) = 2
+       and exists (select 1 from pg_proc where proname = 'new_house' and pronamespace = 'public'::regnamespace)
+       and exists (select 1 from pg_proc where proname = 'commission_ship' and pronamespace = 'public'::regnamespace),
+       null
+union all
+select 'no probe leftovers (auth uid 0215, Casa 0215)',
+       not exists (select 1 from public.players where auth_uid = '00000000-0215-4000-8000-000000000001' or company_name like '%0215%'), null
+) t(chk, ok, seen)
+order by ok nulls first, chk;
+rollback;
+```
+
+### 8c. Before pushing 0216 (after S1 landed): the hunks. Expect every row `occurs = 1`, `new_already_there = 0`. (0215 re-cuts
+none of these seven bodies, so this also reads true at head 0213.)
+
+```sql
+begin transaction read only;
+-- 0216: every OLD hunk must occur EXACTLY once in the live body (LF-normalised). Expect every row occurs = 1.
+with h(fn, n, old, new) as (values
+('public.passage_gate(uuid,numeric,uuid)', 1,
+$h$CREATE OR REPLACE FUNCTION public.passage_gate(p_player uuid, p_nm numeric, p_dest uuid)
+$h$,
+$h$CREATE OR REPLACE FUNCTION public.passage_gate(p_player uuid, p_fleet uuid, p_nm numeric, p_dest uuid, p_course jsonb DEFAULT NULL::jsonb)
+$h$),
+('public.passage_gate(uuid,numeric,uuid)', 2,
+$h$  if p_dest is not null then
+    select r.name, r.min_exploration_level into v_region, v_need
+$h$,
+$h$  -- 0216 (docs/SEA_CONDITIONS_AND_REGIONS.md, S2): WHILE THE SEA CONDITIONS BITE, the destination's waters and the
+  -- course's are asked of the one rule (public.sea_gate: her title, her fleet's wave resistance, the zones) and the
+  -- 0107 region door below is never read — the zone table is the one authority for "is this place open to her".
+  -- Dark, the body below is the pre-image to the character (the region door goes with its column in the slice
+  -- after the switch is lit).
+  if public.sea_conditions_on() then
+    return public.sea_gate(p_player, p_fleet, p_dest, p_course);
+  end if;
+
+  if p_dest is not null then
+    select r.name, r.min_exploration_level into v_region, v_need
+$h$),
+('voyage.sail_refusal(uuid,uuid,jsonb,numeric)', 1,
+$h$CREATE OR REPLACE FUNCTION voyage.sail_refusal(p_fleet uuid, p_dest uuid, p_dest_point jsonb, p_nm numeric)
+$h$,
+$h$CREATE OR REPLACE FUNCTION voyage.sail_refusal(p_fleet uuid, p_dest uuid, p_dest_point jsonb, p_nm numeric, p_course jsonb DEFAULT NULL::jsonb)
+$h$),
+('voyage.sail_refusal(uuid,uuid,jsonb,numeric)', 2,
+$h$  v_gate := public.passage_gate(f.player_id, p_nm, p_dest);
+$h$,
+$h$  v_gate := public.passage_gate(f.player_id, f.id, p_nm, p_dest, p_course);   -- 0216: her fleet and her course, for the sea
+$h$),
+('cmd.do_sail(uuid,jsonb)', 1,
+$h$  v_gate := voyage.sail_refusal(p_fleet, v_dest, v_point, v_nm);
+$h$,
+$h$  v_gate := voyage.sail_refusal(p_fleet, v_dest, v_point, v_nm, v_course);   -- 0216: + the course (the sea conditions judge it)
+$h$),
+('cmd.standing_route_save_for(uuid,uuid,text,jsonb,bigint,integer,integer)', 1,
+$h$      v_gate := public.passage_gate(p_player, v_leg_nm, v_port.id);
+$h$,
+$h$      v_gate := public.passage_gate(p_player, sr.fleet_id, v_leg_nm, v_port.id, s->'course');   -- 0216: + her fleet (none until assigned) and the leg's course
+$h$),
+('cmd.issue_lines(uuid,jsonb,integer)', 1,
+$h$    v_gate := public.passage_gate(v_player, v_nm, v_dest);
+$h$,
+$h$    v_gate := public.passage_gate(v_player, p_fleet, v_nm, v_dest, v_lpath);   -- 0216: + the fleet and the course
+$h$),
+('voyage.reach_passage(uuid,uuid)', 1,
+$h$CREATE OR REPLACE FUNCTION voyage.reach_passage(p_player uuid, p_from uuid)
+$h$,
+$h$CREATE OR REPLACE FUNCTION voyage.reach_passage(p_player uuid, p_fleet uuid, p_from uuid)
+$h$),
+('voyage.reach_passage(uuid,uuid)', 2,
+$h$  v_path  text[];
+begin
+$h$,
+$h$  v_path  text[];
+  ok      boolean[];   -- 0216: lit, edge i → j is open when public.sea_leg_asks allows it for her title and her fleet's wave
+  v_title int;
+  v_wave  numeric;
+begin
+$h$),
+('voyage.reach_passage(uuid,uuid)', 3,
+$h$    select h.region_id, public.passage_gate(p_player, null, h.id) is null as open
+$h$,
+$h$    select h.region_id, public.passage_gate(p_player, p_fleet, null, h.id, null) is null as open   -- 0216: lit, the harbour's own zone
+$h$),
+('voyage.reach_passage(uuid,uuid)', 4,
+$h$  if coalesce(array_length(d, 1), 0) <> v_n * v_n then
+    raise exception 'voyage.reach_passage: % harbours but % sailed distances — a harbour has no sea_reaches row', v_n, coalesce(array_length(d, 1), 0);
+  end if;
+$h$,
+$h$  if coalesce(array_length(d, 1), 0) <> v_n * v_n then
+    raise exception 'voyage.reach_passage: % harbours but % sailed distances — a harbour has no sea_reaches row', v_n, coalesce(array_length(d, 1), 0);
+  end if;
+  -- 0216: THE SEA, ONCE A CALL. Lit, her title and her fleet's wave are read once and every edge is open or shut by
+  -- public.sea_leg_asks (the straight line between the two roadsteads and the destination's zone — the one derivation,
+  -- the same figures public.sea_refusal compares); a side she has no figure for (a merchant's title, an empty fleet's
+  -- wave) is not asked, as the rule itself skips it. Dark, `ok` stays null and every edge is as before.
+  if public.sea_conditions_on() then
+    v_title := public.title_level(p_player);
+    v_wave  := public.fleet_wave(p_fleet);
+    select array_agg(coalesce((v_title is null or s.title_min <= v_title) and (v_wave is null or s.wave_min <= v_wave), true) order by a.i, b.j)
+      into ok
+      from unnest(v_ids) with ordinality a(id, i)
+     cross join unnest(v_ids) with ordinality b(id, j)
+      left join public.sea_leg_asks s on s.from_port = a.id and s.to_port = b.id;
+    -- and a HARBOUR is open by its own zone (the self row of sea_leg_asks is exactly that), not by its region's first
+    -- harbour: 0205's one-door-a-region shortcut holds for the region door, not for the sea (Funchal is home water in
+    -- a region whose first harbour by code is the Azores).
+    select array_agg(a.id = p_from or coalesce((v_title is null or s.title_min <= v_title) and (v_wave is null or s.wave_min <= v_wave), true) order by a.i)
+      into v_open
+      from unnest(v_ids) with ordinality a(id, i)
+      left join public.sea_leg_asks s on s.from_port = a.id and s.to_port = a.id;
+  end if;
+$h$),
+('voyage.reach_passage(uuid,uuid)', 5,
+$h$      if not done[j] and v_open[j] then
+$h$,
+$h$      if not done[j] and v_open[j] and (ok is null or ok[(u - 1) * v_n + j]) then   -- 0216
+$h$),
+('world.good_board(uuid,uuid,uuid,numeric)', 1,
+$h$    from voyage.reach_passage(v_player, v_origin) r;
+$h$,
+$h$    from voyage.reach_passage(v_player, p_fleet, v_origin) r;   -- 0216: + her fleet (the sea conditions)
+$h$),
+('world.good_board(uuid,uuid,uuid,numeric)', 2,
+$h$     cross join lateral voyage.reach_passage(v_player, s.id) r
+$h$,
+$h$     cross join lateral voyage.reach_passage(v_player, p_fleet, s.id) r   -- 0216
+$h$)
+)
+select h.fn, h.n,
+       (length(d.def) - length(replace(d.def, h.old, ''))) / length(h.old) as occurs,
+       (length(d.def) - length(replace(d.def, h.new, ''))) / length(h.new) as new_already_there
+  from h
+  cross join lateral (select replace(pg_get_functiondef(to_regprocedure(h.fn)), E'\r', '') as def) d
+ order by h.fn, h.n;
+rollback;
+```
+
+### 8d. Before pushing 0216: the self-assert's preconditions. Expect every row `ok = true`.
+
+```sql
+begin transaction read only;
+-- 0216 preconditions (run at prod head 0215, i.e. after 0215 landed). Every row's `ok` must be true.
+select * from (
+select 'head is S1 (0215, or the number S1 was renumbered to at push)', max(version) >= '20260818000214', max(version)
+  from supabase_migrations.schema_migrations
+union all
+select 'sea switch dark', (select value from public.world_config where key = 'sea_conditions_bite') = 'false'::jsonb, null
+union all
+select 'the seven old signatures exist, the three new ones do not',
+       to_regprocedure('public.passage_gate(uuid,numeric,uuid)') is not null
+       and to_regprocedure('voyage.sail_refusal(uuid,uuid,jsonb,numeric)') is not null
+       and to_regprocedure('cmd.do_sail(uuid,jsonb)') is not null
+       and to_regprocedure('cmd.standing_route_save_for(uuid,uuid,text,jsonb,bigint,integer,integer)') is not null
+       and to_regprocedure('cmd.issue_lines(uuid,jsonb,integer)') is not null
+       and to_regprocedure('voyage.reach_passage(uuid,uuid)') is not null
+       and to_regprocedure('world.good_board(uuid,uuid,uuid,numeric)') is not null
+       and to_regprocedure('public.passage_gate(uuid,uuid,numeric,uuid,jsonb)') is null
+       and to_regprocedure('voyage.sail_refusal(uuid,uuid,jsonb,numeric,jsonb)') is null
+       and to_regprocedure('voyage.reach_passage(uuid,uuid,uuid)') is null,
+       null
+union all
+-- world.trade_routes calls voyage.sail_refusal with 4 arguments: it resolves to the new 5-argument signature by its default (course null)
+select 'no caller of the three changed signatures beyond the re-cut bodies and world.trade_routes',
+       (select array_agg(distinct n.nspname || '.' || p.proname order by n.nspname || '.' || p.proname)
+          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname in ('public', 'world', 'cmd', 'voyage')
+           and (p.prosrc ~ 'passage_gate\(' or p.prosrc ~ 'sail_refusal\(' or p.prosrc ~ 'reach_passage\(')
+           and p.proname not in ('passage_gate', 'sail_refusal', 'reach_passage'))
+       <@ array['cmd.do_sail', 'cmd.issue_lines', 'cmd.standing_route_save_for', 'world.good_board', 'world.trade_routes']::text[],
+       (select string_agg(distinct n.nspname || '.' || p.proname, ',')
+          from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+         where n.nspname in ('public', 'world', 'cmd', 'voyage')
+           and (p.prosrc ~ 'passage_gate\(' or p.prosrc ~ 'sail_refusal\(' or p.prosrc ~ 'reach_passage\(')
+           and p.proname not in ('passage_gate', 'sail_refusal', 'reach_passage'))
+union all
+select 'the named harbours exist (LIS HAV HNL LPA FNC OPO CAD SAF SVQ SET TEN AGA)',
+       (select count(*) from public.ports where code in ('LIS', 'HAV', 'HNL', 'LPA', 'FNC', 'OPO', 'CAD', 'SAF', 'SVQ', 'SET', 'TEN', 'AGA')) = 12, null
+union all
+select 'probe needs: NAVIGATION + SEAMANSHIP, classes barca nau carraca',
+       (select count(*) from public.skills where code in ('NAVIGATION', 'SEAMANSHIP')) = 2
+       and (select count(*) from public.ship_classes where code in ('barca', 'nau', 'carraca')) = 3, null
+union all
+select 'no probe leftovers (auth uid 0216, Casa/Comptoir 0216)',
+       not exists (select 1 from public.players where auth_uid = '00000000-0216-4000-8000-000000000001'
+                                                 or company_name in ('Casa 0216', 'Comptoir 0216')), null
+) t(chk, ok, seen)
+order by ok nulls first, chk;
+rollback;
+```
+
+## 9. Summary (2026-10-20, the cloud routine)
+
+- **#275 (S1, `osn-sea-s1`)**: every check green on `5278abe` (build, select, pglite-gate ×3, disposable-chain against main's
+  0213 snapshot on real PostgreSQL, acceptance shards ×6, npc-on-world, acceptance). This commit (the FK move + this log)
+  re-runs them; see the PR comment for the state on the new head.
+- **#276 (S2, `osn-sea-s2`)**: rebased onto the new S1 (one commit, 0216 unchanged). Everything green except `disposable-chain`.
+  That red is the expected one: "no usable applied-chain snapshot for this chain — refusing to rebuild from zero on a PR". It turns green
+  once S1 is on main.
+- **Locks**: §7. Longest on a hot table: `players` AccessExclusive 7.5 s (0215); `ports` writes 7.6 s (down from 120 s).
+  0216 holds nothing that blocks play.
+- **Not verified**: the migrations have not run on prod (no push by order). The CI disposable-chain timing of 0215 on real
+  PostgreSQL was not read (the log download was refused by the sandbox proxy). The two rpc specs did not finish locally (CI ran
+  them). PGlite's wall-clock is wasm, not prod. The lock method cannot see locks inside the rolled-back probes (they are
+  RowExclusive on probe rows only).

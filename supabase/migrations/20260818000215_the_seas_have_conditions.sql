@@ -523,8 +523,8 @@ as $$
 $$;
 
 create table public.sea_leg_asks (
-  from_port uuid not null references public.ports(id),
-  to_port   uuid not null references public.ports(id),
+  from_port uuid not null,   -- references public.ports(id): added AFTER the fill, below
+  to_port   uuid not null,
   wave_min  int  not null,
   title_min int  not null,
   primary key (from_port, to_port)
@@ -537,6 +537,12 @@ comment on table public.sea_leg_asks is
 
 insert into public.sea_leg_asks (from_port, to_port, wave_min, title_min)
 select d.from_port, d.to_port, d.wave_min, d.title_min from public.sea_leg_asks_derive() d;
+-- the two references to the HOT `ports` table are added only now: a foreign key takes SHARE ROW EXCLUSIVE on the
+-- table it references until commit, and declared in the CREATE above it would have stopped every write to ports
+-- (the inn's crew pool, a hire) for the whole derivation (measured locally: ~112 s of the file's ~136 s).
+alter table public.sea_leg_asks
+  add constraint sea_leg_asks_from_port_fkey foreign key (from_port) references public.ports(id),
+  add constraint sea_leg_asks_to_port_fkey   foreign key (to_port)   references public.ports(id);
 
 create function public.fleet_wave(p_fleet uuid)
 returns numeric
