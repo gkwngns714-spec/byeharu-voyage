@@ -345,26 +345,45 @@ async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet
   // visible merchant is lying at a quay there is no such hull, and refusing to pick one at all
   // turned a crowded sea into "no merchant hull on the glass" (CI, 2026-10-11). So the clear ones
   // are preferred and the rest are the fallback; `tapHull` proves the tap landed either way.
-  return (
-    (await hullInViewClearOf(page, sailing, skip, 48)) ||
-    (await hullInViewClearOf(page, sailing, skip, 20)) ||
-    (await hullInViewClearOf(page, sailing, skip, 0))
-  )
+  //
+  // AND WITH TIME LEFT ON HER LEG FIRST (2026-10-20). npcOn.fixture warps every merchant's legs to
+  // end at the instant the world is dumped, so every hull on the sea DEPARTED at that instant, and
+  // the short hops round Lisbon — the opening frame — end a few minutes later: inside the npc shard.
+  // A merchant tapped then can dock during the 30-s wait for her course line, leave the chart (a
+  // merchant in port is not drawn, chartModel.ts) and take her line with her — the likely cause of
+  // the red in 2 local runs of 3 on main (PR #277's comment). The line is drawn only while she is at sea, so the hull aimed at is one whose
+  // served eta (`data-merchant-eta`) is more than LEG_LEFT_MS away; a frame with none falls back to
+  // any hull, as the clear-of tiers do.
+  for (const minLeftMs of [LEG_LEFT_MS, 0]) {
+    const id =
+      (await hullInViewClearOf(page, sailing, skip, 48, minLeftMs)) ||
+      (await hullInViewClearOf(page, sailing, skip, 20, minLeftMs)) ||
+      (await hullInViewClearOf(page, sailing, skip, 0, minLeftMs))
+    if (id) return id
+  }
+  return ''
 }
+
+/** Long enough for everything the sheet test does after the tap, with room to spare. */
+const LEG_LEFT_MS = 5 * 60_000
 
 async function hullInViewClearOf(
   page: Page,
   sailing: boolean | null,
   skip: ReadonlySet<string>,
   clearPx: number,
+  minLeftMs: number,
 ): Promise<string> {
   const id = await page.evaluate(
-    ({ wantSailing, seen, clear, z }) => {
+    ({ wantSailing, seen, clear, z, minLeft }) => {
       const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
       for (const h of document.querySelectorAll('[data-testid="map-merchant"]')) {
         if (wantSailing !== null && (h.getAttribute('data-merchant-docked') === 'false') !== wantSailing) continue
         const mid = h.getAttribute('data-merchant-id')
         if (mid && seen.includes(mid)) continue
+        // An empty eta is a hull with no voyage (at anchor): she is going nowhere, so she has time.
+        const eta = Number(h.getAttribute('data-merchant-eta') || Infinity)
+        if (minLeft > 0 && !(eta - Date.now() > minLeft)) continue
         const r = h.getBoundingClientRect()
         const cx = r.left + r.width / 2
         const cy = r.top + r.height / 2
@@ -400,9 +419,9 @@ async function hullInViewClearOf(
       }
       return null
     },
-    { wantSailing: sailing, seen: [...skip], clear: clearPx, z: TAP_ZONE },
+    { wantSailing: sailing, seen: [...skip], clear: clearPx, z: TAP_ZONE, minLeft: minLeftMs },
   )
-  if (!id && skip.size === 0 && clearPx === 0) {
+  if (!id && skip.size === 0 && clearPx === 0 && minLeftMs === 0) {
     throw new Error(`no ${sailing === null ? '' : sailing ? 'sailing ' : 'docked '}merchant hull on the glass`)
   }
   return id ?? ''
@@ -534,13 +553,18 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
 
   // A TAP OPENS THE SHEET — and never the player's own fleet tray. The merchant opened is one with
   // something in her books if any hull on the glass has (the shots below are the feature's record).
-  await openMerchantWorthReading(page, true)
+  const openedId = await openMerchantWorthReading(page, true)
   const sheet = page.getByTestId('merchant-sheet')
   await expect(sheet).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('map-detail-tray')).toHaveCount(0)
   await expect(page.getByTestId('merchant-sheet-body')).toBeVisible({ timeout: 60_000 })
   // her leg is drawn while she is open
-  await expect(page.getByTestId('map-merchant-track')).toHaveCount(1, { timeout: 30_000 })
+  const leftMs = async () =>
+    Number((await page.locator(`[data-merchant-id="${openedId}"]`).getAttribute('data-merchant-eta').catch(() => null)) || NaN) - Date.now()
+  await expect(
+    page.getByTestId('map-merchant-track'),
+    `merchant ${openedId}'s leg, with ${Math.round((await leftMs()) / 1000)} s left on it when the wait began`,
+  ).toHaveCount(1, { timeout: 30_000 })
 
   // half: earnings, laps, route, fortune, blurb
   await expect(page.getByTestId('merchant-earnings-day')).toBeVisible()
