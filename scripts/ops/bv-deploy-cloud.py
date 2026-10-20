@@ -183,8 +183,28 @@ def main() -> None:
         push_err = detail().decode()[:2000] if detail else str(exc)
         print(f"  push reported an error:\n{push_err}")
 
-    # 3. the head decides, not the HTTP call
+    # 3. THE HEAD DECIDES, NOT THE HTTP CALL — and it must be given time to say so.
+    #
+    # 2026-10-20, 0215: the call returned "upstream request failed" (the API gateway gave up on a
+    # long migration) and a single head read straight afterwards still said 0214. It was read too
+    # early: the transaction was still committing, and 0215 landed seconds later. The script
+    # reported "NOT MERGING", so prod went to 0215 while main stayed behind — exactly the
+    # half-deployed state the merge gate exists to prevent.
+    #
+    # A dropped connection says nothing about the transaction's fate. So when the push errors,
+    # poll: either the head becomes the version we pushed, or it is still the old head after the
+    # database has gone quiet, and only then is it really a failure.
     after = head()
+    if after != want and not push_ok:
+        print("  the call dropped; polling the head (a dropped connection does not mean a rollback)")
+        for i in range(24):  # up to ~4 minutes
+            time.sleep(10)
+            after = head()
+            busy = busy_jobs()
+            print(f"  +{(i + 1) * 10}s head={after} busy={busy}")
+            if after == want:
+                print("  it landed after all — the call dropped, the transaction committed")
+                break
     print(f"head after {after}  (wanted {want})")
 
     # 4. wind the clock back whatever happened
