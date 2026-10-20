@@ -35,6 +35,16 @@ import { useT } from '../../lib/i18n'
 // caption carries one fact — `· 40 units on board` — and docs/UI_DIRECTION.md §4.4 gives rarity
 // its hues as a 10-px MARK only: the rarity mark IS drawn, mark only, when the tier is served —
 // never as a text tag.
+//
+// AND THE GOOD'S KIND IS NOT HERE, THOUGH THE OWNER ASKED FOR IT (row 177, 2026-10-20: "what class?
+// What sort it is classified, such as food, weapon, spice etc."). It was added as one caption word
+// on 2026-10-20 and taken straight back out: this row's HEIGHT is a measured contract —
+// tests/layout.spec.ts requires three complete rows above the fold on City › Trade and five on
+// Markets, measured at 390×844 — and at that width the label column is ~130px, so one more word
+// wraps the name to a second line on most goods and spends that budget. The kind is said where
+// there is room for it: the tray a press opens (`PriceRows`' Kind row, both words) and the desk's
+// markets list, whose caption line truncates instead of wrapping. Put it back here only with a
+// re-measured fold.
 
 export function TradeRow({
   good,
