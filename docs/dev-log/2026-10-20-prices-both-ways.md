@@ -2,6 +2,16 @@
 
 **PR #286, branch `osn-prices-both-ways`. Client only, no migration; three commits, one per part.**
 
+**One note for the next hand, learnt the hard way on this branch:** GitHub did not always create the
+`pull_request` runs for a push here (two pushes got none, one got no `build`). Dispatching **Build**
+on the branch is a safe way to get the required check. Dispatching **Migrations — apply proof** is
+NOT: its own header says *"a dispatch is a from-zero apply (the net)"*, so on a client-only branch it
+starts the whole-chain apply a pull request is forbidden from doing — and it turns a check that a PR
+reports as **skipped** (which satisfies the branch protection) into a red one on the head commit. It
+failed here at `Start disposable local Supabase`, three minutes in, which is not a chain error at all.
+The way out is a fresh `pull_request` event: push again, and the newer skipped check is the one
+protection reads.
+
 **The owner, 2026-10-20, row 178 of `docs/OWNER_REQUESTS.md`, verbatim:**
 
 > *"in command, I press a city and it shows buying price, and selling price. But it is not known until
