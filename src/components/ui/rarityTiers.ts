@@ -1,5 +1,6 @@
 import type { GoodRarity } from '../../lib/rpc'
 import type { IconName } from './icons'
+import { translateMaybe, getLocale } from '../../lib/i18n'
 
 // RARITY TIERS — the pure half of the tier rendering (the icons.ts / Icon.tsx split, applied again):
 // the ordered scale, the player's word, and the tier→(shape, colour-token) table, with no React,
@@ -11,7 +12,7 @@ export const RARITY_TIERS = ['common', 'uncommon', 'rare', 'exotic'] as const sa
 
 /** The player's word for a tier — the one reading, like `categoryLabel` for categories. */
 export function rarityLabel(rarity: string): string {
-  return rarity
+  return translateMaybe(getLocale(), 'ui', rarity) ?? rarity
 }
 
 // Completeness both ways: Record refuses to build if GoodRarity gains a tier this table misses.

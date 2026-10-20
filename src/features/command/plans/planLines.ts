@@ -29,6 +29,7 @@ import type { SeaNav } from '../../../lib/sea'
 import type { BoardPassage, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
 import { emptyStop, type RouteStopDraft } from '../standingRouteDraft'
 import type { PlanDraft } from './planDraft'
+import { t } from '../../../lib/i18n'
 
 export type PlanText = { ok: true; lines: PlanLine[] } | { ok: false; noCourseTo: string }
 
@@ -131,7 +132,7 @@ export function planRoute(plan: PlanDraft): RouteStopDraft[] {
 /** "via Ceuta, Angra" — the ports the voyage calls at between (0188), or null when it sails straight.
  *  THE ONE WORDING: the plan builder's estimate line and the best-trade card both read it. */
 export function viaWords(stops: readonly string[], name: (code: string) => string): string | null {
-  return stops.length > 0 ? `via ${stops.map(name).join(', ')}` : null
+  return stops.length > 0 ? t('desk.via', { ports: stops.map(name).join(', ') }) : null
 }
 
 /** What the board served about the fleet reading a row (0188): its speed, the farthest one leg its captain
@@ -168,15 +169,19 @@ function legWords(nm: number, speedKn: number): string {
  *  miles). Otherwise the voyage exists and it is the supplies that fall short. */
 export function reachWords(row: BoardPassage & { miles: number | null }, board: ReachBoard): string {
   if (row.stops == null || row.miles === null) {
-    const own = `too far to sail in one go${board.reachNm !== null ? `: your navigator can only plan ${legWords(board.reachNm, board.speedKn)} at sea without a stop` : ''}`
+    const own =
+      t('desk.tooFar') +
+      (board.reachNm !== null ? t('desk.navigatorOnly', { leg: legWords(board.reachNm, board.speedKn) }) : '')
     const n = row.needs
-    if (n && n.navigation !== null) return `${own}. A captain with Navigation ${n.navigation} could take you there`
-    if (n) return `${own}. No captain can plan a trip that long, and there are no ports on the way to stop at`
+    if (n && n.navigation !== null) return t('desk.captainCould', { own, n: n.navigation })
+    if (n) return t('desk.noCaptain', { own })
     return own
   }
   if (row.longest_leg && row.longest_leg.days > 0) {
-    const leg = `the longest stretch at sea is ${formatVoyageDays(row.longest_leg.days)}`
-    return board.supplyDays !== null ? `${leg}, but your supplies last only ${formatVoyageDays(board.supplyDays)}` : `${leg}, longer than your supplies last`
+    const leg = t('desk.longest', { days: formatVoyageDays(row.longest_leg.days) })
+    return board.supplyDays !== null
+      ? t('desk.suppliesOnly', { leg, days: formatVoyageDays(board.supplyDays) })
+      : t('desk.longerThan', { leg })
   }
-  return 'too far to sail in one go, or your supplies run out first'
+  return t('desk.orSupplies')
 }

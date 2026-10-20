@@ -5,6 +5,7 @@ import { formatPct } from '../lib/format'
 import { useWorld } from './worldStore'
 import type { SnapshotPort } from '../lib/rpc'
 import { PORT_FACES, type PortFace } from './cityFaces'
+import { useT } from '../lib/i18n'
 
 // THE TOWN — what this city costs you, and what it keeps. §6: *"Town face = rows: Tax 3 %, Port's
 // cut 2 %, … then building rows"*.
@@ -41,6 +42,7 @@ export function PortTown({
   /** Turn to the face a building keeps. The chevron on a building row is this. */
   onOpenFace: (face: PortFace) => void
 }) {
+  const t = useT()
   // READ AT THE LEAF (worldStore rule 4): the spread is the market's own figure, and this is the
   // only place it is printed — PortFair deliberately prints neither it nor a before/after pair.
   const spread = useWorld((s) => s.markets[port.id]?.port?.spread ?? null)
@@ -58,9 +60,9 @@ export function PortTown({
 
   return (
     <>
-      <Row label="Market tax" value={<Figure value={formatPct(port.tax_rate, 1)} />} />
+      <Row label={t('inn.marketTax')} value={<Figure value={formatPct(port.tax_rate, 1)} />} />
       <Row
-        label="Port fee"
+        label={t('inn.portFee')}
         value={<Figure value={spread === null ? '—' : formatPct(spread, 1)} tone={spread === null ? 'faint' : 'ink'} />}
         hairline={buildings.length > 0}
       />

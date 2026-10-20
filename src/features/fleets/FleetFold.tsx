@@ -12,6 +12,7 @@ import { FleetShips } from './FleetShips'
 import { FleetStores } from './FleetStores'
 import { fleetDue } from './fleetLine'
 import { keepDays, useStandingOrder } from './standingOrder'
+import { useT } from '../../lib/i18n'
 
 // ONE FLEET, UNFOLDED UNDER ITS ROW — owner row 89 (2026-09-13):
 //
@@ -56,6 +57,7 @@ import { keepDays, useStandingOrder } from './standingOrder'
 // COMMAND at her — and it stands at the fold's foot, in flow, never pinned.
 
 export function FleetFold({ fleet }: { fleet: FleetView }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
   const navigate = useNavigate()
@@ -86,7 +88,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
   return (
     // `flex flex-col` so the first section's `mt-2` cannot collapse through this box: MEASURED at
     // 390×844, without it the fold's own top edge sat 8px under the row it hangs from.
-    <div role="region" aria-label={`${fleet.name} unfolded`} className="flex flex-col pb-4" data-testid="fleet-fold">
+    <div role="region" aria-label={t('fleets.unfolded', { name: fleet.name })} className="flex flex-col pb-4" data-testid="fleet-fold">
       {/* THE VOYAGE, only while there is one: where it is heading, how far along, and when. The
           ETA is the server's and the position its closed form — nothing here interpolates. */}
       {fleet.voyage && fraction !== null && (
@@ -94,9 +96,9 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
           <Bar
             pct={fraction * 100}
             tone="info"
-            label="how far along the voyage"
+            label={t('fleets.howFar')}
             figure={
-              <Figure value={formatOfTotal(fleet.voyage.nm_done, fleet.voyage.total_nm)} unit="miles" />
+              <Figure value={formatOfTotal(fleet.voyage.nm_done, fleet.voyage.total_nm)} unit={t('fleets.unitMiles')} />
             }
             className="mt-1"
           />
@@ -105,17 +107,17 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
 
       <div className="space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
         <div>
-          <SheetSection heading="Ships" data-testid="fleet-fold-section">
+          <SheetSection heading={t('fleets.ships')} data-testid="fleet-fold-section">
             <FleetShips fleet={fleet} />
           </SheetSection>
         </div>
         <div>
-          <SheetSection heading="Cargo" data-testid="fleet-fold-section">
+          <SheetSection heading={t('fleets.cargo')} data-testid="fleet-fold-section">
             <FleetCargo fleet={fleet} />
           </SheetSection>
         </div>
         <div>
-          <SheetSection heading="Supplies" data-testid="fleet-fold-section">
+          <SheetSection heading={t('fleets.supplies')} data-testid="fleet-fold-section">
             <FleetStores
               fleet={fleet}
               order={standing.order}
@@ -130,7 +132,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
                 variant="primary"
                 className="mt-3 w-full"
                 busy={standing.busy}
-                busyLabel="Saving…"
+                busyLabel={t('fleets.saving')}
                 // Until the standing-order book has been read, `keep()` refuses silently
                 // (standingOrder.ts: `if (!book || busy) return false`) — so the button must not be
                 // pressable then, or a quick press does nothing at all. Seen in CI 2026-10-13
@@ -140,7 +142,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
                 onClick={commit}
                 data-testid="fleet-keep"
               >
-                {days === 0 ? 'Stop keeping supplies' : `Keep ${keepDays(days)}`}
+                {days === 0 ? t('fleets.stopKeeping') : t('fleets.keepN', { days: keepDays(days) })}
               </Button>
             )}
           </SheetSection>
@@ -153,7 +155,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
         onClick={() => command({ fleetId: fleet.id })}
         data-testid="fleet-command"
       >
-        Command {fleet.name}
+        {t('fleets.command', { name: fleet.name })}
       </Button>
     </div>
   )

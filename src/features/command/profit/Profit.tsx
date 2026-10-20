@@ -3,6 +3,7 @@ import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta } from '../../../lib/format'
 import { worldBooks, type Books } from '../../../lib/rpc'
 import type { DeskLayout } from '../DeskFrame'
+import { useT, t as tNow } from '../../../lib/i18n'
 
 // PROFIT — the running total (docs/COMMAND_DESK.md §3.8, D7). The owner, 2026-10-17: *"… for max profit"*.
 //
@@ -16,16 +17,17 @@ import type { DeskLayout } from '../DeskFrame'
 // pane and the day-by-day books in the centre; on a phone, one under the other.
 
 const DAYS = 7
-const HINT = 'One bar a game day: up for a gain, down for a loss. Each day’s net is the sum of its lines.'
+const hint = () => tNow('desk.profitHint')
 
 export function Profit({ layout }: { layout: DeskLayout }) {
+  const t = useT()
   const read = useServedRead<Books>('books:7', () => worldBooks(DAYS))
   const b = read.view
 
   if (read.loading && !b) {
     return layout({
       testid: 'desk-profit',
-      sideHint: HINT,
+      sideHint: hint(),
       list: (
         <>
           <Skeleton className="h-[72px] w-full" />
@@ -35,7 +37,7 @@ export function Profit({ layout }: { layout: DeskLayout }) {
       main: null,
     })
   }
-  if (!b) return layout({ testid: 'desk-profit', list: <Note tone="danger">The books could not be read.</Note>, main: null })
+  if (!b) return layout({ testid: 'desk-profit', list: <Note tone="danger">{t('desk.booksFailed')}</Note>, main: null })
 
   // oldest → newest across the bar row, a day with nothing in it standing at zero
   const byDay = new Map(b.books.map((d) => [d.game_day, d.net]))
@@ -47,22 +49,22 @@ export function Profit({ layout }: { layout: DeskLayout }) {
 
   return layout({
     testid: 'desk-profit',
-    sideHint: HINT,
+    sideHint: hint(),
     list: (
     <>
       <div className="grid grid-cols-2 gap-4">
         <div className="min-w-0">
-          <span className="block text-t-caption text-ink-faint">Today</span>
+          <span className="block text-t-caption text-ink-faint">{t('desk.today')}</span>
           <Figure value={formatDucatsDelta(b.today)} tone={b.today > 0 ? 'success' : b.today < 0 ? 'danger' : 'muted'} size="hero" />
         </div>
         <div className="min-w-0">
-          <span className="block text-t-caption text-ink-faint">{b.days} days</span>
+          <span className="block text-t-caption text-ink-faint">{t('desk.nDays', { n: b.days })}</span>
           <Figure value={formatDucatsDelta(b.window)} tone={b.window > 0 ? 'success' : b.window < 0 ? 'danger' : 'muted'} size="figure" />
         </div>
       </div>
 
       {/* SEVEN BARS — one a game day, up for a gain and down for a loss from the one zero line */}
-      <div className="mt-4 grid h-24 grid-cols-7 gap-2" role="img" aria-label="Net by day, the last seven days" data-testid="profit-bars">
+      <div className="mt-4 grid h-24 grid-cols-7 gap-2" role="img" aria-label={t('desk.netByDay')} data-testid="profit-bars">
         {bars.map((x) => (
           <div key={x.day} className="relative h-full">
             <div className="absolute inset-x-0 top-1/2 h-px bg-edge" />
@@ -80,13 +82,13 @@ export function Profit({ layout }: { layout: DeskLayout }) {
     main:
       b.books.length === 0 ? (
         <Note tone="neutral" className="mt-4 lg:mt-0">
-          Nothing earned or spent in the last {b.days} days.
+          {t('desk.nothingEarned', { n: b.days })}
         </Note>
       ) : (
         b.books.map((d, i) => (
           <SheetSection
             key={d.game_day}
-            heading={i === 0 && d.game_day === b.game_day ? 'Today' : `${b.game_day - d.game_day} ${b.game_day - d.game_day === 1 ? 'day' : 'days'} ago`}
+            heading={i === 0 && d.game_day === b.game_day ? t('desk.today') : t('desk.daysAgo', { n: b.game_day - d.game_day })}
             trailing={
               <Figure value={formatDucatsDelta(d.net)} tone={d.net > 0 ? 'success' : d.net < 0 ? 'danger' : 'muted'} />
             }

@@ -17,6 +17,7 @@ import { Invest } from './invest/Invest'
 import { Profit } from './profit/Profit'
 import { PlanBuilder } from './plans/PlanBuilder'
 import { useDeskPlan } from './plans/planDraft'
+import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
 // (≥ 1024 px, WIDE_QUERY) the desk is a TRADING TERMINAL — the fleet and the faces on one header line,
@@ -66,6 +67,7 @@ import { useDeskPlan } from './plans/planDraft'
 // point it here); its verb and argument fields have no writer left on any screen.
 
 export function CommandScreen() {
+  const t = useT()
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
@@ -101,8 +103,8 @@ export function CommandScreen() {
 
   if (phase === 'failed' && fatal) {
     return (
-      <Sheet title="Command">
-        <Note tone="danger" code={fatal.code}>
+      <Sheet title={t('command.title')}>
+        <Note tone="danger" code={fatal.code} figures={fatal.figures}>
           {fatal.sentence}
         </Note>
       </Sheet>
@@ -110,15 +112,15 @@ export function CommandScreen() {
   }
   if (!snapshot) {
     return (
-      <Sheet title="Command">
-        <Row label="Loading…" tone="muted" hairline={false} />
+      <Sheet title={t('command.title')}>
+        <Row label={t('command.loading')} tone="muted" hairline={false} />
       </Sheet>
     )
   }
   if (fleets.length === 0) {
     return (
-      <Sheet title="Command">
-        <Note tone="neutral">No fleets yet. Start your company to get your first one.</Note>
+      <Sheet title={t('command.title')}>
+        <Note tone="neutral">{t('command.noFleets')}</Note>
       </Sheet>
     )
   }
@@ -175,10 +177,10 @@ export function CommandScreen() {
             it, never the header or the frame. */}
         <header className="flex shrink-0 items-center gap-6 border-b border-edge px-6 py-2" data-testid="desk-header">
           <div className="flex min-w-0 flex-1 items-center gap-6">
-            <h1 className="shrink-0 text-t-body font-semibold text-ink">Command</h1>
+            <h1 className="shrink-0 text-t-body font-semibold text-ink">{t('command.title')}</h1>
             <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} inline />
           </div>
-          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label="Desk faces" className="shrink-0" />
+          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="shrink-0" />
         </header>
         {fleet && face === 'markets' ? (
           <Terminal
@@ -196,7 +198,7 @@ export function CommandScreen() {
   }
 
   return (
-    <Sheet title="Command" data-testid="command">
+    <Sheet title={t('command.title')} data-testid="command">
       <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} />
       {/* THE FACES (deskView.ts): one row in the body, not in the sticky title bar — a 44-px control
           there makes the bar taller, and a taller sticky bar covers what a press lands on below it. */}
@@ -204,7 +206,7 @@ export function CommandScreen() {
         segments={DESK_FACES}
         value={face}
         onChange={turnTo}
-        label="Desk faces"
+        label={t('command.deskFaces')}
         fill
         className="mb-3 mt-2"
       />

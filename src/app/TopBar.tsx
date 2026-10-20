@@ -3,7 +3,8 @@ import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
 import { isTradeRoute } from './navTabs'
 import { useShellState } from './shellState'
-import { COIN, formatGameClock, instantMs } from '../lib/format'
+import { COIN, formatGameClock, formatInt, instantMs } from '../lib/format'
+import { useT } from '../lib/i18n'
 
 // THE STATUS STRIP — 32px, two facts, and nothing that says the obvious.
 //
@@ -40,6 +41,7 @@ import { COIN, formatGameClock, instantMs } from '../lib/format'
 // `now` — which is true, and the screen's own re-ask replaces it.
 
 export function TopBar() {
+  const t = useT()
   const { pathname } = useLocation()
   const { nowMs } = useShellState()
   const ducats = useWorld((s) => s.ducats)
@@ -70,7 +72,7 @@ export function TopBar() {
         </span>
         {showCountdown && (
           <>
-            {' · '}prices <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText="now" />
+            {' · '}{t('shell.prices')} <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText={t('shell.now')} />
           </>
         )}
       </span>
@@ -79,7 +81,7 @@ export function TopBar() {
           column's width, so the bar does not jump by the width of a number the moment the first
           read lands. */}
       <span data-testid="purse" className="shrink-0">
-        <Figure value={ducats === null ? '—' : ducats.toLocaleString()} unit={COIN} />
+        <Figure value={ducats === null ? '—' : formatInt(ducats)} unit={COIN} />
       </span>
     </header>
   )

@@ -4,6 +4,7 @@ import { formatPctPoints, formatRelative, instantMs } from '../lib/format'
 import { useWorld } from './worldStore'
 import { useShellState } from '../app/shellState'
 import type { BuffsView } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // WHAT IS ON AT THE QUAY — the visible half of 0026, in one row.
 //
@@ -40,6 +41,7 @@ import type { BuffsView } from '../lib/rpc'
  * the only caller that winds it, so a fair now happens because the game is being played.
  */
 export function QuayFair({ portId }: { portId: string | null }) {
+  const t = useT()
   const buffs = useWorld((s) => (portId ? s.buffs[portId] : undefined))
   const loadBuffs = useWorld((s) => s.loadBuffs)
   // THE ONE CLOCK (app/shellState). A timer of this row's own would be the second one, and two
@@ -69,9 +71,9 @@ export function QuayFair({ portId }: { portId: string | null }) {
     <Row
       tone="accent"
       mark={<Icon name="wreath" size={20} />}
-      label={`${live.map((r) => r.name).join(' · ')} — ends ${formatRelative(Date.parse(live[0].ends_at), nowMs)}`}
+      label={t('port.endsIn', { names: live.map((r) => r.name).join(' · '), when: formatRelative(Date.parse(live[0].ends_at), nowMs) })}
       value={
-        <Figure value={formatPctPoints(buffs.port.buff_pct)} unit="off fees" tone="accent" />
+        <Figure value={formatPctPoints(buffs.port.buff_pct)} unit={t('port.offFees')} tone="accent" />
       }
       data-testid="quay-fair"
     />

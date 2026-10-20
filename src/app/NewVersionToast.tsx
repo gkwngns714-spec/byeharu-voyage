@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Icon } from '../components/ui'
 import { BUILD_ID, newestBuildId } from '../lib/version'
+import { useT } from '../lib/i18n'
 
 // THE ONE PLACE THE GAME SAYS A NEWER BUILD IS LIVE (2026-10-19).
 //
@@ -52,6 +53,7 @@ function writeDismissed(id: string) {
 }
 
 export function NewVersionToast() {
+  const t = useT()
   const [newer, setNewer] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState<string | null>(readDismissed)
 
@@ -95,11 +97,11 @@ export function NewVersionToast() {
         onClick={() => window.location.reload()}
         className="min-h-11 flex-1 truncate px-4 text-left text-t-label text-ink hover:bg-surface-2/60"
       >
-        New version — tap to refresh
+        {t('shell.newVersion')}
       </button>
       <button
         type="button"
-        aria-label="Dismiss"
+        aria-label={t('shell.dismiss')}
         onClick={() => {
           writeDismissed(newer)
           setDismissed(newer)

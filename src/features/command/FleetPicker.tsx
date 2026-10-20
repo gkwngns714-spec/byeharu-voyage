@@ -13,6 +13,7 @@ import { PortFlag } from '../../live/PortFlag'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { formatOfTotal, tonsWord } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
+import { useT, wordTable } from '../../lib/i18n'
 
 // THE FLEET PICKER — which fleet the desk acts for, as ONE button (the owner, 2026-10-20: "in the
 // command, right now i see my fleet name on left top. when i have multiple fleets, how should this
@@ -46,11 +47,11 @@ const SIGNAL_TONE: Record<FleetSignal, DotTone> = {
   waiting: 'neutral',
   stuck: 'danger',
 }
-const SIGNAL_WORD: Record<FleetSignal, string> = {
-  sailing: 'sailing',
-  waiting: 'waiting for orders',
-  stuck: 'stuck',
-}
+const SIGNAL_WORD: Readonly<Record<FleetSignal, string>> = wordTable({
+  sailing: 'command.sig_sailing',
+  waiting: 'command.sig_waiting',
+  stuck: 'command.sig_stuck',
+})
 
 /** Is this key press happening where typing belongs? Then the arrows are the field's, not ours. */
 function typing(target: EventTarget | null): boolean {
@@ -71,6 +72,7 @@ export function FleetPicker({
   /** `useCommandDraft`'s `selectFleet` — the one selection. */
   onSelect: (id: string) => void
 }) {
+  const t = useT()
   const wide = useWide()
   const [open, setOpen] = useState(false)
   const close = useCallback(() => setOpen(false), [])
@@ -128,7 +130,7 @@ export function FleetPicker({
       {othersStuck > 0 && (
         <Dot
           tone="danger"
-          label={othersStuck === 1 ? 'another fleet is stuck' : `${othersStuck} other fleets are stuck`}
+          label={othersStuck === 1 ? t('command.anotherStuck') : t('command.othersStuck', { n: othersStuck })}
           data-testid="fleet-picker-alert"
         />
       )}
@@ -147,7 +149,7 @@ export function FleetPicker({
 
   if (wide) {
     return (
-      <Popover open={open} onClose={close} trigger={trigger} label="Fleets" className="w-80 px-4" data-testid="fleet-list">
+      <Popover open={open} onClose={close} trigger={trigger} label={t('command.fleets')} className="w-80 px-4" data-testid="fleet-list">
         {rows}
       </Popover>
     )
@@ -155,7 +157,7 @@ export function FleetPicker({
   return (
     <>
       {trigger}
-      <Tray detent={open ? 'half' : 'closed'} onDetentChange={(d) => setOpen(d !== 'closed')} title="Fleets" data-testid="fleet-list">
+      <Tray detent={open ? 'half' : 'closed'} onDetentChange={(d) => setOpen(d !== 'closed')} title={t('command.fleets')} data-testid="fleet-list">
         {rows}
       </Tray>
     </>

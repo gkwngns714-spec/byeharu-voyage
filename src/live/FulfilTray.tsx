@@ -7,6 +7,7 @@ import { formatDucats, formatOfTotal, formatPctDelta, formatRelative, formatUnit
 import type { FleetView, ManifestReceipt, Refusal, TradeRequest } from '../lib/rpc'
 import { useFulfilPreview } from './useFulfilPreview'
 import { useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DELIVERY — a request, unfolded: the served preview of meeting it, and ONE button.
@@ -45,6 +46,7 @@ export function FulfilTray({
   /** The delivery landed: the caller keeps the receipt and returns the slot to the basket. */
   onSettled: (receipt: ManifestReceipt) => void
 }) {
+  const t = useT()
   const { nowMs } = useShellState()
   const preview = useFulfilPreview(fleet.id, request.id)
   const fulfil = useWorld((s) => s.fulfil)
@@ -82,10 +84,10 @@ export function FulfilTray({
           onClick={send}
           disabled={!estimate || sending}
           busy={sending}
-          busyLabel="Delivering…"
+          busyLabel={t('trade.delivering')}
           data-testid="fulfil-send"
         >
-          {estimate ? `Fulfil · ${formatDucats(estimate.totals.net)}` : 'Fulfil'}
+          {estimate ? t('trade.fulfilAmount', { amount: formatDucats(estimate.totals.net) }) : t('trade.fulfil')}
         </Button>
       }
     >
@@ -96,28 +98,28 @@ export function FulfilTray({
         after={estimate ? estimate.hold.free_after : null}
         className="py-2"
       />
-      <Row label="Requested" value={<Figure value={formatUnits(request.qty)} size="figure" />} data-testid="fulfil-requested">
+      <Row label={t('trade.requested')} value={<Figure value={formatUnits(request.qty)} size="figure" />} data-testid="fulfil-requested">
         <span className="block text-t-caption text-ink-faint">{`ends ${formatRelative(Date.parse(request.expires_at), nowMs)}`}</span>
       </Row>
-      <Row label="On board" value={<Figure value={formatOfTotal(aboard, request.qty)} unit="units" />} data-testid="fulfil-aboard" />
-      <Row label="Premium" value={<Figure value={formatPctDelta(request.premium_pct)} />} data-testid="fulfil-premium-pct">
-        <span className="block text-t-caption text-ink-faint">over the market, per unit</span>
+      <Row label={t('trade.onBoard')} value={<Figure value={formatOfTotal(aboard, request.qty)} unit={t('trade.units')} />} data-testid="fulfil-aboard" />
+      <Row label={t('trade.premium')} value={<Figure value={formatPctDelta(request.premium_pct)} />} data-testid="fulfil-premium-pct">
+        <span className="block text-t-caption text-ink-faint">{t('trade.overMarket')}</span>
       </Row>
       {sale && (
-        <Row label="You get" value={<Figure value={formatDucats(sale.total)} />} data-testid="fulfil-sale">
+        <Row label={t('trade.youGet')} value={<Figure value={formatDucats(sale.total)} />} data-testid="fulfil-sale">
           <span className="block text-t-caption text-ink-faint">{`${formatUnits(sale.qty)} · ${formatUnitPrice(sale.avg_price)}`}</span>
         </Row>
       )}
       {estimate && <ManifestTotals totals={estimate.totals} testId="fulfil-total" />}
-      {preview.loading && !estimate && !refusal && <Row label="Loading…" tone="muted" hairline={false} />}
+      {preview.loading && !estimate && !refusal && <Row label={t('trade.loading')} tone="muted" hairline={false} />}
       {refusal && (
         <Note
           tone="danger"
-          code={refusal.code}
+          code={refusal.code} figures={refusal.figures}
           action={
             actRefusal && (actRefusal.code === 'E_BUSY' || actRefusal.code === 'E_STALE') ? (
               <Button size="sm" variant="quiet" onClick={send}>
-                Try again
+                {t('trade.tryAgain')}
               </Button>
             ) : undefined
           }

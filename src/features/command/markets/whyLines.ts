@@ -1,5 +1,6 @@
 import { formatFixed, formatInt, formatMiles, formatPct, formatPctChange } from '../../../lib/format'
 import type { PriceWhy } from '../../../lib/rpc'
+import { t as tw, wordTable } from '../../../lib/i18n'
 
 // WHY THIS PRICE, AS LINES (docs/PRICE_FACTORS.md §5; migration 0185): world.price_why's served terms named
 // and ranked by their served multipliers. Pure, so the face (WhyThisPrice.tsx) and the spec share it.
@@ -23,8 +24,8 @@ export function stakeLine(why: PriceWhy): string | null {
   if (!s) return null
   const shave = Number(s.shave)
   return shave > 0
-    ? `Your company is #${s.rank} among this city's givers: ${formatFixed(shave * 100, 0)}% off the port's spread`
-    : `Your company is #${s.rank} among this city's givers`
+    ? tw('markets.stakeShave', { rank: s.rank, pct: formatFixed(shave * 100, 0) })
+    : tw('markets.stake', { rank: s.rank })
 }
 
 /** 0196: the company's own profit tax here and the relation that moves it (world.price_why `tariff`). The
@@ -36,20 +37,20 @@ export function tariffLine(why: PriceWhy): { label: string; value: string } | nu
   const rate = Number(t.rate)
   const base = Number(t.base)
   const moved = base > 0 && Math.abs(rate - base) > 1e-9
-  const where = t.stance === 'home' ? 'your own country' : t.holder ? t.holder.name : 'a free city'
+  const where = t.stance === 'home' ? tw('markets.ownCountry') : t.holder ? t.holder.name : tw('markets.freeCity')
   const how = !moved || t.stance === 'home' ? '' : `, ${STANCE_WORD[t.stance]}`
   return {
-    label: `Tax on your profit · ${where}${how}`,
+    label: tw('markets.tariff', { where, how }),
     value: moved ? `${formatPct(rate, 1)} (×${Number((rate / base).toFixed(2))})` : formatPct(rate, 1),
   }
 }
 
-const STANCE_WORD: Record<'ally' | 'peace' | 'rival' | 'war', string> = {
-  ally: 'an ally',
-  peace: 'at peace',
-  rival: 'a rival',
-  war: 'at war',
-}
+const STANCE_WORD: Readonly<Record<'ally' | 'peace' | 'rival' | 'war', string>> = wordTable({
+  ally: 'markets.ally',
+  peace: 'markets.peace',
+  rival: 'markets.rival',
+  war: 'markets.war',
+})
 
 function effectOf(mult: number): string {
   return mult >= 2 ? `×${formatFixed(mult, mult >= 10 ? 0 : 1)}` : formatPctChange((mult - 1) * 100)
@@ -66,38 +67,39 @@ export function whyLines(why: PriceWhy): WhyLine[] {
   for (const t of why.terms) {
     switch (t.key) {
       case 'haul':
-        add('haul', t.nm ? `Far from where it is made · ${formatMiles(t.nm)}` : 'Far from where it is made', t.mult)
+        add('haul', t.nm ? tw('markets.farMiles', { miles: formatMiles(t.nm) }) : tw('markets.far'), t.mult)
         break
       case 'affinity':
-        add('affinity', t.mult < 1 ? 'Made on this coast' : 'Scarce on this coast', t.mult)
+        add('affinity', tw(t.mult < 1 ? 'markets.madeHere' : 'markets.scarce'), t.mult)
         break
       case 'taste':
-        add('taste-region', why.region ? `Taste in ${why.region}` : 'Local taste', t.region)
-        add('taste-faith', why.faith ? `${why.faith.name} demand` : 'Faith', t.faith)
+        add('taste-region', why.region ? tw('markets.tasteIn', { region: why.region }) : tw('markets.localTaste'), t.region)
+        add('taste-faith', why.faith ? tw('markets.faithDemand', { faith: why.faith.name }) : tw('markets.faith'), t.faith)
         break
       case 'stock':
         add(
           'stock',
-          `${t.mult > 1 ? 'Short of stock' : 'Plenty in stock'}${
-            t.stock !== undefined && t.target !== undefined ? ` · ${formatInt(t.stock)} of ${formatInt(t.target)}` : ''
-          }`,
+          tw(t.mult > 1 ? 'markets.short' : 'markets.plenty') +
+            (t.stock !== undefined && t.target !== undefined
+              ? tw('markets.stockOf', { stock: formatInt(t.stock), target: formatInt(t.target) })
+              : ''),
           t.mult,
         )
         break
       case 'drift':
-        add('drift', 'The market today', t.mult)
+        add('drift', tw('markets.today'), t.mult)
         break
       case 'season':
-        add('season', 'The season', t.mult)
+        add('season', tw('markets.season'), t.mult)
         break
       case 'development':
-        add('development', 'A busy trading town', t.mult)
+        add('development', tw('markets.busyTown'), t.mult)
         break
       case 'band':
-        add('band', t.mult < 1 ? 'Held at the price ceiling' : 'Held at the price floor', t.mult)
+        add('band', tw(t.mult < 1 ? 'markets.ceiling' : 'markets.floor'), t.mult)
         break
       case 'glut': // 0194: recent heavy selling here, fading by half each game day
-        add('glut', 'Sold heavily here lately', t.mult)
+        add('glut', tw('markets.glut'), t.mult)
         break
     }
   }
@@ -110,6 +112,9 @@ export function volumeLine(why: PriceWhy): string | null {
   const v = why.volume
   if (!v) return null
   const units = Number(v.units)
-  if (!(units > 0)) return 'Nobody has traded it here today.'
-  return `Traded here today: ${formatInt(units)} ${units === 1 ? 'unit' : 'units'} by ${v.houses} ${v.houses === 1 ? 'company' : 'companies'}`
+  if (!(units > 0)) return tw('markets.nobodyTraded')
+  return tw('markets.traded', {
+    units: tw('markets.units', { n: formatInt(units), count: units }),
+    houses: tw('markets.companies', { n: v.houses }),
+  })
 }

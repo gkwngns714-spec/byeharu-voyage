@@ -1,6 +1,7 @@
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import type { WherePiece } from '../domain/fleet'
 import { goTo, type GoToTarget } from './goTo'
+import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE ONE LINK TO A PLACE (./goTo.ts) — every harbour, point of water, fleet and merchant named in
@@ -28,6 +29,7 @@ export function GoToLink({
   /** The accessible name, when the visible words are not enough on their own. */
   label?: string
 }) {
+  const t = useT()
   const go = (event: MouseEvent | KeyboardEvent) => {
     event.preventDefault()
     event.stopPropagation()
@@ -38,7 +40,7 @@ export function GoToLink({
       role="link"
       tabIndex={0}
       aria-label={label}
-      title="Show on the chart"
+      title={t('chart.showOnChart')}
       className={LINK}
       data-testid="goto-link"
       data-goto={to.kind === 'port' ? `port:${to.code}` : to.kind === 'fleet' ? `fleet:${to.id}` : 'point'}

@@ -2,6 +2,7 @@ import { deltaTone, Figure, Row } from '../components/ui'
 import { ManifestTotals } from './ManifestTotals'
 import { COIN, formatDucatsDelta, formatInt, formatUnitPrice, formatUnits } from '../lib/format'
 import { lineDelta, type ManifestReceipt } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // THE RECEIPT — the settlement, after the basket has landed. docs/QUAY_LEDGER.md §3 E (owner row
 // 76, slice 2): per-line settled figures, the totals block, ducats before → after, `Trading +N xp`.
@@ -17,6 +18,7 @@ import { lineDelta, type ManifestReceipt } from '../lib/rpc'
 // The BODY of the receipt face only: the panel, its title and its dismissal are ManifestPanel's.
 
 export function ReceiptFace({ receipt }: { receipt: ManifestReceipt }) {
+  const t = useT()
   const { lines, totals, purse, trading } = receipt
   const levelled = trading.level_after > trading.level_before
   return (
@@ -29,25 +31,25 @@ export function ReceiptFace({ receipt }: { receipt: ManifestReceipt }) {
           data-testid="receipt-row"
         >
           <span className="block text-t-caption text-ink-faint">
-            {`${l.side === 'sell' ? 'sold' : 'bought'} · ${formatUnits(l.qty)} · ${formatUnitPrice(l.avg_price)}`}
+            {`${t(l.side === 'sell' ? 'domain.sold' : 'domain.bought')} · ${formatUnits(l.qty)} · ${formatUnitPrice(l.avg_price)}`}
           </span>
         </Row>
       ))}
       <ManifestTotals totals={totals} testId="receipt-row" />
       <Row
-        label="Ducats"
+        label={t('trade.ducats')}
         value={<Figure value={`${formatInt(purse.before)} → ${formatInt(purse.after)}`} unit={COIN} />}
         data-testid="receipt-row"
       />
       {/* A small basket earns 0 xp, and 0 painted green would say "gain" about nothing — deltaTone
           (PR #59 review NIT 9). */}
       <Row
-        label="Trading"
-        value={<Figure value={`${trading.delta > 0 ? '+' : ''}${formatInt(trading.delta)}`} unit="xp" tone={deltaTone(trading.delta)} />}
+        label={t('trade.trading')}
+        value={<Figure value={`${trading.delta > 0 ? '+' : ''}${formatInt(trading.delta)}`} unit={t('trade.xp')} tone={deltaTone(trading.delta)} />}
         hairline={false}
         data-testid="receipt-row"
       >
-        {levelled && <span className="block text-t-caption text-ink-faint">{`Trading level ${formatInt(trading.level_after)}`}</span>}
+        {levelled && <span className="block text-t-caption text-ink-faint">{t('trade.tradingLevel', { n: formatInt(trading.level_after) })}</span>}
       </Row>
     </>
   )
