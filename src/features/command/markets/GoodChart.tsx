@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Chip,
   Hint,
@@ -11,11 +11,13 @@ import {
   Skeleton,
   StockGauge,
   goodIcon,
+  panBackMs,
+  panView,
 } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
-import type { BoardBuyRow, BoardSellRow, PriceOutlook, SnapshotGood } from '../../../lib/rpc'
+import type { BoardBuyRow, BoardSellRow, PriceOutlook, PricePoint, SnapshotGood } from '../../../lib/rpc'
 import { DESK_WINDOW_HOURS, type GoodDesk } from './useGoodDesk'
 import { useT, t as tg } from '../../../lib/i18n'
 
@@ -37,11 +39,23 @@ import { useT, t as tg } from '../../../lib/i18n'
 // SVG's units are screen pixels and its labels stand at their true size. On a phone it is the tray's
 // width and 220 px tall.
 
+/** One frozen empty record, so "the read has not landed" never hands the chart a fresh array. */
+const NO_POINTS: readonly PricePoint[] = []
+
 /** How long a window reads, in the owner's words: hours up to a day, then days and weeks. */
 function windowWord(hours: number): string {
   if (hours % (24 * 7) === 0) return tg('markets.weeks', { n: hours / (24 * 7) })
   if (hours % 24 === 0) return tg('markets.days', { n: hours / 24 })
   return tg('markets.hours', { n: hours })
+}
+
+/** How long a stretch of the record actually is, in the axis's voice: `12 h`, `11.8 h`, `2 days`. The
+ *  move beside the price is labelled with THIS and not with the chip, because a week-wide chip over a
+ *  twelve-hour record is still a twelve-hour move (owner request 178). */
+function spanWord(hours: number): string {
+  if (hours >= 24 && Number.isInteger(hours / 24)) return windowWord(hours)
+  const r = Math.round(hours * 10) / 10
+  return tg('markets.hours', { n: Number.isInteger(r) ? r : r.toFixed(1) })
 }
 
 function useBoxSize<T extends HTMLElement>() {
@@ -84,29 +98,50 @@ export function GoodChart({
   const { winHours, setWinHours } = desk
   const [box, boxSize] = useBoxSize<HTMLDivElement>()
 
-  // THE WINDOW: the served record cut to its last N hours. The chips go to a week; how much of a
-  // chosen window the record can fill is the SERVER's answer (useGoodDesk asks for the slots the
-  // window needs and `world.price_history` clamps the ask to what it keeps), and when it cannot fill
-  // it the foot says so in words rather than drawing an empty stretch of axis.
+  // THE WINDOW AND THE DRAG. The chips choose how WIDE the window is (to a week); the drag chooses how
+  // far BACK it sits (`panMs`, reset when the window or the city changes). The whole record is handed
+  // to the chart and the window tells it which stretch to draw, so the line enters and leaves the
+  // plot's edges instead of being cut to the window first. How much of a chosen window the record can
+  // fill is the SERVER's answer (useGoodDesk asks for the slots the window needs and
+  // `world.price_history` clamps the ask to what it keeps); a window wider than the record would leave
+  // most of the plane empty, so the drawn window is the narrower of the two and the foot says in words
+  // how far back the record truly reaches.
   const nowMs = o ? Date.parse(o.now) : Number.NaN
-  const points = useMemo(() => {
-    const all = history.points ?? []
-    if (!Number.isFinite(nowMs)) return all
-    const from = nowMs - winHours * 3_600_000
-    return all.filter((p) => Date.parse(p.at) >= from)
-  }, [history.points, nowMs, winHours])
+  const points = history.points ?? NO_POINTS
+  // THE DRAG IS REMEMBERED AGAINST WHAT IT WAS MADE ON — the city and the width. A new city or a new
+  // width is a new question, so the window goes back to now; it is DERIVED from the pair rather than
+  // reset by an effect, so there is no render that draws the old offset on the new window.
+  const panKey = `${focus ?? '-'}|${winHours}`
+  const [pan, setPan] = useState({ key: panKey, ms: 0 })
+  const panMs = pan.key === panKey ? pan.ms : 0
+  const setPanMs = useCallback((ms: number) => setPan({ key: panKey, ms }), [panKey])
+
+  const times = useMemo(() => points.map((p) => Date.parse(p.at)), [points])
+  const oldestMs = times.length ? Math.min(...times) : nowMs
+  const estEndMs = o?.points.length ? Date.parse(o.points[o.points.length - 1].at) : nowMs
+  // The chips say how far BACK the window reaches, and the estimate always stands to the right of now,
+  // so the window is the two together — the same plane the chart drew before a window existed. Asking
+  // for more record than there is would only leave the plate empty, so the reach back stops at the
+  // oldest served point and the foot says how far that is.
+  const limits = useMemo(() => {
+    const back = Math.min(winHours * 3_600_000, Math.max(1, nowMs - oldestMs))
+    return { oldestMs, newestMs: Math.max(nowMs, estEndMs), spanMs: back + Math.max(0, estEndMs - nowMs) }
+  }, [oldestMs, estEndMs, nowMs, winHours])
+  const view = useMemo(() => (Number.isFinite(nowMs) ? panView(panMs, limits) : null), [nowMs, panMs, limits])
+  const canPan = panBackMs(limits) > 0
 
   // HOW FAR BACK THE RECORD TRULY REACHES — derived from the served points, never from the window
   // asked for. Said only when the window is more than one slot wider than the record.
-  const earliest = points.length ? Math.min(...points.map((p) => Date.parse(p.at))) : null
-  const recordHours = earliest !== null && Number.isFinite(nowMs) ? (nowMs - earliest) / 3_600_000 : null
+  const recordHours = times.length && Number.isFinite(nowMs) ? (nowMs - oldestMs) / 3_600_000 : null
   const slotHours = o ? o.slot_seconds / 3600 : 0
   const shortRecord = recordHours !== null && winHours - recordHours > slotHours
 
   const arriveMs = focusRow?.arrive_at ? Date.parse(focusRow.arrive_at) : null
   const now = o?.points[0]?.value ?? null
-  const first = points[0]?.mid ?? null
+  const firstShown = view ? points.find((_, i) => times[i] >= view.fromMs) : points[0]
+  const first = firstShown?.mid ?? null
   const move = now !== null && first ? ((now - first) / first) * 100 : null
+  const moveHours = firstShown && Number.isFinite(nowMs) ? (nowMs - Date.parse(firstShown.at)) / 3_600_000 : null
   const stock = stockOf(focusRow, o)
   const best = focusRow?.best ?? null
   const sells = focusRow ? 'quoted' in focusRow : false
@@ -137,23 +172,23 @@ export function GoodChart({
               page already asks it for the breakdown below, so there is no new read and no derivation
               here. The MIDDLE price keeps its own line under them, because the middle is what the
               chart's line and the record are made of. */}
-          <span className="mt-1 block">
+          <div className="mt-1">
             {why ? (
               <PricePair pay={why.ask} get={why.bid} mid={why.mid} size="figure" block />
             ) : (
               <Skeleton className="h-[46px] w-56" />
             )}
-          </span>
+          </div>
           <span className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-t-caption text-ink-faint">
             {now !== null && <span className="tabular-nums">{t('markets.midPrice', { price: formatPrice(now) })}</span>}
-            {move !== null && (
+            {move !== null && moveHours !== null && (
               <span
                 className={[
                   'shrink-0 rounded-chip px-2 text-t-caption tabular-nums',
                   move > 0 ? 'bg-success-soft text-success' : move < 0 ? 'bg-danger-soft text-danger' : 'text-ink-faint',
                 ].join(' ')}
               >
-                {formatPctChange(move)} · {windowWord(winHours)}
+                {formatPctChange(move)} · {spanWord(moveHours)}
               </span>
             )}
           </span>
@@ -201,6 +236,8 @@ export function GoodChart({
             outlook={{ points: o.points, bestAt: o.best?.at ?? null, arriveMs }}
             size={size}
             stockTarget={o.stock_target ?? stock?.target ?? null}
+            view={view}
+            pan={{ offsetMs: panMs, limits, onChange: setPanMs }}
             label={t('markets.chartLabel', { good: good.name, port: focusPort?.name ?? t('markets.thisCity') })}
           />
         ) : outlook.loading || !size ? (
@@ -228,6 +265,11 @@ export function GoodChart({
           <p className="text-t-caption text-ink-faint">{t('markets.noBetter')}</p>
         ) : null}
         {likely && <Hint data-testid="good-likely">{likely}</Hint>}
+        {canPan && panMs === 0 && (
+          <p className="text-t-caption text-ink-faint" data-testid="good-drag-hint">
+            {t('markets.dragBack')}
+          </p>
+        )}
         {shortRecord && recordHours !== null && (
           <p className="text-t-caption text-ink-faint" data-testid="good-record-reach">
             {t('markets.recordBackTo', { span: t('markets.hours', { n: formatFixed(recordHours, 1) }) })}

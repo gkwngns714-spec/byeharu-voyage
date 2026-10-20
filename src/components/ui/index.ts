@@ -147,6 +147,10 @@ export { PricePair } from './PricePair'
 //     geometry is `priceChartModel`, pure, so tests/priceChart.spec.ts proves the axis in Node.
 export { PriceChart } from './PriceChart'
 export { priceChartModel, PRICE_CHART_H, PRICE_CHART_W, type PriceChartModel } from './priceChartModel'
+//     DRAGGING A TIME AXIS (owner request 178, 2026-10-20) — a window and how far back it has been
+//     dragged, clamped to the data. Pure, and shared: `PriceChart` pans with it today and the series
+//     chart can take the same gesture the day its record is long enough to need one.
+export { panBackMs, clampPan, panView, panByDrag, panByKey, type ChartWindow, type PanLimits } from './chartPan'
 //     SERIES CHART — one figure over time, on its own scale: the Stats tab's small multiple (0214). Three
 //     faces draw it (the Overview's holders, a city's purse, the merchants' day), so it is the system's.
 //     The geometry is `seriesChartModel`, pure, so tests/seriesChart.spec.ts proves the axis in Node.

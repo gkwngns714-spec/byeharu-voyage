@@ -169,3 +169,71 @@ never be starved below the window the page opens on).
 - **No second store and no browser-side accumulation.** Keeping points in `localStorage` as the game runs
   would be a second price record, drifting from the server's, unshared between devices, and empty for a
   new player: the rollup already exists and is the server's own.
+
+---
+
+## C. A chart you can drag
+
+### What it does
+
+The price chart's plot is a surface. A drag moves the window through the record — **the content follows
+the finger**, as the map already pans (`panBy`, `src/chart/chartView.ts`) and as every chart does: drag
+the line to the **right** and earlier prices come in from the left. ArrowLeft and ArrowRight walk it a
+quarter of a window at a time, and there the owner's "swiping left" is literal, because the axis has
+the past on its left. The chart's foot says so in one line while there is anything behind the window
+to look at, and the line goes away once you have dragged.
+
+### How it is built, and why not as a second chart
+
+- **`src/components/ui/chartPan.ts`** is the whole gesture as arithmetic: a window's width, how far
+  back it sits, and limits clamped to the data (`panBackMs`, `clampPan`, `panView`, `panByDrag`,
+  `panByKey`). Pure, so a pointer never has to enter a test. It stands beside the two chart models
+  rather than inside one, because `SeriesChart` can take the same pan the day its own record is long
+  enough to need one.
+- **`priceChartModel` gained one optional argument, a window.** With it the axis spans that stretch,
+  x is no longer clamped to the plot (a point outside keeps its true place), and the y band, the x
+  labels and the low / high marks are read from what is INSIDE the window — so panning back rescales
+  to the prices you are looking at. **Without it every line behaves exactly as it did**, which is why
+  all seven of `tests/priceChart.spec.ts`'s existing cases pass unchanged.
+- **`PriceChart` clips everything it draws to the plot** (one `clipPath`, only when there is a window),
+  so a line leaves the plane at its edge instead of piling up on it, and holds the pointer handlers:
+  pointer capture on the press, `touch-pan-y` so a thumb going DOWN a tray still scrolls the tray (the
+  map's embedded-surface rule), and `tabIndex` + the two arrow keys when there is anything to pan.
+- **No second charting idiom.** `SeriesChart` / `seriesChartModel` (PR #283) are untouched: its own
+  header says why the estimate machinery and this axis are two models, and a window is one more
+  argument to the model that already draws the estimate, not a flag on a generic one.
+
+### The window, anchored
+
+The chips say how far **back** the window reaches; the server's estimate always stands to the right of
+now, so the window is the two together — the same plane the chart drew before a window existed, which
+is why the default view did not change. A chip asking for more record than there is stops at the oldest
+served point (an empty three-quarters of a plane is not a product), and the foot says how far back the
+record truly reaches. The move beside the price is labelled with **its own** span and not with the chip,
+so a week-wide chip over a twelve-hour record still reads *+4.1 % · 11.8 h*.
+
+### Decided by default
+
+- **The drag follows the content, not the owner's word order.** He wrote *"dragable to see the past
+  prices by swiping left"*; dragging the content left shows LATER prices in every chart and on this
+  game's own map, so inverting it here would make the chart the one surface in the game that moves the
+  other way. The keyboard keeps his reading (ArrowLeft goes back) and the hint line names the gesture.
+  If he wants the drag itself inverted it is one sign in `panByDrag` and nothing else.
+- **No pinch, no wheel, no zoom.** The window's width is the chips; the wheel stays the page's, so the
+  chart never eats a scroll on a phone (the same choice `useChartSurface`'s embedded posture makes).
+- **One keyboard step is a quarter of a window.**
+
+### Proved by
+
+`tests/priceChart.spec.ts`, extended (pure, Node): a window draws its own stretch and no other (the
+band, the axis labels and the marks are the window's, and a point outside keeps its true x off the
+plot's edge); `now` is labelled where it falls when the estimate puts it inside the window; a drag
+moves the window with the finger and stops at both ends; a window as wide as the record cannot be
+dragged at all; the keyboard walks a quarter of a window with the left arrow into the past.
+
+**No browser spec for the gesture, on purpose.** The local engine's price record is **two points,
+fifteen minutes apart** (`localBackend.ts` plays the snapshot job once so a fresh world has a line at
+all), so on CI's world nothing is wider than the record and nothing is pannable: a browser spec would
+assert a surface that is correctly inert there. The pure spec proves the arithmetic; the drag itself is
+to be driven on production's twelve hours of record, at the 1 h and 6 h chips, with a mouse and at
+390 px.
