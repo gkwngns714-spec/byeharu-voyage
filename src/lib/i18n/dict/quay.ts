@@ -69,6 +69,11 @@ export const quayDict = defineDict({
     profitVs: 'Profit vs bought at',
     net: 'Net',
     noReason: 'The server refused, without a reason.',
+    fulfilCell: 'fulfil',
+    sharesUnit: 'shares',
+    tonsUnit: 'tons',
+    knotsUnit: 'knots',
+    unitsUnit: 'units',
   },
   ko: {
     supplies: '보급',
@@ -137,5 +142,10 @@ export const quayDict = defineDict({
     profitVs: '매입가 대비 이익',
     net: '순이익',
     noReason: '서버가 이유 없이 거절했습니다.',
+    fulfilCell: '납품',
+    sharesUnit: '주',
+    tonsUnit: '톤',
+    knotsUnit: '노트',
+    unitsUnit: '개',
   },
 })

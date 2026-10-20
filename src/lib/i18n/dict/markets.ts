@@ -103,6 +103,7 @@ export const marketsDict = defineDict({
     act_buy: 'buy',
     noBetter: 'No better time ahead: it is as likely to fall as to rise.',
     likely: '{assumes}, the price is likely {lo}–{hi} at {time}.',
+    reckoned: 'At sea: reckoned from {port}, {n} miles off.',
   },
   ko: {
     stakeShave: '내 상회는 이 도시 기부자 중 {rank}위: 항구 수수료 {pct}% 할인',
@@ -204,5 +205,6 @@ export const marketsDict = defineDict({
     act_buy: '매수',
     noBetter: '더 나은 때가 없습니다: 오를 가능성과 내릴 가능성이 같습니다.',
     likely: '{assumes} — {time}에는 {lo}~{hi}일 것입니다.',
+    reckoned: '항해 중: {port} 기준, {n}해리 떨어짐.',
   },
 })

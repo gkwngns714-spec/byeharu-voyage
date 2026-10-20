@@ -290,7 +290,7 @@ function MoveTray({
           max={there}
           min={there > 0 ? 1 : 0}
           step={1}
-          unit="units"
+          unit={t('quay.unitsUnit')}
           label={t('inn.unitsOf', { name: line.name })}
           presets={there > 0 ? [{ label: t('inn.all'), value: there }] : undefined}
           data-testid="storage-qty"

@@ -74,7 +74,7 @@ export function RequestBoard({
             }
             value={
               <ActCell
-                label="fulfil"
+                label={t('quay.fulfilCell')}
                 figure={<Figure value={formatDucatsDelta(r.premium_ducats)} tone="success" />}
                 onPress={() => onPick(r)}
                 dead={dead}

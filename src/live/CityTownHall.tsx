@@ -289,7 +289,7 @@ function InvestTray({
           min={1}
           max={work.offered}
           step={1}
-          unit="shares"
+          unit={t('quay.sharesUnit')}
           label={t('town.sharesToBuy')}
           presets={[{ label: t('town.max'), value: work.offered }]}
           data-testid="townhall-invest-stepper"

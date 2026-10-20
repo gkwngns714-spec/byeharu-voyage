@@ -391,7 +391,7 @@ function SellAt({
     >
       {via && (
         <p className="mb-1 text-t-caption text-ink-faint" data-testid="sell-at-via">
-          At sea: reckoned from {name(via)}, {formatInt(board?.fleet.where.miles_left ?? 0)} miles off.
+          {t('markets.reckoned', { port: name(via), n: formatInt(board?.fleet.where.miles_left ?? 0) })}
         </p>
       )}
       {loading ? (
