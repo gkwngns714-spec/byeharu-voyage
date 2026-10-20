@@ -1,6 +1,7 @@
 import { Flag } from '../components/ui'
 import type { PortAllegiance } from '../lib/rpc'
 import { nationNameOf, useWorld } from './worldStore'
+import { useT } from '../lib/i18n'
 
 // A CITY'S COUNTRY, IN WORDS (0143, docs/INFLUENCE.md D14) — the country that holds a harbour today
 // and whether it can change hands: `Portugal · Home city`, `Castile-Spain · Contested`, `No country`.
@@ -18,18 +19,22 @@ import { nationNameOf, useWorld } from './worldStore'
 /** The title line's part. The caller passes the allegiance it read with `portNationOf`, so a city
  *  whose flag has not been read yet prints nothing here — never a guessed country. */
 export function CityFlag({ allegiance }: { allegiance: PortAllegiance }) {
+  const t = useT()
   const nationByCode = useWorld((s) => s.nationByCode)
   const words =
     allegiance.nation === null
-      ? 'No country'
-      : `${nationNameOf(nationByCode, allegiance.nation)} · ${allegiance.home ? 'Home city' : 'Contested'}`
+      ? t('town.noCountry')
+      : t('town.flagLine', {
+          nation: nationNameOf(nationByCode, allegiance.nation),
+          state: t(allegiance.home ? 'town.homeCity' : 'town.contested'),
+        })
   const ruler = allegiance.ruler ?? null
   return (
     <span data-testid="city-flag">
       {words}
       {ruler && (
         <span data-testid="city-ruler">
-          {' · ruled by '}
+          {t('town.ruledBy')}
           <Flag code={ruler} name={nationNameOf(nationByCode, ruler)} size="caption" />{' '}
           {nationNameOf(nationByCode, ruler)}
         </span>

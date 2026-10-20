@@ -401,15 +401,16 @@ export function TradeTray({
 }
 
 const BOUND: Readonly<Record<string, TKey>> = {
-  hold: 'ui.boundHold',
-  stock: 'ui.boundStock',
-  'daily cap': 'ui.boundDaily',
-  purse: 'ui.boundPurse',
-  'at sea': 'ui.boundSea',
   'cargo space': 'ui.boundSpace',
+  'stock here': 'ui.boundStock',
+  "today's trading limit": 'ui.boundDaily',
+  'your money': 'ui.boundPurse',
+  'being at sea': 'ui.boundSea',
+  'what is aboard': 'ui.boundHold',
 }
 
-/** The server's word for what stops a buy, in the viewer's language; an unknown word as served. */
+/** What stops a buy (useBuyCapacity's caption word), in the viewer's language; an unknown word as
+ *  served. The caption words stay English in the state, because a caller compares them. */
 function boundWord(binding: string): string {
   const key = BOUND[binding]
   return key ? tNow(key) : binding

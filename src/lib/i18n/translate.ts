@@ -61,3 +61,12 @@ export function tFor(locale: Locale): T {
 
 /** The `t` for the locale in force right now — for pure code that is not a component. */
 export const t: T = (key, vars) => translate(getLocale(), key, vars)
+
+/** A WORD TABLE whose words follow the locale: same shape as a plain `Record<K, string>`, but each
+ *  value is read through `t` when it is accessed, so the many readers of one shared table (a
+ *  status word, a face's label) need no change of their own. */
+export function wordTable<K extends string>(keys: Readonly<Record<K, TKey>>): Readonly<Record<K, string>> {
+  const table = {} as Record<K, string>
+  for (const k of Object.keys(keys) as K[]) Object.defineProperty(table, k, { get: () => t(keys[k]), enumerable: true })
+  return table
+}

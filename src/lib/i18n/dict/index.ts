@@ -9,9 +9,11 @@ import { foundDict } from './found'
 import { historyDict } from './history'
 import { mapDict } from './map'
 import { profileDict } from './profile'
+import { quayDict } from './quay'
 import { rankDict } from './rank'
 import { routesDict } from './routes'
 import { shellDict } from './shell'
+import { townDict } from './town'
 import { uiDict } from './ui'
 
 export const DICT = {
@@ -24,8 +26,10 @@ export const DICT = {
   history: historyDict,
   map: mapDict,
   profile: profileDict,
+  quay: quayDict,
   rank: rankDict,
   routes: routesDict,
   shell: shellDict,
+  town: townDict,
   ui: uiDict,
 } as const

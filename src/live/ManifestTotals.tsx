@@ -1,6 +1,7 @@
 import { deltaTone, Figure, Row } from '../components/ui'
 import { formatDucats, formatDucatsDelta } from '../lib/format'
 import type { ManifestReceipt } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // THE TOTALS BLOCK — what a basket comes to, in five rows, spelt ONCE for its two readers.
 //
@@ -28,31 +29,32 @@ export function ManifestTotals({
   /** The caller's row test id — the basket's rows and the receipt's rows are counted apart. */
   testId: string
 }) {
+  const t = useT()
   return (
     <>
-      <Row label="Market tax" value={<Figure value={formatDucats(totals.tax)} />} data-testid={testId} />
-      <Row label="Port fee" value={<Figure value={formatDucats(totals.spread)} />} data-testid={testId} />
+      <Row label={t('quay.marketTax')} value={<Figure value={formatDucats(totals.tax)} />} data-testid={testId} />
+      <Row label={t('quay.portFee')} value={<Figure value={formatDucats(totals.spread)} />} data-testid={testId} />
       {totals.haggle_saved > 0 && (
-        <Row label="Bargain saved" value={<Figure value={formatDucats(totals.haggle_saved)} tone="success" />} data-testid={testId} />
+        <Row label={t('quay.saved')} value={<Figure value={formatDucats(totals.haggle_saved)} tone="success" />} data-testid={testId} />
       )}
       {/* 0087: a delivery's premium — the request board's own figure, paid as its own ledger
           movement — is its own row here, for the tray, the receipt and any basket that ever
           carries one. A basket's receipt serves 0 and draws nothing. */}
       {totals.premium > 0 && (
-        <Row label="Premium" value={<Figure value={formatDucatsDelta(totals.premium)} tone="success" />} data-testid={testId} />
+        <Row label={t('quay.premium')} value={<Figure value={formatDucatsDelta(totals.premium)} tone="success" />} data-testid={testId} />
       )}
       {totals.sold > 0 &&
         (totals.profit !== null ? (
           <Row
-            label="Profit vs bought at"
+            label={t('quay.profitVs')}
             value={<Figure value={formatDucatsDelta(totals.profit)} tone={deltaTone(totals.profit)} />}
             data-testid={testId}
           />
         ) : (
-          <Row label="Profit vs bought at" tone="muted" value="unknown" data-testid={testId} />
+          <Row label={t('quay.profitVs')} tone="muted" value={t('quay.unknown')} data-testid={testId} />
         ))}
       <Row
-        label="Net"
+        label={t('quay.net')}
         value={<Figure value={formatDucatsDelta(totals.net)} size="figure" tone={deltaTone(totals.net)} />}
         hairline={false}
         data-testid={testId}

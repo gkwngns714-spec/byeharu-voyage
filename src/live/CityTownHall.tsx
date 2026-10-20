@@ -8,6 +8,7 @@ import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView } fro
 import { formatDucats, formatInt, formatPct } from '../lib/format'
 import { TownHallInfluence } from './TownHallInfluence'
 import { WORK_NAME } from './workNames'
+import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TOWN HALL — the city's fourth building: its purse, its works, Invest, and who invested
@@ -45,10 +46,11 @@ function useTownHall(portId: string | null) {
 }
 
 export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?: TrayMode }) {
+  const t = useT()
   const read = useTownHall(port.kind === 'HARBOUR' ? port.id : null)
   const [investing, setInvesting] = useState<CityWork | null>(null)
 
-  if (port.kind !== 'HARBOUR') return <Note tone="neutral">No town hall here.</Note>
+  if (port.kind !== 'HARBOUR') return <Note tone="neutral">{t('town.noHall')}</Note>
   const hall = read.view?.view ?? null
   if (!hall) {
     return read.view?.refusal ? (
@@ -66,7 +68,7 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
   return (
     <div data-testid="townhall">
       <Row
-        label="Treasury"
+        label={t('town.treasury')}
         value={<Figure value={formatDucats(hall.purse.ducats)} size="figure" />}
         data-testid="townhall-treasury"
       />
@@ -78,10 +80,10 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
       />
 
       {/* 0144: who holds the city, each country's influence, Donate (docs/INFLUENCE.md §7.1). */}
-      <Heading>Influence</Heading>
+      <Heading>{t('town.influence')}</Heading>
       <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} trayMode={trayMode} />
 
-      <Heading>Works</Heading>
+      <Heading>{t('town.works')}</Heading>
       {hall.works.map((w) => {
         const mine = held.get(w.kind)
         const built = w.level >= w.level_max
@@ -98,10 +100,10 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
             }
             value={
               built ? (
-                'Built'
+                t('town.built')
               ) : canInvest && w.offered > 0 ? (
                 <Button size="sm" onClick={() => setInvesting(w)} data-testid={`townhall-invest-${w.kind}`}>
-                  Invest
+                  {t('town.invest')}
                 </Button>
               ) : undefined
             }
@@ -109,12 +111,12 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
           >
             {!built && w.share_price !== null && (
               <div className="text-t-caption tabular-nums text-ink-muted">
-                {`${formatInt(w.subscribed)} of ${formatInt(w.subscribed + w.offered)} sold · ${formatDucats(w.share_price)} a share`}
+                {t('town.sold', { sold: formatInt(w.subscribed), total: formatInt(w.subscribed + w.offered), price: formatDucats(w.share_price) })}
               </div>
             )}
             {mine && (
               <div className="text-t-caption tabular-nums text-ink-muted" data-testid={`townhall-held-${w.kind}`}>
-                {`You hold ${formatInt(mine.shares)}${mine.owed > 0 ? ` · ${formatDucats(mine.owed)} owed` : ''}`}
+                {t('town.youHold', { n: formatInt(mine.shares), owed: mine.owed > 0 ? t('town.owed', { amount: formatDucats(mine.owed) }) : '' })}
               </div>
             )}
           </Row>
@@ -123,16 +125,16 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
       {/* WHY NOTHING CAN BE PRESSED — one line, never a dead button per row. */}
       {!canInvest && (
         <Row
-          label={hall.enabled ? 'Dock here to invest.' : 'Not selling shares yet.'}
+          label={t(hall.enabled ? 'town.dockToInvest' : 'town.notSelling')}
           tone="muted"
           hairline={false}
           data-testid="townhall-invest-none"
         />
       )}
 
-      <Heading>Investors</Heading>
+      <Heading>{t('town.investors')}</Heading>
       {hall.investors.length === 0 ? (
-        <Row label="Nobody yet." tone="muted" hairline={false} data-testid="townhall-investors-none" />
+        <Row label={t('town.nobody')} tone="muted" hairline={false} data-testid="townhall-investors-none" />
       ) : (
         hall.investors.map((x, i) => (
           <Row
@@ -172,34 +174,36 @@ function Heading({ children }: { children: string }) {
 
 /** The one quiet line under the treasury: what the city does with its purse, and its tax. */
 function purseLine(hall: TownHallView): string {
-  if (!hall.enabled) return 'Not open yet.'
-  const bid = hall.purse.bid_factor < 1 ? `Short of money · bids ${formatPct(hall.purse.bid_factor)}` : 'Buys up to its purse'
-  return `${bid} · Tax ${formatPct(hall.purse.tax_rate)} on profit`
+  if (!hall.enabled) return tNow('town.notOpen')
+  const bid =
+    hall.purse.bid_factor < 1 ? tNow('town.short', { pct: formatPct(hall.purse.bid_factor) }) : tNow('town.buysUp')
+  return tNow('town.taxLine', { bid, pct: formatPct(hall.purse.tax_rate) })
 }
 
 /** The last full day's money, in a few short rows — only the ones that moved. */
 function DayBook({ hall }: { hall: TownHallView }) {
+  const t = useT()
   const rows: [string, number][] = [
-    ['Trade in', hall.day.in.BUY ?? 0],
-    ['Trade out', hall.day.out.SELL ?? 0],
+    [t('town.d_tradeIn'), hall.day.in.BUY ?? 0],
+    [t('town.d_tradeOut'), hall.day.out.SELL ?? 0],
     // 0174: of what it paid for cargo, the part its people paid (the distance premium).
-    ['Paid by its people', hall.day.in.IMPORT_DEMAND ?? 0],
-    ['Tax', hall.day.in.TAX ?? 0],
-    ['Wages', hall.day.in.WAGES ?? 0],
-    ['Shares', hall.day.in.SHARE ?? 0],
-    ['Gifts', hall.day.in.DONATION ?? 0],
-    ['Coupons', hall.day.out.DIVIDEND ?? 0],
+    [t('town.d_people'), hall.day.in.IMPORT_DEMAND ?? 0],
+    [t('town.d_tax'), hall.day.in.TAX ?? 0],
+    [t('town.d_wages'), hall.day.in.WAGES ?? 0],
+    [t('town.d_shares'), hall.day.in.SHARE ?? 0],
+    [t('town.d_gifts'), hall.day.in.DONATION ?? 0],
+    [t('town.d_coupons'), hall.day.out.DIVIDEND ?? 0],
     // 0172: the grant, the city's own earnings, and what passes between it and its capital.
-    ['Grant', hall.day.in.GRANT ?? 0],
-    ['Earnings', hall.day.in.EARNINGS ?? 0],
-    ['From the crown', (hall.day.in.CROWN_TAX ?? 0) + (hall.day.in.CROWN_AID ?? 0)],
-    ['To the crown', (hall.day.out.CROWN_TAX ?? 0) + (hall.day.out.CROWN_AID ?? 0)],
+    [t('town.d_grant'), hall.day.in.GRANT ?? 0],
+    [t('town.d_earnings'), hall.day.in.EARNINGS ?? 0],
+    [t('town.d_fromCrown'), (hall.day.in.CROWN_TAX ?? 0) + (hall.day.in.CROWN_AID ?? 0)],
+    [t('town.d_toCrown'), (hall.day.out.CROWN_TAX ?? 0) + (hall.day.out.CROWN_AID ?? 0)],
   ]
   const moved = rows.filter(([, n]) => n !== 0)
   if (!hall.enabled || moved.length === 0) return null
   return (
     <div data-testid="townhall-day">
-      <Heading>Yesterday</Heading>
+      <Heading>{t('town.yesterday')}</Heading>
       {moved.map(([label, n]) => (
         <Row key={label} label={label} value={<Figure value={formatDucats(n)} />} />
       ))}
@@ -219,6 +223,7 @@ function InvestTray({
   mode?: TrayMode
   onClose: () => void
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('half')
   const [shares, setShares] = useState(() => Math.min(work.offered, 10))
   const [sending, setSending] = useState(false)
@@ -260,7 +265,7 @@ function InvestTray({
     <Tray
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={`Invest in ${WORK_NAME[work.kind]}`}
+      title={t('town.investIn', { work: WORK_NAME[work.kind] })}
       mode={mode}
       data-testid="townhall-invest-tray"
       action={
@@ -269,11 +274,11 @@ function InvestTray({
           className="w-full"
           disabled={estimate === null || shares < 1}
           busy={sending}
-          busyLabel="Investing…"
+          busyLabel={t('town.investing')}
           onClick={send}
           data-testid="townhall-invest-send"
         >
-          {estimate ? `Invest ${formatDucats(estimate.cost)}` : 'Invest'}
+          {estimate ? t('town.investAmount', { amount: formatDucats(estimate.cost) }) : t('town.invest')}
         </Button>
       }
     >
@@ -285,14 +290,14 @@ function InvestTray({
           max={work.offered}
           step={1}
           unit="shares"
-          label="shares to buy"
-          presets={[{ label: 'Max', value: work.offered }]}
+          label={t('town.sharesToBuy')}
+          presets={[{ label: t('town.max'), value: work.offered }]}
           data-testid="townhall-invest-stepper"
         />
       </div>
       {estimate && (
         <Row
-          label={estimate.completed ? 'Cost · completes the level' : 'Cost'}
+          label={t(estimate.completed ? 'town.costCompletes' : 'town.cost')}
           value={<Figure value={formatDucats(estimate.cost)} />}
           hairline={false}
           data-testid="townhall-invest-cost"

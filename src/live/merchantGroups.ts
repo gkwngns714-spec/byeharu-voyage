@@ -1,6 +1,7 @@
 import { isDockedAt, whereabouts } from '../domain/fleet'
 import type { PortMerchant } from '../lib/rpc'
 import { restEndsAt } from './merchantWords'
+import { t } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A HARBOUR'S MERCHANTS, SPLIT INTO THE TWO LISTS THE OWNER ASKED FOR — in port, and incoming
@@ -67,6 +68,6 @@ function byInstant(a: number | null, b: number | null): number {
 export function merchantsSummary(rows: readonly PortMerchant[], portCode: string): string {
   if (rows.length === 0) return ''
   const inPort = harbourSides(rows, portCode).inPort.length
-  const all = `${rows.length} ${rows.length === 1 ? 'merchant' : 'merchants'}`
-  return inPort > 0 ? `${all} · ${inPort} in port` : all
+  const all = t('town.merchants', { n: rows.length })
+  return inPort > 0 ? t('town.inPort', { all, n: inPort }) : all
 }

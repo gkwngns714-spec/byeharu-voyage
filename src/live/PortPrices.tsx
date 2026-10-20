@@ -10,6 +10,7 @@ import { QuayLedger } from './QuayLedger'
 import { RequestBoard } from './RequestBoard'
 import { TradeFaces } from './TradeFaces'
 import { useTradeFace } from './tradeFace'
+import { useT } from '../lib/i18n'
 
 // THE LEDGER, READ-ONLY — a quay none of yours is lying at. docs/QUAY_LEDGER.md §3 A: *"the board
 // opens on the quay a fleet lies at; elsewhere is read-only"*. This is the MARKET tab's one job
@@ -52,6 +53,7 @@ export function PortPrices({
   /** Where a pressed price's tray stands (PriceTray `mode`) — the MAP's city panel passes `side-next`. */
   trayMode?: TrayMode
 }) {
+  const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const reaches = useWorld((s) => s.reaches)
   const [pick, setPick] = useState<TradePick | null>(null)
@@ -92,7 +94,7 @@ export function PortPrices({
           onPick={(good, intent) => setPick({ good, intent })}
           empty={
             <Note tone="neutral" className="mt-3">
-              {face === 'sell' ? 'No cargo to sell.' : 'Nothing is traded here.'}
+              {t(face === 'sell' ? 'quay.noCargoSell' : 'quay.nothingTraded')}
             </Note>
           }
         />
