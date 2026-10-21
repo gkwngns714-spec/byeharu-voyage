@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Chip, Field, Hint, Icon, Note, goodIcon } from '../../components/ui'
+import { Button, Chip, Field, Icon, Note, goodIcon } from '../../components/ui'
 import { whereabouts } from '../../domain/fleet'
 import { routeStopQuiet, stopLine, type StopLine } from '../../domain/route'
 import { PortField } from '../../live/PortField'
@@ -197,7 +197,6 @@ export function RouteEditor({
         )
       })}
 
-      <Hint className="mt-3">{t('command.loopHint')}</Hint>
       {noCourse && (
         <Note tone="danger" className="mt-2">
           {t('command.noCourse', { port: portNameOf(portByCode, noCourse) })}

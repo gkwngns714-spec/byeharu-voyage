@@ -21,6 +21,7 @@ import { rankDict } from './rank'
 import { routesDict } from './routes'
 import { shellDict } from './shell'
 import { shipDict } from './ship'
+import { statsDict } from './stats'
 import { townDict } from './town'
 import { tradeDict } from './trade'
 import { uiDict } from './ui'
@@ -49,6 +50,7 @@ export const DICT = {
   routes: routesDict,
   shell: shellDict,
   ship: shipDict,
+  stats: statsDict,
   town: townDict,
   trade: tradeDict,
   ui: uiDict,

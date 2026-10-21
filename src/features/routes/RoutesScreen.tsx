@@ -190,9 +190,6 @@ function RoutesBody() {
               {t('routes.omitted', { n: formatInt(board.omitted), count: board.omitted })}
             </Hint>
           )}
-          {!board.merchants && mine.length > 0 && (
-            <Hint className="mt-2">{t('routes.onlyYours')}</Hint>
-          )}
 
           {opened && <LaneTray route={opened} detent={detent} onDetentChange={setDetent} />}
         </>

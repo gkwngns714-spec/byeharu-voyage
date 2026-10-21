@@ -1,5 +1,6 @@
 import type { RankRow, SeriesPoint } from '../../components/ui'
 import { instantMs } from '../../lib/format'
+import { properName, t } from '../../lib/i18n'
 import type { StatsFlowLine } from '../../lib/rpc'
 
 // THE FACE TABLE of the Stats tab — pure data, so a spec can pin the five without reading JSX
@@ -29,13 +30,8 @@ export function trendOf<T>(rows: readonly T[], pick: (row: T) => number): number
 
 export type StatsFace = 'overview' | 'markets' | 'cities' | 'merchants' | 'me'
 
-export const STATS_FACES: readonly { id: StatsFace; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'markets', label: 'Markets' },
-  { id: 'cities', label: 'Cities' },
-  { id: 'merchants', label: 'Merchants' },
-  { id: 'me', label: 'Me' },
-]
+/** The faces in order; each one's words are `stats.<id>` in the dictionary. */
+export const STATS_FACES: readonly { id: StatsFace }[] = [{ id: 'overview' }, { id: 'markets' }, { id: 'cities' }, { id: 'merchants' }, { id: 'me' }]
 
 /** How often an open face asks its read again, in ms, when nothing else wakes it. The job writes
  *  every fifteen minutes; a face that re-asked on the world's 3-s beat would ask the same row 300
@@ -71,6 +67,12 @@ export function flowRanks(flows: readonly StatsFlowLine[]): RankRow[] {
       label: f.word,
       value: f.ducats,
       tone: f.side === 'minted' ? ('success' as const) : f.side === 'removed' ? ('danger' as const) : ('neutral' as const),
-      note: f.side === 'minted' ? 'new money' : f.side === 'removed' ? 'money burned' : 'moved between purses',
+      note: f.side === 'minted' ? t('stats.noteNew') : f.side === 'removed' ? t('stats.noteBurned') : t('stats.noteMoved'),
     }))
 }
+
+/** A served good in the viewer's language (Korean map by code; the served name otherwise). */
+export const goodName = (g: { code: string; name: string }): string => properName('good', g.code, g.name)
+
+/** A served port in the viewer's language (the map is keyed by the served name). */
+export const portName = (name: string): string => properName('port', name, name)

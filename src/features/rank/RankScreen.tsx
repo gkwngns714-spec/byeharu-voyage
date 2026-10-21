@@ -218,9 +218,6 @@ function Board({
           <Row label={t('rank.exploration')} value={<Figure value={formatInt(you.exploration_fame)} />} />
           <Row label={t('rank.ports')} value={<Figure value={formatInt(you.ports_reached)} />} />
           <Row label={t('rank.total')} value={<Figure value={formatInt(you.total_fame)} tone="accent" />} hairline={false} />
-          <Hint className="mt-2">
-            {t('rank.howScored')}
-          </Hint>
         </Tray>
       )}
     </>

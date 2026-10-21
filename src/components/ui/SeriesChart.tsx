@@ -96,7 +96,10 @@ export function SeriesChart({
         )}
       </svg>
       {/* the three y figures and the hovered value live in HTML, so they wear the type scale */}
-      <div className="pointer-events-none absolute inset-y-0 right-2 flex flex-col justify-between py-1 text-right">
+      <div
+        className="pointer-events-none absolute right-2 flex flex-col justify-between text-right"
+        style={{ top: `${(plot.y / model.height) * 100}%`, height: `${(plot.h / model.height) * 100}%` }}
+      >
         <span className="text-t-caption tabular-nums text-ink-faint">{format(model.yTicks[2].value)}</span>
         <span className="text-t-caption tabular-nums text-ink-faint">{format(model.yTicks[0].value)}</span>
       </div>

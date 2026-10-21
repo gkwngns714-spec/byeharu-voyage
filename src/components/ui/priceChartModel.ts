@@ -1,4 +1,5 @@
 import { MINUS, formatFixed, priceDigits } from '../../lib/format'
+import { t } from '../../lib/i18n'
 import type { ChartWindow } from './chartPan'
 import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 
@@ -129,12 +130,12 @@ export interface PriceChartModel {
 function hoursLabel(hours: number): string {
   const rounded = Math.round(hours * 10) / 10
   const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
-  return `${text}h`
+  return t('format.agoHour', { n: text })
 }
 
 /** An edge of a dragged window, as hours from now: `now` within a minute of it, else signed hours. */
 function edgeLabel(ms: number): string {
-  if (Math.abs(ms) < 60_000) return 'now'
+  if (Math.abs(ms) < 60_000) return t('shell.now')
   return `${ms < 0 ? MINUS : '+'}${hoursLabel(Math.abs(ms) / 3_600_000)}`
 }
 
@@ -274,7 +275,7 @@ export function priceChartModel(
       [
         { x: plot.x, label: edgeLabel(view.fromMs - nowMs) },
         nowX - plot.x >= 48 && plot.x + plot.w - nowX >= 48
-          ? { x: nowX, label: 'now' }
+          ? { x: nowX, label: t('shell.now') }
           : { x: plot.x + plot.w / 2, label: edgeLabel((view.fromMs + view.toMs) / 2 - nowMs) },
         { x: plot.x + plot.w, label: edgeLabel(view.toMs - nowMs) },
       ]
@@ -289,9 +290,9 @@ export function priceChartModel(
                 label: `${MINUS}${hoursLabel(spanHours / 2)}`,
               },
             ]),
-        { x: nowX, label: 'now' },
+        { x: nowX, label: t('shell.now') },
       ]
-    : [{ x: nowX, label: 'now' }]
+    : [{ x: nowX, label: t('shell.now') }]
 
   let chartOutlook: ChartOutlook | null = null
   if (est) {
