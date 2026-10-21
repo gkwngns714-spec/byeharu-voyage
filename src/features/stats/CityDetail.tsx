@@ -18,10 +18,11 @@ import {
   deltaTone,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 import { worldStatsCity, type StatsCity } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import { nationNameOf, useWorld } from '../../live/worldStore'
-import { STATS_BARS, flowRanks, movePct, toSeries } from './statsFaces'
+import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
 
 // ONE CITY, AT YOUR TIER — the row the Cities face opens (0214; its header carries the gate).
 //
@@ -34,11 +35,12 @@ import { STATS_BARS, flowRanks, movePct, toSeries } from './statsFaces'
 // with its own sparkline — the shape the Markets face uses, so a good does not look different here.
 
 export function CityDetail({ portId, beat, onClose }: { portId: string; beat: number; onClose: () => void }) {
+  const t = useT()
   const read = useServedRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId), { trigger: beat })
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
   if (read.loading && !v) return <Skeleton className="mt-4 h-40 w-full" />
-  if (!v) return <Note tone="danger" className="mt-4">This city's figures could not be read.</Note>
+  if (!v) return <Note tone="danger" className="mt-4">{t('stats.cityFailed')}</Note>
   const flag = v.city.nation === null ? undefined : <Flag code={v.city.nation} name={nationNameOf(nationByCode, v.city.nation)} size="body" />
   const o = v.overview
 
@@ -47,79 +49,78 @@ export function CityDetail({ portId, beat, onClose }: { portId: string; beat: nu
       heading={
         <span className="flex items-center gap-2">
           {flag}
-          {v.city.name}
+          {portName(v.city.name)}
         </span>
       }
       trailing={
         <button type="button" className="min-h-11 px-2 text-t-caption text-accent" onClick={onClose} data-testid="stats-city-close">
-          Close
+          {t('common.close')}
         </button>
       }
       data-testid="stats-city"
     >
       {v.tier === 0 && (
         <Note tone="neutral" data-testid="stats-city-lock">
-          {`Locked. Invest ${formatDucats(v.need ?? v.tier1)} in ${v.city.name} to see its purse, income, taxes and trade.`}
+          {t('stats.cityLocked', { amount: formatDucats(v.need ?? v.tier1), city: portName(v.city.name) })}
         </Note>
       )}
       {o && (
         <div data-testid="stats-city-overview">
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-            <StatCell label="Purse" value={o.purse} format={formatDucats} size="body" tone="accent" />
-            <StatCell label="In, 24 h" value={o.income_1d} format={formatDucatsDelta} size="body" tone="success" />
-            <StatCell label="Out, 24 h" value={-o.spending_1d} format={formatDucatsDelta} size="body" tone="danger" />
-            <StatCell label="Taxes, 24 h" value={o.taxes_1d} format={formatDucats} size="body" />
+            <StatCell label={t('town.i_purse')} value={o.purse} format={formatDucats} size="body" tone="accent" />
+            <StatCell label={t('town.i_in')} value={o.income_1d} format={formatDucatsDelta} size="body" tone="success" />
+            <StatCell label={t('town.i_out')} value={-o.spending_1d} format={formatDucatsDelta} size="body" tone="danger" />
+            <StatCell label={t('town.i_taxes')} value={o.taxes_1d} format={formatDucats} size="body" />
           </div>
           <SeriesChart
             points={toSeries(o.series, (p) => p.purse)}
             format={formatDucats}
-            label={`${v.city.name}'s purse, count by count`}
+            label={t('stats.citySeries', { city: portName(v.city.name) })}
             tone="accent"
             className="mt-4"
-            empty={<Hint className="mt-3">The line starts with the next count.</Hint>}
+            empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
           />
           <SignedBars
             bars={o.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.income - p.spending }))}
-            label={`What ${v.city.name} took in less what it spent, one bar a count`}
+            label={t('stats.cityNet', { city: portName(v.city.name) })}
             height="h-20"
             className="mt-4"
           />
-          <Hint className="mt-2">One bar a count: up is money into the city, down is money out of it.</Hint>
           <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">Sold to the city most, 24 h</span>
+              <span className="block text-t-caption text-ink-faint">{t('stats.soldCityMost')}</span>
               <RankBars
-                rows={o.top_sold.map((r) => ({ id: r.code, label: r.name, value: r.units, text: `${formatInt(r.units)} units`, note: formatDucats(r.ducats) }))}
+                rows={o.top_sold.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
                 format={formatInt}
               />
             </div>
             <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">Bought from the city most, 24 h</span>
+              <span className="block text-t-caption text-ink-faint">{t('stats.boughtCityMost')}</span>
               <RankBars
-                rows={o.top_bought.map((r) => ({ id: r.code, label: r.name, value: r.units, text: `${formatInt(r.units)} units`, note: formatDucats(r.ducats) }))}
+                rows={o.top_bought.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
                 format={formatInt}
               />
             </div>
           </div>
           {o.flows_1d.length > 0 && (
             <div className="mt-4">
-              <span className="block text-t-caption text-ink-faint">The city's money, last 24 h</span>
+              <span className="block text-t-caption text-ink-faint">{t('stats.cityMoney')}</span>
               <RankBars rows={flowRanks(o.flows_1d)} format={formatDucatsDelta} />
             </div>
           )}
           <span className="mt-3 block text-t-caption text-ink-faint">
-            {`Works: ${o.works.map((w) => `${w.kind} ${w.level}`).join(' · ') || 'none built'}`}
+            {t('stats.works', { list: o.works.map((w) => `${w.kind} ${w.level}`).join(' · ') || t('stats.noWorks') })}
           </span>
           {v.tier === 1 && (
-            <Hint className="mt-2">{`Invest ${formatDucats(v.need ?? 0)} more to see every good's price, stock and trade here.`}</Hint>
+            <Hint className="mt-2">{t('stats.investMore', { amount: formatDucats(v.need ?? 0) })}</Hint>
           )}
         </div>
       )}
       {v.detail && (
         <div className="mt-4" data-testid="stats-city-detail">
-          <span className="block text-t-caption text-ink-faint">{`Every good here · ${formatInt(v.detail.goods.length)}`}</span>
+          <span className="block text-t-caption text-ink-faint">{t('stats.goodsHere', { n: formatInt(v.detail.goods.length) })}</span>
           {v.detail.goods.length === 0 ? (
-            <Empty className="mt-2">Nothing recorded here yet.</Empty>
+            <Empty className="mt-2">{t('stats.nothingHere')}</Empty>
           ) : (
             v.detail.goods.map((g, i, all) => {
               const move = movePct(g.mid, g.mid_1d)
@@ -128,7 +129,7 @@ export function CityDetail({ portId, beat, onClose }: { portId: string; beat: nu
                   key={g.code}
                   label={
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="min-w-0 truncate text-ink">{g.name}</span>
+                      <span className="min-w-0 break-words text-ink">{goodName(g)}</span>
                       <span className="shrink-0 text-t-caption text-ink-faint">{categoryLabel(g.category)}</span>
                     </span>
                   }
@@ -139,7 +140,7 @@ export function CityDetail({ portId, beat, onClose }: { portId: string; beat: nu
                         tone={move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'}
                         width={48}
                         height={18}
-                        label={`${g.name} at ${v.city.name}, ${g.spark.length} readings`}
+                        label={t('stats.atCity', { name: goodName(g), city: portName(v.city.name), n: g.spark.length })}
                       />
                       <span className="flex w-24 flex-col items-end">
                         <Figure value={g.mid === null ? '—' : formatPriceFigure(g.mid)} />
@@ -151,12 +152,12 @@ export function CityDetail({ portId, beat, onClose }: { portId: string; beat: nu
                   data-testid="stats-city-good"
                 >
                   <FactsLine>
-                    <span>{`sold ${formatInt(g.sold_1d)}`}</span>
-                    <span>{`bought ${formatInt(g.bought_1d)}`}</span>
+                    <span>{t('stats.sold', { n: formatInt(g.sold_1d) })}</span>
+                    <span>{t('stats.bought', { n: formatInt(g.bought_1d) })}</span>
                     {g.stock !== null && g.stock_target !== null && g.stock_target > 0 && (
-                      <StockGauge stock={g.stock} target={g.stock_target} label={`${g.name} at ${v.city.name}`} className="shrink-0" />
+                      <StockGauge stock={g.stock} target={g.stock_target} label={t('stats.stockAt', { name: goodName(g), city: portName(v.city.name) })} className="shrink-0" />
                     )}
-                    {g.stock === null && <span>not sold here</span>}
+                    {g.stock === null && <span>{t('stats.notSoldHere')}</span>}
                   </FactsLine>
                 </Row>
               )

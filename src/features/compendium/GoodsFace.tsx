@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import {
   Figure,
-  Hint,
   Icon,
   Note,
   RarityMark,
@@ -111,7 +110,6 @@ export function GoodsFace({ query }: { query: string }) {
             // outright, in the server's own words (DESIGN B.4).
             <Note tone="warning" className="mt-2">{t('codex.notTradedAt', { cultures: open.culture_mask.join(', ') })}</Note>
           )}
-          <Hint className="mt-2">{t('codex.baseHint')}</Hint>
         </Tray>
       )}
     </>

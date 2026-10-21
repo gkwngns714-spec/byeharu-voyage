@@ -1,6 +1,7 @@
-import { Dot, Figure, Hint, SheetSection, StatCell } from '../../components/ui'
+import { Dot, Figure, SheetSection, StatCell } from '../../components/ui'
 import { fleetHoldUsed, whereabouts } from '../../domain/fleet'
 import { formatCountdown, formatDucats, formatInt, formatTons } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 import { useWorld } from '../../live/worldStore'
 
 // RIGHT NOW — the figures on this tab that are not a rollup, and they move while you watch.
@@ -18,6 +19,7 @@ import { useWorld } from '../../live/worldStore'
 // as a chart than as a ticker (docs/OWNER_REQUESTS.md row 187).
 
 export function LiveNow({ dueMs }: { dueMs: number | null }) {
+  const t = useT()
   // Selected as primitives, one selector each (worldStore's rule): a selector that built an object
   // would re-render this band on every market fetch in the world.
   const ducats = useWorld((s) => s.ducats)
@@ -34,14 +36,14 @@ export function LiveNow({ dueMs }: { dueMs: number | null }) {
     <SheetSection
       heading={
         <span className="flex items-center gap-2">
-          <Dot tone="success" label="live" />
-          Right now
+          <Dot tone="success" label={t('stats.live')} />
+          {t('stats.rightNow')}
         </span>
       }
       trailing={
         dueMs === null ? undefined : (
           <span className="text-t-caption text-ink-faint">
-            next count in <Figure value={formatCountdown(dueMs)} />
+            {t('stats.nextIn')} <Figure value={formatCountdown(dueMs)} />
           </span>
         )
       }
@@ -49,18 +51,17 @@ export function LiveNow({ dueMs }: { dueMs: number | null }) {
     >
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
         <StatCell
-          label="Your purse"
+          label={t('stats.purse')}
           value={ducats ?? 0}
           format={formatDucats}
           tone="accent"
           text={ducats === null ? '—' : undefined}
           data-testid="stats-live-purse"
         />
-        <StatCell label="Your fleets at sea" value={atSea} format={formatInt} />
-        <StatCell label="Your fleets in port" value={inPort} format={formatInt} />
-        <StatCell label="Cargo you carry" value={carried} format={(v) => formatTons(v)} />
+        <StatCell label={t('stats.fleetsAtSea')} value={atSea} format={formatInt} />
+        <StatCell label={t('stats.fleetsInPort')} value={inPort} format={formatInt} />
+        <StatCell label={t('stats.cargoCarried')} value={carried} format={(v) => formatTons(v)} />
       </div>
-      <Hint className="mt-2">These four come from the world itself and move every few seconds. The figures below are counted every fifteen minutes.</Hint>
     </SheetSection>
   )
 }

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Bar, type BarTone } from './Bar'
 import { Figure, type FigureTone } from './Figure'
+import { useT } from '../../lib/i18n'
 import { Row } from './Row'
 
 // RANKED BARS — a short list in order, each row's bar drawn against the biggest in the list.
@@ -44,7 +45,7 @@ const FIGURE_TONE: Record<BarTone, FigureTone> = {
 export function RankBars({
   rows,
   format,
-  empty = 'Nothing yet',
+  empty,
   className = '',
   ...rest
 }: {
@@ -56,8 +57,9 @@ export function RankBars({
   empty?: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
+  const t = useT()
   if (rows.length === 0) {
-    return <Row label={empty} tone="muted" hairline={false} className={className} {...rest} />
+    return <Row label={empty ?? t('ui.nothingYet')} tone="muted" hairline={false} className={className} {...rest} />
   }
   // The true widest row, and 1 only when every row is nought — flooring it at 1 would draw a list
   // of half-percent movers as a row of stubs.

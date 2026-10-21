@@ -14,6 +14,7 @@ import {
   type RankRow,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import { nationNameOf, useWorld } from '../../live/worldStore'
@@ -30,21 +31,22 @@ import { servedNow } from './statsPulse'
 // laid up.
 
 export function MerchantsFace({ beat, onServed }: FaceProps) {
+  const t = useT()
   const read = useServedRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants(), { trigger: beat })
   const v = read.view
   useEffect(() => onServed(servedNow(v)), [v, onServed])
   const nationByCode = useWorld((s) => s.nationByCode)
 
   if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
-  if (!v) return <Note tone="danger">The merchants' figures could not be read.</Note>
-  if (v.houses === undefined) return <Empty data-testid="stats-empty">No figures yet. The first count is written within fifteen minutes.</Empty>
+  if (!v) return <Note tone="danger">{t('stats.merchantsFailed')}</Note>
+  if (v.houses === undefined) return <Empty data-testid="stats-empty">{t('stats.noFigures')}</Empty>
 
   const states = [
-    { id: 'sailing', label: 'Sailing', value: v.sailing ?? 0, tone: 'info' as const },
-    { id: 'docked', label: 'In port', value: v.docked ?? 0, tone: 'success' as const },
-    { id: 'repairing', label: 'Repairing', value: v.repairing ?? 0, tone: 'warning' as const },
-    { id: 'unable', label: 'Cannot sail', value: v.unable ?? 0, tone: 'danger' as const },
-    { id: 'laid_up', label: 'Laid up', value: v.laid_up ?? 0, tone: 'neutral' as const },
+    { id: 'sailing', label: t('stats.sailing'), value: v.sailing ?? 0, tone: 'info' as const },
+    { id: 'docked', label: t('stats.inPort'), value: v.docked ?? 0, tone: 'success' as const },
+    { id: 'repairing', label: t('stats.repairing'), value: v.repairing ?? 0, tone: 'warning' as const },
+    { id: 'unable', label: t('stats.cannotSail'), value: v.unable ?? 0, tone: 'danger' as const },
+    { id: 'laid_up', label: t('stats.laidUp'), value: v.laid_up ?? 0, tone: 'neutral' as const },
   ]
   const houses = (list: readonly StatsMerchantHouse[]): RankRow[] =>
     list.map((h) => ({
@@ -57,15 +59,15 @@ export function MerchantsFace({ beat, onServed }: FaceProps) {
       ),
       value: h.day,
       tone: h.day >= 0 ? ('success' as const) : ('danger' as const),
-      note: `${formatInt(h.laps)} ${h.laps === 1 ? 'lap' : 'laps'} in 24 h`,
+      note: t('stats.laps', { n: formatInt(h.laps), count: h.laps }),
     }))
 
   return (
     <div data-testid="stats-merchants">
-      <SheetSection heading={`${formatInt(v.houses)} merchant companies · ${formatInt(v.fleets ?? 0)} fleets`}>
+      <SheetSection heading={t('stats.companiesFleets', { houses: formatInt(v.houses), fleets: formatInt(v.fleets ?? 0) })}>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
           <StatCell
-            label="Earned, last 24 h"
+            label={t('stats.earned24')}
             value={v.profit_day ?? 0}
             format={formatDucatsDelta}
             size="body"
@@ -73,52 +75,51 @@ export function MerchantsFace({ beat, onServed }: FaceProps) {
             trend={v.series.map((p) => p.profit_day)}
           />
           <StatCell
-            label="Laps that lost"
+            label={t('stats.lapsLost')}
             value={(v.losing_pct ?? 0) / 100}
             format={(x) => formatPct(x, 1)}
             size="body"
             tone={(v.losing_pct ?? 0) > 50 ? 'danger' : 'ink'}
           />
-          <StatCell label="Laps closed, 24 h" value={v.laps_day ?? 0} format={formatInt} size="body" />
-          <StatCell label="Their purses" value={v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
+          <StatCell label={t('stats.lapsClosed')} value={v.laps_day ?? 0} format={formatInt} size="body" />
+          <StatCell label={t('stats.theirPurses')} value={v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
         </div>
         <StackedBar
           parts={states}
           format={formatInt}
-          label="Where the merchants' fleets are right now"
+          label={t('stats.whereFleets')}
           className="mt-4"
           data-testid="stats-merchant-states"
         />
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="min-w-0">
-            <span className="block text-t-caption text-ink-faint">What they earned in a day, count by count</span>
+            <span className="block text-t-caption text-ink-faint">{t('stats.earnedDay')}</span>
             <SeriesChart
               points={toSeries(v.series, (p) => p.profit_day)}
               format={formatDucats}
-              label="What the merchants earned in the last 24 hours, over time"
+              label={t('stats.earnedLabel')}
               tone="info"
-              empty={<Hint className="mt-2">The line starts with the next count.</Hint>}
+              empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>}
             />
           </div>
           <div className="min-w-0">
-            <span className="block text-t-caption text-ink-faint">Fleets at sea, count by count</span>
+            <span className="block text-t-caption text-ink-faint">{t('stats.atSeaSeries')}</span>
             <SeriesChart
               points={toSeries(v.series, (p) => p.sailing)}
               format={formatInt}
-              label="How many merchant fleets were at sea, over time"
+              label={t('stats.atSeaLabel')}
               tone="accent"
-              empty={<Hint className="mt-2">The line starts with the next count.</Hint>}
+              empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>}
             />
           </div>
         </div>
-        <Hint className="mt-2">A lap counts from its second one: the first lap buys and does not sell yet.</Hint>
       </SheetSection>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <SheetSection heading="Best day" surface data-testid="stats-merchants-top">
-          <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty="No laps closed yet" />
+        <SheetSection heading={t('stats.bestDay')} surface data-testid="stats-merchants-top">
+          <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
         </SheetSection>
-        <SheetSection heading="Worst day" surface data-testid="stats-merchants-bottom">
-          <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty="No laps closed yet" />
+        <SheetSection heading={t('stats.worstDay')} surface data-testid="stats-merchants-bottom">
+          <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
         </SheetSection>
       </div>
     </div>

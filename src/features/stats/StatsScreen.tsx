@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Segmented, Sheet } from '../../components/ui'
-import { formatRelative } from '../../lib/format'
+import { formatCountdown } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CitiesFace } from './Cities'
@@ -38,14 +39,16 @@ import { useStatsPulse, type StatsServed } from './statsPulse'
 // for a composition, ranked bars for "which of these is big", sparklines where a chart is too much.
 
 export function StatsScreen() {
+  const t = useT()
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
-  if (phase === 'failed') return <WorldFailed title="Stats" refusal={fatal} />
-  if (phase !== 'ready') return <WorldLoading title="Stats" />
+  if (phase === 'failed') return <WorldFailed title={t('stats.title')} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={t('stats.title')} />
   return <StatsBody />
 }
 
 function StatsBody() {
+  const t = useT()
   const [face, setFace] = useState<StatsFace>('overview')
   const [served, setServed] = useState<StatsServed | null>(null)
   const pulse = useStatsPulse(served)
@@ -53,11 +56,11 @@ function StatsBody() {
   // `formatRelative` reads only the GAP between its two instants, so (−age, 0) asks it exactly what the
   // server's `age_seconds` measured plus the seconds since, and a skewed device clock cannot age a
   // server's record.
-  const updated = pulse.ageMs === null ? null : `Updated ${formatRelative(-pulse.ageMs, 0)}`
+  const updated = pulse.ageMs === null ? null : t('stats.updated', { time: formatCountdown(pulse.ageMs) })
 
   return (
     <Sheet
-      title="Stats"
+      title={t('stats.title')}
       data-testid="stats"
       trailing={
         updated === null ? undefined : (
@@ -68,13 +71,13 @@ function StatsBody() {
       }
     >
       <Segmented
-        segments={STATS_FACES.map((f) => ({ id: f.id, label: f.label }))}
+        segments={STATS_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`) }))}
         value={face}
         onChange={(id) => {
           setServed(null)
           setFace(id)
         }}
-        label="Stats faces"
+        label={t('stats.facesLabel')}
         className="mb-3 w-fit max-w-full"
       />
       <LiveNow dueMs={pulse.dueMs} />

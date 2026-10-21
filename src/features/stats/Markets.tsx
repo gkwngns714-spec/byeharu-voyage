@@ -4,7 +4,6 @@ import {
   Empty,
   FactsLine,
   Figure,
-  Hint,
   Note,
   RankBars,
   Row,
@@ -19,10 +18,11 @@ import {
   type RankRow,
 } from '../../components/ui'
 import { formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
+import { t as tNow, useT } from '../../lib/i18n'
 import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import type { FaceProps } from './StatsScreen'
-import { movePct } from './statsFaces'
+import { goodName, movePct } from './statsFaces'
 import { servedNow } from './statsPulse'
 
 // MARKETS — every good as a stock-market table: price, its move, what was bought and sold, stock against
@@ -42,6 +42,7 @@ interface GoodRank {
 }
 
 export function MarketsFace({ beat, onServed }: FaceProps) {
+  const t = useT()
   const read = useServedRead<StatsMarkets>('stats:markets', () => worldStatsMarkets(), { trigger: beat })
   const v = read.view
   useEffect(() => onServed(servedNow(v)), [v, onServed])
@@ -59,8 +60,8 @@ export function MarketsFace({ beat, onServed }: FaceProps) {
   }, [v, sort, win])
 
   if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
-  if (!v) return <Note tone="danger">The markets' figures could not be read.</Note>
-  if (v.goods.length === 0) return <Empty data-testid="stats-empty">No figures yet. The first count is written within fifteen minutes.</Empty>
+  if (!v) return <Note tone="danger">{t('stats.marketsFailed')}</Note>
+  if (v.goods.length === 0) return <Empty data-testid="stats-empty">{t('stats.noFigures')}</Empty>
 
   const moved = rows.filter((r) => r.move !== null)
   // a riser rose, a faller fell, and the most traded traded: a flat or idle good is in none of the three
@@ -72,65 +73,64 @@ export function MarketsFace({ beat, onServed }: FaceProps) {
 
   return (
     <div data-testid="stats-markets">
-      <SheetSection heading="The day's market">
+      <SheetSection heading={t('stats.dayMarket')}>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-          <StatCell label="Goods traded, 24 h" value={rows.filter((r) => r.traded > 0).length} format={formatInt} />
-          <StatCell label="Units traded, 24 h" value={unitsTraded} format={formatInt} />
-          <StatCell label={`Rose, ${windowWord(win)}`} value={moved.filter((r) => (r.move ?? 0) > 0).length} format={formatInt} tone="success" />
-          <StatCell label={`Fell, ${windowWord(win)}`} value={moved.filter((r) => (r.move ?? 0) < 0).length} format={formatInt} tone="danger" />
+          <StatCell label={t('stats.goodsTraded')} value={rows.filter((r) => r.traded > 0).length} format={formatInt} />
+          <StatCell label={t('stats.unitsTraded')} value={unitsTraded} format={formatInt} />
+          <StatCell label={t('stats.rose', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) > 0).length} format={formatInt} tone="success" />
+          <StatCell label={t('stats.fell', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) < 0).length} format={formatInt} tone="danger" />
         </div>
       </SheetSection>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Segmented
           segments={[
-            { id: 'movers', label: 'Movers' },
-            { id: 'traded', label: 'Most traded' },
-            { id: 'name', label: 'Name' },
+            { id: 'movers', label: t('stats.movers') },
+            { id: 'traded', label: t('stats.mostTraded') },
+            { id: 'name', label: t('stats.name') },
           ]}
           value={sort}
           onChange={setSort}
-          label="Sort the goods"
+          label={t('stats.sortLabel')}
         />
         <Segmented
           segments={[
-            { id: '1h', label: '1 h' },
-            { id: '1d', label: '1 day' },
-            { id: '7d', label: '7 days' },
+            { id: '1h', label: t('stats.h1') },
+            { id: '1d', label: t('stats.d1') },
+            { id: '7d', label: t('stats.d7') },
           ]}
           value={win}
           onChange={setWin}
-          label="The move's window"
+          label={t('stats.windowLabel')}
         />
       </div>
 
       {/* mt-0 on each: a section brings its own 24px of air, and three of them side by side in a
           grid would otherwise start at two different heights (0214 wrote the same thing here) */}
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SheetSection heading="Risers" surface data-testid="stats-risers" className="mt-0 first:mt-0">
-          <RankBars rows={movers(risers, 'success')} format={formatPctChange} empty="Nothing rose" />
+        <SheetSection heading={t('stats.risers')} surface data-testid="stats-risers" className="mt-0 first:mt-0">
+          <RankBars rows={movers(risers, 'success')} format={formatPctChange} empty={t('stats.nothingRose')} />
         </SheetSection>
-        <SheetSection heading="Fallers" surface data-testid="stats-fallers" className="mt-0 first:mt-0">
-          <RankBars rows={movers(fallers, 'danger')} format={formatPctChange} empty="Nothing fell" />
+        <SheetSection heading={t('stats.fallers')} surface data-testid="stats-fallers" className="mt-0 first:mt-0">
+          <RankBars rows={movers(fallers, 'danger')} format={formatPctChange} empty={t('stats.nothingFell')} />
         </SheetSection>
-        <SheetSection heading="Most traded, 24 h" surface data-testid="stats-most-traded" className="mt-0 first:mt-0">
+        <SheetSection heading={t('stats.mostTraded24')} surface data-testid="stats-most-traded" className="mt-0 first:mt-0">
           <RankBars
-            rows={traded.map((r) => ({ id: r.g.code, label: r.g.name, value: r.traded, text: `${formatInt(r.traded)} units` }))}
+            rows={traded.map((r) => ({ id: r.g.code, label: goodName(r.g), value: r.traded, text: t('format.units', { n: formatInt(r.traded), count: r.traded }) }))}
             format={formatInt}
-            empty="Nothing traded"
+            empty={t('stats.nothingTraded')}
           />
         </SheetSection>
       </div>
 
-      <SheetSection heading={`Every good · ${formatInt(v.goods.length)}`} surface data-testid="stats-goods">
-        <Hint className="mb-2">Price is the mean where the good is sold. Sold and bought are the last 24 hours, every market. Stock against its normal level.</Hint>
+      <SheetSection heading={t('stats.everyGood', { n: formatInt(v.goods.length) })} surface data-testid="stats-goods">
         {shown.map((r, i) => (
           <GoodRow key={r.g.code} g={r.g} move={r.move} last={i === shown.length - 1} />
         ))}
         {!all && rows.length > FIRST && (
           <div className="pt-3">
             <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">
-              {`Show all ${formatInt(rows.length)}`}
+              {t('stats.showAll', { n: formatInt(rows.length) })}
             </Button>
           </div>
         )}
@@ -141,27 +141,28 @@ export function MarketsFace({ beat, onServed }: FaceProps) {
 
 /** The window the player chose, as the words that go after "Rose" and "Fell". */
 function windowWord(win: Window): string {
-  return win === '1h' ? 'last hour' : win === '1d' ? 'last day' : 'last 7 days'
+  return win === '1h' ? tNow('stats.wHour') : win === '1d' ? tNow('stats.wDay') : tNow('stats.wWeek')
 }
 
 /** A mover as a ranked row: the bar is the size of the move, the figure its percent. */
 function movers(rows: readonly GoodRank[], tone: 'success' | 'danger'): RankRow[] {
-  return rows.map((r) => ({ id: r.g.code, label: r.g.name, value: r.move ?? 0, tone }))
+  return rows.map((r) => ({ id: r.g.code, label: goodName(r.g), value: r.move ?? 0, tone }))
 }
 
 function GoodRow({ g, move, last }: { g: StatsGood; move: number | null; last: boolean }) {
+  const t = useT()
   const tone = move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'
   return (
     <Row
       label={
         <span className="flex min-w-0 items-center gap-2">
-          <span className="min-w-0 truncate text-ink">{g.name}</span>
+          <span className="min-w-0 break-words text-ink">{goodName(g)}</span>
           <span className="shrink-0 text-t-caption text-ink-faint">{categoryLabel(g.category)}</span>
         </span>
       }
       value={
         <span className="flex items-center gap-3">
-          <Sparkline values={g.spark} tone={tone} width={48} height={18} label={`${g.name}, ${g.spark.length} readings`} />
+          <Sparkline values={g.spark} tone={tone} width={48} height={18} label={t('stats.readings', { name: goodName(g), n: g.spark.length })} />
           <span className="flex w-24 flex-col items-end">
             <Figure value={g.mid === null ? '—' : formatPriceFigure(g.mid)} />
             <Figure value={move === null ? '—' : formatPctChange(move)} tone={move === null ? 'faint' : deltaTone(move)} />
@@ -172,10 +173,10 @@ function GoodRow({ g, move, last }: { g: StatsGood; move: number | null; last: b
       data-testid="stats-good"
     >
       <FactsLine>
-        <span>{`sold ${formatInt(g.sold_1d)}`}</span>
-        <span>{`bought ${formatInt(g.bought_1d)}`}</span>
-        {g.markets > 0 && <StockGauge stock={g.stock} target={g.stock_target} label={`${g.name}, every market`} className="shrink-0" />}
-        {g.markets === 0 && <span>no city sells it</span>}
+        <span>{t('stats.sold', { n: formatInt(g.sold_1d) })}</span>
+        <span>{t('stats.bought', { n: formatInt(g.bought_1d) })}</span>
+        {g.markets > 0 && <StockGauge stock={g.stock} target={g.stock_target} label={t('stats.everyMarket', { name: goodName(g) })} className="shrink-0" />}
+        {g.markets === 0 && <span>{t('stats.noCitySells')}</span>}
       </FactsLine>
     </Row>
   )

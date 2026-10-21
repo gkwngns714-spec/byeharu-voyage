@@ -93,7 +93,6 @@ export function SignTheBook() {
         <div className="mt-2">
           <NationPicker value={nation} onChange={setNation} label={t('found.country')} />
         </div>
-        {capital && <Hint className="mt-2">{t('found.startAt', { capital })}</Hint>}
 
         {/* A refusal is DATA (DESIGN F.5): a sentence and at least one fix, printed as it arrives —
             this screen does not translate server errors into its own words. The code goes to

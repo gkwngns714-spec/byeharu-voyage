@@ -21,6 +21,8 @@
 // it does not scale to zero unless the data touches it (the shape of the move is the point; the
 // figures beside it carry the size). Below two points it draws nothing.
 
+import { t } from '../../lib/i18n'
+
 export interface SeriesPoint {
   /** The served instant, in ms. */
   atMs: number
@@ -48,12 +50,12 @@ const PAD = { left: 8, right: 8, top: 8, bottom: 18 }
 
 /** "6h", "2d", "45m" — how far before the newest point an instant lies. */
 export function agoLabel(ms: number): string {
-  if (ms < 60_000) return 'now'
+  if (ms < 60_000) return t('shell.now')
   const min = Math.round(ms / 60_000)
-  if (min < 60) return `${min}m`
+  if (min < 60) return t('format.shortM', { n: min })
   const h = Math.round(ms / 3_600_000)
-  if (h < 48) return `${h}h`
-  return `${Math.round(ms / 86_400_000)}d`
+  if (h < 48) return t('format.agoHour', { n: h })
+  return t('format.agoDay', { n: Math.round(ms / 86_400_000) })
 }
 
 export function seriesChartModel(
@@ -89,7 +91,7 @@ export function seriesChartModel(
   const xTicks = [
     { x: plot.x, label: agoLabel(t1 - t0) },
     { x: plot.x + plot.w / 2, label: agoLabel((t1 - t0) / 2) },
-    { x: plot.x + plot.w, label: 'now' },
+    { x: plot.x + plot.w, label: t('shell.now') },
   ]
   return { width: size.width, height: size.height, plot, line, area, yTicks, xTicks, dots }
 }
