@@ -179,9 +179,11 @@ export function GoodChart({
               both are absent while a pressed city's estimate is on the wire — and this line must keep
               its height through that, or the head shrinks by a line and everything under the chart
               moves on a press, which is the law the desk is measured against (tests/desk.layout.spec.ts
-              "a press … does not move"). `min-h-4` is one t-caption line, the figure in src/index.css. */}
-          <span className="mt-1 flex min-h-4 flex-wrap items-baseline gap-x-2 gap-y-1 text-t-caption text-ink-faint">
-            {now !== null && <span className="tabular-nums">{t('markets.midPrice', { price: formatPrice(now) })}</span>}
+              "a press … does not move"). `h-4` is one t-caption line (the figure in src/index.css) and the line NEVER WRAPS: a city whose
+              mid price and move together were wider than the column wrapped the move onto a second line
+              and pushed everything under the chart down 20 px on a press at 390 px. */}
+          <span className="mt-1 flex h-4 items-baseline gap-x-2 overflow-hidden whitespace-nowrap text-t-caption text-ink-faint">
+            {now !== null && <span className="min-w-0 truncate tabular-nums">{t('markets.midPrice', { price: formatPrice(now) })}</span>}
             {move !== null && moveHours !== null && (
               <span
                 className={[
