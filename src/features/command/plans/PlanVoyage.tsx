@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { SmallChart } from '../../../chart'
 import { Figure, Hint, Note, Row } from '../../../components/ui'
-import { fleetCrew, fleetHoldBreakdown, suppliesForDays } from '../../../domain/fleet'
+import { fleetCrew } from '../../../domain/fleet'
 import { useSeaConditions } from '../../../live/useSeaConditions'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatInt, formatOfTotal, formatTons, formatVoyageDays, tonsWord } from '../../../lib/format'
+import { formatInt, formatVoyageDays } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import type { PlanDraft } from './planDraft'
@@ -17,17 +17,16 @@ import { daysAt, planLines, reachBoard, reachWords, seaAsksWords } from './planL
 //      show how long, provision needed for the current crew, how many crews needed, etc... It should show
 //      restrictions – if whether my level, my class, my ship can go to that location."
 //
-// Four parts, under the plan builder's estimate, on the Plans face:
+// Four parts, under the trade card, on the Trade face:
 //
 //   THE CHART — `SmallChart`, the same chart the Map tab draws with, handed ONLY the plan's cities (where the
 //   fleet is, the ports on the way, the buy city, the sell city) and only this fleet (no merchants), with the
 //   plan's courses dashed: the courses `planLines` proposes, the same `path` the queued SAIL lines carry.
 //
-//   THE VOYAGE — days at sea as the board serves them (to the buy city, then on to the sell city), the
-//   supplies the CURRENT crew needs for the longest stretch at sea (the fleet resupplies at each port on the
-//   way; `suppliesForDays` is the server's own consumption, times the served margin a leg must leave), the
-//   cargo space left after those supplies, and the crew against the ships' minimum (`fleetCrew`, row 179's
-//   model: `ship_classes.crew_required`, below which SAIL refuses E_CREW_SHORT).
+//   THE VOYAGE — days at sea as the board serves them (to the buy city, then on to the sell city) and the crew
+//   against the ships' minimum (`fleetCrew`, row 179's model: `ship_classes.crew_required`, below which SAIL
+//   refuses E_CREW_SHORT). The supplies are not worked out here any more (0225): the trade card prints the
+//   board's own `supplies` for the chosen row — public.supply_need's reading, the rule cmd.do_sail buys by.
 //
 //   CAN YOU GO THERE — the ONE authority, read and printed, never re-judged here:
 //     · the reach (0188): the board's `sailable` / `needs` per city, in `reachWords`, THE wording;
@@ -94,18 +93,7 @@ export function PlanVoyage({
   const endsKey = [plan.buyAt, plan.sellAt].filter((c): c is string => c !== null).join(' ')
   const considering = useMemo(() => (endsKey ? endsKey.split(' ') : []), [endsKey])
 
-  // THE VOYAGE, as the board serves it: to the buy city (when it is elsewhere), then on to the sell city.
-  const toBuyDays = !plan.buyAt ? 0 : !buyRow ? null : buyRow.here ? 0 : buyRow.days
-  const days = sellRow && sellRow.days !== null && toBuyDays !== null ? toBuyDays + sellRow.days : null
-  const longest = Math.max(buyRow?.longest_leg?.days ?? 0, sellRow?.longest_leg?.days ?? 0)
-  const stretch = longest > 0 ? longest : days
   const crew = fleetCrew(fleet)
-  const margin = board?.supplies?.margin ?? snapshot?.config.endurance_margin ?? 1
-  const needT =
-    stretch !== null && snapshot ? suppliesForDays(crew.aboard, stretch * margin, snapshot.config) : null
-  const hold = fleetHoldBreakdown(fleet)
-  const roomT = needT !== null ? Math.max(0, hold.totalT - needT) : null
-  const withStops = (buyRow?.stops?.length ?? 0) + (sellRow?.stops?.length ?? 0) > 0
 
   // CAN YOU GO THERE — the reach, per city the plan sails to (the board's verdict, in THE wording).
   const reachRows = [plan.buyAt && buyRow && !buyRow.here ? buyRow : null, sellRow].filter(
@@ -132,54 +120,15 @@ export function PlanVoyage({
         {only.join(' ')}
       </span>
 
-      <span className="mt-4 block text-t-caption text-ink-faint">{t('desk.voyage')}</span>
-      <Row
-        label={t('desk.daysAtSea')}
-        value={<Figure value={days !== null ? formatVoyageDays(days) : '—'} />}
-        data-testid="plan-days"
-      />
-      <Row
-        label={t('desk.suppliesNeeded')}
-        value={
-          <Figure
-            value={
-              needT !== null
-                ? t('desk.suppliesFor', { tons: formatTons(needT, 1), crew: t('desk.crewN', { n: crew.aboard }) })
-                : '—'
-            }
-          />
-        }
-        data-testid="plan-supplies"
-      />
-      <Row
-        label={t('desk.roomForGoods')}
-        value={
-          <Figure
-            value={roomT !== null ? `${formatOfTotal(roomT, hold.totalT)} ${tonsWord(hold.totalT)}` : '—'}
-          />
-        }
-        data-testid="plan-room"
-      />
-      <Row
-        label={t('desk.crewNow')}
-        value={<Figure value={t('desk.crewOf', { n: formatInt(crew.aboard), max: formatInt(crew.max) })} />}
-      />
+      <span className="mt-4 block text-t-caption text-ink-faint">{t('desk.crewNow')}</span>
+      <Row label={t('desk.crewNow')} value={<Figure value={t('desk.crewOf', { n: formatInt(crew.aboard), max: formatInt(crew.max) })} />} />
       <Row
         label={t('desk.crewMin')}
         value={<Figure value={formatInt(crew.required)} tone={crew.short > 0 ? 'warning' : 'ink'} />}
         hairline={false}
         data-testid="plan-crew-min"
       />
-      <Hint>
-        {[
-          longest > 0 && days !== null && longest < days ? t('desk.longestStretch', { days: formatVoyageDays(longest) }) : null,
-          board?.supplies ? t('desk.suppliesNow', { days: formatVoyageDays(board.supplies.days) }) : null,
-          withStops ? t('desk.suppliesStops') : null,
-          crew.short > 0 ? t('desk.crewShort', { n: crew.short }) : t('desk.crewOk'),
-        ]
-          .filter(Boolean)
-          .join(' ')}
-      </Hint>
+      <Hint>{crew.short > 0 ? t('desk.crewShort', { n: crew.short }) : t('desk.crewOk')}</Hint>
 
       <section className="mt-4" data-testid="plan-restrictions">
         <span className="block text-t-caption text-ink-faint">{t('desk.restrictions')}</span>

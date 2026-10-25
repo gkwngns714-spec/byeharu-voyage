@@ -2,17 +2,16 @@ import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE PLAN BUILDER, DRIVEN (docs/COMMAND_DESK.md §3.5, slice D4) — on a local build, at the phone:
-//   a good sold elsewhere → its Buy at row's Plan → the desk turns to Plans (row 183), the builder there with the board's
-//   estimate for the chosen cities → a sell city pressed changes the estimate in place (nothing above it
-//   moves) → "Queue it once" → the desk turns to Plans, where the plan's lines stand in the queue, the
-//   SAIL to the buy city first and the SELL last.
+// A TRADE FROM THE GOOD PAGE, DRIVEN (docs/COMMAND_REDESIGN.md §2, R1) — on a local build, at the phone:
+//   a good sold elsewhere → its Buy at row's Plan → the desk turns to Trade (row 183), the card there with the
+//   board's figures for the chosen cities and the sell list beside it → a second sell row pressed changes the
+//   card in place (nothing above it moves) → Go → the trip's lines stand in the queue, the SELL last.
 // Nothing here asserts a price; the lines' order and the slot's turns are the claim.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('a plan from the good page is queued whole and stands on Plans', async ({ page, request, baseURL }) => {
+test('a trade from the good page is queued whole and stands on Trade', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(
     !(await reachable(request, baseURL ?? '')),
@@ -29,31 +28,41 @@ test('a plan from the good page is queued whole and stands on Plans', async ({ p
   await expect(plan).toBeVisible({ timeout: 60_000 })
   await plan.click()
 
-  // owner row 183: the press turns the desk to Plans, and the plan is made there
+  // owner row 183: the press turns the desk to Trade, and the trade is made there
   await expect(page.getByTestId('desk-plans')).toBeVisible({ timeout: 30_000 })
-  const builder = page.getByTestId('desk-plans').getByTestId('plan-builder')
-  await expect(builder).toBeVisible()
+  const card = page.getByTestId('desk-plans').getByTestId('trade-card')
+  await expect(card).toBeVisible()
   await expect(page.getByTestId('good-page')).toHaveCount(0)
-  // the board's estimate for the chosen cities lands (skeleton first, at its final height)
-  await expect(builder.getByTestId('plan-estimate')).toContainText('Net', { timeout: 60_000 })
+  // the board's figures for the chosen cities land, and the Go button says Go
+  const rows = page.getByTestId('trade-sell-row')
+  await expect(rows.first()).toBeVisible({ timeout: 60_000 })
+  await expect(card.getByTestId('plan-queue')).toHaveText('Go', { timeout: 60_000 })
 
-  // a second sell city pressed: the estimate changes in place, nothing above it moves
-  const sellChips = builder.getByRole('group', { name: 'Sell at' }).getByRole('button')
-  if ((await sellChips.count()) > 1) {
-    const top = await builder.getByTestId('plan-estimate').evaluate((e) => Math.round(e.getBoundingClientRect().top))
-    await sellChips.nth(1).click()
+  // a second sell row pressed: the card changes in place, nothing above it moves. Measured as the card's offset within
+  // its face (the sheet scrolls to reach a row; a scroll is not a move).
+  const offset = () =>
+    card.evaluate((e) => {
+      const face = e.closest('[data-testid="desk-plans"]') as HTMLElement
+      return Math.round(e.getBoundingClientRect().top - face.getBoundingClientRect().top)
+    })
+  if ((await rows.count()) > 1) {
+    const top = await offset()
+    await rows.nth(1).click()
+    await expect(rows.nth(1)).toHaveAttribute('aria-pressed', 'true')
     await page.waitForTimeout(800)
-    expect(await builder.getByTestId('plan-estimate').evaluate((e) => Math.round(e.getBoundingClientRect().top))).toBe(top)
+    expect(await offset(), 'a press moved the card').toBe(top)
   }
 
-  await builder.getByTestId('plan-queue').click()
-  await expect(page.getByTestId('plan-builder')).toHaveCount(0, { timeout: 60_000 })
+  await expect(card.getByTestId('plan-queue')).toHaveText('Go', { timeout: 60_000 })
+  await card.getByTestId('plan-queue').click()
+  await expect(page.getByTestId('trade-card')).toHaveCount(0, { timeout: 60_000 })
   await expect(page.getByTestId('desk-plans')).toBeVisible()
-  const rows = page.getByTestId('queue-row')
-  await expect(rows.first()).toBeVisible({ timeout: 30_000 })
-  const texts = (await rows.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))
-  console.log(`queued plan: ${JSON.stringify(texts)}`)
+  const queued = page.getByTestId('queue-row')
+  await expect(queued.first()).toBeVisible({ timeout: 30_000 })
+  const texts = (await queued.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))
+  console.log(`queued trade: ${JSON.stringify(texts)}`)
   expect(texts.length).toBeGreaterThanOrEqual(3)
   expect(texts.some((t) => /sell/i.test(t))).toBe(true)
+  expect(texts.some((t) => /provision/i.test(t)), "the plan wrote a PROVISION line: supplies are the SAIL's own (0225)").toBe(false)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

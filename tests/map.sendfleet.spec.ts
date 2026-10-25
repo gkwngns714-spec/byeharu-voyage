@@ -319,23 +319,11 @@ test.describe('the whole send, driven on a phone', () => {
     const her = (await row.innerText()).split('\n')[0]
     await row.click()
 
-    const keep = page.getByTestId('map-send-keep')
+    // 0225 (owner row 203): the keep control is GONE — supplies are the SAIL's own business — so the picked row
+    // unfolds only the send's options (the insurance press, when the dry run quoted one).
+    const keep = page.getByTestId('map-send-options')
     await expect(keep).toBeVisible()
-    const ratio = page.getByTestId('map-send-ratio')
-    await expect(
-      ratio,
-      'the tray offers no way to SET a ratio, so a house with no standing order must leave the ' +
-        'map to write one — the screen-hop OWNER_REQUESTS row 45 exists to delete',
-    ).toBeVisible()
-
-    const figures = page.getByTestId('map-send-ratio-figures')
-    const before = await figures.innerText()
-    await page.getByTestId('map-send-ratio-more').click()
-    await page.getByTestId('map-send-ratio-more').click()
-    await expect(figures).not.toHaveText(before)
-    const deeper = await figures.innerText()
-    await page.getByTestId('map-send-ratio-less').click()
-    await expect(figures).not.toHaveText(deeper)
+    await expect(page.getByTestId('map-send-ratio')).toHaveCount(0)
 
     // ARMED, NOT FIRED. Three independent readings of "she has not sailed", because this is the
     // dangerous half: a ratio control one stray tap from dispatching a real voyage would be worse
@@ -348,7 +336,7 @@ test.describe('the whole send, driven on a phone', () => {
     await expect(page.getByTestId('map-send-row-head').first()).toContainText(her)
 
     // NOTHING WAS COLLAPSED, REPLACED OR DESTROYED — the owner's standing rule. The tray still
-    // stands at half; the list and the keep control that were open before the ratio moved are
+    // stands at half; the list and the options that were open before are
     // open after it.
     await expect(tray).toHaveAttribute('data-tray-detent', 'half')
     await expect(page.getByTestId('map-send-fleets')).toBeVisible()
@@ -358,7 +346,7 @@ test.describe('the whole send, driven on a phone', () => {
     const sendPress = page.getByTestId('map-send-ratio-send')
     await expect(sendPress).toBeEnabled()
     await expect(sendPress).toContainText(her)
-    await expect(sendPress).toContainText(/keep/)
+    await expect(sendPress).not.toContainText(/keep/)
 
     await page.screenshot({ path: 'map-fold-ratio-390.png' })
 

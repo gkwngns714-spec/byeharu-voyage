@@ -1833,55 +1833,6 @@ export interface StudiedSkill extends SkillQueueSet {
   paid: number
 }
 
-// ── THE BOOK OF STANDING ORDERS (0034) ──────────────────────────────────────────────────────────
-// A provision preset is a HOUSE-owned standing order — "keep her at N days of stores" — that a
-// fleet points at by reference. The days figure is a RANGE target judged against the served
-// `endurance_days` when the fleet makes port; the tonnage it costs is computed there, from the
-// crew aboard then. Nothing on this side derives either figure — the client's job is to print
-// the target beside the crew it is measured against.
-
-export interface ProvisionPresetFleetRef {
-  id: string
-  name: string
-}
-
-export interface ProvisionPreset {
-  id: string
-  name: string
-  /** The RANGE target, in voyage-days — never a tonnage. Sized at fire time from crew aboard. */
-  days: number
-  /** The fleets sailing under this order. Served, so FLEETS and the book cannot disagree. */
-  fleets: ProvisionPresetFleetRef[]
-}
-
-/** What `world.provision_presets()` serves: the whole book, and how full it may get. */
-export interface ProvisionPresetBook {
-  max: number
-  presets: ProvisionPreset[]
-}
-
-/** `cmd.provision_preset_save` — create (id null) or adjust. Refusals arrive as `Refusal`. */
-export interface PresetSaved {
-  ok: true
-  id: string
-  name: string
-  days: number
-}
-
-export interface PresetDeleted {
-  ok: true
-  deleted: string
-  /** How many fleets the strike released — the FK detaches them, and the server says so. */
-  detached_fleets: number
-}
-
-export interface PresetApplied {
-  ok: true
-  fleet: string
-  preset: string | null
-  days: number | null
-}
-
 // ── STANDING ROUTES (0092) ──────────────────────────────────────────────────────────────────────
 // A route is a loop of harbours that writes its fleet's next orders into the ONE queue whenever the
 // queue runs dry in port; the executor that runs them is the same one a typed order meets. Every
@@ -2768,6 +2719,8 @@ export interface BoardBuyRow extends BoardPassage {
   sailable?: boolean
   /** The passage's longest leg. */
   longest_leg?: { miles: number; days: number } | null
+  /** 0225 — the supplies the passage there asks (see BoardSellRow). */
+  supplies?: BoardSupplies | null
 }
 
 /** A harbour that buys the good (0171 good_board `sell`). Only `quoted` rows carry the money. */
@@ -2793,6 +2746,9 @@ export interface BoardSellRow extends BoardPassage {
   wages: number | null
   net: number | null
   net_per_ton: number | null
+  /** 0225 — `net` less the supplies the passage asks (`supplies.cost`): what the trip leaves. Null when either
+   *  is unknown. Absent before 0225. */
+  profit?: number | null
   cap_left: number | null
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
@@ -2807,6 +2763,21 @@ export interface BoardSellRow extends BoardPassage {
   sailable?: boolean
   /** The passage's longest leg. */
   longest_leg?: { miles: number; days: number } | null
+  /** 0225 — THE SUPPLIES THIS PASSAGE ASKS, from `public.supply_need` (the same rule `cmd.do_sail` buys by):
+   *  the days of stores its longest leg needs at the sail door's margin, what topping her casks up to them costs
+   *  now (0 when they already cover it), and whether they fit her hold beside what she carries. Null when the
+   *  row has no passage. Absent before 0225. */
+  supplies?: BoardSupplies | null
+}
+
+/** 0225 `public.supply_need(fleet, days)`: the stores a passage asks, what they cost, whether they fit. */
+export interface BoardSupplies {
+  days: number
+  cost: number
+  fits: boolean
+  /** Sell rows, when the good is bought first: the units of it that fit beside these stores (the capacity basis less
+   *  their tuns) — what a BUY may load and still sail this leg. Null on the hold basis. */
+  units_fit?: number | null
 }
 
 /** The Navigation a leg needs (0188 public.passage_needs). */

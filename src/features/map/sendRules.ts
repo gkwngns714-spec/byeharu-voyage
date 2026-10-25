@@ -74,9 +74,3 @@ export function canGo(standing: Standing): boolean {
   return standing === 'send' || standing === 'turn'
 }
 
-/** A whole number of days, never less than one — the shape the book's `days` column takes. It
- *  ROUNDS UP, because a target rounded down does not cover the thing it was read from. Not a rule
- *  about provisioning: the server judges every one of these. */
-export function atLeastOneDay(days: number): number {
-  return Number.isFinite(days) ? Math.max(1, Math.ceil(days)) : 1
-}

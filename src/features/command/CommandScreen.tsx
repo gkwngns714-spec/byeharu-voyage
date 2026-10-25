@@ -11,7 +11,7 @@ import { DeskTrade } from './markets/DeskTrade'
 import { GoodPage } from './markets/GoodPage'
 import { Markets } from './markets/Markets'
 import { Terminal } from './markets/Terminal'
-import { Plans } from './plans/Plans'
+import { Trade } from './plans/Trade'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
 import { Profit } from './profit/Profit'
@@ -29,7 +29,7 @@ import { useT } from '../../lib/i18n'
 // all … stylish - modern - sophisticated yet concise simple."*
 //
 // THE SHELL: the fleet strip (which fleet — the picker, FleetPicker.tsx — and its two figures), the faces (deskView.ts — the
-// ones built: Markets · Plans), and the face. A good pressed on Markets opens its page in ONE slot (a
+// ones built: Markets · Trade · City · Invest · Profit), and the face. A good pressed on Markets opens its page in ONE slot (a
 // tray; beside the column on a wide glass); the page's Buy / Sell cell turns that slot over to THE trade
 // tray, and closing it returns to the page. One state says which stands, as PORT's board keeps its own.
 //
@@ -80,9 +80,10 @@ export function CommandScreen() {
   const turnTo = useDeskView((s) => s.turnTo)
   const goodCode = useDeskGood((s) => s.code)
   const openDraft = useDeskPlan((s) => s.open)
-  // PLAN THIS TRADE OPENS THE PLANS FACE (owner row 183, 2026-10-20: "when I press plan this trade, it should
-  // switch to plan tab and make planning there"). The draft is opened and the desk turns to Plans in the same
-  // press; the builder, its chart and its restrictions stand there (Plans.tsx), never over Markets.
+  // PLAN THIS TRADE OPENS THE TRADE FACE (owner row 183, 2026-10-20: "when I press plan this trade, it should
+  // switch to plan tab and make planning there"; row 190/194, 2026-10-25: Plans became Trade, the one page the
+  // whole buy → sail → sell is made on). The draft is opened and the desk turns to it in the same press; the
+  // card, its chart and its restrictions stand there (Trade.tsx), never over Markets.
   const openPlan = (draft: PlanDraft) => {
     openDraft(draft)
     turnTo('plans')
@@ -143,7 +144,7 @@ export function CommandScreen() {
   const layout: DeskLayout = wide ? (parts) => <DeskPanes face={face} {...parts} /> : (parts) => <DeskStack {...parts} />
   const faceBody = (f: FleetView) =>
     face === 'plans' ? (
-      <Plans fleet={f} layout={layout} />
+      <Trade fleet={f} layout={layout} />
     ) : face === 'city' ? (
       <City fleet={f} layout={layout} />
     ) : face === 'invest' ? (

@@ -5,7 +5,7 @@ import { sailEstimate } from '../../domain/order'
 import { whereabouts, whereParts } from '../../domain/fleet'
 import { GoToLink, PlaceLine } from '../../chart'
 import { portNameOf, useWorld } from '../../live/worldStore'
-import { KeepAndSend } from './KeepAndSend'
+import { SendInsurance } from './SendInsurance'
 import { canGo, type Fix } from './sendRules'
 import type { SendFlow } from './useSendFleet'
 import { useT } from '../../lib/i18n'
@@ -69,7 +69,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
         <Refused refusal={v.refusal} fixes={flow.fixesOf(f, v.refusal)} testId="map-send-refusal" />
       )}
 
-      {on && pressable && <KeepAndSend fleet={f} flow={flow} />}
+      {on && pressable && <SendInsurance fleet={f} flow={flow} />}
 
       {acted?.state === 'busy' && (
         <Note tone="neutral" data-testid="map-send-busy">

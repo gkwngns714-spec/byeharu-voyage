@@ -249,8 +249,7 @@ begin
   end;
   if coalesce(cmd.issue(v_rfleet, 'SAIL TO LIS')->>'error_code', 'OK') not in ('E_NO_SUCH_FLEET', 'E_NOT_YOUR_FLEET')
      or coalesce(cmd.clear(v_rfleet, false)->>'error_code', 'OK') <> 'E_NOT_YOUR_FLEET'
-     or coalesce(cmd.cancel_at(v_rfleet, null)->>'error_code', 'OK') <> 'E_NOT_YOUR_FLEET'
-     or coalesce(cmd.provision_preset_apply(v_rfleet, null)->>'error_code', 'OK') <> 'E_NOT_YOUR_FLEET' then
+     or coalesce(cmd.cancel_at(v_rfleet, null)->>'error_code', 'OK') <> 'E_NOT_YOUR_FLEET' then   -- (0225: the preset door is revoked, 42501 for everyone)
     raise exception 'PROOF 12 FAILED: a door accepted a merchant''s fleet';
   end if;
   begin

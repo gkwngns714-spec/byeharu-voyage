@@ -274,22 +274,6 @@ export function fleetCrew(fleet: FleetView): CrewCount {
   return { ...totals, berths: totals.max - totals.aboard }
 }
 
-/**
- * TONS OF SUPPLIES A CREW EATS AND DRINKS IN `days` AT SEA (owner row 183, the Plans face: "provision
- * needed for the current crew"). The server's own arithmetic, read off two served knobs: `voyage.settle`
- * takes `crew × water_per_crew_day` and `crew × food_per_crew_day` off the barrels for every day at sea, and
- * the standing order tops up to `days × crew × per_crew_day` (docs/dev-log/2026-10-20-arrival-wait-and-
- * provisions.md §2). A READING for a plan, never a check: SAIL refuses on the served `endurance_days`.
- */
-export function suppliesForDays(
-  crew: number,
-  days: number,
-  perCrewDay: { water_per_crew_day: number; food_per_crew_day: number },
-): number {
-  if (!(crew > 0) || !(days > 0)) return 0
-  return crew * days * (perCrewDay.water_per_crew_day + perCrewDay.food_per_crew_day)
-}
-
 export function fleetStores(fleet: FleetView): { waterT: number; foodT: number } {
   return {
     waterT: fleet.ships.reduce((n, s) => n + s.water_t, 0),
