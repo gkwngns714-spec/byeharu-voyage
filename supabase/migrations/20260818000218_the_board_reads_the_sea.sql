@@ -314,6 +314,7 @@ declare
   v_lis    uuid;
   v_lpa    uuid;
   v_good   uuid;
+  v_good2  uuid;
   v_gcode  text;
   v_title  int;
   v_wave   numeric;
@@ -476,9 +477,18 @@ begin
        or (v_lp->'sea'->>'needs_title')::int <> 2 then
       raise exception '0218 self-assert FAIL: lit, the Las Palmas buy row reads %', v_lp;
     end if;
-    -- (e) every buy row that HAS a passage is clear: the board's verdict and 0216's reach_passage agree
+    -- (e) every buy row that HAS a passage is clear: the board's verdict and 0216's reach_passage agree. Las Palmas's
+    -- good is sold only past home water (CI round 3: 0 rows with a passage lit), so the board of the first good
+    -- Lisbon sells is read too: its home-water sellers have passages.
+    select g.id into v_good2
+      from public.goods g join public.port_goods pg on pg.good_id = g.id and pg.port_id = v_lis
+     where public.port_offers(v_lis, g.id)
+     order by g.code limit 1;
     for e in select x from jsonb_array_elements(v_res->'buy') x
-              where jsonb_typeof(x->'miles') = 'number' and jsonb_typeof(x->'sea') = 'object' loop
+              where jsonb_typeof(x->'miles') = 'number' and jsonb_typeof(x->'sea') = 'object'
+             union all
+             select x from jsonb_array_elements(world.good_board(v_good2, v_fleet, null, null)->'buy') x
+              where v_good2 is not null and jsonb_typeof(x->'miles') = 'number' and jsonb_typeof(x->'sea') = 'object' loop
       v_lit_open := v_lit_open + 1;
       if jsonb_typeof(e->'sea'->'refusal') = 'object' then
         v_lit_bad := v_lit_bad + 1;

@@ -57,6 +57,10 @@ route crossed far water. The board is now asked with `p_from` = Lisbon (no good 
 Palmas, round 2 found): with no buy city the sell rows run from Lisbon, so home-water sell rows are the clear
 control and the Las Palmas buy row the refused one.
 
+Round 3: every dark check passed and Las Palmas lit read as designed; the lit cross-check found **0** buy rows with
+a passage (that good is sold only past home water). It now reads the board of the first good Lisbon sells as well,
+whose home-water sellers have passages.
+
 ## What was run here
 
 `npm ci --ignore-scripts`, `npx tsc -b` (clean), `npx eslint .` (clean), the pure specs `planWords` (4 new cases),
