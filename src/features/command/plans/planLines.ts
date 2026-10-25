@@ -11,11 +11,12 @@
 //
 // THE PASSAGE SHE CAN SAIL (0188; the owner, 2026-10-18: "your navigation carries you 1700 nm"). A far city is
 // reached through the harbours world.good_board serves as the row's `stops` — every leg within her captain's
-// reach (voyage.reach_passage, the one authority). Each stop is a real SAIL to a harbour; PROVISION FULL is
-// written there only when her casks would not cover the next leg (its course's miles at her speed × the
-// endurance margin, voyage.sail_refusal's rule — the stores the board served are the floor after a PROVISION),
-// so a long passage spends as few of the queue's lines as it can. cmd.issue_lines asks passage_gate of every
-// SAIL before any is queued, and the SAIL itself is still the server's to refuse when it runs.
+// reach (voyage.reach_passage, the one authority). Each stop is a real SAIL to a harbour. cmd.issue_lines asks
+// passage_gate of every SAIL before any is queued, and the SAIL itself is still the server's to refuse when it runs.
+//
+// SUPPLIES ARE THE SAIL'S OWN (0221, owner row 203). No PROVISION line is written here any more: cmd.do_sail buys
+// what each leg needs through public.supply_need before it departs, so the plan carries no casks arithmetic and
+// no stores input — the board's `supplies` on a row is the same rule's reading, printed by the card.
 //
 // INSURING THE CARGO (0213). `plan.insure` writes ` INSURED` on every LADEN SAIL — the legs after the BUY (or
 // every leg, when the plan sells what is already on board) — and on no empty leg: an empty hold insures nothing
@@ -56,8 +57,6 @@ export function daysAt(nm: number, speedKn: number): number {
 export interface PlanPassage {
   toBuy: readonly string[]
   toSell: readonly string[]
-  /** What the board served (0188): her speed, the days her stores carry now, the margin a leg must leave. */
-  stores?: { speedKn: number; days: number; margin: number } | null
 }
 
 export function planLines(
@@ -72,28 +71,15 @@ export function planLines(
   const docked = fleet.status === 'DOCKED' ? fleet.port : null
   let here = docked
   let from = sailOrigin(fleet, portByCode)
-  const stores = passage.stores ?? null
-  let casks = stores?.days ?? Number.POSITIVE_INFINITY
-  // where the BUY line stands: stores are taken on BEFORE the cargo, so a full hold never refuses the casks
-  let buyLine: number | null = null
   // 0213: laden from the start when the plan sells what is on board; otherwise from the BUY on
   let laden = plan.buyAt === null
-  /** A SAIL with its proposed course; at a harbour, PROVISION FULL first when her casks would not cover it. */
+  /** A SAIL with its proposed course. */
   const sail = (code: string): boolean => {
     const to = sailTarget({ dest: code }, portByCode)
     const course = from && to ? proposeCourse(nav, from, to) : null
     if (!course) return false
     const nm = pathLengthNm(course.map(([lat, lon]) => ({ lat, lon })))
     legs.push({ from: here, to: code, path: course, nm })
-    if (stores && stores.speedKn > 0) {
-      const days = daysAt(nm, stores.speedKn)
-      if (here !== null && casks < days * stores.margin) {
-        if (buyLine !== null && here === plan.buyAt) lines.splice(buyLine, 0, { text: 'PROVISION FULL' })
-        else lines.push({ text: 'PROVISION FULL' })
-        casks = Math.max(casks, stores.days)
-      }
-      casks -= days
-    }
     lines.push({ text: `SAIL ${code}${plan.insure && laden ? ' INSURED' : ''}`, path: course })
     from = to
     here = code
@@ -113,7 +99,6 @@ export function planLines(
       if (missed) return { ok: false, noCourseTo: missed }
       here = plan.buyAt
     }
-    buyLine = lines.length
     lines.push({
       text: `BUY ${plan.good} ${plan.units !== null && plan.units > 0 ? num(plan.units) : 'ALL'}${plan.max !== null ? ` AT <= ${num(plan.max)}` : ''}`,
     })

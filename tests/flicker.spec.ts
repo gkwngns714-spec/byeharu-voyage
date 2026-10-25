@@ -107,19 +107,11 @@ test('COMMAND: no button greys and Start route never leaves across three beats',
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await serveRoutesOn(page)
 
-  // A route cannot start without a keep level (E_NO_KEEP) — set one on FLEETS, the way a player does.
-  await page.goto('fleets')
+  // 0221: no keep level is needed any more — supplies are bought by every SAIL.
+  await page.goto('command')
   await ready(page)
-  await page.getByTestId('fleet-row').first().click()
-  const typed = page.getByLabel(/days of supplies to keep .* at, typed/)
-  await typed.fill('10')
-  await typed.press('Enter')
-  await page.getByTestId('fleet-keep').click()
-  await expect(page.getByTestId('fleet-keep')).toHaveCount(0, { timeout: 60_000 })
-  await page.getByTestId('fleet-command').click()
-  await expect(page.getByTestId('command')).toBeVisible()
   // 2026-10-18: the route is on the desk's Plans face (docs/COMMAND_DESK.md §3.5)
-  await page.getByRole('tab', { name: 'Plans' }).click()
+  await page.getByRole('tab', { name: 'Trade' }).click()
 
   const routeRow = page.getByTestId('route-row')
   await expect(routeRow).toContainText('No route', { timeout: 60_000 })

@@ -86,16 +86,12 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
     expect(rowsAfter, 'a press moved the list').toEqual(rowsBefore)
     expect(code).not.toBeNull()
 
-    // A Plan turns the desk to Plans (owner row 183) and stands in its ticket pane; closing it leaves Plans
-    // standing, and the panes are where they were.
+    // A Plan turns the desk to Trade (owner row 183; 0221) and the card stands in its centre pane.
     const plan = page.getByTestId('desk-plan').first()
     if (await plan.count()) {
       await plan.click()
       await expect(page.getByTestId('desk-plans')).toBeVisible({ timeout: 30_000 })
-      await expect(page.getByTestId('desk-pane-ticket').getByTestId('plan-builder')).toBeVisible({ timeout: 30_000 })
-      await page.getByTestId('plan-builder').getByTestId('tray-close').click()
-      await expect(page.getByTestId('plan-builder')).toHaveCount(0)
-      await expect(page.getByTestId('desk-plans')).toBeVisible()
+      await expect(page.getByTestId('desk-pane-chart').getByTestId('trade-card')).toBeVisible({ timeout: 30_000 })
     }
   })
 })

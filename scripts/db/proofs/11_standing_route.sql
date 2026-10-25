@@ -101,8 +101,7 @@ begin
   -- ── 1. THE CLIENT PATH ───────────────────────────────────────────────────────────────────────
   perform cmd.assume_identity(c_auth);
   set local role authenticated;
-  v_res := cmd.provision_preset_save(null, 'Keep for the route', 12);
-  perform cmd.provision_preset_apply(v_fleet, (v_res->>'id')::uuid);
+  -- (0221: no keep level is set first — the standing order is gone; every SAIL buys its own stores)
   v_res := cmd.standing_route_save(null, 'Wine run', jsonb_build_array(
     jsonb_build_object('port', 'LIS', 'course', v_leg, 'lines', jsonb_build_array(
       jsonb_build_object('kind', 'SELL'),

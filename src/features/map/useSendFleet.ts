@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { formatVoyageDays } from '../../lib/format'
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
 import { findVerb, fixAction, isComplete, orderText, sailEstimate, useCommandDraft, verbWord, type SailInsurance } from '../../domain/order'
 import { fleetNow, proposeCourse, roadsteadCourseNote, sailOrigin, sailTarget } from '../../domain/passage'
 import { useWorld } from '../../live/worldStore'
 import {
-  atLeastOneDay,
   destArgs,
   destName,
   standingOf as standingFor,
@@ -29,17 +27,13 @@ import {
 // inline; this is the selectors and the closures, and the tray is the markup.
 //
 // NOT A SECOND COMPOSER. One grammar (`cmd.verb_schema()`), one judge (`cmd.preview()` runs the
-// real verb and rolls it back), ONE issue path (`worldStore.issue` → `cmd.issue`) and ONE
-// standing-order authority (`worldStore.applyPreset`/`savePreset` — a fleet holds a REFERENCE,
-// 0034). Everything here is a second CALLER of an existing authority.
+// real verb and rolls it back) and ONE issue path (`worldStore.issue` → `cmd.issue`). Everything
+// here is a second CALLER of an existing authority.
 //
-// THE RATIO IS A NUMBER OF DAYS, RESOLVED THROUGH THE BOOK: if the house already keeps an order at
-// those days it IS that order, and only otherwise is one written (named for its depth, through
-// `formatVoyageDays`, so FLEETS' book reads exactly like the figure it was set from). The map
-// cannot mint a second, parallel set of standing orders (row 45's rule). A preset chip SETS the
-// days; the one pinned button sends — there used to be two spellings of "what she sails under"
-// (a chip that sent on press, and a days figure); now there is one, and `nudge`/`setDays` write
-// nothing and send nothing.
+// THE KEEP CONTROL IS GONE (owner row 203, 0221): supplies are bought automatically by every SAIL
+// (`cmd.do_sail` through `public.supply_need`), so the tray no longer asks how many days to keep her
+// at, holds no book of standing orders and writes none. What is left under a picked fleet is the
+// insurance press (0213).
 //
 // EVERY ROW SAYS ITS OWN TRUTH: each sendable fleet is DRY-RUN against this exact destination —
 // `cmd.preview` over the same course the send will carry — once, sequentially (every preview
@@ -57,10 +51,6 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const divert = useWorld((s) => s.divert)
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
-  const book = useWorld((s) => s.presets)
-  const loadPresets = useWorld((s) => s.loadPresets)
-  const applyPreset = useWorld((s) => s.applyPreset)
-  const savePreset = useWorld((s) => s.savePreset)
   const cancelOrder = useWorld((s) => s.cancel)
   const clearQueue = useWorld((s) => s.clear)
   // A served reference or a frozen constant — never `?? []` inside the selector (React #185).
@@ -72,7 +62,6 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const [picked, setPicked] = useState<string | null>(null)
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({})
   const [act, setAct] = useState<Act | null>(null)
-  const [days, setDaysHeld] = useState<Record<string, number>>({})
   // 0213: whether to insure her cargo on THIS passage. Off until pressed; the price is the dry run's
   // (`sailEstimate(...).insurance`, quoted by the server on the unasked SAIL), never worked out here.
   const [insured, setInsured] = useState<Record<string, boolean>>({})
@@ -111,35 +100,6 @@ export function useSendFleet(dest: SailDest, open: boolean) {
     }
   }, [open, fleets, spec, seaNav, target, args, portByCode, preview, verdicts, standingOf])
 
-  // The book of standing orders, read once the ratio step first matters.
-  useEffect(() => {
-    if (picked !== null && book === null) void loadPresets()
-  }, [picked, book, loadPresets])
-
-  const presetOf = (fleetId: string) => book?.presets.find((p) => p.fleets.some((fl) => fl.id === fleetId)) ?? null
-
-  /**
-   * THE DEPTH THE RATIO OPENS ON — every branch READS a served figure; none computes one:
-   * (1) what the player set on this tray, (2) the standing order she sails under (0034's book),
-   * (3) the SERVER's own `need` off this row's refusal, (4) the deepest order the book holds,
-   * (5) her range NOW, `endurance_days` (0016), rounded up. Never an invented default: a number
-   * typed here would be a rule about how deep a hold should be provisioned, which is the server's.
-   */
-  const daysOf = (f: FleetView): number => {
-    if (days[f.id] !== undefined) return days[f.id]
-    const current = presetOf(f.id)
-    if (current) return current.days
-    const v = verdicts[f.id]
-    const need = v?.kind === 'refused' ? (v.refusal.figures?.need ?? null) : null
-    if (need !== null && need > 0) return atLeastOneDay(need)
-    const deepest = (book?.presets ?? []).reduce((most, p) => Math.max(most, p.days), 0)
-    if (deepest > 0) return deepest
-    return atLeastOneDay(f.endurance_days)
-  }
-  /** Move the figure. No ceiling on purpose: what a hold can carry is judged by `cmd.do_provision`
-   *  and the days are bound by the table's own CHECK, and neither is restated here. */
-  const setDays = (f: FleetView, to: number) => setDaysHeld((d) => ({ ...d, [f.id]: Math.max(1, to) }))
-  const nudge = (f: FleetView, by: number) => setDays(f, daysOf(f) + by)
 
   const pick = (f: FleetView) => {
     selectFleet(f.id)
@@ -160,25 +120,13 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const busyOn = (f: FleetView) => act?.state === 'busy' && act.fleetId === f.id
   const fail = (f: FleetView) => setAct({ fleetId: f.id, state: 'refused', refusal: useWorld.getState().refusal })
 
-  // ── THE SEND — THE ONE PATH. The standing order through the book, applied only when it CHANGES
-  // her, then the one mover's own act for where she is: `issue` from a quay or an anchor, `divert`
-  // when she is under way. Same authorities, same refusal channel, nothing decided here.
+  // ── THE SEND — THE ONE PATH: the one mover's own act for where she is: `issue` from a quay or an
+  // anchor, `divert` when she is under way. Same authorities, same refusal channel, nothing decided
+  // here. Her supplies for the passage are the SAIL's own business (0221).
   const send = (f: FleetView) => {
     if (busyOn(f) || !spec || !seaNav || !target) return
-    const keep = daysOf(f)
     setAct({ fleetId: f.id, state: 'busy', refusal: null })
     void (async () => {
-      const held = () => useWorld.getState().presets?.presets.find((p) => p.days === keep)
-      let order = held()
-      if (!order) {
-        if (!(await savePreset(null, formatVoyageDays(keep, 0), keep))) return fail(f)
-        // `savePreset` re-reads the book before it returns; it FAILS CLOSED if the order it just
-        // wrote cannot be found rather than sailing her under one nobody asked for.
-        order = held()
-        if (!order) return fail(f)
-      }
-      const current = presetOf(f.id)?.id ?? null
-      if (order.id !== current && !(await applyPreset(f.id, order.id))) return fail(f)
       let okay: boolean
       if (f.voyage) {
         // READ, THEN TURN: at speed she makes real way between reads, and a course proposed from a
@@ -208,11 +156,9 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   }
 
   /**
-   * A FIX THAT NEEDS NO CHOICE IS DONE HERE (OWNER_REQUESTS row 51: no new page for a provision
-   * fix). `PROVISION FULL` is a whole order already — `isComplete` is the one authority — and it
-   * goes down the SAME `cmd.issue` path with the SAME `orderText` line every doorway sends. It fills
-   * to her standing order (`daysOf`), not to the brim: FULL took Gaivota to 89.3 days and 0 t of
-   * hold free on production, 2026-08-31.
+   * A FIX THAT NEEDS NO CHOICE IS DONE HERE (OWNER_REQUESTS row 51: no new page for a fix). A whole
+   * order — `isComplete` is the one authority — goes down the SAME `cmd.issue` path with the SAME
+   * `orderText` line every doorway sends.
    *
    * A FIX WITH AN ARGUMENT STILL TO CHOOSE IS NOT A BUTTON (2026-09-09). It used to hand off to
    * COMMAND's composer; COMMAND composes nothing now (the owner: *"they should be located
@@ -223,10 +169,9 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const runFix = (f: FleetView, verb: string, fixArgs: Record<string, string>) => {
     const fixSpec = findVerb(verbs, verb)
     if (!fixSpec || !isComplete(fixSpec, fixArgs) || busyOn(f)) return
-    const runArgs = verb === 'PROVISION' ? { mode: 'DAYS', days: String(daysOf(f)) } : fixArgs
     setAct({ fleetId: f.id, state: 'busy', refusal: null })
     void (async () => {
-      const okay = await issue(f.id, orderText(fixSpec, runArgs, f.name), null)
+      const okay = await issue(f.id, orderText(fixSpec, fixArgs, f.name), null)
       if (!okay) return fail(f)
       // A FIX CHANGES THE ANSWER. The verdict on her row was the refusal this fix was for; it is
       // forgotten, so the dry run asks the server again and the row says what is true NOW — a
@@ -267,16 +212,11 @@ export function useSendFleet(dest: SailDest, open: boolean) {
     picked,
     pick,
     act,
-    daysOf,
-    setDays,
-    nudge,
     insuranceOf,
     insureOf,
     setInsure,
     send,
     fixesOf,
-    /** The house's standing orders; null until the book has been read. */
-    presets: book?.presets ?? null,
   }
 }
 

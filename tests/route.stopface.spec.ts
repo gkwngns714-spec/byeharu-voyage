@@ -25,7 +25,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { copyFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { PHONE, ready, reachable } from './appReady.fixture'
+import { PHONE, reachable, ready, settled } from './appReady.fixture'
 import { serveRoutesOn } from './routesOn.fixture'
 import { queuedOrderWords, tradeLineWords } from '../src/domain/order'
 import { routeStopLines } from '../src/domain/route'
@@ -121,20 +121,13 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await serveRoutesOn(page)
 
-  // A route cannot start without a keep level (E_NO_KEEP) — set one on FLEETS, the way a player does.
-  await page.goto('fleets')
+  // 0221: no keep level is needed any more — supplies are bought by every SAIL.
+  await page.goto('command')
   await ready(page)
-  await page.getByTestId('fleet-row').first().click()
-  // The stepper's typed figure commits on Enter or blur (Stepper.tsx), never on the keystroke.
-  const typed = page.getByLabel(/days of supplies to keep .* at, typed/)
-  await typed.fill('10')
-  await typed.press('Enter')
-  await page.getByTestId('fleet-keep').click()
-  await expect(page.getByTestId('fleet-keep')).toHaveCount(0, { timeout: 60_000 })
-  await page.getByTestId('fleet-command').click()
-  await expect(page.getByTestId('command')).toBeVisible()
   // 2026-10-18: the route is on the desk's Plans face (docs/COMMAND_DESK.md §3.5)
-  await page.getByRole('tab', { name: 'Plans' }).click()
+  await page.getByRole('tab', { name: 'Trade' }).click()
+  // 0221: the Trade face's Start list loads after the press; let it land, so nothing above the route moves later
+  await settled(page.getByTestId('desk-plans'))
 
   const routeRow = page.getByTestId('route-row')
   await expect(routeRow).toContainText('No route', { timeout: 60_000 })
@@ -207,7 +200,10 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   // stands taller and the pick of the second stop left the first stop's chips above the glass, so the
   // driver's own scroll read as "the press moved the page" (main went red on it). Measured after the
   // chip is in view, the claim is the owner's again: the PRESS moves nothing.
-  await stops.nth(0).getByTestId('route-buy-good').first().scrollIntoViewIfNeeded()
+  // 0221: the route stands with the orders at the FOOT of the Trade face, so "if needed" leaves the chip on the bottom
+  // edge, under the fixed nav bar; the driver then re-scrolls on the click (the hit target is the bar) and that scroll
+  // read as the press moving the page. Brought to the CENTRE, the click scrolls nothing.
+  await stops.nth(0).getByTestId('route-buy-good').first().evaluate((e) => e.scrollIntoView({ block: 'center' }))
   await page.waitForTimeout(300)
   const before = await below()
   await shot(page, 'route-editor-390.png', info)

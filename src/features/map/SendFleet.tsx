@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Button, Hint, Row, SheetSection, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
 import { PortFlag } from '../../live/PortFlag'
-import { formatVoyageDays } from '../../lib/format'
 import { CHART_CHROME, GoToLink } from '../../chart'
 import { CityTabs } from './CityTabs'
 import { useCityTab } from './cityTab'
@@ -28,7 +27,7 @@ import { useT } from '../../lib/i18n'
 //       Market: the price table (PortPrices) — a press slides the price history out beside
 //       Port:   In port · Incoming, yours and the merchants' (CityHarbour)
 //       Inn:    the captains here this quarter hour; crew and supplies for a fleet alongside
-//     [            Send Gaivota · keep 15 days            ]
+//     [                 Send Gaivota                     ]
 //
 // A HARBOUR'S BODY IS `CityTabs` (CityTabs.tsx says what each tab composes). A point of OPEN SEA
 // has no tabs: it is only somewhere to send a fleet.
@@ -36,7 +35,7 @@ import { useT } from '../../lib/i18n'
 // THE SEND IS NOT LOST. The owner's flow, step for step (useSendFleet.ts quotes it): tap a place →
 // the panel opens with the place's name, one line, and `Send fleet` → press it and her fleets are
 // listed with the passage's verdict on each row — at the top of the PORT tab, which the press
-// turns to → press one, the keep control unfolds under it → the one pinned button sends her.
+// turns to → press one, the insurance press unfolds under it → the one pinned button sends her.
 // `Send fleet` stands in the title on every tab. Nothing navigates; the chart is still the ground.
 //
 // THE RULES (useSendFleet.ts carries them): this file composes nothing, judges nothing, and owns
@@ -66,7 +65,7 @@ export function SendFleet({
   const turnTo = useCityTab((s) => s.turnTo)
 
   const picked = fleets.find((f) => f.id === flow.picked) ?? null
-  const sendable = picked !== null && canGo(flow.standingOf(picked)) && flow.presets !== null
+  const sendable = picked !== null && canGo(flow.standingOf(picked))
   // The dead end is named only when the player ARRIVED at it — not in the frame after their own
   // send emptied the list, when her row already says she is under way.
   const nowhere = fleets.length > 0 && !fleets.some((f) => canGo(flow.standingOf(f))) && flow.act?.state !== 'sent'
@@ -151,11 +150,7 @@ export function SendFleet({
             onClick={() => flow.send(picked)}
             data-testid="map-send-ratio-send"
           >
-            {t('map.sendLine', {
-              name: picked.name,
-              days: formatVoyageDays(flow.daysOf(picked), 0),
-              insured: flow.insureOf(picked) ? t('map.insuredTag') : '',
-            })}
+            {t('map.sendLine', { name: picked.name, insured: flow.insureOf(picked) ? t('map.insuredTag') : '' })}
           </Button>
         ) : undefined
       }

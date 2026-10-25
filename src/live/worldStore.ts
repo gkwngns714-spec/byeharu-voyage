@@ -58,9 +58,6 @@ import {
   cmdIssue,
   cmdIssueLines,
   cmdPreview,
-  cmdProvisionPresetApply,
-  cmdProvisionPresetDelete,
-  cmdProvisionPresetSave,
   cmdStandingRouteAssign,
   cmdStandingRouteDelete,
   cmdStandingRoutePause,
@@ -80,7 +77,6 @@ import {
   worldStandings,
   worldBuffs,
   worldSnapshot,
-  worldProvisionPresets,
   worldStandingRoutes,
   worldRouteBoard,
   worldSeaRaster,
@@ -105,7 +101,6 @@ import type {
   PlayerHouse,
   PreviewResult,
   PriceHistory,
-  ProvisionPresetBook,
   Refusal,
   RpcResult,
   StandingRouteBook,
@@ -155,9 +150,6 @@ export interface LiveWorld {
   skills: SkillBook | null
   /** The settled board (0025). Null until RANK asks for it — nothing else needs it. */
   standings: StandingsBoard | null
-  /** The book of standing orders (0034). Null until FLEETS asks for it — it is that tab's card,
-   *  and the server tops fleets up on arrival whether or not anyone is looking. */
-  presets: ProvisionPresetBook | null
   /**
    * EVERY LANE THE WORLD SAILS (0106-0110, owner rows 115/117) — the last `world.route_board`
    * reading, or null before ROUTES has asked for one.
@@ -253,15 +245,6 @@ export interface LiveWorld {
    *  `routeBoardFailed`, rather than blanking a board already on screen. */
   loadRouteBoard: () => Promise<void>
   loadBuffs: (portId: string) => Promise<void>
-  /** Fetch the book of standing orders. FLEETS calls it on mount and after every preset verb. */
-  loadPresets: () => Promise<void>
-  /** Write or adjust a standing order (0034). Re-reads the book — the server's answer is the only
-   *  true one, the same rule every other verb here follows. */
-  savePreset: (presetId: string | null, name: string | null, days: number | null) => Promise<boolean>
-  deletePreset: (presetId: string) => Promise<boolean>
-  /** Put a fleet under an order, or clear it with null. Nothing is bought now — the order fires
-   *  when she makes port, and only there — so only the book is re-read, never the fleets. */
-  applyPreset: (fleetId: string, presetId: string | null) => Promise<boolean>
   /** Read the routes (0092) ALONE — for a verb that moved only the book (save, delete). The
    *  beat's reading of them is `refresh()`'s, never a screen's `readAt` effect. */
   loadRoutes: () => Promise<void>
@@ -489,7 +472,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   /**
    * THE READ'S DOOR — an on-demand read lands its answer through `land`. A LOUD read (the screen IS
-   * the answer: officers, skills, standings, presets, a market) puts its refusal in `refusal`; a
+   * the answer: officers, skills, standings, a market) puts its refusal in `refusal`; a
    * SILENT one (a decoration that is true without it: history, reach, buffs) keeps what it had.
    * Each caller states which, beside its reason.
    */
@@ -509,7 +492,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
    * written once:
    *
    * A FAILED READ IS QUIET AND KEEPS THE LAST BOOK — the rule of every read that rides the beat
-   * (loadMarket, loadOfficers, loadStandings, loadPresets): the next read corrects it. It sets no
+   * (loadMarket, loadOfficers, loadStandings): the next read corrects it. It sets no
    * refusal, because a refusal set here would overwrite the one a verb just drew. Until 2026-09-30
    * it blanked the book to null instead, so a failed read made the fold blink to "Loading…".
    *
@@ -636,7 +619,6 @@ export const useWorld = create<LiveWorld>((set, get) => {
   officers: null,
   skills: null,
   standings: null,
-  presets: null,
   routes: null,
   routeBoard: null,
   routeBoardAt: null,
@@ -851,20 +833,6 @@ export const useWorld = create<LiveWorld>((set, get) => {
   // cost of failing quietly is a missing sign, never a wrong number.
   loadBuffs: (portId) =>
     loader(worldBuffs(portId), (v, s) => ({ buffs: { ...s.buffs, [portId]: v } }), { loud: false }),
-
-  // A FAILED BOOK READ IS LOUD, for the standings' reason: the card IS the book, and a Presets
-  // panel silently showing yesterday's orders would let a player believe a standing order stands
-  // when it does not.
-  loadPresets: () => loader(worldProvisionPresets(), (presets) => ({ presets }), { loud: true }),
-
-  savePreset: async (presetId, name, days) =>
-    (await verb(cmdProvisionPresetSave(presetId, name, days), get().loadPresets)) !== null,
-
-  deletePreset: async (presetId) =>
-    (await verb(cmdProvisionPresetDelete(presetId), get().loadPresets)) !== null,
-
-  applyPreset: async (fleetId, presetId) =>
-    (await verb(cmdProvisionPresetApply(fleetId, presetId), get().loadPresets)) !== null,
 
   // The re-read after a verb that moved the book alone (save, delete). The beat's reading is
   // `refresh()`'s; both are `readRoutes`, the one reader.

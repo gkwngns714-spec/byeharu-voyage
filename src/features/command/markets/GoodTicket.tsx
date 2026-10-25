@@ -32,7 +32,8 @@ import { useT, t as tg } from '../../../lib/i18n'
 //   BUY AT      every city that sells it: BOTH SIDES of its price (what you pay, what you get — the
 //               board's own two lists joined by city, citySides.ts), its stock against normal, how far.
 //   SELL AT     every harbour that buys it: both sides again, net per ton, stock against normal, the
-//               arrival and the best time. A side the board did not price prints as a dash and the
+//               arrival and the best time — and, since 0221 (owner row 190: "i can only plan on buying
+//               but not for selling"), its own Plan press, which opens Trade with that city as the sell. A side the board did not price prints as a dash and the
 //               middle price stands in its place, dim, under its own word — never as a trader's price
 //               (owner request 178, 2026-10-20: *"I want both for all cities"*).
 //   The acts    Buy / Sell here (the trade tray, docked only), Plan (the plan builder: queue it once,
@@ -108,6 +109,7 @@ export function GoodTicket({
         goodName={good.name}
         onFocus={setFocus}
         onTrade={() => onTrade('sell')}
+        onPlan={(sellAt) => plan(aboard > 0 ? null : b?.buy.some((r) => r.port === docked) ? docked : (b?.qty.bought_at ?? null), sellAt)}
       />
       {/* 0185: why the focus city's price is what it is (docs/PRICE_FACTORS.md §5) */}
       <WhyThisPrice why={desk.why.view} loading={desk.why.loading} />
@@ -384,6 +386,7 @@ function SellAt({
   goodName,
   onFocus,
   onTrade,
+  onPlan,
 }: {
   board: GoodBoard | null
   loading: boolean
@@ -398,6 +401,8 @@ function SellAt({
   goodName: string
   onFocus: (port: string) => void
   onTrade: () => void
+  /** Plan a trade that sells at this city (opens Trade). */
+  onPlan: (sellAt: string) => void
 }) {
   const t = useT()
   const rows = board ? (all ? board.sell : board.sell.filter((r) => r.quoted)) : []
@@ -461,9 +466,13 @@ function SellAt({
                   )}
                 </span>
               </button>
-              {r.port === docked && aboard > 0 && (
+              {r.port === docked && aboard > 0 ? (
                 <Button variant="primary" onClick={onTrade} className="shrink-0" data-testid="desk-sell">
                   {t('markets.sell')}
+                </Button>
+              ) : (
+                <Button variant="secondary" onClick={() => onPlan(r.port)} className="shrink-0" data-testid="desk-plan-sell">
+                  {t('markets.plan')}
                 </Button>
               )}
             </div>

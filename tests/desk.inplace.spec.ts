@@ -17,7 +17,7 @@ import { ready, reachable } from './appReady.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 const FACES = [
-  { name: 'Plans', id: 'desk-plans' },
+  { name: 'Trade', id: 'desk-plans' },
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
   { name: 'Profit', id: 'desk-profit' },
@@ -101,26 +101,27 @@ for (const size of SIZES) {
       }
     })
 
-    test('a plan stands in the Plans face, not over it', async ({ page, request, baseURL }) => {
+    test('a trade stands in the Trade face, not over it', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
       await page.getByRole('button', { name: 'Here', exact: true }).click()
       await page.getByTestId('watch-row').first().click()
       const plan = page.getByTestId('desk-plan').first()
       await expect(plan).toBeVisible({ timeout: 60_000 })
       await plan.click()
-      await expect(page.getByTestId('plan-builder')).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByTestId('trade-card')).toBeVisible({ timeout: 30_000 })
       // On a phone the good's page (a press on a GOOD, on Markets) covers the faces; the press is sent
       // to the tab itself, as a keyboard or a screen reader would.
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Plans', exact: true }).dispatchEvent('click')
+      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).dispatchEvent('click')
       await expect(page.getByTestId('desk-plans')).toBeVisible()
-      const builder = page.getByTestId('plan-builder')
+      const builder = page.getByTestId('trade-card')
       await expect(builder).toBeVisible()
-      await expect(page.getByRole('dialog'), 'the plan builder is a pop-up on Plans').toHaveCount(0)
+      await expect(page.getByRole('dialog'), 'the trade card is a pop-up on Trade').toHaveCount(0)
       if (wide) {
-        await expect(page.getByTestId('desk-pane-ticket').getByTestId('plan-builder')).toBeVisible()
+        // 0221: the card is the centre pane of the Trade face (docs/COMMAND_REDESIGN.md §5)
+        await expect(page.getByTestId('desk-pane-chart').getByTestId('trade-card')).toBeVisible()
       } else {
         // in flow: inside the desk's own face, which scrolls with the page
-        await expect(page.getByTestId('desk-plans').getByTestId('plan-builder')).toBeVisible()
+        await expect(page.getByTestId('desk-plans').getByTestId('trade-card')).toBeVisible()
         expect(await builder.evaluate((e) => getComputedStyle(e).position)).not.toBe('fixed')
       }
       await expect(page.getByTestId('command-queue')).toBeVisible()
