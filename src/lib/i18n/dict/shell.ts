@@ -32,6 +32,8 @@ export const shellDict = defineDict({
     toSignup: 'No account? Sign up',
     toSignin: 'Have an account? Sign in',
     signedUp: 'Done. Confirm your email, then sign in.',
+    kst: 'KST',
+    gameDate: 'Game date',
   },
   ko: {
     tab_Menu: '메뉴',
@@ -63,5 +65,7 @@ export const shellDict = defineDict({
     toSignup: '계정 없음? 가입',
     toSignin: '계정 있음? 로그인',
     signedUp: '완료. 이메일 확인 후 로그인.',
+    kst: '한국 시간',
+    gameDate: '게임 날짜',
   },
 })
