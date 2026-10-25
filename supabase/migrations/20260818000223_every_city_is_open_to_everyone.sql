@@ -260,9 +260,13 @@ begin
     -- a rollup row for every harbour, so the reads have figures to serve (rolled back with the rest)
     perform public.tick_price_snapshot(now());
     perform public.tick_stats(now());
-    if (select count(*) from public.stats_city) <> (select count(*) from public.ports where kind = 'HARBOUR') then
-      raise exception '0223 self-assert FAIL: the job wrote % city rows for % harbours',
-        (select count(*) from public.stats_city), (select count(*) from public.ports where kind = 'HARBOUR');
+    -- Count only the SLOT this tick just wrote: stats_city keeps every 15-min slot, so a whole-table count
+    -- asserts the world's history (prod: 69,426 rows on 2026-10-26, which failed the first push), not this run.
+    if (select count(*) from public.stats_city where slot = (select max(slot) from public.stats_city))
+       <> (select count(*) from public.ports where kind = 'HARBOUR') then
+      raise exception '0223 self-assert FAIL: the job wrote % city rows in its slot for % harbours',
+        (select count(*) from public.stats_city where slot = (select max(slot) from public.stats_city)),
+        (select count(*) from public.ports where kind = 'HARBOUR');
     end if;
 
     perform cmd.assume_identity(c_uid);
