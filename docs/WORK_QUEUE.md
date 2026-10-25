@@ -2,10 +2,12 @@
 
 ## RESUMED 2026-10-25 (PC gkwng). Read this first
 Prod head **0216**; main Acceptance green (0ec8ed1, 10-21). Nothing has landed since 10-21. Of the owner's rows 169–188, these are still open: 169a speed ×3, 173 weekly reset, 175 (blocked on the owner), 180 fleets, 183 Plan tab, 186 harbours.
-**In flight (two builds + one design):**
-- Lane A `osn-new-harbours`: row 186, about 8 harbours (northern Russia, Australia, NZ, northern USA) as migration **0217**.
-- Lane B `osn-plan-tab`: row 183, the Plan tab with a route-only map, time, provisions, crew, and restrictions read from 0215/0216's gate.
-- Lane C `osn-fleets-design`: row 180, `docs/FLEETS_AND_SLOTS.md` (7 ships per fleet decided by default; slots by gold and by level).
+**In flight (two builds + one design), as CLOUD ROUTINES (the owner's cloud-first order; credit expires 11-05). They fire 09:14–09:16 UTC; follow them on GitHub branches and PRs:**
+- Lane A `osn-new-harbours` (trig_017yTwoYS3AoraZWTePMeL9M): row 186, about 8 harbours (northern Russia, Australia, NZ, northern USA) as migration **0217**.
+- Lane B `osn-plan-tab` (trig_01LqTod7PwLTiXmLmZ5tW3t2): row 183, the Plan tab with a route-only map, time, provisions, crew, and restrictions read from 0215/0216's gate.
+- Lane C `osn-fleets-design` (trig_01ACHJifBHPMjkjLztgF3uZg): row 180, `docs/FLEETS_AND_SLOTS.md` (7 ships per fleet decided by default; slots by gold and by level).
+
+The main session (this PC) only runs the read-only prod checks, the paired sim, and the deploys. Fable credits ran out until 2026-10-25 10:00 UTC, so the routines use Opus.
 
 **Next:** 169a speed ×3 (paired sim) → 173 weekly rollover, keeping history → sea S3–S6 → live prices.
 
