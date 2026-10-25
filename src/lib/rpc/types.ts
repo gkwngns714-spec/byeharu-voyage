@@ -2706,6 +2706,38 @@ export interface BoardPassage {
   sailable?: boolean
   /** The passage's longest leg. */
   longest_leg?: { miles: number; days: number } | null
+  /** 0218 — what the seas on this row's route ask (null when there is no leg: the city she is at). Absent before
+   *  0218. Served while the sea conditions are dark too: the refusal is then what the rule WILL answer. */
+  sea?: BoardSea | null
+}
+
+/** 0218 — what a board row's seas ask (`public.sea_routes`): the most any leg of the route asks, and the one
+ *  rule's verdict (`public.sea_refusal`) for her title and her fleet's wave. The client prints these; it never
+ *  compares them. */
+export interface BoardSea {
+  /** The zone that refuses, else the route's most demanding zone. */
+  zone: string
+  zone_name: string
+  /** The most any leg of the route asks (`public.sea_leg_asks`); null when the server has no figure for a leg. */
+  needs_title: number | null
+  needs_wave: number | null
+  /** E_SEA_CLOSED when she holds less than a sea on the route asks, else null. */
+  refusal: SeaRefusal | null
+}
+
+/** 0215 — the sea rule's refusal: the first zone that refuses, what it asks and what she holds. */
+export interface SeaRefusal {
+  code: string
+  sentence: string
+  figures: {
+    zone: string
+    zone_name: string
+    needs_title: number
+    needs_wave: number
+    /** Null for a merchant (no title) or a fleet with no hull. */
+    title?: number | null
+    wave?: number | null
+  }
 }
 
 /** A city that sells the good (0171 good_board `buy`). */
@@ -2803,6 +2835,8 @@ export interface GoodBoard {
   reach?: { navigation: number; reach_nm: number } | null
   /** The stores `sailable` read (0188): days at sea her casks carry now, and the margin a leg must leave. */
   supplies?: { days: number; margin: number }
+  /** 0218 — whether the sea conditions bite, and the title and wave the rows' `sea` was judged for. */
+  sea?: { bite: boolean; title: number | null; wave: number | null }
   assumes: string
   clock: { now: string; next_change_at: string }
 }
