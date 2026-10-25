@@ -82,11 +82,15 @@ export function GoodTicket({
         goodName={good.name}
         onFocus={setFocus}
         onTrade={() => onTrade('buy')}
+        // The buyer a buy row's Plan starts on: the city in focus when it buys, else the dearest quoted city she
+        // can SAIL — BestTrade's own pick. Since 0218 (no region door) the dearest quoted buyer can lie past her
+        // stores (sailable false) and a plan on it cannot be queued; it stays a chip the player may press, with
+        // its reason.
         onPlan={(buyAt) =>
           plan(
             buyAt,
             (focus && b?.sell.some((r) => r.port === focus) && !b.buy.some((r) => r.port === focus) ? focus : null) ??
-              b?.sell.find((r) => r.quoted)?.port ??
+              b?.sell.find((r) => r.quoted && r.sailable !== false)?.port ??
               null,
           )
         }
