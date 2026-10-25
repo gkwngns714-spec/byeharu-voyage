@@ -1,36 +1,23 @@
-import { Dot, Figure, SheetSection, StatCell } from '../../components/ui'
-import { fleetHoldUsed, whereabouts } from '../../domain/fleet'
-import { formatCountdown, formatDucats, formatInt, formatTons } from '../../lib/format'
+import { Dot, SheetSection, StatCell } from '../../components/ui'
+import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
+import type { StatsNow } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 
-// RIGHT NOW — the figures on this tab that are not a rollup, and they move while you watch.
+// RIGHT NOW — the figures on this tab that move while you watch, on every face.
 //
-// THE OWNER, 2026-10-20 (request 187): *"I want stats to be in real time — by seconds updated."*
-// The split that answers it is in statsPulse.ts; this is the live half. Every number here is read
-// out of the store the shell ALREADY polls (AppShell's beat: three seconds at the current clock),
-// so the band costs no read, no write and no second poller — it is the world's own beat, printed.
-// Each figure counts to its new value (Counter), which is the moving number request 188 asks for.
-//
-// WHY THESE FOUR. They are the ones a live read can honestly carry: your purse and your fleets are
-// re-read every beat by the shell, and the countdown is arithmetic on the server's own age. The
-// world's money, the goods and the cities are SUMS over every market and every harbour — the job
-// writes them every fifteen minutes, and a figure that cannot move faster than that is better read
-// as a chart than as a ticker (docs/OWNER_REQUESTS.md row 187).
+// THE OWNER (row 200, 2026-10-25): *"i want to be updated every second"*. Three of the four cells are the
+// server's live counters (world.stats_now, asked each second by statsLive.ts): all the money in the world,
+// the fleets at sea — players' and merchants' — and the trades since the last count. The fourth is your
+// own money, out of the store the shell already polls. Each figure counts to its new value (Counter), which
+// is the moving number request 188 asks for. Before 0224 this band carried your fleets and cargo from the
+// store alone, because nothing of the WORLD could honestly move faster than the fifteen-minute rollup;
+// now it can, and the world's figures are what a Stats tab is for.
 
-export function LiveNow({ dueMs }: { dueMs: number | null }) {
+export function LiveNow({ live }: { live: StatsNow | null }) {
   const t = useT()
-  // Selected as primitives, one selector each (worldStore's rule): a selector that built an object
-  // would re-render this band on every market fetch in the world.
+  // Selected as a primitive, one selector (worldStore's rule).
   const ducats = useWorld((s) => s.ducats)
-  const fleets = useWorld((s) => s.fleets)
-
-  // ONE classification per fleet (domain/fleet's `whereabouts`, the authority every screen and the
-  // chart read), then counted. These are FLEETS, not hulls: a fleet is what sails.
-  const where = fleets.map((f) => whereabouts(f).kind)
-  const atSea = where.filter((k) => k === 'sailing').length
-  const inPort = where.filter((k) => k === 'docked').length
-  const carried = fleets.reduce((n, f) => n + fleetHoldUsed(f), 0)
 
   return (
     <SheetSection
@@ -39,13 +26,6 @@ export function LiveNow({ dueMs }: { dueMs: number | null }) {
           <Dot tone="success" label={t('stats.live')} />
           {t('stats.rightNow')}
         </span>
-      }
-      trailing={
-        dueMs === null ? undefined : (
-          <span className="text-t-caption text-ink-faint">
-            {t('stats.nextIn')} <Figure value={formatCountdown(dueMs)} />
-          </span>
-        )
       }
       data-testid="stats-live"
     >
@@ -58,9 +38,21 @@ export function LiveNow({ dueMs }: { dueMs: number | null }) {
           text={ducats === null ? '—' : undefined}
           data-testid="stats-live-purse"
         />
-        <StatCell label={t('stats.fleetsAtSea')} value={atSea} format={formatInt} />
-        <StatCell label={t('stats.fleetsInPort')} value={inPort} format={formatInt} />
-        <StatCell label={t('stats.cargoCarried')} value={carried} format={(v) => formatTons(v)} />
+        <StatCell
+          label={t('stats.money')}
+          value={live?.total ?? 0}
+          format={formatDucats}
+          text={live === null ? '—' : undefined}
+          data-testid="stats-live-world"
+        />
+        <StatCell label={t('stats.fleetsAtSea')} value={live?.at_sea ?? 0} format={formatInt} text={live === null ? '—' : undefined} />
+        <StatCell
+          label={t('stats.tradesSince')}
+          value={live?.since_count.trades ?? 0}
+          format={formatInt}
+          text={live === null ? '—' : undefined}
+          data-testid="stats-live-trades"
+        />
       </div>
     </SheetSection>
   )

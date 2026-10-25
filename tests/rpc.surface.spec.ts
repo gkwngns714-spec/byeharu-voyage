@@ -1613,6 +1613,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // every city is served whole to a company with no stake anywhere.
       // Landed WITH the faces that read them (features/stats).
       'worldStatsOverview', 'worldStatsMarkets', 'worldStatsCities', 'worldStatsCity', 'worldStatsMerchants', 'worldStatsMe',
+      // Pin moved deliberately 2026-10-26 with migration 0224 (owner row 200, "updated every second"): the Stats
+      // tab's one LIVE read — the counters every writer keeps, asked each second while the tab is open. A READ.
+      'worldStatsNow',
       // Pin moved deliberately 2026-10-20 with migration 0215 (docs/SEA_CONDITIONS_AND_REGIONS.md, S1): THE SEA
       // CONDITIONS — every zone's title and wave asks, the caller's title, her fleets' wave, the switch. A READ, no
       // arguments. Served dark (sea_conditions_bite false) ahead of the Codex "Seas" face and the map's shading (C3).

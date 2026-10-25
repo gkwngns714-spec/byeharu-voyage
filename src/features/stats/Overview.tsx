@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import {
   Bar,
   Empty,
@@ -18,8 +17,7 @@ import { useT } from '../../lib/i18n'
 import { worldStatsOverview, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
 import { useServedRead } from '../../live/useServedRead'
 import type { FaceProps } from './StatsScreen'
-import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
-import { servedNow } from './statsPulse'
+import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf, withLivePoint } from './statsFaces'
 
 // OVERVIEW — the world's money: who holds it, what was printed, what was burned, what changed hands.
 //
@@ -28,22 +26,28 @@ import { servedNow } from './statsPulse'
 // small multiples with their own lines (seriesChartModel.ts says why not one plane — players 0.2 M
 // against cities 988 M), the world's whole purse as one chart, then the period's money as bars from a
 // zero line and the kinds ranked. One accent, green–red only for new money against burned.
+//
+// WHAT MOVES EVERY SECOND (0224, owner row 200): the holders and the hero are the live counters when the
+// live read has answered (the rollup's row stands until it does — a truthful older figure, never a blank);
+// the money chart's last point is the live total at the live answer's own instant; the sold / bought charts'
+// last point is the period in progress (the trades since the last count); "Trades, 24 h" adds them. Minted,
+// burned and moved stay the rollup's: their per-kind sums are a period figure by construction (0224's header).
 
 const HOURS = 24
 
-export function OverviewFace({ beat, onServed }: FaceProps) {
+export function OverviewFace({ beat, live }: FaceProps) {
   const t = useT()
   const read = useServedRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS), { trigger: beat })
   const v = read.view
-  useEffect(() => onServed(servedNow(v)), [v, onServed])
 
   if (read.loading && !v) return <Waiting />
   if (!v) return <Note tone="danger">{t('stats.worldFailed')}</Note>
   if (!v.holders || !v.period) {
     return <Empty data-testid="stats-empty">{t('stats.noFigures')}</Empty>
   }
-  const h = v.holders
+  const h = live === null ? v.holders : { players: live.players, merchants: live.merchants, cities: live.cities, set_aside: live.set_aside, total: live.total }
   const day = v.day
+  const since = live?.since_count ?? null
   const holders = [
     { id: 'players', label: t('stats.players'), value: h.players, tone: 'accent' as const },
     { id: 'merchants', label: t('stats.merchantsHolder'), value: h.merchants, tone: 'info' as const },
@@ -52,7 +56,7 @@ export function OverviewFace({ beat, onServed }: FaceProps) {
   ]
   // What the world is worth MORE than it was: everything printed in the last day, less what burned.
   const newMoney = day === null ? null : day.minted - day.removed
-  const totals = toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside)
+  const totals = withLivePoint(toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside), live?.at, live?.total)
 
   return (
     <div data-testid="stats-overview">
@@ -109,7 +113,7 @@ export function OverviewFace({ beat, onServed }: FaceProps) {
           <StatCell label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
           <StatCell label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
           <StatCell label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} size="body" />
-          <StatCell label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} size="body" />
+          <StatCell label={t('stats.trades')} value={(day?.trades ?? 0) + (since?.trades ?? 0)} format={formatInt} size="body" />
         </div>
         <SignedBars
           bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
@@ -121,7 +125,7 @@ export function OverviewFace({ beat, onServed }: FaceProps) {
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.soldCities')}</span>
             <SeriesChart
-              points={toSeries(v.series, (p) => p.sold)}
+              points={withLivePoint(toSeries(v.series, (p) => p.sold), live?.at, since?.sold)}
               format={formatDucats}
               label={t('stats.soldSeries')}
               tone="info"
@@ -131,7 +135,7 @@ export function OverviewFace({ beat, onServed }: FaceProps) {
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.boughtCities')}</span>
             <SeriesChart
-              points={toSeries(v.series, (p) => p.bought)}
+              points={withLivePoint(toSeries(v.series, (p) => p.bought), live?.at, since?.bought)}
               format={formatDucats}
               label={t('stats.boughtSeries')}
               tone="accent"

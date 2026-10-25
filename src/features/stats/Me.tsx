@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import {
   Figure,
   Flag,
@@ -29,14 +28,12 @@ import type { FaceProps } from './StatsScreen'
 
 const DAYS = 7
 
-export function MeFace({ beat, onServed }: FaceProps) {
+export function MeFace({ beat }: FaceProps) {
   const t = useT()
   const me = useServedRead<StatsMe>('stats:me', () => worldStatsMe(), { trigger: beat })
   const books = useServedRead<Books>('stats:books', () => worldBooks(DAYS), { trigger: beat })
   const nationByCode = useWorld((s) => s.nationByCode)
   const { nowMs } = useShellState()
-  // `stats_me` is your own ledger and your rank, not a count of the world: it carries no age to report.
-  useEffect(() => onServed(null), [onServed])
   const v = me.view
   const b = books.view
 

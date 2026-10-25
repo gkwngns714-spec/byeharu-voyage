@@ -33,11 +33,14 @@ export type StatsFace = 'overview' | 'markets' | 'cities' | 'merchants' | 'me'
 /** The faces in order; each one's words are `stats.<id>` in the dictionary. */
 export const STATS_FACES: readonly { id: StatsFace }[] = [{ id: 'overview' }, { id: 'markets' }, { id: 'cities' }, { id: 'merchants' }, { id: 'me' }]
 
-/** How often an open face asks its read again, in ms, when nothing else wakes it. The job writes
- *  every fifteen minutes; a face that re-asked on the world's 3-s beat would ask the same row 300
- *  times. One minute keeps "Updated N min ago" honest within the minute it prints — and the edge of
- *  the next count (statsPulse.ts) is what makes a fresh count arrive in seconds. */
-export const STATS_REFRESH_MS = 60_000
+/** The chart's LAST point, moving live at the right edge (0224, owner row 200): the served series plus one
+ *  point at the live answer's own instant. A live answer that does not parse, or none yet, draws the
+ *  series as served. Presentation: the value is the server's, this only places it. */
+export function withLivePoint(series: readonly SeriesPoint[], at: string | null | undefined, value: number | null | undefined): SeriesPoint[] {
+  const ms = at === null || at === undefined ? null : instantMs(at)
+  if (ms === null || value === null || value === undefined || !Number.isFinite(value)) return [...series]
+  return [...series.filter((p) => p.atMs < ms), { atMs: ms, value }]
+}
 
 /** How many counts a bar row shows — the last six hours at a count a quarter hour. More bars than
  *  this and each one is thinner than the gap beside it (`SignedBars` says so), and 390px is the
