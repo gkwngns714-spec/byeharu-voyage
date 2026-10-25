@@ -1052,7 +1052,7 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
 // ADDED 2026-09-14 with slice 4 of the Quay Ledger (docs/QUAY_LEDGER.md §3 F, migration 0087;
 // owner row 76). The trade board carries `Segmented` Buy · Sell · Requests. Requests lists what
 // this port asks for — goods it does NOT sell — one row per request: the good, `N units · ends in
-// …` (the calendar clock, printed like the fair's end), `+P% over the market · have / need units
+// …` (the calendar clock, printed like the fair's end), `+P% over market · have / need units
 // on board`, and ONE cell `fulfil` carrying the served premium. The fixture fleet carries nothing
 // of what its port asks for BY THE RULE (a port never asks for what it sells, and the only way to
 // carry a good this port does not sell is to have brought it), so on this proof every cell is

@@ -430,6 +430,28 @@ export function select({ base, head, full = false }) {
       }
     }
 
+    // W: a dictionary value REWORDED selects every spec that still pins a piece of the OLD words.
+    // A spec asserts visible text without importing the dictionary, so G/N cannot see it: #299
+    // (plain words) rewrote 1,147 values, its PR selected no layout spec, and main went red on
+    // tests/layout.spec.ts pinning 'per day at sea' and 'over the market'. A piece is a run of two
+    // or more words between placeholders and punctuation; one the new value still says is skipped.
+    for (const c of changed) {
+      if (!/^src\/lib\/i18n\/dict\/.*\.ts$/.test(c.path)) continue
+      let diff = ''
+      try { diff = fileDiff(base, head, c.path) } catch { continue }
+      const VAL_RE = { '-': /^-\s*(\w+):\s*'((?:[^'\\]|\\.)*)'/gm, '+': /^\+\s*(\w+):\s*'((?:[^'\\]|\\.)*)'/gm }
+      const vals = (sign) => new Map([...diff.matchAll(VAL_RE[sign])].map((m) => [m[1], m[2]]))
+      const olds = vals('-'), news = vals('+')
+      for (const [key, old] of olds) {
+        const now = news.get(key) ?? ''
+        for (const piece of old.split(/\{[^}]*\}|[,.·:;—()?!]/)) {
+          const p = piece.trim()
+          if (p.length < 8 || !/\S\s+\S/.test(p) || now.includes(p)) continue
+          for (const [spec, st] of text) if (st.includes(p)) pick(spec, `W: ${c.path} rewords ${key} ('${p}'), which this spec pins`)
+        }
+      }
+    }
+
     // pglite legs: machinery and the proof files themselves
     for (const c of changed) {
       for (const [leg, proof] of Object.entries(PROOF_LEGS)) {
@@ -480,6 +502,14 @@ export function report(sel) {
 // (a new migration does NOT run the growth test; a spec-only PR runs only its specs). CI runs them
 // before trusting a selection; a rule change that breaks one is red here, not silently on a PR.
 const CONTROLS = [
+  {
+    name: 'plain words (bdd50bf: dictionary values reworded) → the specs that pin the old words',
+    sha: 'bdd50bf',
+    check: (s, has) => [
+      [s.mode === 'scoped', 'scoped'],
+      [has('layout.spec.ts'), 'layout.spec selected (it pinned "per day at sea" and "over the market")'],
+    ],
+  },
   {
     name: 'docs only (234bcb9: RESUME.md) → nothing',
     sha: '234bcb9',
