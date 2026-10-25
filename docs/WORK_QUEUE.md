@@ -1,5 +1,15 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## RESUMED 2026-10-25 (PC gkwng). Read this first
+Prod head **0216**; main Acceptance green (0ec8ed1, 10-21). Nothing has landed since 10-21. Of the owner's rows 169–188, these are still open: 169a speed ×3, 173 weekly reset, 175 (blocked on the owner), 180 fleets, 183 Plan tab, 186 harbours.
+**In flight (two builds + one design):**
+- Lane A `osn-new-harbours`: row 186, about 8 harbours (northern Russia, Australia, NZ, northern USA) as migration **0217**.
+- Lane B `osn-plan-tab`: row 183, the Plan tab with a route-only map, time, provisions, crew, and restrictions read from 0215/0216's gate.
+- Lane C `osn-fleets-design`: row 180, `docs/FLEETS_AND_SLOTS.md` (7 ships per fleet decided by default; slots by gold and by level).
+
+**Next:** 169a speed ×3 (paired sim) → 173 weekly rollover, keeping history → sea S3–S6 → live prices.
+
+
 ## WHAT LANDED 2026-10-20 AFTERNOON (cloud session) — read this first
 
 Prod head **0216**, clock **9/9**, main green and published.
