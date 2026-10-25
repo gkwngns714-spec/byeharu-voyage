@@ -52,7 +52,7 @@ test('no answer says nm, her, passage or stores', () => {
   }
 })
 
-// 0218: the board row's `sea` — what the seas on the route ask, and the one rule's verdict (public.sea_refusal)
+// 0219: the board row's `sea` — what the seas on the route ask, and the one rule's verdict (public.sea_refusal)
 const closed = {
   zone: 'NOR-MAC',
   zone_name: 'Macaronesia and the Canary Current',

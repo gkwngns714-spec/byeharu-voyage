@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0218 — THE BOARD READS THE SEA  (docs/SEA_CONDITIONS_AND_REGIONS.md; docs/dev-log/2026-10-25-plan-tab.md "The
+-- 0219 — THE BOARD READS THE SEA  (docs/SEA_CONDITIONS_AND_REGIONS.md; docs/dev-log/2026-10-25-plan-tab.md "The
 --        missing server read"; docs/dev-log/2026-10-25-sea-on-board.md — world.good_board's buy and sell rows say
 --        what the seas on their route ask, judged by the one rule, served dark as a reading and lit as the reason)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -66,7 +66,7 @@
 -- reach_passage agree); title 3 opens Las Palmas and its refusal goes. The walls hold.
 -- ROLLBACK (forward migration): reverse the three hunks (each OLD text is here verbatim), drop public.sea_routes
 -- and public.sea_route_stops.
--- VERSION: 0218 (renumber to the prod head + 1 at push; applies on 0216 or 0217).
+-- VERSION: 0219 (renumber to the prod head + 1 at push; applies on 0216 or 0217).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -75,16 +75,16 @@ begin
   perform set_config('lock_timeout', '5s', true);
 end $guard$;
 
-create or replace function pg_temp.occurs_0218(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0219(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
-create temp table t0_0218 on commit drop as select clock_timestamp() as t0;
+create temp table t0_0219 on commit drop as select clock_timestamp() as t0;
 
 -- ── 1. THE PRE-IMAGE ───────────────────────────────────────────────────────────────────────────
-create temp table defs_before_0218 on commit drop as
+create temp table defs_before_0219 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -94,27 +94,27 @@ select f.fn,
        (select p.proowner from pg_proc p where p.oid = f.fn::regprocedure) as owner
   from (values ('world.good_board(uuid,uuid,uuid,numeric)')) f(fn);
 
-create temp table before_0218 on commit drop as
+create temp table before_0219 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points;
 
-create temp table hunks_0218 (fn text, n int, old text, new text) on commit drop;
-insert into hunks_0218 values
+create temp table hunks_0219 (fn text, n int, old text, new text) on commit drop;
+insert into hunks_0219 values
 ('world.good_board(uuid,uuid,uuid,numeric)', 1,
 $h$  v_passages jsonb;                 -- 0205: voyage.reach_passage(v_player, v_origin), asked once
 begin
 $h$,
 $h$  v_passages jsonb;                 -- 0205: voyage.reach_passage(v_player, v_origin), asked once
-  v_title   int;                    -- 0218: her title (public.title_level), read once
-  v_wave    numeric;                -- 0218: her fleet's wave resistance (public.fleet_wave), read once
-  v_ocode   text;                   -- 0218: the harbour her passages run from
-  v_bpart   jsonb;                  -- 0218: the route to the buy city, when it must be bought first
+  v_title   int;                    -- 0219: her title (public.title_level), read once
+  v_wave    numeric;                -- 0219: her fleet's wave resistance (public.fleet_wave), read once
+  v_ocode   text;                   -- 0219: the harbour her passages run from
+  v_bpart   jsonb;                  -- 0219: the route to the buy city, when it must be bought first
 begin
 $h$),
 ('world.good_board(uuid,uuid,uuid,numeric)', 2,
 $h$  return jsonb_build_object(
     'good', g.code,
 $h$,
-$h$  -- 0218: WHAT THE SEAS ON THE WAY ASK (docs/dev-log/2026-10-25-sea-on-board.md). Every row gains `sea` for the
+$h$  -- 0219: WHAT THE SEAS ON THE WAY ASK (docs/dev-log/2026-10-25-sea-on-board.md). Every row gains `sea` for the
   -- route it serves — where she sails from, its stops, the city (no passage: the direct leg); a sell row's route
   -- runs through the buy city when it must be bought first. public.sea_routes reads public.sea_leg_asks along the
   -- legs and judges them by public.sea_refusal, the one rule. Served dark too, as a reading; lit, a row the sea
@@ -149,20 +149,20 @@ $h$),
 $h$    'supplies', jsonb_build_object('days', round(v_end, 1), 'margin', v_margin),   -- 0188: what `sailable` read
 $h$,
 $h$    'supplies', jsonb_build_object('days', round(v_end, 1), 'margin', v_margin),   -- 0188: what `sailable` read
-    'sea', jsonb_build_object('bite', public.sea_conditions_on(), 'title', v_title, 'wave', v_wave),   -- 0218: what `sea` was judged for
+    'sea', jsonb_build_object('bite', public.sea_conditions_on(), 'title', v_title, 'wave', v_wave),   -- 0219: what `sea` was judged for
 $h$);
 
 -- the pre-image under a pg_temp name, for the dark-identity proof and the timing
 do $$
 begin
-  if (select count(*) from defs_before_0218 where def is not null) <> 1 then
-    raise exception '0218 self-assert FAIL: world.good_board was not found';
+  if (select count(*) from defs_before_0219 where def is not null) <> 1 then
+    raise exception '0219 self-assert FAIL: world.good_board was not found';
   end if;
-  if (select cfg from defs_before_0218) not like '%plan_cache_mode=force_custom_plan%' then
-    raise exception '0218 self-assert FAIL: world.good_board has lost 0206''s plan_cache_mode (config %)', (select cfg from defs_before_0218);
+  if (select cfg from defs_before_0219) not like '%plan_cache_mode=force_custom_plan%' then
+    raise exception '0219 self-assert FAIL: world.good_board has lost 0206''s plan_cache_mode (config %)', (select cfg from defs_before_0219);
   end if;
-  execute replace((select def from defs_before_0218),
-                  'CREATE OR REPLACE FUNCTION world.good_board(', 'CREATE OR REPLACE FUNCTION pg_temp.good_board_old_0218(');
+  execute replace((select def from defs_before_0219),
+                  'CREATE OR REPLACE FUNCTION world.good_board(', 'CREATE OR REPLACE FUNCTION pg_temp.good_board_old_0219(');
 end $$;
 
 -- ── 2. THE ROUTE, AND WHAT ITS SEAS ASK ────────────────────────────────────────────────────────
@@ -172,7 +172,7 @@ language sql
 immutable
 set search_path = public, pg_temp
 as $$
-  -- 0218: A SERVED ROW'S ROUTE as harbour codes — where she sails from, the row's stops, the city. A row with no
+  -- 0219: A SERVED ROW'S ROUTE as harbour codes — where she sails from, the row's stops, the city. A row with no
   -- passage (its stops are not an array: null, as world.good_board serves a city no passage reaches) is the
   -- direct leg. A harbour repeated is no leg (public.sea_routes skips it).
   select case when jsonb_typeof(p_stops) = 'array' then jsonb_build_array(p_from) || p_stops || jsonb_build_array(p_to)
@@ -185,7 +185,7 @@ language sql
 stable security definer
 set search_path = public, pg_temp
 as $$
-  -- 0218: WHAT EACH ROUTE'S SEAS ASK, in the routes' order: { zone, zone_name, needs_title, needs_wave, refusal },
+  -- 0219: WHAT EACH ROUTE'S SEAS ASK, in the routes' order: { zone, zone_name, needs_title, needs_wave, refusal },
   -- null for a route with no leg. needs = the most any leg asks in public.sea_leg_asks (the one derivation). The
   -- zones = every harbour's own (public.harbour_zone) and, for a leg asking more than both its harbours' zones, the
   -- zones public.course_zones finds on the straight line between the roadsteads (the line sea_leg_asks was derived
@@ -248,7 +248,7 @@ as $$
 $$;
 
 comment on function public.sea_routes(int, numeric, jsonb) is
-  '0218: what each route''s seas ask (needs from public.sea_leg_asks, the verdict from public.sea_refusal over the '
+  '0219: what each route''s seas ask (needs from public.sea_leg_asks, the verdict from public.sea_refusal over the '
   'route''s zones). Read by world.good_board. Server-only.';
 
 revoke all on function public.sea_route_stops(text, jsonb, text) from public, anon, authenticated;
@@ -263,37 +263,37 @@ declare
   v_def text;
   v_rev text;
 begin
-  select * into d from defs_before_0218;
+  select * into d from defs_before_0219;
   v_def := d.def;
-  for h in select * from hunks_0218 order by n loop
-    if pg_temp.occurs_0218(v_def, h.old) <> 1 then
-      raise exception '0218 self-assert FAIL: % hunk % occurs % time(s), not once — the deployed body is not what this file was written against',
-        d.fn, h.n, pg_temp.occurs_0218(v_def, h.old);
+  for h in select * from hunks_0219 order by n loop
+    if pg_temp.occurs_0219(v_def, h.old) <> 1 then
+      raise exception '0219 self-assert FAIL: % hunk % occurs % time(s), not once — the deployed body is not what this file was written against',
+        d.fn, h.n, pg_temp.occurs_0219(v_def, h.old);
     end if;
     v_def := replace(v_def, h.old, h.new);
   end loop;
   execute v_def;
   v_rev := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
-  for h in select * from hunks_0218 order by n desc loop
-    if pg_temp.occurs_0218(v_rev, h.new) <> 1 then
-      raise exception '0218 self-assert FAIL: % new hunk % is not in the live body once', d.fn, h.n;
+  for h in select * from hunks_0219 order by n desc loop
+    if pg_temp.occurs_0219(v_rev, h.new) <> 1 then
+      raise exception '0219 self-assert FAIL: % new hunk % is not in the live body once', d.fn, h.n;
     end if;
     v_rev := replace(v_rev, h.new, h.old);
   end loop;
   if v_rev <> d.def then
-    raise exception '0218 self-assert FAIL: % does not reverse to its pre-image', d.fn;
+    raise exception '0219 self-assert FAIL: % does not reverse to its pre-image', d.fn;
   end if;
   select coalesce(pr.proacl::text, '') as acl, pr.provolatile as vol, pr.prosecdef as secdef,
          coalesce(pr.proconfig::text, '') as cfg, pr.proowner as owner
     into p from pg_proc pr where pr.oid = d.fn::regprocedure;
   if p.acl <> d.acl or p.vol <> d.vol or p.secdef <> d.secdef or p.cfg <> d.cfg or p.owner <> d.owner then
-    raise exception '0218 self-assert FAIL: % changed its ACL (% → %), owner, volatility, definer or config (% → %)', d.fn, d.acl, p.acl, d.cfg, p.cfg;
+    raise exception '0219 self-assert FAIL: % changed its ACL (% → %), owner, volatility, definer or config (% → %)', d.fn, d.acl, p.acl, d.cfg, p.cfg;
   end if;
 end $$;
 
 -- ── 4. SELF-ASSERT ─────────────────────────────────────────────────────────────────────────────
 -- the most a list of harbour codes' legs ask, recomputed here from public.sea_leg_asks without public.sea_routes
-create or replace function pg_temp.route_asks_0218(p_codes text[])
+create or replace function pg_temp.route_asks_0219(p_codes text[])
 returns table (title_min int, wave_min int, legs int)
 language sql
 stable
@@ -308,7 +308,7 @@ $$;
 
 do $$
 declare
-  c_uid    constant uuid := '00000000-0218-4000-8000-000000000001';
+  c_uid    constant uuid := '00000000-0219-4000-8000-000000000001';
   v_player uuid;
   v_fleet  uuid;
   v_lis    uuid;
@@ -345,10 +345,10 @@ begin
   select id into v_lis from public.ports where code = 'LIS';
   select id into v_lpa from public.ports where code = 'LPA';
   if v_lis is null or v_lpa is null then
-    raise exception '0218 self-assert FAIL: Lisbon or Las Palmas is missing';
+    raise exception '0219 self-assert FAIL: Lisbon or Las Palmas is missing';
   end if;
   if public.sea_conditions_on() then
-    raise exception '0218 self-assert FAIL: sea_conditions_bite is already lit — this file was proven dark first';
+    raise exception '0219 self-assert FAIL: sea_conditions_bite is already lit — this file was proven dark first';
   end if;
   -- the good: the first by code that Las Palmas sells (its buy row lies past title 1: the refused control), asked
   -- with p_from = Lisbon — so the sell rows run from home water (the clear control): bought at Lisbon when Lisbon
@@ -360,31 +360,31 @@ begin
    where public.port_offers(v_lpa, g.id)
    order by g.code limit 1;
   if v_good is null then
-    raise exception '0218 self-assert FAIL: Las Palmas sells no good';
+    raise exception '0219 self-assert FAIL: Las Palmas sells no good';
   end if;
 
   begin
     -- THE PROBE COMPANY: a barca at Lisbon, title 1, NAVIGATION 5 (so the reach is wide and the seas speak), stores
-    v_player := public.new_house(c_uid, 'Casa 0218', 'PRT', 'LIS', 'Gaivota', 'barca', 'Gaivota 0218', 500000);
+    v_player := public.new_house(c_uid, 'Casa 0219', 'PRT', 'LIS', 'Gaivota', 'barca', 'Gaivota 0219', 500000);
     select f.id into v_fleet from public.fleets f where f.player_id = v_player order by f.created_at limit 1;
     insert into public.player_skills (player_id, skill_id, level)
     select v_player, sk.id, 5 from public.skills sk where sk.code in ('NAVIGATION', 'SEAMANSHIP');
     update public.ships set water_t = 20, food_t = 20 where fleet_id = v_fleet;
     perform cmd.assume_identity(c_uid);
     if public.current_player_id() is distinct from v_player then
-      raise exception '0218 self-assert FAIL: the probe is not the signed-in house';
+      raise exception '0219 self-assert FAIL: the probe is not the signed-in house';
     end if;
     v_title := public.title_level(v_player);
     v_wave  := public.fleet_wave(v_fleet);
     if v_title <> 1 or v_wave <> 12 then
-      raise exception '0218 self-assert FAIL: the probe reads title % and wave %, not 1 and 12', v_title, v_wave;
+      raise exception '0219 self-assert FAIL: the probe reads title % and wave %, not 1 and 12', v_title, v_wave;
     end if;
 
     -- ── DARK ─────────────────────────────────────────────────────────────────────────────────────
     -- (a) the board minus `sea` is the pre-image's, row for row; six calls each, timed in this session
     for v_i in 1 .. 6 loop
       v_t0 := clock_timestamp();
-      v_old := pg_temp.good_board_old_0218(v_good, v_fleet, v_lis, null);
+      v_old := pg_temp.good_board_old_0219(v_good, v_fleet, v_lis, null);
       v_gb_old := v_gb_old || (extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric;
       v_t0 := clock_timestamp();
       v_res := world.good_board(v_good, v_fleet, v_lis, null);
@@ -393,14 +393,14 @@ begin
                || jsonb_build_object('buy',  (select coalesce(jsonb_agg(x.e - 'sea' order by x.i), '[]'::jsonb) from jsonb_array_elements(v_res->'buy') with ordinality x(e, i)),
                                      'sell', (select coalesce(jsonb_agg(x.e - 'sea' order by x.i), '[]'::jsonb) from jsonb_array_elements(v_res->'sell') with ordinality x(e, i)));
       if v_old is distinct from j_new then
-        raise exception '0218 self-assert FAIL: dark, the board minus `sea` differs from its pre-image (call %)', v_i;
+        raise exception '0219 self-assert FAIL: dark, the board minus `sea` differs from its pre-image (call %)', v_i;
       end if;
     end loop;
     if v_res->'sea' is distinct from jsonb_build_object('bite', false, 'title', 1, 'wave', 12) then
-      raise exception '0218 self-assert FAIL: dark, the board''s sea reads %', v_res->'sea';
+      raise exception '0219 self-assert FAIL: dark, the board''s sea reads %', v_res->'sea';
     end if;
     if jsonb_array_length(v_res->'buy') = 0 or jsonb_array_length(v_res->'sell') = 0 then
-      raise exception '0218 self-assert FAIL: the % board has % buy and % sell rows', v_gcode, jsonb_array_length(v_res->'buy'), jsonb_array_length(v_res->'sell');
+      raise exception '0219 self-assert FAIL: the % board has % buy and % sell rows', v_gcode, jsonb_array_length(v_res->'buy'), jsonb_array_length(v_res->'sell');
     end if;
     -- (b) every row: its needs are the most its legs ask (recomputed here), and its refusal is set exactly when she
     -- holds less than that. Buy rows from Lisbon; sell rows through the buy city when it is bought first.
@@ -419,7 +419,7 @@ begin
       if c.side = 'sell' and v_src is not null then
         v_codes := v_bcodes || v_codes;
       end if;
-      select * into a from pg_temp.route_asks_0218(v_codes);
+      select * into a from pg_temp.route_asks_0219(v_codes);
       if a.legs = 0 then
         if jsonb_typeof(e->'sea') <> 'null' then
           v_bad := v_bad + 1; v_badl := v_badl || format(' %s:%s has sea with no leg', c.side, e->>'port');
@@ -444,22 +444,22 @@ begin
       exit when length(v_badl) > 600;
     end loop;
     if v_bad <> 0 then
-      raise exception '0218 self-assert FAIL: dark, % of % rows read the seas wrong:%', v_bad, v_rows, v_badl;
+      raise exception '0219 self-assert FAIL: dark, % of % rows read the seas wrong:%', v_bad, v_rows, v_badl;
     end if;
     if v_shut = 0 or v_open = 0 then
-      raise exception '0218 self-assert FAIL: dark, % rows refused and % clear — both must be seen (the positive control)', v_shut, v_open;
+      raise exception '0219 self-assert FAIL: dark, % rows refused and % clear — both must be seen (the positive control)', v_shut, v_open;
     end if;
     -- (c) Las Palmas, bought from Lisbon: the seas ask title 2 at least, and the rule refuses (a reading, dark)
     select x into v_lp from jsonb_array_elements(v_res->'buy') x where x->>'port' = 'LPA';
     if v_lp is null or (v_lp->'sea'->>'needs_title')::int < 2 or v_lp->'sea'->'refusal'->>'code' is distinct from 'E_SEA_CLOSED'
        or (v_lp->'sea'->'refusal'->'figures'->>'title')::int <> 1 then
-      raise exception '0218 self-assert FAIL: dark, the Las Palmas buy row reads %', v_lp;
+      raise exception '0219 self-assert FAIL: dark, the Las Palmas buy row reads %', v_lp;
     end if;
 
     -- ── LIT (inside the rollback) ─────────────────────────────────────────────────────────────────
     update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
     if not public.sea_conditions_on() then
-      raise exception '0218 self-assert FAIL: the switch did not move';
+      raise exception '0219 self-assert FAIL: the switch did not move';
     end if;
     for v_i in 1 .. 6 loop
       v_t0 := clock_timestamp();
@@ -467,7 +467,7 @@ begin
       v_gb_lit := v_gb_lit || (extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric;
     end loop;
     if (v_res->'sea'->>'bite')::boolean is distinct from true then
-      raise exception '0218 self-assert FAIL: lit, the board''s sea reads %', v_res->'sea';
+      raise exception '0219 self-assert FAIL: lit, the board''s sea reads %', v_res->'sea';
     end if;
     -- (d) Las Palmas has no passage, and its row says why: Macaronesia, title 2 asked, 1 held
     select x into v_lp from jsonb_array_elements(v_res->'buy') x where x->>'port' = 'LPA';
@@ -475,7 +475,7 @@ begin
        or v_lp->'sea'->'refusal'->>'code' is distinct from 'E_SEA_CLOSED' or v_lp->'sea'->>'zone' <> 'NOR-MAC'
        or (v_lp->'sea'->'refusal'->'figures'->>'needs_title')::int <> 2 or (v_lp->'sea'->'refusal'->'figures'->>'title')::int <> 1
        or (v_lp->'sea'->>'needs_title')::int <> 2 then
-      raise exception '0218 self-assert FAIL: lit, the Las Palmas buy row reads %', v_lp;
+      raise exception '0219 self-assert FAIL: lit, the Las Palmas buy row reads %', v_lp;
     end if;
     -- (e) every buy row that HAS a passage is clear: the board's verdict and 0216's reach_passage agree. Las Palmas's
     -- good is sold only past home water (CI round 3: 0 rows with a passage lit), so the board of the first good
@@ -495,33 +495,33 @@ begin
       end if;
     end loop;
     if v_lit_open = 0 or v_lit_bad <> 0 then
-      raise exception '0218 self-assert FAIL: lit, % of % buy rows with a passage are refused by the sea', v_lit_bad, v_lit_open;
+      raise exception '0219 self-assert FAIL: lit, % of % buy rows with a passage are refused by the sea', v_lit_bad, v_lit_open;
     end if;
     -- (f) TITLE 3 (probe record: 10,000 d. of turnover, four harbours called, as 0216's): Las Palmas opens
     for v_i in 1 .. 2 loop
-      perform public.credit(v_player, 'SELL', 5000, public.emit_event(v_player, 'SOLD', '{"probe": "0218"}'::jsonb));
+      perform public.credit(v_player, 'SELL', 5000, public.emit_event(v_player, 'SOLD', '{"probe": "0219"}'::jsonb));
     end loop;
     for c in select p.code from public.ports p where p.kind = 'HARBOUR' and p.code in ('FNC', 'OPO', 'CAD', 'SAF') order by p.code loop
-      perform public.emit_event(v_player, 'VOYAGE_REPORT', jsonb_build_object('to', c.code, 'total_nm', 100, 'probe', '0218'));
+      perform public.emit_event(v_player, 'VOYAGE_REPORT', jsonb_build_object('to', c.code, 'total_nm', 100, 'probe', '0219'));
     end loop;
     if public.title_level(v_player) <> 3 then
-      raise exception '0218 self-assert FAIL: 10,000 d. and four harbours make title %, not 3', public.title_level(v_player);
+      raise exception '0219 self-assert FAIL: 10,000 d. and four harbours make title %, not 3', public.title_level(v_player);
     end if;
     v_res := world.good_board(v_good, v_fleet, v_lis, null);
     select x into v_lp from jsonb_array_elements(v_res->'buy') x where x->>'port' = 'LPA';
     if v_lp is null or jsonb_typeof(v_lp->'miles') <> 'number' or jsonb_typeof(v_lp->'sea'->'refusal') <> 'null'
        or (v_res->'sea'->>'title')::int <> 3 then
-      raise exception '0218 self-assert FAIL: lit at title 3, the Las Palmas buy row reads % (board sea %)', v_lp, v_res->'sea';
+      raise exception '0219 self-assert FAIL: lit at title 3, the Las Palmas buy row reads % (board sea %)', v_lp, v_res->'sea';
     end if;
     raise exception using errcode = 'ZX218', message = 'probe done';
   exception when sqlstate 'ZX218' then
     null;
   end;
-  if exists (select 1 from public.players where auth_uid = c_uid or company_name = 'Casa 0218') then
-    raise exception '0218 self-assert FAIL: the probe survived its rollback';
+  if exists (select 1 from public.players where auth_uid = c_uid or company_name = 'Casa 0219') then
+    raise exception '0219 self-assert FAIL: the probe survived its rollback';
   end if;
   if public.sea_conditions_on() then
-    raise exception '0218 self-assert FAIL: the switch is lit after the probe';
+    raise exception '0219 self-assert FAIL: the switch is lit after the probe';
   end if;
   -- the walls: the two new readers are server-only; the board is still the client's; the registry is as it was
   if has_function_privilege('authenticated', 'public.sea_routes(int, numeric, jsonb)', 'execute')
@@ -530,16 +530,16 @@ begin
      or has_function_privilege('anon', 'public.sea_route_stops(text, jsonb, text)', 'execute')
      or not has_function_privilege('authenticated', 'world.good_board(uuid, uuid, uuid, numeric)', 'execute')
      or has_function_privilege('anon', 'world.good_board(uuid, uuid, uuid, numeric)', 'execute') then
-    raise exception '0218 self-assert FAIL: the walls do not hold';
+    raise exception '0219 self-assert FAIL: the walls do not hold';
   end if;
-  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0218)
+  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0219)
      or exists (select 1 from public.client_rpc_entry_points() e where e.fn is null or not has_function_privilege('authenticated', e.fn, 'execute')) then
-    raise exception '0218 self-assert FAIL: the registry moved or a row is not executable';
+    raise exception '0219 self-assert FAIL: the registry moved or a row is not executable';
   end if;
-  raise notice '0218 self-assert ok: THE BOARD READS THE SEA (dark). world.good_board re-cut by 3 hunks and reversed (ACL, plan_cache_mode kept). DARK (good %): the board minus `sea` equals its pre-image 6 × 6; % rows with a leg read their needs from sea_leg_asks, % refused and % clear, exactly as the figures say; Las Palmas from Lisbon reads E_SEA_CLOSED at title 1. LIT (rolled back): Las Palmas has no passage and says why (Macaronesia, title 2 asked, 1 held); % buy rows with a passage, every one clear; title 3 opens it. TIMING good_board dark old % → new % ms (last 3: % → %), lit % ms. % ms in all.',
+  raise notice '0219 self-assert ok: THE BOARD READS THE SEA (dark). world.good_board re-cut by 3 hunks and reversed (ACL, plan_cache_mode kept). DARK (good %): the board minus `sea` equals its pre-image 6 × 6; % rows with a leg read their needs from sea_leg_asks, % refused and % clear, exactly as the figures say; Las Palmas from Lisbon reads E_SEA_CLOSED at title 1. LIT (rolled back): Las Palmas has no passage and says why (Macaronesia, title 2 asked, 1 held); % buy rows with a passage, every one clear; title 3 opens it. TIMING good_board dark old % → new % ms (last 3: % → %), lit % ms. % ms in all.',
     v_gcode, v_rows, v_shut, v_open, v_lit_open,
     round((select avg(x) from unnest(v_gb_old) x)), round((select avg(x) from unnest(v_gb_new) x)),
     round((select avg(x) from unnest(v_gb_old[4:6]) x)), round((select avg(x) from unnest(v_gb_new[4:6]) x)),
     round((select avg(x) from unnest(v_gb_lit) x)),
-    round(extract(epoch from clock_timestamp() - (select t0 from t0_0218)) * 1000);
+    round(extract(epoch from clock_timestamp() - (select t0 from t0_0219)) * 1000);
 end $$;

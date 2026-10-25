@@ -149,7 +149,7 @@ export function viaWords(stops: readonly string[], name: (code: string) => strin
 
 /** What the board served about the fleet reading a row (0188): its speed, the farthest one leg its captain
  *  plots (null for a company sailing without one), the days of supplies on board now (null when the
- *  board did not say), and whether the sea conditions bite (0218; false when the board did not say). */
+ *  board did not say), and whether the sea conditions bite (0219; false when the board did not say). */
 export interface ReachBoard {
   speedKn: number
   reachNm: number | null
@@ -167,7 +167,7 @@ export function reachBoard(board: Pick<GoodBoard, 'fleet' | 'reach' | 'supplies'
   }
 }
 
-/** What a sea asks, in plain words (0218) — THE ONE WORDING, read by `reachWords` when the sea closes a city and
+/** What a sea asks, in plain words (0219) — THE ONE WORDING, read by `reachWords` when the sea closes a city and
  *  by the Plans face's "Can you go there?" rows:
  *
  *    this sea asks title 2 and wave resistance 10 (Macaronesia and the Canary Current)
@@ -191,7 +191,7 @@ function legWords(nm: number, speedKn: number): string {
  *  dash by the plan builder's note and the best-trade card alike (docs/WORDS.md: no nm, no her, no passage):
  *
  *    this sea asks title 2 and wave resistance 10 (Macaronesia and the Canary Current): you are title 1 and your
- *      fleet holds 12     (0218: the sea conditions bite and the server's sea refusal is the reason)
+ *      fleet holds 12     (0219: the sea conditions bite and the server's sea refusal is the reason)
  *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. A captain with
  *      Navigation 3 could take you there
  *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. No captain can plan
@@ -203,7 +203,7 @@ function legWords(nm: number, speedKn: number): string {
  *  miles). Otherwise the voyage exists and it is the supplies that fall short. */
 export function reachWords(row: BoardPassage & { miles: number | null }, board: ReachBoard): string {
   if (row.stops == null || row.miles === null) {
-    // 0218: lit, a city the SEA closes has no voyage either — the server says so; say that, not "too far"
+    // 0219: lit, a city the SEA closes has no voyage either — the server says so; say that, not "too far"
     const sea = row.sea
     if (board.seaBite && sea?.refusal) {
       const f = sea.refusal.figures

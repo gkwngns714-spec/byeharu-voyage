@@ -1,10 +1,10 @@
-# 2026-10-25 — 0218: the board reads the sea (`osn-sea-on-board`)
+# 2026-10-25 — 0219: the board reads the sea (`osn-sea-on-board`)
 
 > *"It should show restrictions – if whether my level, my class, my ship can go to that location."* (the owner,
 > 2026-10-20, docs/OWNER_REQUESTS.md row 183)
 
 The read that `docs/dev-log/2026-10-25-plan-tab.md` ("The missing server read") named. Prod head 0216; another routine
-writes 0217 (new harbours), so this file is **0218** and renumbers to the prod head + 1 at push. `sea_conditions_bite`
+writes 0217 (new harbours), so this file is **0219** and renumbers to the prod head + 1 at push. `sea_conditions_bite`
 stays dark.
 
 ## What changed
@@ -47,7 +47,7 @@ reads E_SEA_CLOSED; the board's `sea` is `{bite: false, title: 1, wave: 12}`. LI
 Palmas has no passage and says why (NOR-MAC, title 2 asked, 1 held); every buy row WITH a passage is clear (the
 board and 0216's reach_passage agree); at title 3 Las Palmas opens and its refusal goes. Walls: both new readers
 server-only; the board still the client's; the registry unchanged. Timings are printed by the receipt
-(`raise notice '0218 self-assert ok: … TIMING good_board dark old … → new … ms (last 3: …), lit … ms'`).
+(`raise notice '0219 self-assert ok: … TIMING good_board dark old … → new … ms (last 3: …), lit … ms'`).
 
 ## CI round 1
 
@@ -89,17 +89,17 @@ $h$  v_passages jsonb;                 -- 0205: voyage.reach_passage(v_player, v
 begin
 $h$,
 $h$  v_passages jsonb;                 -- 0205: voyage.reach_passage(v_player, v_origin), asked once
-  v_title   int;                    -- 0218: her title (public.title_level), read once
-  v_wave    numeric;                -- 0218: her fleet's wave resistance (public.fleet_wave), read once
-  v_ocode   text;                   -- 0218: the harbour her passages run from
-  v_bpart   jsonb;                  -- 0218: the route to the buy city, when it must be bought first
+  v_title   int;                    -- 0219: her title (public.title_level), read once
+  v_wave    numeric;                -- 0219: her fleet's wave resistance (public.fleet_wave), read once
+  v_ocode   text;                   -- 0219: the harbour her passages run from
+  v_bpart   jsonb;                  -- 0219: the route to the buy city, when it must be bought first
 begin
 $h$),
 ('world.good_board(uuid,uuid,uuid,numeric)', 2,
 $h$  return jsonb_build_object(
     'good', g.code,
 $h$,
-$h$  -- 0218: WHAT THE SEAS ON THE WAY ASK (docs/dev-log/2026-10-25-sea-on-board.md). Every row gains `sea` for the
+$h$  -- 0219: WHAT THE SEAS ON THE WAY ASK (docs/dev-log/2026-10-25-sea-on-board.md). Every row gains `sea` for the
   -- route it serves — where she sails from, its stops, the city (no passage: the direct leg); a sell row's route
   -- runs through the buy city when it must be bought first. public.sea_routes reads public.sea_leg_asks along the
   -- legs and judges them by public.sea_refusal, the one rule. Served dark too, as a reading; lit, a row the sea
@@ -134,7 +134,7 @@ $h$),
 $h$    'supplies', jsonb_build_object('days', round(v_end, 1), 'margin', v_margin),   -- 0188: what `sailable` read
 $h$,
 $h$    'supplies', jsonb_build_object('days', round(v_end, 1), 'margin', v_margin),   -- 0188: what `sailable` read
-    'sea', jsonb_build_object('bite', public.sea_conditions_on(), 'title', v_title, 'wave', v_wave),   -- 0218: what `sea` was judged for
+    'sea', jsonb_build_object('bite', public.sea_conditions_on(), 'title', v_title, 'wave', v_wave),   -- 0219: what `sea` was judged for
 $h$)
 )
 select h.fn, h.n,
@@ -154,7 +154,7 @@ select * from (
 select 'head is 0216 or 0217' as what, max(version) in ('20260818000216', '20260818000217') as ok, max(version)::text as seen
   from supabase_migrations.schema_migrations
 union all
-select 'no 0218 object yet', to_regprocedure('public.sea_routes(int,numeric,jsonb)') is null
+select 'no 0219 object yet', to_regprocedure('public.sea_routes(int,numeric,jsonb)') is null
        and to_regprocedure('public.sea_route_stops(text,jsonb,text)') is null, null
 union all
 select 'sea_conditions_bite is false', not public.sea_conditions_on(), null
@@ -192,8 +192,8 @@ select 'Las Palmas sells a good (the probe''s subject, asked with p_from = Lisbo
        exists (select 1 from public.port_goods pg where pg.port_id = (select id from public.ports where code = 'LPA')
                  and public.port_offers(pg.port_id, pg.good_id)), null
 union all
-select 'no probe residue named 0218', not exists (select 1 from public.players where company_name = 'Casa 0218'
-       or auth_uid = '00000000-0218-4000-8000-000000000001'), null
+select 'no probe residue named 0219', not exists (select 1 from public.players where company_name = 'Casa 0219'
+       or auth_uid = '00000000-0219-4000-8000-000000000001'), null
 union all
 select 'the hunks'' anchor text holds (8a) — the body is the one the file was cut against',
        (select pg_get_functiondef(to_regprocedure('world.good_board(uuid,uuid,uuid,numeric)')) like '%voyage.reach_passage(v_player, p_fleet, s.id) r   -- 0216%'), null
@@ -218,7 +218,7 @@ rollback;
 ```
 
 **8c-1, the boards** — paste `<AUTH_UID>`, `<FLEET>`, `<G1>`…`<G6>`; time the whole file with the shell
-(`time npx --yes supabase@2.120.0 db query --linked -f 8c1.sql`). Before 0218 this is the baseline; 0206 measured
+(`time npx --yes supabase@2.120.0 db query --linked -f 8c1.sql`). Before 0219 this is the baseline; 0206 measured
 ~2 s a board, so expect ≈ 12 s for six and **no board past ~3 s** (the cliff read 8–21 s a board).
 
 ```sql
@@ -231,10 +231,10 @@ select g.n, length(world.good_board(g.good::uuid, '<FLEET>'::uuid, null, null)::
 rollback;
 ```
 
-### 8d. What 0218 adds, on prod's own data, before the push
+### 8d. What 0219 adds, on prod's own data, before the push
 
 The same six boards plus `public.sea_routes`' body,
-inlined (the function does not exist on prod yet), over the routes 0218's hunk builds (buy rows from the port she is
+inlined (the function does not exist on prod yet), over the routes 0219's hunk builds (buy rows from the port she is
 docked at; sell rows through `qty.bought_at`). Time it the same way: **8d − 8c-1 is the cost of the sea pass**;
 the budget is ≤ 10 % of the boards (≈ 1.2 s for six). The `refusal_rows` column is a sanity read: with a title-1
 house in Europe it is the count of rows past home waters.
@@ -334,7 +334,7 @@ select (select count(*) from bd) as boards,
 rollback;
 ```
 
-### 8e. After the push (0218 live): the new board ×6, and the after-check
+### 8e. After the push (0219 live): the new board ×6, and the after-check
 
 Re-run **8c-1** unchanged: now it times the NEW body. Expect within ~10 % of the 8c-1 baseline and no board past
 ~3 s. Then read one row back (`select world.good_board(…)->'buy'->0->'sea'`, same session shape): an object with

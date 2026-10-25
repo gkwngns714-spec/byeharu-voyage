@@ -2706,12 +2706,12 @@ export interface BoardPassage {
   sailable?: boolean
   /** The passage's longest leg. */
   longest_leg?: { miles: number; days: number } | null
-  /** 0218 — what the seas on this row's route ask (null when there is no leg: the city she is at). Absent before
-   *  0218. Served while the sea conditions are dark too: the refusal is then what the rule WILL answer. */
+  /** 0219 — what the seas on this row's route ask (null when there is no leg: the city she is at). Absent before
+   *  0219. Served while the sea conditions are dark too: the refusal is then what the rule WILL answer. */
   sea?: BoardSea | null
 }
 
-/** 0218 — what a board row's seas ask (`public.sea_routes`): the most any leg of the route asks, and the one
+/** 0219 — what a board row's seas ask (`public.sea_routes`): the most any leg of the route asks, and the one
  *  rule's verdict (`public.sea_refusal`) for her title and her fleet's wave. The client prints these; it never
  *  compares them. */
 export interface BoardSea {
@@ -2835,7 +2835,7 @@ export interface GoodBoard {
   reach?: { navigation: number; reach_nm: number } | null
   /** The stores `sailable` read (0188): days at sea her casks carry now, and the margin a leg must leave. */
   supplies?: { days: number; margin: number }
-  /** 0218 — whether the sea conditions bite, and the title and wave the rows' `sea` was judged for. */
+  /** 0219 — whether the sea conditions bite, and the title and wave the rows' `sea` was judged for. */
   sea?: { bite: boolean; title: number | null; wave: number | null }
   assumes: string
   clock: { now: string; next_change_at: string }
