@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fineClass } from '../components/ui'
-import { project } from '../lib/geo'
+import { project, type LatLon } from '../lib/geo'
+import { useT } from '../lib/i18n'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
 import { buildChartModel } from './chartModel'
 import { openingBounds } from './chartView'
 import { mapFleetsOf } from './liveWorld'
+import { loopD } from './route'
 import type { MapSelection } from './mapTypes'
 import { useRegionsFilter } from './regionsFilter'
 import { useBackdrop } from './useBackdrop'
@@ -73,6 +75,15 @@ import { ViewControls } from './ViewControls'
 //    (0039: the sea-lane graph is gone with the leg model — the only lines a chart draws are
 //    TRACKS, verified courses fleets are actually sailing.)
 //
+// ── 2026-10-25, OWNER ROW 183: THE PLAN'S CHART ─────────────────────────────────────────────────
+// *"It should show map (without npcs or name of the cities that aren't associated with the route/plan"*.
+// Two optional props, both off by default (every other caller is unchanged):
+//   · `only` — the port CODES drawn at all. Every other harbour is left off the paper, so no other
+//     city's mark or name can appear; the merchants never reach this chart (it is handed no traffic).
+//   · `legs` — the plan's proposed courses (`planLines`, the course author's water, the same `path`
+//     the queued SAIL lines carry and the server re-verifies). Point 2 above forbids a STRAIGHT line
+//     between two places; these are not straight, they are the course the order would be queued with.
+//
 // And it still invents no place: ports and coordinates are `world.snapshot()`; the fleet's
 // position at sea is `voyage.position`, the server's closed form, copied (./liveWorld.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -82,7 +93,10 @@ export function SmallChart({
   fleets,
   considering,
   highlight,
+  only,
+  legs,
   ariaLabel,
+  findAriaLabel,
   className = 'aspect-[3/2] w-full',
 }: {
   /** `world.snapshot().ports` — the whole table. `ChartCanvas` decides which of it is drawn. */
@@ -102,14 +116,25 @@ export function SmallChart({
    * unreadable.
    */
   highlight: string | null
+  /** Row 183: draw ONLY these port codes (a plan's cities); absent, the whole table as the tab does. */
+  only?: readonly string[]
+  /** Row 183: the plan's proposed courses, drawn dashed (ChartCanvas `plannedD`). */
+  legs?: readonly (readonly LatLon[])[]
   ariaLabel: string
+  findAriaLabel?: string
   className?: string
 }) {
+  const t = useT()
   const boxRef = useRef<HTMLDivElement>(null)
   // The ports as the chart draws them — set on the drawn shore (row 92), the same list the Map
   // tab draws — and the backdrop they stand on.
   const backdrop = useBackdrop(ports)
-  const chartPorts = backdrop.ports
+  const onlyKey = only ? only.join(' ') : null
+  const chartPorts = useMemo(
+    () => (onlyKey === null ? backdrop.ports : backdrop.ports.filter((p) => onlyKey.split(' ').includes(p.code))),
+    [backdrop.ports, onlyKey],
+  )
+  const plannedD = useMemo(() => (legs && legs.length > 0 ? loopD(legs) : null), [legs])
   // The same switch the Map tab wears (row 93): one store, both surfaces.
   const regionsOn = useRegionsFilter()
   const chartFleets = useMemo(() => mapFleetsOf(fleets), [fleets])
@@ -191,17 +216,18 @@ export function SmallChart({
           // label planner never prints a harbour's name underneath it (the Saint-Malo defect, found
           // 2026-08-21 — the same one mechanism the Map tab feeds, not a second spelling of it).
           keepOut={surface.chromeBoxes}
+          plannedD={plannedD}
           ariaLabel={ariaLabel}
           className="pointer-events-none absolute inset-0 h-full w-full"
         />
       ) : (
         <p className={fineClass('absolute inset-0 flex items-center justify-center')}>
-          opening the chart…
+          {t('chart.opening')}
         </p>
       )}
       <ViewControls
         surface={surface}
-        findAriaLabel="Show where she lies and the harbours of this order"
+        findAriaLabel={findAriaLabel ?? t('chart.findOrder')}
         testId="small-chart-controls"
       />
     </div>

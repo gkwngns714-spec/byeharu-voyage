@@ -3,7 +3,7 @@ import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PLAN BUILDER, DRIVEN (docs/COMMAND_DESK.md §3.5, slice D4) — on a local build, at the phone:
-//   a good sold elsewhere → its Buy at row's Plan → the builder (the slot turns over) with the board's
+//   a good sold elsewhere → its Buy at row's Plan → the desk turns to Plans (row 183), the builder there with the board's
 //   estimate for the chosen cities → a sell city pressed changes the estimate in place (nothing above it
 //   moves) → "Queue it once" → the desk turns to Plans, where the plan's lines stand in the queue, the
 //   SAIL to the buy city first and the SELL last.
@@ -29,7 +29,9 @@ test('a plan from the good page is queued whole and stands on Plans', async ({ p
   await expect(plan).toBeVisible({ timeout: 60_000 })
   await plan.click()
 
-  const builder = page.getByTestId('plan-builder')
+  // owner row 183: the press turns the desk to Plans, and the plan is made there
+  await expect(page.getByTestId('desk-plans')).toBeVisible({ timeout: 30_000 })
+  const builder = page.getByTestId('desk-plans').getByTestId('plan-builder')
   await expect(builder).toBeVisible()
   await expect(page.getByTestId('good-page')).toHaveCount(0)
   // the board's estimate for the chosen cities lands (skeleton first, at its final height)
@@ -45,7 +47,7 @@ test('a plan from the good page is queued whole and stands on Plans', async ({ p
   }
 
   await builder.getByTestId('plan-queue').click()
-  await expect(builder).toHaveCount(0, { timeout: 60_000 })
+  await expect(page.getByTestId('plan-builder')).toHaveCount(0, { timeout: 60_000 })
   await expect(page.getByTestId('desk-plans')).toBeVisible()
   const rows = page.getByTestId('queue-row')
   await expect(rows.first()).toBeVisible({ timeout: 30_000 })

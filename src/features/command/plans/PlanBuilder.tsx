@@ -8,7 +8,8 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatClock, formatPrice, formatPriceDelta, formatUnits, formatVoyageDays } from '../../../lib/format'
 import type { FleetView, Refusal, SnapshotGood } from '../../../lib/rpc'
 import { useDeskPlan, type PlanDraft } from './planDraft'
-import { planLines, planRoute, reachBoard, reachWords, viaWords } from './planLines'
+import { planLines, planRoute, viaWords } from './planLines'
+import { PlanVoyage } from './PlanVoyage'
 import { useT } from '../../../lib/i18n'
 
 // THE PLAN BUILDER (docs/COMMAND_DESK.md §3.5) — the owner's coffee example as one tray:
@@ -82,9 +83,8 @@ export function PlanBuilder({
   const sellChoices = b ? b.sell.filter((r) => r.quoted || r.port === plan.sellAt).map((r) => r.port) : []
   const buyRow = b && plan.buyAt ? (b.buy.find((r) => r.port === plan.buyAt) ?? null) : null
   // the voyage the board serves: through its stops; a city beyond the captain's reach or the supplies is not planned
+  // (why, in THE wording, is printed by PlanVoyage's "Can you go there?" — row 183 — not twice)
   const unreachable = [plan.buyAt ? buyRow : null, sellRow].find((r) => r && r.sailable === false) ?? null
-  const unreachableWords =
-    unreachable && b ? `${name(unreachable.port)} — ${reachWords(unreachable, reachBoard(b))}.` : null
 
   const queue = () =>
     press.run(async () => {
@@ -260,11 +260,9 @@ export function PlanBuilder({
           </>
         )}
       </div>
-      {unreachableWords && (
-        <Note tone="danger" className="mt-3" data-testid="plan-unreachable">
-          {unreachableWords}
-        </Note>
-      )}
+      {/* THE VOYAGE (owner row 183): the chart of only this plan, how long, the supplies and crew it needs,
+          and whether you can go there — PlanVoyage.tsx. Under the estimate, so nothing above moves. */}
+      <PlanVoyage fleet={fleet} plan={plan} board={b} buyRow={buyRow} sellRow={sellRow} />
       {noCourse && (
         <Note tone="danger" className="mt-3">
           {t('desk.noWater', { port: name(noCourse) })}

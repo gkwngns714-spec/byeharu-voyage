@@ -31,7 +31,16 @@ import { emptyStop, type RouteStopDraft } from '../standingRouteDraft'
 import type { PlanDraft } from './planDraft'
 import { t } from '../../../lib/i18n'
 
-export type PlanText = { ok: true; lines: PlanLine[] } | { ok: false; noCourseTo: string }
+/** One SAIL of the plan (owner row 183, the Plans face's chart and leg list): where it leaves from (a port
+ *  CODE, or null when the fleet starts at sea), where it goes, its proposed course and that course's miles. */
+export interface PlanLeg {
+  from: string | null
+  to: string
+  path: [number, number][]
+  nm: number
+}
+
+export type PlanText = { ok: true; lines: PlanLine[]; legs: PlanLeg[] } | { ok: false; noCourseTo: string }
 
 /** A number as the grammar reads it: no grouping, at most two decimals. */
 function num(n: number): string {
@@ -39,7 +48,7 @@ function num(n: number): string {
 }
 
 /** Sailed miles as days at sea at this fleet's speed — the one arithmetic the plan and its words share. */
-function daysAt(nm: number, speedKn: number): number {
+export function daysAt(nm: number, speedKn: number): number {
   return nm / speedKn / 24
 }
 
@@ -59,6 +68,7 @@ export function planLines(
   passage: PlanPassage = { toBuy: [], toSell: [] },
 ): PlanText {
   const lines: PlanLine[] = []
+  const legs: PlanLeg[] = []
   const docked = fleet.status === 'DOCKED' ? fleet.port : null
   let here = docked
   let from = sailOrigin(fleet, portByCode)
@@ -73,8 +83,10 @@ export function planLines(
     const to = sailTarget({ dest: code }, portByCode)
     const course = from && to ? proposeCourse(nav, from, to) : null
     if (!course) return false
+    const nm = pathLengthNm(course.map(([lat, lon]) => ({ lat, lon })))
+    legs.push({ from: here, to: code, path: course, nm })
     if (stores && stores.speedKn > 0) {
-      const days = daysAt(pathLengthNm(course.map(([lat, lon]) => ({ lat, lon }))), stores.speedKn)
+      const days = daysAt(nm, stores.speedKn)
       if (here !== null && casks < days * stores.margin) {
         if (buyLine !== null && here === plan.buyAt) lines.splice(buyLine, 0, { text: 'PROVISION FULL' })
         else lines.push({ text: 'PROVISION FULL' })
@@ -114,7 +126,7 @@ export function planLines(
     }
     lines.push({ text: `SELL ${plan.good} ALL${plan.min !== null ? ` AT >= ${num(plan.min)}` : ''}` })
   }
-  return { ok: true, lines }
+  return { ok: true, lines, legs }
 }
 
 /** "Make it a route": the buy stop and the sell stop, in the route editor's own draft. */
