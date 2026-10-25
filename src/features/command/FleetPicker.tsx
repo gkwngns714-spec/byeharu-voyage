@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Button, Dot, Figure, Icon, Popover, Row, Tray, useWide, type DotTone } from '../../components/ui'
+import { Button, Dot, Figure, Icon, Popover, Row, Tray, useWide, type DotTone, Clip } from '../../components/ui'
 import {
   fleetHoldTotal,
   fleetHoldUsed,
@@ -103,7 +103,7 @@ export function FleetPicker({
   const name = (
     <>
       {flag && <PortFlag code={flag} />}
-      <span className="truncate text-t-body font-semibold text-ink">{fleet.name}</span>
+      <Clip className="text-t-body font-semibold text-ink">{fleet.name}</Clip>
     </>
   )
 
@@ -196,7 +196,7 @@ function FleetRows({
             label={
               <span className="flex items-center gap-2">
                 <Dot tone={SIGNAL_TONE[signal]} label={SIGNAL_WORD[signal]} />
-                <span className="truncate">{f.name}</span>
+                <Clip>{f.name}</Clip>
               </span>
             }
             value={<Figure value={formatOfTotal(used, total)} unit={tonsWord(total)} />}

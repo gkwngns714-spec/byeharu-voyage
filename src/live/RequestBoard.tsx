@@ -1,4 +1,4 @@
-import { ActCell, Figure, RarityMark, Row } from '../components/ui'
+import { ActCell, Figure, RarityMark, Row, Clip } from '../components/ui'
 import { useShellState } from '../app/shellState'
 import { formatDucatsDelta, formatOfTotal, formatPctDelta, formatRelative, formatUnits } from '../lib/format'
 import type { TradeRequest } from '../lib/rpc'
@@ -65,7 +65,7 @@ export function RequestBoard({
             key={r.id}
             label={
               <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
-                <span className="max-w-full truncate">{r.name}</span>
+                <Clip>{r.name}</Clip>
                 <RarityMark rarity={r.rarity} />
                 <span className="text-t-caption text-ink-faint">
                   {`· ${formatUnits(r.qty)} · ends ${formatRelative(Date.parse(r.expires_at), nowMs)}`}

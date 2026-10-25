@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Bar, Button, Figure, Row, SheetSection } from '../../components/ui'
+import { Bar, Button, Figure, Row, SectionColumns, SheetSection } from '../../components/ui'
 import { formatOfTotal } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
@@ -105,49 +105,43 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
         </Row>
       )}
 
-      <div className="space-y-6 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0">
-        <div>
-          <SheetSection heading={t('fleets.ships')} data-testid="fleet-fold-section">
-            <FleetShips fleet={fleet} />
-          </SheetSection>
-        </div>
-        <div>
-          <SheetSection heading={t('fleets.cargo')} data-testid="fleet-fold-section">
-            <FleetCargo fleet={fleet} />
-          </SheetSection>
-        </div>
-        <div>
-          <SheetSection heading={t('fleets.supplies')} data-testid="fleet-fold-section">
-            <FleetStores
-              fleet={fleet}
-              order={standing.order}
-              book={standing.book}
-              days={days}
-              onDays={setDraft}
-              refusal={standing.refusal}
-              onDismissRefusal={standing.dismissRefusal}
-            />
-            {draft !== null && days !== served && (
-              <Button
-                variant="primary"
-                className="mt-3 w-full"
-                busy={standing.busy}
-                busyLabel={t('fleets.saving')}
-                // Until the standing-order book has been read, `keep()` refuses silently
-                // (standingOrder.ts: `if (!book || busy) return false`) — so the button must not be
-                // pressable then, or a quick press does nothing at all. Seen in CI 2026-10-13
-                // (flicker.spec, run 38348647015): the press landed before world.provision_presets()
-                // answered and no order was ever sent.
-                disabled={!standing.book}
-                onClick={commit}
-                data-testid="fleet-keep"
-              >
-                {days === 0 ? t('fleets.stopKeeping') : t('fleets.keepN', { days: keepDays(days) })}
-              </Button>
-            )}
-          </SheetSection>
-        </div>
-      </div>
+      <SectionColumns count={3}>
+        <SheetSection heading={t('fleets.ships')} data-testid="fleet-fold-section">
+          <FleetShips fleet={fleet} />
+        </SheetSection>
+        <SheetSection heading={t('fleets.cargo')} data-testid="fleet-fold-section">
+          <FleetCargo fleet={fleet} />
+        </SheetSection>
+        <SheetSection heading={t('fleets.supplies')} data-testid="fleet-fold-section">
+          <FleetStores
+            fleet={fleet}
+            order={standing.order}
+            book={standing.book}
+            days={days}
+            onDays={setDraft}
+            refusal={standing.refusal}
+            onDismissRefusal={standing.dismissRefusal}
+          />
+          {draft !== null && days !== served && (
+            <Button
+              variant="primary"
+              className="mt-3 w-full"
+              busy={standing.busy}
+              busyLabel={t('fleets.saving')}
+              // Until the standing-order book has been read, `keep()` refuses silently
+              // (standingOrder.ts: `if (!book || busy) return false`) — so the button must not be
+              // pressable then, or a quick press does nothing at all. Seen in CI 2026-10-13
+              // (flicker.spec, run 38348647015): the press landed before world.provision_presets()
+              // answered and no order was ever sent.
+              disabled={!standing.book}
+              onClick={commit}
+              data-testid="fleet-keep"
+            >
+              {days === 0 ? t('fleets.stopKeeping') : t('fleets.keepN', { days: keepDays(days) })}
+            </Button>
+          )}
+        </SheetSection>
+      </SectionColumns>
 
       <Button
         variant="primary"

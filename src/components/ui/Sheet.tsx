@@ -1,3 +1,4 @@
+import { Clip } from './Clip'
 import { useRef, useState, type ReactNode } from 'react'
 import { sheetBodyClass, sheetColumnClass } from './screenLayout'
 import { useInTray } from './trayContext'
@@ -73,7 +74,9 @@ export function Sheet({
           pinned ? 'bg-surface' : '',
         ].join(' ')}
       >
-        <h1 className={pinned ? 'truncate text-t-body' : 'truncate text-t-title'}>{title}</h1>
+        <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-title'}>
+          <Clip>{title}</Clip>
+        </h1>
         {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
       </header>
       {/* THE READABLE COLUMN. On a phone it is the glass; from `lg` it is SHEET_REM at most with
@@ -129,4 +132,27 @@ export function SheetSection({
       {surface ? <div className={`rounded-tile ${panel} px-4 [&>*:last-child]:border-b-0`}>{children}</div> : children}
     </section>
   )
+}
+
+/** SECTIONS SIDE BY SIDE (2026-10-25, owner rows 196 / 198: risers, fallers and most traded; best
+ *  and worst day — "not in the same line"). A `SheetSection` brings its own top air (`mt-6`, and
+ *  `mt-2` when it is the first child), which is right in a column and wrong in a row: three sections
+ *  in a grid started at two heights, 16px apart, because only the first one was a first child. Each
+ *  screen patched it its own way — a `mt-0 first:mt-0` that lost to the section's own class, a `div`
+ *  around every section so each one was "first". This is the one place sections stand side by side:
+ *  the group is spaced like one section, the gap between its members is the grid's, every member's
+ *  own top margin is zeroed, and the headings start on one line at every width.
+ *  tests/align.spec.ts measures it (PAIR). */
+export function SectionColumns({
+  count,
+  className = '',
+  children,
+}: {
+  /** How many stand side by side from the `lg` breakpoint; below it they stack. */
+  count: 2 | 3
+  className?: string
+  children: ReactNode
+}) {
+  const cols = count === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
+  return <div className={`mt-6 grid grid-cols-1 gap-6 first:mt-2 ${cols} [&>section]:mt-0! ${className}`}>{children}</div>
 }

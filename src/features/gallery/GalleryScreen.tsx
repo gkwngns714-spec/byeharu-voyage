@@ -3,6 +3,9 @@ import {
   Bar,
   Button,
   Chip,
+  Clip,
+  Col,
+  Cols,
   Corner,
   Field,
   FieldButton,
@@ -11,8 +14,11 @@ import {
   Icon,
   Nav,
   Note,
+  RankBars,
   Row,
+  SectionColumns,
   Segmented,
+  SeriesChart,
   Sheet,
   SheetSection,
   Stepper,
@@ -21,7 +27,7 @@ import {
   Tray,
   type TrayDetent,
 } from '../../components/ui'
-import { COIN } from '../../lib/format'
+import { COIN, formatDucats, formatInt, formatPctChange } from '../../lib/format'
 
 // THE GALLERY — every primitive, in every state, on one page at 390×844.
 //
@@ -89,12 +95,73 @@ export function GalleryScreen() {
           <Row label="Warehouse" tone="muted" value="tier 5" hairline={false} data-testid="gallery-row" />
         </SheetSection>
 
+        {/* THE LISTS, LINED UP (owner rows 196, 198, 199, 201): what tests/align.spec.ts measures
+            with figures the fresh local world does not have yet — a ranked list whose figures differ
+            in width, a row of fixed columns, two sections side by side, a drawn line, a long name */}
+        <SectionColumns count={2}>
+          <SheetSection heading="Risers" surface data-testid="gallery-risers">
+            <RankBars
+              rows={[
+                { id: 'a', label: 'Andalusian Horses', value: 0.124, tone: 'success' },
+                { id: 'b', label: 'Pepper', value: 0.031, tone: 'success' },
+                { id: 'c', label: 'Ship Handling Specialisation, the long name of a good', value: 0.004, tone: 'success' },
+              ]}
+              format={formatPctChange}
+            />
+          </SheetSection>
+          <SheetSection heading="Worst day" surface data-testid="gallery-worst">
+            <RankBars
+              rows={[
+                { id: 'a', label: 'Casa da Conta', value: -1234567, tone: 'danger' },
+                { id: 'b', label: 'Casa', value: -12, tone: 'danger' },
+              ]}
+              format={formatInt}
+            />
+          </SheetSection>
+        </SectionColumns>
+        <SheetSection heading="Columns" surface>
+          {[
+            ['Abalone Shell', '33.2', 0.031],
+            ['Geobukseon (turtle ship) timbers', '6,700.0', -0.2],
+            ['Tea', '1.5', 0],
+          ].map(([name, price, move], i) => (
+            <Row
+              key={String(name)}
+              label={<Clip>{String(name)}</Clip>}
+              value={
+                <Cols>
+                  <Col w="md" phone="hide">
+                    <Figure value="—" tone="faint" />
+                  </Col>
+                  <Col w="sm">
+                    <Figure value={String(price)} />
+                  </Col>
+                  <Col w="sm">
+                    <Figure value={formatPctChange(Number(move))} />
+                  </Col>
+                </Cols>
+              }
+              hairline={i < 2}
+              data-testid="gallery-col-row"
+            >
+              <span className="text-t-caption text-ink-faint">the longest stretch a fleet can sail without a port to call at, written out in full</span>
+            </Row>
+          ))}
+        </SheetSection>
+        <SheetSection heading="Chart">
+          <SeriesChart
+            points={[0, 1, 2, 3, 4, 5, 6, 7].map((h) => ({ atMs: Date.UTC(2026, 9, 25, h), value: [26_061_000, 26_100_000, 25_990_000, 26_300_000, 26_250_000, 26_400_000, 26_380_000, 26_500_000][h] }))}
+            format={formatDucats}
+            label="their purses, eight hours"
+          />
+        </SheetSection>
+
         <SheetSection heading="Bar">
           <div className="flex flex-col gap-3">
-            <Bar pct={62} label="hull" figure={<Figure value="62" unit="%" />} />
-            <Bar pct={18} tone="warning" label="stores" figure={<Figure value="2.1" unit="d" />} />
-            <Bar pct={92} tone="danger" label="hold" figure={<Figure value="55" unit="/ 60 t" />} />
-            <Bar value={4} of={6} tone="success" label="stock" figure={<Figure value="4" unit="/ 6" />} />
+            <Bar pct={62} label="hull" figureCol="md" figure={<Figure value="62" unit="%" />} />
+            <Bar pct={18} tone="warning" label="stores" figureCol="md" figure={<Figure value="2.1" unit="d" />} />
+            <Bar pct={92} tone="danger" label="hold" figureCol="md" figure={<Figure value="55" unit="/ 60 t" />} />
+            <Bar value={4} of={6} tone="success" label="stock" figureCol="md" figure={<Figure value="4" unit="/ 6" />} />
             <Bar value={2} of={5} tone="neutral" label="tries" />
           </div>
         </SheetSection>

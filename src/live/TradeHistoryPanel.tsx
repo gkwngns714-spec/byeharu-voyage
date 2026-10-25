@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Empty, Icon, Skeleton, Tray, TrayTitle, deltaTone, goodIcon, type TrayDetent } from '../components/ui'
+import { Clip, Empty, Figure, Icon, Row, Skeleton, Tray, TrayTitle, deltaTone, goodIcon, type TrayDetent } from '../components/ui'
 import { CHART_CHROME, GoToLink } from '../chart'
 import { useShellState } from '../app/shellState'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../lib/format'
@@ -276,25 +276,24 @@ function Books({
   return (
     <section data-testid="trade-books">
       <Heading>{tl('books.booksHead')}</Heading>
-      <dl className="rounded-control bg-surface-2 px-3 py-1">
+      <div className="rounded-control bg-surface-2 px-3">
         {rows
           .filter((r) => r.always || r.value !== 0)
           .map((r) => (
-            <div key={r.label} className="flex items-baseline justify-between gap-3 border-b border-ink-faint/10 py-1.5">
-              <dt className="min-w-0">
-                <span className="block text-t-body text-ink">{r.label}</span>
-                {r.hint && <span className="block text-t-caption text-ink-faint">{r.hint}</span>}
-              </dt>
-              <dd className={`shrink-0 text-t-body tabular-nums ${r.sign > 0 && r.value > 0 ? 'text-success' : 'text-ink'}`}>
-                {formatDucatsDelta(r.sign * r.value)}
-              </dd>
-            </div>
+            <Row
+              key={r.label}
+              label={<span className="text-t-body text-ink">{r.label}</span>}
+              value={<Figure value={formatDucatsDelta(r.sign * r.value)} tone={r.sign > 0 && r.value > 0 ? 'success' : 'ink'} />}
+            >
+              {r.hint && <span className="block text-t-caption text-ink-faint">{r.hint}</span>}
+            </Row>
           ))}
-        <div className="flex items-baseline justify-between gap-3 py-2">
-          <dt className="text-t-body font-semibold text-ink">{tl('books.net')}</dt>
-          <dd className={`text-t-body font-semibold tabular-nums ${TONE_TEXT[deltaTone(b.net)]}`}>{formatDucatsDelta(b.net)}</dd>
-        </div>
-      </dl>
+        <Row
+          label={<span className="text-t-body font-semibold text-ink">{tl('books.net')}</span>}
+          value={<Figure value={formatDucatsDelta(b.net)} tone={deltaTone(b.net)} className="font-semibold" />}
+          hairline={false}
+        />
+      </div>
     </section>
   )
 }
@@ -355,7 +354,7 @@ function GoodName({ code }: { code: string }) {
   return (
     <span className="flex min-w-0 items-center gap-1.5 text-ink">
       <Icon name={goodIcon(code, good?.category ?? '')} size={14} className="shrink-0 text-ink-faint" />
-      <span className="truncate">{good?.name ?? code}</span>
+      <Clip>{good?.name ?? code}</Clip>
     </span>
   )
 }
@@ -368,9 +367,9 @@ function PortHead({ code, name, n }: { code: string; name: string; n?: number })
           {n}
         </span>
       )}
-      <span className="truncate text-t-body text-ink">
+      <Clip className="text-t-body text-ink">
         <GoToLink to={{ kind: 'port', code }}>{name}</GoToLink>
-      </span>
+      </Clip>
     </div>
   )
 }

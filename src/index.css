@@ -993,3 +993,21 @@ html:lang(ko) body {
   }
 }
 
+
+/* THE ROW'S LINE (2026-10-25, owner rows 196 / 198). Every cell on line 1 of a `Row`
+   (src/components/ui/Row.tsx) sets its text in ONE 24px line box, whatever size the text is, so the
+   first line of a label in t-label, a figure in t-body and a mark centre on the same y. Tailwind's
+   `text-t-*` read their line height through `--tw-leading`, which is registered NON-inheriting, so it
+   is set on every descendant here, and unlayered, so a `leading-*` utility inside a cell cannot pull
+   one cell off the line. A control inside a cell (an `ActCell`) keeps its own compact lines: its box
+   starts at the line's top and its first line, a caption under 4px of padding, centres on the same
+   y. tests/align.spec.ts measures it. */
+.bv-row-line,
+.bv-row-line *:not(button, button *) {
+  --tw-leading: 1.5rem;
+  line-height: 1.5rem;
+}
+/* A cell whose whole content is one control (a `Button`, `min-h-11`) centres it on the line. */
+.bv-row-line:has(> button:only-child) {
+  margin-block: calc((1.5rem - 2.75rem) / 2);
+}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Figure, Note, PricePair, SheetSection, Skeleton, StockGauge } from '../../../components/ui'
+import { Button, Figure, Note, PricePair, SheetSection, Skeleton, StockGauge, Clip } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import {
@@ -200,8 +200,10 @@ function BestTrade({
       <div className="mt-2 grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-1">
         <span className="text-t-caption text-ink-faint">{t('markets.buy')}</span>
         {buy ? (
-          <button type="button" onClick={() => onFocus(buy.port)} className="min-h-11 min-w-0 truncate text-left text-t-body text-ink">
-            <PortFlag code={buy.port} /> {name(buy.port)}
+          <button type="button" onClick={() => onFocus(buy.port)} className="min-h-11 min-w-0 text-left text-t-body text-ink">
+            <Clip>
+              <PortFlag code={buy.port} /> {name(buy.port)}
+            </Clip>
           </button>
         ) : (
           <span className="text-t-body text-ink">{t('markets.onBoard')}</span>
@@ -215,8 +217,10 @@ function BestTrade({
         </span>
 
         <span className="text-t-caption text-ink-faint">{t('markets.sell')}</span>
-        <button type="button" onClick={() => onFocus(sell.port)} className="min-h-11 min-w-0 truncate text-left text-t-body text-ink">
-          <PortFlag code={sell.port} /> {name(sell.port)}
+        <button type="button" onClick={() => onFocus(sell.port)} className="min-h-11 min-w-0 text-left text-t-body text-ink">
+          <Clip>
+            <PortFlag code={sell.port} /> {name(sell.port)}
+          </Clip>
         </button>
         <span className="text-right text-t-body tabular-nums text-ink">
           {sell.price_each !== null ? formatPrice(sell.price_each) : formatPrice(sell.mid)}
@@ -329,9 +333,9 @@ function BuyAt({
               className={`flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-control px-1.5 text-left ${r.port === focus ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}
             >
               <span className="flex items-center justify-between gap-2">
-                <span className={`truncate text-t-body ${r.here ? 'text-accent' : 'text-ink'}`}>
+                <Clip className={`text-t-body ${r.here ? 'text-accent' : 'text-ink'}`}>
                   <PortFlag code={r.port} /> {name(r.port)}
-                </span>
+                </Clip>
                 <PricePair {...sidesAt(sides, r.port)} className="shrink-0" />
               </span>
               <span className="mt-0.5 flex items-center justify-between gap-2">
@@ -340,7 +344,7 @@ function BuyAt({
                 ) : (
                   <span className="text-t-caption text-ink-faint">{formatUnits(r.stock)}</span>
                 )}
-                <span className="truncate text-t-caption text-ink-faint">
+                <span className="break-words text-t-caption text-ink-faint">
                   {r.sailable === false ? reachWords(r, reachBoard(board)) : away(r, r.port === docked)}
                   {r.sailable !== false && viaWords(r.stops ?? [], name) ? ` · ${viaWords(r.stops ?? [], name)}` : ''}
                   {r.best ? ` · ◆ ${formatClock(Date.parse(r.best.at))} ${formatPctChange(-r.best.gain_pct)}` : ''}
@@ -421,12 +425,12 @@ function SellAt({
                 className={`flex min-h-11 min-w-0 flex-1 flex-col justify-center rounded-control px-1.5 text-left ${r.port === focus ? 'bg-accent-soft' : 'hover:bg-surface-2'}`}
               >
                 <span className="flex items-center justify-between gap-2">
-                  <span className="truncate text-t-body text-ink">
+                  <Clip className="text-t-body text-ink">
                     <PortFlag code={r.port} /> {name(r.port)}
                     {r.request ? (
                       <span className="ml-1.5 text-t-caption text-warning">{t('markets.wanted', { pct: formatInt(r.request.premium_pct) })}</span>
                     ) : null}
-                  </span>
+                  </Clip>
                   <PricePair {...sidesAt(sides, r.port)} className="shrink-0" />
                 </span>
                 <span className="mt-0.5 flex items-center justify-between gap-2">
@@ -434,7 +438,7 @@ function SellAt({
                     {typeof r.stock === 'number' && typeof r.stock_target === 'number' && (
                       <StockGauge stock={r.stock} target={r.stock_target} label={`${goodName} at ${name(r.port)}`} />
                     )}
-                    <span className="truncate text-t-caption text-ink-faint">
+                    <span className="break-words text-t-caption text-ink-faint">
                       <span className={r.sailable === false ? 'text-warning' : undefined}>
                         {r.sailable === false ? reachWords(r, reachBoard(board)) : away(r, r.port === docked)}
                       </span>

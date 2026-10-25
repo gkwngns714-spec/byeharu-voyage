@@ -15,6 +15,7 @@ import {
   Tray,
   TrayTitle,
   type TrayDetent,
+  Clip,
 } from '../components/ui'
 import { CHART_CHROME, GoToLink } from '../chart'
 import { useShellState } from '../app/shellState'
@@ -226,8 +227,8 @@ function MerchantBody({
             mark={<IconDisc name="compass" />}
             label={
               <span className="block min-w-0">
-                <span className="block truncate">{card.route.name}</span>
-                <span className="block truncate text-t-caption text-ink-faint">
+                <Clip>{card.route.name}</Clip>
+                <span className="block break-words text-t-caption text-ink-faint">
                   {card.route.stops.map((code, i) => (
                     <Fragment key={`${code}-${i}`}>
                       {i > 0 && ' → '}
@@ -284,7 +285,7 @@ function MerchantBody({
               {/* 0213: THE REFOUND IS RETIRED. What stands behind her cargo is insurance: the losses it
                   paid her, and what the insuring cities could not cover. Nothing until a claim. */}
               {card.company.insurance && card.company.insurance.claims > 0 && (
-                <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-insurance">
+                <span className="block break-words text-t-caption text-ink-faint" data-testid="merchant-insurance">
                   {t('port.insurancePaid', {
                     times: card.company.insurance.claims === 1 ? t('port.once') : t('port.times', { n: formatInt(card.company.insurance.claims) }),
                     paid: formatDucats(card.company.insurance.paid),
@@ -294,7 +295,7 @@ function MerchantBody({
               )}
               {/* 0123: where her surplus went — her largest stake, and how many cities more. */}
               {card.company.invested && card.company.invested.length > 0 && (
-                <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-invested">
+                <span className="block break-words text-t-caption text-ink-faint" data-testid="merchant-invested">
                   {t('port.investedAt', { amount: formatDucats(card.company.invested[0].paid) })}
                   <GoToLink to={{ kind: 'port', code: card.company.invested[0].port }}>{card.company.invested[0].name}</GoToLink>
                   {card.company.invested.length > 1 ? ` +${card.company.invested.length - 1}` : ''}
@@ -302,7 +303,7 @@ function MerchantBody({
               )}
               {/* 0145: where her country's race is — her largest influence, the city and the country. */}
               {card.company.influence && card.company.influence.length > 0 && (
-                <span className="block truncate text-t-caption text-ink-faint" data-testid="merchant-influence">
+                <span className="block break-words text-t-caption text-ink-faint" data-testid="merchant-influence">
                   {t('port.influenceAt', { n: formatInt(card.company.influence[0].points) })}
                   <GoToLink to={{ kind: 'port', code: card.company.influence[0].port }}>{card.company.influence[0].name}</GoToLink>
                   {t('port.forNation', { nation: nationNameOf(nationByCode, card.company.influence[0].nation) })}

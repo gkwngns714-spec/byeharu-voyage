@@ -36,8 +36,10 @@
 //      selects; a change to Flag.tsx itself is still rule A.
 //   I  TEST IDS: a browser spec that names a data-testid which a changed (or rule-S-affected) src
 //      file declares, or declared before the change.
-//   L  FACES: a changed .tsx/.css under src/features, src/live or src/components → layout.spec and
-//      wide.layout.spec, which measure every tab's tables at phone and wide width.
+//   L  FACES: a changed .tsx/.css under src/features, src/live or src/components → layout.spec,
+//      wide.layout.spec and align.spec, which measure every tab's tables, and every list's rows
+//      (one line per row, one column per list, no cut sentence, no label on a chart line — owner
+//      rows 196/198/199/201), at phone and wide width.
 //   S  SQL: for each ADDED migration, the names it DEFINES (`create [or replace] function s.n`,
 //      `alter|drop function s.n`, a hunk target `'s.n(`, and the tables it creates / alters /
 //      writes / indexes / triggers on) and the names it merely MENTIONS (any other `cmd.` `world.`
@@ -413,7 +415,7 @@ export function select({ base, head, full = false }) {
       const tag = why === 'changed' ? '' : ` (${why})`
       if (SHELL_RE.test(f) && why === 'changed') for (const s of browser) pick(s, `A: ${f} is the app shell every face is drawn in`)
       if (FLAGS_RE.test(f)) for (const [s, t] of text) if (t.includes("'public', 'flags'")) pick(s, `A: ${f} is a flag picture this spec holds to the nations`)
-      if (FACE_RE.test(f)) for (const s of ['tests/layout.spec.ts', 'tests/wide.layout.spec.ts']) if (text.has(s)) pick(s, `L: ${f} is a face this spec measures${tag}`)
+      if (FACE_RE.test(f)) for (const s of ['tests/layout.spec.ts', 'tests/wide.layout.spec.ts', 'tests/align.spec.ts']) if (text.has(s)) pick(s, `L: ${f} is a face this spec measures${tag}`)
       if (!/^src\/.*\.(tsx?|mjs)$/.test(f)) continue
       const ids = new Set()
       for (const m of (tree.read(f) ?? '').matchAll(/data-testid=["'{`]+([\w-]+)/g)) ids.add(m[1])

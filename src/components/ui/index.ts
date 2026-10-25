@@ -18,7 +18,8 @@
 
 // 1. SHEET — the one scrolling surface of a tab. Sections are separated by space and a heading,
 //    never by a box. Replaces Screen + PageHeader + Card + CardHeader + SectionLabel + Collapsible.
-export { Sheet, SheetSection } from './Sheet'
+export { SectionColumns, Sheet, SheetSection } from './Sheet'
+export { Clip } from './Clip'
 
 // 2. TRAY — the bottom-docked sheet with detents (peek 96 · half · full) that every "unfold under
 //    the press" becomes. It is `fixed`, so opening one cannot move a tile. `inline` mode folds in
@@ -48,7 +49,7 @@ export { useDismiss } from './useDismiss'
 export { Dot, type DotTone } from './Dot'
 
 // 4. ROW — 52px: mark · label · Figure · chevron. What a table was.
-export { Row, type RowTone } from './Row'
+export { Col, Cols, Row, type ColWidth, type RowTone } from './Row'
 
 // 5. FIGURE — value + unit, tabular, in three of the six type steps. Every number in the game.
 export { Figure, type FigureSize, type FigureTone } from './Figure'

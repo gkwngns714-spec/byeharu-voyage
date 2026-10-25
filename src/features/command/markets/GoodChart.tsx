@@ -13,6 +13,7 @@ import {
   goodIcon,
   panBackMs,
   panView,
+  Clip,
 } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
@@ -159,11 +160,11 @@ export function GoodChart({
           {showName && (
             <span className="flex items-center gap-1.5 text-t-body font-semibold">
               <Icon name={goodIcon(good.code, good.category)} size={18} className="shrink-0 text-ink-muted" />
-              <span className="truncate">{good.name}</span>
+              <Clip>{good.name}</Clip>
               <RarityMark rarity={good.rarity} />
             </span>
           )}
-          <span className="mt-0.5 flex items-center gap-1.5 truncate text-t-caption text-ink-faint">
+          <span className="mt-0.5 flex items-center gap-1.5 break-words text-t-caption text-ink-faint">
             {focusPort && <PortFlag code={focusPort.code} />}
             {focusPort ? t('markets.perUnitAt', { port: focusPort.name }) : t('markets.marketPrice')}
           </span>

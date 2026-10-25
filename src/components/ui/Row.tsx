@@ -85,44 +85,120 @@ export function Row({
   /** A second line under the label — a `<Bar>`, a `<Hint>`. Rows grow; 52px is the FLOOR. */
   children?: ReactNode
 } & { 'data-testid'?: string }) {
+  // THE LINE, AND THE LINE UNDER IT (2026-10-25, owner rows 196 and 198: "it is not in the same
+  // line"). The row is a GRID, not a flex box. Line 1 holds the mark, the label and the value in
+  // fixed tracks, and every cell's first line of text sits in ONE 24px line box (`.bv-row-line`,
+  // src/index.css), so a label in `t-label`, a figure in `t-body` and a mark all centre on the same
+  // y. Line 2 — `children`, the bar or the caption — spans from the label's start to the row's end,
+  // so a list of ranked bars draws every bar on the same track whatever its figure reads. Before
+  // this the value was centred against the label AND its bar together, half a line below the name,
+  // and each bar was as long as its own row's label column: no two bars started or ended together.
+  //
+  // A CONTROL AS THE VALUE (a `Button`, 44px to the line's 24) is centred ON the line, hanging 10px
+  // above and below it (src/index.css), so "Portugal" and "Change" read as one line rather than one
+  // at the top and one centred in a taller box.
+  const columns = [mark !== undefined ? 'auto' : null, 'minmax(0,1fr)', value !== undefined ? 'auto' : null, chevron ? 'auto' : null]
+    .filter(Boolean)
+    .join(' ')
   const body = (
     <>
-      {mark !== undefined && <span className="flex shrink-0 items-center">{mark}</span>}
-      <span className="min-w-0 flex-1 text-t-label">
+      {mark !== undefined && (
+        <span className="bv-row-line flex h-6 items-center" data-row-cell="mark">
+          {mark}
+        </span>
+      )}
+      <span className="bv-row-line min-w-0 break-words text-t-label" data-row-cell="label">
         {label}
-        {children}
       </span>
-      {value !== undefined && <span className="shrink-0 text-right text-t-body">{value}</span>}
-      {chevron && <Icon name="chevron" size={20} className="shrink-0 text-ink-faint" />}
+      {value !== undefined && (
+        <span className="bv-row-line whitespace-nowrap text-right text-t-body tabular-nums" data-row-cell="value">
+          {value}
+        </span>
+      )}
+      {chevron && (
+        <span className="bv-row-line flex h-6 items-center" data-row-cell="chevron">
+          <Icon name="chevron" size={20} className="text-ink-faint" />
+        </span>
+      )}
+      {children !== undefined && children !== null && children !== false && (
+        <span className="min-w-0 text-t-label" style={{ gridColumn: mark !== undefined ? '2 / -1' : '1 / -1' }}>
+          {children}
+        </span>
+      )}
     </>
   )
 
   const shell = [
-    'flex w-full min-h-row items-center gap-3 py-2 text-left',
+    'grid w-full min-h-row content-center items-start gap-x-3 py-2 text-left',
     hairline ? 'border-b border-edge' : '',
     TONE[tone],
     className,
   ]
     .filter(Boolean)
     .join(' ')
+  const grid = { gridTemplateColumns: columns }
 
   if (href !== undefined) {
     return (
-      <a href={href} onClick={onClick} className={shell} {...rest}>
+      <a href={href} onClick={onClick} className={shell} style={grid} data-row-line {...rest}>
         {body}
       </a>
     )
   }
   if (onClick !== undefined) {
     return (
-      <button type="button" onClick={onClick} disabled={disabled} className={`${shell} disabled:opacity-45`} {...rest}>
+      <button type="button" onClick={onClick} disabled={disabled} className={`${shell} disabled:opacity-45`} style={grid} data-row-line {...rest}>
         {body}
       </button>
     )
   }
   return (
-    <div className={shell} {...rest}>
+    <div className={shell} style={grid} data-row-line {...rest}>
       {body}
     </div>
   )
+}
+
+// ── COLUMNS INSIDE THE VALUE ───────────────────────────────────────────────────────────────────
+// A row that reads more than one figure (a price AND its move, a sparkline beside them) puts each in
+// a `Col`: a FIXED-width, one-line, right-aligned, tabular cell. Fixed is the point — a column whose
+// width is its own content starts wherever its row's digits happen to end, and a list of them is a
+// ragged edge. One width scale, named here and nowhere else.
+//   phone="hide"  the column stands down below the `sm` breakpoint; what it says must be said by
+//                 another column or by line 2 of the row. Never a sideways scroll.
+export type ColWidth = 'xs' | 'sm' | 'md' | 'lg'
+const COL_W: Record<ColWidth, string> = {
+  xs: 'w-10', // 40px: a short count
+  sm: 'w-16', // 64px: a price, a percent change
+  md: 'w-20', // 80px: a sparkline, a seven-digit figure
+  lg: 'w-28', // 112px: a figure with its coin or unit
+}
+
+export function Col({
+  w,
+  phone,
+  align = 'end',
+  className = '',
+  children,
+}: {
+  w: ColWidth
+  phone?: 'hide'
+  align?: 'start' | 'end'
+  className?: string
+  children: ReactNode
+}) {
+  const shown = phone === 'hide' ? 'hidden sm:flex' : 'flex'
+  return (
+    <span
+      className={`${shown} ${COL_W[w]} shrink-0 items-center whitespace-nowrap tabular-nums ${align === 'end' ? 'justify-end text-right' : 'justify-start text-left'} ${className}`}
+      data-col={w}
+    >
+      {children}
+    </span>
+  )
+}
+
+/** Several `Col`s side by side, as a row's `value`. */
+export function Cols({ children }: { children: ReactNode }) {
+  return <span className="flex items-center gap-3">{children}</span>
 }

@@ -95,7 +95,7 @@ export function NewVersionToast() {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="min-h-11 flex-1 truncate px-4 text-left text-t-label text-ink hover:bg-surface-2/60"
+        className="min-h-11 flex-1 break-words px-4 text-left text-t-label text-ink hover:bg-surface-2/60"
       >
         {t('shell.newVersion')}
       </button>

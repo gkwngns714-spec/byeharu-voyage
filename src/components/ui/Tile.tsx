@@ -1,3 +1,4 @@
+import { Clip } from './Clip'
 import type { ReactNode } from 'react'
 import { useInTray } from './trayContext'
 
@@ -110,8 +111,8 @@ export function Tile({
     <>
       {mark !== undefined && <span className="flex shrink-0 items-center">{mark}</span>}
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-t-body">{name}</span>
-        {meta !== undefined && <span className="block truncate text-t-caption text-ink-faint">{meta}</span>}
+        <Clip className="text-t-body">{name}</Clip>
+        {meta !== undefined && <span className="block break-words text-t-caption text-ink-faint">{meta}</span>}
       </span>
     </>
   )

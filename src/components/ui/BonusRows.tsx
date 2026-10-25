@@ -22,7 +22,7 @@ export function BonusRows({ rows }: { rows: readonly BonusRow[] }) {
     <ul className="flex flex-col gap-1">
       {rows.map((r) => (
         <li key={r.key} className="flex items-baseline justify-between gap-3 rounded-control bg-surface-2 px-3 py-2">
-          <span className="min-w-0 truncate text-t-caption text-ink">{r.source}</span>
+          <span className="min-w-0 break-words text-t-caption text-ink">{r.source}</span>
           <span className="shrink-0 text-t-caption tabular-nums text-accent">{r.effect}</span>
         </li>
       ))}

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Col, type ColWidth } from './Row'
 
 // ONE BAR — a proportion, drawn.
 //
@@ -53,6 +54,7 @@ export function Bar({
   pendingTone = 'accent',
   tone = 'accent',
   figure,
+  figureCol,
   label,
   className = '',
 }: {
@@ -71,6 +73,10 @@ export function Bar({
   tone?: BarTone
   /** The trailing read — normally a `<Figure size="body">`. Sits after the bar, never inside it. */
   figure?: ReactNode
+  /** IN A STACK OF BARS, the figure's fixed column (Row.tsx's `Col` scale), so every track in the
+   *  stack starts and ends on the same x whatever its figure reads (owner row 198). A lone bar has
+   *  nothing to line up with and leaves it unset. */
+  figureCol?: ColWidth
   /** Names the proportion for assistive tech ("hull"). Not painted; the caller's label is. */
   label?: string
   className?: string
@@ -96,6 +102,7 @@ export function Bar({
         aria-valuemin={0}
         aria-valuemax={segmented ? (of as number) : 100}
         className="flex h-1 min-w-0 flex-1 items-stretch gap-0.5 overflow-hidden rounded-chip"
+        data-track
       >
         {segmented ? (
           Array.from({ length: of as number }, (_, i) => (
@@ -120,7 +127,7 @@ export function Bar({
           </span>
         )}
       </div>
-      {figure !== undefined && <span className="shrink-0">{figure}</span>}
+      {figure !== undefined && (figureCol ? <Col w={figureCol}>{figure}</Col> : <span className="shrink-0">{figure}</span>)}
     </div>
   )
 }

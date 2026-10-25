@@ -1,3 +1,4 @@
+import { Clip } from './Clip'
 import type { InputHTMLAttributes, ReactNode } from 'react'
 import { Icon } from './Icon'
 import { useT } from '../../lib/i18n'
@@ -90,7 +91,7 @@ export function FieldButton({
       {...rest}
     >
       {icon !== null && <Icon name={icon} size={20} className="shrink-0 text-ink-faint" />}
-      <span className="min-w-0 flex-1 truncate">{value}</span>
+      <Clip className="min-w-0 flex-1">{value}</Clip>
       <Icon name="chevron" size={18} className="shrink-0 rotate-90 text-ink-faint" />
     </button>
   )

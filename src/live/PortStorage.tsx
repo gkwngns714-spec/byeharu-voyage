@@ -11,6 +11,7 @@ import {
   Stepper,
   Tray,
   type TrayDetent,
+  Clip,
 } from '../components/ui'
 import { fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
 import { findVerb, moveEstimate, orderText } from '../domain/order'
@@ -184,7 +185,7 @@ function StorageRow({
     .join(' · ')
   return (
     <Row
-      label={<span className="block truncate text-t-body">{line.name}</span>}
+      label={<Clip className="text-t-body">{line.name}</Clip>}
       value={
         <span className="grid grid-cols-2 gap-1">
           <ActCell

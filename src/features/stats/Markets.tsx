@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Button,
+  Col,
+  Cols,
   Empty,
   FactsLine,
   Figure,
   Note,
   RankBars,
   Row,
+  SectionColumns,
   Segmented,
   SheetSection,
   Skeleton,
@@ -105,23 +108,21 @@ export function MarketsFace({ beat, onServed }: FaceProps) {
         />
       </div>
 
-      {/* mt-0 on each: a section brings its own 24px of air, and three of them side by side in a
-          grid would otherwise start at two different heights (0214 wrote the same thing here) */}
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <SheetSection heading={t('stats.risers')} surface data-testid="stats-risers" className="mt-0 first:mt-0">
+      <SectionColumns count={3}>
+        <SheetSection heading={t('stats.risers')} surface data-testid="stats-risers">
           <RankBars rows={movers(risers, 'success')} format={formatPctChange} empty={t('stats.nothingRose')} />
         </SheetSection>
-        <SheetSection heading={t('stats.fallers')} surface data-testid="stats-fallers" className="mt-0 first:mt-0">
+        <SheetSection heading={t('stats.fallers')} surface data-testid="stats-fallers">
           <RankBars rows={movers(fallers, 'danger')} format={formatPctChange} empty={t('stats.nothingFell')} />
         </SheetSection>
-        <SheetSection heading={t('stats.mostTraded24')} surface data-testid="stats-most-traded" className="mt-0 first:mt-0">
+        <SheetSection heading={t('stats.mostTraded24')} surface data-testid="stats-most-traded">
           <RankBars
             rows={traded.map((r) => ({ id: r.g.code, label: goodName(r.g), value: r.traded, text: t('format.units', { n: formatInt(r.traded), count: r.traded }) }))}
             format={formatInt}
             empty={t('stats.nothingTraded')}
           />
         </SheetSection>
-      </div>
+      </SectionColumns>
 
       <SheetSection heading={t('stats.everyGood', { n: formatInt(v.goods.length) })} surface data-testid="stats-goods">
         {shown.map((r, i) => (
@@ -161,13 +162,17 @@ function GoodRow({ g, move, last }: { g: StatsGood; move: number | null; last: b
         </span>
       }
       value={
-        <span className="flex items-center gap-3">
-          <Sparkline values={g.spark} tone={tone} width={48} height={18} label={t('stats.readings', { name: goodName(g), n: g.spark.length })} />
-          <span className="flex w-24 flex-col items-end">
+        <Cols>
+          <Col w="md" phone="hide">
+            <Sparkline values={g.spark} tone={tone} width={48} height={18} label={t('stats.readings', { name: goodName(g), n: g.spark.length })} />
+          </Col>
+          <Col w="sm">
             <Figure value={g.mid === null ? '—' : formatPriceFigure(g.mid)} />
+          </Col>
+          <Col w="sm">
             <Figure value={move === null ? '—' : formatPctChange(move)} tone={move === null ? 'faint' : deltaTone(move)} />
-          </span>
-        </span>
+          </Col>
+        </Cols>
       }
       hairline={!last}
       data-testid="stats-good"
