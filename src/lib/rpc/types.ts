@@ -2200,9 +2200,9 @@ export interface RouteBoardRow {
    * WHAT THIS LANE ASKS OF ANY CAPTAIN (0108, owner row 117) — `public.route_requirement`, the
    * inverse of the gate `public.passage_gate` refuses by. `navigation` is the smallest level
    * whose reach covers the loop's longest leg, and null when a leg is unmeasured (a course the
-   * sea disputes); `exploration` is the dearest region the loop calls at.
+   * sea disputes). There is no `exploration` any more: 0218 (owner row 204) removed the region door.
    */
-  requires: { navigation: number | null; exploration: number }
+  requires: { navigation: number | null }
   /**
    * True when YOU could not sail this loop today. The same rule the gate refuses by, read
    * forward against your own levels — and carried on a MERCHANT'S lane too: merchants are

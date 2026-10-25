@@ -499,6 +499,8 @@ restore every answer to its pre-image (asserted dark in S2 and S3).
 - Boxes live in a child table (`sea_zone_boxes`): three zones have two or three boxes and one spans two seas. The zone
   raster (`sea_zone_cells`) is a derived materialisation of the boxes over the 0040 raster, so a course sample is one
   byte read.
-- In S2 the 0107 region door stays as the DARK path and goes with its column in the slice after the switch is lit
-  (S2b): the owner's standing rule that a dark slice changes no answer outranks §6's "same slice", and the door refuses
-  real plans today (13 of 17 houses are refused Havana by it).
+- In S2 the 0107 region door stayed as the DARK path, to go with its column after the switch was lit (S2b). **Overtaken
+  by owner row 204 (2026-10-25, "remove the region door, let me sail anywhere"): migration 0218 `there_is_no_region_door`
+  deleted it DARK** — the gate block, 0205's door CTE in reach_passage, `requires.exploration`, public.exploration_reach,
+  regions.min_exploration_level and the two region_level knobs. Dark, the passage gate is the leg's length alone; lit,
+  public.sea_gate as S2 wrote it. S2b has nothing left to do.

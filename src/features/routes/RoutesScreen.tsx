@@ -271,12 +271,11 @@ function laneLine(route: RouteBoardRow, mine: boolean): string {
     .join(' · ')
 }
 
-/** The ONE thing standing between you and a lane. Navigation first when both are wanting: it is
- *  the one you can go and buy at the academy this afternoon, where exploration is sailed for. */
-function shutBecause(route: RouteBoardRow): string {
-  return route.requires.navigation !== null && route.requires.navigation > 1
-    ? t('routes.needsNav', { n: formatInt(route.requires.navigation) })
-    : t('routes.needsExp', { n: formatInt(route.requires.exploration) })
+/** The ONE thing standing between you and a lane: the navigation its longest leg asks (0218, owner
+ *  row 204: there is no region door any more, so nothing else shuts a lane). A lane is `closed`
+ *  only when that level is known and above yours. */
+function shutBecause(route: RouteBoardRow): string | null {
+  return route.requires.navigation === null ? null : t('routes.needsNav', { n: formatInt(route.requires.navigation) })
 }
 
 /** THE LANE, OPENED: where she calls, in order, and what the laps say. Every figure is the
@@ -332,7 +331,7 @@ function LaneTray({
             <span className="text-ink-faint">{t('routes.unmeasured')}</span>
           ) : (
             <Figure
-              value={t('routes.navExp', { nav: formatInt(route.requires.navigation), exp: formatInt(route.requires.exploration) })}
+              value={t('routes.asksNav', { nav: formatInt(route.requires.navigation) })}
               tone={route.closed ? 'warning' : undefined}
             />
           )

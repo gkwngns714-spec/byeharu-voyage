@@ -216,7 +216,7 @@ Each slice: `npx tsc -b`, `npx eslint .`, the pure specs, and `duplication` / `s
 1. **Plans is renamed Trade** (`거래`). Markets stays for browsing prices.
 2. **Supplies margin = the existing `endurance_margin`, +15 %.** I did not add a new +20 % knob: one number means the buy and the Sail check cannot disagree. Raising it is one knob change.
 3. **Supplies are bought at each SAIL, never on arrival.** Wages stay a flat 1 ducat per crew-day, unchanged.
-4. **Region door unchanged.** This design shows it truthfully (R2). It does not open regions: that is the sea-conditions switch's job (0215/0216, which replaces the door when lit).
+4. ~~**Region door unchanged.**~~ **Superseded by owner row 204 (2026-10-25, migration 0218 `there_is_no_region_door`): the region door is deleted, dark, for players and merchants.** A Lisbon starter's reach is no longer cut by regions; the leg limit, supplies, money and the sea conditions (0215/0216, dark) are the rules that remain. R2's `shut` can never read `E_REGION_CLOSED`; the code is gone.
 5. **Closed cities are shown, not hidden:** last in the list, with their 1–2 word reason, and not pressable.
 6. **Goods sold only in shut regions:** in Here and Hold they stay listed, with `Shut` and no profit figure.
 7. **Report spans = Day / Week / All**, in game days. Old ledger rows (before R4) appear as one place, "Earlier".
