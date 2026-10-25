@@ -349,13 +349,18 @@ begin
   if public.sea_conditions_on() then
     raise exception '0218 self-assert FAIL: sea_conditions_bite is already lit — this file was proven dark first';
   end if;
-  -- the good: the first by code that Las Palmas sells (so a buy row lies past title 1, the positive control)
+  -- the good: the first by code that BOTH Lisbon and Las Palmas sell, bought at Lisbon (p_from) — so a buy row lies
+  -- past title 1 (Las Palmas, the refused control) and the sell rows run from home water (the clear control). The
+  -- first cut took the first good Las Palmas sells and let the board buy it where it was cheapest: far away, so
+  -- every sell route crossed far water and CI read 240 refused, 0 clear.
   select g.id, g.code into v_good, v_gcode
-    from public.goods g join public.port_goods pg on pg.good_id = g.id and pg.port_id = v_lpa
-   where public.port_offers(v_lpa, g.id)
+    from public.goods g
+    join public.port_goods pg on pg.good_id = g.id and pg.port_id = v_lpa
+    join public.port_goods pl on pl.good_id = g.id and pl.port_id = v_lis
+   where public.port_offers(v_lpa, g.id) and public.port_offers(v_lis, g.id)
    order by g.code limit 1;
   if v_good is null then
-    raise exception '0218 self-assert FAIL: Las Palmas sells no good';
+    raise exception '0218 self-assert FAIL: no good is sold at both Lisbon and Las Palmas';
   end if;
 
   begin
@@ -379,10 +384,10 @@ begin
     -- (a) the board minus `sea` is the pre-image's, row for row; six calls each, timed in this session
     for v_i in 1 .. 6 loop
       v_t0 := clock_timestamp();
-      v_old := pg_temp.good_board_old_0218(v_good, v_fleet, null, null);
+      v_old := pg_temp.good_board_old_0218(v_good, v_fleet, v_lis, null);
       v_gb_old := v_gb_old || (extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric;
       v_t0 := clock_timestamp();
-      v_res := world.good_board(v_good, v_fleet, null, null);
+      v_res := world.good_board(v_good, v_fleet, v_lis, null);
       v_gb_new := v_gb_new || (extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric;
       j_new := (v_res - 'sea')
                || jsonb_build_object('buy',  (select coalesce(jsonb_agg(x.e - 'sea' order by x.i), '[]'::jsonb) from jsonb_array_elements(v_res->'buy') with ordinality x(e, i)),
@@ -458,7 +463,7 @@ begin
     end if;
     for v_i in 1 .. 6 loop
       v_t0 := clock_timestamp();
-      v_res := world.good_board(v_good, v_fleet, null, null);
+      v_res := world.good_board(v_good, v_fleet, v_lis, null);
       v_gb_lit := v_gb_lit || (extract(epoch from clock_timestamp() - v_t0) * 1000)::numeric;
     end loop;
     if (v_res->'sea'->>'bite')::boolean is distinct from true then
@@ -493,7 +498,7 @@ begin
     if public.title_level(v_player) <> 3 then
       raise exception '0218 self-assert FAIL: 10,000 d. and four harbours make title %, not 3', public.title_level(v_player);
     end if;
-    v_res := world.good_board(v_good, v_fleet, null, null);
+    v_res := world.good_board(v_good, v_fleet, v_lis, null);
     select x into v_lp from jsonb_array_elements(v_res->'buy') x where x->>'port' = 'LPA';
     if v_lp is null or jsonb_typeof(v_lp->'miles') <> 'number' or jsonb_typeof(v_lp->'sea'->'refusal') <> 'null'
        or (v_res->'sea'->>'title')::int <> 3 then

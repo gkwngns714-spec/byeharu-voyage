@@ -49,6 +49,13 @@ board and 0216's reach_passage agree); at title 3 Las Palmas opens and its refus
 server-only; the board still the client's; the registry unchanged. Timings are printed by the receipt
 (`raise notice '0218 self-assert ok: … TIMING good_board dark old … → new … ms (last 3: …), lit … ms'`).
 
+## CI round 1
+
+`pglite-gate (ledger)` failed on the self-assert's positive control: *"dark, 240 rows refused and 0 clear"*. The
+probe's good was the first Las Palmas sells, and the board bought it where it was cheapest, far away, so every sell
+route crossed far water. Its subject is now the first good sold at BOTH Lisbon and Las Palmas, bought at Lisbon
+(`p_from`): the Las Palmas buy row is the refused control, the home-water sell rows are the clear one.
+
 ## What was run here
 
 `npm ci --ignore-scripts`, `npx tsc -b` (clean), `npx eslint .` (clean), the pure specs `planWords` (4 new cases),
@@ -176,9 +183,11 @@ select 'Lisbon is title-1 water; Las Palmas is NOR-MAC; LIS→LPA asks title 2 w
        and exists (select 1 from public.sea_leg_asks s where s.from_port = (select id from public.ports where code = 'LIS')
                      and s.to_port = (select id from public.ports where code = 'LPA') and s.title_min = 2 and s.wave_min = 10), null
 union all
-select 'Las Palmas sells a good (the probe''s subject)',
-       exists (select 1 from public.port_goods pg where pg.port_id = (select id from public.ports where code = 'LPA')
-                 and public.port_offers(pg.port_id, pg.good_id)), null
+select 'a good is sold at both Lisbon and Las Palmas (the probe''s subject, bought at Lisbon)',
+       exists (select 1 from public.port_goods pg join public.port_goods pl on pl.good_id = pg.good_id
+                 and pl.port_id = (select id from public.ports where code = 'LIS')
+                where pg.port_id = (select id from public.ports where code = 'LPA')
+                  and public.port_offers(pg.port_id, pg.good_id) and public.port_offers(pl.port_id, pl.good_id)), null
 union all
 select 'no probe residue named 0218', not exists (select 1 from public.players where company_name = 'Casa 0218'
        or auth_uid = '00000000-0218-4000-8000-000000000001'), null
