@@ -5,7 +5,7 @@ Prod head **0216**; main Acceptance green (0ec8ed1, 10-21). Nothing has landed s
 **In flight (two builds + one design), as CLOUD ROUTINES (the owner's cloud-first order; credit expires 11-05). The 09:14 runs died at once on the WEEKLY usage limit (reset 10:00 UTC); they were RE-FIRED at 10:23 UTC. Follow them on GitHub branches and PRs:**
 - Lane A `osn-new-harbours` (trig_017yTwoYS3AoraZWTePMeL9M): row 186, about 8 harbours (northern Russia, Australia, NZ, northern USA) as migration **0217**.
 - Lane B `osn-plan-tab` (trig_01LqTod7PwLTiXmLmZ5tW3t2): row 183, the Plan tab with a route-only map, time, provisions, crew, and restrictions read from 0215/0216's gate.
-- Lane C `osn-fleets-design` (trig_01ACHJifBHPMjkjLztgF3uZg): row 180, `docs/FLEETS_AND_SLOTS.md` (7 ships per fleet decided by default; slots by gold and by level).
+- Lane C: row 180 design **MERGED** (#291, `docs/FLEETS_AND_SLOTS.md`). Its defaults stand unless the owner reverses them: 7 ships per fleet, up to 5 fleets, room opened by level or by gold (the gold is destroyed; 1.37 M for everything), ships move only when docked in the same port, merchants get a flat 2 × 7. Build F1–F7 in Lane A after 0217.
 
 The main session (this PC) only runs the read-only prod checks, the paired sim, and the deploys. Fable credits ran out until 2026-10-25 10:00 UTC, so the routines use Opus.
 
