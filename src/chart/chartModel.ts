@@ -87,8 +87,11 @@ export type PortRole = 'anchorage' | 'destination' | 'route'
  * A MERCHANT FLEET, resolved to ink (0099, docs/NPC_TRADERS.md §8.2) — placed by the SAME code as
  * a fleet of yours (`placeSailing`), and kept in its own list: nothing that is about YOUR fleets
  * (roles, rings, the opening frame, labels, the fleets corner, the minimap) ever reads it.
- * `track` is null unless her served course has more than two points — the one merchant whose
- * card is open; every other merchant is served the current segment only and draws no line.
+ * `track` is null unless the card lent her its whole course (`MapTraffic.tracked`) — the one
+ * merchant whose card is open; every other merchant is served the current segment only and draws
+ * no line. The fact is read, never inferred from the vertex count: until 2026-10-25 this asked for
+ * "more than two points", and a merchant on a straight leg (two vertices whole — Funchal → Cadiz)
+ * drew no line while open, which is what tests/map.merchants.spec.ts:567 reddened on (run 40198593243).
  */
 /**
  * A LANE'S PATH STRING, BUILT ONCE PER LANE (2026-10-12: *"the game looks stuck"*).
@@ -303,7 +306,7 @@ export function buildChartModel(
     const laneD = m.lane && m.lane.length >= 2 ? laneDFor(m.lane) : null
     if (m.kind === 'sailing') {
       merchants.push({
-        ...placeSailing(m, m.voyage, trafficDrift, m.voyage.course.length > 2),
+        ...placeSailing(m, m.voyage, trafficDrift, m.tracked),
         merchant: m,
         loopD,
         laneD,

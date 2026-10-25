@@ -5,8 +5,8 @@
 // UNIT: the merchants arrive through their OWN list (`model.traffic`) and nothing that is about the
 // player's fleets — `model.fleets`, the roles, the opening frame's focus and motion points — ever
 // sees one; `buildChartModel.length` stays 2; an own fleet wins a tie hit; a merchant's position is
-// COPIED from the served one; only the open merchant (more than two served course points) draws a
-// track; the eight nation inks exist and stand off the sea in both schemes.
+// COPIED from the served one; only the open merchant (the card lent her whole course — even a
+// straight two-vertex leg) draws a track; the eight nation inks exist and stand off the sea in both schemes.
 //
 // BROWSER, with the merchants switched on (tests/npcOn.fixture.ts): at 390 × 844 from a Lisbon
 // start, merchant hulls are on the opening frame; a sailing one MOVES between beats; a tap opens the
@@ -131,6 +131,27 @@ test('the open merchant takes her TRACK from the card and her POSITION from the 
   const model = buildChartModel([OWN], [LIS, FNC], [], null, [m])
   expect(model.traffic[0].at).toEqual({ lat: 37.1, lon: -11.3 })
   expect(model.traffic[0].track).not.toBeNull()
+})
+
+// THE STRAIGHT LEG (CI, 2026-10-25, main run 40198593243 and PR #298's). Whether the card lent the
+// course used to be read off the vertex count — "more than two points" — and Funchal → Cadiz is two
+// vertices whole, so the open merchant on it had her card, had her segment found in it, and drew
+// NO line; the browser test below then waited 30 s for `map-merchant-track` and went red on a hull
+// with 77 s still to sail. The fact is now carried (`tracked`), and a two-point leg draws like any other.
+test('the open merchant on a STRAIGHT two-vertex leg still draws her track', () => {
+  const row = sailingRow('m-1', [[32.65, -16.92], [36.53, -6.29]], [34.5, -11.5])
+  const card = { ...row.voyage!, course: [[32.65, -16.92], [36.53, -6.29]] as [number, number][] }
+  const [open, other] = mapTrafficOf([row, sailingRow('m-2', [[32.65, -16.92], [36.53, -6.29]], [33.1, -15.7])], { id: 'm-1', voyage: card })
+  expect(open.tracked).toBe(true)
+  expect(other.tracked).toBe(false)
+  const model = buildChartModel([OWN], [LIS, FNC], [], null, [open, other])
+  expect(model.traffic.find((t) => t.fleet.id === 'm-1')!.track).not.toBeNull()
+  // the same two points, served by the beat alone, lend nothing: no card, no line
+  expect(model.traffic.find((t) => t.fleet.id === 'm-2')!.track).toBeNull()
+  // and a card that names another leg lends nothing on a straight leg either
+  const [stale] = mapTrafficOf([row], { id: 'm-1', voyage: { ...card, course: [[36.53, -6.29], [34.02, -6.84]] } })
+  expect(stale.tracked).toBe(false)
+  expect(buildChartModel([OWN], [LIS, FNC], [], null, [stale]).traffic[0].track).toBeNull()
 })
 
 test('the open merchant draws the whole loop she runs, not only the leg she is on', () => {
@@ -339,7 +360,7 @@ async function backIn(page: Page, presses: number): Promise<void> {
 }
 
 /** A merchant hull whose centre is on the chart's glass, so a tap can land on it. */
-async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet<string> = new Set()): Promise<string> {
+async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet<string> = new Set(), floorMs = 0): Promise<string> {
   // OPEN WATER FIRST, THEN ANYWHERE. A hull within a harbour's reach loses the tap to the harbour —
   // correctly — so a hull clear of every mark is the one to aim at. But on a frame where every
   // visible merchant is lying at a quay there is no such hull, and refusing to pick one at all
@@ -350,11 +371,15 @@ async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet
   // end at the instant the world is dumped, so every hull on the sea DEPARTED at that instant, and
   // the short hops round Lisbon — the opening frame — end a few minutes later: inside the npc shard.
   // A merchant tapped then can dock during the 30-s wait for her course line, leave the chart (a
-  // merchant in port is not drawn, chartModel.ts) and take her line with her — the likely cause of
-  // the red in 2 local runs of 3 on main (PR #277's comment). The line is drawn only while she is at sea, so the hull aimed at is one whose
+  // merchant in port is not drawn, chartModel.ts) and take her line with her. (That was the SUSPECTED
+  // cause of the red in 2 local runs of 3 on main, PR #277's comment; the trace of main run
+  // 40198593243 showed the actual one — a straight two-vertex leg drew no line at all, fixed in
+  // chartModel.ts — on a hull with 77 s still to sail.) The line is drawn only while she is at sea, so the hull aimed at is one whose
   // served eta (`data-merchant-eta`) is more than LEG_LEFT_MS away; a frame with none falls back to
-  // any hull, as the clear-of tiers do.
-  for (const minLeftMs of [LEG_LEFT_MS, 0]) {
+  // `floorMs` — the caller's own floor: the sheet test, which waits 30 s for her line, asks for
+  // TRACK_LEFT_MS so the hull it aims at cannot dock mid-wait (and polls until one exists); a
+  // caller that only opens a sheet for a picture takes any hull (0), as the clear-of tiers do.
+  for (const minLeftMs of [LEG_LEFT_MS, floorMs]) {
     const id =
       (await hullInViewClearOf(page, sailing, skip, 48, minLeftMs)) ||
       (await hullInViewClearOf(page, sailing, skip, 20, minLeftMs)) ||
@@ -366,6 +391,8 @@ async function hullInView(page: Page, sailing: boolean | null, skip: ReadonlySet
 
 /** Long enough for everything the sheet test does after the tap, with room to spare. */
 const LEG_LEFT_MS = 5 * 60_000
+/** The floor: the 30-s wait for her course line, twice over, so the hull aimed at cannot dock inside it. */
+const TRACK_LEFT_MS = 60_000
 
 async function hullInViewClearOf(
   page: Page,
@@ -439,7 +466,7 @@ async function hullInViewClearOf(
  *
  * Returns the id that is open.
  */
-async function openMerchantWorthReading(page: Page, sailing: boolean | null): Promise<string> {
+async function openMerchantWorthReading(page: Page, sailing: boolean | null, floorMs = 0): Promise<string> {
   const tried = new Set<string>()
   let opened = ''
   // THE LAST HULL WHOSE SHEET DID OPEN, kept when the loop closes it to try another (2026-10-16).
@@ -457,7 +484,7 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
   // these screenshots are the record of the feature (the owner read `0 / no lap yet` off one).
   const MAX_HULLS = 8
   for (let attempt = 1; attempt <= MAX_HULLS; attempt++) {
-    const id = await hullInView(page, sailing, tried)
+    const id = await hullInView(page, sailing, tried, floorMs)
     if (!id) break
     tried.add(id)
     seen += 1
@@ -478,7 +505,7 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null): Pr
     // window-capped read (0102) most hulls on the opening frame are on their first lap, which is
     // what made it bite now. The contract in this helper's own doc comment — settle for the last one
     // if none has a figure — is what is kept here; nothing about the assertion is loosened.
-    if (attempt === MAX_HULLS || !(await hullInView(page, sailing, tried))) break
+    if (attempt === MAX_HULLS || !(await hullInView(page, sailing, tried, floorMs))) break
     const close = page.getByTestId('tray-close')
     if (await close.isVisible().catch(() => false)) await close.click()
     opened = ''
@@ -553,7 +580,18 @@ test('the merchants sail on the chart, and a tap opens a read-only sheet', async
 
   // A TAP OPENS THE SHEET — and never the player's own fleet tray. The merchant opened is one with
   // something in her books if any hull on the glass has (the shots below are the feature's record).
-  const openedId = await openMerchantWorthReading(page, true)
+  // THE PRECONDITION THE LINE NEEDS, GUARANTEED FIRST: her line is waited for 30 s below, and a
+  // merchant that docks inside that wait leaves the chart and takes her line with her. So the hull
+  // aimed at has at least TRACK_LEFT_MS to sail — and if the opening frame has none (the fixture
+  // warps every leg to end at the dump, so the short hops round Lisbon all end within minutes),
+  // the sea is given time to serve one: merchants depart on fresh, longer legs every beat.
+  await expect
+    .poll(() => hullInView(page, true, new Set(), TRACK_LEFT_MS), {
+      timeout: 180_000,
+      message: `no sailing merchant hull with ${TRACK_LEFT_MS / 1000} s or more left on her leg came onto the glass`,
+    })
+    .not.toBe('')
+  const openedId = await openMerchantWorthReading(page, true, TRACK_LEFT_MS)
   const sheet = page.getByTestId('merchant-sheet')
   await expect(sheet).toBeVisible({ timeout: 30_000 })
   await expect(page.getByTestId('map-detail-tray')).toHaveCount(0)
