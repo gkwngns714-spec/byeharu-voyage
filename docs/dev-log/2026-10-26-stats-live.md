@@ -155,7 +155,13 @@ The journal will hold about `flows_15min + ledger_15min + trades` rows between c
 
 (5) timings: the trade writer as it is TODAY, 6 sales in one session, as clock_timestamp diffs. It calls volatile
 functions, so it runs in its OWN read-write transaction that ends in `rollback` — never under the read-only one above.
-One statement per block, in this order.
+
+> **⚠ WRITES ON PROD UNLESS RUN AS ONE FILE.** `supabase db query --linked` opens a NEW connection per call, so these
+> blocks run one by one COMMIT each statement: on 2026-10-26 that created the company 'Casa do Segundo 0224' on prod
+> (8,000 founding ducats, 6 sales at Lisbon). Concatenate EVERY block of this section, `begin` … `rollback`, into ONE
+> file and run it with `-f`, or skip this section. The probe below is renamed 'Casa do Segundo 0224 B' for that reason.
+
+Blocks, in order (run them as ONE file):
 ```sql
 rollback
 ```
