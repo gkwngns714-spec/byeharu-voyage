@@ -145,15 +145,18 @@ comment on table public.price_history_day is
   '0225: one finished UTC day of one good at one city, folded from price_history_hour; n = fine points in the day. KEPT FOR EVER — nothing deletes a day row. Server-only; world.price_series serves it.';
 
 -- The pairs a player asked to see at a city that does not sell the good.
+create sequence public.price_watch_seq;
 create table public.price_watch (
-  port_id  uuid not null references public.ports(id) on delete cascade,
-  good_id  uuid not null references public.goods(id) on delete cascade,
-  since    timestamptz not null default now(),
-  asked_at timestamptz not null default now(),
+  port_id   uuid not null references public.ports(id) on delete cascade,
+  good_id   uuid not null references public.goods(id) on delete cascade,
+  since     timestamptz not null default now(),
+  asked_at  timestamptz not null default now(),
+  asked_seq bigint not null default nextval('public.price_watch_seq'),
   primary key (port_id, good_id)
 );
 comment on table public.price_watch is
-  '0225: the (city, good) pairs the record keeps BECAUSE A PLAYER ASKED (cmd.watch_price) — the city does not sell the good, so nothing else would record what it pays. asked_at is the last press; past price_watch_cap the stalest leave. Server-only.';
+  '0225: the (city, good) pairs the record keeps BECAUSE A PLAYER ASKED (cmd.watch_price) — the city does not sell the good, so nothing else would record what it pays. asked_at / asked_seq are the last press (the sequence orders presses strictly, where two in one transaction share a now()); past price_watch_cap the stalest leave. Server-only.';
+revoke all on sequence public.price_watch_seq from public, anon, authenticated;
 
 -- Where the fold stands: hours folded up to hour_done, days up to day_done. One row.
 create table public.price_rollup (
@@ -411,10 +414,12 @@ begin
     return jsonb_build_object('recording', true, 'watched', false, 'pairs', (select count(*) from public.price_watch), 'evicted', 0);
   end if;
   insert into public.price_watch (port_id, good_id) values (p_port, p_good)
-  on conflict (port_id, good_id) do update set asked_at = now();
+  on conflict (port_id, good_id) do update set asked_at = now(), asked_seq = nextval('public.price_watch_seq');
+  -- the stalest PRESS leaves first — by the press sequence, which is strict where asked_at is not (two presses in
+  -- one transaction share a now(); CI run 40229893305 evicted the newer one on that tie)
   delete from public.price_watch w
    where (w.port_id, w.good_id) in (select x.port_id, x.good_id from public.price_watch x
-                                     order by x.asked_at desc, x.port_id, x.good_id offset v_cap);
+                                     order by x.asked_seq desc offset v_cap);
   get diagnostics v_evicted = row_count;
   return jsonb_build_object('recording', true, 'watched', true, 'pairs', (select count(*) from public.price_watch), 'evicted', v_evicted);
 end $$;
