@@ -272,7 +272,7 @@ export function refusalOfOrder(order: QueuedOrder): Refusal | null {
   if (order.status !== 'failed' || !order.error_code) return null
   return {
     code: order.error_code,
-    sentence: order.error_message ?? 'The server refused, without a reason.',
+    sentence: order.error_message ?? t('trade.noReason'),
     // The fixes ride on the ISSUE envelope, not on the order row — a row read back later has no
     // fix attached, and inventing one here would be a second author of "→ do this instead".
     fixes: [],

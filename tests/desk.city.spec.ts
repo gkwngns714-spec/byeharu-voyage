@@ -77,6 +77,6 @@ test('the Profit face: today, the window, seven bars and the day by day books', 
   await expect(page.getByTestId('desk-profit')).toBeVisible()
   await expect(page.getByTestId('profit-bars')).toBeVisible({ timeout: 30_000 })
   // a new company has made nothing yet (its starting money is capital, not profit): the books say so
-  await expect(page.getByTestId('desk-profit')).toContainText(/Nothing earned or spent|Today/, { timeout: 30_000 })
+  await expect(page.getByTestId('desk-profit')).toContainText(/No money in or out|Today/, { timeout: 30_000 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })
