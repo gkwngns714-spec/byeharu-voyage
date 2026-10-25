@@ -219,8 +219,12 @@ for (const viewport of [
       // Row 94: at the world view EVERY harbour is on the sheet, so this was the whole table.
       // Moved deliberately 2026-09-14: 224 → 238 harbours (the Pacific Americas growth, 0090).
       // Moved deliberately 2026-10-25: 238 → 246 harbours (the far-north, Australasian and
-      // northern-US growth, 0217, owner row 186).
-      expect(world!.marks.length).toBe(246)
+      // northern-US growth, 0217, owner row 186) — counted by HARBOUR: the sheet repeats past ±180°
+      // (src/chart/ChartCanvas.tsx, THE COPIES), and Auckland and Wellington, the first harbours
+      // near the seam, are drawn in both copies at the world view (248 marks, measured by CI run
+      // 40195840956 in tests/map.marks.spec.ts). Every mark, copies included, is checked for land above.
+      expect(new Set(world!.marks.map((m) => m.code)).size).toBe(246)
+      expect(world!.marks.length).toBe(248)
     })
   })
 }
