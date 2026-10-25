@@ -11,6 +11,12 @@ The main session (this PC) only runs the read-only prod checks, the paired sim, 
 
 **Next:** 169a speed ×3 (paired sim) → 173 weekly rollover, keeping history → sea S3–S6 → live prices.
 
+### ~14:30 UTC — owner RULE: do all, merge, deploy, finish, clean without asking (memory: finish-merge-deploy-clean-no-asking)
+- **0217 #295:** the npc 2/2 red was map.wrap tapping Astoria, which the frozen fixture did not name; fixed by the cloud job (b93b812). **Prod check found a real defect:** 0217 decided "seeded" from SEED flows, which are pruned on prod (0 left), so it would have opened the 8 new cities with empty purses. Fixed to read `port_treasury.seeded_at` (all 238 set on prod), 234e7f2. CI re-running → deploy.
+- Prod checks for 0217 all match the dev-log except that one: head 0216, hunk ×1, preconditions true, raster/reaches md5 equal, knobs as expected.
+- **Command design MERGED (#297, docs/COMMAND_REDESIGN.md) with its defaults.** Top reach cause: the REGION DOOR (exploration level by nm from Lisbon, 0107:270); a Lisbon starter reaches 111 of 237 harbours, and the Plan wrongly says "too far … Navigation". **R1 build running** in `~/dev/wt-osn-trade-r1` (migration 0220: Trade page, Sell list, automatic supplies, Keep-supplies removed).
+- Deploy order: 0217 → 0218 (#293) → 0219 speed → 0220 R1 → Stats-every-second → R2–R6 / rollover W1–W4.
+
 ### OWNER PLAYTEST 2026-10-25 ~13:30 UTC — OUTRANKS THE LIST BELOW (rows 189–195)
 The owner played and could not trade: "this game must be playable". Local agents:
 - `~/dev/wt-osn-quick-189-193-195`: 189 flat sell chart (diagnose first), 193 every city labelled at 47 % with no overlap, 195 a Korea (KST) real-time clock beside the game date. One client PR.
