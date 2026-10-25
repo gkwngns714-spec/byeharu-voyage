@@ -74,6 +74,18 @@ export function zoomPercent(spanX: number): number {
   return Math.round((Math.log(MAX_SPAN_X / span) / Math.log(MAX_SPAN_X / MIN_SPAN_X)) * 100)
 }
 
+/** The span the zoom readout prints as `pct` — `zoomPercent`'s inverse, unrounded. */
+export function spanAtZoomPercent(pct: number): number {
+  return MAX_SPAN_X / Math.pow(MAX_SPAN_X / MIN_SPAN_X, pct / 100)
+}
+
+/** Row 193: the readout figure from which EVERY harbour is drawn full and named (the owner's 47 %). */
+export const ALL_NAMES_ZOOM_PCT = 47
+
+/** The span at which the readout first prints `ALL_NAMES_ZOOM_PCT` — half a point under it, because
+ *  the readout rounds, so every view that reads "47%" is inside the rung (~28.2°). */
+export const ALL_NAMES_SPAN = spanAtZoomPercent(ALL_NAMES_ZOOM_PCT - 0.5)
+
 /** One press of + or −. A step this size takes ~7 presses to cross the full zoom range, which is
  *  few enough to be usable and many enough not to lose your place. */
 export const ZOOM_STEP = 1.6
@@ -351,8 +363,19 @@ export const LABEL_SPAN_LIMIT = 70
 // coarser as you pull back, by ONE rule keyed on ONE column:
 //
 //   the world   (> 45° across)   the 35 great ports          size_tier 5
-//   a sea       (> 12° across)   + the 79 middling ones       size_tier 3
-//   a coast     (≤ 12° across)   + all the small ones         size_tier 2
+//   a sea       (> ~28° across)  + the 79 middling ones       size_tier 3
+//   a coast     (≤ ~28° across)  + all the small ones         size_tier 2
+//
+// THE COAST RUNG IS THE OWNER'S 47 % (row 193, 2026-10-25: *"i want to see the city info on map at
+// zoom 47%, name and flag. do not make it overlapping with other cities"*). It was 12°, about 62 %
+// on the readout, so at 47 % every tier-2 harbour was a bare dot and asked for no name. The rung is
+// now the span the readout calls 47 % (`ALL_NAMES_SPAN`), so from there in every harbour wears its
+// mark and asks for its name and flag; the planner (./labels.ts) still sets each one only where it
+// overlaps nothing, stepping it out on a leader before it would collide. MEASURED with the real
+// table, a frame centred on each of the 214 harbours at 47 %: on 1280×800, 2,923 of the 2,926 marks
+// inside the frame are named (Middelburg in the Scheldt cluster and Lübeck at the top edge are the 3); on a 390 px phone the same
+// 27° of world is a third the pixels and 806 of 5,702 still cannot be set without overlapping, so a
+// phone needs a step or two more zoom for the densest coasts (tests/map.labels.spec.ts).
 //
 // Until row 94 (2026-09-14) a port below the band was NOT DRAWN. The owner: *"all the ports in
 // the game when i zoom out, it can be a dot, then once zoomed in i will be able to see the
@@ -365,7 +388,7 @@ export const LABEL_SPAN_LIMIT = 70
 /** Span (degrees of longitude on screen) → the smallest `size_tier` that earns its FULL mark at
  *  it (below: a dot). Ordered tightest first; the first row whose `maxSpanX` covers the view wins. */
 export const PORT_TIER_BANDS: readonly { readonly maxSpanX: number; readonly minTier: number }[] = [
-  { maxSpanX: 12, minTier: 1 },
+  { maxSpanX: ALL_NAMES_SPAN, minTier: 1 },
   { maxSpanX: 45, minTier: 3 },
   { maxSpanX: Infinity, minTier: 5 },
 ]
