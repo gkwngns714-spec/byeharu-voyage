@@ -78,7 +78,7 @@ exactly as on main (13.47 vs 13.00). The proof was not touched.
      seed expression lived only inside `public.city_treasury_switch`; it **moves** into `public.city_seed_amount(port)`
      and the switch calls it (one hunk, occurs once, reverses to its pre-image, ACL/volatility/definer/config
      unchanged), so the switch and a harbour born after it read one rule. A new harbour is no capital: 2,000,000 each,
-     16,000,000 in all, as one SEED flow each. On a world never seeded (CI) nothing is posted; the switch seeds them
+     16,000,000 in all, as one SEED flow each. "Seeded" is read from `port_treasury.seeded_at` (prod prunes SEED flows hourly — the main session's fix, 234e7f2). On a world never seeded (CI) nothing is posted; the switch seeds them
      with the rest when it is lit. Both branches tested.
    - **works** (0123): the four at level 0, 0123's statement.
    - **flag** (0143, 0187): measured over all 238 — a great power's foundation flies its founder, every other harbour
@@ -207,9 +207,11 @@ select key, value from public.world_config where key in ('goods_price_level','af
   -- expect goods_price_level 0.2; affinity 0.88 / 1.00 / 0.93 / 9500 / 0.76 (else the growth's knob reconcile
   -- UPDATEs fire — read them before pushing); city_purse_city 2000000; sea_conditions_bite false
 
--- 5. the seeded-world branch: prod's cities were seeded, so the eight will be posted 2,000,000 each
-select exists (select 1 from public.treasury_flows where kind = 'SEED')
-    or exists (select 1 from public.treasury_daybook where kind = 'SEED') as seeded;     -- expect true
+-- 5. the seeded-world branch: prod's cities were seeded, so the eight will be posted 2,000,000 each.
+--    Read from the cities' own record (port_treasury.seeded_at), NOT from SEED flows: treasury_flows is
+--    pruned hourly and the daybook has no SEED kind, so on prod no SEED row is left (main session's fix,
+--    234e7f2 — my first cut read the flows and would have opened the eight with empty purses).
+select count(*) filter (where seeded_at is not null), count(*) from public.port_treasury;  -- expect 238, 238
 select greatest(public.wc_int('city_purse_city'), public.wc_int('city_seed_min'));        -- expect 2000000
 
 -- 6. the roadsteads the file seeds equal what the one SQL rule answers on prod

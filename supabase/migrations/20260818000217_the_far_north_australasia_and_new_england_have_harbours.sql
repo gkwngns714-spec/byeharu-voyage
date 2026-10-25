@@ -3295,7 +3295,7 @@ end $$;
 -- port_language 121/121 vs 0/8, sea_leg_asks 121/121 vs 0/8; and port_goods.haul (0173), which the
 -- world guard holds equal to world.haul_rows() on every row. Each is landed here by ITS OWN rule:
 --   (1) port_treasury (0122) — the row every harbour has, its reserve, and, IN A WORLD WHOSE CITIES
---       WERE ONCE SEEDED (a SEED flow exists: prod), the seed the switch gives a harbour, read from
+--       WERE ONCE SEEDED (port_treasury.seeded_at is set: prod), the seed the switch gives a harbour, read from
 --       ONE function: public.city_seed_amount(port). The expression lived only inside
 --       public.city_treasury_switch (0122, + 0172's standing purse); writing it a second time here
 --       would be the second author NO_SPAGHETTI §1 forbids, so it MOVES into the function and the
