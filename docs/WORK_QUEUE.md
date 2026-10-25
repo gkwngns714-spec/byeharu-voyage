@@ -16,7 +16,7 @@ The main session (this PC) only runs the read-only prod checks, the paired sim, 
 - **#293 = 0218** green, waits for 0217 (deploy order). Deploy both with `~/bin/bv-deploy.sh`.
 - **CLOUD CREDIT GONE (owner, ~12:45 UTC): everything runs LOCALLY now.** 0217 is the last cloud job; the owner said to let it finish. The 169a and 173 routines were turned off before they fired.
 - **NEW Lane A build (local agent):** row 169a speed ×3, `osn-speed-x3` in `~/dev/wt-osn-speed-x3` (node_modules is a junction: unlink it before deleting the folder), file 0219, paired sim run locally.
-- **NEW Lane C design (local agent):** row 173 weekly rollover + history tab, `docs/WEEKLY_ROLLOVER.md` in `~/dev/wt-osn-weekly-rollover-design`.
+- **Row 173 design MERGED (#294, cfa08f2). The owner ACCEPTED ALL DEFAULTS (2026-10-25):** the week runs Monday 00:00 UTC; the Investors board and route lap counters reset; shares, works, influence and flags do not; no backfill; History tab "History"/"내역", 8 weeks; no cron. Build W1–W4 in Lane A after 0219 (speed ×3).
 - **Token rules (owner, 10-25):** fresh session per job; no 10-min reminder; no polling routines (the "PR #293 safety check" routine was disabled); CI is watched with `gh pr checks --watch` in a background shell; routines build locally before pushing and push once.
 
 
