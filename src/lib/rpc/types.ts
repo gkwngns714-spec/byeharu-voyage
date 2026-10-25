@@ -1445,11 +1445,11 @@ export interface FoundedHouse {
 
 // ── 0013-0016: the record, the house, the roster and the school ─────────────────────────────────
 
-/** The spans a price chart can ask for (0225): the fine record for a day, the hourly open/high/low/close
+/** The spans a price chart can ask for (0226): the fine record for a day, the hourly open/high/low/close
  *  for a week or a month, the daily for a year or for ever. The server picks the tier by span. */
 export type PriceSpan = '1d' | '1w' | '1m' | '1y' | 'all'
 
-/** One point of a good's price at a city, BOTH SIDES (0225): `ask` is what the city asks a unit (null
+/** One point of a good's price at a city, BOTH SIDES (0226): `ask` is what the city asks a unit (null
  *  where it does not sell the good — 0061), `bid` what it pays. On the folded tiers (`hour`, `day`) ask
  *  and bid are the period's CLOSE and the `_lo` / `_hi` fields its low and high; the fine tier carries
  *  none of them. */
@@ -1465,7 +1465,7 @@ export interface PricePoint {
   stock?: number
 }
 
-/** `world.price_series(port, good, span)` — THE chart read (0225): one good at one city over a span,
+/** `world.price_series(port, good, span)` — THE chart read (0226): one good at one city over a span,
  *  oldest point first, from the tier the span lives in. `recording` false means the record does not
  *  keep this pair yet (a city that does not sell the good, never asked for): the store presses
  *  `cmd.watch_price` once and the next tick starts the line. `points` is `[]` until then. */
@@ -1483,7 +1483,7 @@ export interface PriceSeries {
   points: PricePoint[]
 }
 
-/** `cmd.watch_price(port, good)` (0225): the record now keeps this pair. */
+/** `cmd.watch_price(port, good)` (0226): the record now keeps this pair. */
 export interface WatchPriceResult {
   recording: boolean
   /** True when the press added (or refreshed) a watch; false for a pair the city sells, recorded anyway. */

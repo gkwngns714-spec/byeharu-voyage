@@ -32,7 +32,7 @@ import { useT, t as tg } from '../../../lib/i18n'
 //                what you pay, what you get, each under its own word (owner request 178, 2026-10-20) —
 //                the middle price with the record's move across the window, and the city's stock;
 //   the cities   a chip per city (flag + name) — a press SELECTS: the chart's data changes in place;
-//   the span     a day · a week · a month · a year · all (0225, owner row 205) — the server picks the
+//   the span     a day · a week · a month · a year · all (0226, owner row 205) — the server picks the
 //                tier; a press SELECTS, and the same picker stands on every chart (useChartSpan);
 //   the chart    BOTH SIDES of the record (owner row 189) and the server's estimate with its band, the
 //                best time ◆ and the arrival rule, and under it the city's STOCK on the same time axis;

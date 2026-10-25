@@ -1,5 +1,5 @@
 // A GOOD'S PRICE AT A CITY OVER THE CHOSEN SPAN — one silent read per (port, good, span), kept by the
-// store (0225, owner rows 189 and 205).
+// store (0226, owner rows 189 and 205).
 //
 // `world.price_series(port, good, span)` decorates a price that is true without it, so a failed read is
 // silent (worldStore.loadSeries) and the row says "No data yet". Every chart in the game — the COMMAND

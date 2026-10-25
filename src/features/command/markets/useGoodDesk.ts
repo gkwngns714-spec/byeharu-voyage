@@ -26,7 +26,7 @@ import { citySides } from './citySides'
 /** The chart's estimate (world.price_outlook): the market price, a day of slots ahead. */
 export const DESK_OUTLOOK = { side: 'mid', slots: 24 } as const
 
-// THE CHART'S SPAN — how far back it looks (0225, owner row 205: "i want to see them in weeks, years
+// THE CHART'S SPAN — how far back it looks (0226, owner row 205: "i want to see them in weeks, years
 // even"). The spans are the server's (world.price_series: a day of fine points, a week or a month of
 // hourly open/high/low/close, a year or all of daily), the choice is `useChartSpan`'s — ONE for every
 // chart in the game — and the read is `usePriceSeries`'s, one per (city, good, span). Until 2026-10-26
@@ -81,7 +81,7 @@ export function useGoodDesk(fleet: FleetView, good: SnapshotGood, cheapest: stri
     focusCode ?? (b ? (b.buy.find((r) => r.here)?.port ?? b.buy[0]?.port ?? b.sell[0]?.port ?? null) : docked)
   const focusPort = focus ? (portByCode[focus] ?? null) : null
   const outlook = usePriceOutlook(focusPort?.id ?? null, good.id, DESK_OUTLOOK.side, DESK_OUTLOOK.slots)
-  // The record over the chosen span, both sides (0225): the server picks the tier and says the step.
+  // The record over the chosen span, both sides (0226): the server picks the tier and says the step.
   const history = usePriceSeries(focusPort?.id ?? null, good.id)
   const why = usePriceWhy(focusPort?.id ?? null, good.id)
 

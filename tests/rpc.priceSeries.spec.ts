@@ -1,4 +1,4 @@
-// PURE UNIT SPEC — 0225, A PRICE IS KEPT FOR YEARS, BOTH WAYS (owner rows 189 and 205), against the real
+// PURE UNIT SPEC — 0226, A PRICE IS KEPT FOR YEARS, BOTH WAYS (owner rows 189 and 205), against the real
 // chain in PGlite through the backend the app installs in local mode. No browser.
 //
 // WHAT IT PINS, from the client's side of the wire (the migration's self-assert pins the server's):

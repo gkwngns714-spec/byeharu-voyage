@@ -225,7 +225,7 @@ test('the keyboard walks a quarter of a window, and the left arrow goes into the
   expect(panByKey(0, false, limits)).toBe(0)
 })
 
-// ── 0225: BOTH SIDES (owner row 189), and a record that reaches back days and years (owner row 205) ──
+// ── 0226: BOTH SIDES (owner row 189), and a record that reaches back days and years (owner row 205) ──
 // A served point carries the city's ask (null where it does not sell the good) and its bid. The chart
 // draws both; the PRIMARY line — the ask where there is one, else the bid — carries the ground and the
 // marks. The folded tiers' low…high is a band under each line and inside the y scale.

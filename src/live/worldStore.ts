@@ -203,7 +203,7 @@ export interface LiveWorld {
   trafficReadAt: number | null
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
-  /** A good's price at a city over a span (0225), keyed `port|good|span` (seriesKey). One read per key;
+  /** A good's price at a city over a span (0226), keyed `port|good|span` (seriesKey). One read per key;
    *  a pair the record does not keep yet is pressed into it once (cmd.watch_price). */
   series: Record<string, PriceSeries>
 
@@ -792,7 +792,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
       { loud: true },
     ),
 
-  // THE SERIES READ (0225): one read per (port, good, span); a payload already kept is not asked again
+  // THE SERIES READ (0226): one read per (port, good, span); a payload already kept is not asked again
   // in this session (the beat does not re-read charts — a chart's line moves one point a slot). A pair the
   // record does not keep yet comes back `recording: false` with no points: the store presses it into the
   // record ONCE (cmd.watch_price, idempotent) and nothing else — the next tick writes the first point, and

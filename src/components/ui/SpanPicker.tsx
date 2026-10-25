@@ -2,7 +2,7 @@ import { Segmented } from './Chip'
 import { PRICE_SPANS, type PriceSpan } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 
-// HOW FAR BACK A PRICE CHART LOOKS — five plain words, one press each (0225, owner row 205: "i want to
+// HOW FAR BACK A PRICE CHART LOOKS — five plain words, one press each (0226, owner row 205: "i want to
 // see them in weeks, years even"). The spans are the server's (`PRICE_SPANS`: what world.price_series
 // answers), the words are the dictionary's, and the choice is the caller's (`useChartSpan`, one for
 // every chart). A press SELECTS: this bar keeps its height and the chart changes in place; nothing

@@ -1,7 +1,7 @@
 # 2026-10-26 — A price is kept for years, both ways (owner rows 189 and 205)
 
-**Branch `osn-price-history`: migration `20260818000225_a_price_is_kept_for_years_both_ways.sql` (renumbers to
-the prod head + 1 at deploy; its tags are `0225`) + the client. NOT merged, NOT deployed.**
+**Branch `osn-price-history`: migration `20260818000226_a_price_is_kept_for_years_both_ways.sql` (renumbers to
+the prod head + 1 at deploy; its tags are `0226`) + the client. NOT merged, NOT deployed.**
 
 **The owner, verbatim (docs/OWNER_REQUESTS.md):**
 
@@ -18,7 +18,7 @@ good had no row at all, so `world.price_history` served nothing for it and `Good
 estimate alone: the flat line. The buying chart was "good" because the city in focus happened to sell the
 good. Nothing recorded what a city PAYS, anywhere.
 
-## 2. What 0225 does
+## 2. What 0226 does
 
 | Part | What | Where |
 |---|---|---|
@@ -115,7 +115,7 @@ select (length(d) - length(replace(d, h, ''))) / length(h) as registry_hunk_1 fr
 ```
 
 ```sql
-select (length(d) - length(replace(d, h, ''))) / length(h) as registry_hunk_2 from (select replace(pg_get_functiondef('public.client_rpc_entry_points()'::regprocedure), chr(13), '') as d, '      (''world'',       ''sea_conditions'',        '''')' || chr(10) || '    ) as t(s, f, a)' as h) z
+select (length(d) - length(replace(d, h, ''))) / length(h) as registry_hunk_2 from (select replace(pg_get_functiondef('public.client_rpc_entry_points()'::regprocedure), chr(13), '') as d, '      (''world'',       ''stats_now'',             '''')' || chr(10) || '    ) as t(s, f, a)' as h) z
 ```
 
 **(2) The rows the backfill will touch, and the pairs** — the counts to time the backfill against (§4: 66,240 rows took 1.3 s in PGlite)

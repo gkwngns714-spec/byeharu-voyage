@@ -17,7 +17,7 @@ import { useT } from '../../lib/i18n'
 // tooltip: at 340 px inside a tray the honest instrument is the lines, three figures on each axis,
 // and three marks.
 //
-// BOTH SIDES (0225, owner row 189): the city's ASK (what you pay) is the `accent` line and its BID
+// BOTH SIDES (0226, owner row 189): the city's ASK (what you pay) is the `accent` line and its BID
 // (what you get) the `info` line; the PRIMARY one — the ask where the city sells the good, else the
 // bid — carries the ground and the marks. On the hourly and daily tiers each side's low…high is a
 // faint band under its line. The legend names both sides in the dictionary's words (Cost · Sale, the

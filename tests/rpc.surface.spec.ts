@@ -1423,7 +1423,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // with the screens that read it, and 0071 REVOKES the grant, so it is not left as a door
       // nobody opens — which is the defect the note two blocks down was written about.
       // 0013-0016. Each of the three cmd.* entries takes NO player id — identity is the JWT's,
-      // the same property that makes cmd.found_house safe for a browser to hold. 0225 replaced
+      // the same property that makes cmd.found_house safe for a browser to hold. 0226 replaced
       // `worldPriceHistory` (one port, every good, twelve hours of one side) with `worldPriceSeries`
       // (one good at one city, both sides, by span) and added the press that keeps a city's price for
       // a good it does not sell.

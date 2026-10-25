@@ -5,6 +5,7 @@ import { GoodKind } from './GoodKind'
 import { PriceChart } from './PriceChart'
 import { primarySide, primaryValue } from './priceChartModel'
 import { Row } from './Row'
+import { Skeleton } from './Skeleton'
 import { SpanPicker } from './SpanPicker'
 import { Sparkline } from './Sparkline'
 import { formatOfTotal, formatPriceFigure } from '../../lib/format'
@@ -31,13 +32,15 @@ import { useT } from '../../lib/i18n'
 // (what is below moves down, which is what an unfold IS). The axis ends at the instant the chart
 // was opened — recorded once on the press, so a re-render does not creep the axis.
 //
-// THE SPAN (0225, owner row 205): a `SpanPicker` stands in the row in BOTH forms — a day, a week, a
+// THE SPAN (0226, owner row 205): a `SpanPicker` stands in the row in BOTH forms — a day, a week, a
 // month, a year, all — and a press on it SELECTS: the store asks the server for that span and the
 // same row redraws; the picker keeps its height, so nothing under it moves. BOTH SIDES (owner row
 // 189): the chart draws what the city asks and what it pays; the folded sparkline follows the
 // primary side (the ask where the city sells the good, else the bid). A span with nothing in it yet
 // — a city that only buys the good, just asked for; a month on a record two days old — says
-// "No data yet" in the line's place and nothing else.
+// "No data yet" in the line's place and nothing else. WHILE THE READ IS ON THE WIRE the line's place
+// is held at the sparkline's own height (a skeleton), so the rows under it do not move when it lands:
+// since 0226 the record is read per (city, good) on the press, not per city ahead of it.
 //
 // THE RANGE IS THIS QUAY'S, TODAY. `range_lo … range_hi` (0071) is how far this price can travel
 // here, at this reading — it is never a fortnight's low and high, and the label does not claim one.
@@ -82,7 +85,7 @@ export function PriceRows({
       <Row label={t('ui.kind')} value={<GoodKind category={good.category} rarity={good.rarity} />} data-testid="good-kind-row" />
       <Row
         label={t('ui.trend')}
-        tone={values.length < 2 ? 'muted' : 'default'}
+        tone={trend.series !== undefined && values.length < 2 ? 'muted' : 'default'}
         chevron={drawable}
         onClick={drawable ? () => setOpenedAt(open ? null : Date.now()) : undefined}
         aria-expanded={drawable ? open : undefined}
@@ -92,8 +95,10 @@ export function PriceRows({
         <div onClick={(e) => e.stopPropagation()} className="mt-1">
           <SpanPicker value={trend.span} onChange={trend.setSpan} />
         </div>
-        {values.length < 2 ? (
-          <span className="block text-t-caption" data-testid="trend-empty">
+        {trend.series === undefined ? (
+          <Skeleton className="mt-1 h-10 w-full" />
+        ) : values.length < 2 ? (
+          <span className="mt-1 block h-10 text-t-caption" data-testid="trend-empty">
             {t('ui.noData')}
           </span>
         ) : open ? (

@@ -17,7 +17,7 @@ import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 // which two trays already draw, and by the COMMAND desk's good page (2026-10-18), which adds the
 // server's ESTIMATE to the right of now. One model, one painter, every caller.
 //
-// ── BOTH SIDES (0225, owner row 189: "why is the selling price chart is flat?") ─────────────────
+// ── BOTH SIDES (0226, owner row 189: "why is the selling price chart is flat?") ─────────────────
 // A served point carries the city's ASK (what you pay; null where the city does not sell the good) and
 // its BID (what you get). The chart draws BOTH as lines; the PRIMARY line — the ask where the city sells
 // the good, else the bid — carries the ground under it and the low / high / now marks, so a city that
@@ -54,7 +54,7 @@ import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 // ── WHAT IT REFUSES ────────────────────────────────────────────────────────────────────────────
 // Without an estimate: fewer than two points, a point whose `at` does not parse, or a non-positive
 // step → null, as before. With one, the record may be EMPTY (a city that does not sell a good keeps
-// no record of it until it is asked for — 0225): the estimate alone is drawn from now.
+// no record of it until it is asked for — 0226): the estimate alone is drawn from now.
 
 /** The drawn plane: 340×170 (docs/QUAY_LEDGER.md Appendix A B), the width of a tray column at
  *  390 px less the gutter, and tall enough for three y labels to stand apart at t-caption. */

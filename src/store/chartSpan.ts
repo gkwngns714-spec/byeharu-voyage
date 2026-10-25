@@ -1,4 +1,4 @@
-// HOW FAR BACK EVERY PRICE CHART LOOKS (0225, owner row 205: "i want to see them in weeks, years even").
+// HOW FAR BACK EVERY PRICE CHART LOOKS (0226, owner row 205: "i want to see them in weeks, years even").
 //
 // ONE span for every chart, not one per chart: the player who presses "1 month" on the good page wants
 // a month on the quay's tray too, and a span is a preference about reading, not a fact about a good.

@@ -436,22 +436,22 @@ export function cmdFoundHouse(
 
 // ── 0013-0016 ───────────────────────────────────────────────────────────────────────────────────
 
-/** The spans `world.price_series` answers, in the order a chart offers them (0225). */
+/** The spans `world.price_series` answers, in the order a chart offers them (0226). */
 export const PRICE_SPANS: readonly PriceSpan[] = ['1d', '1w', '1m', '1y', 'all']
 
 /**
- * ONE good's price at ONE city over a span, both sides of every point (0225, owner rows 189 and 205).
+ * ONE good's price at ONE city over a span, both sides of every point (0226, owner rows 189 and 205).
  * The server picks the tier — the fine record for `1d`, the hourly open/high/low/close for `1w` and
  * `1m`, the daily for `1y` and `all` — and says which in `tier`, with the step each point spans. A pair
  * the record does not keep yet answers `recording: false` with no points; the store then presses
  * `cmdWatchPrice` once, and the next tick starts the line. Replaced `world.price_history` (one port,
- * every good, twelve hours), which 0225 dropped.
+ * every good, twelve hours), which 0226 dropped.
  */
 export function worldPriceSeries(portId: string, goodId: string, span: PriceSpan): Promise<RpcResult<PriceSeries>> {
   return call<PriceSeries>('worldPriceSeries', [portId, goodId, span])
 }
 
-/** Keep this city's price of this good (0225): a city that does not sell a good has no record of what
+/** Keep this city's price of this good (0226): a city that does not sell a good has no record of what
  *  it pays until someone asks. Idempotent; the server caps the list and lets the stalest ask go. */
 export function cmdWatchPrice(portId: string, goodId: string): Promise<RpcResult<WatchPriceResult>> {
   return call<WatchPriceResult>('cmdWatchPrice', [portId, goodId])

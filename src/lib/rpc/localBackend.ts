@@ -37,10 +37,12 @@ import type { RpcBackend } from './backend'
 /** How often this tab may play the snapshot job — a slot is 15 minutes; a re-ask within this is a no-op. */
 const RECORD_EVERY_MS = 30_000
 
-/** The snapshot job, as this tab plays it: the present slot, and — when the window holds nothing yet — the
- *  previous boundary first, so a fresh record has a line to draw. */
+/** The snapshot job, as this tab plays it: the present slot, and — until the present window holds TWO
+ *  slots — the previous boundary first, so a fresh record has a line to draw. Two, not "any": since 0226
+ *  the chain's own apply writes the present slot (its backfill run), so a world image built minutes ago
+ *  already holds one slot, and one point is not a line (tests/layout.spec.ts, the Trend row). */
 const RECORD_SQL = `select case
-    when exists (select 1 from public.price_history where slot >= public.drift_slot_of(now()) - 1)
+    when (select count(distinct slot) from public.price_history where slot >= public.drift_slot_of(now()) - 1) >= 2
       then public.tick_price_snapshot(now())
     else public.tick_price_snapshot(now() - make_interval(secs => public.wc_num('drift_slot_seconds')::double precision))
          || public.tick_price_snapshot(now())

@@ -1004,6 +1004,9 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
     await row.locator('button:enabled').first().click()
     await expect(tray).toBeVisible()
     await expect(trend).toBeVisible()
+    // The record is READ on the press since 0226 (one series per city and good): wait for the read to
+    // land — a sparkline, or the row's "No data yet" — before judging it.
+    await expect(trend.locator('svg[role="img"], [data-testid="trend-empty"]').first()).toBeVisible({ timeout: 60_000 })
     // No record yet, or a record of one point: no sparkline, nothing to unfold.
     if ((await trend.locator('svg[role="img"]').count()) === 0) {
       tried.push(`${name}: no history`)

@@ -217,7 +217,7 @@ export const RPCS = {
     ],
   },
   cmdVerbSchema: { schema: 'cmd', fn: 'verb_schema', args: [] },
-  // 0225 — THE chart read: one good at one city over 1d / 1w / 1m / 1y / all, both sides of every point,
+  // 0226 — THE chart read: one good at one city over 1d / 1w / 1m / 1y / all, both sides of every point,
   // from the tier the span lives in. Replaced 0013's world.price_history (one port, every good, 12 h).
   worldPriceSeries: {
     schema: 'world',
@@ -228,7 +228,7 @@ export const RPCS = {
       { name: 'p_span', type: 'text' },
     ],
   },
-  // 0225 — the press that keeps a city's price for a good it does not sell. Identity is the JWT's.
+  // 0226 — the press that keeps a city's price for a good it does not sell. Identity is the JWT's.
   cmdWatchPrice: {
     schema: 'cmd',
     fn: 'watch_price',
