@@ -62,11 +62,19 @@ test('COMMAND composes no verb — it keeps whose orders, and her queue', () => 
   // same tray and the same door PORT's board uses. That file is the exception, by name; every other file
   // under features/command still composes no verb. D5 rewrites this rule to COMMAND_DESK §2.2.
   const DOORWAYS = new Set(['features/command/markets/DeskTrade.tsx'])
+  // 2026-10-25 — OWNER ROW 183: *"It should show map (without npcs or name of the cities that aren't
+  // associated with the route/plan"*. The Plans face's chart is a PICTURE of the plan, not a doorway:
+  // `SmallChart` takes no tap (its header, point 1), so it composes nothing; the plan's SAIL lines are still
+  // written by planLines.ts and sent through cmd.issue_lines, as before. Only `SmallChart`, only in this file.
+  const PICTURES: Record<string, readonly string[]> = {
+    'features/command/plans/PlanVoyage.tsx': [/\bSmallChart\b/.source],
+  }
   const offenders: string[] = []
   for (const f of files(path.join(SRC, 'features', 'command'))) {
     if (DOORWAYS.has(rel(f))) continue
     const text = readFileSync(f, 'utf8')
     for (const re of COMPOSING) {
+      if (PICTURES[rel(f)]?.includes(re.source)) continue
       if (re.test(text)) offenders.push(`${rel(f)}  ${re.source}`)
     }
   }
