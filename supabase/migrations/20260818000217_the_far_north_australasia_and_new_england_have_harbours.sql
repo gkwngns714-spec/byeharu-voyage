@@ -3418,8 +3418,13 @@ update public.port_treasury t set reserve = public.treasury_reserve(t.port_id), 
  where t.port_id in (select id from new_harbours_0217);
 
 create temp table seeded_world_0217 on commit drop as
-select exists (select 1 from public.treasury_flows where kind = 'SEED')
-    or exists (select 1 from public.treasury_daybook where kind = 'SEED') as seeded;
+-- THE CITY'S OWN RECORD SAYS WHETHER IT WAS SEEDED: port_treasury.seeded_at (0122). Not a SEED flow:
+-- treasury_flows is pruned hourly and the daybook carries no SEED kind, so on prod (238 cities, every
+-- seeded_at set, 0 SEED rows left) a flow test read "never seeded" and would have opened the eight new
+-- harbours with empty purses. Only harbours that existed before this file are asked.
+select exists (select 1 from public.port_treasury t
+                where t.seeded_at is not null
+                  and t.port_id not in (select id from new_harbours_0217)) as seeded;
 
 do $$
 declare r record;
