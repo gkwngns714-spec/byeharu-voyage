@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // `reachWords` is THE ONE WORDING for an unsailable city — the plan builder's note and the best-trade
-// card's rows both read it. It used to say "cannot be reached in legs of 1,700 nm" and "her reach"; the
+// card's rows both read it. It used to say "cannot be reached in legs of 1,700 nm" and "her reach", then a full sentence; the
 // owner's map-UX law is no jargon, and docs/WORDS.md says a distance reads as days of sailing. This spec
 // pins the three answers and the words they may not contain.
 //
@@ -19,19 +19,19 @@ const noLeg = { stops: null, miles: null }
 
 test('a city no leg reaches names the Navigation that would, in days at sea', () => {
   const words = reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 } }, board)
-  expect(words).toBe('too far to sail in one go: your navigator can only plan 14.2 days at sea without a stop. A captain with Navigation 3 could take you there')
+  expect(words).toBe('too far in one go: longest leg 14.2 days. Navigation 3 would reach it')
 })
 
 test('a city no Navigation reaches says so, with the farthest any plots', () => {
   const words = reachWords({ ...noLeg, needs: { navigation: null, reach_nm: 4000 } }, board)
   expect(words).toBe(
-    'too far to sail in one go: your navigator can only plan 14.2 days at sea without a stop. No captain can plan a trip that long, and there are no ports on the way to stop at',
+    'too far in one go: longest leg 14.2 days. No captain can plan it, and no port to stop at',
   )
 })
 
 test('a reachable city the supplies do not carry names its longest leg against them', () => {
   const words = reachWords({ stops: ['CEU'], miles: 3100, longest_leg: { miles: 2500, days: 20.8 } }, board)
-  expect(words).toBe('the longest stretch at sea is 20.8 days, but your supplies last only 36.0 days')
+  expect(words).toBe('longest leg 20.8 days, supplies last 36.0 days')
 })
 
 test('a board with no speed falls back to miles, spelled, never nm', () => {

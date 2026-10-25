@@ -114,8 +114,8 @@ test('0190: a busy quay is seen — what changed hands here today, and by how ma
   const after = await why(r.port_id, r.good_id)
   expect(Number(after.volume!.units) - Number(before.volume!.units)).toBe(37)
   expect(after.volume!.houses).toBeGreaterThanOrEqual(1)
-  expect(volumeLine(after)).toMatch(/^Traded here today: [\d,]+ units by \d+ compan(y|ies)$/)
-  expect(volumeLine({ ...after, volume: { game_day: day, units: 0, houses: 0 } })).toBe('Nobody has traded it here today.')
+  expect(volumeLine(after)).toMatch(/^Today: [\d,]+ units by \d+ compan(y|ies)$/)
+  expect(volumeLine({ ...after, volume: { game_day: day, units: 0, houses: 0 } })).toBe('No trades here today.')
 })
 
 test('0191: a city\'s best friends trade cheaper — rank 1 among its givers is spared 10 % of the spread', async () => {
@@ -140,7 +140,7 @@ test('0191: a city\'s best friends trade cheaper — rank 1 among its givers is 
   expect(await spread(at.far)).toBe(farBefore)
   const w = await db.callAs<PriceWhy>('select world.price_why($1::uuid, $2::uuid) as result', [at.port, at.good])
   expect(w.stake).toEqual({ rank: 1, shave: 0.1 })
-  expect(stakeLine(w)).toBe("Your company is #1 among this city's givers: 10% off the port's spread")
+  expect(stakeLine(w)).toBe('#1 giver here: 10% off the spread')
 })
 
 test('0194: a glutted market remembers — the glut is its own term, and it is printed', async () => {
@@ -150,7 +150,7 @@ test('0194: a glutted market remembers — the glut is its own term, and it is p
   expect(Number(w.terms.find((t) => t.key === 'glut')!.mult)).toBe(0.85)
   const product = Number(w.base) * w.terms.reduce((acc, t) => acc * Number(t.mult), 1)
   expect(Math.abs(product - Number(w.mid))).toBeLessThanOrEqual(Math.max(0.0005 * Number(w.mid), 0.0002))
-  expect(whyLines(w).find((l) => l.key === 'glut')).toMatchObject({ label: 'Sold heavily here lately', effect: '−15.0%' })
+  expect(whyLines(w).find((l) => l.key === 'glut')).toMatchObject({ label: 'Sold a lot lately', effect: '−15.0%' })
   await db.pg.query('update public.port_goods set glut = 0 where port_id = $1 and good_id = $2', [r.port_id, r.good_id])
 })
 
@@ -189,15 +189,15 @@ test("0196: a rival pays the tariff — the profit tax by how the company's powe
   }
   const ist = (await db.pg.query<{ id: string }>(`select id from public.ports where code = 'IST'`)).rows[0].id
   const line = tariffLine(await why(ist, good))!
-  expect(line.label).toBe('Tax on your profit · Ottoman Empire, a rival')
+  expect(line.label).toBe('Profit tax · Ottoman Empire, rival')
   expect(line.value).toMatch(/^\d+(\.\d)?% \(×1\.5\)$/)
   const lis = (await db.pg.query<{ id: string }>(`select id from public.ports where code = 'LIS'`)).rows[0].id
-  expect(tariffLine(await why(lis, good))!.label).toBe('Tax on your profit · your own country')
+  expect(tariffLine(await why(lis, good))!.label).toBe('Profit tax · own country')
   // the race off: every company pays the city's rate, and the line names no stance
   await db.pg.query(`update public.world_config set value = 'false'::jsonb where key = 'influence_enabled'`)
   const off = await why(ist, good)
   expect(Number(off.tariff!.rate)).toBe(Number(off.tariff!.base))
-  expect(tariffLine(off)!.label).toBe('Tax on your profit · Ottoman Empire')
+  expect(tariffLine(off)!.label).toBe('Profit tax · Ottoman Empire')
   await db.pg.query(`update public.world_config set value = 'true'::jsonb where key = 'influence_enabled'`)
 })
 

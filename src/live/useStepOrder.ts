@@ -27,13 +27,15 @@ import { findVerb, isComplete, orderText } from '../domain/order'
 import { useWorld } from './worldStore'
 import type { FleetView, Refusal, VerbSpec } from '../lib/rpc'
 import type { CheckState } from './orderCheck'
+import { t } from '../lib/i18n'
 
-const FALLBACK_REFUSAL: Refusal = {
+/** A refusal with no served sentence, worded in the viewer's language at the moment it is read. */
+const fallbackRefusal = (): Refusal => ({
   code: 'E_REFUSED',
-  sentence: 'The server refused, without a reason.',
+  sentence: t('trade.noReason'),
   fixes: [],
   source: 'server',
-}
+})
 
 /** ONE frozen empty map, so a caller that derives nothing does not hand a fresh literal per render. */
 const NOTHING_GIVEN: Record<string, string> = Object.freeze({})
@@ -112,7 +114,7 @@ export function useStepOrder(
           text,
           state: result
             ? { status: 'ok', result }
-            : { status: 'refused', refusal: useWorld.getState().refusal ?? FALLBACK_REFUSAL },
+            : { status: 'refused', refusal: useWorld.getState().refusal ?? fallbackRefusal() },
         })
       })
     }, 250)
@@ -143,7 +145,7 @@ export function useStepOrder(
         reset()
         onDone()
       } else {
-        setChecked({ text, state: { status: 'refused', refusal: useWorld.getState().refusal ?? FALLBACK_REFUSAL } })
+        setChecked({ text, state: { status: 'refused', refusal: useWorld.getState().refusal ?? fallbackRefusal() } })
       }
     })()
   }

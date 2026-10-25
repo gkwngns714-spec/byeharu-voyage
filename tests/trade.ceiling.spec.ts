@@ -311,7 +311,7 @@ test(`PORT › Trade (sell): count first, then three prices and the share; no "c
   // THE SHARE, with its whole on the same face: profit d. · +N% in the pinned row, the cost under Bought at.
   await expect(tray.locator('[data-testid="trade-tray-profit"]')).toHaveText(/[+−-][\d,]+\s🪙 · [+−-]?\d+%|0\s🪙 · 0%/)
   await expect(tray.locator('[data-testid="trade-tray-paid"]')).toContainText(/[\d,]+\s🪙 for \d+ units?/)
-  await expect(tray.locator('[data-testid="trade-tray-gain-share"]')).toHaveText(/^[+−-]?\d+% on what it cost$/)
+  await expect(tray.locator('[data-testid="trade-tray-gain-share"]')).toHaveText(/^[+−-]?\d+% on cost$/)
 
   // NO "CHECKING" LINE, across three beats AND two presses: the figures stand (dimmed while the
   // new quantity's are on the wire), the You get row never leaves, the button never dies.
