@@ -6,12 +6,14 @@ import {
   Note,
   RankBars,
   SeriesChart,
+  SectionColumns,
   SheetSection,
   Skeleton,
   StackedBar,
   StatCell,
   deltaTone,
   type RankRow,
+  Clip,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib/format'
 import { useT } from '../../lib/i18n'
@@ -54,7 +56,7 @@ export function MerchantsFace({ beat, onServed }: FaceProps) {
       label: (
         <span className="flex min-w-0 items-center gap-2">
           {h.nation !== null && <Flag code={h.nation} name={nationNameOf(nationByCode, h.nation)} size="body" />}
-          <span className="min-w-0 truncate">{h.name}</span>
+          <Clip>{h.name}</Clip>
         </span>
       ),
       value: h.day,
@@ -114,14 +116,14 @@ export function MerchantsFace({ beat, onServed }: FaceProps) {
           </div>
         </div>
       </SheetSection>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <SectionColumns count={2}>
         <SheetSection heading={t('stats.bestDay')} surface data-testid="stats-merchants-top">
           <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
         </SheetSection>
         <SheetSection heading={t('stats.worstDay')} surface data-testid="stats-merchants-bottom">
           <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
         </SheetSection>
-      </div>
+      </SectionColumns>
     </div>
   )
 }

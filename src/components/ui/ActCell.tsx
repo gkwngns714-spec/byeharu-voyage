@@ -33,13 +33,16 @@ export function ActCell({
   /** Accent wash while what this cell opens is open. */
   selected?: boolean
 } & { 'data-testid'?: string }) {
+  // TOP-ALIGNED, not centred (2026-10-25, owner row 198): a button centres its content, so a cell
+  // with a reason line under its figure stood 12px higher than its neighbour without one, and the
+  // two prices of one row did not share a line. A column, from the top.
   return (
     <button
       type="button"
       onClick={onPress}
       disabled={dead !== null}
       aria-pressed={selected}
-      className={`w-28 min-h-14 rounded-control px-2 py-1 text-left disabled:opacity-45 ${selected ? 'bg-accent-soft' : 'bg-surface-2'}`}
+      className={`flex w-28 min-h-14 flex-col items-start justify-start rounded-control px-2 py-1 text-left disabled:opacity-45 ${selected ? 'bg-accent-soft' : 'bg-surface-2'}`}
       {...rest}
     >
       <span className="block text-t-caption text-ink-faint">{label}</span>

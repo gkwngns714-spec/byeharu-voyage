@@ -88,7 +88,7 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
                   }
                   data-testid="holding-row"
                 >
-                  <span className="block truncate text-t-caption text-ink-faint">
+                  <span className="block break-words text-t-caption text-ink-faint">
                     {t('desk.shares', { n: formatInt(r.shares), count: r.shares })} · {t('desk.levelOf', { n: r.level, max: r.level_max })}
                     {r.share_price !== null ? t('desk.sharePrice', { price: formatDucats(r.share_price) }) : ''}
                   </span>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Bar, Figure, Icon, Row, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
+import { Bar, Figure, Icon, Row, Tray, TrayTitle, type TrayDetent, Clip } from '../../components/ui'
 import {
   formatCountdown,
   formatDucatsDelta,
@@ -61,8 +61,8 @@ import { useT, type TKey } from '../../lib/i18n'
 function Fact({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="min-w-0">
-      <dt className="truncate text-t-caption text-ink-faint">{label}</dt>
-      <dd className="truncate text-t-body tabular-nums">{value}</dd>
+      <dt className="break-words text-t-caption text-ink-faint">{label}</dt>
+      <dd className="break-words text-t-body tabular-nums">{value}</dd>
     </div>
   )
 }
@@ -107,7 +107,7 @@ function HullStrip({ hulls }: { hulls: readonly (HullClass | null)[] }) {
           </svg>
         ))}
       </div>
-      <span className="min-w-0 truncate text-t-caption text-ink-faint">
+      <span className="min-w-0 break-words text-t-caption text-ink-faint">
         {[...counted]
           .map(([cls, n]) => {
             const word = HULL_WORD[cls]
@@ -144,8 +144,8 @@ function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id:
               />
             </svg>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-t-body">{ship.name}</span>
-              <span className="block truncate text-t-caption text-ink-faint">
+              <Clip className="text-t-body">{ship.name}</Clip>
+              <span className="block break-words text-t-caption text-ink-faint">
                 {ship.is_flagship ? t('map.flagshipOf', { cls: ship.class }) : ship.class}
               </span>
             </span>
@@ -176,7 +176,7 @@ function RouteLaps({
   return (
     <section className="py-2" data-testid="tray-route-laps">
       <div className="flex items-baseline justify-between gap-2 pb-1.5">
-        <span className="min-w-0 truncate text-t-caption uppercase tracking-wider text-ink-faint">{t('map.tradingOf', { name })}</span>
+        <span className="min-w-0 break-words text-t-caption uppercase tracking-wider text-ink-faint">{t('map.tradingOf', { name })}</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <button type="button" className={`${pill} bg-surface-2 text-ink`} onClick={() => onOpen({ kind: 'day' })} data-testid="tray-trades-day">

@@ -65,13 +65,13 @@ export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; s
         {seats.list.map((s) => (
           <li key={s.seat} className="rounded-control bg-surface-2 px-3 py-2" data-testid={`cabin-${s.seat}`}>
             <div className="flex items-baseline justify-between gap-3">
-              <span className="min-w-0 truncate text-t-caption text-ink-faint">{s.cabin_word}</span>
+              <span className="min-w-0 break-words text-t-caption text-ink-faint">{s.cabin_word}</span>
               {s.captain && (
                 <span className="shrink-0 text-t-caption tabular-nums text-accent">{`${s.captain.rate_pct}%`}</span>
               )}
             </div>
             <div className="flex items-center justify-between gap-3">
-              <span className="min-w-0 truncate text-t-label text-ink">
+              <span className="min-w-0 break-words text-t-label text-ink">
                 {s.captain ? `${s.captain.grade} · ${s.captain.name} · ${s.captain.job_word}` : t('yard.empty')}
               </span>
               {canSeat && s.captain && (

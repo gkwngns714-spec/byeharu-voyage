@@ -1,3 +1,4 @@
+import { Clip } from './Clip'
 import type { ReactNode } from 'react'
 
 // THE TRAY'S HEAD — a name, one line under it, and at most one control.
@@ -36,11 +37,11 @@ export function TrayTitle({
   return (
     <span className="flex min-h-9 items-center justify-between gap-3">
       <span className="min-w-0 flex-1">
-        <span className="block truncate" data-testid={testId}>
+        <Clip data-testid={testId}>
           {name}
-        </span>
+        </Clip>
         {line !== undefined && (
-          <span className="block truncate text-t-caption font-medium text-ink-muted" data-testid={testId ? `${testId}-line` : undefined}>
+          <span className="block break-words text-t-caption font-medium text-ink-muted" data-testid={testId ? `${testId}-line` : undefined}>
             {line}
           </span>
         )}

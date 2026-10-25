@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Note } from '../components/ui'
+import { Button, Note, Clip } from '../components/ui'
 import { cmdAugmentFitting } from '../lib/rpc'
 import type { Refusal, ShipRack, ShipSet } from '../lib/rpc'
 import { useWorld } from './worldStore'
@@ -84,7 +84,7 @@ export function ShipAugments({
               return (
                 <li key={key} className="rounded-control bg-surface-2 px-3 py-1.5" data-testid={`perk-unit-${u.code}`}>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="min-w-0 truncate text-t-label text-ink">{u.name}</span>
+                    <Clip className="text-t-label text-ink">{u.name}</Clip>
                     {canAugment && (u.perk_options?.length ?? 0) > 0 && (
                       <Button variant="quiet" size="sm" disabled={busy} onClick={() => setOpen(open === key ? null : key)}
                         data-testid={`perk-open-${u.code}`}>

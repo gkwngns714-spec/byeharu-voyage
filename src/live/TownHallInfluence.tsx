@@ -77,8 +77,14 @@ export function TownHallInfluence({
         <Row label={t('books.nobodyGiven')} tone="muted" hairline={false} data-testid="townhall-influence-none" />
       ) : (
         shown.map((s) => (
-          <Row key={s.nation} label={<HullCountry nation={s.nation} />} hairline={false} data-testid="townhall-influence-share">
-            <Bar pct={s.share * 100} label={`${nationNameOf(nationByCode, s.nation)} influence`} figure={<Figure value={formatPct(s.share)} size="body" />} className="mt-1" />
+          <Row
+            key={s.nation}
+            label={<HullCountry nation={s.nation} />}
+            value={<Figure value={formatPct(s.share)} size="body" />}
+            hairline={false}
+            data-testid="townhall-influence-share"
+          >
+            <Bar pct={s.share * 100} label={`${nationNameOf(nationByCode, s.nation)} influence`} className="mt-1" />
           </Row>
         ))
       )}

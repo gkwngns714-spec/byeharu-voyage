@@ -201,7 +201,7 @@ function Box({ b }: { b: SlotBox }) {
       ].join(' ')}
     >
       <SlotGlyph kind={b.kind} className={on ? 'text-accent' : 'text-ink-faint/40'} />
-      <span className={`line-clamp-2 text-[0.6875rem] leading-tight ${on ? 'text-ink' : 'text-ink-faint/60'}`}>
+      <span className={`break-words text-[0.6875rem] leading-tight ${on ? 'text-ink' : 'text-ink-faint/60'}`}>
         {on ? b.fitted : shut ? `Lv ${b.opensAt}` : b.word}
       </span>
       {/* 0158 (S13): THE WEAR BAR — what is left of the piece (100 − its served wear), under the server's own
@@ -334,8 +334,8 @@ function SkillBonuses({ bonuses }: { bonuses: readonly ShipBonus[] | undefined }
 function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
     <div className="min-w-0 rounded-control bg-surface-2 px-3 py-2">
-      <dt className="truncate text-t-caption text-ink-faint">{label}</dt>
-      <dd className="truncate">
+      <dt className="break-words text-t-caption text-ink-faint">{label}</dt>
+      <dd className="break-words">
         <span className="text-t-title tabular-nums">{value}</span>
         {unit && <span className="ml-1 text-t-caption text-ink-faint">{unit}</span>}
       </dd>

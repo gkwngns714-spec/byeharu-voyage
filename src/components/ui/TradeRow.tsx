@@ -112,6 +112,7 @@ export function TradeRow({
           />
         </span>
       }
+      under="label"
       data-testid="trade-row"
     >
       {/* THE CITY'S STOCK AGAINST ITS NORMAL LEVEL (owner, 2026-10-18: "i don't see stock of the trade

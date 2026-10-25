@@ -93,7 +93,7 @@ export function WatchRow({
         <span className="min-w-0 flex-1">
           {/* THE NAME WRAPS, never truncates (2026-10-19: "Abalone …", "Adire Cl…" at 1280): two lines
               at most, the rarity mark riding at its end. */}
-          <span className="line-clamp-2 break-words text-t-body leading-tight text-ink">
+          <span className="break-words text-t-body leading-tight text-ink">
             {good.name} <RarityMark rarity={good.rarity} />
           </span>
           {/* THE CHEAPEST SELLER'S STOCK against its normal level (owner, 2026-10-18), then the facts */}
@@ -101,7 +101,7 @@ export function WatchRow({
             {stock && best && (
               <StockGauge stock={stock.stock} target={stock.target} label={t('markets.goodAt', { good: good.name, port: portName(best.port) })} />
             )}
-            <span className="truncate text-t-caption text-ink-faint">{facts.join(' · ') || t('markets.soldNowhere')}</span>
+            <span className="break-words text-t-caption text-ink-faint">{facts.join(' · ') || t('markets.soldNowhere')}</span>
           </span>
         </span>
         <Sparkline

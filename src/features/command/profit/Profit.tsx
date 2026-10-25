@@ -1,4 +1,4 @@
-import { Figure, Note, SheetSection, SignedBars, Skeleton } from '../../../components/ui'
+import { Figure, Note, Row, SheetSection, SignedBars, Skeleton } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta } from '../../../lib/format'
 import { worldBooks, type Books } from '../../../lib/rpc'
@@ -90,12 +90,11 @@ export function Profit({ layout }: { layout: DeskLayout }) {
             data-testid="profit-day"
           >
             {d.lines.map((l) => (
-              <div key={l.kind} className="flex min-h-11 items-center justify-between gap-3 border-b border-edge py-1">
-                <span className="min-w-0 truncate text-t-body text-ink">{l.word}</span>
-                <span className={`whitespace-nowrap text-t-body tabular-nums ${l.ducats >= 0 ? 'text-success' : 'text-ink-muted'}`}>
-                  {formatDucatsDelta(l.ducats)}
-                </span>
-              </div>
+              <Row
+                key={l.kind}
+                label={<span className="text-t-body text-ink">{l.word}</span>}
+                value={<Figure value={formatDucatsDelta(l.ducats)} tone={l.ducats >= 0 ? 'success' : 'muted'} />}
+              />
             ))}
           </SheetSection>
         ))

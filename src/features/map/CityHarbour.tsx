@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
-import { IconDisc, Row, SheetSection, Skeleton } from '../../components/ui'
+import { IconDisc, Row, SheetSection, Skeleton, Clip } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import { MerchantRow } from '../../live/MerchantRow'
 import { merchantParts } from '../../live/merchantLine'
@@ -175,10 +175,10 @@ function OwnRow({
       mark={<IconDisc name={f.dockedAtCode ? 'anchor' : 'ship'} tone="accent" />}
       label={
         <span className="block min-w-0">
-          <span className="block truncate text-t-body text-ink">
+          <Clip className="text-t-body text-ink">
             <GoToLink to={{ kind: 'fleet', id: f.fleet.id }}>{f.fleet.name}</GoToLink>
-          </span>
-          {line !== undefined && <span className="block truncate text-t-caption text-ink-faint">{line}</span>}
+          </Clip>
+          {line !== undefined && <span className="block break-words text-t-caption text-ink-faint">{line}</span>}
         </span>
       }
       value={right}

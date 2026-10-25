@@ -1,4 +1,4 @@
-import { Bar, Figure, PriceCell, Row, SheetSection } from '../components/ui'
+import { Bar, Figure, PriceCell, Row, SheetSection, Clip } from '../components/ui'
 import { fleetCargo, paidPerTun } from '../domain/fleet'
 import { buyableHere } from '../domain/market'
 import { formatPriceDelta, formatPriceFigure, formatTons, formatUnits } from '../lib/format'
@@ -107,7 +107,7 @@ function OnBoardRow({
       <Row
         label={
           <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
-            <span className="max-w-full truncate">{name}</span>
+            <Clip>{name}</Clip>
             <span className="text-t-caption text-ink-faint">{`· ${formatUnits(units)} · ${formatTons(units * bulk, 1)}`}</span>
           </span>
         }

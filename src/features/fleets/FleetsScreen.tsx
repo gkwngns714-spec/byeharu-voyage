@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react'
-import { Bar, CargoBar, FactsLine, IconDisc, Row, Sheet, type IconDiscTone } from '../../components/ui'
+import { Bar, CargoBar, FactsLine, IconDisc, Row, Sheet, type IconDiscTone, Clip } from '../../components/ui'
 import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -172,7 +172,7 @@ function FleetRow({
          own allowance: "a string, or a small stack the caller composes") the bars get the band. */
       label={
         <span className="flex items-baseline justify-between gap-3">
-          <span className="truncate">{fleet.name}</span>
+          <Clip>{fleet.name}</Clip>
           <span className="shrink-0 text-t-body text-ink">{where}</span>
         </span>
       }
