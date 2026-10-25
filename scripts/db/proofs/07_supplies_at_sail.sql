@@ -1,8 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 7 — SUPPLIES AT SAIL  (migration 0221; this file replaced 07_standing_provision, whose subject is gone)
+-- PROOF 7 — SUPPLIES AT SAIL  (migration 0225; this file replaced 07_standing_provision, whose subject is gone)
 --
 -- WHAT THIS PROOF IS FOR, AND WHY IT IS NOT THE MIGRATION'S SELF-ASSERT AGAIN
---   0221 proves, in the transaction that applies it, that the slices are byte-parity, that a SAIL
+--   0225 proves, in the transaction that applies it, that the slices are byte-parity, that a SAIL
 --   buys the stores its leg asks and nothing when the casks cover it, that a full hold is refused
 --   E_ENDURANCE with nothing bought, that the arrival no longer provisions, and that the board's
 --   `supplies.cost` is what the SAIL paid. It cannot prove these, and these are this file:

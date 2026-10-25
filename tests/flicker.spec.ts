@@ -107,7 +107,7 @@ test('COMMAND: no button greys and Start route never leaves across three beats',
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await serveRoutesOn(page)
 
-  // 0221: no keep level is needed any more — supplies are bought by every SAIL.
+  // 0225: no keep level is needed any more — supplies are bought by every SAIL.
   await page.goto('command')
   await ready(page)
   // 2026-10-18: the route is on the desk's Plans face (docs/COMMAND_DESK.md §3.5)

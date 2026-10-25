@@ -2719,7 +2719,7 @@ export interface BoardBuyRow extends BoardPassage {
   sailable?: boolean
   /** The passage's longest leg. */
   longest_leg?: { miles: number; days: number } | null
-  /** 0221 — the supplies the passage there asks (see BoardSellRow). */
+  /** 0225 — the supplies the passage there asks (see BoardSellRow). */
   supplies?: BoardSupplies | null
 }
 
@@ -2746,8 +2746,8 @@ export interface BoardSellRow extends BoardPassage {
   wages: number | null
   net: number | null
   net_per_ton: number | null
-  /** 0221 — `net` less the supplies the passage asks (`supplies.cost`): what the trip leaves. Null when either
-   *  is unknown. Absent before 0221. */
+  /** 0225 — `net` less the supplies the passage asks (`supplies.cost`): what the trip leaves. Null when either
+   *  is unknown. Absent before 0225. */
   profit?: number | null
   cap_left: number | null
   at_arrival: OutlookAtArrival | null
@@ -2763,14 +2763,14 @@ export interface BoardSellRow extends BoardPassage {
   sailable?: boolean
   /** The passage's longest leg. */
   longest_leg?: { miles: number; days: number } | null
-  /** 0221 — THE SUPPLIES THIS PASSAGE ASKS, from `public.supply_need` (the same rule `cmd.do_sail` buys by):
+  /** 0225 — THE SUPPLIES THIS PASSAGE ASKS, from `public.supply_need` (the same rule `cmd.do_sail` buys by):
    *  the days of stores its longest leg needs at the sail door's margin, what topping her casks up to them costs
    *  now (0 when they already cover it), and whether they fit her hold beside what she carries. Null when the
-   *  row has no passage. Absent before 0221. */
+   *  row has no passage. Absent before 0225. */
   supplies?: BoardSupplies | null
 }
 
-/** 0221 `public.supply_need(fleet, days)`: the stores a passage asks, what they cost, whether they fit. */
+/** 0225 `public.supply_need(fleet, days)`: the stores a passage asks, what they cost, whether they fit. */
 export interface BoardSupplies {
   days: number
   cost: number

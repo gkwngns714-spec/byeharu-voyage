@@ -60,7 +60,7 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     await openCityFace(page)
-    // the CITY's Trade building (0221: the desk's own faces have a Trade tab too — Plans became Trade)
+    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
     await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
@@ -129,7 +129,7 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     await openCityFace(page)
-    // the CITY's Trade building (0221: the desk's own faces have a Trade tab too — Plans became Trade)
+    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
     await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
@@ -224,7 +224,7 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     await openCityFace(page)
-    // the CITY's Trade building (0221: the desk's own faces have a Trade tab too — Plans became Trade)
+    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
     await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 

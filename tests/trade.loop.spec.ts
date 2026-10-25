@@ -7,7 +7,7 @@ import { ready, reachable } from './appReady.fixture'
 // the phone (390×844):
 //   Trade → Start = Here → a good this port sells → a Sell row → Go
 // and the queue holds the trip: a BUY here, a SAIL to the sell city (through its stops when there are any) and
-// a SELL last — no PROVISION line, because supplies are the SAIL's own (0221, row 203). The first lines run at
+// a SELL last — no PROVISION line, because supplies are the SAIL's own (0225, row 203). The first lines run at
 // once in port, so within the minute the fleet has left: the BUY is done and she is SAILING (the strip says so).
 // Nothing here asserts a price; the words on the page are 1–2 words (row 202), and that is asserted.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -64,7 +64,7 @@ for (const size of SIZES) {
       await go.click()
 
       // the trip is in the queue. The BUY ran the moment it was queued (she is in port, and the queue runs itself), so
-      // what stands is the rest of it: SAIL … , SELL last — and no PROVISION line anywhere (0221).
+      // what stands is the rest of it: SAIL … , SELL last — and no PROVISION line anywhere (0225).
       await expect(page.getByTestId('trade-card')).toHaveCount(0, { timeout: 60_000 })
       const queued = page.getByTestId('queue-row')
       await expect(queued.first()).toBeVisible({ timeout: 30_000 })

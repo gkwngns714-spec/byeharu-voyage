@@ -1467,7 +1467,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // writer reached through a read, and that is worth knowing before anyone "optimises" it.
       'worldStandings', 'worldBuffs',
       // The book of standing orders (0034: `worldProvisionPresets` and its three verbs) LEFT this list
-      // deliberately 2026-10-25 with migration 0221 (owner row 203): supplies are bought by every SAIL
+      // deliberately 2026-10-25 with migration 0225 (owner row 203): supplies are bought by every SAIL
       // through public.supply_need, the verbs are revoked and out of the registry, and FLEETS has no
       // keep control. A door with no screen behind it is a door nobody opens.
       // Pin moved deliberately 2026-08-23 with migration 0037 (she answers her helm at sea):
@@ -1877,7 +1877,7 @@ test('a standing route round-trips: dark refusal, save, assign, the served state
     expect(isStr(saved.id)).toBe(true)
     expect(saved.stops).toBe(2)
 
-    // 0221: no keep level is asked any more (E_NO_KEEP is gone) — a fleet under no standing order is assigned.
+    // 0225: no keep level is asked any more (E_NO_KEEP is gone) — a fleet under no standing order is assigned.
     const assigned = expectOk(await cmdStandingRouteAssign(saved.id, fleet.id))
     expect(assigned.fleet).toBe(fleet.name)
 

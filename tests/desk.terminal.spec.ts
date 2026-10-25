@@ -86,7 +86,7 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
     expect(rowsAfter, 'a press moved the list').toEqual(rowsBefore)
     expect(code).not.toBeNull()
 
-    // A Plan turns the desk to Trade (owner row 183; 0221) and the card stands in its centre pane.
+    // A Plan turns the desk to Trade (owner row 183; 0225) and the card stands in its centre pane.
     const plan = page.getByTestId('desk-plan').first()
     if (await plan.count()) {
       await plan.click()

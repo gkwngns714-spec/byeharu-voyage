@@ -12,7 +12,7 @@ import { useT } from '../../../lib/i18n'
 // sell city; the card's figures change in place and nothing here moves.
 //
 // THE REASON IS THE SERVER'S. A row is shut when the board marks it `sailable: false` (0188: no chain of legs
-// within her captain's reach, or her hold cannot carry the stores its longest leg asks — `supplies.fits`, 0221).
+// within her captain's reach, or her hold cannot carry the stores its longest leg asks — `supplies.fits`, 0225).
 // The words: no passage → Too far; the stores do not fit → Cargo full; anything else the server shuts → Shut.
 // R2 hands the gate's own code per row; these words then read it instead.
 //

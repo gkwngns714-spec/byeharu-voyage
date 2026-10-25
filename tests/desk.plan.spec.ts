@@ -63,6 +63,6 @@ test('a trade from the good page is queued whole and stands on Trade', async ({ 
   console.log(`queued trade: ${JSON.stringify(texts)}`)
   expect(texts.length).toBeGreaterThanOrEqual(3)
   expect(texts.some((t) => /sell/i.test(t))).toBe(true)
-  expect(texts.some((t) => /provision/i.test(t)), "the plan wrote a PROVISION line: supplies are the SAIL's own (0221)").toBe(false)
+  expect(texts.some((t) => /provision/i.test(t)), "the plan wrote a PROVISION line: supplies are the SAIL's own (0225)").toBe(false)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

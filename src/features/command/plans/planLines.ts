@@ -14,7 +14,7 @@
 // reach (voyage.reach_passage, the one authority). Each stop is a real SAIL to a harbour. cmd.issue_lines asks
 // passage_gate of every SAIL before any is queued, and the SAIL itself is still the server's to refuse when it runs.
 //
-// SUPPLIES ARE THE SAIL'S OWN (0221, owner row 203). No PROVISION line is written here any more: cmd.do_sail buys
+// SUPPLIES ARE THE SAIL'S OWN (0225, owner row 203). No PROVISION line is written here any more: cmd.do_sail buys
 // what each leg needs through public.supply_need before it departs, so the plan carries no casks arithmetic and
 // no stores input — the board's `supplies` on a row is the same rule's reading, printed by the card.
 //

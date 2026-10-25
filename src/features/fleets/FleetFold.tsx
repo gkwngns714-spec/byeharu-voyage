@@ -51,7 +51,7 @@ import { useT } from '../../lib/i18n'
 // ── THE ONE BUTTON ────────────────────────────────────────────────────────────────────────────
 // "Command <fleet>" is the hand-off this tab has always had — it points COMMAND at her — and it
 // stands at the fold's foot, in flow, never pinned. (The keep button went with the standing order,
-// owner row 203 / 0221: supplies are bought automatically at every SAIL.)
+// owner row 203 / 0225: supplies are bought automatically at every SAIL.)
 
 export function FleetFold({ fleet }: { fleet: FleetView }) {
   const t = useT()

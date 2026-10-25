@@ -590,7 +590,7 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
   }
   expect(geometry.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(geometry.pageClientW)
 
-  // 3. WHAT THE FOLD CARRIES: the supplies as one line (owner row 203 / 0221: no keep control), and the one
+  // 3. WHAT THE FOLD CARRIES: the supplies as one line (owner row 203 / 0225: no keep control), and the one
   //    hand-off at the foot. Every control in it clears the 44px reach floor.
   await expect(fold.locator('[data-testid="fleet-stores-days"]')).toBeVisible()
   await expect(fold.locator('[data-testid="fleet-keep-stepper"]')).toHaveCount(0)
@@ -641,13 +641,13 @@ test(`COMMAND: the route row unfolds in place above the queue at ${PHONE.width}p
   await ready(page)
   // 2026-10-18: the route and the queue are the desk's Plans face (docs/COMMAND_DESK.md §3.5)
   await page.getByRole('tab', { name: 'Trade' }).click()
-  // 0221: the Trade face's Start list (what this port sells) loads after the press; let it land before measuring
+  // 0225: the Trade face's Start list (what this port sells) loads after the press; let it land before measuring
   await settled(page.getByTestId('desk-plans'))
   const row = page.getByTestId('route-row')
   await expect(row).toBeVisible()
   // The route book has landed (the label names what it read), so no late text moves the row.
   await expect(row).toContainText(/Not open yet|No route|Route ·/)
-  // 0221: the route stands with the orders at the foot of the Trade face (below Start, the sell list and the card), so
+  // 0225: the route stands with the orders at the foot of the Trade face (below Start, the sell list and the card), so
   // the sheet is brought to it FIRST — the press itself must then scroll nothing (a scroll would read as a move).
   await row.scrollIntoViewIfNeeded()
   await page.waitForTimeout(400)

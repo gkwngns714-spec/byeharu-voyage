@@ -121,12 +121,12 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await serveRoutesOn(page)
 
-  // 0221: no keep level is needed any more — supplies are bought by every SAIL.
+  // 0225: no keep level is needed any more — supplies are bought by every SAIL.
   await page.goto('command')
   await ready(page)
   // 2026-10-18: the route is on the desk's Plans face (docs/COMMAND_DESK.md §3.5)
   await page.getByRole('tab', { name: 'Trade' }).click()
-  // 0221: the Trade face's Start list loads after the press; let it land, so nothing above the route moves later
+  // 0225: the Trade face's Start list loads after the press; let it land, so nothing above the route moves later
   await settled(page.getByTestId('desk-plans'))
 
   const routeRow = page.getByTestId('route-row')
@@ -200,7 +200,7 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   // stands taller and the pick of the second stop left the first stop's chips above the glass, so the
   // driver's own scroll read as "the press moved the page" (main went red on it). Measured after the
   // chip is in view, the claim is the owner's again: the PRESS moves nothing.
-  // 0221: the route stands with the orders at the FOOT of the Trade face, so "if needed" leaves the chip on the bottom
+  // 0225: the route stands with the orders at the FOOT of the Trade face, so "if needed" leaves the chip on the bottom
   // edge, under the fixed nav bar; the driver then re-scrolls on the click (the hit target is the bar) and that scroll
   // read as the press moving the page. Brought to the CENTRE, the click scrolls nothing.
   await stops.nth(0).getByTestId('route-buy-good').first().evaluate((e) => e.scrollIntoView({ block: 'center' }))

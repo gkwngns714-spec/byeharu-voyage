@@ -32,7 +32,7 @@ import { useT, t as tg } from '../../../lib/i18n'
 //   BUY AT      every city that sells it: BOTH SIDES of its price (what you pay, what you get — the
 //               board's own two lists joined by city, citySides.ts), its stock against normal, how far.
 //   SELL AT     every harbour that buys it: both sides again, net per ton, stock against normal, the
-//               arrival and the best time — and, since 0221 (owner row 190: "i can only plan on buying
+//               arrival and the best time — and, since 0225 (owner row 190: "i can only plan on buying
 //               but not for selling"), its own Plan press, which opens Trade with that city as the sell. A side the board did not price prints as a dash and the
 //               middle price stands in its place, dim, under its own word — never as a trader's price
 //               (owner request 178, 2026-10-20: *"I want both for all cities"*).

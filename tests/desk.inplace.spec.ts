@@ -117,7 +117,7 @@ for (const size of SIZES) {
       await expect(builder).toBeVisible()
       await expect(page.getByRole('dialog'), 'the trade card is a pop-up on Trade').toHaveCount(0)
       if (wide) {
-        // 0221: the card is the centre pane of the Trade face (docs/COMMAND_REDESIGN.md §5)
+        // 0225: the card is the centre pane of the Trade face (docs/COMMAND_REDESIGN.md §5)
         await expect(page.getByTestId('desk-pane-chart').getByTestId('trade-card')).toBeVisible()
       } else {
         // in flow: inside the desk's own face, which scrolls with the page

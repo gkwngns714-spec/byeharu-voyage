@@ -3,7 +3,7 @@ import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // FLEETS SAYS ONLY WHAT SHE HAS (owner row 203, 2026-10-25: *"what is this 'keep supply at'? this is useless"*).
-// Since 0221 supplies are bought by every SAIL, so the fold's Supplies column is one figure — `Supplies N days` —
+// Since 0225 supplies are bought by every SAIL, so the fold's Supplies column is one figure — `Supplies N days` —
 // and carries no keep control: no stepper, no keep button, no hint about topping up at every port.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 

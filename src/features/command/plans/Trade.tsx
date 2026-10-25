@@ -27,7 +27,7 @@ import { useT } from '../../../lib/i18n'
 //   ORDERS  the standing route (0092) above the queue the Go filled, and the insured voyages (0213).
 //
 // THE BOARD IS READ ONCE, HERE, and handed to the list and the card: world.good_board for the picked good, FROM
-// the chosen buy city FOR the asked amount (0171, 0188, 0221). Every figure on this page is served; nothing is
+// the chosen buy city FOR the asked amount (0171, 0188, 0225). Every figure on this page is served; nothing is
 // added up on the client.
 //
 // THE DESK LAYS IT OUT (DeskFrame.tsx): on a wide glass Start and the sell list stand in the left pane, the card
@@ -48,7 +48,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const good = plan ? (goodByCode[plan.good] ?? null) : null
   const buyPort = plan?.buyAt ? (portByCode[plan.buyAt] ?? null) : null
   // THE UNITS THE BOARD PRICES: what the player typed, else — once a sell city is chosen — the units that fit beside
-  // the stores that leg asks (the row's served `supplies.units_fit`, 0221), so a BUY never fills the room the casks
+  // the stores that leg asks (the row's served `supplies.units_fit`, 0225), so a BUY never fills the room the casks
   // need. The first read prices the capacity; the row then names the fit and the board is asked again for it.
   const [units, setUnits] = useState<number | null>(null)
   const board = useGoodBoard(good?.id ?? null, fleet.id, fleet.version, plan?.buyAt ? (plan.units ?? units) : null, buyPort?.id ?? null)

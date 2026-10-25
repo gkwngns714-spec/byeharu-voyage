@@ -101,7 +101,7 @@ begin
   -- ── 1. THE CLIENT PATH ───────────────────────────────────────────────────────────────────────
   perform cmd.assume_identity(c_auth);
   set local role authenticated;
-  -- (0221: no keep level is set first — the standing order is gone; every SAIL buys its own stores)
+  -- (0225: no keep level is set first — the standing order is gone; every SAIL buys its own stores)
   v_res := cmd.standing_route_save(null, 'Wine run', jsonb_build_array(
     jsonb_build_object('port', 'LIS', 'course', v_leg, 'lines', jsonb_build_array(
       jsonb_build_object('kind', 'SELL'),

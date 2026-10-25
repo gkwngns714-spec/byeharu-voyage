@@ -25,7 +25,7 @@ import { daysAt, planLines, reachBoard, reachWords, seaAsksWords } from './planL
 //
 //   THE VOYAGE — days at sea as the board serves them (to the buy city, then on to the sell city) and the crew
 //   against the ships' minimum (`fleetCrew`, row 179's model: `ship_classes.crew_required`, below which SAIL
-//   refuses E_CREW_SHORT). The supplies are not worked out here any more (0221): the trade card prints the
+//   refuses E_CREW_SHORT). The supplies are not worked out here any more (0225): the trade card prints the
 //   board's own `supplies` for the chosen row — public.supply_need's reading, the rule cmd.do_sail buys by.
 //
 //   CAN YOU GO THERE — the ONE authority, read and printed, never re-judged here:

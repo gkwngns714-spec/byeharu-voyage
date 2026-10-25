@@ -8,7 +8,7 @@ import { useT } from '../../lib/i18n'
 //
 // This was KeepAndSend: the keep level (how many days of stores she sails under), a bar of what she
 // carries against it, two presses and the book's preset chips. Owner row 203 (2026-10-25: *"what is
-// this 'keep supply at'? this is useless"*) and 0221 made supplies automatic — every SAIL buys what its
+// this 'keep supply at'? this is useless"*) and 0225 made supplies automatic — every SAIL buys what its
 // leg needs through `public.supply_need` — so nothing about stores is asked here any more.
 //
 // INSURE THE CARGO: one press, only when the dry run quoted a price — the server's figure for THIS

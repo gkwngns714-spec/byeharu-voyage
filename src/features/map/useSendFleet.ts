@@ -30,7 +30,7 @@ import {
 // real verb and rolls it back) and ONE issue path (`worldStore.issue` → `cmd.issue`). Everything
 // here is a second CALLER of an existing authority.
 //
-// THE KEEP CONTROL IS GONE (owner row 203, 0221): supplies are bought automatically by every SAIL
+// THE KEEP CONTROL IS GONE (owner row 203, 0225): supplies are bought automatically by every SAIL
 // (`cmd.do_sail` through `public.supply_need`), so the tray no longer asks how many days to keep her
 // at, holds no book of standing orders and writes none. What is left under a picked fleet is the
 // insurance press (0213).
@@ -122,7 +122,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
 
   // ── THE SEND — THE ONE PATH: the one mover's own act for where she is: `issue` from a quay or an
   // anchor, `divert` when she is under way. Same authorities, same refusal channel, nothing decided
-  // here. Her supplies for the passage are the SAIL's own business (0221).
+  // here. Her supplies for the passage are the SAIL's own business (0225).
   const send = (f: FleetView) => {
     if (busyOn(f) || !spec || !seaNav || !target) return
     setAct({ fleetId: f.id, state: 'busy', refusal: null })

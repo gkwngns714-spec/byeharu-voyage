@@ -6,7 +6,7 @@ import { useT } from '../../lib/i18n'
 
 // THE STORES — one line (owner row 203, 2026-10-25: *"what is this 'keep supply at'? this is useless"*).
 //
-// Supplies are AUTOMATIC since 0221: every SAIL buys what its leg needs through `public.supply_need`
+// Supplies are AUTOMATIC since 0225: every SAIL buys what its leg needs through `public.supply_need`
 // (the same rule the sail door judges by), so there is nothing here for a player to set. What is left
 // is what she has — the served days of stores (`endurance_days`, 0016's one range figure) — and the
 // crew they are sized against. The keep-level stepper, its book of presets and the hint about

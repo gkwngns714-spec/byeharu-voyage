@@ -80,7 +80,7 @@ for (const size of SIZES) {
         await expect(chart.getByTestId(id), `a merchant (${id}) is on the trade's chart`).toHaveCount(0)
       }
 
-      // the figures and the restrictions stand on the card (the supplies are the server's: 0221)
+      // the figures and the restrictions stand on the card (the supplies are the server's: 0225)
       await expect(card.getByTestId('plan-days')).toBeVisible()
       await expect(card.getByTestId('plan-supplies')).not.toContainText('—', { timeout: 60_000 })
       await expect(voyage.getByTestId('plan-crew-min')).toBeVisible()

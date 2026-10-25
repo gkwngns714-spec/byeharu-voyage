@@ -319,7 +319,7 @@ test.describe('the whole send, driven on a phone', () => {
     const her = (await row.innerText()).split('\n')[0]
     await row.click()
 
-    // 0221 (owner row 203): the keep control is GONE — supplies are the SAIL's own business — so the picked row
+    // 0225 (owner row 203): the keep control is GONE — supplies are the SAIL's own business — so the picked row
     // unfolds only the send's options (the insurance press, when the dry run quoted one).
     const keep = page.getByTestId('map-send-options')
     await expect(keep).toBeVisible()
