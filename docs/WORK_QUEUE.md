@@ -12,7 +12,7 @@ The main session (this PC) only runs the read-only prod checks, the paired sim, 
 **Next:** 169a speed ×3 (paired sim) → 173 weekly rollover, keeping history → sea S3–S6 → live prices.
 
 ### ~14:30 UTC — owner RULE: do all, merge, deploy, finish, clean without asking (memory: finish-merge-deploy-clean-no-asking)
-- **0217 #295:** the npc 2/2 red was map.wrap tapping Astoria, which the frozen fixture did not name; fixed by the cloud job (b93b812). **Prod check found a real defect:** 0217 decided "seeded" from SEED flows, which are pruned on prod (0 left), so it would have opened the 8 new cities with empty purses. Fixed to read `port_treasury.seeded_at` (all 238 set on prod), 234e7f2. CI re-running → deploy.
+- **0217 LIVE ~15:00 UTC (#295 merged):** after-check OK: 8 cities × 565 goods, purse 2,000,000 each (the seeded fix mattered), 246 harbours, 138,990 port_goods, +48 courses, cron 55 ok / 0 failed. Earlier: the npc 2/2 red was map.wrap tapping Astoria, which the frozen fixture did not name; fixed by the cloud job (b93b812). **Prod check found a real defect:** 0217 decided "seeded" from SEED flows, which are pruned on prod (0 left), so it would have opened the 8 new cities with empty purses. Fixed to read `port_treasury.seeded_at` (all 238 set on prod), 234e7f2. CI re-running → deploy.
 - Prod checks for 0217 all match the dev-log except that one: head 0216, hunk ×1, preconditions true, raster/reaches md5 equal, knobs as expected.
 - **Command design MERGED (#297, docs/COMMAND_REDESIGN.md) with its defaults.** Top reach cause: the REGION DOOR (exploration level by nm from Lisbon, 0107:270); a Lisbon starter reaches 111 of 237 harbours, and the Plan wrongly says "too far … Navigation". **R1 build running** in `~/dev/wt-osn-trade-r1` (migration 0220: Trade page, Sell list, automatic supplies, Keep-supplies removed).
 - **Deploy order (owner: region door FIRST after 0217):** 0217 harbours → 0218 NO REGION DOOR (`wt-osn-no-region-door`) → 0219 sea board (#293, renumber its file + tags at deploy) → 0220 speed ×3 → 0221 R1 Trade → Stats-every-second → R2–R6 / rollover W1–W4.
@@ -274,3 +274,9 @@ Resume in this order:
 - 0180: BUY lines priced live. 0181: no empty laps; REPAIR only when due.
 - Flags (#198); CI 79 → 11 min (#215); flaky specs (#216); from-zero chain (#212); proof 12 (#203).
 - Cleanup: 64 merged or closed branches deleted; 25 orphan folders, 90 logs and 5 stale previews removed.
+
+### ~15:00 UTC findings (PR #298: labels at 47 %, KST clock)
+- **#298** (rows 193, 195) is ready but held: its only red is `map.merchants.spec.ts:567`, which ALSO went red on main at 13:39 on a docs-only commit = a FLAKE. Being fixed on `osn-merchants-track-flake`. Merge #298 after that lands.
+- **Row 189 (flat sell chart) is SERVER-side:** `public.tick_price_snapshot` records only offered pairs (0061:361-363), so a city that only BUYS a good has no history. Needs a migration: sell-side history per (port, good), capped (COMMAND_DESK D4).
+- **Row 197 (city info without investment) is SERVER-gated:** `public.stats_city_tier` (0214:303); `world.stats_city` adds overview at tier ≥1 and detail at tier ≥2 (0214:720,748), and `world.stats_cities` (0214:649) likewise. The migration removes the tier gate, and the client lock faces go in the same slice.
+- Both join Lane A after 0221: **0222 Stats** (every second + no investment gate) → **0223 sell-side price history**.
