@@ -1,9 +1,10 @@
+import { Clip } from '../components/ui'
 import { useLocation } from 'react-router-dom'
 import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
 import { isTradeRoute } from './navTabs'
 import { useShellState } from './shellState'
-import { COIN, formatGameClock, formatGameToday, formatInt, instantMs } from '../lib/format'
+import { COIN, formatGameClock, formatGameToday, formatKoreaTime, formatInt, instantMs } from '../lib/format'
 import { useT } from '../lib/i18n'
 
 // THE STATUS STRIP — 32px, two facts, and nothing that says the obvious.
@@ -64,7 +65,9 @@ export function TopBar() {
     <header className="flex h-8 shrink-0 items-center justify-between gap-3 px-gutter">
       {/* Left: how long the quay's prices stand. An empty span holds the slot when there is
           nothing true to say, so the purse does not slide across the bar between tabs. */}
-      <span className="min-w-0 truncate text-t-caption text-ink-muted">
+      {/* Cut only through Clip (row 201): on a phone the date, hour and price countdown can outrun
+          the bar, and the full line must stay readable by hover or press. */}
+      <Clip className="text-t-caption text-ink-muted">
         {/* THE GAME CLOCK — the world's DATE and its hour (owner row 176, 2026-10-20: *"There is
             one right now showing the time only, but I want to see the date, year, months and so
             on."*). Two clocks, side by side and in that order, because they run at different rates
@@ -72,6 +75,8 @@ export function TopBar() {
             `world.game_day` counts and every served `*_game_days` figure is in; the hour is the
             game clock the Sun stands on (gameTimeOfDayMs). Neither is read from anywhere new —
             both are pure functions of THE ONE CLOCK. */}
+        {/* The date's word (row 195) is for a wide bar: on a phone it would push the hour out. */}
+        <span className="hidden sm:inline">{t('shell.gameDate')} </span>
         <span data-testid="game-date" className="text-ink">
           {formatGameToday(nowMs)}
         </span>
@@ -84,11 +89,22 @@ export function TopBar() {
             {' · '}{t('shell.prices')} <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText={t('shell.now')} />
           </>
         )}
-      </span>
+      </Clip>
 
       {/* Right: the purse. Deliberately NOT hidden while the world opens — a dash holds the
           column's width, so the bar does not jump by the width of a number the moment the first
           read lands. */}
+      {/* THE REAL TIME IN KOREA (owner row 195, 2026-10-25: *"i need a real time clock, set in
+          korea since i am in korea"*) — the same instant as the game's clocks on the left, printed
+          in Asia/Seoul (lib/format/time.ts formatKoreaTime) and ticking with the shell's one-second
+          beat. Fixed width digits, so the bar does not shift as the seconds turn. */}
+      <span className="ml-auto shrink-0 text-t-caption text-ink-muted">
+        {t('shell.kst')}{' '}
+        <span data-testid="kst-clock" className="tabular-nums text-ink">
+          {formatKoreaTime(nowMs)}
+        </span>
+      </span>
+
       <span data-testid="purse" className="shrink-0">
         <Figure value={ducats === null ? '—' : formatInt(ducats)} unit={COIN} />
       </span>

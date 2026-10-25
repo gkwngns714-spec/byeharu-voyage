@@ -53,6 +53,7 @@ export {
   GAME_CLOCK_RATE,
   gameTimeOfDayMs,
   formatGameClock,
+  formatKoreaTime,
   gameSunInstantMs,
   type Season,
   type GameDate,

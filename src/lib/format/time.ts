@@ -268,3 +268,21 @@ export function formatDate(atMs: number, opts: Intl.DateTimeFormatOptions): stri
   if (!Number.isFinite(atMs)) return '—'
   return new Intl.DateTimeFormat(localeTag(), opts).format(atMs)
 }
+
+/** THE OWNER'S OWN CLOCK (row 195, 2026-10-25: *"i need a real time clock, set in korea since i am in
+ *  korea. and a date for game"*). The REAL time in Korea, HH:MM:SS, of the same instant every other
+ *  clock here reads (the shell's server-corrected `nowMs`), so it cannot drift from them. The zone is
+ *  named rather than the device's own, because the owner asked for Korea's: Asia/Seoul, UTC+9, no
+ *  daylight saving. The digits are the same in both languages, so the format is fixed. */
+const KOREA_TIME = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Seoul',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hourCycle: 'h23',
+})
+
+export function formatKoreaTime(nowMs: number): string {
+  if (!Number.isFinite(nowMs)) return '—'
+  return KOREA_TIME.format(nowMs)
+}
