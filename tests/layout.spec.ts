@@ -1114,11 +1114,11 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
     return {
       rows: rows.length,
       rowsWithLot: rows.filter((r) => /\d+ units? · ends (in |just now)/.test(text(r))).length,
-      rowsWithPremium: rows.filter((r) => /[+−]\d+% over the market/.test(text(r))).length,
+      rowsWithPremium: rows.filter((r) => /[+−]\d+% over market/.test(text(r))).length,
       rowsWithShare: rows.filter((r) => /\d+ \/ \d+ units on board/.test(text(r))).length,
       cells: cells.length,
       shortestCell: cells.length ? Math.min(...cells.map((c) => c.getBoundingClientRect().height)) : 0,
-      cellsSayingFulfil: cells.filter((c) => /^fulfil\b/i.test(text(c))).length,
+      cellsSayingFulfil: cells.filter((c) => /^deliver\b/i.test(text(c))).length,
       cellsWithFigure: cells.filter((c) => /[+−]?[\d,]+\s🪙/.test(text(c))).length,
       deadCells: cells.filter((c) => c.disabled).length,
       deadSayingWhy: cells.filter((c) => c.disabled && /\d+ \/ \d+ units on board|no ship here/.test(text(c))).length,
@@ -1296,7 +1296,7 @@ test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and 
   await expect(cost, 'the wages row never arrived — world.crew_cost did not answer').toBeVisible({ timeout: 20_000 })
   // Moved deliberately 2026-10-19 with 0210 (wages ÷ 5, the fraction owed): the day prints at a price's
   // digits — "0.60 🪙" for 3 hands — so the figure may carry a decimal point, and the whole of it is read.
-  await expect(cost).toContainText(/(^|[^\d.,])\d[\d,]*(\.\d+)?\s🪙\s*per day at sea/)
+  await expect(cost).toContainText(/(^|[^\d.,])\d[\d,]*(\.\d+)?\s🪙\s*a day at sea/)
   // THE FIGURE, not the row's text: `Figure` lays its value and unit out as sibling spans, so the
   // text content carries no space between them and the innerText does — comparing prose would
   // compare layout. The number is what the server served, and the number is what must move.
