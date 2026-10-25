@@ -11,6 +11,13 @@ The main session (this PC) only runs the read-only prod checks, the paired sim, 
 
 **Next:** 169a speed ×3 (paired sim) → 173 weekly rollover, keeping history → sea S3–S6 → live prices.
 
+### 12:35 UTC update (main session, fresh)
+- **0217 harbours** routine (cse_01WAoJhjSS2KNx9AGwoZehKG) still running, about 90% done: growth, sea and city self-asserts pass, and so does the world guard. **Proof 05 (first-voyage balance) is on a knife edge**: base 13.47 % long vs 13.00 % short. The new Kola harbour tipped it to 12.71 vs 13.91, so the routine swapped Kola → **Mezen** (White Sea, also real northern Russia). Review that swap on its PR. The next world growth will tip proof 05 again: the proof's margin needs its own fix, and the data must not be bent to pass it.
+- **#293 = 0218** green, waits for 0217 (deploy order). Deploy both with `~/bin/bv-deploy.sh`.
+- **NEW Lane A build:** row 169a speed ×3, `osn-speed-x3` (trig_017eAxRAj1DVt1KgSA77HkYY), file 0219, plus a paired-sim script for this PC.
+- **NEW Lane C design:** row 173 weekly rollover + history tab, `docs/WEEKLY_ROLLOVER.md` on `osn-weekly-rollover-design` (trig_013iMKEECwKnkVufVcwNqroW).
+- **Token rules (owner, 10-25):** fresh session per job; no 10-min reminder; no polling routines (the "PR #293 safety check" routine was disabled); CI is watched with `gh pr checks --watch` in a background shell; routines build locally before pushing and push once.
+
 
 ## WHAT LANDED 2026-10-20 AFTERNOON (cloud session) — read this first
 
