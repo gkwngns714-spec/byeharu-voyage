@@ -37,16 +37,26 @@ import type { RpcBackend } from './backend'
 /** How often this tab may play the snapshot job — a slot is 15 minutes; a re-ask within this is a no-op. */
 const RECORD_EVERY_MS = 30_000
 
-/** The snapshot job, as this tab plays it: the present slot, and — until the present window holds TWO
- *  slots — the previous boundary first, so a fresh record has a line to draw. Two, not "any": since 0226
- *  the chain's own apply writes the present slot (its backfill run), so a world image built minutes ago
- *  already holds one slot, and one point is not a line (tests/layout.spec.ts, the Trend row). */
-const RECORD_SQL = `select case
-    when (select count(distinct slot) from public.price_history where slot >= public.drift_slot_of(now()) - 1) >= 2
-      then public.tick_price_snapshot(now())
-    else public.tick_price_snapshot(now() - make_interval(secs => public.wc_num('drift_slot_seconds')::double precision))
-         || public.tick_price_snapshot(now())
-  end as result`
+/** The snapshot job, as this tab plays it: the present slot (the job's own function, only when the slot
+ *  holds nothing — a full run costs a browser tab tens of seconds since 0226 composes both sides, and
+ *  while it runs nothing else is answered), and — until the previous slot holds something too — a copy
+ *  of the present slot one slot back, so a fresh record has a line to draw ("the market as it stands").
+ *  Since 0226 the chain's own apply writes the present slot (its backfill run), so a world image built
+ *  minutes ago holds one slot, and one point is not a line (tests/layout.spec.ts, the Trend row). */
+const RECORD_SQL = `with t as (
+    select case when not exists (select 1 from public.price_history where slot = public.drift_slot_of(now()))
+                then public.tick_price_snapshot(now()) end as r
+  ), c as (
+    insert into public.price_history (port_id, good_id, slot, at, mid, stock, ask, bid)
+    select h.port_id, h.good_id, h.slot - 1, h.at - make_interval(secs => public.wc_num('drift_slot_seconds')::double precision),
+           h.mid, h.stock, h.ask, h.bid
+      from public.price_history h
+     where h.slot = public.drift_slot_of(now())
+       and not exists (select 1 from public.price_history p where p.slot = public.drift_slot_of(now()) - 1)
+    on conflict (port_id, good_id, slot) do nothing
+    returning 1
+  )
+  select t.r as result from t`
 
 /** How often this tab may play the stats job (0214). Its row is per slot; a re-ask inside a slot writes nothing. */
 const STATS_EVERY_MS = 60_000
