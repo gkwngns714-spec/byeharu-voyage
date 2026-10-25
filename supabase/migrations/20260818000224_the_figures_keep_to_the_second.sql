@@ -81,7 +81,9 @@
 --       events' totals; every state figure still equals its aggregate in the same statement; her fleet
 --       put to sea and brought back moves at_sea by exactly one each way; an open request's escrow and an
 --       accrued dividend planted on the probe move set_aside by their amounts.
---   (d) the fold (through now() + 1 s): state drift all zero; trade counters 0 after it; one more buy → 1.
+--   (d) the fold (through now() + 1 s): state drift all zero; trade counters 0 after it; one more buy → 1. No assert
+--       counts or sums a table that grows on prod: the state aggregates are bounded tables (players, fleets, treasuries,
+--       requests, shares), the events read is the probe's own rows, and tick_stats is never RUN here.
 --   (e) TIMINGS, notice only: world.stats_now() ×6 in one session (target < 5 ms); cmd.do_sell and
 --       cmd.do_buy ×6 BEFORE the hooks and ×6 AFTER; the status write a departure and an arrival make ×6
 --       before and after the trigger (target: the added cost under 2 ms per write).
@@ -721,11 +723,9 @@ begin
     if (v_now->'since_count'->>'trades')::bigint <> 1 or (v_now->'since_count'->>'units')::numeric <> 1 then
       raise exception '0224 self-assert FAIL: a purchase after the fold read %', v_now->'since_count';
     end if;
-    -- the rollup carries the fold on its return (when this slot has no row yet — a busy prod may already have one)
-    v_r := public.tick_stats(now() + interval '2 seconds');
-    if (v_r->>'wrote')::int > 0 and (v_r->'live'->'drift'->>'players') is null then
-      raise exception '0224 self-assert FAIL: tick_stats wrote a row but did not fold the live figures: %', v_r;
-    end if;
+    -- the rollup carries the fold on its return: proven by the hunk (it occurs once and reverses), never by RUNNING
+    -- tick_stats here — on prod that would write and prune the 15-minute tables inside the deploy transaction, under a
+    -- 2-s lock_timeout against the cron's own run, for no proof the hunk check does not already give.
 
     -- (e) AFTER: the same six-fold timings as before the hooks, and the read ×6
     v_t := pg_temp.time_writers_0224(pr.fleet, pr.good, pr.port);
@@ -735,7 +735,7 @@ begin
       v_ms := v_ms || round(extract(epoch from clock_timestamp() - t0) * 1000, 2);
     end loop;
     raise exception using errcode = 'ZX224', message = jsonb_build_object('after', v_t, 'now', to_jsonb(v_ms), 'fold', v_fold,
-      'good', pr.good_code, 'sold', v_sold, 'bought', v_bought, 'tick', v_r - 'live')::text;
+      'good', pr.good_code, 'sold', v_sold, 'bought', v_bought)::text;
   exception when sqlstate 'ZX224' then
     v_out := sqlerrm::jsonb;
   end;
