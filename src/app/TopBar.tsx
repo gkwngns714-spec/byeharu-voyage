@@ -1,4 +1,4 @@
-import { Clip } from '../components/ui/Clip'
+import { Clip } from '../components/ui'
 import { useLocation } from 'react-router-dom'
 import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
