@@ -103,6 +103,70 @@
 -- hard, 39 short routes against 85 at the old setting. 0.020 was the authorised step and 0.020 is
 -- what shipped; the rest is recorded so a second step needs no new measurement.
 --
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+-- 2026-10-25 — DISTANCE PAYS NO LONGER FLIPS ON WORLD GROWTH
+-- ═══════════════════════════════════════════════════════════════════════════════════════════════
+--
+-- BALANCE_DISTANCE_PAYS SAT ON A KNIFE EDGE, AND THE EDGE WAS BUILT IN. It pooled every route the
+-- quay offered the sampled fleets at its default reach and split them at their own median
+-- distance: on main at 0216 that read 13.39 per cent of the stake for the 40 farther routes against
+-- 13.00 for the 39 nearer (PGlite, this file). PR #295 (migration 0217, eight new harbours) changed
+-- ONLY Amsterdam's offers — two routes to Kola in place of Reykjavik and Trondheim — and the same
+-- comparison read 12.71 against 13.91: red, on a world that had merely grown, and the harbour data
+-- was changed (Kola → Mezen) to get past it. A proof that any growth can flip is measuring the
+-- world's accident, not the design (docs/OWNER_REQUESTS.md's proof rule: set your own precondition).
+--
+-- WHY IT WAS AN ACCIDENT, MEASURED. The quay's default reach is `sea_scan_radius_nm` = 1,700 nm
+-- (0047), which is also exactly as far as a starter's navigation carries her (voyage.sail_refusal,
+-- E_LEG_TOO_FAR: *"your navigation carries you 1700 nm"*). Across that whole horizon 0173's distance
+-- term is, by its own shape, next to nothing: world.haul_at(1,700) = ×1.0076 (haul_max 3, share 0.5,
+-- reach 14,500, curve 2 — 0208, 0212). The split therefore compared legs of 1,100–1,400 nm with legs
+-- of 1,400–1,700 nm, between which the DESIGN puts about a third of one per cent — under a 10-per-cent
+-- spread of affinity and drawn noise. Planting the haul flat (`port_goods.haul = 1`) moved the
+-- home-waters figures by half a point (Alexandria 12.29 → 11.97 on the stake); planting the
+-- affinity gradient flat as well took them from 12 to 2. At the first voyage's horizon the whole
+-- designed distance premium is 0005's great-circle affinity gradient, and the haul is inaudible.
+--
+-- THREE WAYS OUT WERE WEIGHED:
+--   * A per-mile or per-day rate. `profit_per_nm` is the quay's own tempo and it favours SHORT
+--     legs by construction (0019's note: it put 27 tuns of wax to Setúbal above porcelain to
+--     Antwerp); a claim that distance pays cannot be stated in a unit that penalises distance.
+--   * A fixed, named list of routes. Pins the accident instead of the design: WHICH named pairs
+--     pay more is itself the emergent fact, and the list would be re-cut on every roster change.
+--   * The knob through its authority. world.haul_at is monotone and 0173 / 0212 / world-guard
+--     already assert the stored column against it on every apply — and it says nothing about the
+--     number the player is offered, which is what this file exists to measure.
+--
+-- WHAT IS ASSERTED NOW: THE KNOB'S TWO HORIZONS, THROUGH THE QUAY'S OWN NUMBER. For every sampled
+-- port, `world.trade_routes` is asked twice on the first drawn market — in HOME WATERS (its default
+-- reach, the horizon a first voyage sees) and at the WORLD horizon (`haul_reach_nm`, the reach 0173
+-- shaped the distance term over) — on the quay's default basis both times (the fleet basis cannot
+-- look past her navigation, and both horizons must be priced through the same quotes at the same
+-- quantity), and the world-horizon trades must out-earn the home-waters ones on the quay's own
+-- `return_pct`, port by port. Both horizons are knobs. Nothing is split at a median. World growth
+-- can only ADD to the world horizon's best, and a new near harbour that paid more per ducat than the
+-- quay's best ocean trades would be a design inversion, which is exactly what should go red.
+--
+-- MEASURED through this very file on main at 0216 (PGlite 18.3, 2026-10-25): home 21.9 against
+-- world 66.0 per cent on the outlay on average, ×3.02; per port Alexandria 23.1 → 60.6, Amsterdam
+-- 18.3 → 45.5, Antwerp 26.0 → 53.7, Barcelona 24.2 → 50.0, Bordeaux 20.8 → 47.5, Busan 20.3 → 151.0,
+-- Cadiz 26.1 → 52.3, Cartagena 16.0 → 67.2. The narrowest port (Amsterdam) is ×2.5; the old split
+-- was ×1.03. Not one of the quay's world-horizon trades out of any of the eight lies inside home
+-- waters: the nearest it names is 3,188 nm (Antwerp), the farthest 9,845 nm+ (Busan, haul ×1.43).
+-- AND WITH 0217 APPLIED ON TOP (the eight harbours that flipped the old split): home 21.9 against
+-- world 62.5, ×2.86, every port still the right way round — Alexandria 23.1 → 59.2, Amsterdam
+-- 18.3 → 45.2, Antwerp 26.0 → 53.7, Barcelona 24.2 → 47.8, Bordeaux 20.8 → 46.2, Busan 20.3 → 131.7,
+-- Cadiz 26.1 → 49.7, Cartagena 16.0 → 66.9. The growth moved the world horizon's figure by a few
+-- points, as growth should, and came nowhere near the premise.
+--
+-- THE POSITIVE CONTROL is in scripts/db/breaktest-balance.mjs (`--only="home waters"`): every market
+-- row farther from its good's nearest maker than the home radius loses BOTH distance terms — the
+-- haul and the affinity gradient — while home waters keep theirs, so the first voyage still pays
+-- and the only thing that changed is this premise. The marker must go red on that world, and it
+-- does (measured 2026-10-25, the clean pair identical twice over): the quay's world-horizon best out
+-- of Antwerp collapses INTO home waters — nearest 1,373 nm, mean stored haul 1.006 — and reads 26.0
+-- against 26.0, with the four markers before it still green.
+--
 -- ── WHAT THIS ASSERTS, AND WHY EACH ONE ────────────────────────────────────────────────────────
 --   * THE OPENING VOYAGE PAYS, EVERYWHERE. From a sample of starting ports, on every drawn market,
 --     the best one-leg round trip the quay offers returns something. A world where the best
@@ -114,11 +178,12 @@
 --     market — the economy the affinity knobs author, with the clock's noise taken out — must sit
 --     in 4-16 per cent, which is the band this file has always carried and the one
 --     scripts/db/tune-balance.mjs sweeps against. This is where the design's intent still bites.
---   * DISTANCE IS WHAT PAYS. The long legs must out-earn the short ones — otherwise there is no
---     reason to ever leave home waters, and the 214-port world collapses to whatever is nearest.
---     POOLED OVER EVERY ROUTE THE QUAY OFFERS at its own default reach. Both buckets must be
---     non-empty: a marker that passes by skipping is exactly the vacuous pass scripts/db/proof.mjs
---     exists to refuse.
+--   * DISTANCE IS WHAT PAYS. What the quay offers at the WORLD horizon must out-earn, per ducat
+--     laid out, what it offers in HOME WATERS — at every sampled port — otherwise there is no
+--     reason to ever leave home waters, and the 238-port world collapses to whatever is nearest.
+--     The two horizons are the design's own knobs (the 2026-10-25 note above), not a split of
+--     whatever the world happens to offer. Both must be non-empty at every port: a marker that
+--     passes by skipping is exactly the vacuous pass scripts/db/proof.mjs exists to refuse.
 --   * AND THE SHORTLIST IS NOT COSTING THE PLAYER ANYTHING. `world.trade_routes` shortlists
 --     candidates by authored affinity before it prices anything (0019's stage 1), which is a
 --     heuristic. So one sampled port is ALSO scanned EXHAUSTIVELY — every good against every
@@ -150,7 +215,7 @@
 -- @pass BALANCE_EVERY_PORT_HAS_A_TRADE   every sampled starting port offers a profitable first voyage
 -- @pass BALANCE_MEDIAN_IN_BAND           the pooled median return on the stake is inside the band
 -- @pass BALANCE_GRADIENT_IN_BAND         the authored gradient, with the clock's noise out, is in 4-16
--- @pass BALANCE_DISTANCE_PAYS            long legs out-earn short ones, pooled over every route offered
+-- @pass BALANCE_DISTANCE_PAYS            at every sampled port the quay's world-horizon trades out-earn its home-waters trades
 -- @pass BALANCE_QUAY_FINDS_THE_BEST      the read's shortlist matches an exhaustive scan at one port
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -227,14 +292,23 @@ declare
   v_pct     numeric;
   v_n       int := 0;
   v_dry     int := 0;
-  v_far     jsonb;          -- the same ports, scanned at the read's own default reach
-  v_short   numeric := 0;   -- pooled return on the stake of every offered route under 400 nm
-  v_short_n int := 0;
-  v_all     jsonb := '[]'::jsonb;   -- every route the quay offered, so the split can follow the world
-  v_cut     numeric;
-  v_long    numeric := 0;   -- ... and over 800 nm
-  v_long_n  int := 0;
-  v_s_sum   numeric; v_s_n int; v_l_sum numeric; v_l_n int;
+  -- THE DISTANCE QUESTION: the quay's answer at its TWO HORIZONS, per sampled port, on the first
+  -- drawn market. Both horizons are knobs, neither is a median of whatever the world happens to
+  -- offer (see the 2026-10-25 note in the header).
+  c_home_nm   constant numeric := public.wc_num('sea_scan_radius_nm');   -- home waters: the quay's own reach, 0047
+  c_world_nm  constant numeric := public.wc_num('haul_reach_nm');        -- the world: the reach 0173's distance term is shaped over
+  v_home      jsonb;
+  v_world     jsonb;
+  v_dist_port  text[]    := '{}';   -- one entry per sampled port, in sample order ...
+  v_dist_home  numeric[] := '{}';   -- ... the mean return on the outlay the quay offers in home waters
+  v_dist_world numeric[] := '{}';   -- ... and at the world horizon
+  v_dist_home_n  int[]   := '{}';
+  v_dist_world_n int[]   := '{}';
+  v_dist_world_lo numeric[] := '{}';   -- the nearest world-horizon route the quay named, nm
+  v_dist_haul  numeric[] := '{}';      -- the mean stored haul of the world-horizon routes' destinations
+  v_i          int;
+  v_home_mean  numeric;
+  v_world_mean numeric;
   v_returns numeric[] := '{}';   -- every sampled port on every drawn market, pooled
   v_draw    numeric[] := '{}';   -- ... and this draw's alone
   v_medians numeric[] := '{}';   -- one median per drawn market, for the notice
@@ -346,24 +420,27 @@ begin
         v_draw := v_draw || v_pct;
       end if;
 
-      -- AND THE DISTANCE QUESTION, over every route the quay will offer at its own default reach.
-      -- One trade per port is too few rows to say anything: it made the old form's answer depend on
-      -- which single port happened to have a long winner. Asked on the first drawn market only —
-      -- it is the expensive read in this file, and the claim is about geography, not about luck.
+      -- AND THE DISTANCE QUESTION, asked at the quay's TWO HORIZONS (the 2026-10-25 note in the
+      -- header): what it offers out of this port in HOME WATERS — its own default reach, the one a
+      -- first voyage sees — and what it offers at the WORLD horizon, the reach 0173 shaped its
+      -- distance term over. Both reads on the quay's DEFAULT basis (no fleet): the fleet basis
+      -- cannot look past her navigation (voyage.sail_refusal, E_LEG_TOO_FAR at the same 1,700 nm),
+      -- and the point is to price both horizons through the same quotes at the same quantity. The
+      -- figure kept is the quay's own `return_pct` (profit on the outlay) — the number it ranks and
+      -- shows. Asked on the first drawn market only: the claim is about geography, not about luck.
       if d = 1 then
-        v_far := world.trade_routes(r_port.id, v_fleet, null, null);
-        -- KEEP THE ROUTES, SPLIT THEM LATER. The bands used to be fixed at 400 and 800 nm, and
-        -- 0065 made that an assertion about a world that no longer exists: with every good in at
-        -- most three cities, neighbouring ports rarely trade what each other wants, and the quay
-        -- offered ZERO routes under 400 nm across all eight sampled ports. The CLAIM is sound --
-        -- farther pays more -- but a claim must be measured against the world the game has, not
-        -- the one the threshold was written in (docs/OWNER_REQUESTS.md's proof rule: never assert
-        -- an ambient). So every offered route is kept and the split is the routes' OWN median.
-        select v_all || coalesce(jsonb_agg(jsonb_build_object(
-                 'nm', (e->>'nm')::numeric,
-                 'pct', (e->>'profit')::numeric / v_stake * 100)), '[]'::jsonb)
-          into v_all
-          from jsonb_array_elements(v_far->'routes') e;
+        v_home  := world.trade_routes(r_port.id, null, null, null);
+        v_world := world.trade_routes(r_port.id, null, c_world_nm, null);
+        v_dist_port := v_dist_port || r_port.code;
+        select v_dist_home || coalesce(avg((e->>'return_pct')::numeric), 0), v_dist_home_n || count(*)::int
+          into v_dist_home, v_dist_home_n
+          from jsonb_array_elements(v_home->'routes') e;
+        select v_dist_world || coalesce(avg((e->>'return_pct')::numeric), 0), v_dist_world_n || count(*)::int,
+               v_dist_world_lo || coalesce(min((e->>'nm')::numeric), 0),
+               v_dist_haul || coalesce(avg(pg.haul), 0)
+          into v_dist_world, v_dist_world_n, v_dist_world_lo, v_dist_haul
+          from jsonb_array_elements(v_world->'routes') e
+          left join public.port_goods pg on pg.port_id = (e->'to'->>'id')::uuid and pg.good_id = (e->>'good_id')::uuid;
       end if;
     end loop;
 
@@ -419,30 +496,36 @@ begin
     round(v_flat_md, 1), c_grad_lo, c_grad_hi, round(v_median, 1),
     round(v_median / greatest(v_flat_md, 0.01), 2);
 
-  -- DISTANCE PAYS. Not a nicety: it is the reason the world is 214 ports wide rather than twelve.
-  -- No skip branch. An empty bucket is a world in which the question cannot be asked, and a marker
+  -- DISTANCE PAYS. Not a nicety: it is the reason the world is 238 ports wide rather than twelve.
+  -- AT EVERY SAMPLED PORT, what the quay offers at the world horizon out-earns, per ducat laid out,
+  -- what it offers in home waters. Per port, not pooled: one origin whose far trades pay less than
+  -- its home ones is a hole in the premise, and pooling would let seven others paper over it.
+  -- No skip branch. An empty horizon is a world in which the question cannot be asked, and a marker
   -- that reports PASS for that is reporting a safety it never examined.
-  -- The split is the median sailed distance of everything on offer, so both halves exist by
-  -- construction whatever the world's shape -- and the comparison stays honest rather than
-  -- vacuous. It still fails loudly if the quay offered nothing at all to compare.
-  select percentile_cont(0.5) within group (order by (e->>'nm')::numeric)
-    into v_cut from jsonb_array_elements(v_all) e;
-  select coalesce(sum((e->>'pct')::numeric) filter (where (e->>'nm')::numeric <  v_cut), 0),
-         count(*)                           filter (where (e->>'nm')::numeric <  v_cut),
-         coalesce(sum((e->>'pct')::numeric) filter (where (e->>'nm')::numeric >= v_cut), 0),
-         count(*)                           filter (where (e->>'nm')::numeric >= v_cut)
-    into v_short, v_short_n, v_long, v_long_n
-    from jsonb_array_elements(v_all) e;
-  if v_short_n = 0 or v_long_n = 0 then
-    raise exception 'PROOF 5 FAILED: the quay offered % nearer route(s) and % farther across % ports (median cut % nm), so "the long legs out-earn the short ones" was never actually compared',
-      v_short_n, v_long_n, c_sample, round(coalesce(v_cut, 0), 1);
+  if coalesce(array_length(v_dist_port, 1), 0) <> c_sample then
+    raise exception 'PROOF 5 FAILED: the distance question was asked at % port(s), not the % sampled', coalesce(array_length(v_dist_port, 1), 0), c_sample;
   end if;
-  if (v_long / v_long_n) <= (v_short / v_short_n) then
-    raise exception 'PROOF 5 FAILED: long legs pay %%% and short legs pay %%% — there is no reason to sail far',
-      round(v_long / v_long_n, 2), round(v_short / v_short_n, 2);
-  end if;
-  raise notice 'PASS: BALANCE_DISTANCE_PAYS — split at the offered routes'' own median of % nm: the % farther route(s) return % per cent of the stake against % per cent for the % nearer',
-    round(v_cut, 1), v_long_n, round(v_long / v_long_n, 2), round(v_short / v_short_n, 2), v_short_n;
+  for v_i in 1..c_sample loop
+    if v_dist_home_n[v_i] = 0 or v_dist_world_n[v_i] = 0 then
+      raise exception 'PROOF 5 FAILED: out of % the quay offered % route(s) in home waters (% nm) and % at the world horizon (% nm), so "distance pays" was never actually compared there',
+        v_dist_port[v_i], v_dist_home_n[v_i], c_home_nm, v_dist_world_n[v_i], c_world_nm;
+    end if;
+    if v_dist_world[v_i] <= v_dist_home[v_i] then
+      raise exception 'PROOF 5 FAILED: out of % the quay''s % world-horizon trade(s) (nearest % nm, mean stored haul %) return % per cent on the outlay against % for its % trade(s) in home waters — there is no reason to sail far from %',
+        v_dist_port[v_i], v_dist_world_n[v_i], round(v_dist_world_lo[v_i]), round(v_dist_haul[v_i], 3),
+        round(v_dist_world[v_i], 1), round(v_dist_home[v_i], 1), v_dist_home_n[v_i], v_dist_port[v_i];
+    end if;
+  end loop;
+  select avg(x) into v_home_mean from unnest(v_dist_home) as t(x);
+  select avg(x) into v_world_mean from unnest(v_dist_world) as t(x);
+  raise notice 'PASS: BALANCE_DISTANCE_PAYS — at every one of % sampled port(s) the quay''s world-horizon trades (within % nm, where 0173''s distance term reaches ×%) out-earn its home-waters trades (within % nm, where it reaches ×%) per ducat laid out: % against % per cent on the outlay on average, a multiple of %; per port (home → world) %',
+    c_sample, c_world_nm,
+    world.haul_at(c_world_nm, public.wc_num('haul_max'), public.wc_num('haul_reach_nm'), public.wc_num('haul_curve'), public.wc_num('haul_premium_share')),
+    c_home_nm,
+    world.haul_at(c_home_nm, public.wc_num('haul_max'), public.wc_num('haul_reach_nm'), public.wc_num('haul_curve'), public.wc_num('haul_premium_share')),
+    round(v_world_mean, 1), round(v_home_mean, 1), round(v_world_mean / greatest(v_home_mean, 0.01), 2),
+    (select string_agg(format('%s %s → %s (%s nm+)', v_dist_port[i], round(v_dist_home[i], 1), round(v_dist_world[i], 1), round(v_dist_world_lo[i])), ', ')
+       from generate_series(1, c_sample) i);
 
   -- THE SHORTLIST IS NOT COSTING ANYTHING. The exhaustive scan must have found something (a zero
   -- pair count would agree with the read vacuously), and the read must match its best.
