@@ -68,23 +68,23 @@ const lit = reachBoard({ fleet: { speed_kn: 5 } as never, reach: { navigation: 2
 
 test('lit, a city the sea closes says what the sea asks, not "too far"', () => {
   const words = reachWords({ ...noLeg, needs: null, sea: closed }, lit)
-  expect(words).toBe('this sea asks title 2 and wave resistance 10 (Macaronesia and the Canary Current): you are title 1 and your fleet holds 12')
+  expect(words).toBe('Sea Macaronesia and the Canary Current: title 2, waves 10 · you: title 1, waves 12')
   expect(words).not.toContain('too far')
 })
 
 test('dark, the sea is a reading: the reason stays the reach', () => {
   expect(board.seaBite).toBe(false)
-  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: closed }, board)).toMatch(/^too far to sail in one go/)
+  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: closed }, board)).toMatch(/^too far in one go/)
 })
 
 test('lit, a city closed by the reach and open by the sea is still too far', () => {
   const open = { ...closed, refusal: null }
-  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: open }, lit)).toMatch(/^too far to sail in one go/)
+  expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 }, sea: open }, lit)).toMatch(/^too far in one go/)
 })
 
 test('what the seas on the way ask, with no refusal, is the route\'s most', () => {
   expect(seaAsksWords({ ...closed, needs_title: 4, needs_wave: 30, refusal: null })).toBe(
-    'the seas on the way ask title 4 and wave resistance 30',
+    'Route: title 4, waves 30',
   )
   expect(seaAsksWords(closed)).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })
