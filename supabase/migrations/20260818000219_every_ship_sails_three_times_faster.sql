@@ -54,7 +54,8 @@
 -- (b) every ship class's speed_kn = its pre-image × 3 exactly (numeric(4,2) × 3 is exact); every speed
 --     item effect, every flat speed perk and every flat speed set bonus = pre-image × 3; pct ones unmoved.
 -- (c) on a probe set of 60 fleets (by md5(id || '0219'), player and merchant), voyage.fleet_speed and
---     voyage.fleet_speed_at(fleet, 1) read pre-image × 3 within the formula's 4-dp rounding (≤ 0.001 kn).
+--     voyage.fleet_speed_at(fleet, 1) read pre-image × 3 within 0.05 kn (world.ship_stats rounds a
+--     SKILLED stat to its base's 2 places, which does not commute with × 3 — see (c) below).
 -- (d) the five bodies — voyage.ship_speed_at, ship_speed, fleet_speed_at, fleet_speed, world.ship_stat —
 --     have the definition md5, ACL, volatility, definer flag and config they had; the formula line
 --     occurs exactly once in ship_speed_at; the walls (client_write_grants / client_executable_writers /
@@ -193,9 +194,13 @@ begin
     raise exception '0219 self-assert FAIL: a class has no speed';
   end if;
 
-  -- (c) the probe fleets sail three times as fast, empty and laden, within the formula's 4-dp rounding
-  select count(*), count(*) filter (where abs(voyage.fleet_speed(id) - kn_before * 3) > 0.001
-                                        or abs(voyage.fleet_speed_at(id, 1) - laden_before * 3) > 0.001),
+  -- (c) the probe fleets sail three times as fast, empty and laden. The tolerance is 0.05 kn, not the
+  -- formula's 4-dp rounding: where skills bite (0133), world.ship_stats rounds the skilled stat to the
+  -- SCALE of its base (speed_kn: 2 places), and that rounding does not commute with × 3 — a barca at
+  -- 5.00 × 1.075 reads 5.38, at 15.00 it reads 16.13, not 16.14 (the disposable chain found 0.0114 kn
+  -- on one of 60). The bound: 3 × 0.005 + 0.005, times the fleet multipliers (< 2), is under 0.04.
+  select count(*), count(*) filter (where abs(voyage.fleet_speed(id) - kn_before * 3) > 0.05
+                                        or abs(voyage.fleet_speed_at(id, 1) - laden_before * 3) > 0.05),
          max(greatest(abs(voyage.fleet_speed(id) - kn_before * 3), abs(voyage.fleet_speed_at(id, 1) - laden_before * 3)))
     into v_n, v_bad, v_maxdev
     from fleets_0219;
