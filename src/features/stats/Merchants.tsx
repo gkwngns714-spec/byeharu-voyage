@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import {
   Empty,
   Flag,
@@ -21,8 +20,7 @@ import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } fro
 import { useServedRead } from '../../live/useServedRead'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import type { FaceProps } from './StatsScreen'
-import { toSeries } from './statsFaces'
-import { servedNow } from './statsPulse'
+import { toSeries, withLivePoint } from './statsFaces'
 
 // MERCHANTS — the companies the world keeps: how many, where their fleets are, what their last day of
 // laps earned (lap 2 onwards, 0097's rule), the share that lost, the five best and the five worst.
@@ -32,11 +30,10 @@ import { servedNow } from './statsPulse'
 // are §4.4's: blue is moving, green is safely in port, amber is being repaired, red cannot sail, grey is
 // laid up.
 
-export function MerchantsFace({ beat, onServed }: FaceProps) {
+export function MerchantsFace({ beat, live }: FaceProps) {
   const t = useT()
   const read = useServedRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants(), { trigger: beat })
   const v = read.view
-  useEffect(() => onServed(servedNow(v)), [v, onServed])
   const nationByCode = useWorld((s) => s.nationByCode)
 
   if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
@@ -84,7 +81,8 @@ export function MerchantsFace({ beat, onServed }: FaceProps) {
             tone={(v.losing_pct ?? 0) > 50 ? 'danger' : 'ink'}
           />
           <StatCell label={t('stats.lapsClosed')} value={v.laps_day ?? 0} format={formatInt} size="body" />
-          <StatCell label={t('stats.theirPurses')} value={v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
+          {/* 0224: their money and the at-sea line's last point are the live counters; the rest of the face is the count's */}
+          <StatCell label={t('stats.theirPurses')} value={live?.merchants ?? v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
         </div>
         <StackedBar
           parts={states}
@@ -107,7 +105,7 @@ export function MerchantsFace({ beat, onServed }: FaceProps) {
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.atSeaSeries')}</span>
             <SeriesChart
-              points={toSeries(v.series, (p) => p.sailing)}
+              points={withLivePoint(toSeries(v.series, (p) => p.sailing), live?.at, live?.at_sea_merchants)}
               format={formatInt}
               label={t('stats.atSeaLabel')}
               tone="accent"

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Button,
   Col,
@@ -26,7 +26,6 @@ import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/
 import { useServedRead } from '../../live/useServedRead'
 import type { FaceProps } from './StatsScreen'
 import { goodName, movePct } from './statsFaces'
-import { servedNow } from './statsPulse'
 
 // MARKETS — every good as a stock-market table: price, its move, what was bought and sold, stock against
 // normal, a line. The day's movers on top as ranked bars, so which rose MOST is read before the digits.
@@ -44,11 +43,10 @@ interface GoodRank {
   traded: number
 }
 
-export function MarketsFace({ beat, onServed }: FaceProps) {
+export function MarketsFace({ beat }: FaceProps) {
   const t = useT()
   const read = useServedRead<StatsMarkets>('stats:markets', () => worldStatsMarkets(), { trigger: beat })
   const v = read.view
-  useEffect(() => onServed(servedNow(v)), [v, onServed])
   const [sort, setSort] = useState<Sort>('movers')
   const [win, setWin] = useState<Window>('1d')
   const [all, setAll] = useState(false)

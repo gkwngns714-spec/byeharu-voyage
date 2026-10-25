@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Segmented, Sheet } from '../../components/ui'
 import { formatCountdown } from '../../lib/format'
 import { useT } from '../../lib/i18n'
+import type { StatsNow } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CitiesFace } from './Cities'
@@ -11,7 +12,7 @@ import { MeFace } from './Me'
 import { MerchantsFace } from './Merchants'
 import { OverviewFace } from './Overview'
 import { STATS_FACES, type StatsFace } from './statsFaces'
-import { useStatsPulse, type StatsServed } from './statsPulse'
+import { useStatsLive } from './statsLive'
 
 // STATS — the world's figures, the way a trading screen shows a market (0214; docs/dev-log/2026-10-20-stats-tab.md).
 // The owner, 2026-10-20: *"a statistic tab along with command, map etc. where i can see the world economy,
@@ -20,19 +21,16 @@ import { useStatsPulse, type StatsServed } from './statsPulse'
 // FIVE FACES, ONE READ EACH. The server's job writes a rollup every fifteen minutes; each face asks one
 // read of it and prints what it says (the sums, the words, the tiers are all the server's).
 //
-// TWO CADENCES, AND THEY ARE BOTH THE OWNER'S (requests 187 and 188, 2026-10-20 — *"I want stats to be
-// in real time, by seconds updated"*, *"no visuals, no charts, no number moving around"*):
-//   · RIGHT NOW (LiveNow.tsx) is the world's own beat — your purse, your fleets, your cargo, straight
-//     out of the store the shell polls every few seconds. No new read, no new write.
-//   · THE ROLLUP is re-asked once a minute AND at the edge of the next count (statsPulse.ts), so a
-//     fresh count reaches the screen within seconds of the server writing it. The age beside the
-//     title ticks every second, measured by the SERVER (`age_seconds`) plus the time elapsed here —
-//     never by this browser's clock.
-// Every headline figure WALKS to its new value (`Counter`), so a count landing is something you see.
+// AND ONE LIVE READ, EVERY SECOND (0224, owner row 200 — *"i want to be updated every second"*, asked three
+// times). statsLive.ts asks world.stats_now() each second while this screen is open: money by holder, fleets
+// at sea, the trades since the last count. The RIGHT NOW band prints it; the Overview and Merchants faces
+// draw it as their headline figures and as each chart's LAST point, moving at the right edge; and the
+// instant of the last count, carried on the same answer, is what re-asks a face's rollup read — no
+// backstop interval, no computed edge. Every headline figure WALKS to its new value (`Counter`).
 //
-// A CITY'S FIGURES ARE BOUGHT (the owner: *"a statistic info of a city is added only when you invest
-// certain amount"*). The Cities face draws a lock where the server sent none; it never has the figures
-// to hide, because the gate is public.stats_city_tier on the server and nothing locked leaves it.
+// EVERY CITY IS OPEN TO EVERYONE (0223; the owner, 2026-10-25, row 197: *"on cities, i want to see all the
+// info without investment"* — reversing his 2026-10-20 gate). The Cities face draws what the server sends,
+// which is everything; there is no lock and no tier anywhere.
 //
 // THE LOOK is the desk's (docs/COMMAND_DESK.md §5): tokens, tabular Figures, hairlines, no boxes, green–red
 // only for gain–loss / up–down, one accent for what is yours; charts on their own scales, a stacked bar
@@ -50,22 +48,17 @@ export function StatsScreen() {
 function StatsBody() {
   const t = useT()
   const [face, setFace] = useState<StatsFace>('overview')
-  const [served, setServed] = useState<StatsServed | null>(null)
-  const pulse = useStatsPulse(served)
-
-  // `formatRelative` reads only the GAP between its two instants, so (−age, 0) asks it exactly what the
-  // server's `age_seconds` measured plus the seconds since, and a skewed device clock cannot age a
-  // server's record.
-  const updated = pulse.ageMs === null ? null : t('stats.updated', { time: formatCountdown(pulse.ageMs) })
+  const { live, count, countAgeMs } = useStatsLive()
+  const counted = countAgeMs === null ? null : t('stats.updated', { time: formatCountdown(countAgeMs) })
 
   return (
     <Sheet
       title={t('stats.title')}
       data-testid="stats"
       trailing={
-        updated === null ? undefined : (
+        counted === null ? undefined : (
           <span className="text-t-caption text-ink-faint" data-testid="stats-updated">
-            {updated}
+            {counted}
           </span>
         )
       }
@@ -73,26 +66,23 @@ function StatsBody() {
       <Segmented
         segments={STATS_FACES.map((f) => ({ id: f.id, label: t(`stats.${f.id}`) }))}
         value={face}
-        onChange={(id) => {
-          setServed(null)
-          setFace(id)
-        }}
+        onChange={setFace}
         label={t('stats.facesLabel')}
         className="mb-3 w-fit max-w-full"
       />
-      <LiveNow dueMs={pulse.dueMs} />
-      {face === 'overview' && <OverviewFace beat={pulse.beat} onServed={setServed} />}
-      {face === 'markets' && <MarketsFace beat={pulse.beat} onServed={setServed} />}
-      {face === 'cities' && <CitiesFace beat={pulse.beat} onServed={setServed} />}
-      {face === 'merchants' && <MerchantsFace beat={pulse.beat} onServed={setServed} />}
-      {face === 'me' && <MeFace beat={pulse.beat} onServed={setServed} />}
+      <LiveNow live={live} />
+      {face === 'overview' && <OverviewFace beat={count} live={live} />}
+      {face === 'markets' && <MarketsFace beat={count} live={live} />}
+      {face === 'cities' && <CitiesFace beat={count} live={live} />}
+      {face === 'merchants' && <MerchantsFace beat={count} live={live} />}
+      {face === 'me' && <MeFace beat={count} live={live} />}
     </Sheet>
   )
 }
 
-/** What every face takes: the tab's beat (re-ask on the backstop and at the next count's edge) and
- *  where to report how old the answer it just drew is. */
+/** What every face takes: the count's beat (its rollup read re-asks when the last count moves) and the live
+ *  figures of this second, for the faces that print them. */
 export interface FaceProps {
   beat: number
-  onServed: (served: StatsServed | null) => void
+  live: StatsNow | null
 }

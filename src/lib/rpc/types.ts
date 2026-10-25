@@ -2981,17 +2981,13 @@ export interface StatsMarkets {
   goods: StatsGood[]
 }
 
-/** A harbour in `world.stats_cities`. The figures (`purse` onwards) exist ONLY at tier 1 or more —
- *  the server never sends them otherwise; a locked city is name, flag, stake and what more it needs. */
+/** A harbour in `world.stats_cities`, served to everyone (0223; the owner: "all the info without
+ *  investment"). The figures (`purse` onwards) are absent only before the job's first rollup row. */
 export interface StatsCityRow {
   id: string
   code: string
   name: string
   nation: string | null
-  tier: 0 | 1 | 2
-  paid: number
-  /** What more opens the next tier; null at the top. */
-  need: number | null
   purse?: number
   works?: number
   income_1d?: number
@@ -3005,8 +3001,6 @@ export interface StatsCities {
   at: string | null
   age_seconds: number | null
   slot_seconds: number
-  tier1: number
-  tier2: number
   cities: StatsCityRow[]
 }
 
@@ -3023,17 +3017,13 @@ export interface StatsCityGood {
   spark: number[]
 }
 
-/** `world.stats_city(port)`: `overview` at tier 1+, `detail` at tier 2. */
+/** `world.stats_city(port)`, served to everyone (0223): `overview` and `detail` are both present once the
+ *  job has written the city's first rollup row. */
 export interface StatsCity {
   city: { id: string; code: string; name: string; nation: string | null }
   at: string | null
   age_seconds: number | null
   slot_seconds: number
-  tier: 0 | 1 | 2
-  paid: number
-  need: number | null
-  tier1: number
-  tier2: number
   overview?: {
     purse: number
     works: { kind: string; level: number }[]
@@ -3075,6 +3065,24 @@ export interface StatsMerchants {
   top?: StatsMerchantHouse[]
   bottom?: StatsMerchantHouse[]
   series: { at: string; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
+}
+
+/** `world.stats_now()` (0224): the live figures this second — money by holder, fleets at sea, and the trades
+ *  since the last count. `counted_at` is when the last count folded the journal: a face re-asks its
+ *  rollup read when it moves. `at` is the server's own clock at the answer. */
+export interface StatsNow {
+  at: string
+  players: number
+  merchants: number
+  cities: number
+  set_aside: number
+  total: number
+  at_sea: number
+  at_sea_merchants: number
+  since_count: { trades: number; units: number; sold: number; bought: number }
+  counted_at: string
+  counted_through: string
+  drift: Record<string, number>
 }
 
 /** `world.stats_me()`: your week and the leaderboard — rank and name only, never a purse. */
