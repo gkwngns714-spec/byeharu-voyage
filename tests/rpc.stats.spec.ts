@@ -7,6 +7,11 @@
 // 2026-10-20 gate 0214 built): with nothing invested anywhere a city's overview AND detail both arrive, the
 // list row carries its figures, and no read carries a tier key. It names stats_city, stats_cities,
 // stats_overview, stats_markets, stats_merchants, stats_me and tick_stats so CI's rule S selects it.
+//
+// AND THE LIVE READ (0224, owner row 200): world.stats_now serves the counters every writer keeps — base row plus
+// the journal public.stats_live_deltas since the last count (public.stats_live_fold, inside tick_stats). Proven
+// below: after the job it equals the rollup's holders with nothing since the count; a credit through public.credit
+// moves the players' figure by its amount within the same second, with no job run; stats_live_add is the one helper.
 
 import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
@@ -21,6 +26,7 @@ import {
   worldStatsMarkets,
   worldStatsMe,
   worldStatsMerchants,
+  worldStatsNow,
   worldStatsOverview,
 } from '../src/lib/rpc'
 
@@ -101,6 +107,36 @@ test('the public reads serve what the job wrote: holders that add up, every good
   expect(me.value.leaderboard.board.some((r) => r.is_you)).toBe(true)
   // rank and name only: no row carries a purse
   for (const r of me.value.leaderboard.board) expect(Object.keys(r).sort()).toEqual(['is_you', 'name', 'nation', 'rank'])
+})
+
+// ── THE LIVE READ (0224) ────────────────────────────────────────────────────────────────────────
+test('stats_now equals the rollup after the count, and moves with a credit before the next one', async () => {
+  const o = await worldStatsOverview(24)
+  expect(o.ok).toBe(true)
+  if (!o.ok) return
+  const n0 = await worldStatsNow()
+  expect(n0.ok).toBe(true)
+  if (!n0.ok) return
+  // the job folded the journal on its way out (tick_stats → stats_live_fold): nothing is pending, no drift
+  expect(n0.value.since_count.trades).toBe(0)
+  expect(n0.value.total).toBe(n0.value.players + n0.value.merchants + n0.value.cities + n0.value.set_aside)
+  expect(n0.value.players).toBe(o.value.holders!.players)
+  expect(n0.value.merchants).toBe(o.value.holders!.merchants)
+  expect(n0.value.cities).toBe(o.value.holders!.cities)
+  expect(n0.value.set_aside).toBe(o.value.holders!.set_aside)
+  for (const v of Object.values(n0.value.drift)) expect(v).toBe(0)
+  // THE POSITIVE CONTROL, BY AMOUNT: one credit of 1,234 to this company, through the one money mover
+  await db.callAs(`select public.credit(public.current_player_id(), 'PROBE_0224', 1234)::text as result`)
+  const n1 = await worldStatsNow()
+  expect(n1.ok).toBe(true)
+  if (!n1.ok) return
+  expect(n1.value.players - n0.value.players).toBe(1234)
+  expect(n1.value.merchants).toBe(n0.value.merchants)
+  expect(n1.value.counted_at).toBe(n0.value.counted_at)
+  // and it is one journal row, written by the helper, not a second row of the base
+  const pending = await db.callAs<number>(`select count(*)::int as result from public.stats_live_deltas`)
+  expect(Number(pending)).toBe(1)
+  expect(Number(await db.callAs<number>(`select count(*)::int as result from public.stats_live`))).toBe(1)
 })
 
 // ── EVERY CITY IS OPEN TO EVERYONE (0223, owner row 197) ───────────────────────────────────────

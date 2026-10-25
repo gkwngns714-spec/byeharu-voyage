@@ -3096,6 +3096,24 @@ export interface StatsMerchants {
   series: { at: string; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
 }
 
+/** `world.stats_now()` (0224): the live figures this second — money by holder, fleets at sea, and the trades
+ *  since the last count. `counted_at` is when the last count folded the journal: a face re-asks its
+ *  rollup read when it moves. `at` is the server's own clock at the answer. */
+export interface StatsNow {
+  at: string
+  players: number
+  merchants: number
+  cities: number
+  set_aside: number
+  total: number
+  at_sea: number
+  at_sea_merchants: number
+  since_count: { trades: number; units: number; sold: number; bought: number }
+  counted_at: string
+  counted_through: string
+  drift: Record<string, number>
+}
+
 /** `world.stats_me()`: your week and the leaderboard — rank and name only, never a purse. */
 export interface StatsMe {
   best_trades: { at: string; good: string; qty: number; total: number; profit: number; fleet: string }[]

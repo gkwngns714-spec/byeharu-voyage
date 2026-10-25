@@ -519,6 +519,9 @@ export const RPCS = {
   worldStatsCity: { schema: 'world', fn: 'stats_city', args: [{ name: 'p_port', type: 'uuid' }] },
   worldStatsMerchants: { schema: 'world', fn: 'stats_merchants', args: [] },
   worldStatsMe: { schema: 'world', fn: 'stats_me', args: [] },
+  // 0224 — THE FIGURES KEEP TO THE SECOND (owner row 200; docs/dev-log/2026-10-26-stats-live.md): the one LIVE read,
+  // asked every second while the Stats tab is open. Base row + the journal since the last count; no aggregate scan.
+  worldStatsNow: { schema: 'world', fn: 'stats_now', args: [] },
   // 0215 — THE SEA CONDITIONS (docs/SEA_CONDITIONS_AND_REGIONS.md): every zone with the title and the wave
   // resistance it asks, the caller's title, each of her fleets' wave, and whether the conditions bite yet. A
   // READ, no arguments (the company is the caller's). The Codex "Seas" face and the map's shading (C3) read it.

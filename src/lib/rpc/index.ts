@@ -86,6 +86,7 @@ import type {
   StatsCity,
   StatsMerchants,
   StatsMe,
+  StatsNow,
   IssueLinesResult,
   InvestReceipt,
   TowReceipt,
@@ -740,6 +741,10 @@ export function worldStatsMerchants(): Promise<RpcResult<StatsMerchants>> {
 /** Your week — best sales, how much traded — and the leaderboard by rank and name. */
 export function worldStatsMe(): Promise<RpcResult<StatsMe>> {
   return call<StatsMe>('worldStatsMe')
+}
+/** The live figures this second (0224): money by holder, fleets at sea, trades since the last count. */
+export function worldStatsNow(): Promise<RpcResult<StatsNow>> {
+  return call<StatsNow>('worldStatsNow')
 }
 
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */
