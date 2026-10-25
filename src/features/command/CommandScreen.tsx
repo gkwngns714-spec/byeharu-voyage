@@ -15,8 +15,7 @@ import { Plans } from './plans/Plans'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
 import { Profit } from './profit/Profit'
-import { PlanBuilder } from './plans/PlanBuilder'
-import { useDeskPlan } from './plans/planDraft'
+import { useDeskPlan, type PlanDraft } from './plans/planDraft'
 import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
@@ -80,8 +79,14 @@ export function CommandScreen() {
   const face = useDeskView((s) => s.face)
   const turnTo = useDeskView((s) => s.turnTo)
   const goodCode = useDeskGood((s) => s.code)
-  const plan = useDeskPlan((s) => s.plan)
-  const openPlan = useDeskPlan((s) => s.open)
+  const openDraft = useDeskPlan((s) => s.open)
+  // PLAN THIS TRADE OPENS THE PLANS FACE (owner row 183, 2026-10-20: "when I press plan this trade, it should
+  // switch to plan tab and make planning there"). The draft is opened and the desk turns to Plans in the same
+  // press; the builder, its chart and its restrictions stand there (Plans.tsx), never over Markets.
+  const openPlan = (draft: PlanDraft) => {
+    openDraft(draft)
+    turnTo('plans')
+  }
   // WHICH TRAY STANDS IN THE SLOT: the good's page, or the trade tray it handed over to.
   const [trading, setTrading] = useState<{
     code: string
@@ -150,19 +155,10 @@ export function CommandScreen() {
     )
 
   if (wide) {
-    // THE TICKET PANE'S SLOT on the Markets face: the plan builder, else the trade tray, else the ticket.
+    // THE TICKET PANE'S SLOT on the Markets face: the trade tray, else the ticket. (The plan builder stands on
+    // the Plans face since row 183.)
     const paneSlot =
-      fleet && plan && goodByCode[plan.good] ? (
-        <PlanBuilder
-          key={`${plan.good}:${fleet.id}`}
-          mode="pane"
-          fleet={fleet}
-          good={goodByCode[plan.good]}
-          plan={plan}
-          onQueued={() => turnTo('plans')}
-          onRoute={() => turnTo('plans')}
-        />
-      ) : fleet && tradingHere ? (
+      fleet && tradingHere ? (
         <DeskTrade
           mode="pane"
           fleet={fleet}
@@ -212,19 +208,10 @@ export function CommandScreen() {
       />
       {fleet && faceBody(fleet)}
 
-      {/* MARKETS' SLOT — one tray at a time, opened by pressing a GOOD (never a face): the plan builder,
-          else the trade tray, else the good's page. Only on Markets: every other face stands its acts in
-          flow inside its own parts (DeskStack), so pressing a face never raises a tray over the screen. */}
-      {face !== 'markets' ? null : fleet && plan && goodByCode[plan.good] ? (
-        <PlanBuilder
-          key={`${plan.good}:${fleet.id}`}
-          fleet={fleet}
-          good={goodByCode[plan.good]}
-          plan={plan}
-          onQueued={() => turnTo('plans')}
-          onRoute={() => turnTo('plans')}
-        />
-      ) : fleet && tradingHere && tradingHere.code === goodCode ? (
+      {/* MARKETS' SLOT — one tray at a time, opened by pressing a GOOD (never a face): the trade tray, else
+          the good's page. Only on Markets: every other face stands its acts in flow inside its own parts
+          (DeskStack), so pressing a face never raises a tray over the screen. A plan stands on Plans (row 183). */}
+      {face !== 'markets' ? null : fleet && tradingHere && tradingHere.code === goodCode ? (
         <DeskTrade fleet={fleet} code={tradingHere.code} intent={tradingHere.intent} onClose={() => setTrading(null)} />
       ) : fleet && good ? (
         <GoodPage

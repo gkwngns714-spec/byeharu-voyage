@@ -128,6 +128,7 @@ export function ChartCanvas({
   islets = NO_ISLETS,
   selection,
   keepOut,
+  plannedD = null,
   ariaLabel,
   className,
 }: {
@@ -163,6 +164,13 @@ export function ChartCanvas({
    * it, which is exactly true of `SmallChart`.
    */
   keepOut?: readonly ChromeBox[]
+  /**
+   * A PLAN'S COURSE, not yet sailed (owner row 183, the Plans face's chart): the legs the plan would
+   * queue, as one path (`loopD` over the courses `planLines` proposes — the same water the queued SAIL
+   * lines carry, which the server re-verifies when each runs). Dashed in the accent, under the marks.
+   * Null — every other chart — draws nothing.
+   */
+  plannedD?: string | null
   ariaLabel: string
   className?: string
 }) {
@@ -401,6 +409,19 @@ export function ChartCanvas({
           return (
             <g key={k} transform={k === 0 ? undefined : `translate(${k * CHART_WIDTH} 0)`} data-sheet-copy={k}>
               <TracksLayer model={model} unitsPerPx={unitsPerPx} lanes={laneBand} />
+              {plannedD && (
+                <path
+                  data-testid="map-plan-course"
+                  d={plannedD}
+                  className="fill-none stroke-accent/80"
+                  strokeWidth={GLYPH.trackStroke}
+                  strokeDasharray="4 4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  vectorEffect="non-scaling-stroke"
+                  pointerEvents="none"
+                />
+              )}
               {/* THE ROADS (0076) — the dotted helper line out to the one point of open water each
                   port is reached from, and the hollow circle on it. UNDER the port marks, because a
                   dotted line crossing a harbour should pass behind it (FleetsLayer.tsx:6-9) and a city
