@@ -9,7 +9,9 @@ const [image, mins, outf, ...migs] = process.argv.slice(2)
 // 2026-10-19: the migrations are applied AFTER the setup, as prod will apply them (the setup lays prod's
 // knobs, npc_route_candidates 16 among them, over the image; applied before it, a knob migration is undone).
 const db = await open(image, [])
-const q = await setup(db, false)
+// 2026-10-25 (0220): ARRFAST_SETUP=0 opens a world speed/prep.mjs already laid prod's state over, so a pair
+// of arms shares one setup and differs only by the migration under test.
+const q = process.env.ARRFAST_SETUP === '0' ? async (sql, p) => (await db.query(sql, p)).rows : await setup(db, false)
 for (const m of migs) {
   const notices = []; const t0 = Date.now()
   await db.exec(readFileSync(m, 'utf8').replace(/\r\n/g, '\n'), { onNotice: (n) => notices.push(n.message) })
