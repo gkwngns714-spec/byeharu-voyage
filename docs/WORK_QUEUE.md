@@ -305,6 +305,9 @@ Every job below has its own worktree `~/dev/wt-<branch>` with a node_modules JUN
 After R1 lands: R3 mini route map (191) → R4 Report (192) → R2 true reasons → rollover W1–W4 (173) → fleets F1–F7 (180) → sea S3–S6 → live prices → far selling. Waiting on owner: #268 pirates, row 175.
 **Rules learned today:** deploy only in number order, renumbering file + tags; after EVERY merge wait for main's Acceptance (bv-deploy.sh now does it); a conflicting PR gets no CI, so rebase first; run each prod check from a file (`db query --linked -f`), one statement per file.
 
+
+### 2026-10-26 (PC 디폴리스): **0225 LIVE** (#305 merged 8d38248; push rc 0, head 0225, cron 9/9, main Acceptance green, Pages deployed). After-check: supply_need/supply_needs exist, preset doors 0, 1 standing order backed up, 0 failed cron in 20 min. Not yet observed: a live SAIL buying its stores. **#310 (0226) is RED** on its own Acceptance (layout.spec:978 price chart, trade.ceiling.spec:175/267/387 Max row/send); a Sonnet agent is fixing it in `~/dev/wt-osn-price-history` (Fable credits out).
+
 ## HAND-OFF 2026-10-26 ~21:00 UTC (owner moving to another PC) — READ THIS FIRST
 **Prod head 0224.** Live today: 0217 harbours · 0218 no region door · 0219 sea board · 0220 speed ×3 · 0222 board 2.6–3.7 s → 1.1–1.3 s · 0223 every city open + "24 min ago" laps · 0224 stats live to the second (stats_now 0.7–5.6 ms, drift 0). Client: plain words #299, aligned lists #303, labels 47 %/KST clock #298, desk.plan fix #306, selector rule W #304. Main Acceptance green.
 | next | branch / PR | state | to finish |
