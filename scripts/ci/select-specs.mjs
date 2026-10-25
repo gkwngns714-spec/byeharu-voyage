@@ -444,6 +444,16 @@ export function select({ base, head, full = false }) {
       const olds = vals('-'), news = vals('+')
       for (const [key, old] of olds) {
         const now = news.get(key) ?? ''
+        // A one-word label ('Fulfil' → 'Deliver') is pinned as a pattern or a quoted string:
+        // layout.spec matched /^fulfil\b/i, which no two-word piece can catch.
+        const word = old.trim()
+        if (/^[A-Za-z][A-Za-z-]{3,}$/.test(word) && word !== now.trim()) {
+          const w = word.toLowerCase()
+          for (const [spec, st] of text) {
+            const lt = st.toLowerCase()
+            if (lt.includes(`/^${w}`) || lt.includes(`'${w}'`) || lt.includes(`"${w}"`) || lt.includes(`/${w}\\b`)) pick(spec, `W: ${c.path} rewords the label ${key} ('${word}'), which this spec pins`)
+          }
+        }
         for (const piece of old.split(/\{[^}]*\}|[,.·:;—()?!]/)) {
           const p = piece.trim()
           if (p.length < 8 || !/\S\s+\S/.test(p) || now.includes(p)) continue
