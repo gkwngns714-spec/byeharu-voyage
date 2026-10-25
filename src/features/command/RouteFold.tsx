@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button, Figure, Hint, Note, Row, deltaTone } from '../../components/ui'
-import { formatDucats, formatDucatsDelta } from '../../lib/format'
+import { formatDucats, formatDucatsDelta, formatRelative } from '../../lib/format'
+import { useShellState } from '../../app/shellState'
 import { usePress } from '../../live/usePress'
 import { useWorld } from '../../live/worldStore'
 import {
@@ -44,6 +45,8 @@ import { useT } from '../../lib/i18n'
 
 export function RouteFold({ fleet }: { fleet: FleetView }) {
   const t = useT()
+  // THE ONE CLOCK (src/app/shellState.ts): the last lap's age ticks from it, never from a Date.now() in a render.
+  const { nowMs } = useShellState()
   const book = useWorld((s) => s.routes)
   const portByCode = useWorld((s) => s.portByCode)
   const pauseRoute = useWorld((s) => s.pauseRoute)
@@ -108,6 +111,14 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
         {route && book?.enabled && (
           <span className="block text-t-caption text-ink-faint" data-testid="route-state">
             {routeStateWord(route, portByCode)}
+            {/* HOW LONG AGO THE LAST LAP CLOSED (owner row 206, 2026-10-26: "like 24 minutes ago, or 1 hour
+                ago"): the one formatter, against the shell's clock, beside the figure it dates. */}
+            {lastLap?.closed_at && (
+              <span data-testid="route-last-lap-age">
+                {' · '}
+                {t('command.lastLapAgo', { ago: formatRelative(Date.parse(lastLap.closed_at), nowMs) })}
+              </span>
+            )}
           </span>
         )}
       </Row>

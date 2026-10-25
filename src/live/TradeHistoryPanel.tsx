@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Clip, Empty, Figure, Icon, Row, Skeleton, Tray, TrayTitle, deltaTone, goodIcon, type TrayDetent } from '../components/ui'
 import { CHART_CHROME, GoToLink } from '../chart'
 import { useShellState } from '../app/shellState'
-import { formatDucats, formatDucatsDelta, formatInt, formatRealShort } from '../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatRealShort, formatRelative } from '../lib/format'
 import { worldFleetTrades, type FleetTrades, type TradeDay, type TradeLap, type TradeLine, type TradeStop } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
 import { useServedRead } from './useServedRead'
@@ -136,7 +136,7 @@ function LapView({ lap }: { lap: TradeLap }) {
       <Plate
         net={lap.net}
         title={tl('books.lapN', { n: formatInt(lap.lap_no) })}
-        caption={tl('books.closedAgo', { ago: formatRealShort(nowMs - Date.parse(lap.closed_at)), took: formatRealShort(took) })}
+        caption={tl('books.closedAgo', { ago: formatRelative(Date.parse(lap.closed_at), nowMs), took: formatRealShort(took) })}
       />
       <Books b={lap} />
       <Heading trailing={lap.stops && <Faint>{tl('books.stops', { n: lap.stops.length })}</Faint>}>
@@ -158,7 +158,7 @@ function OpenView({ open }: { open: NonNullable<FleetTrades['open']> }) {
     <div data-testid="trade-open">
       <div className="mt-2 rounded-sheet bg-gradient-to-br from-accent/15 via-surface-2 to-surface-2 p-4">
         <div className="text-t-caption uppercase tracking-wider text-ink-faint">{tl('books.lapUnderWay', { n: formatInt(open.lap_no) })}</div>
-        <div className="mt-1 text-t-body text-ink">{tl('books.startedAgo', { ago: formatRealShort(nowMs - Date.parse(open.started_at)) })}</div>
+        <div className="mt-1 text-t-body text-ink">{tl('books.startedAgo', { ago: formatRelative(Date.parse(open.started_at), nowMs) })}</div>
         <div className="mt-1 text-t-caption text-ink-faint">{tl('books.booksClose')}</div>
       </div>
       <Heading>{tl('books.soFar')}</Heading>

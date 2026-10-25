@@ -40,9 +40,9 @@ import { properName, useT, type TKey } from '../lib/i18n'
 //              reading of that), and how many of them are short or well stocked (`stockLevel`, the
 //              one reading of stock against normal). Its market tax rides the same line.
 //   Economy    `world.stats_city(port)` (0214) — the purse, money in and out over a day and the
-//              taxes it took. GATED BY YOUR OWN STAKE, by the owner's own rule: a city you have
-//              not invested in arrives with NO figures, and that is drawn as a LOCK with the sum
-//              that opens it — not as an error and not as a blank.
+//              taxes it took. OPEN TO EVERYONE since 0223 (the owner, 2026-10-25, row 197: "on
+//              cities, i want to see all the info without investment"): the figures are absent only
+//              before the job's first rollup row, and that is drawn as nothing, not as an error.
 //
 // THERE IS NO POPULATION IN THIS WORLD. Nothing on the wire or in `data/ports.json` counts a city's
 // people (docs/PRICE_FACTORS.md turned consumption-per-head down as "a world-data change of its
@@ -146,13 +146,8 @@ export function CityInfo({ port }: { port: SnapshotPort }) {
         </FactsLine>
       </Row>
 
-      {/* 0214's gate, drawn as the owner wrote it: figures for a city you have put money into. */}
+      {/* the city's money, served to everyone (0223) */}
       {figures.loading && !v && <Skeleton className="mt-3 h-20 w-full" />}
-      {v && v.tier === 0 && (
-        <Note tone="neutral" className="mt-3" data-testid="city-info-locked">
-          {t('town.i_locked', { amount: formatDucats(v.need ?? v.tier1) })}
-        </Note>
-      )}
       {o && (
         <div className="mt-3" data-testid="city-info-economy">
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">

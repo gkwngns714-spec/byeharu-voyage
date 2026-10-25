@@ -3,8 +3,8 @@ import { PHONE, reachable, ready } from './appReady.fixture'
 
 // THE STATS TAB (0214; the owner: "a statistic tab along with command, map etc. … updated regularly"). The
 // five faces render on a phone with no sideways scroll, the "Updated … ago" line says how old the figures are,
-// and the Cities face draws every harbour LOCKED for a company that has invested nowhere — the server sent no
-// figures to hide. The local world's backend plays the stats job before the first read (localBackend.ts), so
+// and the Cities face draws every harbour OPEN for a company that has invested nowhere (0223, owner row 197: "all
+// the info without investment"). The local world's backend plays the stats job before the first read (localBackend.ts), so
 // the faces have a row to show. It names StatsScreen.tsx so CI's rule N selects it.
 //
 // THE FACE (2026-10-20, owner requests 187 and 188 — "no visuals, no charts, no number moving around" and
@@ -47,14 +47,15 @@ for (const vp of [PHONE, WIDE]) {
 
     await page.getByRole('tab', { name: 'Cities', exact: true }).click()
     await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 60_000 })
-    // nothing invested anywhere: every harbour is locked, and the first one says what to invest
-    await expect(page.getByTestId('stats-city-open')).toHaveCount(0)
-    expect(await page.getByTestId('stats-city-locked').count()).toBeGreaterThan(10)
-    await expect(page.getByTestId('stats-city-locked').first()).toContainText('Invest')
-    await page.getByTestId('stats-city-locked').first().click()
-    await expect(page.getByTestId('stats-city-lock')).toBeVisible({ timeout: 60_000 })
-    await expect(page.getByTestId('stats-city-overview')).toHaveCount(0)
-    await expect(page.getByTestId('stats-city-detail')).toHaveCount(0)
+    // nothing invested anywhere, and every harbour is open (0223, owner row 197): no lock, no "Invest",
+    // and the first row opens with its overview AND its detail
+    expect(await page.getByTestId('stats-city-open').count()).toBeGreaterThan(10)
+    await expect(page.getByTestId('stats-city-locked')).toHaveCount(0)
+    await expect(page.getByTestId('stats-cities')).not.toContainText(/Invest|Locked/)
+    await page.getByTestId('stats-city-open').first().click()
+    await expect(page.getByTestId('stats-city-overview')).toBeVisible({ timeout: 60_000 })
+    await expect(page.getByTestId('stats-city-detail')).toBeVisible()
+    await expect(page.getByTestId('stats-city-lock')).toHaveCount(0)
     await noSidewaysScroll(page)
 
     await page.getByRole('tab', { name: 'Merchants', exact: true }).click()

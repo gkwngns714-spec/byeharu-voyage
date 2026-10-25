@@ -24,15 +24,15 @@ import { useServedRead } from '../../live/useServedRead'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
 
-// ONE CITY, AT YOUR TIER — the row the Cities face opens (0214; its header carries the gate).
+// ONE CITY, OPEN TO EVERYONE — the row the Cities face opens (0214; 0223 removed the investment gate, the
+// owner's row 197: *"on cities, i want to see all the info without investment"*).
 //
-// Nothing here decides what you may see: `v.tier` is the server's answer, `overview` and `detail` are
-// present only at the tier that bought them, and a tier-0 city arrives with figures for nothing — which
-// is CORRECT, and is drawn as the lock rather than as a failure.
+// Nothing here decides what you may see: `overview` and `detail` are both served once the job has written
+// the city's first rollup row, and are absent only before that (drawn as nothing, not as a failure).
 //
-// THE PICTURE AT TIER 1: the purse as one line over the counts, income against spending as bars from a
-// zero line, and what the city buys and sells most as ranked bars. At tier 2 every good follows, each
-// with its own sparkline — the shape the Markets face uses, so a good does not look different here.
+// THE PICTURE: the purse as one line over the counts, income against spending as bars from a zero line,
+// what the city buys and sells most as ranked bars; then every good, each with its own sparkline — the
+// shape the Markets face uses, so a good does not look different here.
 
 export function CityDetail({ portId, beat, onClose }: { portId: string; beat: number; onClose: () => void }) {
   const t = useT()
@@ -59,11 +59,6 @@ export function CityDetail({ portId, beat, onClose }: { portId: string; beat: nu
       }
       data-testid="stats-city"
     >
-      {v.tier === 0 && (
-        <Note tone="neutral" data-testid="stats-city-lock">
-          {t('stats.cityLocked', { amount: formatDucats(v.need ?? v.tier1), city: portName(v.city.name) })}
-        </Note>
-      )}
       {o && (
         <div data-testid="stats-city-overview">
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
@@ -111,9 +106,6 @@ export function CityDetail({ portId, beat, onClose }: { portId: string; beat: nu
           <span className="mt-3 block text-t-caption text-ink-faint">
             {t('stats.works', { list: o.works.map((w) => `${w.kind} ${w.level}`).join(' · ') || t('stats.noWorks') })}
           </span>
-          {v.tier === 1 && (
-            <Hint className="mt-2">{t('stats.investMore', { amount: formatDucats(v.need ?? 0) })}</Hint>
-          )}
         </div>
       )}
       {v.detail && (

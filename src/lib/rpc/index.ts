@@ -725,11 +725,11 @@ export function worldStatsOverview(hours: number | null = null): Promise<RpcResu
 export function worldStatsMarkets(): Promise<RpcResult<StatsMarkets>> {
   return call<StatsMarkets>('worldStatsMarkets')
 }
-/** Every harbour with YOUR tier there; figures only where you hold tier 1 or more (the server decides). */
+/** Every harbour with its purse and day-figures, served to everyone (0223). */
 export function worldStatsCities(): Promise<RpcResult<StatsCities>> {
   return call<StatsCities>('worldStatsCities')
 }
-/** One harbour at your tier: locked, the overview, or the full detail. */
+/** One harbour: its overview and its full detail, served to everyone (0223). */
 export function worldStatsCity(portId: string): Promise<RpcResult<StatsCity>> {
   return call<StatsCity>('worldStatsCity', [portId])
 }
