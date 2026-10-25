@@ -193,17 +193,17 @@ create temp table times_0224 (phase text, t jsonb) on commit drop;
 -- (e) BEFORE: the writers as they are today, on a probe company that is rolled back
 do $$
 declare
-  c_uid constant uuid := '00000000-0224-4000-8000-000000000001';
+  c_uid constant uuid := '00000000-0224-4000-8000-000000000002';
   pr record; v_t jsonb;
 begin
   begin
-    select * into pr from pg_temp.probe_0224(c_uid, 'Casa do Segundo 0224');
+    select * into pr from pg_temp.probe_0224(c_uid, 'Casa do Segundo 0224 B');
     v_t := pg_temp.time_writers_0224(pr.fleet, pr.good, pr.port);
     raise exception using errcode = 'ZX224', message = v_t::text;
   exception when sqlstate 'ZX224' then
     insert into times_0224 values ('before', sqlerrm::jsonb);
   end;
-  if exists (select 1 from public.players where company_name = 'Casa do Segundo 0224') then
+  if exists (select 1 from public.players where company_name = 'Casa do Segundo 0224 B') then
     raise exception '0224 self-assert FAIL: the timing probe survived its rollback';
   end if;
 end $$;
@@ -601,7 +601,7 @@ $$;
 
 do $$
 declare
-  c_uid    constant uuid := '00000000-0224-4000-8000-000000000001';
+  c_uid    constant uuid := '00000000-0224-4000-8000-000000000002';
   c_zero   constant jsonb := '{"players": 0, "merchants": 0, "cities": 0, "set_aside": 0, "at_sea": 0, "at_sea_merchants": 0, "total": 0}'::jsonb;
   pr       record;
   v_id     jsonb;
@@ -649,7 +649,7 @@ begin
 
   -- (c) + (d) + (e) the probe, rolled back whole
   begin
-    select * into pr from pg_temp.probe_0224(c_uid, 'Casa do Segundo 0224');
+    select * into pr from pg_temp.probe_0224(c_uid, 'Casa do Segundo 0224 B');
     -- the founding money is a credit: the players' figure moved with it, and the identity holds
     v_id := pg_temp.identity_0224();
     if v_id <> c_zero or (select count(*) from public.stats_live_deltas where players > 0) < 1 then

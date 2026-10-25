@@ -136,7 +136,7 @@ select count(*) as lisbon_goods from public.port_goods pg join public.ports p on
 ```
 expect `> 0`.
 ```sql
-select count(*) as probe_names from public.players where company_name = 'Casa do Segundo 0224'
+select count(*) as probe_names from public.players where company_name = 'Casa do Segundo 0224 B'
 ```
 expect `0`.
 
@@ -163,13 +163,13 @@ rollback
 begin
 ```
 ```sql
-select public.new_house('00000000-0224-4000-8000-000000000001', 'Casa do Segundo 0224', 'PRT', 'LIS') as probe_player
+select public.new_house('00000000-0224-4000-8000-000000000002', 'Casa do Segundo 0224 B', 'PRT', 'LIS') as probe_player
 ```
 ```sql
-select public.fleet_load((select f.id from public.fleets f join public.players p on p.id = f.player_id where p.company_name = 'Casa do Segundo 0224' order by f.id limit 1), (select g.code from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id) order by g.code limit 1), 60, 1) as loaded
+select public.fleet_load((select f.id from public.fleets f join public.players p on p.id = f.player_id where p.company_name = 'Casa do Segundo 0224 B' order by f.id limit 1), (select g.code from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id) order by g.code limit 1), 60, 1) as loaded
 ```
 ```sql
-select i, t.t0, cmd.do_sell((select f.id from public.fleets f join public.players p on p.id = f.player_id where p.company_name = 'Casa do Segundo 0224' order by f.id limit 1), jsonb_build_object('good', (select g.id from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id) order by g.code limit 1), 'qty', 1)) is not null as sold, clock_timestamp() - t.t0 as took from generate_series(1, 6) i cross join lateral (select clock_timestamp() as t0 where i > 0) t
+select i, t.t0, cmd.do_sell((select f.id from public.fleets f join public.players p on p.id = f.player_id where p.company_name = 'Casa do Segundo 0224 B' order by f.id limit 1), jsonb_build_object('good', (select g.id from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id) order by g.code limit 1), 'qty', 1)) is not null as sold, clock_timestamp() - t.t0 as took from generate_series(1, 6) i cross join lateral (select clock_timestamp() as t0 where i > 0) t
 ```
 `took` per row is one sale's cost today (the first row is the session's warm-up); the same six after the deploy, in the
 same shape, is the added cost. Then
