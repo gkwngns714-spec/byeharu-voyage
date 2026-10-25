@@ -11,6 +11,12 @@ The main session (this PC) only runs the read-only prod checks, the paired sim, 
 
 **Next:** 169a speed ×3 (paired sim) → 173 weekly rollover, keeping history → sea S3–S6 → live prices.
 
+### OWNER PLAYTEST 2026-10-25 ~13:30 UTC — OUTRANKS THE LIST BELOW (rows 189–195)
+The owner played and could not trade: "this game must be playable". Local agents:
+- `~/dev/wt-osn-quick-189-193-195`: 189 flat sell chart (diagnose first), 193 every city labelled at 47 % with no overlap, 195 a Korea (KST) real-time clock beside the game date. One client PR.
+- `~/dev/wt-osn-command-redesign`: DESIGN for rows 190–194 (`docs/COMMAND_REDESIGN.md`): buy AND sell from the Plan, the reach diagnosis, a mini route map, Profit → Report persisted by section and by point. Build slice R1 (playable buy → sail → sell) comes FIRST, ahead of the rollover W-slices and fleets.
+- Still running: 169a speed ×3 (`wt-osn-speed-x3`), proof 05 fix (`wt-osn-proof05-margin`, waiting on CI). 0217 #295 CI running → deploy, then 0218 #293.
+
 ### 12:35 UTC update (main session, fresh)
 - **0217 harbours** routine (cse_01WAoJhjSS2KNx9AGwoZehKG) still running, about 90% done: growth, sea and city self-asserts pass, and so does the world guard. **Proof 05 (first-voyage balance) is on a knife edge**: base 13.47 % long vs 13.00 % short. The new Kola harbour tipped it to 12.71 vs 13.91, so the routine swapped Kola → **Mezen** (White Sea, also real northern Russia). Review that swap on its PR. The next world growth will tip proof 05 again: the proof's margin needs its own fix, and the data must not be bent to pass it.
 - **#293 = 0218** green, waits for 0217 (deploy order). Deploy both with `~/bin/bv-deploy.sh`.
