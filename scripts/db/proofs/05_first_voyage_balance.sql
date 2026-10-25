@@ -162,7 +162,10 @@
 -- THE POSITIVE CONTROL is in scripts/db/breaktest-balance.mjs (`--only="home waters"`): every market
 -- row farther from its good's nearest maker than the home radius loses BOTH distance terms — the
 -- haul and the affinity gradient — while home waters keep theirs, so the first voyage still pays
--- and the only thing that changed is this premise. The marker must go red on that world.
+-- and the only thing that changed is this premise. The marker must go red on that world, and it
+-- does (measured 2026-10-25, the clean pair identical twice over): the quay's world-horizon best out
+-- of Antwerp collapses INTO home waters — nearest 1,373 nm, mean stored haul 1.006 — and reads 26.0
+-- against 26.0, with the four markers before it still green.
 --
 -- ── WHAT THIS ASSERTS, AND WHY EACH ONE ────────────────────────────────────────────────────────
 --   * THE OPENING VOYAGE PAYS, EVERYWHERE. From a sample of starting ports, on every drawn market,
