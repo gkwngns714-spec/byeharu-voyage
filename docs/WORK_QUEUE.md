@@ -4,7 +4,7 @@
 Prod head **0216**; main Acceptance green (0ec8ed1, 10-21). Nothing has landed since 10-21. Of the owner's rows 169–188, these are still open: 169a speed ×3, 173 weekly reset, 175 (blocked on the owner), 180 fleets, 183 Plan tab, 186 harbours.
 **In flight (two builds + one design), as CLOUD ROUTINES (the owner's cloud-first order; credit expires 11-05). The 09:14 runs died at once on the WEEKLY usage limit (reset 10:00 UTC); they were RE-FIRED at 10:23 UTC. Follow them on GitHub branches and PRs:**
 - Lane A `osn-new-harbours` (trig_017yTwoYS3AoraZWTePMeL9M): row 186, about 8 harbours (northern Russia, Australia, NZ, northern USA) as migration **0217**.
-- Lane B `osn-plan-tab` (trig_01LqTod7PwLTiXmLmZ5tW3t2): row 183, the Plan tab with a route-only map, time, provisions, crew, and restrictions read from 0215/0216's gate.
+- Lane B: row 183 Plan tab **MERGED** (#292, 2026-10-25 ~11:25 UTC, client only). It left one missing server read, a Lane A item that must land BEFORE `sea_conditions_bite` is lit: add `sea: { zone, zone_name, needs_title, needs_wave, refusal }` to `world.good_board`'s buy and sell rows (read from `sea_leg_asks` and judged by `public.sea_refusal`). Without it, a leg closed by sea reads as 'too far'.
 - Lane C: row 180 design **MERGED** (#291, `docs/FLEETS_AND_SLOTS.md`). Its defaults stand unless the owner reverses them: 7 ships per fleet, up to 5 fleets, room opened by level or by gold (the gold is destroyed; 1.37 M for everything), ships move only when docked in the same port, merchants get a flat 2 × 7. Build F1–F7 in Lane A after 0217.
 
 The main session (this PC) only runs the read-only prod checks, the paired sim, and the deploys. Fable credits ran out until 2026-10-25 10:00 UTC, so the routines use Opus.
