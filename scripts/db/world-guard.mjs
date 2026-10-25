@@ -93,7 +93,7 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { deriveWorld, GREAT_POWERS, REPO_ROOT, round2, waveResistance } from '../lib/world-derive.mjs'
+import { deriveWorld, goodsAtPriceLevel, GREAT_POWERS, REPO_ROOT, round2, waveResistance } from '../lib/world-derive.mjs'
 import { generateShips, SHIPS_FILE } from '../build-ships.mjs'
 import { generateGear, GEAR_FILE } from '../build-gear.mjs'
 import { captainInputs, generateCaptains, CAPTAINS_FILE } from '../build-captains.mjs'
@@ -774,7 +774,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   {
     const k = db_.scales
     const isHold = (stat) => stat === 'hold'
-    want.goods = want.goods.map((g) => ({ ...g, base_value: g.base_value * k.price }))
+    want.goods = goodsAtPriceLevel(want.goods, k.price)
     want.waveA = {
       ...want.waveA,
       classes: want.waveA.classes.map((c) => ({ ...c, hold: c.hold * k.hold })),

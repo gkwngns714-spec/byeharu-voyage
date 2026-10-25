@@ -54,4 +54,7 @@ export const KO_PORTS: Readonly<Record<string, string>> = {
   Tsushima: '쓰시마', Tunis: '튀니스', Turku: '투르쿠', Ulsan: '울산', Valencia: '발렌시아', Valletta: '발레타',
   Valparaiso: '발파라이소', Vardo: '바르되', Venice: '베네치아', Veracruz: '베라크루스', Visby: '비스비',
   Willemstad: '빌렘스타트', Xiamen: '샤먼', Yeosu: '여수', Zakynthos: '자킨토스', Zanzibar: '잔지바르',
+  // The far-north, Australasian and northern-US growth (0217, owner row 186).
+  Mezen: '메젠', Pustozersk: '푸스토제르스크', Darwin: '다윈', Fremantle: '프리맨틀', Auckland: '오클랜드',
+  Wellington: '웰링턴', Portland: '포틀랜드', Astoria: '아스토리아',
 }

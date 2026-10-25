@@ -5375,6 +5375,14 @@
    "language": "SPANISH"
   },
   {
+   "port": "AST",
+   "language": "SPANISH"
+  },
+  {
+   "port": "AUK",
+   "language": "MALAY"
+  },
+  {
    "port": "AYU",
    "language": "THAI"
   },
@@ -5535,6 +5543,10 @@
    "language": "SPANISH"
   },
   {
+   "port": "DAR",
+   "language": "MALAY"
+  },
+  {
    "port": "DBR",
    "language": "ITALIAN"
   },
@@ -5565,6 +5577,10 @@
   {
    "port": "FNC",
    "language": "PORTUGUESE"
+  },
+  {
+   "port": "FRE",
+   "language": "MALAY"
   },
   {
    "port": "FUK",
@@ -5819,6 +5835,10 @@
    "language": "SPANISH"
   },
   {
+   "port": "MEZ",
+   "language": "SLAVIC"
+  },
+  {
    "port": "MID",
    "language": "DUTCH"
   },
@@ -5987,12 +6007,20 @@
    "language": "ENGLISH"
   },
   {
+   "port": "PTL",
+   "language": "ENGLISH"
+  },
+  {
    "port": "PTT",
    "language": "THAI"
   },
   {
    "port": "PUL",
    "language": "INDIC"
+  },
+  {
+   "port": "PUS",
+   "language": "SLAVIC"
   },
   {
    "port": "QUA",
@@ -6253,6 +6281,10 @@
   {
    "port": "WIL",
    "language": "DUTCH"
+  },
+  {
+   "port": "WLG",
+   "language": "MALAY"
   },
   {
    "port": "XIA",

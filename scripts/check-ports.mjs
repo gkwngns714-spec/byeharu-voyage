@@ -81,6 +81,7 @@ const COUNTRY_BBOX = {
   NI: [-87.6858, 10.7135, -82.7257, 15.031],   // Nicaragua
   NL: [-68.4174, 12.022, 7.1985, 53.5581],     // Netherlands (incl. Caribbean)
   NO: [-9.1174, -54.4625, 33.6404, 80.7701],   // Norway (incl. Svalbard, Bouvet)
+  NZ: [166.4263, -47.2899, 178.5752, -34.3925], // New Zealand (main islands and Stewart Island)
   OM: [51.9786, 16.6424, 59.8446, 26.386],     // Oman
   PA: [-83.0532, 7.2057, -77.1633, 9.6293],    // Panama
   PE: [-81.3376, -18.3377, -68.6843, -0.0291], // Peru

@@ -81,9 +81,13 @@ test.describe('landfall, measured over the real world file', () => {
     // 224 → 238 harbours; ONE of the fourteen falls in drawn water and is moved onto the shore
     // (79 → 80 in water, 51 → 52 moved, widest move 8.58 nm); the islets stay 28. Re-measured by
     // this very test on the merged chain, not remembered.
-    expect(PORTS.length).toBe(238)
-    expect(inWater).toBe(80)
-    expect(moved).toBe(52)
+    // Moved deliberately 2026-10-25 with the far-north, Australasian and northern-US growth
+    // (migration 0217, owner row 186): 238 → 246 harbours; ONE of the eight (Fremantle, 0.43 nm)
+    // falls in drawn water and is moved onto the shore (80 → 81, 52 → 53, widest still 8.58 nm);
+    // the islets stay 28. Measured by this test on 2026-10-25, not remembered.
+    expect(PORTS.length).toBe(246)
+    expect(inWater).toBe(81)
+    expect(moved).toBe(53)
     expect(islets).toBe(28)
     // The cap sits in the gap the measurement found: every coarseness move is under it, every
     // island the file lacks is over it. If either side crosses the cap, the cap is wrong — or a
@@ -214,7 +218,13 @@ for (const viewport of [
       expect(wet, 'harbours drawn in water at the world view').toEqual([])
       // Row 94: at the world view EVERY harbour is on the sheet, so this was the whole table.
       // Moved deliberately 2026-09-14: 224 → 238 harbours (the Pacific Americas growth, 0090).
-      expect(world!.marks.length).toBe(238)
+      // Moved deliberately 2026-10-25: 238 → 246 harbours (the far-north, Australasian and
+      // northern-US growth, 0217, owner row 186) — counted by HARBOUR: the sheet repeats past ±180°
+      // (src/chart/ChartCanvas.tsx, THE COPIES), and Auckland and Wellington, the first harbours
+      // near the seam, are drawn in both copies at the world view (248 marks, measured by CI run
+      // 40195840956 in tests/map.marks.spec.ts). Every mark, copies included, is checked for land above.
+      expect(new Set(world!.marks.map((m) => m.code)).size).toBe(246)
+      expect(world!.marks.length).toBe(248)
     })
   })
 }

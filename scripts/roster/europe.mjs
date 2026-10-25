@@ -404,4 +404,12 @@ export default [
     historicalNames: ['Zante'],
     goods: ['dried-fruit', 'wine', 'olive-oil', 'salt'],
     notes: 'Venetian island whose currant vineyards supplied the English trade — “Zante currants” still carry its name.' },
+  // The far-north, Australasian and northern-US growth, 2026-10-25 (owner row 186; migration 0217). Fetch
+  // manifest only (no goods): wikidata.org was unreachable where this was written, so run fetch-coords.mjs.
+  { id: 'mezen', name: 'Mezen', localName: 'Мезень', wiki: 'Mezen', country: 'RU', sea: 'white-sea', region: 'scandinavia-arctic', tier: 3,
+    historicalNames: ['Okladnikova Sloboda', 'Mezen'],
+    notes: 'The Pomor town at the mouth of the Mezen, where the Arctic fur road from the Pechora and Siberia met the sea; its skippers sailed for walrus, seal and cod along the Murman coast and to Novaya Zemlya.' },
+  { id: 'pustozersk', name: 'Pustozersk', localName: 'Пустозерск', wiki: 'Pustozersk', country: 'RU', sea: 'barents-sea', region: 'scandinavia-arctic', tier: 3,
+    historicalNames: ['Pustozyorsk'],
+    notes: 'Founded 1499 on the Pechora delta, the Tsar’s outpost for the Samoyed fur tribute and the gyrfalcons sent to Moscow; the Pomors sailed to it along the Arctic shore.' },
 ];

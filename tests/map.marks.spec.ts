@@ -17,7 +17,7 @@ import { ready, reachable, zoomStepMs } from './appReady.fixture'
 // first run with tappable dots opened Sanlúcar for a tap on the word "Cadiz"). The countries: the body is every kept ring of the file, at every
 // zoom — there is no culling to prove absent, only the count of countries the body carries.
 //
-// Browser: at the world view 238 harbour marks (224 until 0090) are in the DOM (dots and full marks together), and
+// Browser: at the world view all 246 harbours (224 until 0090, 238 until 0217) are in the DOM — 248 marks, Auckland and Wellington drawn in both copies of the sheet at the seam — (dots and full marks together), and
 // zoomed in on a harbour that was a dot it wears its full mark; both glasses, both schemes; the
 // frame cost of a zoom step at the world view with every dot on the sheet, printed.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -108,9 +108,17 @@ async function marksOnSheet(page: Page) {
     const harbours = groups.filter((g) => g.getAttribute('data-port-kind') === 'HARBOUR')
     return {
       harbours: harbours.length,
+      codes: harbours.map((g) => g.getAttribute('data-port-code') ?? ''),
       dots: harbours.filter((g) => g.getAttribute('data-port-mark') === 'dot').length,
       full: harbours.filter((g) => g.getAttribute('data-port-mark') === 'full').length,
-      firstDot: harbours.find((g) => g.getAttribute('data-port-mark') === 'dot')?.getAttribute('data-port-code') ?? null,
+      // The zoom probe's subject: the first dot drawn ONCE. A harbour at the seam (Auckland, Wellington
+      // since 0217) is drawn in both copies of the sheet, each copy translated by 360°, while its
+      // data-port-x is the copy-local anchor — aiming the pointer there lands a world away from the mark
+      // (CI run 40196400409: the probe picked AUK's west copy and zoomed into empty sea). A harbour drawn
+      // once sits where its anchor says, so the probe satisfies its own precondition (NO_SPAGHETTI §4).
+      firstDot: harbours.find((g) => g.getAttribute('data-port-mark') === 'dot'
+        && harbours.filter((h) => h.getAttribute('data-port-code') === g.getAttribute('data-port-code')).length === 1)
+        ?.getAttribute('data-port-code') ?? null,
       names: document.querySelectorAll('[data-testid="map-labels"] text').length,
       coastBytes: document.querySelector('[data-testid="map-coastline"]')?.getAttribute('d')?.length ?? 0,
     }
@@ -123,10 +131,10 @@ for (const scheme of ['dark', 'light'] as const) {
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
   ]) {
-    test.describe(`all 238 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
+    test.describe(`all 246 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
       test.use({ viewport, colorScheme: scheme })
 
-      test('238 marks at the world view, and a dot becomes its full marker on the way in', async ({
+      test('246 harbours (248 marks: two at the seam) at the world view, and a dot becomes its full marker on the way in', async ({
         page,
         request,
         baseURL,
@@ -163,9 +171,22 @@ for (const scheme of ['dark', 'light'] as const) {
         // exists to show. ./src/chart/PortsLayer.tsx renders every harbour as its dot past
         // `DOT_SPAN_DEG` — a lamp on the night side of the terminator, a dark point by day
         // (2026-10-14, src/chart/sun.ts); the ships, since that date, stay hulls at every span.
-        expect(world.harbours, 'every harbour is on the sheet at the world view').toBe(238)
+        // Moved deliberately 2026-10-25: 238 → 246 harbours (the far-north, Australasian and
+        // northern-US growth, 0217, owner row 186); every new one is small.
+        // AND THE CLAIM IS NOW COUNTED BY HARBOUR, NOT BY MARK (2026-10-25). Since 2026-10-14 the sheet
+        // repeats (src/chart/ChartCanvas.tsx, THE COPIES): the world view's box runs past ±180° and a
+        // harbour is drawn once in every copy whose window holds it. Until 0217 no harbour stood near
+        // enough to the seam for that to show; Auckland (174.76° E) and Wellington (174.78° E) do, and
+        // CI measured 248 marks for 246 harbours (run 40195840956, all four schemes and sizes). So:
+        // every harbour is on the sheet (246 distinct codes), the sheet draws 248 marks, and the two
+        // drawn twice are exactly the two at the seam — a third would be a duplicate, not a copy.
+        const distinct = new Set(world.codes)
+        const twice = [...distinct].filter((c) => world.codes.filter((x) => x === c).length > 1).sort()
+        expect(distinct.size, 'every harbour is on the sheet at the world view').toBe(246)
+        expect(world.harbours, 'one mark per harbour per copy of the sheet').toBe(248)
+        expect(twice, 'the harbours drawn in both copies are the two at the seam').toEqual(['AUK', 'WLG'])
         expect(world.full, 'past the dot rung a city is its dot and nothing else').toBe(0)
-        expect(world.dots).toBe(238)
+        expect(world.dots).toBe(248)
         // The whole body is drawn at the world view — the same path as at the opening frame.
         expect(world.coastBytes).toBe(opening.coastBytes)
         expect(world.coastBytes).toBeGreaterThan(70_000)

@@ -148,7 +148,7 @@ import { applyChain, MIGRATIONS_DIR } from './db/apply-chain.mjs'
 
 // The migration this run writes. 0046 was the first; an applied one is history, so this moves and
 // the emitted SQL supersedes what the previous number seeded.
-const MIGRATION = '20260818000091_the_water_reaches_the_new_harbours.sql'
+const MIGRATION = '20260818000217_the_far_north_australasia_and_new_england_have_harbours.sql'
 const SHORT = MIGRATION.slice(10, 14)
 const OUT = path.join(MIGRATIONS_DIR, MIGRATION)
 const BITS = 2
@@ -158,6 +158,19 @@ const BITS = 2
 // 0079 is that later migration: 0076 already made the columns NOT NULL and already re-cut the
 // mover, so this run carries the raster, the membership patch and the distances, and nothing else.
 const INTRODUCES_THE_ROADSTEAD = false
+
+// THE SECOND SWITCH: `ADDS_PLACES_ONLY` (0217, 2026-10-25). A growth that only ADDS harbours, on water
+// that did not move, needs only their rows: the new places' roadsteads and their distances to and
+// from every place. Re-measuring every pair, as 0091 did, would re-price the whole live world for
+// nothing the growth asked: measured on 2026-10-25 against the applied table, today's pathfinder
+// (src/lib/sea, smoothed since 0091) moves the existing pairs by a mean of -2.53 nm (98 % of pairs
+// under 0.5 %, Coquimbo -> Makassar 9,167 -> 8,651 nm). Those are a movement change for their own
+// slice, not a side effect of eight new towns. So with this switch on, the generator emits the
+// places-only file below — the SAME roadsteads and distances this run computed, through the same
+// one pathfinder, for the new places only — and REFUSES when anything else moved (the raster, the
+// membership patch, an existing roadstead), because then the whole table must be re-measured.
+// Off, it emits the whole-table supersede exactly as before.
+const ADDS_PLACES_ONLY = true
 
 // ── 1. The navigable grid ──────────────────────────────────────────────────────────────────────
 // buildSeaGrid() is the WHOLE rule now — land, channels and the ice at both poles. Nothing is
@@ -806,6 +819,201 @@ for (const h of healed) {
 }
 const b64Row = (bytes) => Buffer.from(bytes).toString('base64')
 const nfmt = (x) => Math.round(x).toLocaleString('en')
+
+// ── ADDS_PLACES_ONLY: the new places' rows, and their keys in every existing row ────────────────
+if (ADDS_PLACES_ONLY) {
+  if (waterMoved || seaPatch.size > 0 || moved.length > 0) {
+    throw new Error(
+      `ADDS_PLACES_ONLY: the water moved (raster changed: ${waterMoved}, membership patch rows: ${seaPatch.size}, ` +
+        `existing roadsteads moved: ${moved.length}) — the whole table must be re-measured; set ADDS_PLACES_ONLY = false`,
+    )
+  }
+  if (newPlaces.length === 0) throw new Error('ADDS_PLACES_ONLY: no place is new to sea_reaches — nothing to add')
+  const newCodes = new Set(newPlaces.map((p) => p.code))
+  const oldPorts = ports.filter((p) => !newCodes.has(p.code))
+  for (const a of newPlaces) {
+    for (const b of ports) {
+      if (b.code === a.code) continue
+      const ab = reaches.get(a.code).get(b.code)
+      const ba = reaches.get(b.code).get(a.code)
+      if (!Number.isFinite(ab) || !Number.isFinite(ba)) throw new Error(`${a.code}<->${b.code}: no sailed distance`)
+      if (Number(ab.toFixed(1)) !== Number(ba.toFixed(1))) throw new Error(`${a.code}<->${b.code}: ${ab} one way, ${ba} the other`)
+    }
+  }
+  // THE LEGS A MERCHANT CAN FIND (0203: "a migration that founds merchants on new courses adds them here").
+  // public.npc_known_legs offers a merchant only legs some loop has held or public.npc_courses remembers, so a
+  // harbour with no course is a harbour no house will ever plan. Each new harbour gets a course to and from
+  // its NEAREST_LEGS nearest existing harbours BY SEA — roadstead to roadstead, the path this run's one
+  // pathfinder sails (findPath, the client's own), at pathJson's four decimals. No house is founded on them;
+  // they are on offer, and the planner (0120/0197/0203) decides whether a loop through them pays.
+  const NEAREST_LEGS = 3
+  const oldHarbours = oldPorts.filter((p) => p.kind === 'HARBOUR')
+  const legs = []
+  for (const a of newPlaces.filter((p) => p.kind === 'HARBOUR')) {
+    const near = [...oldHarbours].sort((x, y) => reaches.get(a.code).get(x.code) - reaches.get(a.code).get(y.code) || x.code.localeCompare(y.code))
+      .slice(0, NEAREST_LEGS)
+    for (const b of near) {
+      for (const [f, t] of [[a, b], [b, a]]) {
+        const path = findPath(nav, roads.get(f.code), roads.get(t.code))
+        if (!path || path.path.length < 2) throw new Error(`${f.code}->${t.code}: the pathfinder found no course`)
+        legs.push({ from: f.code, to: t.code, course: pathJson(path.path), nm: reaches.get(f.code).get(t.code) })
+      }
+    }
+  }
+  const P = []
+  const out = (s = '') => P.push(s)
+  const list = newPlaces.map((p) => p.code).join(' ')
+  out(`-- ═══════════════════════════════════════════════════════════════════════════════════════════════`)
+  out(`-- ${SHORT} (sea) — THE WATER REACHES THE NEW HARBOURS: ${newPlaces.length} roadstead(s) and their sailed distances`)
+  out(`-- ═══════════════════════════════════════════════════════════════════════════════════════════════`)
+  out(`-- GENERATED by scripts/build-sea-migration.mjs with ADDS_PLACES_ONLY (see that switch's note) against the`)
+  out(`-- applied chain plus the growth above. Do not hand-edit: edit the data or the generator and run it again.`)
+  out(`--   * the raster is byte-identical to public.sea_raster (${nfmt(newWater)} water cells): NOT rewritten;`)
+  out(`--   * 0 existing roadsteads move; voyage.channels, voyage.channel_foot and voyage.water_roadstead are`)
+  out(`--     untouched (0091's bodies stand);`)
+  out(`--   * ${newPlaces.length} new row(s) in public.sea_reaches (${list}), each reaching all ${ports.length - 1} other places;`)
+  out(`--   * every one of the ${oldPorts.length} existing rows gains the ${newPlaces.length} new key(s) and keeps every key it had, to the`)
+  out(`--     tenth of a mile (asserted against its pre-image below).`)
+  for (const p of newPlaces) {
+    const rd = roads.get(p.code)
+    out(`--     ${p.code} ${p.name}: roadstead (${rd.lat.toFixed(3)}, ${rd.lon.toFixed(3)}), ${rd.nm.toFixed(2)} nm off the quay${rd.channel ? ` on ${rd.channel}` : ''}`)
+  }
+  out(`--   * ${legs.length} merchant course(s) in public.npc_courses: each new harbour to and from its ${NEAREST_LEGS} nearest`)
+  out(`--     existing harbours by sea, the pathfinder's own course, so public.npc_known_legs can offer them.`)
+  out(`-- ═══════════════════════════════════════════════════════════════════════════════════════════════`)
+  out(`create temporary table reaches_before_${SHORT} on commit drop as`)
+  out(`  select code, snap_nm, roadstead_lat, roadstead_lon, reaches from public.sea_reaches;`)
+  out()
+  out(`insert into public.sea_reaches (port_id, code, snap_nm, roadstead_lat, roadstead_lon, reaches)`)
+  out(`select p.id, v.code, v.snap_nm::numeric, v.rlat::numeric, v.rlon::numeric, v.reaches::jsonb`)
+  out(`  from (values`)
+  out(newPlaces.map((p) => {
+    const obj = {}
+    for (const [c, nm] of [...reaches.get(p.code).entries()].sort()) if (c !== p.code) obj[c] = Number(nm.toFixed(1))
+    const r = roads.get(p.code)
+    return `    (${q(p.code)}, ${snapNm.get(p.code).toFixed(2)}, ${r.lat.toFixed(3)}, ${r.lon.toFixed(3)}, ${j(obj)})`
+  }).join(',\n'))
+  out(`  ) as v(code, snap_nm, rlat, rlon, reaches)`)
+  out(`  join public.ports p on p.code = v.code;`)
+  out()
+  out(`update public.sea_reaches sr`)
+  out(`   set reaches = sr.reaches || v.added::jsonb`)
+  out(`  from (values`)
+  out(oldPorts.map((p) => {
+    const obj = {}
+    for (const n of newPlaces) obj[n.code] = Number(reaches.get(p.code).get(n.code).toFixed(1))
+    return `    (${q(p.code)}, ${j(obj)})`
+  }).join(',\n'))
+  out(`  ) as v(code, added)`)
+  out(` where sr.code = v.code;`)
+  out()
+  out(`-- The measure is the save door's (0203): voyage.segments_from_course over the course itself.`)
+  out(`insert into public.npc_courses (from_port, to_port, course, nm)`)
+  out(`select a.id, b.id, v.course::jsonb,`)
+  out(`       (select sum((x->>'nm')::numeric) from jsonb_array_elements(voyage.segments_from_course(v.course::jsonb)) x)`)
+  out(`  from (values`)
+  out(legs.map((l) => `    (${q(l.from)}, ${q(l.to)}, ${j(l.course)})`).join(',\n'))
+  out(`  ) as v(from_code, to_code, course)`)
+  out(`  join public.ports a on a.code = v.from_code`)
+  out(`  join public.ports b on b.code = v.to_code`)
+  out(`on conflict (from_port, to_port) do nothing;`)
+  out()
+  const newIn = newPlaces.map((p) => q(p.code)).join(', ')
+  out(`do $$`)
+  out(`declare`)
+  out(`  v_n int; v_bad int; v_ports int;`)
+  out(`begin`)
+  out(`  -- (a) every place has a row, and every row reaches every other place`)
+  out(`  select count(*) into v_ports from public.ports;`)
+  out(`  select count(*) into v_n from public.sea_reaches;`)
+  out(`  if v_n <> v_ports or v_ports <> ${ports.length} then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % reach row(s) for % place(s), ${ports.length} expected', v_n, v_ports;`)
+  out(`  end if;`)
+  out(`  select count(*) into v_bad from public.sea_reaches sr`)
+  out(`   where (select count(*) from jsonb_object_keys(sr.reaches)) <> v_ports - 1;`)
+  out(`  if v_bad <> 0 then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % row(s) do not reach every other place', v_bad;`)
+  out(`  end if;`)
+  out(`  -- (b) the existing rows kept everything they had, to the tenth: roadstead, snap and every old key`)
+  out(`  select count(*) into v_n from reaches_before_${SHORT};`)
+  out(`  if v_n <> ${oldPorts.length} then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % rows before, ${oldPorts.length} expected — the pre-image is not this file''s', v_n;`)
+  out(`  end if;`)
+  out(`  select count(*) into v_bad from reaches_before_${SHORT} b join public.sea_reaches sr on sr.code = b.code`)
+  out(`   where (sr.snap_nm, sr.roadstead_lat, sr.roadstead_lon) is distinct from (b.snap_nm, b.roadstead_lat, b.roadstead_lon)`)
+  out(`      or (sr.reaches - array[${newIn}]::text[]) is distinct from b.reaches`)
+  out(`      or (select count(*) from jsonb_object_keys(sr.reaches) k where k in (${newIn})) <> ${newPlaces.length};`)
+  out(`  if v_bad <> 0 then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % existing row(s) changed beyond gaining the new places', v_bad;`)
+  out(`  end if;`)
+  out(`  -- (c) the new roadsteads are what the ONE SQL rule answers, snap_nm long, on sailable water`)
+  out(`  select count(*) into v_bad from public.sea_reaches sr join public.ports p on p.id = sr.port_id`)
+  out(`   cross join lateral voyage.water_roadstead(p.lat, p.lon) w`)
+  out(`   where sr.code in (${newIn})`)
+  out(`     and (w.lat is distinct from sr.roadstead_lat or w.lon is distinct from sr.roadstead_lon`)
+  out(`          or abs(w.nm - sr.snap_nm) > 0.01`)
+  out(`          or abs(voyage.gc_distance_nm(p.lat::float8, p.lon::float8, sr.roadstead_lat::float8, sr.roadstead_lon::float8) - sr.snap_nm) > 0.01);`)
+  out(`  if v_bad <> 0 then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % new roadstead(s) are not what voyage.water_roadstead answers', v_bad;`)
+  out(`  end if;`)
+  out(`  -- (d) symmetric, and never under the great circle between the two roadsteads`)
+  out(`  select count(*) into v_bad from public.sea_reaches a join public.sea_reaches b on b.code <> a.code`)
+  out(`   where a.code in (${newIn})`)
+  out(`     and ((a.reaches->>b.code) is null or (b.reaches->>a.code) is null`)
+  out(`          or (a.reaches->>b.code)::numeric <> (b.reaches->>a.code)::numeric`)
+  out(`          or (a.reaches->>b.code)::numeric < voyage.gc_distance_nm(a.roadstead_lat::float8, a.roadstead_lon::float8, b.roadstead_lat::float8, b.roadstead_lon::float8) - 0.1);`)
+  out(`  if v_bad <> 0 then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % pair(s) with a new place are missing, one-way or under the great circle', v_bad;`)
+  out(`  end if;`)
+  out(`  -- (e) POSITIVE CONTROL: the check (b) bites — bend one old key and it is seen, exactly once`)
+  out(`  update public.sea_reaches set reaches = jsonb_set(reaches, array[${q(oldPorts[1].code)}], '1'::jsonb) where code = ${q(oldPorts[0].code)};`)
+  out(`  select count(*) into v_bad from reaches_before_${SHORT} b join public.sea_reaches sr on sr.code = b.code`)
+  out(`   where (sr.reaches - array[${newIn}]::text[]) is distinct from b.reaches;`)
+  out(`  if v_bad <> 1 then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: a bent distance was found % time(s), expected exactly 1 — check (b) cannot bite', v_bad;`)
+  out(`  end if;`)
+  out(`  update public.sea_reaches sr set reaches = b.reaches || (sr.reaches - (select array_agg(k) from jsonb_object_keys(b.reaches) k))`)
+  out(`    from reaches_before_${SHORT} b where sr.code = b.code and sr.code = ${q(oldPorts[0].code)};`)
+  out(`  select count(*) into v_bad from reaches_before_${SHORT} b join public.sea_reaches sr on sr.code = b.code`)
+  out(`   where (sr.reaches - array[${newIn}]::text[]) is distinct from b.reaches;`)
+  out(`  if v_bad <> 0 then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: the bent control was not restored (% row(s))', v_bad;`)
+  out(`  end if;`)
+  out(`  -- (f) the merchant courses: every one held, starting and ending at the two roadsteads, never under the great`)
+  out(`  --     circle and never 10 % over the sea table (a pulled string may cut a corner the table's flood keeps —`)
+  out(`  --     measured: Mezen -> Arkhangelsk 173.4 nm against the table's 187.4; 0203 records the two measures`)
+  out(`  --     differing), and refused by nothing the land guard knows`)
+  out(`  select count(*) into v_n from public.npc_courses c join public.ports a on a.id = c.from_port join public.ports b on b.id = c.to_port`)
+  out(`   where a.code in (${newIn}) or b.code in (${newIn});`)
+  out(`  if v_n <> ${legs.length} then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % merchant course(s) touch a new harbour, ${legs.length} were emitted', v_n;`)
+  out(`  end if;`)
+  out(`  select count(*) into v_bad from public.npc_courses c`)
+  out(`    join public.ports a on a.id = c.from_port join public.ports b on b.id = c.to_port`)
+  out(`    join public.sea_reaches ra on ra.port_id = a.id join public.sea_reaches rb on rb.port_id = b.id`)
+  out(`   where (a.code in (${newIn}) or b.code in (${newIn}))`)
+  out(`     and ((c.course->0->>0)::numeric <> ra.roadstead_lat or (c.course->0->>1)::numeric <> ra.roadstead_lon`)
+  out(`          or (c.course->-1->>0)::numeric <> rb.roadstead_lat or (c.course->-1->>1)::numeric <> rb.roadstead_lon`)
+  out(`          or c.nm < voyage.gc_distance_nm(ra.roadstead_lat::float8, ra.roadstead_lon::float8, rb.roadstead_lat::float8, rb.roadstead_lon::float8) - 0.1`)
+  out(`          or c.nm > 1.10 * (ra.reaches->>b.code)::numeric`)
+  out(`          or voyage.path_refusal(c.course, ra.roadstead_lat, ra.roadstead_lon, rb.roadstead_lat, rb.roadstead_lon,`)
+  out(`                                 public.wc_num('course_join_nm'), 25, 25) is not null);`)
+  out(`  if v_bad <> 0 then`)
+  out(`    raise exception '${SHORT} self-assert FAIL: % merchant course(s) do not run roadstead to roadstead, fall under the great circle or 10 per cent over the sea table, or cross land', v_bad;`)
+  out(`  end if;`)
+  out(`  raise notice '${SHORT} (sea) self-assert ok: THE WATER REACHES THE NEW HARBOURS — % places, each reaching every other; ${newPlaces.length} new roadstead(s) (${list}) equal voyage.water_roadstead, symmetric and never under the great circle; the ${oldPorts.length} existing rows kept every roadstead and every distance (a bent one IS seen, then restored); the raster is not rewritten; ${legs.length} merchant courses (each new harbour to and from its ${NEAREST_LEGS} nearest by sea) run roadstead to roadstead, never under the great circle nor 10 per cent over the sea table, and cross no land.', v_ports;`)
+  out(`end $$;`)
+  out()
+  const sqlOnly = P.join('\n')
+  if (sqlOnly.includes('\r')) throw new Error('CR found in generated SQL — refuse to emit')
+  if (existsSync(OUT)) {
+    throw new Error(`${OUT} already exists — refusing to rewrite a migration in the chain (README §1)`)
+  }
+  writeFileSync(OUT, sqlOnly, 'utf8')
+  console.log(`\nwrote ${OUT} — ${(sqlOnly.length / 1024).toFixed(0)} KiB (ADDS_PLACES_ONLY: ${list})`)
+  await db.close()
+  process.exit(0)
+}
 
 w(`-- ═══════════════════════════════════════════════════════════════════════════════════════════════`)
 w(`-- ${SHORT} — THE WATER REACHES THE NEW HARBOURS`)

@@ -132,4 +132,7 @@ export const KO_GOODS: Readonly<Record<string, string>> = {
   'alerce-timber': '알레르세 목재', 'araucaria-nuts': '아라우카리아 열매', 'andacollo-gold': '안다코요 금',
   mules: '노새', 'huon-pine': '휴온 소나무', 'sperm-oil': '향유고래 기름', 'wattle-bark': '아카시아 껍질',
   'kangaroo-skins': '캥거루 가죽',
+  jarrah: '자라 목재', 'kauri-timber': '카우리 돛대재', 'kauri-gum': '카우리 수지', harakeke: '뉴질랜드 아마',
+  pounamu: '포우나무 비취', kumara: '쿠마라 고구마', 'mast-pine': '돛대 소나무', 'beaver-pelts': '비버 모피',
+  'douglas-fir': '미송', dentalium: '뿔조개 껍데기',
 }

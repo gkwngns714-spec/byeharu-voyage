@@ -62,7 +62,7 @@
 
 import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { deriveWorld, q, REPO_ROOT } from './lib/world-derive.mjs'
+import { deriveWorld, goodsAtPriceLevel, q, REPO_ROOT } from './lib/world-derive.mjs'
 
 const MIG = join(REPO_ROOT, 'supabase', 'migrations')
 
@@ -151,13 +151,19 @@ base.spec = (await db.query(`
 base.seas = (await db.query(`select code, name from public.seas order by code`)).rows
 base.regions = (await db.query(`select code, name from public.regions order by code`)).rows
 base.nations = (await db.query(`select code, name from public.nations order by code`)).rows
+// 0208: the price level the database applies to every good's data base value (absent before 0208: 1).
+base.priceLevel = Number((await db.query(
+  `select coalesce((select (value #>> '{}')::float8 from public.world_config where key = 'goods_price_level'), 1) as k`,
+)).rows[0].k)
 base.knobs = Object.fromEntries((await db.query(
   `select key, value::text as v from public.world_config where key like 'affinity_%' order by key`,
 )).rows.map((r) => [r.key, r.v]))
 await db.close()
 
 // ── the desired world ─────────────────────────────────────────────────────────────────────────
-const want = deriveWorld()
+const derived = deriveWorld()
+// The goods as the database holds them: the data's figures × the price level (0208, one helper).
+const want = { ...derived, goods: goodsAtPriceLevel(derived.goods, base.priceLevel) }
 
 // ── refusals ──────────────────────────────────────────────────────────────────────────────────
 const wantPortByCode = new Map(want.ports.map((p) => [p.code, p]))
@@ -417,6 +423,14 @@ w(`-- ── 6. THE MARKET FOLLOWS THE WORLD: port_goods re-derived for every (h
 --     changed): affinity/stock_target/production_rate re-derived, stock := the new target — a
 --     retuned geometry with a stale stock displacement would price as a random shortage
 --   * an EXISTING pair whose affinity is unchanged: NOT TOUCHED (stock/drift belong to the game)
+--
+-- THREE SHORT STATEMENTS, NOT ONE UPSERT (2026-10-25, 0217). The single INSERT … ON CONFLICT this
+-- generator used to emit priced every pair of the world — world.demand_for() and three depth calls
+-- on all ~139,000 rows, only for the conflict to throw ~132,000 of them away — and measured 72.6 s on
+-- native PostgreSQL 16 as one statement; 0215's push lost its connection on a statement of that
+-- length. Now the affinity is derived once into a temp table (the arithmetic is unchanged), and the
+-- insert and the update each price only the rows they write.
+create temporary table derived_${shortNo} on commit drop as
 with knob as (
   select public.wc_num('affinity_producer') as producer,
          public.wc_num('affinity_home')     as home,
@@ -438,34 +452,40 @@ nearest as (
     join public.port_specialties ps on ps.port_id = d.src_id
    group by d.port_id, ps.good_id
 )
-insert into public.port_goods (port_id, good_id, affinity, stock, stock_target, production_rate${hasDemand ? ', demand' : ''})
-select p.id,
-       g.id,
-       aff.affinity,
-       ${depthTarget('p.size_tier', 'aff.affinity')},
-       ${depthTarget('p.size_tier', 'aff.affinity')},
-       ${depthProduction('p.size_tier', 'aff.affinity')}${hasDemand ? `,
-       -- 0066: a NEW pair learns what its city wants through the one derivation; an existing pair
-       -- keeps its demand (the region and the category did not move, so neither did it)
-       world.demand_for(p.id, g.id)` : ''}
+select p.id as port_id, g.id as good_id, p.size_tier,
+       world.affinity_at(
+         exists (select 1 from public.port_specialties s
+                  where s.port_id = p.id and s.good_id = g.id),
+         n.nm, k.producer, k.home, k.span, k.reach_nm, k.curve) as affinity
   from public.ports p
   cross join public.goods g
   cross join knob k
   left join nearest n on n.port_id = p.id and n.good_id = g.id
-  cross join lateral (
-    select world.affinity_at(
-             exists (select 1 from public.port_specialties s
-                      where s.port_id = p.id and s.good_id = g.id),
-             n.nm, k.producer, k.home, k.span, k.reach_nm, k.curve) as affinity
-  ) aff
- where p.kind = 'HARBOUR'
-on conflict (port_id, good_id) do update
-   set affinity        = excluded.affinity,
-       stock_target    = excluded.stock_target,
-       production_rate = excluded.production_rate,
-       stock           = excluded.stock,
+ where p.kind = 'HARBOUR';
+
+-- the MISSING pairs: inserted at their target stock${hasDemand ? `, each asking world.demand_for() for its city's
+-- appetite (0066); an existing pair keeps its demand (the region and the category did not move)` : ''}
+insert into public.port_goods (port_id, good_id, affinity, stock, stock_target, production_rate${hasDemand ? ', demand' : ''})
+select d.port_id,
+       d.good_id,
+       d.affinity,
+       ${depthTarget('d.size_tier', 'd.affinity')},
+       ${depthTarget('d.size_tier', 'd.affinity')},
+       ${depthProduction('d.size_tier', 'd.affinity')}${hasDemand ? `,
+       world.demand_for(d.port_id, d.good_id)` : ''}
+  from derived_${shortNo} d
+ where not exists (select 1 from public.port_goods pg where pg.port_id = d.port_id and pg.good_id = d.good_id);
+
+-- the EXISTING pairs whose affinity moved: re-derived, stock := the new target
+update public.port_goods pg
+   set affinity        = d.affinity,
+       stock_target    = ${depthTarget('d.size_tier', 'd.affinity')},
+       production_rate = ${depthProduction('d.size_tier', 'd.affinity')},
+       stock           = ${depthTarget('d.size_tier', 'd.affinity')},
        updated_at      = now()
- where port_goods.affinity is distinct from excluded.affinity;
+  from derived_${shortNo} d
+ where pg.port_id = d.port_id and pg.good_id = d.good_id
+   and pg.affinity is distinct from d.affinity;
 `)
 
 // 7. the derived rows that follow a harbour
