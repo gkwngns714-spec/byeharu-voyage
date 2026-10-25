@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Note, type TradePick, type TrayMode } from '../components/ui'
 import { fleetCargoByCode, fleetPortCode } from '../domain/fleet'
 import type { FleetView, MarketGood, SnapshotPort } from '../lib/rpc'
-import { usePortHistory } from './usePortHistory'
+import { usePriceSeries } from './usePriceSeries'
 import { useRequests } from './useRequests'
 import { useWorld } from './worldStore'
 import { PriceTray } from './PriceTray'
@@ -57,7 +57,7 @@ export function PortPrices({
   const portByCode = useWorld((s) => s.portByCode)
   const reaches = useWorld((s) => s.reaches)
   const [pick, setPick] = useState<TradePick | null>(null)
-  const trend = usePortHistory(port.id, pick?.good.code ?? null)
+  const trend = usePriceSeries(port.id, pick?.good.good_id ?? null)
 
   // Where she lies (or is bound), and the sailed distance from there to this quay — a figure,
   // never a passage ordered here.

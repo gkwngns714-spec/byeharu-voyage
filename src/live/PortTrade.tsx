@@ -11,7 +11,7 @@ import { useTradeFace } from './tradeFace'
 import { useStepOrder } from './useStepOrder'
 import { fleetCargoByCode } from '../domain/fleet'
 import { useManifestPreview } from './useManifestPreview'
-import { usePortHistory } from './usePortHistory'
+import { usePriceSeries } from './usePriceSeries'
 import { useRequests } from './useRequests'
 import { useWorld } from './worldStore'
 import { useTrade } from './useTrade'
@@ -70,7 +70,7 @@ import { useT } from '../lib/i18n'
 // ── WHAT IS DRAWN HERE IS NOT THIS SCREEN'S ───────────────────────────────────────────────────
 // The ledger is `QuayLedger`, shared with the read-only face; the row and the trays are the design
 // system's; the act — the grammar, the door, the ceiling, the dry run, the server's refusal — is
-// `useTrade`'s; the trend is `usePortHistory`'s; the basket's faces are `ManifestPanel`'s. What
+// `useTrade`'s; the trend is `usePriceSeries`'s; the basket's faces are `ManifestPanel`'s. What
 // this file owns is the text FILTER, the pick, the quantity, the supplies row, and the slot.
 //
 // ── WHAT IT DOES NOT OWN ───────────────────────────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export function PortTrade({
   const wide = useWide()
 
   const pick = slot.kind === 'pick' ? slot.pick : null
-  const history = usePortHistory(port.id, pick?.good.code ?? null)
+  const history = usePriceSeries(port.id, pick?.good.good_id ?? null)
   // A unit's bulk is a catalogue fact; the market row does not carry it, the snapshot does.
   const goodByCode = useWorld((s) => s.goodByCode)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])

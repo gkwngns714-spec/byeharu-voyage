@@ -14,13 +14,14 @@ import { PRICE_CHART_H, PRICE_CHART_W, priceChartModel } from '../src/components
 import { MINUS } from '../src/lib/format'
 import type { PricePoint } from '../src/lib/rpc'
 
-/** `n` served points, one per slot, the newest `slotSeconds` before `nowMs`. */
-function series(mids: number[], slotSeconds: number, nowMs: number): PricePoint[] {
-  const n = mids.length
-  return mids.map((mid, i) => ({
-    slot: 1000 + i,
+/** `n` served points, one per step, the newest `slotSeconds` before `nowMs`. Both sides carry the same
+ *  figure here, so every expectation below reads one price: the two-sided cases are their own tests. */
+function series(values: number[], slotSeconds: number, nowMs: number): PricePoint[] {
+  const n = values.length
+  return values.map((v, i) => ({
     at: new Date(nowMs - (n - i) * slotSeconds * 1000).toISOString(),
-    mid,
+    ask: v,
+    bid: v,
   }))
 }
 
@@ -62,8 +63,8 @@ test('the x axis is hours before now, derived from the served cadence and count 
 test('a record older than its cadence × count reads at its true age, so a gap is a gap', () => {
   // Two points, one 6 h ago and one 10 min ago: the span is 6 h, not 20 min.
   const pts: PricePoint[] = [
-    { slot: 1, at: new Date(NOW - 6 * 3_600_000).toISOString(), mid: 100 },
-    { slot: 37, at: new Date(NOW - 600_000).toISOString(), mid: 120 },
+    { at: new Date(NOW - 6 * 3_600_000).toISOString(), ask: 100, bid: 100 },
+    { at: new Date(NOW - 600_000).toISOString(), ask: 120, bid: 120 },
   ]
   const m = priceChartModel(pts, 600, NOW)!
   expect(m.spanHours).toBeCloseTo(6, 6)
@@ -74,11 +75,11 @@ test('a record older than its cadence × count reads at its true age, so a gap i
 test('the marks sit on the lowest, highest and latest served points, and ties go to the latest', () => {
   const m = priceChartModel(series([100, 90, 130, 90, 130, 110], 600, NOW), 600, NOW)!
   expect(m.low.index).toBe(3)
-  expect(m.low.mid).toBe(90)
+  expect(m.low.value).toBe(90)
   expect(m.high.index).toBe(4)
-  expect(m.high.mid).toBe(130)
+  expect(m.high.value).toBe(130)
   expect(m.now.index).toBe(5)
-  expect(m.now.mid).toBe(110)
+  expect(m.now.value).toBe(110)
   expect(m.points).toHaveLength(6)
   // The line visits every point in order; the area closes down to the floor.
   expect(m.line.split(' L')).toHaveLength(6)
@@ -90,7 +91,7 @@ test('nothing is drawn below two points, without a cadence, or with a point that
   expect(priceChartModel(series([100], 600, NOW), 600, NOW)).toBeNull()
   expect(priceChartModel([], 600, NOW)).toBeNull()
   expect(priceChartModel(series([100, 110], 600, NOW), 0, NOW)).toBeNull()
-  expect(priceChartModel([{ slot: 1, at: 'not a time', mid: 100 }, { slot: 2, at: new Date(NOW).toISOString(), mid: 110 }], 600, NOW)).toBeNull()
+  expect(priceChartModel([{ at: 'not a time', ask: 100, bid: 100 }, { at: new Date(NOW).toISOString(), ask: 110, bid: 110 }], 600, NOW)).toBeNull()
   // A flat record is drawn through the middle with ONE label — "it did not move" is an answer.
   const flat = priceChartModel(series([100, 100, 100], 600, NOW), 600, NOW)!
   expect(flat.yTicks.map((t) => t.label)).toEqual(['100'])
@@ -172,8 +173,8 @@ test('a window draws that stretch and no other: the axis spans it, x is not clam
   expect(m.points[0].x).toBeLessThan(m.plot.x)
   expect(m.points[47].x).toBeCloseTo(m.plot.x + m.plot.w - m.plot.w / 12, 3)
   // the marks are the window's own: the record's 1000 is not this chart's high
-  expect(m.low.mid).toBe(100)
-  expect(m.high.mid).toBe(111)
+  expect(m.low.value).toBe(100)
+  expect(m.high.value).toBe(111)
 })
 
 test('a window with the estimate in it labels `now` where it falls, not at the right edge', () => {
@@ -222,4 +223,68 @@ test('the keyboard walks a quarter of a window, and the left arrow goes into the
   expect(panByKey(0.5 * H, true, limits)).toBe(1 * H)
   expect(panByKey(1 * H, false, limits)).toBe(0.5 * H)
   expect(panByKey(0, false, limits)).toBe(0)
+})
+
+// ── 0225: BOTH SIDES (owner row 189), and a record that reaches back days and years (owner row 205) ──
+// A served point carries the city's ask (null where it does not sell the good) and its bid. The chart
+// draws both; the PRIMARY line — the ask where there is one, else the bid — carries the ground and the
+// marks. The folded tiers' low…high is a band under each line and inside the y scale.
+
+test('a city that only buys the good is read on its bid: no ask line, the marks on the bid, the scale its own', () => {
+  const n = 6
+  const pts: PricePoint[] = [100, 90, 130, 90, 130, 110].map((bid, i) => ({
+    at: new Date(NOW - (n - i) * 900_000).toISOString(),
+    ask: null,
+    bid,
+  }))
+  const m = priceChartModel(pts, 900, NOW)!
+  expect(m.primary).toBe('bid')
+  expect(m.sides.ask).toBe('')
+  expect(m.sides.bid).not.toBe('')
+  expect(m.line).toBe(m.sides.bid)
+  expect(m.low.value).toBe(90)
+  expect(m.high.value).toBe(130)
+  expect(m.now.value).toBe(110)
+  expect(m.yTicks.map((t) => t.label)).toEqual(['90', '110', '130'])
+  expect(m.bands).toEqual({ ask: '', bid: '' })
+})
+
+test('a city that sells the good is read on its ask, and the bid is drawn under it in the same scale', () => {
+  const n = 4
+  const pts: PricePoint[] = [100, 110, 120, 130].map((ask, i) => ({
+    at: new Date(NOW - (n - i) * 900_000).toISOString(),
+    ask,
+    bid: ask * 0.8,
+  }))
+  const m = priceChartModel(pts, 900, NOW)!
+  expect(m.primary).toBe('ask')
+  expect(m.line).toBe(m.sides.ask)
+  expect(m.sides.bid).not.toBe('')
+  expect(m.sides.bid).not.toBe(m.sides.ask)
+  expect(m.low.value).toBe(100)
+  expect(m.high.value).toBe(130)
+  // the scale takes the bid in: its lowest point (80) is the floor
+  expect(m.yTicks.map((t) => t.label)).toEqual(['80', '105', '130'])
+})
+
+test('a folded tier draws each side\'s low…high as a band, inside the scale; a long record is labelled in days and years', () => {
+  const days = 30
+  const pts: PricePoint[] = Array.from({ length: days }, (_, i) => ({
+    at: new Date(NOW - (days - i) * 86_400_000).toISOString(),
+    ask: 100,
+    ask_lo: 95,
+    ask_hi: 108,
+    bid: 80,
+    bid_lo: 76,
+    bid_hi: 84,
+  }))
+  const m = priceChartModel(pts, 86_400, NOW)!
+  expect(m.bands.ask.endsWith('Z')).toBe(true)
+  expect(m.bands.bid.endsWith('Z')).toBe(true)
+  expect(m.yTicks.map((t) => t.label)).toEqual(['76', '92', '108'])
+  expect(m.spanHours).toBeCloseTo(30 * 24, 6)
+  expect(m.xTicks.map((t) => t.label)).toEqual([`${MINUS}30d`, `${MINUS}15d`, 'now'])
+  const years = 3 * 365
+  const long = Array.from({ length: years }, (_, i) => ({ at: new Date(NOW - (years - i) * 86_400_000).toISOString(), ask: 1, bid: 1 }))
+  expect(priceChartModel(long, 86_400, NOW)!.xTicks[0].label).toBe(`${MINUS}3y`)
 })

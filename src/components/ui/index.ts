@@ -147,7 +147,9 @@ export { PricePair } from './PricePair'
 //     axis in hours before now, and the low / high / now marks (owner row 76, slice 3). The
 //     geometry is `priceChartModel`, pure, so tests/priceChart.spec.ts proves the axis in Node.
 export { PriceChart } from './PriceChart'
-export { priceChartModel, PRICE_CHART_H, PRICE_CHART_W, type PriceChartModel } from './priceChartModel'
+//     The span every price chart is read over (0225): five plain words, one press each.
+export { SpanPicker } from './SpanPicker'
+export { priceChartModel, primarySide, primaryValue, PRICE_CHART_H, PRICE_CHART_W, type PriceChartModel, type PriceSide } from './priceChartModel'
 //     DRAGGING A TIME AXIS (owner request 178, 2026-10-20) — a window and how far back it has been
 //     dragged, clamped to the data. Pure, and shared: `PriceChart` pans with it today and the series
 //     chart can take the same gesture the day its record is long enough to need one.

@@ -1,6 +1,7 @@
 import { MINUS, formatFixed, priceDigits } from '../../lib/format'
 import { t } from '../../lib/i18n'
 import type { ChartWindow } from './chartPan'
+import { agoLabel } from './seriesChartModel'
 import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -16,19 +17,25 @@ import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 // which two trays already draw, and by the COMMAND desk's good page (2026-10-18), which adds the
 // server's ESTIMATE to the right of now. One model, one painter, every caller.
 //
+// ── BOTH SIDES (0225, owner row 189: "why is the selling price chart is flat?") ─────────────────
+// A served point carries the city's ASK (what you pay; null where the city does not sell the good) and
+// its BID (what you get). The chart draws BOTH as lines; the PRIMARY line — the ask where the city sells
+// the good, else the bid — carries the ground under it and the low / high / now marks, so a city that
+// only buys is marked on the one price it has. On the folded tiers (an hour's or a day's
+// open/high/low/close) each side's low…high is drawn as a band under its line; the fine tier has none.
+//
 // ── WHAT THE AXES SAY, AND WHERE THE NUMBERS COME FROM ─────────────────────────────────────────
 // Every figure on the chart is SERVED or DERIVED from what was served — never a literal.
-//   · y ticks: the drawn minimum, the drawn maximum, and the round midpoint between them — the
-//     record's own, and with an estimate its band as well. The band is the data's own min…max, so a
-//     2 % move and a halving are the same shape at different labels. The labels' decimals follow the
-//     SPAN (2026-10-18: prices run from ~1 to ~100,000 a unit): a span under 1 coin reads to the
-//     cent, under 10 to a tenth, and otherwise whole — so 1.20 · 1.35 · 1.50 never collapse to three
-//     1s, and 98,000 · 99,000 · 100,000 carry no noise.
-//   · x ticks: HOURS BEFORE NOW, ending at `now`. The span is derived from the served points and
-//     `slot_seconds`: the wider of (now − the earliest `at`) and (points × slot_seconds). With an
-//     estimate the axis runs on to its last served instant and is labelled `+Nh` there.
-//   · marks: the lowest point, the highest point, and now. Ties go to the LATEST occurrence. With an
-//     estimate: the served best time (◆) and the arrival (a rule), when the caller has them.
+//   · y ticks: the drawn minimum, the drawn maximum, and the round midpoint between them — every
+//     side, band and estimate on the plane. The band is the data's own min…max, so a 2 % move and a
+//     halving are the same shape at different labels. The labels' decimals follow the SPAN
+//     (2026-10-18: prices run from ~1 to ~100,000 a unit): a span under 1 coin reads to the cent,
+//     under 10 to a tenth, and otherwise whole.
+//   · x ticks: TIME BEFORE NOW, ending at `now` — hours under two days, then days, then years. The
+//     span is derived from the served points and `stepSeconds`: the wider of (now − the earliest `at`)
+//     and (points × step). With an estimate the axis runs on to its last served instant, `+Nh` there.
+//   · marks: the lowest point, the highest point, and now, on the primary line. Ties go to the LATEST
+//     occurrence. With an estimate: the served best time (◆) and the arrival (a rule).
 //
 // ── THE ESTIMATE (docs/COMMAND_DESK.md §5.4) ──────────────────────────────────────────────────
 // `world.price_outlook`'s points, at their served instants, drawn as a dashed line from now, with
@@ -36,7 +43,7 @@ import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 // interpolation, no second guess.
 //
 // ── THE WINDOW, AND THE DRAG (owner request 178, 2026-10-20) ───────────────────────────────────
-// Given a `window` — a from and a to, which `chartPan` works out from the chosen width and how far
+// Given a `window` — a from and a to, which `chartPan` works out from the chosen span and how far
 // back it has been dragged — the axis spans THAT stretch instead of the record's own, and x is no
 // longer clamped to the plot: a point outside the window is given its true x and the PAINTER clips it
 // (`PriceChart`'s clip path). So the line enters and leaves the plot's edges instead of piling up on
@@ -46,8 +53,8 @@ import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 //
 // ── WHAT IT REFUSES ────────────────────────────────────────────────────────────────────────────
 // Without an estimate: fewer than two points, a point whose `at` does not parse, or a non-positive
-// slot → null, as before. With one, the record may be EMPTY (a city that does not sell a good keeps
-// no record of it — COMMAND_DESK D4): the estimate alone is drawn from now.
+// step → null, as before. With one, the record may be EMPTY (a city that does not sell a good keeps
+// no record of it until it is asked for — 0225): the estimate alone is drawn from now.
 
 /** The drawn plane: 340×170 (docs/QUAY_LEDGER.md Appendix A B), the width of a tray column at
  *  390 px less the gutter, and tall enough for three y labels to stand apart at t-caption. */
@@ -57,11 +64,13 @@ export const PRICE_CHART_H = 170
 /** Room for the y labels on the left and the x labels under the plot; the plot fills the rest. */
 const PAD = { left: 48, right: 8, top: 10, bottom: 20 }
 
+export type PriceSide = 'ask' | 'bid'
+
 export interface ChartMark {
   x: number
   y: number
-  /** The price at that point. */
-  mid: number
+  /** The price at that point, on the primary line. */
+  value: number
   /** Which served point of the record it is, oldest first, or -1 for now on the estimate. */
   index: number
 }
@@ -106,15 +115,21 @@ export interface PriceChartModel {
   height: number
   /** The plot rectangle inside the padding — the axes are drawn on its edges. */
   plot: { x: number; y: number; w: number; h: number }
-  /** One `x,y` per served point of the record, oldest first. */
+  /** Which side the ground and the marks follow: the ask where the city sells the good, else the bid. */
+  primary: PriceSide
+  /** One `x,y` per served point of the PRIMARY line, oldest first. */
   points: { x: number; y: number }[]
-  /** The line through the record, as an SVG path ('' when the record is empty). */
+  /** The primary line through the record, as an SVG path ('' when the record is empty). */
   line: string
-  /** The record's line closed down to the plot's floor, for the fill ('' when empty). */
+  /** Each side's line ('' where the record carries no such side), and each side's low…high band on a
+   *  folded tier ('' on the fine tier, which has none). */
+  sides: { ask: string; bid: string }
+  bands: { ask: string; bid: string }
+  /** The primary line closed down to the plot's floor, for the fill ('' when empty). */
   area: string
   /** Drawn min · round(mid) · drawn max, each with the y it sits at. Bottom to top. */
   yTicks: { y: number; label: string }[]
-  /** `−Nh` at the left edge, `−N/2h` in the middle (record only), `now`, and `+Nh` with an estimate. */
+  /** `−N` at the left edge, `−N/2` in the middle (record only), `now`, and `+Nh` with an estimate. */
   xTicks: { x: number; label: string }[]
   /** The span the record's half of the x axis covers, in hours — derived. */
   spanHours: number
@@ -126,14 +141,16 @@ export interface PriceChartModel {
   stock: ChartStock | null
 }
 
-/** Hours as an axis label: whole hours as `8h`, otherwise one decimal (`7.5h`). */
+/** A stretch of time as an axis label: hours to a tenth under two days (`8h`, `7.5h` — a tray's record
+ *  is hours long and a whole hour would hide a slot), then the series chart's own days and years. */
 function hoursLabel(hours: number): string {
+  if (hours >= 48) return agoLabel(hours * 3_600_000)
   const rounded = Math.round(hours * 10) / 10
   const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
   return t('format.agoHour', { n: text })
 }
 
-/** An edge of a dragged window, as hours from now: `now` within a minute of it, else signed hours. */
+/** An edge of a dragged window, as time from now: `now` within a minute of it, else signed. */
 function edgeLabel(ms: number): string {
   if (Math.abs(ms) < 60_000) return t('shell.now')
   return `${ms < 0 ? MINUS : '+'}${hoursLabel(Math.abs(ms) / 3_600_000)}`
@@ -150,6 +167,18 @@ function axisLabel(v: number, dp: number): string {
   return formatFixed(v, dp)
 }
 
+const num = (v: number | null | undefined): v is number => typeof v === 'number' && Number.isFinite(v)
+
+/** Which side a record is read by: the ask wherever the city sells the good, else the bid. */
+export function primarySide(points: readonly PricePoint[]): PriceSide {
+  return points.some((p) => num(p.ask)) ? 'ask' : 'bid'
+}
+
+/** The primary value of a point (the ask where there is one on an ask-led record, else the bid). */
+export function primaryValue(p: PricePoint, side: PriceSide): number {
+  return side === 'ask' && num(p.ask) ? p.ask : p.bid
+}
+
 export interface ChartOutlookInput {
   /** `world.price_outlook`'s points, k = 0 (now) first. */
   points: readonly OutlookPoint[]
@@ -162,8 +191,8 @@ export interface ChartOutlookInput {
 export function priceChartModel(
   /** The served points for ONE good at ONE port, oldest first. */
   points: readonly PricePoint[],
-  /** `PriceHistory.slot_seconds` — how many real seconds one served slot spans. */
-  slotSeconds: number,
+  /** `PriceSeries.step_seconds` — how many real seconds one served point spans. */
+  stepSeconds: number,
   /** The instant the axis ends at (or, with an estimate, where now stands), in ms. */
   nowMs: number,
   /** The server's estimate, drawn to the right of now. */
@@ -179,20 +208,23 @@ export function priceChartModel(
   view: ChartWindow | null = null,
 ): PriceChartModel | null {
   const est = outlook && outlook.points.length >= 2 ? outlook.points : null
-  if (!(slotSeconds > 0) || !Number.isFinite(nowMs)) return null
+  if (!(stepSeconds > 0) || !Number.isFinite(nowMs)) return null
   if (!est && points.length < 2) return null
   const ats = points.map((p) => Date.parse(p.at))
   if (ats.some((t) => !Number.isFinite(t))) return null
   const estAts = est ? est.map((p) => Date.parse(p.at)) : []
   if (estAts.some((t) => !Number.isFinite(t))) return null
 
+  const primary = primarySide(points)
+  const prim = points.map((p) => primaryValue(p, primary))
+
   // INSIDE THE WINDOW, when there is one: the y band is the prices on the plane, not every price ever
   // served. A window that holds nothing falls back to all of them rather than dividing by nothing.
   const inView = (t: number) => !view || (t >= view.fromMs && t <= view.toMs)
-  const mids = points.map((p) => p.mid)
-  const all = [...mids, ...(est ? est.flatMap((p) => [p.lo, p.hi, p.value]) : [])]
+  const valuesOf = (p: PricePoint) => [p.ask, p.bid, p.ask_lo, p.ask_hi, p.bid_lo, p.bid_hi].filter(num)
+  const all = [...points.flatMap(valuesOf), ...(est ? est.flatMap((p) => [p.lo, p.hi, p.value]) : [])]
   const shown = [
-    ...mids.filter((_, i) => inView(ats[i])),
+    ...points.filter((_, i) => inView(ats[i])).flatMap(valuesOf),
     ...(est ? est.filter((_, i) => inView(estAts[i])).flatMap((p) => [p.lo, p.hi, p.value]) : []),
   ]
   const drawn = shown.length ? shown : all
@@ -218,7 +250,7 @@ export function priceChartModel(
   // THE RECORD'S SPAN: the wider of its true age and its cadence × count, never a constant. With
   // an empty record (estimate only) it is nought, and now stands at the left edge.
   const earliest = points.length ? Math.min(...ats) : nowMs
-  const spanMs = points.length ? Math.max(nowMs - earliest, points.length * slotSeconds * 1000, 1) : 0
+  const spanMs = points.length ? Math.max(nowMs - earliest, points.length * stepSeconds * 1000, 1) : 0
   const spanHours = spanMs / 3_600_000
   const endMs = est ? Math.max(nowMs, ...estAts) : nowMs
   const totalMs = view ? Math.max(1, view.toMs - view.fromMs) : Math.max(spanMs + (endMs - nowMs), 1)
@@ -233,25 +265,48 @@ export function priceChartModel(
   // because "it did not move" is a real answer (the sparkline's rule).
   const yOf = (v: number) => (band === 0 ? plot.y + plot.h / 2 : plot.y + plot.h - ((v - lo) / band) * plot.h)
 
-  const xy = points.map((p, i) => ({ x: xOf(ats[i]), y: yOf(p.mid) }))
-  const line = xy.map(({ x, y }, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+  const pathOf = (pts: { x: number; y: number }[]) =>
+    pts.map(({ x, y }, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+  // A side's line runs through the points that carry it; a side absent from the whole record is ''.
+  const sideLine = (pick: (p: PricePoint) => number | null | undefined) => {
+    const pts = points.map((p, i) => ({ v: pick(p), x: xOf(ats[i]) })).filter((q): q is { v: number; x: number } => num(q.v))
+    return pts.length >= 2 ? pathOf(pts.map((q) => ({ x: q.x, y: yOf(q.v) }))) : ''
+  }
+  // A side's low…high band on a folded tier: the highs forward, the lows back, one closed polygon.
+  const sideBand = (loOf: (p: PricePoint) => number | null | undefined, hiOf: (p: PricePoint) => number | null | undefined) => {
+    const pts = points
+      .map((p, i) => ({ lo: loOf(p), hi: hiOf(p), x: xOf(ats[i]) }))
+      .filter((q): q is { lo: number; hi: number; x: number } => num(q.lo) && num(q.hi))
+    if (pts.length < 2) return ''
+    const top = pathOf(pts.map((q) => ({ x: q.x, y: yOf(q.hi) })))
+    const bottom = [...pts]
+      .reverse()
+      .map((q) => `L${q.x.toFixed(1)} ${yOf(q.lo).toFixed(1)}`)
+      .join(' ')
+    return `${top} ${bottom} Z`
+  }
+
+  const xy = ats.map((at, i) => ({ x: xOf(at), y: yOf(prim[i]) }))
+  const line = pathOf(xy)
   const floor = (plot.y + plot.h).toFixed(1)
   const area = xy.length ? `${line} L${xy[xy.length - 1].x.toFixed(1)} ${floor} L${xy[0].x.toFixed(1)} ${floor} Z` : ''
+  const sides = { ask: sideLine((p) => p.ask), bid: sideLine((p) => p.bid) }
+  const bands = { ask: sideBand((p) => p.ask_lo, (p) => p.ask_hi), bid: sideBand((p) => p.bid_lo, (p) => p.bid_hi) }
 
   // Ties go to the LATEST occurrence: the mark says where the price IS at that level. Only points on
   // the plane are marked — a low dragged off the left edge is not this chart's low.
   let lowI = -1
   let highI = -1
-  for (let i = 0; i < mids.length; i++) {
+  for (let i = 0; i < prim.length; i++) {
     if (!inView(ats[i])) continue
-    if (lowI < 0 || mids[i] <= mids[lowI]) lowI = i
-    if (highI < 0 || mids[i] >= mids[highI]) highI = i
+    if (lowI < 0 || prim[i] <= prim[lowI]) lowI = i
+    if (highI < 0 || prim[i] >= prim[highI]) highI = i
   }
-  const nowValue = est ? est[0].value : mids[mids.length - 1]
+  const nowValue = est ? est[0].value : prim[prim.length - 1]
   const mark = (i: number): ChartMark =>
     i >= 0 && i < xy.length
-      ? { x: xy[i].x, y: xy[i].y, mid: mids[i], index: i }
-      : { x: xOf(nowMs), y: yOf(nowValue), mid: nowValue, index: -1 }
+      ? { x: xy[i].x, y: xy[i].y, value: prim[i], index: i }
+      : { x: xOf(nowMs), y: yOf(nowValue), value: nowValue, index: -1 }
 
   const dp = axisDigits(lo, hi)
   const factor = 10 ** dp
@@ -270,7 +325,7 @@ export function priceChartModel(
   // `now` (a fresh record of two slots against six hours of estimate) is labelled at now alone.
   const roomForLeft = nowX - plot.x >= 64
   const xTicks = view
-    ? // THE WINDOW'S OWN EDGES, in hours from now, with `now` in the middle where it has room to
+    ? // THE WINDOW'S OWN EDGES, in time from now, with `now` in the middle where it has room to
       // stand (the estimate puts it inside the window) and the window's midpoint where it does not.
       [
         { x: plot.x, label: edgeLabel(view.fromMs - nowMs) },
@@ -302,7 +357,7 @@ export function priceChartModel(
       lo: yOf(p.lo),
       hi: yOf(p.hi),
     }))
-    const eline = exy.map(({ x, y }, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ')
+    const eline = pathOf(exy)
     const top = exy.map(({ x, hi: h }, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)} ${h.toFixed(1)}`).join(' ')
     const bottom = [...exy]
       .reverse()
@@ -355,15 +410,18 @@ export function priceChartModel(
     width: size.width,
     height: size.height,
     plot,
+    primary,
     points: xy,
     line,
+    sides,
+    bands,
     area,
     yTicks,
     xTicks,
     spanHours,
     low: points.length ? mark(lowI) : mark(-1),
     high: points.length ? mark(highI) : mark(-1),
-    now: est ? mark(-1) : mark(mids.length - 1),
+    now: est ? mark(-1) : mark(prim.length - 1),
     outlook: chartOutlook,
     stock: chartStock,
   }

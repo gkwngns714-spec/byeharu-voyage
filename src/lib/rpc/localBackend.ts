@@ -19,7 +19,7 @@
 // AND THE PRICE RECORD (2026-10-18, the COMMAND desk). On Supabase the snapshot job records every
 // offered price each drift slot (public.tick_price_snapshot, pg_cron); in this tab nothing does, and a
 // fresh world's only record was 0061's self-assert snapshot at now() + 1 hour — a row on no present
-// slot, which 0170 removed with the rest of its kind. So before a read of the RECORD (world.price_history,
+// slot, which 0170 removed with the rest of its kind. So before a read of the RECORD (world.price_series,
 // world.watchlist) this backend runs the SAME function the job runs: at most once in RECORD_EVERY_MS,
 // idempotent per slot (the first sample in a slot is the sample). A world with nothing in the present
 // window starts its record at the previous slot boundary and now — the market as it stands, the two
@@ -77,7 +77,7 @@ export function createLocalBackend(db: LocalCaller): RpcBackend {
       // absent, not to one that is present and null — and every optional parameter in this chain
       // defaults to null, so a padded null is the identical call.
       const params = RPCS[name].args.map((_, i) => values[i] ?? null)
-      const record = name === 'worldPriceHistory' || name === 'worldWatchlist'
+      const record = name === 'worldPriceSeries' || name === 'worldWatchlist'
       const due = record && Date.now() - recordedAt >= RECORD_EVERY_MS
       if (due) recordedAt = Date.now()
       const statsDue = STATS_READS.includes(name) && Date.now() - statsAt >= STATS_EVERY_MS

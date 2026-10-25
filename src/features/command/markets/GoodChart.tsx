@@ -7,19 +7,21 @@ import {
   PriceChart,
   PricePair,
   RarityMark,
-  Segmented,
   Skeleton,
+  SpanPicker,
   StockGauge,
   goodIcon,
   panBackMs,
   panView,
+  primarySide,
+  primaryValue,
   Clip,
 } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { NBSP, formatClock, formatFixed, formatPctChange, formatPrice, formatPriceFigure } from '../../../lib/format'
-import type { BoardBuyRow, BoardSellRow, PriceOutlook, PricePoint, SnapshotGood } from '../../../lib/rpc'
-import { DESK_WINDOW_HOURS, type GoodDesk } from './useGoodDesk'
+import type { BoardBuyRow, BoardSellRow, PriceOutlook, PricePoint, PriceSpan, SnapshotGood } from '../../../lib/rpc'
+import type { GoodDesk } from './useGoodDesk'
 import { useT, t as tg } from '../../../lib/i18n'
 
 // THE GOOD'S CHART — the centre of the desk (docs/COMMAND_DESK.md §3.3, §3.9). The owner, 2026-10-17:
@@ -28,11 +30,12 @@ import { useT, t as tg } from '../../../lib/i18n'
 //
 //   the head     the good, the city the chart follows (its flag), BOTH SIDES of its price there now —
 //                what you pay, what you get, each under its own word (owner request 178, 2026-10-20) —
-//                the middle price with its move across the window, and the city's stock against normal;
+//                the middle price with the record's move across the window, and the city's stock;
 //   the cities   a chip per city (flag + name) — a press SELECTS: the chart's data changes in place;
-//   the window   1 h · 6 h · 12 h of the record (the served points, cut to the window — nothing derived);
-//   the chart    the record and the server's estimate with its band, the best time ◆ and the arrival
-//                rule, and under it the city's STOCK on the same time axis with its normal level dashed;
+//   the span     a day · a week · a month · a year · all (0225, owner row 205) — the server picks the
+//                tier; a press SELECTS, and the same picker stands on every chart (useChartSpan);
+//   the chart    BOTH SIDES of the record (owner row 189) and the server's estimate with its band, the
+//                best time ◆ and the arrival rule, and under it the city's STOCK on the same time axis;
 //   the foot     the best time to trade there (the board's, only when it beats the band) and the likely
 //                range on arrival (the estimate's, in the server's words).
 //
@@ -42,6 +45,22 @@ import { useT, t as tg } from '../../../lib/i18n'
 
 /** One frozen empty record, so "the read has not landed" never hands the chart a fresh array. */
 const NO_POINTS: readonly PricePoint[] = []
+
+/** How far back a span reaches, in hours; null for `all` (as far as the record goes). */
+function spanHoursOf(span: PriceSpan): number | null {
+  switch (span) {
+    case '1d':
+      return 24
+    case '1w':
+      return 24 * 7
+    case '1m':
+      return 24 * 30
+    case '1y':
+      return 24 * 365
+    default:
+      return null
+  }
+}
 
 /** How long a window reads, in the owner's words: hours up to a day, then days and weeks. */
 function windowWord(hours: number): string {
@@ -96,23 +115,25 @@ export function GoodChart({
   const { b, focus, focusPort, setFocus, history, outlook, focusRow, chips, docked } = desk
   const o = outlook.view
   const why = desk.why.view
-  const { winHours, setWinHours } = desk
+  const { span, setSpan } = history
   const [box, boxSize] = useBoxSize<HTMLDivElement>()
 
-  // THE WINDOW AND THE DRAG. The chips choose how WIDE the window is (to a week); the drag chooses how
-  // far BACK it sits (`panMs`, reset when the window or the city changes). The whole record is handed
-  // to the chart and the window tells it which stretch to draw, so the line enters and leaves the
-  // plot's edges instead of being cut to the window first. How much of a chosen window the record can
-  // fill is the SERVER's answer (useGoodDesk asks for the slots the window needs and
-  // `world.price_history` clamps the ask to what it keeps); a window wider than the record would leave
-  // most of the plane empty, so the drawn window is the narrower of the two and the foot says in words
-  // how far back the record truly reaches.
+  // THE SPAN AND THE DRAG. The picker chooses how far BACK the window reaches (a day to all); the drag
+  // chooses how far back it SITS (`panMs`, reset when the span or the city changes). The whole served
+  // series is handed to the chart and the window tells it which stretch to draw, so a line enters and
+  // leaves the plot's edges instead of being cut to the window first. How much of a span the record can
+  // fill is the SERVER's answer (world.price_series serves what the tier keeps); a window wider than
+  // the record would leave most of the plane empty, so the drawn window is the narrower of the two and
+  // the foot says in words how far back the record truly reaches — or "No data yet".
   const nowMs = o ? Date.parse(o.now) : Number.NaN
-  const points = history.points ?? NO_POINTS
-  // THE DRAG IS REMEMBERED AGAINST WHAT IT WAS MADE ON — the city and the width. A new city or a new
-  // width is a new question, so the window goes back to now; it is DERIVED from the pair rather than
+  const series = history.series
+  const points = series?.points ?? NO_POINTS
+  const side = primarySide(points)
+  const spanHours = spanHoursOf(span)
+  // THE DRAG IS REMEMBERED AGAINST WHAT IT WAS MADE ON — the city and the span. A new city or a new
+  // span is a new question, so the window goes back to now; it is DERIVED from the pair rather than
   // reset by an effect, so there is no render that draws the old offset on the new window.
-  const panKey = `${focus ?? '-'}|${winHours}`
+  const panKey = `${focus ?? '-'}|${span}`
   const [pan, setPan] = useState({ key: panKey, ms: 0 })
   const panMs = pan.key === panKey ? pan.ms : 0
   const setPanMs = useCallback((ms: number) => setPan({ key: panKey, ms }), [panKey])
@@ -125,23 +146,29 @@ export function GoodChart({
   // for more record than there is would only leave the plate empty, so the reach back stops at the
   // oldest served point and the foot says how far that is.
   const limits = useMemo(() => {
-    const back = Math.min(winHours * 3_600_000, Math.max(1, nowMs - oldestMs))
+    const wanted = spanHours === null ? Number.POSITIVE_INFINITY : spanHours * 3_600_000
+    const back = Math.min(wanted, Math.max(1, nowMs - oldestMs))
     return { oldestMs, newestMs: Math.max(nowMs, estEndMs), spanMs: back + Math.max(0, estEndMs - nowMs) }
-  }, [oldestMs, estEndMs, nowMs, winHours])
+  }, [oldestMs, estEndMs, nowMs, spanHours])
   const view = useMemo(() => (Number.isFinite(nowMs) ? panView(panMs, limits) : null), [nowMs, panMs, limits])
   const canPan = panBackMs(limits) > 0
 
-  // HOW FAR BACK THE RECORD TRULY REACHES — derived from the served points, never from the window
-  // asked for. Said only when the window is more than one slot wider than the record.
+  // HOW FAR BACK THE RECORD TRULY REACHES — derived from the served points, never from the span
+  // asked for. Said only when the span is more than one step wider than the record; a span with no
+  // points at all says "No data yet" instead.
   const recordHours = times.length && Number.isFinite(nowMs) ? (nowMs - oldestMs) / 3_600_000 : null
-  const slotHours = o ? o.slot_seconds / 3600 : 0
-  const shortRecord = recordHours !== null && winHours - recordHours > slotHours
+  const stepHours = series ? series.step_seconds / 3600 : 0
+  const shortRecord = recordHours !== null && spanHours !== null && spanHours - recordHours > stepHours
+  const noData = series !== undefined && points.length === 0
 
   const arriveMs = focusRow?.arrive_at ? Date.parse(focusRow.arrive_at) : null
   const now = o?.points[0]?.value ?? null
+  // THE MOVE is the record's own, on its primary side: the last served point against the first one on
+  // the plane — never the estimate's middle price against a recorded side.
   const firstShown = view ? points.find((_, i) => times[i] >= view.fromMs) : points[0]
-  const first = firstShown?.mid ?? null
-  const move = now !== null && first ? ((now - first) / first) * 100 : null
+  const first = firstShown ? primaryValue(firstShown, side) : null
+  const last = points.length ? primaryValue(points[points.length - 1], side) : null
+  const move = last !== null && first ? ((last - first) / first) * 100 : null
   const moveHours = firstShown && Number.isFinite(nowMs) ? (nowMs - Date.parse(firstShown.at)) / 3_600_000 : null
   const stock = stockOf(focusRow, o)
   const best = focusRow?.best ?? null
@@ -215,13 +242,7 @@ export function GoodChart({
             </Chip>
           ))}
         </div>
-        <Segmented<string>
-          segments={DESK_WINDOW_HOURS.map((h) => ({ id: String(h), label: windowWord(h) }))}
-          value={String(winHours)}
-          onChange={(id) => setWinHours(Number(id))}
-          label={t('markets.chartWindow')}
-          className="shrink-0 self-start"
-        />
+        <SpanPicker value={span} onChange={setSpan} className="shrink-0 self-start" />
       </div>
 
       {/* THE CHART — fills the pane on a wide glass. On a phone the box keeps room for the plot (220 px) and a
@@ -235,7 +256,7 @@ export function GoodChart({
         {o && size ? (
           <PriceChart
             points={points}
-            slotSeconds={o.slot_seconds}
+            slotSeconds={series?.step_seconds ?? o.slot_seconds}
             nowMs={nowMs}
             outlook={{ points: o.points, bestAt: o.best?.at ?? null, arriveMs }}
             size={size}
@@ -279,11 +300,13 @@ export function GoodChart({
             record, the second narrower), and neither may come and go: a line that appears when a read
             lands moves the ticket under it. So the slot is constant and only its words change. */}
         <p className="text-t-caption text-ink-faint" data-testid="good-chart-note">
-          {shortRecord && recordHours !== null
-            ? t('markets.recordBackTo', { span: t('markets.hours', { n: formatFixed(recordHours, 1) }) })
-            : canPan && panMs === 0
-              ? t('markets.dragBack')
-              : NBSP}
+          {noData
+            ? t('markets.noData')
+            : shortRecord && recordHours !== null
+              ? t('markets.recordBackTo', { span: spanWord(recordHours) })
+              : canPan && panMs === 0
+                ? t('markets.dragBack')
+                : NBSP}
         </p>
       </div>
     </div>

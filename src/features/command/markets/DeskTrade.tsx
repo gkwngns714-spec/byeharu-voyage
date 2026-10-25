@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Note, TradeTray, type TrayMode } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
-import { usePortHistory } from '../../../live/usePortHistory'
+import { usePriceSeries } from '../../../live/usePriceSeries'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { useTrade } from '../../../live/useTrade'
 import { useWorld } from '../../../live/worldStore'
@@ -34,7 +34,7 @@ export function DeskTrade({
   const quay = usePortMarket(port?.id ?? null)
   const good = useMemo(() => quay.market?.goods.find((g) => g.code === code) ?? null, [quay.market, code])
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
-  const history = usePortHistory(port?.id ?? '', good ? code : null)
+  const history = usePriceSeries(port?.id ?? null, good?.good_id ?? null)
   const [qty, setQty] = useState<number | null>(null)
   const trade = useTrade(fleet, intent, good, qty, onClose)
 
