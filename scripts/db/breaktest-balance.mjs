@@ -18,13 +18,18 @@
 
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { applyChain, REPO_ROOT } from './apply-chain.mjs'
+import { applyChainCached, REPO_ROOT } from './apply-chain.mjs'
 import { installMarketFixture } from './market-fixture.mjs'
 
 const PROOF = path.join(REPO_ROOT, 'scripts', 'db', 'proofs', '05_first_voyage_balance.sql')
 const sql = (await readFile(PROOF, 'utf8')).replace(/\r\n/g, '\n')
 
-const { db } = await applyChain({ quiet: true, log: () => {} })
+// `--only=<text>` runs the clean pair and only the breaks whose name contains <text>, and skips the
+// sweep: the way to watch ONE marker bite without paying for the whole table (2026-10-25). The
+// world comes from the prefix cache, as proof.mjs's does (`--fresh` applies from 0001).
+const only = (process.argv.find((a) => a.startsWith('--only=')) ?? '').slice('--only='.length)
+const fresh = process.argv.includes('--fresh') || undefined
+const { db } = await applyChainCached({ log: () => {}, fresh })
 await installMarketFixture(db, { log: console.log })
 console.log('chain applied; proof 05 loaded\n')
 
@@ -72,6 +77,18 @@ const BREAKS = [
     knob('route_scan_goods', 2),
     'BALANCE_EVERY_PORT_HAS_A_TRADE',
   ],
+  // THE SEA BEYOND HOME WATERS PAYS NOTHING FOR DISTANCE (2026-10-25) — the positive control for
+  // BALANCE_DISTANCE_PAYS, which compares the quay's world-horizon trades with its home-waters
+  // ones per origin. Every market row farther from its good's nearest maker than the home radius
+  // loses BOTH distance terms — 0173's haul and 0005's affinity gradient — while the rows inside
+  // home waters keep theirs, so first voyages still pay (BALANCE_EVERY_PORT_HAS_A_TRADE stays
+  // green) and the only thing that changed is the premise this marker asserts. The columns, not
+  // the knobs, for the reason the affinity break above records.
+  [
+    'the sea beyond home waters pays nothing for distance (haul AND affinity flat past the home radius)',
+    "update public.port_goods set haul = 1, affinity = 1.0 where haul_nm > public.wc_num('sea_scan_radius_nm');",
+    'BALANCE_DISTANCE_PAYS',
+  ],
   // `route_scan_keep = 1` IS NOT HERE, AND THAT IS A MEASUREMENT, NOT AN OVERSIGHT. It was tried
   // (2026-08-25) and every marker stayed green — because keeping one destination per good did NOT
   // drop the best trade at the sampled port, which is precisely what
@@ -100,7 +117,7 @@ if (a.red) {
 console.log('')
 
 // ── 2. THE BREAKS ─────────────────────────────────────────────────────────────────────────────
-for (const [name, setup, expected] of BREAKS) {
+for (const [name, setup, expected] of BREAKS.filter(([name]) => name.includes(only))) {
   const r = await run(setup)
   if (!r.red) {
     console.log(`GREEN!!  ${name} — the economy moved and the gate did not notice. DECORATION.`)
@@ -127,7 +144,7 @@ for (const [name, setup, expected] of BREAKS) {
 // pinned to what 0056 set, so every setting but the current one is out of it by construction.
 console.log('\n-- what drift_sigma pays (band-red is expected off the current setting) --')
 const MEDIAN = /returns %?([\d.]+) (?:per cent )?of the stake/
-for (const sigma of [0.01, 0.015, 0.02, 0.03, 0.04, 0.06]) {
+for (const sigma of only ? [] : [0.01, 0.015, 0.02, 0.03, 0.04, 0.06]) {
   const r = await run(knob('drift_sigma', sigma))
   const line = r.red ?? r.pass.find((p) => p.includes('BALANCE_MEDIAN_IN_BAND')) ?? ''
   const m = MEDIAN.exec(line)
