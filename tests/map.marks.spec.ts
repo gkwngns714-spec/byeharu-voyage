@@ -127,7 +127,7 @@ for (const scheme of ['dark', 'light'] as const) {
     test.describe(`all 246 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
       test.use({ viewport, colorScheme: scheme })
 
-      test('246 marks at the world view, and a dot becomes its full marker on the way in', async ({
+      test('246 harbours (248 marks: two at the seam) at the world view, and a dot becomes its full marker on the way in', async ({
         page,
         request,
         baseURL,
