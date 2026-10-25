@@ -1,4 +1,4 @@
-// prep.mjs <merchant-world.tar.gz> <out.tar.gz> <migration.sql>... — the paired sim's common ground (2026-10-25, 0219).
+// prep.mjs <merchant-world.tar.gz> <out.tar.gz> <migration.sql>... — the paired sim's common ground (2026-10-25, 0220).
 // Opens the arrfast merchant world, lays prod's state over it (arrfast/setup.mjs: knobs, stocks, purses,
 // treasuries, loops; no kickoff), applies the migrations prod applied after that state (here 0205–0216, in
 // order, as prod did), and dumps the result ONCE. Both arms of the pair and players.mjs open this dump, so

@@ -1,4 +1,4 @@
-// players.mjs <world.tar.gz> <out.json> <migration.sql> — the PLAYER half of the 0219 pair (2026-10-25).
+// players.mjs <world.tar.gz> <out.json> <migration.sql> — the PLAYER half of the 0220 pair (2026-10-25).
 // Opens the world prep.mjs dumped (prod's state, 0205–0216 applied), measures player.sql as it stands
 // (BEFORE), then in ONE transaction applies the migration under test and measures player.sql again
 // (AFTER) and rolls back — the same world, the same hull, the same markets, the only difference the

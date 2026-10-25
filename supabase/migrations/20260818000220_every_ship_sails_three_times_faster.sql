@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0219 — EVERY SHIP SAILS THREE TIMES FASTER
+-- 0220 — EVERY SHIP SAILS THREE TIMES FASTER
 --        (one knob, speed_scale 3, applied to the rows the one speed formula reads; no body changes)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -53,7 +53,7 @@
 -- (a) the knob reads 3; wind_mult_v0 still reads what it did.
 -- (b) every ship class's speed_kn = its pre-image × 3 exactly (numeric(4,2) × 3 is exact); every speed
 --     item effect, every flat speed perk and every flat speed set bonus = pre-image × 3; pct ones unmoved.
--- (c) on a probe set of 60 fleets (by md5(id || '0219'), player and merchant), voyage.fleet_speed and
+-- (c) on a probe set of 60 fleets (by md5(id || '0220'), player and merchant), voyage.fleet_speed and
 --     voyage.fleet_speed_at(fleet, 1) read pre-image × 3 within 0.05 kn (world.ship_stats rounds a
 --     SKILLED stat to its base's 2 places, which does not commute with × 3 — see (c) below).
 -- (d) the five bodies — voyage.ship_speed_at, ship_speed, fleet_speed_at, fleet_speed, world.ship_stat —
@@ -70,35 +70,35 @@ begin
   perform set_config('statement_timeout', '10min', true);
   perform set_config('lock_timeout', '5s', true);
   if exists (select 1 from public.world_config where key = 'speed_scale') then
-    raise exception '0219 refuses: speed_scale already exists — this has been applied once';
+    raise exception '0220 refuses: speed_scale already exists — this has been applied once';
   end if;
   if not exists (select 1 from public.world_config where key = 'hold_scale') then
-    raise exception '0219 refuses: 0208 (hold_scale) is not in this world';
+    raise exception '0220 refuses: 0208 (hold_scale) is not in this world';
   end if;
   if to_regprocedure('voyage.ship_speed_at(uuid, numeric)') is null or to_regprocedure('world.ship_stat(uuid, text)') is null
      or to_regprocedure('world.ship_stats(uuid)') is null or to_regprocedure('voyage.fleet_speed_at(uuid, numeric)') is null then
-    raise exception '0219 refuses: the speed authorities of 0203 / 0124 are not in this world';
+    raise exception '0220 refuses: the speed authorities of 0203 / 0124 are not in this world';
   end if;
   v_def := replace(pg_get_functiondef('voyage.ship_speed_at(uuid, numeric)'::regprocedure), E'\r', '');
   if (length(v_def) - length(replace(v_def, $n$return round(world.ship_stat(p_ship, 'speed') * v_hull * v_load * v_crew * public.wc_num('wind_mult_v0'), 4);$n$, '')))
      / length($n$return round(world.ship_stat(p_ship, 'speed') * v_hull * v_load * v_crew * public.wc_num('wind_mult_v0'), 4);$n$) <> 1 then
-    raise exception '0219 refuses: voyage.ship_speed_at is not the one formula this file was written against';
+    raise exception '0220 refuses: voyage.ship_speed_at is not the one formula this file was written against';
   end if;
   v_def := replace(pg_get_functiondef('world.ship_stats(uuid)'::regprocedure), E'\r', '');
   if position($n$('speed',      c.speed_kn::numeric)$n$ in v_def) = 0 then
-    raise exception '0219 refuses: world.ship_stats does not read ship_classes.speed_kn as the speed base';
+    raise exception '0220 refuses: world.ship_stats does not read ship_classes.speed_kn as the speed base';
   end if;
   if (select max(speed_kn) * 3 from public.ship_classes) > 99.99 then
-    raise exception '0219 refuses: a class speed × 3 would not fit numeric(4,2)';
+    raise exception '0220 refuses: a class speed × 3 would not fit numeric(4,2)';
   end if;
 end $guard$;
 
 -- ── 1. THE KNOB ─────────────────────────────────────────────────────────────────────────────────
 insert into public.world_config (key, value, description) values
   ('speed_scale', to_jsonb(3),
-   '0219 (owner, 2026-10-20: "ship speed ... about 3 times faster ... including npcs"): every flat speed quantity in '
+   '0220 (owner, 2026-10-20: "ship speed ... about 3 times faster ... including npcs"): every flat speed quantity in '
    'the world as a multiple of the design figure in the data files — ship_classes.speed_kn, item_effects.delta (stat '
-   'speed), perks.per_rank (flat speed), gear_set_bonuses.flat (speed). Applied when those rows are WRITTEN (0219 '
+   'speed), perks.per_rank (flat speed), gear_set_bonuses.flat (speed). Applied when those rows are WRITTEN (0220 '
    'wrote them at 3); the world guard holds them = data × this. Changing it alone moves nothing.');
 
 -- ── 2. LOCK, THEN THE PRE-IMAGES ────────────────────────────────────────────────────────────────
@@ -110,19 +110,19 @@ begin
   perform 1 from public.gear_set_bonuses where stat = 'speed' for update;
 end $lock$;
 
-create temp table classes_0219 on commit drop as
+create temp table classes_0220 on commit drop as
 select id, code, speed_kn from public.ship_classes;
 
-create temp table effects_0219 on commit drop as
+create temp table effects_0220 on commit drop as
 select item_code, delta from public.item_effects where stat = 'speed';
 
-create temp table perks_0219 on commit drop as
+create temp table perks_0220 on commit drop as
 select code, mode, per_rank from public.perks where stat = 'speed';
 
-create temp table gear_0219 on commit drop as
+create temp table gear_0220 on commit drop as
 select line_code, pieces, pct, flat from public.gear_set_bonuses where stat = 'speed';
 
-create temp table defs_before_0219 on commit drop as
+create temp table defs_before_0220 on commit drop as
 select f.fn,
        md5(replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '')) as def_md5,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -134,11 +134,11 @@ select f.fn,
                ('world.ship_stat(uuid, text)'), ('world.ship_stats(uuid)')) f(fn);
 
 -- The probe fleets: 60 by md5, player and merchant, any that has a hull. Their speeds BEFORE.
-create temp table fleets_0219 on commit drop as
+create temp table fleets_0220 on commit drop as
 select f.id, voyage.fleet_speed(f.id) as kn_before, voyage.fleet_speed_at(f.id, 1) as laden_before
   from public.fleets f
  where exists (select 1 from public.ships s where s.fleet_id = f.id)
- order by md5(f.id::text || '0219')
+ order by md5(f.id::text || '0220')
  limit 60;
 
 -- ── 3. THE ROWS: every flat speed quantity × speed_scale ────────────────────────────────────────
@@ -165,33 +165,33 @@ declare
 begin
   -- (a) the knob
   if public.wc_num('speed_scale') <> 3 then
-    raise exception '0219 self-assert FAIL: speed_scale reads %, not 3', public.wc_num('speed_scale');
+    raise exception '0220 self-assert FAIL: speed_scale reads %, not 3', public.wc_num('speed_scale');
   end if;
   if public.wc_num('wind_mult_v0') <> 1 then
-    raise exception '0219 self-assert FAIL: wind_mult_v0 reads %, it was 1 (this file does not touch it)', public.wc_num('wind_mult_v0');
+    raise exception '0220 self-assert FAIL: wind_mult_v0 reads %, it was 1 (this file does not touch it)', public.wc_num('wind_mult_v0');
   end if;
 
   -- (b) the rows: every pre-image row × 3, to the digit; nothing else moved
-  select count(*) into v_bad from classes_0219 b join public.ship_classes c on c.id = b.id where c.speed_kn <> b.speed_kn * 3;
-  if v_bad <> 0 or (select count(*) from classes_0219) <> (select count(*) from public.ship_classes) then
-    raise exception '0219 self-assert FAIL: % class(es) whose speed_kn is not the pre-image × 3', v_bad;
+  select count(*) into v_bad from classes_0220 b join public.ship_classes c on c.id = b.id where c.speed_kn <> b.speed_kn * 3;
+  if v_bad <> 0 or (select count(*) from classes_0220) <> (select count(*) from public.ship_classes) then
+    raise exception '0220 self-assert FAIL: % class(es) whose speed_kn is not the pre-image × 3', v_bad;
   end if;
-  select count(*) into v_bad from effects_0219 b join public.item_effects e on e.item_code = b.item_code and e.stat = 'speed' where e.delta <> b.delta * 3;
-  if v_bad <> 0 or (select count(*) from effects_0219) <> (select count(*) from public.item_effects where stat = 'speed') then
-    raise exception '0219 self-assert FAIL: % speed item effect(s) not the pre-image × 3', v_bad;
+  select count(*) into v_bad from effects_0220 b join public.item_effects e on e.item_code = b.item_code and e.stat = 'speed' where e.delta <> b.delta * 3;
+  if v_bad <> 0 or (select count(*) from effects_0220) <> (select count(*) from public.item_effects where stat = 'speed') then
+    raise exception '0220 self-assert FAIL: % speed item effect(s) not the pre-image × 3', v_bad;
   end if;
-  select count(*) into v_bad from perks_0219 b join public.perks p on p.code = b.code
+  select count(*) into v_bad from perks_0220 b join public.perks p on p.code = b.code
    where p.per_rank <> case when b.mode = 'flat' then b.per_rank * 3 else b.per_rank end;
-  if v_bad <> 0 or (select count(*) from perks_0219) <> (select count(*) from public.perks where stat = 'speed') then
-    raise exception '0219 self-assert FAIL: % speed perk(s) not the pre-image × 3 (flat) or unmoved (pct)', v_bad;
+  if v_bad <> 0 or (select count(*) from perks_0220) <> (select count(*) from public.perks where stat = 'speed') then
+    raise exception '0220 self-assert FAIL: % speed perk(s) not the pre-image × 3 (flat) or unmoved (pct)', v_bad;
   end if;
-  select count(*) into v_bad from gear_0219 b join public.gear_set_bonuses g on g.line_code = b.line_code and g.pieces = b.pieces and g.stat = 'speed'
+  select count(*) into v_bad from gear_0220 b join public.gear_set_bonuses g on g.line_code = b.line_code and g.pieces = b.pieces and g.stat = 'speed'
    where g.pct is distinct from b.pct or g.flat is distinct from b.flat * 3;
-  if v_bad <> 0 or (select count(*) from gear_0219) <> (select count(*) from public.gear_set_bonuses where stat = 'speed') then
-    raise exception '0219 self-assert FAIL: % speed set bonus(es) not the pre-image × 3 (flat) or unmoved (pct)', v_bad;
+  if v_bad <> 0 or (select count(*) from gear_0220) <> (select count(*) from public.gear_set_bonuses where stat = 'speed') then
+    raise exception '0220 self-assert FAIL: % speed set bonus(es) not the pre-image × 3 (flat) or unmoved (pct)', v_bad;
   end if;
   if exists (select 1 from public.ship_classes where speed_kn <= 0) then
-    raise exception '0219 self-assert FAIL: a class has no speed';
+    raise exception '0220 self-assert FAIL: a class has no speed';
   end if;
 
   -- (c) the probe fleets sail three times as fast, empty and laden. The tolerance is 0.05 kn, not the
@@ -203,37 +203,37 @@ begin
                                         or abs(voyage.fleet_speed_at(id, 1) - laden_before * 3) > 0.05),
          max(greatest(abs(voyage.fleet_speed(id) - kn_before * 3), abs(voyage.fleet_speed_at(id, 1) - laden_before * 3)))
     into v_n, v_bad, v_maxdev
-    from fleets_0219;
+    from fleets_0220;
   if v_bad <> 0 then
-    raise exception '0219 self-assert FAIL: % of % probe fleet(s) do not sail at 3 × their pre-image speed (max deviation % kn)', v_bad, v_n, v_maxdev;
+    raise exception '0220 self-assert FAIL: % of % probe fleet(s) do not sail at 3 × their pre-image speed (max deviation % kn)', v_bad, v_n, v_maxdev;
   end if;
-  select count(*) into v_fl from fleets_0219 where kn_before <= 0 or laden_before <= 0;
+  select count(*) into v_fl from fleets_0220 where kn_before <= 0 or laden_before <= 0;
   if v_fl <> 0 then
-    raise exception '0219 self-assert FAIL: % probe fleet(s) read a speed of 0 before the change', v_fl;
+    raise exception '0220 self-assert FAIL: % probe fleet(s) read a speed of 0 before the change', v_fl;
   end if;
 
   -- (d) no body moved: the six definitions, their ACL / volatility / definer / config; the formula once
-  for v_d in select * from defs_before_0219 loop
+  for v_d in select * from defs_before_0220 loop
     select md5(replace(pg_get_functiondef(pr.oid), E'\r', '')) as def_md5, coalesce(pr.proacl::text, '') as acl, pr.provolatile as vol,
            pr.prosecdef as secdef, coalesce(pr.proconfig::text, '') as cfg
       into v_pp from pg_proc pr where pr.oid = v_d.fn::regprocedure;
     if v_pp.def_md5 <> v_d.def_md5 or v_pp.acl <> v_d.acl or v_pp.vol <> v_d.vol or v_pp.secdef <> v_d.secdef or v_pp.cfg <> v_d.cfg then
-      raise exception '0219 self-assert FAIL: % changed its body, ACL, volatility, definer or config', v_d.fn;
+      raise exception '0220 self-assert FAIL: % changed its body, ACL, volatility, definer or config', v_d.fn;
     end if;
   end loop;
   v_def := replace(pg_get_functiondef('voyage.ship_speed_at(uuid, numeric)'::regprocedure), E'\r', '');
   if (length(v_def) - length(replace(v_def, $n$return round(world.ship_stat(p_ship, 'speed') * v_hull * v_load * v_crew * public.wc_num('wind_mult_v0'), 4);$n$, '')))
      / length($n$return round(world.ship_stat(p_ship, 'speed') * v_hull * v_load * v_crew * public.wc_num('wind_mult_v0'), 4);$n$) <> 1 then
-    raise exception '0219 self-assert FAIL: the one formula does not occur exactly once in voyage.ship_speed_at';
+    raise exception '0220 self-assert FAIL: the one formula does not occur exactly once in voyage.ship_speed_at';
   end if;
   if (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0219 self-assert FAIL: a wall moved';
+    raise exception '0220 self-assert FAIL: a wall moved';
   end if;
 
   -- (e) TIMINGS (notice only): the speed path, 8 calls each in this session on the first probe fleet
-  select id into v_fleet from fleets_0219 order by id limit 1;
+  select id into v_fleet from fleets_0220 order by id limit 1;
   if v_fleet is not null then
     for i in 1..8 loop
       v_t := clock_timestamp();
@@ -245,13 +245,13 @@ begin
     end loop;
   end if;
 
-  raise notice '0219 self-assert ok: EVERY SHIP SAILS THREE TIMES FASTER. speed_scale 3; % classes (% → % kn … % → % kn), % speed effects, % flat speed perk(s), % speed set bonus row(s) (% flat) × 3; % probe fleets at 3 × (max deviation % kn; slowest % → % kn empty, % → % kn laden); six bodies unmoved; walls 0; fleet_speed ms %, fleet_speed_at(1) ms %',
-    (select count(*) from classes_0219), (select min(speed_kn) from classes_0219), (select min(speed_kn) from public.ship_classes),
-    (select max(speed_kn) from classes_0219), (select max(speed_kn) from public.ship_classes),
-    (select count(*) from effects_0219), (select count(*) from perks_0219 where mode = 'flat'),
-    (select count(*) from gear_0219), (select count(*) from gear_0219 where flat is not null),
+  raise notice '0220 self-assert ok: EVERY SHIP SAILS THREE TIMES FASTER. speed_scale 3; % classes (% → % kn … % → % kn), % speed effects, % flat speed perk(s), % speed set bonus row(s) (% flat) × 3; % probe fleets at 3 × (max deviation % kn; slowest % → % kn empty, % → % kn laden); six bodies unmoved; walls 0; fleet_speed ms %, fleet_speed_at(1) ms %',
+    (select count(*) from classes_0220), (select min(speed_kn) from classes_0220), (select min(speed_kn) from public.ship_classes),
+    (select max(speed_kn) from classes_0220), (select max(speed_kn) from public.ship_classes),
+    (select count(*) from effects_0220), (select count(*) from perks_0220 where mode = 'flat'),
+    (select count(*) from gear_0220), (select count(*) from gear_0220 where flat is not null),
     v_n, v_maxdev,
-    (select min(kn_before) from fleets_0219), (select min(voyage.fleet_speed(id)) from fleets_0219),
-    (select min(laden_before) from fleets_0219), (select min(voyage.fleet_speed_at(id, 1)) from fleets_0219),
+    (select min(kn_before) from fleets_0220), (select min(voyage.fleet_speed(id)) from fleets_0220),
+    (select min(laden_before) from fleets_0220), (select min(voyage.fleet_speed_at(id, 1)) from fleets_0220),
     v_ms, v_lms;
 end $$;

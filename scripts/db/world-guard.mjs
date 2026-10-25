@@ -525,7 +525,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
            origin_regions, entrepot_ports
       from public.goods order by code`)).rows
   // 0208: the scales the database applies to the data when it writes the rows (world_config
-  // hold_scale, goods_price_level; 0219: speed_scale). A chain before 0208 has no such knob and its rows
+  // hold_scale, goods_price_level; 0220: speed_scale). A chain before 0208 has no such knob and its rows
   // ARE the data's, so their absence reads 1 — the right answer there, not a fallback.
   db_.scales = (await db.query(`
     select coalesce((select (value #>> '{}')::float8 from public.world_config where key = 'hold_scale'), 1) as hold,
@@ -771,7 +771,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   // 0208: THE DATA × THE TWO SCALES (the owner, 2026-10-19: "enlarge the ships cargo by 3x. reduce the
   // goods price by 5x"). The data files keep the design figures; the database holds them × hold_scale
   // (every hold quantity: a hull's rated hold, an item's hold delta, a flat hold perk or set bonus) and
-  // × goods_price_level (a good's base value). 0219 (the owner, 2026-10-20: "ship speed ... about 3 times
+  // × goods_price_level (a good's base value). 0220 (the owner, 2026-10-20: "ship speed ... about 3 times
   // faster"): × speed_scale, every flat speed quantity the same way (a hull's rated speed_kn, an item's
   // speed delta, a flat speed perk or set bonus). One place applies each scale to the wanted rows, here.
   // The product is rounded to 6 places: the database holds numeric(4,2) / numeric(8,2), and the rows are

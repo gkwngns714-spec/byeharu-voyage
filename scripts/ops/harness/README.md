@@ -8,7 +8,7 @@ These are the scratch tools behind the 2026-10-18/19 measurements, copied from `
 - `haul/` is the `haul_max` sweep of 2026-10-20 (0212): `sweep.mjs` lays the arrfast world over an image, applies the
   migrations, then measures `bands.sql` (the far-selling metric: a competent trader's best profit per day by route band)
   for each candidate value in a rolled-back transaction; `sum.mjs` prints the medians and the long ÷ short ratios.
-- `speed/` is the 0219 pair of 2026-10-25 (ship speed ×3): `prep.mjs` lays the arrfast state over a merchant world, applies
+- `speed/` is the 0220 pair of 2026-10-25 (ship speed ×3): `prep.mjs` lays the arrfast state over a merchant world, applies
   the migrations prod applied after that state and dumps the common ground ONCE; `arrfast/sim.mjs` with `ARRFAST_SETUP=0`
   then runs each arm on that dump (the after arm applies the migration under test before the kickoff); `players.mjs` +
   `player.sql` measure a starter's day (days quoted, ducats per real hour and laps per real day by band, through the game's
