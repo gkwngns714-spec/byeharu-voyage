@@ -114,17 +114,21 @@ export function formatTwoClocks(voyageDays: number): string {
   })
 }
 
-/** Relative time against a supplied `now`. Future → "in 4.7 min"; past → "2 days ago". */
+/** Relative time against a supplied `now`, in ONE whole plain unit: "24 min ago", "1 h ago", "3 d ago";
+ *  future → "in 24 min"; under 45 s → "just now". The owner, 2026-10-26 (docs/OWNER_REQUESTS.md row 206):
+ *  *"i want to see time, like 24 minutes ago, or 1 hour ago"*. THE ONE relative-time formatter: every
+ *  "ago" in the game reads from here, against the shell's one clock (src/app/shellState.ts `nowMs`). */
 export function formatRelative(atMs: number, nowMs: number): string {
   const delta = atMs - nowMs
   const abs = Math.abs(delta)
   if (abs < 45_000) return t('format.justNow')
+  const min = Math.round(abs / 60_000)
   const body =
-    abs < 60 * 60 * 1000
-      ? formatRealDuration(abs)
-      : abs < 24 * 60 * 60 * 1000
-        ? t('format.relHours', { n: formatInt(abs / (60 * 60 * 1000)) })
-        : t('format.relDays', { n: formatFixed(abs / (24 * 60 * 60 * 1000), abs < 2 * 24 * 60 * 60 * 1000 ? 1 : 0) })
+    min < 60
+      ? t('format.minutes', { n: formatInt(min) })
+      : min < 24 * 60
+        ? t('format.relHours', { n: formatInt(Math.floor(min / 60)) })
+        : t('format.relDays', { n: formatInt(Math.floor(min / (24 * 60))) })
   return t(delta >= 0 ? 'format.inFuture' : 'format.inPast', { body })
 }
 

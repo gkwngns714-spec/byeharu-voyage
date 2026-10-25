@@ -2,11 +2,11 @@
 // THE WORLD KEEPS ITS FIGURES — the Stats tab's six reads over public.tick_stats (0214)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // Through the client wrappers, as a company founded at Lisbon: the job writes one rollup per slot and
-// nothing on a second call in the same slot; the public reads serve what it wrote; and THE GATE (the
-// owner, 2026-10-20: "a statistic info of a city is added only when you invest certain amount") holds on
-// the server: with nothing invested a city is locked and NO figure of it arrives; at stats_city_tier1 the
-// overview and no detail; at stats_city_tier2 the detail. It names stats_city, stats_cities, stats_overview,
-// stats_markets, stats_merchants, stats_me and tick_stats so CI's rule S selects it.
+// nothing on a second call in the same slot; the public reads serve what it wrote; and EVERY CITY IS OPEN
+// (0223; the owner, 2026-10-25: "on cities, i want to see all the info without investment", reversing the
+// 2026-10-20 gate 0214 built): with nothing invested anywhere a city's overview AND detail both arrive, the
+// list row carries its figures, and no read carries a tier key. It names stats_city, stats_cities,
+// stats_overview, stats_markets, stats_merchants, stats_me and tick_stats so CI's rule S selects it.
 
 import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
@@ -103,74 +103,41 @@ test('the public reads serve what the job wrote: holders that add up, every good
   for (const r of me.value.leaderboard.board) expect(Object.keys(r).sort()).toEqual(['is_you', 'name', 'nation', 'rank'])
 })
 
-// ── THE GATE, in the owner's three steps ────────────────────────────────────────────────────────
-test('with nothing invested a city is locked and no figure of it arrives', async () => {
-  const c = await worldStatsCity(port.id)
-  expect(c.ok).toBe(true)
-  if (!c.ok) return
-  expect(c.value.tier).toBe(0)
-  expect(c.value.paid).toBe(0)
-  expect(c.value.need).toBe(c.value.tier1)
-  expect(c.value.overview).toBeUndefined()
-  expect(c.value.detail).toBeUndefined()
-  const list = await worldStatsCities()
-  expect(list.ok).toBe(true)
-  if (!list.ok) return
-  const harbours = Number(await db.callAs<number>(`select count(*)::int as result from public.ports where kind = 'HARBOUR'`))
-  expect(list.value.cities).toHaveLength(harbours)
-  const row = list.value.cities.find((x) => x.code === port.code)!
-  expect(row.tier).toBe(0)
-  expect(row.purse).toBeUndefined()
-  expect(row.income_1d).toBeUndefined()
-  // nothing invested anywhere: not one city sends a figure
-  expect(list.value.cities.every((x) => x.tier === 0 && x.purse === undefined)).toBe(true)
-})
+// ── EVERY CITY IS OPEN TO EVERYONE (0223, owner row 197) ───────────────────────────────────────
+test('with nothing invested anywhere a city serves its overview and its detail, and every list row its figures', async () => {
+  // the precondition is the company's own: not one share held anywhere
+  expect(Number(await db.callAs<number>(`select count(*)::int as result from public.city_shares where player_id = public.current_player_id()`))).toBe(0)
+  // the gate and its knobs are gone from the chain, not set to zero
+  expect(await db.callAs<boolean>(`select to_regprocedure('public.stats_city_tier(uuid, uuid)') is null as result`)).toBe(true)
+  expect(Number(await db.callAs<number>(`select count(*)::int as result from public.world_config where key like 'stats_city_tier%'`))).toBe(0)
 
-test('at the first threshold the overview arrives and the detail does not', async () => {
-  await db.callAs(
-    `insert into public.city_shares (port_id, kind, player_id, shares, paid, accrued, accrued_day)
-     values ($1::uuid, 'market', public.current_player_id(), 1, public.wc_num('stats_city_tier1')::bigint, 0, world.game_day())
-     returning paid::text as result`,
-    [port.id],
-  )
   const c = await worldStatsCity(port.id)
   expect(c.ok).toBe(true)
   if (!c.ok) return
-  expect(c.value.tier).toBe(1)
-  expect(c.value.paid).toBe(c.value.tier1)
-  expect(c.value.need).toBe(c.value.tier2 - c.value.tier1)
   expect(c.value.overview).toBeDefined()
-  expect(c.value.detail).toBeUndefined()
+  expect(c.value.detail).toBeDefined()
+  for (const k of ['tier', 'paid', 'need', 'tier1', 'tier2']) expect(c.value).not.toHaveProperty(k)
   const purse = Number(await db.callAs<number>(`select public.treasury_balance($1::uuid)::bigint as result`, [port.id]))
   expect(c.value.overview!.purse).toBe(purse)
   expect(Array.isArray(c.value.overview!.works)).toBe(true)
-  const list = await worldStatsCities()
-  expect(list.ok).toBe(true)
-  if (!list.ok) return
-  const row = list.value.cities.find((x) => x.code === port.code)!
-  expect(row.tier).toBe(1)
-  expect(row.purse).toBe(purse)
-  // only THAT city: every other harbour stays locked
-  expect(list.value.cities.filter((x) => x.tier > 0)).toHaveLength(1)
-})
-
-test('at the second threshold the full detail arrives', async () => {
-  await db.callAs(
-    `update public.city_shares set paid = public.wc_num('stats_city_tier2')::bigint
-      where port_id = $1::uuid and player_id = public.current_player_id() returning paid::text as result`,
-    [port.id],
-  )
-  const c = await worldStatsCity(port.id)
-  expect(c.ok).toBe(true)
-  if (!c.ok) return
-  expect(c.value.tier).toBe(2)
-  expect(c.value.need).toBeNull()
-  expect(c.value.overview).toBeDefined()
-  expect(c.value.detail).toBeDefined()
   const offered = Number(await db.callAs<number>(`select count(*)::int as result from public.port_specialties where port_id = $1::uuid`, [port.id]))
   expect(c.value.detail!.goods.length).toBeGreaterThanOrEqual(offered)
   const g = c.value.detail!.goods.find((x) => x.mid !== null)!
   expect(g).toBeDefined()
   expect(g.stock).not.toBeNull()
   expect(g.stock_target).not.toBeNull()
+
+  const list = await worldStatsCities()
+  expect(list.ok).toBe(true)
+  if (!list.ok) return
+  const harbours = Number(await db.callAs<number>(`select count(*)::int as result from public.ports where kind = 'HARBOUR'`))
+  expect(list.value.cities).toHaveLength(harbours)
+  for (const k of ['tier1', 'tier2']) expect(list.value).not.toHaveProperty(k)
+  const row = list.value.cities.find((x) => x.code === port.code)!
+  expect(row.purse).toBe(purse)
+  expect(row.income_1d).toBeDefined()
+  expect(row.taxes_1d).toBeDefined()
+  for (const k of ['tier', 'paid', 'need']) expect(row).not.toHaveProperty(k)
+  // nothing invested anywhere, and not one city withholds its purse
+  expect(list.value.cities.every((x) => x.purse !== undefined)).toBe(true)
 })

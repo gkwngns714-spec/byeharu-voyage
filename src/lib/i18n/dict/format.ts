@@ -22,7 +22,7 @@ export const formatDict = defineDict({
     twoClocks: '{days} voyage-days · {real} real',
     justNow: 'just now',
     relHours: '{n} h',
-    relDays: '{n} days',
+    relDays: '{n} d',
     inFuture: 'in {body}',
     inPast: '{body} ago',
     north: 'N',

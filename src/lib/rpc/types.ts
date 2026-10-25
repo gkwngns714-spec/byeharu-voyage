@@ -3010,17 +3010,13 @@ export interface StatsMarkets {
   goods: StatsGood[]
 }
 
-/** A harbour in `world.stats_cities`. The figures (`purse` onwards) exist ONLY at tier 1 or more —
- *  the server never sends them otherwise; a locked city is name, flag, stake and what more it needs. */
+/** A harbour in `world.stats_cities`, served to everyone (0223; the owner: "all the info without
+ *  investment"). The figures (`purse` onwards) are absent only before the job's first rollup row. */
 export interface StatsCityRow {
   id: string
   code: string
   name: string
   nation: string | null
-  tier: 0 | 1 | 2
-  paid: number
-  /** What more opens the next tier; null at the top. */
-  need: number | null
   purse?: number
   works?: number
   income_1d?: number
@@ -3034,8 +3030,6 @@ export interface StatsCities {
   at: string | null
   age_seconds: number | null
   slot_seconds: number
-  tier1: number
-  tier2: number
   cities: StatsCityRow[]
 }
 
@@ -3052,17 +3046,13 @@ export interface StatsCityGood {
   spark: number[]
 }
 
-/** `world.stats_city(port)`: `overview` at tier 1+, `detail` at tier 2. */
+/** `world.stats_city(port)`, served to everyone (0223): `overview` and `detail` are both present once the
+ *  job has written the city's first rollup row. */
 export interface StatsCity {
   city: { id: string; code: string; name: string; nation: string | null }
   at: string | null
   age_seconds: number | null
   slot_seconds: number
-  tier: 0 | 1 | 2
-  paid: number
-  need: number | null
-  tier1: number
-  tier2: number
   overview?: {
     purse: number
     works: { kind: string; level: number }[]

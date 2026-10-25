@@ -144,11 +144,16 @@ test('the two clocks are printed together, because one of them is a lie on its o
   expect(formatVoyageDays(9.44).endsWith(' d')).toBe(false)
 })
 
-test('relative time reads forwards and backwards from a supplied instant', () => {
+test('relative time reads forwards and backwards from a supplied instant, in one whole plain unit', () => {
   const now = Date.UTC(2026, 5, 1, 12, 0, 0)
-  expect(formatRelative(now + 282_000, now)).toBe('in 4.7 min')
-  expect(formatRelative(now - 2 * 24 * 60 * 60 * 1000, now)).toBe('2 days ago')
+  // Pins moved deliberately 2026-10-26 (owner row 206: "like 24 minutes ago, or 1 hour ago"): whole units,
+  // never "4.7 min" or "1.5 days"; the minute is rounded, the hour and the day are floored.
+  expect(formatRelative(now + 282_000, now)).toBe('in 5 min')
+  expect(formatRelative(now - 24 * 60_000, now)).toBe('24 min ago')
+  expect(formatRelative(now - 90 * 60_000, now)).toBe('1 h ago')
   expect(formatRelative(now + 3 * 60 * 60 * 1000, now)).toBe('in 3 h')
+  expect(formatRelative(now - 2 * 24 * 60 * 60 * 1000, now)).toBe('2 d ago')
+  expect(formatRelative(now - 3.9 * 24 * 60 * 60 * 1000, now)).toBe('3 d ago')
   expect(formatRelative(now + 1_000, now)).toBe('just now')
 })
 

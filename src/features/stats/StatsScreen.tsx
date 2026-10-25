@@ -30,9 +30,9 @@ import { useStatsPulse, type StatsServed } from './statsPulse'
 //     never by this browser's clock.
 // Every headline figure WALKS to its new value (`Counter`), so a count landing is something you see.
 //
-// A CITY'S FIGURES ARE BOUGHT (the owner: *"a statistic info of a city is added only when you invest
-// certain amount"*). The Cities face draws a lock where the server sent none; it never has the figures
-// to hide, because the gate is public.stats_city_tier on the server and nothing locked leaves it.
+// EVERY CITY IS OPEN TO EVERYONE (0223; the owner, 2026-10-25, row 197: *"on cities, i want to see all the
+// info without investment"* — reversing his 2026-10-20 gate). The Cities face draws what the server sends,
+// which is everything; there is no lock and no tier anywhere.
 //
 // THE LOOK is the desk's (docs/COMMAND_DESK.md §5): tokens, tabular Figures, hairlines, no boxes, green–red
 // only for gain–loss / up–down, one accent for what is yours; charts on their own scales, a stacked bar
