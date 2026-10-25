@@ -57,7 +57,7 @@ export const portDict = defineDict({
     try: 'Try',
     serverSaid: 'Server said',
     nothingLost: 'Nothing lost. Reload.',
-    opening: 'Opening…',
+    opening: 'Opening the world.',
     tradeFaces: 'Trade faces',
   },
   ko: {
@@ -114,7 +114,7 @@ export const portDict = defineDict({
     try: '해 볼 것',
     serverSaid: '서버 응답',
     nothingLost: '잃은 것 없음. 새로고침.',
-    opening: '여는 중…',
+    opening: '세계를 여는 중.',
     tradeFaces: '교역 분류',
   },
 })

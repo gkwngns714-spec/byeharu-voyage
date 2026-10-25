@@ -49,5 +49,5 @@ test('a money flow wears the tone of the SERVER\'s side, biggest first', () => {
   expect(rows.map((r) => r.id)).toEqual(['IMPORT_DEMAND', 'CROWN_TAX', 'SELL'])
   expect(rows.map((r) => r.tone)).toEqual(['success', 'danger', 'neutral'])
   // green and red mean new money and burned money here; money that only changed hands is neither
-  expect(rows[2].note).toBe('moved between purses')
+  expect(rows[2].note).toBe('moved')
 })

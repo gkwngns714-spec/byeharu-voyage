@@ -90,6 +90,13 @@ dictionary words were shortened), and boot/auth errors in `worldStore.ts`/`authS
 - `tests/planWords.spec.ts` — the three pinned `reachWords` sentences (`desk.tooFar/navigatorOnly/captainCould/noCaptain/longest/suppliesOnly`).
 - `tests/trade.ceiling.spec.ts` — `/% on what it cost$/` → `/% on cost$/` (`ui.onCost`).
 - `tests/desk.city.spec.ts` — `/Nothing earned or spent|Today/` → `/No money in or out|Today/` (`desk.nothingEarned`).
+- `tests/countUp.spec.ts` — `moved between purses` → `moved` (`stats.noteMoved`).
+- `tests/rpc.why.spec.ts` — the volume, stake, glut and tariff lines (`markets.traded/nobodyTraded/stakeShave/glut/tariff/ownCountry/rival`).
+
+Five values the specs lean on were kept at their old words on purpose, after the first CI round showed them:
+`port.opening` (`Opening the world.` — the boot screen the fixtures wait on), `map.chartLabel` (keeps the
+`Chart of the world` prefix `map.sendfleet` selects by), `map.alreadyHeading`, `history.insured` and
+`history.portInsurance` (the History sentence `insurance.spec` pins).
 
 Every other text assertion in `tests/` (`getByText`, `toHaveText`, `toContainText`, role names) was read against the
 new values before the push: the words they pin (`Buy`, `Sell`, `Here`, `Net`, `Sell at`, `Take it`, `Try again`,
