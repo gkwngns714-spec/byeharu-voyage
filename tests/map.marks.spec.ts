@@ -111,7 +111,14 @@ async function marksOnSheet(page: Page) {
       codes: harbours.map((g) => g.getAttribute('data-port-code') ?? ''),
       dots: harbours.filter((g) => g.getAttribute('data-port-mark') === 'dot').length,
       full: harbours.filter((g) => g.getAttribute('data-port-mark') === 'full').length,
-      firstDot: harbours.find((g) => g.getAttribute('data-port-mark') === 'dot')?.getAttribute('data-port-code') ?? null,
+      // The zoom probe's subject: the first dot drawn ONCE. A harbour at the seam (Auckland, Wellington
+      // since 0217) is drawn in both copies of the sheet, each copy translated by 360°, while its
+      // data-port-x is the copy-local anchor — aiming the pointer there lands a world away from the mark
+      // (CI run 40196400409: the probe picked AUK's west copy and zoomed into empty sea). A harbour drawn
+      // once sits where its anchor says, so the probe satisfies its own precondition (NO_SPAGHETTI §4).
+      firstDot: harbours.find((g) => g.getAttribute('data-port-mark') === 'dot'
+        && harbours.filter((h) => h.getAttribute('data-port-code') === g.getAttribute('data-port-code')).length === 1)
+        ?.getAttribute('data-port-code') ?? null,
       names: document.querySelectorAll('[data-testid="map-labels"] text').length,
       coastBytes: document.querySelector('[data-testid="map-coastline"]')?.getAttribute('d')?.length ?? 0,
     }
