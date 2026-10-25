@@ -82,6 +82,7 @@ export function RequestBoard({
                 data-testid="request-fulfil"
               />
             }
+            under="label"
             data-testid="request-row"
           >
             <span className="block text-t-caption text-ink-faint">

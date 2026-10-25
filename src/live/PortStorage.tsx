@@ -207,6 +207,7 @@ function StorageRow({
         </span>
       }
       hairline={hairline}
+      under="label"
       data-testid="storage-row"
     >
       <span className="block text-t-caption text-ink-faint">{caption}</span>

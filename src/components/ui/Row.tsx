@@ -64,6 +64,7 @@ export function Row({
   href,
   disabled = false,
   className = '',
+  under = 'row',
   children,
   ...rest
 }: {
@@ -84,6 +85,10 @@ export function Row({
   className?: string
   /** A second line under the label — a `<Bar>`, a `<Hint>`. Rows grow; 52px is the FLOOR. */
   children?: ReactNode
+  /** Where line 2 stands. `row` (default): under the label AND the value, so a list's bars share one
+   *  track. `label`: under the label only, beside a value that is taller than one line (a pair of
+   *  `ActCell`s), which then spans both lines — the row stays as tall as its value, not the sum. */
+  under?: 'row' | 'label'
 } & { 'data-testid'?: string }) {
   // THE LINE, AND THE LINE UNDER IT (2026-10-25, owner rows 196 and 198: "it is not in the same
   // line"). The row is a GRID, not a flex box. Line 1 holds the mark, the label and the value in
@@ -100,28 +105,38 @@ export function Row({
   const columns = [mark !== undefined ? 'auto' : null, 'minmax(0,1fr)', value !== undefined ? 'auto' : null, chevron ? 'auto' : null]
     .filter(Boolean)
     .join(' ')
+  // every line-1 cell is PLACED, not auto-flowed: a value spanning two lines would otherwise be
+  // auto-placed into the label's column
+  const labelCol = mark !== undefined ? 2 : 1
   const body = (
     <>
       {mark !== undefined && (
-        <span className="bv-row-line flex h-6 items-center" data-row-cell="mark">
+        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: 1 }} data-row-cell="mark">
           {mark}
         </span>
       )}
-      <span className="bv-row-line min-w-0 break-words text-t-label" data-row-cell="label">
+      <span className="bv-row-line min-w-0 break-words text-t-label" style={{ gridRow: 1, gridColumn: labelCol }} data-row-cell="label">
         {label}
       </span>
       {value !== undefined && (
-        <span className="bv-row-line whitespace-nowrap text-right text-t-body tabular-nums" data-row-cell="value">
+        <span
+          className="bv-row-line whitespace-nowrap text-right text-t-body tabular-nums"
+          style={{ gridRow: under === 'label' ? '1 / span 2' : 1, gridColumn: labelCol + 1 }}
+          data-row-cell="value"
+        >
           {value}
         </span>
       )}
       {chevron && (
-        <span className="bv-row-line flex h-6 items-center" data-row-cell="chevron">
+        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: -2 }} data-row-cell="chevron">
           <Icon name="chevron" size={20} className="text-ink-faint" />
         </span>
       )}
       {children !== undefined && children !== null && children !== false && (
-        <span className="min-w-0 text-t-label" style={{ gridColumn: mark !== undefined ? '2 / -1' : '1 / -1' }}>
+        <span
+          className="min-w-0 text-t-label"
+          style={{ gridRow: 2, gridColumn: under === 'label' ? `${labelCol} / ${labelCol + 1}` : `${labelCol} / -1` }}
+        >
           {children}
         </span>
       )}
