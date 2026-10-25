@@ -2047,10 +2047,11 @@ test('world.route_board() serves every lane the caller may know of, with the fig
     // 0108, owner row 117: WHAT THE LANE ASKS, and whether it is shut to the caller. The migration
     // holds `closed` to agreeing with public.passage_gate on every row; what this pins is the SHAPE
     // the types claim, and that the requirement is the server's own reading and not re-derived here.
-    expect(merchant.requires.exploration).toBeGreaterThanOrEqual(1)
+    // 0218 (owner row 204): the region door is gone, so a lane asks NAVIGATION alone — no `exploration` key.
+    expect(Object.keys(merchant.requires)).toEqual(['navigation'])
     expect(merchant.requires.navigation === null || merchant.requires.navigation >= 1).toBe(true)
     expect(typeof merchant.closed).toBe('boolean')
-    const req = await db.callAs<{ navigation: number | null; exploration: number }>(
+    const req = await db.callAs<{ navigation: number | null }>(
       `select public.route_requirement($1::uuid) as result`,
       [merchant.id],
     )
