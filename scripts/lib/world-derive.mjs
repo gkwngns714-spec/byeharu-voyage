@@ -307,6 +307,17 @@ const PORT_CODES = {
   'coquimbo': 'COQ',
   'concepcion': 'CON',
   'hobart': 'HOB',
+  // The far-north, Australasian and northern-US growth, 2026-10-25 (owner row 186: "There aren't a
+  // single city on top of Russia. Can there be like 2 more? Also 2 more in autrailia and in new zeland.
+  // Also 2 on top of USA."). Authored free codes, first shipped by 0217; never change one.
+  'mezen': 'MEZ',
+  'pustozersk': 'PUS',
+  'darwin': 'DAR',
+  'fremantle': 'FRE',
+  'auckland': 'AUK',
+  'wellington': 'WLG',
+  'portland-maine': 'PTL',
+  'astoria': 'AST',
 }
 
 const fold = (s) =>
@@ -462,6 +473,16 @@ const CAPITALS = {
   // 0140 (the owner's decision, 2026-10-17): Mughal India's capital is Karachi. It was Surat (0003),
   // but 0130 gave Surat to Gujarat, so the capital sat in another country. Karachi is the more
   // developed of Mughal India's two harbours (19 against Chittagong's 17) and on the Arabian Sea.
+}
+
+// ── 0208: THE PRICE LEVEL ─────────────────────────────────────────────────────────────────────
+// The owner, 2026-10-19: "reduce the goods price by 5x". data/goods.json keeps the design figures; the
+// database holds a good's base value × world_config `goods_price_level`. ONE place applies it to the
+// derived goods, for both readers that compare or write the database's rows: scripts/db/world-guard.mjs
+// and scripts/build-world-growth.mjs (a growth that wrote the unscaled figure would land a new good at
+// five times its neighbours' price, and every existing good would read as "changed").
+export function goodsAtPriceLevel(goods, priceLevel) {
+  return goods.map((g) => ({ ...g, base_value: g.base_value * priceLevel }))
 }
 
 // ── PORTS: the derived columns ────────────────────────────────────────────────────────────────

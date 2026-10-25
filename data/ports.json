@@ -8,7 +8,7 @@
     "url": "https://www.wikidata.org/",
     "fetchedAt": "2026-08-18T08:40:20.399Z"
   },
-  "count": 238,
+  "count": 246,
   "ports": [
     {
       "id": "acapulco",
@@ -412,6 +412,59 @@
       "source": {
         "wikidata": "Q1851",
         "enwiki": "Arkhangelsk"
+      }
+    },
+    {
+      "id": "astoria",
+      "name": "Astoria",
+      "localName": "Astoria",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 46.187884,
+      "lon": -123.831253,
+      "sea": "north-pacific",
+      "region": "pacific-americas",
+      "tier": 3,
+      "historicalNames": [
+        "Fort Astoria",
+        "Fort George"
+      ],
+      "goods": [
+        "beaver-pelts",
+        "douglas-fir",
+        "pine-pitch",
+        "dentalium"
+      ],
+      "notes": "The fur post at the mouth of the Columbia, founded 1811 by Astor’s Pacific Fur Company; Chinook traders ran the river’s market long before, outside the 1500-1650 era like Sydney.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Astoria, Oregon"
+      }
+    },
+    {
+      "id": "auckland",
+      "name": "Auckland",
+      "localName": "Tāmaki Makaurau",
+      "country": "NZ",
+      "countryName": "New Zealand",
+      "lat": -36.848461,
+      "lon": 174.763336,
+      "sea": "south-pacific",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Tāmaki Makaurau"
+      ],
+      "goods": [
+        "kauri-timber",
+        "kauri-gum",
+        "harakeke",
+        "kumara"
+      ],
+      "notes": "The isthmus of a hundred lovers, a crowded Maori land of pa and gardens between two harbours; Tasman sighted the islands in 1642 and the town was founded in 1840, outside the 1500-1650 era like Sydney.",
+      "source": {
+        "wikidata": "Q37100",
+        "enwiki": "Auckland"
       }
     },
     {
@@ -1586,6 +1639,34 @@
       }
     },
     {
+      "id": "darwin",
+      "name": "Darwin",
+      "localName": "Garramilla",
+      "country": "AU",
+      "countryName": "Australia",
+      "lat": -12.438056,
+      "lon": 130.841111,
+      "sea": "timor-sea",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Palmerston",
+        "Port Darwin",
+        "Marege’"
+      ],
+      "goods": [
+        "trepang",
+        "pandanus-mats",
+        "wax",
+        "kangaroo-skins"
+      ],
+      "notes": "The Arnhem coast the Makassar trepang fleets called Marege’ and visited every monsoon from about 1700; the town itself was founded in 1869, outside the 1500-1650 era like Sydney.",
+      "source": {
+        "wikidata": "Q11568",
+        "enwiki": "Darwin, Northern Territory"
+      }
+    },
+    {
       "id": "dili",
       "name": "Dili",
       "localName": "Díli",
@@ -1805,6 +1886,33 @@
       "source": {
         "wikidata": "Q158491",
         "enwiki": "Feodosia"
+      }
+    },
+    {
+      "id": "fremantle",
+      "name": "Fremantle",
+      "localName": "Walyalup",
+      "country": "AU",
+      "countryName": "Australia",
+      "lat": -32.05,
+      "lon": 115.75,
+      "sea": "indian-ocean",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Swan River",
+        "Walyalup"
+      ],
+      "goods": [
+        "sandalwood",
+        "wattle-bark",
+        "sperm-oil",
+        "jarrah"
+      ],
+      "notes": "The Swan River mouth Willem de Vlamingh charted in 1697 on a coast the Dutch Indiamen sighted from 1616; the port of the Swan River Colony from 1829, outside the 1500-1650 era like Sydney.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Fremantle"
       }
     },
     {
@@ -3826,6 +3934,33 @@
       }
     },
     {
+      "id": "mezen",
+      "name": "Mezen",
+      "localName": "Мезень",
+      "country": "RU",
+      "countryName": "Russia",
+      "lat": 65.85,
+      "lon": 44.23,
+      "sea": "white-sea",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Okladnikova Sloboda",
+        "Mezen"
+      ],
+      "goods": [
+        "stockfish",
+        "halibut",
+        "eiderdown",
+        "whale-bone-stays"
+      ],
+      "notes": "The Pomor town at the mouth of the Mezen, where the Arctic fur road from the Pechora and Siberia met the sea; its skippers sailed for walrus, seal and cod along the Murman coast and to Novaya Zemlya.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Mezen"
+      }
+    },
+    {
       "id": "middelburg",
       "name": "Middelburg",
       "localName": "Middelburg",
@@ -4758,6 +4893,33 @@
       }
     },
     {
+      "id": "portland-maine",
+      "name": "Portland",
+      "localName": "Portland",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 43.661471,
+      "lon": -70.255326,
+      "sea": "north-atlantic",
+      "region": "north-america-atlantic",
+      "tier": 3,
+      "historicalNames": [
+        "Falmouth",
+        "Casco"
+      ],
+      "goods": [
+        "cod",
+        "maple-sugar",
+        "mast-pine",
+        "beaver-pelts"
+      ],
+      "notes": "Settled on Casco Bay in 1633 as Falmouth; the mast ships of the Royal Navy loaded Maine pine here, and the fishing fleet worked the Gulf of Maine.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Portland, Maine"
+      }
+    },
+    {
       "id": "porto",
       "name": "Porto",
       "localName": "Porto",
@@ -4866,6 +5028,32 @@
       "source": {
         "wikidata": "Q2117793",
         "enwiki": "Pulicat"
+      }
+    },
+    {
+      "id": "pustozersk",
+      "name": "Pustozersk",
+      "localName": "Пустозерск",
+      "country": "RU",
+      "countryName": "Russia",
+      "lat": 67.5345,
+      "lon": 52.6389,
+      "sea": "barents-sea",
+      "region": "scandinavia-arctic",
+      "tier": 3,
+      "historicalNames": [
+        "Pustozyorsk"
+      ],
+      "goods": [
+        "gyrfalcons",
+        "russia-leather",
+        "narwhal-horn",
+        "angelica-root"
+      ],
+      "notes": "Founded 1499 on the Pechora delta, the Tsar’s outpost for the Samoyed fur tribute and the gyrfalcons sent to Moscow; the Pomors sailed to it along the Arctic shore.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Pustozersk"
       }
     },
     {
@@ -6620,6 +6808,33 @@
       "source": {
         "wikidata": "Q54757",
         "enwiki": "Visby"
+      }
+    },
+    {
+      "id": "wellington",
+      "name": "Wellington",
+      "localName": "Te Whanganui-a-Tara",
+      "country": "NZ",
+      "countryName": "New Zealand",
+      "lat": -41.288889,
+      "lon": 174.777222,
+      "sea": "tasman-sea",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Port Nicholson",
+        "Te Whanganui-a-Tara"
+      ],
+      "goods": [
+        "harakeke",
+        "pounamu",
+        "kumara",
+        "sperm-oil"
+      ],
+      "notes": "The great harbour on Cook Strait, Te Whanganui-a-Tara; whalers worked the strait from the 1820s and the town was founded in 1840, outside the 1500-1650 era like Sydney.",
+      "source": {
+        "wikidata": "Q23661",
+        "enwiki": "Wellington"
       }
     },
     {

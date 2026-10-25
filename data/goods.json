@@ -10066,6 +10066,177 @@
       "cultureMask": [],
       "entrepots": [],
       "bulk": 1.2
+    },
+    {
+      "id": "jarrah",
+      "name": "Jarrah",
+      "category": "ship-supplies",
+      "valueBand": 2,
+      "baseValue": [
+        55,
+        105
+      ],
+      "note": "The termite-proof red hardwood of the Swan River country, cut for piles, decks and sleepers from the 1830s.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "kauri-timber",
+      "name": "Kauri Spars",
+      "category": "ship-supplies",
+      "valueBand": 3,
+      "baseValue": [
+        140,
+        280
+      ],
+      "note": "Straight, knot-free kauri trunks of the northern North Island; navy ships loaded them for topmasts from the 1770s.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "kauri-gum",
+      "name": "Kauri Gum",
+      "category": "crafts",
+      "valueBand": 2,
+      "baseValue": [
+        80,
+        160
+      ],
+      "note": "The fossil resin dug from old kauri forest, sold for varnish; Maori chewed it and burned it as a torch.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.8
+    },
+    {
+      "id": "harakeke",
+      "name": "New Zealand Flax",
+      "category": "ship-supplies",
+      "valueBand": 2,
+      "baseValue": [
+        70,
+        135
+      ],
+      "note": "Harakeke fibre, dressed by Maori women; Sydney rope-walks bought it for cordage from the 1810s.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "pounamu",
+      "name": "Pounamu",
+      "category": "gems",
+      "valueBand": 4,
+      "baseValue": [
+        500,
+        950
+      ],
+      "note": "New Zealand greenstone, the nephrite carried north from the West Coast rivers and worked into adzes and taonga.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
+    },
+    {
+      "id": "kumara",
+      "name": "Kumara",
+      "category": "food",
+      "valueBand": 1,
+      "baseValue": [
+        18,
+        40
+      ],
+      "note": "The Polynesian sweet potato, stored in pits; the first thing visiting ships bought from Maori gardens.",
+      "origin": [
+        "oceania"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1
+    },
+    {
+      "id": "mast-pine",
+      "name": "Mast Pine",
+      "category": "ship-supplies",
+      "valueBand": 3,
+      "baseValue": [
+        150,
+        300
+      ],
+      "note": "Eastern white pine of the Maine woods, marked with the King’s broad arrow and floated down to Falmouth for the mast ships.",
+      "origin": [
+        "north-america-atlantic"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "beaver-pelts",
+      "name": "Beaver Pelts",
+      "category": "cloth",
+      "valueBand": 4,
+      "baseValue": [
+        400,
+        800
+      ],
+      "note": "The fur behind every felt hat in Europe; traded at the Maine trading posts and later at the mouth of the Columbia.",
+      "origin": [
+        "north-america-atlantic",
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.2
+    },
+    {
+      "id": "douglas-fir",
+      "name": "Douglas Fir",
+      "category": "ship-supplies",
+      "valueBand": 1,
+      "baseValue": [
+        20,
+        40
+      ],
+      "note": "The tall straight fir of the Columbia woods; Fort George shipped spars and sawn lumber to Hawaii and California.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 1.4
+    },
+    {
+      "id": "dentalium",
+      "name": "Dentalium Shell",
+      "category": "crafts",
+      "valueBand": 3,
+      "baseValue": [
+        200,
+        400
+      ],
+      "note": "Tusk shells strung as money along the whole Northwest coast; the Chinook at the Columbia mouth were its middlemen.",
+      "origin": [
+        "pacific-americas"
+      ],
+      "cultureMask": [],
+      "entrepots": [],
+      "bulk": 0.3
     }
   ]
 }

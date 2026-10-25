@@ -17,7 +17,7 @@ import { ready, reachable, zoomStepMs } from './appReady.fixture'
 // first run with tappable dots opened Sanlúcar for a tap on the word "Cadiz"). The countries: the body is every kept ring of the file, at every
 // zoom — there is no culling to prove absent, only the count of countries the body carries.
 //
-// Browser: at the world view 238 harbour marks (224 until 0090) are in the DOM (dots and full marks together), and
+// Browser: at the world view 246 harbour marks (224 until 0090, 238 until 0217) are in the DOM (dots and full marks together), and
 // zoomed in on a harbour that was a dot it wears its full mark; both glasses, both schemes; the
 // frame cost of a zoom step at the world view with every dot on the sheet, printed.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -123,10 +123,10 @@ for (const scheme of ['dark', 'light'] as const) {
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
   ]) {
-    test.describe(`all 238 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
+    test.describe(`all 246 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
       test.use({ viewport, colorScheme: scheme })
 
-      test('238 marks at the world view, and a dot becomes its full marker on the way in', async ({
+      test('246 marks at the world view, and a dot becomes its full marker on the way in', async ({
         page,
         request,
         baseURL,
@@ -163,9 +163,11 @@ for (const scheme of ['dark', 'light'] as const) {
         // exists to show. ./src/chart/PortsLayer.tsx renders every harbour as its dot past
         // `DOT_SPAN_DEG` — a lamp on the night side of the terminator, a dark point by day
         // (2026-10-14, src/chart/sun.ts); the ships, since that date, stay hulls at every span.
-        expect(world.harbours, 'every harbour is on the sheet at the world view').toBe(238)
+        // Moved deliberately 2026-10-25: 238 → 246 harbours (the far-north, Australasian and
+        // northern-US growth, 0217, owner row 186); every new one is small.
+        expect(world.harbours, 'every harbour is on the sheet at the world view').toBe(246)
         expect(world.full, 'past the dot rung a city is its dot and nothing else').toBe(0)
-        expect(world.dots).toBe(238)
+        expect(world.dots).toBe(246)
         // The whole body is drawn at the world view — the same path as at the opening frame.
         expect(world.coastBytes).toBe(opening.coastBytes)
         expect(world.coastBytes).toBeGreaterThan(70_000)
