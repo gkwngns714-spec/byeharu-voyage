@@ -153,7 +153,12 @@ export function mapTrafficOf(
   for (const t of traffic) {
     // In port is `domain/fleet`'s one rule — the chart needs the served roadstead as well to draw her there.
     const docked = whereabouts(t).kind === 'docked' && t.roadstead !== null
-    const voyage = selected && selected.id === t.id && t.voyage ? trackedVoyage(t.voyage, selected.voyage) : t.voyage
+    // THE CARD'S COURSE, when she is the open one and the card holds her served segment — and the
+    // FACT that it did, carried beside it (`tracked`). It used to be inferred downstream from the
+    // vertex count ("more than two points"), which a straight leg defeats: Funchal → Cadiz is two
+    // vertices whole, so the open merchant on it drew no line (CI, 2026-10-25, main run 40198593243).
+    const lent = selected && selected.id === t.id && t.voyage ? trackedVoyage(t.voyage, selected.voyage) : null
+    const voyage = lent ?? t.voyage
     // DOCKED MERCHANTS ARE FANNED, NOT STACKED — and the place is HERS, not her neighbours'. A
     // first cut counted her position in the served list, so a hull shifted along the ring whenever
     // another merchant docked at or left the same harbour (measured: ~6 px in the 1280 Lisbon
@@ -185,6 +190,7 @@ export function mapTrafficOf(
       berthCode: docked ? t.port : null,
       nextLapAtMs: instantMs(t.next_lap_at),
       berthIndex,
+      tracked: lent !== null,
       // THE LOOP SHE RUNS, not merely the leg she is on (owner row 112). Copied leg by leg from the
       // card, like every other position here; a leg of fewer than two points draws nothing rather
       // than a guessed line.
@@ -220,16 +226,19 @@ export function mapTrafficOf(
  * So: the POSITION is always the traffic row's — the same row every other merchant is placed from,
  * on the same beat as `readAt`. The card contributes nothing but the polyline, and only when the
  * row's own segment can be FOUND in it; if the card is a beat behind across a segment change (or
- * names another voyage), the row's two points stand and she is drawn exactly where she was served.
+ * names another voyage), this returns null, the row's two points stand and she is drawn exactly
+ * where she was served. Null, not the row: whether the card lent the course is a fact the chart
+ * needs (`MapTraffic.tracked`), and a two-vertex straight leg cannot be told from the row's own
+ * two points by looking at the polyline.
  */
 function trackedVoyage(
   row: NonNullable<ServedFleet['voyage']>,
   card: Omit<FleetView['voyage'] & object, 'id'> | null,
-): NonNullable<ServedFleet['voyage']> {
+): NonNullable<ServedFleet['voyage']> | null {
   const full = card?.course
-  if (!full || full.length < 2 || row.course.length < 2 || !row.position) return row
+  if (!full || full.length < 2 || row.course.length < 2 || !row.position) return null
   const seg = segmentIn(full, row.course[0], row.course[1])
-  if (seg === null) return row
+  if (seg === null) return null
   return { ...row, course: full, position: { ...row.position, seg_index: seg } }
 }
 

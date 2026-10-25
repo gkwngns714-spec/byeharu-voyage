@@ -222,6 +222,10 @@ export type MapTraffic = MapFleet & {
   /** HER WHOLE LOOP, leg by leg, when her card is open — the baked water each leg sails (0099).
    *  Null for every other merchant: the loop is served on the card alone, at tap time. */
   readonly loop: readonly (readonly LatLon[])[] | null
+  /** True when her `voyage.course` is the CARD's whole leg (she is the open one, and the card held
+   *  the served segment) — the one case the chart draws her track. Stated, not inferred from the
+   *  vertex count: a straight leg is two vertices whole, exactly like the beat's own segment. */
+  readonly tracked: boolean
   /** True when she lies in port (drawn at the roadstead, bow north). */
   readonly docked: boolean
   /** The port she lies in, by code, when docked. */

@@ -944,8 +944,9 @@ closed_at; 0092:196).
   (`buildChartModel.length` stays 2, `tests/map.voyage.spec.ts:106`); return
   `model.traffic: TrafficOnChart[]`, which never feeds `portRoles`, `destinationPoints`,
   `focusPoints`, `motionPoints`, labels or `model.fleets`. A traffic row's `track` is null unless
-  its course has more than two points (the selected merchant), and its `heading` comes from the
-  two served points.
+  the card lent her its whole course (`MapTraffic.tracked`: the selected merchant, straight
+  two-vertex legs included — since 2026-10-25, when the "more than two points" reading left the
+  open merchant on Funchal → Cadiz without a line), and its `heading` comes from the two served points.
 - `src/chart/FleetsLayer.tsx`: `FleetsLayer` gains one more `map` over `model.traffic` with **the
   same `shipPath` at the same `GLYPH.shipHalfLength`** (13 px: 0.7 × that would be the 8.8 px dot
   `glyphs.ts:82-87` retired because it did not read as a hull), the hull filled with the company's

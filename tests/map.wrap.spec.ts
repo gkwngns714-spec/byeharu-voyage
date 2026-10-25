@@ -143,7 +143,7 @@ const sailing = (id: string, lat: number, lon: number, hulls: readonly ('barca' 
     waters: [],
   },
   enduranceDays: 20,
-  company: 'Casa', ink: 'prt', docked: false, berthCode: null, berthIndex: 0, nextLapAtMs: null, loop: null, lane: null,
+  company: 'Casa', ink: 'prt', docked: false, berthCode: null, berthIndex: 0, nextLapAtMs: null, loop: null, lane: null, tracked: false,
 })
 
 const mine = (id: string, lat: number, lon: number): MapFleet => ({
