@@ -280,3 +280,11 @@ Resume in this order:
 - **Row 189 (flat sell chart) is SERVER-side:** `public.tick_price_snapshot` records only offered pairs (0061:361-363), so a city that only BUYS a good has no history. Needs a migration: sell-side history per (port, good), capped (COMMAND_DESK D4).
 - **Row 197 (city info without investment) is SERVER-gated:** `public.stats_city_tier` (0214:303); `world.stats_city` adds overview at tier ≥1 and detail at tier ≥2 (0214:720,748), and `world.stats_cities` (0214:649) likewise. The migration removes the tier gate, and the client lock faces go in the same slice.
 - Both join Lane A after 0221: **0222 Stats** (every second + no investment gate) → **0223 sell-side price history**.
+
+### ~16:40 UTC — PROD HEAD 0218 (region door gone)
+- **0218 LIVE (#300):** no region door. After-check: regions.min_exploration_level, both knobs and public.exploration_reach are gone; no body names the door; cron 40 ok / 0 failed. Lisbon starter: 222 of 245 harbours (was 111); the rest are past the 1,700 nm leg.
+- **Merged:** #299 plain words, #301 proof 05 (home vs world horizon), #302 merchant-track bug (straight legs drew no track), #303 one row primitive + align guard (rows 196/198/199/201), #304 selector rule W (a reworded dictionary value selects the specs that pin it). Main Acceptance green on 3ddca4f.
+- **Lesson:** #299 turned main red (layout pins); after every merge, wait for MAIN's Acceptance (memory: verify-on-target).
+- **Next deploys:** 0219 #293 (rebased on 0218, CI running) → 0220 speed #296 (green; rebase + re-check after 0219) → 0221 R1 Trade (building).
+- **#298** (labels at 47 %, KST clock): the align guard caught TopBar's date line cut at 390 → now through Clip; CI running, merges on green.
+- **Server queue after R1:** 0222 Stats every second + no investment gate (rows 197, 200) → 0223 sell-side price history (row 189).
