@@ -53,8 +53,9 @@ server-only; the board still the client's; the registry unchanged. Timings are p
 
 `pglite-gate (ledger)` failed on the self-assert's positive control: *"dark, 240 rows refused and 0 clear"*. The
 probe's good was the first Las Palmas sells, and the board bought it where it was cheapest, far away, so every sell
-route crossed far water. Its subject is now the first good sold at BOTH Lisbon and Las Palmas, bought at Lisbon
-(`p_from`): the Las Palmas buy row is the refused control, the home-water sell rows are the clear one.
+route crossed far water. The board is now asked with `p_from` = Lisbon (no good is sold at both Lisbon and Las
+Palmas, round 2 found): with no buy city the sell rows run from Lisbon, so home-water sell rows are the clear
+control and the Las Palmas buy row the refused one.
 
 ## What was run here
 
@@ -183,11 +184,9 @@ select 'Lisbon is title-1 water; Las Palmas is NOR-MAC; LIS→LPA asks title 2 w
        and exists (select 1 from public.sea_leg_asks s where s.from_port = (select id from public.ports where code = 'LIS')
                      and s.to_port = (select id from public.ports where code = 'LPA') and s.title_min = 2 and s.wave_min = 10), null
 union all
-select 'a good is sold at both Lisbon and Las Palmas (the probe''s subject, bought at Lisbon)',
-       exists (select 1 from public.port_goods pg join public.port_goods pl on pl.good_id = pg.good_id
-                 and pl.port_id = (select id from public.ports where code = 'LIS')
-                where pg.port_id = (select id from public.ports where code = 'LPA')
-                  and public.port_offers(pg.port_id, pg.good_id) and public.port_offers(pl.port_id, pl.good_id)), null
+select 'Las Palmas sells a good (the probe''s subject, asked with p_from = Lisbon)',
+       exists (select 1 from public.port_goods pg where pg.port_id = (select id from public.ports where code = 'LPA')
+                 and public.port_offers(pg.port_id, pg.good_id)), null
 union all
 select 'no probe residue named 0218', not exists (select 1 from public.players where company_name = 'Casa 0218'
        or auth_uid = '00000000-0218-4000-8000-000000000001'), null
