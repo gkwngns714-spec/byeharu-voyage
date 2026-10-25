@@ -92,7 +92,16 @@ Client: nothing in the client lists harbours by hand — labels, flags and the c
 `data/region-tint.json` (rebuilt by `scripts/build-region-tint.mjs`: the tint is nearest-harbour-by-water, and New
 Zealand is a new country with a harbour), and three test pins moved deliberately with dated comments
 (`tests/map.landfall.spec.ts`: 238 → 246 harbours, 80 → 81 in drawn water, 52 → 53 moved — Fremantle, 0.43 nm;
-`tests/map.marks.spec.ts`: 238 → 246 marks), each re-measured by the spec itself.
+`tests/map.marks.spec.ts`: 238 → 246 harbours), each re-measured by the spec itself.
+
+**The seam, found by CI.** Auckland (174.76° E) and Wellington (174.78° E) are the first harbours near the
+antimeridian, and the continuous chart (2026-10-14) draws a harbour once in every copy of the sheet its box touches.
+At the world view the box crosses ±180°, so CI measured **248 marks for 246 harbours** (run 40195840956). The two
+map specs now count the claim by harbour (246 distinct codes), pin the marks (248) and name the doubled pair (AUK,
+WLG); the marks spec's zoom probe takes a dot drawn once (a seam copy's anchor is copy-local, run 40196400409); and
+`tests/map.wrap.spec.ts` reads the tapped harbour's name from `deriveWorld()` instead of the frozen 214-harbour
+fixture, which never carried the 0090 or 0217 harbours (it tapped Astoria, run 40197017998). No product code moved:
+the chart was already right.
 
 ## 3. What changes in live play
 

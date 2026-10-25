@@ -21,7 +21,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { PHONE, reachable, ready } from './appReady.fixture'
-import { REAL_PORT_BY_CODE } from './mapWorld.fixture'
+import { deriveWorld } from '../scripts/lib/world-derive.mjs'
 import { serveNpcOn } from './npcOn.fixture'
 import { CHART_WIDTH, project, sheetCopies, xOnSheet, type ViewBox } from '../src/lib/geo'
 import {
@@ -352,8 +352,12 @@ test('panned across the antimeridian, the sheet continues: land, harbours and sh
   // detail tray opens on the harbour's own name (the real port table says which name that is).
   const mark = await markOnGlass(page, 1)
   expect(mark, 'a harbour mark in the second copy, on the glass').not.toBeNull()
-  const named = REAL_PORT_BY_CODE.get(mark!.code)
-  expect(named, `${mark!.code} is in the real port table`).toBeDefined()
+  // The name comes from the ONE derivation of the served world (scripts/lib/world-derive.mjs, which the
+  // world guard holds the database equal to), not from tests/mapWorld.fixture.ts: that table is a frozen
+  // 214-harbour measurement and never carried the 0090 or 0217 harbours. CI run 40197017998 tapped
+  // Astoria (0217) here and the frozen table had no name for it.
+  const named = deriveWorld().ports.find((p: { code: string }) => p.code === mark!.code)
+  expect(named, `${mark!.code} is in the derived world`).toBeDefined()
   await page.mouse.click(mark!.x, mark!.y)
   const tray = page.getByTestId('map-detail-tray')
   await expect(tray).toBeVisible({ timeout: 10_000 })
