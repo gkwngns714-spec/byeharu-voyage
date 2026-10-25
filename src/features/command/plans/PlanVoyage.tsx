@@ -8,7 +8,7 @@ import { formatInt, formatOfTotal, formatTons, formatVoyageDays, tonsWord } from
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import type { PlanDraft } from './planDraft'
-import { daysAt, planLines, reachBoard, reachWords } from './planLines'
+import { daysAt, planLines, reachBoard, reachWords, seaAsksWords } from './planLines'
 
 // THE PLAN'S VOYAGE — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 183):
 //
@@ -35,9 +35,10 @@ import { daysAt, planLines, reachBoard, reachWords } from './planLines'
 //       classes, and whether the conditions bite. Dark, they are a reading only — exactly what the server's
 //       gate answers then (`public.sea_gate` is null while `sea_conditions_bite` is off). Lit, the server
 //       refuses a plan into a closed sea at `cmd.issue_lines` and its sentence is printed by the builder.
-//       Which seas each LEG crosses is not served to the client yet (public.sea_leg_asks is the server's
-//       table; no read exposes it), so no per-leg title or wave is printed: comparing the zones' asks here
-//       would be a second copy of `public.sea_refusal`. The PR names the read that would add it.
+//     · what the seas on the way ask, per city (0218): the board row's `sea` — the most its route's legs ask
+//       and the one rule's verdict (`public.sea_refusal`), served dark too. Printed in `seaAsksWords`, THE
+//       wording; dark, a refusal reads "not in force yet"; lit, a city the sea closes is the reach note's
+//       reason (`reachWords`), printed once. Nothing is compared here.
 //
 //   THE LEGS — each SAIL of the plan, from → to, with its days at sea at the fleet's speed. Last, so a
 //   change in how many legs there are moves nothing above it.
@@ -111,6 +112,7 @@ export function PlanVoyage({
     (r): r is BoardBuyRow | BoardSellRow => r !== null,
   )
   const s = sea.view
+  const seaBite = board ? reachBoard(board).seaBite : (s?.bite ?? false)
   const wave = s?.fleets.find((f) => f.id === fleet.id)?.wave ?? fleet.wave ?? null
   const classes = [...new Set(fleet.ships.map((sh) => sh.class))].join(', ')
 
@@ -199,6 +201,16 @@ export function PlanVoyage({
         <Hint data-testid="plan-sea-state">
           {s ? (s.bite ? t('desk.seaLit') : t('desk.seaDark')) : sea.loading ? '' : t('desk.seaUnread')}
         </Hint>
+        {reachRows.map((r) => {
+          // 0218: the seas on the way, per city — unless lit and closing it: then the reach note below says so
+          if (!r.sea || (seaBite && r.sea.refusal && r.sailable === false)) return null
+          const verdict = r.sea.refusal ? (seaBite ? null : t('desk.seaNotYet')) : t('desk.seaEnough')
+          return (
+            <Hint key={`sea:${r.port}`} data-testid="plan-sea-ask">
+              {`${name(r.port)} — ${seaAsksWords(r.sea)}${verdict ? `: ${verdict}` : ''}.`}
+            </Hint>
+          )
+        })}
         {board &&
           reachRows.map((r) =>
             r.sailable === false ? (

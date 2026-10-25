@@ -26,7 +26,7 @@ import { proposeCourse, sailOrigin, sailTarget } from '../../../domain/passage'
 import { pathLengthNm } from '../../../lib/geo'
 import { formatMiles, formatVoyageDays } from '../../../lib/format'
 import type { SeaNav } from '../../../lib/sea'
-import type { BoardPassage, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
+import type { BoardPassage, BoardSea, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
 import { emptyStop, type RouteStopDraft } from '../standingRouteDraft'
 import type { PlanDraft } from './planDraft'
 import { t } from '../../../lib/i18n'
@@ -148,17 +148,37 @@ export function viaWords(stops: readonly string[], name: (code: string) => strin
 }
 
 /** What the board served about the fleet reading a row (0188): its speed, the farthest one leg its captain
- *  plots (null for a company sailing without one), and the days of supplies on board now (null when the
- *  board did not say). */
+ *  plots (null for a company sailing without one), the days of supplies on board now (null when the
+ *  board did not say), and whether the sea conditions bite (0219; false when the board did not say). */
 export interface ReachBoard {
   speedKn: number
   reachNm: number | null
   supplyDays: number | null
+  seaBite: boolean
 }
 
 /** That, read off a served `world.good_board`. */
-export function reachBoard(board: Pick<GoodBoard, 'fleet' | 'reach' | 'supplies'>): ReachBoard {
-  return { speedKn: board.fleet.speed_kn, reachNm: board.reach?.reach_nm ?? null, supplyDays: board.supplies?.days ?? null }
+export function reachBoard(board: Pick<GoodBoard, 'fleet' | 'reach' | 'supplies' | 'sea'>): ReachBoard {
+  return {
+    speedKn: board.fleet.speed_kn,
+    reachNm: board.reach?.reach_nm ?? null,
+    supplyDays: board.supplies?.days ?? null,
+    seaBite: board.sea?.bite ?? false,
+  }
+}
+
+/** What a sea asks, in plain words (0219) — THE ONE WORDING, read by `reachWords` when the sea closes a city and
+ *  by the Plans face's "Can you go there?" rows:
+ *
+ *    this sea asks title 2 and wave resistance 10 (Macaronesia and the Canary Current)
+ *    the seas on the way ask title 4 and wave resistance 30
+ *
+ *  A refusal names the zone that refuses, with that zone's own asks (`public.sea_refusal`'s figures); without one
+ *  the route's most any leg asks is printed. The figures are the server's; nothing is compared here. */
+export function seaAsksWords(sea: BoardSea): string {
+  const f = sea.refusal?.figures
+  if (f) return t('desk.seaAsks', { title: f.needs_title, wave: f.needs_wave, zone: f.zone_name })
+  return t('desk.seaRoute', { title: sea.needs_title ?? '—', wave: sea.needs_wave ?? '—' })
 }
 
 /** A leg's length as the player reads it: days at sea at this fleet's speed (docs/WORDS.md — a distance reads
@@ -170,6 +190,8 @@ function legWords(nm: number, speedKn: number): string {
 /** Why a city cannot be sailed to (0188), in plain words — THE ONE WORDING, read after the city's name and a
  *  dash by the plan builder's note and the best-trade card alike (docs/WORDS.md: no nm, no her, no passage):
  *
+ *    this sea asks title 2 and wave resistance 10 (Macaronesia and the Canary Current): you are title 1 and your
+ *      fleet holds 12     (0219: the sea conditions bite and the server's sea refusal is the reason)
  *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. A captain with
  *      Navigation 3 could take you there
  *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. No captain can plan
@@ -181,6 +203,13 @@ function legWords(nm: number, speedKn: number): string {
  *  miles). Otherwise the voyage exists and it is the supplies that fall short. */
 export function reachWords(row: BoardPassage & { miles: number | null }, board: ReachBoard): string {
   if (row.stops == null || row.miles === null) {
+    // 0219: lit, a city the SEA closes has no voyage either — the server says so; say that, not "too far"
+    const sea = row.sea
+    if (board.seaBite && sea?.refusal) {
+      const f = sea.refusal.figures
+      const held = f.title != null && f.wave != null ? t('desk.seaHeld', { title: f.title, wave: f.wave }) : ''
+      return seaAsksWords(sea) + held
+    }
     const own =
       t('desk.tooFar') +
       (board.reachNm !== null ? t('desk.navigatorOnly', { leg: legWords(board.reachNm, board.speedKn) }) : '')
