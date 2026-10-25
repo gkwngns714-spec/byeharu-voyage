@@ -288,3 +288,19 @@ Resume in this order:
 - **Next deploys:** 0219 #293 (rebased on 0218, CI running) → 0220 speed #296 (green; rebase + re-check after 0219) → 0221 R1 Trade (building).
 - **#298** (labels at 47 %, KST clock): the align guard caught TopBar's date line cut at 390 → now through Clip; CI running, merges on green.
 - **Server queue after R1:** 0222 Stats every second + no investment gate (rows 197, 200) → 0223 sell-side price history (row 189).
+
+## HAND-OFF 2026-10-26 ~02:00 KST (17:00 UTC) — session limit; resumes ~03:50 KST. READ THIS FIRST
+**Prod head 0220.** Live today: 0217 harbours · 0218 no region door · 0219 sea board · 0220 speed ×3 · plain words #299 · aligned lists #303 · selector rule W #304.
+**Main Acceptance is RED on tests/desk.plan.spec.ts** since 0218: Queue is disabled because the good page offers a plan from an unsailable row (past the 1,700 nm leg). Fix in progress on `osn-desk-plan-pin` (PR #306, worktree `~/dev/wt-desk-plan`): good page/plan must pick the best SAILABLE rows.
+
+Every job below has its own worktree `~/dev/wt-<branch>` with a node_modules JUNCTION. Unlink it with `cmd //c rmdir` BEFORE deleting the folder, and stop any `vite preview` left inside it first.
+| next # | branch / PR | owner rows | state at hand-off | to finish |
+|---|---|---|---|---|
+| 0221 | `osn-trade-r1` #305 | 190 194 203 | red: proof 03 (RLS on provision_preset_backup_0221) + proofs calling revoked provision_preset_apply/save; agent told the fixes | fix, rebase on main, green → prod checks (dev-log 2026-10-25-trade-r1.md) → `~/bin/bv-deploy.sh 305` |
+| 0222 | `osn-board-fast` (no PR yet) | — | good_board 3.2–4.3 s on prod after 0219; target ≤1 s, same output | PR → prod checks → deploy |
+| 0223 | `osn-city-open-lap-age` (no PR yet) | 197 206 | city info for all (drop stats_city_tier gate) + "24 min ago" on last laps | PR → deploy |
+| 0224 | `osn-stats-live` (no PR yet) | 200 | counters kept per write + world.stats_now() polled 1 s | PR → deploy |
+| 0225 | `osn-price-history` (no PR yet) | 189 205 | bid+ask history, hourly 30 d, daily forever, 1D–All charts | PR → deploy |
+| — | `osn-quick-189-193-195` #298 | 193 195 | labels at 47 %, KST clock; only red is desk.plan (main's) | merge after #306 lands, then wait for main |
+After R1 lands: R3 mini route map (191) → R4 Report (192) → R2 true reasons → rollover W1–W4 (173) → fleets F1–F7 (180) → sea S3–S6 → live prices → far selling. Waiting on owner: #268 pirates, row 175.
+**Rules learned today:** deploy only in number order, renumbering file + tags; after EVERY merge wait for main's Acceptance (bv-deploy.sh now does it); a conflicting PR gets no CI, so rebase first; run each prod check from a file (`db query --linked -f`), one statement per file.
