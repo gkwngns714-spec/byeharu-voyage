@@ -67,7 +67,7 @@ test.describe('every port is on the sheet; the zoom decides dot or mark', () => 
     expect(screen).toMatch(
       /hitTest\(model, tappable, at, GLYPH\.hitRadius \* unitsPerPx, dots, GLYPH\.dotHitRadius \* unitsPerPx, drawn\.traffic, placedNames\(\)\)/,
     )
-    expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view, unitsPerPx\)/)
+    expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view\)/)
     expect(screen).not.toContain('portMarks(')
     // The two halves partition the sheet: no harbour in both, none in neither.
     const roles = buildChartModel(mapFleetsOf([]), PORTS).portRoles
