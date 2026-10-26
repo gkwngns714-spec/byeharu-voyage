@@ -25,7 +25,7 @@ import { useT } from '../../../lib/i18n'
 //
 //   MAP     ON TOP (owner row 217, 2026-10-26: *"on command, trade, map should be at top. when i press my order, i
 //           should be able to see the route, time, money, profit all on estimate below the map + map"*): THE map
-//           (TradeMap.tsx, SmallChart at 0 % zoom), the head of the centre pane on a wide glass and the first thing on a
+//           (TradeMap.tsx, the small chart at 0 % zoom), the head of the centre pane on a wide glass and the first thing on a
 //           phone. It draws the order pressed in the orders pane — a queued trip, the voyage under way, the standing
 //           route — with its served estimate under it; else the plan being made; else where she is.
 //   HERE    THE PORT'S MARKET (owner row 210, 2026-10-26): Start = Here puts the market in the centre pane —
