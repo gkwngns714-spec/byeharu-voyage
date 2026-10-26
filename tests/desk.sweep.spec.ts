@@ -48,7 +48,8 @@ for (const size of SIZES) {
       )
       // An old /port link opens the desk's City face.
       await page.goto('port')
-      await ready(page)
+      // The first tray's reads are waited on below: not across a drift-slot edge (appReady.fixture DRIFT_SLOT_MS).
+      await ready(page, { quietMs: 90_000 })
       await expect(page).toHaveURL(/\/command$/)
       await expect(page.getByTestId('desk-city')).toBeVisible()
       await expect(page.getByRole('navigation').getByText('Port', { exact: true })).toHaveCount(0)

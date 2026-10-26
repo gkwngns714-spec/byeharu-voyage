@@ -67,7 +67,45 @@ export async function settled(scope: import('@playwright/test').Locator): Promis
   await expect(scope.locator('.animate-pulse'), 'the panel is still drawing its first read').toHaveCount(0, { timeout: WORLD_BOOT_MS })
 }
 
-export async function ready(page: import('@playwright/test').Page) {
+/**
+ * THE DRIFT SLOT, IN WALL-CLOCK MS — `drift_slot_seconds` is 900 (0240's header: "900 → 600 → 900"; 16
+ * readers), and a slot is `floor(epoch / 900)`, so every tab on every machine crosses an edge at the same
+ * instants: :00, :15, :30, :45.
+ *
+ * WHY A SPEC MUST NOT SPAN ONE WITH A TRAY OPEN. A tab keeps the price record on its own (there is no
+ * pg_cron in it): src/lib/rpc/localBackend.ts plays the snapshot job at boot (`warmRecord`) and again, in
+ * front of the next record read (`world.price_series`, `world.watchlist`), when that read finds the
+ * PRESENT slot empty — i.e. the first one after an edge. The job costs tens of seconds in a tab (the boot
+ * that carries it is the 33 s `ready()` of the failing runs) and PGlite answers one call at a time, so
+ * everything asked behind it waits: the buy tray's `world.buy_capacity` sat unanswered on "Checking max…"
+ * while the shell's own 3-s reads stopped too. Two reds of trade.ceiling.spec.ts:267 fit to the second —
+ * the tray was pressed 2 s after the 10:15:00 UTC edge (main 68b7817, run 40302467679: the tab booted
+ * 10:14:29, the press was 10:15:02, no RPC logged for 26 s), and the sell test started 08:59:50 (PR #344,
+ * run 40294400288), whose press falls on the 09:00:00 edge.
+ */
+export const DRIFT_SLOT_MS = 900_000
+
+/**
+ * STEP ACROSS A SLOT EDGE BEFORE THE SPEC TOUCHES THE TRAY. If the next edge is closer than `quietMs`,
+ * wait for the edge (a stated instant, not a guess about a machine), then boot the tab again: the boot's
+ * own `warmRecord` writes the new slot's record, and `ready()` does not return until the world's reads
+ * — queued behind it — have answered. What follows has a whole slot of quiet ahead of it.
+ */
+async function pastSlotEdge(page: import('@playwright/test').Page, quietMs: number) {
+  const left = DRIFT_SLOT_MS - (Date.now() % DRIFT_SLOT_MS)
+  if (left > quietMs) return
+  // +1 s: every clock in the room has agreed the edge has gone by.
+  await page.waitForFunction((edge) => Date.now() >= edge, Date.now() + left + 1_000, { polling: 250, timeout: quietMs + 30_000 })
+  await page.reload()
+  await ready(page)
+}
+
+/**
+ * @param quietMs  A spec that opens a tray and waits on its reads asks for the slot to hold still for
+ *                 that long (see DRIFT_SLOT_MS). Absent: no promise, no wait — most specs never read the
+ *                 price record after boot.
+ */
+export async function ready(page: import('@playwright/test').Page, { quietMs }: { quietMs?: number } = {}) {
   await page.waitForLoadState('domcontentloaded')
   // BUDGET, MEASURED (2026-08-23, D21): the 243-good world cold-boots in 78.8 s in an idle
   // chromium — the chain's 52,002-row price seed is most of it — and this suite runs several
@@ -111,6 +149,7 @@ export async function ready(page: import('@playwright/test').Page) {
         'Move .env.local aside, `npm run build && npm run preview`, and re-run.',
     )
   }
+  if (quietMs) await pastSlotEdge(page, quietMs)
 }
 
 /**

@@ -47,6 +47,10 @@ test.use({ viewport: PHONE })
 const CEILING_WINDOW_MS = 25_000
 const STORAGE_WINDOW_MS = 25_000
 
+/** How long a spec below needs the drift slot to hold still: the tray's reads, a buy, and the sell's
+ *  first look — a minute and a half, with room. */
+const TRAY_QUIET_MS = 90_000
+
 /** What the watcher writes down: one line per thing that moved, with the ms since it was armed. */
 interface Moved {
   at: number
@@ -150,7 +154,8 @@ async function openPort(page: Page, request: { get: (url: string) => Promise<{ o
     `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
   )
   await page.goto('command')
-  await ready(page)
+  // A tray is opened below and its reads waited on: not across a drift-slot edge (see DRIFT_SLOT_MS).
+  await ready(page, { quietMs: TRAY_QUIET_MS })
   await openCityFace(page)
   const rows = page.locator('[data-testid="trade-row"]')
   expect(await rows.count(), 'no ledger rows — is PORT open on its Trade face with a fleet docked?').toBeGreaterThan(1)
