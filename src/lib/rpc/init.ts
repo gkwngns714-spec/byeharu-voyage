@@ -50,6 +50,7 @@ async function choose(): Promise<BackendKind> {
   const [db, local] = await Promise.all([import('../db'), import('./localBackend')])
   const engine = await db.startLocalDb()
   setBackend(local.createLocalBackend(engine))
+  void local.warmRecord(engine)
   console.info(
     `[rpc] local: PGlite in this tab, chain ${engine.fingerprint}, ` +
       `${engine.applied.length} migration(s), ready in ${engine.bootMs} ms`,

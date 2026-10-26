@@ -99,14 +99,16 @@ test('a pair the city does not sell is not recorded until asked for; the ask kee
 })
 
 test('every span answers from its tier, oldest first, in the shape the types claim; a bad span is refused', async () => {
-  // plant two finished hours of yesterday for the sold pair and fold them, exactly as the job would
+  // plant two finished hours of yesterday for the sold pair and fold them, exactly as the job would.
+  // The base is a fixed hour of YESTERDAY'S UTC day (10:00), never "now minus 26 h": that slid across UTC
+  // midnight between 00:00 and 02:00 UTC and split the eight rows over two days (day bucket 13, not 17).
   await db.callAs(`with ins as (
     insert into public.price_history (port_id, good_id, slot, at, mid, stock, ask, bid)
     select '${port}', '${sold}', public.drift_slot_of(h), h, 10, 0, 20 + i, 10 + i
-      from generate_series(0, 7) i cross join lateral (select date_trunc('hour', now()) - interval '26 hours' + make_interval(mins => 15 * i) as h) t
+      from generate_series(0, 7) i cross join lateral (select (date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '14 hours' + make_interval(mins => 15 * i) as h) t
     on conflict do nothing returning 1)
     select count(*)::int as result from ins`)
-  await db.callAs(`update public.price_rollup set hour_done = date_trunc('hour', now()) - interval '26 hours', day_done = ((date_trunc('hour', now()) - interval '26 hours') at time zone 'UTC')::date returning 1 as result`)
+  await db.callAs(`update public.price_rollup set hour_done = (date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '14 hours', day_done = (((date_trunc('day', now() at time zone 'UTC') at time zone 'UTC') - interval '14 hours') at time zone 'UTC')::date returning 1 as result`)
   await db.callAs(`select public.tick_price_snapshot(now() + make_interval(secs => 2 * public.wc_num('drift_slot_seconds')::double precision))::text as result`)
 
   const tiers: Record<string, string> = { '1d': 'fine', '1w': 'hour', '1m': 'hour', '1y': 'day', all: 'day' }
