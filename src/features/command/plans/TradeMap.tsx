@@ -54,8 +54,11 @@ export function TradeMap({
   scrollOnPick,
   city,
   onCity,
+  goTo = null,
 }: {
   fleet: FleetView
+  /** Row 231: the last city PRESSED (map, chip strip, cargo list) and a press count — the map glides to it. */
+  goTo?: { code: string; n: number } | null
   /** Row 218: the city in hand (ringed, named). */
   city: string | null
   /** Row 218: a harbour pressed on the map. */
@@ -129,6 +132,7 @@ export function TradeMap({
         legs={courses}
         wholeWorld
         onPort={onCity}
+        goTo={goTo}
         ariaLabel={t(pick ? 'desk.mapChart' : 'desk.citiesChart')}
         className="aspect-[2/1] w-full"
       />

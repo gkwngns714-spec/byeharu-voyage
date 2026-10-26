@@ -118,6 +118,14 @@ export const deskDict = defineDict({
     toastBought: 'Bought {n} {good}',
     toastSold: 'Sold {n} {good}',
     toastSail: 'Sailing to {city}',
+    // WHY A BUTTON WILL NOT PRESS, AND THE CARGO LIST ON SELL (owner row 231)
+    whyNoBuyer: '{city} does not buy {good}. Press another city.',
+    whyNoSeller: '{city} does not sell {good}. Press another city.',
+    whyHoldEmpty: 'No {good} aboard.',
+    whyNoMoney: 'Need {need}, you have {have}.',
+    cargo: 'Your cargo',
+    here: 'Here',
+    noPlace: 'Nowhere to sell',
   },
   ko: {
     citySide: '가격, 방, 일을 누르세요.',
@@ -231,5 +239,12 @@ export const deskDict = defineDict({
     toastBought: '{good} {n}개 삼',
     toastSold: '{good} {n}개 팖',
     toastSail: '{city}(으)로 출항',
+    whyNoBuyer: '{city}: {good} 안 삼. 다른 도시를 누르세요.',
+    whyNoSeller: '{city}: {good} 안 팖. 다른 도시를 누르세요.',
+    whyHoldEmpty: '{good} 적재 없음.',
+    whyNoMoney: '{need} 필요, 가진 돈 {have}.',
+    cargo: '내 화물',
+    here: '여기',
+    noPlace: '팔 곳 없음',
   },
 })

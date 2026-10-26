@@ -112,7 +112,8 @@ for (const size of SIZES) {
         await expect(page.getByTestId('trade-act')).toHaveText(/Sail & sell|Too far|Cargo full|Shut/, { timeout: 60_000 })
         await expect(page.getByTestId('plan-estimate')).toBeVisible()
         await expect(page.getByTestId('plan-days')).toBeVisible()
-        await far.click()
+        // closed by its own ✕: on a phone the sheet covers the card (row 231: every near city now bids, so this runs there too)
+        await page.getByTestId('good-detail').getByTestId('tray-close').click()
         await expect(page.getByTestId('good-detail')).toHaveCount(0)
       }
 

@@ -42,12 +42,25 @@ import type { TradeDone } from './tradeDone'
 
 type Trip = ReturnType<typeof useTripBoard>
 
+/** THE GOOD THE PANEL TRADES, AND THE SIDE'S PRICE AT THE CITY (owner row 231). Where she lies, the quay's own row
+ *  (world.market) — DockedAct trades through it. At another city a carried good the city's quay does not list (the
+ *  quay lists a good only where it is offered or she lies with it, public.quay_shows) is still bought there: its
+ *  bid is THE served one, world.price_why's (BuySell.tsx reads it). Nothing is priced here. */
+export interface PanelGood {
+  good_id: string
+  code: string
+  name: string
+  category: string
+  rarity?: MarketGood['rarity']
+  price: number
+}
 
 export function TradePanel({
   side,
   fleet,
   city,
   good,
+  market,
   docked,
   trip,
   mode,
@@ -56,9 +69,11 @@ export function TradePanel({
 }: {
   side: 'buy' | 'sell'
   fleet: FleetView
-  /** The city in hand (port CODE) and its market row for the good. */
+  /** The city in hand (port CODE), the good and the side's price there. */
   city: string
-  good: MarketGood
+  good: PanelGood
+  /** The city's market row for the good — what DockedAct trades through; null where the quay lists none. */
+  market: MarketGood | null
   /** She lies at this city. */
   docked: boolean
   /** The trip's board (BuySell.tsx reads it once; the map draws its legs). Only read when not docked. */
@@ -71,7 +86,7 @@ export function TradePanel({
   const port = portByCode[city] ?? null
   if (!port) return null
   return docked ? (
-    <DockedAct side={side} fleet={fleet} portId={port.id} city={city} good={good} mode={mode} onClose={onClose} onDone={onDone} />
+    market && <DockedAct side={side} fleet={fleet} portId={port.id} city={city} good={market} mode={mode} onClose={onClose} onDone={onDone} />
   ) : (
     <SailAct side={side} fleet={fleet} portId={port.id} city={city} good={good} trip={trip} mode={mode} onClose={onClose} onDone={onDone} />
   )
@@ -96,7 +111,7 @@ function Frame({
   fleet: FleetView
   portId: string
   city: string
-  good: MarketGood
+  good: PanelGood
   mode: TrayMode
   onClose: () => void
   /** The units row: the stepper, or why there is none. */
@@ -112,7 +127,7 @@ function Frame({
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const [detent, setDetent] = useState<TrayDetent>('half')
-  const price = side === 'buy' ? good.buy : good.sell
+  const price = good.price
   const trend = usePriceSeries(portId, good.good_id)
   const day = usePriceSeries(portId, good.good_id, '1d')
   const line = dayLine(day.series, side, price)
@@ -248,8 +263,9 @@ function DockedAct({
   const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
   const lot = Math.max(1, Math.round(step))
   const ceiling = side === 'buy' ? (capacity.bound?.max ?? 0) : aboard
-  const chosen = Math.min(qty ?? Math.min(ceiling, lot), ceiling)
-  // the default (one lot, or all she can when that is less) and the clamp when the ceiling moves, written back in
+  // Sell: all she carries by default, as Sail & sell sells it (owner row 231: one press sells right here)
+  const chosen = Math.min(qty ?? (side === 'sell' ? ceiling : Math.min(ceiling, lot)), ceiling)
+  // the default (Buy: one lot, or all she can when that is less) and the clamp when the ceiling moves, written back in
   // place (derive-from-the-last-render) so the quantity previewed is the quantity on the button
   if (ceiling > 0 && qty !== chosen) setQty(chosen)
   const refused = side === 'buy' && (good.available === false || good.offered === false)
@@ -261,7 +277,7 @@ function DockedAct({
       fleet={fleet}
       portId={portId}
       city={city}
-      good={good}
+      good={{ ...good, price: side === 'buy' ? good.buy : good.sell }}
       mode={mode}
       onClose={onClose}
       total={chosen > 0 ? total : null}
@@ -331,7 +347,7 @@ function SailAct({
   fleet: FleetView
   portId: string
   city: string
-  good: MarketGood
+  good: PanelGood
   trip: Trip
   mode: TrayMode
   onClose: () => void
@@ -461,6 +477,12 @@ function SailAct({
           {go.refusal && (
             <Note tone="danger" className="mt-3" code={go.refusal.code} figures={go.refusal.figures}>
               {go.refusal.sentence}
+            </Note>
+          )}
+          {/* row 231: a button that will not press says why, in a sentence, and what to do */}
+          {mine && !go.refusal && go.why && (
+            <Note tone="warning" className="mt-3" data-testid="trade-why">
+              {go.why}
             </Note>
           )}
         </div>
