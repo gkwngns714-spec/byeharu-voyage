@@ -1,4 +1,6 @@
 import {
+  Empty,
+  FilterBar,
   Figure,
   Flag,
   Hint,
@@ -9,6 +11,8 @@ import {
   SignedBars,
   Skeleton,
   StatCell,
+  oneOf,
+  useFilterChoice,
   type RankRow,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
@@ -17,6 +21,7 @@ import { worldBooks, worldStatsMe, type Books, type StatsMe } from '../../lib/rp
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
 import { useLiveRead } from './statsLive'
+import { ALL, countriesOf } from './statsFilters'
 
 // ME — your own week beside the world's: what you made (world.books, the same read the desk's Profit face
 // prints — one authority for "what did I earn"), your best sales, and where you stand. The leaderboard is
@@ -29,6 +34,7 @@ import { useLiveRead } from './statsLive'
 // are asked again every second while the face is open.
 
 const DAYS = 7
+const SALE_SORTS = ['profit', 'newest', 'total'] as const
 
 export function MeFace() {
   const t = useT()
@@ -36,6 +42,8 @@ export function MeFace() {
   const books = useLiveRead<Books>('stats:books', () => worldBooks(DAYS))
   const nationByCode = useWorld((s) => s.nationByCode)
   const { nowMs } = useShellState()
+  // 0241 (owner row 228): best sales sorted by profit, newest or size; the board filtered by country (ranks kept)
+  const [choice, choose] = useFilterChoice('stats.me', { sales: 'profit', country: ALL })
   const v = me.view
   const b = books.view
 
@@ -52,7 +60,16 @@ export function MeFace() {
           id: String(day),
           value: byDay.get(day) ?? 0,
         }))
-  const sales: RankRow[] = v.best_trades.map((s) => ({
+  const saleSort = oneOf(choice.sales, SALE_SORTS, 'profit')
+  const sorted = [...v.best_trades].sort((a, b) =>
+    saleSort === 'newest' ? Date.parse(b.at) - Date.parse(a.at) : saleSort === 'total' ? b.total - a.total : b.profit - a.profit,
+  )
+  const countries = countriesOf(v.leaderboard.board.map((r) => r.nation))
+    .map((code) => ({ id: code, label: nationNameOf(nationByCode, code) }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  const country = oneOf(choice.country, [ALL, ...countries.map((c) => c.id)], ALL)
+  const board = country === ALL ? v.leaderboard.board : v.leaderboard.board.filter((r) => r.nation === country)
+  const sales: RankRow[] = sorted.map((s) => ({
     id: `${s.at}-${s.good}`,
     label: t('stats.saleLabel', { good: s.good, n: formatInt(s.qty) }),
     value: s.profit,
@@ -88,6 +105,19 @@ export function MeFace() {
       </SheetSection>
 
       <SheetSection heading={t('stats.bestSales')} surface data-testid="stats-best-trades">
+        {v.best_trades.length > 1 && (
+          <FilterBar
+            className="mb-2"
+            data-testid="stats-sales-filters"
+            sort={{
+              id: 'sales',
+              label: t('stats.sortLabel'),
+              options: SALE_SORTS.map((id) => ({ id, label: t(id === 'profit' ? 'stats.bestProfit' : id === 'newest' ? 'stats.newest' : 'stats.biggestSale') })),
+              value: saleSort,
+              onChange: (id) => choose({ sales: id }),
+            }}
+          />
+        )}
         <RankBars rows={sales} format={formatDucatsDelta} empty={t('stats.noSales')} />
       </SheetSection>
 
@@ -97,7 +127,23 @@ export function MeFace() {
         surface
         data-testid="stats-leaderboard"
       >
-        {v.leaderboard.board.map((r, i) => (
+        {countries.length > 1 && (
+          <FilterBar
+            className="mb-2"
+            data-testid="stats-board-filters"
+            picks={[
+              {
+                id: 'country',
+                label: t('stats.country'),
+                options: [{ id: ALL, label: t('stats.allCountries') }, ...countries],
+                value: country,
+                onChange: (id) => choose({ country: id }),
+              },
+            ]}
+          />
+        )}
+        {board.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
+        {board.map((r, i) => (
           <Row
             key={`${r.rank}-${r.name}`}
             mark={<Figure value={formatInt(r.rank)} tone={r.is_you ? 'accent' : 'faint'} className="w-6 justify-end" />}
@@ -108,7 +154,7 @@ export function MeFace() {
               </span>
             }
             tone={r.is_you ? 'accent' : 'default'}
-            hairline={i < v.leaderboard.board.length - 1}
+            hairline={i < board.length - 1}
             data-testid={r.is_you ? 'stats-leaderboard-you' : undefined}
           />
         ))}

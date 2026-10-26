@@ -3105,7 +3105,19 @@ export interface StatsCityRow {
   taxes_1d?: number
   sold_1d?: number
   bought_1d?: number
+  /** 0241: the region's code (0003) and the part of the world it lies in (public.region_area). */
+  region?: string
+  area?: StatsArea | null
+  /** 0241: Σ paid in by every investor there. */
+  invested?: number
+  /** 0241: the caller holds shares there. */
+  mine?: boolean
+  /** 0241: Σ units in its market as of the last count; null before the first count after 0241. */
+  stock?: number | null
 }
+
+/** 0241: public.region_area's eight answers. */
+export type StatsArea = 'europe' | 'africa' | 'middle_east' | 'india' | 'se_asia' | 'east_asia' | 'americas' | 'oceania'
 
 export interface StatsCities {
   /** 0232: the server's now() — the instant every figure is from. */
@@ -3163,6 +3175,9 @@ export interface StatsMerchantHouse {
   laps: number
 }
 
+/** 0241: one merchant company as the server packs it: [name, nation, purse, fleets, earned 24 h, laps 24 h]. */
+export type StatsMerchantRow = [name: string, nation: string | null, purse: number, fleets: number, day: number, laps: number]
+
 export interface StatsMerchants {
   /** 0232: the server's now() — the instant every figure is from. */
   at: string | null
@@ -3183,6 +3198,8 @@ export interface StatsMerchants {
   losing_pct?: number
   top?: StatsMerchantHouse[]
   bottom?: StatsMerchantHouse[]
+  /** 0241: every merchant company, richest first. */
+  list?: StatsMerchantRow[]
   series: { at: string; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
 }
 
