@@ -99,6 +99,9 @@ import { ViewControls } from './ViewControls'
 // position at sea is `voyage.position`, the server's closed form, copied (./liveWorld.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+/** A city press keeps the reader's zoom (row 231). */
+const keepZoom = (spanX: number) => spanX
+
 export function SmallChart({
   ports,
   fleets,
@@ -108,6 +111,7 @@ export function SmallChart({
   legs,
   wholeWorld = false,
   onPort,
+  goTo = null,
   ariaLabel,
   findAriaLabel,
   className = 'aspect-[3/2] w-full',
@@ -137,6 +141,9 @@ export function SmallChart({
   wholeWorld?: boolean
   /** Row 218: a harbour tapped (THE map tab's hit test) — the caller selects that city. Absent: no tap. */
   onPort?: (code: string) => void
+  /** Row 231: a city PRESSED (on the map, the chip strip or the cargo list) — `n` counts the presses, so pressing
+   *  the same city again glides back to it. The chart glides it to the middle at the reader's zoom. Absent: none. */
+  goTo?: { code: string; n: number } | null
   ariaLabel: string
   findAriaLabel?: string
   className?: string
@@ -215,6 +222,22 @@ export function SmallChart({
       at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height
     if (!inside) surface.centreOn(port)
   }, [considering, chartPorts, box, surface])
+
+  // ── ROW 231: A CITY PRESSED IS A CITY GONE TO (the owner, 2026-10-26: "buying and selling when pressed a city,
+  // move the map to that location"). Each press (a new `n`) GLIDES the city to the middle — the go-to loop the Map
+  // tab's search uses (`surface.glideTo`) — at the reader's own zoom (the sheet wraps east-west, so even the whole
+  // world turns to put it in the middle; north-south it comes as near the middle as the sheet's edge allows). Only
+  // the viewBox moves: nothing on the page is collapsed, re-flowed or docked, and no city leaves the glass.
+  const glideTo = surface.glideTo
+  const pressedBefore = useRef(0)
+  const goCode = goTo?.code ?? null
+  const goN = goTo?.n ?? 0
+  useEffect(() => {
+    if (!box || !goCode || goN === pressedBefore.current) return
+    pressedBefore.current = goN
+    const port = ports.find((p) => p.code === goCode)
+    if (port) glideTo(port, keepZoom)
+  }, [goCode, goN, box, ports, glideTo])
 
   const selection: MapSelection = highlight ? { kind: 'port', code: highlight } : null
 

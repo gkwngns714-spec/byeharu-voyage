@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Chip, Hint, Icon, Note, Skeleton, Sparkline, goodIcon } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import type { PortMarketState } from '../../../live/usePortMarket'
+import { usePriceWhy } from '../../../live/useDesk'
 import { usePriceSeries } from '../../../live/usePriceSeries'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { haversineNm } from '../../../lib/geo/greatCircle'
@@ -20,16 +21,21 @@ import { dayLine } from './dayLine'
 //   CARDS       ONE card per good, the same card on both faces: the good's icon and name, THE SIDE'S PRICE (Buy — the
 //               city's ask; Sell — its bid), ▲▼ against a day ago, the day's line (world.price_series, always drawn —
 //               "selling i cannot even see charts"), and her units aboard. On Sell a good the city does not buy is
-//               greyed "No buyer" and does not press.
+//               greyed "No buyer" and does not press. At a city she is NOT at, a carried good its quay does not list
+//               (public.quay_shows: offered there, or she lies there with it) is bid for by world.price_why — the
+//               server buys it there all the same (owner row 231: "i can't sell because i can't dock").
 //
 // Which cards stand is the caller's (BuySell.tsx); this file draws them and hands a press up. Nothing is priced here.
 
 export interface CityGoodRow {
   code: string
+  /** The good's id (the price reads ask by it); null only while the catalogue has not loaded. */
+  goodId: string | null
   name: string
   category: string
   units: number
-  /** The city's market row for the good, or null where it keeps none (Sell: "No buyer"). */
+  /** The city's market row for the good, or null where its quay lists none (Sell, at a city she is not at: the card
+   *  asks world.price_why for the bid — owner row 231). */
   row: MarketGood | null
   /** The side's price, or null. */
   price: number | null
@@ -126,7 +132,7 @@ export function CityBoard({
           ) : (
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-3" data-testid="city-goods-grid">
               {rows.map((r) => (
-                <GoodCard key={r.code} side={side} portId={portId} row={r} on={picked === r.code} loading={quay.market === undefined} onPick={() => onPick(r.code)} />
+                <GoodCard key={r.code} side={side} portId={portId} row={r} bidElsewhere={side === 'sell' && !docked} on={picked === r.code} loading={quay.market === undefined} onPick={() => onPick(r.code)} />
               ))}
             </div>
           )}
@@ -140,21 +146,29 @@ function GoodCard({
   side,
   portId,
   row: r,
+  bidElsewhere,
   on,
-  loading,
+  loading: quayLoading,
   onPick,
 }: {
   side: 'buy' | 'sell'
   portId: string | null
   row: CityGoodRow
+  /** Sell, at a city she is not at: a good its quay does not list is bid for by world.price_why. */
+  bidElsewhere: boolean
   on: boolean
   loading: boolean
   onPick: () => void
 }) {
   const t = useT()
-  const trend = usePriceSeries(r.row ? portId : null, r.row?.good_id ?? null, '1d')
-  const line = dayLine(trend.series, side, r.price)
-  const dead = r.price === null
+  const ask = bidElsewhere && r.row === null
+  const why = usePriceWhy(ask ? portId : null, ask ? r.goodId : null)
+  const price = r.price ?? (ask ? (why.view?.bid ?? null) : null)
+  const priced = r.row !== null || price !== null
+  const trend = usePriceSeries(priced ? portId : null, priced ? r.goodId : null, '1d')
+  const line = dayLine(trend.series, side, price)
+  const dead = price === null
+  const loading = quayLoading || (ask && why.loading)
   return (
     <button
       type="button"
@@ -177,7 +191,7 @@ function GoodCard({
       </span>
       <span className="flex items-baseline justify-between gap-1">
         <span className={`text-t-body font-semibold tabular-nums ${dead ? 'text-ink-faint' : 'text-ink'}`} data-testid="city-good-price">
-          {dead ? (loading ? '…' : t('desk.noBuyer')) : formatPriceFigure(r.price as number)}
+          {dead ? (loading ? '…' : t('desk.noBuyer')) : formatPriceFigure(price as number)}
         </span>
         {!dead && <DayChange change={line.change} />}
       </span>

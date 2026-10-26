@@ -118,6 +118,22 @@ Built (items 3–5 of Row 218 are replaced; the rest stands):
 
 A **press selects** (`docs/dev-log/2026-10-25-plan-tab.md` "A press selects"; COMMAND_DESK §3.5): tapping a good or a row changes the card's figures in place. Nothing above it collapses, re-flows or moves. Every row of the card is always drawn, with a dash while unknown. The map has a fixed 3:2 box.
 
+### Row 231 (2026-10-26): Sell, convenient; a city pressed moves the map
+
+The owner, on the live #345 build: *"the command, sell tab is not good enough, i can't sell because i can't dock. and i can't move to that location. buying and selling when pressed a city, move the map to that location. make the sell tab more convenient. come on!"*
+
+**The cause, from running state.** Prod (read-only, 2026-10-26): Gaivota DOCKED at Banda Aceh (BAN), 120 camphor, purse 0, `on_credit` true. `world.market(city)` lists a good only where `public.quay_shows` holds: the city offers it (`port_offers`: camphor at 3 of 246 harbours) or she lies there with it. So on Sell every other city's camphor card had no market row and `BuySell.tsx` gave it `price: null` → `CityBoard.tsx` drew it "No buyer", `disabled`, and `pickedRow` demanded `r.row !== null`: no panel, no Sail & sell. The server buys there all the same (`world.good_board` serves a sell row at every harbour whose culture takes the good; `world.price_why` serves the bid). Reproduced headless on a local world shaped like hers (BAN, camphor 120, purse 0, purses lit, economy closed): Pattani read "No buyer"; Banten (one of the 3) sailed and queued SELL on credit.
+
+Built (client only, no migration, no knob):
+
+1. **A city she is not at bids for what she carries** (`CityBoard.tsx` GoodCard, `BuySell.tsx`): a carried good its quay does not list is priced by `world.price_why`'s `bid` (the same `world.price` the quay reads) and presses; the panel takes a `PanelGood` (`TradePanel.tsx`) whose price is that bid, and `market` (the quay row) only where she lies (`DockedAct` trades through it).
+2. **Sell opens on her cargo** (`buysell/CargoBest.tsx`, under the map): each good aboard, "Here" (where she lies, when that city buys it: its bid), and the best 3 cities she can sail to, from the board's own fully priced rows (`price_each`, `sailable`), by served `profit` (after wages, supplies, tax): price · days · profit. One press: that city and that good, the panel ready (Sell, or Sail & sell). The board prices in full only its 10 dearest cities (`good_board_quoted`), so "best" is the best of those.
+3. **A city pressed moves the map** (`SmallChart` `goTo`, via `TradeMap`): the map dot, the chip strip or a cargo row, on Buy and on Sell, glides the city to the middle (`surface.glideTo`, the Map tab's go-to loop) at the reader's own zoom; the sheet wraps east-west, so even the whole world turns to it. Only the view moves.
+4. **A button that will not press says why** (`useTripGo` `why`, shown under the estimate): "Pattani does not buy X. Press another city.", the board's reach words for too far / shut / past her stores, "No X aboard.", "Need 120, you have 0.".
+5. **Docked Sell defaults to all aboard** (as Sail & sell sells ALL): one press sells it all here.
+
+Proof: `tests/rpc.sellAnywhere.spec.ts` (her exact shape on Postgres: the near city's quay lists no camphor, price_why bids, SAIL + SELL ALL queue with purse 0 and she sails), `tests/command.sellCargo.spec.ts` (desktop and phone: cargo list, Here sells all, near cities priced and pressable, the map centring on a press on Buy and Sell).
+
 ---
 
 ## 3. The mini route map (row 191)
