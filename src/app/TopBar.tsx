@@ -4,7 +4,7 @@ import { Countdown, Figure } from '../components/ui'
 import { useWorld } from '../live/worldStore'
 import { isTradeRoute } from './navTabs'
 import { useShellState } from './shellState'
-import { COIN, formatGameClock, formatGameToday, formatKoreaTime, formatInt, instantMs } from '../lib/format'
+import { COIN, formatDucatsDelta, formatGameClock, formatGameToday, formatKoreaTime, formatInt, instantMs } from '../lib/format'
 import { useT } from '../lib/i18n'
 
 // THE STATUS STRIP — 32px, two facts, and nothing that says the obvious.
@@ -41,11 +41,24 @@ import { useT } from '../lib/i18n'
 // second authority for "when do prices move" firing on every tab. Past the instant the strip reads
 // `now` — which is true, and the screen's own re-ask replaces it.
 
+/** 0241: how long the capital's gift shows beside the purse. */
+const GIFT_SHOW_MS = 2 * 60_000
+
 export function TopBar() {
   const t = useT()
   const { pathname } = useLocation()
   const { nowMs } = useShellState()
   const ducats = useWorld((s) => s.ducats)
+  // 0241 (owner row 230): what she owes the cities (a SAIL's stores on credit, dock fees) — paid from her next sale.
+  const owed = useWorld((s) => s.player?.owed ?? 0)
+  // 0241: her capital's gift, for two minutes after it lands — one string, so the bar re-renders only when it changes.
+  const giftKey = useWorld((s) => {
+    const e = s.events.find((x) => x.kind === 'CAPITAL_GIFT')
+    return e ? `${e.at}|${typeof e.payload.ducats === 'number' ? e.payload.ducats : (e.ducats_delta ?? 0)}` : null
+  })
+  const [giftAt, giftDucats] = giftKey ? giftKey.split('|') : [null, null]
+  const giftMs = instantMs(giftAt)
+  const showGift = giftMs !== null && nowMs - giftMs >= 0 && nowMs - giftMs < GIFT_SHOW_MS
 
   // A NUMBER, not the markets object: a selector that returned the record would hand the bar a new
   // identity on every market read and re-render it for a port it is not showing. This collapses to
@@ -105,6 +118,16 @@ export function TopBar() {
         </span>
       </span>
 
+      {showGift && (
+        <span data-testid="gift-toast" className="shrink-0 text-t-caption text-success">
+          {t('shell.gift')} {formatDucatsDelta(Number(giftDucats))}
+        </span>
+      )}
+      {owed > 0 && (
+        <span data-testid="owed" className="shrink-0 text-t-caption text-warning">
+          {t('shell.owed')} {formatInt(owed)}
+        </span>
+      )}
       <span data-testid="purse" className="shrink-0">
         <Figure value={ducats === null ? '—' : formatInt(ducats)} unit={COIN} />
       </span>

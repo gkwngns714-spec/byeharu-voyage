@@ -70,6 +70,7 @@ export function TradeCard({
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
   const ducats = useWorld((s) => s.ducats)
+  const onCreditLit = useWorld((s) => s.player?.on_credit === true)
   const issueLines = useWorld((s) => s.issueLines)
   const { set, close, seedRoute } = useDeskPlan()
   const [units, setUnits] = useState(plan.units !== null ? String(plan.units) : '')
@@ -81,6 +82,11 @@ export function TradeCard({
   const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
   const { buyRow, sellRow, days, supplies } = tripRows(b, plan)
   const outlay = (buyRow?.cost ?? 0) + (supplies?.cost ?? 0)
+  // 0241 (owner row 230): SHE SAILS ON CREDIT. While the server says credit is lit (world.player `on_credit`), the
+  // supplies her purse cannot cover are owed to the city and paid from her next sale — they never stop Go. The
+  // cargo itself is still bought with money she has.
+  const onCredit = onCreditLit && ducats !== null && supplies ? Math.max(0, Math.min(supplies.cost, outlay - ducats)) : 0
+  const mustPay = onCreditLit ? (buyRow?.cost ?? 0) : outlay
 
   // WHY GO CANNOT RUN, in the server's terms, read off the board (never judged here): the first that bites.
   const stop: string | null = !plan.sellAt
@@ -97,7 +103,7 @@ export function TradeCard({
           ? t('desk.holdFull')
           : !plan.buyAt && aboard <= 0
             ? t('desk.holdEmpty')
-            : ducats !== null && outlay > ducats
+            : ducats !== null && mustPay > ducats
               ? t('desk.noMoney')
               : null
 
@@ -180,6 +186,13 @@ export function TradeCard({
           value={<Figure value={supplies ? formatPriceDelta(-supplies.cost) : '—'} tone={supplies && !supplies.fits ? 'danger' : 'ink'} />}
           data-testid="plan-supplies"
         />
+        {onCredit > 0 && (
+          <Row
+            label={t('desk.onCredit')}
+            value={<Figure value={formatPriceDelta(-onCredit)} tone="warning" />}
+            data-testid="plan-on-credit"
+          />
+        )}
         <Row label={t('desk.wages')} value={<Figure value={sellRow?.wages != null ? formatPriceDelta(-sellRow.wages) : '—'} />} data-testid="trade-wages" />
         {/* 0237 (§4c): the dock fee at the sell city and the country factor on its tax — served only while the economy is closed */}
         {sellRow?.dues && (
