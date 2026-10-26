@@ -2751,7 +2751,16 @@ export interface BoardPassage {
 export interface BoardShut {
   code: string
   sentence: string
-  figures?: { nm: number; leg_days: number; need_days: number; carry_days: number; cap_nm: number | null }
+  figures?: {
+    nm: number
+    leg_days: number
+    need_days: number
+    carry_days: number
+    cap_nm: number | null
+    /** 0238 — a sell row bought first: the buy city, when the way there is past her stores (no seller is within them). */
+    buy_at?: string
+    buy_at_name?: string
+  }
 }
 
 /** 0219 — what a board row's seas ask (`public.sea_routes`): the most any leg of the route asks, and the one

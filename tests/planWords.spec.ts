@@ -46,6 +46,17 @@ test('0231: a city the stores cannot reach says so with the server figures, not 
   expect(words).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })
 
+test('0238: a row shut on the way to the buy city names that city (owner, Port Royal)', () => {
+  const shut = {
+    code: 'E_ENDURANCE',
+    sentence: '…',
+    figures: { nm: 1614, leg_days: 6.8, need_days: 7.8, carry_days: 4.3, cap_nm: 884, buy_at: 'GUA', buy_at_name: 'Guangzhou' },
+  }
+  const words = reachWords({ ...noLeg, needs: null, shut }, board)
+  expect(words).toBe('Hold too full: bought at Guangzhou, the trip has a crossing that needs 7.8 days of supplies; you can carry 4.3 days')
+  expect(words).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
+})
+
 test('a board with no speed falls back to miles, spelled, never nm', () => {
   const slow = { ...board, speedKn: 0 }
   expect(reachWords({ ...noLeg, needs: { navigation: 3, reach_nm: 2600 } }, slow)).toContain('1,700 miles')
