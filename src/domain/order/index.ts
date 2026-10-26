@@ -43,6 +43,7 @@ export {
   queuedOrderWords,
   refusalOfOrder,
   tradeLineWords,
+  tradeOfTokens,
   verbWord,
   visibleArgs,
   type FixAction,
