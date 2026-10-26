@@ -1,10 +1,11 @@
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useShellState } from '../../app/shellState'
 import { Empty, Row, SheetSection } from '../../components/ui'
 import { formatDucatsDelta, formatRelative } from '../../lib/format'
 import { properName, translateMaybe, useLocale, useT } from '../../lib/i18n'
 import { worldMoneyFeed, type MoneyMove, type RpcResult } from '../../lib/rpc'
 import { useLiveRead } from './statsLive'
+import { emptyDrip, enqueue, step, type Drip } from './moneyDrip'
 
 // THE MONEY LOG — every money move in the world as it happens, beside World money (0235; the owner, row 219,
 // 2026-10-26: *"beside the stat, world money, i want to see the live log of each happenings that cause money -
@@ -19,6 +20,10 @@ import { useLiveRead } from './statsLive'
 // LATE_MS, because a job's moves carry the instant its transaction BEGAN and land when it commits (the
 // arrivals tick, every 15 s, ran up to 12.5 s on prod 2026-10-26), so a batch can land older than a row already
 // shown. Rows merge by key and the newest KEEP are held, so the overlap never doubles a row.
+//
+// THE DRIP (moneyDrip.ts): the arrivals job writes rows in batches every 15 s, so new rows are not shown all at once —
+// they are queued oldest first and revealed a few per second; the player's own rows show at once. Each row keeps its
+// real time. (No animation, so reduced motion is the same.)
 //
 // THE LAYOUT: on a phone, under World money; on the wide glass, in the column's right gutter (the tray's room —
 // the Stats tab opens no tray), its heading on World money's line (World money's own top margin collapses
@@ -47,14 +52,38 @@ function merge(held: MoneyMove[], got: MoneyMove[]): MoneyMove[] {
 
 function useMoneyFeed(): { view: MoneyMove[] | null; loading: boolean } {
   const held = useRef<MoneyMove[]>([])
-  return useLiveRead<MoneyMove[]>('stats:money-feed', async (): Promise<RpcResult<MoneyMove[]>> => {
+  const seen = useRef<Set<string> | null>(null)
+  const drip = useRef<Drip>(emptyDrip)
+  const [shown, setShown] = useState<MoneyMove[] | null>(null)
+  const read = useLiveRead<MoneyMove[]>('stats:money-feed', async (): Promise<RpcResult<MoneyMove[]>> => {
     const newest = held.current[0]
     const after = newest === undefined ? null : new Date(atMs(newest) - LATE_MS).toISOString()
     const r = await worldMoneyFeed(after, KEEP)
     if (!r.ok) return r
     held.current = merge(held.current, r.value.moves)
+    if (seen.current === null) {
+      // the first read is history: shown at once
+      seen.current = new Set(r.value.moves.map((m) => m.key))
+      setShown(held.current)
+    } else {
+      const fresh = r.value.moves.filter((m) => !seen.current!.has(m.key))
+      for (const m of fresh) seen.current.add(m.key)
+      const mine = fresh.filter((m) => m.own)
+      if (mine.length > 0) setShown((s) => merge(s ?? [], mine))
+      drip.current = enqueue(drip.current, fresh.filter((m) => !m.own))
+    }
     return { ok: true, value: held.current }
   })
+  useEffect(() => {
+    const id = setInterval(() => {
+      const { released, next } = step(drip.current)
+      if (released.length === 0) return
+      drip.current = next
+      setShown((s) => merge(s ?? [], released))
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+  return { view: read.view === null ? null : shown ?? read.view, loading: read.loading }
 }
 
 export function MoneyLog() {
