@@ -16,6 +16,7 @@ import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsOverview, type StatsNow, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
 import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
+import { MoneyLog } from './MoneyLog'
 import { useLiveRead } from './statsLive'
 import { WatchSection } from './Watch'
 
@@ -32,6 +33,8 @@ import { WatchSection } from './Watch'
 // read); "the last 24 h" is the count's quarter hours plus the minutes since; "since the last count" is the count in
 // progress; every chart's last point is now() — the money line at its live total, the bars and the sold / bought
 // lines at the period in progress. Nothing here adds a figure: each is the server's.
+//
+// THE MONEY LOG (0235, owner row 219) stands beside World money: every money move as it happens (MoneyLog.tsx).
 
 const HOURS = 24
 
@@ -59,7 +62,8 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
   const totals = toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside)
 
   return (
-    <div data-testid="stats-overview">
+    // `relative`: the money log stands in the column's right gutter on the wide glass, beside World money (MoneyLog.tsx)
+    <div className="relative" data-testid="stats-overview">
       <SheetSection heading={t('stats.money')}>
         <StatCell
           label={t('stats.everyPurse', { n: formatInt(v.hours) })}
@@ -107,6 +111,7 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
           empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
         />
       </SheetSection>
+      <MoneyLog />
 
       <SheetSection heading={t('stats.newMoney')}>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">

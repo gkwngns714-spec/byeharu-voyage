@@ -3158,6 +3158,31 @@ export interface StatsMerchants {
   series: { at: string; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
 }
 
+/** One money move in `world.money_feed` (0235): one purse's gain or loss. Both ends of a sale are two moves. */
+export interface MoneyMove {
+  /** 'L' + ledger id or 'F' + flow id — unique; the list's dedupe key. */
+  key: string
+  at: string
+  /** A company's name (a player's or a merchant's) or a city's. */
+  who: string
+  holder: 'company' | 'merchant' | 'city'
+  /** The caller's own company. */
+  own: boolean
+  kind: string
+  /** The server's word for the kind (stats_flow_words), else the kind itself. */
+  word: string
+  /** minted / moved / removed (stats_flow_words); null for a kind it does not name. */
+  side: 'minted' | 'moved' | 'removed' | null
+  /** Signed, on the holder's purse. Never 0. */
+  delta: number
+}
+
+/** `world.money_feed(after, limit)` (0235, owner row 219): the moves after `after`, newest first. */
+export interface MoneyFeed {
+  now: string
+  moves: MoneyMove[]
+}
+
 /** `world.stats_now()` (0224): the live figures this second — money by holder, fleets at sea, and the trades
  *  since the last count. `counted_at` is when the last count folded the journal. `at` is the server's own clock
  *  at the answer (the Stats header prints it). */
