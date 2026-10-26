@@ -26,7 +26,7 @@ export function SellList({ plan, board, loading }: { plan: PlanDraft; board: Goo
   const name = (c: string) => portNameOf(portByCode, c)
   const open = (board?.sell ?? []).filter((r) => r.sailable !== false)
   const shut = (board?.sell ?? []).filter((r) => r.sailable === false)
-  const reason = (r: BoardSellRow) => (r.stops == null ? t('desk.far') : r.supplies && !r.supplies.fits ? t('desk.holdFull') : t('desk.shut'))
+  const reason = (r: BoardSellRow) => (r.stops == null ? (r.shut?.code === 'E_ENDURANCE' ? t('desk.holdFull') : t('desk.far')) : r.supplies && !r.supplies.fits ? t('desk.holdFull') : t('desk.shut'))
   return (
     <div className="mt-4" data-testid="trade-sell-list">
       <span className="block text-t-caption text-ink-faint">{t('desk.sell')}</span>

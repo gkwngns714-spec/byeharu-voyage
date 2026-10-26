@@ -306,6 +306,9 @@ After R1 lands: R3 mini route map (191) → R4 Report (192) → R2 true reasons 
 **Rules learned today:** deploy only in number order, renumbering file + tags; after EVERY merge wait for main's Acceptance (bv-deploy.sh now does it); a conflicting PR gets no CI, so rebase first; run each prod check from a file (`db query --linked -f`), one statement per file.
 
 
+### 2026-10-26 ~03:40 UTC: prod head **0231**, main green
+LIVE today since 02:30: 0227 who bought what (#320), 0228+0229 economy E1+E2 DARK (#323), 0231 legs fit supplies (#326); #319 main-red fix, #325 ships stay drawn. Next: 0232 stats-all-live (in CI) → 0233/0234 E3+E4 (building, `osn-econ-e3-e4`) → E4b, E5, E6, E6b, E7 → switch on → watch. Then N1 Stats history kept (after 0232). Open: owner's own good_board reads 3.2–4.5 s on prod (look at it). Known: 0226's self-assert fails if CI applies the chain from zero between 01:00 and 01:59 UTC (needs a forward fix in the proof harness, not 0226).
+
 ### 2026-10-26 ~02:30 UTC (PC 디폴리스) — EVERYTHING IN FLIGHT, IN ORDER (owner: "do all the work without dropping any")
 Prod head 0226. Merged + live today: #311 #312 Stats header/countdown, #314 mini map 0 %, #315 Trade Here = port market. Designs merged: ROUTE_BUILDER (#313), CLOSED_ECONOMY (#316 + §3 daily max stock, §4b city wants, §4c port fee / 1-min port time / tax by country).
 | order | item | branch / worktree | state |
