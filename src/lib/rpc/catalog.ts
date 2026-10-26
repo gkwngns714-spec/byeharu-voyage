@@ -217,13 +217,24 @@ export const RPCS = {
     ],
   },
   cmdVerbSchema: { schema: 'cmd', fn: 'verb_schema', args: [] },
-  // 0013-0016: the record, the house, the roster and the school.
-  worldPriceHistory: {
+  // 0226 — THE chart read: one good at one city over 1d / 1w / 1m / 1y / all, both sides of every point,
+  // from the tier the span lives in. Replaced 0013's world.price_history (one port, every good, 12 h).
+  worldPriceSeries: {
     schema: 'world',
-    fn: 'price_history',
+    fn: 'price_series',
     args: [
       { name: 'p_port', type: 'uuid' },
-      { name: 'p_slots', type: 'int' },
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_span', type: 'text' },
+    ],
+  },
+  // 0226 — the press that keeps a city's price for a good it does not sell. Identity is the JWT's.
+  cmdWatchPrice: {
+    schema: 'cmd',
+    fn: 'watch_price',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
     ],
   },
   // Takes NO id — the server reads auth.uid(), so a caller can only ever read their own house.

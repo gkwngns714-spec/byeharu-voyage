@@ -72,7 +72,8 @@ import {
   worldOfficers,
   worldAllegiance,
   worldPlayer,
-  worldPriceHistory,
+  worldPriceSeries,
+  cmdWatchPrice,
   worldSkills,
   worldStandings,
   worldBuffs,
@@ -100,7 +101,8 @@ import type {
   OfficerRoster,
   PlayerHouse,
   PreviewResult,
-  PriceHistory,
+  PriceSeries,
+  PriceSpan,
   Refusal,
   RpcResult,
   StandingRouteBook,
@@ -193,8 +195,9 @@ export interface LiveWorld {
   trafficReadAt: number | null
   /** What is on at the quay (0026), keyed by port id — a fair is a PORT's fact, not the world's. */
   buffs: Record<string, BuffsView>
-  /** One port's remembered prices, keyed by port id (0013). Fetched beside its market. */
-  history: Record<string, PriceHistory>
+  /** A good's price at a city over a span (0226), keyed `port|good|span` (seriesKey). One read per key;
+   *  a pair the record does not keep yet is pressed into it once (cmd.watch_price). */
+  series: Record<string, PriceSeries>
 
   /** The purse, and the events behind it. */
   ducats: number | null
@@ -227,8 +230,9 @@ export interface LiveWorld {
   /** Fetch (and cache) one port's market. */
   loadMarket: (portId: string) => Promise<void>
   /** Fetch (and cache) one port's remembered prices. `slots` is how many the asking window needs; the
-   *  server clamps it to what it keeps and says what it gave (worldPriceHistory). */
-  loadHistory: (portId: string, slots?: number | null) => Promise<void>
+   *  silent: a chart is a decoration on a price that is true without it. Lands `series[seriesKey(...)]`;
+   *  a pair the record does not keep yet is pressed into it once (cmdWatchPrice) and reads again. */
+  loadSeries: (portId: string, goodId: string, span: PriceSpan) => Promise<void>
   /** Fetch (and cache) one place's sailed distances to everywhere (0039). */
   loadReach: (portId: string) => Promise<void>
   /** Fetch (and cache) where the goods of one port pay more. Naming the fleet lying there is what
@@ -403,13 +407,13 @@ export function portNationOf(
 /** How often the beat re-reads the flags (0143). The daily count moves them once a day. */
 const ALLEGIANCE_ASK_EVERY_MS = 60 * 60_000
 let allegianceAskedAtMs = 0
-/** The price-history reads on the wire, by port (loadHistory). */
-const historyAsking = new Map<string, Promise<void>>()
-/** THE WIDEST WINDOW ALREADY ASKED OF EACH PORT, in slots (loadHistory). A wider window asks again; a
- *  narrower one draws what is already kept, because a payload for N slots holds every shorter window
- *  inside it. It is kept beside the served `slots` and not instead of it: the server CLAMPS the ask to
- *  what it retains, so a window the record cannot fill must not ask again every time it is chosen. */
-const historyAsked = new Map<string, number>()
+/** The price-series reads on the wire, by key (loadSeries). */
+const seriesAsking = new Map<string, Promise<void>>()
+/** The pairs this tab has already pressed into the record (loadSeries): one press per pair per session,
+ *  because the press is idempotent on the server and the next tick is what starts the line. */
+const seriesWatched = new Set<string>()
+/** The one spelling of a series key. */
+export const seriesKey = (portId: string, goodId: string, span: PriceSpan) => `${portId}|${goodId}|${span}`
 
 /** THE ROSTER'S CADENCE (0118). A delta asks from the last answer's instant LESS this overlap: a tick
  *  that started before that instant commits its rows dated earlier, after it (tick_arrivals runs for
@@ -627,7 +631,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   trafficWanted: 0,
   trafficReadAt: null,
   buffs: {},
-  history: {},
+  series: {},
   ducats: null,
   events: [],
   markets: {},
@@ -770,26 +774,31 @@ export const useWorld = create<LiveWorld>((set, get) => {
       { loud: true },
     ),
 
-  // ONE ASK A PORT AT A TIME (2026-10-19): the desk asks a good's likely city ahead of its chart, and the
-  // chart then asks the same port while that read is still on the wire — the second ask joins the first.
-  //
-  // A WIDER WINDOW ASKS AGAIN (2026-10-20, owner request 178): the chart's window chips are how many
-  // slots the chart wants, and a payload for N slots already contains every shorter window, so only an
-  // ask WIDER than the widest already made goes to the wire. The served payload replaces the kept one
-  // whole; its own `slots` field is what the server was willing to give, which the chart reads to say
-  // how far the record truly reaches.
-  loadHistory: (portId, slots = null) => {
-    const kept = get().history[portId]
-    const covered = Math.max(historyAsked.get(portId) ?? 0, kept?.slots ?? 0)
-    const wider = slots !== null && slots > covered
-    if (kept !== undefined && !wider) return Promise.resolve()
-    const onWire = historyAsking.get(portId)
-    if (onWire && !wider) return onWire
-    if (slots !== null) historyAsked.set(portId, Math.max(covered, slots))
-    const p = loader(worldPriceHistory(portId, slots), (v, s) => ({ history: { ...s.history, [portId]: v } }), {
-      loud: false,
-    }).finally(() => historyAsking.delete(portId))
-    historyAsking.set(portId, p)
+  // THE SERIES READ (0226): one read per (port, good, span); a payload already kept is not asked again
+  // in this session (the beat does not re-read charts — a chart's line moves one point a slot). A pair the
+  // record does not keep yet comes back `recording: false` with no points: the store presses it into the
+  // record ONCE (cmd.watch_price, idempotent) and nothing else — the next tick writes the first point, and
+  // the next open of the chart reads it. A failed read or press is SILENT (a decoration).
+  loadSeries: (portId, goodId, span) => {
+    const key = seriesKey(portId, goodId, span)
+    if (get().series[key] !== undefined) return Promise.resolve()
+    const onWire = seriesAsking.get(key)
+    if (onWire) return onWire
+    const p = loader(
+      worldPriceSeries(portId, goodId, span),
+      (v, s) => ({ series: { ...s.series, [key]: v } }),
+      { loud: false },
+    )
+      .then(() => {
+        const v = get().series[key]
+        const pair = `${portId}|${goodId}`
+        if (v && !v.recording && !seriesWatched.has(pair)) {
+          seriesWatched.add(pair)
+          void cmdWatchPrice(portId, goodId)
+        }
+      })
+      .finally(() => seriesAsking.delete(key))
+    seriesAsking.set(key, p)
     return p
   },
 

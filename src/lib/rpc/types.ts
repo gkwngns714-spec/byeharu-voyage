@@ -1445,26 +1445,51 @@ export interface FoundedHouse {
 
 // ── 0013-0016: the record, the house, the roster and the school ─────────────────────────────────
 
-/** One remembered point on a good's price line. `mid` only: the spread and the tax are the port's
- *  cut and are read live, while what MOVED is the mid (0013). */
+/** The spans a price chart can ask for (0226): the fine record for a day, the hourly open/high/low/close
+ *  for a week or a month, the daily for a year or for ever. The server picks the tier by span. */
+export type PriceSpan = '1d' | '1w' | '1m' | '1y' | 'all'
+
+/** One point of a good's price at a city, BOTH SIDES (0226): `ask` is what the city asks a unit (null
+ *  where it does not sell the good — 0061), `bid` what it pays. On the folded tiers (`hour`, `day`) ask
+ *  and bid are the period's CLOSE and the `_lo` / `_hi` fields its low and high; the fine tier carries
+ *  none of them. */
 export interface PricePoint {
-  /** The drift slot the sample belongs to — the x axis, in units of `slot_seconds`. */
-  slot: number
   at: string
-  mid: number
-  /** The stock the snapshot wrote beside the mid (0183). */
+  ask: number | null
+  bid: number
+  ask_lo?: number | null
+  ask_hi?: number | null
+  bid_lo?: number
+  bid_hi?: number
+  /** The city's stock at the sample, on the fine tier only (0183's strip). */
   stock?: number
 }
 
-/** `world.price_history(port, slots)` — ONE call per port, keyed by good CODE, oldest point first.
- *  A good with no points yet is simply absent from `goods`; it is never an empty array, so a
- *  caller must treat "missing" and "flat" as different. */
-export interface PriceHistory {
+/** `world.price_series(port, good, span)` — THE chart read (0226): one good at one city over a span,
+ *  oldest point first, from the tier the span lives in. `recording` false means the record does not
+ *  keep this pair yet (a city that does not sell the good, never asked for): the store presses
+ *  `cmd.watch_price` once and the next tick starts the line. `points` is `[]` until then. */
+export interface PriceSeries {
   port: string
-  slots: number
-  /** How many real seconds one slot spans, so an axis can be labelled without knowing the cadence. */
-  slot_seconds: number
-  goods: Record<string, PricePoint[]>
+  good: string
+  span: PriceSpan
+  tier: 'fine' | 'hour' | 'day'
+  /** How many real seconds one point spans: the drift slot, an hour, or a day. */
+  step_seconds: number
+  now: string
+  /** The city sells the good, so every point carries an ask. */
+  offered: boolean
+  recording: boolean
+  points: PricePoint[]
+}
+
+/** `cmd.watch_price(port, good)` (0226): the record now keeps this pair. */
+export interface WatchPriceResult {
+  recording: boolean
+  /** True when the press added (or refreshed) a watch; false for a pair the city sells, recorded anyway. */
+  watched: boolean
+  pairs: number
+  evicted: number
 }
 
 /** Fame, DERIVED from the append-only record every time it is asked (0014) — never a stored

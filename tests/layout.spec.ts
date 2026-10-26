@@ -1001,6 +1001,9 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
     await row.locator('button:enabled').first().click()
     await expect(tray).toBeVisible()
     await expect(trend).toBeVisible()
+    // The record is READ on the press since 0226 (one series per city and good): wait for the read to
+    // land — a sparkline, or the row's "No data yet" — before judging it.
+    await expect(trend.locator('svg[role="img"], [data-testid="trend-empty"]').first()).toBeVisible({ timeout: 60_000 })
     // No record yet, or a record of one point: no sparkline, nothing to unfold.
     if ((await trend.locator('svg[role="img"]').count()) === 0) {
       tried.push(`${name}: no history`)
@@ -1008,7 +1011,7 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
       await expect(tray).toHaveCount(0)
       continue
     }
-    await trend.click()
+    await trend.locator('svg[role="img"]').first().click() // the line, not the span picker that shares the row
     await expect(chart).toBeVisible()
     // A RECORD THAT HAS NOT MOVED IS STILL A RECORD. A fresh world (CI's disposable one) has two or
     // more slots of the same mid for every good, so the chart draws ONE y label there; asserting
@@ -1031,7 +1034,7 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
     await expect(chart.locator('[data-testid="price-chart-now"]')).toHaveCount(1)
     await expect(chart.locator('[data-testid="price-chart-legend"]')).toHaveText(/low[\s\S]*now[\s\S]*high/)
     // And back: a second press folds it to the sparkline.
-    await trend.click()
+    await chart.click()
     await expect(chart).toHaveCount(0)
     await expect(trend.locator('svg[role="img"]')).toHaveCount(1)
     await tray.locator('[data-testid="tray-close"]').click()

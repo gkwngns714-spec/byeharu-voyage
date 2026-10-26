@@ -57,7 +57,9 @@ import type {
   PromotedCaptain,
   AugmentedFitting,
   PreviewResult,
-  PriceHistory,
+  PriceSeries,
+  PriceSpan,
+  WatchPriceResult,
   RequestBoard,
   RouteBoard,
   StandingRouteAssigned,
@@ -430,21 +432,25 @@ export function cmdFoundHouse(
 
 // ── 0013-0016 ───────────────────────────────────────────────────────────────────────────────────
 
+/** The spans `world.price_series` answers, in the order a chart offers them (0226). */
+export const PRICE_SPANS: readonly PriceSpan[] = ['1d', '1w', '1m', '1y', 'all']
+
 /**
- * One port's remembered prices — every good it trades, oldest point first (0013).
- *
- * ONE CALL PER PORT, NOT PER GOOD. A market screen draws a line on every row it shows, and 70 goods
- * would otherwise be 70 round trips with the client deciding how many points a line has.
- *
- * `slots` IS WHAT THE WINDOW NEEDS, NOT WHAT THE RECORD KEEPS (2026-10-20, owner request 178: *"the
- * price is shown max 12 hours, can you make this more longer? Like day? Week?"*). A caller asks for
- * the slots its chosen window would fill; the server clamps the ask to what it actually keeps
- * (`public.price_history_window`, 48 slots = 12 h on production today) and SAYS what it gave in the
- * payload's `slots`. So the client is never the thing that limits the window — the day the retention
- * law widens, the same chips draw more with no client change. Null asks for the server's own default.
+ * ONE good's price at ONE city over a span, both sides of every point (0226, owner rows 189 and 205).
+ * The server picks the tier — the fine record for `1d`, the hourly open/high/low/close for `1w` and
+ * `1m`, the daily for `1y` and `all` — and says which in `tier`, with the step each point spans. A pair
+ * the record does not keep yet answers `recording: false` with no points; the store then presses
+ * `cmdWatchPrice` once, and the next tick starts the line. Replaced `world.price_history` (one port,
+ * every good, twelve hours), which 0226 dropped.
  */
-export function worldPriceHistory(portId: string, slots: number | null = null): Promise<RpcResult<PriceHistory>> {
-  return call<PriceHistory>('worldPriceHistory', [portId, slots])
+export function worldPriceSeries(portId: string, goodId: string, span: PriceSpan): Promise<RpcResult<PriceSeries>> {
+  return call<PriceSeries>('worldPriceSeries', [portId, goodId, span])
+}
+
+/** Keep this city's price of this good (0226): a city that does not sell a good has no record of what
+ *  it pays until someone asks. Idempotent; the server caps the list and lets the stalest ask go. */
+export function cmdWatchPrice(portId: string, goodId: string): Promise<RpcResult<WatchPriceResult>> {
+  return call<WatchPriceResult>('cmdWatchPrice', [portId, goodId])
 }
 
 /**

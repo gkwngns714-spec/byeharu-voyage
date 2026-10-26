@@ -48,14 +48,18 @@ export const SERIES_CHART_W = 340
 export const SERIES_CHART_H = 120
 const PAD = { left: 8, right: 8, top: 8, bottom: 18 }
 
-/** "6h", "2d", "45m" — how far before the newest point an instant lies. */
+/** "6h", "2d", "45m", "2.5y" — how far before the newest point an instant lies. THE one spelling of a
+ *  stretch of time on a chart's axis: the price chart reads it too (0226, for days and years). */
 export function agoLabel(ms: number): string {
   if (ms < 60_000) return t('shell.now')
   const min = Math.round(ms / 60_000)
   if (min < 60) return t('format.shortM', { n: min })
   const h = Math.round(ms / 3_600_000)
   if (h < 48) return t('format.agoHour', { n: h })
-  return t('format.agoDay', { n: Math.round(ms / 86_400_000) })
+  const d = Math.round(ms / 86_400_000)
+  if (d < 730) return t('format.agoDay', { n: d })
+  const y = Math.round((ms / (365 * 86_400_000)) * 10) / 10
+  return t('format.agoYear', { n: Number.isInteger(y) ? String(y) : y.toFixed(1) })
 }
 
 export function seriesChartModel(

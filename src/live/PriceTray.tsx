@@ -29,7 +29,7 @@ export function PriceTray({
   onClose,
 }: {
   good: MarketGood
-  /** The remembered prices here, and their cadence — `usePortHistory`'s one reading. */
+  /** The good's price here over the chosen span, both sides — `usePriceSeries`'s one reading. */
   trend: PriceTrend
   /** The sailed distance from where she lies to this quay, or null when there is no figure. */
   passage: number | null

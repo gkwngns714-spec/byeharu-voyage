@@ -6,21 +6,28 @@ import { formatInt } from '../../lib/format'
 import type { PricePoint } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 
-// THE PRICE CHART — the sparkline, unfolded: the same served line with an axis under it and a
-// scale beside it. docs/QUAY_LEDGER.md §3 F ("the 48-slot price history drawn with an axis") and
+// THE PRICE CHART — the sparkline, unfolded: the same served lines with an axis under them and a
+// scale beside them. docs/QUAY_LEDGER.md §3 F ("the price history drawn with an axis") and
 // Appendix A B (owner row 76, slice 3).
 //
 // It PAINTS `priceChartModel` and decides nothing. Every number on it is served or derived from
 // what was served — the y labels are the record's own min, midpoint and max; the x labels are
-// hours before now, derived from the points and `slot_seconds`; the three marks are the lowest,
-// highest and latest served points. No literal window, no interpolation, no tooltip: at 340 px
-// inside a tray the honest instrument is the line, three figures on each axis, and three marks.
+// time before now, derived from the points and `step_seconds`; the three marks are the lowest,
+// highest and latest served points of the primary line. No literal window, no interpolation, no
+// tooltip: at 340 px inside a tray the honest instrument is the lines, three figures on each axis,
+// and three marks.
 //
-// COLOUR IS A TOKEN, NEVER A LITERAL (tests/duplication.spec.ts §1): the line and the "now" ring
-// are `accent` (yours, may act), the low mark is `danger` and the high mark `success` — §4.4's
-// rule that green–red on a chart only ever mean cheap–dear — the fill is `accent-soft`, and the
-// axes are `edge` and `ink-faint`. The legend under the plot names the three marks in words so a
-// colourblind player and a greyscale screenshot still read them.
+// BOTH SIDES (0226, owner row 189): the city's ASK (what you pay) is the `accent` line and its BID
+// (what you get) the `info` line; the PRIMARY one — the ask where the city sells the good, else the
+// bid — carries the ground and the marks. On the hourly and daily tiers each side's low…high is a
+// faint band under its line. The legend names both sides in the dictionary's words (Cost · Sale, the
+// same two the price pair prints), so a city that only buys reads as the one line it has.
+//
+// COLOUR IS A TOKEN, NEVER A LITERAL (tests/duplication.spec.ts §1): the ask line and the "now" ring
+// are `accent` (yours, may act), the bid line is `info`, the low mark is `danger` and the high mark
+// `success` — §4.4's rule that green–red on a chart only ever mean cheap–dear — the fill is
+// `accent-soft`, and the axes are `edge` and `ink-faint`. The legend under the plot names the marks
+// in words so a colourblind player and a greyscale screenshot still read them.
 //
 // `Sparkline` stays the FOLDED form (PriceRows.tsx toggles between the two); this is not a second
 // sparkline and it does not replace it.
@@ -50,7 +57,7 @@ export function PriceChart({
 }: {
   /** The served points for ONE good at ONE port, oldest first. */
   points: readonly PricePoint[]
-  /** `PriceHistory.slot_seconds`, so the axis can be labelled without knowing the cadence. */
+  /** `PriceSeries.step_seconds`, so the axis can be labelled without knowing the cadence. */
   slotSeconds: number
   /** The instant the axis ends at — the moment the chart was opened. */
   nowMs: number
@@ -157,16 +164,32 @@ export function PriceChart({
         ))}
         {/* EVERYTHING DRAWN STANDS INSIDE THE PLANE (the clip above) when there is a window */}
         <g clipPath={view ? `url(#${clip})` : undefined}>
-          {/* the line, and the ground under it */}
+          {/* the ground under the primary line, each side's low…high band, then both lines */}
           <path d={model.area} className="fill-accent-soft" stroke="none" />
-          <path
-            d={model.line}
-            fill="none"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="stroke-accent"
-          />
+          {model.bands.ask && <path d={model.bands.ask} className="fill-accent" fillOpacity={0.12} stroke="none" data-testid="price-chart-band-ask" />}
+          {model.bands.bid && <path d={model.bands.bid} className="fill-info" fillOpacity={0.12} stroke="none" data-testid="price-chart-band-bid" />}
+          {model.sides.bid && (
+            <path
+              d={model.sides.bid}
+              fill="none"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="stroke-info"
+              data-testid="price-chart-bid"
+            />
+          )}
+          {model.sides.ask && (
+            <path
+              d={model.sides.ask}
+              fill="none"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="stroke-accent"
+              data-testid="price-chart-ask"
+            />
+          )}
           {/* THE ESTIMATE: the band (uncertainty — not yours, not a gain: ink-faint, faint), the dashed
               path from now, now's rule, the arrival's rule and the best time's diamond */}
           {model.outlook && (
@@ -303,6 +326,18 @@ export function PriceChart({
         </g>
       </svg>
       <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-t-caption text-ink-faint" data-testid="price-chart-legend">
+        {model.sides.ask && (
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-0.5 w-3 bg-accent" aria-hidden />
+            {t('ui.youPay')}
+          </span>
+        )}
+        {model.sides.bid && (
+          <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-0.5 w-3 bg-info" aria-hidden />
+            {t('ui.youGet')}
+          </span>
+        )}
         {model.low.index >= 0 && (
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-chip bg-danger" aria-hidden />
