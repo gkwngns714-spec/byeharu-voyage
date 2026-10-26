@@ -1590,6 +1590,10 @@ export interface PlayerHouse {
   levels: PlayerLevels
   /** 0143 — when the company may next change its country (`cmd.change_country`), or null: it may now. */
   nation_change_at: string | null
+  /** 0241 (owner row 230): what the company owes the cities (dock fees, a SAIL's stores on credit) — absent at 0. */
+  owed?: number
+  /** 0241: true while a SAIL's stores may run on credit (the economy closed) — absent otherwise. */
+  on_credit?: boolean
 }
 
 /** One track of DESIGN 8. `level` is the same curve for all three, so "level 4" means one amount

@@ -264,6 +264,14 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     }
     case 'ROUTE_PAUSED':
       return routePausedEventWords(str(p, 'route') ?? t('history.aRoute'), str(p, 'reason'), str(p, 'sentence'))
+    case 'CAPITAL_GIFT': {
+      // 0234 / 0241: her country's capital gave her her starting money (payload {port, port_name, ducats, worth}).
+      const port = str(p, 'port')
+      return t('history.capitalGift', {
+        port: port ? portName(port) : (str(p, 'port_name') ?? ''),
+        amount: formatDucats(num(p, 'ducats') ?? 0),
+      })
+    }
     case 'INSURED': {
       // 0213: the cargo insured at the port she sailed from, for the price the city was paid.
       const port = str(p, 'port')

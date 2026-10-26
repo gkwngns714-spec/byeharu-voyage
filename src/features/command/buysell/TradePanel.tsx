@@ -418,6 +418,9 @@ function SailAct({
             value={<Figure value={go.supplies ? formatPriceDelta(-go.supplies.cost) : '—'} tone={go.supplies && !go.supplies.fits ? 'danger' : 'ink'} />}
             data-testid="plan-supplies"
           />
+          {go.onCredit > 0 && (
+            <Row label={t('desk.onCredit')} value={<Figure value={formatPriceDelta(-go.onCredit)} tone="warning" />} data-testid="plan-on-credit" />
+          )}
           {side === 'sell' && (
             <>
               <Row label={t('desk.wages')} value={<Figure value={go.sellRow?.wages != null ? formatPriceDelta(-go.sellRow.wages) : '—'} />} data-testid="trade-wages" />

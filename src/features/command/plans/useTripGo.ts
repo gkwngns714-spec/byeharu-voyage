@@ -36,6 +36,7 @@ export function useTripGo({
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
   const ducats = useWorld((s) => s.ducats)
+  const onCreditLit = useWorld((s) => s.player?.on_credit === true)
   const issueLines = useWorld((s) => s.issueLines)
   const close = useDeskPlan((s) => s.close)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
@@ -47,6 +48,11 @@ export function useTripGo({
   const { buyRow, sellRow, supplies } = rows
   const end = plan.sellAt ? sellRow : buyRow
   const outlay = (buyRow?.cost ?? 0) + (supplies?.cost ?? 0)
+  // 0241 (owner row 230): SHE SAILS ON CREDIT. While the server says credit is lit (world.player `on_credit`), the
+  // supplies her purse cannot cover are owed to the city and paid from her next sale — they never stop Go. The
+  // cargo itself is still bought with money she has.
+  const onCredit = onCreditLit && ducats !== null && supplies ? Math.max(0, Math.min(supplies.cost, outlay - ducats)) : 0
+  const mustPay = onCreditLit ? (buyRow?.cost ?? 0) : outlay
 
   const stop: string | null =
     !end || !seaNav
@@ -61,7 +67,7 @@ export function useTripGo({
           ? t('desk.holdFull')
           : !plan.buyAt && aboard <= 0
             ? t('desk.holdEmpty')
-            : ducats !== null && outlay > ducats
+            : ducats !== null && mustPay > ducats
               ? t('desk.noMoney')
               : null
 
@@ -84,5 +90,5 @@ export function useTripGo({
       }
     })
 
-  return { ...rows, end, stop, go, pending: press.pending, refusal, noCourse, ready: end !== null && stop === null }
+  return { ...rows, onCredit, end, stop, go, pending: press.pending, refusal, noCourse, ready: end !== null && stop === null }
 }

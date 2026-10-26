@@ -74,6 +74,9 @@ export interface SailEstimate {
    *  SAIL (`insured: false`, the price it WOULD cost), written on `SAIL … INSURED`. Null when the
    *  server served none (a build before 0213) or the hold carries nothing worth insuring. */
   insurance: SailInsurance | null
+  /** 0241 (owner row 230): what this SAIL's stores will leave OWED to the city she sails from (the purse short) —
+   *  `cmd.do_sail`'s `on_credit`. Null when the purse covers them (or the server served none). */
+  onCredit: number | null
 }
 
 export interface SailInsurance {
@@ -94,5 +97,6 @@ export function sailEstimate(estimate: Record<string, unknown> | undefined): Sai
     nm: num(estimate, 'total_nm'),
     days: num(estimate, 'voyage_days'),
     insurance: ins && value !== null && price !== null && value > 0 ? { insured: ins['insured'] === true, value, price } : null,
+    onCredit: num(estimate, 'on_credit'),
   }
 }
