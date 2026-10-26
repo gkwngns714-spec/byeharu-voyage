@@ -27,14 +27,13 @@ import { CHART_WIDTH, project, sheetCopies, xOnSheet, type ViewBox } from '../sr
 import {
   buildChartModel,
   clampView,
-  GLYPH,
   hitTest,
   MAX_SPAN_X,
   minTierForSpan,
   panBy,
   portMarks,
   sheetPieces,
-  SHIP_CELL_PX,
+  stableSlot,
   shipMarks,
   viewBoxOf,
   visiblePorts,
@@ -155,39 +154,45 @@ const mine = (id: string, lat: number, lon: number): MapFleet => ({
   at: { lat, lon },
 })
 
-test('shipMarks culls to the view across the seam, thins the merchants to one per cell, and never thins yours', () => {
+test('shipMarks culls to the view across the seam, draws every merchant on the glass, and never thins yours', () => {
   const traffic = [
     sailing('a', 0, 179.5, ['barca']),
     sailing('b', 0, -179.5, ['nau']),
-    sailing('c', 0, 179.52, ['barca']), // in a's cell at a wide zoom
+    sailing('c', 0, 179.52, ['barca']), // beside a: still drawn, no cell contest
     sailing('far', 0, 0, ['nau']),
   ]
   const fleets = [mine('own', 0, 179.51)]
   const model = buildChartModel(fleets, [], [], null, traffic)
   expect(model.traffic).toHaveLength(4)
   const view: ViewBox = { x: 170, y: -20, width: 20, height: 40 }
-  // 1 °/px: a cell is SHIP_CELL_PX degrees — wide enough that a, c and the fleet of yours share one.
-  const wide = shipMarks(model.fleets, model.traffic, view, 1)
-  expect(wide.fleets.map((f) => f.fleet.id)).toEqual(['own'])
-  // Yours is drawn; the merchants in her cell give way to her; the one across the seam is drawn;
-  // the one at Greenwich is off the glass.
-  expect(wide.traffic.map((t) => t.fleet.id).sort()).toEqual(['b'])
-  // Close in (0.001 °/px) every ship on the glass is its own ship.
-  const close = shipMarks(model.fleets, model.traffic, view, 0.001)
-  expect(close.traffic.map((t) => t.fleet.id).sort()).toEqual(['a', 'b', 'c'])
-  // Two merchants in one cell: the one with more hulls is kept, then the lower id.
-  const two = [sailing('x', 10, 10, ['barca']), sailing('y', 10, 10.01, ['nau', 'nau'])]
-  const m2 = buildChartModel([], [], [], null, two)
-  expect(shipMarks([], m2.traffic, { x: 0, y: -20, width: 20, height: 40 }, 1).traffic.map((t) => t.fleet.id)).toEqual(['y'])
-  const tie = [sailing('q', 10, 10, ['barca']), sailing('p', 10, 10.01, ['barca'])]
-  const m3 = buildChartModel([], [], [], null, tie)
-  expect(shipMarks([], m3.traffic, { x: 0, y: -20, width: 20, height: 40 }, 1).traffic.map((t) => t.fleet.id)).toEqual(['p'])
-  // The cell is the largest hull bow to stern — one legible ship.
-  expect(SHIP_CELL_PX).toBeCloseTo(2 * GLYPH.hullHalfLength[3], 9)
+  const marks = shipMarks(model.fleets, model.traffic, view)
+  expect(marks.fleets.map((f) => f.fleet.id)).toEqual(['own'])
+  // Every merchant on the glass is drawn, a and c side by side included; the one at Greenwich is off.
+  expect(marks.traffic.map((t) => t.fleet.id).sort()).toEqual(['a', 'b', 'c'])
   // A docked fleet of yours is her port's mark, not a ship.
   const docked: MapFleet = { kind: 'docked', id: 'd', name: 'd', hulls: ['nau'], enduranceDays: 20, portCode: 'LIS' }
   const m4 = buildChartModel([docked], [LISBON], [])
-  expect(shipMarks(m4.fleets, [], { x: -20, y: -50, width: 30, height: 30 }, 0.1).fleets).toEqual([])
+  expect(shipMarks(m4.fleets, [], { x: -20, y: -50, width: 30, height: 30 }).fleets).toEqual([])
+})
+
+test('ships stay drawn: passing each other removes neither; a thinned span keeps the SAME ships before and after', () => {
+  const view: ViewBox = { x: 0, y: -40, width: 60, height: 80 }
+  const ids = Array.from({ length: 64 }, (_, i) => `s${i}`)
+  const at = (shift: number) =>
+    buildChartModel([], [], [], null, ids.map((id, i) => sailing(id, (i % 8) * 2, 10 + (i % 5) + (i % 2 ? shift : 0), ['barca'])))
+  // Before: ships apart. After: odd ones sailed through the even ones (some now on top of each other).
+  const before = at(0)
+  const after = at(-1)
+  const drawn = (m: ReturnType<typeof at>) => shipMarks(m.fleets, m.traffic, view).traffic.map((t) => t.fleet.id).sort()
+  expect(drawn(before)).toEqual([...ids].sort())
+  expect(drawn(after)).toEqual([...ids].sort())
+  // Thinned span (tiers are measured; the contract is only that the kept set is the ship's own fact).
+  const wide: ViewBox = { x: -180, y: -80, width: 360, height: 160 }
+  const kept = (m: ReturnType<typeof at>) => shipMarks(m.fleets, m.traffic, wide).traffic.map((t) => t.fleet.id).sort()
+  expect(kept(after)).toEqual(kept(before))
+  expect(kept(after).length).toBeLessThan(ids.length) // the widest tier really thins
+  expect(kept(after).length).toBeGreaterThan(0)
+  for (const id of ids) expect(stableSlot(id)).toBe(stableSlot(id))
 })
 
 test('a Pacific course is two pieces that meet at the seam latitude — the second copy closes the gap', () => {

@@ -233,7 +233,7 @@ function Chart({
       const dots = dotPorts(ports, model.portRoles, view, minTier)
       // THE MERCHANTS THE SHEET DREW — the same thinning the picture applied (shipMarks), so a tap
       // can only land on a hull that is actually on the paper.
-      const drawn = shipMarks(model.fleets, model.traffic, view, unitsPerPx)
+      const drawn = shipMarks(model.fleets, model.traffic, view)
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, drawn.traffic, placedNames())
       // A MERCHANT IS READ, NEVER COMMANDED: her tap selects her and leaves the command draft alone.
       if (hit?.kind === 'fleet') selectFleet(hit.id)

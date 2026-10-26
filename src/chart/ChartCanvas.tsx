@@ -230,10 +230,10 @@ export function ChartCanvas({
     () => windows.map(({ k, window }) => ({ k, marks: portMarks(ports, portRoles, window, minTier) })),
     [windows, ports, portRoles, minTier],
   )
-  // WHICH SHIPS, per copy — your fleets, and the merchants thinned (./shipMarks.ts).
+  // WHICH SHIPS, per copy — your fleets, and the merchants (all, or a stable subset at the widest spans; ./shipMarks.ts).
   const shipsByCopy = useMemo(
-    () => windows.map(({ k, window }) => ({ k, ships: shipMarks(model.fleets, model.traffic, window, unitsPerPx) })),
-    [windows, model, unitsPerPx],
+    () => windows.map(({ k, window }) => ({ k, ships: shipMarks(model.fleets, model.traffic, window) })),
+    [windows, model],
   )
 
   // THE SCREEN'S PIXELS, TURNED INTO CHART UNITS — the one line of arithmetic the keep-out contract

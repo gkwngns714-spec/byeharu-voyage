@@ -189,7 +189,7 @@ export { hitTest, toggleSelection } from './hitTest'
 export { placedNames } from './placedNames'
 // 2026-10-14 — WHICH SHIPS A VIEW DRAWS (every one of them as a ship): the decision, exported like
 // `portMarks` is, so the Map tab's hit test and a spec read the same thinning the picture did.
-export { shipMarks, SHIP_CELL_PX, type ShipMarks } from './shipMarks'
+export { shipMarks, stableSlot, THIN_TIERS, THIN_MOD, type ShipMarks } from './shipMarks'
 // 2026-10-14 — THE SUN: the arithmetic (pure, for tests/map.sun.spec.ts) and nothing of the hook
 // that reads the clock, which only `ChartCanvas` may call.
 export {
