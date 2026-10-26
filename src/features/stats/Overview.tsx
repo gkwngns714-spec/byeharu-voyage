@@ -162,7 +162,7 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
 
 const SIDES = [ALL, 'minted', 'removed', 'moved'] as const
 
-/** The two periods' money by kind under one filter of its side (0241, owner row 228): new, burned or moved. */
+/** The two periods' money by kind under one filter of its side (0244, owner row 228): new, burned or moved. */
 function FlowsByKind({ day, period }: { day: StatsPeriod | null; period: StatsPeriod | null }) {
   const t = useT()
   const [choice, choose] = useFilterChoice('stats.overview', { side: ALL })

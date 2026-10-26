@@ -41,7 +41,7 @@ import { ALL, MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 // EVERY SECOND (0232, owner row 213): where the fleets are and their money are read now; the day's board is the
 // last 24 h of laps up to this second; each line ends at now(). Asked every second while the face is open.
 //
-// EVERY COMPANY (0241, owner row 228): the whole list under the board, filtered by country and sorted by richest
+// EVERY COMPANY (0244, owner row 228): the whole list under the board, filtered by country and sorted by richest
 // (her cash now), best day, most laps, biggest fleet, or name. Remembered per face.
 
 const FIRST = 60

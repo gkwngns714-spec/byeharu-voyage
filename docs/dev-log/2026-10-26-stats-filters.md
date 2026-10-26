@@ -1,10 +1,10 @@
-# 2026-10-26 — Every list can be sorted: filters and sorts on every Stats face (owner row 228, `osn-stats-filters`, migration 0241)
+# 2026-10-26 — Every list can be sorted: filters and sorts on every Stats face (owner row 228, `osn-stats-filters`, migration 0244)
 
 > *"also create filter for all parts in stats, for example in cities such as by area (continents), or by richest, etc"*
 > (2026-10-26, docs/OWNER_REQUESTS.md row 228.)
 
-Server + client, one slice. `supabase/migrations/20260818000241_every_list_can_be_sorted.sql` (prod head is 0240 at
-writing; the deploy renumbers to head + 1, `_0241` suffixes and the probe uuid go with it).
+Server + client, one slice. `supabase/migrations/20260818000244_every_list_can_be_sorted.sql` (prod head is 0240 at
+writing; the deploy renumbers to head + 1, `_0244` suffixes and the probe uuid go with it).
 
 ## What the owner sees
 
@@ -44,7 +44,7 @@ fallers and most traded are cut from the filtered goods.
   read/write in try/catch, a stored value never trusted (only the defaults' keys, only strings; `oneOf` drops a value
   the list no longer offers).
 - `src/features/stats/statsFilters.ts` — the pure filters and sorts (areas, cities, merchants).
-- Server, 0241: `public.region_area(text)` (new, IMMUTABLE, revoked from clients); `world.stats_cities` ×2 hunks (each
+- Server, 0244: `public.region_area(text)` (new, IMMUTABLE, revoked from clients); `world.stats_cities` ×2 hunks (each
   row + `region`, `area`, `invested`, `mine`, `stock`); `public.stats_fold_day` ×1 hunk (the count keeps `stock` on the
   city's day); `world.stats_merchants` ×3 hunks (`list`: `[name, nation, purse, fleets, day, laps]`, richest first; the
   24 h of laps read once into `v_d` for both the board and the list).
@@ -58,7 +58,7 @@ shares at Lisbon reads Lisbon `mine` true, `invested` ≥ its 777, `area` europe
 false; every row has the fields. (e) a probe merchant company (purse 4,321, one roster fleet) is in `list` once.
 No growing table counted against a remembered figure, no DELETE, no `set role`, no hour.
 
-Local, cached-prefix apply: `0241 self-assert ok … Rolled back.` (96 ms).
+Local, cached-prefix apply: `0244 self-assert ok … Rolled back.` (96 ms).
 
 ## PROD CHECKS (read-only, pure SELECTs, one statement per block; run by me on 2026-10-26; pasted results)
 

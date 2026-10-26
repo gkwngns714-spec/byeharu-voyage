@@ -132,7 +132,7 @@ export const statsDict = defineDict({
     saleLabel: '{good} · {n} units',
     captainsByPurse: 'Captains, by money',
     youAre: 'you: {rank} of {of}',
-    // Filters and sorts (0241, owner row 228)
+    // Filters and sorts (0244, owner row 228)
     all: 'All',
     filterLabel: 'Filter',
     area: 'Area',
@@ -297,7 +297,7 @@ export const statsDict = defineDict({
     saleLabel: '{good} · {n}개',
     captainsByPurse: '선장, 돈 순',
     youAre: '나: {of} 중 {rank}',
-    // 필터와 정렬 (0241, 오너 228)
+    // 필터와 정렬 (0244, 오너 228)
     all: '전체',
     filterLabel: '필터',
     area: '지역',

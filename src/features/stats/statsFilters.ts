@@ -4,7 +4,7 @@ import type { StatsArea, StatsCityRow, StatsMerchantRow } from '../../lib/rpc'
 // THE STATS FACES' FILTERS AND SORTS (owner row 228, 2026-10-26: *"also create filter for all parts in stats, for
 // example in cities such as by area (continents), or by richest, etc"*) — pure, so a spec can pin them without JSX.
 // A filter or a sort is a VIEW over what the server served: it never computes a figure. The area of a city is the
-// server's (public.region_area, 0241); the order of the eight areas below is only the order of the chips.
+// server's (public.region_area, 0244); the order of the eight areas below is only the order of the chips.
 
 export const STATS_AREAS: readonly StatsArea[] = ['europe', 'africa', 'middle_east', 'india', 'se_asia', 'east_asia', 'americas', 'oceania']
 

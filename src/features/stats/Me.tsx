@@ -42,7 +42,7 @@ export function MeFace() {
   const books = useLiveRead<Books>('stats:books', () => worldBooks(DAYS))
   const nationByCode = useWorld((s) => s.nationByCode)
   const { nowMs } = useShellState()
-  // 0241 (owner row 228): best sales sorted by profit, newest or size; the board filtered by country (ranks kept)
+  // 0244 (owner row 228): best sales sorted by profit, newest or size; the board filtered by country (ranks kept)
   const [choice, choose] = useFilterChoice('stats.me', { sales: 'profit', country: ALL })
   const v = me.view
   const b = books.view

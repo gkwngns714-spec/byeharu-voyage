@@ -43,7 +43,7 @@ import { ALL } from './statsFilters'
 // quarter hours plus the minutes since), asked again every second while the face is open. A good's price across
 // every market, its moves and its stock are the price record's (the server's header of 0232 says why).
 //
-// FILTERS AND SORTS (0241, owner row 228): by kind (the served category) and rarity (0032's tier, from the world's
+// FILTERS AND SORTS (0244, owner row 228): by kind (the served category) and rarity (0032's tier, from the world's
 // goods); sorted by the biggest move, rose most, fell most, most traded, price, or name. Remembered per face. The
 // risers, fallers and most traded above the list are cut from the filtered goods, so "Spices" shows the spices'.
 

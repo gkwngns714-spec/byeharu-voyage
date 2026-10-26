@@ -4,7 +4,7 @@ import { filterStorageKey, oneOf, readFilterChoice } from '../src/components/ui/
 import { sortMerchants, filterCities, sortCities } from '../src/features/stats/statsFilters'
 import type { StatsCityRow, StatsMerchantRow } from '../src/lib/rpc'
 
-// THE STATS FILTERS (0241, owner row 228: *"also create filter for all parts in stats, for example in cities such as
+// THE STATS FILTERS (0244, owner row 228: *"also create filter for all parts in stats, for example in cities such as
 // by area (continents), or by richest, etc"*). One shared FilterBar (chips + pickers + a sort), remembered per face
 // (filterState.ts). Pinned: the Cities face's Europe chip leaves only European cities (the server's
 // public.region_area), its Richest sort puts the bigger purse first, nothing scrolls sideways on a phone, and the

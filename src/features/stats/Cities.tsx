@@ -18,7 +18,7 @@ import { ALL, CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sort
 // EVERY SECOND (0232, owner row 213): each purse is the live balance and each day-figure the last 24 h up to this
 // second; the list and an open city are each asked again every second while on screen.
 //
-// FILTERS AND SORTS (0241, owner row 228: *"filter … in cities such as by area (continents), or by richest"*): by
+// FILTERS AND SORTS (0244, owner row 228: *"filter … in cities such as by area (continents), or by richest"*): by
 // area (the server's public.region_area), by country, "My cities" (where I hold shares); sorted by richest (the
 // purse), most traded in 24 h, most invested, biggest stock (as of the last count), or name. Remembered per face.
 
