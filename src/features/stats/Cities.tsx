@@ -14,7 +14,7 @@ import { useLiveRead } from './statsLive'
 // every row carries the purse and the day's figures, and a press opens the whole city (CityDetail). Nothing here
 // decides what you may see: the server serves it all. Investing in a city is still a game action, not a key.
 //
-// EVERY SECOND (0227, owner row 213): each purse is the live balance and each day-figure the last 24 h up to this
+// EVERY SECOND (0230, owner row 213): each purse is the live balance and each day-figure the last 24 h up to this
 // second; the list and an open city are each asked again every second while on screen.
 
 export function CitiesFace() {

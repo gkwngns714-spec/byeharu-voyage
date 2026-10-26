@@ -2966,9 +2966,9 @@ export interface StatsWorldPoint {
 
 /** `world.stats_overview(hours)`. `at` null = the job has not written a row yet. */
 export interface StatsOverview {
-  /** 0227: the server's now() — the instant every figure is from. */
+  /** 0230: the server's now() — the instant every figure is from. */
   at: string | null
-  /** 0227: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  /** 0230: the last count, whose quarter hours the figures add their minutes to; null before the first. */
   counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
@@ -3003,9 +3003,9 @@ export interface StatsGood {
 }
 
 export interface StatsMarkets {
-  /** 0227: the server's now() — the instant every figure is from. */
+  /** 0230: the server's now() — the instant every figure is from. */
   at: string | null
-  /** 0227: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  /** 0230: the last count, whose quarter hours the figures add their minutes to; null before the first. */
   counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
@@ -3029,9 +3029,9 @@ export interface StatsCityRow {
 }
 
 export interface StatsCities {
-  /** 0227: the server's now() — the instant every figure is from. */
+  /** 0230: the server's now() — the instant every figure is from. */
   at: string | null
-  /** 0227: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  /** 0230: the last count, whose quarter hours the figures add their minutes to; null before the first. */
   counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
@@ -3055,9 +3055,9 @@ export interface StatsCityGood {
  *  job has written the city's first rollup row. */
 export interface StatsCity {
   city: { id: string; code: string; name: string; nation: string | null }
-  /** 0227: the server's now(). */
+  /** 0230: the server's now(). */
   at: string | null
-  /** 0227: the last count of this city; null before the first. */
+  /** 0230: the last count of this city; null before the first. */
   counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
@@ -3085,9 +3085,9 @@ export interface StatsMerchantHouse {
 }
 
 export interface StatsMerchants {
-  /** 0227: the server's now() — the instant every figure is from. */
+  /** 0230: the server's now() — the instant every figure is from. */
   at: string | null
-  /** 0227: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  /** 0230: the last count, whose quarter hours the figures add their minutes to; null before the first. */
   counted_at: string | null
   age_seconds: number | null
   slot_seconds: number

@@ -20,7 +20,7 @@ import { useStatsLive } from './statsLive'
 // FIVE FACES, ONE READ EACH. The server's job writes a rollup every fifteen minutes; each face asks one
 // read of it and prints what it says (the sums, the words, the tiers are all the server's).
 //
-// AND EVERY READ, EVERY SECOND (0224 for the RIGHT NOW band; 0227 for every face — owner row 213: *"and why is next
+// AND EVERY READ, EVERY SECOND (0224 for the RIGHT NOW band; 0230 for every face — owner row 213: *"and why is next
 // count in minutes? i told you it should be in seconds?"*). Each face's read answers NOW on the server (the count's
 // quarter hours plus the minutes since; the state as it stands; each chart's last point at now()), and each face asks
 // it every second while it is open (statsLive.ts, useLiveRead). There is no count to wait for and none is shown: the

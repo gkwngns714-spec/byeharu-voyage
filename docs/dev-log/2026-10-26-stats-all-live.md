@@ -1,10 +1,10 @@
-# 2026-10-26 — Every figure keeps to the second: the count's quarter hours + the minutes since, read every second (owner row 213, `osn-stats-all-live`, migration 0227)
+# 2026-10-26 — Every figure keeps to the second: the count's quarter hours + the minutes since, read every second (owner row 213, `osn-stats-all-live`, migration 0230)
 
 > *"and why is next count in minutes? i told you it should be in seconds?"*
 > (2026-10-26, docs/OWNER_REQUESTS.md row 213 — after rows 187 and 200.)
 
-Server + client, one slice. `supabase/migrations/20260818000227_every_figure_keeps_to_the_second.sql` (renumbers to
-prod head + 1 at deploy; prod head is 0226 at the time of writing; `_0227` suffixes and the probe uuid go with it).
+Server + client, one slice. `supabase/migrations/20260818000230_every_figure_keeps_to_the_second.sql` (renumbers to
+prod head + 1 at deploy; prod head is 0226, with 0227 (city good trades, #320) and 0228–0229 (economy E1 / E2, #323) ahead; `_0230` suffixes and the probe uuid go with it).
 
 ## What the owner sees
 
@@ -88,7 +88,7 @@ merchants 1–2, me 1–3, books 0–2. The re-cut job ran once (two hours ahead
 Prod (read-only, 2026-10-26 02:10–02:20 UTC; the same SQL as the new reads, written as one SELECT with the window
 functions as materialized CTEs; warm runs after the first cold one; the prod server is noisy, so ranges):
 
-| read | before 0227 | candidate after 0227 |
+| read | before 0230 | candidate after 0230 |
 |---|---|---|
 | world.stats_overview | 15–20 ms | 13–36 ms |
 | world.stats_markets | 478–1,421 ms | about 30 ms (48 ms with a stand-in that builds the cached rows; that stand-in is 17 ms of it) |
@@ -153,7 +153,7 @@ select (length(d) - length(replace(d, '  select * into m from public.stats_merch
 ```
 ### 4_probe_pre
 ```sql
-select (select count(*) from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id)) as lisbon_goods, (select count(*) from public.players where company_name = 'Casa do Segundo 0227') as probe_names, (select count(*) from public.standing_routes sr join public.players p on p.id = sr.player_id and p.is_npc) as npc_routes, public.city_treasury_on() as treasury_on, (select count(*) from public.stats_world) as world_rows
+select (select count(*) from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id)) as lisbon_goods, (select count(*) from public.players where company_name = 'Casa do Segundo 0230') as probe_names, (select count(*) from public.standing_routes sr join public.players p on p.id = sr.player_id and p.is_npc) as npc_routes, public.city_treasury_on() as treasury_on, (select count(*) from public.stats_world) as world_rows
 ```
 ### 5_seed_size
 ```sql
@@ -173,3 +173,13 @@ Results (2026-10-26 02:21 UTC):
 - walls: `0 0 0`.
 
 After the deploy (30-minute after-check): the Stats header shows only "Updated HH:MM:SS"; a good's "sold" on Markets moves within a second of a sale; after the next count, `select slot, day is not null as has_day from public.stats_merchants order by slot desc limit 2` reads true then false. Never run `public.tick_stats` by hand (it writes).
+
+## Beside 0228 / 0229 (economy E1 / E2, #323), checked
+
+- 0229 cuts `public.tick_stats` after `  get diagnostics v_w = row_count;` and `world.stats_now()` after `'at', now(),`.
+  This file's ten hunks never touch either line (hunk 4 ends at the world row's `on conflict (slot) do nothing;`, the
+  line before), and it does not touch `world.stats_now`, so the two re-cuts compose in either order.
+- 0228 re-sides CROWN_AID / CROWN_TAX as moved (no removed kind is left). This file's `stats_sides` assert uses kinds
+  whose side no file changes, and asserts the removed arithmetic against whatever the words table names.
+- Proven: 0227 (#320), 0228 and 0229 (#323) taken from their branches and applied before this file on the cached chain —
+  all four self-asserts green, in order (local, 2026-10-26).

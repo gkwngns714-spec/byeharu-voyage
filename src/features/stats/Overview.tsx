@@ -26,7 +26,7 @@ import { useLiveRead } from './statsLive'
 // against cities 988 M), the world's whole purse as one chart, then the period's money as bars from a
 // zero line and the kinds ranked. One accent, green–red only for new money against burned.
 //
-// EVERYTHING MOVES EVERY SECOND (0227, owner row 213): the read answers NOW and is asked every second while the face
+// EVERYTHING MOVES EVERY SECOND (0230, owner row 213): the read answers NOW and is asked every second while the face
 // is open (useLiveRead). The holders and the hero are the live counters (0224's world.stats_now, served inside the
 // read); "the last 24 h" is the count's quarter hours plus the minutes since; "since the last count" is the count in
 // progress; every chart's last point is now() — the money line at its live total, the bars and the sold / bought
