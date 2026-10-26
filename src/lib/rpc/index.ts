@@ -58,6 +58,7 @@ import type {
   AugmentedFitting,
   PreviewResult,
   PriceSeries,
+  CityGoodTrades,
   PriceSpan,
   WatchPriceResult,
   RequestBoard,
@@ -451,6 +452,12 @@ export function worldPriceSeries(portId: string, goodId: string, span: PriceSpan
  *  it pays until someone asks. Idempotent; the server caps the list and lets the stalest ask go. */
 export function cmdWatchPrice(portId: string, goodId: string): Promise<RpcResult<WatchPriceResult>> {
   return call<WatchPriceResult>('cmdWatchPrice', [portId, goodId])
+}
+
+/** Who bought what (0227, owner row 211): a city's recent trades of one good — company, bought or sold,
+ *  units, price each, when — newest first, the last 7 days, at most `limit`. */
+export function worldCityGoodTrades(portId: string, goodId: string, limit = 50): Promise<RpcResult<CityGoodTrades>> {
+  return call<CityGoodTrades>('worldCityGoodTrades', [portId, goodId, limit])
 }
 
 /**

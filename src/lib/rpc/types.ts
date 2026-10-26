@@ -1483,6 +1483,32 @@ export interface PriceSeries {
   points: PricePoint[]
 }
 
+/** One trade in `world.city_good_trades` (0227): a company bought from or sold to the city. */
+export interface CityGoodTrade {
+  at: string
+  /** The company's name — a player's or a merchant's. */
+  company: string
+  merchant: boolean
+  /** The caller's own company. */
+  own: boolean
+  /** The company's side: it bought from the city, or sold to it. */
+  side: 'bought' | 'sold'
+  qty: number
+  /** Price each. */
+  price: number
+  total: number
+}
+
+/** `world.city_good_trades(port, good, limit)` (0227, owner row 211): a city's trades of one good over
+ *  the last `days`, newest first. */
+export interface CityGoodTrades {
+  port: string
+  good: string
+  now: string
+  days: number
+  trades: CityGoodTrade[]
+}
+
 /** `cmd.watch_price(port, good)` (0226): the record now keeps this pair. */
 export interface WatchPriceResult {
   recording: boolean
