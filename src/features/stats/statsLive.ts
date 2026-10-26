@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useShellState } from '../../app/shellState'
 import { worldStatsNow, type StatsNow } from '../../lib/rpc'
+import { serverNow } from '../../lib/serverClock'
 
 // THE TAB'S ONE LIVE PATH — world.stats_now() every second while the Stats tab is open, and nothing else
 // re-asks anything (0224; docs/dev-log/2026-10-26-stats-live.md).
@@ -21,8 +23,15 @@ import { worldStatsNow, type StatsNow } from '../../lib/rpc'
 // THE HEADER SAYS WHEN THE FIGURES ARE FROM (owner, 2026-10-26: "it says last count 13:28" — the age of the
 // fifteen-minute rollup read as a stale clock while the figures under it moved every second). It prints the
 // server's own `at` of the newest live answer, in Korea time like the top bar's clock, so it ticks with them.
+// And the time left to the next count (owner, same day: "i want to see the refreshed time left for stats"):
+// the stats job runs every fifteen minutes (cron `6,21,36,51 * * * *`), so the next count is due
+// STATS_COUNT_MS after the last one. Measured as a gap on the one clock: the server's `at − counted_at` plus
+// the time elapsed HERE since the answer landed (lib/serverClock), so a wrong device clock cannot skew it.
 
 export const STATS_LIVE_MS = 1_000
+
+/** The stats job's beat: one count every fifteen minutes (cron `6,21,36,51 * * * *`). */
+export const STATS_COUNT_MS = 15 * 60_000
 
 export interface StatsLive {
   /** The newest answer, or null before the first one lands. Kept across a failed ask. */
@@ -31,10 +40,14 @@ export interface StatsLive {
   count: number
   /** The server's instant of the newest live answer, in ms. Null before the first one lands. */
   liveAtMs: number | null
+  /** Time left to the next count, in ms (0 once it is due). Null before the first answer. */
+  nextCountMs: number | null
 }
 
 export function useStatsLive(): StatsLive {
+  const { nowMs } = useShellState()
   const [live, setLive] = useState<StatsNow | null>(null)
+  const [landedMs, setLandedMs] = useState(0)
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -48,6 +61,7 @@ export function useStatsLive(): StatsLive {
         const r = await worldStatsNow()
         if (!alive || !r.ok) return
         setLive(r.value)
+        setLandedMs(serverNow())
         if (lastCountedAt !== null && lastCountedAt !== r.value.counted_at) setCount((c) => c + 1)
         lastCountedAt = r.value.counted_at
       } finally {
@@ -63,5 +77,12 @@ export function useStatsLive(): StatsLive {
   }, [])
 
   const liveAtMs = live === null ? null : Date.parse(live.at)
-  return { live, count, liveAtMs: liveAtMs !== null && Number.isFinite(liveAtMs) ? liveAtMs : null }
+  const countAgeMs =
+    live === null ? null : Math.max(0, Date.parse(live.at) - Date.parse(live.counted_at)) + Math.max(0, nowMs - landedMs)
+  return {
+    live,
+    count,
+    liveAtMs: liveAtMs !== null && Number.isFinite(liveAtMs) ? liveAtMs : null,
+    nextCountMs: countAgeMs !== null && Number.isFinite(countAgeMs) ? Math.max(0, STATS_COUNT_MS - countAgeMs) : null,
+  }
 }
