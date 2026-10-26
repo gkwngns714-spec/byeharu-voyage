@@ -3,6 +3,8 @@
 ## RESUMED 2026-10-26 ~12:15 UTC (PC gkwng)
 - #345 mirrored Buy/Sell MERGED 12:15 UTC (1112dd8, client only).
 - Economy watch +5 h 20 min (12:06 count): moved_since_close +138, new_slot 0, under_reserve 118, broke 38, gifts 144 (1.12 M), fees 3,063 (203,855 ducats), debtors 4. All under the switch-back triggers: stays ON.
+- **0245 E5 LIVE, DARK** (#346 merged c3e86a5, main Acceptance green; cron 776 ok / 0 failed after). `restock_by_investment` = false: lighting is the OWNER's call. `invested` now rolls hourly (decay + SHARE + DONATION), read by nothing while dark. Not in E5: max stock by investment (`depth_mult`) = slice E5b.
+- Owner rows 231 (Sell: can't dock/sail, map moves to pressed city, cargo-first Sell) → `osn-sell-dock-fix`; 232 (tap a Stats chart → large chart, months of data) → folded into N1.
 - Building locally (worktrees `~/dev/wt-<branch>`, node_modules junctions): `osn-flaky-1026` (trade.ceiling:267 + 0019 self-assert), `osn-e5-restock` (E5 = 0245, lands DARK), `osn-n1-stats-history` (N1 = 0246).
 
 ## HAND-OFF 2026-10-26 ~10:40 UTC (PC 디폴리스 shut down; owner moves to another PC) — READ THIS FIRST
