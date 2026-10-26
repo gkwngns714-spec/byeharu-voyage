@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Segmented, Sheet } from '../../components/ui'
-import { formatCountdown } from '../../lib/format'
+import { formatKoreaTime } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import type { StatsNow } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -48,8 +48,8 @@ export function StatsScreen() {
 function StatsBody() {
   const t = useT()
   const [face, setFace] = useState<StatsFace>('overview')
-  const { live, count, countAgeMs } = useStatsLive()
-  const counted = countAgeMs === null ? null : t('stats.updated', { time: formatCountdown(countAgeMs) })
+  const { live, count, liveAtMs } = useStatsLive()
+  const counted = liveAtMs === null ? null : t('stats.updated', { time: formatKoreaTime(liveAtMs) })
 
   return (
     <Sheet
