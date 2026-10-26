@@ -10,7 +10,7 @@ import { worldStatsNow, type RpcResult, type StatsNow } from '../../lib/rpc'
 // so there is nothing to wait for and no count to show: a face simply asks its read every second.
 //
 // ONE RULE FOR EVERY READ ON THE TAB (useLiveRead): asked once on mount, then every STATS_LIVE_MS while the
-// component is mounted; a hidden document skips its asks (the figures are re-read the moment the tab is looked at
+// component is mounted (`refresh`: a changed value asks again NOW with the new `ask`, keeping the answer on screen — the chart span); a hidden document skips its asks (the figures are re-read the moment the tab is looked at
 // again); an ask still on the wire is never stacked under a new one (a slow answer delays the next, it never piles
 // up); a failed ask keeps the last answer on screen. A new subject (another city) drops the old answer.
 //
@@ -26,7 +26,7 @@ export interface LiveRead<V> {
   loading: boolean
 }
 
-export function useLiveRead<V>(subject: string, ask: () => Promise<RpcResult<V>>): LiveRead<V> {
+export function useLiveRead<V>(subject: string, ask: () => Promise<RpcResult<V>>, refresh = ''): LiveRead<V> {
   const [answer, setAnswer] = useState<{ subject: string; view: V | null } | null>(null)
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export function useLiveRead<V>(subject: string, ask: () => Promise<RpcResult<V>>
     }
     // `ask` is the subject's RPC: a new subject is a new ask, the same subject asks the same thing
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subject])
+  }, [subject, refresh])
 
   if (answer === null || answer.subject !== subject) return { view: null, loading: true }
   return { view: answer.view, loading: false }

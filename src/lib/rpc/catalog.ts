@@ -505,11 +505,11 @@ export const RPCS = {
   // writes every fifteen minutes. The world's money and what moved; every good across every market; every
   // city at YOUR tier (the gate is the server's — a locked city arrives without figures); the merchants'
   // day; your week and the leaderboard (rank and name only). None takes a player id.
-  worldStatsOverview: { schema: 'world', fn: 'stats_overview', args: [{ name: 'p_hours', type: 'int' }] },
+  worldStatsOverview: { schema: 'world', fn: 'stats_overview', args: [{ name: 'p_hours', type: 'int' }, { name: 'p_span', type: 'text' }] },
   worldStatsMarkets: { schema: 'world', fn: 'stats_markets', args: [] },
   worldStatsCities: { schema: 'world', fn: 'stats_cities', args: [] },
-  worldStatsCity: { schema: 'world', fn: 'stats_city', args: [{ name: 'p_port', type: 'uuid' }] },
-  worldStatsMerchants: { schema: 'world', fn: 'stats_merchants', args: [] },
+  worldStatsCity: { schema: 'world', fn: 'stats_city', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_span', type: 'text' }] },
+  worldStatsMerchants: { schema: 'world', fn: 'stats_merchants', args: [{ name: 'p_span', type: 'text' }] },
   worldStatsMe: { schema: 'world', fn: 'stats_me', args: [] },
   // 0224 — THE FIGURES KEEP TO THE SECOND (owner row 200; docs/dev-log/2026-10-26-stats-live.md): the one LIVE read,
   // asked every second while the Stats tab is open. Base row + the journal since the last count; no aggregate scan.

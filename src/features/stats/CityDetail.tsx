@@ -7,7 +7,6 @@ import {
   Note,
   RankBars,
   Row,
-  SeriesChart,
   SheetSection,
   SignedBars,
   Skeleton,
@@ -23,6 +22,8 @@ import { worldStatsCity, type StatsCity } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
+import { StatsChart } from './StatsChart'
+import { useChartSpan } from '../../store/chartSpan'
 
 // ONE CITY, OPEN TO EVERYONE — the row the Cities face opens (0214; 0223 removed the investment gate, the
 // owner's row 197: *"on cities, i want to see all the info without investment"*).
@@ -39,7 +40,8 @@ import { useLiveRead } from './statsLive'
 
 export function CityDetail({ portId, onClose }: { portId: string; onClose: () => void }) {
   const t = useT()
-  const read = useLiveRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId))
+  const { span } = useChartSpan()   // 0246: one span for every chart
+  const read = useLiveRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId, span), span)
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
   if (read.loading && !v) return <Skeleton className="mt-4 h-40 w-full" />
@@ -70,7 +72,8 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
             <StatCell label={t('town.i_out')} value={-o.spending_1d} format={formatDucatsDelta} size="body" tone="danger" />
             <StatCell label={t('town.i_taxes')} value={o.taxes_1d} format={formatDucats} size="body" />
           </div>
-          <SeriesChart
+          <StatsChart
+            title={portName(v.city.name)}
             points={toSeries(o.series, (p) => p.purse)}
             format={formatDucats}
             label={t('stats.citySeries', { city: portName(v.city.name) })}

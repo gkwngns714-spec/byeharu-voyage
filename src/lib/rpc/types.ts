@@ -3036,6 +3036,8 @@ export interface StatsPeriod {
 
 export interface StatsWorldPoint {
   at: string
+  /** 0246: slots this point folds (1 on the fine tier; up to 4 an hour, 96 a day). */
+  n?: number
   players: number
   merchants: number
   cities: number
@@ -3056,6 +3058,8 @@ export interface StatsOverview {
   age_seconds: number | null
   slot_seconds: number
   hours: number
+  /** 0246: the span asked for, echoed; null = the legacy `hours` window. */
+  span?: string | null
   holders: StatsHolders | null
   period: StatsPeriod | null
   day: StatsPeriod | null
@@ -3156,6 +3160,7 @@ export interface StatsCity {
   counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
+  span?: string | null
   overview?: {
     purse: number
     works: { kind: string; level: number }[]
@@ -3165,7 +3170,7 @@ export interface StatsCity {
     sold_1d: number
     bought_1d: number
     flows_1d: StatsFlowLine[]
-    series: { at: string; purse: number; income: number; spending: number }[]
+    series: { at: string; n?: number; purse: number; income: number; spending: number }[]
     top_sold: { code: string; name: string; units: number; ducats: number }[]
     top_bought: { code: string; name: string; units: number; ducats: number }[]
   }
@@ -3204,7 +3209,8 @@ export interface StatsMerchants {
   bottom?: StatsMerchantHouse[]
   /** 0244: every merchant company, richest first. */
   list?: StatsMerchantRow[]
-  series: { at: string; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
+  span?: string | null
+  series: { at: string; n?: number; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
 }
 
 /** One money move in `world.money_feed` (0235): one purse's gain or loss. Both ends of a sale are two moves. */
