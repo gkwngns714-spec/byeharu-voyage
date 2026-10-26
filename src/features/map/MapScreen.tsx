@@ -5,6 +5,7 @@ import type { SeaNav } from '../../lib/sea'
 import { pointToken, snapSeaPoint } from '../../domain/passage'
 import { useShellState } from '../../app/shellState'
 import { portNationOf, useWorld } from '../../live/worldStore'
+import { useShipPath } from '../../live/useShipPath'
 import { CityFlag } from '../../live/CityFlag'
 import { usePortFlags } from '../../live/usePortFlags'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
@@ -38,6 +39,7 @@ import {
   hitTest,
   placedNames,
   mapFleetsOf,
+  loopD,
   mapTrafficOf,
   Minimap,
   minTierForSpan,
@@ -190,6 +192,12 @@ function Chart({
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
   const fleets = useMemo(() => mapFleetsOf(fleetViews), [fleetViews])
   const [selection, setSelection] = useState<MapSelection>(null)
+
+  // HER WHOLE PATH WHEN ONE OF YOURS IS PRESSED (owner row 225): the leg she is on is her track; the queued stops
+  // after it, or her standing route's lap, are drawn as the planned course with each stop numbered.
+  const pressedView = selection?.kind === 'fleet' ? (fleetViews.find((f) => f.id === selection.id) ?? null) : null
+  const shipPath = useShipPath(pressedView, nowMs)
+  const pathD = useMemo(() => (shipPath.courses.length > 0 ? loopD(shipPath.courses) : null), [shipPath.courses])
 
   // THE OPEN MERCHANT'S CARD — read once here, for the sheet AND for her leg on the chart (the
   // card serves her full course; every other merchant is served the current segment only).
@@ -411,6 +419,8 @@ function Chart({
           portFlags={portFlags}
           islets={backdrop.islets}
           selection={selection}
+          plannedD={pathD}
+          pathStops={shipPath.stops}
           // Every `CHART_CHROME` box, so no harbour's name prints under the pill, the zoom column,
           // the minimap or the tray.
           keepOut={surface.chromeBoxes}

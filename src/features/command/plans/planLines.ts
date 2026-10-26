@@ -23,23 +23,13 @@
 // and would be charged nothing, so the word there is noise. The price is the server's, set when she sails
 // (public.insure_voyage over the cargo then on board); nothing here guesses it.
 
-import { proposeCourse, sailOrigin, sailTarget } from '../../../domain/passage'
-import { pathLengthNm, type LatLon } from '../../../lib/geo'
+import { courseLeg, daysAt, type PlanLeg, sailOrigin } from '../../../domain/passage'
 import { formatMiles, formatVoyageDays } from '../../../lib/format'
 import type { SeaNav } from '../../../lib/sea'
 import type { BoardPassage, BoardSea, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
 import { emptyStop, type RouteStopDraft } from '../standingRouteDraft'
 import type { PlanDraft } from './planDraft'
 import { t } from '../../../lib/i18n'
-
-/** One SAIL of the plan (owner row 183, the Plans face's chart and leg list): where it leaves from (a port
- *  CODE, or null when the fleet starts at sea), where it goes, its proposed course and that course's miles. */
-export interface PlanLeg {
-  from: string | null
-  to: string
-  path: [number, number][]
-  nm: number
-}
 
 export type PlanText = { ok: true; lines: PlanLine[]; legs: PlanLeg[] } | { ok: false; noCourseTo: string }
 
@@ -48,53 +38,10 @@ function num(n: number): string {
   return String(Math.round(n * 100) / 100)
 }
 
-/** Sailed miles as days at sea at this fleet's speed — the one arithmetic the plan and its words share. */
-export function daysAt(nm: number, speedKn: number): number {
-  return nm / speedKn / 24
-}
-
 /** The harbours between, per leg, as world.good_board serves them (0188): to the buy city, then to the sell city. */
 export interface PlanPassage {
   toBuy: readonly string[]
   toSell: readonly string[]
-}
-
-/** ONE SAIL'S LEG — the course the one course author proposes from `from` to the harbour `code` (where the plan's
- *  SAIL lines get theirs), its miles, and where it ends. Null when no water joins them. */
-function courseLeg(
-  nav: SeaNav,
-  portByCode: Record<string, SnapshotPort>,
-  from: LatLon | null,
-  here: string | null,
-  code: string,
-): { leg: PlanLeg; at: LatLon } | null {
-  const to = sailTarget({ dest: code }, portByCode)
-  const course = from && to ? proposeCourse(nav, from, to) : null
-  if (!to || !course) return null
-  return { leg: { from: here, to: code, path: course, nm: pathLengthNm(course.map(([lat, lon]) => ({ lat, lon }))) }, at: to }
-}
-
-/** THE LEGS THROUGH HARBOURS ALREADY CHOSEN — a queued trip's SAILs, in order (owner row 217: press an order, see
- *  its route on the map). The same course author, from where the fleet is now, as `planLines` draws a plan's. The
- *  legs up to the first harbour without water; the server re-verifies every course when its SAIL runs. */
-export function sailLegs(
-  fleet: FleetView,
-  nav: SeaNav,
-  portByCode: Record<string, SnapshotPort>,
-  codes: readonly string[],
-): PlanLeg[] {
-  const legs: PlanLeg[] = []
-  let here = fleet.status === 'DOCKED' ? fleet.port : null
-  let from = sailOrigin(fleet, portByCode)
-  for (const code of codes) {
-    if (code === here) continue
-    const next = courseLeg(nav, portByCode, from, here, code)
-    if (!next) break
-    legs.push(next.leg)
-    from = next.at
-    here = code
-  }
-  return legs
 }
 
 /** THE TRIP'S ROWS ON THE BOARD — the buy row (the plan's buy city), the sell row (its sell city), the days to sail

@@ -26,6 +26,7 @@ import type { MapPort, MapSea, MapSelection } from './mapTypes'
 import { regionNameRequests, type RegionTint } from './regions'
 import { seaNameRequests } from './seaNames'
 import { shipMarks } from './shipMarks'
+import { ShipPathLayer, type PathStop } from './ShipPathLayer'
 import type { ChromeBox } from './useChartSurface'
 import { useSunlight } from './useSunlight'
 
@@ -99,6 +100,7 @@ import { useSunlight } from './useSunlight'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 /** One frozen empty list, so a chart handed no seas does not allocate one per frame. */
+const NO_STOPS: readonly PathStop[] = []
 const NO_SEAS: readonly MapSea[] = []
 const NO_ISLETS: readonly Point[] = []
 
@@ -129,6 +131,7 @@ export function ChartCanvas({
   selection,
   keepOut,
   plannedD = null,
+  pathStops = NO_STOPS,
   ariaLabel,
   className,
 }: {
@@ -171,6 +174,8 @@ export function ChartCanvas({
    * Null — every other chart — draws nothing.
    */
   plannedD?: string | null
+  /** A pressed ship's stops, numbered (owner row 225): drawn on the planned path, over the ports. */
+  pathStops?: readonly PathStop[]
   ariaLabel: string
   className?: string
 }) {
@@ -464,6 +469,7 @@ export function ChartCanvas({
                 unitsPerPx={unitsPerPx}
                 sun={sun}
               />
+              {pathStops.length > 0 && <ShipPathLayer stops={pathStops} unitsPerPx={unitsPerPx} />}
             </g>
           )
         })}
