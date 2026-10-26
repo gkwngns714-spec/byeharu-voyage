@@ -1136,6 +1136,9 @@ export interface FleetView {
   /** [lat, lon] while ANCHORED at a bare point of open water (0039); null otherwise. */
   anchor: [number, number] | null
   busy_until: string | null
+  /** 0237 — her port time: she may not sail before this instant (a SAIL sent now waits in her queue). Served only
+   *  while she is in it, and only while the economy is closed. */
+  ready_at?: string
   /** Formation speed in knots, slowest ship first (B.3). */
   speed_kn: number
   endurance_days: number
@@ -2464,6 +2467,18 @@ export interface CityInvestor {
 }
 
 /** `world.town_hall(port)` — one harbour's purse, its last full day's book, its works, who invested. */
+/** 0237 (docs/CLOSED_ECONOMY.md §4c) — what a harbour asks a company: how her country stands with the city's holder,
+ *  the factor that puts on her profit tax and dock fee, and the fee (`public.port_dues`). */
+export interface PortDues {
+  stance: 'home' | 'ally' | 'peace' | 'rival' | 'war'
+  factor: number
+  /** The dock fee for the cargo in question (the base alone when none is named). */
+  fee: number
+  fee_base: number
+  fee_pct: number
+  prep_seconds: number
+}
+
 export interface TownHallView {
   port: string
   /** False while the city purses are dark (0122): nothing is offered, nothing moves a purse. */
@@ -2486,6 +2501,8 @@ export interface TownHallView {
   influence: CityInfluence
   /** 0234 — the capital's newest gifts to broke merchants. Absent until this city has given one. */
   gifts?: TownHallGift[]
+  /** 0237 — what this harbour asks the signed-in company (stance, tax factor, dock fee). Closed economy only. */
+  dues?: PortDues
 }
 
 /** 0234 — one capital gift: the company, her starting money, when, and the realm harbour called for it (or null). */
@@ -2828,6 +2845,8 @@ export interface BoardSellRow extends BoardPassage {
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
   request: { premium_pct: number; days_left: number } | null
+  /** 0237 — the dock fee for this parcel there and the country factor on its tax. Closed economy only. */
+  dues?: PortDues
   /** THE PASSAGE SHE CAN SAIL (0188): the harbours between, in order (every leg within her captain's reach);
    *  null when no chain of legs within reach gets there. */
   stops?: string[] | null
