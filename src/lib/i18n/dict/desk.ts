@@ -99,6 +99,7 @@ export const deskDict = defineDict({
     legs: 'Legs',
     legLine: '{from} → {to}',
     atSea: 'At sea',
+    notDocked: 'Not docked',
   },
   ko: {
     citySide: '가격, 방, 일을 누르세요.',
@@ -196,5 +197,6 @@ export const deskDict = defineDict({
     legs: '구간',
     legLine: '{from} → {to}',
     atSea: '바다 위',
+    notDocked: '정박 중 아님',
   },
 })
