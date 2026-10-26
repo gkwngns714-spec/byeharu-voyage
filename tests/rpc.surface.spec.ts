@@ -1412,6 +1412,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // SAME function voyage.settle charges. It lands WITH the face that reads it (the Inn's
       // caption), and the verb it pairs with — DISMISS — is a row of the grammar, not a door here.
       'worldCrewCost',
+      // Pin moved deliberately 2026-10-26 with migration 0227 (owner row 211, who bought what): a city's
+      // recent trades of one good, read by the one list both trays a city's good opens render.
+      'worldCityGoodTrades',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,
       // and the same answer the owner asked the game to stop giving (DESIGN_V1 §13, decision 3:

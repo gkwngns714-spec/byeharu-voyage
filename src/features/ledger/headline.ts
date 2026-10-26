@@ -14,7 +14,7 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 // written by `public.emit_event()` in migration 0007 and 0004 and are exactly:
 //
 //   FOUNDED       {company, port}                             (port is a CODE)
-//   BOUGHT/SOLD   {fleet, good, qty, avg_price, total}        (good is the NAME)
+//   BOUGHT/SOLD   {port, fleet, good, qty, avg_price, total}  (good is the NAME; port the CODE, 0227)
 //   DEPARTED      {fleet, voyage_id, total_nm, points, dest, eta}   (0039: dest is a code or a "lat,lon")
 //   VOYAGE_REPORT {fleet, voyage_id, from, to, from_point?, to_point?, total_nm, lines[]}
 //   PROVISIONED   {fleet, water_t, food_t, cost}

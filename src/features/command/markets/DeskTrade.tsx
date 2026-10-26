@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Note, TradeTray, type TrayMode } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
+import { CityGoodTrades } from '../../../live/CityGoodTrades'
 import { usePriceSeries } from '../../../live/usePriceSeries'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { useTrade } from '../../../live/useTrade'
@@ -59,6 +60,9 @@ export function DeskTrade({
       qty={{ value: qty, onChange: setQty }}
       onClose={onClose}
       mode={mode}
-    />
+    >
+      {/* Who bought what (0227, owner row 211) — the same list the quay's and PORT's trays show. */}
+      <CityGoodTrades portId={port.id} goodId={good.good_id} refresh={fleet.version} />
+    </TradeTray>
   )
 }

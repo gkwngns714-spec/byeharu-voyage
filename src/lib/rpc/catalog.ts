@@ -237,6 +237,16 @@ export const RPCS = {
       { name: 'p_good', type: 'uuid' },
     ],
   },
+  // 0227 — who bought what: a city's recent trades of one good (owner row 211). Names shown, no purses.
+  worldCityGoodTrades: {
+    schema: 'world',
+    fn: 'city_good_trades',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_limit', type: 'int' },
+    ],
+  },
   // Takes NO id — the server reads auth.uid(), so a caller can only ever read their own house.
   worldPlayer: { schema: 'world', fn: 'player', args: [] },
   worldOfficers: { schema: 'world', fn: 'officers', args: [] },
