@@ -18,8 +18,10 @@ import { ready, reachable } from './appReady.fixture'
 //   Storage                     City › Storage — Put in storage on the cargo bought above              opens
 //   Craft · Build · Repair ·    City › Craft / Build / Repair / Skills / Inn, where Lisbon has them    opens
 //   Skills · Inn (hire)
-//   Buy from the good page      Markets › a good → Buy here → the same trade tray                      opens
-//   Read another city's prices  Markets › a good → Buy at / Sell at, every city                        opens
+//   Buy from the desk           Buy › a good → Buy here → the same trade tray                         opens
+//   Read another city's prices  Buy › a city pressed on the mini map → its goods and prices            opens
+//                               (owner row 218: Buy and Sell replaced Markets; tests/command.buySell.spec.ts
+//                               presses the city on the map)
 //   Old /port links             land on COMMAND · City                                                  opens
 //
 // The nav has no Port cell (nav.geometry.spec pins the four).
@@ -68,7 +70,7 @@ for (const size of SIZES) {
       await expect(page.getByTestId('trade-tray')).toHaveCount(0, { timeout: 60_000 })
 
       // Trade · Sell — the good now on board offers its sell tray
-      await page.getByRole('tab', { name: 'Sell', exact: true }).click()
+      await page.getByRole('tablist', { name: 'Trade faces' }).getByRole('tab', { name: 'Sell', exact: true }).click()
       await page.locator('[data-testid="trade-row"] button:enabled').last().click()
       await expect(page.getByTestId('trade-tray-send')).toHaveText(/^Sell /, { timeout: 30_000 })
       await page.getByTestId('trade-tray').getByRole('button', { name: 'Close' }).first().click()
@@ -76,7 +78,7 @@ for (const size of SIZES) {
       // Trade · Requests
       await page.getByRole('tab', { name: 'Requests', exact: true }).click()
       await expect(page.getByTestId('desk-city').getByRole('tabpanel')).not.toBeEmpty()
-      await page.getByRole('tab', { name: 'Buy', exact: true }).click()
+      await page.getByRole('tablist', { name: 'Trade faces' }).getByRole('tab', { name: 'Buy', exact: true }).click()
 
       // Trade · Resupply
       await page.getByTestId('quay-stores').click()
@@ -114,13 +116,12 @@ for (const size of SIZES) {
       await page.getByRole('tab', { name: 'Invest', exact: true }).click()
       await expect(page.getByTestId('invest-hall')).toBeVisible({ timeout: 30_000 })
 
-      // Markets — every city's price for a good, and Buy here through the same tray
-      await page.getByRole('tab', { name: 'Markets', exact: true }).click()
-      await page.getByRole('button', { name: 'Here', exact: true }).click()
-      await page.getByTestId('watch-row').first().click()
-      await expect(page.getByTestId('sell-row').first()).toBeVisible({ timeout: 60_000 })
-      expect(await page.getByTestId('buy-row').count()).toBeGreaterThan(0)
-      await page.getByTestId('desk-buy').click()
+      // Buy — the city's goods with prices, and Buy here through the same tray
+      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Buy', exact: true }).click()
+      const buyFace = page.getByTestId('desk-buy')
+      await buyFace.getByTestId('city-good').first().click()
+      await expect(buyFace.getByTestId('good-detail-price')).toContainText(/\d/, { timeout: 60_000 })
+      await buyFace.getByTestId('good-buy').click()
       await expect(page.getByTestId('trade-tray')).toBeVisible({ timeout: 30_000 })
 
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)

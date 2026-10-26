@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE COMMAND DESK'S THREE READS (docs/COMMAND_DESK.md §5.8, §7.6) — asked when the desk opens a good
-// or the list, and again at the MARKET'S EDGE (the served clock.next_change_at), never on the beat.
+// THE COMMAND DESK'S EDGE READS (docs/COMMAND_DESK.md §5.8, §7.6) — the trip's board and why a price is what
+// it is; asked when the desk opens them, and again at the MARKET'S EDGE (the served clock.next_change_at), never on the beat.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // They ride `useServedRead` (one subject, the last answer kept while the next is on the wire — a re-ask
@@ -12,16 +12,14 @@
 // REMEMBERED UNTIL THE EDGE (2026-10-19, owner: "when pressing a different trade goods, it takes too long
 // to load"): each read keeps its answer (servedMemo.ts) under its own question until the market's next
 // edge — the moment the open desk would re-ask it anyway — so going back to a good just shown draws at
-// once, and `prefetchDeskReads` asks a good's reads before its panes need them (a row the pointer rests
-// on; the focus city's estimate beside the board, not after it). One spelling of each question, below:
-// the hook and the prefetch ask the same thing under the same key.
+// once. (The watchlist, the outlook and their prefetch left with the Markets face, owner row 218.) One
+// spelling of each question, below.
 
 import { useCallback, useState } from 'react'
 import { useReaskAtEdge } from '../components/ui'
 import { useShellState } from '../app/shellState'
-import { worldGoodBoard, worldPriceOutlook, worldPriceWhy, worldWatchlist } from '../lib/rpc'
-import type { GoodBoard, PriceOutlook, PriceWhy, RpcResult, Watchlist } from '../lib/rpc'
-import { askServed } from './servedMemo'
+import { worldGoodBoard, worldPriceWhy } from '../lib/rpc'
+import type { GoodBoard, PriceWhy, RpcResult } from '../lib/rpc'
 import { useServedRead, type ServedRead } from './useServedRead'
 
 type Clocked = { clock: { now: string; next_change_at: string } }
@@ -59,17 +57,6 @@ function useEdgeRead<V extends Clocked>(name: string, { subject, question, ask }
   return read
 }
 
-/** Ask a desk question ahead of its panes: kept under the hook's own key, joined if already asked. */
-function prefetch<V extends Clocked>(name: string, { subject, question, ask }: DeskRead<V>): void {
-  if (subject && question) void askServed<V>(memoKey(name, question), ask, untilEdge)
-}
-
-const watchlistRead = (fleetId: string | null, fleetVersion: number | null): DeskRead<Watchlist> => ({
-  subject: 'watchlist',
-  question: `${fleetId ?? '-'}:${fleetVersion ?? '-'}`,
-  ask: () => worldWatchlist(fleetId),
-})
-
 function goodBoardRead(
   goodId: string | null,
   fleetId: string | null,
@@ -85,28 +72,9 @@ function goodBoardRead(
   }
 }
 
-function priceOutlookRead(
-  portId: string | null,
-  goodId: string | null,
-  side: 'mid' | 'ask' | 'bid',
-  slots: number | null,
-): DeskRead<PriceOutlook> {
-  const subject = portId && goodId ? `${portId}:${goodId}:${side}` : null
-  return {
-    subject,
-    question: subject ? `${subject}:${slots ?? '-'}` : null,
-    ask: () => worldPriceOutlook(portId as string, goodId as string, slots, side),
-  }
-}
-
 function priceWhyRead(portId: string | null, goodId: string | null): DeskRead<PriceWhy> {
   const subject = portId && goodId ? `${portId}:${goodId}` : null
   return { subject, question: subject, ask: () => worldPriceWhy(portId as string, goodId as string) }
-}
-
-/** Every good once (world.watchlist) — what the fleet carries rides the question. */
-export function useWatchlist(fleetId: string | null, fleetVersion: number | null): ServedRead<Watchlist> {
-  return useEdgeRead('watchlist', watchlistRead(fleetId, fleetVersion))
 }
 
 /** One good at every city for this fleet (world.good_board). A trade (the fleet's version) or a new
@@ -122,39 +90,7 @@ export function useGoodBoard(
   return useEdgeRead('good_board', goodBoardRead(goodId, fleetId, fleetVersion, qty, fromPortId))
 }
 
-/** A good's estimated price at one city on one side (world.price_outlook). */
-export function usePriceOutlook(
-  portId: string | null,
-  goodId: string | null,
-  side: 'mid' | 'ask' | 'bid',
-  slots: number | null = null,
-): ServedRead<PriceOutlook> {
-  return useEdgeRead('price_outlook', priceOutlookRead(portId, goodId, side, slots))
-}
-
 /** Why a good's market price at one city is what it is (world.price_why, 0185). */
 export function usePriceWhy(portId: string | null, goodId: string | null): ServedRead<PriceWhy> {
   return useEdgeRead('price_why', priceWhyRead(portId, goodId))
-}
-
-/** Ask ahead of the panes what a desk good page asks: its board (when `board` names the fleet; the
- *  board's own amount and city) and, at each city named, the estimate and the breakdown — the very
- *  questions useGoodBoard / usePriceOutlook / usePriceWhy ask, so the panes find them answered or on
- *  the wire. */
-export function prefetchDeskReads({
-  goodId,
-  board,
-  outlook,
-  portIds,
-}: {
-  goodId: string
-  board: { fleetId: string; fleetVersion: number | null } | null
-  outlook: { side: 'mid' | 'ask' | 'bid'; slots: number | null }
-  portIds: readonly string[]
-}): void {
-  if (board) prefetch('good_board', goodBoardRead(goodId, board.fleetId, board.fleetVersion, null, null))
-  for (const portId of portIds) {
-    prefetch('price_outlook', priceOutlookRead(portId, goodId, outlook.side, outlook.slots))
-    prefetch('price_why', priceWhyRead(portId, goodId))
-  }
 }

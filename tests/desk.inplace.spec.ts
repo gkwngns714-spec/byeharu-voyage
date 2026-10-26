@@ -10,18 +10,19 @@ import { ready, reachable } from './appReady.fixture'
 //     the first press survives every press) and its faces strip where it was;
 //   · the pressed face is the selected one;
 //   · NO DIALOG stands after a press: no tray over the screen, at either size;
-//   · WIDE: every face stands in the terminal's frame — the same three panes, the same boxes as Markets;
+//   · WIDE: every face stands in the terminal's frame — the same three panes, the same boxes as Buy;
 //     what a face opens (City's basket) stands INSIDE the right pane, not over the glass;
-//   · a plan stands in the Plans face's own pane (wide: the right pane; phone: in flow), not a tray.
+//   · a trip planned stands in the Buy face's own pane (wide: the centre pane; phone: in flow), not a tray
+//     (owner row 218: Buy and Sell replaced Markets and Trade).
 // Prices are the local world's; nothing here asserts a figure — only geometry and presence.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 const FACES = [
-  { name: 'Trade', id: 'desk-plans' },
+  { name: 'Sell', id: 'desk-sell' },
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
   { name: 'Profit', id: 'desk-profit' },
-  { name: 'Markets', id: 'watch-row' },
+  { name: 'Buy', id: 'city-good' },
 ] as const
 
 const SIZES = [
@@ -37,7 +38,7 @@ async function openDesk(page: Page, request: Parameters<typeof reachable>[0], ba
   )
   await page.goto('command')
   await ready(page)
-  await expect(page.getByTestId('watch-row').first()).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
 }
 
 const rect = (page: Page, sel: string) =>
@@ -101,27 +102,19 @@ for (const size of SIZES) {
       }
     })
 
-    test('a trade stands in the Trade face, not over it', async ({ page, request, baseURL }) => {
+    test('a trip stands in the Buy face, not over it', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
-      await page.getByRole('button', { name: 'Here', exact: true }).click()
-      await page.getByTestId('watch-row').first().click()
-      const plan = page.getByTestId('desk-plan').first()
-      await expect(plan).toBeVisible({ timeout: 60_000 })
-      await plan.click()
-      await expect(page.getByTestId('trade-card')).toBeVisible({ timeout: 30_000 })
-      // On a phone the good's page (a press on a GOOD, on Markets) covers the faces; the press is sent
-      // to the tab itself, as a keyboard or a screen reader would.
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).dispatchEvent('click')
-      await expect(page.getByTestId('desk-plans')).toBeVisible()
-      const builder = page.getByTestId('trade-card')
-      await expect(builder).toBeVisible()
-      await expect(page.getByRole('dialog'), 'the trade card is a pop-up on Trade').toHaveCount(0)
+      const face = page.getByTestId('desk-buy')
+      await face.getByTestId('city-good').first().click()
+      await face.getByTestId('good-plan').click()
+      const builder = face.getByTestId('trade-card')
+      await expect(builder).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByRole('dialog'), 'the trade card is a pop-up on Buy').toHaveCount(0)
       if (wide) {
-        // 0225: the card is the centre pane of the Trade face (docs/COMMAND_REDESIGN.md §5)
+        // the card is the centre pane of the Buy face
         await expect(page.getByTestId('desk-pane-chart').getByTestId('trade-card')).toBeVisible()
       } else {
         // in flow: inside the desk's own face, which scrolls with the page
-        await expect(page.getByTestId('desk-plans').getByTestId('trade-card')).toBeVisible()
         expect(await builder.evaluate((e) => getComputedStyle(e).position)).not.toBe('fixed')
       }
       await expect(page.getByTestId('command-queue')).toBeVisible()

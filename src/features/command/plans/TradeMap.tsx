@@ -12,7 +12,7 @@ import { orderTrips, tripOf, type OrderTrip } from './orderTrip'
 import { daysAt, tripRows, type PlanLeg } from './planLines'
 import { useSailLegs } from './usePlanCourse'
 
-// THE MAP ON TOP OF THE TRADE PAGE, AND THE ORDER'S ESTIMATE UNDER IT — the owner, 2026-10-26 (row 217):
+// THE MAP ON TOP OF THE BUY AND SELL FACES, AND THE ORDER'S ESTIMATE UNDER IT — the owner, 2026-10-26 (row 217):
 //
 //     "on command, trade, map should be at top. when i press my order, i should be able to see the route, time,
 //      money, profit all on estimate below the map + map"
@@ -30,6 +30,11 @@ import { useSailLegs } from './usePlanCourse'
 //   · the standing route: its stops' served courses, the route board's served miles a lap (route_nm) and average
 //     lap net (route_earnings), and the last closed lap's served bought / supplies / wages;
 //   · a raw SAIL (no good traded): the route and the time only, and one line saying no money estimate is served.
+// THE CITIES (owner row 218, 2026-10-26: *"in mini map in command, show cities, when pressed upon, show trade goods
+// with prices, and charts"*): with no order pressed the map draws EVERY harbour the Map tab draws (no `only`), the
+// city in hand ringed and named (`highlight`), and a harbour pressed is handed to `onCity` (SmallChart's `onPort`,
+// THE map tab's hit test). An order pressed narrows it back to that order's harbours, as row 183/217 drew them.
+//
 // Time is printed in both clocks (`formatTwoClocks`); days at sea from miles are `daysAt`, the plan's one arithmetic.
 
 export type OrderPick = { kind: 'order'; id: string } | { kind: 'voyage' } | { kind: 'route' }
@@ -46,8 +51,14 @@ export function TradeMap({
   pick,
   onClose,
   scrollOnPick,
+  city,
+  onCity,
 }: {
   fleet: FleetView
+  /** Row 218: the city in hand (ringed, named). */
+  city: string | null
+  /** Row 218: a harbour pressed on the map. */
+  onCity: (code: string) => void
   /** The plan being made, when its card is up (drawn when no order is pressed). */
   plan: MapDrawing | null
   pick: OrderPick | null
@@ -92,7 +103,8 @@ export function TradeMap({
     .filter((c): c is string => !!c)
     .filter((c, i, all) => all.indexOf(c) === i)
     .join(' ')
-  const only = useMemo(() => (onlyKey ? onlyKey.split(' ') : []), [onlyKey])
+  // every harbour, unless an order is pressed (its harbours only)
+  const only = useMemo(() => (pick && onlyKey ? onlyKey.split(' ') : undefined), [pick, onlyKey])
   const endsKey = drawing.ends.join(' ')
   const considering = useMemo(() => (endsKey ? endsKey.split(' ') : []), [endsKey])
   const courses = useMemo(() => drawing.legs.map((l) => l.path.map(([lat, lon]) => ({ lat, lon }))), [drawing.legs])
@@ -109,15 +121,16 @@ export function TradeMap({
         ports={snapshot?.ports ?? []}
         fleets={[fleet]}
         considering={considering}
-        highlight={null}
+        highlight={pick ? null : city}
         only={only}
         legs={courses}
         wholeWorld
-        ariaLabel={t(plan && !pick ? 'desk.planChart' : 'desk.mapChart')}
-        className="aspect-[3/2] w-full lg:aspect-[2/1]"
+        onPort={onCity}
+        ariaLabel={t(pick ? 'desk.mapChart' : 'desk.citiesChart')}
+        className="aspect-[2/1] w-full"
       />
       <span className="sr-only" data-testid="trade-map-cities">
-        {only.join(' ')}
+        {only ? only.join(' ') : '*'}
       </span>
       {pick && (
         <OrderEstimate
@@ -163,7 +176,7 @@ function OrderEstimate({
       ) : trip?.plan ? (
         <TripEstimate fleet={fleet} trip={trip} name={name} />
       ) : (
-        <SailEstimate fleet={fleet} trip={trip} legs={legs} name={name} />
+        <PassageEstimate fleet={fleet} trip={trip} legs={legs} name={name} />
       )}
     </div>
   )
@@ -225,7 +238,7 @@ function TripEstimate({ fleet, trip, name }: { fleet: FleetView; trip: OrderTrip
 }
 
 /** A raw SAIL, or the voyage under way with no trade behind it: the route and the time; no money is served. */
-function SailEstimate({ fleet, trip, legs, name }: { fleet: FleetView; trip: OrderTrip | null; legs: readonly PlanLeg[]; name: (c: string) => string }) {
+function PassageEstimate({ fleet, trip, legs, name }: { fleet: FleetView; trip: OrderTrip | null; legs: readonly PlanLeg[]; name: (c: string) => string }) {
   const t = useT()
   const v = fleet.voyage
   const eta = instantMs(v?.eta)

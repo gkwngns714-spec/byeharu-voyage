@@ -65,10 +65,14 @@ export interface PriceTrend {
 export function PriceRows({
   good,
   trend,
+  unfolded = false,
 }: {
   good: MarketGood
   /** The remembered mids for THIS good at THIS port, and their cadence. */
   trend: PriceTrend
+  /** Open on the chart instead of the sparkline (the COMMAND desk's Buy / Sell, owner row 218: a good pressed
+   *  there IS a press for its chart). A press still folds it. */
+  unfolded?: boolean
 }) {
   const t = useT()
   const points = trend.series?.points ?? []
@@ -76,7 +80,7 @@ export function PriceRows({
   const values = points.map((pt) => primaryValue(pt, side))
   const drawable = values.length >= 2 && trend.series !== undefined
   // The instant the chart was opened, or null while folded. One state for "is it open" and "when".
-  const [openedAt, setOpenedAt] = useState<number | null>(null)
+  const [openedAt, setOpenedAt] = useState<number | null>(() => (unfolded ? Date.now() : null))
   const open = drawable && openedAt !== null
 
   return (

@@ -4,12 +4,11 @@ import { ready, reachable } from './appReady.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE COMMAND DESK, MEASURED (docs/COMMAND_DESK.md §5.5–5.7, slice D3) — at the phone (390×844) and
 // the desktop (1440×900), on a local build:
-//   · a Markets row is the 52-px row, and every control on the desk clears 44 px;
+//   · a Buy row (the city's goods, owner row 218) is the 52-px row, and every control on the desk clears 44 px;
 //   · the page never scrolls sideways;
-//   · A PRESS SELECTS (the owner's law): pressing a good opens its page in its own slot and moves no
-//     row of the list; pressing a chart city changes the chart in place and moves nothing below it;
-//   · the page's Buy cell (docked here) turns the slot over to THE trade tray, and closing it returns
-//     to the page.
+//   · A PRESS SELECTS (the owner's law): pressing a good opens its page — under the row on a phone, in the centre
+//     pane on a wide glass — and moves no row at or above the one pressed;
+//   · the page's Buy here (docked here) opens THE trade tray, and closing it returns to the page.
 // Prices are the local world's; nothing here asserts a figure — only geometry and the slot's turns.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -26,8 +25,10 @@ async function openDesk(page: Page, request: Parameters<typeof reachable>[0], ba
   )
   await page.goto('command')
   await ready(page)
-  await expect(page.getByTestId('watch-row').first()).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
 }
+
+const wide = (size: { width: number }) => size.width >= 1024
 
 const tops = (page: Page, sel: string) =>
   page.evaluate((s) => [...document.querySelectorAll(s)].slice(0, 8).map((e) => Math.round(e.getBoundingClientRect().top)), sel)
@@ -36,11 +37,11 @@ for (const size of SIZES) {
   test.describe(`COMMAND desk at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size })
 
-    test('Markets: 52-px rows, 44-px controls, no sideways scroll', async ({ page, request, baseURL }) => {
+    test('Buy: 52-px rows, 44-px controls, no sideways scroll', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
       const m = await page.evaluate(() => {
         const desk = document.querySelector('[data-testid="command"]')!
-        const rows = [...document.querySelectorAll('[data-testid="watch-row"]')].slice(0, 12)
+        const rows = [...document.querySelectorAll('[data-testid="city-good"]')].slice(0, 12)
         const controls = [...desk.querySelectorAll('button, input, [role="tab"]')].filter((e) => {
           const r = e.getBoundingClientRect()
           return r.width > 0 && r.height > 0 && r.top < window.innerHeight
@@ -60,37 +61,23 @@ for (const size of SIZES) {
       expect(m.scrollW).toBeLessThanOrEqual(m.clientW)
     })
 
-    test('a press opens the good in its own slot; the list and the page do not move', async ({ page, request, baseURL }) => {
+    test('a press opens the good in its own place; the rows above it do not move', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
-      // A good the docked city sells, so the page offers Buy here.
-      await page.getByRole('button', { name: 'Here', exact: true }).click()
       await page.waitForTimeout(800)
-      const before = await tops(page, '[data-testid="watch-row"]')
-      await page.getByTestId('watch-row').nth(1).click()
-      await expect(page.getByTestId('good-page')).toBeVisible()
+      const before = await tops(page, '[data-testid="city-good"]')
+      await page.getByTestId('city-good').nth(1).click()
+      await expect(page.getByTestId('good-detail')).toBeVisible()
       await page.waitForTimeout(300)
-      expect(await tops(page, '[data-testid="watch-row"]'), 'opening a good moved the list').toEqual(before)
+      const after = await tops(page, '[data-testid="city-good"]')
+      // wide: the page stands in the centre pane, the list does not move at all; phone: it hangs under the row
+      expect(wide(size) ? after : after.slice(0, 2), 'opening a good moved the list').toEqual(wide(size) ? before : before.slice(0, 2))
 
-      // The board lands (skeletons first, at their final height), then the rows.
-      await expect(page.getByTestId('sell-row').first()).toBeVisible({ timeout: 60_000 })
-      await expect(page.getByTestId('price-chart-estimate')).toBeVisible({ timeout: 60_000 })
-
-      // A chart city pressed: the chart changes in place, nothing below it moves.
-      const chips = page.getByRole('group', { name: 'Chart city' }).getByRole('button')
-      if ((await chips.count()) > 1) {
-        const buyTop = await page.getByTestId('buy-at').evaluate((e) => Math.round(e.getBoundingClientRect().top))
-        await chips.first().click()
-        await page.waitForTimeout(600)
-        const after = await page.getByTestId('buy-at').evaluate((e) => Math.round(e.getBoundingClientRect().top))
-        expect(after, 'pressing a chart city moved what is under the chart').toBe(buyTop)
-      }
-
-      // Buy, here: the slot turns over to the trade tray, and closing it returns to the page.
-      await page.getByTestId('desk-buy').click()
+      // Buy here: THE trade tray; closing it returns to the page.
+      await page.getByTestId('good-buy').click()
       await expect(page.getByTestId('trade-tray')).toBeVisible({ timeout: 30_000 })
-      await expect(page.getByTestId('good-page')).toHaveCount(0)
       await page.getByTestId('trade-tray').getByRole('button', { name: /close/i }).first().click()
-      await expect(page.getByTestId('good-page')).toBeVisible()
+      await expect(page.getByTestId('trade-tray')).toHaveCount(0)
+      await expect(page.getByTestId('good-detail')).toBeVisible()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     })
   })
