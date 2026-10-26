@@ -17,7 +17,7 @@ import { useT } from '../../../lib/i18n'
 // supplies, no sell cities: those are the trip's, and the trip is Cargo's (TradeStart.tsx → the card).
 //
 // NOTHING ABOUT THE ACT IS HERE. A press hands (good, side) to the caller, which opens THE trade tray
-// (markets/DeskTrade.tsx → TradeTray + useTrade: the ceiling, the stepper, the dry run, the one door) — the same
+// (markets/DeskTrade.tsx, the desk's one trade doorway: the ceiling, the count, the dry run, the one door) — the same
 // tray the Markets face and the quay open. The prices are world.market's (usePortMarket, the read the quay
 // makes); which goods can be bought is `buyableHere` (domain/market, 0061), never a field tested here.
 //
