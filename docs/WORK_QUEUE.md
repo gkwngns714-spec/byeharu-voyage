@@ -1,5 +1,12 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## RESUMED 2026-10-26 ~12:15 UTC (PC gkwng)
+- #345 mirrored Buy/Sell MERGED 12:15 UTC (1112dd8, client only).
+- Economy watch +5 h 20 min (12:06 count): moved_since_close +138, new_slot 0, under_reserve 118, broke 38, gifts 144 (1.12 M), fees 3,063 (203,855 ducats), debtors 4. All under the switch-back triggers: stays ON.
+- **0245 E5 LIVE, DARK** (#346 merged c3e86a5, main Acceptance green; cron 776 ok / 0 failed after). `restock_by_investment` = false: lighting is the OWNER's call. `invested` now rolls hourly (decay + SHARE + DONATION), read by nothing while dark. Not in E5: max stock by investment (`depth_mult`) = slice E5b.
+- Owner rows 231 (Sell: can't dock/sail, map moves to pressed city, cargo-first Sell) → `osn-sell-dock-fix`; 232 (tap a Stats chart → large chart, months of data) → folded into N1.
+- Building locally (worktrees `~/dev/wt-<branch>`, node_modules junctions): `osn-flaky-1026` (trade.ceiling:267 + 0019 self-assert), `osn-e5-restock` (E5 = 0245, lands DARK), `osn-n1-stats-history` (N1 = 0246).
+
 ## HAND-OFF 2026-10-26 ~10:40 UTC (PC 디폴리스 shut down; owner moves to another PC) — READ THIS FIRST
 **Prod head 0244. CLOSED ECONOMY ON since 06:52:22 UTC.** Main Acceptance green on a33d77f.
 Live today (this PC): 0225 Trade · 0226 price history · 0227 who bought what · 0228/0229 E1/E2 · 0231 legs fit supplies · 0232 Stats live per second · 0233/0234 E3/E4 · 0235 money log · 0236/0237 E4b (dock fee, 1-min port prep, country tax, gifts by cash) · 0238 buy where she can sail (Port Royal) · 0240 E7 guard + switch (LIT) · 0241 sail on credit (debts paid from the next sale; capitals help players) · 0242 arrivals every 1 s (avg 0.73 s) · 0243 stats count adds both halves · 0244 stats filters. Client: #311 #312 #314 #315 #319 #325 #328 #329 #331 #333 #334 #337 #339 #340. Designs merged: ROUTE_BUILDER, CLOSED_ECONOMY (+§3 daily max stock, §4b wants, §4c fees/prep/tax), NEWS_AND_MARKERS, SHIP_STORES_AND_VARIETY.
@@ -8,7 +15,7 @@ Live today (this PC): 0225 Trade · 0226 price history · 0227 who bought what �
 |---|---|---|
 | 1 | **#345 mirrored Buy/Sell game screen (owner 229)** | built, CI was running at hand-off: `gh pr checks 345` → green → `gh pr merge 345 --squash` (client only) |
 | 2 | **flaky `tests/trade.ceiling.spec.ts:267`** (sell tray Send disabled; failed on #344 and main 68b7817, passed on a33d77f) and **flaky 0019 self-assert in `tests/db.chain.spec.ts:468`** (cold boot; failed once on #343, re-run green) | diagnose, don't re-run until green |
-| 3 | **economy watch** (switched on 06:52): runbook + A1–A7 in `docs/dev-log/2026-10-26-econ-e7.md`. At +1 h: world total flat (+138), gifts 34, fees ~4,700/h, laps −12 % (port prep 60 s), **under_reserve 85 → 112** (cities pay more for sales than they take from buys). Switch back (`select public.economy_close_switch(false)`) if under_reserve > 150, broke > 120, or purses −5 %/day ×2 | check now |
+| 3 | **economy watch** (switched on 06:52): runbook + A1–A7 in `docs/dev-log/2026-10-26-econ-e7.md`. At +1 h: world total flat (+138), gifts 34, fees ~4,700/h, laps −12 % (port prep 60 s), **under_reserve 85 → 112** (cities pay more for sales than they take from buys). OWNER-ONLY switch (owner 10-26: "never do something i didn't tell you"). If under_reserve > 150, broke > 120 or purses −5 %/day ×2, REPORT the numbers to the owner; never flip it ourselves | check now |
 | 4 | E5 restock + max stock by investment (daily) → E6 prices like stocks → E6b city wants ×2 | build, numbers from 0245 |
 | 5 | N1 keep all Stats history (lost daily past 72 h) → N2–N6 news markers | build |
 | 6 | merchants' empty lap SELLs (E_NO_CARGO 400 → 10,400 per 15 min since 06:15) · owner's board 3–4.5 s · merchants net +18 M/day (balancing PARKED by owner) | look into |
