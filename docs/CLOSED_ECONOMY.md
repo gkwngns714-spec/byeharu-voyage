@@ -164,6 +164,26 @@ mid = band(base × affinity × demand × (target/stock)^0.5 × (1+drift) × (1+s
 
 ---
 
+## 4b. City wants — every city needs 1–3 goods and pays far more for them (OWNER 2026-10-26)
+
+*"i want you to create for each city, the trade good that city needs, and the city will pay much more money. this should be for every city, 1~3 trade goods. First make it random? or any other method needed so that the economy circulates even further on a closed gold."*
+
+| | Decided by default |
+|---|---|
+| How many | 1–3 per harbour: 1 base, +1 if `I` ≥ median, +1 if `I` ≥ top quartile (richer cities want more) |
+| Which goods | **Weighted random, not pure random.** Candidates = goods this city does NOT sell (`port_offered_goods`) that ARE sold somewhere ≥ 1,500 nm away. Weight = distance to the nearest seller (far goods weigh more) × 1.5 if the good is in the city's real regional wants (`docs/REGIONAL_GOODS.md`). Seeded per (port, day) so every reader agrees. Pure random would often pick a good sold next door — no voyage, no circulation |
+| When | **Re-drawn once a day** with the other daily settings (00:00 UTC). A good wanted yesterday can't be drawn today (routes must move) |
+| Pays | **×2 the normal sell price** (`want_mult`), paid from the CITY PURSE — never minted. The empty-purse rule still holds: a city that can't pay shrinks the premium first, then refuses |
+| Size | Max units at the premium per day = 10 % of the city's max stock of that good; past it the normal price |
+| Shows | City view and Trade sell list: "Wanted ×2" / "수요 ×2" beside the good; Stats → Cities: a city's wants; the daily draw is logged (`city_wants` table, append-only) |
+| Merchants | NPC merchants see wants like players do (their route planner already reads the board's prices) |
+
+**Why it helps a closed economy:** money flows FROM rich, invested cities TO the traders who bring what they lack; traders then spend and invest elsewhere — gold moves across the map instead of pooling. The ×2 is the knob to watch in §7 (if rich cities drain too fast, lower it).
+
+Slice **E6b** `a_city_wants_what_it_lacks` (before E7): `city_wants` table + the daily draw in the daily job + `want_mult` read by `world.quote_priced`'s sell side and the board; dark = no wants drawn, price byte-identical; lit in-block: a probe port draws 1–3 wants, none sold locally, a probe sale pays ×2 from the purse.
+
+---
+
 ## 5. City purse limits, broke merchants, capital gifts
 
 ### 5.1 Empty-purse rule — confirmed holds everywhere
