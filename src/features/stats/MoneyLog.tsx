@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShellState } from '../../app/shellState'
-import { Empty, Row, SheetSection } from '../../components/ui'
+import { Chip, ChipRow, Empty, Row, SheetSection } from '../../components/ui'
 import { formatDucatsDelta, formatRelative } from '../../lib/format'
 import { properName, translateMaybe, useLocale, useT } from '../../lib/i18n'
 import { worldMoneyFeed, type MoneyMove, type RpcResult } from '../../lib/rpc'
 import { useLiveRead } from './statsLive'
 import { emptyDrip, enqueue, step, type Drip } from './moneyDrip'
+import { SECTORS, sectorOf, type Sector } from './moneySectors'
 
 // THE MONEY LOG — every money move in the world as it happens, beside World money (0235; the owner, row 219,
 // 2026-10-26: *"beside the stat, world money, i want to see the live log of each happenings that cause money -
@@ -30,7 +31,22 @@ import { emptyDrip, enqueue, step, type Drip } from './moneyDrip'
 // through the face, so the log's section drops its margin there). A name is never cut: the label wraps. "5 s ago" is
 // read against the shell's one clock, which is the server's (formatRelative).
 
-const KEEP = 100
+// KEEP is what is held and filtered (a filter must not be empty after a minute); ASK is one read's size.
+const KEEP = 300
+const ASK = 100
+const FILTER_KEY = 'bv:moneylog-filter'
+type Pick = 'all' | Sector
+type Filter = { pick: Pick; mine: boolean }
+
+function loadFilter(): Filter {
+  try {
+    const j = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as Partial<Filter> | null
+    const pick = j?.pick
+    return { pick: pick === 'all' || (SECTORS as readonly string[]).includes(pick as string) ? (pick as Pick) : 'all', mine: j?.mine === true }
+  } catch {
+    return { pick: 'all', mine: false }
+  }
+}
 const LATE_MS = 20_000
 
 const atMs = (m: MoneyMove) => Date.parse(m.at)
@@ -58,7 +74,7 @@ function useMoneyFeed(): { view: MoneyMove[] | null; loading: boolean } {
   const read = useLiveRead<MoneyMove[]>('stats:money-feed', async (): Promise<RpcResult<MoneyMove[]>> => {
     const newest = held.current[0]
     const after = newest === undefined ? null : new Date(atMs(newest) - LATE_MS).toISOString()
-    const r = await worldMoneyFeed(after, KEEP)
+    const r = await worldMoneyFeed(after, ASK)
     if (!r.ok) return r
     held.current = merge(held.current, r.value.moves)
     if (seen.current === null) {
@@ -91,7 +107,24 @@ export function MoneyLog() {
   const locale = useLocale()
   const { nowMs } = useShellState()
   const { view } = useMoneyFeed()
+  const [filter, setFilter] = useState<Filter>(loadFilter)
   if (view === null) return null
+
+  const choose = (f: Filter) => {
+    setFilter(f)
+    try {
+      localStorage.setItem(FILTER_KEY, JSON.stringify(f))
+    } catch {
+      /* storage may be blocked: the choice just is not remembered */
+    }
+  }
+  const base = filter.mine ? view.filter((m) => m.own) : view
+  const counts = new Map<Sector, number>()
+  for (const m of base) {
+    const k = sectorOf(m.kind, m.holder)
+    counts.set(k, (counts.get(k) ?? 0) + 1)
+  }
+  const rows = filter.pick === 'all' ? base : base.filter((m) => sectorOf(m.kind, m.holder) === filter.pick)
 
   const word = (m: MoneyMove) =>
     (m.holder === 'city' ? translateMaybe(locale, 'feed', `c_${m.kind}`) : null) ??
@@ -102,11 +135,24 @@ export function MoneyLog() {
   return (
     <div className="mt-6 lg:absolute lg:top-0 lg:left-[calc(100%+1.5rem)] lg:mt-0 lg:w-[26rem] lg:[&>section]:mt-0!" data-testid="money-log">
       <SheetSection heading={t('feed.heading')}>
-        {view.length === 0 ? (
+        <ChipRow label={t('feed.filter')} className="mb-2">
+          <Chip on={filter.pick === 'all'} onClick={() => choose({ ...filter, pick: 'all' })} data-testid="money-chip-all">
+            {t('feed.s_all')} {base.length}
+          </Chip>
+          <Chip on={filter.mine} onClick={() => choose({ ...filter, mine: !filter.mine })} data-testid="money-chip-mine">
+            {t('feed.s_mine')}
+          </Chip>
+          {SECTORS.map((k) => (
+            <Chip key={k} on={filter.pick === k} onClick={() => choose({ ...filter, pick: k })} data-testid={`money-chip-${k}`}>
+              {t(`feed.s_${k}`)} {counts.get(k) ?? 0}
+            </Chip>
+          ))}
+        </ChipRow>
+        {rows.length === 0 ? (
           <Empty>{t('feed.none')}</Empty>
         ) : (
           <div className="bv-scroll max-h-[28rem] overflow-y-auto lg:max-h-[36rem]">
-            {view.map((m, i, all) => {
+            {rows.map((m, i, all) => {
               const gain = m.delta > 0
               return (
                 <Row

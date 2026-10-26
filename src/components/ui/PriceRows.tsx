@@ -66,6 +66,7 @@ export function PriceRows({
   good,
   trend,
   startOpen = false,
+  compactChart = false,
 }: {
   good: MarketGood
   /** The remembered mids for THIS good at THIS port, and their cadence. */
@@ -74,6 +75,8 @@ export function PriceRows({
    *  point is the chart (owner row 220), and the COMMAND desk's Buy / Sell good page (owner row 218). A press on
    *  the row still folds it. */
   startOpen?: boolean
+  /** The chart as a compact panel (owner row 226) — the COMMAND good page's, in a column wider than a tray. */
+  compactChart?: boolean
 }) {
   const t = useT()
   const points = trend.series?.points ?? []
@@ -111,6 +114,7 @@ export function PriceRows({
             points={points}
             slotSeconds={(trend.series as PriceSeries).step_seconds}
             nowMs={openedAt as number}
+            compact={compactChart}
             label={t('ui.pastPricesAxis', { name: good.name, n: values.length, lo: formatPriceFigure(Math.min(...values)), hi: formatPriceFigure(Math.max(...values)) })}
           />
         ) : (

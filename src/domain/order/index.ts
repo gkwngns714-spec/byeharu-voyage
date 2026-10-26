@@ -55,3 +55,4 @@ export { sailEstimate, saleEstimate, type SailEstimate, type SailInsurance, type
 // The STORE / TAKE reading (0070's `{good, qty, stored_here}`), kept beside the other two; its
 // own file only until estimate.ts is free to take it (moveEstimate.ts's header).
 export { moveEstimate, type MoveEstimate } from './moveEstimate'
+export { orderTrips, tripOf, type OrderTrip, type TripPlan } from './trip'
