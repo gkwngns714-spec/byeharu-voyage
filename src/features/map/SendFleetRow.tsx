@@ -1,5 +1,5 @@
 import { Bar, Button, Figure, Icon, Note, Row } from '../../components/ui'
-import { formatMiles, formatVoyageDays } from '../../lib/format'
+import { formatMiles, formatPriceDelta, formatVoyageDays } from '../../lib/format'
 import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
 import { sailEstimate } from '../../domain/order'
 import { whereabouts, whereParts } from '../../domain/fleet'
@@ -43,6 +43,8 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
         ? <>{where} · {t('map.checkingRoute')}</>
         : where
   const passage = pressable && v?.kind === 'ok' ? passageOf(v.result) : null
+  // 0241 (owner row 230): her purse is short of this passage's stores — the SAIL still goes, and the rest is owed
+  const onCredit = pressable && v?.kind === 'ok' ? (sailEstimate(v.result.estimate).onCredit ?? 0) : 0
 
   return (
     <div data-testid="map-send-row">
@@ -67,6 +69,12 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
 
       {pressable && v?.kind === 'refused' && (
         <Refused refusal={v.refusal} fixes={flow.fixesOf(f, v.refusal)} testId="map-send-refusal" />
+      )}
+
+      {onCredit > 0 && (
+        <span className="block pb-1 text-t-caption text-warning" data-testid="map-send-on-credit">
+          {t('map.onCredit', { amount: formatPriceDelta(-onCredit) })}
+        </span>
       )}
 
       {on && pressable && <SendInsurance fleet={f} flow={flow} />}
