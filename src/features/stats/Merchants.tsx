@@ -9,7 +9,6 @@ import {
   Hint,
   Note,
   RankBars,
-  SeriesChart,
   SectionColumns,
   SheetSection,
   Skeleton,
@@ -28,6 +27,8 @@ import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } fro
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
+import { StatsChart } from './StatsChart'
+import { useChartSpan } from '../../store/chartSpan'
 import { ALL, MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 
 // MERCHANTS — the companies the world keeps: how many, where their fleets are, what their last day of
@@ -48,7 +49,8 @@ const FIRST = 60
 
 export function MerchantsFace() {
   const t = useT()
-  const read = useLiveRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants())
+  const { span } = useChartSpan()   // 0246: one span for every chart
+  const read = useLiveRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants(span), span)
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
   const [choice, choose] = useFilterChoice('stats.merchants', { country: ALL, sort: 'richest' })
@@ -120,7 +122,8 @@ export function MerchantsFace() {
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.earnedDay')}</span>
-            <SeriesChart
+            <StatsChart
+              title={t('stats.earnedDay')}
               points={toSeries(v.series, (p) => p.profit_day)}
               format={formatDucats}
               label={t('stats.earnedLabel')}
@@ -130,7 +133,8 @@ export function MerchantsFace() {
           </div>
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.atSeaSeries')}</span>
-            <SeriesChart
+            <StatsChart
+              title={t('stats.atSeaSeries')}
               points={toSeries(v.series, (p) => p.sailing)}
               format={formatInt}
               label={t('stats.atSeaLabel')}
