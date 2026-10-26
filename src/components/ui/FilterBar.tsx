@@ -73,7 +73,9 @@ export function FilterBar({
         </ChipRow>
       )}
       {lines.length > 0 && (
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
+        // a TOOLBAR, not a list: its pickers stand side by side and are not rows of one column (tests/align.spec.ts
+        // skips a toolbar as it skips a tab list)
+        <div role="toolbar" aria-label={lines.map((p) => p.label).join(', ')} className="flex min-w-0 flex-wrap items-center gap-2">
           {lines.map((p) => (
             <label key={p.id} className="flex min-w-0 max-w-full items-center gap-2 text-t-caption text-ink-faint">
               <span className="shrink-0">{p.label}</span>

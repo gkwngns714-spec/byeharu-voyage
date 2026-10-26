@@ -111,7 +111,8 @@ function measure(): string[] {
   document.querySelectorAll('body *').forEach((e) => {
     if (!visible(e) || rows.has(e) || !e.className || typeof e.className !== 'string') return
     if (e.closest('[data-row-line]') && !e.hasAttribute('data-row-line')) return
-    if (e.closest('nav, [role="tablist"], [data-testid="map-chart"], svg')) return
+    // a toolbar (FilterBar's pickers, 0241) is controls side by side, not rows of a list
+    if (e.closest('nav, [role="tablist"], [role="toolbar"], [data-testid="map-chart"], svg')) return
     const sibs = [...(e.parentElement?.children ?? [])].filter((s) => s.tagName === e.tagName && s.className === e.className)
     if (sibs.length < 2) return
     if (!horizontal(e)) return
