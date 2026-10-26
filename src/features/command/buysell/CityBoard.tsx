@@ -80,9 +80,9 @@ export function CityBoard({
   // THE CHIPS: the city in hand, where she lies, then the harbours nearest where she departs from
   const chips = useMemo(() => {
     const from = sailOrigin(fleet, portByCode)
-    const near = from
-      ? [...(ports ?? [])].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code)
-      : (ports ?? []).map((p) => p.code)
+    // harbours only: a sea place (a cape, a strait) keeps no market
+    const harbours = (ports ?? []).filter((p) => p.kind !== 'SEA_PLACE')
+    const near = from ? [...harbours].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code) : harbours.map((p) => p.code)
     const head = [fleet.status === 'DOCKED' ? fleet.port : null, city].filter((c): c is string => !!c)
     return [...new Set([...head, ...near])].slice(0, CHIPS)
   }, [fleet, portByCode, ports, city])
@@ -163,8 +163,9 @@ function GoodCard({
       aria-pressed={on}
       title={r.name}
       className={[
-        'flex min-w-0 flex-col gap-1 rounded-md border p-2 text-left transition active:scale-[0.97]',
-        on ? 'border-accent bg-accent-soft' : 'border-edge bg-surface hover:bg-surface-2',
+        // a tone step, never a border (UI_DIRECTION §4.3); the pressed card is lit and ringed
+        'flex min-w-0 flex-col gap-1 rounded-md p-2 text-left transition active:scale-[0.97]',
+        on ? 'bg-accent-soft ring-1 ring-accent' : 'bg-surface-2 hover:bg-surface-2/70',
         dead ? 'cursor-default opacity-50' : '',
       ].join(' ')}
       data-testid="city-good"
