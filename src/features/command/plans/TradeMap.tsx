@@ -163,7 +163,7 @@ function OrderEstimate({
       ) : trip?.plan ? (
         <TripEstimate fleet={fleet} trip={trip} name={name} />
       ) : (
-        <SailEstimate fleet={fleet} trip={trip} legs={legs} name={name} />
+        <PassageEstimate fleet={fleet} trip={trip} legs={legs} name={name} />
       )}
     </div>
   )
@@ -225,7 +225,7 @@ function TripEstimate({ fleet, trip, name }: { fleet: FleetView; trip: OrderTrip
 }
 
 /** A raw SAIL, or the voyage under way with no trade behind it: the route and the time; no money is served. */
-function SailEstimate({ fleet, trip, legs, name }: { fleet: FleetView; trip: OrderTrip | null; legs: readonly PlanLeg[]; name: (c: string) => string }) {
+function PassageEstimate({ fleet, trip, legs, name }: { fleet: FleetView; trip: OrderTrip | null; legs: readonly PlanLeg[]; name: (c: string) => string }) {
   const t = useT()
   const v = fleet.voyage
   const eta = instantMs(v?.eta)
