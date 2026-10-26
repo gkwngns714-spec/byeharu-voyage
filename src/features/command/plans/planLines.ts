@@ -231,6 +231,8 @@ function legWords(nm: number, speedKn: number): string {
  *      a trip that long, and there are no ports on the way to stop at
  *    Hold too full: 4.3 days of supplies, crossing needs 7.8 days   (0231: her navigation reaches it, her stores
  *      beside her cargo do not; the server's leg_refusal figures)
+ *    Hold too full: bought at Guangzhou, the trip has a crossing that needs 7.8 days of supplies; you can carry
+ *      4.3 days   (0238: the good is bought first, and no seller is within her stores — the way to the buy city is)
  *    longest leg 21.3 days, can carry 12.0 days   (0231: what her hold carries beside her cargo, not her casks now)
  *  (the owner, 2026-10-19: "What does this mean? make it in simple words")
  *
@@ -248,7 +250,11 @@ export function reachWords(row: BoardPassage & { miles: number | null }, board: 
     // 0231: her navigation would reach it, her stores would not: the server's E_ENDURANCE figures, in plain words
     const shut = row.shut?.figures
     if (row.shut?.code === 'E_ENDURANCE' && shut) {
-      return t('desk.holdTooFull', { carry: formatVoyageDays(shut.carry_days), need: formatVoyageDays(shut.need_days) })
+      const carry = formatVoyageDays(shut.carry_days)
+      const need = formatVoyageDays(shut.need_days)
+      // 0238 (owner, Port Royal): the crossing is on the way to the city it is bought at — name that city
+      if (shut.buy_at) return t('desk.holdTooFullBuy', { city: shut.buy_at_name ?? shut.buy_at, carry, need })
+      return t('desk.holdTooFull', { carry, need })
     }
     const own =
       t('desk.tooFar') +
