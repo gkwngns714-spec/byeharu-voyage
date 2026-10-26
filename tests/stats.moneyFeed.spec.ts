@@ -96,6 +96,16 @@ test('Stats › the money log shows my buy in red and the city’s side of it in
   await expect(city.first()).toContainText('Sold')
   await expect(city.first().locator('.text-success')).toHaveCount(1)
 
+  // THE FILTER (owner 227): Bought shows my buy, Supplies hides it; the chip is remembered; chips scroll in their own row
+  await log.getByTestId('money-chip-bought').click()
+  await expect(mine.first()).toBeVisible()
+  await expect(log.locator('[data-testid="money-move"][data-holder="city"]')).toHaveCount(0)
+  await log.getByTestId('money-chip-supplies').click()
+  await expect(log.locator('[data-testid="money-move"][data-kind="BUY"]')).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('bv:moneylog-filter'))).toContain('supplies')
+  await page.getByTestId('money-chip-all').click()
+  await expect(mine.first()).toBeVisible({ timeout: 30_000 })
+
   // PHONE: under World money, nothing sideways
   const money = page.getByTestId('stats-overview').locator('section').first()
   const [mb, lb] = [await money.boundingBox(), await log.boundingBox()]
