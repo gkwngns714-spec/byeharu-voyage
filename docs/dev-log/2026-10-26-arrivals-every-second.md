@@ -1,8 +1,15 @@
-# 2026-10-26 — Arrivals every second (owner row 224) — migration 0239
+# 2026-10-26 — Arrivals every second (owner row 224) — migration 0242
 
 > *Money must move every 1 second, for real.* — and: *"change to 1 sec, compare how much server cost it needs"*
 
-Migration `supabase/migrations/20260818000239_the_quay_is_read_every_second.sql`. Server only; the client is not touched.
+Migration `supabase/migrations/20260818000242_the_quay_is_read_every_second.sql`. Server only; the client is not touched.
+
+**Renumbered 0239 → 0242** (prod head 0240 — E7, the economy closed — landed while this was in review; 0241 is reserved
+for stats-filters). The four OLD hunks were re-checked on prod at head 0240: each occurs once (§5a). With the economy
+closed on prod, an arrival now starts a 60-s port time (0237), so the probe now makes Funchal at 2000-01-01 00:00:00
+and the run is at 00:00:01: her port time is still running and her wake is not due in the same run. The probe tops up
+Amsterdam's purse before founding her house, as 0240's probe does (closed, a capital pays the starting money). The
+self-assert passes on the chain at 0240 with the economy open AND closed (PGlite, both rolled back). The timings in §1b/§2c were measured on the 0238 world (economy open).
 
 ## 1. Where a run's time goes today (measured)
 
@@ -36,7 +43,7 @@ spread over their length, then caught up and **warmed 240 one-second runs** befo
 
 Fixed part of a run, nothing due (median of 5):
 
-| Fixed part | before 0239 | after 0239 |
+| Fixed part | before 0242 | after 0242 |
 |---|---|---|
 | candidate scan | 34–51 ms (old predicate) | index on `due_at` (inside the 3 ms below) |
 | waiting-merchant ask | 5–7 ms | skipped except on the 15th seconds |
@@ -67,7 +74,7 @@ Per-event costs: §2c.
 - `npc_ask_slot` is `floor(epoch) mod 15 = 0` (fixed instants in 2000, no time of day);
 - the cadence reads `1 seconds` where pg_cron exists;
 - **a probe arrival settles in one run, nothing else touched:** a probe company sails Lisbon → Funchal, her passage is
-  moved whole into 1999, and ONE `tick_arrivals('2000-01-01 00:00:01')` (before every real due instant; asserted that
+  moved whole to end at 2000-01-01 00:00:00, and ONE `tick_arrivals('2000-01-01 00:00:01')` (before every real due instant; asserted that
   nothing else is due then and that it is not an ask slot) settles all her days and docks her at FNC: touched 1,
   asked 0, `due_at` null; every merchant's fleet and voyage at sea has the same digest after; the OLD body from the
   same state answers the same;
@@ -78,7 +85,7 @@ Per-event costs: §2c.
 Same world, same warm-up, same machine, one after the other (the world keeps sailing, so the two runs do not see
 identical events; the per-run event counts are given):
 
-| 100 runs at 1 s | before (live body, 0238) | after (0239) |
+| 100 runs at 1 s | before (live body, 0238) | after (0242) |
 |---|---|---|
 | p50 | 491 ms | **320 ms** |
 | p95 | 1,588 ms | 2,210 ms |
@@ -87,7 +94,7 @@ identical events; the per-run event counts are given):
 | a run: arrivals / sea-days / fleets touched | 2.51 / 9.58 / 10.48 | 2.40 / 10.04 / 11.02 |
 | a run with nothing due | 28.1 ms | **3.1 ms** |
 
-**Where a second's work goes (after 0239)**, each pass run on its own every second for 60 s on the warmed world:
+**Where a second's work goes (after 0242)**, each pass run on its own every second for 60 s on the warmed world:
 
 | Pass | ms a second | items a second | ms an item |
 |---|---|---|---|
@@ -100,7 +107,7 @@ identical events; the per-run event counts are given):
 At prod's event rates (1.43 arrivals, 9.2 sea-days, 0.44 lap starts a second) these local costs make ≈ 300 ms of work
 a second on wasm. **The goal "1–3 arrivals in < 300 ms" holds for a second without a lap start** (3 ms + 1–3 × 64 ms +
 ~9 × 5 ms ≈ 110–240 ms here), **and not for a second in which a merchant starts a lap** (~360 ms each, here). That is
-the merchants' re-planning (`npc_tend_route` / route core), not this job's scan, and 0239 does not change it. The
+the merchants' re-planning (`npc_tend_route` / route core), not this job's scan, and 0242 does not change it. The
 p95 / max are those seconds (and several lap starts falling in one second). Prod's per-event work is slower than
 these numbers (§1a: disk waits), so prod runs will be longer than local ones; §5c measures them after the deploy.
 
@@ -125,7 +132,7 @@ from an IO budget (https://supabase.com/docs/guides/platform/compute-and-disk). 
 "$10/month in compute credits", which covers one Micro; Small (2 GB) is $15/month, Medium (4 GB) $60, Large (2
 dedicated vCPU, 8 GB) $110; egress 250 GB included, then $0.09/GB (https://supabase.com/pricing).
 
-| | 15 s (today) | 1 s, without 0239 | 1 s, with 0239 |
+| | 15 s (today) | 1 s, without 0242 | 1 s, with 0242 |
 |---|---|---|---|
 | runs an hour | 240 | 3,600 | 3,600 |
 | fixed part a run (prod) | ~85 ms | ~85 ms | index reads; ~1–3 ms expected (local 3 ms on wasm) — **re-measure after deploy (§5c)** |
@@ -141,18 +148,18 @@ dedicated vCPU, 8 GB) $110; egress 250 GB included, then $0.09/GB (https://supab
 "Run time" is time inside the job, not pure CPU: part of it is waiting on disk (§1a). It is the honest upper bound
 for the CPU the job uses.
 
-**Verdict:** with 0239, one run a second does the same work as today in smaller pieces, so the job's load stays
+**Verdict:** with 0242, one run a second does the same work as today in smaller pieces, so the job's load stays
 about where it is (~51 % of one core, the same as now). It fits the Micro instance the owner already pays for inside
-Pro's $10 compute credit; no compute add-on is needed for the 1-s change. Without 0239, the same change would add
+Pro's $10 compute credit; no compute add-on is needed for the 1-s change. Without 0242, the same change would add
 ~290 s an hour (+16 %) of pure overhead. What would make each second's work faster is memory, not cadence: the
 database (1,005 MB) no longer fits a Micro's 1 GB, and runs wait on disk reads. Small (2 GB) costs $15/month, i.e. $5
 more than the credit; whether it removes the disk waits is NOT measured.
 
-## 5. PROD CHECKS (read-only, pure SELECTs, one statement per block; run by me on 2026-10-26, head 0238)
+## 5. PROD CHECKS (read-only, pure SELECTs, one statement per block; run by me on 2026-10-26 at head 0238 and again at head 0240)
 
 Every function called is `pg_get_functiondef`, `replace`, `length` (built-ins). No EXPLAIN ANALYZE.
 
-### 5a. The hunks on the LIVE `tick_arrivals` (after 0237). Expect `1,1 / 2,1 / 3,1 / 4,1`.
+### 5a. The hunks on the LIVE `tick_arrivals` (after 0240). Expect `1,1 / 2,1 / 3,1 / 4,1`.
 
 ```sql
 select h.n, (length(d.def) - length(replace(d.def, h.old, ''))) / length(h.old) as occurs
@@ -186,6 +193,13 @@ select (select count(*) from pg_attribute where attrelid = 'public.voyages'::reg
        (select count(*) from public.sea_reaches r join public.ports p on p.id = r.port_id where p.code in ('LIS', 'FNC') and p.kind = 'HARBOUR') as probe_reaches
 ```
 Result: `0,0,0,0,0,15 seconds,2`.
+
+### 5b2. The probe's capital exists (head 0240). Expect `1, 20260818000240`.
+
+```sql
+select (select count(*) from public.ports p join public.nations n on n.capital_port_code = p.code where n.code = 'NLD' and p.kind = 'HARBOUR') as nld_capital, (select max(version) from supabase_migrations.schema_migrations) as head
+```
+Result: `1, 20260818000240`.
 
 ### 5c. AFTER the deploy (for the deployer). Expect `1 seconds`, mean well under 1 s, and ~3,600 runs an hour.
 
