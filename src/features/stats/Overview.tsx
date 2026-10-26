@@ -14,9 +14,10 @@ import {
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import { worldStatsOverview, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
+import { worldStatsOverview, type StatsNow, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
 import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
 import { useLiveRead } from './statsLive'
+import { WatchSection } from './Watch'
 
 // OVERVIEW — the world's money: who holds it, what was printed, what was burned, what changed hands.
 //
@@ -34,7 +35,8 @@ import { useLiveRead } from './statsLive'
 
 const HOURS = 24
 
-export function OverviewFace() {
+/** `live` is the RIGHT NOW band's answer (world.stats_now), handed down for the economy watch it carries (0229). */
+export function OverviewFace({ live }: { live: StatsNow | null }) {
   const t = useT()
   const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS))
   const v = read.view
@@ -143,6 +145,7 @@ export function OverviewFace() {
         </div>
       </SheetSection>
 
+      <WatchSection watch={live?.watch} />
       <Flows heading={t('stats.lastDay')} period={day} testid="stats-flows-day" />
       <Flows heading={t('stats.sinceCount')} period={v.period} testid="stats-flows-period" />
     </div>

@@ -69,7 +69,7 @@ function StatsBody() {
         className="mb-3 w-fit max-w-full"
       />
       <LiveNow live={live} />
-      {face === 'overview' && <OverviewFace />}
+      {face === 'overview' && <OverviewFace live={live} />}
       {face === 'markets' && <MarketsFace />}
       {face === 'cities' && <CitiesFace />}
       {face === 'merchants' && <MerchantsFace />}

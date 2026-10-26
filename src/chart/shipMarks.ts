@@ -16,26 +16,18 @@
 //
 // ── THE RULE ───────────────────────────────────────────────────────────────────────────────────
 // 1. CULLED TO THE WINDOW. Only a ship inside the view (plus the same margin `portMarks` keeps, so
-//    a hull half off the glass is still drawn) is on the sheet. With 822 merchants sailing and an
-//    opening frame 12° wide, that alone is most of the work this layer used to do for nothing.
-// 2. THINNED TO ONE PER CELL. The glass is cut into `SHIP_CELL_PX` squares and each cell draws at
-//    most one merchant: the one with the most hulls, then the lower id — hers, stable, so a
-//    neighbour arriving cannot swap her out (the `berthSlotOf` lesson, ./liveWorld.ts). A cell is
-//    the size of the largest hull, so two merchants that would be drawn on top of each other are
-//    drawn as one ship, and two that would not are both drawn. At the globe on a phone this is the
-//    difference between 822 marks and the few hundred the glass can show as ships.
-// 3. YOURS ARE NEVER THINNED. A fleet of yours is the reason the tab was opened; she is on the
-//    sheet at every zoom, whatever stands beside her. The merchants give way to her cell.
+//    a hull half off the glass is still drawn) is on the sheet.
+// 2. A SHIP NEVER BLINKS (owner, 2026-10-26: *"ships disappear for a while, then come back"*). The
+//    old rule drew one merchant per moving-position cell, so two ships passing each other swapped
+//    in and out. Now every merchant in the window is drawn, at every zoom where that is affordable.
+//    Only at the widest spans (`THIN_TIERS`, measured: docs/dev-log/2026-10-26-ships-stay.md) are
+//    the merchants thinned, and then by a fact about the SHIP alone — `hash(id) % THIN_MOD < n` —
+//    so the same ships are kept wherever their neighbours sail. Never a cell contest on position.
+// 3. YOURS ARE NEVER THINNED.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { project, xOnSheet, type ViewBox } from '../lib/geo'
 import type { FleetOnChart, TrafficOnChart } from './chartModel'
-import { GLYPH } from './glyphs'
-
-/** The cell, in CSS px, inside which the merchants are thinned to one — the largest hull a merchant
- *  sails, bow to stern (the nau, a medium hull: 0135 drew sizes by `GLYPH.hullHalfLength`, and no
- *  merchant sails a heavy one), so a cell holds exactly one legible ship. */
-export const SHIP_CELL_PX = 2 * GLYPH.hullHalfLength[3]
 
 /** Beyond the view's edge, as a fraction of its width and height — the same slack `portMarks`
  *  keeps, so a mark half off the glass is still drawn. */
@@ -44,7 +36,7 @@ const MARGIN = 0.06
 export interface ShipMarks {
   /** Your fleets at sea or at an open anchor, on this view. A docked fleet is her port's mark. */
   readonly fleets: readonly FleetOnChart[]
-  /** The merchants on this view, thinned to one per cell. */
+  /** The merchants on this view — all of them, or at the widest spans a stable subset. */
   readonly traffic: readonly TrafficOnChart[]
 }
 
@@ -52,8 +44,6 @@ export function shipMarks(
   fleets: readonly FleetOnChart[],
   traffic: readonly TrafficOnChart[],
   view: ViewBox,
-  /** Chart units per CSS pixel — the cell is in pixels, like every size on this chart. */
-  unitsPerPx: number,
 ): ShipMarks {
   const padX = view.width * MARGIN
   const padY = view.height * MARGIN
@@ -69,32 +59,31 @@ export function shipMarks(
   const mine: FleetOnChart[] = []
   for (const f of fleets) if (f.dockedAtCode === null && onSheet(f.at.lat, f.at.lon)) mine.push(f)
 
-  const cell = Number.isFinite(unitsPerPx) && unitsPerPx > 0 ? SHIP_CELL_PX * unitsPerPx : 0
-  const cellOf = (x: number, y: number): string =>
-    cell > 0 ? `${Math.floor(x / cell)},${Math.floor(y / cell)}` : `${x},${y}`
-  const taken = new Set<string>()
-  for (const f of mine) {
-    const at = project(f.at)
-    taken.add(cellOf(at.x, at.y))
-  }
-
-  const kept = new Map<string, TrafficOnChart>()
+  const keep = keptOf(view.width)
+  const out: TrafficOnChart[] = []
   for (const t of traffic) {
-    if (!onSheet(t.at.lat, t.at.lon)) continue
-    const at = project(t.at)
-    const key = cellOf(at.x, at.y)
-    if (taken.has(key)) continue
-    const held = kept.get(key)
-    if (!held || outranks(t, held)) kept.set(key, t)
+    if (onSheet(t.at.lat, t.at.lon) && stableSlot(t.fleet.id) < keep) out.push(t)
   }
-  return { fleets: mine, traffic: [...kept.values()] }
+  return { fleets: mine, traffic: out }
 }
 
-/** Which of two merchants in one cell is drawn: the one with more hulls, then the lower id — a
- *  fact about her, never about the order the server listed them in. */
-function outranks(a: TrafficOnChart, b: TrafficOnChart): boolean {
-  const ha = a.fleet.hulls?.length ?? 0
-  const hb = b.fleet.hulls?.length ?? 0
-  if (ha !== hb) return ha > hb
-  return a.fleet.id < b.fleet.id
+/** The modulus of the stable thinning slot. */
+export const THIN_MOD = 8
+
+/** From this view width (chart degrees) up, only `keep` of every `THIN_MOD` merchants are drawn.
+ *  Widest first. Measured, not guessed — see the dev-log. */
+export const THIN_TIERS: readonly { readonly fromSpanDeg: number; readonly keep: number }[] = [
+  { fromSpanDeg: 250, keep: 6 },
+]
+
+function keptOf(spanDeg: number): number {
+  for (const t of THIN_TIERS) if (spanDeg >= t.fromSpanDeg) return t.keep
+  return THIN_MOD
+}
+
+/** A ship's slot in 0..THIN_MOD-1 — FNV-1a of her id, a fact about her and nothing else. */
+export function stableSlot(id: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 0x01000193)
+  return (h >>> 0) % THIN_MOD
 }

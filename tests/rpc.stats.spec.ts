@@ -139,6 +139,26 @@ test('stats_now equals the rollup after the count, and moves with a credit befor
   expect(Number(await db.callAs<number>(`select count(*)::int as result from public.stats_live`))).toBe(1)
 })
 
+// ── THE ECONOMY WATCH (0229, docs/CLOSED_ECONOMY.md §7) ─────────────────────────────────────────
+test('the count keeps the economy watch on its row, and stats_now serves it with the new money', async () => {
+  const w = await db.callAs<Record<string, number | null> | null>(`select watch as result from public.stats_world order by slot desc limit 1`)
+  expect(w, 'the count wrote no watch on its row').not.toBeNull()
+  for (const k of ['under_reserve', 'under_thin', 'thin', 'broke', 'gifts', 'gifts_ducats', 'swing_p50', 'swing_p90', 'swing_steps']) {
+    expect(w!).toHaveProperty(k)
+  }
+  const n = await worldStatsNow()
+  expect(n.ok).toBe(true)
+  if (!n.ok) return
+  const watch = n.value.watch
+  expect(watch, 'stats_now served no watch').toBeTruthy()
+  const minted = Number(await db.callAs<number>(`select minted::bigint as result from public.stats_world order by slot desc limit 1`))
+  expect(watch!.new_slot).toBe(minted)
+  expect(watch!.under_reserve).toBe(w!.under_reserve)
+  expect(watch!.broke).toBe(w!.broke)
+  // dark: no capital has given anything
+  expect(watch!.gifts).toBe(0)
+})
+
 // ── EVERY CITY IS OPEN TO EVERYONE (0223, owner row 197) ───────────────────────────────────────
 test('with nothing invested anywhere a city serves its overview and its detail, and every list row its figures', async () => {
   // the precondition is the company's own: not one share held anywhere
