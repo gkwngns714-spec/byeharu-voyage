@@ -1,10 +1,10 @@
-# 2026-10-26 — Every figure keeps to the second: the count's quarter hours + the minutes since, read every second (owner row 213, `osn-stats-all-live`, migration 0230)
+# 2026-10-26 — Every figure keeps to the second: the count's quarter hours + the minutes since, read every second (owner row 213, `osn-stats-all-live`, migration 0232)
 
 > *"and why is next count in minutes? i told you it should be in seconds?"*
 > (2026-10-26, docs/OWNER_REQUESTS.md row 213 — after rows 187 and 200.)
 
-Server + client, one slice. `supabase/migrations/20260818000230_every_figure_keeps_to_the_second.sql` (renumbers to
-prod head + 1 at deploy; prod head is 0226, with 0227 (city good trades, #320) and 0228–0229 (economy E1 / E2, #323) ahead; `_0230` suffixes and the probe uuid go with it).
+Server + client, one slice. `supabase/migrations/20260818000232_every_figure_keeps_to_the_second.sql` (renumbers to
+prod head + 1 at deploy; prod head is 0226, with 0227 (city good trades, #320) 0228–0229 (economy E1 / E2, #323) and 0231 (legs fit supplies, #326) ahead; `_0232` suffixes and the probe uuid go with it).
 
 ## What the owner sees
 
@@ -88,7 +88,7 @@ merchants 1–2, me 1–3, books 0–2. The re-cut job ran once (two hours ahead
 Prod (read-only, 2026-10-26 02:10–02:20 UTC; the same SQL as the new reads, written as one SELECT with the window
 functions as materialized CTEs; warm runs after the first cold one; the prod server is noisy, so ranges):
 
-| read | before 0230 | candidate after 0230 |
+| read | before 0232 | candidate after 0232 |
 |---|---|---|
 | world.stats_overview | 15–20 ms | 13–36 ms |
 | world.stats_markets | 478–1,421 ms | about 30 ms (48 ms with a stand-in that builds the cached rows; that stand-in is 17 ms of it) |
@@ -153,7 +153,7 @@ select (length(d) - length(replace(d, '  select * into m from public.stats_merch
 ```
 ### 4_probe_pre
 ```sql
-select (select count(*) from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id)) as lisbon_goods, (select count(*) from public.players where company_name = 'Casa do Segundo 0230') as probe_names, (select count(*) from public.standing_routes sr join public.players p on p.id = sr.player_id and p.is_npc) as npc_routes, public.city_treasury_on() as treasury_on, (select count(*) from public.stats_world) as world_rows
+select (select count(*) from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id where p.code = 'LIS' and pg.stock > 50 and not public.culture_refuses(p.culture, g.culture_mask) and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id)) as lisbon_goods, (select count(*) from public.players where company_name = 'Casa do Segundo 0232') as probe_names, (select count(*) from public.standing_routes sr join public.players p on p.id = sr.player_id and p.is_npc) as npc_routes, public.city_treasury_on() as treasury_on, (select count(*) from public.stats_world) as world_rows
 ```
 ### 5_seed_size
 ```sql

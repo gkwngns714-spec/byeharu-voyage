@@ -32,9 +32,9 @@ import { useLiveRead } from './statsLive'
 // a city's own rows are the Cities face's. Sorting is a view the player changes three times in ten seconds, so it
 // is done here.
 //
-// EVERY SECOND (0230, owner row 213): what was bought and sold is the last 24 h up to this second (the count's
+// EVERY SECOND (0232, owner row 213): what was bought and sold is the last 24 h up to this second (the count's
 // quarter hours plus the minutes since), asked again every second while the face is open. A good's price across
-// every market, its moves and its stock are the price record's (the server's header of 0230 says why).
+// every market, its moves and its stock are the price record's (the server's header of 0232 says why).
 
 type Sort = 'movers' | 'traded' | 'name'
 type Window = '1h' | '1d' | '7d'

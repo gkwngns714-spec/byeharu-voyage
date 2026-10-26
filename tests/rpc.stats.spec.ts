@@ -178,7 +178,7 @@ test('with nothing invested anywhere a city serves its overview and its detail, 
   expect(list.value.cities.every((x) => x.purse !== undefined)).toBe(true)
 })
 
-// ── EVERY FIGURE TO THE SECOND (0230, owner row 213: "i told you it should be in seconds?") ─────
+// ── EVERY FIGURE TO THE SECOND (0232, owner row 213: "i told you it should be in seconds?") ─────
 test('a sale moves the overview, the good, the city and the merchants before any count, and every line ends at now', async () => {
   const sale = await db.callAs<{ fleet: string; good: string; code: string; port: string }>(
     `select jsonb_build_object('fleet', f.id, 'good', g.id, 'code', g.code, 'port', pg.port_id) as result

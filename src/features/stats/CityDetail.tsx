@@ -34,7 +34,7 @@ import { useLiveRead } from './statsLive'
 // what the city buys and sells most as ranked bars; then every good, each with its own sparkline — the
 // shape the Markets face uses, so a good does not look different here.
 //
-// EVERY SECOND (0230, owner row 213): the purse and each good's price and stock are live, every day-figure is the
+// EVERY SECOND (0232, owner row 213): the purse and each good's price and stock are live, every day-figure is the
 // last 24 h up to this second, the purse line and each spark end at now(); asked every second while open.
 
 export function CityDetail({ portId, onClose }: { portId: string; onClose: () => void }) {

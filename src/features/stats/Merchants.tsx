@@ -29,7 +29,7 @@ import { useLiveRead } from './statsLive'
 // are §4.4's: blue is moving, green is safely in port, amber is being repaired, red cannot sail, grey is
 // laid up.
 //
-// EVERY SECOND (0230, owner row 213): where the fleets are and their money are read now; the day's board is the
+// EVERY SECOND (0232, owner row 213): where the fleets are and their money are read now; the day's board is the
 // last 24 h of laps up to this second; each line ends at now(). Asked every second while the face is open.
 
 export function MerchantsFace() {

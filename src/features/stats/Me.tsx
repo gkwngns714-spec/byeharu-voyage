@@ -25,7 +25,7 @@ import { useLiveRead } from './statsLive'
 // THE SEVEN BARS are the desk's own (`SignedBars`): one a game day, up for a gain and down for a loss. The
 // same picture in both places, because it is the same question.
 //
-// EVERY SECOND (0230, owner row 213): both reads are computed from the record at the moment they are asked, and
+// EVERY SECOND (0232, owner row 213): both reads are computed from the record at the moment they are asked, and
 // are asked again every second while the face is open.
 
 const DAYS = 7

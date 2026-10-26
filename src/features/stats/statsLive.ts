@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { worldStatsNow, type RpcResult, type StatsNow } from '../../lib/rpc'
 
 // THE TAB'S ONE WAY OF ASKING — every Stats read is asked again every second while it is on screen
-// (0224 for the live band; 0230 for every face; docs/dev-log/2026-10-26-stats-all-live.md).
+// (0224 for the live band; 0232 for every face; docs/dev-log/2026-10-26-stats-all-live.md).
 //
 // THE OWNER (docs/OWNER_REQUESTS.md row 213, 2026-10-26, after rows 187 and 200): *"and why is next count in
-// minutes? i told you it should be in seconds?"*. Since 0230 every face's read answers NOW on the server — the
+// minutes? i told you it should be in seconds?"*. Since 0232 every face's read answers NOW on the server — the
 // count's completed quarter hours plus the minutes since, the state as it stands, each chart ending at now() —
 // so there is nothing to wait for and no count to show: a face simply asks its read every second.
 //

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0230 — EVERY FIGURE KEEPS TO THE SECOND
+-- 0232 — EVERY FIGURE KEEPS TO THE SECOND
 --        (every Stats read answers NOW: the count's completed quarter hours plus the minutes since, read
 --         through ONE set of window functions the fifteen-minute job itself uses; the job stays the history)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -85,7 +85,7 @@
 --   (f) TIMINGS, notice only: each read ×6 in one session; the trial run's ms.
 -- ROLLBACK (forward): reverse the 9 hunks; re-create the five reads from 0214 / 0223; drop the functions and
 -- the three columns.
--- VERSION: 0230 = prod head 0226 + 0227 (city good trades) + 0228–0229 (economy E1 / E2) ahead in the queue + 1 — RENUMBER TO PROD HEAD + 1 AT PUSH (and the _0230
+-- VERSION: 0232 = prod head 0226 + 0227 (city good trades) + 0228–0229 (economy E1 / E2) + 0231 (legs fit supplies) ahead in the queue + 1 — RENUMBER TO PROD HEAD + 1 AT PUSH (and the _0232
 -- suffixes, the probe uuid and this header's tags with it).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -94,24 +94,24 @@ begin
   perform set_config('statement_timeout', '10min', true);
   perform set_config('lock_timeout', '5s', true);
   if to_regclass('public.stats_live') is null or to_regprocedure('world.stats_now()') is null then
-    raise exception '0230 refuses: 0224 (the live figures) is not in this world';
+    raise exception '0232 refuses: 0224 (the live figures) is not in this world';
   end if;
   if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'price_history' and column_name = 'ask') then
-    raise exception '0230 refuses: 0226 (the price record both ways) is not in this world';
+    raise exception '0232 refuses: 0226 (the price record both ways) is not in this world';
   end if;
   if to_regprocedure('public.stats_window_trades(timestamptz, timestamptz)') is not null then
-    raise exception '0230 refuses: public.stats_window_trades already exists — this has been applied once';
+    raise exception '0232 refuses: public.stats_window_trades already exists — this has been applied once';
   end if;
 end $guard$;
 
-create or replace function pg_temp.occurs_0230(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0232(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
 -- ── 0. THE PRE-IMAGES ──────────────────────────────────────────────────────────────────────────
-create temp table defs_before_0230 on commit drop as
+create temp table defs_before_0232 on commit drop as
 select f.fn, f.guard,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -132,17 +132,17 @@ select f.fn, f.guard,
     ('world.stats_merchants()',
      $g$  select * into m from public.stats_merchants order by slot desc limit 1;$g$)) f(fn, guard);
 
-create temp table before_0230 on commit drop as
+create temp table before_0232 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points;
 
 do $$
 declare
   d record;
 begin
-  for d in select * from defs_before_0230 where guard is not null loop
-    if pg_temp.occurs_0230(d.def, d.guard) <> 1 then
-      raise exception '0230 self-assert FAIL: % does not carry the line this file supersedes exactly once (% times) — the deployed body is not the one read',
-        d.fn, pg_temp.occurs_0230(d.def, d.guard);
+  for d in select * from defs_before_0232 where guard is not null loop
+    if pg_temp.occurs_0232(d.def, d.guard) <> 1 then
+      raise exception '0232 self-assert FAIL: % does not carry the line this file supersedes exactly once (% times) — the deployed body is not the one read',
+        d.fn, pg_temp.occurs_0232(d.def, d.guard);
     end if;
   end loop;
 end $$;
@@ -152,13 +152,13 @@ alter table public.stats_good      add column day jsonb;
 alter table public.stats_city      add column day jsonb;
 alter table public.stats_merchants add column day jsonb;
 comment on column public.stats_good.day is
-  '0230: on the NEWEST slot''s rows only — the count''s 24 h for this good (sold / bought units and ducats), the mid '
+  '0232: on the NEWEST slot''s rows only — the count''s 24 h for this good (sold / bought units and ducats), the mid '
   '1 h / 1 d / 7 d before the count and the 24 newest recorded mids. Written and cleared by public.stats_fold_day.';
 comment on column public.stats_city.day is
-  '0230: on the NEWEST slot''s rows only — the count''s 24 h for this city: income, spending, taxes, units sold / '
+  '0232: on the NEWEST slot''s rows only — the count''s 24 h for this city: income, spending, taxes, units sold / '
   'bought, money by kind. Written and cleared by public.stats_fold_day.';
 comment on column public.stats_merchants.day is
-  '0230: on the NEWEST slot''s row only — the count''s 24 h of closed laps (public.stats_merchants_window): net, n, '
+  '0232: on the NEWEST slot''s row only — the count''s 24 h of closed laps (public.stats_merchants_window): net, n, '
   'neg and every house''s day and laps. Written by public.tick_stats, cleared by public.stats_fold_day.';
 
 -- ── 2. ONE READING OF A WINDOW (the job and the live reads ask the same functions) ──────────────
@@ -169,7 +169,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): a trade is a SOLD / BOUGHT event of a goods row, stamped in (p_from, p_to].
+  -- 0232 (moved from 0214's tick_stats): a trade is a SOLD / BOUGHT event of a goods row, stamped in (p_from, p_to].
   select e.id, e.kind, e.player_id, g.id,
          (e.payload->>'qty')::numeric, round((e.payload->>'total')::numeric)::bigint
     from public.events e
@@ -184,7 +184,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230: the world's trades of a window — ducats sold to cities, ducats bought from them, units, trades.
+  -- 0232: the world's trades of a window — ducats sold to cities, ducats bought from them, units, trades.
   select coalesce(sum(t.total) filter (where t.kind = 'SOLD'), 0)::bigint,
          coalesce(sum(t.total) filter (where t.kind = 'BOUGHT'), 0)::bigint,
          coalesce(sum(t.qty), 0),
@@ -199,7 +199,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): a window's trades by good — units and ducats, each side.
+  -- 0232 (moved from 0214's tick_stats): a window's trades by good — units and ducats, each side.
   select t.good_id,
          sum(t.qty) filter (where t.kind = 'SOLD'), sum(t.qty) filter (where t.kind = 'BOUGHT'),
          sum(t.total) filter (where t.kind = 'SOLD'), sum(t.total) filter (where t.kind = 'BOUGHT')
@@ -214,7 +214,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): the window's trades a city still remembers — its SELL / BUY flow carries
+  -- 0232 (moved from 0214's tick_stats): the window's trades a city still remembers — its SELL / BUY flow carries
   -- the event's id and names the harbour (tick_city rolls flows away at :37; 0214's header: the :36–:37 minute).
   select f.port_id, t.good_id, t.kind, t.qty, t.total
     from public.treasury_flows f
@@ -229,7 +229,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): a window's city trades by (city, good).
+  -- 0232 (moved from 0214's tick_stats): a window's city trades by (city, good).
   select t.port_id, t.good_id,
          sum(t.qty) filter (where t.kind = 'SOLD'), sum(t.qty) filter (where t.kind = 'BOUGHT'),
          sum(t.total) filter (where t.kind = 'SOLD'), sum(t.total) filter (where t.kind = 'BOUGHT')
@@ -244,7 +244,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): a window's money flows by (city, kind).
+  -- 0232 (moved from 0214's tick_stats): a window's money flows by (city, kind).
   select f.port_id, f.kind, sum(f.ducats)::bigint
     from public.treasury_flows f
    where f.created_at > p_from and f.created_at <= p_to
@@ -258,7 +258,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): a city's period — income = Σ of its kinds that came in, spending = Σ of the
+  -- 0232 (moved from 0214's tick_stats): a city's period — income = Σ of its kinds that came in, spending = Σ of the
   -- ones that went out, taxes = TAX; units sold to it and bought from it; money by kind. Cities with neither are absent.
   with b as (
     select f.port_id,
@@ -285,7 +285,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): money minted to a house in a window — a company's founding, a merchant's refound.
+  -- 0232 (moved from 0214's tick_stats): money minted to a house in a window — a company's founding, a merchant's refound.
   select l.kind, sum(l.ducats_delta)::bigint
     from public.ledger l
    where l.kind in ('FOUNDING', 'NPC_REFOUND') and l.created_at > p_from and l.created_at <= p_to
@@ -299,7 +299,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230: the world's money by kind for the minutes since the count — every city's flows by kind plus the money
+  -- 0232: the world's money by kind for the minutes since the count — every city's flows by kind plus the money
   -- minted to houses. Provisional by one minute an hour (the header): the count reads daybook + flows.
   select coalesce(jsonb_object_agg(k.kind, k.ducats) filter (where k.ducats <> 0), '{}'::jsonb)
     from (select x.kind, sum(x.ducats)::bigint as ducats
@@ -316,7 +316,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): money by kind on its three sides, by the words table (public.stats_flow_words)
+  -- 0232 (moved from 0214's tick_stats): money by kind on its three sides, by the words table (public.stats_flow_words)
   -- — minted, removed (as a positive figure), moved (Σ |ducats|). A kind not in the table is moved.
   select coalesce(sum(case when w.side = 'minted' then p.v end), 0)::bigint,
          coalesce(sum(case when w.side = 'removed' then -p.v end), 0)::bigint,
@@ -332,7 +332,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): the merchant companies and where their fleets are, now.
+  -- 0232 (moved from 0214's tick_stats): the merchant companies and where their fleets are, now.
   select jsonb_build_object(
            'houses',    (select count(*) from public.npc_houses),
            'fleets',    (select count(*) from public.npc_fleets),
@@ -352,7 +352,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats, which read the laps twice): the closed laps of a window, lap 2 onwards (0097's
+  -- 0232 (moved from 0214's tick_stats, which read the laps twice): the closed laps of a window, lap 2 onwards (0097's
   -- rule: lap 1 holds a purchase and no sale) — Σ net, how many, how many lost, and every merchant house's day and laps.
   with l as materialized (
     select l.route_id, l.net
@@ -380,7 +380,7 @@ language sql
 immutable
 set search_path = public, pg_temp
 as $$
-  -- 0230: two windows of laps as one (the count's 24 h + the minutes since) — sums, and houses summed by name.
+  -- 0232: two windows of laps as one (the count's 24 h + the minutes since) — sums, and houses summed by name.
   select jsonb_build_object(
            'net', coalesce((a->>'net')::bigint, 0) + coalesce((b->>'net')::bigint, 0),
            'n', coalesce((a->>'n')::bigint, 0) + coalesce((b->>'n')::bigint, 0),
@@ -400,7 +400,7 @@ language sql
 immutable
 set search_path = public, pg_temp
 as $$
-  -- 0230 (moved from 0214's tick_stats): a window of laps as the board — Σ net, laps, the share that lost, the five
+  -- 0232 (moved from 0214's tick_stats): a window of laps as the board — Σ net, laps, the share that lost, the five
   -- best and five worst houses by their day (name breaks a tie).
   with h as (
     select * from jsonb_to_recordset(coalesce(p_day->'houses', '[]'::jsonb)) r(name text, nation text, day bigint, laps int)
@@ -423,7 +423,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0230: what the count keeps for the second — each good's and each city's 24 h up to slot p_slot, on that slot's rows;
+-- 0232: what the count keeps for the second — each good's and each city's 24 h up to slot p_slot, on that slot's rows;
 -- `day` cleared from every older row (it lives on the newest slot only). Called by tick_stats on its return.
 declare
   v_ph   bigint := greatest(1, round(3600 / public.wc_num('drift_slot_seconds')))::bigint;   -- slots an hour
@@ -473,9 +473,9 @@ begin
 end $$;
 
 comment on function public.stats_window_trades(timestamptz, timestamptz) is
-  '0230: THE one reading of "the trades of a window" (0214''s rule). public.tick_stats and the Stats reads both ask it. Server-only.';
+  '0232: THE one reading of "the trades of a window" (0214''s rule). public.tick_stats and the Stats reads both ask it. Server-only.';
 comment on function public.stats_fold_day(bigint) is
-  '0230: keeps the count''s 24 h on the newest slot''s stats_good / stats_city rows and clears `day` from older rows. Server-only.';
+  '0232: keeps the count''s 24 h on the newest slot''s stats_good / stats_city rows and clears `day` from older rows. Server-only.';
 
 revoke all on function public.stats_window_trades(timestamptz, timestamptz), public.stats_window_totals(timestamptz, timestamptz),
                        public.stats_window_goods(timestamptz, timestamptz), public.stats_window_city_trades(timestamptz, timestamptz),
@@ -487,8 +487,8 @@ revoke all on function public.stats_window_trades(timestamptz, timestamptz), pub
   from public, anon, authenticated;
 
 -- ── 3. THE JOB'S HUNKS (its window readings become the functions above; `day` on its return) ────
-create temp table hunks_0230 (fn text, n int, old text, new text) on commit drop;
-insert into hunks_0230 values
+create temp table hunks_0232 (fn text, n int, old text, new text) on commit drop;
+insert into hunks_0232 values
 ('public.tick_stats(timestamptz)', 1,
 $h$  -- the trades of the period, once: from the append-only events (the good and the fleet are NAMES there)
   -- (a second run in one transaction — the probe — finds the last run's temp tables still there)
@@ -513,7 +513,7 @@ $h$  -- the trades of the period, once: from the append-only events (the good an
    where f.created_at > v_prev_at and f.created_at <= p_now
    group by 1, 2;
 $h$,
-$h$  -- 0230: the period's trades, flows and laps are read through the public.stats_window_* functions — THE ONE reading
+$h$  -- 0232: the period's trades, flows and laps are read through the public.stats_window_* functions — THE ONE reading
   -- of a window, which the Stats tab's live reads ask for the minutes since this count. No temp tables.
 $h$),
 ('public.tick_stats(timestamptz)', 2,
@@ -522,7 +522,7 @@ $h$          select l.kind, sum(l.ducats_delta)::bigint
            where l.kind in ('FOUNDING', 'NPC_REFOUND') and l.created_at > v_prev_at and l.created_at <= p_now
            group by l.kind) k;
 $h$,
-$h$          select h.kind, h.ducats from public.stats_window_founded(v_prev_at, p_now) h) k;   -- 0230: one reading of the window
+$h$          select h.kind, h.ducats from public.stats_window_founded(v_prev_at, p_now) h) k;   -- 0232: one reading of the window
 $h$),
 ('public.tick_stats(timestamptz)', 3,
 $h$  select coalesce(sum(case when w.side = 'minted' then p.v end), 0),
@@ -533,7 +533,7 @@ $h$  select coalesce(sum(case when w.side = 'minted' then p.v end), 0),
     left join public.stats_flow_words w on w.kind = p.kind;
 $h$,
 $h$  select s.minted, s.removed, s.moved into v_minted, v_removed, v_moved
-    from public.stats_sides(v_period) s;   -- 0230: the words table's sides, one rule
+    from public.stats_sides(v_period) s;   -- 0232: the words table's sides, one rule
 $h$),
 ('public.tick_stats(timestamptz)', 4,
 $h$         coalesce((select sum(t.total) from trades_0214 t where t.kind = 'SOLD'), 0),
@@ -545,7 +545,7 @@ $h$         coalesce((select sum(t.total) from trades_0214 t where t.kind = 'SOL
 $h$,
 $h$         t.sold, t.bought, t.units, t.trades,
          v_period, v_recent
-    from public.stats_window_totals(v_prev_at, p_now) t   -- 0230: one reading of the window
+    from public.stats_window_totals(v_prev_at, p_now) t   -- 0232: one reading of the window
   on conflict (slot) do nothing;
 $h$),
 ('public.tick_stats(timestamptz)', 5,
@@ -554,7 +554,7 @@ $h$    left join (select t.good_id,
                       sum(t.total) filter (where t.kind = 'SOLD') as sold_d, sum(t.total) filter (where t.kind = 'BOUGHT') as bought_d
                  from trades_0214 t group by t.good_id) t on t.good_id = g.id
 $h$,
-$h$    left join public.stats_window_goods(v_prev_at, p_now) t on t.good_id = g.id   -- 0230: one reading of the window
+$h$    left join public.stats_window_goods(v_prev_at, p_now) t on t.good_id = g.id   -- 0232: one reading of the window
 $h$),
 ('public.tick_stats(timestamptz)', 6,
 $h$  select p.id, v_slot, p_now, public.treasury_balance(p.id),
@@ -573,13 +573,13 @@ $h$  select p.id, v_slot, p_now, public.treasury_balance(p.id),
          coalesce((select sum(w.level) from public.city_works w where w.port_id = p.id), 0),
          coalesce(c.sold, 0), coalesce(c.bought, 0), coalesce(c.kinds, '{}'::jsonb)
     from public.ports p
-    left join public.stats_window_cities(v_prev_at, p_now) c on c.port_id = p.id   -- 0230: one reading of the window
+    left join public.stats_window_cities(v_prev_at, p_now) c on c.port_id = p.id   -- 0232: one reading of the window
    where p.kind = 'HARBOUR'
 $h$),
 ('public.tick_stats(timestamptz)', 7,
 $h$          select t.port_id, t.good_id from city_trades_0214 t) k
 $h$,
-$h$          select t.port_id, t.good_id from public.stats_window_city_goods(v_prev_at, p_now) t) k   -- 0230
+$h$          select t.port_id, t.good_id from public.stats_window_city_goods(v_prev_at, p_now) t) k   -- 0232
 $h$),
 ('public.tick_stats(timestamptz)', 8,
 $h$    left join (select t.port_id, t.good_id,
@@ -587,7 +587,7 @@ $h$    left join (select t.port_id, t.good_id,
                       sum(t.total) filter (where t.kind = 'SOLD') as sold_d, sum(t.total) filter (where t.kind = 'BOUGHT') as bought_d
                  from city_trades_0214 t group by 1, 2) t on t.port_id = k.port_id and t.good_id = k.good_id
 $h$,
-$h$    left join public.stats_window_city_goods(v_prev_at, p_now) t on t.port_id = k.port_id and t.good_id = k.good_id   -- 0230
+$h$    left join public.stats_window_city_goods(v_prev_at, p_now) t on t.port_id = k.port_id and t.good_id = k.good_id   -- 0232
 $h$),
 ('public.tick_stats(timestamptz)', 9,
 $h$  -- THE MERCHANTS: each company's last 24 real hours of closed laps (lap 2 onwards — 0097's rule: lap 1 holds a
@@ -621,7 +621,7 @@ $h$  -- THE MERCHANTS: each company's last 24 real hours of closed laps (lap 2 o
            where l.closed_at > p_now - interval '24 hours' and l.closed_at <= p_now and l.lap_no >= 2) d
   on conflict (slot) do nothing;
 $h$,
-$h$  -- THE MERCHANTS (0230: the fleets, the window's laps — read ONCE, where 0214 read them twice — and the board are
+$h$  -- THE MERCHANTS (0232: the fleets, the window's laps — read ONCE, where 0214 read them twice — and the board are
   -- each one function, which the live read asks for the minutes since this count): the last 24 real hours of closed
   -- laps, lap 2 onwards (0097), kept whole as `day` for the live read
   insert into public.stats_merchants (slot, at, houses, fleets, sailing, docked, repairing, unable, laid_up, purse,
@@ -639,7 +639,7 @@ $h$),
 ('public.tick_stats(timestamptz)', 10,
 $h$                            'live', public.stats_live_fold(p_now),   -- 0224: the live figures reconciled on every count
 $h$,
-$h$                            'day', public.stats_fold_day(v_slot),     -- 0230: the 24 h the live reads add their minutes to
+$h$                            'day', public.stats_fold_day(v_slot),     -- 0232: the 24 h the live reads add their minutes to
                             'live', public.stats_live_fold(p_now),   -- 0224: the live figures reconciled on every count
 $h$);
 
@@ -651,34 +651,34 @@ declare
   v_def text;
   v_rev text;
 begin
-  for d in select * from defs_before_0230 where guard is null order by fn loop
+  for d in select * from defs_before_0232 where guard is null order by fn loop
     v_def := d.def;
-    for h in select * from hunks_0230 where fn = d.fn order by n loop
-      if pg_temp.occurs_0230(v_def, h.old) <> 1 then
-        raise exception '0230 self-assert FAIL: % hunk % occurs % time(s), not once — the deployed body is not what this file was written against',
-          d.fn, h.n, pg_temp.occurs_0230(v_def, h.old);
+    for h in select * from hunks_0232 where fn = d.fn order by n loop
+      if pg_temp.occurs_0232(v_def, h.old) <> 1 then
+        raise exception '0232 self-assert FAIL: % hunk % occurs % time(s), not once — the deployed body is not what this file was written against',
+          d.fn, h.n, pg_temp.occurs_0232(v_def, h.old);
       end if;
       v_def := replace(v_def, h.old, h.new);
     end loop;
     if v_def ~ '(trades|city_trades|city_flows|houses)_0214' then
-      raise exception '0230 self-assert FAIL: % still names a temp table of 0214 after the hunks', d.fn;
+      raise exception '0232 self-assert FAIL: % still names a temp table of 0214 after the hunks', d.fn;
     end if;
     execute v_def;
     v_rev := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
-    for h in select * from hunks_0230 where fn = d.fn order by n desc loop
-      if pg_temp.occurs_0230(v_rev, h.new) <> 1 then
-        raise exception '0230 self-assert FAIL: % new hunk % is not in the live body once', d.fn, h.n;
+    for h in select * from hunks_0232 where fn = d.fn order by n desc loop
+      if pg_temp.occurs_0232(v_rev, h.new) <> 1 then
+        raise exception '0232 self-assert FAIL: % new hunk % is not in the live body once', d.fn, h.n;
       end if;
       v_rev := replace(v_rev, h.new, h.old);
     end loop;
     if v_rev <> d.def then
-      raise exception '0230 self-assert FAIL: % does not reverse to its pre-image', d.fn;
+      raise exception '0232 self-assert FAIL: % does not reverse to its pre-image', d.fn;
     end if;
     select coalesce(pr.proacl::text, '') as acl, pr.provolatile as vol, pr.prosecdef as secdef,
            coalesce(pr.proconfig::text, '') as cfg, pr.proowner as owner
       into p from pg_proc pr where pr.oid = d.fn::regprocedure;
     if p.acl <> d.acl or p.vol <> d.vol or p.secdef <> d.secdef or p.cfg <> d.cfg or p.owner <> d.owner then
-      raise exception '0230 self-assert FAIL: % changed its ACL (% → %), owner, volatility, definer or config', d.fn, d.acl, p.acl;
+      raise exception '0232 self-assert FAIL: % changed its ACL (% → %), owner, volatility, definer or config', d.fn, d.acl, p.acl;
     end if;
   end loop;
 end $$;
@@ -693,7 +693,7 @@ set search_path = public, pg_temp
 as $$
 -- 0214: the world's money — by holder now and over the window; this period's and the last day's minted, removed,
 -- moved, sold, bought, by kind. Public.
--- 0230 (owner row 213: every figure to the second): `holders` are the live counters (world.stats_now, 0224);
+-- 0232 (owner row 213: every figure to the second): `holders` are the live counters (world.stats_now, 0224);
 -- `period` is the count in progress (the minutes since the last count); `day` is the count's 24 h plus those
 -- minutes; the series ends with a live point at now(). `at` is now(); `counted_at` is the last count.
 declare
@@ -756,9 +756,9 @@ set search_path = public, pg_temp
 as $$
 -- 0214: every good once, across every market that sells it: the mean price, its moves, what was traded, Σ stock vs
 -- normal, a line. Public (an aggregate over all markets; no city can be read out of it).
--- 0230 (owner row 213): what was traded is NOW — `sold` / `bought` the minutes since the count, `*_1d` the count's 24 h
+-- 0232 (owner row 213): what was traded is NOW — `sold` / `bought` the minutes since the count, `*_1d` the count's 24 h
 -- (stats_good.day) plus those minutes. The price, its moves, the stock and the line are the price record's, as the
--- count read them (the header of 0230: ~1,380 live prices a second do not fit the budget). `at` is now().
+-- count read them (the header of 0232: ~1,380 live prices a second do not fit the budget). `at` is now().
 declare
   v_slot bigint;
   v_at   timestamptz;
@@ -795,7 +795,7 @@ set search_path = public, pg_temp
 as $$
 -- 0214: every harbour: name, flag, the purse, works and the last day's income, spending, taxes and units.
 -- 0223 (the owner: "on cities, i want to see all the info without investment"): served to EVERYONE.
--- 0230 (owner row 213): NOW — the purse is the live balance (public.treasury_balance), the works as they stand, and
+-- 0232 (owner row 213): NOW — the purse is the live balance (public.treasury_balance), the works as they stand, and
 -- every day-figure the count's 24 h (stats_city.day) plus the minutes since (public.stats_window_cities). `at` is now().
 declare
   v_slot   bigint;
@@ -835,7 +835,7 @@ set search_path = public, pg_temp
 as $$
 -- 0214: one harbour: the city, then `overview` and `detail` once the job has written its first row.
 -- 0223 (the owner: "on cities, i want to see all the info without investment"): served to EVERYONE.
--- 0230 (owner row 213): NOW — the purse is the live balance; every day-figure, the money by kind and what it buys and
+-- 0232 (owner row 213): NOW — the purse is the live balance; every day-figure, the money by kind and what it buys and
 -- sells most are the count's 24 h plus the minutes since; each good's price and stock are LIVE (world.mid_price where
 -- the city sells it); the purse line and the spark end at now(). `at` is now().
 declare
@@ -931,7 +931,7 @@ set search_path = public, pg_temp
 as $$
 -- 0214: the merchant companies now, and the last day of them. Public (names, nations and day nets of companies the
 -- world keeps; never a player's purse).
--- 0230 (owner row 213): NOW — where the fleets are (public.stats_merchant_fleets), their money (world.stats_now,
+-- 0232 (owner row 213): NOW — where the fleets are (public.stats_merchant_fleets), their money (world.stats_now,
 -- 0224), and the board over the count's 24 h of laps (stats_merchants.day) plus the laps closed since; the series
 -- ends with a live point at now(). `at` is now().
 declare
@@ -969,12 +969,12 @@ declare
   d record;
   p record;
 begin
-  for d in select * from defs_before_0230 where guard is not null loop
+  for d in select * from defs_before_0232 where guard is not null loop
     select coalesce(pr.proacl::text, '') as acl, pr.provolatile as vol, pr.prosecdef as secdef,
            coalesce(pr.proconfig::text, '') as cfg, pr.proowner as owner
       into p from pg_proc pr where pr.oid = d.fn::regprocedure;
     if p.acl <> d.acl or p.vol <> d.vol or p.secdef <> d.secdef or p.cfg <> d.cfg or p.owner <> d.owner then
-      raise exception '0230 self-assert FAIL: % changed its ACL (% → %), owner, volatility, definer or config', d.fn, d.acl, p.acl;
+      raise exception '0232 self-assert FAIL: % changed its ACL (% → %), owner, volatility, definer or config', d.fn, d.acl, p.acl;
     end if;
   end loop;
 end $$;
@@ -996,7 +996,7 @@ end $$;
 -- ── 6. THE PROOF ───────────────────────────────────────────────────────────────────────────────
 do $$
 declare
-  c_uid    constant uuid := '00000000-0230-4000-8000-000000000002';
+  c_uid    constant uuid := '00000000-0232-4000-8000-000000000002';
   v_lo     timestamptz := now() - interval '1 microsecond';   -- THIS transaction's instant: its own rows only
   v_p      uuid;
   v_f      uuid;
@@ -1026,13 +1026,13 @@ begin
        where n.nspname = 'public' and p.proname in ('stats_window_trades', 'stats_window_totals', 'stats_window_goods', 'stats_window_city_trades',
              'stats_window_city_goods', 'stats_window_flows', 'stats_window_cities', 'stats_window_founded', 'stats_window_kinds', 'stats_sides',
              'stats_merchant_fleets', 'stats_merchants_window', 'stats_merchants_add', 'stats_merchants_board', 'stats_fold_day')) <> 15 then
-    raise exception '0230 self-assert FAIL: the fifteen functions are not all there';
+    raise exception '0232 self-assert FAIL: the fifteen functions are not all there';
   end if;
   if (select count(*) from information_schema.columns where table_schema = 'public' and column_name = 'day'
         and table_name in ('stats_good', 'stats_city', 'stats_merchants')) <> 3 then
-    raise exception '0230 self-assert FAIL: the three `day` columns are not all there';
+    raise exception '0232 self-assert FAIL: the three `day` columns are not all there';
   end if;
-  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0230)
+  if (select count(*) from public.client_rpc_entry_points()) <> (select entry_points from before_0232)
      or has_function_privilege('authenticated', 'public.stats_window_trades(timestamptz, timestamptz)', 'execute')
      or has_function_privilege('authenticated', 'public.stats_fold_day(bigint)', 'execute')
      or not has_function_privilege('authenticated', 'world.stats_overview(integer)', 'execute')
@@ -1040,7 +1040,7 @@ begin
      or (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0230 self-assert FAIL: the registry, the grant wall or the read wall moved';
+    raise exception '0232 self-assert FAIL: the registry, the grant wall or the read wall moved';
   end if;
 
   -- (b) the seed: the newest rows carry their 24 h
@@ -1048,7 +1048,7 @@ begin
      or exists (select 1 from public.stats_city where slot = (select max(slot) from public.stats_city) and day is null)
      or exists (select 1 from public.stats_merchants where slot = (select max(slot) from public.stats_merchants) and day is null)
      or exists (select 1 from public.stats_good where slot < (select max(slot) from public.stats_good) and day is not null) then
-    raise exception '0230 self-assert FAIL: the seed left a newest row without its day, or an older row with one';
+    raise exception '0232 self-assert FAIL: the seed left a newest row without its day, or an older row with one';
   end if;
 
   -- (c) BY AMOUNT, pure
@@ -1056,11 +1056,11 @@ begin
   -- the words table's own — 0228 leaves none — so its arithmetic is asserted against whichever the table names)
   select * into r from public.stats_sides('{"FOUNDING": 100, "SELL": -50, "BUY": 20, "NO_SUCH_KIND": 7}'::jsonb);
   if r.minted <> 100 or r.removed <> 0 or r.moved <> 77 then
-    raise exception '0230 self-assert FAIL: stats_sides read minted % removed % moved %, not 100 / 0 / 77', r.minted, r.removed, r.moved;
+    raise exception '0232 self-assert FAIL: stats_sides read minted % removed % moved %, not 100 / 0 / 77', r.minted, r.removed, r.moved;
   end if;
   select * into r from public.stats_sides(coalesce((select jsonb_object_agg(w.kind, -30) from public.stats_flow_words w where w.side = 'removed'), '{}'::jsonb));
   if r.removed <> 30 * (select count(*) from public.stats_flow_words w where w.side = 'removed') or r.minted <> 0 then
-    raise exception '0230 self-assert FAIL: the removed kinds read removed % minted %', r.removed, r.minted;
+    raise exception '0232 self-assert FAIL: the removed kinds read removed % minted %', r.removed, r.minted;
   end if;
   v_j := public.stats_merchants_board(public.stats_merchants_add(
            '{"net": 2, "n": 3, "neg": 1, "houses": [{"name": "A", "nation": "PRT", "day": 5, "laps": 2}, {"name": "B", "nation": null, "day": -3, "laps": 1}]}'::jsonb,
@@ -1068,7 +1068,7 @@ begin
   if (v_j->>'profit_day')::bigint <> 13 or (v_j->>'laps_day')::int <> 5 or (v_j->>'losing_pct')::numeric <> 20.0
      or v_j->'top' <> '[{"name": "C", "nation": "ESP", "day": 9, "laps": 1}, {"name": "A", "nation": "PRT", "day": 7, "laps": 3}, {"name": "B", "nation": null, "day": -3, "laps": 1}]'::jsonb
      or v_j->'bottom'->0->>'name' <> 'B' then
-    raise exception '0230 self-assert FAIL: two windows added and boarded read %', v_j;
+    raise exception '0232 self-assert FAIL: two windows added and boarded read %', v_j;
   end if;
 
   -- (d) THE POSITIVE CONTROL, rolled back whole
@@ -1084,7 +1084,7 @@ begin
       update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled';
       perform public.treasury_post((select p.id from public.ports p where p.code = 'LIS'), 'SEED', 1000000);   -- a purse to buy with
     end if;
-    v_p := public.new_house(c_uid, 'Casa do Segundo 0230', 'PRT', 'LIS');
+    v_p := public.new_house(c_uid, 'Casa do Segundo 0232', 'PRT', 'LIS');
     select f.id into v_f from public.fleets f where f.player_id = v_p order by f.id limit 1;
     select pg.port_id, pg.good_id, g.code into v_port, v_g, v_code
       from public.port_goods pg join public.ports p on p.id = pg.port_id join public.goods g on g.id = pg.good_id
@@ -1092,7 +1092,7 @@ begin
        and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id)
      order by g.code limit 1;
     if v_g is null then
-      raise exception '0230 self-assert FAIL: Lisbon offers no good with stock over 50 for the probe to trade';
+      raise exception '0232 self-assert FAIL: Lisbon offers no good with stock over 50 for the probe to trade';
     end if;
     perform public.fleet_load(v_f, v_code, 60, 1);
     v_r := cmd.do_sell(v_f, jsonb_build_object('good', v_g, 'qty', 10));
@@ -1103,7 +1103,7 @@ begin
       from public.events e where e.player_id = v_p and e.kind in ('SOLD', 'BOUGHT');
     select coalesce(sum(l.ducats_delta), 0) into v_found from public.ledger l where l.player_id = v_p and l.kind = 'FOUNDING';
     if v_sold <= 0 or v_bought <= 0 or v_found <= 0 then
-      raise exception '0230 self-assert FAIL: the probe did not trade or was not founded (sold % bought % founded %)', v_sold, v_bought, v_found;
+      raise exception '0232 self-assert FAIL: the probe did not trade or was not founded (sold % bought % founded %)', v_sold, v_bought, v_found;
     end if;
     -- a lap of 777 closed now on a merchant's route
     select sr.id, p.company_name into v_route, v_house
@@ -1117,34 +1117,34 @@ begin
     -- THE WINDOW FUNCTIONS, BY AMOUNT, over this transaction's instant (its own rows only)
     select * into r from public.stats_window_totals(v_lo, now());
     if r.trades <> 2 or r.units <> 15 or r.sold <> v_sold or r.bought <> v_bought then
-      raise exception '0230 self-assert FAIL: the window read trades % units % sold % bought %, the probe made 2 / 15 / % / %', r.trades, r.units, r.sold, r.bought, v_sold, v_bought;
+      raise exception '0232 self-assert FAIL: the window read trades % units % sold % bought %, the probe made 2 / 15 / % / %', r.trades, r.units, r.sold, r.bought, v_sold, v_bought;
     end if;
     select * into r from public.stats_window_goods(v_lo, now()) w where w.good_id = v_g;
     if r.sold <> 10 or r.bought <> 5 or r.sold_d <> v_sold or r.bought_d <> v_bought
        or (select count(*) from public.stats_window_goods(v_lo, now())) <> 1 then
-      raise exception '0230 self-assert FAIL: the window by good read % / % (% / % ducats)', r.sold, r.bought, r.sold_d, r.bought_d;
+      raise exception '0232 self-assert FAIL: the window by good read % / % (% / % ducats)', r.sold, r.bought, r.sold_d, r.bought_d;
     end if;
     v_flows := exists (select 1 from public.treasury_flows f where f.created_at > v_lo);
     select * into r from public.stats_window_cities(v_lo, now()) w where w.port_id = v_port;
     if not v_flows then
       if r.port_id is not null then
-        raise exception '0230 self-assert FAIL: no flow was written, yet the window has a row for Lisbon';
+        raise exception '0232 self-assert FAIL: no flow was written, yet the window has a row for Lisbon';
       end if;
     elsif r.sold <> 10 or r.bought <> 5
        or r.taxes <> (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.port_id = v_port and f.kind = 'TAX' and f.created_at > v_lo)
        or r.income - r.spending <> (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.port_id = v_port and f.created_at > v_lo)
        or (r.kinds->>'SELL') is null or (r.kinds->>'BUY') is null then
-      raise exception '0230 self-assert FAIL: Lisbon''s window read sold % bought % taxes % in % out % kinds %', r.sold, r.bought, r.taxes, r.income, r.spending, r.kinds;
+      raise exception '0232 self-assert FAIL: Lisbon''s window read sold % bought % taxes % in % out % kinds %', r.sold, r.bought, r.taxes, r.income, r.spending, r.kinds;
     end if;
     if (select w.ducats from public.stats_window_founded(v_lo, now()) w where w.kind = 'FOUNDING') <> v_found
        or (public.stats_window_kinds(v_lo, now())->>'FOUNDING')::bigint <> v_found then
-      raise exception '0230 self-assert FAIL: the founding money (%) is not the window''s', v_found;
+      raise exception '0232 self-assert FAIL: the founding money (%) is not the window''s', v_found;
     end if;
     if v_route is not null then
       v_j := public.stats_merchants_window(v_lo, now());
       if (v_j->>'net')::bigint <> 777 or (v_j->>'n')::int <> 1 or (v_j->>'neg')::int <> 0
          or jsonb_array_length(v_j->'houses') <> 1 or v_j->'houses'->0->>'name' <> v_house or (v_j->'houses'->0->>'day')::bigint <> 777 then
-        raise exception '0230 self-assert FAIL: the planted lap of 777 read %', v_j;
+        raise exception '0232 self-assert FAIL: the planted lap of 777 read %', v_j;
       end if;
     end if;
 
@@ -1161,7 +1161,7 @@ begin
            (select * from public.stats_world order by slot desc limit 1) l,
            lateral public.stats_window_totals(l.at, now()) w;
     if not coalesce(v_ok, false) then
-      raise exception '0230 self-assert FAIL: world.stats_overview is not the count + the minutes since: %', world.stats_overview(24);
+      raise exception '0232 self-assert FAIL: world.stats_overview is not the count + the minutes since: %', world.stats_overview(24);
     end if;
     select (x->>'sold_1d')::numeric = coalesce((n.day->>'sold_1d')::numeric, 0) + w.sold and (x->>'sold')::numeric = w.sold and w.sold >= 10
            and (x->>'bought_1d')::numeric = coalesce((n.day->>'bought_1d')::numeric, 0) + w.bought and w.bought >= 5
@@ -1172,7 +1172,7 @@ begin
            lateral public.stats_window_goods(n.at, now()) w
      where x->>'code' = v_code and n.good_id = v_g and n.slot = (select max(slot) from public.stats_good) and w.good_id = v_g;
     if not coalesce(v_ok, false) then
-      raise exception '0230 self-assert FAIL: world.stats_markets for % is not the count + the minutes since', v_code;
+      raise exception '0232 self-assert FAIL: world.stats_markets for % is not the count + the minutes since', v_code;
     end if;
     select (x->>'purse')::bigint = public.treasury_balance(v_port)
            and (x->>'sold_1d')::numeric = coalesce((c.day->>'sold')::numeric, 0) + coalesce(w.sold, 0) and (not v_flows or w.sold >= 10)
@@ -1184,7 +1184,7 @@ begin
       left join lateral (select * from public.stats_window_cities(c.at, now()) w0 where w0.port_id = v_port) w on true
      where x->>'id' = v_port::text and c.port_id = v_port and c.slot = (select max(slot) from public.stats_city);
     if not coalesce(v_ok, false) then
-      raise exception '0230 self-assert FAIL: world.stats_cities for Lisbon is not the live purse + the count + the minutes since';
+      raise exception '0232 self-assert FAIL: world.stats_cities for Lisbon is not the live purse + the count + the minutes since';
     end if;
     select (o->'overview'->>'purse')::bigint = public.treasury_balance(v_port)
            and (o->'overview'->>'sold_1d')::numeric = coalesce((c.day->>'sold')::numeric, 0) + coalesce(w.sold, 0)
@@ -1200,7 +1200,7 @@ begin
       left join lateral (select * from public.stats_window_cities(c.at, now()) w0 where w0.port_id = v_port) w on true
      where c.port_id = v_port and c.slot = (select max(slot) from public.stats_city);
     if not coalesce(v_ok, false) then
-      raise exception '0230 self-assert FAIL: world.stats_city for Lisbon is not live: %', world.stats_city(v_port);
+      raise exception '0232 self-assert FAIL: world.stats_city for Lisbon is not live: %', world.stats_city(v_port);
     end if;
     select (o->>'profit_day')::bigint = coalesce((m.day->>'net')::bigint, m.profit_day) + (w.w->>'net')::bigint
            and (o->>'laps_day')::bigint = coalesce((m.day->>'n')::bigint, m.laps_day) + (w.w->>'n')::bigint
@@ -1213,14 +1213,14 @@ begin
            (select * from public.stats_merchants order by slot desc limit 1) m,
            lateral (select public.stats_merchants_window(m.at, now()) as w) w;
     if not coalesce(v_ok, false) then
-      raise exception '0230 self-assert FAIL: world.stats_merchants is not the count + the laps since: %', world.stats_merchants();
+      raise exception '0232 self-assert FAIL: world.stats_merchants is not the count + the laps since: %', world.stats_merchants();
     end if;
 
     -- (f) TIMINGS: each read ×6 in one session, as the probe company (world.stats_me / world.books need a caller)
     perform set_config('request.jwt.claim.sub', c_uid::text, true);
     perform set_config('request.jwt.claims', json_build_object('sub', c_uid)::text, true);
     if public.current_player_id() is distinct from v_p then
-      raise exception '0230 self-assert FAIL: the probe is not the caller for the timings';
+      raise exception '0232 self-assert FAIL: the probe is not the caller for the timings';
     end if;
     foreach v_name in array v_names loop
       v_ms := '{}';
@@ -1245,8 +1245,8 @@ begin
   exception when sqlstate 'ZX227' then
     v_out := sqlerrm::jsonb;
   end;
-  if exists (select 1 from public.players where company_name = 'Casa do Segundo 0230') then
-    raise exception '0230 self-assert FAIL: the probe survived its rollback';
+  if exists (select 1 from public.players where company_name = 'Casa do Segundo 0232') then
+    raise exception '0232 self-assert FAIL: the probe survived its rollback';
   end if;
 
   -- (e) THE JOB RUNS (rolled back): a count two hours ahead — no slot the cron can reach meanwhile
@@ -1259,22 +1259,22 @@ begin
        or (v_run->'day'->>'goods')::int <> (select count(*) from public.goods)
        or (v_run->'day'->>'cities')::int <> (select count(*) from public.ports where kind = 'HARBOUR')
        or (v_run->'live') is null then
-      raise exception '0230 self-assert FAIL: the re-cut job wrote %', v_run;
+      raise exception '0232 self-assert FAIL: the re-cut job wrote %', v_run;
     end if;
     if exists (select 1 from public.stats_good where slot < (v_run->>'slot')::bigint and day is not null)
        or exists (select 1 from public.stats_merchants where slot < (v_run->>'slot')::bigint and day is not null)
        or not exists (select 1 from public.stats_merchants where slot = (v_run->>'slot')::bigint and day is not null and top is not null)
        or exists (select 1 from public.stats_city where slot = (v_run->>'slot')::bigint and day is null) then
-      raise exception '0230 self-assert FAIL: after the run `day` is not on the new slot alone';
+      raise exception '0232 self-assert FAIL: after the run `day` is not on the new slot alone';
     end if;
     raise exception using errcode = 'ZX227', message = jsonb_build_object('ms', round(extract(epoch from clock_timestamp() - t0) * 1000), 'wrote', v_run->'wrote')::text;
   exception when sqlstate 'ZX227' then
     v_run := sqlerrm::jsonb;
   end;
   if exists (select 1 from public.stats_world where at > now() + interval '1 hour') then
-    raise exception '0230 self-assert FAIL: the trial count survived its rollback';
+    raise exception '0232 self-assert FAIL: the trial count survived its rollback';
   end if;
 
-  raise notice '0230 self-assert ok: EVERY FIGURE KEEPS TO THE SECOND. Fifteen window functions, the job re-cut by 10 hunks (each once, each reversing) and the five reads superseded. By amount: a probe company at Lisbon sold 10 and bought 5 of % (% / % ducats) and the window read trades 2, units 15, those ducats, the good 10 / 5, Lisbon 10 / 5, the founding money; a planted lap of 777 read 777 (planted: %; city flows kept here: %). Every read, in one statement, equals the count''s figure + the minutes since, with the probe in them; the city''s price is world.mid_price''s. The re-cut job ran once two hours ahead (rolled back) in % ms, wrote %, and kept `day` on the new slot alone. TIMINGS (ms, 6 calls each in one session): %. Registry unchanged; walls 0.',
+  raise notice '0232 self-assert ok: EVERY FIGURE KEEPS TO THE SECOND. Fifteen window functions, the job re-cut by 10 hunks (each once, each reversing) and the five reads superseded. By amount: a probe company at Lisbon sold 10 and bought 5 of % (% / % ducats) and the window read trades 2, units 15, those ducats, the good 10 / 5, Lisbon 10 / 5, the founding money; a planted lap of 777 read 777 (planted: %; city flows kept here: %). Every read, in one statement, equals the count''s figure + the minutes since, with the probe in them; the city''s price is world.mid_price''s. The re-cut job ran once two hours ahead (rolled back) in % ms, wrote %, and kept `day` on the new slot alone. TIMINGS (ms, 6 calls each in one session): %. Registry unchanged; walls 0.',
     v_out->>'good', v_out->>'sold', v_out->>'bought', v_out->>'lap', v_out->>'flows', v_run->>'ms', v_run->>'wrote', v_out->'ms';
 end $$;
