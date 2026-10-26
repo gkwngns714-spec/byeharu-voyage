@@ -5,7 +5,6 @@ import {
   Hint,
   Note,
   RankBars,
-  SeriesChart,
   SheetSection,
   SignedBars,
   Skeleton,
@@ -21,6 +20,8 @@ import { worldStatsOverview, type StatsNow, type StatsOverview, type StatsPeriod
 import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
 import { MoneyLog } from './MoneyLog'
 import { useLiveRead } from './statsLive'
+import { StatsChart } from './StatsChart'
+import { useChartSpan } from '../../store/chartSpan'
 import { ALL } from './statsFilters'
 import { WatchSection } from './Watch'
 
@@ -45,7 +46,8 @@ const HOURS = 24
 /** `live` is the RIGHT NOW band's answer (world.stats_now), handed down for the economy watch it carries (0229). */
 export function OverviewFace({ live }: { live: StatsNow | null }) {
   const t = useT()
-  const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS))
+  const { span } = useChartSpan()   // 0246: one span for every chart; a press re-asks at once, the figures stay on screen
+  const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span)
   const v = read.view
 
   if (read.loading && !v) return <Waiting />
@@ -67,10 +69,10 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
 
   return (
     // `relative`: the money log stands in the column's right gutter on the wide glass, beside World money (MoneyLog.tsx)
-    <div className="relative" data-testid="stats-overview">
+    <div className="relative" data-testid="stats-overview" data-span={v.span ?? ''}>
       <SheetSection heading={t('stats.money')}>
         <StatCell
-          label={t('stats.everyPurse', { n: formatInt(v.hours) })}
+          label={t('stats.everyPurse')}
           value={h.total}
           format={formatDucats}
           size="hero"
@@ -106,10 +108,11 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
             </StatCell>
           ))}
         </div>
-        <SeriesChart
+        <StatsChart
+          title={t('stats.purseSeries')}
           points={totals}
           format={formatDucats}
-          label={t('stats.purseSeries', { n: formatInt(v.hours) })}
+          label={t('stats.purseSeries')}
           tone="accent"
           className="mt-4"
           empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
@@ -133,7 +136,8 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
         <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.soldCities')}</span>
-            <SeriesChart
+            <StatsChart
+              title={t('stats.soldCities')}
               points={toSeries(v.series, (p) => p.sold)}
               format={formatDucats}
               label={t('stats.soldSeries')}
@@ -143,7 +147,8 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
           </div>
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.boughtCities')}</span>
-            <SeriesChart
+            <StatsChart
+              title={t('stats.boughtCities')}
               points={toSeries(v.series, (p) => p.bought)}
               format={formatDucats}
               label={t('stats.boughtSeries')}

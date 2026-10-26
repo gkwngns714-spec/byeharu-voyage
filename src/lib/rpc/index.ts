@@ -696,8 +696,9 @@ export function worldBooks(days: number | null = null): Promise<RpcResult<Books>
 // ── THE STATS TAB (0214): six reads over the fifteen-minute rollup ──────────────────────────────
 /** The world's money by holder, this period's and the last day's minted / removed / moved and trade,
  *  and the series over `hours` (1..720). */
-export function worldStatsOverview(hours: number | null = null): Promise<RpcResult<StatsOverview>> {
-  return call<StatsOverview>('worldStatsOverview', [hours])
+/** 0246: `span` (1d 1w 1m 1y all) draws the series from the tier it lives in, as `worldPriceSeries`; null = `hours` of fine rows. */
+export function worldStatsOverview(hours: number | null = null, span: PriceSpan | null = null): Promise<RpcResult<StatsOverview>> {
+  return call<StatsOverview>('worldStatsOverview', [hours, span])
 }
 /** Every good across every market that sells it: price and its moves, traded units, stock vs normal. */
 export function worldStatsMarkets(): Promise<RpcResult<StatsMarkets>> {
@@ -708,12 +709,12 @@ export function worldStatsCities(): Promise<RpcResult<StatsCities>> {
   return call<StatsCities>('worldStatsCities')
 }
 /** One harbour: its overview and its full detail, served to everyone (0223). */
-export function worldStatsCity(portId: string): Promise<RpcResult<StatsCity>> {
-  return call<StatsCity>('worldStatsCity', [portId])
+export function worldStatsCity(portId: string, span: PriceSpan | null = null): Promise<RpcResult<StatsCity>> {
+  return call<StatsCity>('worldStatsCity', [portId, span])
 }
 /** The merchant companies' day: where their fleets are, what they earned, the best and the worst. */
-export function worldStatsMerchants(): Promise<RpcResult<StatsMerchants>> {
-  return call<StatsMerchants>('worldStatsMerchants')
+export function worldStatsMerchants(span: PriceSpan | null = null): Promise<RpcResult<StatsMerchants>> {
+  return call<StatsMerchants>('worldStatsMerchants', [span])
 }
 /** Your week — best sales, how much traded — and the leaderboard by rank and name. */
 export function worldStatsMe(): Promise<RpcResult<StatsMe>> {
