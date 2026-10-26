@@ -147,7 +147,8 @@ export function reachBoard(board: Pick<GoodBoard, 'fleet' | 'reach' | 'supplies'
   return {
     speedKn: board.fleet.speed_kn,
     reachNm: board.reach?.reach_nm ?? null,
-    supplyDays: board.supplies?.days ?? null,
+    // 0231: what her hold can carry beside her cargo (every SAIL tops up to it), not what her casks hold now
+    supplyDays: board.supplies?.carry_days ?? board.supplies?.days ?? null,
     seaBite: board.sea?.bite ?? false,
   }
 }
@@ -181,7 +182,9 @@ function legWords(nm: number, speedKn: number): string {
  *      Navigation 3 could take you there
  *    too far to sail in one go: your navigator can only plan 9.4 days at sea without a stop. No captain can plan
  *      a trip that long, and there are no ports on the way to stop at
- *    the longest stretch at sea is 21.3 days, but your supplies last only 12.0 days
+ *    Hold too full: 4.3 days of supplies, crossing needs 7.8 days   (0231: her navigation reaches it, her stores
+ *      beside her cargo do not; the server's leg_refusal figures)
+ *    longest leg 21.3 days, can carry 12.0 days   (0231: what her hold carries beside her cargo, not her casks now)
  *  (the owner, 2026-10-19: "What does this mean? make it in simple words")
  *
  *  No voyage: the board served no `stops` (or, as 0188 serves a buy row it cannot reach, `stops: []` with no
@@ -194,6 +197,11 @@ export function reachWords(row: BoardPassage & { miles: number | null }, board: 
       const f = sea.refusal.figures
       const held = f.title != null && f.wave != null ? t('desk.seaHeld', { title: f.title, wave: f.wave }) : ''
       return seaAsksWords(sea) + held
+    }
+    // 0231: her navigation would reach it, her stores would not: the server's E_ENDURANCE figures, in plain words
+    const shut = row.shut?.figures
+    if (row.shut?.code === 'E_ENDURANCE' && shut) {
+      return t('desk.holdTooFull', { carry: formatVoyageDays(shut.carry_days), need: formatVoyageDays(shut.need_days) })
     }
     const own =
       t('desk.tooFar') +

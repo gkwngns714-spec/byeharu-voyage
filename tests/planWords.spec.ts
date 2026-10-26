@@ -31,7 +31,20 @@ test('a city no Navigation reaches says so, with the farthest any plots', () => 
 
 test('a reachable city the supplies do not carry names its longest leg against them', () => {
   const words = reachWords({ stops: ['CEU'], miles: 3100, longest_leg: { miles: 2500, days: 20.8 } }, board)
-  expect(words).toBe('longest leg 20.8 days, supplies last 36.0 days')
+  expect(words).toBe('longest leg 20.8 days, can carry 36.0 days')
+})
+
+test('0231: the board carry_days (her hold beside her cargo) is what the words read, not her casks now', () => {
+  const carry = reachBoard({ fleet: { speed_kn: 5 } as never, reach: { navigation: 2, reach_nm: 1700 }, supplies: { days: 2, margin: 1.15, carry_days: 4.3 } })
+  const words = reachWords({ stops: ['CEU'], miles: 3100, longest_leg: { miles: 2500, days: 20.8 } }, carry)
+  expect(words).toBe('longest leg 20.8 days, can carry 4.3 days')
+})
+
+test('0231: a city the stores cannot reach says so with the server figures, not "too far"', () => {
+  const shut = { code: 'E_ENDURANCE', sentence: '…', figures: { nm: 1614, leg_days: 6.8, need_days: 7.8, carry_days: 4.3, cap_nm: 884 } }
+  const words = reachWords({ ...noLeg, needs: null, shut }, board)
+  expect(words).toBe('Hold too full: 4.3 days of supplies, crossing needs 7.8 days')
+  expect(words).not.toMatch(/\bnm\b|\bher\b|\bpassage\b|\bstores\b/)
 })
 
 test('a board with no speed falls back to miles, spelled, never nm', () => {
