@@ -41,6 +41,8 @@ for (const vp of [PHONE, WIDE]) {
     await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)
     await expect(page.getByTestId('stats-live-world')).toContainText(/\d/, { timeout: 30_000 })
     await expect(page.getByTestId('stats-live-trades')).toContainText(/\d/)
+    // the economy watch (0229, docs/CLOSED_ECONOMY.md §7), from the live read
+    await expect(page.getByTestId('stats-watch')).toBeVisible({ timeout: 30_000 })
     // and the rollup is DRAWN: the holders' stacked bar and at least one chart on the face
     expect(await page.getByTestId('stats-overview').locator('[role="img"]').count()).toBeGreaterThan(0)
     await noSidewaysScroll(page)

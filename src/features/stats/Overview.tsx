@@ -18,6 +18,7 @@ import { worldStatsOverview, type StatsOverview, type StatsPeriod } from '../../
 import { useServedRead } from '../../live/useServedRead'
 import type { FaceProps } from './StatsScreen'
 import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf, withLivePoint } from './statsFaces'
+import { WatchSection } from './Watch'
 
 // OVERVIEW — the world's money: who holds it, what was printed, what was burned, what changed hands.
 //
@@ -145,6 +146,7 @@ export function OverviewFace({ beat, live }: FaceProps) {
         </div>
       </SheetSection>
 
+      <WatchSection watch={live?.watch} />
       <Flows heading={t('stats.lastDay')} period={day} testid="stats-flows-day" />
       <Flows heading={t('stats.sinceCount')} period={v.period} testid="stats-flows-period" />
     </div>

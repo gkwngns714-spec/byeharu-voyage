@@ -25,6 +25,7 @@ import { statsDict } from './stats'
 import { townDict } from './town'
 import { tradeDict } from './trade'
 import { uiDict } from './ui'
+import { watchDict } from './watch'
 import { yardDict } from './yard'
 import { youDict } from './you'
 
@@ -54,6 +55,7 @@ export const DICT = {
   town: townDict,
   trade: tradeDict,
   ui: uiDict,
+  watch: watchDict,
   yard: yardDict,
   you: youDict,
 } as const
