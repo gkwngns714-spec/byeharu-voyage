@@ -5,6 +5,12 @@ import { stockLevel } from './stockLevel'
 import { formatInt } from '../../lib/format'
 import type { PricePoint } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
+import { useElementSize } from '../../chart/useElementSize'
+
+/** A COMPACT chart's height, in px (owner row 226): a modest panel, never a page. ~0.45 of its width, held between
+ *  these two — 150 px on a phone, 180 px on a wide column — so the price and the Buy / Sell controls stay in view. */
+const COMPACT_MIN_H = 140
+const COMPACT_MAX_H = 180
 
 // THE PRICE CHART — the sparkline, unfolded: the same served lines with an axis under them and a
 // scale beside them. docs/QUAY_LEDGER.md §3 F ("the price history drawn with an axis") and
@@ -54,6 +60,7 @@ export function PriceChart({
   stockTarget = null,
   view = null,
   pan = null,
+  compact = false,
 }: {
   /** The served points for ONE good at ONE port, oldest first. */
   points: readonly PricePoint[]
@@ -74,13 +81,26 @@ export function PriceChart({
   view?: ChartWindow | null
   /** Make the plot draggable: where the window stands now, how far it may go, and what to call. */
   pan?: { offsetMs: number; limits: PanLimits; onChange: (offsetMs: number) => void } | null
+  /** A compact panel (owner row 226, the COMMAND good page): the plane is drawn at the column's own width (so the
+   *  labels stay their size and are not magnified with it) and a modest fixed height. Ignored with `size`. */
+  compact?: boolean
 }) {
   const t = useT()
   const clip = useId()
   const drag = useRef<{ id: number; x: number; offsetMs: number } | null>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const measured = useElementSize(box).width
+  const plane = useMemo(
+    () =>
+      size ??
+      (compact && measured > 0
+        ? { width: Math.round(measured), height: Math.round(Math.min(COMPACT_MAX_H, Math.max(COMPACT_MIN_H, measured * 0.45))) }
+        : undefined),
+    [size, compact, measured],
+  )
   const model = useMemo(
-    () => priceChartModel(points, slotSeconds, nowMs, outlook, size, stockTarget, view),
-    [points, slotSeconds, nowMs, outlook, size, stockTarget, view],
+    () => priceChartModel(points, slotSeconds, nowMs, outlook, plane, stockTarget, view),
+    [points, slotSeconds, nowMs, outlook, plane, stockTarget, view],
   )
   if (!model) return null
   const { plot } = model
@@ -112,7 +132,7 @@ export function PriceChart({
   }
 
   return (
-    <div className="mt-1 w-full" data-testid="price-chart">
+    <div ref={box} className="mt-1 w-full" data-testid="price-chart">
       <svg
         viewBox={`0 0 ${model.width} ${model.height}`}
         className={`block h-auto w-full ${pannable ? 'cursor-grab touch-pan-y' : ''}`}
