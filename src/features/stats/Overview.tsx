@@ -1,6 +1,7 @@
 import {
   Bar,
   Empty,
+  FilterBar,
   Hint,
   Note,
   RankBars,
@@ -11,6 +12,8 @@ import {
   StackedBar,
   StatCell,
   deltaTone,
+  oneOf,
+  useFilterChoice,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
@@ -18,6 +21,7 @@ import { worldStatsOverview, type StatsNow, type StatsOverview, type StatsPeriod
 import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
 import { MoneyLog } from './MoneyLog'
 import { useLiveRead } from './statsLive'
+import { ALL } from './statsFilters'
 import { WatchSection } from './Watch'
 
 // OVERVIEW — the world's money: who holds it, what was printed, what was burned, what changed hands.
@@ -151,18 +155,48 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
       </SheetSection>
 
       <WatchSection watch={live?.watch} />
-      <Flows heading={t('stats.lastDay')} period={day} testid="stats-flows-day" />
-      <Flows heading={t('stats.sinceCount')} period={v.period} testid="stats-flows-period" />
+      <FlowsByKind day={day} period={v.period} />
     </div>
   )
 }
 
+const SIDES = [ALL, 'minted', 'removed', 'moved'] as const
+
+/** The two periods' money by kind under one filter of its side (0244, owner row 228): new, burned or moved. */
+function FlowsByKind({ day, period }: { day: StatsPeriod | null; period: StatsPeriod | null }) {
+  const t = useT()
+  const [choice, choose] = useFilterChoice('stats.overview', { side: ALL })
+  const side = oneOf(choice.side, SIDES, ALL)
+  if ((day?.flows.length ?? 0) === 0 && (period?.flows.length ?? 0) === 0) return null
+  return (
+    <>
+      <FilterBar
+        className="mt-4"
+        data-testid="stats-flows-filters"
+        chips={{
+          label: t('stats.filterLabel'),
+          options: SIDES.map((id) => ({
+            id,
+            label: t(id === ALL ? 'stats.all' : id === 'minted' ? 'stats.flowNew' : id === 'removed' ? 'stats.flowBurned' : 'stats.flowMoved'),
+          })),
+          value: side,
+          onChange: (id) => choose({ side: id }),
+        }}
+      />
+      <Flows heading={t('stats.lastDay')} period={day} side={side} testid="stats-flows-day" />
+      <Flows heading={t('stats.sinceCount')} period={period} side={side} testid="stats-flows-period" />
+    </>
+  )
+}
+
 /** The money of one period, by kind, biggest first — the server's words, the server's sides. */
-function Flows({ heading, period, testid }: { heading: string; period: StatsPeriod | null; testid: string }) {
+function Flows({ heading, period, side, testid }: { heading: string; period: StatsPeriod | null; side: string; testid: string }) {
   if (!period || period.flows.length === 0) return null
+  const flows = side === ALL ? period.flows : period.flows.filter((f) => f.side === side)
+  if (flows.length === 0) return null
   return (
     <SheetSection heading={heading} surface data-testid={testid}>
-      <RankBars rows={flowRanks(period.flows)} format={formatDucatsDelta} />
+      <RankBars rows={flowRanks(flows)} format={formatDucatsDelta} />
     </SheetSection>
   )
 }

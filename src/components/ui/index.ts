@@ -188,6 +188,8 @@ export { useReaskAtEdge } from './reaskAtEdge'
 export { Sparkline, type SparkTone } from './Sparkline'
 export { StockGauge } from './StockGauge'
 export { ChipRow } from './ChipRow'
+export { FilterBar, type FilterChips, type FilterOption, type FilterPick, type FilterToggle } from './FilterBar'
+export { filterStorageKey, oneOf, readFilterChoice, useFilterChoice, type FilterChoice } from './filterState'
 export { sheetBodyClass, sheetColumnClass } from './screenLayout'
 export { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
 // THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a

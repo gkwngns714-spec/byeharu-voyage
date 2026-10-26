@@ -1,5 +1,10 @@
+import { useState } from 'react'
 import {
+  Button,
   Empty,
+  FactsLine,
+  FilterBar,
+  Figure,
   Flag,
   Hint,
   Note,
@@ -13,6 +18,9 @@ import {
   deltaTone,
   type RankRow,
   Clip,
+  Row,
+  oneOf,
+  useFilterChoice,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib/format'
 import { useT } from '../../lib/i18n'
@@ -20,6 +28,7 @@ import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } fro
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
+import { ALL, MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 
 // MERCHANTS — the companies the world keeps: how many, where their fleets are, what their last day of
 // laps earned (lap 2 onwards, 0097's rule), the share that lost, the five best and the five worst.
@@ -31,12 +40,19 @@ import { useLiveRead } from './statsLive'
 //
 // EVERY SECOND (0232, owner row 213): where the fleets are and their money are read now; the day's board is the
 // last 24 h of laps up to this second; each line ends at now(). Asked every second while the face is open.
+//
+// EVERY COMPANY (0244, owner row 228): the whole list under the board, filtered by country and sorted by richest
+// (her cash now), best day, most laps, biggest fleet, or name. Remembered per face.
+
+const FIRST = 60
 
 export function MerchantsFace() {
   const t = useT()
   const read = useLiveRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants())
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
+  const [choice, choose] = useFilterChoice('stats.merchants', { country: ALL, sort: 'richest' })
+  const [all, setAll] = useState(false)
 
   if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
   if (!v) return <Note tone="danger">{t('stats.merchantsFailed')}</Note>
@@ -62,6 +78,15 @@ export function MerchantsFace() {
       tone: h.day >= 0 ? ('success' as const) : ('danger' as const),
       note: t('stats.laps', { n: formatInt(h.laps), count: h.laps }),
     }))
+
+  const list = v.list ?? []
+  const countries = countriesOf(list.map((h) => h[1]))
+    .map((code) => ({ id: code, label: nationNameOf(nationByCode, code) }))
+    .sort((a, b) => a.label.localeCompare(b.label))
+  const country = oneOf(choice.country, [ALL, ...countries.map((c) => c.id)], ALL)
+  const sort = oneOf(choice.sort, MERCHANT_SORTS, 'richest')
+  const rows = sortMerchants(country === ALL ? list : list.filter((h) => h[1] === country), sort)
+  const shown = all ? rows : rows.slice(0, FIRST)
 
   return (
     <div data-testid="stats-merchants">
@@ -123,6 +148,57 @@ export function MerchantsFace() {
           <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
         </SheetSection>
       </SectionColumns>
+      {list.length > 0 && (
+        <SheetSection heading={t('stats.everyCompany', { n: formatInt(rows.length) })} surface data-testid="stats-merchants-all">
+          <FilterBar
+            className="mb-2"
+            data-testid="stats-merchants-filters"
+            picks={[
+              {
+                id: 'country',
+                label: t('stats.country'),
+                options: [{ id: ALL, label: t('stats.allCountries') }, ...countries],
+                value: country,
+                onChange: (id) => choose({ country: id }),
+              },
+            ]}
+            sort={{
+              id: 'sort',
+              label: t('stats.sortLabel'),
+              options: MERCHANT_SORTS.map((id) => ({
+                id,
+                label: t(id === 'richest' ? 'stats.richest' : id === 'earned' ? 'stats.bestEarned' : id === 'laps' ? 'stats.mostLaps' : id === 'fleet' ? 'stats.biggestFleet' : 'stats.name'),
+              })),
+              value: sort,
+              onChange: (id) => choose({ sort: id }),
+            }}
+          />
+          {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
+          {shown.map(([name, nation, purse, fleets, day, laps], i) => (
+            <Row
+              key={name}
+              mark={nation === null ? undefined : <Flag code={nation} name={nationNameOf(nationByCode, nation)} size="body" />}
+              label={<Clip>{name}</Clip>}
+              value={<Figure value={formatDucats(purse)} />}
+              hairline={i < shown.length - 1}
+              data-testid="stats-merchant"
+            >
+              <FactsLine>
+                <span>{t('stats.fleetsN', { n: formatInt(fleets), count: fleets })}</span>
+                <span>{t('stats.earnedFigure', { amount: formatDucatsDelta(day) })}</span>
+                <span>{t('stats.laps', { n: formatInt(laps), count: laps })}</span>
+              </FactsLine>
+            </Row>
+          ))}
+          {!all && rows.length > FIRST && (
+            <div className="pt-3">
+              <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-merchants-show-all">
+                {t('stats.showAll', { n: formatInt(rows.length) })}
+              </Button>
+            </div>
+          )}
+        </SheetSection>
+      )}
     </div>
   )
 }
