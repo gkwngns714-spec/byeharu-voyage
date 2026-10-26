@@ -61,7 +61,9 @@ test('COMMAND composes no verb — it keeps whose orders, and her queue', () => 
   // city the fleet is docked at — composes THE trade tray (features/command/markets/DeskTrade.tsx), the
   // same tray and the same door PORT's board uses. That file is the exception, by name; every other file
   // under features/command still composes no verb. D5 rewrites this rule to COMMAND_DESK §2.2.
-  const DOORWAYS = new Set(['features/command/markets/DeskTrade.tsx'])
+  // 2026-10-26, OWNER ROW 229: the doorway is THE trade panel of the mirrored Buy / Sell screen
+  // (features/command/buysell/TradePanel.tsx) — the same `useTrade` act, its own stepper; DeskTrade.tsx is gone.
+  const DOORWAYS = new Set(['features/command/buysell/TradePanel.tsx'])
   // 2026-10-25 — OWNER ROW 183: *"It should show map (without npcs or name of the cities that aren't
   // associated with the route/plan"*. The Plans face's chart is a PICTURE of the plan, not a doorway:
   // `SmallChart` takes no tap (its header, point 1), so it composes nothing; the plan's SAIL lines are still

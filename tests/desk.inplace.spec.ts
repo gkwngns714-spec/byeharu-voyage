@@ -12,8 +12,8 @@ import { ready, reachable } from './appReady.fixture'
 //   · NO DIALOG stands after a press: no tray over the screen, at either size;
 //   · WIDE: every face stands in the terminal's frame — the same three panes, the same boxes as Buy;
 //     what a face opens (City's basket) stands INSIDE the right pane, not over the glass;
-//   · a trip planned stands in the Buy face's own pane (wide: the centre pane; phone: in flow), not a tray
-//     (owner row 218: Buy and Sell replaced Markets and Trade).
+//   · a good pressed on Buy opens THE trade panel (owner row 229): the right pane on a wide glass, the bottom sheet
+//     on a phone; the desk's frame does not move.
 // Prices are the local world's; nothing here asserts a figure — only geometry and presence.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -102,22 +102,23 @@ for (const size of SIZES) {
       }
     })
 
-    test('a trip stands in the Buy face, not over it', async ({ page, request, baseURL }) => {
+    test('a good pressed opens the trade panel in the desk: the right pane wide, the bottom sheet on a phone', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
       const face = page.getByTestId('desk-buy')
+      const before = await frame(page, wide)
       await face.getByTestId('city-good').first().click()
-      await face.getByTestId('good-plan').click()
-      const builder = face.getByTestId('trade-card')
-      await expect(builder).toBeVisible({ timeout: 30_000 })
-      await expect(page.getByRole('dialog'), 'the trade card is a pop-up on Buy').toHaveCount(0)
+      const panel = page.getByTestId('good-detail')
+      await expect(panel).toBeVisible({ timeout: 30_000 })
       if (wide) {
-        // the card is the centre pane of the Buy face
-        await expect(page.getByTestId('desk-pane-chart').getByTestId('trade-card')).toBeVisible()
+        // owner row 229: the map and the cards in the centre, the panel on the right — no pop-up over the glass
+        await expect(page.getByTestId('desk-pane-ticket').getByTestId('good-detail')).toBeVisible()
+        await expect(page.getByRole('dialog'), 'the trade panel is a pop-up on Buy').toHaveCount(0)
       } else {
-        // in flow: inside the desk's own face, which scrolls with the page
-        expect(await builder.evaluate((e) => getComputedStyle(e).position)).not.toBe('fixed')
+        // owner row 229: a bottom sheet on a phone, at the bottom edge, over nothing it moves
+        await expect(panel).toHaveAttribute('data-tray-mode', 'docked')
       }
-      await expect(page.getByTestId('command-queue')).toBeVisible()
+      expect(await frame(page, wide), 'the panel moved the desk frame').toEqual(before)
+      await expect(page.getByTestId('command-queue')).toBeAttached()
     })
   })
 }

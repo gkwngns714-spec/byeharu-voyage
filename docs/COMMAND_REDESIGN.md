@@ -99,6 +99,22 @@ Decided (the agreed reading); the Row 210 section above and the Markets face of 
 7. **Deleted** (no caller left): the Markets face (watchlist, good chart, ticket, `useGoodDesk`, `citySides`, `marketRows`), Trade's Here and Start (`HereMarket`, `TradeStart`, `Trade`), the watchlist / outlook client reads. The city's wants are not served yet; their mark has a slot in `GoodDetail`'s head.
 8. "Open in Command" on the Map's price tray opens Buy on that city with that good pressed.
 
+### Row 229 (2026-10-26): Buy and Sell, one mirrored game screen
+
+The owner: *"buying and selling in command tab is not straight forward. it is somewhat complex, and selling i cannot even see charts. I want to click on cities, see the selling prices when i click on the city, not give a bunch of list since it will be too easy. for buying and selling i want both to be... similar mechanism. similar screen, buttons to press etc. make it like a true game."*
+
+Built (items 3–5 of Row 218 are replaced; the rest stands):
+
+1. **One component, `side` the only difference** (`buysell/BuySell.tsx`). Phone: map, city chips, cards, orders; the panel is a bottom sheet. Wide: orders on the left, the map and the cards in the centre, the panel in the right pane.
+2. **The map on top**, unchanged (row 207/217 `TradeMap`). Under it a **chip strip** of the eight harbours nearest her (`buysell/CityBoard.tsx`) — names only, for a thumb that misses on the small map. A city she is not at is named with "Not docked".
+3. **The city's board: one card per good** (`CityBoard.tsx`), the same card on both faces: icon, name, the side's price (Buy: ask; Sell: bid), ▲▼ against a day ago (green up, red down), the day's line (`world.price_series` 1-day span, read per card), "Aboard N". On Sell a good the city does not buy is greyed "No buyer" and does not press.
+4. **A card pressed opens THE trade panel** (`buysell/TradePanel.tsx`), one layout for four acts: price and ▲▼ · Aboard · the units (`Stepper`, Max) · the chart (span picker + compact `PriceChart`) · the total and ONE big button, pinned. Docked at the city → **Buy / Sell** (`useTrade` → cmd.issue). Anywhere else → **Sail & buy / Sail & sell**: a one-ended trip (`plans/useTripGo.ts`: SAIL … / BUY n, or SAIL … / SELL ALL), with its estimate (days, supplies, wages, dock fee, profit), Insure, and the voyage's reach (`PlanVoyage`). Why the price (0185) and who bought what (0227) stand under it.
+5. **No cross-city list on these faces:** the sell list (`SellList`) and the two-ended trade card (`TradeCard`) are deleted, and with them "Make it a route" (its seed could only come from a trip with both ends). The server's boards are read as before; the trip's other end is the city she pressed.
+6. **A short toast** after a trade or a trip queued ("Bought 10 Pepper −1,230 🪙", "Sailing to Porto"); no sound.
+7. **A trip whose SAIL has already left** (a near city is one leg, and it runs at once in port): a queued BUY / SELL is read at the voyage's city (`domain/order/trip.ts`), and its estimate under the map draws the voyage under way and its time (`TradeMap.tsx`).
+8. **Known gap (server, not changed here):** `world.good_board` prices a sale in full only at its `good_board_quoted` (10) dearest cities, so Sail & sell to a city outside them shows its days and supplies but a dash for the total and profit. A per-city quote is a migration for a later slice.
+9. Deleted with no caller left: `CityGoods`, `GoodDetail`, `markets/DeskTrade`, `plans/SellList`, `plans/TradeCard`, `planRoute`, the route seed in `planDraft`, and their dictionary keys.
+
 
 A **press selects** (`docs/dev-log/2026-10-25-plan-tab.md` "A press selects"; COMMAND_DESK §3.5): tapping a good or a row changes the card's figures in place. Nothing above it collapses, re-flows or moves. Every row of the card is always drawn, with a dash while unknown. The map has a fixed 3:2 box.
 

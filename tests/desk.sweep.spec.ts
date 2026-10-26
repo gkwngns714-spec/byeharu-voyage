@@ -116,13 +116,12 @@ for (const size of SIZES) {
       await page.getByRole('tab', { name: 'Invest', exact: true }).click()
       await expect(page.getByTestId('invest-hall')).toBeVisible({ timeout: 30_000 })
 
-      // Buy — the city's goods with prices, and Buy here through the same tray
+      // Buy — the city's goods as priced cards, and its one Buy button in the trade panel (owner row 229)
       await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Buy', exact: true }).click()
       const buyFace = page.getByTestId('desk-buy')
       await buyFace.getByTestId('city-good').first().click()
-      await expect(buyFace.getByTestId('good-detail-price')).toContainText(/\d/, { timeout: 60_000 })
-      await buyFace.getByTestId('good-buy').click()
-      await expect(page.getByTestId('trade-tray')).toBeVisible({ timeout: 30_000 })
+      await expect(page.getByTestId('good-detail-price')).toContainText(/\d/, { timeout: 60_000 })
+      await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy', { timeout: 30_000 })
 
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
       await page.screenshot({ path: test.info().outputPath(`sweep-${size.width}.png`) })
