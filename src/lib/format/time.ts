@@ -117,10 +117,18 @@ export function formatTwoClocks(voyageDays: number): string {
 /** Relative time against a supplied `now`, in ONE whole plain unit: "24 min ago", "1 h ago", "3 d ago";
  *  future → "in 24 min"; under 45 s → "just now". The owner, 2026-10-26 (docs/OWNER_REQUESTS.md row 206):
  *  *"i want to see time, like 24 minutes ago, or 1 hour ago"*. THE ONE relative-time formatter: every
- *  "ago" in the game reads from here, against the shell's one clock (src/app/shellState.ts `nowMs`). */
-export function formatRelative(atMs: number, nowMs: number): string {
+ *  "ago" in the game reads from here, against the shell's one clock (src/app/shellState.ts `nowMs`).
+ *  `{ seconds: true }` counts seconds under a minute ("5 s ago") — the Stats money log's form. */
+export function formatRelative(atMs: number, nowMs: number, opts?: { seconds?: boolean }): string {
   const delta = atMs - nowMs
   const abs = Math.abs(delta)
+  // `seconds` (0235, owner row 219 — a LIVE log, where every row is under a minute old): "5 s ago" under a
+  // minute, "just now" under a second; whole minutes and up as below.
+  if (opts?.seconds && abs < 60_000) {
+    const s = Math.floor(abs / 1000)
+    if (s < 1) return t('format.justNow')
+    return t(delta >= 0 ? 'format.inFuture' : 'format.inPast', { body: t('format.seconds', { n: formatInt(s) }) })
+  }
   if (abs < 45_000) return t('format.justNow')
   const min = Math.round(abs / 60_000)
   const body =

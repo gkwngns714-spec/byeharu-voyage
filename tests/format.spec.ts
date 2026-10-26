@@ -155,6 +155,11 @@ test('relative time reads forwards and backwards from a supplied instant, in one
   expect(formatRelative(now - 2 * 24 * 60 * 60 * 1000, now)).toBe('2 d ago')
   expect(formatRelative(now - 3.9 * 24 * 60 * 60 * 1000, now)).toBe('3 d ago')
   expect(formatRelative(now + 1_000, now)).toBe('just now')
+  // 0235 (owner row 219): the Stats money log counts seconds under a minute — the same authority, one option
+  expect(formatRelative(now - 5_400, now, { seconds: true })).toBe('5 s ago')
+  expect(formatRelative(now - 59_000, now, { seconds: true })).toBe('59 s ago')
+  expect(formatRelative(now - 400, now, { seconds: true })).toBe('just now')
+  expect(formatRelative(now - 24 * 60_000, now, { seconds: true })).toBe('24 min ago')
 })
 
 test('the wall clock stamps a ledger row as HH:MM', () => {
