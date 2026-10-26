@@ -101,7 +101,14 @@ export function WatchRow({
             {stock && best && (
               <StockGauge stock={stock.stock} target={stock.target} label={t('markets.goodAt', { good: good.name, port: portName(best.port) })} />
             )}
-            <span className="break-words text-t-caption text-ink-faint">{facts.join(' · ') || t('markets.soldNowhere')}</span>
+            {/* ONE LINE, always (2026-10-26): the facts used to wrap, so a row was 58 px or 74 px by how many
+                facts the served data happened to carry (a 'wanted in' port, an 'on board' count) and the
+                fifth good slid under the fold on some runs. The row is two lines, every row — K.1's
+                'five goods above the fold' is a promise about height, so height must not depend on data.
+                What does not fit is cut with an ellipsis; the whole line is the title. */}
+            <span className="min-w-0 flex-1 truncate text-t-caption text-ink-faint" title={facts.join(' · ')}>
+              {facts.join(' · ') || t('markets.soldNowhere')}
+            </span>
           </span>
         </span>
         <Sparkline

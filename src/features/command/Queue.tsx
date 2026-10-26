@@ -57,8 +57,14 @@ export function Queue({
   fleet,
   onCancel,
   onClear,
+  picked = null,
+  onPick,
 }: {
   fleet: FleetView
+  /** OWNER ROW 217: the order pressed — `voyage` for the passage under way, else a live order's id. Pressing a
+   *  row selects it (Trade.tsx draws it on the map on top, with its estimate); pressing it again clears it. */
+  picked?: string | null
+  onPick?: (pick: { kind: 'voyage' } | { kind: 'order'; id: string } | null) => void
   /** The verbs, as promises: a press is busy until its own act settles (worldStore's cancel/clear).
    *  `onCancel` takes the row's 1-based position in `fleet.queue` — cmd.cancel_at's index (0186). */
   onCancel: (position: number) => Promise<boolean>
@@ -96,6 +102,9 @@ export function Queue({
           mark={<Icon name="ship" size={18} className="text-info" />}
           label={t('command.sailingTo', { place: boundForLabel(where, (c) => portNameOf(portByCode, c)) })}
           value={due !== null ? <Figure value={due} tone="info" /> : undefined}
+          tone={picked === 'voyage' ? 'accent' : 'default'}
+          onClick={onPick ? () => onPick(picked === 'voyage' ? null : { kind: 'voyage' }) : undefined}
+          aria-pressed={onPick ? picked === 'voyage' : undefined}
           data-testid="queue-passage"
         >
           <span className="block text-t-caption text-ink-faint">
@@ -110,11 +119,27 @@ export function Queue({
         orders.map((order, i) => {
           const live = order.status === 'pending' || order.status === 'active'
           const refused = order.status === 'failed'
+          const words = queuedOrderWords(order, fleet.name, portByCode, goodByCode)
           return (
             <Row
               key={order.id}
-              label={queuedOrderWords(order, fleet.name, portByCode, goodByCode)}
-              tone={order.status === 'failed' ? 'muted' : order.status === 'active' ? 'accent' : 'default'}
+              label={
+                onPick && live ? (
+                  // the label is the press (the ✕ beside it is its own button): it selects the order's trip
+                  <button
+                    type="button"
+                    className="w-full text-left underline-offset-4 hover:underline"
+                    aria-pressed={picked === order.id}
+                    onClick={() => onPick(picked === order.id ? null : { kind: 'order', id: order.id })}
+                    data-testid="queue-pick"
+                  >
+                    {words}
+                  </button>
+                ) : (
+                  words
+                )
+              }
+              tone={order.status === 'failed' ? 'muted' : order.status === 'active' || picked === order.id ? 'accent' : 'default'}
               hairline={i < orders.length - 1}
               data-testid="queue-row"
               value={

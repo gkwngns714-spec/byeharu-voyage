@@ -7,7 +7,7 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatPrice, formatPriceDelta, formatUnits, formatVoyageDays } from '../../../lib/format'
 import type { FleetView, GoodBoard, Refusal, SnapshotGood } from '../../../lib/rpc'
 import { useDeskPlan, type PlanDraft } from './planDraft'
-import { planLines, planRoute } from './planLines'
+import { planLines, planRoute, tripRows, type PlanLeg } from './planLines'
 import { PlanVoyage } from './PlanVoyage'
 import { useT } from '../../../lib/i18n'
 
@@ -46,6 +46,7 @@ export function TradeCard({
   plan,
   board: b,
   units: boardUnits,
+  legs,
   onQueued,
   onRoute,
 }: {
@@ -55,6 +56,8 @@ export function TradeCard({
   board: GoodBoard | null
   /** The units the board was asked for: typed, else the row's `units_fit` (Trade.tsx); null = all that fit. */
   units: number | null
+  /** The plan's legs (Trade.tsx proposes them once; the map on top draws them, the leg list prints them). */
+  legs: readonly PlanLeg[]
   /** The plan is in the queue. */
   onQueued: () => void
   /** The route editor has its seed. */
@@ -73,11 +76,7 @@ export function TradeCard({
   const name = (c: string) => portNameOf(portByCode, c)
 
   const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
-  const buyRow = b && plan.buyAt ? (b.buy.find((r) => r.port === plan.buyAt) ?? null) : null
-  const sellRow = b && plan.sellAt ? (b.sell.find((r) => r.port === plan.sellAt) ?? null) : null
-  const toBuyDays = !plan.buyAt ? 0 : !buyRow ? null : buyRow.here ? 0 : buyRow.days
-  const days = sellRow && sellRow.days !== null && toBuyDays !== null ? toBuyDays + sellRow.days : null
-  const supplies = sellRow?.supplies ?? null
+  const { buyRow, sellRow, days, supplies } = tripRows(b, plan)
   const outlay = (buyRow?.cost ?? 0) + (supplies?.cost ?? 0)
 
   // WHY GO CANNOT RUN, in the server's terms, read off the board (never judged here): the first that bites.
@@ -223,8 +222,9 @@ export function TradeCard({
         </Note>
       )}
 
-      {/* THE VOYAGE (owner row 183): the chart of only this trade, the crew, whether you can go there, the legs. */}
-      <PlanVoyage fleet={fleet} plan={plan} board={b} buyRow={buyRow} sellRow={sellRow} />
+      {/* THE VOYAGE (owner row 183): the crew, whether you can go there, the legs. Its chart is THE map on top of the
+          Trade page (owner row 217, TradeMap.tsx). */}
+      <PlanVoyage fleet={fleet} board={b} buyRow={buyRow} sellRow={sellRow} legs={legs} />
     </section>
   )
 }
