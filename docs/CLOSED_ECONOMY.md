@@ -184,6 +184,24 @@ Slice **E6b** `a_city_wants_what_it_lacks` (before E7): `city_wants` table + the
 
 ---
 
+## 4c. Port fee, port time, tax by country (OWNER 2026-10-26)
+
+*"the players and merchants should pay a fee for every city it visits for restock. and it will take realtime 1 min to get back to ocean - preparation. the tax based on country should be different, for example if you are in the same country, no tax ~ few tax, where as relationship between country means more tax."*
+
+| | Decided by default |
+|---|---|
+| **Port fee** | Every docking pays the city a fee — players AND NPC merchants (merchants pay today 0 wages/supplies since 0116; this is their main way back to city purses). Fee = `port_fee_base` 50 + 0.5 % of cargo value aboard, × the country rate below. Paid to the city purse (kind `PORT_FEE`, moved — never burned). A purse that can't pay: the fleet still docks, the fee becomes a debt taken from the next sale there |
+| **Port time** | After docking a fleet needs **1 real minute** to prepare before it can sail again (`port_prep_seconds` 60). A SAIL sent sooner waits in the queue and leaves when ready; the Trade page shows "Ready in 0:42" / "출항 준비 0:42". Merchants obey it too |
+| **Tax by country** | Each company has a home country (players: their founding port's power; merchants: their capital's). The rate a city charges = its base × the country factor: **same country 0×–0.25×**, **friendly 0.5×**, **neutral 1×**, **rival 2×**. Applies to the existing profit tax (0122) and the port fee |
+| **Relations** | A new table `power_relations` (each pair: same / friendly / neutral / rival), seeded from 1500–1650 history (e.g. Spain–Portugal friendly after 1580, Ottoman–Spain rival, Ming–Japan rival after 1592, Netherlands–Spain rival). Static at first; INFLUENCE can move it later |
+| **Shows** | City view: "Tax 2× (rival)" / "세금 2× (적대)"; the Trade card adds the port fee and tax per stop |
+
+Slice **E4b** `every_port_charges_and_takes_a_minute` (after E4): `power_relations`, company home country, `PORT_FEE` in `voyage.settle`'s docking, the prep gate in `voyage.sail_refusal` (E_PREPARING with seconds left), the country factor in `world.tax_rate`. Dark: fee 0, prep 0, factor 1 → byte-identical.
+
+**Selling at a loss — where the gold goes:** nothing is destroyed. If you buy in A at 100 and sell in B at 80, A's purse got 100, B paid 80, you lost 20 — **that 20 now sits in A's purse** and goes back out when A pays the next trader, a want, a gift, or a share coupon. Every ducat is always in someone's purse: players, merchants, or cities (§2.3).
+
+---
+
 ## 5. City purse limits, broke merchants, capital gifts
 
 ### 5.1 Empty-purse rule — confirmed holds everywhere

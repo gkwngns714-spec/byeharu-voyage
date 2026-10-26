@@ -306,6 +306,21 @@ After R1 lands: R3 mini route map (191) → R4 Report (192) → R2 true reasons 
 **Rules learned today:** deploy only in number order, renumbering file + tags; after EVERY merge wait for main's Acceptance (bv-deploy.sh now does it); a conflicting PR gets no CI, so rebase first; run each prod check from a file (`db query --linked -f`), one statement per file.
 
 
+### 2026-10-26 ~02:30 UTC (PC 디폴리스) — EVERYTHING IN FLIGHT, IN ORDER (owner: "do all the work without dropping any")
+Prod head 0226. Merged + live today: #311 #312 Stats header/countdown, #314 mini map 0 %, #315 Trade Here = port market. Designs merged: ROUTE_BUILDER (#313), CLOSED_ECONOMY (#316 + §3 daily max stock, §4b city wants, §4c port fee / 1-min port time / tax by country).
+| order | item | branch / worktree | state |
+|---|---|---|---|
+| 1 | main red (priceSeries tier counts, desk.sweep haggle row, layout.spec:206 Markets fold) | `osn-fix-main-red-0226` | agent fixing |
+| 2 | row 211 who bought what (server read + client) | `osn-city-good-trades` (migration "0227", renumber at deploy) | agent building |
+| 3 | row 213 every Stats figure live to the second, countdown removed | `osn-stats-all-live` ("0227") | agent building |
+| 4 | row 208 Tsushima: reach_passage leg cap from supplies at full hold + plain refusal | not started (diagnosis done: see owner row 208) | next free lane |
+| 5 | economy E1+E2 (dark) | `osn-econ-e1-e2` ("0228/0229") | agent building |
+| 6 | economy E3, E4, E4b (port fee, 1-min prep, country tax + power_relations), E5 (restock + max stock by investment, once a day), E6 (price impact), E6b (city wants ×2 daily), E7 guard → switch on → watch Stats a few days | — | after E1+E2 |
+| 7 | row 216 every chart kept + news markers you can press + live feed | `osn-news-markers` (design) | agent designing |
+| 8 | map ships vanish and come back | — | agent diagnosing (read-only) |
+| 9 | route builder B1–B4 (after 0227 judge), R4 Report, R2, rollover W1–W4, fleets F1–F7, sea S3–S6 | — | queued |
+Deploy order rule: migrations one at a time in number order via `~/bin/bv-deploy.sh`, prod checks read first (pure SELECTs only). Waiting on owner: Casa do Segundo 0224, #268 pirates, row 175. Owner asked: keep tokens low; work until 15:00 KST 10-26.
+
 ### 2026-10-26 (PC 디폴리스): prod head **0226**, main green, Pages deployed
 - **0225 LIVE** (#305, 8d38248): supply_need(s) exist, preset doors 0, 1 standing order backed up. Not yet observed: a live SAIL buying its stores.
 - **0226 LIVE** (#310, de307c9). Fixed first: local-backend snapshot re-ran a full tick per read (996974b) + layout.spec pressed the span picker. After-check: 67,428 rows all sided (ask = bid = rows), rollup marks this hour/today, 16,496 hourly rows, cron 9/9, 0 failed; price-snapshot 1.3–1.6 s (was 4–6 s before).
