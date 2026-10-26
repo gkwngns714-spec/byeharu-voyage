@@ -3134,6 +3134,29 @@ export interface StatsNow {
   counted_at: string
   counted_through: string
   drift: Record<string, number>
+  /** 0229 (docs/CLOSED_ECONOMY.md §7): the closed economy's watch figures; null before the first count. */
+  watch?: StatsWatch | null
+}
+
+/** `world.stats_now().watch` (0229): the newest count's watch figures, its new money, and the world total's
+ *  move over 24 h. The count's own figures are absent on a count made before 0229. */
+export interface StatsWatch {
+  at: string
+  new_slot: number
+  new_day: number
+  total_day_ago: number | null
+  day_ago_at: string | null
+  total_delta_day: number | null
+  under_reserve?: number
+  under_thin?: number
+  thin?: number
+  broke?: number
+  gifts?: number
+  gifts_ducats?: number
+  /** A fraction (0.026 = 2.6 %); null when no price stepped in the hour. */
+  swing_p50?: number | null
+  swing_p90?: number | null
+  swing_steps?: number
 }
 
 /** `world.stats_me()`: your week and the leaderboard — rank and name only, never a purse. */
