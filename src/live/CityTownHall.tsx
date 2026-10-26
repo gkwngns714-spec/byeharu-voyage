@@ -10,6 +10,7 @@ import { formatDucats, formatInt, formatPct, formatRelative } from '../lib/forma
 import { useShellState } from '../app/shellState'
 import { TownHallInfluence } from './TownHallInfluence'
 import { WORK_NAME } from './workNames'
+import { duesWords } from '../domain/port'
 import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -175,7 +176,9 @@ function purseLine(hall: TownHallView): string {
   if (!hall.enabled) return tNow('town.notOpen')
   const bid =
     hall.purse.bid_factor < 1 ? tNow('town.short', { pct: formatPct(hall.purse.bid_factor) }) : tNow('town.buysUp')
-  return tNow('town.taxLine', { bid, pct: formatPct(hall.purse.tax_rate) })
+  const line = tNow('town.taxLine', { bid, pct: formatPct(hall.purse.tax_rate) })
+  // 0237 (§4c): what this harbour asks YOUR company — "Tax 2× (rival) · Dock fee 50" — while the economy is closed
+  return hall.dues ? `${line} · ${duesWords(hall.dues)}` : line
 }
 
 /** 0234: "Gave Casa X · 2 h ago … 5,000" — the capital's newest gifts, as served. */

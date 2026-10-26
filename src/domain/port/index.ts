@@ -60,3 +60,5 @@ export function buildingsOf(port: Keeper | null | undefined): readonly PortBuild
 
 // Which harbours the port field offers — moved here 2026-09-30 with its second caller (0092).
 export { nearbyHarbours, NEAR_PORTS } from './nearby'
+// 0237: what a harbour asks a company — "Tax 2× (rival) · Dock fee 110"
+export { duesWords, taxFactorWords } from './dues'

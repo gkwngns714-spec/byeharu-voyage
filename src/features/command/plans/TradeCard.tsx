@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Button, Chip, Field, Figure, Hint, Note, Row } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
+import { taxFactorWords } from '../../../domain/port'
 import { PortFlag } from '../../../live/PortFlag'
 import { usePress } from '../../../live/usePress'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatPrice, formatPriceDelta, formatUnits, formatVoyageDays } from '../../../lib/format'
+import { formatCountdown, formatPrice, formatPriceDelta, formatUnits, formatVoyageDays, instantMs } from '../../../lib/format'
 import type { FleetView, GoodBoard, Refusal, SnapshotGood } from '../../../lib/rpc'
 import { useDeskPlan, type PlanDraft } from './planDraft'
 import { planLines, planRoute, tripRows, type PlanLeg } from './planLines'
 import { PlanVoyage } from './PlanVoyage'
 import { useT } from '../../../lib/i18n'
+import { useShellState } from '../../../app/shellState'
 
 // THE TRADE CARD — one good, one buy city or the hold, one sell city, one button (docs/COMMAND_REDESIGN.md §2):
 //
@@ -178,6 +180,14 @@ export function TradeCard({
           data-testid="plan-supplies"
         />
         <Row label={t('desk.wages')} value={<Figure value={sellRow?.wages != null ? formatPriceDelta(-sellRow.wages) : '—'} />} data-testid="trade-wages" />
+        {/* 0237 (§4c): the dock fee at the sell city and the country factor on its tax — served only while the economy is closed */}
+        {sellRow?.dues && (
+          <Row
+            label={t('desk.dockFee')}
+            value={<Figure value={`${formatPriceDelta(-sellRow.dues.fee)} · ${taxFactorWords(sellRow.dues)}`} />}
+            data-testid="trade-dues"
+          />
+        )}
         <Row
           label={t('desk.profit')}
           value={<Figure value={sellRow?.profit != null ? formatPriceDelta(sellRow.profit) : '—'} tone={tone} size="figure" />}
@@ -216,6 +226,8 @@ export function TradeCard({
           {t('desk.noWater', { port: name(noCourse) })}
         </Note>
       )}
+      {/* 0237 (§4c): her port time — "Ready in 0:42"; a SAIL queued now leaves when it is up */}
+      {fleet.ready_at && !fleet.voyage && <ReadyIn fleet={fleet} />}
       {refusal && (
         <Note tone="danger" className="mt-3" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}
@@ -226,5 +238,18 @@ export function TradeCard({
           Trade page (owner row 217, TradeMap.tsx). */}
       <PlanVoyage fleet={fleet} board={b} buyRow={buyRow} sellRow={sellRow} legs={legs} />
     </section>
+  )
+}
+
+/** 0237: "Ready in 0:42" while she is in her port time — a live countdown to the served `ready_at`. */
+function ReadyIn({ fleet }: { fleet: FleetView }) {
+  const t = useT()
+  const { nowMs } = useShellState()
+  const at = instantMs(fleet.ready_at)
+  if (at === null || at <= nowMs) return null
+  return (
+    <Hint className="mt-2" data-testid="trade-ready-in">
+      {t('domain.readyIn', { t: formatCountdown(at - nowMs) })}
+    </Hint>
   )
 }
