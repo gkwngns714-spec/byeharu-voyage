@@ -15,9 +15,8 @@ import {
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsOverview, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
-import type { FaceProps } from './StatsScreen'
-import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf, withLivePoint } from './statsFaces'
+import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
+import { useLiveRead } from './statsLive'
 
 // OVERVIEW — the world's money: who holds it, what was printed, what was burned, what changed hands.
 //
@@ -27,17 +26,17 @@ import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf, withLivePoint } fro
 // against cities 988 M), the world's whole purse as one chart, then the period's money as bars from a
 // zero line and the kinds ranked. One accent, green–red only for new money against burned.
 //
-// WHAT MOVES EVERY SECOND (0224, owner row 200): the holders and the hero are the live counters when the
-// live read has answered (the rollup's row stands until it does — a truthful older figure, never a blank);
-// the money chart's last point is the live total at the live answer's own instant; the sold / bought charts'
-// last point is the period in progress (the trades since the last count); "Trades, 24 h" adds them. Minted,
-// burned and moved stay the rollup's: their per-kind sums are a period figure by construction (0224's header).
+// EVERYTHING MOVES EVERY SECOND (0227, owner row 213): the read answers NOW and is asked every second while the face
+// is open (useLiveRead). The holders and the hero are the live counters (0224's world.stats_now, served inside the
+// read); "the last 24 h" is the count's quarter hours plus the minutes since; "since the last count" is the count in
+// progress; every chart's last point is now() — the money line at its live total, the bars and the sold / bought
+// lines at the period in progress. Nothing here adds a figure: each is the server's.
 
 const HOURS = 24
 
-export function OverviewFace({ beat, live }: FaceProps) {
+export function OverviewFace() {
   const t = useT()
-  const read = useServedRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS), { trigger: beat })
+  const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS))
   const v = read.view
 
   if (read.loading && !v) return <Waiting />
@@ -45,9 +44,8 @@ export function OverviewFace({ beat, live }: FaceProps) {
   if (!v.holders || !v.period) {
     return <Empty data-testid="stats-empty">{t('stats.noFigures')}</Empty>
   }
-  const h = live === null ? v.holders : { players: live.players, merchants: live.merchants, cities: live.cities, set_aside: live.set_aside, total: live.total }
+  const h = v.holders
   const day = v.day
-  const since = live?.since_count ?? null
   const holders = [
     { id: 'players', label: t('stats.players'), value: h.players, tone: 'accent' as const },
     { id: 'merchants', label: t('stats.merchantsHolder'), value: h.merchants, tone: 'info' as const },
@@ -56,7 +54,7 @@ export function OverviewFace({ beat, live }: FaceProps) {
   ]
   // What the world is worth MORE than it was: everything printed in the last day, less what burned.
   const newMoney = day === null ? null : day.minted - day.removed
-  const totals = withLivePoint(toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside), live?.at, live?.total)
+  const totals = toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside)
 
   return (
     <div data-testid="stats-overview">
@@ -113,7 +111,7 @@ export function OverviewFace({ beat, live }: FaceProps) {
           <StatCell label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
           <StatCell label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
           <StatCell label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} size="body" />
-          <StatCell label={t('stats.trades')} value={(day?.trades ?? 0) + (since?.trades ?? 0)} format={formatInt} size="body" />
+          <StatCell label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} size="body" />
         </div>
         <SignedBars
           bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
@@ -125,7 +123,7 @@ export function OverviewFace({ beat, live }: FaceProps) {
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.soldCities')}</span>
             <SeriesChart
-              points={withLivePoint(toSeries(v.series, (p) => p.sold), live?.at, since?.sold)}
+              points={toSeries(v.series, (p) => p.sold)}
               format={formatDucats}
               label={t('stats.soldSeries')}
               tone="info"
@@ -135,7 +133,7 @@ export function OverviewFace({ beat, live }: FaceProps) {
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.boughtCities')}</span>
             <SeriesChart
-              points={withLivePoint(toSeries(v.series, (p) => p.bought), live?.at, since?.bought)}
+              points={toSeries(v.series, (p) => p.bought)}
               format={formatDucats}
               label={t('stats.boughtSeries')}
               tone="accent"
