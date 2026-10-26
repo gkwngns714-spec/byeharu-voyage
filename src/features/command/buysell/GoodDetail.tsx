@@ -70,7 +70,7 @@ export function GoodDetail({
         </Hint>
       )}
       <div className="mt-2">
-        <PriceRows good={row} trend={trend} startOpen />
+        <PriceRows good={row} trend={trend} startOpen compactChart />
       </div>
       <WhyThisPrice why={why.view ?? null} loading={why.loading} />
       <CityGoodTrades portId={portId} goodId={row.good_id} refresh={refresh} />
