@@ -1,13 +1,12 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { pressCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MAP ON TOP, AND AN ORDER PRESSED SHOWS ITS ROUTE AND ESTIMATE (owner row 217, 2026-10-26: *"on command,
 // trade, map should be at top. when i press my order, i should be able to see the route, time, money, profit all on
 // estimate below the map + map"*; the faces are Buy and Sell since row 218, and both keep it). A new company at
 // Lisbon, in the in-tab (PGlite) world, at the owner's desktop (1440×900) and the phone (390×844):
-//   Buy → the map is the first thing on the page → buy a good here → Sell → another city on the map → that good →
+//   Buy → the map is the first thing on the page → buy a good here → Sell → that good →
 //   Plan trip → a sell row → Go → press the queued SELL → its course is drawn on the map and the estimate stands
 //   under it (Route, Time, Profit with figures) → press it again → the estimate is gone → on Buy, the same press
 //   shows the same estimate.
@@ -55,8 +54,6 @@ for (const size of SIZES) {
       await faces.getByRole('tab', { name: 'Sell', exact: true }).click()
       const face = page.getByTestId('desk-sell')
       const map = face.getByTestId('trade-map')
-      await pressCity(page, map, 'AMS')
-      await expect(face.getByTestId('city-goods')).toHaveAttribute('data-city', 'AMS')
       const good = face.locator(`[data-testid="city-good"][data-good="${code}"]`)
       await expect(good).toBeVisible({ timeout: 60_000 })
       if ((await good.getAttribute('aria-pressed')) !== 'true') await good.click()

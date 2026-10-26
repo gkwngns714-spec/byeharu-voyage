@@ -84,6 +84,22 @@ Decided (the owner's word):
 5. **"Nothing works", reproduced** on a canary PGlite world (Lisbon, 8,000 d.): Here listed goods with one price each; pressing one opened a trip card whose only button read `Pick sell` and was disabled (`TradeCard.tsx:200`, `disabled={... || !sellRow}`), Route disabled too (`:209`); the sell list it needed stood under ten goods in the left pane (below the fold at 1440×900, far down on a phone). Nothing on Here could buy or sell. With a sell row picked, Go did queue and run. The cause was the design, not a broken call: Here had no buy or sell at all.
 
 
+### Row 218 (2026-10-26): Buy and Sell replace Markets and Trade
+
+The owner: *"in command, there is market, and trade. i want to have buy and sell tab instead of those. with charts, map and all. combine the two market and trade tab, separation. in mini map in command, show cities, when pressed upon, show trade goods with prices, and charts."*
+
+Decided (the agreed reading); the Row 210 section above and the Markets face of COMMAND_DESK §3.2–3.3 are history now:
+
+1. **Faces: Buy · Sell · City · Invest · Profit** (`deskView.ts`; KO 구매 · 판매). Both trading faces are one page, `buysell/BuySell.tsx`, with a `side`.
+2. **The mini map on top of both** (`plans/TradeMap.tsx`, 2:1, 0 % zoom) draws **every city**, as the Map tab draws them. **A city pressed on it** (`SmallChart`'s new `onPort`, THE map tab's `hitTest`) is the city in hand (`store/deskGood.ts` `focus`; default: where she lies, else her next port). It only selects; nothing is ordered by the tap.
+3. **The city's goods** (`buysell/CityGoods.tsx`) under the map: Buy — what the city sells at its ask; Sell — her cargo at the city's bid ("—" where it deals in none). Prices are `world.market` (`usePortMarket`).
+4. **A good pressed** opens its page (`buysell/GoodDetail.tsx`) — under the row on a phone, the centre pane on a wide glass: the price, the chart open (`PriceRows` + `usePriceSeries`, 0226), why the price (`WhyThisPrice`, 0185), who bought what (`CityGoodTrades`, 0227).
+5. **The act:** docked at the city → **Buy here / Sell here**, THE trade tray (`markets/DeskTrade.tsx`, one authority); anywhere else → **Plan trip**, the trip card (`plans/TradeCard.tsx` + `SellList`, read once by `plans/useTripBoard.ts`), Go queues it — offered always (docked at the city, beside Buy here / Sell here; on Sell where she lies, its sell list says where else).
+6. **Row 217 is kept on both faces:** an order pressed draws its route on the map and its estimate under it.
+7. **Deleted** (no caller left): the Markets face (watchlist, good chart, ticket, `useGoodDesk`, `citySides`, `marketRows`), Trade's Here and Start (`HereMarket`, `TradeStart`, `Trade`), the watchlist / outlook client reads. The city's wants are not served yet; their mark has a slot in `GoodDetail`'s head.
+8. "Open in Command" on the Map's price tray opens Buy on that city with that good pressed.
+
+
 A **press selects** (`docs/dev-log/2026-10-25-plan-tab.md` "A press selects"; COMMAND_DESK §3.5): tapping a good or a row changes the card's figures in place. Nothing above it collapses, re-flows or moves. Every row of the card is always drawn, with a dash while unknown. The map has a fixed 3:2 box.
 
 ---

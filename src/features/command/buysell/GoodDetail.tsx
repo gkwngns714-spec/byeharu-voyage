@@ -12,8 +12,8 @@ import { WhyThisPrice } from '../markets/WhyThisPrice'
 // through the design system's pieces:
 //   · the price this side trades at (world.market's ask on Buy, its bid on Sell), as served;
 //   · THE ACT: docked at this city → Buy here / Sell here, which opens THE trade tray (markets/DeskTrade.tsx, the
-//     desk's one trade doorway); anywhere else → Plan trip, which opens the trip's card (plans/TradeCard.tsx) — the
-//     one Go path. Docked here on Buy, both: buy now, or plan the trip from here;
+//     desk's one trade doorway); and always Plan trip, which opens the trip's card (plans/TradeCard.tsx) — the one
+//     Go path (docked here on Sell, its sell list says where else it sells);
 //   · Kind · Trend (the chart, open, over the chosen span: usePriceSeries, 0226) · Range · In stock (PriceRows);
 //   · why the price is what it is (world.price_why, 0185: WhyThisPrice);
 //   · who bought what here (0227: CityGoodTrades).
@@ -39,8 +39,7 @@ export function GoodDetail({
   /** The act can run here now (Buy: the city sells it; Sell: she carries it and the city deals in it). */
   canAct: boolean
   onAct: () => void
-  /** Null where no trip can be planned from this press (Sell, docked here: sell it here). */
-  onPlan: (() => void) | null
+  onPlan: () => void
   /** Re-ask who bought what after her own trade (the fleet's version). */
   refresh: unknown
 }) {
@@ -61,11 +60,9 @@ export function GoodDetail({
             {t(side === 'buy' ? 'desk.buyNow' : 'desk.sellNow')}
           </Button>
         )}
-        {onPlan && (
-          <Button variant={docked ? 'secondary' : 'primary'} onClick={onPlan} data-testid="good-plan">
-            {t('desk.planTrip')}
-          </Button>
-        )}
+        <Button variant={docked ? 'secondary' : 'primary'} onClick={onPlan} data-testid="good-plan">
+          {t('desk.planTrip')}
+        </Button>
       </div>
       {!docked && (
         <Hint className="mt-1" data-testid="good-not-docked">

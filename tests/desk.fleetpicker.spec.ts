@@ -164,10 +164,12 @@ test.describe('several fleets', () => {
     await expect(picker).toContainText('Gaivota')
     await page.keyboard.press('ArrowLeft')
     await expect(picker).toContainText(SECOND_FLEET)
-    // …but not while typing: the search field keeps its arrows.
-    const search = page.getByRole('textbox', { name: 'Search goods' })
+    // …but not while typing: a text field keeps its arrows (the trip card's units, Buy › a good › Plan trip).
+    await page.getByTestId('city-good').first().click()
+    await page.getByTestId('good-plan').click()
+    const search = page.getByTestId('trade-card').getByRole('textbox').first()
     await search.click()
-    await search.pressSequentially('co')
+    await search.pressSequentially('12')
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowLeft')
     await expect(picker).toContainText(SECOND_FLEET)

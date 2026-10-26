@@ -1,12 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { pressCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TRADE LOOP FROM THE DESK (owner row 194's acceptance, docs/COMMAND_REDESIGN.md R1; the faces are Buy and Sell
 // since owner row 218): a new company at Lisbon makes a whole buy → sail → sell trip, at the owner's desktop
 // (1440×900) and the phone (390×844):
-//   Buy → a good of Lisbon → Buy here at once → Sell → another city pressed on the mini map → the good → Plan trip →
+//   Buy → a good of Lisbon → Buy here at once → Sell → the good → Plan trip →
 //   a Sell row → Go
 // and the queue holds the trip: a SAIL to the sell city (through its stops when there are any) and a SELL last —
 // no PROVISION line, because supplies are the SAIL's own (0225, row 203). The SAIL runs at once in port, so
@@ -47,12 +46,10 @@ for (const size of SIZES) {
       await tray.getByTestId('trade-tray-send').click()
       await expect(tray).toHaveCount(0, { timeout: 60_000 })
 
-      // SELL: another city pressed on the map; the good aboard at its price; Plan trip opens the trip
+      // SELL: the good aboard at Lisbon's price; Plan trip opens the trip, its sell list says where
       await faces.getByRole('tab', { name: 'Sell', exact: true }).click()
       const face = page.getByTestId('desk-sell')
       await expect(face).toBeVisible()
-      await pressCity(page, face.getByTestId('trade-map'), 'AMS')
-      await expect(face.getByTestId('city-goods')).toHaveAttribute('data-city', 'AMS')
       const good = face.locator(`[data-testid="city-good"][data-good="${code}"]`)
       await expect(good).toBeVisible({ timeout: 60_000 })
       if ((await good.getAttribute('aria-pressed')) !== 'true') await good.click()

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Hint, SheetSection, useWide } from '../../../components/ui'
+import { Button, Hint, SheetSection, useWide } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { buyableHere, listedHere } from '../../../domain/market'
 import { usePortMarket } from '../../../live/usePortMarket'
@@ -111,7 +111,10 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
   }, [planPressed, wide])
   const planFrom = (r: CityGoodRow) => () => {
     if (!city) return
-    openPlan({ good: r.code, buyAt: side === 'buy' ? city : null, sellAt: side === 'sell' ? city : null, units: null, max: null, min: null, insure: false })
+    // SELL: the trip ends at the city in hand — unless she lies there or it buys none of this good; then the card's
+    // sell list says where (every city the board serves for it).
+    const sellAt = side === 'sell' && !here && r.row ? city : null
+    openPlan({ good: r.code, buyAt: side === 'buy' ? city : null, sellAt, units: null, max: null, min: null, insure: false })
     setPlanPressed((n) => n + 1)
   }
 
@@ -145,13 +148,17 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
         docked={here}
         canAct={side === 'buy' ? buyableHere(r.row) : r.units > 0}
         onAct={() => setTrading({ code: r.code, fleet: fleet.id })}
-        onPlan={side === 'sell' && here ? null : planFrom(r)}
+        onPlan={planFrom(r)}
         refresh={fleet.version}
       />
     ) : (
-      <Hint className="mb-3" data-testid="good-detail-none">
-        {t('desk.noBuyer')}
-      </Hint>
+      // the city keeps no row for a good she carries: say so, and plan where to sell it instead
+      <div className="mb-3" data-testid="good-detail-none">
+        <Hint>{t('desk.noBuyer')}</Hint>
+        <Button variant="primary" className="mt-2" onClick={planFrom(r)} data-testid="good-plan">
+          {t('desk.planTrip')}
+        </Button>
+      </div>
     )
 
   const goods = (

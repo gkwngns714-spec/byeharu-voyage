@@ -31,6 +31,8 @@ restructures law, the map as the place you see where things are.
 
 ---
 
+> **2026-10-26, owner row 218:** the Markets and Trade faces are replaced by **Buy** and **Sell** — the mini map with every city on top, a city pressed shows its goods with prices and charts. See `docs/COMMAND_REDESIGN.md` § Row 218. Sections below that describe the Markets face (§3.2–3.3, §3.9's watchlist) are history.
+
 ## Owner to confirm — every DEFAULT in this plan, in one table
 
 Every rule below is tagged **OWNER** (your words, above or in an earlier row) or **DEFAULT** (my

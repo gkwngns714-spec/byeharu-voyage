@@ -22,8 +22,9 @@ const SIZES = [
 /** An element's offset within the Buy face: the sheet scrolls to reach a row, and a scroll is not a move. */
 const top = (page: Page, id: string) =>
   page.getByTestId(id).first().evaluate((e) => {
-    const face = e.closest('[data-testid="desk-buy"]') as HTMLElement
-    return Math.round(e.getBoundingClientRect().top - face.getBoundingClientRect().top)
+    // wide: the centre pane scrolls by itself, so the offset is within its content (a scroll is not a move)
+    const box = (e.closest('[data-testid="desk-pane-chart"]') ?? e.closest('[data-testid="desk-buy"]')) as HTMLElement
+    return Math.round(e.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop)
   })
 
 for (const size of SIZES) {
