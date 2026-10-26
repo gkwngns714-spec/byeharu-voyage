@@ -367,7 +367,7 @@ export function queuedOrderWords(
 
 /** `<good> <n|ALL> [AT [op] <p>]` — the shape cmd.parse() reads for BUY and SELL (0008, and the
  *  route's writer in 0092). Null for any other shape, which is then said word by word. */
-function tradeOfTokens(verb: 'SELL' | 'BUY', tokens: string[]): { good: string; line: TradeLineInput } | null {
+export function tradeOfTokens(verb: 'SELL' | 'BUY', tokens: string[]): { good: string; line: TradeLineInput } | null {
   const words = tokens.filter((t) => !/^(?:FOR|FROM)$/i.test(t))
   const [good, qtyToken, ...rest] = words
   if (!good || !qtyToken) return null

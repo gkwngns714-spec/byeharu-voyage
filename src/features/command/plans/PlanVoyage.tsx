@@ -1,5 +1,3 @@
-import { useMemo, useState } from 'react'
-import { SmallChart } from '../../../chart'
 import { Figure, Hint, Note, Row } from '../../../components/ui'
 import { fleetCrew } from '../../../domain/fleet'
 import { useSeaConditions } from '../../../live/useSeaConditions'
@@ -7,8 +5,7 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatInt, formatVoyageDays } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
-import type { PlanDraft } from './planDraft'
-import { daysAt, planLines, reachBoard, reachWords, seaAsksWords } from './planLines'
+import { daysAt, reachBoard, reachWords, seaAsksWords, type PlanLeg } from './planLines'
 
 // THE PLAN'S VOYAGE — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 183):
 //
@@ -17,11 +14,10 @@ import { daysAt, planLines, reachBoard, reachWords, seaAsksWords } from './planL
 //      show how long, provision needed for the current crew, how many crews needed, etc... It should show
 //      restrictions – if whether my level, my class, my ship can go to that location."
 //
-// Four parts, under the trade card, on the Trade face:
+// Under the trade card, on the Trade face:
 //
-//   THE CHART — `SmallChart`, the same chart the Map tab draws with, handed ONLY the plan's cities (where the
-//   fleet is, the ports on the way, the buy city, the sell city) and only this fleet (no merchants), with the
-//   plan's courses dashed: the courses `planLines` proposes, the same `path` the queued SAIL lines carry.
+//   THE CHART — since owner row 217 (2026-10-26: *"on command, trade, map should be at top"*) the plan's chart is
+//   THE map on top of the Trade page (TradeMap.tsx), drawn from the same legs (usePlanCourse.ts) this lists.
 //
 //   THE VOYAGE — days at sea as the board serves them (to the buy city, then on to the sell city) and the crew
 //   against the ships' minimum (`fleetCrew`, row 179's model: `ship_classes.crew_required`, below which SAIL
@@ -47,56 +43,26 @@ import { daysAt, planLines, reachBoard, reachWords, seaAsksWords } from './planL
 
 export function PlanVoyage({
   fleet,
-  plan,
   board,
   buyRow,
   sellRow,
+  legs,
 }: {
   fleet: FleetView
-  plan: PlanDraft
   board: GoodBoard | null
   buyRow: BoardBuyRow | null
   sellRow: BoardSellRow | null
+  /** The plan's legs, proposed once (usePlanCourse.ts) — drawn by the map on top, listed here. */
+  legs: readonly PlanLeg[]
 }) {
   const t = useT()
-  const seaNav = useWorld((s) => s.seaNav)
   const portByCode = useWorld((s) => s.portByCode)
-  const snapshot = useWorld((s) => s.snapshot)
   const sea = useSeaConditions()
   const name = (code: string) => portNameOf(portByCode, code)
-
-  // THE FLEET THE COURSES ARE PROPOSED FROM, held while nothing about where it starts has changed: the world is
-  // re-read every 3 s and every read is a new object, and proposing a course is the pathfinder's work. A new
-  // version (a trade, an arrival, an order) or status hands the new one over (derive-from-the-last-render).
-  const fleetKey = `${fleet.id}:${fleet.version}:${fleet.status}:${fleet.port ?? ''}`
-  const [held, setHeld] = useState({ key: fleetKey, fleet })
-  if (held.key !== fleetKey) setHeld({ key: fleetKey, fleet })
-
-  const toBuyKey = (buyRow?.stops ?? []).join(' ')
-  const toSellKey = (sellRow?.stops ?? []).join(' ')
-  const legs = useMemo(() => {
-    if (!seaNav || !plan.sellAt) return []
-    const text = planLines(plan, held.fleet, seaNav, portByCode, {
-      toBuy: toBuyKey ? toBuyKey.split(' ') : [],
-      toSell: toSellKey ? toSellKey.split(' ') : [],
-    })
-    return text.ok ? text.legs : []
-  }, [seaNav, plan, held.fleet, portByCode, toBuyKey, toSellKey])
-
-  const courses = useMemo(() => legs.map((l) => l.path.map(([lat, lon]) => ({ lat, lon }))), [legs])
-  const docked = fleet.status === 'DOCKED' ? fleet.port : null
-  const onlyKey = [docked, ...legs.map((l) => l.to), plan.buyAt, plan.sellAt]
-    .filter((c): c is string => c !== null)
-    .filter((c, i, all) => all.indexOf(c) === i)
-    .join(' ')
-  const only = useMemo(() => (onlyKey ? onlyKey.split(' ') : []), [onlyKey])
-  const endsKey = [plan.buyAt, plan.sellAt].filter((c): c is string => c !== null).join(' ')
-  const considering = useMemo(() => (endsKey ? endsKey.split(' ') : []), [endsKey])
-
   const crew = fleetCrew(fleet)
 
   // CAN YOU GO THERE — the reach, per city the plan sails to (the board's verdict, in THE wording).
-  const reachRows = [plan.buyAt && buyRow && !buyRow.here ? buyRow : null, sellRow].filter(
+  const reachRows = [buyRow && !buyRow.here ? buyRow : null, sellRow].filter(
     (r): r is BoardBuyRow | BoardSellRow => r !== null,
   )
   const s = sea.view
@@ -106,21 +72,6 @@ export function PlanVoyage({
 
   return (
     <div className="mt-4" data-testid="plan-voyage">
-      <SmallChart
-        ports={snapshot?.ports ?? []}
-        fleets={[fleet]}
-        considering={considering}
-        highlight={null}
-        only={only}
-        legs={courses}
-        wholeWorld
-        ariaLabel={t('desk.planChart')}
-        className="aspect-[3/2] w-full"
-      />
-      <span className="sr-only" data-testid="plan-chart-cities">
-        {only.join(' ')}
-      </span>
-
       <span className="mt-4 block text-t-caption text-ink-faint">{t('desk.crewNow')}</span>
       <Row label={t('desk.crewNow')} value={<Figure value={t('desk.crewOf', { n: formatInt(crew.aboard), max: formatInt(crew.max) })} />} />
       <Row

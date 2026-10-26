@@ -60,15 +60,16 @@ for (const size of SIZES) {
       await expect(card).toBeVisible()
       await expect(page.getByRole('dialog'), 'the trade stands over the screen').toHaveCount(0)
 
-      // the chart, once the board has chosen the cities
+      // the chart, once the board has chosen the cities — THE map on top of the Trade page (owner row 217)
       const voyage = card.getByTestId('plan-voyage')
       await expect(voyage).toBeVisible()
-      const chart = voyage.getByTestId('small-chart')
+      const map = plans.getByTestId('trade-map')
+      const chart = map.getByTestId('small-chart')
       await expect(chart.getByTestId('map-view')).toBeVisible({ timeout: 60_000 })
       await expect(card.getByTestId('plan-queue')).toHaveText('Go', { timeout: 60_000 })
       await expect(chart.locator('[data-port-code]').first()).toBeAttached({ timeout: 30_000 })
 
-      const cities = ((await voyage.getByTestId('plan-chart-cities').textContent()) ?? '').trim().split(/\s+/)
+      const cities = ((await map.getByTestId('trade-map-cities').textContent()) ?? '').trim().split(/\s+/)
       const drawn = await chart.locator('[data-port-code]').evaluateAll((els) => [
         ...new Set(els.map((e) => e.getAttribute('data-port-code') ?? '')),
       ])

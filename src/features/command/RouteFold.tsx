@@ -43,7 +43,17 @@ import { useT } from '../../lib/i18n'
 // every beat. The fold now wears ONE `usePress` (src/live/usePress.ts): a button is busy only
 // while ITS OWN press is on the wire, and never on the beat.
 
-export function RouteFold({ fleet }: { fleet: FleetView }) {
+export function RouteFold({
+  fleet,
+  picked = false,
+  onPick,
+}: {
+  fleet: FleetView
+  /** OWNER ROW 217: the standing route is the order pressed — Trade.tsx draws it on the map on top, with its
+   *  estimate. Pressing the row opens the fold AND selects the route; pressing it again folds it and clears. */
+  picked?: boolean
+  onPick?: (on: boolean) => void
+}) {
   const t = useT()
   // THE ONE CLOCK (src/app/shellState.ts): the last lap's age ticks from it, never from a Date.now() in a render.
   const { nowMs } = useShellState()
@@ -104,8 +114,12 @@ export function RouteFold({ fleet }: { fleet: FleetView }) {
         label={label}
         value={lastLap ? <Figure value={formatDucatsDelta(lastLap.net)} tone={deltaTone(lastLap.net)} /> : undefined}
         chevron
-        tone={open ? 'accent' : 'default'}
-        onClick={() => setOpen((o) => !o)}
+        tone={open || picked ? 'accent' : 'default'}
+        onClick={() => {
+          // the fold toggles as it always has; the route is pressed while it stands open
+          if (onPick && route && book?.enabled) onPick(!open)
+          setOpen(!open)
+        }}
         data-testid="route-row"
       >
         {route && book?.enabled && (

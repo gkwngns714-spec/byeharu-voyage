@@ -24,7 +24,7 @@
 // (public.insure_voyage over the cargo then on board); nothing here guesses it.
 
 import { proposeCourse, sailOrigin, sailTarget } from '../../../domain/passage'
-import { pathLengthNm } from '../../../lib/geo'
+import { pathLengthNm, type LatLon } from '../../../lib/geo'
 import { formatMiles, formatVoyageDays } from '../../../lib/format'
 import type { SeaNav } from '../../../lib/sea'
 import type { BoardPassage, BoardSea, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
@@ -59,6 +59,55 @@ export interface PlanPassage {
   toSell: readonly string[]
 }
 
+/** ONE SAIL'S LEG — the course the one course author proposes from `from` to the harbour `code` (where the plan's
+ *  SAIL lines get theirs), its miles, and where it ends. Null when no water joins them. */
+function courseLeg(
+  nav: SeaNav,
+  portByCode: Record<string, SnapshotPort>,
+  from: LatLon | null,
+  here: string | null,
+  code: string,
+): { leg: PlanLeg; at: LatLon } | null {
+  const to = sailTarget({ dest: code }, portByCode)
+  const course = from && to ? proposeCourse(nav, from, to) : null
+  if (!to || !course) return null
+  return { leg: { from: here, to: code, path: course, nm: pathLengthNm(course.map(([lat, lon]) => ({ lat, lon }))) }, at: to }
+}
+
+/** THE LEGS THROUGH HARBOURS ALREADY CHOSEN — a queued trip's SAILs, in order (owner row 217: press an order, see
+ *  its route on the map). The same course author, from where the fleet is now, as `planLines` draws a plan's. The
+ *  legs up to the first harbour without water; the server re-verifies every course when its SAIL runs. */
+export function sailLegs(
+  fleet: FleetView,
+  nav: SeaNav,
+  portByCode: Record<string, SnapshotPort>,
+  codes: readonly string[],
+): PlanLeg[] {
+  const legs: PlanLeg[] = []
+  let here = fleet.status === 'DOCKED' ? fleet.port : null
+  let from = sailOrigin(fleet, portByCode)
+  for (const code of codes) {
+    if (code === here) continue
+    const next = courseLeg(nav, portByCode, from, here, code)
+    if (!next) break
+    legs.push(next.leg)
+    from = next.at
+    here = code
+  }
+  return legs
+}
+
+/** THE TRIP'S ROWS ON THE BOARD — the buy row (the plan's buy city), the sell row (its sell city), the days to sail
+ *  both (to the buy city, then on: the board's own days, 0 when she is there or sells what is aboard), and the
+ *  supplies the sell row's passage asks. THE ONE READING: the trade card and the order's estimate both print it. */
+export function tripRows(b: GoodBoard | null, plan: Pick<PlanDraft, 'buyAt' | 'sellAt'>) {
+  const buyRow = b && plan.buyAt ? (b.buy.find((r) => r.port === plan.buyAt) ?? null) : null
+  const sellRow = b && plan.sellAt ? (b.sell.find((r) => r.port === plan.sellAt) ?? null) : null
+  const toBuyDays = !plan.buyAt ? 0 : !buyRow ? null : buyRow.here ? 0 : buyRow.days
+  const days = sellRow && sellRow.days !== null && toBuyDays !== null ? toBuyDays + sellRow.days : null
+  return { buyRow, sellRow, days, supplies: sellRow?.supplies ?? null }
+}
+
 export function planLines(
   plan: PlanDraft,
   fleet: FleetView,
@@ -75,13 +124,11 @@ export function planLines(
   let laden = plan.buyAt === null
   /** A SAIL with its proposed course. */
   const sail = (code: string): boolean => {
-    const to = sailTarget({ dest: code }, portByCode)
-    const course = from && to ? proposeCourse(nav, from, to) : null
-    if (!course) return false
-    const nm = pathLengthNm(course.map(([lat, lon]) => ({ lat, lon })))
-    legs.push({ from: here, to: code, path: course, nm })
-    lines.push({ text: `SAIL ${code}${plan.insure && laden ? ' INSURED' : ''}`, path: course })
-    from = to
+    const next = courseLeg(nav, portByCode, from, here, code)
+    if (!next) return false
+    legs.push(next.leg)
+    lines.push({ text: `SAIL ${code}${plan.insure && laden ? ' INSURED' : ''}`, path: next.leg.path })
+    from = next.at
     here = code
     return true
   }

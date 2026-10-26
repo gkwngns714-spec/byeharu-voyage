@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Hint, SheetSection, useWide } from '../../../components/ui'
 import { useGoodBoard } from '../../../live/useDesk'
 import { useWorld } from '../../../live/worldStore'
@@ -14,12 +14,20 @@ import { useDeskPlan } from './planDraft'
 import { SellList } from './SellList'
 import { TradeCard } from './TradeCard'
 import { TradeStart, type TradeStartKind } from './TradeStart'
+import { TradeMap, type OrderPick } from './TradeMap'
+import { tripRows } from './planLines'
+import { usePlanCourse } from './usePlanCourse'
 import { useT } from '../../../lib/i18n'
 
 // TRADE — the one page the whole trip is made on (docs/COMMAND_REDESIGN.md §2, §5; owner rows 190 and 194,
 // 2026-10-25: *"i can only plan on buying but not for selling"*, *"this game must be playable, yet it is hard to
 // do so with just whats in the plan page"*). Three parts, one board read:
 //
+//   MAP     ON TOP (owner row 217, 2026-10-26: *"on command, trade, map should be at top. when i press my order, i
+//           should be able to see the route, time, money, profit all on estimate below the map + map"*): THE map
+//           (TradeMap.tsx, the small chart at 0 % zoom), the head of the centre pane on a wide glass and the first thing on a
+//           phone. It draws the order pressed in the orders pane — a queued trip, the voyage under way, the standing
+//           route — with its served estimate under it; else the plan being made; else where she is.
 //   HERE    THE PORT'S MARKET (owner row 210, 2026-10-26): Start = Here puts the market in the centre pane —
 //           every good this port trades and every good aboard, the cargo, the buy price, the sell price, and
 //           Buy / Sell that trade RIGHT HERE through THE trade tray (HereMarket.tsx → markets/DeskTrade.tsx, the
@@ -87,17 +95,35 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const fit = plan?.buyAt && plan.units === null && plan.sellAt ? (b?.sell.find((r) => r.port === plan.sellAt)?.supplies?.units_fit ?? null) : null
   // derive-from-the-last-render (PlanVoyage.tsx's pattern): the row's fit hands the next read its units, in place
   if (fit !== null && fit > 0 && fit !== units) setUnits(fit)
+  // THE PLAN'S LEGS, proposed once: the map on top draws them, the card's leg list prints them.
+  const { buyRow, sellRow } = tripRows(b, plan ?? { buyAt: null, sellAt: null })
+  const planOpen = start !== 'here' && plan !== null && good !== null
+  const legs = usePlanCourse(fleet, planOpen ? plan : null, buyRow, sellRow)
+  const ends = [plan?.buyAt ?? null, plan?.sellAt ?? null].filter((c): c is string => c !== null).join(' ')
+  const planDrawing = useMemo(() => (planOpen ? { legs, ends: ends ? ends.split(' ') : [] } : null), [planOpen, legs, ends])
+  // THE ORDER PRESSED (owner row 217): one of hers — a queued order, the voyage under way, the standing route — for
+  // this fleet. Pressed again, or Close, clears it.
+  const [picked, setPicked] = useState<(OrderPick & { fleet: string }) | null>(null)
+  const pickNow: OrderPick | null = picked?.fleet === fleet.id ? picked : null
+  const choose = (p: OrderPick | null) => setPicked(p ? { ...p, fleet: fleet.id } : null)
+  const map = (
+    <TradeMap fleet={fleet} plan={planDrawing} pick={pickNow} onClose={() => choose(null)} scrollOnPick={!wide} />
+  )
   return layout({
     testid: 'desk-plans',
     order: ['list', 'main', 'side'],
     list: (
       <>
+        {/* THE MAP ON TOP (owner row 217): the first thing on a phone; the centre pane's head on a wide glass */}
+        {!wide && map}
         <TradeStart fleet={fleet} plan={plan} start={start} onStart={setStart} />
         {plan && good && <SellList plan={plan} board={b} loading={board.loading && !b} />}
       </>
     ),
-    main:
-      start === 'here' ? (
+    main: (
+      <>
+        {wide && map}
+        {start === 'here' ? (
         <>
           <HereMarket fleet={fleet} pick={pick} onPick={(p) => setTrading({ ...p, fleet: fleet.id })} />
           {/* a phone: the tray at the bottom edge, over nothing it moves */}
@@ -111,12 +137,15 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           plan={plan}
           board={b}
           units={plan.units ?? units}
+          legs={legs}
           onQueued={() => turnTo('plans')}
           onRoute={() => turnTo('plans')}
         />
       ) : (
         <Hint data-testid="trade-empty">{t('desk.planSide')}</Hint>
-      ),
+      )}
+      </>
+    ),
     side: wide && tray ? (
       <div className="h-full min-h-0" data-testid="here-tray">
         {tray}
@@ -124,9 +153,15 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     ) : (
       <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto lg:px-4 lg:pb-6 lg:pt-3">
         {/* the standing route above the queue (0092, COMMAND_DESK §3.5: the one thing that writes orders by itself) */}
-        <RouteFold fleet={fleet} />
+        <RouteFold fleet={fleet} picked={pickNow?.kind === 'route'} onPick={(on) => choose(on ? { kind: 'route' } : null)} />
         <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
-          <Queue fleet={fleet} onCancel={(position) => cancel(fleet.id, position)} onClear={() => clearQueue(fleet.id)} />
+          <Queue
+            fleet={fleet}
+            onCancel={(position) => cancel(fleet.id, position)}
+            onClear={() => clearQueue(fleet.id)}
+            picked={pickNow?.kind === 'order' ? pickNow.id : pickNow?.kind === 'voyage' ? 'voyage' : null}
+            onPick={choose}
+          />
         </SheetSection>
         {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
         <InsuredVoyages />

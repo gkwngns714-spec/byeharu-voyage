@@ -67,7 +67,9 @@ test('COMMAND composes no verb — it keeps whose orders, and her queue', () => 
   // `SmallChart` takes no tap (its header, point 1), so it composes nothing; the plan's SAIL lines are still
   // written by planLines.ts and sent through cmd.issue_lines, as before. Only `SmallChart`, only in this file.
   const PICTURES: Record<string, readonly string[]> = {
-    'features/command/plans/PlanVoyage.tsx': [/\bSmallChart\b/.source],
+    // 2026-10-26, owner row 217 (*"map should be at top"*): that chart moved to the top of Trade, TradeMap.tsx —
+    // the same picture (no tap), now also of the order pressed. PlanVoyage draws none.
+    'features/command/plans/TradeMap.tsx': [/\bSmallChart\b/.source],
   }
   const offenders: string[] = []
   for (const f of files(path.join(SRC, 'features', 'command'))) {
