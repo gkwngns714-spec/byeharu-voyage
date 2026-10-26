@@ -204,3 +204,4 @@ export function parsePointToken(token: string): LatLon | null {
   }
   return { lat, lon }
 }
+export * from './legs'

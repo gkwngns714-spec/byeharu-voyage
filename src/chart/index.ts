@@ -46,6 +46,8 @@
 
 // ── the picture ────────────────────────────────────────────────────────────────────────────────
 export { ChartCanvas } from './ChartCanvas'
+export type { PathStop } from './ShipPathLayer'
+export { loopD } from './route'
 export { SmallChart } from './SmallChart'
 // The whole-world locator inset a full-tab chart wears in a corner (its header carries the §7B
 // answers — including why it composes the chart's parts rather than `ChartCanvas` whole).

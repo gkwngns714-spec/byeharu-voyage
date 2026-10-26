@@ -8,9 +8,10 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatPriceDelta, formatTwoClocks, instantMs, realMsToVoyageDays } from '../../../lib/format'
 import type { FleetView } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
-import { orderTrips, tripOf, type OrderTrip } from './orderTrip'
-import { daysAt, tripRows, type PlanLeg } from './planLines'
-import { useSailLegs } from './usePlanCourse'
+import { orderTrips, tripOf, type OrderTrip } from '../../../domain/order'
+import { daysAt, type PlanLeg } from '../../../domain/passage'
+import { tripRows } from './planLines'
+import { useSailLegs } from '../../../live/useSailLegs'
 
 // THE MAP ON TOP OF THE BUY AND SELL FACES, AND THE ORDER'S ESTIMATE UNDER IT — the owner, 2026-10-26 (row 217):
 //
