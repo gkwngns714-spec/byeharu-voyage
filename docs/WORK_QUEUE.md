@@ -1,5 +1,10 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## RESUMED 2026-10-26 ~12:15 UTC (PC gkwng)
+- #345 mirrored Buy/Sell MERGED 12:15 UTC (1112dd8, client only).
+- Economy watch +5 h 20 min (12:06 count): moved_since_close +138, new_slot 0, under_reserve 118, broke 38, gifts 144 (1.12 M), fees 3,063 (203,855 ducats), debtors 4. All under the switch-back triggers: stays ON.
+- Building locally (worktrees `~/dev/wt-<branch>`, node_modules junctions): `osn-flaky-1026` (trade.ceiling:267 + 0019 self-assert), `osn-e5-restock` (E5 = 0245, lands DARK), `osn-n1-stats-history` (N1 = 0246).
+
 ## HAND-OFF 2026-10-26 ~10:40 UTC (PC 디폴리스 shut down; owner moves to another PC) — READ THIS FIRST
 **Prod head 0244. CLOSED ECONOMY ON since 06:52:22 UTC.** Main Acceptance green on a33d77f.
 Live today (this PC): 0225 Trade · 0226 price history · 0227 who bought what · 0228/0229 E1/E2 · 0231 legs fit supplies · 0232 Stats live per second · 0233/0234 E3/E4 · 0235 money log · 0236/0237 E4b (dock fee, 1-min port prep, country tax, gifts by cash) · 0238 buy where she can sail (Port Royal) · 0240 E7 guard + switch (LIT) · 0241 sail on credit (debts paid from the next sale; capitals help players) · 0242 arrivals every 1 s (avg 0.73 s) · 0243 stats count adds both halves · 0244 stats filters. Client: #311 #312 #314 #315 #319 #325 #328 #329 #331 #333 #334 #337 #339 #340. Designs merged: ROUTE_BUILDER, CLOSED_ECONOMY (+§3 daily max stock, §4b wants, §4c fees/prep/tax), NEWS_AND_MARKERS, SHIP_STORES_AND_VARIETY.
