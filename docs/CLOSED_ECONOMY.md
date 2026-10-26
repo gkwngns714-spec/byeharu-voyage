@@ -124,7 +124,12 @@ register — shares are near sold out (4,457 of 4,920 levels built), donations a
 | cap | 0.30 | 1.5 h |
 
 - **Zero investment:** 0.03 — goods still come back, slowly. Never zero. *Decided by default.*
-- **Depth (stock_target) does not change** — prices' level is untouched at the switch. *Decided by default.*
+- **OWNER 2026-10-26 (overrides the default above): the MAX STOCK moves with investment too, and both settings are set ONCE PER DAY.**
+  *"the max trade good stock, should increase and decrease depending on the investment of that city too, and the settings set by should be once per day."*
+  - **Once a day** (the daily job, 00:00 UTC), per harbour: read `I`, write `port_treasury.restock_rate` and `port_treasury.depth_mult`. Every reader uses the stored day's values; nothing recomputes them between days.
+  - **Max stock:** `stock_target = base_target × depth_mult`, `depth_mult = 0.5 + 1.0 × I / (I + I½)` → I = 0: 0.5× · median 504 k: ≈ 1.0× (today) · cap: 1.5×.
+  - **No jump:** a day's change is capped at ±10 % of depth (`depth_step_max`), and stock is NOT rescaled — it walks to the new max by the day's restock rate (goods are never created or destroyed by the re-set). The price moves only as the stock/max ratio moves.
+  - Dark: `depth_mult` = 1, `restock_rate` = `stock_regen_fraction` (byte parity). Folded into slice E5.
 - Readers re-cut: `tick_market_drift` (regen) and `public.price_path` (the outlook) read `restock_rate`
   instead of `stock_regen_fraction`. Dark, `restock_rate` returns `stock_regen_fraction` (byte parity).
 - The production works level's term (`works_factor(…,'production',…)` × `production_rate` = 0) stays as is:
