@@ -316,7 +316,7 @@ Prod head 0226. Merged + live today: #311 #312 Stats header/countdown, #314 mini
 | 4 | row 208 Tsushima: reach_passage leg cap from supplies at full hold + plain refusal | not started (diagnosis done: see owner row 208) | next free lane |
 | 5 | economy E1+E2 (dark) | `osn-econ-e1-e2` ("0228/0229") | agent building |
 | 6 | economy E3, E4, E4b (port fee, 1-min prep, country tax + power_relations), E5 (restock + max stock by investment, once a day), E6 (price impact), E6b (city wants ×2 daily), E7 guard → switch on → watch Stats a few days | — | after E1+E2 |
-| 7 | row 216 every chart kept + news markers you can press + live feed | `osn-news-markers` (design) | agent designing |
+| 7 | row 216 every chart kept + news markers (design MERGED #322, docs/NEWS_AND_MARKERS.md): **N1 first (Stats history is being thrown away daily past 72 h)** right after row 213 lands, then N2–N6 | — | queued after 213 |
 | 8 | map ships vanish and come back | — | agent diagnosing (read-only) |
 | 9 | route builder B1–B4 (after 0227 judge), R4 Report, R2, rollover W1–W4, fleets F1–F7, sea S3–S6 | — | queued |
 Deploy order rule: migrations one at a time in number order via `~/bin/bv-deploy.sh`, prod checks read first (pure SELECTs only). Waiting on owner: Casa do Segundo 0224, #268 pirates, row 175. Owner asked: keep tokens low; work until 15:00 KST 10-26.
