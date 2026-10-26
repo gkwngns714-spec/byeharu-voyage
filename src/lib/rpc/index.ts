@@ -86,6 +86,7 @@ import type {
   StatsMerchants,
   StatsMe,
   StatsNow,
+  MoneyFeed,
   IssueLinesResult,
   InvestReceipt,
   TowReceipt,
@@ -721,6 +722,10 @@ export function worldStatsMe(): Promise<RpcResult<StatsMe>> {
 /** The live figures this second (0224): money by holder, fleets at sea, trades since the last count. */
 export function worldStatsNow(): Promise<RpcResult<StatsNow>> {
   return call<StatsNow>('worldStatsNow')
+}
+/** Every money move after `after` (0235, owner row 219): both books, newest first, at most `limit`. Null = the newest. */
+export function worldMoneyFeed(after: string | null, limit = 50): Promise<RpcResult<MoneyFeed>> {
+  return call<MoneyFeed>('worldMoneyFeed', [after, limit])
 }
 
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */

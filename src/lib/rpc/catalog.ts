@@ -514,6 +514,16 @@ export const RPCS = {
   // 0224 — THE FIGURES KEEP TO THE SECOND (owner row 200; docs/dev-log/2026-10-26-stats-live.md): the one LIVE read,
   // asked every second while the Stats tab is open. Base row + the journal since the last count; no aggregate scan.
   worldStatsNow: { schema: 'world', fn: 'stats_now', args: [] },
+  // 0235 — EVERY COIN THAT MOVES IS TOLD (owner row 219; docs/dev-log/2026-10-26-money-feed.md): both money books'
+  // moves after `p_after` (null = no bound), newest first, at most `p_limit` (1…200). Asked every second beside World money.
+  worldMoneyFeed: {
+    schema: 'world',
+    fn: 'money_feed',
+    args: [
+      { name: 'p_after', type: 'timestamptz' },
+      { name: 'p_limit', type: 'int' },
+    ],
+  },
   // 0215 — THE SEA CONDITIONS (docs/SEA_CONDITIONS_AND_REGIONS.md): every zone with the title and the wave
   // resistance it asks, the caller's title, each of her fleets' wave, and whether the conditions bite yet. A
   // READ, no arguments (the company is the caller's). The Codex "Seas" face and the map's shading (C3) read it.
