@@ -71,6 +71,19 @@ Every step has one action:
 
 "Where can I sell X": tap X in Hold or Here. The Sell list **is** the answer. "Sell what is in my hold": Start = Hold.
 
+### Row 210 (2026-10-26): Here is the port's market
+
+The owner: *"the command trade- Here part, i dont get it. its either sell or buy, and yet nothing works. it should show my cargo, sell and buy prices at the center. thats it right? why is there days, supplies?"*
+
+Decided (the owner's word):
+
+1. **Here = the port's market, in the centre pane** (`plans/HereMarket.tsx`). One list: every good this port trades and every good aboard. Each row: the good, Cargo (units aboard), Buy (this port's ask), Sell (its bid; "—" when the port has no row for the good), and the two prices are the presses that trade **right here, at once**. No days, no supplies, no wages, no sell-city list on Here.
+2. **One trade path.** A press opens THE trade tray (`markets/DeskTrade.tsx` → `TradeTray` + `useTrade` + `useBuyCapacity`), the same tray Markets and the quay open. Prices are `world.market` (`usePortMarket`); what can be bought is `buyableHere`. On a wide glass the tray stands in the right pane until it closes; on a phone, at the bottom edge.
+3. **At sea**, Here shows the next port's prices read-only, with "Not docked" and no presses.
+4. **Cargo** stays the trip planner (a good aboard → where to sell → the card with days and supplies → Go). A plan opened from Markets (Plan on a row) lands under Cargo too.
+5. **"Nothing works", reproduced** on a canary PGlite world (Lisbon, 8,000 d.): Here listed goods with one price each; pressing one opened a trip card whose only button read `Pick sell` and was disabled (`TradeCard.tsx:200`, `disabled={... || !sellRow}`), Route disabled too (`:209`); the sell list it needed stood under ten goods in the left pane (below the fold at 1440×900, far down on a phone). Nothing on Here could buy or sell. With a sell row picked, Go did queue and run. The cause was the design, not a broken call: Here had no buy or sell at all.
+
+
 A **press selects** (`docs/dev-log/2026-10-25-plan-tab.md` "A press selects"; COMMAND_DESK §3.5): tapping a good or a row changes the card's figures in place. Nothing above it collapses, re-flows or moves. Every row of the card is always drawn, with a dash while unknown. The map has a fixed 3:2 box.
 
 ---
