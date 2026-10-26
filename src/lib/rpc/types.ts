@@ -2711,6 +2711,18 @@ export interface BoardPassage {
   /** 0219 — what the seas on this row's route ask (null when there is no leg: the city she is at). Absent before
    *  0219. Served while the sea conditions are dark too: the refusal is then what the rule WILL answer. */
   sea?: BoardSea | null
+  /** 0231 — why no passage within her stores reaches the city (`voyage.leg_refusal`): E_ENDURANCE for the least
+   *  longest leg a passage within her navigation would ask. Null when a passage reaches it, or when her navigation
+   *  (not her stores) is what shuts it. Absent before 0231. */
+  shut?: BoardShut | null
+}
+
+/** 0231 — a leg her stores cannot carry: the leg's days at sea, the days of supplies it asks, and the days her hold
+ *  can carry beside her cargo. The client prints these; it never compares them. */
+export interface BoardShut {
+  code: string
+  sentence: string
+  figures?: { nm: number; leg_days: number; need_days: number; carry_days: number; cap_nm: number | null }
 }
 
 /** 0219 — what a board row's seas ask (`public.sea_routes`): the most any leg of the route asks, and the one
@@ -2855,8 +2867,9 @@ export interface GoodBoard {
   quoted: number
   /** Her captain's reach (0188); null for a company that sails without one. */
   reach?: { navigation: number; reach_nm: number } | null
-  /** The stores `sailable` read (0188): days at sea her casks carry now, and the margin a leg must leave. */
-  supplies?: { days: number; margin: number }
+  /** The stores (0188): days at sea her casks carry now, and the margin a leg must leave. 0231: `carry_days`, the
+   *  days of supplies her hold can carry beside her cargo (every SAIL tops up to them): the longest leg she sails. */
+  supplies?: { days: number; margin: number; carry_days?: number | null }
   /** 0219 — whether the sea conditions bite, and the title and wave the rows' `sea` was judged for. */
   sea?: { bite: boolean; title: number | null; wave: number | null }
   assumes: string
