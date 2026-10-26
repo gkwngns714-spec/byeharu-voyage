@@ -1,11 +1,10 @@
-import { useId, useMemo, useRef, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { panBackMs, panByDrag, panByKey, type ChartWindow, type PanLimits } from './chartPan'
 import { priceChartModel, type ChartOutlookInput } from './priceChartModel'
 import { stockLevel } from './stockLevel'
 import { formatInt } from '../../lib/format'
 import type { PricePoint } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
-import { useElementSize } from '../../chart/useElementSize'
 
 /** A COMPACT chart's height, in px (owner row 226): a modest panel, never a page. ~0.45 of its width, held between
  *  these two — 150 px on a phone, 180 px on a wide column — so the price and the Buy / Sell controls stay in view. */
@@ -89,7 +88,16 @@ export function PriceChart({
   const clip = useId()
   const drag = useRef<{ id: number; x: number; offsetMs: number } | null>(null)
   const box = useRef<HTMLDivElement>(null)
-  const measured = useElementSize(box).width
+  const [measured, setMeasured] = useState(0)
+  // the column's own width, so a compact plane is drawn 1:1 (the ResizeObserver is the external system)
+  useEffect(() => {
+    const el = box.current
+    if (!compact || !el) return
+    const ro = new ResizeObserver((e) => setMeasured(e[0]?.contentRect.width ?? 0))
+    ro.observe(el)
+    setMeasured(el.getBoundingClientRect().width)
+    return () => ro.disconnect()
+  }, [compact])
   const plane = useMemo(
     () =>
       size ??
