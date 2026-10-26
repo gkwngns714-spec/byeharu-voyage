@@ -39,7 +39,7 @@ import { test, expect } from '@playwright/test'
 // (tests/appReady.fixture.ts) because a second browser spec — nav.geometry — needs exactly the
 // same three, and two copies of `ready()` would drift apart in silence. The reasoning that used to
 // sit inline here travelled with them; nothing about it changed.
-import { PHONE, ready, reachable } from './appReady.fixture'
+import { PHONE, reachable, ready, settled } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
 
 // 'rank' joined the list 2026-08-23, when 0025 gave that tab a wide table to draw. It was the only
@@ -590,10 +590,11 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
   }
   expect(geometry.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(geometry.pageClientW)
 
-  // 3. WHAT THE FOLD CARRIES: the keep-level stepper in the Supplies column, and the one hand-off
-  //    at the foot. Every control in it clears the 44px reach floor (a "Less"/"More" that is 36px
-  //    is the same defect Input.tsx learned in August).
-  await expect(fold.locator('[data-testid="fleet-keep-stepper"]')).toBeVisible()
+  // 3. WHAT THE FOLD CARRIES: the supplies as one line (owner row 203 / 0225: no keep control), and the one
+  //    hand-off at the foot. Every control in it clears the 44px reach floor.
+  await expect(fold.locator('[data-testid="fleet-stores-days"]')).toBeVisible()
+  await expect(fold.locator('[data-testid="fleet-keep-stepper"]')).toHaveCount(0)
+  await expect(fold.locator('[data-testid="fleet-keep"]')).toHaveCount(0)
   await expect(fold.locator('[data-testid="fleet-command"]')).toBeVisible()
   const short = await fold.evaluate((el) =>
     [...el.querySelectorAll('button')]
@@ -603,16 +604,6 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
   )
   expect(short, 'a control in the fold is under the 44px reach floor').toEqual([])
 
-  // 4. THE KEEP BUTTON APPEARS ONLY WHEN THE STEPPER DIFFERS from what the server holds, and it
-  //    commits — a fresh company is under no order, so one step up is a change, and after the
-  //    press the server holds it and the button goes away again.
-  await expect(fold.locator('[data-testid="fleet-keep"]')).toHaveCount(0)
-  await fold.locator('[data-testid="fleet-keep-stepper"] button[aria-label="More"]').click()
-  const keep = fold.locator('[data-testid="fleet-keep"]')
-  await expect(keep).toBeVisible()
-  await expect(keep).toHaveText(/^Keep \d+ days?$/)
-  await keep.click()
-  await expect(keep, 'the keep did not land — the button should go once the server holds the level').toHaveCount(0, { timeout: 30_000 })
 
   // 5. PRESS THE ROW AGAIN: folded. No fold in the DOM, and the row is where it was.
   await rows.first().click()
@@ -649,11 +640,16 @@ test(`COMMAND: the route row unfolds in place above the queue at ${PHONE.width}p
   await page.goto('command')
   await ready(page)
   // 2026-10-18: the route and the queue are the desk's Plans face (docs/COMMAND_DESK.md §3.5)
-  await page.getByRole('tab', { name: 'Plans' }).click()
+  await page.getByRole('tab', { name: 'Trade' }).click()
+  // 0225: the Trade face's Start list (what this port sells) loads after the press; let it land before measuring
+  await settled(page.getByTestId('desk-plans'))
   const row = page.getByTestId('route-row')
   await expect(row).toBeVisible()
   // The route book has landed (the label names what it read), so no late text moves the row.
   await expect(row).toContainText(/Not open yet|No route|Route ·/)
+  // 0225: the route stands with the orders at the foot of the Trade face (below Start, the sell list and the card), so
+  // the sheet is brought to it FIRST — the press itself must then scroll nothing (a scroll would read as a move).
+  await row.scrollIntoViewIfNeeded()
   await page.waitForTimeout(400)
 
   const MEASURE = () => {
@@ -674,6 +670,7 @@ test(`COMMAND: the route row unfolds in place above the queue at ${PHONE.width}p
     }
   }
   const before = await page.evaluate(MEASURE)
+  console.log(`COMMAND route row @${PHONE.width}px before the press: ${JSON.stringify(before)}`)
   expect(before.row, 'no route row').not.toBeNull()
   expect(before.queue, 'no queue section').not.toBeNull()
   expect(before.unfold, 'a route unfold stands before anything was pressed').toBeNull()

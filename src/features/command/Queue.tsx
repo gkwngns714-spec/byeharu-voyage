@@ -96,6 +96,7 @@ export function Queue({
           mark={<Icon name="ship" size={18} className="text-info" />}
           label={t('command.sailingTo', { place: boundForLabel(where, (c) => portNameOf(portByCode, c)) })}
           value={due !== null ? <Figure value={due} tone="info" /> : undefined}
+          data-testid="queue-passage"
         >
           <span className="block text-t-caption text-ink-faint">
             {t('command.milesOf', { done: formatMiles(fleet.voyage.nm_done), total: formatMiles(fleet.voyage.total_nm) })}

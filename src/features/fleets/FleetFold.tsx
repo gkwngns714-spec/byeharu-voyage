@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bar, Button, Figure, Row, SectionColumns, SheetSection } from '../../components/ui'
 import { formatOfTotal } from '../../lib/format'
@@ -11,7 +10,6 @@ import { FleetCargo } from './FleetCargo'
 import { FleetShips } from './FleetShips'
 import { FleetStores } from './FleetStores'
 import { fleetDue } from './fleetLine'
-import { keepDays, useStandingOrder } from './standingOrder'
 import { useT } from '../../lib/i18n'
 
 // ONE FLEET, UNFOLDED UNDER ITS ROW — owner row 89 (2026-09-13):
@@ -50,11 +48,10 @@ import { useT } from '../../lib/i18n'
 // in its own cell so that `SheetSection`'s `first:mt-2` lands on all three alike and their tops
 // agree to the pixel.
 //
-// ── THE TWO BUTTONS ────────────────────────────────────────────────────────────────────────────
-// The keep button belongs to the SUPPLIES column and appears only when the stepper differs from
-// what the server holds (a primary button that is disabled every time it is first seen is §2
-// item 1's complaint). "Command <fleet>" is the hand-off this tab has always had — it points
-// COMMAND at her — and it stands at the fold's foot, in flow, never pinned.
+// ── THE ONE BUTTON ────────────────────────────────────────────────────────────────────────────
+// "Command <fleet>" is the hand-off this tab has always had — it points COMMAND at her — and it
+// stands at the fold's foot, in flow, never pinned. (The keep button went with the standing order,
+// owner row 203 / 0225: supplies are bought automatically at every SAIL.)
 
 export function FleetFold({ fleet }: { fleet: FleetView }) {
   const t = useT()
@@ -62,24 +59,11 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
   const { nowMs } = useShellState()
   const navigate = useNavigate()
   const handOff = useCommandDraft((s) => s.handOff)
-  const standing = useStandingOrder(fleet)
-
-  // THE STEPPER'S DRAFT, seated on the served figure. Null means "what the server holds", so a
-  // read that lands while the fold is open re-seats the stepper and a committed change needs no
-  // effect to clear it: the draft is dropped the moment the server agrees with it.
-  const served = standing.order?.days ?? 0
-  const [draft, setDraft] = useState<number | null>(null)
-  const days = draft ?? served
 
   // The draft is a structured INTENT (domain/order): the verb and the fleet, the pickers open.
   const command = (intent: CommandIntent) => {
     handOff(intent)
     navigate('/command')
-  }
-  const commit = () => {
-    void standing.keep(days).then((ok) => {
-      if (ok) setDraft(null)
-    })
   }
 
   const fraction = voyageFraction(fleet)
@@ -113,33 +97,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
           <FleetCargo fleet={fleet} />
         </SheetSection>
         <SheetSection heading={t('fleets.supplies')} data-testid="fleet-fold-section">
-          <FleetStores
-            fleet={fleet}
-            order={standing.order}
-            book={standing.book}
-            days={days}
-            onDays={setDraft}
-            refusal={standing.refusal}
-            onDismissRefusal={standing.dismissRefusal}
-          />
-          {draft !== null && days !== served && (
-            <Button
-              variant="primary"
-              className="mt-3 w-full"
-              busy={standing.busy}
-              busyLabel={t('fleets.saving')}
-              // Until the standing-order book has been read, `keep()` refuses silently
-              // (standingOrder.ts: `if (!book || busy) return false`) — so the button must not be
-              // pressable then, or a quick press does nothing at all. Seen in CI 2026-10-13
-              // (flicker.spec, run 38348647015): the press landed before world.provision_presets()
-              // answered and no order was ever sent.
-              disabled={!standing.book}
-              onClick={commit}
-              data-testid="fleet-keep"
-            >
-              {days === 0 ? t('fleets.stopKeeping') : t('fleets.keepN', { days: keepDays(days) })}
-            </Button>
-          )}
+          <FleetStores fleet={fleet} />
         </SheetSection>
       </SectionColumns>
 

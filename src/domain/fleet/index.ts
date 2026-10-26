@@ -48,7 +48,6 @@ export {
   shipHoldFree,
   shipHoldUsed,
   // TONS A CREW NEEDS FOR SO MANY DAYS AT SEA (owner row 183) — the server's consumption, for a plan.
-  suppliesForDays,
   voyageFraction,
   worstHullFraction,
   type CargoLine,

@@ -60,7 +60,8 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     await openCityFace(page)
-    await page.getByRole('tab', { name: /^Trade/i }).first().click()
+    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
+    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
     const rows = page.locator('[data-testid="trade-row"]')
@@ -128,7 +129,8 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     await openCityFace(page)
-    await page.getByRole('tab', { name: /^Trade/i }).first().click()
+    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
+    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
     const rows = page.locator('[data-testid="trade-row"]')
@@ -222,7 +224,8 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     await openCityFace(page)
-    await page.getByRole('tab', { name: /^Trade/i }).first().click()
+    // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
+    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
     await page.waitForTimeout(400)
 
     const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
@@ -355,7 +358,7 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     // 2026-10-18: the route and the queue are the desk's Plans face (docs/COMMAND_DESK.md §3.5)
-    await page.getByRole('tab', { name: 'Plans' }).click()
+    await page.getByRole('tab', { name: 'Trade' }).click()
     const row = page.getByTestId('route-row')
     await expect(row).toContainText(/Not open yet|No route|Route ·/)
     await page.waitForTimeout(400)

@@ -27,3 +27,10 @@ Q "select public.wind_the_clock()" >/dev/null
 echo "push_rc=$rc head=$head want=$want jobs=$(Q "select count(*) filter (where active) n from cron.job where jobname like 'byeharu-voyage:%'" | grep -o '"n": [0-9]*' | grep -o '[0-9]*$')"
 cd ~/dev/byeharu-voyage && git worktree remove --force ~/dev/bv-deploy
 if [ "$rc" = 0 ] && [ "$head" = "$want" ]; then gh pr merge $PR --squash 2>&1 | tail -1; gh pr merge $PR --squash --auto >/dev/null 2>&1; sleep 5; gh pr view $PR --json state --jq '"merged: "+.state'; else echo "NOT MERGING: push failed or head != $want"; exit 2; fi
+# AFTER THE MERGE, MAIN'S OWN NET (2026-10-25: 0218 merged green on its scoped PR run and turned main red on
+# desk.plan; the PR run is not main's full suite). Wait for main's Acceptance on the merge commit and say it.
+sha=$(gh pr view $PR --json mergeCommit --jq .mergeCommit.oid 2>/dev/null)
+if [ -n "$sha" ]; then
+  for i in $(seq 1 20); do id=$(gh run list --workflow acceptance.yml --branch main --limit 8 --json databaseId,headSha --jq ".[]|select(.headSha==\"$sha\")|.databaseId" | head -1); [ -n "$id" ] && break; sleep 15; done
+  if [ -n "$id" ]; then gh run watch $id --exit-status >/dev/null 2>&1; echo "MAIN ACCEPTANCE on ${sha:0:7}: $(gh run view $id --json conclusion --jq .conclusion) $(gh run view $id --json jobs --jq '.jobs[]|select(.conclusion=="failure")|.name' | tr '\n' ';')"; else echo "MAIN ACCEPTANCE on ${sha:0:7}: no run found — CHECK BY HAND"; fi
+fi
