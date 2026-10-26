@@ -5,7 +5,8 @@ import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatInt, formatVoyageDays } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
-import { daysAt, reachBoard, reachWords, seaAsksWords, type PlanLeg } from './planLines'
+import { daysAt, type PlanLeg } from '../../../domain/passage'
+import { reachBoard, reachWords, seaAsksWords } from './planLines'
 
 // THE PLAN'S VOYAGE — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 183):
 //

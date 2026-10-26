@@ -9,9 +9,18 @@
 //
 // A trip with no BUY and no SELL (a raw SAIL) has no plan: its route is drawn, its money is not served.
 
-import { tradeOfTokens } from '../../../domain/order'
-import type { FleetView, QueuedOrder } from '../../../lib/rpc'
-import type { PlanDraft } from './planDraft'
+import { tradeOfTokens } from './index'
+import type { FleetView, QueuedOrder } from '../../lib/rpc'
+
+/** The trade a trip makes (the Command desk's plan, field for field). */
+export interface TripPlan {
+  good: string
+  buyAt: string | null
+  sellAt: string | null
+  units: number | null
+  max: number | null
+  min: number | null
+}
 
 export interface OrderTrip {
   /** The queued orders' ids, in order. */
@@ -21,7 +30,7 @@ export interface OrderTrip {
   /** The harbours its SAILs call at, in order (port CODES). */
   stops: string[]
   /** The trade it makes, as the trade card's plan — null when it trades no one good. */
-  plan: PlanDraft | null
+  plan: TripPlan | null
 }
 
 const LIVE: readonly QueuedOrder['status'][] = ['pending', 'active']
