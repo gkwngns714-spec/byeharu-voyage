@@ -2317,6 +2317,8 @@ export interface MerchantCard {
     invested?: { port: string; name: string; paid: number }[]
     /** 0145 — her influence, by city and the country it counts for, most first. */
     influence?: { port: string; name: string; nation: string; points: number }[]
+    /** 0234 — her newest capital gift (her starting money, from her country's capital). Absent until she has one. */
+    last_gift?: { port: string; name: string; ducats: number; at: string }
   }
   fleet: {
     id: string
@@ -2482,6 +2484,16 @@ export interface TownHallView {
   you: { docked: boolean; holdings: { kind: WorkKind; shares: number; paid: number; owed: number }[] }
   /** 0144 — who holds the city, each country's influence there, and Donate. */
   influence: CityInfluence
+  /** 0234 — the capital's newest gifts to broke merchants. Absent until this city has given one. */
+  gifts?: TownHallGift[]
+}
+
+/** 0234 — one capital gift: the company, her starting money, when, and the realm harbour called for it (or null). */
+export interface TownHallGift {
+  name: string
+  ducats: number
+  at: string
+  called_from: string | null
 }
 
 /** 0144 (docs/INFLUENCE.md I2) — the Town Hall's influence block. */

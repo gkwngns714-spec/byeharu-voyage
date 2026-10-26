@@ -20,7 +20,7 @@ export const watchDict = defineDict({
     underReserve: '준비금 미달',
     underThin: '{n} 미만',
     broke: '파산',
-    gifts: '지원, 24시간',
+    gifts: '지원금, 24시간',
     swing: '가격 변동',
   },
 })

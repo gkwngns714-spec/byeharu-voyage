@@ -5,8 +5,9 @@ import { useSettled } from './useSettled'
 import { useTownHall } from './useTownHall'
 import { useWorld } from './worldStore'
 import { cmdInvest, cmdPreviewInvest, ok } from '../lib/rpc'
-import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallView } from '../lib/rpc'
-import { formatDucats, formatInt, formatPct } from '../lib/format'
+import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallGift, TownHallView } from '../lib/rpc'
+import { formatDucats, formatInt, formatPct, formatRelative } from '../lib/format'
+import { useShellState } from '../app/shellState'
 import { TownHallInfluence } from './TownHallInfluence'
 import { WORK_NAME } from './workNames'
 import { useT, t as tNow } from '../lib/i18n'
@@ -147,6 +148,9 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
         ))
       )}
 
+      {/* 0234: the capital's gifts to broke merchants (docs/CLOSED_ECONOMY.md §5.3) — only once it has given one. */}
+      {hall.gifts && hall.gifts.length > 0 && <Gifts gifts={hall.gifts} />}
+
       <DayBook hall={hall} />
 
       {investing && (
@@ -174,6 +178,30 @@ function purseLine(hall: TownHallView): string {
   return tNow('town.taxLine', { bid, pct: formatPct(hall.purse.tax_rate) })
 }
 
+/** 0234: "Gave Casa X · 2 h ago … 5,000" — the capital's newest gifts, as served. */
+function Gifts({ gifts }: { gifts: TownHallGift[] }) {
+  const t = useT()
+  const { nowMs } = useShellState()
+  return (
+    <div data-testid="townhall-gifts">
+      <Heading>{t('town.giftsGiven')}</Heading>
+      {gifts.map((g, i) => (
+        <Row
+          key={`${g.name}:${g.at}:${i}`}
+          label={
+            <span>
+              {t('town.gave', { name: g.name })}
+              <span className="block text-t-caption text-ink-muted">{formatRelative(Date.parse(g.at), nowMs)}</span>
+            </span>
+          }
+          value={<Figure value={formatDucats(g.ducats)} />}
+          data-testid="townhall-gift"
+        />
+      ))}
+    </div>
+  )
+}
+
 /** The last full day's money, in a few short rows — only the ones that moved. */
 function DayBook({ hall }: { hall: TownHallView }) {
   const t = useT()
@@ -190,8 +218,11 @@ function DayBook({ hall }: { hall: TownHallView }) {
     // 0172: the grant, the city's own earnings, and what passes between it and its capital.
     [t('town.d_grant'), hall.day.in.GRANT ?? 0],
     [t('town.d_earnings'), hall.day.in.EARNINGS ?? 0],
-    [t('town.d_fromCrown'), (hall.day.in.CROWN_TAX ?? 0) + (hall.day.in.CROWN_AID ?? 0)],
-    [t('town.d_toCrown'), (hall.day.out.CROWN_TAX ?? 0) + (hall.day.out.CROWN_AID ?? 0)],
+    // 0234: a capital's call on its realm (CROWN_CALL) is crown money too.
+    [t('town.d_fromCrown'), (hall.day.in.CROWN_TAX ?? 0) + (hall.day.in.CROWN_AID ?? 0) + (hall.day.in.CROWN_CALL ?? 0)],
+    [t('town.d_toCrown'), (hall.day.out.CROWN_TAX ?? 0) + (hall.day.out.CROWN_AID ?? 0) + (hall.day.out.CROWN_CALL ?? 0)],
+    // 0234: what a capital gave broke merchants.
+    [t('town.d_capitalGifts'), hall.day.out.CAPITAL_GIFT ?? 0],
   ]
   const moved = rows.filter(([, n]) => n !== 0)
   if (!hall.enabled || moved.length === 0) return null

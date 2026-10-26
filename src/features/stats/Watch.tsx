@@ -35,7 +35,12 @@ export function WatchSection({ watch }: { watch: StatsWatch | null | undefined }
         {watch.gifts_ducats === undefined ? (
           <StatCell label={t('watch.gifts')} text={dash} size="body" />
         ) : (
-          <StatCell label={t('watch.gifts')} value={watch.gifts_ducats} format={formatDucats} size="body" />
+          <StatCell
+            label={t('watch.gifts')}
+            text={`${formatInt(watch.gifts ?? 0)} · ${formatDucats(watch.gifts_ducats)}`}
+            size="body"
+            data-testid="stats-watch-gifts"
+          />
         )}
         <StatCell label={t('watch.swing')} text={swing} size="body" />
       </div>

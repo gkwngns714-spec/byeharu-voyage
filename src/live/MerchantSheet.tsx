@@ -301,6 +301,13 @@ function MerchantBody({
                   {card.company.invested.length > 1 ? ` +${card.company.invested.length - 1}` : ''}
                 </span>
               )}
+              {/* 0234: her newest capital gift — her starting money, from her country's capital. */}
+              {card.company.last_gift && (
+                <span className="block break-words text-t-caption text-ink-faint" data-testid="merchant-gift">
+                  {t('port.giftFrom', { amount: formatDucats(card.company.last_gift.ducats) })}
+                  <GoToLink to={{ kind: 'port', code: card.company.last_gift.port }}>{card.company.last_gift.name}</GoToLink>
+                </span>
+              )}
               {/* 0145: where her country's race is — her largest influence, the city and the country. */}
               {card.company.influence && card.company.influence.length > 0 && (
                 <span className="block break-words text-t-caption text-ink-faint" data-testid="merchant-influence">
