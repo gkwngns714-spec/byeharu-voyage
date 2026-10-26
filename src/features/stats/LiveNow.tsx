@@ -34,6 +34,7 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
           label={t('stats.purse')}
           value={ducats ?? 0}
           format={formatDucats}
+          size="body"
           tone="accent"
           text={ducats === null ? '—' : undefined}
           data-testid="stats-live-purse"
@@ -42,6 +43,7 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
           label={t('stats.money')}
           value={live?.total ?? 0}
           format={formatDucats}
+          size="body"
           text={live === null ? '—' : undefined}
           data-testid="stats-live-world"
         />

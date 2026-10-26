@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useShellState } from '../../app/shellState'
 import { worldStatsNow, type StatsNow } from '../../lib/rpc'
-import { serverNow } from '../../lib/serverClock'
 
 // THE TAB'S ONE LIVE PATH — world.stats_now() every second while the Stats tab is open, and nothing else
 // re-asks anything (0224; docs/dev-log/2026-10-26-stats-live.md).
@@ -20,9 +18,9 @@ import { serverNow } from '../../lib/serverClock'
 // StatsScreen is mounted. A hidden document skips its asks (both outcomes are truthful: the figures are
 // re-read the moment the tab is looked at again); an ask still on the wire is never stacked under a new one.
 //
-// MEASURED AS A GAP, NEVER AS A DATE (Rank's idiom, kept from statsPulse): the age of the last count is the
-// server's own `at − counted_at` plus the time elapsed HERE since the answer landed, both on the one clock
-// (lib/serverClock), so a device whose clock is wrong by an hour still ages a minute as a minute.
+// THE HEADER SAYS WHEN THE FIGURES ARE FROM (owner, 2026-10-26: "it says last count 13:28" — the age of the
+// fifteen-minute rollup read as a stale clock while the figures under it moved every second). It prints the
+// server's own `at` of the newest live answer, in Korea time like the top bar's clock, so it ticks with them.
 
 export const STATS_LIVE_MS = 1_000
 
@@ -31,13 +29,12 @@ export interface StatsLive {
   live: StatsNow | null
   /** Moves when `counted_at` moves: every face hands it to its rollup read as the `trigger`. */
   count: number
-  /** How long ago the last count was, in ms, on the one clock. Null before the first answer. */
-  countAgeMs: number | null
+  /** The server's instant of the newest live answer, in ms. Null before the first one lands. */
+  liveAtMs: number | null
 }
 
 export function useStatsLive(): StatsLive {
-  const { nowMs } = useShellState()
-  const [state, setState] = useState<{ live: StatsNow; landedMs: number } | null>(null)
+  const [live, setLive] = useState<StatsNow | null>(null)
   const [count, setCount] = useState(0)
 
   useEffect(() => {
@@ -50,7 +47,7 @@ export function useStatsLive(): StatsLive {
       try {
         const r = await worldStatsNow()
         if (!alive || !r.ok) return
-        setState({ live: r.value, landedMs: serverNow() })
+        setLive(r.value)
         if (lastCountedAt !== null && lastCountedAt !== r.value.counted_at) setCount((c) => c + 1)
         lastCountedAt = r.value.counted_at
       } finally {
@@ -65,9 +62,6 @@ export function useStatsLive(): StatsLive {
     }
   }, [])
 
-  const countAgeMs =
-    state === null
-      ? null
-      : Math.max(0, Date.parse(state.live.at) - Date.parse(state.live.counted_at)) + Math.max(0, nowMs - state.landedMs)
-  return { live: state?.live ?? null, count, countAgeMs }
+  const liveAtMs = live === null ? null : Date.parse(live.at)
+  return { live, count, liveAtMs: liveAtMs !== null && Number.isFinite(liveAtMs) ? liveAtMs : null }
 }

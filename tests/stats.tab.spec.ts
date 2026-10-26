@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { PHONE, reachable, ready } from './appReady.fixture'
 
 // THE STATS TAB (0214; the owner: "a statistic tab along with command, map etc. … updated regularly"). The
-// five faces render on a phone with no sideways scroll, the "Last count … ago" line says how old the count is,
+// five faces render on a phone with no sideways scroll, the "Updated HH:MM:SS" line says when the live figures are from,
 // and the Cities face draws every harbour OPEN for a company that has invested nowhere (0223, owner row 197: "all
 // the info without investment"). The local world's backend plays the stats job before the first read (localBackend.ts), so
 // the faces have a row to show. It names StatsScreen.tsx so CI's rule N selects it.
@@ -35,7 +35,7 @@ for (const vp of [PHONE, WIDE]) {
     // Overview: the world's money, with its age
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     await expect(page.getByTestId('stats-holder')).toHaveCount(4)
-    await expect(page.getByTestId('stats-updated')).toContainText('Last count')
+    await expect(page.getByTestId('stats-updated')).toContainText(/Updated \d\d:\d\d:\d\d/)
     // RIGHT NOW: the live band, with a purse that is a figure and not a dash — and the world's live figures (0224)
     await expect(page.getByTestId('stats-live')).toBeVisible()
     await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)
