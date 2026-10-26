@@ -1,5 +1,21 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## HAND-OFF 2026-10-26 ~10:40 UTC (PC 디폴리스 shut down; owner moves to another PC) — READ THIS FIRST
+**Prod head 0244. CLOSED ECONOMY ON since 06:52:22 UTC.** Main Acceptance green on a33d77f.
+Live today (this PC): 0225 Trade · 0226 price history · 0227 who bought what · 0228/0229 E1/E2 · 0231 legs fit supplies · 0232 Stats live per second · 0233/0234 E3/E4 · 0235 money log · 0236/0237 E4b (dock fee, 1-min port prep, country tax, gifts by cash) · 0238 buy where she can sail (Port Royal) · 0240 E7 guard + switch (LIT) · 0241 sail on credit (debts paid from the next sale; capitals help players) · 0242 arrivals every 1 s (avg 0.73 s) · 0243 stats count adds both halves · 0244 stats filters. Client: #311 #312 #314 #315 #319 #325 #328 #329 #331 #333 #334 #337 #339 #340. Designs merged: ROUTE_BUILDER, CLOSED_ECONOMY (+§3 daily max stock, §4b wants, §4c fees/prep/tax), NEWS_AND_MARKERS, SHIP_STORES_AND_VARIETY.
+
+| next | item | state |
+|---|---|---|
+| 1 | **#345 mirrored Buy/Sell game screen (owner 229)** | built, CI was running at hand-off: `gh pr checks 345` → green → `gh pr merge 345 --squash` (client only) |
+| 2 | **flaky `tests/trade.ceiling.spec.ts:267`** (sell tray Send disabled; failed on #344 and main 68b7817, passed on a33d77f) and **flaky 0019 self-assert in `tests/db.chain.spec.ts:468`** (cold boot; failed once on #343, re-run green) | diagnose, don't re-run until green |
+| 3 | **economy watch** (switched on 06:52): runbook + A1–A7 in `docs/dev-log/2026-10-26-econ-e7.md`. At +1 h: world total flat (+138), gifts 34, fees ~4,700/h, laps −12 % (port prep 60 s), **under_reserve 85 → 112** (cities pay more for sales than they take from buys). Switch back (`select public.economy_close_switch(false)`) if under_reserve > 150, broke > 120, or purses −5 %/day ×2 | check now |
+| 4 | E5 restock + max stock by investment (daily) → E6 prices like stocks → E6b city wants ×2 | build, numbers from 0245 |
+| 5 | N1 keep all Stats history (lost daily past 72 h) → N2–N6 news markers | build |
+| 6 | merchants' empty lap SELLs (E_NO_CARGO 400 → 10,400 per 15 min since 06:15) · owner's board 3–4.5 s · merchants net +18 M/day (balancing PARKED by owner) | look into |
+| 7 | ship stores space + ship variety V1–V4 · route builder B1–B4 · R4 Report · rollover W1–W4 · fleets F1–F7 · sea S3–S6 | queued |
+Owner's own company (JOOHOON HA, fleet Gaivota): at Banten with 45,085 cargo, purse 0 — can now sail on credit (0241). Waiting on owner: Casa do Segundo 0224, #268 pirates, row 175.
+Rules learned 10-26: renumber migrations to head+1 BEFORE deploy (push refuses a version below head); worktrees need `supabase/.temp` copied for `--linked`; this PC's locale is Korean (plain-Node word specs fail locally, pass on CI); never change live behaviour inside an economy watch window without saying so.
+
 ## RESUMED 2026-10-25 (PC gkwng). Read this first
 Prod head **0216**; main Acceptance green (0ec8ed1, 10-21). Nothing has landed since 10-21. Of the owner's rows 169–188, these are still open: 169a speed ×3, 173 weekly reset, 175 (blocked on the owner), 180 fleets, 183 Plan tab, 186 harbours.
 **In flight (two builds + one design), as CLOUD ROUTINES (the owner's cloud-first order; credit expires 11-05). The 09:14 runs died at once on the WEEKLY usage limit (reset 10:00 UTC); they were RE-FIRED at 10:23 UTC. Follow them on GitHub branches and PRs:**
