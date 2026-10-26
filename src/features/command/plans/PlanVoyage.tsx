@@ -113,6 +113,7 @@ export function PlanVoyage({
         highlight={null}
         only={only}
         legs={courses}
+        wholeWorld
         ariaLabel={t('desk.planChart')}
         className="aspect-[3/2] w-full"
       />
