@@ -5,10 +5,10 @@ import { ready, reachable } from './appReady.fixture'
 // THE TRADE LOOP FROM ONE PAGE (owner row 194's acceptance, docs/COMMAND_REDESIGN.md R1): a new company at
 // Lisbon makes a whole buy → sail → sell trip from the Trade page ALONE, at the owner's desktop (1440×900) and
 // the phone (390×844):
-//   Trade → Start = Here → a good this port sells → a Sell row → Go
-// and the queue holds the trip: a BUY here, a SAIL to the sell city (through its stops when there are any) and
-// a SELL last — no PROVISION line, because supplies are the SAIL's own (0225, row 203). The first lines run at
-// once in port, so within the minute the fleet has left: the BUY is done and she is SAILING (the strip says so).
+//   Trade → Here (the port's market, owner row 210) → Buy a good at once → Cargo → that good → a Sell row → Go
+// and the queue holds the trip: a SAIL to the sell city (through its stops when there are any) and a SELL last —
+// no PROVISION line, because supplies are the SAIL's own (0225, row 203). The SAIL runs at once in port, so
+// within the minute the fleet has left (the orders pane says so).
 // Nothing here asserts a price; the words on the page are 1–2 words (row 202), and that is asserted.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -33,12 +33,25 @@ for (const size of SIZES) {
       const face = page.getByTestId('desk-plans')
       await expect(face).toBeVisible()
 
-      // START = Here: what this port sells, each row one press
+      // HERE = the port's market (row 210): buy a good this port sells, at once, through THE trade tray
       await face.getByTestId('trade-start-here').click()
+      const buyable = face.locator('button[data-testid="here-buy"]:enabled')
+      await expect(buyable.first()).toBeVisible({ timeout: 120_000 })
+      const code = await buyable.first().locator('xpath=ancestor::*[@data-testid="here-row"]').getAttribute('data-good')
+      await buyable.first().click()
+      const tray = page.getByTestId('trade-tray')
+      await expect(tray.getByTestId('trade-tray-send')).toBeEnabled({ timeout: 60_000 })
+      await tray.getByTestId('trade-tray-send').click()
+      await expect(tray).toHaveCount(0, { timeout: 60_000 })
+
+      // CARGO: the good aboard, pressed, opens the trip
+      await face.getByTestId('trade-start-hold').click()
       const goods = face.getByTestId('trade-good')
-      await expect(goods.first()).toBeVisible({ timeout: 120_000 })
-      await goods.first().click()
-      await expect(goods.first()).toHaveAttribute('aria-pressed', 'true')
+      const good = face.locator(`[data-testid="trade-good"][data-good="${code}"]`)
+      await expect(good).toBeVisible({ timeout: 60_000 })
+      await good.click()
+      await expect(good).toHaveAttribute('aria-pressed', 'true')
+      await expect(goods).not.toHaveCount(0)
 
       // the card stands, with the sell list: open rows are presses, shut rows say why in 1–2 words
       const card = face.getByTestId('trade-card')
@@ -63,20 +76,19 @@ for (const size of SIZES) {
       await expect(go).toHaveText('Go', { timeout: 60_000 })
       await go.click()
 
-      // the trip is in the queue. The BUY ran the moment it was queued (she is in port, and the queue runs itself), so
-      // what stands is the rest of it: SAIL … , SELL last — and no PROVISION line anywhere (0225).
+      // the trip is in the queue: SAIL … , SELL last — no BUY (the cargo is already aboard) and no PROVISION (0225).
       await expect(page.getByTestId('trade-card')).toHaveCount(0, { timeout: 60_000 })
       const queued = page.getByTestId('queue-row')
       await expect(queued.first()).toBeVisible({ timeout: 30_000 })
       const texts = (await queued.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))
       console.log(`trade loop queued: ${JSON.stringify(texts)}`)
       expect(texts.length).toBeGreaterThanOrEqual(2)
-      expect(texts.some((t) => /\bBUY\b/i.test(t)), 'the BUY is still pending: it did not run in port').toBe(false)
+      expect(texts.some((t) => /\bBUY\b/i.test(t)), 'a BUY was queued for cargo already aboard').toBe(false)
       expect(texts.some((t) => /\bSAIL\b/i.test(t)), 'no SAIL in the queue').toBe(true)
       expect(/\bSELL\b/i.test(texts[texts.length - 1]), 'the SELL is not last').toBe(true)
       expect(texts.some((t) => /provision/i.test(t)), 'a PROVISION line was written').toBe(false)
 
-      // and she leaves: the BUY ran in port and the SAIL departed — the orders pane shows her passage under way
+      // and she leaves: the SAIL departed — the orders pane shows her passage under way
       await expect(page.getByTestId('queue-passage'), 'the fleet did not leave port within the minute').toBeVisible({ timeout: 90_000 })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     })

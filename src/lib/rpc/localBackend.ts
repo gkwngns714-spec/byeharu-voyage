@@ -58,6 +58,18 @@ const RECORD_SQL = `with t as (
   )
   select t.r as result from t`
 
+/** Play the snapshot job ONCE at boot, before the app's first read is queued. The world image is built
+ *  minutes (in CI, a quarter-hour) before a tab opens it, so the present slot is usually empty and the
+ *  first read of the record would run the full job (~10 s native, far more in a tab) with nothing else
+ *  answered — a tray left on "Checking max…" for the length of it (the sweep at 1440×900, main red
+ *  2026-10-26). Run here, the same cost lands inside the boot wait where a screen is still loading. */
+export function warmRecord(db: Pick<LocalCaller, 'callAs'>): Promise<void> {
+  return db.callAs<unknown>(RECORD_SQL).then(
+    () => undefined,
+    () => undefined, // the first read of the record runs it again and reports a real failure
+  )
+}
+
 /** How often this tab may play the stats job (0214). Its row is per slot; a re-ask inside a slot writes nothing. */
 const STATS_EVERY_MS = 60_000
 const STATS_SQL = 'select public.tick_stats(now()) as result'

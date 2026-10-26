@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fineClass } from '../components/ui'
-import { project, type LatLon } from '../lib/geo'
+import { project, WORLD_BOUNDS, type LatLon } from '../lib/geo'
 import { useT } from '../lib/i18n'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
@@ -95,6 +95,7 @@ export function SmallChart({
   highlight,
   only,
   legs,
+  wholeWorld = false,
   ariaLabel,
   findAriaLabel,
   className = 'aspect-[3/2] w-full',
@@ -120,6 +121,8 @@ export function SmallChart({
   only?: readonly string[]
   /** Row 183: the plan's proposed courses, drawn dashed (ChartCanvas `plannedD`). */
   legs?: readonly (readonly LatLon[])[]
+  /** Row 207: open at 0 % zoom, the whole world on the glass, instead of framing the choice. */
+  wholeWorld?: boolean
   ariaLabel: string
   findAriaLabel?: string
   className?: string
@@ -149,8 +152,9 @@ export function SmallChart({
   // "find" (and an untouched chart) shows. `openingBounds` is the same arithmetic the tab uses,
   // including the 12° floor and the clamp against a wider-than-the-world fit.
   const frameBounds = useCallback(
-    (aspect: number) => openingBounds(model.focusPoints, model.motionPoints, chartPorts, aspect),
-    [model, chartPorts],
+    (aspect: number) =>
+      wholeWorld ? WORLD_BOUNDS : openingBounds(model.focusPoints, model.motionPoints, chartPorts, aspect),
+    [model, chartPorts, wholeWorld],
   )
 
   // No tap handler — see the header. `scroll: 'page-vertical'` is the embedded posture: the page
