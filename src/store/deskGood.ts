@@ -1,22 +1,31 @@
-// WHICH GOOD IS OPEN ON THE COMMAND DESK (docs/COMMAND_DESK.md §6) — and which city its chart follows.
+// WHICH CITY AND WHICH GOOD THE COMMAND DESK IS READING (docs/COMMAND_DESK.md §6; owner row 218, 2026-10-26).
 //
-// A store, not a prop chain, because it has two writers on day one: the desk's watchlist (a row
-// pressed) and the map's city panel (a good's price tray hands the good over: "Open in Command"). The
-// FOCUS is the city the good page's chart and hero follow — a Buy at row's city, or a Sell at row the
-// player tapped; null means "the page's own default" (the docked city when it trades the good, else the
-// cheapest seller). Session storage: what you were looking at survives a reload and dies with the tab,
-// as the order draft and the port face do.
+// The Buy and Sell faces (features/command/buysell) read ONE city — pressed on the mini map, else where she lies,
+// else her next port — and, on it, ONE good pressed (its prices, its chart, who bought what). Both faces read the
+// same pair, so turning from Buy to Sell keeps the city in hand.
+//
+// A store, not a prop chain, because it has two writers: the desk (a city or a good pressed) and the map's city
+// panel (a good's price tray hands the city and the good over: "Open in Command", live/PriceTray.tsx). `handed`
+// is that hand-over waiting for the desk: the desk turns to Buy on it once and spends it (CommandScreen.tsx).
+// Session storage: what you were looking at survives a reload and dies with the tab.
 
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 export interface DeskGoodState {
-  /** The good's CODE, or null when no good page is open. */
+  /** The good's CODE pressed on the city's list, or null. */
   code: string | null
-  /** The port CODE the chart follows, or null for the page's default. */
+  /** The port CODE the desk reads, or null for "where she lies, else her next port". */
   focus: string | null
+  /** A hand-over from outside the desk is waiting (the desk turns to Buy once). */
+  handed: boolean
+  /** From outside the desk: read this good at this city. */
   open: (code: string, focus?: string | null) => void
+  /** A good pressed (null: none). */
+  pick: (code: string | null) => void
+  /** A city pressed: the good pressed belongs to the city it was pressed at, so it is let go. */
   setFocus: (port: string | null) => void
+  spendHand: () => void
   close: () => void
 }
 
@@ -25,8 +34,11 @@ export const useDeskGood = create<DeskGoodState>()(
     (set) => ({
       code: null,
       focus: null,
-      open: (code, focus = null) => set({ code, focus }),
-      setFocus: (focus) => set({ focus }),
+      handed: false,
+      open: (code, focus = null) => set({ code, focus, handed: true }),
+      pick: (code) => set({ code }),
+      setFocus: (focus) => set((s) => (s.focus === focus ? s : { focus, code: null })),
+      spendHand: () => set({ handed: false }),
       close: () => set({ code: null, focus: null }),
     }),
     {

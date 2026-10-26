@@ -7,7 +7,7 @@ import { DeskTraySlot, type TraySlot } from '../../components/ui'
 //
 // The owner, 2026-10-19: *"at top right, when pressing plans, city, invest, i want the screen of the
 // original command tab to stay same, meaning no pop ups or no new screen, but reloading on the same
-// page. get it?"* Until then only Markets stood in the terminal's three panes; the other faces swapped
+// page. get it?"* Until then only the Markets face (gone with row 218) stood in the terminal's three panes; the other faces swapped
 // the whole glass for a phone column (the header re-flowed into it), and their acts rose as side
 // trays over the right of the glass.
 //
@@ -49,18 +49,14 @@ export function DeskPanes({
   side,
   sideHint,
   mainScroll = true,
-  panes,
 }: DeskParts & {
   face: string
-  /** The centre and right panes composed by the caller (DeskMainPane + DeskSidePane) — Markets, whose two
-   *  panes share one read of the good and turn over with it while the list stays mounted. */
-  panes?: ReactNode
 }) {
   // The right pane's slot element: trays opened inside the face stand in it. It is set in the commit
   // that mounts it, before paint. A face whose right pane is its own (the ticket, the plan builder)
   // provides no slot; its other panes open no trays.
   const [slot, setSlot] = useState<HTMLElement | null>(null)
-  const own = panes !== undefined || (side !== undefined && side !== null)
+  const own = side !== undefined && side !== null
   const pane = useMemo<TraySlot | null>(() => (slot ? { el: slot } : null), [slot])
   const value = own ? null : pane
   return (
@@ -74,25 +70,23 @@ export function DeskPanes({
         <section className="bv-scroll min-h-0 overflow-y-auto border-r border-edge px-4 pb-6 pt-3" data-testid="desk-pane-list">
           {list}
         </section>
-        {panes ?? <DeskMainPane scroll={mainScroll}>{main}</DeskMainPane>}
+        <DeskMainPane scroll={mainScroll}>{main}</DeskMainPane>
       </DeskTraySlot.Provider>
-      {panes === undefined && (
-        <DeskSidePane>
-          {own ? (
-            side
-          ) : (
-            <div className="flex h-full min-h-0 flex-col">
-              {/* THE SLOT: a tray opened in this face is portalled here. Empty → the hint below shows. */}
-              <div ref={setSlot} className="peer bv-scroll min-h-0 flex-1 overflow-y-auto empty:hidden" data-testid="desk-slot" />
-              {sideHint && (
-                <p className="hidden px-4 pt-4 text-t-caption text-ink-faint peer-empty:block" data-testid="desk-slot-hint">
-                  {sideHint}
-                </p>
-              )}
-            </div>
-          )}
-        </DeskSidePane>
-      )}
+      <DeskSidePane>
+        {own ? (
+          side
+        ) : (
+          <div className="flex h-full min-h-0 flex-col">
+            {/* THE SLOT: a tray opened in this face is portalled here. Empty → the hint below shows. */}
+            <div ref={setSlot} className="peer bv-scroll min-h-0 flex-1 overflow-y-auto empty:hidden" data-testid="desk-slot" />
+            {sideHint && (
+              <p className="hidden px-4 pt-4 text-t-caption text-ink-faint peer-empty:block" data-testid="desk-slot-hint">
+                {sideHint}
+              </p>
+            )}
+          </div>
+        )}
+      </DeskSidePane>
     </div>
   )
 }

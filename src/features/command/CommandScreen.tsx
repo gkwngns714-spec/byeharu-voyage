@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Note, Row, Segmented, Sheet, useWide } from '../../components/ui'
 import { useCommandDraft } from '../../domain/order'
 import { useWorld } from '../../live/worldStore'
@@ -7,31 +7,25 @@ import { useDeskGood } from '../../store/deskGood'
 import { DeskPanes, DeskStack, type DeskLayout } from './DeskFrame'
 import { DESK_FACES, useDeskView, type DeskFace } from './deskView'
 import { FleetStrip } from './FleetStrip'
-import { DeskTrade } from './markets/DeskTrade'
-import { GoodPage } from './markets/GoodPage'
-import { Markets } from './markets/Markets'
-import { Terminal } from './markets/Terminal'
-import { Trade } from './plans/Trade'
+import { BuySell } from './buysell/BuySell'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
 import { Profit } from './profit/Profit'
-import { useDeskPlan, type PlanDraft } from './plans/planDraft'
 import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
 // (≥ 1024 px, WIDE_QUERY) the desk is a TRADING TERMINAL — the fleet and the faces on one header line,
-// and the Markets face as three panes (watchlist · chart · ticket, markets/Terminal.tsx) using the whole
-// glass; on a phone it is the Sheet below, the good's page a tray. Which good is open, which tray stands
-// in the slot and which face is up are the same state in both.
+// and every face in the three panes (DeskFrame.tsx) using the whole glass; on a phone it is the Sheet
+// below, the parts one under the other. Which city and good are in hand and which face is up are the
+// same state in both.
 // The owner, 2026-10-17: *"i want you to delete
 // port tab, and focus on command tab. it will be like stock trading screen, with buy and sell plans,
 // seeing charts of each trade goods that i click, setting up trade routes for my fleet, investing, and
 // all … stylish - modern - sophisticated yet concise simple."*
 //
 // THE SHELL: the fleet strip (which fleet — the picker, FleetPicker.tsx — and its two figures), the faces (deskView.ts — the
-// ones built: Markets · Trade · City · Invest · Profit), and the face. A good pressed on Markets opens its page in ONE slot (a
-// tray; beside the column on a wide glass); the page's Buy / Sell cell turns that slot over to THE trade
-// tray, and closing it returns to the page. One state says which stands, as PORT's board keeps its own.
+// ones built: Buy · Sell · City · Invest · Profit; owner row 218 replaced Markets and Trade with Buy and Sell,
+// buysell/BuySell.tsx), and the face.
 //
 // What follows is this screen's history before the desk. The rule it records still holds: a verb that
 // happens at a place is offered only where the fleet is docked (§2.1).
@@ -71,28 +65,21 @@ export function CommandScreen() {
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
   const fleets = useWorld((s) => s.fleets)
-  const goodByCode = useWorld((s) => s.goodByCode)
   const open = useWorld((s) => s.open)
 
   const fleetId = useCommandDraft((s) => s.fleetId)
   const selectFleet = useCommandDraft((s) => s.selectFleet)
   const face = useDeskView((s) => s.face)
   const turnTo = useDeskView((s) => s.turnTo)
-  const goodCode = useDeskGood((s) => s.code)
-  const openDraft = useDeskPlan((s) => s.open)
-  // PLAN THIS TRADE OPENS THE TRADE FACE (owner row 183, 2026-10-20: "when I press plan this trade, it should
-  // switch to plan tab and make planning there"; row 190/194, 2026-10-25: Plans became Trade, the one page the
-  // whole buy → sail → sell is made on). The draft is opened and the desk turns to it in the same press; the
-  // card, its chart and its restrictions stand there (Trade.tsx), never over Markets.
-  const openPlan = (draft: PlanDraft) => {
-    openDraft(draft)
-    turnTo('plans')
-  }
-  // WHICH TRAY STANDS IN THE SLOT: the good's page, or the trade tray it handed over to.
-  const [trading, setTrading] = useState<{
-    code: string
-    intent: 'buy' | 'sell'
-  } | null>(null)
+  // A HAND-OVER FROM THE MAP (live/PriceTray.tsx, "Open in Command"): the city and the good are in hand; the desk
+  // turns to Buy once to show them.
+  const handed = useDeskGood((s) => s.handed)
+  const spendHand = useDeskGood((s) => s.spendHand)
+  useEffect(() => {
+    if (!handed) return
+    turnTo('buy')
+    spendHand()
+  }, [handed, turnTo, spendHand])
 
   useEffect(() => {
     void open()
@@ -131,43 +118,22 @@ export function CommandScreen() {
     )
   }
 
-  const good = goodCode ? (goodByCode[goodCode] ?? null) : null
-  // A trade tray stands only for the good open (a good pressed is a new page; on the wide desk with
-  // nothing chosen yet, the list's first good is the one shown, and the tray was opened for it).
-  const tradingHere =
-    trading && fleet && fleet.status === 'DOCKED' && (goodCode === null || trading.code === goodCode) ? trading : null
-
   // EVERY FACE IN THE ONE FRAME (DeskFrame.tsx; the owner, 2026-10-19: "no pop ups or no new screen, but
   // reloading on the same page"). A face hands its parts to the layout; the desk decides the shape: the
-  // terminal's three panes on a wide glass, one under the other on a phone. Markets is the terminal
-  // itself on a wide glass (Terminal.tsx composes the same panes).
+  // terminal's three panes on a wide glass, one under the other on a phone.
   const layout: DeskLayout = wide ? (parts) => <DeskPanes face={face} {...parts} /> : (parts) => <DeskStack {...parts} />
   const faceBody = (f: FleetView) =>
-    face === 'plans' ? (
-      <Trade fleet={f} layout={layout} />
+    face === 'buy' || face === 'sell' ? (
+      <BuySell key={face} side={face} fleet={f} layout={layout} />
     ) : face === 'city' ? (
       <City fleet={f} layout={layout} />
     ) : face === 'invest' ? (
       <Invest fleet={f} layout={layout} />
-    ) : face === 'profit' ? (
-      <Profit layout={layout} />
     ) : (
-      <Markets fleet={f} />
+      <Profit layout={layout} />
     )
 
   if (wide) {
-    // THE TICKET PANE'S SLOT on the Markets face: the trade tray, else the ticket. (The plan builder stands on
-    // the Plans face since row 183.)
-    const paneSlot =
-      fleet && tradingHere ? (
-        <DeskTrade
-          mode="pane"
-          fleet={fleet}
-          code={tradingHere.code}
-          intent={tradingHere.intent}
-          onClose={() => setTrading(null)}
-        />
-      ) : null
     return (
       <div className="flex h-full min-h-0 flex-col" data-testid="command" data-desk="terminal">
         {/* THE HEADER spans the glass, the same on every face: pressing a face changes the panes below
@@ -179,17 +145,7 @@ export function CommandScreen() {
           </div>
           <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="shrink-0" />
         </header>
-        {fleet && face === 'markets' ? (
-          <Terminal
-            fleet={fleet}
-            code={goodCode}
-            slot={paneSlot}
-            onTrade={(code, intent) => setTrading({ code, intent })}
-            onPlan={openPlan}
-          />
-        ) : (
-          fleet && faceBody(fleet)
-        )}
+        {fleet && faceBody(fleet)}
       </div>
     )
   }
@@ -208,21 +164,6 @@ export function CommandScreen() {
         className="mb-3 mt-2"
       />
       {fleet && faceBody(fleet)}
-
-      {/* MARKETS' SLOT — one tray at a time, opened by pressing a GOOD (never a face): the trade tray, else
-          the good's page. Only on Markets: every other face stands its acts in flow inside its own parts
-          (DeskStack), so pressing a face never raises a tray over the screen. A plan stands on Plans (row 183). */}
-      {face !== 'markets' ? null : fleet && tradingHere && tradingHere.code === goodCode ? (
-        <DeskTrade fleet={fleet} code={tradingHere.code} intent={tradingHere.intent} onClose={() => setTrading(null)} />
-      ) : fleet && good ? (
-        <GoodPage
-          key={`${good.code}:${fleet.id}`}
-          fleet={fleet}
-          good={good}
-          onTrade={(intent) => setTrading({ code: good.code, intent })}
-          onPlan={openPlan}
-        />
-      ) : null}
     </Sheet>
   )
 }

@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fineClass } from '../components/ui'
-import { project, WORLD_BOUNDS, type LatLon } from '../lib/geo'
+import { project, WORLD_BOUNDS, type LatLon, type Point, type ViewBox } from '../lib/geo'
 import { useT } from '../lib/i18n'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
-import { buildChartModel } from './chartModel'
-import { openingBounds } from './chartView'
+import { buildChartModel, dotPorts, visiblePorts } from './chartModel'
+import { minTierForSpan, openingBounds } from './chartView'
+import { GLYPH } from './glyphs'
+import { hitTest } from './hitTest'
+import { placedNames } from './placedNames'
 import { mapFleetsOf } from './liveWorld'
 import { loopD } from './route'
 import type { MapSelection } from './mapTypes'
@@ -84,6 +87,14 @@ import { ViewControls } from './ViewControls'
 //     the queued SAIL lines carry and the server re-verifies). Point 2 above forbids a STRAIGHT line
 //     between two places; these are not straight, they are the course the order would be queued with.
 //
+// ── 2026-10-26, OWNER ROW 218: A CITY PRESSED IS A CITY CHOSEN ─────────────────────────────────
+// *"in mini map in command, show cities, when pressed upon, show trade goods with prices, and charts."*
+// One more optional prop, off by default: `onPort`. With it, point 1 above is lifted for HARBOURS ONLY —
+// a tap is answered by THE map tab's own hit test (`hitTest`, the same reach, the same drawn ports and
+// dots, the same names-first rule), and a harbour it names is handed to the caller. The caller only
+// SELECTS a city to read (the Buy / Sell desk); nothing is ordered by the tap. A hull or open water
+// answers nothing here.
+//
 // And it still invents no place: ports and coordinates are `world.snapshot()`; the fleet's
 // position at sea is `voyage.position`, the server's closed form, copied (./liveWorld.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -96,6 +107,7 @@ export function SmallChart({
   only,
   legs,
   wholeWorld = false,
+  onPort,
   ariaLabel,
   findAriaLabel,
   className = 'aspect-[3/2] w-full',
@@ -123,6 +135,8 @@ export function SmallChart({
   legs?: readonly (readonly LatLon[])[]
   /** Row 207: open at 0 % zoom, the whole world on the glass, instead of framing the choice. */
   wholeWorld?: boolean
+  /** Row 218: a harbour tapped (THE map tab's hit test) — the caller selects that city. Absent: no tap. */
+  onPort?: (code: string) => void
   ariaLabel: string
   findAriaLabel?: string
   className?: string
@@ -157,9 +171,20 @@ export function SmallChart({
     [model, chartPorts, wholeWorld],
   )
 
-  // No tap handler — see the header. `scroll: 'page-vertical'` is the embedded posture: the page
-  // keeps its wheel and its vertical thumb-scroll, the chart gets everything else.
-  const surface = useChartSurface(boxRef, frameBounds, undefined, { scroll: 'page-vertical' })
+  // No tap handler unless `onPort` asks for one (row 218, the header). `scroll: 'page-vertical'` is the
+  // embedded posture: the page keeps its wheel and its vertical thumb-scroll, the chart gets everything else.
+  const onTap = useCallback(
+    (at: Point, unitsPerPx: number, view: ViewBox) => {
+      if (!onPort) return
+      const minTier = minTierForSpan(view.width)
+      const tappable = visiblePorts(chartPorts, model.portRoles, view, minTier)
+      const dots = dotPorts(chartPorts, model.portRoles, view, minTier)
+      const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, [], placedNames())
+      if (hit?.kind === 'port') onPort(hit.code)
+    },
+    [onPort, chartPorts, model],
+  )
+  const surface = useChartSurface(boxRef, frameBounds, onPort ? onTap : undefined, { scroll: 'page-vertical' })
   const box = surface.viewBox
 
   // ── THE CHART MOVES TO THE HARBOUR YOU CHOSE (the owner, 2026-08-23: "when i press corfu or

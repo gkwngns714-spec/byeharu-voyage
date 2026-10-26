@@ -71,7 +71,8 @@ export function PriceRows({
   /** The remembered mids for THIS good at THIS port, and their cadence. */
   trend: PriceTrend
   /** The trend stands unfolded as the chart from the first paint — the MAP's good panel, whose whole
-   *  point is the chart (owner row 220). A press on the row still folds it. */
+   *  point is the chart (owner row 220), and the COMMAND desk's Buy / Sell good page (owner row 218). A press on
+   *  the row still folds it. */
   startOpen?: boolean
 }) {
   const t = useT()

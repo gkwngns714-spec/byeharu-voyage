@@ -173,12 +173,6 @@ export function planRoute(plan: PlanDraft): RouteStopDraft[] {
   return stops
 }
 
-/** "via Ceuta, Angra" — the ports the voyage calls at between (0188), or null when it sails straight.
- *  THE ONE WORDING: the plan builder's estimate line and the best-trade card both read it. */
-export function viaWords(stops: readonly string[], name: (code: string) => string): string | null {
-  return stops.length > 0 ? t('desk.via', { ports: stops.map(name).join(', ') }) : null
-}
-
 /** What the board served about the fleet reading a row (0188): its speed, the farthest one leg its captain
  *  plots (null for a company sailing without one), the days of supplies on board now (null when the
  *  board did not say), and whether the sea conditions bite (0219; false when the board did not say). */

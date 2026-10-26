@@ -2,14 +2,12 @@ import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// PLAN THIS TRADE OPENS THE TRADE FACE, AND ITS CHART HOLDS ONLY THE TRADE (owner row 183, 2026-10-20; the face
-// became Trade with docs/COMMAND_REDESIGN.md R1, rows 190/194/202):
-//   *"In command, when I press plan this trade, it should switch to plan tab and make planning there. It
-//    should show map (without npcs or name of the cities that aren't associated with the route/plan …"*
+// PLAN TRIP STANDS ON THE FACE IT WAS PRESSED ON, ITS COURSE ON THE MAP ON TOP (owner row 183, 2026-10-20, and
+// row 218, 2026-10-26: *"in mini map in command, show cities"* — so the map now draws every city, not only the
+// trade's, and the plan's course is drawn over them):
 // On a local build, at the owner's desktop (1440×900) and the phone (390×844):
-//   · the press turns the desk to Trade (its tab selected) and the trade card stands inside it;
-//   · the card's chart is drawn, and every harbour on it is one of the trade's cities (where the fleet is,
-//     the ports on the way, the buy city, the sell city) — no other city's mark, so no other city's name;
+//   · Plan trip on a good of Buy leaves the desk on Buy (its tab selected) and the trade card stands inside it;
+//   · the map on top is drawn with the cities on it, and the plan's course on it once a sell city is chosen;
 //   · no merchant is on it (no merchant hull, lane, loop or track);
 //   · the supplies line, the crew and "Can you go there?" stand on the card;
 //   · a second sell row pressed changes the figures in place: the card and the chart do not move.
@@ -21,18 +19,19 @@ const SIZES = [
   { width: 390, height: 844 },
 ] as const
 
-/** An element's offset within the Trade face: the sheet scrolls to reach a row, and a scroll is not a move. */
+/** An element's offset within the Buy face: the sheet scrolls to reach a row, and a scroll is not a move. */
 const top = (page: Page, id: string) =>
   page.getByTestId(id).first().evaluate((e) => {
-    const face = e.closest('[data-testid="desk-plans"]') as HTMLElement
-    return Math.round(e.getBoundingClientRect().top - face.getBoundingClientRect().top)
+    // wide: the centre pane scrolls by itself, so the offset is within its content (a scroll is not a move)
+    const box = (e.closest('[data-testid="desk-pane-chart"]') ?? e.closest('[data-testid="desk-buy"]')) as HTMLElement
+    return Math.round(e.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop)
   })
 
 for (const size of SIZES) {
   test.describe(`plan this trade at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size })
 
-    test('the press opens Trade, and the chart holds only the trade', async ({ page, request, baseURL }) => {
+    test('Plan trip stands on Buy, its course on the map with the cities', async ({ page, request, baseURL }) => {
       test.setTimeout(480_000)
       test.skip(
         !(await reachable(request, baseURL ?? '')),
@@ -40,27 +39,23 @@ for (const size of SIZES) {
       )
       await page.goto('command')
       await ready(page)
-      await expect(page.getByTestId('watch-row').first()).toBeVisible({ timeout: 120_000 })
-      await page.getByRole('button', { name: 'Here', exact: true }).click()
-      await page.getByTestId('watch-row').first().click()
+      const plans = page.getByTestId('desk-buy')
+      await expect(plans.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
+      await plans.getByTestId('city-good').first().click()
+      await plans.getByTestId('good-plan').click()
 
-      // "Plan this trade" on the Best trade card; a Buy at row's Plan when the card offers none.
-      const best = page.getByTestId('best-trade-plan')
-      const row = page.getByTestId('desk-plan').first()
-      await expect(best.or(row).first()).toBeVisible({ timeout: 60_000 })
-      await ((await best.count()) > 0 ? best.first() : row).click()
-
-      // the desk turned to Trade, and the trade is made there
-      const plans = page.getByTestId('desk-plans')
-      await expect(plans).toBeVisible({ timeout: 30_000 })
+      // the desk stays on Buy, and the trade is made there
       await expect(
-        page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }),
+        page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Buy', exact: true }),
       ).toHaveAttribute('aria-selected', 'true')
       const card = plans.getByTestId('trade-card')
-      await expect(card).toBeVisible()
+      await expect(card).toBeVisible({ timeout: 30_000 })
       await expect(page.getByRole('dialog'), 'the trade stands over the screen').toHaveCount(0)
+      const rows = page.getByTestId('trade-sell-row')
+      await expect(rows.first()).toBeVisible({ timeout: 60_000 })
+      await rows.first().click()
 
-      // the chart, once the board has chosen the cities — THE map on top of the Trade page (owner row 217)
+      // the chart, once the board has chosen the cities — THE map on top of the face (owner rows 217, 218)
       const voyage = card.getByTestId('plan-voyage')
       await expect(voyage).toBeVisible()
       const map = plans.getByTestId('trade-map')
@@ -69,14 +64,10 @@ for (const size of SIZES) {
       await expect(card.getByTestId('plan-queue')).toHaveText('Go', { timeout: 60_000 })
       await expect(chart.locator('[data-port-code]').first()).toBeAttached({ timeout: 30_000 })
 
-      const cities = ((await map.getByTestId('trade-map-cities').textContent()) ?? '').trim().split(/\s+/)
-      const drawn = await chart.locator('[data-port-code]').evaluateAll((els) => [
-        ...new Set(els.map((e) => e.getAttribute('data-port-code') ?? '')),
-      ])
-      console.log(`trade cities ${JSON.stringify(cities)} · drawn ${JSON.stringify(drawn)}`)
-      expect(cities.length).toBeGreaterThan(0)
-      expect(drawn.length).toBeGreaterThan(0)
-      for (const code of drawn) expect(cities, `${code} is on the chart and not in the trade`).toContain(code)
+      // every city (row 218), and the plan's course over them
+      await expect(map).toHaveAttribute('data-cities', '*')
+      expect(await chart.locator('[data-port-code]').count(), 'the map draws the cities').toBeGreaterThan(20)
+      await expect(map.getByTestId('map-plan-course').first()).toBeAttached({ timeout: 60_000 })
       for (const id of ['map-merchant', 'map-merchant-lane', 'map-merchant-loop', 'map-merchant-track']) {
         await expect(chart.getByTestId(id), `a merchant (${id}) is on the trade's chart`).toHaveCount(0)
       }
@@ -89,7 +80,6 @@ for (const size of SIZES) {
       await expect(voyage.getByTestId('plan-sea-state')).not.toBeEmpty({ timeout: 30_000 })
 
       // a second sell row: figures change in place, the card and the chart stay where they were
-      const rows = page.getByTestId('trade-sell-row')
       if ((await rows.count()) > 1) {
         const before = [await top(page, 'trade-card'), await top(page, 'small-chart')]
         await rows.nth(1).click()

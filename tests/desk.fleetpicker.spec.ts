@@ -107,11 +107,11 @@ test.describe('several fleets', () => {
 
     // THE PRESS OPENS THE LIST AND MOVES NOTHING: the header, the figures and the first list rows
     // sit where they sat.
-    await expect(page.getByTestId('watch-row').first()).toBeVisible({ timeout: 120_000 })
+    await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
     const before = {
       header: await rect(page, '[data-testid="desk-header"]'),
       line: await rect(page, '[data-testid="command-line"]'),
-      row: await rect(page, '[data-testid="watch-row"]'),
+      row: await rect(page, '[data-testid="city-good"]'),
     }
     await picker.click()
     const list = page.getByTestId('fleet-list')
@@ -135,7 +135,7 @@ test.describe('several fleets', () => {
       {
         header: await rect(page, '[data-testid="desk-header"]'),
         line: await rect(page, '[data-testid="command-line"]'),
-        row: await rect(page, '[data-testid="watch-row"]'),
+        row: await rect(page, '[data-testid="city-good"]'),
       },
       'opening the list moved the page',
     ).toEqual(before)
@@ -164,10 +164,12 @@ test.describe('several fleets', () => {
     await expect(picker).toContainText('Gaivota')
     await page.keyboard.press('ArrowLeft')
     await expect(picker).toContainText(SECOND_FLEET)
-    // …but not while typing: the search field keeps its arrows.
-    const search = page.getByRole('textbox', { name: 'Search goods' })
+    // …but not while typing: a text field keeps its arrows (the trip card's units, Buy › a good › Plan trip).
+    await page.getByTestId('city-good').first().click()
+    await page.getByTestId('good-plan').click()
+    const search = page.getByTestId('trade-card').getByRole('textbox').first()
     await search.click()
-    await search.pressSequentially('co')
+    await search.pressSequentially('12')
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('ArrowLeft')
     await expect(picker).toContainText(SECOND_FLEET)

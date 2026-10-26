@@ -6,6 +6,7 @@ import type { MarketGood } from '../lib/rpc'
 import { useDeskGood } from '../store/deskGood'
 import { useT } from '../lib/i18n'
 import { CityGoodTrades } from './CityGoodTrades'
+import { useWorld } from './worldStore'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
 // alongside. MOVED 2026-09-11 from features/market/ with the MARKET tab, which folded into PORT
@@ -44,9 +45,10 @@ export function PriceTray({
 }) {
   const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('half')
-  // THE HAND-OFF (docs/COMMAND_DESK.md §3.3, D8): the map reads a place; the desk is where you act. A
-  // good read here opens on COMMAND — every city's price for it, the estimate, where to sell.
+  // THE HAND-OFF (docs/COMMAND_DESK.md §3.3, D8; row 218): the map reads a place; the desk is where you act. A
+  // good read here opens on COMMAND's Buy face — this city on its mini map, this good pressed on its list.
   const openOnDesk = useDeskGood((s) => s.open)
+  const portCode = useWorld((s) => s.snapshot?.ports.find((p) => p.id === portId)?.code ?? null)
   const navigate = useNavigate()
   return (
     <Tray
@@ -65,7 +67,7 @@ export function PriceTray({
         label={t('trade.openInCommand')}
         chevron
         onClick={() => {
-          openOnDesk(good.code)
+          openOnDesk(good.code, portCode)
           navigate('/command')
         }}
         data-testid="price-tray-desk"

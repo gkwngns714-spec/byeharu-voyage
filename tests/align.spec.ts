@@ -43,7 +43,7 @@ interface Screen {
 }
 
 const SCREENS: Screen[] = [
-  { name: 'Command', route: 'command', faces: [[null, 'Markets'], [null, 'City'], [null, 'Invest'], [null, 'Profit']] },
+  { name: 'Command', route: 'command', faces: [[null, 'Buy'], [null, 'Sell'], [null, 'City'], [null, 'Invest'], [null, 'Profit']] },
   { name: 'City', route: 'command', faces: [[null, 'City'], ['City buildings', '*']] },
   { name: 'Fleets', route: 'fleets' },
   { name: 'Map › Lisbon', route: 'map', open: (page) => openCityPanel(page, 'LIS', 'Lisbon') },

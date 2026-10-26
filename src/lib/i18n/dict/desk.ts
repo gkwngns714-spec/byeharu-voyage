@@ -1,6 +1,6 @@
 import { defineDict } from '../define'
 
-// The Command desk's faces (src/features/command): City, Invest, Profit and Trade (the one trade card).
+// The Command desk's faces (src/features/command): Buy, Sell (the city's goods and the trip card), City, Invest, Profit.
 export const deskDict = defineDict({
   en: {
     citySide: 'Tap a price, room or job.',
@@ -37,14 +37,9 @@ export const deskDict = defineDict({
     owedShort: '{amount} more owed; the city could not pay',
     orders: 'Orders',
     // TRADE (owner rows 190, 194, 202, 203 — docs/COMMAND_REDESIGN.md §2, §5): one page, 1–2 words a label.
-    planSide: 'Pick a good.',
     planOf: 'Trade · {good}',
-    start: 'Start',
     hold: 'Cargo',
-    here: 'Here',
-    nextPort: 'Next port',
     holdEmpty: 'No cargo',
-    hereNone: 'Nothing here',
     aboard: '{units} aboard',
     sell: 'Sell',
     buy: 'Buy',
@@ -68,7 +63,6 @@ export const deskDict = defineDict({
     insuredHint: 'Covers most pirate losses.',
     uninsuredHint: 'No cover for pirate losses.',
     noWater: 'No sea route to {port}.',
-    via: 'via {ports}',
     tooFar: 'too far in one go',
     navigatorOnly: ': longest leg {leg}',
     captainCould: '{own}. Navigation {n} would reach it',
@@ -78,7 +72,6 @@ export const deskDict = defineDict({
     holdTooFull: 'Hold too full: {carry} of supplies, crossing needs {need}',
     longerThan: '{leg}, more than supplies last',
     orSupplies: 'too far, or supplies run out',
-    planChart: 'Plan on the chart',
     crewOf: '{n} / {max} crew',
     crewNow: 'Crew',
     crewMin: 'Min crew',
@@ -111,6 +104,14 @@ export const deskDict = defineDict({
     fee: 'Fee',
     lastLap: 'Money: last lap',
     noMoneyServed: 'No money estimate for this order.',
+    // BUY · SELL (owner row 218)
+    citiesChart: 'Cities on the chart. Press one.',
+    pickCity: 'Press a city on the map.',
+    buyNow: 'Buy here',
+    sellNow: 'Sell here',
+    planTrip: 'Plan trip',
+    noBuy: 'Sells nothing',
+    noBuyer: 'Not bought here',
   },
   ko: {
     citySide: '가격, 방, 일을 누르세요.',
@@ -146,14 +147,9 @@ export const deskDict = defineDict({
     lost: '손실 {amount}',
     owedShort: '{amount}는 도시가 못 냄',
     orders: '명령',
-    planSide: '물건을 고르세요.',
     planOf: '거래 · {good}',
-    start: '시작',
     hold: '화물',
-    here: '이곳',
-    nextPort: '다음 항구',
     holdEmpty: '화물 없음',
-    hereNone: '살 것 없음',
     aboard: '적재 {units}',
     sell: '팔기',
     buy: '사기',
@@ -177,7 +173,6 @@ export const deskDict = defineDict({
     insuredHint: '해적 손실 대부분 보상.',
     uninsuredHint: '해적 손실 보상 없음.',
     noWater: '{port}(으)로 가는 뱃길 없음.',
-    via: '경유 {ports}',
     tooFar: '한 번에 가기엔 너무 멂',
     navigatorOnly: ': 최장 구간 {leg}',
     captainCould: '{own}. 항해술 {n}이면 갈 수 있음',
@@ -187,7 +182,6 @@ export const deskDict = defineDict({
     holdTooFull: '화물 과다: 보급 {carry}, 횡단엔 {need} 필요',
     longerThan: '{leg}, 보급보다 긺',
     orSupplies: '너무 멀거나 보급 부족',
-    planChart: '해도 위 계획',
     crewOf: '{n} / {max}명',
     crewNow: '선원',
     crewMin: '최소 선원',
@@ -219,5 +213,12 @@ export const deskDict = defineDict({
     fee: '수수료',
     lastLap: '돈: 지난 바퀴',
     noMoneyServed: '이 명령은 돈 예상 없음.',
+    citiesChart: '해도 위 도시. 하나를 누르세요.',
+    pickCity: '지도에서 도시를 누르세요.',
+    buyNow: '여기서 사기',
+    sellNow: '여기서 팔기',
+    planTrip: '항해 계획',
+    noBuy: '파는 것 없음',
+    noBuyer: '여기선 안 삼',
   },
 })

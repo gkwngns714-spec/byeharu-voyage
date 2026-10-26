@@ -2,16 +2,16 @@ import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A TRADE FROM THE GOOD PAGE, DRIVEN (docs/COMMAND_REDESIGN.md §2, R1) — on a local build, at the phone:
-//   a good sold elsewhere → its Buy at row's Plan → the desk turns to Trade (row 183), the card there with the
-//   board's figures for the chosen cities and the sell list beside it → a second sell row pressed changes the
-//   card in place (nothing above it moves) → Go → the trip's lines stand in the queue, the SELL last.
+// A TRADE FROM THE GOOD'S PAGE, DRIVEN (docs/COMMAND_REDESIGN.md §2, R1; owner row 218) — on a local build, at the phone:
+//   Buy → a good of the city in hand → Plan trip → the card on the Buy face with the board's figures and the sell
+//   list under it → a sell row → a second sell row pressed changes the card in place (nothing above it moves) → Go →
+//   the trip's lines stand in the queue, the SELL last.
 // Nothing here asserts a price; the lines' order and the slot's turns are the claim.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('a trade from the good page is queued whole and stands on Trade', async ({ page, request, baseURL }) => {
+test('a trip from a good page is queued whole and stands on Buy', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(
     !(await reachable(request, baseURL ?? '')),
@@ -19,31 +19,26 @@ test('a trade from the good page is queued whole and stands on Trade', async ({ 
   )
   await page.goto('command')
   await ready(page)
-  await expect(page.getByTestId('watch-row').first()).toBeVisible({ timeout: 120_000 })
-  // A good the docked city sells that others sell too: its page offers Plan on a row that is not here.
-  await page.getByRole('button', { name: 'Here', exact: true }).click()
-  await page.getByTestId('watch-row').first().click()
-  await expect(page.getByTestId('good-page')).toBeVisible()
-  const plan = page.getByTestId('desk-plan').first()
-  await expect(plan).toBeVisible({ timeout: 60_000 })
-  await plan.click()
+  const face = page.getByTestId('desk-buy')
+  await expect(face.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
+  await face.getByTestId('city-good').first().click()
+  await face.getByTestId('good-plan').click()
 
-  // owner row 183: the press turns the desk to Trade, and the trade is made there
-  await expect(page.getByTestId('desk-plans')).toBeVisible({ timeout: 30_000 })
-  const card = page.getByTestId('desk-plans').getByTestId('trade-card')
-  await expect(card).toBeVisible()
-  await expect(page.getByTestId('good-page')).toHaveCount(0)
+  // the trip is made on the Buy face, in flow
+  const card = face.getByTestId('trade-card')
+  await expect(card).toBeVisible({ timeout: 30_000 })
   // the board's figures for the chosen cities land, and the Go button says Go
   const rows = page.getByTestId('trade-sell-row')
   await expect(rows.first()).toBeVisible({ timeout: 60_000 })
+  await rows.first().click()
   await expect(card.getByTestId('plan-queue')).toHaveText('Go', { timeout: 60_000 })
 
   // a second sell row pressed: the card changes in place, nothing above it moves. Measured as the card's offset within
   // its face (the sheet scrolls to reach a row; a scroll is not a move).
   const offset = () =>
     card.evaluate((e) => {
-      const face = e.closest('[data-testid="desk-plans"]') as HTMLElement
-      return Math.round(e.getBoundingClientRect().top - face.getBoundingClientRect().top)
+      const desk = e.closest('[data-testid="desk-buy"]') as HTMLElement
+      return Math.round(e.getBoundingClientRect().top - desk.getBoundingClientRect().top)
     })
   if ((await rows.count()) > 1) {
     const top = await offset()
@@ -56,7 +51,7 @@ test('a trade from the good page is queued whole and stands on Trade', async ({ 
   await expect(card.getByTestId('plan-queue')).toHaveText('Go', { timeout: 60_000 })
   await card.getByTestId('plan-queue').click()
   await expect(page.getByTestId('trade-card')).toHaveCount(0, { timeout: 60_000 })
-  await expect(page.getByTestId('desk-plans')).toBeVisible()
+  await expect(face).toBeVisible()
   const queued = page.getByTestId('queue-row')
   await expect(queued.first()).toBeVisible({ timeout: 30_000 })
   const texts = (await queued.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))
