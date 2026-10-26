@@ -1117,15 +1117,6 @@ begin
     -- inside a few per cent of her endurance can still be refused once she is loaded. A one-leg
     -- route out of Lisboa is nowhere near that edge, and a probe picks a subject the world will
     -- actually let it use rather than one that fails on some runs and not others.
-    -- NO WEATHER IN THIS PROBE. The hazard dice are seeded from the VOYAGE'S id (0006 voyage.rng),
-    -- and that id is gen_random_uuid() — so every boot rolls different days. About one boot in
-    -- a few dozen drew a PIRATES / STRIPPED day on this 2.7-day voyage (0007 voyage.settle sets
-    -- the cargo to '{}'), and the SELL then answered E_NO_CARGO: "the orders moved 6818 / <NULL>"
-    -- (PR #343, cold boot, green on re-run). What this assert proves is that the price the quay
-    -- OFFERED is the price CHARGED; whether the sea leaves the cargo alone is another question,
-    -- and 0092/0093/0096 close the same door the same way. Inside the probe subtransaction, so the
-    -- knob is back at 0.060 the moment it rolls back. Assert-only edit (docs/NO_SPAGHETTI.md §3).
-    update public.world_config set value = to_jsonb(0.0) where key = 'hazard_p_max';
     v_played   := world.trade_routes(v_lis, v_fleet, 1, null);
     v_top      := v_played->'routes'->0;
     v_pred_out := (v_top->>'outlay')::bigint;
