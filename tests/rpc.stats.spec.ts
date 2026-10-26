@@ -197,3 +197,73 @@ test('with nothing invested anywhere a city serves its overview and its detail, 
   // nothing invested anywhere, and not one city withholds its purse
   expect(list.value.cities.every((x) => x.purse !== undefined)).toBe(true)
 })
+
+// ── EVERY FIGURE TO THE SECOND (0232, owner row 213: "i told you it should be in seconds?") ─────
+test('a sale moves the overview, the good, the city and the merchants before any count, and every line ends at now', async () => {
+  const sale = await db.callAs<{ fleet: string; good: string; code: string; port: string }>(
+    `select jsonb_build_object('fleet', f.id, 'good', g.id, 'code', g.code, 'port', pg.port_id) as result
+       from public.fleets f
+       join public.port_goods pg on pg.port_id = f.port_id and pg.stock > 50
+       join public.ports p on p.id = pg.port_id
+       join public.goods g on g.id = pg.good_id
+      where f.player_id = public.current_player_id() and f.status = 'DOCKED'
+        and not public.culture_refuses(p.culture, g.culture_mask)
+        and exists (select 1 from public.port_offered_goods(pg.port_id) o where o.good_id = pg.good_id)
+      order by g.code limit 1`,
+  )
+  expect(sale, 'the company has no docked fleet at a market').not.toBeNull()
+  // the city purses are dark in this world until lit; the test lights them and seeds a purse to buy with
+  await db.callAs(`update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled' returning true as result`)
+  await db.callAs(`select public.treasury_post('${sale.port}', 'SEED', 1000000)::text as result`)
+  await db.callAs(`select public.fleet_load('${sale.fleet}', '${sale.code}', 20, 1)::text as result`)
+
+  const o0 = await worldStatsOverview(24)
+  const m0 = await worldStatsMarkets()
+  const c0 = await worldStatsCity(sale.port)
+  expect(o0.ok && m0.ok && c0.ok).toBe(true)
+  if (!o0.ok || !m0.ok || !c0.ok) return
+  const good0 = m0.value.goods.find((g) => g.code === sale.code)!
+
+  await db.callAs(`select cmd.do_sell('${sale.fleet}', jsonb_build_object('good', '${sale.good}', 'qty', 7))::text as result`)
+  const counted = await db.callAs<number>(`select count(*)::int as result from public.stats_world`)
+
+  const o1 = await worldStatsOverview(24)
+  const m1 = await worldStatsMarkets()
+  const c1 = await worldStatsCity(sale.port)
+  const list = await worldStatsCities()
+  const mer = await worldStatsMerchants()
+  expect(o1.ok && m1.ok && c1.ok && list.ok && mer.ok).toBe(true)
+  if (!o1.ok || !m1.ok || !c1.ok || !list.ok || !mer.ok) return
+  // no count ran between the two reads
+  expect(Number(await db.callAs<number>(`select count(*)::int as result from public.stats_world`))).toBe(Number(counted))
+  expect(o1.value.counted_at).toBe(o0.value.counted_at)
+
+  // the overview: one more trade in the period in progress and in the last 24 h, by amount
+  expect(o1.value.period!.trades - o0.value.period!.trades).toBe(1)
+  expect(o1.value.day!.trades - o0.value.day!.trades).toBe(1)
+  expect(o1.value.day!.sold).toBeGreaterThan(o0.value.day!.sold)
+  // the good: 7 more sold in the last 24 h
+  const good1 = m1.value.goods.find((g) => g.code === sale.code)!
+  expect(good1.sold_1d - good0.sold_1d).toBe(7)
+  expect(good1.sold - good0.sold).toBe(7)
+  // the city: 7 more bought from ships, its purse the live balance, its price the live price
+  expect(c1.value.overview!.sold_1d - c0.value.overview!.sold_1d).toBe(7)
+  const purse = await db.callAs<number>(`select public.treasury_balance('${sale.port}') as result`)
+  expect(c1.value.overview!.purse).toBe(Number(purse))
+  expect(list.value.cities.find((c) => c.id === sale.port)!.purse).toBe(Number(purse))
+  const g = c1.value.detail!.goods.find((x) => x.code === sale.code)!
+  const live = await db.callAs<number>(
+    `select world.mid_price('${sale.port}', '${sale.good}', (select stock from public.port_goods where port_id = '${sale.port}' and good_id = '${sale.good}')) as result`,
+  )
+  expect(Number(g.mid)).toBe(Number(live))
+  expect(g.spark[g.spark.length - 1]).toBe(g.mid)
+
+  // every chart ends at the read's own instant
+  expect(o1.value.series[o1.value.series.length - 1].at).toBe(o1.value.at)
+  expect(c1.value.overview!.series[c1.value.overview!.series.length - 1].at).toBe(c1.value.at)
+  expect(mer.value.series[mer.value.series.length - 1].at).toBe(mer.value.at)
+  // and the overview's holders are the live counters
+  const n = await worldStatsNow()
+  expect(n.ok).toBe(true)
+  if (n.ok) expect(o1.value.holders!.total).toBe(n.value.total)
+})

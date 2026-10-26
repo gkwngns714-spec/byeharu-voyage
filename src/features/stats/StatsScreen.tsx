@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { Segmented, Sheet } from '../../components/ui'
-import { formatCountdown, formatKoreaTime } from '../../lib/format'
+import { formatKoreaTime } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import type { StatsNow } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CitiesFace } from './Cities'
@@ -21,12 +20,11 @@ import { useStatsLive } from './statsLive'
 // FIVE FACES, ONE READ EACH. The server's job writes a rollup every fifteen minutes; each face asks one
 // read of it and prints what it says (the sums, the words, the tiers are all the server's).
 //
-// AND ONE LIVE READ, EVERY SECOND (0224, owner row 200 — *"i want to be updated every second"*, asked three
-// times). statsLive.ts asks world.stats_now() each second while this screen is open: money by holder, fleets
-// at sea, the trades since the last count. The RIGHT NOW band prints it; the Overview and Merchants faces
-// draw it as their headline figures and as each chart's LAST point, moving at the right edge; and the
-// instant of the last count, carried on the same answer, is what re-asks a face's rollup read — no
-// backstop interval, no computed edge. Every headline figure WALKS to its new value (`Counter`).
+// AND EVERY READ, EVERY SECOND (0224 for the RIGHT NOW band; 0232 for every face — owner row 213: *"and why is next
+// count in minutes? i told you it should be in seconds?"*). Each face's read answers NOW on the server (the count's
+// quarter hours plus the minutes since; the state as it stands; each chart's last point at now()), and each face asks
+// it every second while it is open (statsLive.ts, useLiveRead). There is no count to wait for and none is shown: the
+// header says only when the figures are from. Every headline figure WALKS to its new value (`Counter`).
 //
 // EVERY CITY IS OPEN TO EVERYONE (0223; the owner, 2026-10-25, row 197: *"on cities, i want to see all the
 // info without investment"* — reversing his 2026-10-20 gate). The Cities face draws what the server sends,
@@ -48,19 +46,17 @@ export function StatsScreen() {
 function StatsBody() {
   const t = useT()
   const [face, setFace] = useState<StatsFace>('overview')
-  const { live, count, liveAtMs, nextCountMs } = useStatsLive()
+  const { live, liveAtMs } = useStatsLive()
   const updated = liveAtMs === null ? null : t('stats.updated', { time: formatKoreaTime(liveAtMs) })
-  const next = nextCountMs === null ? null : nextCountMs > 0 ? t('stats.nextCount', { time: formatCountdown(nextCountMs) }) : t('stats.counting')
-  const counted = updated === null ? null : next === null ? updated : `${updated} · ${next}`
 
   return (
     <Sheet
       title={t('stats.title')}
       data-testid="stats"
       trailing={
-        counted === null ? undefined : (
+        updated === null ? undefined : (
           <span className="text-t-caption text-ink-faint" data-testid="stats-updated">
-            {counted}
+            {updated}
           </span>
         )
       }
@@ -73,18 +69,11 @@ function StatsBody() {
         className="mb-3 w-fit max-w-full"
       />
       <LiveNow live={live} />
-      {face === 'overview' && <OverviewFace beat={count} live={live} />}
-      {face === 'markets' && <MarketsFace beat={count} live={live} />}
-      {face === 'cities' && <CitiesFace beat={count} live={live} />}
-      {face === 'merchants' && <MerchantsFace beat={count} live={live} />}
-      {face === 'me' && <MeFace beat={count} live={live} />}
+      {face === 'overview' && <OverviewFace live={live} />}
+      {face === 'markets' && <MarketsFace />}
+      {face === 'cities' && <CitiesFace />}
+      {face === 'merchants' && <MerchantsFace />}
+      {face === 'me' && <MeFace />}
     </Sheet>
   )
-}
-
-/** What every face takes: the count's beat (its rollup read re-asks when the last count moves) and the live
- *  figures of this second, for the faces that print them. */
-export interface FaceProps {
-  beat: number
-  live: StatsNow | null
 }

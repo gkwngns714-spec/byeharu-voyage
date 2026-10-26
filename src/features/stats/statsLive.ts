@@ -1,88 +1,73 @@
 import { useEffect, useState } from 'react'
-import { useShellState } from '../../app/shellState'
-import { worldStatsNow, type StatsNow } from '../../lib/rpc'
-import { serverNow } from '../../lib/serverClock'
+import { worldStatsNow, type RpcResult, type StatsNow } from '../../lib/rpc'
 
-// THE TAB'S ONE LIVE PATH — world.stats_now() every second while the Stats tab is open, and nothing else
-// re-asks anything (0224; docs/dev-log/2026-10-26-stats-live.md).
+// THE TAB'S ONE WAY OF ASKING — every Stats read is asked again every second while it is on screen
+// (0224 for the live band; 0232 for every face; docs/dev-log/2026-10-26-stats-all-live.md).
 //
-// THE OWNER (docs/OWNER_REQUESTS.md row 200, 2026-10-25, asked three times): *"i told you that stats, i
-// want to be updated every second"*. The server keeps the live figures as running counters in the same
-// transactions that change them and serves them as one small read, so asking it every second costs one
-// row plus the rows written since the last count — never an aggregate scan.
+// THE OWNER (docs/OWNER_REQUESTS.md row 213, 2026-10-26, after rows 187 and 200): *"and why is next count in
+// minutes? i told you it should be in seconds?"*. Since 0232 every face's read answers NOW on the server — the
+// count's completed quarter hours plus the minutes since, the state as it stands, each chart ending at now() —
+// so there is nothing to wait for and no count to show: a face simply asks its read every second.
 //
-// ONE PATH, NOT TWO. Before this file the tab re-asked the rollup on a 60-s backstop AND at the computed
-// edge of the next count (statsPulse.ts, deleted with 0224). Both are gone: the live answer carries
-// `counted_at`, the instant the last count folded the figures, and a face re-asks its rollup read when
-// that instant moves (`count` below) — the count's own word that a new row exists, not a clock's guess.
+// ONE RULE FOR EVERY READ ON THE TAB (useLiveRead): asked once on mount, then every STATS_LIVE_MS while the
+// component is mounted; a hidden document skips its asks (the figures are re-read the moment the tab is looked at
+// again); an ask still on the wire is never stacked under a new one (a slow answer delays the next, it never piles
+// up); a failed ask keeps the last answer on screen. A new subject (another city) drops the old answer.
 //
-// WHILE THE TAB IS OPEN, ONLY THEN. The interval lives in this hook's effect, so it exists exactly while
-// StatsScreen is mounted. A hidden document skips its asks (both outcomes are truthful: the figures are
-// re-read the moment the tab is looked at again); an ask still on the wire is never stacked under a new one.
-//
-// THE HEADER SAYS WHEN THE FIGURES ARE FROM (owner, 2026-10-26: "it says last count 13:28" — the age of the
-// fifteen-minute rollup read as a stale clock while the figures under it moved every second). It prints the
-// server's own `at` of the newest live answer, in Korea time like the top bar's clock, so it ticks with them.
-// And the time left to the next count (owner, same day: "i want to see the refreshed time left for stats"):
-// the stats job runs every fifteen minutes (cron `6,21,36,51 * * * *`), so the next count is due
-// STATS_COUNT_MS after the last one. Measured as a gap on the one clock: the server's `at − counted_at` plus
-// the time elapsed HERE since the answer landed (lib/serverClock), so a wrong device clock cannot skew it.
+// THE HEADER says when the figures are from: the server's own `at` of the newest live-band answer, in Korea time
+// like the top bar's clock, so it ticks with them.
 
 export const STATS_LIVE_MS = 1_000
 
-/** The stats job's beat: one count every fifteen minutes (cron `6,21,36,51 * * * *`). */
-export const STATS_COUNT_MS = 15 * 60_000
-
-export interface StatsLive {
-  /** The newest answer, or null before the first one lands. Kept across a failed ask. */
-  live: StatsNow | null
-  /** Moves when `counted_at` moves: every face hands it to its rollup read as the `trigger`. */
-  count: number
-  /** The server's instant of the newest live answer, in ms. Null before the first one lands. */
-  liveAtMs: number | null
-  /** Time left to the next count, in ms (0 once it is due). Null before the first answer. */
-  nextCountMs: number | null
+export interface LiveRead<V> {
+  /** The newest answer for this subject, or null before the first one (or when the first one failed). */
+  view: V | null
+  /** True until the first ask for this subject has answered, either way. */
+  loading: boolean
 }
 
-export function useStatsLive(): StatsLive {
-  const { nowMs } = useShellState()
-  const [live, setLive] = useState<StatsNow | null>(null)
-  const [landedMs, setLandedMs] = useState(0)
-  const [count, setCount] = useState(0)
+export function useLiveRead<V>(subject: string, ask: () => Promise<RpcResult<V>>): LiveRead<V> {
+  const [answer, setAnswer] = useState<{ subject: string; view: V | null } | null>(null)
 
   useEffect(() => {
     let alive = true
     let asking = false
-    let lastCountedAt: string | null = null
-    const ask = async () => {
+    const tick = async () => {
       if (asking || (typeof document !== 'undefined' && document.visibilityState === 'hidden')) return
       asking = true
       try {
-        const r = await worldStatsNow()
-        if (!alive || !r.ok) return
-        setLive(r.value)
-        setLandedMs(serverNow())
-        if (lastCountedAt !== null && lastCountedAt !== r.value.counted_at) setCount((c) => c + 1)
-        lastCountedAt = r.value.counted_at
+        const r = await ask()
+        if (!alive) return
+        // a failed ask keeps the last answer for this subject; the first failed ask is an answer of nothing
+        setAnswer((prev) => (r.ok ? { subject, view: r.value } : prev !== null && prev.subject === subject ? prev : { subject, view: null }))
       } finally {
         asking = false
       }
     }
-    void ask()
-    const id = window.setInterval(() => void ask(), STATS_LIVE_MS)
+    void tick()
+    const id = window.setInterval(() => void tick(), STATS_LIVE_MS)
     return () => {
       alive = false
       window.clearInterval(id)
     }
-  }, [])
+    // `ask` is the subject's RPC: a new subject is a new ask, the same subject asks the same thing
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subject])
 
+  if (answer === null || answer.subject !== subject) return { view: null, loading: true }
+  return { view: answer.view, loading: false }
+}
+
+export interface StatsLive {
+  /** The newest answer of world.stats_now(), or null before the first one lands. Kept across a failed ask. */
+  live: StatsNow | null
+  /** The server's instant of the newest live answer, in ms. Null before the first one lands. */
+  liveAtMs: number | null
+}
+
+/** The RIGHT NOW band's read (world.stats_now, 0224), on the tab's one rule. */
+export function useStatsLive(): StatsLive {
+  const { view: live } = useLiveRead<StatsNow>('stats:now', worldStatsNow)
   const liveAtMs = live === null ? null : Date.parse(live.at)
-  const countAgeMs =
-    live === null ? null : Math.max(0, Date.parse(live.at) - Date.parse(live.counted_at)) + Math.max(0, nowMs - landedMs)
-  return {
-    live,
-    count,
-    liveAtMs: liveAtMs !== null && Number.isFinite(liveAtMs) ? liveAtMs : null,
-    nextCountMs: countAgeMs !== null && Number.isFinite(countAgeMs) ? Math.max(0, STATS_COUNT_MS - countAgeMs) : null,
-  }
+  return { live, liveAtMs: liveAtMs !== null && Number.isFinite(liveAtMs) ? liveAtMs : null }
 }

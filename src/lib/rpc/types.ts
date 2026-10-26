@@ -3005,7 +3005,10 @@ export interface StatsWorldPoint {
 
 /** `world.stats_overview(hours)`. `at` null = the job has not written a row yet. */
 export interface StatsOverview {
+  /** 0232: the server's now() — the instant every figure is from. */
   at: string | null
+  /** 0232: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
   hours: number
@@ -3039,7 +3042,10 @@ export interface StatsGood {
 }
 
 export interface StatsMarkets {
+  /** 0232: the server's now() — the instant every figure is from. */
   at: string | null
+  /** 0232: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
   goods: StatsGood[]
@@ -3062,7 +3068,10 @@ export interface StatsCityRow {
 }
 
 export interface StatsCities {
+  /** 0232: the server's now() — the instant every figure is from. */
   at: string | null
+  /** 0232: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
   cities: StatsCityRow[]
@@ -3085,7 +3094,10 @@ export interface StatsCityGood {
  *  job has written the city's first rollup row. */
 export interface StatsCity {
   city: { id: string; code: string; name: string; nation: string | null }
+  /** 0232: the server's now(). */
   at: string | null
+  /** 0232: the last count of this city; null before the first. */
+  counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
   overview?: {
@@ -3112,7 +3124,10 @@ export interface StatsMerchantHouse {
 }
 
 export interface StatsMerchants {
+  /** 0232: the server's now() — the instant every figure is from. */
   at: string | null
+  /** 0232: the last count, whose quarter hours the figures add their minutes to; null before the first. */
+  counted_at: string | null
   age_seconds: number | null
   slot_seconds: number
   houses?: number
@@ -3132,8 +3147,8 @@ export interface StatsMerchants {
 }
 
 /** `world.stats_now()` (0224): the live figures this second — money by holder, fleets at sea, and the trades
- *  since the last count. `counted_at` is when the last count folded the journal: a face re-asks its
- *  rollup read when it moves. `at` is the server's own clock at the answer. */
+ *  since the last count. `counted_at` is when the last count folded the journal. `at` is the server's own clock
+ *  at the answer (the Stats header prints it). */
 export interface StatsNow {
   at: string
   players: number

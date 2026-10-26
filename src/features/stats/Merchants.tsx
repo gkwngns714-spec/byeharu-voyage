@@ -17,10 +17,9 @@ import {
 import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
 import { nationNameOf, useWorld } from '../../live/worldStore'
-import type { FaceProps } from './StatsScreen'
-import { toSeries, withLivePoint } from './statsFaces'
+import { toSeries } from './statsFaces'
+import { useLiveRead } from './statsLive'
 
 // MERCHANTS — the companies the world keeps: how many, where their fleets are, what their last day of
 // laps earned (lap 2 onwards, 0097's rule), the share that lost, the five best and the five worst.
@@ -29,10 +28,13 @@ import { toSeries, withLivePoint } from './statsFaces'
 // the question is "is the world sailing or stuck", and that is a composition, not five counts. The tones
 // are §4.4's: blue is moving, green is safely in port, amber is being repaired, red cannot sail, grey is
 // laid up.
+//
+// EVERY SECOND (0232, owner row 213): where the fleets are and their money are read now; the day's board is the
+// last 24 h of laps up to this second; each line ends at now(). Asked every second while the face is open.
 
-export function MerchantsFace({ beat, live }: FaceProps) {
+export function MerchantsFace() {
   const t = useT()
-  const read = useServedRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants(), { trigger: beat })
+  const read = useLiveRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants())
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
 
@@ -81,8 +83,7 @@ export function MerchantsFace({ beat, live }: FaceProps) {
             tone={(v.losing_pct ?? 0) > 50 ? 'danger' : 'ink'}
           />
           <StatCell label={t('stats.lapsClosed')} value={v.laps_day ?? 0} format={formatInt} size="body" />
-          {/* 0224: their money and the at-sea line's last point are the live counters; the rest of the face is the count's */}
-          <StatCell label={t('stats.theirPurses')} value={live?.merchants ?? v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
+          <StatCell label={t('stats.theirPurses')} value={v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
         </div>
         <StackedBar
           parts={states}
@@ -105,7 +106,7 @@ export function MerchantsFace({ beat, live }: FaceProps) {
           <div className="min-w-0">
             <span className="block text-t-caption text-ink-faint">{t('stats.atSeaSeries')}</span>
             <SeriesChart
-              points={withLivePoint(toSeries(v.series, (p) => p.sailing), live?.at, live?.at_sea_merchants)}
+              points={toSeries(v.series, (p) => p.sailing)}
               format={formatInt}
               label={t('stats.atSeaLabel')}
               tone="accent"

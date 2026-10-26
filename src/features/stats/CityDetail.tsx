@@ -20,9 +20,9 @@ import {
 import { formatDucats, formatDucatsDelta, formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsCity, type StatsCity } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
+import { useLiveRead } from './statsLive'
 
 // ONE CITY, OPEN TO EVERYONE — the row the Cities face opens (0214; 0223 removed the investment gate, the
 // owner's row 197: *"on cities, i want to see all the info without investment"*).
@@ -33,10 +33,13 @@ import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './
 // THE PICTURE: the purse as one line over the counts, income against spending as bars from a zero line,
 // what the city buys and sells most as ranked bars; then every good, each with its own sparkline — the
 // shape the Markets face uses, so a good does not look different here.
+//
+// EVERY SECOND (0232, owner row 213): the purse and each good's price and stock are live, every day-figure is the
+// last 24 h up to this second, the purse line and each spark end at now(); asked every second while open.
 
-export function CityDetail({ portId, beat, onClose }: { portId: string; beat: number; onClose: () => void }) {
+export function CityDetail({ portId, onClose }: { portId: string; onClose: () => void }) {
   const t = useT()
-  const read = useServedRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId), { trigger: beat })
+  const read = useLiveRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId))
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
   if (read.loading && !v) return <Skeleton className="mt-4 h-40 w-full" />

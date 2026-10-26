@@ -23,15 +23,18 @@ import {
 import { formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
 import { t as tNow, useT } from '../../lib/i18n'
 import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
-import type { FaceProps } from './StatsScreen'
 import { goodName, movePct } from './statsFaces'
+import { useLiveRead } from './statsLive'
 
 // MARKETS — every good as a stock-market table: price, its move, what was bought and sold, stock against
 // normal, a line. The day's movers on top as ranked bars, so which rose MOST is read before the digits.
 // The figures are sums over EVERY market that sells a good (public), so no city can be read out of them;
-// a city's own rows are the Cities face's, at your tier. Sorting is a view the player changes three times
-// in ten seconds, so it is done here.
+// a city's own rows are the Cities face's. Sorting is a view the player changes three times in ten seconds, so it
+// is done here.
+//
+// EVERY SECOND (0232, owner row 213): what was bought and sold is the last 24 h up to this second (the count's
+// quarter hours plus the minutes since), asked again every second while the face is open. A good's price across
+// every market, its moves and its stock are the price record's (the server's header of 0232 says why).
 
 type Sort = 'movers' | 'traded' | 'name'
 type Window = '1h' | '1d' | '7d'
@@ -43,9 +46,9 @@ interface GoodRank {
   traded: number
 }
 
-export function MarketsFace({ beat }: FaceProps) {
+export function MarketsFace() {
   const t = useT()
-  const read = useServedRead<StatsMarkets>('stats:markets', () => worldStatsMarkets(), { trigger: beat })
+  const read = useLiveRead<StatsMarkets>('stats:markets', () => worldStatsMarkets())
   const v = read.view
   const [sort, setSort] = useState<Sort>('movers')
   const [win, setWin] = useState<Window>('1d')

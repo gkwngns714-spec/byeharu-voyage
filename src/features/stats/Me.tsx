@@ -14,10 +14,9 @@ import {
 import { formatDucats, formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldBooks, worldStatsMe, type Books, type StatsMe } from '../../lib/rpc'
-import { useServedRead } from '../../live/useServedRead'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
-import type { FaceProps } from './StatsScreen'
+import { useLiveRead } from './statsLive'
 
 // ME — your own week beside the world's: what you made (world.books, the same read the desk's Profit face
 // prints — one authority for "what did I earn"), your best sales, and where you stand. The leaderboard is
@@ -25,13 +24,16 @@ import type { FaceProps } from './StatsScreen'
 //
 // THE SEVEN BARS are the desk's own (`SignedBars`): one a game day, up for a gain and down for a loss. The
 // same picture in both places, because it is the same question.
+//
+// EVERY SECOND (0232, owner row 213): both reads are computed from the record at the moment they are asked, and
+// are asked again every second while the face is open.
 
 const DAYS = 7
 
-export function MeFace({ beat }: FaceProps) {
+export function MeFace() {
   const t = useT()
-  const me = useServedRead<StatsMe>('stats:me', () => worldStatsMe(), { trigger: beat })
-  const books = useServedRead<Books>('stats:books', () => worldBooks(DAYS), { trigger: beat })
+  const me = useLiveRead<StatsMe>('stats:me', () => worldStatsMe())
+  const books = useLiveRead<Books>('stats:books', () => worldBooks(DAYS))
   const nationByCode = useWorld((s) => s.nationByCode)
   const { nowMs } = useShellState()
   const v = me.view

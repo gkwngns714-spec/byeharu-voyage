@@ -33,15 +33,6 @@ export type StatsFace = 'overview' | 'markets' | 'cities' | 'merchants' | 'me'
 /** The faces in order; each one's words are `stats.<id>` in the dictionary. */
 export const STATS_FACES: readonly { id: StatsFace }[] = [{ id: 'overview' }, { id: 'markets' }, { id: 'cities' }, { id: 'merchants' }, { id: 'me' }]
 
-/** The chart's LAST point, moving live at the right edge (0224, owner row 200): the served series plus one
- *  point at the live answer's own instant. A live answer that does not parse, or none yet, draws the
- *  series as served. Presentation: the value is the server's, this only places it. */
-export function withLivePoint(series: readonly SeriesPoint[], at: string | null | undefined, value: number | null | undefined): SeriesPoint[] {
-  const ms = at === null || at === undefined ? null : instantMs(at)
-  if (ms === null || value === null || value === undefined || !Number.isFinite(value)) return [...series]
-  return [...series.filter((p) => p.atMs < ms), { atMs: ms, value }]
-}
-
 /** How many counts a bar row shows — the last six hours at a count a quarter hour. More bars than
  *  this and each one is thinner than the gap beside it (`SignedBars` says so), and 390px is the
  *  glass this game is drawn for. */
