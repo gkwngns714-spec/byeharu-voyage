@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Field, Figure, Note, Row, TradeTray, useWide, type TradePick } from '../components/ui'
 import { FulfilTray } from './FulfilTray'
+import { CityGoodTrades } from './CityGoodTrades'
 import { HaggleThread } from './HaggleThread'
 import { ManifestPanel } from './ManifestPanel'
 import { QuayLedger } from './QuayLedger'
@@ -247,6 +248,8 @@ export function PortTrade({
             side={pick.intent}
             preview={trade.act.preview}
           />
+          {/* Who bought what (0227, owner row 211) — the same list PORT's price tray shows. */}
+          <CityGoodTrades portId={port.id} goodId={pick.good.good_id} refresh={fleet.version} />
         </TradeTray>
       )}
 
