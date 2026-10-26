@@ -5,6 +5,7 @@ import { formatMiles, formatPriceFigure } from '../lib/format'
 import type { MarketGood } from '../lib/rpc'
 import { useDeskGood } from '../store/deskGood'
 import { useT } from '../lib/i18n'
+import { CityGoodTrades } from './CityGoodTrades'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
 // alongside. MOVED 2026-09-11 from features/market/ with the MARKET tab, which folded into PORT
@@ -22,12 +23,15 @@ import { useT } from '../lib/i18n'
 // always was, and the act is one tab over, where every other passage is ordered from.
 
 export function PriceTray({
+  portId,
   good,
   trend,
   passage,
   mode,
   onClose,
 }: {
+  /** The quay being read — whose trades of this good the tray lists (0227). */
+  portId: string
   good: MarketGood
   /** The good's price here over the chosen span, both sides — `usePriceSeries`'s one reading. */
   trend: PriceTrend
@@ -72,6 +76,7 @@ export function PriceTray({
           data-testid="price-tray-passage"
         />
       )}
+      <CityGoodTrades portId={portId} goodId={good.good_id} />
     </Tray>
   )
 }

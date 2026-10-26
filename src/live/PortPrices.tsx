@@ -100,7 +100,7 @@ export function PortPrices({
         />
       )}
       {pick && (
-        <PriceTray good={pick.good} trend={trend} passage={passage} mode={trayMode} onClose={() => setPick(null)} />
+        <PriceTray portId={port.id} good={pick.good} trend={trend} passage={passage} mode={trayMode} onClose={() => setPick(null)} />
       )}
     </>
   )

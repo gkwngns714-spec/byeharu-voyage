@@ -74,6 +74,14 @@ export const tradeDict = defineDict({
     tonsUnit: 'tons',
     knotsUnit: 'knots',
     unitsUnit: 'units',
+    // 0227 (owner row 211): who bought what — a city's recent trades of one good.
+    trades: 'Trades',
+    tradesNone: 'No trades in 7 days.',
+    tradesBought: 'Bought',
+    tradesSold: 'Sold',
+    tradesLine: '{side} {qty} · {price} each',
+    tradesYou: 'you',
+    tradesMerchant: 'merchant',
   },
   ko: {
     supplies: '보급',
@@ -147,5 +155,12 @@ export const tradeDict = defineDict({
     tonsUnit: '톤',
     knotsUnit: '노트',
     unitsUnit: '개',
+    trades: '거래',
+    tradesNone: '7일간 거래 없음.',
+    tradesBought: '구매',
+    tradesSold: '판매',
+    tradesLine: '{side} {qty}개 · 개당 {price}',
+    tradesYou: '나',
+    tradesMerchant: '상인',
   },
 })
