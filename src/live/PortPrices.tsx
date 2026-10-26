@@ -91,7 +91,11 @@ export function PortPrices({
           goods={shown}
           aboard={aboard}
           pick={pick}
-          onPick={(good, intent) => setPick({ good, intent })}
+          onPick={(good, intent) =>
+            // ON THE MAP a second press on the SAME good slides its chart away (owner row 220);
+            // another good swaps it. PORT's docked tray keeps its plain "the press selects".
+            setPick((was) => (trayMode === 'side-next' && was?.good.code === good.code ? null : { good, intent }))
+          }
           empty={
             <Note tone="neutral" className="mt-3">
               {t(face === 'sell' ? 'trade.noCargoSell' : 'trade.nothingTraded')}
@@ -100,7 +104,7 @@ export function PortPrices({
         />
       )}
       {pick && (
-        <PriceTray portId={port.id} good={pick.good} trend={trend} passage={passage} mode={trayMode} onClose={() => setPick(null)} />
+        <PriceTray key={pick.good.code} portId={port.id} good={pick.good} trend={trend} passage={passage} mode={trayMode} onClose={() => setPick(null)} />
       )}
     </>
   )
