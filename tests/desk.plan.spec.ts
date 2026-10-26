@@ -40,7 +40,17 @@ test('Sail & buy from a city she is not at is queued whole and stands on Buy', a
   console.log(`queued trip to ${city}: ${JSON.stringify(texts)}`)
   // the SAIL runs at once in port (she leaves within the minute), so the queue may hold only the BUY that waits for her
   expect(texts.some((t) => /buy/i.test(t)), 'no BUY was queued').toBe(true)
-  await expect(page.getByTestId('queue-passage').or(queued.filter({ hasText: /sail/i }).first()), 'no SAIL there').toBeVisible({ timeout: 90_000 })
+  // …and a near city is reached in seconds (0242: arrivals every second): the SAIL is queued, under way, or done
+  // (she lies at the city in hand)
+  await expect
+    .poll(
+      async () =>
+        (await page.getByTestId('queue-passage').count()) > 0 ||
+        (await queued.filter({ hasText: /sail/i }).count()) > 0 ||
+        (await face.getByTestId('city-goods').getAttribute('data-city')) === city && (await face.getByTestId('city-goods').getAttribute('data-docked')) === 'true',
+      { timeout: 90_000, message: 'no SAIL there' },
+    )
+    .toBe(true)
   expect(texts.some((t) => /sell/i.test(t)), 'a Sail & buy wrote a SELL').toBe(false)
   expect(texts.some((t) => /provision/i.test(t)), "the plan wrote a PROVISION line: supplies are the SAIL's own (0225)").toBe(false)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
