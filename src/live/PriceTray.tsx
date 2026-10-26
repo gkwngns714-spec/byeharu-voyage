@@ -58,7 +58,9 @@ export function PriceTray({
     >
       <Row label={t('trade.buy')} value={<Figure value={formatPriceFigure(good.buy)} size="figure" />} />
       <Row label={t('trade.sell')} value={<Figure value={formatPriceFigure(good.sell)} size="figure" />} />
-      <PriceRows good={good} trend={trend} />
+      {/* ON THE MAP the slide beside the city panel IS the good's chart (owner row 220): unfolded at once,
+          with the span picker above it and the trades list (0227) below — one chart, PriceRows'. */}
+      <PriceRows good={good} trend={trend} startOpen={mode === 'side-next'} />
       <Row
         label={t('trade.openInCommand')}
         chevron
