@@ -35,21 +35,20 @@ row's `shut.code` is `E_ENDURANCE`. `SellList` shows "Cargo full" instead of "To
   so a 4.3-day hold carries legs of 3.7 days at sea. The shut row prints the supplies the crossing needs (7.8 days for
   Tsushima from Havana), not its 6.8 days at sea.
 
-## 2. Measured (local PGlite: 217 of 218 files restored from the prefix cache, 0231 applied, self-assert 12.8 s)
+## 2. Measured (local PGlite, merged with main at 0227: 218 of 219 files restored from the prefix cache, 0231 applied, self-assert 18.4 s)
 
 ```
-0231 probe (a): empty hold: reach_passage(null cap) = its pre-image row for row (245 harbours); her stores carry 642.9 days (cap 200068 nm > navigation 1700 nm); the board = its pre-image + shut (null on every row) + carry_days; good_board 693.0, 540.0, 557.0, 517.0, 542.0, 682.0 ms (pre-image 749.0, 528.0, 554.0 ms)
+0231 probe (a): empty hold: reach_passage(null cap) = its pre-image row for row (245 harbours); her stores carry 642.9 days (cap 200068 nm > navigation 1700 nm); the board = its pre-image + shut (null on every row) + carry_days; good_board 1122.0, 976.0, 923.0, 931.0, 892.0, 914.0 ms (pre-image 919.0, 909.0, 925.0 ms)
 0231 probe (b): hold 0.60 t free: carry 2.14 days, cap 503.4 nm; supply_need fits 503.4 nm and refuses 510.4 nm
-0231 probe (c): loaded: the pre-image offered 208 sell passage(s) she could not sail (a leg past her stores); now 72 of them sail by more stops, the rest are shut with E_ENDURANCE; every routed row's longest leg is within 503 nm and sailable; good_board 427.0, 495.0, 569.0, 592.0, 537.0, 582.0 ms (pre-image 577.0, 600.0, 406.0 ms; 246 sell rows)
+0231 probe (c): loaded: the pre-image offered 208 sell passage(s) she could not sail (a leg past her stores); now 72 of them sail by more stops, the rest are shut with E_ENDURANCE; every routed row's longest leg is within 503 nm and sailable; good_board 760.0, 759.0, 767.0, 775.0, 742.0, 769.0 ms (pre-image 709.0, 708.0, 685.0 ms; 246 sell rows)
 0231 probe (d): 136 sell row(s) shut with E_ENDURANCE, e.g. KAG {"nm": 1614, "cap_nm": 503, "leg_days": 6.0, "need_days": 6.9, "carry_days": 2.1}
-0231 probe (e): leg_refusal: 478 nm open, 510 nm E_ENDURANCE, 1710 nm E_LEG_TOO_FAR; SAIL LIS -> BIL (580 nm) refused E_ENDURANCE, as leg_refusal said
-0231 probe (f): reach_passage capped / uncapped ms, in pairs: 151.0, 157.0, 162.0, 140.0, 173.0, 133.0
+0231 probe (e): leg_refusal: 478 nm open, 510 nm E_ENDURANCE, 1710 nm E_LEG_TOO_FAR; SAIL LIS -> BIL (580 nm) refused E_ENDURANCE, as leg_refusal said (that leg is 2.1 days at sea and asks 2.5 days of supplies; beside the cargo the hold carries 2.1 — sell some, or stop to resupply)
+0231 probe (f): reach_passage capped / uncapped ms, in pairs: 193.0, 179.0, 220.0, 181.0, 196.0, 178.0
 ```
 
-**Timing.** The board costs the same: loaded, 427–592 ms against the pre-image's 406–600. With an empty hold, 517–693
-against 528–749. The capped search, including its minimax pass, takes 151–173 ms against 133–157 uncapped, about +20
-ms. On prod (about 1.7× this machine) that is about +35 ms, well inside the +0.5 s budget. No buy-here case needs a
-second search (see §1, "decided by default").
+First run, before the merge and with the machine less busy (same file as 0227): loaded boards 427–592 ms against the pre-image's 406–600 ms; capped search 151–173 ms against 133–157 ms uncapped.
+
+**Timing.** The board costs about the same. Loaded: 742–775 ms against the pre-image's 685–709, about +60 ms. Empty hold: 892–1,122 against 909–925, no change. The capped search, with its minimax pass, takes 193–220 ms against 178–181 uncapped, about +15 to +40 ms. On prod (about 1.7× this machine) that is under +0.1 s a board, well inside the +0.5 s budget. No buy-here case needs a second search (see §1, "decided by default").
 
 ## 3. PROD CHECKS (read-only; run by me on 2026-10-26 at head 0226; pasted results)
 
@@ -159,13 +158,17 @@ navigation, so its board does not change.
 3.84, 3.24, 4.29 s between calls. The 219 unsailable-with-a-route rows match 3f. The ~1.2 s in the brief was for
 other boards. This one is a full sell side for a full hold. 0231 adds about +35 ms to it (§2).
 
-## 4. Proof run here
+## 4. Proof run here (after `git merge origin/main`, chain head 0227 + this file as 0231)
 
-- Cached-prefix apply of 0231 (`node scripts/db/build-image.mjs`: 217/218 restored, 0231 applied, self-assert ok).
-  No from-zero apply, no full `db:proof`.
-- `npx tsc -b` 0. eslint on the touched files 0. `npm run build` without `.env.local` (see the PR for its state).
-- Specs: `tests/planWords.spec.ts`, `tests/rpc.goodBoard.spec.ts`, plus the desk.plan / trade.loop specs on
-  `vite preview --port 4200` (`localhost`). Results are in the PR.
+- Cached-prefix apply (`node scripts/db/build-image.mjs`): 218/219 restored, 0231 applied, self-assert ok (§2). No
+  from-zero apply and no full `db:proof`.
+- `npx tsc -b` 0. eslint on the 5 touched client/spec files 0. `npm run build` with no `.env.local` 0.
+- `tests/rpc.goodBoard.spec.ts`: 5 passed.
+- `tests/planWords.spec.ts`: 12 passed with `navigator.language` forced to `en-US`. This machine's Node reports
+  `ko-KR`, which makes the English expectations read Korean on main as well, so that is not a regression.
+- On my own `vite preview --port 4207 --strictPort --host localhost`, killed afterwards: `desk.plan`,
+  `desk.plantab` and `trade.loop` at 1440×900 and 390×844, 5 passed. An earlier run aimed at port 4200 hit another
+  worktree's preview (mine had failed to bind), so I discarded it.
 
 ## 5. Rollback
 
