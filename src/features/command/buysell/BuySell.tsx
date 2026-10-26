@@ -1,48 +1,51 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Hint, SheetSection, useWide } from '../../../components/ui'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { SheetSection, useWide } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { buyableHere, listedHere } from '../../../domain/market'
 import { usePortMarket } from '../../../live/usePortMarket'
-import { useWorld } from '../../../live/worldStore'
+import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
 import type { DeskLayout } from '../DeskFrame'
 import { useDeskView } from '../deskView'
-import { DeskTrade } from '../markets/DeskTrade'
 import { Queue } from '../Queue'
 import { RouteFold } from '../RouteFold'
 import { InsuredVoyages } from '../plans/InsuredVoyages'
-import { useDeskPlan } from '../plans/planDraft'
-import { SellList } from '../plans/SellList'
-import { TradeCard } from '../plans/TradeCard'
+import { useDeskPlan, type PlanDraft } from '../plans/planDraft'
 import { TradeMap, type OrderPick } from '../plans/TradeMap'
 import { useTripBoard } from '../plans/useTripBoard'
-import { CityGoods, type CityGoodRow } from './CityGoods'
-import { GoodDetail } from './GoodDetail'
+import { CityBoard, type CityGoodRow } from './CityBoard'
+import { TradePanel } from './TradePanel'
+import { doneWords, type TradeDone } from './tradeDone'
+import { TradeToast } from './TradeToast'
 import { useT } from '../../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// BUY · SELL — the desk's two trading faces (owner row 218, 2026-10-26)
+// BUY · SELL — ONE MIRRORED SCREEN, TWO SIDES (owner rows 218 and 229, 2026-10-26)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// *"in command, there is market, and trade. i want to have buy and sell tab instead of those. with charts, map and
-// all. combine the two market and trade tab, separation. in mini map in command, show cities, when pressed upon, show
-// trade goods with prices, and charts. get it?"*
+// *"buying and selling in command tab is not straight forward … selling i cannot even see charts. I want to click on
+// cities, see the selling prices when i click on the city, not give a bunch of list since it will be too easy. for
+// buying and selling i want both to be... similar mechanism. similar screen, buttons to press etc. make it like a
+// true game."* (row 229)
 //
-// ONE PAGE, TWO SIDES (`side`), replacing the Markets face (every good, every city) and the Trade face (Here / Cargo /
-// the trip card). Top to bottom on a phone; on a wide glass the desk's three panes (DeskFrame.tsx):
+// ONE component, `side` the only difference, so the two faces look and work the same:
 //
-//   MAP      THE map (plans/TradeMap.tsx — the small chart at 0 % zoom, row 207) with EVERY city on it; a city pressed is
-//            the city in hand (store/deskGood's `focus`; default: where she lies, else her next port). An order pressed
-//            in the orders pane draws its route and its served estimate under the map (row 217), on both sides.
-//   CITY     the city's goods (CityGoods.tsx): BUY — what it sells, at its ask; SELL — her cargo, at its bid. A good
-//            pressed opens its page (GoodDetail.tsx): the price, the chart, why, who bought what, and THE ACT —
-//              docked at this city → Buy here / Sell here: THE trade tray (markets/DeskTrade.tsx, one authority);
-//              anywhere else       → Plan trip: the trip's card (plans/TradeCard.tsx) and its sell list, Go queues it.
-//   ORDERS   the standing route above the queue, and the insured voyages (the right pane on a wide glass).
+//   MAP        THE map (plans/TradeMap.tsx, row 207) with every city and her ship; her orders pressed draw their
+//              routes and estimate (row 217). A city pressed on it — or on the chip strip under it — is the city in
+//              hand (store/deskGood's `focus`; default: where she lies, else her next port).
+//   BOARD      that city's goods as cards (CityBoard.tsx): Buy — what it sells, at its ask; Sell — her cargo, at
+//              its bid ("No buyer" greyed where it buys none). Each with ▲▼ on the day and its line.
+//   PANEL      a card pressed opens THE trade panel (TradePanel.tsx): the chart, the units, the money, ONE button —
+//              Buy / Sell docked there, Sail & buy / Sail & sell anywhere else (the trip, queued with Go's lines).
+//   ORDERS     the standing route, the queue, the insured voyages.
 //
-// EVERY FIGURE IS SERVED: the prices world.market's, the chart world.price_series's, the trip world.good_board's. The
-// city and the good pressed are one store (store/deskGood.ts), so turning Buy → Sell keeps the city in hand.
+// NO CROSS-CITY LIST (row 229: "it will be too easy"): what a city pays is found by pressing it. The server's
+// boards are read as before; the "where to sell" ranking is simply not drawn here. A trip's other end is the city
+// she pressed.
+//
+// A phone: map, chips, cards, orders, one under the other; the panel is a bottom sheet. A wide glass: orders on the
+// left, the map and the cards in the centre, the panel on the right.
 
 export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: FleetView; layout: DeskLayout }) {
   const t = useT()
@@ -66,8 +69,8 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
   const quay = usePortMarket(cityPort?.id ?? null)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
 
-  // THE ROWS (CityGoods.tsx): Buy — the goods this city sells; Sell — her cargo, each with this city's row when it
-  // deals in it (0061: a carried good is listed where she can sell it).
+  // THE CARDS: Buy — the goods this city sells; Sell — her cargo, each with this city's row when it deals in it
+  // (0061: a carried good is listed where she can sell it).
   const rows = useMemo<CityGoodRow[]>(() => {
     const market = quay.market?.goods ?? []
     const byCode = new Map(market.map((g) => [g.code, g]))
@@ -82,46 +85,37 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
               const listed = row !== null && listedHere(row, units)
               return { code, name: row?.name ?? good?.name ?? code, category: row?.category ?? good?.category ?? '', units, row: listed ? row : null, price: listed ? row.sell : null }
             })
-    return out.sort((a, b) => a.name.localeCompare(b.name))
+    // Sell: the goods this city buys first, "No buyer" after
+    return out.sort((a, b) => Number(a.price === null) - Number(b.price === null) || a.name.localeCompare(b.name))
   }, [side, quay.market, aboard, goodByCode])
-  const pickedRow = rows.find((r) => r.code === picked) ?? null
+  const pickedRow = rows.find((r) => r.code === picked && r.row !== null) ?? null
 
-  // THE TRADE TRAY: one good, one side, for this fleet while she lies at the city in hand.
-  const [trading, setTrading] = useState<{ code: string; fleet: string } | null>(null)
-  const tradingNow = here && trading?.fleet === fleet.id ? trading : null
-  const tray = tradingNow ? (
-    <DeskTrade
-      key={`${tradingNow.code}:${side}`}
-      mode={wide ? 'pane' : 'docked'}
-      fleet={fleet}
-      code={tradingNow.code}
-      intent={side}
-      onClose={() => setTrading(null)}
-    />
-  ) : null
-
-  // THE TRIP: a plan of this side — Buy plans buy at a city (buyAt), Sell plans sell what is aboard (buyAt null).
-  const sidePlan = plan && (side === 'buy' ? plan.buyAt !== null : plan.buyAt === null) ? plan : null
-  const trip = useTripBoard(fleet, sidePlan)
-  const cardRef = useRef<HTMLDivElement>(null)
-  const [planPressed, setPlanPressed] = useState(0)
+  // THE TRIP (not docked at the city in hand): Sail & buy plans buy there; Sail & sell plans sell what is aboard there.
+  const want: PlanDraft | null =
+    pickedRow && city && !here
+      ? { good: pickedRow.code, buyAt: side === 'buy' ? city : null, sellAt: side === 'sell' ? city : null, units: null, max: null, min: null, insure: false }
+      : null
+  const matches = (p: PlanDraft | null, w: PlanDraft) => p !== null && p.good === w.good && p.buyAt === w.buyAt && p.sellAt === w.sellAt
+  const tripPlan = want && matches(plan, want) ? plan : null
   useEffect(() => {
-    // a phone: Plan trip brings the card up to the thumb
-    if (planPressed > 0 && !wide) cardRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
-  }, [planPressed, wide])
-  const planFrom = (r: CityGoodRow) => () => {
-    if (!city) return
-    // SELL: the trip ends at the city in hand — unless she lies there or it buys none of this good; then the card's
-    // sell list says where (every city the board serves for it).
-    const sellAt = side === 'sell' && !here && r.row ? city : null
-    openPlan({ good: r.code, buyAt: side === 'buy' ? city : null, sellAt, units: null, max: null, min: null, insure: false })
-    setPlanPressed((n) => n + 1)
-  }
+    if (want && !matches(plan, want)) openPlan(want)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `want` is rebuilt every render; its four keys are the dependency
+  }, [want?.good, want?.buyAt, want?.sellAt, plan, openPlan])
+  const trip = useTripBoard(fleet, tripPlan)
 
   // THE ORDER PRESSED (row 217): one of hers, for this fleet. Pressed again, or Close, clears it.
   const [orderPick, setOrderPick] = useState<(OrderPick & { fleet: string }) | null>(null)
   const pickNow: OrderPick | null = orderPick?.fleet === fleet.id ? orderPick : null
   const choose = (p: OrderPick | null) => setOrderPick(p ? { ...p, fleet: fleet.id } : null)
+
+  // THE TOAST after a trade or a trip queued
+  const [toast, setToast] = useState<string | null>(null)
+  const clearToast = useCallback(() => setToast(null), [])
+  const done = (d: TradeDone) => {
+    setToast(doneWords(t, d, (c) => portNameOf(portByCode, c)))
+    pickGood(null)
+    if (d.sailTo) turnTo(side)
+  }
 
   const map = (
     <TradeMap
@@ -131,110 +125,98 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
       onClose={() => choose(null)}
       scrollOnPick={!wide}
       city={city}
-      onCity={(code) => {
-        setFocus(code)
-        setTrading(null)
-      }}
+      onCity={setFocus}
     />
   )
 
-  const detail = (r: CityGoodRow) =>
-    r.row && cityPort ? (
-      <GoodDetail
-        key={`${city}:${r.code}:${side}`}
-        side={side}
-        portId={cityPort.id}
-        row={r.row}
-        docked={here}
-        canAct={side === 'buy' ? buyableHere(r.row) : r.units > 0}
-        onAct={() => setTrading({ code: r.code, fleet: fleet.id })}
-        onPlan={planFrom(r)}
-        refresh={fleet.version}
-      />
-    ) : (
-      // the city keeps no row for a good she carries: say so, and plan where to sell it instead
-      <div className="mb-3" data-testid="good-detail-none">
-        <Hint>{t('desk.noBuyer')}</Hint>
-        <Button variant="primary" className="mt-2" onClick={planFrom(r)} data-testid="good-plan">
-          {t('desk.planTrip')}
-        </Button>
-      </div>
-    )
-
-  const goods = (
-    <CityGoods
+  const board = (
+    <CityBoard
       side={side}
+      fleet={fleet}
       city={city}
       docked={here}
       quay={quay}
       rows={rows}
       picked={pickedRow ? pickedRow.code : null}
-      onPick={(code) => {
-        pickGood(code)
-        setTrading(null)
-      }}
-      detail={wide ? undefined : detail}
+      onPick={(code) => pickGood(picked === code ? null : code)}
+      onCity={setFocus}
     />
   )
 
-  const card =
-    sidePlan && trip.good ? (
-      <div ref={cardRef} className="mt-4 scroll-mt-28" data-testid="trip">
-        <TradeCard
-          key={`${sidePlan.good}:${sidePlan.buyAt ?? ''}:${fleet.id}`}
-          fleet={fleet}
-          good={trip.good}
-          plan={sidePlan}
-          board={trip.board}
-          units={trip.units}
-          legs={trip.legs}
-          onQueued={() => turnTo(side)}
-          onRoute={() => turnTo(side)}
-        />
-        <SellList plan={sidePlan} board={trip.board} loading={trip.loading} />
-      </div>
+  const panel =
+    pickedRow?.row && city ? (
+      <TradePanel
+        key={`${city}:${pickedRow.code}:${side}:${here ? 'here' : 'trip'}`}
+        side={side}
+        fleet={fleet}
+        city={city}
+        good={pickedRow.row}
+        docked={here}
+        trip={trip}
+        mode={wide ? 'pane' : 'docked'}
+        onClose={() => pickGood(null)}
+        onDone={done}
+      />
     ) : null
 
-  return layout({
-    testid: side === 'buy' ? 'desk-buy' : 'desk-sell',
-    order: ['list', 'main', 'side'],
-    list: (
-      <>
-        {/* THE MAP ON TOP (rows 217, 218): the first thing on a phone; the centre pane's head on a wide glass */}
-        {!wide && map}
-        {goods}
-      </>
-    ),
-    main: (
-      <>
-        {wide && map}
-        {wide && pickedRow && detail(pickedRow)}
-        {card}
-        {/* a phone: the tray at the bottom edge, over nothing it moves */}
-        {!wide && tray}
-      </>
-    ),
-    side:
-      wide && tray ? (
-        <div className="h-full min-h-0" data-testid="here-tray">
-          {tray}
-        </div>
-      ) : (
-        <div className="lg:h-full lg:min-h-0 lg:overflow-y-auto lg:px-4 lg:pb-6 lg:pt-3">
-          {/* the standing route above the queue (0092, COMMAND_DESK §3.5: the one thing that writes orders by itself) */}
-          <RouteFold fleet={fleet} picked={pickNow?.kind === 'route'} onPick={(on) => choose(on ? { kind: 'route' } : null)} />
-          <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
-            <Queue
-              fleet={fleet}
-              onCancel={(position) => cancel(fleet.id, position)}
-              onClear={() => clearQueue(fleet.id)}
-              picked={pickNow?.kind === 'order' ? pickNow.id : pickNow?.kind === 'voyage' ? 'voyage' : null}
-              onPick={choose}
-            />
-          </SheetSection>
-          {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
-          <InsuredVoyages />
-        </div>
-      ),
-  })
+  const orders = (
+    <>
+      {/* the standing route above the queue (0092, COMMAND_DESK §3.5: the one thing that writes orders by itself) */}
+      <RouteFold fleet={fleet} picked={pickNow?.kind === 'route'} onPick={(on) => choose(on ? { kind: 'route' } : null)} />
+      <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
+        <Queue
+          fleet={fleet}
+          onCancel={(position) => cancel(fleet.id, position)}
+          onClear={() => clearQueue(fleet.id)}
+          picked={pickNow?.kind === 'order' ? pickNow.id : pickNow?.kind === 'voyage' ? 'voyage' : null}
+          onPick={choose}
+        />
+      </SheetSection>
+      {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
+      <InsuredVoyages />
+    </>
+  )
+
+  const toastLine = <TradeToast text={toast} onGone={clearToast} />
+
+  return layout(
+    wide
+      ? {
+          testid: side === 'buy' ? 'desk-buy' : 'desk-sell',
+          list: orders,
+          main: (
+            <>
+              {map}
+              {board}
+              {toastLine}
+            </>
+          ),
+          side: panel ? (
+            <div className="h-full min-h-0" data-testid="here-tray">
+              {panel}
+            </div>
+          ) : (
+            <p className="px-4 pt-4 text-t-caption text-ink-faint" data-testid="desk-slot-hint">
+              {t('desk.pickGood')}
+            </p>
+          ),
+        }
+      : {
+          testid: side === 'buy' ? 'desk-buy' : 'desk-sell',
+          order: ['list', 'main', 'side'],
+          list: (
+            <>
+              {map}
+              {board}
+            </>
+          ),
+          main: (
+            <>
+              {panel}
+              {toastLine}
+            </>
+          ),
+          side: <div className="mt-6">{orders}</div>,
+        },
+  )
 }

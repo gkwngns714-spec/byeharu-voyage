@@ -47,6 +47,9 @@ function sailTo(order: QueuedOrder, fleetName: string, isPort: (code: string) =>
 export function orderTrips(fleet: FleetView, isPort: (code: string) => boolean, isGood: (code: string) => boolean): OrderTrip[] {
   const trips: OrderTrip[] = []
   let here: string | null = fleet.status === 'DOCKED' ? fleet.port : null
+  // where a queued BUY / SELL runs: where she lies, else (at sea) where the voyage under way ends — a trip whose SAIL has
+  // already left still trades at its city (owner row 229: a near city is one leg, and it leaves at once)
+  let at: string | null = here ?? fleet.voyage?.to ?? null
   let trip: OrderTrip | null = null
   let buy: { good: string; units: number | null; at: string | null } | null = null
   let sell: { good: string; at: string | null } | null = null
@@ -72,13 +75,14 @@ export function orderTrips(fleet: FleetView, isPort: (code: string) => boolean, 
       if (to) {
         trip.stops.push(to)
         here = to
+        at = to
       }
     } else if (verb === 'BUY' || verb === 'SELL') {
       const tokens = order.text.trim().split(/\s+/).slice(1).filter((w) => w !== fleet.name)
       const trade = tradeOfTokens(verb, tokens)
-      if (trade && verb === 'BUY' && !buy) buy = { good: trade.good, units: trade.line.qty, at: here }
+      if (trade && verb === 'BUY' && !buy) buy = { good: trade.good, units: trade.line.qty, at }
       if (verb === 'SELL') {
-        if (trade) sell = { good: trade.good, at: here }
+        if (trade) sell = { good: trade.good, at }
         close()
       }
     }

@@ -25,7 +25,8 @@ export function usePlanCourse(
   const toBuyKey = (buyRow?.stops ?? []).join(' ')
   const toSellKey = (sellRow?.stops ?? []).join(' ')
   return useMemo(() => {
-    if (!seaNav || !plan?.sellAt) return NONE
+    // a trip with an end: a sell city, or (Sail & buy, owner row 229) a buy city alone
+    if (!seaNav || !plan || (!plan.sellAt && !plan.buyAt)) return NONE
     const text = planLines(plan, held, seaNav, portByCode, {
       toBuy: toBuyKey ? toBuyKey.split(' ') : [],
       toSell: toSellKey ? toSellKey.split(' ') : [],

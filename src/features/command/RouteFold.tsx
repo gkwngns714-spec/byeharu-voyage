@@ -14,9 +14,7 @@ import {
 import type { FleetView, Refusal } from '../../lib/rpc'
 import { RouteEditor } from './RouteEditor'
 import { RouteStopFace } from './RouteStop'
-import { useDeskPlan } from './plans/planDraft'
 import { useDeskView } from './deskView'
-import type { RouteStopDraft } from './standingRouteDraft'
 import { useT } from '../../lib/i18n'
 
 // THE ROUTE, FOLDED ABOVE HER QUEUE — owner, 2026-09-30: *"i want this game to be a simulating
@@ -71,10 +69,6 @@ export function RouteFold({
   // WHICH route the editor is open on: this fleet's own ('own'), a route no fleet runs (its id), a
   // new one ('new'), or none.
   const [editing, setEditing] = useState<string | null>(null)
-  // THE PLAN BUILDER'S HAND-OFF (docs/COMMAND_DESK.md §3.5, "Make it a route"): while a seeded draft
-  // stands, the fold stands open on a NEW route drafted from it; the editor's close spends the seed.
-  const seed: RouteStopDraft[] | null = useDeskPlan((s) => s.routeSeed)
-  const clearSeed = useDeskPlan((s) => s.clearSeed)
   // THIS fold's last refusal — never the store's, which may belong to another screen's press.
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   // ONE press at a time across the fold's buttons: Start / Delete on a spare route, Clear, Pause /
@@ -137,23 +131,14 @@ export function RouteFold({
         )}
       </Row>
 
-      {(open || seed !== null) && (
+      {open && (
         <div className="pb-3" data-testid="route-unfold">
           {!book ? (
             <Row label={t('command.loading')} tone="muted" hairline={false} />
           ) : !book.enabled ? (
             <Hint>{t('command.routesNotOpen')}</Hint>
-          ) : editing || seed !== null ? (
-            <RouteEditor
-              key={seed !== null ? 'seed' : (editing ?? 'none')}
-              fleet={fleet}
-              route={seed !== null ? null : editRoute}
-              initial={seed}
-              onDone={() => {
-                setEditing(null)
-                clearSeed()
-              }}
-            />
+          ) : editing ? (
+            <RouteEditor key={editing} fleet={fleet} route={editRoute} onDone={() => setEditing(null)} />
           ) : !route ? (
             <>
               {spare.map((r) => (

@@ -53,7 +53,7 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   })
 
-  test('a press selects: the good opens in the centre, nothing moves', async ({ page, request, baseURL }) => {
+  test('a press selects: the good opens in the right pane, nothing moves', async ({ page, request, baseURL }) => {
     await openDesk(page, request, baseURL)
     const rows = () =>
       page.evaluate(() => [...document.querySelectorAll('[data-testid="city-good"]')].slice(0, 10).map((e) => Math.round(e.getBoundingClientRect().top)))
@@ -63,7 +63,8 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
     const second = page.getByTestId('city-good').nth(2)
     await second.click()
     await expect(second).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByTestId('desk-pane-chart').getByTestId('good-detail')).toBeVisible()
+    // owner row 229: the map and the cards in the centre, the trade panel on the right
+    await expect(page.getByTestId('desk-pane-ticket').getByTestId('good-detail')).toBeVisible()
     await expect(page.getByTestId('price-chart').or(page.getByTestId('trend-empty'))).toBeVisible({ timeout: 60_000 })
     await page.waitForTimeout(400)
     expect(await panes(), 'a press moved a pane').toEqual(before)
@@ -74,7 +75,7 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
 test.describe('the desk at 390×844', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
-  test('no sideways scroll; the good page opens under its row, the chart in it', async ({ page, request, baseURL }) => {
+  test('no sideways scroll; the good opens as the bottom sheet, the chart in it', async ({ page, request, baseURL }) => {
     await openDesk(page, request, baseURL)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     const row = page.getByTestId('city-good').first()
@@ -82,9 +83,12 @@ test.describe('the desk at 390×844', () => {
     const detail = page.getByTestId('good-detail')
     await expect(detail).toBeVisible()
     await expect(detail.getByTestId('trend-row')).toBeVisible()
-    const r = await box(page, 'city-good')
+    // owner row 229: a bottom sheet at the phone's bottom edge, the one button in it
+    await expect(detail).toHaveAttribute('data-tray-mode', 'docked')
+    await expect(page.getByTestId('trade-act')).toBeVisible()
     const d = await box(page, 'good-detail')
-    expect(d.y, 'the good page is not under its row').toBeGreaterThanOrEqual(r.bottom - 1)
+    expect(d.bottom, 'the sheet does not stand at the bottom edge').toBeGreaterThanOrEqual(844 - 120)
+    expect(d.x).toBeGreaterThanOrEqual(0)
     expect(d.x + d.w).toBeLessThanOrEqual(390)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   })
@@ -92,7 +96,7 @@ test.describe('the desk at 390×844', () => {
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // 2026-10-19, ON THE OWNER'S 1280×707 GLASS: figures were drawn over each other and names truncated to
-// "Abalone …". Measured at 1280, 1440 and 390 on the Buy face's rows.
+// "Abalone …". Measured at 1280, 1440 and 390 on the Buy face's cards (owner row 229: a card per good).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 for (const size of [
   { width: 1280, height: 707 },
@@ -108,7 +112,7 @@ for (const size of [
         const rows = [...document.querySelectorAll('[data-testid="city-good"]')].slice(0, 12)
         const clipped: string[] = []
         for (const row of rows) {
-          for (const cell of row.querySelectorAll<HTMLElement>('[data-col], [data-row-cell="label"]')) {
+          for (const cell of row.querySelectorAll<HTMLElement>('[data-testid="city-good-name"], [data-testid="city-good-price"], [data-testid="city-good-aboard"], [data-testid="day-change"]')) {
             if (cell.scrollWidth > cell.clientWidth + 1) clipped.push(row.getAttribute('data-good') ?? '?')
           }
         }

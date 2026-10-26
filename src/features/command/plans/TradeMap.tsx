@@ -95,7 +95,9 @@ export function TradeMap({
   const drawing: MapDrawing = routeLegs
     ? { legs: routeLegs, ends: route?.stops.map((s) => s.port) ?? [] }
     : pick && trip
-      ? { legs: tripLegs, ends: [trip.plan?.buyAt, trip.plan?.sellAt ?? trip.stops[trip.stops.length - 1]].filter((c): c is string => !!c) }
+      ? // a trip whose SAIL has already left (she is on its way): the voyage under way is its course (row 229 —
+        // a near city is one leg, and that leg runs at once)
+        { legs: tripLegs.length > 0 ? tripLegs : voyageLegs, ends: [trip.plan?.buyAt, trip.plan?.sellAt ?? trip.stops[trip.stops.length - 1]].filter((c): c is string => !!c) }
       : pick?.kind === 'voyage'
         ? { legs: voyageLegs, ends: fleet.voyage?.to ? [fleet.voyage.to] : [] }
         : (plan ?? { legs: [], ends: fleet.voyage?.to ? [fleet.voyage.to] : [] })
@@ -219,8 +221,17 @@ function TripEstimate({ fleet, trip, name }: { fleet: FleetView; trip: OrderTrip
   const good = plan ? (goodByCode[plan.good] ?? null) : null
   const buyPort = plan?.buyAt ? (portByCode[plan.buyAt] ?? null) : null
   const board = useGoodBoard(good?.id ?? null, fleet.id, fleet.version, plan?.buyAt ? plan.units : null, buyPort?.id ?? null)
-  const { buyRow, sellRow, days, supplies } = tripRows(board.view, plan ?? { buyAt: null, sellAt: null })
-  const ports = [trip.start, ...trip.stops].filter((c): c is string => !!c).map(name)
+  const rows = tripRows(board.view, plan ?? { buyAt: null, sellAt: null })
+  const { buyRow, sellRow, supplies } = rows
+  // a trip whose SAIL has already left: its time is the voyage under way (its served instants, as PassageEstimate reads them)
+  const eta = instantMs(fleet.voyage?.eta)
+  const left = instantMs(fleet.voyage?.departed_at)
+  const days = rows.days ?? (trip.stops.length === 0 && eta !== null && left !== null ? realMsToVoyageDays(eta - left) : null)
+  // a trip whose SAIL has already left: the voyage under way is its route (row 229 — a near city is one leg)
+  const ports =
+    trip.stops.length > 0 || !fleet.voyage?.to
+      ? [trip.start, ...trip.stops].filter((c): c is string => !!c).map(name)
+      : [fleet.port ? name(fleet.port) : t('desk.atSea'), name(fleet.voyage.to)]
   return (
     <>
       <RouteLine ports={ports} />

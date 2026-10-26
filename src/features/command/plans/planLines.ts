@@ -5,8 +5,7 @@
 //   SAIL Lisbon                       and the route editor propose theirs; the server re-verifies it when
 //   SELL coffee ALL AT >= 140         the line runs, so a proposal makes nothing legal, only findable)
 //
-// and "Make it a route": the same two stops in the route editor's own draft (`RouteStopDraft`). Every
-// rule — can it buy there, is the price inside the limit, is the water open — is the server's, when the
+// Every rule — can it buy there, is the price inside the limit, is the water open — is the server's, when the
 // line runs (COMMAND_DESK D6: a plan does not wait; a limit missed refuses the line like any order).
 //
 // THE PASSAGE SHE CAN SAIL (0188; the owner, 2026-10-18: "your navigation carries you 1700 nm"). A far city is
@@ -27,7 +26,6 @@ import { courseLeg, daysAt, type PlanLeg, sailOrigin } from '../../../domain/pas
 import { formatMiles, formatVoyageDays } from '../../../lib/format'
 import type { SeaNav } from '../../../lib/sea'
 import type { BoardPassage, BoardSea, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
-import { emptyStop, type RouteStopDraft } from '../standingRouteDraft'
 import type { PlanDraft } from './planDraft'
 import { t } from '../../../lib/i18n'
 
@@ -46,11 +44,13 @@ export interface PlanPassage {
 
 /** THE TRIP'S ROWS ON THE BOARD — the buy row (the plan's buy city), the sell row (its sell city), the days to sail
  *  both (to the buy city, then on: the board's own days, 0 when she is there or sells what is aboard), and the
- *  supplies the sell row's passage asks. THE ONE READING: the trade card and the order's estimate both print it. */
+ *  supplies the passage asks. A trip that only BUYS (Sail & buy, owner row 229: no sell city) ends at the buy city:
+ *  its days and supplies are the buy row's. THE ONE READING: the Buy / Sell panel and the order's estimate both print it. */
 export function tripRows(b: GoodBoard | null, plan: Pick<PlanDraft, 'buyAt' | 'sellAt'>) {
   const buyRow = b && plan.buyAt ? (b.buy.find((r) => r.port === plan.buyAt) ?? null) : null
   const sellRow = b && plan.sellAt ? (b.sell.find((r) => r.port === plan.sellAt) ?? null) : null
   const toBuyDays = !plan.buyAt ? 0 : !buyRow ? null : buyRow.here ? 0 : buyRow.days
+  if (plan.buyAt && !plan.sellAt) return { buyRow, sellRow, days: toBuyDays, supplies: buyRow?.supplies ?? null }
   const days = sellRow && sellRow.days !== null && toBuyDays !== null ? toBuyDays + sellRow.days : null
   return { buyRow, sellRow, days, supplies: sellRow?.supplies ?? null }
 }
@@ -106,18 +106,6 @@ export function planLines(
     lines.push({ text: `SELL ${plan.good} ALL${plan.min !== null ? ` AT >= ${num(plan.min)}` : ''}` })
   }
   return { ok: true, lines, legs }
-}
-
-/** "Make it a route": the buy stop and the sell stop, in the route editor's own draft. */
-export function planRoute(plan: PlanDraft): RouteStopDraft[] {
-  const stops: RouteStopDraft[] = []
-  if (plan.buyAt) {
-    stops.push({ ...emptyStop(plan.buyAt), sellAll: false, buyGood: plan.good, buyUnits: plan.units, buyMax: plan.max })
-  }
-  if (plan.sellAt) {
-    stops.push({ ...emptyStop(plan.sellAt), sellAll: true, sellAllFloor: { price_limit: plan.min, at_profit: false } })
-  }
-  return stops
 }
 
 /** What the board served about the fleet reading a row (0188): its speed, the farthest one leg its captain

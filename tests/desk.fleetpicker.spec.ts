@@ -164,10 +164,9 @@ test.describe('several fleets', () => {
     await expect(picker).toContainText('Gaivota')
     await page.keyboard.press('ArrowLeft')
     await expect(picker).toContainText(SECOND_FLEET)
-    // …but not while typing: a text field keeps its arrows (the trip card's units, Buy › a good › Plan trip).
+    // …but not while typing: a text field keeps its arrows (the trade panel's units, Buy › a good — owner row 229).
     await page.getByTestId('city-good').first().click()
-    await page.getByTestId('good-plan').click()
-    const search = page.getByTestId('trade-card').getByRole('textbox').first()
+    const search = page.getByTestId('good-detail').getByTestId('stepper-figure')
     await search.click()
     await search.pressSequentially('12')
     await page.keyboard.press('ArrowRight')

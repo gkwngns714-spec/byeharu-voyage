@@ -27,14 +27,11 @@ import { useT } from '../../lib/i18n'
 export function RouteEditor({
   fleet,
   route,
-  initial = null,
   onDone,
 }: {
   fleet: FleetView
   /** The route being changed, or null for a new one. */
   route: StandingRoute | null
-  /** A new route's stops, already drafted — the plan builder's "Make it a route" (COMMAND_DESK §3.5). */
-  initial?: RouteStopDraft[] | null
   onDone: () => void
 }) {
   const t = useT()
@@ -53,7 +50,7 @@ export function RouteEditor({
   const whereHome = whereabouts(fleet)
   const home = whereHome.kind === 'docked' ? whereHome.port : null
   const [stops, setStops] = useState<RouteStopDraft[]>(() =>
-    route ? draftOfRoute(route) : initial && initial.length > 0 ? initial : home ? [emptyStop(home), emptyStop('')] : [],
+    route ? draftOfRoute(route) : home ? [emptyStop(home), emptyStop('')] : [],
   )
   // A route saved but not yet started (its assign was refused) is saved AGAIN on the next press,
   // never duplicated: the id is kept here. Once this editor closes, the fold lists that route

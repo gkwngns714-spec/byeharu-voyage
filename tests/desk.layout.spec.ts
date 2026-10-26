@@ -28,8 +28,6 @@ async function openDesk(page: Page, request: Parameters<typeof reachable>[0], ba
   await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
 }
 
-const wide = (size: { width: number }) => size.width >= 1024
-
 const tops = (page: Page, sel: string) =>
   page.evaluate((s) => [...document.querySelectorAll(s)].slice(0, 8).map((e) => Math.round(e.getBoundingClientRect().top)), sel)
 
@@ -37,7 +35,7 @@ for (const size of SIZES) {
   test.describe(`COMMAND desk at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size })
 
-    test('Buy: 52-px rows, 44-px controls, no sideways scroll', async ({ page, request, baseURL }) => {
+    test('Buy: 52-px cards, 44-px controls, no sideways scroll', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
       const m = await page.evaluate(() => {
         const desk = document.querySelector('[data-testid="command"]')!
@@ -69,15 +67,14 @@ for (const size of SIZES) {
       await expect(page.getByTestId('good-detail')).toBeVisible()
       await page.waitForTimeout(300)
       const after = await tops(page, '[data-testid="city-good"]')
-      // wide: the page stands in the centre pane, the list does not move at all; phone: it hangs under the row
-      expect(wide(size) ? after : after.slice(0, 2), 'opening a good moved the list').toEqual(wide(size) ? before : before.slice(0, 2))
+      // owner row 229: the panel stands in the right pane (wide) or rises as the bottom sheet (phone) — no card moves
+      expect(after, 'opening a good moved the cards').toEqual(before)
 
-      // Buy here: THE trade tray; closing it returns to the page.
-      await page.getByTestId('good-buy').click()
-      await expect(page.getByTestId('trade-tray')).toBeVisible({ timeout: 30_000 })
-      await page.getByTestId('trade-tray').getByRole('button', { name: /close/i }).first().click()
-      await expect(page.getByTestId('trade-tray')).toHaveCount(0)
-      await expect(page.getByTestId('good-detail')).toBeVisible()
+      // its one button; closing the panel returns to the cards, still where they were
+      await expect(page.getByTestId('trade-act')).toBeVisible({ timeout: 30_000 })
+      await page.getByTestId('good-detail').getByRole('button', { name: /close/i }).first().click()
+      await expect(page.getByTestId('good-detail')).toHaveCount(0)
+      expect(await tops(page, '[data-testid="city-good"]'), 'closing the panel moved the cards').toEqual(before)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     })
   })

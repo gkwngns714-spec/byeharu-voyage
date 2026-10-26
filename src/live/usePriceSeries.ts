@@ -13,13 +13,17 @@
 
 import { useEffect } from 'react'
 import type { PriceTrend } from '../components/ui'
+import type { PriceSpan } from '../lib/rpc'
 import { useChartSpan } from '../store/chartSpan'
 import { seriesKey, useWorld } from './worldStore'
 
 /** Ensures the pair's series for the chosen span is asked for once, and returns the trend for ONE good
- *  at ONE city. A null port or good asks nothing and reads as "not landed". */
-export function usePriceSeries(portId: string | null, goodId: string | null): PriceTrend {
-  const span = useChartSpan((s) => s.span)
+ *  at ONE city. A null port or good asks nothing and reads as "not landed". `fixed` reads that span
+ *  instead of the chosen one — the Buy / Sell board's cards (owner row 229): every card's line is the
+ *  last day, whatever span the big chart is on. */
+export function usePriceSeries(portId: string | null, goodId: string | null, fixed?: PriceSpan): PriceTrend {
+  const chosen = useChartSpan((s) => s.span)
+  const span = fixed ?? chosen
   const setSpan = useChartSpan((s) => s.setSpan)
   const key = portId && goodId ? seriesKey(portId, goodId, span) : null
   const known = useWorld((s) => (key ? s.series[key] !== undefined : true))
