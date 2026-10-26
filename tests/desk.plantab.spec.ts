@@ -65,7 +65,7 @@ for (const size of SIZES) {
       await expect(chart.locator('[data-port-code]').first()).toBeAttached({ timeout: 30_000 })
 
       // every city (row 218), and the plan's course over them
-      await expect(map.getByTestId('trade-map-cities')).toHaveText('*')
+      await expect(map).toHaveAttribute('data-cities', '*')
       expect(await chart.locator('[data-port-code]').count(), 'the map draws the cities').toBeGreaterThan(20)
       await expect(map.getByTestId('map-plan-course').first()).toBeAttached({ timeout: 60_000 })
       for (const id of ['map-merchant', 'map-merchant-lane', 'map-merchant-loop', 'map-merchant-track']) {

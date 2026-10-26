@@ -116,7 +116,7 @@ export function TradeMap({
   }, [pickKey, scrollOnPick])
 
   return (
-    <section ref={boxRef} className="mb-4 scroll-mt-28" data-testid="trade-map">
+    <section ref={boxRef} className="mb-4 scroll-mt-28" data-testid="trade-map" data-cities={only ? only.join(' ') : '*'}>
       <SmallChart
         ports={snapshot?.ports ?? []}
         fleets={[fleet]}
@@ -129,9 +129,6 @@ export function TradeMap({
         ariaLabel={t(pick ? 'desk.mapChart' : 'desk.citiesChart')}
         className="aspect-[2/1] w-full"
       />
-      <span className="sr-only" data-testid="trade-map-cities">
-        {only ? only.join(' ') : '*'}
-      </span>
       {pick && (
         <OrderEstimate
           key={pickKey ?? ''}

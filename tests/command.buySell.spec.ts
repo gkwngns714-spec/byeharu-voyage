@@ -40,7 +40,7 @@ for (const size of SIZES) {
       // THE MAP ON TOP, every city on it; the city in hand is where she lies
       const map = face.getByTestId('trade-map')
       await expect(map.getByTestId('small-chart')).toBeVisible()
-      await expect(map.getByTestId('trade-map-cities')).toHaveText('*')
+      await expect(map).toHaveAttribute('data-cities', '*')
       expect(await map.locator('[data-port-code]').count(), 'the map draws the cities').toBeGreaterThan(20)
       const goods = face.getByTestId('city-goods')
       await expect(goods).toHaveAttribute('data-city', 'LIS')
