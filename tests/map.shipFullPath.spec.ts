@@ -13,11 +13,15 @@ const SIZES = [
   { width: 390, height: 844 },
 ] as const
 
-/** Trade → Cargo → the good → the Nth sell row → Go. */
+/** Sell → the good → Plan → the Nth sell row → Go. */
 async function queueTrip(page: Page, code: string, nth: number) {
-  const face = page.getByTestId('desk-plans')
-  await face.getByTestId('trade-start-hold').click()
-  await face.locator(`[data-testid="trade-good"][data-good="${code}"]`).click()
+  const faces = page.getByRole('tablist', { name: 'Desk faces' })
+  await faces.getByRole('tab', { name: 'Sell', exact: true }).click()
+  const face = page.getByTestId('desk-sell')
+  const good = face.locator(`[data-testid="city-good"][data-good="${code}"]`)
+  await expect(good).toBeVisible({ timeout: 60_000 })
+  if ((await good.getAttribute('aria-pressed')) !== 'true') await good.click()
+  await face.getByTestId('good-plan').click()
   const rows = face.getByTestId('trade-sell-row')
   await expect(rows.first()).toBeVisible({ timeout: 120_000 })
   await rows.nth(Math.min(nth, (await rows.count()) - 1)).click()
@@ -39,13 +43,14 @@ for (const size of SIZES) {
       )
       await page.goto('command')
       await ready(page)
-      await page.getByRole('tab', { name: 'Trade', exact: true }).click()
-      const face = page.getByTestId('desk-plans')
-      await face.getByTestId('trade-start-here').click()
-      const buyable = face.locator('button[data-testid="here-buy"]:enabled')
-      await expect(buyable.first()).toBeVisible({ timeout: 120_000 })
-      const code = await buyable.first().locator('xpath=ancestor::*[@data-testid="here-row"]').getAttribute('data-good')
-      await buyable.first().click()
+      const faces = page.getByRole('tablist', { name: 'Desk faces' })
+      await faces.getByRole('tab', { name: 'Buy', exact: true }).click()
+      const buyFace = page.getByTestId('desk-buy')
+      const first = buyFace.getByTestId('city-good').first()
+      await expect(first).toBeVisible({ timeout: 120_000 })
+      const code = await first.getAttribute('data-good')
+      await first.click()
+      await buyFace.getByTestId('good-buy').click()
       const tray = page.getByTestId('trade-tray')
       await expect(tray.getByTestId('trade-tray-send')).toBeEnabled({ timeout: 60_000 })
       await tray.getByTestId('trade-tray-send').click()
