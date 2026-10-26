@@ -539,7 +539,7 @@ as $$
                          from public.treasury_flows f join public.ports p on p.id = f.port_id
                         where f.id > p_mark and f.created_at = now() and f.kind <> 'PROBE_0237'), '[]'::jsonb),
     'purse', (select pl.ducats from public.players pl where pl.id = p_p),
-    'ledger', coalesce((select jsonb_agg(jsonb_build_array(l.kind, l.ducats_delta, l.balance_after) order by l.id)
+    'ledger', coalesce((select jsonb_agg(jsonb_build_array(l.kind, l.ducats_delta, l.balance_after) order by l.kind, l.ducats_delta, l.balance_after)
                           from public.ledger l where l.player_id = p_p and l.kind <> 'PROBE_0237'), '[]'::jsonb),
     'fleet', (select jsonb_build_array(f.status, p.code, f.ready_at, f.version)
                 from public.fleets f left join public.ports p on p.id = f.port_id where f.id = p_f),
