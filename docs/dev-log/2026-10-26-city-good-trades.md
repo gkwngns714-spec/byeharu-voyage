@@ -55,11 +55,12 @@ the heap once — a full parallel seq scan of `events` measured **475 ms** cold 
 - `src/lib/rpc`: `worldCityGoodTrades` in the catalog (`catalog.ts`), `CityGoodTrade` / `CityGoodTrades` in
   `types.ts`, `worldCityGoodTrades(port, good, limit = 50)` in `index.ts`. The local (PGlite) backend calls it
   from the catalog like every other read.
-- **Where the press lives.** Every press on a city's good opens one of two trays: PORT's read-only
+- **Where the press lives.** Every press on a city's good opens one of three trays: PORT's read-only
   `PriceTray` (the city Info face when no fleet is there, and the MAP's city panel — both through
-  `src/live/PortPrices.tsx`) and the quay's `TradeTray` (`src/live/PortTrade.tsx`, a fleet docked). The Stats
-  → Cities detail rows (`src/features/stats/CityDetail.tsx`) are not pressable. Both trays now render ONE
-  component, `src/live/CityGoodTrades.tsx`: a caption **Trades**, then a `Row` per trade — the company's full
+  `src/live/PortPrices.tsx`), the quay's `TradeTray` (`src/live/PortTrade.tsx`, a fleet docked), and the desk's
+  trade doorway `src/features/command/markets/DeskTrade.tsx` (the Markets face, and Trade › Here —
+  `HereMarket.tsx`, #315, merged from main). The Stats → Cities detail rows (`src/features/stats/CityDetail.tsx`)
+  are not pressable. All three now render ONE component, `src/live/CityGoodTrades.tsx`: a caption **Trades**, then a `Row` per trade — the company's full
   name (wraps, never cut; the full name is also the hover title), tagged `you` / `merchant`; line 2
   "**Bought 5 · 12 🪙 each**"; the value "**5 min ago**" (the one `formatRelative`, the shell's clock). Yours
   is gold. Empty: "No trades in 7 days." A failed read shows nothing (the tray is true without it). The quay
