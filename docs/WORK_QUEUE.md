@@ -1,5 +1,6 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- **0250 arrivals trim** (`osn-arrivals-trim`, row 224 follow-up): the same answers for less work (crew_pct skips crew_terms when no seated captain bears the effect; ship_stats / hold read once a hull; goods / skills by key; 3 standing_route_laps indexes). Local −19 to −25 % a beat, old vs new identical (self-assert + 128-table end-to-end). Deploys AFTER 0249. Prod before: p50 0.39 s, p95 1.82 s.
 - 2026-10-27: **0249 reconcile timeout** (`osn-reconcile-timeout`): the compactor had committed nothing since 10-25 23:07 (943 k events, 742 k ledger rows waiting), so reconcile hit 120 s in 10 of 13 runs; now one house a transaction under a 30 s budget, and beats + upkeep steps share one lock (no deadlock). Dev-log `2026-10-27-reconcile-timeout.md`.
 
 ## RESUMED 2026-10-26 ~12:15 UTC (PC gkwng)
