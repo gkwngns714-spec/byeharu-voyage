@@ -84,6 +84,13 @@ export function TradeRow({
           <Icon name={goodIcon(good.code, good.category)} size={18} className="mt-0.5 shrink-0 text-ink-muted" />
           <span className="min-w-0 break-words">
             {good.name} <RarityMark rarity={good.rarity} />
+            {/* 0255 (E6b): the city wants this good and pays a multiple for it this period */}
+            {good.wanted != null && (
+              <span className="text-t-caption text-accent" data-testid="trade-row-wanted">
+                {' '}
+                {t('ui.wanted', { mult: String(Number(good.wanted)) })}
+              </span>
+            )}
             {/* The caption keeps its dot — a no-break space, so `·` never ends a line alone. */}
             {aboard > 0 && (
               <span className="text-t-caption text-ink-faint">
