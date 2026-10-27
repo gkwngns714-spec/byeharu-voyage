@@ -127,7 +127,11 @@ $h$  if v_on then
                                                 v_now))
                                 + interval '6 hours');
       v_cleft := 0;
-      for h in select p.id from public.players p where p.is_npc order by p.id loop
+      -- the house with the oldest row awaiting a roll first (her NPC_CARRIED row skipped: two index entries),
+      -- so a slice the budget cuts short is never short of the same houses twice
+      for h in select p.id from public.players p where p.is_npc
+                order by (select min(l.created_at) from public.ledger l
+                           where l.player_id = p.id and l.kind <> 'NPC_CARRIED') nulls last, p.id loop
         if clock_timestamp() >= v_cby then
           v_cleft := v_cleft + 1;
           continue;
