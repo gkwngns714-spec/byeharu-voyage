@@ -20,7 +20,8 @@ import { useT } from '../../lib/i18n'
 //
 // WHEN NEITHER SIDE IS SERVED, `mid` — the market's MIDDLE price — stands in its place, dim and under
 // its own word, so it is never read as a price one trader gets. A board prices the dearest
-// `good_board_quoted` cities in full and serves the middle price for the rest (0171), so that is the
+// `good_board_quoted` cities and the nearest `good_board_quoted_near` she can sail to in full, and serves the
+// middle price for the rest (0171, 0251), so that is the
 // ordinary state of a long sell ladder, not a fault.
 //
 // IN `block` FORM BOTH CELLS ARE ALWAYS DRAWN, dashed where nothing is served yet. A block head is

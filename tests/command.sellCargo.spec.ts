@@ -93,6 +93,14 @@ for (const size of SIZES) {
       await expect(places.first()).toBeVisible({ timeout: 120_000 })
       await expect(block.locator('[data-testid="cargo-place"][data-port="LIS"]')).toContainText('Here')
       for (const p of await places.all()) await expect(p.getByTestId('cargo-place-price')).toHaveText(/\d/)
+      // 0251: THE NEAR CITIES ARE PRICED — the board prices the nearest she can sail to as well as the dearest, so the
+      // list holds a city within a few days of Lisbon (not only the dearest, a month away), with a profit
+      await expect
+        .poll(async () => {
+          const days = await block.locator('[data-testid="cargo-place"]:not([data-port="LIS"]) [data-testid="cargo-place-days"]').allTextContents()
+          return days.map((d) => parseFloat(d.replace(',', '.'))).filter((d) => Number.isFinite(d) && d < 5).length
+        }, { timeout: 60_000, message: 'a near city (under 5 days) is on the cargo list' })
+        .toBeGreaterThan(0)
 
       // one press on a city row: that city and that good, "Sail & sell", the map at the city
       const away = block.locator('[data-testid="cargo-place"]:not([data-port="LIS"])').first()
