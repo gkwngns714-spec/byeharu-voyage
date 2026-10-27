@@ -52,7 +52,29 @@ Rollback: a forward slice reverses the 8 hunks. Every OLD text is in the file. T
 
 Local (PGlite, cached prefix p0237 + 0249):
 - 0249 self-assert ok. The three ways left identical rows and counts `{events 2, orders 1, voyages 1, trade_daily 1, ledger_rolled 3}`: old 29 ms, new whole-world 119 ms, the hour's pieces 4 ms.
+- The real job on a merchant world. Steps: merchants lit (837 fleets), three arrivals runs, `npc_retention_hours` set to 0 locally so every row is past the cut, then `call public.tick_reconcile()` with commits.
+  - Run 1: 16.6 s (tend 460 ms, companies 16 ms, compact 16.1 s, check 18 ms). All 821 houses were done, none left, none failed: 5,310 ledger rows rolled, 3,433 events, 11 orders. The receipt row was written.
+  - Run 2, with nothing left to compact: 14.8 s, which is ~18 ms per house on wasm.
+  - Then `call public.tick_arrivals_each_second(2)`: both beats ran, no error.
 
 Prod before: see the finding above.
 
 Prod after: below.
+
+## Prod after 0249, and why 0253 followed
+
+Deployed 2026-10-27 13:4x UTC: PR #362, merge `fb46b93`, main Acceptance green. Prod head 0249. Beats ran right after it: 169 in 3 minutes, 0 errors, p50 370 ms.
+
+**14:07 run: succeeded in 75.4 s** (11 of the 14 runs before it hit the 120 s timeout). Its receipt (`public.reconcile_runs`): tend 33.1 s, companies 4.3 s, compact 34.5 s, check 3.3 s, 0 failed. But the compactor finished only **12 of 821 houses** (3,141 ledger rows, 3,349 events, 589 voyages, 818 trade_daily rows, 200 orders; 809 left).
+- That is about 2.9 s a house. One house's 10-25 / 10-26 rows lie roughly one to a page across a day and a half, long out of the cache (shared_buffers 320 MB; events alone is 512 MB). So a house step read a page from disk for each row.
+- At that rate the backlog would have taken days. The beats waited on those slow steps: in 14:07-14:08 they averaged 1.2-1.5 s (max 8.7 s), against 0.5 s at 14:05.
+
+## The fix, part 2 (0253)
+
+tick_reconcile's compact step now walks the backlog **by time**. Three hunks:
+- A slice means "compact every house as of instant T", using `public.npc_compact_house(house, T)`: the same function and the same rules. T is six hours past the last slice finished, and never later than now.
+- All the houses in one slice read the same few hours of rows. Those rows sit together on disk and stay in the cache.
+- A finished slice is recorded in the run's receipt (`upto`). A slice that the 30 s budget cut short is done again the next hour; the houses it already reached have nothing left in it. The first run starts at the cut of the oldest merchant ledger row still waiting to be rolled.
+- Compacting as of T and then as of a later T' leaves exactly what compacting once as of T' leaves. The carried row's sum, last instant and balance are all computed from the rows, and every delete is "older than the cut".
+
+Self-assert (0253): the hunks reverse to the live pre-image. `npc_compact_house`, `npc_compact`, the beat and `tick_arrivals` are unchanged (md5). On a probe house (rolled back), compacting as of 10:30 and then 18:00 left byte-identical rows to compacting once as of 18:00, and to `npc_compact`. The first slice rolled 2 rows, the second 3; done once, 4.
