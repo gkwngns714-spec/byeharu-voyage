@@ -122,6 +122,10 @@ jobs:
         run: |
           set -euo pipefail
           supabase stop --no-backup
+          # A volume restored from a snapshot survives `stop --no-backup`; a fresh stack must not boot it.
+          vol="supabase_db_$(sed -n 's/^project_id *= *"\(.*\)".*//p' supabase/config.toml)"
+          docker volume rm -f "$vol" >/dev/null 2>&1 || true
+          if docker volume ls -q | grep -qx "$vol"; then echo "::error::volume $vol still exists"; exit 1; fi
           version="$(node -p "require('$RUNNER_TEMP/out/build.json').version")"
           n="$(node -p "require('$RUNNER_TEMP/out/build.json').n")"
           mkdir -p "$RUNNER_TEMP/chain-files"
@@ -129,7 +133,8 @@ jobs:
           cp "$RUNNER_TEMP/out/baseline.sql" "supabase/migrations/${version}_the_world_as_it_stood_at_${n}.sql"
           ls supabase/migrations/
           t0=$(date +%s)
-          supabase start
+          supabase start | tee /tmp/dbase-start.log
+          if grep -q 'Starting database from backup' /tmp/dbase-start.log; then echo "::error::D-base booted an old volume, not a fresh one"; exit 1; fi
           echo "D_BASE_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
           supabase status -o env > /tmp/sbenv
           set -a; . /tmp/sbenv; set +a

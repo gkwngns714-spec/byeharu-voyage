@@ -32,6 +32,7 @@
 //   node scripts/db/baseline/baseline.mjs pglite  --baseline FILE --out-dir DIR   (load on PGlite + preamble, then lines)
 //   node scripts/db/baseline/baseline.mjs compare A B [--allow FILE]              (exit 1 on any difference)
 //   node scripts/db/baseline/baseline.mjs prod-lines --json FILE --out FILE       (prod's catalog, from `db query -o json`)
+//   node scripts/db/baseline/baseline.mjs prod-compare CI_CATALOG PROD_CATALOG     (named platform normalisations only)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -135,11 +136,13 @@ async function allLines(pgFor, outDir, { dropRoles = false, cron = true } = {}) 
   digests.catalog = await writeLines(outDir, 'catalog', await catalogLines(pgFor(CATALOG_SEARCH_PATH)))
   const bare = pgFor("''")
   digests.content_exact = await writeLines(outDir, 'content-exact', scopeContent(await contentLines(bare), { dropRoles }))
-  digests.content_stable = await writeLines(
-    outDir,
-    'content-stable',
-    scopeContent(await contentLines(bare, { stableOnly: true }), { dropRoles }),
-  )
+  const stable = scopeContent(await contentLines(bare, { stableOnly: true }), { dropRoles })
+  digests.content_stable = await writeLines(outDir, 'content-stable', stable)
+  // RUN-TO-RUN: two INDEPENDENT from-zero applies differ in uuids and clocks (stableOnly drops
+  // those columns) and in ONE routine body, 0076's voyage.assert_paths_water, which embeds the
+  // instant it applied (catalog.sql reads that literal as '<applied>'). So the digest two runs must
+  // share is the catalog's plus this one: every table's stable rows and every sequence position.
+  digests.rows_stable = sha256(stable.slice(0, stable.indexOf('--')).join('\n'))
   if (cron) digests.cron = await writeLines(outDir, 'cron', await cronLines(bare))
   await writeFile(path.join(outDir, 'digests.json'), JSON.stringify(digests, null, 2) + '\n')
   console.log(JSON.stringify(digests, null, 2))
@@ -514,6 +517,48 @@ async function compare() {
   console.log('EQUAL (beyond the allow-list)')
 }
 
+/**
+ * Prod's catalog vs a CI database's, with the platform's differences NAMED and COUNTED rather than
+ * allow-listed line by line (measured 2026-10-27, prod vs the chain at 0248):
+ *   1. service_role's grants in public: prod's stock postgres default privileges give service_role
+ *      everything (D postgres public r = arwdDxtm), a fresh CLI 2.114 Supabase gives it Dxtm/w/none;
+ *      the chain never names service_role in those statements, so every object differs by it.
+ *   2. a routine ACL written out as exactly acldefault() ({=X/owner,owner=X/owner}) equals NULL.
+ * Everything else must be byte-equal.
+ */
+async function prodCompare() {
+  const [a, b] = process.argv.slice(3, 5)
+  const counts = { service_role_items: 0, explicit_default_routine_acl: 0 }
+  const norm = (l) => {
+    let x = l.replace(/,?service_role=[A-Za-z*]*\/postgres/g, () => {
+      counts.service_role_items += 1
+      return ''
+    })
+    x = x.replace(/\{,/g, '{')
+    if (/^F /.test(x) && / \{=X\/postgres,postgres=X\/postgres\} postgres /.test(x)) {
+      counts.explicit_default_routine_acl += 1
+      x = x.replace(/ \{=X\/postgres,postgres=X\/postgres\} postgres /, ' - postgres ')
+    }
+    return x
+  }
+  const A = (await readFile(a, 'utf8')).split('\n').filter(Boolean)
+  const B = (await readFile(b, 'utf8')).split('\n').filter(Boolean)
+  const rawA = new Set(A)
+  const rawB = new Set(B)
+  const rawOnly = A.filter((l) => !rawB.has(l)).length + B.filter((l) => !rawA.has(l)).length
+  const nA = A.map(norm)
+  const nB = B.map(norm)
+  const sA = new Set(nA)
+  const sB = new Set(nB)
+  const onlyA = nA.filter((l) => !sB.has(l))
+  const onlyB = nB.filter((l) => !sA.has(l))
+  console.log(`prod compare ${a} (${A.length}) vs ${b} (${B.length}): ${rawOnly} raw differing line(s); normalised: ${JSON.stringify(counts)}`)
+  for (const l of onlyA) console.log(`< ${l}`)
+  for (const l of onlyB) console.log(`> ${l}`)
+  if (onlyA.length || onlyB.length) process.exit(1)
+  console.log('EQUAL after the two named platform normalisations')
+}
+
 async function prodLines() {
   const j = JSON.parse(await readFile(need('--json'), 'utf8'))
   const rows = (j.rows ?? j).map((r) => r.l)
@@ -522,7 +567,7 @@ async function prodLines() {
 }
 
 const cmd = process.argv[2]
-const commands = { build, lines, pglite, compare, 'prod-lines': prodLines }
+const commands = { build, lines, pglite, compare, 'prod-lines': prodLines, 'prod-compare': prodCompare }
 if (!commands[cmd]) {
   console.error(`usage: baseline.mjs ${Object.keys(commands).join('|')} ...`)
   process.exit(2)

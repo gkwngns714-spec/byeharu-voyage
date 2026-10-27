@@ -17,6 +17,10 @@
 --   K constraint   type, md5 of pg_get_constraintdef
 --   G trigger      enabled state (tgenabled), md5 of pg_get_triggerdef
 --   F routine      md5 of pg_get_functiondef, ACL, owner, volatility, security definer
+--                  (a timestamptz literal in a body is read as '<applied>': 0076 writes THE INSTANT IT
+--                  APPLIED into voyage.assert_paths_water's body — its roadstead cutoff — so every
+--                  apply, prod's and each CI run's, carries a different one. contentLines' exact
+--                  digest still compares that body byte for byte between D-chain and D-base.)
 --   Y type         kind, ACL, owner, enum labels
 --   P policy       command, permissive, roles, md5 of USING / WITH CHECK
 --   D default ACL  the migration role's own entries, per schema and the schema-less one (0018)
@@ -79,7 +83,9 @@ lines(l) as (
                             join pg_type t on t.oid = u.toid
                             join pg_namespace tn on tn.oid = t.typnamespace), ''),
                 p.prokind,
-                md5(case when p.prokind in ('f', 'p', 'w') then pg_get_functiondef(p.oid) else p.prosrc end),
+                md5(regexp_replace(
+                      case when p.prokind in ('f', 'p', 'w') then pg_get_functiondef(p.oid) else p.prosrc end,
+                      '''[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:.]+\+00''::timestamptz', '''<applied>''::timestamptz', 'g')),
                 coalesce(p.proacl::text, '-'), pg_get_userbyid(p.proowner), p.provolatile, p.prosecdef)
     from pg_proc p join ns on ns.oid = p.pronamespace
    where not exists (select 1 from ext where ext.classid = 'pg_proc'::regclass and ext.objid = p.oid)
