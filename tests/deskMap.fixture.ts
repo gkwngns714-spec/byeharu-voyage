@@ -1,14 +1,51 @@
-// A CITY PRESSED ON THE DESK'S MINI MAP (owner row 218) — the way a player presses it: on the harbour's mark,
-// through the chart's own tap (the picture takes no pointer; the surface under it does, and THE map tab's hit test
-// answers). Never an element click.
+// A CITY PRESSED ON THE DESK'S MINI MAP (owner row 218) — the way a player presses it: on the harbour's NAME where
+// one is drawn, else on its mark, through the chart's own tap (the picture takes no pointer; the surface under it
+// does, and THE map tab's hit test answers). Never an element click.
+//
+// THE NAME FIRST, AND A STILL MAP (CI run 40449328997, 390×844): on the phone's whole-world sheet Amsterdam's mark
+// lies 1.2 px from Antwerp's (0.5 px east, 1.1 px north, measured) and under the crowd of names with leaders; a
+// press on its mark's centre was answered "ARP". The hit test answers a drawn name before any mark (hitTest.ts), so
+// the name is what a player's thumb is sure of on a crowded sheet — and what this presses. And a city pressed
+// glides the map (row 231), so the target is read only once it stops moving: a box read mid-glide is a press
+// somewhere else by the time it lands.
 import { expect, type Locator, type Page } from '@playwright/test'
 
 export async function pressCity(page: Page, map: Locator, code: string): Promise<void> {
   const mark = map.locator(`[data-port-code="${code}"]`).first()
   await expect(mark).toBeAttached({ timeout: 60_000 })
   await mark.evaluate((e) => e.scrollIntoView({ block: 'center' }))
-  const box = (await mark.boundingBox())!
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
+  const name = map.locator(`[data-label-id="port:${code}"]`).first()
+  const middle = async (l: Locator) => {
+    const box = await l.boundingBox()
+    return box && { x: box.x + box.width / 2, y: box.y + box.height / 2 }
+  }
+  // the name, if it is drawn on the glass and nothing (the zoom buttons) stands over its middle
+  const open = async (p: { x: number; y: number }) =>
+    map.evaluate((m, q) => {
+      const hit = document.elementFromPoint(q.x, q.y)
+      return !!hit && m.contains(hit) && !hit.closest('button')
+    }, p)
+  const centre = async () => {
+    if (await name.count()) {
+      const p = await middle(name)
+      if (p && (await open(p))) return p
+    }
+    return (await middle(mark))!
+  }
+  let at = await centre()
+  await expect
+    .poll(
+      async () => {
+        await page.waitForTimeout(100)
+        const now = await centre()
+        const still = Math.abs(now.x - at.x) < 0.05 && Math.abs(now.y - at.y) < 0.05
+        at = now
+        return still
+      },
+      { message: `the map under ${code} stops moving`, timeout: 10_000 },
+    )
+    .toBe(true)
+  await page.mouse.click(at.x, at.y)
 }
 
 /** THE NEAREST CITY SHE IS NOT AT (owner row 229): the second chip of the strip under the map (the first is where she
