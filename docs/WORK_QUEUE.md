@@ -1,5 +1,7 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-10-27: **0249 reconcile timeout** (`osn-reconcile-timeout`): the compactor had committed nothing since 10-25 23:07 (943 k events, 742 k ledger rows waiting), so reconcile hit 120 s in 10 of 13 runs; now one house a transaction under a 30 s budget, and beats + upkeep steps share one lock (no deadlock). Dev-log `2026-10-27-reconcile-timeout.md`.
+
 ## RESUMED 2026-10-26 ~12:15 UTC (PC gkwng)
 - #345 mirrored Buy/Sell MERGED 12:15 UTC (1112dd8, client only).
 - Economy watch +5 h 20 min (12:06 count): moved_since_close +138, new_slot 0, under_reserve 118, broke 38, gifts 144 (1.12 M), fees 3,063 (203,855 ducats), debtors 4. All under the switch-back triggers: stays ON.

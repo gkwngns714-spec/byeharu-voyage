@@ -1712,6 +1712,10 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.npc_ask_waiting(timestamptz, timestamptz)',
     // 0248: the arrivals job's one session a minute (a procedure). Server-only.
     'public.tick_arrivals_each_second(int)',
+    // 0249: the compactor's two pieces and the quay lock the beats and the hourly steps share. Server-only.
+    'public.npc_compact_orders(timestamptz)',
+    'public.npc_compact_house(uuid, timestamptz)',
+    'public.hold_the_quay()',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
