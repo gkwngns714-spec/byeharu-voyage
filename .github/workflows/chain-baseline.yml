@@ -1,0 +1,207 @@
+name: Chain baseline — fold 0001..N into one file and prove it (S1, dark)
+
+# SLICE S1 OF docs/CHAIN_BASELINE.md. DARK: the baseline is uploaded as an ARTIFACT and is never
+# committed; no migration moves; prod is not touched (its catalog is compared by hand, read-only,
+# from the artifact's catalog.txt — see docs/dev-log/2026-10-27-chain-baseline-s1.md). Not a
+# required check, and it runs on no pull request.
+#
+# Three databases, the checks of CHAIN_BASELINE.md §1.3:
+#   D-chain   0001..N applied by `supabase start` on a fresh volume (from zero: the gate), or
+#             main's kept applied-chain snapshot plus `migration up` (input `chain: snapshot`, a
+#             quick run for debugging the builder; never the gate)
+#   D-base    a SECOND fresh Supabase whose supabase/migrations/ holds ONLY the baseline, under
+#             N's own version — exactly how S2 will apply it
+#   D-pglite  the baseline loaded on PGlite + scripts/db/supabase-preamble.sql
+# and the gates:
+#   D-chain = D-base, exactly: catalog lines, content lines (every row, sequence, routine, ACL,
+#             policy, role, default ACL, namespace — uuids and clocks included), pg_cron's jobs
+#   D-base  = D-pglite, stable content + catalog, beyond scripts/db/baseline/pglite-allow.txt
+#   0018's schema-less default ACL holds on D-base and D-pglite BY BEHAVIOUR, with a positive
+#   control (scripts/db/baseline/default-acl-proof.sql), plus proof 03's 8 lockdown markers on D-base
+# N is whatever the chain's head is when the run starts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      chain:
+        description: "zero = apply 0001..N from zero (the gate); snapshot = main's kept applied chain (debugging only)"
+        type: choice
+        default: zero
+        options: [zero, snapshot]
+  # TEMPORARY, S1 development only — removed before the PR merges: a push to the S1 branch runs
+  # the job (snapshot mode, or from zero when the commit message says [baseline-zero]).
+  push:
+    branches: [osn-chain-baseline-s1]
+  schedule:
+    # 04:47 KST, after the nightly from-zero net (03:23 KST) has finished.
+    - cron: '47 19 * * *'
+
+permissions:
+  contents: read
+  actions: read  # supabase-snapshot.sh choose lists the kept snapshots
+
+concurrency:
+  group: chain-baseline-${{ github.run_id }}
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    # From zero is ~47-50 min (docs/CI.md); the second stack, the dump and the loads are minutes.
+    timeout-minutes: 120
+    env:
+      SUPABASE_CLI_VERSION: 2.114.0
+      MODE: ${{ inputs.chain || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[baseline-zero]') && 'snapshot') || 'zero' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.114.0  # pinned, as in migrations-apply-proof.yml (and the snapshot keys carry it)
+
+      - name: Snapshot mode — which kept snapshot of main is the longest prefix of this chain
+        id: choose
+        if: env.MODE == 'snapshot'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SNAPSHOT_WAIT_SECONDS: '0'
+        run: |
+          set -euo pipefail
+          # main's caches are readable from any ref; name main as the base so they are considered
+          GITHUB_BASE_REF=main bash scripts/ci/supabase-snapshot.sh choose "$(git rev-parse HEAD)" | tee -a "$GITHUB_OUTPUT"
+
+      - name: Snapshot mode — restore it
+        if: env.MODE == 'snapshot' && steps.choose.outputs.key != ''
+        uses: actions/cache/restore@v4
+        with:
+          path: ${{ runner.temp }}/sbsnap
+          key: ${{ steps.choose.outputs.key }}
+
+      - name: Snapshot mode — judge it and put it in the volume
+        id: plan
+        if: env.MODE == 'snapshot'
+        run: |
+          set -euo pipefail
+          bash scripts/ci/supabase-snapshot.sh usable "$RUNNER_TEMP/sbsnap" | tee -a "$GITHUB_OUTPUT"
+          grep -q '^usable=true' "$GITHUB_OUTPUT" || { echo "::error::no usable snapshot of main for this chain"; exit 1; }
+          bash scripts/ci/supabase-snapshot.sh restore "$RUNNER_TEMP/sbsnap"
+
+      - name: D-chain — the chain applied (${{ env.MODE }})
+        run: |
+          set -euo pipefail
+          t0=$(date +%s)
+          supabase start
+          if [ "$MODE" = "snapshot" ]; then supabase migration up --local; fi
+          echo "D_CHAIN_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
+          supabase status -o env > /tmp/sbenv
+          set -a; . /tmp/sbenv; set +a
+          echo "DB_URL=$DB_URL" >> "$GITHUB_ENV"
+          psql "$DB_URL" -tAc "select version from supabase_migrations.schema_migrations order by version" > /tmp/recorded.txt
+          ls supabase/migrations/*.sql | xargs -n1 basename | cut -d_ -f1 | sort > /tmp/ondisk.txt
+          diff /tmp/ondisk.txt /tmp/recorded.txt || { echo "::error::D-chain's applied list is not supabase/migrations/"; exit 1; }
+          echo "D-chain: $(wc -l < /tmp/recorded.txt) migrations, head $(tail -1 /tmp/recorded.txt)"
+
+      - name: D-chain — its lines
+        run: node scripts/db/baseline/baseline.mjs lines --db-url "$DB_URL" --out-dir "$RUNNER_TEMP/out/d-chain"
+
+      - name: Build the baseline (pg_dump of D-chain + the repairs)
+        run: |
+          set -euo pipefail
+          node scripts/db/baseline/baseline.mjs build --db-url "$DB_URL" \
+            --container "supabase_db_$(sed -n 's/^project_id *= *"\(.*\)".*/\1/p' supabase/config.toml)" \
+            --out "$RUNNER_TEMP/out/baseline.sql" --chain-digests "$RUNNER_TEMP/out/d-chain/digests.json" \
+            --stats "$RUNNER_TEMP/out/build.json"
+          grep -c $'\r' "$RUNNER_TEMP/out/baseline.sql" && { echo "::error::CR in the baseline"; exit 1; } || true
+
+      - name: D-base — a fresh Supabase whose only migration is the baseline, under N's version
+        run: |
+          set -euo pipefail
+          supabase stop --no-backup
+          version="$(node -p "require('$RUNNER_TEMP/out/build.json').version")"
+          n="$(node -p "require('$RUNNER_TEMP/out/build.json').n")"
+          mkdir -p "$RUNNER_TEMP/chain-files"
+          mv supabase/migrations/*.sql "$RUNNER_TEMP/chain-files/"
+          cp "$RUNNER_TEMP/out/baseline.sql" "supabase/migrations/${version}_the_world_as_it_stood_at_${n}.sql"
+          ls supabase/migrations/
+          t0=$(date +%s)
+          supabase start
+          echo "D_BASE_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
+          supabase status -o env > /tmp/sbenv
+          set -a; . /tmp/sbenv; set +a
+          rec="$(psql "$DB_URL" -tAc "select string_agg(version, ',') from supabase_migrations.schema_migrations")"
+          [ "$rec" = "$version" ] || { echo "::error::D-base recorded '$rec', expected exactly $version"; exit 1; }
+          echo "D-base: recorded exactly $rec"
+
+      - name: D-base — its lines
+        run: node scripts/db/baseline/baseline.mjs lines --db-url "$DB_URL" --out-dir "$RUNNER_TEMP/out/d-base"
+
+      - name: D-base — 0018's default ACL by behaviour (with a positive control) and proof 03's lockdown
+        run: |
+          set -euo pipefail
+          out="$(psql "$DB_URL" -v ON_ERROR_STOP=1 -c begin -f scripts/db/baseline/default-acl-proof.sql -c rollback 2>&1)" || { echo "$out"; exit 1; }
+          echo "$out"
+          for m in BASELINE_DEFAULT_ACL_HOLDS BASELINE_DEFAULT_ACL_CONTROL; do
+            echo "$out" | grep -q "PASS: $m" || { echo "::error::missing PASS: $m"; exit 1; }
+          done
+          out="$(psql "$DB_URL" -v ON_ERROR_STOP=1 -c begin -f scripts/db/proofs/03_grant_lockdown.sql -c rollback 2>&1)" || { echo "$out"; exit 1; }
+          echo "$out"
+          for m in GRANT_LOCKDOWN_PROBE_PROVES_QUERY GRANT_LOCKDOWN_NO_WRITE_GRANTS GRANT_LOCKDOWN_ANON_DENIED \
+                   GRANT_LOCKDOWN_AUTHENTICATED_DENIED GRANT_LOCKDOWN_SECRET_UNREADABLE GRANT_LOCKDOWN_RLS_ON_EVERY_TABLE \
+                   GRANT_LOCKDOWN_SERVICE_ROLE_RETAINED GRANT_LOCKDOWN_CHAIN_OWNS_EVERYTHING; do
+            echo "$out" | grep -q "PASS: $m" || { echo "::error::missing PASS: $m"; exit 1; }
+          done
+          echo "default-ACL proof: 2 markers; lockdown: 8 markers"
+
+      - name: GATE — D-chain = D-base, exactly (catalog, every row/sequence/ACL, pg_cron)
+        run: |
+          set -euo pipefail
+          for f in catalog content-exact content-stable cron; do
+            node scripts/db/baseline/baseline.mjs compare "$RUNNER_TEMP/out/d-chain/$f.txt" "$RUNNER_TEMP/out/d-base/$f.txt"
+          done
+
+      - name: D-pglite — the baseline on PGlite + the preamble, its receipt, the default-ACL proof, its lines
+        run: |
+          set -euo pipefail
+          t0=$(date +%s)
+          node scripts/db/baseline/baseline.mjs pglite --baseline "$RUNNER_TEMP/out/baseline.sql" --out-dir "$RUNNER_TEMP/out/d-pglite"
+          echo "D_PGLITE_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
+
+      - name: GATE — D-base = D-pglite (stable content + catalog), beyond the written allow-list
+        run: |
+          set -euo pipefail
+          for f in catalog content-stable; do
+            node scripts/db/baseline/baseline.mjs compare "$RUNNER_TEMP/out/d-base/$f.txt" "$RUNNER_TEMP/out/d-pglite/$f.txt" \
+              --allow scripts/db/baseline/pglite-allow.txt
+          done
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Chain baseline ($MODE)"
+            echo '```'
+            cat "$RUNNER_TEMP/out/build.json" 2>/dev/null || true
+            echo "D-chain digests:"; cat "$RUNNER_TEMP/out/d-chain/digests.json" 2>/dev/null || true
+            echo "D-base digests:";  cat "$RUNNER_TEMP/out/d-base/digests.json" 2>/dev/null || true
+            echo "D-pglite digests:"; cat "$RUNNER_TEMP/out/d-pglite/digests.json" 2>/dev/null || true
+            echo "D-chain ${D_CHAIN_SECONDS:-?} s, D-base start+load ${D_BASE_SECONDS:-?} s, D-pglite ${D_PGLITE_SECONDS:-?} s"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the baseline and its lines (artifact, never committed)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chain-baseline-${{ github.run_id }}
+          path: ${{ runner.temp }}/out
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Stop the stack (always)
+        if: always()
+        run: supabase stop --no-backup || true

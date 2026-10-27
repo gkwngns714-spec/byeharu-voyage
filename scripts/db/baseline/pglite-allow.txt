@@ -1,0 +1,7 @@
+# The lines the baseline on PGlite may differ from the baseline on Supabase by (chain baseline S1).
+# One regular expression per line; `baseline.mjs compare --allow` fails on any other difference and
+# prints any entry that matched nothing, so this list cannot grow silently into a blanket.
+#
+# Roles: contentLines' role block (name + 5 flags). PGlite's roles are the preamble's model
+# (scripts/db/supabase-preamble.sql), the platform's are Supabase's; the PGlite side drops the block.
+^\S+ (true|false) (true|false) (true|false) (true|false) (true|false)$
