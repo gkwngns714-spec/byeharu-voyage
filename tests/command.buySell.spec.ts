@@ -37,6 +37,13 @@ for (const size of SIZES) {
       const face = page.getByTestId('desk-buy')
       await expect(face).toBeVisible()
 
+      // THE SHIP under the orders (row 233): cargo, crew, stores — from the readings FLEETS already draws
+      const ship = face.getByTestId('buy-ship')
+      await expect(ship).toBeVisible()
+      await expect(ship.getByTestId('cargo-bar')).toBeVisible()
+      await expect(ship.getByTestId('buy-ship-crew')).toContainText(/\d+\/\d+/)
+      await expect(ship.getByTestId('buy-ship-stores')).toContainText(/\d/)
+
       // THE MAP ON TOP, every city on it; no cross-city list on the face
       const map = face.getByTestId('trade-map')
       await expect(map.getByTestId('small-chart')).toBeVisible()
