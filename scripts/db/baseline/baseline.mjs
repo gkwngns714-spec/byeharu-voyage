@@ -365,15 +365,23 @@ end $$;
 function cleanDump(sql) {
   const out = []
   let dropped = 0
+  const foreign = []
   for (const line of sql.replace(/\r/g, '').split('\n')) {
     // psql meta-commands (pg_dump 17.6+ writes \restrict / \unrestrict): no non-psql loader takes them
     if (line.startsWith('\\')) {
       dropped += 1
       continue
     }
+    // ANOTHER grantor's default privileges (Supabase's supabase_admin ships them in public): they
+    // are the platform's, already on every target, and the migration role may not set them
+    // (0001 §5b: "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin is refused outright").
+    if (/^ALTER DEFAULT PRIVILEGES FOR ROLE /.test(line) && !/^ALTER DEFAULT PRIVILEGES FOR ROLE postgres /.test(line)) {
+      foreign.push(line)
+      continue
+    }
     out.push(line.replace(/^CREATE SCHEMA ([a-z_]+);$/, 'CREATE SCHEMA IF NOT EXISTS $1;'))
   }
-  return { sql: out.join('\n'), dropped }
+  return { sql: out.join('\n'), dropped, foreign }
 }
 
 async function build() {
@@ -441,6 +449,7 @@ ${digests ? Object.entries(digests).map(([k, v]) => `--   ${k.padEnd(15)} ${v}`)
     baseline_bytes: Buffer.byteLength(body),
     baseline_sha256: sha256(body),
     meta_lines_dropped: cleaned.dropped,
+    foreign_default_acls_dropped: cleaned.foreign,
     explicit_default_acls: fixes.length,
     schemaless_default_acl: global,
     cron_jobs: cron.count,
