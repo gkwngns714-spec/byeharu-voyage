@@ -482,8 +482,11 @@ begin
   if (v_live->>'bad')::int <> 0 or (v_plant->>'bad')::int <> 0 then
     raise exception '0256 self-assert FAIL: old and new answered differently: live % / planted %', v_live, v_plant;
   end if;
-  if (v_live->>'fleets')::int = 0 or (v_live->>'lines')::int = 0 or (v_plant->>'hagged')::int = 0 or (v_plant->>'purse')::int = 0
-     or (v_live->>'bought')::int = 0 then
+  -- (a world with no route at sea — a fresh chain — has no stop to ask: the lines are then proved where routes run)
+  if (v_live->>'fleets')::int = 0 or (v_plant->>'hagged')::int = 0 or (v_plant->>'purse')::int = 0
+     or ((v_live->>'lines')::int = 0 and exists (select 1 from public.standing_routes sr0 where sr0.fleet_id is not null))
+     or ((v_live->>'bought')::int = 0 and exists (select 1 from public.standing_route_lines l0 join public.npc_fleets nf on nf.route_id = l0.route_id
+                                                   where l0.kind = 'BUY')) then
     raise exception '0256 self-assert FAIL: the probe proved nothing (no fleet, no stop, no merchant BUY, no bargain or purser that moved a spread): live % / planted %', v_live, v_plant;
   end if;
 
