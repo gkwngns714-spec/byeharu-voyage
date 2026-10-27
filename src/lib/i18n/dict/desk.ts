@@ -36,6 +36,11 @@ export const deskDict = defineDict({
     lost: 'lost {amount}',
     owedShort: '{amount} more owed; the city could not pay',
     orders: 'Orders',
+    // THE SHIP UNDER THE ORDERS ON BUY (owner row 233): 1–2 words a label
+    ship: 'Ship',
+    perDay: '/ day',
+    stores: 'Stores',
+    provisions: 'Provisions',
     // TRADE (owner rows 190, 194, 202, 203 — docs/COMMAND_REDESIGN.md §2, §5): one page, 1–2 words a label.
     hold: 'Cargo',
     holdEmpty: 'No cargo',
@@ -161,6 +166,10 @@ export const deskDict = defineDict({
     lost: '손실 {amount}',
     owedShort: '{amount}는 도시가 못 냄',
     orders: '명령',
+    ship: '배',
+    perDay: '/ 일',
+    stores: '보급',
+    provisions: '식량',
     hold: '화물',
     holdEmpty: '화물 없음',
     aboard: '적재 {units}',

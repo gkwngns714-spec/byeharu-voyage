@@ -17,6 +17,7 @@ import { TradeMap, type OrderPick } from '../plans/TradeMap'
 import { useTripBoard } from '../plans/useTripBoard'
 import { CargoBest } from './CargoBest'
 import { CityBoard, type CityGoodRow } from './CityBoard'
+import { ShipInfo } from './ShipInfo'
 import { TradePanel } from './TradePanel'
 import { doneWords, type TradeDone } from './tradeDone'
 import { TradeToast } from './TradeToast'
@@ -215,6 +216,8 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
       </SheetSection>
       {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
       <InsuredVoyages />
+      {/* row 233: the ship under the orders, on Buy */}
+      {side === 'buy' && <ShipInfo fleet={fleet} />}
     </>
   )
 
