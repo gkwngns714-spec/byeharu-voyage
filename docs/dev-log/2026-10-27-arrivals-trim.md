@@ -121,3 +121,33 @@ PGlite holds no 215 MB laps table, so the indexes are measured on prod after.
 
 Prod before: see the finding (30 min to 12:32 UTC: p50 0.39 s, p95 1.82 s). The 0248 dev-log's window
 (09:24-09:40): p50 0.38 s, p95 1.46 s.
+
+## Deployed and after-check
+
+Deployed 2026-10-27 14:16:52 UTC (PR #363, push landed at head 0250, merged, main Acceptance green on 8a3a3e3).
+On prod: the three indexes exist and the eight bodies carry the 0250 cut. No failed cron runs after the deploy.
+
+`public.arrivals_beats`, 15 min each side (the first ~2 min after the deploy, the backlog, left out):
+
+| | before (13:58-14:13, after 0249) | after (14:19-14:34) |
+|---|---|---|
+| runs a minute | 53.2 | 56.5 |
+| failures | 0 | 0 |
+| p50 | 417 ms | **368 ms** |
+| p95 | 2,038 ms | **1,698 ms** |
+| max | 8.7 s | 9.3 s |
+| runs over 1 s | 147 (18 %) | 131 (15 %) |
+
+The same fit as in the finding (pre: 13:50-14:13, 1,134 beats; post: 14:19-14:37, 855 beats):
+
+| | per sea-day | per departure | mean beat | p95, beats with no departure | p95, beats with a departure |
+|---|---|---|---|---|---|
+| before | ~26 ms | ~155 ms | 604 ms | 620 ms | 2,142 ms |
+| after | ~15 ms | ~157 ms | 532 ms | 524 ms | 1,916 ms |
+
+**The goal (p95 < 1 s) is NOT met.** Sea-days got ~40 % cheaper. The mean beat dropped 12 % and the p95 17 %. A
+departure still costs ~155 ms on prod, and the beats with a departure still set the p95.
+
+Next slice, not started: the departure path itself. Locally, `cmd.standing_route_lines` costs ~4 ms a stop and
+`cmd.do_sail` ~13 ms. `world.quote_terms` calls `spread_effective` twice for every quote (with and without the
+bargain), and each call asks `crew_pct` twice.
