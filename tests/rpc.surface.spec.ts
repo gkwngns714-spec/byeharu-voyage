@@ -1716,6 +1716,8 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.npc_compact_orders(timestamptz)',
     'public.npc_compact_house(uuid, timestamptz)',
     'public.hold_the_quay()',
+    // 0257: the compaction rules, set-based for a batch of houses. Server-only.
+    'public.npc_compact_houses(uuid[], timestamptz)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
