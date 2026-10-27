@@ -66,7 +66,7 @@ const lit = (s) => `'${String(s).replace(/'/g, "''")}'`
 function psqlClient(url, searchPath) {
   return {
     async query(sql) {
-      const wrapped = `select coalesce(json_agg(t), '[]'::json) from (${sql}) t`
+      const wrapped = `select coalesce(json_agg(_bv_row), '[]'::json) from (${sql}) _bv_row`
       const out = execFileSync(
         'psql',
         [url, '-X', '-q', '-tA', '-v', 'ON_ERROR_STOP=1', '-c', `set search_path = ${searchPath}`, '-c', wrapped],

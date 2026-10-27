@@ -5,3 +5,8 @@
 # Roles: contentLines' role block (name + 5 flags). PGlite's roles are the preamble's model
 # (scripts/db/supabase-preamble.sql), the platform's are Supabase's; the PGlite side drops the block.
 ^\S+ (true|false) (true|false) (true|false) (true|false) (true|false)$
+#
+# NOT NULL as a constraint row (contype 'n'): PostgreSQL 18 (PGlite 0.5.5) records every NOT NULL
+# in pg_constraint; PostgreSQL 17 (Supabase, prod) does not. The not-null fact itself is compared
+# on both sides by the C (column) lines' attnotnull.
+^K \S+ \S+ n [0-9a-f]{32}$
