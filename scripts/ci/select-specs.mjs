@@ -256,7 +256,10 @@ const GROWTH_RULES = [
   // fact and is in no snapshot's key (those hash the migrations, the preamble and the config), so a kept
   // snapshot fits a chain whose guard changed exactly as before. The specs that run it (db.chain,
   // db.image) are still selected by rule G through apply-chain / build-image.
-  /^src\/lib\/db\//, /^tests\/frozenChain\.ts$/, /^scripts\/db\/(?!world-guard\.mjs$|proofs\/|proof\.mjs$|proof-courses\.mjs$|market-fixture\.mjs$)/, /^package(-lock)?\.json$/, /^vite\.config\.ts$/,
+  // scripts/db/baseline/** is not machinery either (chain baseline S1, 2026-10-27): the baseline builder and its
+  // proof read a database the chain already built, run only in chain-baseline.yml (dispatch/nightly), and are in
+  // no snapshot's key; nothing any PR, main or build world boots from reads them.
+  /^src\/lib\/db\//, /^tests\/frozenChain\.ts$/, /^scripts\/db\/(?!world-guard\.mjs$|proofs\/|proof\.mjs$|proof-courses\.mjs$|market-fixture\.mjs$|baseline\/)/, /^package(-lock)?\.json$/, /^vite\.config\.ts$/,
 ]
 const SHELL_RE = /^(src\/app\/|src\/index\.css$|src\/components\/ui\/|public\/(?!flags\/))/
 const FLAGS_RE = /^public\/flags\//

@@ -85,6 +85,20 @@ not the whole game."*
 Main's full run is the safety net. After a batch of merges, check one full Acceptance run on main
 before you call the batch done.
 
+## The chain baseline job (S1, dark, 2026-10-27)
+
+`.github/workflows/chain-baseline.yml` (04:47 KST nightly, and dispatch) folds 0001..head into one
+file and proves it: the chain from zero on a disposable Supabase (D-chain), `pg_dump` + the repairs in
+`scripts/db/baseline/baseline.mjs`, the file loaded as the ONLY migration of a second fresh Supabase
+(D-base) and on PGlite + the preamble (D-pglite). Gates: D-chain = D-base exactly (catalog, every row,
+sequence, ACL, policy, default ACL, pg_cron job); D-base = D-pglite beyond
+`scripts/db/baseline/pglite-allow.txt`; 0018's default ACL by behaviour on both; proof 03 on D-base.
+The baseline is an ARTIFACT, never committed, and the job is not a required check and runs on no PR.
+Dispatch input `chain: snapshot` builds D-chain from main's kept snapshot instead (minutes; for
+debugging the builder, never the gate). `scripts/db/baseline/**` is in no snapshot key and is not chain
+machinery (`select-specs.mjs`). Design and slices: `docs/CHAIN_BASELINE.md`; measurements:
+`docs/dev-log/2026-10-27-chain-baseline-s1.md`.
+
 ## A pull request that does not touch the database
 
 `disposable-chain` is a required check on `main`. migrations-apply-proof therefore runs on **every**

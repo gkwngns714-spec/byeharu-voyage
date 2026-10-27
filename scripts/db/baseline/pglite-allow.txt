@@ -1,0 +1,21 @@
+# The lines the baseline on PGlite may differ from the baseline on Supabase by (chain baseline S1).
+# `<section>: <regular expression>`; `baseline.mjs compare --allow THIS --section S` fails on any
+# other difference AND on any entry of its section that matched nothing, so this list can neither
+# hide a new difference nor outlive the one it was written for. Measured on run 40509678655.
+#
+# Roles: contentLines' role block (name + 5 flags). PGlite's roles are the preamble's model
+# (scripts/db/supabase-preamble.sql), the platform's are Supabase's (31 of them); the PGlite side
+# drops the block.
+content-stable: ^\S+ [tf] [tf] [tf] [tf] [tf]$
+#
+# NOT NULL as a constraint row (contype 'n'): PostgreSQL 18 (PGlite 0.5.5) records every NOT NULL
+# in pg_constraint; PostgreSQL 17 (Supabase, prod) does not. The not-null fact itself is compared
+# on both sides by the C (column) lines' attnotnull.
+catalog: ^K \S+ \S+ n [0-9a-f]{32}$
+#
+# Schema public belongs to the platform (pg_database_owner). Supabase has already granted postgres
+# USAGE on it before the baseline runs; PGlite gets that item from the baseline's own GRANT, so it
+# lands LAST in the list. The same six items, in another order; the D-chain = D-base gate compares
+# this line exactly.
+catalog: ^N public {(pg_database_owner=UC/pg_database_owner,=U/pg_database_owner,postgres=U/pg_database_owner,anon=U/pg_database_owner,authenticated=U/pg_database_owner,service_role=U/pg_database_owner|pg_database_owner=UC/pg_database_owner,=U/pg_database_owner,anon=U/pg_database_owner,authenticated=U/pg_database_owner,service_role=U/pg_database_owner,postgres=U/pg_database_owner)} pg_database_owner$
+content-stable: ^public {(pg_database_owner=UC/pg_database_owner,=U/pg_database_owner,postgres=U/pg_database_owner,anon=U/pg_database_owner,authenticated=U/pg_database_owner,service_role=U/pg_database_owner|pg_database_owner=UC/pg_database_owner,=U/pg_database_owner,anon=U/pg_database_owner,authenticated=U/pg_database_owner,service_role=U/pg_database_owner,postgres=U/pg_database_owner)}$
