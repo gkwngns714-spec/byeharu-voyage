@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0252 — THE OLDEST HOURS ARE CUT FIRST  (the hourly compactor works through its backlog six hours at a
+-- 0253 — THE OLDEST HOURS ARE CUT FIRST  (the hourly compactor works through its backlog six hours at a
 --        time, every house per slice, instead of one house's whole backlog at a time)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
@@ -30,7 +30,7 @@
 -- ── ROLLBACK ────────────────────────────────────────────────────────────────────────────────────
 -- A forward slice reverses the three hunks below (each OLD text is here verbatim).
 --
--- VERSION: 0252 (prod head 0251). Hunks cut from the LIVE body on prod at head 0249 (0250 and 0251 do not touch it), LF-normalised.
+-- VERSION: 0253 (prod head 0252). Hunks cut from the LIVE body on prod at head 0252 (0250, 0251 and 0252 do not touch it), LF-normalised.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
@@ -38,17 +38,17 @@ begin
   perform set_config('statement_timeout', '20min', true);
   perform set_config('lock_timeout', '5s', true);
   if to_regprocedure('public.npc_compact_house(uuid,timestamptz)') is null or to_regclass('public.reconcile_runs') is null then
-    raise exception '0252 refuses: 0249 is not in this world';
+    raise exception '0253 refuses: 0249 is not in this world';
   end if;
 end $guard$;
 
-create or replace function pg_temp.occurs_0252(p_hay text, p_needle text)
+create or replace function pg_temp.occurs_0253(p_hay text, p_needle text)
 returns int
 language sql
 immutable
 as $$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $$;
 
-create temp table defs_before_0252 on commit drop as
+create temp table defs_before_0253 on commit drop as
 select f.fn,
        replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def,
        coalesce((select p.proacl::text from pg_proc p where p.oid = f.fn::regprocedure), '') as acl,
@@ -57,7 +57,7 @@ select f.fn,
        (select coalesce(p.proconfig::text, '') from pg_proc p where p.oid = f.fn::regprocedure) as cfg
   from (values ('public.tick_reconcile(boolean)')) f(fn);
 
-create temp table before_0252 on commit drop as
+create temp table before_0253 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select md5(string_agg(md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
           from pg_proc p where p.oid in ('public.npc_compact_house(uuid,timestamptz)'::regprocedure,
@@ -65,14 +65,14 @@ select (select count(*) from public.client_rpc_entry_points()) as entry_points,
                                          'public.tick_arrivals(timestamptz)'::regprocedure,
                                          'public.tick_arrivals_each_second(int)'::regprocedure)) as others_md5;
 
-create temp table hunks_0252 (fn text, n int, old text, new text) on commit drop;
-insert into hunks_0252 (fn, n, old, new) values
+create temp table hunks_0253 (fn text, n int, old text, new text) on commit drop;
+insert into hunks_0253 (fn, n, old, new) values
 ('public.tick_reconcile(boolean)', 1,
 $h$  v_ctd      int := 0;
 begin
 $h$,
 $h$  v_ctd      int := 0;
-  -- 0252: the compactor's slices — compact every house as of v_slice, six hours past the last slice finished
+  -- 0253: the compactor's slices — compact every house as of v_slice, six hours past the last slice finished
   v_keep     interval;
   v_upto     timestamptz;          -- the last slice finished (from the last receipt that says)
   v_slice    timestamptz;
@@ -105,12 +105,12 @@ $h$  if v_on then
   end if;
 $h$,
 $h$  if v_on then
-    -- 0252: THE OLDEST HOURS FIRST, SIX AT A TIME. A slice compacts every house as of v_slice (the same
+    -- 0253: THE OLDEST HOURS FIRST, SIX AT A TIME. A slice compacts every house as of v_slice (the same
     -- rules: public.npc_compact_house). Its houses all read the same few hours of rows, which lie together
     -- and stay in the cache; one house's whole backlog lay a row to a page across days (0249's first run:
     -- 12 houses in 30 s). A slice finished is kept in the receipt (`upto`); one the budget cut short is
     -- done again next hour. Compacting as of T, then as of a later T', leaves what compacting as of T'
-    -- leaves (0252's self-assert).
+    -- leaves (0253's self-assert).
     v_keep := make_interval(hours => public.wc_int('npc_retention_hours'));
     v_upto := (select (rr.receipt->'merchant_upkeep'->'compact'->>'upto')::timestamptz
                  from public.reconcile_runs rr
@@ -162,22 +162,22 @@ $h$),
 $h$    'orders', coalesce((v_cx->>'orders')::int, 0),
 $h$,
 $h$    'orders', coalesce((v_cx->>'orders')::int, 0),
-    'slices', v_slices, 'upto', v_upto,   -- 0252: slices finished this run; the last instant every house is compacted as of
+    'slices', v_slices, 'upto', v_upto,   -- 0253: slices finished this run; the last instant every house is compacted as of
 $h$);
 
-create or replace function pg_temp.recut_0252(p_fn text)
+create or replace function pg_temp.recut_0253(p_fn text)
 returns void
 language plpgsql
 as $$
 declare
-  v_def text := (select def from defs_before_0252 where fn = p_fn);
+  v_def text := (select def from defs_before_0253 where fn = p_fn);
   h     record;
   v_n   int;
 begin
-  for h in select * from hunks_0252 where fn = p_fn order by n loop
-    v_n := pg_temp.occurs_0252(v_def, h.old);
+  for h in select * from hunks_0253 where fn = p_fn order by n loop
+    v_n := pg_temp.occurs_0253(v_def, h.old);
     if v_n <> 1 then
-      raise exception '0252 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
+      raise exception '0253 self-assert FAIL: hunk % of % occurs % time(s), not once — the live body is not what this file was cut against',
         h.n, p_fn, v_n;
     end if;
     v_def := replace(v_def, h.old, h.new);
@@ -185,13 +185,13 @@ begin
   execute v_def;
 end $$;
 
-select pg_temp.recut_0252(fn) from defs_before_0252 order by fn;
+select pg_temp.recut_0253(fn) from defs_before_0253 order by fn;
 
 -- ── THE PROBE: compacting in two slices leaves what compacting once leaves ──────────────────────
 -- One merchant house with rows from before a 2026-08-01 cut (earlier than every real row, so the probe's rows
 -- are the only ones touched), compacted from the same rolled-back state (a) once as of c_now, (b) as of c_mid
 -- (a cut that splits her old rows) and then as of c_now, (c) by public.npc_compact as of c_now.
-create or replace function pg_temp.digest_0252(p_house uuid)
+create or replace function pg_temp.digest_0253(p_house uuid)
 returns jsonb
 language sql
 as $$
@@ -212,7 +212,7 @@ as $$
     'ledger_sum', public.ledger_sum(p_house))
 $$;
 
-create or replace function pg_temp.run_0252(p_how text, p_house uuid, p_mid timestamptz, p_now timestamptz)
+create or replace function pg_temp.run_0253(p_how text, p_house uuid, p_mid timestamptz, p_now timestamptz)
 returns jsonb
 language plpgsql
 as $$
@@ -228,9 +228,9 @@ begin
     else
       v_a := public.npc_compact(p_now);
     end if;
-    raise exception using errcode = 'ZY252',
-      message = jsonb_build_object('a', v_a, 'b', v_b, 'd', pg_temp.digest_0252(p_house))::text;
-  exception when sqlstate 'ZY252' then
+    raise exception using errcode = 'ZY253',
+      message = jsonb_build_object('a', v_a, 'b', v_b, 'd', pg_temp.digest_0253(p_house))::text;
+  exception when sqlstate 'ZY253' then
     return sqlerrm::jsonb;
   end;
 end $$;
@@ -244,24 +244,24 @@ declare
   c_mid   constant timestamptz := '2026-07-31 16:30:00+00';   -- its cut, 10:30, splits her old rows
   v_res   jsonb;
 begin
-  select * into v_before from before_0252;
+  select * into v_before from before_0253;
 
   -- (a) THE RE-CUT reverses to its pre-image; ACL / volatility / definer / config unmoved; nothing else moved
-  for v_d in select * from defs_before_0252 loop
+  for v_d in select * from defs_before_0253 loop
     v_def := replace(pg_get_functiondef(v_d.fn::regprocedure), E'\r', '');
-    for v_h in select * from hunks_0252 where fn = v_d.fn order by n desc loop
-      if pg_temp.occurs_0252(v_def, v_h.new) <> 1 then
-        raise exception '0252 self-assert FAIL: hunk % of % is not in the new body exactly once', v_h.n, v_d.fn;
+    for v_h in select * from hunks_0253 where fn = v_d.fn order by n desc loop
+      if pg_temp.occurs_0253(v_def, v_h.new) <> 1 then
+        raise exception '0253 self-assert FAIL: hunk % of % is not in the new body exactly once', v_h.n, v_d.fn;
       end if;
       v_def := replace(v_def, v_h.new, v_h.old);
     end loop;
     if v_def <> v_d.def then
-      raise exception '0252 self-assert FAIL: % does not reverse to its pre-image', v_d.fn;
+      raise exception '0253 self-assert FAIL: % does not reverse to its pre-image', v_d.fn;
     end if;
     select coalesce(p.proacl::text, '') as acl, p.provolatile as vol, p.prosecdef as secdef, coalesce(p.proconfig::text, '') as cfg
       into v_pp from pg_proc p where p.oid = v_d.fn::regprocedure;
     if v_pp.acl <> v_d.acl or v_pp.vol <> v_d.vol or v_pp.secdef <> v_d.secdef or v_pp.cfg <> v_d.cfg then
-      raise exception '0252 self-assert FAIL: % changed its ACL, volatility, definer or config', v_d.fn;
+      raise exception '0253 self-assert FAIL: % changed its ACL, volatility, definer or config', v_d.fn;
     end if;
   end loop;
   if (select md5(string_agg(md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
@@ -269,13 +269,13 @@ begin
                                        'public.npc_compact(timestamptz)'::regprocedure,
                                        'public.tick_arrivals(timestamptz)'::regprocedure,
                                        'public.tick_arrivals_each_second(int)'::regprocedure)) <> v_before.others_md5 then
-    raise exception '0252 self-assert FAIL: the compactor''s rules, the beat or the arrivals run moved';
+    raise exception '0253 self-assert FAIL: the compactor''s rules, the beat or the arrivals run moved';
   end if;
   v_def := replace(pg_get_functiondef('public.tick_reconcile(boolean)'::regprocedure), E'\r', '');
-  if pg_temp.occurs_0252(v_def, 'public.npc_compact_house(h.id, v_slice)') <> 1
-     or pg_temp.occurs_0252(v_def, 'public.npc_compact_house(') <> 1
-     or pg_temp.occurs_0252(v_def, 'if p_commit then perform public.hold_the_quay(); end if;') <> 4 then
-    raise exception '0252 self-assert FAIL: tick_reconcile does not compact by slice, once, after the quay lock';
+  if pg_temp.occurs_0253(v_def, 'public.npc_compact_house(h.id, v_slice)') <> 1
+     or pg_temp.occurs_0253(v_def, 'public.npc_compact_house(') <> 1
+     or pg_temp.occurs_0253(v_def, 'if p_commit then perform public.hold_the_quay(); end if;') <> 4 then
+    raise exception '0253 self-assert FAIL: tick_reconcile does not compact by slice, once, after the quay lock';
   end if;
 
   -- (b) TWO SLICES LEAVE WHAT ONE LEAVES (rolled back whole)
@@ -295,25 +295,25 @@ begin
         update public.world_config set value = 'true'::jsonb
          where key in ('npc_traders_enabled', 'standing_routes_enabled') and value is distinct from 'true'::jsonb;
         if not public.npc_traders_on() then
-          raise exception '0252 self-assert FAIL: cannot light the merchants for the probe';
+          raise exception '0253 self-assert FAIL: cannot light the merchants for the probe';
         end if;
       end if;
-      v_m := public.new_house(null, 'Casa das Fatias 0252', 'PRT', 'LIS', p_ducats => 1000, p_is_npc => true);
+      v_m := public.new_house(null, 'Casa das Fatias 0253', 'PRT', 'LIS', p_ducats => 1000, p_is_npc => true);
       v_f := (select f.id from public.fleets f where f.player_id = v_m order by f.created_at limit 1);
       if v_f is null then
-        insert into public.fleets (player_id, name, port_id) values (v_m, 'Fatias 0252', v_port) returning id into v_f;
+        insert into public.fleets (player_id, name, port_id) values (v_m, 'Fatias 0253', v_port) returning id into v_f;
       end if;
       -- E1 before the mid cut, E2 after it (both go), E3 named by a kept ledger row (stays), E4 FOUNDED (stays)
       insert into public.events (id, player_id, kind, payload, created_at) values
-        (e1, v_m, 'PROBE_0252', '{}', c_old - interval '3 hours'), (e2, v_m, 'PROBE_0252', '{}', c_old),
-        (e3, v_m, 'PROBE_0252', '{}', c_old), (e4, v_m, 'FOUNDED', '{}', c_old - interval '1 day');
+        (e1, v_m, 'PROBE_0253', '{}', c_old - interval '3 hours'), (e2, v_m, 'PROBE_0253', '{}', c_old),
+        (e3, v_m, 'PROBE_0253', '{}', c_old), (e4, v_m, 'FOUNDED', '{}', c_old - interval '1 day');
       -- four old rows summing to 0: two before the mid cut (the first slice rolls them), two after it
       insert into public.ledger (player_id, kind, ducats_delta, balance_after, ref_event_id, created_at) values
-        (v_m, 'PROBE_0252', 100, 1100, null, c_old - interval '3 hours'),
-        (v_m, 'PROBE_0252', 300, 1400, null, c_old - interval '2 hours'),
-        (v_m, 'PROBE_0252', -350, 1050, null, c_old - interval '1 hour'),
-        (v_m, 'PROBE_0252', -50, 1000, e2, c_old),
-        (v_m, 'PROBE_0252', 0, 1000, e3, c_now);
+        (v_m, 'PROBE_0253', 100, 1100, null, c_old - interval '3 hours'),
+        (v_m, 'PROBE_0253', 300, 1400, null, c_old - interval '2 hours'),
+        (v_m, 'PROBE_0253', -350, 1050, null, c_old - interval '1 hour'),
+        (v_m, 'PROBE_0253', -50, 1000, e2, c_old),
+        (v_m, 'PROBE_0253', 0, 1000, e3, c_now);
       -- V0 ended before the mid cut, V1 after it: both go
       insert into public.voyages (id, fleet_id, player_id, path, total_nm, speed_profile, departed_at, eta, status,
                                   origin_port_id, dest_port_id, created_at) values
@@ -324,17 +324,17 @@ begin
         from (values (v0), (v1)) v(id), (select code from public.voyage_event_kinds order by code limit 1) k;
       insert into public.trade_daily (player_id, port_id, good_id, game_day, qty) values
         (v_m, v_port, v_good, v_gd - 2, 3), (v_m, v_port, v_good, v_gd - 1, 5), (v_m, v_port, v_good, v_gd, 7);
-      v_pre := pg_temp.digest_0252(v_m);
+      v_pre := pg_temp.digest_0253(v_m);
 
-      v_once   := pg_temp.run_0252('once', v_m, c_mid, c_now);
-      v_sliced := pg_temp.run_0252('sliced', v_m, c_mid, c_now);
-      v_all    := pg_temp.run_0252('all', v_m, c_mid, c_now);
+      v_once   := pg_temp.run_0253('once', v_m, c_mid, c_now);
+      v_sliced := pg_temp.run_0253('sliced', v_m, c_mid, c_now);
+      v_all    := pg_temp.run_0253('all', v_m, c_mid, c_now);
 
       if (v_sliced->'a'->>'ledger_rolled')::int < 2 then
-        raise exception '0252 self-assert FAIL: the first slice rolled no rows (%) — the split proved nothing', v_sliced;
+        raise exception '0253 self-assert FAIL: the first slice rolled no rows (%) — the split proved nothing', v_sliced;
       end if;
       if v_once->'d' is distinct from v_sliced->'d' or v_once->'d' is distinct from v_all->'d' then
-        raise exception '0252 self-assert FAIL: two slices left other rows than one (once %, sliced %, whole world %)', v_once, v_sliced, v_all;
+        raise exception '0253 self-assert FAIL: two slices left other rows than one (once %, sliced %, whole world %)', v_once, v_sliced, v_all;
       end if;
       if (v_once->'d'->>'carried')::int <> 1 or (v_once->'d'->>'events_n')::int <> (v_pre->>'events_n')::int - 2
          or (v_once->'d'->>'voyages_n')::int <> (v_pre->>'voyages_n')::int - 2
@@ -342,28 +342,28 @@ begin
          or (v_once->'d'->>'ledger_n')::int <> (v_pre->>'ledger_n')::int - 3
          or (v_once->'d'->>'purse')::bigint <> (v_pre->>'purse')::bigint
          or (v_once->'d'->>'ledger_sum')::bigint <> (v_pre->>'purse')::bigint then
-        raise exception '0252 self-assert FAIL: the probe did not compact as the rules say (before %, after %)', v_pre, v_once;
+        raise exception '0253 self-assert FAIL: the probe did not compact as the rules say (before %, after %)', v_pre, v_once;
       end if;
       v_res := jsonb_build_object('first_slice', v_sliced->'a', 'second_slice', v_sliced->'b', 'once', v_once->'a');
-      raise exception using errcode = 'ZY25C', message = v_res::text;
+      raise exception using errcode = 'ZY25D', message = v_res::text;
     end;
-  exception when sqlstate 'ZY25C' then
+  exception when sqlstate 'ZY25D' then
     v_res := sqlerrm::jsonb;
   end;
-  if exists (select 1 from public.players where company_name = 'Casa das Fatias 0252') then
-    raise exception '0252 self-assert FAIL: the probe house was left behind';
+  if exists (select 1 from public.players where company_name = 'Casa das Fatias 0253') then
+    raise exception '0253 self-assert FAIL: the probe house was left behind';
   end if;
 
   -- (c) POSTURE
   if (select count(*) from public.client_rpc_entry_points()) <> v_before.entry_points then
-    raise exception '0252 self-assert FAIL: the registry moved';
+    raise exception '0253 self-assert FAIL: the registry moved';
   end if;
   if (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0252 self-assert FAIL: a wall moved';
+    raise exception '0253 self-assert FAIL: a wall moved';
   end if;
 
-  raise notice '0252 self-assert ok: THE OLDEST HOURS ARE CUT FIRST. tick_reconcile compacts every house as of a slice six hours past the last one finished (3 hunks, reverse to the pre-image, ACL / volatility / definer / config unmoved); npc_compact_house, npc_compact, the beat and tick_arrivals unmoved; registry unchanged; walls 0. PROBE (one merchant house, rolled back): compacting as of 10:30 then 18:00 left byte-identical rows to compacting once as of 18:00, and to npc_compact: %. Nothing left behind.',
+  raise notice '0253 self-assert ok: THE OLDEST HOURS ARE CUT FIRST. tick_reconcile compacts every house as of a slice six hours past the last one finished (3 hunks, reverse to the pre-image, ACL / volatility / definer / config unmoved); npc_compact_house, npc_compact, the beat and tick_arrivals unmoved; registry unchanged; walls 0. PROBE (one merchant house, rolled back): compacting as of 10:30 then 18:00 left byte-identical rows to compacting once as of 18:00, and to npc_compact: %. Nothing left behind.',
     v_res;
 end $$;
