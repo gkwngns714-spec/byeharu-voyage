@@ -101,4 +101,36 @@ Prod before: see the finding (p50 0.33 s, p95 1.72 s, 15 % over 1 s).
 
 ## Deployed and after-check
 
-Pending: deploys after 0255 (E6b) is on prod.
+Deployed 2026-10-27 ~17:11 UTC, after 0255 was live and main's apply-proof for 0255 was green (PR #366; push landed at head
+0256; merged 21bbc6b by auto-merge after a docs-only rebase). On prod: `world.spread_effective_pair` exists with
+spread_effective's ACL, the 4 bodies carry the 0256 cut, 0 failed cron runs and 0 beat errors after the deploy.
+Main on 21bbc6b: build, apply-proof and Pages green; Acceptance was still running at the time of writing.
+
+`public.arrivals_beats`, 15 min each side (the first ~2 min after the deploy left out; each window holds one stats minute):
+
+| | before (16:55-17:10) | after (17:14-17:29) |
+|---|---|---|
+| runs a minute | 55.6 | 54.9 |
+| failures | 0 | 0 |
+| p50 | 357 ms | 379 ms |
+| p95 | 1,679 ms | 1,717 ms |
+| max | 10.1 s | 10.6 s |
+| runs over 1 s | 112 (13.4 %) | 144 (17.5 %) |
+
+The same fit as in the finding:
+
+| | per DEPARTED | per SOLD | per BOUGHT | per ROUTE_LAP | per sea-day | R² |
+|---|---|---|---|---|---|---|
+| before | 174 ms | 75 ms | 76 ms | 131 ms | 4.7 ms | 0.45 |
+| after | 168 ms | 129 ms | 44 ms | 97 ms | 6.7 ms | 0.49 |
+
+**The goal (p95 < 1 s) is NOT met, and no gain shows on prod.** The windows differ more than the local saving
+(~2-3 % of a beat). The per-kind figures move ±50 % between windows, and the residual (sd ~410-430 ms) is larger than any
+saving here. Locally a departure is ~17 ms and a sale ~8 ms, but on prod the fit says ~170 ms and ~75-130 ms. That is 10×
+or more, while per-reader timings are only 2-4× slower. So most of a prod beat's cost is not in these readers, and this
+local harness does not show where it is.
+
+Next, not started: find where a prod departure spends its ~170 ms. Prod does not show inner statements
+(`pg_stat_statements.track = top`, `track_functions = none`). Options: time each volatile step on a rolled-back copy of
+prod's data, or have the beat record per-phase clock_timestamp splits in `arrivals_beats`. The second is a change to
+the beat's record only and needs its own slice.
