@@ -100,8 +100,8 @@ lines(l) as (
      and not exists (select 1 from ext where ext.classid = 'pg_type'::regclass and ext.objid = t.oid)
   union all
   select format('P %s.%s %s %s %s %s %s %s', ns.nspname, c.relname, pol.polname, pol.polcmd, pol.polpermissive,
-                coalesce((select string_agg(case when r = 0 then 'PUBLIC' else pg_get_userbyid(r) end, ',' order by 1)
-                            from unnest(pol.polroles) r), '-'),
+                coalesce((select string_agg(case when u.r = 0 then 'PUBLIC' else pg_get_userbyid(u.r) end, ',' order by u.o)
+                            from unnest(pol.polroles) with ordinality u(r, o)), '-'),
                 coalesce(md5(pg_get_expr(pol.polqual, pol.polrelid)), '-'),
                 coalesce(md5(pg_get_expr(pol.polwithcheck, pol.polrelid)), '-'))
     from pg_policy pol

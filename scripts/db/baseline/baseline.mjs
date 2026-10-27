@@ -13,7 +13,7 @@
 //      defaults in public that grant anon/authenticated/service_role everything; pg_dump writes
 //      every object's ACL relative to acldefault(), so without the clearing every table the
 //      baseline creates would be born writable by anon before the dump's own REVOKEs could know.
-//   2. EXPLICIT owner-only ACLs re-issued: pg_dump omits an ACL equal to acldefault(), so an
+//   2. EXPLICIT owner-only ACLs re-issued (and multi-role policies' TO lists in the chain's order): pg_dump omits an ACL equal to acldefault(), so an
 //      object whose ACL is explicitly the default would come back NULL (88 relations in the
 //      design's trial). Same effective access, but the digest is exact, not normalised.
 //   3. THE SCHEMA-LESS DEFAULT ACL (0018: "no new function is executable by PUBLIC"): a
@@ -260,6 +260,23 @@ async function schemalessDefaultAcls(pg) {
   return q.rows.map((r) => r.l)
 }
 
+/**
+ * Every policy naming more than one role, re-issued with its roles in the CHAIN'S order. pg_dump
+ * writes a policy's TO list in pg_roles order, not in polroles' stored order (measured: 11 policies
+ * the chain wrote "to anon, authenticated" came back "authenticated, anon"). Same meaning; the
+ * exact digest (pg_policies.roles) is what notices, so the order is restored rather than ignored.
+ */
+async function policyRoleOrder(pg) {
+  const q = await pg.query(`
+    select format('ALTER POLICY %I ON %I.%I TO %s;', pol.polname, n.nspname, c.relname,
+                  (select string_agg(case when u.r = 0 then 'PUBLIC' else quote_ident(pg_get_userbyid(u.r)) end, ', ' order by u.o)
+                     from unnest(pol.polroles) with ordinality u(r, o))) as l
+      from pg_policy pol join pg_class c on c.oid = pol.polrelid join pg_namespace n on n.oid = c.relnamespace
+     where n.nspname in ('public','world','cmd','voyage') and cardinality(pol.polroles) > 1
+     order by 1`)
+  return q.rows.map((r) => r.l)
+}
+
 async function cronBlock(pg) {
   const has = (await pg.query(`select to_regclass('cron.job') is not null as x`)).rows[0].x
   if (!has) throw new Error('D-chain has no cron.job: the baseline must be built on a Supabase that has pg_cron')
@@ -404,6 +421,7 @@ async function build() {
   const pgDumpVersion = execFileSync('docker', ['exec', container, 'pg_dump', '--version'], { encoding: 'utf8' }).trim()
   const cleaned = cleanDump(dump)
   const fixes = await explicitDefaultAcls(pg)
+  const policies = await policyRoleOrder(pg)
   const global = await schemalessDefaultAcls(pg)
   if (global.length === 0) throw new Error('D-chain holds no schema-less default ACL: 0018 is missing from the chain itself')
   const cron = await cronBlock(pg)
@@ -431,6 +449,9 @@ ${digests ? Object.entries(digests).map(([k, v]) => `--   ${k.padEnd(15)} ${v}`)
     `-- ── EXPLICIT DEFAULT ACLs pg_dump omits (${fixes.length}) ──`,
     ...fixes,
     '',
+    `-- ── POLICY ROLE LISTS in the chain's order (${policies.length}) ──`,
+    ...policies,
+    '',
     `-- ── 0018: the migration role's schema-less default ACL, from D-chain's pg_default_acl (${global.length} statement(s)) ──`,
     'RESET search_path;',
     ...global,
@@ -451,6 +472,7 @@ ${digests ? Object.entries(digests).map(([k, v]) => `--   ${k.padEnd(15)} ${v}`)
     meta_lines_dropped: cleaned.dropped,
     foreign_default_acls_dropped: cleaned.foreign,
     explicit_default_acls: fixes.length,
+    policy_role_orders: policies.length,
     schemaless_default_acl: global,
     cron_jobs: cron.count,
     tables: manifest.length,
