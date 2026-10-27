@@ -30,7 +30,7 @@
 //   node scripts/db/baseline/baseline.mjs build   --db-url URL --container NAME --out FILE
 //   node scripts/db/baseline/baseline.mjs lines   --db-url URL --out-dir DIR      (catalog, content, cron)
 //   node scripts/db/baseline/baseline.mjs pglite  --baseline FILE --out-dir DIR   (load on PGlite + preamble, then lines)
-//   node scripts/db/baseline/baseline.mjs compare A B [--allow FILE]              (exit 1 on any difference)
+//   node scripts/db/baseline/baseline.mjs compare A B [--allow FILE --section S]  (exit 1 on any difference or stale allow entry)
 //   node scripts/db/baseline/baseline.mjs prod-lines --json FILE --out FILE       (prod's catalog, from `db query -o json`)
 //   node scripts/db/baseline/baseline.mjs prod-compare CI_CATALOG PROD_CATALOG     (named platform normalisations only)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -529,7 +529,12 @@ async function compare() {
   const [a, b] = process.argv.slice(3, 5)
   const allowFile = arg('--allow')
   const allow = allowFile
-    ? (await readFile(allowFile, 'utf8')).split('\n').filter((l) => l && !l.startsWith('#')).map((l) => new RegExp(l))
+    ? (await readFile(allowFile, 'utf8'))
+        .split('\n')
+        .filter((l) => l && !l.startsWith('#'))
+        .map((l) => /^([a-z-]+): (.*)$/.exec(l))
+        .filter((m) => m && m[1] === need('--section'))
+        .map((m) => new RegExp(m[2]))
     : []
   const A = (await readFile(a, 'utf8')).split('\n').filter(Boolean)
   const B = (await readFile(b, 'utf8')).split('\n').filter(Boolean)
@@ -545,8 +550,8 @@ async function compare() {
   for (const l of onlyB) console.log(`${allowed(l) ? '  (allowed) ' : ''}> ${l}`)
   // an allow-list entry that matches nothing is stale: it must not quietly grow into a blanket
   const unused = allow.filter((re) => ![...onlyA, ...onlyB].some((l) => re.test(l)))
-  for (const re of unused) console.log(`unused allow entry: ${re}`)
-  if (badA.length || badB.length) process.exit(1)
+  for (const re of unused) console.log(`UNUSED allow entry (stale — remove it): ${re}`)
+  if (badA.length || badB.length || unused.length) process.exit(1)
   console.log('EQUAL (beyond the allow-list)')
 }
 
