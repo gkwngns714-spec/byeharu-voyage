@@ -93,6 +93,43 @@ Local (PGlite, cached prefix p0236 + 0248):
   The first four worked through the 100 s backlog the switch left (10 s budget each). After that the beats landed
   on .000-.002 of each second, p50 81 ms (wasm), with 0-5 fleets each and no errors.
 
-Prod before: see the table above (1 h to 07:40 UTC: 2,864 runs, about 48 a minute, p50 0.71 / p95 2.31 / max 9.85 s, 1 failed).
+Prod before: 1 h to 09:12 UTC (just before the deploy): 2,798 runs = 46.6 a minute, p50 0.75 s, p95 2.43 s, max 11.43 s, 1 failed.
 
-Prod after: (below, after the deploy)
+Deployed 2026-10-27 09:22 UTC (PR #356, merge 656963f, main Acceptance green). The first beat took 10.2 s: it worked
+through the backlog left while the clock was stopped for the deploy. By 09:22:26 the beats were back on the whole second.
+
+**Prod after**: 16 minutes, 09:24-09:40 UTC, read from `public.arrivals_beats`:
+
+| | before (1 h) | after (16 min) |
+|---|---|---|
+| runs a minute | 46.6 | **58.7** (939 runs in 960 s; 55-60 a minute) |
+| failures | 1 | **0** |
+| p50 | 0.75 s | **0.38 s** |
+| p95 | 2.43 s | **1.46 s** |
+| max | 11.43 s | **3.81 s** |
+| runs over 1 s | ~20 % | ~14 % (5-15 a minute) |
+
+## What is left (not fixed by 0248)
+
+Each run is still not "well under 1 s". By second of the minute (09:24-09:40):
+
+| second | beats | avg ms | fleets | ms per fleet |
+|---|---|---|---|---|
+| 0-1 | 30 | 816 | 11.2 | 72.8 |
+| 2-4 | 48 | 732 | 10.9 | 67.1 |
+| 5-14 | 152 | 554 | 11.2 | 49.4 |
+| 15-59 | 709 | ~466 | ~10.4 | ~45 |
+
+- The session warms up for its first ~5 s each minute. A longer loop would remove most of that, up to a 2-minute
+  loop under the 120 s statement_timeout.
+- The steady cost is ~45 ms a fleet × ~10.5 fleets a second (mostly sea-days), 6× the warm PGlite cost. Inner
+  statements cannot be seen on prod (`pg_stat_statements.track = top`, `track_functions = none`, both
+  superuser settings). `pg_stat_user_tables` over 135 s shows the cost spread thin:
+  - about 1,500 `world_config` reads a second (`wc`);
+  - small tables read whole thousands of times: `goods` 4,271 scans / 1.8 M rows, `skill_effects` 4,626,
+    `skills` 5,602, `class_profile` 6,705.
+
+  Warm PGlite's top functions by self time are crew_terms, world.ship_stats, wc, crew_pct, house_skill_scopes.
+  Getting p95 under 1 s means trimming that per-fleet path. That is a separate slice.
+- Separately: `byeharu-voyage:reconcile` has hit its 120 s statement timeout in 6 of the last 8 hours (in
+  `npc_compact`'s events delete). The one arrivals deadlock (04:07) was against it.
