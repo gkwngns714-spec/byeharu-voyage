@@ -70,7 +70,7 @@ function psqlClient(url, searchPath) {
       const out = execFileSync(
         'psql',
         [url, '-X', '-q', '-tA', '-v', 'ON_ERROR_STOP=1', '-c', `set search_path = ${searchPath}`, '-c', wrapped],
-        { encoding: 'utf8', maxBuffer: 1 << 30 },
+        { encoding: 'utf8', maxBuffer: 2 ** 30 },
       )
       return { rows: JSON.parse(out.trim() || '[]') }
     },
@@ -387,7 +387,7 @@ async function build() {
     'docker',
     ['exec', '-e', 'PGPASSWORD=postgres', container, 'pg_dump', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres',
       ...GAME_SCHEMAS.flatMap((s) => ['--schema', s]), '--inserts', '--rows-per-insert=500'],
-    { encoding: 'utf8', maxBuffer: 1 << 31 },
+    { encoding: 'utf8', maxBuffer: 2 ** 31 },
   )
   const dumpMs = Date.now() - t0
   const pgDumpVersion = execFileSync('docker', ['exec', container, 'pg_dump', '--version'], { encoding: 'utf8' }).trim()
