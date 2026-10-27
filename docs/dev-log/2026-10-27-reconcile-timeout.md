@@ -78,3 +78,35 @@ tick_reconcile's compact step now walks the backlog **by time**. Three hunks:
 - Compacting as of T and then as of a later T' leaves exactly what compacting once as of T' leaves. The carried row's sum, last instant and balance are all computed from the rows, and every delete is "older than the cut".
 
 Self-assert (0253): the hunks reverse to the live pre-image. `npc_compact_house`, `npc_compact`, the beat and `tick_arrivals` are unchanged (md5). On a probe house (rolled back), compacting as of 10:30 and then 18:00 left byte-identical rows to compacting once as of 18:00, and to `npc_compact`. The first slice rolled 2 rows, the second 3; done once, 4.
+
+The migration was deployed as **0253**. 0250 (arrivals trim, #363), 0251 (near-city board, #359) and 0252 (E5b, #358) landed first, and none of them touches `tick_reconcile`. The live body was still md5 `ed8cad1b` at head 0252, and all 3 hunks were re-checked against it. One more change went in after the first local run: within a slice, the house with the oldest row waiting to be rolled goes first, so a slice the budget cuts short does not starve the same houses every hour.
+
+Deployed 2026-10-27 ~15:48 UTC: PR #364, merge `01c1c92`, main Acceptance green. Prod head 0253. Beats ran right after: 45 in 2 minutes, 0 errors.
+
+## After-check (prod, the two hourly runs after 0253)
+
+| run (UTC) | status | total | tend | companies | compact | check | houses done / left | rows compacted |
+|---|---|---|---|---|---|---|---|---|
+| 10-27 13:07 (0248) | failed | 120.0 s (timeout) | | | | | 0 | 0 |
+| 10-27 14:07 (0249) | succeeded | 75.4 s | 33.1 s | 4.3 s | 34.5 s | 3.3 s | 12 / 809 | 3,141 ledger, 3,349 events, 589 voyages |
+| 10-27 15:07 (0249) | succeeded | 62.9 s | 22.2 s | 5.3 s | 31.7 s | 3.6 s | 14 / 807 | 4,036 ledger, 4,730 events, 898 voyages |
+| **10-27 16:07 (0253)** | **succeeded** | **57.3 s** | 18.9 s | 4.4 s | 30.8 s | 3.2 s | 12 / 809 | 1,506 ledger, 2,531 events, 524 voyages |
+| **10-27 17:07 (0253)** | **succeeded** | **58.8 s** | 20.7 s | 4.6 s | 30.0 s | 3.4 s | 34 / 787 | 5,215 ledger, 7,717 events, 1,511 voyages |
+
+- Every run since 0249 has succeeded, at about half the 120 s timeout. No tend step failed or was busy.
+- No arrivals beat failed and there was no deadlock. Beats are late while the hour runs: the companies step (~4.5 s) holds the quay lock, and each compaction step holds it for ~1-2 s, so in that window a beat takes 1-5 s. They catch up within the minute.
+
+**What is still open: the compactor does not keep up.** Neither 0249 nor 0253 got past ~12-34 houses in 30 s, so the slice never finished (`upto` is still null) and the backlog is still about 1.01 M merchant events.
+
+IO counters (`pg_statio_user_tables`) sampled at 16:11, 17:06:45 and 17:08:08 show why:
+- During the 17:07 run the **ledger** read 25.8 k heap blocks and 16.5 k index blocks from disk. Events read 7 k + 7 k, port_goods 12 k.
+- Even with nothing running, the ledger reads **~1,700 heap + ~1,500 index blocks a minute**.
+
+The cause is `public.assert_ledger_reconciles`, which runs `ledger_sum(player)` over the house's **whole** ledger. It runs after every merchant ledger insert (the deferred `ledger_reconciles` trigger, so every `credit` in every beat), in every compaction step, and in the check pass. With ~900 uncompacted rows per house spread over ~900 pages that are not in the cache, each of those calls is about a thousand random disk reads.
+- So the backlog makes each house's compaction step slow (~1-2 s, almost all of it that sum), and that keeps the backlog in place.
+- It also very likely explains much of the arrivals' per-fleet cost that 0248's dev-log left open (~45 ms a fleet).
+
+**Next slice (proposed, not built):** a set-based form of the same rules for a batch of houses, `npc_compact_houses(houses[], now)`, with `npc_compact_house` becoming the batch of one, so there is still one authority.
+- One batch of ~100 houses per transaction, under the quay lock, at the normal cut.
+- Its ledger and events reads become bitmap scans that read each page once, in block order, instead of one random read per row.
+- Rolling a house's ledger once shrinks her `ledger_sum` to a handful of rows for good. That is what makes the hourly compaction, the beats' `credit` and the check pass cheap again.
