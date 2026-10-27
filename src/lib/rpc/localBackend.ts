@@ -37,14 +37,32 @@ import type { RpcBackend } from './backend'
 /** How often this tab may play the snapshot job — a slot is 15 minutes; a re-ask within this is a no-op. */
 const RECORD_EVERY_MS = 30_000
 
+/** HOW THIS TAB LETS THE PLANNER RUN THE SNAPSHOT JOB: in the order its FROM clause is written
+ *  (`join_collapse_limit = 1`, transaction-local — `set_config(…, true)` ends with callAs's transaction).
+ *
+ *  THE FREEZE (owner report via docs/WORK_QUEUE.md #349; measured 2026-10-27, Node PGlite, main's image):
+ *  0226's writer (`public.tick_price_snapshot`, supabase/migrations/…0226…sql:241-249) joins
+ *  `price_record_pairs()` (1,380 recorded pairs) to `port_goods` (138,990 rows) and the port terms. PGlite's
+ *  planner, guessing 1,000 rows for the function scan, builds a hash over EVERY port_goods row of each port —
+ *  so `world.mid_price` and `world.price_sides` ran 138,990 times to keep 1,380: 9.1 s native, tens of
+ *  seconds in a tab, the whole of it on the one PGlite queue, so every read and every press waited for the
+ *  first record read after each 15-minute slot edge. In the written order the recorded pairs drive and the
+ *  port_goods primary key answers each one: 0.27 s, and the price_history / _hour / _day rows and the
+ *  rollup marks are byte-identical (tests/rpc.recordEdge.spec.ts proves both on the shipped world).
+ *
+ *  A planner setting changes no answer, only the road to it, so 0226 (frozen) is not edited and the cloud,
+ *  whose pg_cron runs the job off every player's request path, is untouched. Exported for that spec. */
+export const RECORD_PLAN_SQL = `set_config('join_collapse_limit', '1', true)`
+
 /** The snapshot job, as this tab plays it: the present slot (the job's own function, only when the slot
- *  holds nothing — a full run costs a browser tab tens of seconds since 0226 composes both sides, and
- *  while it runs nothing else is answered), and — until the previous slot holds something too — a copy
- *  of the present slot one slot back, so a fresh record has a line to draw ("the market as it stands").
- *  Since 0226 the chain's own apply writes the present slot (its backfill run), so a world image built
- *  minutes ago holds one slot, and one point is not a line (tests/layout.spec.ts, the Trend row). */
+ *  holds nothing), and — until the previous slot holds something too — a copy of the present slot one
+ *  slot back, so a fresh record has a line to draw ("the market as it stands"). Since 0226 the chain's
+ *  own apply writes the present slot (its backfill run), so a world image built minutes ago holds one
+ *  slot, and one point is not a line (tests/layout.spec.ts, the Trend row). The planner setting comes
+ *  first by CASE's own evaluation order (each WHEN in turn), so the job is planned under it. */
 const RECORD_SQL = `with t as (
-    select case when not exists (select 1 from public.price_history where slot = public.drift_slot_of(now()))
+    select case when ${RECORD_PLAN_SQL} is null then null
+                when not exists (select 1 from public.price_history where slot = public.drift_slot_of(now()))
                 then public.tick_price_snapshot(now()) end as r
   ), c as (
     insert into public.price_history (port_id, good_id, slot, at, mid, stock, ask, bid)
@@ -60,9 +78,9 @@ const RECORD_SQL = `with t as (
 
 /** Play the snapshot job ONCE at boot, before the app's first read is queued. The world image is built
  *  minutes (in CI, a quarter-hour) before a tab opens it, so the present slot is usually empty and the
- *  first read of the record would run the full job (~10 s native, far more in a tab) with nothing else
- *  answered — a tray left on "Checking max…" for the length of it (the sweep at 1440×900, main red
- *  2026-10-26). Run here, the same cost lands inside the boot wait where a screen is still loading. */
+ *  first read of the record would run the job with nothing else answered (before RECORD_PLAN_SQL that
+ *  was ~10 s native, far more in a tab — a tray left on "Checking max…", the sweep at 1440×900, main
+ *  red 2026-10-26). Run here, its cost lands inside the boot wait where a screen is still loading. */
 export function warmRecord(db: Pick<LocalCaller, 'callAs'>): Promise<void> {
   return db.callAs<unknown>(RECORD_SQL).then(
     () => undefined,
