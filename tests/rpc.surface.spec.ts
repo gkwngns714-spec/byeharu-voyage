@@ -1710,6 +1710,8 @@ test('the registry and the client grants are one set, and the merchant cores are
     // 0182: the waiting merchants' queue and the arrivals sweep's ask. Server-only.
     'public.npc_waiting_queue(timestamptz)',
     'public.npc_ask_waiting(timestamptz, timestamptz)',
+    // 0248: the arrivals job's one session a minute (a procedure). Server-only.
+    'public.tick_arrivals_each_second(int)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
