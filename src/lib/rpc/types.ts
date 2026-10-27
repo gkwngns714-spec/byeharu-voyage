@@ -563,6 +563,10 @@ export interface MarketGood {
    * E_UNAVAILABLE. Optional for the serve-order reason `rarity` is.
    */
   offered?: boolean
+  /** 0255 (E6b, CLOSED_ECONOMY §4b): THE CITY WANTS THIS GOOD — it pays this multiple of the sell price (from its purse)
+   *  for `wanted_left` more units this period. Absent when it does not (always, while city wants are dark). */
+  wanted?: number | string
+  wanted_left?: number | string
 }
 
 /**
@@ -636,11 +640,22 @@ export interface MarketClock {
   next_change_at: string
 }
 
+/** 0255 (E6b): one good a city wants now (world.market `wants`). */
+export interface CityWant {
+  good_id: string
+  code: string
+  name: string
+  mult: number | string
+  left: number | string
+}
+
 export interface MarketView {
   /** Null when the port id does not exist. */
   port: MarketPort | null
   goods: MarketGood[]
   clock: MarketClock
+  /** 0255 (E6b): the goods this city wants now, at a premium. Absent when none (always, while dark). */
+  wants?: CityWant[]
 }
 
 /** world.buy_capacity(fleet, good) — the most this fleet can ACTUALLY take on here, priced through

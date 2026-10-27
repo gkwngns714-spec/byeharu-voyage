@@ -95,6 +95,12 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
         className="mt-3 lg:flex-wrap"
       />
       <QuayFair portId={port.id} />
+      {/* 0255 (E6b, CLOSED_ECONOMY §4b): what this city wants now and pays a multiple for (absent while dark) */}
+      {quay.market?.wants && quay.market.wants.length > 0 && (
+        <Note tone="neutral" className="mt-3" data-testid="desk-city-wants">
+          {t('ui.wanted', { mult: String(Number(quay.market.wants[0].mult)) })}: {quay.market.wants.map((w) => w.name).join(' · ')}
+        </Note>
+      )}
       <TowNote docked={docked} />
     </>
     ),
