@@ -24,7 +24,7 @@ A **LIVE** text-and-tabs age-of-sail trading game with real players.
 
 ## Hard rules for this repo
 - **Deploy only with `~/bin/bv-deploy.sh <pr>`** (source: `scripts/ops/bv-deploy.sh`). It pushes the migration and merges ONLY if the push landed at the expected head.
-  - Migrations go in strict number order, renumbered to the prod head + 1 at push.
+  - Migrations go in strict number order. Name yours prod head + 1 yourself: the script does not renumber, it pushes the PR's files as they are.
   - Never merge a migration PR by hand: a merge auto-publishes the client.
 - **Prod is read-only for checks.** Wrap them in `begin transaction read only`, and call only functions whose `provolatile` is 's' or 'i'. Never run EXPLAIN ANALYZE on a volatile function.
 - **A migration's self-assert counts only its own probe rows.** Its selections run read-only on prod BEFORE the PR. It never DELETEs from append-only tables (`events`, ledger); clean-up is by rollback.
@@ -36,6 +36,22 @@ A **LIVE** text-and-tabs age-of-sail trading game with real players.
 
 ## Where things are
 - `supabase/migrations/`: the chain. `docs/dev-log/`: one file per slice, with measurements.
-- `docs/OWNER_REQUESTS.md`: every owner instruction. `docs/OWNER_AUDIT_2026-10-18.md`: its audit.
+- `docs/OWNER_REQUESTS.md`: every OPEN owner instruction (closed rows: `docs/OWNER_REQUESTS_DONE.md`). `docs/OWNER_AUDIT_2026-10-18.md`: its audit.
 - `scripts/ops/`: the deploy script, the queue push, and the measurement harness (see its README).
 - `docs/research/`: price and history research, with its audit.
+
+## How agents work here (standing rules: a brief can be a few lines)
+- **Worktree per writer:** `git worktree add ~/dev/wt-<branch> -b <branch> origin/main`. `node_modules` is a JUNCTION to the main clone (`cmd //c mklink /J node_modules <main clone>
+ode_modules`), EXCEPT for a branch that changes the prefix cache or edits an applied migration (it shares the PGlite cache): use a real `npm ci` copy there. Copy `supabase/.temp` in for `--linked`.
+- **Cleanup:** stop previews, `cmd //c rmdir node_modules` BEFORE removing the worktree. Never force-remove worktrees by pattern.
+- **Checks (lean):** `tsc` + `eslint` + `vite build` + only the specs you touch. Never a local from-zero replay or a full `db:proof`: CI is the full proof. Never more than one heavy local chain at once. The machine locale is Korean, so plain-Node word specs may fail locally and pass on CI.
+- **Browsers headless only** (the owner uses this PC). `vite preview` on an explicit unusual port, at `localhost` not `127.0.0.1`.
+- **Migrations:** every file up to the prod head is FROZEN, so never edit one (the PR-CI-never-from-zero law, `docs/CI.md`). Patches for a frozen file's self-assert go in `src/lib/db/frozenAsserts.ts`. Next number = prod head + 1, deployed in number order, one migration PR at a time. Self-assert on a rolled-back probe; LF pre-image hunks; no assert that counts or sums a growing table or compares a rollup against live.
+- **Prod is LIVE multiplayer.** Prod reads: pure SELECTs from a file, one statement per file (`supabase db query --linked -f`). Never EXPLAIN ANALYZE, never select a volatile function. Never change the economy switch or any knob/flag: owner only.
+- **Finishing:** commit trailer `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`; the PR body ends with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+  - **Client-only PR:** `gh pr merge <n> --squash --auto`, then END. Do not poll CI. Auto-merge waits only for the two REQUIRED checks on main, `build` and `disposable-chain`; `acceptance` is not required, so main's own Acceptance run is the net after the merge.
+  - **Migration PR:** put PROD CHECKS in the body. When green, run them, then `~/bin/bv-deploy.sh <n>` (it pushes to prod first, then merges and waits; never chain onto it with `;`).
+  - **Docs-only change:** commit with ` [skip ci]` and the trailer, rebase on origin/main, `git push origin HEAD:main`.
+  - Never re-run a red until it is green: diagnose it.
+- **Words:** every UI label is 1-2 plain words, EN and KO, through `src/lib/i18n/dict/*`. NO SPAGHETTI: one authority per concept.
+- **Bookkeeping:** each PR updates its own owner row in `docs/OWNER_REQUESTS.md` (state only; a closed row moves to `docs/OWNER_REQUESTS_DONE.md`) and adds one line to the top of `docs/WORK_QUEUE.md`.
