@@ -51,6 +51,7 @@ interface Board {
   buy: BuyRow[]
   sell: SellRow[]
   quoted: number
+  quoted_near?: number
   assumes: string
 }
 interface Watch {
@@ -106,7 +107,13 @@ test('world.good_board: where it is sold, and every harbour that buys it, best n
   ).rows[0].n
   expect(b.sell).toHaveLength(harbours)
   const quoted = b.sell.filter((r) => r.quoted)
-  expect(quoted).toHaveLength(Math.min(b.quoted, harbours))
+  // the dearest good_board_quoted, and (0251) the nearest good_board_quoted_near she can sail to — once each
+  expect(quoted.length).toBeGreaterThanOrEqual(Math.min(b.quoted, harbours))
+  expect(quoted.length).toBeLessThanOrEqual(b.quoted + b.quoted_near!)
+  expect(b.quoted_near).toBe(5)
+  const sailable = b.sell.filter((r) => r.sailable && r.port !== 'LIS').sort((x, y) => x.miles! - y.miles!)
+  const cut = sailable[Math.min(b.quoted_near!, sailable.length) - 1]?.miles ?? -1
+  expect(sailable.filter((r) => r.miles! < cut).every((r) => r.quoted)).toBe(true)
   expect(b.sell.slice(0, quoted.length).every((r) => r.quoted)).toBe(true)
   // 0188: a city no chain of legs within her captain's reach gets to has no passage, so no miles, days or net —
   // it ranks after every city she can sail to; the rest are best net first

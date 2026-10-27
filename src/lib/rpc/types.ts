@@ -2909,6 +2909,8 @@ export interface GoodBoard {
   sell: BoardSellRow[]
   /** How many of the dearest cities are priced in full (the knob good_board_quoted). */
   quoted: number
+  /** 0251: how many of the NEAREST cities she can sail to are priced in full too (the knob good_board_quoted_near). */
+  quoted_near?: number
   /** Her captain's reach (0188); null for a company that sails without one. */
   reach?: { navigation: number; reach_nm: number } | null
   /** The stores (0188): days at sea her casks carry now, and the margin a leg must leave. 0231: `carry_days`, the

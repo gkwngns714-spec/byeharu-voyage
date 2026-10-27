@@ -13,15 +13,17 @@ import { useT } from '../../../lib/i18n'
 //
 // One block per good aboard: its name and units, then
 //   · HERE — where she lies, when that city buys it: its bid now (world.price_why, the served price), 0 days;
-//   · the few BEST cities she can sail to for it: the served board's own rows (world.good_board for what is aboard —
-//     the rows it prices in full, `price_each`; that she can sail, `sailable`), dearest profit first: the price, the
+//   · the few BEST cities she can sail to for it, and the few NEAREST: the served board's own rows (world.good_board
+//     for what is aboard — the rows it prices in full, `price_each`; that she can sail, `sailable`): the price, the
 //     days, and the PROFIT after wages, supplies and tax (the row's `profit`, served — nothing is added up here).
-//     The board prices in full only its `good_board_quoted` dearest cities (10), so "best" is the best of those.
+//     The board prices in full its `good_board_quoted` dearest cities (10) and its `good_board_quoted_near` nearest
+//     she can sail to (5, 0251), so "best" is the best of those and "near" the nearest of them. Nearest first.
 // One press on a row is that city and that good, ready to go (BuySell.tsx: the city in hand, the map glides to it,
 // the panel opens with ONE button — Sell there, or Sail & sell).
 
-/** How many cities a good lists — a few, not a directory. */
+/** How many cities a good lists — a few, not a directory: the best few by profit, and the nearest few. */
 const BEST = 3
+const NEAR = 3
 
 export function CargoBest({
   fleet,
@@ -79,11 +81,15 @@ function CargoGood({
   // where she lies, when that city buys it (the board has its row): its bid now, the served price
   const hereRow = b && docked ? (b.sell.find((r) => r.port === docked) ?? null) : null
   const hereBid = usePriceWhy(hereRow && docked ? (portByCode[docked]?.id ?? null) : null, hereRow ? (good?.id ?? null) : null)
-  const best: BoardSellRow[] = (b?.sell ?? [])
-    .filter((r) => r.port !== docked && r.price_each != null && r.sailable === true)
-    // the served profit first; where none is served (her cost unknown), the served price
+  const priced: BoardSellRow[] = (b?.sell ?? []).filter((r) => r.port !== docked && r.price_each != null && r.sailable === true)
+  // the served profit first; where none is served (her cost unknown), the served price
+  const top = [...priced]
     .sort((x, y) => (y.profit ?? -Infinity) - (x.profit ?? -Infinity) || (y.price_each ?? 0) - (x.price_each ?? 0))
     .slice(0, BEST)
+  const byDays = (x: BoardSellRow, y: BoardSellRow) => (x.days ?? Infinity) - (y.days ?? Infinity) || x.port.localeCompare(y.port)
+  const near = priced.filter((r) => !top.includes(r)).sort(byDays).slice(0, NEAR)
+  // one list, nearest first: the near cities and the best ones, each with its days and profit
+  const best = [...top, ...near].sort(byDays)
   const here = hereRow && hereBid.view ? hereBid.view.bid : null
   const none = b !== null && best.length === 0 && here === null && !hereBid.loading
   return (
