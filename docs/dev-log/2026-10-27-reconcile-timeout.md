@@ -110,3 +110,14 @@ The cause is `public.assert_ledger_reconciles`, which runs `ledger_sum(player)` 
 - One batch of ~100 houses per transaction, under the quay lock, at the normal cut.
 - Its ledger and events reads become bitmap scans that read each page once, in block order, instead of one random read per row.
 - Rolling a house's ledger once shrinks her `ledger_sum` to a handful of rows for good. That is what makes the hourly compaction, the beats' `credit` and the check pass cheap again.
+
+## The fix, part 3 (0257): a hundred houses a transaction
+
+`public.npc_compact_houses(houses[], now)` holds the compaction rules, set-based. Same four steps, same order, same keeps and deletes: ended voyages, past trade_daily days, the ledger before the cut rolled into one `NPC_CARRIED` row (balance computed from the purse, then asserted), events. Each step is one statement for the whole batch. `player_id = any(batch)` on the `(player_id, created_at)` indexes is a bitmap scan (prod plan checked with plain EXPLAIN), so each page is read once, in block order, for every house in the batch.
+- `npc_compact_house(house, now)` is now the batch of one (1 hunk). One authority. `npc_compact` is unchanged and runs through it.
+- tick_reconcile (3 hunks) keeps 0253's slices and house order, but takes the houses 100 to a transaction: `hold_the_quay()`, the upkeep scope, the batch, commit. A batch that fails is rolled back whole, and then its houses are done one at a time (the 0249 step), so a bad house holds back only herself. The 30 s budget is checked before every transaction. The receipt adds `batches`.
+- Batch = house by house, because the houses' rows are disjoint. The one way it could differ is a ledger row of house B naming an event of house A. Prod, read-only, 10-27 17:13: 0 of 811,251 named events cross houses.
+
+**ledger_sum is not changed (decided by default).** It is THE statement of the purse invariant (0004). Once a house is rolled, it sums her one carried row plus the last ~6-7 hours of rows (~26 a house-hour, so ~150-180 rows), all recently written and in the cache. Players' ledgers are small (19 houses, p50 2 rows, max 206). A running total would be a second authority for the purse. The drain is the fix for the sum's cost.
+
+Self-assert (0257): the 4 hunks reverse to the live pre-image; ACL, volatility, definer, config unchanged; `npc_compact`, `npc_compact_orders`, `ledger_sum`, `assert_ledger_reconciles`, `credit`, the beat and `tick_arrivals` unchanged (md5); no other function takes the quay lock. Probe (rolled back): 3 merchant houses (two with rows to roll, one with a single old row) and 1 player house, rows before a 2026-08-01 cut. The 0249 house step one house at a time, the batch, the new house step, and `npc_compact` left byte-identical rows and identical answers. The player's rows were untouched.
