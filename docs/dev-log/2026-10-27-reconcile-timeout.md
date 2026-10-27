@@ -123,3 +123,35 @@ The cause is `public.assert_ledger_reconciles`, which runs `ledger_sum(player)` 
 Self-assert (0257): the 4 hunks reverse to the live pre-image; ACL, volatility, definer, config unchanged; `npc_compact`, `npc_compact_orders`, `ledger_sum`, `assert_ledger_reconciles`, `credit`, the beat and `tick_arrivals` unchanged (md5); no other function takes the quay lock. Probe (rolled back): 3 merchant houses (two with rows to roll, one with a single old row) and 1 player house, rows before a 2026-08-01 cut. The 0249 house step one house at a time, the batch, the new house step, and `npc_compact` left byte-identical rows and identical answers. The player's rows were untouched.
 
 Local (PGlite, cached prefix p0242 → 0257): 0257 self-assert ok, answer `{events 6, voyages 6, trade_daily 6, ledger_rolled 8}` the same all four ways. The real job on the seeded merchant world (821 houses, merchants lit, `npc_retention_hours` 0 locally, `call public.tick_reconcile(true)`): compact **375 ms** for 3 slices × 9 batches (27 batches, 0 failed, 3,492 ledger rows rolled, 821 carried rows after). 0249's house-a-transaction step took 16.1 s for one pass on a similar world. `call public.tick_arrivals_each_second(2)` afterwards: no error.
+
+## After-check (prod, the two hourly runs after 0257)
+
+Deployed 2026-10-27 ~17:37 UTC: PR #367, merge 4665f63, prod head 0257 (after 0256, #366). Main Acceptance went red once on `tests/city.goodTrades.spec.ts:78` (the wide-glass step of a player's own Bought row). That spec cannot reach the compactor: nothing in `src/` calls `tick_reconcile` or `npc_compact*`, and a player's rows are never compacted. Re-running the failed shard once, as a diagnostic, passed. Recorded as a first-seen flake.
+
+| run (UTC) | total | tend | companies | compact | check | houses / batches / left | rolled |
+|---|---|---|---|---|---|---|---|
+| 10-27 17:07 (0253) | 58.7 s | 20.7 s | 4.6 s | 30.0 s | 3.4 s | 34 / — / 787 | 5,215 ledger, 7,717 events, 1,511 voyages |
+| **10-27 18:07 (0257)** | **68.1 s** | 16.5 s | 5.0 s | **42.1 s** | 4.5 s | **200 / 2 / 621**, 0 failed | **30,357 ledger, 47,292 events, 9,568 voyages**, 6,421 trade_daily |
+| **10-27 19:07 (0257)** | **79.8 s** | 26.4 s | 5.8 s | **43.5 s** | 4.2 s | **200 / 2 / 621**, 0 failed | **26,230 ledger, 40,966 events, 8,339 voyages**, 5,495 trade_daily |
+
+Backlog (merchant rows older than the 6 h cut; events not of a kept kind):
+
+| at (UTC) | ledger waiting | events waiting |
+|---|---|---|
+| 17:23 (before) | 820,179 | 1,036,817 |
+| 18:08 | 806,334 | 1,008,539 |
+| 19:09 | 801,723 | 992,631 |
+
+Arrivals beats (`public.arrivals_beats`): **0 errors** before, during or after.
+- Outside the hourly run, the beats are the same: p50 365 → 343 → 352 ms, p95 1,712 → 1,652 → 1,589 ms (17:00-17:37, 17:37-18:07, and later).
+- During the run (xx:07-xx:10) they wait longer: p95 9.0 s at 18:07 and 14.6 s at 19:07, max 27.0 s and 26.0 s. Under 0253 the worst was ~11 s. The cause: each batch of 100 holds the quay lock for ~20 s, so a beat waits that long once or twice.
+- `ledger_sum` per house (p50 rows) is still 1,102. It falls only as houses are rolled at the normal cut.
+
+**What this means.** 0257 compacts ~6x more rows per run than 0253 (26-30 k ledger rows, 41-47 k events), with no failures. But the 6 h slice keeps each house's ledger long, so every batch still sums ~1,100 cold rows per house, twice (the explicit check and the deferred trigger). It also reads her voyages and their voyage_events one row at a time (fleet by fleet, then per voyage in the cascade). So each batch is ~20 s. Net drain is ~10 k ledger rows and ~20-28 k events an hour, against 800 k and 990 k waiting.
+- **Estimate: the ledger backlog empties in ~3-4 days (around 10-31), events about the same.** That holds only if the merchants' write rate stays where it is.
+- The first 6 h slice finishes in about 2 more runs (621 houses left, ~200 a run).
+
+**Proposed next (0258, not built):**
+1. A smaller batch (~25 houses), so a batch holds the quay lock for ~5 s, not ~20 s.
+2. Compact each batch at the normal cut, not the 6 h slice. Each house is then rolled once for good, and her checks sum ~150 hot rows instead of ~1,100 cold ones.
+3. Read voyages by `fleet_id = any(...)`, and delete their voyage_events and insurance rows set-based before the voyages, so those pages are also read once, in block order. This leaves the same end rows as the cascade.
