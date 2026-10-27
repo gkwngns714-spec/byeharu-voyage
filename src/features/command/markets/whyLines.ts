@@ -98,8 +98,8 @@ export function whyLines(why: PriceWhy): WhyLine[] {
       case 'band':
         add('band', tw(t.mult < 1 ? 'markets.ceiling' : 'markets.floor'), t.mult)
         break
-      case 'glut': // 0194: recent heavy selling here, fading by half each game day
-        add('glut', tw('markets.glut'), t.mult)
+      case 'glut': // 0194: recent heavy selling here, fading by half each game day; 0254 (E6): below 0 (mult > 1) = recent heavy buying
+        add('glut', tw(t.mult > 1 ? 'markets.press' : 'markets.glut'), t.mult)
         break
     }
   }
