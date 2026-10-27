@@ -102,6 +102,14 @@ test('every span answers from its tier, oldest first, in the shape the types cla
   // plant two finished hours of yesterday for the sold pair and fold them, exactly as the job would.
   // The base is a fixed hour of YESTERDAY'S UTC day (10:00), never "now minus 26 h": that slid across UTC
   // midnight between 00:00 and 02:00 UTC and split the eight rows over two days (day bucket 13, not 17).
+  // The pair's FOLDED record starts empty, so the planted hours are its oldest and its day is theirs alone: the
+  // world image carries the fine rows of the moment it was built, and the first read's job folded them into an
+  // hour and a day. On the UTC day after an image was built those rows lie on "yesterday" too, earlier than
+  // 10:00 — the 1w series then opened on the image's hour (bid 46.53, not 13) and the day was not the planted
+  // one (CI run 40449328997, 04:31 UTC, image built 00:04 UTC the day before).
+  await db.callAs(`with h as (delete from public.price_history_hour where port_id = '${port}' and good_id = '${sold}' returning 1),
+                        d as (delete from public.price_history_day where port_id = '${port}' and good_id = '${sold}' returning 1)
+                   select ((select count(*) from h) + (select count(*) from d))::int as result`)
   await db.callAs(`with ins as (
     insert into public.price_history (port_id, good_id, slot, at, mid, stock, ask, bid)
     select '${port}', '${sold}', public.drift_slot_of(h), h, 10, 0, 20 + i, 10 + i
