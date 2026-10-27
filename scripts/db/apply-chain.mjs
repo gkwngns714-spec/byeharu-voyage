@@ -159,7 +159,9 @@ export async function applyChain({ quiet = false, log = console.log, stopBefore 
     const captured = []
     const t0 = Date.now()
     try {
-      await db.exec(raw, { onNotice: (n) => captured.push(n.message ?? String(n)) })
+      // The same two frozen-assert patches the browser's applier reads (src/lib/db/frozenAsserts.ts).
+      const { sqlToApply } = await import('../../src/lib/db/frozenAsserts.ts')
+      await db.exec(sqlToApply({ name: file, sql: raw }), { onNotice: (n) => captured.push(n.message ?? String(n)) })
     } catch (err) {
       notices.set(file, captured)
       for (const line of captured) log(`    notice: ${line}`)
