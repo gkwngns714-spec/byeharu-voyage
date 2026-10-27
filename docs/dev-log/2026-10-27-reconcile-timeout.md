@@ -196,3 +196,28 @@ tick_reconcile (3 hunks against the live 0258 body): 0253's 6-hour slices again 
 Self-assert (0259): the hunks reverse; the rules, `npc_compact`, the house step, the orders step, `ledger_sum`, `assert_ledger_reconciles`, `credit`, the quay lock, the scope, the beat and `tick_arrivals` unmoved (md5); tick_reconcile calls the batch once, as of `v_slice`. **Probe, four ways, on 0258's four houses:** (twice) the batch as of an instant whose cut falls between the old rows, then as of now; (once) the batch as of now; the house step; `npc_compact`. All left byte-identical rows. Answers: once `{voyages 3, ledger_rolled 8, events 6, trade_daily 6}` (the same from the house step and `npc_compact`), twice `{3, 10, 6, 6}` (A's and C's ledgers rolled in two steps).
 
 Local (PGlite, prefix 247 → 0259, the real job on the merchant world, `npc_retention_hours` 0): run 1 finished one slice (the seed rows of 10-15) and part of the next, 1,172 house-steps in 54 batches, longest hold 653 ms, 30.5 s; run 2 finished the rest (821 houses, 39 batches, longest hold 621 ms, 22.4 s), leaving 821 carried rows. No failures.
+
+Deployed 2026-10-27 ~22:15 UTC: PR #369, merge 97ab6f6, prod head 0259. Main Acceptance green (city.goodTrades passed this time).
+
+## After-check (prod): 0258's second run, and 0259's first
+
+| run (UTC) | total | tend | companies | compact | check | houses / batches / left | rolled | longest hold / ms a house | beats in the run: n / p50 / p95 / max |
+|---|---|---|---|---|---|---|---|---|---|
+| 10-27 22:07 (0258) | 62.6 s | 23.7 s | 5.1 s | 29.8 s | 4.1 s | 5 / 5 / 816 | 5,496 ledger, 6,625 events, 1,273 voyages | 3.8 s / 3,805 ms | 31 / 0.81 / 5.41 / 5.90 s |
+| **10-27 23:07 (0259)** | 53.2 s | 14.4 s | 4.6 s | 30.3 s | 4.0 s | 21 / 8 / 800 | 2,325 ledger, 3,419 events, 663 voyages | 1.23 s / 392 ms | 28 / 0.72 / 4.61 / 6.00 s |
+
+Backlog (merchant rows past the 6 h cut; ledger excludes NPC_CARRIED):
+
+| at (UTC) | ledger | events | ended voyages | houses with rows waiting |
+|---|---|---|---|---|
+| 20:41 (0257 live) | 809,157 | 993,170 | 196,288 | 814 |
+| 22:10 (0258, 2 runs) | 829,104 | 1,016,214 | 200,991 | 811 |
+| 23:10 (0259, 1 run) | 847,620 | 1,037,154 | 205,122 | 814 |
+
+- Beats: 0 errors all along. During the run, p95 4.6-5.4 s and max 5.9-6.9 s under 0258/0259, against 13.3 s / 21.1 s under 0257. **The 2 s target is not met.** The max matches the companies step (one 4.6-6.7 s transaction a run), which no compactor setting moves.
+- **Drain: negative.** The backlog grows ~18-20 k ledger rows an hour under 0258/0259 (0257 shrank it ~5-14 k an hour).
+- Inside the lock the rate is the same either way (~260-280 ledger rows a held second), whether one house's whole backlog (0258) or a few houses' six hours (0259). So the slices did not make small batches cheaper. What differs is how much of the 30 s is spent holding the lock: 0258 ~21 s (6 holds of 3-4 s), 0259 ~8 s (8 holds of ≤1.2 s). The rest went outside the lock, mostly waiting for the beats between transactions, by inference: the receipt did not time it. 0257's 100-house batches did ~625 rows a held second.
+
+## The fix, part 6 (0260): the brief's 5 s hold, and the wait on the record
+
+tick_reconcile (5 hunks): the hold target 1.5 s → **5 s** (the brief's "about 5 s at most"), the batch ceiling 25 → **100** houses (0257's size, the cheapest per row measured). Each compaction transaction's wait for the quay is timed: the receipt adds `held_ms` and `wait_ms`. Everything else is 0259's. The rules are unchanged (md5); 0259's four-way probe is run again (same answers). Decided by default, on 0259's numbers: a 1.5 s hold bought nothing against the 6 s companies step and cost the drain. Local (PGlite, prefix 248 → 0260, real job): 3 slices, 2,463 house-steps in 29 batches of up to 100 houses, longest hold 558 ms, 0 failed.
