@@ -40,7 +40,22 @@ Three human fleets with cargo × 12 boards (6 of the cargo good, 6 other goods),
 Per extra priced row on prod (warm): quote 6–45 ms, profit_tax ~1, daily_cap ~2, price_outlook ~11 → 5 rows ≈ +125 ms.
 `passage_needs` ×246 within reach: 183–237 ms → hoisted ≈ −200 ms.
 
-**After:** (filled in after the deploy, same three sessions)
+**After (head 0251, deployed ~15:05 UTC, #359 merged 02e59b6):** same three files.
+
+| round | boards | p50 | p95 | max |
+|---|---|---|---|---|
+| before (0248) | 36 | 1,697 | 2,162 | 2,837 |
+| after, first round, right after the deploy (the clock re-wound, jobs catching up) | 36 | 2,035 | 2,875 | 3,124 |
+| after, rounds 2–4 (steady) | 108 | 1,650 | 2,054 | 2,410 |
+
+(The table above quotes p95 by linear interpolation; the header's "~2,330" was a by-eye read of the same 36 rows.)
+Steady state is at or under the before p95 while every board now prices 15 rows, not 10. Round 1 was slower on every
+good, including the cargo boards whose cost did not move, so it was load after the clock was wound back up, not the body.
+
+Read back (Casa Almacen, anise at Lisbon): the priced sailable rows nearest first are now Setúbal 0.11 d, Porto 0.45,
+Sanlúcar 0.7, Cádiz 0.71, Seville 0.81, then Fuzhou 39.8 d… (before: the first was 39.8 days away). Their `profit` is
+null for this company, as it is on its dearest rows too: its cargo has no recorded cost (`fleet_cargo_basis`), so the list
+shows the price. `good_board_quoted_near` = 5.
 
 ## PROD CHECKS
 
