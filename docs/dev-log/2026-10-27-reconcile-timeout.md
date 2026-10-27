@@ -61,7 +61,7 @@ Prod before: see the finding above.
 
 Prod after: below.
 
-## Prod after 0249, and why 0250 followed
+## Prod after 0249, and why 0251 followed
 
 Deployed 2026-10-27 13:4x UTC: PR #362, merge `fb46b93`, main Acceptance green. Prod head 0249. Beats ran right after it: 169 in 3 minutes, 0 errors, p50 370 ms.
 
@@ -69,7 +69,7 @@ Deployed 2026-10-27 13:4x UTC: PR #362, merge `fb46b93`, main Acceptance green. 
 - That is about 2.9 s a house. One house's 10-25 / 10-26 rows lie roughly one to a page across a day and a half, long out of the cache (shared_buffers 320 MB; events alone is 512 MB). So a house step read a page from disk for each row.
 - At that rate the backlog would have taken days. The beats waited on those slow steps: in 14:07-14:08 they averaged 1.2-1.5 s (max 8.7 s), against 0.5 s at 14:05.
 
-## The fix, part 2 (0250)
+## The fix, part 2 (0251)
 
 tick_reconcile's compact step now walks the backlog **by time**. Three hunks:
 - A slice means "compact every house as of instant T", using `public.npc_compact_house(house, T)`: the same function and the same rules. T is six hours past the last slice finished, and never later than now.
@@ -77,4 +77,4 @@ tick_reconcile's compact step now walks the backlog **by time**. Three hunks:
 - A finished slice is recorded in the run's receipt (`upto`). A slice that the 30 s budget cut short is done again the next hour; the houses it already reached have nothing left in it. The first run starts at the cut of the oldest merchant ledger row still waiting to be rolled.
 - Compacting as of T and then as of a later T' leaves exactly what compacting once as of T' leaves. The carried row's sum, last instant and balance are all computed from the rows, and every delete is "older than the cut".
 
-Self-assert (0250): the hunks reverse to the live pre-image. `npc_compact_house`, `npc_compact`, the beat and `tick_arrivals` are unchanged (md5). On a probe house (rolled back), compacting as of 10:30 and then 18:00 left byte-identical rows to compacting once as of 18:00, and to `npc_compact`. The first slice rolled 2 rows, the second 3; done once, 4.
+Self-assert (0251): the hunks reverse to the live pre-image. `npc_compact_house`, `npc_compact`, the beat and `tick_arrivals` are unchanged (md5). On a probe house (rolled back), compacting as of 10:30 and then 18:00 left byte-identical rows to compacting once as of 18:00, and to `npc_compact`. The first slice rolled 2 rows, the second 3; done once, 4.
