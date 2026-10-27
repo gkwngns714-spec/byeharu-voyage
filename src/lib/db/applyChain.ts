@@ -20,6 +20,9 @@ import type { MigrationFile } from './chain'
 // arrangement already carries `src/lib/sea/index.ts` into scripts/build-sea-migration.mjs, and
 // every workflow pins Node 24 for it.
 import { assertChainIsSane, orderChain } from './chain.ts'
+// Two FROZEN migrations' self-asserts are read differently on PGlite (a stopwatch, a random pirate
+// roll): frozenAsserts.ts says which, why, and why the files themselves are never edited.
+import { sqlToApply } from './frozenAsserts.ts'
 
 /** The slice of PGlite this module needs. Structural, so a test can hand in a stub. */
 export interface PgExecutor {
@@ -89,7 +92,7 @@ export async function applyChain(
     const notices: string[] = []
     const t = now()
     try {
-      await db.exec(file.sql, { onNotice: (n) => notices.push(n.message ?? String(n)) })
+      await db.exec(sqlToApply(file), { onNotice: (n) => notices.push(n.message ?? String(n)) })
     } catch (err) {
       throw migrationError(file.name, err, notices)
     }
