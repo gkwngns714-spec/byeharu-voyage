@@ -175,3 +175,24 @@ Local (PGlite, cached prefix of 246 files → 0258): 0258 self-assert ok, answer
 - Run 2 (nothing left to roll): compact 19.8 s, 38 batches, longest hold 570 ms. On wasm most of a batch is the open-lap read (~0.5 s: PGlite has no table statistics, so it picks a nested loop). On prod the same read is a hash join over `orders` (65 k rows, plain EXPLAIN).
 - One broken purse (a merchant's purse +1 behind the ledger's back): her batch failed, was rolled back, and was redone one house a transaction. 820 houses were rolled, and she kept her rows. The final invariants raised on her, as they did before 0258.
 - `call public.tick_arrivals_each_second(2)` afterwards: no error.
+
+Deployed 2026-10-27 ~20:22 UTC: PR #368, merge fa97e4a, prod head 0258. The deploy paused the clock for ~3.5 min; the first 3 beats after it caught up the backlog of arrivals at ~10 s each (62-69 fleets a beat), and by 20:26 the beats were back to normal (p50 ~0.3 s), 0 errors. **Main Acceptance went red on `tests/city.goodTrades.spec.ts:78` again** (shard 2/3, 621 of 622 passed): the same step as after 0257, the wide-glass (1280) list of the player's own Bought row, `toBeVisible` timed out 30 s; the phone half of the same test passed. Second sighting, both right after a compactor merge. Nothing in `src/` calls the compactor, and the compactor never touches a player's rows, so the link is not causal as far as can be read. Recorded, not re-run (owner's order).
+
+## After-check (prod, the first hourly run after 0258)
+
+| run (UTC) | total | tend | companies | compact | check | houses / batches / left | rolled | longest hold | beats in the run: n / p50 / p95 / max |
+|---|---|---|---|---|---|---|---|---|---|
+| 10-27 20:07 (0257) | 67.8 s | 27.6 s | 4.6 s | 31.6 s | 4.0 s | 200 / 2 / 621 | 25,041 ledger, 37,772 events, 7,541 voyages | ~20 s | 27 / 0.52 / 13.3 / 21.1 s |
+| **10-27 21:07 (0258)** | 82.5 s | 40.7 s | 6.7 s | **29.9 s** | 5.2 s | **6 / 6 / 815** | **5,463 ledger, 6,550 events, 1,231 voyages** | **3.2 s** | 39 / 1.08 / **5.05 / 6.90 s** |
+
+- The clock worked: no transaction started past the budget (compact 29.9 s, against 0257's 31.6-43.5 s), and the beats waited much less (p95 13.3 → 5.1 s, max 21.1 → 6.9 s; 0 errors). Still not under 2 s.
+- **But the drain collapsed.** At the normal cut, a house's first roll is her whole backlog, two days of rows lying one to a page, cold: one house alone held the lock 3.2 s (`ms_house` 3,188). So every transaction was one house, and 6 houses were done. 0257 rolled ~25 k ledger rows a run; 0258 rolled 5.5 k, below the ~15-20 k that cross the cut each hour, so **the backlog grows** under 0258.
+- What this shows: the cost is in the pages, not the houses. Rows lie on disk in the order they were written, so the cheap read is a short stretch of TIME for many houses (0253's slices), not one house's whole history. The proposal's step 2 (the normal cut) undid that.
+
+## The fix, part 5 (0259): the slices come back, with 0258's clock inside them
+
+tick_reconcile (3 hunks against the live 0258 body): 0253's 6-hour slices again (oldest first, `slices` / `upto` back in the receipt). Inside each slice, 0258's clock unchanged: each transaction timed inside the lock, the next one sized to a 1.5 s hold by the measured rate (1-25 houses), none started unless it ends inside the 30 s budget, a failed batch redone one house a transaction. `npc_compact_houses` (the rules, with 0258's set-based voyages) is unchanged (md5-asserted).
+
+Self-assert (0259): the hunks reverse; the rules, `npc_compact`, the house step, the orders step, `ledger_sum`, `assert_ledger_reconciles`, `credit`, the quay lock, the scope, the beat and `tick_arrivals` unmoved (md5); tick_reconcile calls the batch once, as of `v_slice`. **Probe, four ways, on 0258's four houses:** (twice) the batch as of an instant whose cut falls between the old rows, then as of now; (once) the batch as of now; the house step; `npc_compact`. All left byte-identical rows. Answers: once `{voyages 3, ledger_rolled 8, events 6, trade_daily 6}` (the same from the house step and `npc_compact`), twice `{3, 10, 6, 6}` (A's and C's ledgers rolled in two steps).
+
+Local (PGlite, prefix 247 → 0259, the real job on the merchant world, `npc_retention_hours` 0): run 1 finished one slice (the seed rows of 10-15) and part of the next, 1,172 house-steps in 54 batches, longest hold 653 ms, 30.5 s; run 2 finished the rest (821 houses, 39 batches, longest hold 621 ms, 22.4 s), leaving 821 carried rows. No failures.
