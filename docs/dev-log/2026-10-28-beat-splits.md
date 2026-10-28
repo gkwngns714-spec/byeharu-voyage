@@ -98,3 +98,64 @@ Which function inside a lap start holds the ~600 ms is not measured yet. `track_
 runs one beat in four with `SET LOCAL track_functions = 'all'` and stores `splits.fn`: the 40 functions with the most
 self time (calls, total ms, self ms) and the totals. 3 hunks in the beat; tick_arrivals untouched (md5). A refused
 setting leaves that beat unprofiled. Local: self-assert ok; 8 beats, profiled ones carry `fn`.
+
+## Deployed (0262)
+
+2026-10-28 ~01:00 UTC: PR #374, push landed at head 0262, merged 95e0731, main Acceptance green. Profiled beats cost
+the same as the others (median ms 337 vs 327), so `track_functions` itself is not visible in the numbers.
+
+## The per-function profile (prod, 01:03-01:20 UTC, 187 profiled beats)
+
+Beats with a lap start in the held loop (29 profiled, mean run 1,672 ms), per beat:
+
+| function | total ms | self ms | calls |
+|---|---|---|---|
+| cmd.advance | 1,518 | 30 | 5.6 |
+| public.npc_plan (the lap start's re-plan) | **779** | | 1.3 |
+| public.npc_leg_lines | 636 | 32 | 20.4 |
+| world.trade_routes | 373 | 64 | 20.4 |
+| world.quote_priced | 266 | 162 | 303 |
+| public.wc_num + public.wc (knob reads) | 221 + | 114 + 139 | 4,495 + 5,768 |
+| public.npc_loop_candidates | 188 | 155 | 0.7 |
+| world.mid_terms | 110 | 38 | 545 |
+| cmd.standing_route_close_lap | 70 | 68 | 0.6 |
+| public.ledger_sum (purse checks) | 67 | 67 | 28 |
+
+All 187 profiled beats (mean run 542 ms): npc_plan 122 ms a beat (22 %), close_lap 54 ms self (~130 ms a lap close),
+wc + wc_num 65 ms self (12 %), ledger_sum 33 ms (outside ms), 0261's own beat_reads 23 ms.
+
+**The root cause:** the arrivals beat's slow seconds are the seconds in which a merchant's lap starts. Each lap start
+re-plans her loop on today's prices (`npc_plan`, 0114): ~11 legs, each `world.trade_routes` over both quays plus up
+to 12 quoted goods, and on most lap starts up to 16 candidate loops (`npc_loop_candidates`). That is ~600 ms a lap
+start on prod and ~215 ms locally. 0250 / 0256 trimmed paths that do not include it (a port-time SAIL, an arrival), so
+prod did not move. The ledger backlog (the lead suspect) costs ~30 ms a beat, at the commit, outside `ms`.
+
+## 0264: a lap start reads only what it weighs (same answers)
+
+Three cuts, each from the profile above:
+1. `npc_loop_candidates`' rank of trade destinations reads only the goods each city makes (`haul_nm = 0`, ~6 of ~565
+   rows a port) through a new partial index `port_goods_makes_0264`, not every market row of every destination looked
+   up at home. Same maxima and nulls.
+2. `wc_num` / `wc_int` become SQL-standard bodies (BEGIN ATOMIC), no definer, no SET, so they are inlined: a knob read
+   is one definer call (`wc`, untouched), not two. ACL kept.
+3. 0261's block readings only in the profiled beats (one in four).
+
+The index is created LAST, so its SHARE lock on port_goods is held only to the commit, not through the probe.
+
+Proof (self-assert): the hunks reverse; wc, npc_plan, npc_leg_lines, tick_arrivals, credit unmoved (md5); the knob read's
+plan calls `wc` directly. OLD vs NEW: every knob (number, integer, a missing one); candidates for 60 merchant routes;
+`npc_plan(now, route)` for 12 merchants resting at home, old bodies, new, old again (control), each rolled back.
+
+Local (PGlite, merchant world lit, 6 rounds of rewound laps, ~200 resting at home): self-assert ok (282 knobs, 60 routes
+/ 802 loops, 12 re-plans alike). Negative control: the back haul read from the wrong side: 16 of 60 routes differ.
+
+| local, old vs new | old | 0264 |
+|---|---|---|
+| npc_loop_candidates, a call (60 routes, 2 passes) | 57.2 ms | 32.8 ms (−43 %) |
+| wc_num, 20,000 reads | 497 ms | 315 ms (−37 %) |
+| npc_plan, a lap start (20 resting, 3 passes) | 214.7 ms | 190.7 ms (−11 %) |
+
+What 0264 does not do: after it, a re-plan is still mostly the pricing itself (local profile of 20 plans:
+`quote_priced` 153 calls a plan, `mid_terms` 284, `trade_routes` 11, `wc` 2,215). Same-answer trims can only shave
+that. Cutting it at the root changes WHEN or HOW OFTEN a merchant re-plans, which changes game results. That is the
+owner's call (below, after the after-check).
