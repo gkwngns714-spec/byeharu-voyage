@@ -13,7 +13,9 @@
 // asks and would otherwise never see one arrive — this backend runs `public.tick_arrivals(now())`:
 // THE SAME FUNCTION the job runs, a different driver. A player's own fleets need no such thing
 // (every read of theirs settles them first). The cloud backend does nothing of the kind, because
-// the job does.
+// the job does. And from 0266 a route whose rest is over starts her lap in its own job, not in the
+// beat: so right after the beat this backend runs that job's one pass too, `call
+// public.tick_lap_starts(false)` (THE SAME PROCEDURE the lap-start job runs, in this transaction).
 
 //
 // AND THE PRICE RECORD (2026-10-18, the COMMAND desk). On Supabase the snapshot job records every
@@ -126,7 +128,9 @@ export function createLocalBackend(db: LocalCaller): RpcBackend {
       if (statsDue) statsAt = Date.now()
       const clock =
         name === 'worldSeaRoster' || name === 'worldPortMerchants'
-          ? db.callAs<unknown>('select public.tick_arrivals(now()) as result')
+          ? db
+              .callAs<unknown>('select public.tick_arrivals(now()) as result')
+              .then(() => db.callAs<unknown>('call public.tick_lap_starts(false)'))
           : due
             ? db.callAs<unknown>(RECORD_SQL)
             : statsDue

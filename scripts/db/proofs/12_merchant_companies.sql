@@ -292,6 +292,7 @@ begin
     update public.standing_routes sr set hold_until = now() - interval '1 second'
       from public.players p where p.id = sr.player_id and p.is_npc and sr.hold_until is not null;
     perform public.tick_arrivals(now());
+    call public.tick_lap_starts(false);   -- 0266: a rested merchant's lap starts in its own job, not in the beat
     if v_k % 5 = 0 then
       call public.tick_reconcile(false);   -- 0137: a procedure; false = inside this proof's transaction
     end if;
@@ -428,6 +429,7 @@ begin
   update public.standing_routes sr set hold_until = now() - interval '1 second'
     from public.players p where p.id = sr.player_id and p.is_npc;
   perform public.tick_arrivals(now() + interval '1 hour');
+  call public.tick_lap_starts(false);   -- 0266: the woken holds go to the lap-start job, which must write nothing while dark
   perform public.npc_tend(now());
   if (select count(*) from public.orders o join public.players p on p.id = o.player_id and p.is_npc) <> v_orders
      or exists (select 1 from public.fleets f join public.players p on p.id = f.player_id and p.is_npc where f.status = 'SAILING') then

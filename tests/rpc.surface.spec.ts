@@ -1718,6 +1718,11 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.hold_the_quay()',
     // 0257: the compaction rules, set-based for a batch of houses. Server-only.
     'public.npc_compact_houses(uuid[], timestamptz)',
+    // 0266: the lap-start job (a procedure), its two steps and its due set. Server-only.
+    'public.tick_lap_starts(boolean)',
+    'public.lap_start_plan(uuid)',
+    'public.lap_start_open(uuid)',
+    'public.lap_starts_due()',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
