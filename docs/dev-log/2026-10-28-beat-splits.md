@@ -165,3 +165,49 @@ sighting: `map.sun.spec.ts:305` (npc 2/2), `wide.lanes.length` 0 after 12 zoom-o
 merchant world, `world.sea_traffic` with the old bodies and with the new serves the same 240 fleets, 49 with a lane;
 no earlier failure of that test in the last 40 Acceptance runs. Recorded, not re-run; the fixed commit's run is the
 next reading.
+
+## Deployed (0264) and after-check
+
+2026-10-28 ~02:53 UTC: PR #375, push landed at head 0264, merged dcaf531. Main Acceptance on dcaf531 went red on
+`tests/map.perf.spec.ts:100` ("the wheel did not zoom the chart"): a test race, not 0264 (diagnosis and fix in PR #377,
+`osn-zoomstep-wait`); main is green again on d12e482. 0265 (the compactor, every minute) merged 03:15, so the clean
+0264 window is 03:00-03:12; after that both changes are in the numbers.
+
+| beats outside :07-:09 | before (01:55-02:52, 0263) | after (03:00-03:12, 0264) | after + 0265 (03:16-03:32) |
+|---|---|---|---|
+| beats / fleets a beat | 3,045 / 10.96 | 457 / 10.75 | 789 / 12.41 |
+| runs a minute | 56.6 | 57.2 | |
+| p50 | 348 ms | 349 ms | 366 ms |
+| p95 | 1,720 ms | **1,539 ms** | 2,012 ms |
+| max | 6.1 s | 3.0 s | |
+| over 1 s | 13.4 % | 14.0 % | 17.2 % |
+| errors | 0 | 0 | 0 |
+| probe (0261's own cost) | 28.5 ms | 10.0 ms | |
+
+The reconcile minute (03:07, before 0265): p95 3,986 → 4,388 ms, 40 → 17 runs a minute. That is the compactor's 5 s
+holds (0260), not the beat's work; 0265 replaced that schedule.
+
+Per unit of work (0262 profiles), before → after (clean window) → after + 0265:
+- a lap start's re-plan (`npc_plan`): 617 → 585 → 444 ms a call;
+- `npc_loop_candidates`: 246 → 113 → 128 ms a call (−50 %);
+- `cmd.standing_route_close_lap`: 129 → 139 → 138 ms (untouched by 0264);
+- the knob wrappers are gone from the profile (inlined); a knob read ~46 → ~24 µs.
+
+## Conclusion
+
+- **Root cause:** the beat's slow seconds are a merchant's lap turnover inside the beat: closing her lap (~130 ms) and
+  re-planning the next one on today's prices (`npc_plan`, ~450-600 ms: ~11 legs through `world.trade_routes`, ~150
+  quotes, ~2,200 knob reads, and on most lap starts up to 16 candidate loops). The beats over 1 s are the beats with
+  one or more lap starts. The local profiles behind 0250 / 0256 never ran this path.
+- **Not the cause:** the ledger backlog. The purse checks run at the commit, outside `ms`, ~30 ms a beat. The backlog
+  is also not draining by itself (784 of 821 houses unrolled at 02:10, median 1,202 ledger rows a house and rising),
+  so "wait for the drain" is not a plan for it either; 0265 is the compactor agent's answer.
+- **What same-answer changes can still do:** shave the pricing (e.g. `world.mid_terms` reads four knobs a call, ~280
+  calls a plan). Each is a few percent. The p95 goal (< 1 s) cannot be reached that way while each lap start is
+  priced whole inside a one-second beat.
+- **What would cut it at the root (changes game results: OWNER's call, not built):**
+  1. re-plan only on review laps (`npc_route_review_laps`, 6) or when her loop stops paying, and sail the standing
+     lines otherwise (most lap starts would cost ~0.1 s instead of ~0.5 s);
+  2. move the re-plan out of the beat: a merchant whose rest ends is queued and re-planned by a separate job (or the
+     asking slot), and sails a beat or a few seconds later;
+  3. cap the candidate loops priced per lap start (`npc_route_candidates`, now 16).
