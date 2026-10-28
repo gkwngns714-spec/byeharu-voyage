@@ -221,3 +221,30 @@ Backlog (merchant rows past the 6 h cut; ledger excludes NPC_CARRIED):
 ## The fix, part 6 (0260): the brief's 5 s hold, and the wait on the record
 
 tick_reconcile (5 hunks): the hold target 1.5 s → **5 s** (the brief's "about 5 s at most"), the batch ceiling 25 → **100** houses (0257's size, the cheapest per row measured). Each compaction transaction's wait for the quay is timed: the receipt adds `held_ms` and `wait_ms`. Everything else is 0259's. The rules are unchanged (md5); 0259's four-way probe is run again (same answers). Decided by default, on 0259's numbers: a 1.5 s hold bought nothing against the 6 s companies step and cost the drain. Local (PGlite, prefix 248 → 0260, real job): 3 slices, 2,463 house-steps in 29 batches of up to 100 houses, longest hold 558 ms, 0 failed.
+0259's second run, 10-28 00:07 UTC: total 95.4 s (tend 52.3 s, companies 7.0 s, compact 31.1 s, check 4.9 s), 13 houses in 7 batches (up to 3 houses, longest hold 1.53 s, 509 ms a house), 1,470 ledger rows, 2,153 events, 414 voyages, 0 failed. Beats in the run: 49 / p50 0.96 / p95 5.59 / max 7.66 s, 0 errors.
+
+Deployed 0260 2026-10-28 ~00:13 UTC: PR #370, merge 32eac30, prod head 0260. Pushed after the 00:07 run had finished and after main's nightly apply-proof run had completed. Main Acceptance green.
+
+## After-check (prod, the two hourly runs after 0260)
+
+| run (UTC) | total | tend | companies | compact | check | houses / batches / left | rolled | held / waited for the quay | longest hold / ms a house | beats in the run: n / p50 / p95 / max |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 10-28 00:07 (0259) | 95.4 s | 52.3 s | 7.0 s | 31.1 s | 4.9 s | 13 / 7 / 808 | 1,470 ledger, 2,153 events, 414 voyages | not timed | 1.53 s / 509 ms | 49 / 0.96 / 5.59 / 7.66 s |
+| **10-28 01:07 (0260)** | 80.9 s | 35.6 s | 9.2 s | 31.7 s | 4.4 s | 46 / 5 / 775 | 4,647 ledger, 7,081 events, 1,400 voyages | **13.9 s / 14.9 s** | 3.90 s / 301 ms | 30 / 1.17 / **9.15 / 11.47 s** |
+| **10-28 02:07 (0260)** | 76.5 s | 31.7 s | 5.9 s | 34.9 s | 4.1 s | 102 / 7 / 719 | 5,957 ledger, 8,452 events, 1,619 voyages | **17.0 s / 16.9 s** | 4.01 s / 167 ms | 37 / 0.94 / **6.09 / 8.62 s** |
+
+Backlog (merchant rows past the 6 h cut):
+
+| at (UTC) | ledger | events | ended voyages |
+|---|---|---|---|
+| 22:10 | 829,104 | 1,016,214 | 200,991 |
+| 23:10 | 847,620 | 1,037,154 | 205,122 |
+| 01:10 | 882,852 | 1,076,992 | 213,116 |
+| 02:10 | 897,863 | 1,093,051 | 216,346 |
+
+What the numbers say:
+- **The new `wait_ms` is the missing half of the budget.** Under 0260 the compactor held the quay 13.9-17.0 s of its ~31-35 s and **waited for it 14.9-16.9 s**: half the budget goes to the beats between transactions. The beats themselves are slow while it runs (p50 0.9-1.2 s against ~0.35 s outside). So in an hourly 30 s window the compactor gets ~15 s of real work, whatever the hold size.
+- **Drain: still negative.** 0260 rolled 4.6-6.0 k ledger rows a run, and ~15-18 k cross the cut each hour. The backlog grew ~15 k ledger rows an hour through 02:10 (897,863). **At these rates it never empties.** Draining it means roughly 4x the rows an hour: more compactor time than one 30 s window an hour, or cheaper beats (the arrivals work, 0261/0262).
+- **Beats during the reconcile minute: not under 2 s in any variant.** p95 / max during the run: 0257 9.0-14.6 / 21-27 s; 0258 5.1-5.4 / 5.9-6.9 s; 0259 4.6-5.6 / 6.0-7.7 s; 0260 6.1-9.1 / 8.6-11.5 s. Even with holds ≤1.5 s (0259), the max stays at ~6-8 s: the companies step (one 4.6-9.2 s transaction a run) and the tend phase hold the quay too, and the beats are slow on their own during the run.
+- The "start only if it ends inside the budget" check counts the hold, not the wait for the lock, so 02:07's compact phase ran 34.9 s (~5 s over).
+- 0 failed steps, 0 beat errors in every run.
