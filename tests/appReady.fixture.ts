@@ -155,7 +155,7 @@ export async function ready(page: import('@playwright/test').Page, { quietMs }: 
 /**
  * THE FRAME COST OF A ZOOM STEP, in ms — row 90's apparatus, run INSIDE the page: twelve wheel
  * steps (six in, six out) dispatched on the chart element, two animation frames awaited after
- * each, `performance.now()` around the lot. Nothing in the timed loop crosses to Playwright, so
+ * each (more if React has not yet committed the step), `performance.now()` around the lot. Nothing in the timed loop crosses to Playwright, so
  * the figure is the chart's, not the driver's round trips (which cost ~150 ms a step on a loaded
  * machine and swamped the first measurement on 2026-09-14).
  */
@@ -166,12 +166,22 @@ export async function zoomStepMs(page: import('@playwright/test').Page): Promise
     const svg = chart.querySelector('[data-testid="map-view"]') as SVGSVGElement
     const rect = chart.getBoundingClientRect()
     const frame = () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())))
+    const one = () => new Promise<void>((r) => requestAnimationFrame(() => r()))
+    // A notch's zoom is a React state update made INSIDE an animation frame (useChartSurface's glide
+    // step), and React commits it in a scheduler task after that frame, not in it. On a loaded main
+    // thread the browser may run the next frame before that task, so "changed two frames later" is
+    // not a guarantee (main 2026-10-28, dcaf531: "the wheel did not zoom the chart" at the opening
+    // frame, 14.9°, nowhere near the 1.5° clamp). Two frames stay the floor of every step, so the
+    // figure is what it was; past them, the step waits frame by frame for the commit, and a wheel
+    // that really zooms nothing still fails, after 5 s.
     const step = async (deltaY: number) => {
       const before = svg.getAttribute('viewBox')
       svg.dispatchEvent(
         new WheelEvent('wheel', { deltaY, clientX: rect.left + rect.width / 2, clientY: rect.top + rect.height / 2, bubbles: true, cancelable: true }),
       )
       await frame()
+      const giveUp = performance.now() + 5000
+      while (svg.getAttribute('viewBox') === before && performance.now() < giveUp) await one()
       if (svg.getAttribute('viewBox') === before) throw new Error('the wheel did not zoom the chart')
     }
     const t0 = performance.now()
