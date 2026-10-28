@@ -28,7 +28,8 @@
 --                                         her stake / gift exactly as before;
 --     public.capital_gift_roster(p_now, p_only) — capital_gift_pass's roster query, verbatim;
 --     public.capital_gift_one(p_now, h) — its loop body for one company, verbatim, her row re-read the same way.
---     public.npc_invest and public.capital_gift_pass become the roster walked through the body: in ONE
+--     THIS FILE SUPERSEDES (re-cuts) public.npc_invest (0123, as 0145 left it) and public.capital_gift_pass (0234, as 0241 left it):
+--     each becomes the roster walked through the body; a no-op on what they decide. In ONE
 --     transaction they decide exactly what they decided (proved below on the live world). npc_tend_houses,
 --     npc_tend and player_gift, which call them, are unmoved.
 -- (2) tick_reconcile's companies' step (1 hunk, and 1 for its locals): the rosters are read OUTSIDE the quay (plain reads), then each
