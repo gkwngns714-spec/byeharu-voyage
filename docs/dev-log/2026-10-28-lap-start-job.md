@@ -78,6 +78,38 @@ run on a lit world (below).
 - The committing loop (`call tick_lap_starts()`): 18 laps; with no beat running locally every open waited its
   full 1.5 s (`late` 18), as designed; it stopped at :57.
 
-## Prod after
+## Deployed (0266)
 
-Below, after the deploy.
+2026-10-28: PR #379, CI all green; `bv-deploy.sh` stopped the clock 04:28, push landed at head 0266, clock back
+04:30 (11 jobs active, `byeharu-voyage:lap-starts` among them), merged edc09c7, main Acceptance green.
+The first minutes worked the deploy's backlog (rests that ran out while the clock was off: lag up to 153 s).
+
+## After-check (prod, read-only, 04:40-05:15 UTC, 35 min)
+
+| arrivals beats, outside :07-:09 | before (03:35-04:15, 0265) | after (0266) |
+|---|---|---|
+| beats / runs a minute | 2,039 / 51.0 | 1,913 / 59.8 |
+| p50 | 369 ms | **280 ms** |
+| p95 | 1,715 ms | **733 ms** |
+| max | 5.5 s | 2.6 s |
+| over 1 s | 14.9 % | **1.7 %** |
+| errors | 0 | 0 |
+| quay wait (q) | mean 0.0 ms | mean 3.5 ms, p95 0.1 ms, max 1.0 s |
+| `held` split | 233 ms mean | gone (0 beats carry it) |
+
+Every minute included (the reconcile too): p95 741 ms, max 8.3 s, 1.9 % over 1 s.
+
+| lap starts | before (3 h to 03:47, in the beat) | after (the job) |
+|---|---|---|
+| a minute | 23.5 (p50 24, p95 35, max 71) | **24.6** (p50 23, p95 34, max 36) |
+| lag, rest end to lap start | p50 0.67 s, p95 2.77 s | **p50 1.20 s, p95 5.45 s**, p99 9.1 s, max 12.0 s |
+| failed / busy / gone | | 0 / 0 / 0 |
+| plan step / open step | (~450-600 ms, all in the beat) | 432 ms / 181 ms a lap |
+| open steps that waited the full 1.5 s for a gap | | 41 of 860 |
+| routes with two laps of one number / two open laps | | 0 / 0 |
+
+- The lap-start rate matches the before-rate; the job keeps up (at most 3 due left at a minute's end).
+  Capacity, from the step times (~0.6 s a lap plus a gap wait): ~60 a minute, ~2.4x the rate.
+- The lag is bounded (max 12 s) but its p95 doubled: the job starts one lap at a time, and a new session
+  every minute (it stops at :57; pg_cron starts it at :00) costs a few seconds. If the owner wants it tighter:
+  plan several due merchants ahead and open them in one gap, or keep the session across minutes.
