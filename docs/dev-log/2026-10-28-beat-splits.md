@@ -159,3 +159,9 @@ What 0264 does not do: after it, a re-plan is still mostly the pricing itself (l
 `quote_priced` 153 calls a plan, `mid_terms` 284, `trade_routes` 11, `wc` 2,215). Same-answer trims can only shave
 that. Cutting it at the root changes WHEN or HOW OFTEN a merchant re-plans, which changes game results. That is the
 owner's call (below, after the after-check).
+
+PR #375's first CI run: `duplication.spec.ts:370` red (the header did not say "supersede"; fixed). Also red, first
+sighting: `map.sun.spec.ts:305` (npc 2/2), `wide.lanes.length` 0 after 12 zoom-outs. Not caused by 0264: on the local
+merchant world, `world.sea_traffic` with the old bodies and with the new serves the same 240 fleets, 49 with a lane;
+no earlier failure of that test in the last 40 Acceptance runs. Recorded, not re-run; the fixed commit's run is the
+next reading.

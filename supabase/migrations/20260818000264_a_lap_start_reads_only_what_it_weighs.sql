@@ -28,6 +28,12 @@
 -- (3) The beat (tick_arrivals_each_second, 2 hunks): 0261's block readings are taken in the profiled beats only
 --     (one in four, 0262), not every beat. `reads` / `reads_defer` appear in those rows only.
 --
+-- ── WHAT IT SUPERSEDES ──────────────────────────────────────────────────────────────────────────
+-- public.wc_num and public.wc_int (0001) are superseded whole: the same one expression over public.wc, re-cut as
+-- inlinable SQL-standard bodies. public.npc_loop_candidates (0120, last 0186) is re-cut by one hunk (its rank's read), and
+-- public.tick_arrivals_each_second (0261 / 0262) by two (where 0261's readings are taken). No new input: every answer
+-- is the same, so there is no "absent" case. Everything that must move together is in this file.
+--
 -- ── THE PROOF ───────────────────────────────────────────────────────────────────────────────────
 -- Old bodies kept in pg_temp. Old and new answer: npc_loop_candidates for the merchant routes (each at her home);
 -- wc_num / wc_int for every knob (refusals compared as refusals); then the lap start's re-plan itself,
