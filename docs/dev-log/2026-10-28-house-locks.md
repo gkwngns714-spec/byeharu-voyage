@@ -65,4 +65,46 @@ What 0265 does:
 - **End to end, the same state, the same instant (retention set to -2 h locally so every row is past the cut), each in one rolled-back transaction:** `tick_compact` (the sweep, then until nothing is due: 2 runs, 2.6 s) against `npc_compact` (46.8 s on wasm). **Digests IDENTICAL**: every house's ledger, events, voyages, voyage_events count, insurance count and trade_daily (834 houses; 821 ledger rows, 3,249 events, 349 voyages, 495 trade days left in each).
 - `call tick_arrivals_each_second(2)` afterwards: no error.
 
-Prod before: above. Prod after: below.
+Prod before: above.
+
+## Deployed (0265)
+
+2026-10-28 ~03:14 UTC: PR #376, the push landed at head 0265, merged d12e482, main Acceptance green. 0264 (#375) landed first. `tick_reconcile` was still md5 `46c7cf6d` at head 0264, so both hunks were unchanged. `byeharu-voyage:compact` was active from 03:15. 0266 (#379, lap starts in their own job) was deployed by the arrivals agent at ~04:28, so the beat figures after 04:28 are not 0265's alone.
+
+## After-check (prod, read-only, 03:09 → 05:14 UTC)
+
+**Backlog** (merchant ledger rows waiting past the 6 h cut):
+
+| at (UTC) | ledger waiting | oldest unrolled row | crossed the cut in the last hour |
+|---|---|---|---|
+| 03:09 (before, head 0264) | 911,957 | 10-25 23:09 | 20,465 |
+| 03:40 | 886,948 | 10-25 23:15 | 20,539 |
+| 04:13 | 850,951 | 10-25 23:37 | 19,569 |
+| 05:14 | **779,837** | **10-26 05:32** | 21,068 |
+
+- **The backlog falls**: -71 k in the hour 04:13 → 05:14, against +15-20 k an hour under 0257-0260.
+- The compactor removed 90,595 ledger rows, 120,306 events and 23,840 voyages in the hour 04:00-05:00 (59 runs, ~7.5 s each). That is ~4.4× the growth (~20-21 k/h). The brief asked for ≥ 2×.
+- **ETA:** ~780 k / ~70 k net an hour ≈ 11 h, so around 16:00 UTC 10-28. It should come sooner: every house rolled shrinks her ledger, and each visit gets cheaper.
+
+**The compactor's own numbers** (`public.compact_runs`):
+- 0 failed and 0 notes in every run. 3 houses were skipped in 2 h, because a writer had them.
+- **The 200 ms hold was NOT met while the backlog is cold.** Every transaction is one house. Its hold is p-typical ~1.0-1.6 s (the per-minute max averaged 1.0-1.6 s), and it reached 2.1-2.4 s at most. One hold reached 7.5 s, at 05:07, beside the hourly companies step.
+- The cost is one cold house: her whole ledger (~1,200-3,700 rows) summed three times, plus her 6 h of rows.
+- Only a beat that touches that one house waits for it. The quay waits (`q`) of the beats outside the reconcile minute stayed ≤ ~1 s.
+
+**Beats** (`public.arrivals_beats`; 0 errors in 3,563 beats since 03:15):
+
+| window | outside the reconcile minute: p50 / p95 / max | in :07-:09: p95 / max | the quay wait in :07-:09 (max) |
+|---|---|---|---|
+| 02:00-03:00 (0260) | 347 / 1,726 / 10,642 ms | 1,752 / 5,115 ms | 1.5 s (in the ring's sample) |
+| 03:07 (0264, before 0265) | 350 / 1,532 / 2,959 ms | 4,113 / 9,073 ms | 7.4 s |
+| 04:07 (0265) | 410 / 1,666 / 5,513 ms | 2,295 / 5,753 ms | 5.5 s (the companies step) |
+| 05:07 (0265 + 0266) | 280 / 714 / 2,611 ms | 869 / 8,345 ms | 8.0 s (the companies step, 8.6 s) |
+
+- The hourly run is shorter now: 108.3 s (03:07) → 58.9 s (04:07) → 44.3 s (05:07). The check phase went 4.8 → 1.5 s at 04:07, then back to 4.3 s at 05:07.
+- **What still sets the max in the reconcile minute is the companies' step on the quay** (5.7-8.6 s). 0265 left it there on purpose (see the design). It is mostly 821 ledger sums, which fall as the drain proceeds.
+- **Deadlocks:** `pg_stat_database.deadlocks` went 125 → 126 between 03:40 and 04:13. No victim shows in any receipt: 0 beat errors, 0 compactor failures or notes, 0 tend or companies failures, and no failed cron run except the two deploy unwinds. So it was not the compactor, which would note its own failure. Where it happened is not on record (a client call, by elimination). No deadlock in 04:13 → 05:14.
+
+**Open:**
+- The companies step's hold (the reconcile minute's max).
+- The 200 ms target, until the ledgers are drained. If holds of ~1-2 s per house ever show up in the beats, a smaller per-visit step would not help, because the cost is the ledger sums. The lever would be the 8 s budget.
