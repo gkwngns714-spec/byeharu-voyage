@@ -74,8 +74,13 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   // WIDE GLASS: the desk re-lays out (the tray closes with the swap); the same press opens the same
   // list beside the ledger, with no sideways scroll
   await page.setViewportSize({ width: 1280, height: 900 })
-  if ((await tray.count()) === 0) await pressBuy(page, good)
-  await expect(first).toBeVisible({ timeout: 30_000 })
+  // The swap closes the tray a beat AFTER the resize lands (matchMedia -> React -> the desk remounts), so
+  // "is it closed yet?" read once can still say "open" just before it closes (main run 40577531374: the
+  // final page had no tray). Ask again until the list stands: press only when the tray is not there.
+  await expect(async () => {
+    if ((await tray.count()) === 0) await pressBuy(page, good)
+    await expect(first).toBeVisible({ timeout: 2_000 })
+  }).toPass({ timeout: 30_000 })
   await expect(first).toContainText(/you/i)
   expect(await noSideways(page), 'the page scrolls sideways at 1280').toBe(true)
   await page.screenshot({ path: testInfo.outputPath('trades-wide.png') })
