@@ -1729,6 +1729,8 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.capital_gift_roster(timestamptz, uuid)',
     'public.capital_gift_one(timestamptz, uuid)',
     'public.quay_tally(jsonb, timestamptz, timestamptz)',
+    // 0268: the mint gate the guard holds shared and the economy switch exclusive. Server-only.
+    'public.mint_gate(boolean)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
