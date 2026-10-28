@@ -600,8 +600,24 @@ jobs:
           SUPABASE_CLI_VERSION: 2.114.0
         run: bash scripts/ci/supabase-snapshot.sh restore "$RUNNER_TEMP/sbsnap"
 
+      # A FRESH volume applies 0001 on real Postgres as written, and 0019's probe voyage rolls hazards seeded
+      # from gen_random_uuid(): pirates now and then strip the cargo. Read the frozen self-asserts as PGlite
+      # does (src/lib/db/frozenAsserts.ts, the one list) in this runner's working copy only; restored right
+      # after start, before the snapshot manifest hashes the files. CI machinery, no migration file changes.
+      - uses: actions/setup-node@v4
+        if: steps.plan.outputs.usable != 'true'
+        with:
+          node-version: 24
+      - name: Patch the frozen self-asserts in the working copy (fresh volume only)
+        if: steps.plan.outputs.usable != 'true'
+        run: node scripts/ci/patch-frozen-asserts.mjs supabase/migrations
+
       - name: Start disposable local Supabase (a restored volume boots from the snapshot; a fresh one applies the WHOLE chain, in order)
         run: supabase start
+
+      - name: Restore the migration files as committed (before anything hashes them)
+        if: always() && steps.plan.outputs.usable != 'true'
+        run: git checkout -- supabase/migrations && git status --porcelain supabase/migrations
 
       - name: Apply the files after the snapshot (supabase migration up)
         if: steps.plan.outputs.usable == 'true'
