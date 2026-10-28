@@ -25,6 +25,20 @@ Symptom: in the hourly reconcile minute (:07) merchant lap-start lag spikes (06:
 - 0267 applied in 2.9 s, **self-assert ok: 323 companies probed (273 invested, 16 donated, 43 gifts), 332 ledger / 339 events / 332 flows / 43 gifts rows, identical three ways.**
 - `tick_reconcile(false)`: companies phase 2,038 ms over **323 transactions, longest 15 ms**; tend 837 transactions, longest 97 ms.
 
-## Deployed / after-check
+## Deployed (0267)
 
-(below)
+2026-10-28 ~07:03 UTC: PR #380, CI all green, `bv-deploy.sh`: push landed at head 0267 (the self-assert probe ran on prod's live companies and passed), clock back (11 jobs), merged 4018c78, main Acceptance green.
+
+## After-check (prod, read-only; 07:07 and 08:07 measured, 09:07 and later NOT measured)
+
+| :07 window | companies step | quay hold, companies (longest one) | beat in :07, p95 / max / longest quay wait | lap-start lag in :07, p95 / max | longest lap open |
+|---|---|---|---|---|---|
+| 05:07 (before) | 8,553 ms, 1 txn | ~8.5 s | 7.6 s / 8.3 s / 8.0 s | 11.1 / 12.0 s | 5.8 s |
+| 06:07 (before) | 8,898 ms, 1 txn | ~8.9 s | p95 1.7 s / 10.0 s / 8.8 s | 21.1 / 21.8 s | 7.3 s |
+| 07:07 (0267) | 10,811 ms, 517 txns | **48.9 ms** | 0.95 s / 1.12 s / 0.93 s | 24.3 / 26.1 s (deploy backlog, see below) | 1.2 s |
+| 08:07 (0267) | 9,519 ms, 513 txns | **38.0 ms** | 1.21 s / 2.00 s / 1.09 s | 13.9 / 14.6 s | 1.3 s |
+
+- Tend step (unchanged), from the new tally: 836-837 txns, longest hold 1.17-1.21 s, longest wait 1.37-1.50 s.
+- **The companies' hold is gone**: the beats during the companies phase (08:07:31-:41) waited at most 15 ms; the 8-9 s beat stall is gone. 0 beat errors, 0 failed companies, 0 lap starts failed / busy.
+- **07:07 lag is not clean**: the deploy stopped the clock ~07:03-07:05, so 07:05-07:06 drained rests that ran out meanwhile (lag up to 126 s) and 07:07 still carried that queue.
+- **08:07 lag is still above the ~5.5 s of other minutes, at a NEW place in the minute.** Before, the early laps of :07 were fine and the spike came at the companies' hold (~:30). At 08:07 the laps after :16 are all <= 1.7 s, but the first 15 (08:07:00-:15) lag 7-14.6 s: one lap every ~1-3 s while the tend phase starts (beats 0.9-2.0 s, quay waits up to 1.09 s, 4 opens waited the full 1.5 s for a gap, plan max 2.6 s), beside the compactor's :07 sweep (08:07:00-:08.5) and the stats job (08:06:00-08:07:29). One sample: the cause is NOT yet proven. Next: measure 09:07 and later windows; if it repeats, split the first 15 s of :07 by holder (tend step holds vs compactor sweep vs stats).
