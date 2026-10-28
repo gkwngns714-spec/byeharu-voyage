@@ -57,3 +57,44 @@ while readers timed alone are only 2-4x slower on prod.
 ## Measurements
 
 Prod: below, after the deploy.
+
+## Deployed (0261)
+
+2026-10-28 ~00:31 UTC: PR #373, push landed at head 0261, merged cd53b39, main Acceptance green. Beats resumed at 00:32
+(the first beat worked the deploy's backlog: 10.1 s, 59 fleets); 0 errors.
+
+## First splits (prod, 00:34-00:43 UTC, 532 beats outside :07-:09)
+
+| phase | share of beat time | mean ms | p95 ms |
+|---|---|---|---|
+| q (quay wait) | 0.0 % | 0.1 | 0.1 |
+| arrive (due voyages settled) | 39.4 % | 257 | 640 |
+| held (paced routes wake: a lap starts) | **47.5 %** | 310 | 1,411 |
+| wake (port time up) | 12.1 % | 79 | 244 |
+| repair / ask | 0.7 % | | |
+| defer (the purse checks, outside ms) | 5.5 % of ms | 36 | 96 |
+| commit | | 1.9 | 3.4 |
+| probe (0261's own readings, outside ms) | | 27 | 34 |
+
+- **The ledger is not the cause.** The purse checks cost ~36 ms a beat (p95 96 ms), all at the commit and outside `ms`;
+  hot `ledger_sum` timed on prod: ~2-4 ms for an unrolled house (~1,200 rows), ~0.2-0.4 ms for a rolled one.
+- **The held loop sets the p95.** Beats over 1 s (18 %): held 1,405 ms of a 1,957 ms run. Joined to the laps started at
+  each beat's instant: no lap start, run 308 ms; one, held 594 ms; two, 1,115 ms; three, 2,474 ms. Review laps (every 6th)
+  cost no more than others.
+- **The run's time is the pages it touches:** run = 0.51 ms a block read from outside shared_buffers + 13.5 µs a buffer
+  hit, R² 0.97 (hits 73 % of the time, reads 27 %). A held-heavy beat touches ~100 k buffers (world_config 22 k,
+  port_goods 17 k + 363 cold reads, orders 12 k, ports 7 k, goods 5.6 k, treasury_flows 5 k); a beat with no lap start ~16 k.
+- A lap start is `cmd.run_standing_route` at the lap's head: `public.npc_plan(p_now, route)` re-plans her lines leg by leg
+  (`npc_leg_lines` → `world.trade_routes`, quotes, caps), then the stop's lines and her SAIL. The earlier local profiles
+  timed port-time SAILs and arrivals, not this path. On prod, read-only: `world.trade_routes` ~40 ms a leg,
+  `npc_loop_candidates` ~150 ms a call.
+- `probe` is 24-36 ms a beat on prod (pg_class is larger than locally): outside `ms`, but it is wall time; the fix slice
+  will thin or drop it.
+
+## 0262: one beat in four names its functions
+
+Which function inside a lap start holds the ~600 ms is not measured yet. `track_functions` is in
+`supautils.privileged_role_allowed_configs` and postgres holds that role (SET LOCAL takes, checked read-only). So 0262
+runs one beat in four with `SET LOCAL track_functions = 'all'` and stores `splits.fn`: the 40 functions with the most
+self time (calls, total ms, self ms) and the totals. 3 hunks in the beat; tick_arrivals untouched (md5). A refused
+setting leaves that beat unprofiled. Local: self-assert ok; 8 beats, profiled ones carry `fn`.
