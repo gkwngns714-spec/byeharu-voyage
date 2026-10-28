@@ -92,7 +92,10 @@ jobs:
         run: |
           set -euo pipefail
           t0=$(date +%s)
+          # From zero only: read the frozen self-asserts as PGlite does (frozenAsserts.ts), working copy only.
+          if [ "$MODE" = "zero" ]; then node scripts/ci/patch-frozen-asserts.mjs supabase/migrations; fi
           supabase start
+          git checkout -- supabase/migrations
           if [ "$MODE" = "snapshot" ]; then supabase migration up --local; fi
           echo "D_CHAIN_SECONDS=$(( $(date +%s) - t0 ))" >> "$GITHUB_ENV"
           supabase status -o env > /tmp/sbenv
