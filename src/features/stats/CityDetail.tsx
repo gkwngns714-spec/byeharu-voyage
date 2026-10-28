@@ -17,6 +17,7 @@ import {
   deltaTone,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
+import { useEffect } from 'react'
 import { useT } from '../../lib/i18n'
 import { worldStatsCity, type StatsCity } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
@@ -44,6 +45,14 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
   const read = useLiveRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId, span), span)
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
+  // 0263 (CLOSED_ECONOMY §4b, "Stats → Cities: a city's wants"): what this city wants now, from the market read the
+  // quay already uses (world.market `wants`, the store's one copy). Read once when the city opens: wants re-draw
+  // twice a game-day, not every second. Absent while city wants are dark, so nothing is drawn.
+  const wants = useWorld((s) => s.markets[portId]?.wants)
+  const loadMarket = useWorld((s) => s.loadMarket)
+  useEffect(() => {
+    void loadMarket(portId)
+  }, [portId, loadMarket])
   if (read.loading && !v) return <Skeleton className="mt-4 h-40 w-full" />
   if (!v) return <Note tone="danger" className="mt-4">{t('stats.cityFailed')}</Note>
   const flag = v.city.nation === null ? undefined : <Flag code={v.city.nation} name={nationNameOf(nationByCode, v.city.nation)} size="body" />
@@ -64,6 +73,11 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
       }
       data-testid="stats-city"
     >
+      {wants && wants.length > 0 && (
+        <Note tone="neutral" className="mb-3" data-testid="stats-city-wants">
+          {t('ui.wanted', { mult: String(Number(wants[0].mult)) })}: {wants.map((w) => goodName(w)).join(' · ')}
+        </Note>
+      )}
       {o && (
         <div data-testid="stats-city-overview">
           <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
