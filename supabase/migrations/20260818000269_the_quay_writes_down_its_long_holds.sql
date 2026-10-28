@@ -33,6 +33,11 @@
 --     hunks; the return is the same object (its two last figures are computed just before it, in its order).
 --     A count that raises (the 120 s statement timeout) writes none, as before; pg_cron's log has its error.
 --
+-- ── WHAT THIS FILE SUPERSEDES (re-cuts) ─────────────────────────────────────────────────────────
+-- public.tick_reconcile (0267's), public.tick_lap_starts (0266's) and public.tick_stats (0246's, as 0243/0232 left
+-- it), each by hunks sliced from its live body: the same function with the recording added. A no-op on what each
+-- decides (proved below); nothing else must move with them (the receipts they write are new keys / a new table).
+--
 -- ── WHY NOTHING ELSE MOVES ─────────────────────────────────────────────────────────────────────
 -- Every hunk reverses to the live pre-image (asserted). What the hunks add: clock readings and new locals; one plain
 -- read of a merchant's route and fleet rows (no lock); the receipts' new keys; the quay asked for once more in the
