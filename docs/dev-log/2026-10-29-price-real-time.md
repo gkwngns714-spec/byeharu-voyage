@@ -11,8 +11,13 @@ bodies cut here.
 
 - 138,990 `port_goods` rows; **14,211 carry any press**; avg |glut| **0.0087**; max **+0.0851**; min **-0.0478**;
   **5 rows over 5 %**; **none at the 0.30 cap**; 13,021 positive (sold into) vs 1,190 negative (bought out).
-- Live knobs: `glut_per_depth` 0.30, `glut_max` 0.30, `glut_decay` 0.5, `time_compression` 960. A game day is
-  **~90 real seconds**, so the old decay's "half-life of one game day" was a half-life of **~90 seconds**.
+- Live knobs: `glut_per_depth` 0.30, `glut_max` 0.30, `glut_decay` 0.5, `time_compression` 960. **CORRECTION
+  (2026-10-29 07:35 UTC, measured live after the deploy): a game day is 2880 real seconds (48 minutes), not ~90
+  seconds** — `world.game_day` is `floor(epoch / game_day_seconds)` and the `game_day_seconds` knob reads **2880**;
+  `time_compression` is a different knob. So the old decay's "half-life of one game day" was a half-life of **48
+  real minutes**, and **the fade applies when the game day ticks (every ~48 minutes), not on every drift run**. The
+  new rule still reads true elapsed time, so the cadence does not distort it; but "prices feel still" is mostly the
+  90 % of goods with no press at all and small lots, not a 90-second wipe.
 - `cmd.do_buy` and `cmd.do_sell` are the **only writers** of the press (`public.press_after`); their only live caller is
   `cmd.execute_order`, which `cmd.advance` calls for a player's order **and** a merchant's route order. One rule already.
 - **So the fault is the constants and the decay, not a second rule.** The owner approved: step 0.30 → 0.10 (a whole
@@ -158,8 +163,9 @@ What each probe did (all on planted rows, every probe a rolled-back sub-transact
   the live mix.
 - **The distribution this produces on prod is not predicted here.** The probe row is one Lisbon good; the live mix of
   stock depths, lot sizes and trade frequency decides the press distribution, and that is what the after-check reads.
-- **The decay's many-tick product.** The probes are single ticks at 0/3/6/9 h; live it compounds every game day (~90 s)
-  with a 4-place rounding each time. The error is bounded (~1e-4 a step) but not measured.
+- **The decay's many-tick product.** The probes are single ticks at 0/3/6/9 h; live it compounds every game day
+  (**~48 real minutes** — corrected 2026-10-29 07:35 UTC; the earlier "~90 s" was wrong) with a 4-place rounding each
+  time. The error is bounded (~1e-4 a step) but not measured.
 - **The negative-elapsed race** (a trade during a drift run, up to ~6-8 s) is reasoned, not reproduced.
 - **No local timing of the drift job** was taken (a second heavy chain was avoided): the added per-row arithmetic is one
   `extract` and one division on top of the `power` the update already ran; the live duration above is the measurement.
