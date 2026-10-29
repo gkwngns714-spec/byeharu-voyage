@@ -1415,6 +1415,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-26 with migration 0227 (owner row 211, who bought what): a city's
       // recent trades of one good, read by the one list both trays a city's good opens render.
       'worldCityGoodTrades',
+      // Pin moved deliberately 2026-10-29 with migration 0275 (docs/WEEKLY_ROLLOVER.md, owner row 173):
+      // a city's giving by week — a READ at the city's sixth tab, no player id, what a city serves
+      // about itself. Lands WITH the face that reads it (CityHistory.tsx). The week clock
+      // (world.week_of / world.week_start) and the book's writer (public.city_week_post) are
+      // server-only and are NOT here — they live in the server-only list below.
+      'worldCityHistory',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,
       // and the same answer the owner asked the game to stop giving (DESIGN_V1 §13, decision 3:
