@@ -164,6 +164,32 @@ sale is asserted from each done order's own `qty`, the direct probes assert the 
 reported total, and the stock checks are monotone (`stock_after >= stock_before`) where kept and dropped from the
 queue case. The re-run is the receipt above.
 
+## SECOND PUSH RED, on the probe — the merchant's history (the same class)
+
+The second prod push failed on the migration's own self-assert, before anything applied (prod head stayed 0272):
+
+```
+0273 self-assert FAIL: the new queue run's credit (1902 d.) is not the sum of its done SELL orders' own totals (4864 d.)
+```
+
+On prod the sampled merchant is a REAL one with real history: the order queries read EVERY order row of her fleet,
+so her old done SELLs (4864 d.) entered the sum while the ledger side (created_at of this transaction) saw only this
+run's credit (1902 d.). On the local chain she has no prior orders, so the two agreed. Fixed in the self-assert only
+(cmd.resolve_qty untouched), one pass over every read that is not this-run-scoped:
+
+- `pg_temp.state_0273` now captures the fleet's max order `seq` BEFORE the probe writes a row and returns it; every
+  order read in every probe — the queue case's done-SELL list and order list, the direct cases' digests, the seam's
+  order list — filters `o.seq > <baseline>`. The seam's exists-checks (done SELL / skipped HIRE / failed SAIL) can no
+  longer be satisfied by her old history.
+- The probe's stop now carries ONLY what the probe writes: the queue case deletes the stop's real lines and inserts
+  its own normal-line row (her live sell-everything / BUY lines would otherwise render beside it and satisfy the
+  checks for the wrong reason), and the seam deletes them before the tend so the re-plan writes her own.
+- The per-good daily cap (`world.daily_cap_remaining` reads `public.trade_daily` for the current game day) is the
+  merchant's REAL trading day on prod: the state deletes her `trade_daily` rows for this port/game day (not an
+  append-only table; the delete rolls back with the probe), so the cap can never be exhausted by her real trades.
+- The ledger/events reads stay transaction-scoped (`created_at >= now()`), and the digest compares this run's rows
+  only. The re-run is the receipt above.
+
 ## Local gates
 
 - The cached chain gate (`node scripts/db/proof.mjs …`): `chain: 262 migration(s) — 261 restored from the prefix

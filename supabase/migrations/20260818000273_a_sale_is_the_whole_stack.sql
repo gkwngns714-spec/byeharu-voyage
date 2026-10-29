@@ -188,8 +188,10 @@ insert into new_bodies_0273 (fn, new_def) values
   ('qty', replace(pg_get_functiondef('cmd.resolve_qty(uuid,text,text,jsonb)'::regprocedure), E'\r', ''));
 
 -- ── 2. THE PROBES' EYES ────────────────────────────────────────────────────────────────────────
--- a merchant's rows after a run (uuids blanked: new rows carry new ones) — 0272's shape
-create function pg_temp.digest_0273(p_fleet uuid, p_route uuid, p_house uuid)
+-- a merchant's rows after a run (uuids blanked: new rows carry new ones) — 0272's shape, with the orders
+-- restricted to THIS run's rows (o.seq > p_seq0, the baseline pg_temp.state_0273 returns): on prod the merchant
+-- is a real one with history, and a probe proves its own run, never her past
+create function pg_temp.digest_0273(p_fleet uuid, p_route uuid, p_house uuid, p_seq0 bigint)
 returns text
 language sql
 as $$
@@ -199,7 +201,8 @@ select regexp_replace(concat_ws(' # ',
   (select string_agg(x, ',' order by x) from (select (to_jsonb(l) - 'id')::text as x from public.standing_route_lines l
      where l.route_id = p_route) a),
   (select string_agg((to_jsonb(x) - 'id')::text, ',' order by x.lap_no) from public.standing_route_laps x where x.route_id = p_route),
-  (select string_agg((to_jsonb(o) - 'id')::text, ',' order by o.seq) from public.orders o where o.fleet_id = p_fleet),
+  (select string_agg((to_jsonb(o) - 'id')::text, ',' order by o.seq) from public.orders o
+     where o.fleet_id = p_fleet and o.seq > p_seq0),
   (select to_jsonb(f)::text from public.fleets f where f.id = p_fleet),
   (select string_agg(to_jsonb(s)::text, ',' order by s.id) from public.ships s where s.fleet_id = p_fleet),
   (select string_agg((to_jsonb(v) - 'id')::text, ',' order by v.departed_at) from public.voyages v where v.fleet_id = p_fleet),
@@ -268,7 +271,7 @@ $$;
 create function pg_temp.state_0273(p_house uuid, p_fleet uuid, p_route uuid, p_port uuid, p_ord int, p_short int,
                                    p_purse bigint, p_cargo jsonb, p_basis numeric, p_casks boolean,
                                    p_failed boolean, p_clears int)
-returns void
+returns int
 language plpgsql
 as $$
 declare
@@ -278,12 +281,22 @@ declare
   v_code  text;
   v_next  text;
   v_seq   int;
+  v_seq0  bigint;
   sh      record;
   v_free  numeric;
   v_wp    numeric := public.wc_num('water_per_crew_day');
   v_fp    numeric := public.wc_num('food_per_crew_day');
 begin
+  -- THIS RUN'S BASELINE, read before the probe writes a row: every order read in every probe filters
+  -- o.seq > this, so a real merchant's HISTORY (prod: her own done SELLs, skips, sails) can never satisfy
+  -- a probe's check — the probe proves THIS run, never the merchant's past.
+  select coalesce(max(o.seq), 0) into v_seq0 from public.orders o where o.fleet_id = p_fleet;
   perform pg_temp.traders_on_0273();
+  -- the per-good daily cap (world.daily_cap_remaining reads public.trade_daily for the current game day) is the
+  -- merchant's REAL trading day on prod: clear it for the probe's house at this port, so the cap can never be
+  -- exhausted by her real trades (trade_daily is not append-only; the delete rolls back with the probe)
+  delete from public.trade_daily
+   where player_id = p_house and port_id = p_port and game_day = world.game_day();
   perform cmd.clear_for(p_house, p_fleet, false);
   update public.voyages set status = 'ARRIVED' where fleet_id = p_fleet and status = 'SAILING';
   update public.fleets set status = 'DOCKED', port_id = p_port, lat = null, lon = null,
@@ -339,6 +352,7 @@ begin
   insert into public.events (player_id, kind, payload)
   select p_house, 'NPC_CLEARED', jsonb_build_object('route_id', p_route, 'lap_no', v_lap, 'n', i)
     from generate_series(1, greatest(p_clears, 0)) i;
+  return v_seq0;
 end $$;
 
 -- a direct SELL on the planted merchant, OLD body or NEW (each case re-plants the state and rolls back whole)
@@ -351,12 +365,13 @@ declare
   v_sq    text;
   v_res   jsonb;
   v_code  text;
+  v_seq0  bigint;
   v_before numeric;
   v_after  numeric;
 begin
   select g.code into v_code from public.goods g where g.id = p_good;
   begin
-    perform pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, 0, p_cargo, p_basis, true, false, 0);
+    v_seq0 := pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, 0, p_cargo, p_basis, true, false, 0);
     if p_mode = 'old' then
       select old_def into v_sq from old_bodies_0273; execute v_sq;
     else
@@ -370,14 +385,14 @@ begin
       'cargo_qty', public.fleet_cargo_qty(p_fleet, v_code),
       'stock_before', v_before, 'stock_after', v_after,
       'purse', (select p.ducats from public.players p where p.id = p_house),
-      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house))::text;
+      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0))::text;
   exception when others then
     if sqlstate = 'ZY273' then
       return sqlerrm::jsonb;
     end if;
     return jsonb_build_object('mode', p_mode, 'ok', false, 'refused', sqlerrm, 'sqlstate', sqlstate,
       'cargo_qty', public.fleet_cargo_qty(p_fleet, v_code),
-      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house));
+      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0));
   end;
 end $$;
 
@@ -391,12 +406,13 @@ as $$
 declare
   v_sq   text;
   v_res  jsonb;
+  v_seq0 bigint;
   v_args jsonb := jsonb_build_object('good', p_good, 'qty_mode', p_qty_mode, 'qty_pct', p_qty_pct);
   v_old  numeric;
   v_new  numeric;
 begin
   begin
-    perform pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, p_purse, '{}'::jsonb, 0, false, false, 0);
+    v_seq0 := pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, p_purse, '{}'::jsonb, 0, false, false, 0);
     if p_mode = 'old' then
       select old_def into v_sq from old_bodies_0273; execute v_sq;
       v_res := cmd.do_buy(p_fleet, v_args);
@@ -412,18 +428,18 @@ begin
         'mode', 'both', 'old_v', v_old, 'new_v', v_new,
         'capacity', (public.fleet_buy_capacity(p_fleet, p_good)->>'max_qty')::numeric,
         'cap', world.daily_cap_remaining(p_house, p_port, p_good),
-        'digest', pg_temp.digest_0273(p_fleet, p_route, p_house))::text;
+        'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0))::text;
     end if;
     raise exception using errcode = 'ZY273', message = jsonb_build_object(
       'mode', p_mode, 'ok', true, 'result', v_res,
       'purse', (select p.ducats from public.players p where p.id = p_house),
-      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house))::text;
+      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0))::text;
   exception when others then
     if sqlstate = 'ZY273' then
       return sqlerrm::jsonb;
     end if;
     return jsonb_build_object('mode', p_mode, 'ok', false, 'refused', sqlerrm, 'sqlstate', sqlstate,
-      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house));
+      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0));
   end;
 end $$;
 
@@ -470,8 +486,8 @@ language plpgsql
 as $$
 declare
   v_sq       text;
+  v_seq0     bigint;
   v_ran      int;
-  v_ord_line int;
   v_ledger   numeric;
   v_sold     jsonb;
   v_cargo    jsonb;
@@ -480,16 +496,18 @@ declare
   v_orders   jsonb;
 begin
   begin
-    perform pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, 0, p_cargo, p_basis, true, false, 0);
+    v_seq0 := pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, 0, p_cargo, p_basis, true, false, 0);
     if p_mode = 'old' then
       select old_def into v_sq from old_bodies_0273; execute v_sq;
     else
       select new_def into v_sq from new_bodies_0273; execute v_sq;
     end if;
-    select coalesce(max(l.ord), 0) + 1 into v_ord_line
-      from public.standing_route_lines l where l.route_id = p_route and l.stop_ord = p_ord;
+    -- the stop carries ONLY what the probe writes: the merchant's REAL lines at this stop (a sell-everything row,
+    -- BUYs, floors) would otherwise render beside the probe's row and could satisfy its checks on prod for the
+    -- wrong reason. The delete rolls back with the case.
+    delete from public.standing_route_lines where route_id = p_route and stop_ord = p_ord;
     insert into public.standing_route_lines (route_id, stop_ord, ord, kind, good_id, qty, price_limit, at_profit)
-    values (p_route, p_ord, v_ord_line, 'SELL', null, null, null, true);
+    values (p_route, p_ord, 0, 'SELL', null, null, null, true);
     select coalesce(jsonb_object_agg(gd.code, pg.stock), '{}'::jsonb) into v_stock_before
       from jsonb_object_keys(p_cargo) k
       join public.goods gd on gd.code = k
@@ -500,7 +518,8 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object('good', o.result->>'good', 'qty', o.result->>'qty',
                                                 'total', o.result->>'total')), '[]'::jsonb)
       into v_sold
-      from public.orders o where o.fleet_id = p_fleet and o.verb = 'SELL' and o.status = 'done';
+      from public.orders o
+     where o.fleet_id = p_fleet and o.verb = 'SELL' and o.status = 'done' and o.seq > v_seq0;
     select coalesce((select cargo from public.ships s where s.fleet_id = p_fleet limit 1), '{}'::jsonb) into v_cargo;
     select coalesce(jsonb_object_agg(gd.code, pg.stock), '{}'::jsonb) into v_stock
       from jsonb_object_keys(p_cargo) k
@@ -509,20 +528,20 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object('verb', o.verb, 'status', o.status, 'code', o.error_code,
                                                 'text', o.raw_text) order by o.seq), '[]'::jsonb)
       into v_orders
-      from public.orders o where o.fleet_id = p_fleet;
+      from public.orders o where o.fleet_id = p_fleet and o.seq > v_seq0;
     raise exception using errcode = 'ZY273', message = jsonb_build_object(
       'mode', p_mode, 'ran', v_ran,
       'ledger_sell', v_ledger, 'sold', v_sold, 'cargo', v_cargo, 'stock_before', v_stock_before,
       'stock', v_stock, 'orders', v_orders,
       'fleet_status', (select f.status from public.fleets f where f.id = p_fleet),
       'purse', (select p.ducats from public.players p where p.id = p_house),
-      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house))::text;
+      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0))::text;
   exception when others then
     if sqlstate = 'ZY273' then
       return sqlerrm::jsonb;
     end if;
     return jsonb_build_object('mode', p_mode, 'ok', false, 'refused', sqlerrm, 'sqlstate', sqlstate,
-      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house));
+      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0));
   end;
 end $$;
 
@@ -571,13 +590,14 @@ returns jsonb
 language plpgsql
 as $$
 declare
-  v_r   jsonb;
-  v_sq  text;
+  v_r    jsonb;
+  v_sq   text;
+  v_seq0 bigint;
   v_cost bigint;
   v_sc   jsonb;
 begin
   begin
-    perform pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 1, 0, '{}'::jsonb, 1000000, true, true, 2);
+    v_seq0 := pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 1, 0, '{}'::jsonb, 1000000, true, true, 2);
     -- the hold is sized against the hire SHE faces at THIS quay (public.crew_hire_cost reads where she lies):
     -- prod's crumb shape, sub-ton stacks dearest per tun first, covering the hire 1.3× at the bid
     v_cost := (public.crew_hire_cost(p_fleet, public.fleet_crew_shortfall(p_fleet))->>'cost')::bigint;
@@ -586,6 +606,9 @@ begin
        set cargo = v_sc->'cargo',
            cargo_basis = (select jsonb_object_agg(k, to_jsonb(1000000)) from jsonb_object_keys(v_sc->'cargo') k)
      where s.fleet_id = p_fleet;
+    -- the stop carries ONLY what the probe's own re-plan writes: her REAL lines here would otherwise render and
+    -- execute beside the cut-loss (the plan rewrites them, and this delete is certain; it rolls back with the case)
+    delete from public.standing_route_lines where route_id = p_route and stop_ord = p_ord;
     if p_mode = 'old' then
       select old_def into v_sq from old_bodies_0273; execute v_sq;
     else
@@ -598,7 +621,7 @@ begin
       'hire', v_cost,
       'hold_value', v_sc->>'value',
       'stacks', v_sc->>'stacks',
-      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house),
+      'digest', pg_temp.digest_0273(p_fleet, p_route, p_house, v_seq0),
       'shortfall', public.fleet_crew_shortfall(p_fleet),
       'purse', (select p.ducats from public.players p where p.id = p_house),
       'fleet', (select f.status from public.fleets f where f.id = p_fleet),
@@ -611,7 +634,7 @@ begin
                     = (select p.ducats from public.players p where p.id = p_house)),
       'orders', coalesce((select jsonb_agg(jsonb_build_object('verb', o.verb, 'status', o.status,
                                                               'code', o.error_code, 'text', o.raw_text) order by o.seq)
-                            from public.orders o where o.fleet_id = p_fleet), '[]'::jsonb))::text;
+                            from public.orders o where o.fleet_id = p_fleet and o.seq > v_seq0), '[]'::jsonb))::text;
   exception when sqlstate 'ZY273' then
     return sqlerrm::jsonb;
   end;
