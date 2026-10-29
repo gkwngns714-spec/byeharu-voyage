@@ -898,7 +898,10 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
     expect(r.expires_day).toBeGreaterThan(r.posted_day)
     expect(r.days_left).toBe(r.expires_day - board.game_day)
     expect(r.days_left).toBeGreaterThanOrEqual(1)
-    expect(Date.parse(r.expires_at)).toBeGreaterThan(Date.now())
+    // The expiry lands on a game-day boundary (a game day is 2880 s, the clock authority), so compare
+    // it with the SERVED game clock, never the wall clock: a day tick during the test made a strict
+    // `> Date.now()` fail by the tick's own milliseconds (main red 2026-10-29 16:48 UTC).
+    expect(Date.parse(r.expires_at)).toBeGreaterThanOrEqual((board.game_day + 1) * 2880_000)
     // NEVER a good this port sells — the rule that keeps a request from being an arbitrage on
     // one quay (0087's header).
     expect(offeredHere.has(r.good), `${r.good} is on this port's roster AND on its board`).toBe(false)
@@ -1424,6 +1427,12 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-26 with migration 0227 (owner row 211, who bought what): a city's
       // recent trades of one good, read by the one list both trays a city's good opens render.
       'worldCityGoodTrades',
+      // Pin moved deliberately 2026-10-29 with migration 0275 (docs/WEEKLY_ROLLOVER.md, owner row 173):
+      // a city's giving by week — a READ at the city's sixth tab, no player id, what a city serves
+      // about itself. Lands WITH the face that reads it (CityHistory.tsx). The week clock
+      // (world.week_of / world.week_start) and the book's writer (public.city_week_post) are
+      // server-only and are NOT here — they live in the server-only list below.
+      'worldCityHistory',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,
       // and the same answer the owner asked the game to stop giving (DESIGN_V1 §13, decision 3:
@@ -1743,6 +1752,11 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.quay_tally(jsonb, timestamptz, timestamptz)',
     // 0268: the mint gate the guard holds shared and the economy switch exclusive. Server-only.
     'public.mint_gate(boolean)',
+    // 0275: the week clock and the city book's one writer. Server-only — a client reads the week
+    // through the town hall and the history tab, never computes one.
+    'world.week_of(timestamptz)',
+    'world.week_start(bigint)',
+    'public.city_week_post(uuid, uuid, text, bigint)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f

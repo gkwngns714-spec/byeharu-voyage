@@ -8,6 +8,8 @@ export const mapDict = defineDict({
     Inn: 'Inn',
     'Town Hall': 'Town Hall',
     Info: 'Info',
+    // 0275 (docs/WEEKLY_ROLLOVER.md §4): the city's sixth tab — 내역, not the shell's 기록.
+    History: 'History',
     city: 'City',
     noMarket: 'No market here.',
     tryAgain: 'Try again',
@@ -73,6 +75,8 @@ export const mapDict = defineDict({
     Inn: '주점',
     'Town Hall': '시청',
     Info: '정보',
+    // 0275 (docs/WEEKLY_ROLLOVER.md §4): the city's sixth tab — 내역, not the shell's 기록.
+    History: '내역',
     city: '도시',
     noMarket: '이곳에는 시장이 없습니다.',
     tryAgain: '다시 시도',

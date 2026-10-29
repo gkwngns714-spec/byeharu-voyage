@@ -186,6 +186,24 @@ export function RouteFold({
                 </Note>
               )}
 
+              {/* 0275 (docs/WEEKLY_ROLLOVER.md §5 W4): the weekly counters — the server's week and
+                  its sums, printed as served; the face computes neither the week nor the net. */}
+              {route.earnings && (
+                <div className="pb-1 text-t-caption tabular-nums text-ink-faint" data-testid="route-week-laps">
+                  <span>
+                    {t('routes.weekLaps', { n: route.earnings.week.laps, net: formatDucatsDelta(route.earnings.week.net) })}
+                  </span>
+                  {route.earnings.last_week && (
+                    <span className="block">
+                      {t('routes.lastWeekLaps', {
+                        n: route.earnings.last_week.laps,
+                        net: formatDucatsDelta(route.earnings.last_week.net),
+                      })}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* EACH STOP AS ITS SELL AND BUY LINES (owner, 2026-09-30) — RouteStop.tsx. */}
               {route.stops.map((s, i) => (
                 <RouteStopFace key={s.ord} stop={s} last={i === route.stops.length - 1} />

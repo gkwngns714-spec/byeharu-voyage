@@ -219,6 +219,9 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   await page.getByTestId('route-start').click()
   await expect(page.getByTestId('route-editor')).toHaveCount(0, { timeout: 60_000 })
   await expect(routeRow).toContainText('Route ·', { timeout: 60_000 })
+  // 0275 (docs/WEEKLY_ROLLOVER.md §5 W4): the fold prints the SERVED week counters — the route has
+  // closed no lap yet, so this week reads 0 and last week is absent (no week is computed in a face).
+  await expect(page.getByTestId('route-week-laps')).toContainText('laps this week', { timeout: 60_000 })
   const face = page.getByTestId('route-stop')
   await expect(face).toHaveCount(2)
   const faceGroups = await groups('[data-testid="route-stop"]')
