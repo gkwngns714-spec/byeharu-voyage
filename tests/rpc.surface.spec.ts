@@ -889,7 +889,10 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
     expect(r.expires_day).toBeGreaterThan(r.posted_day)
     expect(r.days_left).toBe(r.expires_day - board.game_day)
     expect(r.days_left).toBeGreaterThanOrEqual(1)
-    expect(Date.parse(r.expires_at)).toBeGreaterThan(Date.now())
+    // The expiry lands on a game-day boundary (a game day is 2880 s, the clock authority), so compare
+    // it with the SERVED game clock, never the wall clock: a day tick during the test made a strict
+    // `> Date.now()` fail by the tick's own milliseconds (main red 2026-10-29 16:48 UTC).
+    expect(Date.parse(r.expires_at)).toBeGreaterThanOrEqual((board.game_day + 1) * 2880_000)
     // NEVER a good this port sells — the rule that keeps a request from being an arbitrage on
     // one quay (0087's header).
     expect(offeredHere.has(r.good), `${r.good} is on this port's roster AND on its board`).toBe(false)
