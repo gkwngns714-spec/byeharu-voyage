@@ -143,6 +143,17 @@ export function seaAsksWords(sea: BoardSea): string {
   return t('desk.seaRoute', { title: sea.needs_title ?? '—', wave: sea.needs_wave ?? '—' })
 }
 
+/** Owner row 191 (docs/COMMAND_REDESIGN.md §3): the sea's ask as ONE short tag beside a leg — the server's
+ *  own `sea` field, printed and never compared. `Later` while the sea switch is dark, `Shut` when it refuses,
+ *  else the title (or the wave) the route asks; null when the row serves no sea at all. */
+export function seaTagWords(sea: BoardSea, bite: boolean): string | null {
+  if (!bite) return t('desk.later')
+  if (sea.refusal) return t('desk.shut')
+  if (sea.needs_title !== null) return t('desk.seaTagTitle', { n: sea.needs_title })
+  if (sea.needs_wave !== null) return t('desk.seaTagWaves', { n: sea.needs_wave })
+  return null
+}
+
 /** A leg's length as the player reads it: days at sea at this fleet's speed (docs/WORDS.md — a distance reads
  *  as days of sailing); miles only when the board gave no speed to sail them at. */
 function legWords(nm: number, speedKn: number): string {
