@@ -1,16 +1,17 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { SmallChart } from '../../../chart'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { openingBounds, SmallChart, type PathStop } from '../../../chart'
 import { Button, Figure, Hint, Icon, Row } from '../../../components/ui'
 import { routeOfFleet } from '../../../domain/route'
 import { useGoodBoard } from '../../../live/useDesk'
 import { useRouteBoard } from '../../../live/useRouteBoard'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatPriceDelta, formatTwoClocks, instantMs, realMsToVoyageDays } from '../../../lib/format'
-import type { FleetView } from '../../../lib/rpc'
+import { formatPriceDelta, formatTwoClocks, formatVoyageDays, instantMs, realMsToVoyageDays } from '../../../lib/format'
+import { unwrapLongitudes, WORLD_BOUNDS, type LatLon } from '../../../lib/geo'
+import type { FleetView, GoodBoard } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import { orderTrips, tripOf, type OrderTrip } from '../../../domain/order'
 import { daysAt, type PlanLeg } from '../../../domain/passage'
-import { tripRows } from './planLines'
+import { seaTagWords, tripRows } from './planLines'
 import { useSailLegs } from '../../../live/useSailLegs'
 
 // THE MAP ON TOP OF THE BUY AND SELL FACES, AND THE ORDER'S ESTIMATE UNDER IT — the owner, 2026-10-26 (row 217):
@@ -36,6 +37,12 @@ import { useSailLegs } from '../../../live/useSailLegs'
 // city in hand ringed and named (`highlight`), and a harbour pressed is handed to `onCity` (SmallChart's `onPort`,
 // THE map tab's hit test). An order pressed narrows it back to that order's harbours, as row 183/217 drew them.
 //
+// ROW 191 (docs/COMMAND_REDESIGN.md §3): WHILE THE PLAN IS BEING MADE the map is THE MINI ROUTE MAP — the plan's
+// stops only, numbered 1..n with the start marked "Now", framed on the legs by the chart's own opening rule
+// (`openingBounds`), and STILL: no pan, no zoom, no live fleets layer, no controls; it redraws only when the legs
+// change. Under it stands one line per leg — its number, from → to, the days, and the sea's one short ask, printed
+// from the served `sea` field and never compared (`seaTagWords`). An order pressed still draws its estimate.
+//
 // Time is printed in both clocks (`formatTwoClocks`); days at sea from miles are `daysAt`, the plan's one arithmetic.
 
 export type OrderPick = { kind: 'order'; id: string } | { kind: 'voyage' } | { kind: 'route' }
@@ -44,7 +51,12 @@ export interface MapDrawing {
   legs: readonly PlanLeg[]
   /** Port CODES ringed as the choice. */
   ends: readonly string[]
+  /** Row 191: the board the plan's legs were read from — its rows' served `sea` is the legs' tag. */
+  board?: GoodBoard | null
 }
+
+/** One frozen empty list, so the plan's chart — which draws NO live fleets layer — allocates nothing per frame. */
+const NO_FLEETS: readonly FleetView[] = []
 
 export function TradeMap({
   fleet,
@@ -76,6 +88,7 @@ export function TradeMap({
   const goodByCode = useWorld((s) => s.goodByCode)
   const book = useWorld((s) => s.routes)
   const boxRef = useRef<HTMLDivElement>(null)
+  const name = (code: string) => portNameOf(portByCode, code)
 
   const trips = useMemo(
     () => orderTrips(fleet, (c) => c in portByCode, (c) => c in goodByCode),
@@ -105,14 +118,57 @@ export function TradeMap({
         ? { legs: voyageLegs, ends: fleet.voyage?.to ? [fleet.voyage.to] : [] }
         : (plan ?? { legs: [], ends: fleet.voyage?.to ? [fleet.voyage.to] : [] })
 
+  // ROW 191: THE PLAN BEING MADE IS THE PLAN'S OWN MINI ROUTE MAP — its stops only, numbered, and still.
+  const planMap = pick === null && plan !== null && plan.legs.length > 0
+  const planCodesKey = useMemo(
+    () => (planMap && plan ? [...new Set(plan.legs.map((l) => l.to))].join(' ') : ''),
+    [planMap, plan],
+  )
+  // THE FRAME, by the chart's own opening rule (the one the tab and this chart open with), asked for the plan's
+  // legs — their water AND their stops' own marks — so a short plan is never framed to nothing, and no stop is
+  // left on the glass's edge. The floor and the aspect arithmetic are `openingBounds`'s, never a second fit.
+  const frame = useCallback(
+    (aspect: number) => {
+      if (!planMap || !plan) return WORLD_BOUNDS
+      const pts: LatLon[] = []
+      for (const l of plan.legs) {
+        for (const [lat, lon] of l.path) pts.push({ lat, lon })
+        const port = portByCode[l.to]
+        if (port) pts.push({ lat: port.lat, lon: port.lon })
+      }
+      const round = unwrapLongitudes(pts)
+      return openingBounds(round, round, round, aspect)
+    },
+    [planMap, plan, portByCode],
+  )
+  // THE STOPS, NUMBERED, AND THE START SAID "NOW" — the chart's own path-stop layer (owner row 225) draws them;
+  // the days ride the leg lines under the map, not the discs, so the picture stays concise.
+  const pathStops = useMemo<readonly PathStop[]>(() => {
+    if (!planMap || !plan) return []
+    const out: PathStop[] = []
+    const start = plan.legs[0]?.path[0]
+    if (start) out.push({ at: { lat: start[0], lon: start[1] }, n: 0, days: null, label: t('desk.now') })
+    plan.legs.forEach((leg, i) => {
+      const end = leg.path[leg.path.length - 1]
+      if (end) out.push({ at: { lat: end[0], lon: end[1] }, n: i + 1, days: null })
+    })
+    return out
+  }, [planMap, plan, t])
+
   const onlyKey = [docked, fleet.voyage?.to ?? null, ...drawing.legs.flatMap((l) => [l.from, l.to]), ...drawing.ends]
     .filter((c): c is string => !!c)
     .filter((c, i, all) => all.indexOf(c) === i)
     .join(' ')
-  // every harbour, unless an order is pressed (its harbours only)
-  const only = useMemo(() => (pick && onlyKey ? onlyKey.split(' ') : undefined), [pick, onlyKey])
+  // every harbour, unless an order is pressed (its harbours only) — and, under a plan, its stops only
+  const only = useMemo(() => {
+    if (planMap) return planCodesKey ? planCodesKey.split(' ') : undefined
+    return pick && onlyKey ? onlyKey.split(' ') : undefined
+  }, [planMap, planCodesKey, pick, onlyKey])
   const endsKey = drawing.ends.join(' ')
-  const considering = useMemo(() => (endsKey ? endsKey.split(' ') : []), [endsKey])
+  const considering = useMemo(
+    () => (planMap ? (planCodesKey ? planCodesKey.split(' ') : []) : endsKey ? endsKey.split(' ') : []),
+    [planMap, planCodesKey, endsKey],
+  )
   const courses = useMemo(() => drawing.legs.map((l) => l.path.map(([lat, lon]) => ({ lat, lon }))), [drawing.legs])
 
   // A PHONE: the order is pressed at the foot of the page; the map and its estimate come up to meet it.
@@ -125,17 +181,21 @@ export function TradeMap({
     <section ref={boxRef} className="mb-4 scroll-mt-28" data-testid="trade-map" data-cities={only ? only.join(' ') : '*'}>
       <SmallChart
         ports={snapshot?.ports ?? []}
-        fleets={[fleet]}
+        fleets={planMap ? NO_FLEETS : [fleet]}
         considering={considering}
-        highlight={pick ? null : city}
+        highlight={planMap ? null : pick ? null : city}
         only={only}
         legs={courses}
-        wholeWorld
-        onPort={onCity}
-        goTo={goTo}
-        ariaLabel={t(pick ? 'desk.mapChart' : 'desk.citiesChart')}
+        stops={pathStops}
+        still={planMap}
+        frame={frame}
+        wholeWorld={!planMap}
+        onPort={planMap ? undefined : onCity}
+        goTo={planMap ? null : goTo}
+        ariaLabel={t(planMap ? 'desk.routeChart' : pick ? 'desk.mapChart' : 'desk.citiesChart')}
         className="aspect-[2/1] w-full"
       />
+      {planMap && plan && <PlanLegs legs={plan.legs} ends={plan.ends} board={plan.board ?? null} speedKn={fleet.speed_kn} name={name} />}
       {pick && (
         <OrderEstimate
           key={pickKey ?? ''}
@@ -147,6 +207,51 @@ export function TradeMap({
         />
       )}
     </section>
+  )
+}
+
+/** THE PLAN'S LEGS UNDER ITS MAP (owner row 191, docs/COMMAND_REDESIGN.md §3) — one line per leg: its number,
+ *  where it leaves and where it ends, the days at this fleet's speed (`daysAt`, the plan's one arithmetic), and
+ *  — where the row the leg ENDS at serves a `sea` — the sea's one short ask, printed from the server's field and
+ *  never compared (`seaTagWords`). An intermediate stop wears no tag: it is not the plan's end. */
+function PlanLegs({
+  legs,
+  ends,
+  board,
+  speedKn,
+  name,
+}: {
+  legs: readonly PlanLeg[]
+  /** The plan's own ends (buyAt / sellAt): only a leg ending AT one wears that row's sea tag. */
+  ends: readonly string[]
+  board: GoodBoard | null
+  speedKn: number
+  name: (code: string) => string
+}) {
+  const t = useT()
+  return (
+    <ol className="mt-2 flex flex-col" data-testid="plan-legs">
+      {legs.map((leg, i) => {
+        const row =
+          board && ends.includes(leg.to)
+            ? (board.buy.find((r) => r.port === leg.to) ?? board.sell.find((r) => r.port === leg.to) ?? null)
+            : null
+        const tag = row?.sea && board?.sea ? seaTagWords(row.sea, board.sea.bite) : null
+        const days = speedKn > 0 ? formatVoyageDays(daysAt(leg.nm, speedKn)) : '—'
+        return (
+          <li
+            key={`${i}:${leg.to}`}
+            className="text-t-caption tabular-nums text-ink-muted"
+            data-testid="plan-leg"
+            data-n={i + 1}
+            data-from={leg.from ?? ''}
+            data-to={leg.to}
+          >
+            {`${i + 1} ${t('desk.legLine', { from: leg.from ? name(leg.from) : t('desk.atSea'), to: name(leg.to) })} · ${days}${tag ? ` · ${tag}` : ''}`}
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 

@@ -115,7 +115,8 @@ for (const size of SIZES) {
         await expect(act).toHaveText(/Sail & sell|Too far|Cargo full|Shut|No money/, { timeout: 60_000 })
         // a button that will not press says why, in a sentence
         if (!(await act.isEnabled())) await expect(panel.getByTestId('trade-why').or(panel.getByRole('note'))).toBeVisible()
-        await expectCentred(sell.getByTestId('trade-map'), to)
+        // ROW 191: on the plan's map the pressed city is a STOP, drawn — the plan's view is static (no glide)
+        await expect(sell.getByTestId('trade-map').locator(`[data-port-code="${to}"]`).first()).toBeAttached({ timeout: 30_000 })
         // closed (the panel lets the good go)
         await panel.getByTestId('tray-close').click()
         await expect(panel).toHaveCount(0)

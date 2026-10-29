@@ -2,10 +2,9 @@ import { Figure, Hint, Note, Row } from '../../../components/ui'
 import { fleetCrew } from '../../../domain/fleet'
 import { useSeaConditions } from '../../../live/useSeaConditions'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatInt, formatVoyageDays } from '../../../lib/format'
+import { formatInt } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
-import { daysAt, type PlanLeg } from '../../../domain/passage'
 import { reachBoard, reachWords, seaAsksWords } from './planLines'
 
 // THE PLAN'S VOYAGE — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 183):
@@ -36,8 +35,8 @@ import { reachBoard, reachWords, seaAsksWords } from './planLines'
 //       wording; dark, a refusal reads "not in force yet"; lit, a city the sea closes is the reach note's
 //       reason (`reachWords`), printed once. Nothing is compared here.
 //
-//   THE LEGS — each SAIL of the plan, from → to, with its days at sea at the fleet's speed. Last, so a
-//   change in how many legs there are moves nothing above it.
+//   THE LEGS — each SAIL of the plan, from → to, with its days at sea at the fleet's speed — stand UNDER
+//   THE MAP since owner row 191 (TradeMap.tsx `PlanLegs`; docs/COMMAND_REDESIGN.md §3), not here.
 //
 // A PRESS SELECTS: every row above the legs is always drawn (a dash while a figure is unknown), and the chart
 // has a fixed shape, so choosing another city changes figures in place and moves nothing.
@@ -47,14 +46,11 @@ export function PlanVoyage({
   board,
   buyRow,
   sellRow,
-  legs,
 }: {
   fleet: FleetView
   board: GoodBoard | null
   buyRow: BoardBuyRow | null
   sellRow: BoardSellRow | null
-  /** The plan's legs, proposed once (usePlanCourse.ts) — drawn by the map on top, listed here. */
-  legs: readonly PlanLeg[]
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
@@ -127,20 +123,6 @@ export function PlanVoyage({
           )}
       </section>
 
-      {legs.length > 0 && (
-        <section className="mt-4" data-testid="plan-legs">
-          <span className="block text-t-caption text-ink-faint">{t('desk.legs')}</span>
-          {legs.map((l, i) => (
-            <Row
-              key={`${i}:${l.to}`}
-              label={t('desk.legLine', { from: l.from ? name(l.from) : t('desk.atSea'), to: name(l.to) })}
-              value={<Figure value={fleet.speed_kn > 0 ? formatVoyageDays(daysAt(l.nm, fleet.speed_kn)) : '—'} />}
-              hairline={i < legs.length - 1}
-              data-testid="plan-leg"
-            />
-          ))}
-        </section>
-      )}
     </div>
   )
 }

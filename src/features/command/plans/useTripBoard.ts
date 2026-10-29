@@ -37,7 +37,10 @@ export function useTripBoard(fleet: FleetView, plan: PlanDraft | null) {
   const open = plan !== null && good !== null
   const legs = usePlanCourse(fleet, open ? plan : null, buyRow, sellRow)
   const ends = [plan?.buyAt ?? null, plan?.sellAt ?? null].filter((c): c is string => c !== null).join(' ')
-  const drawing = useMemo<MapDrawing | null>(() => (open ? { legs, ends: ends ? ends.split(' ') : [] } : null), [open, legs, ends])
+  const drawing = useMemo<MapDrawing | null>(
+    () => (open ? { legs, ends: ends ? ends.split(' ') : [], board: b } : null),
+    [open, legs, ends, b],
+  )
   return {
     good,
     board: b,
