@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { fineClass } from '../components/ui'
-import { project, WORLD_BOUNDS, type LatLon, type Point, type ViewBox } from '../lib/geo'
+import { project, WORLD_BOUNDS, type GeoBounds, type LatLon, type Point, type ViewBox } from '../lib/geo'
 import { useT } from '../lib/i18n'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { ChartCanvas } from './ChartCanvas'
@@ -16,6 +16,7 @@ import { useRegionsFilter } from './regionsFilter'
 import { useBackdrop } from './useBackdrop'
 import { useChartSurface } from './useChartSurface'
 import { ViewControls } from './ViewControls'
+import type { PathStop } from './ShipPathLayer'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A SMALL CHART, EMBEDDED — the same chart, framed on the order being made, and steerable without
@@ -95,6 +96,13 @@ import { ViewControls } from './ViewControls'
 // SELECTS a city to read (the Buy / Sell desk); nothing is ordered by the tap. A hull or open water
 // answers nothing here.
 //
+// ── 2026-10-29, OWNER ROW 191: THE PLAN'S MAP IS A PICTURE ─────────────────────────────────────
+// *"in command, plan, i want to see a small map showing route concisely."* Two more optional props,
+// both off by default: `still` (no pan, no zoom, no controls, no live fleets — the chart redraws only
+// when the legs change) and `frame` (the one opening rule recomputed for the plan's legs, so the
+// view holds them), plus `stops` — the numbered discs and the start's word, drawn by the chart's own
+// `ShipPathLayer` (owner row 225), never a second marker layer.
+//
 // And it still invents no place: ports and coordinates are `world.snapshot()`; the fleet's
 // position at sea is `voyage.position`, the server's closed form, copied (./liveWorld.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -109,6 +117,9 @@ export function SmallChart({
   highlight,
   only,
   legs,
+  stops,
+  still = false,
+  frame,
   wholeWorld = false,
   onPort,
   goTo = null,
@@ -137,6 +148,14 @@ export function SmallChart({
   only?: readonly string[]
   /** Row 183: the plan's proposed courses, drawn dashed (ChartCanvas `plannedD`). */
   legs?: readonly (readonly LatLon[])[]
+  /** Row 191: the plan's stops — numbered discs, and the start's word (`ShipPathLayer`). */
+  stops?: readonly PathStop[]
+  /** Row 191: the plan's chart is STILL — no pan, no zoom, no controls, no fleet layer; it redraws
+   *  only when the legs change. */
+  still?: boolean
+  /** Row 191: a still chart's frame, asked for the glass's aspect — the plan's legs, framed by the
+   *  one opening rule (`openingBounds`). Absent: the whole world. */
+  frame?: (aspect: number) => GeoBounds
   /** Row 207: open at 0 % zoom, the whole world on the glass, instead of framing the choice. */
   wholeWorld?: boolean
   /** Row 218: a harbour tapped (THE map tab's hit test) — the caller selects that city. Absent: no tap. */
@@ -174,24 +193,30 @@ export function SmallChart({
   // including the 12° floor and the clamp against a wider-than-the-world fit.
   const frameBounds = useCallback(
     (aspect: number) =>
-      wholeWorld ? WORLD_BOUNDS : openingBounds(model.focusPoints, model.motionPoints, chartPorts, aspect),
-    [model, chartPorts, wholeWorld],
+      still
+        ? frame
+          ? frame(aspect)
+          : WORLD_BOUNDS
+        : wholeWorld
+          ? WORLD_BOUNDS
+          : openingBounds(model.focusPoints, model.motionPoints, chartPorts, aspect),
+    [model, chartPorts, wholeWorld, still, frame],
   )
 
   // No tap handler unless `onPort` asks for one (row 218, the header). `scroll: 'page-vertical'` is the
   // embedded posture: the page keeps its wheel and its vertical thumb-scroll, the chart gets everything else.
   const onTap = useCallback(
     (at: Point, unitsPerPx: number, view: ViewBox) => {
-      if (!onPort) return
+      if (still || !onPort) return
       const minTier = minTierForSpan(view.width)
       const tappable = visiblePorts(chartPorts, model.portRoles, view, minTier)
       const dots = dotPorts(chartPorts, model.portRoles, view, minTier)
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, [], placedNames())
       if (hit?.kind === 'port') onPort(hit.code)
     },
-    [onPort, chartPorts, model],
+    [still, onPort, chartPorts, model],
   )
-  const surface = useChartSurface(boxRef, frameBounds, onPort ? onTap : undefined, { scroll: 'page-vertical' })
+  const surface = useChartSurface(boxRef, frameBounds, !still && onPort ? onTap : undefined, { scroll: 'page-vertical' })
   const box = surface.viewBox
 
   // ── THE CHART MOVES TO THE HARBOUR YOU CHOSE (the owner, 2026-08-23: "when i press corfu or
@@ -209,7 +234,7 @@ export function SmallChart({
   // from a standing choice is respected, and a frame that already holds the harbour is left alone.
   const chosenBefore = useRef<readonly string[]>([])
   useEffect(() => {
-    if (!box) return
+    if (still || !box) return
     const before = new Set(chosenBefore.current)
     chosenBefore.current = considering
     const fresh = considering.filter((code) => !before.has(code))
@@ -221,7 +246,7 @@ export function SmallChart({
     const inside =
       at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height
     if (!inside) surface.centreOn(port)
-  }, [considering, chartPorts, box, surface])
+  }, [considering, chartPorts, box, surface, still])
 
   // ── ROW 231: A CITY PRESSED IS A CITY GONE TO (the owner, 2026-10-26: "buying and selling when pressed a city,
   // move the map to that location"). Each press (a new `n`) GLIDES the city to the middle — the go-to loop the Map
@@ -233,18 +258,18 @@ export function SmallChart({
   const goCode = goTo?.code ?? null
   const goN = goTo?.n ?? 0
   useEffect(() => {
-    if (!box || !goCode || goN === pressedBefore.current) return
+    if (still || !box || !goCode || goN === pressedBefore.current) return
     pressedBefore.current = goN
     const port = ports.find((p) => p.code === goCode)
     if (port) glideTo(port, keepZoom)
-  }, [goCode, goN, box, ports, glideTo])
+  }, [goCode, goN, box, ports, glideTo, still])
 
   const selection: MapSelection = highlight ? { kind: 'port', code: highlight } : null
 
   return (
     <div
       ref={boxRef}
-      {...surface.handlers}
+      {...(still ? {} : surface.handlers)}
       // `surface.touchClass` is `touch-pan-y` here — the posture and its touch-action are one fact,
       // stated by the hook. `select-none` stops a pan highlighting the labels, exactly as on the
       // tab. `overflow-hidden` clips only the picture; the one control (ViewControls) is in a
@@ -269,6 +294,7 @@ export function SmallChart({
           // 2026-08-21 — the same one mechanism the Map tab feeds, not a second spelling of it).
           keepOut={surface.chromeBoxes}
           plannedD={plannedD}
+          pathStops={stops}
           ariaLabel={ariaLabel}
           className="pointer-events-none absolute inset-0 h-full w-full"
         />
@@ -277,11 +303,13 @@ export function SmallChart({
           {t('chart.opening')}
         </p>
       )}
-      <ViewControls
-        surface={surface}
-        findAriaLabel={findAriaLabel ?? t('chart.findOrder')}
-        testId="small-chart-controls"
-      />
+      {!still && (
+        <ViewControls
+          surface={surface}
+          findAriaLabel={findAriaLabel ?? t('chart.findOrder')}
+          testId="small-chart-controls"
+        />
+      )}
     </div>
   )
 }
