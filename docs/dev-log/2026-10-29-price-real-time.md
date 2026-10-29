@@ -125,6 +125,24 @@ What each probe did (all on planted rows, every probe a rolled-back sub-transact
 
 **After deploy** (the 30-minute window):
 
+**WHAT THE WATCH ACTUALLY MEASURED (2026-10-29, live, appended after the fact):**
+
+- **The clock and the knobs (immediately):** `glut_at` null on **0** rows (all 138,990 stamped — the backfill at
+  07:20:00, and a real trade already stamped 07:21:07); knobs read **0.10 / 3 / 0.30 / 0.5**. PASS.
+- **The decay's first tick (the 08:00 game-day boundary; the fade only applies when the game day advances):**
+  each press times exactly 0.5^(minutes/180) — `0.113 → 0.0969` (40 min, ×0.857), `0.1081 → 0.0944` (35 min,
+  ×0.873), `0.106 → 0.0909`, `-0.0885 → -0.0781`; every touched `glut_at` advanced to 08:00. PASS (the rule is the
+  formula).
+- **The distribution at 08:05:** 14,268 pressed (was 14,236), avg |0.0150| (was 0.0146), max +0.1039 (was +0.113),
+  min -0.0781, 21 at ≥ 5 %, **0 at the cap**. Presses are not frozen and not running away. PASS.
+- **The drift job:** 4.32 s at 07:30, 2.5–17 s range before; the 33.55 s at 07:20 was lock contention with the
+  migration's own commit, not a new cost. PASS.
+- **The beats:** no beat over 2 s and no error in the kept `:06:30–:09:00` windows around the deploy. PASS.
+- **CORRECTION to the root section above:** a game day is 2880 s = **48 minutes** (not ~90 s), so the old half-life
+  was 48 minutes and the fade ticks every ~48 min — see the correction note in "The root".
+
+Original plan, kept for the record:
+
 - **The clock and the knobs** (immediately):
   `select count(*) from public.port_goods where glut_at is null;` → **0**;
   `select key, value from public.world_config where key in ('glut_per_depth','glut_half_life_hours','glut_max','glut_decay');`
