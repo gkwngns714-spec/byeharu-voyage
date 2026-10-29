@@ -959,9 +959,11 @@ begin
 
   -- (g) THE SEAM: a merchant docked below complement, purse 0, sub-ton hold covering the hire at the bid, a failed
   -- SAIL refused E_CREW_SHORT — her whole step, OLD vs NEW. OLD reproduces the loop (every cut-loss SELL skipped
-  -- E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS, the SAIL refused E_CREW_SHORT, her docked); NEW closes it
-  -- (the cut-loss SELLs execute at the bid, the HIRE is paid, the SAIL departs, the crew restored, the purse leaves
-  -- 0 for the value the hold brought in, the ledger reconciled). The control (old against old) must not move.
+  -- E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS, NO SAIL done — the last SAIL's own status is queue mechanics
+  -- a live merchant's state can vary: prod leaves it pending, the fresh chain marks it failed; the loop's evidence
+  -- is the outcomes — her docked, short, purse 0); NEW closes it (the cut-loss SELLs execute at the bid, the HIRE is
+  -- paid, the SAIL departs, the crew restored, the purse holds the sale's remainder, the ledger reconciled). The
+  -- control (old against old) must not move.
   o := pg_temp.crew_case_0273('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord);
   n := pg_temp.crew_case_0273('new', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord);
   c := pg_temp.crew_case_0273('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord);
@@ -972,12 +974,13 @@ begin
     raise exception '0273 self-assert FAIL: the control moved (old against old): % / %', left(o->>'digest', 600), left(c->>'digest', 600);
   end if;
   if not exists (select 1 from jsonb_array_elements(o->'orders') e
-                  where e->>'verb' = 'SELL' and e->>'status' = 'skipped' and e->>'code' = 'E_NO_CARGO')
+                  where e->>'verb' = 'SELL' and e->>'status' = 'skipped' and e->>'code' = 'E_NO_CARGO'
+                    and e->>'text' not like '%AT >=%')
      or not exists (select 1 from jsonb_array_elements(o->'orders') e
                      where e->>'verb' = 'HIRE' and e->>'status' = 'skipped' and e->>'code' = 'E_INSUFFICIENT_FUNDS')
-     or not exists (select 1 from jsonb_array_elements(o->'orders') e
-                     where e->>'verb' = 'SAIL' and e->>'status' = 'failed' and e->>'code' = 'E_CREW_SHORT') then
-    raise exception '0273 self-assert FAIL: the old step did not reproduce the loop (SELL E_NO_CARGO, HIRE skipped, SAIL refused): % / receipt % / route %',
+     or exists (select 1 from jsonb_array_elements(o->'orders') e
+                 where e->>'verb' = 'SAIL' and e->>'status' = 'done') then
+    raise exception '0273 self-assert FAIL: the old step did not reproduce the loop (a cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS, no SAIL done): % / receipt % / route %',
       o->'orders', o->'receipt', o->'route';
   end if;
   if coalesce(o->>'fleet', '') <> 'DOCKED' or coalesce((o->>'shortfall')::int, -1) <= 0
@@ -993,7 +996,7 @@ begin
     raise exception '0273 self-assert FAIL: the new step did not sell at the bid, pay the HIRE and sail: %', n->'orders';
   end if;
   if coalesce(n->>'fleet', '') <> 'SAILING' or coalesce((n->>'shortfall')::int, -1) <> 0
-     or coalesce((n->>'purse')::bigint, -1) < 0 then
+     or coalesce((n->>'purse')::bigint, -1) <= 0 then
     raise exception '0273 self-assert FAIL: the new step left her fleet % with a shortfall of % and a purse of %', n->>'fleet', n->>'shortfall', n->>'purse';
   end if;
   if coalesce((n->>'ledger_ok')::boolean, false) is not true then
@@ -1017,7 +1020,7 @@ begin
         where key in ('npc_traders_enabled', 'standing_routes_enabled')), v_flags;
   end if;
 
-  raise notice '0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 %, prod''s own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (% points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant %: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock never fell, the purse credited the order''s own total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod''s normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the ledger the sum of the done SELLs'' own reported totals (no pre-read price a live market can move); a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant % (% d. hire, a sub-ton hold worth % d. at the bid in % stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and the SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse % d. and the ledger reconciled; the control identical. Rolled back.',
+  raise notice '0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 %, prod''s own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (% points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant %: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock never fell, the purse credited the order''s own total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod''s normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the ledger the sum of the done SELLs'' own reported totals (no pre-read price a live market can move); a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant % (% d. hire, a sub-ton hold worth % d. at the bid in % stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and NO SAIL done, with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse % d. and the ledger reconciled; the control identical. Rolled back.',
     (select md5 from defs_before_0273), v_grid, g.route_id, g.route_id,
     n->>'hire', n->>'hold_value', n->>'stacks', n->>'purse';
 end $$;

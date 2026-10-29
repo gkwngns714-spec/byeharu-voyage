@@ -136,15 +136,15 @@ case re-plants her state and rolls back whole:
 - **THE SEAM** (never ship half a slice): the same merchant, docked below complement, purse 0, a sub-ton hold
   covering the hire at the bid (dearest-per-tun stacks of 0.93 t, at least two, as prod's holds carry), a failed
   `SAIL TO …` refused `E_CREW_SHORT` — her whole step (`public.npc_tend_route`: the clear, 0272's cut-loss, the
-  advance), OLD vs NEW. **OLD reproduces the loop**: every cut-loss SELL `skipped E_NO_CARGO`, the HIRE `skipped
-  E_INSUFFICIENT_FUNDS`, the SAIL `failed E_CREW_SHORT`, her docked, purse 0. **NEW closes it**: the cut-loss SELLs
-  execute at the bid, the HIRE is paid, the SAIL departs, the crew is restored, the purse holds the sale's remainder
-  (≥ 0) and reconciles with the ledger. The control (old against old) is identical.
+  advance), OLD vs NEW. **OLD reproduces the loop**: a cut-loss SELL (no `AT >=`) `skipped E_NO_CARGO`, the HIRE
+  `skipped E_INSUFFICIENT_FUNDS`, **no SAIL done**, her docked, shortfall > 0, purse 0. **NEW closes it**: the
+  cut-loss SELLs execute at the bid, the HIRE is paid, the SAIL departs (`done`), the crew is restored, the purse
+  holds the sale's remainder (> 0) and reconciles with the ledger. The control (old against old) is identical.
 
 ## The receipt (verbatim)
 
 ```
-0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 999e9f6baa9083cfd29e4920fed00886, prod's own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (44 points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant 84f76e31-9166-42b5-a93b-55377d2d7372: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock never fell, the purse credited the order's own total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod's normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the ledger the sum of the done SELLs' own reported totals (no pre-read price a live market can move); a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant 84f76e31-9166-42b5-a93b-55377d2d7372 (20 d. hire, a sub-ton hold worth 1799 d. at the bid in 2 stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and the SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse 367 d. and the ledger reconciled; the control identical. Rolled back.
+0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 999e9f6baa9083cfd29e4920fed00886, prod's own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (44 points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant 84f76e31-9166-42b5-a93b-55377d2d7372: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock never fell, the purse credited the order's own total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod's normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the ledger the sum of the done SELLs' own reported totals (no pre-read price a live market can move); a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant 84f76e31-9166-42b5-a93b-55377d2d7372 (20 d. hire, a sub-ton hold worth 1799 d. at the bid in 2 stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and NO SAIL done, with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse 367 d. and the ledger reconciled; the control identical. Rolled back.
 ```
 
 ## FIRST PUSH RED, on the probe — the live-market race (the recorded class)
@@ -189,6 +189,20 @@ run's credit (1902 d.). On the local chain she has no prior orders, so the two a
   append-only table; the delete rolls back with the probe), so the cap can never be exhausted by her real trades.
 - The ledger/events reads stay transaction-scoped (`created_at >= now()`), and the digest compares this run's rows
   only. The re-run is the receipt above.
+
+## THIRD PUSH RED, on the probe — an over-strict queue assertion (not a live-data leak)
+
+The third prod push failed on the migration's own self-assert, before anything applied (prod head stayed 0272).
+The OLD step's actual orders on prod — the loop DID reproduce: a cut-loss `SELL … ALL` (no `AT >=`) `skipped
+E_NO_CARGO`, the HIRE `skipped E_INSUFFICIENT_FUNDS`, the fleet DOCKED, shortfall > 0, purse 0 — but the final SAIL
+sat `pending` (prod's live queue halts after the skipped HIRE; the fresh local chain marks it `failed`), and the
+planted failed SAIL read `cancelled` after `clear_for`. Queue STATUSES are mechanics a real merchant's state can
+vary; the loop's evidence is the outcomes. Fixed in the self-assert only: OLD now asserts a cut-loss SELL skipped
+E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS, **no SAIL done**, and the outcomes (DOCKED, shortfall > 0,
+purse 0); NEW keeps the outcomes (fleet SAILING, shortfall 0, purse > 0, ledger reconciled, SAIL done, HIRE done,
+cut-loss SELLs done). The normal at-profit line (`SELL burma-rubies ALL AT >= 1050000`, the planted basis's floor)
+skips E_NO_CARGO under OLD and E_PRICE_LIMIT under NEW — correct on both sides, and no assertion counts it. The
+re-run is the receipt above.
 
 ## Local gates
 
