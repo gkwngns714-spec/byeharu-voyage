@@ -461,7 +461,6 @@ declare
   c      jsonb;
   m      record;
   g      record;
-  v_hull int;
   v_short int;
   v_cost  bigint;
   v_qty   numeric;
@@ -475,7 +474,6 @@ declare
   v_lap   int;
   v_route uuid;
   v_house uuid;
-  v_seen  int := 0;
 begin
   select * into v_b from before_0272;
 
@@ -601,8 +599,8 @@ begin
     raise exception '0272 self-assert FAIL: the probe port (%) bids on no good', g.port_id;
   end if;
   -- the hire her planted shortfall costs, and a hold worth several times it at this quay's bid
-  select count(*) into v_hull from public.ships s where s.fleet_id = g.fleet_id;
-  v_short := 2 * v_hull;
+  select coalesce(sum(least(c.crew_required, 2)), 0) into v_short
+    from public.ships s join public.ship_classes c on c.id = s.class_id where s.fleet_id = g.fleet_id;
   v_cost  := (public.crew_hire_cost(g.fleet_id, v_short)->>'cost')::bigint;
   v_bid   := coalesce((select q.total from world.quote(g.port_id, m.good_id, 10, 'sell', null, null) q), 0);
   v_one   := coalesce((select q.total from world.quote(g.port_id, m.good_id, 1, 'sell', null, null) q), 0);
