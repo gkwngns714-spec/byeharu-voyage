@@ -1593,9 +1593,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-18 with migration 0176 (docs/COMMAND_DESK.md D6): WHAT YOU HOLD in every
       // city — a READ, no arguments (the caller's company). Landed WITH the face that reads it (the desk's Invest).
       'worldHoldings',
-      // Pin moved deliberately 2026-10-18 with migration 0177 (docs/COMMAND_DESK.md D7): THE BOOKS — the
-      // caller's ledger by game day and kind. A READ; the window only. Landed WITH the face (the desk's Profit).
-      'worldBooks',
+      // Pin moved deliberately 2026-10-29 with migration 0278 (docs/COMMAND_REDESIGN.md §4, R4; owner row 192):
+      // THE REPORT — the caller's ledger by span, section and place; a READ, no player id. Replaces 0177's
+      // books (dropped in the same migration). Landed WITH the faces that read it (the desk's Report — the
+      // old Profit — and the Stats tab's Me).
+      'worldReport',
       // Pin moved deliberately 2026-10-18 with migration 0185 (docs/PRICE_FACTORS.md §5, slice P1): WHY THIS
       // PRICE — a good's market price at one city and each term it is made of. A READ, no player id. Landed
       // WITH the face that reads it (features/command/markets/GoodPage.tsx, "Why this price").

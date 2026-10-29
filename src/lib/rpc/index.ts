@@ -78,7 +78,8 @@ import type {
   Watchlist,
   PlanLine,
   Holdings,
-  Books,
+  Report,
+  ReportSpan,
   StatsOverview,
   StatsMarkets,
   StatsCities,
@@ -688,9 +689,9 @@ export function worldHoldings(): Promise<RpcResult<Holdings>> {
   return call<Holdings>('worldHoldings')
 }
 
-/** The books (0177): the company's ledger by game day and kind, each day's net. */
-export function worldBooks(days: number | null = null): Promise<RpcResult<Books>> {
-  return call<Books>('worldBooks', [days])
+/** The report (0278, docs/COMMAND_REDESIGN.md §4): the company's ledger by span, section and place. */
+export function worldReport(span: ReportSpan | null = null): Promise<RpcResult<Report>> {
+  return call<Report>('worldReport', [span])
 }
 
 // ── THE STATS TAB (0214): six reads over the fifteen-minute rollup ──────────────────────────────

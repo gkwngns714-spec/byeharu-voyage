@@ -488,9 +488,9 @@ export const RPCS = {
   // 0176 — WHAT YOU HOLD, in every city: the share register's rows, a share's price there now, the dividends
   // collected (docs/COMMAND_DESK.md §3.7). No arguments: the company is the caller's.
   worldHoldings: { schema: 'world', fn: 'holdings', args: [] },
-  // 0177 — THE BOOKS: the ledger by game day and kind, each kind under its one word, each day's net
-  // (docs/COMMAND_DESK.md §3.8). The window in game days, 1..30.
-  worldBooks: { schema: 'world', fn: 'books', args: [{ name: 'p_days', type: 'int' }] },
+  // 0278 — THE REPORT (docs/COMMAND_REDESIGN.md §4, R4; owner row 192): the company's ledger by span,
+  // section and place; a READ, no player id (the company is the caller's). Replaces 0177's books.
+  worldReport: { schema: 'world', fn: 'report', args: [{ name: 'p_span', type: 'text' }] },
   // 0185 — WHY THIS PRICE (docs/PRICE_FACTORS.md §5): a good's market price at one city and each term it
   // is made of, as a multiplier. A READ; asked when the good page's city changes and at the market's edge.
   worldPriceWhy: {

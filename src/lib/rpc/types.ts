@@ -2998,21 +2998,42 @@ export interface Holdings {
   game_day: number
 }
 
-/** One line of a day's books (0177): a ledger kind, its one player word, and its sum. */
-export interface BookLine {
+/** The report's span (0278): today, the last 7 game days, or everything. */
+export type ReportSpan = 'day' | 'week' | 'all'
+
+/** One line of a report section (0278): a ledger kind and its sum, under its own name. */
+export interface ReportLine {
   kind: string
-  word: string
   ducats: number
 }
 
-/** `world.books(days)` (0177) — the company's ledger, newest game day first. */
-export interface Books {
+/** One report section (0278, docs/COMMAND_REDESIGN.md §4): the kinds' one word, their sum, their lines. */
+export interface ReportSection {
+  id: string
+  /** The server's display word; the client maps `id` to the language's label and keeps this as the fallback. */
+  word: string
+  ducats: number
+  lines: ReportLine[]
+}
+
+/** One place money moved (0278): a port, a voyage (from → to, departure game day), or "Earlier". */
+export type ReportPlace =
+  | { kind: 'port'; code: string; name: string; ducats: number }
+  | { kind: 'voyage'; from: string; to: string; game_day: number; ducats: number }
+  | { kind: 'earlier'; ducats: number }
+
+/** One game day of the report's span (0278), zero-filled by the server — oldest first. */
+export interface ReportDay {
   game_day: number
-  days: number
-  /** Today's net, and the window's. */
-  today: number
-  window: number
-  books: { game_day: number; net: number; lines: BookLine[] }[]
+  net: number
+}
+
+/** `world.report(span)` (0278) — the company's ledger by span ('day' | 'week' | 'all'), section and place. */
+export interface Report {
+  total: number
+  sections: ReportSection[]
+  places: ReportPlace[]
+  days: ReportDay[]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

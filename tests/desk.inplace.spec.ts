@@ -21,7 +21,7 @@ const FACES = [
   { name: 'Sell', id: 'desk-sell' },
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
-  { name: 'Profit', id: 'desk-profit' },
+  { name: 'Report', id: 'desk-report' },
   { name: 'Buy', id: 'city-good' },
 ] as const
 

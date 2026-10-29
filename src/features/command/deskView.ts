@@ -1,9 +1,10 @@
 // WHICH FACE OF THE DESK IS UP — COMMAND's own chrome (docs/COMMAND_DESK.md §3.1, §8; PORT's portView.ts
 // pattern). Session storage, for portView's reason: a face you turned to is a thing you are doing.
 //
-// THE FACES, EACH DESCRIBED ONCE: Buy · Sell · City · Invest · Profit. Buy and Sell (owner row 218, 2026-10-26:
+// THE FACES, EACH DESCRIBED ONCE: Buy · Sell · City · Invest · Report. Buy and Sell (owner row 218, 2026-10-26:
 // *"in command, there is market, and trade. i want to have buy and sell tab instead of those"*) replaced the
-// Markets and Trade faces; both are the one page features/command/buysell/BuySell.tsx, on its two sides. A face is
+// Markets and Trade faces; both are the one page features/command/buysell/BuySell.tsx, on its two sides. Report
+// (owner row 192, 2026-10-25: *"the profit tab on command, change it to report"*) replaced Profit (0278). A face is
 // listed here only when it is BUILT — a tab that opens nothing is a door nobody opens. The ORDER is the strip's.
 
 import { create } from 'zustand'
@@ -16,7 +17,7 @@ export const DESK_FACES = [
   { id: 'sell', get label() { return t('command.f_sell') } },
   { id: 'city', get label() { return t('command.f_city') } },
   { id: 'invest', get label() { return t('command.f_invest') } },
-  { id: 'profit', get label() { return t('command.f_profit') } },
+  { id: 'report', get label() { return t('command.f_report') } },
 ] as const
 
 export type DeskFace = (typeof DESK_FACES)[number]['id']
