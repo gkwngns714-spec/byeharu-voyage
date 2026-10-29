@@ -1,5 +1,7 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-10-29 **row 191 the Plan's mini route map BUILT** (PR #388, client only, no migration; NOT merged — the owner merges): the plan's chart is the route only — stops numbered 1..n, the start "Now", a still fit to the legs, no fleet layer; under it one line per leg with days and the served sea tag; tests/trade.map.spec.ts (+ desk.plantab / command.sellCargo updated).
+
 - 2026-10-29 **owner said "do all".** The two owner-gated designs are MERGED, docs only: **#378 RESTRUCTURE** (`d8802c8b`) and **#268 PIRATES_AND_HAVENS** (`c54d0020`). Their build slices follow the bug fixes, in number order. In flight now: **0273** a sale is the whole stack (chain), **0274** the clear off the quay (authoring), **0275** weekly rollover (authoring), **0276** ship variety (authoring), **row 191** Plan mini map (client). Then: 192 Report, 209 route builder, 216 chart points, 221 per-ship stores, 180 fleets. Economy stays owner-only: under_thin 51 reported, nothing switched.
 - 2026-10-29 **CORP_STORAGE_FORGE design merged (docs only, #387):** the two parked asks written up — corp = the house + a home + a forge (3 goods per recipe, Tribal-Wars timers, treasures sold from city purses or spent on ship/captain upgrades) and the world-gold faucet (one writer public.faucet_mint, knob faucet_per_day 0 = dark, recommended 100; per_active served). Build G1–G4, C1–C5 after RESTRUCTURE R2. Economy stays owner-only: nothing switched.
 
