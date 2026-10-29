@@ -72,8 +72,8 @@ test('a ship roll prints its bracket once, signed with U+2212, and none at the c
   expect(rollMark(0.962)).toBe('(−4 %)')
   expect(rollMark(0.994)).toBe('(−1 %)')
   expect(rollMark(1.000)).toBeNull()
-  expect(rollMark(1.0049)).toBeNull()   // within half a point of 1.000: no bracket
-  expect(rollMark(1.005)).toBe('(+1 %)') // round-half-up at the half point
+  expect(rollMark(1.004)).toBeNull()    // +0.4 % — within half a point: no bracket
+  expect(rollMark(1.005)).toBe('(+1 %)') // the 3dp boundary: half a point rounds up
   expect(rollMark(0.995)).toBeNull()    // −0.5 rounds to −0, which prints no bracket
   expect(rollMark(Number.NaN)).toBeNull()
   // The distinction is the whole point, as with money: a hyphen would read as a dash.

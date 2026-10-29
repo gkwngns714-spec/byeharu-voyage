@@ -35,10 +35,12 @@ export function formatInt(n: number): string {
 /** 0276 — a ship's OWN roll against her class, as the bracket the tile prints: 1.032 → "(+3 %)",
  *  0.962 → "(−4 %)", 1.000 (or anything within half a point of it) → null (no bracket). The factor
  *  is the server's (`world.ship_view.roll`); the per cent is DERIVED HERE, once, never per screen.
- *  U+2212 MINUS, like every negative figure this game prints. */
+ *  U+2212 MINUS, like every negative figure this game prints. The factor is stored at 3 decimal
+ *  places, so it is rounded THERE first: a float like 1.005 − 1 = 0.004999… must not tip the half
+ *  point of the per cent the wrong way. */
 export function rollMark(f: number): string | null {
   if (!Number.isFinite(f)) return null
-  const pct = Math.round((f - 1) * 100)
+  const pct = Math.round(Math.round((f - 1) * 1000) / 10)
   if (pct === 0) return null
   return `(${pct > 0 ? '+' : MINUS}${Math.abs(pct)} %)`
 }

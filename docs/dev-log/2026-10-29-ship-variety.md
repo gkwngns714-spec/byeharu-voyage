@@ -210,7 +210,37 @@ The verbatim receipt:
    one is now dropped after the re-cut (its six-argument callers resolve through the new default,
    and the one-insert scan stays exact).
 
-## 10. Deviations from the design doc, said plainly (D)
+## 10. The CI round (PR #392) — what CI found, and what was fixed for it
+
+CI went red in two places, both real and both this slice's:
+
+1. **`pglite-gate (the rest)` — proof 04** (`scripts/db/proofs/04_first_session.sql`): the
+   FIRST_SESSION_OVERSIZED_REFUSED beat derived the room from the CLASS hold and the laden-speed
+   beat rated the ship against the CLASS speed. A founding hull's roll is never below 1.000, so
+   her hold and speed can read up to +20 % over the class's — the "+20" overflow could slip
+   through, and a Fine hull's laden speed can exceed the class rating. Both now read HER OWN
+   figures (`public.ship_hold_capacity` / `public.ship_base`), keeping each beat's intent.
+   The same sweep fixed proofs 05 and 09, which hired `c.crew_max − s.crew` hands for a founding
+   hull whose rolled berths can exceed the class's — they now hire to her own `ship_base` max.
+2. **Acceptance shard 3/3 — `tests/format.spec.ts`**: `rollMark(1.005)` returned null because
+   `1.005 − 1 = 0.004999…` in floats — the half point of the per cent was never reached. The
+   function now rounds at the factor's own 3-decimal scale FIRST (`Math.round((f − 1) × 1000) /
+   10`), which is the stored scale; the spec's boundary cases were corrected to the stored
+   factors (1.004 → null, 1.005 → +1 %). The test was not weakened: it pins the same bracket
+   semantics on the real inputs the server can serve.
+   The same sweep found `tests/rpc.surface.spec.ts` pinned a founding Gaivota's served hold to
+   exactly 60 × hold_scale — with the founding clamp that is now the LOWER bound; it asserts the
+   band (classHold .. classHold × 1.2, the class figure read from the database, not copied).
+   `tests/map.hulls.spec.ts` hard-codes ship figures too, but those are CLIENT-SIDE fixture
+   objects the chart draws — never served — so they are untouched.
+
+The full local proof run after these fixes: **12 file(s), 83/83 PASS markers, exit 0** — including
+proof 04's FIRST_SESSION_OVERSIZED_REFUSED and FIRST_SESSION_SAILS, 05's balance, 09's walks, and
+the 50 s merchant soak (12/12) — on the cached chain (261 restored + 0276 applied). The pure
+`tests/format.spec.ts` rollMark test passes locally (the other seven local failures in that file
+are the machine's Korean locale, known to pass on CI).
+
+## 11. Deviations from the design doc, said plainly (D)
 
 1. `ship_roll(seed, class)` is STABLE, not IMMUTABLE — it reads the band ROWS (the hard
    constraint wins over the design's word). Determinism is unaffected: the factors are stored at

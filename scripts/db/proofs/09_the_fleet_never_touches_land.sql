@@ -72,7 +72,7 @@ begin
   select id into v_fleet from public.fleets where player_id = v_player;
   perform cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
   perform cmd.do_hire(v_fleet, jsonb_build_object('count',
-    (select c.crew_max - sh.crew from public.ships sh
+    (select (public.ship_base(sh.id)).crew_max - sh.crew from public.ships sh
        join public.ship_classes c on c.id = sh.class_id where sh.fleet_id = v_fleet)));
 
   -- ── 1. a real player passage, proposed and verified ─────────────────────────────────────────

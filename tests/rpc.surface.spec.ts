@@ -446,8 +446,17 @@ test('world.fleets() reports the fleet, its ships, its stores and its empty queu
   expect(s.name).toBe('Gaivota')
   expect(s.class).toBe('Barca')
   expect(s.is_flagship).toBe(true)
-  // Moved deliberately 2026-10-19 with 0208 (hold_scale 3): the design 60 × the knob.
-  expect(s.hold).toBe(60 * Number((await db.pg.query<{ v: string }>("select public.wc_num('hold_scale')::text as v")).rows[0].v))
+  // Moved deliberately 2026-10-19 with 0208 (hold_scale 3): the design 60 × the knob. 0276: a
+  // FOUNDING hull rolls her own hold but is never Poor — her roll is raised to 1.000 at least, so
+  // her hold reads between the class's own (× the knob) and its Fine bound. The class's figure is
+  // read from the database, not copied here.
+  const classHold = Number(
+    (await db.pg.query<{ v: string }>(
+      "select c.hold::text as v from public.ships s join public.ship_classes c on c.id = s.class_id where s.name = 'Gaivota'",
+    )).rows[0].v,
+  )
+  expect(s.hold).toBeGreaterThanOrEqual(classHold)
+  expect(s.hold).toBeLessThanOrEqual(classHold * 1.2)
   expect(s.durability).toBe(s.max_durability)
   expect(s.crew).toBe(s.crew_required)
   expect(s.crew_max).toBeGreaterThanOrEqual(s.crew_required)

@@ -282,7 +282,10 @@ begin
   raise notice 'PASS: FIRST_SESSION_READS_MARKET — Lisboa prices the % good(s) it TRADES (of % in the catalogue), and the quay names % for % — % nm out, a quoted margin of % d.; it mids at % here and % there, which is the gradient itself rather than an index of it',
     jsonb_array_length(v_mkt->'goods'), (select count(*) from public.goods), v_good_code, v_dest_name, v_leg_nm, v_edge,
     round(v_mid_home, 1), round(v_mid_away, 1);
-  select greatest(1, floor((c.hold - s.water_t - s.food_t) / g.bulk))
+  -- 0276: the room is HER OWN hold (public.ship_hold_capacity reads world.ship_stats → ship_base),
+  -- not the class's — a rolled hull can hold more than her class's figure, so the class column
+  -- would understate the room and a "+20" overflow could slip through for a Fine hold.
+  select greatest(1, floor((public.ship_hold_capacity(s.id) - s.water_t - s.food_t) / g.bulk))
     into v_room
     from public.ships s
     join public.ship_classes c on c.id = s.class_id
@@ -323,8 +326,9 @@ begin
     v_start, v_after_buy, v_qty, v_cargo;
 
   -- ── 1:20 SAIL, typed the way a player types it
-  select speed_kn into v_rated from public.ship_classes c
-    join public.ships s on s.class_id = c.id where s.fleet_id = v_fleet;
+  -- 0276: the rating she sails against is HER OWN (ship_base), not the class's — a Fine roll's
+  -- laden speed can still exceed the class figure, and then "laden < rating" would falsely fire.
+  select (public.ship_base(s.id)).speed into v_rated from public.ships s where s.fleet_id = v_fleet;
   v_r := proof.sail(v_fleet, v_dest_code);
   if not (v_r->>'ok')::boolean then
     raise exception 'PROOF 4 FAILED at 1:20 — SAIL was refused: %', v_r;
