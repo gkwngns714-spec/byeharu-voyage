@@ -83,18 +83,27 @@ export function PortYard({
   const [name, setName] = useState('')
   const [sending, setSending] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
+  // 0276 — the toast after a build: the ship just laid down and her grade word (nothing when the
+  // hull is standard, or when the server is older than 0276 and serves no grade).
+  const [built, setBuilt] = useState<{ name: string; grade: string } | null>(null)
   const issue = useWorld((s) => s.issue)
 
   const build = (hull: YardHull) => {
     if (!fleet || sending || name.trim().length < 3) return
     setSending(true)
     setRefusal(null)
+    const wanted = name.trim()
     void (async () => {
-      const okay = await issue(fleet.id, `BUILD ${hull.class} ${name.trim()}`, null)
+      const okay = await issue(fleet.id, `BUILD ${hull.class} ${wanted}`, null)
       setSending(false)
       if (okay) {
         setOpen(null)
         setName('')
+        // The world was read back on success: the ship just laid down is the one the order named,
+        // and her grade word is the server's — nothing is derived from the roll here.
+        const ships = useWorld.getState().fleets.find((f) => f.id === fleet.id)?.ships ?? []
+        const grade = ships.find((s) => s.name === wanted)?.grade
+        if (grade) setBuilt({ name: wanted, grade })
       } else {
         setRefusal(useWorld.getState().refusal)
       }
@@ -114,6 +123,11 @@ export function PortYard({
 
   return (
     <div data-testid="port-yard">
+      {built && (
+        <Note tone="accent" data-testid="yard-built" className="mb-3">
+          {built.grade === 'fine' ? t('yard.builtFine', { name: built.name }) : t('yard.builtPoor', { name: built.name })}
+        </Note>
+      )}
       {!fleet && (
         <Note tone="warning" className="mb-3">
           {t('yard.noFleetYard')}
@@ -146,6 +160,7 @@ export function PortYard({
                   tap="whole"
                   onClick={() => {
                     setRefusal(null)
+                    setBuilt(null)   // 0276: a fresh look at a hull clears the last build's toast
                     setDetent('half')
                     setOpen(hull)
                   }}
@@ -190,6 +205,15 @@ export function PortYard({
           <Row label={t('yard.cargo')} value={<Figure value={formatInt(open.hold)} unit={t('yard.tons')} />} />
           <Row label={t('yard.speed')} value={<Figure value={open.speed_kn} unit={t('yard.knots')} />} />
           <Row label={t('yard.crewNeeded')} value={<Figure value={formatInt(open.crew_required)} />} />
+          {/* 0276 — the blind roll, said before you build: the class figures above are the average,
+              and a new hull strays by this much (the rare Poor and Fine beyond). */}
+          {open.variety_pct !== undefined && open.variety_pct > 0 && (
+            <Row
+              label={t('yard.variety')}
+              value={<Figure value={`±${formatInt(open.variety_pct)} %`} />}
+              data-testid="yard-variety"
+            />
+          )}
           <Materials label={t('yard.materials')} list={open.goods} />
           <Materials label={t('yard.parts')} list={open.items} />
 
