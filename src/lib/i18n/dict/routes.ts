@@ -38,6 +38,9 @@ export const routesDict = defineDict({
     meanOf: { one: 'mean of {n} lap', other: 'mean of {n} laps' },
     lapsClosed: 'Laps closed',
     plan: 'Plan: no fleet on it.',
+    // 0275 (docs/WEEKLY_ROLLOVER.md §5 W4): the weekly counters, served by public.route_earnings.
+    weekLaps: { one: '{n} lap this week · {net}', other: '{n} laps this week · {net}' },
+    lastWeekLaps: { one: 'Last week: {n} lap · {net}', other: 'Last week: {n} laps · {net}' },
   },
   ko: {
     title: '항로',
@@ -75,5 +78,8 @@ export const routesDict = defineDict({
     meanOf: { one: '{n}바퀴 평균', other: '{n}바퀴 평균' },
     lapsClosed: '완료한 바퀴',
     plan: '계획: 선단 없음.',
+    // 0275 (docs/WEEKLY_ROLLOVER.md §5 W4): the weekly counters, served by public.route_earnings.
+    weekLaps: { one: '이번 주 {n}바퀴 · {net}', other: '이번 주 {n}바퀴 · {net}' },
+    lastWeekLaps: { one: '지난 주: {n}바퀴 · {net}', other: '지난 주: {n}바퀴 · {net}' },
   },
 })

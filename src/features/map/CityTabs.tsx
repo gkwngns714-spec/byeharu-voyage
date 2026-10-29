@@ -10,6 +10,7 @@ import { PortPrices } from '../../live/PortPrices'
 import { CITY_TABS, useCityTab } from './cityTab'
 import { CityInfo } from '../../live/CityInfo'
 import { CityTownHall } from '../../live/CityTownHall'
+import { CityHistory } from '../../live/CityHistory'
 import { TowNote } from '../../live/TowNote'
 import { useT, type TKey } from '../../lib/i18n'
 
@@ -43,6 +44,9 @@ import { useT, type TKey } from '../../lib/i18n'
 //           is, what its market trades, and — gated by your own stake, 0214's rule — its purse,
 //           its money in and out and the taxes it takes. Composed of reads the panel already
 //           makes; it decides nothing and is no city's second authority.
+//   History `CityHistory` (owner row 173, docs/WEEKLY_ROLLOVER.md §4) — the city's giving by
+//           week, the current week open and the past eight folded (`world.city_history`). The
+//           week, its dates and the totals are served; the face computes none of them.
 //
 // Every second-level tray these faces open stands `side-next`, beside the panel — the pattern a
 // ship opened from a fleet panel already uses (src/live/ShipPanel.tsx).
@@ -72,6 +76,7 @@ export function CityTabs({ portCode, harbour }: { portCode: string; harbour: Rea
         {tab === 'inn' && port && <PortInn port={port} alongside={docked[0] ?? null} trayMode="side-next" />}
         {tab === 'townhall' && port && <CityTownHall port={port} trayMode="side-next" />}
         {tab === 'info' && port && <CityInfo port={port} />}
+        {tab === 'history' && port && <CityHistory port={port} />}
       </div>
     </div>
   )

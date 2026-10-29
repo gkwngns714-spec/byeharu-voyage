@@ -158,3 +158,36 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await expect(page.getByTestId('townhall-given-today')).toContainText('given today', { timeout: 30_000 })
   await expect(page.getByTestId('townhall-influence-share').filter({ hasText: 'Portugal' })).toHaveCount(1, { timeout: 30_000 })
 })
+
+test('0275 (owner row 173): the city History tab folds the weeks — the current one open with the served total', async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  test.setTimeout(600_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+  // The same fixture as the Town Hall board: a merchant invested ten shares of Porto's docks through
+  // the one door, which lands her in THIS week's giving book — the History tab's current week.
+  const world = await townHallWorld()
+  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: world.body, contentType: 'application/gzip' }))
+  await page.setViewportSize(PHONE)
+  await page.goto('map')
+  await ready(page)
+
+  await openCity(page, CITY, 'Porto')
+  await page.getByTestId('map-city-tabs').getByText('History', { exact: true }).click()
+  await expect(page.getByTestId('map-city-history')).toBeVisible({ timeout: 30_000 })
+  // One fold per week, the current week FIRST and OPEN: its label and the served total.
+  const weeks = page.getByTestId('city-history-week')
+  await expect(weeks).toHaveCount(9) // the current week and the past eight
+  const current = weeks.first()
+  await expect(current).toContainText('This week')
+  await expect(current).toContainText('given')
+  await expect(current.getByTestId('city-history-investor').filter({ hasText: world.investor })).toHaveCount(1)
+  await expect(current.getByTestId('city-history-investor').filter({ hasText: world.investor })).toContainText('Merchant')
+  // The week before this one is folded shut and serves nothing — the fixture world gave nothing then.
+  await expect(weeks.nth(1)).toContainText('Last week')
+  await expect(weeks.nth(1).getByTestId('city-history-nobody')).toHaveCount(0) // folded: the muted line is inside the fold
+  await weeks.nth(1).click()
+  await expect(weeks.nth(1).getByTestId('city-history-nobody')).toHaveCount(1)
+})

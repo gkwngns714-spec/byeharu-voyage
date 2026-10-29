@@ -1731,6 +1731,11 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.quay_tally(jsonb, timestamptz, timestamptz)',
     // 0268: the mint gate the guard holds shared and the economy switch exclusive. Server-only.
     'public.mint_gate(boolean)',
+    // 0275: the week clock and the city book's one writer. Server-only — a client reads the week
+    // through the town hall and the history tab, never computes one.
+    'world.week_of(timestamptz)',
+    'world.week_start(bigint)',
+    'public.city_week_post(uuid, uuid, text, bigint)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f

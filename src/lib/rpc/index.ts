@@ -71,6 +71,7 @@ import type {
   FleetTrades,
   PortMerchants,
   TownHallView,
+  CityHistoryView,
   PriceOutlook,
   PriceWhy,
   SeaConditions,
@@ -636,6 +637,12 @@ export function worldPortMerchants(portId: string): Promise<RpcResult<PortMercha
  *  there. Asked when the tab is open, not on the beat. */
 export function worldTownHall(portId: string): Promise<RpcResult<TownHallView>> {
   return call<TownHallView>('worldTownHall', [portId])
+}
+
+/** THE CITY'S HISTORY (0275, docs/WEEKLY_ROLLOVER.md §4) — the weeks of giving to one harbour,
+ *  the current week first, up to eight past. Asked when the tab is open, not on the beat. */
+export function worldCityHistory(portId: string, weeks: number): Promise<RpcResult<CityHistoryView>> {
+  return call<CityHistoryView>('worldCityHistory', [portId, weeks])
 }
 
 /** A good's estimated price at one city (0170), on one side — mid (the chart), ask (where you buy)

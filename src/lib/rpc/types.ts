@@ -1995,6 +1995,9 @@ export interface StandingRoute {
   lap: { lap_no: number; started_at: string; stops_done: number; skipped: number } | null
   /** The last ten closed laps, newest first. */
   laps: StandingRouteLap[]
+  /** 0275 (docs/WEEKLY_ROLLOVER.md §5 W4): the one earnings reading, composed into the book — the
+   *  fold and the tray print `week` / `last_week` from it, never a figure they made themselves. */
+  earnings: RouteEarnings
 }
 
 /** What `world.standing_routes()` serves: the company's routes and the knobs they live under. */
@@ -2271,7 +2274,16 @@ export interface RouteEarnings {
   lap_basis: number
   /** The last seven nets, NEWEST FIRST. */
   laps_recent: number[]
+  /** 0275 (docs/WEEKLY_ROLLOVER.md): the laps closed THIS week — the week is a key, and the live
+   *  counter reads the current week's. `laps_done_all` keeps the old all-time figure (one release,
+   *  then it goes). */
   laps_done: number
+  laps_done_all: number
+  /** 0275: this week's laps and their figures (0 while none closed this week). Served by the server;
+   *  the week itself is never computed on the client. */
+  week: { laps: number; net: number; sold: number; bought: number; supplies: number; repairs: number; wages: number }
+  /** 0275: the week before this one's laps and net — null while none closed last week. */
+  last_week: { laps: number; net: number } | null
 }
 
 
@@ -2476,13 +2488,14 @@ export interface CityWork {
   subscribed: number
 }
 
-/** One holder of a city's shares — a merchant company or a player's company, by name. */
+/** 0275 (docs/WEEKLY_ROLLOVER.md §4): one giver on the city's weekly board — this week's giving,
+ *  from `world.town_hall` and `world.city_history` (invested = SHARE, donated = DONATION). */
 export interface CityInvestor {
   name: string
   merchant: boolean
-  kind: WorkKind
-  shares: number
-  paid: number
+  invested: number
+  donated: number
+  total: number
 }
 
 /** `world.town_hall(port)` — one harbour's purse, its last full day's book, its works, who invested. */
@@ -2514,6 +2527,7 @@ export interface TownHallView {
   }
   day: { game_day: number; in: Record<string, number>; out: Record<string, number> }
   works: CityWork[]
+  /** 0275 (docs/WEEKLY_ROLLOVER.md): THIS week's givers (the board resets weekly; the share register does not). */
   investors: CityInvestor[]
   you: { docked: boolean; holdings: { kind: WorkKind; shares: number; paid: number; owed: number }[] }
   /** 0144 — who holds the city, each country's influence there, and Donate. */
@@ -2530,6 +2544,30 @@ export interface TownHallGift {
   ducats: number
   at: string
   called_from: string | null
+}
+
+/** 0275 — one week of a city's giving, as `world.city_history` serves it. */
+export interface CityHistoryWeek {
+  /** The week's number — `world.week_of`'s; printed, never computed. */
+  week: number
+  /** The instant the week began and the instant the next one begins (`world.week_start`'s). */
+  starts: string
+  ends: string
+  /** The week that is now. */
+  current: boolean
+  /** Σ of everything given to the city that week. */
+  total: number
+  investors: CityInvestor[]
+}
+
+/** `world.city_history(port, weeks)` (0275, docs/WEEKLY_ROLLOVER.md §4) — the city's giving by week:
+ *  the current week and the past eight, newest first. The table keeps every week; the door serves
+ *  eight. Weeks, dates and totals are served; the client prints them and computes none of them. */
+export interface CityHistoryView {
+  port: string
+  /** The current week's number. */
+  week: number
+  weeks: CityHistoryWeek[]
 }
 
 /** 0144 (docs/INFLUENCE.md I2) — the Town Hall's influence block. */
