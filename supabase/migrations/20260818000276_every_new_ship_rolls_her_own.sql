@@ -563,7 +563,10 @@ $h$      for s in select sh.id, sh.durability, (public.ship_base(sh.id)).durabil
 -- ── voyage.fight: the hull handed to fight_resolve carries her rolled max ───────────────────────
 ('voyage.fight(uuid,int,uuid,numeric)', 1,
 $h$             'id', s.id, 'name', s.name, 'tier', c.tier, 'hull', s.durability, 'maxd', c.durability, 'crew', s.crew,$h$,
-$h$             'id', s.id, 'name', s.name, 'tier', c.tier, 'hull', s.durability, 'maxd', (public.ship_base(s.id)).durability, 'crew', s.crew,$h$),
+$h$             'id', s.id, 'name', s.name, 'tier', c.tier, 'hull', s.durability,
+             -- 0276: her own rolled max — as a scalar subselect, because the jsonb_agg around this
+             -- build_object is an aggregate and an aggregate cannot hold a set-returning call.
+             'maxd', (select sb.durability from public.ship_base(s.id) sb), 'crew', s.crew,$h$),
 
 -- ── world.ship_stats: the base of the four rolled stats reads her base (both branches) ──────────
 ('world.ship_stats(uuid)', 1,

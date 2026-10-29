@@ -1673,7 +1673,10 @@ test('the registry and the client grants are one set, and the merchant cores are
   ).toBe('world.sea_traffic(jsonb)')
   const cores = [
     'public.new_house(uuid, text, text, text, text, text, text, bigint, boolean)',
-    'public.commission_ship(uuid, uuid, text, text, boolean, boolean)',
+    // 0276: the roll (the signature gained the probe's id, `p_ship uuid default null`; the old
+    // overload is DROPPED — two overloads with a default would be the ambiguous call 0102's own
+    // comment warns about, and the six-argument callers resolve through the default).
+    'public.commission_ship(uuid, uuid, text, text, boolean, boolean, uuid)',
     'public.form_fleet(uuid, text, uuid)',
     'public.sign_officer(uuid, text, uuid)',
     'public.raise_skill(uuid, text, text)',

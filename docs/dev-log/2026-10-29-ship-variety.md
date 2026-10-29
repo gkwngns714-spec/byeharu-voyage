@@ -240,6 +240,25 @@ the 50 s merchant soak (12/12) — on the cached chain (261 restored + 0276 appl
 `tests/format.spec.ts` rollMark test passes locally (the other seven local failures in that file
 are the machine's Korean locale, known to pass on CI).
 
+**The SECOND CI round found one more, deeper in the same class** (the shard log's real error, not
+the hypothesis): `aggregate function calls cannot contain set-returning function calls` in
+`voyage.fight` — its p_ships builder puts `(public.ship_base(s.id)).durability` INSIDE the
+`jsonb_agg(jsonb_build_object(…))`, and an aggregate's argument may not hold a set-returning call.
+The smoke had created the body (CREATE does not evaluate), and no local proof lit combat_bite, so
+only the fights spec's lit world exposed it. The hunk now reads the max through a scalar subselect
+(`(select sb.durability from public.ship_base(s.id) sb)`) — the same shape the do_hire and
+fleet_repair_due hunks already used. `npcOn.warm` failed in the same run with the SAME error —
+the merchants-on world build runs merchant laps with the fight lit — so one fix covers both.
+`tests/rpc.surface.spec.ts` also pinned the OLD 6-argument commission_ship in its server-only
+cores list (the overload this slice drops on purpose); the list now names the 7-argument
+signature, with the 0102 ambiguity comment cited.
+
+Local runs after the second round: `tests/ledger.fights.spec.ts` **2 passed** (the lit raid
+passage fights every day in rounds and the report hangs each fight under its day, on the new
+fight hunk); `tests/rpc.surface.spec.ts -g "the registry and the client grants"` **1 passed** (the
+cores list names the 7-argument commission_ship and none is client-reachable); the standing gate
+re-ran green (5/5) with the re-cut file.
+
 ## 11. Deviations from the design doc, said plainly (D)
 
 1. `ship_roll(seed, class)` is STABLE, not IMMUTABLE — it reads the band ROWS (the hard
