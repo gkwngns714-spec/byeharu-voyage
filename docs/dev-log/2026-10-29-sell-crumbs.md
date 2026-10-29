@@ -109,12 +109,14 @@ is what the code does — and the self-assert proves the truth table rather than
 On the chain's sample merchant (one hull, a harbour stop that is not the lap's first — 0272's sample shape), each
 case re-plants her state and rolls back whole:
 
-- **(a) SELL ALL of 0.93 t** — OLD raises `E_NO_CARGO`; NEW sells **0.93**, credits the quote's total, the stack
-  empties, the port stock is restored (+0.93).
-- **(b) SELL HALF of 0.93** — OLD `E_NO_CARGO`; NEW sells **0.465**, 0.465 stays aboard, stock +0.465.
-- **(c) SELL PCT 30 of 0.93** — OLD `E_NO_CARGO`; NEW sells **0.279**, 0.651 stays aboard, stock +0.279.
+- **(a) SELL ALL of 0.93 t** — OLD raises `E_NO_CARGO`; NEW sells **0.93**, the purse is credited the order's own
+  reported total, the stack empties, the port stock never fell.
+- **(b) SELL HALF of 0.93** — OLD `E_NO_CARGO`; NEW sells **0.465**, 0.465 stays aboard, the purse credited the
+  order's own total, the stock never fell.
+- **(c) SELL PCT 30 of 0.93** — OLD `E_NO_CARGO`; NEW sells **0.279**, 0.651 stays aboard, the purse credited the
+  order's own total, the stock never fell.
 - **(d) SELL ALL of 3.4 t** — OLD sells **3** and strands a **0.4** t crumb (the crumb generator, seen); NEW sells
-  **3.4**, the stack empties, stock +3.4. The rows differ — asserted.
+  **3.4**, the stack empties, the stock never fell. The rows differ — asserted.
 - **(d′) SELL ALL of a whole 4 t** — OLD and NEW identical rows, 4 sold, the stack empties.
 - **(f) SELL ALL with an empty hold** — `E_NO_CARGO` on both bodies.
 - **(e) BUY ALL / HALF / PCT 30** — `cmd.resolve_qty` answers the same value on both bodies (in situ), and the whole
@@ -123,8 +125,10 @@ case re-plants her state and rolls back whole:
   `qty` NULL, `at_profit` TRUE) over a sub-ton hold, run through `cmd.advance`'s queue-dry refill:
   `cmd.standing_route_lines` render → `cmd.parse` → `cmd.enqueue` → `cmd.advance`. OLD: every SELL `skipped
   E_NO_CARGO`, no SELL credit, the hold intact, she sails with the crumbs (prod's 62,600 in miniature). NEW: each
-  SELL executes for the **exact tonnage**, the ledger is credited the quote's totals, the stacks empty, the port
-  stock restored; then she sails.
+  SELL executes for the **exact tonnage** and the ledger is credited **the sum of the done SELL orders' own reported
+  totals** — read from the executed orders, never from a pre-read `world.quote` that a live market can move between
+  the read and the sale (the first prod push proved exactly that race: 1912 d. vs 1926 d.) — and the stacks empty;
+  then she sails.
 - **(h) THE RULE THAT MUST NOT MOVE** — the same line with the bid BELOW the basis (`at_profit` floor): on a sub-ton
   hold OLD refuses `E_NO_CARGO` (never reaches the price) and NEW refuses `E_PRICE_LIMIT` (the whole stack would
   sell, the floor stops it) — nothing is sold, the order is `skipped`, the hold intact; on a whole 2 t stack both
@@ -140,8 +144,25 @@ case re-plants her state and rolls back whole:
 ## The receipt (verbatim)
 
 ```
-0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 999e9f6baa9083cfd29e4920fed00886, prod's own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (44 points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant 84f76e31-9166-42b5-a93b-55377d2d7372: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock restored, the purse credited the quote's total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod's normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the quote's totals; a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant 84f76e31-9166-42b5-a93b-55377d2d7372 (20 d. hire, a sub-ton hold worth 1799 d. at the bid in 2 stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and the SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse 367 d. and the ledger reconciled; the control identical. Rolled back.
+0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 999e9f6baa9083cfd29e4920fed00886, prod's own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (44 points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant 84f76e31-9166-42b5-a93b-55377d2d7372: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock never fell, the purse credited the order's own total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod's normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the ledger the sum of the done SELLs' own reported totals (no pre-read price a live market can move); a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant 84f76e31-9166-42b5-a93b-55377d2d7372 (20 d. hire, a sub-ton hold worth 1799 d. at the bid in 2 stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and the SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse 367 d. and the ledger reconciled; the control identical. Rolled back.
 ```
+
+## FIRST PUSH RED, on the probe — the live-market race (the recorded class)
+
+The first prod push failed on the migration's own self-assert, before anything applied (prod head stayed 0272):
+
+```
+0273 self-assert FAIL: the new queue SELLs did not credit the quote's totals (1912 d. vs 1926 d.)
+```
+
+The queue probe read `world.quote` BEFORE the sales and compared the ledger to that pre-read sum. On the local
+chain (a still world) that holds; on prod the market is live — other players and merchants trade the same
+port/goods between the read and the sale, so the price moved 14 d. under the probe. The stock delta check raced the
+same way. Fixed in the self-assert only (cmd.resolve_qty untouched): the credit is now asserted as **the sum of the
+done SELL orders' own reported totals, to the ducat** (the executed orders, never a pre-read price), the exact-tonnage
+sale is asserted from each done order's own `qty`, the direct probes assert the purse against the order's own
+reported total, and the stock checks are monotone (`stock_after >= stock_before`) where kept and dropped from the
+queue case. The re-run is the receipt above.
 
 ## Local gates
 

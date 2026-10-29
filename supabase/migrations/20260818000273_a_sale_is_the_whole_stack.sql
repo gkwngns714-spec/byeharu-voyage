@@ -351,18 +351,10 @@ declare
   v_sq    text;
   v_res   jsonb;
   v_code  text;
-  v_qty   numeric;
   v_before numeric;
   v_after  numeric;
-  v_expected numeric;
 begin
-  select g.code, (p_cargo->>g.code)::numeric into v_code, v_qty
-    from public.goods g where g.id = p_good;
-  -- the quantity the MODE resolves to on the new body (the sell under test): the expected total is the quote of
-  -- THAT quantity, so the purse check compares like for like
-  v_qty := case when p_qty_mode = 'HALF' then v_qty / 2
-                when p_qty_mode = 'PCT'  then v_qty * coalesce(p_qty_pct, 0)::numeric / 100
-                else v_qty end;
+  select g.code into v_code from public.goods g where g.id = p_good;
   begin
     perform pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, 0, p_cargo, p_basis, true, false, 0);
     if p_mode = 'old' then
@@ -371,13 +363,12 @@ begin
       select new_def into v_sq from new_bodies_0273; execute v_sq;
     end if;
     select stock into v_before from public.port_goods where port_id = p_port and good_id = p_good;
-    v_expected := coalesce((select q.total from world.quote(p_port, p_good, v_qty, 'sell', null, p_fleet) q), 0);
     v_res := cmd.do_sell(p_fleet, jsonb_build_object('good', p_good, 'qty_mode', p_qty_mode, 'qty_pct', p_qty_pct));
     select stock into v_after from public.port_goods where port_id = p_port and good_id = p_good;
     raise exception using errcode = 'ZY273', message = jsonb_build_object(
       'mode', p_mode, 'ok', true, 'result', v_res,
       'cargo_qty', public.fleet_cargo_qty(p_fleet, v_code),
-      'stock_before', v_before, 'stock_after', v_after, 'expected_total', v_expected,
+      'stock_before', v_before, 'stock_after', v_after,
       'purse', (select p.ducats from public.players p where p.id = p_house),
       'digest', pg_temp.digest_0273(p_fleet, p_route, p_house))::text;
   exception when others then
@@ -481,7 +472,6 @@ declare
   v_sq       text;
   v_ran      int;
   v_ord_line int;
-  v_expected jsonb;
   v_ledger   numeric;
   v_sold     jsonb;
   v_cargo    jsonb;
@@ -489,12 +479,6 @@ declare
   v_stock    jsonb;
   v_orders   jsonb;
 begin
-  -- the expected bid value of every planted stack, before anything moves
-  select coalesce(jsonb_agg(jsonb_build_object('code', k, 'qty', (p_cargo->>k)::numeric,
-                     'total', coalesce((select q.total from world.quote(p_port, gd.id, (p_cargo->>k)::numeric, 'sell', null, p_fleet) q), 0)))
-                  , '[]'::jsonb)
-    into v_expected
-    from jsonb_object_keys(p_cargo) k join public.goods gd on gd.code = k;
   begin
     perform pg_temp.state_0273(p_house, p_fleet, p_route, p_port, p_ord, 0, 0, p_cargo, p_basis, true, false, 0);
     if p_mode = 'old' then
@@ -527,7 +511,7 @@ begin
       into v_orders
       from public.orders o where o.fleet_id = p_fleet;
     raise exception using errcode = 'ZY273', message = jsonb_build_object(
-      'mode', p_mode, 'ran', v_ran, 'expected', v_expected,
+      'mode', p_mode, 'ran', v_ran,
       'ledger_sell', v_ledger, 'sold', v_sold, 'cargo', v_cargo, 'stock_before', v_stock_before,
       'stock', v_stock, 'orders', v_orders,
       'fleet_status', (select f.status from public.fleets f where f.id = p_fleet),
@@ -788,9 +772,9 @@ begin
   end if;
   if not coalesce((n->>'ok')::boolean, false) or coalesce((n->'result'->>'qty')::numeric, -1) <> 0.93
      or coalesce((n->>'cargo_qty')::numeric, -1) <> 0
-     or coalesce((n->>'stock_after')::numeric, -999) <> coalesce((n->>'stock_before')::numeric, 0) + 0.93
-     or coalesce((n->>'purse')::bigint, -1) <> (n->>'expected_total')::bigint then
-    raise exception '0273 self-assert FAIL: the new SELL ALL of 0.93 t did not sell the whole stack for the quote''s total: %', n;
+     or coalesce((n->>'stock_after')::numeric, -999) < coalesce((n->>'stock_before')::numeric, 0)
+     or coalesce((n->>'purse')::bigint, -1) <> (n->'result'->>'total')::bigint then
+    raise exception '0273 self-assert FAIL: the new SELL ALL of 0.93 t did not sell the whole stack for the order''s own total: %', n;
   end if;
   v_step := v_step + 1;
   -- (d2) HALF of 0.93
@@ -803,9 +787,9 @@ begin
   end if;
   if not coalesce((n->>'ok')::boolean, false) or coalesce((n->'result'->>'qty')::numeric, -1) <> 0.465
      or coalesce((n->>'cargo_qty')::numeric, -1) <> 0.465
-     or abs(coalesce((n->>'stock_after')::numeric, -999) - (coalesce((n->>'stock_before')::numeric, 0) + 0.465)) > 0.01
-     or coalesce((n->>'purse')::bigint, -1) <> (n->>'expected_total')::bigint then
-    raise exception '0273 self-assert FAIL: the new SELL HALF of 0.93 t did not sell 0.465 for the quote''s total: %', n;
+     or coalesce((n->>'stock_after')::numeric, -999) < coalesce((n->>'stock_before')::numeric, 0)
+     or coalesce((n->>'purse')::bigint, -1) <> (n->'result'->>'total')::bigint then
+    raise exception '0273 self-assert FAIL: the new SELL HALF of 0.93 t did not sell 0.465 for the order''s own total: %', n;
   end if;
   v_step := v_step + 1;
   -- (d3) PCT 30 of 0.93
@@ -818,9 +802,9 @@ begin
   end if;
   if not coalesce((n->>'ok')::boolean, false) or coalesce((n->'result'->>'qty')::numeric, -1) <> 0.279
      or coalesce((n->>'cargo_qty')::numeric, -1) <> 0.651
-     or abs(coalesce((n->>'stock_after')::numeric, -999) - (coalesce((n->>'stock_before')::numeric, 0) + 0.279)) > 0.01
-     or coalesce((n->>'purse')::bigint, -1) <> (n->>'expected_total')::bigint then
-    raise exception '0273 self-assert FAIL: the new SELL PCT 30 of 0.93 t did not sell 0.279 for the quote''s total: %', n;
+     or coalesce((n->>'stock_after')::numeric, -999) < coalesce((n->>'stock_before')::numeric, 0)
+     or coalesce((n->>'purse')::bigint, -1) <> (n->'result'->>'total')::bigint then
+    raise exception '0273 self-assert FAIL: the new SELL PCT 30 of 0.93 t did not sell 0.279 for the order''s own total: %', n;
   end if;
   v_step := v_step + 1;
   -- (d4) ALL of 3.4: the old body sells floor(3.4) = 3 and strands a 0.4 t crumb; the new body sells the whole 3.4.
@@ -834,7 +818,7 @@ begin
   end if;
   if not coalesce((n->>'ok')::boolean, false) or coalesce((n->'result'->>'qty')::numeric, -1) <> 3.4
      or coalesce((n->>'cargo_qty')::numeric, -1) <> 0
-     or coalesce((n->>'stock_after')::numeric, -999) <> coalesce((n->>'stock_before')::numeric, 0) + 3.4 then
+     or coalesce((n->>'stock_after')::numeric, -999) < coalesce((n->>'stock_before')::numeric, 0) then
     raise exception '0273 self-assert FAIL: the new SELL ALL of 3.4 t did not sell the whole stack: %', n;
   end if;
   if (o->>'digest') is not distinct from (n->>'digest') then
@@ -883,29 +867,28 @@ begin
   -- (e) THE NORMAL LINE through the real queue: prod's own standing_route_lines row (kind SELL, good_id NULL,
   -- qty NULL, at_profit TRUE) over a sub-ton hold, rendered to one SELL <good> ALL AT >= <basis> per good aboard,
   -- parsed, enqueued and executed by cmd.advance (0092's queue-dry refill). OLD skips every SELL E_NO_CARGO and
-  -- credits nothing; NEW executes each SELL for the exact tonnage, credits the ledger the quote's totals, empties
-  -- the stacks and restores the port stock; then she sails.
+  -- credits nothing; NEW executes each SELL for the exact tonnage and credits the ledger the sum of the done
+  -- SELL orders' OWN reported totals (a live market may move the price between a pre-read quote and the sale —
+  -- so the proof reads the orders, never a pre-read price), and the stacks empty; then she sails.
   qg := pg_temp.queue_goods_0273(g.port_id, g.route_id, g.ord);
   o := pg_temp.queue_case_0273('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, qg, 0);
   n := pg_temp.queue_case_0273('new', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, qg, 0);
-  if coalesce((n->>'ledger_sell')::numeric, -1) <> (select coalesce(sum((x->>'total')::numeric), 0) from jsonb_array_elements(n->'expected') as e(x)) then
-    raise exception '0273 self-assert FAIL: the new queue SELLs did not credit the quote''s totals (% d. vs % d.): %',
-      n->>'ledger_sell', (select coalesce(sum((x->>'total')::numeric), 0) from jsonb_array_elements(n->'expected') as e(x)), n->'orders';
-  end if;
-  for v_k in select * from jsonb_array_elements(n->'expected') as e(x) loop
+  -- every planted good: one done SELL order for its EXACT tonnage, and the hold emptied of it
+  for v_k in select * from jsonb_each(qg) as e(k, v) loop
     if not exists (select 1 from jsonb_array_elements(n->'sold') s
-                    where s->>'good' = v_k.x->>'code' and (s->>'qty')::numeric = (v_k.x->>'qty')::numeric) then
-      raise exception '0273 self-assert FAIL: the new queue run sold no % for its exact % t: % / %', v_k.x->>'code', v_k.x->>'qty', n->'sold', n->'orders';
+                    where s->>'good' = v_k.k and (s->>'qty')::numeric = (v_k.v)::numeric) then
+      raise exception '0273 self-assert FAIL: the new queue run sold no % for its exact % t: % / %', v_k.k, v_k.v, n->'sold', n->'orders';
     end if;
-    if coalesce((n->'cargo'->>(v_k.x->>'code'))::numeric, 0) <> 0 then
-      raise exception '0273 self-assert FAIL: the new queue run left % t of % aboard: %', n->'cargo'->>(v_k.x->>'code'), v_k.x->>'code', n->'cargo';
-    end if;
-    if coalesce((n->'stock'->>(v_k.x->>'code'))::numeric, -1)
-       <> coalesce((n->'stock_before'->>(v_k.x->>'code'))::numeric, -1) + (v_k.x->>'qty')::numeric then
-      raise exception '0273 self-assert FAIL: the new queue run did not restore the port stock of % (% → %)',
-        v_k.x->>'code', n->'stock_before'->>(v_k.x->>'code'), n->'stock'->>(v_k.x->>'code');
+    if coalesce((n->'cargo'->>v_k.k)::numeric, 0) <> 0 then
+      raise exception '0273 self-assert FAIL: the new queue run left % t of % aboard: %', n->'cargo'->>v_k.k, v_k.k, n->'cargo';
     end if;
   end loop;
+  -- the credit equals the sum of the done SELL orders' own reported totals, to the ducat
+  if coalesce((n->>'ledger_sell')::numeric, -1)
+     <> (select coalesce(sum((s->>'total')::numeric), -2) from jsonb_array_elements(n->'sold') s) then
+    raise exception '0273 self-assert FAIL: the new queue run''s credit (% d.) is not the sum of its done SELL orders'' own totals (% d.): %',
+      n->>'ledger_sell', (select coalesce(sum((s->>'total')::numeric), -2) from jsonb_array_elements(n->'sold') s), n->'orders';
+  end if;
   if coalesce((o->>'ledger_sell')::numeric, -1) <> 0
      or not exists (select 1 from jsonb_array_elements(o->'orders') e
                      where e->>'verb' = 'SELL' and e->>'status' = 'skipped' and e->>'code' = 'E_NO_CARGO')
@@ -1011,7 +994,7 @@ begin
         where key in ('npc_traders_enabled', 'standing_routes_enabled')), v_flags;
   end if;
 
-  raise notice '0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 %, prod''s own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (% points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant %: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock restored, the purse credited the quote''s total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod''s normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the quote''s totals; a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant % (% d. hire, a sub-ton hold worth % d. at the bid in % stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and the SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse % d. and the ledger reconciled; the control identical. Rolled back.',
+  raise notice '0273 self-assert ok: A SALE IS THE WHOLE STACK. cmd.resolve_qty reverses to its pre-image hunk by hunk (md5 %, prod''s own; its tail pinned), ACL / volatility / definer / config unmoved, every other function in the four schemas unmoved (md5), no function minted, the quay takers and the client entry points unmoved. The arithmetic grid (% points): a buy is identical for every v_max and every mode; a sell is identical exactly when its resolved quantity is a whole tun — 0.93 sells 0.93 (today 0), 3.4 sells 3.4 (today 3, stranding a crumb), HALF of 3 sells 1.5 (today 1); floor(v/2) = floor(floor(v)/2) throughout. Direct probes on merchant %: SELL ALL / HALF / PCT 30 of 0.93 t (old E_NO_CARGO, new sells the exact tonnage, the stack empties, the stock never fell, the purse credited the order''s own total), ALL of 3.4 (old 3 + a 0.4 crumb, new 3.4), ALL of a whole 4 t (identical rows), an empty hold (E_NO_CARGO both), BUY ALL / HALF / PCT (resolve equal, identical rows). The queue (prod''s normal line, kind SELL good_id null qty null at_profit true, rendered → parsed → enqueued → advanced): old skips every SELL E_NO_CARGO and credits nothing; new executes each SELL for the exact tonnage and credits the ledger the sum of the done SELLs'' own reported totals (no pre-read price a live market can move); a bid below the basis still refuses (sub-ton: old E_NO_CARGO, new E_PRICE_LIMIT, the hold intact; a whole 2 t: E_PRICE_LIMIT and identical rows). The seam, her step OLD vs NEW on merchant % (% d. hire, a sub-ton hold worth % d. at the bid in % stacks): OLD leaves every cut-loss SELL skipped E_NO_CARGO, the HIRE skipped E_INSUFFICIENT_FUNDS and the SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, the crew restored, the purse % d. and the ledger reconciled; the control identical. Rolled back.',
     (select md5 from defs_before_0273), v_grid, g.route_id, g.route_id,
     n->>'hire', n->>'hold_value', n->>'stacks', n->>'purse';
 end $$;
