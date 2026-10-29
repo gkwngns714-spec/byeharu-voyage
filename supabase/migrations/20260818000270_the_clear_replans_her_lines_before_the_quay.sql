@@ -46,6 +46,16 @@
 -- receipt.tend_holds: no hold over ~200 ms from a clear). Expect the tend phase's held_ms to fall by the plans'
 -- share (~1-2 s an hour) and the :07 lag p95 toward the other minutes'.
 --
+-- SUPERSEDE (supabase/migrations/README.md:43-48). This file re-cuts TWO live functions, by hunks sliced from
+-- their bodies (each hunk asserts it occurs exactly once and reverses to its pre-image):
+--   * public.npc_tend_route(timestamptz, uuid, uuid, bigint) — 0137's body, as last re-cut by 0150 and 0269;
+--   * public.tick_reconcile(boolean) — 0249's body, as last re-cut by 0265, 0267 and 0269.
+-- It is a no-op for every caller that does not set the plan-pass flags — public.npc_tend (0137) and every proof:
+-- without them v_plan_pass and v_planned are false, the gates run as they did, and 0150's rule is asked through
+-- public.npc_clear_due, which answers exactly what the inline test answered. Everything that must move together
+-- moves in this one file: the rule (public.npc_clear_due), the two flags, the plan-pass mode and the loop that
+-- sets them.
+--
 -- VERSION: 0270 (prod head 0269).
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
