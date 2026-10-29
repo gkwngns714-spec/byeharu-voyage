@@ -5,6 +5,7 @@ import { taxFactorWords } from '../../../domain/port'
 import { CityGoodTrades } from '../../../live/CityGoodTrades'
 import { PortFlag } from '../../../live/PortFlag'
 import { usePriceWhy } from '../../../live/useDesk'
+import { useNewsMarks } from '../../../live/useNewsMarks'
 import { usePriceSeries } from '../../../live/usePriceSeries'
 import { useTrade } from '../../../live/useTrade'
 import { portNameOf, useWorld } from '../../../live/worldStore'
@@ -174,7 +175,7 @@ function Frame({
       <Row label={t('desk.aboardLabel')} value={<Figure value={formatInt(fleetCargoByCode(fleet)[good.code] ?? 0)} />} data-testid="good-detail-aboard" />
       {/* the units first, where a half-raised sheet shows them; the chart they are read against under them */}
       {units}
-      <Chart name={good.name} trend={trend} />
+      <Chart name={good.name} portId={portId} goodId={good.good_id} trend={trend} />
       {extra}
       <WhyThisPrice why={why.view ?? null} loading={why.loading} />
       <CityGoodTrades portId={portId} goodId={good.good_id} refresh={fleet.version} />
@@ -183,12 +184,31 @@ function Frame({
   )
 }
 
-/** THE BIGGER CHART: the span picker and the compact PriceChart over the chosen span. */
-function Chart({ name, trend }: { name: string; trend: ReturnType<typeof usePriceSeries> }) {
+/** THE BIGGER CHART: the span picker and the compact PriceChart over the chosen span, with the chart's
+ *  news dots (0279) over the same window the chart draws. */
+function Chart({
+  name,
+  portId,
+  goodId,
+  trend,
+}: {
+  name: string
+  portId: string
+  goodId: string
+  trend: ReturnType<typeof usePriceSeries>
+}) {
   const t = useT()
   const [openedAt] = useState(() => Date.now())
   const points = trend.series?.points ?? []
   const values = points.map((p) => p.ask ?? p.bid)
+  const ats = points.map((p) => Date.parse(p.at)).filter((n) => Number.isFinite(n))
+  const marks = useNewsMarks(
+    'price',
+    portId,
+    goodId,
+    points.length >= 2 && ats.length >= 2 ? Math.min(...ats) : null,
+    points.length >= 2 && ats.length >= 2 ? Math.max(openedAt, Math.max(...ats)) : null,
+  )
   return (
     <div className="py-2" data-testid="trend-row">
       <SpanPicker value={trend.span} onChange={trend.setSpan} />
@@ -205,6 +225,7 @@ function Chart({ name, trend }: { name: string; trend: ReturnType<typeof usePric
             slotSeconds={(trend.series as PriceSeries).step_seconds}
             nowMs={openedAt}
             compact
+            marks={marks}
             label={t('ui.pastPricesAxis', { name, n: values.length, lo: formatPriceFigure(Math.min(...values)), hi: formatPriceFigure(Math.max(...values)) })}
           />
         </div>

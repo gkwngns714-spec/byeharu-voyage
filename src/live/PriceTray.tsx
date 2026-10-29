@@ -5,7 +5,9 @@ import { formatMiles, formatPriceFigure } from '../lib/format'
 import type { MarketGood } from '../lib/rpc'
 import { useDeskGood } from '../store/deskGood'
 import { useT } from '../lib/i18n'
+import { useGoTo } from '../chart'
 import { CityGoodTrades } from './CityGoodTrades'
+import { useNewsMarks } from './useNewsMarks'
 import { useWorld } from './worldStore'
 
 // A GOOD, READ ON A QUAY SHE IS NOT ON — the tray a price cell opens when nobody of yours is
@@ -50,6 +52,11 @@ export function PriceTray({
   const openOnDesk = useDeskGood((s) => s.open)
   const portCode = useWorld((s) => s.snapshot?.ports.find((p) => p.id === portId)?.code ?? null)
   const navigate = useNavigate()
+  const goTo = useGoTo((s) => s.goTo)
+  // 0279: the trend chart's news dots, over the window the chart draws; the card's city link goes to
+  // the map (the one GoTo every named place uses).
+  const ats = (trend.series?.points ?? []).map((p) => Date.parse(p.at)).filter((n) => Number.isFinite(n))
+  const marks = useNewsMarks('price', portId, good.good_id, ats.length >= 2 ? Math.min(...ats) : null, ats.length >= 2 ? Math.max(...ats) : null)
   return (
     <Tray
       detent={detent}
@@ -62,7 +69,7 @@ export function PriceTray({
       <Row label={t('trade.sell')} value={<Figure value={formatPriceFigure(good.sell)} size="figure" />} />
       {/* ON THE MAP the slide beside the city panel IS the good's chart (owner row 220): unfolded at once,
           with the span picker above it and the trades list (0227) below — one chart, PriceRows'. */}
-      <PriceRows good={good} trend={trend} startOpen={mode === 'side-next'} />
+      <PriceRows good={good} trend={trend} startOpen={mode === 'side-next'} marks={marks} onOpenCity={(code) => goTo({ kind: 'port', code })} />
       <Row
         label={t('trade.openInCommand')}
         chevron

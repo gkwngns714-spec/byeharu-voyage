@@ -9,7 +9,7 @@ import { Skeleton } from './Skeleton'
 import { SpanPicker } from './SpanPicker'
 import { Sparkline } from './Sparkline'
 import { formatOfTotal, formatPriceFigure } from '../../lib/format'
-import type { MarketGood, PriceSeries, PriceSpan } from '../../lib/rpc'
+import type { MarketGood, NewsMark, PriceSeries, PriceSpan } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 
 // WHAT A GOOD IS, WHAT ITS PRICE HAS BEEN, HOW FAR IT CAN GO, AND HOW MUCH IS THERE — the four
@@ -67,6 +67,8 @@ export function PriceRows({
   trend,
   startOpen = false,
   compactChart = false,
+  marks = null,
+  onOpenCity,
 }: {
   good: MarketGood
   /** The remembered mids for THIS good at THIS port, and their cadence. */
@@ -77,6 +79,11 @@ export function PriceRows({
   startOpen?: boolean
   /** The chart as a compact panel (owner row 226) — the COMMAND good page's, in a column wider than a tray. */
   compactChart?: boolean
+  /** The news markers the unfolded chart draws (0279, owner row 216); the caller reads them over the
+   *  window the chart draws. Null draws none — the row is exactly what it was. */
+  marks?: readonly NewsMark[] | null
+  /** Opens a marker's city (the caller's navigation); absent, the card offers no link. */
+  onOpenCity?: (portCode: string) => void
 }) {
   const t = useT()
   const points = trend.series?.points ?? []
@@ -115,6 +122,8 @@ export function PriceRows({
             slotSeconds={(trend.series as PriceSeries).step_seconds}
             nowMs={openedAt as number}
             compact={compactChart}
+            marks={marks}
+            onOpenCity={onOpenCity}
             label={t('ui.pastPricesAxis', { name: good.name, n: values.length, lo: formatPriceFigure(Math.min(...values)), hi: formatPriceFigure(Math.max(...values)) })}
           />
         ) : (

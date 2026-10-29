@@ -1,5 +1,10 @@
-import { useMemo, useState, type PointerEvent, type ReactNode } from 'react'
+import { useMemo, useState, type MouseEvent, type PointerEvent, type ReactNode } from 'react'
 import { nearestDot, seriesChartModel, type SeriesPoint } from './seriesChartModel'
+import { newsMarksModel, type NewsMarkDot } from './newsMarksModel'
+import { NewsCard } from './NewsCard'
+import { newsHeadline } from '../../lib/i18n/dict/news'
+import type { NewsMark } from '../../lib/rpc'
+import { useLocale } from '../../lib/i18n'
 
 // ONE FIGURE OVER TIME — the small-multiple line the Stats tab is made of (seriesChartModel.ts says why
 // one series, one axis). Thin line (1.5), a faint wash to the floor, three y figures in the caption
@@ -32,6 +37,8 @@ export function SeriesChart({
   tone = 'accent',
   size,
   empty = null,
+  marks = null,
+  onOpenCity,
   className = '',
 }: {
   /** Served instants and values; any order. Fewer than two and `empty` is drawn in its place. */
@@ -48,9 +55,21 @@ export function SeriesChart({
    *  that can say why ("the line starts with the next count") passes that line here; a caller that
    *  cannot leaves it null, which is the old behaviour exactly. */
   empty?: ReactNode
+  /** The news markers this chart draws (0279, owner row 216): dots on the time axis at the events'
+   *  instants, press → the cause. Null draws none — the chart is exactly what it was. */
+  marks?: readonly NewsMark[] | null
+  /** Opens a marker's city (the caller's navigation); absent, the card offers no link. */
+  onOpenCity?: (portCode: string) => void
   className?: string
 }) {
+  const locale = useLocale()
   const model = useMemo(() => seriesChartModel(points, size), [points, size])
+  const dots = useMemo(
+    () => (model && marks && marks.length > 0 ? newsMarksModel(marks, model.plot, model.window) : []),
+    [model, marks],
+  )
+  const [pressed, setPressed] = useState<{ dot: NewsMarkDot; x: number; y: number } | null>(null)
+  const shown = pressed !== null && dots.includes(pressed.dot) ? pressed : null
   const [hover, setHover] = useState<number | null>(null)
   if (!model) return <>{empty}</>
   const { plot } = model
@@ -109,6 +128,47 @@ export function SeriesChart({
               <circle cx={dot.x} cy={dot.y} r={3.5} className={`${FILL[tone]} ${STROKE[tone]}`} strokeWidth={1.5} />
             </g>
           )}
+          {/* THE NEWS DOTS (0279, owner row 216): the same newsMarksModel geometry the price chart draws.
+              No clip here, so a dot outside the window is simply not drawn. A press stops at the dot —
+              the small chart's own press target (StatsChart opens the big chart) is left alone. */}
+          {dots.filter((d) => d.inWindow).length > 0 && (
+            <g data-testid="series-chart-marks">
+              {dots
+                .filter((d) => d.inWindow)
+                .map((d, i) => (
+                  <g key={i}>
+                    {d.count > 1 && (
+                      <text
+                        x={d.x}
+                        y={d.y - 8}
+                        textAnchor="middle"
+                        className="fill-ink text-t-caption tabular-nums"
+                        data-testid="series-chart-mark-count"
+                      >
+                        {d.count}
+                      </text>
+                    )}
+                    <circle cx={d.x} cy={d.y} r={d.r} className={d.tone === 'accent' ? 'fill-accent' : 'fill-ink-muted'} />
+                    <circle
+                      cx={d.x}
+                      cy={d.y}
+                      r={12}
+                      fill="transparent"
+                      className="cursor-pointer"
+                      onClick={(e: MouseEvent<SVGCircleElement>) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        const rect = e.currentTarget.getBoundingClientRect()
+                        setPressed(pressed?.dot === d ? null : { dot: d, x: rect.left + rect.width / 2, y: rect.bottom })
+                      }}
+                      data-testid="series-chart-mark"
+                    >
+                      <title>{d.items[0] && newsHeadline(d.items[0], locale)}</title>
+                    </circle>
+                  </g>
+                ))}
+            </g>
+          )}
         </svg>
         {/* the high and low figures, in a column of their own beside the plot, at its top and floor */}
         <div className="relative shrink-0">
@@ -126,6 +186,15 @@ export function SeriesChart({
           </div>
         </div>
       </div>
+      {shown && (
+        <NewsCard
+          dot={shown.dot}
+          anchor={{ x: shown.x, y: shown.y }}
+          nowMs={model.dots[model.dots.length - 1].atMs}
+          onClose={() => setPressed(null)}
+          onOpenCity={onOpenCity}
+        />
+      )}
     </div>
   )
 }

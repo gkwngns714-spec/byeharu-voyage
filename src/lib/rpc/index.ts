@@ -87,6 +87,7 @@ import type {
   StatsMe,
   StatsNow,
   MoneyFeed,
+  NewsMark,
   IssueLinesResult,
   InvestReceipt,
   TowReceipt,
@@ -727,6 +728,19 @@ export function worldStatsNow(): Promise<RpcResult<StatsNow>> {
 /** Every money move after `after` (0235, owner row 219): both books, newest first, at most `limit`. Null = the newest. */
 export function worldMoneyFeed(after: string | null, limit = 50): Promise<RpcResult<MoneyFeed>> {
   return call<MoneyFeed>('worldMoneyFeed', [after, limit])
+}
+
+/** 0279 (owner row 216): a chart's news markers in the window — every mapped event, newest 300 kept, public.
+ *  `chart` ∈ price / city / world / merchants (docs/NEWS_AND_MARKERS.md §3.1). `from` / `to` are ISO strings
+ *  or null (unbounded); the bounds are inclusive. Asked when a chart's window or span changes, never per second. */
+export function worldNewsMarks(
+  chart: 'price' | 'city' | 'world' | 'merchants',
+  port: string | null = null,
+  good: string | null = null,
+  from: string | null = null,
+  to: string | null = null,
+): Promise<RpcResult<NewsMark[]>> {
+  return call<NewsMark[]>('worldNewsMarks', [chart, port, good, from, to])
 }
 
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */

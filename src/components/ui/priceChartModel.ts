@@ -133,6 +133,9 @@ export interface PriceChartModel {
   xTicks: { x: number; label: string }[]
   /** The span the record's half of the x axis covers, in hours — derived. */
   spanHours: number
+  /** The stretch of time the plane draws, in ms — the same window the news marks map their instants
+   *  with (0279; newsMarksModel reads it, the series is untouched by it). */
+  window: { fromMs: number; toMs: number }
   low: ChartMark
   high: ChartMark
   now: ChartMark
@@ -419,6 +422,7 @@ export function priceChartModel(
     yTicks,
     xTicks,
     spanHours,
+    window: { fromMs: startMs, toMs: view ? view.toMs : endMs },
     low: points.length ? mark(lowI) : mark(-1),
     high: points.length ? mark(highI) : mark(-1),
     now: est ? mark(-1) : mark(prim.length - 1),

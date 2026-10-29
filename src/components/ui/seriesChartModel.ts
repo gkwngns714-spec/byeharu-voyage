@@ -42,6 +42,9 @@ export interface SeriesChartModel {
   xTicks: { x: number; label: string }[]
   /** Every point's pixel, for the hover layer: nearest-x lookup. */
   dots: { x: number; y: number; atMs: number; value: number }[]
+  /** The stretch of time the plane draws, in ms — the window the news marks map their instants with
+   *  (0279; newsMarksModel reads it, the series is untouched by it). */
+  window: { fromMs: number; toMs: number }
 }
 
 export const SERIES_CHART_W = 340
@@ -97,7 +100,7 @@ export function seriesChartModel(
     { x: plot.x + plot.w / 2, label: agoLabel((t1 - t0) / 2) },
     { x: plot.x + plot.w, label: t('shell.now') },
   ]
-  return { width: size.width, height: size.height, plot, line, area, yTicks, xTicks, dots }
+  return { width: size.width, height: size.height, plot, line, area, yTicks, xTicks, dots, window: { fromMs: t0, toMs: t1 } }
 }
 
 /** The dot nearest an x in plot pixels — the hover layer's one question. */

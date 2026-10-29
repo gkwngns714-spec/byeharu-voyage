@@ -13,6 +13,7 @@ import { useStepOrder } from './useStepOrder'
 import { fleetCargoByCode } from '../domain/fleet'
 import { useManifestPreview } from './useManifestPreview'
 import { usePriceSeries } from './usePriceSeries'
+import { useNewsMarks } from './useNewsMarks'
 import { useRequests } from './useRequests'
 import { useWorld } from './worldStore'
 import { useTrade } from './useTrade'
@@ -112,6 +113,16 @@ export function PortTrade({
 
   const pick = slot.kind === 'pick' ? slot.pick : null
   const history = usePriceSeries(port.id, pick?.good.good_id ?? null)
+  // 0279: the trend chart's news dots, over the window the chart draws (the served series' own
+  // instants); read only while a good is picked — the tray is this port's, the dots this good's.
+  const pickAts = (history.series?.points ?? []).map((p) => Date.parse(p.at)).filter((t) => Number.isFinite(t))
+  const marks = useNewsMarks(
+    'price',
+    port.id,
+    pick?.good.good_id ?? null,
+    pick && pickAts.length >= 2 ? Math.min(...pickAts) : null,
+    pick && pickAts.length >= 2 ? Math.max(...pickAts) : null,
+  )
   // A unit's bulk is a catalogue fact; the market row does not carry it, the snapshot does.
   const goodByCode = useWorld((s) => s.goodByCode)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
@@ -239,6 +250,7 @@ export function PortTrade({
           trade={trade}
           qty={{ value: qty, onChange: setQty }}
           onClose={toBasket}
+          marks={marks}
         >
           {/* Keyed per pick, so a thread never carries another good's (or the other side's) turns. */}
           <HaggleThread

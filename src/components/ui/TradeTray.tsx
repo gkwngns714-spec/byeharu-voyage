@@ -9,7 +9,7 @@ import { Stepper } from './Stepper'
 import { Tray, type TrayMode } from './Tray'
 import type { TrayDetent } from './trayDetents'
 import { formatDucats, formatDucatsDelta, formatInt, formatPctDelta, formatTons, formatUnitPrice, formatUnits } from '../../lib/format'
-import type { MarketGood, Refusal } from '../../lib/rpc'
+import type { MarketGood, NewsMark, Refusal } from '../../lib/rpc'
 import type { BuyCapacityState } from '../../lib/trade'
 import { t as tNow, useT, type TKey } from '../../lib/i18n'
 
@@ -157,6 +157,8 @@ export function TradeTray({
   onClose,
   children,
   mode = 'docked',
+  marks = null,
+  onOpenCity,
 }: {
   /** Where it stands: docked (a phone's bottom edge, a wide glass's side panel), or a desk pane. */
   mode?: TrayMode
@@ -168,6 +170,11 @@ export function TradeTray({
   onClose: () => void
   /** The caller's own rows under the stepper — the bargain. */
   children?: ReactNode
+  /** The news markers the trend's chart draws (0279, owner row 216); the caller reads them over the
+   *  window the chart draws. Null draws none — the tray is exactly what it was. */
+  marks?: readonly NewsMark[] | null
+  /** Opens a marker's city (the caller's navigation); absent, the card offers no link. */
+  onOpenCity?: (portCode: string) => void
 }) {
   const t = useT()
   const { good, intent } = pick
@@ -383,7 +390,7 @@ export function TradeTray({
           {/* THE MARKET'S CONTEXT — trend, range, stock — BELOW the decision, since 2026-09-14:
               the ceiling and the count are what a buy is decided on; these are what it is read
               against. They used to open the tray. */}
-          <PriceRows good={good} trend={history} />
+          <PriceRows good={good} trend={history} marks={marks} onOpenCity={onOpenCity} />
         </>
       )}
 

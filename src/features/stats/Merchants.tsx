@@ -25,10 +25,11 @@ import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib
 import { useT } from '../../lib/i18n'
 import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
-import { toSeries } from './statsFaces'
+import { seriesWindow, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
+import { useNewsMarks } from '../../live/useNewsMarks'
 import { ALL, MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 
 // MERCHANTS — the companies the world keeps: how many, where their fleets are, what their last day of
@@ -52,6 +53,10 @@ export function MerchantsFace() {
   const { span } = useChartSpan()   // 0246: one span for every chart
   const read = useLiveRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants(span), span)
   const v = read.view
+  // 0279: the merchants' news dots (the world's, and the companies' pass), over the window the
+  // earned-day chart draws.
+  const [fromMs, toMs] = seriesWindow(v?.series ?? [])
+  const marks = useNewsMarks('merchants', null, null, fromMs, toMs)
   const nationByCode = useWorld((s) => s.nationByCode)
   const [choice, choose] = useFilterChoice('stats.merchants', { country: ALL, sort: 'richest' })
   const [all, setAll] = useState(false)
@@ -129,6 +134,7 @@ export function MerchantsFace() {
               label={t('stats.earnedLabel')}
               tone="info"
               empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>}
+              marks={marks}
             />
           </div>
           <div className="min-w-0">

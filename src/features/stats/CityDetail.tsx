@@ -21,10 +21,11 @@ import { useEffect } from 'react'
 import { useT } from '../../lib/i18n'
 import { worldStatsCity, type StatsCity } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
-import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
+import { STATS_BARS, flowRanks, goodName, movePct, portName, seriesWindow, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
+import { useNewsMarks } from '../../live/useNewsMarks'
 
 // ONE CITY, OPEN TO EVERYONE — the row the Cities face opens (0214; 0223 removed the investment gate, the
 // owner's row 197: *"on cities, i want to see all the info without investment"*).
@@ -44,6 +45,9 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
   const { span } = useChartSpan()   // 0246: one span for every chart
   const read = useLiveRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId, span), span)
   const v = read.view
+  // 0279: this city's news dots, over the window the purse chart draws (its own series' instants).
+  const [fromMs, toMs] = seriesWindow(v?.overview?.series ?? [])
+  const marks = useNewsMarks('city', portId, null, fromMs, toMs)
   const nationByCode = useWorld((s) => s.nationByCode)
   // 0263 (CLOSED_ECONOMY §4b, "Stats → Cities: a city's wants"): what this city wants now, from the market read the
   // quay already uses (world.market `wants`, the store's one copy). Read once when the city opens: wants re-draw
@@ -94,6 +98,7 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
             tone="accent"
             className="mt-4"
             empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
+            marks={marks}
           />
           <SignedBars
             bars={o.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.income - p.spending }))}

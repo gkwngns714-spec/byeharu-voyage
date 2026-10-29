@@ -3255,6 +3255,41 @@ export interface MoneyFeed {
   moves: MoneyMove[]
 }
 
+/** `world.news_marks(chart, port, good, from, to)` (0279, owner row 216): one chart marker per mapped
+ *  append-only event in the window. `detail` carries the headline's words as SERVED values — the client
+ *  fills its dict template with them and properName; it computes no figure. */
+export interface NewsMark {
+  id: string
+  at: string
+  kind: string
+  importance: number
+  scope: string
+  port_id: string | null
+  good_id: string | null
+  company_id: string | null
+  detail: NewsMarkDetail
+}
+
+/** The template's words, served per kind (0279). Trades carry the company, the good by code + served name,
+ *  qty, the total in ducats and the city by code + served name; the refound carries the company and the
+ *  amount; the economy switch carries its own payload (closed, world_total, …). A key may be absent where
+ *  the event predates it (a pre-0277 trade carries no city). */
+export interface NewsMarkDetail {
+  company?: string
+  good?: string
+  good_name?: string
+  qty?: number
+  total?: number
+  avg_price?: number
+  city?: string
+  city_name?: string
+  amount?: number
+  week?: number
+  closed?: boolean
+  world_total?: number
+  [key: string]: unknown
+}
+
 /** `world.stats_now()` (0224): the live figures this second — money by holder, fleets at sea, and the trades
  *  since the last count. `counted_at` is when the last count folded the journal. `at` is the server's own clock
  *  at the answer (the Stats header prints it). */

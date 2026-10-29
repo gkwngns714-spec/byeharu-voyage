@@ -28,6 +28,14 @@ export function trendOf<T>(rows: readonly T[], pick: (row: T) => number): number
   return rows.map(pick).filter((v) => Number.isFinite(v))
 }
 
+/** The chart's drawn window — the served series' own first and last instants. The window the news
+ *  marks are read over (0279): the server filters it, so the dots and the line always share one axis.
+ *  Nulls while the record is too short to draw anything. Presentation. */
+export function seriesWindow(rows: readonly { at: string }[]): [number | null, number | null] {
+  const ats = rows.map((r) => instantMs(r.at)).filter((m): m is number => m !== null)
+  return ats.length ? [Math.min(...ats), Math.max(...ats)] : [null, null]
+}
+
 export type StatsFace = 'overview' | 'markets' | 'cities' | 'merchants' | 'me'
 
 /** The faces in order; each one's words are `stats.<id>` in the dictionary. */

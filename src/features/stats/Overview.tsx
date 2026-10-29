@@ -17,11 +17,12 @@ import {
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsOverview, type StatsNow, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
-import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
+import { STATS_BARS, flowRanks, seriesWindow, sharePct, toSeries, trendOf } from './statsFaces'
 import { MoneyLog } from './MoneyLog'
 import { useLiveRead } from './statsLive'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
+import { useNewsMarks } from '../../live/useNewsMarks'
 import { ALL } from './statsFilters'
 import { WatchSection } from './Watch'
 
@@ -49,6 +50,10 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
   const { span } = useChartSpan()   // 0246: one span for every chart; a press re-asks at once, the figures stay on screen
   const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span)
   const v = read.view
+  // 0279: the world's news dots, read over the window the charts draw (the served series' own instants);
+  // one read feeds the three charts the design names (world money, sold, bought).
+  const [fromMs, toMs] = seriesWindow(v?.series ?? [])
+  const marks = useNewsMarks('world', null, null, fromMs, toMs)
 
   if (read.loading && !v) return <Waiting />
   if (!v) return <Note tone="danger">{t('stats.worldFailed')}</Note>
@@ -116,6 +121,7 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
           tone="accent"
           className="mt-4"
           empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
+          marks={marks}
         />
       </SheetSection>
       <MoneyLog />
@@ -143,6 +149,7 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
               label={t('stats.soldSeries')}
               tone="info"
               empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>}
+              marks={marks}
             />
           </div>
           <div className="min-w-0">
@@ -154,6 +161,7 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
               label={t('stats.boughtSeries')}
               tone="accent"
               empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>}
+              marks={marks}
             />
           </div>
         </div>

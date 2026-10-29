@@ -528,6 +528,20 @@ export const RPCS = {
   // resistance it asks, the caller's title, each of her fleets' wave, and whether the conditions bite yet. A
   // READ, no arguments (the company is the caller's). The Codex "Seas" face and the map's shading (C3) read it.
   worldSeaConditions: { schema: 'world', fn: 'sea_conditions', args: [] },
+  // 0279 — A CHART SHOWS ITS NEWS (owner row 216; docs/NEWS_AND_MARKERS.md N3): the chart's news markers — every
+  // mapped append-only event in the window, newest 300, public. Asked when a chart's window or span changes, never
+  // per second. The bounds are timestamptz ISO strings; null = unbounded.
+  worldNewsMarks: {
+    schema: 'world',
+    fn: 'news_marks',
+    args: [
+      { name: 'p_chart', type: 'text' },
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_from', type: 'timestamptz' },
+      { name: 'p_to', type: 'timestamptz' },
+    ],
+  },
   // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
   // queued by the one enqueuer, all or none. The plan builder's "Queue it once".
   cmdIssueLines: {

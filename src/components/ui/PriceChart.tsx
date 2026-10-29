@@ -1,10 +1,13 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { panBackMs, panByDrag, panByKey, type ChartWindow, type PanLimits } from './chartPan'
 import { priceChartModel, type ChartOutlookInput } from './priceChartModel'
+import { newsMarksModel, type NewsMarkDot } from './newsMarksModel'
+import { NewsCard } from './NewsCard'
 import { stockLevel } from './stockLevel'
 import { formatInt } from '../../lib/format'
-import type { PricePoint } from '../../lib/rpc'
-import { useT } from '../../lib/i18n'
+import { newsHeadline } from '../../lib/i18n/dict/news'
+import type { NewsMark, PricePoint } from '../../lib/rpc'
+import { useLocale, useT } from '../../lib/i18n'
 
 /** A COMPACT chart's height, in px (owner row 226): a modest panel, never a page. ~0.45 of its width, held between
  *  these two — 150 px on a phone, 180 px on a wide column — so the price and the Buy / Sell controls stay in view. */
@@ -60,6 +63,8 @@ export function PriceChart({
   view = null,
   pan = null,
   compact = false,
+  marks = null,
+  onOpenCity,
 }: {
   /** The served points for ONE good at ONE port, oldest first. */
   points: readonly PricePoint[]
@@ -83,8 +88,14 @@ export function PriceChart({
   /** A compact panel (owner row 226, the COMMAND good page): the plane is drawn at the column's own width (so the
    *  labels stay their size and are not magnified with it) and a modest fixed height. Ignored with `size`. */
   compact?: boolean
+  /** The news markers this chart draws (0279, owner row 216): dots on the time axis at the events'
+   *  instants, press → the cause. Null draws none — the chart is exactly what it was. */
+  marks?: readonly NewsMark[] | null
+  /** Opens a marker's city (the caller's navigation); absent, the card offers no link. */
+  onOpenCity?: (portCode: string) => void
 }) {
   const t = useT()
+  const locale = useLocale()
   const clip = useId()
   const drag = useRef<{ id: number; x: number; offsetMs: number } | null>(null)
   const box = useRef<HTMLDivElement>(null)
@@ -110,6 +121,14 @@ export function PriceChart({
     () => priceChartModel(points, slotSeconds, nowMs, outlook, plane, stockTarget, view),
     [points, slotSeconds, nowMs, outlook, plane, stockTarget, view],
   )
+  // THE NEWS DOTS (0279): pure geometry beside the series — the series itself never sees them. The
+  // pressed dot's card stands while the dot exists; a re-read of the marks drops a dot that is gone.
+  const dots = useMemo(
+    () => (model && marks && marks.length > 0 ? newsMarksModel(marks, model.plot, model.window) : []),
+    [model, marks],
+  )
+  const [pressed, setPressed] = useState<{ dot: NewsMarkDot; x: number; y: number } | null>(null)
+  const shown = pressed !== null && dots.includes(pressed.dot) ? pressed : null
   if (!model) return null
   const { plot } = model
   const floor = plot.y + plot.h
@@ -351,8 +370,55 @@ export function PriceChart({
             className="stroke-accent"
             data-testid="price-chart-now"
           />
+          {/* THE NEWS DOTS (0279, owner row 216): a point on the time axis for every happening, its cause
+              on the press. r = 3 drawn, a 24 px hit target; accent for imp 3, ink-muted for 1-2; a cluster
+              carries its count above it. Pressing never moves a pixel of the chart. */}
+          {dots.length > 0 && (
+            <g data-testid="price-chart-marks">
+              {dots.map((d, i) => (
+                <g key={i}>
+                  {d.count > 1 && (
+                    <text
+                      x={d.x}
+                      y={d.y - 8}
+                      textAnchor="middle"
+                      className="fill-ink text-t-caption tabular-nums"
+                      data-testid="price-chart-mark-count"
+                    >
+                      {d.count}
+                    </text>
+                  )}
+                  <circle cx={d.x} cy={d.y} r={d.r} className={d.tone === 'accent' ? 'fill-accent' : 'fill-ink-muted'} />
+                  <circle
+                    cx={d.x}
+                    cy={d.y}
+                    r={12}
+                    fill="transparent"
+                    className="cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const rect = e.currentTarget.getBoundingClientRect()
+                      setPressed(pressed?.dot === d ? null : { dot: d, x: rect.left + rect.width / 2, y: rect.bottom })
+                    }}
+                    data-testid="price-chart-mark"
+                  >
+                    <title>{d.items[0] && newsHeadline(d.items[0], locale)}</title>
+                  </circle>
+                </g>
+              ))}
+            </g>
+          )}
         </g>
       </svg>
+      {shown && (
+        <NewsCard
+          dot={shown.dot}
+          anchor={{ x: shown.x, y: shown.y }}
+          nowMs={nowMs}
+          onClose={() => setPressed(null)}
+          onOpenCity={onOpenCity}
+        />
+      )}
       <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-t-caption text-ink-faint" data-testid="price-chart-legend">
         {model.sides.ask && (
           <span className="inline-flex items-center gap-1">
