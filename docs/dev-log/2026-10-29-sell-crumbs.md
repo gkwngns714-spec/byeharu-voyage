@@ -4,7 +4,7 @@ Follows 0272 (`docs/dev-log/2026-10-29-crew-short.md`). 0272's cut-loss writes `
 the stuck merchants' holds — and every SELL is skipped `E_NO_CARGO`, so the loop it was built to close stays open.
 0273 is the one change that lets the SELL execute. Nothing else moves.
 
-**STATUS: BUILT AND PROVED ON THE LOCAL CHAIN** (`osn-sell-crumbs`; PR open, not deployed). The chain applies 0273
+**STATUS: BUILT AND PROVED ON THE LOCAL CHAIN** (`osn-sell-crumbs`; PR #389 open, not deployed). The chain applies 0273
 after 0272 and prints the self-assert receipt below; `proof.mjs standing` and `proof.mjs merchant` are green. The prod
 claims are read-only reads of 2026-10-29 (head 0272); the claims about 0273's own effect are the self-assert's, run on
 the chain's world.
