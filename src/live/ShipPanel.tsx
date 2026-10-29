@@ -1,9 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import { Bar, BonusRows, Empty, Tray, type TrayDetent } from '../components/ui'
-import { formatFixed, formatInt } from '../lib/format'
+import { formatFixed, formatInt, MINUS, rollMark } from '../lib/format'
 import { CHART_CHROME, hullClassOfCode, hullPath } from '../chart'
 import { HullCountry } from './HullCountry'
-import type { ShipSet, ShipBonus, ShipBudget, ShipRack, ShipSeats } from '../lib/rpc'
+import type { ShipSet, ShipBonus, ShipBudget, ShipRack, ShipRoll, ShipSeats } from '../lib/rpc'
 import { ShipCabins, type Seating } from './ShipCabins'
 import { ShipAugments } from './ShipAugments'
 import { useT, t as tNow, type TKey } from '../lib/i18n'
@@ -71,6 +71,15 @@ export interface ShipView {
   armour?: number
   handling?: number
   sighting?: number
+  /** 0276 — her own roll, her grade word and the class's own figures, as `world.ship_view` serves
+   *  them. Absent from a server older than 0276: no bracket, no word, nothing derived. */
+  roll?: ShipRoll
+  grade?: string | null
+  class_hold?: number
+  class_speed?: number
+  class_durability?: number
+  class_crew_max?: number
+  class_handling?: number
 }
 
 // ── THE SLOT GLYPHS — one small line drawing per kind, 24-unit box, stroked in currentColor ──────
@@ -330,41 +339,54 @@ function SkillBonuses({ bonuses }: { bonuses: readonly ShipBonus[] | undefined }
   )
 }
 
-/** One figure in the spec: a quiet label above, the number large. */
-function Stat({ label, value, unit }: { label: string; value: string; unit?: string }) {
+/** 0276 — the bracket's tone by its sign, one place. */
+function rollTone(mark: string): string {
+  return mark.includes('+') ? 'text-accent' : mark.includes(MINUS) ? 'text-warning' : 'text-ink-faint'
+}
+
+/** One figure in the spec: a quiet label above, the number large. `mark` (0276) is her roll's
+ *  bracket, `title` the class average a long-press or hover names. */
+function Stat({ label, value, unit, mark, title }: { label: string; value: string; unit?: string; mark?: string | null; title?: string }) {
   return (
-    <div className="min-w-0 rounded-control bg-surface-2 px-3 py-2">
+    <div className="min-w-0 rounded-control bg-surface-2 px-3 py-2" title={title}>
       <dt className="break-words text-t-caption text-ink-faint">{label}</dt>
       <dd className="break-words">
         <span className="text-t-title tabular-nums">{value}</span>
         {unit && <span className="ml-1 text-t-caption text-ink-faint">{unit}</span>}
+        {mark && <span className={`ml-1 text-t-caption tabular-nums ${rollTone(mark)}`}>{mark}</span>}
       </dd>
     </div>
   )
 }
 
-/** A figure with its gauge: hull, crew, cargo — the three a captain reads as "how full". */
+/** A figure with its gauge: hull, crew, cargo — the three a captain reads as "how full". `mark`
+ *  (0276) is her roll's bracket after the max; `title` the class average on a long-press. */
 function Gauge({
   label,
   now,
   max,
   unit,
   tone,
+  mark,
+  title,
 }: {
   label: string
   now: number
   max: number
   unit?: string
   tone: 'success' | 'warning' | 'danger' | 'accent' | 'neutral'
+  mark?: string | null
+  title?: string
 }) {
   const pct = max > 0 ? Math.max(0, Math.min(1, now / max)) * 100 : 0
   return (
-    <div className="min-w-0">
+    <div className="min-w-0" title={title}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-t-caption text-ink-faint">{label}</span>
         <span className="text-t-caption tabular-nums text-ink">
           {`${formatInt(now)} / ${formatInt(max)}`}
           {unit && <span className="ml-1 text-ink-faint">{unit}</span>}
+          {mark && <span className={`ml-1 ${rollTone(mark)}`}>{mark}</span>}
         </span>
       </div>
       <Bar pct={pct} tone={tone} label={label} className="mt-1" />
@@ -402,6 +424,17 @@ export function ShipPanel({
   const [detent, setDetent] = useState<TrayDetent>('half')
   const hullPct = ship.max_durability > 0 ? ship.durability / ship.max_durability : 1
   const crewShort = ship.crew_required !== undefined && ship.crew < ship.crew_required
+  // 0276 — her own roll, as the server serves it: the bracket per stat, the grade word, and the
+  // class's own figure the long-press names. A server older than 0276 serves none: nothing drawn.
+  const roll = ship.roll
+  const marks = {
+    hull: roll ? rollMark(roll.durability) : null,
+    crew: roll ? rollMark(roll.crew_max) : null,
+    speed: roll ? rollMark(roll.speed) : null,
+    hold: roll ? rollMark(roll.hold) : null,
+  }
+  const avgTitle = (cls: number | undefined, v: string, mark: string | null) =>
+    mark ? (cls !== undefined ? t('ship.classAvg', { cls: ship.class, v }) : undefined) : undefined
   const combat: { label: string; value: number | undefined }[] = [
     { label: t('ship.attack'), value: ship.attack },
     { label: t('ship.accuracy'), value: ship.accuracy },
@@ -445,6 +478,13 @@ export function ShipPanel({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="rounded-chip bg-surface px-2 py-0.5 text-t-caption text-ink">{ship.class}</span>
+            {/* 0276 — her grade word, the server's (fine / poor; a standard hull serves null) */}
+            {ship.grade && (
+              <span
+                data-testid="ship-grade"
+                className={`rounded-chip px-2 py-0.5 text-t-caption ${ship.grade === 'fine' ? 'bg-accent/20 text-accent' : 'bg-warning/15 text-warning'}`}
+              >{ship.grade === 'fine' ? t('ship.fine') : t('ship.poor')}</span>
+            )}
             {ship.level !== undefined && (
               <span
                 data-testid="ship-level"
@@ -461,8 +501,17 @@ export function ShipPanel({
               now={ship.durability}
               max={ship.max_durability}
               tone={hullPct < 0.4 ? 'danger' : hullPct < 0.75 ? 'warning' : 'success'}
+              mark={marks.hull}
+              title={avgTitle(ship.class_durability, formatInt(ship.class_durability ?? ship.max_durability), marks.hull)}
             />
-            <Gauge label={t('ship.crew')} now={ship.crew} max={ship.crew_max} tone={crewShort ? 'danger' : 'neutral'} />
+            <Gauge
+              label={t('ship.crew')}
+              now={ship.crew}
+              max={ship.crew_max}
+              tone={crewShort ? 'danger' : 'neutral'}
+              mark={marks.crew}
+              title={avgTitle(ship.class_crew_max, formatInt(ship.class_crew_max ?? ship.crew_max), marks.crew)}
+            />
             <LevelBar ship={ship} fixed={levelFixed} />
           </div>
         </div>
@@ -474,8 +523,20 @@ export function ShipPanel({
       <section data-testid="ship-stats">
         <Heading>{t('ship.spec')}</Heading>
         <dl className="grid grid-cols-2 gap-2">
-          <Stat label={t('ship.speed')} value={formatFixed(ship.speed, 1)} unit={t('ship.knots')} />
-          <Stat label={t('ship.cargo')} value={`${formatInt(ship.cargo_tuns)} / ${formatInt(ship.hold)}`} unit={t('ship.tons')} />
+          <Stat
+            label={t('ship.speed')}
+            value={formatFixed(ship.speed, 1)}
+            unit={t('ship.knots')}
+            mark={marks.speed}
+            title={avgTitle(ship.class_speed, formatFixed(ship.class_speed ?? ship.speed, 1), marks.speed)}
+          />
+          <Stat
+            label={t('ship.cargo')}
+            value={`${formatInt(ship.cargo_tuns)} / ${formatInt(ship.hold)}`}
+            unit={t('ship.tons')}
+            mark={marks.hold}
+            title={avgTitle(ship.class_hold, formatInt(ship.class_hold ?? ship.hold), marks.hold)}
+          />
         </dl>
         {shownCombat.length > 0 && (
           <dl className="mt-2 grid grid-cols-3 gap-2">

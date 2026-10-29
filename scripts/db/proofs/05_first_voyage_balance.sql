@@ -353,7 +353,7 @@ begin
       perform cmd.assume_identity(v_uid);
       perform cmd.do_provision(v_fleet, jsonb_build_object('mode', 'FULL'));
       perform cmd.do_hire(v_fleet, jsonb_build_object('count',
-        (select c.crew_max - s.crew from public.ships s
+        (select (public.ship_base(s.id)).crew_max - s.crew from public.ships s
            join public.ship_classes c on c.id = s.class_id where s.fleet_id = v_fleet)));
 
       select ducats into v_stake from public.players where id = v_player;

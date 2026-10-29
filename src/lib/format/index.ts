@@ -25,6 +25,7 @@ export {
   formatPctPoints,
   formatPctDelta,
   formatOfTotal,
+  rollMark,
 } from './numbers'
 export {
   TIME_COMPRESSION,

@@ -388,6 +388,10 @@ export interface YardHull {
   crew_required: number
   durability: number
   draft: number
+  /** 0276 — how far (per cent, ±) a NEW hull of this class may stray from the figures above (the
+   *  normal band, `public.ship_variety_band`; the rare Poor and Fine go beyond). The yard says it
+   *  before you build; the roll itself stays blind. Absent from a server older than 0276. */
+  variety_pct?: number
   /** Whether THIS yard is good enough — its tier AND (0130) its country. The server's rule,
    *  never re-derived here. */
   buildable: boolean
@@ -866,6 +870,18 @@ export interface ShipBudget {
   hands: { used: number; max: number }
 }
 
+/** 0276 — her own six factors as `world.ship_view` serves them (`ships.roll_*`): each is her class's
+ *  figure × this, fixed at her commission. 1.000 = the class figure (every pre-0276 hull, every
+ *  famous ship). `stores` is rolled and stored but nothing reads it until the stores-space slice. */
+export interface ShipRoll {
+  hold: number
+  speed: number
+  stores: number
+  durability: number
+  crew_max: number
+  handling: number
+}
+
 export interface FleetShip {
   id: string
   name: string
@@ -896,6 +912,19 @@ export interface FleetShip {
    */
   speed: number
   speed_rated: number
+  /**
+   * 0276 — HER OWN ROLL, fixed at her commission (`ships.roll_*`, six factors; 1.000 for every hull
+   * built before 0276 and every famous ship), her grade word ('fine' / 'poor' / null, derived by
+   * `public.ship_grade`), and the class's own figures beside the rolled ones. Absent from a server
+   * older than 0276: no bracket, no word, nothing derived.
+   */
+  roll?: ShipRoll
+  grade?: string | null
+  class_hold?: number
+  class_speed?: number
+  class_durability?: number
+  class_crew_max?: number
+  class_handling?: number
   /** The six stats a hull did not have until 0074, effective — base plus everything mounted. */
   handling: number
   armour: number

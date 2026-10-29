@@ -32,6 +32,10 @@ export const shipDict = defineDict({
     knots: 'knots',
     cargo: 'Cargo',
     tons: 'tons',
+    /** 0276 — her grade word, and the class's own figure a long-press names beside the roll. */
+    fine: 'Fine',
+    poor: 'Poor',
+    classAvg: '{cls} avg {v}',
     sending: 'Sending…',
     repairShips: 'Repair ships',
     resupply: 'Resupply',
@@ -85,6 +89,10 @@ export const shipDict = defineDict({
     knots: '노트',
     cargo: '적재',
     tons: '톤',
+    /** 0276 — her grade word, and the class's own figure a long-press names beside the roll. */
+    fine: '우수',
+    poor: '부실',
+    classAvg: '{cls} 평균 {v}',
     sending: '보내는 중…',
     repairShips: '배 수리',
     resupply: '보급',

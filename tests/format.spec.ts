@@ -32,6 +32,7 @@ import {
   formatUnitPrice,
   formatUnits,
   formatVoyageDays,
+  rollMark,
   CALENDAR_EPOCH_MS,
   CALENDAR_YEAR_0,
   GAME_DAYS_PER_MONTH,
@@ -63,6 +64,20 @@ test('a money delta is always signed, and a loss uses U+2212 not a hyphen', () =
   // The distinction is the whole point: a hyphen-minus would sit at text height in a mono column.
   expect(MINUS).not.toBe('-')
   expect(formatDucatsDelta(-1104)).toBe('−' + `1,104${C}`)
+})
+
+test('a ship roll prints its bracket once, signed with U+2212, and none at the class figure (0276)', () => {
+  expect(rollMark(1.032)).toBe('(+3 %)')
+  expect(rollMark(1.167)).toBe('(+17 %)')
+  expect(rollMark(0.962)).toBe('(−4 %)')
+  expect(rollMark(0.994)).toBe('(−1 %)')
+  expect(rollMark(1.000)).toBeNull()
+  expect(rollMark(1.004)).toBeNull()    // +0.4 % — within half a point: no bracket
+  expect(rollMark(1.005)).toBe('(+1 %)') // the 3dp boundary: half a point rounds up
+  expect(rollMark(0.995)).toBeNull()    // −0.5 rounds to −0, which prints no bracket
+  expect(rollMark(Number.NaN)).toBeNull()
+  // The distinction is the whole point, as with money: a hyphen would read as a dash.
+  expect(rollMark(0.962)).not.toContain('-')
 })
 
 test('non-finite input degrades to an em dash rather than NaN', () => {

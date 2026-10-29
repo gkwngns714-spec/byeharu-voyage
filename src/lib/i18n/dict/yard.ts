@@ -25,6 +25,10 @@ export const yardDict = defineDict({
     speed: 'Speed',
     knots: 'knots',
     crewNeeded: 'Crew needed',
+    /** 0276 — the yard's blind-roll line: the range a new hull may stray by, served per class. */
+    variety: 'Each hull differs',
+    builtFine: '{name} came out Fine',
+    builtPoor: '{name} came out Poor',
     materials: 'Materials',
     parts: 'Parts',
     yardTier: 'Builds up to level {have}; this needs {need}.',
@@ -69,6 +73,10 @@ export const yardDict = defineDict({
     speed: '속력',
     knots: '노트',
     crewNeeded: '필요 선원',
+    /** 0276 — the yard's blind-roll line: the range a new hull may stray by, served per class. */
+    variety: '배마다 다름',
+    builtFine: '{name}: 우수',
+    builtPoor: '{name}: 부실',
     materials: '자재',
     parts: '부품',
     yardTier: '여긴 {have}단계까지; 이 배는 {need} 필요.',
