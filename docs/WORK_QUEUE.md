@@ -1,5 +1,7 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-10-29 **0271 the press lives in real time, BUILT, NOT deployed** (`osn-price-imp`): the press gets its own clock — `port_goods.glut_at` (the instant it last moved), written by `cmd.do_buy` / `cmd.do_sell` with the trade; `public.tick_market_drift` fades it by REAL time (`glut × glut_decay ^ (real hours since glut_at / glut_half_life_hours)`, half-life 3 h) instead of one game-day (~90 s); step `glut_per_depth` 0.30 → 0.10, cap 0.30 kept, `price_impact` still lit. Self-assert green (probes: 0.4 at 0/3/6/9 h → 0.4/0.2/0.1/0.05; old = new but the clock), 11_standing 5/5, 12_merchant 6/6, duplication 10/10. Prod check before the PR: the three live bodies' md5s match this worktree and each hunk occurs once. Deploys AFTER 0270; 30-minute after-check = the press distribution + the next :07 beats. Nothing merged, nothing deployed.
+
 ## HAND-OFF 2026-10-28 ~15:00 UTC (PC gkwng; owner out of credits, resumes ~3 days later). READ THIS FIRST
 **Prod head 0269, main green, nothing deploying, no agent running.** Memory: read `byeharu-voyage-resume-2026-10-28b.md` + `voyage-bugs-first-root-cause.md`. Owner 10-28: NO SOUNDS (never beep).
 **Before building, re-measure prod (state is days old):** head = 0269? cron failures since 10-28? :07 lap-start lag still spiking (0269 receipts, dev-log 2026-10-28-tend-holds.md)? compactor `left` 0? Has the 10:16-12:05 style slowdown REPEATED (stats runs at the 120 s timeout)? If yes, it becomes an issue (owner).
