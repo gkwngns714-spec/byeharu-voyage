@@ -8,7 +8,10 @@ import { create } from 'zustand'
 // The fourth, Town Hall (0123, owner 2026-10-15): the city's purse, its works, Invest, who invested.
 // The fifth, Info (owner row 174, 2026-10-20): the city itself in a handful of lines — its country,
 // what influences it, where it is, its market and, for a city you have invested in, its economy.
-export type CityTab = 'market' | 'port' | 'inn' | 'townhall' | 'info'
+// The sixth, History (owner row 173, docs/WEEKLY_ROLLOVER.md §4): the city's giving by week — the
+// current week and the past eight. Its word is `map.History`; the shell's own History tab is
+// `shell.tab_History`, a different word in Korean on purpose (내역 vs 기록).
+export type CityTab = 'market' | 'port' | 'inn' | 'townhall' | 'info' | 'history'
 
 export const CITY_TABS: readonly { id: CityTab; label: string }[] = [
   { id: 'market', label: 'Market' },
@@ -16,6 +19,7 @@ export const CITY_TABS: readonly { id: CityTab; label: string }[] = [
   { id: 'inn', label: 'Inn' },
   { id: 'townhall', label: 'Town Hall' },
   { id: 'info', label: 'Info' },
+  { id: 'history', label: 'History' },
 ]
 
 export const useCityTab = create<{ tab: CityTab; turnTo: (tab: CityTab) => void }>((set) => ({
