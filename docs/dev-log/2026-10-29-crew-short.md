@@ -107,8 +107,29 @@ takers the same set, the client entry points the same count.
 - The 0272 self-assert receipt, verbatim:
 
 ```
-0272 self-assert ok: A CREW SHORTAGE IS PAID FROM THE HOLD. npc_leg_lines and npc_clear_due reverse to their pre-images hunk by hunk, ACLs unmoved, every other function in the four schemas unmoved (md5), public.npc_crew_blocked the one function minted, the quay takers and the client entry points unmoved. The rule on 7 planted clears: a SAIL refused E_CREW_SHORT plans on the FIRST clear, E_ENDURANCE too, the third clear too, an ordinary refusal at n < 3 not. The cut-loss, her step OLD vs NEW on merchant 7e6e35a5-eea3-4655-8251-74129a294cb6: OLD leaves HIRE skipped and SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, crew restored and the ledger reconciled; 3 controls (purse covers, hold short, at full complement) left identical rows. Rolled back.
+0272 self-assert ok: A CREW SHORTAGE IS PAID FROM THE HOLD. npc_leg_lines and npc_clear_due reverse to their pre-images hunk by hunk, ACLs unmoved, every other function in the four schemas unmoved (md5), public.npc_crew_blocked the one function minted, the quay takers and the client entry points unmoved, and the traders' switch exactly where the world had it ({"npc_traders_enabled": false, "standing_routes_enabled": false} reads back as it was). The rule on 7 planted clears: a SAIL refused E_CREW_SHORT plans on the FIRST clear, E_ENDURANCE too, the third clear too, an ordinary refusal at n < 3 not. The cut-loss, her step OLD vs NEW on merchant 7e6e35a5-eea3-4655-8251-74129a294cb6: OLD leaves HIRE skipped and SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, crew restored and the ledger reconciled; 3 controls (purse covers, hold short, at full complement) left identical rows. Rolled back.
 ```
+
+- **The switches after the apply, read from the committed world:** `npc_traders_enabled = false`,
+  `standing_routes_enabled = false` — where the fresh world has them (see the CI red below).
+
+### The CI red this slice caused, and the fix (2026-10-29)
+
+The first push went red on acceptance shard 2/3, on exactly the dark-refusal specs
+(`tests/rpc.surface.spec.ts:1902` `expect(dark.enabled).toBe(false)` — a standing route round-trips; `:1960`
+`expect(dark.merchants).toBe(false)` — `world.route_board`; `:2049` `expect(dark.ok).toBe(false)` — `world.fleet_trades`).
+
+**Cause, proved:** the world the shards build shipped with the traders' switch **ON**. The self-assert called
+`pg_temp.traders_on_0272()` at the block's own level (probe B's setup): each probe case below it rolls back its own
+subtransaction, but that call did not sit in one, so its `UPDATE public.world_config` survived to the end of the block
+and was **committed with the migration**. The local proof never saw it because `proof.mjs` discards the world it
+applies; CI's acceptance world is the committed one.
+
+**Fix (probe plumbing only; no rule, no claim touched).** The outer call is gone — every probe case turns the switches
+on INSIDE its own rolled-back subtransaction (`pg_temp.state_0272`), and nothing else needs them on. And the
+self-assert now carries the durable guard that would have caught it: it snapshots both switch values at the top of the
+block and, in check (e), raises `0272 self-assert FAIL: the migration left the traders switch ON …` unless they still
+equal that reading. Verified after the fix by applying the chain and querying the committed world, above.
 
 - `node scripts/db/proof.mjs standing`: `✓ 11_standing_route.sql — 5/5 PASS markers`, `PROOFS PASSED: 1 file(s), 5/5`.
 - `node scripts/db/proof.mjs merchant`: `PROOFS PASSED: 1 file(s), 6/6 PASS markers`.

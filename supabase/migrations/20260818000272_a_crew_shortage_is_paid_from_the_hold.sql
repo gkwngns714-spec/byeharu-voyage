@@ -494,8 +494,13 @@ declare
   v_lap   int;
   v_route uuid;
   v_house uuid;
+  v_flags jsonb;
 begin
   select * into v_b from before_0272;
+  -- THE SWITCHES ARE SNAPSHOT BEFORE ANY PROBE TOUCHES THEM: the last check (e) holds them against this reading, so a
+  -- probe's switch write that escaped its transaction cannot be committed with the migration.
+  select jsonb_object_agg(key, value) into v_flags from public.world_config
+   where key in ('npc_traders_enabled', 'standing_routes_enabled');
 
   -- (a) THE HUNKS reverse to the live pre-images; ACL / volatility / definer / config unmoved; nothing else in
   -- the four schemas moved; exactly one function was minted; no new quay taker; the client entry points still
@@ -616,7 +621,10 @@ begin
     raise exception '0272 self-assert FAIL: no merchant the step can reach — the cut-loss probe proves nothing';
   end if;
   select * into g from pg_temp.sample_0272;
-  perform pg_temp.traders_on_0272();
+  -- NO SWITCH WRITE HERE. Every probe case turns the traders on INSIDE its own rolled-back subtransaction
+  -- (pg_temp.state_0272), and nothing below needs them on outside one. A switch write at this level would survive
+  -- the block and be committed with the migration — the whole world's merchants would come up trading, and every
+  -- dark-refusal spec would then read enabled = true. The self-assert's last check (e) catches exactly that.
   select x.* into m from pg_temp.probe_good_0272(g.port_id) x;
   if m.good_id is null then
     raise exception '0272 self-assert FAIL: the probe port (%) bids on no good', g.port_id;
@@ -749,12 +757,21 @@ begin
   end if;
   v_step := v_step + 1;
 
-  -- (e) THE PROBE LEFT NOTHING: every row it wrote went with its transaction
+  -- (e) THE PROBE LEFT NOTHING: every row it wrote went with its transaction, and the traders' switch stands exactly
+  -- where the world had it. The second half is the check that would have caught the first draft: pg_temp.traders_on_0272
+  -- called at this block's own level survived every case's rollback and was committed with the migration, so the whole
+  -- world came up trading and every dark-refusal spec read enabled = true.
   if exists (select 1 from public.orders where error_message = 'probe_0272')
      or exists (select 1 from public.ledger where kind = 'PROBE_0272') then
     raise exception '0272 self-assert FAIL: a probe row survived its transaction';
   end if;
+  if (select jsonb_object_agg(key, value) from public.world_config
+       where key in ('npc_traders_enabled', 'standing_routes_enabled')) is distinct from v_flags then
+    raise exception '0272 self-assert FAIL: the migration left the traders switch ON — npc_traders_enabled / standing_routes_enabled read % where the world had % (a probe''s switch write escaped its transaction)',
+      (select jsonb_object_agg(key, value) from public.world_config
+        where key in ('npc_traders_enabled', 'standing_routes_enabled')), v_flags;
+  end if;
 
-  raise notice '0272 self-assert ok: A CREW SHORTAGE IS PAID FROM THE HOLD. npc_leg_lines and npc_clear_due reverse to their pre-images hunk by hunk, ACLs unmoved, every other function in the four schemas unmoved (md5), public.npc_crew_blocked the one function minted, the quay takers and the client entry points unmoved. The rule on % planted clears: a SAIL refused E_CREW_SHORT plans on the FIRST clear, E_ENDURANCE too, the third clear too, an ordinary refusal at n < 3 not. The cut-loss, her step OLD vs NEW on merchant %: OLD leaves HIRE skipped and SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, crew restored and the ledger reconciled; % controls (purse covers, hold short, at full complement) left identical rows. Rolled back.',
-    v_rule, g.route_id, v_step - 1;
+  raise notice '0272 self-assert ok: A CREW SHORTAGE IS PAID FROM THE HOLD. npc_leg_lines and npc_clear_due reverse to their pre-images hunk by hunk, ACLs unmoved, every other function in the four schemas unmoved (md5), public.npc_crew_blocked the one function minted, the quay takers and the client entry points unmoved, and the traders'' switch exactly where the world had it (% reads back as it was). The rule on % planted clears: a SAIL refused E_CREW_SHORT plans on the FIRST clear, E_ENDURANCE too, the third clear too, an ordinary refusal at n < 3 not. The cut-loss, her step OLD vs NEW on merchant %: OLD leaves HIRE skipped and SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, crew restored and the ledger reconciled; % controls (purse covers, hold short, at full complement) left identical rows. Rolled back.',
+    v_flags, v_rule, g.route_id, v_step - 1;
 end $$;
