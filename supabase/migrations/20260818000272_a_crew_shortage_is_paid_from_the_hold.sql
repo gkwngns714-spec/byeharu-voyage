@@ -154,6 +154,7 @@ begin
                     where s.fleet_id = p_fleet and (e.value)::text::numeric > 0
                     group by e.key) z
              join public.goods gd on gd.code = z.code
+             join public.port_goods pg on pg.port_id = p_from and pg.good_id = gd.id
             order by z.code loop
     v_have := v_have + coalesce((select q.total from world.quote(p_from, g.good_id, g.qty, 'sell', null, null) q), 0);
     exit when v_have >= v_cost;
@@ -215,6 +216,7 @@ $h$  -- 0272: THE CUT-LOSS FOR CREW. Her fleet lies at this quay below complemen
                 join public.goods gd on gd.code = e.key
                where s.fleet_id = sr.fleet_id and (e.value)::text::numeric > 0
                group by e.key, gd.id) z
+        join public.port_goods pg on pg.port_id = p_from and pg.good_id = z.good_id
        order by 2 desc, 1
     loop
       exit when v_have >= coalesce(v_need, 0);
@@ -295,21 +297,29 @@ select regexp_replace(concat_ws(' # ',
 $$;
 
 -- ── 4. A MERCHANT THE PROBE CAN PUT IN THE STUCK SHAPE ─────────────────────────────────────────
--- One docked merchant whose port is one of her own stops, not the lap's first stop (so the stop carries no
--- REPAIR), with hands at the quay, a good the quay bids on, and no failed order of her own (the probe plants one).
+-- One docked merchant, and a stop of her own loop that is NOT the lap's first (a cursor of 0 is the lap boundary:
+-- 0101 sends a merchant home to rest there, and 0114 re-plans her — neither is what is under test), at a harbour
+-- with hands for sale and a good it bids on, and no failed order of her own (the probe plants one). The probe MOVES
+-- her fleet to that stop's port: in the chain's fresh world every merchant lies at her own stop 0, and prod's stuck
+-- merchants lie mid-loop (TRP, BRI), which is the shape this reproduces.
+-- ONE HULL, as both live cases are (a single carlat, 10/12 and 11/12): cmd.do_hire fills the hull with the MOST ROOM
+-- first, so on a fleet of equal hulls `HIRE <total shortfall>` restores one hull and leaves the others short. That
+-- distribution is 0007's, untouched here, and a multi-hull fleet is NOT what this slice claims to restore.
 create temp table sample_0272 on commit drop as
-select r.route_id, r.fleet_id, r.player_id, r.k, f.port_id
+select r.route_id, r.fleet_id, r.player_id, r.k, s.port_id, s.ord
   from public.npc_tend_roster() r
   join public.fleets f on f.id = r.fleet_id
+  join public.standing_route_stops s on s.route_id = r.route_id and s.ord <> 0
+  join public.ports p on p.id = s.port_id and p.kind = 'HARBOUR'
  where f.status = 'DOCKED'
+   and (select count(*) from public.ships sh where sh.fleet_id = r.fleet_id) = 1
    and (select count(*) from public.standing_route_stops s2 where s2.route_id = r.route_id) >= 2
-   and exists (select 1 from public.standing_route_stops s
-                where s.route_id = r.route_id and s.port_id = f.port_id and s.ord <> 0)
-   and exists (select 1 from public.ports p where p.id = f.port_id and coalesce(p.crew_pool, 0) > 0)
+   and coalesce(p.crew_pool, 0) > 0
    and exists (select 1 from public.goods g
-                where coalesce((select q.total from world.quote(f.port_id, g.id, 10, 'sell', null, null) q), 0) > 0)
+                join public.port_goods pg on pg.port_id = s.port_id and pg.good_id = g.id
+                where coalesce((select q.total from world.quote(s.port_id, g.id, 10, 'sell', null, null) q), 0) > 0)
    and not exists (select 1 from public.orders o where o.fleet_id = r.fleet_id and o.status = 'failed')
- order by r.k
+ order by r.k, s.ord
  limit 1;
 
 -- the traders' switch, on, for the step (rolled back with everything else — as 0150's and 0270's probes)
@@ -319,7 +329,8 @@ language sql
 as $$ update public.world_config set value = 'true'::jsonb
        where key in ('npc_traders_enabled', 'standing_routes_enabled') and value is distinct from 'true'::jsonb $$;
 
--- the good the probe stocks: the smallest-bulk good this quay bids on (a bid of 10 tuns, so the value is real)
+-- the good the probe stocks: the smallest-bulk good this quay has a market in (a bid of 10 tuns, so the value is
+-- real; world.quote RAISES on a port/good pair with no market row, so the join is the guard)
 create function pg_temp.probe_good_0272(p_port uuid)
 returns table (good_id uuid, code text, bulk numeric)
 language sql
@@ -327,6 +338,7 @@ stable
 as $$
   select g.id, g.code, g.bulk
     from public.goods g
+    join public.port_goods pg on pg.port_id = p_port and pg.good_id = g.id
    where coalesce((select q.total from world.quote(p_port, g.id, 10, 'sell', null, null) q), 0) > 0
    order by g.bulk, g.code
    limit 1
@@ -336,7 +348,7 @@ $$;
 -- hull, purse p_purse, her hold stocked (p_qty tuns at cost 1,000,000 — so the at-profit SELL is refused), her casks
 -- full, her preset gone (so no PROVISION line stands between the sale and the hire), her queue cleared, a failed
 -- SAIL refused E_CREW_SHORT at the head, and p_clears NPC_CLEARED events already on this lap.
-create function pg_temp.state_0272(p_house uuid, p_fleet uuid, p_route uuid, p_port uuid, p_short int,
+create function pg_temp.state_0272(p_house uuid, p_fleet uuid, p_route uuid, p_port uuid, p_ord int, p_short int,
                                     p_purse bigint, p_qty numeric, p_clears int)
 returns void
 language plpgsql
@@ -360,9 +372,11 @@ begin
   update public.fleets set status = 'DOCKED', port_id = p_port, lat = null, lon = null,
                            provision_preset_id = null
    where id = p_fleet;
-  -- her hulls: below complement by p_short each, empty holds, dry casks
+  -- her hulls: below complement by p_short each, empty holds, dry casks, at full durability (so the stop's own
+  -- REPAIR line refuses E_UNAVAILABLE and can never spend the money the cut-loss raises)
   update public.ships hs
      set crew = greatest(0, c.crew_required - p_short),
+         durability = c.durability,
          cargo = '{}'::jsonb, cargo_basis = '{}'::jsonb, water_t = 0, food_t = 0
     from public.ship_classes c
    where c.id = hs.class_id and hs.fleet_id = p_fleet;
@@ -383,9 +397,9 @@ begin
   -- her purse, through the ledger (the purse reconciles with it — 0150's purse_0150)
   perform public.credit(p_house, 'PROBE_0272',
                         (p_purse - (select ducats from public.players where id = p_house))::bigint);
-  -- her route: at the stop's port, cursor on it, no pause, no hold, no reserve, a lap of her own
-  select min(s.ord) into v_ord from public.standing_route_stops s
-   where s.route_id = p_route and s.port_id = p_port and s.ord <> 0;
+  -- her route: at the stop's port, cursor on it (a stop that is NOT the lap's first: the lap boundary is 0101's
+  -- rest and 0114's plan, not what this probe measures), no pause, no hold, no reserve, a lap of her own
+  v_ord := p_ord;
   select count(*) into v_n from public.standing_route_stops s where s.route_id = p_route;
   select count(*) into v_lap from public.standing_route_laps x where x.route_id = p_route;
   v_lap := 900272 + v_lap;
@@ -408,7 +422,7 @@ begin
     from generate_series(1, greatest(p_clears, 0)) i;
 end $$;
 
-create function pg_temp.crew_case_0272(p_mode text, p_house uuid, p_fleet uuid, p_route uuid, p_port uuid,
+create function pg_temp.crew_case_0272(p_mode text, p_house uuid, p_fleet uuid, p_route uuid, p_port uuid, p_ord int,
                                        p_short int, p_purse bigint, p_qty numeric, p_clears int)
 returns jsonb
 language plpgsql
@@ -418,7 +432,7 @@ declare
   v_sq text;
 begin
   begin
-    perform pg_temp.state_0272(p_house, p_fleet, p_route, p_port, p_short, p_purse, p_qty, p_clears);
+    perform pg_temp.state_0272(p_house, p_fleet, p_route, p_port, p_ord, p_short, p_purse, p_qty, p_clears);
     if p_mode = 'old' then
       select old_def into v_sq from old_bodies_0272 where fn = 'leg';
       execute v_sq;
@@ -438,6 +452,11 @@ begin
       'shortfall', public.fleet_crew_shortfall(p_fleet),
       'purse', (select p.ducats from public.players p where p.id = p_house),
       'fleet', (select f.status from public.fleets f where f.id = p_fleet),
+      'route', (select jsonb_build_object('pause', sr.paused_reason, 'cursor', sr.stop_cursor, 'lap', sr.lap_no,
+                                          'lap_id', sr.lap_id is not null, 'hold', sr.hold_until, 'reserve', sr.reserve,
+                                          'fleet', sr.fleet_id, 'pace', sr.laps_per_game_day,
+                                          'stops', (select count(*) from public.standing_route_stops s where s.route_id = sr.id))
+                  from public.standing_routes sr where sr.id = p_route),
       'ledger_ok', ((select coalesce(sum(l.ducats_delta), 0) from public.ledger l where l.player_id = p_house)
                     = (select p.ducats from public.players p where p.id = p_house)),
       'orders', coalesce((select jsonb_agg(jsonb_build_object('verb', o.verb, 'status', o.status,
@@ -464,6 +483,7 @@ declare
   v_short int;
   v_cost  bigint;
   v_qty   numeric;
+  v_sqty  numeric;
   v_bid   numeric;
   v_one   numeric;
   v_hold  numeric;
@@ -553,8 +573,11 @@ begin
   begin
     select x.player_id, x.route_id into v_house, v_route from pg_temp.sample_0272 x;
     if v_route is null then
-      select sr.player_id, sr.id into v_house, v_route from public.standing_routes sr
-       where sr.fleet_id is not null order by sr.id limit 1;
+      -- the chain's fresh world leaves every route unstarted (standing_routes.fleet_id null); npc_fleets is the
+      -- roster that names a merchant's route, so it is the one that always answers
+      select nf.player_id, nf.route_id into v_house, v_route
+        from public.npc_fleets nf join public.standing_routes sr on sr.id = nf.route_id
+       order by nf.roster_ord limit 1;
     end if;
     if v_route is null then
       raise exception '0272 self-assert FAIL: no route to plant a clear on — the rule probe proves nothing';
@@ -610,17 +633,20 @@ begin
   if v_qty < 1 then
     raise exception '0272 self-assert FAIL: her hold (%) cannot carry enough % to cover a % d. hire', v_hold, m.code, v_cost;
   end if;
-  if v_one >= v_cost then
-    raise exception '0272 self-assert FAIL: one tun of % is worth % d. at the quay — the "cannot cover" control cannot be built against a % d. hire', m.code, v_one, v_cost;
+  -- the "hold cannot cover it" control needs a hold worth less than the hire: a quarter of it, at the per-tun bid,
+  -- is that even on a quay whose cheapest good is dear enough that a single tun alone would cover the hire
+  v_sqty := least(1, round(v_cost * 0.25 / greatest(v_one, 0.01), 3));
+  if v_sqty <= 0 then
+    raise exception '0272 self-assert FAIL: the "cannot cover" control cannot be sized against a % d. hire', v_cost;
   end if;
 
   -- (d0) the rule's own truth table on the planted shape (every case rolled back with its subtransaction)
   for v_case in select unnest(array['pays', 'covers', 'short', 'full']) loop
     begin
-      perform pg_temp.state_0272(g.player_id, g.fleet_id, g.route_id, g.port_id,
+      perform pg_temp.state_0272(g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord,
                                  case when v_case = 'full' then 0 else 2 end,
                                  case when v_case = 'covers' then 10000 else 0 end,
-                                 case when v_case = 'short' then 1 else v_qty end, 0);
+                                 case when v_case = 'short' then v_sqty else v_qty end, 0);
       if public.npc_crew_blocked(g.fleet_id, g.port_id) is distinct from (v_case = 'pays') then
         raise exception '0272 self-assert FAIL: the rule says % on the "%" shape (shortfall %, purse %, hold) where it must say %',
           public.npc_crew_blocked(g.fleet_id, g.port_id), v_case, public.fleet_crew_shortfall(g.fleet_id),
@@ -638,9 +664,9 @@ begin
   end loop;
 
   -- (d1) THE POSITIVE CASE: purse 0, a hold worth more than the hire, a failed SAIL refused E_CREW_SHORT.
-  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, 2, 0, v_qty, 2);
-  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, 2, 0, v_qty, 2);
-  c := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, 2, 0, v_qty, 2);
+  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 2, 0, v_qty, 2);
+  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 2, 0, v_qty, 2);
+  c := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 2, 0, v_qty, 2);
   if o->'receipt'->>'cleared' is distinct from '1' or o->'receipt'->>'failed' is distinct from '0' then
     raise exception '0272 self-assert FAIL: the old step answered % — it did not reach the clear', o->'receipt';
   end if;
@@ -652,7 +678,8 @@ begin
                   where e->>'verb' = 'HIRE' and e->>'status' = 'skipped' and e->>'code' = 'E_INSUFFICIENT_FUNDS')
      or not exists (select 1 from jsonb_array_elements(o->'orders') e
                      where e->>'verb' = 'SAIL' and e->>'status' = 'failed' and e->>'code' = 'E_CREW_SHORT') then
-    raise exception '0272 self-assert FAIL: the old step did not reproduce the loop (HIRE skipped, SAIL refused): %', o->'orders';
+    raise exception '0272 self-assert FAIL: the old step did not reproduce the loop (HIRE skipped, SAIL refused): % / receipt % / route %',
+      o->'orders', o->'receipt', o->'route';
   end if;
   if (o->>'fleet') <> 'DOCKED' or (o->>'shortfall')::int <= 0 then
     raise exception '0272 self-assert FAIL: the old step left her fleet %, shortfall %', o->>'fleet', o->>'shortfall';
@@ -681,8 +708,8 @@ begin
 
   -- (d2) THE CONTROLS: where the rule must not act, old and new leave the same rows.
   -- covers: her purse already pays the hire — nothing is sold, and she sails.
-  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, 2, 10000, v_qty, 2);
-  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, 2, 10000, v_qty, 2);
+  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 2, 10000, v_qty, 2);
+  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 2, 10000, v_qty, 2);
   if (o->>'digest') is distinct from (n->>'digest') then
     raise exception '0272 self-assert FAIL: the rule acted where her purse covers the hire: % / %', left(o->>'digest', 400), left(n->>'digest', 400);
   end if;
@@ -696,8 +723,8 @@ begin
   end if;
   v_step := v_step + 1;
   -- short: her hold cannot cover the hire — no sale, and the old outcome stands
-  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, 2, 0, 1, 2);
-  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, 2, 0, 1, 2);
+  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 2, 0, v_sqty, 2);
+  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 2, 0, v_sqty, 2);
   if (o->>'digest') is distinct from (n->>'digest') then
     raise exception '0272 self-assert FAIL: the rule acted on a hold that cannot cover the hire: % / %', left(o->>'digest', 400), left(n->>'digest', 400);
   end if;
@@ -709,8 +736,8 @@ begin
   end if;
   v_step := v_step + 1;
   -- full: no shortfall — no HIRE line, no sale, and she sails on the old and the new body alike
-  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, 0, 0, v_qty, 2);
-  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, 0, 0, v_qty, 2);
+  o := pg_temp.crew_case_0272('old', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 0, 0, v_qty, 2);
+  n := pg_temp.crew_case_0272('new', g.player_id, g.fleet_id, g.route_id, g.port_id, g.ord, 0, 0, v_qty, 2);
   if (o->>'digest') is distinct from (n->>'digest') then
     raise exception '0272 self-assert FAIL: the rule acted on a fleet at full complement: % / %', left(o->>'digest', 400), left(n->>'digest', 400);
   end if;

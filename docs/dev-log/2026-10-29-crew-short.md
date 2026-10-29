@@ -4,11 +4,10 @@ Follows `prodcheck-2026-10-29/crew-short-report.md` (the read-only prod investig
 head 0269). That report named the root of the hourly `E_CREW_SHORT` loop; 0272 is the one change it asked for. Nothing
 else moves.
 
-**STATUS: AUTHORED, CHAIN NOT RUN.** The migration, its self-assert and its probes are written and committed on
-`osn-crew-short`. The local chain is held by another slice, so nothing here has been proved on a database yet — no
-`db:apply`, no `proof.mjs`, no self-assert notice, no local timing. Every claim below marked "proved" is proved on
-PROD (read-only) by the report; every claim about 0272's own effect is what the self-assert will prove when the chain
-runs, and is marked so.
+**STATUS: BUILT AND PROVED ON THE LOCAL CHAIN** (`osn-crew-short`; PR open, not deployed). The chain applies 0272
+after 0270 and 0271 and prints the self-assert receipt below; `proof.mjs standing` and `proof.mjs merchant` are green.
+The prod claims are the report's (read-only, head 0269); the claims about 0272's own effect are the self-assert's, run
+on the chain's world.
 
 ## The root, from prod (read-only; the report's own reads, head 0269)
 
@@ -79,11 +78,14 @@ takers the same set, the client entry points the same count.
   first clear**; E_ENDURANCE too; the third clear too (seeded by two planted `NPC_CLEARED` events, `n` read back = 3);
   an ordinary refusal (`E_NO_CARGO`, `SELL / E_INSUFFICIENT_FUNDS`) at `n < 3` does not. The old rule is recomputed
   beside it and the two must agree on every case but the one this file adds.
-- **(d) Probe B, the cut-loss, the real one.** One merchant the step can reach (docked, a route whose stop at her port
-  is not the lap's first stop so no `REPAIR` line stands, hands at the quay, a good the quay bids on, no failed order
-  of her own). The stuck shape is planted on her inside each case's rolled-back subtransaction: docked at the stop's
-  port, `crew = crew_required - 2` on every hull, purse 0, her hold stocked at cost 1,000,000 (so the at-profit SELL is
-  refused `E_PRICE_LIMIT`), casks full (so the SAIL never fails `E_ENDURANCE`), preset gone (so no `PROVISION` line
+- **(d) Probe B, the cut-loss, the real one.** One merchant the step can reach: a **single-hull** docked merchant (both
+  live cases are one carlat), MOVED to a stop of her own loop that is **not the lap's first** — a cursor of 0 is the
+  lap boundary, where 0101 sends a merchant home to rest and 0114 re-plans her, neither of which is under test; the
+  chain's fresh world leaves every merchant at her own stop 0, and prod's stuck merchants lie mid-loop (TRP, BRI) —
+  at a harbour with hands for sale and a good it bids on, and no failed order of her own. The stuck shape is planted
+  on her inside each case's rolled-back subtransaction: `crew = crew_required − 2`, purse 0, her hold stocked at cost
+  1,000,000 (so the at-profit SELL is refused `E_PRICE_LIMIT`), casks full (so the SAIL never fails `E_ENDURANCE`),
+  hulls at full durability (so the stop's REPAIR can never spend the money), preset gone (so no `PROVISION` line
   stands between the sale and the hire), a failed `SAIL TO …` with `E_CREW_SHORT` at the head, and **two**
   `NPC_CLEARED` events already on the lap — so this is the third clear and 0270's rule re-plans on **both** sides: the
   only difference measured is the cut-loss.
@@ -92,18 +94,60 @@ takers the same set, the client entry points the same count.
   - **NEW**: a `SELL … ALL` at the bid is `done`, the `HIRE` is `done`, the `SAIL` is `done`, her fleet **SAILING**,
     `fleet_crew_shortfall = 0`, and her purse still equals the sum of her ledger.
   - **Controls**, each OLD against NEW, digests equal where the rule must not act: **purse covers the hire** (no sale,
-    the hire paid from her purse, she sails); **the hold cannot cover it** (no sale, and the OLD outcome exactly —
-    HIRE skipped, SAIL refused); **at full complement** (no HIRE line at all, no sale, she sails).
+    the hire paid from her purse, she sails); **the hold cannot cover it** (a quarter of the hire's value in the hold —
+    a fractional parcel, since one tun of the probe's good alone is worth more than the hire — no sale, and the OLD
+    outcome exactly: HIRE skipped, SAIL refused); **at full complement** (no HIRE line at all, no sale, she sails).
   - A fourth check inside each shape: `npc_crew_blocked` is false at a quay she does not lie at.
 - **(e) The probe left nothing**: no `probe_0272` order and no `PROBE_0272` ledger row survives.
 
+## The local chain (PGlite; 0270, 0271 and 0272 applied in order)
+
+- `chain: 261 migration(s) — 260 restored from the prefix cache …, 1 applied here — 261 with a self-assert receipt
+  (267 receipt line(s)); chain key 74f8d40bffd1a871, 23.7 s`; world guard ok.
+- The 0272 self-assert receipt, verbatim:
+
+```
+0272 self-assert ok: A CREW SHORTAGE IS PAID FROM THE HOLD. npc_leg_lines and npc_clear_due reverse to their pre-images hunk by hunk, ACLs unmoved, every other function in the four schemas unmoved (md5), public.npc_crew_blocked the one function minted, the quay takers and the client entry points unmoved. The rule on 7 planted clears: a SAIL refused E_CREW_SHORT plans on the FIRST clear, E_ENDURANCE too, the third clear too, an ordinary refusal at n < 3 not. The cut-loss, her step OLD vs NEW on merchant 7e6e35a5-eea3-4655-8251-74129a294cb6: OLD leaves HIRE skipped and SAIL refused E_CREW_SHORT with her docked; NEW sells at the bid, pays the HIRE, sails, crew restored and the ledger reconciled; 3 controls (purse covers, hold short, at full complement) left identical rows. Rolled back.
+```
+
+- `node scripts/db/proof.mjs standing`: `✓ 11_standing_route.sql — 5/5 PASS markers`, `PROOFS PASSED: 1 file(s), 5/5`.
+- `node scripts/db/proof.mjs merchant`: `PROOFS PASSED: 1 file(s), 6/6 PASS markers`.
+- **The pre-images ARE prod's, measured:** at head 0271 the chain's own bodies hash to
+  `65b27dcf73ded8b8ce4b4a1204380999` for `public.npc_leg_lines` and
+  `ff1eed323e3e11b6935079247046f4f5` for `public.npc_clear_due` — the two figures the deploy's prod check names — so
+  the hunks are cut against exactly the bodies production runs.
+
+### What the factory had to be told (probe plumbing only; no claim weakened)
+
+Three probe-only corrections were needed, and none of them changes a rule or an assertion's meaning:
+
+1. **The probe merchant must be moved to a MID-LAP stop.** The chain's fresh world docks every merchant at her own
+   stop 0; a cursor of 0 is the lap boundary, where 0101 sends her home to rest (`hold_until` = closed_at + the
+   fortnight's rest) and 0114 re-plans her — so her step rendered no lines at all. Prod's stuck merchants lie mid-loop
+   (TRP, BRI), which is the shape the probe now builds.
+2. **One hull, as both live cases are.** `cmd.do_hire` fills the hull with the MOST ROOM first, so on a fleet of equal
+   hulls `HIRE <total shortfall>` restores one hull and leaves the others short; the probe's first draft (three hulls)
+   therefore showed a SAIL still refused after a *successful* hire. That distribution is 0007's and is untouched here —
+   see "not proven".
+3. **`world.quote` raises `E_NO_SUCH_GOOD` on a port/good pair with no market row.** The rule, the cut-loss and the
+   probe's good picker now join `public.port_goods` first; an untraded good is worth nothing at that quay.
+
+The "hold cannot cover it" control is built by loading a FRACTIONAL parcel (a quarter of the hire's value), because on
+this quay one tun of the cheapest good alone is worth more than the hire.
+
 ## What is NOT proven (said plainly)
 
-- **Nothing yet on a database.** The chain has not run. The hunks' pre-images are cut from the file text (0142/0150/
-  0181/0209 for `npc_leg_lines`, 0270 for `npc_clear_due`), not from a live `pg_get_functiondef`; the self-assert will
-  be the first to compare them, and if a body moved in a way these files do not show, it will fail there.
+- **The multi-hull and no-cargo shapes, and merchant behaviour on prod.** The probe proves the rule and the cut-loss on
+  the chain's world; what the two live routes do after the deploy is the after-check below, not this file.
 - **A house with neither coin nor saleable cargo is not helped.** `npc_crew_blocked` is false, and the loop continues
   exactly as today. That needs its own owner decision (a bounded city-paid crew aid, or a visible `error` pause).
+- **A multi-hull fleet is not restored by hiring the shortfall.** `cmd.do_hire` fills the hull with the MOST ROOM
+  first (0007's own distribution, untouched here), so on a fleet of equal hulls `HIRE <total shortfall>` restores one
+  hull and leaves the others short. Both live cases are a single carlat, which is the shape the probe builds; a
+  multi-hull stuck merchant would still loop as today. That distribution is its own slice if the owner wants it.
+- **`world.quote` raises `E_NO_SUCH_GOOD` on a port/good pair with no market row** (found while proving). Both the rule
+  and the cut-loss join `public.port_goods` before quoting, so an untraded good counts as worth nothing at that quay
+  rather than aborting her plan.
 - **The cut-loss covers the HIRE, not a `PROVISION` that may run between the sale and the hire in the same stop.**
   `cmd.do_provision` is all-or-nothing (0007:602-607), so a stop whose store top-up the sale also pays may spend it
   before the HIRE. The first clear re-plans (the new clause guarantees it) and sells again while the hold still
