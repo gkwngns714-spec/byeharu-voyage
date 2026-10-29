@@ -488,7 +488,7 @@ function SailAct({
         </div>
       }
       button={<BigButton act={side === 'buy' ? 'sail-buy' : 'sail-sell'} label={label} disabled={!mine || !go.ready} busy={go.pending} onClick={go.go} />}
-      after={mine ? <PlanVoyage fleet={fleet} board={b} buyRow={go.buyRow} sellRow={go.sellRow} legs={trip.legs} /> : undefined}
+      after={mine ? <PlanVoyage fleet={fleet} board={b} buyRow={go.buyRow} sellRow={go.sellRow} /> : undefined}
     />
   )
 }
