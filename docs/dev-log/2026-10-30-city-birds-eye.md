@@ -69,3 +69,10 @@ Also green: `tsc`, `eslint`, `vite build`.
 Measured in `tests/city.page.spec.ts` (section 3a): a press on `city-scene-storage` opens the face
 with `data-building="storage"` and **moves nothing behind it**; all six landmarks are visible and
 pressable; a dot's screen box changes by more than 0.5 px within 900 ms.
+
+## 4. "have the city birds eye view as a square on the top left, and then buildings smaller that fits the right space"
+
+The top block of the page is one row (`city-top`): the plan is `aspect-square`, 52 % of the glass wide,
+at the top left; the six building tiles fill the space to its right in two columns of three, smaller
+(18 px icon, caption label, `min-h-11` — the 44 px reach floor). The summary figures follow below and
+the earnings block is pinned above the rail (`mt-auto`). No page scroll at either glass.

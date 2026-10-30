@@ -227,10 +227,32 @@ function CityFrame({
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col gap-3 px-gutter pb-3">
-        {/* CITY INFO — the drawing, with its population dots. */}
-        <div className="min-h-[110px] flex-[1.15] overflow-hidden" data-testid="city-info-image">
-          <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
-        </div>
+        {/* THE PLAN AND ITS BUILDINGS, side by side (owner, 2026-10-30: "have the city birds eye view
+            as a square on the top left, and then buildings smaller that fits the right space"): the
+            drawing stands SQUARE at the top left, and the six buildings fill the space to its right in
+            two columns of three. The tiles stay ≥ 44 px high (the reach floor). */}
+        <section className="flex min-h-0 shrink-0 gap-2" data-testid="city-top">
+          <div className="aspect-square min-h-[96px] min-w-0 flex-[0_0_52%] self-start overflow-hidden" data-testid="city-info-image">
+            <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
+          </div>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <h2 className="shrink-0 pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
+            <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-3 gap-1.5" data-testid="city-building-grid">
+              {buildings.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => onOpen(b.id)}
+                  data-testid={`city-building-${b.id}`}
+                  className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-tile bg-surface px-1 text-ink-muted transition hover:bg-surface-2 hover:text-ink"
+                >
+                  <Icon name={b.icon} size={18} />
+                  <span className="max-w-full truncate text-t-caption">{t(b.label)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* SUMMARY — four figures. Gold is the city's purse (served); the other three are the
             data slice's, and say so. */}
@@ -257,27 +279,8 @@ function CityFrame({
           </p>
         </section>
 
-        {/* BUILDINGS — six, in a field that wraps (never sideways). */}
-        <section className="flex min-h-0 flex-[1.5] flex-col" data-testid="city-building-grid">
-          <h2 className="shrink-0 pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
-          <div className="grid min-h-0 flex-1 grid-cols-3 grid-rows-2 gap-2 lg:grid-cols-6 lg:grid-rows-1">
-            {buildings.map((b) => (
-              <button
-                key={b.id}
-                type="button"
-                onClick={() => onOpen(b.id)}
-                data-testid={`city-building-${b.id}`}
-                className="flex min-h-0 flex-col items-center justify-center gap-1 rounded-tile bg-surface px-1 py-1 text-ink-muted transition hover:bg-surface-2 hover:text-ink"
-              >
-                <Icon name={b.icon} size={22} />
-                <span className="max-w-full truncate text-t-caption">{t(b.label)}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-
         {/* YOUR EARNINGS — your purse and the crew you employ. */}
-        <section className="flex shrink-0 items-center justify-between gap-3 rounded-tile bg-surface px-gutter py-2" data-testid="city-earnings">
+        <section className="mt-auto flex shrink-0 items-center justify-between gap-3 rounded-tile bg-surface px-gutter py-2" data-testid="city-earnings">
           <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
           <div className="flex items-start gap-6">
             <StatCell
