@@ -229,7 +229,7 @@ function CityFrame({
       <main className="flex min-h-0 flex-1 flex-col gap-3 px-gutter pb-3">
         {/* CITY INFO — the drawing, with its population dots. */}
         <div className="min-h-[110px] flex-[1.15] overflow-hidden" data-testid="city-info-image">
-          <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />
+          <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
         </div>
 
         {/* SUMMARY — four figures. Gold is the city's purse (served); the other three are the

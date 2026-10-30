@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { useT } from '../../lib/i18n'
+import type { CityBuilding } from './CityFace'
 
 // THE CITY FROM ABOVE — a bird's-eye plan of the harbour town (owner, 2026-10-30: "the city graphic
 // should be in bird's eye view"). The page's City Info drawing is now the town LOOKED DOWN ON: the
@@ -7,6 +8,12 @@ import { useT } from '../../lib/i18n'
 // buildings the page offers standing in their own blocks — the Town Hall with its plaza, the Market's
 // stalls, the long quay warehouses (Storage), the Forge with its chimney, the Inn with its courtyard,
 // and the Port, which is the quay itself. Fields beyond the north wall.
+//
+// EVERY LANDMARK IS A DOOR (owner, 2026-10-30: "the bird's eye view is not just visual, i should be
+// able to press buildings") — a press (or Enter / Space, the press a player makes) opens the SAME
+// full-screen face the six building tiles below open; the tiles stay as the named list. And the
+// people MOVE: every dot walks a street (the quay road, the market square's loop, the avenue) on its
+// own loop, so the town is alive rather than a picture of one instant.
 //
 // WHAT IS REAL AND WHAT IS NOT (unchanged from the shell slice). The hour is the served clock's, so
 // night is true for every player at once: the town darkens, the streets light their lamps and the
@@ -60,22 +67,78 @@ function dotAt(i: number, total: number, seed: number): { x: number; y: number }
   return { x: 16 + t * 368 + jitter(seed, i, 3), y: 108 + jitter(seed, i + 1, 2.5) }
 }
 
+/** The five tracks a person walks: the quay road, the market loop, the two roads across, the avenue. */
+function dotTrack(i: number): string {
+  switch (i % 5) {
+    case 2:
+      return 'M236 65 H288 V87 H236 Z'
+    case 1:
+      return 'M230 30 V94'
+    case 3:
+      return 'M16 62 H384'
+    case 4:
+      return 'M98 30 V94'
+    default:
+      return 'M16 96 H384'
+  }
+}
+
 /** The street grid: three roads across the town, five up it, and the quay road along the water. */
 const ROADS_H = [26, 62, 96]
 const ROADS_V = [34, 98, 164, 230, 296, 362]
 /** The blocks a landmark owns — its own roof stands in them, so no block roof is drawn there. */
 const LANDMARK_BLOCKS = new Set(['1-0', '2-0', '4-0', '3-1', '0-2', '1-2', '2-2', '3-2', '4-2'])
 
+/** One landmark on the plan: a press or a key opens that building's full-screen face. */
+function Landmark({
+  id,
+  label,
+  onOpen,
+  hit,
+  children,
+}: {
+  id: CityBuilding
+  label: string
+  onOpen?: (b: CityBuilding) => void
+  /** The whole block is the tap target, not only the roof's outline: x, y, w, h in view units. */
+  hit: { x: number; y: number; w: number; h: number }
+  children: ReactNode
+}) {
+  if (!onOpen) return <g>{children}</g>
+  return (
+    <g
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      data-testid={`city-scene-${id}`}
+      className="cursor-pointer outline-none focus-visible:opacity-80"
+      onClick={() => onOpen(id)}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen(id)
+        }
+      }}
+    >
+      {children}
+      <rect x={hit.x} y={hit.y} width={hit.w} height={hit.h} fill="transparent" />
+    </g>
+  )
+}
+
 export function CityScene({
   sizeTier,
   night,
   seed = '',
+  onOpen,
   className = '',
 }: {
   sizeTier: number
   night: boolean
   /** The city's stable name — the same harbour draws the same plan everywhere. */
   seed?: string
+  /** Pressing a building on the plan opens its face — the same press the tiles below make. */
+  onOpen?: (b: CityBuilding) => void
   className?: string
 }) {
   const t = useT()
@@ -104,7 +167,7 @@ export function CityScene({
     <svg
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
       preserveAspectRatio="xMidYMid slice"
-      role="img"
+      role="group"
       aria-label={`${t('city.title')} · ${night ? t('city.night') : t('city.day')}`}
       data-testid="city-scene"
       data-phase={night ? 'night' : 'day'}
@@ -134,7 +197,7 @@ export function CityScene({
       ))}
 
       {/* THE STREETS */}
-      <g strokeWidth="2.6" opacity="0.5" className="stroke-ink-faint">
+      <g strokeWidth="2.6" opacity="0.6" className="stroke-ink-faint">
         {ROADS_H.map((y) => (
           <line key={`h${y}`} x1="0" y1={y} x2={VIEW_W} y2={y} />
         ))}
@@ -152,7 +215,7 @@ export function CityScene({
       <g data-testid="city-blocks">
         {blocks.map((b) => (
           <g key={b.key}>
-            <rect className="fill-surface-2 stroke-edge" strokeWidth="0.9" x={b.x} y={b.y} width={b.w} height={b.h} />
+            <rect className="fill-surface-2 stroke-ink-faint" strokeWidth="0.5" strokeOpacity="0.35" x={b.x} y={b.y} width={b.w} height={b.h} />
             {/* the ridge, and a lit slope so a roof reads as a roof from above */}
             <line className="stroke-ink-faint" strokeWidth="0.7" opacity="0.45" x1={b.x + 2} y1={b.y + b.h / 2} x2={b.x + b.w - 2} y2={b.y + b.h / 2} />
             <polygon className="fill-ink" opacity="0.06" points={`${b.x + 1},${b.y + 1} ${b.x + b.w - 1},${b.y + 1} ${b.x + b.w - 1},${b.y + b.h / 2 - 1} ${b.x + 1},${b.y + b.h / 2 - 1}`} />
@@ -165,16 +228,17 @@ export function CityScene({
       </g>
 
       {/* THE TOWN HALL — the page's hall, in its own block: the big roof, the tower, and a plaza. */}
-      <g>
+      <Landmark id="hall" label={t('city.cityHall')} onOpen={onOpen} hit={{ x: 164, y: 28, w: 50, h: 30 }}>
         <rect className="fill-surface stroke-edge" strokeWidth="0.9" x="166" y="30" width="46" height="24" />
         <line className="stroke-edge" strokeWidth="0.7" x1="166" y1="42" x2="212" y2="42" />
         <rect className="fill-accent" opacity="0.85" x="186" y="33" width="6" height="6" />
         <circle className="fill-surface-2 stroke-edge" strokeWidth="0.8" cx="170" cy="46" r="4.5" />
         <circle className={night ? 'fill-warning' : 'fill-info'} cx="170" cy="46" r="1.4" opacity="0.9" />
-      </g>
+      </Landmark>
 
       {/* THE MARKET — an open square of stalls beside the avenue. */}
-      <g opacity="0.95">
+      <Landmark id="market" label={t('city.market')} onOpen={onOpen} hit={{ x: 232, y: 63, w: 60, h: 31 }}>
+        <g opacity="0.95">
         <rect className="fill-surface-2" opacity="0.55" x="234" y="66" width="56" height="26" />
         {[0, 1, 2].map((cx) =>
           [0, 1].map((cy) => (
@@ -190,33 +254,34 @@ export function CityScene({
             />
           )),
         )}
-      </g>
+        </g>
+      </Landmark>
 
       {/* STORAGE — the long warehouses on the quay, where the goods land. */}
-      <g>
+      <Landmark id="storage" label={t('city.storage')} onOpen={onOpen} hit={{ x: 34, y: 97, w: 132, h: 19 }}>
         {[38, 82, 126].map((x) => (
           <g key={x}>
             <rect className="fill-surface stroke-edge" strokeWidth="0.8" x={x} y="100" width="36" height="13" />
             <line className="stroke-edge" strokeWidth="0.6" x1={x} y1="106.5" x2={x + 36} y2="106.5" opacity="0.7" />
           </g>
         ))}
-      </g>
+      </Landmark>
 
       {/* THE FORGE — its chimney, and the smoke rising over the roofs. */}
-      <g>
+      <Landmark id="forge" label={t('city.forge')} onOpen={onOpen} hit={{ x: 102, y: 27, w: 34, h: 31 }}>
         <rect className="fill-surface stroke-edge" strokeWidth="0.8" x="106" y="38" width="28" height="18" />
         <rect className="fill-surface-2 stroke-edge" strokeWidth="0.7" x="112" y="31" width="7" height="8" />
         <circle className="fill-ink-faint" opacity={night ? 0.55 : 0.35} cx="115" cy="27" r="2.4" />
         <circle className="fill-ink-faint" opacity={night ? 0.4 : 0.25} cx="118" cy="23" r="1.7" />
         {night && <rect className="fill-warning" opacity="0.85" x="112" y="42" width="5" height="3" />}
-      </g>
+      </Landmark>
 
       {/* THE INN — its courtyard open to the street. */}
-      <g>
+      <Landmark id="inn" label={t('city.inn')} onOpen={onOpen} hit={{ x: 300, y: 30, w: 44, h: 26 }}>
         <rect className="fill-surface stroke-edge" strokeWidth="0.8" x="302" y="32" width="40" height="22" />
         <rect className="fill-surface-2" x="310" y="37" width="24" height="12" />
         {night && <rect className="fill-warning" opacity="0.85" x="306" y="35" width="4" height="3" />}
-      </g>
+      </Landmark>
 
       {/* THE SEA — the waterline, the quay edge, the two piers and the hulls alongside. */}
       <path
@@ -231,9 +296,11 @@ export function CityScene({
       </g>
       {/* the quay edge */}
       <line className="stroke-edge" strokeWidth="1.6" x1="0" y1={COAST_Y} x2={VIEW_W} y2={COAST_Y} opacity="0.9" />
-      {/* piers */}
-      <rect className="fill-surface-2 stroke-edge" strokeWidth="0.7" x="120" y={COAST_Y} width="9" height="20" />
-      <rect className="fill-surface-2 stroke-edge" strokeWidth="0.7" x="288" y={COAST_Y} width="9" height="26" />
+      {/* THE PORT — the piers and the hulls alongside them, the press the quay itself makes. */}
+      <Landmark id="port" label={t('city.port')} onOpen={onOpen} hit={{ x: 116, y: COAST_Y, w: 186, h: 34 }}>
+        <rect className="fill-surface-2 stroke-edge" strokeWidth="0.7" x="120" y={COAST_Y} width="9" height="20" />
+        <rect className="fill-surface-2 stroke-edge" strokeWidth="0.7" x="288" y={COAST_Y} width="9" height="26" />
+      </Landmark>
       {/* hulls: the Port building is the quay — ships lie alongside her */}
       <g className="fill-surface stroke-edge" strokeWidth="0.7">
         <path d="M132 128 q 10 -3 20 0 q 2 4 -2 5 l -16 0 q -4 -1 -2 -5 Z" opacity="0.95" />
@@ -259,10 +326,21 @@ export function CityScene({
         </g>
       )}
 
-      {/* THE PEOPLE — dots in the streets, sized by the served tier. */}
-      <g className={night ? 'fill-accent' : 'fill-ink'} opacity="0.8" data-testid="city-dots">
-        {dots.map((d, i) => (
-          <circle key={i} cx={d.x} cy={d.y} r="1.4" />
+      {/* THE PEOPLE — dots WALKING the streets (owner: "see people moving as dots"), sized by the
+          served tier. Five tracks: the quay road, the market square's loop, the two roads across,
+          the avenue north. Each dot keeps its own phase and pace, so the crowd never marches in
+          step. A dot carries NO cx/cy: animateMotion positions it along its track, and a cx would
+          offset it a second time. */}
+      <g className={night ? 'fill-accent' : 'fill-ink'} opacity="0.95" data-testid="city-dots">
+        {dots.map((_d, i) => (
+          <circle key={i} r="2.1" data-dot={i}>
+            <animateMotion
+              path={dotTrack(i)}
+              dur={`${11 + (i % 5) * 2.4}s`}
+              begin={`${-((i * 1.7) % 9)}s`}
+              repeatCount="indefinite"
+            />
+          </circle>
         ))}
       </g>
 
