@@ -31,6 +31,8 @@ import type {
   BuildingYardView,
   WarehouseView,
   WorkstationView,
+  ForgeView,
+  ForgeReceipt,
   SeaRasterPayload,
   ReachPayload,
   BuyCapacity,
@@ -180,6 +182,26 @@ export function worldWorkstation(
   fleetId: string | null,
 ): Promise<RpcResult<WorkstationView>> {
   return call<WorkstationView>('worldWorkstation', [portId, fleetId])
+}
+
+/**
+ * THE CITY PAGE'S FORGE (0281) — every crafted TRADE good, its raw ingredients, how many of each
+ * are IN THIS CITY'S STORAGE, and the server's own `can_forge` verdict for one batch.
+ *
+ * Takes no fleet: the ingredients come out of the shed, not a hold. `docked` says whether a fleet
+ * of yours lies here, which is what cmd.forge_good requires before anything can be made.
+ */
+export function worldGoodsForge(portId: string): Promise<RpcResult<ForgeView>> {
+  return call<ForgeView>('worldGoodsForge', [portId])
+}
+
+/**
+ * FORGE ONE BATCH (0281): spend a crafted good's goods_recipes ingredients from this city's
+ * storage and land the product there. No money moves. Only while a fleet of yours lies docked
+ * here (E_NOT_DOCKED); E_NO_MATERIALS, E_NOT_FORGEABLE and E_SHED_FULL arrive as refusals.
+ */
+export function cmdForgeGood(portId: string, productId: string, qty = 1): Promise<RpcResult<ForgeReceipt>> {
+  return call<ForgeReceipt>('cmdForgeGood', [portId, productId, qty])
 }
 
 /**

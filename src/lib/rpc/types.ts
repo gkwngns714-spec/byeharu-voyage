@@ -126,6 +126,11 @@ export interface SnapshotGood {
   /** Served by 0032 — see GoodRarity. Optional so the client does not break against a server
    *  that predates it (the same contract `VerbSpec.note` states for 0021). */
   rarity?: GoodRarity
+  /** 0281 (0280's column): 0 = a raw material a city produces, 1-3 = a crafted good the Forge
+   *  makes from raw ingredients. Optional for the serve-order reason rarity is. */
+  tier?: number
+  /** 0281: `tier = 0`, served rather than derived by the client (0280's generated column). */
+  is_raw?: boolean
   /** Cultures that will NOT trade it. Empty = traded everywhere (DESIGN B.4). */
   culture_mask: string[]
 }
@@ -503,6 +508,56 @@ export interface WorkstationView {
   items: WorkstationItem[]
 }
 
+// ── world.goods_forge(port) — the City page's Forge (0281) ────────────────────────────────────
+//
+// THE GOODS economy, not the item/fitting one: a crafted TRADE good (goods.tier 1-3) made out of
+// the raw goods (goods.tier 0) stored in this city, from public.goods_recipes (0280). The client
+// prints `can_forge` and never works it out — it is the same rule cmd.forge_good applies.
+
+/** One input of a goods recipe, and how much of it is IN THIS CITY'S STORAGE. */
+export interface ForgeIngredient {
+  good: string
+  name: string
+  /** The ingredient's own tier (always below the product's). */
+  tier: number
+  /** Units the recipe asks for, for ONE product. */
+  qty: number
+  /** Units of it ashore here now. */
+  have: number
+}
+
+/** One crafted good the Forge can make, with its recipe as this city sees it. */
+export interface ForgeRecipe {
+  /** `SnapshotGood.id` — what cmd.forge_good takes (a uuid, not the code). */
+  product_id: string
+  product: string
+  name: string
+  /** The product's tier, 1-3. */
+  tier: number
+  bulk: number
+  /** Every ingredient is ashore here in its quantity — the server's verdict, never re-derived. */
+  can_forge: boolean
+  ingredients: ForgeIngredient[]
+}
+
+export interface ForgeView {
+  port_id: string
+  /** A fleet of yours lies DOCKED here — storage is only reachable from one (0070). */
+  docked: boolean
+  /** Every crafted good with a recipe, by tier then name. */
+  recipes: ForgeRecipe[]
+}
+
+/** cmd.forge_good's receipt: what was made, and the ingredients that left the shed. */
+export interface ForgeReceipt {
+  ok: true
+  product: string
+  name: string
+  qty: number
+  spent: { good: string; qty: number }[]
+  stored_here: number
+}
+
 /** 0067 — what a kind of building is called and what it does. Served once, read by every screen. */
 export interface SnapshotBuildingKind {
   kind: BuildingKind
@@ -537,6 +592,9 @@ export interface MarketGood {
    *  a market row never needs a code→catalogue join to say one word. Optional for the same
    *  serve-order reason. */
   rarity?: GoodRarity
+  /** 0281 — the same two fields as `SnapshotGood`, from the same columns (0280). */
+  tier?: number
+  is_raw?: boolean
   /** What the player PAYS (ask). */
   buy: number
   /** What the player RECEIVES (bid). */

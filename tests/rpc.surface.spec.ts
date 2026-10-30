@@ -1468,6 +1468,13 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // current_player_id(), so naming another house's port tells you the shed's SIZE and nothing
       // about what is in it. Lands with the face that reads it.
       'worldWarehouse',
+      // Pin moved deliberately 2026-10-30 with migration 0281 (the City page's Forge): the goods
+      // forge's read and its one verb. Both land WITH the face that reads them (PortForge.tsx).
+      // `world.goods_forge(p_port)` is a READ with no player id (what YOU keep comes from
+      // current_player_id()); `cmd.forge_good(p_port, p_product, p_qty)` is fleet-gated like
+      // cmd.invest — no player id, no money moves, refused E_NOT_DOCKED with no fleet lying there.
+      // The ITEM forge docs/CORP_STORAGE_FORGE.md plans (world.forge / cmd.forge) is not this.
+      'worldGoodsForge', 'cmdForgeGood',
       // 0072 — world.building_yard(p_port). A READ, no player id and no FLEET: a hull is built out
       // of the CITY, so what she is carrying is not part of the question. What YOU keep here comes
       // from current_player_id().
