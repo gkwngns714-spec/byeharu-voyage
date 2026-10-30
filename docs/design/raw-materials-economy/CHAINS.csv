@@ -1,0 +1,77 @@
+﻿chain_id,step,product_id,product,tier,ingredients
+cake,1,figs,Figs,0,
+cake,2,fresh-water,Fresh Water,0,
+cake,3,milk,Milk,0,
+cake,4,wheat,Wheat,0,
+cake,5,cream,Cream,1,2 Milk
+cake,6,wheat-flour,Wheat Flour,1,2 Wheat
+cake,7,bread,Bread,2,2 Wheat Flour + 1 Milk + 1 Fresh Water
+cake,8,cake,Cake,3,2 Bread + 1 Figs + 1 Cream
+damascene-work,1,gold,Gold,0,
+damascene-work,2,iron,Iron,0,
+damascene-work,3,coal,Sea Coal,0,
+damascene-work,4,silver,Silver,0,
+damascene-work,5,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+damascene-work,6,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+damascene-work,7,damascene-work,Damascene Work,3,1 Steel Billets + 1 Silver + 1 Gold + 1 Sea Coal
+damascus-blades,1,iron,Iron,0,
+damascus-blades,2,coal,Sea Coal,0,
+damascus-blades,3,timber,Timber,0,
+damascus-blades,4,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+damascus-blades,5,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+damascus-blades,6,damascus-blades,Damascus Blades,3,2 Steel Billets + 1 Sea Coal + 1 Timber
+katana,1,fresh-water,Fresh Water,0,
+katana,2,iron,Iron,0,
+katana,3,coal,Sea Coal,0,
+katana,4,timber,Timber,0,
+katana,5,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+katana,6,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+katana,7,katana,Katana,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water + 1 Timber
+kris,1,iron,Iron,0,
+kris,2,coal,Sea Coal,0,
+kris,3,timber,Timber,0,
+kris,4,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+kris,5,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+kris,6,kris,Kris,3,1 Steel Billets + 1 Sea Coal + 1 Timber
+kvass,1,fresh-water,Fresh Water,0,
+kvass,2,milk,Milk,0,
+kvass,3,rye,Rye,0,
+kvass,4,rye-flour,Rye Flour,1,2 Rye
+kvass,5,rye-bread,Rye Bread,2,2 Rye Flour + 1 Milk + 1 Fresh Water
+kvass,6,kvass,Kvass,3,2 Rye Bread + 1 Fresh Water
+milanese-armour,1,alum,Alum,0,
+milanese-armour,2,fresh-water,Fresh Water,0,
+milanese-armour,3,hides,Hides,0,
+milanese-armour,4,iron,Iron,0,
+milanese-armour,5,madder,Madder,0,
+milanese-armour,6,wool-raw,Raw Wool,0,
+milanese-armour,7,coal,Sea Coal,0,
+milanese-armour,8,tannin-bark,Tannin Bark,0,
+milanese-armour,9,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+milanese-armour,10,leather,Leather,1,2 Hides + 1 Tannin Bark + 1 Fresh Water
+milanese-armour,11,wool-cloth,Woollen Cloth,1,3 Raw Wool + 1 Madder + 1 Alum + 1 Fresh Water
+milanese-armour,12,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+milanese-armour,13,milanese-armour,Milanese Armour,3,2 Steel Billets + 1 Leather + 1 Woollen Cloth
+port-wine,1,grapes,Grapes,0,
+port-wine,2,timber,Timber,0,
+port-wine,3,wine,Wine,1,2 Grapes + 1 Timber
+port-wine,4,brandy,Brandy,2,3 Wine + 1 Timber
+port-wine,5,port-wine,Port Wine,3,2 Wine + 1 Brandy
+sword-blades,1,fresh-water,Fresh Water,0,
+sword-blades,2,iron,Iron,0,
+sword-blades,3,coal,Sea Coal,0,
+sword-blades,4,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+sword-blades,5,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+sword-blades,6,sword-blades,Sword Blades,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water
+talwar,1,fresh-water,Fresh Water,0,
+talwar,2,iron,Iron,0,
+talwar,3,coal,Sea Coal,0,
+talwar,4,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+talwar,5,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+talwar,6,talwar,Talwar,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water
+toledo-blades,1,fresh-water,Fresh Water,0,
+toledo-blades,2,iron,Iron,0,
+toledo-blades,3,coal,Sea Coal,0,
+toledo-blades,4,iron-bars,Iron Bars,1,2 Iron + 1 Sea Coal
+toledo-blades,5,steel-billets,Steel Billets,2,3 Iron Bars + 2 Sea Coal
+toledo-blades,6,toledo-blades,Toledo Blades,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water

@@ -1,0 +1,585 @@
+﻿id,name,name_ko,category,tier,valueBand,baseValue,origin,entrepots,new_role,raw_material_code,recipe,source
+black-pepper,Black Pepper,후추,spice,0,3,"[110, 190]","southeast-asia, west-africa, western-india","aden, alexandria, amsterdam, antwerp, hormuz, istanbul, jeddah, lisbon",raw material,black-pepper,,goods.json
+cloves,Cloves,정향,spice,0,5,"[700, 1400]",southeast-asia,,raw material,cloves,,goods.json
+nutmeg,Nutmeg,육두구,spice,0,5,"[800, 1600]",southeast-asia,,raw material,nutmeg,,goods.json
+mace,Mace,메이스,spice,0,5,"[900, 1800]",southeast-asia,,raw material,mace,,goods.json
+cinnamon,Cinnamon,계피,spice,0,4,"[400, 800]",eastern-india,"kochi, lisbon, old-goa",raw material,cinnamon,,goods.json
+ginger,Ginger,생강,spice,0,3,"[130, 240]","caribbean, eastern-india, south-america-atlantic, western-india",,raw material,ginger,,goods.json
+cardamom,Cardamom,카다멈,spice,0,4,"[350, 650]",western-india,,raw material,cardamom,,goods.json
+long-pepper,Long Pepper,필발,spice,0,3,"[130, 240]",eastern-india,,raw material,long-pepper,,goods.json
+cubeb,Cubeb,쿠베브,spice,0,4,"[280, 540]",southeast-asia,,raw material,cubeb,,goods.json
+grains-of-paradise,Grains of Paradise,멜레게타 후추,spice,0,3,"[150, 300]",west-africa,,raw material,grains-of-paradise,,goods.json
+cassia,Cassia,육계,spice,0,3,"[140, 260]","china-coast, southeast-asia",,raw material,cassia,,goods.json
+turmeric,Turmeric,강황,spice,0,2,"[70, 140]","eastern-india, western-india",,raw material,turmeric,,goods.json
+saffron,Saffron,사프란,spice,0,5,"[1300, 2600]","arabia-gulf, iberia",,raw material,saffron,,goods.json
+chillies,Chillies,고추,spice,0,2,"[60, 120]","caribbean, pacific-americas, south-america-atlantic, southeast-asia, western-india",,raw material,chillies,,goods.json
+vanilla,Vanilla,바닐라,spice,0,5,"[900, 1800]",caribbean,,raw material,vanilla,,goods.json
+anise,Aniseed,아니스,spice,0,2,"[55, 110]","adriatic-ionian, iberia, western-mediterranean",,raw material,anise,,goods.json
+cumin,Cumin,커민,spice,0,2,"[65, 130]","levant, western-india",,raw material,cumin,,goods.json
+coriander,Coriander,고수 씨,spice,0,2,"[55, 110]","iberia, levant",,raw material,coriander,,goods.json
+galangal,Galangal,양강,spice,0,3,"[120, 220]",southeast-asia,,raw material,galangal,,goods.json
+star-anise,Star Anise,팔각,spice,0,3,"[140, 260]","china-coast, southeast-asia",,raw material,star-anise,,goods.json
+allspice,Allspice,올스파이스,spice,0,3,"[160, 320]",caribbean,,raw material,allspice,,goods.json
+zedoary,Zedoary,봉출,spice,0,3,"[150, 300]","eastern-india, southeast-asia",,raw material,zedoary,,goods.json
+wool-cloth,Woollen Cloth,모직물,cloth,1,2,"[60, 120]","adriatic-ionian, aegean-anatolia, british-isles, france-low-countries, iberia, maghreb, scandinavia-arctic, western-mediterranean",hamburg,crafted,,3 Raw Wool + 1 Madder + 1 Alum + 1 Fresh Water,goods.json
+linen,Linen,리넨,cloth,1,2,"[55, 110]","baltic, british-isles, france-low-countries, levant",,crafted,,3 Flax + 1 Fresh Water,goods.json
+cotton-cloth,Cotton Cloth,면직물,cloth,1,2,"[70, 140]","atlantic-isles, east-africa, eastern-india, japan, korea, west-africa, western-india, western-mediterranean",jeddah,crafted,,3 Raw Cotton + 1 Indigo + 1 Fresh Water,goods.json
+muslin,Muslin,모슬린,cloth,1,4,"[320, 600]",eastern-india,,crafted,,3 Raw Cotton + 1 Fresh Water,goods.json
+chintz,Chintz,친츠,cloth,1,3,"[180, 340]",eastern-india,,crafted,,3 Raw Cotton + 1 Indigo + 1 Madder + 1 Alum,goods.json
+silk-cloth,Silk Cloth,비단,cloth,1,4,"[420, 800]","adriatic-ionian, aegean-anatolia, arabia-gulf, china-coast, iberia, japan, western-india, western-mediterranean","acapulco, manila",crafted,,3 Raw Silk + 1 Cochineal + 1 Fresh Water,goods.json
+silk-raw,Raw Silk,생사,cloth,0,4,"[380, 700]","adriatic-ionian, aegean-anatolia, arabia-gulf, china-coast, eastern-india, iberia, levant, southeast-asia, western-mediterranean","fukuoka, hirado",raw material,silk-raw,,goods.json
+carpets,Carpets,양탄자,cloth,2,4,"[300, 620]","aegean-anatolia, arabia-gulf",,crafted,,3 Yarn + 1 Madder + 1 Indigo,goods.json
+ramie-cloth,Ramie Cloth,모시,cloth,1,2,"[70, 140]","china-coast, korea",tsushima,crafted,,3 Ramie + 1 Fresh Water,goods.json
+says-serges,Says & Serges,서지 직물,cloth,1,2,"[65, 130]",france-low-countries,,crafted,,2 Raw Wool + 1 Flax + 1 Woad,goods.json
+velvet,Velvet,벨벳,cloth,1,5,"[750, 1500]","adriatic-ionian, western-mediterranean",,crafted,,3 Raw Silk + 1 Cochineal,goods.json
+lace,Lace,레이스,cloth,2,4,"[400, 800]","adriatic-ionian, france-low-countries",,crafted,,2 Yarn + 1 Linen,goods.json
+tapestries,Tapestries,태피스트리,cloth,2,5,"[800, 1600]",france-low-countries,,crafted,,2 Woollen Cloth + 1 Silk Cloth + 1 Madder,goods.json
+batik,Batik Cloth,바틱,cloth,1,3,"[150, 300]",southeast-asia,,crafted,,3 Raw Cotton + 1 Beeswax + 1 Indigo,goods.json
+raffia-cloth,Raffia Cloth,라피아 직물,cloth,1,2,"[60, 120]",west-africa,,crafted,,3 Raffia + 1 Camwood,goods.json
+barkcloth,Barkcloth,나무껍질 천,cloth,1,1,"[35, 70]",oceania,,crafted,,3 Bark + 1 Fresh Water,goods.json
+camlets,Camlets,캠릿,cloth,1,3,"[200, 380]",aegean-anatolia,,crafted,,3 Raw Wool + 1 Madder + 1 Fresh Water,goods.json
+quilts,Bengal Quilts,벵골 누비이불,cloth,2,3,"[220, 420]",eastern-india,,crafted,,2 Cotton Cloth + 1 Silk Cloth + 1 Indigo,goods.json
+shawls,Kashmir Shawls,카슈미르 숄,cloth,2,5,"[700, 1400]",western-india,,crafted,,3 Yarn + 1 Madder,goods.json
+fustian,Fustian,퍼스티언,cloth,1,2,"[70, 140]","baltic, western-mediterranean",,crafted,,2 Raw Cotton + 2 Flax + 1 Madder,goods.json
+gold-thread,Gold Thread,금사,cloth,1,4,"[450, 900]","levant, western-mediterranean",,crafted,,1 Gold + 2 Raw Silk + 1 Silver,goods.json
+stockings,Knitted Stockings,편직 양말,cloth,2,2,"[80, 160]","british-isles, france-low-countries",,crafted,,3 Yarn + 1 Woad,goods.json
+felt-hats,Felt Hats,펠트 모자,cloth,1,4,"[280, 560]","british-isles, france-low-countries",,crafted,,2 Furs + 1 Raw Wool + 1 Fresh Water,goods.json
+gold,Gold,금,metal,0,5,"[2400, 4200]","caribbean, china-coast, east-africa, maghreb, pacific-americas, southeast-asia, west-africa",,raw material,gold,,goods.json
+silver,Silver,은,metal,0,5,"[1600, 2900]","adriatic-ionian, caribbean, japan, korea, pacific-americas, south-america-atlantic","cadiz, macau, manila, seville",raw material,silver,,goods.json
+copper,Copper,구리,metal,0,2,"[90, 170]","aegean-anatolia, arabia-gulf, baltic, japan, maghreb, pacific-americas, scandinavia-arctic, west-africa",,raw material,copper,,goods.json
+tin,Tin,주석,metal,0,3,"[140, 260]","british-isles, eastern-india, southeast-asia",,raw material,tin,,goods.json
+iron,Iron,철,metal,0,1,"[40, 80]","baltic, british-isles, china-coast, iberia, japan, korea, scandinavia-arctic, west-africa",,raw material,iron,,goods.json
+lead,Lead,납,metal,0,1,"[35, 70]","baltic, british-isles",,raw material,lead,,goods.json
+quicksilver,Quicksilver,수은,metal,0,5,"[1500, 2800]","adriatic-ionian, iberia, pacific-americas",,raw material,quicksilver,,goods.json
+wootz-steel,Wootz Steel,우츠강,metal,2,4,"[350, 700]","eastern-india, western-india",,crafted,,3 Iron Bars + 2 Sea Coal + 1 Clay,goods.json
+firearms,Muskets,머스킷,guns,2,4,"[420, 840]","france-low-countries, japan",,crafted,,2 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur + 1 Sea Coal,goods.json
+cannon,Cannon,대포,guns,2,4,"[500, 1000]","baltic, british-isles, scandinavia-arctic",,crafted,,3 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,goods.json
+brassware,Brassware & Manillas,황동 제품,crafts,2,2,"[80, 160]","baltic, france-low-countries",,crafted,,2 Brass Ingots + 1 Sea Coal,goods.json
+pewter,Pewterware,백랍 그릇,crafts,1,2,"[90, 180]",british-isles,,crafted,,3 Tin + 1 Lead + 1 Sea Coal,goods.json
+copper-cash,Copper Cash,동전,metal,1,2,"[85, 170]",china-coast,,crafted,,3 Copper + 1 Lead + 1 Tin,goods.json
+smallwares,Nuremberg Smallwares,뉘른베르크 잡화,crafts,2,2,"[75, 150]","baltic, british-isles, france-low-countries",,crafted,,2 Iron Bars + 1 Copper + 1 Planks + 1 Sea Coal,goods.json
+armour,Armour,갑옷,weapons,2,4,"[300, 600]",western-mediterranean,,crafted,,2 Iron Bars + 1 Leather + 1 Woollen Cloth,goods.json
+gunpowder,Gunpowder,화약,guns,1,3,"[200, 400]","adriatic-ionian, british-isles, france-low-countries",,crafted,,3 Saltpetre + 1 Sulphur + 1 Sea Coal,goods.json
+porcelain,Porcelain,도자기,crafts,1,4,"[280, 560]","china-coast, japan, southeast-asia","acapulco, lisbon, old-goa",crafted,,2 Clay + 1 Feldspar + 1 Quartz,goods.json
+lacquerware,Lacquerware,칠기,crafts,2,4,"[260, 520]","china-coast, japan, korea, southeast-asia",,crafted,,2 Planks + 2 Copal,goods.json
+glassware,Glassware,유리 그릇,crafts,2,3,"[190, 380]","adriatic-ionian, iberia",,crafted,,3 Glass + 1 Potash,goods.json
+pearls,Pearls,진주,gems,0,5,"[1100, 2200]","arabia-gulf, caribbean, china-coast, eastern-india, pacific-americas, western-india",,raw material,pearls,,goods.json
+diamonds,Diamonds,다이아몬드,gems,0,5,"[1800, 3600]","eastern-india, southeast-asia",antwerp,raw material,diamonds,,goods.json
+ivory,Ivory,상아,gems,0,4,"[420, 850]","east-africa, eastern-india, southeast-asia, west-africa",lisbon,raw material,ivory,,goods.json
+ambergris,Ambergris,용연향,medicine,0,5,"[2000, 4000]","arabia-gulf, atlantic-isles, east-africa, north-america-atlantic, southeast-asia, western-india",,raw material,ambergris,,goods.json
+musk,Musk,사향,medicine,0,5,"[1500, 3000]",china-coast,,raw material,musk,,goods.json
+coral,Coral,산호,gems,0,3,"[230, 460]","iberia, maghreb, western-mediterranean",,raw material,coral,,goods.json
+amber,Amber,호박,gems,0,4,"[340, 680]",baltic,,raw material,amber,,goods.json
+frankincense,Frankincense,유향,medicine,0,3,"[200, 400]","arabia-gulf, east-africa",,raw material,frankincense,,goods.json
+myrrh,Myrrh,몰약,medicine,0,3,"[210, 420]","arabia-gulf, east-africa",,raw material,myrrh,,goods.json
+rubies,Rubies,루비,gems,0,5,"[1600, 3200]",eastern-india,,raw material,rubies,,goods.json
+emeralds,Emeralds,에메랄드,gems,0,5,"[1700, 3400]",caribbean,,raw material,emeralds,,goods.json
+carnelian,Carnelian & Agate,홍옥수·마노,gems,0,3,"[200, 400]",western-india,,raw material,carnelian,,goods.json
+books,Printed Books,인쇄본,books,2,3,"[230, 460]","adriatic-ionian, france-low-countries",,crafted,,2 Paper + 1 Leather + 1 Ink & Brushes,goods.json
+paper,Paper,종이,books,1,2,"[80, 160]","china-coast, france-low-countries, iberia, japan, korea, western-mediterranean",,crafted,,2 Flax + 1 Hemp + 1 Fresh Water,goods.json
+tortoiseshell,Tortoiseshell,대모갑,gems,0,4,"[350, 700]","caribbean, japan, southeast-asia",,raw material,tortoiseshell,,goods.json
+mastic,Mastic,유향수지,medicine,0,4,"[400, 780]",aegean-anatolia,,raw material,mastic,,goods.json
+civet,Civet,영묘향,medicine,0,5,"[1400, 2800]",east-africa,,raw material,civet,,goods.json
+rosewater,Rosewater,장미수,medicine,1,3,"[180, 360]","arabia-gulf, levant",,crafted,,2 Rose + 2 Fresh Water,goods.json
+clocks,Clocks & Instruments,시계·기구,art,2,5,"[900, 1800]","baltic, france-low-countries",,crafted,,1 Brass Ingots + 1 Iron Bars + 1 Planks + 1 Glass,goods.json
+paintings,Paintings,회화,art,2,4,"[420, 840]",france-low-countries,,crafted,,1 Linen + 1 Ochre + 1 Planks,goods.json
+bezoar,Bezoar Stones,우황석,medicine,0,5,"[1200, 2400]","arabia-gulf, southeast-asia, western-india",,raw material,bezoar,,goods.json
+rhino-horn,Rhinoceros Horn,서각,medicine,0,4,"[450, 900]","east-africa, eastern-india, southeast-asia, west-africa",,raw material,rhino-horn,,goods.json
+lapis-lazuli,Lapis Lazuli,청금석,gems,0,5,"[1300, 2600]",arabia-gulf,,raw material,lapis-lazuli,,goods.json
+turquoise,Turquoise,터키석,gems,0,4,"[420, 840]",arabia-gulf,,raw material,turquoise,,goods.json
+folding-fans,Folding Fans,쥘부채,crafts,1,3,"[160, 320]",japan,,crafted,,1 Bamboo + 1 Timber + 1 Rattan,goods.json
+silver-plate,Silverware & Plate,은 식기,crafts,1,4,"[500, 1000]","baltic, iberia",,crafted,,3 Silver + 1 Sea Coal,goods.json
+majolica,Majolica,마욜리카,crafts,1,3,"[190, 380]","iberia, western-mediterranean",,crafted,,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,goods.json
+celadon,Celadon Ware,청자,crafts,1,4,"[280, 560]","korea, southeast-asia",,crafted,,3 Clay + 1 Feldspar + 1 Potash,goods.json
+stoneware,Rhenish Stoneware,라인 석기,crafts,1,2,"[70, 140]","baltic, france-low-countries",,crafted,,3 Clay + 1 Sand + 1 Salt,goods.json
+martaban-jars,Martaban Jars,마르타반 항아리,crafts,1,3,"[170, 340]",eastern-india,,crafted,,3 Clay + 1 Sand + 1 Pine Pitch,goods.json
+glass-beads,Trade Beads,교역 구슬,crafts,2,2,"[75, 150]","adriatic-ionian, france-low-countries",,crafted,,2 Glass + 1 Cobalt Blue,goods.json
+sea-charts,Sea Charts & Globes,해도·지구의,art,2,5,"[800, 1600]","france-low-countries, iberia",,crafted,,1 Paper + 1 Ochre + 1 Planks,goods.json
+ink-sticks,Ink & Brushes,먹·붓,books,1,3,"[180, 360]","china-coast, korea",,crafted,,1 Gallnuts + 1 Gum Arabic + 1 Fresh Water,goods.json
+sword-blades,Sword Blades,칼날,weapons,3,4,"[480, 950]","baltic, iberia, japan",,crafted,,2 Steel Billets + 1 Sea Coal + 1 Fresh Water,goods.json
+theriac,Venice Treacle,베네치아 해독제,medicine,1,4,"[400, 800]",adriatic-ionian,,crafted,,2 Senna + 1 Chinese Rhubarb + 1 Honey + 1 Cinnamon + 1 Ginger + 1 Myrrh,goods.json
+parrots,Parrots & Monkeys,앵무새·원숭이,animals,0,3,"[200, 400]","south-america-atlantic, west-africa",,raw material,parrots,,goods.json
+gyrfalcons,Gyrfalcons,흰매,animals,0,5,"[1500, 3000]",scandinavia-arctic,,raw material,gyrfalcons,,goods.json
+paradise-plumes,Bird-of-Paradise Plumes,극락조 깃털,crafts,0,5,"[900, 1800]","oceania, southeast-asia",,raw material,paradise-plumes,,goods.json
+wheat,Wheat,밀,grain,0,1,"[25, 55]","adriatic-ionian, aegean-anatolia, arabia-gulf, atlantic-isles, baltic, east-africa, france-low-countries, iberia, korea, levant, maghreb, north-america-atlantic, pacific-americas, south-america-atlantic, western-mediterranean",,raw material,wheat,,goods.json
+rice,Rice,쌀,grain,0,1,"[28, 60]","china-coast, eastern-india, iberia, japan, korea, oceania, southeast-asia, western-india",,raw material,rice,,goods.json
+sugar,Sugar,설탕,food,1,3,"[150, 300]","atlantic-isles, caribbean, china-coast, east-africa, eastern-india, japan, levant, maghreb, south-america-atlantic, southeast-asia, west-africa, western-mediterranean","antwerp, lisbon, nantes",crafted,,3 Sugar Cane + 1 Lime + 1 Fresh Water,goods.json
+salt,Salt,소금,food,0,1,"[20, 45]","adriatic-ionian, aegean-anatolia, arabia-gulf, atlantic-isles, baltic, british-isles, caribbean, china-coast, east-africa, eastern-india, france-low-countries, iberia, japan, korea, levant, maghreb, north-america-atlantic, oceania, west-africa, western-india, western-mediterranean",,raw material,salt,,goods.json
+olive-oil,Olive Oil,올리브유,food,1,2,"[70, 140]","adriatic-ionian, aegean-anatolia, iberia, levant, maghreb, western-mediterranean",,crafted,,3 Olives + 1 Fresh Water,goods.json
+wine,Wine,포도주,drink,1,2,"[80, 160]","adriatic-ionian, aegean-anatolia, atlantic-isles, east-africa, france-low-countries, iberia, levant, pacific-americas, western-mediterranean",,crafted,,2 Grapes + 1 Timber,goods.json
+dried-fish,Dried & Salt Fish,건어물,food,1,1,"[35, 75]","arabia-gulf, atlantic-isles, baltic, british-isles, china-coast, east-africa, france-low-countries, iberia, japan, korea, north-america-atlantic, oceania, scandinavia-arctic, southeast-asia, western-india, western-mediterranean",,crafted,,2 Cod + 1 Salt,goods.json
+herring,Herring,청어,food,0,2,"[45, 90]","baltic, british-isles, france-low-countries, scandinavia-arctic",,raw material,herring,,goods.json
+cheese,Cheese,치즈,food,1,2,"[55, 110]","aegean-anatolia, atlantic-isles, british-isles, france-low-countries, western-mediterranean",,crafted,,2 Milk + 1 Salt,goods.json
+salted-beef,Salt Meat,소금 절인 고기,food,1,2,"[60, 120]","atlantic-isles, baltic, british-isles, caribbean, east-africa, france-low-countries, north-america-atlantic, south-america-atlantic",,crafted,,2 Cattle + 1 Salt,goods.json
+coffee,Coffee,커피,drink,1,4,"[400, 780]",arabia-gulf,"alexandria, marseille",crafted,,2 Coffee Bean + 2 Fresh Water,goods.json
+tea,Tea,차,drink,1,4,"[380, 740]","china-coast, japan",,crafted,,2 Tea Leaf + 2 Fresh Water,goods.json
+cacao,Cacao,카카오,drink,1,3,"[200, 400]","caribbean, pacific-americas, south-america-atlantic",,crafted,,2 Cacao Bean + 1 Fresh Water + 1 Honey,goods.json
+dried-fruit,Raisins & Currants,건포도,food,1,2,"[65, 130]","adriatic-ionian, aegean-anatolia, atlantic-isles, france-low-countries, iberia, levant, maghreb, western-mediterranean",,crafted,,2 Grapes + 2 Figs,goods.json
+rye,Rye,호밀,grain,0,1,"[22, 50]",baltic,,raw material,rye,,goods.json
+barley,Barley,보리,grain,0,1,"[22, 48]","baltic, british-isles, scandinavia-arctic",,raw material,barley,,goods.json
+beer,Beer,맥주,drink,2,2,"[50, 100]","baltic, british-isles, france-low-countries",,crafted,,2 Malt + 1 Hops + 1 Fresh Water,goods.json
+sake,Sake,사케,drink,1,2,"[80, 160]",japan,,crafted,,3 Rice + 2 Fresh Water,goods.json
+rum,Rum,럼,drink,2,3,"[140, 280]",caribbean,,crafted,,3 Molasses + 1 Fresh Water,goods.json
+brandy,Brandy,브랜디,drink,2,3,"[150, 300]",france-low-countries,,crafted,,3 Wine + 1 Timber,goods.json
+arrack,Arrack,아라크,drink,1,3,"[130, 260]","eastern-india, southeast-asia, western-india",,crafted,,2 Rice + 1 Sugar Cane + 2 Fresh Water,goods.json
+butter,Butter,버터,food,1,2,"[55, 110]","baltic, british-isles, france-low-countries",,crafted,,2 Milk + 1 Salt,goods.json
+honey,Honey,꿀,food,0,2,"[60, 120]","aegean-anatolia, baltic, maghreb, western-mediterranean",,raw material,honey,,goods.json
+dates,Dates,대추야자,food,0,2,"[60, 120]","arabia-gulf, levant, maghreb",,raw material,dates,,goods.json
+figs,Figs,무화과,food,0,2,"[55, 110]","aegean-anatolia, iberia, maghreb, western-mediterranean",,raw material,figs,,goods.json
+citrus,Lemons & Oranges,레몬·오렌지,food,0,2,"[60, 120]","adriatic-ionian, iberia, maghreb, western-mediterranean",,raw material,citrus,,goods.json
+almonds,Almonds,아몬드,food,0,2,"[70, 140]","adriatic-ionian, iberia, maghreb, western-mediterranean",,raw material,almonds,,goods.json
+coconuts,Coconuts & Copra,코코넛·코프라,food,0,1,"[30, 65]","east-africa, eastern-india, oceania, southeast-asia, western-india",,raw material,coconuts,,goods.json
+sago,Sago,사고,grain,0,1,"[28, 60]","oceania, southeast-asia",,raw material,sago,,goods.json
+maize,Maize,옥수수,grain,0,1,"[25, 55]","caribbean, north-america-atlantic, pacific-americas, south-america-atlantic, west-africa",,raw material,maize,,goods.json
+cassava,Cassava Flour,카사바 가루,grain,1,1,"[25, 55]","caribbean, south-america-atlantic, west-africa",,crafted,,2 Cassava Root + 1 Fresh Water,goods.json
+caviar,Caviar,캐비아,food,1,4,"[300, 600]","aegean-anatolia, scandinavia-arctic",,crafted,,2 Sturgeon + 1 Salt,goods.json
+salted-tuna,Salt Tuna,소금 절인 참치,food,1,2,"[55, 110]","iberia, maghreb, western-mediterranean",,crafted,,2 Tuna + 1 Salt,goods.json
+soy-sauce,Soy Sauce,간장,food,1,2,"[70, 140]","china-coast, japan, korea",,crafted,,2 Soybean + 1 Wheat + 1 Salt,goods.json
+ghee,Ghee,기,food,2,2,"[60, 120]",western-india,,crafted,,2 Butter + 1 Fresh Water,goods.json
+sesame-oil,Sesame Oil,참기름,food,1,2,"[60, 120]","arabia-gulf, eastern-india, levant",,crafted,,2 Sesame + 1 Fresh Water,goods.json
+palm-oil,Palm Oil,팜유,food,1,1,"[35, 70]",west-africa,,crafted,,3 Palm Fruit + 1 Fresh Water,goods.json
+birds-nests,Edible Birds’ Nests,제비집,food,0,5,"[800, 1600]",southeast-asia,,raw material,birds-nests,,goods.json
+sharks-fin,Shark Fin,상어 지느러미,food,1,3,"[150, 300]","china-coast, japan, oceania, southeast-asia",,crafted,,2 Shark + 1 Salt,goods.json
+trepang,Trepang,해삼,food,1,3,"[140, 280]","oceania, southeast-asia",,crafted,,2 Sea Cucumber + 1 Salt,goods.json
+dried-abalone,Dried Abalone,말린 전복,food,1,3,"[180, 360]","japan, korea",,crafted,,2 Abalone + 1 Salt,goods.json
+seaweed,Dried Seaweed,말린 해조,food,0,1,"[25, 55]","japan, korea",,raw material,seaweed,,goods.json
+palm-sugar,Palm Sugar,야자 설탕,food,1,1,"[30, 65]","eastern-india, southeast-asia, western-india",,crafted,,2 Sugar Cane + 1 Fresh Water,goods.json
+molasses,Molasses,당밀,food,1,2,"[50, 100]","atlantic-isles, caribbean, south-america-atlantic",,crafted,,3 Sugar Cane + 1 Lime,goods.json
+tamarind,Tamarind,타마린드,food,0,2,"[65, 130]","eastern-india, southeast-asia, western-india",,raw material,tamarind,,goods.json
+hazelnuts,Hazelnuts,헤이즐넛,food,0,2,"[50, 100]",aegean-anatolia,,raw material,hazelnuts,,goods.json
+pistachios,Pistachios,피스타치오,food,0,3,"[120, 240]","arabia-gulf, levant",,raw material,pistachios,,goods.json
+lychees,Dried Lychees,말린 여지,food,1,2,"[70, 140]",china-coast,,crafted,,2 Lychee + 1 Honey,goods.json
+tobacco,Tobacco,담배,tobacco,0,3,"[170, 340]","aegean-anatolia, caribbean, eastern-india, levant, north-america-atlantic, south-america-atlantic",,raw material,tobacco,,goods.json
+indigo,Indigo,쪽,dye,0,4,"[400, 780]","arabia-gulf, atlantic-isles, caribbean, eastern-india, southeast-asia, western-india","bordeaux, seville",raw material,indigo,,goods.json
+cochineal,Cochineal,코치닐,dye,0,5,"[900, 1800]","caribbean, pacific-americas",seville,raw material,cochineal,,goods.json
+brazilwood,Brazilwood,브라질나무,dye,0,3,"[160, 320]",south-america-atlantic,,raw material,brazilwood,,goods.json
+logwood,Logwood,로그우드,dye,0,3,"[150, 300]",caribbean,,raw material,logwood,,goods.json
+alum,Alum,명반,dye,0,2,"[80, 160]","adriatic-ionian, aegean-anatolia, western-mediterranean",bruges,raw material,alum,,goods.json
+saltpetre,Saltpetre,초석,guns,0,3,"[190, 380]","eastern-india, western-india",,raw material,saltpetre,,goods.json
+sulphur,Sulphur,유황,guns,0,2,"[85, 170]","japan, scandinavia-arctic, western-mediterranean",,raw material,sulphur,,goods.json
+hides,Hides,가죽,cloth,0,2,"[70, 140]","adriatic-ionian, aegean-anatolia, arabia-gulf, atlantic-isles, baltic, british-isles, caribbean, china-coast, east-africa, iberia, japan, korea, levant, maghreb, north-america-atlantic, pacific-americas, south-america-atlantic, southeast-asia, west-africa, western-mediterranean",,raw material,hides,,goods.json
+furs,Furs,모피,cloth,0,4,"[330, 660]","aegean-anatolia, baltic, japan, north-america-atlantic, scandinavia-arctic","la-rochelle, saint-malo",raw material,furs,,goods.json
+wax,Beeswax,밀랍,crafts,0,2,"[90, 180]","adriatic-ionian, baltic, caribbean, east-africa, maghreb, oceania, pacific-americas, scandinavia-arctic, south-america-atlantic, southeast-asia, west-africa",,raw material,wax,,goods.json
+cotton-raw,Raw Cotton,원면,cloth,0,2,"[60, 120]","aegean-anatolia, caribbean, eastern-india, levant, maghreb, south-america-atlantic, western-india",marseille,raw material,cotton-raw,,goods.json
+wool-raw,Raw Wool,원모,cloth,0,2,"[65, 130]","adriatic-ionian, aegean-anatolia, british-isles, iberia, maghreb, oceania, scandinavia-arctic, western-mediterranean",calais,raw material,wool-raw,,goods.json
+gum-arabic,Gum Arabic,아라비아고무,dye,0,3,"[180, 360]","arabia-gulf, east-africa, west-africa",,raw material,gum-arabic,,goods.json
+sandalwood,Sandalwood,백단,medicine,0,4,"[350, 700]","oceania, southeast-asia, western-india",nagasaki,raw material,sandalwood,,goods.json
+ginseng,Ginseng,인삼,medicine,0,4,"[420, 840]","china-coast, korea",tsushima,raw material,ginseng,,goods.json
+horses,Horses,말,animals,0,4,"[450, 900]","arabia-gulf, atlantic-isles, japan, korea, levant, maghreb","diu, old-goa",raw material,horses,,goods.json
+potash,Potash,칼리,dye,0,1,"[35, 75]","baltic, scandinavia-arctic",,raw material,potash,,goods.json
+tallow,Tallow,수지,crafts,0,1,"[30, 65]","baltic, caribbean, pacific-americas, scandinavia-arctic, south-america-atlantic",,raw material,tallow,,goods.json
+woad,Woad,대청,dye,0,2,"[75, 150]","atlantic-isles, france-low-countries, western-mediterranean",,raw material,woad,,goods.json
+madder,Madder,꼭두서니,dye,0,2,"[80, 160]","aegean-anatolia, france-low-countries",,raw material,madder,,goods.json
+lac,Lac & Shellac,랙·셸락,dye,0,3,"[150, 300]",eastern-india,,raw material,lac,,goods.json
+annatto,Annatto,아나토,dye,0,2,"[80, 160]","caribbean, south-america-atlantic",,raw material,annatto,,goods.json
+orchil,Orchil,오칠,dye,0,2,"[70, 140]","atlantic-isles, maghreb",,raw material,orchil,,goods.json
+henna,Henna,헤나,dye,0,2,"[60, 120]","arabia-gulf, east-africa, levant, maghreb",,raw material,henna,,goods.json
+camphor,Borneo Camphor,용뇌,medicine,0,5,"[1000, 2000]","japan, southeast-asia",,raw material,camphor,,goods.json
+benzoin,Benzoin,안식향,medicine,0,4,"[350, 700]",southeast-asia,,raw material,benzoin,,goods.json
+aloeswood,Aloeswood,침향,medicine,0,5,"[1100, 2200]","china-coast, southeast-asia",,raw material,aloeswood,,goods.json
+dragons-blood,Dragon’s Blood,기린혈,dye,0,4,"[300, 600]",arabia-gulf,,raw material,dragons-blood,,goods.json
+socotra-aloes,Socotrine Aloes,소코트라 알로에,medicine,0,3,"[180, 360]",arabia-gulf,,raw material,socotra-aloes,,goods.json
+myrobalans,Myrobalans,가자,medicine,0,2,"[70, 140]","eastern-india, western-india",,raw material,myrobalans,,goods.json
+sappanwood,Sappanwood,소목,dye,0,2,"[90, 180]","eastern-india, southeast-asia",naha,raw material,sappanwood,,goods.json
+red-sanders,Red Sanders,자단,dye,0,2,"[85, 170]",eastern-india,,raw material,red-sanders,,goods.json
+camwood,Camwood,캠우드,dye,0,2,"[80, 160]",west-africa,,raw material,camwood,,goods.json
+ebony,Ebony,흑단,crafts,0,3,"[160, 320]","east-africa, eastern-india",,raw material,ebony,,goods.json
+rattan,Rattan,등나무,crafts,0,1,"[30, 60]",southeast-asia,,raw material,rattan,,goods.json
+opium,Opium,아편,medicine,0,4,"[400, 800]","eastern-india, western-india",,raw material,opium,,goods.json
+areca-nuts,Areca Nuts,빈랑,medicine,0,2,"[55, 110]","eastern-india, southeast-asia, western-india",,raw material,areca-nuts,,goods.json
+kola-nuts,Kola Nuts,콜라나무 열매,medicine,0,2,"[65, 130]",west-africa,,raw material,kola-nuts,,goods.json
+sarsaparilla,Sarsaparilla,사르사,medicine,0,3,"[170, 340]",caribbean,,raw material,sarsaparilla,,goods.json
+sassafras,Sassafras,사사프라스,medicine,0,2,"[90, 180]",north-america-atlantic,,raw material,sassafras,,goods.json
+senna,Senna,센나,medicine,0,3,"[150, 300]","arabia-gulf, east-africa, levant",,raw material,senna,,goods.json
+rhubarb,Chinese Rhubarb,대황,medicine,0,4,"[400, 780]",china-coast,,raw material,rhubarb,,goods.json
+china-root,China Root,토복령,medicine,0,3,"[170, 340]",china-coast,,raw material,china-root,,goods.json
+mother-of-pearl,Mother-of-Pearl,자개,gems,0,3,"[160, 320]","arabia-gulf, japan, southeast-asia",,raw material,mother-of-pearl,,goods.json
+cowries,Cowrie Shells,개오지 조개,crafts,0,2,"[60, 120]","eastern-india, western-india",,raw material,cowries,,goods.json
+chank-shells,Chank Shells,소라 껍데기,crafts,0,2,"[60, 120]",eastern-india,,raw material,chank-shells,,goods.json
+coir,Coir,야자 섬유,ship-supplies,0,1,"[30, 65]","eastern-india, southeast-asia, western-india",,raw material,coir,,goods.json
+gallnuts,Gallnuts,오배자,dye,0,3,"[140, 280]","aegean-anatolia, arabia-gulf, levant",,raw material,gallnuts,,goods.json
+cinchona-bark,Jesuit’s Bark,기나피,medicine,0,5,"[700, 1400]",pacific-americas,,raw material,cinchona-bark,,goods.json
+ostrich-feathers,Ostrich Feathers,타조 깃털,crafts,0,3,"[200, 400]","maghreb, west-africa",,raw material,ostrich-feathers,,goods.json
+sponges,Sponges,해면,crafts,0,2,"[70, 140]","adriatic-ionian, aegean-anatolia",,raw material,sponges,,goods.json
+baleen,Whalebone,고래수염,crafts,0,3,"[180, 360]","british-isles, france-low-countries, iberia, north-america-atlantic, scandinavia-arctic",,raw material,baleen,,goods.json
+sealskins,Sealskins,물개 가죽,cloth,0,2,"[60, 120]","north-america-atlantic, oceania, scandinavia-arctic",,raw material,sealskins,,goods.json
+walrus-ivory,Walrus Ivory,바다코끼리 엄니,gems,0,4,"[400, 800]",scandinavia-arctic,,raw material,walrus-ivory,,goods.json
+narwhal-horn,Narwhal Horn,일각고래 뿔,gems,0,5,"[1800, 3600]",scandinavia-arctic,,raw material,narwhal-horn,,goods.json
+eiderdown,Eiderdown,솜털오리 깃털,crafts,0,3,"[200, 400]",scandinavia-arctic,,raw material,eiderdown,,goods.json
+coal,Sea Coal,석탄,metal,0,1,"[20, 45]",british-isles,,raw material,coal,,goods.json
+marble,Marble,대리석,crafts,0,2,"[90, 180]","adriatic-ionian, aegean-anatolia, western-mediterranean",,raw material,marble,,goods.json
+cork,Cork,코르크,crafts,0,1,"[35, 70]",iberia,,raw material,cork,,goods.json
+copal,Copal,코펄,crafts,0,3,"[140, 280]","caribbean, east-africa",,raw material,copal,,goods.json
+tiger-skins,Tiger Skins,호랑이 가죽,cloth,0,4,"[400, 800]",korea,,raw material,tiger-skins,,goods.json
+isinglass,Isinglass,부레풀,food,1,4,"[280, 560]","aegean-anatolia, baltic, scandinavia-arctic",,crafted,,2 Sturgeon + 1 Fresh Water,goods.json
+russia-leather,Russia Leather,러시아 가죽,cloth,2,3,"[200, 400]","aegean-anatolia, baltic, scandinavia-arctic",,crafted,,3 Leather + 1 Tar & Pitch + 1 Madder,goods.json
+morocco-leather,Morocco Leather,모로코 가죽,cloth,2,3,"[190, 380]",maghreb,,crafted,,3 Leather + 2 Madder + 1 Alum,goods.json
+peru-balsam,Balsam of Peru,페루 발삼,medicine,0,4,"[350, 700]","caribbean, pacific-americas",,raw material,peru-balsam,,goods.json
+jalap,Jalap,얄라파,medicine,0,3,"[180, 360]",caribbean,,raw material,jalap,,goods.json
+vicuna-wool,Vicuña Wool,비쿠냐 털,cloth,0,5,"[700, 1400]",pacific-americas,,raw material,vicuna-wool,,goods.json
+guaiacum,Guaiacum,유창목,medicine,0,4,"[300, 620]",caribbean,,raw material,guaiacum,,goods.json
+verdigris,Verdigris,녹청,dye,1,3,"[150, 300]",western-mediterranean,,crafted,,2 Copper + 1 Grapes + 1 Fresh Water,goods.json
+cobalt,Cobalt Blue,코발트 청,dye,0,4,"[400, 800]",arabia-gulf,,raw material,cobalt,,goods.json
+gamboge,Gamboge,등황,dye,0,3,"[160, 320]",southeast-asia,,raw material,gamboge,,goods.json
+safflower,Safflower,잇꽃,dye,0,2,"[70, 140]","eastern-india, levant, western-india",,raw material,safflower,,goods.json
+catechu,Catechu,아선약,dye,0,2,"[75, 150]","eastern-india, western-india",,raw material,catechu,,goods.json
+elephants,War Elephants,전투 코끼리,animals,0,5,"[2000, 4000]",eastern-india,,raw material,elephants,,goods.json
+spikenard,Spikenard,감송향,medicine,0,4,"[350, 700]",eastern-india,,raw material,spikenard,,goods.json
+asafoetida,Asafoetida,아위,medicine,0,3,"[180, 360]","arabia-gulf, western-india",,raw material,asafoetida,,goods.json
+mecca-balsam,Balm of Mecca,메카 향유,medicine,0,5,"[800, 1600]",arabia-gulf,,raw material,mecca-balsam,,goods.json
+linseed,Linseed,아마씨,crafts,0,1,"[30, 65]",baltic,,raw material,linseed,,goods.json
+hops,Hops,홉,drink,0,1,"[35, 75]","baltic, france-low-countries",,raw material,hops,,goods.json
+soap,Soap,비누,crafts,2,2,"[80, 160]","adriatic-ionian, iberia, levant, western-mediterranean",,crafted,,2 Olive Oil + 1 Tallow + 1 Potash + 1 Salt + 1 Fresh Water,goods.json
+vermilion,Vermilion,주홍,dye,1,4,"[450, 900]","china-coast, france-low-countries",,crafted,,2 Quicksilver + 1 Sulphur,goods.json
+timber,Timber,목재,ship-supplies,0,1,"[30, 65]","aegean-anatolia, atlantic-isles, baltic, british-isles, caribbean, china-coast, east-africa, eastern-india, france-low-countries, iberia, japan, korea, north-america-atlantic, oceania, scandinavia-arctic, south-america-atlantic, western-india",,raw material,timber,,goods.json
+naval-timber,Masts & Spars,돛대·활대,ship-supplies,0,3,"[170, 340]","baltic, north-america-atlantic, scandinavia-arctic, western-mediterranean",portsmouth,raw material,naval-timber,,goods.json
+tar,Tar & Pitch,타르·피치,ship-supplies,0,2,"[55, 110]","baltic, scandinavia-arctic",,raw material,tar,,goods.json
+hemp,Hemp & Cordage,대마·밧줄,ship-supplies,0,2,"[75, 150]","baltic, east-africa, france-low-countries, scandinavia-arctic, western-india, western-mediterranean",portsmouth,raw material,hemp,,goods.json
+flax,Flax & Sailcloth,아마·돛천,ship-supplies,0,2,"[70, 140]","arabia-gulf, baltic, france-low-countries, levant, scandinavia-arctic",,raw material,flax,,goods.json
+whale-oil,Whale & Train Oil,고래기름,ship-supplies,0,3,"[160, 320]","british-isles, france-low-countries, iberia, korea, north-america-atlantic, scandinavia-arctic, south-america-atlantic",,raw material,whale-oil,,goods.json
+teak,Teak,티크,ship-supplies,0,2,"[70, 140]","eastern-india, western-india",,raw material,teak,,goods.json
+rosin,Rosin & Turpentine,송진·테레빈유,ship-supplies,0,1,"[35, 70]","baltic, france-low-countries, scandinavia-arctic",,raw material,rosin,,goods.json
+cedar,Cedar Timber,삼나무 목재,ship-supplies,0,2,"[80, 160]","caribbean, levant, north-america-atlantic",,raw material,cedar,,goods.json
+mangrove-poles,Mangrove Poles,맹그로브 기둥,ship-supplies,0,1,"[28, 60]",east-africa,,raw material,mangrove-poles,,goods.json
+abaca,Manila Hemp,마닐라삼,ship-supplies,0,2,"[60, 120]",southeast-asia,,raw material,abaca,,goods.json
+port-wine,Port Wine,포트와인,drink,3,2,"[35, 53]",iberia,,crafted,,2 Wine + 1 Brandy,goods.json
+sherry,Sherry,셰리,drink,2,2,"[50, 84]",iberia,,crafted,,3 Wine + 1 Gypsum,goods.json
+madeira-wine,Madeira,마데이라,drink,2,2,"[66, 123]",atlantic-isles,,crafted,,3 Wine + 1 Timber,goods.json
+canary-sack,Canary Sack,카나리아 색,drink,2,2,"[40, 62]",atlantic-isles,,crafted,,3 Wine + 1 Honey,goods.json
+malmsey,Malmsey,맘지,drink,2,2,"[55, 96]",aegean-anatolia,,crafted,,3 Wine + 1 Honey,goods.json
+rhenish-wine,Rhenish Wine,라인 포도주,drink,1,2,"[70, 135]",france-low-countries,,crafted,,3 Grapes + 1 Timber + 1 Stone,goods.json
+claret,Claret,클라레,drink,1,2,"[44, 71]",france-low-countries,,crafted,,3 Grapes + 1 Timber,goods.json
+burgundy,Burgundy,부르고뉴,drink,1,2,"[59, 106]",france-low-countries,,crafted,,3 Grapes + 1 Timber,goods.json
+chianti,Chianti,키안티,drink,1,2,"[75, 149]",western-mediterranean,,crafted,,3 Grapes + 1 Timber,goods.json
+retsina,Retsina,레치나,drink,1,2,"[49, 82]",aegean-anatolia,,crafted,,3 Grapes + 1 Pine Pitch,goods.json
+commandaria,Commandaria,코만다리아,drink,1,2,"[64, 118]",levant,,crafted,,3 Grapes + 1 Honey + 1 Timber,goods.json
+tokay,Tokay,토카이,drink,1,2,"[38, 58]",adriatic-ionian,,crafted,,3 Grapes + 1 Honey + 1 Timber,goods.json
+english-ale,English Ale,잉글랜드 에일,drink,2,2,"[53, 91]",british-isles,,crafted,,2 Malt + 1 Hops + 1 Fresh Water,goods.json
+porter-beer,Porter,포터,drink,2,2,"[68, 130]",british-isles,,crafted,,3 Malt + 1 Hops + 1 Fresh Water,goods.json
+hamburg-beer,Hamburg Beer,함부르크 맥주,drink,2,2,"[42, 67]",baltic,,crafted,,2 Malt + 1 Hops + 1 Fresh Water,goods.json
+kvass,Kvass,크바스,drink,3,2,"[58, 103]",baltic,,crafted,,2 Rye Bread + 1 Fresh Water,goods.json
+vodka,Vodka,보드카,drink,2,2,"[73, 143]",baltic,,crafted,,3 Rye Flour + 1 Fresh Water,goods.json
+whisky,Whisky,위스키,drink,2,2,"[47, 77]",british-isles,,crafted,,3 Malt + 1 Fresh Water,goods.json
+gin,Genever,예네버르,drink,2,2,"[62, 113]",france-low-countries,,crafted,,2 Rye Flour + 1 Juniper Berries + 1 Fresh Water,goods.json
+aquavit,Aquavit,아콰비트,drink,2,2,"[36, 55]",scandinavia-arctic,,crafted,,2 Malt + 1 Angelica Root + 1 Fresh Water,goods.json
+cognac,Cognac,코냑,drink,2,2,"[52, 88]",france-low-countries,,crafted,,3 Wine + 1 Timber,goods.json
+grappa,Grappa,그라파,drink,2,2,"[67, 126]",western-mediterranean,,crafted,,3 Wine + 1 Fresh Water,goods.json
+rakia,Rakia,라키야,drink,2,2,"[41, 64]",adriatic-ionian,,crafted,,3 Wine + 1 Fresh Water,goods.json
+ouzo,Ouzo,우조,drink,2,2,"[56, 98]",aegean-anatolia,,crafted,,3 Wine + 1 Aniseed + 1 Fresh Water,goods.json
+arak-levant,Levantine Arak,레반트 아라크,drink,2,2,"[71, 138]",levant,,crafted,,3 Wine + 1 Aniseed + 1 Fresh Water,goods.json
+baijiu,Baijiu,백주,drink,1,2,"[45, 73]",china-coast,,crafted,,3 Sorghum + 2 Fresh Water,goods.json
+soju,Soju,소주,drink,1,2,"[61, 110]",korea,,crafted,,3 Rice + 2 Fresh Water,goods.json
+shochu,Shochu,쇼추,drink,1,2,"[76, 152]",japan,,crafted,,2 Rice + 2 Kumara + 1 Fresh Water,goods.json
+pulque,Pulque,풀케,drink,1,2,"[50, 84]",pacific-americas,,crafted,,3 Agave + 1 Fresh Water,goods.json
+chicha,Chicha,치차,drink,1,2,"[65, 121]","pacific-americas, south-america-atlantic",,crafted,,3 Maize + 2 Fresh Water,goods.json
+palm-wine,Palm Wine,야자술,drink,1,2,"[39, 60]",west-africa,,crafted,,2 Palm Sap + 1 Fresh Water,goods.json
+cachaca,Cachaca,카샤사,drink,2,2,"[54, 94]",south-america-atlantic,,crafted,,3 Molasses + 1 Fresh Water,goods.json
+cider,Cider,사과주,drink,1,2,"[70, 134]",british-isles,,crafted,,3 Apple + 1 Fresh Water,goods.json
+perry,Perry,배술,drink,1,2,"[44, 71]",france-low-countries,,crafted,,3 Pear + 1 Fresh Water,goods.json
+mead,Mead,벌꿀술,drink,1,2,"[59, 106]",scandinavia-arctic,,crafted,,3 Honey + 2 Fresh Water,goods.json
+toddy,Toddy,토디,drink,1,2,"[74, 146]",western-india,,crafted,,2 Palm Sap + 1 Fresh Water,goods.json
+coconut-arrack,Coconut Arrack,코코넛 아라크,drink,1,2,"[48, 80]",southeast-asia,,crafted,,2 Coconuts & Copra + 2 Fresh Water,goods.json
+sherbet,Sherbet Syrup,셔벗 시럽,drink,1,2,"[63, 116]",arabia-gulf,,crafted,,2 Lemons & Oranges + 1 Honey + 2 Fresh Water,goods.json
+mint-tea,Mint Tea,박하차,drink,1,2,"[37, 57]",maghreb,,crafted,,2 Mint + 2 Fresh Water,goods.json
+honeybush,Honeybush Tea,허니부시 차,drink,1,2,"[53, 91]",east-africa,,crafted,,2 Honeybush Leaf + 2 Fresh Water,goods.json
+virginia-leaf,Virginia Leaf,버지니아 잎담배,tobacco,0,3,"[197, 374]",north-america-atlantic,,raw material,tobacco,,goods.json
+maryland-leaf,Maryland Leaf,메릴랜드 잎담배,tobacco,0,3,"[121, 192]",north-america-atlantic,,raw material,tobacco,,goods.json
+brazil-twist,Brazil Twist,브라질 꼰 담배,tobacco,1,3,"[165, 292]",south-america-atlantic,,crafted,,3 Tobacco + 1 Sugar Cane,goods.json
+cuban-leaf,Cuban Leaf,쿠바 잎담배,tobacco,0,3,"[210, 411]",caribbean,,raw material,tobacco,,goods.json
+cigars,Cigars,여송연,tobacco,1,3,"[134, 220]",caribbean,,crafted,,3 Tobacco + 1 Fresh Water,goods.json
+turkish-leaf,Turkish Leaf,튀르키예 잎담배,tobacco,0,3,"[179, 327]",aegean-anatolia,,raw material,tobacco,,goods.json
+persian-tombak,Persian Tombak,페르시아 톰바크,tobacco,0,3,"[102, 154]",arabia-gulf,,raw material,tobacco,,goods.json
+snuff,Snuff,코담배,tobacco,1,3,"[147, 249]",france-low-countries,,crafted,,2 Tobacco + 1 Nutmeg,goods.json
+pipe-tobacco,Pipe Tobacco,파이프 담배,tobacco,1,3,"[192, 361]",british-isles,,crafted,,3 Tobacco + 1 Honey,goods.json
+betel-quid,Betel Quid,구장,tobacco,1,3,"[116, 182]",southeast-asia,,crafted,,2 Areca Nuts + 1 Betel Leaf + 1 Lime,goods.json
+salmon,Salmon,연어,food,0,2,"[56, 98]","pacific-americas, scandinavia-arctic",,raw material,salmon,,goods.json
+cod,Cod,대구,food,0,2,"[71, 137]",north-america-atlantic,,raw material,cod,,goods.json
+stockfish,Stockfish,말린 대구,food,1,2,"[45, 73]",scandinavia-arctic,,crafted,,2 Cod + 1 Salt,goods.json
+tuna,Tuna,참치,food,0,2,"[60, 108]",western-mediterranean,,raw material,tuna,,goods.json
+sardines,Sardines,정어리,food,0,2,"[75, 149]",iberia,,raw material,sardines,,goods.json
+anchovies,Anchovies,멸치,food,0,2,"[49, 82]",western-mediterranean,,raw material,anchovies,,goods.json
+mackerel,Mackerel,고등어,food,0,2,"[65, 121]",british-isles,,raw material,mackerel,,goods.json
+smoked-eel,Smoked Eel,훈제 장어,food,1,2,"[39, 60]",france-low-countries,,crafted,,2 Eel + 1 Salt + 1 Timber,goods.json
+sturgeon,Sturgeon,철갑상어,food,0,2,"[54, 93]",baltic,,raw material,sturgeon,,goods.json
+bonito,Bonito,가다랑어,food,0,2,"[69, 132]",japan,,raw material,bonito,,goods.json
+pollock,Pollock,명태,food,0,2,"[43, 69]",korea,,raw material,pollock,,goods.json
+halibut,Halibut,넙치,food,0,2,"[59, 105]",scandinavia-arctic,,raw material,halibut,,goods.json
+hake,Hake,메를루사,food,0,2,"[74, 146]",iberia,,raw material,hake,,goods.json
+pilchards,Pilchards,필처드,food,0,2,"[48, 79]",british-isles,,raw material,pilchards,,goods.json
+bacalhau,Bacalhau,바칼랴우,food,1,2,"[63, 116]",iberia,,crafted,,2 Cod + 2 Salt,goods.json
+katsuobushi,Katsuobushi,가쓰오부시,food,1,2,"[37, 56]",japan,,crafted,,2 Bonito + 1 Timber + 1 Salt,goods.json
+dried-squid,Dried Squid,마른오징어,food,1,2,"[52, 89]",korea,,crafted,,2 Squid + 1 Salt,goods.json
+salt-cod,Salt Cod,소금 대구,food,1,2,"[68, 129]",north-america-atlantic,,crafted,,2 Cod + 2 Salt,goods.json
+gochujang,Gochujang,고추장,food,1,2,"[42, 66]",korea,,crafted,,2 Rice + 1 Chillies + 1 Salt + 1 Honey,goods.json
+doenjang,Doenjang,된장,food,1,2,"[57, 101]",korea,,crafted,,2 Soybean + 1 Salt + 1 Fresh Water,goods.json
+kimchi,Kimchi,김치,food,1,2,"[72, 140]",korea,,crafted,,2 Cabbage + 1 Salt + 1 Chillies + 1 Cod,goods.json
+miso,Miso,미소,food,1,2,"[46, 75]",japan,,crafted,,2 Soybean + 1 Salt + 1 Fresh Water,goods.json
+mirin,Mirin,미림,food,1,2,"[61, 111]",japan,,crafted,,2 Rice + 1 Honey + 1 Fresh Water,goods.json
+rice-vinegar,Rice Vinegar,쌀식초,food,1,2,"[35, 53]",china-coast,,crafted,,2 Rice + 2 Fresh Water,goods.json
+fish-sauce,Fish Sauce,어간장,food,1,2,"[51, 86]",southeast-asia,,crafted,,2 Anchovies + 2 Salt,goods.json
+shrimp-paste,Shrimp Paste,새우젓,food,1,2,"[66, 124]",southeast-asia,,crafted,,2 Shrimp + 1 Salt,goods.json
+pickled-plums,Pickled Plums,매실 장아찌,food,1,2,"[40, 62]",japan,,crafted,,2 Plum + 1 Salt,goods.json
+olives,Olives,올리브,food,0,2,"[55, 96]",western-mediterranean,,raw material,olives,,goods.json
+capers,Capers,케이퍼,food,0,2,"[70, 135]",western-mediterranean,,raw material,capers,,goods.json
+harissa,Harissa,하리사,food,1,2,"[44, 71]",maghreb,,crafted,,1 Coriander + 1 Cumin + 2 Chillies + 1 Olives + 1 Salt,goods.json
+couscous,Couscous,쿠스쿠스,food,2,2,"[60, 108]",maghreb,,crafted,,2 Wheat Flour + 1 Fresh Water,goods.json
+maple-sugar,Maple Sugar,단풍 설탕,food,1,2,"[75, 149]",north-america-atlantic,,crafted,,3 Fresh Water + 1 Timber,goods.json
+pemmican,Pemmican,페미컨,food,1,2,"[49, 82]",north-america-atlantic,,crafted,,2 Cattle + 1 Figs + 2 Tallow,goods.json
+charqui,Charqui,차르키,food,1,2,"[64, 119]","pacific-americas, south-america-atlantic",,crafted,,2 Cattle + 2 Salt,goods.json
+cassava-bread,Cassava Bread,카사바 빵,food,2,2,"[38, 59]",caribbean,,crafted,,2 Cassava Flour + 1 Fresh Water,goods.json
+plantains,Plantains,플랜틴,food,0,2,"[54, 93]",west-africa,,raw material,plantains,,goods.json
+yams,Yams,얌,food,0,2,"[69, 132]",west-africa,,raw material,yams,,goods.json
+shea-butter,Shea Butter,시어버터,food,1,2,"[43, 69]",west-africa,,crafted,,2 Shea Nut + 1 Tallow + 1 Fresh Water,goods.json
+teff,Teff,테프,grain,0,1,"[19, 34]",east-africa,,raw material,teff,,goods.json
+millet,Millet,조,grain,0,1,"[25, 49]",west-africa,,raw material,millet,,goods.json
+sorghum,Sorghum,수수,grain,0,1,"[15, 25]",east-africa,,raw material,sorghum,,goods.json
+oats,Oats,귀리,grain,0,1,"[21, 39]",british-isles,,raw material,oats,,goods.json
+buckwheat,Buckwheat,메밀,grain,0,1,"[11, 17]",baltic,,raw material,buckwheat,,goods.json
+quinoa,Quinoa,퀴노아,grain,0,1,"[17, 29]",south-america-atlantic,,raw material,quinoa,,goods.json
+spelt,Spelt,스펠트밀,grain,0,1,"[23, 43]",france-low-countries,,raw material,spelt,,goods.json
+persian-carpet,Persian Carpet,페르시아 양탄자,cloth,1,3,"[118, 186]",arabia-gulf,,crafted,,3 Raw Wool + 1 Raw Silk + 2 Madder,goods.json
+kashmir-shawl,Kashmir Shawl,카슈미르 숄,cloth,1,3,"[163, 287]",western-india,,crafted,,4 Raw Wool + 1 Madder,goods.json
+dhaka-muslin,Dhaka Muslin,다카 모슬린,cloth,1,3,"[208, 405]",eastern-india,,crafted,,4 Raw Cotton + 1 Fresh Water,goods.json
+patola-silk,Patola Silk,파톨라 비단,cloth,1,3,"[131, 214]",western-india,,crafted,,3 Raw Silk + 1 Madder + 1 Indigo,goods.json
+nankeen,Nankeen Cloth,남경 무명,cloth,1,3,"[176, 319]",china-coast,,crafted,,3 Raw Cotton + 1 Safflower,goods.json
+shantung-silk,Shantung Silk,산둥 비단,cloth,1,3,"[100, 150]",china-coast,,crafted,,3 Raw Silk + 1 Fresh Water,goods.json
+nishijin-brocade,Nishijin Brocade,니시진 비단,cloth,1,3,"[145, 244]",japan,,crafted,,3 Raw Silk + 1 Gold + 1 Cochineal + 1 Indigo,goods.json
+ramie-korea,Korean Ramie,한산 모시,cloth,1,3,"[190, 355]",korea,,crafted,,3 Ramie + 1 Fresh Water,goods.json
+hemp-cloth,Hemp Cloth,삼베,cloth,1,3,"[113, 176]",korea,,crafted,,3 Hemp + 1 Fresh Water,goods.json
+holland-linen,Holland Linen,홀란트 리넨,cloth,1,3,"[158, 275]",france-low-countries,,crafted,,3 Flax + 1 Fresh Water,goods.json
+flanders-lace,Flanders Lace,플랑드르 레이스,cloth,2,3,"[203, 391]",france-low-countries,,crafted,,2 Yarn + 1 Linen,goods.json
+irish-linen,Irish Linen,아일랜드 리넨,cloth,1,3,"[127, 204]",british-isles,,crafted,,3 Flax + 1 Fresh Water,goods.json
+kersey,Kersey,커지,cloth,1,3,"[171, 307]",british-isles,,crafted,,3 Raw Wool + 1 Madder,goods.json
+worsted,Worsted,소모직물,cloth,1,3,"[216, 428]",british-isles,,crafted,,3 Raw Wool + 1 Fresh Water,goods.json
+baize,Baize,베이즈,cloth,1,3,"[140, 233]",british-isles,,crafted,,3 Raw Wool + 1 Madder,goods.json
+russia-hemp,Russia Hemp Cloth,러시아 삼베,cloth,1,3,"[185, 342]",baltic,,crafted,,3 Hemp + 1 Fresh Water,goods.json
+sailcloth,Sailcloth,돛천,cloth,1,3,"[108, 166]",baltic,,crafted,,3 Flax + 1 Hemp + 1 Tar & Pitch,goods.json
+kente-cloth,Kente Cloth,켄테 천,cloth,1,3,"[153, 263]",west-africa,,crafted,,2 Raw Cotton + 1 Raw Silk + 1 Gold + 1 Indigo + 1 Madder,goods.json
+adire-cloth,Adire Cloth,아디레 천,cloth,1,3,"[198, 377]",west-africa,,crafted,,3 Raw Cotton + 1 Indigo + 1 Potash,goods.json
+kanga-cloth,Kanga Cloth,캉가 천,cloth,1,3,"[122, 194]",east-africa,,crafted,,3 Raw Cotton + 1 Indigo + 1 Madder,goods.json
+alpaca-wool,Alpaca Wool,알파카 털,cloth,0,3,"[167, 296]","pacific-americas, south-america-atlantic",,raw material,alpaca-wool,,goods.json
+tapa-cloth,Tapa Cloth,타파 천,cloth,1,3,"[211, 414]",oceania,,crafted,,3 Bark + 1 Fresh Water,goods.json
+songket,Songket,송켓,cloth,1,3,"[135, 222]",southeast-asia,,crafted,,2 Raw Silk + 1 Gold + 1 Madder,goods.json
+ikat,Ikat,이캇,cloth,1,3,"[180, 329]",southeast-asia,,crafted,,3 Raw Cotton + 1 Indigo + 1 Madder,goods.json
+merino-wool,Merino Wool,메리노 양모,cloth,0,3,"[104, 158]",iberia,,raw material,wool-raw,,goods.json
+damask,Damask,다마스크,cloth,1,3,"[148, 252]",levant,,crafted,,3 Raw Silk + 1 Cochineal,goods.json
+mohair,Mohair,모헤어,cloth,0,3,"[193, 364]",aegean-anatolia,,raw material,mohair,,goods.json
+angora,Angora Wool,앙고라 털,cloth,0,3,"[117, 184]",aegean-anatolia,,raw material,angora,,goods.json
+tin-ingots,Tin Ingots,주석 괴,metal,0,3,"[162, 284]",british-isles,,raw material,tin,,goods.json
+swedish-iron,Swedish Iron,스웨덴 철,metal,0,3,"[206, 400]",scandinavia-arctic,,raw material,iron,,goods.json
+osmund-iron,Osmund Iron,오스문드 철,metal,0,3,"[130, 211]",scandinavia-arctic,,raw material,iron,,goods.json
+japan-copper,Japan Copper,일본 구리,metal,0,3,"[175, 317]",japan,,raw material,copper,,goods.json
+potosi-silver,Potosi Silver,포토시 은,metal,0,3,"[220, 439]","pacific-americas, south-america-atlantic",,raw material,silver,,goods.json
+zacatecas-silver,Zacatecas Silver,사카테카스 은,metal,0,3,"[144, 242]",pacific-americas,,raw material,silver,,goods.json
+gold-dust,Gold Dust,사금,metal,0,3,"[188, 351]","pacific-americas, west-africa",,raw material,gold,,goods.json
+antimony,Antimony,안티몬,metal,0,3,"[112, 174]",china-coast,,raw material,antimony,,goods.json
+zinc-spelter,Spelter,아연,metal,0,3,"[157, 272]",eastern-india,,raw material,zinc-spelter,,goods.json
+bar-iron,Bar Iron,막대 철,metal,0,3,"[202, 388]",baltic,,raw material,iron,,goods.json
+brass-ingots,Brass Ingots,황동 괴,metal,1,3,"[125, 201]",france-low-countries,,crafted,,3 Copper + 1 Spelter + 1 Sea Coal,goods.json
+steel-billets,Steel Billets,강철 괴,metal,2,3,"[170, 304]",arabia-gulf,,crafted,,3 Iron Bars + 2 Sea Coal,goods.json
+platinum,Platinum,백금,metal,0,3,"[215, 425]","pacific-americas, south-america-atlantic",,raw material,platinum,,goods.json
+lodestone,Lodestone,자철석,metal,0,3,"[139, 231]",china-coast,,raw material,lodestone,,goods.json
+alum-shale,Alum Shale,명반 혈암,metal,0,3,"[183, 338]",aegean-anatolia,,raw material,alum-shale,,goods.json
+cinnabar,Cinnabar,진사,metal,0,3,"[107, 164]",iberia,,raw material,cinnabar,,goods.json
+matchlocks,Matchlocks,화승총,guns,2,4,"[442, 758]",japan,,crafted,,2 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur,goods.json
+arquebus,Arquebus,아퀘버스,guns,2,4,"[564, 1072]",france-low-countries,,crafted,,2 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur,goods.json
+culverin,Culverin,컬버린,guns,2,4,"[356, 564]",british-isles,,crafted,,3 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,goods.json
+falconet,Falconet,팰커닛,guns,2,4,"[478, 846]",western-mediterranean,,crafted,,2 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,goods.json
+swivel-gun,Swivel Gun,회전포,guns,2,4,"[600, 1173]",adriatic-ionian,,crafted,,2 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,goods.json
+bombard,Bombard,사석포,guns,2,4,"[392, 643]",aegean-anatolia,,crafted,,3 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur + 1 Stone,goods.json
+rocket-tubes,Rocket Tubes,신기전,guns,2,4,"[515, 940]",western-india,,crafted,,1 Planks + 2 Saltpetre + 1 Sulphur + 1 Sea Coal,goods.json
+fire-lance,Fire Lance,화창,guns,2,4,"[307, 464]",china-coast,,crafted,,1 Planks + 1 Iron Bars + 1 Saltpetre + 1 Sulphur,goods.json
+shot-and-ball,Shot and Ball,탄환,guns,2,4,"[429, 727]",baltic,,crafted,,2 Iron Bars + 2 Lead + 1 Sea Coal,goods.json
+slow-match,Slow Match,화승,guns,1,4,"[551, 1036]",iberia,,crafted,,2 Hemp + 1 Saltpetre + 1 Fresh Water,goods.json
+toledo-blades,Toledo Blades,톨레도 칼날,weapons,3,3,"[116, 182]",iberia,,crafted,,2 Steel Billets + 1 Sea Coal + 1 Fresh Water,goods.json
+damascus-blades,Damascus Blades,다마스쿠스 칼날,weapons,3,3,"[161, 282]",levant,,crafted,,2 Steel Billets + 1 Sea Coal + 1 Timber,goods.json
+katana,Katana,일본도,weapons,3,3,"[205, 397]",japan,,crafted,,2 Steel Billets + 1 Sea Coal + 1 Fresh Water + 1 Timber,goods.json
+kris,Kris,크리스,weapons,3,3,"[129, 209]",southeast-asia,,crafted,,1 Steel Billets + 1 Sea Coal + 1 Timber,goods.json
+talwar,Talwar,탈와르,weapons,3,3,"[174, 314]",western-india,,crafted,,2 Steel Billets + 1 Sea Coal + 1 Fresh Water,goods.json
+pike-heads,Pike Heads,창날,weapons,2,3,"[219, 436]",france-low-countries,,crafted,,2 Iron Bars + 1 Planks + 1 Sea Coal,goods.json
+crossbows,Crossbows,쇠뇌,weapons,2,3,"[142, 238]",adriatic-ionian,,crafted,,2 Planks + 1 Yarn + 1 Iron Bars,goods.json
+war-bows,War Bows,전투용 활,weapons,2,3,"[187, 348]",korea,,crafted,,2 Planks + 1 Yarn + 1 Goose Feathers,goods.json
+milanese-armour,Milanese Armour,밀라노 갑옷,weapons,3,3,"[111, 171]",western-mediterranean,,crafted,,2 Steel Billets + 1 Leather + 1 Woollen Cloth,goods.json
+shields,Hide Shields,가죽 방패,weapons,2,3,"[156, 270]",east-africa,,crafted,,2 Leather + 1 Planks + 1 Iron Bars,goods.json
+kyoto-fans,Kyoto Fans,교토 부채,crafts,1,4,"[574, 1099]",japan,,crafted,,1 Timber + 1 Bamboo + 1 Rattan,goods.json
+imari-ware,Imari Ware,이마리 자기,crafts,1,4,"[366, 586]",japan,,crafted,,2 Clay + 1 Feldspar + 1 Cobalt Blue + 1 Quartz,goods.json
+goryeo-celadon,Goryeo Celadon,고려청자,crafts,1,4,"[488, 871]",korea,,crafted,,3 Clay + 1 Feldspar + 1 Potash,goods.json
+mother-of-pearl-inlay,Nacre Inlay,나전,crafts,2,4,"[610, 1202]",korea,,crafted,,2 Mother-of-Pearl + 2 Planks + 1 Gum Arabic,goods.json
+canton-enamel,Canton Enamel,광둥 법랑,crafts,2,4,"[402, 665]",china-coast,,crafted,,1 Glass + 2 Copper + 1 Tin + 1 Cobalt Blue,goods.json
+cloisonne,Cloisonne,칠보,crafts,2,4,"[524, 964]",china-coast,,crafted,,1 Glass + 2 Copper + 1 Cobalt Blue,goods.json
+benin-bronzes,Benin Bronzes,베냉 청동상,crafts,1,4,"[317, 483]",west-africa,,crafted,,3 Copper + 1 Tin + 1 Beeswax,goods.json
+ashanti-goldwork,Ashanti Goldwork,아샨티 금세공,crafts,1,4,"[439, 751]",west-africa,,crafted,,3 Gold + 1 Beeswax + 1 Clay,goods.json
+zanzibar-doors,Carved Doors,조각 문,crafts,2,4,"[561, 1063]",east-africa,,crafted,,3 Planks + 1 Iron Bars + 1 Coir,goods.json
+damascene-work,Damascene Work,상감 세공,crafts,3,4,"[353, 558]",levant,,crafted,,1 Steel Billets + 1 Silver + 1 Gold + 1 Sea Coal,goods.json
+iznik-tiles,Iznik Tiles,이즈니크 타일,crafts,1,4,"[475, 838]",aegean-anatolia,,crafted,,3 Clay + 1 Quartz + 1 Sand + 1 Cobalt Blue,goods.json
+murano-glass,Murano Glass,무라노 유리,crafts,2,4,"[597, 1164]",adriatic-ionian,,crafted,,3 Glass + 1 Cobalt Blue,goods.json
+venetian-mirrors,Venetian Mirrors,베네치아 거울,crafts,2,4,"[389, 636]",adriatic-ionian,,crafted,,3 Glass + 1 Tin + 1 Silver,goods.json
+delftware,Delftware,델프트 도기,crafts,1,4,"[511, 930]",france-low-countries,,crafted,,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,goods.json
+sheffield-plate,Sheffield Plate,셰필드 도금 은기,crafts,1,4,"[303, 456]",british-isles,,crafted,,2 Copper + 2 Silver + 1 Sea Coal,goods.json
+amber-work,Amber Work,호박 세공,crafts,2,4,"[425, 718]",baltic,,crafted,,3 Amber + 1 Planks,goods.json
+sami-craft,Sami Craft,사미 공예,crafts,2,4,"[548, 1028]",scandinavia-arctic,,crafted,,1 Furs + 1 Walrus Ivory + 1 Woollen Cloth + 1 Planks,goods.json
+talavera,Talavera,탈라베라 도기,crafts,1,4,"[340, 530]",pacific-americas,,crafted,,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,goods.json
+featherwork,Featherwork,깃털 공예,crafts,2,4,"[462, 806]",pacific-americas,,crafted,,3 Bird-of-Paradise Plumes + 1 Cotton Cloth + 1 Gold,goods.json
+tortoiseshell-combs,Tortoiseshell Combs,대모 빗,crafts,2,4,"[584, 1127]",caribbean,,crafted,,2 Tortoiseshell + 1 Planks,goods.json
+sandalwood-carving,Sandalwood Carving,백단 조각,crafts,1,4,"[376, 607]",western-india,,crafted,,3 Sandalwood + 1 Timber,goods.json
+bidriware,Bidriware,비드리 세공,crafts,2,4,"[498, 896]",eastern-india,,crafted,,2 Brass Ingots + 1 Silver + 1 Clay,goods.json
+nipa-mats,Nipa Mats,니파 돗자리,crafts,1,4,"[620, 1231]",southeast-asia,,crafted,,3 Nipa Palm + 1 Fresh Water,goods.json
+pandanus-mats,Pandanus Mats,판다누스 돗자리,crafts,1,4,"[412, 688]",oceania,,crafted,,3 Pandanus + 1 Turmeric,goods.json
+azulejos,Azulejos,아줄레주,crafts,1,4,"[534, 991]",iberia,,crafted,,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,goods.json
+maghreb-brass,Maghreb Brasswork,마그레브 황동 세공,crafts,2,4,"[326, 502]",maghreb,,crafted,,2 Brass Ingots + 1 Sea Coal,goods.json
+saffian-leather,Saffian Leather,사피안 가죽,crafts,2,4,"[449, 775]",maghreb,,crafted,,3 Leather + 2 Madder + 1 Alum,goods.json
+seed-pearls,Seed Pearls,잔 진주,gems,0,5,"[1612, 3079]",arabia-gulf,,raw material,pearls,,goods.json
+golconda-diamonds,Golconda Diamonds,골콘다 다이아몬드,gems,0,5,"[988, 1576]",eastern-india,,raw material,diamonds,,goods.json
+ceylon-sapphires,Ceylon Sapphires,실론 사파이어,gems,0,5,"[1354, 2410]",southeast-asia,,raw material,sapphires,,goods.json
+burma-rubies,Burma Rubies,버마 루비,gems,0,5,"[1721, 3382]",southeast-asia,,raw material,rubies,,goods.json
+jade,Jade,비취,gems,0,5,"[1097, 1810]",china-coast,,raw material,jade,,goods.json
+nephrite,Nephrite,연옥,gems,0,5,"[1463, 2685]",korea,,raw material,nephrite,,goods.json
+emerald-muzo,Muzo Emeralds,무소 에메랄드,gems,0,5,"[840, 1277]",south-america-atlantic,,raw material,emeralds,,goods.json
+opals,Opals,오팔,gems,0,5,"[1206, 2056]",oceania,,raw material,opals,,goods.json
+baltic-amber,Baltic Amber,발트 호박,gems,0,5,"[1572, 2971]",baltic,,raw material,amber,,goods.json
+malachite,Malachite,공작석,gems,0,5,"[949, 1495]",east-africa,,raw material,malachite,,goods.json
+onyx,Onyx,줄마노,gems,0,5,"[1315, 2314]",maghreb,,raw material,onyx,,goods.json
+peridot,Peridot,감람석,gems,0,5,"[1681, 3270]",arabia-gulf,,raw material,peridot,,goods.json
+black-coral,Black Coral,흑산호,gems,0,5,"[1057, 1723]",caribbean,,raw material,coral,,goods.json
+attar-of-roses,Attar of Roses,장미유,medicine,1,3,"[176, 319]",arabia-gulf,,crafted,,3 Rose + 1 Tallow + 1 Fresh Water,goods.json
+mumia,Mumia,무미아,medicine,1,3,"[100, 150]",levant,,crafted,,2 Opium + 1 Myrrh + 1 Ochre,goods.json
+dragon-bone,Dragon Bone,용골,medicine,0,3,"[145, 244]",china-coast,,raw material,dragon-bone,,goods.json
+ginseng-korea,Korean Ginseng,고려인삼,medicine,0,3,"[190, 355]",korea,,raw material,ginseng-korea,,goods.json
+moxa,Moxa,뜸쑥,medicine,0,3,"[113, 176]",japan,,raw material,moxa,,goods.json
+kampo-herbs,Kampo Herbs,한방 약초,medicine,0,3,"[158, 275]",japan,,raw material,kampo-herbs,,goods.json
+ayurvedic-oils,Ayurvedic Oils,아유르베다 기름,medicine,1,3,"[203, 391]",western-india,,crafted,,2 Neem + 2 Sesame + 1 Tallow,goods.json
+neem,Neem,님,medicine,0,3,"[127, 204]",western-india,,raw material,neem,,goods.json
+kino-gum,Kino Gum,키노 고무,medicine,0,3,"[171, 307]",eastern-india,,raw material,kino-gum,,goods.json
+patchouli,Patchouli,파촐리,medicine,0,3,"[216, 428]",southeast-asia,,raw material,patchouli,,goods.json
+clove-oil,Clove Oil,정향유,medicine,1,3,"[140, 233]",southeast-asia,,crafted,,3 Cloves + 1 Fresh Water,goods.json
+copaiba,Copaiba,코파이바,medicine,0,3,"[185, 342]",south-america-atlantic,,raw material,copaiba,,goods.json
+coca-leaf,Coca Leaf,코카 잎,medicine,0,3,"[108, 166]","pacific-americas, south-america-atlantic",,raw material,coca-leaf,,goods.json
+tolu-balsam,Tolu Balsam,톨루 발삼,medicine,0,3,"[153, 263]",caribbean,,raw material,tolu-balsam,,goods.json
+sassafras-root,Sassafras Root,사사프라스 뿌리,medicine,0,3,"[198, 377]",north-america-atlantic,,raw material,sassafras-root,,goods.json
+witch-hazel,Witch Hazel,조록나무,medicine,1,3,"[122, 194]",north-america-atlantic,,crafted,,2 Witch Hazel Bark + 2 Fresh Water,goods.json
+grains-paradise-oil,Melegueta Oil,멜레게타 기름,medicine,1,3,"[167, 296]",west-africa,,crafted,,3 Grains of Paradise + 1 Tallow,goods.json
+myrrh-somali,Somali Myrrh,소말리 몰약,medicine,0,3,"[211, 414]",east-africa,,raw material,myrrh-somali,,goods.json
+storax,Storax,소합향,medicine,0,3,"[135, 222]",aegean-anatolia,,raw material,storax,,goods.json
+theriaca-venetian,Venetian Treacle,베네치아 테리아카,medicine,1,3,"[180, 329]",adriatic-ionian,,crafted,,2 Senna + 1 Chinese Rhubarb + 1 Honey + 1 Cinnamon + 1 Ginger + 1 Myrrh,goods.json
+angelica-root,Angelica Root,당귀,medicine,0,3,"[104, 158]",scandinavia-arctic,,raw material,angelica-root,,goods.json
+juniper-berries,Juniper Berries,노간주 열매,medicine,0,3,"[148, 252]",baltic,,raw material,juniper-berries,,goods.json
+kermes,Kermes,케르메스,dye,0,3,"[193, 364]",western-mediterranean,,raw material,kermes,,goods.json
+weld,Weld,목서초,dye,0,3,"[117, 184]",france-low-countries,,raw material,weld,,goods.json
+dyers-broom,Dyer's Broom,염료 금작화,dye,0,3,"[162, 284]",iberia,,raw material,dyers-broom,,goods.json
+archil-lichen,Archil Lichen,아칠 지의류,dye,0,3,"[206, 400]",atlantic-isles,,raw material,orchil,,goods.json
+sappan-java,Java Sappan,자바 소목,dye,0,3,"[130, 211]",southeast-asia,,raw material,sappanwood,,goods.json
+turmeric-dye,Turmeric Dye,강황 염료,dye,0,3,"[175, 317]",eastern-india,,raw material,turmeric,,goods.json
+persian-berries,Persian Berries,페르시아 베리,dye,0,3,"[220, 439]",arabia-gulf,,raw material,persian-berries,,goods.json
+saffron-dye,Saffron Dye,사프란 염료,dye,0,3,"[144, 242]",aegean-anatolia,,raw material,saffron,,goods.json
+sumac,Sumac,옻나무,dye,0,3,"[188, 351]",maghreb,,raw material,sumac,,goods.json
+tannin-bark,Tannin Bark,타닌 껍질,dye,0,3,"[112, 174]",scandinavia-arctic,,raw material,tannin-bark,,goods.json
+prussian-blue,Prussian Blue,프러시안 블루,dye,1,3,"[157, 272]",baltic,,crafted,,2 Iron + 1 Sea Coal + 1 Potash,goods.json
+smalt,Smalt,스몰트,dye,1,3,"[202, 388]",baltic,,crafted,,2 Cobalt Blue + 1 Sand + 1 Potash,goods.json
+ochre,Ochre,황토,dye,0,3,"[125, 201]",west-africa,,raw material,ochre,,goods.json
+ultramarine,Ultramarine,군청,dye,1,3,"[170, 304]",arabia-gulf,,crafted,,2 Lapis Lazuli + 1 Gum Arabic,goods.json
+lead-white,Lead White,연백,dye,1,3,"[215, 425]",france-low-countries,,crafted,,2 Lead + 1 Grapes + 1 Fresh Water,goods.json
+riga-mast,Riga Mast,리가 돛대,ship-supplies,0,1,"[15, 25]",baltic,,raw material,mast-pine,,goods.json
+memel-fir,Memel Fir,메멜 전나무,ship-supplies,0,1,"[21, 39]",baltic,,raw material,timber,,goods.json
+norway-spruce,Norway Spruce,노르웨이 가문비,ship-supplies,0,1,"[11, 17]",scandinavia-arctic,,raw material,norway-spruce,,goods.json
+stockholm-tar,Stockholm Tar,스톡홀름 타르,ship-supplies,0,1,"[17, 29]",scandinavia-arctic,,raw material,tar,,goods.json
+oakum,Oakum,뱃밥,ship-supplies,1,1,"[23, 44]",british-isles,,crafted,,2 Hemp + 1 Tar & Pitch,goods.json
+cordage,Cordage,밧줄,ship-supplies,1,1,"[13, 21]","british-isles, pacific-americas",,crafted,,2 Hemp + 1 Flax,goods.json
+canvas-duck,Canvas Duck,두꺼운 범포,ship-supplies,1,1,"[19, 34]",france-low-countries,,crafted,,2 Flax + 1 Hemp,goods.json
+live-oak,Live Oak,라이브 오크,ship-supplies,0,1,"[25, 49]",north-america-atlantic,,raw material,live-oak,,goods.json
+greenheart,Greenheart,그린하트,ship-supplies,0,1,"[15, 25]",south-america-atlantic,,raw material,greenheart,,goods.json
+lignum-vitae,Lignum Vitae,유창목재,ship-supplies,0,1,"[21, 38]",caribbean,,raw material,lignum-vitae,,goods.json
+gutta-percha,Gutta-percha,구타페르카,ship-supplies,0,1,"[10, 15]",southeast-asia,,raw material,gutta-percha,,goods.json
+coco-fibre,Coco Fibre,코코 섬유,ship-supplies,0,1,"[16, 27]",western-india,,raw material,coir,,goods.json
+whale-bone-stays,Baleen Stays,고래수염 살대,ship-supplies,1,1,"[23, 43]",scandinavia-arctic,,crafted,,2 Whalebone + 1 Hemp,goods.json
+copper-sheet,Copper Sheathing,선체 동판,ship-supplies,1,1,"[12, 19]",british-isles,,crafted,,3 Copper + 1 Sea Coal,goods.json
+ships-nails,Ship's Nails,배 못,ship-supplies,2,1,"[18, 32]",france-low-countries,,crafted,,2 Iron Bars + 1 Sea Coal,goods.json
+portolan-charts,Portolan Charts,포르톨라노 해도,art,2,5,"[1661, 3214]",adriatic-ionian,,crafted,,1 Paper + 1 Ochre + 1 Planks,goods.json
+flemish-panels,Flemish Panels,플랑드르 패널화,art,2,5,"[1038, 1682]",france-low-countries,,crafted,,2 Planks + 1 Ochre + 1 Linen,goods.json
+italian-canvases,Italian Canvases,이탈리아 유화,art,2,5,"[1404, 2534]",western-mediterranean,,crafted,,2 Linen + 1 Ochre + 1 Planks,goods.json
+ukiyo-e,Ukiyo-e Prints,우키요에,art,2,5,"[1770, 3522]",japan,,crafted,,1 Paper + 1 Indigo + 1 Planks,goods.json
+scroll-paintings,Scroll Paintings,두루마리 그림,art,2,5,"[1147, 1921]",china-coast,,crafted,,2 Paper + 1 Ochre + 1 Planks,goods.json
+mughal-miniatures,Mughal Miniatures,무굴 세밀화,art,2,5,"[1513, 2814]",western-india,,crafted,,1 Paper + 1 Ochre + 1 Gold,goods.json
+astrolabes,Astrolabes,아스트롤라베,art,2,5,"[889, 1374]",arabia-gulf,,crafted,,1 Brass Ingots + 1 Iron Bars + 1 Planks,goods.json
+armillary-spheres,Armillary Spheres,혼천의,art,2,5,"[1255, 2171]",iberia,,crafted,,1 Brass Ingots + 1 Iron Bars + 1 Planks,goods.json
+globes,Terrestrial Globes,지구의,art,2,5,"[1622, 3106]",france-low-countries,,crafted,,1 Planks + 1 Ochre + 1 Copper,goods.json
+nautical-clocks,Nautical Clocks,항해 시계,art,2,5,"[998, 1597]",british-isles,,crafted,,1 Brass Ingots + 1 Iron Bars + 1 Planks + 1 Glass,goods.json
+korean-movable-type,Movable Type,금속활자,books,2,4,"[488, 871]",korea,,crafted,,2 Brass Ingots + 1 Lead + 1 Tin + 1 Planks,goods.json
+sutra-scrolls,Sutra Scrolls,불경 두루마리,books,2,4,"[610, 1202]",japan,,crafted,,1 Paper + 1 Ink & Brushes + 1 Planks,goods.json
+block-printed-books,Block-printed Books,목판본,books,2,4,"[402, 665]",china-coast,,crafted,,1 Paper + 1 Planks + 1 Ink & Brushes,goods.json
+quran-manuscripts,Quran Manuscripts,쿠란 필사본,books,2,4,"[524, 964]",maghreb,,crafted,,2 Parchment + 1 Ink & Brushes + 1 Gold,goods.json
+palm-leaf-manuscripts,Palm-leaf Manuscripts,패엽경,books,2,4,"[317, 483]",eastern-india,,crafted,,2 Palm Leaf + 1 Ink & Brushes,goods.json
+antwerp-presses,Antwerp Imprints,안트베르펜 인쇄본,books,2,4,"[439, 751]",france-low-countries,,crafted,,2 Paper + 1 Leather + 1 Ink & Brushes,goods.json
+venetian-imprints,Venetian Imprints,베네치아 인쇄본,books,2,4,"[561, 1063]",adriatic-ionian,,crafted,,2 Paper + 1 Leather + 1 Ink & Brushes,goods.json
+parchment,Parchment,양피지,books,1,4,"[353, 558]",british-isles,,crafted,,2 Hides + 1 Lime + 1 Fresh Water,goods.json
+rice-paper,Rice Paper,한지,books,1,4,"[475, 838]",china-coast,,crafted,,2 Bark + 1 Fresh Water,goods.json
+arabian-horses,Arabian Horses,아라비아 말,animals,0,4,"[597, 1164]",arabia-gulf,,raw material,horses,,goods.json
+andalusian-horses,Andalusian Horses,안달루시아 말,animals,0,4,"[389, 636]",iberia,,raw material,horses,,goods.json
+camels,Camels,낙타,animals,0,4,"[511, 930]",maghreb,,raw material,camels,,goods.json
+zebu-cattle,Zebu Cattle,혹소,animals,0,4,"[303, 456]",western-india,,raw material,cattle,,goods.json
+merino-sheep,Merino Sheep,메리노 양,animals,0,4,"[425, 718]",iberia,,raw material,sheep,,goods.json
+falcons,Hunting Falcons,사냥매,animals,0,4,"[548, 1028]",scandinavia-arctic,,raw material,falcons,,goods.json
+songbirds,Songbirds,노래새,animals,0,4,"[340, 530]",china-coast,,raw material,songbirds,,goods.json
+macaws,Macaws,마코앵무,animals,0,4,"[462, 806]",south-america-atlantic,,raw material,macaws,,goods.json
+civet-cats,Civet Cats,사향고양이,animals,0,4,"[584, 1127]",east-africa,,raw material,civet-cats,,goods.json
+peacocks,Peacocks,공작,animals,0,4,"[376, 607]",eastern-india,,raw material,peacocks,,goods.json
+sea-otter-pelts,Sea Otter Pelts,해달 모피,cloth,0,5,"[900, 1700]",pacific-americas,,raw material,sea-otter-pelts,,goods.json
+redwood,Redwood,레드우드,ship-supplies,0,1,"[24, 48]",pacific-americas,,raw material,redwood,,goods.json
+california-hides,California Hides,캘리포니아 가죽,cloth,0,2,"[55, 105]",pacific-americas,,raw material,hides,,goods.json
+abalone-shell,Abalone Shell,전복 껍데기,crafts,0,3,"[120, 220]",pacific-americas,,raw material,abalone-shell,,goods.json
+mission-wine,Mission Wine,미션 포도주,drink,1,2,"[40, 70]",pacific-americas,,crafted,,3 Grapes + 1 Fresh Water,goods.json
+brea,Brea,천연 아스팔트,ship-supplies,0,1,"[18, 36]",pacific-americas,,raw material,brea,,goods.json
+baja-pearls,Baja Pearls,바하 진주,gems,0,5,"[1100, 2000]",pacific-americas,,raw material,pearls,,goods.json
+dried-shrimp,Dried Shrimp,마른 새우,food,1,2,"[45, 85]",pacific-americas,,crafted,,2 Shrimp + 1 Salt,goods.json
+mezcal,Mezcal,메스칼,drink,1,2,"[40, 72]",pacific-americas,,crafted,,3 Figs + 1 Fresh Water,goods.json
+coconut-wine,Coconut Wine,코코넛술,drink,1,2,"[38, 68]",pacific-americas,,crafted,,2 Coconuts & Copra + 1 Fresh Water,goods.json
+soconusco-cacao,Soconusco Cacao,소코누스코 카카오,drink,1,4,"[300, 560]",pacific-americas,,crafted,,3 Cacao Bean + 1 Fresh Water + 1 Honey,goods.json
+anil,Anil,아닐 쪽,dye,0,4,"[300, 600]",pacific-americas,,raw material,indigo,,goods.json
+pine-pitch,Pine Pitch,소나무 피치,ship-supplies,0,1,"[20, 40]",pacific-americas,,raw material,pine-pitch,,goods.json
+hammocks,Hammocks,해먹,crafts,2,2,"[50, 95]",pacific-americas,,crafted,,2 Cotton Cloth + 1 Yarn + 1 Annatto,goods.json
+balsa-wood,Balsa Wood,발사나무,ship-supplies,0,1,"[18, 36]",pacific-americas,,raw material,balsa-wood,,goods.json
+guayaquil-cacao,Guayaquil Cacao,과야킬 카카오,drink,1,3,"[180, 340]",pacific-americas,,crafted,,3 Cacao Bean + 1 Fresh Water,goods.json
+toquilla-straw,Toquilla Straw,토킬라 짚,crafts,0,2,"[45, 90]",pacific-americas,,raw material,toquilla-straw,,goods.json
+mangrove-bark,Mangrove Bark,맹그로브 껍질,dye,0,2,"[38, 72]",pacific-americas,,raw material,mangrove-bark,,goods.json
+pisco,Pisco,피스코,drink,2,2,"[40, 72]",pacific-americas,,crafted,,3 Wine + 1 Fresh Water,goods.json
+goatskins,Goatskins,염소 가죽,cloth,0,2,"[50, 95]",pacific-americas,,raw material,goatskins,,goods.json
+piura-cotton,Piura Cotton,피우라 면화,cloth,0,2,"[50, 95]",pacific-americas,,raw material,cotton-raw,,goods.json
+chuno,Chuño,추뇨,grain,0,1,"[15, 30]",pacific-americas,,raw material,chuno,,goods.json
+chilean-copper,Chilean Copper,칠레 구리,metal,0,3,"[170, 310]",pacific-americas,,raw material,copper,,goods.json
+chilean-wine,Chilean Wine,칠레 포도주,drink,1,2,"[38, 68]",pacific-americas,,crafted,,3 Grapes + 1 Fresh Water,goods.json
+alerce-timber,Alerce Timber,알레르세 목재,ship-supplies,0,2,"[60, 115]",pacific-americas,,raw material,alerce-timber,,goods.json
+araucaria-nuts,Araucaria Nuts,아라우카리아 열매,food,0,1,"[14, 28]",pacific-americas,,raw material,araucaria-nuts,,goods.json
+andacollo-gold,Andacollo Gold,안다코요 금,metal,0,4,"[400, 760]",pacific-americas,,raw material,gold,,goods.json
+mules,Mules,노새,animals,0,3,"[150, 280]",pacific-americas,,raw material,mules,,goods.json
+huon-pine,Huon Pine,휴온 소나무,ship-supplies,0,2,"[60, 115]",oceania,,raw material,huon-pine,,goods.json
+sperm-oil,Sperm Oil,향유고래 기름,ship-supplies,0,3,"[150, 280]",oceania,,raw material,sperm-oil,,goods.json
+wattle-bark,Wattle Bark,아카시아 껍질,dye,0,2,"[40, 80]",oceania,,raw material,wattle-bark,,goods.json
+kangaroo-skins,Kangaroo Skins,캥거루 가죽,cloth,0,2,"[50, 95]",oceania,,raw material,kangaroo-skins,,goods.json
+jarrah,Jarrah,자라 목재,ship-supplies,0,2,"[55, 105]",oceania,,raw material,jarrah,,goods.json
+kauri-timber,Kauri Spars,카우리 돛대재,ship-supplies,0,3,"[140, 280]",oceania,,raw material,kauri-timber,,goods.json
+kauri-gum,Kauri Gum,카우리 수지,crafts,0,2,"[80, 160]",oceania,,raw material,kauri-gum,,goods.json
+harakeke,New Zealand Flax,뉴질랜드 아마,ship-supplies,0,2,"[70, 135]",oceania,,raw material,harakeke,,goods.json
+pounamu,Pounamu,포우나무 비취,gems,0,4,"[500, 950]",oceania,,raw material,nephrite,,goods.json
+kumara,Kumara,쿠마라 고구마,food,0,1,"[18, 40]",oceania,,raw material,kumara,,goods.json
+mast-pine,Mast Pine,돛대 소나무,ship-supplies,0,3,"[150, 300]",north-america-atlantic,,raw material,mast-pine,,goods.json
+beaver-pelts,Beaver Pelts,비버 모피,cloth,0,4,"[400, 800]","north-america-atlantic, pacific-americas",,raw material,beaver-pelts,,goods.json
+douglas-fir,Douglas Fir,미송,ship-supplies,0,1,"[20, 40]",pacific-americas,,raw material,douglas-fir,,goods.json
+dentalium,Dentalium Shell,뿔조개 껍데기,crafts,0,3,"[200, 400]",pacific-americas,,raw material,dentalium,,goods.json
+wheat-flour,Wheat Flour,밀가루,grain,1,2,"[38, 82]",,,crafted,,2 Wheat,"NEW — milling/baking gap, owner 2026-10-30"
+rye-flour,Rye Flour,호밀가루,grain,1,2,"[33, 75]",,,crafted,,2 Rye,"NEW — milling/baking gap, owner 2026-10-30"
+barley-flour,Barley Flour,보리가루,grain,1,2,"[33, 72]",,,crafted,,2 Barley,"NEW — milling/baking gap, owner 2026-10-30"
+oat-flour,Oat Flour,귀리가루,grain,1,2,"[32, 59]",,,crafted,,2 Oats,"NEW — milling/baking gap, owner 2026-10-30"
+maize-flour,Maize Flour,옥수수가루,grain,1,2,"[38, 82]",,,crafted,,2 Maize,"NEW — milling/baking gap, owner 2026-10-30"
+rice-flour,Rice Flour,쌀가루,grain,1,2,"[42, 90]",,,crafted,,2 Rice,"NEW — milling/baking gap, owner 2026-10-30"
+bread,Bread,빵,food,2,3,"[60, 110]",,,crafted,,2 Wheat Flour + 1 Milk + 1 Fresh Water,"NEW — milling/baking gap, owner 2026-10-30"
+ships-biscuit,Ship's Biscuit,건빵,food,2,3,"[65, 120]",,,crafted,,2 Wheat Flour + 1 Fresh Water + 1 Salt,"NEW — milling/baking gap, owner 2026-10-30"
+rye-bread,Rye Bread,호밀빵,food,2,3,"[55, 100]",,,crafted,,2 Rye Flour + 1 Milk + 1 Fresh Water,"NEW — milling/baking gap, owner 2026-10-30"
+milk,Milk,우유,food,0,1,"[15, 35]",,,raw material,milk,,"NEW — multi-tier chain gap, owner 2026-10-30"
+eggs,Eggs,달걀,food,0,1,"[15, 30]",,,raw material,eggs,,"NEW — multi-tier chain gap, owner 2026-10-30"
+cream,Cream,크림,food,1,2,"[25, 50]",,,crafted,,2 Milk,"NEW — multi-tier chain gap, owner 2026-10-30"
+iron-bars,Iron Bars,철괴,metal,1,2,"[50, 90]",,,crafted,,2 Iron + 1 Sea Coal,"NEW — multi-tier chain gap, owner 2026-10-30"
+leather,Leather,가죽,cloth,1,2,"[40, 80]",,,crafted,,2 Hides + 1 Tannin Bark + 1 Fresh Water,"NEW — multi-tier chain gap, owner 2026-10-30"
+planks,Planks,판재,ship-supplies,1,2,"[30, 60]",,,crafted,,2 Timber,"NEW — multi-tier chain gap, owner 2026-10-30"
+malt,Malt,맥아,food,1,2,"[30, 60]",,,crafted,,2 Barley,"NEW — multi-tier chain gap, owner 2026-10-30"
+yarn,Yarn,실,cloth,1,2,"[30, 60]",,,crafted,,2 Raw Wool,"NEW — multi-tier chain gap, owner 2026-10-30"
+glass,Glass,유리,crafts,1,2,"[40, 80]",,,crafted,,2 Sand + 1 Potash + 1 Lime,"NEW — multi-tier chain gap, owner 2026-10-30"
+cake,Cake,케이크,food,3,3,"[80, 150]",,,crafted,,2 Bread + 1 Figs + 1 Cream,"NEW — multi-tier chain gap, owner 2026-10-30"

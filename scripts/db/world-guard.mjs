@@ -177,6 +177,7 @@ function drift(db_, want) {
     if (Math.abs(Number(d.bulk) - g.bulk) > 1e-9) say(`good ${g.code}.bulk: ${d.bulk} vs ${g.bulk}`)
     if (Math.abs(Number(d.perishable_pct_day) - g.perishable_pct_day) > 1e-9) say(`good ${g.code}.perishable: ${d.perishable_pct_day} vs ${g.perishable_pct_day}`)
     if (d.category !== g.category) say(`good ${g.code}.category: ${d.category} vs ${g.category}`)
+    if (Number(d.tier) !== (g.tier ?? 0)) say(`good ${g.code}.tier: ${d.tier} vs ${g.tier ?? 0}`)
     if (JSON.stringify(dMask) !== JSON.stringify(g.culture_mask)) say(`good ${g.code}.culture_mask: {${dMask}} vs {${g.culture_mask}}`)
   }
 
@@ -519,10 +520,15 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   db_.places = (await db.query(`
     select p.code, p.name, p.lat::float8 lat, p.lon::float8 lon
       from public.ports p where p.kind = 'SEA_PLACE' order by p.code`)).rows
+  // 0280 adds goods.tier; a chain that stops before it has no column, and reading 0 there keeps
+  // this guard usable on a deliberately partial chain (the CLI applies the whole chain; tools do not).
+  const hasTier = (await db.query(`
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'goods' and column_name = 'tier'`)).rows.length > 0
   db_.goods = (await db.query(`
     select code, name, base_value::float8 base_value, bulk::float8 bulk,
            perishable_pct_day::float8 perishable_pct_day, category, culture_mask,
-           origin_regions, entrepot_ports
+           origin_regions, entrepot_ports, ${hasTier ? 'tier' : '0::int as tier'}
       from public.goods order by code`)).rows
   // 0208: the scales the database applies to the data when it writes the rows (world_config
   // hold_scale, goods_price_level; 0220: speed_scale). A chain before 0208 has no such knob and its rows
