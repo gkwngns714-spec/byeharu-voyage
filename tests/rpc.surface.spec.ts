@@ -1427,11 +1427,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-26 with migration 0227 (owner row 211, who bought what): a city's
       // recent trades of one good, read by the one list both trays a city's good opens render.
       'worldCityGoodTrades',
-      // Pin moved deliberately 2026-10-29 with migration 0275 (docs/WEEKLY_ROLLOVER.md, owner row 173):
-      // a city's giving by week — a READ at the city's sixth tab, no player id, what a city serves
-      // about itself. Lands WITH the face that reads it (CityHistory.tsx). The week clock
-      // (world.week_of / world.week_start) and the book's writer (public.city_week_post) are
-      // server-only and are NOT here — they live in the server-only list below.
+      // Pin moved deliberately 2026-10-30 with migration 0278 (owner row 173): a city's giving by
+      // month — a READ at the city's sixth tab, no player id, what a city serves about itself.
+      // Lands WITH the face that reads it (CityHistory.tsx). The month clock (world.month_of /
+      // world.month_start) and the book's writer (public.city_month_post) are server-only and are
+      // NOT here — they live in the server-only list below.
       'worldCityHistory',
       // 0019's `worldTradeRoutes` was REMOVED 2026-09-02 with 0071. It ranked every port in reach
       // by what it would pay for what is on this quay — the same comparison as the nearby index,
@@ -1752,11 +1752,11 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.quay_tally(jsonb, timestamptz, timestamptz)',
     // 0268: the mint gate the guard holds shared and the economy switch exclusive. Server-only.
     'public.mint_gate(boolean)',
-    // 0275: the week clock and the city book's one writer. Server-only — a client reads the week
+    // 0278: the month clock and the city book's one writer. Server-only — a client reads the month
     // through the town hall and the history tab, never computes one.
-    'world.week_of(timestamptz)',
-    'world.week_start(bigint)',
-    'public.city_week_post(uuid, uuid, text, bigint)',
+    'world.month_of(timestamptz)',
+    'world.month_start(bigint)',
+    'public.city_month_post(uuid, uuid, text, bigint)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
@@ -2043,7 +2043,7 @@ test('world.route_board() serves every lane the caller may know of, with the fig
     expect(merchant.nm === null ? null : Number(merchant.nm)).toBe(nm === null ? null : Number(nm))
     if (merchant.nm !== null) expect(merchant.nm).toBeGreaterThan(0)
     // the earnings object is public.route_earnings' own shape, absences included
-    for (const k of ['day', 'day_laps', 'day_full', 'lap_basis', 'laps_done'] as const) {
+    for (const k of ['day', 'day_laps', 'day_full', 'lap_basis', 'laps_done', 'total'] as const) {
       expect(merchant.earnings[k]).not.toBeUndefined()
     }
     expect(merchant.earnings.lap === null || isNum(merchant.earnings.lap)).toBe(true)

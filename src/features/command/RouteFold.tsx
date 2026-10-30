@@ -186,21 +186,13 @@ export function RouteFold({
                 </Note>
               )}
 
-              {/* 0275 (docs/WEEKLY_ROLLOVER.md §5 W4): the weekly counters — the server's week and
-                  its sums, printed as served; the face computes neither the week nor the net. */}
+              {/* 0278 (the month): the ALL-TIME counters — the server's sums, printed as served; the
+                  face computes neither the month nor the net. Money and laps never reset. */}
               {route.earnings && (
-                <div className="pb-1 text-t-caption tabular-nums text-ink-faint" data-testid="route-week-laps">
+                <div className="pb-1 text-t-caption tabular-nums text-ink-faint" data-testid="route-month-laps">
                   <span>
-                    {t('routes.weekLaps', { n: route.earnings.week.laps, net: formatDucatsDelta(route.earnings.week.net) })}
+                    {t('routes.monthLaps', { n: route.earnings.total.laps, net: formatDucatsDelta(route.earnings.total.net) })}
                   </span>
-                  {route.earnings.last_week && (
-                    <span className="block">
-                      {t('routes.lastWeekLaps', {
-                        n: route.earnings.last_week.laps,
-                        net: formatDucatsDelta(route.earnings.last_week.net),
-                      })}
-                    </span>
-                  )}
                 </div>
               )}
 

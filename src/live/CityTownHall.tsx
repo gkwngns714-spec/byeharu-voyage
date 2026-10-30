@@ -128,9 +128,9 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
         />
       )}
 
-      {/* 0275 (docs/WEEKLY_ROLLOVER.md): the board is THIS week's giving — the share register and
-          `you.holdings` are untouched; only the board resets. */}
-      <Heading>{t('town.investorsWeek')}</Heading>
+      {/* 0278 (docs/WEEKLY_ROLLOVER.md): the board is the city's giving over ALL time — money stays;
+          only the History tab is monthly. Shares and `you.holdings` are untouched as well. */}
+      <Heading>{t('town.investors')}</Heading>
       {hall.investors.length === 0 ? (
         <Row label={t('town.nobody')} tone="muted" hairline={false} data-testid="townhall-investors-none" />
       ) : (

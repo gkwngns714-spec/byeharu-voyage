@@ -2024,8 +2024,8 @@ export interface StandingRoute {
   lap: { lap_no: number; started_at: string; stops_done: number; skipped: number } | null
   /** The last ten closed laps, newest first. */
   laps: StandingRouteLap[]
-  /** 0275 (docs/WEEKLY_ROLLOVER.md §5 W4): the one earnings reading, composed into the book — the
-   *  fold and the tray print `week` / `last_week` from it, never a figure they made themselves. */
+  /** 0278 (the month): the one earnings reading, composed into the book — the fold and the tray print
+   *  `laps_done` / `total` from it, never a figure they made themselves. Money is all-time. */
   earnings: RouteEarnings
 }
 
@@ -2303,16 +2303,11 @@ export interface RouteEarnings {
   lap_basis: number
   /** The last seven nets, NEWEST FIRST. */
   laps_recent: number[]
-  /** 0275 (docs/WEEKLY_ROLLOVER.md): the laps closed THIS week — the week is a key, and the live
-   *  counter reads the current week's. `laps_done_all` keeps the old all-time figure (one release,
-   *  then it goes). */
+  /** 0278 (the month): EVERY closed lap ever — money and laps are all-time, never reset. */
   laps_done: number
-  laps_done_all: number
-  /** 0275: this week's laps and their figures (0 while none closed this week). Served by the server;
-   *  the week itself is never computed on the client. */
-  week: { laps: number; net: number; sold: number; bought: number; supplies: number; repairs: number; wages: number }
-  /** 0275: the week before this one's laps and net — null while none closed last week. */
-  last_week: { laps: number; net: number } | null
+  /** 0278: every month of the lap book, summed (zeros while none closed). Served by the server; the
+   *  month itself is never computed on the client. */
+  total: { laps: number; net: number; sold: number; bought: number; supplies: number; repairs: number; wages: number }
 }
 
 
@@ -2517,8 +2512,9 @@ export interface CityWork {
   subscribed: number
 }
 
-/** 0275 (docs/WEEKLY_ROLLOVER.md §4): one giver on the city's weekly board — this week's giving,
- *  from `world.town_hall` and `world.city_history` (invested = SHARE, donated = DONATION). */
+/** 0278 (the month): one giver on the city's board. `world.town_hall` serves the ALL-TIME giving (every
+ *  month summed — money stays); `world.city_history` serves the same shape for one month at a time
+ *  (invested = SHARE, donated = DONATION). */
 export interface CityInvestor {
   name: string
   merchant: boolean
@@ -2575,28 +2571,28 @@ export interface TownHallGift {
   called_from: string | null
 }
 
-/** 0275 — one week of a city's giving, as `world.city_history` serves it. */
+/** 0278 — one month of a city's giving, as `world.city_history` serves it. */
 export interface CityHistoryWeek {
-  /** The week's number — `world.week_of`'s; printed, never computed. */
-  week: number
-  /** The instant the week began and the instant the next one begins (`world.week_start`'s). */
+  /** The month's number — `world.month_of`'s; printed, never computed. */
+  month: number
+  /** The instant the month began and the instant the next one begins (`world.month_start`'s). */
   starts: string
   ends: string
-  /** The week that is now. */
+  /** The month that is now. */
   current: boolean
-  /** Σ of everything given to the city that week. */
+  /** Σ of everything given to the city that month. */
   total: number
   investors: CityInvestor[]
 }
 
-/** `world.city_history(port, weeks)` (0275, docs/WEEKLY_ROLLOVER.md §4) — the city's giving by week:
- *  the current week and the past eight, newest first. The table keeps every week; the door serves
- *  eight. Weeks, dates and totals are served; the client prints them and computes none of them. */
+/** `world.city_history(port, months)` (0278) — the city's giving by month: the current month and the
+ *  past eight, newest first. The table keeps every month; the door serves nine. Months, dates and
+ *  totals are served; the client prints them and computes none of them. */
 export interface CityHistoryView {
   port: string
-  /** The current week's number. */
-  week: number
-  weeks: CityHistoryWeek[]
+  /** The current month's number. */
+  month: number
+  months: CityHistoryWeek[]
 }
 
 /** 0144 (docs/INFLUENCE.md I2) — the Town Hall's influence block. */
