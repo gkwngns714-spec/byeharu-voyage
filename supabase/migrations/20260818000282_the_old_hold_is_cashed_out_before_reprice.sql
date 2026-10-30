@@ -68,12 +68,12 @@ begin
   end if;
 end $guard$;
 
--- ── 1. THE WINDOW: NO CARGO, NO SHED AND NO PRICE CHANGE WHILE WE COUNT ───────────────────────
+-- ── 1. THE WINDOW (taken inside cash_out_holds, §3) ───────────────────────────────────────────
 -- SHARE conflicts with the ROW EXCLUSIVE lock every INSERT / UPDATE / DELETE takes, so a live
--- trade cannot add or move a good between the value this file reads and the hold it zeroes.
--- lock_timeout makes a busy quay fail the push cleanly instead of waiting on the live game
--- (0214's rule: one lock order, taken once, first).
-lock table public.ships, public.player_storage, public.goods in share mode;
+-- trade cannot add or move a good between the value this file reads and the hold it zeroes. The
+-- lock is taken at the TOP of the function, not here: db push applies each top-level statement in
+-- its own transaction, so a top-level LOCK TABLE has no transaction to live in (SQLSTATE 25P01).
+-- lock_timeout makes a busy quay fail the push cleanly instead of waiting on the live game.
 
 -- ── 2. THE WORD: a re-denomination is MOVED wealth, not new gold ──────────────────────────────
 insert into public.stats_flow_words (kind, side, word, ord) values
@@ -98,6 +98,11 @@ declare
   v_paid  bigint := 0;
   r       record;
 begin
+  -- THE WINDOW (§1): the SHARE lock is taken HERE so the read of each hold and its zeroing are
+  -- one transaction (a top-level LOCK TABLE has no transaction under db push's per-statement apply).
+  perform set_config('lock_timeout', '5s', true);
+  lock table public.ships, public.player_storage, public.goods in share mode;
+
   -- A hold this file cannot price is a hold it must not destroy: refuse before any row moves.
   select string_agg(o.code, ', ' order by o.code) into v_bad
     from (select distinct e.key as code
