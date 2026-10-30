@@ -51,3 +51,28 @@ Decided by default; the owner may reverse it by moving `HOME_TAB` back to `/comm
   face does not scroll the page.
 
 Also green: `tsc`, `eslint`, `vite build`.
+
+## 3. "the bird's eye view is not just visual, i should be able to press buildings, and see people moving as dots"
+
+- **Every landmark is a door.** `Landmark` in `CityScene.tsx` wraps each of the six building groups
+  in `role="button"` + `tabIndex=0`, with a transparent rect covering the whole block as the tap
+  target (the roof outline alone is a 1-2 px line at phone size). Enter / Space press it. Pressing
+  opens the SAME `CityFace` the six tiles below open — the tiles stay as the named list. The scene's
+  `role` changed from `img` to `group`: an image hides its descendants from assistive tech, and these
+  descendants are buttons.
+- **The people walk.** Each dot carries an `<animateMotion>` along one of five street tracks — the
+  quay road, the market square's loop, the two roads across, the avenue north — with its own begin
+  phase and duration, so the crowd never marches in step. A dot has NO `cx`/`cy`: animateMotion
+  positions it along the path, and a `cx` offsets it a second time (found on the first screenshot —
+  the people were walking in the sea).
+
+Measured in `tests/city.page.spec.ts` (section 3a): a press on `city-scene-storage` opens the face
+with `data-building="storage"` and **moves nothing behind it**; all six landmarks are visible and
+pressable; a dot's screen box changes by more than 0.5 px within 900 ms.
+
+## 4. "have the city birds eye view as a square on the top left, and then buildings smaller that fits the right space"
+
+The top block of the page is one row (`city-top`): the plan is `aspect-square`, 52 % of the glass wide,
+at the top left; the six building tiles fill the space to its right in two columns of three, smaller
+(18 px icon, caption label, `min-h-11` — the 44 px reach floor). The summary figures follow below and
+the earnings block is pinned above the rail (`mt-auto`). No page scroll at either glass.

@@ -175,6 +175,30 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(Math.min(...heights), `a building tile is under 44 px at 320: ${heights.join(', ')}`).toBeGreaterThanOrEqual(44)
   await page.setViewportSize({ width: 390, height: 844 })
 
+  // ── 3a. THE PLAN ITSELF IS PRESSABLE, AND THE PEOPLE MOVE (owner, 2026-10-30: "the bird's eye
+  // view is not just visual, i should be able to press buildings, and see people moving as dots")
+  const beforePlan = await frameBoxes(page)
+  await page.getByTestId('city-scene-storage').click()
+  const planFace = page.getByTestId('city-face')
+  await expect(planFace).toBeVisible()
+  await expect(planFace).toHaveAttribute('data-building', 'storage')
+  // …and it is the SAME face the tile opens: nothing behind it moved
+  expect(await frameBoxes(page), 'a press on the plan re-flowed the page').toEqual(beforePlan)
+  await page.getByTestId('city-face-back').click()
+  await expect(planFace).toHaveCount(0)
+  // every landmark on the plan is a door
+  for (const b of ['hall', 'market', 'storage', 'forge', 'port', 'inn']) {
+    await expect(page.getByTestId(`city-scene-${b}`), `the plan's ${b} is not pressable`).toBeVisible()
+  }
+  // the people WALK: one dot's place on the glass changes while we watch
+  const dot = page.getByTestId('city-dots').locator('circle').first()
+  const p0 = await dot.boundingBox()
+  await page.waitForTimeout(900)
+  const p1 = await dot.boundingBox()
+  expect(p0 && p1, 'a people dot has no box').toBeTruthy()
+  const moved = Math.abs(p1!.x - p0!.x) + Math.abs(p1!.y - p0!.y)
+  expect(moved, `the people are still (moved ${moved.toFixed(2)} px in 900 ms)`).toBeGreaterThan(0.5)
+
   // ── 3b. THE CITY IS THE APP'S HOME (owner, 2026-10-30: the new full-screen city IS the game's
   // face — "i keep getting the old screen"). The root route lands on the city, and the rail's
   // Command cell is the one press back to the desk.
