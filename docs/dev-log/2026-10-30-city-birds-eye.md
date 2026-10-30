@@ -76,3 +76,34 @@ The top block of the page is one row (`city-top`): the plan is `aspect-square`, 
 at the top left; the six building tiles fill the space to its right in two columns of three, smaller
 (18 px icon, caption label, `min-h-11` — the 44 px reach floor). The summary figures follow below and
 the earnings block is pinned above the rail (`mt-auto`). No page scroll at either glass.
+
+## 5. The plan redrawn as a city map — 2026-10-31 (owner row 239)
+
+The owner sent a stock aerial reference and said *"make it like this city... simpler but like this"*,
+then *"the page is cut off"*, *"make the whole page better"* and *"much smaller closed square city,
+with lots of small tiny dots like light"*. Three changes landed on `city-art`.
+
+- **A SQUARE viewBox.** `CityScene` is drawn on `0 0 240 240`, not 400×170. The panel is square, so
+  `preserveAspectRatio="xMidYMid slice"` crops nothing: the water band, both city edges and the bottom
+  row of houses are all inside the panel (checked on an element-only screenshot at 390 and 320).
+- **The map.** One CLOSED walled square (192×192 in the 240 frame) inside a 24-unit dark margin: water
+  and two piers with three boats along its top; long low waterfront warehouses (Storage); two wide
+  avenues and three streets with dashed centre lines and eight tiny cars; pale extruded blocks (a dark
+  side face offset down-right, a light top face); one green park with a round pond and a walkway ring;
+  three townhouses and rows of small houses in the southern districts; clustered street trees. The six
+  landmarks keep their whole block as the tap target.
+- **The lights.** 197 static pin-pricks (0.4–0.9 view units, `data-testid="city-lights"`): windows on
+  every roof, lamps down the quay, both avenues and all three streets, and scattered park lamps. They
+  are warm (`fill-accent` / `fill-warning`) and deterministic from the city's seed; by day they are
+  faint (opacity 0.12–0.36), at night the whole city dims to 0.6 and they glow (0.38–0.98). The people
+  stay the fewer, larger MOVING dots — 36 at tier 5, `animateMotion`, no `cx`/`cy` — cool blue, so
+  they never read as lights.
+- **The page.** The left column is the square plan with the four figures in one card directly beneath
+  it (label left, figure right, hairlines); the six building tiles fill the tall column beside them;
+  the earnings card stays above the rail. No page scroll at 390×844 or 320×568 (rail bottom 844 / 568),
+  tiles stay ≥ 44 px at 320.
+
+Measured on a local-mode build served on 4202: `tests/city.page.spec.ts` PASS (press on
+`city-scene-storage` opens Storage's face and moves nothing behind it; all six landmarks pressable; a
+dot moves > 0.5 px in 900 ms); lights 197 ≥ 150; `tsc`, `eslint src/features/city` and `npm run build`
+clean. The reference image was a stock preview and was deleted before the commit.

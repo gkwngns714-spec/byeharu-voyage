@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Icon, Nav, Note, Row, StatCell, TapAway, Tray, type IconName, type NavItem } from '../../components/ui'
+import { Counter, Figure, Icon, Nav, Note, Row, StatCell, TapAway, Tray, type IconName, type NavItem } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { NAV_CELLS, tabHref } from '../../app/navTabs'
 import { alongsideAt, fleetPortCode, housePortCode } from '../../domain/fleet'
@@ -228,13 +228,50 @@ function CityFrame({
 
       <main className="flex min-h-0 flex-1 flex-col gap-3 px-gutter pb-3">
         {/* THE PLAN AND ITS BUILDINGS, side by side (owner, 2026-10-30: "have the city birds eye view
-            as a square on the top left, and then buildings smaller that fits the right space"): the
-            drawing stands SQUARE at the top left, and the six buildings fill the space to its right in
-            two columns of three. The tiles stay ≥ 44 px high (the reach floor). */}
-        <section className="flex min-h-0 shrink-0 gap-2" data-testid="city-top">
-          <div className="aspect-square min-h-[96px] min-w-0 flex-[0_0_52%] self-start overflow-hidden" data-testid="city-info-image">
-            <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
+            as a square on the top left, and then buildings smaller that fits the right space";
+            2026-10-31: "make the whole page better"): the plan stands SQUARE at the top left — the
+            full town, never cropped — and the four figures sit directly beneath it; the six building
+            tiles fill the column beside both, their rows stretching to the row's height so the page
+            reads as one composed block instead of a sparse top and an empty middle. The earnings
+            block stays pinned above the rail. */}
+        <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
+          <div className="flex min-w-0 flex-[0_0_56%] flex-col gap-3">
+            <div className="aspect-square min-h-[96px] min-w-0 overflow-hidden" data-testid="city-info-image">
+              <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
+            </div>
+
+            {/* SUMMARY — four figures directly under the plan, filling the room beside the six
+                building tiles: one card, four rows. Gold is the city's purse (served); the other
+                three are the data slice's, and say so. */}
+            <section className="flex min-h-0 flex-1 flex-col rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
+              <div className="flex min-h-0 flex-1 flex-col divide-y divide-edge">
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-testid="city-gold">
+                  <span className="text-t-caption text-ink-faint">{t('city.gold')}</span>
+                  {cityGold === null ? (
+                    <Figure value="—" size="body" tone="faint" />
+                  ) : (
+                    <Counter value={cityGold} format={formatDucats} size="body" />
+                  )}
+                </div>
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-population">
+                  <span className="text-t-caption text-ink-faint">{t('city.population')}</span>
+                  <Figure value="—" size="body" tone="faint" />
+                </div>
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-status">
+                  <span className="text-t-caption text-ink-faint">{t('city.status')}</span>
+                  <Figure value="—" size="body" tone="faint" />
+                </div>
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-relationship">
+                  <span className="text-t-caption text-ink-faint">{t('city.relationship')}</span>
+                  <Figure value="—" size="body" tone="faint" />
+                </div>
+              </div>
+              <p className="shrink-0 pt-1 text-t-caption text-ink-faint" data-testid="city-soon">
+                {t('city.soonLine')}
+              </p>
+            </section>
           </div>
+
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <h2 className="shrink-0 pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
             <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-3 gap-1.5" data-testid="city-building-grid">
@@ -254,33 +291,8 @@ function CityFrame({
           </div>
         </section>
 
-        {/* SUMMARY — four figures. Gold is the city's purse (served); the other three are the
-            data slice's, and say so. */}
-        <section className="grid shrink-0 grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4" data-testid="city-summary">
-          <StatCell
-            label={t('city.gold')}
-            value={cityGold ?? undefined}
-            format={formatDucats}
-            text={cityGold === null ? '—' : undefined}
-            size="body"
-            data-testid="city-gold"
-          />
-          <div data-placeholder="true" data-testid="city-population">
-            <StatCell label={t('city.population')} text="—" size="body" />
-          </div>
-          <div data-placeholder="true" data-testid="city-status">
-            <StatCell label={t('city.status')} text="—" size="body" />
-          </div>
-          <div data-placeholder="true" data-testid="city-relationship">
-            <StatCell label={t('city.relationship')} text="—" size="body" />
-          </div>
-          <p className="col-span-2 text-t-caption text-ink-faint sm:col-span-4" data-testid="city-soon">
-            {t('city.soonLine')}
-          </p>
-        </section>
-
-        {/* YOUR EARNINGS — your purse and the crew you employ. */}
-        <section className="mt-auto flex shrink-0 items-center justify-between gap-3 rounded-tile bg-surface px-gutter py-2" data-testid="city-earnings">
+        {/* YOUR EARNINGS — your purse and the crew you employ, above the rail. */}
+        <section className="flex shrink-0 items-center justify-between gap-3 rounded-tile bg-surface px-gutter py-2" data-testid="city-earnings">
           <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
           <div className="flex items-start gap-6">
             <StatCell
