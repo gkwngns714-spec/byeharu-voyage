@@ -811,6 +811,7 @@ create table public.goods_recipes (
   check (product_id <> ingredient_id)
 );
 create index goods_recipes_ingredient_idx on public.goods_recipes (ingredient_id);
+alter table public.goods_recipes enable row level security;
 comment on table public.goods_recipes is
   '0280: THE recipe graph. One row per (product, ingredient): a product has 2-6 distinct '
   'ingredients, each of a strictly lower tier; ingredient_id and product_id are goods. '
@@ -1598,6 +1599,7 @@ create table public.city_production (
   unique (port_id, rank)
 );
 create index city_production_good_idx on public.city_production (good_id);
+alter table public.city_production enable row level security;
 comment on table public.city_production is
   '0280: what each harbour MAKES, 1-2 goods (rank 1 then 2). Bigger cities make higher tiers: '
   'size_tier 5 -> up to 3, 3 -> up to 2, 2 -> tier 0. The quay does not read this yet; '
