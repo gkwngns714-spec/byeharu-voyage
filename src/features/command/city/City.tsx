@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { Button, Note, Segmented, Skeleton } from '../../../components/ui'
 import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../../domain/fleet'
 import { buildingTier, hasBuilding } from '../../../domain/port'
@@ -41,6 +42,7 @@ import { useT } from '../../../lib/i18n'
 
 export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const t = useT()
+  const navigate = useNavigate()
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
   const face = useDeskView((s) => s.cityFace)
@@ -75,10 +77,22 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
     sideHint: t('desk.citySide'),
     list: (
     <>
-      <h2 className="flex items-center gap-2 text-t-body font-semibold text-ink">
-        <PortFlag code={port.code} />
-        {port.name}
-      </h2>
+      {/* THE CITY PAGE'S DOOR (2026-10-30): the full-screen city, for the city in hand. The press
+          navigates; it does not change this face, and the desk is exactly as it was when you return. */}
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="flex min-w-0 items-center gap-2 text-t-body font-semibold text-ink">
+          <PortFlag code={port.code} />
+          <span className="truncate">{port.name}</span>
+        </h2>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => navigate(`/city?port=${encodeURIComponent(port.code)}`)}
+          data-testid="desk-city-open"
+        >
+          {t('city.open')}
+        </Button>
+      </div>
       {!here && (
         <Note tone="neutral" className="mt-2" data-testid="desk-city-bound">
           {where.kind === 'sailing'
