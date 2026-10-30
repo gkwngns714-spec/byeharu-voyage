@@ -245,7 +245,7 @@ function CityFrame({
                 three are the data slice's, and say so. */}
             <section className="flex min-h-0 flex-1 flex-col rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
               <div className="flex min-h-0 flex-1 flex-col divide-y divide-edge">
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-testid="city-gold">
+                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-testid="city-gold">
                   <span className="text-t-caption text-ink-faint">{t('city.gold')}</span>
                   {cityGold === null ? (
                     <Figure value="—" size="body" tone="faint" />
@@ -253,19 +253,22 @@ function CityFrame({
                     <Counter value={cityGold} format={formatDucats} size="body" />
                   )}
                 </div>
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-population">
+                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-population">
                   <span className="text-t-caption text-ink-faint">{t('city.population')}</span>
                   <Figure value="—" size="body" tone="faint" />
                 </div>
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-status">
+                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-status">
                   <span className="text-t-caption text-ink-faint">{t('city.status')}</span>
                   <Figure value="—" size="body" tone="faint" />
                 </div>
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-relationship">
+                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-relationship">
                   <span className="text-t-caption text-ink-faint">{t('city.relationship')}</span>
                   <Figure value="—" size="body" tone="faint" />
                 </div>
               </div>
+              <p className="shrink-0 pt-1 text-t-caption text-ink-faint" data-testid="city-soon">
+                {t('city.soonLine')}
+              </p>
             </section>
           </div>
 
@@ -285,9 +288,6 @@ function CityFrame({
                 </button>
               ))}
             </div>
-            <p className="mt-auto shrink-0 pt-2 text-t-caption text-ink-faint" data-testid="city-soon">
-              {t('city.soonLine')}
-            </p>
           </div>
         </section>
 
