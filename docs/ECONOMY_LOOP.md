@@ -89,7 +89,7 @@ by 0050:673-677 — writes one `ledger` row :238-239).
 | `BUY` | `cmd.do_buy` 0022:674-768 (sliced 0050, 0061, 0080-0083, 0096): `credit(BUY, −q.total)` :761; ask = mid × (1 + tax + spread/2) (0022:400) | **sink** | the market |
 | `WAGES` | `voyage.settle` 0027:299-308 → 0086:162-169 → 0114:622-630 (`× running_cost_mult`): `−least(wages, purse)` per settled sea-day (0027:306-307) | sink | nothing. **Merchants pay 0 since 0116:40-44** |
 | `PROVISION` / `REPAIR` / `HIRE` / `BUILD` / `TUITION` / `OFFICER_WAGE` | 0017:327-329 / 0007:751-753 / 0007:689-692 / 0072:269-271 / 0016:235-241 / 0096:562-568 | sink | nothing (merchants pay 0 of the first two) |
-| harbour dues | `port_fee_per_ship` 50 (0001:166) | — | **read by nothing** — and stays so (§2.2) |
+| harbour dues | `port_fee_per_ship` 250 (0001:166) | — | **read by nothing** — and stays so (§2.2) |
 | pirates | `voyage.settle` 0027:340-351: `RANSOM` costs 0; `PLUNDERED` leaves the cargo | — | no money moves |
 
 Transfers between purses: **none**. Every movement is a house against the void.

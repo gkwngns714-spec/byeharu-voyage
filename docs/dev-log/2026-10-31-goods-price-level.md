@@ -4,8 +4,11 @@
 plus the data files its catalogue money lives in (`data/hulls.json`, `data/officers.json`,
 `data/npc-houses.json`, `data/ships.generated.json`, `scripts/build-ships.mjs`), the two proof
 literals its starting purse moved (`04_first_session.sql`, `10_manifest.sql`), the tests and client
-copy that pinned 8,000 (`db.chain`, `db.image`, `rpc.firstSession`, `rpc.surface`, `found.ts`, the
-Gallery), the world-image certification (`scripts/db/build-image.mjs`), and the live design docs
+copy that carried the old 8,000 (`rpc.firstSession`, `rpc.surface`, `found.ts`, the Gallery; and
+`db.chain`/`db.image`, whose FROZEN-PREFIX boots now read that prefix's own `starting_ducats`
+instead of any literal), the two spec fixes PR CI found (the port fee read from the knob, the
+align row heuristic's inline chips — §9), the world-image certification (`scripts/db/build-image.mjs`),
+and the live design docs
 (`DESIGN`, `ECONOMY_LOOP`, `CLOSED_ECONOMY`, `NPC_TRADERS`, `FLEETS_AND_SLOTS`, `PIRATES_AND_HAVENS`,
 `SHIPS_AND_SKILLS`, `SHIPS_AND_GEAR`, `CORP_STORAGE_FORGE`).
 
@@ -200,12 +203,31 @@ node scripts/db/proof.mjs 10   # PROOF 10 — manifest
 (SQLSTATE 42702); the world-guard then found the 98 hull/class rounding diffs (the data values now
 written, not a blind ×5); the world-guard's history tables did not exist as named (the month books,
 not the week books); the client build's image certification still expected 8,000 (`build-image.mjs`
-now reads `starting_ducats`); the db.chain/db.image/rpc specs and the client copy pinned 8,000
-(now 40,000). Each was a diagnostic failure, not a re-run.
+now reads `starting_ducats`); the live-world specs (`rpc.firstSession`, `rpc.surface`) and the
+client copy carried 8,000 (now 40,000), while the two FROZEN-PREFIX boots (`db.chain`, `db.image`)
+read that prefix's own knob. Each was a diagnostic failure, not a re-run.
 
-**Still to re-run, after the image rebuild:** the db.chain / db.image / rpc.firstSession /
-rpc.surface acceptance specs and the vite build (this dev-log is updated with their results by the
-committing session; the PR CI runs the same specs on the selected legs).
+**PR CI round 1 (run 41092403249, head `635ea87c`) found four spec-side dependencies of the ×5, all
+fixed in this branch:** (i) `rpc.portDues` pinned the old fee 100 — it now reads `port_fee_base`
+from the knob and the fee the RPC serves (250 × 2 = 500); (ii) `align` read the gallery's seven
+side-by-side `Figure`s as a hand-rolled row once the hero "40,000🪙" grew past the spec's 120px chip
+floor — MEASURED 139.6px; a flex item blockifies (computed `flex`), so the guard now keys on the
+primitive's own `inline-flex` class; (iii) `db.chain`/`db.image` pinned the K.1 purse at 40,000, but
+those two boot the FROZEN PREFIX (ends at 000041, before 0285) — they now read that prefix's own
+`starting_ducats`; (iv) `db.chain`'s growth test required the live house not to move, and 0282+0285
+in the growth half move it by the owner's declared cut-over — the test now asserts exactly
+`5 × (old purse + round(Σ qty × old base_value))`, the hold emptied, and every other field equal.
+The `disposable-chain` failure was its Docker-network flake (the coordinator's call), not this
+branch.
+
+**Local acceptance after the fixes (cached chain, local-mode build):** `npm run build` exit 0 (the
+emitted image certified at 40,000); `tsc --noEmit` and `eslint` clean; `align` **2 passed, 0 defects
+at 1280 and 0 at 390, 0 skipped** (4.2 min); `db.chain` + `db.image` + `rpc.portDues` +
+`rpc.firstSession` + `rpc.surface` **50 passed, 0 failed, 0 skipped** (1.2 h; `db.chain`'s growth
+test the long pole). One diagnostic note: the first local `align` run loaded the earlier
+computed-display guard and reported the same Gallery defect; the 139.6px measurement showed why
+(blockification), the guard was changed to the class, and the 0-defect run is a changed file, not a
+re-run of a red. The PR CI re-run is the remaining gate.
 
 ## 10. PROD CHECKS for the main session
 
@@ -300,8 +322,8 @@ RESCALE credit of −4/5 of the current purse per house. The history books stay 
 
 - The prod push itself: the main session runs `~/bin/bv-deploy.sh`; this file has not been applied
   to prod.
-- The local acceptance specs and the vite build after the image cert fix (pending at this writing;
-  the committing session records them; the PR CI runs the selected specs).
+- The PR CI re-run after the four spec fixes (the local acceptance is green: build exit 0, align
+  2/2 with 0 defects at both widths and 0 skipped, the five node specs 50/50).
 - The live market's real prices after the push and the economy counts (`under_thin`, `broke`,
   `debtors`, `total`) — to be reported after the deploy.
 
@@ -311,8 +333,15 @@ RESCALE credit of −4/5 of the current purse per house. The history books stay 
 - `data/hulls.json`, `data/officers.json`, `data/npc-houses.json`, `data/ships.generated.json`,
   `scripts/build-ships.mjs` — the catalogue data move.
 - `scripts/db/proofs/04_first_session.sql`, `10_manifest.sql` — the starting-purse literals.
-- `tests/db.chain.spec.ts`, `tests/db.image.spec.ts`, `tests/rpc.firstSession.spec.ts`,
-  `tests/rpc.surface.spec.ts` — 40,000.
+- `tests/rpc.firstSession.spec.ts`, `tests/rpc.surface.spec.ts` — the live world's starting purse,
+  40,000.
+- `tests/db.chain.spec.ts`, `tests/db.image.spec.ts` — the frozen-prefix boots read the prefix's own
+  `starting_ducats` (8,000 there: the prefix ends before 0285); the growth test encodes the declared
+  0282 cash-out + 0285 ×5 cut-over.
+- `tests/rpc.portDues.spec.ts` — the dock fee read from `port_fee_base` and the served figure.
+- `tests/align.spec.ts` — the row heuristic no longer treats an inline-level primitive (the gallery's
+  Figures) as a row: the hero "40,000🪙" measured 139.6 px (over the 120 px chip floor) and computes
+  `flex` (a flex item blockifies), so the guard reads the primitive's own `inline-flex` class.
 - `src/lib/i18n/dict/found.ts`, `src/features/gallery/GalleryScreen.tsx` and the sign-up/RPC/localDb/
   boot comments — 40,000.
 - `scripts/db/build-image.mjs` — the image certification reads `starting_ducats`.

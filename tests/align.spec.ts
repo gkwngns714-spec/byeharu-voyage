@@ -113,6 +113,14 @@ function measure(): string[] {
     if (e.closest('[data-row-line]') && !e.hasAttribute('data-row-line')) return
     // a toolbar (FilterBar's pickers, 0244) is controls side by side, not rows of a list
     if (e.closest('nav, [role="tablist"], [role="toolbar"], [data-testid="map-chart"], svg')) return
+    // AN INLINE CHIP IS CONTENT, NOT A ROW (0285, 2026-10-31). A `Figure` is one inline-flex whose
+    // two spans are its value and its unit, baseline-aligned by design (Figure.tsx, docs/UI_DIRECTION
+    // §4.1), and the gallery draws seven of them side by side. The 120px chip floor below hid them
+    // until the ×5 re-base made the hero "40,000🪙" wider than it — MEASURED on the built page at
+    // 1280: 139.6px — and the heuristic then read value|unit as a ragged row. Computed display
+    // cannot say so (a flex item blockifies: the root computes `flex`), so the primitive's own class
+    // is the signal; no list row carries it (a Row is a grid, a hand-rolled row a block flex div).
+    if (e.classList.contains('inline-flex')) return
     const sibs = [...(e.parentElement?.children ?? [])].filter((s) => s.tagName === e.tagName && s.className === e.className)
     if (sibs.length < 2) return
     if (!horizontal(e)) return
