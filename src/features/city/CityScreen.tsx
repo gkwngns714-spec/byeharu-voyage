@@ -10,7 +10,8 @@ import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
 import type { SnapshotPort } from '../../lib/rpc'
-import { formatDucats, formatInt } from '../../lib/format'
+import { formatDucats, formatInt, gameSunInstantMs } from '../../lib/format'
+import { daylightAt, subsolarPoint } from '../../chart/sun'
 import { serverNow } from '../../lib/serverClock'
 import { translateMaybe, useLocale, useT, type TKey } from '../../lib/i18n'
 import { CityFace, type CityBuilding } from './CityFace'
@@ -170,7 +171,9 @@ function CityFrame({
   // THE HOUR is the served clock's, through the shell context (AppShell's one clock in every other
   // route; here this page provides it — CityScreen).
   const { nowMs } = useShellState()
-  const night = isNight(nowMs)
+  // DAY/NIGHT is the world's ONE sun (chart/sun), at the game clock's hour, over THIS city — never a
+  // local-time hour: every player sees the same night, and it matches the Map's own day sheet.
+  const night = daylightAt({ lat: port.lat, lon: port.lon }, subsolarPoint(gameSunInstantMs(nowMs))) < 0.5
 
   const buildings: readonly { id: CityBuilding; icon: IconName; label: TKey }[] = [
     { id: 'hall', icon: 'coin', label: 'city.cityHall' },
@@ -270,12 +273,6 @@ function CityFrame({
       <CityRail locale={locale} onNavigate={onNavigate} />
     </>
   )
-}
-
-/** Day is 06:00–17:59 on the served clock; night is the rest. */
-function isNight(nowMs: number): boolean {
-  const hour = new Date(nowMs).getHours()
-  return hour < 6 || hour >= 18
 }
 
 /** THE BOTTOM RAIL — HQ · Levels · map · stats · menu. A group reveals its members in a tray and
