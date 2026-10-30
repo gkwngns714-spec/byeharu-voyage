@@ -247,14 +247,20 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
 
   // RETARGETED AGAIN 2026-10-18, PORT → COMMAND (docs/COMMAND_DESK.md D8). The board is City's Trade face
   // now, under the fleet strip, the desk's faces, the city's name and its buildings: MEASURED at 390×844 the
-  // first row stands at 536px and THREE complete rows fit above the 787px fold. The face a player LANDS on
-  // is Buy (Markets until row 218), every good priced on one 52-px row — K.1's beat ("you did not have to know anything to see
-  // it") is measured there, below, with the floor five rows.
+  // first row stood at 536px and THREE complete rows fit above the 787px fold.
+  //
+  // RE-MEASURED 2026-10-30 (the desk's chrome grew by the owner's own two changes): #396 made the building
+  // strip WRAP instead of scrolling sideways ("i don't like things needed scrolling sideways") — eight
+  // buildings on two 44-px lines where one scrolling line stood, +52px — and #400 put the City page's door
+  // ("City view") beside the city's name, +14px. The first row now stands at 594px, and TWO complete rows
+  // fit above the fold; a wrapped strip and 44-px controls are not negotiable (the owner asked for the
+  // wrap; the floor of 44 is the desk's law), so the floor here is the measured two. K.1's beat is proven
+  // below, on the face a player LANDS on (Trade), with its own floor of five priced cards.
   expect(
     fold.completeRowsAboveFold,
     `only ${fold.completeRowsAboveFold} complete good rows above the fold at ${fold.foldY}px ` +
-      `(first row at ${fold.firstRowTop}px, ${fold.rowHeight}px each) — three fit on City › Trade on 2026-10-18`,
-  ).toBeGreaterThanOrEqual(3)
+      `(first row at ${fold.firstRowTop}px, ${fold.rowHeight}px each) — two fit on City › Trade on 2026-10-30`,
+  ).toBeGreaterThanOrEqual(2)
   // 0071: this used to require a `%` — the nearby index. That figure is gone, and with it the
   // only thing on the row that was a comparison rather than a fact. What must be on screen now is
   // the RANGE, which is what replaced it: how far this price can travel, here — on EVERY row.
@@ -262,7 +268,12 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
   expect(fold.rowsWithoutRange, 'a good row carries no price-range bar — the tide is the row\'s second line').toBe(0)
 
   // K.1 on the face a player lands on: Trade (owner 2026-10-30 — Buy and Sell became ONE combined face), the
-  // docked city's goods as cards, every buyable one priced. The floor is five cards above the fold, as it was.
+  // docked city's goods as cards, every buyable one priced. MEASURED 2026-10-30 at 390×844: the cards are
+  // 129–145 px (two prices, the day's line and two 44-px buttons in one card, not a 52-px ledger row), the
+  // city chips wrap above them (owner: no sideways scrolling), and FOUR complete cards stand above the
+  // 787-px fold — two rows of two. Five would need a third row: 3 × 129 px = 387 px in the 381 px left
+  // below the highest card start, so five is arithmetically out of reach of this shape, not a regression.
+  // The floor is the measured four.
   await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
   const buy = await page.evaluate(() => {
@@ -273,7 +284,7 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
     return { complete: above.length, priced: above.filter((r) => /\d/.test(r.querySelector('[data-testid="trade-good-buy"]')?.textContent ?? '')).length }
   })
   console.log(`TRADE fold @${PHONE.width}px: ${JSON.stringify(buy)}`)
-  expect(buy.complete, 'fewer than five goods above the fold on Trade').toBeGreaterThanOrEqual(5)
+  expect(buy.complete, 'fewer than four goods above the fold on Trade').toBeGreaterThanOrEqual(4)
   expect(buy.priced, 'a good above the fold on Trade carries no price').toBe(buy.complete)
 })
 

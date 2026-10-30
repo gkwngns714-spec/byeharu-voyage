@@ -15,12 +15,12 @@ import type { TradeGoodRow } from './tradeRows'
 
 // THE COMBINED TRADE BOARD (owner 2026-10-30: *"removing the map, just have combined buy and sell tab with trade
 // goods when docked"*) — the city in hand's goods in ONE list, each row showing the city's ASK (Buy) and BID (Sell)
-// side by side, so a trade is one press, not a face turn. It replaces the mirrored Buy / Sell cards (CityBoard.tsx),
-// which is kept but no longer used.
+// side by side, so a trade is one press, not a face turn. It replaced the mirrored Buy / Sell cards
+// (CityBoard.tsx, deleted 2026-10-30 — one board, not two).
 //
 //   CITY CHIPS  a short strip of the harbours nearest her, for a thumb that misses on the small map — names only,
 //               never a price: what a city pays is found by pressing it (owner row 229, no cross-city list on Buy).
-//               The same strip CityBoard drew; this board is its home now.
+//               The short strip of nearest harbours CityBoard drew.
 //   CARDS       ONE card per good: its icon and name, BOTH prices (the city's ask on the left, its bid on the right),
 //               ▲▼ against a day ago, the day's line, and her units aboard. At a city she is NOT at, a carried good
 //               its quay does not list is bid for by world.price_why — the server buys it there all the same (owner
@@ -126,7 +126,7 @@ export function TradeBoard({
           ) : (
             <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
               {rows.map((r) => (
-                <TradeRow key={r.code} portId={portId} r={r} docked={docked} on={picked === r.code} onBuy={onBuy} onSell={onSell} />
+                <TradeCard key={r.code} portId={portId} r={r} docked={docked} on={picked === r.code} onBuy={onBuy} onSell={onSell} />
               ))}
             </div>
           )}
@@ -136,7 +136,9 @@ export function TradeBoard({
   )
 }
 
-function TradeRow({
+/** ONE good's card. Named TradeCard, not TradeRow: `TradeRow` is the design system's row
+ *  (components/ui) and a screen may not re-declare its name (tests/duplication.spec.ts). */
+function TradeCard({
   portId,
   r,
   docked,

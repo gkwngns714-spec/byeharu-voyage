@@ -135,4 +135,18 @@ export const KO_GOODS: Readonly<Record<string, string>> = {
   jarrah: '자라 목재', 'kauri-timber': '카우리 돛대재', 'kauri-gum': '카우리 수지', harakeke: '뉴질랜드 아마',
   pounamu: '포우나무 비취', kumara: '쿠마라 고구마', 'mast-pine': '돛대 소나무', 'beaver-pelts': '비버 모피',
   'douglas-fir': '미송', dentalium: '뿔조개 껍데기',
+  // THE RAW GOODS (0280, 2026-10-30): the materials, crops and livestock a city's Forge turns into
+  // the crafted goods above. Without these the compendium printed 64 English names in the Korean game.
+  abalone: '전복', agave: '아가베', apple: '사과', bamboo: '대나무', bark: '나무껍질', 'barley-flour': '보리 가루',
+  'betel-leaf': '빈랑 잎', bread: '빵', cabbage: '양배추', 'cacao-bean': '카카오 열매', cake: '케이크',
+  'cassava-root': '카사바 뿌리', cattle: '소', clay: '점토', 'coffee-bean': '커피 열매', cream: '크림', eel: '장어',
+  eggs: '달걀', feldspar: '장석', 'fresh-water': '민물', glass: '유리', 'goose-feathers': '거위 깃털', grapes: '포도',
+  gypsum: '석고', 'honeybush-leaf': '허니부시 잎', 'iron-bars': '철괴', leather: '가죽', lime: '석회', lychee: '여지',
+  'maize-flour': '옥수수 가루', malt: '엿기름', milk: '우유', mint: '박하', nipa: '니파야자', 'oat-flour': '귀리 가루',
+  'palm-fruit': '야자 열매', 'palm-leaf': '야자 잎', 'palm-sap': '야자 수액', pandanus: '판다누스', pear: '배',
+  planks: '판재', plum: '자두', quartz: '석영', raffia: '라피아', ramie: '모시풀', 'rice-flour': '쌀가루',
+  rose: '장미', 'rye-bread': '호밀 빵', 'rye-flour': '호밀 가루', sand: '모래', 'sea-cucumber': '해삼',
+  sesame: '참깨', shark: '상어', 'shea-nut': '시어 열매', 'ships-biscuit': '건빵', shrimp: '새우', soybean: '콩',
+  squid: '오징어', stone: '돌', 'sugar-cane': '사탕수수', 'tea-leaf': '찻잎', 'wheat-flour': '밀가루',
+  'witch-hazel-bark': '위치하젤 껍질', yarn: '실',
 }

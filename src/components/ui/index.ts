@@ -178,6 +178,8 @@ export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // has its OWN drawn glyph — see goodIcons.ts for the table and for why seven was the wrong answer.
 export { goodIcon, categoryLabel } from './goodIcons'
 export { Skeleton } from './Skeleton'
+// The tap-away plane an inline tray stands on — ONE recipe for the NavBar and the City page's rail.
+export { TapAway } from './TapAway'
 // The two faces of THE ONE CLOCK: the real time now, and the time until a served instant —
 // pure display over shellState's nowMs (see Clock.tsx). When a countdown reaches zero the caller
 // re-asks the server through useReaskAtEdge; the edge idiom lives once, in reaskAtEdge.ts.
