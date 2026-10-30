@@ -1,0 +1,288 @@
+good_id,good_name,name_ko,good_category,tier,recipe,ingredient_1,ingredient_2,ingredient_3,ingredient_4,ingredient_5,ingredient_6,qty_1,qty_2,qty_3,qty_4,qty_5,qty_6,notes
+wool-cloth,Woollen Cloth,모직물,cloth,1,3 Raw Wool + 1 Madder + 1 Alum + 1 Fresh Water,wool-raw,madder,alum,fresh-water,,,3,1,1,1,,,"England's broadcloth and kerseys, and Flemish and Florentine cloth, were Europe's chief export westward and east."
+linen,Linen,리넨,cloth,1,3 Flax + 1 Fresh Water,flax,fresh-water,,,,,3,1,,,,,"Brittany, Flanders, Silesia and Egypt; the ordinary cloth of shirts, sails and paper rag."
+cotton-cloth,Cotton Cloth,면직물,cloth,1,3 Raw Cotton + 1 Indigo + 1 Fresh Water,cotton-raw,indigo,fresh-water,,,,3,1,1,,,,"Gujarati and Coromandel calicoes were the currency of the Indian Ocean, bought in India to buy spices elsewhere."
+muslin,Muslin,모슬린,cloth,1,3 Raw Cotton + 1 Fresh Water,cotton-raw,fresh-water,,,,,3,1,,,,,"The gossamer cottons of Dhaka and the Bengal delta, the finest woven cloth of the period."
+chintz,Chintz,친츠,cloth,1,3 Raw Cotton + 1 Indigo + 1 Madder + 1 Alum,cotton-raw,indigo,madder,alum,,,3,1,1,1,,,Painted and mordant-dyed Coromandel cottons; kalamkari from Machilipatnam and Pulicat.
+silk-cloth,Silk Cloth,비단,cloth,1,3 Raw Silk + 1 Cochineal + 1 Fresh Water,silk-raw,cochineal,fresh-water,,,,3,1,1,,,,"Chinese damasks and satins, Persian brocades, and the woven silks of Bursa, Valencia and Lucca."
+carpets,Carpets,양탄자,cloth,2,3 Yarn + 1 Madder + 1 Indigo,yarn,madder,indigo,,,,3,1,1,,,,Safavid Persia and Ottoman Anatolia; carried west overland to Aleppo and by sea from Bandar Abbas.
+ramie-cloth,Ramie Cloth,모시,cloth,1,3 Ramie + 1 Fresh Water,ramie,fresh-water,,,,,3,1,,,,,"Korean mosi, a fine summer bast cloth, among the goods traded through the Busan Waegwan to Tsushima."
+says-serges,Says & Serges,서지 직물,cloth,1,2 Raw Wool + 1 Flax + 1 Woad,wool-raw,flax,woad,,,,2,1,1,,,,"The light ""new draperies"" of Flanders and Zeeland that undercut old broadcloth in every warm market."
+velvet,Velvet,벨벳,cloth,1,3 Raw Silk + 1 Cochineal,silk-raw,cochineal,,,,,3,1,,,,,"Genoese and Venetian silk velvet, the cloth of cardinals and council chambers."
+lace,Lace,레이스,cloth,2,2 Yarn + 1 Linen,yarn,linen,,,,,2,1,,,,,"Venetian needle lace and Flemish bobbin lace, worth more than the linen it trimmed."
+tapestries,Tapestries,태피스트리,cloth,2,2 Woollen Cloth + 1 Silk Cloth + 1 Madder,wool-cloth,silk-cloth,madder,,,,2,1,1,,,,Brussels and Oudenaarde hangings sold through Antwerp; a single suite could furnish a palace.
+batik,Batik Cloth,바틱,cloth,1,3 Raw Cotton + 1 Beeswax + 1 Indigo,cotton-raw,wax,indigo,,,,3,1,1,,,,"Wax-resist patterned cottons of Java, traded through the pasisir ports alongside Indian cloth."
+raffia-cloth,Raffia Cloth,라피아 직물,cloth,1,3 Raffia + 1 Camwood,raffia,camwood,,,,,3,1,,,,,"The palm-fibre cloth of Kongo and Loango, so trusted it passed as money on the coast."
+barkcloth,Barkcloth,나무껍질 천,cloth,1,3 Bark + 1 Fresh Water,bark,fresh-water,,,,,3,1,,,,,"Beaten bark tapa of the Pacific islands, patterned and traded from canoe to canoe."
+camlets,Camlets,캠릿,cloth,1,3 Raw Wool + 1 Madder + 1 Fresh Water,wool-raw,madder,fresh-water,,,,3,1,1,,,,"The watered mohair cloth of Angora goats, carried down to Smyrna for the Levant Company ships."
+quilts,Bengal Quilts,벵골 누비이불,cloth,2,2 Cotton Cloth + 1 Silk Cloth + 1 Indigo,cotton-cloth,silk-cloth,indigo,,,,2,1,1,,,,"The embroidered colchas of Satgaon, stitched in silk on cotton; a Portuguese favourite from the first."
+shawls,Kashmir Shawls,카슈미르 숄,cloth,2,3 Yarn + 1 Madder,yarn,madder,,,,,3,1,,,,,Goat-down shawls woven in Kashmir and carried down to the Gujarat and Sind ports; a season each on the loom.
+fustian,Fustian,퍼스티언,cloth,1,2 Raw Cotton + 2 Flax + 1 Madder,cotton-raw,flax,madder,,,,2,2,1,,,,"The cotton-linen workhorse cloth of Milan and Augsburg, shipped out through Genoa and the Elbe."
+gold-thread,Gold Thread,금사,cloth,1,1 Gold + 2 Raw Silk + 1 Silver,gold,silk-raw,silver,,,,1,2,1,,,,"Gilt-silver thread of Genoa and Cyprus for brocades and church work, sold by the spool like treasure."
+stockings,Knitted Stockings,편직 양말,cloth,2,3 Yarn + 1 Woad,yarn,woad,,,,,3,1,,,,,"Jersey and English worsted stockings, knitted by the thousand dozen for every market in Europe."
+felt-hats,Felt Hats,펠트 모자,cloth,1,2 Furs + 1 Raw Wool + 1 Fresh Water,furs,wool-raw,fresh-water,,,,2,1,1,,,,Beaver felt hats of London and Normandy — the reason the beaver pelts crossed the Atlantic at all.
+wootz-steel,Wootz Steel,우츠강,metal,2,3 Iron Bars + 2 Sea Coal + 1 Clay,iron-bars,coal,clay,,,,3,2,1,,,,The crucible steel cakes of the Deccan that Damascus smiths forged into watered blades.
+firearms,Muskets,머스킷,guns,2,2 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur + 1 Sea Coal,iron-bars,planks,saltpetre,sulphur,coal,,2,1,1,1,1,,Sakai matchlocks and Low Countries muskets; a chest of them opened doors on every coast.
+cannon,Cannon,대포,guns,2,3 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,iron-bars,tin,planks,saltpetre,,,3,1,1,1,,,Wealden cast-iron guns and Swedish pieces; a strategic export every state tried and failed to embargo.
+brassware,Brassware & Manillas,황동 제품,crafts,2,2 Brass Ingots + 1 Sea Coal,brass-ingots,coal,,,,,2,1,,,,,"Nuremberg and Aachen basins, kettles and manilla bracelets — the currency goods of the Guinea trade."
+pewter,Pewterware,백랍 그릇,crafts,1,3 Tin + 1 Lead + 1 Sea Coal,tin,lead,coal,,,,3,1,1,,,,"English pewter plates and flagons, the everyday shine of every tavern from Danzig to Barbados."
+copper-cash,Copper Cash,동전,metal,1,3 Copper + 1 Lead + 1 Tin,copper,lead,tin,,,,3,1,1,,,,"Strings of Chinese cash, shipped as money itself to Japan and Java where the coin was current."
+smallwares,Nuremberg Smallwares,뉘른베르크 잡화,crafts,2,2 Iron Bars + 1 Copper + 1 Planks + 1 Sea Coal,iron-bars,copper,planks,coal,,,2,1,1,1,,,"Knives, needles, mirrors and bells by the barrel — the small iron goods every factor bartered."
+armour,Armour,갑옷,weapons,2,2 Iron Bars + 1 Leather + 1 Woollen Cloth,iron-bars,leather,wool-cloth,,,,2,1,1,,,,"Milanese corslets and morions shipped through Genoa; a fading trade, but princes still paid."
+gunpowder,Gunpowder,화약,guns,1,3 Saltpetre + 1 Sulphur + 1 Sea Coal,saltpetre,sulphur,coal,,,,3,1,1,,,,"Corned powder from the Amsterdam, London and Venetian mills; every fort and fleet ran dry without it."
+porcelain,Porcelain,도자기,crafts,1,2 Clay + 1 Feldspar + 1 Quartz,clay,feldspar,quartz,,,,2,1,1,,,,Jingdezhen blue-and-white shipped through Canton and Macau; the kraak ware the Dutch took from Portuguese carracks.
+lacquerware,Lacquerware,칠기,crafts,2,2 Planks + 2 Copal,planks,copal,,,,,2,2,,,,,"Japanese and Ryukyuan urushi ware, and Vietnamese and Korean lacquer, prized as cabinet goods in Europe."
+glassware,Glassware,유리 그릇,crafts,2,3 Glass + 1 Potash,glass,potash,,,,,3,1,,,,,"Murano cristallo and mirrors, and the fine glass of Barcelona; Venice guarded the craft as a state secret."
+books,Printed Books,인쇄본,books,2,2 Paper + 1 Leather + 1 Ink & Brushes,paper,leather,ink-sticks,,,,2,1,1,,,,The presses of Venice and the Plantin house at Antwerp; bales of books moved like any other cloth.
+paper,Paper,종이,books,1,2 Flax + 1 Hemp + 1 Fresh Water,flax,hemp,fresh-water,,,,2,1,1,,,,"Ligurian reams, Chinese bamboo paper and Korean hanji; the clerks of the world never had enough."
+rosewater,Rosewater,장미수,medicine,1,2 Rose + 2 Fresh Water,rose,fresh-water,,,,,2,2,,,,,"Distilled roses of Shiraz and Damascus, shipped in glass carboys packed in straw."
+clocks,Clocks & Instruments,시계·기구,art,2,1 Brass Ingots + 1 Iron Bars + 1 Planks + 1 Glass,brass-ingots,iron-bars,planks,glass,,,1,1,1,1,,,Nuremberg and Augsburg clockwork and Dutch instruments; the Jesuits opened Peking with such gifts.
+paintings,Paintings,회화,art,2,1 Linen + 1 Ochre + 1 Planks,linen,ochre,planks,,,,1,1,1,,,,"Antwerp's picture market sold devotional panels and landscapes by the crate, sight unseen."
+folding-fans,Folding Fans,쥘부채,crafts,1,1 Bamboo + 1 Timber + 1 Rattan,bamboo,timber,rattan,,,,1,1,1,,,,Kyoto folding fans shipped through Sakai; Europe copied the idea and never the finish.
+silver-plate,Silverware & Plate,은 식기,crafts,1,3 Silver + 1 Sea Coal,silver,coal,,,,,3,1,,,,,Augsburg workshops and Seville shops turned bullion into cups and salvers that travelled as gifts of state.
+majolica,Majolica,마욜리카,crafts,1,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,clay,tin,sand,cobalt,,,3,1,1,1,,,"Tin-glazed ware of Montelupo and Manises, the bright pottery of every Mediterranean table."
+celadon,Celadon Ware,청자,crafts,1,3 Clay + 1 Feldspar + 1 Potash,clay,feldspar,potash,,,,3,1,1,,,,Sawankhalok green ware out of Siam and Korean bowls the Japanese tea masters ruined themselves for.
+stoneware,Rhenish Stoneware,라인 석기,crafts,1,3 Clay + 1 Sand + 1 Salt,clay,sand,salt,,,,3,1,1,,,,"Salt-glazed jugs and bellarmines of the Rhine kilns, shipped down to every North Sea harbour."
+martaban-jars,Martaban Jars,마르타반 항아리,crafts,1,3 Clay + 1 Sand + 1 Pine Pitch,clay,sand,pine-pitch,,,,3,1,1,,,,"The great glazed storage jars of Martaban, prized from Japan to Arabia for keeping water sweet."
+glass-beads,Trade Beads,교역 구슬,crafts,2,2 Glass + 1 Cobalt Blue,glass,cobalt,,,,,2,1,,,,,"Murano conterie and Dutch beads by the barrel, the small change of the Guinea and fur trades."
+sea-charts,Sea Charts & Globes,해도·지구의,art,2,1 Paper + 1 Ochre + 1 Planks,paper,ochre,planks,,,,1,1,1,,,,"Waggoners, portolans and globes from the Low Countries presses; a good rutter was worth a cargo."
+ink-sticks,Ink & Brushes,먹·붓,books,1,1 Gallnuts + 1 Gum Arabic + 1 Fresh Water,gallnuts,gum-arabic,fresh-water,,,,1,1,1,,,,"Huizhou ink sticks and Korean brushes, the tools of every yamen and academy."
+sword-blades,Sword Blades,칼날,weapons,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water,steel-billets,coal,fresh-water,,,,2,1,1,,,,"Japanese blades shipped to China by the thousand, with Toledo and Solingen steel for the western trade."
+theriac,Venice Treacle,베네치아 해독제,medicine,1,2 Senna + 1 Chinese Rhubarb + 1 Honey + 1 Cinnamon + 1 Ginger + 1 Myrrh,senna,rhubarb,honey,cinnamon,ginger,myrrh,2,1,1,1,1,1,The sixty-ingredient cure-all compounded in public in Venice and faked everywhere else.
+sugar,Sugar,설탕,food,1,3 Sugar Cane + 1 Lime + 1 Fresh Water,sugar-cane,lime,fresh-water,,,,3,1,1,,,,"Madeira and Sao Tome first, then the Pernambuco and Bahia mills and, from the 1640s, Barbados."
+olive-oil,Olive Oil,올리브유,food,1,3 Olives + 1 Fresh Water,olives,fresh-water,,,,,3,1,,,,,"Andalusia, Apulia and the Levant; used as much for soap-making and cloth fulling as for food."
+wine,Wine,포도주,drink,1,2 Grapes + 1 Timber,grapes,timber,,,,,2,1,,,,,"Bordeaux claret, Canary sack, Madeira and Cretan malmsey — the grape wines every northern fleet came south for."
+dried-fish,Dried & Salt Fish,건어물,food,1,2 Cod + 1 Salt,cod,salt,,,,,2,1,,,,,Newfoundland and Iceland cod and Norwegian stockfish; the protein that provisioned Catholic Europe and its ships.
+cheese,Cheese,치즈,food,1,2 Milk + 1 Salt,milk,salt,,,,,2,1,,,,,Holland's Edam and Gouda rounds kept at sea for months and provisioned fleets on every ocean route.
+salted-beef,Salt Meat,소금 절인 고기,food,1,2 Cattle + 1 Salt,cattle,salt,,,,,2,1,,,,,Irish and Baltic barrelled beef and pork; also the hide-and-tallow cattle economy of the Plata and Hispaniola.
+coffee,Coffee,커피,drink,1,2 Coffee Bean + 2 Fresh Water,coffee-bean,fresh-water,,,,,2,2,,,,,"Grown in the Yemeni highlands and shipped through Mocha, its only outlet until the 18th century."
+tea,Tea,차,drink,1,2 Tea Leaf + 2 Fresh Water,tea-leaf,fresh-water,,,,,2,2,,,,,Fujian and Zhejiang leaf; the first Dutch shipment reached Europe from Java in 1610.
+cacao,Cacao,카카오,drink,1,2 Cacao Bean + 1 Fresh Water + 1 Honey,cacao-bean,fresh-water,honey,,,,2,1,1,,,,"Soconusco, Guayaquil and the Venezuelan coast; drunk in New Spain long before the Spanish court took it up."
+dried-fruit,Raisins & Currants,건포도,food,1,2 Grapes + 2 Figs,grapes,figs,,,,,2,2,,,,,"Malaga raisins, Ionian currants and the sun-dried vine fruit of the Aegean, shipped north by the shipload."
+beer,Beer,맥주,drink,2,2 Malt + 1 Hops + 1 Fresh Water,malt,hops,fresh-water,,,,2,1,1,,,,"Hamburg and Danzig hopped beer and English ale, safer than water and shipped by the hundred barrels."
+sake,Sake,사케,drink,1,3 Rice + 2 Fresh Water,rice,fresh-water,,,,,3,2,,,,,"The rice brew of Itami and Nada, casked at Osaka for every castle town on the seaway."
+rum,Rum,럼,drink,2,3 Molasses + 1 Fresh Water,molasses,fresh-water,,,,,3,1,,,,,"The kill-devil spirit of the Barbados cane mills, aged into currency in every buccaneer port."
+brandy,Brandy,브랜디,drink,2,3 Wine + 1 Timber,wine,timber,,,,,3,1,,,,,"Burnt wine of the Charente and Gironde, distilled so it could survive any voyage and improve for it."
+arrack,Arrack,아라크,drink,1,2 Rice + 1 Sugar Cane + 2 Fresh Water,rice,sugar-cane,fresh-water,,,,2,1,2,,,,"Palm and rice spirit of Batavia, Ceylon and Goa; the sailor’s punch on every eastern voyage."
+butter,Butter,버터,food,1,2 Milk + 1 Salt,milk,salt,,,,,2,1,,,,,"Irish and Dutch salted butter in firkins, victualling fleets and plantations alike."
+cassava,Cassava Flour,카사바 가루,grain,1,2 Cassava Root + 1 Fresh Water,cassava-root,fresh-water,,,,,2,1,,,,,"Farinha de guerra, the toasted root flour that provisioned every Brazil and Angola voyage."
+caviar,Caviar,캐비아,food,1,2 Sturgeon + 1 Salt,sturgeon,salt,,,,,2,1,,,,,"Pressed sturgeon roe of the Black Sea and Volga, barrelled for Italy since Genoese Kaffa."
+salted-tuna,Salt Tuna,소금 절인 참치,food,1,2 Tuna + 1 Salt,tuna,salt,,,,,2,1,,,,,"The almadraba tunny of the straits, netted at the season and salted down by the thousand."
+soy-sauce,Soy Sauce,간장,food,1,2 Soybean + 1 Wheat + 1 Salt,soybean,wheat,salt,,,,2,1,1,,,,"Brewed soy of Japan, casked at Nagasaki; the Dutch carried it as far as Batavia and beyond."
+ghee,Ghee,기,food,2,2 Butter + 1 Fresh Water,butter,fresh-water,,,,,2,1,,,,,"Clarified butter of Gujarat and Sind, shipped in jars wherever Indian crews and kitchens went."
+sesame-oil,Sesame Oil,참기름,food,1,2 Sesame + 1 Fresh Water,sesame,fresh-water,,,,,2,1,,,,,"The lamp and cooking oil of Egypt and Bengal, pressed where the olive will not grow."
+palm-oil,Palm Oil,팜유,food,1,3 Palm Fruit + 1 Fresh Water,palm-fruit,fresh-water,,,,,3,1,,,,,"The red cooking oil of the Guinea coast, bought by every factory to feed its own people."
+sharks-fin,Shark Fin,상어 지느러미,food,1,2 Shark + 1 Salt,shark,salt,,,,,2,1,,,,,"Dried fins from the eastern seas, bound for the Chinese banquet trade."
+trepang,Trepang,해삼,food,1,2 Sea Cucumber + 1 Salt,sea-cucumber,salt,,,,,2,1,,,,,"Smoked sea cucumber of the Makassar praus, fished as far as the dry south land for Chinese kitchens."
+dried-abalone,Dried Abalone,말린 전복,food,1,2 Abalone + 1 Salt,abalone,salt,,,,,2,1,,,,,"Diver-gathered abalone of Jeju and Kyushu, dried hard and prized in China above fresh pearl."
+palm-sugar,Palm Sugar,야자 설탕,food,1,2 Sugar Cane + 1 Fresh Water,sugar-cane,fresh-water,,,,,2,1,,,,,"Jaggery boiled from palm sap, the everyday sweet of Bengal and the Indies."
+molasses,Molasses,당밀,food,1,3 Sugar Cane + 1 Lime,sugar-cane,lime,,,,,3,1,,,,,"The mill syrup left when sugar is struck; sold cheap, and the seed of every rum still."
+lychees,Dried Lychees,말린 여지,food,1,2 Lychee + 1 Honey,lychee,honey,,,,,2,1,,,,,"The Fujian orchard fruit, dried to raisins of the south and shipped up the whole China coast."
+isinglass,Isinglass,부레풀,food,1,2 Sturgeon + 1 Fresh Water,sturgeon,fresh-water,,,,,2,1,,,,,"Sturgeon bladder glue of the Volga fisheries, the finest clarifier and adhesive money could buy."
+russia-leather,Russia Leather,러시아 가죽,cloth,2,3 Leather + 1 Tar & Pitch + 1 Madder,leather,tar,madder,,,,3,1,1,,,,"Birch-oil dressed yuft, red and waterproof; bookbinders and saddlers knew it by smell alone."
+morocco-leather,Morocco Leather,모로코 가죽,cloth,2,3 Leather + 2 Madder + 1 Alum,leather,madder,alum,,,,3,2,1,,,,Goatskin dressed soft and scarlet in Fez and Marrakesh; the binding of every fine library.
+verdigris,Verdigris,녹청,dye,1,2 Copper + 1 Grapes + 1 Fresh Water,copper,grapes,fresh-water,,,,2,1,1,,,,"The green copper pigment of Montpellier, raised on wine lees and sold by the barrel."
+soap,Soap,비누,crafts,2,2 Olive Oil + 1 Tallow + 1 Potash + 1 Salt + 1 Fresh Water,olive-oil,tallow,potash,salt,fresh-water,,2,1,1,1,1,,"Olive-oil soap of Marseille, Aleppo and Venice, boxed and shipped as a finished ware."
+vermilion,Vermilion,주홍,dye,1,2 Quicksilver + 1 Sulphur,quicksilver,sulphur,,,,,2,1,,,,,"The scarlet mercury pigment, made in China and Holland and sold by the pound to painters and printers."
+port-wine,Port Wine,포트와인,drink,3,2 Wine + 1 Brandy,wine,brandy,,,,,2,1,,,,,"Port Wine is a grape wine, fermented and matured in casks in its home region."
+sherry,Sherry,셰리,drink,2,3 Wine + 1 Gypsum,wine,gypsum,,,,,3,1,,,,,"Sherry is a grape wine, fermented and matured in casks in its home region."
+madeira-wine,Madeira,마데이라,drink,2,3 Wine + 1 Timber,wine,timber,,,,,3,1,,,,,"Madeira is a grape wine, fermented and matured in casks in its home region."
+canary-sack,Canary Sack,카나리아 색,drink,2,3 Wine + 1 Honey,wine,honey,,,,,3,1,,,,,"Canary Sack is a grape wine, fermented and matured in casks in its home region."
+malmsey,Malmsey,맘지,drink,2,3 Wine + 1 Honey,wine,honey,,,,,3,1,,,,,"Malmsey is a grape wine, fermented and matured in casks in its home region."
+rhenish-wine,Rhenish Wine,라인 포도주,drink,1,3 Grapes + 1 Timber + 1 Stone,grapes,timber,stone,,,,3,1,1,,,,"Rhenish Wine is a grape wine, fermented and matured in casks in its home region."
+claret,Claret,클라레,drink,1,3 Grapes + 1 Timber,grapes,timber,,,,,3,1,,,,,"Claret is a grape wine, fermented and matured in casks in its home region."
+burgundy,Burgundy,부르고뉴,drink,1,3 Grapes + 1 Timber,grapes,timber,,,,,3,1,,,,,"Burgundy is a grape wine, fermented and matured in casks in its home region."
+chianti,Chianti,키안티,drink,1,3 Grapes + 1 Timber,grapes,timber,,,,,3,1,,,,,"Chianti is a grape wine, fermented and matured in casks in its home region."
+retsina,Retsina,레치나,drink,1,3 Grapes + 1 Pine Pitch,grapes,pine-pitch,,,,,3,1,,,,,"Retsina is a grape wine, fermented and matured in casks in its home region."
+commandaria,Commandaria,코만다리아,drink,1,3 Grapes + 1 Honey + 1 Timber,grapes,honey,timber,,,,3,1,1,,,,"Commandaria is a grape wine, fermented and matured in casks in its home region."
+tokay,Tokay,토카이,drink,1,3 Grapes + 1 Honey + 1 Timber,grapes,honey,timber,,,,3,1,1,,,,"Tokay is a grape wine, fermented and matured in casks in its home region."
+english-ale,English Ale,잉글랜드 에일,drink,2,2 Malt + 1 Hops + 1 Fresh Water,malt,hops,fresh-water,,,,2,1,1,,,,English Ale is a fermented grain drink brewed in the town brewhouses.
+porter-beer,Porter,포터,drink,2,3 Malt + 1 Hops + 1 Fresh Water,malt,hops,fresh-water,,,,3,1,1,,,,"Porter is a grape wine, fermented and matured in casks in its home region."
+hamburg-beer,Hamburg Beer,함부르크 맥주,drink,2,2 Malt + 1 Hops + 1 Fresh Water,malt,hops,fresh-water,,,,2,1,1,,,,Hamburg Beer is a fermented grain drink brewed in the town brewhouses.
+kvass,Kvass,크바스,drink,3,2 Rye Bread + 1 Fresh Water,rye-bread,fresh-water,,,,,2,1,,,,,Kvass is a fermented grain drink brewed in the town brewhouses.
+vodka,Vodka,보드카,drink,2,3 Rye Flour + 1 Fresh Water,rye-flour,fresh-water,,,,,3,1,,,,,"Vodka is a distilled spirit, run from a fermented mash in a copper still."
+whisky,Whisky,위스키,drink,2,3 Malt + 1 Fresh Water,malt,fresh-water,,,,,3,1,,,,,"Whisky is a distilled spirit, run from a fermented mash in a copper still."
+gin,Genever,예네버르,drink,2,2 Rye Flour + 1 Juniper Berries + 1 Fresh Water,rye-flour,juniper-berries,fresh-water,,,,2,1,1,,,,"Genever is a distilled spirit, run from a fermented mash in a copper still."
+aquavit,Aquavit,아콰비트,drink,2,2 Malt + 1 Angelica Root + 1 Fresh Water,malt,angelica-root,fresh-water,,,,2,1,1,,,,"Aquavit is a distilled spirit, run from a fermented mash in a copper still."
+cognac,Cognac,코냑,drink,2,3 Wine + 1 Timber,wine,timber,,,,,3,1,,,,,"Cognac is a distilled spirit, run from a fermented mash in a copper still."
+grappa,Grappa,그라파,drink,2,3 Wine + 1 Fresh Water,wine,fresh-water,,,,,3,1,,,,,"Grappa is a distilled spirit, run from a fermented mash in a copper still."
+rakia,Rakia,라키야,drink,2,3 Wine + 1 Fresh Water,wine,fresh-water,,,,,3,1,,,,,"Rakia is a distilled spirit, run from a fermented mash in a copper still."
+ouzo,Ouzo,우조,drink,2,3 Wine + 1 Aniseed + 1 Fresh Water,wine,anise,fresh-water,,,,3,1,1,,,,"Ouzo is a distilled spirit, run from a fermented mash in a copper still."
+arak-levant,Levantine Arak,레반트 아라크,drink,2,3 Wine + 1 Aniseed + 1 Fresh Water,wine,anise,fresh-water,,,,3,1,1,,,,"Levantine Arak is a distilled spirit, run from a fermented mash in a copper still."
+baijiu,Baijiu,백주,drink,1,3 Sorghum + 2 Fresh Water,sorghum,fresh-water,,,,,3,2,,,,,"Baijiu is a distilled spirit, run from a fermented mash in a copper still."
+soju,Soju,소주,drink,1,3 Rice + 2 Fresh Water,rice,fresh-water,,,,,3,2,,,,,"Soju is a distilled spirit, run from a fermented mash in a copper still."
+shochu,Shochu,쇼추,drink,1,2 Rice + 2 Kumara + 1 Fresh Water,rice,kumara,fresh-water,,,,2,2,1,,,,"Shochu is a distilled spirit, run from a fermented mash in a copper still."
+pulque,Pulque,풀케,drink,1,3 Agave + 1 Fresh Water,agave,fresh-water,,,,,3,1,,,,,Pulque is a fermented or brewed beverage of the period.
+chicha,Chicha,치차,drink,1,3 Maize + 2 Fresh Water,maize,fresh-water,,,,,3,2,,,,,Chicha is a fermented or brewed beverage of the period.
+palm-wine,Palm Wine,야자술,drink,1,2 Palm Sap + 1 Fresh Water,palm-sap,fresh-water,,,,,2,1,,,,,"Palm Wine is a grape wine, fermented and matured in casks in its home region."
+cachaca,Cachaca,카샤사,drink,2,3 Molasses + 1 Fresh Water,molasses,fresh-water,,,,,3,1,,,,,"Cachaca is a distilled spirit, run from a fermented mash in a copper still."
+cider,Cider,사과주,drink,1,3 Apple + 1 Fresh Water,apple,fresh-water,,,,,3,1,,,,,Cider is a fermented or brewed beverage of the period.
+perry,Perry,배술,drink,1,3 Pear + 1 Fresh Water,pear,fresh-water,,,,,3,1,,,,,Perry is a fermented or brewed beverage of the period.
+mead,Mead,벌꿀술,drink,1,3 Honey + 2 Fresh Water,honey,fresh-water,,,,,3,2,,,,,Mead is a fermented or brewed beverage of the period.
+toddy,Toddy,토디,drink,1,2 Palm Sap + 1 Fresh Water,palm-sap,fresh-water,,,,,2,1,,,,,"Toddy is an infused or sweetened drink of the period, brewed from the listed plants and water."
+coconut-arrack,Coconut Arrack,코코넛 아라크,drink,1,2 Coconuts & Copra + 2 Fresh Water,coconuts,fresh-water,,,,,2,2,,,,,"Coconut Arrack is a distilled spirit, run from a fermented mash in a copper still."
+sherbet,Sherbet Syrup,셔벗 시럽,drink,1,2 Lemons & Oranges + 1 Honey + 2 Fresh Water,citrus,honey,fresh-water,,,,2,1,2,,,,"Sherbet Syrup is an infused or sweetened drink of the period, brewed from the listed plants and water."
+mint-tea,Mint Tea,박하차,drink,1,2 Mint + 2 Fresh Water,mint,fresh-water,,,,,2,2,,,,,"Mint Tea is an infused or sweetened drink of the period, brewed from the listed plants and water."
+honeybush,Honeybush Tea,허니부시 차,drink,1,2 Honeybush Leaf + 2 Fresh Water,honeybush-leaf,fresh-water,,,,,2,2,,,,,Honeybush Tea is a fermented or brewed beverage of the period.
+brazil-twist,Brazil Twist,브라질 꼰 담배,tobacco,1,3 Tobacco + 1 Sugar Cane,tobacco,sugar-cane,,,,,3,1,,,,,Brazil Twist is a prepared tobacco product of the period.
+cigars,Cigars,여송연,tobacco,1,3 Tobacco + 1 Fresh Water,tobacco,fresh-water,,,,,3,1,,,,,Cigars is a prepared tobacco product of the period.
+snuff,Snuff,코담배,tobacco,1,2 Tobacco + 1 Nutmeg,tobacco,nutmeg,,,,,2,1,,,,,Snuff is a prepared tobacco product of the period.
+pipe-tobacco,Pipe Tobacco,파이프 담배,tobacco,1,3 Tobacco + 1 Honey,tobacco,honey,,,,,3,1,,,,,Pipe Tobacco is a prepared tobacco product of the period.
+betel-quid,Betel Quid,구장,tobacco,1,2 Areca Nuts + 1 Betel Leaf + 1 Lime,areca-nuts,betel-leaf,lime,,,,2,1,1,,,,Betel Quid is a prepared tobacco product of the period.
+stockfish,Stockfish,말린 대구,food,1,2 Cod + 1 Salt,cod,salt,,,,,2,1,,,,,"Stockfish is a preserved fishery product, dried, salted or smoked for long voyages."
+smoked-eel,Smoked Eel,훈제 장어,food,1,2 Eel + 1 Salt + 1 Timber,eel,salt,timber,,,,2,1,1,,,,"Smoked Eel is a preserved fishery product, dried, salted or smoked for long voyages."
+bacalhau,Bacalhau,바칼랴우,food,1,2 Cod + 2 Salt,cod,salt,,,,,2,2,,,,,"Bacalhau is a preserved fishery product, dried, salted or smoked for long voyages."
+katsuobushi,Katsuobushi,가쓰오부시,food,1,2 Bonito + 1 Timber + 1 Salt,bonito,timber,salt,,,,2,1,1,,,,"Katsuobushi is a preserved fishery product, dried, salted or smoked for long voyages."
+dried-squid,Dried Squid,마른오징어,food,1,2 Squid + 1 Salt,squid,salt,,,,,2,1,,,,,Dried Squid is a foodstuff prepared and packed for the trade.
+salt-cod,Salt Cod,소금 대구,food,1,2 Cod + 2 Salt,cod,salt,,,,,2,2,,,,,"Salt Cod is a preserved fishery product, dried, salted or smoked for long voyages."
+gochujang,Gochujang,고추장,food,1,2 Rice + 1 Chillies + 1 Salt + 1 Honey,rice,chillies,salt,honey,,,2,1,1,1,,,Gochujang is a preserved or fermented kitchen preparation of the period.
+doenjang,Doenjang,된장,food,1,2 Soybean + 1 Salt + 1 Fresh Water,soybean,salt,fresh-water,,,,2,1,1,,,,Doenjang is a preserved or fermented kitchen preparation of the period.
+kimchi,Kimchi,김치,food,1,2 Cabbage + 1 Salt + 1 Chillies + 1 Cod,cabbage,salt,chillies,cod,,,2,1,1,1,,,Kimchi is a preserved or fermented kitchen preparation of the period.
+miso,Miso,미소,food,1,2 Soybean + 1 Salt + 1 Fresh Water,soybean,salt,fresh-water,,,,2,1,1,,,,Miso is a preserved or fermented kitchen preparation of the period.
+mirin,Mirin,미림,food,1,2 Rice + 1 Honey + 1 Fresh Water,rice,honey,fresh-water,,,,2,1,1,,,,Mirin is a preserved or fermented kitchen preparation of the period.
+rice-vinegar,Rice Vinegar,쌀식초,food,1,2 Rice + 2 Fresh Water,rice,fresh-water,,,,,2,2,,,,,Rice Vinegar is a preserved or fermented kitchen preparation of the period.
+fish-sauce,Fish Sauce,어간장,food,1,2 Anchovies + 2 Salt,anchovies,salt,,,,,2,2,,,,,"Fish Sauce is a preserved fishery product, dried, salted or smoked for long voyages."
+shrimp-paste,Shrimp Paste,새우젓,food,1,2 Shrimp + 1 Salt,shrimp,salt,,,,,2,1,,,,,"Shrimp Paste is a preserved fishery product, dried, salted or smoked for long voyages."
+pickled-plums,Pickled Plums,매실 장아찌,food,1,2 Plum + 1 Salt,plum,salt,,,,,2,1,,,,,Pickled Plums is a foodstuff prepared and packed for the trade.
+harissa,Harissa,하리사,food,1,1 Coriander + 1 Cumin + 2 Chillies + 1 Olives + 1 Salt,coriander,cumin,chillies,olives,salt,,1,1,2,1,1,,Harissa is a preserved or fermented kitchen preparation of the period.
+couscous,Couscous,쿠스쿠스,food,2,2 Wheat Flour + 1 Fresh Water,wheat-flour,fresh-water,,,,,2,1,,,,,Couscous is a preserved or fermented kitchen preparation of the period.
+maple-sugar,Maple Sugar,단풍 설탕,food,1,3 Fresh Water + 1 Timber,fresh-water,timber,,,,,3,1,,,,,Maple Sugar is a sugar-house product boiled from cane juice.
+pemmican,Pemmican,페미컨,food,1,2 Cattle + 1 Figs + 2 Tallow,cattle,figs,tallow,,,,2,1,2,,,,Pemmican is a preserved or fermented kitchen preparation of the period.
+charqui,Charqui,차르키,food,1,2 Cattle + 2 Salt,cattle,salt,,,,,2,2,,,,,Charqui is a preserved or fermented kitchen preparation of the period.
+cassava-bread,Cassava Bread,카사바 빵,food,2,2 Cassava Flour + 1 Fresh Water,cassava,fresh-water,,,,,2,1,,,,,Cassava Bread is a preserved or fermented kitchen preparation of the period.
+shea-butter,Shea Butter,시어버터,food,1,2 Shea Nut + 1 Tallow + 1 Fresh Water,shea-nut,tallow,fresh-water,,,,2,1,1,,,,"Shea Butter is a dairy preparation of the period, salted or clarified for keeping."
+persian-carpet,Persian Carpet,페르시아 양탄자,cloth,1,3 Raw Wool + 1 Raw Silk + 2 Madder,wool-raw,silk-raw,madder,,,,3,1,2,,,,Persian Carpet is a woven textile finished from the listed fibre in period workshops.
+kashmir-shawl,Kashmir Shawl,카슈미르 숄,cloth,1,4 Raw Wool + 1 Madder,wool-raw,madder,,,,,4,1,,,,,Kashmir Shawl is a woven textile finished from the listed fibre in period workshops.
+dhaka-muslin,Dhaka Muslin,다카 모슬린,cloth,1,4 Raw Cotton + 1 Fresh Water,cotton-raw,fresh-water,,,,,4,1,,,,,Dhaka Muslin is a woven textile finished from the listed fibre in period workshops.
+patola-silk,Patola Silk,파톨라 비단,cloth,1,3 Raw Silk + 1 Madder + 1 Indigo,silk-raw,madder,indigo,,,,3,1,1,,,,Patola Silk is a woven textile finished from the listed fibre in period workshops.
+nankeen,Nankeen Cloth,남경 무명,cloth,1,3 Raw Cotton + 1 Safflower,cotton-raw,safflower,,,,,3,1,,,,,Nankeen Cloth is a woven textile finished from the listed fibre in period workshops.
+shantung-silk,Shantung Silk,산둥 비단,cloth,1,3 Raw Silk + 1 Fresh Water,silk-raw,fresh-water,,,,,3,1,,,,,Shantung Silk is a woven textile finished from the listed fibre in period workshops.
+nishijin-brocade,Nishijin Brocade,니시진 비단,cloth,1,3 Raw Silk + 1 Gold + 1 Cochineal + 1 Indigo,silk-raw,gold,cochineal,indigo,,,3,1,1,1,,,Nishijin Brocade is a woven textile finished from the listed fibre in period workshops.
+ramie-korea,Korean Ramie,한산 모시,cloth,1,3 Ramie + 1 Fresh Water,ramie,fresh-water,,,,,3,1,,,,,Korean Ramie is a woven textile finished from the listed fibre in period workshops.
+hemp-cloth,Hemp Cloth,삼베,cloth,1,3 Hemp + 1 Fresh Water,hemp,fresh-water,,,,,3,1,,,,,Hemp Cloth is a woven textile finished from the listed fibre in period workshops.
+holland-linen,Holland Linen,홀란트 리넨,cloth,1,3 Flax + 1 Fresh Water,flax,fresh-water,,,,,3,1,,,,,Holland Linen is a woven textile finished from the listed fibre in period workshops.
+flanders-lace,Flanders Lace,플랑드르 레이스,cloth,2,2 Yarn + 1 Linen,yarn,linen,,,,,2,1,,,,,Flanders Lace is a woven textile finished from the listed fibre in period workshops.
+irish-linen,Irish Linen,아일랜드 리넨,cloth,1,3 Flax + 1 Fresh Water,flax,fresh-water,,,,,3,1,,,,,Irish Linen is a woven textile finished from the listed fibre in period workshops.
+kersey,Kersey,커지,cloth,1,3 Raw Wool + 1 Madder,wool-raw,madder,,,,,3,1,,,,,Kersey is a woven textile finished from the listed fibre in period workshops.
+worsted,Worsted,소모직물,cloth,1,3 Raw Wool + 1 Fresh Water,wool-raw,fresh-water,,,,,3,1,,,,,Worsted is a woven textile finished from the listed fibre in period workshops.
+baize,Baize,베이즈,cloth,1,3 Raw Wool + 1 Madder,wool-raw,madder,,,,,3,1,,,,,Baize is a woven textile finished from the listed fibre in period workshops.
+russia-hemp,Russia Hemp Cloth,러시아 삼베,cloth,1,3 Hemp + 1 Fresh Water,hemp,fresh-water,,,,,3,1,,,,,Russia Hemp Cloth is a woven textile finished from the listed fibre in period workshops.
+sailcloth,Sailcloth,돛천,cloth,1,3 Flax + 1 Hemp + 1 Tar & Pitch,flax,hemp,tar,,,,3,1,1,,,,Sailcloth is a woven textile finished from the listed fibre in period workshops.
+kente-cloth,Kente Cloth,켄테 천,cloth,1,2 Raw Cotton + 1 Raw Silk + 1 Gold + 1 Indigo + 1 Madder,cotton-raw,silk-raw,gold,indigo,madder,,2,1,1,1,1,,Kente Cloth is a woven textile finished from the listed fibre in period workshops.
+adire-cloth,Adire Cloth,아디레 천,cloth,1,3 Raw Cotton + 1 Indigo + 1 Potash,cotton-raw,indigo,potash,,,,3,1,1,,,,Adire Cloth is a woven textile finished from the listed fibre in period workshops.
+kanga-cloth,Kanga Cloth,캉가 천,cloth,1,3 Raw Cotton + 1 Indigo + 1 Madder,cotton-raw,indigo,madder,,,,3,1,1,,,,Kanga Cloth is a woven textile finished from the listed fibre in period workshops.
+tapa-cloth,Tapa Cloth,타파 천,cloth,1,3 Bark + 1 Fresh Water,bark,fresh-water,,,,,3,1,,,,,Tapa Cloth is a woven textile finished from the listed fibre in period workshops.
+songket,Songket,송켓,cloth,1,2 Raw Silk + 1 Gold + 1 Madder,silk-raw,gold,madder,,,,2,1,1,,,,Songket is a woven textile finished from the listed fibre in period workshops.
+ikat,Ikat,이캇,cloth,1,3 Raw Cotton + 1 Indigo + 1 Madder,cotton-raw,indigo,madder,,,,3,1,1,,,,Ikat is a woven textile finished from the listed fibre in period workshops.
+damask,Damask,다마스크,cloth,1,3 Raw Silk + 1 Cochineal,silk-raw,cochineal,,,,,3,1,,,,,Damask is a woven textile finished from the listed fibre in period workshops.
+brass-ingots,Brass Ingots,황동 괴,metal,1,3 Copper + 1 Spelter + 1 Sea Coal,copper,zinc-spelter,coal,,,,3,1,1,,,,"Brass Ingots is a refined metal commodity traded in bars, cakes or ingots."
+steel-billets,Steel Billets,강철 괴,metal,2,3 Iron Bars + 2 Sea Coal,iron-bars,coal,,,,,3,2,,,,,"Steel Billets is a refined metal commodity traded in bars, cakes or ingots."
+matchlocks,Matchlocks,화승총,guns,2,2 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur,iron-bars,planks,saltpetre,sulphur,,,2,1,1,1,,,"Matchlocks is a finished craft ware of the period, made in regional workshops."
+arquebus,Arquebus,아퀘버스,guns,2,2 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur,iron-bars,planks,saltpetre,sulphur,,,2,1,1,1,,,"Arquebus is a finished craft ware of the period, made in regional workshops."
+culverin,Culverin,컬버린,guns,2,3 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,iron-bars,tin,planks,saltpetre,,,3,1,1,1,,,"Culverin is a finished craft ware of the period, made in regional workshops."
+falconet,Falconet,팰커닛,guns,2,2 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,iron-bars,tin,planks,saltpetre,,,2,1,1,1,,,"Falconet is a finished craft ware of the period, made in regional workshops."
+swivel-gun,Swivel Gun,회전포,guns,2,2 Iron Bars + 1 Tin + 1 Planks + 1 Saltpetre,iron-bars,tin,planks,saltpetre,,,2,1,1,1,,,"Swivel Gun is a finished craft ware of the period, made in regional workshops."
+bombard,Bombard,사석포,guns,2,3 Iron Bars + 1 Planks + 1 Saltpetre + 1 Sulphur + 1 Stone,iron-bars,planks,saltpetre,sulphur,stone,,3,1,1,1,1,,"Bombard is a finished craft ware of the period, made in regional workshops."
+rocket-tubes,Rocket Tubes,신기전,guns,2,1 Planks + 2 Saltpetre + 1 Sulphur + 1 Sea Coal,planks,saltpetre,sulphur,coal,,,1,2,1,1,,,"Rocket Tubes is a finished craft ware of the period, made in regional workshops."
+fire-lance,Fire Lance,화창,guns,2,1 Planks + 1 Iron Bars + 1 Saltpetre + 1 Sulphur,planks,iron-bars,saltpetre,sulphur,,,1,1,1,1,,,"Fire Lance is a finished craft ware of the period, made in regional workshops."
+shot-and-ball,Shot and Ball,탄환,guns,2,2 Iron Bars + 2 Lead + 1 Sea Coal,iron-bars,lead,coal,,,,2,2,1,,,,"Shot and Ball is a finished craft ware of the period, made in regional workshops."
+slow-match,Slow Match,화승,guns,1,2 Hemp + 1 Saltpetre + 1 Fresh Water,hemp,saltpetre,fresh-water,,,,2,1,1,,,,"Slow Match is a finished craft ware of the period, made in regional workshops."
+toledo-blades,Toledo Blades,톨레도 칼날,weapons,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water,steel-billets,coal,fresh-water,,,,2,1,1,,,,"Toledo Blades is a finished craft ware of the period, made in regional workshops."
+damascus-blades,Damascus Blades,다마스쿠스 칼날,weapons,3,2 Steel Billets + 1 Sea Coal + 1 Timber,steel-billets,coal,timber,,,,2,1,1,,,,"Damascus Blades is a finished craft ware of the period, made in regional workshops."
+katana,Katana,일본도,weapons,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water + 1 Timber,steel-billets,coal,fresh-water,timber,,,2,1,1,1,,,"Katana is a finished craft ware of the period, made in regional workshops."
+kris,Kris,크리스,weapons,3,1 Steel Billets + 1 Sea Coal + 1 Timber,steel-billets,coal,timber,,,,1,1,1,,,,"Kris is a finished craft ware of the period, made in regional workshops."
+talwar,Talwar,탈와르,weapons,3,2 Steel Billets + 1 Sea Coal + 1 Fresh Water,steel-billets,coal,fresh-water,,,,2,1,1,,,,"Talwar is a finished craft ware of the period, made in regional workshops."
+pike-heads,Pike Heads,창날,weapons,2,2 Iron Bars + 1 Planks + 1 Sea Coal,iron-bars,planks,coal,,,,2,1,1,,,,"Pike Heads is a finished craft ware of the period, made in regional workshops."
+crossbows,Crossbows,쇠뇌,weapons,2,2 Planks + 1 Yarn + 1 Iron Bars,planks,yarn,iron-bars,,,,2,1,1,,,,"Crossbows is a finished craft ware of the period, made in regional workshops."
+war-bows,War Bows,전투용 활,weapons,2,2 Planks + 1 Yarn + 1 Goose Feathers,planks,yarn,goose-feathers,,,,2,1,1,,,,"War Bows is a finished craft ware of the period, made in regional workshops."
+milanese-armour,Milanese Armour,밀라노 갑옷,weapons,3,2 Steel Billets + 1 Leather + 1 Woollen Cloth,steel-billets,leather,wool-cloth,,,,2,1,1,,,,"Milanese Armour is a finished craft ware of the period, made in regional workshops."
+shields,Hide Shields,가죽 방패,weapons,2,2 Leather + 1 Planks + 1 Iron Bars,leather,planks,iron-bars,,,,2,1,1,,,,"Hide Shields is a finished craft ware of the period, made in regional workshops."
+kyoto-fans,Kyoto Fans,교토 부채,crafts,1,1 Timber + 1 Bamboo + 1 Rattan,timber,bamboo,rattan,,,,1,1,1,,,,"Kyoto Fans is a finished craft ware of the period, made in regional workshops."
+imari-ware,Imari Ware,이마리 자기,crafts,1,2 Clay + 1 Feldspar + 1 Cobalt Blue + 1 Quartz,clay,feldspar,cobalt,quartz,,,2,1,1,1,,,"Imari Ware is a finished craft ware of the period, made in regional workshops."
+goryeo-celadon,Goryeo Celadon,고려청자,crafts,1,3 Clay + 1 Feldspar + 1 Potash,clay,feldspar,potash,,,,3,1,1,,,,"Goryeo Celadon is a finished craft ware of the period, made in regional workshops."
+mother-of-pearl-inlay,Nacre Inlay,나전,crafts,2,2 Mother-of-Pearl + 2 Planks + 1 Gum Arabic,mother-of-pearl,planks,gum-arabic,,,,2,2,1,,,,"Nacre Inlay is a finished craft ware of the period, made in regional workshops."
+canton-enamel,Canton Enamel,광둥 법랑,crafts,2,1 Glass + 2 Copper + 1 Tin + 1 Cobalt Blue,glass,copper,tin,cobalt,,,1,2,1,1,,,"Canton Enamel is a finished craft ware of the period, made in regional workshops."
+cloisonne,Cloisonne,칠보,crafts,2,1 Glass + 2 Copper + 1 Cobalt Blue,glass,copper,cobalt,,,,1,2,1,,,,"Cloisonne is a finished craft ware of the period, made in regional workshops."
+benin-bronzes,Benin Bronzes,베냉 청동상,crafts,1,3 Copper + 1 Tin + 1 Beeswax,copper,tin,wax,,,,3,1,1,,,,"Benin Bronzes is a finished craft ware of the period, made in regional workshops."
+ashanti-goldwork,Ashanti Goldwork,아샨티 금세공,crafts,1,3 Gold + 1 Beeswax + 1 Clay,gold,wax,clay,,,,3,1,1,,,,"Ashanti Goldwork is a finished craft ware of the period, made in regional workshops."
+zanzibar-doors,Carved Doors,조각 문,crafts,2,3 Planks + 1 Iron Bars + 1 Coir,planks,iron-bars,coir,,,,3,1,1,,,,"Carved Doors is a finished craft ware of the period, made in regional workshops."
+damascene-work,Damascene Work,상감 세공,crafts,3,1 Steel Billets + 1 Silver + 1 Gold + 1 Sea Coal,steel-billets,silver,gold,coal,,,1,1,1,1,,,"Damascene Work is a finished craft ware of the period, made in regional workshops."
+iznik-tiles,Iznik Tiles,이즈니크 타일,crafts,1,3 Clay + 1 Quartz + 1 Sand + 1 Cobalt Blue,clay,quartz,sand,cobalt,,,3,1,1,1,,,"Iznik Tiles is a finished craft ware of the period, made in regional workshops."
+murano-glass,Murano Glass,무라노 유리,crafts,2,3 Glass + 1 Cobalt Blue,glass,cobalt,,,,,3,1,,,,,"Murano Glass is a finished craft ware of the period, made in regional workshops."
+venetian-mirrors,Venetian Mirrors,베네치아 거울,crafts,2,3 Glass + 1 Tin + 1 Silver,glass,tin,silver,,,,3,1,1,,,,"Venetian Mirrors is a finished craft ware of the period, made in regional workshops."
+delftware,Delftware,델프트 도기,crafts,1,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,clay,tin,sand,cobalt,,,3,1,1,1,,,"Delftware is a finished craft ware of the period, made in regional workshops."
+sheffield-plate,Sheffield Plate,셰필드 도금 은기,crafts,1,2 Copper + 2 Silver + 1 Sea Coal,copper,silver,coal,,,,2,2,1,,,,"Sheffield Plate is a finished craft ware of the period, made in regional workshops."
+amber-work,Amber Work,호박 세공,crafts,2,3 Amber + 1 Planks,amber,planks,,,,,3,1,,,,,"Amber Work is a finished craft ware of the period, made in regional workshops."
+sami-craft,Sami Craft,사미 공예,crafts,2,1 Furs + 1 Walrus Ivory + 1 Woollen Cloth + 1 Planks,furs,walrus-ivory,wool-cloth,planks,,,1,1,1,1,,,"Sami Craft is a finished craft ware of the period, made in regional workshops."
+talavera,Talavera,탈라베라 도기,crafts,1,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,clay,tin,sand,cobalt,,,3,1,1,1,,,"Talavera is a finished craft ware of the period, made in regional workshops."
+featherwork,Featherwork,깃털 공예,crafts,2,3 Bird-of-Paradise Plumes + 1 Cotton Cloth + 1 Gold,paradise-plumes,cotton-cloth,gold,,,,3,1,1,,,,"Featherwork is a finished craft ware of the period, made in regional workshops."
+tortoiseshell-combs,Tortoiseshell Combs,대모 빗,crafts,2,2 Tortoiseshell + 1 Planks,tortoiseshell,planks,,,,,2,1,,,,,"Tortoiseshell Combs is a finished craft ware of the period, made in regional workshops."
+sandalwood-carving,Sandalwood Carving,백단 조각,crafts,1,3 Sandalwood + 1 Timber,sandalwood,timber,,,,,3,1,,,,,"Sandalwood Carving is a finished craft ware of the period, made in regional workshops."
+bidriware,Bidriware,비드리 세공,crafts,2,2 Brass Ingots + 1 Silver + 1 Clay,brass-ingots,silver,clay,,,,2,1,1,,,,"Bidriware is a finished craft ware of the period, made in regional workshops."
+nipa-mats,Nipa Mats,니파 돗자리,crafts,1,3 Nipa Palm + 1 Fresh Water,nipa,fresh-water,,,,,3,1,,,,,"Nipa Mats is a finished craft ware of the period, made in regional workshops."
+pandanus-mats,Pandanus Mats,판다누스 돗자리,crafts,1,3 Pandanus + 1 Turmeric,pandanus,turmeric,,,,,3,1,,,,,"Pandanus Mats is a finished craft ware of the period, made in regional workshops."
+azulejos,Azulejos,아줄레주,crafts,1,3 Clay + 1 Tin + 1 Sand + 1 Cobalt Blue,clay,tin,sand,cobalt,,,3,1,1,1,,,"Azulejos is a finished craft ware of the period, made in regional workshops."
+maghreb-brass,Maghreb Brasswork,마그레브 황동 세공,crafts,2,2 Brass Ingots + 1 Sea Coal,brass-ingots,coal,,,,,2,1,,,,,"Maghreb Brasswork is a finished craft ware of the period, made in regional workshops."
+saffian-leather,Saffian Leather,사피안 가죽,crafts,2,3 Leather + 2 Madder + 1 Alum,leather,madder,alum,,,,3,2,1,,,,"Saffian Leather is a finished craft ware of the period, made in regional workshops."
+attar-of-roses,Attar of Roses,장미유,medicine,1,3 Rose + 1 Tallow + 1 Fresh Water,rose,tallow,fresh-water,,,,3,1,1,,,,"Attar of Roses is a period materia medica, dried or packed and sold by apothecaries."
+mumia,Mumia,무미아,medicine,1,2 Opium + 1 Myrrh + 1 Ochre,opium,myrrh,ochre,,,,2,1,1,,,,"Mumia is a period materia medica, dried or packed and sold by apothecaries."
+ayurvedic-oils,Ayurvedic Oils,아유르베다 기름,medicine,1,2 Neem + 2 Sesame + 1 Tallow,neem,sesame,tallow,,,,2,2,1,,,,"Ayurvedic Oils is a period materia medica, dried or packed and sold by apothecaries."
+clove-oil,Clove Oil,정향유,medicine,1,3 Cloves + 1 Fresh Water,cloves,fresh-water,,,,,3,1,,,,,"Clove Oil is a period materia medica, dried or packed and sold by apothecaries."
+witch-hazel,Witch Hazel,조록나무,medicine,1,2 Witch Hazel Bark + 2 Fresh Water,witch-hazel-bark,fresh-water,,,,,2,2,,,,,"Witch Hazel is a period materia medica, dried or packed and sold by apothecaries."
+grains-paradise-oil,Melegueta Oil,멜레게타 기름,medicine,1,3 Grains of Paradise + 1 Tallow,grains-of-paradise,tallow,,,,,3,1,,,,,"Melegueta Oil is a period materia medica, dried or packed and sold by apothecaries."
+theriaca-venetian,Venetian Treacle,베네치아 테리아카,medicine,1,2 Senna + 1 Chinese Rhubarb + 1 Honey + 1 Cinnamon + 1 Ginger + 1 Myrrh,senna,rhubarb,honey,cinnamon,ginger,myrrh,2,1,1,1,1,1,"Venetian Treacle is a period materia medica, dried or packed and sold by apothecaries."
+prussian-blue,Prussian Blue,프러시안 블루,dye,1,2 Iron + 1 Sea Coal + 1 Potash,iron,coal,potash,,,,2,1,1,,,,Prussian Blue is a dyestuff prepared for the dyehouse.
+smalt,Smalt,스몰트,dye,1,2 Cobalt Blue + 1 Sand + 1 Potash,cobalt,sand,potash,,,,2,1,1,,,,Smalt is a dyestuff prepared for the dyehouse.
+ultramarine,Ultramarine,군청,dye,1,2 Lapis Lazuli + 1 Gum Arabic,lapis-lazuli,gum-arabic,,,,,2,1,,,,,Ultramarine is a dyestuff prepared for the dyehouse.
+lead-white,Lead White,연백,dye,1,2 Lead + 1 Grapes + 1 Fresh Water,lead,grapes,fresh-water,,,,2,1,1,,,,Lead White is a dyestuff prepared for the dyehouse.
+oakum,Oakum,뱃밥,ship-supplies,1,2 Hemp + 1 Tar & Pitch,hemp,tar,,,,,2,1,,,,,Oakum is a naval store prepared for shipyards and riggers.
+cordage,Cordage,밧줄,ship-supplies,1,2 Hemp + 1 Flax,hemp,flax,,,,,2,1,,,,,Cordage is a naval store prepared for shipyards and riggers.
+canvas-duck,Canvas Duck,두꺼운 범포,ship-supplies,1,2 Flax + 1 Hemp,flax,hemp,,,,,2,1,,,,,Canvas Duck is a naval store prepared for shipyards and riggers.
+whale-bone-stays,Baleen Stays,고래수염 살대,ship-supplies,1,2 Whalebone + 1 Hemp,baleen,hemp,,,,,2,1,,,,,Baleen Stays is a naval store prepared for shipyards and riggers.
+copper-sheet,Copper Sheathing,선체 동판,ship-supplies,1,3 Copper + 1 Sea Coal,copper,coal,,,,,3,1,,,,,Copper Sheathing is a naval store prepared for shipyards and riggers.
+ships-nails,Ship's Nails,배 못,ship-supplies,2,2 Iron Bars + 1 Sea Coal,iron-bars,coal,,,,,2,1,,,,,Ship's Nails is a naval store prepared for shipyards and riggers.
+portolan-charts,Portolan Charts,포르톨라노 해도,art,2,1 Paper + 1 Ochre + 1 Planks,paper,ochre,planks,,,,1,1,1,,,,Portolan Charts is a workshop product of the period instrument and picture trade.
+flemish-panels,Flemish Panels,플랑드르 패널화,art,2,2 Planks + 1 Ochre + 1 Linen,planks,ochre,linen,,,,2,1,1,,,,Flemish Panels is a workshop product of the period instrument and picture trade.
+italian-canvases,Italian Canvases,이탈리아 유화,art,2,2 Linen + 1 Ochre + 1 Planks,linen,ochre,planks,,,,2,1,1,,,,Italian Canvases is a workshop product of the period instrument and picture trade.
+ukiyo-e,Ukiyo-e Prints,우키요에,art,2,1 Paper + 1 Indigo + 1 Planks,paper,indigo,planks,,,,1,1,1,,,,Ukiyo-e Prints is a workshop product of the period instrument and picture trade.
+scroll-paintings,Scroll Paintings,두루마리 그림,art,2,2 Paper + 1 Ochre + 1 Planks,paper,ochre,planks,,,,2,1,1,,,,Scroll Paintings is a workshop product of the period instrument and picture trade.
+mughal-miniatures,Mughal Miniatures,무굴 세밀화,art,2,1 Paper + 1 Ochre + 1 Gold,paper,ochre,gold,,,,1,1,1,,,,Mughal Miniatures is a workshop product of the period instrument and picture trade.
+astrolabes,Astrolabes,아스트롤라베,art,2,1 Brass Ingots + 1 Iron Bars + 1 Planks,brass-ingots,iron-bars,planks,,,,1,1,1,,,,Astrolabes is a workshop product of the period instrument and picture trade.
+armillary-spheres,Armillary Spheres,혼천의,art,2,1 Brass Ingots + 1 Iron Bars + 1 Planks,brass-ingots,iron-bars,planks,,,,1,1,1,,,,Armillary Spheres is a workshop product of the period instrument and picture trade.
+globes,Terrestrial Globes,지구의,art,2,1 Planks + 1 Ochre + 1 Copper,planks,ochre,copper,,,,1,1,1,,,,Terrestrial Globes is a workshop product of the period instrument and picture trade.
+nautical-clocks,Nautical Clocks,항해 시계,art,2,1 Brass Ingots + 1 Iron Bars + 1 Planks + 1 Glass,brass-ingots,iron-bars,planks,glass,,,1,1,1,1,,,Nautical Clocks is a workshop product of the period instrument and picture trade.
+korean-movable-type,Movable Type,금속활자,books,2,2 Brass Ingots + 1 Lead + 1 Tin + 1 Planks,brass-ingots,lead,tin,planks,,,2,1,1,1,,,Movable Type is a printed or manuscript book product of the period.
+sutra-scrolls,Sutra Scrolls,불경 두루마리,books,2,1 Paper + 1 Ink & Brushes + 1 Planks,paper,ink-sticks,planks,,,,1,1,1,,,,Sutra Scrolls is a printed or manuscript book product of the period.
+block-printed-books,Block-printed Books,목판본,books,2,1 Paper + 1 Planks + 1 Ink & Brushes,paper,planks,ink-sticks,,,,1,1,1,,,,Block-printed Books is a printed or manuscript book product of the period.
+quran-manuscripts,Quran Manuscripts,쿠란 필사본,books,2,2 Parchment + 1 Ink & Brushes + 1 Gold,parchment,ink-sticks,gold,,,,2,1,1,,,,Quran Manuscripts is a printed or manuscript book product of the period.
+palm-leaf-manuscripts,Palm-leaf Manuscripts,패엽경,books,2,2 Palm Leaf + 1 Ink & Brushes,palm-leaf,ink-sticks,,,,,2,1,,,,,Palm-leaf Manuscripts is a printed or manuscript book product of the period.
+antwerp-presses,Antwerp Imprints,안트베르펜 인쇄본,books,2,2 Paper + 1 Leather + 1 Ink & Brushes,paper,leather,ink-sticks,,,,2,1,1,,,,Antwerp Imprints is a printed or manuscript book product of the period.
+venetian-imprints,Venetian Imprints,베네치아 인쇄본,books,2,2 Paper + 1 Leather + 1 Ink & Brushes,paper,leather,ink-sticks,,,,2,1,1,,,,Venetian Imprints is a printed or manuscript book product of the period.
+parchment,Parchment,양피지,books,1,2 Hides + 1 Lime + 1 Fresh Water,hides,lime,fresh-water,,,,2,1,1,,,,Parchment is a printed or manuscript book product of the period.
+rice-paper,Rice Paper,한지,books,1,2 Bark + 1 Fresh Water,bark,fresh-water,,,,,2,1,,,,,Rice Paper is a printed or manuscript book product of the period.
+mission-wine,Mission Wine,미션 포도주,drink,1,3 Grapes + 1 Fresh Water,grapes,fresh-water,,,,,3,1,,,,,"The black Mission grape planted at San Diego de Alcalá and every mission north of it, the first wine of California."
+dried-shrimp,Dried Shrimp,마른 새우,food,1,2 Shrimp + 1 Salt,shrimp,salt,,,,,2,1,,,,,"Sun-dried shrimp of the Mazatlán lagoons, the salted staple of the Sinaloa coast and a Lenten food inland."
+mezcal,Mezcal,메스칼,drink,1,3 Figs + 1 Fresh Water,figs,fresh-water,,,,,3,1,,,,,"Agave spirit distilled in Jalisco, Sinaloa and Oaxaca from the late 1500s, once Spanish stills met the pulque maguey."
+coconut-wine,Coconut Wine,코코넛술,drink,1,2 Coconuts & Copra + 1 Fresh Water,coconuts,fresh-water,,,,,2,1,,,,,Tuba distilled by the Filipino sailors who settled Colima off the Manila galleon in the 1570s: the vino de cocos the Crown tried and failed to ban.
+soconusco-cacao,Soconusco Cacao,소코누스코 카카오,drink,1,3 Cacao Bean + 1 Fresh Water + 1 Honey,cacao-bean,fresh-water,honey,,,,3,1,1,,,,"The finest cacao of New Spain, from the Soconusco lowlands, tributed to the Aztec court and later shipped from Huatulco to Peru and Mexico."
+hammocks,Hammocks,해먹,crafts,2,2 Cotton Cloth + 1 Yarn + 1 Annatto,cotton-cloth,yarn,annatto,,,,2,1,1,,,,"Cotton hammocks woven in Nicaragua and the Cauca, the bed of every Spanish ship’s crew after Columbus saw them in the Indies."
+guayaquil-cacao,Guayaquil Cacao,과야킬 카카오,drink,1,3 Cacao Bean + 1 Fresh Water,cacao-bean,fresh-water,,,,,3,1,,,,,"The cheap, plentiful cacao of the Guayas plains, shipped to Acapulco and Peru against the Crown’s own bans from the 1600s."
+pisco,Pisco,피스코,drink,2,3 Wine + 1 Fresh Water,wine,fresh-water,,,,,3,1,,,,,"Grape brandy of the Ica valleys, distilled from the 1610s and shipped from the port that named it to every quay of the South Sea."
+chilean-wine,Chilean Wine,칠레 포도주,drink,1,3 Grapes + 1 Fresh Water,grapes,fresh-water,,,,,3,1,,,,,"The País grape planted from 1550 in the central valley, shipped north to Peru from the 1600s."
+wheat-flour,Wheat Flour,밀가루,grain,1,2 Wheat + 1 Fresh Water,wheat,fresh-water,,,,,2,1,,,,,"NEW — milling gap, owner 2026-10-30. Stone-milled wheat flour, the base of bread and ship's biscuit."
+rye-flour,Rye Flour,호밀가루,grain,1,2 Rye + 1 Fresh Water,rye,fresh-water,,,,,2,1,,,,,"NEW — milling gap, owner 2026-10-30. Stone-milled rye flour for the black bread of the Baltic."
+barley-flour,Barley Flour,보리가루,grain,1,2 Barley + 1 Fresh Water,barley,fresh-water,,,,,2,1,,,,,"NEW — milling gap, owner 2026-10-30. Stone-milled barley flour for bannocks and porridge."
+oat-flour,Oat Flour,귀리가루,grain,1,2 Oats + 1 Fresh Water,oats,fresh-water,,,,,2,1,,,,,"NEW — milling gap, owner 2026-10-30. Stone-milled oat flour for oatcakes and ship's provisions."
+maize-flour,Maize Flour,옥수수가루,grain,1,2 Maize + 1 Fresh Water,maize,fresh-water,,,,,2,1,,,,,"NEW — milling gap, owner 2026-10-30. Stone-milled maize flour for American and Atlantic provisions."
+rice-flour,Rice Flour,쌀가루,grain,1,2 Rice + 1 Fresh Water,rice,fresh-water,,,,,2,1,,,,,"NEW — milling gap, owner 2026-10-30. Stone-milled rice flour for Asian noodles and cakes."
+bread,Bread,빵,food,2,2 Wheat Flour + 1 Milk + 1 Fresh Water,wheat-flour,milk,fresh-water,,,,2,1,1,,,,"NEW — baking gap, owner 2026-10-30. Oven-baked wheat bread, the everyday loaf of town and ship."
+ships-biscuit,Ship's Biscuit,건빵,food,2,2 Wheat Flour + 1 Fresh Water + 1 Salt,wheat-flour,fresh-water,salt,,,,2,1,1,,,,"NEW — baking gap, owner 2026-10-30. Twice-baked hardtack, the staple of every long voyage."
+rye-bread,Rye Bread,호밀빵,food,2,2 Rye Flour + 1 Milk + 1 Fresh Water,rye-flour,milk,fresh-water,,,,2,1,1,,,,"NEW — baking gap, owner 2026-10-30. Dense rye loaf of the Baltic and northern Europe."
+cream,Cream,크림,food,1,2 Milk + 1 Fresh Water,milk,fresh-water,,,,,2,1,,,,,"NEW — dairy gap, owner 2026-10-30. Cream skimmed from milk."
+iron-bars,Iron Bars,철괴,metal,1,2 Iron + 1 Sea Coal,iron,coal,,,,,2,1,,,,,"NEW — metal-chain gap, owner 2026-10-30. Smelted and wrought iron bars, the smith's stock."
+leather,Leather,가죽,cloth,1,2 Hides + 1 Tannin Bark + 1 Fresh Water,hides,tannin-bark,fresh-water,,,,2,1,1,,,,"NEW — leather-chain gap, owner 2026-10-30. Tanned cattle hide, the leatherworker's stock."
+planks,Planks,판재,ship-supplies,1,2 Timber + 1 Fresh Water,timber,fresh-water,,,,,2,1,,,,,"NEW — wood-chain gap, owner 2026-10-30. Sawn planks and boards, the shipwright's and joiner's stock."
+malt,Malt,맥아,food,1,2 Barley + 1 Fresh Water,barley,fresh-water,,,,,2,1,,,,,"NEW — brewing-chain gap, owner 2026-10-30. Germinated and kiln-dried barley for brewing."
+yarn,Yarn,실,cloth,1,2 Raw Wool + 1 Fresh Water,wool-raw,fresh-water,,,,,2,1,,,,,"NEW — textile-chain gap, owner 2026-10-30. Spun wool yarn for weaving and knitting."
+glass,Glass,유리,crafts,1,2 Sand + 1 Potash + 1 Lime,sand,potash,lime,,,,2,1,1,,,,"NEW — glass-chain gap, owner 2026-10-30. Raw glass melted from sand, potash and lime."
+cake,Cake,케이크,food,3,2 Bread + 1 Figs + 1 Cream,bread,figs,cream,,,,2,1,1,,,,"NEW — baking-chain gap, owner 2026-10-30. A raised cake of bread, fruit and cream, the banquet finish of the grain chain."

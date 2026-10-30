@@ -627,6 +627,8 @@ export function deriveWorld() {
     bulk: g.bulk ?? 1.0,
     perishable_pct_day: PERISH[g.id] ?? 0,
     category: g.category,
+    // 0280: 0 = raw material, 1-3 = crafted. The catalogue's own tier, carried into goods.tier.
+    tier: g.tier ?? 0,
     culture_mask: g.cultureMask ?? [],
     industry: g.industry === true,
     origin_regions: (g.origin ?? []).map((r) => {
