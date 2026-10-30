@@ -26,7 +26,7 @@ import type { TradeDone } from './tradeDone'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // *"for buying and selling i want both to be... similar mechanism. similar screen, buttons to press etc."* A card
-// pressed on the city's board (CityBoard.tsx) opens this, top to bottom, on both faces:
+// pressed on the Trade board (TradeBoard.tsx) opens this, top to bottom:
 //
 //   the price this side trades at, ▲▼ against a day ago, the good's kind
 //   Aboard · the units (Stepper, with Max)

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Icon, Nav, Row, Tray, type NavItem, type TrayDetent } from '../components/ui'
+import { Icon, Nav, Row, TapAway, Tray, type NavItem, type TrayDetent } from '../components/ui'
 import { NAV_CELLS, tabHref } from './navTabs'
 import { useT, translateMaybe, useLocale } from '../lib/i18n'
 
@@ -107,16 +107,8 @@ export function NavBar() {
     <div data-testid="app-nav" className="relative shrink-0">
       {openMembers && (
         <>
-          {/* Tap anywhere else to dismiss. It sits BELOW the tray and below the bar (z-10 against
-              z-20 and the tray's own z-40), so both stay pressable — a backdrop that swallowed the
-              bar's own taps would be the collapse rule broken by another route. */}
-          <button
-            type="button"
-            aria-label={t('shell.closeGroup', { name: word(openMembers.label) })}
-            onClick={closeGroup}
-            tabIndex={-1}
-            className="absolute inset-x-0 bottom-full z-10 h-screen cursor-default"
-          />
+          {/* Tap anywhere else to dismiss (TapAway: the one recipe, shared with the City page's rail). */}
+          <TapAway label={t('shell.closeGroup', { name: word(openMembers.label) })} onClick={closeGroup} />
           <div className="absolute inset-x-0 bottom-full z-20">
             <Tray
               data-testid="nav-group-panel"

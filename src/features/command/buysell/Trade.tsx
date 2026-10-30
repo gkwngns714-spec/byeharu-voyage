@@ -267,7 +267,7 @@ function MapFold({ open, onToggle, children }: { open: boolean; onToggle: () => 
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-md bg-surface-2 px-3 py-2 transition"
+        className="flex min-h-11 w-full items-center justify-between rounded-md bg-surface-2 px-3 py-2 transition"
         data-testid="trade-map-toggle"
       >
         <span className="text-t-label font-medium text-ink">{t('shell.tab_Map')}</span>

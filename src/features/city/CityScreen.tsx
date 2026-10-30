@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Icon, Nav, Note, Row, StatCell, Tray, type IconName, type NavItem } from '../../components/ui'
+import { Icon, Nav, Note, Row, StatCell, TapAway, Tray, type IconName, type NavItem } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { NAV_CELLS, tabHref } from '../../app/navTabs'
 import { alongsideAt, fleetPortCode, housePortCode } from '../../domain/fleet'
@@ -11,7 +11,7 @@ import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
 import type { SnapshotPort } from '../../lib/rpc'
 import { formatDucats, formatInt, gameSunInstantMs } from '../../lib/format'
-import { daylightAt, subsolarPoint } from '../../chart/sun'
+import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
 import { translateMaybe, useLocale, useT, type TKey } from '../../lib/i18n'
 import { CityFace, type CityBuilding } from './CityFace'
@@ -310,13 +310,7 @@ function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>
     <div className="relative shrink-0" data-testid="city-rail">
       {panel !== null && (
         <>
-          <button
-            type="button"
-            aria-label={t('common.close')}
-            onClick={() => setPanel(null)}
-            tabIndex={-1}
-            className="absolute inset-x-0 bottom-full z-10 h-screen cursor-default"
-          />
+          <TapAway label={t('common.close')} onClick={() => setPanel(null)} />
           <div className="absolute inset-x-0 bottom-full z-20">
             <Tray mode="inline" detent="half" onDetentChange={(next) => (next === 'closed' ? setPanel(null) : undefined)} title={panel === 'menu' ? t('city.menu') : t('city.levels')}>
               {panel === 'levels' ? (
