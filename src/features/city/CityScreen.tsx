@@ -266,15 +266,12 @@ function CityFrame({
                   <Figure value="—" size="body" tone="faint" />
                 </div>
               </div>
-              <p className="shrink-0 pt-1 text-t-caption text-ink-faint" data-testid="city-soon">
-                {t('city.soonLine')}
-              </p>
             </section>
           </div>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <h2 className="shrink-0 pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
-            <div className="grid min-h-0 flex-1 grid-cols-2 grid-rows-3 gap-1.5" data-testid="city-building-grid">
+            <div className="grid min-h-0 grid-cols-2 grid-rows-3 auto-rows-[72px] gap-1.5" data-testid="city-building-grid">
               {buildings.map((b) => (
                 <button
                   key={b.id}
@@ -288,6 +285,9 @@ function CityFrame({
                 </button>
               ))}
             </div>
+            <p className="mt-auto shrink-0 pt-2 text-t-caption text-ink-faint" data-testid="city-soon">
+              {t('city.soonLine')}
+            </p>
           </div>
         </section>
 
