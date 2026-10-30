@@ -35,21 +35,22 @@ import type { PathStop } from './ShipPathLayer'
 // is the whole reason `src/chart/` exists as a layer of its own (`docs/NO_SPAGHETTI.md` §2).
 //
 // ── A GESTURE SURFACE INSIDE A SCROLLING FORM, AND HOW THAT IS NOT A TRAP ──────────────────────
-// This chart sits above the Issue button, inside a form a phone scrolls. A chart that owned every
-// gesture there — `touch-none`, a preventDefault wheel — would be a wall: the player's finger
-// lands on it, drags down, and the page does not move. An action must never live where it cannot
-// be reached (docs/CORE_REUSE.md §1.5), which is exactly why this chart mounted no surface at all
-// until today. The answer is not a second gesture implementation and not staying inert; it is the
-// ONE surface hook in its embedded posture, `scroll: 'page-vertical'` (its header carries the
-// contract):
+// This chart sits inside a desk face a phone scrolls. A chart that owned every gesture there —
+// `touch-none`, a preventDefault wheel — would be a wall: the player's finger lands on it, drags
+// down, and the page does not move. An action must never live where it cannot be reached
+// (docs/CORE_REUSE.md §1.5), which is exactly why this chart once mounted no surface at all. The
+// answer is not a second gesture implementation and not staying inert; it is the ONE surface hook,
+// configured per use (the hook's header carries the contract):
 //
-//   · a one-finger drag DOWN the page scrolls the page — the browser itself runs the vertical
-//     axis (`touch-pan-y`), so the Issue button is always reachable with a thumb on the chart;
-//   · a one-finger drag ALONG the coast pans the chart; a pinch zooms it; a mouse drag pans both
-//     axes (a mouse never scrolled a page by dragging);
-//   · the WHEEL scrolls the page, untouched — no listener is attached — and zoom is the visible
-//     +/−/find column, the same 44 px controls the Map tab wears, measured into `keepOut` so no
-//     port name is ever printed underneath them.
+//   · the CITIES chart (Buy / Sell) takes `wheel-zoom`: a one-finger drag DOWN the page scrolls
+//     the page (`touch-pan-y`), so the desk below is always reachable with a thumb on the chart,
+//     while the WHEEL zooms — the reader's first instinct on a map big enough to deserve it, and
+//     the owner's row 2026-10-30 ("the map, i can't zoom in … in command"). A one-finger drag
+//     ALONG the coast pans the chart; a pinch zooms it; a mouse drag pans both axes (a mouse never
+//     scrolled a page by dragging).
+//   · the PLAN's chart takes `still` (below), which cedes every gesture to the page — `page-vertical`,
+//     no wheel listener, no +/− column — so it is a picture that never stands between a thumb and
+//     the Issue button.
 //
 // Rejected: a tap-to-activate mode (a modal state the player must discover, and one forgotten
 // deactivation from being the very trap above); an expand-to-fullscreen chart (a second screen to
@@ -203,8 +204,9 @@ export function SmallChart({
     [model, chartPorts, wholeWorld, still, frame],
   )
 
-  // No tap handler unless `onPort` asks for one (row 218, the header). `scroll: 'page-vertical'` is the
-  // embedded posture: the page keeps its wheel and its vertical thumb-scroll, the chart gets everything else.
+  // No tap handler unless `onPort` asks for one (row 218, the header). The posture follows `still`: the
+  // plan's chart (`still`) cedes everything to the page — `page-vertical` — and stays a picture, while the
+  // cities chart wheel-zooms like the Map tab (`wheel-zoom`) and still lets a thumb scroll the form past it.
   const onTap = useCallback(
     (at: Point, unitsPerPx: number, view: ViewBox) => {
       if (still || !onPort) return
@@ -216,7 +218,7 @@ export function SmallChart({
     },
     [still, onPort, chartPorts, model],
   )
-  const surface = useChartSurface(boxRef, frameBounds, !still && onPort ? onTap : undefined, { scroll: 'page-vertical' })
+  const surface = useChartSurface(boxRef, frameBounds, !still && onPort ? onTap : undefined, { scroll: still ? 'page-vertical' : 'wheel-zoom' })
   const box = surface.viewBox
 
   // ── THE CHART MOVES TO THE HARBOUR YOU CHOSE (the owner, 2026-08-23: "when i press corfu or

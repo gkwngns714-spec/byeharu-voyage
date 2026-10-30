@@ -39,30 +39,30 @@ import { useElementSize } from './useElementSize'
 // slop because this is where a tap is decided — what a second press means belongs to the screen
 // (MapScreen: the second press is what names a point of open water).
 //
-// ── ONE IMPLEMENTATION, TWO POSTURES (2026-08-23) ──────────────────────────────────────────────
-// This hook is the only gesture implementation the game has, and it now serves two kinds of
-// surface. A FULL-TAB chart (the Map tab) owns every gesture on its glass: `touch-none`, and a
-// non-passive wheel listener that `preventDefault`s so zooming never scrolls anything. An
-// EMBEDDED chart (`SmallChart`, inside the SAIL composer's scrolling form) must NOT own them all:
-// a chart that eats the wheel and every vertical drag, sitting above the Issue button, is a wall
-// the player cannot scroll past — a reach break (docs/CORE_REUSE.md §1.5), which is the reason
-// SmallChart was inert until today. `scroll: 'page-vertical'` is the whole difference, and it is
-// an OPTION on this hook rather than a second implementation precisely so the pan arithmetic, the
-// pinch, the chrome guard and the tap rule can never drift apart between the two surfaces.
+// ── ONE IMPLEMENTATION, THREE POSTURES (2026-08-23; `wheel-zoom` 2026-10-30) ────────────────────
+// This hook is the only gesture implementation the game has, and it serves two kinds of surface.
+// A FULL-TAB chart (the Map tab) owns every gesture on its glass: `touch-none`, and a non-passive
+// wheel listener that `preventDefault`s so zooming never scrolls anything. An EMBEDDED chart
+// (`SmallChart`, the command desk's map) must not own them all, and how much it cedes is the
+// `scroll` option — a chart that ate every vertical drag while it sat over a scrolling form would
+// be a wall the player cannot scroll past (docs/CORE_REUSE.md §1.5). The option is one hook rather
+// than two implementations precisely so the pan arithmetic, the pinch, the chrome guard and the
+// tap rule can never drift apart between the postures.
 //
-// What 'page-vertical' cedes, and to whom (§7C: every branch here chooses between two ACCEPTABLE
-// outcomes — both "the chart moves" and "the page scrolls" are products, on the surface each is
-// asked for on):
-//   · the WHEEL is the page's. No listener is attached at all, so a mouse wheel over the chart
-//     scrolls the form exactly as it does over the text beside it. Zoom is the visible +/− column
-//     (`ViewControls`), which the full tab has anyway.
-//   · a one-finger TOUCH drag's VERTICAL axis is the page's. The paired `touchClass` is
-//     `touch-pan-y`, so the browser itself runs vertical scrolling (and cancels our pointer when
-//     it claims a drag); our pan applies the HORIZONTAL component only, so the two authorities
-//     never fight over one gesture — a finger going down the page scrolls the page, a finger
-//     going along the coast pans the chart.
-//   · a PINCH is still the chart's (`pan-y` leaves multi-touch to us), and a MOUSE drag still
-//     pans both axes — a mouse drag never scrolled a page, so there is nothing to cede.
+// What the embedded postures cede, and to whom (§7C: every branch here chooses between two
+// ACCEPTABLE outcomes — both "the chart moves" and "the page scrolls" are products):
+//   · 'wheel-zoom' (the command desk's map): the WHEEL is the chart's — a mouse wheel zooms, the
+//     reader's first instinct on a map big enough to deserve it. A one-finger TOUCH drag's
+//     VERTICAL axis is still the page's (`touch-pan-y`), so a thumb scrolling the form is never
+//     trapped on the map. A pinch zooms; a mouse drag pans both axes.
+//   · 'page-vertical' (a small embedded chart): the WHEEL is the page's. No listener is attached
+//     at all, so a mouse wheel over the chart scrolls the form exactly as it does over the text
+//     beside it, and zoom is the visible +/− column (`ViewControls`). A one-finger TOUCH drag's
+//     VERTICAL axis is the page's (`touch-pan-y`), so the browser itself runs vertical scrolling;
+//     our pan applies the HORIZONTAL component only, so the two authorities never fight over one
+//     gesture — a finger down the page scrolls the page, a finger along the coast pans the chart.
+//   · a PINCH is still the chart's (`pan-y` leaves multi-touch to us), and a MOUSE drag still pans
+//     both axes — a mouse drag never scrolled a page, so there is nothing to cede.
 //
 // ── THE VIEW IS DERIVED, NOT SYNCHRONISED ──────────────────────────────────────────────────────
 // State holds only the view the player DELIBERATELY moved to. Everything else — the opening frame,
@@ -205,12 +205,16 @@ export interface ChartSurfaceOptions {
   /**
    * Who owns the gestures a scrolling page also wants — see the header.
    *   'chart'          (default) a full-tab surface: wheel zooms (non-passive), every drag pans.
-   *   'page-vertical'  embedded in a vertically scrolling form: the wheel and a one-finger touch
-   *                    drag's vertical axis belong to the PAGE; zoom is the caller's `ViewControls`.
+   *   'wheel-zoom'     embedded in a scrolling form on a MOUSE: the wheel ZOOMS (the reader's first
+   *                    instinct, and the command desk's map is big enough to deserve it), while a
+   *                    one-finger TOUCH drag's vertical axis stays the page's — a thumb keeps
+   *                    scrolling the form. A mouse drag pans both axes; a pinch zooms.
+   *   'page-vertical'  embedded in a small scrolling form: the wheel AND a one-finger touch drag's
+   *                    vertical axis belong to the PAGE; zoom is the caller's `ViewControls`.
    * Whichever is chosen, put the returned `touchClass` on the surface element — the posture and
    * its `touch-action` are one fact, stated here once, never hand-paired at a call site.
    */
-  readonly scroll?: 'chart' | 'page-vertical'
+  readonly scroll?: 'chart' | 'wheel-zoom' | 'page-vertical'
 }
 
 export interface ChartSurface {
@@ -287,9 +291,13 @@ export function useChartSurface(
   onTap?: (at: Point, unitsPerPx: number, view: ViewBox, presses: number) => void,
   options?: ChartSurfaceOptions,
 ): ChartSurface {
-  /** True when the surrounding page owns the wheel and the vertical axis of a one-finger touch
-   *  drag. A boolean rather than the option string below, so every consumer reads one spelling. */
-  const pageOwnsVertical = options?.scroll === 'page-vertical'
+  const owns = options?.scroll ?? 'chart'
+  /** The page owns the wheel: a mouse wheel scrolls the form, never zooms (page-vertical only). */
+  const pageOwnsWheel = owns === 'page-vertical'
+  /** The page owns the vertical axis of a one-finger TOUCH drag — the browser scrolls the form
+   *  (`touch-pan-y`) — on every posture but the full `chart`. A MOUSE drag pans both axes on every
+   *  posture (a mouse never scrolled a page by dragging). */
+  const pageOwnsVertical = owns !== 'chart'
   // ── measure ───────────────────────────────────────────────────────────────────────────────────
   // ./useElementSize.ts, because the small chart needs the same two numbers and must not mount this
   // hook to get them (its non-passive wheel listener would eat the page scroll under a chart that
@@ -414,7 +422,7 @@ export function useChartSurface(
   // stands still, with the Issue button below the fold. No listener, so the wheel behaves over the
   // chart exactly as it does over the paragraph above it, and zoom is the visible +/− column.
   useEffect(() => {
-    if (pageOwnsVertical) return
+    if (pageOwnsWheel) return
     const element = ref.current
     if (!element) return
     const onWheel = (event: WheelEvent) => {
@@ -432,7 +440,7 @@ export function useChartSurface(
     }
     element.addEventListener('wheel', onWheel, { passive: false })
     return () => element.removeEventListener('wheel', onWheel)
-  }, [ref, glideZoom, pageOwnsVertical])
+  }, [ref, glideZoom, pageOwnsWheel])
 
   // ── pointers: one finger pans, two pinch ──────────────────────────────────────────────────────
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
