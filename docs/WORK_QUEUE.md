@@ -1,5 +1,7 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-10-30 **Command Trade: one Buy/Sell face, no map** (client-only, no migration; PR #399 OPEN, branch ui-trade-merge, NOT merged): the command desk's Buy and Sell faces merge into one Trade face — when the fleet is docked, the city's goods in a single list, each card carrying both prices (ask + bid) and a Buy + a Sell button; the mini-map and cross-city picks are gone (owner: "the map on command - buy and sell - is quiet the bad feeling … remove the map, just have combined buy and sell tab").
+
 - 2026-10-30 **command mini-map zooms on the wheel** (client-only, no migration): the Buy/Sell cities map now wheel-zooms like the Map tab (a new `wheel-zoom` posture in `useChartSurface`), while a thumb still scrolls the desk past it; the plan's map stays a still picture (`page-vertical`). Owner: "the map, i can't zoom in … in command".
 
 - 2026-10-30 **UI: no sideways scrolling, LIVE** (#396, merged, client-only, no migration): the four horizontal scrollers — Segmented face bars, ChipRow (fleet strip / Markets filters / plan builder), the city chips, and the trade-pick strip — now wrap onto a second line instead of scrolling (owner: "i don't like things needed scrolling sideways"). Client auto-publishes on merge.
