@@ -648,8 +648,13 @@ declare
 begin
   begin
     update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled';
-    update public.port_treasury set reserve = 0 where port_id = (select id from public.ports where code = 'LIS');
-    perform public.treasury_post((select id from public.ports where code = 'LIS'), 'PROBE_0279', 10000000, null, null, true);
+    -- 0279: HERMETIC FUNDING. Zero the rolled purse AND the reserve, then move the append-only
+    -- flows (inserted, never deleted) up or down so the insurer's surplus is EXACTLY 10,000,000 —
+    -- live prod's ducats/flows must never reach the payout or its assert.
+    update public.port_treasury set reserve = 0, ducats = 0
+     where port_id = (select id from public.ports where code = 'LIS');
+    perform public.treasury_post((select id from public.ports where code = 'LIS'), 'PROBE_0279',
+      10000000 - public.city_surplus((select id from public.ports where code = 'LIS')), null, null, true);
     h := pg_temp.house_0279(c_uid, false, true, true);
     v_f := (h->>'fleet')::uuid; v_p := (h->>'player')::uuid; v_voy := (h->>'voyage')::uuid;
     v_exp := pg_temp.expected_home_0279(v_voy, 1);
@@ -814,13 +819,16 @@ begin
 end $$;
 
 do $$ begin end $$;
--- (P4) THE CITY DONATES THE SHORTFALL. The purse emptied after she sailed, a dear yard (the knob
--- raised inside this block only), the city she is forced into lit and funded: the gift is the quote
--- less the purse, capped by that city's surplus, on the DONATION ledger and the treasury alike; the
--- purse ends at the insurance plus the gift, and the damaged hulls are NOT repaired for her. The
--- city is the probe's own computed closest city (on this leg she is past half way, so it is the
--- DESTINATION — a fact, not an assumption), and the expected gift is derived from that city's
--- surplus as it stood before the day settled, less the payout if the insurer is the same city.
+-- (P4) THE CITY DONATES THE SHORTFALL. The purse emptied after she sailed, a dear yard (the rate
+-- raised inside this block only), the city she is forced into lit and funded to EXACTLY 10,000,000
+-- (its rolled purse and reserve zeroed, its unrolled flows topped up), with the yard's other knobs
+-- pinned (running_cost_level 0.2, the home's dev_industry 0) so the quote is the same on a fresh
+-- world and on live prod: the gift is the quote less the purse, capped by that city's surplus, on the
+-- DONATION ledger and the treasury alike; the purse ends at the insurance plus the gift, and the
+-- damaged hulls are NOT repaired for her. The city is the probe's own computed closest city (on this
+-- leg she is past half way, so it is the DESTINATION — a fact, not an assumption), and the expected
+-- gift is derived from that city's funded surplus as it stood before the day settled, less the
+-- payout if the insurer is the same city.
 do $$
 declare
   h jsonb; v_f uuid; v_p uuid; v_voy uuid; v_home uuid; v_exp uuid;
@@ -833,14 +841,24 @@ begin
     h := pg_temp.house_0279('00000000-0279-4000-8000-000000000005'::uuid, false, true, true);
     v_f := (h->>'fleet')::uuid; v_p := (h->>'player')::uuid; v_voy := (h->>'voyage')::uuid;
     v_exp := pg_temp.expected_home_0279(v_voy, 1);
-    update public.port_treasury set reserve = 0 where port_id in (v_lis, v_exp);
-    perform public.treasury_post(v_lis, 'PROBE_0279', 2000, null, null, true);   -- enough for the 1,800 owed
+    -- 0279: HERMETIC FUNDING. Zero each involved city's rolled purse AND reserve, then move the
+    -- append-only flows (inserted, never deleted) so each surplus is EXACTLY the target: the insurer
+    -- at 2,000 (enough for the 1,800 owed) and the home at 10,000,000. Live prod's ducats/flows must
+    -- never reach the donation, its cap or the receipt.
+    update public.port_treasury set reserve = 0, ducats = 0 where port_id in (v_lis, v_exp);
+    perform public.treasury_post(v_lis, 'PROBE_0279', 2000 - public.city_surplus(v_lis), null, null, true);   -- enough for the 1,800 owed
     if v_exp <> v_lis then
-      perform public.treasury_post(v_exp, 'PROBE_0279', 10000000, null, null, true);
+      perform public.treasury_post(v_exp, 'PROBE_0279', 10000000 - public.city_surplus(v_exp), null, null, true);
     end if;
     perform public.credit(v_p, 'PROBE_0279', -(select ducats from public.players where id = v_p));
     update public.ships set water_t = 0, food_t = 0, durability = 1 where fleet_id = v_f;
+    -- 0279: PIN every knob public.fleet_repair_cost reads, so the yard's quote (hence the shortfall)
+    -- is identical on a fresh CI world and on live prod: the raised rate, 0210's seed 0.2 for
+    -- running_cost_level, and the home port's dev_industry at 0. With ~399 hull points the quote is
+    -- ~79,800,000, far above the funded 10,000,000 — the cap binds deterministically.
     update public.world_config set value = '1000000'::jsonb where key = 'repair_rate_per_point';
+    update public.world_config set value = '0.2'::jsonb where key = 'running_cost_level';   -- 0210's seed
+    update public.ports set dev_industry = 0 where id = v_exp;
     v_surplus0 := public.city_surplus(v_exp);
     v_purse0 := (select ducats from public.players where id = v_p);
     perform voyage.settle(v_f, voyage.day_ends_at(v_voy, 1) + interval '1 second');
@@ -861,11 +879,18 @@ begin
     v_paid  := coalesce((v_out->'payload'->'insurance'->>'paid')::bigint, 0);
     v_short := (v_out->'payload'->'repair'->>'short')::bigint;
     v_want  := least(v_short, greatest(0, v_surplus0 - case when v_home = v_lis then v_paid else 0 end));
+    v_out := v_out || jsonb_build_object('short', v_short, 'want', v_want, 'surplus0', v_surplus0);
     if v_paid <> 1800 then
       raise exception '0279 self-assert FAIL: the insurance did not pay 1,800 of 2,000 first: %', v_out->'payload'->'insurance';
     end if;
     if v_short <= 0 or v_want <= 0 then
       raise exception '0279 self-assert FAIL: no shortfall or no city surplus to meet it: %', v_out;
+    end if;
+    if v_surplus0 <> 10000000 then
+      raise exception '0279 self-assert FAIL: the funded surplus reads %, not the probe''s 10,000,000 — the probe is not hermetic', v_surplus0;
+    end if;
+    if v_want <> v_surplus0 then
+      raise exception '0279 self-assert FAIL: the cap did not bind (shortfall %, funded surplus %)', v_short, v_surplus0;
     end if;
     if (v_out->'payload'->'repair'->>'donated')::bigint <> v_want
        or (v_out->>'ledger_donation')::bigint <> v_want
@@ -937,8 +962,13 @@ declare
 begin
   begin
     update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled';
-    update public.port_treasury set reserve = 0 where port_id = (select id from public.ports where code = 'LIS');
-    perform public.treasury_post((select id from public.ports where code = 'LIS'), 'PROBE_0279', 10000000, null, null, true);
+    -- 0279: HERMETIC FUNDING. Zero the rolled purse AND the reserve, then move the append-only
+    -- flows (inserted, never deleted) up or down so the insurer's surplus is EXACTLY 10,000,000 —
+    -- live prod's ducats/flows must never reach the payout or its assert.
+    update public.port_treasury set reserve = 0, ducats = 0
+     where port_id = (select id from public.ports where code = 'LIS');
+    perform public.treasury_post((select id from public.ports where code = 'LIS'), 'PROBE_0279',
+      10000000 - public.city_surplus((select id from public.ports where code = 'LIS')), null, null, true);
     h := pg_temp.house_0279('00000000-0279-4000-8000-000000000008'::uuid, true, false, true);
     v_f := (h->>'fleet')::uuid; v_p := (h->>'player')::uuid; v_voy := (h->>'voyage')::uuid;
     update public.ships set water_t = 0, food_t = 0 where fleet_id = v_f;
@@ -1050,7 +1080,14 @@ begin
   if (p1->'second_settle')::int <> 0 then
     raise exception '0279 self-assert FAIL: a settled forced home settled again';
   end if;
-  if (p4->'payload'->'repair'->>'donated')::bigint <> 10000000 or (p5->>'min_hull')::numeric <> 1 then
+  -- 0279: compared against the probe's OWN stored figures (want / surplus0), never a magic number:
+  -- the city donated exactly the funded surplus it was given (the capped shortfall), and the hull
+  -- that was at 1 survived. A fresh CI world and live prod must answer the same.
+  if (p4->>'want') is null
+     or (p4->'payload'->'repair'->>'donated')::bigint is distinct from (p4->>'want')::bigint
+     or (p4->>'want')::bigint is distinct from (p4->>'surplus0')::bigint
+     or (p4->>'want')::bigint <= 0
+     or (p5->>'min_hull')::numeric <> 1 then
     raise exception '0279 self-assert FAIL: the donation or the never-to-0 rule did not hold';
   end if;
   raise notice '0279 self-assert ok: A DRY SHIP IS FORCED HOME. voyage.settle and cmd.do_repair reverse to their pre-images hunk by hunk, ACL/volatility/definer/config unmoved, every other body in the four schemas unmoved by md5, the registry and the knobs unmoved; the three new functions are server-only; FORCED_HOME is ordinal 16, never rolled, not in the sea mix, and its report line names the city. Probes (own rows, rolled back): the chain end to end (the closest city re-stated from public.sea_reaches, the hold emptied through fleet_unload, 1800 of 2000 paid, the hulls hurt but every one afloat, DOCKED, ABORTED, one event, no second settle; the pre-image body runs none of it); a sound larder is not dry; no policy, no payout; the city''s gift is the capped shortfall on the DONATION ledger and treasury and does not repair the hulls; a hull at 1 is never taken to 0 and an existing wreck is left to the tow; a merchant gets the same chain insured without asking; a passage with no roadstead is not forced home; the yard''s price is one line. Rolled back.';
