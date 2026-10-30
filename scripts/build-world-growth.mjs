@@ -103,6 +103,7 @@ const hasColumn = async (table, column) => (await db.query(
 )).rows.length > 0
 const hasOrigin = await hasColumn('goods', 'origin_regions')   // 0062
 const hasIndustry = await hasColumn('goods', 'industry')       // 0064
+const hasTier = await hasColumn('goods', 'tier')               // 0280
 const hasDemand = await hasColumn('port_goods', 'demand')      // 0066
 const hasFurnish = (await db.query(
   `select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'furnish_harbours'`,
@@ -227,6 +228,7 @@ const changedGoods = want.goods.filter((g) => {
     || (hasOrigin && (JSON.stringify(pgArr(b.origin_regions)) !== JSON.stringify(g.origin_regions)
                       || JSON.stringify(pgArr(b.entrepot_ports)) !== JSON.stringify(g.entrepot_ports)))
     || (hasIndustry && Boolean(b.industry) !== Boolean(g.industry))
+    || (hasTier && Number(b.tier) !== Number(g.tier))
 })
 
 
@@ -317,9 +319,9 @@ if (newGoods.length) {
   // 0062 gave every good its geography and 0064 gave it its industry flag; a growth that inserted
   // a good without them would land it with an empty origin, which world-guard reads as drift and
   // 0062's own law reads as a good buyable nowhere.
-  w('insert into public.goods (code, name, base_value, bulk, perishable_pct_day, category, culture_mask, origin_regions, entrepot_ports, industry) values')
+  w(`insert into public.goods (code, name, base_value, bulk, perishable_pct_day, category, culture_mask, origin_regions, entrepot_ports, industry${hasTier ? ', tier' : ''}) values`)
   w(newGoods.map((g) =>
-    `  (${q(g.code)}, ${q(g.name)}, ${g.base_value.toFixed(2)}, ${g.bulk.toFixed(3)}, ${g.perishable_pct_day.toFixed(3)}, ${q(g.category)}, '{${g.culture_mask.join(',')}}', '{${g.origin_regions.join(',')}}', '{${g.entrepot_ports.join(',')}}', ${g.industry ? 'true' : 'false'})`,
+    `  (${q(g.code)}, ${q(g.name)}, ${g.base_value.toFixed(2)}, ${g.bulk.toFixed(3)}, ${g.perishable_pct_day.toFixed(3)}, ${q(g.category)}, '{${g.culture_mask.join(',')}}', '{${g.origin_regions.join(',')}}', '{${g.entrepot_ports.join(',')}}', ${g.industry ? 'true' : 'false'}${hasTier ? `, ${Number(g.tier)}` : ''})`,
   ).join(',\n') + '\non conflict (code) do nothing;\n')
 }
 if (changedGoods.length) {
@@ -328,15 +330,16 @@ if (changedGoods.length) {
    set name = v.name, base_value = v.base_value, bulk = v.bulk,
        perishable_pct_day = v.perish, category = v.category, culture_mask = v.mask::text[]${hasOrigin ? `,
        origin_regions = v.origin::text[], entrepot_ports = v.entrepot::text[]` : ''}${hasIndustry ? `,
-       industry = v.industry` : ''}
+       industry = v.industry` : ''}${hasTier ? `,
+       tier = v.tier` : ''}
   from (values`)
   w(changedGoods.map((g) =>
-    `  (${q(g.code)}, ${q(g.name)}, ${g.base_value.toFixed(2)}::numeric, ${g.bulk.toFixed(3)}::numeric, ${g.perishable_pct_day.toFixed(3)}::numeric, ${q(g.category)}, ${q('{' + g.culture_mask.join(',') + '}')}, ${q('{' + g.origin_regions.join(',') + '}')}, ${q('{' + g.entrepot_ports.join(',') + '}')}, ${g.industry ? 'true' : 'false'})`,
+    `  (${q(g.code)}, ${q(g.name)}, ${g.base_value.toFixed(2)}::numeric, ${g.bulk.toFixed(3)}::numeric, ${g.perishable_pct_day.toFixed(3)}::numeric, ${q(g.category)}, ${q('{' + g.culture_mask.join(',') + '}')}, ${q('{' + g.origin_regions.join(',') + '}')}, ${q('{' + g.entrepot_ports.join(',') + '}')}, ${g.industry ? 'true' : 'false'}${hasTier ? `, ${Number(g.tier)}` : ''})`,
   ).join(',\n'))
-  w(`  ) as v(code, name, base_value, bulk, perish, category, mask, origin, entrepot, industry)
+  w(`  ) as v(code, name, base_value, bulk, perish, category, mask, origin, entrepot, industry${hasTier ? ', tier' : ''})
  where g.code = v.code
-   and (g.name, g.base_value, g.bulk, g.perishable_pct_day, g.category, g.culture_mask${hasOrigin ? ', g.origin_regions, g.entrepot_ports' : ''}${hasIndustry ? ', g.industry' : ''})
-       is distinct from (v.name, v.base_value, v.bulk, v.perish, v.category, v.mask::text[]${hasOrigin ? ', v.origin::text[], v.entrepot::text[]' : ''}${hasIndustry ? ', v.industry' : ''});
+   and (g.name, g.base_value, g.bulk, g.perishable_pct_day, g.category, g.culture_mask${hasOrigin ? ', g.origin_regions, g.entrepot_ports' : ''}${hasIndustry ? ', g.industry' : ''}${hasTier ? ', g.tier' : ''})
+       is distinct from (v.name, v.base_value, v.bulk, v.perish, v.category, v.mask::text[]${hasOrigin ? ', v.origin::text[], v.entrepot::text[]' : ''}${hasIndustry ? ', v.industry' : ''}${hasTier ? ', v.tier' : ''});
 `)
 }
 

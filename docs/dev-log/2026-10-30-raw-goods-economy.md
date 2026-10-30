@@ -385,6 +385,8 @@ own self-assert proves this reverse restores the pre-image (target 4).
 * `scripts/lib/world-derive.mjs` — carries `tier` into the derived world.
 * `scripts/db/world-guard.mjs` — checks `goods.tier` against `data/goods.json` (tolerates a chain
   before 0280).
+* `scripts/build-world-growth.mjs` — carries `tier` into a future growth migration, so a new
+  crafted good is not inserted at the default tier 0.
 * `data/goods.json` — a `tier` on every good; the 64 new goods.
 * `docs/design/raw-materials-economy/` — the finished design source (CSVs + README), with the 10
   single-input recipes' `fresh-water` fix recorded in `RECIPES.csv` and `README.md`.
