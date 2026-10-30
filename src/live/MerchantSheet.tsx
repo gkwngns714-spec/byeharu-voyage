@@ -202,8 +202,8 @@ function MerchantBody({
             because a lap closes on arrival home BEFORE the home sale, so the first lap is a
             purchase with no sale and reads as a huge loss (RouteEarnings.lap carries the whole
             derivation). While that is the case the tile says what is true. `laps_done` counts
-            CLOSED laps — 0275 (docs/WEEKLY_ROLLOVER.md): of THIS week, the weekly reset's own
-            counter (the all-time figure rides `laps_done_all`). */}
+            CLOSED laps — 0278 (the month): every closed lap ever, all-time; money and laps never
+            reset. */}
         <Tile
           name={t('port.aLap')}
           meta={e && e.lap !== null ? t('port.overLaps', { n: e.lap_basis }) : undefined}

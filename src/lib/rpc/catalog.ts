@@ -326,15 +326,15 @@ export const RPCS = {
   // dry run take no fleet and no player id: the caller's company buys, only while a fleet of hers
   // lies docked at that harbour (E_NOT_DOCKED) — the read's `you.docked` is the same test.
   worldTownHall: { schema: 'world', fn: 'town_hall', args: [{ name: 'p_port', type: 'uuid' }] },
-  // 0275 (docs/WEEKLY_ROLLOVER.md §4) — THE CITY'S HISTORY: the weeks of giving, the current one
-  // first, up to 8 past. A READ at a tap (the city's sixth tab), never on the beat. The week,
-  // the dates and the totals are served; the client computes none of them.
+  // 0278 (the month) — THE CITY'S HISTORY: the months of giving, the current one first, up to 8
+  // past. A READ at a tap (the city's sixth tab), never on the beat. The month, the dates and the
+  // totals are served; the client computes none of them.
   worldCityHistory: {
     schema: 'world',
     fn: 'city_history',
     args: [
       { name: 'p_port', type: 'uuid' },
-      { name: 'p_weeks', type: 'int' },
+      { name: 'p_months', type: 'int' },
     ],
   },
   cmdPreviewInvest: {

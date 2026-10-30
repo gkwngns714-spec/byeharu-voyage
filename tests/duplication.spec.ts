@@ -432,34 +432,28 @@ test('a migration that re-cuts an existing function declares the supersede in it
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE WEEK IS ONE AUTHORITY — 0275 (docs/WEEKLY_ROLLOVER.md §3)
+// THE MONTH IS ONE AUTHORITY — 0278
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The current week is `world.week_of` / `world.week_start` (0275, the pair that lives next to
-// `world.game_day`), and the only place the week's arithmetic is spelt. The client never computes
-// a week: it prints the week, starts and ends SERVED. `604800` (a real week in seconds),
-// `getDay(` and `startOfWeek` are the three shapes a second clock would take, so none may appear
-// in src/ or in a migration later than the one that defined the week. 0275 itself is the authority
-// and spells 604800 — the rule reads only the files AFTER it.
+// The current month is `world.month_of` / `world.month_start` (0278, the pair that lives next to
+// `world.game_day`), and the only place the month's arithmetic is spelt. The client never computes
+// a month: it prints the month, starts and ends SERVED. `getMonth(`, `getUTCMonth(` and a helper
+// named `monthOf(` or `monthStart(` are the shapes a second month clock would take, so none may
+// appear in src/. (The i18n KEY `town.monthOf` is a string, not a call, and is allowed.)
 
-test('no second week clock: 604800, getDay( and startOfWeek never appear in src/ or after 0275', () => {
+test('no second month clock: getMonth(, getUTCMonth( and monthOf(/monthStart( never appear in src/', () => {
   const offenders: string[] = []
-  for (const m of chain().filter((x) => x.short > '0275')) {
-    if (/604800|getDay\(|startOfWeek/.test(m.sql)) {
-      offenders.push(`${m.file}: a second week arithmetic`)
-    }
-  }
   for (const f of sourceFiles(SRC)) {
-    if (/604800|getDay\(|startOfWeek/.test(read(f))) {
-      offenders.push(`${rel(f)}: a second week arithmetic`)
+    if (/getMonth\(|getUTCMonth\(|\bmonthOf\s*\(|\bmonthStart\s*\(/.test(read(f))) {
+      offenders.push(`${rel(f)}: a second month arithmetic`)
     }
   }
   expect(
     offenders,
-    `A second reading of "which week is it" appeared. The one authority is world.week_of / ` +
-      `world.week_start (20260818000275_the_week_is_a_key.sql, docs/WEEKLY_ROLLOVER.md §3); the ` +
-      `client prints the week, starts and ends SERVED, and a week arithmetic in a later migration ` +
-      `is a second clock that will drift the day the knob moves.\n` + offenders.join('\n'),
+    `A second reading of "which month is it" appeared. The one authority is world.month_of / ` +
+      `world.month_start (20260818000278_the_month_is_a_key.sql); the client prints the month, ` +
+      `starts and ends SERVED, and a month arithmetic of its own is a second clock that will ` +
+      `drift the day the knob moves.\n` + offenders.join('\n'),
   ).toEqual([])
 })
 

@@ -159,23 +159,21 @@ function ShipList({ ships, onOpen }: { ships: readonly FleetShip[]; onOpen: (id:
 
 /** HER ROUTE'S TRADING — the route's name, a "So far" press, the lap under way, and one pill per
  *  closed lap (newest first, the same seven world.fleet_trades serves, so pill i is lap i there).
- *  The nets are the routes book's own (`StandingRoute.laps`), not a sum made here. 0275
- *  (docs/WEEKLY_ROLLOVER.md §5 W4): the week counters ride the same served book (the route's
- *  `earnings`), printed as served — the week itself is never computed in a face. */
+ *  The nets are the routes book's own (`StandingRoute.laps`), not a sum made here. 0278 (the month):
+ *  the all-time counters ride the same served book (the route's `earnings`), printed as served — the
+ *  month itself is never computed in a face. */
 function RouteLaps({
   name,
   laps,
   underWay,
-  week,
-  lastWeek,
+  total,
   onOpen,
 }: {
   name: string
   laps: readonly number[]
   underWay: boolean
-  /** 0275: this week's laps and net (the server's), and the week before's — absent while none. */
-  week?: { laps: number; net: number } | null
-  lastWeek?: { laps: number; net: number } | null
+  /** 0278: every month of the lap book, summed (the server's) — absent while none. */
+  total?: { laps: number; net: number } | null
   onOpen: (pick: TradePick) => void
 }) {
   const t = useT()
@@ -185,14 +183,9 @@ function RouteLaps({
       <div className="flex items-baseline justify-between gap-2 pb-1.5">
         <span className="min-w-0 break-words text-t-caption uppercase tracking-wider text-ink-faint">{t('map.tradingOf', { name })}</span>
       </div>
-      {week && (
-        <div className="pb-1 text-t-caption tabular-nums text-ink-faint" data-testid="tray-week-laps">
-          <span>{t('routes.weekLaps', { n: week.laps, net: formatDucatsDelta(week.net) })}</span>
-          {lastWeek && (
-            <span className="block">
-              {t('routes.lastWeekLaps', { n: lastWeek.laps, net: formatDucatsDelta(lastWeek.net) })}
-            </span>
-          )}
+      {total && (
+        <div className="pb-1 text-t-caption tabular-nums text-ink-faint" data-testid="tray-month-laps">
+          <span>{t('routes.monthLaps', { n: total.laps, net: formatDucatsDelta(total.net) })}</span>
         </div>
       )}
       <div className="flex flex-wrap gap-1.5">
@@ -362,8 +355,7 @@ export function VoyageTray({
           name={route.name}
           laps={route.laps.slice(0, 7).map((l) => l.net)}
           underWay={route.lap !== null}
-          week={route.earnings?.week}
-          lastWeek={route.earnings?.last_week}
+          total={route.earnings?.total}
           onOpen={openTrades}
         />
       )}
