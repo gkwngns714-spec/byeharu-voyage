@@ -47,6 +47,7 @@ import { CityScene } from './CityScene'
 
 export function CityScreen() {
   const t = useT()
+  const locale = useLocale()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const phase = useWorld((s) => s.phase)
@@ -88,18 +89,40 @@ export function CityScreen() {
     </ShellStateContext.Provider>
   )
 
+  // A page that cannot draw its city still keeps its RAIL: since this route is the app's landing
+  // screen, a failure or a fleet with no harbour must never be a dead end — map, stats, the menu and
+  // the way back to the desk stay one press away.
   if (phase === 'failed') {
     const fatal = useWorld.getState().fatal
     return gate(
-      <div className="p-gutter">
-        <Note tone="danger" code={fatal?.code} figures={fatal?.figures}>
-          {fatal?.sentence ?? t('city.failed')}
-        </Note>
-      </div>,
+      <>
+        <div className="flex-1 p-gutter">
+          <Note tone="danger" code={fatal?.code} figures={fatal?.figures}>
+            {fatal?.sentence ?? t('city.failed')}
+          </Note>
+        </div>
+        <CityRail locale={locale} onNavigate={navigate} />
+      </>,
     )
   }
-  if (phase !== 'ready') return gate(<Note tone="neutral" className="p-gutter">{t('city.loading')}</Note>)
-  if (!port || port.kind !== 'HARBOUR') return gate(<Note tone="neutral" className="p-gutter">{t('city.noCity')}</Note>)
+  if (phase !== 'ready')
+    return gate(
+      <>
+        <div className="flex-1 p-gutter">
+          <Note tone="neutral">{t('city.loading')}</Note>
+        </div>
+        <CityRail locale={locale} onNavigate={navigate} />
+      </>,
+    )
+  if (!port || port.kind !== 'HARBOUR')
+    return gate(
+      <>
+        <div className="flex-1 p-gutter">
+          <Note tone="neutral">{t('city.noCity')}</Note>
+        </div>
+        <CityRail locale={locale} onNavigate={navigate} />
+      </>,
+    )
 
   return gate(<CityBody port={port} draftFleetId={draftFleetId} onNavigate={navigate} />)
 }
@@ -206,7 +229,7 @@ function CityFrame({
       <main className="flex min-h-0 flex-1 flex-col gap-3 px-gutter pb-3">
         {/* CITY INFO — the drawing, with its population dots. */}
         <div className="min-h-[110px] flex-[1.15] overflow-hidden" data-testid="city-info-image">
-          <CityScene sizeTier={port.size_tier} night={night} />
+          <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />
         </div>
 
         {/* SUMMARY — four figures. Gold is the city's purse (served); the other three are the
@@ -275,11 +298,13 @@ function CityFrame({
   )
 }
 
-/** THE BOTTOM RAIL — HQ · Levels · map · stats · menu. A group reveals its members in a tray and
- *  moves no cell (the rail's one law, components/ui/Nav.tsx). */
+/** THE BOTTOM RAIL — HQ · Command · map · stats · menu. A group reveals its members in a tray and
+ *  moves no cell (the rail's one law, components/ui/Nav.tsx). The Command cell is the way back to
+ *  the desk now that the city is the app's landing screen; it borrows the tab's own word, so the
+ *  city cannot invent a second name for the desk. */
 function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>; onNavigate: ReturnType<typeof useNavigate> }) {
   const t = useT()
-  const [panel, setPanel] = useState<'menu' | 'levels' | null>(null)
+  const [panel, setPanel] = useState<'menu' | null>(null)
 
   // The cabin's members come from the ONE tab table (app/navTabs.ts) — never a second list.
   const cabin = NAV_CELLS.find((c) => c.kind === 'group')
@@ -296,11 +321,8 @@ function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>
   }, [panel])
 
   const items: NavItem[] = [
-    { id: 'hq', label: t('city.hq'), icon: 'compass', href: tabHref('/city') },
-    // Levels is a placeholder, but it is a DESTINATION-shaped cell, not a group: it carries an href
-    // (this page) so the rail does not turn its glyph as if it revealed a tray, and its press
-    // opens the "next slice" note (below).
-    { id: 'levels', label: t('city.levels'), icon: 'wreath', href: tabHref('/city') },
+    { id: 'hq', label: t('city.hq'), icon: 'wreath', href: tabHref('/city') },
+    { id: 'command', label: word('Command'), icon: 'compass', href: tabHref('/command') },
     { id: '/map', label: t('city.map'), icon: 'chart', href: tabHref('/map') },
     { id: '/stats', label: t('city.stats'), icon: 'stats', href: tabHref('/stats') },
     { id: 'menu', label: t('city.menu'), icon: 'chevron' },
@@ -312,10 +334,8 @@ function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>
         <>
           <TapAway label={t('common.close')} onClick={() => setPanel(null)} />
           <div className="absolute inset-x-0 bottom-full z-20">
-            <Tray mode="inline" detent="half" onDetentChange={(next) => (next === 'closed' ? setPanel(null) : undefined)} title={panel === 'menu' ? t('city.menu') : t('city.levels')}>
-              {panel === 'levels' ? (
-                <Note tone="neutral" data-testid="city-levels-soon">{t('city.levelsSoon')}</Note>
-              ) : members.length === 0 ? null : (
+            <Tray mode="inline" detent="half" onDetentChange={(next) => (next === 'closed' ? setPanel(null) : undefined)} title={t('city.menu')}>
+              {members.length === 0 ? null : (
                 members.map((m, i) => (
                   <Row
                     key={m.to}
@@ -340,14 +360,10 @@ function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>
         items={items}
         current="hq"
         openGroup={panel ?? undefined}
-        onGroup={(id) => setPanel((p) => (p === id ? null : (id as 'menu' | 'levels')))}
+        onGroup={(id) => setPanel((p) => (p === id ? null : 'menu'))}
         onNavigate={(item) => {
-          if (item.id === 'levels') {
-            setPanel('levels')
-            return
-          }
           setPanel(null)
-          if (item.id === '/map' || item.id === '/stats') onNavigate(item.id)
+          if (item.id === '/map' || item.id === '/stats' || item.id === 'command') onNavigate(item.id === 'command' ? '/command' : item.id)
         }}
       />
     </div>
