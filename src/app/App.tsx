@@ -16,6 +16,7 @@ import { LedgerScreen } from '../features/ledger/LedgerScreen'
 import { RankScreen } from '../features/rank/RankScreen'
 import { RoutesScreen } from '../features/routes/RoutesScreen'
 import { CompendiumScreen } from '../features/compendium/CompendiumScreen'
+import { CityScreen } from '../features/city/CityScreen'
 import { ProfileScreen } from '../features/profile/ProfileScreen'
 import { YouScreen } from '../features/you/YouScreen'
 
@@ -48,6 +49,19 @@ export function App() {
             the cold chain — and without skipping on a cloud build. It is not in the tab table and
             nothing links to it. See features/gallery/GalleryScreen.tsx. */}
         <Route path="/ui" element={<GalleryScreen />} />
+        {/* THE CITY PAGE (2026-10-30, owner's "Game screen development"). A FULL-SCREEN city with
+            its own header and its own bottom rail, so it is INSIDE RequireAuth but OUTSIDE AppShell
+            — the shell's tab bar would be a second navigation on the same glass. It opens the world
+            itself (idempotent) and provides the shell clock its building faces read. Entry: the
+            desk's City face (`features/command/city/City.tsx`, the `City view` press). */}
+        <Route
+          path="/city"
+          element={
+            <RequireAuth>
+              <CityScreen />
+            </RequireAuth>
+          }
+        />
         <Route
           element={
             <RequireAuth>
