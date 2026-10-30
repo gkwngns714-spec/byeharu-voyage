@@ -175,6 +175,18 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(Math.min(...heights), `a building tile is under 44 px at 320: ${heights.join(', ')}`).toBeGreaterThanOrEqual(44)
   await page.setViewportSize({ width: 390, height: 844 })
 
+  // ── 3b. THE CITY IS THE APP'S HOME (owner, 2026-10-30: the new full-screen city IS the game's
+  // face — "i keep getting the old screen"). The root route lands on the city, and the rail's
+  // Command cell is the one press back to the desk.
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/city(\?|$)/)
+  await ready(page)
+  await expect(page.getByTestId('city-screen')).toBeVisible()
+  await page.getByTestId('nav-cell-command').click()
+  await expect(page).toHaveURL(/\/command$/)
+  await ready(page)
+  await expect(page.getByTestId('command')).toBeVisible()
+
   // ── 4. NO EXISTING ROUTE BROKE ───────────────────────────────────────────────────────────────
   // The rail's map and stats are the app's own routes, reached from here.
   await page.getByTestId('nav-cell-/map').click()

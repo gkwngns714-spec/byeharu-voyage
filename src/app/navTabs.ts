@@ -169,8 +169,10 @@ export const NAV_CELLS: readonly NavCell[] = (() => {
   return cells
 })()
 
-/** The landing destination. Orders are the point of the game, so the app opens on Command. */
-export const HOME_TAB = '/command'
+/** The landing destination. The CITY is the game's face (owner, 2026-10-30: the new full-screen
+ *  city — "i keep getting the old screen"): the app opens on it, and its rail carries the desk
+ *  (Command), the map, the stats and the menu. */
+export const HOME_TAB = '/city'
 
 /** The URL a destination actually has in the browser. The router is mounted on
  *  `import.meta.env.BASE_URL` (App.tsx passes it as the basename, and vite.config.ts sets it to
