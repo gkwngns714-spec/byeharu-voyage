@@ -10,12 +10,11 @@ import type { ReactNode } from 'react'
 // every caller added an `extra` override, so a chip had no one look (§3 rule 4).
 //
 // ── WHAT THE SEGMENTED CONTROL FIXES ON SIGHT ──────────────────────────────────────────────────
-// PORT draws seven faces as a `TabRow` that WRAPS TO TWO ROWS at 390px (§2 item 9: "two rows of
-// tabs is a menu, not a face"). A segmented control is ONE row that scrolls its own overflow, on
-// a `surface-2` track with the selected face as a raised `surface` pill — the shape a phone has
-// used for "which side of this am I looking at" for fifteen years, and one a player reads without
-// a label. The strip scrolls, and that is honest here in a way it was not for `TabRow`: a track
-// with a visibly clipped pill at its edge says there is more, where a bare row of buttons did not.
+// PORT once drew seven faces as a `TabRow` that wrapped to two rows, and a bare row of buttons did
+// not say there was more. A segmented control is ONE set of faces on a `surface-2` track, the
+// selected face a raised `surface` pill — the shape a phone has used for "which side of this am I
+// looking at" for fifteen years, read without a label. The owner's law (2026-10-30): NOTHING scrolls
+// sideways, so a face set that outgrows one line WRAPS to the next (`flex-wrap`), never `overflow-x-auto`.
 //
 // BOTH CLEAR 44px. The reach floor does not care how small a control looks — `Input.tsx` learned
 // that in August and the same sentence applies.
@@ -79,7 +78,7 @@ export function Segmented<T extends string>({
     <div
       role="tablist"
       aria-label={label}
-      className={`bv-scroll-x flex gap-1 overflow-x-auto rounded-control bg-surface-2 p-1 ${className}`}
+      className={`flex flex-wrap gap-1 rounded-control bg-surface-2 p-1 ${className}`}
     >
       {segments.map((s) => {
         const on = s.id === value

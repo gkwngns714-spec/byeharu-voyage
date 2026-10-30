@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 
-// A ROW OF CHIPS THAT SCROLLS SIDEWAYS — bleeding to the gutter, with no native bar (`.bv-scroll-x`):
-// the clipped chip at the edge says there is more. Written once here (it was the same class recipe in
-// four places on the desk: the fleet strip, the Markets filters, the plan builder's Buy at and Sell at).
-// A press on a chip SELECTS; the row never moves.
+// A ROW OF CHIPS THAT WRAPS — bleeding to the gutter, never scrolling sideways (the owner's law
+// 2026-10-30: nothing scrolls sideways; a chip set that outgrows one line wraps to the next). Written
+// once here (it was the same class recipe in four places on the desk: the fleet strip, the Markets
+// filters, the plan builder's Buy at and Sell at). A press on a chip SELECTS; the row never moves.
 
 export function ChipRow({
   label,
@@ -17,7 +17,7 @@ export function ChipRow({
 }) {
   return (
     <div
-      className={`bv-scroll-x -mx-gutter flex gap-2 overflow-x-auto px-gutter pb-1 ${className}`}
+      className={`-mx-gutter flex flex-wrap gap-2 px-gutter pb-1 ${className}`}
       role={label ? 'group' : undefined}
       aria-label={label}
     >
