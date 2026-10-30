@@ -2,6 +2,7 @@ import { Button, Note, Sheet, Skeleton } from '../../components/ui'
 import { buildingTier, hasBuilding } from '../../domain/port'
 import { CityInfo } from '../../live/CityInfo'
 import { CityTownHall } from '../../live/CityTownHall'
+import { PortForge } from '../../live/PortForge'
 import { PortInn } from '../../live/PortInn'
 import { PortPrices } from '../../live/PortPrices'
 import { PortShipyard } from '../../live/PortShipyard'
@@ -20,8 +21,7 @@ import { useT, type TKey } from '../../lib/i18n'
 // authority (docs/NO_SPAGHETTI.md): the city hall is CityTownHall + CityInfo, the market is the
 // quay's own Trade face (PortTrade) or, for a city no fleet of yours lies at, its read-only
 // ledger (PortPrices), the storage is PortStorage, the port is the yard and the shipwright, the
-// inn is PortInn. Forge is the one building this world has no face for yet — its placeholder
-// says so, in one line, and invents nothing.
+// inn is PortInn, and the Forge is PortForge (0281: raw goods + recipes -> a crafted trade good).
 //
 // THE PAGE SCROLLS, THE GLASS DOES NOT. A face is a `Sheet` inside a fixed, full-viewport layer:
 // the document never scrolls (the City page's own rule), while a long list — the market's goods —
@@ -73,11 +73,7 @@ export function CityFace({
         )}
         {building === 'market' && <MarketFace port={port} fleet={fleet} />}
         {building === 'storage' && <StorageFace port={port} fleet={fleet} />}
-        {building === 'forge' && (
-          <Note tone="neutral" data-testid="city-forge-soon">
-            {t('city.forgeSoon')}
-          </Note>
-        )}
+        {building === 'forge' && <ForgeFace port={port} fleet={fleet} />}
         {building === 'port' && <PortFace port={port} fleet={fleet} />}
         {building === 'inn' && <InnFace port={port} fleet={fleet} />}
       </Sheet>
@@ -113,6 +109,11 @@ function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | nu
   ) : (
     <PortPrices goods={quay.market.goods} port={port} reader={null} />
   )
+}
+
+/** The Forge: the GOODS economy's crafting face (0281) — raw goods + recipes -> a trade good. */
+function ForgeFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
+  return <PortForge portId={port.id} fleet={fleet} />
 }
 
 function StorageFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {

@@ -125,10 +125,34 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   await expect(face).toHaveCount(0)
   expect(await frameBoxes(page), 'closing a face moved the page').toEqual(before)
 
-  // The Forge is the one building with no face yet, and says so in one line.
+  // The Forge is the goods forge (0281): the crafted trade goods, their recipes, and a tray whose
+  // Forge button is the server's to answer. A 287-recipe catalogue scrolls INSIDE the sheet — the
+  // page behind it must not gain a scrollbar.
   await page.getByTestId('city-building-forge').click()
   await expect(page.getByTestId('city-face')).toHaveAttribute('data-building', 'forge')
-  await expect(page.getByTestId('city-forge-soon')).toBeVisible()
+  await expect(page.getByTestId('port-forge')).toBeVisible()
+  const forgeTiles = page.locator('[data-testid^="forge-product-"]')
+  await expect.poll(() => forgeTiles.count(), { timeout: 60_000 }).toBeGreaterThan(0)
+  await expect(page.getByTestId('forge-tier-1')).toBeVisible()
+  const forgeScroll = await page.evaluate(() => ({
+    w: document.documentElement.scrollWidth,
+    cw: document.documentElement.clientWidth,
+    h: document.documentElement.scrollHeight,
+    ch: document.documentElement.clientHeight,
+  }))
+  expect(forgeScroll.w, 'the Forge face scrolls sideways').toBeLessThanOrEqual(forgeScroll.cw)
+  expect(forgeScroll.h, 'the Forge face scrolls the page').toBeLessThanOrEqual(forgeScroll.ch)
+  // One recipe opens its tray: ingredients with a have/need figure, and one Forge button.
+  const first = forgeTiles.first()
+  const firstCode = (await first.getAttribute('data-testid'))!.replace('forge-product-', '')
+  await first.click()
+  await expect(page.getByTestId('forge-tray')).toBeVisible()
+  // A fresh world has nothing ashore: the recipe's have/need figures are printed, the Forge button
+  // is there but the server's own verdict keeps it shut, and the shortfall is named.
+  await expect(page.getByTestId(`forge-make-${firstCode}`)).toBeVisible()
+  await expect(page.getByTestId(`forge-make-${firstCode}`)).toBeDisabled()
+  await expect(page.getByText(/^Missing:/)).toBeVisible()
+  await page.getByTestId('tray-close').click()
   await page.getByTestId('city-face-back').click()
   await expect(page.getByTestId('city-face')).toHaveCount(0)
 

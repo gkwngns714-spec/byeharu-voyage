@@ -76,6 +76,24 @@ export const RPCS = {
       { name: 'p_fleet', type: 'uuid' },
     ],
   },
+  // 0281 — the City page's Forge face's ONE read: every crafted trade good with its
+  // goods_recipes ingredients, how many of each are ashore HERE, and the server's can_forge
+  // verdict. No fleet argument: the ingredients come out of the shed, not a hold (0072's reason).
+  worldGoodsForge: {
+    schema: 'world',
+    fn: 'goods_forge',
+    args: [{ name: 'p_port', type: 'uuid' }],
+  },
+  // 0281 — the Forge's one verb (cmd.forge_good): fleet-gated like cmd.invest, no money moves.
+  cmdForgeGood: {
+    schema: 'cmd',
+    fn: 'forge_good',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_product', type: 'uuid' },
+      { name: 'p_qty', type: 'int' },
+    ],
+  },
   // 0039 — THE FREE SEA. The raster the client's pathfinder proposes over (the same row the
   // server verifies by — one authority, fetched once per session), and one place's sailed
   // distances to everywhere (the SAIL picker's ordering and figures).
