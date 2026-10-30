@@ -339,6 +339,14 @@ function chain(): Migration[] {
 // word-match (an edited file forces CI's from-zero rebuild, and prod already carries the original),
 // so this map accepts that one tag for that one file. It is keyed by the full file name, so a new
 // migration cannot inherit it, and the tag must still open BOTH the FAIL raise and the ok receipt.
+// WHICH DO-BLOCK COUNTS. The check looks for a DO block, and a DO block may name its dollar quote:
+// `do $$ … $$` and `do $probe$ … $probe$` are the same statement. 0282 (LIVE on production
+// 2026-10-30) names every one of its blocks ($guard$, $run$, $probe$, $done$) and carries the whole
+// proof — a tagged FAIL raise per property and the closing receipt; it failed only a literal
+// word-match on `do $$`. A live migration is never edited to appease a word-match (the same reason
+// the GP1 exception above exists), so the detector accepts a named delimiter. The rule's substance
+// is unchanged: a DO block, `<tag> self-assert FAIL`, and a `<tag> … self-assert ok` receipt.
+const DO_BLOCK = /do\s+\$(?:[a-z_][a-z0-9_]*)?\$/i
 const SELF_ASSERT_TAG_EXCEPTIONS: Readonly<Record<string, string>> = {
   '20260818000187_the_great_powers.sql': 'GP1',
 }
@@ -350,7 +358,7 @@ test('every migration proves itself in the transaction that applies it, and prin
   const bad: string[] = []
   for (const m of files) {
     const tag = SELF_ASSERT_TAG_EXCEPTIONS[m.file] ?? m.short
-    if (!/do\s+\$\$/i.test(m.sql)) bad.push(`${m.file}  — no do $$ … $$ self-assert block at all`)
+    if (!DO_BLOCK.test(m.sql)) bad.push(`${m.file}  — no do $…$ self-assert block at all`)
     else if (!new RegExp(`${tag}\\s+self-assert FAIL`, 'i').test(m.sql))
       bad.push(`${m.file}  — no "raise exception '${tag} self-assert FAIL: …'"`)
     else if (!new RegExp(`raise\\s+notice\\s+'${tag}[^']*self-assert ok`, 'i').test(m.sql))
