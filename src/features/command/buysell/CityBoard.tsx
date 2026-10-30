@@ -95,9 +95,9 @@ export function CityBoard({
 
   return (
     <div data-testid="city-goods" data-city={city ?? ''} data-side={side} data-docked={docked ? 'true' : 'false'}>
-      <div className="-mx-1 mb-2 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label={t('desk.cityChips')} data-testid="city-chips">
+      <div className="-mx-1 mb-2 flex flex-wrap gap-1.5 px-1 pb-1" role="group" aria-label={t('desk.cityChips')} data-testid="city-chips">
         {chips.map((c) => (
-          <Chip key={c} on={c === city} onClick={() => onCity(c)} className="shrink-0 whitespace-nowrap" data-testid="city-chip" data-port={c}>
+          <Chip key={c} on={c === city} onClick={() => onCity(c)} className="max-w-full" data-testid="city-chip" data-port={c}>
             <PortFlag code={c} /> {portNameOf(portByCode, c)}
           </Chip>
         ))}

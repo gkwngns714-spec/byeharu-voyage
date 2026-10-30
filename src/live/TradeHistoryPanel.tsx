@@ -90,8 +90,8 @@ function PickStrip({ t, pick, onPick }: { t: FleetTrades; pick: TradePick; onPic
       on ? 'bg-accent-soft ring-1 ring-accent' : 'bg-surface-2 ring-1 ring-transparent hover:ring-ink-faint/30',
     ].join(' ')
   return (
-    <div className="-mx-gutter overflow-x-auto px-gutter pb-1 pt-2" data-testid="trade-pick">
-      <div className="flex gap-1.5">
+    <div className="-mx-gutter px-gutter pb-1 pt-2" data-testid="trade-pick">
+      <div className="flex flex-wrap gap-1.5">
         {t.day && (
           <button type="button" className={chip(pick.kind === 'day')} onClick={() => onPick({ kind: 'day' })} data-testid="trade-pick-day">
             <span className="text-t-caption text-ink-faint">{tl(t.day.full ? 'books.aDay' : 'books.soFar')}</span>
