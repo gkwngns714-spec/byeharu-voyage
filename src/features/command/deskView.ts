@@ -1,9 +1,9 @@
 // WHICH FACE OF THE DESK IS UP — COMMAND's own chrome (docs/COMMAND_DESK.md §3.1, §8; PORT's portView.ts
 // pattern). Session storage, for portView's reason: a face you turned to is a thing you are doing.
 //
-// THE FACES, EACH DESCRIBED ONCE: Buy · Sell · City · Invest · Profit. Buy and Sell (owner row 218, 2026-10-26:
-// *"in command, there is market, and trade. i want to have buy and sell tab instead of those"*) replaced the
-// Markets and Trade faces; both are the one page features/command/buysell/BuySell.tsx, on its two sides. A face is
+// THE FACES, EACH DESCRIBED ONCE: Trade · City · Invest · Profit. Trade (owner 2026-10-30, *"removing the map, just
+// have combined buy and sell tab with trade goods when docked"*) merged the earlier Buy and Sell faces (row 218)
+// into ONE page, features/command/buysell/Trade.tsx — the docked city's goods, both sides in one list. A face is
 // listed here only when it is BUILT — a tab that opens nothing is a door nobody opens. The ORDER is the strip's.
 
 import { create } from 'zustand'
@@ -12,8 +12,7 @@ import { createJSONStorage, persist } from 'zustand/middleware'
 import { t } from '../../lib/i18n'
 
 export const DESK_FACES = [
-  { id: 'buy', get label() { return t('command.f_buy') } },
-  { id: 'sell', get label() { return t('command.f_sell') } },
+  { id: 'trade', get label() { return t('command.f_trade') } },
   { id: 'city', get label() { return t('command.f_city') } },
   { id: 'invest', get label() { return t('command.f_invest') } },
   { id: 'profit', get label() { return t('command.f_profit') } },
@@ -39,7 +38,7 @@ export interface DeskViewState {
 export const useDeskView = create<DeskViewState>()(
   persist(
     (set) => ({
-      face: 'buy',
+      face: 'trade',
       cityFace: 'market',
       routeOpen: false,
       turnTo: (face) => set({ face }),
@@ -55,7 +54,7 @@ export const useDeskView = create<DeskViewState>()(
         const p = (persisted ?? {}) as Partial<DeskViewState>
         return {
           ...current,
-          face: DESK_FACES.some((f) => f.id === p.face) ? (p.face as DeskFace) : 'buy',
+          face: DESK_FACES.some((f) => f.id === p.face) ? (p.face as DeskFace) : 'trade',
           cityFace: typeof p.cityFace === 'string' ? p.cityFace : 'market',
         }
       },

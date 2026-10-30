@@ -1,12 +1,14 @@
 import { test, expect, type Locator } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { buyHere, findCarry } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PLAN'S MINI ROUTE MAP (owner row 191; docs/COMMAND_REDESIGN.md §3) — on a local build, at the
-// owner's desktop (1440×900) and the phone (390×844):
+// owner's desktop (1440×900) and the phone (390×844). The Trade face is ONE screen now (owner
+// 2026-10-30: Buy and Sell are one combined list; the map is small, at the bottom, foldable):
 //   · the plan's chart draws THE STOPS ONLY, numbered: every harbour on it is a stop of the plan;
 //   · the chart is STILL: no zoom column, no pan/zoom surface;
-//   · pressing a second sell row moves neither the map box nor the card (a press selects);
+//   · pressing a second sell row moves neither the card nor the map box's SIZE (a press selects);
 //   · the leg lines under the map are the trip's SAIL lines: one line per leg, and Go queues exactly
 //     that many SAIL orders.
 // Nothing here asserts a price: presence, membership, geometry and counts are the claim.
@@ -58,46 +60,33 @@ for (const size of SIZES) {
       )
       await page.goto('command')
       await ready(page)
-      const faces = page.getByRole('tablist', { name: 'Desk faces' })
+      const face = page.getByTestId('desk-trade')
 
-      // A GOOD ABOARD, bought where she lies — Sell opens on her cargo, and its rows make the trips
-      await faces.getByRole('tab', { name: 'Buy', exact: true }).click()
-      const buy = page.getByTestId('desk-buy')
-      const buyBoard = buy.getByTestId('city-goods')
-      const home = (await buy.getByTestId('city-chip').first().getAttribute('data-port'))!
-      await buy.getByTestId('city-chip').first().click()
-      await expect(buyBoard).toHaveAttribute('data-city', home)
-      const good = buy.locator('[data-testid="city-good"]:not([disabled])').first()
-      await expect(good).toBeVisible({ timeout: 120_000 })
-      const code = (await good.getAttribute('data-good'))!
-      await good.click()
-      const panel = page.getByTestId('good-detail')
-      await expect(panel.getByTestId('stepper-figure')).toBeVisible({ timeout: 60_000 })
-      await panel.getByTestId('stepper-figure').fill('1')
-      await panel.getByTestId('stepper-figure').press('Enter')
-      const act = page.getByTestId('trade-act')
-      await expect(act).toBeEnabled({ timeout: 60_000 })
-      await act.click()
-      await expect(page.getByTestId('trade-toast')).toContainText(/^Bought 1 /, { timeout: 60_000 })
+      // A GOOD ABOARD, bought where she lies — its cargo rows make the trips (found by pressing cities, owner row 229)
+      const { code, home } = await findCarry(page)
+      await buyHere(page, code)
 
       // SELL: her cargo, and the rows that make a trip (never "Here" — this is the plan's map that is under test)
-      await faces.getByRole('tab', { name: 'Sell', exact: true }).click()
-      const sell = page.getByTestId('desk-sell')
-      const block = sell.locator(`[data-testid="cargo-good"][data-good="${code}"]`)
+      const cargo = face.getByTestId('cargo-best')
+      const block = cargo.locator(`[data-testid="cargo-good"][data-good="${code}"]`)
       await expect(block).toBeVisible()
       const rows = block.locator(`[data-testid="cargo-place"]:not([data-port="${home}"])`)
       await expect(rows.first()).toBeVisible({ timeout: 120_000 })
       expect(await rows.count(), 'fewer than two sell rows to press').toBeGreaterThanOrEqual(2)
 
-      const map = sell.getByTestId('trade-map')
+      const map = face.getByTestId('trade-map')
       const chart = map.getByTestId('small-chart')
       const legs = map.getByTestId('plan-leg')
+      const panel = page.getByTestId('good-detail')
 
-      /** A row pressed: its city is in hand, the card is up, and the plan's mini map is drawn. */
+      /** A row pressed: its city is in hand, the card is up, and the plan's mini map is drawn. The buy re-priced
+       *  her cargo (her cost changed), so the board may re-sort its rows once; the row is pressed by the port it
+       *  read — not by its list position — so a re-sort never presses a different city than the one asserted. */
       const pressRow = async (row: Locator) => {
         const to = (await row.getAttribute('data-port'))!
-        await row.evaluate((e) => e.scrollIntoView({ block: 'start' }))
-        await row.click()
+        const byPort = block.locator(`[data-testid="cargo-place"][data-port="${to}"]`)
+        await byPort.evaluate((e) => e.scrollIntoView({ block: 'start' }))
+        await byPort.click()
         await expect(panel).toHaveAttribute('data-city', to, { timeout: 60_000 })
         await expect(legs.first()).toBeVisible({ timeout: 60_000 })
         return to
@@ -116,12 +105,15 @@ for (const size of SIZES) {
       // STILL: the plan's chart wears no zoom column (row 191: no pan, no zoom)
       await expect(chart.getByTestId('small-chart-controls')).toHaveCount(0)
 
-      // A SECOND SELL ROW PRESSED: the map box and the card stay exactly where they are
-      const mapBefore = await layoutBox(chart)
+      // A SECOND SELL ROW PRESSED: the card stays put, and the map box keeps its size (a press selects). The map now
+      // sits at the BOTTOM under the board (owner 2026-10-30), so its page place follows the board's height — which
+      // legitimately changes when the city in hand changes — but the card's pane and the chart's frame do not.
+      const sizeBefore = await layoutBox(chart)
       const cardBefore = await screenBox(panel)
       const to1 = await pressRow(rows.nth(1))
       expect(to1, 'the second row is the same city').not.toBe(to0)
-      expect(await layoutBox(chart), 'pressing a sell row moved the map box').toEqual(mapBefore)
+      const sizeAfter = await layoutBox(chart)
+      expect({ w: sizeAfter.w, h: sizeAfter.h }, 'pressing a sell row resized the map box').toEqual({ w: sizeBefore.w, h: sizeBefore.h })
       expect(await screenBox(panel), 'pressing a sell row moved the card').toEqual(cardBefore)
 
       // THE LEG COUNT IS THE SAIL LINES: a ready row's plan, then Go, then the queue. THE LONGEST ready
@@ -132,6 +124,7 @@ for (const size of SIZES) {
       // A SAIL that has DEPARTED is `done`, and `cmd.queue` serves only pending / active / failed: that
       // one line stands as the voyage row (`queue-passage`) and the SAIL lines still queued are N − 1, so
       // their SUM is the plan's leg count (measured: 10 queued + 1 under way = 11 legs).
+      const act = page.getByTestId('trade-act')
       let best: { i: number; days: number } | null = null
       const tries = Math.min(await rows.count(), 6)
       for (let i = 0; i < tries; i++) {

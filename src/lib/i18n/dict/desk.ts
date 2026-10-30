@@ -117,6 +117,8 @@ export const deskDict = defineDict({
     pickCity: 'Press a city on the map.',
     noBuy: 'Sells nothing',
     noBuyer: 'No buyer',
+    // THE COMBINED TRADE FACE (owner 2026-10-30): docked only — the map is gone, both sides in one list.
+    tradeNotDocked: 'Not docked — sail to a city to trade.',
     // THE MIRRORED SCREEN (owner row 229)
     sailBuy: 'Sail & buy',
     sailSell: 'Sail & sell',
@@ -248,6 +250,7 @@ export const deskDict = defineDict({
     pickCity: '지도에서 도시를 누르세요.',
     noBuy: '파는 것 없음',
     noBuyer: '안 삼',
+    tradeNotDocked: '정박 중 아님 — 거래하려면 도시로 항해하세요.',
     sailBuy: '가서 사기',
     sailSell: '가서 팔기',
     max: '최대',

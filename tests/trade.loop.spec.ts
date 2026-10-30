@@ -3,10 +3,10 @@ import { ready, reachable } from './appReady.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE TRADE LOOP FROM THE DESK (owner row 194's acceptance, docs/COMMAND_REDESIGN.md R1; the faces are Buy and Sell
-// since owner row 218): a new company at Lisbon makes a whole buy → sail → sell trip, at the owner's desktop
+// THE TRADE LOOP FROM THE DESK (owner row 194's acceptance, docs/COMMAND_REDESIGN.md R1; the face is ONE screen
+// since owner 2026-10-30): a new company at Lisbon makes a whole buy → sail → sell trip, at the owner's desktop
 // (1440×900) and the phone (390×844):
-//   Buy → a good of Lisbon → Buy (the panel's one button) → Sell → a city she is not at (the chip strip; owner
+//   Trade → a good of Lisbon → Buy (the panel's one button) → a city she is not at (the chip strip; owner
 //   row 229: no list of where to sell) → the good → Sail & sell
 // and the queue holds the trip: a SAIL to the sell city (through its stops when there are any) and a SELL last —
 // no PROVISION line, because supplies are the SAIL's own (0225, row 203). The SAIL runs at once in port, so
@@ -23,7 +23,7 @@ for (const size of SIZES) {
   test.describe(`the trade loop at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size })
 
-    test('buy → sail → sell is queued from Buy and Sell, and the fleet leaves', async ({ page, request, baseURL }) => {
+    test('buy → sail → sell is queued from Trade, and the fleet leaves', async ({ page, request, baseURL }) => {
       test.setTimeout(480_000)
       test.skip(
         !(await reachable(request, baseURL ?? '')),
@@ -31,17 +31,14 @@ for (const size of SIZES) {
       )
       await page.goto('command')
       await ready(page)
-      const faces = page.getByRole('tablist', { name: 'Desk faces' })
-      await faces.getByRole('tab', { name: 'Buy', exact: true }).click()
-      const buyFace = page.getByTestId('desk-buy')
-      await expect(buyFace).toBeVisible()
+      const face = page.getByTestId('desk-trade')
+      await expect(face).toBeVisible()
 
       // a good Lisbon sells that a harbour near her deals in — found by pressing cities (owner row 229)
       const { code, city } = await findCarry(page)
       // BUY: at once, through THE trade panel's one button
       await buyHere(page, code)
       // SELL: that city, the same panel, its button "Sail & sell", its labels 1–2 words
-      await expect(page.getByTestId('trade-sell-list')).toHaveCount(0)
       await sailAndSell(page, code, city)
 
       // the trip is in the queue: SAIL … , SELL last — no BUY (the cargo is already aboard) and no PROVISION (0225).

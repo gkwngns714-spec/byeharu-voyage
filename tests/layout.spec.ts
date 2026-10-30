@@ -261,21 +261,20 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
   expect(fold.firstRowHasRange, 'the first good row carries no price-range bar').toBe(true)
   expect(fold.rowsWithoutRange, 'a good row carries no price-range bar — the tide is the row\'s second line').toBe(0)
 
-  // K.1 on the face a player lands on: Buy (owner row 218 — it replaced Markets), the mini map on top and the
-  // city's goods under it, every one priced. MEASURED 2026-10-26 at 390×844: the map is 250–429px, the first good
-  // row ends at 549px, 52px a row, so FIVE complete rows stand above the 787px fold. The floor is five, as it was.
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Buy', exact: true }).click()
-  await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 60_000 })
+  // K.1 on the face a player lands on: Trade (owner 2026-10-30 — Buy and Sell became ONE combined face), the
+  // docked city's goods as cards, every buyable one priced. The floor is five cards above the fold, as it was.
+  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+  await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
   const buy = await page.evaluate(() => {
     const nav = document.querySelector('nav')
     const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
-    const rows = [...document.querySelectorAll('[data-testid="city-good"]')]
+    const rows = [...document.querySelectorAll('[data-testid="trade-good"]')]
     const above = rows.filter((r) => r.getBoundingClientRect().bottom <= foldY)
-    return { complete: above.length, priced: above.filter((r) => /\d/.test(r.querySelector('[data-testid="city-good-price"]')?.textContent ?? '')).length }
+    return { complete: above.length, priced: above.filter((r) => /\d/.test(r.querySelector('[data-testid="trade-good-buy"]')?.textContent ?? '')).length }
   })
-  console.log(`BUY fold @${PHONE.width}px: ${JSON.stringify(buy)}`)
-  expect(buy.complete, 'fewer than five goods above the fold on Buy').toBeGreaterThanOrEqual(5)
-  expect(buy.priced, 'a good above the fold on Buy carries no price').toBe(buy.complete)
+  console.log(`TRADE fold @${PHONE.width}px: ${JSON.stringify(buy)}`)
+  expect(buy.complete, 'fewer than five goods above the fold on Trade').toBeGreaterThanOrEqual(5)
+  expect(buy.priced, 'a good above the fold on Trade carries no price').toBe(buy.complete)
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -641,10 +640,10 @@ test(`COMMAND: the route row unfolds in place above the queue at ${PHONE.width}p
   )
   await page.goto('command')
   await ready(page)
-  // 2026-10-18: the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Buy since row 218
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Buy', exact: true }).click()
+  // 2026-10-18: the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
+  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
   // the city's goods load after the press; let them land before measuring
-  await settled(page.getByTestId('desk-buy'))
+  await settled(page.getByTestId('desk-trade'))
   const row = page.getByTestId('route-row')
   await expect(row).toBeVisible()
   // The route book has landed (the label names what it read), so no late text moves the row.

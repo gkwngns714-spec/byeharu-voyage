@@ -107,11 +107,11 @@ test.describe('several fleets', () => {
 
     // THE PRESS OPENS THE LIST AND MOVES NOTHING: the header, the figures and the first list rows
     // sit where they sat.
-    await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
+    await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
     const before = {
       header: await rect(page, '[data-testid="desk-header"]'),
       line: await rect(page, '[data-testid="command-line"]'),
-      row: await rect(page, '[data-testid="city-good"]'),
+      row: await rect(page, '[data-testid="trade-good"]'),
     }
     await picker.click()
     const list = page.getByTestId('fleet-list')
@@ -135,7 +135,7 @@ test.describe('several fleets', () => {
       {
         header: await rect(page, '[data-testid="desk-header"]'),
         line: await rect(page, '[data-testid="command-line"]'),
-        row: await rect(page, '[data-testid="city-good"]'),
+        row: await rect(page, '[data-testid="trade-good"]'),
       },
       'opening the list moved the page',
     ).toEqual(before)
@@ -164,8 +164,8 @@ test.describe('several fleets', () => {
     await expect(picker).toContainText('Gaivota')
     await page.keyboard.press('ArrowLeft')
     await expect(picker).toContainText(SECOND_FLEET)
-    // …but not while typing: a text field keeps its arrows (the trade panel's units, Buy › a good — owner row 229).
-    await page.getByTestId('city-good').first().click()
+    // …but not while typing: a text field keeps its arrows (the trade panel's units, Trade › a good).
+    await page.getByTestId('trade-buy').first().click()
     const search = page.getByTestId('good-detail').getByTestId('stepper-figure')
     await search.click()
     await search.pressSequentially('12')

@@ -7,6 +7,7 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 // ship, not the current going city"*). The canary: queue two trips (Sell › a city › Sail & sell, owner row 229), open the Map, press her
 // fleet — the leg she is on AND the queued stop after it are drawn as the planned course, each stop numbered
 // (1, 2 …) with its days; pressing her again clears it. In the in-tab (PGlite) world, desktop and phone.
+// The Trade face is ONE screen now (owner 2026-10-30), so the trips are queued from its chip strip and board.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 const SIZES = [
@@ -32,27 +33,28 @@ for (const size of SIZES) {
       const { code, city, home } = await findCarry(page)
       await buyHere(page, code)
       await sailAndSell(page, code, city)
-      const faces = page.getByRole('tablist', { name: 'Desk faces' })
-      await faces.getByRole('tab', { name: 'Buy', exact: true }).click()
-      const buyFace = page.getByTestId('desk-buy')
-      const chips = buyFace.getByTestId('city-chip')
+      const face = page.getByTestId('desk-trade')
+      const board = face.getByTestId('trade-board')
+      const chips = face.getByTestId('city-chip')
       const codes = await chips.evaluateAll((es) => es.map((e) => e.getAttribute('data-port') ?? ''))
       let queuedMore = 0
       for (const other of codes.slice(1)) {
         if (queuedMore >= 2) break
         if (other === city || other === home) continue
-        await buyFace.locator(`[data-testid="city-chip"][data-port="${other}"]`).click()
-        const card = buyFace.locator('[data-testid="city-good"]:not([disabled])').first()
-        await expect(buyFace.getByTestId('city-goods')).toHaveAttribute('data-city', other)
-        await expect(buyFace.getByTestId('city-good').first().or(buyFace.getByTestId('city-goods-none'))).toBeVisible({ timeout: 60_000 })
+        await face.locator(`[data-testid="city-chip"][data-port="${other}"]`).click()
+        const card = face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
+        await expect(board).toHaveAttribute('data-city', other)
+        await expect(
+          face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first().or(face.getByTestId('trade-board-empty')),
+        ).toBeVisible({ timeout: 60_000 })
         if (!(await card.isVisible())) continue
-        await card.click()
+        await card.getByTestId('trade-buy').click()
         const act = page.getByTestId('trade-act')
         await expect(act).toHaveAttribute('data-act', 'sail-buy')
         await expect(act).toBeEnabled({ timeout: 30_000 }).catch(() => {})
         if (!(await act.isEnabled())) {
           console.log(`no trip to ${other}: ${await act.innerText()}`)
-          await card.click()
+          await card.getByTestId('trade-buy').click()
           continue
         }
         await act.click()

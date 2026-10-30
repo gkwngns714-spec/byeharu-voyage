@@ -17,7 +17,7 @@ import { useDeskPlan } from '../plans/planDraft'
 import { PlanVoyage } from '../plans/PlanVoyage'
 import { useTripGo } from '../plans/useTripGo'
 import type { useTripBoard } from '../plans/useTripBoard'
-import { DayChange } from './CityBoard'
+import { DayChange } from './TradeBoard'
 import { dayLine } from './dayLine'
 import type { TradeDone } from './tradeDone'
 

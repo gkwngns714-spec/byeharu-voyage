@@ -1,14 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { SheetSection, useWide } from '../../../components/ui'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { Icon, SheetSection, useWide } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
-import { buyableHere, listedHere } from '../../../domain/market'
 import { usePriceWhy } from '../../../live/useDesk'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
+import { useT } from '../../../lib/i18n'
 import type { DeskLayout } from '../DeskFrame'
-import { useDeskView } from '../deskView'
 import { Queue } from '../Queue'
 import { RouteFold } from '../RouteFold'
 import { InsuredVoyages } from '../plans/InsuredVoyages'
@@ -16,66 +15,52 @@ import { useDeskPlan, type PlanDraft } from '../plans/planDraft'
 import { TradeMap, type OrderPick } from '../plans/TradeMap'
 import { useTripBoard } from '../plans/useTripBoard'
 import { CargoBest } from './CargoBest'
-import { CityBoard, type CityGoodRow } from './CityBoard'
 import { ShipInfo } from './ShipInfo'
+import { TradeBoard } from './TradeBoard'
+import { tradeRows, type TradeGoodRow } from './tradeRows'
 import { TradePanel } from './TradePanel'
 import { doneWords, type TradeDone } from './tradeDone'
 import { TradeToast } from './TradeToast'
-import { useT } from '../../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// BUY · SELL — ONE MIRRORED SCREEN, TWO SIDES (owner rows 218 and 229, 2026-10-26)
+// TRADE — ONE SCREEN, BOTH SIDES, AND THE SMALL MAP AT THE BOTTOM (owner 2026-10-30)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// *"buying and selling in command tab is not straight forward … selling i cannot even see charts. I want to click on
-// cities, see the selling prices when i click on the city, not give a bunch of list since it will be too easy. for
-// buying and selling i want both to be... similar mechanism. similar screen, buttons to press etc. make it like a
-// true game."* (row 229)
+// *"the map on command - buy and sell - is quiet the bad feeling. i am thinking of removing the map, just have
+// combined buy and sell tab with trade goods when docked, choosing a fleet."* → *"make the map small, and show at
+// bottom, foldable."*
 //
-// ONE component, `side` the only difference, so the two faces look and work the same:
+// The Buy and Sell faces (BuySell.tsx, row 218) were two faces over ONE city — picked on a mini-map at the top — and
+// the map did the city-picking. They are ONE face now. Its goods stand in ONE list (TradeBoard.tsx): every row carries
+// BOTH prices — the city's ask (Buy) and its bid (Sell) side by side — and the panel (TradePanel.tsx) opens on
+// whichever button is pressed: Buy / Sell where she lies, Sail & buy / Sail & sell anywhere else (owner row 229/231).
 //
-//   MAP        THE map (plans/TradeMap.tsx, row 207) with every city and her ship; her orders pressed draw their
-//              routes and estimate (row 217). A city pressed on it — or on the chip strip under it — is the city in
-//              hand (store/deskGood's `focus`; default: where she lies, else her next port).
-//   BOARD      that city's goods as cards (CityBoard.tsx): Buy — what it sells, at its ask; Sell — her cargo, at
-//              its bid ("No buyer" greyed where it buys none). Each with ▲▼ on the day and its line.
-//   PANEL      a card pressed opens THE trade panel (TradePanel.tsx): the chart, the units, the money, ONE button —
-//              Buy / Sell docked there, Sail & buy / Sail & sell anywhere else (the trip, queued with Go's lines).
-//   ORDERS     the standing route, the queue, the insured voyages.
+//   CHIPS      a short strip of harbours nearest her — a city pressed on it (or on the map) is the city in hand.
+//   BOARD      that city's goods as cards: both prices, ▲▼ on the day, the day's line, her units aboard, and a Buy
+//              and a Sell button on each (dead where there is no such side).
+//   CARGO      her cargo, and the best places to sell it (CargoBest.tsx, owner row 231).
+//   MAP        the small map (plans/TradeMap.tsx) at the BOTTOM, FOLDABLE: a thin toggle; expanded, the map and the
+//              pressed order's estimate. The fold changes only the map's own height — the board above never moves.
+//   PANEL      a button pressed opens THE trade panel (TradePanel.tsx): the chart, the units, the money, ONE button.
+//   ORDERS     the standing route, the queue, the insured voyages, and the ship under them.
 //
-// NO CROSS-CITY LIST ON BUY (row 229: "it will be too easy"): what a city pays is found by pressing it.
-//
-// SELL OPENS ON HER CARGO (owner row 231, 2026-10-26: *"the command, sell tab is not good enough, i can't sell
-// because i can't dock. and i can't move to that location. buying and selling when pressed a city, move the map to
-// that location. make the sell tab more convenient. come on!"*):
-//   · CARGO (CargoBest.tsx), under the map on Sell: each good aboard with the few best cities she can sail to for
-//     it — the served board's own rows (world.good_board: price, days, profit after wages, supplies and tax) — and
-//     "Here" where she lies; one press on a row is that city and that good, ready to go.
-//   · A CITY SHE IS NOT AT BUYS WHAT SHE CARRIES even where its quay lists no such row: world.market lists a good
-//     only where the city offers it or she lies with it (public.quay_shows), and that is why every such city read
-//     "No buyer" and could not be pressed — while the server buys there all the same. Its bid is world.price_why's
-//     (the served price, the same world.price the quay reads); the card prices and presses, the panel opens.
-//   · A CITY PRESSED (the map, the chip strip, a cargo row) MOVES THE MAP TO IT (TradeMap's `goTo`): a glide of the
-//     view, nothing re-flowed.
-//
-// A phone: map, chips, cards, orders, one under the other; the panel is a bottom sheet. A wide glass: orders on the
-// left, the map and the cards in the centre, the panel on the right.
+// A city pressed MOVES the map to it (row 231); an order pressed draws its route and estimate on it (row 217).
 
-export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: FleetView; layout: DeskLayout }) {
+export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const t = useT()
   const wide = useWide()
   const cancel = useWorld((s) => s.cancel)
   const clearQueue = useWorld((s) => s.clear)
   const portByCode = useWorld((s) => s.portByCode)
   const goodByCode = useWorld((s) => s.goodByCode)
-  const turnTo = useDeskView((s) => s.turnTo)
-  const focus = useDeskGood((s) => s.focus)
-  const setFocus = useDeskGood((s) => s.setFocus)
   const picked = useDeskGood((s) => s.code)
   const pickGood = useDeskGood((s) => s.pick)
+  const focus = useDeskGood((s) => s.focus)
+  const setFocus = useDeskGood((s) => s.setFocus)
   const plan = useDeskPlan((s) => s.plan)
   const openPlan = useDeskPlan((s) => s.open)
 
+  // The city in hand: pressed on the map or the strip, else where she lies, else her next port.
   const docked = fleet.status === 'DOCKED' ? fleet.port : null
   const city = focus && portByCode[focus] ? focus : (docked ?? fleet.voyage?.to ?? null)
   const cityPort = city ? (portByCode[city] ?? null) : null
@@ -83,31 +68,29 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
   const quay = usePortMarket(cityPort?.id ?? null)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
 
-  // THE CARDS: Buy — the goods this city sells; Sell — her cargo, each with this city's row when it deals in it
-  // (0061: a carried good is listed where she can sell it).
-  const rows = useMemo<CityGoodRow[]>(() => {
-    const market = quay.market?.goods ?? []
-    const byCode = new Map(market.map((g) => [g.code, g]))
-    const out: CityGoodRow[] =
-      side === 'buy'
-        ? market.filter((g) => buyableHere(g)).map((g) => ({ code: g.code, goodId: g.good_id, name: g.name, category: g.category, units: aboard[g.code] ?? 0, row: g, price: g.buy }))
-        : Object.entries(aboard)
-            .filter(([, units]) => units > 0)
-            .map(([code, units]) => {
-              const good = goodByCode[code]
-              const row = byCode.get(code) ?? null
-              const listed = row !== null && listedHere(row, units)
-              return { code, goodId: row?.good_id ?? good?.id ?? null, name: row?.name ?? good?.name ?? code, category: row?.category ?? good?.category ?? '', units, row: listed ? row : null, price: listed ? row.sell : null }
-            })
-    // Sell: the goods this city buys first, "No buyer" after
-    return out.sort((a, b) => Number(a.price === null) - Number(b.price === null) || a.name.localeCompare(b.name))
-  }, [side, quay.market, aboard, goodByCode])
-  // Sell at a city she is not at: a carried good its quay does not list is bid for by world.price_why (the header)
-  const bidElsewhere = side === 'sell' && !here
+  // THE CARDS: the city's goods in one list, both sides' prices in each row.
+  const rows = useMemo<TradeGoodRow[]>(() => tradeRows(quay.market?.goods ?? [], aboard, goodByCode), [quay.market, aboard, goodByCode])
+
+  // THE SIDE OF THE OPEN PANEL — the combined board's Buy and Sell buttons each open one; the same good pressed on
+  // the side already open closes it.
+  const [side, setSide] = useState<'buy' | 'sell'>('buy')
+  const openSide = useCallback(
+    (s: 'buy' | 'sell', code: string) => {
+      if (picked === code && side === s) pickGood(null)
+      else {
+        setSide(s)
+        pickGood(code)
+      }
+    },
+    [picked, side, pickGood],
+  )
+
+  // Sell at a city she is NOT at: a carried good its quay does not list is bid for by world.price_why (owner row 231).
   const pickedAny = rows.find((r) => r.code === picked) ?? null
-  const pickedBid = usePriceWhy(bidElsewhere && pickedAny && !pickedAny.row ? (cityPort?.id ?? null) : null, pickedAny?.goodId ?? null)
-  const pickedPrice = pickedAny ? (pickedAny.price ?? (bidElsewhere ? (pickedBid.view?.bid ?? null) : null)) : null
-  const pickedRow = pickedAny && pickedPrice !== null && pickedAny.goodId && (pickedAny.row !== null || bidElsewhere) ? pickedAny : null
+  const sellUnlisted = side === 'sell' && !here && pickedAny && pickedAny.sell === null && pickedAny.units > 0
+  const pickedBid = usePriceWhy(sellUnlisted ? (cityPort?.id ?? null) : null, pickedAny?.goodId ?? null)
+  const price = pickedAny ? (side === 'buy' ? pickedAny.buy : (pickedAny.sell ?? (sellUnlisted ? (pickedBid.view?.bid ?? null) : null))) : null
+  const pickedRow = pickedAny && pickedAny.goodId && price !== null && (side === 'buy' || pickedAny.sell !== null || sellUnlisted) ? pickedAny : null
 
   // THE TRIP (not docked at the city in hand): Sail & buy plans buy there; Sail & sell plans sell what is aboard there.
   const want: PlanDraft | null =
@@ -133,9 +116,12 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
     setFocus(code)
     setGoTo((g) => ({ code, n: (g?.n ?? 0) + 1 }))
   }
-  // a cargo row (Sell): that city and that good, ready to go
+  // a cargo row: that city and that good, ready to go — it is a SELL there (CargoBest is the sell aid, owner row 231).
+  // It always OPENS for that city — never the board buttons' toggle (a second row for the same good must switch the
+  // city, not close: openSide's `picked === good && side === 'sell'` would read the stale good and close instead).
   const pressCargo = (code: string, good: string) => {
     pressCity(code)
+    setSide('sell')
     pickGood(good)
   }
 
@@ -145,40 +131,44 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
   const done = (d: TradeDone) => {
     setToast(doneWords(t, d, (c) => portNameOf(portByCode, c)))
     pickGood(null)
-    if (d.sailTo) turnTo(side)
   }
 
+  // THE SMALL MAP AT THE BOTTOM, FOLDABLE (owner 2026-10-30): folded, a thin toggle; expanded, the map. The fold
+  // changes only the map's own height — nothing above it re-flows or collapses.
+  const [mapOpen, setMapOpen] = useState(true)
   const map = (
-    <TradeMap
-      fleet={fleet}
-      plan={trip.drawing}
-      pick={pickNow}
-      onClose={() => choose(null)}
-      scrollOnPick={!wide}
-      city={city}
-      onCity={pressCity}
-      goTo={goTo}
-    />
+    <MapFold open={mapOpen} onToggle={() => setMapOpen((o) => !o)}>
+      <TradeMap
+        fleet={fleet}
+        plan={trip.drawing}
+        pick={pickNow}
+        onClose={() => choose(null)}
+        scrollOnPick={!wide}
+        city={city}
+        onCity={pressCity}
+        goTo={goTo}
+      />
+    </MapFold>
   )
 
-  const cargo = side === 'sell' ? <CargoBest fleet={fleet} city={city} picked={pickedRow ? pickedRow.code : null} onPress={pressCargo} /> : null
+  const cargo = <CargoBest fleet={fleet} city={city} picked={pickedRow ? pickedRow.code : null} onPress={pressCargo} />
 
   const board = (
-    <CityBoard
-      side={side}
+    <TradeBoard
       fleet={fleet}
       city={city}
       docked={here}
       quay={quay}
       rows={rows}
       picked={pickedRow ? pickedRow.code : null}
-      onPick={(code) => pickGood(picked === code ? null : code)}
+      onBuy={(code) => openSide('buy', code)}
+      onSell={(code) => openSide('sell', code)}
       onCity={pressCity}
     />
   )
 
   const panel =
-    pickedRow && pickedPrice !== null && city ? (
+    pickedRow && city ? (
       <TradePanel
         key={`${city}:${pickedRow.code}:${side}:${here ? 'here' : 'trip'}`}
         side={side}
@@ -190,7 +180,7 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
           name: pickedRow.name,
           category: pickedRow.category,
           rarity: pickedRow.row?.rarity,
-          price: pickedPrice,
+          price: price as number,
         }}
         market={pickedRow.row}
         docked={here}
@@ -216,8 +206,8 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
       </SheetSection>
       {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
       <InsuredVoyages />
-      {/* row 233: the ship under the orders, on Buy */}
-      {side === 'buy' && <ShipInfo fleet={fleet} />}
+      {/* row 233: the ship under the orders */}
+      <ShipInfo fleet={fleet} />
     </>
   )
 
@@ -226,13 +216,13 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
   return layout(
     wide
       ? {
-          testid: side === 'buy' ? 'desk-buy' : 'desk-sell',
+          testid: 'desk-trade',
           list: orders,
           main: (
             <>
-              {map}
-              {cargo}
               {board}
+              {cargo}
+              {map}
               {toastLine}
             </>
           ),
@@ -247,13 +237,13 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
           ),
         }
       : {
-          testid: side === 'buy' ? 'desk-buy' : 'desk-sell',
+          testid: 'desk-trade',
           order: ['list', 'main', 'side'],
           list: (
             <>
-              {map}
-              {cargo}
               {board}
+              {cargo}
+              {map}
             </>
           ),
           main: (
@@ -264,5 +254,26 @@ export function BuySell({ side, fleet, layout }: { side: 'buy' | 'sell'; fleet: 
           ),
           side: <div className="mt-6">{orders}</div>,
         },
+  )
+}
+
+/** The map's fold (owner 2026-10-30): a thin toggle; open, the map under it. The fold is the map area's own height —
+ *  the board and everything above it stay exactly where they are. */
+function MapFold({ open, onToggle, children }: { open: boolean; onToggle: () => void; children: ReactNode }) {
+  const t = useT()
+  return (
+    <section className="mt-4" data-testid="trade-map-fold" data-open={open ? 'true' : 'false'}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between rounded-md bg-surface-2 px-3 py-2 transition"
+        data-testid="trade-map-toggle"
+      >
+        <span className="text-t-label font-medium text-ink">{t('shell.tab_Map')}</span>
+        <Icon name="chevron" size={16} className={`text-ink-muted ${open ? 'rotate-90' : ''}`} />
+      </button>
+      {open && <div className="mt-2">{children}</div>}
+    </section>
   )
 }

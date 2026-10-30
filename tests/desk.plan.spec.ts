@@ -4,14 +4,15 @@ import { pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // SAIL & BUY, DRIVEN (owner row 229; the trip's lines since docs/COMMAND_REDESIGN.md §2) — on a local build, at the phone:
-//   Buy → a city she is not at (the chip strip) → a good → THE panel's one button says "Sail & buy" → pressed →
-//   the trip's lines are queued: SAIL there (it runs at once in port: she leaves), then BUY. No sell list stands anywhere (row 229).
+//   Trade → a city she is not at (the chip strip) → a good's Buy button → THE panel's one button says "Sail & buy" →
+//   pressed → the trip's lines are queued: SAIL there (it runs at once in port: she leaves), then BUY. No sell list
+//   stands anywhere (row 229).
 // Nothing here asserts a price; the lines and the button's word are the claim.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 test.use({ viewport: { width: 390, height: 844 }, locale: 'en-US' })
 
-test('Sail & buy from a city she is not at is queued whole and stands on Buy', async ({ page, request, baseURL }) => {
+test('Sail & buy from a city she is not at is queued whole and stands on Trade', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(
     !(await reachable(request, baseURL ?? '')),
@@ -19,10 +20,10 @@ test('Sail & buy from a city she is not at is queued whole and stands on Buy', a
   )
   await page.goto('command')
   await ready(page)
-  const face = page.getByTestId('desk-buy')
-  await expect(face.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
+  const face = page.getByTestId('desk-trade')
+  await expect(face.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
   const city = await pressNearCity(face)
-  await expect(face.getByTestId('city-goods')).toHaveAttribute('data-docked', 'false')
+  await expect(face.getByTestId('trade-board')).toHaveAttribute('data-docked', 'false')
   await pressFirstPricedCard(face)
 
   const act = page.getByTestId('trade-act')
@@ -47,7 +48,7 @@ test('Sail & buy from a city she is not at is queued whole and stands on Buy', a
       async () =>
         (await page.getByTestId('queue-passage').count()) > 0 ||
         (await queued.filter({ hasText: /sail/i }).count()) > 0 ||
-        (await face.getByTestId('city-goods').getAttribute('data-city')) === city && (await face.getByTestId('city-goods').getAttribute('data-docked')) === 'true',
+        (await face.getByTestId('trade-board').getAttribute('data-city')) === city && (await face.getByTestId('trade-board').getAttribute('data-docked')) === 'true',
       { timeout: 90_000, message: 'no SAIL there' },
     )
     .toBe(true)
