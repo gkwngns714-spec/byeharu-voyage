@@ -8,7 +8,8 @@ import { ready, reachable } from './appReady.fixture'
 //   Trade → the docked city's goods in ONE list, each card carrying BOTH prices (Buy = the city's ask,
 //   Sell = its bid) and its day line → press Buy on a good: THE panel (the chart, the units, the money,
 //   ONE button "Buy") → Buy 1 → press Sell on that same card: the panel says Sell → Sell 1 → no cargo.
-// No map and no cross-city list stand on the face: trade happens where she lies, nowhere else. Nothing
+// The SMALL map stands at the bottom of the face, in a fold (owner 2026-10-30); no cross-city list stands
+// anywhere — trade happens where she lies, and the map is there to glance at, not to work from. Nothing
 // here asserts a price; "a figure, not a dash" is the claim.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -52,7 +53,9 @@ for (const size of SIZES) {
       await expect(cards.first().getByTestId('trade-good-sell')).toHaveText(/\d|No buyer/)
       await expect(cards.first().getByTestId('trade-good-spark')).toBeVisible()
       await expect(cards.first().getByTestId('trade-good-aboard')).toHaveText(/Aboard \d/)
-      await expect(page.getByTestId('trade-map')).toHaveCount(0)
+      // the small map is there, at the bottom, in a fold (owner 2026-10-30); no cross-city list
+      await expect(page.getByTestId('trade-map')).toHaveCount(1)
+      await expect(face.getByTestId('trade-map-fold')).toHaveAttribute('data-open', 'true')
       await expect(page.getByTestId('trade-sell-list')).toHaveCount(0)
 
       // BUY: a good's Buy button opens THE panel — the chart, the units with Max, the money, ONE button "Buy"
