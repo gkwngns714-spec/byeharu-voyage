@@ -32,6 +32,7 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   FLAG_CHANGED  {port, port_name, from, from_name, to, to_name, share_to, share_from}  (0146)
 //   INSURED       {fleet, voyage_id, port, to, value, price, keep_pct}                      (0213 — port/to are CODES)
 //   INSURANCE_PAID {fleet, voyage_id, day, cause, port, lost, lost_value, keep_pct, owed, paid, short}  (0213)
+//   FORCED_HOME   {fleet, voyage_id, day, port, port_name, cargo_lost, hull_lost, insurance, repair}   (0279)
 //
 // An unknown kind falls through to the kind itself rather than to an invented sentence — a new
 // migration's event shows up as a legible row on the day it lands, without lying about its content.
@@ -283,6 +284,19 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         at: at(port),
         price: price === null ? '' : t('history.forPrice', { price: formatDucats(price) }),
       })
+    }
+    // 0279: A SHIP THAT RAN DRY IS FORCED HOME. The hold is lost (the insurance's own line sits
+    // beside this one — INSURANCE_PAID with cause FORCED_HOME — and the city's gift is the DONATION
+    // movement), and the city she was forced into is the sentence's place.
+    case 'FORCED_HOME': {
+      const port = str(p, 'port')
+      const lost = p['cargo_lost']
+      const repair = p['repair']
+      const donated = num(repair && typeof repair === 'object' ? (repair as Record<string, unknown>) : undefined, 'donated')
+      const held = lost !== null && typeof lost === 'object' && Object.keys(lost).length > 0
+      return t('history.forcedHome', { fleet, port: port ? portName(port) : t('history.aCity') })
+        + (held ? t('history.forcedHomeHold') : '')
+        + (donated !== null && donated > 0 ? t('history.forcedHomeGift', { amount: formatDucats(donated) }) : '')
     }
     case 'INSURANCE_PAID': {
       // 0213: what the insuring city paid for the cargo pirates took — and what its purse could not.
