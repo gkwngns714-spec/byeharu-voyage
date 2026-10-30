@@ -9,7 +9,7 @@ import { COUNT_UP_MS, countUpValue } from './countUp'
 // tabular figures the digits do not shuffle sideways while they move.
 //
 // THE CALLER STILL OWNS THE FORMATTING (lib/format): this takes the NUMBER and the formatter, and
-// formats every step with it, so a counting purse reads "4,180 🪙 … 6,920 🪙 … 8,000 🪙" in the
+// formats every step with it, so a counting purse reads "4,180 🪙 … 6,920 🪙 … 40,000 🪙" in the
 // game's own spelling rather than in a raw digit run.
 //
 // A PLAYER WHO ASKED FOR LESS MOTION GETS NONE. `prefers-reduced-motion: reduce` sets the figure at

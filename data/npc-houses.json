@@ -24,7 +24,7 @@
       "name": "Gonçalo Pires",
       "specialty": "NAVIGATOR",
       "bonus_pct": 4,
-      "wage": 600,
+      "wage": 3000,
       "nation": "PRT",
       "home": "OPO",
       "blurb": "A Porto pilot who knows the bar at Lisbon and every shoal of the Algarve."
@@ -34,7 +34,7 @@
       "name": "Diego de Arana",
       "specialty": "PURSER",
       "bonus_pct": 4.5,
-      "wage": 620,
+      "wage": 3100,
       "nation": "ESP",
       "home": "BIL",
       "blurb": "A Basque factor who counts iron and wool in the same breath."
@@ -44,7 +44,7 @@
       "name": "Pieter Hooft",
       "specialty": "QUARTERMASTER",
       "bonus_pct": 5,
-      "wage": 680,
+      "wage": 3400,
       "nation": "NLD",
       "home": "MID",
       "blurb": "Stows a Zeeland hold so tight the cooper weeps."
@@ -54,7 +54,7 @@
       "name": "Thomas Ward",
       "specialty": "SURGEON",
       "bonus_pct": 4,
-      "wage": 560,
+      "wage": 2800,
       "nation": "ENG",
       "home": "PTH",
       "blurb": "Ship's surgeon out of Portsmouth; lemons in every chest."
@@ -64,7 +64,7 @@
       "name": "Hinrich Castorp",
       "specialty": "QUARTERMASTER",
       "bonus_pct": 4.5,
-      "wage": 600,
+      "wage": 3000,
       "nation": "HAN",
       "home": "BER",
       "blurb": "Kept the Bryggen stores for the Kontor eleven winters."
@@ -74,7 +74,7 @@
       "name": "Luca Spinola",
       "specialty": "NAVIGATOR",
       "bonus_pct": 4,
-      "wage": 580,
+      "wage": 2900,
       "nation": "GEN",
       "home": "NAP",
       "blurb": "Knows the Tyrrhenian by its colours at dawn."
@@ -84,7 +84,7 @@
       "name": "Marin Contarini",
       "specialty": "PURSER",
       "bonus_pct": 5,
-      "wage": 700,
+      "wage": 3500,
       "nation": "VEN",
       "home": "DBR",
       "blurb": "Keeps the Muda's books in the Rialto's own hand."
@@ -94,7 +94,7 @@
       "name": "Jean Lambert",
       "specialty": "SURGEON",
       "bonus_pct": 4,
-      "wage": 560,
+      "wage": 2800,
       "nation": "FRA",
       "home": "NAN",
       "blurb": "A Nantes barber-surgeon with a steady saw."
@@ -104,7 +104,7 @@
       "name": "Seydi Ali",
       "specialty": "NAVIGATOR",
       "bonus_pct": 5,
-      "wage": 690,
+      "wage": 3450,
       "nation": "OTT",
       "home": "ALE",
       "blurb": "Has sailed the Alexandria run since the reed beds were young."
@@ -114,7 +114,7 @@
       "name": "Virji Vora",
       "specialty": "PURSER",
       "bonus_pct": 6,
-      "wage": 800,
+      "wage": 4000,
       "nation": "MUG",
       "home": "SRT",
       "blurb": "The richest broker on the Surat waterfront lends to his own captains."
@@ -124,7 +124,7 @@
       "name": "Lin Daoqian",
       "specialty": "NAVIGATOR",
       "bonus_pct": 4.5,
-      "wage": 640,
+      "wage": 3200,
       "nation": "MNG",
       "home": "QUA",
       "blurb": "Reads the monsoon off the Zayton quays."
@@ -134,7 +134,7 @@
       "name": "Suminokura Ryōi",
       "specialty": "QUARTERMASTER",
       "bonus_pct": 5,
-      "wage": 660,
+      "wage": 3300,
       "nation": "JPN",
       "home": "NAG",
       "blurb": "Fits out red-seal ships for the southern seas."

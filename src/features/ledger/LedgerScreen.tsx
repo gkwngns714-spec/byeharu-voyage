@@ -32,7 +32,7 @@ import { useT, type TKey } from '../../lib/i18n'
 //                                                          a screen that reports on its own
 //                                                          freshness is telemetry (§5).
 //   the second timestamp on every row (`just now`)        → gone. One clock per row.
-//   `balance 8,000 d.` on every row                       → gone. The purse is in the status strip
+//   `balance 40,000 d.` on every row                       → gone. The purse is in the status strip
 //                                                          on every tab; a balance beside every
 //                                                          row is the same fact restated.
 //   the footer notice about balances not summing          → gone with the balances it explained.

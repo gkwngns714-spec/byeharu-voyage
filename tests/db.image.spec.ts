@@ -191,7 +191,7 @@ test('the world opens from the image without applying a single migration here', 
          from public.players p where p.auth_uid = $1`,
       [LOCAL_AUTH_UID],
     )
-    expect(house.rows[0].ducats).toBe(8000)
+    expect(house.rows[0].ducats).toBe(40000)
     expect(house.rows[0].ports).toBeGreaterThan(200)
   } finally {
     await db.close()
@@ -295,7 +295,7 @@ test('a refused image falls back to applying the chain, and says so out loud', a
       'select ducats::int as ducats from public.players where auth_uid = $1',
       [LOCAL_AUTH_UID],
     )
-    expect(house.rows[0].ducats).toBe(8000)
+    expect(house.rows[0].ducats).toBe(40000)
     const stored = await readStoredChain(db.pg)
     expect(stored?.fingerprint).toBe(db.fingerprint)
   } finally {

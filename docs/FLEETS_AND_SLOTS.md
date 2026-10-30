@@ -47,7 +47,7 @@ Merchants (NPC companies) skip the level rules: they get the flat numbers, 2 fle
 - 18 human companies. **Every one has exactly 1 fleet.** 15 have 1 ship, 3 have 2.
 - **No human has any Seamanship level**, so every human fleet is capped at **2 ships** today.
 - 821 merchants: 786 fleets of 1 ship, 44 of 2, 7 of 3. None near 7.
-- Human purses: 3,200 to 47,000 ducats (most at the starting 8,000). Humans hold about 0.03 % of the
+- Human purses: 16,000 to 235,000 ducats (most at the starting 40,000). Humans hold about 0.03 % of the
   world's 812 M ducats; merchants hold the rest.
 
 ### The NO-HOME law

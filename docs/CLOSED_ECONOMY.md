@@ -41,7 +41,7 @@ Every "decided by default" below is mine; the owner reverses afterwards.
 | World total (players + merchants + cities + set aside) | **1,968,004,265** | `stats_world` 01:21 |
 | … 24 h earlier / at 10-20 23:51 | 1,897,777,160 (**+70.2 M/24 h**) / 1,710,276,398 (+257.7 M in 5 d) | `stats_world` |
 | Held by cities / merchants / players / set aside | 1,126.3 M (246) / 827.8 M (821) / 0.23 M (19) / 13.7 M | `stats_world` |
-| Minted 24 h | **EARNINGS 28.23 M · IMPORT_DEMAND 25.43 M · SEED 16.00 M** (8 new harbours, 0217) · FOUNDING 8,000 · NPC_REFOUND 0 · GRANT 0 | `stats_world.period` |
+| Minted 24 h | **EARNINGS 28.23 M · IMPORT_DEMAND 25.43 M · SEED 16.00 M** (8 new harbours, 0217) · FOUNDING 40,000 · NPC_REFOUND 0 · GRANT 0 | `stats_world.period` |
 | Removed 24 h | **0** | `stats_world.removed` |
 | SELL paid 24 h | 424.0 M: purse **398.6 M (94 %)**, minted premium **25.4 M (6 %)** | SELL vs IMPORT_DEMAND |
 | BUY taken in 24 h | 363.1 M | `period` |
@@ -74,7 +74,7 @@ purses thin). Average runway 1,126 M / 32 M ≈ 35 days; thin cities feel it fir
 | `IMPORT_DEMAND` | 25.43 M | `cmd.do_sell`: townsfolk pay the distance premium | **stops**: the purse pays the whole SELL; the empty-purse rule judges the whole total |
 | `SEED` | 16.00 M | switch / new-harbour migrations | **never again**: a new harbour starts at 0 and is funded by `CROWN_AID` from its capital (moved) |
 | `GRANT` | 0 | one-off 0172 | never again (guard) |
-| `FOUNDING` (player 8,000 · merchant capital · `npc_fix_hull_skills` tuition) | 8,000 | `credit` from nothing | **paid by the country's capital** (`city_pays`, realm call if short — §5) |
+| `FOUNDING` (player 40,000 · merchant capital · `npc_fix_hull_skills` tuition) | 40,000 | `credit` from nothing | **paid by the country's capital** (`city_pays`, realm call if short — §5) |
 | `NPC_REFOUND` | 0 | retired 0213 | replaced by `CAPITAL_GIFT` (§5) |
 | `PREMIUM` | — | escrowed at posting (`BOUNTY`) | unchanged (moved) |
 | `CROWN_AID` / `CROWN_TAX` | net 0 | city → city, **mislabelled** minted / removed in `stats_flow_words` | relabel `moved` (E1) |

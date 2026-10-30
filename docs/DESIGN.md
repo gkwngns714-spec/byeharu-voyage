@@ -1431,7 +1431,7 @@ shipyard discount.
 **The 10-minute first session, beat by beat:**
 
 ```
-0:00  You are the Casa de Aveiro. One Barca, "Gaivota", docked at Lisboa. 8,000 ducats.
+0:00  You are the Casa de Aveiro. One Barca, "Gaivota", docked at Lisboa. 40,000 ducats.
 0:20  MARKET tab. Sal is 62% of its neighbours. The BUY block is at the top; you did
       not have to know anything to see it.
 0:40  Tap the row. CMD fills in  BUY sal 60.  You submit. −420 d.

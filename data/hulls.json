@@ -7,7 +7,7 @@
     {
       "class": "barca",
       "yard_tier": 1,
-      "ducats": 3000,
+      "ducats": 15000,
       "note": "A coaster. Two fittings and a stack of deal boards - the hull a house builds first.",
       "goods": [
         { "in": "timber", "qty": 40 },
@@ -23,7 +23,7 @@
     {
       "class": "carlat",
       "yard_tier": 2,
-      "ducats": 7000,
+      "ducats": 35000,
       "note": "The lateen caravel: weatherly, and she wants a proper rudder and a headsail to prove it.",
       "goods": [
         { "in": "timber", "qty": 70 },
@@ -42,7 +42,7 @@
     {
       "class": "nau",
       "yard_tier": 3,
-      "ducats": 30000,
+      "ducats": 150000,
       "note": "Four hundred tuns of hold. Live oak below the waterline, copper over it, and a year of somebody's life.",
       "goods": [
         { "in": "live-oak", "qty": 90 },

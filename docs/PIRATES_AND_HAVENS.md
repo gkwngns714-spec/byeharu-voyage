@@ -512,7 +512,7 @@ departure, read, not promised).
 
 ## 6. Economy and balance (post-0208)
 
-**The money the players have.** Post-0208 a starter has 8,000 🪙 and makes about 18 % of the stake on a
+**The money the players have.** Post-0208 a starter has 40,000 🪙 and makes about 18 % of the stake on a
 first voyage (dev-log 2026-10-19-economy §4); merchant lap nets have a median of 46 🪙 and 36 % of laps close
 at or below zero; ship prices are unchanged (barca 12,000, caravela 26,000, nau 120,000, galleon 150,000;
 Golden Hind 118,000). A laden barca (180 t) carries roughly 3,000–5,000 🪙 of cargo at the new prices; a

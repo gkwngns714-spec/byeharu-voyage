@@ -20,7 +20,7 @@ import { useT } from '../../lib/i18n'
 // ── IT ASKS FOR TWO THINGS ─────────────────────────────────────────────────────────────────────
 // A name, and (0143, owner 2026-10-17: like Uncharted Waters, every company belongs to a country)
 // the country it sails for — Portugal unless chosen. Not a starting port, not a ship: DESIGN K.1
-// opens every captain the same way — one Barca called Gaivota, 8,000 ducats — alongside in the
+// opens every captain the same way — one Barca called Gaivota, 40,000 ducats — alongside in the
 // chosen country's capital, and the server is what decides that (cmd.found_house), not this form.
 // The capital's name printed here is read off the served catalogue, never kept here.
 //

@@ -5,7 +5,7 @@
 // ── THE DEFECT THIS EXISTS TO CLOSE (2026-08-20, reported by the owner) ─────────────────────────
 // The owner played the game, bought cargo, and watched the purse go down. A migration was edited
 // later that day — 0005, for speed, with the economy proved bit-identical — and on their next load
-// the purse was back at 8,000 ducats. The voyage, the cargo and the ledger were gone.
+// the purse was back at 40,000 ducats. The voyage, the cargo and the ledger were gone.
 //
 // Nothing had gone wrong with the game. localDb.ts does exactly what its own header promises:
 // "if the build carries a different chain, the stored database is DEMOLISHED and rebuilt from

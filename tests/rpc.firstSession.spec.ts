@@ -122,7 +122,7 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
   expect(fleet.ships[0].class).toBe('Barca')
 
   const opening = expectOk(await worldLedger()).ducats!
-  expect(opening).toBe(8000)
+  expect(opening).toBe(40000)
 
   // ── 0:20 — the MARKET tab, read the way a player reads it ────────────────────────────────────
   // What does this market mark BUY, and which port one leg away pays more for it?
@@ -146,8 +146,8 @@ test('the first session: buy where it is cheap, sell where it is dear, come home
 
 
   // A STARTER'S constraints are part of the choice, not a detail to work around afterwards: the
-  // hold is 60 tuns and the purse is 8,000 ducats. Porcelain is the best gradient out of Lisbon
-  // and 110 tuns of it costs 27,657 — the game says E_INSUFFICIENT_FUNDS, correctly, and a first
+  // hold is 60 tuns and the purse is 40,000 ducats. Porcelain is the best gradient out of Lisbon
+  // and 110 tuns of it costs 138,285 — the game says E_INSUFFICIENT_FUNDS, correctly, and a first
   // session that ignored the purse would be testing a player who does not exist.
   // FREE HOLD IS THE SERVER'S NUMBER, not a fold repeated here. This spec used to compute
   // `hold - cargo - water - food` by hand, which was a seventh copy of the rule migration 0017

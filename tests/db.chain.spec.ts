@@ -564,7 +564,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   expect(db.bootMs).toBeGreaterThan(0)
 
   try {
-    // §K.1, 0:00 — "You are the Casa de Aveiro. One Barca, 'Gaivota', docked at Lisboa. 8,000
+    // §K.1, 0:00 — "You are the Casa de Aveiro. One Barca, 'Gaivota', docked at Lisboa. 40,000
     // ducats." Seeded by the chain's own public.new_house(), so the purse arrived through the
     // ledger and the founding event exists.
     const house = await db.pg.query<{ company_name: string; ducats: number; n_events: number }>(
@@ -575,7 +575,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
     )
     expect(house.rows).toHaveLength(1)
     expect(house.rows[0].company_name).toBe('Casa de Aveiro')
-    expect(house.rows[0].ducats).toBe(8000)
+    expect(house.rows[0].ducats).toBe(40000)
     expect(house.rows[0].n_events).toBe(1)
 
     const fleet = await db.pg.query<{ name: string; status: string; port: string; ships: number }>(
@@ -856,7 +856,7 @@ test('the world grows under a live house: player rows survive the growth to the 
     // The buy LANDED — a rehearsal over an empty hold rehearses nothing.
     const lived = facts.lived
     expect(JSON.stringify(lived.cargo)).toContain(facts.good)
-    expect(Number(lived.ducats)).toBeLessThan(8000)
+    expect(Number(lived.ducats)).toBeLessThan(40000)
     expect(lived.ducats).toBe(lived.ledger_sum)
 
     // The house did not move by one ducat, one tun, or one ship.
