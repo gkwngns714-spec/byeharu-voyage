@@ -7,7 +7,7 @@ import { useDeskGood } from '../../store/deskGood'
 import { DeskPanes, DeskStack, type DeskLayout } from './DeskFrame'
 import { DESK_FACES, useDeskView, type DeskFace } from './deskView'
 import { FleetStrip } from './FleetStrip'
-import { BuySell } from './buysell/BuySell'
+import { Trade } from './buysell/Trade'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
 import { Profit } from './profit/Profit'
@@ -77,7 +77,7 @@ export function CommandScreen() {
   const spendHand = useDeskGood((s) => s.spendHand)
   useEffect(() => {
     if (!handed) return
-    turnTo('buy')
+    turnTo('trade')
     spendHand()
   }, [handed, turnTo, spendHand])
 
@@ -123,8 +123,8 @@ export function CommandScreen() {
   // terminal's three panes on a wide glass, one under the other on a phone.
   const layout: DeskLayout = wide ? (parts) => <DeskPanes face={face} {...parts} /> : (parts) => <DeskStack {...parts} />
   const faceBody = (f: FleetView) =>
-    face === 'buy' || face === 'sell' ? (
-      <BuySell key={face} side={face} fleet={f} layout={layout} />
+    face === 'trade' ? (
+      <Trade fleet={f} layout={layout} />
     ) : face === 'city' ? (
       <City fleet={f} layout={layout} />
     ) : face === 'invest' ? (

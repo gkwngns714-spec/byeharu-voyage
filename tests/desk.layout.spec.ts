@@ -4,11 +4,11 @@ import { ready, reachable } from './appReady.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE COMMAND DESK, MEASURED (docs/COMMAND_DESK.md §5.5–5.7, slice D3) — at the phone (390×844) and
 // the desktop (1440×900), on a local build:
-//   · a Buy row (the city's goods, owner row 218) is the 52-px row, and every control on the desk clears 44 px;
+//   · a Trade card (the docked city's goods) stands taller than the old 52-px row, and every control on the desk clears 44 px;
 //   · the page never scrolls sideways;
-//   · A PRESS SELECTS (the owner's law): pressing a good opens its page — under the row on a phone, in the centre
-//     pane on a wide glass — and moves no row at or above the one pressed;
-//   · the page's Buy here (docked here) opens THE trade tray, and closing it returns to the page.
+//   · A PRESS SELECTS (the owner's law): pressing a good's Buy opens its page — under the card on a phone, in the centre
+//     pane on a wide glass — and moves no card at or above the one pressed;
+//   · the page's Trade (docked here) opens THE trade tray, and closing it returns to the page.
 // Prices are the local world's; nothing here asserts a figure — only geometry and the slot's turns.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -25,7 +25,7 @@ async function openDesk(page: Page, request: Parameters<typeof reachable>[0], ba
   )
   await page.goto('command')
   await ready(page)
-  await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
 }
 
 const tops = (page: Page, sel: string) =>
@@ -35,11 +35,11 @@ for (const size of SIZES) {
   test.describe(`COMMAND desk at ${size.width}×${size.height}`, () => {
     test.use({ viewport: size })
 
-    test('Buy: 52-px cards, 44-px controls, no sideways scroll', async ({ page, request, baseURL }) => {
+    test('Trade: a card taller than 52 px, 44-px controls, no sideways scroll', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
       const m = await page.evaluate(() => {
         const desk = document.querySelector('[data-testid="command"]')!
-        const rows = [...document.querySelectorAll('[data-testid="city-good"]')].slice(0, 12)
+        const rows = [...document.querySelectorAll('[data-testid="trade-good"]')].slice(0, 12)
         const controls = [...desk.querySelectorAll('button, input, [role="tab"]')].filter((e) => {
           const r = e.getBoundingClientRect()
           return r.width > 0 && r.height > 0 && r.top < window.innerHeight
@@ -62,11 +62,11 @@ for (const size of SIZES) {
     test('a press opens the good in its own place; the rows above it do not move', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
       await page.waitForTimeout(800)
-      const before = await tops(page, '[data-testid="city-good"]')
-      await page.getByTestId('city-good').nth(1).click()
+      const before = await tops(page, '[data-testid="trade-good"]')
+      await page.getByTestId('trade-buy').nth(1).click()
       await expect(page.getByTestId('good-detail')).toBeVisible()
       await page.waitForTimeout(300)
-      const after = await tops(page, '[data-testid="city-good"]')
+      const after = await tops(page, '[data-testid="trade-good"]')
       // owner row 229: the panel stands in the right pane (wide) or rises as the bottom sheet (phone) — no card moves
       expect(after, 'opening a good moved the cards').toEqual(before)
 
@@ -74,7 +74,7 @@ for (const size of SIZES) {
       await expect(page.getByTestId('trade-act')).toBeVisible({ timeout: 30_000 })
       await page.getByTestId('good-detail').getByRole('button', { name: /close/i }).first().click()
       await expect(page.getByTestId('good-detail')).toHaveCount(0)
-      expect(await tops(page, '[data-testid="city-good"]'), 'closing the panel moved the cards').toEqual(before)
+      expect(await tops(page, '[data-testid="trade-good"]'), 'closing the panel moved the cards').toEqual(before)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     })
   })

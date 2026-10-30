@@ -18,11 +18,10 @@ import { ready, reachable } from './appReady.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 const FACES = [
-  { name: 'Sell', id: 'desk-sell' },
+  { name: 'Trade', id: 'desk-trade' },
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
   { name: 'Profit', id: 'desk-profit' },
-  { name: 'Buy', id: 'city-good' },
 ] as const
 
 const SIZES = [
@@ -38,7 +37,7 @@ async function openDesk(page: Page, request: Parameters<typeof reachable>[0], ba
   )
   await page.goto('command')
   await ready(page)
-  await expect(page.getByTestId('city-good').first()).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
 }
 
 const rect = (page: Page, sel: string) =>
@@ -104,9 +103,9 @@ for (const size of SIZES) {
 
     test('a good pressed opens the trade panel in the desk: the right pane wide, the bottom sheet on a phone', async ({ page, request, baseURL }) => {
       await openDesk(page, request, baseURL)
-      const face = page.getByTestId('desk-buy')
+      const face = page.getByTestId('desk-trade')
       const before = await frame(page, wide)
-      await face.getByTestId('city-good').first().click()
+      await face.getByTestId('trade-buy').first().click()
       const panel = page.getByTestId('good-detail')
       await expect(panel).toBeVisible({ timeout: 30_000 })
       if (wide) {

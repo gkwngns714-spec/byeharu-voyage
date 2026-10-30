@@ -18,10 +18,8 @@ import { ready, reachable } from './appReady.fixture'
 //   Storage                     City › Storage — Put in storage on the cargo bought above              opens
 //   Craft · Build · Repair ·    City › Craft / Build / Repair / Skills / Inn, where Lisbon has them    opens
 //   Skills · Inn (hire)
-//   Buy from the desk           Buy › a good → Buy here → the same trade tray                         opens
-//   Read another city's prices  Buy › a city pressed on the mini map → its goods and prices            opens
-//                               (owner row 218: Buy and Sell replaced Markets; tests/command.buySell.spec.ts
-//                               presses the city on the map)
+//   Trade from the desk         Trade › a good's Buy → the same trade tray                             opens
+//   (owner 2026-10-30: Buy and Sell are one Trade face; the mini map and its cross-city picks are gone)
 //   Old /port links             land on COMMAND · City                                                  opens
 //
 // The nav has no Port cell (nav.geometry.spec pins the four).
@@ -117,10 +115,10 @@ for (const size of SIZES) {
       await page.getByRole('tab', { name: 'Invest', exact: true }).click()
       await expect(page.getByTestId('invest-hall')).toBeVisible({ timeout: 30_000 })
 
-      // Buy — the city's goods as priced cards, and its one Buy button in the trade panel (owner row 229)
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Buy', exact: true }).click()
-      const buyFace = page.getByTestId('desk-buy')
-      await buyFace.getByTestId('city-good').first().click()
+      // Trade — the docked city's goods as priced cards, and its Buy button in the trade panel (owner 2026-10-30)
+      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+      const tradeFace = page.getByTestId('desk-trade')
+      await tradeFace.getByTestId('trade-buy').first().click()
       await expect(page.getByTestId('good-detail-price')).toContainText(/\d/, { timeout: 60_000 })
       await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy', { timeout: 30_000 })
 

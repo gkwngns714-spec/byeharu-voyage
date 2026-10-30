@@ -10,7 +10,6 @@
     "db.prefixCache.spec.ts": 8,
     "desk.city.spec.ts": 90,
     "desk.layout.spec.ts": 120,
-    "desk.plan.spec.ts": 90,
     "desk.sweep.spec.ts": 120,
     "duplication.spec.ts": 1,
     "firstRead.empty.spec.ts": 13,

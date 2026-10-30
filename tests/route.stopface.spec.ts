@@ -124,10 +124,10 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   // 0225: no keep level is needed any more — supplies are bought by every SAIL.
   await page.goto('command')
   await ready(page)
-  // the route is on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Buy since row 218
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Buy', exact: true }).click()
+  // the route is on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
+  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
   // the city's goods load after the press; let them land, so nothing above the route moves later
-  await settled(page.getByTestId('desk-buy'))
+  await settled(page.getByTestId('desk-trade'))
 
   const routeRow = page.getByTestId('route-row')
   await expect(routeRow).toContainText('No route', { timeout: 60_000 })
