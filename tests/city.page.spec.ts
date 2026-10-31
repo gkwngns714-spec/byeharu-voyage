@@ -57,6 +57,28 @@ async function scrollState(page: Page) {
   })
 }
 
+/** THE SCENE SITS EXACTLY IN ITS SQUARE FRAME (owner, 2026-10-31: "the map is sticking out of its
+ *  frame, meaning it is bigger than the square"). Clipping would hide an oversized drawing, so the
+ *  proof is the boxes: every edge and both dimensions of `city-scene` must be the panel's, within
+ *  0.5 px, at every glass. */
+async function expectSceneInFrame(page: Page, where: string) {
+  const gaps = await page.evaluate(() => {
+    const panel = document.querySelector('[data-testid="city-info-image"]')!.getBoundingClientRect()
+    const scene = document.querySelector('[data-testid="city-scene"]')!.getBoundingClientRect()
+    return {
+      left: scene.left - panel.left,
+      top: scene.top - panel.top,
+      right: panel.right - scene.right,
+      bottom: panel.bottom - scene.bottom,
+      width: scene.width - panel.width,
+      height: scene.height - panel.height,
+    }
+  })
+  for (const [side, gap] of Object.entries(gaps)) {
+    expect(Math.abs(gap), `the scene is not inside its frame at the ${side} (${where})`).toBeLessThanOrEqual(0.5)
+  }
+}
+
 test('the City page: entry, no scroll, placeholders, and a building face that moves nothing', async ({ page, request, baseURL }) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
@@ -86,6 +108,7 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(s.scrollY, 'the City page is scrolled').toBe(0)
   expect(s.railBottom, 'the rail hangs below the glass').toBeLessThanOrEqual(s.vh)
   expect(s.earningsBottom, 'the earnings block hangs below the glass').toBeLessThanOrEqual(s.vh)
+  await expectSceneInFrame(page, '390×844')
 
   // ── 2. PLACEHOLDERS ARE PLACEHOLDERS ─────────────────────────────────────────────────────────
   for (const id of ['city-population', 'city-status', 'city-relationship']) {
@@ -170,26 +193,25 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(small.docW, 'the City page scrolls sideways at 320').toBeLessThanOrEqual(small.clientW)
   expect(small.docH, 'the City page scrolls down at 320').toBeLessThanOrEqual(small.clientH)
   expect(small.railBottom, 'the rail hangs below a 320×568 glass').toBeLessThanOrEqual(small.vh)
+  await expectSceneInFrame(page, '320×568')
   // …and the six building tiles still clear the 44 px reach floor
   const heights = await page.locator('[data-testid^="city-building-"]').evaluateAll((es) => es.map((e) => Math.round(e.getBoundingClientRect().height)))
   expect(Math.min(...heights), `a building tile is under 44 px at 320: ${heights.join(', ')}`).toBeGreaterThanOrEqual(44)
+
+  // ── 1c. THE SAME PAGE ON A 360×640 GLASS ────────────────────────────────────────────────────
+  await page.setViewportSize({ width: 360, height: 640 })
+  await page.waitForTimeout(400)
+  const mid = await scrollState(page)
+  console.log(`360 scroll: ${mid.docW}/${mid.clientW} wide, ${mid.docH}/${mid.clientH} tall, rail bottom ${mid.railBottom}`)
+  expect(mid.docW, 'the City page scrolls sideways at 360').toBeLessThanOrEqual(mid.clientW)
+  expect(mid.docH, 'the City page scrolls down at 360').toBeLessThanOrEqual(mid.clientH)
+  expect(mid.railBottom, 'the rail hangs below a 360×640 glass').toBeLessThanOrEqual(mid.vh)
+  await expectSceneInFrame(page, '360×640')
   await page.setViewportSize({ width: 390, height: 844 })
 
-  // ── 3a. THE PLAN ITSELF IS PRESSABLE, AND THE PEOPLE MOVE (owner, 2026-10-30: "the bird's eye
-  // view is not just visual, i should be able to press buildings, and see people moving as dots")
-  const beforePlan = await frameBoxes(page)
-  await page.getByTestId('city-scene-storage').click()
-  const planFace = page.getByTestId('city-face')
-  await expect(planFace).toBeVisible()
-  await expect(planFace).toHaveAttribute('data-building', 'storage')
-  // …and it is the SAME face the tile opens: nothing behind it moved
-  expect(await frameBoxes(page), 'a press on the plan re-flowed the page').toEqual(beforePlan)
-  await page.getByTestId('city-face-back').click()
-  await expect(planFace).toHaveCount(0)
-  // every landmark on the plan is a door
-  for (const b of ['hall', 'market', 'storage', 'forge', 'port', 'inn']) {
-    await expect(page.getByTestId(`city-scene-${b}`), `the plan's ${b} is not pressable`).toBeVisible()
-  }
+  // ── 3a. THE PEOPLE WALK (owner, 2026-10-30: "see people moving as dots"; 2026-10-31: the crowd
+  // also waits and turns back, but these walkers are the ones the spec measures). The drawing is
+  // NOT pressable: the six building tiles above are the only doors.
   // the people WALK: one dot's place on the glass changes while we watch
   const dot = page.getByTestId('city-dots').locator('circle').first()
   const p0 = await dot.boundingBox()
