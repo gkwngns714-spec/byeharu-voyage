@@ -13,8 +13,12 @@ import { ready, reachable } from './appReady.fixture'
 //      all the city, a closed one").
 //   1. NO page scroll, vertical or horizontal — the document does not overflow at 390×844, and the
 //      rail and the earnings block sit inside the viewport.
-//   2. A building press opens its FULL-SCREEN face and moves nothing behind it: every key region's
-//      rectangle is identical before and after the press (the owner's UI law).
+//   2. THE HQ SPLIT, IN PLACE: the plan LEFT and the TOWN HALL RIGHT on the same HQ screen — no
+//      hall face, no overlay (owner, 2026-10-31: "the town hall screen is on the same HQ screen,
+//      but where the city is"). The panel shows the treasury, the influence book (NO market rows,
+//      NO tax rows) and one tappable Investors row; its drawer slides in from the RIGHT, full-width
+//      on a phone, with its own close, and nothing behind either move reflows (the owner's UI law).
+//      The five other buildings keep their full-screen faces, which move nothing behind them.
 //   3. Population is a stated estimate off the served size tier — a huge grouped number with the
 //      "≈" glyph and its caption. Status is the company's own SERVED influence points in this
 //      city (`world.town_hall.influence.you.points`); Relationship is the harbour's served stance
@@ -39,6 +43,7 @@ async function frameBoxes(page: Page) {
     return {
       header: pick('city-header'),
       scene: pick('city-info-image'),
+      hall: pick('city-hall-panel'),
       summary: pick('city-summary'),
       grid: pick('city-building-grid'),
       earnings: pick('city-earnings'),
@@ -125,7 +130,30 @@ async function expectWholeCityDrawn(page: Page, where: string) {
   }
 }
 
-test('the City page: entry, no scroll, placeholders, and a building face that moves nothing', async ({ page, request, baseURL }) => {
+/** THE HQ SPLIT IS SIDE BY SIDE, at every glass (owner, 2026-10-31: "the town hall screen is on the
+ *  same HQ screen, but where the city is"): the plan's right edge is left of the hall panel's left
+ *  edge, and both have real boxes. The plan DRAWING stays square through CityScene's meet contract
+ *  (the whole-city proof above); its panel is square at the phone sizes, asserted there. */
+async function expectHqSplit(page: Page, where: string) {
+  const b = await page.evaluate(() => {
+    const plan = document.querySelector('[data-testid="city-info-image"]')!.getBoundingClientRect()
+    const panel = document.querySelector('[data-testid="city-hall-panel"]')!.getBoundingClientRect()
+    return {
+      planRight: plan.right,
+      planW: plan.width,
+      planH: plan.height,
+      panelLeft: panel.left,
+      panelW: panel.width,
+      panelH: panel.height,
+    }
+  })
+  expect(b.planW, `the plan has no width (${where})`).toBeGreaterThan(0)
+  expect(b.panelW, `the hall panel has no width (${where})`).toBeGreaterThan(0)
+  expect(b.panelH, `the hall panel has no height (${where})`).toBeGreaterThan(0)
+  expect(b.planRight, `the plan is not left of the hall panel (${where})`).toBeLessThanOrEqual(b.panelLeft + 0.5)
+}
+
+test('the City page: entry, the HQ split, no scroll, and the faces that move nothing', async ({ page, request, baseURL }) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
 
@@ -228,10 +256,47 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   await expect.poll(async () => page.getByTestId('city-your-gold').innerText(), { timeout: 60_000 }).toContain('🪙')
   await expect(page.getByTestId('city-employees')).toContainText(/\d/)
 
-  // ── 3. SIX BUILDINGS; A PRESS OPENS A FULL-SCREEN FACE AND MOVES NOTHING ────────────────────
-  for (const b of ['hall', 'market', 'storage', 'forge', 'port', 'inn']) {
+  // ── 3. THE HQ SPLIT: PLAN LEFT, THE TOWN HALL IN PLACE RIGHT ────────────────────────────────
+  // The hall has NO face and NO overlay; it stands in the main area beside the plan (owner,
+  // 2026-10-31: "the town hall screen is on the same HQ screen, but where the city is"). The panel
+  // carries the treasury, the influence book (no market rows, no tax rows) and the Investors row.
+  await expectHqSplit(page, '390×844')
+  const planBox = await page.getByTestId('city-info-image').boundingBox()
+  expect(Math.abs(planBox!.width - planBox!.height), 'the plan is not square at 390×844').toBeLessThanOrEqual(1)
+  const hallPanel = page.getByTestId('city-hall-panel')
+  await expect(hallPanel).toBeVisible()
+  // the hall read rides the world beat: the panel shows its skeleton until the served block lands
+  await expect(hallPanel.getByTestId('townhall-influence')).toBeVisible({ timeout: 60_000 })
+  await expect(hallPanel.getByTestId('city-hall-purse')).toBeVisible()
+  await expect(hallPanel.getByTestId('city-hall-investors')).toBeVisible()
+  for (const absent of ['townhall-day', 'townhall-purse-line', 'townhall-your-tax', 'townhall-mayor', 'townhall-mayor-tax']) {
+    await expect(hallPanel.locator(`[data-testid="${absent}"]`), `${absent} must not stand in the hall panel`).toHaveCount(0)
+  }
+  // the row is a real control at the 44-px reach floor
+  const investorRow = await page.getByTestId('city-hall-investors').boundingBox()
+  expect(investorRow!.height, 'the Investors row is under 44 px').toBeGreaterThanOrEqual(44)
+  // tapping it opens the served board in a drawer from the RIGHT, full-width on a phone; the side
+  // Tray slides in (bv-slide-in-right), so the boxes are read after it has landed at the right edge
+  const beforePanel = await frameBoxes(page)
+  await page.getByTestId('city-hall-investors').click()
+  const drawer = page.getByTestId('city-investors-drawer')
+  await expect(drawer).toBeVisible()
+  await expect.poll(async () => Math.round((await drawer.boundingBox())!.x), { timeout: 5_000 }).toBe(0)
+  const drawerBox = await drawer.boundingBox()
+  expect(Math.round(drawerBox!.width), 'the investors drawer is not full-width at 390').toBe(390)
+  expect(Math.round(drawerBox!.x + drawerBox!.width), 'the investors drawer is not at the right edge').toBe(390)
+  expect(await frameBoxes(page), 'opening the investors drawer re-flowed the page behind it').toEqual(beforePanel)
+  const closeBox = await drawer.getByTestId('tray-close').boundingBox()
+  expect(closeBox!.height, 'the drawer close is under 44 px').toBeGreaterThanOrEqual(44)
+  await drawer.getByTestId('tray-close').click()
+  await expect(drawer).toHaveCount(0)
+  expect(await frameBoxes(page), 'closing the investors drawer moved the page').toEqual(beforePanel)
+
+  // THE OTHER FIVE BUILDINGS KEEP THEIR FULL-SCREEN FACES, and a press moves nothing behind it.
+  for (const b of ['market', 'storage', 'forge', 'port', 'inn']) {
     await expect(page.getByTestId(`city-building-${b}`), `building ${b} is missing`).toBeVisible()
   }
+  await expect(page.getByTestId('city-building-hall'), 'the Town Hall has no face/tile: it stands in place').toHaveCount(0)
   const before = await frameBoxes(page)
 
   await page.getByTestId('city-building-storage').click()
@@ -298,7 +363,19 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(small.railBottom, 'the rail hangs below a 320×568 glass').toBeLessThanOrEqual(small.vh)
   await expectSceneInFrame(page, '320×568')
   await expectWholeCityDrawn(page, '320×568')
-  // …and the six building tiles still clear the 44 px reach floor
+  // THE SPLIT HOLDS AT 320 TOO (owner: "you know that this game is also for mobile right?"): the
+  // plan left, the hall panel right, and the drawer full-width from the right on this phone.
+  await expectHqSplit(page, '320×568')
+  const smallPlan = await page.getByTestId('city-info-image').boundingBox()
+  expect(Math.abs(smallPlan!.width - smallPlan!.height), 'the plan is not square at 320×568').toBeLessThanOrEqual(1)
+  await page.getByTestId('city-hall-investors').click()
+  const smallDrawer = page.getByTestId('city-investors-drawer')
+  await expect(smallDrawer).toBeVisible()
+  await expect.poll(async () => Math.round((await smallDrawer.boundingBox())!.x), { timeout: 5_000 }).toBe(0)
+  expect(Math.round((await smallDrawer.boundingBox())!.width), 'the investors drawer is not full-width at 320').toBe(320)
+  await smallDrawer.getByTestId('tray-close').click()
+  await expect(smallDrawer).toHaveCount(0)
+  // …and the five building tiles still clear the 44 px reach floor
   const heights = await page.locator('[data-testid^="city-building-"]').evaluateAll((es) => es.map((e) => Math.round(e.getBoundingClientRect().height)))
   expect(Math.min(...heights), `a building tile is under 44 px at 320: ${heights.join(', ')}`).toBeGreaterThanOrEqual(44)
 
@@ -331,6 +408,7 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
     expect(wide.railBottom, `the rail hangs below a ${w}×${h} glass`).toBeLessThanOrEqual(wide.vh)
     await expectSceneInFrame(page, `${w}×${h}`)
     await expectWholeCityDrawn(page, `${w}×${h}`)
+    await expectHqSplit(page, `${w}×${h}`)
     // The same squeeze that flattened the plan also crushed the figures card to a 16-px sliver on
     // these windows; the population hero must actually fit inside the card, not be clipped away.
     const card = await page.evaluate(() => {
@@ -344,16 +422,17 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   await page.setViewportSize({ width: 390, height: 844 })
 
   // ── 3a. THE PEOPLE WALK (owner, 2026-10-30: "see people moving as dots"; 2026-10-31: the crowd
-  // also waits and turns back, but these walkers are the ones the spec measures). The drawing is
-  // NOT pressable: the six building tiles above are the only doors.
+  // also waits and turns back, but these walkers are the ones the spec measures — and the owner
+  // asked for the walk to be 3× slower, so the window is 2.5 s: a slower walker must still move).
+  // The drawing is NOT pressable: the five building doors above are the only ways in.
   // the people WALK: one dot's place on the glass changes while we watch
   const dot = page.getByTestId('city-dots').locator('circle').first()
   const p0 = await dot.boundingBox()
-  await page.waitForTimeout(900)
+  await page.waitForTimeout(2500)
   const p1 = await dot.boundingBox()
   expect(p0 && p1, 'a people dot has no box').toBeTruthy()
   const moved = Math.abs(p1!.x - p0!.x) + Math.abs(p1!.y - p0!.y)
-  expect(moved, `the people are still (moved ${moved.toFixed(2)} px in 900 ms)`).toBeGreaterThan(0.5)
+  expect(moved, `the people are still (moved ${moved.toFixed(2)} px in 2500 ms)`).toBeGreaterThan(0.5)
 
   // ── 3b. THE CITY IS THE APP'S HOME (owner, 2026-10-30: the new full-screen city IS the game's
   // face — "i keep getting the old screen"). The root route lands on the city; the rail has NO

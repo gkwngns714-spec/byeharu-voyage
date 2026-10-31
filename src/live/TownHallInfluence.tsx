@@ -34,11 +34,22 @@ export function TownHallInfluence({
   influence,
   docked,
   trayMode,
+  showTax = true,
+  compact = false,
 }: {
   port: SnapshotPort
   influence: CityInfluence
   docked: boolean
   trayMode?: TrayMode
+  /** The City page's in-place Town Hall panel shows the influence WITHOUT the tax rows (owner,
+   *  2026-10-31: "no need market info. tax info. influence yes"). The map's Town Hall and the
+   *  desk's Invest keep them: they never pass this. */
+  showTax?: boolean
+  /** The City page's NARROW panel (owner: "you know that this game is also for mobile right?"):
+   *  the holder row keeps the flag and the name but drops the Home city / Contested word (the page
+   *  header already says Home city), and the home-of caption rows go — the same served facts, two
+   *  lines less in a 136-171 px panel. */
+  compact?: boolean
 }) {
   const t = useT()
   const nationByCode = useWorld((s) => s.nationByCode)
@@ -59,13 +70,15 @@ export function TownHallInfluence({
           )
         }
         value={
-          <span className="text-t-caption text-ink-muted">
-            {t(influence.home ? 'books.homeCity' : 'books.contested')}
-          </span>
+          compact ? undefined : (
+            <span className="text-t-caption text-ink-muted">
+              {t(influence.home ? 'books.homeCity' : 'books.contested')}
+            </span>
+          )
         }
         data-testid="townhall-holder"
       />
-      {influence.home && influence.holder && (
+      {!compact && influence.home && influence.holder && (
         <Row
           label={t('books.homeOf', { nation: nationNameOf(nationByCode, influence.holder) })}
           tone="muted"
@@ -89,7 +102,7 @@ export function TownHallInfluence({
         ))
       )}
       {/* 0147: the mayor — the holder's top giver who sails for it (D8) — and the rate they set. */}
-      {influence.mayor && (
+      {showTax && influence.mayor && (
         <Row
           label={t('books.mayor', { name: influence.mayor.name })}
           value={
@@ -102,8 +115,8 @@ export function TownHallInfluence({
           data-testid="townhall-mayor"
         />
       )}
-      {you && you.mayor && <MayorTax port={port} setAt={influence.mayor?.tax_set_at ?? null} />}
-      {you && influence.open && (
+      {showTax && you && you.mayor && <MayorTax port={port} setAt={influence.mayor?.tax_set_at ?? null} />}
+      {showTax && you && influence.open && (
         <Row
           label={t('books.yourTax', {
             pct: formatPct(you.tax_rate, 1),

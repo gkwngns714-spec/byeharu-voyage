@@ -356,6 +356,65 @@ const HALL: readonly Building[] = [hall(166, 86, 24, 8, 0.72), hall(172, 76, 10,
 const FORGE: readonly Building[] = [hall(166, 44, 13, 7, 0.74), house(177, 31, 2.4, 13, 0.76), house(188, 50, 5, 5, 0.66)]
 const INN: readonly Building[] = [hall(166, 132, 16, 10.5, 0.74), house(188, 136, 4, 7, 0.68)]
 
+/** THE ALLEYS (owner, 2026-10-31: "add more roads that leads to the buildings too") — a service
+ *  lane around every block and a way in from the nearest lane or street, plus a lane of their own
+ *  to the hall, the warehouses, the forge and the inn. ONE path: the same street ink at a thinner
+ *  weight, drawn under the buildings. It runs in each block's own padding and in the gaps between
+ *  blocks, so it never crosses a building; the four named places' lanes are laid in their open
+ *  yards, and nothing enters the river mouth or leaves the land. */
+const ALLEY_PATH = (() => {
+  const parts: string[] = []
+  const LANES_X = [66, 116, 158, 198]
+  const STREETS_Y = [70, 120, 170]
+  const named = [...STORAGE, ...HALL, ...FORGE, ...INN].map((b) => ({ x1: b.x, y1: b.y, x2: b.x + b.w, y2: b.y + b.h }))
+  /** Draw a connector unless it would run under a named building or into the river mouth. */
+  const tryLink = (fx: number, fy: number, tx: number, ty: number): boolean => {
+    const x1 = Math.min(fx, tx)
+    const x2 = Math.max(fx, tx)
+    const y1 = Math.min(fy, ty)
+    const y2 = Math.max(fy, ty)
+    if (named.some((n) => x1 < n.x2 + 0.7 && x2 > n.x1 - 0.7 && y1 < n.y2 + 0.7 && y2 > n.y1 - 0.7)) return false
+    if (x2 > 122 && x1 < 138 && y2 > 185) return false
+    parts.push(`M${fx.toFixed(1)} ${fy.toFixed(1)} L${tx.toFixed(1)} ${ty.toFixed(1)}`)
+    return true
+  }
+  for (const b of BLOCKS) {
+    const inset = 0.9
+    const x1 = b.x + inset
+    const y1 = b.y + inset
+    const x2 = b.x + b.w - inset
+    const y2 = b.y + b.h - inset
+    const mx = (x1 + x2) / 2
+    const my = (y1 + y2) / 2
+    // the service lane around the block, one side at a time
+    if (x2 - x1 >= 3 && y2 - y1 >= 3) {
+      tryLink(x1, y1, x2, y1)
+      tryLink(x1, y2, x2, y2)
+      tryLink(x1, y1, x1, y2)
+      tryLink(x2, y1, x2, y2)
+    }
+    // a way in from the nearest lane (left/right) and street (above/below), or a short alley mouth
+    const side = (edgeX: number, edgeY: number, target: number | undefined, axis: 'x' | 'y', dir: -1 | 1) => {
+      if (target !== undefined && tryLink(edgeX, edgeY, axis === 'x' ? target : edgeX, axis === 'y' ? target : edgeY)) return
+      tryLink(edgeX, edgeY, edgeX + (axis === 'x' ? dir * 4 : 0), edgeY + (axis === 'y' ? dir * 4 : 0))
+    }
+    const left = [...LANES_X].filter((x) => x < b.x).pop()
+    const right = LANES_X.find((x) => x > b.x + b.w)
+    const above = [...STREETS_Y].filter((y) => y < b.y).pop()
+    const below = STREETS_Y.find((y) => y > b.y + b.h)
+    side(b.x, my, left, 'x', -1)
+    side(b.x + b.w, my, right, 'x', 1)
+    side(mx, b.y, above, 'y', -1)
+    side(mx, b.y + b.h, below, 'y', 1)
+  }
+  // the four named places' own lanes to their doors (each in a known open yard)
+  parts.push('M116 40 H103 V47') // the warehouses: between their rows, from LANE_W
+  parts.push('M158 101 H166') // the hall: from LANE_E to the plaza
+  parts.push('M158 58 H194') // the forge: along its yard, under the halls
+  parts.push('M158 150 H190') // the inn: along its yard
+  return parts.join(' ')
+})()
+
 /** A stable 0..1 number from the seed and an index — the one source of every variation. */
 function seedOf(name: string): number {
   let h = 2166136261
@@ -471,7 +530,7 @@ function sceneOf(seed: number) {
       o: 0.92,
       move: {
         d: `M${x.toFixed(2)} ${y.toFixed(2)} l${(Math.cos(a) * len).toFixed(2)} ${(Math.sin(a) * len).toFixed(2)}`,
-        dur: 6 + rand(seed, 75005 + k * 7) * 8,
+        dur: (6 + rand(seed, 75005 + k * 7) * 8) * 3,
         begin: -rand(seed, 75006 + k * 7) * 10,
         back: true,
       },
@@ -488,7 +547,7 @@ function sceneOf(seed: number) {
       y: 0,
       r: 0.95 + rand(seed, 76001 + k * 7) * 0.3,
       o: 0.92 + rand(seed, 76002 + k * 7) * 0.08,
-      move: { d: walkerPaths[pi], dur: 14 + rand(seed, 76003 + k * 7) * 12, begin: -rand(seed, 76004 + k * 7) * 24, back: false },
+      move: { d: walkerPaths[pi], dur: (14 + rand(seed, 76003 + k * 7) * 12) * 3, begin: -rand(seed, 76004 + k * 7) * 24, back: false },
     })
   }
 
@@ -754,6 +813,9 @@ export function CityScene({
         {LANE_PATHS.map((d, i) => (
           <path key={i} d={d} className="stroke-ink-faint" fill="none" strokeWidth="1.3" opacity="0.42" strokeLinecap="round" />
         ))}
+        {/* THE ALLEYS — a service lane around every block and a way in from the streets; one path,
+            the same ink at a thinner weight, drawn under the buildings. */}
+        <path d={ALLEY_PATH} className="stroke-ink-faint" fill="none" strokeWidth="0.7" opacity="0.35" strokeLinecap="round" />
 
         {/* THE ORDINARY BLOCKS' BUILDINGS. */}
         {generic.map((b, i) => (
