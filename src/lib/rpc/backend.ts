@@ -10,7 +10,7 @@
 // If a screen ever contains `if (hasCloud)`, this design has failed.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { rpcLabel, type RpcName } from './catalog'
+import { RPCS, rpcLabel, type RpcName } from './catalog'
 import { fromError, fromPayload, type RpcResult } from './result'
 
 export type BackendKind = 'local' | 'cloud'
@@ -24,6 +24,20 @@ export interface RpcBackend {
 }
 
 let active: RpcBackend | null = null
+
+/**
+ * THE MUTATION SIGNAL (2026-10-31). `src/lib` is the layer everything else stands on, so this
+ * dispatcher may not import the store's resource cache — `tests/sections.spec.ts` is the guard,
+ * and it caught exactly that import on this slice's first run. The dispatcher instead ANNOUNCES a
+ * verb that changed the world; the cache (which is allowed to import down into lib) subscribes
+ * once at module load. One signal, one subscriber, no upward import and no second copy of the
+ * catalogue's `mutates` knowledge: the flag still lives on the RPC row.
+ */
+export type MutationListener = (name: RpcName, invalidates: readonly string[]) => void
+let mutationListener: MutationListener | null = null
+export function setMutationListener(listener: MutationListener | null): void {
+  mutationListener = listener
+}
 
 /** Install the backend. Called once, by init.ts — or by a spec, which supplies its own engine. */
 export function setBackend(backend: RpcBackend): void {
@@ -69,7 +83,13 @@ export async function call<T>(name: RpcName, values: readonly unknown[] = []): P
   // that re-asked a list every 3 s (owner rows 95-97) was invisible until something printed it.
   console.debug('[rpc]', rpcLabel(name))
   try {
-    return fromPayload<T>(await backend.invoke(name, values))
+    const result = fromPayload<T>(await backend.invoke(name, values))
+    // A VERB THAT CHANGED THE WORLD DROPS THE LIVE ANSWERS (src/store/resourceCache.ts): every
+    // finite-lifetime read goes, plus the SESSION entries this verb names in the catalogue. A
+    // refusal changed nothing, so it invalidates nothing.
+    const spec = RPCS[name]
+    if (result.ok && spec.mutates) mutationListener?.(name, spec.invalidates ?? [])
+    return result
   } catch (err) {
     const refusal = fromError(err)
     return {

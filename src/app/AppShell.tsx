@@ -9,50 +9,14 @@ import { useWorld } from '../live/worldStore'
 import { serverNow } from '../lib/serverClock'
 import { useGoTo } from '../chart'
 import { useLocale } from '../lib/i18n'
+import { readIntervalMs } from '../domain/readClock'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
 // whole authenticated app; the shared data layer (see shellState.ts) mounts HERE and nowhere else.
 
-/** How often the shell reads the world again. THE READ IS THE CATCH-UP (DESIGN D.2): every read
- *  settles every voyage server-side before it answers, so this interval is not a poll for changes
- *  — it IS how time passes in this game, and it is also how often a fleet's position on the chart
- *  can move.
- *
- *  THIS USED TO BE A FLAT 30 SECONDS, and its own comment justified that as "well inside a
- *  voyage-day (three real minutes at TIME_COMPRESSION 480)". Migration 0045 took the compression to
- *  9600 for testing, which makes a voyage-day NINE SECONDS — so thirty seconds became THREE AND A
- *  THIRD voyage-days between reads. A short passage could begin and end between two of them, and a
- *  fleet under way jumped across the chart instead of crawling. The owner: *"i want the location of
- *  my fleet moving in map to be shown more often, updated more often"*.
- *
- *  So the cadence is DERIVED from the served clock rather than pinned beside it. The rule is "read
- *  several times per voyage-day", which is what the old comment actually meant; the number 30_000
- *  was that rule evaluated once, by hand, against a knob that has since moved. A second hand-tuned
- *  constant would drift again the next time anyone touches the compression.
- *
- *  Clamped at both ends: never faster than 3 s (a read settles voyages server-side, and hammering
- *  it buys nothing a player can see), never slower than 30 s (the old cadence remains the floor on
- *  a slow world, so nothing can arrive unnoticed).
- *
- *  HOW MANY IS "SEVERAL", AND WHY IT ROSE TO TWELVE (2026-10-11). Four was enough while a
- *  voyage-day was nine real seconds: the arithmetic gave 2.25 s and the 3-s floor took over, so the
- *  number did nothing. 0100 made a voyage-day NINETY real seconds, and four reads of it is a
- *  twenty-two-second beat — a player watching a hull creep sees her correct her course four times a
- *  passage, and an arrival they are waiting for can sit unread for twenty seconds. Twelve gives a
- *  7.5-second beat at the current clock AND lands under the 3-s floor at every clock this game has
- *  shipped before, so nothing that was tuned against the old speed moves. The RULE is still "read
- *  several times per voyage-day" and it is still derived from the served knob; only the reading of
- *  "several" is now one a slow world can live with. */
-const READS_PER_VOYAGE_DAY = 12
-const READ_MIN_MS = 3_000
-const READ_MAX_MS = 30_000
-
-function readIntervalMs(timeCompression: number | undefined): number {
-  if (!timeCompression || timeCompression <= 0) return READ_MAX_MS
-  const voyageDaySeconds = (24 * 3600) / timeCompression
-  const ms = (voyageDaySeconds / READS_PER_VOYAGE_DAY) * 1000
-  return Math.min(READ_MAX_MS, Math.max(READ_MIN_MS, Math.round(ms)))
-}
+/** THE READ CADENCE lives in src/app/readClock.ts now — one authority for "how often the world is
+ *  read", shared with the resource cache's default lifetime (worldStore.readEveryMs). The rule is
+ *  unchanged: the served clock decides it. */
 
 export function AppShell() {
   // THE LANGUAGE (src/lib/i18n): read here so a switch re-renders the whole tree in place — no
@@ -87,6 +51,9 @@ export function AppShell() {
   const compression = useWorld((w) => w.snapshot?.config.time_compression)
   useEffect(() => {
     const every = readIntervalMs(compression)
+    // THE BEAT IS ALSO THE CACHE'S DEFAULT LIFETIME: a served read is kept for exactly one beat,
+    // so a remount inside it downloads nothing and the beat's own read still refreshes the world.
+    useWorld.setState({ readEveryMs: every })
     const id = window.setInterval(() => {
       const world = useWorld.getState()
       // Only when the world is up, and never on top of a read already in flight: a second read

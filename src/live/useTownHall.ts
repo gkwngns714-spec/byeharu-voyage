@@ -20,5 +20,5 @@ export function useTownHall(portId: string | null) {
   return useServedRead<Served<TownHallView>>(portId, async () => {
     const r = await worldTownHall(portId as string)
     return ok(r.ok ? { view: r.value, refusal: null } : { view: null, refusal: r.refusal })
-  })
+  }, { name: 'worldTownHall' })
 }

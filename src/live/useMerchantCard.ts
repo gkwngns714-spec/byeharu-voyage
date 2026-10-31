@@ -5,6 +5,8 @@ import { useServedRead } from './useServedRead'
 // keyed by the fleet, re-asked on the world's beat. The card is read at a tap and while it is open,
 // never otherwise; the figures on it are the server's (laps summed by `public.route_earnings`).
 export function useMerchantCard(fleetId: string | null): { card: MerchantCard | null; loading: boolean } {
-  const read = useServedRead<MerchantCard>(fleetId, () => worldNpcFleetCard(fleetId ?? ''))
+  const read = useServedRead<MerchantCard>(fleetId, () => worldNpcFleetCard(fleetId ?? ''), {
+    name: 'worldNpcFleetCard',
+  })
   return { card: read.view, loading: read.loading }
 }

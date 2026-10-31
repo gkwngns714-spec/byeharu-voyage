@@ -42,7 +42,7 @@ export function TradeHistoryPanel({
   onClose: () => void
 }) {
   const [detent, setDetent] = useState<TrayDetent>('half')
-  const read = useServedRead<FleetTrades>(fleetId, () => worldFleetTrades(fleetId))
+  const read = useServedRead<FleetTrades>(fleetId, () => worldFleetTrades(fleetId), { name: 'worldFleetTrades' })
   const t = read.view
 
   return (

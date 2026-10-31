@@ -49,7 +49,9 @@ export function PortAcademy() {
 
   // A level lands the instant its finish passes — on the SERVER. At the first finish the book in
   // hand has stopped being true, so it is asked again (never advanced here).
-  const reask = useCallback(() => void loadSkills(), [loadSkills])
+  // A finished level is a NEW fact on the server; the cache keeps the skill book for the session,
+  // so this edge's ask must force it through (loadSkills(true)) rather than replay the kept book.
+  const reask = useCallback(() => void loadSkills(true), [loadSkills])
   const firstFinish = book?.queue[0] ? Date.parse(book.queue[0].finishes_at) : null
   useReaskAtEdge(firstFinish, book ? Date.parse(book.now) : null, nowMs, reask)
 

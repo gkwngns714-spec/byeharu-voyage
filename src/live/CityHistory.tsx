@@ -37,7 +37,7 @@ export function CityHistory({ port }: { port: SnapshotPort }) {
   const read = useServedRead<Served<CityHistoryView>>(port.kind === 'HARBOUR' ? `history:${port.id}` : null, async () => {
     const r = await worldCityHistory(port.id, 8)
     return ok(r.ok ? { view: r.value, refusal: null } : { view: null, refusal: r.refusal })
-  })
+  }, { name: 'worldCityHistory' })
   // WHICH month stands open — DERIVED, never set in an effect: the current month until a press
   // picks another (or folds all); a different city's answer resets to its own current month,
   // because the pick carries the subject it was made for. Chrome, never a figure.

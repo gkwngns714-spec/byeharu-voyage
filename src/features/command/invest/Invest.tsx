@@ -30,7 +30,7 @@ import { useT, properName } from '../../../lib/i18n'
 export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
-  const held = useServedRead<Holdings>('holdings', () => worldHoldings())
+  const held = useServedRead<Holdings>('holdings', () => worldHoldings(), { name: 'worldHoldings' })
   const h = held.view
   const [picked, setPicked] = useState<string | null>(null)
   const hallCode = picked ?? fleetPortCode(fleet)

@@ -16,5 +16,5 @@ import type { RequestBoard } from '../lib/rpc'
 import { useServedRead, type ServedRead } from './useServedRead'
 
 export function useRequests(portId: string | null): ServedRead<RequestBoard> {
-  return useServedRead<RequestBoard>(portId, () => worldContracts(portId as string))
+  return useServedRead<RequestBoard>(portId, () => worldContracts(portId as string), { name: 'worldContracts' })
 }

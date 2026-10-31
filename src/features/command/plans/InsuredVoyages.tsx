@@ -19,7 +19,7 @@ import { useT } from '../../../lib/i18n'
 export function InsuredVoyages() {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
-  const read = useServedRead<InsuranceView>('insurance', worldInsurance)
+  const read = useServedRead<InsuranceView>('insurance', worldInsurance, { name: 'worldInsurance' })
   const v = read.view
   if (!v || (v.active.length === 0 && v.paid.length === 0)) return null
   const name = (c: string) => portNameOf(portByCode, c)

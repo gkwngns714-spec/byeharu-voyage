@@ -19,5 +19,6 @@ export type WorkstationState = ServedRead<WorkstationView>
 export function useWorkstation(portId: string | null, fleetId: string | null): WorkstationState {
   return useServedRead(portId ? `${portId}:${fleetId ?? '-'}` : null, () =>
     worldWorkstation(portId as string, fleetId),
+    { name: 'worldWorkstation' },
   )
 }

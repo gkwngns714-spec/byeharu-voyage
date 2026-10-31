@@ -30,5 +30,7 @@ import type { PortMerchants } from '../lib/rpc'
 import { useServedRead, type ServedRead } from './useServedRead'
 
 export function useMerchantsHere(portId: string | null): ServedRead<PortMerchants> {
-  return useServedRead<PortMerchants>(portId, () => worldPortMerchants(portId as string))
+  return useServedRead<PortMerchants>(portId, () => worldPortMerchants(portId as string), {
+    name: 'worldPortMerchants',
+  })
 }

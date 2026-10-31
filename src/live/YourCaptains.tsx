@@ -22,7 +22,7 @@ import { t as tl } from '../lib/i18n'
 // server refuses E_NOT_IN_PORT otherwise, and its refusal is printed if the two disagree.
 
 export function YourCaptains() {
-  const { view } = useServedRead('captains', () => worldCaptains())
+  const { view } = useServedRead('captains', () => worldCaptains(), { name: 'worldCaptains' })
   const [open, setOpen] = useState<string | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
   const captains = view?.captains ?? []

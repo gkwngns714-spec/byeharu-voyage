@@ -46,6 +46,8 @@ export interface HaggleStateRead {
 export function useHaggleState(fleetId: string | null, goodCode: string | null): HaggleStateRead {
   const goodId = useWorld((s) => (goodCode ? (s.goodByCode[goodCode]?.id ?? null) : null))
   const subject = fleetId && goodId ? `${fleetId}:${goodId}` : null
-  const read = useServedRead<HaggleState>(subject, () => worldHaggleState(fleetId as string, goodId as string))
+  const read = useServedRead<HaggleState>(subject, () => worldHaggleState(fleetId as string, goodId as string), {
+    name: 'worldHaggleState',
+  })
   return { state: read.view, loading: read.loading }
 }

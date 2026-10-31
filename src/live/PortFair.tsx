@@ -60,7 +60,8 @@ export function QuayFair({ portId }: { portId: string | null }) {
       return
     }
     if (edge !== null && nowMs >= edge && buffsAt !== null && buffsAt < edge) {
-      void loadBuffs(portId)
+      // The fair's own edge has passed; the kept payload answers an earlier question, so force.
+      void loadBuffs(portId, true)
     }
   }, [portId, buffs, edge, buffsAt, nowMs, loadBuffs])
 
