@@ -742,14 +742,16 @@ export function CityScene({
   sizeTier,
   night,
   seed = '',
+  selected,
   className = '',
 }: {
   sizeTier: number
   night: boolean
   /** The city's stable name — the same harbour draws the same picture everywhere. */
   seed?: string
-  /** Kept for the page's API; the picture itself is not pressable — the tiles are the doors. */
-  onOpen?: (b: CityBuilding) => void
+  /** The place open in the right panel, marked on the plan with one ring. The picture itself is
+   *  not pressable — the six tiles above it are the doors (owner, 2026-10-31). */
+  selected?: CityBuilding | 'hall'
   className?: string
 }) {
   const t = useT()
@@ -762,6 +764,16 @@ export function CityScene({
   const lights = useMemo(() => lightGroups(lamps), [lamps])
   const stillCrowd = useMemo(() => crowdGroups(crowd), [crowd])
   const dim = night ? 0.72 : 1
+  // THE OPEN PLACE, MARKED — the one thing a press changes on the plan (the page's frame never
+  // moves). The five in-wall places trace to their block; the port lies outside the wall, on the
+  // harbour front.
+  const selectedMark = useMemo(() => {
+    if (!selected) return null
+    const block = BLOCKS.find((x) => x.kind === selected)
+    return block
+      ? { cx: block.x + block.w / 2, cy: block.y + block.h / 2, r: Math.max(block.w, block.h) / 2 + 2.5 }
+      : { cx: 40, cy: 104, r: 17 }
+  }, [selected])
 
   return (
     <svg
@@ -821,6 +833,22 @@ export function CityScene({
         {generic.map((b, i) => (
           <Roof key={i} b={b} />
         ))}
+
+        {/* THE OPEN PLACE, MARKED — a ring around the place the right panel shows, so a press
+            changes the plan and the panel, and nothing else (owner, 2026-10-31). */}
+        {selectedMark && (
+          <g data-testid="city-selected" data-selected={selected} pointerEvents="none">
+            <circle
+              className="fill-accent stroke-accent"
+              fillOpacity="0.1"
+              strokeWidth="0.7"
+              opacity="0.9"
+              cx={selectedMark.cx}
+              cy={selectedMark.cy}
+              r={selectedMark.r}
+            />
+          </g>
+        )}
 
         {/* THE SIX NAMED PLACES, PICTURE MARKS ONLY — the tiles are the doors. */}
         <g data-testid="city-scene-storage" pointerEvents="none">
