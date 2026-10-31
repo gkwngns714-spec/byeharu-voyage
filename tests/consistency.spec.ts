@@ -570,3 +570,54 @@ test.fixme('HQ at 320: the hall panel never scrolls (city slice; #426 states 336
   const fit = await page.getByTestId('city-hall-scroll').evaluate((el) => ({ sh: (el as HTMLElement).scrollHeight, ch: (el as HTMLElement).clientHeight }))
   expect(fit.sh, `the hall panel scrolls at 320: ${fit.sh}/${fit.ch}`).toBeLessThanOrEqual(fit.ch + 1)
 })
+
+// ── ONE HOME PER FACT (owner, 2026-10-31: *"no info duplicate info needed… this goes for every
+// parts of the game"*) ─────────────────────────────────────────────────────────────────────────
+// The inventory (docs/dev-log/2026-10-31-no-duplicates.md) walked every screen's visible lines and
+// found the facts printed on more than one tab. Each repeat was removed from the tab whose subject
+// it is not; this test holds the removals:
+//   * the captains' board is RANK's — Stats/Me no longer repeats it;
+//   * the desk's cargo DOOR carries no figure (Fleets is the home); the strip keeps her hold,
+//     because the desk acts on that hold (stated judgment call);
+//   * the hall's five figures (Population · Gold · Status · Relationship · Employees) never
+//     appear outside the City screen.
+test('one home per fact: the captains board is Rank’s, the desk’s cargo door is a door, the hall’s figures stay in the City', async ({ page, request, baseURL }) => {
+  test.setTimeout(420_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+  await page.setViewportSize(SIZES[0])
+  const failures: string[] = []
+
+  // STATS/ME — the captains board has ONE home, and it is not here
+  await screen(page, 'stats')
+  if (!(await pressFace(page.getByRole('tablist'), 'Me', 'stats/Me', failures))) return expect(failures, 'the Me face did not open').toEqual([])
+  if ((await page.getByTestId('stats-leaderboard').count()) !== 0)
+    failures.push('stats/Me: the captains board stands here again — Rank is its home')
+  const titles = await page.locator('[data-summary-row]').evaluateAll((els) => els.map((e) => (e.firstElementChild?.textContent ?? '').trim()))
+  if (titles.includes('Captains')) failures.push(`stats/Me: a "Captains" summary row stands (${titles.join(', ')})`)
+
+  // RANK — the board lives here, behind its own row, and it names you
+  await screen(page, 'rank')
+  await page.getByTestId('rank-open').click()
+  await expect(page.getByTestId('rank-open-page')).toBeVisible()
+  if ((await page.getByTestId('rank-you').count()) === 0) failures.push('rank: the captains board does not name you')
+  await page.locator('[data-detail-back]').last().click()
+
+  // THE DESK — the cargo door carries no figure; the strip keeps the acting figure
+  await screen(page, 'command')
+  if (!(await pressFace(page.getByRole('tablist', { name: 'Desk faces' }), 'Trade', 'desk/Trade', failures)))
+    return expect(failures, 'the Trade face did not open').toEqual([])
+  const door = (await page.getByTestId('cargo-open').innerText()).trim()
+  if (/\d/.test(door)) failures.push(`desk/Trade: the cargo door carries a figure ("${door}") — Fleets is the home; the door must be a door`)
+  const strip = (await page.getByTestId('command-line').innerText()).trim()
+  if (!/\d/.test(strip)) failures.push('desk: the strip lost the acting cargo figure')
+
+  // THE HALL'S FIVE FIGURES — the City screen only
+  for (const route of ['fleets', 'map', 'stats', 'rank', 'routes', 'compendium', 'you', 'profile', 'ledger', 'command']) {
+    await screen(page, route)
+    for (const id of ['city-population', 'city-gold', 'city-status', 'city-relationship', 'city-employees']) {
+      if ((await page.getByTestId(id).count()) !== 0) failures.push(`${route} prints the hall's ${id}`)
+    }
+  }
+
+  expect(failures, 'one fact, one home').toEqual([])
+})

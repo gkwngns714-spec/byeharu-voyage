@@ -191,7 +191,10 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
       onPick={choose}
     />
   )
-  const cargoRow = <SummaryRow title={t('desk.cargo')} figure={cargoFigure} word={t('common.open')} onClick={() => setPage('cargo')} data-testid="cargo-open" />
+  // THE CARGO DOOR CARRIES NO FIGURE (owner, 2026-10-31: *"no info duplicate info needed"*): the
+  // desk's strip already prints her hold, and Fleets is the cargo fact's home. The door opens the
+  // board whole, whose own title carries the figure — one readout, one home.
+  const cargoRow = <SummaryRow title={t('desk.cargo')} word={t('common.open')} onClick={() => setPage('cargo')} data-testid="cargo-open" />
   const mapRow = <SummaryRow title={t('shell.tab_Map')} figure={mapFigure} word={t('common.open')} onClick={() => setPage('map')} data-testid="trade-map-open" />
   const ordersRow = <SummaryRow title={t('desk.orders')} figure={formatInt(fleet.queue.length)} word={t('common.open')} onClick={() => setPage('orders')} data-testid="command-queue" />
   const pages = (
