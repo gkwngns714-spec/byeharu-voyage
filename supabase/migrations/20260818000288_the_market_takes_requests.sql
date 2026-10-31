@@ -529,7 +529,7 @@ begin
     v_jobs int := 0;
   begin
     if to_regclass('cron.job') is not null then
-      execute q'select count(*) from cron.job where command ilike ''%market_request%''' into v_jobs;
+      execute $q$select count(*) from cron.job where command ilike '%market_request%'$q$ into v_jobs;
     end if;
     if v_jobs <> 0 then
       raise exception '0288 self-assert FAIL: a job names market_request — this file adds no job';
