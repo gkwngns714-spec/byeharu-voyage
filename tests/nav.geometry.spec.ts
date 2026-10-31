@@ -140,18 +140,22 @@ test(`nav: one row, every cell reachable, no label shaved at ${PHONE.width}px`, 
   ).toBeGreaterThanOrEqual(3)
 
   // 0b. THE COUNT, PINNED. Six cells from 2026-08-25; five from 2026-09-11, when MARKET folded into
-  //     PORT (owner row 76, docs/QUAY_LEDGER.md); FOUR since 2026-10-18, when PORT went under COMMAND
-  //     (docs/COMMAND_DESK.md D8, the owner: "delete port tab, and focus on command tab") — Command ·
-  //     Fleets · Map · Menu. A cell labelled Market or Port is an old tab coming back; a fifth cell of
-  //     any name is a new destination that did not go through src/app/navTabs.ts's grouping argument.
+  //     PORT (owner row 76, docs/QUAY_LEDGER.md); FOUR since 2026-10-18, when PORT went under the
+  //     desk. A cell labelled Market or Port is an old tab coming back.
   //     Pin moved deliberately 2026-10-20 with 0214 (the owner: "a statistic tab along with command, map
   //     etc."): FIVE — Command · Fleets · Map · Stats · Menu. Stats is ONE TAP by the owner's own sentence,
   //     not a cabin member; 390 ÷ 5 = 78 px and 320 ÷ 5 = 64 px both clear the 44 px floor and the 46 px the
   //     widest label needs, and the one-row assert below re-measures it.
-  expect(report.cells.map((c) => c.label), 'a nav cell is labelled Market or Port — both went under COMMAND').not.toContain('Market')
+  //     Pin moved AGAIN 2026-10-31, on the owner's correction: *"it is a game you dick. and i told you
+  //     to remove the command tab. wtf are you going on about"*. The desk has NO tab (its door is the
+  //     City's Market building, whose face composes the trade face) and the home — HQ — leads the
+  //     bar: FIVE again — HQ · Fleets · Map · Stats · Menu. A Command cell here is the owner's own
+  //     word coming back.
+  expect(report.cells.map((c) => c.label)).not.toContain('Market')
   expect(report.cells.map((c) => c.label)).not.toContain('Port')
-  expect(report.cells.map((c) => c.label)).toEqual(['Command', 'Fleets', 'Map', 'Stats', 'Menu'])
-  expect(report.cells.length, `the bar draws ${report.cells.length} cells; five since STATS joined (0214)`).toBe(5)
+  expect(report.cells.map((c) => c.label), 'the Command tab is back on the bar').not.toContain('Command')
+  expect(report.cells.map((c) => c.label)).toEqual(['HQ', 'Fleets', 'Map', 'Stats', 'Menu'])
+  expect(report.cells.length, `the bar draws ${report.cells.length} cells; five — HQ · Fleets · Map · Stats · Menu (owner, 2026-10-31)`).toBe(5)
 
   // 1. ONE ROW. The decision this file pins: at nine tabs the bar wrapped to 3×3 and ate 168px of
   //    an 844px screen. The cure was grouping, not a second row, so a second row is a failure.
@@ -269,4 +273,82 @@ test('nav: opening a group REVEALS its members and moves nothing in the bar', as
     await expect(panel).toBeHidden()
     await expect(cell).toHaveAttribute('aria-expanded', 'false')
   }
+})
+
+test('nav: HQ leads, no Command tab; the City rail is HQ · Map · Stats · Menu; Market opens the trade face', async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  await openApp(page, request, baseURL)
+
+  // THE BAR HAS NO COMMAND CELL (owner, 2026-10-31: "it is a game you dick. and i told you to remove
+  // the command tab") and HQ leads it, wearing the City rail's own word.
+  const bar = page.getByTestId('nav-bar')
+  await expect(bar.getByTestId('nav-cell-/city')).toBeVisible()
+  await expect(bar.getByTestId('nav-label-/city')).toHaveText('HQ')
+  await expect(bar.getByTestId('nav-cell-/command'), 'the Command tab is back on the bar').toHaveCount(0)
+
+  // FLEETS → HQ: one press lands on the City page.
+  await bar.getByTestId('nav-cell-/fleets').click()
+  await expect(page).toHaveURL(/\/fleets$/)
+  await ready(page)
+  await page.getByTestId('nav-bar').getByTestId('nav-cell-/city').click()
+  await expect(page).toHaveURL(/\/city(\?|$)/)
+  await ready(page)
+  await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('city-screen')).toBeVisible()
+  await expect(
+    page.getByTestId('city-nav').getByTestId('nav-cell-command'),
+    'the Command cell is back on the City rail',
+  ).toHaveCount(0)
+
+  // THE CITY RAIL'S OWN CELLS ARE REAL TAP TARGETS AT 390, and nothing scrolls sideways here.
+  const railCells = await page
+    .locator('[data-testid="city-nav"] > a, [data-testid="city-nav"] > button')
+    .evaluateAll((es) =>
+      es.map((e) => {
+        const r = e.getBoundingClientRect()
+        return { label: (e.textContent ?? '').trim(), w: Math.round(r.width), h: Math.round(r.height) }
+      }),
+    )
+  expect(railCells.length, `the City rail draws ${railCells.length} cells; HQ · Map · Stats · Menu`).toBe(4)
+  for (const c of railCells) {
+    expect(
+      c.w,
+      `city rail cell ${c.label} is ${c.w}px wide, under the ${TOUCH_FLOOR}px reach floor`,
+    ).toBeGreaterThanOrEqual(TOUCH_FLOOR)
+    expect(
+      c.h,
+      `city rail cell ${c.label} is ${c.h}px tall, under the ${TOUCH_FLOOR}px reach floor`,
+    ).toBeGreaterThanOrEqual(TOUCH_FLOOR)
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+
+  // CITY → MARKET: the desk's door from the home — the Market building opens the trade face.
+  await page.getByTestId('city-building-market').click()
+  await expect(page.getByTestId('city-face')).toBeVisible()
+  await expect(page.getByTestId('city-face')).toHaveAttribute('data-building', 'market')
+  await expect(page.getByTestId('quay-stores'), 'the market face is not the trade face').toBeVisible({
+    timeout: 60_000,
+  })
+  await page.getByTestId('city-face-back').click()
+  await expect(page.getByTestId('city-face')).toHaveCount(0)
+
+  // HQ → MAP → HQ: a destination outside the shell, then home again.
+  await page.getByTestId('nav-cell-/map').click()
+  await expect(page).toHaveURL(/\/map$/)
+  await ready(page)
+  await page.getByTestId('nav-bar').getByTestId('nav-cell-/city').click()
+  await expect(page).toHaveURL(/\/city(\?|$)/)
+  await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 60_000 })
+
+  // HQ → STATS → HQ: the same, on the City rail's other destination.
+  await page.getByTestId('nav-cell-/stats').click()
+  await expect(page).toHaveURL(/\/stats$/)
+  await ready(page)
+  await page.getByTestId('nav-bar').getByTestId('nav-cell-/city').click()
+  await expect(page).toHaveURL(/\/city(\?|$)/)
+  await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 60_000 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

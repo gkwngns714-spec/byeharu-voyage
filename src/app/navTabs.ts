@@ -4,11 +4,12 @@ import type { IconName } from '../components/ui'
 // spec instead of read out of JSX. NavBar renders EXACTLY this list; there is no second table.
 //
 // ── THE DESTINATIONS, and why each is its own screen — eight, and NINE since 2026-10-20 ────
-//   Command  whose orders, and what she has been told: her queue, the halt, cancel and clear.
-//            Since 2026-09-09 it composes NO verb — the owner: *"they should be located
-//            accordingly at different locations"* — every verb's doorway is on the face of the
-//            building whose act it is (PORT) or on the chart (SAIL). FLEETS' "Command her" still
-//            points it at a hull through `domain/order`'s draft; nothing hands it a verb.
+//   Command  NOT A TAB (owner, 2026-10-31): the desk — her queue, the halt, cancel and clear — is
+//            reached from the CITY's Market building (its face composes the trade face), never
+//            from this bar. Since 2026-09-09 it composes NO verb — the owner: *"they should be
+//            located accordingly at different locations"* — every verb's doorway is on the face
+//            of the building whose act it is (PORT) or on the chart (SAIL). FLEETS' "Command her"
+//            still points it at a hull through `domain/order`'s draft; nothing hands it a verb.
 //   Fleets   what you own and where it is: ships, crew, hold, condition.
 //   Port     the harbour you are in — its prices, and prices read elsewhere through its port
 //            field — its services, its dues, its news. MARKET folded into it on 2026-09-11 (owner
@@ -68,7 +69,10 @@ import type { IconName } from '../components/ui'
 //            44px reach floor and the 46px COMMAND needs. This is why SIX and not seven: 320 ÷ 7 is
 //            45.7px, and COMMAND would be shaved by the arithmetic alone.
 // SINCE 2026-09-11 the bar draws FIVE cells (Market gone); nav.geometry.spec pins the count and
-// re-measures the row on every run.
+// re-measures the row on every run. 2026-10-31: still FIVE — HQ leads the bar and the COMMAND tab
+// is GONE (owner: *"it is a game you dick. and i told you to remove the command tab"*): the City is
+// the game's home and its Market building is the desk's door. The label is "HQ", the City rail's
+// own word; the bar is HQ · Fleets · Map · Stats · Menu.
 
 export interface NavTab {
   to: string
@@ -95,7 +99,20 @@ const GROUPS: Record<NavGroupId, NavGroup> = {
 }
 
 const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] = [
-  { to: '/command', label: 'Command', icon: 'compass', enabled: true },
+  // HQ (owner, 2026-10-31: *"i press hq, then command, then hq disappears"*). The City page is the
+  // game's home and sits OUTSIDE the shell, so without a cell here the desk's screens had no way
+  // back to it — a navigation dead end. One press from every screen, as its OWN cell at the head of
+  // the bar. The word is the City rail's own — `city.hq`, "HQ" / "본부" — and the order matches that
+  // rail: HQ · Map · Stats · Menu (Fleets sits between HQ and Map here; the City rail does not
+  // carry it). Five cells: 390 ÷ 5 = 78 px, clear of the 44 px floor and the 46 px the widest
+  // label needs, and nav.geometry.spec re-measures the row on every run.
+  { to: '/city', label: 'HQ', icon: 'wreath', enabled: true },
+  // THE DESK HAS NO TAB (owner, 2026-10-31: *"it is a game you dick. and i told you to remove the
+  // command tab. wtf are you going on about"* — said before and not done). The trading desk is
+  // reached from the CITY: its Market building opens the trade face (`features/city/CityFace.tsx`,
+  // `PortTrade`). The /command route itself is kept for the desk screen and old links (App.tsx) —
+  // it is not a destination in this table, and the rail never carries it. Bar: HQ · Fleets · Map ·
+  // Stats · Menu.
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
   // STATS (owner, 2026-10-20: *"a statistic tab along with command, map etc. where i can see the world
