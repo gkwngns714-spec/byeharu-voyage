@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { PHONE, openFold, reachable, ready } from './appReady.fixture'
+import { PHONE, closeDetail, openDetail, reachable, ready } from './appReady.fixture'
 import { filterStorageKey, oneOf, readFilterChoice } from '../src/components/ui/filterState'
 import { sortMerchants, filterCities, sortCities } from '../src/features/stats/statsFilters'
 import type { StatsCityRow, StatsMerchantRow } from '../src/lib/rpc'
@@ -24,31 +24,34 @@ test('Cities: Europe leaves only European cities; Richest puts the bigger purse 
   await ready(page)
   await page.getByRole('tab', { name: 'Cities', exact: true }).click()
   await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 120_000 })
-  // the list is a fold (the sheet law); the filters above it stay open
-  await openFold(page, 'stats-cities-list')
-  const names = page.getByTestId('stats-city-name')
-  await expect.poll(() => names.count(), { timeout: 60_000 }).toBeGreaterThan(10)
-  const everyCity = await names.count()
-
+  // THE FILTERS ARE THEIR OWN PAGE (owner, 2026-10-31): open it, choose Europe + Richest, close.
+  await openDetail(page, 'stats-cities-filters')
   await page.getByTestId('filter-chip-europe').click()
   await expect(page.getByTestId('filter-chip-europe')).toHaveAttribute('aria-pressed', 'true')
-  await expect.poll(() => names.count()).toBeLessThan(everyCity)
+  await page.getByTestId('filter-pick-sort').selectOption('richest')
+  await closeDetail(page)
+
+  // THE LIST IS ITS OWN PAGE: open it and read the filtered, sorted rows.
+  await openDetail(page, 'stats-cities-list')
+  const names = page.getByTestId('stats-city-name')
+  await expect.poll(() => names.count(), { timeout: 60_000 }).toBeGreaterThan(10)
   const areas = await names.evaluateAll((els) => els.map((e) => e.getAttribute('data-area')))
   expect(areas.length).toBeGreaterThan(0)
   expect(new Set(areas)).toEqual(new Set(['europe']))
-  await noSidewaysScroll(page)
-
-  await page.getByTestId('filter-pick-sort').selectOption('richest')
   const purses = await names.evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-purse'))))
   expect(purses.length).toBeGreaterThan(1)
   expect(purses[0]).toBeGreaterThanOrEqual(purses[1])
+  await noSidewaysScroll(page)
+  await closeDetail(page)
 
   // remembered: the face comes back on Europe
   await page.getByRole('tab', { name: 'Markets', exact: true }).click()
   await expect(page.getByTestId('stats-markets-filters')).toBeVisible({ timeout: 60_000 })
   await noSidewaysScroll(page)
   await page.getByRole('tab', { name: 'Cities', exact: true }).click()
+  await openDetail(page, 'stats-cities-filters')
   await expect(page.getByTestId('filter-chip-europe')).toHaveAttribute('aria-pressed', 'true', { timeout: 60_000 })
+  await closeDetail(page)
 })
 
 test('a remembered choice never trusts what it reads', () => {

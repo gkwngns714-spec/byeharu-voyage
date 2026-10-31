@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShellState } from '../../app/shellState'
-import { Empty, Row, ScrollPane, SectionFold, TileChoice, TileGrid } from '../../components/ui'
+import { DetailPage, Empty, Row, SummaryRow, TileChoice, TileGrid } from '../../components/ui'
 import { formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
 import { properName, translateMaybe, useLocale, useT } from '../../lib/i18n'
 import { worldMoneyFeed, type MoneyMove, type RpcResult } from '../../lib/rpc'
@@ -8,30 +8,11 @@ import { useLiveRead } from './statsLive'
 import { emptyDrip, enqueue, step, type Drip } from './moneyDrip'
 import { SECTORS, sectorOf, type Sector } from './moneySectors'
 
-// THE MONEY LOG — every money move in the world as it happens, beside World money (0235; the owner, row 219,
-// 2026-10-26: *"beside the stat, world money, i want to see the live log of each happenings that cause money -
-// drop and gain, at the right side. possible?"*).
-//
-// ONE READ, world.money_feed: both money books (a company's ledger, a city's flows), newest first. Each row is ONE
-// purse's gain or loss — a sale is two rows, the company's "+1,200 · Casa X · Sold" and the city's "−1,200 ·
-// Lisbon · Bought" (decided by default in the migration). Green for a gain, red for a drop, and how long ago.
-//
-// ON THE TAB'S ONE WAY OF ASKING (statsLive.ts, useLiveRead): asked on mount and every second while the face is
-// open, never stacked, a hidden page skips. Each ask names only what is newer than the newest row held — less
-// LATE_MS, because a job's moves carry the instant its transaction BEGAN and land when it commits (the
-// arrivals tick, every 15 s, ran up to 12.5 s on prod 2026-10-26), so a batch can land older than a row already
-// shown. Rows merge by key and the newest KEEP are held, so the overlap never doubles a row.
-//
-// THE DRIP (moneyDrip.ts): the arrivals job writes rows in batches every 15 s, so new rows are not shown all at once —
-// they are queued oldest first and revealed a few per second; the player's own rows show at once. Each row keeps its
-// real time. (No animation, so reduced motion is the same.)
-//
-// THE LAYOUT: on a phone, under World money; on the wide glass, in the column's right gutter (the tray's room —
-// the Stats tab opens no tray), its heading on World money's line (World money's own top margin collapses
-// through the face, so the log's section drops its margin there). A name is never cut: the label wraps. "5 s ago" is
-// read against the shell's one clock, which is the server's (formatRelative).
+// THE MONEY LOG (0235, owner row 219): every money move in the world as it happens. On the compact
+// Stats screen it is ONE summary row carrying the number of moves held; the sector grid and the
+// live list live on a pop-up page (owner, 2026-10-31: compact screens, pages on press). The drip
+// (moneyDrip.ts) reveals batches a few rows a second; each row keeps its real time.
 
-// KEEP is what is held and filtered (a filter must not be empty after a minute); ASK is one read's size.
 const KEEP = 300
 const ASK = 100
 const FILTER_KEY = 'bv:moneylog-filter'
@@ -51,7 +32,6 @@ const LATE_MS = 20_000
 
 const atMs = (m: MoneyMove) => Date.parse(m.at)
 
-/** Newest first on (at, key) — the server's order. */
 function newestFirst(a: MoneyMove, b: MoneyMove): number {
   const d = atMs(b) - atMs(a)
   if (d !== 0) return d
@@ -78,7 +58,6 @@ function useMoneyFeed(): { view: MoneyMove[] | null; loading: boolean } {
     if (!r.ok) return r
     held.current = merge(held.current, r.value.moves)
     if (seen.current === null) {
-      // the first read is history: shown at once
       seen.current = new Set(r.value.moves.map((m) => m.key))
       setShown(held.current)
     } else {
@@ -108,6 +87,7 @@ export function MoneyLog() {
   const { nowMs } = useShellState()
   const { view } = useMoneyFeed()
   const [filter, setFilter] = useState<Filter>(loadFilter)
+  const [open, setOpen] = useState(false)
   if (view === null) return null
 
   const choose = (f: Filter) => {
@@ -133,31 +113,35 @@ export function MoneyLog() {
   const who = (m: MoneyMove) => (m.holder === 'city' ? properName('port', m.who, m.who, locale) : m.who)
 
   return (
-    <div className="mt-6 lg:absolute lg:top-0 lg:left-[calc(100%+1.5rem)] lg:mt-0 lg:w-[26rem] lg:[&>section]:mt-0!" data-testid="money-log">
-      {/* THE LOG IS A SECONDARY BLOCK ON THE SHEET (2026-10-31, the sheet law): its closed line
-          carries how many moves are held, and the grid + the bounded list are one press away. */}
-      <SectionFold heading={t('feed.heading')} summary={formatInt(base.length)} data-testid="money-log-fold">
-        {/* THE FILTERS ARE A GRID, NOT A CHIP ROW (owner, 2026-10-31: *"in stats money log, the
-            tappable thing is not ordered. make it into square and allign properly orderly."*).
-            Every sector owns one equal cell on fixed column lines, in the fixed order above. */}
-        <TileGrid label={t('feed.filter')} columns={4} className="mb-2">
-          <TileChoice on={filter.pick === 'all'} onClick={() => choose({ ...filter, pick: 'all' })} data-testid="money-chip-all">
-            {t('feed.s_all')} {base.length}
-          </TileChoice>
-          <TileChoice on={filter.mine} onClick={() => choose({ ...filter, mine: !filter.mine })} data-testid="money-chip-mine">
-            {t('feed.s_mine')}
-          </TileChoice>
-          {SECTORS.map((k) => (
-            <TileChoice key={k} on={filter.pick === k} onClick={() => choose({ ...filter, pick: k })} data-testid={`money-chip-${k}`}>
-              {t(`feed.s_${k}`)} {counts.get(k) ?? 0}
+    <>
+      <SummaryRow
+        title={t('feed.heading')}
+        figure={formatInt(base.length)}
+        word={t('common.open')}
+        onClick={() => setOpen(true)}
+        data-testid="money-log"
+      />
+      {open && (
+        <DetailPage title={t('feed.heading')} figure={formatInt(base.length)} onClose={() => setOpen(false)} data-testid="money-log-page">
+          {/* THE FILTERS ARE A GRID (owner, 2026-10-31). Every sector owns one equal cell on fixed
+              column lines, in the fixed order above. */}
+          <TileGrid label={t('feed.filter')} columns={4} className="mb-2">
+            <TileChoice on={filter.pick === 'all'} onClick={() => choose({ ...filter, pick: 'all' })} data-testid="money-chip-all">
+              {t('feed.s_all')} {base.length}
             </TileChoice>
-          ))}
-        </TileGrid>
-        {rows.length === 0 ? (
-          <Empty>{t('feed.none')}</Empty>
-        ) : (
-          <ScrollPane className="max-h-[24rem] lg:max-h-[32rem]">
-            {rows.map((m, i, all) => {
+            <TileChoice on={filter.mine} onClick={() => choose({ ...filter, mine: !filter.mine })} data-testid="money-chip-mine">
+              {t('feed.s_mine')}
+            </TileChoice>
+            {SECTORS.map((k) => (
+              <TileChoice key={k} on={filter.pick === k} onClick={() => choose({ ...filter, pick: k })} data-testid={`money-chip-${k}`}>
+                {t(`feed.s_${k}`)} {counts.get(k) ?? 0}
+              </TileChoice>
+            ))}
+          </TileGrid>
+          {rows.length === 0 ? (
+            <Empty>{t('feed.none')}</Empty>
+          ) : (
+            rows.map((m, i, all) => {
               const gain = m.delta > 0
               return (
                 <Row
@@ -184,10 +168,10 @@ export function MoneyLog() {
                   data-tone={gain ? 'gain' : 'drop'}
                 />
               )
-            })}
-          </ScrollPane>
-        )}
-      </SectionFold>
-    </div>
+            })
+          )}
+        </DetailPage>
+      )}
+    </>
   )
 }

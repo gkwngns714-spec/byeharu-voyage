@@ -1,6 +1,6 @@
 import { test, expect, type Locator } from '@playwright/test'
-import { openFold, ready, reachable } from './appReady.fixture'
-import { openTradeMap, pressCity } from './deskMap.fixture'
+import { closeDetail, openDetail, ready, reachable } from './appReady.fixture'
+import { closeTradeMap, openTradeMap, pressCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // SELL OPENS ON HER CARGO, A CITY PRESSED IS A CITY GONE TO, AND EVERY CITY SHE CAN SELL AT PRESSES (owner row 231,
@@ -60,12 +60,12 @@ for (const size of SIZES) {
       await page.goto('command')
       await ready(page)
       const face = page.getByTestId('desk-trade')
-      // on a phone the map starts closed (the one-page law); the press opens it
-      await openTradeMap(face)
       const board = face.getByTestId('trade-board')
 
-      // BUY ONE GOOD AT LISBON
+      // THE MAP IS A PAGE: open it, press Lisbon on it, close.
+      await openTradeMap(face)
       await pressCity(page, face.getByTestId('trade-map'), 'LIS')
+      await closeTradeMap(face)
       const card = face.locator('[data-testid="trade-good"]:has([data-testid="trade-buy"]:not([disabled]))').first()
       await expect(card).toBeVisible({ timeout: 120_000 })
       const code = (await card.getAttribute('data-good'))!
@@ -83,11 +83,13 @@ for (const size of SIZES) {
       const chip = face.getByTestId('city-chip').nth(2)
       const chipCity = (await chip.getAttribute('data-port'))!
       await chip.click()
+      await openTradeMap(face)
       await expectCentred(face.getByTestId('trade-map'), chipCity)
+      await closeTradeMap(face)
 
       // HER CARGO: the good, "Here", and the cities to sail to, each with a figure — in the folded
       // Cargo block on a phone, opened as a player opens it
-      await openFold(page, 'cargo-fold')
+      await openDetail(page, 'cargo-open')
       const cargo = face.getByTestId('cargo-best')
       await expect(cargo).toBeVisible()
       const block = cargo.locator(`[data-testid="cargo-good"][data-good="${code}"]`)
@@ -111,6 +113,7 @@ for (const size of SIZES) {
         const to = (await away.getAttribute('data-port'))!
         await away.click()
         await expect(away).toHaveAttribute('aria-pressed', 'true')
+        await closeDetail(page)
         await expect(board).toHaveAttribute('data-city', to)
         await expect(panel).toHaveAttribute('data-city', to)
         await expect(panel).toHaveAttribute('data-good', code)
@@ -118,8 +121,10 @@ for (const size of SIZES) {
         await expect(act).toHaveText(/Sail & sell|Too far|Cargo full|Shut|No money/, { timeout: 60_000 })
         // a button that will not press says why, in a sentence
         if (!(await act.isEnabled())) await expect(panel.getByTestId('trade-why').or(panel.getByRole('note'))).toBeVisible()
-        // ROW 191: on the plan's map the pressed city is a STOP, drawn — the plan's view is static (no glide)
+        // ROW 191: on the plan's map page the pressed city is a STOP, drawn.
+        await openTradeMap(face)
         await expect(face.getByTestId('trade-map').locator(`[data-port-code="${to}"]`).first()).toBeAttached({ timeout: 30_000 })
+        await closeTradeMap(face)
         // closed (the panel lets the good go)
         await panel.getByTestId('tray-close').click()
         await expect(panel).toHaveCount(0)
@@ -139,22 +144,29 @@ for (const size of SIZES) {
       }
       // the last one pressed: the map glides to it; its Sell opens Sail & sell
       const last = near[Math.min(4, near.length - 1)]
+      await openTradeMap(face)
       await expectCentred(face.getByTestId('trade-map'), last)
+      await closeTradeMap(face)
       await board.locator(`[data-testid="trade-good"][data-good="${code}"]`).getByTestId('trade-sell').click()
       await expect(panel).toHaveAttribute('data-city', last)
       await expect(act).toHaveAttribute('data-act', 'sail-sell')
       await panel.getByTestId('tray-close').click()
       await expect(panel).toHaveCount(0)
 
-      // HERE: Sell, all aboard, one press
+      // HERE: Sell, all aboard, one press — the cargo is its own page; press the row, then close
+      // the page to work the panel behind it.
+      await openDetail(page, 'cargo-open')
       await block.locator('[data-testid="cargo-place"][data-port="LIS"]').click()
+      await closeDetail(page)
       await expect(panel).toHaveAttribute('data-city', 'LIS')
       await expect(act).toHaveAttribute('data-act', 'sell')
       await expect(panel.getByTestId('stepper-figure')).toHaveValue('1')
       await expect(act).toBeEnabled({ timeout: 60_000 })
       await act.click()
       await expect(page.getByTestId('trade-toast')).toContainText(/^Sold 1 /, { timeout: 60_000 })
-      await expect(cargo.getByTestId('cargo-best-empty')).toBeVisible({ timeout: 60_000 })
+      await openDetail(page, 'cargo-open')
+      await expect(page.getByTestId('cargo-best').getByTestId('cargo-best-empty')).toBeVisible({ timeout: 60_000 })
+      await closeDetail(page)
 
       // no sideways scroll
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)

@@ -7,12 +7,17 @@
 // a card's Buy or Sell button opens the panel. The test ids below are the combined board's (TradeBoard.tsx).
 import { expect, type Locator, type Page } from '@playwright/test'
 
-/** THE SMALL MAP IS A FOLD AND IS CLOSED ON A PHONE (2026-10-31, the one-page law). A spec that
- *  drives the map opens it first, as a player does; on the wide desk it already stands open. */
+/** THE MAP IS A PAGE (owner, 2026-10-31): a spec that drives it presses its summary row and works
+ *  inside the full-screen page, then closes it before touching the face behind. */
 export async function openTradeMap(face: Locator): Promise<void> {
-  const fold = face.getByTestId('trade-map-fold')
-  if ((await fold.getAttribute('data-open')) === 'false') await face.getByTestId('trade-map-toggle').click()
-  await expect(fold).toHaveAttribute('data-open', 'true')
+  await face.getByTestId('trade-map-open').click()
+  await expect(face.getByTestId('trade-map-open-page')).toBeVisible()
+}
+
+/** Close the page a summary opened (the one back press every DetailPage carries). */
+export async function closeTradeMap(face: Locator): Promise<void> {
+  await face.getByTestId('trade-map-open-page').locator('[data-detail-back]').click()
+  await expect(face.getByTestId('trade-map-open-page')).toHaveCount(0)
 }
 
 export async function pressCity(page: Page, map: Locator, code: string): Promise<void> {
@@ -80,7 +85,6 @@ export async function pressFirstPricedCard(face: Locator): Promise<string> {
  *  Returns the good, that city and where she lies; the face is left back on where she lies. */
 export async function findCarry(page: Page, skip: readonly string[] = []): Promise<{ code: string; city: string; home: string }> {
   const face = page.getByTestId('desk-trade')
-  await openTradeMap(face)
   const board = face.getByTestId('trade-board')
   const chips = face.getByTestId('city-chip')
   await expect(chips.first()).toBeVisible({ timeout: 60_000 })
@@ -94,15 +98,17 @@ export async function findCarry(page: Page, skip: readonly string[] = []): Promi
   await expect(board).toHaveAttribute('data-city', home)
   const here = new Set(await goodsOf())
   const near = (await chips.evaluateAll((es) => es.map((e) => e.getAttribute('data-port') ?? ''))).slice(1)
-  const map = face.getByTestId('trade-map')
-  const all = await map.locator('[data-port-code]').evaluateAll((es) => es.map((e) => e.getAttribute('data-port-code') ?? ''))
   const tried = new Set<string>([home, ...skip])
-  for (const city of [...near, ...all]) {
+  for (const city of near) {
     if (!city || tried.has(city)) continue
     tried.add(city)
     const chip = face.locator(`[data-testid="city-chip"][data-port="${city}"]`)
     if (await chip.count()) await chip.click()
-    else await pressCity(page, map, city)
+    else {
+      await openTradeMap(face)
+      await pressCity(page, face.getByTestId('trade-map'), city)
+      await closeTradeMap(face)
+    }
     if (!(await expect(board).toHaveAttribute('data-city', city, { timeout: 3_000 }).then(() => true, () => false))) continue
     const there = await goodsOf().catch(() => [] as string[])
     const code = there.find((c) => here.has(c))
@@ -117,11 +123,14 @@ export async function findCarry(page: Page, skip: readonly string[] = []): Promi
 /** Sell → the city → the good → Sail & sell (owner row 229). Its estimate's labels are 1–2 words (row 202). */
 export async function sailAndSell(page: Page, code: string, city: string): Promise<void> {
   const face = page.getByTestId('desk-trade')
-  await openTradeMap(face)
   const board = face.getByTestId('trade-board')
   const chip = face.locator(`[data-testid="city-chip"][data-port="${city}"]`)
   if (await chip.count()) await chip.click()
-  else await pressCity(page, face.getByTestId('trade-map'), city)
+  else {
+    await openTradeMap(face)
+    await pressCity(page, face.getByTestId('trade-map'), city)
+    await closeTradeMap(face)
+  }
   await expect(board).toHaveAttribute('data-city', city)
   await expect(board).toHaveAttribute('data-docked', 'false')
   const card = face.locator(`[data-testid="trade-good"][data-good="${code}"]`)

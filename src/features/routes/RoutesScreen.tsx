@@ -4,12 +4,13 @@ import {
   Figure,
   Hint,
   Note,
+  DetailPage,
   Row,
-  ScrollPane,
   Segmented,
   Sheet,
   SheetSection,
   Skeleton,
+  SummaryRow,
   Tray,
   type TrayDetent,
 } from '../../components/ui'
@@ -83,6 +84,8 @@ function RoutesBody() {
   const [order, setOrder] = useState<Order>('nm')
   const [open, setOpen] = useState<string | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
+  // THE BOARD IS A PAGE (owner, 2026-10-31); the compact screen is the sort strip and one summary.
+  const [page, setPage] = useState(false)
 
   const rows = useMemo(() => sortRoutes(board?.routes ?? [], order), [board, order])
   const mine = rows.filter((r) => r.mine)
@@ -90,36 +93,7 @@ function RoutesBody() {
   const opened = board?.routes.find((r) => r.id === open) ?? null
 
   return (
-    <Sheet
-      title={t('routes.title')}
-      data-testid="routes"
-      trailing={
-        board === null ? undefined : (
-          // THE BOARD IS A PHOTOGRAPH, HONESTLY DATED — it is asked once and then left alone
-          // (useRouteBoard says why, with the 218 ms a call at 838 routes that decided it), so
-          // it says how old it is and offers to be asked again rather than pretending to be
-          // live. The same bargain RANK strikes with its "settled" line.
-          <span className="flex items-center gap-2 text-t-caption text-ink-faint">
-            <span>
-              {board.omitted > 0
-                ? t('routes.someLanes', { n: formatInt(board.routes.length), total: formatInt(board.total) })
-                : t('routes.lanes', { n: formatInt(board.total), count: board.total })}
-            </span>
-            {readAt !== null && <span>{formatRelative(readAt, nowMs)}</span>}
-            <Button
-              variant="quiet"
-              size="sm"
-              onClick={refresh}
-              busy={refreshing}
-              busyLabel={t('routes.reading')}
-              data-testid="routes-refresh"
-            >
-              {t('routes.readAgain')}
-            </Button>
-          </span>
-        )
-      }
-    >
+    <Sheet title={t('routes.title')} data-testid="routes">
       {board === null ? (
         loading ? (
           <div className="space-y-2">
@@ -132,14 +106,42 @@ function RoutesBody() {
         )
       ) : (
         <>
+          <SummaryRow
+            title={t('routes.title')}
+            figure={formatInt(board.total)}
+            word={t('common.open')}
+            onClick={() => setPage(true)}
+            data-testid="routes-open"
+          />
+          {page && (
+            <DetailPage
+              title={t('routes.title')}
+              figure={formatInt(board.total)}
+              onClose={() => {
+                setPage(false)
+                setOpen(null)
+              }}
+              data-testid="routes-open-page"
+            >
+              {/* THE BOARD IS A PHOTOGRAPH, HONESTLY DATED — it says how old it is and offers to be
+                  asked again rather than pretending to be live. */}
+              <div className="flex flex-wrap items-center gap-2 pb-2 text-t-caption text-ink-faint">
+                <span>
+                  {board.omitted > 0
+                    ? t('routes.someLanes', { n: formatInt(board.routes.length), total: formatInt(board.total) })
+                    : t('routes.lanes', { n: formatInt(board.total), count: board.total })}
+                </span>
+                {readAt !== null && <span>{formatRelative(readAt, nowMs)}</span>}
+                <Button variant="quiet" size="sm" onClick={refresh} busy={refreshing} busyLabel={t('routes.reading')} data-testid="routes-refresh">
+                  {t('routes.readAgain')}
+                </Button>
+              </div>
           {failed && (
             <Note tone="warning" className="mb-3">
               {t('routes.stale')}
             </Note>
           )}
           <Segmented segments={ORDERS.map((o) => ({ id: o.id, label: t(o.label) }))} value={order} onChange={setOrder} label={t('routes.rankBy')} className="mb-3" />
-
-          <ScrollPane className="max-h-[calc(100dvh_-_16rem)]" data-testid="routes-pane">
           {mine.length > 0 && (
             // HERS ON HER OWN PANEL, as RANK pins the captain's line: one tone step, so her lanes
             // read as hers rather than as the first rows of a printout.
@@ -192,9 +194,9 @@ function RoutesBody() {
               {t('routes.omitted', { n: formatInt(board.omitted), count: board.omitted })}
             </Hint>
           )}
-          </ScrollPane>
-
           {opened && <LaneTray route={opened} detent={detent} onDetentChange={setDetent} />}
+            </DetailPage>
+          )}
         </>
       )}
     </Sheet>

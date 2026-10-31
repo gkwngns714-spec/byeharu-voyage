@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import {
+  DetailPage,
   Figure,
   IconDisc,
   Row,
-  ScrollPane,
   Segmented,
   Sheet,
   SheetSection,
+  SummaryRow,
   Tray,
   type IconName,
   type TrayDetent,
@@ -18,40 +19,9 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { headline, payloadFights, payloadLines } from './headline'
 import { useT, type TKey } from '../../lib/i18n'
 
-// LEDGER — E.6. "The narrative organ of the game. This is where combat lives, as prose."
-//
-// Rows, not cards (docs/UI_DIRECTION.md §6 LEDGER, 2026-09-09). Every row is one served event,
-// newest first, in the server's own order: the clock it happened at, one sentence about it, and
-// the movement of money it made. A row whose event carries a report — the served after-action
-// prose, `payload.lines` — opens that report in a tray. Nothing else is on the screen.
-//
-// ── WHAT §2 ITEM 19 COUNTED, AND WHERE EACH THING WENT ─────────────────────────────────────────
-//   the filter card, `1 of 1 entries`, `read just now`   → a Segmented in the sheet header; the
-//                                                          counts and the read-age are gone. The
-//                                                          world re-reads itself every thirty
-//                                                          seconds and this feed rides that read;
-//                                                          a screen that reports on its own
-//                                                          freshness is telemetry (§5).
-//   the second timestamp on every row (`just now`)        → gone. One clock per row.
-//   `balance 40,000 d.` on every row                       → gone. The purse is in the status strip
-//                                                          on every tab; a balance beside every
-//                                                          row is the same fact restated.
-//   the footer notice about balances not summing          → gone with the balances it explained.
-//                                                          The rule it stated is still true and
-//                                                          still asserted (tests/rpc.firstSession
-//                                                          .spec.ts): WAGES move the purse through
-//                                                          `public.credit()` with no event behind
-//                                                          them, so the rows never sum to the
-//                                                          purse. Nothing here adds them up, so
-//                                                          nothing here has to say so.
-//
-// ── THE FACES ARE A GROUPING, NOT A SECOND NAME ────────────────────────────────────────────────
-// The old chips were built from the kinds present on the page, and the header of that file
-// refused to translate the server's kinds into the fixture's TRADE / VOYAGE / PORT / MARKET
-// because "a mapping layer would be a second name for every event". §6 asks for four faces —
-// All · Trade · Voyage · Crew — so the grouping exists, ONCE, below, and it groups rather than
-// renames: the headline still says what the event was. A kind the table does not know shows
-// under All and under nothing else, which is the honest reading of "we have not filed this yet".
+// LEDGER — the running record. THE COMPACT SCREEN (owner, 2026-10-31): the four faces are a tile
+// grid and the feed is one summary row with its entry count; a press opens the feed's own full-
+// screen page (every row, the report tray on a row). Nothing removed; nothing unfolds in place.
 
 type Face = 'all' | 'trade' | 'voyage' | 'crew'
 
@@ -62,8 +32,6 @@ const FACES: readonly { id: Face; label: TKey }[] = [
   { id: 'crew', label: 'codex.crew' },
 ]
 
-/** The server's kinds (emit_event, 0004/0007/0015/0016/0034) under the four faces. FOUNDED is the
- *  house's own line and belongs to no face but All. */
 const FACE_OF: Record<string, Exclude<Face, 'all'>> = {
   BOUGHT: 'trade',
   SOLD: 'trade',
@@ -74,21 +42,18 @@ const FACE_OF: Record<string, Exclude<Face, 'all'>> = {
   PROVISION_REFUSED: 'voyage',
   REPAIRING: 'voyage',
   REPAIRED: 'voyage',
-  TOWED: 'voyage',   // 0152: a wreck towed to a shipyard
-  FORCED_HOME: 'voyage',   // 0279: a ship that ran dry is forced home
-  // 0092: a standing route's lap and its pause are VOYAGE lines (docs/TRADE_ROUTES.md §6).
+  TOWED: 'voyage',
+  FORCED_HOME: 'voyage',
   ROUTE_LAP: 'voyage',
   ROUTE_PAUSED: 'voyage',
   HIRED: 'crew',
   DISMISSED: 'crew',
   SIGNED_OFFICER: 'crew',
   STUDIED: 'crew',
-  ENROLLED: 'crew',   // 0131: a skill's enrolment (its tuition)
+  ENROLLED: 'crew',
   WAGES: 'crew',
 }
 
-/** A row's mark is its FACE's mark — the grouping above, drawn, not a second table of kinds. A
- *  kind no face holds (FOUNDED, or one not filed yet) wears the book. */
 const FACE_ICON: Record<Exclude<Face, 'all'>, IconName> = {
   trade: 'coin',
   voyage: 'ship',
@@ -101,19 +66,10 @@ const markOf = (kind: string): IconName => {
 
 export function LedgerScreen() {
   const t = useT()
-  // FIELDS, NOT THE STORE (worldStore.ts rule 4). The Ledger is the screen that made the rule: it
-  // is the longest list in the game and it re-rendered whole, twice, on every read.
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
-
-  if (phase === 'failed') {
-    return <WorldFailed title={t('codex.history')} refusal={fatal} />
-  }
-  if (phase !== 'ready') {
-    return (
-      <WorldLoading title={t('codex.history')} />
-    )
-  }
+  if (phase === 'failed') return <WorldFailed title={t('codex.history')} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={t('codex.history')} />
   return <LedgerBody />
 }
 
@@ -124,76 +80,61 @@ function LedgerBody() {
   const [face, setFace] = useState<Face>('all')
   const [open, setOpen] = useState<LedgerEvent | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
+  const [page, setPage] = useState(false)
 
-  // `world.ledger()` already answers newest-first (0009: `order by e.created_at desc`). The screen
-  // does not re-sort it: the server's order is the record's order.
   const shown = face === 'all' ? events : events.filter((e) => FACE_OF[e.kind] === face)
-  // A CALLER, not a second author: `portNameOf` is the one reading of "what is this code called".
   const portName = (code: string) => portNameOf(portByCode, code)
-  // 0189: the open report's battle reports, each hung under its day's line in the tray below
   const fights = open === null ? [] : payloadFights(open.payload)
 
   const show = (event: LedgerEvent) => {
     setOpen(event)
     setDetent('half')
   }
+  const closePage = () => {
+    setPage(false)
+    setOpen(null)
+    setDetent('closed')
+  }
 
   return (
-    <Sheet
-      title={t('codex.history')}
-      data-testid="ledger"
-      trailing={<Segmented segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))} value={face} onChange={setFace} label={t('codex.history')} />}
-    >
-      {events.length === 0 ? (
-        <Row label={t('codex.nothingYet')} tone="muted" hairline={false} />
-      ) : shown.length === 0 ? (
-        <Row label={t('codex.nothingHere')} tone="muted" hairline={false} />
-      ) : (
-        // ONE PANEL, AND A MARK PER LINE (2026-10-01, owner: "it is like a text game"). Each entry
-        // is led by what KIND of thing happened — coin, ship, crew — and the clock drops to the
-        // caption under the headline, where a time belongs: read when wanted, never the anchor.
-        <SheetSection surface>
-          {/* THE FEED IS THE ONE LIST THAT CAN OUTGROW THE GLASS — bounded here so the tab's own
-              surface and its face strip never travel with it (the page law is onepage.spec.ts). */}
-          <ScrollPane className="max-h-[calc(100dvh_-_12rem)]" data-testid="ledger-pane">
-          {shown.map((event) => {
-            const atMs = Date.parse(event.at)
-            const report = payloadLines(event.payload)
-            return (
-              <Row
-                key={event.id}
-                data-testid="ledger-row"
-                mark={<IconDisc name={markOf(event.kind)} />}
-                label={headline(event, portName)}
-                value={movement(event.ducats_delta)}
-                chevron={report.length > 0}
-                onClick={report.length > 0 ? () => show(event) : undefined}
-              >
-                <span className="block text-t-caption tabular-nums text-ink-faint">
-                  {Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}
-                </span>
-              </Row>
-            )
-          })}
-          </ScrollPane>
-        </SheetSection>
+    <Sheet title={t('codex.history')} data-testid="ledger">
+      <Segmented segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))} value={face} onChange={setFace} label={t('codex.history')} className="mb-3 w-fit" />
+      <SummaryRow title={t('codex.history')} figure={formatInt(shown.length)} word={t('common.open')} onClick={() => setPage(true)} data-testid="ledger-open" />
+
+      {page && (
+        <DetailPage title={t('codex.history')} figure={formatInt(shown.length)} onClose={closePage} data-testid="ledger-open-page">
+          {shown.length === 0 ? (
+            <Row label={events.length === 0 ? t('codex.nothingYet') : t('codex.nothingHere')} tone="muted" hairline={false} />
+          ) : (
+            <SheetSection surface>
+              {shown.map((event) => {
+                const atMs = Date.parse(event.at)
+                const report = payloadLines(event.payload)
+                return (
+                  <Row
+                    key={event.id}
+                    data-testid="ledger-row"
+                    mark={<IconDisc name={markOf(event.kind)} />}
+                    label={headline(event, portName)}
+                    value={movement(event.ducats_delta)}
+                    chevron={report.length > 0}
+                    onClick={report.length > 0 ? () => show(event) : undefined}
+                  >
+                    <span className="block text-t-caption tabular-nums text-ink-faint">
+                      {Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}
+                    </span>
+                  </Row>
+                )
+              })}
+            </SheetSection>
+          )}
+        </DetailPage>
       )}
 
-      {/* THE REPORT IS READ, NOT SCANNED. The served prose is whole sentences about a night under
-          bare poles; it is the one place in the game that is reading rather than checking, and
-          it opens at half so a long passage can be dragged to full. The headline is the tray's
-          title, so the reader knows which voyage they are reading without the row behind it. */}
       {open !== null && (
-        <Tray
-          detent={detent}
-          onDetentChange={setDetent}
-          title={headline(open, portName)}
-          data-testid="ledger-report"
-        >
+        <Tray detent={detent} onDetentChange={setDetent} title={headline(open, portName)} data-testid="ledger-report">
           <div className="space-y-3 pb-2">
             {payloadLines(open.payload).map((line, i) => {
-              // 0189: a day fought in rounds carries its battle report — served words, hung under
-              // the day's own sentence, one round to a line, so the fight reads top to bottom.
               const fight = fights.find((f) => f.line === i)
               return (
                 <div key={i}>
@@ -217,18 +158,9 @@ function LedgerBody() {
   )
 }
 
-/** THE MOVEMENT IS THE FIGURE (§4.1: the one figure a row is about). Signed, tabular, green or red
- *  by meaning — gain and loss are the only things those two colours may ever mean (§4.4). The unit
- *  is not repeated on every row: the column is money, and the purse in the status strip says `d.`
- *  once. `balance_after` is served and true, and is deliberately not printed — see the header. */
 function movement(delta: number | null) {
   if (delta === null) return undefined
   const rounded = Math.round(delta)
   if (rounded === 0) return <Figure value="0" tone="faint" />
-  return (
-    <Figure
-      value={`${rounded > 0 ? '+' : MINUS}${formatInt(Math.abs(rounded))}`}
-      tone={rounded > 0 ? 'success' : 'danger'}
-    />
-  )
+  return <Figure value={`${rounded > 0 ? '+' : MINUS}${formatInt(Math.abs(rounded))}`} tone={rounded > 0 ? 'success' : 'danger'} />
 }

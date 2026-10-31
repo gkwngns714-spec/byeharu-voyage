@@ -1,15 +1,16 @@
+import { useState } from 'react'
 import {
   Bar,
+  DetailPage,
   Empty,
   FilterBar,
   Hint,
   Note,
   RankBars,
-  SectionFold,
   SignedBars,
-  Skeleton,
   StackedBar,
   StatCell,
+  SummaryRow,
   deltaTone,
   oneOf,
   useFilterChoice,
@@ -25,30 +26,18 @@ import { useChartSpan } from '../../store/chartSpan'
 import { ALL } from './statsFilters'
 import { WatchSection } from './Watch'
 
-// OVERVIEW — the world's money: who holds it, what was printed, what was burned, what changed hands.
-//
-// THE SHAPE, top to bottom: the one hero figure (every purse in the world, counting to its new value),
-// the four holders as one stacked bar so the composition is read before any digit, the same four as
-// small multiples with their own lines (seriesChartModel.ts says why not one plane — players 0.2 M
-// against cities 988 M), the world's whole purse as one chart, then the period's money as bars from a
-// zero line and the kinds ranked. One accent, green–red only for new money against burned.
-//
-// EVERYTHING MOVES EVERY SECOND (0232, owner row 213): the read answers NOW and is asked every second while the face
-// is open (useLiveRead). The holders and the hero are the live counters (0224's world.stats_now, served inside the
-// read); "the last 24 h" is the count's quarter hours plus the minutes since; "since the last count" is the count in
-// progress; every chart's last point is now() — the money line at its live total, the bars and the sold / bought
-// lines at the period in progress. Nothing here adds a figure: each is the server's.
-//
-// THE MONEY LOG (0235, owner row 219) stands beside World money: every money move as it happens (MoneyLog.tsx).
+// OVERVIEW — the world's money. THE COMPACT SCREEN (owner, 2026-10-31): one summary row per block,
+// its key figure on the line, a press opens the block's full-screen page (DetailPage). Nothing is
+// unfolded in place and nothing is removed — every former block lives whole on its page.
 
 const HOURS = 24
 
-/** `live` is the RIGHT NOW band's answer (world.stats_now), handed down for the economy watch it carries (0229). */
 export function OverviewFace({ live }: { live: StatsNow | null }) {
   const t = useT()
-  const { span } = useChartSpan()   // 0246: one span for every chart; a press re-asks at once, the figures stay on screen
+  const { span } = useChartSpan()
   const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span)
   const v = read.view
+  const [page, setPage] = useState<'money' | 'new' | null>(null)
 
   if (read.loading && !v) return <Waiting />
   if (!v) return <Note tone="danger">{t('stats.worldFailed')}</Note>
@@ -63,115 +52,77 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
     { id: 'cities', label: t('stats.citiesHolder'), value: h.cities, tone: 'success' as const },
     { id: 'set_aside', label: t('stats.setAside'), value: h.set_aside, tone: 'neutral' as const },
   ]
-  // What the world is worth MORE than it was: everything printed in the last day, less what burned.
   const newMoney = day === null ? null : day.minted - day.removed
   const totals = toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside)
 
   return (
-    // `relative`: the money log stands in the column's right gutter on the wide glass, beside World money (MoneyLog.tsx)
-    <div className="relative" data-testid="stats-overview" data-span={v.span ?? ''}>
-      {/* THE FACE'S DETAIL IS ONE PRESS AWAY (2026-10-31, the sheet law): the closed line carries
-          the world's whole purse. The holders, the composition and the series stand inside. */}
-      <SectionFold heading={t('stats.money')} summary={formatDucats(h.total)} data-testid="stats-money">
-        <StatCell
-          label={t('stats.everyPurse')}
-          value={h.total}
-          format={formatDucats}
-          size="hero"
-          delta={newMoney === null ? undefined : { text: t('stats.today', { amount: formatDucatsDelta(newMoney) }), tone: deltaTone(newMoney) }}
-        />
-        {/* The bar's own legend is OFF because the four cells under it ARE the legend: each one
-            names its holder, prints its figure, and carries a share bar in the segment's own tone.
-            Colour is never the only channel either way. */}
-        <StackedBar
-          parts={holders}
-          format={formatDucats}
-          label={t('stats.byHolder')}
-          legend={false}
-          className="mt-3"
-        />
-        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-          {holders.map((x) => (
-            <StatCell
-              key={x.id}
-              label={x.label}
-              value={x.value}
-              format={formatDucats}
-              size="body"
-              trend={trendOf(v.series, (p) => p[x.id as 'players' | 'merchants' | 'cities' | 'set_aside'])}
-              data-testid="stats-holder"
-            >
-              <Bar
-                pct={sharePct(x.value, h.total)}
-                tone={x.tone}
-                label={t('stats.shareOf', { who: x.label })}
-                className="mt-1"
-              />
-            </StatCell>
-          ))}
-        </div>
-        <StatsChart
-          title={t('stats.purseSeries')}
-          points={totals}
-          format={formatDucats}
-          label={t('stats.purseSeries')}
-          tone="accent"
-          className="mt-4"
-          empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
-        />
-      </SectionFold>
-      <MoneyLog />
+    <div data-testid="stats-overview" data-span={v.span ?? ''}>
+      <div className="mt-2 flex flex-col gap-2">
+        <SummaryRow title={t('stats.money')} figure={formatDucats(h.total)} word={t('common.open')} onClick={() => setPage('money')} data-testid="stats-money" />
+        <MoneyLog />
+        <SummaryRow title={t('stats.newMoney')} figure={formatDucatsDelta(newMoney ?? 0)} word={t('common.open')} onClick={() => setPage('new')} data-testid="stats-new-money" />
+        <WatchSection watch={live?.watch} />
+        <FlowsByKind day={day} period={v.period} />
+      </div>
 
-      {/* THE SECONDARY BLOCK, FOLDED (owner, 2026-10-31: *"make things foldable"*): its closed
-          line carries today's net money, and the charts are one press away — never gone. */}
-      <SectionFold heading={t('stats.newMoney')} summary={formatDucatsDelta(newMoney ?? 0)} data-testid="stats-new-money">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-          <StatCell label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
-          <StatCell label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
-          <StatCell label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} size="body" />
-          <StatCell label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} size="body" />
-        </div>
-        <SignedBars
-          bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
-          label={t('stats.netBars')}
-          height="h-20"
-          className="mt-4"
-        />
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="min-w-0">
-            <span className="block text-t-caption text-ink-faint">{t('stats.soldCities')}</span>
-            <StatsChart
-              title={t('stats.soldCities')}
-              points={toSeries(v.series, (p) => p.sold)}
-              format={formatDucats}
-              label={t('stats.soldSeries')}
-              tone="info"
-              empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>}
-            />
+      {page === 'money' && (
+        <DetailPage title={t('stats.money')} figure={formatDucats(h.total)} onClose={() => setPage(null)} data-testid="stats-money-page">
+          <StatCell
+            label={t('stats.everyPurse')}
+            value={h.total}
+            format={formatDucats}
+            size="hero"
+            delta={newMoney === null ? undefined : { text: t('stats.today', { amount: formatDucatsDelta(newMoney) }), tone: deltaTone(newMoney) }}
+          />
+          <StackedBar parts={holders} format={formatDucats} label={t('stats.byHolder')} legend={false} className="mt-3" />
+          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
+            {holders.map((x) => (
+              <StatCell
+                key={x.id}
+                label={x.label}
+                value={x.value}
+                format={formatDucats}
+                size="body"
+                trend={trendOf(v.series, (p) => p[x.id as 'players' | 'merchants' | 'cities' | 'set_aside'])}
+                data-testid="stats-holder"
+              >
+                <Bar pct={sharePct(x.value, h.total)} tone={x.tone} label={t('stats.shareOf', { who: x.label })} className="mt-1" />
+              </StatCell>
+            ))}
           </div>
-          <div className="min-w-0">
-            <span className="block text-t-caption text-ink-faint">{t('stats.boughtCities')}</span>
-            <StatsChart
-              title={t('stats.boughtCities')}
-              points={toSeries(v.series, (p) => p.bought)}
-              format={formatDucats}
-              label={t('stats.boughtSeries')}
-              tone="accent"
-              empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>}
-            />
-          </div>
-        </div>
-      </SectionFold>
+          <StatsChart title={t('stats.purseSeries')} points={totals} format={formatDucats} label={t('stats.purseSeries')} tone="accent" className="mt-4" empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>} />
+        </DetailPage>
+      )}
 
-      <WatchSection watch={live?.watch} />
-      <FlowsByKind day={day} period={v.period} />
+      {page === 'new' && (
+        <DetailPage title={t('stats.newMoney')} figure={formatDucatsDelta(newMoney ?? 0)} onClose={() => setPage(null)} data-testid="stats-new-money-page">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
+            <StatCell label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
+            <StatCell label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
+            <StatCell label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} size="body" />
+            <StatCell label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} size="body" />
+          </div>
+          <SignedBars bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))} label={t('stats.netBars')} height="h-20" className="mt-4" />
+          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="min-w-0">
+              <span className="block text-t-caption text-ink-faint">{t('stats.soldCities')}</span>
+              <StatsChart title={t('stats.soldCities')} points={toSeries(v.series, (p) => p.sold)} format={formatDucats} label={t('stats.soldSeries')} tone="info" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
+            </div>
+            <div className="min-w-0">
+              <span className="block text-t-caption text-ink-faint">{t('stats.boughtCities')}</span>
+              <StatsChart title={t('stats.boughtCities')} points={toSeries(v.series, (p) => p.bought)} format={formatDucats} label={t('stats.boughtSeries')} tone="accent" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
+            </div>
+          </div>
+        </DetailPage>
+      )}
     </div>
   )
 }
 
 const SIDES = [ALL, 'minted', 'removed', 'moved'] as const
 
-/** The two periods' money by kind under one filter of its side (0244, owner row 228): new, burned or moved. */
+/** The two periods' money by kind under one filter of its side (0244, owner row 228). The filter is
+ *  a tile grid on the compact screen; each period is a summary row that opens its own page. */
 function FlowsByKind({ day, period }: { day: StatsPeriod | null; period: StatsPeriod | null }) {
   const t = useT()
   const [choice, choose] = useFilterChoice('stats.overview', { side: ALL })
@@ -180,7 +131,7 @@ function FlowsByKind({ day, period }: { day: StatsPeriod | null; period: StatsPe
   return (
     <>
       <FilterBar
-        className="mt-4"
+        className="mt-2"
         data-testid="stats-flows-filters"
         chips={{
           label: t('stats.filterLabel'),
@@ -198,24 +149,31 @@ function FlowsByKind({ day, period }: { day: StatsPeriod | null; period: StatsPe
   )
 }
 
-/** The money of one period, by kind, biggest first — the server's words, the server's sides. */
+/** A period of money by kind: a summary row with the kind count; its page holds the ranked bars. */
 function Flows({ heading, period, side, testid }: { heading: string; period: StatsPeriod | null; side: string; testid: string }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
   if (!period || period.flows.length === 0) return null
   const flows = side === ALL ? period.flows : period.flows.filter((f) => f.side === side)
   if (flows.length === 0) return null
   return (
-    <SectionFold heading={heading} summary={formatInt(flows.length)} data-testid={testid}>
-      <RankBars rows={flowRanks(flows)} format={formatDucatsDelta} />
-    </SectionFold>
+    <>
+      <SummaryRow title={heading} figure={formatInt(flows.length)} word={t('common.open')} onClick={() => setOpen(true)} data-testid={testid} />
+      {open && (
+        <DetailPage title={heading} figure={formatInt(flows.length)} onClose={() => setOpen(false)} data-testid={`${testid}-page`}>
+          <RankBars rows={flowRanks(flows)} format={formatDucatsDelta} />
+        </DetailPage>
+      )}
+    </>
   )
 }
 
 function Waiting() {
   return (
     <div className="space-y-3" data-testid="stats-waiting">
-      <Skeleton className="h-24 w-full" />
-      <Skeleton className="h-32 w-full" />
-      <Skeleton className="h-12 w-2/3" />
+      <div className="h-24 w-full animate-pulse rounded-tile bg-surface" />
+      <div className="h-32 w-full animate-pulse rounded-tile bg-surface" />
+      <div className="h-12 w-2/3 animate-pulse rounded-tile bg-surface" />
     </div>
   )
 }

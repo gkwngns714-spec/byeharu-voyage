@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Icon, SectionFold, SheetSection, useWide } from '../../../components/ui'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { DetailPage, SummaryRow, useWide } from '../../../components/ui'
 import { fleetCargoByCode, fleetHoldTotal, fleetHoldUsed } from '../../../domain/fleet'
 import { usePriceWhy } from '../../../live/useDesk'
 import { usePortMarket } from '../../../live/usePortMarket'
@@ -134,35 +134,12 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     pickGood(null)
   }
 
-  // THE SMALL MAP AT THE BOTTOM, FOLDABLE (owner 2026-10-30): folded, a thin toggle; expanded, the map. The fold
-  // changes only the map's own height — nothing above it re-flows or collapses.
-  // ON A PHONE THE MAP STANDS CLOSED (2026-10-31, the sheet law): the board is the face, and the
-  // map is one press away at the bottom. On the wide desk it is open — there it costs no Sheet.
-  const [mapOpen, setMapOpen] = useState(wide)
-  const map = (
-    <MapFold open={mapOpen} onToggle={() => setMapOpen((o) => !o)} summary={city ? portNameOf(portByCode, city) : undefined}>
-      <TradeMap
-        fleet={fleet}
-        plan={trip.drawing}
-        pick={pickNow}
-        onClose={() => choose(null)}
-        scrollOnPick={!wide}
-        city={city}
-        onCity={pressCity}
-        goTo={goTo}
-      />
-    </MapFold>
-  )
-
+  // THE COMPACT FACE (owner, 2026-10-31): the board is the subject; Cargo, Map and Orders are
+  // summary rows with their key figures, each opening a full-screen page. Nothing unfolds in place.
+  const [page, setPage] = useState<'cargo' | 'map' | 'orders' | null>(null)
+  const cargoFigure = formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))
+  const mapFigure = city ? portNameOf(portByCode, city) : undefined
   const cargo = <CargoBest fleet={fleet} city={city} picked={pickedRow ? pickedRow.code : null} onPress={pressCargo} />
-  // THE PHONE'S SECONDARY BLOCKS ARE FOLDED, EACH WITH ITS FIGURE (2026-10-31, the sheet law).
-  const cargoBlock = wide ? (
-    cargo
-  ) : (
-    <SectionFold heading={t('desk.cargo')} summary={formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} data-testid="cargo-fold">
-      {cargo}
-    </SectionFold>
-  )
 
   const board = (
     <TradeBoard
@@ -213,26 +190,39 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
       onPick={choose}
     />
   )
-  const orders = (
+  const cargoRow = <SummaryRow title={t('desk.cargo')} figure={cargoFigure} word={t('common.open')} onClick={() => setPage('cargo')} data-testid="cargo-open" />
+  const mapRow = <SummaryRow title={t('shell.tab_Map')} figure={mapFigure} word={t('common.open')} onClick={() => setPage('map')} data-testid="trade-map-open" />
+  const ordersRow = <SummaryRow title={t('desk.orders')} figure={formatInt(fleet.queue.length)} word={t('common.open')} onClick={() => setPage('orders')} data-testid="command-queue" />
+  const pages = (
     <>
-      {routeRow}
-      {wide ? (
-        <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
-          {queue}
-        </SheetSection>
-      ) : (
-        // THE PHONE'S ORDERS ARE ONE FOLDED LINE (2026-10-31, the sheet law): the route row above
-        // stays visible; the queue, the insured voyages and the ship are one press away.
-        <SectionFold heading={t('desk.orders')} summary={formatInt(fleet.queue.length)} data-testid="command-queue">
+      {page === 'cargo' && (
+        <DetailPage title={t('desk.cargo')} figure={cargoFigure} onClose={() => setPage(null)} data-testid="cargo-open-page">
+          {cargo}
+        </DetailPage>
+      )}
+      {page === 'map' && (
+        <DetailPage title={t('shell.tab_Map')} figure={mapFigure} onClose={() => setPage(null)} data-testid="trade-map-open-page">
+          <TradeMap
+            fleet={fleet}
+            plan={trip.drawing}
+            pick={pickNow}
+            onClose={() => choose(null)}
+            scrollOnPick={!wide}
+            city={city}
+            onCity={pressCity}
+            goTo={goTo}
+          />
+        </DetailPage>
+      )}
+      {page === 'orders' && (
+        <DetailPage title={t('desk.orders')} figure={formatInt(fleet.queue.length)} onClose={() => setPage(null)} data-testid="command-queue-page">
           {queue}
           {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
           <InsuredVoyages />
           {/* row 233: the ship under the orders */}
           <ShipInfo fleet={fleet} />
-        </SectionFold>
+        </DetailPage>
       )}
-      {wide && <InsuredVoyages />}
-      {wide && <ShipInfo fleet={fleet} />}
     </>
   )
 
@@ -242,13 +232,19 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     wide
       ? {
           testid: 'desk-trade',
-          list: orders,
+          list: (
+            <>
+              {routeRow}
+              {ordersRow}
+            </>
+          ),
           main: (
             <>
               {board}
-              {cargo}
-              {map}
+              {cargoRow}
+              {mapRow}
               {toastLine}
+              {pages}
             </>
           ),
           side: panel ? (
@@ -266,42 +262,26 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           order: ['list', 'main', 'side'],
           list: (
             <>
+              {/* The summaries stand ABOVE the board so they stay reachable while the trade
+                  panel (a docked tray) covers the lower half. */}
+              {cargoRow}
+              {mapRow}
               {board}
-              {cargoBlock}
-              {map}
             </>
           ),
           main: (
             <>
               {panel}
               {toastLine}
+              {pages}
             </>
           ),
-          side: <div className="mt-2">{orders}</div>,
+          side: (
+            <div className="mt-2">
+              {routeRow}
+              {ordersRow}
+            </div>
+          ),
         },
-  )
-}
-
-/** The map's fold (owner 2026-10-30): a thin toggle; open, the map under it. The fold is the map area's own height —
- *  the board and everything above it stay exactly where they are. */
-function MapFold({ open, onToggle, summary, children }: { open: boolean; onToggle: () => void; summary?: string; children: ReactNode }) {
-  const t = useT()
-  return (
-    <section className="mt-4" data-testid="trade-map-fold" data-open={open ? 'true' : 'false'}>
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex min-h-11 w-full items-center justify-between rounded-md bg-surface-2 px-3 py-2 transition"
-        data-testid="trade-map-toggle"
-      >
-        <span className="text-t-label font-medium text-ink">{t('shell.tab_Map')}</span>
-        <span className="flex min-w-0 items-center gap-2 text-t-caption text-ink-muted">
-          {summary !== undefined && <span className="min-w-0 truncate">{summary}</span>}
-          <Icon name="chevron" size={16} className={`shrink-0 ${open ? 'rotate-90' : ''}`} />
-        </span>
-      </button>
-      {open && <div className="mt-2">{children}</div>}
-    </section>
   )
 }
