@@ -10,7 +10,7 @@ import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
-import { useWorldBeat } from '../../live/useWorldBeat'
+import { useWorldBeat } from '../../live/worldStore'
 import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
@@ -127,7 +127,7 @@ export function CityScreen() {
   }, [])
   // AND THE SAME BEAT the shell arms: this page stands outside AppShell, so without it the city's
   // served reads (the hall, the market, the requests) were asked once and frozen while the player
-  // stood here. One spelling (live/useWorldBeat.ts).
+  // stood here. One spelling (live/worldStore.ts's useWorldBeat).
   useWorldBeat()
 
   // THE ONE CLOCK, for the faces composed inside a building (the shell's own contract, shellState.ts).

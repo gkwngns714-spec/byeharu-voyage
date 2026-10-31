@@ -48,6 +48,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { create } from 'zustand'
+import { useEffect } from 'react'
 import {
   cmdCancel,
   cmdClear,
@@ -87,7 +88,7 @@ import {
 import { navFromServed, type SeaNav } from '../lib/sea'
 import { registerHullClasses } from '../chart'
 import { msUntilEdge, peekResource, readResource, SESSION_MS } from '../store/resourceCache'
-import { READ_MAX_MS } from '../domain/readClock'
+import { READ_MAX_MS, readIntervalMs } from '../domain/readClock'
 import { whereabouts } from '../domain/fleet'
 import { mergeRoster, readSavedRoster, rosterKey, savedRosterText, trafficRowAt } from './seaRoster'
 import { namedMarket, namedSnapshot } from './worldNames'
@@ -240,6 +241,10 @@ export interface LiveWorld {
   open: () => Promise<void>
   /** Read again — fleets and ledger. THIS IS HOW TIME PASSES. */
   refresh: () => Promise<void>
+  /** ONE STEP OF THE WORLD'S BEAT — refresh only when the world is up and no read is in flight.
+   *  A screen outside the shell (the City page) calls this on its own timer; the guard lives HERE
+   *  so no screen reads the read flag (tests/flicker.spec.ts). */
+  beat: () => void
   /** Fetch (and cache) one port's market. `force` asks again after a mutation (afterTrade) or a
    *  player's retry; a plain call is served from the cache until the market's own edge. */
   loadMarket: (portId: string, force?: boolean) => Promise<void>
@@ -732,6 +737,10 @@ export const useWorld = create<LiveWorld>((set, get) => {
     })
   },
 
+  beat: () => {
+    const s = useWorld.getState()
+    if (s.phase === 'ready' && !s.reading) void s.refresh()
+  },
   refresh: async () => {
     set({ reading: true })
     // The house rides along with the fleets: it is the same read cadence (fame is derived from the
@@ -1101,3 +1110,18 @@ subscribeLocale(() => {
   for (const [id, m] of servedMarkets) markets[id] = namedMarket(m, locale)
   useWorld.setState({ ...snapshotLookups(servedSnapshot), markets })
 })
+
+/** ARM THE WORLD'S BEAT for a screen that stands outside the shell (the City page). The shell arms
+ *  its own identical interval (AppShell); this one exists so the city's served reads — the hall,
+ *  the market, the requests — are not asked once and then frozen under a standing player. The
+ *  guard lives in `beat()` above, so the shell and this store are the only readers of the flag
+ *  (tests/flicker.spec.ts's law). The caller owns its lifetime: the returned effect clears it. */
+export function useWorldBeat(): void {
+  const compression = useWorld((w) => w.snapshot?.config.time_compression)
+  useEffect(() => {
+    const every = readIntervalMs(compression)
+    useWorld.setState({ readEveryMs: every })
+    const id = window.setInterval(() => useWorld.getState().beat(), every)
+    return () => window.clearInterval(id)
+  }, [compression])
+}
