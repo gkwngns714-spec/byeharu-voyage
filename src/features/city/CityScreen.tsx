@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Counter, Figure, Icon, Nav, Note, Row, StatCell, TapAway, Tray, type IconName, type NavItem } from '../../components/ui'
+import { useSearchParams } from 'react-router-dom'
+import { Counter, Figure, Icon, Note, StatCell, type IconName } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
-import { NAV_CELLS, tabHref } from '../../app/navTabs'
+import { NavBar } from '../../app/NavBar'
 import { alongsideAt, fleetPortCode, housePortCode } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
-import type { Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
+import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, formatInt, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
-import { translateMaybe, useLocale, useT, type TKey } from '../../lib/i18n'
-import { CityFace, type CityBuilding } from './CityFace'
+import { useT, type TKey } from '../../lib/i18n'
+import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
 
@@ -22,12 +22,14 @@ import { CityScene } from './CityScene'
 // THE CITY PAGE — a city, full screen (owner's "Game screen development", 2026-10-30)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// THE BRIEF: THE HQ SPLIT — the city plan on the LEFT, the TOWN HALL IN PLACE on the RIGHT (owner,
-// 2026-10-31: "the town hall screen is on the same HQ screen, but where the city is"): its
-// treasury, the influence book (no tax rows here), and one tappable Investors row opening a
-// right-hand drawer; the four figures beneath the plan; the five other buildings, each opening a
-// full-screen face; your earnings; and a bottom rail (HQ | map | stats | menu). NO PAGE SCROLL —
-// the frame is one viewport at every glass, and the columns fit it on a phone.
+// THE BRIEF: THE HQ SCREEN IS A FRAME AROUND TWO REGIONS (owner, 2026-10-31: *"in buildings 6
+// building tappable should always be inside. when pressed each building, HQ stays the same, but
+// the the location where the city image is, as well as the right side should only change."*). The
+// frame — the header, the six building tiles, the rail — never moves. The two regions: the city's
+// plan on the LEFT (with the city's figures beneath it), and on the RIGHT the open place's panel —
+// the Town Hall by default (treasury, influence book with no tax rows, one tappable Investors row
+// opening a right-hand drawer), else the building's own face composed in place. NO PAGE SCROLL —
+// the frame is one viewport at every glass.
 //
 // ── WHAT IS REAL ON THIS SLICE, AND WHAT IS NOT ────────────────────────────────────────────────
 // This is the SHELL. It is client-only: there is no migration and no new served field.
@@ -45,12 +47,12 @@ import { CityScene } from './CityScene'
 //              figures ride the hall's ONE served block — no cell asks a second read.
 //
 // ── WHY IT SITS OUTSIDE AppShell ──────────────────────────────────────────────────────────────
-// The page draws its OWN bottom rail and its OWN header, so the shell's tab bar would be a second
-// navigation on the same glass. It is therefore a sibling of `/ui`, inside `RequireAuth` but not
-// inside `AppShell` (src/app/App.tsx) — and for the same reason it provides the one thing the
-// shell normally provides to a face: the clock (`ShellStateContext`). It opens the world itself,
-// idempotently. `data-world` is on the root so the browser specs' one "is the world up" wait
-// (tests/appReady.fixture.ts) works here too.
+// The page draws its OWN header and fills its own viewport, and it renders the shell's own NavBar
+// as its rail (ONE tab table, app/NavBar.tsx — never a second nav). It is a sibling of `/ui`,
+// inside `RequireAuth` but not inside `AppShell` (src/app/App.tsx) — and for the same reason it
+// provides the one thing the shell normally provides to a face: the clock (`ShellStateContext`).
+// It opens the world itself, idempotently. `data-world` is on the root so the browser specs' one
+// "is the world up" wait (tests/appReady.fixture.ts) works here too.
 
 /** THE POPULATION IS AN ESTIMATE, NOT A SERVED COUNT (owner, 2026-10-31: "more tiny dot with huge
  *  number"). The only served size figure is `port.size_tier` (1-5), so the figure beneath the
@@ -76,10 +78,21 @@ const RELATION_WORDS: Record<Relation, TKey> = {
   none: 'city.relationNone',
 }
 
+/** THE SIX PLACES — one row of the frame, the Town Hall first (the page's main panel), then the
+ *  five buildings. A press opens the place's panel on the right and marks it on the plan; it moves
+ *  no cell (owner, 2026-10-31: the frame "stays the same"). */
+type CitySelection = 'hall' | CityBuilding
+const CITY_TILES: readonly { id: CitySelection; icon: IconName; label: TKey }[] = [
+  { id: 'hall', icon: 'wreath', label: 'city.cityHall' },
+  { id: 'market', icon: 'chart', label: 'city.market' },
+  { id: 'storage', icon: 'cask', label: 'city.storage' },
+  { id: 'forge', icon: 'mallet', label: 'city.forge' },
+  { id: 'port', icon: 'ship', label: 'city.port' },
+  { id: 'inn', icon: 'crew', label: 'city.inn' },
+]
+
 export function CityScreen() {
   const t = useT()
-  const locale = useLocale()
-  const navigate = useNavigate()
   const [params] = useSearchParams()
   const phase = useWorld((s) => s.phase)
 
@@ -132,7 +145,7 @@ export function CityScreen() {
             {fatal?.sentence ?? t('city.failed')}
           </Note>
         </div>
-        <CityRail locale={locale} onNavigate={navigate} />
+        <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
     )
   }
@@ -142,7 +155,7 @@ export function CityScreen() {
         <div className="flex-1 p-gutter">
           <Note tone="neutral">{t('city.loading')}</Note>
         </div>
-        <CityRail locale={locale} onNavigate={navigate} />
+        <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
     )
   if (!port || port.kind !== 'HARBOUR')
@@ -151,22 +164,20 @@ export function CityScreen() {
         <div className="flex-1 p-gutter">
           <Note tone="neutral">{t('city.noCity')}</Note>
         </div>
-        <CityRail locale={locale} onNavigate={navigate} />
+        <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
     )
 
-  return gate(<CityBody port={port} draftFleetId={draftFleetId} onNavigate={navigate} />)
+  return gate(<CityBody port={port} draftFleetId={draftFleetId} />)
 }
 
 /** Everything that reads served city data — mounted only once the world is up. */
 function CityBody({
   port,
   draftFleetId,
-  onNavigate,
 }: {
   port: SnapshotPort
   draftFleetId: string | null
-  onNavigate: ReturnType<typeof useNavigate>
 }) {
   const fleets = useWorld((s) => s.fleets)
   const ducats = useWorld((s) => s.ducats)
@@ -188,22 +199,24 @@ function CityBody({
     [fleets],
   )
 
-  const [open, setOpen] = useState<CityBuilding | null>(null)
+  // WHICH PLACE IS OPEN — the Town Hall until a tile is pressed. A press changes the plan's mark
+  // and this panel ONLY; the frame (the header, the six tiles, the figures, the rail) never moves
+  // (owner, 2026-10-31: "HQ stays the same, but the the location where the city image is, as well
+  // as the right side should only change").
+  const [selected, setSelected] = useState<CitySelection>('hall')
 
   return (
-    <>
-      <CityFrame
-        port={port}
-        hall={hall}
-        hallRefusal={hallRefusal}
-        ducats={ducats}
-        employees={employees}
-        allegiance={portNationOf(allegiance, port.code)}
-        onOpen={setOpen}
-        onNavigate={onNavigate}
-      />
-      {open !== null && <CityFace building={open} port={port} fleet={fleet} onClose={() => setOpen(null)} />}
-    </>
+    <CityFrame
+      port={port}
+      fleet={fleet}
+      hall={hall}
+      hallRefusal={hallRefusal}
+      ducats={ducats}
+      employees={employees}
+      allegiance={portNationOf(allegiance, port.code)}
+      selected={selected}
+      onSelect={setSelected}
+    />
   )
 }
 
@@ -211,27 +224,27 @@ function CityBody({
  *  building doors, earnings, the rail. */
 function CityFrame({
   port,
+  fleet,
   hall,
   hallRefusal,
   ducats,
   employees,
   allegiance,
-  onOpen,
-  onNavigate,
+  selected,
+  onSelect,
 }: {
   port: SnapshotPort
+  /** A fleet of yours lying HERE (the city's acting fleet), or null — a read-only city. */
+  fleet: FleetView | null
   hall: TownHallView | null
   hallRefusal: Refusal | null
   ducats: number | null
   employees: number
   allegiance: ReturnType<typeof portNationOf>
-  onOpen: (b: CityBuilding) => void
-  onNavigate: ReturnType<typeof useNavigate>
+  selected: CitySelection
+  onSelect: (s: CitySelection) => void
 }) {
   const t = useT()
-  const locale = useLocale()
-  // THE HOUR is the served clock's, through the shell context (AppShell's one clock in every other
-  // route; here this page provides it — CityScreen).
   const { nowMs } = useShellState()
   // DAY/NIGHT is the world's ONE sun (chart/sun), at the game clock's hour, over THIS city — never a
   // local-time hour: every player sees the same night, and it matches the Map's own day sheet.
@@ -255,17 +268,9 @@ function CityFrame({
   const relation: Relation =
     stance ?? (houseNation === null ? 'none' : portNation === null ? 'free' : houseNation === portNation ? 'home' : 'different')
 
-  const buildings: readonly { id: CityBuilding; icon: IconName; label: TKey }[] = [
-    { id: 'market', icon: 'chart', label: 'city.market' },
-    { id: 'storage', icon: 'cask', label: 'city.storage' },
-    { id: 'forge', icon: 'mallet', label: 'city.forge' },
-    { id: 'port', icon: 'ship', label: 'city.port' },
-    { id: 'inn', icon: 'crew', label: 'city.inn' },
-  ]
-
   return (
     <>
-      <header className="flex shrink-0 items-center gap-3 px-gutter py-2" data-testid="city-header">
+      <header className="flex shrink-0 items-center gap-2 px-gutter py-1.5" data-testid="city-header">
         <PortFlag code={port.code} size="title" />
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-t-title" data-testid="city-name">{port.name}</h1>
@@ -274,7 +279,7 @@ function CityFrame({
           </div>
         </div>
         <span
-          className="shrink-0 rounded-chip bg-surface-2 px-2.5 py-1 text-t-caption text-ink-muted"
+          className="shrink-0 rounded-chip bg-surface-2 px-2 py-0.5 text-t-caption text-ink-muted"
           data-testid="city-phase"
           data-phase={night ? 'night' : 'day'}
         >
@@ -282,7 +287,32 @@ function CityFrame({
         </span>
       </header>
 
-      <main className="flex min-h-0 flex-1 flex-col gap-3 px-gutter pb-3">
+      {/* THE SIX BUILDINGS — the page's OWN ROW, always visible, part of the frame: a press swaps
+          the plan's mark and the right panel and moves nothing here (owner, 2026-10-31: "in
+          buildings 6 building tappable should always be inside"). */}
+      <nav aria-label={t('city.buildings')} className="shrink-0 px-gutter pt-1" data-testid="city-buildings">
+        <div className="grid grid-cols-3 gap-1 min-[361px]:grid-cols-6" data-testid="city-building-grid">
+          {CITY_TILES.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => onSelect(b.id)}
+              aria-pressed={selected === b.id}
+              data-testid={`city-building-${b.id}`}
+              className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-tile px-0.5 transition ${
+                selected === b.id
+                  ? 'bg-surface-2 text-ink ring-1 ring-inset ring-accent'
+                  : 'bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink'
+              }`}
+            >
+              <Icon name={b.icon} size={14} />
+              <span className="max-w-full text-balance text-center text-t-caption leading-tight">{t(b.label)}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <main className="flex min-h-0 flex-1 flex-col gap-2 px-gutter pb-1.5 pt-1.5">
         {/* THE HQ SPLIT (owner, 2026-10-31: "the town hall screen is on the same HQ screen, but
             where the city is"): the plan on the LEFT — the full town, never cropped, whatever shape
             the panel takes (CityScene fits the whole square plate inside it with `xMidYMid meet` on
@@ -291,167 +321,90 @@ function CityFrame({
             tappable Investors row), and the five other building doors beneath it. The earnings
             block stays pinned above the rail. */}
         <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
-          <div className="flex min-w-0 flex-[0_0_50%] flex-col gap-3">
-            <div className="aspect-square min-h-[96px] w-full min-w-0 overflow-hidden" data-testid="city-info-image">
-              <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
+          {selected === 'hall' ? (
+            <>
+              {/* THE PLAN — the city image on the LEFT, the Town Hall in place on the RIGHT: the
+                  hall's two regions. */}
+              <div className="flex min-h-0 min-w-0 flex-[0_0_50%] flex-col gap-2">
+                <div className="min-h-0 flex-1 overflow-hidden" data-testid="city-info-image">
+                  <CityScene sizeTier={port.size_tier} night={night} seed={port.code} selected={selected} />
+                </div>
+              </div>
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+                <CityHallPanel port={port} hall={hall} refusal={hallRefusal} />
+              </div>
+            </>
+          ) : (
+            /* A BUILDING IS OPEN — it takes the split's TWO REGIONS (where the plan stands and the
+               right side) as ONE panel, so its existing face stays legible at phone width; the
+               frame above and below never moves (owner, 2026-10-31: "HQ stays the same, but the
+               the location where the city image is, as well as the right side should only
+               change"). */
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="city-open-panel">
+              <CityFacePanel building={selected} port={port} fleet={fleet} />
             </div>
+          )}
+        </section>
 
-            {/* SUMMARY — the population estimate is the headline (the huge number off the served
-                size tier, said as an estimate); beneath it the city's purse, YOUR STATUS (the
-                influence points you hold here — served, the book every Share and Donation writes)
-                and the town's RELATIONSHIP to your nation (the harbour's served stance: Home port /
-                Ally / Peace / Rival / War; the two served nations compared only while the dues
-                block is not served). Its floor is its own content (`min-h-fit`): on a wide or short
-                window the same flex squeeze that flattened the plan panel also crushed this card
-                to a 16-px sliver, so the huge number vanished — the card keeps its height and the
-                PLAN shrinks instead (the scene still draws the whole city, CityScene). */}
-            <section className="flex min-h-fit flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2 max-[360px]:px-2" data-testid="city-summary">
-              <div className="shrink-0" data-testid="city-population">
-                <span className="block text-t-caption text-ink-faint">{t('city.population')}</span>
-                <Figure value={`≈ ${formatInt(population)}`} size="figure" tone="ink" />
-                <span className="block text-t-caption text-ink-faint">{t('city.populationNote')}</span>
+        {/* THE CITY'S FIGURES — the frame's own row: the population estimate (off the served size
+            tier, said as an estimate), the city's purse, YOUR STATUS (the influence points you hold
+            here — served) and the town's RELATIONSHIP, then your own purse and the crew you employ.
+            Full width and packed, so nothing is spread over empty space (owner, 2026-10-31: "i
+            noticed there are too many empty spaces. Pack them up, make it concise and simeple"). */}
+        <section className="shrink-0 rounded-tile bg-surface px-gutter py-1.5 max-[360px]:px-2" data-testid="city-summary">
+          <div className="flex items-start justify-between gap-2">
+            <div data-testid="city-population" className="min-w-0">
+              <span className="block text-t-caption text-ink-faint">{t('city.population')}</span>
+              <Figure value={`≈ ${formatInt(population)}`} size="body" tone="ink" />
+            </div>
+            <div className="flex items-start gap-3 text-right">
+              <div data-testid="city-gold" className="min-w-0">
+                <span className="block text-t-caption text-ink-faint">{t('city.gold')}</span>
+                {cityGold === null ? (
+                  <Figure value="—" size="body" tone="faint" />
+                ) : (
+                  <Counter value={cityGold} format={formatDucats} size="body" />
+                )}
               </div>
-              <div className="mt-2 flex min-h-0 flex-1 flex-col divide-y divide-edge">
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-testid="city-gold">
-                  <span className="text-t-caption text-ink-faint">{t('city.gold')}</span>
-                  {cityGold === null ? (
-                    <Figure value="—" size="body" tone="faint" />
-                  ) : (
-                    <Counter value={cityGold} format={formatDucats} size="body" />
-                  )}
-                </div>
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-testid="city-status">
-                  <span className="text-t-caption text-ink-faint">{t('city.status')}</span>
-                  {statusPoints === null ? (
-                    <Figure value="—" size="body" tone="faint" />
-                  ) : (
-                    <Figure value={formatInt(statusPoints)} size="body" tone="ink" />
-                  )}
-                </div>
-                <div
-                  className="flex min-h-0 flex-1 items-center justify-between gap-2"
-                  data-testid="city-relationship"
-                  data-stance={stance ?? 'none'}
-                  data-nation={portNation ?? 'none'}
-                >
-                  <span className="text-t-caption text-ink-faint">{t('city.relationship')}</span>
-                  <span className="text-right text-t-caption text-ink">{t(RELATION_WORDS[relation])}</span>
-                </div>
+              <div data-testid="city-status" className="min-w-0">
+                <span className="block text-t-caption text-ink-faint">{t('city.status')}</span>
+                {statusPoints === null ? (
+                  <Figure value="—" size="body" tone="faint" />
+                ) : (
+                  <Figure value={formatInt(statusPoints)} size="body" tone="ink" />
+                )}
               </div>
-            </section>
+              <div
+                className="min-w-0"
+                data-testid="city-relationship"
+                data-stance={stance ?? 'none'}
+                data-nation={portNation ?? 'none'}
+              >
+                <span className="block text-t-caption text-ink-faint">{t('city.relationship')}</span>
+                <span className="block text-t-caption text-ink">{t(RELATION_WORDS[relation])}</span>
+              </div>
+            </div>
           </div>
-
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
-            <CityHallPanel port={port} hall={hall} refusal={hallRefusal} />
-            <div className="shrink-0">
-              <h2 className="pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
-              <div className="grid auto-rows-[44px] grid-cols-2 gap-1.5" data-testid="city-building-grid">
-                {buildings.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => onOpen(b.id)}
-                    data-testid={`city-building-${b.id}`}
-                    className="relative flex min-h-11 min-w-0 flex-col items-start overflow-hidden rounded-tile bg-surface px-1.5 py-1 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink"
-                  >
-                    <span className="max-w-full text-t-caption">{t(b.label)}</span>
-                    <Icon name={b.icon} size={14} className="absolute bottom-1 right-1 text-ink-faint" />
-                  </button>
-                ))}
-              </div>
+          <div className="text-right text-t-caption text-ink-faint">{t('city.populationNote')}</div>
+          <div className="mt-1 flex items-center justify-between gap-2 border-t border-edge pt-1" data-testid="city-earnings">
+            <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
+            <div className="flex items-start gap-4">
+              <StatCell
+                label={t('city.gold')}
+                value={ducats ?? undefined}
+                format={formatDucats}
+                text={ducats === null ? '—' : undefined}
+                size="body"
+                data-testid="city-your-gold"
+              />
+              <StatCell label={t('city.employees')} value={employees} format={formatInt} size="body" data-testid="city-employees" />
             </div>
           </div>
         </section>
 
-        {/* YOUR EARNINGS — your purse and the crew you employ, above the rail. */}
-        <section className="flex shrink-0 items-center justify-between gap-3 rounded-tile bg-surface px-gutter py-2" data-testid="city-earnings">
-          <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
-          <div className="flex items-start gap-6">
-            <StatCell
-              label={t('city.gold')}
-              value={ducats ?? undefined}
-              format={formatDucats}
-              text={ducats === null ? '—' : undefined}
-              size="body"
-              data-testid="city-your-gold"
-            />
-            <StatCell label={t('city.employees')} value={employees} format={formatInt} size="body" data-testid="city-employees" />
-          </div>
-        </section>
       </main>
 
-      <CityRail locale={locale} onNavigate={onNavigate} />
+      <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
     </>
-  )
-}
-
-/** THE BOTTOM RAIL — HQ · map · stats · menu. A group reveals its members in a tray and moves no
- *  cell (the rail's one law, components/ui/Nav.tsx). NO Command cell (owner, 2026-10-31: *"i told
- *  you to remove the command tab"*): the desk is reached from this city's MARKET building, whose
- *  face composes the trade face (CityFace). */
-function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>; onNavigate: ReturnType<typeof useNavigate> }) {
-  const t = useT()
-  const [panel, setPanel] = useState<'menu' | null>(null)
-
-  // The cabin's members come from the ONE tab table (app/navTabs.ts) — never a second list.
-  const cabin = NAV_CELLS.find((c) => c.kind === 'group')
-  const members = cabin?.kind === 'group' ? cabin.members : []
-  const word = (label: string) => translateMaybe(locale, 'shell', `tab_${label}`) ?? label
-
-  useEffect(() => {
-    if (panel === null) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPanel(null)
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [panel])
-
-  const items: NavItem[] = [
-    { id: 'hq', label: t('city.hq'), icon: 'wreath', href: tabHref('/city') },
-    { id: '/map', label: t('city.map'), icon: 'chart', href: tabHref('/map') },
-    { id: '/stats', label: t('city.stats'), icon: 'stats', href: tabHref('/stats') },
-    { id: 'menu', label: t('city.menu'), icon: 'chevron' },
-  ]
-
-  return (
-    <div className="relative shrink-0" data-testid="city-rail">
-      {panel !== null && (
-        <>
-          <TapAway label={t('common.close')} onClick={() => setPanel(null)} />
-          <div className="absolute inset-x-0 bottom-full z-20">
-            <Tray mode="inline" detent="half" onDetentChange={(next) => (next === 'closed' ? setPanel(null) : undefined)} title={t('city.menu')}>
-              {members.length === 0 ? null : (
-                members.map((m, i) => (
-                  <Row
-                    key={m.to}
-                    mark={<Icon name={m.icon} size={20} />}
-                    label={word(m.label)}
-                    chevron
-                    hairline={i < members.length - 1}
-                    onClick={() => {
-                      setPanel(null)
-                      onNavigate(m.to)
-                    }}
-                  />
-                ))
-              )}
-            </Tray>
-          </div>
-        </>
-      )}
-
-      <Nav
-        data-testid="city-nav"
-        items={items}
-        current="hq"
-        openGroup={panel ?? undefined}
-        onGroup={(id) => setPanel((p) => (p === id ? null : 'menu'))}
-        onNavigate={(item) => {
-          setPanel(null)
-          if (item.id === '/map' || item.id === '/stats') onNavigate(item.id)
-        }}
-      />
-    </div>
   )
 }

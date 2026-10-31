@@ -5,6 +5,7 @@ import { TownHallInfluence } from '../../live/TownHallInfluence'
 import type { CityInvestor, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats } from '../../lib/format'
 import { useT } from '../../lib/i18n'
+import { CityPanel } from './CityPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TOWN HALL, IN PLACE (owner, 2026-10-31)
@@ -43,55 +44,57 @@ export function CityHallPanel({
 
   if (refusal) {
     return (
-      <section data-testid="city-hall-panel" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2">
+      <CityPanel testId="city-hall-panel">
         <Note tone="danger" code={refusal.code} figures={refusal.figures}>
           {refusal.sentence}
         </Note>
-      </section>
+      </CityPanel>
     )
   }
   if (!hall) {
     return (
-      <section data-testid="city-hall-panel" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2">
+      <CityPanel testId="city-hall-panel">
         <Skeleton className="h-24 w-full" />
-      </section>
+      </CityPanel>
     )
   }
 
   return (
-    <section data-testid="city-hall-panel" className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tile bg-surface">
-      {/* THE PANEL SCROLLS INSIDE ITSELF — the page never does. */}
-      <div className="bv-scroll min-h-0 flex-1 overflow-y-auto px-gutter py-2">
-        <h2 className="pb-1 text-t-caption text-ink-faint">{t('city.cityHall')}</h2>
-        <Row
-          label={<span className="text-t-caption">{t('city.gold')}</span>}
-          value={<Figure value={formatDucats(hall.purse.ducats)} size="figure" />}
-          data-testid="city-hall-purse"
-        />
-        <h3 className="pb-1 pt-3 text-t-caption uppercase tracking-wider text-ink-faint">{t('town.influence')}</h3>
-        <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} showTax={false} compact />
-      </div>
-
-      {/* INVESTORS — one real tappable row (52 px), pinned under the panel's scroll so it is always
-          reachable, even on the smallest glass. A compact button (caption label, tight gaps) so the
-          word holds on one line at 320. The drawer it opens is the served board. */}
-      <div className="shrink-0 border-t border-edge px-gutter">
-        <button
-          type="button"
-          onClick={() => setInvestorsOpen(true)}
-          data-testid="city-hall-investors"
-          className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left text-ink-muted transition hover:text-ink"
-        >
-          <span className="text-t-caption">{t('town.investors')}</span>
-          <span className="flex items-center gap-1 text-t-caption tabular-nums">
-            {hall.investors.length}
-            <Icon name="chevron" size={16} className="text-ink-faint" />
-          </span>
-        </button>
-      </div>
-
-      {investorsOpen && <InvestorsDrawer investors={hall.investors} onClose={() => setInvestorsOpen(false)} />}
-    </section>
+    <CityPanel
+      testId="city-hall-panel"
+      scrollTestId="city-hall-scroll"
+      footer={
+        <>
+          {/* INVESTORS — one real tappable row (44 px), pinned under the panel's scroll so it is
+              always reachable, even on the smallest glass. The drawer it opens is the served
+              board. */}
+          <div className="shrink-0 border-t border-edge px-gutter">
+            <button
+              type="button"
+              onClick={() => setInvestorsOpen(true)}
+              data-testid="city-hall-investors"
+              className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left text-ink-muted transition hover:text-ink"
+            >
+              <span className="text-t-caption">{t('town.investors')}</span>
+              <span className="flex items-center gap-1 text-t-caption tabular-nums">
+                {hall.investors.length}
+                <Icon name="chevron" size={16} className="text-ink-faint" />
+              </span>
+            </button>
+          </div>
+          {investorsOpen && <InvestorsDrawer investors={hall.investors} onClose={() => setInvestorsOpen(false)} />}
+        </>
+      }
+    >
+      <h2 className="pb-1 text-t-caption text-ink-faint">{t('city.cityHall')}</h2>
+      <Row
+        label={<span className="text-t-caption">{t('city.gold')}</span>}
+        value={<Figure value={formatDucats(hall.purse.ducats)} size="figure" />}
+        data-testid="city-hall-purse"
+      />
+      <h3 className="pb-1 pt-2 text-t-caption uppercase tracking-wider text-ink-faint">{t('town.influence')}</h3>
+      <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} showTax={false} compact />
+    </CityPanel>
   )
 }
 
