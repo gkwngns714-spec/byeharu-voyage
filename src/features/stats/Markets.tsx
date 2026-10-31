@@ -10,7 +10,9 @@ import {
   Note,
   RankBars,
   Row,
+  ScrollPane,
   SectionColumns,
+  SectionFold,
   Segmented,
   SheetSection,
   Skeleton,
@@ -109,9 +111,16 @@ export function MarketsFace() {
         </div>
       </SheetSection>
 
-      <FilterBar
-        className="mt-4"
+      {/* THE FILTERS ARE A CONSULT ON A PHONE/WIDE SHEET (2026-10-31, the sheet law): the closed
+          line carries the kind in hand, and the kind grid + rarity/sort pickers are one press away. */}
+      <SectionFold
+        heading={t('stats.filterLabel')}
+        summary={kind === ALL ? t('stats.allKinds') : categoryLabel(kind)}
         data-testid="stats-markets-filters"
+      >
+      <FilterBar
+        className="mt-0"
+        data-testid="stats-markets-filters-bar"
         chips={{
           label: t('stats.kind'),
           options: [{ id: ALL, label: t('stats.allKinds') }, ...kinds.map((k) => ({ id: k, label: categoryLabel(k) }))],
@@ -152,8 +161,12 @@ export function MarketsFace() {
           label={t('stats.windowLabel')}
         />
       </div>
+      </SectionFold>
 
-      <SectionColumns count={3}>
+      {/* THE TOP-MOVER PANELS ARE THE SECONDARY BLOCK: one folded line with how many goods moved,
+          the three ranked lists one press away. The goods list below stays the face's subject. */}
+      <SectionFold heading={t('stats.movers')} summary={formatInt(moved.length)} data-testid="stats-movers">
+        <SectionColumns count={3}>
         <SheetSection heading={t('stats.risers')} surface data-testid="stats-risers">
           <RankBars rows={movers(risers, 'success')} format={formatPctChange} empty={t('stats.nothingRose')} />
         </SheetSection>
@@ -167,13 +180,18 @@ export function MarketsFace() {
             empty={t('stats.nothingTraded')}
           />
         </SheetSection>
-      </SectionColumns>
+        </SectionColumns>
+      </SectionFold>
 
-      <SheetSection heading={t('stats.everyGood', { n: formatInt(rows.length) })} surface data-testid="stats-goods">
+      {/* THE GOODS LIST IS THE FACE'S LONGEST BLOCK (2026-10-31, the sheet law): the closed line
+          carries its count, the filters stand above it, and one press reveals the bounded list. */}
+      <SectionFold heading={t('stats.everyGood', { n: formatInt(rows.length) })} summary={formatInt(rows.length)} data-testid="stats-goods">
         {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
+        <ScrollPane className="max-h-[calc(100dvh_-_26rem)]" data-testid="stats-goods-pane">
         {shown.map((r, i) => (
           <GoodRow key={r.g.code} g={r.g} move={r.move} last={i === shown.length - 1} />
         ))}
+        </ScrollPane>
         {!all && rows.length > FIRST && (
           <div className="pt-3">
             <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">
@@ -181,7 +199,7 @@ export function MarketsFace() {
             </Button>
           </div>
         )}
-      </SheetSection>
+      </SectionFold>
     </div>
   )
 }

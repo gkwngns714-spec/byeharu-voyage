@@ -4,6 +4,7 @@ import {
   Hint,
   Note,
   Row,
+  ScrollPane,
   Segmented,
   Sheet,
   SheetSection,
@@ -196,6 +197,7 @@ function Board({
       )}
 
       <SheetSection surface>
+        <ScrollPane className="max-h-[calc(100dvh_-_20rem)]" data-testid="rank-pane">
         {others.map((r, i) => (
           <Row
             key={`${r.position}-${r.company_name}`}
@@ -210,6 +212,7 @@ function Board({
             )}
           </Row>
         ))}
+        </ScrollPane>
       </SheetSection>
 
       {you !== null && (

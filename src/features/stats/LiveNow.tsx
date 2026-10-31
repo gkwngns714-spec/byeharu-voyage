@@ -29,7 +29,9 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
       }
       data-testid="stats-live"
     >
-      <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
+      {/* FOUR CELLS ON ONE LINE AT EVERY WIDTH (2026-10-31): the live band is a summary, and the
+          sheet has to fit the glass. The labels wrap; the figures stay. */}
+      <div className="grid grid-cols-4 gap-x-3 gap-y-3">
         <StatCell
           label={t('stats.purse')}
           value={ducats ?? 0}

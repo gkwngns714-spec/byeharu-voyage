@@ -1,6 +1,6 @@
 import { test, expect, type Locator } from '@playwright/test'
-import { ready, reachable } from './appReady.fixture'
-import { buyHere, findCarry } from './deskMap.fixture'
+import { openFold, ready, reachable } from './appReady.fixture'
+import { buyHere, findCarry, openTradeMap } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PLAN'S MINI ROUTE MAP (owner row 191; docs/COMMAND_REDESIGN.md §3) — on a local build, at the
@@ -61,12 +61,14 @@ for (const size of SIZES) {
       await page.goto('command')
       await ready(page)
       const face = page.getByTestId('desk-trade')
+      await openTradeMap(face)
 
       // A GOOD ABOARD, bought where she lies — its cargo rows make the trips (found by pressing cities, owner row 229)
       const { code, home } = await findCarry(page)
       await buyHere(page, code)
 
       // SELL: her cargo, and the rows that make a trip (never "Here" — this is the plan's map that is under test)
+      await openFold(page, 'cargo-fold')
       const cargo = face.getByTestId('cargo-best')
       const block = cargo.locator(`[data-testid="cargo-good"][data-good="${code}"]`)
       await expect(block).toBeVisible()
@@ -143,6 +145,8 @@ for (const size of SIZES) {
       expect(sailLines, 'the plan has no leg line').toBeGreaterThan(0)
       await act.click()
       await expect(page.getByTestId('trade-toast')).toContainText('Sailing to', { timeout: 60_000 })
+      // the queue stands in the folded Orders on a phone
+      await openFold(page, 'command-queue')
       await expect
         .poll(
           async () =>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Field, Segmented, Sheet } from '../../components/ui'
+import { Field, ScrollPane, Segmented, Sheet } from '../../components/ui'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainsFace } from './CaptainsFace'
@@ -116,11 +116,16 @@ function CompendiumBody() {
         spellCheck={false}
         autoCorrect="off"
       />
+      {/* THE ONE LIST THAT IS LONGER THAN ANY GLASS — 243 goods, 55 hulls, 107 captains, 25 nations.
+          It scrolls inside its own bounded pane, so the face strip and the search stay where they
+          are and the tab's own surface never travels (onepage.spec.ts measures the document). */}
       <div role="tabpanel" className="mt-3">
-        {face === 'goods' && <GoodsFace query={query} />}
-        {face === 'ships' && <ShipsFace query={query} />}
-        {face === 'captains' && <CaptainsFace query={query} answered={rosterAnswered} />}
-        {face === 'nations' && <NationsFace query={query} />}
+        <ScrollPane className="max-h-[calc(100dvh_-_20rem)]">
+          {face === 'goods' && <GoodsFace query={query} />}
+          {face === 'ships' && <ShipsFace query={query} />}
+          {face === 'captains' && <CaptainsFace query={query} answered={rosterAnswered} />}
+          {face === 'nations' && <NationsFace query={query} />}
+        </ScrollPane>
       </div>
     </Sheet>
   )

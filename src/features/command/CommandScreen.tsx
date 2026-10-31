@@ -161,7 +161,7 @@ export function CommandScreen() {
         onChange={turnTo}
         label={t('command.deskFaces')}
         fill
-        className="mb-3 mt-2"
+        className="mb-2 mt-1"
       />
       {fleet && faceBody(fleet)}
     </Sheet>

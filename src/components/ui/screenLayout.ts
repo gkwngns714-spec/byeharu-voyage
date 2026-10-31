@@ -56,7 +56,7 @@ export function sheetColumnClass(): string {
 /** The Sheet's body — the column, padded. The header takes `sheetColumnClass()` on its own so the
  *  title stands over the column it titles, not over the whole glass. */
 export function sheetBodyClass(): string {
-  return `px-gutter pb-8 ${sheetColumnClass()}`
+  return `px-gutter pb-6 ${sheetColumnClass()}`
 }
 
 /** The docked Tray from `lg`: a side panel between the status strip (top-8) and the nav

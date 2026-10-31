@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Icon, SheetSection, useWide } from '../../../components/ui'
-import { fleetCargoByCode } from '../../../domain/fleet'
+import { Icon, SectionFold, SheetSection, useWide } from '../../../components/ui'
+import { fleetCargoByCode, fleetHoldTotal, fleetHoldUsed } from '../../../domain/fleet'
 import { usePriceWhy } from '../../../live/useDesk'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import type { FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
+import { formatInt, formatOfTotal } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import type { DeskLayout } from '../DeskFrame'
 import { Queue } from '../Queue'
@@ -135,9 +136,11 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
 
   // THE SMALL MAP AT THE BOTTOM, FOLDABLE (owner 2026-10-30): folded, a thin toggle; expanded, the map. The fold
   // changes only the map's own height — nothing above it re-flows or collapses.
-  const [mapOpen, setMapOpen] = useState(true)
+  // ON A PHONE THE MAP STANDS CLOSED (2026-10-31, the sheet law): the board is the face, and the
+  // map is one press away at the bottom. On the wide desk it is open — there it costs no Sheet.
+  const [mapOpen, setMapOpen] = useState(wide)
   const map = (
-    <MapFold open={mapOpen} onToggle={() => setMapOpen((o) => !o)}>
+    <MapFold open={mapOpen} onToggle={() => setMapOpen((o) => !o)} summary={city ? portNameOf(portByCode, city) : undefined}>
       <TradeMap
         fleet={fleet}
         plan={trip.drawing}
@@ -152,6 +155,14 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   )
 
   const cargo = <CargoBest fleet={fleet} city={city} picked={pickedRow ? pickedRow.code : null} onPress={pressCargo} />
+  // THE PHONE'S SECONDARY BLOCKS ARE FOLDED, EACH WITH ITS FIGURE (2026-10-31, the sheet law).
+  const cargoBlock = wide ? (
+    cargo
+  ) : (
+    <SectionFold heading={t('desk.cargo')} summary={formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} data-testid="cargo-fold">
+      {cargo}
+    </SectionFold>
+  )
 
   const board = (
     <TradeBoard
@@ -191,23 +202,37 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
       />
     ) : null
 
+  // the standing route above the queue (0092, COMMAND_DESK §3.5: the one thing that writes orders by itself)
+  const routeRow = <RouteFold fleet={fleet} picked={pickNow?.kind === 'route'} onPick={(on) => choose(on ? { kind: 'route' } : null)} />
+  const queue = (
+    <Queue
+      fleet={fleet}
+      onCancel={(position) => cancel(fleet.id, position)}
+      onClear={() => clearQueue(fleet.id)}
+      picked={pickNow?.kind === 'order' ? pickNow.id : pickNow?.kind === 'voyage' ? 'voyage' : null}
+      onPick={choose}
+    />
+  )
   const orders = (
     <>
-      {/* the standing route above the queue (0092, COMMAND_DESK §3.5: the one thing that writes orders by itself) */}
-      <RouteFold fleet={fleet} picked={pickNow?.kind === 'route'} onPick={(on) => choose(on ? { kind: 'route' } : null)} />
-      <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
-        <Queue
-          fleet={fleet}
-          onCancel={(position) => cancel(fleet.id, position)}
-          onClear={() => clearQueue(fleet.id)}
-          picked={pickNow?.kind === 'order' ? pickNow.id : pickNow?.kind === 'voyage' ? 'voyage' : null}
-          onPick={choose}
-        />
-      </SheetSection>
-      {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
-      <InsuredVoyages />
-      {/* row 233: the ship under the orders */}
-      <ShipInfo fleet={fleet} />
+      {routeRow}
+      {wide ? (
+        <SheetSection heading={t('desk.orders')} surface data-testid="command-queue">
+          {queue}
+        </SheetSection>
+      ) : (
+        // THE PHONE'S ORDERS ARE ONE FOLDED LINE (2026-10-31, the sheet law): the route row above
+        // stays visible; the queue, the insured voyages and the ship are one press away.
+        <SectionFold heading={t('desk.orders')} summary={formatInt(fleet.queue.length)} data-testid="command-queue">
+          {queue}
+          {/* 0213: the insured voyages under way and what the insurance paid — only when there are any. */}
+          <InsuredVoyages />
+          {/* row 233: the ship under the orders */}
+          <ShipInfo fleet={fleet} />
+        </SectionFold>
+      )}
+      {wide && <InsuredVoyages />}
+      {wide && <ShipInfo fleet={fleet} />}
     </>
   )
 
@@ -242,7 +267,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           list: (
             <>
               {board}
-              {cargo}
+              {cargoBlock}
               {map}
             </>
           ),
@@ -252,14 +277,14 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {toastLine}
             </>
           ),
-          side: <div className="mt-6">{orders}</div>,
+          side: <div className="mt-2">{orders}</div>,
         },
   )
 }
 
 /** The map's fold (owner 2026-10-30): a thin toggle; open, the map under it. The fold is the map area's own height —
  *  the board and everything above it stay exactly where they are. */
-function MapFold({ open, onToggle, children }: { open: boolean; onToggle: () => void; children: ReactNode }) {
+function MapFold({ open, onToggle, summary, children }: { open: boolean; onToggle: () => void; summary?: string; children: ReactNode }) {
   const t = useT()
   return (
     <section className="mt-4" data-testid="trade-map-fold" data-open={open ? 'true' : 'false'}>
@@ -271,7 +296,10 @@ function MapFold({ open, onToggle, children }: { open: boolean; onToggle: () => 
         data-testid="trade-map-toggle"
       >
         <span className="text-t-label font-medium text-ink">{t('shell.tab_Map')}</span>
-        <Icon name="chevron" size={16} className={`text-ink-muted ${open ? 'rotate-90' : ''}`} />
+        <span className="flex min-w-0 items-center gap-2 text-t-caption text-ink-muted">
+          {summary !== undefined && <span className="min-w-0 truncate">{summary}</span>}
+          <Icon name="chevron" size={16} className={`shrink-0 ${open ? 'rotate-90' : ''}`} />
+        </span>
       </button>
       {open && <div className="mt-2">{children}</div>}
     </section>

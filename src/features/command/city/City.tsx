@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Button, Note, Segmented, Skeleton } from '../../../components/ui'
+import { Button, Note, ScrollPane, Segmented, Skeleton } from '../../../components/ui'
 import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../../domain/fleet'
 import { buildingTier, hasBuilding } from '../../../domain/port'
 import { PORT_FACES, type PortFace } from '../../../live/cityFaces'
@@ -120,6 +120,9 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
     ),
     main: (
       <div role="tabpanel" className="mt-3 lg:mt-0">
+        {/* THE BUILDING'S FACE IS THE ONE LONG BODY ON THE PHONE (2026-10-31, the sheet law): it
+            scrolls inside its own pane, so the city, its buildings and its rail never travel. */}
+        <ScrollPane className="max-h-[12rem] lg:max-h-none">
         {shown.id === 'market' &&
           (quay.market === undefined ? (
             quay.refusal !== null ? (
@@ -160,6 +163,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
           <PortYard portId={port.id} fleet={acting} tier={buildingTier(port, 'building_yard')} />
         )}
         {shown.id === 'academy' && <PortAcademy />}
+        </ScrollPane>
       </div>
     ),
   })

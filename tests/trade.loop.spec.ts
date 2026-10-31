@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { ready, reachable } from './appReady.fixture'
+import { openFold, ready, reachable } from './appReady.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -42,6 +42,8 @@ for (const size of SIZES) {
       await sailAndSell(page, code, city)
 
       // the trip is in the queue: SAIL … , SELL last — no BUY (the cargo is already aboard) and no PROVISION (0225).
+      // The queue stands in the folded Orders on a phone (the one-page law).
+      await openFold(page, 'command-queue')
       const queued = page.getByTestId('queue-row')
       await expect(queued.first()).toBeVisible({ timeout: 30_000 })
       const texts = (await queued.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))

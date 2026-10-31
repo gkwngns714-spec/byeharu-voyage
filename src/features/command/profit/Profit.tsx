@@ -1,4 +1,4 @@
-import { Figure, Note, Row, SheetSection, SignedBars, Skeleton } from '../../../components/ui'
+import { Figure, Note, Row, ScrollPane, SectionFold, SignedBars, Skeleton } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta } from '../../../lib/format'
 import { worldBooks, type Books } from '../../../lib/rpc'
@@ -80,13 +80,15 @@ export function Profit({ layout }: { layout: DeskLayout }) {
           {t('desk.nothingEarned', { n: b.days })}
         </Note>
       ) : (
-        b.books.map((d, i) => (
-          <SheetSection
+        // EACH DAY IS A FOLDED LINE (owner, 2026-10-31: *"make things foldable"*): its date and
+        // its net stand closed; the day's lines are one press away, never gone. The week of them
+        // is the phone's long body, so it scrolls inside its own pane.
+        <ScrollPane className="max-h-[14rem] lg:max-h-none">
+        {b.books.map((d, i) => (
+          <SectionFold
             key={d.game_day}
             heading={i === 0 && d.game_day === b.game_day ? t('desk.today') : t('desk.daysAgo', { n: b.game_day - d.game_day })}
-            trailing={
-              <Figure value={formatDucatsDelta(d.net)} tone={d.net > 0 ? 'success' : d.net < 0 ? 'danger' : 'muted'} />
-            }
+            summary={<Figure value={formatDucatsDelta(d.net)} tone={d.net > 0 ? 'success' : d.net < 0 ? 'danger' : 'muted'} />}
             data-testid="profit-day"
           >
             {d.lines.map((l) => (
@@ -96,8 +98,9 @@ export function Profit({ layout }: { layout: DeskLayout }) {
                 value={<Figure value={formatDucatsDelta(l.ducats)} tone={l.ducats >= 0 ? 'success' : 'muted'} />}
               />
             ))}
-          </SheetSection>
-        ))
+          </SectionFold>
+        ))}
+        </ScrollPane>
       ),
   })
 }

@@ -5,7 +5,7 @@ import {
   Hint,
   Note,
   RankBars,
-  SheetSection,
+  SectionFold,
   SignedBars,
   Skeleton,
   StackedBar,
@@ -70,7 +70,9 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
   return (
     // `relative`: the money log stands in the column's right gutter on the wide glass, beside World money (MoneyLog.tsx)
     <div className="relative" data-testid="stats-overview" data-span={v.span ?? ''}>
-      <SheetSection heading={t('stats.money')}>
+      {/* THE FACE'S DETAIL IS ONE PRESS AWAY (2026-10-31, the sheet law): the closed line carries
+          the world's whole purse. The holders, the composition and the series stand inside. */}
+      <SectionFold heading={t('stats.money')} summary={formatDucats(h.total)} data-testid="stats-money">
         <StatCell
           label={t('stats.everyPurse')}
           value={h.total}
@@ -117,10 +119,12 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
           className="mt-4"
           empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
         />
-      </SheetSection>
+      </SectionFold>
       <MoneyLog />
 
-      <SheetSection heading={t('stats.newMoney')}>
+      {/* THE SECONDARY BLOCK, FOLDED (owner, 2026-10-31: *"make things foldable"*): its closed
+          line carries today's net money, and the charts are one press away — never gone. */}
+      <SectionFold heading={t('stats.newMoney')} summary={formatDucatsDelta(newMoney ?? 0)} data-testid="stats-new-money">
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
           <StatCell label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
           <StatCell label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
@@ -157,7 +161,7 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
             />
           </div>
         </div>
-      </SheetSection>
+      </SectionFold>
 
       <WatchSection watch={live?.watch} />
       <FlowsByKind day={day} period={v.period} />
@@ -200,9 +204,9 @@ function Flows({ heading, period, side, testid }: { heading: string; period: Sta
   const flows = side === ALL ? period.flows : period.flows.filter((f) => f.side === side)
   if (flows.length === 0) return null
   return (
-    <SheetSection heading={heading} surface data-testid={testid}>
+    <SectionFold heading={heading} summary={formatInt(flows.length)} data-testid={testid}>
       <RankBars rows={flowRanks(flows)} format={formatDucatsDelta} />
-    </SheetSection>
+    </SectionFold>
   )
 }
 

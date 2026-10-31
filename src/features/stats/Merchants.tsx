@@ -9,7 +9,8 @@ import {
   Hint,
   Note,
   RankBars,
-  SectionColumns,
+  ScrollPane,
+  SectionFold,
   SheetSection,
   Skeleton,
   StackedBar,
@@ -112,6 +113,9 @@ export function MerchantsFace() {
           <StatCell label={t('stats.lapsClosed')} value={v.laps_day ?? 0} format={formatInt} size="body" />
           <StatCell label={t('stats.theirPurses')} value={v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
         </div>
+        {/* THE CHARTS ARE SECONDARY; THE FOUR FIGURES ABOVE ARE THE SUMMARY (2026-10-31, the
+            sheet law). The fold's line carries the merchant fleet count. */}
+        <SectionFold heading={t('stats.whereFleets')} summary={formatInt(v.fleets ?? 0)} data-testid="stats-merchant-fold">
         <StackedBar
           parts={states}
           format={formatInt}
@@ -143,17 +147,26 @@ export function MerchantsFace() {
             />
           </div>
         </div>
+        </SectionFold>
       </SheetSection>
-      <SectionColumns count={2}>
-        <SheetSection heading={t('stats.bestDay')} surface data-testid="stats-merchants-top">
-          <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
-        </SheetSection>
-        <SheetSection heading={t('stats.worstDay')} surface data-testid="stats-merchants-bottom">
-          <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
-        </SheetSection>
-      </SectionColumns>
+      {/* BOTH EDGES OF THE DAY, EACH ON ONE FOLDED LINE carrying its figure: the lists are a
+          consult, and opening one moves only its own body (the press law). */}
+      <SectionFold
+        heading={t('stats.bestDay')}
+        summary={formatDucatsDelta(v.top?.[0]?.day ?? 0)}
+        data-testid="stats-merchants-top"
+      >
+        <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
+      </SectionFold>
+      <SectionFold
+        heading={t('stats.worstDay')}
+        summary={formatDucatsDelta(v.bottom?.[0]?.day ?? 0)}
+        data-testid="stats-merchants-bottom"
+      >
+        <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
+      </SectionFold>
       {list.length > 0 && (
-        <SheetSection heading={t('stats.everyCompany', { n: formatInt(rows.length) })} surface data-testid="stats-merchants-all">
+        <SectionFold heading={t('stats.everyCompany', { n: formatInt(rows.length) })} summary={formatInt(rows.length)} data-testid="stats-merchants-all">
           <FilterBar
             className="mb-2"
             data-testid="stats-merchants-filters"
@@ -178,6 +191,7 @@ export function MerchantsFace() {
             }}
           />
           {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
+          <ScrollPane className="max-h-[calc(100dvh_-_22rem)]" data-testid="stats-merchants-pane">
           {shown.map(([name, nation, purse, fleets, day, laps], i) => (
             <Row
               key={name}
@@ -194,6 +208,7 @@ export function MerchantsFace() {
               </FactsLine>
             </Row>
           ))}
+          </ScrollPane>
           {!all && rows.length > FIRST && (
             <div className="pt-3">
               <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-merchants-show-all">
@@ -201,7 +216,7 @@ export function MerchantsFace() {
               </Button>
             </div>
           )}
-        </SheetSection>
+        </SectionFold>
       )}
     </div>
   )

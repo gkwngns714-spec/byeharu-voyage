@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { ready, reachable } from './appReady.fixture'
+import { openFold, ready, reachable } from './appReady.fixture'
+import { openTradeMap } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE — ONE DOCKED SCREEN, BOTH SIDES (owner 2026-10-30: *"removing the map, just have combined buy
@@ -36,6 +37,8 @@ for (const size of SIZES) {
       await faces.getByRole('tab', { name: 'Trade', exact: true }).click()
       const face = page.getByTestId('desk-trade')
       await expect(face).toBeVisible()
+      // the ship stands inside the folded Orders on a phone (the one-page law); a press reveals it
+      await openFold(page, 'command-queue')
 
       // THE SHIP under the orders (row 233): cargo, crew, stores — from the readings FLEETS already draws
       const ship = face.getByTestId('buy-ship')
@@ -53,7 +56,9 @@ for (const size of SIZES) {
       await expect(cards.first().getByTestId('trade-good-sell')).toHaveText(/\d|No buyer/)
       await expect(cards.first().getByTestId('trade-good-spark')).toBeVisible()
       await expect(cards.first().getByTestId('trade-good-aboard')).toHaveText(/Aboard \d/)
-      // the small map is there, at the bottom, in a fold (owner 2026-10-30); no cross-city list
+      // the small map is there, at the bottom, in a fold (owner 2026-10-30); on a phone it starts
+      // closed and a player presses its line to open it
+      await openTradeMap(face)
       await expect(page.getByTestId('trade-map')).toHaveCount(1)
       await expect(face.getByTestId('trade-map-fold')).toHaveAttribute('data-open', 'true')
       await expect(page.getByTestId('trade-sell-list')).toHaveCount(0)

@@ -1,6 +1,7 @@
 import {
   Empty,
   FilterBar,
+  SectionFold,
   Figure,
   Flag,
   Hint,
@@ -104,7 +105,8 @@ export function MeFace() {
         <Hint className="mt-2">{t('stats.trades7', { n: formatInt(v.trades_7d) })}</Hint>
       </SheetSection>
 
-      <SheetSection heading={t('stats.bestSales')} surface data-testid="stats-best-trades">
+      {/* A CONSULT, NOT THE WEEK'S HEADLINE: folded, its closed line carrying the best profit. */}
+      <SectionFold heading={t('stats.bestSales')} summary={formatDucatsDelta(sorted[0]?.profit ?? 0)} data-testid="stats-best-trades">
         {v.best_trades.length > 1 && (
           <FilterBar
             className="mb-2"
@@ -119,12 +121,12 @@ export function MeFace() {
           />
         )}
         <RankBars rows={sales} format={formatDucatsDelta} empty={t('stats.noSales')} />
-      </SheetSection>
+      </SectionFold>
 
-      <SheetSection
+      {/* THE LEADERBOARD IS A CONSULT: its closed line carries your rank (2026-10-31, the sheet law). */}
+      <SectionFold
         heading={t('stats.captainsByPurse')}
-        trailing={<span className="text-t-caption text-ink-faint">{v.leaderboard.you === null ? '' : t('stats.youAre', { rank: formatInt(v.leaderboard.you), of: formatInt(v.leaderboard.players) })}</span>}
-        surface
+        summary={v.leaderboard.you === null ? '' : t('stats.youAre', { rank: formatInt(v.leaderboard.you), of: formatInt(v.leaderboard.players) })}
         data-testid="stats-leaderboard"
       >
         {countries.length > 1 && (
@@ -158,7 +160,7 @@ export function MeFace() {
             data-testid={r.is_you ? 'stats-leaderboard-you' : undefined}
           />
         ))}
-      </SheetSection>
+      </SectionFold>
     </div>
   )
 }
