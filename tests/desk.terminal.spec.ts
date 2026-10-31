@@ -51,7 +51,22 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
     const rows = () =>
       page.evaluate(() => [...document.querySelectorAll('[data-testid="trade-good"]')].slice(0, 10).map((e) => Math.round(e.getBoundingClientRect().top)))
     const panes = async () => [await box(page, 'desk-pane-list'), await box(page, 'desk-pane-chart'), await box(page, 'desk-pane-ticket')]
-    const rowsBefore = await rows()
+    // THE LIST SETTLES BEFORE THE PRESS IS MEASURED. The desk's cards grow 121 → 129 px as the
+    // served market read lands; measuring the press across that arrival reported "a press moved the
+    // list" while the press had moved nothing (measured 2026-10-31 on b14ae1c6: with the read
+    // settled, the before/after rects are identical). The law is about the PRESS, so wait for the
+    // list to stop changing and then compare.
+    const settled = async () => {
+      let prev = await rows()
+      for (let i = 0; i < 40; i++) {
+        await page.waitForTimeout(150)
+        const next = await rows()
+        if (JSON.stringify(next) === JSON.stringify(prev)) return next
+        prev = next
+      }
+      return prev
+    }
+    const rowsBefore = await settled()
     const before = await panes()
     await page.getByTestId('trade-buy').nth(2).click()
     // owner row 229: the cards in the centre, the trade panel on the right

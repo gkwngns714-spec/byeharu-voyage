@@ -333,7 +333,10 @@ test('nav: HQ leads, no Command tab; the City rail is the shell rail (HQ · Flee
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toBeVisible()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
-  await expect(page.getByTestId('quay-stores'), 'the market face is not the trade face').toBeVisible({
+  // #429/#430: the Market building composes the market face (Basket · Buy · Sell · Requests); its
+  // own Buy door renders once the quay read has landed. PortTrade (`quay-stores`) now lives inside
+  // the pressed board page, not on the face.
+  await expect(page.getByTestId('city-market-buy'), 'the market face did not stand').toBeVisible({
     timeout: 60_000,
   })
   await page.getByTestId('city-building-hall').click()

@@ -108,8 +108,10 @@ test('a tab cycle asks a cached resource once — Market → Stats → Map → C
   const openMarket = async () => {
     await page.getByTestId('city-building-market').click()
     await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
-    // The face's own quay read may still be landing; the mount burst is already on the wire.
-    await expect(page.getByTestId('quay-stores')).toBeVisible({ timeout: 60_000 })
+    // THE MARKET FACE'S OWN DOOR (owner 2026-10-31, #429/#430: the Market building composes the
+    // market face — Basket · Buy · Sell · Requests — not the old PortTrade board). Its doors render
+    // only after the quay read has landed, so this is the face's own "I am up" marker.
+    await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
   }
   const closeMarket = async () => {
     // #426: the building face is the right-hand panel; the Hall tile returns to the Town Hall.
