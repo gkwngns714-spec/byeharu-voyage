@@ -9,22 +9,25 @@ import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
-import type { PortDues, SnapshotPort } from '../../lib/rpc'
+import type { Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, formatInt, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
 import { translateMaybe, useLocale, useT, type TKey } from '../../lib/i18n'
 import { CityFace, type CityBuilding } from './CityFace'
+import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PAGE — a city, full screen (owner's "Game screen development", 2026-10-30)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// THE BRIEF: a city image that changes with the hour and shows its people as dots; four figures
-// (Gold · Population · Status · Relationship); a grid of six buildings, each opening a full-screen
-// face; your earnings; and a bottom rail (HQ | Levels | map | stats | menu). NO PAGE SCROLL — the
-// frame is one viewport, the grid wraps, and nothing goes sideways.
+// THE BRIEF: THE HQ SPLIT — the city plan on the LEFT, the TOWN HALL IN PLACE on the RIGHT (owner,
+// 2026-10-31: "the town hall screen is on the same HQ screen, but where the city is"): its
+// treasury, the influence book (no tax rows here), and one tappable Investors row opening a
+// right-hand drawer; the four figures beneath the plan; the five other buildings, each opening a
+// full-screen face; your earnings; and a bottom rail (HQ | map | stats | menu). NO PAGE SCROLL —
+// the frame is one viewport at every glass, and the columns fit it on a phone.
 //
 // ── WHAT IS REAL ON THIS SLICE, AND WHAT IS NOT ────────────────────────────────────────────────
 // This is the SHELL. It is client-only: there is no migration and no new served field.
@@ -173,15 +176,12 @@ function CityBody({
   const { docked } = alongsideAt(fleets, port.code, draftFleetId)
   const fleet = docked[0] ?? null
 
-  const hall = useTownHall(port.id)
-  const cityGold = hall.view?.view?.purse.ducats ?? null
-  // THE TWO SERVED FACTS BENEATH THE PURSE (owner, 2026-10-31: "status and relationship too"):
-  // the influence points you hold here under the country you sail for now (`influence.you.points`
-  // — the book every Share and Donation writes), and the harbour's served stance toward that
-  // nation (`dues.stance`, `public.power_stance`). Both ride the hall's one read; neither is
-  // computed here.
-  const statusPoints = hall.view?.view?.influence?.you?.points ?? null
-  const stance = hall.view?.view?.dues?.stance ?? null
+  // ONE HALL READ FEEDS THE WHOLE PAGE: the in-place Town Hall panel (the treasury, the influence
+  // book, the investors board) and the figures card beneath the plan — the city's gold, YOUR STATUS
+  // (`influence.you.points`) and the town's RELATIONSHIP (`dues.stance`). Nothing recomputed here.
+  const hallRead = useTownHall(port.id)
+  const hall = hallRead.view?.view ?? null
+  const hallRefusal = hallRead.view?.refusal ?? null
 
   const employees = useMemo(
     () => fleets.reduce((n, f) => n + f.ships.reduce((m, s) => m + s.crew, 0), 0),
@@ -194,9 +194,8 @@ function CityBody({
     <>
       <CityFrame
         port={port}
-        cityGold={cityGold}
-        statusPoints={statusPoints}
-        stance={stance}
+        hall={hall}
+        hallRefusal={hallRefusal}
         ducats={ducats}
         employees={employees}
         allegiance={portNationOf(allegiance, port.code)}
@@ -208,12 +207,12 @@ function CityBody({
   )
 }
 
-/** The frame itself: header, scene, the four figures, the six buildings, earnings, the rail. */
+/** The frame itself: header, the HQ split (plan + the hall panel), the four figures, the five
+ *  building doors, earnings, the rail. */
 function CityFrame({
   port,
-  cityGold,
-  statusPoints,
-  stance,
+  hall,
+  hallRefusal,
   ducats,
   employees,
   allegiance,
@@ -221,9 +220,8 @@ function CityFrame({
   onNavigate,
 }: {
   port: SnapshotPort
-  cityGold: number | null
-  statusPoints: number | null
-  stance: PortDues['stance'] | null
+  hall: TownHallView | null
+  hallRefusal: Refusal | null
   ducats: number | null
   employees: number
   allegiance: ReturnType<typeof portNationOf>
@@ -240,6 +238,13 @@ function CityFrame({
   const night = daylightAt({ lat: port.lat, lon: port.lon }, subsolarPoint(gameSunInstantMs(nowMs))) < 0.5
   const population = populationEstimate(port.size_tier)
 
+  // THE HALL'S ONE SERVED BLOCK, read once in CityBody and spent here: the purse (also on the
+  // panel), your influence points (Status) and the harbour's stance (Relationship). Nulls are
+  // genuine absences (no company / no dues), never placeholders.
+  const cityGold = hall?.purse.ducats ?? null
+  const statusPoints = hall?.influence.you?.points ?? null
+  const stance = hall?.dues?.stance ?? null
+
   // THE RELATIONSHIP IS THE SERVER'S STANCE while the hall answers it (`public.power_stance`,
   // between the nation you sail for and the city's holder): home / ally / peace / rival / war.
   // While the dues block is not served it falls back to the two SERVED nations themselves — the
@@ -251,7 +256,6 @@ function CityFrame({
     stance ?? (houseNation === null ? 'none' : portNation === null ? 'free' : houseNation === portNation ? 'home' : 'different')
 
   const buildings: readonly { id: CityBuilding; icon: IconName; label: TKey }[] = [
-    { id: 'hall', icon: 'coin', label: 'city.cityHall' },
     { id: 'market', icon: 'chart', label: 'city.market' },
     { id: 'storage', icon: 'cask', label: 'city.storage' },
     { id: 'forge', icon: 'mallet', label: 'city.forge' },
@@ -279,18 +283,15 @@ function CityFrame({
       </header>
 
       <main className="flex min-h-0 flex-1 flex-col gap-3 px-gutter pb-3">
-        {/* THE PLAN AND ITS BUILDINGS, side by side (owner, 2026-10-30: "have the city birds eye view
-            as a square on the top left, and then buildings smaller that fits the right space";
-            2026-10-31: "make the whole page better"): the plan stands at the top left — the full
-            town, never cropped, whatever shape this panel takes: CityScene fits the whole square
-            plate inside it (`xMidYMid meet`, on the plate's own ground colour), because on a wide
-            or short window the flex row can flatten the panel and the old `slice` cropped the
-            city (owner, 2026-10-31: "i told you that i need to see all the city, a closed one") —
-            and the four figures sit directly beneath it; the six building tiles stand small beside
-            it, each with its name at the top left and its served figure beneath. The earnings block
-            stays pinned above the rail. */}
+        {/* THE HQ SPLIT (owner, 2026-10-31: "the town hall screen is on the same HQ screen, but
+            where the city is"): the plan on the LEFT — the full town, never cropped, whatever shape
+            the panel takes (CityScene fits the whole square plate inside it with `xMidYMid meet` on
+            the plate's own ground colour) — with the four figures beneath it; the TOWN HALL IN
+            PLACE on the RIGHT (its treasury, the influence book without the tax rows, and the
+            tappable Investors row), and the five other building doors beneath it. The earnings
+            block stays pinned above the rail. */}
         <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
-          <div className="flex min-w-0 flex-[0_0_56%] flex-col gap-3">
+          <div className="flex min-w-0 flex-[0_0_50%] flex-col gap-3">
             <div className="aspect-square min-h-[96px] w-full min-w-0 overflow-hidden" data-testid="city-info-image">
               <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
             </div>
@@ -304,7 +305,7 @@ function CityFrame({
                 window the same flex squeeze that flattened the plan panel also crushed this card
                 to a 16-px sliver, so the huge number vanished — the card keeps its height and the
                 PLAN shrinks instead (the scene still draws the whole city, CityScene). */}
-            <section className="flex min-h-fit flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
+            <section className="flex min-h-fit flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2 max-[360px]:px-2" data-testid="city-summary">
               <div className="shrink-0" data-testid="city-population">
                 <span className="block text-t-caption text-ink-faint">{t('city.population')}</span>
                 <Figure value={`≈ ${formatInt(population)}`} size="figure" tone="ink" />
@@ -334,36 +335,30 @@ function CityFrame({
                   data-nation={portNation ?? 'none'}
                 >
                   <span className="text-t-caption text-ink-faint">{t('city.relationship')}</span>
-                  <Figure value={t(RELATION_WORDS[relation])} size="body" tone="ink" />
+                  <span className="text-right text-t-caption text-ink">{t(RELATION_WORDS[relation])}</span>
                 </div>
               </div>
             </section>
           </div>
 
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            <h2 className="shrink-0 pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
-            <div className="grid auto-rows-[68px] grid-cols-2 gap-1.5" data-testid="city-building-grid">
-              {buildings.map((b) => (
-                <button
-                  key={b.id}
-                  type="button"
-                  onClick={() => onOpen(b.id)}
-                  data-testid={`city-building-${b.id}`}
-                  className="relative flex min-h-11 min-w-0 flex-col items-start overflow-hidden rounded-tile bg-surface px-1.5 py-1 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink"
-                >
-                  <span className="max-w-full text-t-caption">{t(b.label)}</span>
-                  {b.id === 'hall' && (
-                    <span className="mt-0.5 block min-w-0 max-w-full overflow-hidden">
-                      <Figure
-                        value={cityGold === null ? '—' : formatDucats(cityGold)}
-                        size="body"
-                        tone={cityGold === null ? 'faint' : 'ink'}
-                      />
-                    </span>
-                  )}
-                  <Icon name={b.icon} size={14} className="absolute bottom-1 right-1 text-ink-faint" />
-                </button>
-              ))}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
+            <CityHallPanel port={port} hall={hall} refusal={hallRefusal} />
+            <div className="shrink-0">
+              <h2 className="pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
+              <div className="grid auto-rows-[44px] grid-cols-2 gap-1.5" data-testid="city-building-grid">
+                {buildings.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => onOpen(b.id)}
+                    data-testid={`city-building-${b.id}`}
+                    className="relative flex min-h-11 min-w-0 flex-col items-start overflow-hidden rounded-tile bg-surface px-1.5 py-1 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink"
+                  >
+                    <span className="max-w-full text-t-caption">{t(b.label)}</span>
+                    <Icon name={b.icon} size={14} className="absolute bottom-1 right-1 text-ink-faint" />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </section>

@@ -1,7 +1,5 @@
 import { Button, Note, Sheet, Skeleton } from '../../components/ui'
 import { buildingTier, hasBuilding } from '../../domain/port'
-import { CityInfo } from '../../live/CityInfo'
-import { CityTownHall } from '../../live/CityTownHall'
 import { PortForge } from '../../live/PortForge'
 import { PortInn } from '../../live/PortInn'
 import { PortPrices } from '../../live/PortPrices'
@@ -18,20 +16,21 @@ import { useT, type TKey } from '../../lib/i18n'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // Every face here is an EXISTING one, composed — nothing is rewritten and nothing is a second
-// authority (docs/NO_SPAGHETTI.md): the city hall is CityTownHall + CityInfo, the market is the
-// quay's own Trade face (PortTrade) or, for a city no fleet of yours lies at, its read-only
-// ledger (PortPrices), the storage is PortStorage, the port is the yard and the shipwright, the
-// inn is PortInn, and the Forge is PortForge (0281: raw goods + recipes -> a crafted trade good).
+// authority (docs/NO_SPAGHETTI.md): the market is the quay's own Trade face (PortTrade) or, for a
+// city no fleet of yours lies at, its read-only ledger (PortPrices), the storage is PortStorage,
+// the port is the yard and the shipwright, the inn is PortInn, and the Forge is PortForge (0281:
+// raw goods + recipes -> a crafted trade good). THE TOWN HALL HAS NO FACE: it stands IN PLACE on
+// the City page (owner, 2026-10-31: "the town hall screen is on the same HQ screen, but where the
+// city is" — CityHallPanel).
 //
 // THE PAGE SCROLLS, THE GLASS DOES NOT. A face is a `Sheet` inside a fixed, full-viewport layer:
 // the document never scrolls (the City page's own rule), while a long list — the market's goods —
 // is read inside the sheet, exactly as it is on every other screen.
 
-export type CityBuilding = 'hall' | 'market' | 'storage' | 'forge' | 'port' | 'inn'
+export type CityBuilding = 'market' | 'storage' | 'forge' | 'port' | 'inn'
 
 /** One word per building, and the word's key beside it — never derived from the id. */
 const BUILDING_LABEL: Record<CityBuilding, TKey> = {
-  hall: 'city.cityHall',
   market: 'city.market',
   storage: 'city.storage',
   forge: 'city.forge',
@@ -63,14 +62,6 @@ export function CityFace({
           </Button>
         }
       >
-        {building === 'hall' && (
-          <>
-            <CityInfo port={port} />
-            <div className="mt-6" data-testid="city-hall-treasury">
-              <CityTownHall port={port} />
-            </div>
-          </>
-        )}
         {building === 'market' && <MarketFace port={port} fleet={fleet} />}
         {building === 'storage' && <StorageFace port={port} fleet={fleet} />}
         {building === 'forge' && <ForgeFace port={port} fleet={fleet} />}

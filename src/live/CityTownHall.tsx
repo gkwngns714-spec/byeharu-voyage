@@ -9,6 +9,7 @@ import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallGift, Town
 import { formatDucats, formatInt, formatPct, formatRelative } from '../lib/format'
 import { useShellState } from '../app/shellState'
 import { TownHallInfluence } from './TownHallInfluence'
+import { InvestorRow } from './CityInvestors'
 import { WORK_NAME } from './workNames'
 import { duesWords } from '../domain/port'
 import { useT, t as tNow } from '../lib/i18n'
@@ -134,21 +135,7 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
       {hall.investors.length === 0 ? (
         <Row label={t('town.nobody')} tone="muted" hairline={false} data-testid="townhall-investors-none" />
       ) : (
-        hall.investors.map((x, i) => (
-          <Row
-            key={`${x.name}:${i}`}
-            label={
-              <span>
-                {x.name}
-                <span className="block text-t-caption text-ink-muted">
-                  {`${x.merchant ? `${t('town.merchantWord')} · ` : ''}${t('town.invested')} ${formatDucats(x.invested)} · ${t('town.donated')} ${formatDucats(x.donated)}`}
-                </span>
-              </span>
-            }
-            value={<Figure value={formatDucats(x.total)} />}
-            data-testid="townhall-investor"
-          />
-        ))
+        hall.investors.map((x, i) => <InvestorRow key={`${x.name}:${i}`} investor={x} />)
       )}
 
       {/* 0234: the capital's gifts to broke merchants (docs/CLOSED_ECONOMY.md §5.3) — only once it has given one. */}
