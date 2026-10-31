@@ -1475,6 +1475,16 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // cmd.invest — no player id, no money moves, refused E_NOT_DOCKED with no fleet lying there.
       // The ITEM forge docs/CORP_STORAGE_FORGE.md plans (world.forge / cmd.forge) is not this.
       'worldGoodsForge', 'cmdForgeGood',
+      // Pin moved deliberately 2026-10-31 with migration 0288 (the Market face's Request, the
+      // owner's own instruction: *"Request i press, a page shows up … merchants will come and sell
+      // it to you if the price is reasonable"* · *"should only be done in your home country- home
+      // city"*): `world.requests(p_port)` — a READ of the caller's own open requests there, plus
+      // whether that port is her home city — and its two verbs `cmd.request_place(p_port, p_good,
+      // p_qty, p_price)` / `cmd.request_cancel(p_request)`. All three land WITH the face that reads
+      // them (the City's Market › Requests), take no player id (identity is the JWT's), and the
+      // place verb refuses E_NOT_HOME away from the home city ON THE SERVER — hiding the door is
+      // not the enforcement. Registry: 81 → 84 entry points.
+      'worldRequests', 'cmdRequestPlace', 'cmdRequestCancel',
       // 0072 — world.building_yard(p_port). A READ, no player id and no FLEET: a hull is built out
       // of the CITY, so what she is carrying is not part of the question. What YOU keep here comes
       // from current_player_id().

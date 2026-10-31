@@ -6,7 +6,7 @@ import { TopBar } from './TopBar'
 import { RebuildNotice } from './RebuildNotice'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
-import { useWorldBeat } from '../live/useWorldBeat'
+import { readIntervalMs } from '../domain/readClock'
 import { serverNow } from '../lib/serverClock'
 import { useGoTo } from '../chart'
 import { useLocale } from '../lib/i18n'
@@ -47,9 +47,24 @@ export function AppShell() {
   }, [navigate])
 
   // The cadence follows the SERVED clock, so it is right for whatever the world's compression is —
-  // and it re-arms if that knob ever changes under a running tab. ONE spelling of the beat
-  // (live/useWorldBeat.ts), shared with the City page, which stands outside this shell.
-  useWorldBeat()
+  // and it re-arms if that knob ever changes under a running tab. The shell's own dedupe on the
+  // read flag lives HERE (tests/flicker.spec.ts: only the shell and the store may read it); the
+  // City page, which stands outside this shell, arms the same beat through worldStore's
+  // `useWorldBeat` (the store's `beat()` carries the same guard).
+  const compression = useWorld((w) => w.snapshot?.config.time_compression)
+  useEffect(() => {
+    const every = readIntervalMs(compression)
+    // THE BEAT IS ALSO THE CACHE'S DEFAULT LIFETIME: a served read is kept for exactly one beat,
+    // so a remount inside it downloads nothing and the beat's own read still refreshes the world.
+    useWorld.setState({ readEveryMs: every })
+    const id = window.setInterval(() => {
+      const world = useWorld.getState()
+      // Only when the world is up, and never on top of a read already in flight: a second read
+      // would settle the same voyages twice for nothing and race the first one's answer.
+      if (world.phase === 'ready' && !world.reading) void world.refresh()
+    }, every)
+    return () => window.clearInterval(id)
+  }, [compression])
 
   // A tab regaining focus is a player coming back, and coming back is exactly the moment the
   // ledger should have moved. Reading here is what makes "it moved while I was away" true.
