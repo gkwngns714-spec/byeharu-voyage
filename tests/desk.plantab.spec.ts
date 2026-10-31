@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
+import { openTradeMap, pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A TRIP STANDS ON THE FACE IT WAS PRESSED ON, ITS COURSE ON THE SMALL MAP (owner row 183, 2026-10-20; row 218; row 229,
@@ -53,6 +53,8 @@ for (const size of SIZES) {
       // the chart — THE small map on the face (owner rows 217, 218; small, bottom, foldable since 2026-10-30)
       const voyage = card.getByTestId('plan-voyage')
       await expect(voyage).toBeAttached({ timeout: 60_000 })
+      // the one-page layout folds the small map on a phone: open it the way a player does
+      await openTradeMap(plans)
       const map = plans.getByTestId('trade-map')
       const chart = map.getByTestId('small-chart')
       await expect(chart.getByTestId('map-view')).toBeVisible({ timeout: 60_000 })
