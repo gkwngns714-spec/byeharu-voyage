@@ -6,6 +6,11 @@ import { ready, reachable } from './appReady.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The brief's four rules, measured in the running app rather than read off the code:
+//   0. THE WHOLE SQUARE CITY IS ON THE GLASS at every shape: the plan panel can be a rectangle on a
+//      wide or short window, and the scene must fit the entire plate inside it (never `slice`),
+//      proven by mapping the viewBox's four corners through the svg's own screen CTM at 390×844,
+//      320×568, 360×640, 1280×900 and 1440×900 (owner, 2026-10-31: "i told you that i need to see
+//      all the city, a closed one").
 //   1. NO page scroll, vertical or horizontal — the document does not overflow at 390×844, and the
 //      rail and the earnings block sit inside the viewport.
 //   2. A building press opens its FULL-SCREEN face and moves nothing behind it: every key region's
@@ -80,6 +85,44 @@ async function expectSceneInFrame(page: Page, where: string) {
   }
 }
 
+/** THE WHOLE SQUARE CITY IS ON THE GLASS (owner, 2026-10-31: "i told you that i need to see all the
+ *  city, a closed one"). On a wide or short window the flex row can flatten the plan panel into a
+ *  rectangle; the old `xMidYMid slice` then scaled the 240×240 plate to COVER the panel and cropped
+ *  the top and bottom of the walled city — the "section" the owner saw. The scene now uses
+ *  `xMidYMid meet`, so the whole plate is drawn inside the panel. The proof does not trust the
+ *  attribute: it maps the viewBox's four corners through the svg's own screen CTM and requires
+ *  every corner ON the svg's rectangle. Under a slice crop the corners land outside it. */
+async function expectWholeCityDrawn(page: Page, where: string) {
+  const m = await page.evaluate(() => {
+    const svg = document.querySelector('[data-testid="city-scene"]') as SVGSVGElement | null
+    if (!svg) return null
+    const box = svg.getBoundingClientRect()
+    const ctm = svg.getScreenCTM()
+    if (!ctm) return null
+    const vb = svg.viewBox.baseVal
+    const p = svg.createSVGPoint()
+    const corners = [
+      [vb.x, vb.y],
+      [vb.x + vb.width, vb.y],
+      [vb.x, vb.y + vb.height],
+      [vb.x + vb.width, vb.y + vb.height],
+    ].map(([x, y], i) => {
+      p.x = x
+      p.y = y
+      const q = p.matrixTransform(ctm)
+      return { i, x: q.x, y: q.y }
+    })
+    return { box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom }, corners }
+  })
+  expect(m, `the city scene is not rendered (${where})`).not.toBeNull()
+  for (const c of m!.corners) {
+    expect(c.x, `the city's corner ${c.i} is off its frame to the left (${where})`).toBeGreaterThanOrEqual(m!.box.left - 0.5)
+    expect(c.x, `the city's corner ${c.i} is off its frame to the right (${where})`).toBeLessThanOrEqual(m!.box.right + 0.5)
+    expect(c.y, `the city's corner ${c.i} is off its frame above (${where})`).toBeGreaterThanOrEqual(m!.box.top - 0.5)
+    expect(c.y, `the city's corner ${c.i} is off its frame below (${where})`).toBeLessThanOrEqual(m!.box.bottom + 0.5)
+  }
+}
+
 test('the City page: entry, no scroll, placeholders, and a building face that moves nothing', async ({ page, request, baseURL }) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
@@ -110,6 +153,7 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(s.railBottom, 'the rail hangs below the glass').toBeLessThanOrEqual(s.vh)
   expect(s.earningsBottom, 'the earnings block hangs below the glass').toBeLessThanOrEqual(s.vh)
   await expectSceneInFrame(page, '390×844')
+  await expectWholeCityDrawn(page, '390×844')
 
   // ── 2. THE POPULATION ESTIMATE, AND TWO PLACEHOLDERS ────────────────────────────────────────
   // Population is no longer a placeholder: the huge estimate is derived from the served size tier
@@ -205,6 +249,7 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(small.docH, 'the City page scrolls down at 320').toBeLessThanOrEqual(small.clientH)
   expect(small.railBottom, 'the rail hangs below a 320×568 glass').toBeLessThanOrEqual(small.vh)
   await expectSceneInFrame(page, '320×568')
+  await expectWholeCityDrawn(page, '320×568')
   // …and the six building tiles still clear the 44 px reach floor
   const heights = await page.locator('[data-testid^="city-building-"]').evaluateAll((es) => es.map((e) => Math.round(e.getBoundingClientRect().height)))
   expect(Math.min(...heights), `a building tile is under 44 px at 320: ${heights.join(', ')}`).toBeGreaterThanOrEqual(44)
@@ -218,6 +263,36 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(mid.docH, 'the City page scrolls down at 360').toBeLessThanOrEqual(mid.clientH)
   expect(mid.railBottom, 'the rail hangs below a 360×640 glass').toBeLessThanOrEqual(mid.vh)
   await expectSceneInFrame(page, '360×640')
+  await expectWholeCityDrawn(page, '360×640')
+
+  // ── 1d. THE WIDE GLASS — THE SHAPE THE OWNER REPORTED CUT (2026-10-31: "i told you that i need
+  // to see all the city, a closed one"). A wide or short window flattens the plan panel into a
+  // rectangle; the old `slice` scaled the square city to COVER it and cropped the top and bottom of
+  // the walled town. The whole plate must be on the glass here too, and the page must not gain a
+  // scroll: these sizes are the ones that were never measured before the report.
+  for (const [w, h] of [
+    [1280, 900],
+    [1440, 900],
+  ] as const) {
+    await page.setViewportSize({ width: w, height: h })
+    await page.waitForTimeout(400)
+    const wide = await scrollState(page)
+    console.log(`wide ${w}×${h} scroll: ${wide.docW}/${wide.clientW} wide, ${wide.docH}/${wide.clientH} tall, rail bottom ${wide.railBottom}`)
+    expect(wide.docW, `the City page scrolls sideways at ${w}×${h}`).toBeLessThanOrEqual(wide.clientW)
+    expect(wide.docH, `the City page scrolls down at ${w}×${h}`).toBeLessThanOrEqual(wide.clientH)
+    expect(wide.railBottom, `the rail hangs below a ${w}×${h} glass`).toBeLessThanOrEqual(wide.vh)
+    await expectSceneInFrame(page, `${w}×${h}`)
+    await expectWholeCityDrawn(page, `${w}×${h}`)
+    // The same squeeze that flattened the plan also crushed the figures card to a 16-px sliver on
+    // these windows; the population hero must actually fit inside the card, not be clipped away.
+    const card = await page.evaluate(() => {
+      const summary = document.querySelector('[data-testid="city-summary"]')!.getBoundingClientRect()
+      const pop = document.querySelector('[data-testid="city-population"]')!.getBoundingClientRect()
+      return { h: summary.height, popBottom: pop.bottom, summaryBottom: summary.bottom }
+    })
+    expect(card.h, `the figures card is crushed at ${w}×${h}`).toBeGreaterThanOrEqual(120)
+    expect(card.popBottom, `the population figure is clipped by the figures card at ${w}×${h}`).toBeLessThanOrEqual(card.summaryBottom + 0.5)
+  }
   await page.setViewportSize({ width: 390, height: 844 })
 
   // ── 3a. THE PEOPLE WALK (owner, 2026-10-30: "see people moving as dots"; 2026-10-31: the crowd
