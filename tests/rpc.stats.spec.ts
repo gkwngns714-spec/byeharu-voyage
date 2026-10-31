@@ -32,16 +32,25 @@ import {
 
 let db: LocalDb
 let port: { id: string; code: string }
+/** THE ONE INSTANT the setup and the same-slot test share. `now()` at each call is TWO instants, and
+ *  two instants a few seconds either side of a 15-minute stats-slot boundary testify to two DIFFERENT
+ *  slots: CI read `wrote` 2257 (a full slot's rows) where the spec's own premise said 0 — a slot
+ *  boundary flake, not a product bug (acceptance shard 3/3, 2026-11-01). One instant, read from the
+ *  world itself, makes "the same slot" a fact of the test instead of a race. */
+let at: string
+const atSql = () => `'${at}'::timestamptz`
 
 test.beforeAll(async () => {
   test.setTimeout(360_000)
   db = await openLocalDb({ loadChain, loadImage: builtWorldImage, dataDir: 'memory://', log: () => {} })
   setBackend(createLocalBackend(db))
   await db.callAs(`select cmd.found_house('Contas Spec', 'PRT') as result`)
+  // ONE instant for the snapshot and the job (see `at` above): the world's clock, taken once.
+  at = await db.callAs<string>(`select now()::text as result`)
   // a present price record, so the goods rows have a mid; then the job, once (the backend would run it
   // before the first stats read anyway — this makes the slot explicit)
-  await db.callAs(`select public.tick_price_snapshot(now())::text as result`)
-  await db.callAs(`select public.tick_stats(now())::text as result`)
+  await db.callAs(`select public.tick_price_snapshot(${atSql()})::text as result`)
+  await db.callAs(`select public.tick_stats(${atSql()})::text as result`)
   port = await db.callAs<{ id: string; code: string }>(
     `select jsonb_build_object('id', p.id, 'code', p.code) as result from public.ports p
       where p.kind = 'HARBOUR' and exists (select 1 from public.port_specialties s where s.port_id = p.id)
@@ -55,7 +64,8 @@ test.afterAll(async () => {
 })
 
 test('the job writes one rollup per slot and nothing on a second call in the same slot', async () => {
-  const again = await db.callAs<{ wrote: number }>(`select public.tick_stats(now()) as result`)
+  // THE SAME INSTANT THE SETUP USED (see `at`): the same-slot premise is the test's own fact.
+  const again = await db.callAs<{ wrote: number }>(`select public.tick_stats(${atSql()}) as result`)
   expect(again.wrote).toBe(0)
   const rows = await db.callAs<{ world: number; goods: number; cities: number; merchants: number }>(
     `select jsonb_build_object('world', (select count(*) from public.stats_world),
