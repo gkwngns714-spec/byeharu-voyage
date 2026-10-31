@@ -9,7 +9,8 @@ import {
   Hint,
   Note,
   RankBars,
-  SectionColumns,
+  ScrollPane,
+  SectionFold,
   SheetSection,
   Skeleton,
   StackedBar,
@@ -144,14 +145,22 @@ export function MerchantsFace() {
           </div>
         </div>
       </SheetSection>
-      <SectionColumns count={2}>
-        <SheetSection heading={t('stats.bestDay')} surface data-testid="stats-merchants-top">
-          <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
-        </SheetSection>
-        <SheetSection heading={t('stats.worstDay')} surface data-testid="stats-merchants-bottom">
-          <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
-        </SheetSection>
-      </SectionColumns>
+      {/* BOTH EDGES OF THE DAY, EACH ON ONE FOLDED LINE carrying its figure: the lists are a
+          consult, and opening one moves only its own body (the press law). */}
+      <SectionFold
+        heading={t('stats.bestDay')}
+        summary={formatDucatsDelta(v.top?.[0]?.day ?? 0)}
+        data-testid="stats-merchants-top"
+      >
+        <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
+      </SectionFold>
+      <SectionFold
+        heading={t('stats.worstDay')}
+        summary={formatDucatsDelta(v.bottom?.[0]?.day ?? 0)}
+        data-testid="stats-merchants-bottom"
+      >
+        <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
+      </SectionFold>
       {list.length > 0 && (
         <SheetSection heading={t('stats.everyCompany', { n: formatInt(rows.length) })} surface data-testid="stats-merchants-all">
           <FilterBar
@@ -178,6 +187,7 @@ export function MerchantsFace() {
             }}
           />
           {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
+          <ScrollPane className="max-h-[calc(100dvh_-_22rem)]" data-testid="stats-merchants-pane">
           {shown.map(([name, nation, purse, fleets, day, laps], i) => (
             <Row
               key={name}
@@ -194,6 +204,7 @@ export function MerchantsFace() {
               </FactsLine>
             </Row>
           ))}
+          </ScrollPane>
           {!all && rows.length > FIRST && (
             <div className="pt-3">
               <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-merchants-show-all">

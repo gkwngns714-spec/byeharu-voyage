@@ -19,6 +19,10 @@
 // 1. SHEET — the one scrolling surface of a tab. Sections are separated by space and a heading,
 //    never by a box. Replaces Screen + PageHeader + Card + CardHeader + SectionLabel + Collapsible.
 export { SectionColumns, Sheet, SheetSection } from './Sheet'
+//    A SECONDARY SECTION, FOLDED — one 44-px line with its key figure, the block one press away
+//    (owner, 2026-10-31: *"make things foldable"*). The press law is the section's own: the
+//    control opens its own body under itself and never moves what stands above it.
+export { SectionFold } from './SectionFold'
 export { Clip } from './Clip'
 
 // 2. TRAY — the bottom-docked sheet with detents (peek 96 · half · full) that every "unfold under
@@ -91,6 +95,14 @@ export { CargoBar } from './CargoBar'
 
 // 8. CHIP / SEGMENTED — one token in a set; one set of faces.
 export { Chip, Segmented, type SegmentSpec } from './Chip'
+//    THE CHOICE GRID (owner, 2026-10-31: *"make it into square and allign properly orderly. this
+//    applies to all the places throughout the game."*). Every set of tappable choices is a fixed
+//    number of equal cells with aligned edges — one grid, composed by Segmented and by every
+//    filter row, never a ragged row of shrink-wrapped pills.
+export { TileChoice, TileGrid } from './TileGrid'
+export { tileCellClass, type ChoiceColumns } from './tileStyles'
+//    THE BOUNDED PANE: a long list scrolls inside its own box while the tab's composition stands.
+export { ScrollPane } from './ScrollPane'
 export { LanguageSwitch } from './LanguageSwitch'
 
 // 9. BUTTON — flat: primary / secondary / quiet / destructive, 44 and 36, icon.
@@ -189,7 +201,6 @@ export { useReaskAtEdge } from './reaskAtEdge'
 // eventually; the fold waits for the screen that needs both in one place.
 export { Sparkline, type SparkTone } from './Sparkline'
 export { StockGauge } from './StockGauge'
-export { ChipRow } from './ChipRow'
 export { FilterBar, type FilterChips, type FilterOption, type FilterPick, type FilterToggle } from './FilterBar'
 export { filterStorageKey, oneOf, readFilterChoice, useFilterChoice, type FilterChoice } from './filterState'
 export { sheetBodyClass, sheetColumnClass } from './screenLayout'

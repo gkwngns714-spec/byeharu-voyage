@@ -3,6 +3,7 @@ import {
   Figure,
   IconDisc,
   Row,
+  ScrollPane,
   Segmented,
   Sheet,
   SheetSection,
@@ -152,6 +153,9 @@ function LedgerBody() {
         // is led by what KIND of thing happened — coin, ship, crew — and the clock drops to the
         // caption under the headline, where a time belongs: read when wanted, never the anchor.
         <SheetSection surface>
+          {/* THE FEED IS THE ONE LIST THAT CAN OUTGROW THE GLASS — bounded here so the tab's own
+              surface and its face strip never travel with it (the page law is onepage.spec.ts). */}
+          <ScrollPane className="max-h-[calc(100dvh_-_12rem)]" data-testid="ledger-pane">
           {shown.map((event) => {
             const atMs = Date.parse(event.at)
             const report = payloadLines(event.payload)
@@ -171,6 +175,7 @@ function LedgerBody() {
               </Row>
             )
           })}
+          </ScrollPane>
         </SheetSection>
       )}
 

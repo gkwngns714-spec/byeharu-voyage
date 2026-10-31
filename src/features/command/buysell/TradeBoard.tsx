@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Button, Chip, Hint, Icon, Note, Skeleton, Sparkline, goodIcon } from '../../../components/ui'
+import { Button, Hint, Icon, Note, ScrollPane, Skeleton, Sparkline, TileChoice, TileGrid, goodIcon } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { usePriceWhy } from '../../../live/useDesk'
 import { usePriceSeries } from '../../../live/usePriceSeries'
@@ -89,13 +89,19 @@ export function TradeBoard({
 
   return (
     <div data-testid="trade-board" data-city={city ?? ''} data-docked={docked ? 'true' : 'false'}>
-      <div className="-mx-1 mb-2 flex flex-wrap gap-1.5 px-1 pb-1" role="group" aria-label={t('desk.cityChips')} data-testid="city-chips">
+      {/* THE CITY PICKER IS A GRID (owner, 2026-10-31) — equal cells, fixed columns, in the same
+          nearest-first order; a flag and a name per cell, never a ragged strip. */}
+      <TileGrid label={t('desk.cityChips')} columns={4} className="mb-2" data-testid="city-chips">
         {chips.map((c) => (
-          <Chip key={c} on={c === city} onClick={() => onCity(c)} className="max-w-full" data-testid="city-chip" data-port={c}>
-            <PortFlag code={c} /> {portNameOf(portByCode, c)}
-          </Chip>
+          <TileChoice key={c} on={c === city} onClick={() => onCity(c)} data-testid="city-chip" data-port={c}>
+            {/* one child: the flag and the name stay ONE group, centred — and no `truncate`, so a
+                long harbour wraps rather than hiding its tail (tests/align.spec.ts's CUT rule). */}
+            <span className="flex min-w-0 items-center gap-1">
+              <PortFlag code={c} /> <span className="min-w-0 break-words">{portNameOf(portByCode, c)}</span>
+            </span>
+          </TileChoice>
         ))}
-      </div>
+      </TileGrid>
       {!city ? (
         <Hint>{t('desk.pickCity')}</Hint>
       ) : (
@@ -124,11 +130,16 @@ export function TradeBoard({
           ) : rows.length === 0 ? (
             <Hint data-testid="trade-board-empty">{t('desk.noBuy')}</Hint>
           ) : (
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
-              {rows.map((r) => (
-                <TradeCard key={r.code} portId={portId} r={r} docked={docked} on={picked === r.code} onBuy={onBuy} onSell={onSell} />
-              ))}
-            </div>
+            // THE CARDS ARE THE ONE LONG LIST ON THIS FACE: at a busy quay they run past the
+            // glass, so they scroll inside their own bounded pane (the page above stays put).
+            // From lg the desk's centre pane is already the scroller — no second bound there.
+            <ScrollPane className="max-h-[calc(100dvh_-_30rem)] lg:max-h-none">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+                {rows.map((r) => (
+                  <TradeCard key={r.code} portId={portId} r={r} docked={docked} on={picked === r.code} onBuy={onBuy} onSell={onSell} />
+                ))}
+              </div>
+            </ScrollPane>
           )}
         </>
       )}

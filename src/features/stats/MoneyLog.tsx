@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShellState } from '../../app/shellState'
-import { Chip, ChipRow, Empty, Row, SheetSection } from '../../components/ui'
+import { Empty, Row, ScrollPane, SheetSection, TileChoice, TileGrid } from '../../components/ui'
 import { formatDucatsDelta, formatRelative } from '../../lib/format'
 import { properName, translateMaybe, useLocale, useT } from '../../lib/i18n'
 import { worldMoneyFeed, type MoneyMove, type RpcResult } from '../../lib/rpc'
@@ -135,23 +135,26 @@ export function MoneyLog() {
   return (
     <div className="mt-6 lg:absolute lg:top-0 lg:left-[calc(100%+1.5rem)] lg:mt-0 lg:w-[26rem] lg:[&>section]:mt-0!" data-testid="money-log">
       <SheetSection heading={t('feed.heading')}>
-        <ChipRow label={t('feed.filter')} className="mb-2">
-          <Chip on={filter.pick === 'all'} onClick={() => choose({ ...filter, pick: 'all' })} data-testid="money-chip-all">
+        {/* THE FILTERS ARE A GRID, NOT A CHIP ROW (owner, 2026-10-31: *"in stats money log, the
+            tappable thing is not ordered. make it into square and allign properly orderly."*).
+            Every sector owns one equal cell on fixed column lines, in the fixed order above. */}
+        <TileGrid label={t('feed.filter')} columns={4} className="mb-2">
+          <TileChoice on={filter.pick === 'all'} onClick={() => choose({ ...filter, pick: 'all' })} data-testid="money-chip-all">
             {t('feed.s_all')} {base.length}
-          </Chip>
-          <Chip on={filter.mine} onClick={() => choose({ ...filter, mine: !filter.mine })} data-testid="money-chip-mine">
+          </TileChoice>
+          <TileChoice on={filter.mine} onClick={() => choose({ ...filter, mine: !filter.mine })} data-testid="money-chip-mine">
             {t('feed.s_mine')}
-          </Chip>
+          </TileChoice>
           {SECTORS.map((k) => (
-            <Chip key={k} on={filter.pick === k} onClick={() => choose({ ...filter, pick: k })} data-testid={`money-chip-${k}`}>
+            <TileChoice key={k} on={filter.pick === k} onClick={() => choose({ ...filter, pick: k })} data-testid={`money-chip-${k}`}>
               {t(`feed.s_${k}`)} {counts.get(k) ?? 0}
-            </Chip>
+            </TileChoice>
           ))}
-        </ChipRow>
+        </TileGrid>
         {rows.length === 0 ? (
           <Empty>{t('feed.none')}</Empty>
         ) : (
-          <div className="bv-scroll max-h-[28rem] overflow-y-auto lg:max-h-[36rem]">
+          <ScrollPane className="max-h-[24rem] lg:max-h-[32rem]">
             {rows.map((m, i, all) => {
               const gain = m.delta > 0
               return (
@@ -180,7 +183,7 @@ export function MoneyLog() {
                 />
               )
             })}
-          </div>
+          </ScrollPane>
         )}
       </SheetSection>
     </div>

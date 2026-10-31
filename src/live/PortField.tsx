@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Chip, Field, useDismiss } from '../components/ui'
+import { Field, TileChoice, TileGrid, useDismiss } from '../components/ui'
 import type { SnapshotPort } from '../lib/rpc'
 import { nearbyHarbours } from '../domain/port'
 import { useWorld } from './worldStore'
@@ -138,13 +138,13 @@ export function PortField({
         // harbour is +Infinity away and the order falls to the alphabet (Acapulco first); a driver that picks
         // "the first harbour that is not home" in that window picks a leg no navigator can plan. The attribute
         // is the one honest reading of that state, for the specs and for anyone else who asks the markup.
-        <div className="mt-2 flex flex-wrap gap-2" data-testid="port-chips" data-reach={reach ? 'measured' : 'pending'}>
+        <TileGrid label={t('port.findPort')} columns={3} className="mt-2" data-testid="port-chips" data-reach={reach ? 'measured' : 'pending'}>
           {listed.map((p) => (
-            <Chip key={p.id} on={p.code === current?.code} onClick={() => choose(p.code)} data-testid="port-chip">
+            <TileChoice key={p.id} on={p.code === current?.code} onClick={() => choose(p.code)} data-testid="port-chip">
               {p.name}
-            </Chip>
+            </TileChoice>
           ))}
-        </div>
+        </TileGrid>
       )}
     </div>
   )

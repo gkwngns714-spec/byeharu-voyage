@@ -1,4 +1,6 @@
 import type { ReactNode } from 'react'
+import { TileGrid } from './TileGrid'
+import { tileCellClass, type ChoiceColumns } from './tileStyles'
 
 // THE CHIP, AND THE SEGMENTED CONTROL — one token in a set, and one set of faces.
 //
@@ -56,12 +58,23 @@ export interface SegmentSpec<T extends string> {
   label: ReactNode
 }
 
+// THE SET OF FACES STAND ON THE CHOICE GRID (owner, 2026-10-31: *"make it into square and allign
+// properly orderly. this applies to all the places throughout the game."*). Before this a face
+// bar was a row of shrink-wrapped pills whose widths were their own words; the grid gives every
+// face one column width, one 44-px line and left edges on the column lines. The base cell recipe
+// is `TileGrid`'s (`tileCellClass`), so a face and a filter cannot drift apart; only the state
+// skin differs — a selected face is the raised `surface` on the track, a selected filter is the
+// accent wash.
+//
+// COLUMNS: the caller may name them; otherwise the set itself decides — up to five faces share
+// one row, and a longer set (eight buildings, ten hull filters) takes four columns and wraps.
 export function Segmented<T extends string>({
   segments,
   value,
   onChange,
   label,
   fill = false,
+  columns,
   className = '',
 }: {
   segments: readonly SegmentSpec<T>[]
@@ -69,16 +82,19 @@ export function Segmented<T extends string>({
   onChange: (id: T) => void
   /** Names the set for assistive tech ("Port faces"). Not painted. */
   label: string
-  /** The segments share the whole width — a short fixed set (the map city panel's Market | Port |
-   *  Inn), where a scrolling row of shrink-wrapped cells would leave half the bar empty. */
+  /** The set shares the whole width (a fixed set of faces on a panel's top edge). */
   fill?: boolean
+  /** Fixed column count; default: the set's own size up to five, four beyond it. */
+  columns?: ChoiceColumns
   className?: string
 }) {
+  const cols: ChoiceColumns = columns ?? (segments.length <= 5 ? (Math.max(2, segments.length) as 2 | 3 | 4 | 5) : 4)
   return (
-    <div
+    <TileGrid
       role="tablist"
-      aria-label={label}
-      className={`flex flex-wrap gap-1 rounded-control bg-surface-2 p-1 ${className}`}
+      label={label}
+      columns={cols}
+      className={['rounded-control bg-surface-2 p-1', fill ? 'w-full' : 'w-fit max-w-full', className].filter(Boolean).join(' ')}
     >
       {segments.map((s) => {
         const on = s.id === value
@@ -89,16 +105,12 @@ export function Segmented<T extends string>({
             type="button"
             aria-selected={on}
             onClick={() => onChange(s.id)}
-            className={[
-              'min-h-11 min-w-11 shrink-0 whitespace-nowrap rounded-control px-3 text-t-caption transition',
-              fill ? 'flex-1' : '',
-              on ? 'bg-surface text-ink' : 'text-ink-muted',
-            ].join(' ')}
+            className={`${tileCellClass()} ${on ? 'bg-surface text-ink' : 'text-ink-muted'}`}
           >
             {s.label}
           </button>
         )
       })}
-    </div>
+    </TileGrid>
   )
 }

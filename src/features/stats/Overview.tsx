@@ -5,6 +5,7 @@ import {
   Hint,
   Note,
   RankBars,
+  SectionFold,
   SheetSection,
   SignedBars,
   Skeleton,
@@ -120,7 +121,9 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
       </SheetSection>
       <MoneyLog />
 
-      <SheetSection heading={t('stats.newMoney')}>
+      {/* THE SECONDARY BLOCK, FOLDED (owner, 2026-10-31: *"make things foldable"*): its closed
+          line carries today's net money, and the charts are one press away — never gone. */}
+      <SectionFold heading={t('stats.newMoney')} summary={formatDucatsDelta(newMoney ?? 0)} data-testid="stats-new-money">
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
           <StatCell label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
           <StatCell label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
@@ -157,7 +160,7 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
             />
           </div>
         </div>
-      </SheetSection>
+      </SectionFold>
 
       <WatchSection watch={live?.watch} />
       <FlowsByKind day={day} period={v.period} />

@@ -10,7 +10,9 @@ import {
   Note,
   RankBars,
   Row,
+  ScrollPane,
   SectionColumns,
+  SectionFold,
   Segmented,
   SheetSection,
   Skeleton,
@@ -153,7 +155,10 @@ export function MarketsFace() {
         />
       </div>
 
-      <SectionColumns count={3}>
+      {/* THE TOP-MOVER PANELS ARE THE SECONDARY BLOCK: one folded line with how many goods moved,
+          the three ranked lists one press away. The goods list below stays the face's subject. */}
+      <SectionFold heading={t('stats.movers')} summary={formatInt(moved.length)} data-testid="stats-movers">
+        <SectionColumns count={3}>
         <SheetSection heading={t('stats.risers')} surface data-testid="stats-risers">
           <RankBars rows={movers(risers, 'success')} format={formatPctChange} empty={t('stats.nothingRose')} />
         </SheetSection>
@@ -167,13 +172,16 @@ export function MarketsFace() {
             empty={t('stats.nothingTraded')}
           />
         </SheetSection>
-      </SectionColumns>
+        </SectionColumns>
+      </SectionFold>
 
       <SheetSection heading={t('stats.everyGood', { n: formatInt(rows.length) })} surface data-testid="stats-goods">
         {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
+        <ScrollPane className="max-h-[calc(100dvh_-_26rem)]" data-testid="stats-goods-pane">
         {shown.map((r, i) => (
           <GoodRow key={r.g.code} g={r.g} move={r.move} last={i === shown.length - 1} />
         ))}
+        </ScrollPane>
         {!all && rows.length > FIRST && (
           <div className="pt-3">
             <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">

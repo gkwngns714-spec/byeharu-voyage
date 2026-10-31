@@ -5,6 +5,7 @@ import {
   Hint,
   Note,
   Row,
+  ScrollPane,
   Segmented,
   Sheet,
   SheetSection,
@@ -138,6 +139,7 @@ function RoutesBody() {
           )}
           <Segmented segments={ORDERS.map((o) => ({ id: o.id, label: t(o.label) }))} value={order} onChange={setOrder} label={t('routes.rankBy')} className="mb-3" />
 
+          <ScrollPane className="max-h-[calc(100dvh_-_16rem)]" data-testid="routes-pane">
           {mine.length > 0 && (
             // HERS ON HER OWN PANEL, as RANK pins the captain's line: one tone step, so her lanes
             // read as hers rather than as the first rows of a printout.
@@ -190,6 +192,7 @@ function RoutesBody() {
               {t('routes.omitted', { n: formatInt(board.omitted), count: board.omitted })}
             </Hint>
           )}
+          </ScrollPane>
 
           {opened && <LaneTray route={opened} detent={detent} onDetentChange={setDetent} />}
         </>

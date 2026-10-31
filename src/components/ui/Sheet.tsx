@@ -65,7 +65,7 @@ export function Sheet({
         data-testid="sheet-header"
         data-pinned={pinned}
         className={[
-          'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter pb-2 pt-4',
+          'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter pb-2 pt-3',
           sheetColumnClass(),
           // AT REST THE TITLE STANDS ON THE WORLD; PINNED, IT IS A BAR. Measured on the gallery at
           // 390×844 (shots dark-1/light-1): an always-opaque header reads as a title bar even at
@@ -122,7 +122,7 @@ export function SheetSection({
   // IN A TRAY the panel steps up to `surface-2` (trayContext.ts): a tray is itself `surface`.
   const panel = useInTray() ? 'bg-surface-2' : 'bg-surface'
   return (
-    <section className={`mt-6 first:mt-2 ${className}`} {...rest}>
+    <section className={`mt-4 first:mt-2 ${className}`} {...rest}>
       {(heading !== undefined || trailing !== undefined) && (
         <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
           {heading !== undefined && <h2 className="text-t-body font-semibold text-ink">{heading}</h2>}
@@ -154,5 +154,5 @@ export function SectionColumns({
   children: ReactNode
 }) {
   const cols = count === 3 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
-  return <div className={`mt-6 grid grid-cols-1 gap-6 first:mt-2 ${cols} [&>section]:mt-0! ${className}`}>{children}</div>
+  return <div className={`mt-4 grid grid-cols-1 gap-4 first:mt-2 ${cols} [&>section]:mt-0! ${className}`}>{children}</div>
 }

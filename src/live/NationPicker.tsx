@@ -1,4 +1,4 @@
-import { Chip } from '../components/ui'
+import { TileChoice, TileGrid } from '../components/ui'
 import { HullCountry } from './HullCountry'
 import { useWorld } from './worldStore'
 
@@ -24,12 +24,14 @@ export function NationPicker({
     .filter((n) => n.great)
     .sort((a, b) => a.name.localeCompare(b.name))
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap gap-1.5" data-testid="nation-picker">
+    // THE TEN POWERS AS ONE ORDERED GRID (owner, 2026-10-31) — equal cells on fixed column lines,
+    // alphabetical, never a ragged wall of pills.
+    <TileGrid label={label} columns={3} data-testid="nation-picker">
       {nations.map((n) => (
-        <Chip key={n.code} on={n.code === value} onClick={() => onChange(n.code)} data-testid={`nation-${n.code}`}>
+        <TileChoice key={n.code} on={n.code === value} onClick={() => onChange(n.code)} data-testid={`nation-${n.code}`}>
           <HullCountry nation={n.code} />
-        </Chip>
+        </TileChoice>
       ))}
-    </div>
+    </TileGrid>
   )
 }
