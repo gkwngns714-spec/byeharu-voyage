@@ -371,7 +371,7 @@ begin
   end if;
   if (select i.indrelid from pg_index i where i.indexrelid = 'public.events_trades_window'::regclass) <> 'public.events'::regclass
      or (select i.indnatts from pg_index i where i.indexrelid = 'public.events_trades_window'::regclass) <> 5
-     or (select array_agg(a.attname order by u.ord)
+     or (select array_agg(a.attname::text order by u.ord)
            from pg_index i
            cross join lateral unnest(string_to_array(i.indkey::text, ' ')::int2[]) with ordinality u(attnum, ord)
            join pg_attribute a on a.attrelid = i.indrelid and a.attnum = u.attnum
@@ -388,7 +388,7 @@ begin
   end if;
   if (select i.indrelid from pg_index i where i.indexrelid = 'public.ledger_founded_window'::regclass) <> 'public.ledger'::regclass
      or (select i.indnatts from pg_index i where i.indexrelid = 'public.ledger_founded_window'::regclass) <> 1
-     or (select array_agg(a.attname order by u.ord)
+     or (select array_agg(a.attname::text order by u.ord)
            from pg_index i
            cross join lateral unnest(string_to_array(i.indkey::text, ' ')::int2[]) with ordinality u(attnum, ord)
            join pg_attribute a on a.attrelid = i.indrelid and a.attnum = u.attnum
@@ -403,7 +403,7 @@ begin
   end if;
   if (select i.indrelid from pg_index i where i.indexrelid = 'public.standing_route_laps_window'::regclass) <> 'public.standing_route_laps'::regclass
      or (select i.indnatts from pg_index i where i.indexrelid = 'public.standing_route_laps_window'::regclass) <> 4
-     or (select array_agg(a.attname order by u.ord)
+     or (select array_agg(a.attname::text order by u.ord)
            from pg_index i
            cross join lateral unnest(string_to_array(i.indkey::text, ' ')::int2[]) with ordinality u(attnum, ord)
            join pg_attribute a on a.attrelid = i.indrelid and a.attnum = u.attnum
@@ -502,6 +502,6 @@ begin
     raise exception '0287 self-assert FAIL: a wall moved';
   end if;
 
-  raise notice '0287 self-assert ok: THE STATS READ TOUCHES ONLY THE ROWS IT SERVES. Three indexes, no body re-cut: events_trades_window (created_at INCLUDE id/kind/player_id/payload, kind SOLD/BOUGHT), ledger_founded_window (created_at, kind FOUNDING/NPC_REFOUND), standing_route_laps_window (closed_at INCLUDE route_id/net/lap_no, lap 2+). Every function in public/cmd/world/voyage unmoved by md5 (% functions); registry % unchanged; walls 0; both owner switches as found. Probe (2004-06-01, its own rows, planted twice and rolled back and asserted gone): without the indexes sold 1600 / bought 500 / units 25 / trades 4, the good 15 / 10, the city income 530 / spending 1600 / taxes 30 / sold 15 / bought 10, kinds SELL -1600 / BUY 500 / TAX 30 / FOUNDING 500 / NPC_REFOUND 300; with the indexes the answers are byte-identical, and each index is valid, ready and exactly as declared (table, key / INCLUDE columns, predicate — from the catalog, never a planner's choice; prod plans and timings are the measured record). The read over probe counts: world.stats_overview(24,''1d'') % ms, (24,''1w'') % ms, sections and holders intact (prod before this file: 17.1 s and >110 s / 57014); prod''s one-time journal backlog folds at the next successful count.',
+  raise notice '0287 self-assert ok: THE STATS READ TOUCHES ONLY THE ROWS IT SERVES. Three indexes, no body re-cut: events_trades_window (created_at INCLUDE id/kind/player_id/payload, kind SOLD/BOUGHT), ledger_founded_window (created_at, kind FOUNDING/NPC_REFOUND), standing_route_laps_window (closed_at INCLUDE route_id/net/lap_no, lap 2+). Every function in public/cmd/world/voyage unmoved by md5 (% functions); registry % unchanged; walls 0; both owner switches as found. Probe (2004-06-01, its own rows, planted twice and rolled back and asserted gone): without the indexes sold 1600 / bought 500 / units 25 / trades 4, the good 15 / 10, the city income 530 / spending 1600 / taxes 30 / sold 15 / bought 10, kinds SELL -1600 / BUY 500 / TAX 30 / FOUNDING 500 / NPC_REFOUND 300; with the indexes the answers are byte-identical, and each index is valid, ready and exactly as declared (table, key / INCLUDE columns, predicate — from the catalog, never a planner''s choice; prod plans and timings are the measured record). The read over probe counts: world.stats_overview(24,''1d'') % ms, (24,''1w'') % ms, sections and holders intact (prod before this file: 17.1 s and >110 s / 57014); prod''s one-time journal backlog folds at the next successful count.',
     (select fns from before_0287), (select entry_points from before_0287), v_ms, v_ms2;
 end $probe2$;
