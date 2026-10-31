@@ -79,6 +79,8 @@ test('PORT: a selection swept across the board, ending on the nav bar, then a na
   const selected = await page.evaluate(() => (document.getSelection()?.toString() ?? '').trim())
   expect(selected.length, 'the sweep selected nothing — this proof measured no selection').toBeGreaterThan(20)
 
-  await pressWhereItStands(page, page.getByTestId('nav-cell-/command'))
-  expect(new URL(page.url()).pathname, 'the nav press after a selection did not route').toMatch(/\/command$/)
+  // The bar has no Command cell since 2026-10-31 (owner: "i told you to remove the command tab");
+  // this proof needs only SOME nav press after a selection — Map is the destination beside it.
+  await pressWhereItStands(page, page.getByTestId('nav-cell-/map'))
+  expect(new URL(page.url()).pathname, 'the nav press after a selection did not route').toMatch(/\/map$/)
 })

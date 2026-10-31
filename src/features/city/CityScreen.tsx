@@ -390,10 +390,10 @@ function CityFrame({
   )
 }
 
-/** THE BOTTOM RAIL — HQ · Command · map · stats · menu. A group reveals its members in a tray and
- *  moves no cell (the rail's one law, components/ui/Nav.tsx). The Command cell is the way back to
- *  the desk now that the city is the app's landing screen; it borrows the tab's own word, so the
- *  city cannot invent a second name for the desk. */
+/** THE BOTTOM RAIL — HQ · map · stats · menu. A group reveals its members in a tray and moves no
+ *  cell (the rail's one law, components/ui/Nav.tsx). NO Command cell (owner, 2026-10-31: *"i told
+ *  you to remove the command tab"*): the desk is reached from this city's MARKET building, whose
+ *  face composes the trade face (CityFace). */
 function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>; onNavigate: ReturnType<typeof useNavigate> }) {
   const t = useT()
   const [panel, setPanel] = useState<'menu' | null>(null)
@@ -414,7 +414,6 @@ function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>
 
   const items: NavItem[] = [
     { id: 'hq', label: t('city.hq'), icon: 'wreath', href: tabHref('/city') },
-    { id: 'command', label: word('Command'), icon: 'compass', href: tabHref('/command') },
     { id: '/map', label: t('city.map'), icon: 'chart', href: tabHref('/map') },
     { id: '/stats', label: t('city.stats'), icon: 'stats', href: tabHref('/stats') },
     { id: 'menu', label: t('city.menu'), icon: 'chevron' },
@@ -455,7 +454,7 @@ function CityRail({ locale, onNavigate }: { locale: ReturnType<typeof useLocale>
         onGroup={(id) => setPanel((p) => (p === id ? null : 'menu'))}
         onNavigate={(item) => {
           setPanel(null)
-          if (item.id === '/map' || item.id === '/stats' || item.id === 'command') onNavigate(item.id === 'command' ? '/command' : item.id)
+          if (item.id === '/map' || item.id === '/stats') onNavigate(item.id)
         }}
       />
     </div>

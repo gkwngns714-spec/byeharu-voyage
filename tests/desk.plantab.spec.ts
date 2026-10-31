@@ -1,14 +1,14 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { openTradeMap, pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
+import { closeTradeMap, openTradeMap, pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A TRIP STANDS ON THE FACE IT WAS PRESSED ON, ITS COURSE ON THE SMALL MAP (owner row 183, 2026-10-20; row 218; row 229,
 // 2026-10-26 — a city she is not at, a good pressed: the panel's one button is "Sail & buy" and the trip is drawn):
 // On a local build, at the owner's desktop (1440×900) and the phone (390×844):
 //   · a good of a city she is not at leaves the desk on Trade (its tab selected) and the trade panel stands in it;
-//   · the small map (row 2026-10-30: small, at the bottom, foldable) is the plan's mini route map (row 191): its stops
-//     only, numbered, and the trip's course on it;
+//   · the small map — a summary row on the compact face since 2026-10-31, a press opening its own full-screen
+//     page — is the plan's mini route map (row 191): its stops only, numbered, and the trip's course on it;
 //   · no merchant is on it (no merchant hull, lane, loop or track);
 //   · the days, the supplies, the crew and "Can you go there?" stand in the panel;
 //   · a step of the units changes the figures in place: the panel's button and the map do not move.
@@ -50,10 +50,10 @@ for (const size of SIZES) {
       await expect(card).toBeVisible({ timeout: 30_000 })
       await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'sail-buy')
 
-      // the chart — THE small map on the face (owner rows 217, 218; small, bottom, foldable since 2026-10-30)
+      // the chart — THE small map, a summary row on the compact face (owner rows 217, 218; a page since 2026-10-31)
       const voyage = card.getByTestId('plan-voyage')
       await expect(voyage).toBeAttached({ timeout: 60_000 })
-      // the one-page layout folds the small map on a phone: open it the way a player does
+      // press the map's summary row and work inside its page, the way a player does
       await openTradeMap(plans)
       const map = plans.getByTestId('trade-map')
       const chart = map.getByTestId('small-chart')
@@ -84,11 +84,14 @@ for (const size of SIZES) {
       await expect(voyage.getByTestId('plan-restrictions')).toBeAttached()
       await expect(voyage.getByTestId('plan-sea-state')).not.toBeEmpty({ timeout: 30_000 })
 
-      // a step of the units: the figures change in place, the button and the map stay where they were
-      const before = [await top(page, 'trade-act'), await top(page, 'small-chart')]
+      // A STEP OF THE UNITS (the press law): a press changes the figures in place and moves nothing that
+      // follows it. Read the face with the map's page CLOSED — an open page covers the screen, so the
+      // press would land on the page, not the card; the map's place on the face is its summary row.
+      await closeTradeMap(plans)
+      const before = [await top(page, 'trade-act'), await top(page, 'trade-map-open')]
       await card.getByRole('button', { name: 'Less', exact: true }).click()
       await page.waitForTimeout(800)
-      expect([await top(page, 'trade-act'), await top(page, 'small-chart')], 'a press moved the trade').toEqual(before)
+      expect([await top(page, 'trade-act'), await top(page, 'trade-map-open')], 'a press moved the trade').toEqual(before)
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
     })
   })
