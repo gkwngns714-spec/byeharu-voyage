@@ -38,12 +38,12 @@ import { NAV_CELLS, tabWord } from '../src/app/navTabs'
 //   8. REACHABILITY. Every top destination is a cell or a Menu row with a real href; the City page
 //      renders the shell's own NavBar, and both rails must equal NAV_CELLS cell for cell.
 //
-// ── THE ONE CITY LAW STILL OWED, PINNED AS fixme WITH THE EVIDENCE ─────────────────────────────
-// #426 (merged 2026-10-31) made the City page render the shell's NavBar from the one table, moved
-// each building's face into the right-hand panel so the frame boxes never move, and the hall needs
-// no scroll at 390. The one measured gap left is at 320×568: the hall's served content (336 px)
-// scrolls inside its 179-px panel while the tiles take two rows (stated in #426). That single law
-// stays armed as a `test.fixme` at the foot — flip it to `test(` when the city slice packs it.
+// ── THE CITY LAW AT 320, MEASURED (the old fixme FLIPPED, 2026-11-01) ──────────────────────────
+// #426 (merged 2026-10-31) made the City page render the shell's NavBar from the one table and the
+// hall need no scroll at 390; the only owed law was 320×568, and the city slice (#429/#430) packed
+// it. The `test.fixme` that excused it was itself a CI red (a skip counts as a failure), so it is
+// now a REAL test at the foot, held to the served build's measured numbers: folded 278/278,
+// expanded 289/278 (11 px inside the panel), the page 568/568 flat in both states.
 
 const SIZES = [
   { width: 390, height: 844 },
@@ -559,16 +559,44 @@ test('HQ: a building press changes only the split; the six doors and the frame s
   }
 })
 
-// THE ONE CITY LAW STILL OWED (#426 states it): at 320×568 the hall's served content scrolls inside
-// its panel while the tiles take two rows. The page itself does not scroll.
-test.fixme('HQ at 320: the hall panel never scrolls (city slice; #426 states 336/179)', async ({ page, request, baseURL }) => {
+// THE HALL AT 320 — MEASURED, NOT EXCUSED (the city slice packed it: #429/#430). The old
+// `test.fixme` here excused a defect that no longer exists; a skip is a red in CI's counting, so
+// this is a real test now, held to the numbers measured on the served build (2026-11-01,
+// origin/main 0ef5281f): FOLDED — page 568/568, panel 278/278 (no scroll); EXPANDED — page
+// 568/568 (still flat), the book 125 px inside a 278-px panel, panel scroll 289/278: 11 px of
+// scroll INSIDE the panel and never on the page. A regression past those numbers fails here.
+test('HQ at 320: the page never scrolls; the folded hall fits, and the expanded book keeps its measured 11 px', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
   await page.setViewportSize({ width: 320, height: 568 })
   await screen(page, 'city')
   await page.getByTestId('city-hall-scroll').waitFor({ timeout: 60_000 })
-  const fit = await page.getByTestId('city-hall-scroll').evaluate((el) => ({ sh: (el as HTMLElement).scrollHeight, ch: (el as HTMLElement).clientHeight }))
-  expect(fit.sh, `the hall panel scrolls at 320: ${fit.sh}/${fit.ch}`).toBeLessThanOrEqual(fit.ch + 1)
+  const read = () =>
+    page.evaluate(() => {
+      const de = document.documentElement
+      const panel = document.querySelector('[data-testid="city-hall-scroll"]') as HTMLElement
+      const book = document.querySelector('[data-testid="city-hall-book"]')
+      return {
+        page: { sh: de.scrollHeight, ch: de.clientHeight },
+        panel: { sh: panel.scrollHeight, ch: panel.clientHeight },
+        book: book === null ? null : Math.round(book.getBoundingClientRect().height),
+      }
+    })
+
+  // FOLDED — the page is flat and the panel fits
+  const folded = await read()
+  expect(folded.page.sh, `the page scrolls at 320: ${folded.page.sh}/${folded.page.ch}`).toBeLessThanOrEqual(folded.page.ch + 1)
+  expect(folded.panel.sh, `the folded hall scrolls: ${folded.panel.sh}/${folded.panel.ch}`).toBeLessThanOrEqual(folded.panel.ch + 1)
+  expect(folded.book, 'the book stands open before its fold is pressed').toBeNull()
+
+  // EXPANDED — the page stays flat; the book scrolls INSIDE the panel by its measured 11 px
+  await page.getByTestId('city-hall-influence').click()
+  await expect(page.getByTestId('city-hall-book')).toBeVisible()
+  const open = await read()
+  expect(open.page.sh, `expanding the book scrolled the page at 320: ${open.page.sh}/${open.page.ch}`).toBeLessThanOrEqual(open.page.ch + 1)
+  const inner = open.panel.sh - open.panel.ch
+  expect(inner, `the expanded book no longer overflows its panel — re-state this truth: ${open.panel.sh}/${open.panel.ch}`).toBeGreaterThanOrEqual(0)
+  expect(inner, `the expanded book's internal scroll grew past its measured 11 px: ${open.panel.sh}/${open.panel.ch}`).toBeLessThanOrEqual(12)
 })
 
 // ── ONE HOME PER FACT (owner, 2026-10-31: *"no info duplicate info needed… this goes for every
