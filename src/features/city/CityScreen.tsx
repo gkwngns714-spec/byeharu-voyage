@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Counter, Figure, Icon, Note, StatCell, type IconName } from '../../components/ui'
+import { Figure, Icon, LoadMeter, Note, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { NavBar } from '../../app/NavBar'
 import { alongsideAt, fleetPortCode, housePortCode } from '../../domain/fleet'
@@ -10,7 +10,7 @@ import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
 import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
-import { formatDucats, formatInt, gameSunInstantMs } from '../../lib/format'
+import { formatDucats, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
 import { useT, type TKey } from '../../lib/i18n'
@@ -26,24 +26,32 @@ import { CityScene } from './CityScene'
 // building tappable should always be inside. when pressed each building, HQ stays the same, but
 // the the location where the city image is, as well as the right side should only change."*). The
 // frame — the header, the six building tiles, the rail — never moves. The two regions: the city's
-// plan on the LEFT (with the city's figures beneath it), and on the RIGHT the open place's panel —
-// the Town Hall by default (treasury, influence book with no tax rows, one tappable Investors row
-// opening a right-hand drawer), else the building's own face composed in place. NO PAGE SCROLL —
-// the frame is one viewport at every glass.
+// plan on the LEFT (its mark moving to the open place) and on the RIGHT the open place's panel —
+// the Town Hall by default, else the building's own COMPACT panel. The plan stays on the glass for
+// every place (owner, 2026-10-31: the market's basket "opens inside the building's own region —
+// the right-hand panel (with the city-image area left)").
+//
+// ── THE FIGURES LIVE IN THE HALL PANEL, NOT THE FRAME (owner, 2026-10-31) ─────────────────────
+// *"I DON'T NEED TO SEEP POPULATION AND RELATION, ANYTHING THAT WAS ALREADY SHOWN ON TOWN HALL"*
+// and *"MARKET- BASKET? WTF IS THIS POPPING UP BLOCKING THE WHOLE SCREEN? FIX THIS…"* — the frame's
+// full-width figures card printed Population · Gold · Status · Relationship · Your earnings above
+// every building face, repeating the hall. The five are now the hall panel's own compact block
+// (Population · Gold · Status · Relationship · Employees) and no other face prints them. The frame
+// keeps ONE line of its own — YOUR purse ("Your earnings"), which the hall does not show — so the
+// frame is header + six tiles + earnings + rail, identical across every press, and the room the
+// card gave back is what lets the hall show its book and its fold at 390×568 without scrolling.
 //
 // ── WHAT IS REAL ON THIS SLICE, AND WHAT IS NOT ────────────────────────────────────────────────
 // This is the SHELL. It is client-only: there is no migration and no new served field.
 //   real       the city (the fleet's docked port, or `?port=`), its flag and country, day/night off
 //              the served clock, the city's GOLD (`world.town_hall` purse — the treasury the server
-//              already serves), your own gold (`world.ledger` purse), your EMPLOYEES (the crew
-//              aboard your hulls, from `world.fleets`), STATUS (the influence points you hold in
-//              this city under the country you sail for now — `world.town_hall.influence.you`.
-//              `points`, the book every Share and Donation writes), RELATIONSHIP (the harbour's
-//              served stance toward that nation — `world.town_hall.dues.stance`,
+//              already serves), your own influence points (`world.town_hall.influence.you.points`),
+//              your EMPLOYEES (the crew aboard your hulls, from `world.fleets`), RELATIONSHIP (the
+//              harbour's served stance toward that nation — `world.town_hall.dues.stance`,
 //              `public.power_stance`: home / ally / peace / rival / war), and every building face,
 //              which is the existing one composed (CityFace.tsx).
 //   estimate   Population only: `port.size_tier` is the one served size figure, so the number is a
-//              stated curve off it with its caption. Nothing else here is a guess, and the three
+//              stated curve off it with its "≈" glyph. Nothing else here is a guess, and the five
 //              figures ride the hall's ONE served block — no cell asks a second read.
 //
 // ── WHY IT SITS OUTSIDE AppShell ──────────────────────────────────────────────────────────────
@@ -55,9 +63,9 @@ import { CityScene } from './CityScene'
 // "is the world up" wait (tests/appReady.fixture.ts) works here too.
 
 /** THE POPULATION IS AN ESTIMATE, NOT A SERVED COUNT (owner, 2026-10-31: "more tiny dot with huge
- *  number"). The only served size figure is `port.size_tier` (1-5), so the figure beneath the
- *  plan is a stated curve off it and the card's caption says so. The curve: tier 1 ≈ 8,000 ·
- *  2 ≈ 18,000 · 3 ≈ 45,000 · 4 ≈ 90,000 · 5 ≈ 160,000. */
+ *  number"). The only served size figure is `port.size_tier` (1-5), so the figure the hall prints is
+ *  a stated curve off it and carries "≈". The curve: tier 1 ≈ 8,000 · 2 ≈ 18,000 · 3 ≈ 45,000 ·
+ *  4 ≈ 90,000 · 5 ≈ 160,000. */
 const POPULATION_BY_TIER = [8000, 18000, 45000, 90000, 160000] as const
 function populationEstimate(sizeTier: number): number {
   return POPULATION_BY_TIER[Math.max(0, Math.min(4, (sizeTier || 1) - 1))]
@@ -78,9 +86,22 @@ const RELATION_WORDS: Record<Relation, TKey> = {
   none: 'city.relationNone',
 }
 
+/** THE LOADING METER'S STEPS (owner, 2026-10-31: "show percentage of its loading time") — the
+ *  screen's REAL reads, each `done` at its own completion event and nothing else. The world's
+ *  three boot completions ride the store's `boot` (snapshot · sea · first beat read); the fourth
+ *  is the city's own served read, the hall. Four equal steps until a caller knows a size. */
+function loadStepsFor(t: ReturnType<typeof useT>, boot: number, hallDone: boolean): readonly LoadStep[] {
+  return [
+    { id: 'world', label: t('city.loadWorld'), done: boot >= 1 },
+    { id: 'sea', label: t('city.loadSea'), done: boot >= 2 },
+    { id: 'fleets', label: t('city.loadFleets'), done: boot >= 3 },
+    { id: 'hall', label: t('city.loadHall'), done: hallDone },
+  ]
+}
+
 /** THE SIX PLACES — one row of the frame, the Town Hall first (the page's main panel), then the
- *  five buildings. A press opens the place's panel on the right and marks it on the plan; it moves
- *  no cell (owner, 2026-10-31: the frame "stays the same"). */
+ *  five buildings. A press changes the plan's mark and the right panel; it moves no cell (owner,
+ *  2026-10-31: the frame "stays the same"). */
 type CitySelection = 'hall' | CityBuilding
 const CITY_TILES: readonly { id: CitySelection; icon: IconName; label: TKey }[] = [
   { id: 'hall', icon: 'wreath', label: 'city.cityHall' },
@@ -95,6 +116,8 @@ export function CityScreen() {
   const t = useT()
   const [params] = useSearchParams()
   const phase = useWorld((s) => s.phase)
+  // THE BOOT'S REAL STEPS, for the loading meter (worldStore's own completion counts).
+  const boot = useWorld((s) => s.boot)
 
   // THE WORLD OPENS HERE, once, exactly as AppShell opens it for the tabs (open() is idempotent).
   useEffect(() => {
@@ -153,7 +176,7 @@ export function CityScreen() {
     return gate(
       <>
         <div className="flex-1 p-gutter">
-          <Note tone="neutral">{t('city.loading')}</Note>
+          <LoadMeter steps={loadStepsFor(t, boot, false)} data-testid="city-load" />
         </div>
         <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
@@ -180,15 +203,17 @@ function CityBody({
   draftFleetId: string | null
 }) {
   const fleets = useWorld((s) => s.fleets)
-  const ducats = useWorld((s) => s.ducats)
   const allegiance = useWorld((s) => s.allegiance)
+  /** YOUR OWN PURSE — the frame's one line that repeats nothing from the hall (whose Gold is the
+   *  CITY's purse). It is what the old earnings line carried, kept alone. */
+  const ducats = useWorld((s) => s.ducats)
 
   // The fleet acting for this city: one of yours lying here, else nobody (a read-only city).
   const { docked } = alongsideAt(fleets, port.code, draftFleetId)
   const fleet = docked[0] ?? null
 
-  // ONE HALL READ FEEDS THE WHOLE PAGE: the in-place Town Hall panel (the treasury, the influence
-  // book, the investors board) and the figures card beneath the plan — the city's gold, YOUR STATUS
+  // ONE HALL READ FEEDS THE WHOLE PAGE: the hall panel (the treasury, the influence book, the
+  // investors board) and its five-figure block — the city's gold, YOUR STATUS
   // (`influence.you.points`) and the town's RELATIONSHIP (`dues.stance`). Nothing recomputed here.
   const hallRead = useTownHall(port.id)
   const hall = hallRead.view?.view ?? null
@@ -199,10 +224,7 @@ function CityBody({
     [fleets],
   )
 
-  // WHICH PLACE IS OPEN — the Town Hall until a tile is pressed. A press changes the plan's mark
-  // and this panel ONLY; the frame (the header, the six tiles, the figures, the rail) never moves
-  // (owner, 2026-10-31: "HQ stays the same, but the the location where the city image is, as well
-  // as the right side should only change").
+  // WHICH PLACE IS OPEN — the Town Hall until a tile is pressed.
   const [selected, setSelected] = useState<CitySelection>('hall')
 
   return (
@@ -211,8 +233,8 @@ function CityBody({
       fleet={fleet}
       hall={hall}
       hallRefusal={hallRefusal}
-      ducats={ducats}
       employees={employees}
+      ducats={ducats}
       allegiance={portNationOf(allegiance, port.code)}
       selected={selected}
       onSelect={setSelected}
@@ -220,15 +242,16 @@ function CityBody({
   )
 }
 
-/** The frame itself: header, the HQ split (plan + the hall panel), the four figures, the five
- *  building doors, earnings, the rail. */
+/** The frame itself: header, the HQ split (plan + the open place's panel), the six tiles, the rail.
+ *  The frame is box-stable across every press — the plan's MARK and the right panel are the only
+ *  things a press changes. */
 function CityFrame({
   port,
   fleet,
   hall,
   hallRefusal,
-  ducats,
   employees,
+  ducats,
   allegiance,
   selected,
   onSelect,
@@ -238,25 +261,24 @@ function CityFrame({
   fleet: FleetView | null
   hall: TownHallView | null
   hallRefusal: Refusal | null
-  ducats: number | null
   employees: number
+  /** YOUR purse — the frame's one earnings line; nothing else of the old figures card remains. */
+  ducats: number | null
   allegiance: ReturnType<typeof portNationOf>
   selected: CitySelection
   onSelect: (s: CitySelection) => void
 }) {
   const t = useT()
   const { nowMs } = useShellState()
+  // THE LOADING METER, WHILE THE SCREEN IS STILL LOADING: the world steps ride `boot`, the hall
+  // step is this screen's own read. It is NOT part of the frame (it is gone at ready, when every
+  // frame proof runs), and it updates on step completion only.
+  const boot = useWorld((s) => s.boot)
+  const hallDone = hall !== null || hallRefusal !== null
   // DAY/NIGHT is the world's ONE sun (chart/sun), at the game clock's hour, over THIS city — never a
   // local-time hour: every player sees the same night, and it matches the Map's own day sheet.
   const night = daylightAt({ lat: port.lat, lon: port.lon }, subsolarPoint(gameSunInstantMs(nowMs))) < 0.5
   const population = populationEstimate(port.size_tier)
-
-  // THE HALL'S ONE SERVED BLOCK, read once in CityBody and spent here: the purse (also on the
-  // panel), your influence points (Status) and the harbour's stance (Relationship). Nulls are
-  // genuine absences (no company / no dues), never placeholders.
-  const cityGold = hall?.purse.ducats ?? null
-  const statusPoints = hall?.influence.you?.points ?? null
-  const stance = hall?.dues?.stance ?? null
 
   // THE RELATIONSHIP IS THE SERVER'S STANCE while the hall answers it (`public.power_stance`,
   // between the nation you sail for and the city's holder): home / ally / peace / rival / war.
@@ -265,6 +287,7 @@ function CityFrame({
   // nation is a fact, different nations are a fact, never a guessed ally or war.
   const houseNation = useWorld((s) => s.player?.nation ?? null)
   const portNation = allegiance?.nation ?? null
+  const stance = hall?.dues?.stance ?? null
   const relation: Relation =
     stance ?? (houseNation === null ? 'none' : portNation === null ? 'free' : houseNation === portNation ? 'home' : 'different')
 
@@ -286,6 +309,12 @@ function CityFrame({
           {night ? t('city.night') : t('city.day')}
         </span>
       </header>
+
+      {!hallDone && (
+        <div className="shrink-0 px-gutter" data-testid="city-load-host">
+          <LoadMeter steps={loadStepsFor(t, boot, hallDone)} data-testid="city-load" />
+        </div>
+      )}
 
       {/* THE SIX BUILDINGS — the page's OWN ROW, always visible, part of the frame: a press swaps
           the plan's mark and the right panel and moves nothing here (owner, 2026-10-31: "in
@@ -312,96 +341,47 @@ function CityFrame({
         </div>
       </nav>
 
-      <main className="flex min-h-0 flex-1 flex-col gap-2 px-gutter pb-1.5 pt-1.5">
-        {/* THE HQ SPLIT (owner, 2026-10-31: "the town hall screen is on the same HQ screen, but
-            where the city is"): the plan on the LEFT — the full town, never cropped, whatever shape
-            the panel takes (CityScene fits the whole square plate inside it with `xMidYMid meet` on
-            the plate's own ground colour) — with the four figures beneath it; the TOWN HALL IN
-            PLACE on the RIGHT (its treasury, the influence book without the tax rows, and the
-            tappable Investors row), and the five other building doors beneath it. The earnings
-            block stays pinned above the rail. */}
+      <main className="flex min-h-0 flex-1 flex-col px-gutter pb-1.5 pt-1.5">
+        {/* THE HQ SPLIT (owner, 2026-10-31): the plan on the LEFT — the full town, never cropped
+            (CityScene fits the whole square plate inside it with `xMidYMid meet` on the plate's own
+            ground colour) — and the open place's panel on the RIGHT. The plan stays on the glass
+            for every place: a press moves its mark and swaps the panel only. The five figures are
+            NOT here; they are the hall panel's block (owner: "the hall panel is their single
+            home"). */}
         <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
-          {selected === 'hall' ? (
-            <>
-              {/* THE PLAN — the city image on the LEFT, the Town Hall in place on the RIGHT: the
-                  hall's two regions. */}
-              <div className="flex min-h-0 min-w-0 flex-[0_0_50%] flex-col gap-2">
-                <div className="min-h-0 flex-1 overflow-hidden" data-testid="city-info-image">
-                  <CityScene sizeTier={port.size_tier} night={night} seed={port.code} selected={selected} />
-                </div>
-              </div>
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <CityHallPanel port={port} hall={hall} refusal={hallRefusal} />
-              </div>
-            </>
-          ) : (
-            /* A BUILDING IS OPEN — it takes the split's TWO REGIONS (where the plan stands and the
-               right side) as ONE panel, so its existing face stays legible at phone width; the
-               frame above and below never moves (owner, 2026-10-31: "HQ stays the same, but the
-               the location where the city image is, as well as the right side should only
-               change"). */
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="city-open-panel">
-              <CityFacePanel building={selected} port={port} fleet={fleet} />
-            </div>
-          )}
-        </section>
-
-        {/* THE CITY'S FIGURES — the frame's own row: the population estimate (off the served size
-            tier, said as an estimate), the city's purse, YOUR STATUS (the influence points you hold
-            here — served) and the town's RELATIONSHIP, then your own purse and the crew you employ.
-            Full width and packed, so nothing is spread over empty space (owner, 2026-10-31: "i
-            noticed there are too many empty spaces. Pack them up, make it concise and simeple"). */}
-        <section className="shrink-0 rounded-tile bg-surface px-gutter py-1.5 max-[360px]:px-2" data-testid="city-summary">
-          <div className="flex items-start justify-between gap-2">
-            <div data-testid="city-population" className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('city.population')}</span>
-              <Figure value={`≈ ${formatInt(population)}`} size="body" tone="ink" />
-            </div>
-            <div className="flex items-start gap-3 text-right">
-              <div data-testid="city-gold" className="min-w-0">
-                <span className="block text-t-caption text-ink-faint">{t('city.gold')}</span>
-                {cityGold === null ? (
-                  <Figure value="—" size="body" tone="faint" />
-                ) : (
-                  <Counter value={cityGold} format={formatDucats} size="body" />
-                )}
-              </div>
-              <div data-testid="city-status" className="min-w-0">
-                <span className="block text-t-caption text-ink-faint">{t('city.status')}</span>
-                {statusPoints === null ? (
-                  <Figure value="—" size="body" tone="faint" />
-                ) : (
-                  <Figure value={formatInt(statusPoints)} size="body" tone="ink" />
-                )}
-              </div>
-              <div
-                className="min-w-0"
-                data-testid="city-relationship"
-                data-stance={stance ?? 'none'}
-                data-nation={portNation ?? 'none'}
-              >
-                <span className="block text-t-caption text-ink-faint">{t('city.relationship')}</span>
-                <span className="block text-t-caption text-ink">{t(RELATION_WORDS[relation])}</span>
-              </div>
+          <div className="flex min-h-0 min-w-0 flex-[0_0_50%] flex-col">
+            <div className="min-h-0 flex-1 overflow-hidden" data-testid="city-info-image">
+              <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />
             </div>
           </div>
-          <div className="text-right text-t-caption text-ink-faint">{t('city.populationNote')}</div>
-          <div className="mt-1 flex items-center justify-between gap-2 border-t border-edge pt-1" data-testid="city-earnings">
-            <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
-            <div className="flex items-start gap-4">
-              <StatCell
-                label={t('city.gold')}
-                value={ducats ?? undefined}
-                format={formatDucats}
-                text={ducats === null ? '—' : undefined}
-                size="body"
-                data-testid="city-your-gold"
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {selected === 'hall' ? (
+              <CityHallPanel
+                port={port}
+                hall={hall}
+                refusal={hallRefusal}
+                population={population}
+                employees={employees}
+                relation={{ word: t(RELATION_WORDS[relation]), stance, nation: portNation }}
               />
-              <StatCell label={t('city.employees')} value={employees} format={formatInt} size="body" data-testid="city-employees" />
-            </div>
+            ) : (
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="city-open-panel">
+                <CityFacePanel building={selected} port={port} fleet={fleet} />
+              </div>
+            )}
           </div>
         </section>
 
+        {/* THE FRAME'S ONE EARNINGS LINE — YOUR purse, and NOTHING repeated from the hall (the
+            owner's five figures live only in the hall panel). It stays a frame row so the frame is
+            the same shape at every press (and the merged audit's HQ-geometry proof still reads a
+            `city-summary` between the split and the rail). */}
+        <div data-testid="city-summary" className="shrink-0 pt-1">
+          <div className="flex min-h-5 items-center justify-between gap-2 px-1">
+            <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
+            <Figure value={ducats === null ? '—' : formatDucats(ducats)} size="body" tone={ducats === null ? 'faint' : 'ink'} />
+          </div>
+        </div>
       </main>
 
       <div data-testid="city-rail" className="shrink-0"><NavBar /></div>

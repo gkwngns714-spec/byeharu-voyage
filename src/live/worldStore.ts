@@ -129,6 +129,12 @@ export type LoadPhase = 'idle' | 'opening' | 'ready' | 'failed'
 export interface LiveWorld {
   // ── what is loaded ───────────────────────────────────────────────────────────────────────────
   phase: LoadPhase
+  /** THE WORLD BOOT'S COMPLETED REAL STEPS (0-3), each written at the instant one of the boot's
+   *  own awaits resolves — the one authority the loading meter reads (components/ui/LoadMeter,
+   *  composed by the City page as World · Sea · Fleets · Hall). Never a timer, never an estimate:
+   *  1 = the served world snapshot (the bundle: image/chain + snapshot) · 2 = the sea raster ·
+   *  3 = the first beat read (fleets/player/ledger/routes). The hall step is the screen's own. */
+  boot: number
   /** Set when the world could not be opened at all. A failure is rendered, never spun on. */
   fatal: Refusal | null
   /** Which backend answered. Display only — nothing branches on it. */
@@ -619,6 +625,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   return {
   phase: 'idle',
+  boot: 0,
   fatal: null,
   mode: null,
   snapshot: null,
@@ -653,7 +660,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
 
   open: async () => {
     if (get().phase !== 'idle') return
-    set({ phase: 'opening' })
+    set({ phase: 'opening', boot: 0 })
 
     // initRpc() BOOTS A DATABASE, and a database can fail to boot — a migration that will not
     // apply throws here rather than returning a refusal, because it happens below the RPC seam
@@ -683,6 +690,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
       set({ phase: 'failed', fatal: snap.refusal, mode })
       return
     }
+    // THE LOADING METER'S FIRST REAL STEP: the served world (its bundle and snapshot) is here.
+    set({ boot: 1 })
     // THE SEA RIDES WITH THE WORLD. Without the raster no course can be proposed and SAIL — the
     // game's core verb — is dead, so a world without its water is a failed open, not a degraded
     // one (§7C: the else branch would be a different product wearing this one's name).
@@ -691,6 +700,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
       set({ phase: 'failed', fatal: sea.refusal, mode })
       return
     }
+    // THE SECOND REAL STEP: the chart's water is served.
+    set({ boot: 2 })
     servedSnapshot = snap.value
     const named = snapshotLookups(snap.value)
 
@@ -716,6 +727,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
       // A world that answered snapshot() but not fleets() is still a world worth showing: the
       // failure is already in `fatal` (refresh set `phase: 'failed'`) and the screens render it.
       ...(get().phase === 'failed' ? {} : { phase: 'ready' as const }),
+      // THE THIRD REAL STEP: the first beat read has answered (with the world published).
+      boot: 3,
     })
   },
 

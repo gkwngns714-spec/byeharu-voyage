@@ -47,9 +47,7 @@ async function frameBoxes(page: Page) {
     }
     return {
       header: pick('city-header'),
-      summary: pick('city-summary'),
       grid: pick('city-building-grid'),
-      earnings: pick('city-earnings'),
       rail: pick('city-rail'),
     }
   })
@@ -59,7 +57,6 @@ async function scrollState(page: Page) {
   return page.evaluate(() => {
     const el = document.documentElement
     const rail = document.querySelector('[data-testid="city-rail"]')!.getBoundingClientRect()
-    const earnings = document.querySelector('[data-testid="city-earnings"]')!.getBoundingClientRect()
     return {
       docW: el.scrollWidth,
       clientW: el.clientWidth,
@@ -67,7 +64,6 @@ async function scrollState(page: Page) {
       clientH: el.clientHeight,
       scrollY: window.scrollY,
       railBottom: Math.round(rail.bottom),
-      earningsBottom: Math.round(earnings.bottom),
       vh: window.innerHeight,
     }
   })
@@ -184,7 +180,6 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   expect(s.docH, 'the City page scrolls down').toBeLessThanOrEqual(s.clientH)
   expect(s.scrollY, 'the City page is scrolled').toBe(0)
   expect(s.railBottom, 'the rail hangs below the glass').toBeLessThanOrEqual(s.vh)
-  expect(s.earningsBottom, 'the earnings block hangs below the glass').toBeLessThanOrEqual(s.vh)
   await expectSceneInFrame(page, '390×844')
   await expectWholeCityDrawn(page, '390×844')
 
@@ -256,7 +251,6 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   // own purse and crew are served figures too.
   await expect(page.getByTestId('city-gold')).not.toHaveAttribute('data-placeholder', 'true')
   await expect.poll(async () => page.getByTestId('city-gold').innerText(), { timeout: 60_000 }).not.toContain('—')
-  await expect.poll(async () => page.getByTestId('city-your-gold').innerText(), { timeout: 60_000 }).toContain('🪙')
   await expect(page.getByTestId('city-employees')).toContainText(/\d/)
 
   // ── 3. THE HQ SPLIT: PLAN LEFT, THE TOWN HALL IN PLACE RIGHT ────────────────────────────────
@@ -279,13 +273,18 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   expect(hallFit.sh, 'the hall panel scrolls at 390×844').toBeLessThanOrEqual(hallFit.ch)
   const hallPanel = page.getByTestId('city-hall-panel')
   await expect(hallPanel).toBeVisible()
-  // the hall read rides the world beat: the panel shows its skeleton until the served block lands
+  // THE INFLUENCE IS FOLDABLE (owner, 2026-10-31): the book stands behind the fold; a press opens
+  // it in place (the tax rows included — this supersedes the older "no tax info" for the hall).
+  const fold = page.getByTestId('city-hall-influence')
+  await expect(fold).toHaveAttribute('aria-expanded', 'false')
+  await expect(hallPanel.getByTestId('city-hall-book')).toHaveCount(0)
+  await fold.click()
+  await expect(fold).toHaveAttribute('aria-expanded', 'true')
   await expect(hallPanel.getByTestId('townhall-influence')).toBeVisible({ timeout: 60_000 })
-  await expect(hallPanel.getByTestId('city-hall-purse')).toBeVisible()
   await expect(hallPanel.getByTestId('city-hall-investors')).toBeVisible()
-  for (const absent of ['townhall-day', 'townhall-purse-line', 'townhall-your-tax', 'townhall-mayor', 'townhall-mayor-tax']) {
-    await expect(hallPanel.locator(`[data-testid="${absent}"]`), `${absent} must not stand in the hall panel`).toHaveCount(0)
-  }
+  await expect(hallPanel.locator('[data-testid="townhall-day"]'), 'market info must not stand in the hall panel').toHaveCount(0)
+  await fold.click()
+  await expect(fold).toHaveAttribute('aria-expanded', 'false')
   // the row is a real control at the 44-px reach floor
   const investorRow = await page.getByTestId('city-hall-investors').boundingBox()
   expect(investorRow!.height, 'the Investors row is under 44 px').toBeGreaterThanOrEqual(44)
@@ -313,20 +312,20 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   const before = await frameBoxes(page)
   for (const b of six) {
     await page.getByTestId(`city-building-${b}`).click()
+    // THE CITY IMAGE STAYS LEFT (owner, 2026-10-31) and the panel stands right of it: a press
+    // changes the plan's mark and the right-hand panel only.
+    await expect(page.getByTestId('city-info-image'), `pressing ${b} removed the city image`).toBeVisible()
+    const imageBox = (await page.getByTestId('city-info-image').boundingBox())!
     if (b === 'hall') {
       await expect(page.getByTestId('city-hall-panel')).toBeVisible()
       await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
-      await expect(page.getByTestId('city-info-image')).toBeVisible()
     } else {
       const panel = page.getByTestId('city-face-panel')
       await expect(panel).toBeVisible()
       await expect(panel).toHaveAttribute('data-building', b)
-      // IN PLACE: the opened place takes the split's TWO regions (the plan's place and the right
-      // side) as ONE panel — legible at phone width, never a full-glass overlay.
-      const pb = await panel.boundingBox()
-      expect(pb!.width, `the ${b} panel does not fill the split`).toBeGreaterThan(300)
-      expect(pb!.width, `the ${b} panel is a full-screen layer`).toBeLessThan(390)
-      await expect(page.getByTestId('city-info-image')).toHaveCount(0)
+      const pb = (await panel.boundingBox())!
+      expect(pb.x, `the ${b} panel is not right of the city image`).toBeGreaterThanOrEqual(imageBox.x + imageBox.width - 1)
+      expect(pb.width, `the ${b} panel is a full-screen layer`).toBeLessThan(390)
     }
     expect(await frameBoxes(page), `pressing ${b} re-flowed the frame`).toEqual(before)
     const withPanel = await page.evaluate(() => ({
@@ -341,15 +340,23 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-hall-panel')).toBeVisible()
 
-  // The Forge is the goods forge (0281): the crafted trade goods, their recipes, and a tray whose
-  // Forge button is the server's to answer. A 287-recipe catalogue scrolls INSIDE the panel — the
-  // page must not gain a scrollbar.
+  // The Forge is the goods forge (0281): the compact panel lists the product TIERS (audit row 39 —
+  // a product's control carries the product's name, never the whole recipe); a tier row opens its
+  // products as the one page (the audit's no-panel-scroll law), and a product's tray is the
+  // server's to answer.
   await page.getByTestId('city-building-forge').click()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'forge')
+  const tierRows = page.getByTestId('city-face-panel').locator('[data-summary-row]')
+  await expect.poll(() => tierRows.count(), { timeout: 60_000 }).toBeGreaterThan(0)
+  const tierId = (await tierRows.first().getAttribute('data-testid'))!
+  const tier = tierId.replace('city-forge-tier-', '')
+  await tierRows.first().click()
+  const forgePage = page.locator('[data-detail-page]')
+  await expect(forgePage).toBeVisible()
   await expect(page.getByTestId('port-forge')).toBeVisible()
   const forgeTiles = page.locator('[data-testid^="forge-product-"]')
   await expect.poll(() => forgeTiles.count(), { timeout: 60_000 }).toBeGreaterThan(0)
-  await expect(page.getByTestId('forge-tier-1')).toBeVisible()
+  await expect(page.getByTestId(`forge-tier-${tier}`)).toBeVisible()
   const forgeScroll = await page.evaluate(() => ({
     w: document.documentElement.scrollWidth,
     cw: document.documentElement.clientWidth,
@@ -369,13 +376,23 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await expect(page.getByTestId(`forge-make-${firstCode}`)).toBeDisabled()
   await expect(page.getByText(/^Missing:/)).toBeVisible()
   await page.getByTestId('tray-close').click()
+  // back from the tier's page to the compact panel, then the hall
+  await page.locator('[data-detail-back]').last().click()
+  await expect(forgePage).toHaveCount(0)
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
 
-  // An existing face composes whole in the panel: the market is the quay's own ledger.
+  // A compact face composes in the panel: the market's three board faces, one press from the quay's
+  // own ledger (the page the row opens).
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
-  await expect(page.getByTestId('city-face-panel')).not.toBeEmpty()
+  await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
+  await page.getByTestId('city-market-buy').click()
+  const marketPage = page.locator('[data-detail-page]')
+  await expect(marketPage).toBeVisible()
+  await expect(page.getByTestId('quay-stores')).toBeVisible({ timeout: 60_000 })
+  await page.locator('[data-detail-back]').last().click()
+  await expect(marketPage).toHaveCount(0)
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-hall-panel')).toBeVisible()
 
@@ -397,13 +414,15 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
     const tile = page.getByTestId(`city-building-${b}`)
     await expect(tile, `building tile ${b} is missing at 320`).toBeVisible()
   }
-  // THE HALL AT 320 — MEASURED, AND WHAT GIVES SAID OUT LOUD (owner, 2026-10-31: "The same at
-  // 320×568 as far as physically possible — measure and say what gives"). The panel is 227 px tall
-  // here and its served content needs more, so it scrolls INSIDE ITSELF; the page does not scroll
-  // (asserted above). At 390 the hall fits with no scroll (asserted earlier).
+  // THE HALL AT 320 FITS WITHOUT SCROLL (owner, 2026-10-31: the Influence fold + the hall's five
+  // figures): COLLAPSED is the default — one 44-px Influence row, the five compact figure lines and
+  // the Investors row — so its scroller no longer scrolls; the EXPANDED book may scroll inside the
+  // panel at the smallest glass (stated and measured by city.audit.spec), while the page itself
+  // never does (asserted above).
   const hallFitSmall = await page.getByTestId('city-hall-scroll').evaluate((el) => ({ sh: el.scrollHeight, ch: el.clientHeight }))
-  console.log(`hall content at 320: ${hallFitSmall.sh} px in a ${hallFitSmall.ch} px panel — it scrolls inside itself`)
+  console.log(`hall content at 320: ${hallFitSmall.sh}/${hallFitSmall.ch}`)
   expect(hallFitSmall.ch, 'the hall panel has no height at 320').toBeGreaterThan(100)
+  expect(hallFitSmall.sh, `the hall panel scrolls at 320: ${hallFitSmall.sh} > ${hallFitSmall.ch}`).toBeLessThanOrEqual(hallFitSmall.ch + 1)
   await page.getByTestId('city-hall-investors').click()
   const smallDrawer = page.getByTestId('city-investors-drawer')
   await expect(smallDrawer).toBeVisible()
@@ -445,15 +464,10 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
     await expectSceneInFrame(page, `${w}×${h}`)
     await expectWholeCityDrawn(page, `${w}×${h}`)
     await expectHqSplit(page, `${w}×${h}`)
-    // The same squeeze that flattened the plan also crushed the figures card to a 16-px sliver on
-    // these windows; the population hero must actually fit inside the card, not be clipped away.
-    const card = await page.evaluate(() => {
-      const summary = document.querySelector('[data-testid="city-summary"]')!.getBoundingClientRect()
-      const pop = document.querySelector('[data-testid="city-population"]')!.getBoundingClientRect()
-      return { h: summary.height, popBottom: pop.bottom, summaryBottom: summary.bottom }
-    })
-    expect(card.h, `the figures card is crushed at ${w}×${h}`).toBeGreaterThanOrEqual(90)
-    expect(card.popBottom, `the population figure is clipped by the figures card at ${w}×${h}`).toBeLessThanOrEqual(card.summaryBottom + 0.5)
+    // THE FIVE FIGURES LIVE IN THE HALL PANEL (owner, 2026-10-31: the frame's card is gone).
+    for (const id of ['city-population', 'city-gold', 'city-status', 'city-relationship', 'city-employees']) {
+      await expect(page.getByTestId(id), `${id} is missing at ${w}×${h}`).toBeVisible()
+    }
   }
   await page.setViewportSize({ width: 390, height: 844 })
 
@@ -481,9 +495,13 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await expect(page.getByTestId('city-rail').getByTestId('nav-cell-command')).toHaveCount(0)
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
+  await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
+  await page.getByTestId('city-market-buy').click()
   await expect(page.getByTestId('quay-stores'), 'the market face is not the trade face').toBeVisible({
     timeout: 60_000,
   })
+  await page.locator('[data-detail-back]').last().click()
+  await expect(page.locator('[data-detail-page]')).toHaveCount(0)
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
 

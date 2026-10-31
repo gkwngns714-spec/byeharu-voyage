@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Figure, Icon, Note, Row, Skeleton, Tray, type TrayDetent } from '../../components/ui'
 import { InvestorRow } from '../../live/CityInvestors'
 import { TownHallInfluence } from '../../live/TownHallInfluence'
 import type { CityInvestor, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
-import { formatDucats } from '../../lib/format'
+import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { CityPanel } from './CityPanel'
 
@@ -14,33 +14,59 @@ import { CityPanel } from './CityPanel'
 // The owner, verbatim: *"the HQ tab, when pressed town hall, the city image you've created should
 // show up. right now the city image is at center, move it the left side, and then at the right side
 // show what you would see the page pop up,. no need market info. tax info. influence yes, investors
-// - tappable where when tapped, a list slides to the right where you can close."* And, before this
-// could be called done: *"you know that this game is also for mobile right?"*
+// - tappable where when tapped, a list slides to the right where you can close."*
 //
-// So the hall is the City page's MAIN PANEL, not a face: the plan stands LEFT, this panel RIGHT, at
-// every glass. It composes the same served block the town hall face reads (`world.town_hall`):
-//   · the city's TREASURY (the purse the hall's own core figure),
-//   · the INFLUENCE book — with the tax rows off (`showTax={false}`): the owner cut tax info from
-//     THIS view; the map's Town Hall and the desk's Invest still show it (they pass no switch),
-//   · ONE tappable INVESTORS row; the served board opens a drawer from the RIGHT, full-width on a
-//     phone, with its own close. The drawer is fixed over the page, so nothing behind it reflows
-//     (the press law) — and the panel and the drawer scroll INSIDE themselves, never the page.
+// ── THE INFLUENCE IS FOLDABLE — THE ONE OWNER-ORDERED FOLD (2026-10-31) ───────────────────────
+// *"CITY HALL - THERE IS A SCROLL YOU NEED TO DO FOR INFLUENCE. MAKE INFLUENCE FOLDABLE, ADD
+// POPULATION GOLD STATUS RELATIONSHIP EMPLOYEES ON THE RIGHT SIDE SINCE THERE WILL BE MORE ROOM"*
+// Collapsed (the default) Influence is ONE row: its word, your served points and the disclosure
+// chevron, ≥ 44 px. A press expands the book IN PLACE — the rows the hall used to carry, now WITH
+// the tax rows (`showTax` no longer off; this supersedes the older "no tax info" for the hall) — and
+// a second press folds it. This fold is owner-ordered and is the one sanctioned fold; the game's
+// "enough with folding" law is about in-place re-flow nobody asked for.
 //
-// NO market info (the hall's day book) and NO works/Invest here either: the owner did not ask for
-// them in this panel, and the desk's Invest face and the map's Town Hall keep them whole.
+// ── THE FIVE FIGURES ARE THE HALL'S SINGLE HOME (owner, 2026-10-31) ───────────────────────────
+// *"I DON'T NEED TO SEEP POPULATION AND RELATION, ANYTHING THAT WAS ALREADY SHOWN ON TOWN HALL"* —
+// the frame's full-width figures card was removed (CityScreen), and this panel carries the block:
+// Population (≈, the stated estimate off the served size tier) · Gold (the hall's purse) · Status
+// (your influence points) · Relationship (the harbour's served stance) · Employees (the crew aboard
+// your hulls). One compact line each — label at `t-caption`, figure at `t-body` — so the whole
+// block costs ~130 px, not the 52-px rows of a list. No other city face prints any of these words.
+//
+// ── NO SCROLL AT ANY SERVED GLASS ─────────────────────────────────────────────────────────────
+// The book's rows are compressed inside this panel (`[data-row-line]` loses the 52-px floor's
+// padding and min-height): at 390×568 the panel shows the fold row, the expanded book, the five
+// figures and the Investors row with no scroll in either state; at 320×568 the COLLAPSED state fits
+// and the EXPANDED book may scroll inside the panel — stated and measured by tests/city.audit.spec
+// — while the page itself never scrolls. The investors drawer is still the design system's side
+// Tray (fixed, full-width on a phone below lg), opened by its own 44-px row, and it covers nothing
+// that the press law protects: it is a dismissal surface with its own close.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** The book's rows inside the hall panel: no 52-px floor padding, nothing but the served lines. */
+const BOOK_DENSE = '[&_[data-row-line]]:min-h-0 [&_[data-row-line]]:py-0'
 
 export function CityHallPanel({
   port,
   hall,
   refusal,
+  population,
+  employees,
+  relation,
 }: {
   port: SnapshotPort
   hall: TownHallView | null
   refusal: Refusal | null
+  /** The stated estimate off the served size tier (CityScreen's one curve). */
+  population: number
+  /** The crew aboard your hulls (the frame's old figure, now the block's). */
+  employees: number
+  /** The harbour's relationship, worded and carrying its served facts (for the spec's data attrs). */
+  relation: { word: string; stance: string | null; nation: string | null }
 }) {
   const t = useT()
   const [investorsOpen, setInvestorsOpen] = useState(false)
+  const [influenceOpen, setInfluenceOpen] = useState(false)
 
   if (refusal) {
     return (
@@ -59,10 +85,12 @@ export function CityHallPanel({
     )
   }
 
+  const you = hall.influence.you
   return (
     <CityPanel
       testId="city-hall-panel"
       scrollTestId="city-hall-scroll"
+      contentClassName="max-[360px]:px-2 max-[360px]:py-1"
       footer={
         <>
           {/* INVESTORS — one real tappable row (44 px), pinned under the panel's scroll so it is
@@ -86,15 +114,65 @@ export function CityHallPanel({
         </>
       }
     >
-      <h2 className="pb-1 text-t-caption text-ink-faint">{t('city.cityHall')}</h2>
-      <Row
-        label={<span className="text-t-caption">{t('city.gold')}</span>}
-        value={<Figure value={formatDucats(hall.purse.ducats)} size="figure" />}
-        data-testid="city-hall-purse"
-      />
-      <h3 className="pb-1 pt-2 text-t-caption uppercase tracking-wider text-ink-faint">{t('town.influence')}</h3>
-      <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} showTax={false} compact />
+      {/* THE INFLUENCE FOLD — collapsed: its word, your points, the chevron; ≥ 44 px. */}
+      <button
+        type="button"
+        aria-expanded={influenceOpen}
+        onClick={() => setInfluenceOpen((v) => !v)}
+        data-testid="city-hall-influence"
+        className="flex min-h-11 w-full shrink-0 items-center justify-between gap-2 rounded-control border-b border-edge text-left text-ink-muted transition hover:text-ink"
+      >
+        <span className="text-t-caption">{t('town.influence')}</span>
+        <span className="flex items-center gap-1 text-t-caption tabular-nums">
+          {you ? formatInt(you.points) : null}
+          <Icon name="chevron" size={16} className={`text-ink-faint transition ${influenceOpen ? 'rotate-180' : ''}`} />
+        </span>
+      </button>
+      {influenceOpen && (
+        <div className={BOOK_DENSE} data-testid="city-hall-book">
+          <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} compact />
+        </div>
+      )}
+
+      {/* THE FIVE FIGURES — Population · Gold · Status · Relationship · Employees. The hall is
+          their single home; no other city face prints one of these words. */}
+      <div data-testid="city-hall-figures" className="mt-1">
+        <FigureLine label={t('city.population')} testid="city-population">
+          <Figure value={`≈ ${formatInt(population)}`} size="body" tone="ink" />
+        </FigureLine>
+        <FigureLine label={t('city.gold')} testid="city-gold">
+          <Figure value={formatDucats(hall.purse.ducats)} size="body" tone="ink" />
+        </FigureLine>
+        <FigureLine label={t('city.status')} testid="city-status">
+          {you ? <Figure value={formatInt(you.points)} size="body" tone="ink" /> : <span className="text-ink-faint">—</span>}
+        </FigureLine>
+        <FigureLine label={t('city.relationship')} testid="city-relationship" data-stance={relation.stance ?? 'none'} data-nation={relation.nation ?? 'none'}>
+          <span className="text-t-caption text-ink">{relation.word}</span>
+        </FigureLine>
+        <FigureLine label={t('city.employees')} testid="city-employees">
+          <Figure value={formatInt(employees)} size="body" tone="ink" />
+        </FigureLine>
+      </div>
     </CityPanel>
+  )
+}
+
+/** ONE COMPACT LINE — label at caption size on the left, the figure on the right, 20 px tall. */
+function FigureLine({
+  label,
+  testid,
+  children,
+  ...rest
+}: {
+  label: string
+  testid: string
+  children: ReactNode
+} & { 'data-stance'?: string; 'data-nation'?: string }) {
+  return (
+    <div className="flex min-h-5 items-center justify-between gap-2 py-0 leading-tight" data-testid={testid} {...rest}>
+      <span className="truncate text-t-caption text-ink-faint">{label}</span>
+      <span className="shrink-0 text-right tabular-nums">{children}</span>
+    </div>
   )
 }
 
