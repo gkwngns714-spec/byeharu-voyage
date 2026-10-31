@@ -37,16 +37,9 @@ import { useT, t as tNow } from '../lib/i18n'
 // the full-screen Sheet. There are 287 recipes, grouped by the product's tier, and the sheet is
 // what scrolls — never the page behind it.
 
-/** One group per product tier, in the served order (the query orders by tier, then name). */
-function groupsByTier(recipes: readonly ForgeRecipe[]): [number, ForgeRecipe[]][] {
-  const groups = new Map<number, ForgeRecipe[]>()
-  for (const r of recipes) {
-    const group = groups.get(r.tier)
-    if (group) group.push(r)
-    else groups.set(r.tier, [r])
-  }
-  return [...groups.entries()]
-}
+/** One group per product tier, in the served order — `forgeGroups.ts`'s one fold, shared with the
+ *  City page's compact Forge screen (its tier rows carry these same counts). */
+import { groupsByTier } from './forgeGroups'
 
 /** What is missing for one batch, in the server's own figures — a rendering of served numbers,
  *  never a re-derivation of `can_forge` (which the server sends). */
@@ -59,10 +52,14 @@ function shortfall(recipe: ForgeRecipe): string | null {
 export function PortForge({
   portId,
   fleet,
+  tier,
 }: {
   portId: string
   /** A fleet of yours lying here, or null — storage is only reachable from one (0070). */
   fleet: FleetView | null
+  /** ONE tier's products only, when the City page's tier row opened this face (CityFace.tsx).
+   *  Absent: every tier, as the desk's own caller composes it. */
+  tier?: number
 }) {
   const t = useT()
   const { view, loading } = useForge(portId)
@@ -103,15 +100,19 @@ export function PortForge({
 
       {view.recipes.length === 0 && <Note tone="neutral">{t('city.forgeNone')}</Note>}
 
-      {groupsByTier(view.recipes).map(([tier, recipes]) => (
-        <SheetSection key={tier} heading={t('city.forgeTier', { n: formatInt(tier) })} data-testid={`forge-tier-${tier}`}>
+      {groupsByTier(view.recipes)
+        .filter(([group]) => tier === undefined || group === tier)
+        .map(([group, recipes]) => (
+        <SheetSection key={group} heading={t('city.forgeTier', { n: formatInt(group) })} data-testid={`forge-tier-${group}`}>
           <TileField>
             {recipes.map((recipe) => (
               <Tile
                 key={recipe.product}
                 mark={<Icon name="mallet" size={20} />}
+                // THE CONTROL CARRIES THE PRODUCT'S NAME (1-2 plain words), never the whole recipe
+                // (audit row 39: "Adire Cloth Indigo · Potash · Raw Cotton"). The ingredients are
+                // listed in the tray this tile opens, and the tray's title is the product's name.
                 name={recipe.name}
-                meta={recipe.ingredients.map((i) => i.name).join(' · ')}
                 state={recipe.can_forge ? 'rest' : 'muted'}
                 tap="whole"
                 onClick={() => {

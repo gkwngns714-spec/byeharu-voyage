@@ -9,6 +9,7 @@ export function CityPanel({
   scrollTestId,
   building,
   footer,
+  contentClassName = '',
   children,
 }: {
   testId: string
@@ -17,6 +18,9 @@ export function CityPanel({
   /** The open building's id, read by the specs (`data-building`). */
   building?: string
   footer?: ReactNode
+  /** Extra classes for the scrolling body — the hall packs its padding on the narrowest glass
+   *  (≤ 360 px), where every pixel of the 320×568 panel is spoken for. */
+  contentClassName?: string
   children: ReactNode
 }) {
   return (
@@ -27,7 +31,7 @@ export function CityPanel({
     >
       <div
         data-testid={scrollTestId}
-        className="bv-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-gutter py-2"
+        className={`bv-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-gutter py-2 ${contentClassName}`}
       >
         {children}
       </div>

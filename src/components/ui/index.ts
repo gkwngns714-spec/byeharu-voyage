@@ -23,6 +23,9 @@ export { SectionColumns, Sheet, SheetSection } from './Sheet'
 //    once clicked show new page popping up"*): a 44-px SummaryRow and the full-screen DetailPage it
 //    opens — a back press, its own bounded scroll, the tab untouched behind. SectionFold is retired.
 export { DetailPage, SummaryRow } from './Detail'
+//    THE LOADING METER (owner, 2026-10-31): a screen's REAL progress as a percentage — steps in,
+//    completed steps / total out (weighted where a size is known), gone the instant it is ready.
+export { LoadMeter, type LoadStep } from './LoadMeter'
 //    THE SHEET'S OWN SCROLL SURFACE carries `data-sheet`; onepage.spec.ts reads it.
 export { Clip } from './Clip'
 
