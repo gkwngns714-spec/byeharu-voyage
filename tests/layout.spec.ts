@@ -369,6 +369,10 @@ for (const field of FIELDS) {
     await ready(page)
     await page.getByRole('tab', { name: new RegExp(`^${field.face}`, 'i') }).first().click()
     await page.waitForTimeout(400)
+    // THE CATALOGUE IS A POP-UP PAGE (owner, 2026-10-31): the face strip selects, the summary opens.
+    await page.getByTestId('codex-open').click()
+    await expect(page.getByTestId('codex-open-page')).toBeVisible()
+    await page.waitForTimeout(300)
 
     const report = await page.evaluate(MEASURE_FIELD, field.testId)
     console.log(`${field.face} @${PHONE.width}px: ${JSON.stringify(report)}`)
@@ -385,6 +389,7 @@ for (const field of FIELDS) {
     // A tile that is nearly the whole body is a line wearing a border.
     expect(report.tileWidth, `a tile is ${report.tileWidth}px wide — that is a row, not a tile`).toBeLessThan(220)
     expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
+    await page.locator('[data-detail-back]').last().click()
   })
 }
 

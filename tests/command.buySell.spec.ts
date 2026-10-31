@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { openFold, ready, reachable } from './appReady.fixture'
-import { openTradeMap } from './deskMap.fixture'
+import { closeDetail, openDetail, ready, reachable } from './appReady.fixture'
+import { closeTradeMap, openTradeMap } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // TRADE — ONE DOCKED SCREEN, BOTH SIDES (owner 2026-10-30: *"removing the map, just have combined buy
@@ -38,13 +38,15 @@ for (const size of SIZES) {
       const face = page.getByTestId('desk-trade')
       await expect(face).toBeVisible()
       // the ship stands inside the folded Orders on a phone (the one-page law); a press reveals it
-      await openFold(page, 'command-queue')
+      await openDetail(page, 'command-queue')
 
       // THE SHIP under the orders (row 233): cargo, crew, stores — from the readings FLEETS already draws
       const ship = face.getByTestId('buy-ship')
       await expect(ship).toBeVisible()
       await expect(ship.getByTestId('buy-ship-crew')).toContainText(/\d+\/\d+/)
       await expect(ship.getByTestId('buy-ship-stores')).toContainText(/\d/)
+      // back to the compact face before working the board
+      await closeDetail(page)
 
       // THE BOARD: the docked city's goods, one card per good, both prices; no map, no cross-city list
       const board = face.getByTestId('trade-board')
@@ -60,7 +62,7 @@ for (const size of SIZES) {
       // closed and a player presses its line to open it
       await openTradeMap(face)
       await expect(page.getByTestId('trade-map')).toHaveCount(1)
-      await expect(face.getByTestId('trade-map-fold')).toHaveAttribute('data-open', 'true')
+      await closeTradeMap(face)
       await expect(page.getByTestId('trade-sell-list')).toHaveCount(0)
 
       // BUY: a good's Buy button opens THE panel — the chart, the units with Max, the money, ONE button "Buy"

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { PHONE, openFold, reachable, ready } from './appReady.fixture'
+import { PHONE, closeDetail, openDetail, reachable, ready } from './appReady.fixture'
 
 // THE STATS TAB (0214; the owner: "a statistic tab along with command, map etc. … updated regularly"). The
 // five faces render on a phone with no sideways scroll, the "Updated HH:MM:SS" line says when the live figures are from,
@@ -35,7 +35,7 @@ for (const vp of [PHONE, WIDE]) {
     // Overview: the world's money, with its age
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     // THE FACE'S DETAIL IS FOLDED (2026-10-31, the sheet law): one press opens it, as a player does.
-    await openFold(page, 'stats-money')
+    await openDetail(page, 'stats-money')
     await expect(page.getByTestId('stats-holder')).toHaveCount(4)
     await expect(page.getByTestId('stats-updated')).toContainText(/Updated \d\d:\d\d:\d\d/)
     // RIGHT NOW: the live band, with a purse that is a figure and not a dash — and the world's live figures (0224)
@@ -48,16 +48,18 @@ for (const vp of [PHONE, WIDE]) {
     // and the rollup is DRAWN: the holders' stacked bar and at least one chart on the face
     expect(await page.getByTestId('stats-overview').locator('[role="img"]').count()).toBeGreaterThan(0)
     await noSidewaysScroll(page)
+    await closeDetail(page)
 
     await page.getByRole('tab', { name: 'Markets', exact: true }).click()
     await expect(page.getByTestId('stats-markets')).toBeVisible({ timeout: 60_000 })
-    await openFold(page, 'stats-goods')
+    await openDetail(page, 'stats-goods')
     expect(await page.getByTestId('stats-good').count()).toBeGreaterThan(10)
     await noSidewaysScroll(page)
+    await closeDetail(page)
 
     await page.getByRole('tab', { name: 'Cities', exact: true }).click()
     await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 60_000 })
-    await openFold(page, 'stats-cities-list')
+    await openDetail(page, 'stats-cities-list')
     // nothing invested anywhere, and every harbour is open (0223, owner row 197): no lock, no "Invest",
     // and the first row opens with its overview AND its detail
     expect(await page.getByTestId('stats-city-open').count()).toBeGreaterThan(10)
@@ -68,6 +70,8 @@ for (const vp of [PHONE, WIDE]) {
     await expect(page.getByTestId('stats-city-detail')).toBeVisible()
     await expect(page.getByTestId('stats-city-lock')).toHaveCount(0)
     await noSidewaysScroll(page)
+    await page.getByTestId('stats-city-close').click()
+    await closeDetail(page)
 
     await page.getByRole('tab', { name: 'Merchants', exact: true }).click()
     await expect(page.getByTestId('stats-merchants')).toBeVisible({ timeout: 60_000 })
@@ -75,8 +79,9 @@ for (const vp of [PHONE, WIDE]) {
 
     await page.getByRole('tab', { name: 'Me', exact: true }).click()
     await expect(page.getByTestId('stats-me')).toBeVisible({ timeout: 60_000 })
-    await openFold(page, 'stats-leaderboard')
+    await openDetail(page, 'stats-leaderboard')
     await expect(page.getByTestId('stats-leaderboard-you')).toBeVisible()
+    await closeDetail(page)
     await expect(page.getByTestId('stats-me-bars')).toBeVisible()
     // the live band belongs to the TAB, not to a face: it is still there on the fifth one
     await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)

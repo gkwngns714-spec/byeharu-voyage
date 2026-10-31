@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import {
+  DetailPage,
   Figure,
   Hint,
   Note,
   Row,
-  ScrollPane,
   Segmented,
   Sheet,
   SheetSection,
   Skeleton,
+  SummaryRow,
   Tray,
   type TrayDetent,
 } from '../../components/ui'
@@ -77,6 +78,9 @@ function RankBody() {
   const [answered, setAnswered] = useState(false)
   // 0148: Captains (the board) or Countries (who holds the cities).
   const [face, setFace] = useState<'captains' | 'countries'>('captains')
+  // THE BOARD IS A PAGE (owner, 2026-10-31): the compact screen is the face strip and one summary.
+  const [page, setPage] = useState(false)
+  const nationByCode = useWorld((s) => s.nationByCode)
 
   // KEYED ON `readAt`: the world re-reads itself every thirty seconds and on tab focus, and the
   // board rides that same beat — a refused read is retried with no button, and a new slot's
@@ -117,7 +121,23 @@ function RankBody() {
         label={t('rank.standings')}
         className="mb-3 w-fit"
       />
-      {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
+      <SummaryRow
+        title={face === 'captains' ? t('rank.captains') : t('rank.countries')}
+        figure={face === 'captains' ? formatInt(board?.board_size ?? 0) : formatInt(Object.keys(nationByCode).length)}
+        word={t('common.open')}
+        onClick={() => setPage(true)}
+        data-testid="rank-open"
+      />
+      {page && (
+        <DetailPage
+          title={face === 'captains' ? t('rank.captains') : t('rank.countries')}
+          figure={face === 'captains' ? formatInt(board?.board_size ?? 0) : formatInt(Object.keys(nationByCode).length)}
+          onClose={() => setPage(false)}
+          data-testid="rank-open-page"
+        >
+          {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
+        </DetailPage>
+      )}
     </Sheet>
   )
 }
@@ -197,7 +217,6 @@ function Board({
       )}
 
       <SheetSection surface>
-        <ScrollPane className="max-h-[calc(100dvh_-_20rem)]" data-testid="rank-pane">
         {others.map((r, i) => (
           <Row
             key={`${r.position}-${r.company_name}`}
@@ -212,7 +231,6 @@ function Board({
             )}
           </Row>
         ))}
-        </ScrollPane>
       </SheetSection>
 
       {you !== null && (

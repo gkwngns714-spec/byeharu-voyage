@@ -19,10 +19,10 @@
 // 1. SHEET — the one scrolling surface of a tab. Sections are separated by space and a heading,
 //    never by a box. Replaces Screen + PageHeader + Card + CardHeader + SectionLabel + Collapsible.
 export { SectionColumns, Sheet, SheetSection } from './Sheet'
-//    A SECONDARY SECTION, FOLDED — one 44-px line with its key figure, the block one press away
-//    (owner, 2026-10-31: *"make things foldable"*). The press law is the section's own: the
-//    control opens its own body under itself and never moves what stands above it.
-export { SectionFold } from './SectionFold'
+//    THE COMPACT SCREEN'S ONE MECHANISM (owner, 2026-10-31: *"make everything small, compact and
+//    once clicked show new page popping up"*): a 44-px SummaryRow and the full-screen DetailPage it
+//    opens — a back press, its own bounded scroll, the tab untouched behind. SectionFold is retired.
+export { DetailPage, SummaryRow } from './Detail'
 //    THE SHEET'S OWN SCROLL SURFACE carries `data-sheet`; onepage.spec.ts reads it.
 export { Clip } from './Clip'
 
