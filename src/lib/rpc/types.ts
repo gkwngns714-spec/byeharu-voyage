@@ -3119,21 +3119,55 @@ export interface Holdings {
   game_day: number
 }
 
-/** One line of a day's books (0177): a ledger kind, its one player word, and its sum. */
-export interface BookLine {
+/** One line of a report (0286): a ledger kind, its one word (the server's fallback for an unlisted
+ *  kind), and its sum over the span. */
+export interface ReportLine {
   kind: string
   word: string
   ducats: number
 }
 
-/** `world.books(days)` (0177) — the company's ledger, newest game day first. */
-export interface Books {
+/** One section of the report (0286) — the design's fixed table of kinds (docs/COMMAND_REDESIGN.md §4). */
+export interface ReportSection {
+  id: 'trade' | 'crew' | 'supplies' | 'repairs' | 'insurance' | 'invest' | 'ships' | 'other'
+  ducats: number
+  lines: ReportLine[]
+}
+
+/** Where the money moved (0286): a port while docked, else a voyage at sea, else Earlier (no point:
+ *  the pre-0284 history and the kinds whose event names no fleet). Earlier is always last. */
+export type ReportPlace =
+  | { kind: 'port'; id: string | null; code: string | null; name: string | null; ducats: number; lines: ReportLine[] }
+  | {
+      kind: 'voyage'
+      id: string
+      from: string | null
+      to: string | null
+      from_name: string | null
+      to_name: string | null
+      day: number | null
+      ducats: number
+      lines: ReportLine[]
+    }
+  | { kind: 'earlier'; ducats: number; lines: ReportLine[] }
+
+/** One bar of the report's day axis (0286): a game day and its net; Day/Week arrive zero-filled. */
+export interface ReportDay {
   game_day: number
-  days: number
-  /** Today's net, and the window's. */
-  today: number
-  window: number
-  books: { game_day: number; net: number; lines: BookLine[] }[]
+  net: number
+}
+
+/** The report's three spans, in game days (0286). */
+export type ReportSpan = 'day' | 'week' | 'all'
+
+/** `world.report(span)` (0286) — the company's whole record by section and point, per read. */
+export interface Report {
+  span: ReportSpan
+  game_day: number
+  total: number
+  sections: ReportSection[]
+  places: ReportPlace[]
+  days: ReportDay[]
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

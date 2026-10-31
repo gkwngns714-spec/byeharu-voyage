@@ -1,7 +1,7 @@
 import { defineDict } from '../define'
 
-// The Command tab (src/features/command): the desk, its five faces, the fleet picker, the queue,
-// the route fold and editor. 대항해시대 words: 시세 · 계획 · 도시 · 투자 · 수익.
+// The Command tab (src/features/command): the desk, its four faces, the fleet picker, the queue,
+// the route fold and editor. 대항해시대 words: 시세 · 계획 · 도시 · 투자 · 보고.
 export const commandDict = defineDict({
   en: {
     title: 'Command',
@@ -13,7 +13,7 @@ export const commandDict = defineDict({
     f_trade: 'Trade',
     f_city: 'City',
     f_invest: 'Invest',
-    f_profit: 'Profit',
+    f_report: 'Report',
     supplies: 'Supplies',
     cargo: 'Cargo',
     cargoBar: 'cargo, {of} {word}',
@@ -77,7 +77,7 @@ export const commandDict = defineDict({
     f_trade: '거래',
     f_city: '도시',
     f_invest: '투자',
-    f_profit: '이익',
+    f_report: '보고',
     supplies: '보급',
     cargo: '화물',
     cargoBar: '화물, {of}{word}',

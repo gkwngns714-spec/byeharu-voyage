@@ -21,7 +21,7 @@ const FACES = [
   { name: 'Trade', id: 'desk-trade' },
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
-  { name: 'Profit', id: 'desk-profit' },
+  { name: 'Report', id: 'desk-report' },
 ] as const
 
 const SIZES = [
