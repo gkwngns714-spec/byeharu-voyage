@@ -54,7 +54,7 @@ export function realMsToVoyageDays(ms: number): number {
 /** Voyage-days as the fleet list prints them: 1.63 → "1.6 days".
  *
  *  IT SPELLS THE WORD, and that is the whole point. It used to print "1.6 d" while
- *  `formatDucats` printed "8,000 d." — THE SAME LETTER FOR TWO UNITS, separated only by a full
+ *  `formatDucats` printed "40,000 d." — THE SAME LETTER FOR TWO UNITS, separated only by a full
  *  stop, side by side on FLEETS and PORT. The owner asked, 2026-08-22: "common words — stores?
  *  t? kn? what are these". This function spelled "days" that day and the other two units were
  *  kept as "t" and "kn" on the argument that they were unambiguous. They were not: 2026-09-13,

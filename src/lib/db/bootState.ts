@@ -34,7 +34,7 @@ export interface BootState {
   /** True when the stored database was thrown away and rebuilt because the chain had changed. */
   rebuilt: boolean
   /** Set when a rebuild demolished a world that had a player's rows in it. THE PLAYER MUST BE TOLD:
-   *  a purse that silently returns to 8,000 ducats reads as the game losing their money, which is
+   *  a purse that silently returns to 40,000 ducats reads as the game losing their money, which is
    *  exactly how it was reported (DEV_LOG D11c). See lib/db/rescue.ts. */
   rescued: { rows: number; tables: number; stored: boolean; note: string | null } | null
   /** Set when a PRE-BUILT world was downloaded and then REFUSED because the fingerprint written

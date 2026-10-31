@@ -491,14 +491,14 @@ test('world.fleets() reports the fleet, its ships, its stores and its empty queu
 
 test('world.ledger() pages, reconciles, and carries the purse', async () => {
   const page = expectOk(await worldLedger())
-  expect(page.ducats).toBe(8000)
+  expect(page.ducats).toBe(40000)
   expect(page.ledger_sum).toBe(page.ducats)
   expect(page.events.length).toBeGreaterThanOrEqual(1)
   const founding = page.events.find((e) => e.kind === 'FOUNDED')!
   expect(founding).toBeDefined()
   expect(isStr(founding.id) && isStr(founding.at)).toBe(true)
-  expect(founding.ducats_delta).toBe(8000)
-  expect(founding.balance_after).toBe(8000)
+  expect(founding.ducats_delta).toBe(40000)
+  expect(founding.balance_after).toBe(40000)
   expect(founding.payload).toMatchObject({ port: 'LIS', company: 'Casa de Aveiro' })
   expect(isStr(page.next_cursor)).toBe(true)
 

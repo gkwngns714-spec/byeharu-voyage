@@ -159,36 +159,36 @@ export const TECH = {
 /** THE ARCHETYPES (size/role) — the Portuguese values; Wave A uses these twelve. `racks` = High / Mid /
  *  Low / Refit (+ 1 Flourish from medium up). `labour` is the base yard labour in ducats. */
 export const ARCHETYPES = {
-  '1/trade':    { hold: 60,  speed: 5.0, crewReq: 8,   crewMax: 20,  hull: 400,  draft: 1, handling: 70, armour: 5,  attack: 0,   accuracy: 0,  reach: 20, sighting: 8,  deck: 12, racks: [1, 2, 0, 0], labour: 3000 },
-  '1/explorer': { hold: 35,  speed: 6.4, crewReq: 6,   crewMax: 16,  hull: 300,  draft: 1, handling: 86, armour: 4,  attack: 0,   accuracy: 0,  reach: 20, sighting: 10, deck: 11, racks: [1, 3, 0, 0], labour: 2400 },
-  '1/combat':   { hold: 30,  speed: 6.2, crewReq: 14,  crewMax: 40,  hull: 350,  draft: 1, handling: 84, armour: 6,  attack: 20,  accuracy: 30, reach: 30, sighting: 9,  deck: 15, racks: [2, 2, 0, 0], labour: 3500 },
-  '1/support':  { hold: 45,  speed: 5.8, crewReq: 10,  crewMax: 30,  hull: 380,  draft: 1, handling: 80, armour: 6,  attack: 10,  accuracy: 20, reach: 25, sighting: 10, deck: 14, racks: [1, 2, 1, 0], labour: 3000 },
-  '2/trade':    { hold: 130, speed: 5.4, crewReq: 14,  crewMax: 34,  hull: 600,  draft: 2, handling: 68, armour: 12, attack: 20,  accuracy: 30, reach: 40, sighting: 10, deck: 22, racks: [1, 3, 1, 1], labour: 7000 },
-  '2/explorer': { hold: 90,  speed: 6.0, crewReq: 12,  crewMax: 30,  hull: 550,  draft: 1, handling: 75, armour: 12, attack: 20,  accuracy: 40, reach: 45, sighting: 10, deck: 22, racks: [2, 3, 0, 1], labour: 7000 },
-  '2/combat':   { hold: 70,  speed: 6.6, crewReq: 28,  crewMax: 90,  hull: 480,  draft: 1, handling: 88, armour: 8,  attack: 50,  accuracy: 38, reach: 30, sighting: 11, deck: 28, racks: [2, 4, 0, 1], labour: 8000 },
-  '2/support':  { hold: 100, speed: 5.8, crewReq: 20,  crewMax: 60,  hull: 650,  draft: 2, handling: 72, armour: 14, attack: 30,  accuracy: 40, reach: 50, sighting: 11, deck: 28, racks: [2, 3, 1, 1], labour: 9000 },
-  '3/trade':    { hold: 400, speed: 4.4, crewReq: 60,  crewMax: 140, hull: 1800, draft: 3, handling: 45, armour: 30, attack: 120, accuracy: 55, reach: 70, sighting: 14, deck: 56, racks: [3, 5, 1, 2], labour: 30000 },
-  '3/combat':   { hold: 300, speed: 4.8, crewReq: 90,  crewMax: 220, hull: 2000, draft: 3, handling: 50, armour: 34, attack: 170, accuracy: 58, reach: 72, sighting: 14, deck: 62, racks: [4, 5, 1, 2], labour: 34000 },
-  '4/trade':    { hold: 600, speed: 4.4, crewReq: 80,  crewMax: 200, hull: 2400, draft: 4, handling: 40, armour: 32, attack: 110, accuracy: 50, reach: 65, sighting: 13, deck: 72, racks: [3, 6, 2, 2], labour: 48000 },
-  '4/combat':   { hold: 420, speed: 4.6, crewReq: 130, crewMax: 320, hull: 2800, draft: 4, handling: 42, armour: 40, attack: 240, accuracy: 60, reach: 78, sighting: 14, deck: 82, racks: [5, 5, 2, 2], labour: 55000 },
+  '1/trade':    { hold: 60,  speed: 5.0, crewReq: 8,   crewMax: 20,  hull: 400,  draft: 1, handling: 70, armour: 5,  attack: 0,   accuracy: 0,  reach: 20, sighting: 8,  deck: 12, racks: [1, 2, 0, 0], labour: 15000 },
+  '1/explorer': { hold: 35,  speed: 6.4, crewReq: 6,   crewMax: 16,  hull: 300,  draft: 1, handling: 86, armour: 4,  attack: 0,   accuracy: 0,  reach: 20, sighting: 10, deck: 11, racks: [1, 3, 0, 0], labour: 12000 },
+  '1/combat':   { hold: 30,  speed: 6.2, crewReq: 14,  crewMax: 40,  hull: 350,  draft: 1, handling: 84, armour: 6,  attack: 20,  accuracy: 30, reach: 30, sighting: 9,  deck: 15, racks: [2, 2, 0, 0], labour: 17500 },
+  '1/support':  { hold: 45,  speed: 5.8, crewReq: 10,  crewMax: 30,  hull: 380,  draft: 1, handling: 80, armour: 6,  attack: 10,  accuracy: 20, reach: 25, sighting: 10, deck: 14, racks: [1, 2, 1, 0], labour: 15000 },
+  '2/trade':    { hold: 130, speed: 5.4, crewReq: 14,  crewMax: 34,  hull: 600,  draft: 2, handling: 68, armour: 12, attack: 20,  accuracy: 30, reach: 40, sighting: 10, deck: 22, racks: [1, 3, 1, 1], labour: 35000 },
+  '2/explorer': { hold: 90,  speed: 6.0, crewReq: 12,  crewMax: 30,  hull: 550,  draft: 1, handling: 75, armour: 12, attack: 20,  accuracy: 40, reach: 45, sighting: 10, deck: 22, racks: [2, 3, 0, 1], labour: 35000 },
+  '2/combat':   { hold: 70,  speed: 6.6, crewReq: 28,  crewMax: 90,  hull: 480,  draft: 1, handling: 88, armour: 8,  attack: 50,  accuracy: 38, reach: 30, sighting: 11, deck: 28, racks: [2, 4, 0, 1], labour: 40000 },
+  '2/support':  { hold: 100, speed: 5.8, crewReq: 20,  crewMax: 60,  hull: 650,  draft: 2, handling: 72, armour: 14, attack: 30,  accuracy: 40, reach: 50, sighting: 11, deck: 28, racks: [2, 3, 1, 1], labour: 45000 },
+  '3/trade':    { hold: 400, speed: 4.4, crewReq: 60,  crewMax: 140, hull: 1800, draft: 3, handling: 45, armour: 30, attack: 120, accuracy: 55, reach: 70, sighting: 14, deck: 56, racks: [3, 5, 1, 2], labour: 150000 },
+  '3/combat':   { hold: 300, speed: 4.8, crewReq: 90,  crewMax: 220, hull: 2000, draft: 3, handling: 50, armour: 34, attack: 170, accuracy: 58, reach: 72, sighting: 14, deck: 62, racks: [4, 5, 1, 2], labour: 170000 },
+  '4/trade':    { hold: 600, speed: 4.4, crewReq: 80,  crewMax: 200, hull: 2400, draft: 4, handling: 40, armour: 32, attack: 110, accuracy: 50, reach: 65, sighting: 13, deck: 72, racks: [3, 6, 2, 2], labour: 240000 },
+  '4/combat':   { hold: 420, speed: 4.6, crewReq: 130, crewMax: 320, hull: 2800, draft: 4, handling: 42, armour: 40, attack: 240, accuracy: 60, reach: 78, sighting: 14, deck: 82, racks: [5, 5, 2, 2], labour: 275000 },
   // Wave B (S14, 0138) — the capital and flagship archetypes, solved from §4.3's Wave B table (every row
   // reproduces from these × its line, checked column by column; the PRT nau da carreira and carraca
   // grande ARE the capital and flagship trade archetypes).
-  '5/trade':    { hold: 900,  speed: 4.2, crewReq: 120, crewMax: 300, hull: 3400, draft: 5, handling: 35, armour: 38, attack: 160, accuracy: 50, reach: 65, sighting: 13, deck: 100, racks: [3, 7, 3, 3], labour: 80000 },
-  '5/combat':   { hold: 600,  speed: 4.3, crewReq: 200, crewMax: 480, hull: 4000, draft: 5, handling: 36, armour: 48, attack: 340, accuracy: 62, reach: 82, sighting: 14, deck: 115, racks: [6, 6, 2, 3], labour: 95000 },
-  '6/trade':    { hold: 1500, speed: 3.9, crewReq: 200, crewMax: 500, hull: 5000, draft: 5, handling: 30, armour: 42, attack: 220, accuracy: 50, reach: 65, sighting: 13, deck: 138, racks: [4, 7, 4, 3], labour: 150000 },
-  '6/combat':   { hold: 800,  speed: 4.0, crewReq: 320, crewMax: 750, hull: 5600, draft: 5, handling: 32, armour: 55, attack: 480, accuracy: 64, reach: 85, sighting: 15, deck: 150, racks: [7, 6, 2, 3], labour: 170000 },
+  '5/trade':    { hold: 900,  speed: 4.2, crewReq: 120, crewMax: 300, hull: 3400, draft: 5, handling: 35, armour: 38, attack: 160, accuracy: 50, reach: 65, sighting: 13, deck: 100, racks: [3, 7, 3, 3], labour: 400000 },
+  '5/combat':   { hold: 600,  speed: 4.3, crewReq: 200, crewMax: 480, hull: 4000, draft: 5, handling: 36, armour: 48, attack: 340, accuracy: 62, reach: 82, sighting: 14, deck: 115, racks: [6, 6, 2, 3], labour: 475000 },
+  '6/trade':    { hold: 1500, speed: 3.9, crewReq: 200, crewMax: 500, hull: 5000, draft: 5, handling: 30, armour: 42, attack: 220, accuracy: 50, reach: 65, sighting: 13, deck: 138, racks: [4, 7, 4, 3], labour: 750000 },
+  '6/combat':   { hold: 800,  speed: 4.0, crewReq: 320, crewMax: 750, hull: 5600, draft: 5, handling: 32, armour: 55, attack: 480, accuracy: 64, reach: 85, sighting: 15, deck: 150, racks: [7, 6, 2, 3], labour: 850000 },
   // Wave C (S15, 0159) — the medium and heavy SUPPORT archetypes, solved from §4.3's Wave C table through
   // TECH.T2 (the PRT nau de guerra IS the medium support archetype × the T2 uplift; the OTT mavna ÷ its line
   // gives the heavy one: 455 / 0.95 → 480, 4.4 / 0.98 → 4.5, 125 / 1.25 → 100, 3,560 / 1.2 / 1.1 → 2,700,
   // 180 / 1.15 → 160, deck 89 − 12, racks 4/6/3/2 − the T2 Low). No T1 hull is built from them yet.
-  '3/support':  { hold: 280,  speed: 4.8, crewReq: 70,  crewMax: 180, hull: 1700, draft: 3, handling: 52, armour: 34, attack: 100, accuracy: 55, reach: 60, sighting: 14, deck: 57,  racks: [3, 5, 2, 2], labour: 30000 },
-  '4/support':  { hold: 480,  speed: 4.5, crewReq: 100, crewMax: 260, hull: 2700, draft: 4, handling: 44, armour: 44, attack: 160, accuracy: 60, reach: 70, sighting: 14, deck: 77,  racks: [4, 6, 2, 2], labour: 52000 },
+  '3/support':  { hold: 280,  speed: 4.8, crewReq: 70,  crewMax: 180, hull: 1700, draft: 3, handling: 52, armour: 34, attack: 100, accuracy: 55, reach: 60, sighting: 14, deck: 57,  racks: [3, 5, 2, 2], labour: 150000 },
+  '4/support':  { hold: 480,  speed: 4.5, crewReq: 100, crewMax: 260, hull: 2700, draft: 4, handling: 44, armour: 44, attack: 160, accuracy: 60, reach: 70, sighting: 14, deck: 77,  racks: [4, 6, 2, 2], labour: 260000 },
   // Wave D (S17, 0166) — the heavy EXPLORER archetype, solved from §4.3's San Juan Bautista row through the
   // JPN line and TECH.F (360 / 0.9 → 400, 5.5 / 1.0918 → 5.0, 80 / 1.15 → 70, 207 / 1.15 → 180, 2,300 / 0.95
   // / 1.1 → 2,200, handling 64 − 4 − 10, armour 32 − 2 − 2, attack 110 / 1.1, accuracy 60 − 6 − 4, reach 57 + 8,
   // sighting 23 − 1 − 5, deck 78 − 4, racks 2/8/2/2 − the famous Mid, labour 184,000 / 4). No T1 hull is built from it.
-  '4/explorer': { hold: 400,  speed: 5.0, crewReq: 70,  crewMax: 180, hull: 2200, draft: 3, handling: 50, armour: 28, attack: 100, accuracy: 50, reach: 65, sighting: 17, deck: 74,  racks: [2, 7, 2, 2], labour: 46000 },
+  '4/explorer': { hold: 400,  speed: 5.0, crewReq: 70,  crewMax: 180, hull: 2200, draft: 3, handling: 50, armour: 28, attack: 100, accuracy: 50, reach: 65, sighting: 17, deck: 74,  racks: [2, 7, 2, 2], labour: 230000 },
 }
 
 /** Each line's yard-labour factor (what its yards charge against Lisbon's) and its goods substitutions. */

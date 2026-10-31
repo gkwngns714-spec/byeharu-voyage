@@ -564,9 +564,13 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
   expect(db.bootMs).toBeGreaterThan(0)
 
   try {
-    // §K.1, 0:00 — "You are the Casa de Aveiro. One Barca, 'Gaivota', docked at Lisboa. 8,000
-    // ducats." Seeded by the chain's own public.new_house(), so the purse arrived through the
-    // ledger and the founding event exists.
+    // §K.1, 0:00 — the first session as THIS CHAIN states it. This spec boots the FROZEN PREFIX
+    // (tests/frozenChain.ts: everything below 2026-08-24's growth baseline), which ends before
+    // 0285's ×5 re-base; its K.1 purse is the prefix's own starting_ducats — read, never pinned,
+    // so the world and this assertion cannot drift (the LIVE world's K.1 is 40,000).
+    // Seeded by the chain's own public.new_house(), so the purse arrived through the ledger and
+    // the founding event exists.
+    const start = await db.pg.query<{ v: number }>(`select public.wc_int('starting_ducats')::int as v`)
     const house = await db.pg.query<{ company_name: string; ducats: number; n_events: number }>(
       `select p.company_name, p.ducats::int as ducats,
               (select count(*)::int from public.events e where e.player_id = p.id) as n_events
@@ -575,7 +579,7 @@ test('a cold boot ends ready, seeded with the K.1 first session, and reports eve
     )
     expect(house.rows).toHaveLength(1)
     expect(house.rows[0].company_name).toBe('Casa de Aveiro')
-    expect(house.rows[0].ducats).toBe(8000)
+    expect(house.rows[0].ducats).toBe(start.rows[0].v)
     expect(house.rows[0].n_events).toBe(1)
 
     const fleet = await db.pg.query<{ name: string; status: string; port: string; ships: number }>(
@@ -689,8 +693,8 @@ test('a chain change rebuilds the stored world instead of layering onto it', asy
 // and real houses have sailed and traded in that world ever since; every migration from 0041 on
 // lands ON them, not on an empty database. This test is that path: build the pre-growth chain,
 // found a house through the chain's own door, buy real cargo on the quay, and only THEN apply the
-// growth — then prove the house, the fleet, the cargo and the ledger did not move by one ducat
-// while the world doubled around them.
+// growth — then prove the house and its fleet survive it, moving only by the cut-over the owner
+// has since ordered (every hold cashed out, every purse ×5), while the world doubled around them.
 //
 // GROWTH_SPLIT is the frozen production baseline (tests/frozenChain.ts says why it never moves).
 
@@ -856,12 +860,47 @@ test('the world grows under a live house: player rows survive the growth to the 
     // The buy LANDED — a rehearsal over an empty hold rehearses nothing.
     const lived = facts.lived
     expect(JSON.stringify(lived.cargo)).toContain(facts.good)
-    expect(Number(lived.ducats)).toBeLessThan(8000)
+    expect(Number(lived.ducats)).toBeLessThan(40000)
     expect(lived.ducats).toBe(lived.ledger_sum)
 
-    // The house did not move by one ducat, one tun, or one ship.
     const after = await houseSnapshot(db)
-    expect(after).toEqual(lived)
+
+    // ── THE DECLARED CUT-OVER ───────────────────────────────────────────────────────────────────
+    // Since 2026-10-30 the growth half carries the owner's whole-scale re-base, and it moves a live
+    // house BY DESIGN — the exact opposite of "not one ducat" for two files, pinned here by name
+    // because the growth half is frozen history:
+    //   0282  every held trade good is cashed out at the then-current goods.base_value — ONE
+    //         LIQUIDATION credit for the whole hold, round(Σ qty × base_value) — and both holds
+    //         (aboard and ashore) are emptied;
+    //   0285  every purse ×5, written as one RESCALE credit of 4 × the purse it found (through
+    //         public.credit, so the append-only ledger still reconciles).
+    // So the hold empties and the purse is 5 × (its old purse + the liquidation). Any change outside
+    // these three fields still fails: that is what keeps this test the growth guard it was.
+    expect(growth.some((f) => f.name.startsWith('20260818000282_'))).toBe(true)
+    expect(growth.some((f) => f.name.startsWith('20260818000285_'))).toBe(true)
+    const held = new Map<string, number>()
+    for (const hold of (lived.cargo as Array<Record<string, number>> | null) ?? []) {
+      for (const [code, qty] of Object.entries(hold ?? {})) held.set(code, (held.get(code) ?? 0) + qty)
+    }
+    // 0282 priced the hold at the base_value it found; 0285 multiplied that column ×5, so the old
+    // figure is the grown one ÷ 5 (both scales are exact to two decimals).
+    const grownBase = await db.query<{ code: string; v: string }>(
+      `select code, (base_value / 5)::text as v from public.goods`,
+    )
+    const baseOf = new Map(grownBase.rows.map((r) => [r.code, Number(r.v)]))
+    const liquidation = Math.round([...held].reduce((sum, [code, qty]) => sum + qty * (baseOf.get(code) ?? NaN), 0))
+    expect(liquidation).toBeGreaterThan(0) // the rehearsal's hold had real value, not a vacuous zero
+    const offCutOver = (house: Record<string, unknown>) => {
+      const rest = { ...house }
+      delete rest.ducats
+      delete rest.ledger_sum
+      delete rest.cargo
+      return rest
+    }
+    expect(offCutOver(after)).toEqual(offCutOver(lived))
+    expect(after.cargo).toEqual((lived.cargo as unknown[]).map(() => ({})))
+    expect(after.ducats).toBe(5 * (Number(lived.ducats) + liquidation))
+    expect(after.ledger_sum).toBe(after.ducats)
 
     // The world around them grew, and the market covers ALL of it — including their own port and
     // their own cargo good, which must still quote a positive price.

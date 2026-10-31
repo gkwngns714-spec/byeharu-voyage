@@ -4,7 +4,7 @@ import { defineDict } from '../define'
 export const foundDict = defineDict({
   en: {
     title: 'Start',
-    more: 'One ship, Gaivota, and 8,000 ducats at {capital}.',
+    more: 'One ship, Gaivota, and 40,000 ducats at {capital}.',
     yourCapital: 'your capital',
     moreTitle: 'How you begin',
     hint: 'Everyone begins the same way.',
@@ -18,7 +18,7 @@ export const foundDict = defineDict({
   },
   ko: {
     title: '시작',
-    more: '배 한 척 가이보타와 8,000두캇, {capital}에서.',
+    more: '배 한 척 가이보타와 40,000두캇, {capital}에서.',
     yourCapital: '자국 수도',
     moreTitle: '시작',
     hint: '모두 같게 시작.',

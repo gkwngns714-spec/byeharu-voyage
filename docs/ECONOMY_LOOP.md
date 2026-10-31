@@ -82,14 +82,14 @@ by 0050:673-677 — writes one `ledger` row :238-239).
 
 | Kind | Where | Direction | Counterparty today |
 |---|---|---|---|
-| `FOUNDING` | `new_house` 0004:300-302 → 0096:469-472 (`p_ducats`, `p_is_npc`); `starting_ducats` 8,000 | **faucet** | nothing. Each merchant at seeding: capital + officer wages + tuition (`npc_found` 0097:287-298) |
+| `FOUNDING` | `new_house` 0004:300-302 → 0096:469-472 (`p_ducats`, `p_is_npc`); `starting_ducats` 40,000 | **faucet** | nothing. Each merchant at seeding: capital + officer wages + tuition (`npc_found` 0097:287-298) |
 | `NPC_REFOUND` | `npc_tend` 0114:550-553 → sliced 0115:204-209: purse < capital × `npc_purse_floor_pct` (0.20, 0097:84) and no refound in `npc_refound_cooldown_game_days` (30) → `credit(house, 'NPC_REFOUND', capital − purse)` | **faucet** | nothing; one top-up per company per real day, unbounded (0115:22-23 deleted the weekly cap) |
 | `SELL` | `cmd.do_sell` 0022:770-838 (sliced 0050, 0061, 0080-0083, 0096): `credit(SELL, +q.total)` :831. bid = mid × (1 − spread/2) × (1 − tax) (0022:407) | **faucet** | the market, an infinite purse |
 | `PREMIUM` | `cmd.run_fulfil` 0087:445-449 | **faucet** | nothing (8–20 % of mid × qty, 0087:172-175) |
 | `BUY` | `cmd.do_buy` 0022:674-768 (sliced 0050, 0061, 0080-0083, 0096): `credit(BUY, −q.total)` :761; ask = mid × (1 + tax + spread/2) (0022:400) | **sink** | the market |
 | `WAGES` | `voyage.settle` 0027:299-308 → 0086:162-169 → 0114:622-630 (`× running_cost_mult`): `−least(wages, purse)` per settled sea-day (0027:306-307) | sink | nothing. **Merchants pay 0 since 0116:40-44** |
 | `PROVISION` / `REPAIR` / `HIRE` / `BUILD` / `TUITION` / `OFFICER_WAGE` | 0017:327-329 / 0007:751-753 / 0007:689-692 / 0072:269-271 / 0016:235-241 / 0096:562-568 | sink | nothing (merchants pay 0 of the first two) |
-| harbour dues | `port_fee_per_ship` 50 (0001:166) | — | **read by nothing** — and stays so (§2.2) |
+| harbour dues | `port_fee_per_ship` 250 (0001:166) | — | **read by nothing** — and stays so (§2.2) |
 | pirates | `voyage.settle` 0027:340-351: `RANSOM` costs 0; `PLUNDERED` leaves the cargo | — | no money moves |
 
 Transfers between purses: **none**. Every movement is a house against the void.
@@ -97,7 +97,7 @@ Transfers between purses: **none**. Every movement is a house against the void.
 ### 1.2 After this plan: one closed loop
 
 ```
-  FOUNDING (new player, 8,000)        SEED (once, at the switch — §6)
+  FOUNDING (new player, 40,000)        SEED (once, at the switch — §6)
             │                                   │
             ▼                                   ▼
    ┌────────────────────┐   BUY (whole ask, no tax) · TAX (on a sale's profit) · WAGES (the leg, at arrival) ·
@@ -109,7 +109,7 @@ Transfers between purses: **none**. Every movement is a house against the void.
                                                                                                         ◀───────────┘
 ```
 
-**What is still created**: a new player's 8,000, and the one-time seed. **What is still
+**What is still created**: a new player's 40,000, and the one-time seed. **What is still
 destroyed**: nothing by design. Two small stated leaks: (a) the wages of a voyage that never arrives
 (ADRIFT / UNABLE_TO_SAIL, 0027:412-414) are paid by the house and reach no city; (b) voyages already
 at sea when 0122 lands have settled days without a `wages_paid` figure. Both show in the watch query

@@ -425,14 +425,14 @@ class, so S4's escort re-cut stays a no-op for unfitted hulls of every type.
 
 | code | name | family · rig | tier | hold t | crew req/max | kn | hull | draft | guns | buy price | yard labour | yard tier | built where (`yard_regions`) | min trading level | role |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `pinnace` | Pinnace | Western · mixed | 1 | 35 | 6 / 16 | 6.4 | 300 | 1 | 0 | 10,000 | 2,500 | 1 | any yard | 1 | scout: fast, sees far, carries little |
-| `dhow` | Dhow | Eastern · lateen | 1 | 75 | 9 / 22 | 5.2 | 380 | 1 | 0 | 11,000 | 2,800 | 1 | WIA ARA EAS SOU (Kochi, Kozhikode, Old Goa, Surat, Jakarta, Malacca, Manila) | 1 | the Indian Ocean coaster; a barca with a bigger hold |
-| `carred` | Caravela redonda | Western · square | 2 | 130 | 16 / 40 | 5.6 | 650 | 2 | 4 | 34,000 | 9,000 | 2 | IBE FRA BRI WES ADR BAL CAR STH PAC | 2 | the all-round trader |
-| `fluyt` | Fluyt | Western · square | 2 | 240 | 10 / 26 | 4.9 | 700 | 2 | 2 | 40,000 | 10,000 | 2 | FRA BAL BRI (Amsterdam, Antwerp, Hamburg, Lübeck, Gdansk, London) | 3 | the bulk hauler: a nau's share of cargo on a carlat's wages |
-| `xebec` | Xebec | Mediterranean · mixed | 2 | 70 | 28 / 90 | 6.6 | 480 | 1 | 5 | 30,000 | 8,000 | 2 | WES ADR LEV AEG IBE (Genoa, Marseille, Venice, Alexandria, Istanbul, Cádiz, Seville, Lisbon) | 3 | the fast escort and boarder; big crew, small hold |
-| `junk` | Junk | Eastern · mixed | 2 | 200 | 20 / 60 | 4.8 | 850 | 2 | 2 | 38,000 | 9,500 | 1 | CHI JAP KOR SOU (Guangzhou, Macau, Nagasaki, Osaka, Tokyo, Busan, Jakarta, Malacca, Manila) | 2 | the sturdy eastern trader: watertight bulkheads, hard to sink |
-| `galleon` | Galleon | Western · square | 3 | 320 | 80 / 220 | 4.7 | 2,100 | 3 | 17 | 150,000 | 38,000 | 3 | the seven great yards | 5 | the armed convoy: fights at range |
-| `indiaman` | East Indiaman | Western · square | 3 | 520 | 70 / 180 | 4.5 | 2,000 | 3 | 11 | 170,000 | 42,000 | 3 | the seven great yards | 6 | the long-haul trader: more hold than anything afloat |
+| `pinnace` | Pinnace | Western · mixed | 1 | 35 | 6 / 16 | 6.4 | 300 | 1 | 0 | 50,000 | 12,500 | 1 | any yard | 1 | scout: fast, sees far, carries little |
+| `dhow` | Dhow | Eastern · lateen | 1 | 75 | 9 / 22 | 5.2 | 380 | 1 | 0 | 55,000 | 14,000 | 1 | WIA ARA EAS SOU (Kochi, Kozhikode, Old Goa, Surat, Jakarta, Malacca, Manila) | 1 | the Indian Ocean coaster; a barca with a bigger hold |
+| `carred` | Caravela redonda | Western · square | 2 | 130 | 16 / 40 | 5.6 | 650 | 2 | 4 | 170,000 | 45,000 | 2 | IBE FRA BRI WES ADR BAL CAR STH PAC | 2 | the all-round trader |
+| `fluyt` | Fluyt | Western · square | 2 | 240 | 10 / 26 | 4.9 | 700 | 2 | 2 | 200,000 | 50,000 | 2 | FRA BAL BRI (Amsterdam, Antwerp, Hamburg, Lübeck, Gdansk, London) | 3 | the bulk hauler: a nau's share of cargo on a carlat's wages |
+| `xebec` | Xebec | Mediterranean · mixed | 2 | 70 | 28 / 90 | 6.6 | 480 | 1 | 5 | 150,000 | 40,000 | 2 | WES ADR LEV AEG IBE (Genoa, Marseille, Venice, Alexandria, Istanbul, Cádiz, Seville, Lisbon) | 3 | the fast escort and boarder; big crew, small hold |
+| `junk` | Junk | Eastern · mixed | 2 | 200 | 20 / 60 | 4.8 | 850 | 2 | 2 | 190,000 | 47,500 | 1 | CHI JAP KOR SOU (Guangzhou, Macau, Nagasaki, Osaka, Tokyo, Busan, Jakarta, Malacca, Manila) | 2 | the sturdy eastern trader: watertight bulkheads, hard to sink |
+| `galleon` | Galleon | Western · square | 3 | 320 | 80 / 220 | 4.7 | 2,100 | 3 | 17 | 750,000 | 190,000 | 3 | the seven great yards | 5 | the armed convoy: fights at range |
+| `indiaman` | East Indiaman | Western · square | 3 | 520 | 70 / 180 | 4.5 | 2,000 | 3 | 11 | 850,000 | 210,000 | 3 | the seven great yards | 6 | the long-haul trader: more hold than anything afloat |
 
 The junk's yard tier is 1 on purpose: every eastern yard derives as tier 1 (`world-derive.mjs:530`,
 `dev_industry` 10 at Guangzhou/Nagasaki/…), and a junk is the hull those yards have always built.

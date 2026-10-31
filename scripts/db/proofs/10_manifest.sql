@@ -372,7 +372,7 @@ begin
   -- The purse drained for marker 3 is refilled through the same mover, so the bargained buy is
   -- refused by nothing but its own gates. Then certainty, as proof 06 sets it, so the bargain is
   -- about its SIZE and not about luck.
-  perform public.credit(v_player, 'PROOF_REFILL', 8000, public.emit_event(v_player, 'PROOF_REFILL', '{}'::jsonb));
+  perform public.credit(v_player, 'PROOF_REFILL', public.wc_int('starting_ducats'), public.emit_event(v_player, 'PROOF_REFILL', '{}'::jsonb));
   update public.world_config set value = to_jsonb(1.0) where key = 'haggle_base_success';
   update public.world_config set value = to_jsonb(1.0) where key = 'haggle_success_max';
   select * into v_q from world.quote(v_port, v_c, 10, 'buy', null, v_fleet);

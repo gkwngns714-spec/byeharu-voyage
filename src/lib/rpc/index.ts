@@ -438,7 +438,7 @@ export type { Refusal, RefusalFigures, RpcResult } from './result'
 export type * from './types'
 
 /**
- * Sign the book: found this account's house, its 8,000 ducats and its first Barca at Lisboa.
+ * Sign the book: found this account's house, its 40,000 ducats and its first Barca at Lisboa.
  *
  * CALLED ONCE PER ACCOUNT, EVER, and the server is what makes that true — `public.players.auth_uid`
  * is unique, and 0011 translates the violation into `E_ALREADY_FOUNDED`. So the client never has to

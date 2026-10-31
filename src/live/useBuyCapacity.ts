@@ -5,7 +5,7 @@
 // This replaces a client-side `buyBound()` whose own comment admitted the flaw: it divided the
 // purse by the market's opening ask, and a real BUY REPRICES AS IT WALKS THE BOOK (§G.2), so the
 // true ceiling is always lower. The player met that as a MAX chip offering 91 tuns of pepper and a
-// refusal reading "91 tuns cost 8130 d. and you hold 8000" — the game contradicting its own picker.
+// refusal reading "91 tuns cost 40650 d. and you hold 40000" — the game contradicting its own picker.
 //
 // `world.buy_capacity(fleet, good)` answers it on the server, stepping down through the SAME quote
 // a committed trade walks, so the number offered and the number charged cannot disagree. It also

@@ -191,7 +191,7 @@ test('the world opens from the image without applying a single migration here', 
          from public.players p where p.auth_uid = $1`,
       [LOCAL_AUTH_UID],
     )
-    expect(house.rows[0].ducats).toBe(8000)
+    expect(house.rows[0].ducats).toBe(40000)
     expect(house.rows[0].ports).toBeGreaterThan(200)
   } finally {
     await db.close()
@@ -290,12 +290,15 @@ test('a refused image falls back to applying the chain, and says so out loud', a
     expect(phases).toContain('applying')
     expect(channel.get().error).toBeNull()
 
-    // And the world that came out of the fallback is the real one.
+    // And the world that came out of the fallback is the real one. This spec boots the FROZEN
+    // PREFIX (tests/frozenChain.ts — it ends before 0285's ×5 re-base), so its K.1 purse is the
+    // prefix's own starting_ducats: read it rather than pin a number the live world moved.
+    const start = await db.pg.query<{ v: number }>(`select public.wc_int('starting_ducats')::int as v`)
     const house = await db.pg.query<{ ducats: number }>(
       'select ducats::int as ducats from public.players where auth_uid = $1',
       [LOCAL_AUTH_UID],
     )
-    expect(house.rows[0].ducats).toBe(8000)
+    expect(house.rows[0].ducats).toBe(start.rows[0].v)
     const stored = await readStoredChain(db.pg)
     expect(stored?.fingerprint).toBe(db.fingerprint)
   } finally {

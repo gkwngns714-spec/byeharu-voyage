@@ -41,7 +41,7 @@ Every "decided by default" below is mine; the owner reverses afterwards.
 | World total (players + merchants + cities + set aside) | **1,968,004,265** | `stats_world` 01:21 |
 | … 24 h earlier / at 10-20 23:51 | 1,897,777,160 (**+70.2 M/24 h**) / 1,710,276,398 (+257.7 M in 5 d) | `stats_world` |
 | Held by cities / merchants / players / set aside | 1,126.3 M (246) / 827.8 M (821) / 0.23 M (19) / 13.7 M | `stats_world` |
-| Minted 24 h | **EARNINGS 28.23 M · IMPORT_DEMAND 25.43 M · SEED 16.00 M** (8 new harbours, 0217) · FOUNDING 8,000 · NPC_REFOUND 0 · GRANT 0 | `stats_world.period` |
+| Minted 24 h | **EARNINGS 28.23 M · IMPORT_DEMAND 25.43 M · SEED 16.00 M** (8 new harbours, 0217) · FOUNDING 40,000 · NPC_REFOUND 0 · GRANT 0 | `stats_world.period` |
 | Removed 24 h | **0** | `stats_world.removed` |
 | SELL paid 24 h | 424.0 M: purse **398.6 M (94 %)**, minted premium **25.4 M (6 %)** | SELL vs IMPORT_DEMAND |
 | BUY taken in 24 h | 363.1 M | `period` |
@@ -74,7 +74,7 @@ purses thin). Average runway 1,126 M / 32 M ≈ 35 days; thin cities feel it fir
 | `IMPORT_DEMAND` | 25.43 M | `cmd.do_sell`: townsfolk pay the distance premium | **stops**: the purse pays the whole SELL; the empty-purse rule judges the whole total |
 | `SEED` | 16.00 M | switch / new-harbour migrations | **never again**: a new harbour starts at 0 and is funded by `CROWN_AID` from its capital (moved) |
 | `GRANT` | 0 | one-off 0172 | never again (guard) |
-| `FOUNDING` (player 8,000 · merchant capital · `npc_fix_hull_skills` tuition) | 8,000 | `credit` from nothing | **paid by the country's capital** (`city_pays`, realm call if short — §5) |
+| `FOUNDING` (player 40,000 · merchant capital · `npc_fix_hull_skills` tuition) | 40,000 | `credit` from nothing | **paid by the country's capital** (`city_pays`, realm call if short — §5) |
 | `NPC_REFOUND` | 0 | retired 0213 | replaced by `CAPITAL_GIFT` (§5) |
 | `PREMIUM` | — | escrowed at posting (`BOUNTY`) | unchanged (moved) |
 | `CROWN_AID` / `CROWN_TAX` | net 0 | city → city, **mislabelled** minted / removed in `stats_flow_words` | relabel `moved` (E1) |
@@ -190,7 +190,7 @@ Slice **E6b** `a_city_wants_what_it_lacks` (before E7): `city_wants` table + the
 
 | | Decided by default |
 |---|---|
-| **Port fee** | Every docking pays the city a fee — players AND NPC merchants (merchants pay today 0 wages/supplies since 0116; this is their main way back to city purses). Fee = `port_fee_base` 50 + 0.5 % of cargo value aboard, × the country rate below. Paid to the city purse (kind `PORT_FEE`, moved — never burned). A purse that can't pay: the fleet still docks, the fee becomes a debt taken from the next sale there |
+| **Port fee** | Every docking pays the city a fee — players AND NPC merchants (merchants pay today 0 wages/supplies since 0116; this is their main way back to city purses). Fee = `port_fee_base` 250 + 0.5 % of cargo value aboard, × the country rate below. Paid to the city purse (kind `PORT_FEE`, moved — never burned). A purse that can't pay: the fleet still docks, the fee becomes a debt taken from the next sale there |
 | **Port time** | After docking a fleet needs **1 real minute** to prepare before it can sail again (`port_prep_seconds` 60). A SAIL sent sooner waits in the queue and leaves when ready; the Trade page shows "Ready in 0:42" / "출항 준비 0:42". Merchants obey it too |
 | **Tax by country** | Each company has a home country (players: their founding port's power; merchants: their capital's). The rate a city charges = its base × the country factor: **same country 0×–0.25×**, **friendly 0.5×**, **neutral 1×**, **rival 2×**. Applies to the existing profit tax (0122) and the port fee |
 | **Relations** | A new table `power_relations` (each pair: same / friendly / neutral / rival), seeded from 1500–1650 history (e.g. Spain–Portugal friendly after 1580, Ottoman–Spain rival, Ming–Japan rival after 1592, Netherlands–Spain rival). Static at first; INFLUENCE can move it later |

@@ -6,7 +6,7 @@ import { useT } from '../lib/i18n'
 // THE ONE PLACE THE GAME ADMITS IT RESET THE WORLD.
 //
 // ── WHY IT EXISTS (2026-08-20) ─────────────────────────────────────────────────────────────────
-// The owner bought cargo, watched the purse go down, came back later and found 8,000 ducats again.
+// The owner bought cargo, watched the purse go down, came back later and found 40,000 ducats again.
 // Nothing had malfunctioned: a migration had been edited, which changes the chain fingerprint, and
 // localDb.ts then does what its own header promises — it demolishes the stored world and rebuilds
 // it from 0001, because applying new migrations onto an old database produces a schema that exists

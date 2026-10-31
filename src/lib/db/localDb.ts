@@ -193,7 +193,7 @@ export async function openLocalDb(options: OpenLocalDbOptions): Promise<LocalDb>
         )
         // THE PLAYER'S ROWS COME OUT FIRST. The rebuild below takes the world AND the house
         // standing in it, and until 2026-08-20 it took them silently and irrecoverably — a purse
-        // that had bought cargo was back at 8,000 ducats with no word said (DEV_LOG D11c). This
+        // that had bought cargo was back at 40,000 ducats with no word said (DEV_LOG D11c). This
         // cannot throw; a failed rescue is reported, never fatal.
         const rescued = await rescuePlayerRows(pg, stored.fingerprint, authUid)
         if (rescued.rows > 0) {
@@ -360,7 +360,7 @@ async function finishBoot(args: {
       progress: progressFor('seeding', 0, 0),
       message: 'Founding your house: one Barca at Lisboa, and the purse to start her.',
     })
-    // THE CHAIN'S OWN FOUNDING FUNCTION. §K.1's opening — 8,000 ducats, one Barca named Gaivota
+    // THE CHAIN'S OWN FOUNDING FUNCTION. §K.1's opening — 40,000 ducats, one Barca named Gaivota
     // docked at Lisboa — is authored in migration 0004, with the purse invariant enforced by the
     // same triggers that guard every later ducat. A hand-written INSERT here would be a second
     // authority for what a new house is, and would bypass the ledger.

@@ -266,9 +266,12 @@ export async function certifyWorldImage(bytes, { fingerprint, log = () => {} } =
         [uid],
       )
     ).rows[0]
-    if (!house || house.ducats !== 8000 || house.ships !== 1) {
+    const openingPurse = (
+      await pg.query("select public.wc_int('starting_ducats') as n")
+    ).rows[0].n
+    if (!house || house.ducats !== openingPurse || house.ships !== 1) {
       throw new Error(
-        'IMAGE REFUSED: the restored world could not open a house — expected 8,000 ducats and one ' +
+        `IMAGE REFUSED: the restored world could not open a house — expected ${openingPurse} ducats and one ` +
           `hull, got ${JSON.stringify(house ?? null)}. A world that reads back correctly but ` +
           'cannot be written to is not a world anybody can play.',
       )

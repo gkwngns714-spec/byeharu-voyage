@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- PROOF 4 — THE FIRST SESSION  (DESIGN §K.1, beat by beat, in the world that actually exists)
 --
---   "0:00  You are the Casa de Aveiro. One Barca, 'Gaivota', docked at Lisboa. 8,000 ducats.
+--   "0:00  You are the Casa de Aveiro. One Barca, 'Gaivota', docked at Lisboa. 40,000 ducats.
 --    0:20  MARKET tab. A good reads far below its neighbours. The BUY block is at the top.
 --    0:40  Tap the row. CMD fills in the order. You submit — and it is refused, because it does
 --          not fit. You buy what fits.
@@ -32,7 +32,7 @@
 --   discovered. Every command is still a typed string through cmd.issue(): the grammar carries the
 --   session, not the executors.
 --
--- @pass FIRST_SESSION_OPENS          one Barca named Gaivota, docked at Lisboa, 8,000 ducats
+-- @pass FIRST_SESSION_OPENS          one Barca named Gaivota, docked at Lisboa, 40,000 ducats
 -- @pass FIRST_SESSION_READS_MARKET   a good reads below 90% of its neighbours here and dearer there
 -- @pass FIRST_SESSION_OVERSIZED_REFUSED  an order bigger than the hold is refused E_HOLD_FULL with a sentence and a fix
 -- @pass FIRST_SESSION_BUYS_CARGO     the cargo is aboard and the purse fell by the quoted amount
@@ -152,7 +152,7 @@ begin
   select id into v_fleet from public.fleets where player_id = v_player;
   select ducats into v_start from public.players where id = v_player;
 
-  if v_start <> 8000
+  if v_start <> public.wc_int('starting_ducats')
      or (select name from public.fleets where id = v_fleet) <> 'Gaivota'
      or (select status from public.fleets where id = v_fleet) <> 'DOCKED'
      or (select port_id from public.fleets where id = v_fleet) <> v_lis

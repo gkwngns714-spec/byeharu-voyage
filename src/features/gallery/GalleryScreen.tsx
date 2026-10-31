@@ -72,7 +72,7 @@ export function GalleryScreen() {
       >
         <SheetSection heading="Figure">
           <div className="flex flex-wrap items-baseline gap-4">
-            <Figure value="8,000" unit={COIN} size="hero" />
+            <Figure value="40,000" unit={COIN} size="hero" />
             <Figure value="78" unit="d./t" size="figure" />
             <Figure value="15.0" unit="days" tone="success" />
             <Figure value="4" unit="/ 60 t" tone="muted" />

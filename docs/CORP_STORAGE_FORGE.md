@@ -2,7 +2,7 @@
 
 Status: design for the owner, 2026-10-29. **Nothing here is built and nothing on prod changed.**
 Prod head at writing: **0272** (0273 in flight; `docs/WORK_QUEUE.md` 2026-10-29). The closed economy is
-**LIVE** (0240 lit 2026-10-26 ~06:52 UTC; stamp 1,986,693,521; E5/E5b/E6/E6b ON since 10-28).
+**LIVE** (0240 lit 2026-10-26 ~06:52 UTC; stamp 9,933,467,605; E5/E5b/E6/E6b ON since 10-28).
 
 The owner's two parked asks (`docs/WORK_QUEUE.md`, parked 2026-10-28, released 2026-10-29 by *"do all"*):
 
@@ -95,7 +95,7 @@ purses lit, a positive delta of a minted kind is refused `E_NO_NEW_GOLD` at both
 `public.credit` `0240:264-275` and `public.treasury_post` `0240:276-284`). A city that pays runs its credit
 under a local setting, `byeharu.paid_by_city = 'on'`, put back after (`0240:285-313`). The switch
 `public.economy_close_switch` (`0240:338`) recorded the stamp knobs `economy_closed_at` and
-`economy_closed_total` = **1,986,693,521** (`0240:229-233`). Live reading (WORK_QUEUE 10-29): closed,
+`economy_closed_total` = **9,933,467,605** (`0240:229-233`). Live reading (WORK_QUEUE 10-29): closed,
 `moved_since_close` +138 (the known one-time race; owner: leave it), new money 0 — **the world total is flat
 by construction today.**
 
@@ -268,7 +268,7 @@ route's STORE line says "Store" because it is the same act, one word.
 - **Sinks: all land in purses, removed = 0.** The table in §1.1 is the whole sink set; nothing burns gold.
   A closed economy therefore has **one** problem left: the total is frozen while the player base moves, so
   **gold per active player drifts** — down when companies join, and it cannot answer a player's bare purse.
-- **The stamp:** `economy_closed_total` = 1,986,693,521 (`0240:229-233`, recorded by the switch at close).
+- **The stamp:** `economy_closed_total` = 9,933,467,605 (`0240:229-233`, recorded by the switch at close).
 
 ### 6.2 The faucet rule (the owner's second ask)
 

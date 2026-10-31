@@ -25,7 +25,7 @@
 //
 // The reason it changed is worth keeping. A client-side maximum ignores the purse, so the very
 // first tap a new player made arrived on CMD already refused — "60 tuns cost 8020 d. and you hold
-// 8000". The same bug was then found a THIRD and a FOURTH time (the MAX chip, and PORT's
+// 40000". The same bug was then found a THIRD and a FOURTH time (the MAX chip, and PORT's
 // `affordableUnits`, deleted 2026-08-22). `ALL` is resolved server-side by
 // `public.fleet_buy_capacity()`, which walks the same stepped book a real trade walks and stops at
 // whichever of hold, stock, daily cap or purse binds first — and because the grammar reads it WHEN
