@@ -1,6 +1,6 @@
 import { test, expect, type Locator } from '@playwright/test'
-import { ready, reachable } from './appReady.fixture'
-import { pressCity } from './deskMap.fixture'
+import { openFold, ready, reachable } from './appReady.fixture'
+import { openTradeMap, pressCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // SELL OPENS ON HER CARGO, A CITY PRESSED IS A CITY GONE TO, AND EVERY CITY SHE CAN SELL AT PRESSES (owner row 231,
@@ -60,6 +60,8 @@ for (const size of SIZES) {
       await page.goto('command')
       await ready(page)
       const face = page.getByTestId('desk-trade')
+      // on a phone the map starts closed (the one-page law); the press opens it
+      await openTradeMap(face)
       const board = face.getByTestId('trade-board')
 
       // BUY ONE GOOD AT LISBON
@@ -83,7 +85,9 @@ for (const size of SIZES) {
       await chip.click()
       await expectCentred(face.getByTestId('trade-map'), chipCity)
 
-      // HER CARGO: the good, "Here", and the cities to sail to, each with a figure
+      // HER CARGO: the good, "Here", and the cities to sail to, each with a figure — in the folded
+      // Cargo block on a phone, opened as a player opens it
+      await openFold(page, 'cargo-fold')
       const cargo = face.getByTestId('cargo-best')
       await expect(cargo).toBeVisible()
       const block = cargo.locator(`[data-testid="cargo-good"][data-good="${code}"]`)

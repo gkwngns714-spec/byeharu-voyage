@@ -68,6 +68,20 @@ export async function settled(scope: import('@playwright/test').Locator): Promis
 }
 
 /**
+ * OPEN A FOLDED SECTION, if it is there. The one-page slice (2026-10-31) puts secondary blocks
+ * behind `SectionFold`s closed by default: a spec that reaches into one opens it the way a player
+ * does — one press on the fold's own 44-px line — and then asserts against what is revealed.
+ * A no-op when the block is not a fold at that width (the wide desk composes the same content
+ * openly).
+ */
+export async function openFold(page: import('@playwright/test').Page, testid: string) {
+  const toggle = page.getByTestId(`${testid}-toggle`)
+  if ((await toggle.count()) === 0) return
+  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+}
+
+/**
  * THE DRIFT SLOT, IN WALL-CLOCK MS — `drift_slot_seconds` is 900 (0240's header: "900 → 600 → 900"; 16
  * readers), and a slot is `floor(epoch / 900)`, so every tab on every machine crosses an edge at the same
  * instants: :00, :15, :30, :45.

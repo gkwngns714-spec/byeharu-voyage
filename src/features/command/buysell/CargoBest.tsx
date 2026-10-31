@@ -42,8 +42,9 @@ export function CargoBest({
     .filter(([, units]) => units > 0)
     .sort(([a], [b]) => a.localeCompare(b))
   return (
+    // THE HEADING BELONGS TO THE CALLER (Trade.tsx wraps this in a `SectionFold` on a phone; the
+    // wide desk shows it in the centre pane). The block itself is the goods and their places.
     <section className="mb-4" data-testid="cargo-best">
-      <h3 className="mb-1 text-t-label font-semibold text-ink-muted">{t('desk.cargo')}</h3>
       {aboard.length === 0 ? (
         <Hint data-testid="cargo-best-empty">{t('desk.holdEmpty')}</Hint>
       ) : (

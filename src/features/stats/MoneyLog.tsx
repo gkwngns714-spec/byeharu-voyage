@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useShellState } from '../../app/shellState'
-import { Empty, Row, ScrollPane, SheetSection, TileChoice, TileGrid } from '../../components/ui'
-import { formatDucatsDelta, formatRelative } from '../../lib/format'
+import { Empty, Row, ScrollPane, SectionFold, TileChoice, TileGrid } from '../../components/ui'
+import { formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
 import { properName, translateMaybe, useLocale, useT } from '../../lib/i18n'
 import { worldMoneyFeed, type MoneyMove, type RpcResult } from '../../lib/rpc'
 import { useLiveRead } from './statsLive'
@@ -134,7 +134,9 @@ export function MoneyLog() {
 
   return (
     <div className="mt-6 lg:absolute lg:top-0 lg:left-[calc(100%+1.5rem)] lg:mt-0 lg:w-[26rem] lg:[&>section]:mt-0!" data-testid="money-log">
-      <SheetSection heading={t('feed.heading')}>
+      {/* THE LOG IS A SECONDARY BLOCK ON THE SHEET (2026-10-31, the sheet law): its closed line
+          carries how many moves are held, and the grid + the bounded list are one press away. */}
+      <SectionFold heading={t('feed.heading')} summary={formatInt(base.length)} data-testid="money-log-fold">
         {/* THE FILTERS ARE A GRID, NOT A CHIP ROW (owner, 2026-10-31: *"in stats money log, the
             tappable thing is not ordered. make it into square and allign properly orderly."*).
             Every sector owns one equal cell on fixed column lines, in the fixed order above. */}
@@ -185,7 +187,7 @@ export function MoneyLog() {
             })}
           </ScrollPane>
         )}
-      </SheetSection>
+      </SectionFold>
     </div>
   )
 }

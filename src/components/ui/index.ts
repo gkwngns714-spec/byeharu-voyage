@@ -23,6 +23,7 @@ export { SectionColumns, Sheet, SheetSection } from './Sheet'
 //    (owner, 2026-10-31: *"make things foldable"*). The press law is the section's own: the
 //    control opens its own body under itself and never moves what stands above it.
 export { SectionFold } from './SectionFold'
+//    THE SHEET'S OWN SCROLL SURFACE carries `data-sheet`; onepage.spec.ts reads it.
 export { Clip } from './Clip'
 
 // 2. TRAY — the bottom-docked sheet with detents (peek 96 · half · full) that every "unfold under

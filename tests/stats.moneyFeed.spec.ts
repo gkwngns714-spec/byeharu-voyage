@@ -15,7 +15,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
-import { PHONE, ready, reachable } from './appReady.fixture'
+import { PHONE, openFold, ready, reachable } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
 
 test.use({ viewport: PHONE })
@@ -81,6 +81,8 @@ test('Stats › the money log shows my buy in red and the city’s side of it in
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
   const log = page.getByTestId('money-log')
   await expect(log).toBeVisible({ timeout: 30_000 })
+  // THE LOG IS A FOLD ON THE SHEET (2026-10-31, the sheet law); a player presses its line to see it.
+  await openFold(page, 'money-log-fold')
 
   // MY BUY: a drop, red, mine
   const mine = log.locator('[data-testid="money-move"][data-holder="company"][data-kind="BUY"][data-tone="drop"]').filter({ hasText: '(you)' })
@@ -117,7 +119,8 @@ test('Stats › the money log shows my buy in red and the city’s side of it in
   await page.setViewportSize({ width: 1280, height: 900 })
   await expect(mine.first()).toBeVisible()
   const [mw, lw] = [await money.boundingBox(), await log.boundingBox()]
-  const [mh, lh] = [await money.locator('h2').first().boundingBox(), await log.locator('h2').first().boundingBox()]
+  // both are folds now: compare their own 44-px lines, which is where each heading stands
+  const [mh, lh] = [await page.getByTestId('stats-money-toggle').boundingBox(), await page.getByTestId('money-log-fold-toggle').boundingBox()]
   expect(mw && lw && lw.x >= mw.x + mw.width, 'the log is not to the right of World money').toBe(true)
   expect(mh && lh && Math.abs(lh.y - mh.y) <= 2, 'the log’s heading is not on World money’s line').toBe(true)
   expect(lw && lw.x + lw.width <= 1280, 'the log runs off the glass').toBe(true)

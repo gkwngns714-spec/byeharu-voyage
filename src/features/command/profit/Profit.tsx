@@ -1,4 +1,4 @@
-import { Figure, Note, Row, SectionFold, SignedBars, Skeleton } from '../../../components/ui'
+import { Figure, Note, Row, ScrollPane, SectionFold, SignedBars, Skeleton } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta } from '../../../lib/format'
 import { worldBooks, type Books } from '../../../lib/rpc'
@@ -81,8 +81,10 @@ export function Profit({ layout }: { layout: DeskLayout }) {
         </Note>
       ) : (
         // EACH DAY IS A FOLDED LINE (owner, 2026-10-31: *"make things foldable"*): its date and
-        // its net stand closed; the day's lines are one press away, never gone.
-        b.books.map((d, i) => (
+        // its net stand closed; the day's lines are one press away, never gone. The week of them
+        // is the phone's long body, so it scrolls inside its own pane.
+        <ScrollPane className="max-h-[14rem] lg:max-h-none">
+        {b.books.map((d, i) => (
           <SectionFold
             key={d.game_day}
             heading={i === 0 && d.game_day === b.game_day ? t('desk.today') : t('desk.daysAgo', { n: b.game_day - d.game_day })}
@@ -97,7 +99,8 @@ export function Profit({ layout }: { layout: DeskLayout }) {
               />
             ))}
           </SectionFold>
-        ))
+        ))}
+        </ScrollPane>
       ),
   })
 }

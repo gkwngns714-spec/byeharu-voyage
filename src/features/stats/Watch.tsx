@@ -1,4 +1,4 @@
-import { SheetSection, StatCell, deltaTone } from '../../components/ui'
+import { SectionFold, StatCell, deltaTone } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import type { StatsWatch } from '../../lib/rpc'
@@ -21,7 +21,9 @@ export function WatchSection({ watch }: { watch: StatsWatch | null | undefined }
       ? dash
       : `${formatPct(watch.swing_p50, 1)} / ${formatPct(watch.swing_p90, 1)}`
   return (
-    <SheetSection heading={t('watch.heading')} data-testid="stats-watch">
+    // THE WATCH IS A CONSULT, SO IT IS ONE LINE (2026-10-31, the sheet law): the closed line carries
+    // new money at the last count; the seven figures are one press away.
+    <SectionFold heading={t('watch.heading')} summary={watch.new_slot === undefined ? dash : formatDucatsDelta(watch.new_slot)} data-testid="stats-watch">
       <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
         <StatCell label={t('watch.newMoney')} value={watch.new_slot} format={formatDucatsDelta} size="body" tone={watch.new_slot > 0 ? 'success' : 'ink'} />
         {watch.total_delta_day === null ? (
@@ -44,6 +46,6 @@ export function WatchSection({ watch }: { watch: StatsWatch | null | undefined }
         )}
         <StatCell label={t('watch.swing')} text={swing} size="body" />
       </div>
-    </SheetSection>
+    </SectionFold>
   )
 }

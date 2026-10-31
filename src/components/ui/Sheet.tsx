@@ -59,6 +59,7 @@ export function Sheet({
         if (next !== pinned) setPinned(next)
       }}
       className={`bv-scroll h-full overflow-y-auto ${className}`}
+      data-sheet=""
       {...rest}
     >
       <header

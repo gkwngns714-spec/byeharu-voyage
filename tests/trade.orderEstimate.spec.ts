@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { ready, reachable } from './appReady.fixture'
-import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
+import { openFold, ready, reachable } from './appReady.fixture'
+import { buyHere, findCarry, openTradeMap, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE SMALL MAP AT THE BOTTOM, AND AN ORDER PRESSED SHOWS ITS ROUTE AND ESTIMATE (owner row 217, 2026-10-26: *"on
@@ -38,6 +38,8 @@ for (const size of SIZES) {
       // THE SMALL MAP AT THE BOTTOM: below the goods board, in a fold that is open by default
       const fold = face.getByTestId('trade-map-fold')
       await expect(fold).toBeVisible()
+      // on a phone the map starts folded (the one-page law); the press opens it, as a player does
+      await openTradeMap(face)
       await expect(fold).toHaveAttribute('data-open', 'true')
       await expect(face.getByTestId('trade-board').first()).toBeVisible()
       await expect(face.getByTestId('trade-map').getByTestId('small-chart')).toBeVisible()
@@ -50,7 +52,9 @@ for (const size of SIZES) {
       await sailAndSell(page, code, city)
       const map = face.getByTestId('trade-map')
 
-      // press the queued SELL: its route on the map, its estimate under it
+      // press the queued SELL: its route on the map, its estimate under it (the Orders fold is
+      // closed at rest on a phone; a player opens it to see the queue)
+      await openFold(page, 'command-queue')
       const sell = page.getByTestId('queue-pick').last()
       await expect(sell).toBeVisible({ timeout: 30_000 })
       await sell.click()

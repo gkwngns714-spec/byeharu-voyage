@@ -10,7 +10,10 @@ import { reachable, ready } from './appReady.fixture'
 //
 //   1. THE DOCUMENT NEVER SCROLLS — `documentElement.scrollHeight <= clientHeight + 1` and the same
 //      for width, on every main tab. A tab may own a bounded pane that scrolls inside itself
-//      (`ScrollPane`, data-scroll-pane) or a Sheet surface; the PAGE never moves.
+//      (`ScrollPane`, data-scroll-pane); the PAGE never moves.
+//   1b. THE TAB'S OWN SHEET NEVER SCROLLS — the surface the owner actually feels. `Sheet` carries
+//      `data-sheet`; its scrollHeight must equal its clientHeight at rest, scrollTop 0, on every
+//      route that draws one (all but Map and the City page, which are one glass).
 //   2. THE MAIN LANDMARK IS THERE AND VISIBLE on every tab.
 //   3. EVERY SET OF TAPPABLE CHOICES IS AN ORDERED GRID — each `[data-choice-grid]` has equal
 //      cells on shared column lines (the owner: *"make it into square and allign properly orderly.
@@ -34,6 +37,7 @@ interface DocReport {
   clientH: number
   scrollY: number
   main: { top: number; bottom: number; width: number; height: number } | null
+  sheet: { h: number; ch: number; top: number } | null
   grids: { label: string; cells: { l: number; t: number; w: number; h: number }[] }[]
 }
 
@@ -46,6 +50,7 @@ async function read(page: Page): Promise<DocReport> {
     }
     const main = document.querySelector('main')
     const box = main?.getBoundingClientRect() ?? null
+    const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
     const grids = [...document.querySelectorAll('[data-choice-grid]')]
       .filter(visible)
       .map((g) => ({
@@ -64,9 +69,45 @@ async function read(page: Page): Promise<DocReport> {
       clientH: de.clientHeight,
       scrollY: window.scrollY,
       main: box === null ? null : { top: Math.round(box.top), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height) },
+      sheet: sheet === null ? null : { h: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop },
       grids,
     }
   })
+}
+
+/** EVERY FACE INSIDE A TAB IS STILL THE SAME SHEET. The desk has four faces and Stats five; a
+ *  face that starts the Sheet scrolling is the same defect one press in. Switch the faces the way
+ *  a player does and hold each one to the two laws (page and Sheet). `listName === null` means the
+ *  page's first tab list (Stats draws exactly one). */
+async function walkFaces(
+  page: Page,
+  size: { width: number; height: number },
+  listName: RegExp | null,
+  faces: readonly string[],
+) {
+  for (const face of faces) {
+    const strip = listName === null ? page.getByRole('tablist').first() : page.getByRole('tablist', { name: listName })
+    await strip.getByRole('tab', { name: face, exact: true }).click()
+    await page
+      .waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 60_000 })
+      .catch(() => {})
+    await page.waitForTimeout(350)
+    const m = await read(page)
+    console.log(
+      `ONEPAGE @${size.width} face ${face}: doc ${m.docW}×${m.docH} / ${m.clientW}×${m.clientH}, ` +
+        `sheet ${m.sheet === null ? 'none' : `${m.sheet.h}/${m.sheet.ch}`}, Y ${m.scrollY}`,
+    )
+    expect(m.docH, `face ${face} scrolls the PAGE down at ${size.width}px`).toBeLessThanOrEqual(m.clientH + 1)
+    expect(m.docW, `face ${face} scrolls the PAGE sideways at ${size.width}px`).toBeLessThanOrEqual(m.clientW + 1)
+    if (m.sheet !== null) {
+      expect(m.sheet.top, `face ${face}'s Sheet is already scrolled`).toBe(0)
+      expect(
+        m.sheet.h,
+        `face ${face} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}. ` +
+          `Fold the secondary blocks and bound the lists.`,
+      ).toBeLessThanOrEqual(m.sheet.ch + 1)
+    }
+  }
 }
 
 for (const size of SIZES) {
@@ -82,7 +123,10 @@ for (const size of SIZES) {
       await page.goto(route)
       await ready(page)
       const m = await read(page)
-      console.log(`ONEPAGE @${size.width} ${route}: doc ${m.docW}×${m.docH} / ${m.clientW}×${m.clientH}, Y ${m.scrollY}, grids ${m.grids.length}`)
+      console.log(
+        `ONEPAGE @${size.width} ${route}: doc ${m.docW}×${m.docH} / ${m.clientW}×${m.clientH}, ` +
+          `sheet ${m.sheet === null ? 'none' : `${m.sheet.h}/${m.sheet.ch}`}, Y ${m.scrollY}, grids ${m.grids.length}`,
+      )
 
       // 1. THE PAGE NEVER SCROLLS, down or sideways, and arrives at the top.
       expect(
@@ -99,6 +143,19 @@ for (const size of SIZES) {
       expect(m.main!.height, `${route}'s main landmark has no height`).toBeGreaterThan(0)
       expect(m.main!.bottom, `${route}'s main landmark hangs below the glass`).toBeLessThanOrEqual(size.height + 1)
 
+      // 2b. THE TAB'S OWN SHEET DOES NOT SCROLL. This is the law the owner feels when he scrolls:
+      //     the document was always fixed; the Sheet is what travelled. Fold the secondary blocks
+      //     and bound the lists until its scrollHeight is its clientHeight; never clip, never hide.
+      if (m.sheet !== null) {
+        expect(m.sheet.top, `${route}'s Sheet is already scrolled at ${size.width}px`).toBe(0)
+        expect(m.sheet.ch, `${route}'s Sheet has no height at ${size.width}px`).toBeGreaterThan(0)
+        expect(
+          m.sheet.h,
+          `${route} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}. ` +
+            `Put the secondary blocks in closed SectionFolds and the long lists in bounded ScrollPanes.`,
+        ).toBeLessThanOrEqual(m.sheet.ch + 1)
+      }
+
       // 3. EVERY CHOICE GRID IS ORDERED: its cells share one width, one height and one line, and
       //    every cell clears the reach floor. Non-vacuity is asserted after the walk.
       for (const g of m.grids) {
@@ -114,6 +171,10 @@ for (const size of SIZES) {
           expect(c.w, `grid "${g.label}" at ${size.width}px: a cell is ${c.w}px wide, under the 44px floor`).toBeGreaterThanOrEqual(44)
         }
       }
+
+      // 3b. EVERY FACE INSIDE THE TAB IS STILL ONE PAGE: the desk's four faces and Stats' five.
+      if (route === 'command') await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Profit', 'Trade'])
+      if (route === 'stats') await walkFaces(page, size, null, ['Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
 
       // 4. A FOLD KEEPS ITS INFORMATION. Stats' "New and moved money" is closed by default with its
       //    figure on the line; one press reveals its body (the press law's reveal, not a deletion).

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { ready, reachable } from './appReady.fixture'
+import { openFold, ready, reachable } from './appReady.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -62,6 +62,8 @@ for (const size of SIZES) {
         queuedMore++
       }
       expect(queuedMore, 'two more trips could not be queued').toBe(2)
+      // the queue is inside the folded Orders on a phone (the one-page law)
+      await openFold(page, 'command-queue')
       expect(await page.getByTestId('queue-row').count()).toBeGreaterThanOrEqual(3)
 
       // the Map: press her in the fleets list

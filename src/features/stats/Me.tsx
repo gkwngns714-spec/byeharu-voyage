@@ -123,10 +123,10 @@ export function MeFace() {
         <RankBars rows={sales} format={formatDucatsDelta} empty={t('stats.noSales')} />
       </SectionFold>
 
-      <SheetSection
+      {/* THE LEADERBOARD IS A CONSULT: its closed line carries your rank (2026-10-31, the sheet law). */}
+      <SectionFold
         heading={t('stats.captainsByPurse')}
-        trailing={<span className="text-t-caption text-ink-faint">{v.leaderboard.you === null ? '' : t('stats.youAre', { rank: formatInt(v.leaderboard.you), of: formatInt(v.leaderboard.players) })}</span>}
-        surface
+        summary={v.leaderboard.you === null ? '' : t('stats.youAre', { rank: formatInt(v.leaderboard.you), of: formatInt(v.leaderboard.players) })}
         data-testid="stats-leaderboard"
       >
         {countries.length > 1 && (
@@ -160,7 +160,7 @@ export function MeFace() {
             data-testid={r.is_you ? 'stats-leaderboard-you' : undefined}
           />
         ))}
-      </SheetSection>
+      </SectionFold>
     </div>
   )
 }

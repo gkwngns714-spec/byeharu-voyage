@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { PHONE, reachable, ready } from './appReady.fixture'
+import { PHONE, openFold, reachable, ready } from './appReady.fixture'
 import { filterStorageKey, oneOf, readFilterChoice } from '../src/components/ui/filterState'
 import { sortMerchants, filterCities, sortCities } from '../src/features/stats/statsFilters'
 import type { StatsCityRow, StatsMerchantRow } from '../src/lib/rpc'
@@ -24,6 +24,8 @@ test('Cities: Europe leaves only European cities; Richest puts the bigger purse 
   await ready(page)
   await page.getByRole('tab', { name: 'Cities', exact: true }).click()
   await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 120_000 })
+  // the list is a fold (the sheet law); the filters above it stay open
+  await openFold(page, 'stats-cities-list')
   const names = page.getByTestId('stats-city-name')
   await expect.poll(() => names.count(), { timeout: 60_000 }).toBeGreaterThan(10)
   const everyCity = await names.count()

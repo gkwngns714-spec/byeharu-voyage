@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Empty, FactsLine, FilterBar, Figure, Flag, Note, Row, ScrollPane, SheetSection, Skeleton, oneOf, useFilterChoice } from '../../components/ui'
+import { Empty, FactsLine, FilterBar, Figure, Flag, Note, Row, ScrollPane, SectionFold, Skeleton, oneOf, useFilterChoice } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsCities, type StatsCities, type StatsCityRow } from '../../lib/rpc'
@@ -77,7 +77,9 @@ export function CitiesFace() {
         sort={{ id: 'sort', label: t('stats.sortLabel'), options: sortOptions, value: sort, onChange: (id) => choose({ sort: id as CitySort }) }}
       />
 
-      <SheetSection heading={t('stats.citiesCount', { n: formatInt(rows.length) })} surface data-testid="stats-cities-open">
+      {/* THE CITY LIST IS A CONSULT: the filters stand open above it, and its closed line carries
+          the count (2026-10-31, the sheet law). */}
+      <SectionFold heading={t('stats.citiesCount', { n: formatInt(rows.length) })} summary={formatInt(rows.length)} data-testid="stats-cities-list">
         {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
         <ScrollPane className="max-h-[calc(100dvh_-_24rem)]" data-testid="stats-cities-pane">
         {rows.map((c, i) => (
@@ -107,7 +109,7 @@ export function CitiesFace() {
           </Row>
         ))}
         </ScrollPane>
-      </SheetSection>
+      </SectionFold>
     </div>
   )
 }

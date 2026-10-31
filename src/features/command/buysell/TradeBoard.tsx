@@ -133,7 +133,7 @@ export function TradeBoard({
             // THE CARDS ARE THE ONE LONG LIST ON THIS FACE: at a busy quay they run past the
             // glass, so they scroll inside their own bounded pane (the page above stays put).
             // From lg the desk's centre pane is already the scroller — no second bound there.
-            <ScrollPane className="max-h-[calc(100dvh_-_30rem)] lg:max-h-none">
+            <ScrollPane className="max-h-[9rem] lg:max-h-none">
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
                 {rows.map((r) => (
                   <TradeCard key={r.code} portId={portId} r={r} docked={docked} on={picked === r.code} onBuy={onBuy} onSell={onSell} />

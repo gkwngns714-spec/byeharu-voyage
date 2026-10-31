@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Figure, Hint, Note, Row, SheetSection, Skeleton } from '../../../components/ui'
+import { Figure, Hint, Note, Row, ScrollPane, SheetSection, Skeleton } from '../../../components/ui'
 import { fleetPortCode } from '../../../domain/fleet'
 import { CityTownHall } from '../../../live/CityTownHall'
 import { WORK_NAME } from '../../../live/workNames'
@@ -69,7 +69,10 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
                 {t(h.enabled ? 'desk.noShares' : 'desk.sharesClosed')}
               </Note>
             ) : (
-              h.rows.map((r) => (
+              // THE HOLDINGS ROWS ARE THE ONE LONG LIST (2026-10-31, the sheet law): the totals
+              // above stand, the rows scroll inside their own pane on a phone.
+              <ScrollPane className="max-h-[10rem] lg:max-h-none">
+              {h.rows.map((r) => (
                 <Row
                   key={`${r.port}:${r.kind}`}
                   onClick={() => setPicked(r.port)}
@@ -93,7 +96,8 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
                     {r.share_price !== null ? t('desk.sharePrice', { price: formatDucats(r.share_price) }) : ''}
                   </span>
                 </Row>
-              ))
+              ))}
+              </ScrollPane>
             )}
           </>
         )}
@@ -101,6 +105,7 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
     ),
     main:
       hall && hall.kind === 'HARBOUR' ? (
+        <ScrollPane className="max-h-[14rem] lg:max-h-none">
         <SheetSection
           heading={
             <span className="flex items-center gap-2">
@@ -112,6 +117,7 @@ export function Invest({ fleet, layout }: { fleet: FleetView; layout: DeskLayout
         >
           <CityTownHall key={hall.code} port={hall} />
         </SheetSection>
+        </ScrollPane>
       ) : (
         <Note tone="neutral" className="mt-4">
           {t('desk.notAtCity', { fleet: fleet.name })}
