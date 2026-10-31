@@ -343,9 +343,10 @@ test.describe('wide glass', () => {
     expect(await rows.first().boundingBox()).toEqual(rowBox)
   })
 
-  // 0092: COMMAND's route row at the desktop's width — inside the 48rem column, and the unfold stays
-  // inside the row's own x range; pressing it moves the row not at all.
-  test(`COMMAND › Route at ${WIDE.width}px: the route row sits in the column and unfolds inside it`, async ({
+  // 0092: COMMAND's route row at the desktop's width — inside the 48rem column; since consistency
+  // row 38 the press opens THE ROUTE'S PAGE (the one `DetailPage`, fixed over the desk) instead of
+  // an in-column unfold: the row and the queue row below it keep their boxes, and Back returns.
+  test(`COMMAND › Route at ${WIDE.width}px: the route row sits in the column and opens its page`, async ({
     page,
     request,
     baseURL,
@@ -366,18 +367,21 @@ test.describe('wide glass', () => {
     const rowBox = (await row.boundingBox())!
     expect(rowBox.width).toBeLessThanOrEqual(SHEET_REM * remPx + 1)
 
+    const queueBox = (await page.getByTestId('command-queue').boundingBox())!
     await row.click()
-    const unfold = page.getByTestId('route-unfold')
-    await expect(unfold).toBeVisible()
+    const routePage = page.getByTestId('route-page')
+    await expect(routePage).toBeVisible()
+    await expect(routePage).toHaveAttribute('data-detail-page', '')
     await page.waitForTimeout(400)
     expect(await row.boundingBox(), 'pressing the route row moved it').toEqual(rowBox)
-    const box = (await unfold.boundingBox())!
-    console.log(`COMMAND route fold @${WIDE.width}px: row ${JSON.stringify(rowBox)} unfold ${JSON.stringify(box)}`)
-    expect(box.x).toBeGreaterThanOrEqual(Math.floor(rowBox.x))
-    expect(box.x + box.width).toBeLessThanOrEqual(Math.ceil(rowBox.x + rowBox.width))
+    expect(await page.getByTestId('command-queue').boundingBox(), 'the route page re-flowed the row below').toEqual(queueBox)
+    const pageBox = (await routePage.boundingBox())!
+    console.log(`COMMAND route page @${WIDE.width}px: row ${JSON.stringify(rowBox)} page ${JSON.stringify(pageBox)}`)
+    expect(pageBox.width, 'the page is not the full-screen overlay').toBeGreaterThanOrEqual(WIDE.width - 1)
 
-    await row.click()
-    await expect(page.getByTestId('route-unfold')).toHaveCount(0)
+    await routePage.locator('[data-detail-back]').click()
+    await expect(page.getByTestId('route-page')).toHaveCount(0)
     expect(await row.boundingBox()).toEqual(rowBox)
+    expect(await page.getByTestId('command-queue').boundingBox()).toEqual(queueBox)
   })
 })

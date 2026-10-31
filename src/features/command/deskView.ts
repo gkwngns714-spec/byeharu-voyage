@@ -24,11 +24,11 @@ export interface DeskViewState {
   face: DeskFace
   /** The City face's building (live/cityFaces.ts); one that the city lacks falls back to its first. */
   cityFace: PortFace
-  /** Buy / Sell: whether the route fold stands open. HERE, not in RouteFold's own state, because the desk
+  /** Buy / Sell: whether the route's PAGE stands open. HERE, not in RouteFold's own state, because the desk
    *  has TWO SHAPES (CommandScreen: the Sheet below 1024 px, the terminal above) and crossing that
-   *  width mounts the face anew — a fold's own `useState` folded the route shut on every turn of a
+   *  width mounts the face anew — a local `useState` closed the route on every turn of a
    *  tablet or resize of a window (tests/route.stopface.spec.ts, red on main from #225). Not persisted:
-   *  an open fold is a glance, not a thing you are doing. */
+   *  an open page is a glance, not a thing you are doing. */
   routeOpen: boolean
   turnTo: (face: DeskFace) => void
   setCityFace: (face: PortFace) => void

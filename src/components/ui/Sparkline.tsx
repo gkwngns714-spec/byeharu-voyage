@@ -44,11 +44,12 @@ export function Sparkline({
   className?: string
 }) {
   const t = useT()
-  if (values.length < 2) {
-    return (
-      <span className={`inline-block font-mono text-[10px] text-ink-faint ${className}`}>—</span>
-    )
-  }
+  // BELOW TWO POINTS THERE IS NO LINE, AND THIS DRAWS NOTHING (consistency audit row 37,
+  // 2026-10-31). Until this fix the branch returned a "—" span, so every good whose served series
+  // was empty or one point long printed a dash the desk read as a placeholder where a figure was
+  // owed. The absence is now drawn as an absence, which is what the header above always claimed;
+  // a caller that wants a word beside the gap says it itself — the chart never speaks.
+  if (values.length < 2) return null
 
   const lo = Math.min(...values)
   const hi = Math.max(...values)

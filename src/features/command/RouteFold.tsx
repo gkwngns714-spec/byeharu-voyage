@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Figure, Hint, Note, Row, deltaTone } from '../../components/ui'
+import { Button, DetailPage, Figure, Hint, Note, Row, deltaTone } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatRelative } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { usePress } from '../../live/usePress'
@@ -17,11 +17,11 @@ import { RouteStopFace } from './RouteStop'
 import { useDeskView } from './deskView'
 import { useT } from '../../lib/i18n'
 
-// THE ROUTE, FOLDED ABOVE HER QUEUE — owner, 2026-09-30: *"i want this game to be a simulating
+// THE ROUTE, A ROW ABOVE HER QUEUE — owner, 2026-09-30: *"i want this game to be a simulating
 // based - meaning i set up route, trade routes - going back and forth, afk, running all the time"*.
 //
 // ── §7B, ANSWERED BEFORE THE FIRST LINE (docs/TRADE_ROUTES.md §2, §7) ──────────────────────────
-// CONCEPT     one fleet's standing route, as a row that unfolds in place: what it does at each
+// CONCEPT     one fleet's standing route: a row that opens THE ROUTE'S PAGE — what it does at each
 //             stop, whether it is running, and the last laps' money. A route is a standing ORDER,
 //             so it lives on COMMAND ("the only tab that changes the world", DESIGN §E.1) — never in
 //             FleetFold, whose own header names "a fourth thing folded in here (an order queue, a
@@ -31,9 +31,11 @@ import { useT } from '../../lib/i18n'
 // WRONG SHAPE a number computed here. Lap net, sold, bought, wages, the next-lap time: all served
 //             by world.standing_routes() and formatted by src/lib/format.
 //
-// ── THE FOLD RULE (owner rows 6, 15, 25, 28, 45) ───────────────────────────────────────────────
-// Pressing the row SELECTS; the row and everything above it stay where they are, and what is
-// below — the queue — moves down. tests/layout.spec.ts measures it at 390×844.
+// ── THE PAGE RULE (owner, 2026-10-31: "enough with folding things"; consistency row 38) ────────
+// Pressing the row SELECTS the route and opens its `DetailPage` — the ONE pop-up page, fixed OVER
+// the desk and out of flow by construction — so the row, the queue below it and everything above
+// keep their boxes to the pixel. Nothing unfolds in place; nothing below the press re-flows.
+// tests/layout.spec.ts measures it at 390×844, wide.layout.spec.ts at 1280.
 //
 // ── NO BUTTON HERE WEARS THE WORLD READ (owner, 2026-09-30: "a bar ... blinks on its own") ──────
 // Every button in this fold used to be `disabled={busy}` — the store's flag for a world read in
@@ -48,7 +50,7 @@ export function RouteFold({
 }: {
   fleet: FleetView
   /** OWNER ROW 217: the standing route is the order pressed — Trade.tsx draws it on the map on top, with its
-   *  estimate. Pressing the row opens the fold AND selects the route; pressing it again folds it and clears. */
+   *  estimate. Pressing the row opens the route's page AND selects the route; the page's Back press clears. */
   picked?: boolean
   onPick?: (on: boolean) => void
 }) {
@@ -62,8 +64,8 @@ export function RouteFold({
   const assignRoute = useWorld((s) => s.assignRoute)
   const clearQueue = useWorld((s) => s.clear)
 
-  // Open or folded is the DESK's state (deskView.ts `routeOpen`), so it survives the desk's change of
-  // shape at 1024 px; which route the editor is on stays here.
+  // Whether the PAGE stands open is the DESK's state (deskView.ts `routeOpen`), so it survives the
+  // desk's change of shape at 1024 px; which route the editor is on stays here.
   const open = useDeskView((s) => s.routeOpen)
   const setOpen = useDeskView((s) => s.setRouteOpen)
   // WHICH route the editor is open on: this fleet's own ('own'), a route no fleet runs (its id), a
@@ -103,16 +105,17 @@ export function RouteFold({
         : t('command.noRoute')
 
   return (
-    <div data-testid="route-fold">
+    <>
       <Row
         label={label}
         value={lastLap ? <Figure value={formatDucatsDelta(lastLap.net)} tone={deltaTone(lastLap.net)} /> : undefined}
         chevron
         tone={open || picked ? 'accent' : 'default'}
         onClick={() => {
-          // the fold toggles as it always has; the route is pressed while it stands open
-          if (onPick && route && book?.enabled) onPick(!open)
-          setOpen(!open)
+          // the press OPENS the route's page (row 38) and selects the route on the map; nothing behind
+          // it moves, and the page's Back press clears the pick
+          if (onPick && route && book?.enabled) onPick(true)
+          setOpen(true)
         }}
         data-testid="route-row"
       >
@@ -132,7 +135,14 @@ export function RouteFold({
       </Row>
 
       {open && (
-        <div className="pb-3" data-testid="route-unfold">
+        <DetailPage
+          title={t('command.route')}
+          onClose={() => {
+            setOpen(false)
+            if (onPick && route && book?.enabled) onPick(false)
+          }}
+          data-testid="route-page"
+        >
           {!book ? (
             <Row label={t('command.loading')} tone="muted" hairline={false} />
           ) : !book.enabled ? (
@@ -246,8 +256,8 @@ export function RouteFold({
               {refusal.sentence}
             </Note>
           )}
-        </div>
+        </DetailPage>
       )}
-    </div>
+    </>
   )
 }

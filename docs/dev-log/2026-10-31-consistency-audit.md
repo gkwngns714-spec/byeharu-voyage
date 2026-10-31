@@ -37,12 +37,13 @@ and 1280×800** — 90 measured screens — and recorded:
 Result: **0 page errors**, **0 press-law failures**, and the violation table below. The permanent
 net is `tests/consistency.spec.ts`; the measurements are quoted per row.
 
-## Violations: found 40 · fixed 34 · remaining 6
+## Violations: found 40 · fixed 37 · remaining 3
 
-Remaining rows are **not** silently accepted: each names the slice that owns it. **Six** remain —
-three on the Command desk (33, 37, 38), two in the City slice (35, the 320-px hall scroll; 39, the
-Forge recipe labels), and one accepted word collision with its reason (40). Five more (1, 2, 32,
-34, 36) were closed by #426, the parallel City slice that merged mid-pass.
+Remaining rows are **not** silently accepted: each names the slice that owns it. **Three** remain —
+two in the City slice (35, the 320-px hall scroll; 39, the Forge recipe labels) and one accepted
+word collision with its reason (40). The three Command rows (33, 37, 38) are fixed by the
+follow-up `command-fix` slice; five more (1, 2, 32, 34, 36) were closed by #426, the parallel City
+slice that merged mid-pass.
 
 | # | screen | rule broken | evidence | state |
 |---:|---|---|---|---|
@@ -78,12 +79,12 @@ Forge recipe labels), and one accepted word collision with its reason (40). Five
 | 30 | Codex | stale spec structure (compact rework) | `greatPowers.spec.ts:86` expected the nation groups on the compact screen; CI red on #416. It now presses `codex-open` and asserts inside `codex-open-page`. | FIXED |
 | 31 | Codex | stale spec structure (compact rework) | `captains.codex.spec.ts` expected `officer-tile` in place. Same door added; a sweep of `tests/` found no `SectionFold`/fold testid references left except the Command route unfold (row 38). | FIXED |
 | 32 | City building faces | 44-px floor | **Back 52.3×36 px** on all five faces. Declared by name in the permanent spec's allowlist (`Button size="sm"`, the design system's sanctioned 36). | FIXED — #426 (city slice) |
-| 33 | Command desk › City face | 44-px floor | **"City view" 77×36 px**. Declared in the same allowlist. | REMAINING — Command |
+| 33 | Command desk › City face | 44-px floor | **"City view" 77×36 px**. Declared in the same allowlist. | FIXED — `command-fix` (md = 44 px; the allowlist entry deleted) |
 | 34 | City building faces | no-scroll law | Their Sheets scroll: market **1,075/844**, forge **17,496/844**, port **6,488/844** at 390; forge **8,856/800** at 1280. The one-page law says a page's body scrolls, never its root. | FIXED — #426 (city slice) |
 | 35 | City (HQ) | the owner's HQ rule: HQ never scrolls | At 320×568 the Town Hall panel's body scrolls **340/156** (the coordinator's named failing case). | REMAINING — city slice (the ONE fixme) |
 | 36 | City (HQ) | the owner's newest building rule | Pressing a building opens a **full-screen `city-face` over the whole page** (faceOpen=1; every door's centre is owned by face content): the rule says only the city-image area and the right panel change, six doors always visible. | FIXED — #426 (city slice) |
-| 37 | Command | placeholder where a figure is owed | `trade-good-spark` prints **"—" ×1 @390, ×4 @1280** where no price series exists; recorded, not a figure the desk can serve yet. | REMAINING — Command |
-| 38 | Command | the owner's press law / "enough with folding" | The route row still UNFOLDS in place above the queue (`route-unfold`), re-flowing everything below. Outside this pass's file domains. | REMAINING — Command |
+| 37 | Command | placeholder where a figure is owed | `trade-good-spark` prints **"—" ×1 @390, ×4 @1280** where no price series exists; recorded, not a figure the desk can serve yet. | FIXED — `command-fix` (the absence is drawn as absence; `sparkAbsence` proves it) |
+| 38 | Command | the owner's press law / "enough with folding" | The route row still UNFOLDS in place above the queue (`route-unfold`), re-flowing everything below. Outside this pass's file domains. | FIXED — `command-fix` (the one `DetailPage`, `route-page`) |
 | 39 | City › Forge face | label length | Product controls carry whole recipe names — **"Adire Cloth Indigo · Potash · Raw Cotton"** and 20+ more. City slice. | REMAINING — city slice |
 | 40 | Codex vs Profile | duplicate word for different things | Ship size tier **"Light"** and the appearance scheme **"Light"**. Kept: the contexts never meet, both words are the plain standard, and the six-tier ladder has no better one-word step. | REMAINING — accepted |
 
@@ -120,9 +121,10 @@ Forge recipe labels), and one accepted word collision with its reason (40). Five
    purses (row 19), Supplies/Provisions (row 25), Works in/out (row 26), State/Standing (row 22),
    World money/All money (row 9), and the two-scope refusal sentence (row 20). The one collision
    left is declared with its reason (row 40).
-5. **The 44-px floor.** Routes' refresh went 36→44 (row 24); the two remaining 36-px controls are
-   the design system's sanctioned `Button size="sm"` and are declared by test id in the permanent
-   spec instead of being filtered silently (rows 32–33).
+5. **The 44-px floor.** Routes' refresh went 36→44 (row 24); the two remaining 36-px controls were
+   declared by test id in the permanent spec instead of being filtered silently (rows 32–33) —
+   #426 removed the city faces' Back and the `command-fix` slice made the desk's City view md, so
+   the allowlist is now EMPTY and every walked control is 44 px or larger.
 6. **Stale specs after the compact rework.** `greatPowers` and `captains.codex` now drive the
    pop-up page a player drives (rows 30–31); `map.townhall` drives "Giving".
 
@@ -132,8 +134,9 @@ Forge recipe labels), and one accepted word collision with its reason (40). Five
   cell-for-cell, with the Menu's rows equal to its members; (2) every tab screen's title equals its
   rail word (8 parameterised tests); (3) at 390×844 and 1280×800, every route, desk face, Stats
   face, every opened summary page and every fleet page is held to: no document/Sheet/page-root
-  scroll, no sideways scroller, the 44-px floor (with the declared 36-px allowlist), the
-  placeholder-dash ban, the duplicate-label ban and the ≤2-word summary-title law; (4) the HQ doors
+  scroll, no sideways scroller, the 44-px floor (the allowlist is now EMPTY; rows 32–33 are
+  fixed), the placeholder-dash ban (the desk's sparklines included, with `sparkAbsence` proving
+  every gap is the served absence), the duplicate-label ban and the ≤2-word summary-title law; (4) the HQ doors
   visible with no scroll and no dead band at 390 and 320; (5) the City rail equality and the
   six-door press/stability proofs as real tests, plus ONE `test.fixme` for the 320-px hall panel's
   inner scroll with its evidence.

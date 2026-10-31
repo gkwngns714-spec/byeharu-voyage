@@ -85,7 +85,6 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
           <span className="truncate">{port.name}</span>
         </h2>
         <Button
-          size="sm"
           variant="secondary"
           onClick={() => navigate(`/city?port=${encodeURIComponent(port.code)}`)}
           data-testid="desk-city-open"
