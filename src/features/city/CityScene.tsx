@@ -2,34 +2,31 @@ import { useMemo } from 'react'
 import { useT } from '../../lib/i18n'
 import type { CityBuilding } from './CityFace'
 
-// THE CITY, AS A PICTURE — a fine engraved coastal plan seen from above (owner, 2026-10-31:
-// "it doesnt have to be attractive, but sophisticated"; before that: "random dots", everything
-// "smaller at least 10 times", circular houses, curved roads, "way more dots of population", and
-// "these dots are population, it can stop it can go back and forth, random movements, and they
-// could be in buildings like houses and more. show a city").
+// THE CITY, LEGIBLE — a coastal town seen from above (owner, 2026-10-31: *"wtf is this city ...
+// does this look like a city with citizens?"*, then *"no smaller tiny dots, scale it with
+// buildings"*). The picture is built to be read in one second at 200 px:
 //
-// ONE SIDE IS THE SEA. The coast runs the full height of the plate as a precise compound curve; the
-// water is a calm tonal mass under a few fine hairlines, never a colour field. Along it the quay
-// and the PORT are unmistakable: three piers into the water, moored hulls alongside them, two
-// cranes, storehouses and crates on the quay, and the warm lamps that make a harbour read at
-// night. Beside it the old town is a field of fine light-on-dark marks: hundreds of tiny circular
-// houses, exact ring roads and winding lanes, density falling away from the coast into thinner
-// outskirts, with a park and a pond kept as quiet tonal shapes.
+//   · BLOCKS OF BUILDINGS, not a dot field. A curved street network — the quay road, three broad
+//     inland streets and three narrower lanes — frames blocks, and each block carries real
+//     buildings along its street edges: round towers, long halls and small houses, pale roofs with
+//     one consistent thin outline. The six named places are markedly larger: the town hall with
+//     its tower and flag, the market square with its stalls, the warehouse rows, the forge with
+//     its chimney and smoke, the inn around its courtyard, and the port at the quay.
+//   · CITIZENS AT THE BUILDINGS' OWN SCALE. Warm accent dots of r 1.45-1.95 (a small house is
+//     r 2.5-3), never pin-pricks, clearly brighter than the window lights. Many walk the street
+//     network; the rest gather in clusters at the market, the quay/port and the hall plaza, with a
+//     thinner scatter in the outskirts. They are the readable layer; the ~210 window lights stay
+//     small and dim as texture.
+//   · THE SEA AND THE PORT ON ONE SIDE. The water is a calm tonal mass up the LEFT under one
+//     compound curved coast; three piers into it, moored hulls, cranes, crates and the quay lamps
+//     make the harbour unmistakable.
 //
-// THE DOTS ARE PEOPLE. Hundreds of them are scattered through the town, many inside the houses;
-// most sit still, some wander short seeded paths, and some walk a line and turn back — never in
-// step, each with its own delay, duration and direction. The walkers on the ring roads are the
-// served tier's count. The building lights are the brightest thing in the picture: one accent
-// colour, warm at night and faint by day. Nothing here is clickable — the six named tiles are the
-// only doors (owner: "i dont need to be able to press buildings for building info. it just have to
-// be visually attractive").
-//
-// RESTRAINED, BY CONSTRUCTION. Two grounds (fill-surface land, fill-bg sea), one ink (ink-faint
-// for every mark, varied only in opacity), one accent (the lights). No gradients, no glow, no
-// palette literal. The whole drawing lives inside the 0..VIEW viewBox and the svg is exactly the
-// square frame — `block h-full w-full` inside an `overflow-hidden` square panel — so nothing paints
-// outside it (owner: "the map is sticking out of its frame"). Night dims the town as one sheet and
-// lets the lights through; every city draws its own picture from its own name.
+// Sophistication is kept: two grounds (fill-surface land, fill-bg sea), one ink (fill-ink-faint for
+// every building, road, block and outline, varied only by opacity) and one accent (the citizens and
+// the lights). No gradients, no glow, no palette literal. Every mark is inside the 0..VIEW viewBox
+// and the svg is exactly the square frame (`block h-full w-full` inside an `overflow-hidden`
+// square). Nothing on the map is pressable — the six tiles are the only doors. Every arrangement
+// is derived from the city's own name (the seed), so a harbour draws the same picture everywhere.
 
 const VIEW = 240
 /** The fine plate border, inset from the panel's edge. */
@@ -38,7 +35,6 @@ const PLATE = 4
 /** The coast: one precise compound curve, top edge to bottom edge. */
 const coastX = (y: number): number => 52 + 9 * Math.sin(0.6 + (y / VIEW) * Math.PI * 2.1)
 
-/** The coast as a polyline sampled every 2 units — the curve is gentle enough to read as one line. */
 function coastPath(from: number, to: number): string {
   let d = ''
   for (let y = from; y <= to; y += 2) d += `${d === '' ? 'M' : ' L'}${coastX(y).toFixed(2)} ${y}`
@@ -48,67 +44,108 @@ function coastPath(from: number, to: number): string {
 const SEA = `${coastPath(0, VIEW)} L0 ${VIEW} L0 0 Z`
 const COAST = coastPath(1, VIEW - 1)
 
-/** The town's plan: three exact ring roads, five winding lanes, one park. */
-const CENTRE = { x: 148, y: 120 } as const
-const RINGS = [22, 42, 62] as const
-const LANES = [
-  'M60 74 C 90 86, 100 110, 130 118 S 185 118, 214 96',
-  'M64 150 C 96 146, 118 168, 150 172 S 200 168, 222 190',
-  'M96 4 C 104 40, 130 60, 150 80 S 190 110, 200 138',
-  'M210 4 C 200 40, 170 60, 150 84 S 112 124, 100 160',
-  'M80 236 C 96 210, 130 200, 150 192 S 200 180, 220 160',
-] as const
-const PARK = { x: 196, y: 186, r: 17 } as const
-const PARK_TREES = [
-  { x: 188, y: 178, r: 1.2 },
-  { x: 195, y: 175, r: 1.0 },
-  { x: 202, y: 179, r: 1.3 },
-  { x: 206, y: 188, r: 1.0 },
-  { x: 199, y: 196, r: 1.2 },
-  { x: 189, y: 192, r: 1.1 },
-  { x: 193, y: 184, r: 0.9 },
-  { x: 203, y: 194, r: 0.9 },
-] as const
+type Cubic = readonly [number, number, number, number, number, number, number, number]
 
-/** The six named places stay as PICTURE marks only (the tiles are the doors). */
-const MARKS = [
-  { x: 152, y: 112, clear: 8 }, // Town Hall
-  { x: 112, y: 152, clear: 7 }, // Market
-  { x: 186, y: 122, clear: 7 }, // Forge
-  { x: 152, y: 190, clear: 8 }, // Inn
-  { x: 66, y: 80, clear: 6 }, // Storage
-] as const
+/** The street network: the quay road, three broad streets, three narrow lanes. */
+const QUAY_ROAD: readonly Cubic[] = [
+  [68, 4, 76, 44, 58, 76, 66, 112],
+  [66, 112, 74, 148, 60, 196, 66, 236],
+]
+const STREET_N: readonly Cubic[] = [
+  [62, 90, 94, 82, 126, 84, 158, 88],
+  [158, 88, 190, 92, 214, 96, 234, 88],
+]
+const STREET_M: readonly Cubic[] = [
+  [62, 134, 94, 140, 126, 132, 158, 134],
+  [158, 134, 190, 140, 214, 146, 234, 134],
+]
+const STREET_S: readonly Cubic[] = [
+  [62, 176, 94, 182, 126, 174, 158, 176],
+  [158, 176, 190, 182, 214, 188, 234, 176],
+]
+const LANE_W: readonly Cubic[] = [
+  [118, 38, 114, 84, 122, 128, 118, 178],
+  [118, 178, 122, 214, 114, 228, 118, 236],
+]
+const LANE_E: readonly Cubic[] = [
+  [160, 38, 156, 84, 164, 128, 160, 178],
+  [160, 178, 164, 214, 156, 228, 160, 236],
+]
+const LANE_F: readonly Cubic[] = [
+  [202, 44, 198, 88, 206, 132, 202, 182],
+  [202, 182, 206, 214, 198, 228, 202, 232],
+]
 
-/** The port: three piers into the sea, four moored hulls, two cranes, storehouses on the quay. */
-const PIERS = [
-  { x: 32, y: 90, w: 23, h: 3 },
-  { x: 25, y: 122, w: 23, h: 3 },
-  { x: 23, y: 152, w: 22, h: 3 },
-] as const
-const SHIPS = [
-  { x: 33, y: 94 },
-  { x: 35, y: 101 },
-  { x: 26, y: 126 },
-  { x: 24, y: 133 },
-  { x: 24, y: 156 },
-  { x: 20, y: 163 },
-] as const
-const STORES = [
-  { x: 66, y: 80, r: 3.0 },
-  { x: 64, y: 108, r: 2.8 },
-  { x: 68, y: 164, r: 3.0 },
-] as const
+function pathOf(segs: readonly Cubic[]): string {
+  let d = `M${segs[0][0]} ${segs[0][1]}`
+  for (const s of segs) d += ` C${s[2]} ${s[3]}, ${s[4]} ${s[5]}, ${s[6]} ${s[7]}`
+  return d
+}
 
-/** People walk the ring roads and the winding lanes. Deterministic per city. */
-const PEOPLE_TRACKS = [
-  'M148 58 a 62 62 0 1 0 0.12 0',
-  'M148 98 a 22 22 0 1 1 0.12 0',
-  'M64 150 C 96 146, 118 168, 150 172 S 200 168, 222 190',
-  'M96 4 C 104 40, 130 60, 150 80 S 190 110, 200 138',
-  'M60 74 C 90 86, 100 110, 130 118 S 185 118, 214 96',
-] as const
+function cubicAt(s: Cubic, t: number): { x: number; y: number } {
+  const u = 1 - t
+  const a = u * u * u
+  const b = 3 * u * u * t
+  const c = 3 * u * t * t
+  const d = t * t * t
+  return {
+    x: a * s[0] + b * s[2] + c * s[4] + d * s[6],
+    y: a * s[1] + b * s[3] + c * s[5] + d * s[7],
+  }
+}
 
-/** A small stable hash: the same city name gives the same picture. */
+/** A point on a road at t in 0..1, across all its segments. */
+function roadPoint(segs: readonly Cubic[], t: number): { x: number; y: number } {
+  const k = Math.min(segs.length - 1, Math.floor(t * segs.length))
+  return cubicAt(segs[k], Math.min(1, Math.max(0, t * segs.length - k)))
+}
+
+const ROADS = [QUAY_ROAD, STREET_N, STREET_M, STREET_S] as const
+const LANES = [LANE_W, LANE_E, LANE_F] as const
+const ROAD_PATHS = ROADS.map(pathOf)
+const LANE_PATHS = LANES.map(pathOf)
+
+/** The blocks between the streets: the six named places and the ordinary town. */
+type Kind = 'generic' | 'storage' | 'market' | 'hall' | 'forge' | 'inn'
+type Block = { x: number; y: number; w: number; h: number; kind: Kind }
+const BLOCKS: readonly Block[] = [
+  { x: 76, y: 52, w: 36, h: 30, kind: 'storage' },
+  { x: 122, y: 50, w: 34, h: 32, kind: 'generic' },
+  { x: 164, y: 52, w: 34, h: 30, kind: 'forge' },
+  { x: 206, y: 56, w: 24, h: 26, kind: 'generic' },
+  { x: 76, y: 96, w: 36, h: 30, kind: 'generic' },
+  { x: 122, y: 94, w: 34, h: 32, kind: 'market' },
+  { x: 164, y: 94, w: 34, h: 32, kind: 'hall' },
+  { x: 206, y: 98, w: 24, h: 28, kind: 'generic' },
+  { x: 76, y: 142, w: 36, h: 28, kind: 'generic' },
+  { x: 122, y: 140, w: 34, h: 30, kind: 'generic' },
+  { x: 164, y: 142, w: 34, h: 28, kind: 'inn' },
+  { x: 206, y: 146, w: 22, h: 24, kind: 'generic' },
+  { x: 104, y: 188, w: 28, h: 16, kind: 'generic' },
+  { x: 146, y: 190, w: 24, h: 14, kind: 'generic' },
+  { x: 186, y: 188, w: 22, h: 16, kind: 'generic' },
+]
+
+type Building = {
+  kind: 'house' | 'hall' | 'tower'
+  x: number
+  y: number
+  w: number
+  h: number
+  r: number
+  o: number
+}
+
+const house = (x: number, y: number, w: number, h: number, o: number): Building => ({ kind: 'house', x, y, w, h, r: 0, o })
+const hall = (x: number, y: number, w: number, h: number, o: number): Building => ({ kind: 'hall', x, y, w, h, r: 0, o })
+
+/** The named places' own, larger buildings (also the source of their window lights). */
+const STORAGE: readonly Building[] = [hall(80, 56, 30, 6, 0.74), hall(80, 64, 27, 6, 0.72), hall(80, 72, 14, 5, 0.68)]
+const HALL: readonly Building[] = [hall(164, 106, 30, 10, 0.72), hall(172, 94, 12, 12, 0.85), house(190, 118, 5, 5, 0.66)]
+const FORGE: readonly Building[] = [hall(168, 66, 16, 9, 0.74), house(180, 52, 3, 14, 0.76), house(190, 72, 6, 6, 0.66)]
+const INN: readonly Building[] = [hall(168, 146, 20, 13, 0.74), house(190, 150, 5, 8, 0.68)]
+
+/** A stable 0..1 number from the seed and an index — the one source of every variation. */
 function seedOf(name: string): number {
   let h = 2166136261
   for (let i = 0; i < name.length; i++) {
@@ -118,142 +155,215 @@ function seedOf(name: string): number {
   return h >>> 0
 }
 
-/** A stable 0..1 number from the seed and an index — the one source of every scatter. */
 function rand(seed: number, n: number): number {
   const x = Math.sin(seed * 0.0001 + n * 12.9898) * 43758.5453
   return x - Math.floor(x)
 }
 
-/** The walkers are people: the count follows the served size tier, and never a made-up population. */
+/** The served tier's walkers, as before: people on the streets, never a made-up population. */
 function dotCount(sizeTier: number): number {
   return 6 + Math.max(1, Math.min(5, sizeTier || 1)) * 6
 }
 
-type Building = { x: number; y: number; r: number; o: number; ring: boolean }
-type Move = { d: string; dur: number; begin: number; back: boolean }
-type CrowdDot = { x: number; y: number; r: number; o: number; move: Move | null }
-type Lamp = { x: number; y: number; r: number; b: number }
-
-/**
- * THE WHOLE PICTURE'S NUMBERS, drawn once from the seed: the houses (density falling away from
- * the coast), the crowd (still, wandering, turning back), and the lights.
- */
-function sceneOf(seed: number): { buildings: Building[]; crowd: CrowdDot[]; lamps: Lamp[] } {
-  const buildings: Building[] = []
-  for (let i = 0; i < 1600 && buildings.length < 460; i++) {
-    const y = 8 + rand(seed, i * 11 + 1) * 224
-    const c = coastX(y)
-    const t = rand(seed, i * 11 + 2)
-    const x = c + 6 + t * (232 - c - 6)
-    const near = 1 - t
-    if (rand(seed, i * 11 + 3) > 0.16 + 0.82 * near) continue
-    if (Math.hypot(x - PARK.x, y - PARK.y) < PARK.r + 2) continue
-    let blocked = false
-    for (const m of MARKS) {
-      if (Math.hypot(x - m.x, y - m.y) < m.clear) {
-        blocked = true
-        break
+/** A generic block's buildings: rows facing its streets, one or two halls, a tower in the yard. */
+function blockBuildings(block: Block, seed: number, bi: number): Building[] {
+  const out: Building[] = []
+  const pad = 2.2
+  const innerW = block.w - pad * 2
+  const o0 = 0.62 + rand(seed, bi * 131 + 1) * 0.16
+  for (let row = 0; row < 2; row++) {
+    const n = 2 + Math.floor(rand(seed, bi * 131 + 10 + row) * 3)
+    const slot = innerW / n
+    for (let i = 0; i < n; i++) {
+      const w = Math.min(innerW, Math.max(4.5, slot - 1.4 + (rand(seed, bi * 131 + 20 + row * 10 + i) - 0.5) * 1.6))
+      const h = 4.2 + rand(seed, bi * 131 + 40 + row * 10 + i) * 2.6
+      const x = Math.min(block.x + pad + i * slot + 0.7, block.x + block.w - pad - w)
+      const y = row === 0 ? block.y + pad : block.y + block.h - pad - h
+      const o = o0 + rand(seed, bi * 131 + 80 + row * 10 + i) * 0.1
+      if (rand(seed, bi * 131 + 55 + row * 10 + i) < 0.18) {
+        out.push({ kind: 'tower', x: x + w / 2, y: y + h / 2, w: 0, h: 0, r: Math.min(w, h) * 0.45, o })
+        continue
       }
+      const isHall = w > 9 && rand(seed, bi * 131 + 60 + row * 10 + i) < 0.4
+      out.push({ kind: isHall ? 'hall' : 'house', x, y, w, h, r: 0, o })
     }
-    if (blocked) continue
-    const r = 0.9 + rand(seed, i * 11 + 4) * (0.9 + 0.8 * near)
-    buildings.push({
-      x,
-      y,
-      r,
-      o: 0.3 + rand(seed, i * 11 + 5) * 0.35,
-      ring: rand(seed, i * 11 + 6) < 0.2,
+  }
+  if (rand(seed, bi * 131 + 110) < 0.5) {
+    const w = 4 + rand(seed, bi * 131 + 111) * 3
+    const h = 4 + rand(seed, bi * 131 + 112) * 2.5
+    out.push({
+      kind: 'house',
+      x: block.x + block.w / 2 - w / 2 + (rand(seed, bi * 131 + 113) - 0.5) * 2,
+      y: block.y + block.h / 2 - h / 2,
+      w,
+      h,
+      r: 0,
+      o: o0 + 0.03,
     })
   }
+  if (rand(seed, bi * 131 + 100) < 0.8) {
+    out.push({
+      kind: 'tower',
+      x: block.x + block.w / 2 + (rand(seed, bi * 131 + 101) - 0.5) * 6,
+      y: block.y + block.h / 2 + (rand(seed, bi * 131 + 102) - 0.5) * 4,
+      w: 0,
+      h: 0,
+      r: 2.8 + rand(seed, bi * 131 + 103) * 1.2,
+      o: o0 + 0.06,
+    })
+  }
+  return out
+}
 
-  const crowd: CrowdDot[] = []
-  for (let i = 0; i < 440; i++) {
-    const n = 50000 + i * 13
-    const home = rand(seed, n + 1)
-    let x: number
-    let y: number
-    if (home < 0.45 && buildings.length > 0) {
-      const b = buildings[Math.floor(rand(seed, n + 2) * buildings.length)]
-      const a = rand(seed, n + 3) * Math.PI * 2
-      const rr = b.r * (0.15 + rand(seed, n + 4) * 0.7)
-      x = b.x + Math.cos(a) * rr
-      y = b.y + Math.sin(a) * rr
-    } else {
-      y = 8 + rand(seed, n + 5) * 224
-      const c = coastX(y)
-      x = c + 4 + rand(seed, n + 6) * (232 - c - 4)
-    }
-    const r = 0.35 + rand(seed, n + 7) * 0.4
-    const o = 0.26 + rand(seed, n + 8) * 0.3
-    if (rand(seed, n + 9) >= 0.3) {
-      crowd.push({ x, y, r, o, move: null })
-      continue
-    }
-    const a = rand(seed, n + 10) * Math.PI * 2
-    const len = 2 + rand(seed, n + 11) * 6
-    const dx = Math.cos(a) * len
-    const dy = Math.sin(a) * len
-    const back = rand(seed, n + 12) < 0.55
-    const d = back
-      ? `M${x.toFixed(2)} ${y.toFixed(2)} l${dx.toFixed(2)} ${dy.toFixed(2)}`
-      : `M${x.toFixed(2)} ${y.toFixed(2)} c ${(dx * 0.5).toFixed(2)} ${(-dy * 0.9).toFixed(2)}, ${(dx * 1.3).toFixed(2)} ${(dy * 0.7).toFixed(2)}, ${dx.toFixed(2)} ${dy.toFixed(2)} c ${(-dx * 0.6).toFixed(2)} ${(dy * 0.8).toFixed(2)}, ${(-dx * 1.2).toFixed(2)} ${(-dy * 0.4).toFixed(2)}, 0 0`
+type Move = { d: string; dur: number; begin: number; back: boolean }
+type Citizen = { x: number; y: number; r: number; o: number; move: Move | null }
+type Lamp = { x: number; y: number; r: number; b: number }
+
+/** Everything the picture needs, drawn once from the seed. */
+function sceneOf(seed: number) {
+  const generic: Building[] = []
+  for (const [bi, block] of BLOCKS.entries()) {
+    if (block.kind === 'generic') generic.push(...blockBuildings(block, seed, bi))
+  }
+  const all = [...generic, ...STORAGE, ...HALL, ...FORGE, ...INN]
+
+  const crowd: Citizen[] = []
+  const addCitizen = (x: number, y: number, n: number) => {
+    crowd.push({ x, y, r: 1.55 + rand(seed, n) * 0.4, o: 0.9 + rand(seed, n + 1) * 0.1, move: null })
+  }
+  // the market crowd
+  for (let k = 0; k < 34; k++) addCitizen(127 + rand(seed, 70000 + k * 7) * 23, 100 + rand(seed, 70001 + k * 7) * 21, 70002 + k * 7)
+  // the harbour crowd along the quay
+  for (let k = 0; k < 24; k++) {
+    const y = 72 + rand(seed, 71000 + k * 7) * 86
+    addCitizen(coastX(y) + 1.5 + rand(seed, 71001 + k * 7) * 4.5, y, 71002 + k * 7)
+  }
+  // the town hall plaza
+  for (let k = 0; k < 12; k++) addCitizen(169 + rand(seed, 72000 + k * 7) * 19, 117 + rand(seed, 72001 + k * 7) * 6, 72002 + k * 7)
+  // people along the streets
+  for (let k = 0; k < 40; k++) {
+    const road = ROADS[Math.floor(rand(seed, 73000 + k * 7) * ROADS.length)]
+    const p = roadPoint(road, rand(seed, 73001 + k * 7))
+    addCitizen(p.x + (rand(seed, 73002 + k * 7) - 0.5) * 2.4, p.y + (rand(seed, 73003 + k * 7) - 0.5) * 2.4, 73004 + k * 7)
+  }
+  // a thinner scatter in the outskirts
+  for (let k = 0; k < 10; k++) addCitizen(100 + rand(seed, 74000 + k * 7) * 112, 184 + rand(seed, 74001 + k * 7) * 26, 74002 + k * 7)
+  // a few people strolling a short line at the market and the quay
+  for (let k = 0; k < 12; k++) {
+    const atMarket = k % 2 === 0
+    const x = atMarket ? 128 + rand(seed, 75000 + k * 7) * 20 : coastX(110) + 2 + rand(seed, 75000 + k * 7) * 4
+    const y = atMarket ? 104 + rand(seed, 75001 + k * 7) * 16 : 82 + rand(seed, 75001 + k * 7) * 60
+    const a = rand(seed, 75002 + k * 7) * Math.PI * 2
+    const len = 2.5 + rand(seed, 75003 + k * 7) * 4
     crowd.push({
       x,
       y,
-      r,
-      o,
-      move: { d, dur: 7 + rand(seed, n + 13) * 12, begin: -rand(seed, n + 14) * 20, back },
+      r: 1.55 + rand(seed, 75004 + k * 7) * 0.4,
+      o: 0.92,
+      move: {
+        d: `M${x.toFixed(2)} ${y.toFixed(2)} l${(Math.cos(a) * len).toFixed(2)} ${(Math.sin(a) * len).toFixed(2)}`,
+        dur: 6 + rand(seed, 75005 + k * 7) * 8,
+        begin: -rand(seed, 75006 + k * 7) * 10,
+        back: true,
+      },
     })
   }
 
-  const lamps: Lamp[] = []
-  const add = (x: number, y: number, b: number) => {
-    lamps.push({ x, y, r: 0.4 + rand(seed, 60000 + lamps.length * 5 + 1) * 0.5, b })
-  }
-  // the quay's lamps, the pier heads and the crane arms — the port is the lit place
-  for (let k = 0; k < 36; k++) {
-    const y = 60 + rand(seed, 61000 + k * 7 + 1) * 118
-    add(coastX(y) + 1.2 + rand(seed, 61000 + k * 7 + 2) * 4.4, y, 0.55 + rand(seed, 61000 + k * 7 + 3) * 0.45)
-  }
-  add(47.5, 80, 0.95)
-  add(41.5, 136, 0.95)
-  add(31, 88, 1)
-  add(32.5, 90, 0.85)
-  add(25.5, 122, 0.85)
-  add(23.5, 152, 0.85)
-  // lights on the ring roads, at random angles — never a tidy row
+  // the walkers along the road network; the first one is on the middle street (the spec's witness)
+  const walkerPaths = [...ROAD_PATHS, ...LANE_PATHS]
+  const walkers: Citizen[] = []
   for (let k = 0; k < 54; k++) {
-    const ring = RINGS[k % 3]
-    const a = rand(seed, 62000 + k * 7 + 1) * Math.PI * 2
-    add(CENTRE.x + Math.cos(a) * ring, CENTRE.y + Math.sin(a) * ring, 0.35 + rand(seed, 62000 + k * 7 + 2) * 0.45)
+    const pi = k === 0 ? 2 : Math.floor(rand(seed, 76000 + k * 7) * walkerPaths.length)
+    walkers.push({
+      x: 0,
+      y: 0,
+      r: 1.55 + rand(seed, 76001 + k * 7) * 0.4,
+      o: 0.92 + rand(seed, 76002 + k * 7) * 0.08,
+      move: { d: walkerPaths[pi], dur: 14 + rand(seed, 76003 + k * 7) * 12, begin: -rand(seed, 76004 + k * 7) * 24, back: false },
+    })
   }
-  // lit windows on the houses
-  for (let k = 0; k < 84 && buildings.length > 0; k++) {
-    const b = buildings[Math.floor(rand(seed, 63000 + k * 7 + 1) * buildings.length)]
-    const a = rand(seed, 63000 + k * 7 + 2) * Math.PI * 2
-    add(b.x + Math.cos(a) * b.r * 0.9, b.y + Math.sin(a) * b.r * 0.9, 0.3 + rand(seed, 63000 + k * 7 + 3) * 0.4)
+
+  // the window lights: small, dim texture on every roof, plus the stalls, the quay and the streets
+  const lamps: Lamp[] = []
+  const addLamp = (x: number, y: number, b: number) => {
+    lamps.push({ x, y, r: 0.35 + rand(seed, 80000 + lamps.length * 5) * 0.3, b })
   }
-  // a few quiet lamps through the town
-  for (let k = 0; k < 30; k++) {
-    const y = 8 + rand(seed, 64000 + k * 7 + 1) * 224
-    const c = coastX(y)
-    add(c + 8 + rand(seed, 64000 + k * 7 + 2) * (230 - c - 8), y, 0.25 + rand(seed, 64000 + k * 7 + 3) * 0.35)
+  for (const [i, b] of all.entries()) {
+    if (b.kind === 'tower') {
+      addLamp(b.x + (rand(seed, 81000 + i * 9) - 0.5) * b.r, b.y + (rand(seed, 81001 + i * 9) - 0.5) * b.r, 0.35 + rand(seed, 81002 + i * 9) * 0.4)
+      continue
+    }
+    const n = b.kind === 'hall' ? 3 : 2
+    for (let k = 0; k < n; k++) {
+      addLamp(
+        b.x + 1.2 + rand(seed, 81010 + i * 9 + k * 3) * Math.max(0.5, b.w - 2.4),
+        b.y + 0.8 + rand(seed, 81011 + i * 9 + k * 3) * Math.max(0.4, b.h - 1.6),
+        0.25 + rand(seed, 81012 + i * 9 + k * 3) * 0.4,
+      )
+    }
   }
-  return { buildings, crowd, lamps }
+  for (let k = 0; k < 6; k++) addLamp(131.5 + (k % 3) * 8, 103.2 + Math.floor(k / 3) * 10, 0.6)
+  for (let k = 0; k < 26; k++) {
+    const y = 70 + rand(seed, 82000 + k * 5) * 90
+    addLamp(coastX(y) + 1.2 + rand(seed, 82001 + k * 5) * 4.2, y, 0.55 + rand(seed, 82002 + k * 5) * 0.45)
+  }
+  for (let k = 0; k < 25; k++) {
+    const road = ROADS[Math.floor(rand(seed, 83000 + k * 5) * ROADS.length)]
+    const p = roadPoint(road, rand(seed, 83001 + k * 5))
+    addLamp(p.x, p.y, 0.3 + rand(seed, 83002 + k * 5) * 0.35)
+  }
+  addLamp(31, 88, 0.95)
+  addLamp(26, 122, 0.9)
+  addLamp(24, 152, 0.9)
+  addLamp(48, 80, 0.95)
+  addLamp(42, 136, 0.95)
+  addLamp(17, 55, 1)
+  addLamp(45, 74, 0.95)
+  addLamp(39, 108, 0.95)
+  addLamp(35, 136, 0.95)
+
+  return { generic, crowd, walkers, lamps }
+}
+
+/** A building's roof: pale fill, one consistent thin outline; a ridge on the long halls. */
+function Roof({ b }: { b: Building }) {
+  const common = {
+    className: 'fill-ink-faint stroke-ink-faint',
+    fillOpacity: b.o,
+    strokeWidth: '0.45',
+    strokeOpacity: '0.9',
+  }
+  if (b.kind === 'tower') return <circle cx={b.x} cy={b.y} r={b.r} {...common} />
+  return (
+    <g>
+      <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="0.7" {...common} />
+      {b.kind === 'hall' && (
+        <line
+          className="stroke-ink-faint"
+          strokeWidth="0.3"
+          opacity="0.45"
+          x1={b.x + 1.5}
+          y1={b.y + b.h / 2}
+          x2={b.x + b.w - 1.5}
+          y2={b.y + b.h / 2}
+        />
+      )}
+    </g>
+  )
 }
 
 /** A moored hull: a fine outline with one deck line, seen from above. */
-function Ship({ x, y }: { x: number; y: number }) {
+function Ship({ x, y, w = 13, h = 5 }: { x: number; y: number; w?: number; h?: number }) {
   return (
     <g>
       <path
-        className="fill-surface-2 stroke-ink-faint"
-        fillOpacity="0.35"
-        strokeWidth="0.45"
-        strokeOpacity="0.7"
-        d={`M${x} ${y} L${x + 9} ${y} L${x + 11} ${y + 2} L${x + 9} ${y + 4} L${x} ${y + 4} Z`}
+        className="fill-ink-faint stroke-ink-faint"
+        fillOpacity="0.45"
+        strokeWidth="0.55"
+        strokeOpacity="0.9"
+        d={`M${x} ${y} L${x + w - 4} ${y} L${x + w} ${y + h / 2} L${x + w - 4} ${y + h} L${x} ${y + h} Z`}
       />
-      <line className="stroke-ink-faint" strokeWidth="0.3" opacity="0.4" x1={x + 2} y1={y + 2} x2={x + 8.5} y2={y + 2} />
+      <line className="stroke-ink-faint" strokeWidth="0.4" opacity="0.6" x1={x + 2} y1={y + h / 2} x2={x + w - 3} y2={y + h / 2} />
     </g>
   )
 }
@@ -268,16 +378,16 @@ export function CityScene({
   night: boolean
   /** The city's stable name — the same harbour draws the same picture everywhere. */
   seed?: string
-  /** Kept for the page's API; the picture itself is not pressable any more — the tiles are the doors. */
+  /** Kept for the page's API; the picture itself is not pressable — the tiles are the doors. */
   onOpen?: (b: CityBuilding) => void
   className?: string
 }) {
   const t = useT()
   const s = useMemo(() => seedOf(seed), [seed])
-  const { buildings, crowd, lamps } = useMemo(() => sceneOf(s), [s])
-  const people = useMemo(() => Array.from({ length: dotCount(sizeTier) }, (_, i) => i), [sizeTier])
-  // Night holds the town down as one sheet; the lights are drawn above it at full glow.
-  const dim = night ? 0.62 : 1
+  const { generic, crowd, walkers, lamps } = useMemo(() => sceneOf(s), [s])
+  // The served tier's walkers are the count the page has always used; the clusters are the crowd.
+  const servedWalkers = useMemo(() => walkers.slice(0, dotCount(sizeTier)), [walkers, sizeTier])
+  const dim = night ? 0.72 : 1
 
   return (
     <svg
@@ -302,123 +412,141 @@ export function CityScene({
       <path className="stroke-ink-faint" fill="none" strokeWidth="0.4" opacity="0.3" d={COAST} transform="translate(3.2 0)" />
 
       <g opacity={dim}>
-        {/* THE OLD TOWN — a faint tonal mass under the dense houses by the quay. */}
-        <ellipse className="fill-ink-faint" opacity="0.035" cx="130" cy="118" rx="66" ry="70" />
-
-        {/* THE PARK — one quiet tonal shape with its pond and a ring of trees. */}
-        <circle className="stroke-ink-faint" fill="none" strokeWidth="0.4" opacity="0.18" cx={PARK.x} cy={PARK.y} r={PARK.r} />
-        <circle className="fill-bg" opacity="0.75" cx={PARK.x + 3} cy={PARK.y + 2} r="4.5" />
-        <circle className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.3" cx={PARK.x + 3} cy={PARK.y + 2} r="4.5" />
-        {PARK_TREES.map((tr, i) => (
-          <circle key={i} className="fill-ink-faint" opacity="0.26" cx={tr.x} cy={tr.y} r={tr.r} />
+        {/* THE BLOCKS — a faint ground and one outline each, so the town reads as streets and cells. */}
+        {BLOCKS.map((b, i) => (
+          <g key={i}>
+            <rect className="fill-ink-faint" opacity="0.04" x={b.x} y={b.y} width={b.w} height={b.h} rx="2.5" />
+            <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.22" x={b.x} y={b.y} width={b.w} height={b.h} rx="2.5" />
+          </g>
         ))}
 
-        {/* THE ROADS — three exact rings and five winding lanes, one stroke weight. */}
-        {RINGS.map((r) => (
-          <circle key={r} className="stroke-ink-faint" fill="none" strokeWidth="0.7" opacity="0.34" cx={CENTRE.x} cy={CENTRE.y} r={r} />
+        {/* THE STREET NETWORK — broad curved streets and narrower lanes, continuous lighter lines. */}
+        {ROAD_PATHS.map((d, i) => (
+          <path key={i} d={d} className="stroke-ink-faint" fill="none" strokeWidth="3" opacity="0.6" strokeLinecap="round" />
         ))}
-        {LANES.map((d, i) => (
-          <path key={i} className="stroke-ink-faint" fill="none" strokeWidth="0.6" opacity="0.28" d={d} />
+        {LANE_PATHS.map((d, i) => (
+          <path key={i} d={d} className="stroke-ink-faint" fill="none" strokeWidth="1.3" opacity="0.42" strokeLinecap="round" />
         ))}
 
-        {/* THE HOUSES — hundreds of tiny circular houses, dense by the coast, thinning outward. */}
-        {buildings.map((b, i) =>
-          b.ring ? (
-            <circle key={i} className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity={b.o} cx={b.x} cy={b.y} r={b.r} />
-          ) : (
-            <circle key={i} className="fill-ink-faint" opacity={b.o} cx={b.x} cy={b.y} r={b.r} />
-          ),
-        )}
+        {/* THE ORDINARY BLOCKS' BUILDINGS — rows facing the streets, a tower in the yard. */}
+        {generic.map((b, i) => (
+          <Roof key={i} b={b} />
+        ))}
 
-        {/* THE CROWD — tiny people: most still (many inside the houses), some wandering, some
-            walking a short line and turning back, each on its own seeded delay and pace. */}
-        <g data-testid="city-crowd" pointerEvents="none" className="fill-ink-faint">
-          {crowd.map((c, i) =>
-            c.move ? (
-              <circle key={i} r={c.r} opacity={c.o}>
-                <animateMotion
-                  path={c.move.d}
-                  dur={`${c.move.dur.toFixed(1)}s`}
-                  begin={`${c.move.begin.toFixed(1)}s`}
-                  repeatCount="indefinite"
-                  {...(c.move.back ? { keyPoints: '0;1;0', keyTimes: '0;0.5;1' } : {})}
-                />
-              </circle>
-            ) : (
-              <circle key={i} cx={c.x} cy={c.y} r={c.r} opacity={c.o} />
-            ),
-          )}
+        {/* THE SIX NAMED PLACES — larger and distinct, picture marks only: the tiles are the doors. */}
+        <g data-testid="city-scene-storage" pointerEvents="none">
+          {STORAGE.map((b, i) => (
+            <Roof key={i} b={b} />
+          ))}
+          <g className="fill-ink-faint" opacity="0.5">
+            <rect x="78" y="58" width="2" height="2" />
+            <rect x="81" y="61" width="2" height="2" />
+            <rect x="78" y="67" width="2" height="2" />
+          </g>
         </g>
 
-        {/* THE SIX NAMED PLACES, AS PICTURE MARKS. Inert by design: the tiles are the only doors. */}
         <g data-testid="city-scene-hall" pointerEvents="none">
-          <circle className="stroke-ink-faint" fill="none" strokeWidth="0.6" opacity="0.65" cx="152" cy="112" r="4.8" />
-          <circle className="fill-surface-2" opacity="0.45" cx="152" cy="112" r="2.6" />
-          <rect className="fill-ink-faint" opacity="0.55" x="150.2" y="104.2" width="3.6" height="5" />
-          <line className="stroke-accent" strokeWidth="0.5" opacity="0.9" x1="154.2" y1="105" x2="154.2" y2="102.4" />
-          <rect className="fill-accent" opacity="0.9" x="154.4" y="102.1" width="1.7" height="1.2" />
+          {HALL.map((b, i) => (
+            <Roof key={i} b={b} />
+          ))}
+          <rect className="fill-ink-faint" opacity="0.08" x="166" y="117" width="26" height="7" rx="1" />
+          <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.4" x="166" y="117" width="26" height="7" rx="1" />
+          <circle className="fill-ink-faint" opacity="0.14" cx="179" cy="120.5" r="2.2" />
+          <circle className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.5" cx="179" cy="120.5" r="2.2" />
+          <line className="stroke-accent" strokeWidth="1" opacity="0.95" x1="178" y1="94" x2="178" y2="90.6" />
+          <rect className="fill-accent" opacity="0.95" x="178.4" y="90.2" width="3" height="1.7" />
         </g>
 
         <g data-testid="city-scene-market" pointerEvents="none">
-          <circle className="stroke-ink-faint" fill="none" strokeWidth="0.4" opacity="0.3" cx="112" cy="152" r="7.5" />
-          {[
-            [108, 149],
-            [115, 148],
-            [110, 154],
-            [117, 153],
-            [113, 158],
-          ].map(([x, y], i) => (
-            <circle key={i} className="fill-accent" opacity="0.75" cx={x} cy={y} r="1" />
-          ))}
+          <rect className="fill-ink-faint" opacity="0.07" x="125" y="97" width="28" height="26" rx="2" />
+          <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.35" x="125" y="97" width="28" height="26" rx="2" />
+          {[0, 1, 2].map((c) =>
+            [0, 1].map((r) => (
+              <g key={`${c}${r}`}>
+                <rect
+                  className="fill-ink-faint stroke-ink-faint"
+                  fillOpacity="0.68"
+                  strokeWidth="0.4"
+                  strokeOpacity="0.9"
+                  x={128 + c * 8}
+                  y={102 + r * 11}
+                  width="6"
+                  height="4"
+                  rx="0.6"
+                />
+                <circle className="fill-accent" opacity="0.8" cx={131 + c * 8} cy={103.6 + r * 11} r="0.9" />
+              </g>
+            )),
+          )}
         </g>
 
         <g data-testid="city-scene-forge" pointerEvents="none">
-          <circle className="fill-ink-faint" opacity="0.55" cx="186" cy="122" r="3.6" />
-          <circle className="fill-ink-faint" opacity="0.55" cx="188.6" cy="118.4" r="1.7" />
-          <rect className="fill-ink-faint" opacity="0.6" x="189.2" y="111.6" width="1.3" height="6.6" />
-          <g className="stroke-ink-faint" fill="none" strokeWidth="0.4" opacity="0.3">
-            <path d="M191.5 111 c 1.6 -1.2 3 -0.4 3 1.2" />
-            <path d="M193.5 107.5 c 1.4 -1 2.6 -0.2 2.6 1.1" />
+          {FORGE.map((b, i) => (
+            <Roof key={i} b={b} />
+          ))}
+          <g className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.35">
+            <circle cx="182" cy="48" r="2" />
+            <circle cx="185" cy="43" r="1.6" />
+            <circle cx="188" cy="39" r="1.2" />
           </g>
         </g>
 
         <g data-testid="city-scene-inn" pointerEvents="none">
-          <circle className="stroke-ink-faint" fill="none" strokeWidth="0.8" opacity="0.65" cx="152" cy="190" r="4.6" />
-          <circle className="fill-surface-2" opacity="0.25" cx="152" cy="190" r="2.2" />
-          <circle className="fill-ink-faint" opacity="0.35" cx="152" cy="190" r="0.8" />
-        </g>
-
-        <g data-testid="city-scene-storage" pointerEvents="none">
-          {STORES.map((st, i) => (
-            <g key={i}>
-              <circle className="fill-ink-faint" opacity="0.4" cx={st.x} cy={st.y} r={st.r} />
-              <circle className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.35" cx={st.x} cy={st.y} r={st.r} />
-              <rect className="fill-ink-faint" opacity="0.5" x={st.x + st.r - 0.7} y={st.y + st.r - 0.7} width="1.8" height="1.8" />
-            </g>
+          {INN.map((b, i) => (
+            <Roof key={i} b={b} />
           ))}
+          <rect className="fill-surface" x="174" y="150" width="8" height="6" />
+          <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.5" x="174" y="150" width="8" height="6" />
+          <circle className="fill-ink-faint" opacity="0.4" cx="178" cy="153" r="1.4" />
         </g>
 
-        {/* THE PORT — piers into the water, hulls alongside, two cranes. The clearest shape in town. */}
+        {/* THE PORT — a breakwater and lighthouse, three piers into the water, hulls alongside,
+            three cranes on the quay and crates: the harbour is the clearest shape on this side. */}
         <g data-testid="city-scene-port" pointerEvents="none">
-          {PIERS.map((p, i) => (
+          <path d="M54 70 C 42 66, 30 68, 18 64" className="stroke-ink-faint" fill="none" strokeWidth="3.6" opacity="0.45" strokeLinecap="round" />
+          <rect className="fill-ink-faint stroke-ink-faint" fillOpacity="0.6" strokeOpacity="0.8" strokeWidth="0.4" x="15" y="56" width="4" height="9" />
+          {[
+            { x: 32, y: 88, w: 26 },
+            { x: 25, y: 120, w: 26 },
+            { x: 23, y: 150, w: 25 },
+          ].map((p, i) => (
             <rect
               key={i}
               className="fill-ink-faint stroke-ink-faint"
-              fillOpacity="0.35"
-              strokeOpacity="0.45"
-              strokeWidth="0.3"
+              fillOpacity="0.5"
+              strokeOpacity="0.7"
+              strokeWidth="0.4"
               x={p.x}
               y={p.y}
               width={p.w}
-              height={p.h}
+              height="4"
+              rx="1.8"
             />
           ))}
-          {SHIPS.map((sh, i) => (
-            <Ship key={i} x={sh.x} y={sh.y} />
+          {[
+            { x: 34, y: 93 },
+            { x: 36, y: 101 },
+            { x: 27, y: 126 },
+            { x: 24, y: 132 },
+            { x: 25, y: 156 },
+            { x: 21, y: 162 },
+            { x: 32, y: 76 },
+            { x: 18, y: 138 },
+          ].map((sh, i) => (
+            <Ship key={i} x={sh.x} y={sh.y} w={i === 0 ? 17 : i < 6 ? 15 : 13} h={i === 0 ? 6 : 5.5} />
           ))}
-          <g className="stroke-ink-faint" fill="none" strokeWidth="0.7" opacity="0.6">
-            <path d="M54 86 v-8 h-9 M54 82 l-6 -4" />
-            <path d="M48 142 v-8 h-9 M48 138 l-6 -4" />
+          <g className="stroke-ink-faint" fill="none" strokeWidth="1.1" opacity="0.8">
+            <path d="M56 88 v-14 h-11 M56 81 l-8 -5" />
+            <path d="M50 122 v-14 h-11 M50 115 l-8 -5" />
+            <path d="M46 150 v-14 h-11 M46 143 l-8 -5" />
+          </g>
+          <g className="fill-ink-faint" opacity="0.5">
+            <rect x="60" y="92" width="2.4" height="2.4" />
+            <rect x="63" y="94" width="2" height="2" />
+            <rect x="55" y="126" width="2.4" height="2.4" />
+            <rect x="52" y="153" width="2.2" height="2.2" />
+            <rect x="64" y="150" width="2" height="2" />
+            <rect x="58" y="162" width="2.2" height="2.2" />
           </g>
         </g>
       </g>
@@ -435,7 +563,7 @@ export function CityScene({
         height={VIEW - PLATE * 2 - 1}
       />
 
-      {/* THE LIGHTS — the one accent, the brightest thing in the picture. */}
+      {/* THE WINDOW LIGHTS — small, dim, warm; texture behind the citizens. */}
       <g data-testid="city-lights" pointerEvents="none">
         {lamps.map((l, i) => (
           <circle
@@ -444,24 +572,41 @@ export function CityScene({
             cx={l.x}
             cy={l.y}
             r={l.r}
-            opacity={night ? 0.5 + l.b * 0.5 : 0.2 + l.b * 0.28}
+            opacity={night ? 0.45 + l.b * 0.35 : 0.18 + l.b * 0.22}
           />
         ))}
       </g>
 
-      {/* THE WALKERS — the served tier's count of people on the ring roads and lanes. A dot carries
-          NO cx/cy: animateMotion positions it along its path, and a centre would offset it twice. */}
-      <g data-testid="city-dots" className="fill-ink-faint" opacity="0.8" pointerEvents="none">
-        {people.map((i) => (
-          <circle key={i} r="1.2" data-dot={i}>
-            <animateMotion
-              path={PEOPLE_TRACKS[i % PEOPLE_TRACKS.length]}
-              dur={`${13 + (i % 5) * 2.6}s`}
-              begin={`${-((i * 1.7) % 11)}s`}
-              repeatCount="indefinite"
-            />
-          </circle>
-        ))}
+      {/* THE CROWD — people at the buildings' own scale: warm, larger than the lights, clustered
+          at the market and the quay and walking the streets. */}
+      <g data-testid="city-crowd" pointerEvents="none" className="fill-accent">
+        {crowd.map((c, i) =>
+          c.move ? (
+            <circle key={i} r={c.r} opacity={c.o}>
+              <animateMotion
+                path={c.move.d}
+                dur={`${c.move.dur.toFixed(1)}s`}
+                begin={`${c.move.begin.toFixed(1)}s`}
+                repeatCount="indefinite"
+                {...(c.move.back ? { keyPoints: '0;1;0', keyTimes: '0;0.5;1' } : {})}
+              />
+            </circle>
+          ) : (
+            <circle key={i} cx={c.x} cy={c.y} r={c.r} opacity={c.o} />
+          ),
+        )}
+      </g>
+
+      {/* THE WALKERS — the served tier's people on the road network. No cx/cy: animateMotion
+          positions each one along its path, and a centre would offset it twice. */}
+      <g data-testid="city-dots" pointerEvents="none" className="fill-accent">
+        {servedWalkers.map((c, i) =>
+          c.move ? (
+            <circle key={i} r={c.r} opacity={c.o} data-dot={i}>
+              <animateMotion path={c.move.d} dur={`${c.move.dur.toFixed(1)}s`} begin={`${c.move.begin.toFixed(1)}s`} repeatCount="indefinite" />
+            </circle>
+          ) : null,
+        )}
       </g>
     </svg>
   )
