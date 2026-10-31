@@ -3,6 +3,7 @@ import { defineDict } from '../define'
 // The shell (src/app): the tab bar, the top bar, the notices above every tab, and sign-in.
 export const shellDict = defineDict({
   en: {
+    tab_HQ: 'HQ',
     tab_Menu: 'Menu',
     tab_Command: 'Command',
     tab_Fleets: 'Fleets',
@@ -38,6 +39,7 @@ export const shellDict = defineDict({
     gameDate: 'Game date',
   },
   ko: {
+    tab_HQ: '본부',
     tab_Menu: '메뉴',
     tab_Command: '지휘',
     tab_Fleets: '선단',

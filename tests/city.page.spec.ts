@@ -349,16 +349,21 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(moved, `the people are still (moved ${moved.toFixed(2)} px in 900 ms)`).toBeGreaterThan(0.5)
 
   // ── 3b. THE CITY IS THE APP'S HOME (owner, 2026-10-30: the new full-screen city IS the game's
-  // face — "i keep getting the old screen"). The root route lands on the city, and the rail's
-  // Command cell is the one press back to the desk.
+  // face — "i keep getting the old screen"). The root route lands on the city; the rail has NO
+  // Command cell (owner, 2026-10-31: "i told you to remove the command tab"), and the desk's door
+  // from here is the MARKET building, whose face composes the trade face.
   await page.goto('/')
   await expect(page).toHaveURL(/\/city(\?|$)/)
   await ready(page)
   await expect(page.getByTestId('city-screen')).toBeVisible()
-  await page.getByTestId('nav-cell-command').click()
-  await expect(page).toHaveURL(/\/command$/)
-  await ready(page)
-  await expect(page.getByTestId('command')).toBeVisible()
+  await expect(page.getByTestId('city-nav').getByTestId('nav-cell-command')).toHaveCount(0)
+  await page.getByTestId('city-building-market').click()
+  await expect(page.getByTestId('city-face')).toHaveAttribute('data-building', 'market')
+  await expect(page.getByTestId('quay-stores'), 'the market face is not the trade face').toBeVisible({
+    timeout: 60_000,
+  })
+  await page.getByTestId('city-face-back').click()
+  await expect(page.getByTestId('city-face')).toHaveCount(0)
 
   // ── 4. NO EXISTING ROUTE BROKE ───────────────────────────────────────────────────────────────
   // The rail's map and stats are the app's own routes, reached from here.

@@ -95,8 +95,10 @@ test('the bar reaches Stats in one tap, beside Map', async ({ page, request, bas
   await page.setViewportSize(PHONE)
   await page.goto('command')
   await ready(page)
+  // FIVE cells since 2026-10-31, and NO Command tab (owner: "it is a game you dick. and i told you
+  // to remove the command tab" — the desk is reached from the City's Market building): HQ leads.
   const labels = await page.getByTestId('nav-bar').locator('a, button').allInnerTexts()
-  expect(labels.map((l) => l.trim())).toEqual(['Command', 'Fleets', 'Map', 'Stats', 'Menu'])
+  expect(labels.map((l) => l.trim())).toEqual(['HQ', 'Fleets', 'Map', 'Stats', 'Menu'])
   await page.getByTestId('nav-bar').getByText('Stats').click()
   await expect(page.getByTestId('stats')).toBeVisible()
   await expect(page).toHaveURL(/\/stats$/)
