@@ -10,8 +10,9 @@ import { ready, reachable } from './appReady.fixture'
 //      rail and the earnings block sit inside the viewport.
 //   2. A building press opens its FULL-SCREEN face and moves nothing behind it: every key region's
 //      rectangle is identical before and after the press (the owner's UI law).
-//   3. Population · Status · Relationship are visibly placeholders — "—", marked `data-placeholder`,
-//      with the "next slice" caption — never a number dressed as game data.
+//   3. Population is a stated estimate off the served size tier — a huge grouped number with the
+//      "≈" glyph and its caption; Status and Relationship stay visibly placeholders ("—", marked
+//      `data-placeholder`) with the "next slice" caption — never a number dressed as game data.
 //   4. The entry point (COMMAND · City → `City view`) and the routes beside it still work: MAP and
 //      STATS open after the City page, and COMMAND's desk City face is here on return.
 //
@@ -110,12 +111,22 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(s.earningsBottom, 'the earnings block hangs below the glass').toBeLessThanOrEqual(s.vh)
   await expectSceneInFrame(page, '390×844')
 
-  // ── 2. PLACEHOLDERS ARE PLACEHOLDERS ─────────────────────────────────────────────────────────
-  for (const id of ['city-population', 'city-status', 'city-relationship']) {
+  // ── 2. THE POPULATION ESTIMATE, AND TWO PLACEHOLDERS ────────────────────────────────────────
+  // Population is no longer a placeholder: the huge estimate is derived from the served size tier
+  // and says so (owner, 2026-10-31: "more tiny dot with huge number"). Status and Relationship are
+  // still the data slice's and stay marked placeholders.
+  for (const id of ['city-status', 'city-relationship']) {
     const cell = page.getByTestId(id)
     await expect(cell, `${id} is not marked as a placeholder`).toHaveAttribute('data-placeholder', 'true')
     await expect(cell, `${id} does not print the placeholder`).toContainText('—')
   }
+  const populationCell = page.getByTestId('city-population')
+  await expect(populationCell, 'the population is still a placeholder').not.toHaveAttribute('data-placeholder', 'true')
+  const populationText = await populationCell.innerText()
+  console.log(`population: ${populationText.replace(/\s+/g, ' ')}`)
+  expect(populationText, 'the population estimate is not shown as an estimate').toContain('≈')
+  expect(populationText, 'the population estimate is not grouped digits').toMatch(/\d{1,3}(,\d{3})+/)
+  expect(Number(populationText.replace(/[^\d]/g, '')), 'the population estimate is not a city-sized number').toBeGreaterThanOrEqual(1000)
   await expect(page.getByTestId('city-soon')).toBeVisible()
   await expect(page.getByTestId('city-gold')).toBeVisible()
   // Gold is NOT a placeholder: the city's served purse lands (0 on a new local world), and your

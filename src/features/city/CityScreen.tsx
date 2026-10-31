@@ -45,6 +45,15 @@ import { CityScene } from './CityScene'
 // idempotently. `data-world` is on the root so the browser specs' one "is the world up" wait
 // (tests/appReady.fixture.ts) works here too.
 
+/** THE POPULATION IS AN ESTIMATE, NOT A SERVED COUNT (owner, 2026-10-31: "more tiny dot with huge
+ *  number"). The only served size figure is `port.size_tier` (1-5), so the figure beneath the
+ *  plan is a stated curve off it and the card's caption says so. The curve: tier 1 ≈ 8,000 ·
+ *  2 ≈ 18,000 · 3 ≈ 45,000 · 4 ≈ 90,000 · 5 ≈ 160,000. */
+const POPULATION_BY_TIER = [8000, 18000, 45000, 90000, 160000] as const
+function populationEstimate(sizeTier: number): number {
+  return POPULATION_BY_TIER[Math.max(0, Math.min(4, (sizeTier || 1) - 1))]
+}
+
 export function CityScreen() {
   const t = useT()
   const locale = useLocale()
@@ -197,6 +206,7 @@ function CityFrame({
   // DAY/NIGHT is the world's ONE sun (chart/sun), at the game clock's hour, over THIS city — never a
   // local-time hour: every player sees the same night, and it matches the Map's own day sheet.
   const night = daylightAt({ lat: port.lat, lon: port.lon }, subsolarPoint(gameSunInstantMs(nowMs))) < 0.5
+  const population = populationEstimate(port.size_tier)
 
   const buildings: readonly { id: CityBuilding; icon: IconName; label: TKey }[] = [
     { id: 'hall', icon: 'coin', label: 'city.cityHall' },
@@ -239,11 +249,17 @@ function CityFrame({
               <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
             </div>
 
-            {/* SUMMARY — four figures directly under the plan, filling the room beside the six
-                building tiles: one card, four rows. Gold is the city's purse (served); the other
-                three are the data slice's, and say so. */}
+            {/* SUMMARY — the population estimate is the headline (the huge number off the served
+                size tier, said as an estimate), with the city's purse and the two remaining
+                placeholders beneath it. Gold is served; Status and Relationship are the data
+                slice's, and say so. */}
             <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
-              <div className="flex min-h-0 flex-1 flex-col divide-y divide-edge">
+              <div className="shrink-0" data-testid="city-population">
+                <span className="block text-t-caption text-ink-faint">{t('city.population')}</span>
+                <Figure value={`≈ ${formatInt(population)}`} size="figure" tone="ink" />
+                <span className="block text-t-caption text-ink-faint">{t('city.populationNote')}</span>
+              </div>
+              <div className="mt-2 flex min-h-0 flex-1 flex-col divide-y divide-edge">
                 <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-testid="city-gold">
                   <span className="text-t-caption text-ink-faint">{t('city.gold')}</span>
                   {cityGold === null ? (
@@ -251,10 +267,6 @@ function CityFrame({
                   ) : (
                     <Counter value={cityGold} format={formatDucats} size="body" />
                   )}
-                </div>
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-population">
-                  <span className="text-t-caption text-ink-faint">{t('city.population')}</span>
-                  <Figure value="—" size="body" tone="faint" />
                 </div>
                 <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-status">
                   <span className="text-t-caption text-ink-faint">{t('city.status')}</span>
