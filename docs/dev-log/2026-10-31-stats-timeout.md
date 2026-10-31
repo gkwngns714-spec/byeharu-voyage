@@ -57,6 +57,40 @@ columns are `payload->>'port'`, `payload->>'good'` (the 24 h attempt was a bitma
 24.9 s). The count's own killer is the same shape on the laps table: `standing_route_laps_closed_at`
 (closed_at only) heap-fetches `route_id`, `net` for ~28,700 laps from a 238 MB heap.
 
+## 3b. What made it slow — one level deeper (the owner's question, 2026-10-31)
+
+The owner, verbatim: *"STATS NOT WORKING, THINGS ARE GETTING SLOW... FIND THE ROOT, FIX IT. BUT DO
+NOT CHANGE ANYTHING REGARDING TIME - THE SECONDLY DATA RENEWAL STAYS IN STATS, AND SO ON. IT WAS FINE
+BEFORE, BUT YOU CAUSED SOMETHING THAT MADE THE GAME SLOWER."* Measured, with the timeline:
+
+- **The every-minute market is the amplifier, and its date is in the laps.** The hourly
+  `standing_route_laps` close rate (48 h histogram, read-only): 2026-10-29 hours **669-1,635 laps/h**;
+  the **2026-10-30 01:00 hour jumps to 2,505** and stays **2,669-3,220/h through 17:00**; after the
+  count dies at 18:06 the hours fall to 1,350-1,760/h (the economy already failing); 10-31
+  01:00-09:00 is 2,218-2,939/h, then 1,545 / 1,507 / 1,030 as the degradation deepens. The step is
+  2026-10-30 ~00:35-01:00 UTC — the every-minute market going live (`game_day_seconds` 60, the drift
+  cron `* * * * *`). It multiplied the laps the count's 24 h merchants window must sum, and every
+  trade and ledger row behind the Stats read.
+- **The count was already near the wall before it broke.** Its 69 successful runs from
+  2026-10-30 01:06 to 18:06 averaged **51.2 s** (43 % of the 2-minute statement_timeout); the 75
+  failures from 18:21 average **120.3 s**. The first timeout is the 24 h laps window crossing 120 s.
+- **The whole database competes with the every-minute drift's writes.** `public.port_goods` is
+  154,734 rows; the drift updates ~**139k of them every minute** (the owner's 10-30 after-check:
+  138,952 / 138,990 rows moving, mean 13.1 s a run); the cumulative counters are **718,814,773
+  updates, 362,184,669 of them HOT**. That is ~2,300 row updates/s plus WAL against one disk; the
+  cold scans measured here (84.7 s for 228k events; 26.4 s for 184k ledger rows) are what ~1.2 MB/s
+  of effective read looks like under it.
+- **The rows the read scans grew with it, and the dead count compounded it.** Per hour now: events
+  13,323 (1,585 trades), ledger **11,236 (3.1/s)**, treasury flows 6,030, laps 1,003. Live: events
+  574,878, ledger 409,556 (the compactor is itself failing under the I/O — its failed runs take
+  10.4 s), and `stats_live_deltas` **1,037,183** (~19 rows/s, unfolded since 18:06). The scans that
+  cost 4.3-110 s are over these rows.
+- **What it is NOT, named because the owner asked:** the **0284 ledger-points trigger is not the
+  driver** — it fires on ~3 ledger inserts/s with 1-3 indexed probes each; the ledger's cost is a
+  scan of 183,661 rows/24 h with no index on `kind`, not the trigger. `price_history` is 14,300
+  rows/24 h (the tiers prune it) and `orders` 13,335/24 h — **neither is in the overview's path**.
+  No client cadence, cron, schedule, TTL or knob is touched by 0287.
+
 ## 4. The fix, and why an index rather than a re-cut
 
 **Three covering indexes; no function body is re-cut.** The same SQL reads the same rows; every served
