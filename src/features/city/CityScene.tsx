@@ -2,18 +2,20 @@ import { useMemo } from 'react'
 import { useT } from '../../lib/i18n'
 import type { CityBuilding } from './CityFace'
 
-// THE CLOSED WALLED HARBOUR CITY — a coastal town seen from above, complete inside its own wall
-// (owner, 2026-10-31: *"make it a closed city. right now it is only a section"*; before that:
-// *"wtf is this city ... does this look like a city with citizens?"*, *"no smaller tiny dots,
-// scale it with buildings"*, *"good. more tiny dot with huge number"*).
+// THE ORGANIC WALLED HARBOUR CITY — a coastal town seen from above, complete inside its own wall
+// (owner, 2026-10-31: *"west edge is good, but the rest edge is too rigid. maybe have something
+// like a different shape / form. and more people if possible. good"*; before that: *"make it a
+// closed city. right now it is only a section"*, *"wtf is this city ... does this look like a city
+// with citizens?"*, *"no smaller tiny dots, scale it with buildings"*, *"good. more tiny dot with
+// huge number"*).
 //
-// A city WALL with gate towers encloses the land; a dark margin of ground lies outside the wall on
-// the top, right and bottom, and the SEA lies outside the wall on the left, where the wall opens
-// into a wide harbour front — the quay gate — with the port outside it: a breakwater and
-// lighthouse, three piers, moored hulls, cranes and the quay lamps. Every street and lane ends at
-// the wall or the quay, every block and every named place is complete inside the boundary, and the
-// whole composition sits inside the 240 plate with a margin on every edge, so nothing is cut by
-// the frame.
+// The WEST edge is unchanged — the sea, the coast, the harbour front and the port (breakwater and
+// lighthouse, three piers, moored hulls, cranes, crates, quay lamps). The three landward sides are
+// one ORGANIC wall: a curved, segmented town wall with angled bastions at every joint, bulges and
+// folds, a river mouth crossing the south wall into a small basin, and a dark margin that follows
+// the wall's own shape. Every street and lane ends at the wall or the quay; the blocks fill the
+// irregular shape (their top steps with the north wall's folds, their right edge with the east
+// wall's); nothing is cut by the frame.
 //
 // INSIDE: a curved street network (the quay road, three broad streets, three narrower lanes)
 // frames blocks packed with small buildings — three dense rows per block of 3-5-unit houses,
@@ -21,11 +23,13 @@ import type { CityBuilding } from './CityFace'
 // named places are markedly larger and distinct (the Town Hall tower and flag, the market square,
 // the warehouse rows, the forge chimney and smoke, the inn courtyard, and the port at the harbour
 // front). Citizens are warm accent dots one step larger than half a small house (r 0.95-1.25), so
-// they stay readable beside the shrunken buildings; the walkers take the streets and the rest
-// gather at the market and the quay. A fine stipple of ~2,200 tiny dots (r 0.35-0.7, low opacity)
-// fills the blocks and the quay, and the small dim window lights sit beneath them. The crowd is
-// the readable layer; the stipple is the teeming texture. Nothing on the map is pressable: the
-// six tiles are the only doors.
+// they stay readable beside the shrunken buildings; the crowd is roughly doubled (owner: "more
+// people if possible") — about 300 gathered at the market, the quay, the hall plaza and the
+// streets — and the served tier's walkers take the road network. A fine stipple of ~2,200 tiny
+// dots (r 0.35-0.7, low opacity) fills the blocks and the quay, on the drawn land only (the wall
+// is the boundary), and the small dim window lights sit beneath them. The crowd is the readable
+// layer; the stipple is the teeming texture. Nothing on the map is pressable: the six tiles are
+// the only doors.
 //
 // Restrained palette: fill-surface land, fill-bg sea and margin, fill-ink-faint for every building,
 // road, block, wall and outline, and fill-accent for the citizens and the lights. No gradients, no
@@ -42,8 +46,11 @@ import type { CityBuilding } from './CityFace'
 const VIEW = 240
 /** The fine plate border, inset from the panel's edge. */
 const PLATE = 4
-/** The city wall's landward sides; the sea side is the coast itself. */
-const WALL = { top: 22, right: 220, bottom: 218 } as const
+/** The west edge — the sea, the coast, the harbour front and the port — is UNCHANGED (owner,
+ *  2026-10-31: "west edge is good"). These are the sea wall's top and bottom, where it meets the
+ *  water; the harbour front opens between GATE.from and GATE.to. */
+const SEA_TOP = 22
+const SEA_BOTTOM = 218
 /** The harbour front — the open quay gate in the coast wall, where the port lies outside. */
 const GATE = { from: 84, to: 160 } as const
 
@@ -63,72 +70,189 @@ function coastPath(from: number, to: number): string {
     .join(' ')
 }
 
-/** The land inside the wall: the wall's three landward sides, then the coast back up to the top. */
-const LAND = (() => {
-  const up = coastPts(WALL.bottom, WALL.top)
-  return (
-    `M${coastX(WALL.top).toFixed(2)} ${WALL.top} L${WALL.right} ${WALL.top} L${WALL.right} ${WALL.bottom} L${coastX(WALL.bottom).toFixed(2)} ${WALL.bottom} ` +
-    up
-      .slice(1)
-      .map((p) => `L${p.x.toFixed(2)} ${p.y}`)
-      .join(' ') +
-    ' Z'
-  )
-})()
-const WALL_PATH = `M${coastX(WALL.top).toFixed(2)} ${WALL.top} L${WALL.right} ${WALL.top} L${WALL.right} ${WALL.bottom} L${coastX(WALL.bottom).toFixed(2)} ${WALL.bottom}`
-const COAST_WALL_N = coastPath(WALL.top, GATE.from)
-const COAST_WALL_S = coastPath(GATE.to, WALL.bottom)
+const COAST_WALL_N = coastPath(SEA_TOP, GATE.from)
+const COAST_WALL_S = coastPath(GATE.to, SEA_BOTTOM)
 const SEA_LINES = coastPath(1, VIEW - 1)
 
-/** A gate tower at every corner, every road end and the two ends of the harbour front. */
-const TOWERS: readonly { x: number; y: number }[] = [
-  { x: coastX(WALL.top), y: WALL.top },
-  { x: WALL.right, y: WALL.top },
-  { x: WALL.right, y: WALL.bottom },
-  { x: coastX(WALL.bottom), y: WALL.bottom },
-  { x: WALL.right, y: 70 },
-  { x: WALL.right, y: 120 },
-  { x: WALL.right, y: 170 },
-  { x: 116, y: WALL.top },
-  { x: 158, y: WALL.top },
-  { x: 198, y: WALL.top },
-  { x: 116, y: WALL.bottom },
-  { x: 158, y: WALL.bottom },
-  { x: 198, y: WALL.bottom },
-  { x: coastX(GATE.from), y: GATE.from },
-  { x: coastX(GATE.to), y: GATE.to },
+/** THE ORGANIC WALL (owner, 2026-10-31: "west edge is good, but the rest edge is too rigid. maybe
+ *  have something like a different shape / form"). The three landward sides are one curved,
+ *  segmented town wall — bulges and folds, a bastion at every joint, a river mouth crossing the
+ *  south wall into a small basin — and the margin follows the wall's own shape. The sea side (the
+ *  coast, the harbour front and the port) is untouched. Every point keeps a margin inside the plate. */
+const WALL_N: readonly Cubic[] = [
+  [coastX(SEA_TOP), SEA_TOP, 76, 27, 84, 10, 100, 16],
+  [100, 16, 112, 20, 118, 36, 132, 30],
+  [132, 30, 146, 24, 154, 10, 168, 14],
+  [168, 14, 182, 18, 192, 30, 202, 31],
+  [202, 31, 210, 32, 217, 37, 221, 44],
 ]
+const WALL_E: readonly Cubic[] = [
+  [221, 44, 224, 54, 224, 64, 220, 72],
+  [220, 72, 216, 82, 207, 90, 206, 100],
+  [206, 100, 205, 110, 219, 116, 221, 128],
+  [221, 128, 222, 138, 209, 146, 208, 158],
+  [208, 158, 207, 168, 219, 176, 220, 186],
+  [220, 186, 221, 196, 214, 205, 209, 212],
+]
+const WALL_S: readonly Cubic[] = [
+  [209, 212, 204, 219, 196, 223, 188, 220],
+  [188, 220, 181, 217, 177, 223, 170, 222],
+  [170, 222, 164, 221, 161, 213, 158, 206],
+  [158, 206, 154, 202, 146, 202, 143, 207],
+  [143, 207, 138, 216, 128, 223, 120, 219],
+  [120, 219, 108, 214, 96, 224, 84, 221],
+  [84, 221, 75, 219, 65, 217, coastX(SEA_BOTTOM), SEA_BOTTOM],
+]
+
+/** The wall as one continuous stroke: north, east, south; the sea side is the coast itself. */
+const WALL_PATH = pathOf([...WALL_N, ...WALL_E, ...WALL_S])
+
+/** The land inside the wall: the wall itself, then the coast back up to the top. */
+const LAND = (() => {
+  const up = coastPts(SEA_BOTTOM, SEA_TOP)
+  return WALL_PATH + ' ' + up.slice(1).map((p) => `L${p.x.toFixed(2)} ${p.y}`).join(' ') + ' Z'
+})()
+
+type Pt = { x: number; y: number }
+
+/** Sample a wall's cubics into a fine polyline — every lookup and the land test use one set. */
+function sampleCubics(segs: readonly Cubic[], per: number): Pt[] {
+  const out: Pt[] = []
+  for (const s of segs) for (let i = 0; i <= per; i++) out.push(cubicAt(s, i / per))
+  return out
+}
+
+const N_PTS = sampleCubics(WALL_N, 12)
+/** The whole east side, north-east corner included: the north wall's last segment then the east. */
+const E_SIDE = sampleCubics([WALL_N[WALL_N.length - 1], ...WALL_E], 12)
+/** The south wall, ordered west to east for the y(x) lookup. */
+const S_PTS = [...sampleCubics(WALL_S, 12)].sort((a, b) => a.x - b.x)
+const LAND_POLY: readonly Pt[] = [
+  ...sampleCubics(WALL_N, 8),
+  ...sampleCubics(WALL_E, 8),
+  ...sampleCubics(WALL_S, 8),
+  ...coastPts(SEA_BOTTOM, SEA_TOP),
+]
+
+function interp(pts: readonly Pt[], key: 'x' | 'y', value: number): number {
+  const other = key === 'x' ? 'y' : 'x'
+  if (value <= pts[0][key]) return pts[0][other]
+  for (let i = 1; i < pts.length; i++) {
+    if (value <= pts[i][key]) {
+      const a = pts[i - 1]
+      const b = pts[i]
+      const t = (value - a[key]) / Math.max(1e-6, b[key] - a[key])
+      return a[other] + (b[other] - a[other]) * t
+    }
+  }
+  return pts[pts.length - 1][other]
+}
+
+/** The north wall's y at x — the land lies below it. */
+function yNorth(x: number): number {
+  return interp(N_PTS, 'x', x)
+}
+/** The east wall's x at y — the land lies left of it (the north-east corner is included). */
+function xEast(y: number): number {
+  return interp(E_SIDE, 'y', y)
+}
+/** The south wall's y at x — the land lies above it. */
+function ySouth(x: number): number {
+  return interp(S_PTS, 'x', x)
+}
+/** The most inward (largest) north-wall y over a block's x span — the block's safe top. */
+function yNorthMax(x1: number, x2: number): number {
+  let m = -Infinity
+  for (let x = x1; x <= x2 + 0.01; x += 2) m = Math.max(m, yNorth(x))
+  return Math.max(m, yNorth(x2))
+}
+/** The most inward (smallest) east-wall x over a block's y span — the block's safe right. */
+function xEastMin(y1: number, y2: number): number {
+  let m = Infinity
+  for (let y = y1; y <= y2 + 0.01; y += 2) m = Math.min(m, xEast(y))
+  return Math.min(m, xEast(y2))
+}
+/** Point-in-polygon on the drawn land, so no speck or citizen is ever outside the wall. */
+function insideLand(x: number, y: number): boolean {
+  let inside = false
+  for (let i = 0, j = LAND_POLY.length - 1; i < LAND_POLY.length; j = i++) {
+    const a = LAND_POLY[i]
+    const b = LAND_POLY[j]
+    if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside
+  }
+  return inside
+}
+
+/** THE RIVER MOUTH — water crossing the south wall between the bottom blocks and opening into a
+ *  small basin; the wall's stroke over it is the water gate. */
+const RIVER = 'M134 222 C133 212 133 204 133 198 C133 191 127 191 127 198 C127 204 127 212 126 222 Z'
+const RIVER_BANKS = 'M134 222 C133 212 133 204 133 198 C133 191 127 191 127 198 C127 204 127 212 126 222'
+function inRiver(x: number, y: number): boolean {
+  return x > 123.5 && x < 136.5 && y > 186
+}
+
+/** The bastions: at every wall joint, at the roads' gates, at the river mouth, and at the harbour
+ *  front's own ends (those four stay axis-aligned exactly as the west edge was). */
+type Bastion = { x: number; y: number; a: number }
+function angleOf(pts: readonly Pt[], key: 'x' | 'y', value: number): number {
+  const other = key === 'x' ? 'y' : 'x'
+  let k = 1
+  for (let i = 1; i < pts.length; i++) {
+    k = i
+    if (value <= pts[i][key]) break
+  }
+  const a = pts[Math.max(0, k - 1)]
+  const b = pts[Math.min(pts.length - 1, k)]
+  return (Math.atan2(b[other] - a[other], b[key] - a[key]) * 180) / Math.PI
+}
+const BASTIONS: readonly Bastion[] = (() => {
+  const out: Bastion[] = []
+  for (const s of [...WALL_N, ...WALL_E, ...WALL_S]) {
+    out.push({ x: s[6], y: s[7], a: (Math.atan2(s[7] - s[5], s[6] - s[4]) * 180) / Math.PI })
+  }
+  out.push({ x: coastX(SEA_TOP), y: SEA_TOP, a: 0 })
+  out.push({ x: coastX(SEA_BOTTOM), y: SEA_BOTTOM, a: 0 })
+  out.push({ x: coastX(GATE.from), y: GATE.from, a: 0 })
+  out.push({ x: coastX(GATE.to), y: GATE.to, a: 0 })
+  for (const y of [70, 120, 170]) out.push({ x: xEast(y) - 1, y, a: angleOf(E_SIDE, 'y', y) })
+  for (const x of [116, 158, 198]) {
+    out.push({ x, y: yNorth(x) + 1, a: angleOf(N_PTS, 'x', x) })
+    out.push({ x, y: ySouth(x) - 1, a: angleOf(S_PTS, 'x', x) })
+  }
+  for (const x of [125, 135]) out.push({ x, y: ySouth(x), a: angleOf(S_PTS, 'x', x) })
+  return out
+})()
 
 type Cubic = readonly [number, number, number, number, number, number, number, number]
 
 /** The street network, all of it inside the wall: the quay road, three streets, three lanes. */
 const QUAY_ROAD: readonly Cubic[] = [
-  [64, WALL.top, 72, 60, 54, 92, 62, 126],
-  [62, 126, 70, 160, 56, 196, 62, WALL.bottom],
+  [64, SEA_TOP, 72, 60, 54, 92, 62, 126],
+  [62, 126, 70, 160, 56, 196, 62, SEA_BOTTOM],
 ]
 const STREET_N: readonly Cubic[] = [
   [coastX(70) + 2, 70, 90, 64, 126, 66, 158, 70],
-  [158, 70, 190, 74, 204, 76, WALL.right - 2, 70],
+  [158, 70, 190, 74, 204, 76, xEast(70) - 2, 70],
 ]
 const STREET_M: readonly Cubic[] = [
   [coastX(120) + 2, 120, 90, 126, 126, 118, 158, 120],
-  [158, 120, 190, 126, 204, 128, WALL.right - 2, 120],
+  [158, 120, 190, 126, 204, 128, xEast(120) - 2, 120],
 ]
 const STREET_S: readonly Cubic[] = [
   [coastX(170) + 2, 170, 90, 176, 126, 168, 158, 170],
-  [158, 170, 190, 176, 204, 178, WALL.right - 2, 170],
+  [158, 170, 190, 176, 204, 178, xEast(170) - 2, 170],
 ]
 const LANE_W: readonly Cubic[] = [
-  [116, WALL.top, 112, 66, 120, 110, 116, 154],
-  [116, 154, 120, 196, 112, 210, 116, WALL.bottom],
+  [116, yNorth(116) + 1.5, 112, 66, 120, 110, 116, 154],
+  [116, 154, 120, 196, 112, 210, 116, ySouth(116) - 2.5],
 ]
 const LANE_E: readonly Cubic[] = [
-  [158, WALL.top, 154, 66, 162, 110, 158, 154],
-  [158, 154, 162, 196, 154, 210, 158, WALL.bottom],
+  [158, yNorth(158) + 1.5, 154, 66, 162, 110, 158, 154],
+  [158, 154, 162, 196, 154, 210, 158, ySouth(158) - 2.5],
 ]
 const LANE_F: readonly Cubic[] = [
-  [198, WALL.top, 194, 66, 202, 110, 198, 154],
-  [198, 154, 202, 196, 194, 210, 198, WALL.bottom],
+  [198, yNorth(198) + 1.5, 194, 66, 202, 110, 198, 154],
+  [198, 154, 202, 196, 194, 210, 198, ySouth(198) - 2.5],
 ]
 
 function pathOf(segs: readonly Cubic[]): string {
@@ -160,24 +284,35 @@ const LANES = [LANE_W, LANE_E, LANE_F] as const
 const ROAD_PATHS = ROADS.map(pathOf)
 const LANE_PATHS = LANES.map(pathOf)
 
-/** The blocks inside the wall: the six named places and the ordinary town, all complete. */
+/** The blocks inside the wall: the six named places and the ordinary town, all complete — the outer
+ *  rows are CUT TO THE ORGANIC WALL, so the town fills the shape (its top steps with the north
+ *  wall's folds, its right edge with the east wall's bulges). */
 type Kind = 'generic' | 'storage' | 'market' | 'hall' | 'forge' | 'inn'
 type Block = { x: number; y: number; w: number; h: number; kind: Kind }
+/** A block in the north row: its top sits just under the north wall's most inward point. */
+function northBlock(x: number, w: number, bottom: number, kind: Kind): Block {
+  const y = yNorthMax(x, x + w) + 2.5
+  return { x, y, w, h: bottom - y, kind }
+}
+/** A block in the east row: its right edge sits just inside the east wall's most inward point. */
+function eastBlock(x: number, y: number, h: number, kind: Kind): Block {
+  return { x, y, w: xEastMin(y, y + h) - 2 - x, h, kind }
+}
 const BLOCKS: readonly Block[] = [
-  { x: 74, y: 30, w: 36, h: 30, kind: 'storage' },
-  { x: 120, y: 28, w: 34, h: 32, kind: 'generic' },
-  { x: 162, y: 30, w: 34, h: 30, kind: 'forge' },
-  { x: 200, y: 30, w: 16, h: 30, kind: 'generic' },
+  northBlock(74, 36, 60, 'storage'),
+  northBlock(120, 34, 60, 'generic'),
+  northBlock(162, 34, 60, 'forge'),
+  eastBlock(200, 38, 22, 'generic'),
   { x: 74, y: 78, w: 36, h: 30, kind: 'generic' },
   { x: 120, y: 76, w: 34, h: 32, kind: 'market' },
   { x: 162, y: 76, w: 34, h: 32, kind: 'hall' },
-  { x: 200, y: 78, w: 16, h: 30, kind: 'generic' },
+  eastBlock(200, 78, 30, 'generic'),
   { x: 74, y: 128, w: 36, h: 28, kind: 'generic' },
   { x: 120, y: 126, w: 34, h: 30, kind: 'generic' },
   { x: 162, y: 128, w: 34, h: 28, kind: 'inn' },
-  { x: 200, y: 128, w: 16, h: 28, kind: 'generic' },
-  { x: 96, y: 178, w: 28, h: 18, kind: 'generic' },
-  { x: 136, y: 180, w: 24, h: 16, kind: 'generic' },
+  eastBlock(200, 128, 28, 'generic'),
+  { x: 96, y: 178, w: 26, h: 18, kind: 'generic' },
+  { x: 140, y: 180, w: 20, h: 16, kind: 'generic' },
   { x: 174, y: 178, w: 22, h: 16, kind: 'generic' },
 ]
 
@@ -280,25 +415,29 @@ function sceneOf(seed: number) {
   const addCitizen = (x: number, y: number, n: number) => {
     crowd.push({ x, y, r: 0.95 + rand(seed, n) * 0.3, o: 0.9 + rand(seed, n + 1) * 0.1, move: null })
   }
-  // the market crowd, inside the square
-  for (let k = 0; k < 34; k++) addCitizen(125 + rand(seed, 70000 + k * 7) * 23, 82 + rand(seed, 70001 + k * 7) * 20, 70002 + k * 7)
-  // the harbour crowd along the quay, inside the wall
-  for (let k = 0; k < 24; k++) {
+  // the market crowd, inside the square — BUSY (owner, 2026-10-31: "more people if possible")
+  for (let k = 0; k < 70; k++) addCitizen(125 + rand(seed, 70000 + k * 7) * 23, 82 + rand(seed, 70001 + k * 7) * 20, 70002 + k * 7)
+  // the harbour crowd along the quay, inside the wall — BUSY
+  for (let k = 0; k < 54; k++) {
     const y = 70 + rand(seed, 71000 + k * 7) * 90
     addCitizen(coastX(y) + 1.5 + rand(seed, 71001 + k * 7) * 4.5, y, 71002 + k * 7)
   }
   // the town hall plaza
-  for (let k = 0; k < 12; k++) addCitizen(169 + rand(seed, 72000 + k * 7) * 19, 99 + rand(seed, 72001 + k * 7) * 5, 72002 + k * 7)
+  for (let k = 0; k < 24; k++) addCitizen(169 + rand(seed, 72000 + k * 7) * 19, 99 + rand(seed, 72001 + k * 7) * 5, 72002 + k * 7)
   // people along the streets
-  for (let k = 0; k < 40; k++) {
+  for (let k = 0; k < 100; k++) {
     const road = ROADS[Math.floor(rand(seed, 73000 + k * 7) * ROADS.length)]
     const p = roadPoint(road, rand(seed, 73001 + k * 7))
     addCitizen(p.x + (rand(seed, 73002 + k * 7) - 0.5) * 2.4, p.y + (rand(seed, 73003 + k * 7) - 0.5) * 2.4, 73004 + k * 7)
   }
-  // a thinner scatter in the outskirts, still inside the wall
-  for (let k = 0; k < 10; k++) addCitizen(100 + rand(seed, 74000 + k * 7) * 112, 178 + rand(seed, 74001 + k * 7) * 28, 74002 + k * 7)
+  // a thinner scatter in the outskirts, still inside the wall (the wall is tested, not assumed)
+  for (let k = 0; k < 28; k++) {
+    const x = 100 + rand(seed, 74000 + k * 7) * 112
+    const y = 178 + rand(seed, 74001 + k * 7) * 28
+    if (insideLand(x, y) && !inRiver(x, y)) addCitizen(x, y, 74002 + k * 7)
+  }
   // a few people strolling a short line at the market and the quay
-  for (let k = 0; k < 12; k++) {
+  for (let k = 0; k < 24; k++) {
     const atMarket = k % 2 === 0
     const x = atMarket ? 128 + rand(seed, 75000 + k * 7) * 20 : coastX(110) + 2 + rand(seed, 75000 + k * 7) * 4
     const y = atMarket ? 86 + rand(seed, 75001 + k * 7) * 16 : 82 + rand(seed, 75001 + k * 7) * 60
@@ -387,6 +526,13 @@ function sceneOf(seed: number) {
     } else {
       y = 26 + rand(seed, 84007 + k * 5) * 188
       x = coastX(y) + 3 + rand(seed, 84008 + k * 5) * (216 - coastX(y) - 3)
+    }
+    // the drawn wall is the boundary: a speck outside the land (or in the river) is re-rolled on
+    // the land once, then dropped — never drawn in the margin
+    if (!insideLand(x, y) || inRiver(x, y)) {
+      y = 26 + rand(seed, 84011 + k * 3) * 188
+      x = coastX(y) + 3 + rand(seed, 84012 + k * 3) * (216 - coastX(y) - 3)
+      if (!insideLand(x, y) || inRiver(x, y)) continue
     }
     teeming.push({
       x,
@@ -484,6 +630,10 @@ export function CityScene({
       </g>
       <path className="fill-surface" d={LAND} />
       <path className="stroke-ink-faint" fill="none" strokeWidth="0.4" opacity="0.3" d={coastPath(1, VIEW - 1)} transform="translate(3.2 0)" />
+      {/* THE RIVER MOUTH — water crossing the south wall between the bottom blocks into a small
+          basin; the wall's stroke over it is the water gate. */}
+      <path className="fill-bg" d={RIVER} />
+      <path className="stroke-ink-faint" fill="none" strokeWidth="0.5" opacity="0.45" d={RIVER_BANKS} />
 
       <g opacity={dim}>
         {/* THE BLOCKS — a faint ground and one outline each. */}
@@ -631,23 +781,26 @@ export function CityScene({
           ))}
         </g>
 
-        {/* THE WALL AND ITS GATES — the closed city's boundary; the coast on the left opens at the
-            harbour front (the quay gate) onto the port. */}
+        {/* THE ORGANIC WALL AND ITS BASTIONS — one curved, segmented boundary on the three landward
+            sides; the sea side is the coast and the harbour front, unchanged. The low, wide band
+            under the line gives the wall its thickness (an inner rampart walk) at every size. */}
+        <path d={WALL_PATH} className="stroke-ink-faint" fill="none" strokeWidth="4.4" opacity="0.28" strokeLinecap="round" strokeLinejoin="round" />
         <path d={WALL_PATH} className="stroke-ink-faint" fill="none" strokeWidth="2.2" opacity="0.8" strokeLinecap="round" strokeLinejoin="round" />
         <path d={COAST_WALL_N} className="stroke-ink-faint" fill="none" strokeWidth="2" opacity="0.75" strokeLinecap="round" />
         <path d={COAST_WALL_S} className="stroke-ink-faint" fill="none" strokeWidth="2" opacity="0.75" strokeLinecap="round" />
-        {TOWERS.map((tw, i) => (
+        {BASTIONS.map((tw, i) => (
           <rect
             key={i}
             className="fill-ink-faint stroke-ink-faint"
             fillOpacity="0.55"
             strokeOpacity="0.65"
             strokeWidth="0.5"
-            x={tw.x - 2}
-            y={tw.y - 2}
-            width="4"
-            height="4"
+            x="-2.3"
+            y="-2.3"
+            width="4.6"
+            height="4.6"
             rx="0.8"
+            transform={`translate(${tw.x.toFixed(2)} ${tw.y.toFixed(2)}) rotate(${tw.a.toFixed(1)})`}
           />
         ))}
       </g>
