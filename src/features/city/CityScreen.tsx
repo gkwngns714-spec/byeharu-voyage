@@ -239,10 +239,14 @@ function CityFrame({
       <main className="flex min-h-0 flex-1 flex-col gap-3 px-gutter pb-3">
         {/* THE PLAN AND ITS BUILDINGS, side by side (owner, 2026-10-30: "have the city birds eye view
             as a square on the top left, and then buildings smaller that fits the right space";
-            2026-10-31: "make the whole page better"): the plan stands SQUARE at the top left — the
-            full town, never cropped — and the four figures sit directly beneath it; the six building
-            tiles stand small beside it, each with its name at the top left and its served figure
-            beneath. The earnings block stays pinned above the rail. */}
+            2026-10-31: "make the whole page better"): the plan stands at the top left — the full
+            town, never cropped, whatever shape this panel takes: CityScene fits the whole square
+            plate inside it (`xMidYMid meet`, on the plate's own ground colour), because on a wide
+            or short window the flex row can flatten the panel and the old `slice` cropped the
+            city (owner, 2026-10-31: "i told you that i need to see all the city, a closed one") —
+            and the four figures sit directly beneath it; the six building tiles stand small beside
+            it, each with its name at the top left and its served figure beneath. The earnings block
+            stays pinned above the rail. */}
         <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
           <div className="flex min-w-0 flex-[0_0_56%] flex-col gap-3">
             <div className="aspect-square min-h-[96px] w-full min-w-0 overflow-hidden" data-testid="city-info-image">
@@ -252,8 +256,11 @@ function CityFrame({
             {/* SUMMARY — the population estimate is the headline (the huge number off the served
                 size tier, said as an estimate), with the city's purse and the two remaining
                 placeholders beneath it. Gold is served; Status and Relationship are the data
-                slice's, and say so. */}
-            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
+                slice's, and say so. Its floor is its own content (`min-h-fit`): on a wide or short
+                window the same flex squeeze that flattened the plan panel also crushed this card
+                to a 16-px sliver, so the huge number vanished — the card keeps its height and the
+                PLAN shrinks instead (the scene still draws the whole city, CityScene). */}
+            <section className="flex min-h-fit flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
               <div className="shrink-0" data-testid="city-population">
                 <span className="block text-t-caption text-ink-faint">{t('city.population')}</span>
                 <Figure value={`≈ ${formatInt(population)}`} size="figure" tone="ink" />

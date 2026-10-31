@@ -29,8 +29,15 @@ import type { CityBuilding } from './CityFace'
 //
 // Restrained palette: fill-surface land, fill-bg sea and margin, fill-ink-faint for every building,
 // road, block, wall and outline, and fill-accent for the citizens and the lights. No gradients, no
-// glow, no palette literal. Every coordinate is inside 0..VIEW and the svg is exactly the square
-// frame. Every arrangement is derived from the city's own name (the seed).
+// glow, no palette literal. Every coordinate is inside 0..VIEW.
+//
+// THE WHOLE CITY IS ALWAYS ON THE GLASS (owner, 2026-10-31: *"i told you that i need to see all the
+// city, a closed one"*). The panel around this svg can be wider than tall — the flex row that holds
+// it squashes the square on a wide or short window — so the scene never crops: `xMidYMid meet` fits
+// the entire 240×240 plate inside the panel, and the svg's own background is the plate's ground
+// (`bg-bg`), so the letterbox bands are invisible. `slice` is forbidden here: on 2026-10-31 it cut
+// the city's top and bottom on the owner's wide glass and he reported it as "only a section".
+// Every arrangement is derived from the city's own name (the seed).
 
 const VIEW = 240
 /** The fine plate border, inset from the panel's edge. */
@@ -459,12 +466,12 @@ export function CityScene({
   return (
     <svg
       viewBox={`0 0 ${VIEW} ${VIEW}`}
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio="xMidYMid meet"
       role="group"
       aria-label={`${t('city.title')} · ${night ? t('city.night') : t('city.day')}`}
       data-testid="city-scene"
       data-phase={night ? 'night' : 'day'}
-      className={`block h-full w-full rounded-tile ${className}`}
+      className={`block h-full w-full rounded-tile bg-bg ${className}`}
     >
       {/* THE MARGIN, THE SEA AND THE LAND — the dark ground outside the wall, the sea hairlines on
           the left, and the walled city's land inside. */}
