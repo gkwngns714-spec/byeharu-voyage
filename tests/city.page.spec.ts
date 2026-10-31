@@ -479,14 +479,22 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   // also waits and turns back, but these walkers are the ones the spec measures — and the owner
   // asked for the walk to be 3× slower, so the window is 2.5 s: a slower walker must still move).
   // The drawing is NOT pressable: the six building tiles above are the only ways in.
-  // the people WALK: one dot's place on the glass changes while we watch
+  // the people WALK: one dot's place on the glass changes while we watch.
+  // A HIDDEN DOCUMENT PAUSES THE SMIL TIMELINE (2026-11-01: run 41212925876 on main reported
+  // "moved 0.00 px in 2500 ms" on a loaded shard while this test passed locally, 21.8 s — the page
+  // had been backgrounded and animateMotion froze). Bring the page to the front and POLL for the
+  // movement instead of trusting one pair of samples; the law is unchanged (a walker must move).
+  await page.bringToFront()
   const dot = page.getByTestId('city-dots').locator('circle').first()
   const p0 = await dot.boundingBox()
-  await page.waitForTimeout(2500)
-  const p1 = await dot.boundingBox()
-  expect(p0 && p1, 'a people dot has no box').toBeTruthy()
-  const moved = Math.abs(p1!.x - p0!.x) + Math.abs(p1!.y - p0!.y)
-  expect(moved, `the people are still (moved ${moved.toFixed(2)} px in 2500 ms)`).toBeGreaterThan(0.5)
+  expect(p0, 'a people dot has no box').toBeTruthy()
+  let moved = 0
+  for (let i = 0; i < 8 && moved <= 0.5; i++) {
+    await page.waitForTimeout(800)
+    const p1 = await dot.boundingBox()
+    if (p1) moved = Math.max(moved, Math.abs(p1.x - p0!.x) + Math.abs(p1.y - p0!.y))
+  }
+  expect(moved, `the people are still (moved ${moved.toFixed(2)} px in up to 6.4 s)`).toBeGreaterThan(0.5)
 
   // ── 3b. THE CITY IS THE APP'S HOME (owner, 2026-10-30: the new full-screen city IS the game's
   // face — "i keep getting the old screen"). The root route lands on the city; the rail has NO
