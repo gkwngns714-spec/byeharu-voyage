@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { Fragment, useMemo } from 'react'
 import { useT } from '../../lib/i18n'
 import type { CityBuilding } from './CityFace'
 
@@ -222,6 +222,27 @@ const BASTIONS: readonly Bastion[] = (() => {
   for (const x of [125, 135]) out.push({ x, y: ySouth(x), a: angleOf(S_PTS, 'x', x) })
   return out
 })()
+
+/** The bastions as ONE path of rotated rounded squares — the same 33 towers, one element (the
+ *  slow-down fix: node count only; the geometry is identical to the old rects: a 4.6 square with
+ *  r 0.8 corners, translated to the bastion and rotated to the wall's tangent). */
+function bastionPath(bastions: readonly Bastion[]): string {
+  const h = 2.3
+  const r = 0.8
+  let d = ''
+  for (const b of bastions) {
+    const rad = (b.a * Math.PI) / 180
+    const cos = Math.cos(rad)
+    const sin = Math.sin(rad)
+    const p = (x: number, y: number) => `${(b.x + x * cos - y * sin).toFixed(2)} ${(b.y + x * sin + y * cos).toFixed(2)}`
+    d +=
+      `M${p(h, -h + r)} L${p(h, h - r)} A${r} ${r} 0 0 1 ${p(h - r, h)} L${p(-h + r, h)} ` +
+      `A${r} ${r} 0 0 1 ${p(-h, h - r)} L${p(-h, -h + r)} A${r} ${r} 0 0 1 ${p(-h + r, -h)} ` +
+      `L${p(h - r, -h)} A${r} ${r} 0 0 1 ${p(h, -h + r)} Z`
+  }
+  return d
+}
+const BASTION_MARKS = bastionPath(BASTIONS)
 
 type Cubic = readonly [number, number, number, number, number, number, number, number]
 
@@ -555,7 +576,7 @@ function Roof({ b }: { b: Building }) {
   }
   if (b.kind === 'tower') return <circle cx={b.x} cy={b.y} r={b.r} {...common} />
   return (
-    <g>
+    <>
       <rect x={b.x} y={b.y} width={b.w} height={b.h} rx="0.7" {...common} />
       {b.kind === 'hall' && (
         <line
@@ -568,14 +589,14 @@ function Roof({ b }: { b: Building }) {
           y2={b.y + b.h / 2}
         />
       )}
-    </g>
+    </>
   )
 }
 
 /** A moored hull: a fine outline with one deck line, seen from above. */
 function Ship({ x, y, w = 13, h = 5 }: { x: number; y: number; w?: number; h?: number }) {
   return (
-    <g>
+    <>
       <path
         className="fill-ink-faint stroke-ink-faint"
         fillOpacity="0.45"
@@ -584,8 +605,78 @@ function Ship({ x, y, w = 13, h = 5 }: { x: number; y: number; w?: number; h?: n
         d={`M${x} ${y} L${x + w - 4} ${y} L${x + w} ${y + h / 2} L${x + w - 4} ${y + h} L${x} ${y + h} Z`}
       />
       <line className="stroke-ink-faint" strokeWidth="0.4" opacity="0.6" x1={x + 2} y1={y + h / 2} x2={x + w - 3} y2={y + h / 2} />
-    </g>
+    </>
   )
+}
+
+// ── THE SLOW-DOWN FIX (owner, 2026-10-31: "the game became slow, find this") ────────────────────
+// The City page is the landing screen; the scene shipped ~2,800 dot ELEMENTS (every stipple speck,
+// window light and still person its own circle). The picture is identical drawn as a few PATHS of
+// zero-length round-capped strokes — one paint object per radius/opacity bucket instead of one
+// element per dot. The people who MOVE stay individual circles: they are the ones that animate.
+// Node count, look and positions are unchanged; only the drawing technique changes.
+
+/** A zero-length subpath with a round cap paints a dot as wide as the stroke. */
+function dotsPath(points: readonly { x: number; y: number }[]): string {
+  let d = ''
+  for (const p of points) d += `M${p.x.toFixed(2)} ${p.y.toFixed(2)}h0`
+  return d
+}
+/** The bucket a value falls in, by its upper cuts. */
+function bucketOf(value: number, cuts: readonly number[]): number {
+  let i = 0
+  while (i < cuts.length && value >= cuts[i]) i++
+  return i
+}
+type DotGroup = { d: string; w: number; o: number }
+
+/** The 2,200 specks in 3 radius × 3 opacity buckets (the source ranges are finer than the eye can
+ *  tell at r 0.35-0.7). */
+function stippleGroups(dots: readonly Speck[]): DotGroup[] {
+  const R = [0.42, 0.53, 0.64]
+  const RC = [0.47, 0.59]
+  const O = [0.13, 0.19, 0.25]
+  const OC = [0.16, 0.22]
+  const out: DotGroup[] = []
+  for (let ri = 0; ri < R.length; ri++) {
+    for (let oi = 0; oi < O.length; oi++) {
+      const pts = dots.filter((t) => bucketOf(t.r, RC) === ri && bucketOf(t.o, OC) === oi)
+      if (pts.length > 0) out.push({ d: dotsPath(pts), w: R[ri] * 2, o: O[oi] })
+    }
+  }
+  return out
+}
+/** The window lights in 2 radius × 3 brightness buckets; the day/night opacity is the old curve on
+ *  each bucket's brightness. */
+function lightGroups(lamps: readonly Lamp[]): { d: string; w: number; b: number }[] {
+  const R = [0.42, 0.58]
+  const RC = [0.5]
+  const B = [0.4, 0.65, 0.9]
+  const BC = [0.52, 0.78]
+  const out: { d: string; w: number; b: number }[] = []
+  for (let ri = 0; ri < R.length; ri++) {
+    for (let bi = 0; bi < B.length; bi++) {
+      const pts = lamps.filter((l) => bucketOf(l.r, RC) === ri && bucketOf(l.b, BC) === bi)
+      if (pts.length > 0) out.push({ d: dotsPath(pts), w: R[ri] * 2, b: B[bi] })
+    }
+  }
+  return out
+}
+/** The STILL people in 3 radius × 2 opacity buckets; the ones who stroll keep a circle each. */
+function crowdGroups(crowd: readonly Citizen[]): DotGroup[] {
+  const R = [1.0, 1.1, 1.2]
+  const RC = [1.05, 1.15]
+  const O = [0.92, 0.97]
+  const OC = [0.95]
+  const still = crowd.filter((c) => c.move === null)
+  const out: DotGroup[] = []
+  for (let ri = 0; ri < R.length; ri++) {
+    for (let oi = 0; oi < O.length; oi++) {
+      const pts = still.filter((c) => bucketOf(c.r, RC) === ri && bucketOf(c.o, OC) === oi)
+      if (pts.length > 0) out.push({ d: dotsPath(pts), w: R[ri] * 2, o: O[oi] })
+    }
+  }
+  return out
 }
 
 export function CityScene({
@@ -607,6 +698,10 @@ export function CityScene({
   const { generic, crowd, walkers, lamps, teeming } = useMemo(() => sceneOf(s), [s])
   // The served tier's walkers are the count the page has always used; the clusters are the crowd.
   const servedWalkers = useMemo(() => walkers.slice(0, dotCount(sizeTier)), [walkers, sizeTier])
+  // The dot layers are ONE PATH per bucket (see the helpers above) — the slow-down fix.
+  const stipple = useMemo(() => stippleGroups(teeming), [teeming])
+  const lights = useMemo(() => lightGroups(lamps), [lamps])
+  const stillCrowd = useMemo(() => crowdGroups(crowd), [crowd])
   const dim = night ? 0.72 : 1
 
   return (
@@ -638,10 +733,18 @@ export function CityScene({
       <g opacity={dim}>
         {/* THE BLOCKS — a faint ground and one outline each. */}
         {BLOCKS.map((b, i) => (
-          <g key={i}>
-            <rect className="fill-ink-faint" opacity="0.04" x={b.x} y={b.y} width={b.w} height={b.h} rx="2.5" />
-            <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.22" x={b.x} y={b.y} width={b.w} height={b.h} rx="2.5" />
-          </g>
+          <rect
+            key={i}
+            className="fill-ink-faint stroke-ink-faint"
+            fillOpacity="0.04"
+            strokeOpacity="0.22"
+            strokeWidth="0.35"
+            x={b.x}
+            y={b.y}
+            width={b.w}
+            height={b.h}
+            rx="2.5"
+          />
         ))}
 
         {/* THE STREET NETWORK — every road ends at the wall or the quay. */}
@@ -673,20 +776,17 @@ export function CityScene({
           {HALL.map((b, i) => (
             <Roof key={i} b={b} />
           ))}
-          <rect className="fill-ink-faint" opacity="0.08" x="166" y="98" width="22" height="6" rx="1" />
-          <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.4" x="166" y="98" width="22" height="6" rx="1" />
-          <circle className="fill-ink-faint" opacity="0.14" cx="177" cy="101" r="1.8" />
-          <circle className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.5" cx="177" cy="101" r="1.8" />
+          <rect className="fill-ink-faint stroke-ink-faint" fillOpacity="0.08" strokeOpacity="0.4" strokeWidth="0.35" x="166" y="98" width="22" height="6" rx="1" />
+          <circle className="fill-ink-faint stroke-ink-faint" fillOpacity="0.14" strokeOpacity="0.5" strokeWidth="0.35" cx="177" cy="101" r="1.8" />
           <line className="stroke-accent" strokeWidth="1" opacity="0.95" x1="177" y1="76" x2="177" y2="73.2" />
           <rect className="fill-accent" opacity="0.95" x="177.4" y="72.8" width="2.6" height="1.5" />
         </g>
 
         <g data-testid="city-scene-market" pointerEvents="none">
-          <rect className="fill-ink-faint" opacity="0.07" x="124" y="80" width="26" height="22" rx="2" />
-          <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.35" x="124" y="80" width="26" height="22" rx="2" />
+          <rect className="fill-ink-faint stroke-ink-faint" fillOpacity="0.07" strokeOpacity="0.35" strokeWidth="0.35" x="124" y="80" width="26" height="22" rx="2" />
           {[0, 1, 2].map((c) =>
             [0, 1].map((r) => (
-              <g key={`${c}${r}`}>
+              <Fragment key={`${c}${r}`}>
                 <rect
                   className="fill-ink-faint stroke-ink-faint"
                   fillOpacity="0.68"
@@ -699,7 +799,7 @@ export function CityScene({
                   rx="0.5"
                 />
                 <circle className="fill-accent" opacity="0.8" cx={129.5 + c * 8} cy={85.4 + r * 10} r="0.8" />
-              </g>
+              </Fragment>
             )),
           )}
         </g>
@@ -719,8 +819,7 @@ export function CityScene({
           {INN.map((b, i) => (
             <Roof key={i} b={b} />
           ))}
-          <rect className="fill-surface" x="171" y="135" width="6" height="5" />
-          <rect className="stroke-ink-faint" fill="none" strokeWidth="0.35" opacity="0.5" x="171" y="135" width="6" height="5" />
+          <rect className="fill-surface stroke-ink-faint" strokeOpacity="0.5" strokeWidth="0.35" x="171" y="135" width="6" height="5" />
           <circle className="fill-ink-faint" opacity="0.4" cx="174" cy="137.5" r="1.2" />
         </g>
 
@@ -774,10 +873,10 @@ export function CityScene({
           </g>
         </g>
 
-        {/* THE TEEMING TEXTURE — thousands of tiny dots inside the walls. */}
-        <g data-testid="city-teeming" pointerEvents="none" className="fill-ink-faint">
-          {teeming.map((d, i) => (
-            <circle key={i} cx={d.x} cy={d.y} r={d.r} opacity={d.o} />
+        {/* THE TEEMING TEXTURE — the same thousands of tiny dots, drawn as one path per bucket. */}
+        <g data-testid="city-teeming" pointerEvents="none" className="stroke-ink-faint" strokeLinecap="round">
+          {stipple.map((g, i) => (
+            <path key={i} d={g.d} fill="none" strokeWidth={g.w.toFixed(2)} opacity={g.o} />
           ))}
         </g>
 
@@ -788,21 +887,7 @@ export function CityScene({
         <path d={WALL_PATH} className="stroke-ink-faint" fill="none" strokeWidth="2.2" opacity="0.8" strokeLinecap="round" strokeLinejoin="round" />
         <path d={COAST_WALL_N} className="stroke-ink-faint" fill="none" strokeWidth="2" opacity="0.75" strokeLinecap="round" />
         <path d={COAST_WALL_S} className="stroke-ink-faint" fill="none" strokeWidth="2" opacity="0.75" strokeLinecap="round" />
-        {BASTIONS.map((tw, i) => (
-          <rect
-            key={i}
-            className="fill-ink-faint stroke-ink-faint"
-            fillOpacity="0.55"
-            strokeOpacity="0.65"
-            strokeWidth="0.5"
-            x="-2.3"
-            y="-2.3"
-            width="4.6"
-            height="4.6"
-            rx="0.8"
-            transform={`translate(${tw.x.toFixed(2)} ${tw.y.toFixed(2)}) rotate(${tw.a.toFixed(1)})`}
-          />
-        ))}
+        <path d={BASTION_MARKS} className="fill-ink-faint stroke-ink-faint" fillOpacity="0.55" strokeOpacity="0.65" strokeWidth="0.5" />
       </g>
 
       {/* THE PLATE'S FINE BORDER — the picture's own frame, inside the panel. */}
@@ -817,22 +902,19 @@ export function CityScene({
         height={VIEW - PLATE * 2 - 1}
       />
 
-      {/* THE WINDOW LIGHTS — small, dim, warm; texture behind the citizens. */}
-      <g data-testid="city-lights" pointerEvents="none">
-        {lamps.map((l, i) => (
-          <circle
-            key={i}
-            className="fill-accent"
-            cx={l.x}
-            cy={l.y}
-            r={l.r}
-            opacity={night ? 0.45 + l.b * 0.35 : 0.18 + l.b * 0.22}
-          />
+      {/* THE WINDOW LIGHTS — the same small, dim, warm dots, one path per bucket. */}
+      <g data-testid="city-lights" pointerEvents="none" className="stroke-accent" strokeLinecap="round">
+        {lights.map((g, i) => (
+          <path key={i} d={g.d} fill="none" strokeWidth={g.w.toFixed(2)} opacity={night ? 0.45 + g.b * 0.35 : 0.18 + g.b * 0.22} />
         ))}
       </g>
 
-      {/* THE CROWD — people at the buildings' own scale, inside the walls. */}
-      <g data-testid="city-crowd" pointerEvents="none" className="fill-accent">
+      {/* THE CROWD — the still people as one path per bucket; the ones who stroll keep a circle and
+          their own animateMotion (they are the people who must move). */}
+      <g data-testid="city-crowd" pointerEvents="none" className="fill-accent stroke-accent" strokeLinecap="round">
+        {stillCrowd.map((g, i) => (
+          <path key={`s${i}`} d={g.d} fill="none" strokeWidth={g.w.toFixed(2)} opacity={g.o} />
+        ))}
         {crowd.map((c, i) =>
           c.move ? (
             <circle key={i} r={c.r} opacity={c.o}>
@@ -844,9 +926,7 @@ export function CityScene({
                 {...(c.move.back ? { keyPoints: '0;1;0', keyTimes: '0;0.5;1' } : {})}
               />
             </circle>
-          ) : (
-            <circle key={i} cx={c.x} cy={c.y} r={c.r} opacity={c.o} />
-          ),
+          ) : null,
         )}
       </g>
 
