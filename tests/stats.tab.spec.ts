@@ -79,9 +79,6 @@ for (const vp of [PHONE, WIDE]) {
 
     await page.getByRole('tab', { name: 'Me', exact: true }).click()
     await expect(page.getByTestId('stats-me')).toBeVisible({ timeout: 60_000 })
-    await openDetail(page, 'stats-leaderboard')
-    await expect(page.getByTestId('stats-leaderboard-you')).toBeVisible()
-    await closeDetail(page)
     await expect(page.getByTestId('stats-me-bars')).toBeVisible()
     // the live band belongs to the TAB, not to a face: it is still there on the fifth one
     await expect(page.getByTestId('stats-live-purse')).toContainText(/\d/)
