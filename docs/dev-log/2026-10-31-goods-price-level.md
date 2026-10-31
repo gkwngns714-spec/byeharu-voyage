@@ -12,9 +12,13 @@ and the live design docs
 (`DESIGN`, `ECONOMY_LOOP`, `CLOSED_ECONOMY`, `NPC_TRADERS`, `FLEETS_AND_SLOTS`, `PIRATES_AND_HAVENS`,
 `SHIPS_AND_SKILLS`, `SHIPS_AND_GEAR`, `CORP_STORAGE_FORGE`).
 
-**State while this is written:** AUTHORED and GATED on the local cached chain (receipts below),
-committed and pushed as PR #410 (`price-level`). **NOT deployed** — the main session deploys; the
-prod head must read `20260818000284` and 0285 is the next number. **Do NOT merge from this branch.**
+**State while this is written:** AUTHORED, GATED on the local cached chain (receipts below), and
+pushed as PR #410 (`price-level`). The first deploy push (2026-10-31) STOPPED at statement 37:
+`public.treasury_flows` is append-only on prod (0122's `tg_treasury_append_only`), and the file now
+leaves it untouched as history; **nothing was applied and the prod head stayed
+`20260818000284`**. The gate was re-run after the fix and is green (results below). **NOT deployed** — the
+main session re-deploys; the prod head must read `20260818000284` and 0285 is the next number.
+**Do NOT merge from this branch.**
 
 ## 1. The instruction, and why the whole scale
 
@@ -84,7 +88,6 @@ ratios, counts and tonnes. The one knob/column pair from the first version stays
   stake × 5.
 - **`public.treasury_daybook.ducats`** — the city's rolled day-book × 5. NECESSARY:
   `public.tick_city` asserts `ducats = Σ daybook`.
-- **`public.treasury_flows.ducats`** — the unrolled half × 5; `treasury_balance` = ducats + flows.
 - **`public.city_shares.paid` / `accrued`** — the shares' paid and unpaid coupons × 5 (the set-aside
   trigger follows).
 - **`public.trade_contracts.mid_at_post` / `premium_per_unit` / `premium_ducats` / `escrow`** —
@@ -113,8 +116,9 @@ ratios, counts and tonnes. The one knob/column pair from the first version stays
   `city_purse_city`, `city_purse_capital`, `city_seed_min`, `city_earnings_per_dev`,
   `fame_ducats_per_point`, `influence_day_cap`.
 - **`world_config.economy_closed_total`** — the closed economy's stamp × 5 when numeric.
-- **`public.stats_live` players/merchants/cities/set_aside** — brought to exactly 5 × the actual
-  purses/city money/set-aside through `public.stats_live_add`.
+- **`public.stats_live` players/merchants/cities/set_aside** — brought to the actual after the
+  re-base (players/merchants and set-aside ×5; cities = 5 × the rolled half + the flows) through
+  `public.stats_live_add`.
 
 ## 5. What does not move
 
@@ -124,23 +128,28 @@ ratios, counts and tonnes. The one knob/column pair from the first version stays
 - No ACL/volatility/definer/config, no column type, no `port_goods` row (count + md5), no goods or
   item recipe, no cargo/hold/stock/count/tonne, no rate/percentage/share/spread/multiplier.
 - **History is not rewritten:** `ledger` (append-only), `events`, `capital_gifts`, `city_month_book`,
-  `route_month_laps`, `standing_route_laps`, `stats_*` history, `voyages.wages_paid`, and every
-  expired/fulfilled contract stay at the scale their money actually moved at. The player ledger
-  reconciles through the RESCALE rows; the city live purse reconciles through its two live halves
-  and the day-book. `price_history` IS scaled because it is the live chart (0208 scaled it too).
+  `route_month_laps`, `standing_route_laps`, `stats_*` history, `voyages.wages_paid`,
+  `treasury_flows` (append-only aggregate history — 0122's `tg_treasury_append_only` refuses any
+  UPDATE; the first prod push died on it), and every expired/fulfilled contract stay at the scale
+  their money actually moved at. The player ledger reconciles through the RESCALE rows; the city
+  live purse is the ×5 rolled half plus the flows as they stand, and the day-book is ×5 so
+  `tick_city`'s purse = daybook still holds. `price_history` IS scaled because it is the live chart
+  (0208 scaled it too).
 - The two switches are OWNER-ONLY and untouched: `economy_closed` and `city_treasury_enabled` read
   back exactly as found (true on prod, false in a fresh local chain). The RESCALE kind is `moved`,
   so the closed economy's no-new-gold guard passes it by design.
 
 ## 6. The city purse and the live Stats, said once
 
-`treasury_balance(port) = port_treasury.ducats + Σ treasury_flows.ducats` — both halves ×5.
-`tick_city`'s ROLL folds the flows into `ducats` and deletes them, and its ASSERT requires
-`ducats = Σ treasury_daybook`; the day-book is scaled too, and the next ROLL adds the scaled flows.
-The `stats_live` cities counter has no trigger on a bare purse update, so one final
-`stats_live_add` brings all four state figures to exactly 5 × the actual before. The credit RESCALE
-rows move players/merchants; the `city_shares.accrued` and `trade_contracts.escrow` triggers move
-set-aside.
+`treasury_balance(port) = port_treasury.ducats ×5 + Σ treasury_flows.ducats as found` — the flows
+are append-only aggregate history and are NOT re-scaled (0122's `tg_treasury_append_only` refuses
+any UPDATE; the first prod push died on statement 37). `tick_city`'s ROLL folds the flows into
+`ducats` and deletes them, and its ASSERT requires `ducats = Σ treasury_daybook`; the day-book is
+scaled ×5 with the rolled purse, and the next ROLL takes the unscaled flows into the scaled book.
+The `stats_live` cities counter has no trigger on a bare purse update, so one final `stats_live_add`
+brings all four state figures to the actual after (players/merchants ×5, cities = 5 × the rolled
+half + the flows, set-aside ×5). The credit RESCALE rows move players/merchants; the
+`city_shares.accrued` and `trade_contracts.escrow` triggers move set-aside.
 
 ## 7. The data move
 
@@ -160,7 +169,8 @@ diffs from a blind ×5 are zero; 103 ship classes + 225 items, 105 captains, 821
 
 - **As found:** goods count/md5/knob/extremes; every good; every recipe product's
   `item_recipe_value`; `port_goods` count + md5; 663-function count + md5; every house's purse;
-  every city purse/day-book/flow; every share/contract/wage/debt/policy; every hull/class/officer/
+  every city purse/day-book (the flows are history, asserted unchanged); every
+  share/contract/wage/debt/policy; every hull/class/officer/
   capital; every cost basis/route/order; every price-history row; every knob; the live Stats; the
   watch; the 103 hull/class data values.
 - **The guard** refuses a missing table/function, a wrong `goods.base_value` type, a missing/
@@ -187,16 +197,19 @@ node scripts/db/proof.mjs 10   # PROOF 10 — manifest
   at 40,000; purse 40,000 → 40,337 over 4 laps).
 - **PROOF 5: 5/5** — median first voyage **18.0%** of the stake (band 14.7–21.7), 8 ports / 3
   markets, worst 10.6, best 23.8; every port has a paying first voyage; distance pays.
-- **PROOF 7: 4/4** — BUY coriander 310 / SAIL LIS / SELL ALL in one queue; sold 22,838 d.; stores
+- **PROOF 7: 4/4** — BUY coriander 309 / SAIL LIS / SELL ALL in one queue; sold 22,766 d.; stores
   bought; the queue clear.
-- **PROOF 2: 6/6** — 500 orders; 346 succeeded / 154 refused; 4,350 ledger rows; every purse equals
-  Σ ledger (38,092 / 38,388 / 38,460); 853 fleets and 0 SAILING agree; the check bites.
-- **PROOF 12: 6/6** — 22 merchant laps; the probe merchant nets 23,620/day; every merchant reconciles;
+- **PROOF 2: 6/6** — 500 orders; 340 succeeded / 160 refused; 4,349 ledger rows; every purse equals
+  Σ ledger (38,417 / 38,352 / 38,760); 853 fleets and 0 SAILING agree; the check bites.
+- **PROOF 12: 6/6** — 22 merchant laps; the probe merchant nets 23,886/day; every merchant reconciles;
   the rank/earnings/dark checks pass.
-- **PROOF 4: 9/9** — opens at **40,000**; silk-cloth → Funchal → wine; the purse 39,737 → 49,486,
-  a **24.53%** return; the oversized order refused E_HOLD_FULL; the queue completes unattended.
+- **PROOF 4: 9/9** — opens at **40,000**; silk-cloth → Funchal → wine; +9,749 d. on a 39,740 d.
+  stake, a **24.53%** return; the oversized order refused E_HOLD_FULL; the queue completes unattended.
 - **PROOF 10: 10/10** — the 40,000 refill; the manifest sells-funds-buys, is atomic, the receipt is
   the ledger, XP honest, the client path closed.
+- The gate was re-run after the `treasury_flows` fix (2026-10-31): `check-versions` 273, `standing`
+  273/273 with world-guard ok and 11_standing 5/5, PROOF 5 5/5, PROOF 7 4/4, PROOF 2 6/6, PROOF 12
+  6/6, PROOF 4 9/9, PROOF 10 10/10 — every count and every marker again.
 - `duplication`: 11/11 (the migration-proves-itself, supersede and every other guard).
 
 **Gate-found defects, fixed:** the first 0285 had unqualified `recipe_0285.v` references
@@ -229,10 +242,19 @@ computed-display guard and reported the same Gallery defect; the 139.6px measure
 (blockification), the guard was changed to the class, and the 0-defect run is a changed file, not a
 re-run of a red. The PR CI re-run is the remaining gate.
 
+**Why the local gate did not catch the prod refusal:** 0122's guard is a `BEFORE UPDATE OR DELETE
+FOR EACH ROW` trigger. Every local world the gate built — the fresh chain, the image build, the
+growth rehearsal — has an empty `public.treasury_flows` at migration time (its inserts are
+`treasury_post`'s runtime body and rolled-back probes; 0122's own self-assert proves the trigger
+bites when a row exists), so the old UPDATE matched zero rows and no trigger fired. Prod carries
+12,041 live flow rows, each of which raises SQLSTATE 42501. The file now never writes the table.
+
 ## 10. PROD CHECKS for the main session
 
 Run each block as one statement (`npx --yes supabase@2.120.0 db query --linked -f <file>`), read-only;
-every function called is stable. Expected as found on 2026-10-31 (head `20260818000284`).
+every function called is stable. Expected as found on 2026-10-31 (head `20260818000284`). The first
+push (head 0284) stopped at statement 37 on `treasury_flows` append-only with **nothing applied**;
+the file now leaves the flows untouched (history), and these are the numbers for the retried push.
 
 ```sql
 select
@@ -290,13 +312,14 @@ select p.port_code, p.good_code, p.base_value, p.stock,
 --             quote 10 buy avg_price 529.62, total 5297.
 ```
 
-**After the push** (read-only): every money figure above is × 5 — players 1,704,092,571 →
-**8,520,462,855**; city live 47,346,325 → **236,731,625**; set-aside 275,143,554 → **1,375,717,770**;
-world total 2,026,582,450 → **10,132,912,250**; economy_closed_total 1,986,693,521 →
-**9,933,467,605**; starting_ducats 8,000 → **40,000**; wage_per_crew_day 1 → **5**; barca hull
-3,000 → **15,000** and build_cost 12,000 → **60,000**; NPC capital 5,000 … 729,000 → 25,000 …
-**3,645,000**; shares paid 137,085,286 → **685,426,430** and accrued → **1,366,619,570**; open
-premium 1,866,702 → **9,333,510** and escrow → **9,098,200**; insured value 1,427,040,231 →
+**After the push** (read-only): every RE-SCALED money figure above is × 5 (the append-only flows
+stay as found) — players 1,704,092,571 → **8,520,462,855**; city live 47,346,325 →
+**253,846,481** (5 × the rolled 51,625,039 + the flows −4,278,714); set-aside 275,143,554 →
+**1,375,717,770**; world total 2,026,582,450 → **10,150,027,106**; economy_closed_total
+1,986,693,521 → **9,933,467,605**; starting_ducats 8,000 → **40,000**; wage_per_crew_day 1 → **5**;
+barca hull 3,000 → **15,000** and build_cost 12,000 → **60,000**; NPC capital 5,000 … 729,000 →
+25,000 … **3,645,000**; shares paid 137,085,286 → **685,426,430** and accrued → **1,366,619,570**;
+open premium 1,866,702 → **9,333,510** and escrow → **9,098,200**; insured value 1,427,040,231 →
 **7,135,201,155**; fleet owed 65,612.60 → **328,063.00**; fee debts 159,208 → **796,040**; the 103
 hull/class prices are the re-derived data values (98 differ a few thousand from a blind ×5 by the
 generator's 500-ducat rounding); route limits 1,635 rows ×5; price_history mid 1.0449 …
@@ -312,18 +335,19 @@ world `total`. Prices are ×5, so these counts are the watch; the economy switch
 ## 11. Forward rollback (ready, not applied)
 
 One new migration, the exact inverse (never an edit of this file): goods.base_value / 5 and
-`goods_price_level` → 0.2; every table above's money ÷ 5; every knob ÷ 5; the city
-purse/day-book/flows ÷ 5; the stats_live counters brought back through `stats_live_add`;
-`economy_closed_total` ÷ 5; the RESCALE kind stays and the player purses are taken back with a
-RESCALE credit of −4/5 of the current purse per house. The history books stay as recorded; the
-103 hull/class prices return to their as-found values from the data. Only the owner may call for it.
+`goods_price_level` → 0.2; every table above's money ÷ 5; every knob ÷ 5; the city's rolled
+purse/day-book ÷ 5 (the flows were never scaled and stay); the stats_live counters brought back
+through `stats_live_add` (cities = the rolled half /5 + the flows); `economy_closed_total` ÷ 5; the
+RESCALE kind stays and the player purses are taken back with a RESCALE credit of −4/5 of the
+current purse per house. The history books stay as recorded; the 103 hull/class prices return to
+their as-found values from the data. Only the owner may call for it.
 
 ## 12. What is unproven
 
-- The prod push itself: the main session runs `~/bin/bv-deploy.sh`; this file has not been applied
-  to prod.
-- The PR CI re-run after the four spec fixes (the local acceptance is green: build exit 0, align
-  2/2 with 0 defects at both widths and 0 skipped, the five node specs 50/50).
+- The prod push itself: the first attempt (2026-10-31, head 0284) stopped at statement 37 —
+  `treasury_flows` is append-only on prod — and applied NOTHING; this file now leaves the flows
+  untouched (history). The main session re-deploys with `~/bin/bv-deploy.sh`.
+- The PR CI re-run after the four spec fixes (the gate re-run after the flows fix is green: see §9).
 - The live market's real prices after the push and the economy counts (`under_thin`, `broke`,
   `debtors`, `total`) — to be reported after the deploy.
 

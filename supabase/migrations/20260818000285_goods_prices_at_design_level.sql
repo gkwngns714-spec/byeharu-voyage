@@ -37,8 +37,9 @@
 --     (sum 26,061,000); route line limits 1,635; price_history 12,870 points (mid 1.0449 … 2,062.9058);
 --     ships with a cargo basis 530; city treasury LIT and the economy CLOSED (economy_closed_total
 --     1,986,693,521 d.); stats watch under_thin 187, under_reserve 131, broke 51.
---   The design sheet is at design ÷ 5 today; the whole world is at the same ÷ 5. ×5 on everything
---   absolute restores it at every ratio.
+--   The design sheet is at design ÷ 5 today; the whole world is at the same ÷ 5. ×5 on every
+--   absolute ducat quantity restores it at every ratio — except the append-only flows (history,
+--   below), which stay where they are.
 --
 -- ── THE RULE ──────────────────────────────────────────────────────────────────────────────────
 --   EVERY ABSOLUTE DUCAT QUANTITY × 5. A quantity that is money — a purse, a stored price, a wage,
@@ -59,9 +60,9 @@
 --   public.treasury_daybook.ducats        the city's rolled day-book × 5. NECESSARY: public.tick_city
 --                                         asserts ducats = Σ daybook; scaling the purse alone would
 --                                         break the hour's own reconciliation.
---   public.treasury_flows.ducats          the unrolled half of every city purse × 5. public.
---                                         treasury_balance = port_treasury.ducats + these flows, so
---                                         both halves and the day-book move by the same × 5.
+--   public.treasury_flows.ducats          NOT LISTED — append-only history, never updated (see WHAT
+--                                         DOES NOT MOVE); the live balance is 5 × port_treasury.ducats
+--                                         (the rolled half, ×5) + these flows as they stand.
 --   public.city_shares.paid               what a company paid for its city shares × 5.
 --   public.city_shares.accrued            coupons accrued but not yet paid × 5 (the stats set-aside
 --                                         trigger follows it in the same update).
@@ -110,9 +111,9 @@
 --   world_config.economy_closed_total     the closed economy's stamp (a ducat total) × 5 when it is
 --                                         a number; null stays null.
 --   public.stats_live (players/merchants/cities/set_aside)  the live Stats counters are brought to
---                                         exactly 5 × the actual purses/city money/set-aside through
+--                                         the actual money after the re-base (players/merchants and set-aside ×5; cities = 5 × the rolled half + the flows, history) through
 --                                         public.stats_live_add (the ONE live-figure helper), so the
---                                         world total the owner watches is 5 × from the first second.
+--                                         world total the owner watches is exact from the first second.
 --
 -- ── WHAT DOES NOT MOVE ────────────────────────────────────────────────────────────────────────
 --   No persistent function body is re-cut or created: public.new_house reads starting_ducats,
@@ -125,10 +126,12 @@
 --   ratio.
 --   HISTORY IS NOT REWRITTEN: public.ledger (append-only), public.events, public.capital_gifts,
 --   public.city_month_book, public.route_month_laps, public.standing_route_laps,
---   public.voyages.wages_paid, the public.stats_* history, and every expired/fulfilled trade
+--   public.voyages.wages_paid, the public.stats_* history, public.treasury_flows (append-only
+--   aggregate history — 0122's trigger refuses any UPDATE), and every expired/fulfilled trade
 --   contract stay at the scale their money actually moved at. The player
---   ledger reconciles through the RESCALE rows; the city's live purse reconciles through its two
---   live halves and the day-book; the old books are books of real money and 0208 kept them for the
+--   ledger reconciles through the RESCALE rows; the city's live purse is the ×5 rolled half plus
+--   the flows as they stand, and the day-book is ×5 so tick_city's purse = daybook still holds; the
+--   old books are books of real money and 0208 kept them for the
 --   same reason. The public.price_history line IS scaled because it is the live chart the market
 --   draws on, not a ledger of money moved (0208 scaled it for the same reason).
 --   The two switches are OWNER-ONLY and are not touched: economy_closed and city_treasury_enabled
@@ -137,19 +140,21 @@
 --   kind is 'moved', so a closed economy's no-new-gold guard passes it by design.
 --
 -- ── THE CITY PURSE, SAID ONCE (because it is two rows and a book) ─────────────────────────────
---   public.treasury_balance(port) = port_treasury.ducats + Σ treasury_flows.ducats. Both halves ×5.
---   public.tick_city's ROLL folds the flows into ducats and deletes them, and its ASSERT requires
---   ducats = Σ treasury_daybook; therefore treasury_daybook.ducats ×5 too, and the next ROLL adds
---   the scaled flows to the scaled purse and the scaled book. The stats_live cities counter is moved
---   to 5 × the actual live balance through stats_live_add, because a direct row update does not fire
---   the 0224 trigger (the trigger exists for treasury_post, which this file does not need: the purse
---   must be re-denominated, not paid in).
+--   public.treasury_balance(port) = port_treasury.ducats ×5 + Σ treasury_flows.ducats AS FOUND.
+--   The flows are append-only history and are NOT re-scaled; port_treasury.ducats and
+--   treasury_daybook.ducats ARE (tick_city's ASSERT requires ducats = Σ daybook). The next ROLL
+--   folds the unscaled flows into the scaled purse and the scaled book — the one-time seam the
+--   owner's rule accepts by calling the flows history. The stats_live cities counter is moved to
+--   that actual live balance (5 × the rolled half + the flows) through stats_live_add, because a
+--   direct row update does not fire the 0224 trigger (the trigger exists for treasury_post, which
+--   this file does not need: the purse must be re-denominated, not paid in).
 --
 -- ── THE STATS LIVE, SAID ONCE ───────────────────────────────────────────────────────────────
 --   The players/merchants counters move with every public.credit RESCALE row (credit calls
 --   stats_live_add); the set-aside counter moves with the city_shares.accrued and trade_contracts
 --   .escrow UPDATE triggers. The cities counter has no trigger on a bare port_treasury update, so a
---   final stats_live_add brings each of the four state figures to exactly 5 × the actual before.
+--   final stats_live_add brings the four state figures to the actual after (players/merchants and
+--   set-aside ×5; cities = 5 × the rolled half + the flows).
 --   The sold/bought window counters are a period flow, not a state, and are left for the next count.
 --
 -- ── SUPERSEDE ─────────────────────────────────────────────────────────────────────────────────
@@ -167,11 +172,12 @@
 --   (c) every row of every table above exactly 5 × its as-found money — the 103 hull/class prices
 --       equal the re-derived data value (the same ×5 scale through the generator's 500-ducat
 --       rounding and shed re-fit) — the row counts unchanged;
---   (d) the city halves: treasury_balance = 5 × as-found for every port, port_treasury.ducats =
---       Σ treasury_daybook (the tick_city invariant), and both books' rows × 5;
+--   (d) the city: port_treasury ×5 and treasury_daybook ×5, treasury_balance = 5 × the as-found
+--       rolled half + the as-found flows for every port, port_treasury.ducats = Σ treasury_daybook
+--       (the tick_city invariant), and treasury_flows unchanged (history, append-only);
 --   (e) every one of the 21 knobs ×5, every other knob unchanged except goods_price_level 0.1 →
 --       1.0, and the two owner switches unchanged; economy_closed_total ×5 when numeric;
---   (f) the live Stats: players/merchants/cities/set_aside = 5 × the actual purses/city/set-aside,
+--   (f) the live Stats: players/merchants and set-aside ×5, cities = 5 × the rolled half + the flows,
 --       and world.stats_now().total = 5 × the actual world total; stats_watch's under_thin,
 --       under_reserve, broke and swing equal, thin ×5 (the gifts' ducat history is not rewritten and
 --       is not asserted);
@@ -199,7 +205,8 @@
 --
 -- ── FORWARD ROLLBACK (a new migration, never an edit of this one) ─────────────────────────────
 --   The exact inverse, in one forward file: goods.base_value / 5 and goods_price_level → 0.2; every
---   table above's money ÷ 5; every knob ÷ 5; the city purse/day-book/flows ÷ 5; the stats_live
+--   table above's money ÷ 5; every knob ÷ 5; the city's rolled purse/day-book ÷ 5 (the flows were
+--   never scaled and stay); the stats_live
 --   counters brought back through stats_live_add; economy_closed_total ÷ 5; the RESCALE kind stays
 --   and the player purses are taken back with a RESCALE credit of −4/5 of the current purse per
 --   house. The history books stay as recorded. Only the owner may call for it.
@@ -570,7 +577,10 @@ begin
   raise notice '0285 rescale: % house(s), % ducat(s) credited through public.credit', v_n, v_sum;
 end $run$;
 
--- 5. The city's two live halves and the book that reconciles them.
+-- 5. The city's rolled purse and the book that reconciles it. public.treasury_flows is NOT touched:
+--    it is append-only aggregate history (0122's tg_treasury_append_only refuses any UPDATE — the
+--    first prod push stopped on its 12,041 rows), and this slice's rule keeps history at the scale
+--    its money moved at. The live balance is the ×5 rolled half plus those flows.
 update public.port_treasury
    set ducats = ducats * 5,
        reserve = reserve * 5,
@@ -578,7 +588,6 @@ update public.port_treasury
        updated_at = now();
 
 update public.treasury_daybook set ducats = ducats * 5;
-update public.treasury_flows   set ducats = ducats * 5;
 
 -- 6. The city's shares, and the open requests' money (expired/fulfilled contracts are history).
 update public.city_shares set paid = paid * 5, accrued = accrued * 5;
@@ -692,10 +701,12 @@ update public.price_history
        ask = case when ask is null then null else round(ask * 5, 2) end,
        bid = case when bid is null then null else round(bid * 5, 2) end;
 
--- 11. Bring the four live Stats state figures to exactly 5 × the actual money. The credit rows moved
---     players/merchants; the city_shares.accrued and trade_contracts.escrow UPDATE triggers moved
---     set_aside; the cities counter has no trigger on a bare purse update, so one stats_live_add
---     settles all four (the helper writes one journal row per changed figure, as 0224 requires).
+-- 11. Bring the four live Stats state figures to the actual money after the re-base: players and
+--     merchants ×5, cities = 5 × the rolled half + the flows (history, unscaled), set-aside ×5.
+--     The credit rows moved players/merchants; the city_shares.accrued and trade_contracts.escrow
+--     UPDATE triggers moved set_aside; the cities counter has no trigger on a bare purse update, so
+--     one stats_live_add settles all four (the helper writes one journal row per changed figure, as
+--     0224 requires).
 do $stats$
 declare
   v_act  record;
@@ -709,7 +720,8 @@ begin
   select world.stats_now() into v_now;
   v_np   := 5 * (select players_np_sum from snap_0285);
   v_npc  := 5 * (select players_npc_sum from snap_0285);
-  v_city := 5 * v_act.cities;
+  -- the flows are history and stay: 5 × (rolled + flows) - 4 × flows = 5 × rolled + flows
+  v_city := 5 * v_act.cities - 4 * (select flows_sum from snap_0285);
   v_set  := 5 * v_act.set_aside;
   perform public.stats_live_add(jsonb_build_object(
     'players',   v_np   - (v_now->>'players')::bigint,
@@ -834,7 +846,7 @@ begin
       v_rc_rows, (select count(*) from players_0285 where ducats <> 0), v_big, 4 * v.players_sum;
   end if;
 
-  -- (c) EVERY MONEY ROW ×5, EVERY COUNT UNCHANGED
+  -- (c) EVERY RESCALED MONEY ROW ×5 (the append-only flows stay), EVERY COUNT UNCHANGED
   select count(*) into v_n from public.port_treasury p join pt_0285 b on b.port_id = p.port_id
    where p.ducats is distinct from b.ducats * 5
       or p.reserve is distinct from b.reserve * 5
@@ -856,11 +868,13 @@ begin
      or (select coalesce(sum(ducats), 0) from public.treasury_daybook) <> v.daybook_sum * 5 then
     raise exception '0285 self-assert FAIL: % treasury_daybook row(s) not exactly 5 x', v_n;
   end if;
+  -- THE FLOWS ARE HISTORY AND UNTOUCHED (0122's append-only trigger refuses an UPDATE; the first
+  -- prod push died here, so this file no longer writes the table at all).
   select count(*) into v_n from public.treasury_flows f join flows_0285 b on b.id = f.id
-   where f.ducats is distinct from b.ducats * 5;
+   where f.ducats is distinct from b.ducats;
   if v_n <> 0 or (select count(*) from public.treasury_flows) <> (select count(*) from flows_0285)
-     or (select coalesce(sum(ducats), 0) from public.treasury_flows) <> v.flows_sum * 5 then
-    raise exception '0285 self-assert FAIL: % treasury_flows row(s) not exactly 5 x', v_n;
+     or (select coalesce(sum(ducats), 0) from public.treasury_flows) <> v.flows_sum then
+    raise exception '0285 self-assert FAIL: % treasury_flows row(s) moved; the flows are history', v_n;
   end if;
 
   -- THE TICK_CITY INVARIANT: the purse equals its day-book, after the scale as before it
@@ -869,13 +883,13 @@ begin
                                            where d.port_id = t.port_id), 0)) then
     raise exception '0285 self-assert FAIL: the tick_city purse = daybook invariant is broken after the scale';
   end if;
-  -- THE LIVE CITY BALANCE ×5, PORT BY PORT
+  -- THE LIVE CITY BALANCE: 5 × the rolled half + the flows AS FOUND (they are history and unscaled)
   select count(*) into v_n
     from public.port_treasury t join pt_0285 b on b.port_id = t.port_id
    where public.treasury_balance(t.port_id)
-         <> 5 * (b.ducats + coalesce((select sum(f.ducats) from flows_0285 f where f.port_id = b.port_id), 0));
+         <> 5 * b.ducats + coalesce((select sum(f.ducats) from flows_0285 f where f.port_id = b.port_id), 0);
   if v_n <> 0 then
-    raise exception '0285 self-assert FAIL: % city live balance(s) are not exactly 5 x (ducats + flows)', v_n;
+    raise exception '0285 self-assert FAIL: % city live balance(s) are not exactly (5 x the rolled half + the flows)', v_n;
   end if;
 
   select count(*) into v_n from public.city_shares s
@@ -998,18 +1012,18 @@ begin
     raise exception '0285 self-assert FAIL: an owner switch moved';
   end if;
 
-  -- (e) THE LIVE STATS: EXACTLY 5 × THE ACTUAL MONEY
+  -- (e) THE LIVE STATS: THE ACTUAL MONEY AFTER THE RE-BASE (the flows stay unscaled)
   select world.stats_now() into v_now;
   v_np   := 5 * (select players_np_sum from snap_0285);
   v_npc  := 5 * (select players_npc_sum from snap_0285);
-  v_city := 5 * v_act.cities;
+  v_city := 5 * v_act.cities - 4 * (select flows_sum from snap_0285);
   v_set  := 5 * v_act.set_aside;
   if (v_now->>'players')::bigint is distinct from v_np
      or (v_now->>'merchants')::bigint is distinct from v_npc
      or (v_now->>'cities')::bigint is distinct from v_city
      or (v_now->>'set_aside')::bigint is distinct from v_set
      or (v_now->>'total')::bigint is distinct from v_np + v_npc + v_city + v_set then
-    raise exception '0285 self-assert FAIL: the live Stats are not 5 x the actual money: % vs %/%/%/%',
+    raise exception '0285 self-assert FAIL: the live Stats are not the actual money after the re-base: % vs %/%/%/%',
       v_now, v_np, v_npc, v_city, v_set;
   end if;
 
@@ -1071,7 +1085,7 @@ begin
 
   -- (h) THE RECEIPT
   v_gmd5 := pg_temp.goods_md5_0285();
-  raise notice '0285 self-assert ok: THE WHOLE WORLD IS RE-BASED x5, SO EVERY RATIO IS KEPT. goods % (md5 % -> %), every base_value exactly x5; goods_price_level % -> %; % item recipe products unchanged; % house(s) / % d. -> % d. (players % d. + merchants % d.), every purse x5, % RESCALE row(s) = % d.; city live % d. -> % d. (port_treasury % d. + flows % d.; daybook % d.), reserve % d., invested % d., % city share(s) paid % d. / accrued % d., % open contract(s) premium % d. / escrow % d.; % wage row(s) % d., % fee debt(s) % d., % policy(ies) value % d.; % hull(s) / % class(es) (their re-derived data values) / % officer(s) / % merchant capital(s) x5; % cargo basis, % storage basis, % route limit, % order limit; % price point(s) x5; 21 money knobs x5 and every rate unchanged; stats watch under_thin % / under_reserve % / broke % / swing %/% kept, thin % -> %; live Stats = 5 x the actual money (total % d.); history books not re-scaled; port_goods % rows md5 % unchanged; % functions md5 % unchanged; rolled-back probe %/% base % -> % moved mid/ask/bid/avg_price/total by %/%/%/%/%, rollback restored %.',
+  raise notice '0285 self-assert ok: THE WHOLE WORLD IS RE-BASED x5, SO EVERY RATIO IS KEPT. goods % (md5 % -> %), every base_value exactly x5; goods_price_level % -> %; % item recipe products unchanged; % house(s) / % d. -> % d. (players % d. + merchants % d.), every purse x5, % RESCALE row(s) = % d.; city live % d. -> % d. (port_treasury % d. as found x5 + flows % d. as found; daybook % d. as found x5), reserve % d., invested % d., % city share(s) paid % d. / accrued % d., % open contract(s) premium % d. / escrow % d.; % wage row(s) % d., % fee debt(s) % d., % policy(ies) value % d.; % hull(s) / % class(es) (their re-derived data values) / % officer(s) / % merchant capital(s) x5; % cargo basis, % storage basis, % route limit, % order limit; % price point(s) x5; 21 money knobs x5 and every rate unchanged; stats watch under_thin % / under_reserve % / broke % / swing %/% kept, thin % -> %; live Stats = the actual money after the re-base (total % d.); history books not re-scaled; port_goods % rows md5 % unchanged; % functions md5 % unchanged; rolled-back probe %/% base % -> % moved mid/ask/bid/avg_price/total by %/%/%/%/%, rollback restored %.',
     v.goods_n, v.goods_md5, v_gmd5,
     v.knob, public.wc_num('goods_price_level'),
     v_rc_n,
