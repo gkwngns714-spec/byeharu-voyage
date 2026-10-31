@@ -136,10 +136,14 @@ one write that clears the backlog under a longer statement_timeout if the cron's
   _kinds`, every figure asserted against its hand-computed amount (sold 1600, bought 500, units 25,
   trades 4; the good 15 / 10; the city income 530, spending 1600, taxes 30, sold 15, bought 10; kinds
   SELL -1600, BUY 500, TAX 30, FOUNDING 500, NPC_REFOUND 300). Rolled back and asserted gone.
-- **(c)** the three indexes exist, valid, partial, with their key and INCLUDE columns.
-- **(d) with the indexes:** the same probe answers **byte-identically** to (b); the read's events
-  query, the founded query and the merchants query plan (seq scans discouraged) through
-  `events_trades_window` / `ledger_founded_window` / `standing_route_laps_window`.
+- **(c)** the three indexes exist, valid, ready, live and partial, asserted **from the catalog** — the
+  intended table, the exact key / INCLUDE columns in order (`pg_index.indkey` + `pg_attribute`) and
+  the predicate — never from a planner's choice.
+- **(d) with the indexes:** the same probe answers **byte-identically** to (b); rolled back and
+  asserted gone. No plan is asserted in a disposable world: the prod plans and timings are the
+  measured record (PROD CHECKS / §6). CI's first red on this PR was the fragile plan check — the
+  disposable chain's statistics named another index while the index itself was valid; the assertion
+  is now catalog-only.
 - **(e)** `world.stats_overview(24, '1d')` and `(24, '1w')` over probe count rows planted ten days
   ahead answer with every section — holders adding to their four parts, period, day, a series ending
   at the read's own `now()` — and the measured ms are printed. On the probe world: **1d 6 ms, 1w

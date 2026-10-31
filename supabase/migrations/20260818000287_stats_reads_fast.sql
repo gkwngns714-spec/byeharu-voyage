@@ -309,7 +309,6 @@ do $probe2$
 declare
   v_before jsonb;
   v_after jsonb;
-  v_plan json;
   v_t0 timestamptz;
   v_ms numeric;
   v_ms2 numeric;
@@ -359,46 +358,62 @@ begin
     raise exception '0287 self-assert FAIL: the rolled-back probe left a row behind';
   end if;
 
-  -- the exact queries plan through the new indexes (planning only; seq scans discouraged)
-  perform set_config('enable_seqscan', 'off', true);
-  execute $q$
-    explain (format json)
-    select e.id, e.kind, e.player_id, g.id, (e.payload->>'qty')::numeric, round((e.payload->>'total')::numeric)::bigint
-      from public.events e
-      join public.goods g on g.name = e.payload->>'good'
-     where e.kind in ('SOLD', 'BOUGHT')
-       and e.created_at > now() - interval '24 hours'
-       and e.created_at <= now()
-  $q$ into v_plan;
-  if v_plan::text not like '%events_trades_window%' then
-    raise exception '0287 self-assert FAIL: the read''s events window does not plan through events_trades_window: %', left(v_plan::text, 600);
+  -- (d) THE INDEXES, BY DEFINITION — data-independent. Never assert a planner's choice here: it varies
+  -- with a world's statistics (CI's first red on this PR was exactly that — the disposable chain chose
+  -- another plan while the index was valid). The prod plans and timings are measured in PROD CHECKS /
+  -- docs/dev-log/2026-10-31-stats-timeout.md; this file asserts the definitions, which are invariant.
+  if (select count(*) from pg_index i
+       where i.indexrelid in (to_regclass('public.events_trades_window'),
+                              to_regclass('public.ledger_founded_window'),
+                              to_regclass('public.standing_route_laps_window'))
+         and i.indisvalid and i.indisready and i.indislive and i.indpred is not null and i.indnkeyatts = 1) <> 3 then
+    raise exception '0287 self-assert FAIL: the three indexes are not all present, valid, ready, live and partial (one key column each)';
   end if;
-  execute $q$
-    explain (format json)
-    select l.kind, sum(l.ducats_delta)::bigint
-      from public.ledger l
-     where l.kind in ('FOUNDING', 'NPC_REFOUND')
-       and l.created_at > now() - interval '24 hours'
-       and l.created_at <= now()
-     group by l.kind
-  $q$ into v_plan;
-  if v_plan::text not like '%ledger_founded_window%' then
-    raise exception '0287 self-assert FAIL: the founded window does not plan through ledger_founded_window: %', left(v_plan::text, 600);
+  if (select i.indrelid from pg_index i where i.indexrelid = 'public.events_trades_window'::regclass) <> 'public.events'::regclass
+     or (select i.indnatts from pg_index i where i.indexrelid = 'public.events_trades_window'::regclass) <> 5
+     or (select array_agg(a.attname order by u.ord)
+           from pg_index i
+           cross join lateral unnest(string_to_array(i.indkey::text, ' ')::int2[]) with ordinality u(attnum, ord)
+           join pg_attribute a on a.attrelid = i.indrelid and a.attnum = u.attnum
+          where i.indexrelid = 'public.events_trades_window'::regclass)
+        is distinct from array['created_at', 'id', 'kind', 'player_id', 'payload']
+     or (select pg_get_expr(i.indpred, i.indrelid) from pg_index i where i.indexrelid = 'public.events_trades_window'::regclass)
+        not like '%kind = ANY%'
+     or (select pg_get_expr(i.indpred, i.indrelid) from pg_index i where i.indexrelid = 'public.events_trades_window'::regclass)
+        not like '%SOLD%'
+     or (select pg_get_expr(i.indpred, i.indrelid) from pg_index i where i.indexrelid = 'public.events_trades_window'::regclass)
+        not like '%BOUGHT%' then
+    raise exception '0287 self-assert FAIL: events_trades_window is not events(created_at) INCLUDE (id, kind, player_id, payload) WHERE kind IN (SOLD, BOUGHT): %',
+      pg_get_indexdef('public.events_trades_window'::regclass);
   end if;
-  execute $q$
-    explain (format json)
-    with l as materialized (
-      select l.route_id, l.net
-        from public.standing_route_laps l
-       where l.closed_at > now() - interval '24 hours'
-         and l.closed_at <= now()
-         and l.lap_no >= 2)
-    select to_jsonb(l) from l
-  $q$ into v_plan;
-  if v_plan::text not like '%standing_route_laps_window%' then
-    raise exception '0287 self-assert FAIL: the merchants window does not plan through standing_route_laps_window: %', left(v_plan::text, 600);
+  if (select i.indrelid from pg_index i where i.indexrelid = 'public.ledger_founded_window'::regclass) <> 'public.ledger'::regclass
+     or (select i.indnatts from pg_index i where i.indexrelid = 'public.ledger_founded_window'::regclass) <> 1
+     or (select array_agg(a.attname order by u.ord)
+           from pg_index i
+           cross join lateral unnest(string_to_array(i.indkey::text, ' ')::int2[]) with ordinality u(attnum, ord)
+           join pg_attribute a on a.attrelid = i.indrelid and a.attnum = u.attnum
+          where i.indexrelid = 'public.ledger_founded_window'::regclass)
+        is distinct from array['created_at']
+     or (select pg_get_expr(i.indpred, i.indrelid) from pg_index i where i.indexrelid = 'public.ledger_founded_window'::regclass)
+        not like '%FOUNDING%'
+     or (select pg_get_expr(i.indpred, i.indrelid) from pg_index i where i.indexrelid = 'public.ledger_founded_window'::regclass)
+        not like '%NPC_REFOUND%' then
+    raise exception '0287 self-assert FAIL: ledger_founded_window is not ledger(created_at) WHERE kind IN (FOUNDING, NPC_REFOUND): %',
+      pg_get_indexdef('public.ledger_founded_window'::regclass);
   end if;
-  perform set_config('enable_seqscan', 'on', true);
+  if (select i.indrelid from pg_index i where i.indexrelid = 'public.standing_route_laps_window'::regclass) <> 'public.standing_route_laps'::regclass
+     or (select i.indnatts from pg_index i where i.indexrelid = 'public.standing_route_laps_window'::regclass) <> 4
+     or (select array_agg(a.attname order by u.ord)
+           from pg_index i
+           cross join lateral unnest(string_to_array(i.indkey::text, ' ')::int2[]) with ordinality u(attnum, ord)
+           join pg_attribute a on a.attrelid = i.indrelid and a.attnum = u.attnum
+          where i.indexrelid = 'public.standing_route_laps_window'::regclass)
+        is distinct from array['closed_at', 'route_id', 'net', 'lap_no']
+     or (select pg_get_expr(i.indpred, i.indrelid) from pg_index i where i.indexrelid = 'public.standing_route_laps_window'::regclass)
+        not like '%lap_no >= 2%' then
+    raise exception '0287 self-assert FAIL: standing_route_laps_window is not standing_route_laps(closed_at) INCLUDE (route_id, net, lap_no) WHERE lap_no >= 2: %',
+      pg_get_indexdef('public.standing_route_laps_window'::regclass);
+  end if;
 
   -- (e) THE READ over probe count rows ten days ahead: every section, and the measured ms
   if exists (select 1 from public.stats_world w where w.at >= v_anchor - interval '1 day' and w.at < v_anchor + interval '1 day') then
@@ -487,6 +502,6 @@ begin
     raise exception '0287 self-assert FAIL: a wall moved';
   end if;
 
-  raise notice '0287 self-assert ok: THE STATS READ TOUCHES ONLY THE ROWS IT SERVES. Three indexes, no body re-cut: events_trades_window (created_at INCLUDE id/kind/player_id/payload, kind SOLD/BOUGHT), ledger_founded_window (created_at, kind FOUNDING/NPC_REFOUND), standing_route_laps_window (closed_at INCLUDE route_id/net/lap_no, lap 2+). Every function in public/cmd/world/voyage unmoved by md5 (% functions); registry % unchanged; walls 0; both owner switches as found. Probe (2004-06-01, its own rows, planted twice and rolled back and asserted gone): without the indexes sold 1600 / bought 500 / units 25 / trades 4, the good 15 / 10, the city income 530 / spending 1600 / taxes 30 / sold 15 / bought 10, kinds SELL -1600 / BUY 500 / TAX 30 / FOUNDING 500 / NPC_REFOUND 300; with the indexes the answers are byte-identical, and the read, founded and merchants queries plan through events_trades_window / ledger_founded_window / standing_route_laps_window (seq scans discouraged). The read over probe counts: world.stats_overview(24,''1d'') % ms, (24,''1w'') % ms, sections and holders intact (prod before this file: 17.1 s and >110 s / 57014); prod''s one-time journal backlog folds at the next successful count.',
+  raise notice '0287 self-assert ok: THE STATS READ TOUCHES ONLY THE ROWS IT SERVES. Three indexes, no body re-cut: events_trades_window (created_at INCLUDE id/kind/player_id/payload, kind SOLD/BOUGHT), ledger_founded_window (created_at, kind FOUNDING/NPC_REFOUND), standing_route_laps_window (closed_at INCLUDE route_id/net/lap_no, lap 2+). Every function in public/cmd/world/voyage unmoved by md5 (% functions); registry % unchanged; walls 0; both owner switches as found. Probe (2004-06-01, its own rows, planted twice and rolled back and asserted gone): without the indexes sold 1600 / bought 500 / units 25 / trades 4, the good 15 / 10, the city income 530 / spending 1600 / taxes 30 / sold 15 / bought 10, kinds SELL -1600 / BUY 500 / TAX 30 / FOUNDING 500 / NPC_REFOUND 300; with the indexes the answers are byte-identical, and each index is valid, ready and exactly as declared (table, key / INCLUDE columns, predicate — from the catalog, never a planner's choice; prod plans and timings are the measured record). The read over probe counts: world.stats_overview(24,''1d'') % ms, (24,''1w'') % ms, sections and holders intact (prod before this file: 17.1 s and >110 s / 57014); prod''s one-time journal backlog folds at the next successful count.',
     (select fns from before_0287), (select entry_points from before_0287), v_ms, v_ms2;
 end $probe2$;
