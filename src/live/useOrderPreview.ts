@@ -68,7 +68,7 @@ export function useOrderPreview(fleetId: string, line: string | null): OrderPrev
     return ok<Priced>(
       r.ok ? { estimate: r.value.estimate ?? null, refusal: null } : { estimate: null, refusal: r.refusal },
     )
-  })
+  }, { name: 'cmdPreview', cache: false })
 
   if (line === null) return NOTHING
   // Exposed only while the settled line IS the button's: the figure printed is always the figure

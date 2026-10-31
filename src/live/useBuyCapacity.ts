@@ -65,6 +65,6 @@ export function useBuyCapacity(fleetId: string | null, goodCode: string | null):
       bound: { max: Number(r.value.max_qty), binding: captionFor(r.value.bound_by) },
       estTotal: Number(r.value.est_total),
     })
-  })
+  }, { name: 'worldBuyCapacity' })
   return { bound: read.view?.bound ?? null, estTotal: read.view?.estTotal ?? null, loading: read.loading }
 }

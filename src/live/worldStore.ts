@@ -86,6 +86,8 @@ import {
 } from '../lib/rpc'
 import { navFromServed, type SeaNav } from '../lib/sea'
 import { registerHullClasses } from '../chart'
+import { msUntilEdge, peekResource, readResource, SESSION_MS } from '../store/resourceCache'
+import { READ_MAX_MS } from '../domain/readClock'
 import { whereabouts } from '../domain/fleet'
 import { mergeRoster, readSavedRoster, rosterKey, savedRosterText, trafficRowAt } from './seaRoster'
 import { namedMarket, namedSnapshot } from './worldNames'
@@ -105,6 +107,7 @@ import type {
   PriceSpan,
   Refusal,
   RpcResult,
+  AllegianceView,
   StandingRouteBook,
   StandingRouteStopDraft,
   ReachPayload,
@@ -211,6 +214,10 @@ export interface LiveWorld {
   refusal: Refusal | null
   /** When the last successful read landed (ms since epoch), so a screen can say "as of". */
   readAt: number | null
+  /** THE SHELL'S READ CADENCE, in ms (readClock.ts) — AppShell writes it when it arms the beat.
+   *  `useServedRead` reads it as the default lifetime of a kept answer: one beat is exactly when
+   *  the same mount would ask again. Before the first write, the slow-world floor. */
+  readEveryMs: number
 
   // ── lookups, built once per snapshot ─────────────────────────────────────────────────────────
   portByCode: Record<string, SnapshotPort>
@@ -227,8 +234,9 @@ export interface LiveWorld {
   open: () => Promise<void>
   /** Read again — fleets and ledger. THIS IS HOW TIME PASSES. */
   refresh: () => Promise<void>
-  /** Fetch (and cache) one port's market. */
-  loadMarket: (portId: string) => Promise<void>
+  /** Fetch (and cache) one port's market. `force` asks again after a mutation (afterTrade) or a
+   *  player's retry; a plain call is served from the cache until the market's own edge. */
+  loadMarket: (portId: string, force?: boolean) => Promise<void>
   /** Fetch (and cache) one port's remembered prices. `slots` is how many the asking window needs; the
    *  silent: a chart is a decoration on a price that is true without it. Lands `series[seriesKey(...)]`;
    *  a pair the record does not keep yet is pressed into it once (cmdWatchPrice) and reads again. */
@@ -241,14 +249,14 @@ export interface LiveWorld {
    *  once an hour. Flags change once a day, so this is never on the 3-s beat. */
   loadAllegiance: () => Promise<void>
   /** Fetch the roster and the school. Idempotent; screens call them on mount. */
-  loadOfficers: () => Promise<void>
-  loadSkills: () => Promise<void>
-  loadStandings: (limit?: number | null) => Promise<void>
+  loadOfficers: (force?: boolean) => Promise<void>
+  loadSkills: (force?: boolean) => Promise<void>
+  loadStandings: (limit?: number | null, force?: boolean) => Promise<void>
   /** Read the route board. ROUTES calls this once on mount and again when the player asks; no
    *  beat calls it (see `routeBoard`). A refusal keeps the last answer and sets
    *  `routeBoardFailed`, rather than blanking a board already on screen. */
-  loadRouteBoard: () => Promise<void>
-  loadBuffs: (portId: string) => Promise<void>
+  loadRouteBoard: (force?: boolean) => Promise<void>
+  loadBuffs: (portId: string, force?: boolean) => Promise<void>
   /** Read the routes (0092) ALONE — for a verb that moved only the book (save, delete). The
    *  beat's reading of them is `refresh()`'s, never a screen's `readAt` effect. */
   loadRoutes: () => Promise<void>
@@ -404,11 +412,9 @@ export function portNationOf(
   return allegiance[code]
 }
 
-/** How often the beat re-reads the flags (0143). The daily count moves them once a day. */
+/** How long a flag answer is kept (0143). The daily count moves the flags once a day, and a
+ *  company changing country is a verb that drops this entry by name (catalog.ts). */
 const ALLEGIANCE_ASK_EVERY_MS = 60 * 60_000
-let allegianceAskedAtMs = 0
-/** The price-series reads on the wire, by key (loadSeries). */
-const seriesAsking = new Map<string, Promise<void>>()
 /** The pairs this tab has already pressed into the record (loadSeries): one press per pair per session,
  *  because the press is idempotent on the server and the next tick is what starts the line. */
 const seriesWatched = new Set<string>()
@@ -446,7 +452,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // "The market she lies at" — in port or not is `domain/fleet`'s one rule, not a bare `port` read.
     const where = fleet ? whereabouts(fleet) : null
     const port = where?.kind === 'docked' ? get().portByCode[where.port] : null
-    if (port) await get().loadMarket(port.id)
+    if (port) await get().loadMarket(port.id, true)
   }
 
   /**
@@ -638,6 +644,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   reading: false,
   refusal: null,
   readAt: null,
+  readEveryMs: READ_MAX_MS,
   portByCode: {},
   nationByCode: {},
   portById: {},
@@ -742,8 +749,10 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // the routes read's settle is a no-op. On the fatal branch above the routes are not read at
     // all and the last book stands.
     await readRoutes()
-    // 0143: THE FLAGS, once an hour — a read that takes no lock and changes once a day.
-    if (Date.now() - allegianceAskedAtMs >= ALLEGIANCE_ASK_EVERY_MS) await get().loadAllegiance()
+    // 0143: THE FLAGS — a read that takes no lock and changes once a day. The cache keeps the
+    // answer for the hour (loadAllegiance's lifetime), so this call is a memory read on 59 beats
+    // out of 60; the hour now lives with the answer it describes, not in a second counter here.
+    await get().loadAllegiance()
     // THE MERCHANTS RIDE THE SAME BEAT, after the routes and only while a screen wants them. This
     // read takes no lock, but it keeps the one order (fleets → routes → traffic) so the deadlock
     // rule above stays one rule.
@@ -764,15 +773,30 @@ export const useWorld = create<LiveWorld>((set, get) => {
     })
   },
 
-  loadMarket: (portId) =>
-    loader(
-      worldMarket(portId),
+  loadMarket: async (portId, force = false) => {
+    // KEPT UNTIL THE MARKET'S OWN EDGE (resourceCache, `msUntilEdge`): the payload carries the
+    // instant the whole market next steps, so a remount inside that slot draws the kept prices and
+    // touches no wire. A trade forces it (`afterTrade`); past the edge the next read asks.
+    const key = `worldMarket|${portId}`
+    if (!force) {
+      const held = peekResource<MarketView>(key)
+      if (held !== undefined) {
+        if (get().markets[portId] === undefined) {
+          servedMarkets.set(portId, held)
+          set((s) => ({ markets: { ...s.markets, [portId]: namedMarket(held, getLocale()) } }))
+        }
+        return
+      }
+    }
+    await loader(
+      readResource(key, () => worldMarket(portId), (v) => msUntilEdge(v.clock), force),
       (v, s) => {
         servedMarkets.set(portId, v)
         return { markets: { ...s.markets, [portId]: namedMarket(v, getLocale()) } }
       },
       { loud: true },
-    ),
+    )
+  },
 
   // THE SERIES READ (0226): one read per (port, good, span); a payload already kept is not asked again
   // in this session (the beat does not re-read charts — a chart's line moves one point a slot). A pair the
@@ -782,56 +806,127 @@ export const useWorld = create<LiveWorld>((set, get) => {
   loadSeries: (portId, goodId, span) => {
     const key = seriesKey(portId, goodId, span)
     if (get().series[key] !== undefined) return Promise.resolve()
-    const onWire = seriesAsking.get(key)
-    if (onWire) return onWire
-    const p = loader(
-      worldPriceSeries(portId, goodId, span),
-      (v, s) => ({ series: { ...s.series, [key]: v } }),
-      { loud: false },
-    )
-      .then(() => {
-        const v = get().series[key]
-        const pair = `${portId}|${goodId}`
-        if (v && !v.recording && !seriesWatched.has(pair)) {
-          seriesWatched.add(pair)
-          void cmdWatchPrice(portId, goodId)
-        }
-      })
-      .finally(() => seriesAsking.delete(key))
-    seriesAsking.set(key, p)
-    return p
+    const cacheKey = `worldPriceSeries|${key}`
+    const pressWatch = (v: PriceSeries | undefined) => {
+      const pair = `${portId}|${goodId}`
+      if (v && !v.recording && !seriesWatched.has(pair)) {
+        seriesWatched.add(pair)
+        void cmdWatchPrice(portId, goodId)
+      }
+    }
+    const held = peekResource<PriceSeries>(cacheKey)
+    if (held !== undefined) {
+      set((s) => ({ series: { ...s.series, [key]: held } }))
+      pressWatch(held)
+      return Promise.resolve()
+    }
+    // A SERIES IS STATIC PER CHAIN (a chart's line moves one point a slot, not per tab): kept for
+    // the session, and a pair the record does not keep yet is pressed into it once.
+    return loader(readResource(cacheKey, () => worldPriceSeries(portId, goodId, span), SESSION_MS), (v, s) => ({
+      series: { ...s.series, [key]: v },
+    }), { loud: false }).then(() => pressWatch(get().series[key]))
   },
 
   // A FAILED REACH READ IS SILENT, like history: the picker still lists every harbour, only
   // unordered by distance — a truthful, lesser answer (§7C's mirror), never a fabricated figure.
   loadReach: async (portId) => {
     if (get().reaches[portId]) return
-    await loader(worldReach(portId), (v, s) => ({ reaches: { ...s.reaches, [portId]: v } }), { loud: false })
+    const key = `worldReach|${portId}`
+    const held = peekResource<ReachPayload>(key)
+    if (held !== undefined) {
+      set((s) => ({ reaches: { ...s.reaches, [portId]: held } }))
+      return
+    }
+    // A reach never changes within a chain version (0039): session lifetime.
+    await loader(readResource(key, () => worldReach(portId), SESSION_MS), (v, s) => ({
+      reaches: { ...s.reaches, [portId]: v },
+    }), { loud: false })
   },
 
   // A FAILED FLAG READ IS SILENT: the last flags stand (or none, before the first), which is a
   // truthful lesser answer — the city line then prints no flag, never a stale guess as new.
   loadAllegiance: async () => {
-    allegianceAskedAtMs = Date.now()
-    await loader(worldAllegiance(), (v) => ({
+    // The flags move once a day (0143); the hour is the read's lifetime, so the beat's call is a
+    // memory read on 59 beats out of 60 and the map's port-open call is the same one answer.
+    const key = 'worldAllegiance'
+    const held = peekResource<AllegianceView>(key)
+    if (held !== undefined) {
+      if (Object.keys(get().allegiance).length === 0) {
+        set({ allegiance: Object.fromEntries(held.ports.map((p) => [p.port, p])) })
+      }
+      return
+    }
+    await loader(readResource(key, () => worldAllegiance(), ALLEGIANCE_ASK_EVERY_MS), (v) => ({
       allegiance: Object.fromEntries(v.ports.map((p) => [p.port, p])),
     }), { loud: false })
   },
 
-  loadOfficers: () => loader(worldOfficers(), (officers) => ({ officers }), { loud: true }),
+  // THE CATALOGUES ARE KEPT FOR THE SESSION (resourceCache): the officer roster and the skill book
+  // cannot change by looking at them, and the verbs that DO change them name them in catalog.ts
+  // (`invalidates`), so a hire/study drops exactly that entry. `force` is for a screen whose own
+  // served edge has passed (PortAcademy's next level).
+  loadOfficers: async (force = false) => {
+    const key = 'worldOfficers'
+    if (!force) {
+      const held = peekResource<OfficerRoster>(key)
+      if (held !== undefined) {
+        if (get().officers === null) set({ officers: held })
+        return
+      }
+    }
+    await loader(readResource(key, () => worldOfficers(), SESSION_MS, force), (officers) => ({ officers }), {
+      loud: true,
+    })
+  },
 
-  loadSkills: () => loader(worldSkills(), (skills) => ({ skills }), { loud: true }),
+  loadSkills: async (force = false) => {
+    const key = 'worldSkills'
+    if (!force) {
+      const held = peekResource<SkillBook>(key)
+      if (held !== undefined) {
+        if (get().skills === null) set({ skills: held })
+        return
+      }
+    }
+    await loader(readResource(key, () => worldSkills(), SESSION_MS, force), (skills) => ({ skills }), { loud: true })
+  },
 
   // A FAILED BOARD READ IS LOUD, unlike the history read. That one decorates a price that is true
   // without them; the board IS the screen, so a RANK tab that silently kept yesterday's order would
   // be showing a standing nobody holds.
-  loadStandings: (limit = null) => loader(worldStandings(limit), (standings) => ({ standings }), { loud: true }),
+  loadStandings: async (limit = null, force = false) => {
+    const key = `worldStandings|${limit ?? '-'}`
+    if (!force) {
+      const held = peekResource<StandingsBoard>(key)
+      if (held !== undefined) {
+        if (get().standings === null) set({ standings: held })
+        return
+      }
+    }
+    // The board rides the world's beat while RANK is open (RankScreen's readAt effect): one beat
+    // is its lifetime, so a remount in that window draws the kept board.
+    await loader(readResource(key, () => worldStandings(limit), () => get().readEveryMs, force), (standings) => ({
+      standings,
+    }), { loud: true })
+  },
 
-  loadRouteBoard: async () => {
+  loadRouteBoard: async (force = false) => {
     // A REFUSAL IS NOT A REFUSAL BANNER HERE. The board is consulted deliberately and its own
     // screen prints "the last read was refused — these are the figures from before it", which is
     // more use than a world-level refusal the player has to dismiss to get back to the list.
-    const r = await worldRouteBoard()
+    const key = 'worldRouteBoard'
+    if (!force) {
+      const held = peekResource<RouteBoard>(key)
+      if (held !== undefined) {
+        if (get().routeBoard === null) {
+          set({ routeBoard: held, routeBoardAt: Date.now(), routeBoardFailed: false })
+        }
+        return
+      }
+    }
+    // ASKED ONCE, THEN LEFT ALONE (the store's own rule since 0106): session lifetime. The ROUTES
+    // screen's refresh press forces it, and no beat calls it.
+    const r = await readResource(key, () => worldRouteBoard(), SESSION_MS, force)
     if (r.ok) set({ routeBoard: r.value, routeBoardAt: Date.now(), routeBoardFailed: false })
     else set({ routeBoardFailed: true })
   },
@@ -840,8 +935,20 @@ export const useWorld = create<LiveWorld>((set, get) => {
   // this read is also what winds the calendar where pg_cron is absent (0026). A quay that does not
   // know a fair is on still quotes the right price — `world.market` reads the spread itself — so the
   // cost of failing quietly is a missing sign, never a wrong number.
-  loadBuffs: (portId) =>
-    loader(worldBuffs(portId), (v, s) => ({ buffs: { ...s.buffs, [portId]: v } }), { loud: false }),
+  loadBuffs: async (portId, force = false) => {
+    const key = `worldBuffs|${portId}`
+    if (!force) {
+      const held = peekResource<BuffsView>(key)
+      if (held !== undefined) {
+        if (get().buffs[portId] === undefined) set((s) => ({ buffs: { ...s.buffs, [portId]: held } }))
+        return
+      }
+    }
+    // A fair's edge forces (PortFair); otherwise one beat is the lifetime.
+    await loader(readResource(key, () => worldBuffs(portId), () => get().readEveryMs, force), (v, s) => ({
+      buffs: { ...s.buffs, [portId]: v },
+    }), { loud: false })
+  },
 
   // The re-read after a verb that moved the book alone (save, delete). The beat's reading is
   // `refresh()`'s; both are `readRoutes`, the one reader.

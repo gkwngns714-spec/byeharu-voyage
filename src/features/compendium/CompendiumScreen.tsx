@@ -33,14 +33,16 @@ export function CompendiumScreen() {
 function CompendiumBody() {
   const t = useT()
   const loadOfficers = useWorld((s) => s.loadOfficers)
-  const readAt = useWorld((s) => s.readAt)
   const snapshot = useWorld((s) => s.snapshot)
   const roster = useWorld((s) => s.officers)
   const nationByCode = useWorld((s) => s.nationByCode)
 
+  // ONCE, NOT ON EVERY BEAT (2026-10-31): the roster is a catalogue the cache keeps for the
+  // session, and a hire drops it by name. The old `readAt` dependency asked it again every beat
+  // while the Codex was open — the owner's "keep it even though you move from tab to tab" was
+  // being paid for four times a second on this screen.
   const [rosterAnswered, setRosterAnswered] = useState(false)
   useEffect(() => {
-    if (readAt === null) return
     let alive = true
     void loadOfficers().then(() => {
       if (alive) setRosterAnswered(true)
@@ -48,7 +50,7 @@ function CompendiumBody() {
     return () => {
       alive = false
     }
-  }, [loadOfficers, readAt])
+  }, [loadOfficers])
 
   const [face, setFace] = useState<FaceId>('goods')
   const [query, setQuery] = useState('')

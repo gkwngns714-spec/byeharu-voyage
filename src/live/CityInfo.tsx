@@ -90,7 +90,7 @@ export function CityInfo({ port }: { port: SnapshotPort }) {
   const figures = useServedRead<StatsCity>(
     harbour === null ? null : `info:city:${harbour}`,
     () => worldStatsCity(harbour as string),
-    { trigger: ONE_ASK },
+    { trigger: ONE_ASK, name: 'worldStatsCity' },
   )
 
   if (port.kind !== 'HARBOUR') return <Note tone="neutral">{t('town.i_noCity')}</Note>

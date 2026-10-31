@@ -64,7 +64,8 @@ export function useRouteBoard(): RouteBoardRead {
 
   const refresh = useCallback(() => {
     setAsking(true)
-    void loadRouteBoard().finally(() => setAsking(false))
+    // THE PLAYER ASKED — the board is kept for the session (resourceCache), so this press forces.
+    void loadRouteBoard(true).finally(() => setAsking(false))
   }, [loadRouteBoard])
 
   return {

@@ -46,6 +46,6 @@ export function usePreviewRead(subject: string | null, ask: () => Promise<RpcRes
   const read = useServedRead<Priced>(subject, async () => {
     const r = await ask()
     return ok<Priced>(r.ok ? { estimate: r.value.estimate, refusal: null } : { estimate: null, refusal: r.refusal })
-  })
+  }, { name: 'cmdPreview', cache: false })
   return { estimate: read.view?.estimate ?? null, refusal: read.view?.refusal ?? null, loading: read.loading }
 }

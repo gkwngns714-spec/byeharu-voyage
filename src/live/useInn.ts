@@ -18,5 +18,5 @@ import { useServedRead, type ServedRead } from './useServedRead'
 export type InnState = ServedRead<InnView>
 
 export function useInn(portId: string | null): InnState {
-  return useServedRead(portId, () => worldInn(portId as string))
+  return useServedRead(portId, () => worldInn(portId as string), { name: 'worldInn' })
 }

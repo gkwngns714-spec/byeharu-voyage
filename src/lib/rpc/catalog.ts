@@ -32,9 +32,16 @@ export interface RpcSpec {
   readonly schema: 'world' | 'cmd'
   readonly fn: string
   readonly args: readonly RpcArg[]
+  /** A verb that CHANGES the world. A preview does not: it is the same act rolled back. When one
+   *  of these succeeds, `backend.call` drops the live answers in `src/store/resourceCache.ts`, so
+   *  the next read of a price, a shed or a town hall asks the server again. */
+  readonly mutates?: true
+  /** SESSION-kept cache entries this verb also changes, by RPC-name prefix (a hire changes the
+   *  officer roster, a study the skill book). Finite entries are dropped by `mutates` already. */
+  readonly invalidates?: readonly string[]
 }
 
-export const RPCS = {
+const TABLE = {
   worldSnapshot: { schema: 'world', fn: 'snapshot', args: [] },
   worldMarket: { schema: 'world', fn: 'market', args: [{ name: 'p_port', type: 'uuid' }] },
   worldFleets: { schema: 'world', fn: 'fleets', args: [] },
@@ -88,6 +95,7 @@ export const RPCS = {
   cmdForgeGood: {
     schema: 'cmd',
     fn: 'forge_good',
+    mutates: true,
     args: [
       { name: 'p_port', type: 'uuid' },
       { name: 'p_product', type: 'uuid' },
@@ -145,6 +153,7 @@ export const RPCS = {
   cmdHaggle: {
     schema: 'cmd',
     fn: 'haggle',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_good', type: 'uuid' },
@@ -156,6 +165,7 @@ export const RPCS = {
   cmdIssue: {
     schema: 'cmd',
     fn: 'issue',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_text', type: 'text' },
@@ -189,6 +199,7 @@ export const RPCS = {
   cmdTradeBasket: {
     schema: 'cmd',
     fn: 'trade_basket',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_lines', type: 'jsonb' },
@@ -212,6 +223,7 @@ export const RPCS = {
   cmdFulfil: {
     schema: 'cmd',
     fn: 'fulfil',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_contract', type: 'uuid' },
@@ -221,6 +233,7 @@ export const RPCS = {
   cmdCancel: {
     schema: 'cmd',
     fn: 'cancel_at',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_index', type: 'int' },
@@ -229,6 +242,7 @@ export const RPCS = {
   cmdClear: {
     schema: 'cmd',
     fn: 'clear',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_include_active', type: 'boolean' },
@@ -281,6 +295,8 @@ export const RPCS = {
   cmdHireOfficer: {
     schema: 'cmd',
     fn: 'hire_officer',
+    mutates: true,
+    invalidates: ['worldOfficers'],
     args: [
       { name: 'p_code', type: 'text' },
       { name: 'p_fleet', type: 'uuid' },
@@ -289,6 +305,8 @@ export const RPCS = {
   cmdStudySkill: {
     schema: 'cmd',
     fn: 'study_skill',
+    mutates: true,
+    invalidates: ['worldSkills'],
     args: [
       { name: 'p_code', type: 'text' },
       { name: 'p_fleet', type: 'uuid' },
@@ -300,6 +318,8 @@ export const RPCS = {
   cmdSkillEnroll: {
     schema: 'cmd',
     fn: 'skill_enroll',
+    mutates: true,
+    invalidates: ['worldSkills'],
     args: [
       { name: 'p_code', type: 'text' },
       { name: 'p_fleet', type: 'uuid' },
@@ -308,6 +328,8 @@ export const RPCS = {
   cmdSkillQueueSet: {
     schema: 'cmd',
     fn: 'skill_queue_set',
+    mutates: true,
+    invalidates: ['worldSkills'],
     args: [{ name: 'p_entries', type: 'jsonb' }],
   },
   // 0092 — STANDING ROUTES (docs/TRADE_ROUTES.md, slice 1). One read and four verbs, landed with the
@@ -367,6 +389,8 @@ export const RPCS = {
   cmdInvest: {
     schema: 'cmd',
     fn: 'invest',
+    mutates: true,
+    invalidates: ['worldAllegiance'],
     args: [
       { name: 'p_port', type: 'uuid' },
       { name: 'p_kind', type: 'text' },
@@ -382,6 +406,7 @@ export const RPCS = {
   cmdTow: {
     schema: 'cmd',
     fn: 'tow',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_expected_version', type: 'int' },
@@ -390,6 +415,7 @@ export const RPCS = {
   cmdStandingRouteSave: {
     schema: 'cmd',
     fn: 'standing_route_save',
+    mutates: true,
     args: [
       { name: 'p_route', type: 'uuid' },
       { name: 'p_name', type: 'text' },
@@ -401,11 +427,13 @@ export const RPCS = {
   cmdStandingRouteDelete: {
     schema: 'cmd',
     fn: 'standing_route_delete',
+    mutates: true,
     args: [{ name: 'p_route', type: 'uuid' }],
   },
   cmdStandingRouteAssign: {
     schema: 'cmd',
     fn: 'standing_route_assign',
+    mutates: true,
     args: [
       { name: 'p_route', type: 'uuid' },
       { name: 'p_fleet', type: 'uuid' },
@@ -414,6 +442,7 @@ export const RPCS = {
   cmdStandingRoutePause: {
     schema: 'cmd',
     fn: 'standing_route_pause',
+    mutates: true,
     args: [
       { name: 'p_route', type: 'uuid' },
       { name: 'p_paused', type: 'boolean' },
@@ -426,6 +455,7 @@ export const RPCS = {
   cmdDivert: {
     schema: 'cmd',
     fn: 'divert',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_dest', type: 'uuid' },
@@ -437,12 +467,12 @@ export const RPCS = {
   // auth.uid() — which is why it is safe for a browser to hold, unlike public.new_house().
   // 0143 (docs/INFLUENCE.md I1): every harbour's flag, and a company's change of country.
   worldAllegiance: { schema: 'world', fn: 'allegiance', args: [] },
-  cmdChangeCountry: { schema: 'cmd', fn: 'change_country', args: [{ name: 'p_nation_code', type: 'text' }] },
+  cmdChangeCountry: { schema: 'cmd', fn: 'change_country', mutates: true, invalidates: ['worldAllegiance'], args: [{ name: 'p_nation_code', type: 'text' }] },
   // 0144 (docs/INFLUENCE.md I2): a gift to a city, and its dry run (the Town Hall's Donate).
-  cmdDonate: { schema: 'cmd', fn: 'donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
+  cmdDonate: { schema: 'cmd', fn: 'donate', mutates: true, invalidates: ['worldAllegiance'], args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
   cmdPreviewDonate: { schema: 'cmd', fn: 'preview_donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
   // 0147 (docs/INFLUENCE.md I5): the mayor sets the city's profit tax.
-  cmdSetTax: { schema: 'cmd', fn: 'set_tax', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_rate', type: 'numeric' }] },
+  cmdSetTax: { schema: 'cmd', fn: 'set_tax', mutates: true, args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_rate', type: 'numeric' }] },
   // 0148 (docs/INFLUENCE.md I6): Rank's Countries board.
   worldNationStandings: { schema: 'world', fn: 'nation_standings', args: [] },
   // 0157 (docs/SKILLS_AND_CAPTAINS.md K5): seat a captain in a cabin of a ship, move her, or put her
@@ -453,16 +483,20 @@ export const RPCS = {
   cmdCaptainTraitsSet: {
     schema: 'cmd',
     fn: 'captain_traits_set',
+    mutates: true,
+    invalidates: ['worldCaptains'],
     args: [
       { name: 'p_code', type: 'text' },
       { name: 'p_traits', type: 'text[]' },
     ],
   },
   // 0162 (K8): promote a captain — her ship docked, her level, the items in storage there.
-  cmdPromoteCaptain: { schema: 'cmd', fn: 'promote_captain', args: [{ name: 'p_code', type: 'text' }] },
+  cmdPromoteCaptain: { schema: 'cmd', fn: 'promote_captain', mutates: true, invalidates: ['worldCaptains'], args: [{ name: 'p_code', type: 'text' }] },
   cmdSeatCaptain: {
     schema: 'cmd',
     fn: 'seat_captain',
+    mutates: true,
+    invalidates: ['worldCaptains'],
     args: [
       { name: 'p_code', type: 'text' },
       { name: 'p_ship', type: 'uuid' },
@@ -474,6 +508,7 @@ export const RPCS = {
   cmdAugmentFitting: {
     schema: 'cmd',
     fn: 'augment_fitting',
+    mutates: true,
     args: [
       { name: 'p_ship', type: 'uuid' },
       { name: 'p_item', type: 'text' },
@@ -484,6 +519,8 @@ export const RPCS = {
   cmdFoundHouse: {
     schema: 'cmd',
     fn: 'found_house',
+    mutates: true,
+    invalidates: ['worldOfficers', 'worldSkills'],
     args: [
       { name: 'p_company_name', type: 'text' },
       { name: 'p_nation_code', type: 'text' },
@@ -562,6 +599,7 @@ export const RPCS = {
   cmdIssueLines: {
     schema: 'cmd',
     fn: 'issue_lines',
+    mutates: true,
     args: [
       { name: 'p_fleet', type: 'uuid' },
       { name: 'p_lines', type: 'jsonb' },
@@ -570,7 +608,11 @@ export const RPCS = {
   },
 } as const satisfies Record<string, RpcSpec>
 
-export type RpcName = keyof typeof RPCS
+export type RpcName = keyof typeof TABLE
+
+/** The catalogue, widened to its contract: every row may now carry `mutates`/`invalidates`, which
+ *  `call()` reads after a verb succeeds. `TABLE` still pins the keys and the argument names. */
+export const RPCS: Record<RpcName, RpcSpec> = TABLE
 
 /** `world.snapshot()` — for logs and error messages, spelled the way the migration spells it. */
 export function rpcLabel(name: RpcName): string {

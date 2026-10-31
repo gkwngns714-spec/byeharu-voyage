@@ -10,7 +10,7 @@ import { useT } from '../../lib/i18n'
 // its three biggest givers. Nothing is counted here; the server counts `public.port_nation`.
 export function CountriesBoard() {
   const t = useT()
-  const read = useServedRead('countries', worldNationStandings)
+  const read = useServedRead('countries', worldNationStandings, { name: 'worldNationStandings' })
   const board = read.view
   if (!board) {
     return (

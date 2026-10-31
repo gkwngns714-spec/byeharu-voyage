@@ -22,5 +22,6 @@ export type StorageState = ServedRead<WarehouseView>
 export function useStorage(portId: string | null, fleetId: string | null): StorageState {
   return useServedRead(portId ? `${portId}:${fleetId ?? '-'}` : null, () =>
     worldWarehouse(portId as string, fleetId),
+    { name: 'worldWarehouse' },
   )
 }

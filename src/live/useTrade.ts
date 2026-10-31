@@ -121,7 +121,7 @@ export function useTrade(
       const r = await cmdPreview(fleet.id, line as string, null)
       return ok<SaleEstimate | null>(r.ok && r.value.estimate ? saleEstimate(r.value.estimate) : null)
     },
-    { question },
+    { question, name: 'cmdPreview', cache: false },
   )
   // The figures on screen are the last served for this good; `previewLoading` says they are not
   // yet the figures for the quantity on the button — the finger has not rested, or the answer for

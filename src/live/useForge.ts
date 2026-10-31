@@ -17,5 +17,5 @@ import { useServedRead, type ServedRead } from './useServedRead'
 export type ForgeState = ServedRead<ForgeView>
 
 export function useForge(portId: string | null): ForgeState {
-  return useServedRead(portId, () => worldGoodsForge(portId as string))
+  return useServedRead(portId, () => worldGoodsForge(portId as string), { name: 'worldGoodsForge' })
 }

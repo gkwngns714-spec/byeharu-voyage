@@ -268,7 +268,7 @@ function InvestTray({
       const r = await cmdPreviewInvest(port.id, work.kind, settled)
       return ok(r.ok ? { view: r.value, refusal: null } : { view: null, refusal: r.refusal })
     },
-    { question: String(settled) },
+    { question: String(settled), name: 'cmdPreviewInvest', cache: false },
   )
   const current = settled === shares && !check.stale ? check.view : null
   const estimate = current?.view ?? null

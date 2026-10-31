@@ -10,10 +10,10 @@
 // new QUESTION, so it is asked at once and the old figures stand, `stale`, until it lands.
 //
 // REMEMBERED UNTIL THE EDGE (2026-10-19, owner: "when pressing a different trade goods, it takes too long
-// to load"): each read keeps its answer (servedMemo.ts) under its own question until the market's next
-// edge — the moment the open desk would re-ask it anyway — so going back to a good just shown draws at
-// once. (The watchlist, the outlook and their prefetch left with the Markets face, owner row 218.) One
-// spelling of each question, below.
+// to load"): each read keeps its answer (src/store/resourceCache.ts) under its own question until the
+// market's next edge — the moment the open desk would re-ask it anyway — so going back to a good just
+// shown draws at once. (The watchlist, the outlook and their prefetch left with the Markets face, owner
+// row 218.) One spelling of each question, below.
 
 import { useCallback, useState } from 'react'
 import { useReaskAtEdge } from '../components/ui'
@@ -21,12 +21,9 @@ import { useShellState } from '../app/shellState'
 import { worldGoodBoard, worldPriceWhy } from '../lib/rpc'
 import type { GoodBoard, PriceWhy, RpcResult } from '../lib/rpc'
 import { useServedRead, type ServedRead } from './useServedRead'
+import { msUntilEdge } from '../store/resourceCache'
 
 type Clocked = { clock: { now: string; next_change_at: string } }
-
-/** A clocked answer is fresh until its own edge (both ends on the server's clock, so the glass's skew
- *  does not matter). */
-const untilEdge = (v: Clocked) => Date.parse(v.clock.next_change_at) - Date.parse(v.clock.now)
 
 /** One desk question: what it is FOR, what is asked, and the RPC. */
 interface DeskRead<V> {
@@ -35,8 +32,6 @@ interface DeskRead<V> {
   ask: () => Promise<RpcResult<V>>
 }
 
-const memoKey = (name: string, question: string) => `${name}|${question}`
-
 /** A served read with a clock, re-asked when its own edge passes, kept until then. */
 function useEdgeRead<V extends Clocked>(name: string, { subject, question, ask }: DeskRead<V>): ServedRead<V> {
   const { nowMs } = useShellState()
@@ -44,7 +39,8 @@ function useEdgeRead<V extends Clocked>(name: string, { subject, question, ask }
   const read = useServedRead<V>(subject, ask, {
     question,
     trigger: edges,
-    memo: subject && question ? { key: memoKey(name, question), freshMs: untilEdge } : null,
+    name,
+    freshMs: (v: V) => msUntilEdge(v.clock),
   })
   const edgeMs = read.view ? Date.parse(read.view.clock.next_change_at) : null
   const atMs = read.view ? Date.parse(read.view.clock.now) : null

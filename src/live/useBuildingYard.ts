@@ -13,5 +13,5 @@ import { useServedRead, type ServedRead } from './useServedRead'
 export type BuildingYardState = ServedRead<BuildingYardView>
 
 export function useBuildingYard(portId: string | null): BuildingYardState {
-  return useServedRead(portId, () => worldBuildingYard(portId as string))
+  return useServedRead(portId, () => worldBuildingYard(portId as string), { name: 'worldBuildingYard' })
 }

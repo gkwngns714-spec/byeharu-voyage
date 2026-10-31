@@ -54,7 +54,7 @@ function TowRow({ fleet }: { fleet: FleetView }) {
   const quote = useServedRead<Served>(`tow:${fleet.id}`, async () => {
     const r = await cmdPreviewTow(fleet.id)
     return ok(r.ok ? { view: r.value, refusal: null } : { view: null, refusal: r.refusal })
-  })
+  }, { name: 'cmdPreviewTow', cache: false })
   const estimate = quote.view?.view ?? null
   const shown = refusal ?? quote.view?.refusal ?? null
 

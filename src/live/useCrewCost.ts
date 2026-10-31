@@ -49,6 +49,7 @@ export function useCrewCost(fleetId: string | null, count: number | null): CrewC
   const settled = useSettled(count)
   const read = useServedRead(fleetId !== null ? `${fleetId}:${settled ?? '-'}` : null, () =>
     worldCrewCost(fleetId as string, settled),
+    { name: 'worldCrewCost' },
   )
   if (fleetId === null) return IDLE
   if (settled !== count) return WAITING

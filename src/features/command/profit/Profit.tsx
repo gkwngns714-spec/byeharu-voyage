@@ -15,7 +15,7 @@ const hint = () => tNow('desk.profitHint')
 
 export function Profit({ layout }: { layout: DeskLayout }) {
   const t = useT()
-  const read = useServedRead<Books>('books:7', () => worldBooks(DAYS))
+  const read = useServedRead<Books>('books:7', () => worldBooks(DAYS), { name: 'worldBooks' })
   const b = read.view
   const [day, setDay] = useState<number | null>(null)
 
