@@ -1,5 +1,5 @@
-import { Fragment, useState } from 'react'
-import { Bar, CargoBar, FactsLine, IconDisc, Row, Sheet, type IconDiscTone, Clip } from '../../components/ui'
+import { useState } from 'react'
+import { Bar, CargoBar, DetailPage, FactsLine, IconDisc, Row, Sheet, type IconDiscTone, Clip } from '../../components/ui'
 import { formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -16,7 +16,8 @@ import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
 import { fleetDue } from './fleetLine'
-import { useT } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
+import { useLocale, useT } from '../../lib/i18n'
 
 // FLEETS — what you own, one row each, redrawn to docs/UI_DIRECTION.md §6 (§7 step 7).
 //
@@ -29,19 +30,16 @@ import { useT } from '../../lib/i18n'
 // and when, and one caption line of the three figures that decide the next order: stores, hold,
 // hull.
 //
-// ── PRESSING THE ROW UNFOLDS HER UNDER IT (owner row 89, 2026-09-13) ──────────────────────────
-// "fleets, i want to be folded not creating a new pop up page when clicking a ship/fleet. when
-// folded, ships cargo supplies should be in one page with three columns." The docked tray
-// (FleetTray.tsx, deleted) is gone: a press mounts `FleetFold` IMMEDIATELY AFTER the pressed row —
-// ships, cargo and supplies together, three columns on a wide glass, stacked on a phone — and a
-// second press folds it. The row and everything above it stay where they were; what is below
-// moves down, which is what an unfold is (rows 6, 15, 25, 28, 45).
+// ── PRESSING THE ROW OPENS HER PAGE (owner, 2026-10-31) ──────────────────────────────────────
+// The owner's newest law, verbatim: *"everything has folded. enough with folding things. make
+// everything small, compact and once clicked show new page popping up."* Row 89's unfold-under-the-
+// row is therefore RETIRED — it re-flowed everything below the press, the one thing the press law
+// forbids — and the fleet's ships, cargo and supplies now stand whole on the ONE pop-up page every
+// other compact block uses (`DetailPage`): a fixed overlay with its own back press, so the row,
+// the rows below it and the rail keep their boxes to the pixel while it is open.
 //
-// ANY NUMBER OF FLEETS MAY STAND UNFOLDED, and that is the rule deciding it, not a preference: if
-// only one could, pressing a row BELOW an open one would fold the open one and move the pressed
-// row up under the finger — the restructure-on-press the owner has refused three times. A press
-// therefore only ever adds or removes the region directly under its own row. The open set is by
-// ID, not by reference, because the store hands out a new FleetView every half minute.
+// The row still SELECTS: it lights `accent` while its page is up, and the page is keyed by ID (the
+// store hands out a new FleetView every half minute), so an open page survives a world read.
 //
 // ── THE CAPTAINS MOVED TO THE YOU TAB (owner row 181, 2026-10-20) ─────────────────────────
 // 0160's roster stood at the foot of this screen until the owner asked for a personal tab and named
@@ -65,22 +63,23 @@ import { useT } from '../../lib/i18n'
 // so a countdown past its instant says "due", never "arrived".
 
 export function FleetsScreen() {
-  const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
+  const title = tabWord(useLocale(), '/fleets')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
 
   if (phase === 'failed') {
-    return <WorldFailed title={t('fleets.title')} refusal={fatal} />
+    return <WorldFailed title={title} refusal={fatal} />
   }
   if (phase !== 'ready' || !snapshot) {
-    return <WorldLoading title={t('fleets.title')} />
+    return <WorldLoading title={title} />
   }
-  return <FleetsBody />
+  return <FleetsBody title={title} />
 }
 
-function FleetsBody() {
+function FleetsBody({ title }: { title: string }) {
   const t = useT()
   const fleets = useWorld((s) => s.fleets)
   const portByCode = useWorld((s) => s.portByCode)
@@ -89,43 +88,35 @@ function FleetsBody() {
   // route (src/domain/route), never a column: the route itself is COMMAND's (RouteFold.tsx). The
   // world read brings the routes with the fleets (worldStore.refresh), so this tab asks nothing.
   const routes = useWorld((s) => s.routes)
-  // WHICH FLEETS ARE UNFOLDED, BY ID (see the header). A new Set on every toggle, because React
-  // compares state by reference and a mutated Set would not re-render.
-  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set())
-  const toggle = (id: string) =>
-    setUnfolded((was) => {
-      const next = new Set(was)
-      if (!next.delete(id)) next.add(id)
-      return next
-    })
+  // WHICH FLEET'S PAGE IS OPEN, BY ID (see the header). One page at a time, like every other compact
+  // block; the row behind it never moves.
+  const [openFleetId, setOpenFleetId] = useState<string | null>(null)
+  const openFleet = fleets.find((f) => f.id === openFleetId) ?? null
   // The one authority for code → name (worldStore.portNameOf).
   const portName = (code: string) => portNameOf(portByCode, code)
 
   return (
-    <Sheet title={t('fleets.title')} data-testid="fleets">
+    <Sheet title={title} data-testid="fleets">
       {fleets.length === 0 ? (
         <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
       ) : (
-        fleets.map((fleet, i) => {
-          const open = unfolded.has(fleet.id)
-          return (
-            <Fragment key={fleet.id}>
-              <FleetRow
-                fleet={fleet}
-                where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
-                  .filter(Boolean)
-                  .join(' · ')}
-                open={open}
-                /* The hairline does not depend on the fold: MEASURED on the first run of
-                   tests/layout.spec.ts — giving the last row a hairline when it opened grew its
-                   box from 58 to 59 px, which is the row moving under the finger. */
-                last={i === fleets.length - 1}
-                onToggle={() => toggle(fleet.id)}
-              />
-              {open && <FleetFold fleet={fleet} />}
-            </Fragment>
-          )
-        })
+        fleets.map((fleet, i) => (
+          <FleetRow
+            key={fleet.id}
+            fleet={fleet}
+            where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
+              .filter(Boolean)
+              .join(' · ')}
+            selected={openFleetId === fleet.id}
+            last={i === fleets.length - 1}
+            onOpen={() => setOpenFleetId(fleet.id)}
+          />
+        ))
+      )}
+      {openFleet !== null && (
+        <DetailPage title={openFleet.name} onClose={() => setOpenFleetId(null)} data-testid="fleet-page">
+          <FleetFold fleet={openFleet} />
+        </DetailPage>
       )}
     </Sheet>
   )
@@ -146,17 +137,17 @@ const MARK: Record<ReturnType<typeof fleetStatusTone>, IconDiscTone> = {
 function FleetRow({
   fleet,
   where,
-  open,
+  selected,
   last,
-  onToggle,
+  onOpen,
 }: {
   fleet: FleetView
   /** `Lisbon`, `to Cádiz · 1.2 d`, `Lisbon · 2 h` — `whereLine` and `fleetDue`, joined by the caller. */
   where: string
-  /** Unfolded under this row. The row reads `accent` — §4.4: gold is "selected, yours". */
-  open: boolean
+  /** Her page is up. The row reads `accent` — §4.4: gold is "selected, yours". */
+  selected: boolean
   last: boolean
-  onToggle: () => void
+  onOpen: () => void
 }) {
   const t = useT()
   const used = fleetHoldUsed(fleet)
@@ -177,8 +168,8 @@ function FleetRow({
         </span>
       }
       chevron
-      tone={open ? 'accent' : 'default'}
-      onClick={onToggle}
+      tone={selected ? 'accent' : 'default'}
+      onClick={onOpen}
       hairline={!last}
       data-testid="fleet-row"
     >

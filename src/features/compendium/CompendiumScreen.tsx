@@ -7,7 +7,8 @@ import { CaptainsFace } from './CaptainsFace'
 import { GoodsFace } from './GoodsFace'
 import { NationsFace } from './NationsFace'
 import { ShipsFace } from './ShipsFace'
-import { useT } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
+import { useLocale, useT } from '../../lib/i18n'
 
 // CODEX — the 도감: every good, hull, officer and flag the world serves. THE COMPACT SCREEN (owner,
 // 2026-10-31): the four faces are a tile grid; the catalogue itself is one summary row with its
@@ -22,15 +23,16 @@ const FACES = [
 type FaceId = (typeof FACES)[number]['id']
 
 export function CompendiumScreen() {
-  const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
+  const title = tabWord(useLocale(), '/compendium')
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
-  if (phase === 'failed') return <WorldFailed title={t('codex.codex')} refusal={fatal} />
-  if (phase !== 'ready') return <WorldLoading title={t('codex.codex')} />
-  return <CompendiumBody />
+  if (phase === 'failed') return <WorldFailed title={title} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={title} />
+  return <CompendiumBody title={title} />
 }
 
-function CompendiumBody() {
+function CompendiumBody({ title }: { title: string }) {
   const t = useT()
   const loadOfficers = useWorld((s) => s.loadOfficers)
   const snapshot = useWorld((s) => s.snapshot)
@@ -67,7 +69,7 @@ function CompendiumBody() {
           : Object.keys(nationByCode).length
 
   return (
-    <Sheet title={t('codex.codex')} data-testid="codex">
+    <Sheet title={title} data-testid="codex">
       <Segmented
         label={t('codex.faces')}
         segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))}

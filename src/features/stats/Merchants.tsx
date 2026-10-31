@@ -83,7 +83,7 @@ export function MerchantsFace() {
   const rows = sortMerchants(country === ALL ? list : list.filter((h) => h[1] === country), sort)
   const shown = all ? rows : rows.slice(0, FIRST)
 
-  const allTitle = t('stats.everyCompany', { n: formatInt(rows.length) })
+  const allTitle = t('stats.everyCompany')
   const topTitle = t('stats.bestDay')
   const bottomTitle = t('stats.worstDay')
 
@@ -116,8 +116,8 @@ export function MerchantsFace() {
               <StatsChart title={t('stats.earnedDay')} points={toSeries(v.series, (p) => p.profit_day)} format={formatDucats} label={t('stats.earnedLabel')} tone="info" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
             </div>
             <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('stats.atSeaSeries')}</span>
-              <StatsChart title={t('stats.atSeaSeries')} points={toSeries(v.series, (p) => p.sailing)} format={formatInt} label={t('stats.atSeaLabel')} tone="accent" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
+              <span className="block text-t-caption text-ink-faint">{t('stats.fleetsAtSea')}</span>
+              <StatsChart title={t('stats.fleetsAtSea')} points={toSeries(v.series, (p) => p.sailing)} format={formatInt} label={t('stats.atSeaLabel')} tone="accent" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
             </div>
           </div>
         </DetailPage>
@@ -180,7 +180,7 @@ export function MerchantsFace() {
           {!all && rows.length > FIRST && (
             <div className="pt-3">
               <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-merchants-show-all">
-                {t('stats.showAll', { n: formatInt(rows.length) })}
+                {t('stats.showAll')}
               </Button>
             </div>
           )}

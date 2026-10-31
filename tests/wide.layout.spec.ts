@@ -266,13 +266,14 @@ test.describe('wide glass', () => {
   })
 
   // ═════════════════════════════════════════════════════════════════════════════════════════════
-  // FLEETS — the fold is THREE COLUMNS on a wide glass (owner row 89, 2026-09-13): *"when folded,
-  // ships cargo supplies should be in one page with three columns."* The fold mounts under the
-  // pressed row (tests/layout.spec.ts proves the phone stack and that nothing above moves); here
-  // its three sections must stand SIDE BY SIDE — three boxes whose x ranges do not overlap, whose
-  // tops agree within 2px, all inside the 48rem column — and a second press folds it.
+  // FLEETS — a fleet's PAGE holds THREE COLUMNS on a wide glass. The shape is row 89's (*"ships
+  // cargo supplies should be in one page with three columns"*); the mechanism is the owner's
+  // 2026-10-31 law (*"everything has folded. enough with folding things … once clicked show new
+  // page popping up"*): the row opens the one `DetailPage`, and the list behind it cannot move
+  // because a fixed overlay is out of flow. tests/layout.spec.ts proves the phone stack and the
+  // unmoved list; here the page's three sections stand side by side, on one line.
   // ═════════════════════════════════════════════════════════════════════════════════════════════
-  test(`FLEETS at ${WIDE.width}px: a fleet unfolds into three columns inside the 48rem column, and folds again`, async ({
+  test(`FLEETS at ${WIDE.width}px: a fleet's page holds three columns, and the row behind it does not move`, async ({
     page,
     request,
     baseURL,
@@ -288,20 +289,19 @@ test.describe('wide glass', () => {
 
     const rows = page.locator('[data-testid="fleet-row"]')
     expect(await rows.count(), 'no fleet rows — did the world found a company with a fleet?').toBeGreaterThan(0)
-    const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
     const rowBox = (await rows.first().boundingBox())!
-    // The row itself is no wider than the column (the wide glass, proved for PORT above).
-    expect(rowBox.width).toBeLessThanOrEqual(SHEET_REM * remPx + 1)
 
-    // PRESS. Nothing at or above the row moves (row 15) — the row's own box is the witness.
+    // PRESS. The page opens; the row's own box is the witness that the list did not move.
     await rows.first().click()
-    const fold = page.locator('[data-testid="fleet-fold"]')
-    await expect(fold).toBeVisible()
+    const fleetPage = page.getByTestId('fleet-page')
+    await expect(fleetPage).toBeVisible()
     await page.waitForTimeout(600)
     expect(await rows.first().boundingBox(), 'pressing the row moved it').toEqual(rowBox)
+    const pageRoot = await fleetPage.evaluate((el) => ({ h: (el as HTMLElement).scrollHeight, ch: (el as HTMLElement).clientHeight }))
+    expect(pageRoot.h, `the fleet page itself scrolls: ${pageRoot.h} > ${pageRoot.ch}`).toBeLessThanOrEqual(pageRoot.ch + 1)
 
-    const sections = await page.evaluate(() =>
-      [...document.querySelectorAll('[data-testid="fleet-fold-section"]')].map((s) => {
+    const sections = await fleetPage.evaluate((el) =>
+      [...el.querySelectorAll('[data-testid="fleet-fold-section"]')].map((s) => {
         const r = s.getBoundingClientRect()
         return {
           heading: (s.querySelector('h2')?.textContent ?? '').trim(),
@@ -312,7 +312,8 @@ test.describe('wide glass', () => {
         }
       }),
     )
-    console.log(`FLEETS fold @${WIDE.width}px: ${JSON.stringify(sections)}`)
+    const pageBox = (await fleetPage.boundingBox())!
+    console.log(`FLEETS page @${WIDE.width}px: ${JSON.stringify(sections)}`)
     expect(sections.map((s) => s.heading)).toEqual(['Ships', 'Cargo', 'Supplies'])
 
     // 1. SIDE BY SIDE: three x ranges that do not overlap, left to right in the owner's order.
@@ -326,19 +327,18 @@ test.describe('wide glass', () => {
     for (const s of sections) {
       expect(Math.abs(s.top - sections[0].top), `${s.heading}'s top is not on the line`).toBeLessThanOrEqual(2)
     }
-    // 3. INSIDE THE COLUMN: every box within the pressed row's own x range, which is the 48rem
-    //    column at most — the fold does not reach into the tray's slot or off the glass.
+    // 3. INSIDE THE PAGE: every box within the page's own x range, never off the glass.
     for (const s of sections) {
-      expect(s.left, `${s.heading} starts left of the column`).toBeGreaterThanOrEqual(Math.floor(rowBox.x))
-      expect(s.right, `${s.heading} runs past the column`).toBeLessThanOrEqual(Math.ceil(rowBox.x + rowBox.width))
+      expect(s.left, `${s.heading} starts left of the page`).toBeGreaterThanOrEqual(Math.floor(pageBox.x))
+      expect(s.right, `${s.heading} runs past the page's right edge`).toBeLessThanOrEqual(Math.ceil(pageBox.x + pageBox.width))
       expect(s.width, `${s.heading} is too narrow to read`).toBeGreaterThan(160)
     }
-    // No tray stands: the fold IS the detail now (FleetTray.tsx is deleted).
+    // No tray stands: the page IS the detail now (FleetTray.tsx is deleted).
     await expect(page.locator('[data-tray-mode]')).toHaveCount(0)
 
-    // PRESS AGAIN: folded, no fold in the DOM, the row where it was.
-    await rows.first().click()
-    await expect(page.locator('[data-testid="fleet-fold"]')).toHaveCount(0)
+    // THE BACK PRESS: the page is gone, the row is where it was.
+    await page.locator('[data-detail-back]').last().click()
+    await expect(page.locator('[data-testid="fleet-page"]')).toHaveCount(0)
     await page.waitForTimeout(400)
     expect(await rows.first().boundingBox()).toEqual(rowBox)
   })

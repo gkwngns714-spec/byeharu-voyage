@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon, Nav, Row, TapAway, Tray, type NavItem, type TrayDetent } from '../components/ui'
-import { NAV_CELLS, tabHref } from './navTabs'
-import { useT, translateMaybe, useLocale } from '../lib/i18n'
+import { NAV_CELLS, navWord, tabHref } from './navTabs'
+import { useT, useLocale } from '../lib/i18n'
 
 // THE ONE navigation. Extracted from AppShell so it can be RENDERED AND MEASURED on its own at a
 // phone viewport without booting the shell — a number in a comment is not a measurement, and
@@ -89,7 +89,8 @@ export function NavBar() {
   // route on it without translating an href back into a path.
   // A tab is named in navTabs.ts in English; its word on screen is the shell dictionary's.
   const locale = useLocale()
-  const word = (label: string) => translateMaybe(locale, 'shell', `tab_${label}`) ?? label
+  // THE WORD COMES FROM THE TABLE (navTabs.ts `navWord`), never a second spelling here.
+  const word = (label: string) => navWord(locale, label)
   const items: NavItem[] = NAV_CELLS.map((c) =>
     c.kind === 'tab'
       ? { id: c.to, label: word(c.label), icon: c.icon, href: tabHref(c.to) }

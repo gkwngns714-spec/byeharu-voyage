@@ -8,8 +8,10 @@ export const mapDict = defineDict({
     Inn: 'Inn',
     'Town Hall': 'Town Hall',
     Info: 'Info',
-    // 0275 (docs/WEEKLY_ROLLOVER.md §4): the city's sixth tab — 내역, not the shell's 기록.
-    History: 'History',
+    // 0275 (docs/WEEKLY_ROLLOVER.md §4): the city's sixth tab. THE WORD IS "Giving", NOT "History"
+    // (the audit, 2026-10-31): the shell's History is the event log, and two different screens
+    // sharing one English word is two things wearing one name. Korean already distinguished it.
+    History: 'Giving',
     city: 'City',
     noMarket: 'No market here.',
     tryAgain: 'Try again',

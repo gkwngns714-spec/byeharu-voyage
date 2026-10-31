@@ -175,7 +175,9 @@ test('0278 (owner row 173): the city History tab folds the months — the curren
   await ready(page)
 
   await openCity(page, CITY, 'Porto')
-  await page.getByTestId('map-city-tabs').getByText('History', { exact: true }).click()
+  // The city's giving tab is worded "Giving" since the consistency audit (2026-10-31): the shell's
+  // History is the event log, so one English word no longer names two different screens.
+  await page.getByTestId('map-city-tabs').getByText('Giving', { exact: true }).click()
   await expect(page.getByTestId('map-city-history')).toBeVisible({ timeout: 30_000 })
   // One fold per month, the current month FIRST and OPEN: its label and the served total.
   const months = page.getByTestId('city-history-month')

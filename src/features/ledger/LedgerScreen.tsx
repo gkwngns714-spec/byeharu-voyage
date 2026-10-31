@@ -17,7 +17,8 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { headline, payloadFights, payloadLines } from './headline'
-import { useT, type TKey } from '../../lib/i18n'
+import { useLocale, useT, type TKey } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
 
 // LEDGER — the running record. THE COMPACT SCREEN (owner, 2026-10-31): the four faces are a tile
 // grid and the feed is one summary row with its entry count; a press opens the feed's own full-
@@ -65,15 +66,16 @@ const markOf = (kind: string): IconName => {
 }
 
 export function LedgerScreen() {
-  const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — the rail says History, so the screen does.
+  const title = tabWord(useLocale(), '/ledger')
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
-  if (phase === 'failed') return <WorldFailed title={t('codex.history')} refusal={fatal} />
-  if (phase !== 'ready') return <WorldLoading title={t('codex.history')} />
-  return <LedgerBody />
+  if (phase === 'failed') return <WorldFailed title={title} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={title} />
+  return <LedgerBody title={title} />
 }
 
-function LedgerBody() {
+function LedgerBody({ title }: { title: string }) {
   const t = useT()
   const events = useWorld((s) => s.events)
   const portByCode = useWorld((s) => s.portByCode)
@@ -97,12 +99,12 @@ function LedgerBody() {
   }
 
   return (
-    <Sheet title={t('codex.history')} data-testid="ledger">
-      <Segmented segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))} value={face} onChange={setFace} label={t('codex.history')} className="mb-3 w-fit" />
-      <SummaryRow title={t('codex.history')} figure={formatInt(shown.length)} word={t('common.open')} onClick={() => setPage(true)} data-testid="ledger-open" />
+    <Sheet title={title} data-testid="ledger">
+      <Segmented segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))} value={face} onChange={setFace} label={title} className="mb-3 w-fit" />
+      <SummaryRow title={title} figure={formatInt(shown.length)} word={t('common.open')} onClick={() => setPage(true)} data-testid="ledger-open" />
 
       {page && (
-        <DetailPage title={t('codex.history')} figure={formatInt(shown.length)} onClose={closePage} data-testid="ledger-open-page">
+        <DetailPage title={title} figure={formatInt(shown.length)} onClose={closePage} data-testid="ledger-open-page">
           {shown.length === 0 ? (
             <Row label={events.length === 0 ? t('codex.nothingYet') : t('codex.nothingHere')} tone="muted" hairline={false} />
           ) : (

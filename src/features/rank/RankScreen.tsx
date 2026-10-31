@@ -18,7 +18,8 @@ import type { PlayerHouse, StandingsBoard } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CountriesBoard } from './CountriesBoard'
-import { useT } from '../../lib/i18n'
+import { useLocale, useT } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
 
 // RANK — one list, and you are pinned to the top of it. docs/UI_DIRECTION.md §6 "RANK".
 //
@@ -49,17 +50,19 @@ import { useT } from '../../lib/i18n'
 // reason in 0025's header and is not restated here.
 
 export function RankScreen() {
-  const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord). It read "Standings" while the rail said
+  // "Rank" — two words for one screen (the audit, 2026-10-31).
+  const title = tabWord(useLocale(), '/rank')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
 
   if (phase === 'failed') {
-    return <WorldFailed title={t('rank.title')} refusal={fatal} />
+    return <WorldFailed title={title} refusal={fatal} />
   }
   if (phase !== 'ready') {
     return (
-      <WorldLoading title={t('rank.title')} />
+      <WorldLoading title={title} />
     )
   }
   return <RankBody />
@@ -67,6 +70,7 @@ export function RankScreen() {
 
 function RankBody() {
   const t = useT()
+  const title = tabWord(useLocale(), '/rank')
   const house = useWorld((s) => s.player)
   const board = useWorld((s) => s.standings)
   const loadStandings = useWorld((s) => s.loadStandings)
@@ -103,7 +107,7 @@ function RankBody() {
 
   return (
     <Sheet
-      title={t('rank.standings')}
+      title={title}
       data-testid="rank"
       trailing={
         settled === null ? undefined : (
@@ -118,7 +122,7 @@ function RankBody() {
         ]}
         value={face}
         onChange={setFace}
-        label={t('rank.standings')}
+        label={title}
         className="mb-3 w-fit"
       />
       <SummaryRow

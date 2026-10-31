@@ -92,6 +92,9 @@ export function MeFace() {
 
       {page === 'sales' && (
         <DetailPage title={t('stats.bestSales')} figure={formatDucatsDelta(sorted[0]?.profit ?? 0)} onClose={() => setPage(null)} data-testid="stats-best-trades-page">
+          {/* THE WINDOW IS A FACT, SAID ONCE (the audit, 2026-10-31): it left the title when the
+              title became two plain words, and it must not be lost from the reading. */}
+          <Hint className="mb-2">{t('stats.wWeek')}</Hint>
           {v.best_trades.length > 1 && (
             <FilterBar
               className="mb-2"

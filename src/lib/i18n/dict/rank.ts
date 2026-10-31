@@ -3,8 +3,6 @@ import { defineDict } from '../define'
 // The Rank tab (src/features/rank): the captains' standings and the countries' board.
 export const rankDict = defineDict({
   en: {
-    title: 'Rank',
-    standings: 'Standings',
     settled: 'settled {when}',
     captains: 'Captains',
     countries: 'Countries',
@@ -23,8 +21,6 @@ export const rankDict = defineDict({
     thisWeek: '{n} this week',
   },
   ko: {
-    title: '순위',
-    standings: '순위표',
     settled: '{when} 집계',
     captains: '선장',
     countries: '국가',

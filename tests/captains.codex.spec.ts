@@ -22,6 +22,11 @@ test('Codex → Captains: every captain carries her grade, and the Grade filter 
   await page.goto('compendium')
   await ready(page)
   await page.getByRole('tab', { name: /^Captains/i }).first().click()
+  // THE CATALOGUE IS A POP-UP PAGE (owner, 2026-10-31: *"make everything small, compact and once
+  // clicked show new page popping up"*): the face strip selects, `codex-open` opens the face's
+  // whole page, and the tiles and filters stand there. This spec used to read them in place.
+  await page.getByTestId('codex-open').click()
+  await expect(page.getByTestId('codex-open-page')).toBeVisible()
   const tiles = page.getByTestId('officer-tile')
   await expect(tiles).toHaveCount(people.length, { timeout: 60_000 })
 

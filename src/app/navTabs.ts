@@ -1,4 +1,5 @@
 import type { IconName } from '../components/ui'
+import { translateMaybe, type Locale } from '../lib/i18n'
 
 // THE TAB TABLE — pure data + policy (no React), so the navigation contract can be pinned by a
 // spec instead of read out of JSX. NavBar renders EXACTLY this list; there is no second table.
@@ -198,6 +199,22 @@ export const HOME_TAB = '/city'
  *  that owns the paths — a second copy is a second answer to "where does this tab live". */
 export function tabHref(to: string): string {
   return `${import.meta.env.BASE_URL.replace(/\/$/, '')}${to}`
+}
+
+/** THE BAR'S WORD for a label — the shell dictionary's `tab_<label>` entry, else the label itself.
+ *  This is the ONE AUTHORITY for what a destination is called: the rail's cells and every tab
+ *  screen's own Sheet title read it, so a rail word and a screen word cannot drift. They had:
+ *  Rank's screen titled itself "Standings" while its cell said "Rank" (the audit, 2026-10-31). */
+export function navWord(locale: Locale, label: string): string {
+  return translateMaybe(locale, 'shell', `tab_${label}`) ?? label
+}
+
+/** The word of the tab whose route is `to` — what a screen inside the shell titles itself with,
+ *  so its title and its lit nav cell are one word. A route outside the table falls back to its own
+ *  last segment (no tab screen does that today; the command desk is not a tab and keeps its own). */
+export function tabWord(locale: Locale, to: string): string {
+  const tab = NAV_TABS.find((t) => t.to === to)
+  return navWord(locale, tab?.label ?? to.replace(/^\//, ''))
 }
 
 /** THE SCREENS THAT READ PRICES — where the status strip carries the market countdown.
