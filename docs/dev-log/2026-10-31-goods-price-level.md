@@ -16,7 +16,7 @@ and the live design docs
 pushed as PR #410 (`price-level`). The first deploy push (2026-10-31) STOPPED at statement 37:
 `public.treasury_flows` is append-only on prod (0122's `tg_treasury_append_only`), and the file now
 leaves it untouched as history; **nothing was applied and the prod head stayed
-`20260818000284`**. The gate was re-run after the fix and is green (results below). **NOT deployed** — the
+`20260818000284`**. The second deploy push (2026-10-31) then STOPPED in the file's own (f) watch assert: it demanded every watch figure unchanged, but the file itself moves thin 10,000 → 50,000, so under_thin must move; the block now proves the property (thin 50,000; every figure finite/non-negative; under_thin re-counted directly; broke unchanged; the swing unchanged; the world total and the closed-economy stamp the same composition). **Nothing was applied either time and the prod head stayed `20260818000284`.** The gate was re-run after the watch fix and is green (results below). **NOT deployed** — the
 main session re-deploys; the prod head must read `20260818000284` and 0285 is the next number.
 **Do NOT merge from this branch.**
 
@@ -207,9 +207,10 @@ node scripts/db/proof.mjs 10   # PROOF 10 — manifest
   stake, a **24.53%** return; the oversized order refused E_HOLD_FULL; the queue completes unattended.
 - **PROOF 10: 10/10** — the 40,000 refill; the manifest sells-funds-buys, is atomic, the receipt is
   the ledger, XP honest, the client path closed.
-- The gate was re-run after the `treasury_flows` fix (2026-10-31): `check-versions` 273, `standing`
-  273/273 with world-guard ok and 11_standing 5/5, PROOF 5 5/5, PROOF 7 4/4, PROOF 2 6/6, PROOF 12
-  6/6, PROOF 4 9/9, PROOF 10 10/10 — every count and every marker again.
+- The gate was re-run after the `treasury_flows` fix and again after the watch-assert fix
+  (2026-10-31): `check-versions` 273, the chain **273/273 with a self-assert receipt (279 receipt
+  lines)**, world-guard ok, 11_standing 5/5, PROOF 5 5/5, PROOF 7 4/4, PROOF 2 6/6, PROOF 12 6/6,
+  PROOF 4 9/9, PROOF 10 10/10 — every count and every marker again (chain key `598ddb95b359d765`).
 - `duplication`: 11/11 (the migration-proves-itself, supersede and every other guard).
 
 **Gate-found defects, fixed:** the first 0285 had unqualified `recipe_0285.v` references
@@ -249,12 +250,20 @@ growth rehearsal — has an empty `public.treasury_flows` at migration time (its
 bites when a row exists), so the old UPDATE matched zero rows and no trigger fired. Prod carries
 12,041 live flow rows, each of which raises SQLSTATE 42501. The file now never writes the table.
 
+**Why the local gate did not catch the second prod refusal:** the old `(f)` demanded `under_thin`
+unchanged, but `under_thin` is a count against a threshold the file itself scales — `thin` 10,000 →
+50,000 — so a harbour between the two thresholds is newly thin and the count must rise. No local
+world has a harbour in that band (the local `under_thin` is the same before and after), so the
+equality held locally and could only fail on prod. The block now proves the property, not equality.
+
 ## 10. PROD CHECKS for the main session
 
 Run each block as one statement (`npx --yes supabase@2.120.0 db query --linked -f <file>`), read-only;
 every function called is stable. Expected as found on 2026-10-31 (head `20260818000284`). The first
-push (head 0284) stopped at statement 37 on `treasury_flows` append-only with **nothing applied**;
-the file now leaves the flows untouched (history), and these are the numbers for the retried push.
+push (head 0284) stopped at statement 37 on `treasury_flows` append-only; the second stopped in the
+(f) watch self-assert (the old equality vs the thin ×5). **Nothing was applied either time**; the
+file now leaves the flows untouched (history) and proves the watch property, and these are the
+numbers for the retried push.
 
 ```sql
 select
@@ -345,9 +354,11 @@ their as-found values from the data. Only the owner may call for it.
 ## 12. What is unproven
 
 - The prod push itself: the first attempt (2026-10-31, head 0284) stopped at statement 37 —
-  `treasury_flows` is append-only on prod — and applied NOTHING; this file now leaves the flows
-  untouched (history). The main session re-deploys with `~/bin/bv-deploy.sh`.
-- The PR CI re-run after the four spec fixes (the gate re-run after the flows fix is green: see §9).
+  `treasury_flows` is append-only on prod — and the second stopped in the (f) watch self-assert (an
+  equality the thin ×5 makes false); BOTH applied NOTHING. This file now leaves the flows untouched
+  and proves the watch property. The main session re-deploys with `~/bin/bv-deploy.sh`.
+- The PR CI re-run after the four spec fixes (both gate re-runs — after the flows fix and after the
+  watch fix — are green: see §9).
 - The live market's real prices after the push and the economy counts (`under_thin`, `broke`,
   `debtors`, `total`) — to be reported after the deploy.
 

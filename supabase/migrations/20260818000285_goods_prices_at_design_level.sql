@@ -178,17 +178,19 @@
 --   (e) every one of the 21 knobs ×5, every other knob unchanged except goods_price_level 0.1 →
 --       1.0, and the two owner switches unchanged; economy_closed_total ×5 when numeric;
 --   (f) the live Stats: players/merchants and set-aside ×5, cities = 5 × the rolled half + the flows,
---       and world.stats_now().total = 5 × the actual world total; stats_watch's under_thin,
---       under_reserve, broke and swing equal, thin ×5 (the gifts' ducat history is not rewritten and
---       is not asserted);
+--       and world.stats_now().total = the same composition; the watch proves the PROPERTY, not
+--       equality — thin = 50,000 and every figure finite/non-negative, under_thin = the direct count
+--       under the NEW thin, broke unchanged (a count), the swing unchanged (a ratio); the
+--       closed-economy stamp is the same composition as a world total (×5) (the gifts' ducat
+--       history is not rewritten and is not asserted);
 --   (g) a rolled-back probe on one harbour good: world.price/world.quote mid/ask/bid/avg_price/total
 --       move ~5 × when that one good is scaled ×5, then the rollback restores it.
 --
 -- ── PROD CHECKS (read-only, one SELECT per file; run before the push) ─────────────────────────
 --   Expected as found on 2026-10-31 (head 20260818000284; the exact numbers above in THE MEASURED
---   STATE), and after the push every money figure is ×5: players 1,704,092,571 → 8,520,462,855;
---   the city live balance 47,346,325 → 236,731,625; set-aside (open escrow + city_shares.accrued)
---   275,143,554 → 1,375,717,770; world total 2,026,582,450 → 10,132,912,250; economy_closed_total
+--   STATE), and after the push every RE-SCALED money figure is ×5 (the append-only flows stay as found): players 1,704,092,571 → 8,520,462,855;
+--   the city live balance 47,346,325 → 253,846,481 (5 × the rolled 51,625,039 + the flows −4,278,714); set-aside (open escrow + city_shares.accrued)
+--   275,143,554 → 1,375,717,770; world total 2,026,582,450 → 10,150,027,106; economy_closed_total
 --   1,986,693,521 → 9,933,467,605; starting_ducats 8,000 → 40,000; wage_per_crew_day 1 → 5;
 --   barca hull 3,000 → 15,000 and barca build_cost 12,000 → 60,000 (the 103 hull/class prices are
 --   the re-derived data values; 98 differ a few thousand from a blind old ×5 by the generator's
@@ -197,8 +199,9 @@
 --   1,366,619,570; open premium 1,866,702 → 9,333,510 and escrow 1,819,640 → 9,098,200;
 --   insured value 1,427,040,231 → 7,135,201,155; fleet owed 65,612.60 → 328,063.00; fee debts
 --   159,208 → 796,040; route limits 1,635 rows ×5; price_history mid 1.0449 … 2,062.9058 → 5.2245 …
---   10,314.5290; stats watch thin 10,000 → 50,000, under_thin 187, under_reserve 131, broke 51
---   (the ratios are preserved), swing 0.0641/0.1669 unchanged; the goods md5, the 222 recipe
+--   10,314.5290; stats watch thin 10,000 → 50,000 (under_thin is re-counted against the new thin — the harbours
+--   between the thresholds become thin — and under_reserve can cross on the un-scaled flows;
+--   broke 51 and the swing stay, a count and a ratio); the goods md5, the 222 recipe
 --   values, port_goods md5 and the 663 function md5 unchanged.
 --   The exact SQL blocks are in docs/dev-log/2026-10-31-goods-price-level.md §PROD CHECKS and in
 --   the PR body; the local proof gate runs PROOF 5 and PROOF 7, and every proof in the chain.
@@ -765,6 +768,7 @@ declare
   v_city  bigint;
   v_set   bigint;
   v_rc_rows int;
+  v_stamp jsonb;
   v_scaled constant text[] := array[
     'starting_ducats', 'provision_food_price', 'provision_water_price', 'wage_per_crew_day',
     'repair_rate_per_point', 'hire_crew_rate', 'tow_fee_per_nm', 'port_fee_base', 'port_fee_per_ship',
@@ -1027,16 +1031,68 @@ begin
       v_now, v_np, v_npc, v_city, v_set;
   end if;
 
-  -- (f) THE WATCH: THE COUNTS AND THE SWING ARE KEPT; THE THIN THRESHOLD MOVES ×5
+  -- (f) THE WATCH PROVES THE PROPERTY, NOT EQUALITY. The thin threshold itself is money and moves
+  --     ×5 (10,000 → 50,000), so under_thin MUST move: the harbours between the old and the new
+  --     threshold are newly thin. The old block demanded every figure unchanged, which cannot hold
+  --     on a live world — and the local gate missed it because no local harbour sat in the band.
   v_watch := public.stats_watch(now());
-  if (v_watch->>'under_thin') is distinct from (v.watch->>'under_thin')
-     or (v_watch->>'under_reserve') is distinct from (v.watch->>'under_reserve')
-     or (v_watch->>'broke') is distinct from (v.watch->>'broke')
-     or (v_watch->>'swing_p50') is distinct from (v.watch->>'swing_p50')
+  if not (v_watch ?& array['under_reserve','under_thin','thin','broke','gifts','gifts_ducats',
+                          'swing_p50','swing_p90','swing_steps']) then
+    raise exception '0285 self-assert FAIL: the watch lost a figure: %', v_watch;
+  end if;
+  -- every figure is a finite, non-negative NUMBER; swing_p50 / swing_p90 may be null when no price
+  -- step exists (swing_steps = 0) — an absent reading, not a moved figure.
+  if exists (
+    select 1 from jsonb_each(v_watch) e
+     where not (jsonb_typeof(e.value) = 'number'
+                and (e.value #>> '{}')::numeric >= 0
+                and (e.value #>> '{}')::numeric <> 'NaN'::numeric
+                and (e.value #>> '{}')::numeric <> 'Infinity'::numeric
+                and (e.value #>> '{}')::numeric <> '-Infinity'::numeric)
+       and not (e.key in ('swing_p50','swing_p90') and e.value = 'null'::jsonb)
+  ) then
+    raise exception '0285 self-assert FAIL: a watch figure is not a finite, non-negative number: %', v_watch;
+  end if;
+  -- thin reads the ×5 knob; under_thin is RE-COUNTED against the NEW thin in this transaction
+  -- (the definition stats_watch uses: treasury_balance < thin), never inferred from the old value.
+  if (v_watch->>'thin')::numeric is distinct from 50000
+     or (v_watch->>'thin')::numeric is distinct from public.wc_num('stats_thin_purse') then
+    raise exception '0285 self-assert FAIL: the watch thin is %, not 50000', v_watch->>'thin';
+  end if;
+  if (v_watch->>'under_thin')::bigint is distinct from
+       (select count(*) from public.port_treasury t
+         where public.treasury_balance(t.port_id) < public.wc_num('stats_thin_purse')) then
+    raise exception '0285 self-assert FAIL: the watch under_thin % is not the direct count % under thin %',
+      v_watch->>'under_thin',
+      (select count(*) from public.port_treasury t
+        where public.treasury_balance(t.port_id) < public.wc_num('stats_thin_purse')),
+      public.wc_num('stats_thin_purse');
+  end if;
+  -- broke is a COUNT, not money: 5 × capital and 5 × purse leave the ratio, so the count is unchanged.
+  if (v_watch->>'broke') is distinct from (v.watch->>'broke') then
+    raise exception '0285 self-assert FAIL: the watch broke moved: % -> %', v.watch->>'broke', v_watch->>'broke';
+  end if;
+  -- the swing is a ratio of two mids, so the ×5 on price_history cancels: it is exactly as found.
+  if (v_watch->>'swing_p50') is distinct from (v.watch->>'swing_p50')
      or (v_watch->>'swing_p90') is distinct from (v.watch->>'swing_p90')
-     or (v_watch->>'swing_steps') is distinct from (v.watch->>'swing_steps')
-     or (v_watch->>'thin')::numeric is distinct from (v.watch->>'thin')::numeric * 5 then
-    raise exception '0285 self-assert FAIL: the economy watch moved: before %, after %', v.watch, v_watch;
+     or (v_watch->>'swing_steps') is distinct from (v.watch->>'swing_steps') then
+    raise exception '0285 self-assert FAIL: the watch swing moved: before %, after %', v.watch, v_watch;
+  end if;
+  -- under_reserve is deliberately NOT compared: the live balance carries the un-scaled flows against
+  -- the ×5 reserve, so a harbour can legitimately cross the line.
+  -- THE WORLD TOTAL AND THE CLOSED-ECONOMY STAMP ARE THE SAME COMPOSITION the file asserts in (e):
+  -- 5 × the rescaled money + the un-rescaled flows; the stamp is a world total captured at the close,
+  -- so it moves with the ×5 this file applies to every ducat total.
+  if (world.stats_now()->>'total')::bigint is distinct from v_np + v_npc + v_city + v_set then
+    raise exception '0285 self-assert FAIL: the world total is not 5 x the rescaled money + the flows: % vs %',
+      world.stats_now()->>'total', v_np + v_npc + v_city + v_set;
+  end if;
+  v_stamp := case when jsonb_typeof(v.econ_total) = 'number'
+                  then to_jsonb((v.econ_total #>> '{}')::bigint * 5)
+                  else 'null'::jsonb end;
+  if (select value from public.world_config where key = 'economy_closed_total') is distinct from v_stamp then
+    raise exception '0285 self-assert FAIL: the closed-economy stamp is not the same composition: % -> %',
+      v.econ_total, (select value from public.world_config where key = 'economy_closed_total');
   end if;
 
   -- (g) THE MARKET PRICES FROM THE STORED COLUMN — a rolled-back probe on one harbour good
