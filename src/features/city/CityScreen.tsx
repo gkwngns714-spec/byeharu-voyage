@@ -231,21 +231,20 @@ function CityFrame({
             as a square on the top left, and then buildings smaller that fits the right space";
             2026-10-31: "make the whole page better"): the plan stands SQUARE at the top left — the
             full town, never cropped — and the four figures sit directly beneath it; the six building
-            tiles fill the column beside both, their rows stretching to the row's height so the page
-            reads as one composed block instead of a sparse top and an empty middle. The earnings
-            block stays pinned above the rail. */}
+            tiles stand small beside it, each with its name at the top left and its served figure
+            beneath. The earnings block stays pinned above the rail. */}
         <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
           <div className="flex min-w-0 flex-[0_0_56%] flex-col gap-3">
-            <div className="aspect-square min-h-[96px] min-w-0 overflow-hidden" data-testid="city-info-image">
+            <div className="aspect-square min-h-[96px] w-full min-w-0 overflow-hidden" data-testid="city-info-image">
               <CityScene sizeTier={port.size_tier} night={night} seed={port.code} onOpen={onOpen} />
             </div>
 
             {/* SUMMARY — four figures directly under the plan, filling the room beside the six
                 building tiles: one card, four rows. Gold is the city's purse (served); the other
                 three are the data slice's, and say so. */}
-            <section className="flex min-h-0 flex-1 flex-col rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tile bg-surface px-gutter py-2" data-testid="city-summary">
               <div className="flex min-h-0 flex-1 flex-col divide-y divide-edge">
-                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-testid="city-gold">
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-testid="city-gold">
                   <span className="text-t-caption text-ink-faint">{t('city.gold')}</span>
                   {cityGold === null ? (
                     <Figure value="—" size="body" tone="faint" />
@@ -253,15 +252,15 @@ function CityFrame({
                     <Counter value={cityGold} format={formatDucats} size="body" />
                   )}
                 </div>
-                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-population">
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-population">
                   <span className="text-t-caption text-ink-faint">{t('city.population')}</span>
                   <Figure value="—" size="body" tone="faint" />
                 </div>
-                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-status">
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-status">
                   <span className="text-t-caption text-ink-faint">{t('city.status')}</span>
                   <Figure value="—" size="body" tone="faint" />
                 </div>
-                <div className="flex min-h-11 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-relationship">
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-relationship">
                   <span className="text-t-caption text-ink-faint">{t('city.relationship')}</span>
                   <Figure value="—" size="body" tone="faint" />
                 </div>
@@ -274,17 +273,26 @@ function CityFrame({
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             <h2 className="shrink-0 pb-1 text-t-caption text-ink-faint">{t('city.buildings')}</h2>
-            <div className="grid min-h-0 grid-cols-2 grid-rows-3 auto-rows-[72px] gap-1.5" data-testid="city-building-grid">
+            <div className="grid auto-rows-[68px] grid-cols-2 gap-1.5" data-testid="city-building-grid">
               {buildings.map((b) => (
                 <button
                   key={b.id}
                   type="button"
                   onClick={() => onOpen(b.id)}
                   data-testid={`city-building-${b.id}`}
-                  className="flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-tile bg-surface px-1 text-ink-muted transition hover:bg-surface-2 hover:text-ink"
+                  className="relative flex min-h-11 min-w-0 flex-col items-start overflow-hidden rounded-tile bg-surface px-1.5 py-1 text-left text-ink-muted transition hover:bg-surface-2 hover:text-ink"
                 >
-                  <Icon name={b.icon} size={18} />
-                  <span className="max-w-full truncate text-t-caption">{t(b.label)}</span>
+                  <span className="max-w-full text-t-caption">{t(b.label)}</span>
+                  {b.id === 'hall' && (
+                    <span className="mt-0.5 block min-w-0 max-w-full overflow-hidden">
+                      <Figure
+                        value={cityGold === null ? '—' : formatDucats(cityGold)}
+                        size="body"
+                        tone={cityGold === null ? 'faint' : 'ink'}
+                      />
+                    </span>
+                  )}
+                  <Icon name={b.icon} size={14} className="absolute bottom-1 right-1 text-ink-faint" />
                 </button>
               ))}
             </div>
