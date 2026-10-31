@@ -207,7 +207,7 @@ for (const size of SIZES) {
       gridsMeasured += assertGrids(m.grids, size, `${route} @${size.width}`)
 
       // 3b. EVERY FACE INSIDE THE TAB, AND EVERY PAGE ITS SUMMARIES OPEN.
-      if (route === 'command') pagesMeasured += await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Profit', 'Trade'])
+      if (route === 'command') pagesMeasured += await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Report', 'Trade'])
       else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
       else pagesMeasured += await walkPages(page, size)
 

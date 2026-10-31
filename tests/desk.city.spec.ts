@@ -68,15 +68,22 @@ test('the Invest face: your holdings, and the Town Hall of the city the fleet is
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })
 
-test('the Profit face: today, the window, seven bars and the day by day books', async ({ page, request, baseURL }) => {
+test('the Report face: spans, the total, eight section rows and the places', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
   await page.goto('command')
   await ready(page)
-  await page.getByRole('tab', { name: 'Profit', exact: true }).click()
-  await expect(page.getByTestId('desk-profit')).toBeVisible()
-  await expect(page.getByTestId('profit-bars')).toBeVisible({ timeout: 30_000 })
-  // a new company has made nothing yet (its starting money is capital, not profit): the books say so
-  await expect(page.getByTestId('desk-profit')).toContainText(/No money in or out|Today/, { timeout: 30_000 })
+  await page.getByRole('tab', { name: 'Report', exact: true }).click()
+  await expect(page.getByTestId('desk-report')).toBeVisible()
+  await expect(page.getByTestId('report-spans')).toBeVisible({ timeout: 30_000 })
+  for (const id of ['trade', 'crew', 'supplies', 'repairs', 'insurance', 'invest', 'ships', 'other'])
+    await expect(page.getByTestId(`report-section-${id}`)).toHaveAttribute('data-summary-row', '')
+  // a pressed section opens its own page (the pop-up mechanism), and the back press returns
+  await page.getByTestId('report-section-trade').click()
+  await expect(page.getByTestId('report-section-trade-page')).toBeVisible()
+  await page.locator('[data-detail-back]').last().click()
+  await expect(page.getByTestId('report-section-trade-page')).toHaveCount(0)
+  // a new company has made nothing yet (its starting money is capital, not profit): the report says so
+  await expect(page.getByTestId('report-places')).toContainText(/Nothing in or out|수입/, { timeout: 30_000 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 })

@@ -10,7 +10,7 @@ import { FleetStrip } from './FleetStrip'
 import { Trade } from './buysell/Trade'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
-import { Profit } from './profit/Profit'
+import { Report } from './report/Report'
 import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
@@ -24,8 +24,8 @@ import { useT } from '../../lib/i18n'
 // all … stylish - modern - sophisticated yet concise simple."*
 //
 // THE SHELL: the fleet strip (which fleet — the picker, FleetPicker.tsx — and its two figures), the faces (deskView.ts — the
-// ones built: Buy · Sell · City · Invest · Profit; owner row 218 replaced Markets and Trade with Buy and Sell,
-// buysell/BuySell.tsx), and the face.
+// ones built: Trade · City · Invest · Report; owner row 218 replaced Markets and Trade with Buy and Sell,
+// buysell/BuySell.tsx; row 192/244 turned Profit into Report), and the face.
 //
 // What follows is this screen's history before the desk. The rule it records still holds: a verb that
 // happens at a place is offered only where the fleet is docked (§2.1).
@@ -130,7 +130,7 @@ export function CommandScreen() {
     ) : face === 'invest' ? (
       <Invest fleet={f} layout={layout} />
     ) : (
-      <Profit layout={layout} />
+      <Report layout={layout} />
     )
 
   if (wide) {

@@ -20,7 +20,7 @@ import {
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatRelative } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import { worldBooks, worldStatsMe, type Books, type StatsMe } from '../../lib/rpc'
+import { worldReport, worldStatsMe, type Report, type StatsMe } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
 import { useLiveRead } from './statsLive'
@@ -29,6 +29,11 @@ import { ALL, countriesOf } from './statsFilters'
 // ME — your own week beside the world's. THE COMPACT SCREEN (owner, 2026-10-31): the week's four
 // figures and bars stand; the best sales and the captains' board are summary rows, each opening its
 // own full-screen page with its filter and list whole.
+//
+// WHAT YOU MADE is world.report('week') — the same read the desk's Report face prints (one authority
+// for "what did I earn"). Its day axis arrives zero-filled, so the bars are the served days.
+// EVERY SECOND (0232, owner row 213): both reads are computed from the record at the moment they are
+// asked, and are asked again every second while the face is open.
 
 const DAYS = 7
 const SALE_SORTS = ['profit', 'newest', 'total'] as const
@@ -37,7 +42,7 @@ type Page = 'sales' | 'board' | null
 export function MeFace() {
   const t = useT()
   const me = useLiveRead<StatsMe>('stats:me', () => worldStatsMe())
-  const books = useLiveRead<Books>('stats:books', () => worldBooks(DAYS))
+  const books = useLiveRead<Report>('stats:report', () => worldReport('week'))
   const nationByCode = useWorld((s) => s.nationByCode)
   const { nowMs } = useShellState()
   const [choice, choose] = useFilterChoice('stats.me', { sales: 'profit', country: ALL })
@@ -48,12 +53,10 @@ export function MeFace() {
   if ((me.loading && !v) || (books.loading && !b)) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
   if (!v) return <Note tone="danger">{t('stats.meFailed')}</Note>
 
-  const perDay = b ? Math.round(b.window / Math.max(1, b.days)) : null
-  const byDay = new Map((b?.books ?? []).map((d) => [d.game_day, d.net]))
-  const bars =
-    b === null
-      ? []
-      : Array.from({ length: b.days }, (_, i) => b.game_day - b.days + 1 + i).map((day) => ({ id: String(day), value: byDay.get(day) ?? 0 }))
+  const perDay = b ? Math.round(b.total / Math.max(1, b.days.length)) : null
+  // oldest → newest across the bar row: the report's day axis arrives zero-filled, so it IS the row.
+  const today = b?.days.find((d) => d.game_day === b.game_day)?.net ?? 0
+  const bars = (b?.days ?? []).map((d) => ({ id: String(d.game_day), value: d.net }))
   const saleSort = oneOf(choice.sales, SALE_SORTS, 'profit')
   const sorted = [...v.best_trades].sort((a, b) =>
     saleSort === 'newest' ? Date.parse(b.at) - Date.parse(a.at) : saleSort === 'total' ? b.total - a.total : b.profit - a.profit,
@@ -76,8 +79,22 @@ export function MeFace() {
     <div data-testid="stats-me">
       <SheetSection heading={t('stats.yourWeek')}>
         <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-          <StatCell label={t('stats.todayLabel')} value={b?.today ?? 0} format={formatDucatsDelta} text={b === null ? '—' : undefined} tone={(b?.today ?? 0) >= 0 ? 'success' : 'danger'} size="hero" />
-          <StatCell label={t('stats.dayAverage')} value={perDay ?? 0} format={formatDucatsDelta} text={perDay === null ? '—' : undefined} size="body" tone={(perDay ?? 0) >= 0 ? 'success' : 'danger'} />
+          <StatCell
+            label={t('stats.todayLabel')}
+            value={today}
+            format={formatDucatsDelta}
+            text={b === null ? '—' : undefined}
+            tone={today >= 0 ? 'success' : 'danger'}
+            size="hero"
+          />
+          <StatCell
+            label={t('stats.dayAverage')}
+            value={perDay ?? 0}
+            format={formatDucatsDelta}
+            text={perDay === null ? '—' : undefined}
+            size="body"
+            tone={(perDay ?? 0) >= 0 ? 'success' : 'danger'}
+          />
           <StatCell label={t('stats.sold7')} value={v.sold_7d} format={formatDucats} size="body" />
           <StatCell label={t('stats.bought7')} value={v.bought_7d} format={formatDucats} size="body" />
         </div>
