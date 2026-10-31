@@ -16,8 +16,10 @@ import { ready, reachable } from './appReady.fixture'
 //   2. A building press opens its FULL-SCREEN face and moves nothing behind it: every key region's
 //      rectangle is identical before and after the press (the owner's UI law).
 //   3. Population is a stated estimate off the served size tier — a huge grouped number with the
-//      "≈" glyph and its caption; Status and Relationship stay visibly placeholders ("—", marked
-//      `data-placeholder`) with the "next slice" caption — never a number dressed as game data.
+//      "≈" glyph and its caption. Status is the company's own SERVED influence points in this
+//      city (`world.town_hall.influence.you.points`); Relationship is the harbour's served stance
+//      toward the company's nation (home / ally / peace / rival / war), or the two served nations
+//      compared while the dues block is not served — never a placeholder, never a random word.
 //   4. The entry point (COMMAND · City → `City view`) and the routes beside it still work: MAP and
 //      STATS open after the City page, and COMMAND's desk City face is here on return.
 //
@@ -155,15 +157,12 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   await expectSceneInFrame(page, '390×844')
   await expectWholeCityDrawn(page, '390×844')
 
-  // ── 2. THE POPULATION ESTIMATE, AND TWO PLACEHOLDERS ────────────────────────────────────────
-  // Population is no longer a placeholder: the huge estimate is derived from the served size tier
-  // and says so (owner, 2026-10-31: "more tiny dot with huge number"). Status and Relationship are
-  // still the data slice's and stay marked placeholders.
-  for (const id of ['city-status', 'city-relationship']) {
-    const cell = page.getByTestId(id)
-    await expect(cell, `${id} is not marked as a placeholder`).toHaveAttribute('data-placeholder', 'true')
-    await expect(cell, `${id} does not print the placeholder`).toContainText('—')
-  }
+  // ── 2. THE THREE FIGURES: POPULATION (A STATED ESTIMATE), STATUS AND RELATIONSHIP (SERVED) ──
+  // Population is a stated estimate off the served size tier (owner, 2026-10-31: "more tiny dot
+  // with huge number"). Status is the company's own influence points in this city; Relationship is
+  // the harbour's served stance toward the nation the company sails for — or, while the dues block
+  // is not served, the two SERVED nations compared (owner: "status and relationship too"). Neither
+  // cell may be a placeholder.
   const populationCell = page.getByTestId('city-population')
   await expect(populationCell, 'the population is still a placeholder').not.toHaveAttribute('data-placeholder', 'true')
   const populationText = await populationCell.innerText()
@@ -171,7 +170,49 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   expect(populationText, 'the population estimate is not shown as an estimate').toContain('≈')
   expect(populationText, 'the population estimate is not grouped digits').toMatch(/\d{1,3}(,\d{3})+/)
   expect(Number(populationText.replace(/[^\d]/g, '')), 'the population estimate is not a city-sized number').toBeGreaterThanOrEqual(1000)
-  await expect(page.getByTestId('city-soon')).toBeVisible()
+
+  // STATUS — the company's own influence in this city, a served figure (`influence.you.points`).
+  const statusCell = page.getByTestId('city-status')
+  await expect(statusCell, 'Status is still a placeholder').not.toHaveAttribute('data-placeholder', 'true')
+  // the hall's read rides the world beat: the cell prints '—' until the served influence lands
+  await expect
+    .poll(async () => statusCell.innerText(), { timeout: 60_000, message: 'Status never received the served influence points' })
+    .not.toContain('—')
+  const statusText = await statusCell.innerText()
+  console.log(`status: ${statusText.replace(/\s+/g, ' ')}`)
+  expect(statusText, 'Status does not print a served number').toMatch(/\d/)
+  expect(statusText, 'Status is the placeholder dash').not.toContain('—')
+
+  // RELATIONSHIP — the server's stance when the dues block is served (home / ally / peace / rival
+  // / war), else the two served nations compared. The cell carries the served holder nation; the
+  // printed word must be one of the city's words and, when a stance is served, exactly that
+  // stance's word. The home-port word itself names a served fact: the company's nation and the
+  // city's holder are the same.
+  const relationCell = page.getByTestId('city-relationship')
+  await expect(relationCell, 'Relationship is still a placeholder').not.toHaveAttribute('data-placeholder', 'true')
+  // the holder nation is the served fact the word stands on; wait for the world's allegiance read
+  await expect
+    .poll(async () => relationCell.getAttribute('data-nation'), { timeout: 60_000, message: 'Relationship never received the served holder nation' })
+    .toMatch(/^[A-Z]{3}$/)
+  const relation = await relationCell.evaluate((el) => ({
+    text: (el as HTMLElement).innerText.replace(/\s+/g, ' ').trim(),
+    stance: el.getAttribute('data-stance'),
+    nation: el.getAttribute('data-nation'),
+  }))
+  console.log(`relationship: ${JSON.stringify(relation)}`)
+  const STANCE_WORDS: Record<string, string> = { home: 'Home port', ally: 'Ally', peace: 'Peace', rival: 'Rival', war: 'War' }
+  const FALLBACK_WORDS = ['Home port', 'Different nation', 'Free port', 'No nation']
+  expect(relation.nation, 'Relationship does not carry the served holder nation').toMatch(/^[A-Z]{3}$|^none$/)
+  if (relation.stance !== null && relation.stance !== 'none') {
+    expect(STANCE_WORDS[relation.stance], `the served stance "${relation.stance}" is not one this spec knows`).toBeTruthy()
+    expect(relation.text, 'Relationship does not print the served stance').toContain(STANCE_WORDS[relation.stance])
+  } else {
+    expect(
+      FALLBACK_WORDS.some((w) => relation.text.includes(w)),
+      `Relationship prints no served word: ${relation.text}`,
+    ).toBe(true)
+  }
+  expect(relation.text, 'Relationship prints the placeholder dash').not.toContain('—')
   await expect(page.getByTestId('city-gold')).toBeVisible()
   // Gold is NOT a placeholder: the city's served purse lands (0 on a new local world), and your
   // own purse and crew are served figures too.

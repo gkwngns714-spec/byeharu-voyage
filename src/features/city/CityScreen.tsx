@@ -9,7 +9,7 @@ import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
-import type { SnapshotPort } from '../../lib/rpc'
+import type { PortDues, SnapshotPort } from '../../lib/rpc'
 import { formatDucats, formatInt, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
@@ -30,12 +30,16 @@ import { CityScene } from './CityScene'
 // This is the SHELL. It is client-only: there is no migration and no new served field.
 //   real       the city (the fleet's docked port, or `?port=`), its flag and country, day/night off
 //              the served clock, the city's GOLD (`world.town_hall` purse — the treasury the server
-//              already serves), your own gold (`world.ledger` purse) and your EMPLOYEES (the crew
-//              aboard your hulls, from `world.fleets`), and every building face, which is the
-//              existing one composed (CityFace.tsx).
-//   placeholder Population, Status and Relationship are NOT on the wire yet (the data migration is
-//              a later slice). They print "—", carry `data-placeholder`, and one caption line says
-//              so. Nothing here invents a number.
+//              already serves), your own gold (`world.ledger` purse), your EMPLOYEES (the crew
+//              aboard your hulls, from `world.fleets`), STATUS (the influence points you hold in
+//              this city under the country you sail for now — `world.town_hall.influence.you`.
+//              `points`, the book every Share and Donation writes), RELATIONSHIP (the harbour's
+//              served stance toward that nation — `world.town_hall.dues.stance`,
+//              `public.power_stance`: home / ally / peace / rival / war), and every building face,
+//              which is the existing one composed (CityFace.tsx).
+//   estimate   Population only: `port.size_tier` is the one served size figure, so the number is a
+//              stated curve off it with its caption. Nothing else here is a guess, and the three
+//              figures ride the hall's ONE served block — no cell asks a second read.
 //
 // ── WHY IT SITS OUTSIDE AppShell ──────────────────────────────────────────────────────────────
 // The page draws its OWN bottom rail and its OWN header, so the shell's tab bar would be a second
@@ -52,6 +56,21 @@ import { CityScene } from './CityScene'
 const POPULATION_BY_TIER = [8000, 18000, 45000, 90000, 160000] as const
 function populationEstimate(sizeTier: number): number {
   return POPULATION_BY_TIER[Math.max(0, Math.min(4, (sizeTier || 1) - 1))]
+}
+
+/** The served stances (`public.power_stance`, via `world.town_hall.dues`: home / ally / peace /
+ *  rival / war) and the plain facts left when the dues block is not served (economy open, purse
+ *  dark, no company): the two SERVED nations, compared — never a guessed ally or war. */
+type Relation = 'home' | 'ally' | 'peace' | 'rival' | 'war' | 'different' | 'free' | 'none'
+const RELATION_WORDS: Record<Relation, TKey> = {
+  home: 'city.relationHome',
+  ally: 'city.relationAlly',
+  peace: 'city.relationPeace',
+  rival: 'city.relationRival',
+  war: 'city.relationWar',
+  different: 'city.relationDifferent',
+  free: 'city.relationFree',
+  none: 'city.relationNone',
 }
 
 export function CityScreen() {
@@ -156,6 +175,13 @@ function CityBody({
 
   const hall = useTownHall(port.id)
   const cityGold = hall.view?.view?.purse.ducats ?? null
+  // THE TWO SERVED FACTS BENEATH THE PURSE (owner, 2026-10-31: "status and relationship too"):
+  // the influence points you hold here under the country you sail for now (`influence.you.points`
+  // — the book every Share and Donation writes), and the harbour's served stance toward that
+  // nation (`dues.stance`, `public.power_stance`). Both ride the hall's one read; neither is
+  // computed here.
+  const statusPoints = hall.view?.view?.influence?.you?.points ?? null
+  const stance = hall.view?.view?.dues?.stance ?? null
 
   const employees = useMemo(
     () => fleets.reduce((n, f) => n + f.ships.reduce((m, s) => m + s.crew, 0), 0),
@@ -169,6 +195,8 @@ function CityBody({
       <CityFrame
         port={port}
         cityGold={cityGold}
+        statusPoints={statusPoints}
+        stance={stance}
         ducats={ducats}
         employees={employees}
         allegiance={portNationOf(allegiance, port.code)}
@@ -184,6 +212,8 @@ function CityBody({
 function CityFrame({
   port,
   cityGold,
+  statusPoints,
+  stance,
   ducats,
   employees,
   allegiance,
@@ -192,6 +222,8 @@ function CityFrame({
 }: {
   port: SnapshotPort
   cityGold: number | null
+  statusPoints: number | null
+  stance: PortDues['stance'] | null
   ducats: number | null
   employees: number
   allegiance: ReturnType<typeof portNationOf>
@@ -207,6 +239,16 @@ function CityFrame({
   // local-time hour: every player sees the same night, and it matches the Map's own day sheet.
   const night = daylightAt({ lat: port.lat, lon: port.lon }, subsolarPoint(gameSunInstantMs(nowMs))) < 0.5
   const population = populationEstimate(port.size_tier)
+
+  // THE RELATIONSHIP IS THE SERVER'S STANCE while the hall answers it (`public.power_stance`,
+  // between the nation you sail for and the city's holder): home / ally / peace / rival / war.
+  // While the dues block is not served it falls back to the two SERVED nations themselves — the
+  // same `world.allegiance` holder the header's flag reads and your own house's nation: same
+  // nation is a fact, different nations are a fact, never a guessed ally or war.
+  const houseNation = useWorld((s) => s.player?.nation ?? null)
+  const portNation = allegiance?.nation ?? null
+  const relation: Relation =
+    stance ?? (houseNation === null ? 'none' : portNation === null ? 'free' : houseNation === portNation ? 'home' : 'different')
 
   const buildings: readonly { id: CityBuilding; icon: IconName; label: TKey }[] = [
     { id: 'hall', icon: 'coin', label: 'city.cityHall' },
@@ -254,9 +296,11 @@ function CityFrame({
             </div>
 
             {/* SUMMARY — the population estimate is the headline (the huge number off the served
-                size tier, said as an estimate), with the city's purse and the two remaining
-                placeholders beneath it. Gold is served; Status and Relationship are the data
-                slice's, and say so. Its floor is its own content (`min-h-fit`): on a wide or short
+                size tier, said as an estimate); beneath it the city's purse, YOUR STATUS (the
+                influence points you hold here — served, the book every Share and Donation writes)
+                and the town's RELATIONSHIP to your nation (the harbour's served stance: Home port /
+                Ally / Peace / Rival / War; the two served nations compared only while the dues
+                block is not served). Its floor is its own content (`min-h-fit`): on a wide or short
                 window the same flex squeeze that flattened the plan panel also crushed this card
                 to a 16-px sliver, so the huge number vanished — the card keeps its height and the
                 PLAN shrinks instead (the scene still draws the whole city, CityScene). */}
@@ -275,18 +319,24 @@ function CityFrame({
                     <Counter value={cityGold} format={formatDucats} size="body" />
                   )}
                 </div>
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-status">
+                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-testid="city-status">
                   <span className="text-t-caption text-ink-faint">{t('city.status')}</span>
-                  <Figure value="—" size="body" tone="faint" />
+                  {statusPoints === null ? (
+                    <Figure value="—" size="body" tone="faint" />
+                  ) : (
+                    <Figure value={formatInt(statusPoints)} size="body" tone="ink" />
+                  )}
                 </div>
-                <div className="flex min-h-0 flex-1 items-center justify-between gap-2" data-placeholder="true" data-testid="city-relationship">
+                <div
+                  className="flex min-h-0 flex-1 items-center justify-between gap-2"
+                  data-testid="city-relationship"
+                  data-stance={stance ?? 'none'}
+                  data-nation={portNation ?? 'none'}
+                >
                   <span className="text-t-caption text-ink-faint">{t('city.relationship')}</span>
-                  <Figure value="—" size="body" tone="faint" />
+                  <Figure value={t(RELATION_WORDS[relation])} size="body" tone="ink" />
                 </div>
               </div>
-              <p className="shrink-0 pt-1 text-t-caption text-ink-faint" data-testid="city-soon">
-                {t('city.soonLine')}
-              </p>
             </section>
           </div>
 
