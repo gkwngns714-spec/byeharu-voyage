@@ -6,10 +6,10 @@ import { TopBar } from './TopBar'
 import { RebuildNotice } from './RebuildNotice'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
+import { readIntervalMs } from '../domain/readClock'
 import { serverNow } from '../lib/serverClock'
 import { useGoTo } from '../chart'
 import { useLocale } from '../lib/i18n'
-import { readIntervalMs } from '../domain/readClock'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
 // whole authenticated app; the shared data layer (see shellState.ts) mounts HERE and nowhere else.
@@ -47,7 +47,10 @@ export function AppShell() {
   }, [navigate])
 
   // The cadence follows the SERVED clock, so it is right for whatever the world's compression is —
-  // and it re-arms if that knob ever changes under a running tab.
+  // and it re-arms if that knob ever changes under a running tab. The shell's own dedupe on the
+  // read flag lives HERE (tests/flicker.spec.ts: only the shell and the store may read it); the
+  // City page, which stands outside this shell, arms the same beat through worldStore's
+  // `useWorldBeat` (the store's `beat()` carries the same guard).
   const compression = useWorld((w) => w.snapshot?.config.time_compression)
   useEffect(() => {
     const every = readIntervalMs(compression)

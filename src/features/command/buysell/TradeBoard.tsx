@@ -200,7 +200,14 @@ function TradeCard({
           {sellDead ? t('desk.noBuyer') : formatPriceFigure(sell as number)}
         </span>
       </span>
-      <span className="flex h-4 min-w-0 flex-1 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
+      {/* THE SPARK ROW RESERVES ITS HEIGHT WHATEVER THE READ HAS LANDED (2026-10-31). `h-4` alone
+          did not: `flex-1` set a flex-basis of 0 and the item's automatic minimum came from its
+          CHILD, so a card whose price series had not landed was 16 px SHORTER — the card grew the
+          moment the read arrived, and a press that opened the ticket moved the rows below it
+          (desk.terminal's "a press moved the list": measured spark 0→16 px, card 113→129 px).
+          `shrink-0` makes h-4 the height in every state, so the list is the same list before and
+          after any read or press. */}
+      <span className="flex h-4 min-w-0 shrink-0 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
         {!buyDead && <Sparkline values={line.values} width={96} height={16} className="h-4 w-full" />}
       </span>
       <span className="flex items-center gap-2">
