@@ -508,22 +508,17 @@ test(`PORT: the ledger's price cells are the trade, and a press moves nothing ab
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// FLEETS — a fleet unfolds UNDER its row, and folds again; nothing at or above the press moves
+// FLEETS — a fleet row opens her page, and the list behind it does not move
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// ADDED 2026-09-13 with owner row 89: *"fleets, i want to be folded not creating a new pop up page
-// when clicking a ship/fleet. when folded, ships cargo supplies should be in one page with three
-// columns."* The docked FleetTray is deleted; a press on a fleet row mounts `FleetFold`
-// (src/features/fleets/FleetFold.tsx) immediately after that row. Two rules meet here:
-//   · row 89 — the three faces are on ONE surface, in flow, directly under the row: the fold's
-//               top edge is the pressed row's bottom edge, and on a phone the three sections
-//               (Ships, Cargo, Supplies) stack in that order, each fully inside the sheet's width.
-//   · row 15 — *"don't restruct anything."* The pressed row, the sheet's title and everything
-//               above the press are at the same offsets before and after. What is BELOW may move
-//               down — that is what an unfold IS, and it is measured here as the fold standing
-//               where the next row would have stood.
-// A second press folds it: no `fleet-fold` in the DOM, and the row is where it was.
-test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three sections stacked, and folds again`, async ({
+// THE FLEET'S PAGE (owner, 2026-10-31: *"everything has folded. enough with folding things. make
+// everything small, compact and once clicked show new page popping up. this is wrong"*). Row 89's
+// unfold-under-the-row is RETIRED: it re-flowed every row below the press, and a press may not
+// re-flow what follows it. A press now opens the one `DetailPage` — a fixed overlay with a back
+// press — holding the three sections row 89 asked for (Ships · Cargo · Supplies, stacked on a
+// phone). The list behind it is measured to the pixel: the header, the pressed row AND the row
+// below keep their boxes.
+test(`FLEETS: a fleet row opens her page, nothing behind it moves at ${PHONE.width}px, and the back press returns`, async ({
   page,
   request,
   baseURL,
@@ -539,7 +534,7 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
 
   const rows = page.locator('[data-testid="fleet-row"]')
   expect(await rows.count(), 'no fleet rows — did the world found a company with a fleet?').toBeGreaterThan(0)
-  await expect(page.locator('[data-testid="fleet-fold"]'), 'a fold is standing before anything was pressed').toHaveCount(0)
+  await expect(page.locator('[data-testid="fleet-page"]'), 'a fleet page is standing before anything was pressed').toHaveCount(0)
 
   // Everything AT OR ABOVE the press: the sheet's title and the first row, by viewport rect. The
   // sheet's box does not scroll on a press, so viewport rects are the sheet's own offsets here.
@@ -552,48 +547,46 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
     return {
       header: rect(document.querySelector('[data-testid="sheet-header"]')),
       row: rect(document.querySelector('[data-testid="fleet-row"]')),
+      // THE ROW BELOW is the witness the old unfold could not pass: it moved down by the fold's
+      // height. An overlay is out of flow, so it may not move at all.
+      next: rect(document.querySelectorAll('[data-testid="fleet-row"]')[1] ?? null),
     }
   }
   const before = await page.evaluate(ABOVE)
   expect(before.row, 'the first fleet row has no box').not.toBeNull()
 
-  // 1. PRESS THE ROW. The fold appears, and it appears DIRECTLY under the pressed row.
+  // 1. PRESS THE ROW. HER PAGE OPENS, and the list behind it does not move — not the row, not the
+  //    title, and not the row BELOW it (which an unfold used to push down).
   await rows.first().click()
-  const fold = page.locator('[data-testid="fleet-fold"]')
-  await expect(fold).toBeVisible()
+  const fleetPage = page.getByTestId('fleet-page')
+  await expect(fleetPage).toBeVisible()
   await page.waitForTimeout(600)
   const after = await page.evaluate(ABOVE)
-  expect(after, 'pressing a fleet row MOVED the row or the title above it — the fold must mount AFTER the row, never before or around it').toEqual(before)
+  expect(after, 'pressing a fleet row MOVED the list behind it — a page must overlay, never re-flow').toEqual(before)
+  const pageRoot = await fleetPage.evaluate((el) => ({ h: (el as HTMLElement).scrollHeight, ch: (el as HTMLElement).clientHeight }))
+  expect(pageRoot.h, `the fleet page itself scrolls: ${pageRoot.h} > ${pageRoot.ch}`).toBeLessThanOrEqual(pageRoot.ch + 1)
+  const fold = fleetPage.locator('[data-testid="fleet-fold"]')
+  await expect(fold).toBeVisible()
 
-  const geometry = await page.evaluate(() => {
-    const r = (el: Element) => el.getBoundingClientRect()
-    const row = document.querySelector('[data-testid="fleet-row"]')!
-    const fold = document.querySelector('[data-testid="fleet-fold"]')!
-    const sheet = document.querySelector('[data-testid="fleets"]')!
-    const sections = [...document.querySelectorAll('[data-testid="fleet-fold-section"]')].map((s) => ({
-      heading: (s.querySelector('h2')?.textContent ?? '').trim(),
-      left: Math.round(r(s).left),
-      right: Math.round(r(s).right),
-      top: Math.round(r(s).top),
-      bottom: Math.round(r(s).bottom),
-    }))
+  // 2. THREE SECTIONS, STACKED, in the owner's order (row 89's shape, now on the page). On a phone
+  //    each is under the last: same left edge, each top at or below the previous bottom, inside the page.
+  const geometry = await fleetPage.evaluate((el) => {
+    const r = (n: Element) => n.getBoundingClientRect()
     return {
-      rowBottom: Math.round(r(row).bottom),
-      foldTop: Math.round(r(fold).top),
-      sheetLeft: Math.round(r(sheet).left),
-      sheetRight: Math.round(r(sheet).right),
-      sections,
+      left: Math.round(r(el).left),
+      right: Math.round(r(el).right),
+      sections: [...el.querySelectorAll('[data-testid="fleet-fold-section"]')].map((s) => ({
+        heading: (s.querySelector('h2')?.textContent ?? '').trim(),
+        left: Math.round(r(s).left),
+        right: Math.round(r(s).right),
+        top: Math.round(r(s).top),
+        bottom: Math.round(r(s).bottom),
+      })),
       pageScrollW: document.documentElement.scrollWidth,
       pageClientW: document.documentElement.clientWidth,
     }
   })
-  console.log(`FLEETS fold @${PHONE.width}px: ${JSON.stringify(geometry)}`)
-
-  // The fold's top is the row's bottom: DIRECTLY under, nothing between (1px for the hairline).
-  expect(Math.abs(geometry.foldTop - geometry.rowBottom), 'the fold does not hang directly under the pressed row').toBeLessThanOrEqual(1)
-
-  // 2. THREE SECTIONS, STACKED, in the owner's order. On a phone each is under the last: same left
-  //    edge, and each one's top at or below the previous one's bottom. All inside the sheet.
+  console.log(`FLEETS page @${PHONE.width}px: ${JSON.stringify(geometry)}`)
   expect(geometry.sections.map((s) => s.heading)).toEqual(['Ships', 'Cargo', 'Supplies'])
   for (let i = 1; i < geometry.sections.length; i++) {
     const above = geometry.sections[i - 1]
@@ -602,13 +595,13 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
     expect(here.left, `${here.heading} does not share ${above.heading}'s left edge`).toBe(above.left)
   }
   for (const s of geometry.sections) {
-    expect(s.left, `${s.heading} starts left of the sheet`).toBeGreaterThanOrEqual(geometry.sheetLeft)
-    expect(s.right, `${s.heading} runs past the sheet's right edge`).toBeLessThanOrEqual(geometry.sheetRight)
+    expect(s.left, `${s.heading} starts left of the page`).toBeGreaterThanOrEqual(geometry.left)
+    expect(s.right, `${s.heading} runs past the page's right edge`).toBeLessThanOrEqual(geometry.right)
   }
   expect(geometry.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(geometry.pageClientW)
 
-  // 3. WHAT THE FOLD CARRIES: the supplies as one line (owner row 203 / 0225: no keep control), and the one
-  //    hand-off at the foot. Every control in it clears the 44px reach floor.
+  // 3. WHAT THE PAGE CARRIES: the supplies as one line (owner row 203 / 0225: no keep control), and the one
+  //    hand-off at the foot. Every control on it clears the 44px reach floor.
   await expect(fold.locator('[data-testid="fleet-stores-days"]')).toBeVisible()
   await expect(fold.locator('[data-testid="fleet-keep-stepper"]')).toHaveCount(0)
   await expect(fold.locator('[data-testid="fleet-keep"]')).toHaveCount(0)
@@ -619,14 +612,14 @@ test(`FLEETS: a fleet unfolds directly under its row at ${PHONE.width}px, three 
       .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
       .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
   )
-  expect(short, 'a control in the fold is under the 44px reach floor').toEqual([])
+  expect(short, 'a control on the page is under the 44px reach floor').toEqual([])
 
 
-  // 5. PRESS THE ROW AGAIN: folded. No fold in the DOM, and the row is where it was.
-  await rows.first().click()
-  await expect(page.locator('[data-testid="fleet-fold"]')).toHaveCount(0)
+  // 5. THE BACK PRESS CLOSES THE PAGE. It is gone from the DOM, and the list behind it is untouched.
+  await page.locator('[data-detail-back]').last().click()
+  await expect(page.locator('[data-testid="fleet-page"]')).toHaveCount(0)
   await page.waitForTimeout(400)
-  expect(await page.evaluate(ABOVE), 'folding moved the row').toEqual(before)
+  expect(await page.evaluate(ABOVE), 'closing the page moved the list').toEqual(before)
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

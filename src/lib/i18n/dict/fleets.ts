@@ -3,7 +3,6 @@ import { defineDict } from '../define'
 // The Fleets tab (src/features/fleets): every fleet, its ships, cargo and supplies.
 export const fleetsDict = defineDict({
   en: {
-    title: 'Fleets',
     noFleets: 'No fleets yet.',
     hull: 'hull',
     worstHull: 'worst, {pct}',
@@ -26,13 +25,13 @@ export const fleetsDict = defineDict({
     // column next to it is about DAYS of endurance, and this one is about TUNS of the same hold.
     holdMadeOf: 'Of {total} {word}:',
     holdGoods: 'Trade goods',
-    holdProvisions: 'Provisions',
+    // WORDS.md law: food and water aboard are SUPPLIES, never "provisions" (the audit, 2026-10-31).
+    holdProvisions: 'Supplies',
     holdFree: 'Empty',
     holdFigure: '{pct} · {tons} {word}',
     holdShare: '{what}, {pct}',
   },
   ko: {
-    title: '선단',
     noFleets: '아직 선단이 없습니다.',
     hull: '선체',
     worstHull: '최악, {pct}',
@@ -53,7 +52,7 @@ export const fleetsDict = defineDict({
     onBoard: '승선',
     holdMadeOf: '{total}{word} 중:',
     holdGoods: '교역품',
-    holdProvisions: '보급품',
+    holdProvisions: '보급',
     holdFree: '빈 공간',
     holdFigure: '{pct} · {tons}{word}',
     holdShare: '{what}, {pct}',

@@ -5,7 +5,6 @@ import { defineDict } from '../define'
 // prints a ladder, so one dictionary holds its words.
 export const youDict = defineDict({
   en: {
-    title: 'You',
     noCompany: 'No company yet.',
     levels: 'Levels',
     trading: 'Trading',
@@ -19,7 +18,6 @@ export const youDict = defineDict({
     flagship: 'flagship',
   },
   ko: {
-    title: '나',
     noCompany: '아직 회사 없음.',
     levels: '레벨',
     trading: '교역',

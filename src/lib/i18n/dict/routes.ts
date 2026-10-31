@@ -3,7 +3,6 @@ import { defineDict } from '../define'
 // The Routes tab (src/features/routes): every trade lane sailed in the world.
 export const routesDict = defineDict({
   en: {
-    title: 'Routes',
     distance: 'Distance',
     earnings: 'Earnings',
     calls: 'Calls',
@@ -13,7 +12,7 @@ export const routesDict = defineDict({
     readAgain: 'Read again',
     failed: 'Routes not loaded. Retrying…',
     stale: 'Last figures.',
-    rankBy: 'Rank by',
+    sortLabel: 'Sort',
     noneAnywhere: 'No routes yet.',
     noneYours: 'No routes of yours.',
     omitted: { one: '{n} shorter lane hidden.', other: '{n} shorter lanes hidden.' },
@@ -31,7 +30,7 @@ export const routesDict = defineDict({
     asksNav: 'Navigation {nav}',
     wouldRefuse: 'Refused today.',
     within: 'Within reach.',
-    standing: 'Standing',
+    state: 'State',
     lapEarns: 'Lap earns',
     notYet: 'not yet',
     twoLaps: 'Needs 2 closed laps.',
@@ -42,7 +41,6 @@ export const routesDict = defineDict({
     monthLaps: { one: 'All time: {n} lap · {net}', other: 'All time: {n} laps · {net}' },
   },
   ko: {
-    title: '항로',
     distance: '거리',
     earnings: '수익',
     calls: '기항',
@@ -52,7 +50,7 @@ export const routesDict = defineDict({
     readAgain: '다시 읽기',
     failed: '항로를 못 읽음. 다시 시도 중…',
     stale: '지난 수치.',
-    rankBy: '정렬',
+    sortLabel: '정렬',
     noneAnywhere: '아직 항로 없음.',
     noneYours: '내 항로 없음.',
     omitted: { one: '짧은 뱃길 {n}개 숨김.', other: '짧은 뱃길 {n}개 숨김.' },
@@ -70,7 +68,7 @@ export const routesDict = defineDict({
     asksNav: '항해술 {nav}',
     wouldRefuse: '오늘은 거절됨.',
     within: '가능.',
-    standing: '상태',
+    state: '상태',
     lapEarns: '바퀴당 수익',
     notYet: '아직 없음',
     twoLaps: '완료 2바퀴 필요.',

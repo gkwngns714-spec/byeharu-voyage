@@ -106,7 +106,7 @@ export function MarketsFace() {
       <div className="mt-2 flex flex-col gap-2">
         <SummaryRow title={t('stats.filterLabel')} figure={kindWord} word={t('common.open')} onClick={() => setPage('filters')} data-testid="stats-markets-filters" />
         <SummaryRow title={t('stats.movers')} figure={formatInt(moved.length)} word={t('common.open')} onClick={() => setPage('movers')} data-testid="stats-movers" />
-        <SummaryRow title={t('stats.everyGood', { n: formatInt(rows.length) })} figure={formatInt(rows.length)} word={t('common.open')} onClick={() => setPage('goods')} data-testid="stats-goods" />
+        <SummaryRow title={t('stats.everyGood')} figure={formatInt(rows.length)} word={t('common.open')} onClick={() => setPage('goods')} data-testid="stats-goods" />
       </div>
 
       {page === 'filters' && (
@@ -177,7 +177,7 @@ export function MarketsFace() {
       )}
 
       {page === 'goods' && (
-        <DetailPage title={t('stats.everyGood', { n: formatInt(rows.length) })} figure={formatInt(rows.length)} onClose={() => setPage(null)} data-testid="stats-goods-page">
+        <DetailPage title={t('stats.everyGood')} figure={formatInt(rows.length)} onClose={() => setPage(null)} data-testid="stats-goods-page">
           {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
           {shown.map((r, i) => (
             <GoodRow key={r.g.code} g={r.g} move={r.move} last={i === shown.length - 1} />
@@ -185,7 +185,7 @@ export function MarketsFace() {
           {!all && rows.length > FIRST && (
             <div className="pt-3">
               <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">
-                {t('stats.showAll', { n: formatInt(rows.length) })}
+                {t('stats.showAll')}
               </Button>
             </div>
           )}

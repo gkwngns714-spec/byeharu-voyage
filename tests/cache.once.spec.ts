@@ -107,20 +107,22 @@ test('a tab cycle asks a cached resource once — Market → Stats → Map → C
   /** THE DESK'S DOOR (the current IA): the City page's Market building opens the trade face. */
   const openMarket = async () => {
     await page.getByTestId('city-building-market').click()
-    await expect(page.getByTestId('city-face')).toHaveAttribute('data-building', 'market')
+    await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
     // The face's own quay read may still be landing; the mount burst is already on the wire.
     await expect(page.getByTestId('quay-stores')).toBeVisible({ timeout: 60_000 })
   }
   const closeMarket = async () => {
-    await page.getByTestId('city-face-back').click()
-    await expect(page.getByTestId('city-face')).toHaveCount(0)
+    // #426: the building face is the right-hand panel; the Hall tile returns to the Town Hall.
+    await page.getByTestId('city-building-hall').click()
+    await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
   }
   const goHq = async () => {
     await navBar('nav-cell-/city').click()
     await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 60_000 })
   }
   const goStatsFromCity = async () => {
-    await page.getByTestId('city-nav').getByTestId('nav-cell-/stats').click()
+    // #426: the City rail is the shell NavBar, so its cells live under city-rail too.
+    await page.getByTestId('city-rail').getByTestId('nav-cell-/stats').click()
   }
   const goCodex = async () => {
     await navBar('nav-cell-cabin').click()
@@ -133,7 +135,7 @@ test('a tab cycle asks a cached resource once — Market → Stats → Map → C
     rows.push(await visit(`c${cycle}-map`, () => navBar('nav-cell-/map').click(), page.getByTestId('map-chart')))
     rows.push(await visit(`c${cycle}-codex`, goCodex, page.getByTestId('codex')))
     rows.push(await visit(`c${cycle}-hq`, goHq, page.getByTestId('city-rail')))
-    rows.push(await visit(`c${cycle}-market`, openMarket, page.getByTestId('city-face')))
+    rows.push(await visit(`c${cycle}-market`, openMarket, page.getByTestId('city-face-panel')))
     await closeMarket()
     rows.push(await visit(`c${cycle}-stats`, goStatsFromCity, page.getByTestId('stats')))
   }

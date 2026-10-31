@@ -9,7 +9,7 @@ import { ready, reachable } from './appReady.fixture'
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-test('the fleet fold shows Supplies N days and no keep control', async ({ page, request, baseURL }) => {
+test('the fleet page shows Supplies N days and no keep control', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(
     !(await reachable(request, baseURL ?? '')),
@@ -18,7 +18,11 @@ test('the fleet fold shows Supplies N days and no keep control', async ({ page, 
   await page.goto('fleets')
   await ready(page)
   await page.getByTestId('fleet-row').first().click()
-  const fold = page.getByTestId('fleet-fold')
+  // HER CONTENT IS ON A PAGE (owner, 2026-10-31: *"enough with folding things … once clicked show
+  // new page popping up"*): the row opens `fleet-page`, the one DetailPage, and the sections stand there.
+  const fleetPage = page.getByTestId('fleet-page')
+  await expect(fleetPage).toBeVisible()
+  const fold = fleetPage.getByTestId('fleet-fold')
   await expect(fold).toBeVisible()
   const days = fold.getByTestId('fleet-stores-days')
   await expect(days).toBeVisible()
@@ -28,4 +32,7 @@ test('the fleet fold shows Supplies N days and no keep control', async ({ page, 
   await expect(fold.getByTestId('fleet-keep')).toHaveCount(0)
   await expect(fold).not.toContainText(/keep/i)
   await expect(fold.getByTestId('fleet-command')).toBeVisible()
+  // THE BACK PRESS REVEALS THE LIST, UNTOUCHED.
+  await page.locator('[data-detail-back]').last().click()
+  await expect(fleetPage).toHaveCount(0)
 })

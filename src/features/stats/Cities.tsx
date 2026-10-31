@@ -42,7 +42,7 @@ export function CitiesFace() {
     .sort((a, b) => a.label.localeCompare(b.label))
   const country = oneOf(choice.country, [ALL, ...countries.map((c) => c.id)], ALL)
   const rows = sortCities(filterCities(v.cities, { area, country, mine: choice.mine === '1' }), sort, (c) => portName(c.name))
-  const title = t('stats.citiesCount', { n: formatInt(rows.length) })
+  const title = t('stats.citiesCount')
 
   return (
     <div data-testid="stats-cities">

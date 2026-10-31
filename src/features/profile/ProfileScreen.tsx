@@ -8,7 +8,8 @@ import { useWorld } from '../../live/worldStore'
 import { formatDate } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { APPEARANCES, readAppearance, writeAppearance, type Appearance } from './appearance'
-import { properName, useT, type TKey } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
+import { properName, useLocale, useT, type TKey } from '../../lib/i18n'
 
 // PROFILE (in Cabin) — docs/UI_DIRECTION.md §6:
 //
@@ -44,6 +45,8 @@ import { properName, useT, type TKey } from '../../lib/i18n'
 
 export function ProfileScreen() {
   const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
+  const title = tabWord(useLocale(), '/profile')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const player = useWorld((s) => s.player)
   const user = useAuthStore((s) => s.user)
@@ -59,7 +62,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <Sheet title={t('profile.title')} data-testid="profile">
+    <Sheet title={title} data-testid="profile">
       <SheetSection surface>
         {player ? (
           <Row
@@ -90,7 +93,9 @@ export function ProfileScreen() {
         <CountrySection nation={player.nation} changeAt={player.nation_change_at} nowMs={nowMs} />
       )}
 
-      <SheetSection heading={t('profile.language')}>
+      {/* ONE WORD FOR LANGUAGE: the switch's own accessible name is `common.language`; this
+          heading read `profile.language`, a second key for the same idea (the audit, 2026-10-31). */}
+      <SheetSection heading={t('common.language')}>
         <LanguageSwitch className="w-fit" />
       </SheetSection>
 

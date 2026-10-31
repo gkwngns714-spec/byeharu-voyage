@@ -275,7 +275,7 @@ test('nav: opening a group REVEALS its members and moves nothing in the bar', as
   }
 })
 
-test('nav: HQ leads, no Command tab; the City rail is HQ · Map · Stats · Menu; Market opens the trade face', async ({
+test('nav: HQ leads, no Command tab; the City rail is the shell rail (HQ · Fleets · Map · Stats · Menu); Market opens in place', async ({
   page,
   request,
   baseURL,
@@ -299,20 +299,22 @@ test('nav: HQ leads, no Command tab; the City rail is HQ · Map · Stats · Menu
   await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('city-screen')).toBeVisible()
   await expect(
-    page.getByTestId('city-nav').getByTestId('nav-cell-command'),
+    page.getByTestId('city-rail').getByTestId('nav-cell-command'),
     'the Command cell is back on the City rail',
   ).toHaveCount(0)
 
   // THE CITY RAIL'S OWN CELLS ARE REAL TAP TARGETS AT 390, and nothing scrolls sideways here.
+  // #426: the City page renders the shell's own NavBar, so the cells live under city-rail too and
+  // BOTH rails are the five cells of the one tab table (Fleets included).
   const railCells = await page
-    .locator('[data-testid="city-nav"] > a, [data-testid="city-nav"] > button')
+    .locator('[data-testid="city-rail"] [data-testid^="nav-cell-"]')
     .evaluateAll((es) =>
       es.map((e) => {
         const r = e.getBoundingClientRect()
         return { label: (e.textContent ?? '').trim(), w: Math.round(r.width), h: Math.round(r.height) }
       }),
     )
-  expect(railCells.length, `the City rail draws ${railCells.length} cells; HQ · Map · Stats · Menu`).toBe(4)
+  expect(railCells.length, `the City rail draws ${railCells.length} cells; HQ · Fleets · Map · Stats · Menu`).toBe(5)
   for (const c of railCells) {
     expect(
       c.w,
@@ -326,14 +328,16 @@ test('nav: HQ leads, no Command tab; the City rail is HQ · Map · Stats · Menu
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 
   // CITY → MARKET: the desk's door from the home — the Market building opens the trade face.
+  // #426: a building's face composes INTO the right-hand panel; there is no full-screen face and
+  // no Back control — the Hall tile returns to the Town Hall in place.
   await page.getByTestId('city-building-market').click()
-  await expect(page.getByTestId('city-face')).toBeVisible()
-  await expect(page.getByTestId('city-face')).toHaveAttribute('data-building', 'market')
+  await expect(page.getByTestId('city-face-panel')).toBeVisible()
+  await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
   await expect(page.getByTestId('quay-stores'), 'the market face is not the trade face').toBeVisible({
     timeout: 60_000,
   })
-  await page.getByTestId('city-face-back').click()
-  await expect(page.getByTestId('city-face')).toHaveCount(0)
+  await page.getByTestId('city-building-hall').click()
+  await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
 
   // HQ → MAP → HQ: a destination outside the shell, then home again.
   await page.getByTestId('nav-cell-/map').click()

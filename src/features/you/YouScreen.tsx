@@ -4,7 +4,8 @@ import type { FleetView, LevelTrack, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { YourCaptains } from '../../live/YourCaptains'
-import { useT } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
+import { useLocale, useT } from '../../lib/i18n'
 
 // YOU — the owner, row 181 (2026-10-20): *"Create a tab for personal info, such as my level, my
 // ships, captains, achievements, levels etc."*
@@ -32,22 +33,23 @@ import { useT } from '../../lib/i18n'
 // player's"), so this tab says nothing about them. The day they exist, they are a section here.
 
 export function YouScreen() {
-  const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
+  const title = tabWord(useLocale(), '/you')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
-  if (phase === 'failed') return <WorldFailed title={t('you.title')} refusal={fatal} />
-  if (phase !== 'ready') return <WorldLoading title={t('you.title')} />
-  return <YouBody />
+  if (phase === 'failed') return <WorldFailed title={title} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={title} />
+  return <YouBody title={title} />
 }
 
-function YouBody() {
+function YouBody({ title }: { title: string }) {
   const t = useT()
   const player = useWorld((s) => s.player)
   const fleets = useWorld((s) => s.fleets)
 
   return (
-    <Sheet title={t('you.title')} data-testid="you">
+    <Sheet title={title} data-testid="you">
       {player === null ? (
         <SheetSection surface>
           <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />

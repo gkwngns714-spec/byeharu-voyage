@@ -90,6 +90,11 @@ test('the Codex lists the ten as Great powers and the thirteen as Local rulers',
   await page.goto('compendium')
   await ready(page)
   await page.getByRole('tab', { name: /^Nations/i }).first().click()
+  // THE CATALOGUE IS A POP-UP PAGE (owner, 2026-10-31: *"make everything small, compact and once
+  // clicked show new page popping up"*): the face strip selects, and `codex-open` opens the face's
+  // whole page. Here the face used to draw in place; this drives the mechanism a player drives.
+  await page.getByTestId('codex-open').click()
+  await expect(page.getByTestId('codex-open-page')).toBeVisible()
   await expect(page.getByTestId('nation-great').locator('[data-testid="flag"]')).toHaveCount(GREAT_POWERS.length, { timeout: 60_000 })
   await expect(page.getByTestId('nation-rulers').locator('[data-testid="flag"]')).toHaveCount(minors.length)
 })

@@ -20,7 +20,8 @@ import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { useRouteBoard } from '../../live/useRouteBoard'
 import { useShellState } from '../../app/shellState'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
-import { t, useT, type TKey } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
+import { t, useLocale, useT, type TKey } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ROUTES — every lane the world sails, on one board (owner row 115, 2026-10-11).
@@ -57,14 +58,15 @@ import { t, useT, type TKey } from '../../lib/i18n'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function RoutesScreen() {
-  const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
+  const title = tabWord(useLocale(), '/routes')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
 
-  if (phase === 'failed') return <WorldFailed title={t('routes.title')} refusal={fatal} />
-  if (phase !== 'ready') return <WorldLoading title={t('routes.title')} />
-  return <RoutesBody />
+  if (phase === 'failed') return <WorldFailed title={title} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={title} />
+  return <RoutesBody title={title} />
 }
 
 type Order = 'nm' | 'earned' | 'calls'
@@ -75,7 +77,7 @@ const ORDERS: readonly { id: Order; label: TKey }[] = [
   { id: 'calls', label: 'routes.calls' },
 ] as const
 
-function RoutesBody() {
+function RoutesBody({ title }: { title: string }) {
   const t = useT()
   // THE ONE CLOCK (src/app/shellState.ts), so the board's age ticks without this screen
   // keeping a second one.
@@ -93,7 +95,7 @@ function RoutesBody() {
   const opened = board?.routes.find((r) => r.id === open) ?? null
 
   return (
-    <Sheet title={t('routes.title')} data-testid="routes">
+    <Sheet title={title} data-testid="routes">
       {board === null ? (
         loading ? (
           <div className="space-y-2">
@@ -107,7 +109,7 @@ function RoutesBody() {
       ) : (
         <>
           <SummaryRow
-            title={t('routes.title')}
+            title={title}
             figure={formatInt(board.total)}
             word={t('common.open')}
             onClick={() => setPage(true)}
@@ -115,7 +117,7 @@ function RoutesBody() {
           />
           {page && (
             <DetailPage
-              title={t('routes.title')}
+              title={title}
               figure={formatInt(board.total)}
               onClose={() => {
                 setPage(false)
@@ -132,7 +134,9 @@ function RoutesBody() {
                     : t('routes.lanes', { n: formatInt(board.total), count: board.total })}
                 </span>
                 {readAt !== null && <span>{formatRelative(readAt, nowMs)}</span>}
-                <Button variant="quiet" size="sm" onClick={refresh} busy={refreshing} busyLabel={t('routes.reading')} data-testid="routes-refresh">
+                {/* THE 44-PX FLOOR (the audit, 2026-10-31): this stood at 36px with no neighbour
+                    on the floor. It is the page's one secondary action, so it takes the md size. */}
+                <Button variant="quiet" onClick={refresh} busy={refreshing} busyLabel={t('routes.reading')} data-testid="routes-refresh">
                   {t('routes.readAgain')}
                 </Button>
               </div>
@@ -141,7 +145,7 @@ function RoutesBody() {
               {t('routes.stale')}
             </Note>
           )}
-          <Segmented segments={ORDERS.map((o) => ({ id: o.id, label: t(o.label) }))} value={order} onChange={setOrder} label={t('routes.rankBy')} className="mb-3" />
+          <Segmented segments={ORDERS.map((o) => ({ id: o.id, label: t(o.label) }))} value={order} onChange={setOrder} label={t('routes.sortLabel')} className="mb-3" />
           {mine.length > 0 && (
             // HERS ON HER OWN PANEL, as RANK pins the captain's line: one tone step, so her lanes
             // read as hers rather than as the first rows of a printout.
@@ -348,7 +352,7 @@ function LaneTray({
             : t('routes.within')}
         </span>
       </Row>
-      <Row label={t('routes.standing')} value={route.state} />
+      <Row label={t('routes.state')} value={route.state} />
       <Row
         label={t('routes.lapEarns')}
         value={

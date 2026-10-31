@@ -12,10 +12,11 @@ import { FleetStores } from './FleetStores'
 import { fleetDue } from './fleetLine'
 import { useT } from '../../lib/i18n'
 
-// ONE FLEET, UNFOLDED UNDER ITS ROW — owner row 89 (2026-09-13):
-//
-//     "fleets, i want to be folded not creating a new pop up page when clicking a ship/fleet.
-//      when folded, ships cargo supplies should be in one page with three columns"
+// ONE FLEET'S PAGE — owner row 89's SHAPE (2026-09-13): *"when folded, ships cargo supplies should
+// be in one page with three columns"* — on the owner's 2026-10-31 mechanism: *"everything has
+// folded. enough with folding things. make everything small, compact and once clicked show new
+// page popping up."* The three faces therefore stand whole on `DetailPage` (FleetsScreen mounts
+// this component inside it as `fleet-page`), never unfolded under the row.
 //
 // ── §7B, ANSWERED BEFORE THE FIRST LINE ────────────────────────────────────────────────────────
 // The CONCEPT: a fleet's three sides — ships, cargo, supplies — read together, in the list, under
@@ -27,19 +28,17 @@ import { useT } from '../../lib/i18n'
 // a fourth thing folded in here (an order queue, a history) — that is a second screen wearing a
 // fold, and the tell is a fourth column.
 //
-// ── WHY NOT THE INLINE TRAY ────────────────────────────────────────────────────────────────────
-// `Tray mode="inline"` is in flow, which is the half of the rule that matters — but it is still a
-// TRAY: a detent ladder (96 px · half the glass · all of it), a drag handle, a ✕, its own inner
-// scroll box and a pinned action. An unfold has none of those to offer: it is as tall as what it
-// holds, it scrolls with the sheet, and it closes by pressing the row it hangs from. Composing the
-// tray here would have meant a fold with a Resize handle that resizes nothing the player wants.
-// So this is a plain region: three `SheetSection`s in a grid, and one button at the foot.
+// ── WHY A PLAIN REGION ON A PAGE, NOT A TRAY ───────────────────────────────────────────────────
+// A TRAY brings a detent ladder (96 px · half the glass · all of it), a drag handle, a ✕, its own
+// inner scroll box and a pinned action — none of which suit a block that is simply as tall as what
+// it holds. The `DetailPage` already brings the one scroll, the title and the back press, so this
+// stays a plain region: three `SheetSection`s in a grid, and one button at the foot.
 //
 // ── THE OWNER'S RULE, KEPT BY WHERE THIS IS MOUNTED ────────────────────────────────────────────
-// Rows 6, 15, 25, 28, 45: pressing a control SELECTS; nothing at or above the press moves. This
-// region is rendered by FleetsScreen IMMEDIATELY AFTER the pressed row, so the row and everything
-// above it are where they were, and what is below moves down — which is what an unfold IS.
-// tests/layout.spec.ts measures it at 390×844; tests/wide.layout.spec.ts at 1440×900.
+// Rows 6, 15, 25, 28, 45: pressing a control SELECTS; nothing at or above the press moves — and
+// since 2026-10-31 nothing BELOW it moves either. This region stands on the fixed `DetailPage`
+// overlay, so the whole list behind it keeps its boxes. tests/layout.spec.ts measures the phone
+// page and the unmoved list at 390×844; tests/wide.layout.spec.ts its three columns at 1440×900.
 //
 // ── THREE COLUMNS ON A WIDE GLASS, ONE UNDER ANOTHER ON A PHONE ────────────────────────────────
 // From `lg` (screenLayout.ts, the wide glass) the three sections stand side by side inside the

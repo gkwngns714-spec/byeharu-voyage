@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Segmented, Sheet } from '../../components/ui'
 import { formatKoreaTime } from '../../lib/format'
-import { useT } from '../../lib/i18n'
+import { useLocale, useT } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CitiesFace } from './Cities'
@@ -35,15 +36,16 @@ import { useStatsLive } from './statsLive'
 // for a composition, ranked bars for "which of these is big", sparklines where a chart is too much.
 
 export function StatsScreen() {
-  const t = useT()
+  // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
+  const title = tabWord(useLocale(), '/stats')
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
-  if (phase === 'failed') return <WorldFailed title={t('stats.title')} refusal={fatal} />
-  if (phase !== 'ready') return <WorldLoading title={t('stats.title')} />
-  return <StatsBody />
+  if (phase === 'failed') return <WorldFailed title={title} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={title} />
+  return <StatsBody title={title} />
 }
 
-function StatsBody() {
+function StatsBody({ title }: { title: string }) {
   const t = useT()
   const [face, setFace] = useState<StatsFace>('overview')
   const { live, liveAtMs } = useStatsLive()
@@ -51,7 +53,7 @@ function StatsBody() {
 
   return (
     <Sheet
-      title={t('stats.title')}
+      title={title}
       data-testid="stats"
       trailing={
         updated === null ? undefined : (

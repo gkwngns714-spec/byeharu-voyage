@@ -4,14 +4,12 @@ import { defineDict } from '../define'
 // went with the levels to the You tab (dict/you.ts, owner row 181).
 export const profileDict = defineDict({
   en: {
-    title: 'Profile',
     since: 'since {date}',
     noCompany: 'No company yet.',
     appearance: 'Appearance',
     Dark: 'Dark',
     Light: 'Light',
     Auto: 'Auto',
-    language: 'Language',
     localOnly: 'Not signed in: clearing browser data ends this game.',
     signOut: 'Sign out',
     signedIn: 'Signed in',
@@ -25,14 +23,12 @@ export const profileDict = defineDict({
     sailFor: 'Sail for {nation}',
   },
   ko: {
-    title: '프로필',
     since: '{date} 설립',
     noCompany: '아직 회사가 없습니다.',
     appearance: '화면',
     Dark: '어둡게',
     Light: '밝게',
     Auto: '자동',
-    language: '언어',
     localOnly: '로그인 안 됨: 브라우저 데이터를 지우면 게임이 끝남.',
     signOut: '로그아웃',
     signedIn: '로그인됨',

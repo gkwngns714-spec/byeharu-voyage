@@ -3,14 +3,12 @@ import { defineDict } from '../define'
 // The Codex (src/features/compendium) and the History tab's own chrome (src/features/ledger).
 export const codexDict = defineDict({
   en: {
-    history: 'History',
     all: 'All',
     trade: 'Trade',
     voyage: 'Voyage',
     crew: 'Crew',
     nothingYet: 'Nothing yet.',
     nothingHere: 'Nothing here yet.',
-    codex: 'Codex',
     faces: 'Codex faces',
     goods: 'Goods',
     ships: 'Ships',
@@ -68,14 +66,12 @@ export const codexDict = defineDict({
     baseFigures: 'Before bonuses.',
   },
   ko: {
-    history: '기록',
     all: '전체',
     trade: '교역',
     voyage: '항해',
     crew: '선원',
     nothingYet: '아직 없음.',
     nothingHere: '아직 없음.',
-    codex: '도감',
     faces: '도감 분류',
     goods: '교역품',
     ships: '선박',
