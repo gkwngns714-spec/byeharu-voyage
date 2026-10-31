@@ -11,7 +11,8 @@ import { ready, reachable, settled } from './appReady.fixture'
 //
 //   A. CITY HALL — the Influence section is FOLDABLE (the one owner-ordered fold): collapsed it is
 //      ONE row (its word, your points, the chevron, ≥ 44 px); a press expands the book in place
-//      (tax rows included), a second press folds it. The hall panel also carries the FIVE FIGURES
+//      (the influence book; TAX ROWS STAY OFF, per the owner's 2026-10-30 instruction), a second
+//      press folds it. The hall panel also carries the FIVE FIGURES
 //      as one compact block — Population · Gold · Status · Relationship · Employees.
 //   B. NO REPEATS / NO BASKET OVERLAY — the frame's figures row is GONE (the hall block is the
 //      single home); no non-hall face prints one of those five words; the Market's Basket press
@@ -312,12 +313,18 @@ test('city audit @390×568: the hall — Influence folded and expanded — shows
   expect((await page.getByTestId('city-relationship').innerText()).trim().length, 'Relationship is empty').toBeGreaterThan(0)
   expect(await page.getByTestId('city-employees').innerText(), 'Employees carries no figure').toMatch(/\d/)
 
-  // EXPANDED — the book in place (tax rows included): still no scroll at the owner's 390×568.
+  // EXPANDED — the influence book in place (TAX ROWS OFF, the owner's 2026-10-30 rule): still no
+  // scroll at 390×568.
   await fold.click()
   await expect(fold).toHaveAttribute('aria-expanded', 'true')
   const book = page.getByTestId('city-hall-book')
   await expect(book).toBeVisible()
   await settled(book)
+  // TAX INFO STAYS OFF (owner, 2026-10-30: *"no need market info. tax info. influence yes…"*): the
+  // expanded book carries no tax row and no tax control — not at any glass.
+  for (const id of ['townhall-your-tax', 'townhall-mayor', 'townhall-mayor-tax']) {
+    await expect(book.locator(`[data-testid="${id}"]`), `${id} must not stand in the influence book`).toHaveCount(0)
+  }
   const expanded = await scrollOf(hall)
   console.log(`AUDIT @390×568 hall expanded: ${expanded.sh}/${expanded.ch}`)
   expect(expanded.sh, `the hall scrolls EXPANDED at 390×568: ${expanded.sh} > ${expanded.ch}`).toBeLessThanOrEqual(expanded.ch + 1)
@@ -366,6 +373,10 @@ test('city audit @320×568: the hall says what fits and what scrolls, and the pa
   await fold.click()
   await expect(fold).toHaveAttribute('aria-expanded', 'true')
   await settled(page.getByTestId('city-hall-book'))
+  // TAX INFO STAYS OFF at the smallest glass too.
+  for (const id of ['townhall-your-tax', 'townhall-mayor', 'townhall-mayor-tax']) {
+    await expect(page.getByTestId('city-hall-book').locator(`[data-testid="${id}"]`), `${id} must not stand in the influence book`).toHaveCount(0)
+  }
   const expanded = await scrollOf(hall)
   console.log(`AUDIT @320×568 hall expanded: ${expanded.sh}/${expanded.ch} (the page stays flat either way)`)
   // At the smallest glass the EXPANDED book may scroll inside the panel — stated here — but the
