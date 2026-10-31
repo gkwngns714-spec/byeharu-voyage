@@ -274,7 +274,8 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   const hallPanel = page.getByTestId('city-hall-panel')
   await expect(hallPanel).toBeVisible()
   // THE INFLUENCE IS FOLDABLE (owner, 2026-10-31): the book stands behind the fold; a press opens
-  // it in place (the tax rows included — this supersedes the older "no tax info" for the hall).
+  // it in place — and TAX INFO STAYS OFF (the owner, 2026-10-30: "no need market info. tax info.
+  // influence yes…" — that instruction stands).
   const fold = page.getByTestId('city-hall-influence')
   await expect(fold).toHaveAttribute('aria-expanded', 'false')
   await expect(hallPanel.getByTestId('city-hall-book')).toHaveCount(0)
@@ -283,6 +284,9 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await expect(hallPanel.getByTestId('townhall-influence')).toBeVisible({ timeout: 60_000 })
   await expect(hallPanel.getByTestId('city-hall-investors')).toBeVisible()
   await expect(hallPanel.locator('[data-testid="townhall-day"]'), 'market info must not stand in the hall panel').toHaveCount(0)
+  for (const id of ['townhall-your-tax', 'townhall-mayor', 'townhall-mayor-tax']) {
+    await expect(hallPanel.locator(`[data-testid="${id}"]`), `${id} must not stand in the influence book`).toHaveCount(0)
+  }
   await fold.click()
   await expect(fold).toHaveAttribute('aria-expanded', 'false')
   // the row is a real control at the 44-px reach floor

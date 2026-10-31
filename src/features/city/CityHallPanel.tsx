@@ -20,10 +20,11 @@ import { CityPanel } from './CityPanel'
 // *"CITY HALL - THERE IS A SCROLL YOU NEED TO DO FOR INFLUENCE. MAKE INFLUENCE FOLDABLE, ADD
 // POPULATION GOLD STATUS RELATIONSHIP EMPLOYEES ON THE RIGHT SIDE SINCE THERE WILL BE MORE ROOM"*
 // Collapsed (the default) Influence is ONE row: its word, your served points and the disclosure
-// chevron, ≥ 44 px. A press expands the book IN PLACE — the rows the hall used to carry, now WITH
-// the tax rows (`showTax` no longer off; this supersedes the older "no tax info" for the hall) — and
-// a second press folds it. This fold is owner-ordered and is the one sanctioned fold; the game's
-// "enough with folding" law is about in-place re-flow nobody asked for.
+// chevron, ≥ 44 px. A press expands the INFLUENCE BOOK in place — the rows the hall has always
+// carried, with the TAX ROWS OFF (`showTax={false}`; the owner, 2026-10-30: *"no need market info.
+// tax info. influence yes…"* — that instruction stands, unchanged, and is not ours to supersede) —
+// and a second press folds it. This fold is owner-ordered and is the one sanctioned fold; the
+// game's "enough with folding" law is about in-place re-flow nobody asked for.
 //
 // ── THE FIVE FIGURES ARE THE HALL'S SINGLE HOME (owner, 2026-10-31) ───────────────────────────
 // *"I DON'T NEED TO SEEP POPULATION AND RELATION, ANYTHING THAT WAS ALREADY SHOWN ON TOWN HALL"* —
@@ -130,7 +131,7 @@ export function CityHallPanel({
       </button>
       {influenceOpen && (
         <div className={BOOK_DENSE} data-testid="city-hall-book">
-          <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} compact />
+          <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} showTax={false} compact />
         </div>
       )}
 
