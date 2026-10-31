@@ -265,7 +265,12 @@ for (const size of SIZES) {
     for (const m of measured) {
       // NO PANEL SCROLL — the content is a compact screen; the rest opens as a page.
       expect(m.root.sh, `${m.id} panel scrolls at ${size.width}: ${m.root.sh} > ${m.root.ch}`).toBeLessThanOrEqual(m.root.ch + 1)
-      if (m.inner) {
+      // THE MARKET'S ONE EXCEPTION, AND THE OWNER ASKED FOR IT (2026-10-31): "have BUY, beneath show
+      // all the trade goods neatly organized. So is sell - cargo good." A list of every good at the
+      // port is a bounded LIST PANE — it scrolls inside its own box, which is consistency.spec's own
+      // rule ("lists scroll inside their own bounded panes"); the page, the frame and the document
+      // still never scroll, which the checks above and below hold. Its inner scroller is the list.
+      if (m.inner && m.id !== 'market') {
         expect(m.inner.sh, `${m.id} panel's inner scroller scrolls at ${size.width}: ${m.inner.sh} > ${m.inner.ch}`).toBeLessThanOrEqual(m.inner.ch + 1)
       }
     }

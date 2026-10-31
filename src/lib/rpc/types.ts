@@ -1472,6 +1472,38 @@ export interface RequestBoard {
   contracts: TradeRequest[]
 }
 
+/** 0288 — ONE of the caller's standing BUY orders at a port (world.requests). `qty` and `escrow`
+ *  are what is LEFT of it; a fill sells the merchant's goods to the house at `unit_price`. */
+export interface MarketRequestRow {
+  id: string
+  good_id: string
+  /** The good's code (the market's own key), served. */
+  code: string
+  name: string
+  qty: number
+  unit_price: number
+  escrow: number
+  created_at: string
+}
+
+/** 0288 — `world.requests(port)`: the caller's own open requests there, and the server's answer to
+ *  "is this my home city" (the same reading cmd.request_place enforces, so the door and the gate
+ *  can never disagree). */
+export interface PortRequests {
+  home: boolean
+  requests: MarketRequestRow[]
+}
+
+/** 0288 — the placement's answer: the row as it now stands. */
+export interface RequestPlacement {
+  request: { id: string; qty: number; unit_price: number; escrow: number }
+}
+
+/** 0288 — the cancel's answer: how much of the escrow came back. */
+export interface RequestCancel {
+  refund: number
+}
+
 /**
  * The order as `cmd.issue()` reports it back — NOT a full QueuedOrder. The issue payload carries
  * six fields and deliberately omits `text` and `verb`: the caller just supplied the text, and the
