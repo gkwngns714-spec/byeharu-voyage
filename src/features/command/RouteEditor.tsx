@@ -10,7 +10,8 @@ import { draftOfRoute, emptyStop, routeName, routePayload, type RouteStopDraft }
 import { RouteStopBlock, StopLineRow, StopPortRow } from './RouteStop'
 import { useT } from '../../lib/i18n'
 
-// THE ROUTE EDITOR — inside RouteFold, in place (docs/TRADE_ROUTES.md §7). Slice 1's scope, and
+// THE ROUTE EDITOR — inside RouteFold, on the route's page (docs/TRADE_ROUTES.md §7; the one
+// pop-up page since consistency row 38). Slice 1's scope, and
 // no more: two stops — where the fleet lies, and one port picked with THE port field (the same
 // field PORT uses, src/live/PortField.tsx) — and at each stop "sell all" and one BUY (a good this
 // port's market offers, how many units, the Max each). Each stop is RouteStop.tsx's block — its

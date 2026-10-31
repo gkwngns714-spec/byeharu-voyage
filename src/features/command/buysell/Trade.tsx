@@ -179,7 +179,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
       />
     ) : null
 
-  // the standing route above the queue (0092, COMMAND_DESK §3.5: the one thing that writes orders by itself)
+  // the standing route above the queue (0092, COMMAND_DESK §3.5: the one thing that writes orders by
+  // itself); the row opens the route's page (consistency row 38)
   const routeRow = <RouteFold fleet={fleet} picked={pickNow?.kind === 'route'} onPick={(on) => choose(on ? { kind: 'route' } : null)} />
   const queue = (
     <Queue

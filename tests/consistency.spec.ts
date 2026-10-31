@@ -20,16 +20,19 @@ import { NAV_CELLS, tabWord } from '../src/app/navTabs'
 //      fails here.
 //   2. ONE WORD PER DESTINATION. Every tab screen's title equals the word on its rail cell (the
 //      audit found Rank titled "Standings" while its cell said "Rank").
-//   3. THE 44-PX FLOOR. Every visible control is at least 44×44, except the design system's one
-//      sanctioned 36-px size, whose two remaining users are DECLARED by name below (debt, not
-//      silence).
+//   3. THE 44-PX FLOOR. Every visible control is at least 44×44. The design system's sanctioned
+//      36-px size has NO user left on any walked screen (Command's City view went md, row 33);
+//      the allowlist below stays as the one declared place, now empty (a future 36 must be
+//      declared there, not filtered silently).
 //   4. NO SCROLL. The document, a tab's Sheet and every pop-up page's root never scroll; no
 //      visible box scrolls sideways. Lists scroll inside their own bounded panes.
-//   5. NO PLACEHOLDER DASH where a figure is owed. Measured on the COMPACT screens, where the
-//      audit found none. Inside a page a dash is sometimes the truth: a good no market prices has
-//      no figure, and the economy watch's fields are dark in local mode — the app's documented
-//      "the server did not price this side" (the first run flagged 16 of those; the dev-log records
-//      the investigation, and the rule stays where a figure is actually owed).
+//   5. NO PLACEHOLDER DASH where a figure is owed. Measured on the COMPACT screens — now
+//      including the desk, whose good sparkline drew "—" below two served points until row 37
+//      (it now draws NOTHING, and `sparkAbsence` below proves each gap is the served absence).
+//      Inside a page a dash is sometimes the truth: a good no market prices has no figure, and
+//      the economy watch's fields are dark in local mode — the app's documented "the server did
+//      not price this side" (the first run flagged 16 of those; the dev-log records the
+//      investigation, and the rule stays where a figure is actually owed).
 //   6. NO DUPLICATE LABEL for two different controls on one screen.
 //   7. TWO PLAIN WORDS at most on a summary row's title (the owner's label law).
 //   8. REACHABILITY. Every top destination is a cell or a Menu row with a real href; the City page
@@ -67,12 +70,12 @@ const TITLED = [
 const STATS_FACES = ['Overview', 'Markets', 'Cities', 'Merchants', 'Me'] as const
 const DESK_FACES = ['Trade', 'City', 'Invest', 'Report'] as const
 
-/** THE ONE SANCTIONED SIZE BELOW THE FLOOR: `Button size="sm"` is 36px for an in-row secondary
- *  action (docs/UI_DIRECTION.md §5, "44 and 36"; primitives.geometry.spec fences it the same way).
- *  ONE live control still wears it — the Command desk City face's `City view`, outside this pass;
- *  #426 removed the city faces' Back entirely. Declared by test id so the exception is visible; a
- *  second one must be added here deliberately. */
-const SM_ALLOWED = new Set(['desk-city-open'])
+/** THE ONE DECLARED PLACE FOR A SUB-44 CONTROL — NOW EMPTY (consistency row 33 fixed: the Command
+ *  desk City face's `City view` is the md 44-px size, and #426 removed the city faces' Back).
+ *  `Button size="sm"` (36px, docs/UI_DIRECTION.md §5's in-row size) has no visible user on any
+ *  walked screen. The mechanism stays so a future one must be DECLARED here by test id, not
+ *  filtered silently. */
+const SM_ALLOWED = new Set<string>()
 
 interface Snapshot {
   doc: { sw: number; cw: number; sh: number; ch: number }
@@ -196,6 +199,30 @@ function violations(s: Snapshot, where: string, opts: { dashes?: boolean } = {})
   for (const d of s.duplicates) out.push(`${where}: two controls share the label "${d.label}": ${d.where.join(', ')}`)
   for (const sm of s.summaries) if (sm.words > 2) out.push(`${where}: summary title "${sm.title}" is ${sm.words} words — the law is one or two`)
   return out
+}
+
+/** ROW 37's LAW (consistency audit): a good card draws a price line ONLY where the SERVED series
+ *  has two or more points (`data-points`, off world.price_series via dayLine); below two it draws
+ *  NOTHING — the absence is drawn as an absence, never as a dash. Read from the DOM, so the claim
+ *  is made against the served number itself. */
+async function sparkAbsence(page: Page, where: string): Promise<string[]> {
+  return page.evaluate((where) => {
+    const out: string[] = []
+    for (const card of Array.from(document.querySelectorAll('[data-testid="trade-good"]'))) {
+      const spark = card.querySelector('[data-testid="trade-good-spark"]')
+      if (!spark) {
+        out.push(`${where}: a good card has no spark slot`)
+        continue
+      }
+      const points = Number(spark.getAttribute('data-points') ?? '0')
+      const drawn = spark.querySelector('svg') !== null
+      const text = (spark.textContent ?? '').trim()
+      if (points >= 2 && !drawn) out.push(`${where}: a good with ${points} served points draws no line`)
+      if (points < 2 && (drawn || text !== ''))
+        out.push(`${where}: a good with ${points} served points draws ${drawn ? 'a line' : `"${text}"`} — the absence must be drawn as absence`)
+    }
+    return out
+  }, where)
 }
 
 async function screen(page: Page, route: string) {
@@ -361,9 +388,9 @@ for (const size of SIZES) {
       // THE CITY'S FIGURES ARE SERVED, NOT PLACEHOLDERS: wait for the hall read before the dash
       // sweep, or a slow first read would be mistaken for a dash where a figure is owed.
       if (route === 'city') await page.getByTestId('city-hall-scroll').waitFor({ timeout: 60_000 })
-      // `command` keeps its own good sparklines, which print a dash until a price series exists —
-      // recorded in the dev-log as this pass's one remaining placeholder (the desk is outside it).
-      failures.push(...violations(await snapshot(page), `${size.width} ${route}`, { dashes: route !== 'command' }))
+      // The desk is held to the dash ban too (row 37 fixed): its good sparkline draws nothing below
+      // two served points, and `sparkAbsence` below proves every gap is the served absence itself.
+      failures.push(...violations(await snapshot(page), `${size.width} ${route}`))
 
       if (route === 'stats') {
         for (const face of STATS_FACES) {
@@ -376,7 +403,9 @@ for (const size of SIZES) {
         for (const face of DESK_FACES) {
           if (!(await pressFace(page.getByRole('tablist', { name: 'Desk faces' }), face, `${size.width} desk/${face}`, failures))) continue
           await page.waitForTimeout(400)
-          failures.push(...violations(await snapshot(page), `${size.width} desk/${face}`, { dashes: false }))
+          failures.push(...violations(await snapshot(page), `${size.width} desk/${face}`))
+          // ROW 37: every good card's spark is a line iff the SERVED series holds two or more points.
+          if (face === 'Trade') failures.push(...(await sparkAbsence(page, `${size.width} desk/${face}`)))
         }
       } else if (route === 'fleets') {
         // HER PAGE IS THE ONE DETAIL (owner, 2026-10-31): every fleet row opens it, and it obeys
