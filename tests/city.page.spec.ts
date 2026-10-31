@@ -157,6 +157,13 @@ test('the City page: entry, no scroll, placeholders, and a building face that mo
   await expectSceneInFrame(page, '390×844')
   await expectWholeCityDrawn(page, '390×844')
 
+  // THE LANDING SCENE'S NODE BUDGET (owner, 2026-10-31: "the game became slow, find this"). The
+  // stipple, the window lights and the still people are drawn as a few paths, not one element per
+  // dot; the scene keeps its exact look at ~390 elements. This fails if a future change goes back.
+  const sceneNodes = await page.getByTestId('city-scene').evaluate((svg) => svg.querySelectorAll('*').length)
+  console.log(`scene nodes: ${sceneNodes}`)
+  expect(sceneNodes, 'the city scene is over its 400-node budget').toBeLessThan(400)
+
   // ── 2. THE THREE FIGURES: POPULATION (A STATED ESTIMATE), STATUS AND RELATIONSHIP (SERVED) ──
   // Population is a stated estimate off the served size tier (owner, 2026-10-31: "more tiny dot
   // with huge number"). Status is the company's own influence points in this city; Relationship is
