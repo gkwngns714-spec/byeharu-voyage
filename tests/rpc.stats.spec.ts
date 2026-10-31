@@ -267,3 +267,39 @@ test('a sale moves the overview, the good, the city and the merchants before any
   expect(n.ok).toBe(true)
   if (n.ok) expect(o1.value.holders!.total).toBe(n.value.total)
 })
+
+// ── 0287: THE OVERVIEW ANSWERS FOR THE 1 d / 1 w SPANS, EVERY SECTION INTACT ────────────────────
+// The owner's live failure: "World figures not loaded." — world.stats_overview(24, '1d') / (24, '1w')
+// timing out inside stats_window_totals on prod. 0287 gives the window reads their covering indexes;
+// this spec pins the read itself: both spans answer, with holders, period, day and a series ending at
+// the read's own instant. (The prod timeout is an I/O/scan property the migration's self-assert
+// measures; this spec proves the read's shape cannot silently lose a section.)
+test('a 1d and a 1w overview answer with the sections and holders intact', async () => {
+  for (const span of ['1d', '1w'] as const) {
+    const o = await worldStatsOverview(24, span)
+    expect(o.ok, `worldStatsOverview(24, '${span}') failed`).toBe(true)
+    if (!o.ok) return
+    // the span is echoed and every section 0232 / 0246 serve is there
+    expect(o.value.span).toBe(span)
+    expect(o.value.at).not.toBeNull()
+    expect(o.value.counted_at).not.toBeNull()
+    expect(o.value.age_seconds).not.toBeNull()
+    expect(o.value.slot_seconds).toBeGreaterThan(0)
+    expect(o.value.hours).toBeGreaterThan(0)
+    // the holders are the live counters and add up to their four parts
+    expect(o.value.holders).not.toBeNull()
+    const h = o.value.holders!
+    expect(h.total).toBe(h.players + h.merchants + h.cities + h.set_aside)
+    // the period in progress and the last day are served, with every figure the face prints
+    expect(o.value.period).not.toBeNull()
+    expect(o.value.day).not.toBeNull()
+    for (const k of ['minted', 'removed', 'moved', 'sold', 'bought', 'units', 'trades']) {
+      expect(o.value.day).toHaveProperty(k)
+      expect(o.value.period).toHaveProperty(k)
+    }
+    // the series is drawn from the span's tier and ends at the read's own instant
+    expect(Array.isArray(o.value.series)).toBe(true)
+    expect(o.value.series.length).toBeGreaterThanOrEqual(1)
+    expect(o.value.series[o.value.series.length - 1].at).toBe(o.value.at)
+  }
+})
