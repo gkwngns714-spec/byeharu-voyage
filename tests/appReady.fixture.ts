@@ -68,17 +68,19 @@ export async function settled(scope: import('@playwright/test').Locator): Promis
 }
 
 /**
- * OPEN A FOLDED SECTION, if it is there. The one-page slice (2026-10-31) puts secondary blocks
- * behind `SectionFold`s closed by default: a spec that reaches into one opens it the way a player
- * does — one press on the fold's own 44-px line — and then asserts against what is revealed.
- * A no-op when the block is not a fold at that width (the wide desk composes the same content
- * openly).
+ * OPEN A SUMMARY'S PAGE, the way a player does: one press on its 44-px summary row. The one-page
+ * slice (owner, 2026-10-31: *"make everything small, compact and once clicked show new page
+ * popping up"*) puts every block's detail on a full-screen `DetailPage`; its test id is `${row}-page`.
  */
-export async function openFold(page: import('@playwright/test').Page, testid: string) {
-  const toggle = page.getByTestId(`${testid}-toggle`)
-  if ((await toggle.count()) === 0) return
-  if ((await toggle.getAttribute('aria-expanded')) === 'false') await toggle.click()
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+export async function openDetail(page: import('@playwright/test').Page, testid: string) {
+  await page.getByTestId(testid).click()
+  await expect(page.getByTestId(`${testid}-page`)).toBeVisible()
+}
+
+/** THE PAGE'S BACK PRESS — the one control every DetailPage carries. */
+export async function closeDetail(page: import('@playwright/test').Page) {
+  await page.locator('[data-detail-back]').last().click()
+  await expect(page.locator('[data-detail-page]')).toHaveCount(0)
 }
 
 /**

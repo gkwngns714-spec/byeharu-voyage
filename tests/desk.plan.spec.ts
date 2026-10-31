@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { openFold, ready, reachable } from './appReady.fixture'
+import { openDetail, ready, reachable } from './appReady.fixture'
 import { pressFirstPricedCard, pressNearCity } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -36,7 +36,7 @@ test('Sail & buy from a city she is not at is queued whole and stands on Trade',
   await expect(page.getByTestId('good-detail')).toHaveCount(0)
   await expect(face).toBeVisible()
   // the queue is inside the folded Orders on a phone (the one-page law)
-  await openFold(page, 'command-queue')
+  await openDetail(page, 'command-queue')
   const queued = page.getByTestId('queue-row')
   await expect(queued.first()).toBeVisible({ timeout: 30_000 })
   const texts = (await queued.allInnerTexts()).map((t) => t.replace(/\s+/g, ' '))

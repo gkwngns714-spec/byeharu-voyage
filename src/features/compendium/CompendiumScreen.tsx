@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Field, ScrollPane, Segmented, Sheet } from '../../components/ui'
+import { DetailPage, Field, Segmented, Sheet, SummaryRow } from '../../components/ui'
+import { formatInt } from '../../lib/format'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainsFace } from './CaptainsFace'
@@ -8,39 +9,9 @@ import { NationsFace } from './NationsFace'
 import { ShipsFace } from './ShipsFace'
 import { useT } from '../../lib/i18n'
 
-// CODEX — the 도감: everything that exists in this world, catalogued, whether or not you have met
-// it. The owner, 2026-08-23: "create a 도감, separate tab, showing all the trade goods, ships,
-// captains that are made in this game. categorize them, make filters." Redrawn to
-// docs/UI_DIRECTION.md §6 "CODEX".
-//
-// ── IT IS A REFERENCE. IT COMMANDS NOTHING. ────────────────────────────────────────────────────
-// No buy, no hire, no sail, no hand-off. Every acting surface already exists once — orders are
-// composed on COMMAND, officers sign on at their quay on PORT, hulls are a yard's business — and a
-// button here would be a second one of it.
-//
-// ── NOTHING HERE IS COMPUTED, AND NO PRICE IS PRINTED ──────────────────────────────────────────
-// Every figure is a served field read off `world.snapshot()` or `world.officers()`. A good's BASE
-// is the catalogue's anchor, not a price — prices are per port and live. Nothing is averaged,
-// ranked or derived (worldStore.ts rule 3).
-//
-// ── WHAT §6 CUT, MEASURED ──────────────────────────────────────────────────────────────────────
-// The goods face stood 39,365px tall at 390px. Behind the title's dot sat a 90-word paragraph; under
-// the tabs sat TWO chip strips scrolling sideways (17 kinds × 4 rarities) with "Swipe for the
-// rest." under them, then `523 of 523 goods`, then a tile per good carrying FOUR figures of which
-// two — `SPOILS —` and `REFUSED BY —` — printed an em-dash on most of 523 goods. A dash is a figure
-// that is not there. Ship tiles printed `build 40 h` and `cost 2,400 d.` for hulls no order can
-// commission (domain/fleet/statGloss.ts says so); captain tiles printed "no rule reads this
-// specialty yet — the bonus changes nothing" as a line of fine print on the tile.
-//
-// What stands now: ONE filter field, which answers to a name, a kind and a rarity word alike — so
-// "spices" and "rare" filter as the chip strips did, without the strips — and ONE `Segmented` of
-// four faces. The kind is a heading over its group. A tile shows the mark, the name, the rarity
-// and ONE figure; everything else is in a tray, and a fact that is absent is simply not a row.
-//
-// ── THE FOUR FACES ─────────────────────────────────────────────────────────────────────────────
-// Goods, ships and captains are the owner's. Nations ride along because they are the fourth noun
-// every other page speaks in codes, and 0028 serves the catalogue so a code can become a name.
-// Ports are deliberately NOT a face: MAP draws them all and MARKET lists them.
+// CODEX — the 도감: every good, hull, officer and flag the world serves. THE COMPACT SCREEN (owner,
+// 2026-10-31): the four faces are a tile grid; the catalogue itself is one summary row with its
+// count, opening a full-screen page that holds the search and the face's field whole.
 
 const FACES = [
   { id: 'goods', label: 'codex.goods', noun: 'codex.filter_goods' },
@@ -52,18 +23,10 @@ type FaceId = (typeof FACES)[number]['id']
 
 export function CompendiumScreen() {
   const t = useT()
-  // FIELDS, NOT THE STORE (worldStore.ts rule 4).
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
-
-  if (phase === 'failed') {
-    return <WorldFailed title={t('codex.codex')} refusal={fatal} />
-  }
-  if (phase !== 'ready') {
-    return (
-      <WorldLoading title={t('codex.codex')} />
-    )
-  }
+  if (phase === 'failed') return <WorldFailed title={t('codex.codex')} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={t('codex.codex')} />
   return <CompendiumBody />
 }
 
@@ -71,12 +34,10 @@ function CompendiumBody() {
   const t = useT()
   const loadOfficers = useWorld((s) => s.loadOfficers)
   const readAt = useWorld((s) => s.readAt)
+  const snapshot = useWorld((s) => s.snapshot)
+  const roster = useWorld((s) => s.officers)
+  const nationByCode = useWorld((s) => s.nationByCode)
 
-  // WHETHER THE ROSTER HAS ANSWERED, which `officers === null` alone cannot say: null is both "not
-  // asked yet" and "the read was refused", and without the distinction a refused read draws a
-  // skeleton for ever. Keyed on `readAt` so the one live thing here — who has signed, and whose
-  // fleet they serve — rides the world's own thirty-second beat, and a refused read is retried
-  // with no button.
   const [rosterAnswered, setRosterAnswered] = useState(false)
   useEffect(() => {
     if (readAt === null) return
@@ -91,7 +52,17 @@ function CompendiumBody() {
 
   const [face, setFace] = useState<FaceId>('goods')
   const [query, setQuery] = useState('')
-  const noun = FACES.find((f) => f.id === face)?.noun ?? 'codex.filter_goods'
+  const [open, setOpen] = useState(false)
+  const current = FACES.find((f) => f.id === face) ?? FACES[0]
+  const label = t(current.label)
+  const count =
+    face === 'goods'
+      ? (snapshot?.goods?.length ?? 0)
+      : face === 'ships'
+        ? (snapshot?.ship_classes?.length ?? 0)
+        : face === 'captains'
+          ? (roster?.officers.length ?? 0)
+          : Object.keys(nationByCode).length
 
   return (
     <Sheet title={t('codex.codex')} data-testid="codex">
@@ -100,33 +71,31 @@ function CompendiumBody() {
         segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))}
         value={face}
         onChange={(next) => {
-          // A filter belongs to the face it was typed against: "pepper" carried onto the ships
-          // face would show an empty catalogue for a reason typed a minute ago on another list.
+          // A filter belongs to the face it was typed against.
           setFace(next)
           setQuery('')
         }}
       />
-      <Field
-        className="mt-3"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onClear={() => setQuery('')}
-        aria-label={t(noun)}
-        placeholder={t(noun)}
-        spellCheck={false}
-        autoCorrect="off"
-      />
-      {/* THE ONE LIST THAT IS LONGER THAN ANY GLASS — 243 goods, 55 hulls, 107 captains, 25 nations.
-          It scrolls inside its own bounded pane, so the face strip and the search stay where they
-          are and the tab's own surface never travels (onepage.spec.ts measures the document). */}
-      <div role="tabpanel" className="mt-3">
-        <ScrollPane className="max-h-[calc(100dvh_-_20rem)]">
-          {face === 'goods' && <GoodsFace query={query} />}
-          {face === 'ships' && <ShipsFace query={query} />}
-          {face === 'captains' && <CaptainsFace query={query} answered={rosterAnswered} />}
-          {face === 'nations' && <NationsFace query={query} />}
-        </ScrollPane>
-      </div>
+      <SummaryRow className="mt-3" title={label} figure={formatInt(count)} word={t('common.open')} onClick={() => setOpen(true)} data-testid="codex-open" />
+      {open && (
+        <DetailPage title={label} figure={formatInt(count)} onClose={() => setOpen(false)} data-testid="codex-open-page">
+          <Field
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onClear={() => setQuery('')}
+            aria-label={t(current.noun)}
+            placeholder={t(current.noun)}
+            spellCheck={false}
+            autoCorrect="off"
+          />
+          <div role="tabpanel" className="mt-3">
+            {face === 'goods' && <GoodsFace query={query} />}
+            {face === 'ships' && <ShipsFace query={query} />}
+            {face === 'captains' && <CaptainsFace query={query} answered={rosterAnswered} />}
+            {face === 'nations' && <NationsFace query={query} />}
+          </div>
+        </DetailPage>
+      )}
     </Sheet>
   )
 }

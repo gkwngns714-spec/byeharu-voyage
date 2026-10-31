@@ -2,24 +2,22 @@ import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// ONE PAGE — the owner's law, measured on every main tab (2026-10-31)
+// ONE PAGE — the owner's law, measured on every main tab, every face and every pop-up page
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // *"i hate to scroll down on things, make it so that all the info is packed on one page. all the
-// game."* The law this file holds, at the phone (390×844) and the wide desk (1280×800):
+// game"* — then, on the mechanism: *"make everything small, compact and once clicked show new page
+// popping up."* The laws this file holds, at 390×844 and 1280×800:
 //
-//   1. THE DOCUMENT NEVER SCROLLS — `documentElement.scrollHeight <= clientHeight + 1` and the same
-//      for width, on every main tab. A tab may own a bounded pane that scrolls inside itself
-//      (`ScrollPane`, data-scroll-pane); the PAGE never moves.
-//   1b. THE TAB'S OWN SHEET NEVER SCROLLS — the surface the owner actually feels. `Sheet` carries
-//      `data-sheet`; its scrollHeight must equal its clientHeight at rest, scrollTop 0, on every
-//      route that draws one (all but Map and the City page, which are one glass).
+//   1. THE DOCUMENT NEVER SCROLLS — scrollHeight ≤ clientHeight + 1 and the same for width.
+//   1b. THE TAB'S OWN SHEET NEVER SCROLLS — `Sheet` carries `data-sheet`; scrollHeight equals
+//      clientHeight at rest, scrollTop 0, on every route and every face (all but Map and the City
+//      page, which are one glass).
+//   1c. EVERY SUMMARY ROW OPENS A PAGE, AND THE PAGE ITSELF DOES NOT SCROLL — `[data-detail-page]`
+//      is fixed, its own root does not overflow, and its content scrolls inside (a ScrollPane).
 //   2. THE MAIN LANDMARK IS THERE AND VISIBLE on every tab.
-//   3. EVERY SET OF TAPPABLE CHOICES IS AN ORDERED GRID — each `[data-choice-grid]` has equal
-//      cells on shared column lines (the owner: *"make it into square and allign properly orderly.
-//      this applies to all the places throughout the game."*), every cell ≥ 44 px.
-//   4. A FOLDED SECONDARY SECTION OPENS ITS OWN BODY when pressed and keeps its information
-//      (owner: *"make things foldable"*) — the Stats "New and moved money" block is the witness.
+//   3. EVERY SET OF TAPPABLE CHOICES IS AN ORDERED GRID — each `[data-choice-grid]` has equal cells
+//      on shared column lines, every cell ≥ 44 px — on the compact screen and inside every page.
 //
 // The City page already carried its own no-scroll proof (tests/city.page.spec.ts) and is asserted
 // here too, without touching src/features/city/** (another slice owns those files).
@@ -75,16 +73,72 @@ async function read(page: Page): Promise<DocReport> {
   })
 }
 
-/** EVERY FACE INSIDE A TAB IS STILL THE SAME SHEET. The desk has four faces and Stats five; a
- *  face that starts the Sheet scrolling is the same defect one press in. Switch the faces the way
- *  a player does and hold each one to the two laws (page and Sheet). `listName === null` means the
- *  page's first tab list (Stats draws exactly one). */
+type GridReport = DocReport['grids'][number]
+
+/** THE GRID LAW: equal cells, one line, ordered lefts, every cell ≥ 44 px. Returns the count. */
+function assertGrids(grids: readonly GridReport[], _size: { width: number }, where: string): number {
+  let n = 0
+  for (const g of grids) {
+    if (g.cells.length < 2) continue
+    n++
+    const [a, b] = g.cells
+    expect(Math.abs(a.w - b.w), `${where}: grid "${g.label}" first two cells differ in width (${a.w} vs ${b.w})`).toBeLessThanOrEqual(1)
+    expect(Math.abs(a.h - b.h), `${where}: grid "${g.label}" first two cells differ in height (${a.h} vs ${b.h})`).toBeLessThanOrEqual(1)
+    expect(Math.abs(a.t - b.t), `${where}: grid "${g.label}" first two cells are not on one line`).toBeLessThanOrEqual(1)
+    expect(b.l, `${where}: grid "${g.label}" second cell is not right of the first`).toBeGreaterThan(a.l)
+    for (const c of g.cells) {
+      expect(c.h, `${where}: grid "${g.label}" a cell is ${c.h}px tall, under the 44px floor`).toBeGreaterThanOrEqual(44)
+      expect(c.w, `${where}: grid "${g.label}" a cell is ${c.w}px wide, under the 44px floor`).toBeGreaterThanOrEqual(44)
+    }
+  }
+  return n
+}
+
+/** EVERY SUMMARY ROW OPENS A PAGE, AND THE PAGE ITSELF DOES NOT SCROLL. Walks the compact screen's
+ *  rows, opens each as a player does, holds the page to the no-scroll law, closes with the back
+ *  press, and returns how many pages it measured. */
+async function walkPages(page: Page, size: { width: number; height: number }): Promise<number> {
+  const rows = page.locator('[data-summary-row]')
+  const count = await rows.count()
+  let opened = 0
+  for (let i = 0; i < count; i++) {
+    const row = rows.nth(i)
+    if (!(await row.isVisible())) continue
+    const label = (await row.getAttribute('data-testid')) ?? `summary #${i}`
+    await row.click()
+    const dialog = page.locator('[data-detail-page]')
+    await expect(dialog, `${label} opened no page at ${size.width}px`).toBeVisible()
+    await expect(dialog.locator('[data-detail-back]'), `${label}'s page has no back press`).toBeVisible()
+    await page.waitForTimeout(150)
+    const m = await read(page)
+    const root = await page.evaluate(() => {
+      const pg = document.querySelector('[data-detail-page]') as HTMLElement
+      return { h: pg.scrollHeight, ch: pg.clientHeight, top: pg.scrollTop }
+    })
+    console.log(
+      `ONEPAGE @${size.width} page ${label}: root ${root.h}/${root.ch}, ` +
+        `doc ${m.docW}×${m.docH} / ${m.clientW}×${m.clientH}, grids ${m.grids.length}`,
+    )
+    expect(m.docH, `${label}'s page scrolls the DOCUMENT at ${size.width}px`).toBeLessThanOrEqual(m.clientH + 1)
+    expect(m.docW, `${label}'s page shears the DOCUMENT sideways at ${size.width}px`).toBeLessThanOrEqual(m.clientW + 1)
+    expect(root.top, `${label}'s page is already scrolled`).toBe(0)
+    expect(root.h, `${label}'s PAGE ITSELF scrolls at ${size.width}px: ${root.h} > ${root.ch}`).toBeLessThanOrEqual(root.ch + 1)
+    assertGrids(m.grids, size, `${label} page`)
+    await page.locator('[data-detail-back]').last().click()
+    await expect(page.locator('[data-detail-page]')).toHaveCount(0)
+    opened++
+  }
+  return opened
+}
+
+/** EVERY FACE INSIDE A TAB IS STILL THE SAME SHEET, and every face's summaries open pages. */
 async function walkFaces(
   page: Page,
   size: { width: number; height: number },
   listName: RegExp | null,
   faces: readonly string[],
-) {
+): Promise<number> {
+  let pages = 0
   for (const face of faces) {
     const strip = listName === null ? page.getByRole('tablist').first() : page.getByRole('tablist', { name: listName })
     await strip.getByRole('tab', { name: face, exact: true }).click()
@@ -103,22 +157,22 @@ async function walkFaces(
       expect(m.sheet.top, `face ${face}'s Sheet is already scrolled`).toBe(0)
       expect(
         m.sheet.h,
-        `face ${face} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}. ` +
-          `Fold the secondary blocks and bound the lists.`,
+        `face ${face} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}.`,
       ).toBeLessThanOrEqual(m.sheet.ch + 1)
     }
+    pages += await walkPages(page, size)
   }
+  return pages
 }
 
 for (const size of SIZES) {
-  test(`one page at ${size.width}×${size.height}: every tab, every choice grid`, async ({ page, request, baseURL }) => {
-    // One boot, ten routes: the local world persists in the tab, so a reload re-reads rather than
-    // rebuilding the chain. The probe of 2026-10-31 measured 10 routes in ~28 s this way.
-    test.setTimeout(1_200_000)
+  test(`one page at ${size.width}×${size.height}: every tab, face, page and choice grid`, async ({ page, request, baseURL }) => {
+    test.setTimeout(1_800_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(size)
 
     let gridsMeasured = 0
+    let pagesMeasured = 0
     for (const route of ROUTES) {
       await page.goto(route)
       await ready(page)
@@ -128,69 +182,47 @@ for (const size of SIZES) {
           `sheet ${m.sheet === null ? 'none' : `${m.sheet.h}/${m.sheet.ch}`}, Y ${m.scrollY}, grids ${m.grids.length}`,
       )
 
-      // 1. THE PAGE NEVER SCROLLS, down or sideways, and arrives at the top.
-      expect(
-        m.docH,
-        `${route} scrolls the PAGE down at ${size.width}px: ${m.docH} > ${m.clientH}. ` +
-          `Put the long list in a ScrollPane (data-scroll-pane) instead of growing the document.`,
-      ).toBeLessThanOrEqual(m.clientH + 1)
+      // 1. THE DOCUMENT NEVER SCROLLS.
+      expect(m.docH, `${route} scrolls the PAGE down at ${size.width}px: ${m.docH} > ${m.clientH}`).toBeLessThanOrEqual(m.clientH + 1)
       expect(m.docW, `${route} scrolls the PAGE sideways at ${size.width}px: ${m.docW} > ${m.clientW}`).toBeLessThanOrEqual(m.clientW + 1)
       expect(m.scrollY, `${route} is already scrolled on arrival`).toBe(0)
 
-      // 2. THE MAIN LANDMARK IS THERE, on the glass.
+      // 2. THE MAIN LANDMARK.
       expect(m.main, `${route} rendered no main landmark`).not.toBeNull()
       expect(m.main!.width, `${route}'s main landmark has no width`).toBeGreaterThan(0)
       expect(m.main!.height, `${route}'s main landmark has no height`).toBeGreaterThan(0)
       expect(m.main!.bottom, `${route}'s main landmark hangs below the glass`).toBeLessThanOrEqual(size.height + 1)
 
-      // 2b. THE TAB'S OWN SHEET DOES NOT SCROLL. This is the law the owner feels when he scrolls:
-      //     the document was always fixed; the Sheet is what travelled. Fold the secondary blocks
-      //     and bound the lists until its scrollHeight is its clientHeight; never clip, never hide.
+      // 2b. THE TAB'S OWN SHEET NEVER SCROLLS.
       if (m.sheet !== null) {
         expect(m.sheet.top, `${route}'s Sheet is already scrolled at ${size.width}px`).toBe(0)
         expect(m.sheet.ch, `${route}'s Sheet has no height at ${size.width}px`).toBeGreaterThan(0)
         expect(
           m.sheet.h,
-          `${route} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}. ` +
-            `Put the secondary blocks in closed SectionFolds and the long lists in bounded ScrollPanes.`,
+          `${route} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}.`,
         ).toBeLessThanOrEqual(m.sheet.ch + 1)
       }
 
-      // 3. EVERY CHOICE GRID IS ORDERED: its cells share one width, one height and one line, and
-      //    every cell clears the reach floor. Non-vacuity is asserted after the walk.
-      for (const g of m.grids) {
-        if (g.cells.length < 2) continue
-        gridsMeasured++
-        const [a, b] = g.cells
-        expect(Math.abs(a.w - b.w), `grid "${g.label}" at ${size.width}px: its first two cells differ in width (${a.w} vs ${b.w})`).toBeLessThanOrEqual(1)
-        expect(Math.abs(a.h - b.h), `grid "${g.label}" at ${size.width}px: its first two cells differ in height (${a.h} vs ${b.h})`).toBeLessThanOrEqual(1)
-        expect(Math.abs(a.t - b.t), `grid "${g.label}" at ${size.width}px: its first two cells are not on one line`).toBeLessThanOrEqual(1)
-        expect(b.l, `grid "${g.label}" at ${size.width}px: its second cell is not to the right of the first`).toBeGreaterThan(a.l)
-        for (const c of g.cells) {
-          expect(c.h, `grid "${g.label}" at ${size.width}px: a cell is ${c.h}px tall, under the 44px floor`).toBeGreaterThanOrEqual(44)
-          expect(c.w, `grid "${g.label}" at ${size.width}px: a cell is ${c.w}px wide, under the 44px floor`).toBeGreaterThanOrEqual(44)
-        }
-      }
+      // 3. EVERY CHOICE GRID ON THE COMPACT SCREEN.
+      gridsMeasured += assertGrids(m.grids, size, `${route} @${size.width}`)
 
-      // 3b. EVERY FACE INSIDE THE TAB IS STILL ONE PAGE: the desk's four faces and Stats' five.
-      if (route === 'command') await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Profit', 'Trade'])
-      if (route === 'stats') await walkFaces(page, size, null, ['Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
+      // 3b. EVERY FACE INSIDE THE TAB, AND EVERY PAGE ITS SUMMARIES OPEN.
+      if (route === 'command') pagesMeasured += await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Profit', 'Trade'])
+      else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
+      else pagesMeasured += await walkPages(page, size)
 
-      // 4. A FOLD KEEPS ITS INFORMATION. Stats' "New and moved money" is closed by default with its
-      //    figure on the line; one press reveals its body (the press law's reveal, not a deletion).
+      // 3c. A PAGE KEEPS ITS INFORMATION: the New and moved money page draws its figures.
       if (route === 'stats') {
-        const toggle = page.getByTestId('stats-new-money-toggle')
-        await expect(toggle, 'the New and moved money section has no fold control').toBeVisible()
-        await expect(toggle).toHaveAttribute('aria-expanded', 'false')
-        await toggle.click()
-        await expect(toggle).toHaveAttribute('aria-expanded', 'true')
-        await expect(page.getByTestId('stats-new-money').locator('[role="img"]').first(), 'the folded block revealed no figures').toBeVisible({ timeout: 30_000 })
+        await page.getByTestId('stats-new-money').click()
+        await expect(page.getByTestId('stats-new-money-page')).toBeVisible()
+        await expect(page.getByTestId('stats-new-money-page').locator('[role="img"]').first(), 'the New and moved money page drew no figures').toBeVisible({ timeout: 30_000 })
+        await page.locator('[data-detail-back]').last().click()
+        await expect(page.locator('[data-detail-page]')).toHaveCount(0)
       }
     }
 
-    // NON-VACUITY: the walk must have met choice grids on several screens (Stats, Command, the
-    // Codex, Profile, History, Rank, Routes all draw one). A green that measured nothing is worse
-    // than a red (tests/layout.spec.ts's header).
+    // NON-VACUITY: choice grids on several screens, and many summary pages actually opened.
     expect(gridsMeasured, 'the walk met almost no choice grids — did the screens render?').toBeGreaterThan(3)
+    expect(pagesMeasured, 'the walk opened almost no summary pages — did the summaries render?').toBeGreaterThan(8)
   })
 }

@@ -1,20 +1,14 @@
-import { Figure, Note, Row, ScrollPane, SectionFold, SignedBars, Skeleton } from '../../../components/ui'
+import { useState } from 'react'
+import { DetailPage, Figure, Note, Row, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
 import { formatDucatsDelta } from '../../../lib/format'
 import { worldBooks, type Books } from '../../../lib/rpc'
 import type { DeskLayout } from '../DeskFrame'
 import { useT, t as tNow } from '../../../lib/i18n'
 
-// PROFIT — the running total (docs/COMMAND_DESK.md §3.8, D7). The owner, 2026-10-17: *"… for max profit"*.
-//
-// THE BOOKS ARE world.books (0177): the ledger — the record every coin moves through — summed by game day and kind,
-// each kind under the server's one word, each day's net the sum of its lines. The head is today's net and the
-// window's; seven bars, one a day, green or red by sign, the zero line their only axis; then each day's lines. The
-// bars' heights are the served nets scaled to the tallest — presentation, not arithmetic about money.
-
-//
-// THE DESK LAYS IT OUT (DeskFrame.tsx, 2026-10-19): on a wide glass the head and the bars stand in the left
-// pane and the day-by-day books in the centre; on a phone, one under the other.
+// PROFIT — the running total (D7). THE COMPACT SCREEN (owner, 2026-10-31): today and the window
+// stand with the seven bars; each day is one summary row with its net, opening the day's own page
+// with every line whole. Nothing unfolds in place.
 
 const DAYS = 7
 const hint = () => tNow('desk.profitHint')
@@ -23,6 +17,7 @@ export function Profit({ layout }: { layout: DeskLayout }) {
   const t = useT()
   const read = useServedRead<Books>('books:7', () => worldBooks(DAYS))
   const b = read.view
+  const [day, setDay] = useState<number | null>(null)
 
   if (read.loading && !b) {
     return layout({
@@ -39,68 +34,68 @@ export function Profit({ layout }: { layout: DeskLayout }) {
   }
   if (!b) return layout({ testid: 'desk-profit', list: <Note tone="danger">{t('desk.booksFailed')}</Note>, main: null })
 
-  // oldest → newest across the bar row, a day with nothing in it standing at zero
   const byDay = new Map(b.books.map((d) => [d.game_day, d.net]))
-  const bars = Array.from({ length: b.days }, (_, i) => b.game_day - b.days + 1 + i).map((day) => ({
-    day,
-    net: byDay.get(day) ?? 0,
+  const bars = Array.from({ length: b.days }, (_, i) => b.game_day - b.days + 1 + i).map((g) => ({
+    day: g,
+    net: byDay.get(g) ?? 0,
   }))
+  const open = b.books.find((d) => d.game_day === day) ?? null
+  const titleOf = (d: { game_day: number }) =>
+    d.game_day === b.game_day ? t('desk.today') : t('desk.daysAgo', { n: b.game_day - d.game_day })
 
   return layout({
     testid: 'desk-profit',
     sideHint: hint(),
     list: (
-    <>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="min-w-0">
-          <span className="block text-t-caption text-ink-faint">{t('desk.today')}</span>
-          <Figure value={formatDucatsDelta(b.today)} tone={b.today > 0 ? 'success' : b.today < 0 ? 'danger' : 'muted'} size="hero" />
+      <>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="min-w-0">
+            <span className="block text-t-caption text-ink-faint">{t('desk.today')}</span>
+            <Figure value={formatDucatsDelta(b.today)} tone={b.today > 0 ? 'success' : b.today < 0 ? 'danger' : 'muted'} size="hero" />
+          </div>
+          <div className="min-w-0">
+            <span className="block text-t-caption text-ink-faint">{t('desk.nDays', { n: b.days })}</span>
+            <Figure value={formatDucatsDelta(b.window)} tone={b.window > 0 ? 'success' : b.window < 0 ? 'danger' : 'muted'} size="figure" />
+          </div>
         </div>
-        <div className="min-w-0">
-          <span className="block text-t-caption text-ink-faint">{t('desk.nDays', { n: b.days })}</span>
-          <Figure value={formatDucatsDelta(b.window)} tone={b.window > 0 ? 'success' : b.window < 0 ? 'danger' : 'muted'} size="figure" />
-        </div>
-      </div>
-
-      {/* SEVEN BARS — one a game day, up for a gain and down for a loss from the one zero line.
-          The shape is `SignedBars` since 2026-10-20: the Stats tab wanted the same row three more
-          times (your last days, the world's new money, a city's income), so it is a primitive and
-          this is one of its four callers. */}
-      <SignedBars
-        bars={bars.map((x) => ({ id: String(x.day), value: x.net }))}
-        label={t('desk.netByDay')}
-        className="mt-4"
-        data-testid="profit-bars"
-      />
-    </>
+        <SignedBars bars={bars.map((x) => ({ id: String(x.day), value: x.net }))} label={t('desk.netByDay')} className="mt-4" data-testid="profit-bars" />
+      </>
     ),
-    main:
-      b.books.length === 0 ? (
-        <Note tone="neutral" className="mt-4 lg:mt-0">
-          {t('desk.nothingEarned', { n: b.days })}
-        </Note>
-      ) : (
-        // EACH DAY IS A FOLDED LINE (owner, 2026-10-31: *"make things foldable"*): its date and
-        // its net stand closed; the day's lines are one press away, never gone. The week of them
-        // is the phone's long body, so it scrolls inside its own pane.
-        <ScrollPane className="max-h-[14rem] lg:max-h-none">
-        {b.books.map((d, i) => (
-          <SectionFold
-            key={d.game_day}
-            heading={i === 0 && d.game_day === b.game_day ? t('desk.today') : t('desk.daysAgo', { n: b.game_day - d.game_day })}
-            summary={<Figure value={formatDucatsDelta(d.net)} tone={d.net > 0 ? 'success' : d.net < 0 ? 'danger' : 'muted'} />}
-            data-testid="profit-day"
+    main: (
+      <div className="mt-2 flex flex-col gap-2">
+        {b.books.length === 0 ? (
+          <Note tone="neutral" className="mt-4 lg:mt-0">
+            {t('desk.nothingEarned', { n: b.days })}
+          </Note>
+        ) : (
+          b.books.map((d) => (
+            <SummaryRow
+              key={d.game_day}
+              title={titleOf(d)}
+              figure={<Figure value={formatDucatsDelta(d.net)} tone={d.net > 0 ? 'success' : d.net < 0 ? 'danger' : 'muted'} />}
+              word={t('common.open')}
+              onClick={() => setDay(d.game_day)}
+              data-testid="profit-day"
+            />
+          ))
+        )}
+        {open !== null && (
+          <DetailPage
+            title={titleOf(open)}
+            figure={<Figure value={formatDucatsDelta(open.net)} tone={open.net > 0 ? 'success' : open.net < 0 ? 'danger' : 'muted'} />}
+            onClose={() => setDay(null)}
+            data-testid="profit-day-page"
           >
-            {d.lines.map((l) => (
+            {open.lines.map((l) => (
               <Row
                 key={l.kind}
                 label={<span className="text-t-body text-ink">{l.word}</span>}
                 value={<Figure value={formatDucatsDelta(l.ducats)} tone={l.ducats >= 0 ? 'success' : 'muted'} />}
               />
             ))}
-          </SectionFold>
-        ))}
-        </ScrollPane>
-      ),
+          </DetailPage>
+        )}
+      </div>
+    ),
   })
 }

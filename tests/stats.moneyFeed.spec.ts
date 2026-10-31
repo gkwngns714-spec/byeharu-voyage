@@ -1,28 +1,18 @@
-// THE MONEY LOG (0235, owner row 219, 2026-10-26): *"beside the stat, world money, i want to see the live log of each
-// happenings that cause money - drop and gain, at the right side. possible?"* — the Stats Overview lists every money
-// move as it happens, beside World money: green for a gain, red for a drop, who, what for, how long ago.
-//
-// Here, in the in-tab (PGlite) canary world with the city purses lit (the shipped world keeps them dark, so the
-// precondition is set in Node on the build's own image through THE switch, as tests/map.townhall.spec.ts does):
-// buy one lot on the quay, open Stats, and the log carries the buy twice — YOUR row in red (a drop) and the CITY's
-// row in green (its gain) — under World money on a phone and in the right-hand column on a wide glass, with no
-// sideways scroll. It names MoneyLog.tsx / Overview.tsx so CI's rule N selects it.
-//
-// The build under test must be served: `npm run build && npx vite preview --port <n>`, then
-// PLAYWRIGHT_BASE_URL=http://localhost:<n>/byeharu-voyage/ (localhost, not 127.0.0.1).
-
 import { test, expect, type Page } from '@playwright/test'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
-import { PHONE, openFold, ready, reachable } from './appReady.fixture'
+import { closeDetail, openDetail, ready, reachable } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
 
-test.use({ viewport: PHONE })
+// THE MONEY LOG (0235, owner row 219): every money move beside World money. Since the owner's
+// 2026-10-31 compact-screen law it is ONE summary row on Stats; a press opens its full-screen page,
+// where the sector grid and the live rows stand. This proof buys a lot on the quay, opens Stats,
+// opens the log's page, and finds YOUR row (a drop) and the CITY's row (a gain), filters, and the
+// page's own no-scroll law at the phone and the wide desk.
 
 let litImage: Buffer | null = null
 
-/** The build's world with the city purses lit (public.city_treasury_switch(true)). */
 async function litWorld(): Promise<Buffer> {
   if (litImage) return litImage
   const dir = path.resolve('dist', 'db')
@@ -31,8 +21,6 @@ async function litWorld(): Promise<Buffer> {
   const { PGlite } = await import('@electric-sql/pglite')
   const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(readFileSync(path.join(dir, name)))) })
   try {
-    // The switch refuses a world whose money cannot carry the merchants' surplus line; only the purses are needed
-    // here, so that line is lowered for the switch and put back (map.townhall.spec.ts).
     const above = await pg.query<{ v: unknown }>(`select value as v from public.world_config where key = 'npc_invest_above'`)
     await pg.exec(`update public.world_config set value = to_jsonb(0) where key = 'npc_invest_above'`)
     const sw = await pg.query<{ j: { enabled: boolean } }>(`select public.city_treasury_switch(true) as j`)
@@ -45,7 +33,6 @@ async function litWorld(): Promise<Buffer> {
   return litImage
 }
 
-/** Press the first live `buy` cell on the quay and send the tray. */
 async function buyOne(page: Page): Promise<void> {
   const pressed = await page.evaluate(() => {
     const cell = [...document.querySelectorAll('[data-testid="trade-row"] button:enabled')].find((b) =>
@@ -64,7 +51,7 @@ async function buyOne(page: Page): Promise<void> {
 const noSideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
-test('Stats › the money log shows my buy in red and the city’s side of it in green, beside World money', async ({ page, request, baseURL }, testInfo) => {
+test('Stats › the money log page shows my buy in red and the city’s side in green', async ({ page, request, baseURL }, testInfo) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   const world = await litWorld()
@@ -76,13 +63,12 @@ test('Stats › the money log shows my buy in red and the city’s side of it in
 
   await buyOne(page)
 
-  // to Stats, in the app (the world lives in this tab)
   await page.getByTestId('nav-bar').getByText('Stats').click()
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
-  const log = page.getByTestId('money-log')
+  // the log is a compact summary row; a press opens its page
+  await openDetail(page, 'money-log')
+  const log = page.getByTestId('money-log-page')
   await expect(log).toBeVisible({ timeout: 30_000 })
-  // THE LOG IS A FOLD ON THE SHEET (2026-10-31, the sheet law); a player presses its line to see it.
-  await openFold(page, 'money-log-fold')
 
   // MY BUY: a drop, red, mine
   const mine = log.locator('[data-testid="money-move"][data-holder="company"][data-kind="BUY"][data-tone="drop"]').filter({ hasText: '(you)' })
@@ -98,32 +84,36 @@ test('Stats › the money log shows my buy in red and the city’s side of it in
   await expect(city.first()).toContainText('Sold')
   await expect(city.first().locator('.text-success')).toHaveCount(1)
 
-  // THE FILTER (owner 227): Bought shows my buy, Supplies hides it; the chip is remembered; chips scroll in their own row
+  // THE FILTERS ARE THE ORDERED GRID (owner, 2026-10-31) on the page; a sector press filters.
   await log.getByTestId('money-chip-bought').click()
   await expect(mine.first()).toBeVisible()
   await expect(log.locator('[data-testid="money-move"][data-holder="city"]')).toHaveCount(0)
   await log.getByTestId('money-chip-supplies').click()
   await expect(log.locator('[data-testid="money-move"][data-kind="BUY"]')).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('bv:moneylog-filter'))).toContain('supplies')
-  await page.getByTestId('money-chip-all').click()
+  await log.getByTestId('money-chip-all').click()
   await expect(mine.first()).toBeVisible({ timeout: 30_000 })
 
-  // PHONE: under World money, nothing sideways
-  const money = page.getByTestId('stats-overview').locator('section').first()
-  const [mb, lb] = [await money.boundingBox(), await log.boundingBox()]
-  expect(mb && lb && lb.y >= mb.y + mb.height - 1, 'the log is not under World money on a phone').toBe(true)
+  // THE PAGE ITSELF DOES NOT SCROLL; its body does. The document/Sheet behind are fixed.
+  const pageBox = await page.evaluate(() => {
+    const pg = document.querySelector('[data-detail-page]') as HTMLElement
+    const de = document.documentElement
+    return { h: pg.scrollHeight, ch: pg.clientHeight, top: pg.scrollTop, docH: de.scrollHeight, docCh: de.clientHeight }
+  })
+  expect(pageBox.top, 'the money log page is already scrolled').toBe(0)
+  expect(pageBox.h, `the money log page itself scrolls: ${pageBox.h} > ${pageBox.ch}`).toBeLessThanOrEqual(pageBox.ch + 1)
+  expect(pageBox.docH, 'the document scrolls behind the page').toBeLessThanOrEqual(pageBox.docCh + 1)
   expect(await noSideways(page), 'the page scrolls sideways at 390').toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('money-log-phone.png') })
+  await page.screenshot({ path: testInfo.outputPath('money-log-page-phone.png') })
 
-  // WIDE: the right-hand column beside World money, its top on World money's line, inside the glass
+  // WIDE: the same page, full screen, still no sideways scroll.
   await page.setViewportSize({ width: 1280, height: 900 })
   await expect(mine.first()).toBeVisible()
-  const [mw, lw] = [await money.boundingBox(), await log.boundingBox()]
-  // both are folds now: compare their own 44-px lines, which is where each heading stands
-  const [mh, lh] = [await page.getByTestId('stats-money-toggle').boundingBox(), await page.getByTestId('money-log-fold-toggle').boundingBox()]
-  expect(mw && lw && lw.x >= mw.x + mw.width, 'the log is not to the right of World money').toBe(true)
-  expect(mh && lh && Math.abs(lh.y - mh.y) <= 2, 'the log’s heading is not on World money’s line').toBe(true)
-  expect(lw && lw.x + lw.width <= 1280, 'the log runs off the glass').toBe(true)
   expect(await noSideways(page), 'the page scrolls sideways at 1280').toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('money-log-wide.png') })
+  await page.screenshot({ path: testInfo.outputPath('money-log-page-wide.png') })
+
+  // BACK REVEALS THE COMPACT SCREEN UNTOUCHED.
+  await closeDetail(page)
+  await expect(page.getByTestId('stats-overview')).toBeVisible()
+  expect(await noSideways(page), 'the compact screen scrolls sideways after the back press').toBe(true)
 })
