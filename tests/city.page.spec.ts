@@ -386,17 +386,16 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
 
-  // A compact face composes in the panel: the market's three board faces, one press from the quay's
-  // own ledger (the page the row opens).
+  // A compact face composes in the panel: the market's chart stands in the left region and its
+  // goods are listed BENEATH the BUY door, in the panel — no page (owner, 2026-10-31: "when
+  // pressing buy, a new page pops up - this is not good. instead, have BUY, beneath show all the
+  // trade goods").
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
   await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
-  await page.getByTestId('city-market-buy').click()
-  const marketPage = page.locator('[data-detail-page]')
-  await expect(marketPage).toBeVisible()
-  await expect(page.getByTestId('quay-stores')).toBeVisible({ timeout: 60_000 })
-  await page.locator('[data-detail-back]').last().click()
-  await expect(marketPage).toHaveCount(0)
+  await expect(page.getByTestId('trade-row').first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('city-market-chart')).toBeVisible()
+  await expect(page.locator('[data-detail-page]')).toHaveCount(0)
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-hall-panel')).toBeVisible()
 
@@ -508,12 +507,9 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
   await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
-  await page.getByTestId('city-market-buy').click()
-  await expect(page.getByTestId('quay-stores'), 'the market face is not the trade face').toBeVisible({
+  await expect(page.getByTestId('trade-row').first(), 'the market face is not the goods list').toBeVisible({
     timeout: 60_000,
   })
-  await page.locator('[data-detail-back]').last().click()
-  await expect(page.locator('[data-detail-page]')).toHaveCount(0)
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
 

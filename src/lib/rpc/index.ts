@@ -64,6 +64,9 @@ import type {
   PriceSpan,
   WatchPriceResult,
   RequestBoard,
+  PortRequests,
+  RequestPlacement,
+  RequestCancel,
   RouteBoard,
   StandingRouteAssigned,
   StandingRouteBook,
@@ -363,6 +366,36 @@ export async function cmdTradeBasket(
  */
 export function worldContracts(portId: string): Promise<RpcResult<RequestBoard>> {
   return call<RequestBoard>('worldContracts', [portId])
+}
+
+/**
+ * 0288 — THE CALLER'S OWN MARKET REQUESTS at one port, and whether that port IS her home city.
+ * The server's `home` is the same reading the verb enforces (public.home_port_of), so a client
+ * that draws the door only here cannot drift from the gate.
+ *
+ * @param portId `SnapshotPort.id` — a uuid, NOT the three-letter code.
+ */
+export function worldRequests(portId: string): Promise<RpcResult<PortRequests>> {
+  return call<PortRequests>('worldRequests', [portId])
+}
+
+/**
+ * 0288 — PLACE A STANDING BUY REQUEST: home city only (E_NOT_HOME), a whole quantity, a price. The
+ * escrow (qty × price) leaves the purse in the same transaction; the answer is the row as it now
+ * stands. A refusal (E_INSUFFICIENT_FUNDS, E_NO_QTY, E_NO_PRICE, E_NO_SUCH_GOOD) arrives typed.
+ */
+export function cmdRequestPlace(
+  portId: string,
+  goodId: string,
+  qty: number,
+  price: number,
+): Promise<RpcResult<RequestPlacement>> {
+  return call<RequestPlacement>('cmdRequestPlace', [portId, goodId, qty, price])
+}
+
+/** 0288 — CLOSE ONE REQUEST: the unfilled part of the escrow returns (REQUEST_REFUND). */
+export function cmdRequestCancel(requestId: string): Promise<RpcResult<RequestCancel>> {
+  return call<RequestCancel>('cmdRequestCancel', [requestId])
 }
 
 /**
