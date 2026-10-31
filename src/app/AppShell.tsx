@@ -6,10 +6,10 @@ import { TopBar } from './TopBar'
 import { RebuildNotice } from './RebuildNotice'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
+import { useWorldBeat } from '../live/useWorldBeat'
 import { serverNow } from '../lib/serverClock'
 import { useGoTo } from '../chart'
 import { useLocale } from '../lib/i18n'
-import { readIntervalMs } from '../domain/readClock'
 
 // THE PERSISTENT SHELL: a slim header, the tab content, and the ONE tab bar. Mounted once for the
 // whole authenticated app; the shared data layer (see shellState.ts) mounts HERE and nowhere else.
@@ -47,21 +47,9 @@ export function AppShell() {
   }, [navigate])
 
   // The cadence follows the SERVED clock, so it is right for whatever the world's compression is —
-  // and it re-arms if that knob ever changes under a running tab.
-  const compression = useWorld((w) => w.snapshot?.config.time_compression)
-  useEffect(() => {
-    const every = readIntervalMs(compression)
-    // THE BEAT IS ALSO THE CACHE'S DEFAULT LIFETIME: a served read is kept for exactly one beat,
-    // so a remount inside it downloads nothing and the beat's own read still refreshes the world.
-    useWorld.setState({ readEveryMs: every })
-    const id = window.setInterval(() => {
-      const world = useWorld.getState()
-      // Only when the world is up, and never on top of a read already in flight: a second read
-      // would settle the same voyages twice for nothing and race the first one's answer.
-      if (world.phase === 'ready' && !world.reading) void world.refresh()
-    }, every)
-    return () => window.clearInterval(id)
-  }, [compression])
+  // and it re-arms if that knob ever changes under a running tab. ONE spelling of the beat
+  // (live/useWorldBeat.ts), shared with the City page, which stands outside this shell.
+  useWorldBeat()
 
   // A tab regaining focus is a player coming back, and coming back is exactly the moment the
   // ledger should have moved. Reading here is what makes "it moved while I was away" true.

@@ -5,10 +5,12 @@ import { ShellStateContext, useShellState } from '../../app/shellState'
 import { NavBar } from '../../app/NavBar'
 import { alongsideAt, fleetPortCode, housePortCode } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
+import { MarketLeft } from '../../live/MarketLeft'
 import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNationOf, useWorld } from '../../live/worldStore'
+import { useWorldBeat } from '../../live/useWorldBeat'
 import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
@@ -123,6 +125,10 @@ export function CityScreen() {
   useEffect(() => {
     void useWorld.getState().open()
   }, [])
+  // AND THE SAME BEAT the shell arms: this page stands outside AppShell, so without it the city's
+  // served reads (the hall, the market, the requests) were asked once and frozen while the player
+  // stood here. One spelling (live/useWorldBeat.ts).
+  useWorldBeat()
 
   // THE ONE CLOCK, for the faces composed inside a building (the shell's own contract, shellState.ts).
   // This route is outside AppShell, so it is the shell for the length of this page.
@@ -351,7 +357,10 @@ function CityFrame({
         <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
           <div className="flex min-h-0 min-w-0 flex-[0_0_50%] flex-col">
             <div className="min-h-0 flex-1 overflow-hidden" data-testid="city-info-image">
-              <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />
+              {/* THE MARKET'S LEFT REGION IS THE CHART (owner, 2026-10-31: "when pressing a market,
+                  instead of city, i would like to have a graph shown") — every other place keeps the
+                  city picture. The box is the frame's, unchanged. */}
+              {selected === 'market' ? <MarketLeft port={port} /> : <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />}
             </div>
           </div>
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">

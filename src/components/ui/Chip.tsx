@@ -105,7 +105,7 @@ export function Segmented<T extends string>({
             type="button"
             aria-selected={on}
             onClick={() => onChange(s.id)}
-            className={`${tileCellClass()} ${on ? 'bg-surface text-ink' : 'text-ink-muted'}`}
+            className={`${tileCellClass()} min-w-11 ${on ? 'bg-surface text-ink' : 'text-ink-muted'}`}
           >
             {s.label}
           </button>

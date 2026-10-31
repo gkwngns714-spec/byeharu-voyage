@@ -212,6 +212,28 @@ const TABLE = {
   // it in one savepoint and takes the fleet's version like trade_basket, so a double-tap delivers
   // once (E_STALE). Both refuse a fleet that is not yours with cmd.issue's own E_NO_SUCH_FLEET.
   worldContracts: { schema: 'world', fn: 'contracts', args: [{ name: 'p_port', type: 'uuid' }] },
+  // 0288 — THE MARKET'S REQUESTS. world.requests(port) is the caller's own open requests there and
+  // whether that port is her HOME CITY; cmd.request_place refuses anywhere else on the SERVER
+  // (E_NOT_HOME); cmd.request_cancel returns the unfilled escrow. Placing takes money out of the
+  // purse, so a mutation drops the live answers like every other write.
+  worldRequests: { schema: 'world', fn: 'requests', args: [{ name: 'p_port', type: 'uuid' }] },
+  cmdRequestPlace: {
+    schema: 'cmd',
+    fn: 'request_place',
+    mutates: true,
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_qty', type: 'numeric' },
+      { name: 'p_price', type: 'bigint' },
+    ],
+  },
+  cmdRequestCancel: {
+    schema: 'cmd',
+    fn: 'request_cancel',
+    mutates: true,
+    args: [{ name: 'p_request', type: 'uuid' }],
+  },
   cmdPreviewFulfil: {
     schema: 'cmd',
     fn: 'preview_fulfil',

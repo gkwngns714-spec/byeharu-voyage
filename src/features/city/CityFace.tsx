@@ -1,26 +1,21 @@
 import { useState, type ReactNode } from 'react'
-import { Button, CargoBar, DetailPage, Figure, Note, Row, Skeleton, SummaryRow } from '../../components/ui'
+import { DetailPage, Note, Skeleton, SummaryRow } from '../../components/ui'
 import { buildingTier, hasBuilding } from '../../domain/port'
-import { fleetCargoByCode, fleetCrew, fleetHoldTotal, fleetHoldUsed, worstHullFraction } from '../../domain/fleet'
+import { fleetCrew, worstHullFraction } from '../../domain/fleet'
 import { PortForge } from '../../live/PortForge'
 import { groupsByTier } from '../../live/forgeGroups'
 import { PortInn } from '../../live/PortInn'
-import { PortPrices } from '../../live/PortPrices'
 import { PORT_FACES } from '../../live/cityFaces'
 import { PortShipyard } from '../../live/PortShipyard'
 import { PortStorage } from '../../live/PortStorage'
-import { PortTrade } from '../../live/PortTrade'
 import { PortYard } from '../../live/PortYard'
 import { useForge } from '../../live/useForge'
 import { useInn } from '../../live/useInn'
-import { useManifestPreview } from '../../live/useManifestPreview'
-import { usePortMarket } from '../../live/usePortMarket'
-import { TRADE_FACES, useTradeFace, type TradeFace } from '../../live/tradeFace'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
-import { formatDucats, formatInt, formatOfTotal, formatPct } from '../../lib/format'
-import { linesFor, useManifest } from '../../store/manifest'
+import { formatInt, formatOfTotal, formatPct } from '../../lib/format'
 import { useT, type TKey } from '../../lib/i18n'
 import { CityPanel } from './CityPanel'
+import { MarketFace } from './MarketFace'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A BUILDING'S FACE, IN THE RIGHT PANEL (the City page, 2026-10-31)
@@ -102,112 +97,6 @@ export function CityFacePanel({
       {building === 'port' && <PortFace port={port} fleet={fleet} />}
       {building === 'inn' && <InnFace port={port} fleet={fleet} />}
     </CityPanel>
-  )
-}
-
-/** THE QUAY — Basket in this panel (never an overlay), the board's three faces as rows. */
-function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
-  const t = useT()
-  const quay = usePortMarket(port.kind === 'HARBOUR' ? port.id : null)
-  const [open, setOpen] = useState<TradeFace | null>(null)
-  const [basketOpen, setBasketOpen] = useState(false)
-  const staged = useManifest((s) => linesFor(s, fleet?.id ?? '', port.code))
-  if (!hasBuilding(port, 'market')) return <Note tone="neutral">{t('city.noMarket')}</Note>
-  if (quay.market === undefined) {
-    return quay.refusal !== null ? (
-      <Note
-        tone="danger"
-        code={quay.refusal.code}
-        figures={quay.refusal.figures}
-        action={
-          <Button size="sm" onClick={quay.retry}>
-            {t('common.retry')}
-          </Button>
-        }
-      >
-        {quay.refusal.sentence}
-      </Note>
-    ) : (
-      <Skeleton className="h-28 w-full" />
-    )
-  }
-  const goods = quay.market.goods
-  const cargoLines = fleet ? Object.keys(fleetCargoByCode(fleet)).length : undefined
-  const FIGURES: Record<TradeFace, number | undefined> = { buy: goods.length, sell: cargoLines, requests: undefined }
-  const turn = (face: TradeFace) => {
-    // The board's face is the ONE store every caller reads (live/tradeFace.ts) — never a second
-    // copy of "which face".
-    useTradeFace.getState().turnTo(face)
-    setOpen(face)
-  }
-  return (
-    <>
-      {basketOpen && fleet ? (
-        <BasketSummary fleet={fleet} port={port} onClose={() => setBasketOpen(false)} onOpenBoard={turn} />
-      ) : (
-        <>
-          {fleet && (
-            <Row
-              label={t('trade.basket')}
-              value={formatInt(staged.length)}
-              chevron
-              onClick={() => setBasketOpen(true)}
-              data-testid="city-market-basket"
-            />
-          )}
-          {TRADE_FACES.map((f) => (
-            <SummaryRow
-              key={f.id}
-              title={f.label}
-              figure={FIGURES[f.id] === undefined ? undefined : formatInt(FIGURES[f.id]!)}
-              onClick={() => turn(f.id)}
-              data-testid={`city-market-${f.id}`}
-            />
-          ))}
-        </>
-      )}
-      {open !== null && (
-        <DetailPage title={t('city.market')} onClose={() => setOpen(null)} data-testid={`city-market-${open}-page`}>
-          <PageBody>
-            {fleet ? <PortTrade goods={goods} fleet={fleet} port={port} /> : <PortPrices goods={goods} port={port} reader={null} />}
-          </PageBody>
-        </DetailPage>
-      )}
-    </>
-  )
-}
-
-/** THE BASKET, IN THE PANEL (owner, 2026-10-31: no popping block) — the staged line count, the
- *  served total, the hold bar, and one row to the board. It computes nothing: the lines are the
- *  manifest store's and the total is `cmd.preview_basket`'s (useManifestPreview). */
-function BasketSummary({
-  fleet,
-  port,
-  onClose,
-  onOpenBoard,
-}: {
-  fleet: FleetView
-  port: SnapshotPort
-  onClose: () => void
-  onOpenBoard: (face: TradeFace) => void
-}) {
-  const t = useT()
-  const lines = useManifest((s) => linesFor(s, fleet.id, port.code))
-  const preview = useManifestPreview(fleet.id, port.code, lines)
-  const totals = preview.estimate?.totals ?? null
-  return (
-    <div data-testid="city-basket">
-      <div className="flex min-h-11 items-center justify-between gap-2 border-b border-edge">
-        <span className="text-t-caption text-ink-faint">{t('trade.basket')}</span>
-        <span className="flex items-center gap-2 text-t-caption tabular-nums text-ink-muted">
-          {lines.length === 0 ? t('trade.basketEmpty') : formatInt(lines.length)}
-          {totals !== null && <Figure value={formatDucats(totals.net)} size="body" />}
-        </span>
-      </div>
-      <CargoBar used={fleetHoldUsed(fleet)} total={fleetHoldTotal(fleet)} free={fleet.free_hold} className="py-2" />
-      <SummaryRow title={t('town.f_market')} onClick={() => onOpenBoard('buy')} data-testid="city-basket-board" />
-      <Row label={t('common.back')} chevron onClick={onClose} hairline={false} data-testid="city-basket-back" />
-    </div>
   )
 }
 
