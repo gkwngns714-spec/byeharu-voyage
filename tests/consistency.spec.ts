@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { NAV_CELLS, tabWord } from '../src/app/navTabs'
 
@@ -65,7 +65,7 @@ const TITLED = [
 ] as const
 
 const STATS_FACES = ['Overview', 'Markets', 'Cities', 'Merchants', 'Me'] as const
-const DESK_FACES = ['Trade', 'City', 'Invest', 'Profit'] as const
+const DESK_FACES = ['Trade', 'City', 'Invest', 'Report'] as const
 
 /** THE ONE SANCTIONED SIZE BELOW THE FLOOR: `Button size="sm"` is 36px for an in-row secondary
  *  action (docs/UI_DIRECTION.md §5, "44 and 36"; primitives.geometry.spec fences it the same way).
@@ -333,6 +333,21 @@ test.describe('the screen says the rail’s word', () => {
   }
 })
 
+/** PRESS A FACE TAB, BOUNDED. A tab whose word changed in the code (the fourth desk face became
+ *  "Report" in #416 while this walk still said "Profit") made locator.click() wait for a tab that
+ *  would never appear — the whole walk died on the 30-minute TEST timeout and named no cause. Ten
+ *  seconds, then the walk records WHICH word was missing and moves on: a one-word defect is a
+ *  one-line red, never a half-hour hang. */
+async function pressFace(tabs: Locator, face: string, where: string, failures: string[]): Promise<boolean> {
+  try {
+    await tabs.getByRole('tab', { name: face, exact: true }).click({ timeout: 10_000 })
+    return true
+  } catch {
+    failures.push(`${where}: the "${face}" tab was not pressable within 10 s — does the tablist still carry that word?`)
+    return false
+  }
+}
+
 for (const size of SIZES) {
   test(`every route, face and page obeys the laws at ${size.width}×${size.height}`, async ({ page, request, baseURL }) => {
     test.setTimeout(1_800_000)
@@ -352,14 +367,14 @@ for (const size of SIZES) {
 
       if (route === 'stats') {
         for (const face of STATS_FACES) {
-          await page.getByRole('tablist').getByRole('tab', { name: face, exact: true }).click()
+          if (!(await pressFace(page.getByRole('tablist'), face, `${size.width} stats/${face}`, failures))) continue
           await page.waitForTimeout(500)
           failures.push(...violations(await snapshot(page), `${size.width} stats/${face}`))
           pagesOpened += await walkPages(page, failures, `${size.width} stats/${face}`)
         }
       } else if (route === 'command') {
         for (const face of DESK_FACES) {
-          await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: face, exact: true }).click()
+          if (!(await pressFace(page.getByRole('tablist', { name: 'Desk faces' }), face, `${size.width} desk/${face}`, failures))) continue
           await page.waitForTimeout(400)
           failures.push(...violations(await snapshot(page), `${size.width} desk/${face}`, { dashes: false }))
         }
