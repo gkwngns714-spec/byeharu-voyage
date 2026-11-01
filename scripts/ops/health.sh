@@ -19,6 +19,9 @@ Q "select j.jobname, count(*) as runs, count(*) filter (where d.status='failed')
 BAD=$(Q "select string_agg(j.jobname || ' ' || round(100.0*count(*) filter (where d.status='failed')/count(*))::text || '% failed', '; ') as v from (select 1) x, cron.job_run_details d join cron.job j using(jobid) where d.start_time > now() - interval '2 hours' and d.end_time is not null group by j.jobname having count(*) filter (where d.status='failed') * 5 > count(*)" | val v)
 [ -n "$BAD" ] && [ "$BAD" != "null" ] && alert "cron jobs failing more than 20% over 2 h: $BAD"
 
+echo "== cron: last 15 min per job (what it is like NOW)"
+Q "select j.jobname, count(*) as runs, count(*) filter (where d.status='failed') as failed, round(avg(extract(epoch from d.end_time-d.start_time))::numeric,1) as avg_s, round(max(extract(epoch from d.end_time-d.start_time))::numeric,1) as max_s from cron.job_run_details d join cron.job j using(jobid) where d.start_time > now() - interval '15 minutes' and d.end_time is not null group by 1 order by 1" | rows
+
 echo "== the Stats count (every 15 min): freshness and the journal"
 Q "select to_char(max(at),'MM-DD HH24:MI') as newest_count, round(extract(epoch from now()-max(at))/60) as age_min from public.stats_world" | rows
 AGE=$(Q "select round(extract(epoch from now()-max(at))/60) as v from public.stats_world" | val v)
@@ -32,11 +35,14 @@ Q "select c.relname, pg_size_pretty(pg_total_relation_size(c.oid)) as total, rou
 Q "select string_agg(c.relname || ' ' || round(100.0*c.relallvisible/nullif(c.relpages,0))::text || '% mapped', '; ') as v from pg_class c where c.relnamespace='public'::regnamespace and c.relkind='r' and c.relpages > 12000 and 100.0*c.relallvisible/nullif(c.relpages,0) < 90" | val v | { read -r L; [ -n "$L" ] && [ "$L" != "null" ] && alert "big tables with a stale visibility map (< 90% all-visible; index-only scans become heap fetches): $L"; }
 Q "select string_agg(c.relname || ' ' || s.n_dead_tup::text || ' dead of ~' || c.reltuples::bigint::text, '; ') as v from pg_class c join pg_stat_user_tables s on s.relid=c.oid where c.relnamespace='public'::regnamespace and c.relkind='r' and c.reltuples > 20000 and s.n_dead_tup > 1.0*c.reltuples" | val v | { read -r L; [ -n "$L" ] && [ "$L" != "null" ] && alert "tables with more dead rows than live ones (bloat): $L"; }
 
-echo "== write load: WAL since the last restart, and the heaviest statements"
-Q "select round(wal_bytes/1048576.0/greatest(extract(epoch from now()-stats_reset)/60,1),1) as wal_mb_per_min, wal_fpi from pg_stat_wal" | rows
-W=$(Q "select round(wal_bytes/1048576.0/greatest(extract(epoch from now()-stats_reset)/60,1),1) as v from pg_stat_wal" | val v)
-[ -n "$W" ] && awk "BEGIN{exit !($W > 30)}" && alert "WAL is ${W} MB/min (> 30): the write path is saturating the disk — check port_goods (HOT share, fillfactor) and the minute jobs"
-Q "select calls, round(mean_exec_time) as mean_ms, round(total_exec_time/1000) as total_s, shared_blks_dirtied as dirtied, left(regexp_replace(query,'\s+',' ','g'),70) as q from pg_stat_statements order by total_exec_time desc limit 5" | rows
+echo "== write load: WAL over a 30 s window, port_goods HOT share, and the heaviest statements (since restart)"
+R() { Q "select extract(epoch from now()) as t, wal_bytes::numeric as w, wal_fpi as f, (select n_tup_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as u, (select n_tup_hot_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as h from pg_stat_wal" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const r=JSON.parse(s.slice(s.indexOf("{"))).rows[0];console.log([r.t,r.w,r.f,r.u,r.h].join(" "))}catch(e){console.log("")}})'; }
+WA=$(R); sleep 30; WB=$(R)
+WRATE=$(node -e 'const a=process.argv[1].split(" ").map(Number),b=process.argv[2].split(" ").map(Number);if(a.length<5||b.length<5||isNaN(a[0])||isNaN(b[0])){console.log("");process.exit(0)}const m=(b[0]-a[0])/60;console.log(((b[1]-a[1])/1048576/m).toFixed(1)+" "+Math.round((b[2]-a[2])/m)+" "+(b[3]-a[3]>0?(100*(b[4]-a[4])/(b[3]-a[3])).toFixed(0):"-"))' "$WA" "$WB")
+set -- $WRATE; echo "  wal_mb_per_min=${1:-?}  fpi_per_min=${2:-?}  port_goods_hot_pct=${3:-?}   (baseline after the 0292 rewrite: ~47 MB/min, 100 % HOT; the every-minute market itself is ~30 MB/min of it)"
+[ -n "$1" ] && awk "BEGIN{exit !($1 > 70)}" && alert "WAL is ${1} MB/min (> 70, the post-0292 baseline is ~47): the write path is saturating the disk — check the minute jobs and what else started writing"
+[ -n "$3" ] && [ "$3" != "-" ] && [ "$3" -lt 80 ] && alert "port_goods updates are only ${3} % HOT (the rewrite's fillfactor 30 should give ~100 %): a long snapshot is pinning dead versions, or the table needs the rewrite again"
+Q "select calls, round(mean_exec_time) as mean_ms, round(total_exec_time/1000) as total_s, shared_blks_dirtied as dirtied, left(regexp_replace(query,'s+',' ','g'),70) as q from pg_stat_statements order by total_exec_time desc limit 5" | rows
 
 echo "== what a player waits for (timed through the CLI; baseline select 1 first)"
 t() { local a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1; local b=$(date +%s%N); awk "BEGIN{printf \"  %-28s %6.1f s\n\", \"$1\", ($b-$a)/1e9}"; }

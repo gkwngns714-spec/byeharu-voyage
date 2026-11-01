@@ -16,7 +16,8 @@ Read-only. It prints the numbers and an `ALERT:` line for each threshold that tr
 | journal > 300,000 rows | `world.stats_now()` sums all of it per call; check the count and the drain |
 | big table < 90 % all-visible | index-only scans turn into heap fetches; give the table the `scale_factor = 0, threshold ~500–2000` autovacuum options its siblings have |
 | table with more dead rows than live | bloat; rewrite (CLUSTER) with a fillfactor, as 0292 did for `port_goods` |
-| WAL > 30 MB/min | the write path is saturating the disk; look at `port_goods` HOT share and the minute jobs |
+| WAL > 70 MB/min (30 s window) | the write path is saturating the disk (the post-0292 baseline is ~47 MB/min: the every-minute market itself); look at the minute jobs and what else started writing |
+| port_goods updates < 80 % HOT | a long snapshot is pinning dead versions, or the table needs the rewrite again |
 
 ## 2. The CADENCE-CHANGE PROTOCOL (the rule the incident was missing)
 Any change to `game_day_seconds`, `drift_slot_seconds`, a drift/regen knob or ANY cron expression is a load change, not a tweak. Before it:
