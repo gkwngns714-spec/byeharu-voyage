@@ -1094,7 +1094,10 @@ html:lang(ko) body {
   --tw-leading: 1.5rem;
   line-height: 1.5rem;
 }
-/* A cell whose whole content is one control (a `Button`, `min-h-11`) centres it on the line. */
-.bv-row-line:has(> button:only-child) {
+/* A cell whose whole content is one control (a `Button`, `min-h-11`) centres it on the line.
+   AN ACT CELL IS NOT THAT CONTROL (2026-11-02, the desk's Requests: the `deliver` cell stands alone in its value, so it was hung 10.5 px above and below the line like a
+   44-px button — but it is 56–78 px tall, so each row's cell ran 3 px into the next row's (336 px² at 390, 79×3 at 1280; the sweep's row 9). It is a whole box and keeps its
+   margin box, as the Market's pair always has (that one stands inside its `ActPair`, so this rule never saw it). `data-act-cell`, ActCell.tsx. */
+.bv-row-line:has(> button:only-child:not([data-act-cell])) {
   margin-block: calc((1.5rem - 2.75rem) / 2);
 }

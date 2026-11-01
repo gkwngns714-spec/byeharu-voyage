@@ -163,6 +163,27 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
           if (area > 2) boxes.push(`control ${name(controls[i])} × ${name(controls[j])} (${Math.round(area)} px²)`)
         }
       }
+      // …and no TEXT stands on a control it is not inside: a good's stock gauge ("6,700 / 6,700") ran 4 px under the buy cell beside it in the Map's port tray at 390 and in
+      // the desk's Trade rows (the sweep's row 7) — a text and a control are cousins too, and the figure that is under the control cannot be read.
+      if (phone) {
+        const leaves = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+        for (let n = leaves.nextNode(); n; n = leaves.nextNode()) {
+          const txt = (n.textContent ?? '').replace(/s+/g, ' ').trim()
+          const host = n.parentElement
+          if (!txt || !host || host.closest('svg') || !vis(host)) continue
+          const range = document.createRange()
+          range.selectNodeContents(n)
+          const r = [...range.getClientRects()].find((x) => x.width > 0 && x.height > 0)
+          if (!r) continue
+          for (const c of controls) {
+            if (c.contains(host)) continue
+            const b = c.getBoundingClientRect()
+            const ox = Math.min(r.right, b.right) - Math.max(r.left, b.left)
+            const oy = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top)
+            if (ox > 2 && oy > 3) boxes.push(`text "${txt.slice(0, 20)}" stands on control ${name(c)} (${Math.round(ox)}×${Math.round(oy)} px)`)
+          }
+        }
+      }
       // …and a chart's labels are siblings too: two axis labels standing on each other
       const chartText = (phone ? [...root.querySelectorAll('svg text')] : []).filter(vis)
       for (let i = 0; i < chartText.length; i++) {

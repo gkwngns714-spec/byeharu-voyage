@@ -47,6 +47,7 @@ export function ActCell({
       onClick={onPress}
       disabled={dead !== null}
       aria-pressed={selected}
+      data-act-cell=""
       className={`flex w-28 min-h-14 min-w-0 max-w-full flex-col items-start justify-start whitespace-normal rounded-control px-2 py-1 text-left disabled:opacity-45 narrow:px-1.5 tight:min-h-11 tight:flex-row tight:flex-wrap tight:content-center tight:items-baseline tight:gap-x-2 ${selected ? 'bg-accent-soft' : 'bg-surface-2'}`}
       {...rest}
     >

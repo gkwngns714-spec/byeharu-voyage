@@ -35,6 +35,10 @@ export interface DeskParts {
   order?: readonly ('list' | 'main' | 'side')[]
   /** The centre pane scrolls by itself (default); the chart fills its pane instead. */
   mainScroll?: boolean
+  /** ON A PHONE the centre part is a BOARD that takes the glass left under the list part (the City's building face): it stands on a flex column
+   *  that gives it the rest of the Sheet and scrolls inside itself, instead of its own height under a fixed cap. The wide desk lays it out in its pane
+   *  as always. */
+  mainFill?: boolean
 }
 
 /** How the desk lays a face out — the one decision a face does not make. */
@@ -113,12 +117,14 @@ export function DeskSidePane({ children }: { children?: ReactNode }) {
 }
 
 /** The phone: the parts one under the other, in the Sheet. */
-export function DeskStack({ testid, list, main, side, order = ['list', 'main', 'side'] }: DeskParts) {
+export function DeskStack({ testid, list, main, side, order = ['list', 'main', 'side'], mainFill = false }: DeskParts) {
   const parts = { list, main, side }
   return (
-    <div data-testid={testid}>
+    <div data-testid={testid} className={mainFill ? 'flex min-h-0 flex-1 flex-col' : undefined}>
       {order.map((k) => (
-        <div key={k}>{parts[k]}</div>
+        <div key={k} className={mainFill ? (k === 'main' ? 'flex min-h-0 flex-1 flex-col' : 'shrink-0') : undefined}>
+          {parts[k]}
+        </div>
       ))}
     </div>
   )
