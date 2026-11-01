@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
-import { GLASSES, openFace, readGlass, seededWorld } from './unfold.fixture'
+import { GLASSES, openFace, readGlass } from './unfold.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // RANK, UNFOLDED — the owner's law, measured on both faces at three glasses (2026-11-02)
@@ -31,7 +31,6 @@ for (const glass of GLASSES) {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(glass)
-    await seededWorld(page)
     await page.goto('rank')
     await ready(page)
     await expect(page.getByTestId('rank')).toBeVisible()

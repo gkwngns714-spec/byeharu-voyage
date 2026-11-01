@@ -1,5 +1,9 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
+import path from 'node:path'
+import { gzipSync } from 'node:zlib'
 import type { Page } from '@playwright/test'
+import { WORLD_IMAGE_DIR } from '../scripts/db/build-image.mjs'
+import { asWorldImageFile } from '../src/lib/db/worldImage'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE UNFOLD LAWS' ONE MEASURING APPARATUS (2026-11-02)
@@ -133,15 +137,131 @@ export async function openFace(page: Page, tab: string) {
   await page.waitForTimeout(600)
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A PLAYED WORLD, BUILT AT RUN TIME — the rows a canary world does not have
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// The world a browser spec boots is the canary: ONE ledger entry (the founding), no route lane (its traders are off), a board
+// of ten. The owner's world serves fifty ledger entries and a board of lanes, and the unfold laws are about THOSE rows (how
+// many stand whole in the glass, a row with a report that opens its tray, a lane the server cannot rank). A spec may not
+// skip — CI fails any skipped test, because a skip means the app was not served — so the rows are made here: restore THIS
+// build's own world image, replace the two reads that serve them with type-shaped fixtures, dump it, and serve that image to
+// the page in place of the built one. It is how db.image.spec builds its wounded image. Nothing is written to disk and nothing
+// outside the spec's browser context sees it.
 
-/** A LIVE-SIZED WORLD, LOCAL ONLY. The canary world a CI run boots serves one ledger entry, no route lane and a short
- *  board; the owner's world serves fifty entries and a board of lanes. `UNFOLD_WORLD=<a world image tarball>` serves that
- *  image in place of the built one (the same one-line route the measuring scripts use), so the unfold laws can be read
- *  on rows a played world has. Unset (CI), it does nothing and the specs read the canary. */
-export async function seededWorld(page: Page): Promise<boolean> {
-  const file = process.env.UNFOLD_WORLD
-  if (!file) return false
-  const body = readFileSync(file)
-  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body, contentType: 'application/gzip' }))
-  return true
+/** A jsonb literal for a SQL string (standard_conforming_strings: only the quote needs doubling). */
+const jsonb = (value: unknown) => `'${JSON.stringify(value).replace(/'/g, "''")}'::jsonb`
+
+let played: Promise<Buffer> | null = null
+
+function playedImage(): Promise<Buffer> {
+  played ??= (async () => {
+    const dir = path.join(process.cwd(), 'dist', WORLD_IMAGE_DIR)
+    const name = readdirSync(dir).find((f) => /^world-.*\.tar\.gz$/.test(f))
+    if (name === undefined) throw new Error(`NO PRE-BUILT WORLD in ${dir} — run "npm run build"`)
+    const { PGlite } = await import('@electric-sql/pglite')
+    const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(readFileSync(path.join(dir, name)))) })
+    try {
+      const ports = (await pg.query<{ code: string }>('select code from public.ports order by code limit 60')).rows.map((r) => r.code)
+      await pg.query('drop function if exists world.ledger(timestamptz, int)')
+      await pg.query(
+        `create function world.ledger(p_cursor timestamptz default null, p_limit int default 50) returns jsonb language sql volatile as $f$ select ${jsonb(ledgerPage(ports))} $f$`,
+      )
+      await pg.query('drop function if exists world.route_board()')
+      await pg.query(`create function world.route_board() returns jsonb language sql stable as $f$ select ${jsonb(routeBoard(ports))} $f$`)
+      const tar = new Uint8Array(await (await pg.dumpDataDir('none')).arrayBuffer())
+      return Buffer.from(gzipSync(tar))
+    } finally {
+      await pg.close()
+    }
+  })()
+  return played
 }
+
+/** Serve the played world to this page: fifty ledger entries and a board of forty lanes. Call it before `page.goto`. */
+export async function playedWorld(page: Page): Promise<void> {
+  const body = await playedImage()
+  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body, contentType: 'application/gzip' }))
+}
+
+/** `world.ledger`'s page: fifty entries, newest first, of the kinds headline.ts composes — ten in Trade, twenty in Voyage,
+ *  twenty in Crew, and a voyage report (a row that opens its tray) among the Voyage ones. */
+function ledgerPage(ports: string[]) {
+  const now = Date.now()
+  const port = (i: number) => ports[i % ports.length]
+  const goods = ['Silk', 'Pepper', 'Cloves', 'Amber', 'Brazilwood', 'Porcelain', 'Tin', 'Saffron', 'Merino Wool', 'Sugar', 'Camphor', 'Nutmeg']
+  const fleets = ['Santa Clara', 'Boa Esperança', 'São Gabriel', 'Fortuna']
+  const events: Record<string, unknown>[] = []
+  let mins = 3
+  for (let i = 0; i < 50; i++) {
+    mins += 7 + ((i * 13) % 23)
+    const fleet = fleets[i % fleets.length]
+    const good = goods[(i * 5) % goods.length]
+    const qty = 20 + ((i * 7) % 60)
+    const sold = 12 + ((i * 17) % 110) + 0.5
+    const bought = 8 + ((i * 11) % 90) + 0.5
+    const nm = 220 + i * 31
+    const [kind, payload, delta] = ((): [string, Record<string, unknown>, number | null] => {
+      switch (i % 10) {
+        case 0: return ['BOUGHT', { port: port(i * 3), fleet, good, qty, avg_price: bought, total: Math.round(qty * bought) }, -Math.round(qty * bought)]
+        case 1: return ['SOLD', { port: port(i * 3), fleet, good, qty, avg_price: sold, total: Math.round(qty * sold) }, Math.round(qty * sold)]
+        case 2: return ['DEPARTED', { fleet, voyage_id: 'v', total_nm: nm, points: 9, dest: port(i * 3 + 7), eta: new Date(now + 300 * 60_000).toISOString() }, null]
+        case 3:
+          return [
+            'VOYAGE_REPORT',
+            {
+              fleet, voyage_id: 'v', from: port(i * 3), to: port(i * 3 + 7), total_nm: nm,
+              lines: [`${fleet} sailed ${nm} nm from the home port.`, 'Fair winds for two days, a calm on the third.', 'No losses; the hold came in whole.'],
+            },
+            null,
+          ]
+        case 4: return ['PROVISIONED', { fleet, water_t: 4.5, food_t: 6.2, cost: 180 + i }, -(180 + i)]
+        case 5: return ['HIRED', { fleet, count: 6 + (i % 5), urgent: i % 4 === 0, cost: 90 + i * 2 }, -(90 + i * 2)]
+        case 6: return ['WAGES', { fleet }, -(120 + i * 3)]
+        case 7: return ['REPAIRED', { fleet }, null]
+        case 8: return ['SIGNED_OFFICER', { officer: 'Afonso de Albuquerque', code: 'x', specialty: 'Combat', bonus_pct: 7, cost: 1200 }, -1200]
+        default: return ['STUDIED', { skill: 'Navigation', code: 'NAVIGATION', level: 2 + (i % 3), port: port(i * 3), cost: 400 }, -400]
+      }
+    })()
+    events.push({ id: `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`, kind, payload, at: new Date(now - mins * 60_000).toISOString(), ducats_delta: delta, balance_after: null })
+  }
+  return { events, next_cursor: null, ducats: 40000, ledger_sum: 40000 }
+}
+
+/** `world.route_board`: forty of a hundred and twenty lanes, two of them hers, some unmeasured, some shut to her, some with no
+ *  lap closed yet — the shape `RouteBoard` documents. */
+function routeBoard(ports: string[]) {
+  const now = new Date().toISOString()
+  const companies = ['Casa da Índia', 'Companhia de Malaca', 'Casa de Contratación', 'Juncos de Quanzhou', 'Company of Plymouth', 'Sociedade Matos', 'Huis Reael', 'Banco Foscari', 'Fraterna Badoer', 'Hermanos Hurtado']
+  const nations = ['PRT', 'PRT', 'ESP', 'MNG', 'ENG', 'PRT', 'NLD', null, null, 'ESP']
+  const names = ['Spice carreira', 'Cloth run', 'Gold coast loop', 'Lisbon–Seville feeder', 'Malabar pepper', 'Silk and silver', 'North Sea herring', 'Levant caravan', 'Tin and wool', 'Sugar triangle']
+  const routes = Array.from({ length: 40 }, (_, i) => {
+    const mine = i < 2
+    const stops = 3 + (i % 5)
+    const nm = i % 9 === 5 ? null : 600 + ((i * 397) % 7400)
+    const lap = i % 4 === 2 ? null : 800 + ((i * 523) % 9000)
+    return {
+      id: `route-${i}`,
+      name: mine ? ['My Cloth run', 'My Malabar loop'][i] : `${names[i % names.length]} ${i}`,
+      mine,
+      merchant: !mine,
+      company: mine ? null : companies[i % companies.length],
+      nation_code: mine ? null : nations[i % nations.length],
+      ink: null,
+      stops: Array.from({ length: stops }, (_, k) => ports[(i * 4 + k * 3) % ports.length]),
+      stop_count: stops,
+      nm,
+      regions: 1 + (i % 3),
+      state: i % 5 === 0 ? 'Sailing' : 'Docked',
+      assigned: i % 6 !== 4,
+      requires: { navigation: nm === null ? null : 1 + (i % 6) },
+      closed: i % 7 === 3,
+      earnings: {
+        day: 900, day_laps: 2, day_since: null, day_full: true, lap, lap_basis: lap === null ? 1 : 3 + (i % 5), laps_recent: [], laps_done: i % 9,
+        total: { laps: i % 9, net: 0, sold: 0, bought: 0, supplies: 0, repairs: 0, wages: 0 },
+      },
+    }
+  })
+  return { at: now, merchants: true, routes, total: 120, omitted: 80 }
+}
+
