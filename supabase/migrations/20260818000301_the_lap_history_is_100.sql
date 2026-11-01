@@ -18,13 +18,14 @@
 --   key). At every lap close it runs, for THAT route only,
 --       delete from public.standing_route_laps x where x.route_id = p_route and x.lap_no <= l.lap_no - public.wc_int('standing_route_lap_keep');
 --   so once the knob reads 100 each route trims itself to its newest 100 closed laps (+ the open one) at its NEXT lap close: ~100 rows per route,
---   about 837 x 100 = ~84,000 rows in all, over the first hour or so (a route closes a lap every 10-30 minutes; a route that is laid up or paused trims
---   when it next closes one). Rows now: 167,587 over 837 routes = 200-201 each; afterwards ~84,500. The heap (227 MB) keeps its size: the freed room is
+--   about 837 x 100 = ~84,000 rows in all, over the first hour or two (the 837 routes close ~2,800 laps an hour when the disk is quiet = a lap per route
+--   every ~18 minutes on average, and every 33-50 minutes in the busy hours; a route that is laid up or paused trims when it next closes one).
+--   Rows now: 167,587 over 837 routes = 200-201 each; afterwards ~84,500. The heap (227 MB) keeps its size: the freed room is
 --   reused by new laps, and a LATER migration compacts the table - this file does not.
 --
 -- ── WHAT DEPENDS ON HOW MANY LAPS ARE KEPT (every reader of the laps table, read on prod) ───────
 --   Needs the newest 1-10 laps only: cmd.standing_route_close_lap (the previous lap's stock_out), cmd.run_standing_route (the last N laps lost money,
---   N = the route's own guard; the newest started/closed lap), cmd.standing_route_note_skip (the open lap), public.lap_trades (one lap),
+--   N = the route's own guard, 1 to 20; the newest started/closed lap), cmd.standing_route_note_skip (the open lap), public.lap_trades (one lap),
 --   public.npc_leg_lines (the newest 2 closed laps), world.npc_fleet_card (the newest lap's skipped), world.standing_routes (the newest 10),
 --   public.route_earnings `lap` / `laps_recent` (the newest 7), world.fleet_trades (the newest 8). route_earnings `laps_done` is max(lap_no) and `total`
 --   comes from public.route_month_laps (0278), the all-time book: neither moves.
@@ -33,8 +34,8 @@
 --   profit_day, laps_day, losing_pct, top, bottom, and each house's day and laps).
 --   SAID PLAINLY: for a route that closes MORE than 100 laps in a day, the newest 100 cover less than 24 hours, so its "so far today" is shorter
 --   and the Stats merchants day counts fewer laps. Measured on prod (read-only, 2026-11-01 23:30 UTC, DB clock): over the last 24 h 34 of 781 routes
---   closed 100+ laps (max 132); but the last three whole hours ran at the quiet-disk rate (2,747 / 2,812 / 2,804 laps an hour, against 1,000-1,700 in
---   the busy hours), and at THAT rate x 8 about 278 of 760 routes (37 %) close 100+ laps a day (p50 80, p90 160, max 328), and the laps beyond each
+--   closed 100+ laps (max 132); but the last three whole hours ran at the quiet-disk rate (2,747 / 2,812 / 2,804 laps an hour, against about 800-1,700,
+--   and one hour of 459, in the busy hours), and at THAT rate x 8 about 278 of 760 routes (37 %) close 100+ laps a day (p50 80, p90 160, max 328), and the laps beyond each
 --   route's newest 100 are 12,056 of 66,904 (18 %). EVERY ONE OF THEM IS A MERCHANT (NPC) ROUTE: the world has 838 routes, 837 merchants' and ONE
 --   player's (Havana - Matsumae, which has never closed a lap), so no human player's own sheet is cut short. The merchant sheet already prints
 --   "So far - over the last <span>" when `day_full` is false (src/live/MerchantSheet.tsx), so the shorter day is labelled, not hidden.
@@ -47,7 +48,7 @@
 -- ── THE BUDGET OF THIS FILE (docs/OPS_HEALTH.md section 4) ──────────────────────────────────────
 --   bv-deploy.sh pauses every cron job for the whole push. statement_timeout 90 s and lock_timeout 5 s from the first statement: a slow file FAILS FAST
 --   and rolls back whole. The update and every assert share ONE DO block (the runner is not a transaction block: a statement outside it would be
---   kept after a failed assert). The self-assert reads the catalog (676+ function bodies, twice), the 291-row knob table (twice) and nothing else:
+--   kept after a failed assert). The self-assert reads the catalog (678 function bodies on prod, twice), the 291-row knob table (twice) and nothing else:
 --   milliseconds, independent of the size of any real table. It looks ONLY at its own row, never runs a real step and never reads the laps.
 --
 -- ── PROD CHECKS (before the push; read-only; in the PR body) ────────────────────────────────────
