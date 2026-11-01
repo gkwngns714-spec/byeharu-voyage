@@ -19,7 +19,7 @@
 --       delete from public.standing_route_laps x where x.route_id = p_route and x.lap_no <= l.lap_no - public.wc_int('standing_route_lap_keep');
 --   so once the knob reads 100 each route trims itself to its newest 100 closed laps (+ the open one) at its NEXT lap close: ~100 rows per route,
 --   about 837 x 100 = ~84,000 rows in all, over the first hour or two (the 837 routes close ~2,800 laps an hour when the disk is quiet = a lap per route
---   every ~18 minutes on average, and every 33-50 minutes in the busy hours; a route that is laid up or paused trims when it next closes one).
+--   every ~18 minutes on average, and every 30-60 minutes in the busy hours; a route that is laid up or paused trims when it next closes one).
 --   Rows now: 167,587 over 837 routes = 200-201 each; afterwards ~84,500. The heap (227 MB) keeps its size: the freed room is
 --   reused by new laps, and a LATER migration compacts the table - this file does not.
 --
