@@ -96,11 +96,12 @@ the rule merely stable; an unrelated function moved) — every one stops at its 
   bodies as 0292 and 0293 left them. Earlier, on the tree rebased onto 0291: 280 migrations, 278 restored, 2 applied, 291 receipt lines, the same pass.
 - 0294's self-assert, tried to be broken: 23 mutations, every one caught by its own `0294 self-assert FAIL`; the control applies (§4).
 - `npm run build` (local mode): clean; the world image built from the prefix cache.
-- Playwright against the built image (headless, `localhost`, an explicit port, the trailing-slash base — 0 skipped, read), on the FINAL build, main merged in:
-  **126 passed in 24 spec files, 0 failed (5.7 min)** — `good.class` 13 · `duplication` 11 · `sections` 8 · `i18n.keys` 4 · `words` 1 · `market.desk` 3 · `align` 2 ·
-  `consistency` 17 · `layout` 19 · `primitives.geometry` 5 · `city.density` 1 · `city.page` 1 · `city.audit` 9 · `onepage` 2 · `wide.layout` 6 · `desk.layout` 4 · `i18n.ko` 2 ·
-  `stats.unfold` 6 · `stats.tab` 3 · `stats.filters` 3 · `stats.moneyFeedDrip` 2 · `stats.bigChart` 2 · `stats.moneySectors` 1 · `stats.moneyFeed` 1. Before the merge the same 17
-  non-Stats files passed on the build without it: 108 of 108.
+- Playwright against the built image (headless, `localhost`, an explicit port, the trailing-slash base — nothing skipped for a missing server, read), on the FINAL build, main merged in
+  through #449: **138 passed, 1 skipped, 0 failed in 28 spec files (5.4 min)** — `good.class` 13 · `duplication` 11 · `sections` 8 · `i18n.keys` 4 · `words` 1 · `market.desk` 3 ·
+  `align` 2 · `consistency` 17 · `layout` 19 · `primitives.geometry` 5 · `city.density` 1 · `city.page` 1 · `city.audit` 9 · `onepage` 2 · `wide.layout` 6 · `desk.layout` 4 · `i18n.ko` 2 ·
+  `stats.unfold` 6 · `stats.tab` 3 · `stats.filters` 3 · `stats.moneyFeedDrip` 2 · `stats.bigChart` 2 · `stats.moneySectors` 1 · `stats.moneyFeed` 1 · `codex.unfold` 4 · `ledger.unfold` 3 + 1
+  skipped (its own: it needs `UNFOLD_WORLD`, a live-sized world, and says so) · `greatPowers` 4 · `captains.codex` 1. After the last merge (#450, the Rank unfold) on a fresh build, the
+  files it touches again: `good.class` 13 · `consistency` 17 · `layout` 19 · `stats.unfold` 6 · `codex.unfold` 4 · `rank.unfold` 4 · `rank.countries` 1 — **64 passed, 0 failed**.
 
 `tests/good.class.spec.ts` — PURE: the table is complete for 1–5 (a word in both languages, a lit-bar count, a token each), a list row wears the
 class from the number alone (the wash from class 4 only; none, null, 0, 6 and 99 draw nothing), the class table is not the rarity table (no shared
@@ -139,7 +140,7 @@ for this diff (`GoodKind` is the app shell); the local batch had run 16, and the
    at least 8 whole rows on the glass at 390, no text cut, none crossing), and `GoodsFace.tsx` conflicted: main's rows taken, the class re-placed. The tile's meta line is gone, and
    every place in a row's label costs width (the label already wraps the rarity word under a long name) — so the meter hangs **under the good's own icon, in the mark cell**:
    absolutely positioned, 14 px under a 20-px icon, so it adds no width to the row and no height (the cell's line is the row's 24 and the 44-px row has 28 px of content) — a
-   row cannot grow by it, on any font. The Codex steps of this spec lost their `codex-open` press (the face is the list). Re-proved on the merged tree: §5.
+   row cannot grow by it, on any font. The Codex steps of this spec lost their `codex-open` press (the face is the list). #449 (History) and #450 (Rank) merged without a conflict in code. Re-proved on the merged tree: §5.
 
 ## 6. BEFORE / AFTER (headless Chromium, DPR 2, English, dark; `…\scratchpad\good-class\shots\`)
 `before-*` is the design commit built as it was (no client change); `after-*` is this branch. Desk City › Buy at 390: `before-desk-buy-phone.png` /
