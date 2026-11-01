@@ -16,7 +16,7 @@
 --   the whole database    WAL 61.8 MiB/min over 283 min (17,495 MiB, 2,058,184 full-page images).
 --   cron, hourly means    08:00 → 14:00 UTC — drift 17.8, 42.6, 38.4, 39.1, 41.5, 43.1, 51.3 s (max 120.4 s, 13
 --                         timeouts since 10:00); compact 3.2 → 23.5 s (max 92.4); price-snapshot 3.8 → 35.3 s.
---   compute               shared_buffers 320 MB, maintenance_work_mem 64 MB, statement_timeout 120 s: a 293 MB
+--   compute               shared_buffers 256 MB, maintenance_work_mem 64 MB, statement_timeout 120 s: a 293 MB
 --                         table plus its 36 MB of indexes never stays cached.
 --
 -- ── WHY ONLY A THIRD ARE HOT ───────────────────────────────────────────────────────────────────
@@ -28,13 +28,15 @@
 -- pin until a VACUUM, so the room never comes back between vacuums: a loop only a rewrite WITH spare room breaks.
 --
 -- ── WHAT CHANGES (three statements, in this order, in this transaction) ────────────────────────
---   alter table public.port_goods set (fillfactor = 40);
+--   alter table public.port_goods set (fillfactor = 30);
 --   cluster public.port_goods using port_goods_pkey;     -- rewrites the heap and all three indexes, honours the
 --                                                        -- fillfactor, and lays a harbour's rows side by side
 --   analyze public.port_goods;
--- Fillfactor 40 puts ~21 live rows on a page of room for ~53, so a page holds a whole minute of new versions
--- beside the old ones (21 + 21 <= 53), and even a second update of some rows (a trade touching stock) stays
--- in the page; the in-page pruning clears the old versions at the next visit. Expected table ~60 MB (vs 293 MB).
+-- Fillfactor 30 leaves 70 % of every page empty: ~15-16 live rows on a page that holds ~52 tuples, so a page takes
+-- a whole minute of new versions beside the old ones (16 + 16 <= 52) AND a second minute while a long snapshot (the
+-- Stats count, a minute-long statement) still pins the first: three versions of every row fit (3 x 16 = 48 <= 52).
+-- A trade touching stock stays in the page too, and the in-page pruning clears the old versions at the next visit
+-- once nothing pins them. Expected table ~80 MB (vs 293 MB).
 -- The cluster order (port_id, good_id) is the order the per-harbour drift reads, so a harbour's rows share pages.
 --
 -- ── WHAT DOES NOT MOVE ────────────────────────────────────────────────────────────────────────
@@ -55,7 +57,7 @@
 -- ── SELF-ASSERT (the rewrite itself is the migration's effect; the one probe write is rolled back) ──
 --   (a) the SAME ROWS: under the lock, count(*), min/max(port_id) and sum(hashtext(port_id || good_id)) before and
 --       after (port_goods is a fixed catalogue, so equality is valid once the lock is held); never empty;
---   (b) reloptions carry fillfactor=40;
+--   (b) reloptions carry fillfactor=30;
 --   (c) the three indexes exist, valid, ready and live, with the SAME pg_get_indexdef text as before, each REBUILT
 --       (a new relfilenode), and the primary key is the table's clustered index;
 --   (d) the table's relfilenode changed (the rewrite happened);
@@ -134,7 +136,7 @@ select i.indexrelid::regclass::text as name,
 
 -- ── 3. THE REWRITE ──────────────────────────────────────────────────────────────────────────────
 insert into clock_0291 values ('rewrite_start', clock_timestamp());
-alter table public.port_goods set (fillfactor = 40);
+alter table public.port_goods set (fillfactor = 30);
 cluster public.port_goods using port_goods_pkey;
 analyze public.port_goods;
 insert into clock_0291 values ('rewritten', clock_timestamp());
@@ -190,8 +192,8 @@ begin
   end if;
 
   -- (b) the fillfactor is on the table
-  if not exists (select 1 from pg_class c where c.oid = 'public.port_goods'::regclass and c.reloptions @> array['fillfactor=40']) then
-    raise exception '0291 self-assert FAIL: public.port_goods does not carry fillfactor=40 (reloptions %)',
+  if not exists (select 1 from pg_class c where c.oid = 'public.port_goods'::regclass and c.reloptions @> array['fillfactor=30']) then
+    raise exception '0291 self-assert FAIL: public.port_goods does not carry fillfactor=30 (reloptions %)',
       (select c.reloptions from pg_class c where c.oid = 'public.port_goods'::regclass);
   end if;
 
@@ -285,7 +287,7 @@ begin
     into v_heap_after, v_indexes_after;
   v_t_end := clock_timestamp();
 
-  raise notice '0291 self-assert ok: THE MARKET TABLE KEEPS ROOM. public.port_goods was rewritten in place by CLUSTER on port_goods_pkey with fillfactor 40, under one ACCESS EXCLUSIVE lock taken before the first read. The same % rows and the same key checksum % (min / max port and sum of hashtext(port || good)) before and after; reloptions %; the % indexes valid, ready and live, each rebuilt (a new relfilenode) and defined exactly as before, the primary key marked clustered; the table moved from relfilenode % to %. A probe UPDATE of one real row (updated_at, rolled back and asserted gone) was a HOT update — the transaction''s own HOT counter rose % -> %. Every function in public/cmd/world/voyage unmoved by md5 (% functions), the registry unchanged at % entry points, the walls 0 / 0 / 0, both owner switches as found. Printed, never asserted: heap % -> % bytes (% -> % pages of %), indexes % -> % bytes; seconds under the ACCESS EXCLUSIVE lock — the read before the rewrite %, the rewrite (alter + cluster + analyze) %, the asserts after it %, in all % through the last assert.',
+  raise notice '0291 self-assert ok: THE MARKET TABLE KEEPS ROOM. public.port_goods was rewritten in place by CLUSTER on port_goods_pkey with fillfactor 30, under one ACCESS EXCLUSIVE lock taken before the first read. The same % rows and the same key checksum % (min / max port and sum of hashtext(port || good)) before and after; reloptions %; the % indexes valid, ready and live, each rebuilt (a new relfilenode) and defined exactly as before, the primary key marked clustered; the table moved from relfilenode % to %. A probe UPDATE of one real row (updated_at, rolled back and asserted gone) was a HOT update — the transaction''s own HOT counter rose % -> %. Every function in public/cmd/world/voyage unmoved by md5 (% functions), the registry unchanged at % entry points, the walls 0 / 0 / 0, both owner switches as found. Printed, never asserted: heap % -> % bytes (% -> % pages of %), indexes % -> % bytes; seconds under the ACCESS EXCLUSIVE lock — the read before the rewrite %, the rewrite (alter + cluster + analyze) %, the asserts after it %, in all % through the last assert.',
     b.n, b.key_sum,
     (select c.reloptions from pg_class c where c.oid = 'public.port_goods'::regclass),
     v_idx_n, b.table_filenode, v_filenode, v_hot0, v_hot1,
