@@ -108,15 +108,17 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
       <h4 className="pb-1 pt-4 text-t-caption text-ink-faint">{tl('books.traits', { n: chosen.length, slots })}</h4>
       {(captain.traits ?? []).map((t) => {
         const on = chosen.includes(t.code)
+        // THE SENTENCE IS LINE 2 (2026-11-02), as in the Codex's captain tray (CaptainsFace.tsx): as the row's `value` it
+        // stood in a one-line cell beside the name, so "Ship-supplies trader" was left 9 px wide, one letter a line, at 320.
         return (
           <Row
             key={t.code}
             label={t.word}
-            value={t.lines.join(' · ')}
             tone={on ? 'default' : 'muted'}
             onClick={captain.can_change ? () => toggle(t.code) : undefined}
             data-testid={`captain-trait-${t.code}`}
           >
+            <span className="block text-t-body">{t.lines.join(' · ')}</span>
             {on && <span className="block text-t-caption text-accent">{tl('books.inUse')}</span>}
           </Row>
         )

@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { PHONE, ready, reachable } from './appReady.fixture'
+import { GLASSES } from './trayLaw.fixture'
+import { NAV_CELLS } from '../src/app/navTabs'
 
 // NAV BAR GEOMETRY — the pin that stops the tab rail growing a second row again.
 //
@@ -273,6 +275,74 @@ test('nav: opening a group REVEALS its members and moves nothing in the bar', as
     await expect(panel).toBeHidden()
     await expect(cell).toHaveAttribute('aria-expanded', 'false')
   }
+})
+
+// ── THE MENU TRAY STANDS AS TALL AS ITS ROWS (the layout sweep of 2026-11-02, row 11) ────────────────
+//
+// The Menu opens at the tray's `half` detent, which was chosen when it held four rows. It holds six now (navTabs.ts),
+// and six 52-px rows under the 52-px handle row and the 34-px title are 406 px. MEASURED on origin/main 9a97051e, headless:
+//   320×640   half = 320 px → the body 234 px for 320 px of rows: "You" cut, "Profile" behind an 86-px scroll (4 of 6 whole)
+//   1280×800  half = 400 px → the body 314 px: 6 px of scroll under "Profile"
+//   390×844   half = 422 px → fits, which is why nobody saw it
+// A scroll inside a six-row menu is a member the player has to know to hunt for. NavBar.tsx floors the tray at its rows'
+// height (`min-height`, capped at the glass); this holds every member WHOLE and REACHABLE (a finger lands on it, not on
+// whatever covers it) with no inner scroll at the three glasses. A short glass (a phone on its side) cannot hold six rows
+// at all: there the law is only that the tray does not lift its head off the glass — the rows it cannot show scroll, as
+// they always did (before the floor: 1 of 6 whole at 667×375; after: 3 of 6 and the head on the glass).
+
+const SHORT_GLASS = { width: 667, height: 375 }
+
+const READ_MENU = () => {
+  const panel = document.querySelector('[data-testid="nav-group-panel"]') as HTMLElement
+  const scroller = ([...panel.querySelectorAll('*')] as HTMLElement[]).find((el) => /auto|scroll/.test(getComputedStyle(el).overflowY))!
+  const sr = scroller.getBoundingClientRect()
+  const rows = ([...panel.querySelectorAll('a')] as HTMLElement[]).map((a) => {
+    const r = a.getBoundingClientRect()
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+    return {
+      word: (a.textContent ?? '').replace(/\s+/g, ' ').trim(),
+      whole: r.top >= sr.top - 0.5 && r.bottom <= sr.bottom + 0.5,
+      reachable: hit !== null && a.contains(hit),
+    }
+  })
+  const box = panel.getBoundingClientRect()
+  return { rows, innerScroll: scroller.scrollHeight - scroller.clientHeight, top: Math.round(box.top), height: Math.round(box.height) }
+}
+
+test('nav: the Menu tray stands as tall as its rows — every member whole and reachable, no inner scroll — at 390×844, 320×640 and 1280×800', async ({
+  page,
+  request,
+  baseURL,
+}) => {
+  await openApp(page, request, baseURL)
+  const members = NAV_CELLS.flatMap((c) => (c.kind === 'group' ? c.members : []))
+  expect(members.length, 'the table has no Menu members — nothing to hold whole').toBeGreaterThan(4)
+  const group = page.locator('[data-testid="nav-bar"] > button').first()
+  const panel = page.getByTestId('nav-group-panel')
+
+  const broken: string[] = []
+  for (const glass of [...GLASSES, SHORT_GLASS]) {
+    await page.setViewportSize(glass)
+    await group.click()
+    await expect(panel).toBeVisible()
+    const read = await page.evaluate(READ_MENU)
+    const at = `${glass.width}×${glass.height}`
+    console.log(`MENU @${at}: tray ${read.height}px from y=${read.top}, ${read.rows.filter((r) => r.whole).length}/${read.rows.length} rows whole, inner scroll ${read.innerScroll}px`)
+    expect(read.rows.length, `${at}: the Menu drew ${read.rows.length} rows for ${members.length} members`).toBe(members.length)
+    // THE HEAD STAYS ON THE GLASS at every glass, the short one included.
+    if (read.top < 0) broken.push(`${at}: the tray's head stands ${-read.top}px above the glass`)
+    if (glass !== SHORT_GLASS) {
+      // `scrollHeight` and `clientHeight` are whole numbers of a fractional layout: 1 px is rounding, 6 px is a missing row's edge.
+      if (read.innerScroll > 1) broken.push(`${at}: the tray scrolls ${read.innerScroll}px inside itself`)
+      for (const r of read.rows) {
+        if (!r.whole) broken.push(`${at}: "${r.word}" is cut by the tray's own edge`)
+        if (!r.reachable) broken.push(`${at}: a finger on "${r.word}" lands on something else`)
+      }
+    }
+    await group.click()
+    await expect(panel).toBeHidden()
+  }
+  expect(broken, `the Menu tray is shorter than its rows:\n${broken.join('\n')}`).toEqual([])
 })
 
 test('nav: HQ leads, no Command tab; the City rail is the shell rail (HQ · Fleets · Map · Stats · Menu); Market opens in place', async ({

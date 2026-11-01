@@ -189,14 +189,13 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
               />
             }
           />
+          {/* A TRAIT IS ITS NAME ON LINE 1 AND ITS SENTENCE ON LINE 2 (2026-11-02). The sentence is a clause or two of prose
+              ("−4.2% crew lost to pirates · −4.2 points of homesickness", 436 px) and `Row` keeps a `value` on one line, so
+              as the value it shoved the tray 74 px sideways at 390 and left "Surgeon" one letter wide; on line 2 it wraps
+              under its label and the row is as wide as the tray. The row's tone and the served `in_use` still colour it. */}
           {(open.traits ?? []).map((t) => (
-            <Row
-              key={t.code}
-              label={t.word}
-              value={<Figure value={t.lines.join(' · ')} tone={t.in_use ? 'success' : 'faint'} />}
-              tone={t.in_use ? 'default' : 'muted'}
-              data-testid={`captain-trait-${t.code}`}
-            >
+            <Row key={t.code} label={t.word} tone={t.in_use ? 'default' : 'muted'} data-testid={`captain-trait-${t.code}`}>
+              <span className={`block text-t-body ${t.in_use ? 'text-success' : ''}`}>{t.lines.join(' · ')}</span>
               {t.note && <Hint>{t.note}</Hint>}
             </Row>
           ))}
