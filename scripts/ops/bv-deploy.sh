@@ -31,6 +31,10 @@ if [ "$rc" = 0 ] && [ "$head" = "$want" ]; then gh pr merge $PR --squash 2>&1 | 
 # desk.plan; the PR run is not main's full suite). Wait for main's Acceptance on the merge commit and say it.
 sha=$(gh pr view $PR --json mergeCommit --jq .mergeCommit.oid 2>/dev/null)
 if [ -n "$sha" ]; then
-  for i in $(seq 1 20); do id=$(gh run list --workflow acceptance.yml --branch main --limit 8 --json databaseId,headSha --jq ".[]|select(.headSha==\"$sha\")|.databaseId" | head -1); [ -n "$id" ] && break; sleep 15; done
+  for i in $(seq 1 20); do id=$(gh run list --workflow acceptance.yml --branch main --limit 8 --json databaseId,headSha --jq ".[]|select(.headSha==\"$sha\")|.databaseId" | head -1); [ -n "$id" ] && break
+    # 2026-11-02: THIS MERGE FIRES NO PUSH WORKFLOW (gh's own token), so nothing would ever appear here and a migration PR's client would stay unpublished
+    # (0294's class meter did, until it was started by hand). After ~30 s with no run for the merge commit, start BOTH on main once.
+    if [ "$i" = 3 ]; then gh workflow run deploy-pages.yml --ref main >/dev/null 2>&1; gh workflow run acceptance.yml --ref main >/dev/null 2>&1; echo "no workflow fired for ${sha:0:7}: dispatched deploy-pages.yml and acceptance.yml on main"; fi
+    sleep 15; done
   if [ -n "$id" ]; then gh run watch $id --exit-status >/dev/null 2>&1; echo "MAIN ACCEPTANCE on ${sha:0:7}: $(gh run view $id --json conclusion --jq .conclusion) $(gh run view $id --json jobs --jq '.jobs[]|select(.conclusion=="failure")|.name' | tr '\n' ';')"; else echo "MAIN ACCEPTANCE on ${sha:0:7}: no run found — CHECK BY HAND"; fi
 fi
