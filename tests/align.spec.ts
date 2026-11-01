@@ -50,16 +50,9 @@ const SCREENS: Screen[] = [
   { name: 'Stats', route: 'stats', faces: [[null, 'Overview'], [null, 'Markets'], [null, 'Cities'], [null, 'Merchants'], [null, 'Me']] },
   { name: 'Ledger', route: 'ledger', faces: [[null, 'All'], [null, 'Trade'], [null, 'Voyage'], [null, 'Crew']] },
   { name: 'Rank', route: 'rank', faces: [[null, 'Captains'], [null, 'Countries']] },
-  {
-    name: 'Routes',
-    route: 'routes',
-    // THE BOARD IS A PAGE (owner, 2026-10-31): open it, then its sort strip is the first tablist.
-    open: async (page) => {
-      await page.getByTestId('routes-open').click()
-      await expect(page.getByTestId('routes-open-page')).toBeVisible()
-    },
-    faces: [[null, 'Distance'], [null, 'Earnings'], [null, 'Calls']],
-  },
+  // THE BOARD STANDS ON THE GLASS (the unfold slice, 2026-11-02, owner row 260): it was a page behind `routes-open`, which this walk
+  // pressed to reach the sort strip; the strip is now in the panel's header, the first tablist, where the walk finds it.
+  { name: 'Routes', route: 'routes', faces: [[null, 'Distance'], [null, 'Earnings'], [null, 'Calls']] },
   { name: 'Compendium', route: 'compendium', faces: [[null, 'Goods'], [null, 'Ships'], [null, 'Captains'], [null, 'Nations']] },
   { name: 'You', route: 'you' },
   { name: 'Profile', route: 'profile' },

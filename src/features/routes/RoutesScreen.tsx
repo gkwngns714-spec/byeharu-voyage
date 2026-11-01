@@ -1,19 +1,5 @@
 import { useMemo, useState } from 'react'
-import {
-  Button,
-  Figure,
-  Hint,
-  Note,
-  DetailPage,
-  Row,
-  Segmented,
-  Sheet,
-  SheetSection,
-  Skeleton,
-  SummaryRow,
-  Tray,
-  type TrayDetent,
-} from '../../components/ui'
+import { Button, Figure, Hint, ListPanel, Note, Row, Segmented, Sheet, Skeleton, Tray, type TrayDetent } from '../../components/ui'
 import { formatDucats, formatInt, formatMiles, formatRelative } from '../../lib/format'
 import type { RouteBoardRow } from '../../lib/rpc'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
@@ -24,7 +10,10 @@ import { tabWord } from '../../app/navTabs'
 import { t, useLocale, useT, type TKey } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// ROUTES — every lane the world sails, on one board (owner row 115, 2026-10-11).
+// ROUTES — every lane the world sails, on one board (owner row 115, 2026-10-11). ON THE GLASS (the unfold slice,
+// 2026-11-02, owner row 260): it was the sort strip over ONE summary row (`Routes 40 · Open`) with the board behind a
+// pop-up page; it is now ONE list panel — the lanes, hers first, ranked by the order picked in the panel's header, the
+// board's age beside its title with its one button, the lane tray a sibling outside the scroller.
 //
 // The owner: *"show all trade routes created"* · *"rank them with distance, earning prices, etc."*
 //
@@ -86,8 +75,6 @@ function RoutesBody({ title }: { title: string }) {
   const [order, setOrder] = useState<Order>('nm')
   const [open, setOpen] = useState<string | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
-  // THE BOARD IS A PAGE (owner, 2026-10-31); the compact screen is the sort strip and one summary.
-  const [page, setPage] = useState(false)
 
   const rows = useMemo(() => sortRoutes(board?.routes ?? [], order), [board, order])
   const mine = rows.filter((r) => r.mine)
@@ -95,7 +82,7 @@ function RoutesBody({ title }: { title: string }) {
   const opened = board?.routes.find((r) => r.id === open) ?? null
 
   return (
-    <Sheet title={title} data-testid="routes">
+    <Sheet title={title} fill data-testid="routes">
       {board === null ? (
         loading ? (
           <div className="space-y-2">
@@ -108,99 +95,57 @@ function RoutesBody({ title }: { title: string }) {
         )
       ) : (
         <>
-          <SummaryRow
-            title={title}
-            figure={formatInt(board.total)}
-            word={t('common.open')}
-            onClick={() => setPage(true)}
-            data-testid="routes-open"
-          />
-          {page && (
-            <DetailPage
-              title={title}
-              figure={formatInt(board.total)}
-              onClose={() => {
-                setPage(false)
-                setOpen(null)
-              }}
-              data-testid="routes-open-page"
-            >
-              {/* THE BOARD IS A PHOTOGRAPH, HONESTLY DATED — it says how old it is and offers to be
-                  asked again rather than pretending to be live. */}
-              <div className="flex flex-wrap items-center gap-2 pb-2 text-t-caption text-ink-faint">
-                <span>
-                  {board.omitted > 0
-                    ? t('routes.someLanes', { n: formatInt(board.routes.length), total: formatInt(board.total) })
-                    : t('routes.lanes', { n: formatInt(board.total), count: board.total })}
-                </span>
-                {readAt !== null && <span>{formatRelative(readAt, nowMs)}</span>}
-                {/* THE 44-PX FLOOR (the audit, 2026-10-31): this stood at 36px with no neighbour
-                    on the floor. It is the page's one secondary action, so it takes the md size. */}
-                <Button variant="quiet" onClick={refresh} busy={refreshing} busyLabel={t('routes.reading')} data-testid="routes-refresh">
-                  {t('routes.readAgain')}
-                </Button>
-              </div>
-          {failed && (
-            <Note tone="warning" className="mb-3">
-              {t('routes.stale')}
-            </Note>
-          )}
-          <Segmented segments={ORDERS.map((o) => ({ id: o.id, label: t(o.label) }))} value={order} onChange={setOrder} label={t('routes.sortLabel')} className="mb-3" />
-          {mine.length > 0 && (
-            // HERS ON HER OWN PANEL, as RANK pins the captain's line: one tone step, so her lanes
-            // read as hers rather than as the first rows of a printout.
-            <SheetSection surface>
-              {mine.map((r, i) => (
+          {/* THE BOARD IS A PHOTOGRAPH, HONESTLY DATED — it says how old it is (beside its title) and offers to be
+              asked again (its one button) rather than pretending to be live. */}
+          <ListPanel
+            title={
+              board.omitted > 0
+                ? t('routes.someLanes', { n: formatInt(board.routes.length), total: formatInt(board.total) })
+                : t('routes.lanes', { n: formatInt(board.total), count: board.total })
+            }
+            count={readAt !== null ? formatRelative(readAt, nowMs) : undefined}
+            // THE 44-PX FLOOR (the audit, 2026-10-31): it is the panel's one secondary action, so it takes the md size.
+            trailing={
+              <Button variant="quiet" onClick={refresh} busy={refreshing} busyLabel={t('routes.reading')} data-testid="routes-refresh">
+                {t('routes.readAgain')}
+              </Button>
+            }
+            controls={
+              <>
+                {failed && (
+                  <Note tone="warning" className="w-full">
+                    {t('routes.stale')}
+                  </Note>
+                )}
+                <Segmented segments={ORDERS.map((o) => ({ id: o.id, label: t(o.label) }))} value={order} onChange={setOrder} label={t('routes.sortLabel')} />
+              </>
+            }
+            data-testid="routes-list"
+          >
+            {others.length === 0 && mine.length === 0 ? (
+              <Row label={board.merchants ? t('routes.noneAnywhere') : t('routes.noneYours')} tone="muted" hairline={false} />
+            ) : (
+              // HERS FIRST, then the merchants' — the order picked ranks each group; her lanes read as hers by
+              // their accent tone, as RANK pins the captain's line.
+              [...mine, ...others].map((r, i, all) => (
                 <Lane
                   key={r.id}
                   route={r}
                   order={order}
-                  mine
-                  hairline={i < mine.length - 1}
+                  mine={r.mine}
+                  hairline={i < all.length - 1}
                   onOpen={() => {
                     setOpen(r.id)
                     setDetent('half')
                   }}
                 />
-              ))}
-            </SheetSection>
-          )}
-
-          {others.length === 0 && mine.length === 0 ? (
-            <Row
-              label={
-                board.merchants
-                  ? t('routes.noneAnywhere')
-                  : t('routes.noneYours')
-              }
-              tone="muted"
-              hairline={false}
-            />
-          ) : (
-            <SheetSection surface className={mine.length > 0 ? 'mt-2' : undefined}>
-              {others.map((r, i) => (
-                <Lane
-                  key={r.id}
-                  route={r}
-                  order={order}
-                  hairline={i < others.length - 1}
-                  onOpen={() => {
-                    setOpen(r.id)
-                    setDetent('half')
-                  }}
-                />
-              ))}
-            </SheetSection>
-          )}
-
-          {board.omitted > 0 && (
-            <Hint className="mt-2">
-              {t('routes.omitted', { n: formatInt(board.omitted), count: board.omitted })}
-            </Hint>
-          )}
+              ))
+            )}
+            {board.omitted > 0 && (
+              <Hint className="mt-2">{t('routes.omitted', { n: formatInt(board.omitted), count: board.omitted })}</Hint>
+            )}
+          </ListPanel>
           {opened && <LaneTray route={opened} detent={detent} onDetentChange={setDetent} />}
-            </DetailPage>
-          )}
         </>
       )}
     </Sheet>
@@ -237,14 +182,21 @@ function Lane({
   hairline: boolean
   onOpen: () => void
 }) {
+  const ranked = rankFigure(route, order)
   return (
     // A LANE YOU CANNOT SAIL IS STILL ON THE BOARD, and reads as muted rather than being
     // hidden: the owner asked to SEE every route created (row 115), and what it would take is
     // the reason to go and study (row 117). Yours wins the tone when both apply — nothing you
-    // keep is ever shown as out of your own reach on your own panel.
+    // keep is ever shown as out of your own reach among your own lanes (first on the board).
     <Row
       label={route.name}
-      value={<Figure value={rankFigure(route, order)} tone={mine ? 'accent' : undefined} />}
+      value={
+        ranked === null ? (
+          <span className="text-ink-faint">{t(order === 'nm' ? 'routes.unmeasured' : 'routes.notYet')}</span>
+        ) : (
+          <Figure value={ranked} tone={mine ? 'accent' : undefined} />
+        )
+      }
       tone={mine ? 'accent' : route.closed ? 'muted' : undefined}
       chevron
       onClick={onOpen}
@@ -256,11 +208,12 @@ function Lane({
   )
 }
 
-/** The figure being ranked on, and the ABSENCE where the server has one. */
-function rankFigure(route: RouteBoardRow, order: Order): string {
-  if (order === 'nm') return route.nm === null ? '—' : formatMiles(route.nm)
+/** The figure being ranked on; NULL where the server has none (an unmeasured lap, earnings before a second lap
+ *  closes) — the row says so in a word, it never draws a dash. */
+function rankFigure(route: RouteBoardRow, order: Order): string | null {
+  if (order === 'nm') return route.nm === null ? null : formatMiles(route.nm)
   if (order === 'calls') return formatInt(route.stop_count)
-  return route.earnings.lap === null ? '—' : formatDucats(route.earnings.lap)
+  return route.earnings.lap === null ? null : formatDucats(route.earnings.lap)
 }
 
 /** Whose lane, and its shape: `Casa da Índia · 5 calls · 3 regions · 4,120 nm`. Her own says so by
