@@ -63,7 +63,7 @@ export function CitiesFace() {
               {
                 id: 'area',
                 label: t('stats.area'),
-                options: [{ id: ALL, label: t('stats.all') }, ...STATS_AREAS.map((a) => ({ id: a, label: t(areaWord(a)) }))],
+                options: [{ id: ALL, label: t('stats.area') }, ...STATS_AREAS.map((a) => ({ id: a, label: t(areaWord(a)) }))],
                 value: area,
                 onChange: (id) => choose({ area: id }),
               },
