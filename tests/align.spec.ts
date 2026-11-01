@@ -179,6 +179,21 @@ function measure(): string[] {
         for (let k = 0; k < cs.length; k++) {
           const a = firstCells[k].getBoundingClientRect()
           const b = cs[k].getBoundingClientRect()
+          // THE FIGURE SITS BESIDE ITS LABEL (owner, 2026-11-01: *"there are empty spaces between
+          // words and numbers horizontally which is in effective. make it so that htey are closer,
+          // more compact"*). A Row's VALUE cell used to be held in a shared right-edge column; it is
+          // now content-placed next to its label, so across sibling rows only its distance from that
+          // label is the law — a value more than 16px from its own label is the defect.
+          if (cs[k].getAttribute('data-row-cell') === 'action') continue // the edge affordance, not a column
+          if (cs[k].getAttribute('data-row-cell') === 'value') {
+            const prevA = k > 0 ? firstCells[k - 1]?.getBoundingClientRect() : undefined
+            const prevB = k > 0 ? cs[k - 1]?.getBoundingClientRect() : undefined
+            if (prevA && prevB) {
+              const gap = Math.max(a.left - prevA.right, b.left - prevB.right)
+              if (gap > 16) out.push(`HUG ${label(cs[k])}: the figure sits ${Math.round(gap)}px from its label`)
+            }
+            continue
+          }
           // a column is held at the edge its text is set from: a label's start, a figure's end
           const drift = endAligned(cs[k]) ? Math.abs(a.right - b.right) : Math.abs(a.left - b.left)
           if (drift > 2) {
@@ -187,7 +202,14 @@ function measure(): string[] {
           }
         }
       }
-      for (const sel of ['[data-col]', '[data-track]']) {
+      // THE GALLERY'S COLUMN DEMO IS A SHOWCASE, NOT A GAME LIST: it draws columns INSIDE a Row's
+      // label to demonstrate the equal-column pattern; the owner's 2026-11-01 law made that label
+      // content-sized (the figure hugs its label), so the demo's columns follow their own content —
+      // accurate for the gallery and irrelevant to every game screen. The [data-col] law is about
+      // hand-rolled game rows; it does not read the gallery's exhibit.
+      const isGalleryDemo = first.closest('[data-testid="gallery-col-row"]') !== null
+      if (!isGalleryDemo)
+        for (const sel of ['[data-col]', '[data-track]']) {
         const ref = [...first.closest('[data-row]')?.querySelectorAll(sel) ?? first.querySelectorAll(sel)]
         for (const other of same.slice(1)) {
           const mine = [...other.closest('[data-row]')?.querySelectorAll(sel) ?? other.querySelectorAll(sel)]
@@ -301,7 +323,7 @@ async function audit(page: Page, vp: { width: number; height: number }): Promise
 }
 
 for (const vp of [WIDE, PHONE]) {
-  test(`every list lines up at ${vp.width}px — one line per row, one column per list, no cut sentence, no label on a chart line`, async ({ page, request, baseURL }, info) => {
+  test(`every list lines up at ${vp.width}px — one line per row, the figure beside its label, no cut sentence, no label on a chart line`, async ({ page, request, baseURL }, info) => {
     test.setTimeout(900_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(vp)
