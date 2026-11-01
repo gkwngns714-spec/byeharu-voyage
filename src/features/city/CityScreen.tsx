@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Figure, Icon, LoadMeter, Note, type IconName, type LoadStep } from '../../components/ui'
+import { Figure, Icon, LoadMeter, Note, Row, ScrollPane, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { NavBar } from '../../app/NavBar'
-import { alongsideAt, fleetPortCode, housePortCode } from '../../domain/fleet'
+import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
 import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
-import { portNationOf, useWorld } from '../../live/worldStore'
+import { portNameOf, portNationOf, useWorld } from '../../live/worldStore'
 import { useWorldBeat } from '../../live/worldStore'
 import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, gameSunInstantMs } from '../../lib/format'
@@ -190,14 +190,49 @@ export function CityScreen() {
   if (!port || port.kind !== 'HARBOUR')
     return gate(
       <>
-        <div className="flex-1 p-gutter">
-          <Note tone="neutral">{t('city.noCity')}</Note>
-        </div>
+        <NoCity fleets={fleets} inHand={draftPort ?? null} />
         <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
     )
 
   return gate(<CityBody port={port} draftFleetId={draftFleetId} />)
+}
+
+/** THE HQ WITH NO CITY IN HAND (2026-11-02, the HQ-on-a-phone slice; the sweep's row 8). The fleet in hand is bound for a cape or open water, so there is no harbour to
+ *  stand in — and the page was ONE line ("No city in hand.") over 740 px of nothing at 390, with no way to pick another fleet. It says what it can: that line, and YOUR
+ *  FLEETS — each with what she is doing now (the one where-rule, `whereLine`, her countdown on the page's clock), the one in hand in gold — and a press on a fleet
+ *  SELECTS her (the command draft's one selection, the same the desk's picker and the Map write): bring one that lies in a harbour into hand and the page is that
+ *  harbour. The picker's own component belongs to another screen (`features/command`), which this one may not import (tests/sections.spec.ts); the list is the picker
+ *  here, as rows, and it needs no popover because the glass has the room. The rail stays as it was. */
+function NoCity({ fleets, inHand }: { fleets: readonly FleetView[]; inHand: FleetView | null }) {
+  const t = useT()
+  const { nowMs } = useShellState()
+  const portByCode = useWorld((s) => s.portByCode)
+  const selectFleet = useCommandDraft((s) => s.selectFleet)
+  return (
+    <div className="flex min-h-0 flex-1 flex-col px-gutter pb-1.5 pt-1.5" data-testid="city-nocity">
+      <Note tone="neutral">{t('city.noCity')}</Note>
+      {fleets.length > 0 && (
+        <section className="mt-2 flex min-h-0 flex-col rounded-tile bg-surface px-gutter pt-1" data-testid="city-nocity-fleets">
+          <h2 className="pb-1 text-t-caption text-ink-faint">{t('command.fleets')}</h2>
+          <ScrollPane className="min-h-0">
+            {fleets.map((f) => (
+              <Row
+                key={f.id}
+                label={f.name}
+                chevron
+                tone={f.id === inHand?.id ? 'accent' : 'default'}
+                onClick={() => selectFleet(f.id)}
+                data-testid="city-nocity-fleet"
+              >
+                <span className="block text-t-caption text-ink-faint">{whereLine(whereabouts(f), (code) => portNameOf(portByCode, code), nowMs)}</span>
+              </Row>
+            ))}
+          </ScrollPane>
+        </section>
+      )}
+    </div>
+  )
 }
 
 /** Everything that reads served city data — mounted only once the world is up. */
