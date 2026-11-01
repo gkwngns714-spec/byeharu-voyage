@@ -38,5 +38,10 @@ real-Postgres CI job (`disposable-chain`) and the prod push show it. Learned the
 - A `create temp table … on commit drop` did not survive past the table rewrite (`relation "clock_0292" does not exist`). Use session-lived scratch tables and drop them in the last assert.
 - `ANALYZE`/`VACUUM`-style utility statements are not part of a migration; CLUSTER of one named table, ALTER TABLE and TRUNCATE work. Raise `statement_timeout` with a session-level
   `set_config(..., false)` in the guard and `reset` it at the end of the file (a transaction-local setting does not reach the next statement).
+- **A migration freezes the game clock for as long as it runs.** `bv-deploy.sh` unwinds the clock (every cron job paused) for the whole push, so the file's run time is the game's downtime. 0300's first push (then numbered 0296,
+  2026-11-01 19:25 UTC) ran probes against real merchants under a 10-minute `statement_timeout`: they ran past it, the clock stood still for ten minutes and nothing was kept (CI's tiny world had run them in 0.9 s).
+  So, for every migration: `statement_timeout` ≤ 90 s and `lock_timeout` 5 s in the FIRST statement (a deliberate long statement — a CLUSTER, a table rewrite — may raise the first for that file and says why in its header);
+  the whole file ≤ 45 s on prod, measured on a POPULATED world (prod-sized history, the switches prod has), not CI's; a self-assert never executes a real game step or digests live rows — it stubs them, or the proof lives in CI
+  (`scripts/db/proofs/`) and the file says so in its header, the dev-log and a printed notice, in every environment alike (never a switch that skips a proof quietly).
 - Never dispatch `migrations-apply-proof.yml` by hand: a manual dispatch applies the WHOLE chain from zero and every PR's `disposable-chain` waits for it. After a `bv-deploy.sh` merge
   (which fires no workflow) dispatch ONLY `acceptance.yml --ref main`.

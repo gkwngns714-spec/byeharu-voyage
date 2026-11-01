@@ -1777,6 +1777,8 @@ test('the registry and the client grants are one set, and the merchant cores are
     'world.month_of(timestamptz)',
     'world.month_start(bigint)',
     'public.city_month_post(uuid, uuid, text, bigint)',
+    // 0300: the hourly upkeep's hard end, a pure rule read by public.tick_reconcile alone. Server-only.
+    'public.upkeep_hard_end(timestamptz, numeric, numeric)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
