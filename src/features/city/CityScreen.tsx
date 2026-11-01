@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Figure, Icon, LoadMeter, Note, type IconName, type LoadStep } from '../../components/ui'
+import { Figure, Icon, LoadMeter, Note, Row, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { NavBar } from '../../app/NavBar'
 import { alongsideAt, fleetPortCode, housePortCode } from '../../domain/fleet'
@@ -386,13 +386,16 @@ function CityFrame({
             the same shape at every press (and the merged audit's HQ-geometry proof still reads a
             `city-summary` between the split and the rail). */}
         <div data-testid="city-summary" className="shrink-0 pt-1">
-          {/* THE EARNINGS FIGURE HUGS ITS WORD (owner, 2026-11-01): this frame line used to push
-              the purse to the far edge of the whole frame; it now stands 8 px behind "Your
-              earnings", like every other row on the HQ. */}
-          <div className="flex min-h-5 items-center gap-2 px-1">
-            <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
-            <Figure value={ducats === null ? '—' : formatDucats(ducats)} size="body" tone={ducats === null ? 'faint' : 'ink'} />
-          </div>
+          {/* THE EARNINGS LINE IS A ROW OF THE ONE ROW (2026-11-01 re-point): the compact size keeps
+              the frame line on a 20-px data line while the shared columns place the purse beside
+              its word. */}
+          <Row
+            className="px-1"
+            label={t('city.earnings')}
+            value={<Figure value={ducats === null ? '—' : formatDucats(ducats)} size="body" tone={ducats === null ? 'faint' : 'ink'} />}
+            hairline={false}
+            size="compact"
+          />
         </div>
       </main>
 

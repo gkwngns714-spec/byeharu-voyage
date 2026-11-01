@@ -88,12 +88,11 @@ export function CityFacePanel({
   fleet: FleetView | null
 }) {
   const t = useT()
-  // THE ROW PITCH IS THE REACH FLOOR (owner, 2026-11-01: *"more compact with full detail"*): Row's
-  // 52-px rhythm (44 px + 8 pt) is compacted to the 44-px floor inside the city faces only. The
-  // shared primitives are NOT edited here (another writer owns them); a row whose content is taller
-  // than 44 still grows — the floor is a minimum, never a crop.
+  // THE SHARED ROW IS THE ONE ROW (2026-11-01 re-point): the faces draw the shared `Row`/`SummaryRow`
+  // at their own size — no city-local pitch override, no city-local hug. The 52-px rhythm and the
+  // figure-beside-its-label law come from the primitives.
   return (
-    <CityPanel testId="city-face-panel" building={building} contentClassName="[&_[data-row-line]]:min-h-11">
+    <CityPanel testId="city-face-panel" building={building}>
       <h2 className="pb-1 text-t-caption text-ink-faint">{t(BUILDING_LABEL[building])}</h2>
       {building === 'market' && <MarketFace port={port} fleet={fleet} />}
       {building === 'storage' && <StorageFace port={port} fleet={fleet} />}

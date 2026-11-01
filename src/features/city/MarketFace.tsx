@@ -175,20 +175,25 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
             board.view.requests.map((r) => (
               <div key={r.id} className="border-b border-edge py-1" data-testid={`city-open-request-${r.id}`}>
                 <Row label={`${r.name} ×${formatInt(r.qty)}`} value={<Figure value={formatUnitPrice(r.unit_price)} />} />
-                <div className="flex min-h-11 items-center gap-2">
-                  <span className="text-t-caption text-ink-faint">{t('city.requestPay')}</span>
-                  <Figure value={formatDucats(r.escrow)} />
-                  <Button
-                    className="ml-auto"
-                    onClick={() => {
-                      setCancelling(r.id)
-                      void cmdRequestCancel(r.id).finally(() => setCancelling(null))
-                    }}
-                    disabled={cancelling === r.id}
-                  >
-                    {t('city.requestCancel')}
-                  </Button>
-                </div>
+                <Row
+                  label={t('city.requestPay')}
+                  value={
+                    <span className="flex items-center gap-2">
+                      <Figure value={formatDucats(r.escrow)} />
+                      <Button
+                        onClick={() => {
+                          setCancelling(r.id)
+                          void cmdRequestCancel(r.id).finally(() => setCancelling(null))
+                        }}
+                        disabled={cancelling === r.id}
+                      >
+                        {t('city.requestCancel')}
+                      </Button>
+                    </span>
+                  }
+                  hairline={false}
+                  size="compact"
+                />
               </div>
             ))
           )}
@@ -236,15 +241,19 @@ function BasketSummary({
   const totals = preview.estimate?.totals ?? null
   return (
     <div data-testid="city-basket">
-      {/* THE BASKET'S SUMMARY LINE — the count and the total hug the word (owner, 2026-11-01),
-          instead of being pushed to the panel's far edge. */}
-      <div className="flex min-h-11 items-center gap-2 border-b border-edge">
-        <span className="text-t-caption text-ink-faint">{t('trade.basket')}</span>
-        <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">
-          {lines.length === 0 ? t('trade.basketEmpty') : formatInt(lines.length)}
-        </span>
-        {totals !== null && <Figure value={formatDucats(totals.net)} size="body" />}
-      </div>
+      {/* THE BASKET'S SUMMARY LINE — a compact row of the ONE row (2026-11-01 re-point): the shared
+          columns place the count and the total beside the word. */}
+      <Row
+        label={t('trade.basket')}
+        value={
+          <span className="flex items-center gap-2 text-t-caption text-ink-muted">
+            {lines.length === 0 ? t('trade.basketEmpty') : formatInt(lines.length)}
+            {totals !== null && <Figure value={formatDucats(totals.net)} size="body" />}
+          </span>
+        }
+        size="compact"
+        data-testid="city-basket-head"
+      />
       <SummaryRow title={t('town.f_market')} onClick={onOpenBoard} data-testid="city-basket-board" />
       <Row label={t('common.back')} chevron onClick={onClose} hairline={false} data-testid="city-basket-back" />
     </div>

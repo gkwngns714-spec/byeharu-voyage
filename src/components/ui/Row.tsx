@@ -45,6 +45,13 @@ import { Icon } from './Icon'
 
 export type RowTone = 'default' | 'accent' | 'muted'
 
+/** THE ONE SIZE PARAMETER OF THE ONE ROW (2026-11-01). `row` is the 52-px list line. `compact` is a
+ *  DATA line — caption label, body value, one 20-px line — for figures that must stand on a panel
+ *  (the hall's Population · Gold · Status · Relationship · Employees, the HQ's earnings line). It is
+ *  a size of this component, never a second row implementation; a compact row that is PRESSABLE
+ *  keeps the 44-px reach floor, and its label truncates with its full text as `title`. */
+export type RowSize = 'row' | 'compact'
+
 const TONE: Record<RowTone, string> = {
   default: 'text-ink',
   // Selected / yours. §4.4: gold means "you may act, or this is yours".
@@ -65,6 +72,7 @@ export function Row({
   disabled = false,
   className = '',
   under = 'row',
+  size = 'row',
   children,
   ...rest
 }: {
@@ -89,6 +97,8 @@ export function Row({
    *  track. `label`: under the label only, beside a value that is taller than one line (a pair of
    *  `ActCell`s), which then spans both lines — the row stays as tall as its value, not the sum. */
   under?: 'row' | 'label'
+  /** The row's one size — see RowSize. */
+  size?: RowSize
 } & { 'data-testid'?: string }) {
   // THE LINE, AND THE LINE UNDER IT (2026-10-25, owner rows 196 and 198: "it is not in the same
   // line"). The row is a GRID, not a flex box. Line 1 holds the mark, the label and the value in
@@ -113,27 +123,41 @@ export function Row({
   // every line-1 cell is PLACED, not auto-flowed: a value spanning two lines would otherwise be
   // auto-placed into the label's column
   const labelCol = 2
+  // THE COMPACT SIZE (2026-11-01): a data line, not a list line. The shared line boxes are 24 px
+  // (`.bv-row-line`, unlayered CSS); a compact row draws them at 20 — the inline line-height on the
+  // cells beats the stylesheet the same way the grid placement above does. A pressable compact row
+  // still takes the 44-px reach floor; a data line takes its own line.
+  const dense = size === 'compact'
+  const pressable = href !== undefined || onClick !== undefined
+  const lineStyle = dense ? ({ lineHeight: '1.25rem' } as const) : null
+  const cellStyle = (style: { gridRow?: number | string; gridColumn?: number | string }) =>
+    lineStyle === null ? style : { ...style, ...lineStyle }
   const body = (
     <>
       {mark !== undefined && (
-        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: 1 }} data-row-cell="mark">
+        <span className="bv-row-line flex h-6 items-center" style={cellStyle({ gridRow: 1, gridColumn: 1 })} data-row-cell="mark">
           {mark}
         </span>
       )}
-      <span className="bv-row-line min-w-0 break-words text-t-label" style={{ gridRow: 1, gridColumn: labelCol }} data-row-cell="label">
+      <span
+        title={dense && typeof label === 'string' ? label : undefined}
+        className={dense ? 'bv-row-line min-w-0 truncate text-t-caption text-ink-faint' : 'bv-row-line min-w-0 break-words text-t-label'}
+        style={cellStyle({ gridRow: 1, gridColumn: labelCol })}
+        data-row-cell="label"
+      >
         {label}
       </span>
       {value !== undefined && (
         <span
           className="bv-row-line whitespace-nowrap text-left text-t-body tabular-nums"
-          style={{ gridRow: under === 'label' ? '1 / span 2' : 1, gridColumn: 3 }}
+          style={cellStyle({ gridRow: under === 'label' ? '1 / span 2' : 1, gridColumn: 3 })}
           data-row-cell="value"
         >
           {value}
         </span>
       )}
       {chevron && (
-        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: -1 }} data-row-cell="chevron">
+        <span className="bv-row-line flex h-6 items-center" style={cellStyle({ gridRow: 1, gridColumn: -1 })} data-row-cell="chevron">
           <Icon name="chevron" size={20} className="text-ink-faint" />
         </span>
       )}
@@ -149,7 +173,9 @@ export function Row({
   )
 
   const shell = [
-    'grid w-full min-h-row content-center items-start gap-x-3 py-2 text-left',
+    dense
+      ? `grid w-full content-center items-start gap-x-3 text-left ${pressable ? 'min-h-11 py-1' : 'min-h-5 py-0'}`
+      : 'grid w-full min-h-row content-center items-start gap-x-3 py-2 text-left',
     hairline ? 'border-b border-edge' : '',
     TONE[tone],
     className,

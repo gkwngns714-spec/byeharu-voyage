@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { Figure, Icon, Note, Row, Skeleton, Tray, type TrayDetent } from '../../components/ui'
+import { useState } from 'react'
+import { Figure, Note, Row, Skeleton, SummaryRow, Tray, type TrayDetent } from '../../components/ui'
 import { InvestorRow } from '../../live/CityInvestors'
 import { TownHallInfluence } from '../../live/TownHallInfluence'
 import type { CityInvestor, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
@@ -97,35 +97,22 @@ export function CityHallPanel({
           {/* INVESTORS — one real tappable row (44 px), pinned under the panel's scroll so it is
               always reachable, even on the smallest glass. The drawer it opens is the served
               board. */}
-          <div className="shrink-0 border-t border-edge px-gutter">
-            <button
-              type="button"
-              onClick={() => setInvestorsOpen(true)}
-              data-testid="city-hall-investors"
-              className="flex min-h-11 w-full items-center gap-2 py-2 text-left text-ink-muted transition hover:text-ink"
-            >
-              <span className="text-t-caption">{t('town.investors')}</span>
-              <span className="shrink-0 text-t-caption tabular-nums">{hall.investors.length}</span>
-              <Icon name="chevron" size={16} className="ml-auto text-ink-faint" />
-            </button>
+          <div className="shrink-0 border-t border-edge">
+            <SummaryRow title={t('town.investors')} figure={hall.investors.length} onClick={() => setInvestorsOpen(true)} data-testid="city-hall-investors" />
           </div>
           {investorsOpen && <InvestorsDrawer investors={hall.investors} onClose={() => setInvestorsOpen(false)} />}
         </>
       }
     >
-      {/* THE INFLUENCE FOLD — collapsed: its word, your points hugging it, the chevron at the edge;
-          ≥ 44 px. */}
-      <button
-        type="button"
+      {/* THE INFLUENCE FOLD — the shared summary row (the one row): its word, your points beside it,
+          the chevron at the edge, ≥ 44 px, and `aria-expanded` saying the state. */}
+      <SummaryRow
+        title={t('town.influence')}
+        figure={you ? formatInt(you.points) : undefined}
         aria-expanded={influenceOpen}
         onClick={() => setInfluenceOpen((v) => !v)}
         data-testid="city-hall-influence"
-        className="flex min-h-11 w-full shrink-0 items-center gap-2 rounded-control border-b border-edge text-left text-ink-muted transition hover:text-ink"
-      >
-        <span className="text-t-caption">{t('town.influence')}</span>
-        <span className="shrink-0 text-t-caption tabular-nums">{you ? formatInt(you.points) : null}</span>
-        <Icon name="chevron" size={16} className={`ml-auto text-ink-faint transition ${influenceOpen ? 'rotate-180' : ''}`} />
-      </button>
+      />
       {influenceOpen && (
         <div className={BOOK_DENSE} data-testid="city-hall-book">
           <TownHallInfluence port={port} influence={hall.influence} docked={hall.you.docked} showTax={false} compact />
@@ -135,47 +122,24 @@ export function CityHallPanel({
       {/* THE FIVE FIGURES — Population · Gold · Status · Relationship · Employees. The hall is
           their single home; no other city face prints one of these words. */}
       <div data-testid="city-hall-figures" className="mt-1">
-        <FigureLine label={t('city.population')} testid="city-population">
-          <Figure value={`≈ ${formatInt(population)}`} size="body" tone="ink" />
-        </FigureLine>
-        <FigureLine label={t('city.gold')} testid="city-gold">
-          <Figure value={formatDucats(hall.purse.ducats)} size="body" tone="ink" />
-        </FigureLine>
-        <FigureLine label={t('city.status')} testid="city-status">
-          {you ? <Figure value={formatInt(you.points)} size="body" tone="ink" /> : <span className="text-ink-faint">—</span>}
-        </FigureLine>
-        <FigureLine label={t('city.relationship')} testid="city-relationship" data-stance={relation.stance ?? 'none'} data-nation={relation.nation ?? 'none'}>
-          <span className="text-t-caption text-ink">{relation.word}</span>
-        </FigureLine>
-        <FigureLine label={t('city.employees')} testid="city-employees">
-          <Figure value={formatInt(employees)} size="body" tone="ink" />
-        </FigureLine>
+        <Row label={t('city.population')} value={<Figure value={`≈ ${formatInt(population)}`} size="body" tone="ink" />} hairline={false} size="compact" data-testid="city-population" />
+        <Row label={t('city.gold')} value={<Figure value={formatDucats(hall.purse.ducats)} size="body" tone="ink" />} hairline={false} size="compact" data-testid="city-gold" />
+        <Row
+          label={t('city.status')}
+          value={you ? <Figure value={formatInt(you.points)} size="body" tone="ink" /> : <span className="text-ink-faint">—</span>}
+          hairline={false}
+          size="compact"
+          data-testid="city-status"
+        />
+        <div data-testid="city-relationship" data-stance={relation.stance ?? 'none'} data-nation={relation.nation ?? 'none'}>
+          <Row label={t('city.relationship')} value={<span className="text-t-caption text-ink">{relation.word}</span>} hairline={false} size="compact" />
+        </div>
+        <Row label={t('city.employees')} value={<Figure value={formatInt(employees)} size="body" tone="ink" />} hairline={false} size="compact" data-testid="city-employees" />
       </div>
     </CityPanel>
   )
 }
 
-/** ONE COMPACT LINE — 20 px tall, the figure hugging its label (owner, 2026-11-01: *"empty spaces
- *  between words and numbers horizontally … make it so that htey are closer, more compact"*). The
- *  figure used to be pushed to the far edge by `justify-between`; it now stands 8 px behind its
- *  word, and nothing is spread across the panel. */
-function FigureLine({
-  label,
-  testid,
-  children,
-  ...rest
-}: {
-  label: string
-  testid: string
-  children: ReactNode
-} & { 'data-stance'?: string; 'data-nation'?: string }) {
-  return (
-    <div className="flex min-h-5 items-center gap-2 py-0 leading-tight" data-testid={testid} {...rest}>
-      <span title={label} className="min-w-0 truncate text-t-caption text-ink-faint">{label}</span>
-      <span className="shrink-0 tabular-nums">{children}</span>
-    </div>
-  )
-}
 
 /** THE INVESTORS DRAWER — the design system's side Tray (mode="side"): it slides in from the RIGHT
  *  (`bv-slide-in-right`), is the full width below `lg` (owner: "you know that this game is also for

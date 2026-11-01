@@ -43,6 +43,10 @@ export function SummaryRow({
   word?: ReactNode
   onClick: () => void
   className?: string
+  /** The disclosure state, for a row that folds content in place (the hall's Influence). Passed
+   *  through to the button; the chevron itself stays the shared edge affordance (no per-screen
+   *  rotation). */
+  'aria-expanded'?: boolean
 } & { 'data-testid'?: string }) {
   return (
     <button
