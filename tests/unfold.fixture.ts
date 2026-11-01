@@ -42,6 +42,20 @@ export interface Flat {
   labelCuts: string[]
 }
 
+/** THE PHONE LAWS AS LINES, one per defect, empty when they hold (the HQ slice, 2026-11-02): (a) no two boxes overlap, (b) no text stands one letter wide, (c) nothing is cut without its full
+ *  text, (d) nothing scrolls sideways. A spec reads a scoped `readGlass` and asserts this is `[]`; the spelling of a law is here once. */
+export function phoneLaws(where: string, f: Flat): string[] {
+  const out: string[] = []
+  for (const d of f.boxes) out.push(`${where}: (a) sibling boxes overlap — ${d}`)
+  for (const d of f.overlaps) out.push(`${where}: (a) two texts cross — ${d}`)
+  for (const d of f.narrow) out.push(`${where}: (b) one letter per line — ${d}`)
+  for (const d of f.cuts) out.push(`${where}: (c) text cut with no way to read it — ${d}`)
+  for (const d of f.labelCuts) out.push(`${where}: (c) a label is cut — ${d}`)
+  if (f.doc.sw > f.doc.cw) out.push(`${where}: (d) the page scrolls sideways (${f.doc.sw} in ${f.doc.cw} px)`)
+  for (const d of f.sideways) out.push(`${where}: (d) a box scrolls sideways — ${d}`)
+  return out
+}
+
 /** One face as data: scroll, overlap, cut text and the panel's whole rows. Self-contained — it is shipped into the page.
  *  `scope` (a selector) narrows what is MEASURED to one subtree (the HQ's right panel, its left region); the document's own
  *  scroll (`doc`) always stands for the whole page. Absent, everything is measured as before. */

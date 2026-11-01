@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { ready, reachable, settled } from './appReady.fixture'
-import { GLASSES, readGlass, type Flat, type Glass } from './unfold.fixture'
+import { GLASSES, phoneLaws as defects, readGlass, type Glass } from './unfold.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE HQ ON A PHONE — the law that keeps every building's face legible (2026-11-02)
@@ -42,19 +42,6 @@ async function press(page: Page, tile: Tile) {
   await settled(panel)
   if (tile === 'market') await settled(page.getByTestId('city-market-chart'))
   await page.waitForTimeout(400)
-}
-
-/** One reading, turned into one line per defect. */
-function defects(where: string, f: Flat): string[] {
-  const out: string[] = []
-  for (const d of f.boxes) out.push(`${where}: (a) sibling boxes overlap — ${d}`)
-  for (const d of f.overlaps) out.push(`${where}: (a) two texts cross — ${d}`)
-  for (const d of f.narrow) out.push(`${where}: (b) one letter per line — ${d}`)
-  for (const d of f.cuts) out.push(`${where}: (c) text cut with no way to read it — ${d}`)
-  for (const d of f.labelCuts) out.push(`${where}: (c) a label is cut — ${d}`)
-  if (f.doc.sw > f.doc.cw) out.push(`${where}: (d) the page scrolls sideways (${f.doc.sw} in ${f.doc.cw} px)`)
-  for (const d of f.sideways) out.push(`${where}: (d) a box scrolls sideways — ${d}`)
-  return out
 }
 
 /** Press the six tiles in turn and read the right panel (and the Market's chart and its three faces) at each. */
