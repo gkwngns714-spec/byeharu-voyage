@@ -31,8 +31,8 @@ CLUSTER's duration; `pg_stat_progress_vacuum` / `pg_stat_activity` / `pg_statio_
   cleared again within the minute.
 * **369 autovacuums and 305 autoanalyzes** since 09:34 (18:56:31); in the last 30 minutes 23 and 20. A pass reads 6-14 k of the 14,374 pages (84,435 reads / 14 passes = 6.0 k each).
 * **The brief's model (a pass every ~1.5 min because 31 k dead tuples are crossed "within seconds") is not what happens.** `n_dead_tup` counts dead versions **net of in-page
-  pruning** (`heap_page_prune` subtracts what it reclaims), so it never grows with the update rate: it stands at about one market pass. Traced every ~5 s (two traces, ~60 samples):
-  **113,345 .. 213,559**, and across the pass of 18:52:26 (154,734 rows updated) it rose by only 73,125 — the pass pruned ~81,600 of the previous pass's versions on its way.
+  pruning** (`heap_page_prune` subtracts what it reclaims), so it never grows with the update rate: it stands at about one market pass. Traced for 14 minutes (72 samples, 18:51-19:06, plus an earlier 24-sample trace):
+  **113,345 .. 254,846** between vacuums (0 right after one), and across the pass of 18:52:26 (154,734 rows updated) it rose by only 73,125 — the pass pruned ~81,600 of the previous pass's versions on its way.
   The default trigger is 50 + 0.2 × 154,734 = **30,997**: the table is above it **all the time**, so a pass begins as soon as the last one ends (+ the 60 s naptime).
 * `n_mod_since_analyze` (the analyze counter) does count HOT updates and is not reduced by pruning: +154,734 per pass (154,857 → 309,591 at 18:52:26).
 
@@ -65,7 +65,7 @@ cluster public.voyages using voyages_pkey;           -- then the same reads agai
 ```
 **Chosen N: vacuum 1,000,000, analyze 4,500,000.**
 * **Analyze 4,500,000**: it counts every change (§1.2) at 154,734 a pass → one analyze per **29.1 minutes** (was one per ~1.5). The planner's statistics are static (a fixed 246 × 629 catalogue; lookups by key).
-* **Vacuum 1,000,000** (not 4.5 M): routine churn peaks at ~214 k, so 1 M is 4.7x above anything seen (and 2.7x above one extra pinned pass, ~370 k): **no routine vacuum**. A safety net remains for what
+* **Vacuum 1,000,000** (not 4.5 M): routine churn peaks at ~255 k, so 1 M is 3.9x above anything seen (and 2.4x above one extra pinned pass, ~410 k): **no routine vacuum**. A safety net remains for what
   pruning cannot clear — a snapshot that pins several passes, or a non-HOT leak (dead index entries that only a vacuum removes): it trips within ~5 market passes of garbage. At 4.5 M that net would be a
   half-hour hole (if HOT broke entirely: 3 index entries × 154 k updates ≈ 9 MB of index growth a minute). One token to change if the coordinator disagrees.
 * **Anti-wraparound is unaffected**: `relation_needs_vacanalyze` sets `dovacuum` for `force_vacuum` (age(relfrozenxid) > `autovacuum_freeze_max_age` = 200,000,000) before it reads any threshold. Numbers (read-only):
@@ -77,7 +77,7 @@ cluster public.voyages using voyages_pkey;           -- then the same reads agai
 | xid consumption | next xid 14,505,921 (18:26:18) → 14,515,993 (18:36:05) → 14,530,726 (18:51:18) → 14,536,345 (18:56:31) = **16.8 a second**, 1.45 M a day | the database's life average (since 2026-08-20): ~0.2 M a day |
 | days to 200,000,000 with NO regular pass | 200 M / 16.8 = 11.9 M s = **138 days** | then a forced aggressive pass (112 MB, one pass) |
 | margin after the forced pass starts | 2,147,483,647 − 200,000,000 = 1.95 B xids = **3.7 years**; the failsafe is at `vacuum_failsafe_age` 1.6 B | |
-| multixacts | 9.4 a second; limit `autovacuum_multixact_freeze_max_age` 400,000,000 → 492 days | port_goods age_mxid 1,370-1,881 now |
+| multixacts | ~10 a second (9.4 / 11.1 / 10.3 over 18:36-18:51 / 18:51-19:07 / 18:36-19:07); limit `autovacuum_multixact_freeze_max_age` 400,000,000 → ~450 days | port_goods age_mxid 717-1,881 |
 
   (And a safety-net vacuum at 1 M dead versions advances `relfrozenxid` as a side effect.)
 
@@ -102,6 +102,7 @@ public/cmd/world/voyage (md5, 676 functions), the registry (84), the walls (0/0/
 **Local gates:** `node scripts/db/check-versions.mjs` OK (283, no collisions) · `BYEHARU_PREFIX_CACHE=required node scripts/db/proof.mjs standing`: 282 restored from `p0282`, 1 applied (the file's DO body),
 **283/283 with a self-assert receipt**, world-guard ok, `11_standing_route.sql` 5/5 (a second run after the last header-comment edit restored all 283 from the snapshot of the first — the cache key ignores comments, so the executed SQL is the same text) ·
 `npx playwright test tests/duplication.spec.ts` 11/11. tsc / eslint / build: not run, no TypeScript touched.
+**CI (first run, head `bad17f60`):** every check green incl. `disposable-chain` — the real Postgres 17 behind the CLI's `migration up --local` restored the 281-file snapshot, applied 0294 and `20260818000297_the_disk_gets_quiet.sql` (0.65 s) and passed the chain/ACL/lockdown steps; its `voyages` is empty, so this proves the mechanism, not the 25 k-row identity.
 **Extra local proof (scratchpad scripts, not in the repo):** the file applied to private copies of the 0294 world in two runner regimes — (A) the whole file as one multi-statement query, (B) statement by statement,
 each its own autocommit transaction (the strictest reading of the CLI pipeline) — both OK; against a synthetic prod-shaped `voyages` (25,289 rows in a 198 MB heap) the rewrite gives 25,346 → 3,162 pages in 0.65 s
 on wasm; **16 mutations** of the file (skip the ALTER, a wrong threshold, a dropped fillfactor, skip the CLUSTER, a row deleted / an index dropped / an option, constraint or trigger changed after the rewrite, another table's
@@ -115,7 +116,7 @@ exactly as found (one transaction).
 4. **The size of the read reduction** — expected, not measured: `port_goods` 43 passes / 30 min of 6-14 k blocks (~8.6 k a minute) → ~1 analyze / 29 min (~0.5 k a minute); `voyages` ~6.4 k a minute → ~0.8 k. About 13-15 k blocks a minute
    (110-125 MB a minute), a third of the 44 k a minute of my windows. The brief's own 20.7 k a minute (a quieter window) cannot be compared with it.
 5. **Row identity at scale in CI**: the chain's world has an EMPTY `voyages` (0 rows in 346 pages), so CI proves the mechanism and prod proves the 25 k rows (under the lock, at deploy).
-6. **Row order**: after CLUSTER, `voyages` is stored in `id` (uuid) order; a query that relies on the unspecified order of a seq scan without `ORDER BY` could return rows in another order. I did not audit every function.
+6. **Row order**: after CLUSTER, `voyages` is stored in `id` (uuid) order; a query that relies on the unspecified order of a seq scan without `ORDER BY` could return rows in another order. I did not audit every function; a regex scan of the live function bodies (`prosrc`) found no `select … from voyages … limit 1` statement at all (crude, but no unordered pick-one-row over this table).
 7. **Index-only scans on `voyages`** read the heap until its first autovacuum sets the map (≤ ~6 min; a 25 MB cached heap).
 8. Whether the burst credits of the disk are exhausted at the time of the deploy (decides 5 s vs 30 s of lock).
 
@@ -167,7 +168,7 @@ ok(total / mins < 0.8 * 44000, `reads ${Math.round(total / mins)} a minute again
 EOF
 rm -rf "$T"
 ```
-**A good result:** `port_goods` `reloptions` = fillfactor=30 + the four options; **`av` flat over 10 minutes (was +7)**; `aa` +0 or +1 (was +7; one per ~29 min); `n_dead_tup` between ~110 k and ~370 k and never near 1,000,000;
+**A good result:** `port_goods` `reloptions` = fillfactor=30 + the four options; **`av` flat over 10 minutes (was +7)**; `aa` +0 or +1 (was +7; one per ~29 min); `n_dead_tup` between ~110 k and ~410 k and never near 1,000,000;
 HOT share of the window's updates ≥ 95 % (was 100 %); relpages 14,374 ± 1 %; `age_xid` rising ~1,000 a minute (fine). `voyages` `relpages` **~3,000-3,500** (≈ 24-28 MB; was 25,372 / 198 MB) and shrinking with
 the retention, its indexes ~200-300 pages in all (was 3,019), its two options unchanged, `relallvisible/relpages` > 95 % after its first autovacuum (within ~10 minutes). Table reads per minute **≲ 30 k** in a window
 that includes no Stats count (44 k before), the two tables' shares 21 % + 9 % → < 3 %. `bash scripts/ops/health.sh` with no new ALERT; the market job (`drift`) no slower (11-25 s), WAL no higher.

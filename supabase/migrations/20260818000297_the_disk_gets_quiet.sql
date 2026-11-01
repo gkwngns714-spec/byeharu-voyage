@@ -19,7 +19,7 @@
 -- statistics it refreshes serve primary-key lookups that do not depend on them. Yet autovacuum has started on it 369 times and autoanalyze 305 times since the
 -- restart (23 and 20 of them in the last 30 minutes), each pass reading 6–14 k of its 14,374 pages. WHY it never rests: n_dead_tup is the number of dead versions
 -- NET OF PRUNING (heap_page_prune subtracts what it reclaims), so it stands at about one market pass and never falls under the default trigger
--- (50 + 0.2 × 154,734 = 30,997). Traced every 5 s for several minutes it ran 113,345 .. 213,559, and across the pass of 18:52:26 — 154,734 rows updated — it rose
+-- (50 + 0.2 × 154,734 = 30,997). Traced for 14 minutes (72 samples, 18:51-19:06) it ran 113,345 .. 254,846 between vacuums (0 right after one), and across the pass of 18:52:26 — 154,734 rows updated — it rose
 -- by only 73,125, because the pass pruned ~81,600 of the previous pass's versions on its way. The table is above the line ALL THE TIME, so a pass begins as soon as
 -- the last one ends.
 --
@@ -41,9 +41,9 @@
 --      fillfactor = 30 stays (ALTER … SET adds to a table's options, it does not replace them — asserted). The two numbers differ ON PURPOSE:
 --      • ANALYZE counts every change, HOT or not (n_mod_since_analyze rose by 154,734 in one pass: 154,857 → 309,591). 4,500,000 is 29 minutes of the market:
 --        one analyze every ~29 minutes instead of one every ~1.5. The statistics are static (a fixed catalogue of 246 ports × 629 goods).
---      • VACUUM counts dead versions net of pruning, which has not passed ~214 k (one more pass pinned by a long snapshot would add 154,734). A threshold of "30 minutes
+--      • VACUUM counts dead versions net of pruning, which has not passed ~255 k (one more pass pinned by a long snapshot would add 154,734). A threshold of "30 minutes
 --        of updates" (4.5 M) could never be reached — it would switch the vacuum off, and a pin or a non-HOT leak (each leaves dead index entries that only a vacuum clears)
---        would pile up unseen. 1,000,000 is 4.7x the highest routine reading: routine churn never trips it; a real leak trips it within ~5 market passes. Expected: no routine pass.
+--        would pile up unseen. 1,000,000 is 3.9x the highest routine reading: routine churn never trips it; a real leak trips it within ~5 market passes. Expected: no routine pass.
 --   B. public.voyages is rewritten in place: lock table … in access exclusive mode; the rows read; cluster public.voyages using voyages_pkey; the rows read again.
 --      Its own options (autovacuum scale factor 0, threshold 2000) stay as they are (asserted). Expected: ~3,200 pages (~25 MB), indexes ~2 MB, from 198 MB and 24 MB.
 --
@@ -52,7 +52,7 @@
 -- relation_needs_vacanalyze the force_vacuum flag sets dovacuum before the thresholds are read. Measured: age(relfrozenxid) of port_goods 1,429–4,880 (the 1.5-minute
 -- passes keep it near 0 — the only thing they buy), the oldest age in the database 14.5 M (the system catalogs), xids consumed at 16.8 a second (30,424 in 1,813 s,
 -- 18:26:18 → 18:56:31; 1.45 M a day). With no regular pass at all port_goods reaches 200,000,000 in 138 days and a freeze pass then starts by itself, 1.9 billion xids
--- short of wraparound (3.7 years at this rate; the failsafe is at 1.6 billion). Multixacts: 9.4 a second against a limit of 400,000,000 — 492 days.
+-- short of wraparound (3.7 years at this rate; the failsafe is at 1.6 billion). Multixacts: ~10 a second (9.4-11.1 in three windows) against a limit of 400,000,000 — ~450 days.
 --
 -- ── THE LOCK, AND WHAT A PLAYER SEES ──────────────────────────────────────────────────────────
 -- CLUSTER holds ACCESS EXCLUSIVE on voyages from the first read to the commit (everything else in this file is catalog-light). The same statement on port_goods in 0292 took
