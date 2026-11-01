@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { PHONE, openDetail, reachable, ready } from './appReady.fixture'
+import { PHONE, reachable, ready } from './appReady.fixture'
 
 // RANK → COUNTRIES (0148, docs/INFLUENCE.md I6): world.nation_standings / worldNationStandings — every
 // country's cities, home and won, served by the server (public.port_nation) and printed as served.
@@ -19,8 +19,7 @@ test('Rank → Countries lists every country with its home cities', async ({ pag
   await page.goto('rank')
   await ready(page)
   await page.getByRole('tab', { name: 'Countries' }).click()
-  // the board is a pop-up page (owner, 2026-10-31)
-  await openDetail(page, 'rank-open')
+  // the board stands on the glass (it was a pop-up page behind `rank-open` until the unfold slice, 2026-11-02, owner row 260)
   await expect(page.getByTestId('rank-country')).toHaveCount(Object.keys(homes).length, { timeout: 60_000 })
   const portugal = page.getByTestId('rank-country').filter({ hasText: 'Portugal' })
   await expect(portugal).toContainText(`${homes.PRT.length} home`)

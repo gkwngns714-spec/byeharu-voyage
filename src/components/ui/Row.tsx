@@ -71,7 +71,7 @@ export function Row({
   mark?: ReactNode
   /** What this row is. A string, or a small stack the caller composes. */
   label: ReactNode
-  /** What it reads — a `<Figure>`, a `<Bar>`, a word. Right-aligned, never wrapped. */
+  /** What it reads — a `<Figure>`, a `<Bar>`, a word. Stands beside the label, never wrapped. */
   value?: ReactNode
   /** Set when pressing the row OPENS something. */
   chevron?: boolean
@@ -104,15 +104,32 @@ export function Row({
   // at the top and one centred in a taller box.
   // THE FIGURE SITS BESIDE ITS LABEL (owner, 2026-11-01: *"there are empty spaces between words and
   // numbers horizontally which is in effective. make it so that htey are closer, more compact"*).
-  // Until this change the label owned a `1fr` track, so a short label pushed its figure to the far
-  // right edge — the screen was mostly gap. The tracks are now: mark · LABEL (content-sized) ·
-  // value · slack (1fr) · chevron. The slack absorbs the spare width AFTER the value, so the figure
-  // hugs the label and the chevron still stands at the right edge; a list's bars (line 2) still span
-  // the full width because they run to the last column.
-  const columns = 'auto minmax(0, auto) auto minmax(0, 1fr) auto'
+  // Until that change the label owned a `1fr` track, so a short label pushed its figure to the far
+  // right edge — the screen was mostly gap. The tracks are: mark · LABEL (content-sized) · VALUE ·
+  // slack (1fr) · chevron. The slack absorbs the spare width AFTER the value, so the figure hugs the
+  // label and the chevron still stands at the right edge; a list's bars (line 2) still span the full
+  // width because they run to the last column.
+  //
+  // TWO RULES KEEP THE HUG FROM COSTING ROOM (main red on fe610dd0, 2026-11-01: the City's desk
+  // face scrolled sideways, two buy/sell cells overlapped, the HQ book wrapped 24 px taller).
+  //  1. A GAP BELONGS TO A CELL, NOT TO A TRACK. `gap-x-3` charges 12 px between every pair of tracks
+  //     whether or not anything stands in them: five fixed tracks cost 48 px even for a row that is
+  //     one lone label, so "No gifts yet." got 72 of the hall book's 120 px and wrapped to a second
+  //     line. The shell has NO column gap; the cell that has a neighbour on its left carries `ml-3`
+  //     (the same 12 px), so an empty mark / value / chevron slot and the slack track cost nothing.
+  //  2. THE VALUE TRACK IS `max-content`, never `auto`. An `auto` track starts at its MIN-content (a
+  //     buy+sell pair of two 112-px cells is 4 px wide at min-content) and shares the free space with
+  //     the label's track, so the label took its whole width first and the pair was squeezed to
+  //     176 px with its cells drawing over each other. `max-content` reserves the value's whole width
+  //     first; the label takes what is left — as it did under the `1fr` label — and the label alone
+  //     wraps.
+  const columns = 'auto minmax(0, auto) max-content minmax(0, 1fr) auto'
   // every line-1 cell is PLACED, not auto-flowed: a value spanning two lines would otherwise be
   // auto-placed into the label's column
   const labelCol = 2
+  const chevronCol = 5
+  // the 12 px a cell keeps from the one before it (rule 1); a label and line 2 stand 12 px behind a mark
+  const afterMark = mark !== undefined ? 'ml-3' : ''
   const body = (
     <>
       {mark !== undefined && (
@@ -120,12 +137,12 @@ export function Row({
           {mark}
         </span>
       )}
-      <span className="bv-row-line min-w-0 break-words text-t-label" style={{ gridRow: 1, gridColumn: labelCol }} data-row-cell="label">
+      <span className={`bv-row-line min-w-0 break-words text-t-label ${afterMark}`} style={{ gridRow: 1, gridColumn: labelCol }} data-row-cell="label">
         {label}
       </span>
       {value !== undefined && (
         <span
-          className="bv-row-line whitespace-nowrap text-left text-t-body tabular-nums"
+          className="bv-row-line ml-3 whitespace-nowrap text-left text-t-body tabular-nums"
           style={{ gridRow: under === 'label' ? '1 / span 2' : 1, gridColumn: 3 }}
           data-row-cell="value"
         >
@@ -133,13 +150,13 @@ export function Row({
         </span>
       )}
       {chevron && (
-        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: -1 }} data-row-cell="chevron">
+        <span className="bv-row-line ml-3 flex h-6 items-center" style={{ gridRow: 1, gridColumn: chevronCol }} data-row-cell="chevron">
           <Icon name="chevron" size={20} className="text-ink-faint" />
         </span>
       )}
       {children !== undefined && children !== null && children !== false && (
         <span
-          className="min-w-0 text-t-label"
+          className={`min-w-0 text-t-label ${afterMark}`}
           style={{ gridRow: 2, gridColumn: under === 'label' ? `${labelCol} / ${labelCol + 1}` : `${labelCol} / -1` }}
         >
           {children}
@@ -149,7 +166,7 @@ export function Row({
   )
 
   const shell = [
-    'grid w-full min-h-row content-center items-start gap-x-3 py-2 text-left',
+    'grid w-full min-h-row content-center items-start py-2 text-left',
     hairline ? 'border-b border-edge' : '',
     TONE[tone],
     className,

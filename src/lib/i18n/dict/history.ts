@@ -6,6 +6,7 @@ import { defineDict } from '../define'
 export const historyDict = defineDict({
   en: {
     aFleet: 'A fleet',
+    countEntries: { one: '{n} entry', other: '{n} entries' },
     yourCompany: 'Your company',
     cargo: 'cargo',
     some: 'some',
@@ -90,6 +91,7 @@ export const historyDict = defineDict({
   },
   ko: {
     aFleet: '한 선단',
+    countEntries: { one: '{n}건', other: '{n}건' },
     yourCompany: '내 회사',
     cargo: '화물',
     some: '약간의',

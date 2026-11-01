@@ -1,4 +1,4 @@
-import { Figure, Row, SheetSection, Skeleton } from '../../components/ui'
+import { Figure, ListPanel, Row, Skeleton } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import { worldNationStandings } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
@@ -14,14 +14,16 @@ export function CountriesBoard() {
   const board = read.view
   if (!board) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
-      </div>
+      <ListPanel title={t('rank.countries')} data-testid="rank-countries">
+        <div className="space-y-2 py-1">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      </ListPanel>
     )
   }
   return (
-    <SheetSection surface data-testid="rank-countries">
+    <ListPanel title={t('rank.countCountries', { n: formatInt(board.countries.length), count: board.countries.length })} data-testid="rank-countries">
       {board.countries.map((c, i) => (
         <Row
           key={c.nation}
@@ -41,6 +43,6 @@ export function CountriesBoard() {
           </span>
         </Row>
       ))}
-    </SheetSection>
+    </ListPanel>
   )
 }

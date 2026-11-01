@@ -22,23 +22,19 @@ test('Codex → Captains: every captain carries her grade, and the Grade filter 
   await page.goto('compendium')
   await ready(page)
   await page.getByRole('tab', { name: /^Captains/i }).first().click()
-  // THE CATALOGUE IS A POP-UP PAGE (owner, 2026-10-31: *"make everything small, compact and once
-  // clicked show new page popping up"*): the face strip selects, `codex-open` opens the face's
-  // whole page, and the tiles and filters stand there. This spec used to read them in place.
-  await page.getByTestId('codex-open').click()
-  await expect(page.getByTestId('codex-open-page')).toBeVisible()
+  // THE CATALOGUE STANDS ON THE GLASS (the unfold slice, 2026-11-02: it was a pop-up page behind `codex-open`): the face
+  // strip selects, and the captains and their three filters are the Codex's own list panel.
   const tiles = page.getByTestId('officer-tile')
   await expect(tiles).toHaveCount(people.length, { timeout: 60_000 })
 
-  // the three filters are there, with the served words
-  const filters = page.getByTestId('captain-filters')
-  await expect(filters.getByRole('tablist', { name: 'Grade' })).toBeVisible()
-  await expect(filters.getByRole('tablist', { name: 'Role' }).getByRole('tab', { name: 'Exploration' })).toBeVisible()
-  await expect(filters.getByRole('tablist', { name: 'Job' }).getByRole('tab', { name: 'Gem trader' })).toBeVisible()
+  // the three filters are there, with the served words (pickers in the panel's header, one option each)
+  await expect(page.getByTestId('filter-pick-grade')).toBeVisible()
+  await expect(page.getByTestId('filter-pick-focus').locator('option', { hasText: 'Exploration' })).toHaveCount(1)
+  await expect(page.getByTestId('filter-pick-job').locator('option', { hasText: 'Gem trader' })).toHaveCount(1)
 
   // Grade S keeps exactly the S captains, and every one of them says S on its tile
   expect(sCount, 'the data holds no S captain — the filter would prove nothing').toBeGreaterThan(0)
-  await filters.getByRole('tablist', { name: 'Grade' }).getByRole('tab', { name: 'S', exact: true }).click()
+  await page.getByTestId('filter-pick-grade').selectOption('S')
   await expect(tiles).toHaveCount(sCount)
   for (const text of await tiles.allInnerTexts()) expect(text).toMatch(/\bS\b/)
 

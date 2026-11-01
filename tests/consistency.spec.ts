@@ -382,9 +382,15 @@ for (const size of SIZES) {
     await page.setViewportSize(size)
     const failures: string[] = []
     let pagesOpened = 0
+    // LIST PANELS MET (the unfold slice, 2026-11-02): a list that stands on the glass is the new unit of "a screen
+    // that rendered", beside the summary pages that are leaving by law (U1). Counted where they stand.
+    const panelsHere = () => page.locator('[data-list-panel]:visible').count()
+    let panelsMet = 0
+    let statsPanels = 0
 
     for (const route of ROUTES) {
       await screen(page, route)
+      if (route !== 'stats') panelsMet += await panelsHere()
       // THE CITY'S FIGURES ARE SERVED, NOT PLACEHOLDERS: wait for the hall read before the dash
       // sweep, or a slow first read would be mistaken for a dash where a figure is owed.
       if (route === 'city') await page.getByTestId('city-hall-scroll').waitFor({ timeout: 60_000 })
@@ -397,6 +403,7 @@ for (const size of SIZES) {
           if (!(await pressFace(page.getByRole('tablist'), face, `${size.width} stats/${face}`, failures))) continue
           await page.waitForTimeout(500)
           failures.push(...violations(await snapshot(page), `${size.width} stats/${face}`))
+          statsPanels += await panelsHere()
           pagesOpened += await walkPages(page, failures, `${size.width} stats/${face}`)
         }
       } else if (route === 'command') {
@@ -429,8 +436,14 @@ for (const size of SIZES) {
       }
     }
 
-    // NON-VACUITY: the walk must have opened many pages and met many controls.
-    expect(pagesOpened, 'the walk opened almost no pop-up pages — did the screens render?').toBeGreaterThan(15)
+    // NON-VACUITY, REWRITTEN TO THE NEW LAW (2026-11-02): this floor was "more than 15 pop-up pages opened", and
+    // Stats alone supplied 15 of them (five faces of summary rows). U1 takes those rows away — a list is on the
+    // screen, not behind a press — so the floor counts what the walk now meets: every Stats face must stand its own
+    // list panel (all five, by name), and the pages and panels together must stay a real walk. Each screen that
+    // unfolds later trades its pages for a panel here; the sum does not fall.
+    expect(statsPanels, 'the Stats faces did not each stand a list panel — are the lists back behind a press?').toBe(STATS_FACES.length)
+    panelsMet += statsPanels
+    expect(pagesOpened + panelsMet, 'the walk met almost no pages and list panels — did the screens render?').toBeGreaterThan(8)
 
     console.log(`CONSISTENCY ${size.width}×${size.height}: ${failures.length} violations`)
     for (const f of failures) console.log(`  ${f}`)
@@ -623,12 +636,11 @@ test('one home per fact: the captains board is Rank’s, the desk’s cargo door
   const titles = await page.locator('[data-summary-row]').evaluateAll((els) => els.map((e) => (e.firstElementChild?.textContent ?? '').trim()))
   if (titles.includes('Captains')) failures.push(`stats/Me: a "Captains" summary row stands (${titles.join(', ')})`)
 
-  // RANK — the board lives here, behind its own row, and it names you
+  // RANK — the board lives here, on the glass (it stood behind `rank-open` until the unfold slice, 2026-11-02, owner row
+  // 260), and it names you
   await screen(page, 'rank')
-  await page.getByTestId('rank-open').click()
-  await expect(page.getByTestId('rank-open-page')).toBeVisible()
+  await expect(page.getByTestId('rank-list')).toBeVisible()
   if ((await page.getByTestId('rank-you').count()) === 0) failures.push('rank: the captains board does not name you')
-  await page.locator('[data-detail-back]').last().click()
 
   // THE DESK — the cargo door carries no figure; the strip keeps the acting figure
   await screen(page, 'command')

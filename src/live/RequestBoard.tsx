@@ -1,4 +1,4 @@
-import { ActCell, Figure, RarityMark, Row, Clip } from '../components/ui'
+import { ActCell, Figure, GoodKind, goodClassRow, Row, Clip } from '../components/ui'
 import { useShellState } from '../app/shellState'
 import { formatDucatsDelta, formatOfTotal, formatPctDelta, formatRelative, formatUnits } from '../lib/format'
 import type { TradeRequest } from '../lib/rpc'
@@ -10,9 +10,10 @@ import { useT } from '../lib/i18n'
 //
 // docs/QUAY_LEDGER.md §3 F (owner row 76, slice 4, 2026-09-14): the reference's 의뢰 board as the
 // third face of the trade board — *"what this port pays a premium for, by when, how much is
-// already aboard"*. Each row is the board's own shape (TradeRow's): the good and its rarity mark,
-// a caption, and ONE cell where the ledger has its two — `fulfil`, carrying the premium the
-// delivery pays, dead with its reason when it cannot be pressed.
+// already aboard"*. Each row is the board's own shape (TradeRow's): the good and its marks (rarity
+// and, since 0294, premium class — `GoodKind compact`), a caption, and ONE cell where the ledger
+// has its two — `fulfil`, carrying the premium the delivery pays, dead with its reason when it
+// cannot be pressed.
 //
 // ── EVERY FIGURE IS SERVED (0087, world.contracts) ─────────────────────────────────────────────
 // The lot (`qty`), the premium as a fraction and for the whole lot (`premium_pct`,
@@ -63,10 +64,11 @@ export function RequestBoard({
         return (
           <Row
             key={r.id}
+            {...goodClassRow(r.class)}
             label={
               <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
                 <Clip>{r.name}</Clip>
-                <RarityMark rarity={r.rarity} />
+                <GoodKind compact rarity={r.rarity} goodClass={r.class} />
                 <span className="text-t-caption text-ink-faint">
                   {`· ${formatUnits(r.qty)} · ends ${formatRelative(Date.parse(r.expires_at), nowMs)}`}
                 </span>

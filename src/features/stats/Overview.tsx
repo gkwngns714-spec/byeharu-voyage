@@ -1,50 +1,74 @@
 import { useState } from 'react'
 import {
-  Bar,
-  DetailPage,
   Empty,
   FilterBar,
+  Figure,
   Hint,
+  ListPanel,
   Note,
   RankBars,
+  Segmented,
   SignedBars,
+  Skeleton,
   StackedBar,
   StatCell,
-  SummaryRow,
+  StatRun,
   deltaTone,
   oneOf,
   useFilterChoice,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import { worldStatsOverview, type StatsNow, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
-import { STATS_BARS, flowRanks, sharePct, toSeries, trendOf } from './statsFaces'
-import { MoneyLog } from './MoneyLog'
+import { worldStatsOverview, type StatsHolders, type StatsNow, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
+import { STATS_BARS, flowRanks, toSeries, trendOf } from './statsFaces'
+import { MoneyLogControls, MoneyRows } from './MoneyLog'
+import { loadMoveFilter, saveMoveFilter, sliceMoves, useMoneyFeed, type MoveFilter } from './moneyFeed'
 import { useLiveRead } from './statsLive'
+import { Block } from './StatsBlock'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
 import { ALL } from './statsFilters'
 import { WatchSection } from './Watch'
 
-// OVERVIEW — the world's money. THE COMPACT SCREEN (owner, 2026-10-31): one summary row per block,
-// its key figure on the line, a press opens the block's full-screen page (DetailPage). Nothing is
-// unfolded in place and nothing is removed — every former block lives whole on its page.
+// OVERVIEW — the world's money, ALL ON THE FACE (owner, 2026-11-01, row 260: *"everything is folded in stats this
+// is soo wrong. make it compact showing everything possible."*). It was five summary rows and 21 pages behind
+// them. It is now three blocks of figures, each with its small chart beside or under it, over ONE list panel:
+//
+//   WHO HOLDS IT   one stacked bar, the four holders' figures with their trend beside each, the purse line
+//   MONEY FLOWS    printed, burned, moved, trades; the net of each count, what was sold to and bought from cities
+//   ECONOMY WATCH  the seven figures the closed economy is judged by (Watch.tsx)
+//   THE PANEL      the money log (every move, as it happens) — or the day's money by kind
+//
+// What moved, and where (docs/dev-log/2026-11-01-unfold-stats.md §1): the old hero figure is the band's
+// `World money` (one home), its "today" is the Money flows figure; the per-holder share bars are the stacked
+// bar. Nothing else left the face. Every read is exactly what it was — asked every second (statsLive.ts).
 
 const HOURS = 24
+type View = 'moves' | 'kinds'
 
 export function OverviewFace({ live }: { live: StatsNow | null }) {
   const t = useT()
   const { span } = useChartSpan()
   const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span)
   const v = read.view
-  const [page, setPage] = useState<'money' | 'new' | null>(null)
 
   if (read.loading && !v) return <Waiting />
   if (!v) return <Note tone="danger">{t('stats.worldFailed')}</Note>
   if (!v.holders || !v.period) {
     return <Empty data-testid="stats-empty">{t('stats.noFigures')}</Empty>
   }
-  const h = v.holders
+  return <OverviewReady live={live} v={v} holders={v.holders} />
+}
+
+/** The face once the world's figures have answered. The money feed is read from here — for as long as the
+ *  face stands, whichever view the panel shows — exactly as the money log's row was (it mounted when this
+ *  answer did, not before); the drip keeps what it holds across a switch of view. */
+function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: StatsOverview; holders: StatsHolders }) {
+  const t = useT()
+  const feed = useMoneyFeed()
+  const [view, setView] = useState<View>('moves')
+  const [filter, setFilter] = useState<MoveFilter>(loadMoveFilter)
+  const [choice, choose] = useFilterChoice('stats.overview', { side: ALL })
   const day = v.day
   const holders = [
     { id: 'players', label: t('stats.players'), value: h.players, tone: 'accent' as const },
@@ -54,126 +78,177 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
   ]
   const newMoney = day === null ? null : day.minted - day.removed
   const totals = toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside)
+  const side = oneOf(choice.side, SIDES, ALL)
+
+  const moves = feed.view === null ? null : sliceMoves(feed.view, filter)
+  const chooseMoves = (f: MoveFilter) => {
+    setFilter(f)
+    saveMoveFilter(f)
+  }
+
+  const above = (
+    <>
+      <Block
+        title={t('stats.byHolder')}
+        aside={
+          <StatsChart
+            look="line"
+            title={t('stats.purseSeries')}
+            points={totals}
+            format={formatDucats}
+            label={t('stats.purseSeries')}
+            tone="accent"
+          />
+        }
+        data-testid="stats-money"
+      >
+        <StackedBar parts={holders} format={formatDucats} label={t('stats.byHolder')} legend={false} />
+        <div className="mt-1 grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-x-4 gap-y-1">
+          {holders.map((x) => (
+            <StatCell
+              key={x.id}
+              label={x.label}
+              value={x.value}
+              format={formatDucats}
+              size="body"
+              trend={trendOf(v.series, (p) => p[x.id as 'players' | 'merchants' | 'cities' | 'set_aside'])}
+              trendBeside
+              data-testid="stats-holder"
+            />
+          ))}
+        </div>
+      </Block>
+
+      <Block
+        title={t('stats.newMoney')}
+        figure={<Figure value={formatDucatsDelta(newMoney ?? 0)} tone={deltaTone(newMoney ?? 0)} />}
+        data-testid="stats-new-money"
+      >
+        <StatRun>
+          <StatCell inline label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
+          <StatCell inline label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
+          <StatCell inline label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} size="body" />
+          <StatCell inline label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} size="body" />
+        </StatRun>
+        <div className="mt-1 grid grid-cols-3 gap-x-3">
+          <div className="min-w-0">
+            <span className="block text-t-caption text-ink-faint">{t('stats.netShort')}</span>
+            <SignedBars
+              bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
+              label={t('stats.netBars')}
+              height="h-7 lg:h-10"
+              className="mt-1"
+            />
+          </div>
+          <StatsChart
+            title={t('stats.soldCities')}
+            points={toSeries(v.series, (p) => p.sold)}
+            format={formatDucats}
+            label={t('stats.soldSeries')}
+            tone="info"
+          />
+          <StatsChart
+            title={t('stats.boughtCities')}
+            points={toSeries(v.series, (p) => p.bought)}
+            format={formatDucats}
+            label={t('stats.boughtSeries')}
+            tone="accent"
+          />
+        </div>
+      </Block>
+
+      <WatchSection watch={live?.watch} />
+    </>
+  )
 
   return (
-    <div data-testid="stats-overview" data-span={v.span ?? ''}>
-      <div className="mt-2 flex flex-col gap-2">
-        <SummaryRow title={t('stats.money')} figure={formatDucats(h.total)} word={t('common.open')} onClick={() => setPage('money')} data-testid="stats-money" />
-        <MoneyLog />
-        <SummaryRow title={t('stats.newMoney')} figure={formatDucatsDelta(newMoney ?? 0)} word={t('common.open')} onClick={() => setPage('new')} data-testid="stats-new-money" />
-        <WatchSection watch={live?.watch} />
-        <FlowsByKind day={day} period={v.period} />
-      </div>
-
-      {page === 'money' && (
-        <DetailPage title={t('stats.money')} figure={formatDucats(h.total)} onClose={() => setPage(null)} data-testid="stats-money-page">
-          <StatCell
-            label={t('stats.everyPurse')}
-            value={h.total}
-            format={formatDucats}
-            size="hero"
-            delta={newMoney === null ? undefined : { text: t('stats.today', { amount: formatDucatsDelta(newMoney) }), tone: deltaTone(newMoney) }}
+    <ListPanel
+      above={above}
+      face={{ 'data-testid': 'stats-overview', 'data-span': v.span ?? '' }}
+      controls={
+        <>
+          <Segmented
+            segments={[
+              { id: 'moves', label: t('stats.moves') },
+              { id: 'kinds', label: t('stats.lastDay') },
+            ]}
+            value={view}
+            onChange={setView}
+            label={t('feed.heading')}
+            columns={2}
+            className="shrink-0"
           />
-          <StackedBar parts={holders} format={formatDucats} label={t('stats.byHolder')} legend={false} className="mt-3" />
-          <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-            {holders.map((x) => (
-              <StatCell
-                key={x.id}
-                label={x.label}
-                value={x.value}
-                format={formatDucats}
-                size="body"
-                trend={trendOf(v.series, (p) => p[x.id as 'players' | 'merchants' | 'cities' | 'set_aside'])}
-                data-testid="stats-holder"
-              >
-                <Bar pct={sharePct(x.value, h.total)} tone={x.tone} label={t('stats.shareOf', { who: x.label })} className="mt-1" />
-              </StatCell>
-            ))}
-          </div>
-          <StatsChart title={t('stats.purseSeries')} points={totals} format={formatDucats} label={t('stats.purseSeries')} tone="accent" className="mt-4" empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>} />
-        </DetailPage>
+          {view === 'moves' ? (
+            <MoneyLogControls filter={filter} onFilter={chooseMoves} total={moves?.base.length ?? 0} counts={moves?.counts ?? new Map()} />
+          ) : (
+            <FilterBar
+              compact
+              data-testid="stats-flows-filters"
+              sort={{
+                id: 'side',
+                label: t('stats.filterLabel'),
+                options: SIDES.map((id) => ({
+                  id,
+                  label: t(id === ALL ? 'stats.all' : id === 'minted' ? 'stats.flowNew' : id === 'removed' ? 'stats.flowBurned' : 'stats.flowMoved'),
+                })),
+                value: side,
+                onChange: (id) => choose({ side: id }),
+              }}
+            />
+          )}
+        </>
+      }
+      data-testid={view === 'moves' ? 'money-log' : 'stats-flows'}
+    >
+      {view === 'moves' ? (
+        feed.view === null ? (
+          feed.loading ? <Skeleton className="my-1 h-10 w-full" /> : <Empty className="my-1">{t('feed.none')}</Empty>
+        ) : (
+          <MoneyRows rows={moves?.rows ?? []} />
+        )
+      ) : (
+        <Kinds day={day} period={v.period} side={side} />
       )}
-
-      {page === 'new' && (
-        <DetailPage title={t('stats.newMoney')} figure={formatDucatsDelta(newMoney ?? 0)} onClose={() => setPage(null)} data-testid="stats-new-money-page">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-            <StatCell label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} size="body" tone="success" />
-            <StatCell label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} size="body" tone="danger" />
-            <StatCell label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} size="body" />
-            <StatCell label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} size="body" />
-          </div>
-          <SignedBars bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))} label={t('stats.netBars')} height="h-20" className="mt-4" />
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('stats.soldCities')}</span>
-              <StatsChart title={t('stats.soldCities')} points={toSeries(v.series, (p) => p.sold)} format={formatDucats} label={t('stats.soldSeries')} tone="info" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('stats.boughtCities')}</span>
-              <StatsChart title={t('stats.boughtCities')} points={toSeries(v.series, (p) => p.bought)} format={formatDucats} label={t('stats.boughtSeries')} tone="accent" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
-            </div>
-          </div>
-        </DetailPage>
-      )}
-    </div>
+    </ListPanel>
   )
 }
 
 const SIDES = [ALL, 'minted', 'removed', 'moved'] as const
 
-/** The two periods' money by kind under one filter of its side (0244, owner row 228). The filter is
- *  a tile grid on the compact screen; each period is a summary row that opens its own page. */
-function FlowsByKind({ day, period }: { day: StatsPeriod | null; period: StatsPeriod | null }) {
+/** The two periods' money by kind under one filter of its side (0244, owner row 228): the day's, then the
+ *  count's — each a heading and its ranked bars, in the panel. */
+function Kinds({ day, period, side }: { day: StatsPeriod | null; period: StatsPeriod | null; side: string }) {
   const t = useT()
-  const [choice, choose] = useFilterChoice('stats.overview', { side: ALL })
-  const side = oneOf(choice.side, SIDES, ALL)
-  if ((day?.flows.length ?? 0) === 0 && (period?.flows.length ?? 0) === 0) return null
+  if ((day?.flows.length ?? 0) === 0 && (period?.flows.length ?? 0) === 0) return <Empty className="my-1">{t('stats.noFigures')}</Empty>
   return (
     <>
-      <FilterBar
-        className="mt-2"
-        data-testid="stats-flows-filters"
-        chips={{
-          label: t('stats.filterLabel'),
-          options: SIDES.map((id) => ({
-            id,
-            label: t(id === ALL ? 'stats.all' : id === 'minted' ? 'stats.flowNew' : id === 'removed' ? 'stats.flowBurned' : 'stats.flowMoved'),
-          })),
-          value: side,
-          onChange: (id) => choose({ side: id }),
-        }}
-      />
       <Flows heading={t('stats.lastDay')} period={day} side={side} testid="stats-flows-day" />
       <Flows heading={t('stats.sinceCount')} period={period} side={side} testid="stats-flows-period" />
     </>
   )
 }
 
-/** A period of money by kind: a summary row with the kind count; its page holds the ranked bars. */
+/** A period of money by kind: its heading and the ranked bars. */
 function Flows({ heading, period, side, testid }: { heading: string; period: StatsPeriod | null; side: string; testid: string }) {
-  const t = useT()
-  const [open, setOpen] = useState(false)
   if (!period || period.flows.length === 0) return null
   const flows = side === ALL ? period.flows : period.flows.filter((f) => f.side === side)
   if (flows.length === 0) return null
   return (
-    <>
-      <SummaryRow title={heading} figure={formatInt(flows.length)} word={t('common.open')} onClick={() => setOpen(true)} data-testid={testid} />
-      {open && (
-        <DetailPage title={heading} figure={formatInt(flows.length)} onClose={() => setOpen(false)} data-testid={`${testid}-page`}>
-          <RankBars rows={flowRanks(flows)} format={formatDucatsDelta} />
-        </DetailPage>
-      )}
-    </>
+    <div data-testid={testid}>
+      <Hint className="pt-1">
+        {heading} · {formatInt(flows.length)}
+      </Hint>
+      <RankBars rows={flowRanks(flows)} format={formatDucatsDelta} />
+    </div>
   )
 }
 
 function Waiting() {
   return (
     <div className="space-y-3" data-testid="stats-waiting">
-      <div className="h-24 w-full animate-pulse rounded-tile bg-surface" />
-      <div className="h-32 w-full animate-pulse rounded-tile bg-surface" />
-      <div className="h-12 w-2/3 animate-pulse rounded-tile bg-surface" />
+      <Skeleton className="h-24 w-full" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-12 w-2/3" />
     </div>
   )
 }

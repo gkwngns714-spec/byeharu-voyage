@@ -1,13 +1,11 @@
 import { useState } from 'react'
 import {
-  DetailPage,
   Figure,
   IconDisc,
+  ListPanel,
   Row,
   Segmented,
   Sheet,
-  SheetSection,
-  SummaryRow,
   Tray,
   type IconName,
   type TrayDetent,
@@ -20,9 +18,10 @@ import { headline, payloadFights, payloadLines } from './headline'
 import { useLocale, useT, type TKey } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
 
-// LEDGER — the running record. THE COMPACT SCREEN (owner, 2026-10-31): the four faces are a tile
-// grid and the feed is one summary row with its entry count; a press opens the feed's own full-
-// screen page (every row, the report tray on a row). Nothing removed; nothing unfolds in place.
+// LEDGER — the running record, ON THE GLASS (owner, 2026-11-01, row 260: *"make things unfolded, minimize
+// scrolling"*). It was the four faces over one summary row (`History 50 · Open`) with the feed behind a press;
+// it is now the four faces over ONE list panel: the entries, newest first, scrolling inside it. A row with a
+// report keeps its chevron and opens the report tray, as it always did. Nothing removed.
 
 type Face = 'all' | 'trade' | 'voyage' | 'crew'
 
@@ -82,7 +81,6 @@ function LedgerBody({ title }: { title: string }) {
   const [face, setFace] = useState<Face>('all')
   const [open, setOpen] = useState<LedgerEvent | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
-  const [page, setPage] = useState(false)
 
   const shown = face === 'all' ? events : events.filter((e) => FACE_OF[e.kind] === face)
   const portName = (code: string) => portNameOf(portByCode, code)
@@ -92,46 +90,42 @@ function LedgerBody({ title }: { title: string }) {
     setOpen(event)
     setDetent('half')
   }
-  const closePage = () => {
-    setPage(false)
-    setOpen(null)
-    setDetent('closed')
-  }
 
   return (
-    <Sheet title={title} data-testid="ledger">
-      <Segmented segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))} value={face} onChange={setFace} label={title} className="mb-3 w-fit" />
-      <SummaryRow title={title} figure={formatInt(shown.length)} word={t('common.open')} onClick={() => setPage(true)} data-testid="ledger-open" />
-
-      {page && (
-        <DetailPage title={title} figure={formatInt(shown.length)} onClose={closePage} data-testid="ledger-open-page">
-          {shown.length === 0 ? (
-            <Row label={events.length === 0 ? t('codex.nothingYet') : t('codex.nothingHere')} tone="muted" hairline={false} />
-          ) : (
-            <SheetSection surface>
-              {shown.map((event) => {
-                const atMs = Date.parse(event.at)
-                const report = payloadLines(event.payload)
-                return (
-                  <Row
-                    key={event.id}
-                    data-testid="ledger-row"
-                    mark={<IconDisc name={markOf(event.kind)} />}
-                    label={headline(event, portName)}
-                    value={movement(event.ducats_delta)}
-                    chevron={report.length > 0}
-                    onClick={report.length > 0 ? () => show(event) : undefined}
-                  >
-                    <span className="block text-t-caption tabular-nums text-ink-faint">
-                      {Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}
-                    </span>
-                  </Row>
-                )
-              })}
-            </SheetSection>
-          )}
-        </DetailPage>
-      )}
+    <Sheet title={title} fill data-testid="ledger">
+      <Segmented
+        segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))}
+        value={face}
+        onChange={setFace}
+        label={title}
+        className="mb-1 w-fit max-w-full shrink-0"
+      />
+      <ListPanel title={t('history.countEntries', { n: formatInt(shown.length), count: shown.length })} data-testid="ledger-list">
+        {shown.length === 0 ? (
+          <Row label={events.length === 0 ? t('codex.nothingYet') : t('codex.nothingHere')} tone="muted" hairline={false} />
+        ) : (
+          shown.map((event, i) => {
+            const atMs = Date.parse(event.at)
+            const report = payloadLines(event.payload)
+            return (
+              <Row
+                key={event.id}
+                data-testid="ledger-row"
+                mark={<IconDisc name={markOf(event.kind)} />}
+                label={headline(event, portName)}
+                value={movement(event.ducats_delta)}
+                chevron={report.length > 0}
+                onClick={report.length > 0 ? () => show(event) : undefined}
+                hairline={i < shown.length - 1}
+              >
+                <span className="block text-t-caption tabular-nums text-ink-faint">
+                  {Number.isFinite(atMs) ? formatClock(atMs) : '--:--'}
+                </span>
+              </Row>
+            )
+          })
+        )}
+      </ListPanel>
 
       {open !== null && (
         <Tray detent={detent} onDetentChange={setDetent} title={headline(open, portName)} data-testid="ledger-report">

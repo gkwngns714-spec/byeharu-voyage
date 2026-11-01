@@ -211,13 +211,14 @@ for (const size of SIZES) {
       else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
       else pagesMeasured += await walkPages(page, size)
 
-      // 3c. A PAGE KEEPS ITS INFORMATION: the New and moved money page draws its figures.
+      // 3c. A FACE KEEPS ITS INFORMATION WHERE IT STANDS (the unfold slice, 2026-11-02, owner row 260: Stats has no
+      // summary rows any more — U1): the day's money flows draw their figures and net bars ON the Overview, with no
+      // press. The walk above ends on the Overview, so that is the face on the glass.
       if (route === 'stats') {
-        await page.getByTestId('stats-new-money').click()
-        await expect(page.getByTestId('stats-new-money-page')).toBeVisible()
-        await expect(page.getByTestId('stats-new-money-page').locator('[role="img"]').first(), 'the New and moved money page drew no figures').toBeVisible({ timeout: 30_000 })
-        await page.locator('[data-detail-back]').last().click()
-        await expect(page.locator('[data-detail-page]')).toHaveCount(0)
+        const flows = page.getByTestId('stats-new-money')
+        await expect(flows, 'the Money flows block is not on the Overview').toBeVisible()
+        await expect(flows.locator('[role="img"]').first(), 'the Money flows block drew no figures').toBeVisible({ timeout: 30_000 })
+        expect(await page.locator('[data-detail-page]').count(), 'the Stats Overview opened a page').toBe(0)
       }
     }
 
