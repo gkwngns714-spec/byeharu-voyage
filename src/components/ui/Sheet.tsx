@@ -115,6 +115,7 @@ export function SheetSection({
   heading,
   trailing,
   surface = false,
+  inline = false,
   children,
   className = '',
   ...rest
@@ -124,15 +125,19 @@ export function SheetSection({
   trailing?: ReactNode
   /** Seat the section's rows on one `surface` panel. Rows only — never tiles (see above). */
   surface?: boolean
+  /** THE SECTION IS ONE SMALL CONTROL (a switch of two or three words), so its heading and the control stand on ONE line, the control right behind
+   *  the word, and drop under it only when the two do not fit (2026-11-02, the Profile at 320×640: Language and Appearance were 92 px each for a
+   *  44-px control and a 24-px word — 80 px that pushed the sign-out card onto the rail). Two callers: Language and Appearance. */
+  inline?: boolean
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
   // IN A TRAY the panel steps up to `surface-2` (trayContext.ts): a tray is itself `surface`.
   const panel = useInTray() ? 'bg-surface-2' : 'bg-surface'
   return (
-    <section className={`mt-4 first:mt-2 ${className}`} {...rest}>
+    <section className={`mt-4 first:mt-2 ${inline ? 'flex flex-wrap items-center gap-x-3 gap-y-2' : ''} ${className}`} {...rest}>
       {(heading !== undefined || trailing !== undefined) && (
-        <div className="mb-2 flex min-h-8 items-center justify-between gap-3">
+        <div className={`${inline ? '' : 'mb-2'} flex min-h-8 items-center justify-between gap-3`}>
           {heading !== undefined && <h2 className="text-t-body font-semibold text-ink">{heading}</h2>}
           {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
         </div>

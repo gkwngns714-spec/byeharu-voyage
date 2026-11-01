@@ -95,11 +95,11 @@ export function ProfileScreen() {
 
       {/* ONE WORD FOR LANGUAGE: the switch's own accessible name is `common.language`; this
           heading read `profile.language`, a second key for the same idea (the audit, 2026-10-31). */}
-      <SheetSection heading={t('common.language')}>
+      <SheetSection heading={t('common.language')} inline>
         <LanguageSwitch className="w-fit" />
       </SheetSection>
 
-      <SheetSection heading={t('profile.appearance')}>
+      <SheetSection heading={t('profile.appearance')} inline>
         <Segmented
           segments={APPEARANCES.map((a) => ({ id: a.id, label: t(`profile.${a.label}` as TKey) }))}
           value={appearance}
