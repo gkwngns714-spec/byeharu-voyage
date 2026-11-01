@@ -1,26 +1,24 @@
 import { useState } from 'react'
 import {
   Button,
-  DetailPage,
+  Clip,
   Empty,
   FactsLine,
   FilterBar,
   Figure,
   Flag,
-  Hint,
+  ListPanel,
   Note,
   RankBars,
   Row,
-  SheetSection,
+  Segmented,
   Skeleton,
   StackedBar,
   StatCell,
-  SummaryRow,
   deltaTone,
-  type RankRow,
-  Clip,
   oneOf,
   useFilterChoice,
+  type RankRow,
 } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt, formatPct } from '../../lib/format'
 import { useT } from '../../lib/i18n'
@@ -28,16 +26,19 @@ import { worldStatsMerchants, type StatsMerchantHouse, type StatsMerchants } fro
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
+import { Block } from './StatsBlock'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
 import { ALL, MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 
-// MERCHANTS — the companies the world keeps. THE COMPACT SCREEN (owner, 2026-10-31): the four day
-// figures stand; the fleet chart, the two day boards and the company list are summary rows with
-// their key figures, each opening its own full-screen page.
+// MERCHANTS — the companies the world keeps, ALL ON THE FACE (owner, 2026-11-01, row 260). It was four day
+// figures and four summary rows (the fleets' chart, the best day, the worst day, every company), each
+// opening a page. It is now the figures and where the fleets are, with their two small charts, over ONE
+// list panel with three views of the same companies: every company (with its country and its sort), the
+// five best days and the five worst. None is behind a page; a press on the strip changes what the panel lists.
 
 const FIRST = 60
-type Page = 'charts' | 'top' | 'bottom' | 'all' | null
+type View = 'companies' | 'best' | 'worst'
 
 export function MerchantsFace() {
   const t = useT()
@@ -47,7 +48,7 @@ export function MerchantsFace() {
   const nationByCode = useWorld((s) => s.nationByCode)
   const [choice, choose] = useFilterChoice('stats.merchants', { country: ALL, sort: 'richest' })
   const [all, setAll] = useState(false)
-  const [page, setPage] = useState<Page>(null)
+  const [view, setView] = useState<View>('companies')
 
   if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
   if (!v) return <Note tone="danger">{t('stats.merchantsFailed')}</Note>
@@ -83,91 +84,104 @@ export function MerchantsFace() {
   const rows = sortMerchants(country === ALL ? list : list.filter((h) => h[1] === country), sort)
   const shown = all ? rows : rows.slice(0, FIRST)
 
-  const allTitle = t('stats.everyCompany')
-  const topTitle = t('stats.bestDay')
-  const bottomTitle = t('stats.worstDay')
-
-  return (
-    <div data-testid="stats-merchants">
-      <SheetSection heading={t('stats.companiesFleets', { houses: formatInt(v.houses), fleets: formatInt(v.fleets ?? 0) })}>
-        <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-          <StatCell label={t('stats.earned24')} value={v.profit_day ?? 0} format={formatDucatsDelta} size="body" tone={deltaTone(v.profit_day ?? 0)} trend={v.series.map((p) => p.profit_day)} />
+  const above = (
+    <>
+      <Block title={t('stats.companiesFleets', { houses: formatInt(v.houses), fleets: formatInt(v.fleets ?? 0) })} data-testid="stats-merchant-figures">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(9.5rem,1fr))] gap-x-4 gap-y-1">
+          <StatCell
+            label={t('stats.earned24')}
+            value={v.profit_day ?? 0}
+            format={formatDucatsDelta}
+            size="body"
+            tone={deltaTone(v.profit_day ?? 0)}
+            trend={v.series.map((p) => p.profit_day)}
+            trendBeside
+          />
           <StatCell label={t('stats.lapsLost')} value={(v.losing_pct ?? 0) / 100} format={(x) => formatPct(x, 1)} size="body" tone={(v.losing_pct ?? 0) > 50 ? 'danger' : 'ink'} />
           <StatCell label={t('stats.lapsClosed')} value={v.laps_day ?? 0} format={formatInt} size="body" />
-          <StatCell label={t('stats.theirPurses')} value={v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} />
+          <StatCell label={t('stats.theirPurses')} value={v.purse ?? 0} format={formatDucats} size="body" trend={v.series.map((p) => p.purse)} trendBeside />
         </div>
-      </SheetSection>
+      </Block>
 
-      <div className="mt-2 flex flex-col gap-2">
-        <SummaryRow title={t('stats.whereFleets')} figure={formatInt(v.fleets ?? 0)} word={t('common.open')} onClick={() => setPage('charts')} data-testid="stats-merchant-fold" />
-        <SummaryRow title={topTitle} figure={formatDucatsDelta(v.top?.[0]?.day ?? 0)} word={t('common.open')} onClick={() => setPage('top')} data-testid="stats-merchants-top" />
-        <SummaryRow title={bottomTitle} figure={formatDucatsDelta(v.bottom?.[0]?.day ?? 0)} word={t('common.open')} onClick={() => setPage('bottom')} data-testid="stats-merchants-bottom" />
-        {list.length > 0 && (
-          <SummaryRow title={allTitle} figure={formatInt(rows.length)} word={t('common.open')} onClick={() => setPage('all')} data-testid="stats-merchants-all" />
-        )}
-      </div>
+      <Block title={t('stats.whereFleets')} figure={formatInt(v.fleets ?? 0)} data-testid="stats-merchant-fold">
+        <StackedBar parts={states} format={formatInt} label={t('stats.whereFleets')} data-testid="stats-merchant-states" />
+        <div className="mt-1 grid grid-cols-2 gap-x-3">
+          <StatsChart title={t('stats.earnedDay')} points={toSeries(v.series, (p) => p.profit_day)} format={formatDucats} label={t('stats.earnedLabel')} tone="info" />
+          <StatsChart title={t('stats.fleetsAtSea')} points={toSeries(v.series, (p) => p.sailing)} format={formatInt} label={t('stats.atSeaLabel')} tone="accent" />
+        </div>
+      </Block>
+    </>
+  )
 
-      {page === 'charts' && (
-        <DetailPage title={t('stats.whereFleets')} figure={formatInt(v.fleets ?? 0)} onClose={() => setPage(null)} data-testid="stats-merchant-fold-page">
-          <StackedBar parts={states} format={formatInt} label={t('stats.whereFleets')} data-testid="stats-merchant-states" />
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('stats.earnedDay')}</span>
-              <StatsChart title={t('stats.earnedDay')} points={toSeries(v.series, (p) => p.profit_day)} format={formatDucats} label={t('stats.earnedLabel')} tone="info" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('stats.fleetsAtSea')}</span>
-              <StatsChart title={t('stats.fleetsAtSea')} points={toSeries(v.series, (p) => p.sailing)} format={formatInt} label={t('stats.atSeaLabel')} tone="accent" empty={<Hint className="mt-2">{t('stats.lineSoon')}</Hint>} />
-            </div>
-          </div>
-        </DetailPage>
-      )}
-
-      {page === 'top' && (
-        <DetailPage title={topTitle} figure={formatDucatsDelta(v.top?.[0]?.day ?? 0)} onClose={() => setPage(null)} data-testid="stats-merchants-top-page">
-          <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
-        </DetailPage>
-      )}
-
-      {page === 'bottom' && (
-        <DetailPage title={bottomTitle} figure={formatDucatsDelta(v.bottom?.[0]?.day ?? 0)} onClose={() => setPage(null)} data-testid="stats-merchants-bottom-page">
-          <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />
-        </DetailPage>
-      )}
-
-      {page === 'all' && (
-        <DetailPage title={allTitle} figure={formatInt(rows.length)} onClose={() => setPage(null)} data-testid="stats-merchants-all-page">
-          <FilterBar
-            className="mb-2"
-            data-testid="stats-merchants-filters"
-            picks={[
-              {
-                id: 'country',
-                label: t('stats.country'),
-                options: [{ id: ALL, label: t('stats.allCountries') }, ...countries],
-                value: country,
-                onChange: (id) => choose({ country: id }),
-              },
+  return (
+    <ListPanel
+      above={above}
+      face={{ 'data-testid': 'stats-merchants' }}
+      controls={
+        <>
+          <Segmented
+            segments={[
+              { id: 'companies', label: t('stats.companies') },
+              { id: 'best', label: t('stats.bestDay') },
+              { id: 'worst', label: t('stats.worstDay') },
             ]}
-            sort={{
-              id: 'sort',
-              label: t('stats.sortLabel'),
-              options: MERCHANT_SORTS.map((id) => ({
-                id,
-                label: t(id === 'richest' ? 'stats.richest' : id === 'earned' ? 'stats.bestEarned' : id === 'laps' ? 'stats.mostLaps' : id === 'fleet' ? 'stats.biggestFleet' : 'stats.name'),
-              })),
-              value: sort,
-              onChange: (id) => choose({ sort: id }),
-            }}
+            value={view}
+            onChange={setView}
+            label={t('stats.everyCompany')}
+            columns={3}
+            className="shrink-0"
           />
-          {rows.length === 0 && <Empty data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
+          {view === 'companies' && (
+            <>
+              <FilterBar
+                compact
+                data-testid="stats-merchants-filters"
+                picks={[
+                  {
+                    id: 'country',
+                    label: t('stats.country'),
+                    options: [{ id: ALL, label: t('stats.allCountries') }, ...countries],
+                    value: country,
+                    onChange: (id) => choose({ country: id }),
+                  },
+                ]}
+              />
+              <FilterBar
+                compact
+                data-testid="stats-merchants-sort"
+                sort={{
+                  id: 'sort',
+                  label: t('stats.sortLabel'),
+                  options: MERCHANT_SORTS.map((id) => ({
+                    id,
+                    label: t(id === 'richest' ? 'stats.richest' : id === 'earned' ? 'stats.bestEarned' : id === 'laps' ? 'stats.mostLaps' : id === 'fleet' ? 'stats.biggestFleet' : 'stats.name'),
+                  })),
+                  value: sort,
+                  onChange: (id) => choose({ sort: id }),
+                }}
+              />
+            </>
+          )}
+        </>
+      }
+      data-testid={view === 'companies' ? 'stats-merchants-all' : view === 'best' ? 'stats-merchants-top' : 'stats-merchants-bottom'}
+    >
+      {view === 'best' && <RankBars rows={houses(v.top ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />}
+      {view === 'worst' && <RankBars rows={houses(v.bottom ?? [])} format={formatDucatsDelta} empty={t('stats.noLaps')} />}
+      {view === 'companies' && (
+        <>
+          {rows.length === 0 && (
+            <Empty className="my-1" data-testid="stats-no-match">
+              {t('stats.noMatch')}
+            </Empty>
+          )}
           {shown.map(([name, nation, purse, fleets, day, laps], i) => (
             <Row
               key={name}
               mark={nation === null ? undefined : <Flag code={nation} name={nationNameOf(nationByCode, nation)} size="body" />}
               label={<Clip>{name}</Clip>}
               value={<Figure value={formatDucats(purse)} />}
-              hairline={i < shown.length - 1}
+              hairline={i < shown.length - 1 || (!all && rows.length > FIRST)}
               data-testid="stats-merchant"
             >
               <FactsLine>
@@ -178,14 +192,14 @@ export function MerchantsFace() {
             </Row>
           ))}
           {!all && rows.length > FIRST && (
-            <div className="pt-3">
+            <div className="py-2">
               <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-merchants-show-all">
                 {t('stats.showAll')}
               </Button>
             </div>
           )}
-        </DetailPage>
+        </>
       )}
-    </div>
+    </ListPanel>
   )
 }

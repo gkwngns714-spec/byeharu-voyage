@@ -58,7 +58,7 @@ export const feedDict = defineDict({
     c_FOUNDING: 'Founding',
   },
   ko: {
-    heading: '돈의 흐름',
+    heading: '돈 기록',
     none: '아직 없음.',
     you: '나',
     filter: '거르기',

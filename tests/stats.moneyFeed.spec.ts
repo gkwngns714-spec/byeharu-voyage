@@ -2,14 +2,15 @@ import { test, expect, type Page } from '@playwright/test'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
-import { closeDetail, openDetail, ready, reachable } from './appReady.fixture'
+import { ready, reachable } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
 
-// THE MONEY LOG (0235, owner row 219): every money move beside World money. Since the owner's
-// 2026-10-31 compact-screen law it is ONE summary row on Stats; a press opens its full-screen page,
-// where the sector grid and the live rows stand. This proof buys a lot on the quay, opens Stats,
-// opens the log's page, and finds YOUR row (a drop) and the CITY's row (a gain), filters, and the
-// page's own no-scroll law at the phone and the wide desk.
+// THE MONEY LOG (0235, owner row 219): every money move beside World money. Since the unfold slice
+// (2026-11-02, owner row 260: *"everything is folded in stats"*) it is the Overview's own list panel — its rows
+// stand on the face, and the 13 sector tiles of the old page are one select that carries the same counts.
+// This proof buys a lot on the quay, opens Stats, and finds YOUR row (a drop) and the CITY's row (a gain)
+// in the panel, filters them through the select, and holds the panel to the no-scroll law at the phone
+// and the wide desk.
 
 let litImage: Buffer | null = null
 
@@ -51,7 +52,7 @@ async function buyOne(page: Page): Promise<void> {
 const noSideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)
 
-test('Stats › the money log page shows my buy in red and the city’s side in green', async ({ page, request, baseURL }, testInfo) => {
+test('Stats › the money log panel shows my buy in red and the city’s side in green', async ({ page, request, baseURL }, testInfo) => {
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   const world = await litWorld()
@@ -65,9 +66,8 @@ test('Stats › the money log page shows my buy in red and the city’s side in 
 
   await page.getByTestId('nav-bar').getByText('Stats').click()
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
-  // the log is a compact summary row; a press opens its page
-  await openDetail(page, 'money-log')
-  const log = page.getByTestId('money-log-page')
+  // the log is the Overview's list panel: its rows are there, nothing to open
+  const log = page.getByTestId('money-log')
   await expect(log).toBeVisible({ timeout: 30_000 })
 
   // MY BUY: a drop, red, mine
@@ -84,36 +84,35 @@ test('Stats › the money log page shows my buy in red and the city’s side in 
   await expect(city.first()).toContainText('Sold')
   await expect(city.first().locator('.text-success')).toHaveCount(1)
 
-  // THE FILTERS ARE THE ORDERED GRID (owner, 2026-10-31) on the page; a sector press filters.
-  await log.getByTestId('money-chip-bought').click()
+  // THE SECTOR IS ONE SELECT in the panel's header (it was 13 tiles on a page); each option carries its count.
+  const sector = log.getByTestId('filter-pick-sector')
+  await sector.selectOption('bought')
   await expect(mine.first()).toBeVisible()
   await expect(log.locator('[data-testid="money-move"][data-holder="city"]')).toHaveCount(0)
-  await log.getByTestId('money-chip-supplies').click()
+  await sector.selectOption('supplies')
   await expect(log.locator('[data-testid="money-move"][data-kind="BUY"]')).toHaveCount(0)
   expect(await page.evaluate(() => localStorage.getItem('bv:moneylog-filter'))).toContain('supplies')
-  await log.getByTestId('money-chip-all').click()
+  await sector.selectOption('all')
   await expect(mine.first()).toBeVisible({ timeout: 30_000 })
 
-  // THE PAGE ITSELF DOES NOT SCROLL; its body does. The document/Sheet behind are fixed.
-  const pageBox = await page.evaluate(() => {
-    const pg = document.querySelector('[data-detail-page]') as HTMLElement
+  // THE TAB IS FLAT; THE LIST SCROLLS INSIDE ITS PANEL: the Sheet and the document do not move, and the panel's
+  // own body is the one box that may (unfold slice, U2).
+  const flat = await page.evaluate(() => {
+    const sheet = document.querySelector('[data-sheet]') as HTMLElement
+    const body = document.querySelector('[data-testid="money-log"] [data-list-body]') as HTMLElement
     const de = document.documentElement
-    return { h: pg.scrollHeight, ch: pg.clientHeight, top: pg.scrollTop, docH: de.scrollHeight, docCh: de.clientHeight }
+    return { sh: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop, docH: de.scrollHeight, docCh: de.clientHeight, body: body.scrollHeight - body.clientHeight }
   })
-  expect(pageBox.top, 'the money log page is already scrolled').toBe(0)
-  expect(pageBox.h, `the money log page itself scrolls: ${pageBox.h} > ${pageBox.ch}`).toBeLessThanOrEqual(pageBox.ch + 1)
-  expect(pageBox.docH, 'the document scrolls behind the page').toBeLessThanOrEqual(pageBox.docCh + 1)
+  expect(flat.top, 'the Stats sheet is already scrolled').toBe(0)
+  expect(flat.sh, `the Stats sheet itself scrolls: ${flat.sh} > ${flat.ch}`).toBeLessThanOrEqual(flat.ch + 1)
+  expect(flat.docH, 'the document scrolls').toBeLessThanOrEqual(flat.docCh + 1)
+  expect(flat.body, 'the money log panel does not scroll — are its rows all there?').toBeGreaterThan(0)
   expect(await noSideways(page), 'the page scrolls sideways at 390').toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('money-log-page-phone.png') })
+  await page.screenshot({ path: testInfo.outputPath('money-log-panel-phone.png') })
 
-  // WIDE: the same page, full screen, still no sideways scroll.
+  // WIDE: the same panel, beside the figures, still no sideways scroll.
   await page.setViewportSize({ width: 1280, height: 900 })
   await expect(mine.first()).toBeVisible()
   expect(await noSideways(page), 'the page scrolls sideways at 1280').toBe(true)
-  await page.screenshot({ path: testInfo.outputPath('money-log-page-wide.png') })
-
-  // BACK REVEALS THE COMPACT SCREEN UNTOUCHED.
-  await closeDetail(page)
-  await expect(page.getByTestId('stats-overview')).toBeVisible()
-  expect(await noSideways(page), 'the compact screen scrolls sideways after the back press').toBe(true)
+  await page.screenshot({ path: testInfo.outputPath('money-log-panel-wide.png') })
 })

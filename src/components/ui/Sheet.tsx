@@ -35,6 +35,7 @@ import { useInTray } from './trayContext'
 export function Sheet({
   title,
   trailing,
+  fill = false,
   children,
   className = '',
   ...rest
@@ -43,6 +44,10 @@ export function Sheet({
   title: ReactNode
   /** ONE control, on the title's line — a `Segmented`, a `Chip`, a `Button`. Never two. */
   trailing?: ReactNode
+  /** THE GLASS IS THE LIST'S (unfold slice, 2026-11-01): the body fills the height under the title, so a
+   *  `ListPanel` takes what the screen leaves free and the tab itself never scrolls. Off for every tab
+   *  whose content is its own height. */
+  fill?: boolean
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
@@ -58,7 +63,7 @@ export function Sheet({
         const next = (e.currentTarget.scrollTop ?? 0) > 26
         if (next !== pinned) setPinned(next)
       }}
-      className={`bv-scroll h-full overflow-y-auto ${className}`}
+      className={`bv-scroll h-full overflow-y-auto ${fill ? 'flex flex-col' : ''} ${className}`}
       data-sheet=""
       {...rest}
     >
@@ -66,7 +71,9 @@ export function Sheet({
         data-testid="sheet-header"
         data-pinned={pinned}
         className={[
-          'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter pb-2 pt-3',
+          'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter',
+          // A FILLED SHEET'S TITLE LINE IS 8 px SHORTER: the glass under it belongs to the list.
+          fill ? 'shrink-0 pb-1 pt-2' : 'pb-2 pt-3',
           sheetColumnClass(),
           // AT REST THE TITLE STANDS ON THE WORLD; PINNED, IT IS A BAR. Measured on the gallery at
           // 390×844 (shots dark-1/light-1): an always-opaque header reads as a title bar even at
@@ -82,7 +89,7 @@ export function Sheet({
       </header>
       {/* THE READABLE COLUMN. On a phone it is the glass; from `lg` it is SHEET_REM at most with
           the tray's space kept clear at its right — screenLayout.ts, "the wide glass". */}
-      <div className={sheetBodyClass()}>{children}</div>
+      <div className={sheetBodyClass(fill)}>{children}</div>
     </div>
   )
 }
