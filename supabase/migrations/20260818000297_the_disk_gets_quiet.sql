@@ -24,11 +24,12 @@
 -- the last one ends.
 --
 -- ── voyages: WHY IT IS REWRITTEN ───────────────────────────────────────────────────────────────
--- 25,372 pages (198 MB) for 22.7–25.2 k live rows (the brief's count: 24,932 ARRIVED history, 359 SAILING, 156 ABORTED; the live count FALLS ~80 a minute, ~156 deleted
--- against ~70 inserted) whose column widths (pg_stats) sum to ~980 B a row, ~26 MB, ~3,200 pages: 8x bloat. Its four indexes hold 3,019 pages for ~25 k entries (the
--- primary key 1,221 pages where ~90 would do, voyages_fleet_ended_0249 1,759 where ~110 would). Every autoanalyze reads the whole heap (its 30,000-row sample is larger
--- than the table) and every autovacuum a heap pass and the four index passes: 77 vacuums and 30 analyzes since the restart, 5 and 5 of them in the last 30 minutes,
--- 70,478 block reads in the 11 minutes polled. The rewrite is CLUSTER on the primary key because that is the only FULL index (the other three are partial, and CLUSTER
+-- 25,372 pages (198 MB) for 21,359 live rows (exact count at 19:17; the brief had 25,447 an hour earlier — 24,932 ARRIVED history, 359 SAILING, 156 ABORTED — and the cumulative
+-- counters say ~150 deleted and ~73 inserted a minute: the table is draining). Column widths (pg_stats) sum to ~980 B a row, so CLUSTER's full packing needs ~2,700 pages (~21 MB)
+-- (~3,200 at the brief's 25 k rows): 8-9x bloat. (n_live_tup is only an estimate here: 22,055 at 19:07, 39,358 at 19:17 after a vacuum of the bloated heap.) Its four indexes
+-- hold 3,019 pages for ~21-25 k entries (the primary key 1,221 pages where ~80-90 would do, voyages_fleet_ended_0249 1,759 where ~100-110 would). Every autoanalyze reads the
+-- whole heap (its 30,000-row sample is larger than the table) and every autovacuum a heap pass and the four index passes: 80 vacuums and 33 analyzes since the restart (19:17),
+-- a pair every ~6 minutes, 70,478 block reads in the 11 minutes polled. The rewrite is CLUSTER on the primary key because that is the only FULL index (the other three are partial, and CLUSTER
 -- refuses a partial index).
 --
 -- ── NOT IN THIS FILE ──────────────────────────────────────────────────────────────────────────
@@ -45,7 +46,7 @@
 --        of updates" (4.5 M) could never be reached — it would switch the vacuum off, and a pin or a non-HOT leak (each leaves dead index entries that only a vacuum clears)
 --        would pile up unseen. 1,000,000 is 3.9x the highest routine reading: routine churn never trips it; a real leak trips it within ~5 market passes. Expected: no routine pass.
 --   B. public.voyages is rewritten in place: lock table … in access exclusive mode; the rows read; cluster public.voyages using voyages_pkey; the rows read again.
---      Its own options (autovacuum scale factor 0, threshold 2000) stay as they are (asserted). Expected: ~3,200 pages (~25 MB), indexes ~2 MB, from 198 MB and 24 MB.
+--      Its own options (autovacuum scale factor 0, threshold 2000) stay as they are (asserted). Expected: ~2,700 pages (~21 MB), indexes ~2 MB, from 198 MB and 24 MB.
 --
 -- ── ANTI-WRAPAROUND IS NOT AFFECTED BY ANY OF THIS ─────────────────────────────────────────────
 -- autovacuum starts a freeze pass on any table whose age(relfrozenxid) passes autovacuum_freeze_max_age (200,000,000) whatever its thresholds say: in
@@ -71,7 +72,7 @@
 --   (e) public.voyages keeps its own options, its constraints, the foreign keys in and out, and its trigger;
 --   (f) every OTHER relation's options, every function in public/cmd/world/voyage (md5), the registry, the walls (0/0/0) and both owner switches as found.
 --   Printed, never asserted: the heap and index sizes before and after, the age of port_goods' relfrozenxid, the seconds under the lock. The chain's own world has an EMPTY voyages (0 rows,
---   346 dead pages), so CI proves the mechanism (lock, CLUSTER inside a DO block, the rebuilds, the options) and prod proves the row identity at 25 k rows under the lock.
+--   346 dead pages), so CI proves the mechanism (lock, CLUSTER inside a DO block, the rebuilds, the options) and prod proves the row identity at ~21 k rows under the lock.
 -- ROLLBACK (forward, a NEW migration, never an edit): alter table public.port_goods reset (autovacuum_vacuum_scale_factor, autovacuum_vacuum_threshold,
 --   autovacuum_analyze_scale_factor, autovacuum_analyze_threshold); — the voyages rewrite is not undone and needs no undo (a compact table is the goal; CLUSTER again if it bloats again).
 -- VERSION: 0297 — prod head 0294 today. 0295 (stats-period) and 0296 (reconcile-wall) are other branches' migrations and deploy first; this file deploys AFTER 0296.

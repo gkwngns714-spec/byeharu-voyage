@@ -36,18 +36,19 @@ CLUSTER's duration; `pg_stat_progress_vacuum` / `pg_stat_activity` / `pg_statio_
   The default trigger is 50 + 0.2 × 154,734 = **30,997**: the table is above it **all the time**, so a pass begins as soon as the last one ends (+ the 60 s naptime).
 * `n_mod_since_analyze` (the analyze counter) does count HOT updates and is not reduced by pruning: +154,734 per pass (154,857 → 309,591 at 18:52:26).
 
-### 1.3 `voyages` — 8x bloat, and the most expensive single reader per pass
-* 25,372 pages (198 MB); `pg_stats` column widths sum to **977-983 B** a row (`path` jsonb 746 B, `speed_profile` 96 B, the rest ~140 B); live rows 25,169 (18:26) → **22,330** (19:00): the
-  retention deletes ~156 a minute against ~70 inserted. At 90 % fill that is **~3,200 pages (~25 MB)** — 7.9x. Synthetic check, a 25,289-row table in a 198 MB heap rewritten
-  by this file's code: **3,162 pages (24.7 MB)**, indexes 18.9 MB → 1.9 MB.
-* Indexes: 4, **3,019 pages** (23.6 MB) for ~25 k entries: `voyages_pkey (id)` 1,221 pages (≈90 needed), `voyages_fleet_ended_0249 (fleet_id, eta) WHERE status <> 'SAILING'` 1,759 (≈110),
+### 1.3 `voyages` — 8-9x bloat, and the most expensive single reader per pass
+* 25,372 pages (198 MB); `pg_stats` column widths sum to **977-983 B** a row (`path` jsonb 746 B, `speed_profile` 96 B, the rest ~140 B); **21,359 live rows, exact** (19:17:30, 445 SAILING; the brief had 25,447 an hour earlier). The cumulative counters give ~150 deleted and ~73 inserted a minute
+  (`n_tup_del` 49,057 → 56,682 and `n_tup_ins` 26,727 → 30,459 between 18:26 and 19:17): the table is draining. `n_live_tup` is only an ESTIMATE here (22,055 at 19:07, **39,358** at 19:17 after a vacuum of
+  the bloated heap) and is not relied on. CLUSTER packs pages full: ~7.9 rows a page → **~2,700 pages (~21 MB)** for 21.4 k rows, ~3,200 for the brief's 25.4 k — 8-9x. Synthetic check, a 25,289-row
+  table in a 198 MB heap rewritten by this file's code: **3,162 pages (24.7 MB)**, indexes 18.9 MB → 1.9 MB.
+* Indexes: 4, **3,019 pages** (23.6 MB) for ~21-25 k entries: `voyages_pkey (id)` 1,221 pages (≈80-90 needed), `voyages_fleet_ended_0249 (fleet_id, eta) WHERE status <> 'SAILING'` 1,759 (≈100-110),
   `voyages_due_at` 28, `voyages_one_sailing_per_fleet` 11. **Only the primary key is a full index** (CLUSTER refuses a partial one), so `CLUSTER … USING voyages_pkey`.
 * Options `{autovacuum_vacuum_scale_factor=0, autovacuum_vacuum_threshold=2000}`; 2 foreign keys IN (`voyage_events`, `insured_voyages`, ON DELETE CASCADE), 4 out (ports ×2, fleet, player), 5 checks, trigger
   `voyages_keep_due_at`; no publication, no dependent view, an empty TOAST table.
 * **77 autovacuums and 30 autoanalyzes** since 09:34 (**5 and 5 in the last 30 minutes**). An ANALYZE samples min(30,000 rows, all blocks) so on a 25,372-page table it reads **every
   page**; a vacuum pass was watched in `pg_stat_progress_vacuum` (18:38:35-18:38:59: scanning heap → vacuuming indexes → vacuuming heap, ~25 s) and the table's read counters then rose by 31,681 (the
   flush landed 25 s after the pass). Two vacuums in the 11 min poll = 70,478 reads (6.4 k a minute, 14.5 % of the table reads of that window).
-* After the rewrite each pass costs ~1/8 of that (heap 3.2 k pages, indexes ~240).
+* After the rewrite each pass costs ~1/8 of that (heap ~2.7-3.2 k pages, indexes ~230).
 
 ### 1.4 What the brief got wrong (so it is not rebuilt on)
 * **`price_history_hour` is not bloated** and is NOT in this file: **246,321 rows** in 3,697 pages (66 a page, 174 hours of history). The "14 k live rows" was `n_live_tup`, which restarted from 0
@@ -115,9 +116,9 @@ exactly as found (one transaction).
 3. **That no routine autovacuum runs on `port_goods` afterwards** — derived from the traces (§1.2), not observed with the options in place. The after-check decides it (10 minutes).
 4. **The size of the read reduction** — expected, not measured: `port_goods` 43 passes / 30 min of 6-14 k blocks (~8.6 k a minute) → ~1 analyze / 29 min (~0.5 k a minute); `voyages` ~6.4 k a minute → ~0.8 k. About 13-15 k blocks a minute
    (110-125 MB a minute), a third of the 44 k a minute of my windows. The brief's own 20.7 k a minute (a quieter window) cannot be compared with it.
-5. **Row identity at scale in CI**: the chain's world has an EMPTY `voyages` (0 rows in 346 pages), so CI proves the mechanism and prod proves the 25 k rows (under the lock, at deploy).
+5. **Row identity at scale in CI**: the chain's world has an EMPTY `voyages` (0 rows in 346 pages), so CI proves the mechanism and prod proves the ~21 k rows (under the lock, at deploy).
 6. **Row order**: after CLUSTER, `voyages` is stored in `id` (uuid) order; a query that relies on the unspecified order of a seq scan without `ORDER BY` could return rows in another order. I did not audit every function; a regex scan of the live function bodies (`prosrc`) found no `select … from voyages … limit 1` statement at all (crude, but no unordered pick-one-row over this table).
-7. **Index-only scans on `voyages`** read the heap until its first autovacuum sets the map (≤ ~6 min; a 25 MB cached heap).
+7. **Index-only scans on `voyages`** read the heap until its first autovacuum sets the map (≤ ~6 min; a ~21 MB cached heap).
 8. Whether the burst credits of the disk are exhausted at the time of the deploy (decides 5 s vs 30 s of lock).
 
 ## 6. PROD CHECKS (read-only) — before the deploy, and the AFTER-CHECK
@@ -152,7 +153,7 @@ console.log('table'.padEnd(26), 'reads/min'.padStart(10), 'share'.padStart(6), '
 for (const r of rows.sort((x, y) => y.reads - x.reads).slice(0, 10)) console.log(r.t.padEnd(26), String(Math.round(r.reads / mins)).padStart(10), (Math.round(1000 * r.reads / total) / 10 + '%').padStart(6), String(r.av).padStart(8), String(r.aa).padStart(8), String(r.dead).padStart(10), (r.upd ? Math.round(100 * r.hot / r.upd) + '%' : '-').padStart(6), String(r.pages).padStart(7))
 const pg = b.find(r => r.relname === 'port_goods'), vo = b.find(r => r.relname === 'voyages')
 console.log('\nport_goods reloptions:', JSON.stringify(pg.reloptions), ' age(relfrozenxid):', pg.age_xid, ' last autovacuum:', pg.last_autovacuum, ' last autoanalyze:', pg.last_autoanalyze)
-console.log(`voyages: ${vo.relpages} pages = ${(vo.relpages * 8 / 1024).toFixed(1)} MB heap (before: 25,372 pages = 198 MB), all-visible ${vo.relallvisible}/${vo.relpages}, live ${vo.n_live_tup}, reloptions ${JSON.stringify(vo.reloptions)}`)
+console.log(`voyages: ${vo.relpages} pages = ${(vo.relpages * 8 / 1024).toFixed(1)} MB heap (before: 25,372 pages = 198 MB), all-visible ${vo.relallvisible}/${vo.relpages}, live (an ESTIMATE) ${vo.n_live_tup}, reloptions ${JSON.stringify(vo.reloptions)}`)
 console.log('voyages indexes (pages; before: pkey 1221, fleet_ended 1759, due_at 28, one_sailing 11):', idx.map(i => i.idx.replace('public.', '') + '=' + i.relpages).join('  '))
 const P = rows.find(r => r.t === 'port_goods'), V = rows.find(r => r.t === 'voyages')
 console.log('\nVERDICT (what a good result is):')
@@ -162,14 +163,14 @@ ok(P.av === 0, `port_goods autovacuums in the window: ${P.av} (was ~7 per 10 min
 ok(P.aa <= 1, `port_goods autoanalyzes in the window: ${P.aa} (was ~7 per 10 min; one per ~29 min expected)`)
 ok(P.upd > 0 && P.hot / P.upd >= 0.95, `port_goods updates HOT: ${P.upd ? Math.round(100 * P.hot / P.upd) : '-'} % of ${P.upd} (was 100 %)`)
 ok(P.dead < 1000000, `port_goods n_dead_tup ${P.dead} (routine 110 k-215 k; a pass starts at 1,000,000)`)
-ok(vo.relpages < 12000, `voyages heap ${vo.relpages} pages (25,372 before; the rewrite expects ~3,000-3,500, less as retention deletes)`)
+ok(vo.relpages < 12000, `voyages heap ${vo.relpages} pages (25,372 before; the rewrite expects ~2,500-3,300, less as retention deletes)`)
 ok(JSON.stringify(vo.reloptions) === JSON.stringify(['autovacuum_vacuum_scale_factor=0', 'autovacuum_vacuum_threshold=2000']), 'voyages kept its own two options')
 ok(total / mins < 0.8 * 44000, `reads ${Math.round(total / mins)} a minute against ~44,000 before (expected ~30,000 or less in a comparable window; the Stats count at :06/:21/:36/:51 adds ~10,000 in its minute)`)
 EOF
 rm -rf "$T"
 ```
 **A good result:** `port_goods` `reloptions` = fillfactor=30 + the four options; **`av` flat over 10 minutes (was +7)**; `aa` +0 or +1 (was +7; one per ~29 min); `n_dead_tup` between ~110 k and ~410 k and never near 1,000,000;
-HOT share of the window's updates ≥ 95 % (was 100 %); relpages 14,374 ± 1 %; `age_xid` rising ~1,000 a minute (fine). `voyages` `relpages` **~3,000-3,500** (≈ 24-28 MB; was 25,372 / 198 MB) and shrinking with
+HOT share of the window's updates ≥ 95 % (was 100 %); relpages 14,374 ± 1 %; `age_xid` rising ~1,000 a minute (fine). `voyages` `relpages` **~2,500-3,300** (≈ 20-26 MB; was 25,372 / 198 MB; 21,359 live rows at 19:17) and shrinking with
 the retention, its indexes ~200-300 pages in all (was 3,019), its two options unchanged, `relallvisible/relpages` > 95 % after its first autovacuum (within ~10 minutes). Table reads per minute **≲ 30 k** in a window
 that includes no Stats count (44 k before), the two tables' shares 21 % + 9 % → < 3 %. `bash scripts/ops/health.sh` with no new ALERT; the market job (`drift`) no slower (11-25 s), WAL no higher.
 **A bad result:** `av` of `port_goods` still climbing (the options did not land: read `reloptions`); HOT < 80 % (a long snapshot is pinning — find it in `pg_stat_activity`); `n_dead_tup` > 1 M (a pass will run; look for the pin);
