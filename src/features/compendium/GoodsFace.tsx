@@ -1,13 +1,11 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import {
   Figure,
   Icon,
+  ListPanel,
   Note,
   RarityMark,
   Row,
-  SheetSection,
-  Tile,
-  TileField,
   Tray,
   categoryLabel,
   goodIcon,
@@ -20,7 +18,7 @@ import { useWorld } from '../../live/worldStore'
 import { NoAnswer } from './NoAnswer'
 import { useT } from '../../lib/i18n'
 
-// THE GOODS FACE — every good this world trades, grouped under its kind, one figure a tile.
+// THE GOODS FACE — every good this world trades, grouped under its kind, one figure a row, ON THE GLASS.
 //
 // THE KIND IS A HEADING, NOT A CHIP. The snapshot serves goods by CODE (0009:96), which interleaves
 // the seven kinds; sorting on two served fields is presentation, not authorship. The heading says
@@ -30,10 +28,13 @@ import { useT } from '../../lib/i18n'
 // ONE FIGURE. Base is the figure the catalogue exists to carry; bulk, spoilage and the cultures
 // that refuse a good are in the tray, and a good that keeps or is traded everywhere simply has no
 // such row — a dash is not a figure.
+//
+// A ROW, NOT A TILE (the unfold slice, 2026-11-02): the 629 goods stand in the Codex's list panel, ten and
+// more of them on a phone, each a 44-px row that opens its tray. The tray is the item's detail, as it was.
 
 const EMPTY: readonly SnapshotGood[] = []
 
-export function GoodsFace({ query }: { query: string }) {
+export function GoodsFace({ query, search }: { query: string; search: ReactNode }) {
   const t = useT()
   const snapshot = useWorld((s) => s.snapshot)
   const goods = snapshot?.goods ?? EMPTY
@@ -56,32 +57,44 @@ export function GoodsFace({ query }: { query: string }) {
     }
     return out
   }, [goods, query])
-
-  if (groups.length === 0) return <NoAnswer />
+  const total = groups.reduce((n, g) => n + g.rows.length, 0)
 
   return (
     <>
-      {groups.map((group) => (
-        <SheetSection key={group.category} heading={categoryLabel(group.category)}>
-          <TileField>
-            {group.rows.map((g) => (
-              <Tile
-                key={g.code}
-                mark={<Icon name={goodIcon(g.code, g.category)} size={20} />}
-                name={g.name}
-                meta={g.rarity ? <RarityMark rarity={g.rarity} size={10} withWord /> : undefined}
-                figure={<Figure value={anchor(g.base_value)} unit={COIN} />}
-                tap="whole"
-                onClick={() => {
-                  setDetent('half')
-                  setOpen(g)
-                }}
-                data-testid="good-tile"
-              />
-            ))}
-          </TileField>
-        </SheetSection>
-      ))}
+      <ListPanel title={t('codex.countGoods', { n: formatInt(total), count: total })} trailing={search} data-testid="codex-list">
+        {groups.length === 0 ? (
+          <NoAnswer />
+        ) : (
+          groups.map((group) => (
+            <Fragment key={group.category}>
+              <span className="block pt-2 text-t-caption font-semibold text-ink-muted" data-testid="good-kind">
+                {categoryLabel(group.category)}
+              </span>
+              {group.rows.map((g) => (
+                <Row
+                  key={g.code}
+                  mark={<Icon name={goodIcon(g.code, g.category)} size={20} />}
+                  label={
+                    // THE NAME IS NEVER CUT: it wraps at its spaces, and the rarity word drops under it when the two do not
+                    // fit one line — a short name keeps one 44-px line, a long one (or a 320-px glass) takes a second.
+                    <span className="flex flex-wrap items-center gap-x-2">
+                      <span>{g.name}</span>
+                      {g.rarity && <RarityMark rarity={g.rarity} size={10} withWord />}
+                    </span>
+                  }
+                  value={<Figure value={anchor(g.base_value)} unit={COIN} />}
+                  chevron
+                  onClick={() => {
+                    setDetent('half')
+                    setOpen(g)
+                  }}
+                  data-testid="good-tile"
+                />
+              ))}
+            </Fragment>
+          ))
+        )}
+      </ListPanel>
 
       {open && (
         <Tray

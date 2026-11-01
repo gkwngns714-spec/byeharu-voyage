@@ -289,58 +289,52 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A LIST OF THINGS IS A FIELD, NOT A COLUMN OF LINES
+// THE CODEX'S LISTS STAND ON THE GLASS, ONE ENTRY A LINE (the unfold slice, 2026-11-02)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// The owner, 2026-08-26: *"i told trade goods to be in grid like shape - organized not in lines.
-// Yet this also did not occur."* SAID TWICE — the first telling (2026-08-23, "make trade goods in
-// blocks as well, not all alligned in sentences — horizontally") converted MARKET and the
-// compendium's GOODS face and stopped there, and nothing in this repo could tell that it had
-// stopped. Three lists were still one entry per full-width line, MEASURED on the running build at
-// 390px before this spec existed:
-//
-//   · COMMAND's BUY/SELL good picker  — 243 goods as 324px rows, a list 44,212px tall. The
-//     biggest list of trade goods in the game and the only one you actually buy from.
-//   · the compendium's SHIPS face     — a ten-column table 680px wide inside a 332px box, so six
-//     of a hull's ten figures sat behind a sideways swipe.
-//   · the compendium's CAPTAINS face  — every officer a 324px block, 107px tall.
-//
-// So the rule gets a measurement instead of a paragraph. A FIELD means: at 390px, at least two
-// entries share a row. That is the whole assertion, and it is the one thing prose could not
-// enforce. It cannot be satisfied by a wrapper, a class name or a comment — only by two boxes with
-// the same top and different lefts.
-//
-// WHAT IT DELIBERATELY DOES NOT CLAIM. It says nothing about how TALL a tile is, and nothing about
-// the NATIONS face, which is a three-column code→name lookup that measured 324px inside a 332px
-// box — it fits, it does not scroll, and it is a lookup rather than a catalogue of entities. Two
-// tiles abreast would make it twice as tall and no denser. That one stays a table, on purpose.
+// RETARGETED. This block used to hold the owner's 2026-08-23/26 GRID rule for the catalogue faces — *"i told
+// trade goods to be in grid like shape - organized not in lines"* — as `maxPerRow ≥ 2` and `tileWidth < 220`.
+// The owner has spoken since, twice: 2026-10-31 (*"make everything small, compact and once clicked show new
+// page popping up"*, which put the whole catalogue behind one `Goods 629 · Open` row) and 2026-11-01 (*"everything
+// is folded … make things unfolded, minimize scrolling, everything compact with full info"*, row 260 and
+// docs/dev-log/2026-11-01-ui-unfold.md U1: a list is on the screen, not behind a press). The approved shape is
+// ONE `ListPanel` of `Row`s, so — as QUAY_LEDGER did for ports on 2026-09-11 — the two grid assertions are
+// replaced by their honest opposites (an entry a line, a row as wide as the panel) and the owner's NEW law is
+// asserted in their place: the face's rows stand in a panel INSIDE THE GLASS with at least N of them whole
+// before any press, and the page does not shear sideways. It cannot be satisfied by a wrapper or a comment:
+// the rows are measured against the panel's own body.
 const FIELDS = [
-  // GOODS ARE HERE EVEN THOUGH THEY ALREADY PASS, and that is the point: this face converted on
-  // 2026-08-23 and had no assertion, which is exactly why nobody noticed that its two siblings had
-  // not. A guard that only covers the thing that broke will let the next one break silently.
-  { tab: 'compendium', face: 'Goods', testId: 'good-tile', noun: 'goods' },
-  { tab: 'compendium', face: 'Ships', testId: 'ship-tile', noun: 'ship classes' },
-  { tab: 'compendium', face: 'Captains', testId: 'officer-tile', noun: 'officers' },
+  // N is the least that "unfolded" means at 390×844; measured on the canary world: Goods 12, Ships 6, Captains 9 whole
+  // rows (the floor sits well under it, since a live world's longer names and fact lines make the rows taller).
+  { tab: 'compendium', face: 'Goods', testId: 'good-tile', noun: 'goods', rows: 8 },
+  { tab: 'compendium', face: 'Ships', testId: 'ship-tile', noun: 'ship classes', rows: 4 },
+  { tab: 'compendium', face: 'Captains', testId: 'officer-tile', noun: 'officers', rows: 4 },
 ] as const
 
-/** HOW MANY ENTRIES SHARE A ROW. Self-contained on purpose: Playwright ships the source of this
- *  function into the page, so it may not reach anything outside itself (the same rule
- *  nav.geometry.spec.ts's MEASURE keeps). Tiles are grouped by their top edge, which is what "on
- *  the same line" actually means — no class name, no container, no wrapper can fake it. */
+/** HOW MANY ENTRIES STAND WHOLE IN THE PANEL, AND ON HOW MANY LINES. Self-contained on purpose: Playwright
+ *  ships the source of this function into the page, so it may not reach anything outside itself (the same
+ *  rule nav.geometry.spec.ts's MEASURE keeps). Entries are grouped by their top edge, which is what "on the
+ *  same line" actually means — no class name, no container, no wrapper can fake it. */
 const MEASURE_FIELD = (testId: string) => {
+  const body = document.querySelector('[data-testid="codex-list"] [data-list-body]') as HTMLElement | null
   const tiles = [...document.querySelectorAll(`[data-testid="${testId}"]`)] as HTMLElement[]
   const perRow = new Map<number, number>()
   for (const t of tiles) {
     const top = Math.round(t.getBoundingClientRect().top)
     perRow.set(top, (perRow.get(top) ?? 0) + 1)
   }
+  const b = body?.getBoundingClientRect()
+  const whole = b ? tiles.filter((t) => t.getBoundingClientRect().top >= b.top - 1 && t.getBoundingClientRect().bottom <= b.bottom + 1).length : 0
   const first = tiles[0]?.getBoundingClientRect()
   return {
+    panel: body !== null && b !== undefined && b.height > 0 && b.top >= 0 && b.bottom <= window.innerHeight + 1,
     tiles: tiles.length,
+    whole,
     maxPerRow: perRow.size === 0 ? 0 : Math.max(...perRow.values()),
     rows: perRow.size,
     tileWidth: first ? Math.round(first.width) : 0,
     tileHeight: first ? Math.round(first.height) : 0,
+    bodyWidth: b ? Math.round(b.width) : 0,
     pageScrollW: document.documentElement.scrollWidth,
     pageClientW: document.documentElement.clientWidth,
   }
@@ -355,7 +349,7 @@ const MEASURE_OFFSETS = (testId: string) =>
   }))
 
 for (const field of FIELDS) {
-  test(`COMPENDIUM ${field.face}: ${field.noun} stand in a field, not in lines, at ${PHONE.width}px`, async ({
+  test(`COMPENDIUM ${field.face}: ${field.noun} stand on the glass, one a line, no press, at ${PHONE.width}px`, async ({
     page,
     request,
     baseURL,
@@ -368,11 +362,7 @@ for (const field of FIELDS) {
     await page.goto(field.tab)
     await ready(page)
     await page.getByRole('tab', { name: new RegExp(`^${field.face}`, 'i') }).first().click()
-    await page.waitForTimeout(400)
-    // THE CATALOGUE IS A POP-UP PAGE (owner, 2026-10-31): the face strip selects, the summary opens.
-    await page.getByTestId('codex-open').click()
-    await expect(page.getByTestId('codex-open-page')).toBeVisible()
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(500)
 
     const report = await page.evaluate(MEASURE_FIELD, field.testId)
     console.log(`${field.face} @${PHONE.width}px: ${JSON.stringify(report)}`)
@@ -380,16 +370,13 @@ for (const field of FIELDS) {
     // NON-VACUITY, the floor every check in this file carries: a face that rendered nothing would
     // pass "no entry is on a line of its own" by having no entries.
     expect(report.tiles, `no [data-testid="${field.testId}"] found — did the face render?`).toBeGreaterThan(1)
-    expect(
-      report.maxPerRow,
-      `every ${field.noun} entry is on a line of its own — ${report.tiles} tiles, ` +
-        `widest row ${report.maxPerRow}. The owner asked for a grid twice; ` +
-        `compose <TileField> (src/components/ui/Tile.tsx), do not write a second grid.`,
-    ).toBeGreaterThanOrEqual(2)
-    // A tile that is nearly the whole body is a line wearing a border.
-    expect(report.tileWidth, `a tile is ${report.tileWidth}px wide — that is a row, not a tile`).toBeLessThan(220)
+    expect(report.panel, 'the list panel is not inside the glass').toBe(true)
+    // THE LAW: the list is on the screen, with its rows whole, before any press.
+    expect(report.whole, `${report.whole} whole ${field.noun} stand in the panel; the law is ${field.rows}`).toBeGreaterThanOrEqual(field.rows)
+    // THE HONEST OPPOSITES of the old grid assertions: one entry a line, as wide as the panel's padded body.
+    expect(report.maxPerRow, `${field.noun} stand ${report.maxPerRow} to a line — a row is one`).toBe(1)
+    expect(report.tileWidth, `a row is ${report.tileWidth}px of a ${report.bodyWidth}px panel body`).toBeGreaterThanOrEqual(report.bodyWidth - 28)
     expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
-    await page.locator('[data-detail-back]').last().click()
   })
 }
 
