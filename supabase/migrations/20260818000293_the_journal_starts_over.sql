@@ -16,7 +16,7 @@
 -- used (`p_seed = true`) does exactly this from an empty journal. No player-owned row, ledger line, event, order or stats HISTORY row is
 -- read for deletion: the history tables (stats_world/_good/_city/_city_goods/_merchants) are NOT touched.
 --
--- ── WHAT CHANGES (this transaction) ────────────────────────────────────────────────────────────
+-- ── WHAT CHANGES (one DO block, so one transaction; see the note inside it) ────────────────────────────────────────────────────────────
 --   lock table public.stats_live_deltas in access exclusive mode;     -- writers wait, nothing is lost: they commit AFTER this
 --   truncate public.stats_live_deltas;                                 -- the 2.1 M rows go (instant; the heap file is dropped)
 --   update public.stats_live set counted_through = clock_timestamp();  -- "trades since the count" starts now: its windows are empty
@@ -42,8 +42,8 @@
 -- ── 0. GUARD ────────────────────────────────────────────────────────────────────────────────────
 do $guard$
 begin
-  perform set_config('statement_timeout', '10min', true);
-  perform set_config('lock_timeout', '5s', true);
+  perform set_config('statement_timeout', '10min', false);
+  perform set_config('lock_timeout', '5s', false);
   if to_regclass('public.stats_live_deltas') is null or to_regclass('public.stats_live') is null then
     raise exception '0293 refuses: public.stats_live or public.stats_live_deltas is not in this world';
   end if;
@@ -53,7 +53,7 @@ begin
 end $guard$;
 
 -- ── 1. AS FOUND ─────────────────────────────────────────────────────────────────────────────────
-create temp table before_0293 on commit drop as
+create temp table before_0293 as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')) as fns,
@@ -65,21 +65,7 @@ select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select c.reltuples::bigint from pg_class c where c.oid = 'public.stats_live_deltas'::regclass) as est_rows,
        pg_total_relation_size('public.stats_live_deltas') as bytes_before;
 
-create temp table clock_0293 (k text primary key, t timestamptz not null) on commit drop;
-
--- ── 2. THE LOCK, THE WIPE, THE RESEED ───────────────────────────────────────────────────────────
-lock table public.stats_live_deltas in access exclusive mode;
-insert into clock_0293 values ('locked', clock_timestamp());
-
-truncate public.stats_live_deltas;
-
-update public.stats_live set counted_through = clock_timestamp() where id;
-
-do $reseed$
-begin
-  perform public.stats_live_fold(clock_timestamp(), true);
-end $reseed$;
-insert into clock_0293 values ('reseeded', clock_timestamp());
+create temp table clock_0293 (k text primary key, t timestamptz not null);
 
 -- ── 3. THE SELF-ASSERT (the last statement of the file) ─────────────────────────────────────────
 do $assert$
@@ -91,6 +77,18 @@ declare
   v_t_lock   timestamptz;
   v_t_done   timestamptz;
 begin
+  -- THE LOCK, THE WIPE, THE RESEED AND THE ASSERTS IN ONE BLOCK: they share one transaction, so the lock is held across all of them. (The
+  -- deploy runner is NOT a transaction block: a bare top-level LOCK TABLE is refused there — prod push 2026-11-01 15:49, `LOCK TABLE can only be
+  -- used in transaction blocks` — and a statement boundary may end the implicit transaction, so nothing that needs the lock may sit outside this block.)
+  lock table public.stats_live_deltas in access exclusive mode;
+  insert into clock_0293 values ('locked', clock_timestamp());
+
+  truncate public.stats_live_deltas;
+
+  update public.stats_live set counted_through = clock_timestamp() where id;
+  perform public.stats_live_fold(clock_timestamp(), true);
+  insert into clock_0293 values ('reseeded', clock_timestamp());
+
   select * into f from before_0293;
   select t into v_t_lock from clock_0293 where k = 'locked';
   select t into v_t_done from clock_0293 where k = 'reseeded';
@@ -135,4 +133,9 @@ begin
     f.est_rows, f.bytes_before, f.fns, f.entry_points,
     round(extract(epoch from v_t_done - v_t_lock)::numeric, 2),
     round(extract(epoch from clock_timestamp() - v_t_lock)::numeric, 2);
+
+  drop table if exists pg_temp.before_0293, pg_temp.clock_0293;
 end $assert$;
+
+reset statement_timeout;
+reset lock_timeout;
