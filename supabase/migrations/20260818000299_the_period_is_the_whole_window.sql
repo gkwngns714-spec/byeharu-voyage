@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0295 — THE PERIOD IS THE WHOLE WINDOW
+-- 0299 — THE PERIOD IS THE WHOLE WINDOW
 --        (the Stats money log reads each count's money over every game day since the last count, not over the
 --         newest three: one new STABLE reader, public.stats_recent, and ONE hunk in public.tick_stats)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -88,6 +88,11 @@
 -- ── SELF-ASSERT (ONE atomic block: if anything below fails, nothing of this file is kept) ───────
 --   Probe rows only, dated 2004 (no real game day, flow or count sits there; asserted before planting), planted in rolled-back
 --   sub-transactions, with game_day_seconds pinned to 60 and stats_max_window_minutes to 120 INSIDE the probe (rolled back with it).
+--   THE PROBE LOOKS ONLY AT ITS OWN KEY SPACE. This file's first push to prod (numbered 0295, 2026-11-01 19:20 UTC) died on its first comparison and kept
+--   nothing: prod's daybook holds today's real game days and the daybook half has no upper bound (verbatim from the old statement; harmless where
+--   p_now is the real now), so stats_recent at a 2004 instant returns those days too, and a comparison of the whole map passed only on a world with an
+--   empty daybook. Every map and every period compared is now cut to the probe's days [D - 130, D + 20] and kinds first, and every message prints only
+--   that cut, capped at 500 characters. The old statement and the new reader are compared whole, in ONE statement (one snapshot).
 --   (a) as found: the hunk occurs once in the live body and reverses to the pre-image; tick_stats keeps its ACL / volatility / definer /
 --       config and no longer mentions the daybook; stats_recent is STABLE, SECURITY DEFINER, server-only, and holds the old statement text
 --       with the one bound renamed; EVERY OTHER function in public / cmd / world / voyage is md5-unmoved (exactly tick_stats moved and
@@ -103,13 +108,21 @@
 -- ROLLBACK (forward): re-create public.tick_stats by reversing the hunk (the OLD text is in this file, verbatim) and drop public.stats_recent;
 --   the previous row's wider `recent` is read by the old body by the same key rule. Nothing else was written.
 -- DEPLOY: no lock beyond the two function rows and a table-comment row (stats_world), plus, for the seconds a probe runs, row locks on two
---   world_config rows (readers are not blocked); the running count keeps its old body until it ends. This file's lock_timeout is 5 s. The self-assert takes ~8 scans of treasury_flows (~1-2 s each on prod).
--- VERSION: 0295 (prod head 0294, read-only 2026-11-01); deploys AFTER 0294, one migration at a time.
+--   world_config rows (readers are not blocked); the running count keeps its old body until it ends. This file's lock_timeout is 5 s.
+--   THE PUSH PAUSES EVERY CRON JOB FOR AS LONG AS IT RUNS, so the guard sets statement_timeout to 90 s (the most this file may take) and the
+--   self-assert is kept short: it reads NO real flows. Every probe instant is in 2004, so the flows half (created_at <= p_now) is an index scan of an
+--   empty range, and the daybook half, which has no upper bound, returns the real daybook once (~3,700 rows from 615 pages). Measured read-only on
+--   prod, server-side, calm (2026-11-01 19:38): the reader at a 2004 instant 5-19 ms (4 runs), the md5 pass over all 676 functions 0.38 s cold and
+--   0.03 s warm, the cut's price_history / founded-rows / previous-row reads 5-16 / 6 / 3 ms, the key-space guards 4-5 ms, the knobs' md5 1 ms:
+--   well under a second of reading in all, plus the DDL and ~65 planted rows. The whole file ran in 0.1-0.2 s on the local worlds (the prod-data
+--   one included) and in ~0.3 s on CI's real Postgres, and prints its own elapsed time at the end (printed, never asserted).
+-- VERSION: 0299 (prod head 0294, read-only 2026-11-01). 0297 (the quiet disk) and 0298 (the hourly upkeep) deploy first; this deploys AFTER 0298, one
+--   migration at a time. (First cut as 0295; renumbered twice because `db push` refuses a file numbered below the prod head.)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $guard$
 begin
-  perform set_config('statement_timeout', '10min', false);
+  perform set_config('statement_timeout', '90s', false);   -- the push pauses every cron job while it runs: 90 s is the most this file may take
   perform set_config('lock_timeout', '5s', false);
   if to_regprocedure('public.tick_stats(timestamptz)') is null
      or to_regprocedure('public.stats_window_start(timestamptz,timestamptz)') is null
@@ -117,10 +130,10 @@ begin
      or to_regclass('public.treasury_daybook') is null
      or to_regclass('public.treasury_flows') is null
      or to_regclass('public.stats_world') is null then
-    raise exception '0295 refuses: 0214 / 0243 / 0290 (the count, its two halves and its window cap) are not in this world';
+    raise exception '0299 refuses: 0214 / 0243 / 0290 (the count, its two halves and its window cap) are not in this world';
   end if;
   if to_regprocedure('public.stats_recent(timestamptz,timestamptz)') is not null then
-    raise exception '0295 refuses: public.stats_recent exists — this has been applied once';
+    raise exception '0299 refuses: public.stats_recent exists — this has been applied once';
   end if;
 end $guard$;
 
@@ -147,9 +160,9 @@ declare
            group by x.gd) d;
 $h$;
   c_new    constant text := $h$  -- THE WORLD: every game day of the window and the two before its first (never fewer than the newest three), per kind, over daybook + flows
-  -- (public.stats_recent, 0295) — and the period as the difference. The difference is taken per (game day, kind) of THIS map: this value less the
+  -- (public.stats_recent, 0299) — and the period as the difference. The difference is taken per (game day, kind) of THIS map: this value less the
   -- previous row's value for the same day and kind, nothing when the previous row held no such day; a day only the previous row holds is never read.
-  v_recent := public.stats_recent(p_now, v_prev_at);   -- 0295: v_prev_at is the window's start AFTER 0290's cap
+  v_recent := public.stats_recent(p_now, v_prev_at);   -- 0299: v_prev_at is the window's start AFTER 0290's cap
 $h$;
   -- where the cut body ends: the last line of the `period` statement (unchanged by this file)
   c_anchor constant text := $h$          select h.kind, h.ducats from public.stats_window_founded(v_prev_at, p_now) h) k;   -- 0232: one reading of the window
@@ -161,7 +174,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $fn$
--- 0295: THE MONEY THAT MOVED, per game day and kind — {game_day: {kind: ducats}} over the daybook (rolled) + the flows (not yet rolled), from
+-- 0299: THE MONEY THAT MOVED, per game day and kind — {game_day: {kind: ducats}} over the daybook (rolled) + the flows (not yet rolled), from
 -- two game days before the first day of the window [p_since, p_now] to p_now's day (never fewer than the newest three: p_since after p_now
 -- reads those). tick_stats' own statement, moved here verbatim (0243's per-(day, kind) sum before the aggregate, CARRIED excluded, the flows cut
 -- at p_now) with ONE change: the lower bound v_lo, computed once. tick_stats keeps it as `recent`, the next row's baseline; `period` is the per-key
@@ -190,8 +203,8 @@ begin
 end $fn$
 $f$;
   d_probe  constant int := 130;      -- the probe's key space is [D - d_probe, D + 20]
-  c_a      constant text := 'PROBE_0295';
-  c_b      constant text := 'PROBE_0295_B';
+  c_a      constant text := 'PROBE_0299';
+  c_b      constant text := 'PROBE_0299_B';
   v_def    text;
   v_acl    text;
   v_vol    "char";
@@ -222,24 +235,26 @@ $f$;
   v_t3     jsonb;
   v_old    jsonb;
   v_plain  numeric;
+  v_noise  int;
+  v_t0     timestamptz := clock_timestamp();
 begin
   -- ── 0. THE SCRATCH FUNCTIONS (pg_temp: gone with the session, dropped again at the end) ─────────
-  execute $q$create function pg_temp.occurs_0295(p_hay text, p_needle text)
+  execute $q$create function pg_temp.occurs_0299(p_hay text, p_needle text)
 returns int language sql immutable
 as $b$ select (length(p_hay) - length(replace(p_hay, p_needle, ''))) / length(p_needle) $b$
 $q$;
   -- the instant `p_off` seconds into game day `p_d` (the probe pins game_day_seconds to 60)
-  execute $q$create function pg_temp.at_0295(p_d int, p_off numeric)
+  execute $q$create function pg_temp.at_0299(p_d int, p_off numeric)
 returns timestamptz language sql immutable
 as $b$ select to_timestamp((p_d::numeric * 60 + p_off)::double precision) $b$
 $q$;
   -- a recent map from a spec 'offset:a=amount,b=amount;offset:a=amount;...' (a / b = the two probe kinds; offsets from the day D)
-  execute $q$create function pg_temp.map_0295(p_d int, p_spec text)
+  execute $q$create function pg_temp.map_0299(p_d int, p_spec text)
 returns jsonb language sql
 as $b$
   select coalesce(jsonb_object_agg((p_d + x.o)::text, x.kinds), '{}'::jsonb)
     from (select split_part(s.item, ':', 1)::int as o,
-                 jsonb_object_agg(case split_part(kv.pair, '=', 1) when 'a' then 'PROBE_0295' when 'b' then 'PROBE_0295_B' end,
+                 jsonb_object_agg(case split_part(kv.pair, '=', 1) when 'a' then 'PROBE_0299' when 'b' then 'PROBE_0299_B' end,
                                   split_part(kv.pair, '=', 2)::bigint) as kinds
             from unnest(string_to_array(p_spec, ';')) s(item),
                  unnest(string_to_array(split_part(s.item, ':', 2), ',')) kv(pair)
@@ -247,12 +262,35 @@ as $b$
 $b$
 $q$;
   -- Σ of one kind over every day of a map (the plain difference of totals, the positive control)
-  execute $q$create function pg_temp.total_0295(p_map jsonb, p_kind text)
+  execute $q$create function pg_temp.total_0299(p_map jsonb, p_kind text)
 returns numeric language sql
 as $b$ select coalesce(sum(kv.value::numeric), 0) from jsonb_each(p_map) r, jsonb_each_text(r.value) kv where kv.key = p_kind $b$
 $q$;
+  -- THE PROBE LOOKS ONLY AT ITS OWN KEY SPACE. prod's daybook holds today's real game days and the daybook half has no upper bound (verbatim from the old
+  -- statement; harmless in operation, where nothing is newer than the real p_now), so stats_recent at a 2004 instant returns those days too. A map the probe
+  -- compares is cut to the probe's days [D - 130, D + 20] and to its own kinds (the two probe kinds, and CARRIED so that a leaked CARRIED row shows).
+  execute $q$create function pg_temp.probe_0299(p_map jsonb, p_d int)
+returns jsonb language sql
+as $b$
+  select coalesce(jsonb_object_agg(x.day, x.kinds), '{}'::jsonb)
+    from (select e.key as day, jsonb_object_agg(kv.key, kv.value) as kinds
+            from jsonb_each(p_map) e, jsonb_each(e.value) kv
+           where e.key::int between p_d - 130 and p_d + 20 and kv.key in ('PROBE_0299', 'PROBE_0299_B', 'CARRIED')
+           group by e.key) x
+$b$
+$q$;
+  -- a period cut to the probe's two kinds
+  execute $q$create function pg_temp.kinds_0299(p_period jsonb)
+returns jsonb language sql
+as $b$ select coalesce(jsonb_object_agg(kv.key, kv.value), '{}'::jsonb) from jsonb_each(p_period) kv where kv.key in ('PROBE_0299', 'PROBE_0299_B') $b$
+$q$;
+  -- a message argument is never longer than 500 characters (the first prod failure was a 34 KB message: a whole map printed)
+  execute $q$create function pg_temp.cap_0299(p_text text)
+returns text language sql immutable
+as $b$ select case when length(p_text) > 500 then left(p_text, 500) || ' ... (' || length(p_text) || ' characters)' else p_text end $b$
+$q$;
   -- the two knobs the probe depends on (rolled back with the probe)
-  execute $q$create function pg_temp.pin_0295()
+  execute $q$create function pg_temp.pin_0299()
 returns void language plpgsql
 as $b$
 declare
@@ -263,12 +301,12 @@ begin
    where w.key = v.key;
   get diagnostics v_n = row_count;
   if v_n <> 2 then
-    raise exception '0295 self-assert FAIL: the probe could not pin its two knobs (%)', v_n;
+    raise exception '0299 self-assert FAIL: the probe could not pin its two knobs (%)', v_n;
   end if;
 end $b$
 $q$;
   -- a previous count's row, with a slot above every real one, so that `order by slot desc limit 1` finds it
-  execute $q$create function pg_temp.prev_0295(p_at timestamptz, p_recent jsonb)
+  execute $q$create function pg_temp.prev_0299(p_at timestamptz, p_recent jsonb)
 returns void language sql
 as $b$
   insert into public.stats_world (slot, at, game_day, players, merchants, cities, set_aside, minted, removed, moved,
@@ -290,15 +328,15 @@ $q$;
   select value into v_city from public.world_config where key = 'city_treasury_enabled';
   select md5(string_agg(c.key || '=' || c.value::text, ',' order by c.key)) into v_knobs from public.world_config c;
 
-  if pg_temp.occurs_0295(v_def, c_old) <> 1 then
-    raise exception '0295 self-assert FAIL: the hunk occurs % time(s) in the live tick_stats, not once — the live body is not what this file was cut against',
-      pg_temp.occurs_0295(v_def, c_old);
+  if pg_temp.occurs_0299(v_def, c_old) <> 1 then
+    raise exception '0299 self-assert FAIL: the hunk occurs % time(s) in the live tick_stats, not once — the live body is not what this file was cut against',
+      pg_temp.occurs_0299(v_def, c_old);
   end if;
 
   -- ── 2. THE READER, THEN THE ONE HUNK ────────────────────────────────────────────────────────────
   execute c_fn;
   comment on function public.stats_recent(timestamptz, timestamptz) is
-    '0295: {game_day: {kind: ducats}} over the daybook + the flows, from two game days before the first day of the window [p_since, p_now] to p_now''s day (never fewer than the newest three). tick_stats keeps it as `recent`; `period` is the per-(day, kind) difference of two such maps. STABLE, server-only; called by public.tick_stats alone.';
+    '0299: {game_day: {kind: ducats}} over the daybook + the flows, from two game days before the first day of the window [p_since, p_now] to p_now''s day (never fewer than the newest three). tick_stats keeps it as `recent`; `period` is the per-(day, kind) difference of two such maps. STABLE, server-only; called by public.tick_stats alone.';
   revoke all on function public.stats_recent(timestamptz, timestamptz) from public, anon, authenticated;
 
   v_new := replace(v_def, c_old, c_new);
@@ -306,19 +344,19 @@ $q$;
 
   -- ── 3. (a) AS FOUND, AFTER: the hunk, the reader, every other function ──────────────────────────
   select replace(pg_get_functiondef(p.oid), E'\r', '') into v_new from pg_proc p where p.oid = 'public.tick_stats(timestamptz)'::regprocedure;
-  if pg_temp.occurs_0295(v_new, c_new) <> 1 or pg_temp.occurs_0295(v_new, c_old) <> 0 then
-    raise exception '0295 self-assert FAIL: the new hunk is not in the live body exactly once (or the old text is still there)';
+  if pg_temp.occurs_0299(v_new, c_new) <> 1 or pg_temp.occurs_0299(v_new, c_old) <> 0 then
+    raise exception '0299 self-assert FAIL: the new hunk is not in the live body exactly once (or the old text is still there)';
   end if;
   if replace(v_new, c_new, c_old) <> v_def then
-    raise exception '0295 self-assert FAIL: tick_stats does not reverse to its pre-image';
+    raise exception '0299 self-assert FAIL: tick_stats does not reverse to its pre-image';
   end if;
-  if pg_temp.occurs_0295(v_new, 'treasury_daybook') <> 0 then
-    raise exception '0295 self-assert FAIL: tick_stats still reads treasury_daybook — the query did not move whole';
+  if pg_temp.occurs_0299(v_new, 'treasury_daybook') <> 0 then
+    raise exception '0299 self-assert FAIL: tick_stats still reads treasury_daybook — the query did not move whole';
   end if;
   select coalesce(p.proacl::text, '') as acl, p.provolatile as vol, p.prosecdef as secdef, coalesce(p.proconfig::text, '') as cfg
     into pr from pg_proc p where p.oid = 'public.tick_stats(timestamptz)'::regprocedure;
   if pr.acl <> v_acl or pr.vol <> v_vol or pr.secdef <> v_secdef or pr.cfg <> v_cfg then
-    raise exception '0295 self-assert FAIL: tick_stats changed its ACL, volatility, definer or config';
+    raise exception '0299 self-assert FAIL: tick_stats changed its ACL, volatility, definer or config';
   end if;
 
   select p.oid, p.provolatile, p.prosecdef, coalesce(p.proconfig::text, '') as cfg, coalesce(p.proacl::text, '') as acl, p.prosrc
@@ -326,12 +364,12 @@ $q$;
   if not found or pr.provolatile <> 's' or not pr.prosecdef or pr.cfg not like '%search_path=public, pg_temp%'
      or has_function_privilege('anon', pr.oid, 'execute') or has_function_privilege('authenticated', pr.oid, 'execute')
      or pr.acl like '%,=X/%' or pr.acl like '{=X/%' then
-    raise exception '0295 self-assert FAIL: stats_recent is not a STABLE, SECURITY DEFINER, server-only function with the search_path set (acl %)', pr.acl;
+    raise exception '0299 self-assert FAIL: stats_recent is not a STABLE, SECURITY DEFINER, server-only function with the search_path set (acl %)', pg_temp.cap_0299(pr.acl);
   end if;
   -- the statement moved whole: the old statement text (its comment line dropped) with the one bound renamed
   v_stmt := replace(substr(c_old, strpos(c_old, E'\n') + 1), 'world.game_day(p_now) - 2', 'v_lo');
-  if pg_temp.occurs_0295(pr.prosrc, v_stmt) <> 1 or pg_temp.occurs_0295(c_old, 'world.game_day(p_now) - 2') <> 2 then
-    raise exception '0295 self-assert FAIL: stats_recent does not hold the old statement with only the bound renamed';
+  if pg_temp.occurs_0299(pr.prosrc, v_stmt) <> 1 or pg_temp.occurs_0299(c_old, 'world.game_day(p_now) - 2') <> 2 then
+    raise exception '0299 self-assert FAIL: stats_recent does not hold the old statement with only the bound renamed';
   end if;
 
   -- EVERY OTHER FUNCTION in public / cmd / world / voyage is md5-unmoved: exactly tick_stats differs, exactly stats_recent is new
@@ -344,7 +382,7 @@ $q$;
            where a.value is distinct from b.value) q;
   if v_diff is distinct from (select array_agg(e order by e) from unnest(array[
         to_regprocedure('public.tick_stats(timestamptz)')::text, to_regprocedure('public.stats_recent(timestamptz,timestamptz)')::text]) e) then
-    raise exception '0295 self-assert FAIL: the functions that moved or appeared are %, not exactly tick_stats and stats_recent', v_diff;
+    raise exception '0299 self-assert FAIL: the functions that moved or appeared are %, not exactly tick_stats and stats_recent', pg_temp.cap_0299(v_diff::text);
   end if;
   select count(*) into v_n from jsonb_object_keys(v_fns0);
 
@@ -352,51 +390,57 @@ $q$;
   if (select count(*) from public.client_rpc_entry_points()) <> v_entry
      or (select value from public.world_config where key = 'economy_closed') is distinct from v_econ
      or (select value from public.world_config where key = 'city_treasury_enabled') is distinct from v_city then
-    raise exception '0295 self-assert FAIL: the registry or an owner switch moved';
+    raise exception '0299 self-assert FAIL: the registry or an owner switch moved';
   end if;
   if (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0295 self-assert FAIL: a wall moved';
+    raise exception '0299 self-assert FAIL: a wall moved';
   end if;
   if (select md5(string_agg(c.key || '=' || c.value::text, ',' order by c.key)) from public.world_config c) is distinct from v_knobs then
-    raise exception '0295 self-assert FAIL: a knob moved';
+    raise exception '0299 self-assert FAIL: a knob moved';
   end if;
-  raise notice '0295 self-assert ok: (a)  AS FOUND. The one hunk occurs once in the live tick_stats and reverses to its pre-image; tick_stats keeps its ACL, volatility, definer and config and no longer reads the daybook; stats_recent is STABLE, SECURITY DEFINER, server-only (no anon / authenticated / PUBLIC execute), search_path set, and holds the old statement text with only the lower bound renamed; EVERY OTHER function in public/cmd/world/voyage is md5-unmoved (% functions: exactly tick_stats differs, exactly stats_recent is new); registry % unchanged; walls 0 / 0 / 0; both owner switches and every knob as found.',
+  raise notice '0299 self-assert ok: (a)  AS FOUND. The one hunk occurs once in the live tick_stats and reverses to its pre-image; tick_stats keeps its ACL, volatility, definer and config and no longer reads the daybook; stats_recent is STABLE, SECURITY DEFINER, server-only (no anon / authenticated / PUBLIC execute), search_path set, and holds the old statement text with only the lower bound renamed; EVERY OTHER function in public/cmd/world/voyage is md5-unmoved (% functions: exactly tick_stats differs, exactly stats_recent is new); registry % unchanged; walls 0 / 0 / 0; both owner switches and every knob as found.',
     v_n, v_entry;
 
   -- ── 4. THE PROBE FUNCTIONS: the old statement, and the live body cut after the period ───────────
-  execute 'create function pg_temp.recent_old_0295(p_now timestamptz) returns jsonb language plpgsql as $b$ declare v_recent jsonb; begin '
+  execute 'create function pg_temp.recent_old_0299(p_now timestamptz) returns jsonb language plpgsql stable as $b$ declare v_recent jsonb; begin '
           || c_old || ' return v_recent; end $b$';
-  if pg_temp.occurs_0295(v_new, c_anchor) <> 1 then
-    raise exception '0295 self-assert FAIL: the end of the period statement occurs % time(s) in the live body, not once', pg_temp.occurs_0295(v_new, c_anchor);
+  if pg_temp.occurs_0299(v_new, c_anchor) <> 1 then
+    raise exception '0299 self-assert FAIL: the end of the period statement occurs % time(s) in the live body, not once', pg_temp.occurs_0299(v_new, c_anchor);
   end if;
   execute replace(substr(v_new, 1, strpos(v_new, c_anchor) + length(c_anchor) - 1)
                   || E'  return jsonb_build_object(''since'', v_prev_at, ''skipped'', v_skip, ''recent'', v_recent, ''period'', v_period);\nend $function$\n',
-                  'CREATE OR REPLACE FUNCTION public.tick_stats(', 'CREATE FUNCTION pg_temp.tick_cut_0295(');
+                  'CREATE OR REPLACE FUNCTION public.tick_stats(', 'CREATE FUNCTION pg_temp.tick_cut_0299(');
 
   -- ── 5. (b) THE READER AND (c) THE COUNT, ON PLANTED ROWS DATED 2004 ─────────────────────────────
+  -- THE PROBE LOOKS ONLY AT ITS OWN KEY SPACE. (This file's first push to prod, numbered 0295, 2026-11-01 19:20 UTC, died on its first comparison: prod's
+  -- daybook holds today's real game days and the daybook half has no upper bound — verbatim from the old statement, harmless where p_now is the real now —
+  -- so stats_recent at a 2004 instant returns those days too, and a comparison of the WHOLE map could only pass on a world with an empty daybook.)
+  -- So every map and every period is cut to the probe's days [D - 130, D + 20] and kinds before it is compared (pg_temp.probe_0299 / kinds_0299), and
+  -- every message prints only that cut, capped (pg_temp.cap_0299). The one whole-map comparison left, the old statement against the new reader on the
+  -- same rows (R2, R3), runs in ONE statement, so both read one snapshot.
   -- Day D = the probe's p_now's game day. Daybook (the rolled half), kind a unless said: D-19 2 · D-18 1 · D-17 7,000 · D-16 11,000 · D-15 60 ·
   -- D-14 5 · D-13 100 · D-12 200 (+ b 50) · D-11 300 · D-10 400 (+ CARRIED 777,777) · D-9 500.
   -- Flows (the not yet rolled half): D-15 40 (before the previous count, 30 s in) and 40 (after it) · D-14 6 (a day in BOTH halves: 5 + 6 = 11) ·
   -- D-8 .. D-1: 1,000 .. 8,000 · D-3 b 30 · D-2 b 40 · D 9,000 (before p_now) and 99,999 (after it) · D+1 .. D+15: 100 .. 1,500.
   begin
-    perform pg_temp.pin_0295();
+    perform pg_temp.pin_0299();
     v_d := world.game_day(v_now);
-    v_now2 := pg_temp.at_0295(v_d + 15, 30);
-    if pg_temp.at_0295(v_d, 30) <> v_now or world.game_day(pg_temp.at_0295(v_d - 3, 0)) <> v_d - 3 or world.game_day(pg_temp.at_0295(v_d + 7, 59.9)) <> v_d + 7
+    v_now2 := pg_temp.at_0299(v_d + 15, 30);
+    if pg_temp.at_0299(v_d, 30) <> v_now or world.game_day(pg_temp.at_0299(v_d - 3, 0)) <> v_d - 3 or world.game_day(pg_temp.at_0299(v_d + 7, 59.9)) <> v_d + 7
        or world.game_day(v_now2) <> v_d + 15 or v_now2 - v_now <> interval '15 minutes' then
-      raise exception '0295 self-assert FAIL: the probe''s day arithmetic is off (game_day_seconds pinned to %)', public.wc_num('game_day_seconds');
+      raise exception '0299 self-assert FAIL: the probe''s day arithmetic is off (game_day_seconds pinned to %)', public.wc_num('game_day_seconds');
     end if;
     -- no real day, flow or count sits in the probe's key space
     if exists (select 1 from public.treasury_daybook b where b.game_day between v_d - d_probe and v_d + 20)
-       or exists (select 1 from public.treasury_flows f where f.created_at >= pg_temp.at_0295(v_d - d_probe, 0) and f.created_at < pg_temp.at_0295(v_d + 21, 0))
+       or exists (select 1 from public.treasury_flows f where f.created_at >= pg_temp.at_0299(v_d - d_probe, 0) and f.created_at < pg_temp.at_0299(v_d + 21, 0))
        or exists (select 1 from public.stats_world w where w.at >= '2004-01-01' and w.at < '2005-01-01') then
-      raise exception '0295 self-assert FAIL: a real row already sits in the probe''s 2004 key space';
+      raise exception '0299 self-assert FAIL: a real row already sits in the probe''s 2004 key space';
     end if;
     select id into v_port from public.ports where kind = 'HARBOUR' order by id limit 1;
     if v_port is null then
-      raise exception '0295 self-assert FAIL: no harbour to plant the probe at';
+      raise exception '0299 self-assert FAIL: no harbour to plant the probe at';
     end if;
 
     insert into public.treasury_daybook (port_id, game_day, kind, ducats)
@@ -404,7 +448,7 @@ $q$;
       from (values (-19, c_a, 2), (-18, c_a, 1), (-17, c_a, 7000), (-16, c_a, 11000), (-15, c_a, 60), (-14, c_a, 5), (-13, c_a, 100),
                    (-12, c_a, 200), (-12, c_b, 50), (-11, c_a, 300), (-10, c_a, 400), (-10, 'CARRIED', 777777), (-9, c_a, 500)) t(o, k, a);
     insert into public.treasury_flows (port_id, kind, ducats, created_at)
-    select v_port, t.k, t.a, pg_temp.at_0295(v_d + t.o, t.s)
+    select v_port, t.k, t.a, pg_temp.at_0299(v_d + t.o, t.s)
       from (values (-15, c_a, 40, 10), (-15, c_a, 40, 50), (-14, c_a, 6, 20),
                    (-8, c_a, 1000, 20), (-7, c_a, 2000, 20), (-6, c_a, 3000, 20), (-5, c_a, 4000, 20),
                    (-4, c_a, 5000, 20), (-3, c_a, 6000, 20), (-2, c_a, 7000, 20), (-1, c_a, 8000, 20),
@@ -414,88 +458,92 @@ $q$;
                    (11, c_a, 1100, 10), (12, c_a, 1200, 10), (13, c_a, 1300, 10), (14, c_a, 1400, 10), (15, c_a, 1500, 10)) t(o, k, a, s);
 
     -- (R1) a 15-day window: exactly its days, both halves summed, CARRIED out, the flow after p_now out, D-19 / D-18 below the bound out
-    v_r1 := public.stats_recent(v_now, pg_temp.at_0295(v_d - 15, 30));
-    if v_r1 is distinct from pg_temp.map_0295(v_d, '-17:a=7000;-16:a=11000;-15:a=140;-14:a=11;-13:a=100;-12:a=200,b=50;-11:a=300;-10:a=400;-9:a=500;-8:a=1000;-7:a=2000;-6:a=3000;-5:a=4000;-4:a=5000;-3:a=6000,b=30;-2:a=7000,b=40;-1:a=8000;0:a=9000') then
-      raise exception '0295 self-assert FAIL: (R1) the 15-day window is not its 18 days summed over both halves: %', v_r1;
+    v_r1 := public.stats_recent(v_now, pg_temp.at_0299(v_d - 15, 30));
+    select count(*) into v_noise from jsonb_object_keys(v_r1) k where k::int not between v_d - d_probe and v_d + 20;   -- the real days the answer carries besides the probe's (a populated daybook): ignored
+    if pg_temp.probe_0299(v_r1, v_d) is distinct from pg_temp.map_0299(v_d, '-17:a=7000;-16:a=11000;-15:a=140;-14:a=11;-13:a=100;-12:a=200,b=50;-11:a=300;-10:a=400;-9:a=500;-8:a=1000;-7:a=2000;-6:a=3000;-5:a=4000;-4:a=5000;-3:a=6000,b=30;-2:a=7000,b=40;-1:a=8000;0:a=9000') then
+      raise exception '0299 self-assert FAIL: (R1) the probe''s days of the 15-day window are not its 18 days summed over both halves: %', pg_temp.cap_0299(pg_temp.probe_0299(v_r1, v_d)::text);
     end if;
-    -- (R2) no gap: the old three-day shape, and EQUAL to the old statement run on the same rows
-    v_r2 := public.stats_recent(v_now, v_now);
-    v_old := pg_temp.recent_old_0295(v_now);
-    if v_r2 is distinct from pg_temp.map_0295(v_d, '-2:a=7000,b=40;-1:a=8000;0:a=9000') or v_r2 is distinct from v_old then
-      raise exception '0295 self-assert FAIL: (R2) with no gap stats_recent is not the old three-day statement: % against %', v_r2, v_old;
+    -- (R2) / (R3) in ONE statement (one snapshot): no gap -> the old three-day shape, EQUAL to the old statement run on the same rows (the whole maps, real days
+    -- and all); a window start AFTER p_now still reads the newest three days
+    select public.stats_recent(v_now, v_now), public.stats_recent(v_now, v_now + interval '1 hour'), pg_temp.recent_old_0299(v_now) into v_r2, v_r3, v_old;
+    if v_r2 is distinct from v_old then
+      raise exception '0299 self-assert FAIL: (R2) with no gap stats_recent is not the old three-day statement run on the same rows (probe days % against %)',
+        pg_temp.cap_0299(pg_temp.probe_0299(v_r2, v_d)::text), pg_temp.cap_0299(pg_temp.probe_0299(v_old, v_d)::text);
     end if;
-    -- (R3) a window start AFTER p_now still reads the newest three days
-    v_r3 := public.stats_recent(v_now, v_now + interval '1 hour');
+    if pg_temp.probe_0299(v_r2, v_d) is distinct from pg_temp.map_0299(v_d, '-2:a=7000,b=40;-1:a=8000;0:a=9000') then
+      raise exception '0299 self-assert FAIL: (R2) with no gap the probe''s days are %, not its newest three', pg_temp.cap_0299(pg_temp.probe_0299(v_r2, v_d)::text);
+    end if;
     if v_r3 is distinct from v_r2 then
-      raise exception '0295 self-assert FAIL: (R3) a window start after p_now reads %, not the newest three days', v_r3;
+      raise exception '0299 self-assert FAIL: (R3) a window start after p_now reads, in the probe''s days, %, not the newest three days', pg_temp.cap_0299(pg_temp.probe_0299(v_r3, v_d)::text);
     end if;
     -- (R4) a window start 30 days back reads every planted day (nothing caps it inside the reader)
     v_r4 := public.stats_recent(v_now, v_now - interval '30 days');
-    if v_r4 is distinct from (pg_temp.map_0295(v_d, '-19:a=2;-18:a=1') || v_r1) then
-      raise exception '0295 self-assert FAIL: (R4) a window start 30 days back does not read every planted day: %', v_r4;
+    if pg_temp.probe_0299(v_r4, v_d) is distinct from (pg_temp.map_0299(v_d, '-19:a=2;-18:a=1') || pg_temp.probe_0299(v_r1, v_d)) then
+      raise exception '0299 self-assert FAIL: (R4) a window start 30 days back does not read every planted day: %', pg_temp.cap_0299(pg_temp.probe_0299(v_r4, v_d)::text);
     end if;
 
     -- (T1) THE FIRST ROW AFTER THIS FILE: the previous count, 15 minutes before, wrote the OLD shape (its newest three days, as of its instant: D-15 held 100)
-    perform pg_temp.prev_0295(pg_temp.at_0295(v_d - 15, 30), pg_temp.map_0295(v_d, '-17:a=7000;-16:a=11000;-15:a=100'));
-    v_t1 := pg_temp.tick_cut_0295(v_now);
-    if (v_t1->>'since')::timestamptz is distinct from pg_temp.at_0295(v_d - 15, 30) or jsonb_typeof(v_t1->'skipped') is distinct from 'null'
-       or v_t1->'recent' is distinct from v_r1 then
-      raise exception '0295 self-assert FAIL: (T1) the count did not read the window from the previous count: since %, skipped %, recent %', v_t1->>'since', v_t1->'skipped', v_t1->'recent';
+    perform pg_temp.prev_0299(pg_temp.at_0299(v_d - 15, 30), pg_temp.map_0299(v_d, '-17:a=7000;-16:a=11000;-15:a=100'));
+    v_t1 := pg_temp.tick_cut_0299(v_now);
+    if (v_t1->>'since')::timestamptz is distinct from pg_temp.at_0299(v_d - 15, 30) or jsonb_typeof(v_t1->'skipped') is distinct from 'null'
+       or pg_temp.probe_0299(v_t1->'recent', v_d) is distinct from pg_temp.probe_0299(v_r1, v_d) then
+      raise exception '0299 self-assert FAIL: (T1) the count did not read the window from the previous count: since %, skipped %, probe days %',
+        v_t1->>'since', pg_temp.cap_0299((v_t1->'skipped')::text), pg_temp.cap_0299(pg_temp.probe_0299(v_t1->'recent', v_d)::text);
     end if;
     -- the flows of the window (after the previous count, up to p_now): a: D-15 after it 40 + D-14..D 46,511 = 46,551 · b: 50 + 30 + 40 = 120
-    if v_t1->'period' is distinct from '{"PROBE_0295": 46551, "PROBE_0295_B": 120}'::jsonb then
-      raise exception '0295 self-assert FAIL: (T1) the first row after the file has period %, not the window''s flows {a 46551, b 120}', v_t1->'period';
+    if pg_temp.kinds_0299(v_t1->'period') is distinct from '{"PROBE_0299": 46551, "PROBE_0299_B": 120}'::jsonb then
+      raise exception '0299 self-assert FAIL: (T1) the first row after the file has probe period %, not the window''s flows {a 46551, b 120}', pg_temp.cap_0299(pg_temp.kinds_0299(v_t1->'period')::text);
     end if;
 
     -- (T2) THE STEADY STATE: the previous count wrote the NEW shape (T1's map, as of p_now); one window (15 game days) later, 99,999 more landed on
     -- day D after it and 100 .. 1,500 on D+1 .. D+15. The new map is D-2 .. D+15; the previous map's D-17 .. D-3 are only in the old map and are never read.
-    perform pg_temp.prev_0295(v_now, v_t1->'recent');
-    v_t2 := pg_temp.tick_cut_0295(v_now2);
+    perform pg_temp.prev_0299(v_now, v_t1->'recent');
+    v_t2 := pg_temp.tick_cut_0299(v_now2);
     if (v_t2->>'since')::timestamptz is distinct from v_now or jsonb_typeof(v_t2->'skipped') is distinct from 'null'
-       or v_t2->'recent' is distinct from pg_temp.map_0295(v_d, '-2:a=7000,b=40;-1:a=8000;0:a=108999;1:a=100;2:a=200;3:a=300;4:a=400;5:a=500;6:a=600;7:a=700;8:a=800;9:a=900;10:a=1000;11:a=1100;12:a=1200;13:a=1300;14:a=1400;15:a=1500') then
-      raise exception '0295 self-assert FAIL: (T2) the second count did not read D-2 .. D+15 from the first: since %, recent %', v_t2->>'since', v_t2->'recent';
+       or pg_temp.probe_0299(v_t2->'recent', v_d) is distinct from pg_temp.map_0299(v_d, '-2:a=7000,b=40;-1:a=8000;0:a=108999;1:a=100;2:a=200;3:a=300;4:a=400;5:a=500;6:a=600;7:a=700;8:a=800;9:a=900;10:a=1000;11:a=1100;12:a=1200;13:a=1300;14:a=1400;15:a=1500') then
+      raise exception '0299 self-assert FAIL: (T2) the second count did not read D-2 .. D+15 from the first: since %, probe days %', v_t2->>'since', pg_temp.cap_0299(pg_temp.probe_0299(v_t2->'recent', v_d)::text);
     end if;
     -- a: D-2 and D-1 unchanged (0), D +99,999, D+1..D+15 12,000 = 111,999 · b: unchanged on D-2 (0), nothing else in range
-    if v_t2->'period' is distinct from '{"PROBE_0295": 111999}'::jsonb then
-      raise exception '0295 self-assert FAIL: (T2) the steady-state row has period %, not the new flows {a 111999}', v_t2->'period';
+    if pg_temp.kinds_0299(v_t2->'period') is distinct from '{"PROBE_0299": 111999}'::jsonb then
+      raise exception '0299 self-assert FAIL: (T2) the steady-state row has probe period %, not the new flows {a 111999}', pg_temp.cap_0299(pg_temp.kinds_0299(v_t2->'period')::text);
     end if;
     -- the positive control: a plain difference of totals on the same two maps is a different (wrong) number, so this probe can tell the rules apart
-    v_plain := pg_temp.total_0295(v_t2->'recent', c_a) - pg_temp.total_0295(v_t1->'recent', c_a);
+    v_plain := pg_temp.total_0299(v_t2->'recent', c_a) - pg_temp.total_0299(v_t1->'recent', c_a);
     if v_plain <> 71348 then
-      raise exception '0295 self-assert FAIL: (T2) the plain difference of totals is %, expected 71348 (a number other than the per-key 111999)', v_plain;
+      raise exception '0299 self-assert FAIL: (T2) the plain difference of totals is %, expected 71348 (a number other than the per-key 111999)', v_plain;
     end if;
 
-    raise exception using errcode = 'ZX295', message = 'rollback';
-  exception when sqlstate 'ZX295' then
+    raise exception using errcode = 'ZX299', message = 'rollback';
+  exception when sqlstate 'ZX299' then
     null;
   end;
 
   -- (T3) THE CAP DECIDES THE BOUND: a previous count five hours old; the capped start (p_now - 120 minutes = D-120) is what stats_recent gets, so D-123 (inside
   -- five hours, below the capped bound D-122) is not read, and D-122 .. D-120 are. A tick_stats that passed the raw previous instant would read D-123 too.
   begin
-    perform pg_temp.pin_0295();
+    perform pg_temp.pin_0299();
     v_d := world.game_day(v_now);
     if exists (select 1 from public.treasury_daybook b where b.game_day between v_d - d_probe and v_d + 20)
-       or exists (select 1 from public.treasury_flows f where f.created_at >= pg_temp.at_0295(v_d - d_probe, 0) and f.created_at < pg_temp.at_0295(v_d + 21, 0))
+       or exists (select 1 from public.treasury_flows f where f.created_at >= pg_temp.at_0299(v_d - d_probe, 0) and f.created_at < pg_temp.at_0299(v_d + 21, 0))
        or exists (select 1 from public.stats_world w where w.at >= '2004-01-01' and w.at < '2005-01-01') then
-      raise exception '0295 self-assert FAIL: a real row already sits in the probe''s 2004 key space (T3)';
+      raise exception '0299 self-assert FAIL: a real row already sits in the probe''s 2004 key space (T3)';
     end if;
     select id into v_port from public.ports where kind = 'HARBOUR' order by id limit 1;
     insert into public.treasury_flows (port_id, kind, ducats, created_at)
-    select v_port, c_a, t.a, pg_temp.at_0295(v_d + t.o, 20)
+    select v_port, c_a, t.a, pg_temp.at_0299(v_d + t.o, 20)
       from (values (-123, 9), (-122, 3), (-121, 5), (-120, 7)) t(o, a);
-    perform pg_temp.prev_0295(v_now - interval '5 hours', '{}'::jsonb);
-    v_t3 := pg_temp.tick_cut_0295(v_now);
+    perform pg_temp.prev_0299(v_now - interval '5 hours', '{}'::jsonb);
+    v_t3 := pg_temp.tick_cut_0299(v_now);
     if (v_t3->>'since')::timestamptz is distinct from v_now - interval '120 minutes'
        or (v_t3->'skipped'->>'from')::timestamptz is distinct from v_now - interval '5 hours'
        or (v_t3->'skipped'->>'to')::timestamptz is distinct from v_now - interval '120 minutes'
-       or v_t3->'recent' is distinct from pg_temp.map_0295(v_d, '-122:a=3;-121:a=5;-120:a=7')
-       or v_t3->'period' is distinct from '{"PROBE_0295": 15}'::jsonb then
-      raise exception '0295 self-assert FAIL: (T3) after a five-hour gap the count read since %, skipped %, recent %, period % — not the capped window D-122 .. D-120',
-        v_t3->>'since', v_t3->'skipped', v_t3->'recent', v_t3->'period';
+       or pg_temp.probe_0299(v_t3->'recent', v_d) is distinct from pg_temp.map_0299(v_d, '-122:a=3;-121:a=5;-120:a=7')
+       or pg_temp.kinds_0299(v_t3->'period') is distinct from '{"PROBE_0299": 15}'::jsonb then
+      raise exception '0299 self-assert FAIL: (T3) after a five-hour gap the count read since %, skipped %, probe days %, probe period % — not the capped window D-122 .. D-120',
+        v_t3->>'since', pg_temp.cap_0299((v_t3->'skipped')::text), pg_temp.cap_0299(pg_temp.probe_0299(v_t3->'recent', v_d)::text), pg_temp.cap_0299(pg_temp.kinds_0299(v_t3->'period')::text);
     end if;
-    raise exception using errcode = 'ZX295', message = 'rollback';
-  exception when sqlstate 'ZX295' then
+    raise exception using errcode = 'ZX299', message = 'rollback';
+  exception when sqlstate 'ZX299' then
     null;
   end;
 
@@ -503,19 +551,21 @@ $q$;
   if exists (select 1 from public.treasury_daybook where kind in (c_a, c_b))
      or exists (select 1 from public.treasury_flows where kind in (c_a, c_b))
      or exists (select 1 from public.stats_world w where w.at >= '2004-01-01' and w.at < '2005-01-01') then
-    raise exception '0295 self-assert FAIL: a probe row survived its rollback';
+    raise exception '0299 self-assert FAIL: a probe row survived its rollback';
   end if;
   if (select md5(string_agg(c.key || '=' || c.value::text, ',' order by c.key)) from public.world_config c) is distinct from v_knobs then
-    raise exception '0295 self-assert FAIL: a probe left a knob moved';
+    raise exception '0299 self-assert FAIL: a probe left a knob moved';
   end if;
   -- the table comment last: its (share-update-exclusive) lock is then held only to the commit
   comment on table public.stats_world is
-    '0214, `recent` re-read by 0295: the world''s money by holder at each slot, and what moved since the previous row: minted, removed, moved (Σ |flow| over the moved kinds), sold / bought (ducats, from SOLD / BOUGHT events), units, trades. `period` is kind → ducats this period: per (game day, kind) of `recent`, its value less the previous row''s for the same day (public.tick_stats). `recent` is {game_day: {kind: ducats}} over daybook + flows (public.stats_recent): every game day of the count''s window and the two before it, never fewer than the newest three; the next row''s baseline. A row written before 0295 holds only the newest three days and a `period` read over them. Written by public.tick_stats alone.';
+    '0214, `recent` re-read by 0299: the world''s money by holder at each slot, and what moved since the previous row: minted, removed, moved (Σ |flow| over the moved kinds), sold / bought (ducats, from SOLD / BOUGHT events), units, trades. `period` is kind → ducats this period: per (game day, kind) of `recent`, its value less the previous row''s for the same day (public.tick_stats). `recent` is {game_day: {kind: ducats}} over daybook + flows (public.stats_recent): every game day of the count''s window and the two before it, never fewer than the newest three; the next row''s baseline. A row written before 0299 holds only the newest three days and a `period` read over them. Written by public.tick_stats alone.';
 
-  drop function pg_temp.tick_cut_0295(timestamptz), pg_temp.recent_old_0295(timestamptz), pg_temp.prev_0295(timestamptz, jsonb), pg_temp.pin_0295(),
-                pg_temp.total_0295(jsonb, text), pg_temp.map_0295(int, text), pg_temp.at_0295(int, numeric), pg_temp.occurs_0295(text, text);
+  drop function pg_temp.tick_cut_0299(timestamptz), pg_temp.recent_old_0299(timestamptz), pg_temp.prev_0299(timestamptz, jsonb), pg_temp.pin_0299(),
+                pg_temp.total_0299(jsonb, text), pg_temp.map_0299(int, text), pg_temp.at_0299(int, numeric), pg_temp.occurs_0299(text, text),
+                pg_temp.probe_0299(jsonb, int), pg_temp.kinds_0299(jsonb), pg_temp.cap_0299(text);
 
-  raise notice '0295 self-assert ok: (b)(c)(d)  THE PERIOD IS THE WHOLE WINDOW, probe rows dated 2004 only (game_day_seconds pinned to 60 inside the probe). stats_recent on planted daybook + flows rows: a 15-day window reads exactly its 18 days with both halves summed, CARRIED and the flow after p_now out and the days below the bound out; with no gap it is the old three-day shape and EQUAL to the old statement run on the same rows; a window start after p_now reads the same three days; a start 30 days back reads every planted day. The live tick_stats body cut after the period statement: (T1) the FIRST ROW after this file, against a previous row of the OLD shape, has period = the window''s flows to the ducat (46,551 and 120); (T2) the steady state, against a previous row of the NEW shape one window later, has period = the new flows only (111,999), the 15 old-only days ignored, where a plain difference of totals would read 71,348; (T3) after a five-hour gap the 0290 cap decides the bound (since = p_now - 120 minutes, skipped {from, to}) and the day below it is absent. Rolled back and asserted gone; no knob moved.';
+  raise notice '0299 self-assert ok: (b)(c)(d)  THE PERIOD IS THE WHOLE WINDOW, probe rows dated 2004 only (game_day_seconds pinned to 60 inside the probe); every map compared is cut to the probe''s own days and kinds (the R1 answer also carried % real game day(s) of a populated daybook, ignored). stats_recent on planted daybook + flows rows: a 15-day window reads exactly its 18 days with both halves summed, CARRIED and the flow after p_now out and the days below the bound out; with no gap it is the old three-day shape and EQUAL to the old statement run on the same rows (one snapshot); a window start after p_now reads the same three days; a start 30 days back reads every planted day. The live tick_stats body cut after the period statement: (T1) the FIRST ROW after this file, against a previous row of the OLD shape, has period = the window''s flows to the ducat (46,551 and 120); (T2) the steady state, against a previous row of the NEW shape one window later, has period = the new flows only (111,999), the 15 old-only days ignored, where a plain difference of totals would read 71,348; (T3) after a five-hour gap the 0290 cap decides the bound (since = p_now - 120 minutes, skipped {from, to}) and the day below it is absent. Rolled back and asserted gone; no knob moved. Printed, never asserted: the whole block took % ms.',
+    v_noise, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $main$;
 
 reset statement_timeout;
