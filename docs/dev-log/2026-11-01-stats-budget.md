@@ -201,3 +201,121 @@ Update this file with the gates and measurements; the matching row in `docs/OWNE
 rows 250/255); one line at the top of `docs/WORK_QUEUE.md`. PR title: `MIGRATION — 0290: the count keeps to a budget (deploy
 AFTER 0289)`; body = PROD CHECKS + the before/after table; ends with the Claude Code line. Commit trailer:
 `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
+
+---
+
+# Built (2026-11-01, `stats-budget`) — what shipped, what differs from the design, the gates, the prod checks
+
+## 11. What the file is
+
+`supabase/migrations/20260818000290_the_count_keeps_to_a_budget.sql` (prod head `20260818000289` re-read before writing; no renumber).
+As §4, in this order: guard · as-found (the three pre-images, **every** function's md5 in public/cmd/world/voyage, the knobs' md5) · the five
+knobs · `stats_window_start` / `stats_late` / `stats_live_compact` · `stats_fold_marks` (RLS on, `revoke all` from public/anon/authenticated,
+comment naming its one writer) · the seven indexes (§4.6, each with a comment) · the hunks (`tick_stats` ×3, `stats_live_fold` ×1, each asserted
+to occur once in the live body) · `stats_compact` re-cut whole (`create or replace`, the supersede declared in the header) · the self-assert.
+
+**Self-assert, all in rolled-back sub-transactions, every probe row in 2004 or 40 days ahead (nothing real is read by value):**
+- **(a) as found:** the five knobs read 120 / 4 / 1 / 300000 / 60 and are described; every other knob unmoved (md5 of the rest of `world_config`);
+  the marks table is server-only (RLS, no anon/authenticated privilege), keyed `(tbl, unit)`, its unit check bites; the seven indexes read from
+  `pg_index` (table, key column, predicate, valid/ready/live, one btree key, no INCLUDE, not unique); the three seams are server-only with the
+  intended volatility; the four hunks reverse to the pre-images; the three re-cuts keep ACL/volatility/definer/config; **every other function
+  md5-unmoved: the set of functions that differ is exactly the three re-cuts plus the three new seams** (670 functions locally); registry and
+  both owner switches as found; walls 0 / 0 / 0.
+- **(b) the cap:** `stats_window_start` at 30 / 120 / 43-hour gaps and with the knob at 60; then **one real `tick_stats`** at `now() + 40 days`
+  (so its flow window, its 24 h laps window and its fold are empty/the probe's; what is left is the count's fixed phases) five hours after a
+  planted previous count: `since` = p_now − 120 min, `skipped` = `{from: p_now − 5 h, to: p_now − 120 min}`, `stats_runs.receipt.skipped` equals
+  it, `fold` not late, the planted marks moved by exactly one batch; and the **live `tick_stats` body cut right after the cap**, asked 15 minutes
+  after that count: `skipped` is JSON null and `since` is that count's `at`.
+- **(c) the fold:** *no marks*: the first range is `[bucket(last count BEFORE this one − window) − 1 h, +4 h)` — a probe count's own row at P and
+  the previous count at P − 9 days; rows in the hour before and the hour after the range are untouched; all eight first marks asserted
+  (including the day edge lifting the hour tier of `stats_city_good`). *marks planted*: budget 0 → `late: true`, nothing removed, every row and
+  mark as planted; then five calls: the first folds exactly 4 world hours (05–08 of seven) and 1 of 4 good days, marks move by exactly the batch
+  and never past an edge (all eight marks asserted), the good's hour mark (planted below the day edge) lifts above it; calls 2–4 fold the rest
+  (3 hours, then a day each); call 5 folds nothing; Σ minted and Σ n unchanged.
+- **(d) the journal:** `stats_live_compact` on a TEMP table of the journal's shape — 4 of 10 rows become one (newest `at`, every figure the sum),
+  Σ of every column unchanged, count = n − p_rows + 1, returned number right; p_rows ≥ n leaves one row; 1 row / 0 / null change nothing; an empty
+  table invents no row. `stats_live_fold` with `stats_live_batch_rows` = 1 on the **real** journal (three planted rows so any world is "over"; a
+  limit-2 test and a ONE-row compaction, rolled back): `draining`, `folded` 0, `compacted` 1, `public.stats_live` untouched; at budget 0
+  `compacted` 0.
+
+**Mutation controls (the asserts can fail):** 24 in-memory mutations of the file, each applied to the chain and each caught by the assert meant
+for it — the count's own row taken as "the last count"; no batch bound on the hour tier; no day-edge lift; a day tier that may pass its edge;
+`stats_late` never late; the fold ignoring lateness; a batch one hour too long; a compaction that loses a column / does not insert / replaces a
+fixed 1 row; a drain that compacts nothing / reports `draining: false` / counts the whole journal; the cap gone / ignoring its knob / `skipped`
+not returned / `skipped` set under the cap; an unrelated function moved; the marks table readable by a client; a seam open to `anon`; an index on
+the wrong column / without its predicate; a day tier that does not write its mark. (Scratch harness, not in the repo.)
+
+## 12. Where this differs from §4–§5, and why
+
+1. **"The last count" is the newest `stats_world` row BEFORE `p_now`, not the newest row.** `tick_stats` inserts this run's own `stats_world`
+   row long before it calls `stats_compact`; "the newest `at`" is therefore `p_now`, which would set the first marks to the CURRENT edge − 1 h and
+   the 44-hour backlog would never be folded (a mark only moves forward). `stats_compact` reads `max(at) where at < p_now` (null → `p_now`).
+   The (c) probe plants both a previous count and the count's own row and proves the range follows the former. (§5(c) said "a probe row with a
+   slot above every real one": not needed once the rule is by `at`.)
+2. **`stats_late()` is `>=` the budget, not `>`.** A budget of 0 is then late at any clock resolution (PGlite's clock is not a microsecond one);
+   otherwise identical.
+3. **`tick_stats` hunk 1 declares two locals** (`v_start`, `v_skip`), so the cap calls `stats_window_start` once.
+4. **(b) runs ONE real count, not two.** A real count even at `now() + 40 days` still pays its fixed phases (pre-spiral prod receipts:
+   `recent` 1.9–5.0 s, `city_goods` 1.7–2.8 s, `world` 0.7–1.5 s, `goods` 0.6–0.9 s, `cities` 0.3–0.4 s ≈ 7–11 s on prod volume, an estimate: a
+   VOLATILE count cannot be run on prod to measure it); a second would double it, so "under the cap → null" is proven on the live body cut after the
+   cap. Locally the real count takes 370 ms (PGlite, tiny world). If the coordinator wants it gone from the push, drop the `tick_stats(v_p1)`
+   block in `$probe_b$` and keep the cut-body case.
+5. **Prod check "2004 probe keys absent":** `stats_world` / `stats_merchants` by `at`; for the three big tables (no index on `at`: that is
+   this slice) by the **slot windows a 2004 probe row would carry** (`drift_slot_of` of a 2004 instant is `[1,192,128, 1,227,264)` at 900 s a slot
+   and `[17,881,920, 18,408,960)` at 60 s), one primary-key range probe per good/port. A first version OR-ed the two windows in one statement, ran
+   past 120 s on the saturated database and was stopped from the client; `pg_stat_activity` afterwards showed it no longer running. Nothing was
+   written.
+6. **`docs/WORK_QUEUE.md` is not edited** (coordinator's instruction while several PRs are in flight); row 256 of `docs/OWNER_REQUESTS.md` is.
+
+**A fact worth knowing, found on the way:** the slot numbering changed on 2026-10-30 ~00:35 when the every-minute market went live: before it a
+slot is 15 minutes (`stats_world.slot` 1,991,711 at 2026-10-20 23:51), after it a minute (29,889,726 at 2026-10-30 18:06), because
+`drift_slot_seconds` went 900 → 60. Everything in this file is keyed on `at`, never on slot arithmetic across that line; `max(slot)` of a bucket is
+still its latest row because the new slots are larger.
+
+## 13. Gates (local, each run once on the final file; the migration was not touched after the proof run)
+
+| gate | result |
+|---|---|
+| `npx tsc -b` | clean (6.4 s) |
+| `npx eslint` on touched files | no `.ts` / `.tsx` / `.js` / `.mjs` file is touched (SQL and markdown only): nothing to lint |
+| `node scripts/db/check-versions.mjs` | 278 migrations, 278 distinct versions, no collisions, positive control fired |
+| `BYEHARU_PREFIX_CACHE=required node scripts/db/proof.mjs standing` | 277 restored from the prefix cache (2.9 s), 1 applied (mine); **278 / 278 with a self-assert receipt (289 receipt lines)**; world-guard ok; `11_standing_route` 5/5 PASS; never a from-zero replay |
+| `npm run build` | clean; world image built from the prefix cache (277 restored, 1 applied, certified, 17.86 MB, chain `9284ab4027060e90-278-130530a`) |
+| `npx playwright test tests/duplication.spec.ts tests/rpc.stats.spec.ts` | **18 passed, 0 skipped, 0 failed** (11 + 7) in 9.4 s against the built world image; `vite preview` on port 4417 at `localhost`, trailing slash, stopped afterwards |
+
+Local measurements (PGlite 18, tiny world): the whole self-assert 509 ms; the real end-to-end count 370 ms; the migration applied on the
+277-file snapshot in 2.9 s + 0.5 s.
+
+**Are all seven indexes used?** (the brief: drop any that is not.) Checked in a scratch PGlite with the migration applied and prod-shaped tables
+(`stats_good` 199 k rows, `stats_city` 127 k, `stats_city_good` 504 k; minute-numbered slots; `day` on the newest slot only; `analyze`; plans only,
+`explain (costs off)`, nothing run on prod): `stats_good_at` / `stats_city_at` / `stats_city_good_at` — the Bitmap Index Scan under `stats_fold`'s
+group read and its delete (a 4-hour range); `stats_good_slot` / `stats_city_slot` — `stats_fold_day`'s 24 h range read and its `n.slot = p_slot`
+update; `stats_good_day` / `stats_city_day` — the `set day = null where slot < p_slot and day is not null` update, which reads the ~565 / ~246 rows
+that carry `day` instead of the table. **All seven are chosen; none dropped.**
+
+## 14. PROD CHECKS (read-only, 2026-11-01 ~14:00 UTC, before the PR; the SQL files are in `~/dev/prodcheck-2026-11-01-0290/`)
+
+| check | result |
+|---|---|
+| head | `20260818000289` (277 migrations) |
+| the six md5s (LF-normalised `pg_get_functiondef`) | `tick_stats` `d2e72eede1406c36a08dc08b99caf604` · `stats_compact` `6ae5bf23fc0fe2ddb848ce9c693a32e3` · `stats_live_fold` `baa36db2387718e4173c6d8cfcebcc7f` · `stats_fold` `fd5cbeb86419b50512426819505a14f8` · `stats_fold_day` `d148c7e5529853daabd3e68382a25061` · `world.stats_now` `00b70324f22fd246657281acdabf18a4` — **all six equal §7**; the first five VOLATILE definers with `{postgres, service_role}` EXECUTE, `stats_now` STABLE with `authenticated` |
+| absent | all 16: the five knobs, `stats_fold_marks`, `stats_window_start`, `stats_late`, `stats_live_compact`, the seven index names |
+| existing knobs | `stats_fine_hours` 72 · `stats_city_good_fine_hours` 48 · `stats_hour_days` 30 · `stats_city_good_hour_days` 7 · `stats_fold_back_days` 14 · `drift_slot_seconds` 60 · `game_day_seconds` 60 |
+| existing indexes | the five stats tables, `stats_live`, `stats_runs`: primary keys only; none on `stats_live_deltas` |
+| 2004 probe keys | `stats_world` 0, `stats_merchants` 0 (by `at`); `stats_good` 0 / `stats_city` 0 / `stats_city_good` 0 in both slot windows (see §12.5) |
+| the count | cron `byeharu-voyage:stats` `6,21,36,51 * * * *` active; last 24 h: **92 failed, avg 118.7 s, 0 succeeded**, one running; `stats_world` 384 rows, newest slot 29,889,726 at `2026-10-30 18:06:00.094397+00` |
+| sizes (estimates) | `stats_live_deltas` 1,895,801 rows / 250 MB · `stats_city_good` 565,223 / 221 MB · `stats_good` 218,488 / 69 MB · `stats_city` 92,518 / 43 MB · `stats_runs` 168 rows |
+| the last good runs (`stats_runs`, 10-30 16:51–18:06) | `merchants` 11.1–13.2 s · `fold` 8.8–9.8 s (32.6–34.0 s on the hour) · `day` 4.2–7.9 s · `recent` 1.9–5.0 s · `city_goods` 1.7–2.8 s · `world` 0.7–1.5 s · `live` 0.6–1.4 s · `goods` 0.6–0.9 s · `cities` 0.3–0.4 s; totals 34–35 s (61–63 s on the hour) |
+| the database right now | `pg_stat_activity` showed `tick_market_drift_each_port` active 107 s waiting on `WALWrite`, `tick_arrivals_each_second` 33 s on `WalSync`, `tick_lap_starts` 41 s on an advisory lock, `tick_compact` 14 s on `DataFileWrite`: write-I/O saturated, which is why this file adds no write the count did not already make and the push's own probe is one count at an empty window |
+
+## 15. What the first runs after the deploy should show (for the §8 after-check)
+
+- **First run (the first `:06/:21/:36/:51` after the deploy):** `stats_runs.receipt.skipped` = `{from: 2026-10-30 18:06:00.094397+00, to: p_now − 120 min}`
+  and `since` = `to`; `fold` without `late`; `phases` whose `merchants` is the one remaining long phase (~12 s, index-only since 0287).
+- **Marks after run 1** (eight rows in `stats_fold_marks`): hour — `stats_world`, `stats_merchants`, `stats_good`, `stats_city` `2026-10-27 21:00`,
+  `stats_city_good` `2026-10-28 21:00`; day — `stats_good`, `stats_city` `2026-09-30`, `stats_city_good` `2026-10-23`. Each later run moves each
+  hour mark by 4 hours (to the edge, where it then moves an hour per hour) and each day mark by 1 day (to its edge).
+- **The journal:** `stats_live_deltas` (estimate from `pg_class` / `pg_stat_user_tables`, never a count) falls by ~300,000 a run; at ≤ 300,000
+  the next run runs the full reconcile (`live.folded` > 0, `draining` absent) and `world.stats_now()` answers in milliseconds.
+- **Forward rollback** (unchanged from §8): `drop index` the seven, re-create the three functions from their pre-images (the hunks' OLD text is in the
+  file; `stats_compact` is 0246's), drop the marks table and the five knobs.
