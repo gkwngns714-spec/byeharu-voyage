@@ -34,7 +34,7 @@ reverse): the class is a FIVE-step PREMIUM scale by a good's value, drawn so a p
 | class 4's English word | "Premium" | **"superior"** | docs/WORDS.md keeps *premium* for what a request pays over the market (`Premium +200 🪙`); the Fulfil tray shows both. Korean keeps 프리미엄 (its request word is 웃돈). The words: basic · standard · fine · superior · luxury / 기본 · 일반 · 고급 · 프리미엄 · 최고급. A row was added to WORDS.md. |
 | the compact mark | the meter beside the rarity glyph | **the two marks STACKED** (glyph over meter, one 14-px-wide cluster that gives 3 px back by a negative margin) | beside it, the cluster cost 20 px of the name's line and on a phone it wrapped under the name: Cinnamon 79 → 86 px, a request row 59 → 81. Stacked it advances the line by 11 px where the glyph alone advanced it by 12, and adds no height (§5, §5a). |
 | "a tinted row edge" | an edge rail | **a soft background wash from the row's start edge, classes 4–5** (10 % → 0 by 55 % of the width) | a rail hung in the gutter was clipped by the desk's scroll pane (invisible at 390), and an inset one lay over a name's first letter; a background cannot overlap, add a pixel, or be clipped. |
-| Stats | "the lists that sort gain Class" | `Class` is one more key of the Stats › Markets sort (`SORTS`, `FilterBar`), and its rows wear the mark | the only goods list with a sort control |
+| Stats | "the lists that sort gain Class" | `Class` is one more key of the Stats › Markets sort (`SORTS`, `FilterBar` — after the unfold of #447 a select in the list panel's own header), and its rows wear the mark | the only goods list with a sort control |
 
 **Server (0294).** Knob `world_config.good_class_edges = [45, 140, 350, 950]` (four ascending base-value edges). `class = 1 + the number of
 edges at or below base_value`. All three functions server-only (revoked from every client role), `search_path` set, invoker; the rule is
@@ -90,15 +90,17 @@ the rule merely stable; an unrelated function moved) — every one stops at its 
 
 ## 5. Proof — the gates, and what each said (2026-11-02; the local gates on the tree that was pushed, the CI's in §5a)
 - `tsc -b`: clean · `eslint` on the touched TypeScript files: clean · `node scripts/db/check-versions.mjs`: OK, 280 migration files, no collision.
-- THE CHAIN, through the prefix cache (`BYEHARU_PREFIX_CACHE=required node scripts/db/proof.mjs standing`, never from zero), on the tree rebased onto main (0291 in): 280
-  migrations — 278 restored from the cached prefix, 2 applied here (0291, 0294) — all 280 with a self-assert receipt (291 receipt lines), the world guard `ok` (the applied
-  world equals `data/*.json`), `PROOFS PASSED: 1 file(s), 5/5 PASS markers`. The fix commit of §5a touches no SQL.
+- THE CHAIN, through the prefix cache (`BYEHARU_PREFIX_CACHE=required node scripts/db/proof.mjs standing`, never from zero), on the tree with main merged in (0291, 0292,
+  0293 and the Stats unfold are in; prod head 0293): 282 migrations — 281 restored from the cached prefix, 1 applied here (0294) — all 282 with a self-assert receipt (293 receipt
+  lines), the world guard `ok` (the applied world equals `data/*.json`), `PROOFS PASSED: 1 file(s), 5/5 PASS markers`. So 0294's hunks apply, and its self-assert holds, on the
+  bodies as 0292 and 0293 left them. Earlier, on the tree rebased onto 0291: 280 migrations, 278 restored, 2 applied, 291 receipt lines, the same pass.
 - 0294's self-assert, tried to be broken: 23 mutations, every one caught by its own `0294 self-assert FAIL`; the control applies (§4).
 - `npm run build` (local mode): clean; the world image built from the prefix cache.
-- Playwright against the built image (headless, `localhost`, an explicit port, the trailing-slash base — 0 skipped, read), on the FINAL build (after the fix of §5a):
-  **108 passed in 17 spec files, 0 failed (5.0 min)** — `good.class` 13 · `duplication` 11 · `sections` 8 · `i18n.keys` 4 · `words` 1 · `market.desk` 3 · `align` 2 ·
-  `consistency` 17 · `layout` 19 · `primitives.geometry` 5 · `city.density` 1 · `city.page` 1 · `city.audit` 9 · `onepage` 2 · `wide.layout` 6 · `desk.layout` 4 · `i18n.ko` 2
-  (`city.audit` is the file whose Forge test the CI caught; it was not in the first local batch).
+- Playwright against the built image (headless, `localhost`, an explicit port, the trailing-slash base — 0 skipped, read), on the FINAL build, main merged in:
+  **126 passed in 24 spec files, 0 failed (5.7 min)** — `good.class` 13 · `duplication` 11 · `sections` 8 · `i18n.keys` 4 · `words` 1 · `market.desk` 3 · `align` 2 ·
+  `consistency` 17 · `layout` 19 · `primitives.geometry` 5 · `city.density` 1 · `city.page` 1 · `city.audit` 9 · `onepage` 2 · `wide.layout` 6 · `desk.layout` 4 · `i18n.ko` 2 ·
+  `stats.unfold` 6 · `stats.tab` 3 · `stats.filters` 3 · `stats.moneyFeedDrip` 2 · `stats.bigChart` 2 · `stats.moneySectors` 1 · `stats.moneyFeed` 1. Before the merge the same 17
+  non-Stats files passed on the build without it: 108 of 108.
 
 `tests/good.class.spec.ts` — PURE: the table is complete for 1–5 (a word in both languages, a lit-bar count, a token each), a list row wears the
 class from the number alone (the wash from class 4 only; none, null, 0, 6 and 99 draw nothing), the class table is not the rarity table (no shared
@@ -130,13 +132,18 @@ for this diff (`GoodKind` is the app shell); the local batch had run 16, and the
    (d) two invariants that hold on any machine's fonts: the cluster advances its line by no more than the glyph it joined (or its own 14 px when it stands alone), and it is
    no taller than the 24-px line. The failing test stopped at its first list, so the phone test's other lists (the requests, the Codex, the Forge) had not yet run on the runner.
 
+3. **Main moved while the fix was written** (0292 and 0293 deployed — prod head read 0293 — and the Stats unfold, #447). Merged in, two conflicts: `docs/OWNER_REQUESTS.md` (main's
+   row 260 kept, my row 261 after it) and `src/features/stats/Markets.tsx` (the unfold rewrote the face onto `ListPanel`; main's structure taken whole and my four additions re-applied:
+   the `class` key of the sort and its label, the class served to `GoodRow`, the compact mark, the row wash). The Markets list is no longer behind a detail page, so my Stats test
+   now reads the sort where it stands (a select in the list panel's header). Re-proved on the merged tree: §5.
+
 ## 6. BEFORE / AFTER (headless Chromium, DPR 2, English, dark; `…\scratchpad\good-class\shots\`)
 `before-*` is the design commit built as it was (no client change); `after-*` is this branch. Desk City › Buy at 390: `before-desk-buy-phone.png` /
 `after-desk-buy-phone.png`; Requests at 390: `before-requests-phone.png` / `after-requests-phone.png`; the City page's Market at 1280:
 `before-market-wide.png` / `after-market-wide.png`; the Codex's goods at 390: `before-codex-phone.png` / `after-codex-phone.png` (+ `after-codex-loud-phone.png`
-a luxury tile, `after-codex-tray-phone.png` its tray with the Class row); the Forge's tier page: `before-forge-phone.png` / `after-forge-phone.png`;
-the design gallery's Good marks (the ladders and a cargo list): `after-gallery-phone.png`; Stats › Markets › Every good sorted by Top class:
-`after-stats-class.png`. The measured row heights are in the spec's console output (`tallest growth` per list).
+a luxury tile, `after-codex-tray-phone.png` its tray with the Class row); the Forge's tier page: `before-forge-phone.png` / `after-forge-phone.png` (the tile is its name and the meter) and the tray a tile opens, its first row the class: `after-forge-tray-phone.png`;
+the design gallery's Good marks (the ladders and a cargo list): `after-gallery-phone.png`; Stats › Markets, the unfolded list sorted by Top class:
+`after-stats-class-phone.png` / `after-stats-class-wide.png`. The measured row heights are in the spec's console output (`tallest growth` per list).
 
 ## 7. Found on the way, NOT fixed here (not this slice's files)
 - **The City page's Market at 390×844 is broken on main before this change** — its two-region layout leaves the name column one character wide

@@ -535,16 +535,13 @@ test('Stats › Markets sorts every good by class, premium first, through the so
   await page.goto('stats')
   await ready(page)
   await page.getByRole('tab', { name: 'Markets', exact: true }).click()
-  await page.getByTestId('stats-markets-filters').click()
-  await expect(page.getByTestId('stats-markets-filters-page')).toBeVisible()
+  // THE LIST STANDS ON THE FACE (the unfold slice, #447): its sort is a select in the list panel's own header — nothing to open
+  await expect(page.getByTestId('stats-markets-sort')).toBeVisible({ timeout: 60_000 })
   // the key is one of the existing sort's own options, beside price and name
   const options = await page.getByTestId('filter-pick-sort').locator('option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value))
   expect(options).toEqual(expect.arrayContaining(['movers', 'price', 'name', 'class']))
   await page.getByTestId('filter-pick-sort').selectOption('class')
-  await page.locator('[data-detail-back]').last().click()
-  await page.getByTestId('stats-goods').click()
-  await expect(page.getByTestId('stats-goods-page')).toBeVisible()
-  await expect(page.getByTestId('stats-good').first()).toBeVisible()
+  await expect(page.getByTestId('stats-good').first()).toBeVisible({ timeout: 60_000 })
 
   const rows = await page.evaluate(inspectRows, '[data-testid="stats-good"]')
   expectList('stats Every good', rows, new Map())
