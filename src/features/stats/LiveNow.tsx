@@ -1,4 +1,4 @@
-import { Dot, SheetSection, StatCell } from '../../components/ui'
+import { Dot, SheetSection } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import type { StatsNow } from '../../lib/rpc'
@@ -29,34 +29,32 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
       }
       data-testid="stats-live"
     >
-      {/* FOUR CELLS ON ONE LINE AT EVERY WIDTH (2026-10-31): the live band is a summary, and the
-          sheet has to fit the glass. The labels wrap; the figures stay. */}
-      <div className="grid grid-cols-4 gap-x-3 gap-y-3">
-        <StatCell
-          label={t('stats.purse')}
-          value={ducats ?? 0}
-          format={formatDucats}
-          size="body"
-          tone="accent"
-          text={ducats === null ? '—' : undefined}
-          data-testid="stats-live-purse"
-        />
-        <StatCell
-          label={t('stats.money')}
-          value={live?.total ?? 0}
-          format={formatDucats}
-          size="body"
-          text={live === null ? '—' : undefined}
-          data-testid="stats-live-world"
-        />
-        <StatCell label={t('stats.fleetsAtSea')} value={live?.at_sea ?? 0} format={formatInt} text={live === null ? '—' : undefined} />
-        <StatCell
-          label={t('stats.tradesSince')}
-          value={live?.since_count.trades ?? 0}
-          format={formatInt}
-          text={live === null ? '—' : undefined}
-          data-testid="stats-live-trades"
-        />
+      {/* A WRAPPING FACTS LINE (owner, 2026-11-01: *"everything is folded in stats… make it
+          compact showing everything possible"*): four labelled live figures at caption scale —
+          the same four numbers in one block instead of a 4-cell grid. The test ids stay on the
+          figures themselves. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 text-t-caption text-ink-faint">
+        <span className="whitespace-nowrap">
+          {t('stats.purse')}{' '}
+          <span className="tabular-nums text-accent" data-testid="stats-live-purse">
+            {ducats === null ? '—' : formatDucats(ducats ?? 0)}
+          </span>
+        </span>
+        <span className="whitespace-nowrap">
+          {t('stats.money')}{' '}
+          <span className="tabular-nums text-ink" data-testid="stats-live-world">
+            {live === null ? '—' : formatDucats(live.total ?? 0)}
+          </span>
+        </span>
+        <span className="whitespace-nowrap">
+          {t('stats.fleetsAtSea')} <span className="tabular-nums text-ink">{live === null ? '—' : formatInt(live.at_sea ?? 0)}</span>
+        </span>
+        <span className="whitespace-nowrap">
+          {t('stats.tradesSince')}{' '}
+          <span className="tabular-nums text-ink" data-testid="stats-live-trades">
+            {live === null ? '—' : formatInt(live.since_count.trades ?? 0)}
+          </span>
+        </span>
       </div>
     </SheetSection>
   )

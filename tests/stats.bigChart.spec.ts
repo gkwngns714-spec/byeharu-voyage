@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { PHONE, openDetail, reachable, ready } from './appReady.fixture'
+import { PHONE, reachable, ready } from './appReady.fixture'
 
 // A STATS CHART OPENS LARGE (owner row 232, 0246; StatsChart.tsx): tapping a Stats chart opens the same Tray the Buy / Sell
 // good page opens its price chart in, with the shared span picker (1d · 1w · 1m · 1y · All) over the same SeriesChart,
@@ -18,12 +18,11 @@ for (const vp of [PHONE, WIDE]) {
     await ready(page)
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     await expect(page.getByTestId('stats-overview')).toHaveAttribute('data-span', '1d', { timeout: 60_000 })
-    // the charts live behind the World money fold (2026-10-31, the sheet law)
-    await openDetail(page, 'stats-money')
+    // THE CHARTS STAND ON THE FACE (owner, 2026-11-01: the fold and the page are gone — the mini
+    // chart row is inline). The press opens the tray; the face under it does not move.
     await expect(page.getByTestId('stats-big-chart')).toHaveCount(0)
 
-    // the page under the tray does not move when it opens
-    // the tapped chart's place against the first holder cell, both in the tab's own scroll box: a press may scroll that box, it may not re-flow it
+    // the tapped chart's place against the first holder cell: a press may open a fixed tray, it may not re-flow the face
     const gap = () => page.evaluate(() => document.querySelector('[data-testid="stats-chart-tap"]')!.getBoundingClientRect().top - document.querySelector('[data-testid="stats-holder"]')!.getBoundingClientRect().top)
     const before = await gap()
     await page.getByTestId('stats-chart-tap').first().click()

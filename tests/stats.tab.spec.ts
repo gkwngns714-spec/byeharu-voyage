@@ -34,8 +34,8 @@ for (const vp of [PHONE, WIDE]) {
 
     // Overview: the world's money, with its age
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
-    // THE FACE'S DETAIL IS FOLDED (2026-10-31, the sheet law): one press opens it, as a player does.
-    await openDetail(page, 'stats-money')
+    // THE FACE IS INLINE (owner, 2026-11-01: *"everything is folded in stats this is soo wrong"*):
+    // the holders stand on the face itself — no press, no page.
     await expect(page.getByTestId('stats-holder')).toHaveCount(4)
     await expect(page.getByTestId('stats-updated')).toContainText(/Updated \d\d:\d\d:\d\d/)
     // RIGHT NOW: the live band, with a purse that is a figure and not a dash — and the world's live figures (0224)
@@ -48,7 +48,6 @@ for (const vp of [PHONE, WIDE]) {
     // and the rollup is DRAWN: the holders' stacked bar and at least one chart on the face
     expect(await page.getByTestId('stats-overview').locator('[role="img"]').count()).toBeGreaterThan(0)
     await noSidewaysScroll(page)
-    await closeDetail(page)
 
     await page.getByRole('tab', { name: 'Markets', exact: true }).click()
     await expect(page.getByTestId('stats-markets')).toBeVisible({ timeout: 60_000 })
