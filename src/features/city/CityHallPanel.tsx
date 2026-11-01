@@ -102,32 +102,29 @@ export function CityHallPanel({
               type="button"
               onClick={() => setInvestorsOpen(true)}
               data-testid="city-hall-investors"
-              className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left text-ink-muted transition hover:text-ink"
+              className="flex min-h-11 w-full items-center gap-2 py-2 text-left text-ink-muted transition hover:text-ink"
             >
               <span className="text-t-caption">{t('town.investors')}</span>
-              <span className="flex items-center gap-1 text-t-caption tabular-nums">
-                {hall.investors.length}
-                <Icon name="chevron" size={16} className="text-ink-faint" />
-              </span>
+              <span className="shrink-0 text-t-caption tabular-nums">{hall.investors.length}</span>
+              <Icon name="chevron" size={16} className="ml-auto text-ink-faint" />
             </button>
           </div>
           {investorsOpen && <InvestorsDrawer investors={hall.investors} onClose={() => setInvestorsOpen(false)} />}
         </>
       }
     >
-      {/* THE INFLUENCE FOLD — collapsed: its word, your points, the chevron; ≥ 44 px. */}
+      {/* THE INFLUENCE FOLD — collapsed: its word, your points hugging it, the chevron at the edge;
+          ≥ 44 px. */}
       <button
         type="button"
         aria-expanded={influenceOpen}
         onClick={() => setInfluenceOpen((v) => !v)}
         data-testid="city-hall-influence"
-        className="flex min-h-11 w-full shrink-0 items-center justify-between gap-2 rounded-control border-b border-edge text-left text-ink-muted transition hover:text-ink"
+        className="flex min-h-11 w-full shrink-0 items-center gap-2 rounded-control border-b border-edge text-left text-ink-muted transition hover:text-ink"
       >
         <span className="text-t-caption">{t('town.influence')}</span>
-        <span className="flex items-center gap-1 text-t-caption tabular-nums">
-          {you ? formatInt(you.points) : null}
-          <Icon name="chevron" size={16} className={`text-ink-faint transition ${influenceOpen ? 'rotate-180' : ''}`} />
-        </span>
+        <span className="shrink-0 text-t-caption tabular-nums">{you ? formatInt(you.points) : null}</span>
+        <Icon name="chevron" size={16} className={`ml-auto text-ink-faint transition ${influenceOpen ? 'rotate-180' : ''}`} />
       </button>
       {influenceOpen && (
         <div className={BOOK_DENSE} data-testid="city-hall-book">
@@ -158,7 +155,10 @@ export function CityHallPanel({
   )
 }
 
-/** ONE COMPACT LINE — label at caption size on the left, the figure on the right, 20 px tall. */
+/** ONE COMPACT LINE — 20 px tall, the figure hugging its label (owner, 2026-11-01: *"empty spaces
+ *  between words and numbers horizontally … make it so that htey are closer, more compact"*). The
+ *  figure used to be pushed to the far edge by `justify-between`; it now stands 8 px behind its
+ *  word, and nothing is spread across the panel. */
 function FigureLine({
   label,
   testid,
@@ -170,9 +170,9 @@ function FigureLine({
   children: ReactNode
 } & { 'data-stance'?: string; 'data-nation'?: string }) {
   return (
-    <div className="flex min-h-5 items-center justify-between gap-2 py-0 leading-tight" data-testid={testid} {...rest}>
-      <span className="truncate text-t-caption text-ink-faint">{label}</span>
-      <span className="shrink-0 text-right tabular-nums">{children}</span>
+    <div className="flex min-h-5 items-center gap-2 py-0 leading-tight" data-testid={testid} {...rest}>
+      <span title={label} className="min-w-0 truncate text-t-caption text-ink-faint">{label}</span>
+      <span className="shrink-0 tabular-nums">{children}</span>
     </div>
   )
 }

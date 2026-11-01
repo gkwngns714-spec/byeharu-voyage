@@ -386,7 +386,10 @@ function CityFrame({
             the same shape at every press (and the merged audit's HQ-geometry proof still reads a
             `city-summary` between the split and the rail). */}
         <div data-testid="city-summary" className="shrink-0 pt-1">
-          <div className="flex min-h-5 items-center justify-between gap-2 px-1">
+          {/* THE EARNINGS FIGURE HUGS ITS WORD (owner, 2026-11-01): this frame line used to push
+              the purse to the far edge of the whole frame; it now stands 8 px behind "Your
+              earnings", like every other row on the HQ. */}
+          <div className="flex min-h-5 items-center gap-2 px-1">
             <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
             <Figure value={ducats === null ? '—' : formatDucats(ducats)} size="body" tone={ducats === null ? 'faint' : 'ink'} />
           </div>
