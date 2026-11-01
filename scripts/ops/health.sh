@@ -56,9 +56,10 @@ L=$(Q "select string_agg(c.relname || ' ' || s.n_dead_tup::text || ' dead of ~' 
 PGB=$(Q "select (pg_total_relation_size('public.port_goods')/1048576)::int as v" | val v)
 [ -n "$PGB" ] && [ "$PGB" != "null" ] && [ "$PGB" -gt 250 ] && alert "port_goods is ${PGB} MB (0292 rewrote it to ~120 MB; before it was 307 MB): bloat is back — in-page updates are failing or autovacuum is blocked; it needs the rewrite again"
 
-echo "== write load: WAL over a 30 s window, port_goods HOT share, and the heaviest statements (since restart)"
+echo "== write load: WAL over a 90 s window, port_goods HOT share, and the heaviest statements (since restart)"
 R() { Q "select extract(epoch from now()) as t, wal_bytes::numeric as w, wal_fpi as f, (select n_tup_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as u, (select n_tup_hot_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as h from pg_stat_wal" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const r=JSON.parse(s.slice(s.indexOf("{"))).rows[0];console.log([r.t,r.w,r.f,r.u,r.h].join(" "))}catch(e){console.log("")}})'; }
-WA=$(R); sleep 30; WB=$(R)
+# 90 s, not 30: the checkpoint every 5 min makes a short window swing (2026-11-02: 101 MB/min in one 30 s window, 45 MB/min over 4 min, 18-41 in others)
+WA=$(R); sleep 90; WB=$(R)
 WRATE=$(node -e 'const a=process.argv[1].split(" ").map(Number),b=process.argv[2].split(" ").map(Number);if(a.length<5||b.length<5||isNaN(a[0])||isNaN(b[0])){console.log("");process.exit(0)}const m=(b[0]-a[0])/60;console.log(((b[1]-a[1])/1048576/m).toFixed(1)+" "+Math.round((b[2]-a[2])/m)+" "+(b[3]-a[3]>0?(100*(b[4]-a[4])/(b[3]-a[3])).toFixed(0):"-"))' "$WA" "$WB")
 set -- $WRATE; echo "  wal_mb_per_min=${1:-?}  fpi_per_min=${2:-?}  port_goods_hot_pct=${3:-?}   (baseline after the 0292 rewrite: ~47 MB/min, 100 % HOT; the every-minute market itself is ~30 MB/min of it)"
 [ -n "$1" ] && awk "BEGIN{exit !($1 > 70)}" && alert "WAL is ${1} MB/min (> 70, the post-0292 baseline is ~47): the write path is saturating the disk — check the minute jobs and what else started writing"
