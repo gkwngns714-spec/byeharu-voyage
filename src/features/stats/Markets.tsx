@@ -6,6 +6,7 @@ import {
   FactsLine,
   FilterBar,
   Figure,
+  GoodKind,
   ListPanel,
   Note,
   Row,
@@ -16,6 +17,7 @@ import {
   StockGauge,
   categoryLabel,
   deltaTone,
+  goodClassRow,
   oneOf,
   rarityLabel,
   RARITY_TIERS,
@@ -36,7 +38,7 @@ import { Block } from './StatsBlock'
 // with the filters (kind · rarity · sort) in the panel's own header and the window on the day it sets. A press on a good was never
 // anything — the row is its own detail (its price, its move, what sold and bought, its stock).
 
-const SORTS = ['movers', 'rose', 'fell', 'traded', 'price', 'name'] as const
+const SORTS = ['movers', 'rose', 'fell', 'traded', 'price', 'class', 'name'] as const
 type Window = '1h' | '1d' | '7d'
 const FIRST = 60
 
@@ -66,7 +68,10 @@ export function MarketsFace() {
       .filter((g) => (kind === ALL || g.category === kind) && (rarity === ALL || goodByCode[g.code]?.rarity === rarity))
       .map((g) => ({ g, move: movePct(g.mid, before(g)), traded: g.sold_1d + g.bought_1d }))
     const byName = (a: GoodRank, b: GoodRank) => a.g.name.localeCompare(b.g.name)
+    // THE PREMIUM CLASS (0294) is the catalogue's served number, read by code; a good it has none for sorts last
+    const classOf = (r: GoodRank) => goodByCode[r.g.code]?.class ?? 0
     if (sort === 'name') return list.sort(byName)
+    if (sort === 'class') return list.sort((a, b) => classOf(b) - classOf(a) || (b.g.mid ?? -1) - (a.g.mid ?? -1) || byName(a, b))
     if (sort === 'traded') return list.sort((a, b) => b.traded - a.traded || byName(a, b))
     if (sort === 'price') return list.sort((a, b) => (b.g.mid ?? -1) - (a.g.mid ?? -1) || byName(a, b))
     if (sort === 'rose') return list.sort((a, b) => (b.move ?? -Infinity) - (a.move ?? -Infinity) || byName(a, b))
@@ -161,7 +166,7 @@ export function MarketsFace() {
             options: SORTS.map((id) => ({
               id,
               label: t(
-                id === 'movers' ? 'stats.movers' : id === 'rose' ? 'stats.roseMost' : id === 'fell' ? 'stats.fellMost' : id === 'traded' ? 'stats.mostTraded' : id === 'price' ? 'stats.dearest' : 'stats.name',
+                id === 'movers' ? 'stats.movers' : id === 'rose' ? 'stats.roseMost' : id === 'fell' ? 'stats.fellMost' : id === 'traded' ? 'stats.mostTraded' : id === 'price' ? 'stats.dearest' : id === 'class' ? 'stats.topClass' : 'stats.name',
               ),
             })),
             value: sort,
@@ -195,7 +200,7 @@ export function MarketsFace() {
     >
       {rows.length === 0 && <Empty className="my-1" data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
       {shown.map((r, i) => (
-        <GoodRow key={r.g.code} g={r.g} move={r.move} last={i === shown.length - 1 && (all || rows.length <= FIRST)} />
+        <GoodRow key={r.g.code} g={r.g} move={r.move} goodClass={goodByCode[r.g.code]?.class} last={i === shown.length - 1 && (all || rows.length <= FIRST)} />
       ))}
       {!all && rows.length > FIRST && (
         <div className="py-2">
@@ -243,15 +248,17 @@ function Board({ title, rows, empty, testid }: { title: string; rows: readonly B
   )
 }
 
-function GoodRow({ g, move, last }: { g: StatsGood; move: number | null; last: boolean }) {
+function GoodRow({ g, move, goodClass, last }: { g: StatsGood; move: number | null; goodClass: number | undefined; last: boolean }) {
   const t = useT()
   const tone = move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'
   return (
     <Row
+      {...goodClassRow(goodClass)}
       label={
         <span className="flex min-w-0 items-center gap-2">
           <span className="min-w-0 break-words text-ink">{goodName(g)}</span>
           <span className="shrink-0 text-t-caption text-ink-faint">{categoryLabel(g.category)}</span>
+          <GoodKind compact goodClass={goodClass} className="shrink-0" />
         </span>
       }
       // THE FIGURES FOLLOW THEIR NAME (owner, 2026-11-01, row 260: label and figure close): the line, the price and

@@ -3,6 +3,7 @@ import {
   Bar,
   Button,
   Chip,
+  CargoRows,
   Clip,
   Col,
   Cols,
@@ -10,11 +11,15 @@ import {
   Field,
   FieldButton,
   Figure,
+  GOOD_CLASSES,
+  GoodClassMark,
   Hint,
   Icon,
   Nav,
   Note,
   RankBars,
+  RARITY_TIERS,
+  RarityMark,
   Row,
   SectionColumns,
   Segmented,
@@ -202,6 +207,34 @@ export function GalleryScreen() {
               data-testid="gallery-tile"
             />
           </TileField>
+        </SheetSection>
+
+        {/* THE TWO MARKS A GOOD WEARS (0294). Rarity — a glyph — is how few harbours make it; class — a
+            five-bar meter — is how much a ton of it is worth. The legend shows both ladders with their
+            words; the cargo rows are the SAME CargoRows a fleet and a merchant draw, one good in each
+            class, so classes 4 and 5 show the wash that makes a premium good visible before a word. */}
+        <SheetSection heading="Good marks" data-testid="gallery-good-marks">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-2 text-t-caption" data-testid="gallery-class-legend">
+            {GOOD_CLASSES.map((c) => (
+              <GoodClassMark key={c} goodClass={c} withWord />
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pb-2 text-t-caption" data-testid="gallery-rarity-legend">
+            {RARITY_TIERS.map((r) => (
+              <RarityMark key={r} rarity={r} withWord />
+            ))}
+          </div>
+          <CargoRows
+            rows={[
+              { code: 'wheat', name: 'Wheat', category: 'grain', class: 1, qty: 120 },
+              { code: 'salt', name: 'Salt', category: 'food', class: 2, qty: 80 },
+              { code: 'wine', name: 'Wine', category: 'drink', class: 3, qty: 40 },
+              { code: 'silk', name: 'Silk', category: 'cloth', class: 4, qty: 18 },
+              { code: 'amber', name: 'Amber', category: 'gems', class: 5, qty: 6 },
+            ]}
+            totalTons={52.4}
+            testId="gallery-cargo-row"
+          />
         </SheetSection>
 
         <SheetSection heading="Chip and Segmented">

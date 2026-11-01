@@ -52,6 +52,8 @@ export interface PanelGood {
   name: string
   category: string
   rarity?: MarketGood['rarity']
+  /** The served premium class (0294), beside the rarity. */
+  class?: MarketGood['class']
   price: number
 }
 
@@ -159,7 +161,7 @@ function Frame({
         <span className="text-t-caption text-ink-muted" data-testid="good-detail-city">
           <PortFlag code={city} /> {portNameOf(portByCode, city)}
         </span>
-        <GoodKind category={good.category} rarity={good.rarity} />
+        <GoodKind category={good.category} rarity={good.rarity} goodClass={good.class} />
       </div>
       <Row
         label={t(side === 'buy' ? 'desk.buy' : 'desk.sell')}

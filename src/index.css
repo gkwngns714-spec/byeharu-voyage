@@ -264,6 +264,26 @@
   --color-rarity-rare: #b39df2;
   --color-rarity-exotic: #e59ad5;
 
+  /* ── CLASS — the five premium classes of 0294, served on every good ─────────────────────────
+     How much a ton of a good is WORTH, drawn beside the rarity mark and never mistaken for it
+     (rarity is how few harbours make the good; gold is dear and common). A RAMP, not a rainbow:
+     classes 1-3 are the game's own three inks climbing from quiet to full — basic faint, standard
+     muted, fine full ink — so the everyday goods stay quiet, and the two premium classes are the
+     only chroma the scale has: copper (4) and gold (5). A premium good is therefore the loudest
+     mark in any list, and the hues stay clear of rarity's sea-glass / violet / orchid and of the
+     four meanings (copper sits between danger's red and the accent's gold, and is only ever a
+     small bar meter, never a figure). Colour is never the only channel: the SHAPE is the number of
+     lit bars out of five (GoodClassMark), so the class survives a colourblind player and a
+     greyscale screenshot.
+     Measured by tests/good.class.spec.ts from THIS file's own figures — contrast on --color-surface
+     and on the inset --color-surface-2, night: 1 ink-faint 5.78 / 5.15 · 2 ink-muted 8.09 / 7.21 ·
+     3 ink 15.72 / 14.00 · 4 #ee9a5c 7.70 / 6.85 · 5 #ffdc6a 12.83 / 11.43 (all ≥ 4.5). */
+  --color-class-1: var(--color-ink-faint);
+  --color-class-2: var(--color-ink-muted);
+  --color-class-3: var(--color-ink);
+  --color-class-4: #ee9a5c;
+  --color-class-5: #ffdc6a;
+
   /* price index — one meaning per colour. cheap = you should BUY, dear = you should SELL. */
   --color-cheap: var(--color-success);
   --color-dear: var(--color-danger);
@@ -386,6 +406,8 @@
 
 :root {
   color-scheme: dark;
+  /* how strong the premium rows' wash is at the row's start edge (.bv-class-4 / .bv-class-5) */
+  --class-wash: 10%;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -410,6 +432,7 @@
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
 :root[data-theme='light'] {
     color-scheme: light;
+    --class-wash: 16%;
 
     --color-bg: #eef2f6;
     --color-sea-1: #dce8f2;
@@ -524,6 +547,15 @@
     --color-rarity-uncommon: #0f8c7a;
     --color-rarity-rare: #6d4fd0;
     --color-rarity-exotic: #b4409b;
+
+    /* The day's class ramp. 2 and 3 are the day's own ink-muted and ink (they follow the block above).
+       Class 1 is NOT the day's ink-faint — #6b7280 measures 4.42 on the inset surface-2, under AA —
+       so it takes its own; 4 and 5 are copper and a deep gold, a step darker than the night's.
+       On white / the inset: 1 #646c79 5.30 / 4.84 · 2 ink-muted 7.56 / 6.91 · 3 ink 17.74 / 16.21 ·
+       4 #a8501c 5.48 / 5.01 · 5 #7a5a00 6.38 / 5.83 (tests/good.class.spec.ts re-measures them). */
+    --color-class-1: #646c79;
+    --color-class-4: #a8501c;
+    --color-class-5: #7a5a00;
 
     /* The night sea's elevation is a black cast; on paper it has to be a softer, cooler one. */
     --shadow-sheet: 0 -8px 32px -16px rgb(16 24 40 / 0.18);
@@ -662,6 +694,22 @@ html:lang(ko) body {
         transparent 60%
       ),
       linear-gradient(to bottom, var(--color-sea-1) 0%, var(--color-sea-2) 100%);
+  }
+
+  /* A PREMIUM GOOD'S ROW WEARS ITS CLASS (0294, goodClassTiers.ts `goodClassRow`): a soft fade of the
+     class's own tone from the row's start edge — 10 % at the edge, gone by 55 % of the width — so a
+     premium good is the warm row in a list before a word is read. It is a BACKGROUND, so it adds no
+     track, no gap and no pixel to any row (docs/dev-log/2026-11-01-main-red-row-tracks.md: a row may
+     not buy width), it cannot overlap anything, and no scroll pane can clip it (a rail hung in the
+     gutter was clipped by the desk's pane, and an inset one lay over a name's first letter). 10 % is
+     the most the fade may be at night: ink-faint text on the tinted ground still clears 4.5 : 1 (the
+     day states its own 16 %, because a dark copper on the day's pale blue-grey ground needs more to
+     read as warm and not as a smudge). Only classes 4 and 5 have one. A tile's own `bg-surface` is a colour and this an image, so a tile wears both. */
+  .bv-class-4 {
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--color-class-4) var(--class-wash), transparent), transparent 55%);
+  }
+  .bv-class-5 {
+    background-image: linear-gradient(90deg, color-mix(in srgb, var(--color-class-5) var(--class-wash), transparent), transparent 55%);
   }
 
   /* THE SLIDER, and it is here because it cannot be anywhere else. An `input[type=range]` is drawn

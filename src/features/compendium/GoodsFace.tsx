@@ -1,6 +1,7 @@
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import {
   Figure,
+  GoodClassMark,
   Icon,
   ListPanel,
   Note,
@@ -8,6 +9,7 @@ import {
   Row,
   Tray,
   categoryLabel,
+  goodClassRow,
   goodIcon,
   type TrayDetent,
 } from '../../components/ui'
@@ -73,7 +75,16 @@ export function GoodsFace({ query, search }: { query: string; search: ReactNode 
               {group.rows.map((g) => (
                 <Row
                   key={g.code}
-                  mark={<Icon name={goodIcon(g.code, g.category)} size={20} />}
+                  {...goodClassRow(g.class)}
+                  // THE PREMIUM CLASS (0294) HANGS UNDER THE GOOD'S OWN MARK: the mark cell is the icon's 20 px wide and its line the
+                  // row's 24, so a meter under the icon costs no width and no height — the label keeps every pixel it had, the name is
+                  // never cut or pushed to a second line by it, and the 44-px row stays 44 (the class word is the tray's Class row)
+                  mark={
+                    <span className="relative inline-flex">
+                      <Icon name={goodIcon(g.code, g.category)} size={20} />
+                      <GoodClassMark goodClass={g.class} className="absolute left-1/2 top-full mt-0.5 -translate-x-1/2" />
+                    </span>
+                  }
                   label={
                     // THE NAME IS NEVER CUT: it wraps at its spaces, and the rarity word drops under it when the two do not
                     // fit one line — a short name keeps one 44-px line, a long one (or a 320-px glass) takes a second.
@@ -105,6 +116,7 @@ export function GoodsFace({ query, search }: { query: string; search: ReactNode 
         >
           <Row label={t('codex.kind')} value={categoryLabel(open.category)} />
           {open.rarity && <Row label={t('codex.rarity')} value={<RarityMark rarity={open.rarity} size={10} withWord />} />}
+          {open.class != null && <Row label={t('codex.class')} value={<GoodClassMark goodClass={open.class} withWord />} data-testid="good-class-row" />}
           <Row label={t('codex.base')} value={<Figure value={anchor(open.base_value)} unit={COIN} />} />
           <Row
             label={t('codex.weight')}

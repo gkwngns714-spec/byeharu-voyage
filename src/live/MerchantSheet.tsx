@@ -169,12 +169,13 @@ function MerchantBody({
   // Date.now() read during a render.
   const { nowMs } = useShellState()
   const nationByCode = useWorld((s) => s.nationByCode)
+  const goodByCode = useWorld((s) => s.goodByCode)
   const e = card.earnings
   const cargo = useMemo(() => {
     return Object.entries(fleetCargoByCode(card))
-      .map(([code, qty]) => ({ code, name: goodName(code), category: goodCategory(code), qty }))
+      .map(([code, qty]) => ({ code, name: goodName(code), category: goodCategory(code), class: goodByCode[code]?.class, qty }))
       .sort((a, b) => a.name.localeCompare(b.name))
-  }, [card, goodName, goodCategory])
+  }, [card, goodName, goodCategory, goodByCode])
   const skipped = card.route?.last_skipped ?? []
   const level = card.skills.reduce((n, sk) => n + sk.level, 0)
 

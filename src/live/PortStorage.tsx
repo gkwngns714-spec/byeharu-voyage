@@ -5,11 +5,13 @@ import {
   Button,
   CargoBar,
   Figure,
+  GoodKind,
   Note,
   Row,
   SheetSection,
   Stepper,
   Tray,
+  goodClassRow,
   type TrayDetent,
   Clip,
 } from '../components/ui'
@@ -175,6 +177,8 @@ function StorageRow({
   hairline: boolean
 }) {
   const t = useT()
+  // the premium class (0294), off the served catalogue by the line's code — as the name's own lookup is
+  const goodClass = useWorld((s) => s.goodByCode[line.code]?.class)
   const stored = line.stored ? Math.floor(line.stored.qty) : 0
   const aboard = line.aboard ? Math.floor(line.aboard.qty) : 0
   const caption = [
@@ -185,7 +189,13 @@ function StorageRow({
     .join(' · ')
   return (
     <Row
-      label={<Clip className="text-t-body">{line.name}</Clip>}
+      {...goodClassRow(goodClass)}
+      label={
+        <span className="flex min-w-0 items-center gap-x-1.5">
+          <Clip className="text-t-body">{line.name}</Clip>
+          <GoodKind compact goodClass={goodClass} />
+        </span>
+      }
       value={
         <span className="grid grid-cols-2 gap-1">
           <ActCell
