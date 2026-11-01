@@ -144,3 +144,11 @@ inner scroll from 11 px to 43, and that spec holds it to 12.
 * **A rotated phone, and DPR 2 / 3**: layout is in CSS px and nothing here reads DPR; I did not look at it at 2 or 3.
 * **Real Korean fonts on a device**: measured with the machine's own; a narrower or wider Hangul face moves the wraps, not the laws.
 * The desk (PR 2) and the Profile (PR 3) are their own slices, `docs/dev-log/2026-11-02-city-phone-desk.md` and the Profile section of its PR.
+
+## 8. Found after the merge (PR 5, `city-phone-openreq`)
+
+The first cut of the law walked the Requests face with NO request open (the canary world has none until one is placed). Placing one — the house's own request is a line on that face: what it is, the sum held, and a
+**Cancel** — showed what the walk could not: `MarketFace`'s line was one non-wrapping row of the word, the sum and an 85-px button, **190 px in a panel with 139 px of room at 390 and 104 at 320**. Measured on `main`
+after #456–#459: the Cancel stood at x 332…417 against the panel's edge at 374 — **43 px past it at 390, 78 px at 320** (297…382 against 304: seven pixels of an unpressable button, clipped by the panel; English and Korean).
+The line is now `flex-wrap`: the word and the sum, and the Cancel under them at the right edge when the three do not fit (−16 px = inside, at 390, 320 and 1280). The law presses Requests › New request › the first good › Place
+and reads the face with the request open (`market requests · one open`): red on `main` at 390 and 320 in both languages (the panel body clipped), green here. `market.desk.spec.ts`'s place-list-cancel test still passes.
