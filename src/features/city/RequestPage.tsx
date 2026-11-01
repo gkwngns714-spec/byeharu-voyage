@@ -96,7 +96,10 @@ export function RequestPage({
           </div>
         ) : (
           <div className="mt-2">
-            <div className="h-64" data-testid="city-request-chart">
+            {/* THE CHART STANDS AT ITS OWN HEIGHT (2026-11-02, the HQ-on-a-phone slice): it was a 256-px box (`h-64`) around a card that is 276-420 px (the chart, its
+                legend, the span picker, Range, In stock) — at 1280 the price and quantity inputs sat over the picker, at 390 the picker straddled the box's edge, and
+                at 320 the rows were cut out of reach. The page's body is the one scroller; nothing in it needs a fixed window. */}
+            <div data-testid="city-request-chart">
               <MarketLeft port={port} good={good} />
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2">

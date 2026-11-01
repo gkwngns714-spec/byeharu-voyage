@@ -83,6 +83,23 @@ async function walk(page: Page, glass: Glass): Promise<string[]> {
       await page.waitForTimeout(500)
       found.push(...defects(`${at} market ${names[i]}`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
     }
+    // THE REQUEST PAGE (the house's home city: Requests is a face of its own there) — its list of goods, then the chart step: a 256-px box once held a
+    // 276–420-px card, and at 1280 the inputs sat over the span picker
+    if ((await faces.count()) > 2) {
+      await faces.nth(2).click()
+      await page.getByTestId('city-request-new').click()
+      await expect(page.getByTestId('city-request-page')).toBeVisible()
+      await page.waitForTimeout(500)
+      found.push(...defects(`${at} request page · goods`, await readGlass(page, 'city-request-page', null, '[data-testid="city-request-page"]')))
+      await page.locator('[data-testid^="city-request-good-"]').first().click()
+      await expect(page.getByTestId('city-request-chart')).toBeVisible()
+      await settled(page.getByTestId('city-request-page'))
+      await page.waitForTimeout(600)
+      found.push(...defects(`${at} request page · chart`, await readGlass(page, 'city-request-page', null, '[data-testid="city-request-page"]')))
+      await page.locator('[data-detail-back]').last().click()
+      await expect(page.locator('[data-detail-page]')).toHaveCount(0)
+      await faces.nth(0).click()
+    }
   }
   return found
 }

@@ -111,12 +111,15 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
         .map((e) => `${e.getAttribute('data-testid') ?? e.tagName.toLowerCase()} "${(e.textContent ?? '').trim().slice(0, 30)}"`)
 
       // ── THE PHONE LAWS (the HQ slice, 2026-11-02; docs/dev-log/2026-11-02-city-phone.md) ───────────────────────────
+      // They are read only for a NAMED subtree (`scope`): they compare every pair of boxes in it, which is cheap for a panel and a long wait for the
+      // Codex's 629 rows, and the five unfold specs name no scope and assert none of them.
+      const phone = scope !== null
       const name = (e: Element) => `${e.getAttribute('data-testid') ?? e.getAttribute('data-row-cell') ?? e.tagName.toLowerCase()} "${(e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 22)}"`
 
       // (a) no two SIBLING boxes overlap by more than 2 px². In-flow siblings only: an absolute or fixed child is a layer drawn over
       // its parent on purpose (a gauge's fill, a chevron), never a box that has lost its place. An svg's insides are the chart's own.
       const boxes: string[] = []
-      for (const p of [root, ...inside]) {
+      for (const p of phone ? [root, ...inside] : []) {
         if (p.tagName.toLowerCase() === 'svg' || p.parentElement?.closest('svg')) continue
         const kids = [...p.children].filter((k) => vis(k) && !['absolute', 'fixed'].includes(getComputedStyle(k).position))
         for (let i = 0; i < kids.length; i++) {
@@ -128,8 +131,26 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
           }
         }
       }
+      // …and no two CONTROLS overlap, whoever their parents are: a span picker standing over the price field below it (the request page's chart box was
+      // 256 px round a card of 420) is two cousins, not two siblings, and the one underneath cannot be pressed. A control that is itself a layer
+      // (absolute or fixed, or inside one: the ✕ inside a field) is on its parent on purpose.
+      const layered = (e: Element) => {
+        for (let a: Element | null = e; a && a !== root; a = a.parentElement) if (['absolute', 'fixed'].includes(getComputedStyle(a).position)) return true
+        return false
+      }
+      const controls = (phone ? [...root.querySelectorAll('button, a[href], input, select, textarea, [role="button"], [role="tab"]')] : []).filter((e) => vis(e) && !layered(e))
+      for (let i = 0; i < controls.length; i++) {
+        for (let j = i + 1; j < controls.length; j++) {
+          if (controls[i].contains(controls[j]) || controls[j].contains(controls[i])) continue
+          if (controls[i].parentElement === controls[j].parentElement) continue // siblings are counted above
+          const a = controls[i].getBoundingClientRect()
+          const b = controls[j].getBoundingClientRect()
+          const area = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top))
+          if (area > 2) boxes.push(`control ${name(controls[i])} × ${name(controls[j])} (${Math.round(area)} px²)`)
+        }
+      }
       // …and a chart's labels are siblings too: two axis labels standing on each other
-      const chartText = [...root.querySelectorAll('svg text')].filter(vis)
+      const chartText = (phone ? [...root.querySelectorAll('svg text')] : []).filter(vis)
       for (let i = 0; i < chartText.length; i++) {
         for (let j = i + 1; j < chartText.length; j++) {
           const a = chartText[i].getBoundingClientRect()
@@ -145,7 +166,7 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
       // word that stands on one line ("All", 14.6 px at 12 px type) is short, not squeezed.
       const narrow: string[] = []
       const words = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-      for (let n = words.nextNode(); n; n = words.nextNode()) {
+      for (let n = phone ? words.nextNode() : null; n; n = words.nextNode()) {
         const txt = (n.textContent ?? '').replace(/\s+/g, ' ').trim()
         const host = n.parentElement
         if (txt.length < 3 || !host || host.closest('svg')) continue
@@ -161,7 +182,7 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
 
       // a label never shrinks below its own text: no row label, no summary title, is wider than the cell it stands in. A cell may
       // be 0 px wide (that is the defect), so it is found by style, not by its box; 4 px of a trailing mark's side is not cut text.
-      const labelCuts = [...root.querySelectorAll('[data-row-cell="label"]')]
+      const labelCuts = (phone ? [...root.querySelectorAll('[data-row-cell="label"]')] : [])
         .filter((e): e is HTMLElement => {
           if (!(e instanceof HTMLElement)) return false
           const style = getComputedStyle(e)

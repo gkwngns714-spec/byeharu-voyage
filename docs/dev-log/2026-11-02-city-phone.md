@@ -21,6 +21,7 @@ The law (§4) was run on `main` first; its counts are the BEFORE.
 | Forge · Port | fine | "Tier 1" 41 in 17 px, "Repair" 50 in 20 — cut |
 | Hall (default face) | "Population" cut to "Popul…" | "Po…" and "Relatio…" |
 | Requests (Market face) | "New request" 98 px in 87 | 98 in 52 |
+| **Request page** (a page the Requests face opens) | the chart step: a **256-px box** (`h-64`) round a card of 262–420 px — at 1280 the price and quantity fields stand **over the span picker (1,213 px² of control over control)**; at 390 the picker straddles the box's edge; Range and In stock are cut out of reach | the same; the page's body holds 584 |
 
 Elsewhere (the brief's list; reproduced in the browser first):
 
@@ -58,6 +59,8 @@ squeezed), so a value wider than the row took everything and the label's track (
 | `TileGrid.tsx` · `tileStyles.ts` | `narrow:` choices are a wrapping line, never under the 44-px floor (Buy · Sell / Requests; the span picker in two rows) |
 | `priceChartModel.ts` | `declutterTicks`: x labels that would stand on each other drop — the middle, then the first; `now` never |
 | `CityPanel.tsx` · `MarketLeft.tsx` | the two surfaces ARE query containers (`@container`); the chart card scrolls whole when the glass is too short |
+| `RequestPage.tsx` | the chart's 256-px box (`h-64`) is gone: the card stands at its own height and the page's body is the one scroller |
+| `SpanPicker.tsx` | **no edit**: it is a `Segmented`, so the `TileGrid` change above is its fix (its five tabs overlapped by 520 / 828 px²; they are now a wrapping line, two rows at 390, three at 320) |
 | `Detail.tsx` `DetailPage` · `Tray.tsx` | pages and trays standing over the HQ are containers of their own, so the rows in them ask the page, not the panel underneath |
 | `CityHallPanel.tsx` `FigureLine` | label never cut; figure under it (`narrow:`); the one stated exception: a glass < 600 px (`short:`), where `consistency.spec.ts` holds the 320×568 panel to 12 px of inner scroll |
 
@@ -86,7 +89,8 @@ At 320×640, 390×844 and 1280×800 (and 390 / 320 in Korean), press each of the
 its three faces — **(a)** no two sibling boxes (and no two chart labels) overlap by more than 2 px²; **(b)** no text of 3+ characters stands in a column narrower than
 1.4 × its font size *(read off the text's own line boxes: a label squeezed to 0 px has no box to read; and only text that WRAPPED can be such a column — "All" is 14.6 px
 at 12 px type and stands on one line)*; **(c)** nothing is cut without its full text — an ellipsis carries a `title` (a `Clip`), a row's LABEL is never cut at all (4 px
-of a trailing mark's side is not cut text), nothing is clipped by the panel's edge; **(d)** nothing scrolls sideways, the page or a box. Plus two text boxes crossing.
+of a trailing mark's side is not cut text), nothing is clipped by the panel's edge; **(d)** nothing scrolls sideways, the page or a box. Plus two text boxes crossing, and (a) also reads **control over control whoever the parents are** (a span picker over the field below it is two cousins, not two siblings — that is how the request page's overlap was found and
+why the first cut of the law missed it).
 The three previously-red specs (`consistency.spec.ts` 379 / 568, `market.desk.spec.ts` 34) pass on the same build — they were fixed by #441; this slice keeps them so.
 `priceChart.spec.ts` pins the axis rule, and `layout.spec.ts`'s request test now asserts nothing in a request row stands right of the row.
 
@@ -117,9 +121,10 @@ What the phone shows now (served build, the canary world; the Market list is lon
   289 in 278, exactly as on `main`.
 
 Gates (lean; headless; `localhost`; ports 4781 baseline · 4783 this build; Node's locale forced to English for the plain-Node word specs, because this machine's is Korean): `tsc -b`, `eslint` on every touched file,
-`npm run build`; **183 specs, 0 failed, 0 skipped** — `city.phone` 5 (it is RED on `main`: 4 of 5), `city.density`, `city.page`, `city.audit`, `consistency` (379 at both glasses, 568, the HQ ones), `market.desk` (34),
-`align`, `onepage`, `layout`, `wide.layout`, `desk.layout`, `desk.sweep`, `desk.inplace`, `desk.city`, `primitives.geometry`, `good.class`, `selection.lock`, `trade.ceiling`, `trade.loop`, `city.goodTrades`,
-`command.buySell`, `command.sellCargo`, `priceChart` (+1), `words`, `i18n.keys`, `i18n.ko`, `duplication`. CI is the full proof.
+`npm run build`. One run on the rebased branch (`95211ac0`): **141 passed in 13.0 min, 0 failed, 0 skipped** — `city.phone` (5), `city.density`, `city.page`, `city.audit`, `consistency` (379 at both glasses, 568, the HQ ones),
+`market.desk` (34), `align`, `onepage`, `layout`, `wide.layout`, `desk.layout`, `desk.sweep`, `desk.inplace`, `desk.city`, `primitives.geometry`, `good.class`, `selection.lock`, `trade.ceiling`, `trade.loop`,
+`city.goodTrades`, `command.buySell`, `command.sellCargo`, `priceChart` (+1), `words`, `i18n.keys`, `i18n.ko`, `duplication`. After the last commit (the request page, the control-over-control law, the opt-in scope of the phone laws):
+`city.phone` 5/5 and `market.desk` 3/3 on the new build, and the five unfold specs (`stats`, `codex`, `ledger`, `rank`, `routes`: 29 tests) pass against the extended fixture. CI is the full proof (the selection runs every browser spec).
 
 ## 6. What the three previously-red specs say
 
@@ -129,6 +134,10 @@ inner scroll from 11 px to 43, and that spec holds it to 12.
 
 ## 7. Not done, and unverified
 
+* **Left over from the coordinator's sweep (row 14), for a next slice — each is a decision about what a row IS, not a layout:** the Inn's "Crew" and "Captains here" rows open the SAME page; "Repair 0%" opens a page with
+  no line; a Forge tier opens a 796-px page. U1 says a row whose page holds one line should be the line. Fixing them changes what the HQ's Inn / Port faces contain and the specs that count their rows (`city.density`: "the inn lost a row"),
+  so they were not done here.
+* **The HQ with no city in hand** (sweep row 8) is PR 4 (`city-phone-nocity`).
 * **The trade pane** — the tray a good opens inside the Market panel (Max, Cargo space, the Add and Buy buttons): its rows now wrap by the same primitive, but its button strip (two buttons side by side in 139 px: "Buy 80 units 4,700")
   and the stepper were not rebuilt, and the law does not press into it. UNVERIFIED at 390/320.
 * **The Hall on a glass under 600 px tall** keeps "Popul…" (titled): the one stated exception, §2.
