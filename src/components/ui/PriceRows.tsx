@@ -46,9 +46,9 @@ import { useT } from '../../lib/i18n'
 // here, at this reading — it is never a fortnight's low and high, and the label does not claim one.
 //
 // THE KIND ROW came first on 2026-10-20 (owner row 177: *"The trade goods should show rarity, and
-// what class?"*). Both words are served on the market row itself — `category` and the 0032 tier —
-// so this costs no read, and it lands in BOTH trays at once, which is why it was put here rather
-// than in either of them. `GoodKind` is the one composition of the two words.
+// what class?"*). The words are served on the market row itself — `category`, the 0032 tier and, since
+// 0294, the premium class — so this costs no read, and it lands in BOTH trays at once, which is why
+// it was put here rather than in either of them. `GoodKind` is the one composition of the words.
 
 /** ONE good's price at ONE port over the chosen span, as `src/live/usePriceSeries.ts` reads it: the
  *  served series (undefined until the read lands), the span it was asked for and the one way to change
@@ -89,8 +89,8 @@ export function PriceRows({
 
   return (
     <>
-      {/* WHAT IT IS, before what it costs — the kind, then how rare a source is (owner row 177). */}
-      <Row label={t('ui.kind')} value={<GoodKind category={good.category} rarity={good.rarity} />} data-testid="good-kind-row" />
+      {/* WHAT IT IS, before what it costs — the kind, then how rare a source is (owner row 177), then its class (0294). */}
+      <Row label={t('ui.kind')} value={<GoodKind category={good.category} rarity={good.rarity} goodClass={good.class} />} data-testid="good-kind-row" />
       <Row
         label={t('ui.trend')}
         tone={trend.series !== undefined && values.length < 2 ? 'muted' : 'default'}

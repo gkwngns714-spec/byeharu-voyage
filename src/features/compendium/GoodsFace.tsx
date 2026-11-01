@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import {
   Figure,
+  GoodClassMark,
+  GoodKind,
   Icon,
   Note,
   RarityMark,
@@ -10,6 +12,7 @@ import {
   TileField,
   Tray,
   categoryLabel,
+  goodClassRow,
   goodIcon,
   type TrayDetent,
 } from '../../components/ui'
@@ -67,9 +70,13 @@ export function GoodsFace({ query }: { query: string }) {
             {group.rows.map((g) => (
               <Tile
                 key={g.code}
+                {...goodClassRow(g.class)}
                 mark={<Icon name={goodIcon(g.code, g.category)} size={20} />}
                 name={g.name}
-                meta={g.rarity ? <RarityMark rarity={g.rarity} size={10} withWord /> : undefined}
+                // THE TWO MARKS (the heading already says the kind): the rarity word, then the premium class
+                // (0294) as its meter alone — a second word wraps the tile's meta line at 390 and the tile
+                // grows; the tray this press opens has the class in its own row, with its word
+                meta={g.rarity || g.class ? <GoodKind rarity={g.rarity} goodClass={g.class} classWord={false} size={10} /> : undefined}
                 figure={<Figure value={anchor(g.base_value)} unit={COIN} />}
                 tap="whole"
                 onClick={() => {
@@ -92,6 +99,7 @@ export function GoodsFace({ query }: { query: string }) {
         >
           <Row label={t('codex.kind')} value={categoryLabel(open.category)} />
           {open.rarity && <Row label={t('codex.rarity')} value={<RarityMark rarity={open.rarity} size={10} withWord />} />}
+          {open.class != null && <Row label={t('codex.class')} value={<GoodClassMark goodClass={open.class} withWord />} data-testid="good-class-row" />}
           <Row label={t('codex.base')} value={<Figure value={anchor(open.base_value)} unit={COIN} />} />
           <Row
             label={t('codex.weight')}

@@ -43,6 +43,7 @@ export function ShipInfo({ fleet }: { fleet: FleetView }) {
           code: line.code,
           name: goodByCode[line.code]?.name ?? line.code,
           category: goodByCode[line.code]?.category ?? '',
+          class: goodByCode[line.code]?.class,
           qty: line.qty,
         }))}
         totalTons={hold.goodsT}

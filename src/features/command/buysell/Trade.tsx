@@ -168,6 +168,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           name: pickedRow.name,
           category: pickedRow.category,
           rarity: pickedRow.row?.rarity,
+          // the class is the same served number in both payloads, so a carried good this quay does not list still has one
+          class: pickedRow.row?.class ?? goodByCode[pickedRow.code]?.class,
           price: price as number,
         }}
         market={pickedRow.row}

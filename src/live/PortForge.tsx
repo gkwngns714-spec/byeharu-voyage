@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Button,
   Figure,
+  GoodKind,
   Icon,
   Note,
   Row,
@@ -9,6 +10,7 @@ import {
   Tile,
   TileField,
   Tray,
+  goodClassRow,
   type TrayDetent,
 } from '../components/ui'
 import { useForge } from './useForge'
@@ -68,6 +70,9 @@ export function PortForge({
   const [sending, setSending] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const refresh = useWorld((s) => s.refresh)
+  // A recipe names its goods by CODE and serves no class: the premium class (0294) is read off the
+  // served catalogue by that code, the lookup every other list makes for a name and a category.
+  const goodByCode = useWorld((s) => s.goodByCode)
 
   const forge = (recipe: ForgeRecipe) => {
     if (!fleet || sending) return
@@ -108,11 +113,13 @@ export function PortForge({
             {recipes.map((recipe) => (
               <Tile
                 key={recipe.product}
+                {...goodClassRow(goodByCode[recipe.product]?.class)}
                 mark={<Icon name="mallet" size={20} />}
                 // THE CONTROL CARRIES THE PRODUCT'S NAME (1-2 plain words), never the whole recipe
                 // (audit row 39: "Adire Cloth Indigo · Potash · Raw Cotton"). The ingredients are
                 // listed in the tray this tile opens, and the tray's title is the product's name.
                 name={recipe.name}
+                meta={goodByCode[recipe.product]?.class != null ? <GoodKind goodClass={goodByCode[recipe.product]?.class} /> : undefined}
                 state={recipe.can_forge ? 'rest' : 'muted'}
                 tap="whole"
                 onClick={() => {
@@ -152,7 +159,8 @@ export function PortForge({
           {open.ingredients.map((i, idx) => (
             <Row
               key={i.good}
-              label={i.name}
+              {...goodClassRow(goodByCode[i.good]?.class)}
+              label={<>{i.name} <GoodKind compact goodClass={goodByCode[i.good]?.class} /></>}
               value={
                 <Figure
                   value={formatInt(i.have)}

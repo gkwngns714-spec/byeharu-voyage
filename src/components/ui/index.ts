@@ -221,7 +221,13 @@ export { chromeAsideTrayClass, chromeAsideSideTrayClass } from './screenLayout'
 // so the tier survives a colourblind player and a greyscale screenshot. §5 keeps the MARK.
 export { RarityMark } from './Rarity'
 export { rarityLabel, RARITY_TIERS } from './rarityTiers'
-// WHAT A GOOD IS, in its two served words — its kind and its rarity tier (owner row 177).
+// The one rendering of a good's SERVED premium class (0294): a colour token AND a five-bar meter, so the
+// class survives a colourblind player and a greyscale screenshot. `goodClassRow` is what a LIST ROW spreads
+// to wear it — the class number and, from class 4, the wash that makes a premium good visible before a word.
+export { GoodClassMark } from './GoodClassMark'
+export { GOOD_CLASSES, GOOD_CLASS_BARS, goodClassLabel, goodClassRow } from './goodClassTiers'
+// WHAT A GOOD IS, in its three served words — its kind, its rarity tier (owner row 177) and its premium
+// class (0294); and the compact form, the two marks alone, that rides inside a list row's name.
 export { GoodKind } from './GoodKind'
 // The served danger tier's words and thresholds (0040). The PIPS become a `<Bar of={…}>`; the
 // table is data and stays.

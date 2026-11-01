@@ -2,7 +2,8 @@ import { ActCell } from './ActCell'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
 import { goodIcon } from './goodIcons'
-import { RarityMark } from './Rarity'
+import { goodClassRow } from './goodClassTiers'
+import { GoodKind } from './GoodKind'
 import { Row } from './Row'
 import { StockGauge } from './StockGauge'
 import { formatPriceFigure, formatUnits } from '../../lib/format'
@@ -12,7 +13,7 @@ import { useT } from '../../lib/i18n'
 // THE LEDGER ROW — one good, its two prices as its two acts, and the tide. docs/QUAY_LEDGER.md §3
 // screen A (owner row 76, 2026-09-11).
 //
-// A COMPOSITION, NOT A THIRTEENTH PRIMITIVE. `Row` + `Figure` + `Bar` + `RarityMark`, exactly as
+// A COMPOSITION, NOT A THIRTEENTH PRIMITIVE. `Row` + `Figure` + `Bar` + `GoodKind`, exactly as
 // the `TradeTile` it replaces was `Tile` + `Figure` + `Bar`. It stands in the design system for the
 // reason that one did: PORT's Trade face draws it for the quay she lies at and PORT's read-only
 // ledger draws it for a quay she is not on, and a good may not look different on the two.
@@ -34,7 +35,11 @@ import { useT } from '../../lib/i18n'
 // NO `native` WORD (owner, 2026-10-17: "remove native"; 0141 took the key off world.market). The
 // caption carries one fact — `· 40 units on board` — and docs/UI_DIRECTION.md §4.4 gives rarity
 // its hues as a 10-px MARK only: the rarity mark IS drawn, mark only, when the tier is served —
-// never as a text tag.
+// never as a text tag. THE PREMIUM CLASS (0294) IS DRAWN THE SAME WAY, beside it: `GoodKind compact`
+// is the two marks STACKED in one unbreakable cluster inside the name's own line (so it adds no track
+// and no gap to the Row — docs/dev-log/2026-11-01-main-red-row-tracks.md — and no line to the label),
+// and from class 4 the row wears a soft wash of the class's tone from its start edge (`goodClassRow`),
+// a background, which costs no pixel.
 //
 // AND THE GOOD'S KIND IS NOT HERE, THOUGH THE OWNER ASKED FOR IT (row 177, 2026-10-20: "what class?
 // What sort it is classified, such as food, weapon, spice etc."). It was added as one caption word
@@ -67,6 +72,7 @@ export function TradeRow({
   const t = useT()
   return (
     <Row
+      {...goodClassRow(good.class)}
       label={
         // THE CAPTION WRAPS UNDER THE NAME WHEN IT DOES NOT FIT, and never squeezes it: at 390px a
         // row with cargo on board once read `◇ · 10 units on board` with the name truncated to
@@ -83,7 +89,7 @@ export function TradeRow({
         <span className="flex items-start gap-1.5 text-t-body">
           <Icon name={goodIcon(good.code, good.category)} size={18} className="mt-0.5 shrink-0 text-ink-muted" />
           <span className="min-w-0 break-words">
-            {good.name} <RarityMark rarity={good.rarity} />
+            {good.name} <GoodKind compact rarity={good.rarity} goodClass={good.class} />
             {/* 0255 (E6b): the city wants this good and pays a multiple for it this period */}
             {good.wanted != null && (
               <span className="text-t-caption text-accent" data-testid="trade-row-wanted">

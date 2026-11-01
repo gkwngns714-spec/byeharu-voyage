@@ -114,6 +114,17 @@ export interface PortRoadstead {
  */
 export type GoodRarity = 'common' | 'uncommon' | 'rare' | 'exotic'
 
+/**
+ * A TRADE GOOD'S PREMIUM CLASS — a SERVED number, 1 (basic) to 5 (luxury), decided by exactly one
+ * server rule (0294's `public.good_class`: 1 plus the number of `good_class_edges` at or below the
+ * good's base value). The client draws it (`GoodClassMark` in the design system) and never computes
+ * it: a class derived here from `base_value` would be a second authority that drifts the day the
+ * owner tunes the knob. It is a third idea, not a re-statement of the other two on the same row:
+ * `rarity` is how few harbours MAKE the good, `tier` how it is produced (raw, or made in the Forge),
+ * `class` how much a ton of it is WORTH — gold is dear and common, glassware is cheap and exotic.
+ */
+export type GoodClass = 1 | 2 | 3 | 4 | 5
+
 export interface SnapshotGood {
   id: string
   code: string
@@ -126,6 +137,10 @@ export interface SnapshotGood {
   /** Served by 0032 — see GoodRarity. Optional so the client does not break against a server
    *  that predates it (the same contract `VerbSpec.note` states for 0021). */
   rarity?: GoodRarity
+  /** 0294 — the premium class, 1 (basic) to 5 (luxury); see GoodClass. Optional for the serve-order
+   *  reason rarity is: a server older than this build serves none, and the client then draws NOTHING
+   *  for it — never a class guessed from `base_value`. */
+  class?: GoodClass
   /** 0281 (0280's column): 0 = a raw material a city produces, 1-3 = a crafted good the Forge
    *  makes from raw ingredients. Optional for the serve-order reason rarity is. */
   tier?: number
@@ -592,6 +607,8 @@ export interface MarketGood {
    *  a market row never needs a code→catalogue join to say one word. Optional for the same
    *  serve-order reason. */
   rarity?: GoodRarity
+  /** 0294 — the same premium class as `SnapshotGood.class`, from the same rule. */
+  class?: GoodClass
   /** 0281 — the same two fields as `SnapshotGood`, from the same columns (0280). */
   tier?: number
   is_raw?: boolean
@@ -1443,6 +1460,8 @@ export interface TradeRequest {
   category: string
   /** The same served tier `MarketGood.rarity` carries (0032's `good_rarity`). */
   rarity?: GoodRarity
+  /** 0294 — the same premium class `MarketGood.class` carries. */
+  class?: GoodClass
   /** Tons one unit takes (`goods.bulk`), so a tray can say what the lot does to the ship. */
   bulk: number
   /** The whole lot asked for, in units. A delivery is the whole lot or nothing. */
