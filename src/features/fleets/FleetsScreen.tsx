@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Bar, CargoBar, DetailPage, FactsLine, IconDisc, Row, Sheet, type IconDiscTone, Clip } from '../../components/ui'
-import { formatPct, formatVoyageDays } from '../../lib/format'
+import { Bar, CargoBar, DetailPage, FactsLine, IconDisc, ListPanel, Row, Sheet, type IconDiscTone, Clip } from '../../components/ui'
+import { formatInt, formatPct, formatVoyageDays } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
@@ -40,6 +40,13 @@ import { useLocale, useT } from '../../lib/i18n'
 //
 // The row still SELECTS: it lights `accent` while its page is up, and the page is keyed by ID (the
 // store hands out a new FleetView every half minute), so an open page survives a world read.
+//
+// ── ON THE GLASS (the sheets-grow slice, 2026-11-02; docs/dev-log/2026-11-02-sheets-grow.md) ──────
+// The fleets stood straight on a `Sheet`, so a veteran with eight hulls scrolled the PAGE (122 px at 390×844, 326 at 320×640)
+// and a company of two left two thirds of the glass empty. The unfold laws (docs/dev-log/2026-11-01-ui-unfold.md, U2) put a
+// list that can be long in ONE `ListPanel` that takes the glass the title leaves and scrolls INSIDE itself: `Sheet fill`,
+// one panel, its title the count, the rows exactly the rows below. The page behind a press is still the fixed `DetailPage`
+// (a sibling of the panel, never inside its scroller), so the row, the rows below it and the panel keep their boxes.
 //
 // ── THE CAPTAINS MOVED TO THE YOU TAB (owner row 181, 2026-10-20) ─────────────────────────
 // 0160's roster stood at the foot of this screen until the owner asked for a personal tab and named
@@ -96,23 +103,29 @@ function FleetsBody({ title }: { title: string }) {
   const portName = (code: string) => portNameOf(portByCode, code)
 
   return (
-    <Sheet title={title} data-testid="fleets">
-      {fleets.length === 0 ? (
-        <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
-      ) : (
-        fleets.map((fleet, i) => (
-          <FleetRow
-            key={fleet.id}
-            fleet={fleet}
-            where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
-              .filter(Boolean)
-              .join(' · ')}
-            selected={openFleetId === fleet.id}
-            last={i === fleets.length - 1}
-            onOpen={() => setOpenFleetId(fleet.id)}
-          />
-        ))
-      )}
+    <Sheet title={title} fill data-testid="fleets">
+      {/* THE TITLE IS THE COUNT (as RANK's is): the rows it holds. An empty company has no count to say — its one row does. */}
+      <ListPanel
+        title={fleets.length === 0 ? undefined : t('fleets.count', { n: formatInt(fleets.length), count: fleets.length })}
+        data-testid="fleets-list"
+      >
+        {fleets.length === 0 ? (
+          <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
+        ) : (
+          fleets.map((fleet, i) => (
+            <FleetRow
+              key={fleet.id}
+              fleet={fleet}
+              where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
+                .filter(Boolean)
+                .join(' · ')}
+              selected={openFleetId === fleet.id}
+              last={i === fleets.length - 1}
+              onOpen={() => setOpenFleetId(fleet.id)}
+            />
+          ))
+        )}
+      </ListPanel>
       {openFleet !== null && (
         <DetailPage title={openFleet.name} onClose={() => setOpenFleetId(null)} data-testid="fleet-page">
           <FleetFold fleet={openFleet} />
@@ -160,11 +173,15 @@ function FleetRow({
       /* WHERE SHE IS RIDES ON THE NAME'S LINE, not in the row's value slot. The value slot stands
          beside the WHOLE band, so with it filled the caption line under the name was squeezed to
          the label's width and the bars measured 12px — a mood ring. Composed as a stack (Row's
-         own allowance: "a string, or a small stack the caller composes") the bars get the band. */
+         own allowance: "a string, or a small stack the caller composes") the bars get the band.
+         THE STACK WRAPS (the sheets-grow slice, 2026-11-02): a fleet AT SEA says where she is bound and when
+         ("to Cape St Vincent · 22s"), and beside that line the name was left 16 px at 320×640 and 76 px at 390 —
+         a cut with nothing left to read or press. The two stand on one line while they fit (a fleet in port,
+         the wide glass); when they do not, the where line drops UNDER the name and the name is whole. */
       label={
-        <span className="flex items-baseline justify-between gap-3">
-          <Clip>{fleet.name}</Clip>
-          <span className="shrink-0 text-t-body text-ink">{where}</span>
+        <span className="flex flex-wrap items-baseline justify-between gap-x-3">
+          <Clip className="max-w-full">{fleet.name}</Clip>
+          <span className="min-w-0 max-w-full text-t-body text-ink">{where}</span>
         </span>
       }
       chevron
@@ -173,20 +190,21 @@ function FleetRow({
       hairline={!last}
       data-testid="fleet-row"
     >
-      {/* THE THREE FACTS THAT DECIDE THE NEXT ORDER, on one caption line: whether to sail is
-          "how many days of supplies", whether to buy is "how much cargo space is left", whether to
-          repair is "how sound is the worst hull". The figure stays beside each bar — a bar you cannot
-          read exactly is a mood ring, and this is a ledger. */}
+      {/* THE THREE FACTS THAT DECIDE THE NEXT ORDER: whether to sail is "how many days of supplies",
+          whether to repair is "how sound is the worst hull", whether to buy is "how much cargo space is
+          left". The figure stays beside each bar — a bar you cannot read exactly is a mood ring, and
+          this is a ledger. */}
       {/* THE LINE WRAPS RATHER THAN OVERLAPS (2026-10-01). At 390px the three groups did not fit
           one line, the two bars were squeezed to nothing and `4 / 60 tons` was printed on top of
-          `hull` (seen in the design pass's before-shot). On a phone the supplies figure takes its
-          own line and each gauge keeps a floor — the width its word, a bar you can read and its
-          figure need — so cargo and hull stack under it; from `sm` all three share one line. */}
+          `hull` (seen in the design pass's before-shot). Each gauge keeps a floor — the width its word,
+          a bar you can read and its figure need — and the cargo gauge takes its own line on a phone.
+          THREE LINES ON A PHONE, NOT FOUR (the sheets-grow slice, 2026-11-02: eight hulls had to
+          scroll the page): supplies and hull share the first line when the row is wide enough — at
+          390 they are (128 + 12 + 128 in about 290) and a veteran's eight rows stand whole in the panel;
+          at 320 they are not, hull wraps under supplies as it always did. From `sm` all three share
+          one line. The order is the order a phone reads them in; nothing is dropped. */}
       <FactsLine data-testid="fleet-row-bars">
-        <span className="shrink-0 basis-full tabular-nums sm:basis-auto">{t('fleets.ofSupplies', { days: formatVoyageDays(fleet.endurance_days) })}</span>
-        {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
-            with its staged change washed on. */}
-        <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-48 flex-1" />
+        <span className="shrink-0 tabular-nums">{t('fleets.ofSupplies', { days: formatVoyageDays(fleet.endurance_days) })}</span>
         {/* §4.4: a hull that is merely sound is NEUTRAL — green is for gain, and a whole fleet
             painted green spends the one colour that means "cheap" on a hull that is fine. */}
         <span className="flex min-w-32 flex-1 items-center gap-3">
@@ -199,6 +217,9 @@ function FleetRow({
             className="min-w-0 flex-1"
           />
         </span>
+        {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
+            with its staged change washed on. */}
+        <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-48 grow basis-full sm:basis-auto" />
       </FactsLine>
     </Row>
   )

@@ -13,7 +13,8 @@ export const youDict = defineDict({
     noFighting: 'no fighting yet',
     levelOf: '{name} level',
     ships: 'Ships',
-    shipsCount: '{ships} in {fleets} fleets',
+    // The plural follows the FLEETS (`count`): "1 in 1 fleet", "8 in 8 fleets" — it read "1 in 1 fleets".
+    shipsCount: { one: '{ships} in {fleets} fleet', other: '{ships} in {fleets} fleets' },
     noShips: 'No ships yet.',
     flagship: 'flagship',
   },
@@ -26,7 +27,7 @@ export const youDict = defineDict({
     noFighting: '아직 전투 없음',
     levelOf: '{name} 레벨',
     ships: '배',
-    shipsCount: '선단 {fleets}개 · {ships}척',
+    shipsCount: { one: '선단 {fleets}개 · {ships}척', other: '선단 {fleets}개 · {ships}척' },
     noShips: '아직 선박이 없습니다.',
     flagship: '기함',
   },

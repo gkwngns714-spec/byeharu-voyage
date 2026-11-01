@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Bar, Button, Note, Row, TileField, Tray, type TrayDetent, OfficerTile } from '../components/ui'
-import { cmdCaptainTraitsSet, cmdPromoteCaptain, worldCaptains } from '../lib/rpc'
+import { Bar, Button, Clip, FactsLine, Figure, Icon, Note, Row, Tray } from '../components/ui'
+import { cmdCaptainTraitsSet, cmdPromoteCaptain } from '../lib/rpc'
 import type { Refusal, YourCaptain } from '../lib/rpc'
-import { formatInt } from '../lib/format'
-import { useServedRead } from './useServedRead'
+import { formatInt, formatPctPoints } from '../lib/format'
+import type { YourCaptainsFace } from './useYourCaptains'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
 
@@ -20,50 +20,56 @@ import { t as tl } from '../lib/i18n'
 // CHOOSING TRAITS is cmd.captain_traits_set: the player ticks up to her `slots` among the traits she knows,
 // and the server says yes or why not. Offered only while `can_change` (ashore, or her ship docked) — the
 // server refuses E_NOT_IN_PORT otherwise, and its refusal is printed if the two disagree.
+//
+// TWO PARTS, ONE FACE (the sheets-grow slice, 2026-11-02). The roster was a field of `OfficerTile`s inside its own section, with its
+// tray inside that section too. The YOU screen now stands on the glass as figures over ONE list panel (docs/dev-log/2026-11-02-
+// sheets-grow.md): the captains are ROWS of that panel — the Codex's captain row, the same shape the Inn and the Codex print — and
+// the tray is a SIBLING of the panel, never inside the scroller that cuts it. `useYourCaptains` (useYourCaptains.ts) is the one read
+// and the one open captain; `CaptainRows` goes in the panel's body, `CaptainTray` beside the panel. `OfficerTile` is untouched: the
+// Codex and a merchant's sheet still draw it.
 
-export function YourCaptains() {
-  const { view } = useServedRead('captains', () => worldCaptains(), { name: 'worldCaptains' })
-  const [open, setOpen] = useState<string | null>(null)
-  const [detent, setDetent] = useState<TrayDetent>('half')
-  const captains = view?.captains ?? []
-  const shown = captains.find((c) => c.code === open) ?? null
-
+/** The roster as the rows of a list panel — or the one row that says there is nobody to list. */
+export function CaptainRows({ face }: { face: YourCaptainsFace }) {
+  const { captains, press } = face
+  if (captains.length === 0) {
+    return <Row label={tl('books.noCaptains')} tone="muted" hairline={false} data-testid="your-captains-none" />
+  }
   return (
-    <section className="pt-4" data-testid="your-captains">
-      <h3 className="pb-2 text-t-caption uppercase tracking-wider text-ink-faint">{tl('books.captains')}</h3>
-      {captains.length === 0 ? (
-        <Row label={tl('books.noCaptains')} tone="muted" hairline={false} data-testid="your-captains-none" />
-      ) : (
-        <TileField>
-          {captains.map((c) => (
-            <OfficerTile
-              key={c.code}
-              name={c.name}
-              role={c.job_word ?? ''}
-              grade={c.grade ?? null}
-              bonusPct={c.traits?.[0]?.pct ?? 0}
-              homePort={c.ship ? `${c.ship} · ${c.cabin_word ?? ''}` : tl('books.ashore')}
-              takesEffect={c.traits?.[0]?.in_use ?? false}
-              onClick={() => {
-                setDetent('half')
-                setOpen(c.code)
-              }}
-              testId="your-captain"
-            />
-          ))}
-        </TileField>
-      )}
-      {shown && (
-        <Tray
-          detent={detent}
-          onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
-          title={shown.name}
-          data-testid="your-captain-tray"
-        >
-          <CaptainSheet key={shown.code} captain={shown} />
-        </Tray>
-      )}
-    </section>
+    <>
+      {captains.map((c, i) => {
+        // her first trait speaks for her on the row, as it did on the tile; muted when nothing reads it yet
+        const takesEffect = c.traits?.[0]?.in_use ?? false
+        const where = c.ship ? [c.ship, c.cabin_word].filter(Boolean).join(' · ') : tl('books.ashore')
+        return (
+          <Row
+            key={c.code}
+            mark={<Icon name="crew" size={20} />}
+            label={<Clip>{c.name}</Clip>}
+            value={<Figure value={`+${formatPctPoints(c.traits?.[0]?.pct ?? 0)}`} tone={takesEffect ? 'success' : 'faint'} />}
+            tone={takesEffect ? 'default' : 'muted'}
+            chevron
+            onClick={() => press(c.code)}
+            hairline={i < captains.length - 1}
+            data-testid="your-captain"
+          >
+            <FactsLine>
+              <span>{[c.grade, c.job_word, where].filter(Boolean).join(' · ')}</span>
+            </FactsLine>
+          </Row>
+        )
+      })}
+    </>
+  )
+}
+
+/** The tray a press on a row opens. Mount it BESIDE the panel, never inside the scroller that holds the rows. */
+export function CaptainTray({ face }: { face: YourCaptainsFace }) {
+  const { shown, detent, move } = face
+  if (shown === null) return null
+  return (
+    <Tray detent={detent} onDetentChange={move} title={shown.name} data-testid="your-captain-tray">
+      <CaptainSheet key={shown.code} captain={shown} />
+    </Tray>
   )
 }
 

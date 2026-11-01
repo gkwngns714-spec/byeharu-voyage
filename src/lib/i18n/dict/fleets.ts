@@ -4,6 +4,8 @@ import { defineDict } from '../define'
 export const fleetsDict = defineDict({
   en: {
     noFleets: 'No fleets yet.',
+    // THE LIST PANEL'S TITLE (the sheets-grow slice, 2026-11-02): how many fleets the panel holds, the way RANK counts its captains.
+    count: { one: '{n} fleet', other: '{n} fleets' },
     hull: 'hull',
     worstHull: 'worst, {pct}',
     ofSupplies: '{days} of supplies',
@@ -33,6 +35,7 @@ export const fleetsDict = defineDict({
   },
   ko: {
     noFleets: '아직 선단이 없습니다.',
+    count: { one: '선단 {n}개', other: '선단 {n}개' },
     hull: '선체',
     worstHull: '최악, {pct}',
     ofSupplies: '보급 {days}',
