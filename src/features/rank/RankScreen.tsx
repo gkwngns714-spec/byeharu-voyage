@@ -1,18 +1,5 @@
 import { useEffect, useState } from 'react'
-import {
-  DetailPage,
-  Figure,
-  Hint,
-  Note,
-  Row,
-  Segmented,
-  Sheet,
-  SheetSection,
-  Skeleton,
-  SummaryRow,
-  Tray,
-  type TrayDetent,
-} from '../../components/ui'
+import { Figure, Hint, ListPanel, Note, Row, Segmented, Sheet, Skeleton, Tray, type TrayDetent } from '../../components/ui'
 import { formatInt, formatRelative } from '../../lib/format'
 import type { PlayerHouse, StandingsBoard } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
@@ -21,7 +8,10 @@ import { CountriesBoard } from './CountriesBoard'
 import { useLocale, useT } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
 
-// RANK — one list, and you are pinned to the top of it. docs/UI_DIRECTION.md §6 "RANK".
+// RANK — one list, and you are pinned to the top of it. docs/UI_DIRECTION.md §6 "RANK". ON THE GLASS (the unfold
+// slice, 2026-11-02, owner row 260): it was the face tabs over ONE summary row (`Captains 10 · Open`) with the board
+// behind a pop-up page; it is now the face tabs over ONE list panel — your line pinned in its header, the board
+// scrolling under it, the fame tray a sibling outside the scroller.
 //
 // ── WHAT THIS SCREEN WAS, AND WHY THREE-QUARTERS OF IT WENT ────────────────────────────────────
 // §2 item 17, measured at 390px: a five-column table that sheared at `TRA…` with "Swipe the table
@@ -82,9 +72,6 @@ function RankBody() {
   const [answered, setAnswered] = useState(false)
   // 0148: Captains (the board) or Countries (who holds the cities).
   const [face, setFace] = useState<'captains' | 'countries'>('captains')
-  // THE BOARD IS A PAGE (owner, 2026-10-31): the compact screen is the face strip and one summary.
-  const [page, setPage] = useState(false)
-  const nationByCode = useWorld((s) => s.nationByCode)
 
   // KEYED ON `readAt`: the world re-reads itself every thirty seconds and on tab focus, and the
   // board rides that same beat — a refused read is retried with no button, and a new slot's
@@ -108,6 +95,7 @@ function RankBody() {
   return (
     <Sheet
       title={title}
+      fill
       data-testid="rank"
       trailing={
         settled === null ? undefined : (
@@ -123,25 +111,9 @@ function RankBody() {
         value={face}
         onChange={setFace}
         label={title}
-        className="mb-3 w-fit"
+        className="mb-1 w-fit max-w-full shrink-0"
       />
-      <SummaryRow
-        title={face === 'captains' ? t('rank.captains') : t('rank.countries')}
-        figure={face === 'captains' ? formatInt(board?.board_size ?? 0) : formatInt(Object.keys(nationByCode).length)}
-        word={t('common.open')}
-        onClick={() => setPage(true)}
-        data-testid="rank-open"
-      />
-      {page && (
-        <DetailPage
-          title={face === 'captains' ? t('rank.captains') : t('rank.countries')}
-          figure={face === 'captains' ? formatInt(board?.board_size ?? 0) : formatInt(Object.keys(nationByCode).length)}
-          onClose={() => setPage(false)}
-          data-testid="rank-open-page"
-        >
-          {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
-        </DetailPage>
-      )}
+      {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
     </Sheet>
   )
 }
@@ -168,23 +140,27 @@ function Board({
   const [detent, setDetent] = useState<TrayDetent>('closed')
 
   if (!board) {
-    return answered ? (
-      <Note tone="warning">{t('rank.failed')}</Note>
-    ) : (
-      <div className="space-y-2">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-2/3" />
-      </div>
+    return (
+      <ListPanel title={t('rank.captains')} data-testid="rank-list">
+        {answered ? (
+          <Note tone="warning" className="my-1">
+            {t('rank.failed')}
+          </Note>
+        ) : (
+          <div className="space-y-2 py-1">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-2/3" />
+          </div>
+        )}
+      </ListPanel>
     )
   }
   if (board.board.length === 0) {
     return (
-      <Row
-        label={board.why ?? t('rank.empty')}
-        tone="muted"
-        hairline={false}
-      />
+      <ListPanel title={t('rank.captains')} data-testid="rank-list">
+        <Row label={board.why ?? t('rank.empty')} tone="muted" hairline={false} />
+      </ListPanel>
     )
   }
 
@@ -197,30 +173,32 @@ function Board({
 
   return (
     <>
-      {you === null ? (
-        <Row label={t('rank.notRanked')} tone="muted" />
-      ) : (
-        // YOUR LINE ON ITS OWN PANEL, the board on another (2026-10-01): one tone step each, so
-        // the pinned row reads as pinned rather than as the first line of a printout.
-        <SheetSection surface>
-          <Row
-            mark={<Place position={you.position} mine />}
-            label={yourName}
-            value={<Figure value={formatInt(you.total_fame)} tone="accent" />}
-            tone="accent"
-            chevron
-            onClick={() => setDetent('half')}
-            data-testid="rank-you"
-          >
-            <Standing nation={flag(house?.nation ?? null)} tied={you.tied} />
-          </Row>
-        </SheetSection>
-      )}
-      {you !== null && !you.on_board && (
-        <Hint className="mt-2">{t('rank.below', { n: formatInt(board.board_size) })}</Hint>
-      )}
-
-      <SheetSection surface>
+      <ListPanel
+        title={t('rank.countCaptains', { n: formatInt(board.board_size), count: board.board_size })}
+        // YOUR LINE IS PINNED IN THE PANEL'S HEADER, fixed over the rows that scroll under it (it was on its own
+        // panel in the page, 2026-10-01: one tone step, so it reads as pinned and not as the first line of a printout).
+        controls={
+          you === null ? (
+            <Row label={t('rank.notRanked')} tone="muted" hairline={false} />
+          ) : (
+            <>
+              <Row
+                mark={<Place position={you.position} mine />}
+                label={yourName}
+                value={<Figure value={formatInt(you.total_fame)} tone="accent" />}
+                tone="accent"
+                chevron
+                onClick={() => setDetent('half')}
+                data-testid="rank-you"
+              >
+                <Standing nation={flag(house?.nation ?? null)} tied={you.tied} />
+              </Row>
+              {!you.on_board && <Hint className="w-full">{t('rank.below', { n: formatInt(board.board_size) })}</Hint>}
+            </>
+          )
+        }
+        data-testid="rank-list"
+      >
         {others.map((r, i) => (
           <Row
             key={`${r.position}-${r.company_name}`}
@@ -235,7 +213,7 @@ function Board({
             )}
           </Row>
         ))}
-      </SheetSection>
+      </ListPanel>
 
       {you !== null && (
         <Tray detent={detent} onDetentChange={setDetent} title={yourName} data-testid="fame-tray">

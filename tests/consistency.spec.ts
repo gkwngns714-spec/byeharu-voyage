@@ -636,12 +636,11 @@ test('one home per fact: the captains board is Rank’s, the desk’s cargo door
   const titles = await page.locator('[data-summary-row]').evaluateAll((els) => els.map((e) => (e.firstElementChild?.textContent ?? '').trim()))
   if (titles.includes('Captains')) failures.push(`stats/Me: a "Captains" summary row stands (${titles.join(', ')})`)
 
-  // RANK — the board lives here, behind its own row, and it names you
+  // RANK — the board lives here, on the glass (it stood behind `rank-open` until the unfold slice, 2026-11-02, owner row
+  // 260), and it names you
   await screen(page, 'rank')
-  await page.getByTestId('rank-open').click()
-  await expect(page.getByTestId('rank-open-page')).toBeVisible()
+  await expect(page.getByTestId('rank-list')).toBeVisible()
   if ((await page.getByTestId('rank-you').count()) === 0) failures.push('rank: the captains board does not name you')
-  await page.locator('[data-detail-back]').last().click()
 
   // THE DESK — the cargo door carries no figure; the strip keeps the acting figure
   await screen(page, 'command')
