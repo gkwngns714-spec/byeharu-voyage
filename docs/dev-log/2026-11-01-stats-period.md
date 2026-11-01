@@ -128,7 +128,7 @@ real flows are never read; the daybook half, which has no upper bound, returns t
 | the key-space guards (daybook band, flows band, `stats_world` 2004) and the leftover checks | 4-5 ms |
 | the knobs' md5 / the registry count | 1 / 8 ms |
 
-Well under a second of reading in all, plus the DDL and ~65 planted rows. The whole file: **99-163 ms** on the local worlds (clean, noisy, prod-data), **~0.3 s** on CI's real Postgres
+Well under a second of reading in all, plus the DDL and ~65 planted rows. The whole file: **84-163 ms** on the local worlds (clean, noisy, prod-data), **~0.3 s** on CI's real Postgres
 (`supabase migration up`), and it **prints its own elapsed time** (printed, never asserted). Not measured as a whole on prod (a push is the only way); the ceiling is the 90 s timeout.
 
 ## 5. The proof (self-assert, ONE atomic `DO` block: a failed assert keeps none of the file)
@@ -153,9 +153,9 @@ The local harness restores the chain's 282 files from the prefix cache (candidat
 
 | world | what it holds | the old text (0295 as pushed) | this file |
 |---|---|---|---|
-| **clean** (= CI's) | the chain's tiny world | passes | passes, 113 ms |
-| **noise** | `game_day_seconds` and `drift_slot_seconds` 60 (prod's regime); the daybook holds today's real days (20 harbours × 6 days × BUY / SELL / TAX), days just above the probe's band (D+21, D+25, D+500, D+100000), 800 recent flows at now() − k minutes, 4 counts already written | **FAILS at R1** (1,239-character message) | passes, 95 ms — R1's raw answer carried **10** real days besides the probe's, ignored |
-| **prod** | prod's own tables imported read-only on 2026-11-01 19:28 UTC: `world_config` (291 keys), `treasury_daybook` (5,769 rows, game days 29,892,607 … 29,892,636), `treasury_flows` (12,300), `stats_world` (275); ports mapped by code | **FAILS at R1** (5,051 characters) | passes, 133 ms — R1's raw answer carried **30** real days, ignored |
+| **clean** (= CI's) | the chain's tiny world | passes | passes, 120 ms |
+| **noise** | `game_day_seconds` and `drift_slot_seconds` 60 (prod's regime); the daybook holds today's real days (20 harbours × 6 days × BUY / SELL / TAX), days just above the probe's band (D+21, D+25, D+500, D+100000), 800 recent flows at now() − k minutes, 4 counts already written | **FAILS at R1** (1,239-character message) | passes, 97 ms — R1's raw answer carried **10** real days besides the probe's, ignored |
+| **prod** | prod's own tables imported read-only on 2026-11-01 19:28 UTC: `world_config` (291 keys), `treasury_daybook` (5,769 rows, game days 29,892,607 … 29,892,636), `treasury_flows` (12,300), `stats_world` (275); ports mapped by code | **FAILS at R1** (5,051 characters) | passes, 115 ms — R1's raw answer carried **30** real days, ignored |
 
 **Mutation controls (the asserts can fail): 39 in-memory mutations of the file, each applied to each of the three worlds** (117 runs). **29 are caught by the assert meant for them in all three worlds** (the bound, each half, CARRIED, the 0243 sum, the call's argument, the cap, the ACL / volatility / definer, another function moved, an owner switch, a knob, the pre-image, probe rows surviving, a real row in the probe's key space, the period statement rewritten as a difference of totals). **The 8 "remove a probe filter" mutations** (R1, R2, R4, T1 recent and period, T2 recent, T3 recent and period — M30-M35, M37, M38; M30 is the one the coordinator asked for) **apply on the clean world, as they must (it holds nothing but the probe's own rows), and are CAUGHT on both populated worlds.** Two controls apply everywhere by design: M36 (T2 reads the previous row's whole map, so the real days net to zero and drop out of the period; its kind filter stays as belt and braces) and M39 (a probe filter that forgot CARRIED hides a CARRIED leak — which is why the filter keeps CARRIED). The longest failure message in the whole run was **666 characters** (the first prod failure was 34 KB). (Scratch harness, not in the repo.)
 
@@ -163,11 +163,11 @@ The local harness restores the chain's 282 files from the prefix cache (candidat
 
 | gate | result |
 |---|---|
-| `node scripts/db/check-versions.mjs` | 283 migrations, 283 distinct versions, positive control fired |
-| `BYEHARU_PREFIX_CACHE=required node scripts/db/proof.mjs standing` | 282 restored from the prefix cache (2.2 s), 1 applied; **283 / 283 with a self-assert receipt (295 receipt lines)**; world-guard ok; `11_standing_route` 5 / 5 PASS; never a from-zero replay |
-| `BYEHARU_PREFIX_CACHE=required npm run build` | clean (`tsc -b` + `vite build`); world image from the prefix cache, certified, 18.55 MB gz |
+| `node scripts/db/check-versions.mjs` | 284 migrations (0297 is on main), 284 distinct versions, positive control fired |
+| `BYEHARU_PREFIX_CACHE=required node scripts/db/proof.mjs standing` | 283 restored from the prefix cache (2.1 s), 1 applied (mine); **284 / 284 with a self-assert receipt (296 receipt lines)**; world-guard ok; `11_standing_route` 5 / 5 PASS; never a from-zero replay |
+| `BYEHARU_PREFIX_CACHE=required npm run build` | clean (`tsc -b` + `vite build`); world image from the prefix cache (282 restored, 2 applied), certified, 18.46 MB gz |
 | `npx playwright test tests/duplication.spec.ts tests/rpc.stats.spec.ts` | **18 passed** (11 + 7), 0 failed, 0 skipped |
-| the three rehearsal worlds | clean 113 ms, noise 95 ms, prod-data 133 ms; the old text fails R1 on the last two |
+| the three rehearsal worlds | clean 120 ms, noise 97 ms, prod-data 115 ms; the old text fails R1 on the last two |
 | 39 mutations × 3 worlds | as above |
 
 ## 6. PROD CHECKS (read-only, one pure SELECT per call, 2026-11-01 18:20-19:40 UTC, before the PR; the first four re-read 19:26)
