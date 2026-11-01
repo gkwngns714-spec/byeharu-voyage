@@ -102,12 +102,17 @@ export function Row({
   // A CONTROL AS THE VALUE (a `Button`, 44px to the line's 24) is centred ON the line, hanging 10px
   // above and below it (src/index.css), so "Portugal" and "Change" read as one line rather than one
   // at the top and one centred in a taller box.
-  const columns = [mark !== undefined ? 'auto' : null, 'minmax(0,1fr)', value !== undefined ? 'auto' : null, chevron ? 'auto' : null]
-    .filter(Boolean)
-    .join(' ')
+  // THE FIGURE SITS BESIDE ITS LABEL (owner, 2026-11-01: *"there are empty spaces between words and
+  // numbers horizontally which is in effective. make it so that htey are closer, more compact"*).
+  // Until this change the label owned a `1fr` track, so a short label pushed its figure to the far
+  // right edge — the screen was mostly gap. The tracks are now: mark · LABEL (content-sized) ·
+  // value · slack (1fr) · chevron. The slack absorbs the spare width AFTER the value, so the figure
+  // hugs the label and the chevron still stands at the right edge; a list's bars (line 2) still span
+  // the full width because they run to the last column.
+  const columns = 'auto minmax(0, auto) auto minmax(0, 1fr) auto'
   // every line-1 cell is PLACED, not auto-flowed: a value spanning two lines would otherwise be
   // auto-placed into the label's column
-  const labelCol = mark !== undefined ? 2 : 1
+  const labelCol = 2
   const body = (
     <>
       {mark !== undefined && (
@@ -120,15 +125,15 @@ export function Row({
       </span>
       {value !== undefined && (
         <span
-          className="bv-row-line whitespace-nowrap text-right text-t-body tabular-nums"
-          style={{ gridRow: under === 'label' ? '1 / span 2' : 1, gridColumn: labelCol + 1 }}
+          className="bv-row-line whitespace-nowrap text-left text-t-body tabular-nums"
+          style={{ gridRow: under === 'label' ? '1 / span 2' : 1, gridColumn: 3 }}
           data-row-cell="value"
         >
           {value}
         </span>
       )}
       {chevron && (
-        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: -2 }} data-row-cell="chevron">
+        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: -1 }} data-row-cell="chevron">
           <Icon name="chevron" size={20} className="text-ink-faint" />
         </span>
       )}

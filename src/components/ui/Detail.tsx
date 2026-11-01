@@ -52,11 +52,14 @@ export function SummaryRow({
       className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control bg-surface px-3 py-2 text-left transition hover:bg-surface-2 ${className}`}
       {...rest}
     >
-      <span title={typeof title === 'string' ? title : undefined} className="min-w-0 truncate text-t-body font-semibold text-ink">{title}</span>
-      {/* `justify-end` holds the figure/word column's RIGHT edge on every row (align.spec's
-          COLUMN law): the content widths differ, the column edge must not. */}
-      <span className="flex shrink-0 items-center justify-end gap-2 text-t-caption tabular-nums text-ink-muted">
-        {figure !== undefined && <span>{figure}</span>}
+      <span title={typeof title === 'string' ? title : undefined} data-row-cell="label" className="min-w-0 truncate text-t-body font-semibold text-ink">{title}</span>
+      {/* THE FIGURE HUGS ITS TITLE (owner, 2026-11-01: *"empty spaces between words and numbers
+          horizontally… make it so that htey are closer, more compact"*). It used to be pushed to the
+          right edge by `justify-between`; now only the WORD and the chevron stand at the edge — the
+          affordance keeps its place, the number keeps its label. The `data-row-cell` names are the
+          slots align.spec reads: label · value (beside it) · action (the edge affordance). */}
+      {figure !== undefined && <span data-row-cell="value" className="shrink-0 text-t-caption tabular-nums text-ink-muted">{figure}</span>}
+      <span data-row-cell="action" className="ml-auto flex shrink-0 items-center justify-end gap-2 text-t-caption tabular-nums text-ink-muted">
         {word !== undefined && <span className="text-ink-faint">{word}</span>}
         <Icon name="chevron" size={16} />
       </span>
