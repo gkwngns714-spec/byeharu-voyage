@@ -167,3 +167,52 @@ test.describe('in Korean, with a good on board', () => {
     expect(found, `the Storage face is not clean at 320×640 in Korean:\n${found.join('\n')}`).toEqual([])
   })
 })
+
+// THE INN'S GUEST TRAY, FOR EVERY GUEST THE ROOM OFFERS. A guest's tile opens the hiring tray (docked: the glass's width on a phone, a side panel on the wide glass),
+// and its trait rows read a sentence — "−4.2% crew lost to pirates · −4.2 points of homesickness" is 436 px — that PortInn passed as the row's VALUE, which `Row` keeps
+// on one line: the tray scrolled sideways and the trait's name stood one letter wide (the captain tray had the same row and the same defect; the Inn's measured clean at
+// 390 only because the sentences of the guests it was asked about were short). The sentence is the row's second line now, and the room is read guest by guest.
+async function innGuests(page: Page, glass: Glass): Promise<string[]> {
+  await page.setViewportSize(glass)
+  await page.goto('city')
+  await ready(page)
+  await expect(page.getByTestId('city-screen')).toBeVisible()
+  await expect(page.getByTestId('city-hall-panel')).toBeVisible()
+  await press(page, 'inn')
+  // the room is a page of its own in the HQ (Captains here > the Inn page: crew, supplies, the guests)
+  await page.getByTestId('city-inn-captains').click()
+  await expect(page.getByTestId('city-inn-page')).toBeVisible()
+  const guests = page.locator('[data-testid^="guest-"]')
+  await expect(guests.first(), 'the inn has no guest to open').toBeVisible({ timeout: 30_000 })
+  const count = Math.min(await guests.count(), 8)
+  const found: string[] = []
+  for (let i = 0; i < count; i++) {
+    await guests.nth(i).click()
+    await expect(page.getByTestId('inn-tray')).toBeVisible()
+    await settled(page.getByTestId('inn-tray'))
+    await page.waitForTimeout(500)
+    found.push(...defects(`${glass.width}×${glass.height} inn guest ${i + 1} of ${count}`, await readGlass(page, 'inn-tray', null, '[data-testid="inn-tray"]')))
+    await page.getByTestId('tray-close').click()
+    await expect(page.getByTestId('inn-tray')).toHaveCount(0)
+  }
+  return found
+}
+
+for (const glass of GLASSES) {
+  test(`the Inn's guest tray is clean for every guest at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    const found = await innGuests(page, glass)
+    expect(found, `the Inn's guest tray is not clean on a ${glass.width}-px glass:\n${found.join('\n')}`).toEqual([])
+  })
+}
+
+test.describe('in Korean, the Inn', () => {
+  test.use({ locale: 'ko-KR' })
+  test("the Inn's guest tray is clean for every guest at 320×640", async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    const found = await innGuests(page, { width: 320, height: 640 })
+    expect(found, `the Inn's guest tray is not clean at 320×640 in Korean:\n${found.join('\n')}`).toEqual([])
+  })
+})

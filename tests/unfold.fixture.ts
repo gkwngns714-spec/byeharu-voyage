@@ -130,18 +130,65 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
       const phone = scope !== null
       const name = (e: Element) => `${e.getAttribute('data-testid') ?? e.getAttribute('data-row-cell') ?? e.tagName.toLowerCase()} "${(e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 22)}"`
 
+      // WHAT IS ON THE GLASS, NOT WHAT IS IN THE DOM: a box scrolled out of a pane (the trade pane's last rows under its pinned Add and Buy) is still a box, and a
+      // pair of them "overlap" behind the pane's edge where nobody sees them. Every rect below is clipped by each ancestor that clips (overflow not visible), as the
+      // text leaves above are; a box with nothing left on the glass takes no part.
+      type Box = { left: number; top: number; right: number; bottom: number }
+      // A fixed box is placed on the viewport, so no ancestor's overflow clips it; a box inside one is clipped by what lies between, the fixed ancestor included.
+      const onGlass = (e: Element, r: Box): Box | null => {
+        let box: Box | null = { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
+        if (getComputedStyle(e).position === 'fixed') return box
+        for (let a: Element | null = e.parentElement; a && a !== document.body && box; a = a.parentElement) {
+          const st = getComputedStyle(a)
+          if (st.overflowX !== 'visible' || st.overflowY !== 'visible') {
+            const c = a.getBoundingClientRect()
+            box = { left: Math.max(box.left, c.left), top: Math.max(box.top, c.top), right: Math.min(box.right, c.right), bottom: Math.min(box.bottom, c.bottom) }
+            if (box.right - box.left <= 0 || box.bottom - box.top <= 0) box = null
+          }
+          if (st.position === 'fixed') break
+        }
+        return box
+      }
+      // …and by FRAGMENT: an inline element that wraps (a caption that ends one line and begins the next) is two boxes, and `getBoundingClientRect()` is the union of
+      // them — a rectangle that covers whatever stands between its two lines, which is no overlap at all. A block is one fragment, as ever.
+      // An INLINE element's boxes also hold the blank at its two ends (a caption that opens with the space that parts it from the mark before it), and a mark
+      // that lies 3 px over that blank on purpose (GoodKind's `-mr-[3px]`) is no overlap of anything drawn — so an inline element is measured from its first glyph
+      // to its last, line by line.
+      const boxesOf = (e: Element): DOMRect[] => {
+        if (getComputedStyle(e).display !== 'inline') return [...e.getClientRects()]
+        const walker = document.createTreeWalker(e, NodeFilter.SHOW_TEXT)
+        let first: Text | null = null
+        let last: Text | null = null
+        for (let n = walker.nextNode() as Text | null; n; n = walker.nextNode() as Text | null) {
+          if (/\S/.test(n.data)) {
+            first = first ?? n
+            last = n
+          }
+        }
+        if (first === null || last === null) return [...e.getClientRects()]
+        const range = document.createRange()
+        range.setStart(first, first.data.search(/\S/))
+        range.setEnd(last, last.data.replace(/\s+$/, '').length)
+        const ink = [...range.getClientRects()]
+        return ink.length > 0 ? ink : [...e.getClientRects()]
+      }
+      const rectsOf = (e: Element): Box[] => boxesOf(e).map((r) => onGlass(e, r)).filter((b): b is Box => b !== null && b.right - b.left > 0 && b.bottom - b.top > 0)
+      const crossing = (a: Box, b: Box) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top))
+      const crossingAll = (as: Box[], bs: Box[]) => as.reduce((sum, a) => sum + bs.reduce((s2, b) => s2 + crossing(a, b), 0), 0)
+
       // (a) no two SIBLING boxes overlap by more than 2 px². In-flow siblings only: an absolute or fixed child is a layer drawn over
       // its parent on purpose (a gauge's fill, a chevron), never a box that has lost its place. An svg's insides are the chart's own.
       const boxes: string[] = []
       for (const p of phone ? [root, ...inside] : []) {
         if (p.tagName.toLowerCase() === 'svg' || p.parentElement?.closest('svg')) continue
-        const kids = [...p.children].filter((k) => vis(k) && !['absolute', 'fixed'].includes(getComputedStyle(k).position))
+        const kids = [...p.children]
+          .filter((k) => vis(k) && !['absolute', 'fixed'].includes(getComputedStyle(k).position))
+          .map((k) => ({ k, r: rectsOf(k) }))
+          .filter((x) => x.r.length > 0)
         for (let i = 0; i < kids.length; i++) {
           for (let j = i + 1; j < kids.length; j++) {
-            const a = kids[i].getBoundingClientRect()
-            const b = kids[j].getBoundingClientRect()
-            const area = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top))
-            if (area > 2) boxes.push(`${name(kids[i])} × ${name(kids[j])} (${Math.round(area)} px²)`)
+            const area = crossingAll(kids[i].r, kids[j].r)
+            if (area > 2) boxes.push(name(kids[i].k) + ' × ' + name(kids[j].k) + ' (' + Math.round(area) + ' px²)')
           }
         }
       }
@@ -152,15 +199,16 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
         for (let a: Element | null = e; a && a !== root; a = a.parentElement) if (['absolute', 'fixed'].includes(getComputedStyle(a).position)) return true
         return false
       }
-      const controls = (phone ? [...root.querySelectorAll('button, a[href], input, select, textarea, [role="button"], [role="tab"]')] : []).filter((e) => vis(e) && !layered(e))
+      const controls = (phone ? [...root.querySelectorAll('button, a[href], input, select, textarea, [role="button"], [role="tab"]')] : [])
+        .filter((e) => vis(e) && !layered(e))
+        .map((e) => ({ e, r: rectsOf(e) }))
+        .filter((x) => x.r.length > 0)
       for (let i = 0; i < controls.length; i++) {
         for (let j = i + 1; j < controls.length; j++) {
-          if (controls[i].contains(controls[j]) || controls[j].contains(controls[i])) continue
-          if (controls[i].parentElement === controls[j].parentElement) continue // siblings are counted above
-          const a = controls[i].getBoundingClientRect()
-          const b = controls[j].getBoundingClientRect()
-          const area = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top))
-          if (area > 2) boxes.push(`control ${name(controls[i])} × ${name(controls[j])} (${Math.round(area)} px²)`)
+          if (controls[i].e.contains(controls[j].e) || controls[j].e.contains(controls[i].e)) continue
+          if (controls[i].e.parentElement === controls[j].e.parentElement) continue // siblings are counted above
+          const area = crossingAll(controls[i].r, controls[j].r)
+          if (area > 2) boxes.push('control ' + name(controls[i].e) + ' × ' + name(controls[j].e) + ' (' + Math.round(area) + ' px²)')
         }
       }
       // …and no TEXT stands on a control it is not inside: a good's stock gauge ("6,700 / 6,700") ran 4 px under the buy cell beside it in the Map's port tray at 390 and in
@@ -168,19 +216,23 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
       if (phone) {
         const leaves = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
         for (let n = leaves.nextNode(); n; n = leaves.nextNode()) {
-          const txt = (n.textContent ?? '').replace(/s+/g, ' ').trim()
+          const txt = (n.textContent ?? '').replace(/\s+/g, ' ').trim()
           const host = n.parentElement
           if (!txt || !host || host.closest('svg') || !vis(host)) continue
           const range = document.createRange()
           range.selectNodeContents(n)
-          const r = [...range.getClientRects()].find((x) => x.width > 0 && x.height > 0)
-          if (!r) continue
-          for (const c of controls) {
-            if (c.contains(host)) continue
-            const b = c.getBoundingClientRect()
-            const ox = Math.min(r.right, b.right) - Math.max(r.left, b.left)
-            const oy = Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top)
-            if (ox > 2 && oy > 3) boxes.push(`text "${txt.slice(0, 20)}" stands on control ${name(c)} (${Math.round(ox)}×${Math.round(oy)} px)`)
+          // every line the text occupies, not only its first
+          for (const raw of [...range.getClientRects()].filter((x) => x.width > 0 && x.height > 0)) {
+            const r = onGlass(host, raw)
+            if (!r) continue
+            for (const c of controls) {
+              if (c.e.contains(host)) continue
+              for (const cr of c.r) {
+                const ox = Math.min(r.right, cr.right) - Math.max(r.left, cr.left)
+                const oy = Math.min(r.bottom, cr.bottom) - Math.max(r.top, cr.top)
+                if (ox > 2 && oy > 3) boxes.push('text "' + txt.slice(0, 20) + '" stands on control ' + name(c.e) + ' (' + Math.round(ox) + '×' + Math.round(oy) + ' px)')
+              }
+            }
           }
         }
       }
@@ -191,7 +243,7 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
           const a = chartText[i].getBoundingClientRect()
           const b = chartText[j].getBoundingClientRect()
           const area = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top))
-          if (area > 2) boxes.push(`chart "${(chartText[i].textContent ?? '').trim()}" × "${(chartText[j].textContent ?? '').trim()}" (${Math.round(area)} px²)`)
+          if (area > 2) boxes.push('chart "' + (chartText[i].textContent ?? '').trim() + '" × "' + (chartText[j].textContent ?? '').trim() + '" (' + Math.round(area) + ' px²)')
         }
       }
 
