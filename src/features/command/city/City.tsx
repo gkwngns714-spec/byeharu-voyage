@@ -74,6 +74,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
 
   return layout({
     testid: 'desk-city',
+    mainFill: true,
     sideHint: t('desk.citySide'),
     list: (
     <>
@@ -118,10 +119,15 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
     </>
     ),
     main: (
-      <div role="tabpanel" className="mt-3 lg:mt-0">
+      <div role="tabpanel" className="mt-3 flex min-h-0 flex-1 flex-col lg:mt-0">
         {/* THE BUILDING'S FACE IS THE ONE LONG BODY ON THE PHONE (2026-10-31, the sheet law): it
-            scrolls inside its own pane, so the city, its buildings and its rail never travel. */}
-        <ScrollPane className="max-h-[12rem] lg:max-h-none">
+            scrolls inside its own pane, so the city, its buildings and its rail never travel.
+            THE PANE TAKES THE GLASS THAT IS LEFT (2026-11-02): it was a 12-rem (192 px) cap inside a Sheet that ended 187 px below it, and
+            its own controls (the supplies row, Buy · Sell · Requests, the filter: 150 px) took 150 of the 192 — at 390 forty px of goods stood on
+            the glass, at 320 none. It is now the rest of the Sheet (7 rem at the least, so a short glass scrolls the Sheet rather than
+            crush it) — and a QUERY CONTAINER (index.css, `pair:`), so a Trade row in a 288-px pane at 320 stands its name over its two
+            price cells instead of squeezing the name to one letter. */}
+        <ScrollPane className="@container min-h-28 flex-1 lg:max-h-none">
         {shown.id === 'market' &&
           (quay.market === undefined ? (
             quay.refusal !== null ? (

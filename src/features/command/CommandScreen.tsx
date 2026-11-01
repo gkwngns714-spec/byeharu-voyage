@@ -151,7 +151,10 @@ export function CommandScreen() {
   }
 
   return (
-    <Sheet title={t('command.title')} data-testid="command">
+    // THE GLASS IS THE FACE'S (2026-11-02, the HQ-on-a-phone slice; docs/dev-log/2026-11-02-city-phone-desk.md): the desk's body fills the height under the title,
+    // so a face that is ONE board (the City's building face) takes what the strip, the faces and its own header leave free instead of a 12-rem cap —
+    // for EVERY face, so pressing one never moves the title (the press law). A face that is taller than the glass still scrolls the Sheet, as before.
+    <Sheet title={t('command.title')} fill data-testid="command">
       <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} />
       {/* THE FACES (deskView.ts): one row in the body, not in the sticky title bar — a 44-px control
           there makes the bar taller, and a taller sticky bar covers what a press lands on below it. */}
