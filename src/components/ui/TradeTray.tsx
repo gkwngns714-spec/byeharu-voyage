@@ -265,7 +265,9 @@ export function TradeTray({
               the whole width where there is no basket to stage into. */}
           {/* The basket button takes its own width; the send button, which carries the count and
               the price, takes the rest — halves wrapped `Buy 10 units · 822 🪙` onto two lines. */}
-          <div className={act.stage ? 'grid grid-cols-[auto_1fr] gap-2' : ''}>
+          {/* IN A NARROW CONTAINER (`narrow:`, index.css — the pane a good opens in the HQ's phone panel is 104–139 px) the two acts stand one over the other: side by
+              side they were 62 px and the 150-px label, in a box of 139, and the Buy button — the act the pane is for — ran off its edge, unpressable. */}
+          <div className={act.stage ? 'grid grid-cols-[auto_1fr] gap-2 narrow:grid-cols-1' : ''}>
             {act.stage && (
               <Button variant="secondary" className="w-full" onClick={act.stage} disabled={!live} data-testid="trade-tray-stage">
                 {t('ui.addToBasket')}
@@ -273,7 +275,7 @@ export function TradeTray({
             )}
             <Button
               variant="primary"
-              className="w-full"
+              className="w-full text-center narrow:px-2"
               onClick={act.send}
               disabled={!live}
               busy={act.sending}

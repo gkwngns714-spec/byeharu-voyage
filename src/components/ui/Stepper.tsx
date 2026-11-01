@@ -127,17 +127,21 @@ export function Stepper({
 
   return (
     <div className={`flex flex-col gap-2 ${className}`} {...rest}>
-      <div className="flex items-center gap-3">
+      {/* IN A NARROW CONTAINER (`narrow:`, index.css — the HQ's panel on a phone: the pane a good opens is 139 px wide at 390 and 104 at 320) the row is
+          wrapped: the figure and its unit take the first line, whole, and the two buttons share the one under it (or stand one over the other when
+          two 44-px targets and the gap are wider than the room). Two 44-px buttons, a 12-px gap either side and the figure are 112 px before the figure
+          has a letter: the figure was squeezed to nothing and its unit stood under the `+`. Anywhere else the row is the one it has always been. */}
+      <div className="flex items-center gap-3 narrow:flex-wrap narrow:gap-y-1">
         <button
           type="button"
           aria-label={t('ui.less')}
           onClick={() => onChange(clamp(value - step))}
           disabled={value <= floor}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-surface-2 text-ink disabled:opacity-45"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-surface-2 text-ink disabled:opacity-45 narrow:w-auto narrow:min-w-11 narrow:flex-[1_1_2.75rem]"
         >
           <Icon name="minus" size={20} />
         </button>
-        <div className="flex min-w-0 flex-1 items-baseline justify-center gap-1">
+        <div className="flex min-w-0 flex-1 items-baseline justify-center gap-1 narrow:order-first narrow:flex-[1_1_100%] narrow:flex-wrap">
           <input
             type="text"
             inputMode="numeric"
@@ -172,7 +176,7 @@ export function Stepper({
           aria-label={t('ui.more')}
           onClick={() => onChange(clamp(value + step))}
           disabled={value >= ceiling}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-surface-2 text-ink disabled:opacity-45"
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-control bg-surface-2 text-ink disabled:opacity-45 narrow:w-auto narrow:min-w-11 narrow:flex-[1_1_2.75rem]"
         >
           <Icon name="plus" size={20} />
         </button>

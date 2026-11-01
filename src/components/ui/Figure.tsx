@@ -62,8 +62,10 @@ export function Figure({
 }) {
   return (
     // A FIGURE WIDER THAN THE ROOM IT STANDS IN keeps its number whole and drops its unit under it (`narrow:`, index.css — the HQ's phone
-    // panel: `6,700 / 6,700 units` is 138 px and the chart card's row 128). Anywhere else it is the one nowrap line it has always been.
-    <span className={`inline-flex items-baseline gap-1 whitespace-nowrap narrow:max-w-full narrow:flex-wrap ${className}`}>
+    // panel: `6,700 / 6,700 units` is 138 px and the chart card's row 128); a number wider than the room by itself (`6,700 / 6,700` is 106 px, the
+    // pane a good opens at 320 has 104) breaks at its own spaces — a money figure and its coin never part (a no-break space, lib/format).
+    // Anywhere else it is the one nowrap line it has always been.
+    <span className={`inline-flex items-baseline gap-1 whitespace-nowrap narrow:max-w-full narrow:flex-wrap narrow:whitespace-normal ${className}`}>
       <span className={`tabular-nums ${SIZE[size]} ${TONE[tone]}`}>{value}</span>
       {unit !== undefined && <span className="text-t-caption text-ink-faint">{unit}</span>}
     </span>

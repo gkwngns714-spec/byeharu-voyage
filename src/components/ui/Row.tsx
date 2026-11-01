@@ -61,7 +61,7 @@ const FLOW = {
     pad: 'narrow:pr-8',
     mark: 'narrow:shrink-0',
     label: 'narrow:ml-0 narrow:flex-[1_1_7rem] narrow:max-w-max',
-    value: 'narrow:ml-0 narrow:max-w-full narrow:shrink-0',
+    value: 'narrow:ml-0 narrow:max-w-full narrow:shrink-0 narrow:whitespace-normal',
     chevron: 'narrow:absolute narrow:right-0 narrow:top-2 narrow:ml-0',
     line2: 'narrow:ml-0 narrow:basis-full',
   },
@@ -167,8 +167,10 @@ export function Row({
   // standing in one flow, the chevron laid over the right edge of line 1, line 2 a full line of its own:
   //   · the LABEL never shrinks below its own text, up to 7 rem; past that it may wrap (`flex: 1 1 7rem`,
   //     `max-width: max-content`: a short label asks for exactly its words, a long one for 7 rem);
-  //   · the VALUE never wraps inside itself (a figure stays whole); when label and value do not fit one line, the
-  //     value drops UNDER the label, flush with it — still ONE row, its pitch the 44-px floor or more;
+  //   · the VALUE stays whole while it can (a `Figure` is `nowrap`); when label and value do not fit one line, the
+  //     value drops UNDER the label, flush with it — still ONE row, its pitch the 44-px floor or more; a value that is
+  //     wider than the whole row even there ("none on board" is 111 px, a column of 104) wraps at its own spaces
+  //     instead of standing past the row's edge and making the pane scroll sideways;
   //   · a gap belongs to a cell here too: the flow's `gap-x-3` is the 12 px, so every cell's `ml-3` is dropped.
   // A row that is not inside such a container — every other screen — never matches `narrow:` and is the grid above.
   const body = (

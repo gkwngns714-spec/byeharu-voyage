@@ -116,7 +116,9 @@ export function HaggleThread({
         aria-expanded={open}
         data-testid="haggle-row"
         value={
-          <span className="flex items-center gap-3">
+          // WRAPS (2026-11-02, the HQ-on-a-phone slice): the tries and the odds are two figures of 95 px in the 72 of a pane's value cell at 320 — side by side
+          // they squeezed each other to letter columns ("3 /" over "3"); the odds drop under the tries when they do not fit.
+          <span className="flex flex-wrap items-center gap-x-3">
             <Figure value={formatOfTotal(quay.attempts_left, quay.attempts_max)} unit={t('trade.triesLeft')} tone={read.loading ? 'faint' : 'muted'} />
             <Figure value={formatPctPoints(quay.next_odds_pct, 0)} tone={oddsTone} />
           </span>
@@ -153,7 +155,8 @@ export function HaggleThread({
             {/* 0161: the server's sentence when one of her captains speaks the port's language */}
             {quay.language_line && <span className="block text-t-caption text-accent" data-testid="haggle-language">{quay.language_line}</span>}
           </Row>
-          <div className="grid grid-cols-2 gap-2 py-2">
+          {/* ONE OVER THE OTHER in a narrow container (`narrow:`, index.css — the HQ's pane at 320 is 104 px: two 48-px buttons, the second wider than its box) */}
+          <div className="grid grid-cols-2 gap-2 py-2 narrow:grid-cols-1">
             <Button variant="secondary" className="w-full" onClick={() => setOpen(false)} data-testid="haggle-take">
               {t('trade.takeIt')}
             </Button>

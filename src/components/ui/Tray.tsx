@@ -187,7 +187,7 @@ export function Tray({
       {/* THE HANDLE IS THE DRAG SURFACE AND A REAL CONTROL. A grab bar that only responds to a
           pointer is unreachable from a keyboard, so it is a button: ↑ and ↓ step the detent
           ladder, which is the same ladder the drag snaps to. */}
-      <div className="flex items-center gap-2 px-gutter pt-2">
+      <div className="flex items-center gap-2 px-gutter pt-2 narrow:px-0">
         {/* A side panel has nothing to drag: the handle gives way to a spacer and the close button
             keeps its place at the right. */}
         {side ? (
@@ -227,13 +227,14 @@ export function Tray({
         )}
       </div>
 
-      <h2 className="shrink-0 px-gutter pb-2 text-t-title">{title}</h2>
+      {/* `break-words`: a title wider than the tray breaks inside its word instead of being cut by the tray's edge ("Quicksilver" is 109 px at this size, the pane at 320 has 104). */}
+      <h2 className="shrink-0 break-words px-gutter pb-2 text-t-title narrow:px-0">{title}</h2>
 
       {/* The one scrolling region. The action below it never enters this box, per §6's sketch:
           "the ONE primary button, always at the bottom edge, never in the scroll". */}
-      <div className="bv-scroll min-h-0 flex-1 overflow-y-auto px-gutter pb-2">{children}</div>
+      <div className="bv-scroll min-h-0 flex-1 overflow-y-auto px-gutter pb-2 narrow:px-0">{children}</div>
 
-      {action !== undefined && <div className="shrink-0 px-gutter pb-4 pt-2">{action}</div>}
+      {action !== undefined && <div className="shrink-0 px-gutter pb-4 pt-2 narrow:px-0 narrow:pb-2">{action}</div>}
     </section>
     </InTray.Provider>
   )

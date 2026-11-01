@@ -44,6 +44,30 @@ async function press(page: Page, tile: Tile) {
   await page.waitForTimeout(400)
 }
 
+/** Press the first good the open list offers: the pane it opens stands in the panel (the one TradeTray, pane mode), with its Bargain read in. */
+async function openATradePane(page: Page) {
+  await page.locator('[data-testid="trade-row"] button:enabled').first().click()
+  await expect(page.getByTestId('trade-tray')).toBeVisible()
+  await expect(page.getByTestId('haggle-row')).toBeVisible({ timeout: 30_000 })
+  await settled(page.getByTestId('city-face-panel'))
+  await page.waitForTimeout(600)
+}
+
+/** The index of the listed good whose name holds the longest single word — the title a pane cannot wrap at a space. */
+async function longestWordRow(page: Page): Promise<number> {
+  const names = await page.locator('[data-testid="trade-row"] [data-row-cell="label"]').allInnerTexts()
+  let best = 0
+  let longest = 0
+  names.forEach((name, i) => {
+    const word = name.split(/\s+/).reduce((a, b) => (b.length > a.length ? b : a), '').length
+    if (word > longest) {
+      longest = word
+      best = i
+    }
+  })
+  return best
+}
+
 /** Press the six tiles in turn and read the right panel (and the Market's chart and its three faces) at each. */
 async function walk(page: Page, glass: Glass): Promise<string[]> {
   await page.setViewportSize(glass)
@@ -70,6 +94,26 @@ async function walk(page: Page, glass: Glass): Promise<string[]> {
       await page.waitForTimeout(500)
       found.push(...defects(`${at} market ${names[i]}`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
     }
+    // THE TRADE PANE — a good pressed on Buy opens the one `TradeTray` in the panel (pane mode): the quantity's stepper, the Max, the Bargain, the trend rows
+    // and the two acts pinned under them. It is the act the Market is for, and nothing here had read it: at 390 its Buy ran 50 px past the panel's edge, the
+    // stepper's figure was squeezed to nothing under its `+`, and at 320 the pane scrolled sideways with the Buy a sliver at the edge.
+    await openATradePane(page)
+    found.push(...defects(`${at} market trade pane · buy`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
+    // …with the Bargain open (a press selects: its thread opens in the pane's own scroll)
+    await page.getByTestId('haggle-row').click()
+    await expect(page.getByTestId('haggle-thread')).toBeVisible()
+    await page.waitForTimeout(400)
+    found.push(...defects(`${at} market trade pane · bargain`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
+    await page.getByTestId('tray-close').click()
+    await expect(page.getByTestId('trade-tray')).toHaveCount(0)
+    // …and the good whose name holds the LONGEST WORD ("Quicksilver"): the pane's title is the one line that cannot wrap at a space — 109 px of it in a column of 104 at 320 was cut
+    await page.locator('[data-testid="trade-row"]').nth(await longestWordRow(page)).locator('button:enabled').first().click()
+    await expect(page.getByTestId('trade-tray')).toBeVisible()
+    await settled(page.getByTestId('city-face-panel'))
+    await page.waitForTimeout(600)
+    found.push(...defects(`${at} market trade pane · longest name`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
+    await page.getByTestId('tray-close').click()
+    await expect(page.getByTestId('trade-tray')).toHaveCount(0)
     // THE REQUEST PAGE (the house's home city: Requests is a face of its own there) — its list of goods, then the chart step: a 256-px box once held a
     // 276–420-px card, and at 1280 the inputs sat over the span picker
     if ((await faces.count()) > 2) {
@@ -146,7 +190,19 @@ async function storageWithAGood(page: Page, glass: Glass): Promise<string[]> {
   await expect(page.getByTestId('storage-row').first()).toBeVisible({ timeout: 30_000 })
   await settled(page.getByTestId('city-face-panel'))
   await page.waitForTimeout(500)
-  return defects(`${glass.width}×${glass.height} storage · a good on board`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]'))
+  const at = `${glass.width}×${glass.height}`
+  const found = defects(`${at} storage · a good on board`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]'))
+  // …and the Market's Sell face with that good on it, and the pane it opens (the sale's figures: Bought at, Sells at, You get, the profit pinned over the act)
+  await page.getByTestId('city-building-market').click()
+  await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
+  await settled(page.getByTestId('city-face-panel'))
+  await page.locator('[data-testid="city-face-panel"] [role="tablist"] [role="tab"]').nth(1).click()
+  await expect(page.locator('[data-testid="trade-row"]').first()).toBeVisible({ timeout: 30_000 })
+  await page.waitForTimeout(500)
+  found.push(...defects(`${at} market sell · a good on board`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
+  await openATradePane(page)
+  found.push(...defects(`${at} market trade pane · sell`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
+  return found
 }
 
 for (const glass of GLASSES) {
@@ -165,5 +221,54 @@ test.describe('in Korean, with a good on board', () => {
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     const found = await storageWithAGood(page, { width: 320, height: 640 })
     expect(found, `the Storage face is not clean at 320×640 in Korean:\n${found.join('\n')}`).toEqual([])
+  })
+})
+
+// THE INN'S GUEST TRAY, FOR EVERY GUEST THE ROOM OFFERS. A guest's tile opens the hiring tray (docked: the glass's width on a phone, a side panel on the wide glass),
+// and its trait rows read a sentence — "−4.2% crew lost to pirates · −4.2 points of homesickness" is 436 px — that PortInn passed as the row's VALUE, which `Row` keeps
+// on one line: the tray scrolled sideways and the trait's name stood one letter wide (the captain tray had the same row and the same defect; the Inn's measured clean at
+// 390 only because the sentences of the guests it was asked about were short). The sentence is the row's second line now, and the room is read guest by guest.
+async function innGuests(page: Page, glass: Glass): Promise<string[]> {
+  await page.setViewportSize(glass)
+  await page.goto('city')
+  await ready(page)
+  await expect(page.getByTestId('city-screen')).toBeVisible()
+  await expect(page.getByTestId('city-hall-panel')).toBeVisible()
+  await press(page, 'inn')
+  // the room is a page of its own in the HQ (Captains here > the Inn page: crew, supplies, the guests)
+  await page.getByTestId('city-inn-captains').click()
+  await expect(page.getByTestId('city-inn-page')).toBeVisible()
+  const guests = page.locator('[data-testid^="guest-"]')
+  await expect(guests.first(), 'the inn has no guest to open').toBeVisible({ timeout: 30_000 })
+  const count = Math.min(await guests.count(), 8)
+  const found: string[] = []
+  for (let i = 0; i < count; i++) {
+    await guests.nth(i).click()
+    await expect(page.getByTestId('inn-tray')).toBeVisible()
+    await settled(page.getByTestId('inn-tray'))
+    await page.waitForTimeout(500)
+    found.push(...defects(`${glass.width}×${glass.height} inn guest ${i + 1} of ${count}`, await readGlass(page, 'inn-tray', null, '[data-testid="inn-tray"]')))
+    await page.getByTestId('tray-close').click()
+    await expect(page.getByTestId('inn-tray')).toHaveCount(0)
+  }
+  return found
+}
+
+for (const glass of GLASSES) {
+  test(`the Inn's guest tray is clean for every guest at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    const found = await innGuests(page, glass)
+    expect(found, `the Inn's guest tray is not clean on a ${glass.width}-px glass:\n${found.join('\n')}`).toEqual([])
+  })
+}
+
+test.describe('in Korean, the Inn', () => {
+  test.use({ locale: 'ko-KR' })
+  test("the Inn's guest tray is clean for every guest at 320×640", async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    const found = await innGuests(page, { width: 320, height: 640 })
+    expect(found, `the Inn's guest tray is not clean at 320×640 in Korean:\n${found.join('\n')}`).toEqual([])
   })
 })
