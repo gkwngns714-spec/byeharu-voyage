@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Chip } from './Chip'
 import { TileChoice, TileGrid } from './TileGrid'
 import type { ChoiceColumns } from './tileStyles'
 
@@ -44,11 +45,36 @@ export interface FilterPick<T extends string = string> {
   onChange: (id: T) => void
 }
 
+/** ONE PICKER: a native select, 44 px tall, named (`label`) and — in the compact bar — named only for
+ *  assistive tech. Both bars draw it; there is one recipe. */
+function PickSelect({ pick, bare }: { pick: FilterPick<string>; bare: boolean }) {
+  return (
+    <label title={bare ? pick.label : undefined} className="flex min-w-0 max-w-full items-center gap-2 text-t-caption text-ink-faint">
+      <span className={bare ? 'sr-only' : 'shrink-0'}>{pick.label}</span>
+      <select
+        value={pick.value}
+        onChange={(e) => pick.onChange(e.target.value)}
+        // A COMPACT PICKER IS AS WIDE AS WHAT IT SAYS, not as its longest option (`field-sizing`): three of them stand
+        // on one line of a phone. Where a browser lacks it the picker is the width it always was.
+        className={`min-h-11 min-w-0 max-w-full rounded-control bg-surface-2 px-3 text-t-caption text-ink ${bare ? 'field-sizing-content' : ''}`}
+        data-testid={`filter-pick-${pick.id}`}
+      >
+        {pick.options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
 export function FilterBar({
   chips,
   toggles = [],
   picks = [],
   sort,
+  compact = false,
   className = '',
   ...rest
 }: {
@@ -57,9 +83,32 @@ export function FilterBar({
   /** Filters with too many choices for chips (a country). */
   picks?: readonly FilterPick<string>[]
   sort?: FilterPick<string>
+  /** THE BAR OF A LIST PANEL'S HEADER (unfold slice, 2026-11-01): no grid of chips — every choice is a
+   *  picker or a toggle, on ONE wrapping line, and a picker's name is not printed (its options say what it
+   *  is). A list that stands on the glass has about one line to spare for its filters. */
+  compact?: boolean
   className?: string
 } & { 'data-testid'?: string }) {
   const lines = [...picks, ...(sort ? [sort] : [])]
+  if (compact) {
+    return (
+      <div
+        role="toolbar"
+        aria-label={lines.map((p) => p.label).join(', ')}
+        className={`flex min-w-0 flex-wrap items-center gap-2 ${className}`}
+        data-testid={rest['data-testid'] ?? 'filter-bar'}
+      >
+        {lines.map((p) => (
+          <PickSelect key={p.id} pick={p} bare />
+        ))}
+        {toggles.map((t) => (
+          <Chip key={t.id} on={t.on} onClick={() => t.onChange(!t.on)} data-testid={`filter-toggle-${t.id}`}>
+            {t.label}
+          </Chip>
+        ))}
+      </div>
+    )
+  }
   return (
     <div className={`flex min-w-0 flex-col gap-2 ${className}`} data-testid={rest['data-testid'] ?? 'filter-bar'}>
       {(chips !== undefined || toggles.length > 0) && (
@@ -83,21 +132,7 @@ export function FilterBar({
         // skips a toolbar as it skips a tab list)
         <div role="toolbar" aria-label={lines.map((p) => p.label).join(', ')} className="flex min-w-0 flex-wrap items-center gap-2">
           {lines.map((p) => (
-            <label key={p.id} className="flex min-w-0 max-w-full items-center gap-2 text-t-caption text-ink-faint">
-              <span className="shrink-0">{p.label}</span>
-              <select
-                value={p.value}
-                onChange={(e) => p.onChange(e.target.value)}
-                className="min-h-11 min-w-0 max-w-full rounded-control bg-surface-2 px-3 text-t-caption text-ink"
-                data-testid={`filter-pick-${p.id}`}
-              >
-                {p.options.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <PickSelect key={p.id} pick={p} bare={false} />
           ))}
         </div>
       )}

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Segmented, Sheet } from '../../components/ui'
+import { Dot, Segmented, Sheet } from '../../components/ui'
 import { formatKoreaTime } from '../../lib/format'
 import { useLocale, useT } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
@@ -20,6 +20,11 @@ import { useStatsLive } from './statsLive'
 //
 // FIVE FACES, ONE READ EACH. The server's job writes a rollup every fifteen minutes; each face asks one
 // read of it and prints what it says (the sums, the words, the tiers are all the server's).
+//
+// NOTHING IS BEHIND A PRESS (owner, 2026-11-01, row 260: *"everything is folded in stats this is soo wrong.
+// make it compact showing everything possible."*). Each face is its figures — with their small charts beside
+// them — over (or, from `lg`, beside) ONE `ListPanel`: the money log, the goods, the cities, the companies,
+// the best sales. A press opens ONE item's page or a chart's large view, never the list and never a figure.
 //
 // AND EVERY READ, EVERY SECOND (0224 for the RIGHT NOW band; 0232 for every face — owner row 213: *"and why is next
 // count in minutes? i told you it should be in seconds?"*). Each face's read answers NOW on the server (the count's
@@ -51,14 +56,20 @@ function StatsBody({ title }: { title: string }) {
   const { live, liveAtMs } = useStatsLive()
   const updated = liveAtMs === null ? null : t('stats.updated', { time: formatKoreaTime(liveAtMs) })
 
+  // THE GLASS IS THE FACE'S (the unfold slice, 2026-11-02): `fill` hands the height under the title to the
+  // face, whose figures and list panel share it — the tab itself never scrolls (docs/dev-log/2026-11-01-unfold-stats.md).
   return (
     <Sheet
       title={title}
+      fill
       data-testid="stats"
       trailing={
         updated === null ? undefined : (
-          <span className="text-t-caption text-ink-faint" data-testid="stats-updated">
-            {updated}
+          // THE GREEN DOT IS "RIGHT NOW": the band under the tabs and every face asks again each second, and
+          // the line says from when. It stood as a heading of the band, a line of its own, until the unfold slice.
+          <span className="flex items-center gap-2 text-t-caption text-ink-faint">
+            <Dot tone="success" label={t('stats.live')} />
+            <span data-testid="stats-updated">{updated}</span>
           </span>
         )
       }
@@ -68,7 +79,7 @@ function StatsBody({ title }: { title: string }) {
         value={face}
         onChange={setFace}
         label={t('stats.facesLabel')}
-        className="mb-3 w-fit max-w-full"
+        className="mb-1 w-fit max-w-full shrink-0"
       />
       <LiveNow live={live} />
       {face === 'overview' && <OverviewFace live={live} />}

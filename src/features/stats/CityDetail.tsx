@@ -2,12 +2,10 @@ import {
   Empty,
   FactsLine,
   Figure,
-  Flag,
   Hint,
   Note,
   RankBars,
   Row,
-  SheetSection,
   SignedBars,
   Skeleton,
   Sparkline,
@@ -20,7 +18,7 @@ import { formatDucats, formatDucatsDelta, formatInt, formatPctChange, formatPric
 import { useEffect } from 'react'
 import { useT } from '../../lib/i18n'
 import { worldStatsCity, type StatsCity } from '../../lib/rpc'
-import { nationNameOf, useWorld } from '../../live/worldStore'
+import { useWorld } from '../../live/worldStore'
 import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
 import { StatsChart } from './StatsChart'
@@ -36,15 +34,17 @@ import { useChartSpan } from '../../store/chartSpan'
 // what the city buys and sells most as ranked bars; then every good, each with its own sparkline — the
 // shape the Markets face uses, so a good does not look different here.
 //
+// A PAGE, NOT A SECTION (the unfold slice, 2026-11-02): a city's row on the Cities list opens this inside a
+// `DetailPage` — its title, its purse and its Back are the page's own, so the old heading and its Close are gone.
+//
 // EVERY SECOND (0232, owner row 213): the purse and each good's price and stock are live, every day-figure is the
 // last 24 h up to this second, the purse line and each spark end at now(); asked every second while open.
 
-export function CityDetail({ portId, onClose }: { portId: string; onClose: () => void }) {
+export function CityDetail({ portId }: { portId: string }) {
   const t = useT()
   const { span } = useChartSpan()   // 0246: one span for every chart
   const read = useLiveRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId, span), span)
   const v = read.view
-  const nationByCode = useWorld((s) => s.nationByCode)
   // 0263 (CLOSED_ECONOMY §4b, "Stats → Cities: a city's wants"): what this city wants now, from the market read the
   // quay already uses (world.market `wants`, the store's one copy). Read once when the city opens: wants re-draw
   // twice a game-day, not every second. Absent while city wants are dark, so nothing is drawn.
@@ -55,24 +55,10 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
   }, [portId, loadMarket])
   if (read.loading && !v) return <Skeleton className="mt-4 h-40 w-full" />
   if (!v) return <Note tone="danger" className="mt-4">{t('stats.cityFailed')}</Note>
-  const flag = v.city.nation === null ? undefined : <Flag code={v.city.nation} name={nationNameOf(nationByCode, v.city.nation)} size="body" />
   const o = v.overview
 
   return (
-    <SheetSection
-      heading={
-        <span className="flex items-center gap-2">
-          {flag}
-          {portName(v.city.name)}
-        </span>
-      }
-      trailing={
-        <button type="button" className="min-h-11 px-2 text-t-caption text-accent" onClick={onClose} data-testid="stats-city-close">
-          {t('common.close')}
-        </button>
-      }
-      data-testid="stats-city"
-    >
+    <div data-testid="stats-city">
       {wants && wants.length > 0 && (
         <Note tone="neutral" className="mb-3" data-testid="stats-city-wants">
           {t('ui.wanted', { mult: String(Number(wants[0].mult)) })}: {wants.map((w) => goodName(w)).join(' · ')}
@@ -92,6 +78,7 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
             format={formatDucats}
             label={t('stats.citySeries', { city: portName(v.city.name) })}
             tone="accent"
+            look="chart"
             className="mt-4"
             empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
           />
@@ -177,6 +164,6 @@ export function CityDetail({ portId, onClose }: { portId: string; onClose: () =>
           )}
         </div>
       )}
-    </SheetSection>
+    </div>
   )
 }

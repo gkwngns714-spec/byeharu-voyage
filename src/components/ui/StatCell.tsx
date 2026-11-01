@@ -44,6 +44,8 @@ export function StatCell({
   delta,
   trend,
   trendTone = 'even',
+  trendBeside = false,
+  inline = false,
   children,
   className = '',
   ...rest
@@ -64,28 +66,71 @@ export function StatCell({
   /** Where it has been: the newest readings, oldest first. Under 2 and nothing is drawn. */
   trend?: readonly number[]
   trendTone?: SparkTone
+  /** THE LINE STANDS BESIDE THE FIGURE (unfold slice, 2026-11-01: *"compact showing everything possible"*)
+   *  instead of under it: the cell stays two lines tall (label, then figure and line) rather than three.
+   *  The line takes what the figure leaves; where the figure leaves none it drops under it. */
+  trendBeside?: boolean
+  /** THE LABEL STANDS BEFORE ITS FIGURE ON ONE LINE (unfold slice, 2026-11-02; owner row 258/260: *"label and
+   *  figure close … compact with full detail"*) — a pair that wraps with its neighbours inside a
+   *  `flex flex-wrap`, 24 px a line, instead of a cell 40 px tall. For a block of several short figures; a
+   *  figure that carries a line or a delta keeps the stacked form. */
+  inline?: boolean
   /** A `Bar`, a share, a second caption — whatever this one figure needs and no more. */
   children?: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
+  const drawn = trend !== undefined && trend.length > 1
+  // `text` wins: a caller that has a reading which is NOT a number ("—", "locked") passes it
+  // beside the value it would otherwise have counted to.
+  const figure =
+    text === undefined && value !== undefined && format !== undefined ? (
+      <Counter value={value} format={format} unit={unit} size={size} tone={tone} />
+    ) : (
+      <Figure value={text ?? '—'} unit={unit} size={size} tone={text === undefined ? 'faint' : tone} />
+    )
+  if (inline) {
+    return (
+      <div className={`inline-flex min-w-0 items-baseline gap-2 ${className}`} {...rest}>
+        <span className="whitespace-nowrap text-t-caption text-ink-faint">{label}</span>
+        {figure}
+      </div>
+    )
+  }
   return (
     <div className={`min-w-0 ${className}`} {...rest}>
       <span className="block text-t-caption text-ink-faint">{label}</span>
-      {/* `text` wins: a caller that has a reading which is NOT a number ("—", "locked") passes it
-          beside the value it would otherwise have counted to. */}
-      {text === undefined && value !== undefined && format !== undefined ? (
-        <Counter value={value} format={format} unit={unit} size={size} tone={tone} />
+      {drawn && trendBeside ? (
+        <span className="flex flex-wrap items-center gap-x-2">
+          {figure}
+          <Sparkline values={trend} tone={trendTone} width={96} height={20} className="min-w-8 flex-1 lg:h-7" />
+        </span>
       ) : (
-        <Figure value={text ?? '—'} unit={unit} size={size} tone={text === undefined ? 'faint' : tone} />
+        figure
       )}
       {delta !== undefined && (
         <span className="block">
           <Figure value={delta.text} tone={delta.tone} />
         </span>
       )}
-      {trend !== undefined && trend.length > 1 && (
-        <Sparkline values={trend} tone={trendTone} width={96} height={20} className="mt-1 w-full" />
-      )}
+      {drawn && !trendBeside && <Sparkline values={trend} tone={trendTone} width={96} height={20} className="mt-1 w-full" />}
+      {children}
+    </div>
+  )
+}
+
+/** A RUN OF INLINE PAIRS — `StatCell inline`s that wrap like words, 24 px a line, with 16 px between pairs.
+ *  The one place that line is spelled: the live band, the economy watch, the day's flows, the market's day
+ *  and the week all stand on it (five callers, 2026-11-02). */
+export function StatRun({
+  className = '',
+  children,
+  ...rest
+}: {
+  className?: string
+  children: ReactNode
+} & { 'data-testid'?: string }) {
+  return (
+    <div className={`flex flex-wrap items-baseline gap-x-4 gap-y-0 ${className}`} {...rest}>
       {children}
     </div>
   )

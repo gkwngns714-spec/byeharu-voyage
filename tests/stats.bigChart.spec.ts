@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { PHONE, openDetail, reachable, ready } from './appReady.fixture'
+import { PHONE, reachable, ready } from './appReady.fixture'
 
 // A STATS CHART OPENS LARGE (owner row 232, 0246; StatsChart.tsx): tapping a Stats chart opens the same Tray the Buy / Sell
 // good page opens its price chart in, with the shared span picker (1d · 1w · 1m · 1y · All) over the same SeriesChart,
@@ -18,8 +18,8 @@ for (const vp of [PHONE, WIDE]) {
     await ready(page)
     await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
     await expect(page.getByTestId('stats-overview')).toHaveAttribute('data-span', '1d', { timeout: 60_000 })
-    // the charts live behind the World money fold (2026-10-31, the sheet law)
-    await openDetail(page, 'stats-money')
+    // the charts are ON the face (2026-11-02, the unfold slice: they were behind the World money row); each mini is a
+    // press target and the large chart is closed until it is pressed
     await expect(page.getByTestId('stats-big-chart')).toHaveCount(0)
 
     // the page under the tray does not move when it opens

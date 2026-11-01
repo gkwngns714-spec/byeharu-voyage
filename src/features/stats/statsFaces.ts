@@ -38,12 +38,6 @@ export const STATS_FACES: readonly { id: StatsFace }[] = [{ id: 'overview' }, { 
  *  glass this game is drawn for. */
 export const STATS_BARS = 24
 
-/** The share one holder has of the world's money, 0–100, for the Overview's bars. Presentation. */
-export function sharePct(part: number, total: number): number {
-  if (!Number.isFinite(part) || !Number.isFinite(total) || total <= 0) return 0
-  return Math.max(0, Math.min(100, (part / total) * 100))
-}
-
 /** A price move in percent points from `before` to `now`; null when either side is unknown. */
 export function movePct(now: number | null, before: number | null): number | null {
   if (now === null || before === null || !Number.isFinite(now) || !Number.isFinite(before) || before === 0) return null
