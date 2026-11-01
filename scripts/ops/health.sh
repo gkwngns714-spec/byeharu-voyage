@@ -4,7 +4,12 @@
 # It prints the numbers, then ALERT lines for each threshold that trips — thresholds are the ones that would have caught the 10-30 → 11-01 incident
 # hours or days earlier. Usage: bash scripts/ops/health.sh
 export PATH="$HOME/tools/supabase:$PATH"
-Q() { timeout 120 supabase db query --linked --output-format json "$1" 2>/dev/null; }
+# `supabase db query --linked` needs the project link (supabase/.temp): a fresh worktree has none, so go where it is.
+if [ ! -d supabase/.temp ]; then for d in "$HOME/dev/byeharu-voyage" "$HOME/byeharu-voyage"; do [ -d "$d/supabase/.temp" ] && { cd "$d" || exit 1; break; }; done; fi
+# A check that could not run is NOT a clean bill: every failed query is written here and the last line says so (2026-11-02: a run from a worktree
+# printed "no thresholds tripped" over eight "(query failed)" lines).
+FAILS=$(mktemp); trap 'rm -f "$FAILS"' EXIT
+Q() { local out n; for n in 1 2; do out=$(timeout 120 supabase db query --linked --output-format json "$1" 2>/dev/null); case "$out" in *'"rows"'*) printf '%s' "$out"; return 0 ;; esac; sleep 2; done; echo x >> "$FAILS"; printf '%s' "$out"; }
 rows() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s.slice(s.indexOf("{")));for(const r of j.rows)console.log("  "+Object.entries(r).map(([k,v])=>k+"="+(v&&typeof v==="object"?JSON.stringify(v):v)).join("  "))}catch(e){console.log("  (query failed)")}})'; }
 val() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(j.rows[0]["'"$1"'"])}catch(e){console.log("")}})'; }
 ALERTS=0; alert() { echo "ALERT: $1"; ALERTS=$((ALERTS+1)); }
@@ -50,10 +55,13 @@ set -- $WRATE; echo "  wal_mb_per_min=${1:-?}  fpi_per_min=${2:-?}  port_goods_h
 Q "select calls, round(mean_exec_time) as mean_ms, round(total_exec_time/1000) as total_s, shared_blks_dirtied as dirtied, left(regexp_replace(query,'s+',' ','g'),70) as q from pg_stat_statements order by total_exec_time desc limit 5" | rows
 
 echo "== what a player waits for (timed through the CLI; baseline select 1 first)"
-t() { local a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1; local b=$(date +%s%N); awk "BEGIN{printf \"  %-28s %6.1f s\n\", \"$1\", ($b-$a)/1e9}"; }
+t() { local a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || { sleep 2; a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || echo x >> "$FAILS"; }; local b=$(date +%s%N); awk "BEGIN{printf \"  %-28s %6.1f s\n\", \"$1\", ($b-$a)/1e9}"; }
 t "baseline select 1" "select 1"
 t "world.stats_now()" "select world.stats_now() ->> 'at'"
 t "world.sea_roster(1 day)" "select length(world.sea_roster(now() - interval '1 day')::text)"
 
 echo
-if [ "$ALERTS" -eq 0 ]; then echo "HEALTH: no thresholds tripped."; else echo "HEALTH: $ALERTS alert(s) above."; fi
+NF=$(wc -l < "$FAILS" | tr -d ' ')
+if [ "$NF" -gt 0 ]; then echo "HEALTH: UNKNOWN - $NF query(ies) failed above, so this is NOT a clean bill (is supabase linked? is the network up?)."; exit 2
+elif [ "$ALERTS" -eq 0 ]; then echo "HEALTH: no thresholds tripped."
+else echo "HEALTH: $ALERTS alert(s) above."; exit 1; fi
