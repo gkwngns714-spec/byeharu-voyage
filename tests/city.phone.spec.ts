@@ -118,3 +118,52 @@ test.describe('in Korean', () => {
     })
   }
 })
+
+// THE STORAGE FACE WITH A GOOD IN THE HOLD. The canary's hold is empty, so the walk above saw "Nothing stored or on board" and never drew a `StorageRow` — the row
+// whose Put and Take cells (an `ActPair`, the Market's own pair) this slice reshaped. A lot is bought on the desk (the way a player does: City › Trade › a price › send),
+// the page is asked for again at the glass under test, and the Storage tile is pressed: the row stands, and the four laws hold on it.
+async function stockOneLot(page: Page) {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('command')
+  await ready(page)
+  await page.getByRole('tab', { name: /^(City|도시)$/ }).first().click()
+  await expect(page.getByTestId('desk-city')).toBeVisible()
+  const cargo = page.getByTestId('command-line')
+  const before = await cargo.innerText()
+  await page.locator('[data-testid="trade-row"] button:enabled').first().click()
+  const send = page.getByTestId('trade-tray').getByTestId('trade-tray-send')
+  await expect(send).toBeEnabled({ timeout: 30_000 })
+  await send.click()
+  await expect.poll(async () => cargo.innerText(), { timeout: 60_000 }).not.toBe(before)
+}
+
+async function storageWithAGood(page: Page, glass: Glass): Promise<string[]> {
+  await stockOneLot(page)
+  await page.setViewportSize(glass)
+  await page.goto('city')
+  await ready(page)
+  await page.getByTestId('city-building-storage').click()
+  await expect(page.getByTestId('storage-row').first()).toBeVisible({ timeout: 30_000 })
+  await settled(page.getByTestId('city-face-panel'))
+  await page.waitForTimeout(500)
+  return defects(`${glass.width}×${glass.height} storage · a good on board`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]'))
+}
+
+for (const glass of GLASSES) {
+  test(`the HQ's Storage face with a good on board is clean at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    const found = await storageWithAGood(page, glass)
+    expect(found, `the Storage face is not clean on a ${glass.width}-px glass:\n${found.join('\n')}`).toEqual([])
+  })
+}
+
+test.describe('in Korean, with a good on board', () => {
+  test.use({ locale: 'ko-KR' })
+  test("the HQ's Storage face with a good on board is clean at 320×640", async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    const found = await storageWithAGood(page, { width: 320, height: 640 })
+    expect(found, `the Storage face is not clean at 320×640 in Korean:\n${found.join('\n')}`).toEqual([])
+  })
+})
