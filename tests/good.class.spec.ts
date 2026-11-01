@@ -262,6 +262,11 @@ interface RowFacts {
    *  the request rows' fulfil cell does at 390 — and the question is only whether the mark made it worse) */
   spill: number
   spillBare: number
+  /** the compact cluster (GoodKind) — how far it advances its line (its width less what it gives back by a
+   *  negative margin), the rarity glyph's own width it joined, and its height; null when the row has none */
+  advance: number | null
+  glyph: number | null
+  clusterH: number | null
   /** what the class mark's box intersects (by > 1 px each way): other marks, buttons, cells, text */
   overlaps: string[]
 }
@@ -269,8 +274,11 @@ interface RowFacts {
 /** Runs IN THE PAGE: every row `sel` matches, measured with the class marks and again with them hidden. */
 function inspectRows(sel: string): RowFacts[] {
   const rows = [...document.querySelectorAll<HTMLElement>(sel)]
+  // THE BASELINE IS THE ROW AS IT WAS BEFORE THE CLASS: the class mark gone AND the cluster's give-back margin
+  // gone, so what stands is the rarity glyph alone at its own 12 px. (The first draft hid the mark only, which
+  // left the baseline 2 px NARROWER than the original, and a Linux row that sat on the 2-px edge read as "grown".)
   const style = document.createElement('style')
-  style.textContent = '[data-good-class-mark]{display:none !important}'
+  style.textContent = '[data-good-class-mark]{display:none !important} [data-testid="good-marks"]{margin-right:0 !important}'
   const withMarks = rows.map((r) => r.getBoundingClientRect().height)
   const spillWith = rows.map((r) => r.scrollWidth - r.clientWidth)
   document.head.appendChild(style)
@@ -292,14 +300,21 @@ function inspectRows(sel: string): RowFacts[] {
         if (r.width > 0 && r.height > 0 && hit(box, r)) overlaps.push(`${el.tagName.toLowerCase()}${el.getAttribute('data-testid') ? '#' + el.getAttribute('data-testid') : ''}`)
       }
       // 2. any text in the row that is not the mark's own
+      // (the INK of the text: its leading and trailing spaces are blank, and the cluster's give-back margin lies over one)
       const walk = document.createTreeWalker(row, NodeFilter.SHOW_TEXT)
       for (let n = walk.nextNode(); n; n = walk.nextNode()) {
-        if (!n.textContent?.trim() || mark.contains(n)) continue
+        const raw = n.textContent ?? ''
+        const [from, to] = [raw.length - raw.trimStart().length, raw.trimEnd().length]
+        if (from >= to || mark.contains(n)) continue
         const range = document.createRange()
-        range.selectNodeContents(n)
-        if ([...range.getClientRects()].some((r) => r.width > 0 && hit(box, r))) overlaps.push(`text "${n.textContent.trim().slice(0, 24)}"`)
+        range.setStart(n, from)
+        range.setEnd(n, to)
+        if ([...range.getClientRects()].some((r) => r.width > 0 && hit(box, r))) overlaps.push(`text "${raw.trim().slice(0, 24)}"`)
       }
     }
+    const cluster = row.querySelector<HTMLElement>('[data-testid="good-marks"]')
+    const clusterBox = cluster?.getBoundingClientRect()
+    const glyph = cluster?.querySelector<SVGElement>('svg:not([data-meter-lit])')
     const word = mark ? mark.getAttribute('aria-label') ?? (mark.textContent ?? '').trim() : null
     return {
       i,
@@ -313,6 +328,9 @@ function inspectRows(sel: string): RowFacts[] {
       hBare: Math.round(bare[i] * 100) / 100,
       spill: spillWith[i],
       spillBare: spillBare[i],
+      advance: cluster && clusterBox ? Math.round((clusterBox.width + (parseFloat(getComputedStyle(cluster).marginRight) || 0)) * 100) / 100 : null,
+      glyph: glyph ? Math.round(glyph.getBoundingClientRect().width * 100) / 100 : null,
+      clusterH: clusterBox ? Math.round(clusterBox.height * 100) / 100 : null,
       overlaps,
     }
   })
@@ -330,9 +348,16 @@ function expectList(name: string, rows: RowFacts[], colours: Map<number, Set<str
   bad("the row's own class is not its mark's", (r) => r.attr !== r.cls)
   bad("a mark does not speak the dictionary's word for its class", (r) => r.cls === null || r.word !== words[r.cls - 1])
   bad('a premium row (4-5) has no wash, or an everyday row has one', (r) => r.cls !== null && r.wash !== (r.cls >= 4))
-  bad('the class mark GREW a row (its height moved when the marks were hidden)', (r) => Math.abs(r.h - r.hBare) > 0.51)
+  // ONE-SIDED, on purpose: the cluster advances its line by LESS than the glyph it joined (11 px against 12), so a row that
+  // sits exactly on its wrap edge — Cinnamon at 390 does, on main, to the quarter pixel — may fit WITH the mark and wrap
+  // without it. A row that got shorter is not a row the class grew; a row that got taller is.
+  bad('the class mark GREW a row (it is taller with the mark than with the class hidden)', (r) => r.h - r.hBare > 0.51)
   bad('the class mark overlaps something in its row', (r) => r.overlaps.length > 0)
   bad('the class mark pushed a row sideways (it spills more with the mark than without)', (r) => r.spill - r.spillBare > 1)
+  // THE INVARIANT THAT HOLDS ON EVERY MACHINE'S FONTS: the cluster costs the name's line no more than the rarity
+  // glyph it joined did (or, with no glyph beside it, no more than its own meter), and it stands inside the 24-px line
+  bad("the cluster advances its line by more than the rarity glyph did", (r) => r.advance !== null && r.advance > (r.glyph ? r.glyph : 14) + 0.01)
+  bad('the cluster is taller than the 24-px line it rides in', (r) => r.clusterH !== null && r.clusterH > 24)
   for (const r of rows) {
     if (r.cls === null) continue
     const seen = colours.get(r.cls) ?? new Set<string>()
@@ -340,7 +365,7 @@ function expectList(name: string, rows: RowFacts[], colours: Map<number, Set<str
     colours.set(r.cls, seen)
   }
   const classes = [...new Set(rows.map((r) => r.cls))].sort()
-  console.log(`${name}: ${rows.length} rows, classes ${JSON.stringify(classes)}, tallest delta ${Math.max(...rows.map((r) => Math.abs(r.h - r.hBare))).toFixed(2)} px`)
+  console.log(`${name}: ${rows.length} rows, classes ${JSON.stringify(classes)}, tallest growth ${Math.max(0, ...rows.map((r) => r.h - r.hBare)).toFixed(2)} px, ${rows.filter((r) => r.hBare - r.h > 0.51).length} row(s) shorter`)
 }
 
 /** One class → ONE colour, whatever the list; and a premium class is a different colour from an everyday one. */

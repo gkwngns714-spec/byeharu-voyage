@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Button,
   Figure,
+  GoodClassMark,
   GoodKind,
   Icon,
   Note,
@@ -119,7 +120,9 @@ export function PortForge({
                 // (audit row 39: "Adire Cloth Indigo · Potash · Raw Cotton"). The ingredients are
                 // listed in the tray this tile opens, and the tray's title is the product's name.
                 name={recipe.name}
-                meta={goodByCode[recipe.product]?.class != null ? <GoodKind goodClass={goodByCode[recipe.product]?.class} /> : undefined}
+                // the control's text is the product's NAME, never more (tests/city.audit.spec.ts: the tray must contain it):
+                // the class is its meter alone, the word its accessible name and the first row of the tray this press opens
+                meta={goodByCode[recipe.product]?.class != null ? <GoodKind goodClass={goodByCode[recipe.product]?.class} classWord={false} /> : undefined}
                 state={recipe.can_forge ? 'rest' : 'muted'}
                 tap="whole"
                 onClick={() => {
@@ -156,6 +159,9 @@ export function PortForge({
             ) : undefined
           }
         >
+          {goodByCode[open.product]?.class != null && (
+            <Row label={t('codex.class')} value={<GoodClassMark goodClass={goodByCode[open.product]?.class} withWord />} data-testid="forge-class-row" />
+          )}
           {open.ingredients.map((i, idx) => (
             <Row
               key={i.good}

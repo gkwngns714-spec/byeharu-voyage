@@ -63,12 +63,15 @@ export function GoodKind({
     // name's line, and on a phone the cluster then wrapped under the name and every such row grew by
     // a line (Cinnamon 79 → 86 px; a request 59 → 81). Stacked — the glyph over the meter, 20 px in
     // the 24-px line (the glyph's own box has a pixel of air, so no gap is needed) — the cluster is 14 px
-    // wide against the glyph's 12 (the 2 px given back by a negative margin), so a name that fitted still
-    // fits and no row gets a line it did not have.
+    // wide against the glyph's 12 and gives 3 px back by a negative margin, so it advances the line by 11 px
+    // where the glyph alone advanced it by 12. A name that fitted still fits, whatever a machine's font
+    // metrics; a row that sits ON its wrap edge (Cinnamon at 390 does, on main, to the quarter pixel; a Linux
+    // runner wrapped it at an advance of 12) fits with the mark where it would wrap without; none gets a
+    // line it did not have. The next word starts after a space or a flex gap, so the 3 px lie over blank.
     const both = Boolean(rarity) && goodClass != null
     return (
       <span
-        className={`inline-flex flex-col items-center whitespace-nowrap align-middle ${both ? '-mr-0.5' : ''} ${className}`}
+        className={`inline-flex flex-col items-center whitespace-nowrap align-middle ${both ? '-mr-[3px]' : ''} ${className}`}
         data-testid="good-marks"
       >
         {rarity ? <RarityMark rarity={rarity} size={size} /> : null}
