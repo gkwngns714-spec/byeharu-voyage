@@ -158,7 +158,7 @@ export function ListPanel({
               <h2 className="flex min-w-0 flex-1 items-baseline gap-2 text-t-body font-semibold text-ink">
                 {title}
                 {count !== undefined && (
-                  <span className="text-t-caption font-normal tabular-nums text-ink-muted" data-list-count="">
+                  <span className="shrink-0 whitespace-nowrap text-t-caption font-normal tabular-nums text-ink-muted" data-list-count="">
                     {count}
                   </span>
                 )}
