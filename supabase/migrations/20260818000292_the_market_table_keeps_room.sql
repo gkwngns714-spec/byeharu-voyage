@@ -27,17 +27,23 @@
 -- rows and not-yet-pruned dead versions has none. A non-HOT update leaves a dead version that its index entries
 -- pin until a VACUUM, so the room never comes back between vacuums: a loop only a rewrite WITH spare room breaks.
 --
--- ── WHAT CHANGES (three statements, in this order, in this transaction) ────────────────────────
+-- ── WHAT CHANGES (two statements, in this order, in this transaction) ────────────────────────
 --   alter table public.port_goods set (fillfactor = 30);
 --   cluster public.port_goods using port_goods_pkey;     -- rewrites the heap and all three indexes, honours the
 --                                                        -- fillfactor, and lays a harbour's rows side by side
---   analyze public.port_goods;
 -- Fillfactor 30 leaves 70 % of every page empty: ~15-16 live rows on a page that holds ~52 tuples, so a page takes
 -- a whole minute of new versions beside the old ones (16 + 16 <= 52) AND a second minute while a long snapshot (the
 -- Stats count, a minute-long statement) still pins the first: three versions of every row fit (3 x 16 = 48 <= 52).
 -- A trade touching stock stays in the page too, and the in-page pruning clears the old versions at the next visit
 -- once nothing pins them. Expected table ~80 MB (vs 293 MB).
 -- The cluster order (port_id, good_id) is the order the per-harbour drift reads, so a harbour's rows share pages.
+--
+-- ── WHY NOTHING AFTER THE REWRITE MAY DEPEND ON THE TRANSACTION SURVIVING IT ─────────────────────
+-- CI's real Postgres (the Supabase CLI's statement pipeline, PR #444 run 41321070873) failed `relation "clock_0292" does not exist` at the statement
+-- right after `analyze`: a transaction-scoped (ON COMMIT DROP) scratch table did not survive the rewrite there, though it did on PGlite. So: the scratch
+-- tables live as long as the session and are dropped by the last assert; ANALYZE is gone (CLUSTER itself refreshes relpages and reltuples; the column
+-- statistics are those of the same rows; the next autovacuum-analyze refreshes them); and the same-rows assert holds on its own because port_goods is a
+-- fixed catalogue (246 ports x 629 goods: no insert, no delete), lock or no lock.
 --
 -- ── WHAT DOES NOT MOVE ────────────────────────────────────────────────────────────────────────
 -- No function body (tick_market_drift, which writes this table, is 0289's and is not touched), no row, column,
@@ -67,7 +73,7 @@
 --       two owner switches as found.
 --   A size and a timing are printed, never asserted. The receipt's seconds are for the chain logs (local, CI):
 --   `supabase db push` prints no notices, so the deploy reads the prod durations afterwards from pg_stat_statements
---   (utility statements are tracked: the CLUSTER, ALTER TABLE, ANALYZE and the last DO rows of this transaction)
+--   (utility statements are tracked: the CLUSTER, ALTER TABLE and the last DO rows of this transaction)
 --   or samples pg_locks while it runs.
 -- ROLLBACK (forward, a NEW migration, never an edit): alter table public.port_goods reset (fillfactor);
 --   cluster public.port_goods using port_goods_pkey;
@@ -96,7 +102,7 @@ begin
 end $guard$;
 
 -- ── 1. AS FOUND, before the lock (catalog reads only; nothing here touches the table) ───────────
-create temp table before_0292 on commit drop as
+create temp table before_0292 as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')) as fns,
@@ -106,7 +112,7 @@ select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select value from public.world_config where key = 'economy_closed') as economy_closed,
        (select value from public.world_config where key = 'city_treasury_enabled') as city_treasury_enabled;
 
-create temp table clock_0292 (k text primary key, t timestamptz not null) on commit drop;
+create temp table clock_0292 (k text primary key, t timestamptz not null);
 
 -- ── 2. THE LOCK FIRST, then the table as found ─────────────────────────────────────────────────
 do $lock$
@@ -115,7 +121,7 @@ begin
   insert into clock_0292 values ('locked', clock_timestamp());
 end $lock$;
 
-create temp table table_before_0292 on commit drop as
+create temp table table_before_0292 as
 select k.n, k.min_port, k.max_port, k.key_sum,
        c.relfilenode as table_filenode,
        pg_relation_size(c.oid) as heap_bytes,
@@ -126,7 +132,7 @@ select k.n, k.min_port, k.max_port, k.key_sum,
        pg_class c
  where c.oid = 'public.port_goods'::regclass;
 
-create temp table idx_before_0292 on commit drop as
+create temp table idx_before_0292 as
 select i.indexrelid::regclass::text as name,
        pg_get_indexdef(i.indexrelid) as def,
        ic.relfilenode as filenode
@@ -138,7 +144,6 @@ select i.indexrelid::regclass::text as name,
 insert into clock_0292 values ('rewrite_start', clock_timestamp());
 alter table public.port_goods set (fillfactor = 30);
 cluster public.port_goods using port_goods_pkey;
-analyze public.port_goods;
 insert into clock_0292 values ('rewritten', clock_timestamp());
 
 -- ── 4. THE SELF-ASSERT (the last statement of the file) ────────────────────────────────────────
@@ -287,7 +292,7 @@ begin
     into v_heap_after, v_indexes_after;
   v_t_end := clock_timestamp();
 
-  raise notice '0292 self-assert ok: THE MARKET TABLE KEEPS ROOM. public.port_goods was rewritten in place by CLUSTER on port_goods_pkey with fillfactor 30, under one ACCESS EXCLUSIVE lock taken before the first read. The same % rows and the same key checksum % (min / max port and sum of hashtext(port || good)) before and after; reloptions %; the % indexes valid, ready and live, each rebuilt (a new relfilenode) and defined exactly as before, the primary key marked clustered; the table moved from relfilenode % to %. A probe UPDATE of one real row (updated_at, rolled back and asserted gone) was a HOT update — the transaction''s own HOT counter rose % -> %. Every function in public/cmd/world/voyage unmoved by md5 (% functions), the registry unchanged at % entry points, the walls 0 / 0 / 0, both owner switches as found. Printed, never asserted: heap % -> % bytes (% -> % pages of %), indexes % -> % bytes; seconds under the ACCESS EXCLUSIVE lock — the read before the rewrite %, the rewrite (alter + cluster + analyze) %, the asserts after it %, in all % through the last assert.',
+  raise notice '0292 self-assert ok: THE MARKET TABLE KEEPS ROOM. public.port_goods was rewritten in place by CLUSTER on port_goods_pkey with fillfactor 30, under one ACCESS EXCLUSIVE lock taken before the first read. The same % rows and the same key checksum % (min / max port and sum of hashtext(port || good)) before and after; reloptions %; the % indexes valid, ready and live, each rebuilt (a new relfilenode) and defined exactly as before, the primary key marked clustered; the table moved from relfilenode % to %. A probe UPDATE of one real row (updated_at, rolled back and asserted gone) was a HOT update — the transaction''s own HOT counter rose % -> %. Every function in public/cmd/world/voyage unmoved by md5 (% functions), the registry unchanged at % entry points, the walls 0 / 0 / 0, both owner switches as found. Printed, never asserted: heap % -> % bytes (% -> % pages of %), indexes % -> % bytes; seconds under the ACCESS EXCLUSIVE lock — the read before the rewrite %, the rewrite (alter + cluster) %, the asserts after it %, in all % through the last assert.',
     b.n, b.key_sum,
     (select c.reloptions from pg_class c where c.oid = 'public.port_goods'::regclass),
     v_idx_n, b.table_filenode, v_filenode, v_hot0, v_hot1,
@@ -298,4 +303,7 @@ begin
     round(extract(epoch from v_t_done - v_t_start)::numeric, 2),
     round(extract(epoch from v_t_end - v_t_done)::numeric, 2),
     round(extract(epoch from v_t_end - v_t_locked)::numeric, 2);
+
+  -- the scratch tables are session-lived (see the header): drop them here, after the receipt has been printed
+  drop table if exists pg_temp.before_0292, pg_temp.clock_0292, pg_temp.table_before_0292, pg_temp.idx_before_0292;
 end $assert$;
