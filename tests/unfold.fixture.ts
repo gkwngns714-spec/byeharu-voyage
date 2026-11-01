@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -132,3 +133,15 @@ export async function openFace(page: Page, tab: string) {
   await page.waitForTimeout(600)
 }
 
+
+/** A LIVE-SIZED WORLD, LOCAL ONLY. The canary world a CI run boots serves one ledger entry, no route lane and a short
+ *  board; the owner's world serves fifty entries and a board of lanes. `UNFOLD_WORLD=<a world image tarball>` serves that
+ *  image in place of the built one (the same one-line route the measuring scripts use), so the unfold laws can be read
+ *  on rows a played world has. Unset (CI), it does nothing and the specs read the canary. */
+export async function seededWorld(page: Page): Promise<boolean> {
+  const file = process.env.UNFOLD_WORLD
+  if (!file) return false
+  const body = readFileSync(file)
+  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body, contentType: 'application/gzip' }))
+  return true
+}
