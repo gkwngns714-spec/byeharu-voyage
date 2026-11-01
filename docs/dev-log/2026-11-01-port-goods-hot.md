@@ -43,6 +43,7 @@ analyze public.port_goods;
   deploy (`bv-deploy.sh`) runs `unwind_the_clock()` first (the crons are stopped), so only player reads can wait; budget for
   roughly 10–60 s of lock on this compute (estimate; measure it in the dev-log from the push log).
 - `cluster … using port_goods_pkey` also orders the rows by `(port_id, good_id)`: the per-port drift touches one port's rows together.
+**Verified before this was written** (PGlite 18.3, a scratch table; prod is PG 17.6, same code path): `begin; alter table t set (fillfactor = 40); cluster t using t_pkey; analyze t; commit;` runs inside one transaction block; `relfilenode` changes; `reloptions` = `{fillfactor=40}`; one update on the rewritten table counts as HOT in `pg_stat_get_xact_tuples_hot_updated` (1 of 1). Script: the session scratchpad `pglite-check.cjs`.
 - Forward rollback: `alter table public.port_goods reset (fillfactor); cluster public.port_goods using port_goods_pkey;` (a new
   migration, never an edit).
 
