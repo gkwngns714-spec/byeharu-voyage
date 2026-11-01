@@ -443,10 +443,10 @@ for (const vp of [
     await expect(page.getByTestId('request-row').first()).toBeVisible({ timeout: 30_000 })
     expectList(`${vp.name} · desk Requests`, await page.evaluate(inspectRows, '[data-testid="request-row"]'), colours)
 
-    // 3. THE CODEX'S GOODS (SnapshotGood): every good of the world, every class
+    // 3. THE CODEX'S GOODS (SnapshotGood): every good of the world, every class — the face stands on the glass (the
+    // Codex unfold, #448): its 629 rows are one list panel, nothing to open
     await page.goto('compendium')
     await ready(page)
-    await page.getByTestId('codex-open').click()
     await expect(page.getByTestId('good-tile').first()).toBeVisible({ timeout: 60_000 })
     const tiles = await page.evaluate(inspectRows, '[data-testid="good-tile"]')
     expectList(`${vp.name} · Codex goods`, tiles, colours)
@@ -511,7 +511,6 @@ test.describe('in Korean', () => {
 
     await page.goto('compendium')
     await ready(page)
-    await page.getByTestId('codex-open').click()
     await expect(page.getByTestId('good-tile').first()).toBeVisible({ timeout: 60_000 })
     expectList('ko · Codex goods', await page.evaluate(inspectRows, '[data-testid="good-tile"]'), colours, KO_WORDS)
 

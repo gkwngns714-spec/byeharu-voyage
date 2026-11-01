@@ -54,7 +54,7 @@ owner switches as found.
 `src/components/ui/goodClassTiers.ts` is the pure table (class → word key, lit bars, colour token, row wash; `goodClassRow` is what a LIST ROW
 spreads); `GoodClassMark.tsx` is the ONE component (a five-bar meter at the block characters' ▂▃▅▆█ heights, lit bars = the class, plus the word
 in the tile / tray form); `GoodKind` is the one composition of a good's identity (kind · rarity · class; `compact` = the two marks stacked, for
-a list row). Drawn by: the Market rows (`TradeRow`), the request board, the Codex tile and tray, the trade tray's Kind row and `TradePanel`,
+a list row). Drawn by: the Market rows (`TradeRow`), the request board, the Codex's rows (the meter hangs under the good's own icon: no width, no height) and its tray, the trade tray's Kind row and `TradePanel`,
 the cargo rows (a fleet's, a merchant's, the desk's), the Forge tiles (the meter alone: a control's text is the product's name, which the tray it opens must repeat — the tray's first row says the class) and ingredients, the Storage rows, and Stats › Markets. A server older
 than this build serves no `class` and the client then draws NOTHING — never a guess. Two channels, always: a colour token (§4) AND the shape.
 Not drawn (and said so): the desk's Trade-face goods cards (`TradeBoard`, which shows no rarity either — its panel does show the class), route
@@ -132,10 +132,14 @@ for this diff (`GoodKind` is the app shell); the local batch had run 16, and the
    (d) two invariants that hold on any machine's fonts: the cluster advances its line by no more than the glyph it joined (or its own 14 px when it stands alone), and it is
    no taller than the 24-px line. The failing test stopped at its first list, so the phone test's other lists (the requests, the Codex, the Forge) had not yet run on the runner.
 
-3. **Main moved while the fix was written** (0292 and 0293 deployed — prod head read 0293 — and the Stats unfold, #447). Merged in, two conflicts: `docs/OWNER_REQUESTS.md` (main's
+3. **Main moved while the fix was written** (0292 and 0293 deployed — prod head read 0293 — the Stats unfold #447, then the Codex unfold #448 and the History unfold #449). Merged in, two conflicts: `docs/OWNER_REQUESTS.md` (main's
    row 260 kept, my row 261 after it) and `src/features/stats/Markets.tsx` (the unfold rewrote the face onto `ListPanel`; main's structure taken whole and my four additions re-applied:
    the `class` key of the sort and its label, the class served to `GoodRow`, the compact mark, the row wash). The Markets list is no longer behind a detail page, so my Stats test
-   now reads the sort where it stands (a select in the list panel's header). Re-proved on the merged tree: §5.
+   now reads the sort where it stands (a select in the list panel's header). #448 then turned the Codex's goods from tiles into 44-px rows of one list panel (its law:
+   at least 8 whole rows on the glass at 390, no text cut, none crossing), and `GoodsFace.tsx` conflicted: main's rows taken, the class re-placed. The tile's meta line is gone, and
+   every place in a row's label costs width (the label already wraps the rarity word under a long name) — so the meter hangs **under the good's own icon, in the mark cell**:
+   absolutely positioned, 14 px under a 20-px icon, so it adds no width to the row and no height (the cell's line is the row's 24 and the 44-px row has 28 px of content) — a
+   row cannot grow by it, on any font. The Codex steps of this spec lost their `codex-open` press (the face is the list). Re-proved on the merged tree: §5.
 
 ## 6. BEFORE / AFTER (headless Chromium, DPR 2, English, dark; `…\scratchpad\good-class\shots\`)
 `before-*` is the design commit built as it was (no client change); `after-*` is this branch. Desk City › Buy at 390: `before-desk-buy-phone.png` /

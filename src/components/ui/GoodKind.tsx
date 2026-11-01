@@ -26,7 +26,7 @@ import { RarityMark } from './Rarity'
 // Codex, a Market row and a request all answer "what is this thing" and a good may not read
 // differently on them (docs/NO_SPAGHETTI.md §1). It has TWO FORMS, one concept:
 //   · the WORDS form (default): the kind, then the rarity and the class each with its word — where a
-//     good has been pressed and there is room to spell it out (the trays, the Codex tile);
+//     good has been pressed and there is room to spell it out (the trays);
 //   · the COMPACT form (`compact`): the two MARKS alone, in one unbreakable cluster that rides inside
 //     a name's own line. A LIST is mark-only (docs/UI_DIRECTION.md §4.4, and TradeRow's header: the
 //     kind is not in a row because its height is a measured contract), and a mark the row has no room
@@ -50,8 +50,8 @@ export function GoodKind({
   /** Marks only, in one cluster that does not break — for a list row. */
   compact?: boolean
   /** In the words form, spell the class out beside its meter (default). False draws the meter alone, the
-   *  word as its accessible name: for a TILE whose meta line already carries the rarity word, where a second
-   *  word wraps the line and the tile grows (the Codex at 390). A press opens the tray, which spells it. */
+   *  word as its accessible name: for a control whose text must stay the good's name (the Forge's tile — its
+   *  tray repeats the name, and its first row says the class). A press opens the tray, which spells it. */
   classWord?: boolean
   /** The rarity glyph's size in px (the class meter has its own). */
   size?: number
