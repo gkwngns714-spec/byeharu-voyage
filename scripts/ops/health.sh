@@ -9,7 +9,8 @@ if [ ! -d supabase/.temp ]; then for d in "$HOME/dev/byeharu-voyage" "$HOME/byeh
 # A check that could not run is NOT a clean bill: every failed query is written here and the last line says so (2026-11-02: a run from a worktree
 # printed "no thresholds tripped" over eight "(query failed)" lines).
 FAILS=$(mktemp); trap 'rm -f "$FAILS"' EXIT
-Q() { local out n; for n in 1 2; do out=$(timeout 120 supabase db query --linked --output-format json "$1" 2>/dev/null); case "$out" in *'"rows"'*) printf '%s' "$out"; return 0 ;; esac; sleep 2; done; echo x >> "$FAILS"; printf '%s' "$out"; }
+Q() { local out n; for n in 1 2; do out=$(timeout 120 supabase db query --linked --output-format json "$1" 2>/dev/null); case "$out" in *'"rows"'*) printf '%s' "$out"; return 0 ;; esac; sleep 2; done; printf '%s' "$1" | tr '
+' ' ' | cut -c1-90 >> "$FAILS"; echo >> "$FAILS"; printf '%s' "$out"; }
 rows() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s.slice(s.indexOf("{")));for(const r of j.rows)console.log("  "+Object.entries(r).map(([k,v])=>k+"="+(v&&typeof v==="object"?JSON.stringify(v):v)).join("  "))}catch(e){console.log("  (query failed)")}})'; }
 val() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(j.rows[0]["'"$1"'"])}catch(e){console.log("")}})'; }
 ALERTS=0; alert() { echo "ALERT: $1"; ALERTS=$((ALERTS+1)); }
@@ -21,11 +22,21 @@ UP=$(Q "select round(extract(epoch from now()-pg_postmaster_start_time())/3600,1
 
 echo "== cron: last 2 h per job (runs, failed, avg s, max s)"
 Q "select j.jobname, count(*) as runs, count(*) filter (where d.status='failed') as failed, round(avg(extract(epoch from d.end_time-d.start_time))::numeric,1) as avg_s, round(max(extract(epoch from d.end_time-d.start_time))::numeric,1) as max_s from cron.job_run_details d join cron.job j using(jobid) where d.start_time > now() - interval '2 hours' and d.end_time is not null group by 1 order by 1" | rows
-BAD=$(Q "select string_agg(j.jobname || ' ' || round(100.0*count(*) filter (where d.status='failed')/count(*))::text || '% failed', '; ') as v from (select 1) x, cron.job_run_details d join cron.job j using(jobid) where d.start_time > now() - interval '2 hours' and d.end_time is not null group by j.jobname having count(*) filter (where d.status='failed') * 5 > count(*)" | val v)
+BAD=$(Q "select string_agg(x.jobname || ' ' || x.pct::text || '% failed', '; ') as v from (select j.jobname, round(100.0*count(*) filter (where d.status='failed')/count(*)) as pct from cron.job_run_details d join cron.job j using(jobid) where d.start_time > now() - interval '2 hours' and d.end_time is not null group by j.jobname having count(*) filter (where d.status='failed') * 5 > count(*)) x" | val v)
 [ -n "$BAD" ] && [ "$BAD" != "null" ] && alert "cron jobs failing more than 20% over 2 h: $BAD"
 
 echo "== cron: last 15 min per job (what it is like NOW)"
 Q "select j.jobname, count(*) as runs, count(*) filter (where d.status='failed') as failed, round(avg(extract(epoch from d.end_time-d.start_time))::numeric,1) as avg_s, round(max(extract(epoch from d.end_time-d.start_time))::numeric,1) as max_s from cron.job_run_details d join cron.job j using(jobid) where d.start_time > now() - interval '15 minutes' and d.end_time is not null group by 1 order by 1" | rows
+
+echo "== the world on time: voyages past their due time, and the hourly safety check"
+# The PLAYER-VISIBLE number (2026-11-02): before the 0297 repack 269 of 376 sailing voyages were past due, 27 s late on average; after it 6 of 516, 0.3 s.
+Q "select count(*) filter (where due_at < now()) as past_due, count(*) as sailing, round(coalesce(avg(extract(epoch from now()-due_at)) filter (where due_at < now()),0)::numeric,1) as avg_lag_s, round(coalesce(max(extract(epoch from now()-due_at)) filter (where due_at < now()),0)::numeric,1) as max_lag_s from public.voyages where status = 'SAILING'" | rows
+LAG=$(Q "select round(coalesce(avg(extract(epoch from now()-due_at)) filter (where due_at < now()),0)::numeric,1) as v from public.voyages where status = 'SAILING'" | val v)
+[ -n "$LAG" ] && awk "BEGIN{exit !($LAG > 5)}" && alert "voyages are processed $LAG s late on average (> 5): the arrivals beat cannot keep up - read public.arrivals_beats by 10 minutes and the disk reads (OPS_HEALTH.md)"
+# The hourly reconcile's invariants pass (ledger, sailing, write grants) was DOWN for about two days (10-29 20:07 on) before anyone saw it: a failing run leaves no row.
+RAGE=$(Q "select round(extract(epoch from now()-max(at))/3600, 1) as v from public.reconcile_runs" | val v)
+echo "  newest completed hourly reconcile: ${RAGE:-?} h ago (a run is hourly at :07)"
+[ -n "$RAGE" ] && awk "BEGIN{exit !($RAGE > 3)}" && alert "the hourly safety check (tick_reconcile) has not completed for $RAGE h (> 3): its invariants pass is not running - read its cron runs and public.reconcile_runs"
 
 echo "== the Stats count (every 15 min): freshness and the journal"
 Q "select to_char(max(at),'MM-DD HH24:MI') as newest_count, round(extract(epoch from now()-max(at))/60) as age_min from public.stats_world" | rows
@@ -55,13 +66,13 @@ set -- $WRATE; echo "  wal_mb_per_min=${1:-?}  fpi_per_min=${2:-?}  port_goods_h
 Q "select calls, round(mean_exec_time) as mean_ms, round(total_exec_time/1000) as total_s, shared_blks_dirtied as dirtied, left(regexp_replace(query,'s+',' ','g'),70) as q from pg_stat_statements order by total_exec_time desc limit 5" | rows
 
 echo "== what a player waits for (timed through the CLI; baseline select 1 first)"
-t() { local a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || { sleep 2; a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || echo x >> "$FAILS"; }; local b=$(date +%s%N); awk "BEGIN{printf \"  %-28s %6.1f s\n\", \"$1\", ($b-$a)/1e9}"; }
+t() { local a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || { sleep 2; a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || echo "timing: $1" >> "$FAILS"; }; local b=$(date +%s%N); awk "BEGIN{printf \"  %-28s %6.1f s\n\", \"$1\", ($b-$a)/1e9}"; }
 t "baseline select 1" "select 1"
 t "world.stats_now()" "select world.stats_now() ->> 'at'"
 t "world.sea_roster(1 day)" "select length(world.sea_roster(now() - interval '1 day')::text)"
 
 echo
-NF=$(wc -l < "$FAILS" | tr -d ' ')
-if [ "$NF" -gt 0 ]; then echo "HEALTH: UNKNOWN - $NF query(ies) failed above, so this is NOT a clean bill (is supabase linked? is the network up?)."; exit 2
+NF=$(grep -c . "$FAILS")
+if [ "$NF" -gt 0 ]; then echo "HEALTH: UNKNOWN - $NF query(ies) failed, so this is NOT a clean bill (is supabase linked? is the network up?):"; grep . "$FAILS" | sed 's/^/    failed: /'; exit 2
 elif [ "$ALERTS" -eq 0 ]; then echo "HEALTH: no thresholds tripped."
 else echo "HEALTH: $ALERTS alert(s) above."; exit 1; fi
