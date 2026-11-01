@@ -42,7 +42,7 @@
 -- ── WHAT DOES NOT MOVE ──────────────────────────────────────────────────────────────────────────
 --   Every other world_config row (key, value, description, updated_at: one md5, before = after), every function in public / cmd / world / voyage (md5,
 --   asserted; no function is created, re-cut or dropped), the registry, the walls (0 / 0 / 0), both owner switches (economy_closed,
---   city_treasury_enabled), every cron job and schedule. No lap row is read or written by this file (asserted from this transaction's own table counters).
+--   city_treasury_enabled), every cron job and schedule. No lap row is read or written by this file (asserted from this backend's own counters on the table and its indexes).
 --
 -- ── THE BUDGET OF THIS FILE (docs/OPS_HEALTH.md section 4) ──────────────────────────────────────
 --   bv-deploy.sh pauses every cron job for the whole push. statement_timeout 90 s and lock_timeout 5 s from the first statement: a slow file FAILS FAST
@@ -63,8 +63,9 @@
 --   (c) the closer is still the only reader and still trims per route by lap_no against the knob (its live text, once); every function in
 --       public / cmd / world / voyage is md5-unmoved (count and one md5 by identity);
 --   (d) the registry, the walls (0 / 0 / 0) and both owner switches as found;
---   (e) this transaction touched public.standing_route_laps with no scan, no fetch, no insert, no update and no delete.
---   Printed, never asserted: the elapsed time. Run against 8 deliberate breakages of this file (docs/dev-log): each fails it, for the intended reason.
+--   (e) this backend made no scan, no fetch, no insert, no update and no delete on public.standing_route_laps or any of its indexes (pg_stat_get_xact_*,
+--       before = after inside the block: they count what the block itself did, whichever scan the planner chose).
+--   Printed, never asserted: the elapsed time. Run against 14 deliberate breakages of this file and a knob at 150 on a populated local world (docs/dev-log): each fails, for the intended reason.
 -- ROLLBACK (forward, a NEW migration): set the knob back to 200 (rows already trimmed do not come back).
 -- VERSION: 0301 — prod head 0300 (the hourly reconcile, deployed 2026-11-01); deploys AFTER 0300, one migration at a time.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -125,10 +126,14 @@ begin
   select count(*) into v_entry from public.client_rpc_entry_points();
   select c.value into v_econ from public.world_config c where c.key = 'economy_closed';
   select c.value into v_city from public.world_config c where c.key = 'city_treasury_enabled';
-  -- this transaction's own counters on the laps table so far (a file that never touches it leaves them where they are)
-  v_laps0 := coalesce(pg_stat_get_xact_numscans(c_laps), 0) + coalesce(pg_stat_get_xact_tuples_returned(c_laps), 0)
-           + coalesce(pg_stat_get_xact_tuples_fetched(c_laps), 0) + coalesce(pg_stat_get_xact_tuples_inserted(c_laps), 0)
-           + coalesce(pg_stat_get_xact_tuples_updated(c_laps), 0) + coalesce(pg_stat_get_xact_tuples_deleted(c_laps), 0);
+  -- this backend's own counters on the laps table AND its indexes so far (a file that never touches them leaves the sum where it is): scans, tuples
+  -- returned and fetched on the table and on every index (an index scan or an index-only read counts on the index, not on the table), and the
+  -- table's inserts, updates and deletes
+  v_laps0 := (select coalesce(sum(coalesce(pg_stat_get_xact_numscans(x.o), 0) + coalesce(pg_stat_get_xact_tuples_returned(x.o), 0)
+                                  + coalesce(pg_stat_get_xact_tuples_fetched(x.o), 0)
+                                  + case when x.o = c_laps then coalesce(pg_stat_get_xact_tuples_inserted(x.o), 0) + coalesce(pg_stat_get_xact_tuples_updated(x.o), 0)
+                                                                 + coalesce(pg_stat_get_xact_tuples_deleted(x.o), 0) else 0 end), 0)
+                from (select c_laps as o union all select i.indexrelid from pg_index i where i.indrelid = c_laps) x);
 
   -- ── THE ONE UPDATE ────────────────────────────────────────────────────────────────────────────
   if v_before = to_jsonb(200) then
@@ -199,13 +204,15 @@ begin
   end if;
 
   -- ── (e) NO LAP ROW WAS READ OR WRITTEN ────────────────────────────────────────────────────────
-  if coalesce(pg_stat_get_xact_numscans(c_laps), 0) + coalesce(pg_stat_get_xact_tuples_returned(c_laps), 0)
-     + coalesce(pg_stat_get_xact_tuples_fetched(c_laps), 0) + coalesce(pg_stat_get_xact_tuples_inserted(c_laps), 0)
-     + coalesce(pg_stat_get_xact_tuples_updated(c_laps), 0) + coalesce(pg_stat_get_xact_tuples_deleted(c_laps), 0) <> v_laps0 then
-    raise exception '0301 self-assert FAIL: this file touched public.standing_route_laps (a scan, fetch, insert, update or delete)';
+  if (select coalesce(sum(coalesce(pg_stat_get_xact_numscans(x.o), 0) + coalesce(pg_stat_get_xact_tuples_returned(x.o), 0)
+                          + coalesce(pg_stat_get_xact_tuples_fetched(x.o), 0)
+                          + case when x.o = c_laps then coalesce(pg_stat_get_xact_tuples_inserted(x.o), 0) + coalesce(pg_stat_get_xact_tuples_updated(x.o), 0)
+                                                         + coalesce(pg_stat_get_xact_tuples_deleted(x.o), 0) else 0 end), 0)
+        from (select c_laps as o union all select i.indexrelid from pg_index i where i.indrelid = c_laps) x) <> v_laps0 then
+    raise exception '0301 self-assert FAIL: this file touched public.standing_route_laps or one of its indexes (a scan, fetch, insert, update or delete)';
   end if;
 
-  raise notice '0301 self-assert ok: THE LAP HISTORY IS 100. public.world_config standing_route_lap_keep % -> 100 (jsonb number; wc_int and wc_num read 100; moved by this run: %); its sibling standing_route_lap_trades_keep still 7; the other % world_config rows unmoved (one md5 over key, value, description and updated_at, before = after); the lap closer cmd.standing_route_close_lap is the only function that names the knob and still trims one route at a time by lap_no (each route trims itself to its newest 100 laps at its NEXT close - no purge here); all % functions in public/cmd/world/voyage md5-unmoved; registry % entry points, walls 0 / 0 / 0, economy_closed and city_treasury_enabled as found; public.standing_route_laps not scanned, fetched, inserted, updated or deleted by this transaction. Printed, never asserted: % ms.',
+  raise notice '0301 self-assert ok: THE LAP HISTORY IS 100. public.world_config standing_route_lap_keep % -> 100 (jsonb number; wc_int and wc_num read 100; moved by this run: %); its sibling standing_route_lap_trades_keep still 7; the other % world_config rows unmoved (one md5 over key, value, description and updated_at, before = after); the lap closer cmd.standing_route_close_lap is the only function that names the knob and still trims one route at a time by lap_no (each route trims itself to its newest 100 laps at its NEXT close - no purge here); all % functions in public/cmd/world/voyage md5-unmoved; registry % entry points, walls 0 / 0 / 0, economy_closed and city_treasury_enabled as found; public.standing_route_laps and its indexes not scanned, fetched, inserted, updated or deleted by this block. Printed, never asserted: % ms.',
     v_before, v_moved, v_rows0 - 1, v_nfn0, v_entry, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $main$;
 
