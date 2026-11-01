@@ -158,7 +158,14 @@ export function CityHallPanel({
 /** ONE COMPACT LINE — 20 px tall, the figure hugging its label (owner, 2026-11-01: *"empty spaces
  *  between words and numbers horizontally … make it so that htey are closer, more compact"*). The
  *  figure used to be pushed to the far edge by `justify-between`; it now stands 8 px behind its
- *  word, and nothing is spread across the panel. */
+ *  word, and nothing is spread across the panel.
+ *
+ *  A LABEL IS NEVER CUT, AND A FIGURE THAT DOES NOT FIT MOVES UNDER ITS LABEL (2026-11-02, the HQ on a phone: "Popul…" and "Relatio…" read
+ *  as stumps at 390 and 320). Inside the panel's query container (`narrow:`, index.css) the line wraps: "Population ≈ 160,000" is 148 px
+ *  and the panel's room 139 at 390, 120 at 320, so the figure drops one line, flush with its word. ONE EXCEPTION, STATED: on a glass
+ *  under 600 px tall (`short:`) a second line is 16 px the panel does not have — at 320×568 with the Influence book open the panel
+ *  already scrolls 11 px inside itself and tests/consistency.spec.ts holds it to 12 — so the line stays one line, the label is cut and
+ *  carries its full word as its `title` (the one place in the HQ this is so, the sizes the unfold laws do not name). */
 function FigureLine({
   label,
   testid,
@@ -170,8 +177,14 @@ function FigureLine({
   children: ReactNode
 } & { 'data-stance'?: string; 'data-nation'?: string }) {
   return (
-    <div className="flex min-h-5 items-center gap-2 py-0 leading-tight" data-testid={testid} {...rest}>
-      <span title={label} className="min-w-0 truncate text-t-caption text-ink-faint">{label}</span>
+    <div className="flex min-h-5 items-center gap-x-2 py-0 leading-tight narrow:flex-wrap short:narrow:flex-nowrap" data-testid={testid} {...rest}>
+      <span
+        data-row-cell="label"
+        title={label}
+        className="shrink-0 text-t-caption text-ink-faint short:narrow:min-w-0 short:narrow:shrink short:narrow:truncate"
+      >
+        {label}
+      </span>
       <span className="shrink-0 tabular-nums">{children}</span>
     </div>
   )

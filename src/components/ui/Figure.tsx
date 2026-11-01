@@ -61,7 +61,9 @@ export function Figure({
   className?: string
 }) {
   return (
-    <span className={`inline-flex items-baseline gap-1 whitespace-nowrap ${className}`}>
+    // A FIGURE WIDER THAN THE ROOM IT STANDS IN keeps its number whole and drops its unit under it (`narrow:`, index.css — the HQ's phone
+    // panel: `6,700 / 6,700 units` is 138 px and the chart card's row 128). Anywhere else it is the one nowrap line it has always been.
+    <span className={`inline-flex items-baseline gap-1 whitespace-nowrap narrow:max-w-full narrow:flex-wrap ${className}`}>
       <span className={`tabular-nums ${SIZE[size]} ${TONE[tone]}`}>{value}</span>
       {unit !== undefined && <span className="text-t-caption text-ink-faint">{unit}</span>}
     </span>

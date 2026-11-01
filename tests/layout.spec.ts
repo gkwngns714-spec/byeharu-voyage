@@ -1126,6 +1126,11 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
       rowWidth: rows[0] ? Math.round(rows[0].getBoundingClientRect().width) : 0,
       pageScrollW: document.documentElement.scrollWidth,
       pageClientW: document.documentElement.clientWidth,
+      // A CELL NEVER RUNS PAST ITS ROW (2026-11-02): a dead `deliver` cell said "0 / 20 units on board" on ONE line, 15 px past its 112-px box
+      // and the row's edge, and the pane scrolled sideways. Nothing inside a request row stands right of the row's own edge, and the pane the
+      // rows stand in (the desk's board) does not scroll sideways.
+      pastItsRow: rows.reduce((n, r) => n + [...r.querySelectorAll('*')].filter((e) => e.getBoundingClientRect().right > r.getBoundingClientRect().right + 1).length, 0),
+      paneSideways: rows[0] ? (() => { const pane = rows[0].closest('[data-scroll-pane]'); return pane ? pane.scrollWidth - pane.clientWidth : 0 })() : 0,
     }
   })
   console.log(`PORT requests @${PHONE.width}px: ${JSON.stringify(report)}`)
@@ -1140,6 +1145,8 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
   expect(report.deadSayingWhy, 'a dead fulfil cell went grey without saying why').toBe(report.deadCells)
   expect(report.rowWidth, 'a request row is not a board row').toBeGreaterThanOrEqual(300)
   expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
+  expect(report.pastItsRow, 'a fulfil cell, or the reason it gives, runs past its row').toBe(0)
+  expect(report.paneSideways, 'the board the request rows stand in scrolls sideways').toBeLessThanOrEqual(1)
   // Nothing is docked: no tray opened by turning a face, and on a phone an empty basket docks nothing.
   await expect(page.locator('[data-testid="fulfil-tray"]')).toHaveCount(0)
   await expect(page.locator('[data-testid="basket-panel"]')).toHaveCount(0)

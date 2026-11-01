@@ -165,9 +165,11 @@ export function Tray({
         // and unpressable (2026-10-18, every phone). Closing it gives the first panel back as it
         // stood. tests/map.shipPanel.spec.ts asks the browser which panel a finger lands on.
         mode === 'side-next' ? 'z-50 lg:z-30' : 'z-40',
+        // A TRAY THAT STANDS OVER THE PAGE IS A QUERY CONTAINER OF ITS OWN (index.css, `narrow:`): its rows ask the tray, never the
+        // HQ panel it was opened from. A pane stands IN a panel and asks the panel.
         mode === 'pane'
           ? 'flex flex-col overflow-hidden bg-surface'
-          : 'flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
+          : '@container flex flex-col overflow-hidden rounded-t-sheet bg-surface shadow-sheet',
         'transition-[height] duration-sheet ease-sheet',
         mode === 'side-next'
           ? traySideNextClass()

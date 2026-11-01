@@ -51,7 +51,7 @@ export function TileGrid({
       role={role}
       aria-label={label}
       data-choice-grid=""
-      className={`grid ${COLUMN_CLASS[columns]} gap-1.5 ${className}`}
+      className={`grid ${COLUMN_CLASS[columns]} gap-1.5 narrow:flex narrow:flex-wrap narrow:gap-1 ${className}`}
       {...rest}
     >
       {children}

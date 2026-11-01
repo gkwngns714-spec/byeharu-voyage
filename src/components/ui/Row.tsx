@@ -53,6 +53,29 @@ const TONE: Record<RowTone, string> = {
   muted: 'text-ink-faint',
 }
 
+/** THE WRAPPING FLOW'S CLASSES, once per threshold (Tailwind reads class names as written, so each spelling is typed out). `narrow:` is a query
+ *  container below 15 rem; `pair:` is one below 22 rem, for a row whose value is a pair of act cells. docs/dev-log/2026-11-02-city-phone.md. */
+const FLOW = {
+  narrow: {
+    shell: 'narrow:relative narrow:flex narrow:flex-wrap narrow:gap-x-3',
+    pad: 'narrow:pr-8',
+    mark: 'narrow:shrink-0',
+    label: 'narrow:ml-0 narrow:flex-[1_1_7rem] narrow:max-w-max',
+    value: 'narrow:ml-0 narrow:max-w-full narrow:shrink-0',
+    chevron: 'narrow:absolute narrow:right-0 narrow:top-2 narrow:ml-0',
+    line2: 'narrow:ml-0 narrow:basis-full',
+  },
+  pair: {
+    shell: 'pair:relative pair:flex pair:flex-wrap pair:gap-x-3',
+    pad: 'pair:pr-8',
+    mark: 'pair:shrink-0',
+    label: 'pair:ml-0 pair:flex-[1_1_7rem] pair:max-w-max',
+    value: 'pair:ml-0 pair:max-w-full pair:shrink-0',
+    chevron: 'pair:absolute pair:right-0 pair:top-2 pair:ml-0',
+    line2: 'pair:ml-0 pair:basis-full',
+  },
+} as const
+
 export function Row({
   mark,
   label,
@@ -65,6 +88,7 @@ export function Row({
   disabled = false,
   className = '',
   under = 'row',
+  pair = false,
   children,
   ...rest
 }: {
@@ -89,6 +113,9 @@ export function Row({
    *  track. `label`: under the label only, beside a value that is taller than one line (a pair of
    *  `ActCell`s), which then spans both lines — the row stays as tall as its value, not the sum. */
   under?: 'row' | 'label'
+  /** The value is a PAIR of act cells (`ActPair`, 14.25 rem). Such a row stands beside its label from 22 rem of room and wraps under it
+   *  below (`pair:`, index.css); any other row wraps below 15 rem (`narrow:`). */
+  pair?: boolean
 } & { 'data-testid'?: string }) {
   // THE LINE, AND THE LINE UNDER IT (2026-10-25, owner rows 196 and 198: "it is not in the same
   // line"). The row is a GRID, not a flex box. Line 1 holds the mark, the label and the value in
@@ -130,19 +157,37 @@ export function Row({
   const chevronCol = 5
   // the 12 px a cell keeps from the one before it (rule 1); a label and line 2 stand 12 px behind a mark
   const afterMark = mark !== undefined ? 'ml-3' : ''
+  const flow = FLOW[pair ? 'pair' : 'narrow']
+  // ── THE NARROW ROW: ON A PHONE'S HALF GLASS THE FIGURE MOVES UNDER ITS LABEL ─────────────────
+  // (2026-11-02, docs/dev-log/2026-11-02-city-phone.md; owner: *"you know that this game is also for mobile
+  // right?"*). Inside a query container narrower than 15 rem (the HQ's panel on a phone: 139 px at 390, 104 at
+  // 320 — `narrow:`, index.css) the five tracks above cannot all stand: the value track is `max-content`, so a
+  // figure wider than the row took the whole width and the label was squeezed to NOTHING (a good's name one letter
+  // wide; "Space" in a column beside "0 / 750 tons"). The row is then a WRAPPING line instead — mark · label · value
+  // standing in one flow, the chevron laid over the right edge of line 1, line 2 a full line of its own:
+  //   · the LABEL never shrinks below its own text, up to 7 rem; past that it may wrap (`flex: 1 1 7rem`,
+  //     `max-width: max-content`: a short label asks for exactly its words, a long one for 7 rem);
+  //   · the VALUE never wraps inside itself (a figure stays whole); when label and value do not fit one line, the
+  //     value drops UNDER the label, flush with it — still ONE row, its pitch the 44-px floor or more;
+  //   · a gap belongs to a cell here too: the flow's `gap-x-3` is the 12 px, so every cell's `ml-3` is dropped.
+  // A row that is not inside such a container — every other screen — never matches `narrow:` and is the grid above.
   const body = (
     <>
       {mark !== undefined && (
-        <span className="bv-row-line flex h-6 items-center" style={{ gridRow: 1, gridColumn: 1 }} data-row-cell="mark">
+        <span className={`bv-row-line flex h-6 items-center ${flow.mark}`} style={{ gridRow: 1, gridColumn: 1 }} data-row-cell="mark">
           {mark}
         </span>
       )}
-      <span className={`bv-row-line min-w-0 break-words text-t-label ${afterMark}`} style={{ gridRow: 1, gridColumn: labelCol }} data-row-cell="label">
+      <span
+        className={`bv-row-line min-w-0 break-words text-t-label ${afterMark} ${flow.label}`}
+        style={{ gridRow: 1, gridColumn: labelCol }}
+        data-row-cell="label"
+      >
         {label}
       </span>
       {value !== undefined && (
         <span
-          className="bv-row-line ml-3 whitespace-nowrap text-left text-t-body tabular-nums"
+          className={`bv-row-line ml-3 whitespace-nowrap text-left text-t-body tabular-nums ${flow.value}`}
           style={{ gridRow: under === 'label' ? '1 / span 2' : 1, gridColumn: 3 }}
           data-row-cell="value"
         >
@@ -150,13 +195,17 @@ export function Row({
         </span>
       )}
       {chevron && (
-        <span className="bv-row-line ml-3 flex h-6 items-center" style={{ gridRow: 1, gridColumn: chevronCol }} data-row-cell="chevron">
+        <span
+          className={`bv-row-line ml-3 flex h-6 items-center ${flow.chevron}`}
+          style={{ gridRow: 1, gridColumn: chevronCol }}
+          data-row-cell="chevron"
+        >
           <Icon name="chevron" size={20} className="text-ink-faint" />
         </span>
       )}
       {children !== undefined && children !== null && children !== false && (
         <span
-          className={`min-w-0 text-t-label ${afterMark}`}
+          className={`min-w-0 text-t-label ${afterMark} ${flow.line2}`}
           style={{ gridRow: 2, gridColumn: under === 'label' ? `${labelCol} / ${labelCol + 1}` : `${labelCol} / -1` }}
         >
           {children}
@@ -166,7 +215,9 @@ export function Row({
   )
 
   const shell = [
-    'grid w-full min-h-row content-center items-start py-2 text-left',
+    `grid w-full min-h-row content-center items-start py-2 text-left ${flow.shell}`,
+    // the chevron is laid over the right edge in the narrow flow: its 20 px and 12 are kept clear of the line
+    chevron ? flow.pad : '',
     hairline ? 'border-b border-edge' : '',
     TONE[tone],
     className,

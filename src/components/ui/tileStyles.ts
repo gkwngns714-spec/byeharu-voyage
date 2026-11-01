@@ -17,5 +17,8 @@ export const COLUMN_CLASS: Record<ChoiceColumns, string> = {
 /** The cell's base recipe — layout only. The STATE skin belongs to the caller (a filter washes
  *  accent; a face stands on the segmented track), because those are two different meanings. */
 export function tileCellClass(): string {
-  return 'flex min-h-11 min-w-0 items-center justify-center rounded-control px-2 py-1 text-center text-t-caption leading-tight transition'
+  // ON A PHONE'S HALF GLASS (`narrow:`, index.css) the cells are a WRAPPING line, not equal columns: three faces at 139 px are 40 px each,
+  // and "Requests" is 56 px of words. A cell keeps its words (`flex-auto`: its own width, then the line's spare room), never under the 44-px
+  // reach floor, and the line breaks where the next cell does not fit — the rest stands on the next line, as wide as it is.
+  return 'flex min-h-11 min-w-0 items-center justify-center rounded-control px-2 py-1 text-center text-t-caption leading-tight transition narrow:min-w-11 narrow:flex-auto narrow:px-1'
 }

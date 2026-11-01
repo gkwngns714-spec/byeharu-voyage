@@ -33,12 +33,21 @@ export interface Flat {
   overlaps: string[]
   cuts: string[]
   rows: { found: boolean; whole: number; total: number; inView: boolean }
+  /** THE PHONE LAWS (the HQ slice, 2026-11-02) — each a list of defects, empty when the law holds. */
+  /** (a) two in-flow SIBLING boxes (a tile, a figure, a label) overlapping by more than 2 px², and two chart labels crossing. */
+  boxes: string[]
+  /** (b) text of three or more characters laid out narrower than 1.4 × its own font size: the one-character-per-line wrap. */
+  narrow: string[]
+  /** A row's LABEL (a `data-row-cell="label"`, a summary row's title) wider than the box it stands in: a label never shrinks below its own text. */
+  labelCuts: string[]
 }
 
-/** One face as data: scroll, overlap, cut text and the panel's whole rows. Self-contained — it is shipped into the page. */
-export async function readGlass(page: Page, panel: string, row: string | null): Promise<Flat> {
+/** One face as data: scroll, overlap, cut text and the panel's whole rows. Self-contained — it is shipped into the page.
+ *  `scope` (a selector) narrows what is MEASURED to one subtree (the HQ's right panel, its left region); the document's own
+ *  scroll (`doc`) always stands for the whole page. Absent, everything is measured as before. */
+export async function readGlass(page: Page, panel: string, row: string | null, scope: string | null = null): Promise<Flat> {
   return page.evaluate(
-    ({ panel, row }) => {
+    ({ panel, row, scope }) => {
       const vis = (e: Element) => {
         const r = e.getBoundingClientRect()
         const s = getComputedStyle(e)
@@ -47,15 +56,18 @@ export async function readGlass(page: Page, panel: string, row: string | null): 
       const de = document.documentElement
       const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
       const above = document.querySelector('[data-list-above]') as HTMLElement | null
+      /** What is measured: the whole page, or the one subtree the caller named. */
+      const root: Element = (scope !== null ? document.querySelector(scope) : document.body) ?? document.body
+      const inside = [...root.querySelectorAll('*')]
 
       // every visible box that scrolls sideways
-      const sideways = [...document.querySelectorAll('*')]
+      const sideways = inside
         .filter((e) => e instanceof HTMLElement && vis(e) && /auto|scroll/.test(getComputedStyle(e).overflowX) && e.scrollWidth > e.clientWidth + 1)
         .map((e) => e.getAttribute('data-testid') ?? e.tagName.toLowerCase())
 
       // text boxes, each clipped by every ancestor that clips: text scrolled out of a pane is not on the glass
       const leaves: { txt: string; l: number; t: number; r: number; b: number; host: Element }[] = []
-      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
       for (let n = walker.nextNode(); n; n = walker.nextNode()) {
         const txt = (n.textContent ?? '').trim()
         const host = n.parentElement
@@ -88,7 +100,7 @@ export async function readGlass(page: Page, panel: string, row: string | null): 
       }
 
       // cut text carries its full text (align.spec's CUT, held here at 320 too); a 1-px screen-reader label is not text on the glass
-      const cuts = [...document.querySelectorAll('body *')]
+      const cuts = inside
         .filter((e): e is HTMLElement => {
           if (!(e instanceof HTMLElement) || !vis(e) || e.closest('svg') || e.clientWidth <= 2) return false
           if (!(e.textContent ?? '').trim()) return false
@@ -97,6 +109,65 @@ export async function readGlass(page: Page, panel: string, row: string | null): 
           return cut && !e.closest('[title]')?.getAttribute('title')?.trim()
         })
         .map((e) => `${e.getAttribute('data-testid') ?? e.tagName.toLowerCase()} "${(e.textContent ?? '').trim().slice(0, 30)}"`)
+
+      // ── THE PHONE LAWS (the HQ slice, 2026-11-02; docs/dev-log/2026-11-02-city-phone.md) ───────────────────────────
+      const name = (e: Element) => `${e.getAttribute('data-testid') ?? e.getAttribute('data-row-cell') ?? e.tagName.toLowerCase()} "${(e.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 22)}"`
+
+      // (a) no two SIBLING boxes overlap by more than 2 px². In-flow siblings only: an absolute or fixed child is a layer drawn over
+      // its parent on purpose (a gauge's fill, a chevron), never a box that has lost its place. An svg's insides are the chart's own.
+      const boxes: string[] = []
+      for (const p of [root, ...inside]) {
+        if (p.tagName.toLowerCase() === 'svg' || p.parentElement?.closest('svg')) continue
+        const kids = [...p.children].filter((k) => vis(k) && !['absolute', 'fixed'].includes(getComputedStyle(k).position))
+        for (let i = 0; i < kids.length; i++) {
+          for (let j = i + 1; j < kids.length; j++) {
+            const a = kids[i].getBoundingClientRect()
+            const b = kids[j].getBoundingClientRect()
+            const area = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top))
+            if (area > 2) boxes.push(`${name(kids[i])} × ${name(kids[j])} (${Math.round(area)} px²)`)
+          }
+        }
+      }
+      // …and a chart's labels are siblings too: two axis labels standing on each other
+      const chartText = [...root.querySelectorAll('svg text')].filter(vis)
+      for (let i = 0; i < chartText.length; i++) {
+        for (let j = i + 1; j < chartText.length; j++) {
+          const a = chartText[i].getBoundingClientRect()
+          const b = chartText[j].getBoundingClientRect()
+          const area = Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top))
+          if (area > 2) boxes.push(`chart "${(chartText[i].textContent ?? '').trim()}" × "${(chartText[j].textContent ?? '').trim()}" (${Math.round(area)} px²)`)
+        }
+      }
+
+      // (b) no text of three or more characters is laid out in a column narrower than 1.4 × its font size: that is a column one
+      // letter wide — a good's name wrapped to nothing beside two price tiles. It is read off the TEXT's own line boxes, not its
+      // element's box (a label squeezed to 0 px draws its letters outside it), and only a text that WRAPPED can be such a column: a
+      // word that stands on one line ("All", 14.6 px at 12 px type) is short, not squeezed.
+      const narrow: string[] = []
+      const words = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+      for (let n = words.nextNode(); n; n = words.nextNode()) {
+        const txt = (n.textContent ?? '').replace(/\s+/g, ' ').trim()
+        const host = n.parentElement
+        if (txt.length < 3 || !host || host.closest('svg')) continue
+        const style = getComputedStyle(host)
+        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue
+        const range = document.createRange()
+        range.selectNodeContents(n)
+        const lines = [...range.getClientRects()].filter((x) => x.width > 0 && x.height > 0)
+        const widest = Math.max(0, ...lines.map((x) => x.width))
+        const size = parseFloat(style.fontSize)
+        if (lines.length > 1 && widest < 1.4 * size) narrow.push(`"${txt.slice(0, 24)}" stands ${lines.length} lines high and ${widest.toFixed(1)} px wide at ${size} px type`)
+      }
+
+      // a label never shrinks below its own text: no row label, no summary title, is wider than the cell it stands in. A cell may
+      // be 0 px wide (that is the defect), so it is found by style, not by its box; 4 px of a trailing mark's side is not cut text.
+      const labelCuts = [...root.querySelectorAll('[data-row-cell="label"]')]
+        .filter((e): e is HTMLElement => {
+          if (!(e instanceof HTMLElement)) return false
+          const style = getComputedStyle(e)
+          return style.display !== 'none' && style.visibility !== 'hidden' && e.scrollWidth > e.clientWidth + 4
+        })
+        .map((e) => `${name(e)} (${e.scrollWidth} in ${e.clientWidth} px)`)
 
       const panelEl = document.querySelector(`[data-testid="${panel}"]`)
       const body = panelEl?.querySelector('[data-list-body]') ?? null
@@ -123,9 +194,12 @@ export async function readGlass(page: Page, panel: string, row: string | null): 
         overlaps: [...new Set(overlaps)],
         cuts: [...new Set(cuts)],
         rows: { found: body !== null, whole, total, inView },
+        boxes: [...new Set(boxes)],
+        narrow: [...new Set(narrow)],
+        labelCuts: [...new Set(labelCuts)],
       }
     },
-    { panel, row },
+    { panel, row, scope },
   )
 }
 

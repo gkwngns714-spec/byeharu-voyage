@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   ActCell,
+  ActPair,
   Bar,
   Button,
   CargoBar,
@@ -197,7 +198,7 @@ function StorageRow({
         </span>
       }
       value={
-        <span className="grid grid-cols-2 gap-1">
+        <ActPair>
           <ActCell
             label={t('inn.put')}
             figure={<Figure value={formatUnits(aboard)} />}
@@ -214,10 +215,11 @@ function StorageRow({
             selected={selected === 'take'}
             data-testid={`storage-take-${line.code}`}
           />
-        </span>
+        </ActPair>
       }
       hairline={hairline}
       under="label"
+      pair
       data-testid="storage-row"
     >
       <span className="block text-t-caption text-ink-faint">{caption}</span>
