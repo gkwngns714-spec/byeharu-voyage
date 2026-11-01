@@ -1,6 +1,6 @@
-# 2026-11-01 — 0291: the market table is rewritten compact, with room for in-page updates
+# 2026-11-01 — 0292: the market table is rewritten compact, with room for in-page updates
 
-**Branch** `port-goods-hot` · **migration** `supabase/migrations/20260818000291_the_market_table_keeps_room.sql`
+**Branch** `port-goods-hot` · **migration** `supabase/migrations/20260818000292_the_market_table_keeps_room.sql`
 (number = prod head + 1 AT THE TIME OF DEPLOY; this file assumes 0290 — `stats-budget`, the Stats count — is live first.
 Deploy one migration at a time, `~/bin/bv-deploy.sh <pr>`, by the coordinator. Do NOT open the PR until the coordinator says
 0290 is merged and main's snapshot run has finished: the chain law.)
@@ -119,9 +119,9 @@ printed `setting` and `unit` glued together (`32768` + `8kB` = "327688kB"); re-r
 **How to read the lock window:** `supabase db push` prints no notices, so the migration's receipt (it prints the seconds) is for the
 chain logs only. On prod read the durations of this transaction's own statements from `pg_stat_statements` (utility statements are
 tracked — the drift's `call …` row is one): the `cluster public.port_goods using port_goods_pkey` row (the rewrite), `alter table
-public.port_goods set …`, `analyze public.port_goods`, the `create temp table table_before_0291 …` row (the count and checksum before) and the
+public.port_goods set …`, `analyze public.port_goods`, the `create temp table table_before_0292 …` row (the count and checksum before) and the
 last `do $assert$ …` row (the asserts after). Their sum is, to within milliseconds, the time ACCESS EXCLUSIVE was held (the catalog read
-before the lock, `create temp table before_0291 …`, is outside it). Or sample `pg_locks` for the granted AccessExclusiveLock on
+before the lock, `create temp table before_0292 …`, is outside it). Or sample `pg_locks` for the granted AccessExclusiveLock on
 `public.port_goods` once a second during the push. Players' reads of `port_goods` wait for that time (prod's `anon` role cancels a query at
 3 s and `authenticated` / `authenticator` at 8 s — read from `pg_roles` at 14:36 UTC — so a window longer than that shows as failed
 market reads, with the clock unwound).
@@ -141,27 +141,27 @@ outlives about two minutes of market passes — which is what 0290 (the count's 
 ## 7. Bookkeeping
 
 This file completed with the gates and the local timings; one line at the top of `docs/WORK_QUEUE.md` (**the coordinator's — not edited
-here**); the owner row for "the game became slower" (OWNER_REQUESTS row 259, the nearest to 256/259) has a state line added. PR title: `MIGRATION — 0291: the market table
+here**); the owner row for "the game became slower" (OWNER_REQUESTS row 259, the nearest to 256/259) has a state line added. PR title: `MIGRATION — 0292: the market table
 is rewritten compact, with room for in-page updates (deploy AFTER 0290)`. Commit trailer:
 `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 
 ## 8. Build record — 2026-11-01, worktree `~/dev/wt-port-goods`, branch `port-goods-hot`
 
-**Gates (each run once on the final bytes of the migration, fillfactor 30; log files in the session scratchpad `pg0291/`):**
+**Gates (each run once on the final bytes of the migration, fillfactor 30; log files in the session scratchpad `pg0292/`):**
 - `node scripts/db/check-versions.mjs` — OK: 278 migrations, no collisions, all names well-formed.
 - `BYEHARU_PREFIX_CACHE=required node scripts/db/proof.mjs standing` — exit 0. The chain came through the prefix cache: restored
-  277/278 from `preamble-p0277` in 2.9 s, applied 1 here (0291), snapshot after 278 files (39.2 MB, round trip verified), 278 of 278
+  277/278 from `preamble-p0277` in 2.9 s, applied 1 here (0292), snapshot after 278 files (39.2 MB, round trip verified), 278 of 278
   with a `self-assert ok:` receipt (285 receipt lines), 8.5 s for the whole chain step; world-guard ok (246 harbours, 629 goods,
   154,734 market rows); `11_standing_route.sql` 5/5 PASS.
 - `npx playwright test tests/duplication.spec.ts` — 11 passed (1.1 s) (it reads the migrations off disk: the DO block, the
-  `0291 self-assert FAIL` raise, the `0291 … self-assert ok` receipt).
+  `0292 self-assert FAIL` raise, the `0292 … self-assert ok` receipt).
 - tsc / eslint — not run: no TypeScript touched.
 - Not run locally, left to CI / the coordinator by design: `db.chain.spec`, `db.image.spec` (selected for any added migration),
   the full suite on main.
 - *The first fillfactor-40 build of this file passed the same three gates (check-versions OK 278, standing 5/5 with 278 receipts,
   duplication 11/11); it was superseded by the decision for 30, and the gates above were run again on the new bytes.*
 
-**The local self-assert wall time (PGlite 18.3, in memory, the real chain world, 154,734 rows, fillfactor 30):** 0291 applied to a
+**The local self-assert wall time (PGlite 18.3, in memory, the real chain world, 154,734 rows, fillfactor 30):** 0292 applied to a
 private copy of the p0277 world twice — the whole file in 1,321 ms and 1,295 ms. Under the ACCESS EXCLUSIVE lock: the read before
 0.13 / 0.12 s, the rewrite (alter + cluster + analyze) 0.98 / 0.96 s, the asserts after it 0.12 / 0.13 s — **1.23 / 1.21 s in all; the
 self-assert's own share (both reads, the md5 sweep of 670 functions, registry, walls, the probe) is 0.25 s** (at fillfactor 40: 0.95 s in
@@ -174,7 +174,7 @@ chain run, so the receipt and the timings above come from the private apply of t
 pages, 15.00 live rows a page, 80.6 MB), indexes 29,171,712 → 8,978,432 B.**
 
 **Side effect on every test world (good):** the chain's own world carries bloat too (its heap was 241 MB for 154,734 rows: the chain's
-own updates and no vacuum). The migration compacts it: the prefix snapshot after 0291 is 39.2 MB against
+own updates and no vacuum). The migration compacts it: the prefix snapshot after 0292 is 39.2 MB against
 94.5 MB before it (`p0278` vs `p0277`, gzip level 1), so every restore of a world is smaller and quicker.
 
 **Local experiment — does a whole-table update, once a "minute", stay in the page?** (scratch scripts `hot-sim.mjs` / `hot-gen.mjs`

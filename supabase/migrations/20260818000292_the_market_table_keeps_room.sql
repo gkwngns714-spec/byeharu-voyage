@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0291 — THE MARKET TABLE KEEPS ROOM   (a LOAD-ONLY slice: the table is rewritten compact; every row is identical)
+-- 0292 — THE MARKET TABLE KEEPS ROOM   (a LOAD-ONLY slice: the table is rewritten compact; every row is identical)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- ── WHY (prod, read-only, head 0289, 2026-11-01 14:13–14:22 UTC) ───────────────────────────────
@@ -71,7 +71,7 @@
 --   or samples pg_locks while it runs.
 -- ROLLBACK (forward, a NEW migration, never an edit): alter table public.port_goods reset (fillfactor);
 --   cluster public.port_goods using port_goods_pkey;
--- VERSION: 0291 — prod head 0289 today. 0290 (the Stats count) deploys first; this file deploys AFTER it.
+-- VERSION: 0292 — prod head 0290 today. 0291 (the laps' autovacuum, which unblocks the Stats count) deploys first; this file deploys AFTER it.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 -- ── 0. GUARD ────────────────────────────────────────────────────────────────────────────────────
@@ -82,21 +82,21 @@ begin
   if not exists (select 1 from pg_class c
                   where c.oid = to_regclass('public.port_goods') and c.relkind = 'r' and c.relpersistence = 'p')
      or to_regclass('public.port_goods_pkey') is null then
-    raise exception '0291 refuses: public.port_goods (a permanent table) or port_goods_pkey is not in this world';
+    raise exception '0292 refuses: public.port_goods (a permanent table) or port_goods_pkey is not in this world';
   end if;
   if not exists (select 1 from pg_index i
                   where i.indexrelid = 'public.port_goods_pkey'::regclass and i.indrelid = 'public.port_goods'::regclass
                     and i.indisprimary and i.indisvalid and i.indisready) then
-    raise exception '0291 refuses: port_goods_pkey is not the valid primary key of public.port_goods';
+    raise exception '0292 refuses: port_goods_pkey is not the valid primary key of public.port_goods';
   end if;
   if exists (select 1 from pg_class c, unnest(c.reloptions) o
               where c.oid = 'public.port_goods'::regclass and o like 'fillfactor=%') then
-    raise exception '0291 refuses: public.port_goods already carries a fillfactor — this has been applied once';
+    raise exception '0292 refuses: public.port_goods already carries a fillfactor — this has been applied once';
   end if;
 end $guard$;
 
 -- ── 1. AS FOUND, before the lock (catalog reads only; nothing here touches the table) ───────────
-create temp table before_0291 on commit drop as
+create temp table before_0292 on commit drop as
 select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')) as fns,
@@ -106,16 +106,16 @@ select (select count(*) from public.client_rpc_entry_points()) as entry_points,
        (select value from public.world_config where key = 'economy_closed') as economy_closed,
        (select value from public.world_config where key = 'city_treasury_enabled') as city_treasury_enabled;
 
-create temp table clock_0291 (k text primary key, t timestamptz not null) on commit drop;
+create temp table clock_0292 (k text primary key, t timestamptz not null) on commit drop;
 
 -- ── 2. THE LOCK FIRST, then the table as found ─────────────────────────────────────────────────
 do $lock$
 begin
   lock table public.port_goods in access exclusive mode;
-  insert into clock_0291 values ('locked', clock_timestamp());
+  insert into clock_0292 values ('locked', clock_timestamp());
 end $lock$;
 
-create temp table table_before_0291 on commit drop as
+create temp table table_before_0292 on commit drop as
 select k.n, k.min_port, k.max_port, k.key_sum,
        c.relfilenode as table_filenode,
        pg_relation_size(c.oid) as heap_bytes,
@@ -126,7 +126,7 @@ select k.n, k.min_port, k.max_port, k.key_sum,
        pg_class c
  where c.oid = 'public.port_goods'::regclass;
 
-create temp table idx_before_0291 on commit drop as
+create temp table idx_before_0292 on commit drop as
 select i.indexrelid::regclass::text as name,
        pg_get_indexdef(i.indexrelid) as def,
        ic.relfilenode as filenode
@@ -135,11 +135,11 @@ select i.indexrelid::regclass::text as name,
  where i.indrelid = 'public.port_goods'::regclass;
 
 -- ── 3. THE REWRITE ──────────────────────────────────────────────────────────────────────────────
-insert into clock_0291 values ('rewrite_start', clock_timestamp());
+insert into clock_0292 values ('rewrite_start', clock_timestamp());
 alter table public.port_goods set (fillfactor = 30);
 cluster public.port_goods using port_goods_pkey;
 analyze public.port_goods;
-insert into clock_0291 values ('rewritten', clock_timestamp());
+insert into clock_0292 values ('rewritten', clock_timestamp());
 
 -- ── 4. THE SELF-ASSERT (the last statement of the file) ────────────────────────────────────────
 do $assert$
@@ -172,28 +172,28 @@ declare
   v_t_done timestamptz;
   v_t_end timestamptz;
 begin
-  select * into b from table_before_0291;
-  select * into f from before_0291;
-  select t into v_t_locked from clock_0291 where k = 'locked';
-  select t into v_t_start from clock_0291 where k = 'rewrite_start';
-  select t into v_t_done from clock_0291 where k = 'rewritten';
+  select * into b from table_before_0292;
+  select * into f from before_0292;
+  select t into v_t_locked from clock_0292 where k = 'locked';
+  select t into v_t_start from clock_0292 where k = 'rewrite_start';
+  select t into v_t_done from clock_0292 where k = 'rewritten';
 
   -- (a) the SAME ROWS: nothing was lost, added or re-keyed by the rewrite
   if b.n is null or b.n = 0 then
-    raise exception '0291 self-assert FAIL: public.port_goods was empty under the lock — there is nothing to rewrite, and the HOT probe would have no row';
+    raise exception '0292 self-assert FAIL: public.port_goods was empty under the lock — there is nothing to rewrite, and the HOT probe would have no row';
   end if;
   select count(*), min(port_id::text), max(port_id::text), sum(hashtext(port_id::text || good_id::text))
     into v_n, v_min, v_max, v_sum
     from public.port_goods;
   if v_n is distinct from b.n or v_min is distinct from b.min_port or v_max is distinct from b.max_port
      or v_sum is distinct from b.key_sum then
-    raise exception '0291 self-assert FAIL: the rewrite changed the key set — % rows / checksum % / % .. % before, % rows / checksum % / % .. % after',
+    raise exception '0292 self-assert FAIL: the rewrite changed the key set — % rows / checksum % / % .. % before, % rows / checksum % / % .. % after',
       b.n, b.key_sum, b.min_port, b.max_port, v_n, v_sum, v_min, v_max;
   end if;
 
   -- (b) the fillfactor is on the table
   if not exists (select 1 from pg_class c where c.oid = 'public.port_goods'::regclass and c.reloptions @> array['fillfactor=30']) then
-    raise exception '0291 self-assert FAIL: public.port_goods does not carry fillfactor=30 (reloptions %)',
+    raise exception '0292 self-assert FAIL: public.port_goods does not carry fillfactor=30 (reloptions %)',
       (select c.reloptions from pg_class c where c.oid = 'public.port_goods'::regclass);
   end if;
 
@@ -204,7 +204,7 @@ begin
          count(*) filter (where not coalesce(a.ok, false)),
          count(*)
     into v_missing, v_moved, v_same_file, v_not_ok, v_idx_n
-    from idx_before_0291 b2
+    from idx_before_0292 b2
     full join (select i.indexrelid::regclass::text as name,
                       pg_get_indexdef(i.indexrelid) as def,
                       ic.relfilenode as filenode,
@@ -213,26 +213,26 @@ begin
                  join pg_class ic on ic.oid = i.indexrelid
                 where i.indrelid = 'public.port_goods'::regclass) a on a.name = b2.name;
   if v_idx_n <> 3 or v_missing <> 0 then
-    raise exception '0291 self-assert FAIL: public.port_goods has % index(es) after the rewrite (% missing or new), not the same three as before', v_idx_n, v_missing;
+    raise exception '0292 self-assert FAIL: public.port_goods has % index(es) after the rewrite (% missing or new), not the same three as before', v_idx_n, v_missing;
   end if;
   if v_moved <> 0 then
-    raise exception '0291 self-assert FAIL: % index definition(s) differ from the text taken before the rewrite', v_moved;
+    raise exception '0292 self-assert FAIL: % index definition(s) differ from the text taken before the rewrite', v_moved;
   end if;
   if v_not_ok <> 0 then
-    raise exception '0291 self-assert FAIL: % index(es) are not valid, ready and live after the rewrite', v_not_ok;
+    raise exception '0292 self-assert FAIL: % index(es) are not valid, ready and live after the rewrite', v_not_ok;
   end if;
   if v_same_file <> 0 then
-    raise exception '0291 self-assert FAIL: % index(es) kept their relfilenode — they were not rebuilt', v_same_file;
+    raise exception '0292 self-assert FAIL: % index(es) kept their relfilenode — they were not rebuilt', v_same_file;
   end if;
   select i.indisclustered into v_clustered from pg_index i where i.indexrelid = 'public.port_goods_pkey'::regclass;
   if v_clustered is distinct from true then
-    raise exception '0291 self-assert FAIL: port_goods_pkey is not marked as the table''s clustered index';
+    raise exception '0292 self-assert FAIL: port_goods_pkey is not marked as the table''s clustered index';
   end if;
 
   -- (d) the heap really was rewritten
   select c.relfilenode into v_filenode from pg_class c where c.oid = 'public.port_goods'::regclass;
   if v_filenode is not distinct from b.table_filenode then
-    raise exception '0291 self-assert FAIL: public.port_goods kept relfilenode % — the rewrite did not happen', v_filenode;
+    raise exception '0292 self-assert FAIL: public.port_goods kept relfilenode % — the rewrite did not happen', v_filenode;
   end if;
 
   -- (e) THE POINT OF THE SLICE: a market update of one real row finds room on its page — a HOT update.
@@ -253,15 +253,15 @@ begin
     null;
   end;
   if v_rows is distinct from 1 then
-    raise exception '0291 self-assert FAIL: the probe update touched % row(s), not 1', v_rows;
+    raise exception '0292 self-assert FAIL: the probe update touched % row(s), not 1', v_rows;
   end if;
   if v_hot1 - v_hot0 is distinct from 1 then
-    raise exception '0291 self-assert FAIL: the probe update of one row was not a HOT update (the transaction''s HOT counter went % -> %) — the rewritten page has no room for the new version',
+    raise exception '0292 self-assert FAIL: the probe update of one row was not a HOT update (the transaction''s HOT counter went % -> %) — the rewritten page has no room for the new version',
       v_hot0, v_hot1;
   end if;
   select g.updated_at into v_new from public.port_goods g where g.port_id = v_port and g.good_id = v_good;
   if v_new is distinct from v_old then
-    raise exception '0291 self-assert FAIL: the probe update survived its rollback (updated_at % -> %)', v_old, v_new;
+    raise exception '0292 self-assert FAIL: the probe update survived its rollback (updated_at % -> %)', v_old, v_new;
   end if;
 
   -- (f) nothing else moved
@@ -270,24 +270,24 @@ begin
      or (select md5(string_agg(md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
            from pg_proc p join pg_namespace n on n.oid = p.pronamespace
           where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')) <> f.fns_md5 then
-    raise exception '0291 self-assert FAIL: a function in public/cmd/world/voyage moved or was added — this file creates and changes none';
+    raise exception '0292 self-assert FAIL: a function in public/cmd/world/voyage moved or was added — this file creates and changes none';
   end if;
   if (select count(*) from public.client_rpc_entry_points()) <> f.entry_points
      or (select value from public.world_config where key = 'economy_closed') is distinct from f.economy_closed
      or (select value from public.world_config where key = 'city_treasury_enabled') is distinct from f.city_treasury_enabled then
-    raise exception '0291 self-assert FAIL: the registry or an owner switch moved';
+    raise exception '0292 self-assert FAIL: the registry or an owner switch moved';
   end if;
   if (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0291 self-assert FAIL: a wall moved';
+    raise exception '0292 self-assert FAIL: a wall moved';
   end if;
 
   select pg_relation_size('public.port_goods'::regclass), pg_indexes_size('public.port_goods'::regclass)
     into v_heap_after, v_indexes_after;
   v_t_end := clock_timestamp();
 
-  raise notice '0291 self-assert ok: THE MARKET TABLE KEEPS ROOM. public.port_goods was rewritten in place by CLUSTER on port_goods_pkey with fillfactor 30, under one ACCESS EXCLUSIVE lock taken before the first read. The same % rows and the same key checksum % (min / max port and sum of hashtext(port || good)) before and after; reloptions %; the % indexes valid, ready and live, each rebuilt (a new relfilenode) and defined exactly as before, the primary key marked clustered; the table moved from relfilenode % to %. A probe UPDATE of one real row (updated_at, rolled back and asserted gone) was a HOT update — the transaction''s own HOT counter rose % -> %. Every function in public/cmd/world/voyage unmoved by md5 (% functions), the registry unchanged at % entry points, the walls 0 / 0 / 0, both owner switches as found. Printed, never asserted: heap % -> % bytes (% -> % pages of %), indexes % -> % bytes; seconds under the ACCESS EXCLUSIVE lock — the read before the rewrite %, the rewrite (alter + cluster + analyze) %, the asserts after it %, in all % through the last assert.',
+  raise notice '0292 self-assert ok: THE MARKET TABLE KEEPS ROOM. public.port_goods was rewritten in place by CLUSTER on port_goods_pkey with fillfactor 30, under one ACCESS EXCLUSIVE lock taken before the first read. The same % rows and the same key checksum % (min / max port and sum of hashtext(port || good)) before and after; reloptions %; the % indexes valid, ready and live, each rebuilt (a new relfilenode) and defined exactly as before, the primary key marked clustered; the table moved from relfilenode % to %. A probe UPDATE of one real row (updated_at, rolled back and asserted gone) was a HOT update — the transaction''s own HOT counter rose % -> %. Every function in public/cmd/world/voyage unmoved by md5 (% functions), the registry unchanged at % entry points, the walls 0 / 0 / 0, both owner switches as found. Printed, never asserted: heap % -> % bytes (% -> % pages of %), indexes % -> % bytes; seconds under the ACCESS EXCLUSIVE lock — the read before the rewrite %, the rewrite (alter + cluster + analyze) %, the asserts after it %, in all % through the last assert.',
     b.n, b.key_sum,
     (select c.reloptions from pg_class c where c.oid = 'public.port_goods'::regclass),
     v_idx_n, b.table_filenode, v_filenode, v_hot0, v_hot1,
