@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Icon, Nav, Row, TapAway, Tray, type NavItem, type TrayDetent } from '../components/ui'
 import { NAV_CELLS, navWord, tabHref } from './navTabs'
@@ -21,7 +21,7 @@ import { useT, useLocale } from '../lib/i18n'
 //   · the cell — a 22px icon over a 12px sentence-case label, no mono, no letter-spacing, no
 //     `uppercase tracking-wider` — is the `Nav` primitive's, drawn once and never re-spelt here
 //   · the revealed panel — which was 25 lines of hand-placed `absolute … bottom-full` markup with
-//     its own border, its own surface and its own grid class — is a `Tray` of four `Row`s
+//     its own border, its own surface and its own grid class — is a `Tray` of `Row`s, one per member
 // The routing, the group table and the open/shut fact stay here, which is where they belong.
 //
 // ── A GROUP REVEALS. IT DOES NOT REPLACE THE BAR ────────────────────────────────────────────────
@@ -40,11 +40,34 @@ import { useT, useLocale } from '../lib/i18n'
 // where this bar already is, so it would cover the control it was opened from. Both modes keep the
 // owner's rule; only one of them leaves the rail reachable underneath.
 
-/** Four rows want the working detent, not the peek. `peek` is 96px — one row plus a reach floor —
- *  which is the right answer to "what did I just tap?" and the wrong one to "here are the four
- *  places you keep at your desk". `half` is 422px at 390×844, which holds the four 52px rows, the
- *  handle and the title with room to spare; the ladder still lets a drag take it anywhere. */
+/** The Menu's rows want the working detent, not the peek. `peek` is 104px — one row plus a reach
+ *  floor — which is the right answer to "what did I just tap?" and the wrong one to "here are the
+ *  places you keep in the cabin". The ladder still lets a drag take it anywhere. */
 const CABIN_DETENT: TrayDetent = 'half'
+
+// ── THE MENU STANDS AS TALL AS ITS ROWS, AT LEAST (2026-11-02, the layout sweep, row 11) ───────────
+// `half` is half the glass, and the Menu has SIX members: six 52-px rows under the 52-px handle row
+// and the 34-px title is 406 px (the Tray's own chrome: its `pt-2` + `h-11` handle row, its `t-title`
+// head with `pb-2`, the `pb-2` under its scroll). Half of 844 is 422 and held them; half of 800 is
+// 400 (6 px of scroll under the last row) and half of 640 is 320 (the body 234 px: "You" cut, "Profile"
+// behind an 86-px scroll). `half` was chosen when the Menu had four.
+//
+// The Tray has no stop that is "as tall as its rows" (Tray.tsx `HEIGHT`: peek · half · full), so the
+// floor is this caller's, said once here and in nobody else's file: `min-height` beats the Tray's
+// `height`, so the tray is `half` wherever `half` is enough and its rows' height wherever it is not.
+// The rows are counted from the table (`--cabin-floor` on the wrapper below carries the member
+// count), never typed. The floor is `min()`ed with the glass between the status strip (`top-8`) and
+// the bar (`bottom-14` and its 1-px edge — screenLayout.ts `traySideEdgeClass`), so a glass too short
+// for six rows lifts nothing off the top and falls back to the inner scroll it always had. It applies
+// at `half` only: a drag down to `peek` must still be a peek.
+const CABIN_FLOOR = 'min-h-[var(--cabin-floor)]'
+
+/** `--cabin-floor` for a tray of `rows` member rows: the rows (`--spacing-row`, src/index.css) plus
+ *  the Tray's 5.875rem of chrome (3.25 handle row + 2.125 head + 0.5 foot), capped at the free glass. */
+const cabinFloor = (rows: number) =>
+  ({
+    '--cabin-floor': `min(calc(var(--spacing-row) * ${rows} + 5.875rem), calc(100dvh - 5.5rem - 1px))`,
+  }) as CSSProperties
 
 export function NavBar() {
   const t = useT()
@@ -62,6 +85,7 @@ export function NavBar() {
   )
   const open = opened && opened.path === pathname ? opened : null
   const openGroup = open?.group ?? null
+  const trayDetent = open?.detent ?? CABIN_DETENT
   const closeGroup = () => setOpened(null)
 
   // Escape is the keyboard's tap-outside.
@@ -97,7 +121,7 @@ export function NavBar() {
       : { id: c.id, label: word(c.label), icon: c.icon },
   )
 
-  /** One spelling of "go there, and shut the tray on the way out" — for the six cells and the four
+  /** One spelling of "go there, and shut the tray on the way out" — for the cells and the Menu's
    *  rows alike. The anchors keep their real hrefs; this is only what answers a plain left-click. */
   const go = (to: string) => {
     closeGroup()
@@ -110,11 +134,12 @@ export function NavBar() {
         <>
           {/* Tap anywhere else to dismiss (TapAway: the one recipe, shared with the City page's rail). */}
           <TapAway label={t('shell.closeGroup', { name: word(openMembers.label) })} onClick={closeGroup} />
-          <div className="absolute inset-x-0 bottom-full z-20">
+          <div className="absolute inset-x-0 bottom-full z-20" style={cabinFloor(openMembers.members.length)}>
             <Tray
               data-testid="nav-group-panel"
               mode="inline"
-              detent={open?.detent ?? CABIN_DETENT}
+              detent={trayDetent}
+              className={trayDetent === 'half' ? CABIN_FLOOR : ''}
               onDetentChange={(next) => {
                 if (next === 'closed') closeGroup()
                 else setOpened({ path: pathname, group: openMembers.id, detent: next })
