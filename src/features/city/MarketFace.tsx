@@ -175,7 +175,9 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
             board.view.requests.map((r) => (
               <div key={r.id} className="border-b border-edge py-1" data-testid={`city-open-request-${r.id}`}>
                 <Row label={`${r.name} ×${formatInt(r.qty)}`} value={<Figure value={formatUnitPrice(r.unit_price)} />} />
-                <div className="flex min-h-11 items-center gap-2">
+                {/* THE LINE WRAPS (2026-11-02, the HQ-on-a-phone slice): word, sum held and Cancel are 190 px and the panel's room 139 at 390, 104 at 320 — the
+                    Cancel stood 43 px past the panel's edge at 390 and 78 at 320, cut off and unpressable. Under the sum, at the right edge, when they do not fit. */}
+                <div className="flex min-h-11 flex-wrap items-center gap-x-2">
                   <span className="text-t-caption text-ink-faint">{t('city.requestPay')}</span>
                   <Figure value={formatDucats(r.escrow)} />
                   <Button

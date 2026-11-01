@@ -83,8 +83,13 @@ async function walk(page: Page, glass: Glass): Promise<string[]> {
       await settled(page.getByTestId('city-request-page'))
       await page.waitForTimeout(600)
       found.push(...defects(`${at} request page · chart`, await readGlass(page, 'city-request-page', null, '[data-testid="city-request-page"]')))
-      await page.locator('[data-detail-back]').last().click()
+      // …and PLACE it: the house's own open request is a line on the Requests face (what it is, the sum held, a Cancel) — its Cancel stood 43 px past the
+      // panel's edge at 390 and 78 at 320, a button nobody could press, because the canary has no open request until one is placed
+      await page.getByTestId('city-request-place').click()
       await expect(page.locator('[data-detail-page]')).toHaveCount(0)
+      await expect(page.locator('[data-testid^="city-open-request-"]').first()).toBeVisible({ timeout: 30_000 })
+      await page.waitForTimeout(600)
+      found.push(...defects(`${at} market requests · one open`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]')))
       await faces.nth(0).click()
     }
   }
