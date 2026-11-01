@@ -1,6 +1,45 @@
 @import 'tailwindcss';
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════
+   THE PHONE'S HALF GLASS — two variants that ask the PANEL how wide it is (2026-11-02).
+   The HQ keeps its split at every width (owner, 2026-10-31: *"the same screen dividends (city
+   view, then right side the info) should stay the same for all"*), so on a phone the right panel
+   is half the glass: 139 px of room inside its padding at 390, 104 at 320. A row's label, its
+   figure and the two price cells beside it need 350. A surface that narrow is a QUERY CONTAINER
+   (`@container`: the HQ's panel body, the Market's chart card, and every page or tray that stands
+   over them, so their rows ask the page and not the panel under it), and the shared primitives —
+   `Row`, `SummaryRow`, `ActCell`/`ActPair`, `TileGrid` — read its width instead of the screen's:
+     narrow:  below 15 rem the figure may move UNDER its label, a face's choices wrap, a summary
+              row's title wraps instead of being cut;
+     pair:    below 22 rem the same for a row whose value is a PAIR of act cells (14.25 rem: a good's BUY and SELL) —
+              7 rem of name, the 0.75 rem between and the pair need 22; the desk's board pane at 320 is 18;
+     tight:   below 8.25 rem (two 64-px cells and a gap) the pair of act cells stands one over the other.
+   What is not inside such a container — every other screen, and the HQ itself from 592 px of glass —
+   never matches either, so it does not move by a pixel. docs/dev-log/2026-11-02-city-phone.md. */
+@custom-variant narrow {
+  @container (max-width: 15rem) {
+    @slot;
+  }
+}
+@custom-variant pair {
+  @container (max-width: 22rem) {
+    @slot;
+  }
+}
+@custom-variant tight {
+  @container (max-width: 8.25rem) {
+    @slot;
+  }
+}
+/* short:  a glass under 600 px tall — the one place a second line costs more than the page can give (the hall's five figures at
+   320×568 with the Influence book open: tests/consistency.spec.ts holds its inner scroll to 12 px). */
+@custom-variant short {
+  @media (max-height: 600px) {
+    @slot;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════
    BYEHARU VOYAGE DESIGN SYSTEM — the ONE canonical token source.
    Screens never hardcode palette literals (slate-900, white/40, …): they compose the primitives
    in src/components/ui/, which consume ONLY these tokens. Tailwind v4 @theme turns each token

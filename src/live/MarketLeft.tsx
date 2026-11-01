@@ -40,8 +40,12 @@ export function MarketLeft({ port, good: given = null }: { port: SnapshotPort; g
   }
   const series = trend.series
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-tile bg-surface px-2 py-1" data-testid="city-market-chart">
-      <div className="flex min-h-6 items-baseline justify-between gap-2">
+    // A QUERY CONTAINER (index.css, `narrow:`): the chart card is half the glass on a phone — 163 px of room at 390, 128 at 320 — and its
+    // span picker and its two rows ask THIS width how to stand. THE CARD SCROLLS WHOLE when the glass is too short for all of it (320×640:
+    // the chart, a three-line legend, the span picker and the two rows are 450 px of a 395-px card) — nothing is clipped out of reach; at
+    // 390×844 and 1280×800 it all stands at once and nothing scrolls.
+    <div className="@container bv-scroll flex h-full min-h-0 flex-col overflow-y-auto rounded-tile bg-surface px-2 py-1" data-testid="city-market-chart">
+      <div className="flex min-h-6 shrink-0 items-baseline justify-between gap-2">
         <span className="min-w-0 truncate text-t-caption text-ink-faint" data-testid="city-market-chart-good">
           {good.name}
         </span>
@@ -63,7 +67,7 @@ export function MarketLeft({ port, good: given = null }: { port: SnapshotPort; g
         )}
         <SpanPicker value={trend.span} onChange={trend.setSpan} className="mt-1" />
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="shrink-0">
         <Row
           label={t('ui.range')}
           value={<Figure value={`${formatPriceFigure(good.range_lo)}–${formatPriceFigure(good.range_hi)}`} />}

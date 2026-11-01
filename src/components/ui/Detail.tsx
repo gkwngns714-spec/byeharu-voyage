@@ -44,22 +44,33 @@ export function SummaryRow({
   onClick: () => void
   className?: string
 } & { 'data-testid'?: string }) {
+  // ── ON A PHONE'S HALF GLASS THE TITLE IS NEVER CUT (2026-11-02; owner: an Inn row read "Capt…" with nothing to press
+  // to read it). Inside a query container narrower than 15 rem (`narrow:`, index.css — the HQ's panel at 390 and 320)
+  // the row is a WRAPPING line, as `Row` is: the title keeps its words (up to 5 rem before it wraps), the figure drops
+  // under it when the two do not fit one line, and the chevron is laid over the right edge of line 1. A summary row
+  // that is not inside such a container is the single truncating line it has always been.
   return (
     <button
       type="button"
       onClick={onClick}
       data-summary-row=""
-      className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control bg-surface px-3 py-2 text-left transition hover:bg-surface-2 ${className}`}
+      className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control bg-surface px-3 py-2 text-left transition hover:bg-surface-2 narrow:relative narrow:flex-wrap narrow:content-center narrow:justify-start narrow:gap-y-0 narrow:px-0 narrow:pr-6 ${className}`}
       {...rest}
     >
-      <span title={typeof title === 'string' ? title : undefined} data-row-cell="label" className="min-w-0 truncate text-t-body font-semibold text-ink">{title}</span>
+      <span
+        title={typeof title === 'string' ? title : undefined}
+        data-row-cell="label"
+        className="min-w-0 truncate text-t-body font-semibold text-ink narrow:max-w-max narrow:flex-[1_1_5rem] narrow:overflow-visible narrow:whitespace-normal narrow:break-words narrow:text-clip"
+      >
+        {title}
+      </span>
       {/* THE FIGURE HUGS ITS TITLE (owner, 2026-11-01: *"empty spaces between words and numbers
           horizontally… make it so that htey are closer, more compact"*). It used to be pushed to the
           right edge by `justify-between`; now only the WORD and the chevron stand at the edge — the
           affordance keeps its place, the number keeps its label. The `data-row-cell` names are the
           slots align.spec reads: label · value (beside it) · action (the edge affordance). */}
       {figure !== undefined && <span data-row-cell="value" className="shrink-0 text-t-caption tabular-nums text-ink-muted">{figure}</span>}
-      <span data-row-cell="action" className="ml-auto flex shrink-0 items-center justify-end gap-2 text-t-caption tabular-nums text-ink-muted">
+      <span data-row-cell="action" className="ml-auto flex shrink-0 items-center justify-end gap-2 text-t-caption tabular-nums text-ink-muted narrow:absolute narrow:right-0 narrow:top-[11px] narrow:ml-0">
         {word !== undefined && <span className="text-ink-faint">{word}</span>}
         <Icon name="chevron" size={16} />
       </span>
@@ -98,7 +109,9 @@ export function DetailPage({
       aria-modal="true"
       aria-label={typeof title === 'string' ? title : undefined}
       data-detail-page=""
-      className="fixed inset-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink"
+      // A QUERY CONTAINER OF ITS OWN (index.css, `narrow:`): the page is the whole glass, however narrow the HQ panel it was
+      // opened from — its rows must ask the page, not the panel under it.
+      className="@container fixed inset-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink"
       {...rest}
     >
       <header className="flex min-h-14 shrink-0 items-center gap-2 border-b border-edge px-gutter py-1">

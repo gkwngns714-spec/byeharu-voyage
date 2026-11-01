@@ -147,7 +147,7 @@ export { Nav, type NavItem } from './Nav'
 //     ACT CELL — one act on a row with the figure it is about, dead with its reason when it is.
 //     TradeRow's price cell, promoted 2026-09-13 when the Storage face wanted the same box for
 //     `Put in storage` / `Take on board` (owner row 88). Two callers, one box.
-export { ActCell } from './ActCell'
+export { ActCell, ActPair } from './ActCell'
 //     BONUS ROWS — what a source adds, one row per source, the server's words on both sides. A
 //     ship's skill bonuses (ShipPanel, 0133) and a fleet's crew bonuses (CrewBonuses, 0157) had
 //     hand-written the same row; promoted 2026-10-18 when tests/duplication.spec.ts caught it.

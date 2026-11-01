@@ -1,4 +1,4 @@
-import { ActCell } from './ActCell'
+import { ActCell, ActPair } from './ActCell'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
 import { goodIcon } from './goodIcons'
@@ -108,7 +108,7 @@ export function TradeRow({
         </span>
       }
       value={
-        <span className="grid grid-cols-2 gap-1">
+        <ActPair>
           <PriceCell
             label="buy"
             price={good.buy}
@@ -123,9 +123,10 @@ export function TradeRow({
             dead={aboard > 0 ? null : t('ui.noneOnBoard')}
             selected={selected === 'sell'}
           />
-        </span>
+        </ActPair>
       }
       under="label"
+      pair
       data-testid="trade-row"
     >
       {/* THE CITY'S STOCK AGAINST ITS NORMAL LEVEL (owner, 2026-10-18: "i don't see stock of the trade

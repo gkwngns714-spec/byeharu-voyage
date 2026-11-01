@@ -68,7 +68,9 @@ export function StockGauge({
       // NEVER SHRINKS (2026-10-19, the owner's 1280-px glass): with `min-w-0` a narrow row squeezed the
       // gauge under its own figure and "1205 / 268" was drawn over the bar and the text beside it. The
       // gauge keeps its width; what stands beside it truncates instead.
-      className={`inline-flex shrink-0 items-center gap-1.5 ${className}`}
+      // (2026-11-02) AND IT NEVER RUNS PAST THE ROOM IT STANDS IN: the bar and its figure are 134 px, a phone panel's row 104. The figure
+      // wraps UNDER the bar there (`flex-wrap`), whole; the gauge itself still never shrinks under its own figure.
+      className={`inline-flex max-w-full shrink-0 flex-wrap items-center gap-x-1.5 ${className}`}
     >
       <span className="relative h-1 w-12 shrink-0 overflow-hidden rounded-chip bg-edge" aria-hidden>
         <span className={`absolute inset-y-0 left-0 rounded-chip ${FILL[level]}`} style={{ width: `${fill}%` }} />

@@ -31,7 +31,9 @@ export function CityPanel({
     >
       <div
         data-testid={scrollTestId}
-        className={`bv-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-gutter py-2 ${contentClassName}`}
+        // A QUERY CONTAINER (index.css, `narrow:`): on a phone this panel is half the glass, 139 px of room at 390 and 104 at 320, and
+        // every row, summary row, act cell and face in it asks THIS width — not the screen's — how to stand.
+        className={`@container bv-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-gutter py-2 ${contentClassName}`}
       >
         {children}
       </div>

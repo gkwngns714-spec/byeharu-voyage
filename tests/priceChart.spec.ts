@@ -288,3 +288,26 @@ test('a folded tier draws each side\'s low…high as a band, inside the scale; a
   const long = Array.from({ length: years }, (_, i) => ({ at: new Date(NOW - (years - i) * 86_400_000).toISOString(), ask: 1, bid: 1 }))
   expect(priceChartModel(long, 86_400, NOW)!.xTicks[0].label).toBe(`${MINUS}3y`)
 })
+
+// THE PHONE'S HALF GLASS (2026-11-02, docs/dev-log/2026-11-02-city-phone.md): a compact plane is drawn at its column's own width — 163 px at 390
+// (107 of plot), 128 at 320 (72 of plot) — and three labels that stand apart on the 340-px plane stood on each other there ("−0.5h" over "−0.3h",
+// and in Korean "−0.5시간" over "−0.3시간 지금"). No two x labels stand on each other; the middle one goes first, then the first, and `now`
+// — the last — is never lost. A plane wide enough keeps all of them: the wide chart is exactly what it was.
+test('on a narrow plane no two x labels stand on each other: the middle goes first, then the first, and `now` stays', () => {
+  const pts = series([100, 110, 105], 600, NOW) // three slots of ten minutes: half an hour, so `−0.5h` and `−0.3h` are five glyphs each
+  const labels = (width: number) => priceChartModel(pts, 600, NOW, null, { width, height: 140 })!.xTicks.map((t) => t.label)
+  expect(labels(340)).toEqual([`${MINUS}0.5h`, `${MINUS}0.3h`, 'now'])
+  expect(labels(163)).toEqual([`${MINUS}0.5h`, 'now'])
+  expect(labels(128)).toEqual([`${MINUS}0.5h`, 'now'])
+  expect(labels(96)).toEqual(['now'])
+  // and whatever width, the labels that stay are clear of one another on the painter's own anchoring (first from its start, last to its end)
+  for (const width of [340, 260, 200, 163, 140, 128, 112, 96]) {
+    const ticks = priceChartModel(pts, 600, NOW, null, { width, height: 140 })!.xTicks
+    const spans = ticks.map((t, i) => {
+      const w = t.label.length * 6.6
+      return i === 0 ? [t.x, t.x + w] : i === ticks.length - 1 ? [t.x - w, t.x] : [t.x - w / 2, t.x + w / 2]
+    })
+    for (let i = 1; i < spans.length; i++) expect(spans[i][0] - spans[i - 1][1], `width ${width}: label ${i} stands on label ${i - 1}`).toBeGreaterThanOrEqual(0)
+    expect(ticks[ticks.length - 1].label).toBe('now')
+  }
+})

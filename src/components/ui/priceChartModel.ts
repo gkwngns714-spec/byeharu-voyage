@@ -64,6 +64,42 @@ export const PRICE_CHART_H = 170
 /** Room for the y labels on the left and the x labels under the plot; the plot fills the rest. */
 const PAD = { left: 48, right: 8, top: 10, bottom: 20 }
 
+/** THE WIDTH OF A TICK LABEL, in the plane's own px, estimated from its characters — the model is pure and cannot ask the browser. A
+ *  t-caption (12 px) Inter digit or letter is 6.6 px, a space 3.5, and a Hangul or CJK syllable the full 12.5. It errs wide: a label
+ *  dropped needlessly costs one tick, a label kept that overlaps costs the axis. */
+function labelWidth(label: string): number {
+  let w = 0
+  for (const ch of label) w += (ch.codePointAt(0) ?? 0) >= 0x2e80 ? 12.5 : ch === ' ' ? 3.5 : 6.6
+  return w
+}
+
+/** Air between two neighbouring tick labels, in the plane's px. */
+const TICK_GAP = 6
+
+/** TWO LABELS NEVER STAND ON EACH OTHER. The painter (PriceChart.tsx) sets the first tick from its start, the last to its end and
+ *  every other on its middle; this reads those same extents and drops ticks until each label clears the one before it — an interior
+ *  tick first (but never `now`), then the first, so the last, `now`, is the one label a chart cannot lose. A plane wide enough for
+ *  all of them keeps all of them: the wide chart is exactly what it was. */
+export function declutterTicks(ticks: { x: number; label: string }[]): { x: number; label: string }[] {
+  const now = t('shell.now')
+  const clear = (list: { x: number; label: string }[]) =>
+    list.every((_, i) => {
+      if (i === 0) return true
+      const at = (k: number): [number, number] => {
+        const w = labelWidth(list[k].label)
+        return k === 0 ? [list[k].x, list[k].x + w] : k === list.length - 1 ? [list[k].x - w, list[k].x] : [list[k].x - w / 2, list[k].x + w / 2]
+      }
+      return at(i)[0] - at(i - 1)[1] >= TICK_GAP
+    })
+  let list = [...ticks]
+  while (list.length > 1 && !clear(list)) {
+    const interior = list.findIndex((tick, i) => i > 0 && i < list.length - 1 && tick.label !== now)
+    const drop = interior >= 0 ? interior : 0
+    list = list.filter((_, i) => i !== drop)
+  }
+  return list
+}
+
 export type PriceSide = 'ask' | 'bid'
 
 export interface ChartMark {
@@ -324,7 +360,7 @@ export function priceChartModel(
   // Two labels never stand on each other: a record too short to give its own left label room beside
   // `now` (a fresh record of two slots against six hours of estimate) is labelled at now alone.
   const roomForLeft = nowX - plot.x >= 64
-  const xTicks = view
+  const ticksOnX = view
     ? // THE WINDOW'S OWN EDGES, in time from now, with `now` in the middle where it has room to
       // stand (the estimate puts it inside the window) and the window's midpoint where it does not.
       [
@@ -364,7 +400,7 @@ export function priceChartModel(
       .map(({ x, lo: l }) => `L${x.toFixed(1)} ${l.toFixed(1)}`)
       .join(' ')
     const endLabel = `+${hoursLabel((endMs - nowMs) / 3_600_000)}`
-    if (!view) xTicks.push({ x: plot.x + plot.w, label: endLabel })
+    if (!view) ticksOnX.push({ x: plot.x + plot.w, label: endLabel })
     const bestMs = outlook?.bestAt ? Date.parse(outlook.bestAt) : NaN
     const bestI = Number.isFinite(bestMs) ? estAts.findIndex((t) => t === bestMs) : -1
     const arrive = outlook?.arriveMs
@@ -405,6 +441,11 @@ export function priceChartModel(
       target: stockTarget,
     }
   }
+
+  // THE LABELS ARE THE ONES THAT STAND CLEAR OF EACH OTHER (2026-11-02, the HQ's phone panel): a compact plane is drawn at its column's
+  // own width, and at 390 that is 107 px of plot — "−0.5h", "−0.3h" and "now" stood on one another, and in Korean ("−0.5시간" … "지금")
+  // they stood on one another at 390 as well. The middle label goes first, then the first; `now`, the last, never goes.
+  const xTicks = declutterTicks(ticksOnX)
 
   return {
     width: size.width,
