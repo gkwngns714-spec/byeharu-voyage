@@ -57,10 +57,12 @@ The proof floor is `min(rows served, N)`: the canary world serves one entry, a l
 
 Page and Sheet scroll 0 · the panel stands inside the glass with ≥ `min(rows, N)` rows whole before any press · `ledger-row`, the
 face tabs and the empty state are present · no two text boxes cross · cut text carries its full text · a row with a report
-opens the report tray and closing it leaves the list unchanged, and a face tab narrows the feed and the title counts it (the
-live-sized local world only: `UNFOLD_WORLD=<image>`, otherwise **skipped, with the reason printed** — the canary has no entry
-with a report). No existing spec named the Ledger's summary row, so none is rewritten: `align`, `consistency`, `onepage`
-and `layout`'s table walk read the screen generically.
+opens the report tray and closing it leaves the list unchanged, and a face tab narrows the feed and the title counts it. **The
+rows come from a played world the fixture builds at run time** (`playedWorld(page)` in `tests/unfold.fixture.ts`: this build's
+own image restored in the spec's process, `world.ledger` replaced by a page of fifty, served to the page in place of the built
+image — the way `db.image.spec` builds its wounded image); the young world (the canary: one entry) has its own test. No existing
+spec named the Ledger's summary row, so none is rewritten: `align`, `consistency`, `onepage` and `layout`'s table walk read the
+screen generically.
 
 ## 5. Measured (served build, headless)
 
@@ -75,6 +77,10 @@ on the canary (1 entry) and the 50-entry world; the old page behind the press wa
 
 ## 6. Found on the way
 
+* **CI RED, MINE, FIXED IN THE FOLLOW-UP (#449 → this fix).** The first cut of `ledger.unfold.spec` skipped its tray proof
+  unless an env var served a local image, and CI fails ANY skipped test (`acceptance-shard`: "Every skip in tests/ means the app was
+  not served … neither is a pass"): shard 1/3 and the aggregate `acceptance` of #449 went red after it had merged on its two required
+  checks. The proof is now hermetic (above), runs in CI, and nothing in tests/ skips for want of data.
 * The world image of the first seeded run was stale (older than the current migration chain) and the app sat at *World 0 %*
   for 130 s; a seed has to be rebuilt from the current `dist/db` image every time. Local scaffolding only, nothing in the repo.
 * Judgment call, stated: the clock time stays under the sentence (line two), as on the old page and on the Stats money log; at
