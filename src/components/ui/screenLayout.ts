@@ -54,9 +54,15 @@ export function sheetColumnClass(): string {
 }
 
 /** The Sheet's body — the column, padded. The header takes `sheetColumnClass()` on its own so the
- *  title stands over the column it titles, not over the whole glass. */
-export function sheetBodyClass(): string {
-  return `px-gutter pb-6 ${sheetColumnClass()}`
+ *  title stands over the column it titles, not over the whole glass.
+ *
+ *  `fill` (2026-11-01, the unfold slice) makes the body a flex column that takes the glass the header
+ *  leaves, with 8 px under it instead of 24: a screen whose job is ONE list (a `ListPanel`) gives that
+ *  list the rest of the height instead of letting the tab scroll. Every other caller keeps the old string. */
+export function sheetBodyClass(fill = false): string {
+  return fill
+    ? `flex min-h-0 flex-1 flex-col px-gutter pb-2 ${sheetColumnClass()}`
+    : `px-gutter pb-6 ${sheetColumnClass()}`
 }
 
 /** The docked Tray from `lg`: a side panel between the status strip (top-8) and the nav

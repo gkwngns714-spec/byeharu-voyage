@@ -70,7 +70,7 @@ export { Counter } from './Counter'
 export { COUNT_UP_MS, countUpEase, countUpValue } from './countUp'
 //    THE STAT CELL — a label, that one figure (counting), its move and its line. The dashboard
 //    tile the Stats tab had hand-written fourteen times; no box, because §4.3 allows none.
-export { StatCell } from './StatCell'
+export { StatCell, StatRun } from './StatCell'
 
 // 6. TILE — the selectable block, and TileField, the CSS grid it stands in.
 export { Tile, TileField, type TileState } from './Tile'
@@ -107,6 +107,11 @@ export { TileChoice, TileGrid } from './TileGrid'
 export { tileCellClass, type ChoiceColumns } from './tileStyles'
 //    THE BOUNDED PANE: a long list scrolls inside its own box while the tab's composition stands.
 export { ScrollPane } from './ScrollPane'
+//    THE LIST PANEL (owner, 2026-11-01: *"everything is folded … make things unfolded"*): a list that
+//    stands ON the screen — fixed header, a body that scrolls inside it with a visible cut edge, the
+//    shared `Row` packed to the reach floor, the height the glass leaves free. Stats (five faces),
+//    Codex, Ledger, Rank and Routes compose it; a press opens ONE item's page, never the list.
+export { DenseRows, ListPanel } from './ListPanel'
 export { LanguageSwitch } from './LanguageSwitch'
 
 // 9. BUTTON — flat: primary / secondary / quiet / destructive, 44 and 36, icon.

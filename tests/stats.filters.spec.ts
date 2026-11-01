@@ -1,12 +1,12 @@
 import { test, expect, type Page } from '@playwright/test'
-import { PHONE, closeDetail, openDetail, reachable, ready } from './appReady.fixture'
+import { PHONE, reachable, ready } from './appReady.fixture'
 import { filterStorageKey, oneOf, readFilterChoice } from '../src/components/ui/filterState'
 import { sortMerchants, filterCities, sortCities } from '../src/features/stats/statsFilters'
 import type { StatsCityRow, StatsMerchantRow } from '../src/lib/rpc'
 
 // THE STATS FILTERS (0244, owner row 228: *"also create filter for all parts in stats, for example in cities such as
 // by area (continents), or by richest, etc"*). One shared FilterBar (chips + pickers + a sort), remembered per face
-// (filterState.ts). Pinned: the Cities face's Europe chip leaves only European cities (the server's
+// (filterState.ts). Pinned: the Cities face's Europe area leaves only European cities (the server's
 // public.region_area), its Richest sort puts the bigger purse first, nothing scrolls sideways on a phone, and the
 // pure halves hold (a remembered choice never trusts what it reads). It names Cities.tsx and FilterBar.tsx so CI's
 // rule N selects it.
@@ -24,15 +24,13 @@ test('Cities: Europe leaves only European cities; Richest puts the bigger purse 
   await ready(page)
   await page.getByRole('tab', { name: 'Cities', exact: true }).click()
   await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 120_000 })
-  // THE FILTERS ARE THEIR OWN PAGE (owner, 2026-10-31): open it, choose Europe + Richest, close.
-  await openDetail(page, 'stats-cities-filters')
-  await page.getByTestId('filter-chip-europe').click()
-  await expect(page.getByTestId('filter-chip-europe')).toHaveAttribute('aria-pressed', 'true')
+  // THE FILTERS STAND IN THE LIST'S OWN HEADER (the unfold slice, 2026-11-02: they were a page of tiles behind a
+  // row): the area and the sort are two selects over the rows, nothing to open.
+  await page.getByTestId('filter-pick-area').selectOption('europe')
+  await expect(page.getByTestId('filter-pick-area')).toHaveValue('europe')
   await page.getByTestId('filter-pick-sort').selectOption('richest')
-  await closeDetail(page)
 
-  // THE LIST IS ITS OWN PAGE: open it and read the filtered, sorted rows.
-  await openDetail(page, 'stats-cities-list')
+  // THE LIST IS THE PANEL BELOW THEM: read the filtered, sorted rows.
   const names = page.getByTestId('stats-city-name')
   await expect.poll(() => names.count(), { timeout: 60_000 }).toBeGreaterThan(10)
   const areas = await names.evaluateAll((els) => els.map((e) => e.getAttribute('data-area')))
@@ -42,16 +40,13 @@ test('Cities: Europe leaves only European cities; Richest puts the bigger purse 
   expect(purses.length).toBeGreaterThan(1)
   expect(purses[0]).toBeGreaterThanOrEqual(purses[1])
   await noSidewaysScroll(page)
-  await closeDetail(page)
 
   // remembered: the face comes back on Europe
   await page.getByRole('tab', { name: 'Markets', exact: true }).click()
   await expect(page.getByTestId('stats-markets-filters')).toBeVisible({ timeout: 60_000 })
   await noSidewaysScroll(page)
   await page.getByRole('tab', { name: 'Cities', exact: true }).click()
-  await openDetail(page, 'stats-cities-filters')
-  await expect(page.getByTestId('filter-chip-europe')).toHaveAttribute('aria-pressed', 'true', { timeout: 60_000 })
-  await closeDetail(page)
+  await expect(page.getByTestId('filter-pick-area')).toHaveValue('europe', { timeout: 60_000 })
 })
 
 test('a remembered choice never trusts what it reads', () => {
