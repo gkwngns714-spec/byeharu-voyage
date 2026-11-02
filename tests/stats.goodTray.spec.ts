@@ -23,6 +23,8 @@ for (const vp of [PHONE, WIDE]) {
     await expect(page.getByTestId('stats-good-tray')).toHaveCount(0)
 
     const top = () => rows.first().evaluate((el) => el.getBoundingClientRect().top)
+    // the click scrolls its target into view first, so measure from there: the law is that OPENING the tray moves nothing
+    await rows.first().scrollIntoViewIfNeeded()
     const before = await top()
     await rows.first().click()
     const tray = page.getByTestId('stats-good-tray')
