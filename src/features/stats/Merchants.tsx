@@ -4,6 +4,7 @@ import {
   Card,
   CardRow,
   Clip,
+  Counter,
   Empty,
   FactsLine,
   FilterBar,
@@ -96,7 +97,8 @@ export function MerchantsFace() {
         <>
           <CardRow>
             <Card title={t('stats.theirPurses')} data-testid="stats-chart-purses">
-              <StatCell look="stacked" label={t('stats.theirPurses')} value={v.purse ?? 0} format={formatDucats} />
+              {/* THE TITLE IS THE LABEL: a card called "Their money" does not say it again over its figure */}
+              <Counter value={v.purse ?? 0} format={formatDucats} size="figure" />
               <StatsChart
                 look="chart"
                 title={t('stats.theirPurses')}
@@ -110,7 +112,7 @@ export function MerchantsFace() {
               />
             </Card>
             <Card title={t('stats.fleetsAtSea')} data-testid="stats-chart-sea">
-              <StatCell look="stacked" label={t('stats.fleetsAtSea')} value={v.sailing ?? 0} format={formatInt} />
+              <Counter value={v.sailing ?? 0} format={formatInt} size="figure" />
               <StatsChart
                 look="chart"
                 title={t('stats.fleetsAtSea')}
