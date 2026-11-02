@@ -1,16 +1,21 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, Row, Tray, type TrayDetent } from '../../components/ui'
-import { formatFixed, formatInt, formatOfTotal } from '../../lib/format'
+import { ALL, Card, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSplit, RankBars, Row, Tray, type TrayDetent } from '../../components/ui'
+import { formatFixed, formatInt, formatKnots, formatOfTotal, formatTons } from '../../lib/format'
 import type { SnapshotShipClass } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { HullCountry } from '../../live/HullCountry'
 import { HullTech } from '../../live/HullTech'
 import { nationNameOf, useWorld } from '../../live/worldStore'
+import { optionsOf } from './codexFilters'
 import { NoAnswer } from './NoAnswer'
 import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 
-// THE SHIPS FACE — every class of hull, as the shipwright rates her, ON THE GLASS (the unfold slice,
-// 2026-11-02): one row a class in the Codex's list panel, the four filters one line of selects in its header.
+// THE SHIPS FACE — every class of hull, as the shipwright rates her, ON THE PAGE (2026-11-02, owner row 267; the pattern
+// is Stats', docs/dev-log/2026-11-02-stats-design.md). MAIN | SIDE: MAIN is ONE list card — a row a class, the four filters one
+// line of pickers in its header, the search on its title line, the rows in as many columns as the main holds; the SIDE is the
+// tray's column and holds the two figures a hull is chosen by AS GRAPHICS — the biggest holds and the fastest hulls among the
+// classes the filters leave, five each, ranked bars (the question a list of figures cannot answer: which of these is big).
+// A press on a row opens the class's tray, which slides over the side column and moves nothing.
 //
 // HOLD, SPEED, CREW, AND NOTHING ELSE ON THE ROW (docs/UI_DIRECTION.md §6). `build 40 h` and
 // `cost 2,400 d.` described hulls no order can commission — domain/fleet/statGloss.ts says so in
@@ -18,7 +23,8 @@ import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 // a stat the player cannot use. Hull IS read (repair reads condition), so it is in the tray with the
 // tier. Draft is shown there as a fact of the hull only — 0139 removed the gate that read it.
 //
-// SERVED ORDER: the snapshot serves ship classes by tier (0009:97) — the catalogue's own ladder.
+// SERVED ORDER: the snapshot serves ship classes by tier (0009:97) — the catalogue's own ladder. The two boards are
+// sorted on a served figure, which is presentation, not authorship.
 //
 // THE COUNTRY (0130): each class arrives with its line's flag nation; the row and the tray print
 // it through the one renderer, HullCountry.
@@ -29,6 +35,8 @@ import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 // the ones below and nowhere else.
 
 const EMPTY: readonly SnapshotShipClass[] = []
+/** How many hulls a board ranks. */
+const BOARD = 5
 
 /** The words for the served size (`class_profile.size`), role and tech. */
 // Keys in the codex dictionary (`size_3`, `role_trade`, `tech_F`); a value with no entry prints as served.
@@ -38,29 +46,7 @@ const roleWord = (r: string | null | undefined) => (r == null ? null : word(`rol
 const techWord = (t: string | null | undefined) => (t == null ? null : word(`tech_${t}`, t))
 
 type Filters = { line: string; size: string; role: string; tech: string }
-const ALL = 'all'
 const NO_FILTER: Filters = { line: ALL, size: ALL, role: ALL, tech: ALL }
-
-interface Option {
-  id: string
-  label: string
-}
-
-/** The distinct served values of one key, in a stable order, as options behind "All". */
-function optionsOf(
-  all: string,
-  classes: readonly SnapshotShipClass[],
-  key: (s: SnapshotShipClass) => string | null,
-  label: (value: string, s: SnapshotShipClass) => string,
-  order: (a: string, b: string) => number = (a, b) => a.localeCompare(b),
-): Option[] {
-  const firstOf = new Map<string, SnapshotShipClass>()
-  for (const s of classes) {
-    const v = key(s)
-    if (v != null && !firstOf.has(v)) firstOf.set(v, s)
-  }
-  return [{ id: ALL, label: all }, ...[...firstOf.keys()].sort(order).map((v) => ({ id: v, label: label(v, firstOf.get(v)!) }))]
-}
 
 export function ShipsFace({ query, search }: { query: string; search: ReactNode }) {
   const t = useT()
@@ -76,8 +62,8 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
     () => ({
       line: optionsOf(tNow('codex.country'), classes, (s) => s.line ?? null, (v, s) => (s.line_nation ? nationNameOf(nationByCode, s.line_nation) : v)),
       size: optionsOf(tNow('codex.size'), classes, (s) => (s.size == null ? null : String(s.size)), (v) => sizeWord(Number(v)) ?? v, (a, b) => Number(a) - Number(b)),
-      role: optionsOf(tNow('codex.role'), classes, (s) => s.role ?? null, (v) => roleWord(v) ?? v),
-      tech: optionsOf(tNow('codex.tech'), classes, (s) => s.tech ?? null, (v) => techWord(v) ?? v),
+      role: optionsOf(tNow('codex.role'), classes, (s) => s.role ?? null, (v) => roleWord(v) ?? v, (a, b) => a.localeCompare(b)),
+      tech: optionsOf(tNow('codex.tech'), classes, (s) => s.tech ?? null, (v) => techWord(v) ?? v, (a, b) => a.localeCompare(b)),
     }),
     [classes, nationByCode],
   )
@@ -94,6 +80,10 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
     )
   }, [classes, query, filters])
 
+  // THE TWO BOARDS: the biggest holds and the fastest hulls among the rows on the face, the name breaking a tie
+  const byHold = useMemo(() => [...rows].sort((a, b) => b.hold - a.hold || a.name.localeCompare(b.name)).slice(0, BOARD), [rows])
+  const bySpeed = useMemo(() => [...rows].sort((a, b) => b.speed_kn - a.speed_kn || a.name.localeCompare(b.name)).slice(0, BOARD), [rows])
+
   const picks = (['line', 'size', 'role', 'tech'] as const)
     .filter((k) => facets[k].length > 2)
     .map((k) => ({
@@ -106,42 +96,73 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
 
   return (
     <>
-      <ListPanel
-        title={t('codex.countShips', { n: formatInt(rows.length), count: rows.length })}
-        trailing={search}
-        controls={picks.length > 0 ? <FilterBar compact data-testid="ship-filters" picks={picks} /> : undefined}
-        data-testid="codex-list"
-      >
-        {rows.length === 0 ? (
-          <NoAnswer />
-        ) : (
-          rows.map((s) => (
-            <Row
-              key={s.code}
-              mark={<Icon name="ship" size={20} />}
-              // THE NAME IS NEVER CUT: the row's first line is the name and the hold; the speed leads the facts line
-              // under it. With both figures beside the name a 320-px glass left it 45–55 px (measured: "Niaochuan"
-              // needs 71, "Queen's Pinnace" 112), so the first cut build showed "Niao…".
-              label={s.name}
-              value={<Figure value={formatInt(s.hold)} unit={t('trade.tonsUnit')} />}
-              chevron
-              onClick={() => {
-                setDetent('half')
-                setOpen(s)
-              }}
-              data-testid="ship-tile"
-            >
-              <FactsLine>
-                <Figure value={formatFixed(s.speed_kn, 1)} unit={t('trade.knotsUnit')} />
-                {s.line_nation && <HullCountry nation={s.line_nation} compact />}
-                <HullTech tech={s.tech} />
-                <span>{[sizeWord(s.size), roleWord(s.role), `${s.family} · ${s.rig}`].filter(Boolean).join(' · ')}</span>
-                <span>{`crew ${formatOfTotal(s.crew_required, s.crew_max)}`}</span>
-              </FactsLine>
-            </Row>
-          ))
-        )}
-      </ListPanel>
+      <PageSplit
+        data-testid="codex-ships"
+        // no `sideFirst`: on a phone the boards stand AFTER the list — the Codex's purpose is the list, and its first rows are on the first glass
+        stickySide
+        main={
+          <ListPanel
+            look="card"
+            columns="fit"
+            title={t('codex.ships')}
+            count={formatInt(rows.length)}
+            trailing={search}
+            controls={picks.length > 0 ? <FilterBar compact data-testid="ship-filters" picks={picks} /> : undefined}
+            data-testid="codex-list"
+          >
+            {rows.length === 0 ? (
+              <NoAnswer />
+            ) : (
+              rows.map((s) => (
+                <Row
+                  key={s.code}
+                  mark={<Icon name="ship" size={20} />}
+                  // THE NAME IS NEVER CUT: the row's first line is the name and the hold; the speed leads the facts line
+                  // under it. With both figures beside the name a 320-px glass left it 45–55 px (measured: "Niaochuan"
+                  // needs 71, "Queen's Pinnace" 112), so the first cut build showed "Niao…".
+                  label={s.name}
+                  value={<Figure value={formatInt(s.hold)} unit={t('trade.tonsUnit')} />}
+                  chevron
+                  hairline={false}
+                  onClick={() => {
+                    setDetent('half')
+                    setOpen(s)
+                  }}
+                  data-testid="ship-tile"
+                >
+                  <FactsLine>
+                    <Figure value={formatFixed(s.speed_kn, 1)} unit={t('trade.knotsUnit')} />
+                    {s.line_nation && <HullCountry nation={s.line_nation} compact />}
+                    <HullTech tech={s.tech} />
+                    <span>{[sizeWord(s.size), roleWord(s.role), `${s.family} · ${s.rig}`].filter(Boolean).join(' · ')}</span>
+                    <span>{`crew ${formatOfTotal(s.crew_required, s.crew_max)}`}</span>
+                  </FactsLine>
+                </Row>
+              ))
+            )}
+          </ListPanel>
+        }
+        side={
+          <>
+            <Card title={t('codex.biggestCargo')} data-testid="codex-ships-cargo">
+              <RankBars
+                rules={false}
+                format={formatInt}
+                empty={t('codex.noMatches')}
+                rows={byHold.map((s) => ({ id: s.code, label: s.name, value: s.hold, text: formatTons(s.hold) }))}
+              />
+            </Card>
+            <Card title={t('codex.fastest')} data-testid="codex-ships-speed">
+              <RankBars
+                rules={false}
+                format={formatInt}
+                empty={t('codex.noMatches')}
+                rows={bySpeed.map((s) => ({ id: s.code, label: s.name, value: s.speed_kn, text: formatKnots(s.speed_kn) }))}
+              />
+            </Card>
+          </>
+        }
+      />
 
       {open && (
         <Tray

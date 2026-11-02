@@ -17,6 +17,7 @@ import {
   StatCell,
   StockGauge,
   categoryLabel,
+  ALL,
   deltaTone,
   goodClassRow,
   oneOf,
@@ -31,7 +32,6 @@ import { useWorld } from '../../live/worldStore'
 import { GoodTray } from './GoodTray'
 import { goodName, movePct } from './statsFaces'
 import { useLiveRead } from './statsLive'
-import { ALL } from './statsFilters'
 
 // MARKETS — every good as a stock-market table, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267:
 // *"it looks so wrong … too packed"*). The face is MAIN | SIDE (screenLayout.ts "THE PAGE"): MAIN is ONE list card — the goods,

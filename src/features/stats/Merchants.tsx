@@ -20,6 +20,7 @@ import {
   Skeleton,
   StackedBar,
   StatCell,
+  ALL,
   deltaTone,
   oneOf,
   useFilterChoice,
@@ -33,7 +34,7 @@ import { CARD_CHART_H, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
-import { ALL, MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
+import { MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 
 // MERCHANTS — the companies the world keeps, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267:
 // *"it looks so wrong … too packed"*). MAIN | SIDE (screenLayout.ts "THE PAGE"): the SIDE — the tray's column — holds the

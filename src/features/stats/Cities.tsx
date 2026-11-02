@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Button, DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, ListPanel, Note, Row, Skeleton, oneOf, useFilterChoice } from '../../components/ui'
+import { ALL, Button, DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, ListPanel, Note, Row, Skeleton, oneOf, useFilterChoice } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsCities, type StatsCities, type StatsCityRow } from '../../lib/rpc'
@@ -7,7 +7,7 @@ import { nationNameOf, useWorld } from '../../live/worldStore'
 import { CityDetail } from './CityDetail'
 import { portName } from './statsFaces'
 import { useLiveRead } from './statsLive'
-import { ALL, CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sortCities, type CitySort } from './statsFilters'
+import { CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sortCities, type CitySort } from './statsFilters'
 
 // CITIES — every harbour, open to everyone (0223, owner row 197), ALL ON THE FACE (owner, 2026-11-01, row 260). It
 // was two summary rows — the filters on one page, the 246 cities on another. It is ONE list card across the whole page

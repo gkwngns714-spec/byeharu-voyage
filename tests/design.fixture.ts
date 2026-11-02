@@ -39,6 +39,12 @@ export interface DesignRead {
   glass: { w: number; h: number }
   /** The sheet's visible text, leftmost to rightmost (px from the glass's left), or null when it has none. */
   span: { left: number; right: number } | null
+  /** THE CONTENT BLOCK: the text span widened to the edges of the page's blocks (`[data-card]` / `[data-list-panel]`), or the text
+   *  span alone where a screen has no blocks. Added 2026-11-02 for the Codex: a card standing at the page's margin IS content at
+   *  the margin, though its words end at its padding — a kind grid's words are centred in their cells, a board's figure hugs its
+   *  label — and the Stats sheet only reaches its margin by the "Updated" line of its title bar. Text alone would read a page of
+   *  cards as a column kept clear. `span` stays what it was (the Stats laws read it). */
+  block: { left: number; right: number } | null
   /** Boxes other than the sheet that scroll inside themselves, by test id or tag. */
   scrollers: string[]
   /** Controls under 44 px in width or height: `id "label" W×H`. */
@@ -130,9 +136,19 @@ export async function readDesign(
     const sideEl = root.querySelector('[data-page-side]')
     const side = sideEl && vis(sideEl) ? { l: sideEl.getBoundingClientRect().left, w: sideEl.getBoundingClientRect().width } : null
 
+    // the content block: the text, widened to the blocks' own edges (only the blocks on the glass count, as the text does)
+    let blockLeft = left
+    let blockRight = right
+    for (const c of cards) {
+      if (c.l + c.w <= 0 || c.l >= innerWidth) continue
+      blockLeft = Math.min(blockLeft, c.l)
+      blockRight = Math.max(blockRight, c.l + c.w)
+    }
+
     return {
       glass: { w: innerWidth, h: innerHeight },
       span: Number.isFinite(left) ? { left, right } : null,
+      block: Number.isFinite(blockLeft) ? { left: blockLeft, right: blockRight } : null,
       scrollers,
       smallControls,
       rows,

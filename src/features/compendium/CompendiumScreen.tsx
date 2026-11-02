@@ -12,8 +12,16 @@ import { useLocale, useT } from '../../lib/i18n'
 // CODEX — the 도감: every good, hull, officer and flag the world serves, ON THE GLASS (owner, 2026-11-01, row
 // 260: *"everything is folded … make things unfolded, minimize scrolling"*). It was the four faces as a tile grid
 // and ONE summary row (`Goods 629 · Open`) with three quarters of the screen empty under it; the 629 goods were
-// behind the press. It is now the four faces over ONE list panel: the face's rows, with the search (and each
-// face's own filters) in the panel's header. A press on a row opens THAT item's tray, as it always did.
+// behind the press. A press on a row opens THAT item's tray, as it always did.
+//
+// THE PAGE, NOT THE PACKED COLUMN (2026-11-02, owner row 267: *"it looks so wrong. The past was better. right now
+// everything is on left, too packed. this was a mistake"*). The unfold slice put the four faces over ONE list panel in a
+// 75-rem column with 26 rem kept clear at the right, its rows at their text line, scrolling inside themselves. The Codex is
+// now a PAGE (`Sheet layout="page"`, screenLayout.ts "THE PAGE") on the pattern Stats set (docs/dev-log/2026-11-02-stats-design.md,
+// Card.tsx): MAIN | SIDE on the glass, the face's list a card whose rows stand in columns, the side column — the tray's — holding
+// the face's second block (the Goods' kind and rarity choices, the Ships' and Captains' boards, the local rulers), the page
+// scrolling, never a list inside itself. A tray opened from a row slides over the side column and nothing under it moves.
+// The numbers it was measured to are in docs/dev-log/2026-11-02-codex-design.md.
 
 const FACES = [
   { id: 'goods', label: 'codex.goods', noun: 'codex.filter_goods' },
@@ -56,11 +64,11 @@ function CompendiumBody({ title }: { title: string }) {
   const [query, setQuery] = useState('')
   const current = FACES.find((f) => f.id === face) ?? FACES[0]
 
-  // THE SEARCH STANDS ON THE PANEL'S TITLE LINE, beside the count, so a list with a search and no filter has a
-  // one-line header; each face hands it to its own panel.
+  // THE SEARCH STANDS ON THE LIST CARD'S TITLE LINE, beside the count, so a list with a search and no filter has a
+  // one-line header; each face hands it to its own card.
   const search = (
     <Field
-      className="w-40"
+      className="w-44"
       value={query}
       onChange={(e) => setQuery(e.target.value)}
       onClear={() => setQuery('')}
@@ -72,8 +80,9 @@ function CompendiumBody({ title }: { title: string }) {
     />
   )
 
+  // THE PAGE SCROLLS (2026-11-02, owner row 267): no `fill`, no inner scroll — a face is as tall as its cards.
   return (
-    <Sheet title={title} fill data-testid="codex">
+    <Sheet title={title} layout="page" data-testid="codex">
       <Segmented
         label={t('codex.faces')}
         segments={FACES.map((f) => ({ id: f.id, label: t(f.label) }))}
@@ -83,7 +92,7 @@ function CompendiumBody({ title }: { title: string }) {
           setFace(next)
           setQuery('')
         }}
-        className="mb-1 w-fit max-w-full shrink-0"
+        className="w-fit max-w-full"
       />
       {face === 'goods' && <GoodsFace query={query} search={search} />}
       {face === 'ships' && <ShipsFace query={query} search={search} />}
