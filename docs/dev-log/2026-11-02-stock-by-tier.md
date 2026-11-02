@@ -20,5 +20,7 @@ Owner: "higher tier items should have less quantity for purchase. Also designate
 ## What the first prod deploy taught
 The first push was REFUSED by 0303's own self-assert and rolled back (prod head stayed 0302, 12 cron jobs active): 55,358 rows would have changed their stock/max ratio. Cities hold a surplus (stock over max); the first draft clamped stock to the new, lower max, which would have raised those prices. The local PGlite world has no surplus, so only prod could show it. Fix: stock moves by exactly the max's ratio, no clamp. LESSON: a re-cut of live market rows must be proved against prod's real distribution (read-only SELECT of the projected result) before the push.
 
-## After-check (30 minutes)
-To be filled: cron failures since the deploy, voyage lag, market job time, a price spot-check on 10 cut goods.
+## After-check (08:18-08:22 UTC, 4-8 minutes after the push landed at ~08:14)
+- `scripts/ops/health.sh`: HEALTH: no thresholds tripped. Prod head 303. Average voyage lag 0.3 s (max 0.3 s), 6 past due of 576 sailing. The hourly reconcile finished 0.2 h ago. WAL 31.6 MB/min, `port_goods` 100 % HOT. Stats count 14 min old.
+- Failed cron runs in the last 3 h: 6, ALL `job canceled` at deploy moments (05:23 the purse deploy; 08:04 the refused first push; 08:14 this deploy) - the deploy script cancels the jobs on purpose while it pushes. None failed on its own.
+- Not yet done: a price spot-check on cut goods one hour on, and a second health run at +30 min.
