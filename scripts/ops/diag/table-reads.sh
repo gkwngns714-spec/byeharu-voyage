@@ -4,7 +4,7 @@
 . "$(dirname "$0")/_link.sh"
 SECS=${1:-180}; SCD="${TMPDIR:-/tmp}"
 SQL="select s.relname, coalesce(i.heap_blks_read,0) as heap_r, coalesce(i.heap_blks_hit,0) as heap_h, coalesce(i.idx_blks_read,0) as idx_r, coalesce(i.idx_blks_hit,0) as idx_h, coalesce(i.toast_blks_read,0)+coalesce(i.tidx_blks_read,0) as toast_r, s.seq_scan, s.seq_tup_read, s.idx_scan, pg_relation_size(s.relid)/1048576 as mb, extract(epoch from now()) as t from pg_stat_user_tables s left join pg_statio_user_tables i on i.relid = s.relid where s.schemaname = 'public'"
-read_now() { timeout 90 supabase db query --linked --output-format json "$SQL" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(JSON.stringify(j.rows))})'; }
+read_now() { timeout 90 supabase db query --linked $SB_RO --output-format json "$SQL" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(JSON.stringify(j.rows))})'; }
 read_now > "$SCD/RA.json"; echo "reading A taken $(date -u +%H:%M:%S)"
 target=$(( $(date +%s) + SECS )); while [ "$(date +%s)" -lt "$target" ]; do sleep 5; done
 read_now > "$SCD/RB.json"; echo "reading B taken $(date -u +%H:%M:%S)"

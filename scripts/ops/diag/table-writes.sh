@@ -5,7 +5,7 @@
 SECS=${1:-180}
 SCD="${TMPDIR:-/tmp}"
 SQL="select s.relname, s.n_tup_ins as ins, s.n_tup_upd as upd, s.n_tup_del as del, s.n_tup_hot_upd as hot, (case when c.reltuples > 0 then pg_relation_size(c.oid)::numeric / c.reltuples else 100 end) as row_bytes, extract(epoch from now()) as t from pg_stat_user_tables s join pg_class c on c.oid = s.relid where s.schemaname = 'public'"
-read_now() { timeout 90 supabase db query --linked --output-format json "$SQL" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(JSON.stringify(j.rows))})'; }
+read_now() { timeout 90 supabase db query --linked $SB_RO --output-format json "$SQL" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(JSON.stringify(j.rows))})'; }
 read_now > "$SCD/A.json"; echo "reading A taken $(date -u +%H:%M:%S)"
 target=$(( $(date +%s) + SECS )); while [ "$(date +%s)" -lt "$target" ]; do sleep 5; done
 read_now > "$SCD/B.json"; echo "reading B taken $(date -u +%H:%M:%S)"
