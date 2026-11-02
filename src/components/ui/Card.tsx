@@ -1,9 +1,9 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { cardSpanClass, pageGridClass, type CardSpan } from './screenLayout'
+import { PAGE_GAP, pageSplitClass } from './screenLayout'
 import { StatCell } from './StatCell'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE PAGE'S PIECES — a grid, a card, a stat card (2026-11-02, owner row 267)
+// THE PAGE'S PIECES — a split, a card, a stat card (2026-11-02, owner row 267)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // *"i want you to redesign the looks of the game. for example stats, it looks so wrong. The past was
@@ -15,23 +15,76 @@ import { StatCell } from './StatCell'
 // the PATTERN every screen takes in its turn (docs/dev-log/2026-11-02-stats-design.md has the measured
 // numbers and what the next screen copies):
 //
-//   Sheet layout="page"   the container: centred, at most 90 rem, margins 16 · 24 · 48, the title at 30 px
-//   PageGrid              twelve columns from `md`, 20-24 px gutters; one column below
-//   Card                  a block with ROOM: 16-px corners (`rounded-sheet`), one tone step and one hairline,
-//                         16 px of padding on a phone and 24 from `lg`, a title at 16 px (18 from `md`)
-//   StatCard              a card that is ONE figure: the label at 14 px above it, the figure at 24 px
+//   Sheet layout="page"   the container: centred, content at most 80 rem, margins 16 · 24 · 32 · 40, the title 30 px
+//   StatStrip             a row of stat cards across the page (the live band): 1 · 2 · 4 across
+//   PageSplit             MAIN | SIDE from 1,024 px; the SIDE is the tray's column and is always used
+//   CardRow               two cards across inside a column (from 768; one under it at 1,024-1,279, where main is 584)
+//   Card                  a block with ROOM: 12-px corners, one tone step and one hairline, 16 px of padding on a
+//                         phone, 20 from 768 and 24 from 1,280, a title at 16 px (18 from 768)
+//   StatCard              a card that is ONE figure: the label at 14 px over the figure at 24 px
 //   StatCell look=…       the same figure inside a card: `stacked` (label over figure) or `line` (label left,
 //                         figure right) — never a label and a figure hugging at 8 px
-//   ListPanel look="card" a list as a card: rows 52-60 px, whitespace instead of a rule between rows, a gentle
-//                         hover, the page scrolling (never an inner scroll)
+//   ListPanel look="card" a list as a card: rows 52-60 px, whitespace and not a rule between rows, a gentle hover,
+//                         figures on the row's right edge, the page scrolling (never an inner scroll)
 //
-// NO SECOND SKIN. A card is `surface` on the world with the `edge` hairline (docs/UI_DIRECTION.md §4.3: a
-// tone step, and where a step will not do, a hairline — never a box). It holds `surface-2` insets (a picker, a
-// chip) but never another card. The grid decides widths, not the card: a card takes a `span`
-// (screenLayout.ts `CardSpan`), and the figure cards are never wider than 560 px at any glass.
+// NO SECOND SKIN. A card is `surface` on the world with the `edge` hairline (docs/UI_DIRECTION.md §4.3: a tone step,
+// and where a step will not do, a hairline — never a box). It holds `surface-2` insets (a picker, a chip) but never
+// another card. The grid decides widths, not the card: no card is wider than a column of the page, and a figure card is
+// never wider than 560 px at any glass (408 px in a CardRow at 1,440).
 
-/** THE 12-COLUMN PAGE GRID. Children are `Card`s (or anything that takes a `span` class). */
-export function PageGrid({
+/** A custom `data-*` hook a caller may put on a split (a face's own test id, its span). */
+type DataAttrs = { [K in `data-${string}`]?: string | number | boolean | undefined }
+
+/** THE STAT STRIP: a row of `StatCard`s across the whole page — one column on a phone (each a line), two from 640, four from
+ *  1,280 (302 px a card at 1,440: the world's money, nine digits and a coin, is 188 px at 24 px and fits it with its padding). */
+export function StatStrip({
+  className = '',
+  children,
+  ...rest
+}: {
+  className?: string
+  children: ReactNode
+  'aria-label'?: string
+} & { 'data-testid'?: string }) {
+  return (
+    <section className={`grid grid-cols-1 ${PAGE_GAP} sm:grid-cols-2 xl:grid-cols-4 ${className}`} data-stat-strip="" {...rest}>
+      {children}
+    </section>
+  )
+}
+
+/** MAIN | SIDE — the page's one split (screenLayout.ts "THE PAGE"). From 1,024 px `main` stands left and `side` stands in the
+ *  tray's column (352 · 384 · 416 px), top-aligned (neither is stretched to the other's height, so a short side leaves its
+ *  space under it rather than padding a card); below 1,024 px they are one column. `sideFirst` puts the side ABOVE main
+ *  there (a screen whose side holds what the main list is read with: the filters, the day's figures) and leaves the
+ *  wide order alone. A tray opened from either slides over the side column. */
+export function PageSplit({
+  main,
+  side,
+  sideFirst = false,
+  className = '',
+  ...rest
+}: {
+  main: ReactNode
+  side: ReactNode
+  sideFirst?: boolean
+  className?: string
+} & DataAttrs & { 'data-testid'?: string }) {
+  return (
+    <div className={`${pageSplitClass()} ${className}`} data-page-split="" {...rest}>
+      <div className={`flex min-w-0 flex-col ${PAGE_GAP} ${sideFirst ? 'lg:order-1' : ''}`} data-page-main="">
+        {main}
+      </div>
+      <aside className={`flex min-w-0 flex-col ${PAGE_GAP} ${sideFirst ? 'order-first lg:order-2' : ''}`} data-page-side="">
+        {side}
+      </aside>
+    </div>
+  )
+}
+
+/** TWO CARDS ACROSS: inside a column of the page, two from 768 (a page of one column is 720 px there), one at 1,024-1,279
+ *  (main is 584 px: two would be 280 each), two again from 1,280 (384 · 408 px). */
+export function CardRow({
   className = '',
   children,
   ...rest
@@ -40,39 +93,17 @@ export function PageGrid({
   children: ReactNode
 } & { 'data-testid'?: string }) {
   return (
-    <div className={`${pageGridClass()} ${className}`} data-page-grid="" {...rest}>
+    <div className={`grid grid-cols-1 ${PAGE_GAP} md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 ${className}`} {...rest}>
       {children}
     </div>
   )
 }
 
-/** A ZONE OF CARDS — several cards that stand in one span of the page and lay themselves out two across
- *  (one on a phone). It is how a tall card (a log, a list) stands BESIDE a block of figure cards without a
- *  row-span stretching them: the zone is its own grid, so the tall card's height moves nothing in it. */
-export function CardZone({
-  span = 'zone',
-  className = '',
-  children,
-  ...rest
-}: {
-  span?: CardSpan
-  className?: string
-  children: ReactNode
-} & { 'data-testid'?: string }) {
-  return (
-    <div className={`${cardSpanClass(span)} grid min-w-0 grid-cols-1 content-start gap-4 sm:gap-5 md:grid-cols-2 lg:gap-6 ${className}`} {...rest}>
-      {children}
-    </div>
-  )
-}
-
-/** THE CARD: a titled block with room around its content. `title` is the card's own words (16 px, 18 from `lg`);
- *  `aside` is the ONE small control of the title's line (a window picker); `compact` is for a card that is one
- *  figure. Without a `span` the card fills the cell it is put in (inside a `CardZone`, or a plain stack). */
+/** THE CARD: a titled block with room around its content. `title` is the card's own words (16 px, 18 from 768); `aside` is
+ *  the ONE small control of the title's line (a window picker); `compact` is for a card that is one figure. */
 export function Card({
   title,
   aside,
-  span,
   compact = false,
   className = '',
   children,
@@ -80,7 +111,6 @@ export function Card({
 }: {
   title?: ReactNode
   aside?: ReactNode
-  span?: CardSpan
   compact?: boolean
   className?: string
   children?: ReactNode
@@ -88,9 +118,8 @@ export function Card({
   return (
     <section
       className={[
-        'min-w-0 rounded-sheet border border-edge bg-surface',
-        compact ? 'p-4 lg:px-6 lg:py-5' : 'p-4 sm:p-5 lg:p-6',
-        span === undefined ? '' : cardSpanClass(span),
+        'min-w-0 rounded-tile border border-edge bg-surface',
+        compact ? 'p-4 md:px-5 md:py-4 xl:px-6 xl:py-5' : 'p-4 md:p-5 xl:p-6',
         className,
       ].join(' ')}
       data-card=""
@@ -107,56 +136,18 @@ export function Card({
   )
 }
 
-/** A STAT CARD: one labelled figure and nothing else — the page's live band (money, at sea, trades, the world's
- *  money). The label (14 px, muted) stands over the figure (24 px, tabular) from `sm`; on a phone the card is one
- *  line, the label at its left and the figure at its right, so four of them cost 56 px each and not 84. The
- *  figure counts to its new value (`StatCell` → `Counter`). Every other prop is a `StatCell`'s. */
-export function StatCard({
-  span = 'quarter',
-  className = '',
-  ...stat
-}: { span?: CardSpan } & Omit<ComponentProps<typeof StatCell>, 'look'>) {
+/** A STAT CARD: one labelled figure and nothing else — the page's live band (money, at sea, trades, the world's money). The
+ *  label (14 px, muted) stands over the figure (24 px, tabular); on a phone the card is one line, the label at its left and
+ *  the figure at its right (the figure drops under its label only where the two do not fit one line), so four of them cost
+ *  56 px each and not 84. The figure counts to its new value (`StatCell` → `Counter`). Every other prop is a `StatCell`'s. */
+export function StatCard({ className = '', ...stat }: Omit<ComponentProps<typeof StatCell>, 'look'>) {
   return (
-    <Card span={span} compact>
+    <Card compact>
       <StatCell
         look="stacked"
-        className={`max-sm:flex-row max-sm:items-baseline max-sm:justify-between max-sm:gap-4 ${className}`}
+        className={`max-sm:flex-row max-sm:flex-wrap max-sm:items-baseline max-sm:justify-between max-sm:gap-x-4 ${className}`}
         {...stat}
       />
     </Card>
-  )
-}
-
-/** A custom `data-*` hook a caller may put on a band (a face's own test id, its span). */
-type DataAttrs = { [K in `data-${string}`]?: string | number | boolean | undefined }
-
-/** A BAND: a full-width run of the page that is itself the 12-column grid, with an optional heading line of its own
- *  (a title at 16/18 px and ONE control — a window picker). The live band (four stat cards), a face's whole body
- *  and a "Movers" row are bands; a band's children are cards, and they stand on the same columns as the page's. */
-export function Band({
-  title,
-  aside,
-  span = 'full',
-  className = '',
-  children,
-  ...rest
-}: {
-  title?: ReactNode
-  aside?: ReactNode
-  span?: CardSpan
-  className?: string
-  children: ReactNode
-  'aria-label'?: string
-} & DataAttrs & { 'data-testid'?: string }) {
-  return (
-    <section className={`min-w-0 ${cardSpanClass(span)} ${className}`} data-band="" {...rest}>
-      {(title !== undefined || aside !== undefined) && (
-        <div className="mb-3 flex min-h-11 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          {title !== undefined && <h2 className="min-w-0 text-t-body font-semibold text-ink md:text-t-card">{title}</h2>}
-          {aside !== undefined && <div className="ml-auto shrink-0">{aside}</div>}
-        </div>
-      )}
-      <div className={pageGridClass()}>{children}</div>
-    </section>
   )
 }

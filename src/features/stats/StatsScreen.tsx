@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Dot, PageGrid, Segmented, Sheet } from '../../components/ui'
+import { Dot, Segmented, Sheet } from '../../components/ui'
 import { formatKoreaTime } from '../../lib/format'
 import { useLocale, useT } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
@@ -28,7 +28,7 @@ import { useStatsLive } from './statsLive'
 // THE PAGE, NOT THE PACKED COLUMN (2026-11-02, owner row 267: *"it looks so wrong. The past was better. right now
 // everything is on left, too packed. this was a mistake"*). The unfold slice put each face in one 75-rem column with
 // 26 rem kept clear at the right and every row at its text line; the face is now a PAGE (`Sheet layout="page"`,
-// screenLayout.ts "THE PAGE"): the glass's whole width on a 12-column grid, the figures in cards with room, the
+// screenLayout.ts "THE PAGE"): MAIN | SIDE on the glass (the side is the tray's column), the figures in cards with room, the
 // figures themselves 24 px, the page scrolling when the stack is long. This screen is the PATTERN — Card.tsx has it
 // — and docs/dev-log/2026-11-02-stats-design.md the numbers it was measured to.
 //
@@ -86,14 +86,12 @@ function StatsBody({ title }: { title: string }) {
         label={t('stats.facesLabel')}
         className="w-fit max-w-full"
       />
-      <PageGrid className="mt-5 lg:mt-6">
-        <LiveNow live={live} />
-        {face === 'overview' && <OverviewFace live={live} />}
-        {face === 'markets' && <MarketsFace />}
-        {face === 'cities' && <CitiesFace />}
-        {face === 'merchants' && <MerchantsFace />}
-        {face === 'me' && <MeFace />}
-      </PageGrid>
+      <LiveNow live={live} />
+      {face === 'overview' && <OverviewFace live={live} />}
+      {face === 'markets' && <MarketsFace />}
+      {face === 'cities' && <CitiesFace />}
+      {face === 'merchants' && <MerchantsFace />}
+      {face === 'me' && <MeFace />}
     </Sheet>
   )
 }

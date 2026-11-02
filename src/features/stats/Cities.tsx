@@ -10,10 +10,11 @@ import { useLiveRead } from './statsLive'
 import { ALL, CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sortCities, type CitySort } from './statsFilters'
 
 // CITIES — every harbour, open to everyone (0223, owner row 197), ALL ON THE FACE (owner, 2026-11-01, row 260). It
-// was two summary rows — the filters on one page, the 246 cities on another. It is ONE list card: the cities, with
-// the filters (area · country · sort · mine) in the card's own header, in as many columns as the glass holds (1 on a
-// phone, 2 at 1,024, 3 from 1,280 — 2026-11-02, row 267: *"everything is on left, too packed"*). A press on a city opens
-// THAT city's page (its purse over time, what it buys and sells, every good it holds); Back returns to the list.
+// was two summary rows — the filters on one page, the 246 cities on another. It is ONE list card across the whole page
+// (a face with ONE block and no second one has no side to fill, so the list takes both columns): the cities, with the
+// filters (area · country · sort · mine) in the card's own header, in as many columns as the page holds (1 on a phone, 2 from
+// 768, 3 from 1,280 — 2026-11-02, row 267: *"everything is on left, too packed"*). A press on a city opens THAT city's page
+// (its purse over time, what it buys and sells, every good it holds); Back returns to the list.
 
 const FIRST = 60
 
@@ -34,8 +35,8 @@ export function CitiesFace() {
     [t],
   )
 
-  if (read.loading && !v) return <Skeleton className="h-64 w-full md:col-span-12" data-testid="stats-waiting" />
-  if (!v) return <Note tone="danger" className="md:col-span-12">{t('stats.citiesFailed')}</Note>
+  if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
+  if (!v) return <Note tone="danger">{t('stats.citiesFailed')}</Note>
 
   const flag = (c: StatsCityRow) =>
     c.nation === null ? undefined : <Flag code={c.nation} name={nationNameOf(nationByCode, c.nation)} size="body" />
@@ -52,7 +53,6 @@ export function CitiesFace() {
     <>
       <ListPanel
         look="card"
-        span="full"
         columns="fit"
         title={t('stats.citiesCount')}
         count={formatInt(rows.length)}

@@ -113,10 +113,10 @@ export { ScrollPane } from './ScrollPane'
 //    Codex, Ledger, Rank and Routes compose it; a press opens ONE item's page, never the list.
 export { ListPanel } from './ListPanel'
 
-// THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE", docs/dev-log/2026-11-02-stats-design.md): a
-// 12-column grid of cards on the whole glass. `Sheet layout="page"` is its container; `StatCell look="stacked|line"`
+// THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE", docs/dev-log/2026-11-02-stats-design.md): MAIN | SIDE on
+// the whole glass, the side being the tray's column. `Sheet layout="page"` is its container; `StatCell look="stacked|line"`
 // and `ListPanel look="card"` are its figure and its list. Stats is the first screen on it; the rest follow.
-export { Band, Card, CardZone, PageGrid, StatCard } from './Card'
+export { Card, CardRow, PageSplit, StatCard, StatStrip } from './Card'
 export { LanguageSwitch } from './LanguageSwitch'
 
 // 9. BUTTON — flat: primary / secondary / quiet / destructive, 44 and 36, icon.
@@ -218,7 +218,7 @@ export { StockGauge } from './StockGauge'
 export { FilterBar, type FilterChips, type FilterOption, type FilterPick, type FilterToggle } from './FilterBar'
 export { filterStorageKey, oneOf, readFilterChoice, useFilterChoice, type FilterChoice } from './filterState'
 export { sheetBodyClass, sheetColumnClass } from './screenLayout'
-export { cardSpanClass, pageBodyClass, pageColumnClass, pageGridClass, PAGE_REM, type CardSpan } from './screenLayout'
+export { PAGE_GAP, PAGE_REM, SIDE_REM, pageBodyClass, pageColumnClass, pageSplitClass, pageVarsClass, trayDockPageClass } from './screenLayout'
 export { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
 // THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a
 // side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is

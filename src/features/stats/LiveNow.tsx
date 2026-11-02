@@ -1,4 +1,4 @@
-import { Band, StatCard } from '../../components/ui'
+import { StatCard, StatStrip } from '../../components/ui'
 import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import type { StatsNow } from '../../lib/rpc'
@@ -14,10 +14,10 @@ import { useWorld } from '../../live/worldStore'
 // (StatsScreen.tsx): the whole band is live, and that is said once.
 //
 // FOUR STAT CARDS (2026-11-02, owner row 267 — *"too packed"*). The unfold slice drew this band as a line of
-// four label-and-figure pairs at 16 px, hugging; it is now a row of stat cards: the label at 14 px over the
-// figure at 24 px, 100 px of card each, four across from 1,280 (two across below, one line each on a phone).
-// Nothing about WHEN a figure moves changed. The world's money is nine digits and a coin — 185 px at 24 px —
-// which fits the narrowest card (278 px at 1,280, 296 px of it inside the padding) and, on a phone, a whole line.
+// four label-and-figure pairs at 16 px, hugging; it is now a strip of stat cards: the label at 14 px over the
+// figure at 24 px, four across from 1,280 (302 px a card at 1,440, 278 at 1,280), two from 640, one line each on a
+// phone. Nothing about WHEN a figure moves changed. The world's money is nine digits and a coin — 188 px at 24 px —
+// which fits the narrowest card with its padding and, on a phone, a whole line (or drops under its label).
 
 export function LiveNow({ live }: { live: StatsNow | null }) {
   const t = useT()
@@ -25,7 +25,7 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
   const ducats = useWorld((s) => s.ducats)
 
   return (
-    <Band aria-label={t('stats.rightNow')} data-testid="stats-live">
+    <StatStrip aria-label={t('stats.rightNow')} data-testid="stats-live">
       <StatCard
         label={t('stats.purse')}
         value={ducats ?? 0}
@@ -55,6 +55,6 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
         text={live === null ? '—' : undefined}
         data-testid="stats-live-world"
       />
-    </Band>
+    </StatStrip>
   )
 }

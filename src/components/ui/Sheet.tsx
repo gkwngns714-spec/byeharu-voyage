@@ -1,6 +1,7 @@
 import { Clip } from './Clip'
 import { useRef, useState, type ReactNode } from 'react'
-import { pageBodyClass, pageColumnClass, sheetBodyClass, sheetColumnClass } from './screenLayout'
+import { pageBodyClass, pageColumnClass, pageVarsClass, sheetBodyClass, sheetColumnClass } from './screenLayout'
+import { InPage } from './pageContext'
 import { useInTray } from './trayContext'
 
 // THE SHEET — the one scrolling surface of a tab, and the end of the admin document.
@@ -51,9 +52,10 @@ export function Sheet({
   fill?: boolean
   /** THE SHAPE OF THE SHEET (2026-11-02, owner row 267). `column` (the default) is every screen as it was: a readable
    *  column of at most SHEET_REM with the tray's space kept clear at its right. `page` is the pattern the owner asked
-   *  for — *"everything is on left, too packed"* — a centred container of at most 90 rem on a 12-column grid, its
-   *  blocks `Card`s, the title at 30 px, the page scrolling (never an inner scroll) and no column reserved for a
-   *  tray (a tray is a slide-over, index.css). Screens take it one at a time; screenLayout.ts "THE PAGE" is its law. */
+   *  for — *"everything is on left, too packed"* — a centred container of at most 80 rem, MAIN | SIDE from 1,024 px
+   *  (the side is the tray's column and carries the screen's second block; a tray slides over it), its blocks `Card`s,
+   *  the title at 30 px, the page scrolling (never an inner scroll). Screens take it one at a time;
+   *  screenLayout.ts "THE PAGE" is its law and Card.tsx its pieces. */
   layout?: 'column' | 'page'
   children: ReactNode
   className?: string
@@ -71,7 +73,7 @@ export function Sheet({
         const next = (e.currentTarget.scrollTop ?? 0) > 26
         if (next !== pinned) setPinned(next)
       }}
-      className={`bv-scroll h-full overflow-y-auto ${fill && !page ? 'flex flex-col' : ''} ${className}`}
+      className={`bv-scroll h-full overflow-y-auto ${fill && !page ? 'flex flex-col' : ''} ${page ? pageVarsClass() : ''} ${className}`}
       data-sheet=""
       data-sheet-layout={page ? 'page' : undefined}
       {...rest}
@@ -85,7 +87,7 @@ export function Sheet({
           className={['sticky top-0 z-10', pinned ? 'bg-surface' : ''].join(' ')}
         >
           <div className={`flex items-center justify-between gap-x-4 gap-y-2 ${pinned ? 'py-2' : 'pb-3 pt-5 lg:pb-4 lg:pt-8'} ${pageColumnClass()}`}>
-            <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-figure md:text-t-display'}>
+            <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-figure md:text-t-page'}>
               <Clip>{title}</Clip>
             </h1>
             {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
@@ -115,8 +117,14 @@ export function Sheet({
       )}
       {/* THE READABLE COLUMN. On a phone it is the glass; from `lg` it is SHEET_REM at most with
           the tray's space kept clear at its right — screenLayout.ts, "the wide glass". THE PAGE (`layout="page"`)
-          is the container of screenLayout.ts "THE PAGE": the whole glass, nothing kept clear. */}
-      <div className={page ? pageBodyClass() : sheetBodyClass(fill)}>{children}</div>
+          is the container of screenLayout.ts "THE PAGE": main | side, the side being the tray's own column. */}
+      {page ? (
+        <InPage.Provider value={true}>
+          <div className={pageBodyClass()}>{children}</div>
+        </InPage.Provider>
+      ) : (
+        <div className={sheetBodyClass(fill)}>{children}</div>
+      )}
     </div>
   )
 }

@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import {
-  Band,
   Button,
   Card,
-  CardZone,
+  CardRow,
   Empty,
   FilterBar,
   Hint,
   ListPanel,
   Note,
+  PageSplit,
   RankBars,
   Segmented,
   SignedBars,
@@ -31,22 +31,21 @@ import { useChartSpan } from '../../store/chartSpan'
 import { ALL } from './statsFilters'
 import { WatchCard } from './Watch'
 
-// OVERVIEW — the world's money, ALL ON THE FACE, in cards (owner, 2026-11-01, row 260: *"everything is folded in stats
-// this is soo wrong"*; 2026-11-02, row 267: *"it looks so wrong. The past was better. right now everything is on left,
-// too packed"*). Under the live band (LiveNow.tsx):
+// OVERVIEW — the world's money, ALL ON THE FACE, in cards (owner, 2026-11-01, row 260: *"everything is folded in stats this
+// is soo wrong"*; 2026-11-02, row 267: *"it looks so wrong. The past was better. right now everything is on left,
+// too packed"*). Under the live strip (LiveNow.tsx) the face is MAIN | SIDE (screenLayout.ts "THE PAGE"):
 //
-//   WHO HOLDS IT   the stacked bar and the four holders' figures, each with its trend beside it
-//   MONEY FLOWS    the net of the day, printed / burned / moved / trades, one bar a count
-//   ECONOMY WATCH  the seven figures the closed economy is judged by (Watch.tsx)
-//   THREE CHARTS   the world's money, what was sold to cities, what was bought from them — each 160 px tall, each a
-//                  press to its large view (StatsChart.tsx)
-//   THE MONEY LOG  every move as it happens (or the day's money by kind) — one card, beside the figures from 1,280
+//   MAIN  WHO HOLDS IT   the stacked bar and the four holders' figures, each with its trend beside it
+//         MONEY FLOWS    the net of the day, printed / burned / moved / trades, one bar a count
+//         ECONOMY WATCH  the seven figures the closed economy is judged by (Watch.tsx)
+//         THREE CHARTS   the world's money, what was sold to cities, what was bought from them — each 176 px tall, each
+//                        a press to its large view (StatsChart.tsx)
+//   SIDE  THE MONEY LOG  every move as it happens (or the day's money by kind) — the tray's column, as in the past
 //
-// The figure cards stand two across in a `CardZone` (the 8 columns beside the log); the log is the tall card at the
-// right and shows its first twenty moves, the rest one press away ("Show all") — so it ends where the figures end,
-// and no column is left empty under the shorter one. What moved, and where (docs/dev-log/2026-11-01-unfold-stats.md §1):
-// the old hero figure is the band's `World money`, its "today" is the Money flows figure. Every read is exactly what
-// it was — asked every second (statsLive.ts).
+// The side is the tray's column and it is USED: the log stands where a tray opened from a chart slides over it. The log shows
+// its first fifteen moves, the rest one press away ("Show all"), so it ends about where the figures end. What moved, and where
+// (docs/dev-log/2026-11-01-unfold-stats.md §1): the old hero figure is the strip's `World money`, its "today" is the Money
+// flows figure. Every read is exactly what it was — asked every second (statsLive.ts).
 
 const HOURS = 24
 const LOG_FIRST = 15
@@ -59,9 +58,9 @@ export function OverviewFace({ live }: { live: StatsNow | null }) {
   const v = read.view
 
   if (read.loading && !v) return <Waiting />
-  if (!v) return <Note tone="danger" className="md:col-span-12">{t('stats.worldFailed')}</Note>
+  if (!v) return <Note tone="danger">{t('stats.worldFailed')}</Note>
   if (!v.holders || !v.period) {
-    return <Empty className="md:col-span-12" data-testid="stats-empty">{t('stats.noFigures')}</Empty>
+    return <Empty data-testid="stats-empty">{t('stats.noFigures')}</Empty>
   }
   return <OverviewReady live={live} v={v} holders={v.holders} />
 }
@@ -97,146 +96,150 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
   const more = view === 'moves' && !all && logRows.length > LOG_FIRST
 
   return (
-    <Band data-testid="stats-overview" data-span={v.span ?? ''}>
-      <CardZone>
-        <Card title={t('stats.byHolder')} data-testid="stats-money">
-          <StackedBar parts={holders} format={formatDucats} label={t('stats.byHolder')} legend={false} />
-          <div className="mt-5 flex flex-col gap-4">
-            {holders.map((x) => (
-              <StatCell
-                key={x.id}
-                look="stacked"
-                mark={<span className={`h-2.5 w-2.5 shrink-0 rounded-full ${SWATCH[x.tone]}`} aria-hidden="true" />}
-                label={x.label}
-                value={x.value}
+    <PageSplit
+      data-testid="stats-overview"
+      data-span={v.span ?? ''}
+      main={
+        <>
+          <CardRow>
+            <Card title={t('stats.byHolder')} data-testid="stats-money">
+              <StackedBar parts={holders} format={formatDucats} label={t('stats.byHolder')} legend={false} />
+              <div className="mt-5 flex flex-col gap-4">
+                {holders.map((x) => (
+                  <StatCell
+                    key={x.id}
+                    look="stacked"
+                    mark={<span className={`h-2.5 w-2.5 shrink-0 rounded-full ${SWATCH[x.tone]}`} aria-hidden="true" />}
+                    label={x.label}
+                    value={x.value}
+                    format={formatDucats}
+                    trend={trendOf(v.series, (p) => p[x.id as 'players' | 'merchants' | 'cities' | 'set_aside'])}
+                    data-testid="stats-holder"
+                  />
+                ))}
+              </div>
+            </Card>
+
+            <Card title={t('stats.newMoney')} data-testid="stats-new-money">
+              <StatCell look="stacked" label={t('stats.netShort')} value={newMoney ?? 0} format={formatDucatsDelta} tone={deltaTone(newMoney ?? 0)} />
+              <div className="mt-3">
+                <StatCell look="line" label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} tone="success" />
+                <StatCell look="line" label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} tone="danger" />
+                <StatCell look="line" label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} />
+                <StatCell look="line" label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} />
+              </div>
+              <SignedBars
+                bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
+                label={t('stats.netBars')}
+                height="h-24"
+                className="mt-5"
+              />
+              <span className="mt-2 block text-t-caption text-ink-muted">{t('stats.netBars')}</span>
+            </Card>
+          </CardRow>
+
+          <CardRow>
+            <WatchCard watch={live?.watch} />
+            <Card title={t('stats.purseSeries')} data-testid="stats-chart-world">
+              <StatsChart
+                look="chart"
+                title={t('stats.purseSeries')}
+                points={totals}
                 format={formatDucats}
-                trend={trendOf(v.series, (p) => p[x.id as 'players' | 'merchants' | 'cities' | 'set_aside'])}
-                data-testid="stats-holder"
+                label={t('stats.purseSeries')}
+                tone="accent"
+                height={CARD_CHART_H}
+                empty={<Hint>{t('stats.lineSoon')}</Hint>}
               />
-            ))}
-          </div>
-        </Card>
+            </Card>
+          </CardRow>
 
-        <Card title={t('stats.newMoney')} data-testid="stats-new-money">
-          <StatCell
-            look="stacked"
-            label={t('stats.netShort')}
-            value={newMoney ?? 0}
-            format={formatDucatsDelta}
-            tone={deltaTone(newMoney ?? 0)}
-          />
-          <div className="mt-3">
-            <StatCell look="line" label={t('stats.printed')} value={day?.minted ?? 0} format={formatDucatsDelta} tone="success" />
-            <StatCell look="line" label={t('stats.burned')} value={-(day?.removed ?? 0)} format={formatDucatsDelta} tone="danger" />
-            <StatCell look="line" label={t('stats.moved')} value={day?.moved ?? 0} format={formatDucats} />
-            <StatCell look="line" label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} />
-          </div>
-          <SignedBars
-            bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
-            label={t('stats.netBars')}
-            height="h-24"
-            className="mt-5"
-          />
-          <span className="mt-2 block text-t-caption text-ink-muted">{t('stats.netBars')}</span>
-        </Card>
-
-        <WatchCard watch={live?.watch} />
-
-        <Card title={t('stats.purseSeries')} data-testid="stats-chart-world">
-          <StatsChart
-            look="chart"
-            title={t('stats.purseSeries')}
-            points={totals}
-            format={formatDucats}
-            label={t('stats.purseSeries')}
-            tone="accent"
-            height={CARD_CHART_H}
-            empty={<Hint>{t('stats.lineSoon')}</Hint>}
-          />
-        </Card>
-        <Card title={t('stats.soldCities')} data-testid="stats-chart-sold">
-          <StatsChart
-            look="chart"
-            title={t('stats.soldCities')}
-            points={toSeries(v.series, (p) => p.sold)}
-            format={formatDucats}
-            label={t('stats.soldSeries')}
-            tone="info"
-            height={CARD_CHART_H}
-            empty={<Hint>{t('stats.lineSoon')}</Hint>}
-          />
-        </Card>
-        <Card title={t('stats.boughtCities')} data-testid="stats-chart-bought">
-          <StatsChart
-            look="chart"
-            title={t('stats.boughtCities')}
-            points={toSeries(v.series, (p) => p.bought)}
-            format={formatDucats}
-            label={t('stats.boughtSeries')}
-            tone="accent"
-            height={CARD_CHART_H}
-            empty={<Hint>{t('stats.lineSoon')}</Hint>}
-          />
-        </Card>
-      </CardZone>
-
-      <ListPanel
-        look="card"
-        span="side"
-        title={t('feed.heading')}
-        controls={
-          <>
-            <Segmented
-              segments={[
-                { id: 'moves', label: t('stats.moves') },
-                { id: 'kinds', label: t('stats.lastDay') },
-              ]}
-              value={view}
-              onChange={setView}
-              label={t('feed.heading')}
-              columns={2}
-              className="shrink-0"
-            />
-            {view === 'moves' ? (
-              <MoneyLogControls filter={filter} onFilter={chooseMoves} total={moves?.base.length ?? 0} counts={moves?.counts ?? new Map()} />
+          <CardRow>
+            <Card title={t('stats.soldCities')} data-testid="stats-chart-sold">
+              <StatsChart
+                look="chart"
+                title={t('stats.soldCities')}
+                points={toSeries(v.series, (p) => p.sold)}
+                format={formatDucats}
+                label={t('stats.soldSeries')}
+                tone="info"
+                height={CARD_CHART_H}
+                empty={<Hint>{t('stats.lineSoon')}</Hint>}
+              />
+            </Card>
+            <Card title={t('stats.boughtCities')} data-testid="stats-chart-bought">
+              <StatsChart
+                look="chart"
+                title={t('stats.boughtCities')}
+                points={toSeries(v.series, (p) => p.bought)}
+                format={formatDucats}
+                label={t('stats.boughtSeries')}
+                tone="accent"
+                height={CARD_CHART_H}
+                empty={<Hint>{t('stats.lineSoon')}</Hint>}
+              />
+            </Card>
+          </CardRow>
+        </>
+      }
+      side={
+        <ListPanel
+          look="card"
+          title={t('feed.heading')}
+          controls={
+            <>
+              <Segmented
+                segments={[
+                  { id: 'moves', label: t('stats.moves') },
+                  { id: 'kinds', label: t('stats.lastDay') },
+                ]}
+                value={view}
+                onChange={setView}
+                label={t('feed.heading')}
+                columns={2}
+                className="shrink-0"
+              />
+              {view === 'moves' ? (
+                <MoneyLogControls filter={filter} onFilter={chooseMoves} total={moves?.base.length ?? 0} counts={moves?.counts ?? new Map()} />
+              ) : (
+                <FilterBar
+                  compact
+                  data-testid="stats-flows-filters"
+                  sort={{
+                    id: 'side',
+                    label: t('stats.filterLabel'),
+                    options: SIDES.map((id) => ({
+                      id,
+                      label: t(id === ALL ? 'stats.all' : id === 'minted' ? 'stats.flowNew' : id === 'removed' ? 'stats.flowBurned' : 'stats.flowMoved'),
+                    })),
+                    value: side,
+                    onChange: (id) => choose({ side: id }),
+                  }}
+                />
+              )}
+            </>
+          }
+          footer={
+            more ? (
+              <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-log-show-all">
+                {t('stats.showAll')}
+              </Button>
+            ) : undefined
+          }
+          data-testid={view === 'moves' ? 'money-log' : 'stats-flows'}
+        >
+          {view === 'moves' ? (
+            feed.view === null ? (
+              feed.loading ? <Skeleton className="my-1 h-10 w-full" /> : <Empty className="my-1">{t('feed.none')}</Empty>
             ) : (
-              <FilterBar
-                compact
-                data-testid="stats-flows-filters"
-                sort={{
-                  id: 'side',
-                  label: t('stats.filterLabel'),
-                  options: SIDES.map((id) => ({
-                    id,
-                    label: t(id === ALL ? 'stats.all' : id === 'minted' ? 'stats.flowNew' : id === 'removed' ? 'stats.flowBurned' : 'stats.flowMoved'),
-                  })),
-                  value: side,
-                  onChange: (id) => choose({ side: id }),
-                }}
-              />
-            )}
-          </>
-        }
-        footer={
-          more ? (
-            <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-log-show-all">
-              {t('stats.showAll')}
-            </Button>
-          ) : undefined
-        }
-        data-testid={view === 'moves' ? 'money-log' : 'stats-flows'}
-      >
-        {view === 'moves' ? (
-          feed.view === null ? (
-            feed.loading ? <Skeleton className="my-1 h-10 w-full" /> : <Empty className="my-1">{t('feed.none')}</Empty>
+              <MoneyRows rows={shownRows} />
+            )
           ) : (
-            <MoneyRows rows={shownRows} />
-          )
-        ) : (
-          <Kinds day={day} period={v.period} side={side} />
-        )}
-      </ListPanel>
-    </Band>
+            <Kinds day={day} period={v.period} side={side} />
+          )}
+        </ListPanel>
+      }
+    />
   )
 }
 
@@ -275,10 +278,9 @@ function Flows({ heading, period, side, testid }: { heading: string; period: Sta
 
 function Waiting() {
   return (
-    <Band data-testid="stats-waiting">
-      <Skeleton className="h-64 w-full md:col-span-6 xl:col-span-4" />
-      <Skeleton className="h-64 w-full md:col-span-6 xl:col-span-4" />
-      <Skeleton className="h-64 w-full md:col-span-12 xl:col-span-4" />
-    </Band>
+    <div className="grid grid-cols-1 gap-3 md:gap-4 xl:grid-cols-2 xl:gap-6" data-testid="stats-waiting">
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </div>
   )
 }

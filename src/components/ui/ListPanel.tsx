@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { cardSpanClass, type CardSpan } from './screenLayout'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE LIST PANEL — a list that is ON the screen, not behind a press (owner, 2026-11-01)
@@ -147,7 +146,6 @@ export function ListPanel({
   controls,
   look = 'panel',
   columns = 1,
-  span,
   footer,
   children,
   className = '',
@@ -167,8 +165,6 @@ export function ListPanel({
   look?: 'panel' | 'card'
   /** `card` only. `1`: one column of rows (a feed beside figure cards). `fit`: as many columns of at least 20 rem as fit. */
   columns?: 1 | 'fit'
-  /** `card` only: how much of the page grid the card takes (screenLayout.ts `CardSpan`). */
-  span?: CardSpan
   /** `card` only: what stands under the rows — the "Show all" that reveals the rest. */
   footer?: ReactNode
   /** The rows — `Row`s, or a `RankBars` — and nothing that is not a row of this list. */
@@ -184,7 +180,7 @@ export function ListPanel({
         data-list-panel=""
         data-list-look="card"
         aria-label={named}
-        className={`min-w-0 rounded-sheet border border-edge bg-surface p-4 sm:p-5 lg:p-6 ${span === undefined ? '' : cardSpanClass(span)} ${className}`}
+        className={`min-w-0 rounded-tile border border-edge bg-surface p-4 md:p-5 xl:p-6 ${className}`}
         {...rest}
       >
         {(title !== undefined || count !== undefined || trailing !== undefined || controls !== undefined) && (

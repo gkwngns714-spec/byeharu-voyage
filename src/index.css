@@ -339,7 +339,7 @@
        t-title    20/26  600   sheet title, section heading
        t-figure   24/28  600   the ONE figure a block is about (price, ETA, purse)
        t-hero     34/38  600   the headline figure of a sheet (capacity, passage days)
-     (+ t-card and t-display below: the page layout's two voices, 2026-11-02)
+     (+ t-card and t-page below: the page layout's two voices, 2026-11-02)
 
      Figures are tabular: `t-figure` and `t-hero` carry `tabular-nums` themselves (further down),
      and Tailwind's own `tabular-nums` utility is available anywhere else a column must line up. */
@@ -370,13 +370,13 @@
      layout="page"`, `Card`), so no other screen changes by a pixel. The six above stay the vocabulary of
      everything else.
        t-card     18/24  600   a card's title (the page layout; 16 px `t-body` on a phone)
-       t-display  30/36  600   the page's own title (the page layout, from `md`; 24 px `t-figure` on a phone) */
+       t-page     30/36  600   the page's own title (the page layout, from 768; 24 px `t-figure` on a phone) */
   --text-t-card: 1.125rem;
   --text-t-card--line-height: 1.5rem;
   --text-t-card--font-weight: 600;
-  --text-t-display: 1.875rem;
-  --text-t-display--line-height: 2.25rem;
-  --text-t-display--font-weight: 600;
+  --text-t-page: 1.875rem;
+  --text-t-page--line-height: 2.25rem;
+  --text-t-page--font-weight: 600;
 
   /* ── SPACE — 4-pt base, 8-pt rhythm ─────────────────────────────────────────────────────────
      4 · 8 · 12 · 16 · 24 · 32 · 48, which is `1 2 3 4 6 8 12` on this base and nothing between.
@@ -1115,20 +1115,4 @@ html:lang(ko) body {
    margin box, as the Market's pair always has (that one stands inside its `ActPair`, so this rule never saw it). `data-act-cell`, ActCell.tsx. */
 .bv-row-line:has(> button:only-child:not([data-act-cell])) {
   margin-block: calc((1.5rem - 2.75rem) / 2);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════════════════
-   THE PAGE LAYOUT'S TRAY IS A SLIDE-OVER (2026-11-02, owner row 267: *"everything is on left, too packed"*).
-   A page of cards (`Sheet layout="page"`, screenLayout.ts "THE PAGE") uses the whole glass; it reserves no
-   column for a tray that is usually shut. A docked tray opened from it therefore stands OVER the cards, flush
-   with the glass's right edge — the owner's rule that pressing never re-flows what is behind (the tray is
-   `position: fixed`, so nothing under it moves by a pixel; tests/stats.design.spec.ts measures the cards
-   before and after). Every other screen keeps `trayDockWideClass()` exactly (the right edge of its centred
-   pair): this rule matches only while a page-layout Sheet is mounted. When the other screens take the page
-   layout, `trayDockWideClass` loses its pair arithmetic and this rule goes with it — one authority again.
-   Unlayered on purpose: it must out-rank the tray's own `lg:right-[…]` utility. */
-@media (width >= 64rem) {
-  body:has([data-sheet-layout='page']) [data-tray-mode='docked']:not([data-tray-slotted]) {
-    right: 0;
-  }
 }
