@@ -90,11 +90,13 @@ One column; cards stack; the stat strip is four 56-px lines; padding 16; figures
 - **Overview** — strip (money · at sea · recent trades · world money); MAIN: *Who holds it* (bar, four holders with trends), *Money flows* (net, printed / burned / moved / trades, a bar a count), *Economy watch* (seven lines), the world's money, *Sold to cities* and *Bought from cities* (176-px charts); SIDE: the *Money log* (15 moves, Show all) or the day's money by kind.
 - **Markets** — MAIN: *Every good* in two columns (the filters and the sort in its header); SIDE (first on a phone, sticky from 1,024): *Market today* with its window as a segmented control and four figures, then *Up*, *Down* and *Most traded*.
 - **Cities** — one list card across the page (a face with one block has no second block to put in a side): 246 cities in 1 · 2 · 3 columns, the filters in its header; a row opens the city's page, Back returns.
+- **The city's own page** (a row of Cities opens it in the shared `DetailPage`): a strip of four stat cards (purse, in, out, taxes), the purse line and the net bars as two cards across, what it sold and bought most as two cards across, the money by kind, and the goods as one card list in 1 · 2 · 3 columns — in a centred container on the page's own margins.
 - **Merchants** — MAIN: *Their money* and *At sea* (a figure and a chart each), then the companies (three views: every company, best day, worst day); SIDE (first on a phone): the companies' day with its earnings chart, and *Fleets now*.
 - **Me** — MAIN: *Best sales*; SIDE (first on a phone): *My week*.
 
 Every figure and every test id of the old faces is still there (`tests/stats.design.spec.ts` asserts the list, U3); new ids were added (`stats-chart-world`, `stats-chart-sold`, `stats-chart-bought`, `stats-chart-purses`, `stats-chart-sea`, `stats-log-show-all`, `stats-cities-show-all`, `gallery-page`, …). No new word: every label is an existing dictionary key, English and Korean.
 
+<!-- measured:start -->
 ## 4. Measured, BEFORE → AFTER
 
 Headless Chromium, English, dark scheme, DPR 1, the canary world, one persistent page per glass, both builds served by `vite preview` on `localhost` (BEFORE = origin/main 3e05ab32, AFTER = this branch). "Text span" is the leftmost..rightmost visible text of the Stats sheet (x in px, its share of the glass, and the band empty at its right). Rows are the four list rows (`money-move`, `stats-good`, `stats-city-open`, `stats-merchant`). "Cards" are outer rounded filled surfaces of at least 120 × 40 px; "rules" are thin lines under a row; "inner scrollers" are boxes other than the sheet that scroll inside themselves. Raw numbers: every face at every glass are in `scratchpad` JSON on the PC that measured them; the Overview and Markets rows are here.
@@ -131,6 +133,7 @@ Headless Chromium, English, dark scheme, DPR 1, the canary world, one persistent
 | Me 1280 × 800 | 52..804 (58.8 %, 476 px empty) | 40..1240 (93.8 %, 40 px empty) | — → — | — → — | 1 → 6 | 0 → 0 |
 
 What the numbers say: the content block went from 52 % / 59 % / 56 % of the glass (1,440 / 1,280 / 1,024) to 89 % / 94 % / 94 %, and the empty band at its right from 556 / 476 / 440 px to 80 / 40 / 32 — the same as the margin at its left; the key figure from 16 to 24 px and its label from 12 to 14; the page title from 20 to 30 (24 on a phone); a list row from 48-53 to 60 px (56-60 on a phone; the Cities list rows were 728 px wide at 1,440 and are 405); cards from 1 (a list panel) to 5-11; thin rules from 60-245 to 0; inner scrollers from 1-2 per face to 0. The cost is length: the sheet that was exactly the glass is now 1,508 px (Overview) to 5,692 px (Merchants, 390) tall — the owner's *"vertical page scroll is fine again"*.
+<!-- measured:end -->
 
 ## 5. The laws, and which were red before
 
@@ -152,7 +155,6 @@ Specs that held the packed design, rewritten with the reason in the commit: `con
 - **Canary world only.** One fleet, no trades, charts of one or two points (a flat line; the "now" axis ×3), no sales on Me. A played world with real money moves, ten-digit purses and moving charts will lengthen the Overview's log and put real lines in the 176-px charts; the 24-px figures were checked against the longest figure this world has (131,367,515 and a coin, 188 px), not against ten digits (about 205 px: a stat card at 1,280 is 278 px with 24 px of padding, so it fits; a `stacked` holder cell in a 384-px card fits to about 15 digits).
 - **Light scheme not shot**; the laws ran in the dark scheme (the suite's default).
 - **DPR 2** was shot for the pictures, not re-measured (layout is in CSS px).
-- The city's own page (`CityDetail`, inside `DetailPage`) keeps its old look: it is a full-screen page of the shared `Detail` primitive, and belongs to the HQ/Detail slice.
 - Real Chrome on the owner's laptop was not driven (headless only).
 
 ## 7. The screens that still need the pattern, in the order proposed
