@@ -67,12 +67,17 @@ export function MoneyRows({ rows }: { rows: readonly MoneyMove[] }) {
           // sentence that wrapped at a company's long name was 35 px or 57 px by luck of the name; this is 48.
           <Row
             key={m.key}
+            // THE AMOUNT AND THE NAME ARE BOXES, NOT INLINE RUNS (2026-11-02, the page laws): two inline spans that wrap across lines
+            // have bounding boxes that cross (the name's box spans both lines), which is what the overlap law reads — and at 320 a
+            // company's long name wrapped under its amount. A wrapping flex line keeps each its own box and the same words.
             label={
-              <span className="break-words">
+              <span className="flex flex-wrap items-baseline gap-x-1.5 break-words">
                 <span className={`tabular-nums ${gain ? 'text-success' : 'text-danger'}`}>{formatDucatsDelta(m.delta)}</span>
-                {' · '}
-                <span className={m.own ? 'text-accent' : undefined}>{who(m)}</span>
-                {m.own && <span className="text-t-caption text-ink-faint"> ({t('feed.you')})</span>}
+                <span className="text-ink-faint" aria-hidden="true">
+                  ·
+                </span>
+                <span className={`min-w-0 ${m.own ? 'text-accent' : ''}`}>{who(m)}</span>
+                {m.own && <span className="text-t-caption text-ink-faint">({t('feed.you')})</span>}
               </span>
             }
             hairline={i < rows.length - 1}

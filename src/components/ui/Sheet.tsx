@@ -73,7 +73,10 @@ export function Sheet({
         const next = (e.currentTarget.scrollTop ?? 0) > 26
         if (next !== pinned) setPinned(next)
       }}
-      className={`bv-scroll h-full overflow-y-auto ${fill && !page ? 'flex flex-col' : ''} ${page ? pageVarsClass() : ''} ${className}`}
+      // A PAGE IS POSITIONED (`relative`): a screen-reader label (`sr-only`, absolute, a FilterBar names its pickers with one) escapes the scroller
+      // that holds it unless something between them is a containing block, and then stretches the DOCUMENT to where it stands in the
+      // flow — the page scrolled 2,620 px under a 844-px glass on a phone (2026-11-02). The old list panels were `relative` themselves; a page's lists are not.
+      className={`bv-scroll h-full overflow-y-auto ${fill && !page ? 'flex flex-col' : ''} ${page ? `relative ${pageVarsClass()}` : ''} ${className}`}
       data-sheet=""
       data-sheet-layout={page ? 'page' : undefined}
       {...rest}

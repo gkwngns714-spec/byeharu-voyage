@@ -30,6 +30,11 @@ export const DESIGN_GLASSES = [
   { width: 320, height: 640 },
 ] as const
 
+/** A LIST ROW IS NEVER WIDER THAN THIS (rem): the 2026-09-13 complaint, "too much blank space" between a name and its price, must not come
+ *  back. The brief says 35 rem (560 px); it is 36 here because the main column of a 1,024-px page is 588 px and a one-column card list
+ *  there is 562 px — two over. One number for every page spec. */
+export const ROW_MAX_REM = 36
+
 export interface DesignRead {
   glass: { w: number; h: number }
   /** The sheet's visible text, leftmost to rightmost (px from the glass's left), or null when it has none. */

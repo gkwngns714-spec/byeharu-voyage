@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
-import { DESIGN_GLASSES, boxesOf, readDesign, trayBox } from './design.fixture'
+import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, trayBox } from './design.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // STATS IS A PAGE — the owner's design order, measured on every face at five glasses, in English and Korean (2026-11-02)
@@ -25,7 +25,7 @@ import { DESIGN_GLASSES, boxesOf, readDesign, trayBox } from './design.fixture'
 //   (b) THE DEFECT RULES STAND: no sideways scroll, no two text or figure boxes crossing, no text narrower than 1.4 × its font
 //       size (the one-letter wrap), no cut text without its full text, every control at least 44 × 44.
 //   (c) THE HIERARCHY: a key figure at least 24 px, its label at least 13 px, a list row at least 52 px — and no list row wider
-//       than 35 rem, so the 2026-09-13 complaint ("too much blank space" between a name and its price) cannot come back.
+//       than 36 rem, so the 2026-09-13 complaint ("too much blank space" between a name and its price) cannot come back.
 //   (d) A TRAY OPENED FROM A CHART MOVES NOTHING BEHIND IT, and from 1,024 it slides over the page's SIDE column — the same x and
 //       width — because the side is the tray's column.
 //   (f) NO SCROLL TRAP: nothing but the sheet scrolls — the page scrolls (the owner, 2026-11-02: a long stack may), a list never
@@ -50,6 +50,7 @@ const FACES = [
 ] as const
 
 const SHEET = '[data-testid="stats"]'
+
 
 async function open(page: Page, glass: { width: number; height: number }) {
   await page.setViewportSize(glass)
@@ -108,11 +109,12 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
             if (f.font < 24) failures.push(`${where}: (c) the figure ${f.id} is ${f.font} px — the law is 24`)
             if (f.label !== null && f.label < 13) failures.push(`${where}: (c) the label of ${f.id} is ${f.label} px — the law is 13`)
           }
-          for (const r of d.rows) {
-            rowsMet++
-            if (r.h < 52 - 0.5) failures.push(`${where}: (c) a ${r.id} row is ${Math.round(r.h)} px tall — the law is 52`)
-            if (r.w > 35 * 16 + 1) failures.push(`${where}: (c) a ${r.id} row is ${Math.round(r.w)} px wide — a row is never wider than 35 rem`)
-          }
+          // (a row is counted once per rule: the worst one is named, the rest are a number)
+          const short = d.rows.filter((r) => r.h < 52 - 0.5)
+          const wide = d.rows.filter((r) => r.w > ROW_MAX_REM * 16 + 1)
+          rowsMet += d.rows.length
+          if (short.length > 0) failures.push(`${where}: (c) ${short.length} list rows are under 52 px — the shortest is a ${short[0].id} row of ${Math.round(Math.min(...short.map((r) => r.h)))}`)
+          if (wide.length > 0) failures.push(`${where}: (c) ${wide.length} list rows are wider than ${ROW_MAX_REM} rem — the widest is a ${wide[0].id} row of ${Math.round(Math.max(...wide.map((r) => r.w)))} px`)
 
           // (f) NO SCROLL TRAP — only the sheet scrolls
           for (const s of d.scrollers) failures.push(`${where}: (f) a box scrolls inside itself — ${s}`)

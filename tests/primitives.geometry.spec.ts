@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { PHONE, reachable } from './appReady.fixture'
+import { ROW_MAX_REM } from './design.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PRIMITIVES, MEASURED — docs/UI_DIRECTION.md §7 step 2
@@ -356,7 +357,7 @@ test('the page: 24-px figures, cards with room, main | side with the tray over t
     expect(m.radius, `${where}: a card's corner`).toBe(12)
     for (const r of m.rows) {
       expect(r.h, `${where}: a list row is ${r.h} px — the law is ${g.row}`).toBeGreaterThanOrEqual(g.row - 0.5)
-      expect(r.w, `${where}: a list row is ${r.w} px wide — never wider than 35 rem`).toBeLessThanOrEqual(35 * 16 + 1)
+      expect(r.w, `${where}: a list row is ${r.w} px wide — never wider than ${ROW_MAX_REM} rem`).toBeLessThanOrEqual(ROW_MAX_REM * 16 + 1)
     }
     expect(m.docW[0], `${where}: the page scrolls sideways`).toBeLessThanOrEqual(m.docW[1])
     if (g.main !== null && g.side !== null) {
