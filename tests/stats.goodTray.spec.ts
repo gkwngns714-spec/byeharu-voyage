@@ -31,10 +31,10 @@ for (const vp of [PHONE, WIDE]) {
     const code = await tray.getAttribute('data-good')
     expect(code).toBeTruthy()
     await expect(tray.getByRole('heading').first()).not.toBeEmpty()
-    // a city that lists it is chosen and its chart is drawn (the span picker stands over it)
-    await expect(tray.getByTestId('stats-good-chart')).toBeVisible({ timeout: 120_000 })
-    await expect(tray.getByTestId('span-picker')).toBeVisible()
-    await expect(tray.locator('[role="img"]')).toHaveCount(1, { timeout: 60_000 })
+    // the WORLD chart stands at once (the 24 recorded mids the server serves with the good); a city's own chart, with the
+    // span picker over it, is a choice only for a city whose book is already loaded
+    await expect(tray.getByTestId('stats-good-chart')).toBeVisible()
+    await expect(tray.locator('[role="img"]')).toHaveCount(1, { timeout: 30_000 })
     expect(await top()).toBe(before)
   })
 }

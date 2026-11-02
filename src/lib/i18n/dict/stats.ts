@@ -81,6 +81,8 @@ export const statsDict = defineDict({
     moveLabel: 'Move',
     goodCities: 'City',
     goodSeries: '{name} price at {city}',
+    goodWorld: 'World',
+    goodWorldSeries: '{name} average price, all cities',
     readings: '{name}, {n} readings',
     everyMarket: '{name}, every market',
     // Cities (0223: every city open to everyone, no lock words)
@@ -251,6 +253,8 @@ export const statsDict = defineDict({
     moveLabel: '변동',
     goodCities: '도시',
     goodSeries: '{city}의 {name} 가격',
+    goodWorld: '세계',
+    goodWorldSeries: '{name} 평균 가격, 전체 도시',
     readings: '{name}, 기록 {n}개',
     everyMarket: '{name}, 전체 시장',
     citiesCount: '도시',
