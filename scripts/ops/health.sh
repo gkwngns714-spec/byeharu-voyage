@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # THE GAME'S HEALTH, in one read-only pass (2026-11-01, after the Stats-count outage and the every-minute-market overload).
-# Run it at the START of every session and after EVERY deploy. Pure SELECTs through `supabase db query --linked`; nothing is written.
+# Run it at the START of every session and after EVERY deploy. Pure SELECTs through `supabase db query --linked --read-only`; nothing is written.
 # It prints the numbers, then ALERT lines for each threshold that trips — thresholds are the ones that would have caught the 10-30 → 11-01 incident
 # hours or days earlier. Usage: bash scripts/ops/health.sh
 export PATH="$HOME/tools/supabase:$PATH"
@@ -11,12 +11,14 @@ if ! command -v supabase >/dev/null 2>&1; then
 exec npx --yes supabase@latest "$@"
 ' > "$_shim/supabase"; chmod +x "$_shim/supabase"; export PATH="$_shim:$PATH"
 fi
-# `supabase db query --linked` needs the project link (supabase/.temp): a fresh worktree has none, so go where it is.
-if [ ! -d supabase/.temp ]; then for d in "$HOME/dev/byeharu-voyage" "$HOME/byeharu-voyage"; do [ -d "$d/supabase/.temp" ] && { cd "$d" || exit 1; break; }; done; fi
+# `supabase db query --linked` needs the project link (supabase/.temp/project-ref): a fresh worktree has none, so go where it is. Test the FILE: the CLI makes supabase/.temp/cli-latest in any folder it runs in.
+if [ ! -f supabase/.temp/project-ref ]; then for d in "$HOME/dev/byeharu-voyage" "$HOME/byeharu-voyage"; do [ -f "$d/supabase/.temp/project-ref" ] && { cd "$d" || exit 1; break; }; done; fi
+# Supabase CLI v3 refuses SQL in agent mode unless the statement is declared read-only; every query here is a pure SELECT, so say so when the CLI knows the flag (older CLIs do not).
+SB_RO=""; supabase db query --help 2>&1 | grep -q -- "--read-only" && SB_RO="--read-only"
 # A check that could not run is NOT a clean bill: every failed query is written here and the last line says so (2026-11-02: a run from a worktree
 # printed "no thresholds tripped" over eight "(query failed)" lines).
 FAILS=$(mktemp); trap 'rm -f "$FAILS"' EXIT
-Q() { local out n; for n in 1 2; do out=$(timeout 120 supabase db query --linked --output-format json "$1" 2>/dev/null); case "$out" in *'"rows"'*) printf '%s' "$out"; return 0 ;; esac; sleep 2; done; printf '%s' "$1" | tr '
+Q() { local out n; for n in 1 2; do out=$(timeout 120 supabase db query --linked $SB_RO --output-format json "$1" 2>/dev/null); case "$out" in *'"rows"'*) printf '%s' "$out"; return 0 ;; esac; sleep 2; done; printf '%s' "$1" | tr '
 ' ' ' | cut -c1-90 >> "$FAILS"; echo >> "$FAILS"; printf '%s' "$out"; }
 rows() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s.slice(s.indexOf("{")));for(const r of j.rows)console.log("  "+Object.entries(r).map(([k,v])=>k+"="+(v&&typeof v==="object"?JSON.stringify(v):v)).join("  "))}catch(e){console.log("  (query failed)")}})'; }
 val() { node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s.slice(s.indexOf("{")));console.log(j.rows[0]["'"$1"'"])}catch(e){console.log("")}})'; }
@@ -71,14 +73,16 @@ WRATE=$(node -e 'const a=process.argv[1].split(" ").map(Number),b=process.argv[2
 set -- $WRATE; echo "  wal_mb_per_min=${1:-?}  fpi_per_min=${2:-?}  port_goods_hot_pct=${3:-?}   (baseline after the 0292 rewrite: ~47 MB/min, 100 % HOT; the every-minute market itself is ~30 MB/min of it)"
 [ -n "$1" ] && awk "BEGIN{exit !($1 > 70)}" && alert "WAL is ${1} MB/min (> 70, the post-0292 baseline is ~47): the write path is saturating the disk — check the minute jobs and what else started writing"
 [ -n "$3" ] && [ "$3" != "-" ] && [ "$3" -lt 80 ] && alert "port_goods updates are only ${3} % HOT (the rewrite's fillfactor 30 should give ~100 %): a long snapshot is pinning dead versions, or the table needs the rewrite again"
-Q "select calls, round(mean_exec_time) as mean_ms, round(total_exec_time/1000) as total_s, shared_blks_dirtied as dirtied, left(regexp_replace(query,'s+',' ','g'),70) as q from pg_stat_statements order by total_exec_time desc limit 5" | rows
+Q "select calls, round(mean_exec_time) as mean_ms, round(total_exec_time/1000) as total_s, shared_blks_dirtied as dirtied, left(regexp_replace(query,'\s+',' ','g'),70) as q from extensions.pg_stat_statements order by total_exec_time desc limit 5" | rows
 
-echo "== what a player waits for (timed through the CLI; baseline select 1 first)"
-t() { local a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || { sleep 2; a=$(date +%s%N); timeout 120 supabase db query --linked "$2" >/dev/null 2>&1 || echo "timing: $1" >> "$FAILS"; }; local b=$(date +%s%N); awk "BEGIN{printf \"  %-28s %6.1f s\n\", \"$1\", ($b-$a)/1e9}"; }
-t "baseline select 1" "select 1"
-t "world.stats_now()" "select world.stats_now() ->> 'at'"
-t "world.sea_roster(1 day)" "select length(world.sea_roster(now() - interval '1 day')::text)"
-
+echo "== what a player waits for: the game's own calls through the API (PostgREST), server time since restart"
+# The CLI's read-only role (supabase_read_only_user) may not EXECUTE world.*, and a CLI round trip is mostly network (~3-4 s from Korea), so read
+# the players' real calls instead: every RPC the client makes runs through PostgREST as "... pgrst_call ...".
+Q "select calls, round(mean_exec_time) as mean_ms, round(max_exec_time) as max_ms, substring(query from '\"(?:world|public)\"\.\"([a-z_0-9]+)\"') as fn from extensions.pg_stat_statements where query like '%pgrst_call%' and query ~ '\"(world|public)\"\.\"' order by total_exec_time desc limit 8" | rows
+SN=$(Q "select coalesce(round(max(mean_exec_time)),0) as v from extensions.pg_stat_statements where query like '%pgrst_call%' and query like '%\"stats_now\"%'" | val v)
+[ -n "$SN" ] && [ "$SN" -gt 3000 ] && alert "a player's Stats read (world.stats_now through the API) averages ${SN} ms (> 3,000): the journal or the count is behind"
+t() { local a=$(date +%s%N); timeout 120 supabase db query --linked $SB_RO "$2" >/dev/null 2>&1 || { sleep 2; a=$(date +%s%N); timeout 120 supabase db query --linked $SB_RO "$2" >/dev/null 2>&1 || echo "timing: $1" >> "$FAILS"; }; local b=$(date +%s%N); awk "BEGIN{printf \"  %-28s %6.1f s\n\", \"$1\", ($b-$a)/1e9}"; }
+t "CLI round trip (select 1)" "select 1"
 echo
 NF=$(grep -c . "$FAILS")
 if [ "$NF" -gt 0 ]; then echo "HEALTH: UNKNOWN - $NF query(ies) failed, so this is NOT a clean bill (is supabase linked? is the network up?):"; grep . "$FAILS" | sed 's/^/    failed: /'; exit 2

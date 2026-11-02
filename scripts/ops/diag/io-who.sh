@@ -3,7 +3,7 @@
 . "$(dirname "$0")/_link.sh"
 SECS=${1:-150}; SCD="${TMPDIR:-/tmp}"
 SQL="select 'io' as k, backend_type||'/'||context as who, coalesce(reads,0) as reads, coalesce(writes,0) as writes, extract(epoch from now()) as t, null::bigint as av, null::bigint as dead from pg_stat_io where object='relation' and (coalesce(reads,0)+coalesce(writes,0))>0 union all select 'av', relname, 0, 0, extract(epoch from now()), autovacuum_count, n_dead_tup from pg_stat_user_tables where schemaname='public' and (pg_total_relation_size(relid) > 50*1024*1024)"
-rd() { timeout 90 supabase db query --linked --output-format json "$SQL" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{console.log(JSON.stringify(JSON.parse(s.slice(s.indexOf("{"))).rows))})'; }
+rd() { timeout 90 supabase db query --linked $SB_RO --output-format json "$SQL" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{console.log(JSON.stringify(JSON.parse(s.slice(s.indexOf("{"))).rows))})'; }
 rd > "$SCD/IA.json"; echo "A $(date -u +%H:%M:%S)"
 target=$(( $(date +%s) + SECS )); while [ "$(date +%s)" -lt "$target" ]; do sleep 5; done
 rd > "$SCD/IB.json"; echo "B $(date -u +%H:%M:%S)"

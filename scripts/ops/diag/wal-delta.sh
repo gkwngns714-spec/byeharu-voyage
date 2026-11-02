@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 . "$(dirname "$0")/_link.sh"
-read_now() { timeout 60 supabase db query --linked --output-format json "select extract(epoch from now()) as t, wal_bytes::numeric as wal, wal_fpi as fpi, (select n_tup_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as upd, (select n_tup_hot_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as hot from pg_stat_wal" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s.slice(s.indexOf("{"))).rows[0];console.log([r.t,r.wal,r.fpi,r.upd,r.hot].join(" "))})'; }
+read_now() { timeout 60 supabase db query --linked $SB_RO --output-format json "select extract(epoch from now()) as t, wal_bytes::numeric as wal, wal_fpi as fpi, (select n_tup_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as upd, (select n_tup_hot_upd from pg_stat_user_tables where relid='public.port_goods'::regclass) as hot from pg_stat_wal" 2>/dev/null | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s.slice(s.indexOf("{"))).rows[0];console.log([r.t,r.wal,r.fpi,r.upd,r.hot].join(" "))})'; }
 A=$(read_now); echo "A: $A"
 target=$(( $(date +%s) + 240 )); while [ "$(date +%s)" -lt "$target" ]; do sleep 5; done
 B=$(read_now); echo "B: $B"
