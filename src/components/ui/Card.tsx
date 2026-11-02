@@ -62,12 +62,16 @@ export function PageSplit({
   main,
   side,
   sideFirst = false,
+  stickySide = false,
   className = '',
   ...rest
 }: {
   main: ReactNode
   side: ReactNode
   sideFirst?: boolean
+  /** From 1,024 px the side follows the scroll (a short side beside a long list: the day's figures and the movers beside 629 goods),
+   *  stopping under the pinned title. Off, it stands where it is. */
+  stickySide?: boolean
   className?: string
 } & DataAttrs & { 'data-testid'?: string }) {
   return (
@@ -75,7 +79,7 @@ export function PageSplit({
       <div className={`flex min-w-0 flex-col ${PAGE_GAP} ${sideFirst ? 'lg:order-1' : ''}`} data-page-main="">
         {main}
       </div>
-      <aside className={`flex min-w-0 flex-col ${PAGE_GAP} ${sideFirst ? 'order-first lg:order-2' : ''}`} data-page-side="">
+      <aside className={`flex min-w-0 flex-col ${PAGE_GAP} ${sideFirst ? 'order-first lg:order-2' : ''} ${stickySide ? 'lg:sticky lg:top-16' : ''}`} data-page-side="">
         {side}
       </aside>
     </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import {
   Bar,
   Button,
+  Card,
   Chip,
   CargoRows,
   Clip,
@@ -26,6 +27,7 @@ import {
   SeriesChart,
   Sheet,
   SheetSection,
+  StatCell,
   Stepper,
   Tile,
   TileField,
@@ -75,6 +77,21 @@ export function GalleryScreen() {
         title="Primitives"
         trailing={<Chip on>Step 2</Chip>}
       >
+        {/* THE PAGE'S PIECES (2026-11-02, owner row 267): a Card, and the two looks of a StatCell inside it. Their layout — the strip, the
+            MAIN | SIDE split, the card list, the tray over the side — is the gallery's second page, /ui/page. */}
+        <SheetSection heading="Card" data-testid="gallery-cards">
+          <Card title="Who holds it" data-testid="gallery-card-sample">
+            <StatCell look="stacked" label="Players" value={1062515} format={formatDucats} />
+            <div className="mt-3">
+              <StatCell look="line" label="Merchant purses" value={130305000} format={formatDucats} />
+              <StatCell look="line" label="City purses" value={0} format={formatDucats} />
+            </div>
+          </Card>
+          <a href="ui/page" className="mt-3 block min-h-11 text-t-label text-accent" data-testid="gallery-page-link">
+            The page: strip, main and side, card list, tray over the side
+          </a>
+        </SheetSection>
+
         <SheetSection heading="Figure">
           <div className="flex flex-wrap items-baseline gap-4">
             <Figure value="40,000" unit={COIN} size="hero" />

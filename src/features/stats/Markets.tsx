@@ -96,6 +96,7 @@ export function MarketsFace() {
     <PageSplit
       data-testid="stats-markets"
       sideFirst
+      stickySide
       main={
         <ListPanel
           look="card"

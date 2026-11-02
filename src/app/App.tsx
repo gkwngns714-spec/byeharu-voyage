@@ -7,6 +7,7 @@ import { NewVersionToast } from './NewVersionToast'
 import { HOME_TAB } from './navTabs'
 import { AuthPage } from '../features/auth/AuthPage'
 import { GalleryScreen } from '../features/gallery/GalleryScreen'
+import { PageGalleryScreen } from '../features/gallery/PageGalleryScreen'
 import { CommandScreen } from '../features/command/CommandScreen'
 import { FleetsScreen } from '../features/fleets/FleetsScreen'
 import { useDeskView } from '../features/command/deskView'
@@ -49,6 +50,8 @@ export function App() {
             the cold chain — and without skipping on a cloud build. It is not in the tab table and
             nothing links to it. See features/gallery/GalleryScreen.tsx. */}
         <Route path="/ui" element={<GalleryScreen />} />
+        {/* THE PAGE PATTERN (2026-11-02, owner row 267): the gallery's second page — a stat strip, MAIN | SIDE, cards, a card list, a tray over the side. */}
+        <Route path="/ui/page" element={<PageGalleryScreen />} />
         {/* THE CITY PAGE (2026-10-30, owner's "Game screen development"). A FULL-SCREEN city with
             its own header and its own bottom rail, so it is INSIDE RequireAuth but OUTSIDE AppShell
             — the shell's tab bar would be a second navigation on the same glass. It opens the world

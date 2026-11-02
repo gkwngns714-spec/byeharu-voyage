@@ -35,7 +35,7 @@ interface DocReport {
   clientH: number
   scrollY: number
   main: { top: number; bottom: number; width: number; height: number } | null
-  sheet: { h: number; ch: number; top: number } | null
+  sheet: { h: number; ch: number; top: number; page: boolean } | null
   grids: { label: string; cells: { l: number; t: number; w: number; h: number }[] }[]
 }
 
@@ -67,7 +67,7 @@ async function read(page: Page): Promise<DocReport> {
       clientH: de.clientHeight,
       scrollY: window.scrollY,
       main: box === null ? null : { top: Math.round(box.top), bottom: Math.round(box.bottom), width: Math.round(box.width), height: Math.round(box.height) },
-      sheet: sheet === null ? null : { h: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop },
+      sheet: sheet === null ? null : { h: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop, page: sheet.getAttribute('data-sheet-layout') === 'page' },
       grids,
     }
   })
@@ -155,10 +155,14 @@ async function walkFaces(
     expect(m.docW, `face ${face} scrolls the PAGE sideways at ${size.width}px`).toBeLessThanOrEqual(m.clientW + 1)
     if (m.sheet !== null) {
       expect(m.sheet.top, `face ${face}'s Sheet is already scrolled`).toBe(0)
-      expect(
-        m.sheet.h,
-        `face ${face} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}.`,
-      ).toBeLessThanOrEqual(m.sheet.ch + 1)
+      // A PAGE SCROLLS AS A PAGE (2026-11-02, owner row 267: *"too packed"* — the cost of room is length); #413's law still binds every
+      // Sheet that is not one (a tab that takes the page layout leaves this law the day it does, with its own spec).
+      if (!m.sheet.page) {
+        expect(
+          m.sheet.h,
+          `face ${face} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}.`,
+        ).toBeLessThanOrEqual(m.sheet.ch + 1)
+      }
     }
     pages += await walkPages(page, size)
   }
@@ -197,10 +201,13 @@ for (const size of SIZES) {
       if (m.sheet !== null) {
         expect(m.sheet.top, `${route}'s Sheet is already scrolled at ${size.width}px`).toBe(0)
         expect(m.sheet.ch, `${route}'s Sheet has no height at ${size.width}px`).toBeGreaterThan(0)
-        expect(
-          m.sheet.h,
-          `${route} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}.`,
-        ).toBeLessThanOrEqual(m.sheet.ch + 1)
+        // (a Sheet that is a PAGE — Stats, 2026-11-02, owner row 267 — scrolls as one; tests/stats.design.spec.ts holds its laws)
+        if (!m.sheet.page) {
+          expect(
+            m.sheet.h,
+            `${route} scrolls its own Sheet at ${size.width}px: ${m.sheet.h} > ${m.sheet.ch}.`,
+          ).toBeLessThanOrEqual(m.sheet.ch + 1)
+        }
       }
 
       // 3. EVERY CHOICE GRID ON THE COMPACT SCREEN.

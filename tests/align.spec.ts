@@ -148,11 +148,16 @@ function measure(): string[] {
   }
 
   // COLUMN: sibling rows of one list
-  const lists = new Map<Element, Element[]>()
+  // A LIST IS A PARENT'S ROWS IN ONE COLUMN (2026-11-02, owner row 267): a card list (ListPanel look="card", columns="fit") lays
+  // its rows out in as many columns as the glass holds, and rows in two columns are not one list — each column is compared with itself.
+  const lists = new Map<string, Element[]>()
+  const parentIds = new Map<Element, number>()
   for (const row of rows) {
     const p = row.closest('[data-row]')?.parentElement ?? row.parentElement
     if (!p) continue
-    lists.set(p, [...(lists.get(p) ?? []), row])
+    if (!parentIds.has(p)) parentIds.set(p, parentIds.size)
+    const key = `${parentIds.get(p)}@${Math.round(row.getBoundingClientRect().left / 8)}`
+    lists.set(key, [...(lists.get(key) ?? []), row])
   }
   for (const [, list] of lists) {
     if (list.length < 2) continue
@@ -179,6 +184,19 @@ function measure(): string[] {
           // label is the law — a value more than 16px from its own label is the defect.
           if (cs[k].getAttribute('data-row-cell') === 'action') continue // the edge affordance, not a column
           if (cs[k].getAttribute('data-row-cell') === 'value') {
+            // A CARD LIST'S FIGURES STAND ON THE ROW'S RIGHT EDGE (2026-11-02, owner row 267 — the HUG law below was written for the
+            // unfold slice, *"empty spaces between words and numbers"*, and the owner called that compaction a mistake: label and
+            // figure glued at 12-85 px, where the past held 300-577). A row of a card list is one COLUMN wide (20 rem at the least), so
+            // its figure ends where its neighbours' end: compared by the right edge, like any column. Every other list keeps HUG until
+            // its own slice takes the card list.
+            if (other.closest('[data-list-look="card"]') !== null) {
+              const drift = Math.abs(a.right - b.right)
+              if (drift > 2) {
+                out.push(`COLUMN ${label(other)}: its figure ends ${Math.round(drift)}px from ${label(first)}'s`)
+                break
+              }
+              continue
+            }
             const prevA = k > 0 ? firstCells[k - 1]?.getBoundingClientRect() : undefined
             const prevB = k > 0 ? cs[k - 1]?.getBoundingClientRect() : undefined
             if (prevA && prevB) {

@@ -26,6 +26,12 @@ import { NAV_CELLS, tabWord } from '../src/app/navTabs'
 //      declared there, not filtered silently).
 //   4. NO SCROLL. The document, a tab's Sheet and every pop-up page's root never scroll; no
 //      visible box scrolls sideways. Lists scroll inside their own bounded panes.
+//      AMENDED 2026-11-02 (owner row 267, *"right now everything is on left, too packed. this was a mistake"*): a Sheet that
+//      declares `layout="page"` (Stats; screenLayout.ts "THE PAGE") IS a page and scrolls as one — a long stack of cards may
+//      be longer than the glass, which is what "less packed" costs. Everything else in this law still binds it (the DOCUMENT is
+//      flat, nothing scrolls sideways, the Sheet arrives at the top, every control is 44 px), and tests/stats.design.spec.ts holds
+//      its own laws (no list scrolls inside itself, the glass is used, the hierarchy). Every other tab keeps the old law until it
+//      takes the page layout in its turn.
 //   5. NO PLACEHOLDER DASH where a figure is owed. Measured on the COMPACT screens — now
 //      including the desk, whose good sparkline drew "—" below two served points until row 37
 //      (it now draws NOTHING, and `sparkAbsence` below proves each gap is the served absence).
@@ -79,7 +85,7 @@ const SM_ALLOWED = new Set<string>()
 
 interface Snapshot {
   doc: { sw: number; cw: number; sh: number; ch: number }
-  sheet: { sh: number; ch: number; top: number } | null
+  sheet: { sh: number; ch: number; top: number; page: boolean } | null
   pageRoot: { sh: number; ch: number; top: number } | null
   hscroll: { testid: string | null; cls: string; sw: number; cw: number }[]
   controls: { tag: string; role: string | null; testid: string | null; label: string; w: number; h: number }[]
@@ -165,7 +171,7 @@ async function snapshot(page: Page): Promise<Snapshot> {
     const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
     return {
       doc: { sw: de.scrollWidth, cw: de.clientWidth, sh: de.scrollHeight, ch: de.clientHeight },
-      sheet: sheet ? { sh: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop } : null,
+      sheet: sheet ? { sh: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop, page: sheet.getAttribute('data-sheet-layout') === 'page' } : null,
       pageRoot: dialog ? { sh: dialog.scrollHeight, ch: dialog.clientHeight, top: dialog.scrollTop } : null,
       hscroll,
       controls,
@@ -183,7 +189,7 @@ function violations(s: Snapshot, where: string, opts: { dashes?: boolean } = {})
   if (s.doc.sh > s.doc.ch + 1) out.push(`${where}: the document scrolls down ${s.doc.sh}/${s.doc.ch}`)
   if (s.sheet !== null) {
     if (s.sheet.top > 0) out.push(`${where}: the Sheet is already scrolled on arrival`)
-    if (s.sheet.sh > s.sheet.ch + 1) out.push(`${where}: the Sheet scrolls ${s.sheet.sh}/${s.sheet.ch}`)
+    if (s.sheet.sh > s.sheet.ch + 1 && !s.sheet.page) out.push(`${where}: the Sheet scrolls ${s.sheet.sh}/${s.sheet.ch}`)
   }
   if (s.pageRoot !== null) {
     if (s.pageRoot.top > 0) out.push(`${where}: the page root is already scrolled`)

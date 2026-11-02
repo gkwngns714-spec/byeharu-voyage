@@ -15,10 +15,16 @@
 import { test, expect } from '@playwright/test'
 import {
   GAP_REM,
+  PAGE_REM,
   PAIR_REM,
   SHEET_REM,
+  SIDE_REM,
   TRAY_REM,
+  pageColumnClass,
+  pageSplitClass,
+  pageVarsClass,
   sheetBodyClass,
+  trayDockPageClass,
   trayDockWideClass,
 } from '../src/components/ui/screenLayout'
 import { reachable, ready } from './appReady.fixture'
@@ -42,6 +48,40 @@ test('the literal wide classes encode the named constants — one rule, two read
   const half = /calc\(50%-([0-9.]+)rem\)/.exec(tray)
   expect(half, `the tray's right offset is not 50% − PAIR/2 in "${tray}"`).not.toBeNull()
   expect(Number(half![1])).toBe(PAIR_REM / 2)
+})
+
+// THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE"): the same proof for the other shape. The page's side column IS the
+// tray's column, so the split and the docked tray must read ONE width — `--page-side`, set once on the Sheet from SIDE_REM — and the
+// tray's right edge is the page's right margin: `max(--page-pad, 50% − PAGE_REM/2)`. The browser half is tests/stats.design.spec.ts
+// ("a chart's tray … stands over the side column", at five glasses).
+test('the literal page classes encode the named page constants — the split and the tray read one side width', () => {
+  const rem = (cls: string, prefix: string) => {
+    const m = new RegExp(`${prefix}\\[([0-9.]+)rem\\]`).exec(cls)
+    expect(m, `${prefix}[…rem] missing from "${cls}"`).not.toBeNull()
+    return Number(m![1])
+  }
+  // the container: PAGE_REM of content plus the widest margin (xl:px-10 = 2.5 rem) on each side
+  expect(rem(pageColumnClass(), 'max-w-')).toBe(PAGE_REM + 2 * 2.5)
+  // the margins: 1 · 1.5 · 2 · 2.5 rem = --page-pad = the container's px-4 · md:px-6 · lg:px-8 · xl:px-10
+  const vars = pageVarsClass()
+  expect(vars).toContain('[--page-pad:1rem]')
+  expect(vars).toContain('md:[--page-pad:1.5rem]')
+  expect(vars).toContain('lg:[--page-pad:2rem]')
+  expect(vars).toContain('xl:[--page-pad:2.5rem]')
+  for (const cls of ['px-4', 'md:px-6', 'lg:px-8', 'xl:px-10']) expect(pageColumnClass()).toContain(cls)
+  // the side: SIDE_REM at lg, xl and from 90 rem, set once …
+  expect(vars).toContain(`[--page-side:${SIDE_REM.lg}rem]`)
+  expect(vars).toContain(`xl:[--page-side:${SIDE_REM.xl}rem]`)
+  expect(vars).toContain(`min-[90rem]:[--page-side:${SIDE_REM.wide}rem]`)
+  expect(SIDE_REM.wide).toBe(TRAY_REM) // … and from 1,440 it is exactly the tray's own width
+  // … and read twice: by the split, and by the tray (its width, and its right edge at half the content)
+  expect(pageSplitClass()).toContain('lg:grid-cols-[minmax(0,1fr)_var(--page-side)]')
+  const tray = trayDockPageClass()
+  expect(tray).toContain('lg:w-[var(--page-side)]')
+  const half = /calc\(50%-([0-9.]+)rem\)/.exec(tray)
+  expect(half, `the tray's right offset is not 50% − PAGE_REM/2 in "${tray}"`).not.toBeNull()
+  expect(Number(half![1])).toBe(PAGE_REM / 2)
+  expect(tray).toContain('max(var(--page-pad)')
 })
 
 test.describe('wide glass', () => {
