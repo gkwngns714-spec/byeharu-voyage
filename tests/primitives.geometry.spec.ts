@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { PHONE, reachable } from './appReady.fixture'
+import { ROW_MAX_REM } from './design.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PRIMITIVES, MEASURED — docs/UI_DIRECTION.md §7 step 2
@@ -299,4 +300,92 @@ test('a tray does not animate for a player who asked it not to', async ({ page, 
     .getByTestId('demo-tray')
     .evaluate((el) => getComputedStyle(el).transitionDuration)
   expect(duration, `the tray still animates for ${duration} under prefers-reduced-motion`).toMatch(/^0m?s$/)
+})
+
+// ═══════════════════════════════════════════════════════════
+// THE PAGE PATTERN, MEASURED — owner row 267 (2026-11-02)
+// ═══════════════════════════════════════════════════════════
+//
+// *"it looks so wrong … right now everything is on left, too packed."* The page layout (screenLayout.ts "THE PAGE", Card.tsx) is
+// numbers too, and /ui/page draws it with literal figures so they are read here without the 78 s boot of a screen: the stat strip's
+// figures are 24 px and their labels 14, a card has 16 px of padding on a phone, 20 from 768, 24 from 1,280, with 12-px corners; the
+// page is MAIN | SIDE from 1,024 — 840 | 416 at 1,440, 792 | 384 at 1,280, 588 | 352 at 1,024 (the gutter 24 · 24 · 20) — and one column
+// below it, the side FIRST on the phone; a list row is 52 px on a phone and 60 from 1,024 and never wider than 35 rem; and a docked
+// tray opened inside the page stands over the side column — the same x and width — and moves nothing.
+test('the page: 24-px figures, cards with room, main | side with the tray over the side, rows 52 / 60', async ({ page, request, baseURL }) => {
+  test.setTimeout(180_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`)
+  const glasses = [
+    { width: 1440, height: 900, main: 840, side: 416, pad: 24, row: 60 },
+    { width: 1280, height: 800, main: 792, side: 384, pad: 24, row: 60 },
+    { width: 1024, height: 768, main: 588, side: 352, pad: 20, row: 60 },
+    { width: 390, height: 844, main: null, side: null, pad: 16, row: 52 },
+  ]
+  let measured = 0
+  for (const g of glasses) {
+    await page.setViewportSize({ width: g.width, height: g.height })
+    await page.goto('ui/page')
+    await page.waitForSelector('[data-testid="gallery-page"]', { timeout: 30_000 })
+    await page.waitForTimeout(500)
+    const m = await page.evaluate(() => {
+      const rect = (sel: string) => {
+        const e = document.querySelector(sel)
+        if (!e) return null
+        const r = e.getBoundingClientRect()
+        return { l: r.left, t: r.top, w: r.width, h: r.height }
+      }
+      const px = (e: Element | null, p: string) => (e ? parseFloat(getComputedStyle(e).getPropertyValue(p)) : NaN)
+      const stats = [...document.querySelectorAll('[data-testid="gallery-stat"]')]
+      return {
+        figure: stats.map((s) => px(s.querySelector('.tabular-nums'), 'font-size')),
+        label: stats.map((s) => px(s.querySelector('[data-stat-label]'), 'font-size')),
+        padding: px(document.querySelector('[data-testid="gallery-card"]'), 'padding-left'),
+        radius: px(document.querySelector('[data-testid="gallery-card"]'), 'border-top-left-radius'),
+        main: rect('[data-page-main]'),
+        side: rect('[data-page-side]'),
+        rows: [...document.querySelectorAll('[data-testid="gallery-list-row"]')].map((r) => r.getBoundingClientRect()).map((r) => ({ h: r.height, w: r.width })),
+        strip: [...document.querySelectorAll('[data-testid="gallery-strip"] > *')].map((c) => c.getBoundingClientRect().top),
+        docW: [document.documentElement.scrollWidth, document.documentElement.clientWidth],
+      }
+    })
+    const where = `/ui/page @${g.width}`
+    console.log(`PAGE ${where}: figures ${m.figure.join('/')} · labels ${m.label.join('/')} · card pad ${m.padding} r${m.radius} · main ${Math.round(m.main?.w ?? 0)} side ${Math.round(m.side?.w ?? 0)} · rows ${Math.round(Math.min(...m.rows.map((r) => r.h)))}..${Math.round(Math.max(...m.rows.map((r) => r.w)))}`)
+    for (const f of m.figure) expect(f, `${where}: a stat figure is ${f} px — the law is 24`).toBeGreaterThanOrEqual(24)
+    for (const l of m.label) expect(l, `${where}: a stat label is ${l} px — the law is 13`).toBeGreaterThanOrEqual(13)
+    expect(m.figure.length, `${where}: the strip drew no stat cards`).toBe(4)
+    expect(m.padding, `${where}: a card's padding`).toBe(g.pad)
+    expect(m.radius, `${where}: a card's corner`).toBe(12)
+    for (const r of m.rows) {
+      expect(r.h, `${where}: a list row is ${r.h} px — the law is ${g.row}`).toBeGreaterThanOrEqual(g.row - 0.5)
+      expect(r.w, `${where}: a list row is ${r.w} px wide — never wider than ${ROW_MAX_REM} rem`).toBeLessThanOrEqual(ROW_MAX_REM * 16 + 1)
+    }
+    expect(m.docW[0], `${where}: the page scrolls sideways`).toBeLessThanOrEqual(m.docW[1])
+    if (g.main !== null && g.side !== null) {
+      expect(Math.abs(m.main!.w - g.main), `${where}: main is ${m.main!.w} px, the law is ${g.main}`).toBeLessThanOrEqual(1)
+      expect(Math.abs(m.side!.w - g.side), `${where}: the side is ${m.side!.w} px, the law is ${g.side}`).toBeLessThanOrEqual(1)
+      expect(m.side!.l, `${where}: the side is not right of main`).toBeGreaterThan(m.main!.l + m.main!.w)
+    } else {
+      expect(m.side!.t, `${where}: on a phone the side comes first (sideFirst)`).toBeLessThan(m.main!.t)
+      expect(Math.abs(m.side!.l - m.main!.l), `${where}: the phone is one column`).toBeLessThanOrEqual(1)
+    }
+
+    // THE TRAY STANDS OVER THE SIDE COLUMN — the same x, the same width — and nothing under it moves
+    const before = await page.evaluate(() => [...document.querySelectorAll('[data-testid="gallery-card"], [data-testid="gallery-strip"]')].map((e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height] }))
+    await page.getByTestId('gallery-page-open').click()
+    const tray = page.getByTestId('gallery-page-tray')
+    await expect(tray).toBeVisible()
+    await page.waitForTimeout(500)
+    const box = await tray.boundingBox()
+    expect(box, `${where}: the tray has no box`).not.toBeNull()
+    if (g.side !== null) {
+      expect(Math.abs(box!.x - m.side!.l), `${where}: the tray stands at x=${box!.x}, the side column at x=${m.side!.l}`).toBeLessThanOrEqual(2)
+      expect(Math.abs(box!.width - m.side!.w), `${where}: the tray is ${box!.width} px wide, the side column ${m.side!.w}`).toBeLessThanOrEqual(2)
+    }
+    const after = await page.evaluate(() => [...document.querySelectorAll('[data-testid="gallery-card"], [data-testid="gallery-strip"]')].map((e) => { const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height] }))
+    expect(after, `${where}: opening the tray moved the cards behind it`).toEqual(before)
+    await page.getByTestId('tray-close').click()
+    await expect(tray).toHaveCount(0)
+    measured++
+  }
+  expect(measured, 'the page was measured at fewer than four glasses').toBe(4)
 })

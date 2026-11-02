@@ -1,15 +1,19 @@
 import {
+  Card,
   Empty,
   FactsLine,
   Figure,
   Hint,
+  ListPanel,
   Note,
+  PAGE_GAP,
   RankBars,
   Row,
   SignedBars,
   Skeleton,
   Sparkline,
-  StatCell,
+  StatCard,
+  StatStrip,
   StockGauge,
   categoryLabel,
   deltaTone,
@@ -19,7 +23,7 @@ import { useEffect } from 'react'
 import { useT } from '../../lib/i18n'
 import { worldStatsCity, type StatsCity } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
-import { STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
+import { CARD_CHART_H, STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
@@ -37,8 +41,20 @@ import { useChartSpan } from '../../store/chartSpan'
 // A PAGE, NOT A SECTION (the unfold slice, 2026-11-02): a city's row on the Cities list opens this inside a
 // `DetailPage` — its title, its purse and its Back are the page's own, so the old heading and its Close are gone.
 //
+// THE PAGE PATTERN (2026-11-02, owner row 267: *"it looks so wrong … everything is on left, too packed"*): the page's
+// content is a centred container of at most 80 rem on the page's own margins; the four figures are a strip of stat
+// cards (24 px), the purse line and the net bars are cards with a 176-px chart, what it sold and bought most are two
+// cards across, and the goods are ONE list card in as many columns as the page holds. (The page is the shared
+// `DetailPage` primitive and keeps its own header and its one bounded scroll; nothing of it is touched.)
+//
 // EVERY SECOND (0232, owner row 213): the purse and each good's price and stock are live, every day-figure is the
 // last 24 h up to this second, the purse line and each spark end at now(); asked every second while open.
+
+/** The page's container inside a `DetailPage`'s body (which already has 16 px of side padding): 80 rem at most, and the page's
+ *  own margins (24 · 32 · 40 from 768 · 1,024 · 1,280) made up with the extra side padding. */
+const CITY_PAGE = `mx-auto flex w-full max-w-[80rem] flex-col pt-1 md:pt-3 ${PAGE_GAP} md:px-2 lg:px-4 xl:px-6`
+/** Two cards across from 768. */
+const PAIR = `grid grid-cols-1 ${PAGE_GAP} md:grid-cols-2`
 
 export function CityDetail({ portId }: { portId: string }) {
   const t = useT()
@@ -58,109 +74,122 @@ export function CityDetail({ portId }: { portId: string }) {
   const o = v.overview
 
   return (
-    <div data-testid="stats-city">
+    <div className={CITY_PAGE} data-testid="stats-city">
       {wants && wants.length > 0 && (
-        <Note tone="neutral" className="mb-3" data-testid="stats-city-wants">
+        <Note tone="neutral" data-testid="stats-city-wants">
           {t('ui.wanted', { mult: String(Number(wants[0].mult)) })}: {wants.map((w) => goodName(w)).join(' · ')}
         </Note>
       )}
       {o && (
-        <div data-testid="stats-city-overview">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-            <StatCell label={t('town.i_purse')} value={o.purse} format={formatDucats} size="body" tone="accent" />
-            <StatCell label={t('town.i_in')} value={o.income_1d} format={formatDucatsDelta} size="body" tone="success" />
-            <StatCell label={t('town.i_out')} value={-o.spending_1d} format={formatDucatsDelta} size="body" tone="danger" />
-            <StatCell label={t('town.i_taxes')} value={o.taxes_1d} format={formatDucats} size="body" />
+        <div className={`flex flex-col ${PAGE_GAP}`} data-testid="stats-city-overview">
+          <StatStrip>
+            <StatCard label={t('town.i_purse')} value={o.purse} format={formatDucats} tone="accent" />
+            <StatCard label={t('town.i_in')} value={o.income_1d} format={formatDucatsDelta} tone="success" />
+            <StatCard label={t('town.i_out')} value={-o.spending_1d} format={formatDucatsDelta} tone="danger" />
+            <StatCard label={t('town.i_taxes')} value={o.taxes_1d} format={formatDucats} />
+          </StatStrip>
+          <div className={PAIR}>
+            <Card title={portName(v.city.name)}>
+              <StatsChart
+                title={portName(v.city.name)}
+                points={toSeries(o.series, (p) => p.purse)}
+                format={formatDucats}
+                label={t('stats.citySeries', { city: portName(v.city.name) })}
+                tone="accent"
+                look="chart"
+                height={CARD_CHART_H}
+                empty={<Hint>{t('stats.lineSoon')}</Hint>}
+              />
+            </Card>
+            <Card title={t('stats.netShort')}>
+              <SignedBars
+                bars={o.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.income - p.spending }))}
+                label={t('stats.cityNet', { city: portName(v.city.name) })}
+                height="h-28"
+              />
+              <span className="mt-3 block text-t-caption text-ink-muted">
+                {t('stats.works', { list: o.works.map((w) => `${w.kind} ${w.level}`).join(' · ') || t('stats.noWorks') })}
+              </span>
+            </Card>
           </div>
-          <StatsChart
-            title={portName(v.city.name)}
-            points={toSeries(o.series, (p) => p.purse)}
-            format={formatDucats}
-            label={t('stats.citySeries', { city: portName(v.city.name) })}
-            tone="accent"
-            look="chart"
-            className="mt-4"
-            empty={<Hint className="mt-3">{t('stats.lineSoon')}</Hint>}
-          />
-          <SignedBars
-            bars={o.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.income - p.spending }))}
-            label={t('stats.cityNet', { city: portName(v.city.name) })}
-            height="h-20"
-            className="mt-4"
-          />
-          <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('stats.soldCityMost')}</span>
-              <RankBars
-                rows={o.top_sold.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
-                format={formatInt}
-              />
-            </div>
-            <div className="min-w-0">
-              <span className="block text-t-caption text-ink-faint">{t('stats.boughtCityMost')}</span>
-              <RankBars
-                rows={o.top_bought.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
-                format={formatInt}
-              />
-            </div>
+          <div className={PAIR}>
+            <Card title={t('stats.soldCityMost')}>
+              <div>
+                <RankBars
+                  rules={false}
+                  rows={o.top_sold.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
+                  format={formatInt}
+                />
+              </div>
+            </Card>
+            <Card title={t('stats.boughtCityMost')}>
+              <div>
+                <RankBars
+                  rules={false}
+                  rows={o.top_bought.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
+                  format={formatInt}
+                />
+              </div>
+            </Card>
           </div>
           {o.flows_1d.length > 0 && (
-            <div className="mt-4">
-              <span className="block text-t-caption text-ink-faint">{t('stats.cityMoney')}</span>
-              <RankBars rows={flowRanks(o.flows_1d)} format={formatDucatsDelta} />
-            </div>
+            <Card title={t('stats.cityMoney')}>
+              <div>
+                <RankBars rows={flowRanks(o.flows_1d)} format={formatDucatsDelta} rules={false} />
+              </div>
+            </Card>
           )}
-          <span className="mt-3 block text-t-caption text-ink-faint">
-            {t('stats.works', { list: o.works.map((w) => `${w.kind} ${w.level}`).join(' · ') || t('stats.noWorks') })}
-          </span>
         </div>
       )}
       {v.detail && (
-        <div className="mt-4" data-testid="stats-city-detail">
-          <span className="block text-t-caption text-ink-faint">{t('stats.goodsHere', { n: formatInt(v.detail.goods.length) })}</span>
+        <div data-testid="stats-city-detail">
           {v.detail.goods.length === 0 ? (
-            <Empty className="mt-2">{t('stats.nothingHere')}</Empty>
+            <Card title={t('stats.goodsHere', { n: formatInt(0) })}>
+              <Empty>{t('stats.nothingHere')}</Empty>
+            </Card>
           ) : (
-            v.detail.goods.map((g, i, all) => {
-              const move = movePct(g.mid, g.mid_1d)
-              return (
-                <Row
-                  key={g.code}
-                  label={
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="min-w-0 break-words text-ink">{goodName(g)}</span>
-                      <span className="shrink-0 text-t-caption text-ink-faint">{categoryLabel(g.category)}</span>
-                    </span>
-                  }
-                  value={
-                    <span className="flex items-center gap-3">
-                      <Sparkline
-                        values={g.spark}
-                        tone={move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'}
-                        width={48}
-                        height={18}
-                        label={t('stats.atCity', { name: goodName(g), city: portName(v.city.name), n: g.spark.length })}
-                      />
-                      <span className="flex w-24 flex-col items-end">
-                        <Figure value={g.mid === null ? '—' : formatPriceFigure(g.mid)} />
-                        <Figure value={move === null ? '—' : formatPctChange(move)} tone={move === null ? 'faint' : deltaTone(move)} />
+            <ListPanel look="card" columns="fit" title={t('stats.goodsHere', { n: formatInt(v.detail.goods.length) })}>
+              {v.detail.goods.map((g) => {
+                const move = movePct(g.mid, g.mid_1d)
+                return (
+                  <Row
+                    key={g.code}
+                    label={
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="min-w-0 break-words text-ink">{goodName(g)}</span>
+                        <span className="shrink-0 text-t-caption text-ink-faint">{categoryLabel(g.category)}</span>
                       </span>
-                    </span>
-                  }
-                  hairline={i < all.length - 1}
-                  data-testid="stats-city-good"
-                >
-                  <FactsLine>
-                    <span>{t('stats.sold', { n: formatInt(g.sold_1d) })}</span>
-                    <span>{t('stats.bought', { n: formatInt(g.bought_1d) })}</span>
-                    {g.stock !== null && g.stock_target !== null && g.stock_target > 0 && (
-                      <StockGauge stock={g.stock} target={g.stock_target} label={t('stats.stockAt', { name: goodName(g), city: portName(v.city.name) })} className="shrink-0" />
-                    )}
-                    {g.stock === null && <span>{t('stats.notSoldHere')}</span>}
-                  </FactsLine>
-                </Row>
-              )
-            })
+                    }
+                    value={
+                      <span className="flex items-center gap-3">
+                        <Sparkline
+                          values={g.spark}
+                          tone={move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'}
+                          width={48}
+                          height={18}
+                          label={t('stats.atCity', { name: goodName(g), city: portName(v.city.name), n: g.spark.length })}
+                        />
+                        <span className="flex w-24 flex-col items-end">
+                          <Figure value={g.mid === null ? '—' : formatPriceFigure(g.mid)} />
+                          <Figure value={move === null ? '—' : formatPctChange(move)} tone={move === null ? 'faint' : deltaTone(move)} />
+                        </span>
+                      </span>
+                    }
+                    hairline={false}
+                    data-testid="stats-city-good"
+                  >
+                    <FactsLine>
+                      <span>{t('stats.sold', { n: formatInt(g.sold_1d) })}</span>
+                      <span>{t('stats.bought', { n: formatInt(g.bought_1d) })}</span>
+                      {g.stock !== null && g.stock_target !== null && g.stock_target > 0 && (
+                        <StockGauge stock={g.stock} target={g.stock_target} label={t('stats.stockAt', { name: goodName(g), city: portName(v.city.name) })} className="shrink-0" />
+                      )}
+                      {g.stock === null && <span>{t('stats.notSoldHere')}</span>}
+                    </FactsLine>
+                  </Row>
+                )
+              })}
+            </ListPanel>
           )}
         </div>
       )}

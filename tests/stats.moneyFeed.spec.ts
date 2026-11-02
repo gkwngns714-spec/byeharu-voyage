@@ -95,8 +95,10 @@ test('Stats › the money log panel shows my buy in red and the city’s side in
   await sector.selectOption('all')
   await expect(mine.first()).toBeVisible({ timeout: 30_000 })
 
-  // THE TAB IS FLAT; THE LIST SCROLLS INSIDE ITS PANEL: the Sheet and the document do not move, and the panel's
-  // own body is the one box that may (unfold slice, U2).
+  // THE PAGE SCROLLS; THE LIST DOES NOT (2026-11-02, owner row 267: *"too packed … this was a mistake"*). The unfold slice's U2 stood here —
+  // "the tab is flat and the list scrolls inside its panel" — and was the packed design. The document does not move, the Sheet arrives at the
+  // top and scrolls as the PAGE it is (Sheet layout="page"), and the money log's own body is not a scroller: its first fifteen moves stand and
+  // "Show all" reveals the rest.
   const flat = await page.evaluate(() => {
     const sheet = document.querySelector('[data-sheet]') as HTMLElement
     const body = document.querySelector('[data-testid="money-log"] [data-list-body]') as HTMLElement
@@ -104,9 +106,15 @@ test('Stats › the money log panel shows my buy in red and the city’s side in
     return { sh: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop, docH: de.scrollHeight, docCh: de.clientHeight, body: body.scrollHeight - body.clientHeight }
   })
   expect(flat.top, 'the Stats sheet is already scrolled').toBe(0)
-  expect(flat.sh, `the Stats sheet itself scrolls: ${flat.sh} > ${flat.ch}`).toBeLessThanOrEqual(flat.ch + 1)
   expect(flat.docH, 'the document scrolls').toBeLessThanOrEqual(flat.docCh + 1)
-  expect(flat.body, 'the money log panel does not scroll — are its rows all there?').toBeGreaterThan(0)
+  expect(flat.body, 'the money log scrolls inside itself — a page scrolls, a list does not').toBeLessThanOrEqual(1)
+  const moves = log.locator('[data-testid="money-move"]')
+  const shown = await moves.count()
+  const showAll = page.getByTestId('stats-log-show-all')
+  if ((await showAll.count()) > 0) {
+    await showAll.click()
+    await expect.poll(() => moves.count(), { message: 'Show all revealed no more moves' }).toBeGreaterThan(shown)
+  }
   expect(await noSideways(page), 'the page scrolls sideways at 390').toBe(true)
   await page.screenshot({ path: testInfo.outputPath('money-log-panel-phone.png') })
 

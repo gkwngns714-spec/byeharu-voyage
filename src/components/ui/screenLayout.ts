@@ -65,6 +65,73 @@ export function sheetBodyClass(fill = false): string {
     : `px-gutter pb-6 ${sheetColumnClass()}`
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE PAGE — main and side on the whole glass (2026-11-02, owner row 267)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// *"i want you to redesign the looks of the game. for example stats, it looks so wrong. The past was better.
+// right now everything is on left, too packed. this was a mistake."* The wide glass above reserves the right
+// 27.5 rem of every sheet for a tray that is shut almost always, and the unfold slice packed what was left.
+// docs/dev-log/2026-11-02-design-past-vs-now.md measured why the past (before #413) felt better: it DOCKED real
+// content in that tray column (the Stats Overview's Money log at x=908..1324) and set its figures at 24 and 34 px.
+//
+// THE PAGE is the shape every screen takes in its turn (Stats first; docs/dev-log/2026-11-02-stats-design.md has the
+// measured numbers and what the next screen copies). It is opt-in — `Sheet layout="page"` — and nothing above changes:
+// a screen that does not ask for it is exactly what it was.
+//
+//   container   centred, the content at most PAGE_REM (80 rem = 1,280 px); side margins 16 px (phone), 24 (768),
+//               32 (1,024), 40 (1,280), and past 1,360 px centred — 80 px each side at 1,440
+//   gutter      12 px (phone), 16 (768), 20 (1,024), 24 (1,280): between cards, and between main and side
+//   split       from `lg` (1,024) the page is MAIN | SIDE: the side column is exactly the tray's width — 352 px at
+//               1,024, 384 at 1,280, 416 (26 rem) from 1,440 — so main is 584 · 792 · 840. Below `lg` the page is
+//               one column and the side stacks with main (a screen says whether it stands first or last)
+//   side        THE TRAY COLUMN, AND IT IS USED: closed, it carries the screen's second block (Overview: the Money
+//               log; Markets: the day's figures and the movers); a tray opened from a row slides OVER it — the same x,
+//               the same width (`trayDockPageClass`, which reads the same `--page-side` the split does) — so nothing
+//               under it moves and the page never has an empty band at its right
+//
+// The literal strings are for Tailwind's scanner (it cannot see a class built from a number); the numbers they encode
+// are stated once, here, and tests/wide.layout.spec.ts parses them.
+
+/** The page's content, at its widest, in rem. 80 rem = 1,280 px. */
+export const PAGE_REM = 80
+/** The side column at `lg`, `xl` and from 90 rem (1,440), in rem: 22 = 352 px, 24 = 384, 26 = 416 (the tray's width). */
+export const SIDE_REM = { lg: 22, xl: 24, wide: 26 } as const
+
+/** THE GUTTER: 12 · 16 · 20 · 24 px at phone · 768 · 1,024 · 1,280. */
+export const PAGE_GAP = 'gap-3 md:gap-4 lg:gap-5 xl:gap-6'
+
+/** The page's two custom properties, set once on the Sheet and read by BOTH the split and the docked tray, so the tray's
+ *  x and width cannot drift from the side column's: `--page-pad` is the margin at each glass, `--page-side` the side. */
+export function pageVarsClass(): string {
+  // pad: 1rem = 16 · md 1.5rem = 24 · lg 2rem = 32 · xl 2.5rem = 40. side: 22rem · xl 24rem · 90rem (1,440) 26rem = SIDE_REM
+  return '[--page-pad:1rem] md:[--page-pad:1.5rem] lg:[--page-pad:2rem] xl:[--page-pad:2.5rem] [--page-side:22rem] xl:[--page-side:24rem] min-[90rem]:[--page-side:26rem]'
+}
+
+/** The page container: centred, content at most PAGE_REM, margins 16 · 24 · 32 · 40 (`--page-pad`). */
+export function pageColumnClass(): string {
+  // 85rem = PAGE_REM + 2 × the widest margin (2.5rem): the margin is part of the box, the 80 rem is not
+  return 'mx-auto w-full max-w-[85rem] px-4 md:px-6 lg:px-8 xl:px-10'
+}
+
+/** The page's body under its title: the container, a column of its blocks one gutter apart, air under the last. */
+export function pageBodyClass(): string {
+  return `${pageColumnClass()} ${PAGE_GAP} flex flex-col pb-8 pt-2 lg:pb-12`
+}
+
+/** MAIN | SIDE from `lg`: one column below it. The side is `--page-side` wide (the tray's width). */
+export function pageSplitClass(): string {
+  return `grid grid-cols-1 ${PAGE_GAP} lg:grid-cols-[minmax(0,1fr)_var(--page-side)] lg:items-start`
+}
+
+/** The docked Tray over a PAGE, from `lg`: the side column's own x and width, between the status strip (top-8) and the
+ *  nav (bottom-14), rounded on every side (the margin shows beside it). Its right edge is the page's right margin —
+ *  `max(--page-pad, 50% − PAGE_REM/2)` from the glass's right — and its width is `--page-side`. */
+export function trayDockPageClass(): string {
+  // 40rem = PAGE_REM / 2
+  return 'lg:inset-auto lg:top-8 lg:bottom-14 lg:right-[max(var(--page-pad),calc(50%-40rem))] lg:w-[var(--page-side)] lg:h-auto lg:rounded-sheet'
+}
+
 /** The docked Tray from `lg`: a side panel between the status strip (top-8) and the nav
  *  (bottom-14), TRAY_REM wide, its right edge where the centred pair's right edge is —
  *  `max(0, 50% − PAIR_REM/2)` from the glass's right — so it stands exactly in the space

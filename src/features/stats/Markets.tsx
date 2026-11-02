@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   Button,
-  Clip,
+  Card,
   Empty,
   FactsLine,
   FilterBar,
@@ -9,11 +9,12 @@ import {
   GoodKind,
   ListPanel,
   Note,
+  PageSplit,
   Row,
+  Segmented,
   Skeleton,
   Sparkline,
   StatCell,
-  StatRun,
   StockGauge,
   categoryLabel,
   deltaTone,
@@ -30,13 +31,14 @@ import { useWorld } from '../../live/worldStore'
 import { goodName, movePct } from './statsFaces'
 import { useLiveRead } from './statsLive'
 import { ALL } from './statsFilters'
-import { Block } from './StatsBlock'
 
-// MARKETS — every good as a stock-market table, ALL ON THE FACE (owner, 2026-11-01, row 260). It was a day's four
-// figures and three summary rows (Filter · Movers · Every good) with the filters, the movers and the 629
-// goods on three pages. It is now the day's four figures and the movers over ONE list panel: the goods,
-// with the filters (kind · rarity · sort) in the panel's own header and the window on the day it sets. A press on a good was never
-// anything — the row is its own detail (its price, its move, what sold and bought, its stock).
+// MARKETS — every good as a stock-market table, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267:
+// *"it looks so wrong … too packed"*). The face is MAIN | SIDE (screenLayout.ts "THE PAGE"): MAIN is ONE list card — the goods,
+// with the filters (kind · rarity · sort) in its own header, in as many columns as the main holds (1 on a phone, 2 from 768 and
+// in the 840 px of main at 1,440); the SIDE is the tray's column, the day's figures and the movers — the window that sets them
+// (1 h · 1 day · 7 days, a segmented choice and not a drop-down), the day's four figures, then three cards of three goods: up,
+// down and most traded. On a phone the side comes first (what the list is read with), as P1 had it. A press on a good was
+// never anything — the row is its own detail (its price, its move, what sold and bought, its stock).
 
 const SORTS = ['movers', 'rose', 'fell', 'traded', 'price', 'class', 'name'] as const
 type Window = '1h' | '1d' | '7d'
@@ -90,43 +92,106 @@ export function MarketsFace() {
   const shown = all ? rows : rows.slice(0, FIRST)
   const unitsTraded = rows.reduce((n, r) => n + r.traded, 0)
 
-  const above = (
-    <>
-      <Block
-        title={t('stats.dayMarket')}
-        // THE WINDOW IS THE DAY'S: it sets the rose and fell counts, the movers and every row's move, so it stands
-        // on the block those figures are in, not among the list's filters (which then fit one line of a phone).
-        aside={
-          <FilterBar
-            compact
-            className="ml-auto"
-            data-testid="stats-markets-window"
-            picks={[
-              {
-                id: 'window',
-                label: t('stats.windowLabel'),
-                options: [
-                  { id: '1h', label: t('stats.h1') },
-                  { id: '1d', label: t('stats.d1') },
-                  { id: '7d', label: t('stats.d7') },
-                ],
-                value: win,
-                onChange: (id) => setWin(id as Window),
-              },
-            ]}
-          />
-        }
-        data-testid="stats-markets-day"
-      >
-        <StatRun>
-          <StatCell inline label={t('stats.goodsTraded')} value={rows.filter((r) => r.traded > 0).length} format={formatInt} size="body" />
-          <StatCell inline label={t('stats.unitsTraded')} value={unitsTraded} format={formatInt} size="body" />
-          <StatCell inline label={t('stats.rose', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) > 0).length} format={formatInt} size="body" tone="success" />
-          <StatCell inline label={t('stats.fell', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) < 0).length} format={formatInt} size="body" tone="danger" />
-        </StatRun>
-      </Block>
-      <Block title={t('stats.movers')} data-testid="stats-movers">
-        <div className="grid grid-cols-3 gap-x-3 lg:grid-cols-1">
+  return (
+    <PageSplit
+      data-testid="stats-markets"
+      sideFirst
+      stickySide
+      main={
+        <ListPanel
+          look="card"
+          columns="fit"
+          title={t('stats.everyGood')}
+          count={formatInt(rows.length)}
+          trailing={
+            <FilterBar
+              compact
+              data-testid="stats-markets-sort"
+              sort={{
+                id: 'sort',
+                label: t('stats.sortLabel'),
+                options: SORTS.map((id) => ({
+                  id,
+                  label: t(
+                    id === 'movers' ? 'stats.movers' : id === 'rose' ? 'stats.roseMost' : id === 'fell' ? 'stats.fellMost' : id === 'traded' ? 'stats.mostTraded' : id === 'price' ? 'stats.dearest' : id === 'class' ? 'stats.topClass' : 'stats.name',
+                  ),
+                })),
+                value: sort,
+                onChange: (id) => choose({ sort: id }),
+              }}
+            />
+          }
+          controls={
+            <FilterBar
+              compact
+              data-testid="stats-markets-filters"
+              picks={[
+                {
+                  id: 'kind',
+                  label: t('stats.kind'),
+                  options: [{ id: ALL, label: t('stats.allKinds') }, ...kinds.map((k) => ({ id: k, label: categoryLabel(k) }))],
+                  value: kind,
+                  onChange: (id) => choose({ kind: id }),
+                },
+                {
+                  id: 'rarity',
+                  label: t('stats.rarity'),
+                  options: [{ id: ALL, label: t('stats.anyRarity') }, ...RARITY_TIERS.map((r) => ({ id: r, label: rarityLabel(r) }))],
+                  value: rarity,
+                  onChange: (id) => choose({ rarity: id }),
+                },
+              ]}
+            />
+          }
+          footer={
+            !all && rows.length > FIRST ? (
+              <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">
+                {t('stats.showAll')}
+              </Button>
+            ) : undefined
+          }
+          data-testid="stats-goods"
+        >
+          {rows.length === 0 && (
+            <Empty className="my-1 md:col-span-full" data-testid="stats-no-match">
+              {t('stats.noMatch')}
+            </Empty>
+          )}
+          {shown.map((r) => (
+            <GoodRow key={r.g.code} g={r.g} move={r.move} goodClass={goodByCode[r.g.code]?.class} />
+          ))}
+        </ListPanel>
+      }
+      side={
+        <>
+          <Card
+            title={t('stats.dayMarket')}
+            // THE WINDOW IS THE DAY'S: it sets the rose and fell counts, the movers and every row's move, so it stands on the
+            // heading of the figures it sets, not among the list's filters. Three choices: a segmented control, never a drop-down.
+            aside={
+              <div data-testid="stats-markets-window">
+                <Segmented
+                  segments={[
+                    { id: '1h', label: t('stats.h1') },
+                    { id: '1d', label: t('stats.d1') },
+                    { id: '7d', label: t('stats.d7') },
+                  ]}
+                  value={win}
+                  onChange={setWin}
+                  label={t('stats.windowLabel')}
+                  columns={3}
+                />
+              </div>
+            }
+            data-testid="stats-markets-day"
+          >
+            <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+              <StatCell look="stacked" label={t('stats.goodsTraded')} value={rows.filter((r) => r.traded > 0).length} format={formatInt} />
+              <StatCell look="stacked" label={t('stats.unitsTraded')} value={unitsTraded} format={formatInt} />
+              <StatCell look="stacked" label={t('stats.rose', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) > 0).length} format={formatInt} tone="success" />
+              <StatCell look="stacked" label={t('stats.fell', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) < 0).length} format={formatInt} tone="danger" />
+            </div>
+          </Card>
           <Board
             title={t('stats.risers')}
             testid="stats-risers"
@@ -145,71 +210,9 @@ export function MarketsFace() {
             empty={t('stats.nothingTraded')}
             rows={traded.map((r) => ({ id: r.g.code, label: goodName(r.g), text: formatInt(r.traded), tone: 'ink' as const }))}
           />
-        </div>
-      </Block>
-    </>
-  )
-
-  return (
-    <ListPanel
-      above={above}
-      face={{ 'data-testid': 'stats-markets' }}
-      title={t('stats.everyGood')}
-      count={formatInt(rows.length)}
-      trailing={
-        <FilterBar
-          compact
-          data-testid="stats-markets-sort"
-          sort={{
-            id: 'sort',
-            label: t('stats.sortLabel'),
-            options: SORTS.map((id) => ({
-              id,
-              label: t(
-                id === 'movers' ? 'stats.movers' : id === 'rose' ? 'stats.roseMost' : id === 'fell' ? 'stats.fellMost' : id === 'traded' ? 'stats.mostTraded' : id === 'price' ? 'stats.dearest' : id === 'class' ? 'stats.topClass' : 'stats.name',
-              ),
-            })),
-            value: sort,
-            onChange: (id) => choose({ sort: id }),
-          }}
-        />
+        </>
       }
-      controls={
-        <FilterBar
-          compact
-          data-testid="stats-markets-filters"
-          picks={[
-            {
-              id: 'kind',
-              label: t('stats.kind'),
-              options: [{ id: ALL, label: t('stats.allKinds') }, ...kinds.map((k) => ({ id: k, label: categoryLabel(k) }))],
-              value: kind,
-              onChange: (id) => choose({ kind: id }),
-            },
-            {
-              id: 'rarity',
-              label: t('stats.rarity'),
-              options: [{ id: ALL, label: t('stats.anyRarity') }, ...RARITY_TIERS.map((r) => ({ id: r, label: rarityLabel(r) }))],
-              value: rarity,
-              onChange: (id) => choose({ rarity: id }),
-            },
-          ]}
-        />
-      }
-      data-testid="stats-goods"
-    >
-      {rows.length === 0 && <Empty className="my-1" data-testid="stats-no-match">{t('stats.noMatch')}</Empty>}
-      {shown.map((r, i) => (
-        <GoodRow key={r.g.code} g={r.g} move={r.move} goodClass={goodByCode[r.g.code]?.class} last={i === shown.length - 1 && (all || rows.length <= FIRST)} />
-      ))}
-      {!all && rows.length > FIRST && (
-        <div className="py-2">
-          <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">
-            {t('stats.showAll')}
-          </Button>
-        </div>
-      )}
-    </ListPanel>
+    />
   )
 }
 
@@ -224,31 +227,21 @@ interface BoardRow {
   tone: 'success' | 'danger' | 'ink'
 }
 
-const BOARD_TONE = { success: 'text-success', danger: 'text-danger', ink: 'text-ink-muted' } as const
-
-/** A MOVERS BOARD: three goods and their figures, a column of the face (the page it used to open held exactly
- *  these rows). Each entry is two lines — the good over its figure — so a column a third of the glass wide
- *  still reads a whole name; one that does not fit is cut with `Clip`, which carries the full name (a press on
- *  a glass with no hover reads it in place). */
+/** A MOVERS CARD: three goods and their figures, one line each — the good at the left, its move or its count at the
+ *  right, 52 px a line (a good's name wraps rather than being cut, so a long one is read whole). */
 function Board({ title, rows, empty, testid }: { title: string; rows: readonly BoardRow[]; empty: string; testid: string }) {
   return (
-    <div className="min-w-0" data-testid={testid}>
-      <span className="block text-t-caption text-ink-faint">{title}</span>
+    <Card title={title} data-testid={testid}>
       {rows.length === 0 ? (
-        <span className="block text-t-label text-ink-faint">{empty}</span>
+        <span className="block text-t-label text-ink-muted">{empty}</span>
       ) : (
-        rows.map((r) => (
-          <div key={r.id} className="min-w-0 pt-0.5">
-            <Clip className="text-t-label text-ink">{r.label}</Clip>
-            <span className={`block text-t-caption tabular-nums ${BOARD_TONE[r.tone]}`}>{r.text}</span>
-          </div>
-        ))
+        rows.map((r) => <StatCell key={r.id} look="line" label={r.label} text={r.text} tone={r.tone} />)
       )}
-    </div>
+    </Card>
   )
 }
 
-function GoodRow({ g, move, goodClass, last }: { g: StatsGood; move: number | null; goodClass: number | undefined; last: boolean }) {
+function GoodRow({ g, move, goodClass }: { g: StatsGood; move: number | null; goodClass: number | undefined }) {
   const t = useT()
   const tone = move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'
   return (
@@ -268,8 +261,8 @@ function GoodRow({ g, move, goodClass, last }: { g: StatsGood; move: number | nu
       // city sells has no price, a record younger than the window has no move.
       value={
         <span className="flex items-center gap-3">
-          {/* THE LINE WANTS ROOM: it stands only where the list is at least 24 rem wide. The PANEL's width decides, not
-              the window's — a desktop's list stands beside the figures and is not as wide as the window. */}
+          {/* THE LINE WANTS ROOM: it stands only where the row is at least 24 rem wide. The ROW's width decides (each row of a
+              card list is its own query container), not the window's. */}
           <span className="hidden @[24rem]:block">
             <Sparkline values={g.spark} tone={tone} width={48} height={18} label={t('stats.readings', { name: goodName(g), n: g.spark.length })} />
           </span>
@@ -277,7 +270,7 @@ function GoodRow({ g, move, goodClass, last }: { g: StatsGood; move: number | nu
           {move !== null && <Figure value={formatPctChange(move)} tone={deltaTone(move)} />}
         </span>
       }
-      hairline={!last}
+      hairline={false}
       data-testid="stats-good"
     >
       <FactsLine>

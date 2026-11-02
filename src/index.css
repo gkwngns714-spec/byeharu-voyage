@@ -339,6 +339,7 @@
        t-title    20/26  600   sheet title, section heading
        t-figure   24/28  600   the ONE figure a block is about (price, ETA, purse)
        t-hero     34/38  600   the headline figure of a sheet (capacity, passage days)
+     (+ t-card and t-page below: the page layout's two voices, 2026-11-02)
 
      Figures are tabular: `t-figure` and `t-hero` carry `tabular-nums` themselves (further down),
      and Tailwind's own `tabular-nums` utility is available anywhere else a column must line up. */
@@ -362,6 +363,20 @@
   --text-t-hero: 2.125rem;
   --text-t-hero--line-height: 2.375rem;
   --text-t-hero--font-weight: 600;
+
+  /* ── THE PAGE'S TWO EXTRA VOICES (2026-11-02, owner row 267: *"it looks so wrong … right now everything is
+     on left, too packed"*; docs/dev-log/2026-11-02-stats-design.md). A PAGE of cards has a title bigger than a
+     sheet's and a card title between `t-body` and `t-title`; both are used ONLY by the page layout (`Sheet
+     layout="page"`, `Card`), so no other screen changes by a pixel. The six above stay the vocabulary of
+     everything else.
+       t-card     18/24  600   a card's title (the page layout; 16 px `t-body` on a phone)
+       t-page     30/36  600   the page's own title (the page layout, from 768; 24 px `t-figure` on a phone) */
+  --text-t-card: 1.125rem;
+  --text-t-card--line-height: 1.5rem;
+  --text-t-card--font-weight: 600;
+  --text-t-page: 1.875rem;
+  --text-t-page--line-height: 2.25rem;
+  --text-t-page--font-weight: 600;
 
   /* ── SPACE — 4-pt base, 8-pt rhythm ─────────────────────────────────────────────────────────
      4 · 8 · 12 · 16 · 24 · 32 · 48, which is `1 2 3 4 6 8 12` on this base and nothing between.

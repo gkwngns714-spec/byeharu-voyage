@@ -21,14 +21,21 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 // THE CUT EDGE IS VISIBLE. While more rows lie below, the last 1.25 rem of the body fades — a list
 // that ends at a hard line reads as the whole list. At the end of the list the fade is gone.
 //
-// `above` — A FACE THAT HAS FIGURES AS WELL AS THE LIST (the Stats faces). The figures stand over
-// the panel on a phone and BESIDE it from `lg`; the same two blocks, more room (U2). On a phone
-// the figure block is as tall as its content, and only when the glass is too short for the figures
-// and a 12-rem panel does the figure block scroll inside itself — the panel never drops below its
-// floor, and the page never scrolls. That is the whole reason this is one primitive and not a
-// panel plus a layout: the rule "who gives way" lives where both are.
+// (`above` — the figures of a Stats face over or beside the panel, with a 12-rem floor and a figure block that scrolled inside
+// itself on a short glass — stood here until 2026-11-02, when the owner called the packed Stats a mistake; a face's figures are
+// cards on the page now, `look="card"` below, and nothing else ever used it.)
 //
 // WHAT IT DECIDES NOTHING ABOUT. The rows, the filters and what a press opens are the caller's.
+//
+// ═══ THE OTHER LOOK: `look="card"` (2026-11-02, owner row 267 — *"too packed … this was a mistake"*) ═══
+// The panel above is the owner's compaction: a fixed-height box that scrolls inside itself, its rows packed to their text
+// line and divided by a rule. The CARD is the pattern that replaces it, screen by screen (Stats first; Card.tsx has the
+// whole pattern): the same header (title, count, sort, filters) on a `Card`'s surface with its room, and under it rows that
+// stand 52 px on a phone and 60 from `lg`, parted by whitespace and not by a rule, a gentle hover on a desktop, and
+// NO INNER SCROLL — the page scrolls, the card is as tall as its rows. Opt-in: `look` defaults to `panel`, so every screen
+// that has not been redone is exactly what it was. `columns="fit"` lays the rows out in as many columns of at least 20 rem
+// as the card holds (1 on a phone, 2 at 768 and 1,024, 3 at 1,280 and 1,440), each row its own query container, so a row is never
+// wider than a column and a list never stretches name-to-price across the page. `footer` is where "Show all" stands.
 
 /** A cell may carry the caller's own data-* hooks (a span, a view name) — typed once, as TileGrid does. */
 type DataAttrs = { [K in `data-${string}`]?: string | number | boolean | undefined }
@@ -39,6 +46,22 @@ type DataAttrs = { [K in `data-${string}`]?: string | number | boolean | undefin
  *  which is which — a row that gains an `onClick` gains its floor and cannot forget it. */
 const PACKED =
   '[&_div[data-row-line]]:min-h-0 [&_div[data-row-line]]:py-1 [&_button[data-row-line]]:min-h-11 [&_a[data-row-line]]:min-h-11'
+
+/** THE ROWS OF A CARD LIST (`look="card"`): no rule under a row, a row 52 px on a phone and 60 from `lg` (a button or a link
+ *  keeps its 44-px reach inside that), 8 px of its own side padding with the body's `-mx-2` handing it back — so the hover
+ *  fills a rounded band while the text stays on the card's padding line. The selector, not the caller, says so: a row that
+ *  passes `hairline` still draws no rule here.
+ *
+ *  THE FIGURE STANDS AT THE ROW'S RIGHT EDGE (the `Row`'s tracks re-cut: mark · label 1fr · value · chevron). The unfold slice
+ *  hugged the figure to its label (`Row`'s slack track) because a row was then 750 px wide and its price 700 px from its name.
+ *  A row of a card list is one COLUMN wide (20 rem at the least), so the figures of a list stand on one edge
+ *  and the eye runs down them — the label never shrinks below its own text (it wraps). */
+const CARD_ROWS =
+  '[&_[data-row-line]]:grid-cols-[auto_minmax(0,1fr)_max-content_0px_auto]! [&_[data-row-line]]:rounded-control [&_[data-row-line]]:border-b-0 [&_[data-row-line]]:px-2 lg:[&_[data-row-line]]:min-h-15 [@media(hover:hover)]:[&_[data-row-line]:hover]:bg-surface-2'
+
+/** THE COLUMNS OF A `columns="fit"` CARD LIST: as many as hold 20 rem each (1 on a phone, 2 from 768, 3 from 1,152 of card);
+ *  every row is its own query container, so a row asks the column it stands in and never the page. */
+const CARD_COLUMNS = 'grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-x-4 [&>*]:@container'
 
 /** A BOUNDED SCROLL THAT KNOWS WHETHER MORE LIES BELOW. Private: `ScrollPane` is the bare bound; this adds
  *  the one thing the cut edge needs — `onMore(true)` while rows lie below the fold, and `data-more` on the
@@ -118,8 +141,9 @@ export function ListPanel({
   count,
   trailing,
   controls,
-  above,
-  face,
+  look = 'panel',
+  columns = 1,
+  footer,
   children,
   className = '',
   ...rest
@@ -133,10 +157,13 @@ export function ListPanel({
   trailing?: ReactNode
   /** The filters and the view switch: one wrapping line under the title, fixed over the rows. */
   controls?: ReactNode
-  /** The face's figures. Over the panel on a phone, beside it from `lg`. */
-  above?: ReactNode
-  /** Hooks for the container that holds `above` and the panel (the face's own test id). */
-  face?: DataAttrs & { 'data-testid'?: string }
+  /** `panel` (default): the fixed-height box that scrolls inside itself, as every list screen but Stats has it. `card`:
+   *  the page layout's list (see the header). */
+  look?: 'panel' | 'card'
+  /** `card` only. `1`: one column of rows (a feed beside figure cards). `fit`: as many columns of at least 20 rem as fit. */
+  columns?: 1 | 'fit'
+  /** `card` only: what stands under the rows — the "Show all" that reveals the rest. */
+  footer?: ReactNode
   /** The rows — `Row`s, or a `RankBars` — and nothing that is not a row of this list. */
   children: ReactNode
   className?: string
@@ -144,6 +171,40 @@ export function ListPanel({
   const named = typeof title === 'string' ? title : undefined
   // WHETHER ROWS LIE BELOW THE FOLD — the cut edge draws itself only then (a list that ends does not fade).
   const [more, setMore] = useState(false)
+  if (look === 'card') {
+    return (
+      <section
+        data-list-panel=""
+        data-list-look="card"
+        aria-label={named}
+        className={`min-w-0 rounded-tile border border-edge bg-surface p-4 md:p-5 xl:p-6 ${className}`}
+        {...rest}
+      >
+        {(title !== undefined || count !== undefined || trailing !== undefined || controls !== undefined) && (
+          <header className="mb-4 flex flex-col gap-3" data-list-header="">
+            {(title !== undefined || count !== undefined || trailing !== undefined) && (
+              <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
+                <h2 className="flex min-w-0 flex-1 items-baseline gap-2 text-t-body font-semibold text-ink md:text-t-card">
+                  {title}
+                  {count !== undefined && (
+                    <span className="shrink-0 whitespace-nowrap text-t-label font-normal tabular-nums text-ink-muted" data-list-count="">
+                      {count}
+                    </span>
+                  )}
+                </h2>
+                {trailing !== undefined && <div className="flex shrink-0 items-center gap-2">{trailing}</div>}
+              </div>
+            )}
+            {controls !== undefined && <div className="flex min-w-0 flex-wrap items-center gap-2">{controls}</div>}
+          </header>
+        )}
+        <div className={`-mx-2 ${CARD_ROWS} ${columns === 'fit' ? CARD_COLUMNS : '@container'}`} data-list-body="">
+          {children}
+        </div>
+        {footer !== undefined && <div className="pt-3">{footer}</div>}
+      </section>
+    )
+  }
   const panel = (
     <section
       data-list-panel=""
@@ -177,17 +238,5 @@ export function ListPanel({
       {more && <span aria-hidden="true" data-list-edge="" className="pointer-events-none absolute inset-x-0 bottom-0 h-5 bg-gradient-to-t from-surface to-transparent" />}
     </section>
   )
-  if (above === undefined) return panel
-  return (
-    <div
-      data-list-face=""
-      className="grid min-h-0 flex-1 grid-rows-[minmax(0,auto)_minmax(12rem,1fr)] gap-2 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-4"
-      {...face}
-    >
-      <CutEdge className="flex flex-col gap-1.5" data-list-above="">
-        {above}
-      </CutEdge>
-      {panel}
-    </div>
-  )
+  return panel
 }

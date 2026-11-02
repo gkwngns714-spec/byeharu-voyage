@@ -33,6 +33,11 @@ export type StatsFace = 'overview' | 'markets' | 'cities' | 'merchants' | 'me'
 /** The faces in order; each one's words are `stats.<id>` in the dictionary. */
 export const STATS_FACES: readonly { id: StatsFace }[] = [{ id: 'overview' }, { id: 'markets' }, { id: 'cities' }, { id: 'merchants' }, { id: 'me' }]
 
+/** THE CHART OF A CARD (2026-11-02, owner row 267 — *"charts get room"*): a `SeriesChart` 176 px tall (its plot 150), drawn 1 : 1 at
+ *  the width the card leaves, with its reading line above it — the unfold slice drew these as a 24-px sparkline. The large view
+ *  (StatsChart.tsx `BIG`) is 640 × 280. */
+export const CARD_CHART_H = 176
+
 /** How many counts a bar row shows — the last six hours at a count a quarter hour. More bars than
  *  this and each one is thinner than the gap beside it (`SignedBars` says so), and 390px is the
  *  glass this game is drawn for. */

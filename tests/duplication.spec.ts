@@ -721,7 +721,8 @@ test('no arbitrary type size in a screen — the scale is six steps and it has n
   expect(
     overDebt(found, ARBITRARY_SIZE_DEBT),
     `An arbitrary type size in a screen. The scale is text-t-caption / t-label / t-body / t-title / ` +
-      `t-figure / t-hero (src/index.css, docs/UI_DIRECTION.md §4.1) — six steps, each with its own ` +
+      `t-figure / t-hero (src/index.css, docs/UI_DIRECTION.md §4.1) — six steps (and, for the page layout only, t-card ` +
+      `and t-page, 2026-11-02) — each with its own ` +
       `line-height and weight. A seventh size is a layout problem, not a type problem. If the file ` +
       `below is already in the ledger at the top of §6, you ADDED one: the debt may be paid, never ` +
       `grown.\n`,

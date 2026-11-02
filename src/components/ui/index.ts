@@ -70,7 +70,7 @@ export { Counter } from './Counter'
 export { COUNT_UP_MS, countUpEase, countUpValue } from './countUp'
 //    THE STAT CELL — a label, that one figure (counting), its move and its line. The dashboard
 //    tile the Stats tab had hand-written fourteen times; no box, because §4.3 allows none.
-export { StatCell, StatRun } from './StatCell'
+export { StatCell } from './StatCell'
 
 // 6. TILE — the selectable block, and TileField, the CSS grid it stands in.
 export { Tile, TileField, type TileState } from './Tile'
@@ -111,7 +111,12 @@ export { ScrollPane } from './ScrollPane'
 //    stands ON the screen — fixed header, a body that scrolls inside it with a visible cut edge, the
 //    shared `Row` packed to the reach floor, the height the glass leaves free. Stats (five faces),
 //    Codex, Ledger, Rank and Routes compose it; a press opens ONE item's page, never the list.
-export { DenseRows, ListPanel } from './ListPanel'
+export { ListPanel } from './ListPanel'
+
+// THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE", docs/dev-log/2026-11-02-stats-design.md): MAIN | SIDE on
+// the whole glass, the side being the tray's column. `Sheet layout="page"` is its container; `StatCell look="stacked|line"`
+// and `ListPanel look="card"` are its figure and its list. Stats is the first screen on it; the rest follow.
+export { Card, CardRow, PageSplit, StatCard, StatStrip } from './Card'
 export { LanguageSwitch } from './LanguageSwitch'
 
 // 9. BUTTON — flat: primary / secondary / quiet / destructive, 44 and 36, icon.
@@ -213,6 +218,7 @@ export { StockGauge } from './StockGauge'
 export { FilterBar, type FilterChips, type FilterOption, type FilterPick, type FilterToggle } from './FilterBar'
 export { filterStorageKey, oneOf, readFilterChoice, useFilterChoice, type FilterChoice } from './filterState'
 export { sheetBodyClass, sheetColumnClass } from './screenLayout'
+export { PAGE_GAP, PAGE_REM, SIDE_REM, pageBodyClass, pageColumnClass, pageSplitClass, pageVarsClass, trayDockPageClass } from './screenLayout'
 export { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
 // THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a
 // side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is

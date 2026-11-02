@@ -218,7 +218,9 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
         for (let n = leaves.nextNode(); n; n = leaves.nextNode()) {
           const txt = (n.textContent ?? '').replace(/\s+/g, ' ').trim()
           const host = n.parentElement
-          if (!txt || !host || host.closest('svg') || !vis(host)) continue
+          // a screen-reader label (`sr-only`: a 1-px clipped box whose text overflows it) is not text on the glass — a compact FilterBar names its
+          // pickers that way, and its "Filter" was read as standing on the very picker it names (2026-11-02, the page laws)
+          if (!txt || !host || host.closest('svg') || host.closest('.sr-only') || !vis(host)) continue
           const range = document.createRange()
           range.selectNodeContents(n)
           // every line the text occupies, not only its first
