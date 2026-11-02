@@ -4,6 +4,13 @@
 # It prints the numbers, then ALERT lines for each threshold that trips — thresholds are the ones that would have caught the 10-30 → 11-01 incident
 # hours or days earlier. Usage: bash scripts/ops/health.sh
 export PATH="$HOME/tools/supabase:$PATH"
+# No `supabase` on PATH (Git Bash on a fresh PC): put a shim in front that runs the CLI through npx, so every query below still works
+# and a missing CLI is never read as "no data" (each failed query is counted and the verdict says UNKNOWN, never healthy).
+if ! command -v supabase >/dev/null 2>&1; then
+  _shim=$(mktemp -d); printf '#!/bin/sh
+exec npx --yes supabase@latest "$@"
+' > "$_shim/supabase"; chmod +x "$_shim/supabase"; export PATH="$_shim:$PATH"
+fi
 # `supabase db query --linked` needs the project link (supabase/.temp): a fresh worktree has none, so go where it is.
 if [ ! -d supabase/.temp ]; then for d in "$HOME/dev/byeharu-voyage" "$HOME/byeharu-voyage"; do [ -d "$d/supabase/.temp" ] && { cd "$d" || exit 1; break; }; done; fi
 # A check that could not run is NOT a clean bill: every failed query is written here and the last line says so (2026-11-02: a run from a worktree
