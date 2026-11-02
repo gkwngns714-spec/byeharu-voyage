@@ -2,7 +2,7 @@
 
 Owner, 2026-11-02, verbatim (row 267): *"i want you to redesign the looks of the game. for example stats, it looks so wrong. The past was better. right now everything is on left, too packed. this was a mistake"*.
 
-Stats is the first screen of a game-wide redesign (PR #466, merge `eb5285a7`, 2026-11-02 00:49 UTC; the Pages deploy on it succeeded and the live bundle carries the new test ids). What was built here is the PATTERN — a page layout, a card, a stat card, a card list, a tray that slides over the page's side column — so that Codex, History, Rank, Routes, HQ, Fleets and the Map copy it one at a time. It is client-only (no migration, no server change, no read changed) and opt-in: `Sheet layout="page"` and `ListPanel look="card"` default to what every other screen already is, so no other screen moved by a pixel.
+Stats is the first screen of a game-wide redesign (PR #466, merge `eb5285a7`, 2026-11-02 00:49 UTC; the Pages deploy on it succeeded, the live bundle carries the new test ids, and main's Acceptance on it passed — every shard, the 19 new law tests among them; a small follow-up, #467 `1480e2ed`, removed a label that two Merchants cards repeated over their own figure). What was built here is the PATTERN — a page layout, a card, a stat card, a card list, a tray that slides over the page's side column — so that Codex, History, Rank, Routes, HQ, Fleets and the Map copy it one at a time. It is client-only (no migration, no server change, no read changed) and opt-in: `Sheet layout="page"` and `ListPanel look="card"` default to what every other screen already is, so no other screen moved by a pixel.
 
 ## 0. The answer in six lines
 
