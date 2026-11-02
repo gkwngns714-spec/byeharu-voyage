@@ -140,7 +140,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
     <>
       <PageSplit
         data-testid="codex-captains"
-        sideFirst
+        // no `sideFirst`: on a phone the boards stand AFTER the list — the Codex's purpose is the list, and its first rows are on the first glass
         stickySide
         main={
           <ListPanel

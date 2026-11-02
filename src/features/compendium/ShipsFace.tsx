@@ -98,7 +98,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
     <>
       <PageSplit
         data-testid="codex-ships"
-        sideFirst
+        // no `sideFirst`: on a phone the boards stand AFTER the list — the Codex's purpose is the list, and its first rows are on the first glass
         stickySide
         main={
           <ListPanel

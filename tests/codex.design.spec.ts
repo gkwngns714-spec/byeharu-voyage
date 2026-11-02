@@ -35,22 +35,39 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, trayBox } from './des
 //   (e) THE SIDE IS USED: every face has a second block, and from 1,024 it stands in the side column (the Goods' kind and
 //       rarity choices, the Ships' and Captains' boards, the local rulers) — a page never has an empty band at its right.
 //   (f) NO SCROLL TRAP: nothing but the sheet scrolls — the page scrolls, a list never scrolls inside itself.
+//   (g) THE LIST COMES FIRST ON A PHONE (the review of the first cut, 2026-11-02: the Goods' kind and rarity grids filled the whole
+//       first glass at 390×844 and "Goods 629" stood at its bottom edge). Below the split the face's FIRST ROW stands on the first
+//       glass, before any scroll: no side block (a choice grid, a board) stands above the list there — the Goods' kind and rarity
+//       are two pickers in the list card's header (`filter-pick-kind`, `filter-pick-rarity`, the same picker the Ships and Captains
+//       faces hold their filters in, driven by the one state the grids drive from 1,024), the boards stand after the list.
 //
 // WHICH WERE RED BEFORE: the same file, run against the build of origin/main 856a9830 (the packed column), fails (a) at
 // every glass of 1,024 and up, (c) (a pressable row is 44 px, a nation's row 33), (d)'s side column, (e) (no side column, no
 // second block) and (f) (the list scrolls inside itself) — at every glass, both languages; (b), the no-move half of (d), U3,
-// U5 and U8 were already green there: they are guards, kept. The numbers are in the dev-log.
+// U5 and U8 were already green there: they are guards, kept. (g) was red on the first cut of this branch (8445610e, measured:
+// the first Goods row 69 px under the glass's edge at 390×844 and 327 at 320×640, the first Ships row 247 / 573, the first
+// Captains row 65 / 299, and no kind or rarity picker on a phone — 6 of 6 phone tests) and is green on the second. The numbers
+// are in the dev-log.
 
 const ROWS = ['good-tile', 'ship-tile', 'officer-tile', 'nation-row'] as const
 
 /** The four faces, by their place in the tab strip (a Korean strip has other words), the panel and row each stands, what the
- *  old faces had by test id — still on the face (U3) — and the face's second block, which stands in the side (e). */
+ *  old faces had by test id — still on the face (U3) — the face's second block, which stands in the side from 1,024 (e), and
+ *  what stands in its place below the split (`phone`: the Goods' pickers; a board face keeps its boards, after the list). */
 const FACES = [
-  { name: 'Goods', panel: 'codex-list', row: 'good-tile', kept: ['codex-search', 'good-kind'], side: ['codex-kinds', 'codex-rarity'] },
-  { name: 'Ships', panel: 'codex-list', row: 'ship-tile', kept: ['codex-search', 'ship-filters'], side: ['codex-ships-cargo', 'codex-ships-speed'] },
-  { name: 'Captains', panel: 'codex-list', row: 'officer-tile', kept: ['codex-search', 'captain-filters'], side: ['codex-captains-grades', 'codex-captains-roles'] },
-  { name: 'Nations', panel: 'nation-great', row: 'nation-row', kept: ['codex-search', 'nation-rows', 'nation-great', 'nation-rulers'], side: ['nation-rulers'] },
+  { name: 'Goods', panel: 'codex-list', row: 'good-tile', kept: ['codex-search', 'good-kind'], side: ['codex-kinds', 'codex-rarity'], phone: ['goods-filters', 'filter-pick-kind', 'filter-pick-rarity'] },
+  { name: 'Ships', panel: 'codex-list', row: 'ship-tile', kept: ['codex-search', 'ship-filters'], side: ['codex-ships-cargo', 'codex-ships-speed'], phone: ['codex-ships-cargo', 'codex-ships-speed'] },
+  { name: 'Captains', panel: 'codex-list', row: 'officer-tile', kept: ['codex-search', 'captain-filters'], side: ['codex-captains-grades', 'codex-captains-roles'], phone: ['codex-captains-grades', 'codex-captains-roles'] },
+  { name: 'Nations', panel: 'nation-great', row: 'nation-row', kept: ['codex-search', 'nation-rows', 'nation-great', 'nation-rulers'], side: ['nation-rulers'], phone: ['nation-rulers'] },
 ] as const
+
+/** The first row's box on the glass (viewport px), or null. Self-contained, shipped into the page. */
+const FIRST_ROW = (id: string) => {
+  const e = document.querySelector(`[data-testid="${id}"]`)
+  if (!e) return null
+  const r = e.getBoundingClientRect()
+  return { top: r.top, bottom: r.bottom, glass: innerHeight }
+}
 
 const SHEET = '[data-testid="codex"]'
 
@@ -136,13 +153,23 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           if (short.length > 0) failures.push(`${where}: (c) ${short.length} list rows are under 52 px — the shortest is a ${short[0].id} row of ${Math.round(Math.min(...short.map((r) => r.h)))}`)
           if (wide.length > 0) failures.push(`${where}: (c) ${wide.length} list rows are wider than ${ROW_MAX_REM} rem — the widest is a ${wide[0].id} row of ${Math.round(Math.max(...wide.map((r) => r.w)))} px`)
 
-          // (e) THE SIDE IS USED — the face's second block is there, and from 1,024 it stands in the side column
-          const blocks = await page.evaluate(IN_SIDE, { sheet: SHEET, ids: face.side })
-          for (const b of blocks) {
-            if (!b.found) failures.push(`${where}: (e) the face has no ${b.id} block`)
-            else if (glass.width >= 1024 && !b.inSide) failures.push(`${where}: (e) ${b.id} does not stand in the side column`)
+          // (e) THE SIDE IS USED — from 1,024 the face's second block stands in the side column; below it, what stands in its place is there
+          if (glass.width >= 1024) {
+            const blocks = await page.evaluate(IN_SIDE, { sheet: SHEET, ids: face.side })
+            for (const b of blocks) {
+              if (!b.found) failures.push(`${where}: (e) the face has no ${b.id} block`)
+              else if (!b.inSide) failures.push(`${where}: (e) ${b.id} does not stand in the side column`)
+            }
+            if (d.side === null) failures.push(`${where}: (e) the page has no side column`)
+          } else {
+            for (const id of face.phone) {
+              if ((await page.getByTestId(id).count()) === 0) failures.push(`${where}: (e) the face has no ${id} on a phone`)
+            }
+            // (g) THE LIST COMES FIRST ON A PHONE — the first row stands on the first glass, before any scroll
+            const first = await page.evaluate(FIRST_ROW, face.row)
+            if (first === null) failures.push(`${where}: (g) the face has no ${face.row} row`)
+            else if (first.bottom > first.glass + 1) failures.push(`${where}: (g) the first ${face.row} row stands ${Math.round(first.bottom - first.glass)} px under the glass's edge — a side block stands above the list`)
           }
-          if (glass.width >= 1024 && d.side === null) failures.push(`${where}: (e) the page has no side column`)
 
           // (f) NO SCROLL TRAP — only the sheet scrolls
           for (const s of d.scrollers) failures.push(`${where}: (f) a box scrolls inside itself — ${s}`)
@@ -201,23 +228,42 @@ for (const glass of DESIGN_GLASSES) {
     expect(await goods.count(), 'closing the tray changed the list').toBe(total)
 
     // A KIND PRESSED SELECTS (owner rows 6, 15, 25: *"Pressing a control SELECTS. It never collapses, re-flows, replaces or
-    // destroys the surface it was pressed on"*): the list holds that kind alone, the chip says it is on, and the side's cards
-    // and the search are exactly where they were — the list is the only thing that changed.
-    const chips = page.locator('[data-testid="codex-kinds"] [data-testid^="filter-chip-"]')
-    expect(await chips.count(), 'the Kind card offers no kinds').toBeGreaterThan(5)
-    const chip = chips.nth(1)
-    await chip.scrollIntoViewIfNeeded()
-    await page.waitForTimeout(300)
-    const still = ['codex-kinds', 'codex-rarity', 'codex-search']
-    const held = await boxesOf(page, SHEET, still)
-    await chip.click()
-    await expect(chip).toHaveAttribute('aria-pressed', 'true')
-    await expect.poll(() => goods.count(), { timeout: 15_000 }).toBeLessThan(total)
-    expect(await goods.count(), 'the kind left no goods').toBeGreaterThan(0)
-    expect(await page.getByTestId('good-kind').count(), 'one kind, one heading').toBe(1)
-    expect(await boxesOf(page, SHEET, still), 'pressing a kind moved the side or the search').toEqual(held)
-    await chips.first().click()
-    await expect.poll(() => goods.count(), { timeout: 15_000 }).toBe(total)
+    // destroys the surface it was pressed on"*): the list holds that kind alone, the control says it is on, and the side's cards
+    // (the pickers' bar, on a phone) and the search are exactly where they were — the list is the only thing that changed.
+    if (glass.width >= 1024) {
+      const chips = page.locator('[data-testid="codex-kinds"] [data-testid^="filter-chip-"]')
+      expect(await chips.count(), 'the Kind card offers no kinds').toBeGreaterThan(5)
+      const chip = chips.nth(1)
+      await chip.scrollIntoViewIfNeeded()
+      await page.waitForTimeout(300)
+      const still = ['codex-kinds', 'codex-rarity', 'codex-search']
+      const held = await boxesOf(page, SHEET, still)
+      await chip.click()
+      await expect(chip).toHaveAttribute('aria-pressed', 'true')
+      await expect.poll(() => goods.count(), { timeout: 15_000 }).toBeLessThan(total)
+      expect(await goods.count(), 'the kind left no goods').toBeGreaterThan(0)
+      expect(await page.getByTestId('good-kind').count(), 'one kind, one heading').toBe(1)
+      expect(await boxesOf(page, SHEET, still), 'pressing a kind moved the side or the search').toEqual(held)
+      await chips.first().click()
+      await expect.poll(() => goods.count(), { timeout: 15_000 }).toBe(total)
+    } else {
+      // (g) on a phone the kind is a picker in the list card's header — the same state the grid drives from 1,024
+      const pick = page.getByTestId('filter-pick-kind')
+      await expect(pick, 'the Goods face has no kind picker on a phone').toBeVisible()
+      const options = await pick.locator('option').evaluateAll((os) => os.map((o) => (o as HTMLOptionElement).value))
+      expect(options.length, 'the kind picker offers no kinds').toBeGreaterThan(5)
+      // a compact picker is as wide as the word it shows (FilterBar: `field-sizing-content`), so the bar's WIDTH follows the choice
+      // by design; its place and its height, and the search's whole box, must not
+      const place = (b: Record<string, [number, number, number, number] | null>) => ({ search: b['codex-search'], bar: b['goods-filters'] === null ? null : [b['goods-filters'][0], b['goods-filters'][1], b['goods-filters'][3]] })
+      const held = place(await boxesOf(page, SHEET, ['goods-filters', 'codex-search']))
+      await pick.selectOption(options[1])
+      await expect.poll(() => goods.count(), { timeout: 15_000 }).toBeLessThan(total)
+      expect(await goods.count(), 'the kind left no goods').toBeGreaterThan(0)
+      expect(await page.getByTestId('good-kind').count(), 'one kind, one heading').toBe(1)
+      expect(place(await boxesOf(page, SHEET, ['goods-filters', 'codex-search'])), 'picking a kind moved the pickers or the search').toEqual(held)
+      await pick.selectOption('all')
+      await expect.poll(() => goods.count(), { timeout: 15_000 }).toBe(total)
+    }
   })
 }
 
