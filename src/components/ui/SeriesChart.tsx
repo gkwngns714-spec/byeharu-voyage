@@ -1,4 +1,4 @@
-import { useMemo, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type PointerEvent, type ReactNode } from 'react'
 import { nearestDot, seriesChartModel, type SeriesPoint } from './seriesChartModel'
 
 // ONE FIGURE OVER TIME — the small-multiple line the Stats tab is made of (seriesChartModel.ts says why
@@ -31,6 +31,7 @@ export function SeriesChart({
   label,
   tone = 'accent',
   size,
+  height,
   empty = null,
   className = '',
 }: {
@@ -42,6 +43,12 @@ export function SeriesChart({
   label: string
   tone?: SeriesTone
   size?: { width: number; height: number }
+  /** A CHART OF A STATED HEIGHT, DRAWN 1 : 1 (2026-11-02, owner row 267 — *"charts get room"*). `size` is a sheet the browser then scales to
+   *  the box it finds, so a chart's height was whatever its width made it (a 340 × 120 sheet in a 216-px plot is 76 px tall, and its
+   *  captions shrink with it). With `height` (px) the chart is exactly that tall: it measures its own width and draws on a sheet of
+   *  that width, so a pixel of the model is a pixel of the glass, the captions stay 12 px, and the plot is never squeezed. Absent,
+   *  nothing changes (the price chart and the large view keep `size`). */
+  height?: number
   /** WHAT STANDS WHERE THE LINE WOULD BE while the record is too short to draw one (2026-10-20,
    *  owner request 188). A chart that renders NOTHING is read as a missing feature — the tab's
    *  first hour has one row per figure, and the owner's words that day were "no charts". A caller
@@ -50,7 +57,20 @@ export function SeriesChart({
   empty?: ReactNode
   className?: string
 }) {
-  const model = useMemo(() => seriesChartModel(points, size), [points, size])
+  // THE BOX'S OWN WIDTH, for a chart of a stated `height`: measured on the svg (a flex child, so its width is what the card leaves).
+  const [node, setNode] = useState<SVGSVGElement | null>(null)
+  const [boxW, setBoxW] = useState(0)
+  useEffect(() => {
+    if (node === null || height === undefined) return
+    const read = () => setBoxW(Math.max(120, Math.round(node.getBoundingClientRect().width)))
+    read()
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(read)
+    watch.observe(node)
+    return () => watch.disconnect()
+  }, [node, height])
+  const sheet = useMemo(() => (height !== undefined && boxW > 0 ? { width: boxW, height } : size), [height, boxW, size])
+  const model = useMemo(() => seriesChartModel(points, sheet), [points, sheet])
   const [hover, setHover] = useState<number | null>(null)
   if (!model) return <>{empty}</>
   const { plot } = model
@@ -79,7 +99,9 @@ export function SeriesChart({
       </div>
       <div className="flex items-stretch gap-2">
         <svg
+          ref={setNode}
           viewBox={`0 0 ${model.width} ${model.height}`}
+          style={height === undefined ? undefined : { height }}
           className="block h-auto min-w-0 flex-1 touch-pan-y"
           role="img"
           aria-label={label}

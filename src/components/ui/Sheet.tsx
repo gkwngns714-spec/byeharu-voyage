@@ -1,6 +1,6 @@
 import { Clip } from './Clip'
 import { useRef, useState, type ReactNode } from 'react'
-import { sheetBodyClass, sheetColumnClass } from './screenLayout'
+import { pageBodyClass, pageColumnClass, sheetBodyClass, sheetColumnClass } from './screenLayout'
 import { useInTray } from './trayContext'
 
 // THE SHEET — the one scrolling surface of a tab, and the end of the admin document.
@@ -36,6 +36,7 @@ export function Sheet({
   title,
   trailing,
   fill = false,
+  layout = 'column',
   children,
   className = '',
   ...rest
@@ -48,11 +49,18 @@ export function Sheet({
    *  `ListPanel` takes what the screen leaves free and the tab itself never scrolls. Off for every tab
    *  whose content is its own height. */
   fill?: boolean
+  /** THE SHAPE OF THE SHEET (2026-11-02, owner row 267). `column` (the default) is every screen as it was: a readable
+   *  column of at most SHEET_REM with the tray's space kept clear at its right. `page` is the pattern the owner asked
+   *  for — *"everything is on left, too packed"* — a centred container of at most 90 rem on a 12-column grid, its
+   *  blocks `Card`s, the title at 30 px, the page scrolling (never an inner scroll) and no column reserved for a
+   *  tray (a tray is a slide-over, index.css). Screens take it one at a time; screenLayout.ts "THE PAGE" is its law. */
+  layout?: 'column' | 'page'
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
   const [pinned, setPinned] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
+  const page = layout === 'page'
 
   return (
     <div
@@ -63,33 +71,52 @@ export function Sheet({
         const next = (e.currentTarget.scrollTop ?? 0) > 26
         if (next !== pinned) setPinned(next)
       }}
-      className={`bv-scroll h-full overflow-y-auto ${fill ? 'flex flex-col' : ''} ${className}`}
+      className={`bv-scroll h-full overflow-y-auto ${fill && !page ? 'flex flex-col' : ''} ${className}`}
       data-sheet=""
+      data-sheet-layout={page ? 'page' : undefined}
       {...rest}
     >
-      <header
-        data-testid="sheet-header"
-        data-pinned={pinned}
-        className={[
-          'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter',
-          // A FILLED SHEET'S TITLE LINE IS 8 px SHORTER: the glass under it belongs to the list.
-          fill ? 'shrink-0 pb-1 pt-2' : 'pb-2 pt-3',
-          sheetColumnClass(),
-          // AT REST THE TITLE STANDS ON THE WORLD; PINNED, IT IS A BAR. Measured on the gallery at
-          // 390×844 (shots dark-1/light-1): an always-opaque header reads as a title bar even at
-          // scrollTop 0, which is a header bar — the thing §3 rule 1 deletes — reintroduced by the
-          // one primitive that replaced it. Opaque only when it is actually holding content back.
-          pinned ? 'bg-surface' : '',
-        ].join(' ')}
-      >
-        <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-title'}>
-          <Clip>{title}</Clip>
-        </h1>
-        {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
-      </header>
+      {page ? (
+        // THE PAGE'S TITLE BAR spans the glass when it pins (a bar), and its content stands in the page container:
+        // at rest the title is the page's own 30 px (24 on a phone), pinned it is the 16-px label of a bar.
+        <header
+          data-testid="sheet-header"
+          data-pinned={pinned}
+          className={['sticky top-0 z-10', pinned ? 'bg-surface' : ''].join(' ')}
+        >
+          <div className={`flex items-center justify-between gap-x-4 gap-y-2 ${pinned ? 'py-2' : 'pb-3 pt-5 lg:pb-4 lg:pt-8'} ${pageColumnClass()}`}>
+            <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-figure md:text-t-display'}>
+              <Clip>{title}</Clip>
+            </h1>
+            {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
+          </div>
+        </header>
+      ) : (
+        <header
+          data-testid="sheet-header"
+          data-pinned={pinned}
+          className={[
+            'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter',
+            // A FILLED SHEET'S TITLE LINE IS 8 px SHORTER: the glass under it belongs to the list.
+            fill ? 'shrink-0 pb-1 pt-2' : 'pb-2 pt-3',
+            sheetColumnClass(),
+            // AT REST THE TITLE STANDS ON THE WORLD; PINNED, IT IS A BAR. Measured on the gallery at
+            // 390×844 (shots dark-1/light-1): an always-opaque header reads as a title bar even at
+            // scrollTop 0, which is a header bar — the thing §3 rule 1 deletes — reintroduced by the
+            // one primitive that replaced it. Opaque only when it is actually holding content back.
+            pinned ? 'bg-surface' : '',
+          ].join(' ')}
+        >
+          <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-title'}>
+            <Clip>{title}</Clip>
+          </h1>
+          {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
+        </header>
+      )}
       {/* THE READABLE COLUMN. On a phone it is the glass; from `lg` it is SHEET_REM at most with
-          the tray's space kept clear at its right — screenLayout.ts, "the wide glass". */}
-      <div className={sheetBodyClass(fill)}>{children}</div>
+          the tray's space kept clear at its right — screenLayout.ts, "the wide glass". THE PAGE (`layout="page"`)
+          is the container of screenLayout.ts "THE PAGE": the whole glass, nothing kept clear. */}
+      <div className={page ? pageBodyClass() : sheetBodyClass(fill)}>{children}</div>
     </div>
   )
 }

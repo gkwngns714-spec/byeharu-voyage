@@ -32,6 +32,14 @@ import { Sparkline, type SparkTone } from './Sparkline'
 // which is the owner's request 188 — *"no number moving around"*. `value` is therefore a NUMBER;
 // a reading that is not one (a locked city's purse, a price no city sells) is passed as `text`,
 // which prints a plain `Figure` and never animates towards nothing.
+//
+// THREE LOOKS, ONE CELL (2026-11-02, owner row 267 — *"too packed"*; the page layout, Card.tsx):
+//   `cell`     the cell as it was (the default: the City's info, the You screen) — a caption over a body figure
+//   `stacked`  a CARD's cell: the label at 14 px in `ink-muted` over the figure at 24 px, 4 px between them, the
+//              trend beside the figure — the figure is the loudest thing in its card
+//   `line`     a STATEMENT LINE of a card: the label (and its `mark`, a swatch) at the left, the figure at the
+//              right, 48 px tall — a list of money figures whose widths differ stays on one edge
+// The two card looks carry `data-stat-label` and `data-stat-figure="<size>"`, which tests/stats.design.spec.ts reads.
 
 export function StatCell({
   label,
@@ -46,6 +54,8 @@ export function StatCell({
   trendTone = 'even',
   trendBeside = false,
   inline = false,
+  look = 'cell',
+  mark,
   children,
   className = '',
   ...rest
@@ -75,6 +85,10 @@ export function StatCell({
    *  `flex flex-wrap`, 24 px a line, instead of a cell 40 px tall. For a block of several short figures; a
    *  figure that carries a line or a delta keeps the stacked form. */
   inline?: boolean
+  /** WHERE THE CELL STANDS (see the header): `cell` (default, unchanged), `stacked` or `line` — the page layout's. */
+  look?: 'cell' | 'stacked' | 'line'
+  /** A swatch or icon before the label (`line` and `stacked` only). */
+  mark?: ReactNode
   /** A `Bar`, a share, a second caption — whatever this one figure needs and no more. */
   children?: ReactNode
   className?: string
@@ -88,6 +102,28 @@ export function StatCell({
     ) : (
       <Figure value={text ?? '—'} unit={unit} size={size} tone={text === undefined ? 'faint' : tone} />
     )
+  if (look !== 'cell') {
+    const line = look === 'line'
+    return (
+      <div className={`min-w-0 ${line ? 'flex min-h-12 items-center justify-between gap-4 py-1' : 'flex flex-col gap-1'} ${className}`} data-stat-look={look} {...rest}>
+        <span className="flex min-w-0 items-center gap-2 text-t-label text-ink-muted" data-stat-label="">
+          {mark}
+          <span className="min-w-0 break-words">{label}</span>
+        </span>
+        <span className={`flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 ${line ? 'justify-end' : ''}`} data-stat-figure={size}>
+          {drawn && line && <Sparkline values={trend} tone={trendTone} width={96} height={20} className="h-7 w-20 shrink-0" />}
+          {figure}
+          {drawn && !line && <Sparkline values={trend} tone={trendTone} width={96} height={20} className="h-7 min-w-12 flex-1" />}
+        </span>
+        {delta !== undefined && (
+          <span className="block">
+            <Figure value={delta.text} tone={delta.tone} />
+          </span>
+        )}
+        {children}
+      </div>
+    )
+  }
   if (inline) {
     return (
       <div className={`inline-flex min-w-0 items-baseline gap-2 ${className}`} {...rest}>
@@ -113,24 +149,6 @@ export function StatCell({
         </span>
       )}
       {drawn && !trendBeside && <Sparkline values={trend} tone={trendTone} width={96} height={20} className="mt-1 w-full" />}
-      {children}
-    </div>
-  )
-}
-
-/** A RUN OF INLINE PAIRS — `StatCell inline`s that wrap like words, 24 px a line, with 16 px between pairs.
- *  The one place that line is spelled: the live band, the economy watch, the day's flows, the market's day
- *  and the week all stand on it (five callers, 2026-11-02). */
-export function StatRun({
-  className = '',
-  children,
-  ...rest
-}: {
-  className?: string
-  children: ReactNode
-} & { 'data-testid'?: string }) {
-  return (
-    <div className={`flex flex-wrap items-baseline gap-x-4 gap-y-0 ${className}`} {...rest}>
       {children}
     </div>
   )

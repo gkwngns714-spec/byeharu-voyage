@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Dot, Segmented, Sheet } from '../../components/ui'
+import { Dot, PageGrid, Segmented, Sheet } from '../../components/ui'
 import { formatKoreaTime } from '../../lib/format'
 import { useLocale, useT } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
@@ -21,10 +21,16 @@ import { useStatsLive } from './statsLive'
 // FIVE FACES, ONE READ EACH. The server's job writes a rollup every fifteen minutes; each face asks one
 // read of it and prints what it says (the sums, the words, the tiers are all the server's).
 //
-// NOTHING IS BEHIND A PRESS (owner, 2026-11-01, row 260: *"everything is folded in stats this is soo wrong.
-// make it compact showing everything possible."*). Each face is its figures — with their small charts beside
-// them — over (or, from `lg`, beside) ONE `ListPanel`: the money log, the goods, the cities, the companies,
+// NOTHING IS BEHIND A PRESS (owner, 2026-11-01, row 260: *"everything is folded in stats this is soo wrong."*).
+// Each face is its figures and charts, in cards, and ONE list: the money log, the goods, the cities, the companies,
 // the best sales. A press opens ONE item's page or a chart's large view, never the list and never a figure.
+//
+// THE PAGE, NOT THE PACKED COLUMN (2026-11-02, owner row 267: *"it looks so wrong. The past was better. right now
+// everything is on left, too packed. this was a mistake"*). The unfold slice put each face in one 75-rem column with
+// 26 rem kept clear at the right and every row at its text line; the face is now a PAGE (`Sheet layout="page"`,
+// screenLayout.ts "THE PAGE"): the glass's whole width on a 12-column grid, the figures in cards with room, the
+// figures themselves 24 px, the page scrolling when the stack is long. This screen is the PATTERN — Card.tsx has it
+// — and docs/dev-log/2026-11-02-stats-design.md the numbers it was measured to.
 //
 // AND EVERY READ, EVERY SECOND (0224 for the RIGHT NOW band; 0232 for every face — owner row 213: *"and why is next
 // count in minutes? i told you it should be in seconds?"*). Each face's read answers NOW on the server (the count's
@@ -56,12 +62,11 @@ function StatsBody({ title }: { title: string }) {
   const { live, liveAtMs } = useStatsLive()
   const updated = liveAtMs === null ? null : t('stats.updated', { time: formatKoreaTime(liveAtMs) })
 
-  // THE GLASS IS THE FACE'S (the unfold slice, 2026-11-02): `fill` hands the height under the title to the
-  // face, whose figures and list panel share it — the tab itself never scrolls (docs/dev-log/2026-11-01-unfold-stats.md).
+  // THE PAGE SCROLLS (2026-11-02, owner row 267): no `fill`, no inner scroll — a face is as tall as its cards.
   return (
     <Sheet
       title={title}
-      fill
+      layout="page"
       data-testid="stats"
       trailing={
         updated === null ? undefined : (
@@ -79,14 +84,16 @@ function StatsBody({ title }: { title: string }) {
         value={face}
         onChange={setFace}
         label={t('stats.facesLabel')}
-        className="mb-1 w-fit max-w-full shrink-0"
+        className="w-fit max-w-full"
       />
-      <LiveNow live={live} />
-      {face === 'overview' && <OverviewFace live={live} />}
-      {face === 'markets' && <MarketsFace />}
-      {face === 'cities' && <CitiesFace />}
-      {face === 'merchants' && <MerchantsFace />}
-      {face === 'me' && <MeFace />}
+      <PageGrid className="mt-5 lg:mt-6">
+        <LiveNow live={live} />
+        {face === 'overview' && <OverviewFace live={live} />}
+        {face === 'markets' && <MarketsFace />}
+        {face === 'cities' && <CitiesFace />}
+        {face === 'merchants' && <MerchantsFace />}
+        {face === 'me' && <MeFace />}
+      </PageGrid>
     </Sheet>
   )
 }

@@ -65,6 +65,72 @@ export function sheetBodyClass(fill = false): string {
     : `px-gutter pb-6 ${sheetColumnClass()}`
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE PAGE — cards on the whole glass (2026-11-02, owner row 267)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// *"i want you to redesign the looks of the game. for example stats, it looks so wrong. The past was better.
+// right now everything is on left, too packed. this was a mistake."* The wide glass above reserves the right
+// 27.5 rem of every sheet for a tray that is shut almost always, and the unfold slice packed what was left. The
+// PAGE is the other shape, and it is the pattern every screen takes in its turn (Stats first; docs/dev-log/
+// 2026-11-02-stats-design.md): a centred container up to PAGE_REM on a 12-column grid, its blocks CARDS with
+// room around them. It is opt-in — `Sheet layout="page"` — and nothing above changes: a screen that does not
+// ask for it is exactly what it was.
+//
+//   container   centred, at most PAGE_REM (90 rem = 1,440 px); side margins 16 px on a phone, 24 px from `sm`,
+//               48 px from `xl` (1,280) — so at 1,280 the cards span 1,184 px (92 % of the glass), at 1,440
+//               1,344 px (93 %), and nothing is reserved at the right
+//   grid        one column below `md` (768); from `md` twelve columns with 20-24 px gutters; a card takes
+//               `CARD_SPAN` of them: a QUARTER (a stat) is 6 of 12 from `md` and 3 from `xl`, a THIRD (a card of
+//               figures) 6 then 4 — two across at 1,024, three across at 1,280 and 1,440 — so no figure card
+//               is wider than 560 px at any glass (432 px at 1,440), and a row of a list inside one is
+//               content-sized, never stretched across the page (the 2026-09-13 complaint, "too much blank
+//               space", must not come back)
+//   tray        a docked tray is a slide-over, flush with the right edge (index.css), never a column
+//
+// The literal strings below are for Tailwind's scanner (it cannot see a class built from a number); the
+// numbers they encode are stated once, here, and tests/wide.layout.spec.ts parses them.
+
+/** The page container's greatest width, in rem. 90 rem = 1,440 px. */
+export const PAGE_REM = 90
+
+/** The page container: centred, at most PAGE_REM, margins 16 · 24 (`sm`) · 48 (`xl`) px. */
+export function pageColumnClass(): string {
+  // 90rem = PAGE_REM · px-4 = 16 · sm:px-6 = 24 · xl:px-12 = 48
+  return 'mx-auto w-full max-w-[90rem] px-4 sm:px-6 xl:px-12'
+}
+
+/** The page's body under its title: the container, with air under the last card. */
+export function pageBodyClass(): string {
+  return `${pageColumnClass()} pb-8 pt-2 lg:pb-12`
+}
+
+/** THE 12-COLUMN GRID cards stand on: one column below `md`; from `md` twelve, 20 px gutters (24 from `lg`). */
+export function pageGridClass(): string {
+  return 'grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-12 lg:gap-6'
+}
+
+/** How much of the grid a card takes. `quarter` is a stat card (6/12 from `md`, 3/12 from `xl`: 2 then 4 across);
+ *  `third` a card of figures (6/12 then 4/12: 2 then 3 across); `half` is 6/12 at every width from `md`;
+ *  `side` a tall card beside a zone (12/12, then 4/12), `zone` the block of cards it stands beside (12/12, then
+ *  8/12: a `CardZone`, two cards across); `full` the whole width — a list or a toolbar, whose rows lay
+ *  themselves out in columns and are never wider than 35 rem. */
+export type CardSpan = 'quarter' | 'third' | 'half' | 'side' | 'zone' | 'full'
+
+const CARD_SPAN: Record<CardSpan, string> = {
+  quarter: 'md:col-span-6 xl:col-span-3',
+  third: 'md:col-span-6 xl:col-span-4',
+  half: 'md:col-span-6',
+  side: 'md:col-span-12 xl:col-span-4',
+  zone: 'md:col-span-12 xl:col-span-8',
+  full: 'md:col-span-12',
+}
+
+/** The grid classes of a card's span. */
+export function cardSpanClass(span: CardSpan): string {
+  return CARD_SPAN[span]
+}
+
 /** The docked Tray from `lg`: a side panel between the status strip (top-8) and the nav
  *  (bottom-14), TRAY_REM wide, its right edge where the centred pair's right edge is —
  *  `max(0, 50% − PAIR_REM/2)` from the glass's right — so it stands exactly in the space

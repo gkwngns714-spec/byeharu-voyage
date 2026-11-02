@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, ListPanel, Note, Row, Skeleton, oneOf, useFilterChoice } from '../../components/ui'
+import { Button, DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, ListPanel, Note, Row, Skeleton, oneOf, useFilterChoice } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsCities, type StatsCities, type StatsCityRow } from '../../lib/rpc'
@@ -10,15 +10,19 @@ import { useLiveRead } from './statsLive'
 import { ALL, CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sortCities, type CitySort } from './statsFilters'
 
 // CITIES — every harbour, open to everyone (0223, owner row 197), ALL ON THE FACE (owner, 2026-11-01, row 260). It
-// was two summary rows — the filters on one page, the 246 cities on another. It is now ONE list panel: the
-// cities, with the filters (area · country · sort · mine) in the panel's own header. A press on a city opens
+// was two summary rows — the filters on one page, the 246 cities on another. It is ONE list card: the cities, with
+// the filters (area · country · sort · mine) in the card's own header, in as many columns as the glass holds (1 on a
+// phone, 2 at 1,024, 3 from 1,280 — 2026-11-02, row 267: *"everything is on left, too packed"*). A press on a city opens
 // THAT city's page (its purse over time, what it buys and sells, every good it holds); Back returns to the list.
+
+const FIRST = 60
 
 export function CitiesFace() {
   const t = useT()
   const read = useLiveRead<StatsCities>('stats:cities', () => worldStatsCities())
   const v = read.view
   const [open, setOpen] = useState<StatsCityRow | null>(null)
+  const [all, setAll] = useState(false)
   const nationByCode = useWorld((s) => s.nationByCode)
   const [choice, choose] = useFilterChoice('stats.cities', { area: ALL, country: ALL, mine: '0', sort: 'richest' })
   const sortOptions = useMemo(
@@ -30,8 +34,8 @@ export function CitiesFace() {
     [t],
   )
 
-  if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
-  if (!v) return <Note tone="danger">{t('stats.citiesFailed')}</Note>
+  if (read.loading && !v) return <Skeleton className="h-64 w-full md:col-span-12" data-testid="stats-waiting" />
+  if (!v) return <Note tone="danger" className="md:col-span-12">{t('stats.citiesFailed')}</Note>
 
   const flag = (c: StatsCityRow) =>
     c.nation === null ? undefined : <Flag code={c.nation} name={nationNameOf(nationByCode, c.nation)} size="body" />
@@ -42,10 +46,14 @@ export function CitiesFace() {
     .sort((a, b) => a.label.localeCompare(b.label))
   const country = oneOf(choice.country, [ALL, ...countries.map((c) => c.id)], ALL)
   const rows = sortCities(filterCities(v.cities, { area, country, mine: choice.mine === '1' }), sort, (c) => portName(c.name))
+  const shown = all ? rows : rows.slice(0, FIRST)
 
   return (
     <>
       <ListPanel
+        look="card"
+        span="full"
+        columns="fit"
         title={t('stats.citiesCount')}
         count={formatInt(rows.length)}
         trailing={
@@ -78,14 +86,21 @@ export function CitiesFace() {
             toggles={[{ id: 'mine', label: t('stats.myCities'), on: choice.mine === '1', onChange: (on) => choose({ mine: on ? '1' : '0' }) }]}
           />
         }
+        footer={
+          !all && rows.length > FIRST ? (
+            <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-cities-show-all">
+              {t('stats.showAll')}
+            </Button>
+          ) : undefined
+        }
         data-testid="stats-cities"
       >
         {rows.length === 0 && (
-          <Empty className="my-1" data-testid="stats-no-match">
+          <Empty className="my-1 md:col-span-full" data-testid="stats-no-match">
             {t('stats.noMatch')}
           </Empty>
         )}
-        {rows.map((c, i) => (
+        {shown.map((c) => (
           <Row
             key={c.id}
             mark={flag(c)}
@@ -97,7 +112,7 @@ export function CitiesFace() {
             value={<Figure value={formatDucats(c.purse ?? 0)} />}
             chevron
             onClick={() => setOpen(c)}
-            hairline={i < rows.length - 1}
+            hairline={false}
             data-testid="stats-city-open"
           >
             <FactsLine>
