@@ -21,12 +21,9 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 // THE CUT EDGE IS VISIBLE. While more rows lie below, the last 1.25 rem of the body fades — a list
 // that ends at a hard line reads as the whole list. At the end of the list the fade is gone.
 //
-// `above` — A FACE THAT HAS FIGURES AS WELL AS THE LIST (the Stats faces). The figures stand over
-// the panel on a phone and BESIDE it from `lg`; the same two blocks, more room (U2). On a phone
-// the figure block is as tall as its content, and only when the glass is too short for the figures
-// and a 12-rem panel does the figure block scroll inside itself — the panel never drops below its
-// floor, and the page never scrolls. That is the whole reason this is one primitive and not a
-// panel plus a layout: the rule "who gives way" lives where both are.
+// (`above` — the figures of a Stats face over or beside the panel, with a 12-rem floor and a figure block that scrolled inside
+// itself on a short glass — stood here until 2026-11-02, when the owner called the packed Stats a mistake; a face's figures are
+// cards on the page now, `look="card"` below, and nothing else ever used it.)
 //
 // WHAT IT DECIDES NOTHING ABOUT. The rows, the filters and what a press opens are the caller's.
 //

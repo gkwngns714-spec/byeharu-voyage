@@ -46,6 +46,7 @@ export function RankBars({
   rows,
   format,
   empty,
+  rules = true,
   className = '',
   ...rest
 }: {
@@ -53,6 +54,8 @@ export function RankBars({
   rows: readonly RankRow[]
   /** How a row's figure reads (lib/format owns the spelling). */
   format: (v: number) => string
+  /** The 1px rule between rows. Off in a card (2026-11-02, the page layout: whitespace parts rows, a rule parts groups). */
+  rules?: boolean
   /** The one row drawn instead of an empty list. */
   empty?: ReactNode
   className?: string
@@ -74,7 +77,7 @@ export function RankBars({
             key={r.id}
             label={r.label}
             value={<Figure value={r.text ?? format(r.value)} tone={FIGURE_TONE[tone]} />}
-            hairline={i < rows.length - 1}
+            hairline={rules && i < rows.length - 1}
           >
             {r.note !== undefined && <span className="block text-t-caption text-ink-faint">{r.note}</span>}
             <Bar pct={(Math.abs(r.value) / widest) * 100} tone={tone} className="mt-1" />

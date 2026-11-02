@@ -38,7 +38,7 @@ import { Sparkline, type SparkTone } from './Sparkline'
 //   `stacked`  a CARD's cell: the label at 14 px in `ink-muted` over the figure at 24 px, 4 px between them, the
 //              trend beside the figure — the figure is the loudest thing in its card
 //   `line`     a STATEMENT LINE of a card: the label (and its `mark`, a swatch) at the left, the figure at the
-//              right, 48 px tall — a list of money figures whose widths differ stays on one edge
+//              right, 52 px tall (the row token) — a list of money figures whose widths differ stays on one edge
 // The two card looks carry `data-stat-label` and `data-stat-figure="<size>"`, which tests/stats.design.spec.ts reads.
 
 export function StatCell({
@@ -105,7 +105,7 @@ export function StatCell({
   if (look !== 'cell') {
     const line = look === 'line'
     return (
-      <div className={`min-w-0 ${line ? 'flex min-h-12 items-center justify-between gap-4 py-1' : 'flex flex-col gap-1'} ${className}`} data-stat-look={look} {...rest}>
+      <div className={`min-w-0 ${line ? 'flex min-h-row items-center justify-between gap-4 py-1' : 'flex flex-col gap-1'} ${className}`} data-stat-look={look} {...rest}>
         <span className="flex min-w-0 items-center gap-2 text-t-label text-ink-muted" data-stat-label="">
           {mark}
           <span className="min-w-0 break-words">{label}</span>
