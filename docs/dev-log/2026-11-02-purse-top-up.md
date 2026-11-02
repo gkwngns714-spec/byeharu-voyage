@@ -15,4 +15,18 @@ Every purse = old x m; purse = rolled + flows; rolled = daybook; OWNER_GRANT flo
 Chain to 0301 (cached prefix), run 0302: fresh dark world passes; populated world with economy closed and purses lit (246 harbours, random purses): total 1,180,729,900 = expected sum of old x m.
 
 ## Prod numbers
-(filled after deploy)
+Deployed with ~/bin/bv-deploy.sh 468 (PR #468, merge d6be60b); prod head 20260818000302. The grant ran 2026-11-02 05:23:49 UTC.
+
+| | harbours | live purse total |
+|---|---|---|
+| Before (read-only, minutes earlier, purses drift every second) | 246 (23 capitals) | 192,122,298 (capitals 8,970,721) |
+| Old balances AT RUN TIME, recovered from the grant flows | 246 | non-capitals 189,391,212 + capitals 12,705,411 = 202,096,623 |
+| Expected after, at the moment of the grant | | 189,391,212 x 100 + 12,705,411 x 500 = 25,291,826,700 |
+
+- 238 OWNER_GRANT flows (the other 8 harbours were at 0), sum 25,089,730,077 d. = 99 x non-capital old + 499 x capital old: 215 non-capital flows divisible by 99, 23 capital flows divisible by 499, old sums as above.
+- The migration's own self-assert (every purse = old x multiplier, purse = rolled + flows, guard controls) passed on prod, or the push would have rolled back.
+- Purses move with play every second, so the total read minutes later (25,273,361,936 at 05:27, 25,154,318,716 at 05:39) is lower than the grant-moment figure: that is trade, not a defect.
+- Books after: tick_city (05:37) rolled it: treasury_daybook OWNER_GRANT = 25,089,730,077; Stats live cities figure equals the actual purse sum (25,154,318,716 at 05:39). The stamp economy_closed_total was not touched.
+- cron.job_run_details since the deploy: byeharu-voyage:stats 05:36, 05:51, 06:06 succeeded; byeharu-voyage:city 05:37 succeeded; byeharu-voyage:reconcile 06:07 succeeded. All 12 jobs active.
+
+Choice made: "old" is the live balance (treasury_balance = rolled + unrolled flows), not port_treasury.ducats alone, because that is the purse the game pays against.
