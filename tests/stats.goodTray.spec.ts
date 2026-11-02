@@ -31,10 +31,18 @@ for (const vp of [PHONE, WIDE]) {
     const code = await tray.getAttribute('data-good')
     expect(code).toBeTruthy()
     await expect(tray.getByRole('heading').first()).not.toBeEmpty()
-    // the WORLD chart stands at once (the 24 recorded mids the server serves with the good); a city's own chart, with the
-    // span picker over it, is a choice only for a city whose book is already loaded
-    await expect(tray.getByTestId('stats-good-chart')).toBeVisible()
-    await expect(tray.locator('[role="img"]')).toHaveCount(1, { timeout: 30_000 })
+    // the WORLD chart stands at once, drawn from the 24 recorded mids the server serves with the good. A fresh test world
+    // may have recorded none: the tray then says so, and never leaves a gap where a chart is owed. So the law is: the
+    // chart container stands, and it draws exactly one chart iff it holds two or more points, else the note.
+    const chart = tray.getByTestId('stats-good-chart')
+    await expect(chart).toBeVisible()
+    const pts = Number(await chart.getAttribute('data-points'))
+    if (pts >= 2) {
+      await expect(chart.locator('[role="img"]')).toHaveCount(1)
+    } else {
+      await expect(chart.locator('[role="img"]')).toHaveCount(0)
+      await expect(chart).toContainText(/no data|기록 없음/i)
+    }
     expect(await top()).toBe(before)
   })
 }

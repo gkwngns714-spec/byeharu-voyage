@@ -52,7 +52,7 @@ export function GoodTray({ g, move, goodClass, onClose }: { g: StatsGood; move: 
         {g.markets > 0 && <StockGauge stock={g.stock} target={g.stock_target} label={t('stats.everyMarket', { name: goodName(g) })} className="shrink-0" />}
         {g.markets === 0 && <span>{t('stats.noCitySells')}</span>}
       </FactsLine>
-      <div className="mt-3" data-testid="stats-good-chart" data-city={city?.id ?? WORLD}>
+      <div className="mt-3" data-testid="stats-good-chart" data-city={city?.id ?? WORLD} data-points={points.length}>
         {cities.length > 0 && (
           <Segmented segments={[{ id: WORLD, label: t('stats.goodWorld') }, ...cities.map((c) => ({ id: c.id, label: c.name }))]} value={city?.id ?? WORLD} onChange={setPicked} label={t('stats.goodCities')} />
         )}
