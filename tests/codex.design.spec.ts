@@ -46,8 +46,10 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, trayBox } from './des
 // second block) and (f) (the list scrolls inside itself) — at every glass, both languages; (b), the no-move half of (d), U3,
 // U5 and U8 were already green there: they are guards, kept. (g) was red on the first cut of this branch (8445610e, measured:
 // the first Goods row 69 px under the glass's edge at 390×844 and 327 at 320×640, the first Ships row 247 / 573, the first
-// Captains row 65 / 299, and no kind or rarity picker on a phone — 6 of 6 phone tests) and is green on the second. The numbers
-// are in the dev-log.
+// Captains row 65 / 299, and no kind or rarity picker on a phone — 6 of 6 phone tests) and is green on the second. The picker's
+// name law was red on the second cut (5da046f2: `filter-pick-kind reads "All" with nothing chosen — a picker reads its name,
+// "Kind"`, and the same for Rarity, in English and Korean — 4 of 4 phone face walks) and is green on the third. The numbers are
+// in the dev-log.
 
 const ROWS = ['good-tile', 'ship-tile', 'officer-tile', 'nation-row'] as const
 
@@ -56,10 +58,18 @@ const ROWS = ['good-tile', 'ship-tile', 'officer-tile', 'nation-row'] as const
  *  what stands in its place below the split (`phone`: the Goods' pickers; a board face keeps its boards, after the list). */
 const FACES = [
   { name: 'Goods', panel: 'codex-list', row: 'good-tile', kept: ['codex-search', 'good-kind'], side: ['codex-kinds', 'codex-rarity'], phone: ['goods-filters', 'filter-pick-kind', 'filter-pick-rarity'] },
-  { name: 'Ships', panel: 'codex-list', row: 'ship-tile', kept: ['codex-search', 'ship-filters'], side: ['codex-ships-cargo', 'codex-ships-speed'], phone: ['codex-ships-cargo', 'codex-ships-speed'] },
-  { name: 'Captains', panel: 'codex-list', row: 'officer-tile', kept: ['codex-search', 'captain-filters'], side: ['codex-captains-grades', 'codex-captains-roles'], phone: ['codex-captains-grades', 'codex-captains-roles'] },
+  { name: 'Ships', panel: 'codex-list', row: 'ship-tile', kept: ['codex-search', 'ship-filters'], side: ['codex-ships-cargo', 'codex-ships-speed'], phone: ['codex-ships-cargo', 'codex-ships-speed', 'filter-pick-size', 'filter-pick-role'] },
+  { name: 'Captains', panel: 'codex-list', row: 'officer-tile', kept: ['codex-search', 'captain-filters'], side: ['codex-captains-grades', 'codex-captains-roles'], phone: ['codex-captains-grades', 'codex-captains-roles', 'filter-pick-grade', 'filter-pick-focus', 'filter-pick-job'] },
   { name: 'Nations', panel: 'nation-great', row: 'nation-row', kept: ['codex-search', 'nation-rows', 'nation-great', 'nation-rulers'], side: ['nation-rulers'], phone: ['nation-rulers'] },
 ] as const
+
+/** What a picker SHOWS and what it IS NAMED (its own label's title — a compact FilterBar picker names itself for assistive tech
+ *  only), or null when there is no such picker. Self-contained, shipped into the page. */
+const PICKER_READS = (id: string) => {
+  const s = document.querySelector(`[data-testid="${id}"]`)
+  if (!(s instanceof HTMLSelectElement)) return null
+  return { shown: (s.options[s.selectedIndex]?.text ?? '').trim(), name: (s.closest('label')?.getAttribute('title') ?? '').trim() }
+}
 
 /** The first row's box on the glass (viewport px), or null. Self-contained, shipped into the page. */
 const FIRST_ROW = (id: string) => {
@@ -164,6 +174,14 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           } else {
             for (const id of face.phone) {
               if ((await page.getByTestId(id).count()) === 0) failures.push(`${where}: (e) the face has no ${id} on a phone`)
+              // A PICKER WITH NOTHING CHOSEN READS ITS NAME (the review of the second cut: the Goods' two pickers both read "All" and could
+              // not be told apart; the Ships' read Country / Size / Role / Tech). The name is the picker's own, so the law holds in Korean too.
+              if (id.startsWith('filter-pick-')) {
+                const read = await page.evaluate(PICKER_READS, id)
+                if (read === null) failures.push(`${where}: (e) ${id} is not a picker`)
+                else if (read.name === '') failures.push(`${where}: (e) ${id} has no name`)
+                else if (read.shown !== read.name) failures.push(`${where}: (e) ${id} reads "${read.shown}" with nothing chosen — a picker reads its name, "${read.name}"`)
+              }
             }
             // (g) THE LIST COMES FIRST ON A PHONE — the first row stands on the first glass, before any scroll
             const first = await page.evaluate(FIRST_ROW, face.row)

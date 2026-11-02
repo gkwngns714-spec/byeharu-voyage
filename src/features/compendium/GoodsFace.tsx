@@ -24,6 +24,7 @@ import { COIN, formatFixed, formatInt, formatPct } from '../../lib/format'
 import type { SnapshotGood } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { useWorld } from '../../live/worldStore'
+import { optionsOf } from './codexFilters'
 import { NoAnswer } from './NoAnswer'
 import { useT } from '../../lib/i18n'
 
@@ -92,9 +93,15 @@ export function GoodsFace({ query, search }: { query: string; search: ReactNode 
   }, [goods, query, kind, rarity])
   const total = groups.reduce((n, g) => n + g.rows.length, 0)
 
-  // THE TWO CHOICES, SPELLED ONCE: the options every face of a choice draws
-  const kindOptions = [{ id: ALL, label: t('codex.all') }, ...kinds.map((k) => ({ id: k, label: categoryLabel(k) }))]
-  const rarityOptions = [{ id: ALL, label: t('codex.all') }, ...RARITY_TIERS.map((r) => ({ id: r, label: rarityLabel(r) }))]
+  // THE TWO CHOICES, SPELLED ONCE (`optionsOf`, as the Ships' and Captains' filters): a PICKER'S "every one" option is the picker's
+  // own NAME — "Kind", "Rarity" — so a picker with nothing chosen reads what it is (the review of the second cut: two pickers both
+  // reading "All" could not be told apart; the Ships' read Country / Size / Role / Tech). The chip GRID's "every one" cell reads
+  // "All": its card's title already says the name.
+  const kindPicks = optionsOf(t('codex.kind'), kinds, (k) => k, (k) => categoryLabel(k))
+  const rarityPicks = optionsOf(t('codex.rarity'), RARITY_TIERS, (r) => r, (r) => rarityLabel(r))
+  const all = { id: ALL, label: t('codex.all') }
+  const kindChips = [all, ...kindPicks.slice(1)]
+  const rarityChips = [all, ...rarityPicks.slice(1)]
 
   const list = (
     <ListPanel
@@ -109,8 +116,8 @@ export function GoodsFace({ query, search }: { query: string; search: ReactNode 
             compact
             data-testid="goods-filters"
             picks={[
-              { id: 'kind', label: t('codex.kind'), options: kindOptions, value: kind, onChange: setKind },
-              { id: 'rarity', label: t('codex.rarity'), options: rarityOptions, value: rarity, onChange: setRarity },
+              { id: 'kind', label: t('codex.kind'), options: kindPicks, value: kind, onChange: setKind },
+              { id: 'rarity', label: t('codex.rarity'), options: rarityPicks, value: rarity, onChange: setRarity },
             ]}
           />
         )
@@ -177,10 +184,10 @@ export function GoodsFace({ query, search }: { query: string; search: ReactNode 
               {/* THE KIND, EVERY CHOICE ON THE GLASS: one ordered grid of equal cells (FilterBar's chips, the owner's 2026-10-31 rule),
                   three across — "Ship supplies" is the widest word and stands in a third of the 352-px side at 1,024 */}
               <Card title={t('codex.kind')} data-testid="codex-kinds">
-                <FilterBar chips={{ label: t('codex.kind'), options: kindOptions, value: kind, onChange: setKind, columns: 3 }} />
+                <FilterBar chips={{ label: t('codex.kind'), options: kindChips, value: kind, onChange: setKind, columns: 3 }} />
               </Card>
               <Card title={t('codex.rarity')} data-testid="codex-rarity">
-                <FilterBar chips={{ label: t('codex.rarity'), options: rarityOptions, value: rarity, onChange: setRarity, columns: 3 }} />
+                <FilterBar chips={{ label: t('codex.rarity'), options: rarityChips, value: rarity, onChange: setRarity, columns: 3 }} />
               </Card>
             </>
           }
