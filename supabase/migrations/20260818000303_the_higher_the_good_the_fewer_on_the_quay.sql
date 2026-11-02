@@ -230,5 +230,8 @@ begin
       raise exception '0303 self-assert FAIL: a cron job moved';
     end if;
   end if;
+
+  raise notice '0303 self-assert ok: THE HIGHER THE GOOD, THE FEWER ON THE QUAY. % goods designated rare (goods.is_rare), tier scales % and rare scale % read by public.good_stock_scale alone, floor % tun; % port_goods rows re-cut with stock, max stock, base target and production rate moved by one ratio (no row grew, no scale-1 row moved, stock/target ratio kept so no price moves); mean max stock falls tier by tier (plain raw mean %) and the rare mean % is under half of it; no other knob, function or cron job moved.',
+    array_length(c_rare, 1), v_tiers, v_rare_scale, v_floor, v_cut, round(v_plain0, 1), round(v_rare_mean, 1);
 end
 $m$;
