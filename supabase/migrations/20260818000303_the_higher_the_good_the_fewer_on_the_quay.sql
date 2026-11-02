@@ -140,7 +140,7 @@ begin
   update public.port_goods pg
      set stock_target    = greatest(0.01, round(pre.stock_target * k.r, 2)),
          base_target     = case when pre.base_target is null then null else k.new_base end,
-         stock           = least(round(pre.stock * k.r, 2), greatest(0.01, round(pre.stock_target * k.r, 2))),
+         stock           = round(pre.stock * k.r, 2),   -- the SAME ratio as the max, NO clamp: a glut (stock over max, 55,358 rows on prod) stays a glut, so stock/max and the price do not move
          production_rate = round(pre.production_rate * k.r, 2)
     from pre_0303 pre
     cross join lateral (
