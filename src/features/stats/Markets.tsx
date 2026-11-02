@@ -28,6 +28,7 @@ import { formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
 import { t as tNow, useT } from '../../lib/i18n'
 import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
+import { GoodTray } from './GoodTray'
 import { goodName, movePct } from './statsFaces'
 import { useLiveRead } from './statsLive'
 import { ALL } from './statsFilters'
@@ -37,8 +38,8 @@ import { ALL } from './statsFilters'
 // with the filters (kind · rarity · sort) in its own header, in as many columns as the main holds (1 on a phone, 2 from 768 and
 // in the 840 px of main at 1,440); the SIDE is the tray's column, the day's figures and the movers — the window that sets them
 // (1 h · 1 day · 7 days, a segmented choice and not a drop-down), the day's four figures, then three cards of three goods: up,
-// down and most traded. On a phone the side comes first (what the list is read with), as P1 had it. A press on a good was
-// never anything — the row is its own detail (its price, its move, what sold and bought, its stock).
+// down and most traded. On a phone the side comes first (what the list is read with), as P1 had it. A press on a good opens
+// its tray (GoodTray.tsx: its figures and its price chart); the row still carries its price, its move, what sold and bought, its stock.
 
 const SORTS = ['movers', 'rose', 'fell', 'traded', 'price', 'class', 'name'] as const
 type Window = '1h' | '1d' | '7d'
@@ -244,8 +245,11 @@ function Board({ title, rows, empty, testid }: { title: string; rows: readonly B
 function GoodRow({ g, move, goodClass }: { g: StatsGood; move: number | null; goodClass: number | undefined }) {
   const t = useT()
   const tone = move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'
+  const [open, setOpen] = useState(false)
   return (
+    <>
     <Row
+      onClick={() => setOpen(true)}
       {...goodClassRow(goodClass)}
       label={
         <span className="flex min-w-0 items-center gap-2">
@@ -280,5 +284,7 @@ function GoodRow({ g, move, goodClass }: { g: StatsGood; move: number | null; go
         {g.markets === 0 && <span>{t('stats.noCitySells')}</span>}
       </FactsLine>
     </Row>
+    {open && <GoodTray g={g} move={move} goodClass={goodClass} onClose={() => setOpen(false)} />}
+    </>
   )
 }
