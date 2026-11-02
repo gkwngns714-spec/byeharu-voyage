@@ -52,7 +52,7 @@ import { useChartSpan } from '../../store/chartSpan'
 
 /** The page's container inside a `DetailPage`'s body (which already has 16 px of side padding): 80 rem at most, and the page's
  *  own margins (24 · 32 · 40 from 768 · 1,024 · 1,280) made up with the extra side padding. */
-const CITY_PAGE = `mx-auto flex w-full max-w-[80rem] flex-col ${PAGE_GAP} md:px-2 lg:px-4 xl:px-6`
+const CITY_PAGE = `mx-auto flex w-full max-w-[80rem] flex-col pt-1 md:pt-3 ${PAGE_GAP} md:px-2 lg:px-4 xl:px-6`
 /** Two cards across from 768. */
 const PAIR = `grid grid-cols-1 ${PAGE_GAP} md:grid-cols-2`
 
@@ -114,7 +114,7 @@ export function CityDetail({ portId }: { portId: string }) {
           </div>
           <div className={PAIR}>
             <Card title={t('stats.soldCityMost')}>
-              <div className="-mx-2">
+              <div>
                 <RankBars
                   rules={false}
                   rows={o.top_sold.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
@@ -123,7 +123,7 @@ export function CityDetail({ portId }: { portId: string }) {
               </div>
             </Card>
             <Card title={t('stats.boughtCityMost')}>
-              <div className="-mx-2">
+              <div>
                 <RankBars
                   rules={false}
                   rows={o.top_bought.map((r) => ({ id: r.code, label: goodName(r), value: r.units, text: t('format.units', { n: formatInt(r.units), count: r.units }), note: formatDucats(r.ducats) }))}
@@ -134,7 +134,7 @@ export function CityDetail({ portId }: { portId: string }) {
           </div>
           {o.flows_1d.length > 0 && (
             <Card title={t('stats.cityMoney')}>
-              <div className="-mx-2">
+              <div>
                 <RankBars rows={flowRanks(o.flows_1d)} format={formatDucatsDelta} rules={false} />
               </div>
             </Card>
