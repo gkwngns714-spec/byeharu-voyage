@@ -1,3 +1,4 @@
+import { ALL } from '../../components/ui'
 import type { TKey } from '../../lib/i18n/translate'
 import type { StatsArea, StatsCityRow, StatsMerchantRow } from '../../lib/rpc'
 
@@ -20,9 +21,6 @@ export const areaWord = (a: StatsArea): TKey =>
     americas: 'stats.areaAmericas',
     oceania: 'stats.areaOceania',
   } as const satisfies Record<StatsArea, TKey>)[a]
-
-/** "Every one" in a chip row or a picker. */
-export const ALL = 'all'
 
 // ── Cities ──────────────────────────────────────────────────────────────────────────────────────
 export const CITY_SORTS = ['richest', 'traded', 'invested', 'stock', 'name'] as const

@@ -184,7 +184,10 @@ export function ListPanel({
           <header className="mb-4 flex flex-col gap-3" data-list-header="">
             {(title !== undefined || count !== undefined || trailing !== undefined) && (
               <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
-                <h2 className="flex min-w-0 flex-1 items-baseline gap-2 text-t-body font-semibold text-ink md:text-t-card">
+                {/* THE TITLE KEEPS 8 REM (2026-11-02, the Codex at 320×640): beside a 176-px search the title of a 256-px card was
+                    squeezed to 68 px, "Great powers" wrapped and its count ran under the control. A control that does not fit beside
+                    8 rem of title wraps UNDER it (the line wraps) — the title is never the thing that gives way. */}
+                <h2 className="flex min-w-32 flex-1 items-baseline gap-2 text-t-body font-semibold text-ink md:text-t-card">
                   {title}
                   {count !== undefined && (
                     <span className="shrink-0 whitespace-nowrap text-t-label font-normal tabular-nums text-ink-muted" data-list-count="">

@@ -12,6 +12,11 @@ import { useCallback, useState } from 'react'
 
 export type FilterChoice = Record<string, string>
 
+/** "EVERY ONE" IN A CHIP ROW OR A PICKER — the id of the choice that narrows nothing. It stood in the Stats faces' own
+ *  statsFilters.ts until the Codex's filters (2026-11-02, the page slice) became its second caller; two screens
+ *  spelling one id is the copy docs/NO_SPAGHETTI.md §2 moves, so it lives with the filter machinery. */
+export const ALL = 'all'
+
 export function filterStorageKey(list: string): string {
   return `byeharu-voyage.filter.v1:${list}`
 }

@@ -15,6 +15,7 @@ import {
   Skeleton,
   StackedBar,
   StatCell,
+  ALL,
   deltaTone,
   oneOf,
   useFilterChoice,
@@ -28,7 +29,6 @@ import { loadMoveFilter, saveMoveFilter, sliceMoves, useMoneyFeed, type MoveFilt
 import { useLiveRead } from './statsLive'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
-import { ALL } from './statsFilters'
 import { WatchCard } from './Watch'
 
 // OVERVIEW — the world's money, ALL ON THE FACE, in cards (owner, 2026-11-01, row 260: *"everything is folded in stats this

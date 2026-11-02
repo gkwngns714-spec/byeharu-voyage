@@ -289,26 +289,28 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CODEX'S LISTS STAND ON THE GLASS, ONE ENTRY A LINE (the unfold slice, 2026-11-02)
+// THE CODEX'S LISTS STAND ON THE PAGE, ONE ENTRY A LINE ON A PHONE (the page slice, 2026-11-02)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// RETARGETED. This block used to hold the owner's 2026-08-23/26 GRID rule for the catalogue faces — *"i told
+// RETARGETED TWICE. This block used to hold the owner's 2026-08-23/26 GRID rule for the catalogue faces — *"i told
 // trade goods to be in grid like shape - organized not in lines"* — as `maxPerRow ≥ 2` and `tileWidth < 220`.
-// The owner has spoken since, twice: 2026-10-31 (*"make everything small, compact and once clicked show new
-// page popping up"*, which put the whole catalogue behind one `Goods 629 · Open` row) and 2026-11-01 (*"everything
+// The owner has spoken since, three times: 2026-10-31 (*"make everything small, compact and once clicked show new
+// page popping up"*, which put the whole catalogue behind one `Goods 629 · Open` row); 2026-11-01 (*"everything
 // is folded … make things unfolded, minimize scrolling, everything compact with full info"*, row 260 and
-// docs/dev-log/2026-11-01-ui-unfold.md U1: a list is on the screen, not behind a press). The approved shape is
-// ONE `ListPanel` of `Row`s, so — as QUAY_LEDGER did for ports on 2026-09-11 — the two grid assertions are
-// replaced by their honest opposites (an entry a line, a row as wide as the panel) and the owner's NEW law is
-// asserted in their place: the face's rows stand in a panel INSIDE THE GLASS with at least N of them whole
-// before any press, and the page does not shear sideways. It cannot be satisfied by a wrapper or a comment:
-// the rows are measured against the panel's own body.
+// docs/dev-log/2026-11-01-ui-unfold.md U1: a list is on the screen, not behind a press), which made the faces ONE
+// `ListPanel` of `Row`s scrolling inside the glass with N rows whole before a press; and 2026-11-02 (row 267, *"it looks
+// so wrong. The past was better. right now everything is on left, too packed. this was a mistake"*), which reverses
+// the packing: the face is a PAGE (Sheet layout="page"; docs/dev-log/2026-11-02-codex-design.md), its list a CARD that
+// holds every entry and scrolls nowhere inside itself — the page scrolls. So the two glass-fit assertions of the unfold
+// slice ("the panel stands inside the glass", "N rows whole before a press") are gone — they held the packing — and what
+// stays is strengthened: EVERY entry stands whole in the card's body (not N of them), the body is not a scroller, an
+// entry is one a line on a phone and as wide as the card's body, and the page does not shear sideways. It cannot be
+// satisfied by a wrapper or a comment: the rows are measured against the card's own body. tests/codex.design.spec.ts
+// holds the page's own laws (the glass used, the hierarchy, the side column, the tray over it) at five glasses.
 const FIELDS = [
-  // N is the least that "unfolded" means at 390×844; measured on the canary world: Goods 12, Ships 6, Captains 9 whole
-  // rows (the floor sits well under it, since a live world's longer names and fact lines make the rows taller).
-  { tab: 'compendium', face: 'Goods', testId: 'good-tile', noun: 'goods', rows: 8 },
-  { tab: 'compendium', face: 'Ships', testId: 'ship-tile', noun: 'ship classes', rows: 4 },
-  { tab: 'compendium', face: 'Captains', testId: 'officer-tile', noun: 'officers', rows: 4 },
+  { tab: 'compendium', face: 'Goods', testId: 'good-tile', noun: 'goods' },
+  { tab: 'compendium', face: 'Ships', testId: 'ship-tile', noun: 'ship classes' },
+  { tab: 'compendium', face: 'Captains', testId: 'officer-tile', noun: 'officers' },
 ] as const
 
 /** HOW MANY ENTRIES STAND WHOLE IN THE PANEL, AND ON HOW MANY LINES. Self-contained on purpose: Playwright
@@ -327,7 +329,8 @@ const MEASURE_FIELD = (testId: string) => {
   const whole = b ? tiles.filter((t) => t.getBoundingClientRect().top >= b.top - 1 && t.getBoundingClientRect().bottom <= b.bottom + 1).length : 0
   const first = tiles[0]?.getBoundingClientRect()
   return {
-    panel: body !== null && b !== undefined && b.height > 0 && b.top >= 0 && b.bottom <= window.innerHeight + 1,
+    // the card's body holds its rows and scrolls nowhere inside itself (the page scrolls — 2026-11-02, row 267)
+    bodyScroll: body === null ? null : { sh: body.scrollHeight, ch: body.clientHeight },
     tiles: tiles.length,
     whole,
     maxPerRow: perRow.size === 0 ? 0 : Math.max(...perRow.values()),
@@ -370,12 +373,13 @@ for (const field of FIELDS) {
     // NON-VACUITY, the floor every check in this file carries: a face that rendered nothing would
     // pass "no entry is on a line of its own" by having no entries.
     expect(report.tiles, `no [data-testid="${field.testId}"] found — did the face render?`).toBeGreaterThan(1)
-    expect(report.panel, 'the list panel is not inside the glass').toBe(true)
-    // THE LAW: the list is on the screen, with its rows whole, before any press.
-    expect(report.whole, `${report.whole} whole ${field.noun} stand in the panel; the law is ${field.rows}`).toBeGreaterThanOrEqual(field.rows)
-    // THE HONEST OPPOSITES of the old grid assertions: one entry a line, as wide as the panel's padded body.
+    // THE LAW (2026-11-02, row 267): the list is a card on the page that holds EVERY entry whole and scrolls nowhere inside itself.
+    expect(report.bodyScroll, 'the face has no list card').not.toBeNull()
+    expect(report.bodyScroll!.sh, `the card's body scrolls inside itself (${report.bodyScroll!.sh} in ${report.bodyScroll!.ch} px) — the page scrolls, a list never does`).toBeLessThanOrEqual(report.bodyScroll!.ch + 1)
+    expect(report.whole, `${report.whole} of ${report.tiles} ${field.noun} stand whole in the card — every one must`).toBe(report.tiles)
+    // THE HONEST OPPOSITES of the old grid assertions: one entry a line on a phone, as wide as the card's body.
     expect(report.maxPerRow, `${field.noun} stand ${report.maxPerRow} to a line — a row is one`).toBe(1)
-    expect(report.tileWidth, `a row is ${report.tileWidth}px of a ${report.bodyWidth}px panel body`).toBeGreaterThanOrEqual(report.bodyWidth - 28)
+    expect(report.tileWidth, `a row is ${report.tileWidth}px of a ${report.bodyWidth}px card body`).toBeGreaterThanOrEqual(report.bodyWidth - 28)
     expect(report.pageScrollW, 'the page shears sideways').toBeLessThanOrEqual(report.pageClientW)
   })
 }
