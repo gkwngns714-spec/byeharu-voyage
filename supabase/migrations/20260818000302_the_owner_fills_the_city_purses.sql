@@ -20,6 +20,11 @@
 --       migration or a server function that sets it. No function other than this file's DO block sets it.
 --   No bypass: the top-up goes through public.treasury_post, the one writer of a city purse, and treasury_post calls the guard exactly as always.
 --
+-- ── SUPERSEDES (one function) ───────────────────────────────────────────────────────────────────
+--   This file SUPERSEDES public.mint_guard (0240 section 3, re-cut by 0268 section 3): the same signature, ACL, definer, volatility and config, 0268's body
+--   verbatim plus the one early return for OWNER_GRANT. With the setting absent (every call but this file's loop) the new body behaves exactly as 0268's:
+--   the change is a no-op unless byeharu.owner_grant = 'on'. The kind (stats_flow_words) and the exception that lets it through move together, in this file.
+--
 -- ── THE TOP-UP ──────────────────────────────────────────────────────────────────────────────────
 --   For each harbour (public.ports.kind = 'HARBOUR', one public.port_treasury row each): old = public.treasury_balance(port) AT RUN TIME (the rolled purse
 --   plus the flows not yet rolled - the live purse the game pays and bids against), multiplier m = 500 for a nation capital, else 100, and
