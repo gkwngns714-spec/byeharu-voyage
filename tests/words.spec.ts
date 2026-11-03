@@ -23,7 +23,8 @@ import path from 'node:path'
 
 const ROOT = path.resolve(process.cwd())
 const SRC = path.join(ROOT, 'src')
-const SWEPT = ['features', 'app', 'components/ui', 'domain', 'lib/format', 'live', 'store'].map((d) =>
+// lib/i18n/dict holds nearly all player text since the i18n move, and was not swept until 2026-11-03 ("water {water} t" shipped in two dicts).
+const SWEPT = ['features', 'app', 'components/ui', 'domain', 'lib/format', 'lib/i18n/dict', 'live', 'store'].map((d) =>
   path.join(SRC, d),
 )
 
@@ -130,7 +131,8 @@ function literals(src: string): string[] {
   const code = stripComments(src)
   for (const m of code.matchAll(/'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)) {
     const raw = m[1] ?? m[2] ?? m[3] ?? ''
-    out.push(raw.replace(/\$\{[^}]*\}/g, '0'))
+    // a dict string's `{name}` placeholder is a hole too (`'water {water} t'` is a figure and a unit)
+    out.push(raw.replace(/\$\{[^}]*\}/g, '0').replace(/\{[A-Za-z_][A-Za-z0-9_]*\}/g, '0'))
   }
   // JSX text only: one line, no code characters — `=> (` and `) : (` between `>` and `<` are code.
   for (const m of code.matchAll(/>([^<>{}=();\n]*[A-Za-z]{2,}[^<>{}=();\n]*)</g)) out.push(m[1].trim())
@@ -145,7 +147,8 @@ test('no banned word in player-facing text — docs/WORDS.md', () => {
       // The gallery is the design system's own showroom, not a screen a player reaches.
       if (rel.includes('/gallery/')) continue
       for (const lit of literals(readFileSync(file, 'utf8'))) {
-        if (ALLOW.some((a) => a.test(lit))) continue
+        // every value in a dict is player text, so the code-literal allowances (identifiers, server verbs) do not apply there
+        if (!rel.includes('/i18n/dict/') && ALLOW.some((a) => a.test(lit))) continue
         for (const { word, say } of BANNED) {
           if (word.test(lit)) hits.push(`${rel}: "${lit.slice(0, 80)}" — say "${say}"`)
         }

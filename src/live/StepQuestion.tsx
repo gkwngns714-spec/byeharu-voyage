@@ -5,7 +5,7 @@ import type { StepOrder } from './useStepOrder'
 import { fleetStores, worstHullFraction } from '../domain/fleet'
 import { enumNaming } from '../domain/order'
 import { hasBuilding } from '../domain/port'
-import { formatInt, formatPct, formatVoyageDays } from '../lib/format'
+import { formatInt, formatPct, formatTons, formatVoyageDays } from '../lib/format'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { useT, t } from '../lib/i18n'
 
@@ -183,7 +183,7 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
       <Row label={t('ship.supplies')} value={<Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />} />
       <Row
         label={t('ship.onBoard')}
-        value={<Figure value={t('ship.waterFood', { water: stores.waterT.toFixed(0), food: stores.foodT.toFixed(0) })} />}
+        value={<Figure value={t('ship.waterFood', { water: formatTons(stores.waterT), food: formatTons(stores.foodT) })} />}
         hairline={false}
       />
     </>
