@@ -1,13 +1,21 @@
 import { defineDict } from '../define'
 
-// The Routes tab (src/features/routes): every trade lane sailed in the world.
+// The Routes tab (src/features/routes): every trade lane sailed in the world. The page's own words (2026-11-03, the page
+// slice: the board's shape, the top lanes and the lanes by company beside the list) are the short ones at the top — names,
+// never sentences (docs/WORDS.md). `someLanes` went with that slice: a card's title is the word Lanes and its count a figure,
+// as on every page list; the lanes the world holds beyond the board are the `omitted` caption's.
 export const routesDict = defineDict({
   en: {
+    top: 'Top lanes',
+    byCompany: 'By company',
+    inReach: 'Within reach',
+    outOfReach: 'Out of reach',
+    byReach: 'Lanes by reach',
+    read: 'read {when}',
     distance: 'Distance',
     earnings: 'Earnings',
     calls: 'Calls',
-    someLanes: '{n} of {total} lanes',
-    lanes: { one: '{n} lane', other: '{n} lanes' },
+    lanes: 'Lanes',
     reading: 'Reading…',
     readAgain: 'Read again',
     failed: 'Routes not loaded. Retrying…',
@@ -19,7 +27,7 @@ export const routesDict = defineDict({
     yours: 'Yours',
     callsN: { one: '{n} call', other: '{n} calls' },
     regionsN: '{n} regions',
-    noFleet: 'no fleet',
+    noFleet: 'No fleet',
     needsNav: 'Navigation {n}',
     callsAt: 'Calls at',
     lapSails: 'Lap',
@@ -41,11 +49,16 @@ export const routesDict = defineDict({
     monthLaps: { one: 'All time: {n} lap · {net}', other: 'All time: {n} laps · {net}' },
   },
   ko: {
+    top: '상위 항로',
+    byCompany: '회사별',
+    inReach: '항해 가능',
+    outOfReach: '항해 불가',
+    byReach: '항해 가능 여부',
+    read: '{when} 읽음',
     distance: '거리',
     earnings: '수익',
     calls: '기항',
-    someLanes: '항로 {total}개 중 {n}개',
-    lanes: { one: '항로 {n}개', other: '항로 {n}개' },
+    lanes: '항로',
     reading: '읽는 중…',
     readAgain: '다시 읽기',
     failed: '항로를 못 읽음. 다시 시도 중…',
