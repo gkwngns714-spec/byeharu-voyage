@@ -57,7 +57,7 @@ for (const size of SIZES) {
       await expect(cards.first().getByTestId('trade-good-buy')).toHaveText(/\d/)
       await expect(cards.first().getByTestId('trade-good-sell')).toHaveText(/\d|No buyer/)
       await expect(cards.first().getByTestId('trade-good-spark')).toBeVisible()
-      await expect(cards.first().getByTestId('trade-good-aboard')).toHaveText(/Aboard \d/)
+      await expect(cards.first().getByTestId('trade-good-aboard')).toHaveText(/On board \d/)
       // the small map is there, at the bottom, in a fold (owner 2026-10-30); on a phone it starts
       // closed and a player presses its line to open it
       await openTradeMap(face)
