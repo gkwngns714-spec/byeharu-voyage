@@ -1,43 +1,65 @@
-import { useEffect, useState } from 'react'
-import { Figure, Hint, ListPanel, Note, Row, Segmented, Sheet, Skeleton, Tray, type TrayDetent } from '../../components/ui'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Card,
+  Figure,
+  Hint,
+  ListHeading,
+  ListPanel,
+  Note,
+  PageSplit,
+  RankBars,
+  Row,
+  Segmented,
+  Sheet,
+  Skeleton,
+  StackedBar,
+  StatCell,
+  Tray,
+  type RankRow,
+  type StackedPart,
+  type TrayDetent,
+} from '../../components/ui'
 import { formatInt, formatRelative } from '../../lib/format'
 import type { PlayerHouse, StandingsBoard } from '../../lib/rpc'
+import { HullCountry } from '../../live/HullCountry'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CountriesBoard } from './CountriesBoard'
+import { leadersOf, linesOf, type Line } from './rankFigures'
 import { useLocale, useT } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
 
-// RANK — one list, and you are pinned to the top of it. docs/UI_DIRECTION.md §6 "RANK". ON THE GLASS (the unfold
-// slice, 2026-11-02, owner row 260): it was the face tabs over ONE summary row (`Captains 10 · Open`) with the board
-// behind a pop-up page; it is now the face tabs over ONE list panel — your line pinned in its header, the board
-// scrolling under it, the fame tray a sibling outside the scroller.
+// RANK — the board, ON THE PAGE. docs/UI_DIRECTION.md §6 "RANK".
 //
-// ── WHAT THIS SCREEN WAS, AND WHY THREE-QUARTERS OF IT WENT ────────────────────────────────────
-// §2 item 17, measured at 390px: a five-column table that sheared at `TRA…` with "Swipe the table
-// for the rest." under it, then FOUR cards — the house (a purse the status strip already prints,
-// and fleet/ship LIMITS with a gauge captioned "hulls the house may still own"), a five-way split
-// of fame, and three level tracks of which one printed `Combat — Level 0` beside a sentence
-// admitting there is no combat in the game. 1,237px, and eleven ⓘ dots. The board row already
-// carries the fame; a limit is not a rank; a track that admits it is empty is not on this screen.
-// The levels belong on PROFILE as bars (§6), and the house's own line is the one place its fame is
-// broken down — in a tray, when it is asked for.
+// THE PAGE, NOT THE PACKED COLUMN (2026-11-03, owner row 267: *"it looks so wrong. The past was better. right now
+// everything is on left, too packed. this was a mistake"*). The unfold slice (2026-11-02, row 260) put the two faces over ONE
+// list panel in a 75-rem column with 26 rem kept clear at the right — your line pinned in its header, the board scrolling
+// under it inside the panel. Rank is now a PAGE (`Sheet layout="page"`, screenLayout.ts "THE PAGE") on the pattern Stats set
+// (docs/dev-log/2026-11-02-stats-design.md, Card.tsx) and the Codex and History followed: MAIN | SIDE from 1,024 px — MAIN
+// the board as ONE list card whose rows stand in as many columns as the main holds (the place as each row's mark, so two
+// columns still read as one ladder); the SIDE the tray's column, holding YOUR STANDING AS GRAPHICS (the place and the fame
+// at 24 px, the two fames the total is made of as one stacked bar, the ports and the companies as lines) and the LEADERS —
+// the first rows of the board as ranked bars. The page scrolls, never a list inside itself; nothing is pinned and nothing
+// follows the scroll. The numbers it was measured to are in docs/dev-log/2026-11-03-rank-design.md.
 //
-// ── THE TABLE IS ROWS ──────────────────────────────────────────────────────────────────────────
-// Five columns were four facts, and four facts fit in a row: the place, the house and its flag,
-// and the fame the board is sorted by. The two fames the total is made of, and the ports, are in
-// the tray on YOUR row — for another house they were never a decision. With that the last reason
-// for `Table/TH/TD`, `scrollTableClass` and `useClipped` on this screen is gone.
+// YOUR LINE IS IN THE LIST, where it stands: in its place when you are on the board, else under its own heading after the
+// board's rows (0025 serves `you` off the board's end for exactly this). It was pinned in the panel's header — a line that
+// docks and follows the scroll, which the page pattern does not do; your standing's figures stand in the side column instead,
+// where every page keeps its second block.
 //
-// ── ONE CLOCK ──────────────────────────────────────────────────────────────────────────────────
-// Everything on this screen is the PHOTOGRAPH `public.standings` took (0025), and the title's
-// trailing line says how old it is, measured by the server (`age_seconds`), never by this
-// browser's clock. The old screen printed live figures from `world.player()` beside settled ones
-// and had to explain why they disagreed; there is nothing live here now, so there is nothing to
-// explain. Your own live record is PROFILE's.
+// YOUR LINE OPENS THE FAME TRAY — the place, the country, the two fames the total is made of, the ports, the cities you are
+// mayor of, the total — and it slides over the side column and moves nothing, as it always did. The other rows are read-only,
+// as they were: 0025 serves the two fames and the ports on every row, but for another company they were never a decision
+// (its header says what it deliberately does NOT serve — no purse, no cargo, no fleet, no port — and that is not restated
+// here). A first cut of this slice made every row a button; tests/i18n.ko.spec.ts refused it, rightly — a button is the
+// client's own element, and ten served company names stood in it that no data file lists. The `Line` shape and the tray's
+// rows are one house's, so the tray COULD open any row; that it opens yours is a choice, not a limit of the payload.
 //
-// What the board deliberately does not carry — no purse, no cargo, no fleet, no port — has its
-// reason in 0025's header and is not restated here.
+// ONE CLOCK. Everything on this screen is the PHOTOGRAPH `public.standings` took (0025), and the title's trailing line says
+// how old it is, measured by the server (`age_seconds`), never by this browser's clock. Your own live record is PROFILE's.
+
+/** How many of the board's rows the Leaders board draws as bars. */
+const LEADERS = 5
 
 export function RankScreen() {
   // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord). It read "Standings" while the rail said
@@ -51,9 +73,7 @@ export function RankScreen() {
     return <WorldFailed title={title} refusal={fatal} />
   }
   if (phase !== 'ready') {
-    return (
-      <WorldLoading title={title} />
-    )
+    return <WorldLoading title={title} />
   }
   return <RankBody />
 }
@@ -92,10 +112,11 @@ function RankBody() {
   const settled =
     board !== null && board.age_seconds !== null ? formatRelative(-board.age_seconds * 1000, 0) : null
 
+  // THE PAGE SCROLLS (2026-11-03, owner row 267): no `fill`, no inner scroll — the board is as tall as its rows.
   return (
     <Sheet
       title={title}
-      fill
+      layout="page"
       data-testid="rank"
       trailing={
         settled === null ? undefined : (
@@ -111,7 +132,7 @@ function RankBody() {
         value={face}
         onChange={setFace}
         label={title}
-        className="mb-1 w-fit max-w-full shrink-0"
+        className="w-fit max-w-full"
       />
       {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
     </Sheet>
@@ -123,7 +144,7 @@ function RankBody() {
  *   not answered yet    skeleton rows, only until the read lands
  *   answered, no board  the read was refused — say so, do not draw an empty list
  *   houses = 0          an empty world, carrying the server's OWN `why`
- *   you = null          signed in, no house: the board is real and no line on it is yours
+ *   you = null          signed in, no company: the board is real and no line on it is yours
  */
 function Board({
   board,
@@ -137,11 +158,16 @@ function Board({
 }) {
   const t = useT()
   const nationByCode = useWorld((s) => s.nationByCode)
+  const [open, setOpen] = useState<Line | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
 
-  if (!board) {
+  const yourName = house?.company_name ?? t('rank.yourCompany')
+  const yourNation = house?.nation ?? null
+  const lines = useMemo(() => (board === null ? null : linesOf(board, { name: yourName, nation: yourNation })), [board, yourName, yourNation])
+
+  if (!board || lines === null) {
     return (
-      <ListPanel title={t('rank.captains')} data-testid="rank-list">
+      <ListPanel look="card" title={t('rank.captains')} data-testid="rank-list">
         {answered ? (
           <Note tone="warning" className="my-1">
             {t('rank.failed')}
@@ -158,69 +184,135 @@ function Board({
   }
   if (board.board.length === 0) {
     return (
-      <ListPanel title={t('rank.captains')} data-testid="rank-list">
+      <ListPanel look="card" title={t('rank.captains')} data-testid="rank-list">
         <Row label={board.why ?? t('rank.empty')} tone="muted" hairline={false} />
       </ListPanel>
     )
   }
 
-  const you = board.you
-  const yourName = house?.company_name ?? t('rank.yourCompany')
-  // YOUR LINE IS PINNED, so it is not drawn a second time in the list; a captain below the cut is
-  // carried by `you` whether or not she placed, which is why 0025 serves it.
-  const others = board.board.filter((r) => !r.is_you)
+  const mine = lines.mine
   const flag = (code: string | null) => (code === null ? null : nationNameOf(nationByCode, code))
+  const show = (line: Line) => {
+    setOpen(line)
+    setDetent('half')
+  }
+  const row = (r: Line) => (
+    <Row
+      key={`${r.position}-${r.name}`}
+      mark={<Place position={r.position} mine={r.mine} />}
+      label={r.name}
+      value={<Figure value={formatInt(r.total_fame)} tone={r.mine ? 'accent' : 'ink'} />}
+      tone={r.mine ? 'accent' : 'default'}
+      chevron={r.mine}
+      hairline={false}
+      onClick={r.mine ? () => show(r) : undefined}
+      data-testid={r.mine ? 'rank-you' : 'rank-row'}
+    >
+      <Standing nation={flag(r.nation)} tied={r.tied} />
+      {r.mayor_of.length > 0 && (
+        <span className="block text-t-caption text-ink-faint" data-testid="rank-mayor-of">
+          {t('rank.mayorOf', { cities: r.mayor_of.join(', ') })}
+        </span>
+      )}
+    </Row>
+  )
+
+  // THE TWO FAMES THE TOTAL IS MADE OF, as the parts of one bar (0014's two tracks; the server sums them)
+  const split: StackedPart[] =
+    mine === null
+      ? []
+      : [
+          { id: 'trade', label: t('rank.trade'), value: mine.trade_fame, tone: 'accent' },
+          { id: 'exploration', label: t('rank.exploration'), value: mine.exploration_fame, tone: 'info' },
+        ]
+  const leaders: RankRow[] = leadersOf(lines.rows, LEADERS).map((r) => ({
+    id: `${r.position}-${r.name}`,
+    label: r.name,
+    value: r.total_fame,
+    note: [flag(r.nation), r.tied ? t('rank.tied') : null].filter(Boolean).join(' · ') || undefined,
+    tone: r.mine ? 'accent' : 'neutral',
+  }))
 
   return (
     <>
-      <ListPanel
-        title={t('rank.countCaptains', { n: formatInt(board.board_size), count: board.board_size })}
-        // YOUR LINE IS PINNED IN THE PANEL'S HEADER, fixed over the rows that scroll under it (it was on its own
-        // panel in the page, 2026-10-01: one tone step, so it reads as pinned and not as the first line of a printout).
-        controls={
-          you === null ? (
-            <Row label={t('rank.notRanked')} tone="muted" hairline={false} />
-          ) : (
-            <>
-              <Row
-                mark={<Place position={you.position} mine />}
-                label={yourName}
-                value={<Figure value={formatInt(you.total_fame)} tone="accent" />}
-                tone="accent"
-                chevron
-                onClick={() => setDetent('half')}
-                data-testid="rank-you"
-              >
-                <Standing nation={flag(house?.nation ?? null)} tied={you.tied} />
-              </Row>
-              {!you.on_board && <Hint className="w-full">{t('rank.below', { n: formatInt(board.board_size) })}</Hint>}
-            </>
-          )
-        }
-        data-testid="rank-list"
-      >
-        {others.map((r, i) => (
-          <Row
-            key={`${r.position}-${r.company_name}`}
-            mark={<Place position={r.position} />}
-            label={r.company_name}
-            value={<Figure value={formatInt(r.total_fame)} />}
-            hairline={i < others.length - 1}
+      <PageSplit
+        data-testid="rank-page"
+        // no `sideFirst`: on a phone your standing stands AFTER the board — the screen's purpose is the board, and its first
+        // row is on the first glass (the Codex's lesson, 2026-11-02)
+        stickySide
+        main={
+          <ListPanel
+            look="card"
+            columns="fit"
+            title={t('rank.captains')}
+            count={formatInt(lines.rows.length)}
+            // OFF THE BOARD'S END (0025 serves `you` whether or not you placed): the one caption of the card says the cut
+            footer={mine !== null && !lines.onBoard ? <Hint>{t('rank.below', { n: formatInt(board.board_size) })}</Hint> : undefined}
+            data-testid="rank-list"
           >
-            <Standing nation={flag(r.nation)} tied={r.tied} />
-            {r.mayor_of && r.mayor_of.length > 0 && (
-              <span className="block text-t-caption text-ink-faint" data-testid="rank-mayor-of">{t('rank.mayorOf', { cities: r.mayor_of.join(', ') })}</span>
+            {lines.rows.map(row)}
+            {mine !== null && !lines.onBoard && (
+              <>
+                {/* YOUR LINE UNDER ITS OWN HEADING (ListHeading spans the card's columns), after the board's rows */}
+                <ListHeading data-testid="rank-you-heading">{t('rank.yourCompany')}</ListHeading>
+                {row(mine)}
+              </>
             )}
-          </Row>
-        ))}
-      </ListPanel>
+            {mine === null && <Row label={t('rank.notRanked')} tone="muted" hairline={false} />}
+          </ListPanel>
+        }
+        side={
+          <>
+            <Card title={t('rank.standing')} data-testid="rank-standing">
+              {mine === null ? (
+                <Row label={t('rank.notRanked')} tone="muted" hairline={false} />
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <StatCell look="stacked" label={t('rank.place')} value={mine.position} format={formatInt} tone="accent" data-testid="rank-place">
+                      {mine.tied && <span className="block text-t-caption text-ink-faint">{t('rank.tied')}</span>}
+                    </StatCell>
+                    <StatCell look="stacked" label={t('rank.fame')} value={mine.total_fame} format={formatInt} data-testid="rank-fame" />
+                  </div>
+                  {/* THE SPLIT, drawn — the bar draws itself only once there is fame to split; before that the two lines say 0 */}
+                  {mine.trade_fame + mine.exploration_fame > 0 ? (
+                    <StackedBar parts={split} format={formatInt} label={t('rank.fameByKind')} className="mt-5" data-testid="rank-fame-split" />
+                  ) : (
+                    <div className="mt-3">
+                      <StatCell look="line" label={t('rank.trade')} value={mine.trade_fame} format={formatInt} />
+                      <StatCell look="line" label={t('rank.exploration')} value={mine.exploration_fame} format={formatInt} />
+                    </div>
+                  )}
+                  <div className="mt-3">
+                    <StatCell look="line" label={t('rank.ports')} value={mine.ports_reached} format={formatInt} />
+                    <StatCell look="line" label={t('rank.companies')} value={board.houses} format={formatInt} />
+                  </div>
+                </>
+              )}
+            </Card>
+            <Card title={t('rank.leaders')} data-testid="rank-leaders">
+              <RankBars rules={false} format={formatInt} empty={t('rank.empty')} rows={leaders} />
+            </Card>
+          </>
+        }
+      />
 
-      {you !== null && (
-        <Tray detent={detent} onDetentChange={setDetent} title={yourName} data-testid="fame-tray">
-          <Row label={t('rank.trade')} value={<Figure value={formatInt(you.trade_fame)} />} />
-          <Row label={t('rank.exploration')} value={<Figure value={formatInt(you.exploration_fame)} />} />
-          <Row label={t('rank.ports')} value={<Figure value={formatInt(you.ports_reached)} />} />
-          <Row label={t('rank.total')} value={<Figure value={formatInt(you.total_fame)} tone="accent" />} hairline={false} />
+      {open !== null && (
+        <Tray
+          detent={detent}
+          onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
+          title={open.name}
+          data-testid="fame-tray"
+        >
+          <Row label={t('rank.place')} value={<Figure value={formatInt(open.position)} tone={open.mine ? 'accent' : 'ink'} />}>
+            {open.tied && <span className="block text-t-caption text-ink-faint">{t('rank.tied')}</span>}
+          </Row>
+          {open.nation !== null && <Row label={t('codex.country')} value={<HullCountry nation={open.nation} />} />}
+          <Row label={t('rank.trade')} value={<Figure value={formatInt(open.trade_fame)} />} />
+          <Row label={t('rank.exploration')} value={<Figure value={formatInt(open.exploration_fame)} />} />
+          <Row label={t('rank.ports')} value={<Figure value={formatInt(open.ports_reached)} />} />
+          {open.mayor_of.length > 0 && <Row label={t('rank.mayorOf', { cities: open.mayor_of.join(', ') })} />}
+          <Row label={t('rank.total')} value={<Figure value={formatInt(open.total_fame)} tone="accent" />} hairline={false} />
         </Tray>
       )}
     </>
