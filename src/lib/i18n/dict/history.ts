@@ -2,11 +2,22 @@ import { defineDict } from '../define'
 
 // The History tab's sentences (src/features/ledger/headline.ts): one line per event, composed on
 // this side from the event's payload. Optional pieces are their own entries (` at {port}`), so each
-// language puts them where its own word order wants them.
+// language puts them where its own word order wants them. The page's own words (2026-11-03, the page
+// slice: the entries card, the Money card and its lines, the By kind and Biggest boards) are the short
+// ones at the top — names, never sentences (docs/WORDS.md).
 export const historyDict = defineDict({
   en: {
+    entries: 'Entries',
+    money: 'Money',
+    in: 'In',
+    out: 'Out',
+    moves: 'Moves',
+    movesBars: 'One bar a move, oldest first',
+    byKind: 'By kind',
+    biggest: 'Biggest moves',
+    other: 'Other',
+    noMoney: 'No money moved.',
     aFleet: 'A fleet',
-    countEntries: { one: '{n} entry', other: '{n} entries' },
     yourCompany: 'Your company',
     cargo: 'cargo',
     some: 'some',
@@ -90,8 +101,17 @@ export const historyDict = defineDict({
     bare: '{what}.',
   },
   ko: {
+    entries: '기록',
+    money: '돈',
+    in: '수입',
+    out: '지출',
+    moves: '변동',
+    movesBars: '막대 하나가 변동 하나, 오래된 순',
+    byKind: '종류별',
+    biggest: '큰 변동',
+    other: '기타',
+    noMoney: '돈의 변동 없음.',
     aFleet: '한 선단',
-    countEntries: { one: '{n}건', other: '{n}건' },
     yourCompany: '내 회사',
     cargo: '화물',
     some: '약간의',

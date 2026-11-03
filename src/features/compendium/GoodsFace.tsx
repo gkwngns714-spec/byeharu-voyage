@@ -6,6 +6,7 @@ import {
   FilterBar,
   GoodClassMark,
   Icon,
+  ListHeading,
   ListPanel,
   Note,
   PageSplit,
@@ -129,12 +130,9 @@ export function GoodsFace({ query, search }: { query: string; search: ReactNode 
       ) : (
         groups.map((group) => (
           <Fragment key={group.category}>
-            {/* THE HEADING SPANS THE CARD'S COLUMNS: a kind's goods follow it in every column, never a heading in column
-                one with its goods in column two; its 8 px of side padding are the rows' own, so the words stand on the
-                rows' text line */}
-            <span className="col-span-full block px-2 pb-1 pt-3 text-t-label font-semibold text-ink-muted first:pt-0" data-testid="good-kind">
-              {categoryLabel(group.category)}
-            </span>
+            {/* THE HEADING SPANS THE CARD'S COLUMNS (ListHeading): a kind's goods follow it in every column, never a heading in
+                column one with its goods in column two */}
+            <ListHeading data-testid="good-kind">{categoryLabel(group.category)}</ListHeading>
             {group.rows.map((g) => (
               <Row
                 key={g.code}

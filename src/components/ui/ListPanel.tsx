@@ -119,6 +119,26 @@ function CutEdge({
   )
 }
 
+/** THE HEADING OF A GROUP OF ROWS in a card list (`look="card"`): a kind over the Codex's goods, a day over History's entries.
+ *  It spans the card's columns — a group's rows follow it in every column, never a heading in column one with its rows in
+ *  column two — and its 8 px of side padding are the rows' own, so the word stands on the rows' text line. ONE recipe
+ *  (2026-11-03): the Codex wrote it first, History was about to write it a second time, and tests/duplication.spec.ts refused
+ *  the copy — a heading of a list is the list's, not either screen's. */
+export function ListHeading({
+  className = '',
+  children,
+  ...rest
+}: {
+  className?: string
+  children: ReactNode
+} & DataAttrs & { 'data-testid'?: string }) {
+  return (
+    <span className={`col-span-full block px-2 pb-1 pt-3 text-t-label font-semibold text-ink-muted first:pt-0 ${className}`} {...rest}>
+      {children}
+    </span>
+  )
+}
+
 /** ROWS PACKED LIKE A LIST PANEL'S, OUTSIDE A PANEL — a short board of five rows on a face's figure
  *  block (the best and worst day, the movers). One packing, one authority: `ListPanel` composes it. */
 export function DenseRows({

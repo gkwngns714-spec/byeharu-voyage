@@ -112,6 +112,8 @@ export { ScrollPane } from './ScrollPane'
 //    shared `Row` packed to the reach floor, the height the glass leaves free. Stats (five faces),
 //    Codex, Ledger, Rank and Routes compose it; a press opens ONE item's page, never the list.
 export { ListPanel } from './ListPanel'
+//    THE HEADING OF A GROUP OF ROWS in a card list — a kind over goods, a day over entries — spanning the card's columns.
+export { ListHeading } from './ListPanel'
 
 // THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE", docs/dev-log/2026-11-02-stats-design.md): MAIN | SIDE on
 // the whole glass, the side being the tray's column. `Sheet layout="page"` is its container; `StatCell look="stacked|line"`
