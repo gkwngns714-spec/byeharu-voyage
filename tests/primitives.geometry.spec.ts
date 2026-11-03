@@ -275,6 +275,40 @@ test('sheet: the title pins small on scroll, and a Note never prints the server 
   expect(large, 'the unpinned title is not t-title').toBe('20px')
   expect(small, `the pinned title is ${small} and the large one ${large} — it did not shrink`).toBe('16px')
 
+  // THE TITLE NEVER FLUTTERS (2026-11-03, found by tests/history.design.spec.ts at 320×640): a stop inside the header's
+  // shrink used to pin, be pulled back under the threshold by the browser's scroll anchoring, unpin, and pin again, four
+  // times a second for ever (Sheet.tsx has the loop). The rule is now: pin past the large title's own height, let go only
+  // at the top. So a stop at 30 px, a stop just past the large header, and a return to the top each HOLD STILL — two
+  // readings 400 ms apart agree — and the top is the top: scrollTop 0, the title large.
+  const sheetBox = '[data-testid="gallery"] > div'
+  const stateAt = async (top: number) => {
+    await page.evaluate(
+      ({ sel, top }) => {
+        const box = document.querySelector(sel)
+        if (box) box.scrollTop = top
+      },
+      { sel: sheetBox, top },
+    )
+    const read = () =>
+      page.evaluate((sel) => {
+        const box = document.querySelector(sel)!
+        return { top: box.scrollTop, pinned: box.querySelector('[data-testid="sheet-header"]')?.getAttribute('data-pinned') }
+      }, sheetBox)
+    await page.waitForTimeout(400)
+    const a = await read()
+    await page.waitForTimeout(400)
+    const b = await read()
+    expect(b, `the sheet did not hold still after a stop at ${top}: ${JSON.stringify(a)} then ${JSON.stringify(b)}`).toEqual(a)
+    return a
+  }
+  expect(await stateAt(0)).toEqual({ top: 0, pinned: 'false' })
+  const largeHeader = await header.evaluate((el) => (el as HTMLElement).offsetHeight)
+  expect(largeHeader, 'the large header has no height').toBeGreaterThan(26)
+  expect((await stateAt(30)).pinned, 'a stop at 30 px, under the large title, pinned it').toBe('false')
+  expect((await stateAt(largeHeader + 2)).pinned, 'a stop just past the large header did not pin').toBe('true')
+  expect(await stateAt(0), 'a return to the top did not let the title go, or did not reach the top').toEqual({ top: 0, pinned: 'false' })
+  console.log(`SHEET PIN: large header ${largeHeader} px — a stop at 30 and at ${largeHeader + 2} hold still`)
+
   // §5's refusal form: "the code never prints (it goes to `console.debug`)". §2 item 13 lists
   // thirteen kinds of developer vocabulary that had leaked onto player screens; the gallery hands
   // `Note` an `E_HOLD_FULL` on purpose so that this can be a measurement rather than a rule.

@@ -62,15 +62,24 @@ export function Sheet({
 } & { 'data-testid'?: string }) {
   const [pinned, setPinned] = useState(false)
   const box = useRef<HTMLDivElement | null>(null)
+  const head = useRef<HTMLElement | null>(null)
   const page = layout === 'page'
 
   return (
     <div
       ref={box}
       onScroll={(e) => {
-        // One threshold, and it is the height the large title gives up: 26px is `t-title`'s own
-        // line box. Above it the title is the page; below it, it is a label on a bar.
-        const next = (e.currentTarget.scrollTop ?? 0) > 26
+        // THE TITLE PINS ONCE THE SHEET HAS SCROLLED PAST THE TITLE'S OWN HEIGHT, AND LETS GO ONLY AT THE TOP
+        // (2026-11-03; found by the History page law at 320×640). It was one threshold, 26 px, both ways — and a
+        // pinned header is SHORTER than a large one (6 px on a column sheet, 22-44 px on a page), so a stop inside
+        // that shrink looped for ever: past 26 the title pinned, the header shrank, the browser's scroll anchoring
+        // pulled the scroll back under 26 to hold the content still, the title unpinned, the header grew, anchoring
+        // pushed the scroll past 26 again — measured 38 ↔ 16 four times a second with nobody touching it. Pinning
+        // only past the large header's full height means anchoring's pull-back (the shrink, less than that height)
+        // can never reach 0, and 0 is now the only place the title lets go: the title is large at rest and small
+        // once the page is under way, and nothing in between can flutter. tests/primitives.geometry.spec.ts holds it.
+        const top = e.currentTarget.scrollTop ?? 0
+        const next = pinned ? top > 0 : top > (head.current?.offsetHeight ?? 0)
         if (next !== pinned) setPinned(next)
       }}
       // A PAGE IS POSITIONED (`relative`): a screen-reader label (`sr-only`, absolute, a FilterBar names its pickers with one) escapes the scroller
@@ -85,6 +94,7 @@ export function Sheet({
         // THE PAGE'S TITLE BAR spans the glass when it pins (a bar), and its content stands in the page container:
         // at rest the title is the page's own 30 px (24 on a phone), pinned it is the 16-px label of a bar.
         <header
+          ref={head}
           data-testid="sheet-header"
           data-pinned={pinned}
           className={['sticky top-0 z-10', pinned ? 'bg-surface' : ''].join(' ')}
@@ -98,6 +108,7 @@ export function Sheet({
         </header>
       ) : (
         <header
+          ref={head}
           data-testid="sheet-header"
           data-pinned={pinned}
           className={[
