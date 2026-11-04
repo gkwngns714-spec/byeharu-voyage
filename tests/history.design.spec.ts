@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { phoneLaws, playedWorld, readGlass } from './unfold.fixture'
-import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, trayBox } from './design.fixture'
+import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledSheet, trayBox } from './design.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // HISTORY IS A PAGE — the owner's design order, measured on every face at five glasses, in English and Korean (2026-11-03)
@@ -105,24 +105,9 @@ async function openFace(page: Page, index: number) {
   await page.waitForTimeout(600)
 }
 
-/** THE SHEET HAS SETTLED after a scroll the test made: its scrollTop and its title's pinned state hold still across a quarter
- *  second (and a pinned title is never at the top). A box read before the title's pin has rendered stands 22 px lower than the
- *  same box read after it — a pin, not a move — so the boxes are read only once the sheet is still. This guard is what found the
- *  Sheet's flutter (2026-11-03: `38/false → 16/true → 38/false …` with nobody touching it; Sheet.tsx has the cause and the fix,
- *  tests/primitives.geometry.spec.ts the law), and it stays: a sheet that cannot hold still cannot be measured. */
-async function settled(page: Page) {
-  const read = () =>
-    page.locator(SHEET).evaluate((e) => ({ top: e.scrollTop, pinned: e.querySelector('[data-testid="sheet-header"]')?.getAttribute('data-pinned') === 'true' }))
-  const seen: string[] = []
-  for (let i = 0; i < 20; i++) {
-    const a = await read()
-    await page.waitForTimeout(250)
-    const b = await read()
-    seen.push(`${a.top}/${a.pinned} → ${b.top}/${b.pinned}`)
-    if (a.top === b.top && a.pinned === b.pinned && (!b.pinned || b.top > 0)) return
-  }
-  throw new Error(`the sheet did not settle after a scroll (scrollTop/pinned, read a quarter second apart): ${seen.join(', ')}`)
-}
+/** THE SHEET HAS SETTLED after a scroll the test made — the guard that found the Sheet's flutter (2026-11-03) lives in
+ *  design.fixture.ts since Rank became its second caller; this spec reads it on its own sheet. */
+const settled = (page: Page) => settledSheet(page, SHEET)
 
 /** A box's place and width (not its height): what a face press may not move. */
 const place = (b: [number, number, number, number] | null) => (b === null ? null : [b[0], b[1], b[2]])

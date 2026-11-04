@@ -1,13 +1,25 @@
 import { defineDict } from '../define'
 
-// The Rank tab (src/features/rank): the captains' standings and the countries' board.
+// The Rank tab (src/features/rank): the captains' standings and the countries' board. The page's own words (2026-11-03, the
+// page slice: your standing and the leaders beside the board, your country and the cities held beside the countries) are the
+// short ones at the top — names, never sentences (docs/WORDS.md). The two `count*` keys went with that slice: a card's title
+// is the face's word and its count a figure, as on every page list.
 export const rankDict = defineDict({
   en: {
+    standing: 'Your standing',
+    place: 'Place',
+    fame: 'Fame',
+    fameByKind: 'Fame by kind',
+    companies: 'Companies',
+    leaders: 'Leaders',
+    country: 'Your country',
+    held: 'Cities held',
+    home: 'Home',
+    won: 'Won',
+    week: 'This week',
     settled: 'settled {when}',
     captains: 'Captains',
     countries: 'Countries',
-    countCaptains: { one: '{n} captain', other: '{n} captains' },
-    countCountries: { one: '{n} country', other: '{n} countries' },
     failed: 'Rankings not loaded. Retrying…',
     empty: 'No rankings.',
     yourCompany: 'You',
@@ -23,11 +35,20 @@ export const rankDict = defineDict({
     thisWeek: '{n} this week',
   },
   ko: {
+    standing: '내 순위',
+    place: '등수',
+    fame: '명성',
+    fameByKind: '종류별 명성',
+    companies: '회사',
+    leaders: '선두',
+    country: '내 나라',
+    held: '보유 도시',
+    home: '본거지',
+    won: '획득',
+    week: '이번 주',
     settled: '{when} 집계',
     captains: '선장',
     countries: '국가',
-    countCaptains: { one: '{n}명', other: '{n}명' },
-    countCountries: { one: '{n}곳', other: '{n}곳' },
     failed: '순위를 못 읽음. 다시 시도 중…',
     empty: '순위 없음.',
     yourCompany: '나',

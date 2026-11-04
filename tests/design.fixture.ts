@@ -180,6 +180,26 @@ export async function boxesOf(page: Page, sheet: string, ids: readonly string[])
   )
 }
 
+/** THE SHEET HAS SETTLED after a scroll the test made: its scrollTop and its title's pinned state hold still across a quarter
+ *  second (and a pinned title is never at the top). A box read before the title's pin has rendered stands 22 px lower than the
+ *  same box read after it — a pin, not a move — so the boxes are read only once the sheet is still. This guard is what found the
+ *  Sheet's flutter (2026-11-03: `38/false → 16/true → 38/false …` with nobody touching it; Sheet.tsx has the cause and the fix,
+ *  tests/primitives.geometry.spec.ts the law), and it stays: a sheet that cannot hold still cannot be measured. History wrote it
+ *  first; Rank is its second caller, so it lives here (2026-11-03). */
+export async function settled(page: Page, sheet: string): Promise<void> {
+  const read = () =>
+    page.locator(sheet).evaluate((e) => ({ top: e.scrollTop, pinned: e.querySelector('[data-testid="sheet-header"]')?.getAttribute('data-pinned') === 'true' }))
+  const seen: string[] = []
+  for (let i = 0; i < 20; i++) {
+    const a = await read()
+    await page.waitForTimeout(250)
+    const b = await read()
+    seen.push(`${a.top}/${a.pinned} → ${b.top}/${b.pinned}`)
+    if (a.top === b.top && a.pinned === b.pinned && (!b.pinned || b.top > 0)) return
+  }
+  throw new Error(`the sheet did not settle after a scroll (scrollTop/pinned, read a quarter second apart): ${seen.join(', ')}`)
+}
+
 /** The open tray's box (null when none stands). */
 export async function trayBox(page: Page): Promise<{ l: number; t: number; w: number; h: number } | null> {
   return page.evaluate(() => {
