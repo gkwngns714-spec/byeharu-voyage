@@ -57,7 +57,7 @@ for (const size of SIZES) {
       await expect(cards.first().getByTestId('trade-good-buy')).toHaveText(/\d/)
       await expect(cards.first().getByTestId('trade-good-sell')).toHaveText(/\d|No buyer/)
       await expect(cards.first().getByTestId('trade-good-spark')).toBeVisible()
-      await expect(cards.first().getByTestId('trade-good-aboard')).toHaveText(/Aboard \d/)
+      await expect(cards.first().getByTestId('trade-good-aboard')).toHaveText(/On board \d/)
       // the small map is there, at the bottom, in a fold (owner 2026-10-30); on a phone it starts
       // closed and a player presses its line to open it
       await openTradeMap(face)
@@ -90,7 +90,7 @@ for (const size of SIZES) {
       await expect(panel).toHaveCount(0)
       await expect(
         board.locator(`[data-testid="trade-good"][data-good="${code}"]`).getByTestId('trade-good-aboard'),
-      ).toHaveText('Aboard 1', { timeout: 60_000 })
+      ).toHaveText('On board 1', { timeout: 60_000 })
 
       // SELL: the same card's Sell button; the panel says Sell, and selling leaves no cargo of it
       const mine = board.locator(`[data-testid="trade-good"][data-good="${code}"]`)
@@ -105,7 +105,7 @@ for (const size of SIZES) {
       await expect(page.getByTestId('trade-toast')).toContainText(/^Sold 1 /, { timeout: 60_000 })
       await expect(
         board.locator(`[data-testid="trade-good"][data-good="${code}"]`).getByTestId('trade-good-aboard'),
-      ).toHaveText('Aboard 0', { timeout: 60_000 })
+      ).toHaveText('On board 0', { timeout: 60_000 })
 
       // no sideways scroll
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)

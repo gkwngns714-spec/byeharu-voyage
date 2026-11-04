@@ -1,4 +1,4 @@
-import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPct, formatPctPoints, formatUnitPrice, pointLabel } from '../../lib/format'
+import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPct, formatPctPoints, formatTons, formatUnitPrice, pointLabel } from '../../lib/format'
 import { parsePointToken } from '../../domain/passage'
 import { routePausedEventWords } from '../../domain/route'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
@@ -113,7 +113,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const what =
         water === null || food === null
           ? ''
-          : t('history.dash', { what: t('history.waterFood', { water: water.toFixed(1), food: food.toFixed(1) }) })
+          : t('history.dash', { what: t('history.waterFood', { water: formatTons(water, 1), food: formatTons(food, 1) }) })
       return t('history.resupplied', { fleet, what })
     }
     // A STANDING ORDER THAT COULD NOT RUN IS AN EVENT, not a silence. 0034 writes this row when a

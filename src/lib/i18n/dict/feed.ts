@@ -38,7 +38,7 @@ export const feedDict = defineDict({
     k_INSURANCE: 'Insurance',
     k_INSURANCE_PAID: 'Insurance paid',
     k_FOUNDING: 'Founded',
-    k_NPC_REFOUND: 'Refounded',
+    k_NPC_REFOUND: 'Insurance paid',
     k_CAPITAL_GIFT: 'Gift',
     k_BOUNTY: 'Bounty',
     k_BOUNTY_LAPSED: 'Bounty back',
