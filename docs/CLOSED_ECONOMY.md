@@ -100,6 +100,12 @@ Known leak (0122 §1.2a): wages of a voyage that never arrives. It shows as the 
 No reserve is needed: new players and broke merchants are paid by capitals, which are cities.
 *Decided by default: no world reserve.*
 
+**The owner's own new money (as built).** Two minted kinds pass `public.mint_guard` while closed, each by ONE documented exception
+(a transaction-local setting only its one writer sets, the 0240 `paid_by_city` shape); the invariant above then reads
+"constant + Σ of these two kinds since the close", and Stats shows both on the minted side:
+`OWNER_GRANT` (0302, the one-off purse top-up, `byeharu.owner_grant`) and `POPULATION_TAX` (0304, each harbour's people pay their city
+daily, `byeharu.population_tax`, set only by `public.population_tick`; `docs/dev-log/2026-11-04-city-population.md`).
+
 ---
 
 ## 3. Restock by investment
