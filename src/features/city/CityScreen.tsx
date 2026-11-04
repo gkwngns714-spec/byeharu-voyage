@@ -58,9 +58,9 @@ import { CityScene } from './CityScene'
 //              harbour's served stance toward that nation — `world.town_hall.dues.stance`,
 //              `public.power_stance`: home / ally / peace / rival / war), and every building face,
 //              which is the existing one composed (CityFace.tsx).
-//   estimate   Population only: `port.size_tier` is the one served size figure, so the number is a
-//              stated curve off it with its "≈" glyph. Nothing else here is a guess, and the five
-//              figures ride the hall's ONE served block — no cell asks a second read.
+//   served     Population too, since 0304: `world.town_hall.people` (a real-world figure that grows, holds or
+//              shrinks every 10 minutes). Nothing here is a guess, and the five figures ride the hall's ONE
+//              served block — no cell asks a second read.
 //
 // ── WHY IT SITS OUTSIDE AppShell ──────────────────────────────────────────────────────────────
 // The page draws its OWN header and fills its own viewport, and it renders the shell's own NavBar
@@ -69,15 +69,6 @@ import { CityScene } from './CityScene'
 // provides the one thing the shell normally provides to a face: the clock (`ShellStateContext`).
 // It opens the world itself, idempotently. `data-world` is on the root so the browser specs' one
 // "is the world up" wait (tests/appReady.fixture.ts) works here too.
-
-/** THE POPULATION IS AN ESTIMATE, NOT A SERVED COUNT (owner, 2026-10-31: "more tiny dot with huge
- *  number"). The only served size figure is `port.size_tier` (1-5), so the figure the hall prints is
- *  a stated curve off it and carries "≈". The curve: tier 1 ≈ 8,000 · 2 ≈ 18,000 · 3 ≈ 45,000 ·
- *  4 ≈ 90,000 · 5 ≈ 160,000. */
-const POPULATION_BY_TIER = [8000, 18000, 45000, 90000, 160000] as const
-function populationEstimate(sizeTier: number): number {
-  return POPULATION_BY_TIER[Math.max(0, Math.min(4, (sizeTier || 1) - 1))]
-}
 
 /** The served stances (`public.power_stance`, via `world.town_hall.dues`: home / ally / peace /
  *  rival / war) and the plain facts left when the dues block is not served (economy open, purse
@@ -325,7 +316,6 @@ function CityFrame({
   // DAY/NIGHT is the world's ONE sun (chart/sun), at the game clock's hour, over THIS city — never a
   // local-time hour: every player sees the same night, and it matches the Map's own day sheet.
   const night = daylightAt({ lat: port.lat, lon: port.lon }, subsolarPoint(gameSunInstantMs(nowMs))) < 0.5
-  const population = populationEstimate(port.size_tier)
 
   // THE RELATIONSHIP IS THE SERVER'S STANCE while the hall answers it (`public.power_stance`,
   // between the nation you sail for and the city's holder): home / ally / peace / rival / war.
@@ -424,7 +414,6 @@ function CityFrame({
                     port={port}
                     hall={hall}
                     refusal={hallRefusal}
-                    population={population}
                     employees={employees}
                     relation={{ word: t(RELATION_WORDS[relation]), stance, nation: portNation }}
                   />

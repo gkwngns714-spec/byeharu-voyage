@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { Icon, Note, Row, Skeleton, StatCell, Tray, type TrayDetent } from '../../components/ui'
 import { InvestorRow } from '../../live/CityInvestors'
 import { TownHallInfluence } from '../../live/TownHallInfluence'
-import type { CityInvestor, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
+import type { CityInvestor, Refusal, SnapshotPort, TownHallPeople, TownHallView } from '../../lib/rpc'
 import { formatDucats, formatInt } from '../../lib/format'
-import { useT } from '../../lib/i18n'
+import { useT, type TKey } from '../../lib/i18n'
 import { CityPanel } from './CityPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -29,7 +29,9 @@ import { CityPanel } from './CityPanel'
 // ── THE FIVE FIGURES ARE THE HALL'S SINGLE HOME (owner, 2026-10-31) ───────────────────────────
 // *"I DON'T NEED TO SEEP POPULATION AND RELATION, ANYTHING THAT WAS ALREADY SHOWN ON TOWN HALL"* —
 // the frame's full-width figures card was removed (CityScreen), and this panel carries the block:
-// Population (≈, the stated estimate off the served size tier) · Gold (the hall's purse) · Status
+// Population (0304: the SERVED population, `hall.people` — a real-world figure c. 1650 that grows, holds or
+// shrinks every 10 minutes; under it the last step's arrow and why) · Gold (the hall's purse; under it the
+// tax its people pay it a day) · Status
 // (your influence points) · Relationship (the harbour's served stance) · Employees (the crew aboard
 // your hulls). One compact line each — label at `t-caption`, figure at `t-body` — so the whole
 // block costs ~130 px, not the 52-px rows of a list. No other city face prints any of these words.
@@ -48,15 +50,12 @@ export function CityHallPanel({
   port,
   hall,
   refusal,
-  population,
   employees,
   relation,
 }: {
   port: SnapshotPort
   hall: TownHallView | null
   refusal: Refusal | null
-  /** The stated estimate off the served size tier (CityScreen's one curve). */
-  population: number
   /** The crew aboard your hulls (the frame's old figure, now the block's). */
   employees: number
   /** The harbour's relationship, worded and carrying its served facts (for the spec's data attrs). */
@@ -84,6 +83,7 @@ export function CityHallPanel({
   }
 
   const you = hall.influence.you
+  const people = hall.people ?? null
   return (
     <CityPanel
       testId="city-hall-panel"
@@ -132,8 +132,26 @@ export function CityHallPanel({
       {/* THE FIVE FIGURES — Population · Gold · Status · Relationship · Employees, at 24 px with their labels over them, two across
           (the page pattern's stacked figure; the hall is their single home, no other city face prints one of these words). */}
       <div data-testid="city-hall-figures" className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5">
-        <StatCell look="stacked" label={t('city.population')} text={`≈ ${formatInt(population)}`} tone="ink" data-testid="city-population" />
-        <StatCell look="stacked" label={t('city.gold')} text={formatDucats(hall.purse.ducats)} tone="ink" data-testid="city-gold" />
+        <StatCell
+          look="stacked"
+          label={t('city.population')}
+          text={people ? formatInt(people.population) : '—'}
+          tone="ink"
+          delta={people ? { text: stepWords(t, people), tone: STEP_TONE[people.kind] } : undefined}
+          data-testid="city-population"
+          data-population={people?.population ?? 'none'}
+          data-kind={people?.kind ?? 'none'}
+          data-reason={people?.reason ?? 'none'}
+        />
+        <StatCell
+          look="stacked"
+          label={t('city.gold')}
+          text={formatDucats(hall.purse.ducats)}
+          tone="ink"
+          delta={people ? { text: t('city.perDay', { n: formatDucats(people.per_day) }), tone: 'muted' } : undefined}
+          data-testid="city-gold"
+          data-per-day={people?.per_day ?? 'none'}
+        />
         <StatCell look="stacked" label={t('city.status')} text={you ? formatInt(you.points) : '—'} tone="ink" data-testid="city-status" />
         <StatCell look="stacked" label={t('city.employees')} text={formatInt(employees)} tone="ink" data-testid="city-employees" />
         <StatCell
@@ -149,6 +167,24 @@ export function CityHallPanel({
       </div>
     </CityPanel>
   )
+}
+
+/** THE STEP'S WORDS: an arrow for the last 10-minute step, then why — the signal that moved it, the bound that stopped it, or Steady. */
+const STEP_ARROW: Record<TownHallPeople['kind'], string> = { GROW: '↑', HOLD: '→', SHRINK: '↓' }
+const STEP_TONE: Record<TownHallPeople['kind'], 'success' | 'muted' | 'danger'> = { GROW: 'success', HOLD: 'muted', SHRINK: 'danger' }
+const STEP_KIND: Record<TownHallPeople['kind'], TKey> = { GROW: 'city.popGrow', HOLD: 'city.popHold', SHRINK: 'city.popShrink' }
+const STEP_REASON: Record<NonNullable<TownHallPeople['reason']>, TKey> = {
+  INVEST: 'city.popINVEST',
+  FAMINE: 'city.popFAMINE',
+  WAR: 'city.popWAR',
+  PIRATES: 'city.popPIRATES',
+  STORM: 'city.popSTORM',
+  CEILING: 'city.popCEILING',
+  FLOOR: 'city.popFLOOR',
+}
+function stepWords(t: ReturnType<typeof useT>, p: TownHallPeople): string {
+  const why = p.reason && STEP_REASON[p.reason] ? t(STEP_REASON[p.reason]) : t(STEP_KIND[p.kind])
+  return `${STEP_ARROW[p.kind]} ${why}`
 }
 
 /** THE INVESTORS DRAWER — the design system's docked Tray: from 1,024 px it slides over the page's SIDE column (the same x and width, nothing behind it

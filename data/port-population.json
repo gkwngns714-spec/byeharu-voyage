@@ -1,0 +1,1975 @@
+{
+  "$doc": "../docs/dev-log/2026-11-04-city-population.md",
+  "note": "Each harbour's real-world population c. 1650, the starting value and baseline of public.port_population (migration 0304). AUTHORED in scripts/build-population.mjs; the world guard holds the database equal to this file. confidence: A count/agreed, B scholarly estimate, C thin evidence, L later founding (year given), N analogue (named in note).",
+  "count": 246,
+  "ports": [
+    {
+      "code": "ACA",
+      "id": "acapulco",
+      "population": 4000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "galleon port; swelled several-fold during the Manila galleon fair"
+    },
+    {
+      "code": "ACC",
+      "id": "accra",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Ga towns beside the European forts"
+    },
+    {
+      "code": "ADE",
+      "id": "aden",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "much shrunk since its medieval height"
+    },
+    {
+      "code": "AGA",
+      "id": "agadir",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Santa Cruz do Cabo, a small Saadian port after the Portuguese left (1541)"
+    },
+    {
+      "code": "ALE",
+      "id": "alexandria",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Ottoman Alexandria in decline (estimates 8,000-50,000)"
+    },
+    {
+      "code": "ALG",
+      "id": "algiers",
+      "population": 80000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the corsair capital at its height (estimates 60,000-100,000+)"
+    },
+    {
+      "code": "AMB",
+      "id": "ambon",
+      "population": 6000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Dutch Fort Victoria and town"
+    },
+    {
+      "code": "AMS",
+      "id": "amsterdam",
+      "population": 175000,
+      "year": 1650,
+      "confidence": "A",
+      "note": ""
+    },
+    {
+      "code": "ANC",
+      "id": "ancona",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "ANG",
+      "id": "angra-do-heroismo",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the chief town of the Azores"
+    },
+    {
+      "code": "ANT",
+      "id": "antalya",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "ARP",
+      "id": "antwerp",
+      "population": 65000,
+      "year": 1650,
+      "confidence": "A",
+      "note": "down from 100,000 in 1560 after the Scheldt was closed"
+    },
+    {
+      "code": "ARI",
+      "id": "arica",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "silver port of Potosi"
+    },
+    {
+      "code": "ARK",
+      "id": "arkhangelsk",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Russia's only sea port to the west"
+    },
+    {
+      "code": "AST",
+      "id": "astoria",
+      "population": 150,
+      "year": 1813,
+      "confidence": "L",
+      "note": "Fort Astoria, founded 1811"
+    },
+    {
+      "code": "AUK",
+      "id": "auckland",
+      "population": 3000,
+      "year": 1845,
+      "confidence": "L",
+      "note": "founded 1840"
+    },
+    {
+      "code": "AYU",
+      "id": "ayutthaya",
+      "population": 150000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Siam's capital; estimates up to 200,000"
+    },
+    {
+      "code": "BAN",
+      "id": "banda-aceh",
+      "population": 50000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "capital of the Aceh sultanate"
+    },
+    {
+      "code": "BND",
+      "id": "banda-neira",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Dutch perkenier settlement after the 1621 conquest"
+    },
+    {
+      "code": "BAS",
+      "id": "bandar-abbas",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Gombroon, Persia's port after Hormuz fell (1622)"
+    },
+    {
+      "code": "BNT",
+      "id": "banten",
+      "population": 70000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Banten sultanate's pepper port"
+    },
+    {
+      "code": "BAR",
+      "id": "barcelona",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "NAV",
+      "id": "barra-de-navidad",
+      "population": 200,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the 1564 Legazpi departure port; little more than a landing by 1650"
+    },
+    {
+      "code": "BSR",
+      "id": "basra",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Ottoman Basra"
+    },
+    {
+      "code": "BEI",
+      "id": "beirut",
+      "population": 6000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "BEL",
+      "id": "belem",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "founded 1616"
+    },
+    {
+      "code": "BER",
+      "id": "bergen",
+      "population": 14000,
+      "year": 1650,
+      "confidence": "A",
+      "note": "Norway's largest town"
+    },
+    {
+      "code": "BIL",
+      "id": "bilbao",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "BOR",
+      "id": "bordeaux",
+      "population": 45000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "BOS",
+      "id": "boston",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "A",
+      "note": ""
+    },
+    {
+      "code": "BRI",
+      "id": "bridgetown",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the island of Barbados held ~40,000; its town far fewer"
+    },
+    {
+      "code": "BRS",
+      "id": "bristol",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "BRU",
+      "id": "bruges",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "BUV",
+      "id": "buenaventura",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": "a river landing, abandoned and refounded more than once"
+    },
+    {
+      "code": "BUE",
+      "id": "buenos-aires",
+      "population": 4000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "BUS",
+      "id": "busan",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Dongnae town and the Japan House (Waegwan)"
+    },
+    {
+      "code": "CAD",
+      "id": "cadiz",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "rising toward 40,000 by 1700"
+    },
+    {
+      "code": "CAG",
+      "id": "cagliari",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "CAL",
+      "id": "calabar",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Efik towns of Old Calabar"
+    },
+    {
+      "code": "CLS",
+      "id": "calais",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "CLL",
+      "id": "callao",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the port alone; Lima (~25,000) lies inland"
+    },
+    {
+      "code": "CAP",
+      "id": "cape-coast",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "CPT",
+      "id": "cape-town",
+      "population": 1500,
+      "year": 1700,
+      "confidence": "L",
+      "note": "founded 1652 by the VOC"
+    },
+    {
+      "code": "CAR",
+      "id": "cartagena",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "CEB",
+      "id": "cebu",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Spanish town and its Parian"
+    },
+    {
+      "code": "CEU",
+      "id": "ceuta",
+      "population": 4000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "a garrison town"
+    },
+    {
+      "code": "CHE",
+      "id": "chennai",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Madras, founded 1639; ~40,000 by the 1670s"
+    },
+    {
+      "code": "CHS",
+      "id": "chios",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the town; the island held more"
+    },
+    {
+      "code": "CHI",
+      "id": "chittagong",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Arakanese port"
+    },
+    {
+      "code": "CID",
+      "id": "cidade-velha",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Ribeira Grande, in decline"
+    },
+    {
+      "code": "COL",
+      "id": "colombo",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Portuguese Colombo before the Dutch siege (1656)"
+    },
+    {
+      "code": "CON",
+      "id": "concepcion",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "at Penco"
+    },
+    {
+      "code": "COP",
+      "id": "copenhagen",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "A",
+      "note": ""
+    },
+    {
+      "code": "COQ",
+      "id": "coquimbo",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "La Serena and its anchorage"
+    },
+    {
+      "code": "COR",
+      "id": "corfu",
+      "population": 12000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Venetian town; the island held more"
+    },
+    {
+      "code": "CRK",
+      "id": "cork",
+      "population": 6000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "CUM",
+      "id": "cumana",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "DAR",
+      "id": "darwin",
+      "population": 500,
+      "year": 1871,
+      "confidence": "L",
+      "note": "founded 1869 as Palmerston"
+    },
+    {
+      "code": "DIL",
+      "id": "dili",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "N",
+      "note": "a small Timorese coastal settlement; analogue: Kupang"
+    },
+    {
+      "code": "DIU",
+      "id": "diu",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Portuguese Diu"
+    },
+    {
+      "code": "DUB",
+      "id": "dublin",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "after the 1650 plague; ~45,000 by 1680"
+    },
+    {
+      "code": "DBR",
+      "id": "dubrovnik",
+      "population": 6000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the city; the republic held ~30,000"
+    },
+    {
+      "code": "REA",
+      "id": "el-realejo",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "ELM",
+      "id": "elmina",
+      "population": 12000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the town beside the castle"
+    },
+    {
+      "code": "FAM",
+      "id": "famagusta",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "much reduced under the Ottomans"
+    },
+    {
+      "code": "FEO",
+      "id": "feodosia",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Ottoman Kefe; travellers' figures run far higher"
+    },
+    {
+      "code": "FRE",
+      "id": "fremantle",
+      "population": 500,
+      "year": 1832,
+      "confidence": "L",
+      "note": "founded 1829"
+    },
+    {
+      "code": "FUK",
+      "id": "fukuoka",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Hakata and the Fukuoka castle town together"
+    },
+    {
+      "code": "FNC",
+      "id": "funchal",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "FUZ",
+      "id": "fuzhou",
+      "population": 200000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Fujian's provincial capital; estimates vary widely"
+    },
+    {
+      "code": "GAL",
+      "id": "galle",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "GDA",
+      "id": "gdansk",
+      "population": 70000,
+      "year": 1650,
+      "confidence": "A",
+      "note": ""
+    },
+    {
+      "code": "GOA",
+      "id": "genoa",
+      "population": 75000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "before the 1656 plague"
+    },
+    {
+      "code": "GIB",
+      "id": "gibraltar",
+      "population": 4000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the Spanish town before 1704"
+    },
+    {
+      "code": "GOR",
+      "id": "goree",
+      "population": 500,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "GUA",
+      "id": "guangzhou",
+      "population": 400000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "late-Ming Canton; sacked by the Qing in 1650"
+    },
+    {
+      "code": "GYE",
+      "id": "guayaquil",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "HAD",
+      "id": "hadibu",
+      "population": 500,
+      "year": 1650,
+      "confidence": "N",
+      "note": "the chief village of Socotra; analogue: other Arabian Sea island towns"
+    },
+    {
+      "code": "HAG",
+      "id": "hagatna",
+      "population": 1000,
+      "year": 1670,
+      "confidence": "L",
+      "note": "the Spanish mission town, founded 1668"
+    },
+    {
+      "code": "HAM",
+      "id": "hamburg",
+      "population": 75000,
+      "year": 1650,
+      "confidence": "A",
+      "note": ""
+    },
+    {
+      "code": "HAN",
+      "id": "hanoi",
+      "population": 100000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Thang Long (Ke Cho); European visitors' estimates"
+    },
+    {
+      "code": "HAV",
+      "id": "havana",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "~26,000 by 1700"
+    },
+    {
+      "code": "HER",
+      "id": "heraklion",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Venetian Candia, under siege 1648-1669"
+    },
+    {
+      "code": "HIR",
+      "id": "hirado",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "in decline after the Dutch left for Dejima (1641)"
+    },
+    {
+      "code": "HOB",
+      "id": "hobart",
+      "population": 1000,
+      "year": 1810,
+      "confidence": "L",
+      "note": "founded 1804"
+    },
+    {
+      "code": "HOI",
+      "id": "hoi-an",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Japanese and Chinese merchant quarters"
+    },
+    {
+      "code": "HON",
+      "id": "hong-kong",
+      "population": 7000,
+      "year": 1841,
+      "confidence": "L",
+      "note": "the British count of the island, 1841; only villages before"
+    },
+    {
+      "code": "HNL",
+      "id": "honolulu",
+      "population": 6000,
+      "year": 1823,
+      "confidence": "L",
+      "note": "the Hawaiian town at the first missionary estimates"
+    },
+    {
+      "code": "HOO",
+      "id": "hooghly",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Mughal port that replaced the Portuguese town (1632)"
+    },
+    {
+      "code": "HRN",
+      "id": "hoorn",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "A",
+      "note": ""
+    },
+    {
+      "code": "HOR",
+      "id": "hormuz",
+      "population": 40000,
+      "year": 1600,
+      "confidence": "B",
+      "note": "before its fall (1622); deserted by 1650, so the 1600 figure is used"
+    },
+    {
+      "code": "HUA",
+      "id": "huatulco",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": "raided by Drake (1579) and Cavendish (1587)"
+    },
+    {
+      "code": "INC",
+      "id": "incheon",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "N",
+      "note": "Joseon Incheon-bu; analogue: other Joseon county towns"
+    },
+    {
+      "code": "IST",
+      "id": "istanbul",
+      "population": 700000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "estimates 600,000-750,000"
+    },
+    {
+      "code": "IZM",
+      "id": "izmir",
+      "population": 80000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the Levant's rising entrepot"
+    },
+    {
+      "code": "JAF",
+      "id": "jaffna",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "JAK",
+      "id": "jakarta",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Batavia within and around the walls"
+    },
+    {
+      "code": "JAM",
+      "id": "jamestown",
+      "population": 500,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the Virginia colony held ~15,000; the town a few hundred"
+    },
+    {
+      "code": "JED",
+      "id": "jeddah",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "JEJ",
+      "id": "jeju",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Jeju town; the island held more"
+    },
+    {
+      "code": "KAG",
+      "id": "kagoshima",
+      "population": 50000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Satsuma castle town"
+    },
+    {
+      "code": "KAL",
+      "id": "kaliningrad",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Konigsberg"
+    },
+    {
+      "code": "KAN",
+      "id": "kannur",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "KAR",
+      "id": "karachi",
+      "population": 10000,
+      "year": 1800,
+      "confidence": "L",
+      "note": "founded c. 1729"
+    },
+    {
+      "code": "KHA",
+      "id": "khambhat",
+      "population": 50000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Cambay, silting and declining"
+    },
+    {
+      "code": "KIL",
+      "id": "kilwa",
+      "population": 4000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "long past its height"
+    },
+    {
+      "code": "KIN",
+      "id": "kingston-upon-hull",
+      "population": 7000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "KOC",
+      "id": "kochi",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Portuguese Cochin and Mattancherry, before the Dutch (1663)"
+    },
+    {
+      "code": "KOL",
+      "id": "kollam",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "KOZ",
+      "id": "kozhikode",
+      "population": 50000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Zamorin's city"
+    },
+    {
+      "code": "KUP",
+      "id": "kupang",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "LAR",
+      "id": "la-rochelle",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "recovering after the 1628 siege"
+    },
+    {
+      "code": "LAG",
+      "id": "lagos-ng",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Eko, a Benin outpost"
+    },
+    {
+      "code": "LPA",
+      "id": "las-palmas",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "LEH",
+      "id": "le-havre",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "LEI",
+      "id": "leith",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the port alone; Edinburgh (~30,000) lies inland"
+    },
+    {
+      "code": "LIS",
+      "id": "lisbon",
+      "population": 150000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "LIV",
+      "id": "livorno",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "LON",
+      "id": "london",
+      "population": 400000,
+      "year": 1650,
+      "confidence": "A",
+      "note": ""
+    },
+    {
+      "code": "LNG",
+      "id": "longyearbyen",
+      "population": 200,
+      "year": 1650,
+      "confidence": "N",
+      "note": "no town until 1906; analogue: the summer whaling station at Smeerenburg"
+    },
+    {
+      "code": "LUA",
+      "id": "luanda",
+      "population": 6000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "LUB",
+      "id": "lubeck",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "MAC",
+      "id": "macau",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "after the Japan trade was lost (1639); ~40,000 at its height"
+    },
+    {
+      "code": "MCH",
+      "id": "machilipatnam",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Golconda's great port"
+    },
+    {
+      "code": "MAK",
+      "id": "makassar",
+      "population": 100000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Gowa-Tallo before the Dutch conquest (1669)"
+    },
+    {
+      "code": "MAL",
+      "id": "malacca",
+      "population": 5000,
+      "year": 1678,
+      "confidence": "A",
+      "note": "the Dutch census of 1678; ~20,000 under the Portuguese before 1641"
+    },
+    {
+      "code": "MLG",
+      "id": "malaga",
+      "population": 25000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "after the 1649 plague"
+    },
+    {
+      "code": "MLE",
+      "id": "male",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "MLN",
+      "id": "malindi",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "in decline after the Portuguese moved to Mombasa (1593)"
+    },
+    {
+      "code": "MAN",
+      "id": "manama",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "MNG",
+      "id": "mangaluru",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "MNL",
+      "id": "manila",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Intramuros with the Chinese Parian"
+    },
+    {
+      "code": "MRS",
+      "id": "marseille",
+      "population": 65000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "MAS",
+      "id": "massawa",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "MAT",
+      "id": "matsumae",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Matsumae castle town"
+    },
+    {
+      "code": "MZT",
+      "id": "mazatlan",
+      "population": 3000,
+      "year": 1830,
+      "confidence": "L",
+      "note": "a fishing village until the port opened in the 1820s"
+    },
+    {
+      "code": "MES",
+      "id": "messina",
+      "population": 80000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "before the 1674 revolt; figures run 60,000-120,000"
+    },
+    {
+      "code": "MEZ",
+      "id": "mezen",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "MID",
+      "id": "middelburg",
+      "population": 25000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "MOC",
+      "id": "mocha",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the coffee port, rising"
+    },
+    {
+      "code": "MOG",
+      "id": "mogadishu",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "MOK",
+      "id": "mokpo",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "N",
+      "note": "a Joseon naval post; analogue: Yeosu's naval town, smaller"
+    },
+    {
+      "code": "MOM",
+      "id": "mombasa",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "under Fort Jesus"
+    },
+    {
+      "code": "MTY",
+      "id": "monterey",
+      "population": 500,
+      "year": 1790,
+      "confidence": "L",
+      "note": "founded 1770"
+    },
+    {
+      "code": "ISL",
+      "id": "mozambique-island",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "MUM",
+      "id": "mumbai",
+      "population": 10000,
+      "year": 1661,
+      "confidence": "B",
+      "note": "when ceded to England (1661)"
+    },
+    {
+      "code": "MUS",
+      "id": "muscat",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "retaken from the Portuguese in 1650"
+    },
+    {
+      "code": "MYE",
+      "id": "myeik",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Mergui"
+    },
+    {
+      "code": "NAG",
+      "id": "nagasaki",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "25,000 in 1616, 64,500 by the 1696 count"
+    },
+    {
+      "code": "NAH",
+      "id": "naha",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the port below Shuri"
+    },
+    {
+      "code": "NAM",
+      "id": "nampo",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "N",
+      "note": "no town of the name until 1900s; analogue: Joseon river-mouth towns below Pyongyang"
+    },
+    {
+      "code": "NAN",
+      "id": "nantes",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "NAP",
+      "id": "naples",
+      "population": 300000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "before the 1656 plague killed about half"
+    },
+    {
+      "code": "NEW",
+      "id": "new-york",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "A",
+      "note": "New Amsterdam"
+    },
+    {
+      "code": "NIN",
+      "id": "ningbo",
+      "population": 150000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "NUU",
+      "id": "nuuk",
+      "population": 300,
+      "year": 1730,
+      "confidence": "L",
+      "note": "Godthab, founded 1728"
+    },
+    {
+      "code": "OLD",
+      "id": "old-goa",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "~75,000 in 1600, ~20,000 by 1695"
+    },
+    {
+      "code": "ORA",
+      "id": "oran",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "a Spanish presidio"
+    },
+    {
+      "code": "OSA",
+      "id": "osaka",
+      "population": 300000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "OUI",
+      "id": "ouidah",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "before the slave-trade boom of the 1670s"
+    },
+    {
+      "code": "PAI",
+      "id": "paita",
+      "population": 500,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "PAL",
+      "id": "palermo",
+      "population": 110000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "PLM",
+      "id": "palma",
+      "population": 25000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "PAN",
+      "id": "panama-city",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "old Panama, before the 1671 sack"
+    },
+    {
+      "code": "PAR",
+      "id": "paramaribo",
+      "population": 1000,
+      "year": 1680,
+      "confidence": "L",
+      "note": "English settlement 1650, Dutch from 1667"
+    },
+    {
+      "code": "PAT",
+      "id": "patras",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "PTT",
+      "id": "pattani",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "PLY",
+      "id": "plymouth",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "PON",
+      "id": "ponta-delgada",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "PLO",
+      "id": "port-louis",
+      "population": 3000,
+      "year": 1740,
+      "confidence": "L",
+      "note": "founded 1735"
+    },
+    {
+      "code": "POR",
+      "id": "port-royal",
+      "population": 6500,
+      "year": 1680,
+      "confidence": "L",
+      "note": "English from 1655; the 1680 figure"
+    },
+    {
+      "code": "PTL",
+      "id": "portland-maine",
+      "population": 500,
+      "year": 1680,
+      "confidence": "L",
+      "note": "Falmouth settlement"
+    },
+    {
+      "code": "OPO",
+      "id": "porto",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "PRT",
+      "id": "portobelo",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the permanent town; thousands more at the fair"
+    },
+    {
+      "code": "PTH",
+      "id": "portsmouth",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "PUL",
+      "id": "pulicat",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Dutch Fort Geldria"
+    },
+    {
+      "code": "PUS",
+      "id": "pustozersk",
+      "population": 500,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "QUA",
+      "id": "quanzhou",
+      "population": 100000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "long past its Song height"
+    },
+    {
+      "code": "QUE",
+      "id": "quebec-city",
+      "population": 500,
+      "year": 1666,
+      "confidence": "A",
+      "note": "the 1666 census of the town (547)"
+    },
+    {
+      "code": "REC",
+      "id": "recife",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Dutch Mauritsstad and Recife"
+    },
+    {
+      "code": "REY",
+      "id": "reykjavik",
+      "population": 200,
+      "year": 1786,
+      "confidence": "L",
+      "note": "a farm until the 1786 trading charter"
+    },
+    {
+      "code": "RHO",
+      "id": "rhodes",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "RIG",
+      "id": "riga",
+      "population": 25000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "RIO",
+      "id": "rio-de-janeiro",
+      "population": 4000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "ROT",
+      "id": "rotterdam",
+      "population": 30000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "SAF",
+      "id": "safi",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SAI",
+      "id": "saint-louis",
+      "population": 1000,
+      "year": 1700,
+      "confidence": "L",
+      "note": "founded 1659"
+    },
+    {
+      "code": "SNT",
+      "id": "saint-malo",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SAK",
+      "id": "sakai",
+      "population": 60000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SAL",
+      "id": "sale",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the corsair republic of Sale and Rabat"
+    },
+    {
+      "code": "SLV",
+      "id": "salvador",
+      "population": 12000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the capital of Brazil"
+    },
+    {
+      "code": "SDG",
+      "id": "san-diego",
+      "population": 500,
+      "year": 1800,
+      "confidence": "L",
+      "note": "founded 1769"
+    },
+    {
+      "code": "SFR",
+      "id": "san-francisco",
+      "population": 500,
+      "year": 1847,
+      "confidence": "L",
+      "note": "Yerba Buena, just before the gold rush"
+    },
+    {
+      "code": "SAN",
+      "id": "san-juan",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SNL",
+      "id": "sanlucar",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TEN",
+      "id": "santa-cruz-de-tenerife",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "La Laguna was the island's capital"
+    },
+    {
+      "code": "SGO",
+      "id": "santo-domingo",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SOS",
+      "id": "santos",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SAO",
+      "id": "sao-tome",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SET",
+      "id": "setubal",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SVQ",
+      "id": "seville",
+      "population": 120000,
+      "year": 1646,
+      "confidence": "B",
+      "note": "before the 1649 plague killed about half"
+    },
+    {
+      "code": "SHI",
+      "id": "shimonoseki",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Akamagaseki"
+    },
+    {
+      "code": "SOF",
+      "id": "sofala",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SOY",
+      "id": "soyo",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Mbanza Soyo"
+    },
+    {
+      "code": "SPL",
+      "id": "split",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "STA",
+      "id": "st-augustine",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "STG",
+      "id": "st-georges-bermuda",
+      "population": 1000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "STJ",
+      "id": "st-johns-nl",
+      "population": 500,
+      "year": 1680,
+      "confidence": "C",
+      "note": "the winter residents"
+    },
+    {
+      "code": "STO",
+      "id": "stockholm",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "SUA",
+      "id": "suakin",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SUE",
+      "id": "suez",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "SUR",
+      "id": "surabaya",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "after its conquest by Mataram (1625)"
+    },
+    {
+      "code": "SRT",
+      "id": "surat",
+      "population": 100000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the Mughal empire's chief port; ~200,000 by 1700"
+    },
+    {
+      "code": "SYD",
+      "id": "sydney",
+      "population": 2500,
+      "year": 1800,
+      "confidence": "L",
+      "note": "founded 1788"
+    },
+    {
+      "code": "TAI",
+      "id": "tainan",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Dutch Zeelandia and Saccam with the Chinese settlers"
+    },
+    {
+      "code": "TAL",
+      "id": "tallinn",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "TAN",
+      "id": "tangier",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TER",
+      "id": "ternate",
+      "population": 8000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "THA",
+      "id": "thanlyin",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Syriam"
+    },
+    {
+      "code": "THE",
+      "id": "thessaloniki",
+      "population": 40000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "TID",
+      "id": "tidore",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TOK",
+      "id": "tokyo",
+      "population": 500000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "Edo; ~1,000,000 by 1720"
+    },
+    {
+      "code": "TON",
+      "id": "tongyeong",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Joseon naval headquarters town"
+    },
+    {
+      "code": "TOR",
+      "id": "torshavn",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TOU",
+      "id": "toulon",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TRA",
+      "id": "trabzon",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TRI",
+      "id": "tripoli-lb",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TRP",
+      "id": "tripoli-ly",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TRO",
+      "id": "trondheim",
+      "population": 6000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "TSU",
+      "id": "tsushima",
+      "population": 10000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Fuchu, the So clan's castle town"
+    },
+    {
+      "code": "TUN",
+      "id": "tunis",
+      "population": 80000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "TUR",
+      "id": "turku",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "ULS",
+      "id": "ulsan",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "VAL",
+      "id": "valencia",
+      "population": 50000,
+      "year": 1650,
+      "confidence": "B",
+      "note": ""
+    },
+    {
+      "code": "VLL",
+      "id": "valletta",
+      "population": 20000,
+      "year": 1650,
+      "confidence": "B",
+      "note": "the harbour towns together"
+    },
+    {
+      "code": "VLP",
+      "id": "valparaiso",
+      "population": 500,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "VAR",
+      "id": "vardo",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "VEN",
+      "id": "venice",
+      "population": 140000,
+      "year": 1650,
+      "confidence": "A",
+      "note": "after the 1630 plague"
+    },
+    {
+      "code": "VER",
+      "id": "veracruz",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "VIS",
+      "id": "visby",
+      "population": 3000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "WLG",
+      "id": "wellington",
+      "population": 3000,
+      "year": 1842,
+      "confidence": "L",
+      "note": "founded 1840"
+    },
+    {
+      "code": "WIL",
+      "id": "willemstad",
+      "population": 2000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    },
+    {
+      "code": "XIA",
+      "id": "xiamen",
+      "population": 50000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Koxinga's base in the 1650s"
+    },
+    {
+      "code": "YEO",
+      "id": "yeosu",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Jeolla left naval base"
+    },
+    {
+      "code": "ZAK",
+      "id": "zakynthos",
+      "population": 15000,
+      "year": 1650,
+      "confidence": "C",
+      "note": "the Venetian town"
+    },
+    {
+      "code": "ZAN",
+      "id": "zanzibar",
+      "population": 5000,
+      "year": 1650,
+      "confidence": "C",
+      "note": ""
+    }
+  ]
+}

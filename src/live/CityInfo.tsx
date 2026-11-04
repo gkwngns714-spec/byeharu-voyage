@@ -44,9 +44,9 @@ import { properName, useT, type TKey } from '../lib/i18n'
 //              cities, i want to see all the info without investment"): the figures are absent only
 //              before the job's first rollup row, and that is drawn as nothing, not as an error.
 //
-// THERE IS NO POPULATION IN THIS WORLD. Nothing on the wire or in `data/ports.json` counts a city's
-// people (docs/PRICE_FACTORS.md turned consumption-per-head down as "a world-data change of its
-// own"), so this face does not print one and does not invent one. The nearest honest fact about a
+// THIS FACE PRINTS NO POPULATION. Since 0304 the world counts a city's people (`world.town_hall.people`,
+// public.port_population) and the City hall (src/features/city/CityHallPanel.tsx) is its one home; this
+// face does not repeat it. The nearest honest fact about a
 // city's size is its served `size_tier`, the rank the chart already draws its mark and its light
 // from, and it is printed as a WORD — a bare level is what the owner refused in row 83.
 //

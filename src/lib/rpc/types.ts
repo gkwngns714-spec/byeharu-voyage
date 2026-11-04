@@ -2670,6 +2670,21 @@ export interface TownHallView {
   gifts?: TownHallGift[]
   /** 0237 — what this harbour asks the signed-in company (stance, tax factor, dock fee). Closed economy only. */
   dues?: PortDues
+  /** 0304 — the city's people (public.town_hall_people). Absent for a harbour with no population row. */
+  people?: TownHallPeople
+}
+
+/** 0304 — a harbour's people: the population now (rounded), its real-world figure c. 1650 and that figure's year, the tax its people pay
+ *  the city a UTC day (from the CURRENT population), the last 10-minute step and why, and the change over the kept day of steps. */
+export interface TownHallPeople {
+  population: number
+  baseline: number
+  year: number
+  per_day: number
+  kind: 'GROW' | 'HOLD' | 'SHRINK'
+  /** INVEST / FAMINE / WAR (PIRATES / STORM once they have a source) on a step; CEILING / FLOOR when a bound stopped it; null when quiet. */
+  reason: 'INVEST' | 'FAMINE' | 'WAR' | 'PIRATES' | 'STORM' | 'CEILING' | 'FLOOR' | null
+  day_change: number
 }
 
 /** 0234 — one capital gift: the company, her starting money, when, and the realm harbour called for it (or null). */

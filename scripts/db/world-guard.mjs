@@ -11,6 +11,7 @@
 // chain's world and data/*.json disagree — whichever of the two moved.
 //
 // WHAT "EQUAL" MEANS HERE
+//   * population  (0304) public.port_population's authored columns EQUAL data/port-population.json, both directions
 //   * harbours    every port in data/ports.json exists (by pinned code), every column the chain
 //                 derives from the data is equal, both directions — EXCEPT crew_pool, which is
 //                 seeded once and then owned by the running game (0007 hire drains it)
@@ -842,6 +843,29 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   }
 
   const findings = drift(db_, want)
+
+  // 0304: THE POPULATIONS ARE THE DATA — every harbour's authored real-world figure in public.port_population
+  // (baseline, year, confidence, note) EQUALS data/port-population.json (scripts/build-population.mjs), both
+  // directions. `population` itself is game state (public.population_tick moves it) and is not compared. Its own
+  // positive control: the same comparison with one planted row must see exactly one more.
+  const hasPopulation = (await db.query(`select to_regclass('public.port_population') is not null as ok`)).rows[0].ok
+  if (hasPopulation) {
+    const pdata = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'port-population.json'), 'utf8')).ports
+    const w = new Set(pdata.map((x) => `${x.code}|${x.population}|${x.year}|${x.confidence}|${x.note}`))
+    const rows = (await db.query(`select p.code, pp.baseline, pp.year, pp.confidence, pp.note
+                                    from public.port_population pp join public.ports p on p.id = pp.port_id`)).rows
+      .map((x) => `${x.code}|${x.baseline}|${x.year}|${x.confidence}|${x.note}`)
+    const diff = (dbRows) => {
+      const d = new Set(dbRows)
+      return [...[...w].filter((k) => !d.has(k)).map((k) => `population ${k} is in data/port-population.json but not in the database`),
+              ...[...d].filter((k) => !w.has(k)).map((k) => `population ${k} is in the database but not in data/port-population.json`)]
+    }
+    const found = diff(rows)
+    if (diff([...rows, 'ZZZ|1|1650|A|planted']).length !== found.length + 1) {
+      throw new Error('WORLD GUARD IS BLIND: a deliberately bent population row was not seen.')
+    }
+    findings.push(...found)
+  }
 
   // 0173: THE HAUL IS THE DERIVATION — every market row's haul_nm / haul equals world.haul_rows() (the
   // sailing distance from the nearest maker and its multiplier, from the roster, public.sea_reaches and the

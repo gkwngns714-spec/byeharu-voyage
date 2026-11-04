@@ -93,7 +93,7 @@ export const townDict = defineDict({
     m_passing: 'Passing',
     m_away: 'Away',
     endsSoon: 'ends soon',
-    // The city panel's Info tab (owner row 174, 2026-10-20). No population: this world counts none.
+    // The city panel's Info tab (owner row 174, 2026-10-20). No population here: the City hall is its one home (0304).
     i_country: 'Country',
     i_nobody: 'No gifts yet',
     i_sea: 'Sea',

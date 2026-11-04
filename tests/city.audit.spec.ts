@@ -313,8 +313,13 @@ test('city audit @390×568: the hall — Influence folded and expanded — shows
   // THE FIVE FIGURES — the hall is their single home, every one with a value.
   const population = (await page.getByTestId('city-population').innerText()).replace(/\s+/g, ' ')
   console.log(`AUDIT hall figures: population "${population}"`)
-  expect(population, 'Population is not the stated estimate').toContain('≈')
-  expect(population, 'Population is not grouped digits').toMatch(/\d{1,3}(,\d{3})+/)
+  // 0304: the SERVED population (world.town_hall.people), the figure exactly the served one, and the step's arrow under it
+  expect(population, 'Population is still the old estimate').not.toContain('≈')
+  const servedPopulation = await page.getByTestId('city-population').getAttribute('data-population')
+  expect(servedPopulation, 'the hall serves no population').toMatch(/^\d+$/)
+  expect(population.replace(/[^\d]/g, '').startsWith(servedPopulation!), 'Population does not print the served figure').toBe(true)
+  expect(population, 'Population carries no step arrow').toMatch(/[↑→↓]/)
+  expect(await page.getByTestId('city-gold').getAttribute('data-per-day'), 'the hall serves no daily tax').toMatch(/^\d+$/)
   await expect.poll(async () => (await page.getByTestId('city-gold').innerText()).includes('—'), { timeout: 60_000 }).toBe(false)
   expect(await page.getByTestId('city-gold').innerText(), 'Gold carries no figure').toMatch(/\d/)
   await expect.poll(async () => (await page.getByTestId('city-status').innerText()).includes('—'), { timeout: 60_000 }).toBe(false)
