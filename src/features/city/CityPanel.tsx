@@ -1,43 +1,41 @@
 import type { ReactNode } from 'react'
+import { Card } from '../../components/ui'
 
-/** THE CITY PANEL — the ONE owner of the right-hand card: the Town Hall's panel and every building
- *  face stand on this shell (owner, 2026-10-31: a press changes only the plan's place and the right
- *  side). The card fills its column; its content scrolls INSIDE itself when a list is long, so the
- *  page never does. Rows pinned under the scroll (the Investors row and its drawer) go in `footer`. */
+/** THE CITY PANEL — the ONE owner of the side column's card: the Town Hall's panel and every building face stand on this shell (owner,
+ *  2026-10-31: a press changes only the plan's place and the right side). It is a page `Card` (2026-11-04, owner row 267: the HQ takes the
+ *  page pattern, docs/dev-log/2026-11-04-hq-design.md): its title is the place's word, its content stands at the card's own height and the PAGE
+ *  scrolls — no list scrolls inside it any more. Rows pinned under the content (the Investors row and its drawer) go in `footer`. */
 export function CityPanel({
   testId,
   scrollTestId,
   building,
+  title,
   footer,
   contentClassName = '',
   children,
 }: {
   testId: string
-  /** The inner scroll region's testid, for the specs that measure it (the hall's no-scroll law). */
+  /** The content region's testid, for the specs that measure it. */
   scrollTestId?: string
   /** The open building's id, read by the specs (`data-building`). */
   building?: string
+  /** The place's own word, the card's title. */
+  title?: ReactNode
   footer?: ReactNode
-  /** Extra classes for the scrolling body — the hall packs its padding on the narrowest glass
-   *  (≤ 360 px), where every pixel of the 320×568 panel is spoken for. */
+  /** Extra classes for the content region. */
   contentClassName?: string
   children: ReactNode
 }) {
   return (
-    <section
-      data-testid={testId}
-      data-building={building}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-tile bg-surface"
-    >
+    <Card title={title} data-testid={testId} data-building={building}>
       <div
         data-testid={scrollTestId}
-        // A QUERY CONTAINER (index.css, `narrow:`): on a phone this panel is half the glass, 139 px of room at 390 and 104 at 320, and
-        // every row, summary row, act cell and face in it asks THIS width — not the screen's — how to stand.
-        className={`@container bv-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-gutter py-2 ${contentClassName}`}
+        // A QUERY CONTAINER (index.css, `narrow:`): every row, summary row, act cell and face in it asks THIS width — the side column's — how to stand.
+        className={`@container min-w-0 ${contentClassName}`}
       >
         {children}
       </div>
       {footer}
-    </section>
+    </Card>
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Figure, Icon, LoadMeter, Note, Row, ScrollPane, type IconName, type LoadStep } from '../../components/ui'
+import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, StatCard, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { NavBar } from '../../app/NavBar'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
@@ -23,6 +23,12 @@ import { CityScene } from './CityScene'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PAGE — a city, full screen (owner's "Game screen development", 2026-10-30)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// THE PAGE (2026-11-04, owner row 267: *"everything is on left, too packed. this was a mistake"*): the HQ is no longer a 100dvh frame
+// split 50/50 with panels that scroll inside themselves. It is a PAGE on the pattern Stats set (`Sheet layout="page"`, docs/dev-log/
+// 2026-11-04-hq-design.md): the name for the title, the six places as a row of cards, then MAIN | SIDE from 1,024 px — MAIN the plan,
+// SIDE the tray's column (your purse over the open place's panel); one column below it, the panel before the plan. The page scrolls.
+// The brief below stands, with its words moved: "left" is MAIN, "right" is SIDE.
 //
 // THE BRIEF: THE HQ SCREEN IS A FRAME AROUND TWO REGIONS (owner, 2026-10-31: *"in buildings 6
 // building tappable should always be inside. when pressed each building, HQ stays the same, but
@@ -334,102 +340,104 @@ function CityFrame({
 
   return (
     <>
-      <header className="flex shrink-0 items-center gap-2 px-gutter py-1.5" data-testid="city-header">
-        <PortFlag code={port.code} size="title" />
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-t-title" data-testid="city-name">{port.name}</h1>
-          <div className="truncate text-t-caption text-ink-faint">
-            {allegiance ? <CityFlag allegiance={allegiance} /> : null}
-          </div>
-        </div>
-        <span
-          className="shrink-0 rounded-chip bg-surface-2 px-2 py-0.5 text-t-caption text-ink-muted"
-          data-testid="city-phase"
-          data-phase={night ? 'night' : 'day'}
-        >
-          {night ? t('city.night') : t('city.day')}
-        </span>
-      </header>
-
-      {!hallDone && (
-        <div className="shrink-0 px-gutter" data-testid="city-load-host">
-          <LoadMeter steps={loadStepsFor(t, boot, hallDone)} data-testid="city-load" />
-        </div>
-      )}
-
-      {/* THE SIX BUILDINGS — the page's OWN ROW, always visible, part of the frame: a press swaps
-          the plan's mark and the right panel and moves nothing here (owner, 2026-10-31: "in
-          buildings 6 building tappable should always be inside"). */}
-      <nav aria-label={t('city.buildings')} className="shrink-0 px-gutter pt-1" data-testid="city-buildings">
-        <div className="grid grid-cols-3 gap-1 min-[361px]:grid-cols-6" data-testid="city-building-grid">
-          {CITY_TILES.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() => onSelect(b.id)}
-              aria-pressed={selected === b.id}
-              data-testid={`city-building-${b.id}`}
-              className={`flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-tile px-0.5 transition ${
-                selected === b.id
-                  ? 'bg-surface-2 text-ink ring-1 ring-inset ring-accent'
-                  : 'bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink'
-              }`}
+      {/* THE PAGE (2026-11-04, owner row 267: *"everything is on left, too packed"* — the HQ takes the pattern Stats set, `Sheet layout="page"`,
+          docs/dev-log/2026-11-04-hq-design.md): the city's name for the title, the day or night beside it, then the six places as a row of
+          cards across the page, then MAIN | SIDE — MAIN the plan (the market's chart when the market is open), SIDE the tray's column: your purse
+          over the open place's panel. The page scrolls; nothing inside it does. */}
+      <div className="min-h-0 flex-1">
+        <Sheet
+          layout="page"
+          data-testid="city-page"
+          title={
+            <span className="inline-flex items-center gap-3" data-testid="city-header">
+              <PortFlag code={port.code} size="title" />
+              <span data-testid="city-name">{port.name}</span>
+            </span>
+          }
+          trailing={
+            <span
+              className="rounded-chip bg-surface-2 px-3 py-1 text-t-label text-ink-muted"
+              data-testid="city-phase"
+              data-phase={night ? 'night' : 'day'}
             >
-              <Icon name={b.icon} size={14} />
-              <span className="max-w-full text-balance text-center text-t-caption leading-tight">{t(b.label)}</span>
-            </button>
-          ))}
-        </div>
-      </nav>
-
-      <main className="flex min-h-0 flex-1 flex-col px-gutter pb-1.5 pt-1.5">
-        {/* THE HQ SPLIT (owner, 2026-10-31): the plan on the LEFT — the full town, never cropped
-            (CityScene fits the whole square plate inside it with `xMidYMid meet` on the plate's own
-            ground colour) — and the open place's panel on the RIGHT. The plan stays on the glass
-            for every place: a press moves its mark and swaps the panel only. The five figures are
-            NOT here; they are the hall panel's block (owner: "the hall panel is their single
-            home"). */}
-        <section className="flex min-h-0 flex-1 gap-2" data-testid="city-top">
-          <div className="flex min-h-0 min-w-0 flex-[0_0_50%] flex-col">
-            <div className="min-h-0 flex-1 overflow-hidden" data-testid="city-info-image">
-              {/* THE MARKET'S LEFT REGION IS THE CHART (owner, 2026-10-31: "when pressing a market,
-                  instead of city, i would like to have a graph shown") — every other place keeps the
-                  city picture. The box is the frame's, unchanged. */}
-              {selected === 'market' ? <MarketLeft port={port} /> : <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />}
+              {night ? t('city.night') : t('city.day')}
+            </span>
+          }
+        >
+          {!hallDone && (
+            <div data-testid="city-load-host">
+              <LoadMeter steps={loadStepsFor(t, boot, hallDone)} data-testid="city-load" />
             </div>
-          </div>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {selected === 'hall' ? (
-              <CityHallPanel
-                port={port}
-                hall={hall}
-                refusal={hallRefusal}
-                population={population}
-                employees={employees}
-                relation={{ word: t(RELATION_WORDS[relation]), stance, nation: portNation }}
-              />
-            ) : (
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="city-open-panel">
-                <CityFacePanel building={selected} port={port} fleet={fleet} />
-              </div>
-            )}
-          </div>
-        </section>
+          )}
 
-        {/* THE FRAME'S ONE EARNINGS LINE — YOUR purse, and NOTHING repeated from the hall (the
-            owner's five figures live only in the hall panel). It stays a frame row so the frame is
-            the same shape at every press (and the merged audit's HQ-geometry proof still reads a
-            `city-summary` between the split and the rail). */}
-        <div data-testid="city-summary" className="shrink-0 pt-1">
-          {/* THE EARNINGS FIGURE HUGS ITS WORD (owner, 2026-11-01): this frame line used to push
-              the purse to the far edge of the whole frame; it now stands 8 px behind "Your
-              earnings", like every other row on the HQ. */}
-          <div className="flex min-h-5 items-center gap-2 px-1">
-            <span className="text-t-caption text-ink-faint">{t('city.earnings')}</span>
-            <Figure value={ducats === null ? '—' : formatDucats(ducats)} size="body" tone={ducats === null ? 'faint' : 'ink'} />
-          </div>
-        </div>
-      </main>
+          {/* THE SIX PLACES — a row of cards across the page, always there: a press swaps the plan and the side panel and moves nothing here
+              (owner, 2026-10-31: "in buildings 6 building tappable should always be inside"). */}
+          <nav aria-label={t('city.buildings')} data-testid="city-buildings">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6 md:gap-4 xl:gap-6" data-testid="city-building-grid">
+              {CITY_TILES.map((b) => (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => onSelect(b.id)}
+                  aria-pressed={selected === b.id}
+                  data-testid={`city-building-${b.id}`}
+                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile px-1 py-2 transition ${
+                    selected === b.id
+                      ? 'bg-surface-2 text-ink ring-1 ring-inset ring-accent'
+                      : 'bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink'
+                  }`}
+                >
+                  <Icon name={b.icon} size={20} />
+                  <span className="max-w-full text-balance text-center text-t-label leading-tight">{t(b.label)}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          <PageSplit
+            sideFirst
+            data-testid="city-top"
+            main={
+              <Card title={allegiance ? <CityFlag allegiance={allegiance} /> : undefined} data-testid="city-plan">
+                {/* THE PLAN, the full town, never cropped (CityScene fits the whole square plate inside the box with `xMidYMid meet`); the box is
+                    the same square for every place (the market's chart, on a phone, stands at its own height: it is a card that must not scroll inside itself), so a press moves the plan's mark and nothing else. The market's left region is its CHART
+                    (owner, 2026-10-31: "when pressing a market, instead of city, i would like to have a graph shown"). */}
+                <div
+                  className={`mx-auto w-full max-w-[clamp(20rem,calc(100dvh-22rem),44rem)] overflow-hidden ${selected === 'market' ? 'lg:aspect-square' : 'aspect-square'}`}
+                  data-testid="city-info-image"
+                >
+                  {selected === 'market' ? <MarketLeft port={port} /> : <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />}
+                </div>
+              </Card>
+            }
+            side={
+              <>
+                {/* YOUR purse — the frame's one line that repeats nothing from the hall (whose Gold is the CITY's purse). */}
+                <StatCard
+                  label={t('city.earnings')}
+                  text={ducats === null ? '—' : formatDucats(ducats)}
+                  tone={ducats === null ? 'faint' : 'ink'}
+                  data-testid="city-summary"
+                />
+                {selected === 'hall' ? (
+                  <CityHallPanel
+                    port={port}
+                    hall={hall}
+                    refusal={hallRefusal}
+                    population={population}
+                    employees={employees}
+                    relation={{ word: t(RELATION_WORDS[relation]), stance, nation: portNation }}
+                  />
+                ) : (
+                  <div data-testid="city-open-panel">
+                    <CityFacePanel building={selected} port={port} fleet={fleet} />
+                  </div>
+                )}
+              </>
+            }
+          />
+        </Sheet>
+      </div>
 
       <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
     </>

@@ -459,7 +459,7 @@ for (const size of SIZES) {
 
 // ── THE CITY PAGE — the doors, the figures and the glass (passing today) ────────────────────────
 for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }] as const) {
-  test(`HQ at ${size.width}×${size.height}: every building door visible, no scroll, no dead band`, async ({ page, request, baseURL }) => {
+  test(`HQ at ${size.width}×${size.height}: every building door visible, the page's own scroll, the rail at the foot`, async ({ page, request, baseURL }) => {
     test.setTimeout(300_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
     await page.setViewportSize(size)
@@ -503,7 +503,9 @@ for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }] as
     const b = m.boxes
     expect(b.header !== null && b.buildings !== null && b.grid !== null && b.summary !== null && b.rail !== null, 'a HQ frame block is missing').toBe(true)
     expect(b.grid!.b, 'the six doors overlap the split below them').toBeLessThanOrEqual(b.summary!.t + 1)
-    expect(b.rail!.t - b.summary!.b, 'dead space between the figures and the rail').toBeLessThanOrEqual(24)
+    // (2026-11-04, the HQ is a page: row 267 reverses the packed frame — the page scrolls above a rail that stays on the glass's foot, so the "no dead band"
+    // law of the 100dvh frame becomes "the rail stands at the glass's bottom edge"; the doors stand above the purse and the panel.)
+    expect(Math.abs(b.rail!.b - size.height), 'the rail is not at the glass foot').toBeLessThanOrEqual(1)
     expect(b.rail!.b, 'the rail hangs below the glass').toBeLessThanOrEqual(size.height + 1)
   })
 }
