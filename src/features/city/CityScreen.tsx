@@ -381,10 +381,10 @@ function CityFrame({
                   onClick={() => onSelect(b.id)}
                   aria-pressed={selected === b.id}
                   data-testid={`city-building-${b.id}`}
-                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile border px-1 py-2 transition ${
+                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile px-1 py-2 transition ${
                     selected === b.id
-                      ? 'border-accent bg-surface-2 text-ink'
-                      : 'border-edge bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink'
+                      ? 'bg-surface-2 text-ink ring-1 ring-inset ring-accent'
+                      : 'bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink'
                   }`}
                 >
                   <Icon name={b.icon} size={20} />
