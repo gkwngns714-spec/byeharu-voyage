@@ -156,7 +156,10 @@ export function trayDockWideClass(): string {
  *  never squeezed. The same break `traySideNextClass` already used for "no room for two". */
 export function traySideEdgeClass(): string {
   // 39rem = TRAY_REM × 1.5 (owner, 2026-10-15: "give more room, about 50% more")
-  return 'fixed top-8 bottom-14 right-0 w-full lg:w-[39rem] lg:rounded-l-sheet bv-slide-in-right'
+  // 2026-11-04 (Map redesign, row 267): from `lg` it is the PAGE's side column — `--page-side` wide, its right edge on the page's
+  // right margin (as `trayDockPageClass`), rounded on every side; the Map's root sets the page vars (`pageVarsClass`). It was 39 rem
+  // flush to the glass's edge, over a third of the chart at 1,440. Below `lg` it is the glass, as it was.
+  return 'fixed top-8 bottom-14 right-0 w-full lg:right-[max(var(--page-pad),calc(50%-40rem))] lg:w-[var(--page-side)] lg:rounded-sheet bv-slide-in-right'
 }
 
 /** THE SECOND PANEL, SLID OUT FROM THE FIRST (owner, 2026-10-15: *"i want it to show by sliding
@@ -166,7 +169,8 @@ export function traySideEdgeClass(): string {
  *  — the whole width, as the first does there (`traySideEdgeClass`). */
 export function traySideNextClass(): string {
   // 39rem = traySideEdgeClass's width · 26rem = TRAY_REM
-  return 'fixed top-8 bottom-14 right-0 w-full lg:right-[39rem] lg:w-[26rem] lg:rounded-l-sheet bv-slide-in-right lg:bv-slide-out-left'
+  // 2026-11-04: from `lg` its right edge is the first panel's left edge — the page's right margin + `--page-side` + a 1-rem gap.
+  return 'fixed top-8 bottom-14 right-0 w-full lg:right-[calc(max(var(--page-pad),50%-40rem)+var(--page-side)+1rem)] lg:w-[var(--page-side)] lg:rounded-sheet bv-slide-in-right lg:bv-slide-out-left'
 }
 
 /** The chart's corner chrome beside that panel — its right edge where the panel's left edge is.
@@ -175,7 +179,8 @@ export function traySideNextClass(): string {
 export function chromeAsideSideTrayClass(): string {
   // 39rem, as traySideEdgeClass · 65rem = 39rem + the second panel's 26rem (traySideNextClass),
   // while one stands — read off the page, since the second panel is opened inside the first.
-  return 'lg:right-[39rem] lg:[body:has([data-testid=map-ship-panel])_&]:right-[65rem]'
+  // 2026-11-04: the panel's left edge = page margin + `--page-side` + 1 rem (a second panel: + `--page-side` + 1 rem more).
+  return 'lg:right-[calc(max(var(--page-pad),50%-40rem)+var(--page-side)+1rem)] lg:[body:has([data-testid=map-ship-panel])_&]:right-[calc(max(var(--page-pad),50%-40rem)+2*var(--page-side)+2rem)]'
 }
 
 /**

@@ -56,7 +56,7 @@ import {
   type MapSelection,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideSideTrayClass, Icon } from '../../components/ui'
+import { chromeAsideSideTrayClass, Icon, pageVarsClass } from '../../components/ui'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
@@ -404,7 +404,7 @@ function Chart({
       data-panels-folded={folded || undefined}
       // `touchClass` is the hook's (posture and `touch-action` are ONE fact); `bv-sea` paints the
       // frames before `box` is measured, so nothing flashes where the sea will be.
-      className={`bv-sea relative h-full w-full ${surface.touchClass} select-none overflow-hidden`}
+      className={`bv-sea relative h-full w-full ${pageVarsClass()} ${surface.touchClass} select-none overflow-hidden`}
       data-testid="map-chart"
     >
       {box && (
