@@ -114,12 +114,12 @@ test.describe('a ship opened from her fleet', () => {
 
     const t = await centre(tray)
     const p = await centre(panel)
-    // the fleet tray at the right edge, 39rem wide; the ship's panel to its left, 26rem wide,
-    // its right edge on the tray's left edge (traySideEdgeClass / traySideNextClass)
-    expect(Math.round(t.box.x + t.box.width)).toBe(WIDE.width)
-    expect(Math.abs(t.box.width - 39 * rem)).toBeLessThanOrEqual(1)
-    expect(Math.abs(p.box.width - 26 * rem)).toBeLessThanOrEqual(1)
-    expect(Math.abs(p.box.x + p.box.width - t.box.x)).toBeLessThanOrEqual(1)
+    // THE PAGE'S SIDE COLUMN (2026-11-04, Map redesign): the fleet tray stands at the page's right margin (40 px at 1,280), 24 rem
+    // (`--page-side`) wide; the ship's panel to its left, the same width, a 1-rem gap between (traySideEdgeClass / traySideNextClass)
+    expect(Math.round(t.box.x + t.box.width)).toBe(WIDE.width - 40)
+    expect(Math.abs(t.box.width - 24 * rem)).toBeLessThanOrEqual(1)
+    expect(Math.abs(p.box.width - 24 * rem)).toBeLessThanOrEqual(1)
+    expect(Math.abs(p.box.x + p.box.width + rem - t.box.x)).toBeLessThanOrEqual(1)
     // no overlap, so each is the topmost thing at its own centre
     expect(await trayUnder(page, p.x, p.y)).toBe('map-ship-panel')
     expect(await trayUnder(page, t.x, t.y)).toBe('map-detail-tray')
