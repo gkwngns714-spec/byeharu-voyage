@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { Bar, CargoBar, DetailPage, FactsLine, IconDisc, ListPanel, Row, Sheet, type IconDiscTone, Clip } from '../../components/ui'
-import { formatInt, formatPct, formatVoyageDays } from '../../lib/format'
+import { Bar, CargoBar, Card, DetailPage, FactsLine, IconDisc, ListPanel, PageSplit, Row, Sheet, StatCell, type IconDiscTone, Clip } from '../../components/ui'
+import { formatInt, formatOfTotal, formatPct, formatVoyageDays, tonsWord } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
@@ -40,6 +40,12 @@ import { useLocale, useT } from '../../lib/i18n'
 //
 // The row still SELECTS: it lights `accent` while its page is up, and the page is keyed by ID (the
 // store hands out a new FleetView every half minute), so an open page survives a world read.
+//
+// ── THE PAGE (2026-11-04, owner row 267: *"everything is on left, too packed. this was a mistake"*) ─────────────────────────────
+// The sheets-grow slice below put the fleets in ONE panel that scrolled inside itself. That is the packing the owner reversed:
+// Fleets is now a PAGE on the pattern Stats set (`Sheet layout="page"`, docs/dev-log/2026-11-04-fleets-design.md): MAIN the fleets as
+// one card list, SIDE (the tray's column) your company in figures; one column on a phone, the list first. The page scrolls;
+// nothing inside it does. A press still opens the fleet's own page (`DetailPage`), and nothing behind it moves.
 //
 // ── ON THE GLASS (the sheets-grow slice, 2026-11-02; docs/dev-log/2026-11-02-sheets-grow.md) ──────
 // The fleets stood straight on a `Sheet`, so a veteran with eight hulls scrolled the PAGE (122 px at 390×844, 326 at 320×640)
@@ -102,30 +108,59 @@ function FleetsBody({ title }: { title: string }) {
   // The one authority for code → name (worldStore.portNameOf).
   const portName = (code: string) => portNameOf(portByCode, code)
 
+  // YOUR COMPANY, in figures: the fleets and hulls you own, those under way, and the hold's use across them. A count of the served list,
+  // and the existing folds (fleetHoldUsed / fleetHoldTotal) summed — no figure the server does not already stand behind.
+  const hulls = fleets.reduce((n, f) => n + f.ships.length, 0)
+  const underway = fleets.filter((f) => f.status === 'SAILING').length
+  const holdUsed = fleets.reduce((n, f) => n + fleetHoldUsed(f), 0)
+  const holdTotal = fleets.reduce((n, f) => n + fleetHoldTotal(f), 0)
+
   return (
-    <Sheet title={title} fill data-testid="fleets">
-      {/* THE TITLE IS THE COUNT (as RANK's is): the rows it holds. An empty company has no count to say — its one row does. */}
-      <ListPanel
-        title={fleets.length === 0 ? undefined : t('fleets.count', { n: formatInt(fleets.length), count: fleets.length })}
-        data-testid="fleets-list"
-      >
-        {fleets.length === 0 ? (
-          <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
-        ) : (
-          fleets.map((fleet, i) => (
-            <FleetRow
-              key={fleet.id}
-              fleet={fleet}
-              where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
-                .filter(Boolean)
-                .join(' · ')}
-              selected={openFleetId === fleet.id}
-              last={i === fleets.length - 1}
-              onOpen={() => setOpenFleetId(fleet.id)}
-            />
-          ))
-        )}
-      </ListPanel>
+    <Sheet title={title} layout="page" data-testid="fleets">
+      <PageSplit
+        data-testid="fleets-page"
+        // no `sideFirst`: on a phone the company's figures stand AFTER the fleets — the screen's purpose is the list, and its first row is
+        // on the first glass (the Codex's lesson, 2026-11-02)
+        stickySide
+        main={
+          /* THE TITLE IS THE COUNT (as RANK's is): the rows it holds. An empty company has no count to say — its one row does. */
+          <ListPanel
+            look="card"
+            columns="fit"
+            title={fleets.length === 0 ? undefined : t('fleets.count', { n: formatInt(fleets.length), count: fleets.length })}
+            data-testid="fleets-list"
+          >
+            {fleets.length === 0 ? (
+              <Row label={t('fleets.noFleets')} tone="muted" hairline={false} />
+            ) : (
+              fleets.map((fleet, i) => (
+                <FleetRow
+                  key={fleet.id}
+                  fleet={fleet}
+                  where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  selected={openFleetId === fleet.id}
+                  last={i === fleets.length - 1}
+                  onOpen={() => setOpenFleetId(fleet.id)}
+                />
+              ))
+            )}
+          </ListPanel>
+        }
+        side={
+          <Card title={t('fleets.company')} data-testid="fleets-company">
+            <div className="grid grid-cols-2 gap-4">
+              <StatCell look="stacked" label={title} value={fleets.length} format={formatInt} data-testid="fleets-total" />
+              <StatCell look="stacked" label={t('fleets.ships')} value={hulls} format={formatInt} data-testid="fleets-hulls" />
+            </div>
+            <div className="mt-3">
+              <StatCell look="line" label={t('fleets.underway')} value={underway} format={formatInt} data-testid="fleets-underway" />
+              <StatCell look="line" label={t('fleets.cargo')} text={`${formatOfTotal(holdUsed, holdTotal)} ${tonsWord(holdTotal)}`} data-testid="fleets-hold" />
+            </div>
+          </Card>
+        }
+      />
       {openFleet !== null && (
         <DetailPage title={openFleet.name} onClose={() => setOpenFleetId(null)} data-testid="fleet-page">
           <FleetFold fleet={openFleet} />

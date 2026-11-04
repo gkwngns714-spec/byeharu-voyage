@@ -25,6 +25,11 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 //   U8  a press on a fleet opens her page and nothing behind it moves; a press on a captain opens her tray, and the tray stands
 //       OUTSIDE the panel's scroller.
 //
+// 2026-11-04 (owner row 267, "everything is on left, too packed"): FLEETS left this file. Its half held the compaction — ONE panel that
+// scrolls inside itself and fills the glass, "N rows whole in the panel", "the page never scrolls" — which row 267 reverses; the page's laws are
+// tests/fleets.design.spec.ts. What stays here is what this file was right about and still holds: YOU's panel, a fleet's page opening without
+// moving what is behind it, the 24-character name whole at 320, a fleet at sea.
+//
 // The two worlds are throwaway images built from this build's own (tests/twoFleets.fixture.ts, tests/manyFleets.fixture.ts). A
 // spec may not skip for want of rows — CI fails any skipped test — so the rows are made, and the count of what stands is asserted:
 // a world with one hull would pass every line below, and the first assertion refuses it.
@@ -37,7 +42,6 @@ const WORLDS: Record<World, { serve: (page: Page) => Promise<void>; hulls: numbe
 
 /** Rows WHOLE in the panel's body, by glass width, for the veteran's world (the budget in the dev-log, held a little below what
  *  was measured so a different font on CI cannot fail it). */
-const NEED_FLEETS: Record<number, number> = { 390: 7, 320: 3, 1280: 8 }
 const NEED_SHIPS: Record<number, number> = { 390: 6, 320: 5, 1280: 8 }
 const NEED_CAPTAINS: Record<number, number> = { 390: 1, 320: 0, 1280: 6 }
 
@@ -140,36 +144,6 @@ async function open(page: Page, glass: Glass, world: World, route: string, sheet
     .catch(() => {})
 }
 
-/** One FLEETS state, every law. `ko` swaps the English words it reads for the Korean ones; the laws are the same. */
-async function checkFleets(page: Page, glass: Glass, world: World, ko = false): Promise<void> {
-  const { hulls } = WORLDS[world]
-  const where = `FLEETS ${ko ? 'ko ' : ''}${world === 'two' ? '2 hulls' : `${hulls} hulls`} at ${glass.width}×${glass.height}`
-  await open(page, glass, world, 'fleets', 'fleets')
-  const failures: string[] = []
-
-  // NON-VACUITY: the world really has this many fleets, and the old ids are on the screen
-  await expect(page.getByTestId('fleet-row'), `${where}: the world does not hold ${hulls} fleets`).toHaveCount(hulls)
-  await expect(page.getByTestId('fleet-row-bars')).toHaveCount(hulls)
-  await expect(page.getByTestId('cargo-bar')).toHaveCount(hulls)
-  await expect(page.getByTestId('fleets-list')).toBeVisible()
-  await expect(page.getByTestId('fleets-list')).toContainText(ko ? `선단 ${hulls}개` : `${hulls} fleets`)
-
-  const m = await readGlass(page, 'fleets-list', 'fleet-row', '[data-sheet]')
-  console.log(`GROW ${where}: doc ${m.doc.sh}/${m.doc.ch}, sheet ${m.sheet?.sh}/${m.sheet?.ch}, rows ${m.rows.whole}/${m.rows.total}`)
-  flat(m, where, failures)
-  if (world === 'veteran') {
-    const need = Math.min(m.rows.total, NEED_FLEETS[glass.width])
-    if (m.rows.whole < need) failures.push(`${where}: ${m.rows.whole} whole fleets of ${m.rows.total}; the law is ${need}`)
-  } else if (m.rows.whole !== m.rows.total) failures.push(`${where}: ${m.rows.whole} of ${m.rows.total} fleets whole`)
-  for (const s of await underFloor(page, 'fleets-list', ['fleet-row'])) failures.push(`${where}: under the 44-px floor: ${s}`)
-  const under = await glassUnder(page, 'fleets-list')
-  if (under < 0 || under > 12) failures.push(`${where}: ${under} px of glass stand under the panel — the panel does not fill the glass`)
-  const scroll = await panelScrolls(page, 'fleets-list', 'fleet-row', where, failures)
-  // the panel is what scrolls where the fleets are longer than the glass: eight hulls on a 320×640 phone certainly are
-  if (world === 'veteran' && glass.width === 320 && !scroll.overflow) failures.push(`${where}: eight fleets fit a 320×640 panel — the proof of an inner scroll is vacuous`)
-  expect(failures, `FLEETS grew past the glass: ${where}`).toEqual([])
-}
-
 /** One YOU state, every law. */
 async function checkYou(page: Page, glass: Glass, world: World, ko = false): Promise<void> {
   const { hulls, captains } = WORLDS[world]
@@ -223,12 +197,6 @@ for (const world of Object.keys(WORLDS) as World[]) {
   for (const glass of GLASSES) {
     const tag = `${world === 'two' ? '2 hulls' : `${VETERAN_HULLS} hulls`} at ${glass.width}×${glass.height}`
 
-    test(`FLEETS with ${tag}: the page is flat, every fleet stands in the panel, nothing removed`, async ({ page, request, baseURL }) => {
-      test.setTimeout(600_000)
-      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-      await checkFleets(page, glass, world)
-    })
-
     test(`YOU with ${tag}: the page is flat, levels over one panel of ships and captains, nothing removed`, async ({ page, request, baseURL }) => {
       test.setTimeout(600_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
@@ -241,11 +209,6 @@ for (const world of Object.keys(WORLDS) as World[]) {
 // the narrowest glass the repo measures — the place a cut name and a wrapped line show first.
 test.describe('in Korean', () => {
   test.use({ locale: 'ko-KR' })
-  test(`FLEETS with ${VETERAN_HULLS} hulls at 320×640: the page is flat, every law holds`, async ({ page, request, baseURL }) => {
-    test.setTimeout(600_000)
-    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-    await checkFleets(page, GLASSES[1], 'veteran', true)
-  })
   test(`YOU with ${VETERAN_HULLS} hulls at 320×640: the page is flat, every law holds`, async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
@@ -356,9 +319,10 @@ test('FLEETS: a fleet AT SEA keeps her name whole at 320×640, with where she is
   const name = sailing.locator('.truncate').first()
   expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1), 'her name is cut beside where she is bound').toBe(false)
   expect(await name.evaluate((el) => el.clientWidth), 'her name is a few pixels wide').toBeGreaterThan(60)
+  // FLEETS is a page now (tests/fleets.design.spec.ts holds its laws): the document is flat and the defect rules stand
   const m = await readGlass(page, 'fleets-list', 'fleet-row', '[data-sheet]')
-  const failures: string[] = []
-  flat(m, 'FLEETS at sea at 320×640', failures)
+  const failures = phoneLaws('FLEETS at sea at 320×640', m)
+  if (m.doc.sh > m.doc.ch + 1) failures.push(`the document scrolls ${m.doc.sh}/${m.doc.ch}`)
   expect(failures, 'a fleet at sea broke the page').toEqual([])
 })
 
