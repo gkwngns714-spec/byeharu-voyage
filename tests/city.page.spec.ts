@@ -194,9 +194,9 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   console.log(`scene nodes: ${sceneNodes}`)
   expect(sceneNodes, 'the city scene is over its 400-node budget').toBeLessThan(400)
 
-  // ── 2. THE THREE FIGURES: POPULATION (A STATED ESTIMATE), STATUS AND RELATIONSHIP (SERVED) ──
-  // Population is a stated estimate off the served size tier (owner, 2026-10-31: "more tiny dot
-  // with huge number"). Status is the company's own influence points in this city; Relationship is
+  // ── 2. THE THREE FIGURES: POPULATION, STATUS AND RELATIONSHIP (ALL SERVED) ──
+  // Population is served since 0304 (world.town_hall.people: a real-world figure c. 1650 that
+  // grows, holds or shrinks every 10 minutes). Status is the company's own influence points in this city; Relationship is
   // the harbour's served stance toward the nation the company sails for — or, while the dues block
   // is not served, the two SERVED nations compared (owner: "status and relationship too"). Neither
   // cell may be a placeholder.
@@ -204,9 +204,12 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await expect(populationCell, 'the population is still a placeholder').not.toHaveAttribute('data-placeholder', 'true')
   const populationText = await populationCell.innerText()
   console.log(`population: ${populationText.replace(/\s+/g, ' ')}`)
-  expect(populationText, 'the population estimate is not shown as an estimate').toContain('≈')
-  expect(populationText, 'the population estimate is not grouped digits').toMatch(/\d{1,3}(,\d{3})+/)
-  expect(Number(populationText.replace(/[^\d]/g, '')), 'the population estimate is not a city-sized number').toBeGreaterThanOrEqual(1000)
+  // 0304: the population is SERVED (world.town_hall.people) — a real-world figure that steps every 10 minutes — not an estimate
+  expect(populationText, 'the population is still the old estimate').not.toContain('≈')
+  await expect(populationCell, 'the hall serves no population').toHaveAttribute('data-population', /^\d+$/)
+  const served = Number(await populationCell.getAttribute('data-population'))
+  expect(served, 'the served population is not a town').toBeGreaterThan(0)
+  expect(populationText, 'the population does not print the served figure').toContain(served.toLocaleString('en-US'))
 
   // STATUS — the company's own influence in this city, a served figure (`influence.you.points`).
   const statusCell = page.getByTestId('city-status')
