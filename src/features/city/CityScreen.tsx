@@ -344,7 +344,7 @@ function CityFrame({
           docs/dev-log/2026-11-04-hq-design.md): the city's name for the title, the day or night beside it, then the six places as a row of
           cards across the page, then MAIN | SIDE — MAIN the plan (the market's chart when the market is open), SIDE the tray's column: your purse
           over the open place's panel. The page scrolls; nothing inside it does. */}
-      <div className="min-h-0 flex-1">
+      <main className="min-h-0 flex-1">
         <Sheet
           layout="page"
           data-testid="city-page"
@@ -437,7 +437,7 @@ function CityFrame({
             }
           />
         </Sheet>
-      </div>
+      </main>
 
       <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
     </>
