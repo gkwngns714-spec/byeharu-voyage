@@ -73,11 +73,11 @@ $body$
 
   -- ── 2. SELF-ASSERT ──
   if not exists (select 1 from pg_proc p where p.oid = 'world.stats_city_people(uuid)'::regprocedure and p.provolatile = 's' and p.prosecdef) then
-    raise exception '0305 FAIL: the reader is not STABLE SECURITY DEFINER';
+    raise exception '0305 self-assert FAIL: the reader is not STABLE SECURITY DEFINER';
   end if;
   if not has_function_privilege('authenticated', 'world.stats_city_people(uuid)', 'execute')
      or has_function_privilege('anon', 'world.stats_city_people(uuid)', 'execute') then
-    raise exception '0305 FAIL: the reader is not granted to authenticated alone';
+    raise exception '0305 self-assert FAIL: the reader is not granted to authenticated alone';
   end if;
   select id into v_port from public.ports where code = 'LON';
   v_r := world.stats_city_people(v_port);
@@ -86,15 +86,15 @@ $body$
   if v_r is null or (v_r - 'rank' - 'of' - 'series') <> v_want
      or (v_r ->> 'rank')::int < 1 or (v_r ->> 'rank')::int > v_n or (v_r ->> 'of')::int <> v_n
      or jsonb_typeof(v_r -> 'series') <> 'array' then
-    raise exception '0305 FAIL: the reader served % for London (hall block %)', v_r, v_want;
+    raise exception '0305 self-assert FAIL: the reader served % for London (hall block %)', v_r, v_want;
   end if;
   -- the rank is the count above + 1: the most populous harbour is rank 1
   if not exists (select 1 from public.port_population pp where pp.population = (select max(population) from public.port_population)
                     and (world.stats_city_people(pp.port_id) ->> 'rank') = '1') then
-    raise exception '0305 FAIL: the most populous harbour is not rank 1';
+    raise exception '0305 self-assert FAIL: the most populous harbour is not rank 1';
   end if;
   if world.stats_city_people('00000000-0000-0000-0000-000000000000') <> '{}'::jsonb then
-    raise exception '0305 FAIL: an unknown harbour did not serve {}';
+    raise exception '0305 self-assert FAIL: an unknown harbour did not serve {}';
   end if;
   -- nothing else moved
   select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
@@ -102,13 +102,13 @@ $body$
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> 'world.stats_city_people(uuid)'::regprocedure;
   if v_fn_after <> v_fn_before then
-    raise exception '0305 FAIL: another function moved';
+    raise exception '0305 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key)) from public.world_config c) <> v_cfg_before then
-    raise exception '0305 FAIL: a world_config row moved';
+    raise exception '0305 self-assert FAIL: a world_config row moved';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0305 FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0305 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
   raise notice '0305 self-assert ok: world.stats_city_people is STABLE, definer-owned, executable by authenticated alone; serves the hall block, a rank and the kept steps (London rank % of %, % logged steps); an unknown harbour serves {}; nothing else moved. Printed, never asserted: % ms.', v_r ->> 'rank', v_r ->> 'of', jsonb_array_length(v_r -> 'series'), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end

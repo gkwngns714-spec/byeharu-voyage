@@ -22,7 +22,7 @@ import { formatDucats, formatDucatsDelta, formatInt, formatPctChange, formatPric
 import { useEffect } from 'react'
 import { useT } from '../../lib/i18n'
 import { worldStatsCity, worldStatsCityPeople, type StatsCity, type StatsCityPeople } from '../../lib/rpc'
-import { STEP_TONE, stepWords } from '../city/populationWords'
+import { STEP_TONE, stepWords } from '../../domain/population'
 import { useWorld } from '../../live/worldStore'
 import { CARD_CHART_H, STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'

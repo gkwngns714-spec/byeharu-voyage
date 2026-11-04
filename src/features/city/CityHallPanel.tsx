@@ -5,7 +5,7 @@ import { TownHallInfluence } from '../../live/TownHallInfluence'
 import type { CityInvestor, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import { STEP_TONE, stepWords } from './populationWords'
+import { STEP_TONE, stepWords } from '../../domain/population'
 import { CityPanel } from './CityPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
