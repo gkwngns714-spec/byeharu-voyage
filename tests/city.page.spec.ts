@@ -326,7 +326,6 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
     // THE CITY IMAGE STAYS LEFT (owner, 2026-10-31) and the panel stands right of it: a press
     // changes the plan's mark and the right-hand panel only.
     await expect(page.getByTestId('city-info-image'), `pressing ${b} removed the city image`).toBeVisible()
-    const imageBox = (await page.getByTestId('city-info-image').boundingBox())!
     if (b === 'hall') {
       await expect(page.getByTestId('city-hall-panel')).toBeVisible()
       await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
@@ -334,9 +333,19 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
       const panel = page.getByTestId('city-face-panel')
       await expect(panel).toBeVisible()
       await expect(panel).toHaveAttribute('data-building', b)
+      const image = page.getByTestId('city-info-image')
+      // both boxes are read TOGETHER and re-read until the layout has settled (the image box was once read before the panel stood, and CI saw 562 > 508)
+      await expect
+        .poll(
+          async () => {
+            const [p, i] = [await panel.boundingBox(), await image.boundingBox()]
+            return p !== null && i !== null ? p.y + p.height <= i.y + 1 : false
+          },
+          { message: `the ${b} panel is not above the city image`, timeout: 5_000 },
+        )
+        .toBe(true)
       const pb = (await panel.boundingBox())!
       // (this spec stands at a phone: the page is one column there and the panel stands ABOVE the plan — row 267, 2026-11-04; the wide split is in hq.design.spec.ts)
-      expect(pb.y + pb.height, `the ${b} panel is not above the city image`).toBeLessThanOrEqual(imageBox.y + 1)
       expect(pb.width, `the ${b} panel is a full-screen layer`).toBeLessThan(390)
     }
     expect(await frameBoxes(page), `pressing ${b} re-flowed the frame`).toEqual(before)

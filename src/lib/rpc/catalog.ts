@@ -597,6 +597,7 @@ const TABLE = {
   worldStatsMarkets: { schema: 'world', fn: 'stats_markets', args: [] },
   worldStatsCities: { schema: 'world', fn: 'stats_cities', args: [] },
   worldStatsCity: { schema: 'world', fn: 'stats_city', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_span', type: 'text' }] },
+  worldStatsCityPeople: { schema: 'world', fn: 'stats_city_people', args: [{ name: 'p_port', type: 'uuid' }] },
   worldStatsMerchants: { schema: 'world', fn: 'stats_merchants', args: [{ name: 'p_span', type: 'text' }] },
   worldStatsMe: { schema: 'world', fn: 'stats_me', args: [] },
   // 0224 — THE FIGURES KEEP TO THE SECOND (owner row 200; docs/dev-log/2026-10-26-stats-live.md): the one LIVE read,

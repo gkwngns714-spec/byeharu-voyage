@@ -90,6 +90,7 @@ import type {
   StatsMarkets,
   StatsCities,
   StatsCity,
+  StatsCityPeople,
   StatsMerchants,
   StatsMe,
   StatsNow,
@@ -774,6 +775,10 @@ export function worldStatsCities(): Promise<RpcResult<StatsCities>> {
 /** One harbour: its overview and its full detail, served to everyone (0223). */
 export function worldStatsCity(portId: string, span: PriceSpan | null = null): Promise<RpcResult<StatsCity>> {
   return call<StatsCity>('worldStatsCity', [portId, span])
+}
+/** 0305: a harbour's people for the Stats city page: the hall's block plus its rank among all harbours and the kept day of 10-minute steps. {} for a harbour with no population row. */
+export function worldStatsCityPeople(portId: string): Promise<RpcResult<StatsCityPeople>> {
+  return call<StatsCityPeople>('worldStatsCityPeople', [portId])
 }
 /** The merchant companies' day: where their fleets are, what they earned, the best and the worst. */
 export function worldStatsMerchants(span: PriceSpan | null = null): Promise<RpcResult<StatsMerchants>> {

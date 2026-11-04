@@ -1649,7 +1649,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // row 197: "all the info without investment") removed that gate; tests/rpc.stats.spec.ts proves
       // every city is served whole to a company with no stake anywhere.
       // Landed WITH the faces that read them (features/stats).
-      'worldStatsOverview', 'worldStatsMarkets', 'worldStatsCities', 'worldStatsCity', 'worldStatsMerchants', 'worldStatsMe',
+      'worldStatsOverview', 'worldStatsMarkets', 'worldStatsCities', 'worldStatsCity', 'worldStatsCityPeople', 'worldStatsMerchants', 'worldStatsMe',
       // Pin moved deliberately 2026-10-26 with migration 0224 (owner row 200, "updated every second"): the Stats
       // tab's one LIVE read — the counters every writer keeps, asked each second while the tab is open. A READ.
       'worldStatsNow',
