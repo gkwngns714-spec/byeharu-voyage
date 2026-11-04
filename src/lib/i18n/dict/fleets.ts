@@ -6,6 +6,9 @@ export const fleetsDict = defineDict({
     noFleets: 'No fleets yet.',
     // THE LIST PANEL'S TITLE (the sheets-grow slice, 2026-11-02): how many fleets the panel holds, the way RANK counts its captains.
     count: { one: '{n} fleet', other: '{n} fleets' },
+    // THE PAGE'S SIDE CARD (2026-11-04): the company in figures beside the fleets.
+    company: 'Your company',
+    underway: 'Under way',
     hull: 'hull',
     worstHull: 'worst, {pct}',
     ofSupplies: '{days} of supplies',
@@ -36,6 +39,8 @@ export const fleetsDict = defineDict({
   ko: {
     noFleets: '아직 선단이 없습니다.',
     count: { one: '선단 {n}개', other: '선단 {n}개' },
+    company: '내 회사',
+    underway: '항해 중',
     hull: '선체',
     worstHull: '최악, {pct}',
     ofSupplies: '보급 {days}',
