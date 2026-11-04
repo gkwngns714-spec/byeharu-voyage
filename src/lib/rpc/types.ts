@@ -3415,6 +3415,14 @@ export interface StatsCity {
   detail?: { goods: StatsCityGood[] }
 }
 
+/** `world.stats_city_people(port)` (0305): the hall's people block (TownHallPeople) + rank (1 = most people) of `of` harbours + the kept
+ *  day of steps, oldest first. An empty object (no `population`) for a harbour with no population row. */
+export type StatsCityPeople = Partial<TownHallPeople> & {
+  rank?: number
+  of?: number
+  series?: { at: string; population: number }[]
+}
+
 export interface StatsMerchantHouse {
   name: string
   nation: string | null

@@ -21,7 +21,8 @@ import {
 import { formatDucats, formatDucatsDelta, formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
 import { useEffect } from 'react'
 import { useT } from '../../lib/i18n'
-import { worldStatsCity, type StatsCity } from '../../lib/rpc'
+import { worldStatsCity, worldStatsCityPeople, type StatsCity, type StatsCityPeople } from '../../lib/rpc'
+import { STEP_TONE, stepWords } from '../city/populationWords'
 import { useWorld } from '../../live/worldStore'
 import { CARD_CHART_H, STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
 import { useLiveRead } from './statsLive'
@@ -61,6 +62,8 @@ export function CityDetail({ portId }: { portId: string }) {
   const { span } = useChartSpan()   // 0246: one span for every chart
   const read = useLiveRead<StatsCity>(`stats:city:${portId}`, () => worldStatsCity(portId, span), span)
   const v = read.view
+  const peopleRead = useLiveRead<StatsCityPeople>(`stats:city-people:${portId}`, () => worldStatsCityPeople(portId), span)
+  const people = peopleRead.view
   // 0263 (CLOSED_ECONOMY §4b, "Stats → Cities: a city's wants"): what this city wants now, from the market read the
   // quay already uses (world.market `wants`, the store's one copy). Read once when the city opens: wants re-draw
   // twice a game-day, not every second. Absent while city wants are dark, so nothing is drawn.
@@ -88,6 +91,56 @@ export function CityDetail({ portId }: { portId: string }) {
             <StatCard label={t('town.i_out')} value={-o.spending_1d} format={formatDucatsDelta} tone="danger" />
             <StatCard label={t('town.i_taxes')} value={o.taxes_1d} format={formatDucats} />
           </StatStrip>
+          {people && people.population !== undefined && people.baseline !== undefined && (
+            <div className={`flex flex-col ${PAGE_GAP}`} data-testid="stats-city-people">
+              <StatStrip>
+                <StatCard
+                  label={t('city.population')}
+                  value={people.population}
+                  format={formatInt}
+                  delta={people.kind ? { text: stepWords(t, { kind: people.kind, reason: people.reason ?? null }), tone: STEP_TONE[people.kind] } : undefined}
+                  data-testid="stats-city-population"
+                  data-population={people.population}
+                  data-kind={people.kind ?? 'none'}
+                  data-reason={people.reason ?? 'none'}
+                />
+                <StatCard
+                  label={t('stats.peopleOfBase', { year: String(people.year ?? '') })}
+                  value={(people.population / people.baseline - 1) * 100}
+                  format={formatPctChange}
+                  tone={deltaTone(people.population - people.baseline)}
+                  data-testid="stats-city-people-base"
+                />
+                <StatCard
+                  label={t('stats.peopleTax')}
+                  value={people.per_day ?? 0}
+                  format={formatDucats}
+                  data-testid="stats-city-people-tax"
+                  data-per-day={people.per_day ?? 0}
+                />
+                {people.rank !== undefined && people.of !== undefined && (
+                  <StatCard
+                    label={t('stats.peopleRank')}
+                    text={t('stats.peopleRankOf', { rank: formatInt(people.rank), of: formatInt(people.of) })}
+                    data-testid="stats-city-people-rank"
+                    data-rank={people.rank}
+                  />
+                )}
+              </StatStrip>
+              <Card title={t('stats.people')}>
+                <StatsChart
+                  title={t('stats.people')}
+                  points={toSeries(people.series ?? [], (p) => p.population)}
+                  format={formatInt}
+                  label={t('stats.peopleChart', { city: portName(v.city.name) })}
+                  tone="accent"
+                  look="chart"
+                  height={CARD_CHART_H}
+                  empty={<Hint>{t('stats.peopleSoon')}</Hint>}
+                />
+              </Card>
+            </div>
+          )}
           <div className={PAIR}>
             <Card title={portName(v.city.name)}>
               <StatsChart

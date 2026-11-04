@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Icon, Note, Row, Skeleton, StatCell, Tray, type TrayDetent } from '../../components/ui'
 import { InvestorRow } from '../../live/CityInvestors'
 import { TownHallInfluence } from '../../live/TownHallInfluence'
-import type { CityInvestor, Refusal, SnapshotPort, TownHallPeople, TownHallView } from '../../lib/rpc'
+import type { CityInvestor, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, formatInt } from '../../lib/format'
-import { useT, type TKey } from '../../lib/i18n'
+import { useT } from '../../lib/i18n'
+import { STEP_TONE, stepWords } from './populationWords'
 import { CityPanel } from './CityPanel'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -167,24 +168,6 @@ export function CityHallPanel({
       </div>
     </CityPanel>
   )
-}
-
-/** THE STEP'S WORDS: an arrow for the last 10-minute step, then why — the signal that moved it, the bound that stopped it, or Steady. */
-const STEP_ARROW: Record<TownHallPeople['kind'], string> = { GROW: '↑', HOLD: '→', SHRINK: '↓' }
-const STEP_TONE: Record<TownHallPeople['kind'], 'success' | 'muted' | 'danger'> = { GROW: 'success', HOLD: 'muted', SHRINK: 'danger' }
-const STEP_KIND: Record<TownHallPeople['kind'], TKey> = { GROW: 'city.popGrow', HOLD: 'city.popHold', SHRINK: 'city.popShrink' }
-const STEP_REASON: Record<NonNullable<TownHallPeople['reason']>, TKey> = {
-  INVEST: 'city.popINVEST',
-  FAMINE: 'city.popFAMINE',
-  WAR: 'city.popWAR',
-  PIRATES: 'city.popPIRATES',
-  STORM: 'city.popSTORM',
-  CEILING: 'city.popCEILING',
-  FLOOR: 'city.popFLOOR',
-}
-function stepWords(t: ReturnType<typeof useT>, p: TownHallPeople): string {
-  const why = p.reason && STEP_REASON[p.reason] ? t(STEP_REASON[p.reason]) : t(STEP_KIND[p.kind])
-  return `${STEP_ARROW[p.kind]} ${why}`
 }
 
 /** THE INVESTORS DRAWER — the design system's docked Tray: from 1,024 px it slides over the page's SIDE column (the same x and width, nothing behind it
