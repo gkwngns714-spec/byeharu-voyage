@@ -129,19 +129,22 @@ async function expectWholeCityDrawn(page: Page, where: string) {
   }
 }
 
-/** THE HQ SPLIT IS SIDE BY SIDE, at every glass (owner, 2026-10-31: "the town hall screen is on the
- *  same HQ screen, but where the city is"): the plan's right edge is left of the hall panel's left
- *  edge, and both have real boxes. The plan DRAWING stays square through CityScene's meet contract
- *  (the whole-city proof above); its panel is square at the phone sizes, asserted there. */
+/** THE HQ SPLIT IS MAIN | SIDE FROM 1,024 PX, AND ONE COLUMN BELOW (owner, 2026-10-31: "the town hall screen is on the same HQ screen, but where
+ *  the city is"; row 267, 2026-11-04: the HQ is a page, docs/dev-log/2026-11-04-hq-design.md). From 1,024 the plan's right edge is left of the hall
+ *  panel's left edge; below it the two stand in one column and the panel stands ABOVE the plan (the panel first on a phone). Both have real boxes.
+ *  The plan DRAWING stays square through CityScene's meet contract (the whole-city proof above). */
 async function expectHqSplit(page: Page, where: string) {
   const b = await page.evaluate(() => {
     const plan = document.querySelector('[data-testid="city-info-image"]')!.getBoundingClientRect()
     const panel = document.querySelector('[data-testid="city-hall-panel"]')!.getBoundingClientRect()
     return {
+      wide: innerWidth >= 1024,
       planRight: plan.right,
+      planTop: plan.top,
       planW: plan.width,
       planH: plan.height,
       panelLeft: panel.left,
+      panelBottom: panel.bottom,
       panelW: panel.width,
       panelH: panel.height,
     }
@@ -149,7 +152,8 @@ async function expectHqSplit(page: Page, where: string) {
   expect(b.planW, `the plan has no width (${where})`).toBeGreaterThan(0)
   expect(b.panelW, `the hall panel has no width (${where})`).toBeGreaterThan(0)
   expect(b.panelH, `the hall panel has no height (${where})`).toBeGreaterThan(0)
-  expect(b.planRight, `the plan is not left of the hall panel (${where})`).toBeLessThanOrEqual(b.panelLeft + 0.5)
+  if (b.wide) expect(b.planRight, `the plan is not left of the hall panel (${where})`).toBeLessThanOrEqual(b.panelLeft + 0.5)
+  else expect(b.panelBottom, `the hall panel is not above the plan (${where})`).toBeLessThanOrEqual(b.planTop + 0.5)
 }
 
 test('the City page: entry, the six-tile frame, the hall in place, and no scroll', async ({ page, request, baseURL }) => {
@@ -328,7 +332,8 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
       await expect(panel).toBeVisible()
       await expect(panel).toHaveAttribute('data-building', b)
       const pb = (await panel.boundingBox())!
-      expect(pb.x, `the ${b} panel is not right of the city image`).toBeGreaterThanOrEqual(imageBox.x + imageBox.width - 1)
+      // (this spec stands at a phone: the page is one column there and the panel stands ABOVE the plan — row 267, 2026-11-04; the wide split is in hq.design.spec.ts)
+      expect(pb.y + pb.height, `the ${b} panel is not above the city image`).toBeLessThanOrEqual(imageBox.y + 1)
       expect(pb.width, `the ${b} panel is a full-screen layer`).toBeLessThan(390)
     }
     expect(await frameBoxes(page), `pressing ${b} re-flowed the frame`).toEqual(before)

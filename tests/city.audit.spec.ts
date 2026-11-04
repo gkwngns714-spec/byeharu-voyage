@@ -189,12 +189,13 @@ for (const size of SIZES) {
       // building's own region — the right-hand panel (with the city-image area left)").
       const image = page.getByTestId('city-info-image')
       await expect(image, `pressing ${id} removed the city image`).toBeVisible()
-      // THE PANEL STANDS RIGHT OF THE PLAN — never a full-screen layer over the doors.
+      // THE PANEL STANDS BESIDE THE PLAN FROM 1,024 PX (in the side column, right of it) AND ABOVE IT BELOW — never a full-screen layer over the doors
+      // (2026-11-04, the HQ page: it was "right of the plan at every glass" in a 100dvh frame; a card now has its content's height, so no height law).
       const ib = (await image.boundingBox())!
       const pb = (await panel.boundingBox())!
-      expect(pb.x, `the ${id} panel is not right of the city image`).toBeGreaterThanOrEqual(ib.x + ib.width - 1)
+      if (size.width >= 1024) expect(pb.x, `the ${id} panel is not right of the city image`).toBeGreaterThanOrEqual(ib.x + ib.width - 1)
+      else expect(pb.y + pb.height, `the ${id} panel is not above the city image`).toBeLessThanOrEqual(ib.y + 1)
       expect(pb.width, `the ${id} panel is as wide as the glass (a full-screen layer)`).toBeLessThan(size.width)
-      expect(pb.height, `the ${id} panel is as tall as the glass (a full-screen layer)`).toBeLessThan(size.height)
       splits.push({ id, image: await boxOf(image), panel: await boxOf(panel), top: await boxOf(page.getByTestId('city-top')) })
       const d = await docScroll(page)
       expect(d.h, `pressing ${id} scrolls the page down`).toBeLessThanOrEqual(d.ch + 1)
@@ -202,11 +203,14 @@ for (const size of SIZES) {
       await assertControls(page, `@${size.width} ${id} panel`)
     }
     const hallSplit = splits[0]
+    // ONE SHAPE FOR ALL SIX, in x and width: the columns hold still across presses; heights are the cards' own (the page scrolls)
+    const cols = (x: { image: { x: number; w: number }; panel: { x: number; w: number }; top: { x: number; w: number } }) => ({
+      image: [x.image.x, x.image.w],
+      panel: [x.panel.x, x.panel.w],
+      top: [x.top.x, x.top.w],
+    })
     for (const s of splits.slice(1)) {
-      expect(
-        { image: s.image, panel: s.panel, top: s.top },
-        `the ${s.id} split differs from the hall's — one shape for all six`,
-      ).toEqual({ image: hallSplit.image, panel: hallSplit.panel, top: hallSplit.top })
+      expect(cols(s), `the ${s.id} split differs from the hall's — one shape for all six`).toEqual(cols(hallSplit))
     }
     console.log(`AUDIT @${size.width} one split for six: image ${JSON.stringify(hallSplit.image)} panel ${JSON.stringify(hallSplit.panel)}`)
     await press(page, 'hall')

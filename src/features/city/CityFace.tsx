@@ -88,13 +88,10 @@ export function CityFacePanel({
   fleet: FleetView | null
 }) {
   const t = useT()
-  // THE ROW PITCH IS THE REACH FLOOR (owner, 2026-11-01: *"more compact with full detail"*): Row's
-  // 52-px rhythm (44 px + 8 pt) is compacted to the 44-px floor inside the city faces only. The
-  // shared primitives are NOT edited here (another writer owns them); a row whose content is taller
-  // than 44 still grows — the floor is a minimum, never a crop.
+  // THE FACE STANDS IN A PAGE CARD (2026-11-04, the HQ on the page pattern): its title is the building's word, its rows keep
+  // Row's own 52-px rhythm (the 44-px compaction of 2026-11-01 is gone: row 267, "too packed") and the page scrolls.
   return (
-    <CityPanel testId="city-face-panel" building={building} contentClassName="[&_[data-row-line]]:min-h-11">
-      <h2 className="pb-1 text-t-caption text-ink-faint">{t(BUILDING_LABEL[building])}</h2>
+    <CityPanel testId="city-face-panel" building={building} title={t(BUILDING_LABEL[building])}>
       {building === 'market' && <MarketFace port={port} fleet={fleet} />}
       {building === 'storage' && <StorageFace port={port} fleet={fleet} />}
       {building === 'forge' && <ForgeFace port={port} fleet={fleet} />}
@@ -118,6 +115,7 @@ function ForgeFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | nul
       {groups.length === 0 && <Note tone="neutral">{t('city.forgeNone')}</Note>}
       {groups.map(([tier, recipes]) => (
         <SummaryRow
+          className="min-h-row!"
           key={tier}
           title={t('city.forgeTier', { n: formatInt(tier) })}
           figure={formatInt(recipes.length)}
@@ -160,8 +158,8 @@ function PortFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null
   const damage = fleet ? formatPct(1 - worstHullFraction(fleet), 0) : undefined
   return (
     <>
-      {yard && <SummaryRow title={buildWord} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
-      {repair && <SummaryRow title={repairWord} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
+      {yard && <SummaryRow className="min-h-row!" title={buildWord} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
+      {repair && <SummaryRow className="min-h-row!" title={repairWord} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
       {open === 'yard' && (
         <DetailPage title={buildWord} onClose={() => setOpen(null)} data-testid="city-port-yard-page">
           <PageBody>
@@ -192,12 +190,14 @@ function InnFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null 
   return (
     <>
       <SummaryRow
+          className="min-h-row!"
         title={t('inn.crew')}
         figure={crew ? formatOfTotal(crew.aboard, crew.max) : undefined}
         onClick={() => setOpen(true)}
         data-testid="city-inn-crew"
       />
       <SummaryRow
+          className="min-h-row!"
         title={t('inn.captainsHere')}
         figure={room.view ? formatInt(room.view.present.length) : undefined}
         onClick={() => setOpen(true)}
