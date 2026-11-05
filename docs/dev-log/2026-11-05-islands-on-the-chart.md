@@ -1,6 +1,6 @@
 # 2026-11-05 - The harbours have their islands (migration 0319, number set at deploy)
 
-Branch `islands-on-the-chart` · migration `supabase/migrations/20260818000319_the_harbours_have_their_islands.sql` · owner row 296, which reopens row 92.
+Branch `islands-on-the-chart` · migration `supabase/migrations/20260818000319_the_harbours_have_their_islands.sql` · owner row 297, which reopens row 92.
 
 ## The order
 Row 92: *"some cities are in the ocean, not on land such as istanbul. I want you to fix it."* Reconfirmed 2026-11-05: *"some cities are in ocean, they are meant to be like that yes?"* Row 41: the fleet never touches land.
