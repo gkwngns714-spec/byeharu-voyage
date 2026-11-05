@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { worldMoneyFeed, type MoneyMove, type RpcResult } from '../../lib/rpc'
 import { emptyDrip, enqueue, step, type Drip } from './moneyDrip'
 import { SECTORS, sectorOf, type Sector } from './moneySectors'
-import { useLiveRead } from './statsLive'
+import { useLiveRead } from '../../live/liveRead'
 
 // THE MONEY LOG'S FEED AND ITS FILTER (0235, owner row 219): every money move in the world as it happens.
 // The drip (moneyDrip.ts) reveals batches a few rows a second; each row keeps its real time. Moved out of

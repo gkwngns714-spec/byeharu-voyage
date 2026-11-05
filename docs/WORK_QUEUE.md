@@ -1,5 +1,7 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-11-05 CITY LIVE (client-only PR): HQ gold, population and status, and the Town Hall, read `world.town_hall` every second through the one shared `useLiveRead` (now src/live/liveRead.ts); one ask a second per open page; tests/city.live.spec.ts.
+
 
 
 
