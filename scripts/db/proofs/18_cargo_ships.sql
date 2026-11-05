@@ -7,7 +7,7 @@
 -- @pass CARGO_DARK_NOTHING  dark, the commission makes nothing for a real great power
 -- @pass CARGO_ALL_POWERS    lit, every great power with a harbour capital gets the knob's count, and no purse in the world moves
 -- @pass CARGO_NOT_MERCHANT  no merchant roster and no map read names her
--- @pass CARGO_SAILS         she departs with voyage.depart and docks with voyage.settle: no wage, no stores, no forced home, no purse moved but the dock fee she owes
+-- @pass CARGO_SAILS         she departs with voyage.depart and docks with voyage.settle: no wage, no stores, no forced home, no dock fee (0309), no purse moved
 -- @pass CARGO_COMPACTED     her ended voyage is compacted with the merchants', so her history does not grow
 -- @pass CARGO_KNOWN_LEAK    world.sea_traffic's `total` counts her, the one read V4 must close before she is lit on prod
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -130,10 +130,10 @@ begin
   if v_wages <> 0 then
     raise exception 'PROOF 18 FAIL: she owes wages: %', v_wages;
   end if;
-  if v_fee <= 0 then
-    raise exception 'PROOF 18 FAIL: the known dock fee was not owed: the dev-log says V2 must meet it';
+  if v_fee <> 0 then
+    raise exception 'PROOF 18 FAIL: she owes a dock fee of %: public.port_fee answers 0 for a cargo ship since 0309', v_fee;
   end if;
-  raise notice 'PASS: CARGO_SAILS — % to %, % nm, at speed % (% nm a real minute), % days settled, docked; no wage, no stores, no forced home; she owes the harbour % d. dock fee and V2 must meet it',
+  raise notice 'PASS: CARGO_SAILS — % to %, % nm, at speed % (% nm a real minute), % days settled, docked; no wage, no stores, no forced home; % d. dock fee owed',
     v_capc, v_cityc, round((select total_nm from public.voyages where id = v_voy)), v_speed, round(v_speed * public.wc_num('time_compression') / 60), v_n, v_fee;
 
   -- her history goes with the merchants'

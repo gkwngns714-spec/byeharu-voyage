@@ -2,7 +2,7 @@
 
 **Words (owner, 2026-11-05):** the ship is a **Cargo ship**; the gold is **Funds**; its load is a **Shipment**. Not "gift", not "aid".
 
-**Status: V1 built dark (0308, `docs/dev-log/2026-11-05-cargo-ships.md`): the fleet kind, the book of funds aboard, the sizing and what V2 must meet. The rest is design.** Prod head at writing: **0305**.
+**Status: V1 live dark (0308, `docs/dev-log/2026-11-05-cargo-ships.md`): the fleet kind, the book of funds aboard, the sizing. V2 built dark (0309, `docs/dev-log/2026-11-05-cargo-funds.md`): loading from `crown_aid`'s same decision, one circuit of a realm, delivery, return, funds aboard in the total, no dock fee, hull rule. Client and goods are design.** Prod head at writing: **0305**.
 **The owner (2026-11-05):** *"i need a transportation ship, cities moving trade goods to different cities, moving gold to gold. Capital city with its massive income, will provide other cities with gold when depleted."*
 Every "decided by default" is mine; the owner reverses afterwards.
 
