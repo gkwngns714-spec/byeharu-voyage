@@ -1,5 +1,7 @@
 # WORLD POWERS: standing, levels, armed cargo ships, player war fleets, timed battles, navies, pirates
 
+
+**Owner answers, 2026-11-05:** a player MAY join the pirates ("yes they can"); whether a pirate player may attack other players' merchants stays open, and the no-PvP law stands until answered. City reserve: capitals are sized and filled first. Bank #484 on hold.
 **Status: DESIGN, build-ready, 2026-11-05. Nothing here is built. No migration, no code, no prod write.**
 Prod head at writing: **0312**. All prod figures are pure SELECTs of 2026-11-05 about 08:30 UTC. Slices have names, not numbers: each takes prod head + 1 when cut.
 **Owner rows:** 282-288, plus the ship-looks order of the same day (row 291). Every "decided by default" is mine; the owner reverses afterwards.
