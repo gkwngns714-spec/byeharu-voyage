@@ -5,6 +5,8 @@ import { formatDucatsDelta } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
 import { t as tNow, useT, type TKey } from '../../../lib/i18n'
 import type { DeskLayout } from '../DeskFrame'
+import { HistoryChart } from '../../../live/HistoryChart'
+import { companyLines } from '../../../live/historyLines'
 
 // REPORT — every earning and loss by SECTION and by POINT (0286, docs/COMMAND_REDESIGN.md §4–5;
 // owner rows 192, 244: *"the profit tab on command, change it to report, saving all the earnings and
@@ -21,7 +23,7 @@ import type { DeskLayout } from '../DeskFrame'
 // with its lines whole (SummaryRow → DetailPage, the one mechanism). Nothing unfolds in place.
 
 type Span = ReportView['span']
-type Open = { kind: 'section'; id: ReportSection['id'] } | { kind: 'place'; index: number } | null
+type Open = { kind: 'section'; id: ReportSection['id'] } | { kind: 'place'; index: number } | { kind: 'history' } | null
 
 const SPANS = [
   { id: 'day' as const, get label() { return tNow('desk.spanDay') } },
@@ -156,7 +158,11 @@ export function Report({ layout }: { layout: DeskLayout }) {
         </div>
         <h3 className="mb-1 mt-3 text-t-caption font-semibold text-ink-faint">{t('desk.bySection')}</h3>
         <ScrollPane className="max-h-[13rem] lg:max-h-none" data-testid="report-sections">
-          <div className="flex flex-col gap-1.5">{r.sections.map(section)}</div>
+          <div className="flex flex-col gap-1.5">
+            {r.sections.map(section)}
+            {/* a door, not a card: the record by day, week and month is a page of its own, and sits in this scrolling list so the face stays one glass tall at 390 px (tests/onepage.spec.ts) */}
+            <SummaryRow title={t('stats.yourHistory')} word={t('common.open')} onClick={() => setOpen({ kind: 'history' })} data-testid="report-history" />
+          </div>
         </ScrollPane>
       </>
     ),
@@ -177,6 +183,11 @@ export function Report({ layout }: { layout: DeskLayout }) {
             className="mt-3"
             data-testid="report-bars"
           />
+        )}
+        {open?.kind === 'history' && (
+          <DetailPage title={t('stats.yourHistory')} onClose={() => setOpen(null)} data-testid="report-history-page">
+            <HistoryChart what="me" title={t('stats.yourHistory')} lines={companyLines(t)} data-testid="history-me" />
+          </DetailPage>
         )}
         {openSection !== null && (
           <DetailPage

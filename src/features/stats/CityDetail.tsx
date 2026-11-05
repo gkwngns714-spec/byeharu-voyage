@@ -29,6 +29,8 @@ import { BonusCard } from './BonusCard'
 import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
+import { HistoryChart } from '../../live/HistoryChart'
+import { cityLines } from '../../live/historyLines'
 
 // ONE CITY, OPEN TO EVERYONE — the row the Cities face opens (0214; 0223 removed the investment gate, the
 // owner's row 197: *"on cities, i want to see all the info without investment"*).
@@ -166,6 +168,7 @@ export function CityDetail({ portId }: { portId: string }) {
               </span>
             </Card>
           </div>
+          <HistoryChart what="city" subject={v.city.code} title={t('stats.cityHistory')} lines={cityLines(t)} data-testid="history-city" />
           <div className={PAIR}>
             <Card title={t('stats.soldCityMost')}>
               <div>

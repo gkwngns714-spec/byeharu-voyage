@@ -13,6 +13,7 @@ Read-only. It prints the numbers and an `ALERT:` line for each threshold that tr
 | database restarted < 6 h ago | outage or crash; caches are cold; look for a gap in `cron.job_run_details` |
 | cron job failing > 20 % over 2 h | read its last `return_message`; a timeout names the statement |
 | Stats count older than 45 min | `public.stats_runs`, the last `byeharu-voyage:stats` runs |
+| history job older than 45 min | `public.history_runs`, the last `byeharu-voyage:history` runs. Past 5 hours stopped, merchants' earned and lost are rolled away unread: a restart heals everything else (0316) |
 | journal > 300,000 rows | `world.stats_now()` sums all of it per call; check the count and the drain |
 | big table < 90 % all-visible | index-only scans turn into heap fetches; give the table the `scale_factor = 0, threshold ~500–2000` autovacuum options its siblings have |
 | table with more dead rows than live | bloat; rewrite (CLUSTER) with a fillfactor, as 0292 did for `port_goods` |

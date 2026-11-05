@@ -604,6 +604,8 @@ const TABLE = {
   worldStatsCityPeople: { schema: 'world', fn: 'stats_city_people', args: [{ name: 'p_port', type: 'uuid' }] },
   worldStatsMerchants: { schema: 'world', fn: 'stats_merchants', args: [{ name: 'p_span', type: 'text' }] },
   worldStatsMe: { schema: 'world', fn: 'stats_me', args: [] },
+  // 0316: GRAPHS BY DAY, WEEK AND MONTH (docs/dev-log/2026-11-05-history-graphs.md): the one read of the daily history tables
+  worldHistory: { schema: 'world', fn: 'history', args: [{ name: 'p_what', type: 'text' }, { name: 'p_subject', type: 'text' }, { name: 'p_period', type: 'text' }] },
   // 0224 — THE FIGURES KEEP TO THE SECOND (owner row 200; docs/dev-log/2026-10-26-stats-live.md): the one LIVE read,
   // asked every second while the Stats tab is open. Base row + the journal since the last count; no aggregate scan.
   worldStatsNow: { schema: 'world', fn: 'stats_now', args: [] },

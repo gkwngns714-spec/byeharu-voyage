@@ -85,6 +85,9 @@ import type {
   Watchlist,
   PlanLine,
   Holdings,
+  History,
+  HistoryPeriod,
+  HistoryWhat,
   Report,
   ReportSpan,
   StatsOverview,
@@ -761,6 +764,14 @@ export function worldHoldings(): Promise<RpcResult<Holdings>> {
 /** The report (0286): the company's ledger by the design's sections and by point, over day / week / all. */
 export function worldReport(span: ReportSpan = 'week'): Promise<RpcResult<Report>> {
   return call<Report>('worldReport', [span])
+}
+
+/** The periods a history graph offers (0316), in the order the picker shows them. */
+export const HISTORY_PERIODS: readonly HistoryPeriod[] = ['day', 'week', 'month']
+
+/** One subject's history by period (0316): one daily row per subject, a week and a month are those rows grouped. */
+export function worldHistory<P>(what: HistoryWhat, subject: string | null, period: HistoryPeriod): Promise<RpcResult<History<P>>> {
+  return call<History<P>>('worldHistory', [what, subject, period])
 }
 
 // ── THE STATS TAB (0214): six reads over the fifteen-minute rollup ──────────────────────────────
