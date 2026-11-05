@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } from './trayDetents'
@@ -107,7 +107,24 @@ export function Tray({
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const drag = useRef<{ startY: number; startHeight: number } | null>(null)
   // A SIDE PANEL SLIDES BACK OUT BEFORE IT IS GONE (owner, 2026-11-05): a close asks for the exit first and reports 'closed' when it ends.
+  // THE END IS A CLOCK OF THE SLIDE'S OWN LENGTH, read off the element so index.css stays the one place it is set, and never the
+  // `animationend` event: the slide is a picture of the close, not a condition of it. No animation means 0 ms, and the tray still goes.
+  // While leaving it takes no tap (`pointer-events-none` below): what is under it answers, so the tap lands on the chart.
   const [leaving, setLeaving] = useState(false)
+  const element = useRef<HTMLElement>(null)
+  const report = useRef(onDetentChange)
+  useEffect(() => {
+    report.current = onDetentChange
+  })
+  useEffect(() => {
+    if (!leaving) return
+    const slide = element.current ? parseFloat(getComputedStyle(element.current).animationDuration) * 1000 : 0
+    const end = window.setTimeout(() => {
+      setLeaving(false)
+      report.current('closed')
+    }, slide || 0)
+    return () => window.clearTimeout(end)
+  }, [leaving])
   // ON A WIDE GLASS A DOCKED TRAY IS A SIDE PANEL (screenLayout.ts, "the wide glass"): it stands
   // beside the column at full height, so the detent ladder — a bottom-edge idea — does not apply.
   // `detent` still says open or closed; the height is the panel's.
@@ -159,6 +176,7 @@ export function Tray({
     // this `surface` is `surface-2`, so it has a shape.
     <InTray.Provider value={true}>
     <section
+      ref={element}
       // A pane (the desk's slot, the desk's ticket pane) is a region of the page, not a dialog over it.
       role={mode === 'pane' ? 'region' : 'dialog'}
       aria-modal={mode === 'pane' ? undefined : false}
@@ -166,9 +184,6 @@ export function Tray({
       aria-label={typeof title === 'string' ? title : undefined}
       data-tray-mode={mode}
       data-tray-detent={detent}
-      onAnimationEnd={(e) => {
-        if (leaving && e.target === e.currentTarget) onDetentChange('closed')
-      }}
       style={{ height, transitionDuration: dragHeight !== null ? '0ms' : undefined }}
       className={[
         // THE LAYER ORDER OF THE TWO SIDE PANELS, the one place it is decided. From `lg` the second
@@ -195,7 +210,7 @@ export function Tray({
             : mode === 'pane'
               ? 'relative h-full w-full'
               : 'relative w-full',
-        leaving ? 'bv-slide-to-right' : '',
+        leaving ? 'bv-slide-to-right pointer-events-none' : '',
         className,
       ].join(' ')}
       {...rest}

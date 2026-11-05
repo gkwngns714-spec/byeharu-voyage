@@ -9,19 +9,19 @@ import { pressCity } from './deskMap.fixture'
 //
 // *"…The past was better. right now everything is on left, too packed. this was a mistake."* The Map is ONE GLASS OF CHART, so the
 // pattern means this (docs/dev-log/2026-11-04-map-design.md): the chart is the main column and stays whole; the selection panels are
-// the SIDE column — a tray from `lg` is the page's side column (`--page-side`: 352 · 384 · 416 px, its right edge on the page's
-// margin) and slides OVER the chart's right part; it never pushes or shrinks the chart. It was 39 rem flush to the glass's edge.
+// the SIDE column — a tray from `lg` is the page's side column (`--page-side`: 352 · 384 · 416 px, its right edge on the window's
+// edge since row 278) and slides OVER the chart's right part; it never pushes or shrinks the chart. It was 39 rem flush to the glass's edge.
 //
 // THE LAWS (from 1,024 px unless said):
 //   (a) THE CHART IS NEVER REDUCED: its box is the same shut and with a tray open.
-//   (b) THE TRAY IS THE SIDE COLUMN: its width is the page's side width, its right edge the page's margin — max(--page-pad, (glass − 1,280)/2).
+//   (b) THE TRAY IS THE SIDE COLUMN: its width is the page's side width, its right edge 0 px from the window's edge. REVERSED BY THE OWNER
+//       2026-11-05 (row 278; it was the page's margin, max(--page-pad, (glass − 1,280)/2)): "i want it to slide from the right slide from the edge of the page".
 //   (c) THE CHROME GIVES WAY: the zoom column's right edge is left of the tray's left edge.
 //   (d) BELOW 1,024 the tray is the glass, as it was.
 //   (e) NOTHING SCROLLS BUT THE TRAY'S OWN BODY: the document stays flat.
 // RED BEFORE: against origin/main (the 39-rem panel flush to the edge) (b) fails at every wide glass.
 
 const SIDE = (w: number) => (w >= 1440 ? 416 : w >= 1280 ? 384 : 352)
-const PAD = (w: number) => Math.max(w >= 1280 ? 40 : 32, (w - 1280) / 2)
 
 async function pressLisbon(page: Page) {
   await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
@@ -50,7 +50,8 @@ for (const glass of DESIGN_GLASSES) {
     if (glass.width >= 1024) {
       if (Math.abs(t.width - SIDE(glass.width)) > 1) failures.push(`(b) the tray is ${Math.round(t.width)} px wide — the side column is ${SIDE(glass.width)}`)
       const right = glass.width - (t.x + t.width)
-      if (Math.abs(right - PAD(glass.width)) > 1) failures.push(`(b) the tray's right edge is ${Math.round(right)} px from the glass's — the page's margin is ${PAD(glass.width)}`)
+      // The owner, 2026-11-05: "i want it to slide from the right slide from the edge of the page".
+      if (Math.abs(right) > 1) failures.push(`(b) the tray's right edge is ${Math.round(right)} px from the window's edge — it stands on the edge`)
       const controls = await page.getByTestId('map-view-controls').boundingBox()
       if (controls && controls.x + controls.width > t.x + 1) failures.push(`(c) the zoom column (right edge ${Math.round(controls.x + controls.width)}) stands under the tray (left edge ${Math.round(t.x)})`)
     } else if (Math.abs(t.width - glass.width) > 1) failures.push(`(d) below 1,024 the tray is ${Math.round(t.width)} px, the glass is ${glass.width}`)

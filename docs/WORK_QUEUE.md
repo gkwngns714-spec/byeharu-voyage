@@ -1,5 +1,6 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-11-05 MAP TRAY REDS (client-only PR, row 278): `tests/map.design.spec.ts` law (b) now says the tray stands 0 px from the window's edge; a leaving tray no longer swallows a tap meant for the chart (the race behind `map.sendfleet.spec.ts:436`, seen on #492); a close ends on a clock, never on `animationend`.
 - 2026-11-05 CITY LIVE (client-only PR): HQ gold, population and status, and the Town Hall, read `world.town_hall` every second through the one shared `useLiveRead` (now src/live/liveRead.ts); one ask a second per open page; tests/city.live.spec.ts.
 
 
