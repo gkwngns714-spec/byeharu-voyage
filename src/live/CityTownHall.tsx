@@ -9,6 +9,7 @@ import type { CityWork, InvestReceipt, Refusal, SnapshotPort, TownHallGift, Town
 import { formatDucats, formatInt, formatPct, formatRelative } from '../lib/format'
 import { useShellState } from '../app/shellState'
 import { FundsOnWay } from './FundsOnWay'
+import { FineRow } from './FineRow'
 import { TownHallInfluence } from './TownHallInfluence'
 import { InvestorRow } from './CityInvestors'
 import { WORK_NAME } from './workNames'
@@ -77,6 +78,7 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
         data-testid="townhall-purse-line"
       />
       <FundsOnWay hall={hall} />
+      <FineRow port={port} hall={hall} />
 
       {/* 0144: who holds the city, each country's influence, Donate (docs/INFLUENCE.md §7.1). */}
       <Heading>{t('town.influence')}</Heading>

@@ -17,6 +17,7 @@ import { formatDucats, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
 import { useT, type TKey } from '../../lib/i18n'
+import { regardBandWord } from '../../domain/port'
 import { CityFacePanel, type CityBuilding } from './CityFace'
 import { CityHallPanel } from './CityHallPanel'
 import { CityScene } from './CityScene'
@@ -327,6 +328,8 @@ function CityFrame({
   const houseNation = useWorld((s) => s.player?.nation ?? null)
   const portNation = allegiance?.nation ?? null
   const stance = hall?.dues?.stance ?? null
+  // 0318: lit, the Relationship reads what this country thinks of YOUR company, which the stance only starts (`dues.regard`, docs/WORLD_POWERS.md §2.1).
+  const regard = hall?.dues?.regard ?? null
   const relation: Relation =
     stance ?? (houseNation === null ? 'none' : portNation === null ? 'free' : houseNation === portNation ? 'home' : 'different')
 
@@ -422,7 +425,7 @@ function CityFrame({
                     hall={hall}
                     refusal={hallRefusal}
                     employees={employees}
-                    relation={{ word: t(RELATION_WORDS[relation]), stance, nation: portNation }}
+                    relation={{ word: regard ? regardBandWord(regard.band) : t(RELATION_WORDS[relation]), stance, nation: portNation, band: regard?.band ?? null }}
                   />
                 ) : (
                   <div data-testid="city-open-panel">

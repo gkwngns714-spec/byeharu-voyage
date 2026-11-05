@@ -1,12 +1,13 @@
 import { formatDucats, formatDucatsDelta, formatInt, formatMiles, formatPct, formatPctPoints, formatTons, formatUnitPrice, pointLabel } from '../../lib/format'
 import { parsePointToken } from '../../domain/passage'
+import { regardBandWord } from '../../domain/port'
 import { routePausedEventWords } from '../../domain/route'
 // THE ONE READER OF A JSONB FIELD (2026-08-23). `num`/`str` were declared here AND in
 // features/command/PreviewPanel.tsx, and they had already drifted; docs/NO_SPAGHETTI.md §2 listed
 // the pair as debt to fold. See src/lib/json.ts for why the stronger version is the one that
 // survived.
 import { num, str } from '../../lib/json'
-import type { LedgerEvent } from '../../lib/rpc'
+import type { LedgerEvent, RegardBand } from '../../lib/rpc'
 import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 
 // ── THE ONE HEADLINE COMPOSER ───────────────────────────────────────────────────────────────────
@@ -29,6 +30,8 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //   NATION_CHANGED {from, from_name, to, to_name}                 (0143 — codes and names)
 //   DONATED       {port, port_name, amount, nation}               (0144 — a gift to a city)
+//   FINE_PAID     {port, port_name, amount, nation}               (0318 — a fine paid at a capital)
+//   REGARD_CHANGED {nation, delta, reason, score, band}           (0318 — what a country thinks of the company moved)
 //   FLAG_CHANGED  {port, port_name, from, from_name, to, to_name, share_to, share_from}  (0146)
 //   INSURED       {fleet, voyage_id, port, to, value, price, keep_pct}                      (0213 — port/to are CODES)
 //   INSURANCE_PAID {fleet, voyage_id, day, cause, port, lost, lost_value, keep_pct, owed, paid, short}  (0213)
@@ -251,6 +254,26 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         to: where ? t('history.toWhere', { where }) : '',
       })
     }
+    // 0318: a fine paid at a capital.
+    case 'FINE_PAID': {
+      const amount = num(p, 'amount')
+      const where = cityName(p, portName)
+      return t('history.finePaid', {
+        amount: amount !== null ? formatDucats(amount) : t('history.coin'),
+        to: where ? t('history.toWhere', { where }) : '',
+      })
+    }
+    // 0318: what a country thinks of the company moved.
+    case 'REGARD_CHANGED': {
+      const band = str(p, 'band')
+      const delta = num(p, 'delta')
+      const score = num(p, 'score')
+      return t(delta !== null && delta < 0 ? 'history.regardFell' : 'history.regardRose', {
+        country: countryName(p, 'nation') ?? t('history.aCountry'),
+        band: band ? regardBandWord(band as RegardBand) : '',
+        score: score !== null ? formatInt(score) : '',
+      })
+    }
     // 0143: the company's change of country, in the country's own name.
     case 'NATION_CHANGED': {
       const to = countryName(p, 'to')
@@ -332,7 +355,7 @@ function cityName(p: Record<string, unknown>, portName: (code: string) => string
 }
 
 /** A country named by the payload (`to` / `from` are codes; `*_name` the server's English). */
-function countryName(p: Record<string, unknown>, key: 'to' | 'from'): string | null {
+function countryName(p: Record<string, unknown>, key: 'to' | 'from' | 'nation'): string | null {
   const code = str(p, key)
   const served = str(p, `${key}_name`) ?? code
   return code && served ? properName('nation', code, served) : served

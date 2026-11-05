@@ -58,6 +58,31 @@ async function donateWorld(): Promise<{ body: Buffer; mayor: string }> {
   return litImage
 }
 
+/** 0318: the lit world with regard lit too. The company is founded when the page boots, so a fixture trigger plants her debt then: -150 with Portugal, 30,000 d. owed, inside her starting purse. */
+let fineImage: Buffer | null = null
+async function fineWorld(): Promise<Buffer> {
+  if (fineImage) return fineImage
+  const lit = await donateWorld()
+  const { PGlite } = await import('@electric-sql/pglite')
+  const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(lit.body)) })
+  try {
+    await pg.exec("update public.world_config set value = 'true'::jsonb where key in ('regard_enabled', 'economy_closed')")
+    await pg.exec(`
+      create function public.fixture_regard() returns trigger language plpgsql security definer as $f$
+      begin
+        if not new.is_npc then
+          insert into public.house_regard (player_id, nation_id, points) values (new.id, (select id from public.nations where code = 'PRT'), -150);
+        end if;
+        return new;
+      end $f$;
+      create trigger fixture_regard after insert on public.players for each row execute function public.fixture_regard();`)
+    fineImage = Buffer.from(await (await pg.dumpDataDir('gzip')).arrayBuffer())
+  } finally {
+    await pg.close()
+  }
+  return fineImage
+}
+
 async function townHallWorld(): Promise<{ body: Buffer; investor: string; investorNation: string }> {
   if (image) return image
   const dir = path.resolve('dist', 'db')
@@ -160,6 +185,25 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await expect(page.getByTestId('townhall-donate-tray')).toHaveCount(0, { timeout: 30_000 })
   await expect(page.getByTestId('townhall-given-today')).toContainText('given today', { timeout: 30_000 })
   await expect(page.getByTestId('townhall-influence-share').filter({ hasText: 'Portugal' })).toHaveCount(1, { timeout: 30_000 })
+})
+
+test('0318: lit, a company reads her band on the hall and pays her fine at the capital', async ({ page, request, baseURL }) => {
+  test.setTimeout(600_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), 'nothing served at ' + baseURL + ' — run npm run preview and re-run')
+  const body = await fineWorld()
+  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body, contentType: 'application/gzip' }))
+  await page.setViewportSize(PHONE)
+  await page.goto('map')
+  await ready(page)
+
+  await openCity(page, 'LIS', 'Lisbon')
+  await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
+  await expect(page.getByTestId('townhall-fine')).toBeVisible({ timeout: 30_000 })
+  await expect(page.getByTestId('townhall-purse-line')).toContainText('Neutral')
+  await page.getByTestId('townhall-pay-fine').click()
+  // the fine is gone from the hall, and she stands at her home base again
+  await expect(page.getByTestId('townhall-fine')).toHaveCount(0, { timeout: 30_000 })
+  await expect(page.getByTestId('townhall-purse-line')).toContainText('Friendly')
 })
 
 test('0313: a finished work still sells: Invest stands on it, with its open lot and its price', async ({ page, request, baseURL }) => {

@@ -495,6 +495,8 @@ const TABLE = {
   // 0144 (docs/INFLUENCE.md I2): a gift to a city, and its dry run (the Town Hall's Donate).
   cmdDonate: { schema: 'cmd', fn: 'donate', mutates: true, invalidates: ['worldAllegiance'], args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
   cmdPreviewDonate: { schema: 'cmd', fn: 'preview_donate', args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
+  // 0318 (docs/WORLD_POWERS.md §2.1): a fine paid at a capital (the Town Hall). Dark: E_NOT_IN_USE.
+  cmdPayFine: { schema: 'cmd', fn: 'pay_fine', mutates: true, args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_coin', type: 'bigint' }] },
   // 0147 (docs/INFLUENCE.md I5): the mayor sets the city's profit tax.
   cmdSetTax: { schema: 'cmd', fn: 'set_tax', mutates: true, args: [{ name: 'p_port', type: 'uuid' }, { name: 'p_rate', type: 'numeric' }] },
   // 0148 (docs/INFLUENCE.md I6): Rank's Countries board.
