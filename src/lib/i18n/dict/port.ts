@@ -4,6 +4,15 @@ import { defineDict } from '../define'
 // a merchant's sheet, a ship's panel, the world gate.
 export const portDict = defineDict({
   en: {
+    kindLabel: 'Kind',
+    kindAll: 'All kinds',
+    kindCapital: 'Capital',
+    kindIslandCapital: 'Island capital',
+    kindCity: 'City',
+    kindIslandCity: 'Island city',
+    kindTown: 'Town',
+    kindIslandTown: 'Island town',
+    kindIsland: 'Island',
     aDay: 'A day',
     soFar: 'So far',
     realDay: 'a real day',
@@ -62,6 +71,15 @@ export const portDict = defineDict({
     tradeFaces: 'Trade faces',
   },
   ko: {
+    kindLabel: '종류',
+    kindAll: '모든 종류',
+    kindCapital: '수도',
+    kindIslandCapital: '섬 수도',
+    kindCity: '도시',
+    kindIslandCity: '섬 도시',
+    kindTown: '소도시',
+    kindIslandTown: '섬 소도시',
+    kindIsland: '섬',
     aDay: '하루',
     soFar: '지금까지',
     realDay: '실제 하루',

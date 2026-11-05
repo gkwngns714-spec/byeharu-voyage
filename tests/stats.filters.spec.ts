@@ -49,6 +49,24 @@ test('Cities: Europe leaves only European cities; Richest puts the bigger purse 
   await expect(page.getByTestId('filter-pick-area')).toHaveValue('europe', { timeout: 60_000 })
 })
 
+test('Cities: each row says its kind, and the Kind filter keeps only that kind', async ({ page, request, baseURL }) => {
+  test.setTimeout(420_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}: run npm run preview and re-run`)
+  await page.setViewportSize(PHONE)
+  await page.goto('stats')
+  await ready(page)
+  await page.getByRole('tab', { name: 'Cities', exact: true }).click()
+  await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 120_000 })
+  await page.getByTestId('filter-pick-kind').selectOption('capital')
+  const kinds = page.getByTestId('stats-city-kind')
+  await expect.poll(() => kinds.count(), { timeout: 60_000 }).toBeGreaterThan(5)
+  const words = await kinds.allTextContents()
+  expect(new Set(words)).toEqual(new Set(['Capital', 'Island capital']))
+  await page.getByTestId('filter-pick-kind').selectOption('island')
+  await expect.poll(async () => (await kinds.allTextContents()).every((w) => w.startsWith('Island')), { timeout: 60_000 }).toBe(true)
+  await noSidewaysScroll(page)
+})
+
 test('a remembered choice never trusts what it reads', () => {
   const d = { area: 'all', sort: 'richest' }
   const key = filterStorageKey('stats.cities')
