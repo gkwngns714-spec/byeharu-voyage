@@ -1,5 +1,7 @@
 # WORLD POWERS: standing, levels, armed cargo ships, player war fleets, timed battles, navies, pirates
 
+
+**Owner answers, 2026-11-05:** a player MAY join the pirates ("yes they can"); whether a pirate player may attack other players' merchants stays open, and the no-PvP law stands until answered. City reserve: capitals are sized and filled first. Bank #484 on hold.
 **Status: DESIGN, build-ready, 2026-11-05. Nothing here is built. No migration, no code, no prod write.**
 Prod head at writing: **0312**. All prod figures are pure SELECTs of 2026-11-05 about 08:30 UTC. Slices have names, not numbers: each takes prod head + 1 when cut.
 **Owner rows:** 282-288, plus the ship-looks order of the same day (row 291). Every "decided by default" is mine; the owner reverses afterwards.
@@ -31,7 +33,7 @@ The owner's orders, short:
 11. **Reach:** capitals alone reach 181 of 246 harbours in 10 minutes. Nine more stations reach 242. No capital reaches the Pacific coast of the Americas, so stations go there.
 12. **What cannot be reached becomes WANTED:** the country's navy may fight that player's fleets later, rolled and frozen at departure, the way a raid is.
 13. **Pirates** are an 11th great power on the existing tables. Their purse is their city purses. Plunder really moves: goods into their stock, gold into their purse. That makes their goods cheap, with no second price rule.
-14. **Fix insurance first:** in the last 24 h cities paid out 29.5 M d. and took in 7.4 M d. Pirates would widen that.
+14. **Fix insurance first:** in the last 24 h cities paid out 29.5 M d. and took in 7.4 M d. Pirates would widen that. **Cause proven 2026-11-05: a bug, not a price; migration 0314, `docs/dev-log/2026-11-05-insurance.md`.**
 15. **Each kind of ship gets its own hull and mark, day and night,** through the one renderer, chosen by a `kind` from the server (section 9).
 
 ---
@@ -550,7 +552,7 @@ v1: **no.** A docked fleet is never attacked and no port is taken by force (law,
 | Payouts (`INSURANCE_PAID`) | **29.50 M d.** |
 | Net out of city purses | **-22.1 M d. a day** |
 
-Paid out is 4 × what is charged. The brief's "31 M a day" is close to this read. The cause is not measured. `insurance_raid_loss` 0.084 sets the premium; to break even at today's take it would be about 0.33, arithmetic only. **Knob, owner's.** A payout is from `city_surplus` only and 129 of 246 cities hold under 50,000 d., so more raids mostly raise `short`, not the drain: the insured loses out. With pirates lit, raids rise by half where a ship is present (`pressure` +0.5).
+Paid out is 4 × what is charged. The brief's "31 M a day" is close to this read. **The cause is now measured and is a bug (`docs/dev-log/2026-11-05-insurance.md`):** 92 % of the money paid went on `FORCED_HOME`, and every one of those ships had already arrived; a raid-only book earns 1.74 × what it owes. Migration 0314 fixes it, and **premiums do not need to rise**. The rest of this paragraph is the first read, kept for the record: `insurance_raid_loss` 0.084 sets the premium; to break even at today's take it would be about 0.33, arithmetic only. **Knob, owner's.** A payout is from `city_surplus` only and 129 of 246 cities hold under 50,000 d., so more raids mostly raise `short`, not the drain: the insured loses out. With pirates lit, raids rise by half where a ship is present (`pressure` +0.5).
 
 **Also:** merchants insure every laden voyage and pay the same premium, from purses of 10.4 B. So a higher premium moves gold from merchants to cities, which the cities need. That helps, on top.
 
@@ -563,7 +565,7 @@ Paid out is 4 × what is charged. The brief's "31 M a day" is close to this read
 
 | Slice | Content | Red-first proof |
 |---|---|---|
-| **W0b** `insurance_pays_its_way` | Owner's knob, measured cause first | Quote × loss over a week of `insured_voyages`; dev-log prints it |
+| **W0b** `insurance_pays_its_way` | A bug, no knob: migration 0314 | Quote × loss over what `insured_voyages` keeps (7.6 hours); dev-log prints it |
 | **W15** Z1 of `PIRATES_AND_HAVENS` | `sea_danger`, frozen segments | That doc's parity for all 51 seas |
 | **W16** `the_brethren` | Nation, 4 homes, relations, free port hunks, two harbours, Codex, picker hides PIR | World guard; W unchanged; no gold made (`SEED` refused and not used); home guard re-enabled; picker shows 10; influence rows re-keyed Σ constant |
 | **W17** `pirate_ships_sail` | Kind, size, map, hazard hand-off, stow, RANSOM, book | Raid dark parity 960 days; moved 0; goods conserved into stock; cap holds; a hoard at 0 builds none |
@@ -746,7 +748,7 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 | # | Slice | Needs | Live play changes? |
 |---|---|---|---|
 | **W0a** | `each_kind_its_look` | Nothing | Keyline on all hulls only |
-| **W0b** | `insurance_pays_its_way` | Owner | Premiums, owner's knob |
+| **W0b** | `insurance_pays_its_way` | | Yes: ships dry at the ETA now dock. No premium moves |
 | **W1** | `a_house_has_a_regard` | | Dark |
 | **W2** | `levels_are_lit` | | **Yes, owner** |
 | **W3** | `a_captain_has_a_sheet` | W2 | Reads |
@@ -781,7 +783,7 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 1. **May a player join the pirates?** Default: no. PIR is not on the country picker. If yes, an owner of a pirate fleet raids at sea and the *"no player attacks a player"* law needs a ruling: can she attack other players' merchants? I recommend: join yes later, players stay off-limits.
 2. **May a player attack ordinary merchant ships of a country?** Default: no. They are the economy, 821 houses, 10.4 B. You said *"cargo ship"* and *"countries"*.
 3. **May a player attack her own country's ships?** Default: no.
-4. **Light order:** levels (W2), then cargo ships (W9, stops instant aid, first lap up to about 5 hours), then attacks. Each is your switch. Are you content with insurance premiums rising about 4 × for merchants, to stop cities losing 22 M d. a day?
+4. **Light order:** levels (W2), then cargo ships (W9, stops instant aid, first lap up to about 5 hours), then attacks. Each is your switch. (The insurance question that stood here is closed: the 22 M d. a day was a bug, 0314, and premiums need not rise.)
 5. **Pirate homes:** Salé as HQ, Port Royal, plus two new harbours (Lingga, Gotō)? Port Royal holds 997 M d. and would make the pirates richer than four countries at once. The alternative is a free port with a small purse, or new harbours only, starting at 0.
 6. **"Cheaper products":** default is cheap by stock only, so a pirate port with little plunder is not cheap. A flat discount is one term, and more arbitrage.
 7. **Pirate ports attackable?** Default not yet. It breaks nothing in law if the attack is ships in its roads and takes no flag; taking the city by force would.

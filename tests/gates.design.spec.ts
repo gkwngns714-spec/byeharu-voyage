@@ -12,7 +12,7 @@ import { DESIGN_GLASSES, readDesign } from './design.fixture'
 // packed column kept to the left: the BOOK a new captain signs (`SignTheBook`), the WORLD OPENING and the WORLD REFUSING
 // (`WorldGate`). Each is now a PAGE (`Sheet layout="page"`) on the pattern Stats set, so a tab's skeleton and its screen stand on
 // the same grid and nothing jumps when the world arrives. They cannot be reached on demand in local play, so they are read at
-// `/ui/gates/found | loading | failed` (src/features/gallery/GatesGalleryScreen.tsx), with the same apparatus as every page spec.
+// `/ui/gates/found | loading | failed` (src/features/found/GatesGalleryScreen.tsx), with the same apparatus as every page spec.
 //
 // THE LAWS: (a) the width used · (b) the defect rules (incl. every control 44 px) · (e) the side is used: from 1,024 each door has a
 // second block standing in the side column · (f) no scroll trap · (g) on a phone the door's first block begins on the first glass.
