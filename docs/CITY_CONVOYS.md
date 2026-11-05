@@ -1,4 +1,4 @@
-# CITY_CONVOYS — cargo ship ships: goods city to city, gold capital to depleted city
+# CITY_CONVOYS — cargo ships: goods city to city, gold capital to depleted city
 
 **Words (owner, 2026-11-05):** the ship is a **Cargo ship**; the gold is **Funds**; its load is a **Shipment**. Not "gift", not "aid".
 
@@ -7,6 +7,28 @@
 Every "decided by default" is mine; the owner reverses afterwards.
 
 Standing rules kept: closed economy (no minted gold; `mint_guard` untouched), a city never below zero (0122), one place per concept, switches/knobs owner-only, ships dark.
+
+---
+
+## REVIEW 2026-11-05: read this first; it overrides the sections below where they differ
+
+Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_goods`). The original draft got three things wrong: it said no `CROWN_AID` ran (it read `treasury_flows`, which keeps only about a minute; the daybook keeps about 30 minutes, since a game day is about a real minute), it treated capital funding of cities as new, and it assumed cities lack goods.
+
+| Claim | Measured |
+|---|---|
+| The capital already funds poor cities | **True, today, instantly.** `city_day`: `CROWN_AID` tops a city up to its reserve from what the capital holds above its own. Last daily record: 21.0 M d. out of capitals, about 160 cities received |
+| Capitals have massive income | **Half true.** Median income 11.6 M a day vs 3.1 M for other cities, 562.6 M together; but they spent 685.7 M. 12 of 23 capitals hold under 100,000 d. |
+| Gold is where it is needed | **False.** Top 10 of 246 cities hold 74 % of 23.4 B; 32 hold 0; 95 hold under 10,000. |
+| Cities lack goods | **False by stock.** 154,723 of 154,734 stock rows are above 80 % of target, 0 below 20 %, 0 empty |
+| Empty purses hurt | 217 of the 14,195 orders on file failed `E_CITY_BROKE` (1.5 %). Period not measured |
+
+**Why 101 cities under 10,000 d. stay broke:** (a) 47 have a capital under 100,000 d. to draw on, often while the nation holds plenty in one other city (MRS capital 6,857 d., nation 3.36 B); (b) 16 have a capital over 1 M but already meet their reserve, because the reserve is 3 days of the city's own recent sale payouts, and a broke city pays out little (43 of the 101 show zero outflow), so a broke city is judged not short. (c) One nation (BUS) holds 49,145 d. in total: nothing inside it can help.
+
+**Better plan, in order:**
+1. **Fix the reserve floor** so a broke city counts as short (owner knob; one small migration).
+2. **Let the capital draw on its nation's rich cities** before funding: `CROWN_CALL` already does this for merchant gifts; reuse it.
+3. **Cargo ships carry funds only**, and they **replace** the instant `CROWN_AID` delivery: one rule, one path, never both. Measure first: instant aid reaches about 160 cities a day, and 2 ships per nation cannot, so the ship count and a route that serves several cities on one trip must come from a prod read, and the extra `E_CITY_BROKE` during the delay must be watched.
+4. **Goods run (section 4): dropped for now.** No city is short by stock, and crown ships moving goods would take the player's own trade.
 
 ---
 
@@ -109,7 +131,7 @@ Standing rules kept: closed economy (no minted gold; `mint_guard` untouched), a 
 
 ## 7. Is it needed now? (a measurement owed before lighting)
 
-I could not show a depletion problem today: two prod reads of city purses disagreed (one used the rolled column, one a recomputed balance that came out negative for a city, so it was wrong). Before any switch is lit, a correct read of the live balance (`treasury_balance` if its volatility is stable/immutable, else the same sum the game pays against) must list: cities under 3 days of cover, by nation; the capitals' free gold; and what `CROWN_AID` / `CAPITAL_GIFT` already move per day (24 h: CAPITAL_GIFT 4 flows, -145,000 d.; no CROWN_AID). If few cities are short, the gold run ships dark and waits.
+Settled by the REVIEW at the top of this file: cities do run short, and the fault is the reserve rule and where the gold sits. The ship is not the cure by itself.
 
 ---
 

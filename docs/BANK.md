@@ -1,6 +1,6 @@
 # BANK — one national bank per nation, in the capital city only
 
-**Status: DESIGN (2026-11-05). Nothing here is built. No migration, no code.** Prod head at writing: **0305**.
+**Status: ON HOLD (2026-11-05). B1 is PR #484, NOT deployed. The owner asked whether borrowing is needed now; the prod read (docs/CITY_CONVOYS.md, REVIEW) says the shortage is the reserve rule and where gold sits, so a lender solves nothing yet.** Prod head at writing: **0305**.
 Slices are numbered by slice name; migration numbers are reserved at build time (next free after whatever is in flight).
 
 **The owner (2026-11-05):** an institution like a bank, where cities can hold cash and be given a mortgage.
