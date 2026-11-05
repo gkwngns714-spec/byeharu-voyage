@@ -55,6 +55,11 @@ Q "select count(*) as journal_rows_up_to_1m from (select 1 from public.stats_liv
 J=$(Q "select count(*) as v from (select 1 from public.stats_live_deltas limit 1000000) x" | val v)
 [ -n "$J" ] && [ "$J" -gt 300000 ] && alert "the stats journal holds ${J}+ rows (> 300,000): world.stats_now() sums all of it on every call"
 
+echo "== the history job (every 15 min, 0316)"
+HAGE=$(Q "select round(extract(epoch from now()-max(at))/60) as v from public.history_runs" | val v)
+echo "  newest history run: ${HAGE:-?} min ago"
+[ -n "$HAGE" ] && awk "BEGIN{exit !($HAGE > 45)}" && alert "the history job is ${HAGE} min old (it runs every 15): past 5 hours stopped, merchants' earned and lost are rolled away unread - read public.history_runs and its cron runs"
+
 echo "== the tables that matter (size, visibility map, dead rows, last autovacuum)"
 Q "select c.relname, pg_size_pretty(pg_total_relation_size(c.oid)) as total, round(100.0*c.relallvisible/nullif(c.relpages,0),1) as pct_allvisible, s.n_dead_tup as dead, to_char(s.last_autovacuum,'MM-DD HH24:MI') as last_vac, round(100.0*s.n_tup_hot_upd/nullif(s.n_tup_upd,0)) as hot_pct from pg_class c join pg_stat_user_tables s on s.relid=c.oid where c.relnamespace='public'::regnamespace and c.relkind='r' and pg_total_relation_size(c.oid) > 100*1024*1024 order by pg_total_relation_size(c.oid) desc" | rows
 # port_goods is the one table the every-minute market rewrites in full: its map is cleared by design (nothing is lost: its updates are 100 % HOT and the next check reports that)

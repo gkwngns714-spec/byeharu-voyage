@@ -7,6 +7,8 @@ import { usePriceSeries } from '../../live/usePriceSeries'
 import { useWorld } from '../../live/worldStore'
 import { useChartSpan } from '../../store/chartSpan'
 import { goodName, portName, toSeries } from './statsFaces'
+import { GoodPrices, HistoryChart } from '../../live/HistoryChart'
+import { goodLines } from '../../live/historyLines'
 
 // A GOOD'S DETAIL TRAY (owner, 2026-11-02: *"on stats, market - trade goods. nothing opened… when i click i want to see
 // the charts and info"*). Pressing a good on Stats → Markets opens the SAME `Tray` the Buy / Sell page and the Stats
@@ -73,6 +75,7 @@ export function GoodTray({ g, move, goodClass, onClose }: { g: StatsGood; move: 
           <span className="mt-3 block text-t-caption text-ink-faint">{t('ui.noData')}</span>
         )}
       </div>
+      <HistoryChart what="good" subject={g.code} title={t('stats.marketHistory')} lines={goodLines(t)} under={GoodPrices} className="mt-3" data-testid="history-good" />
     </Tray>
   )
 }

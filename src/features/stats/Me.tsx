@@ -4,6 +4,8 @@ import { useT } from '../../lib/i18n'
 import { worldReport, worldStatsMe, type Report, type StatsMe } from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
 import { useLiveRead } from '../../live/liveRead'
+import { HistoryChart } from '../../live/HistoryChart'
+import { companyLines } from '../../live/historyLines'
 
 // ME — your own week beside the world's, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267). MAIN |
 // SIDE (screenLayout.ts "THE PAGE"): the best sales are ONE list card in main, with their sort in its header, and the week —
@@ -55,6 +57,8 @@ export function MeFace() {
       data-testid="stats-me"
       sideFirst
       main={
+        <>
+        <HistoryChart what="me" title={t('stats.yourHistory')} lines={companyLines(t)} data-testid="history-me" />
         <ListPanel
           look="card"
           columns="fit"
@@ -82,6 +86,7 @@ export function MeFace() {
           <Hint className="px-2 pb-1 pt-1 md:col-span-full">{t('stats.wWeek')}</Hint>
           <RankBars rows={sales} format={formatDucatsDelta} empty={t('stats.noSales')} className="contents" />
         </ListPanel>
+        </>
       }
       side={
         <Card title={t('stats.yourWeek')} data-testid="stats-me-week">
