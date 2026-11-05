@@ -109,6 +109,7 @@ export function Card({
   title,
   aside,
   compact = false,
+  flush = false,
   className = '',
   children,
   ...rest
@@ -116,6 +117,8 @@ export function Card({
   title?: ReactNode
   aside?: ReactNode
   compact?: boolean
+  /** NO PADDING: the card is a SURFACE only (a pane of the Command desk, which pads and scrolls its own content). */
+  flush?: boolean
   className?: string
   children?: ReactNode
 } & { 'data-testid'?: string }) {
@@ -123,7 +126,7 @@ export function Card({
     <section
       className={[
         'min-w-0 rounded-tile border border-edge bg-surface',
-        compact ? 'p-4 md:px-5 md:py-4 xl:px-6 xl:py-5' : 'p-4 md:p-5 xl:p-6',
+        flush ? '' : compact ? 'p-4 md:px-5 md:py-4 xl:px-6 xl:py-5' : 'p-4 md:p-5 xl:p-6',
         className,
       ].join(' ')}
       data-card=""

@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { DeskTraySlot, type TraySlot } from '../../components/ui'
+import { Card, DeskTraySlot, type TraySlot } from '../../components/ui'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DESK'S FRAME — ONE FRAME FOR EVERY FACE (2026-10-19)
@@ -65,15 +65,17 @@ export function DeskPanes({
   const value = own ? null : pane
   return (
     <div
-      className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,23rem)_minmax(0,1fr)_minmax(20rem,24rem)]"
+      className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,22rem)_minmax(0,1fr)_minmax(20rem,22rem)] gap-3 px-3 pb-3 min-[90rem]:gap-4 min-[90rem]:px-6 min-[90rem]:pb-4"
       data-testid={testid}
       data-desk-frame=""
       data-face={face}
     >
       <DeskTraySlot.Provider value={value}>
-        <section className="bv-scroll min-h-0 overflow-y-auto border-r border-edge px-4 pb-6 pt-3" data-testid="desk-pane-list">
-          {list}
-        </section>
+        <Card flush className="min-h-0 overflow-hidden">
+          <section className="bv-scroll h-full min-h-0 overflow-y-auto p-4 min-[90rem]:p-5" data-testid="desk-pane-list">
+            {list}
+          </section>
+        </Card>
         <DeskMainPane scroll={mainScroll}>{main}</DeskMainPane>
       </DeskTraySlot.Provider>
       <DeskSidePane>
@@ -98,21 +100,25 @@ export function DeskPanes({
 /** The centre pane: scrolls by itself, or (the chart) is filled by its content. */
 export function DeskMainPane({ scroll = true, children }: { scroll?: boolean; children?: ReactNode }) {
   return (
-    <section
-      className={scroll ? 'bv-scroll min-h-0 overflow-y-auto px-6 pb-6 pt-4' : 'flex min-h-0 flex-col px-6 pb-3 pt-4'}
-      data-testid="desk-pane-chart"
-    >
-      {children}
-    </section>
+    <Card flush className="min-h-0 overflow-hidden">
+      <section
+        className={scroll ? 'bv-scroll h-full min-h-0 overflow-y-auto p-5 min-[90rem]:p-6' : 'flex h-full min-h-0 flex-col p-5 min-[90rem]:p-6'}
+        data-testid="desk-pane-chart"
+      >
+        {children}
+      </section>
+    </Card>
   )
 }
 
 /** The right pane — the ticket pane, the desk's slot. Always the grid's third column. */
 export function DeskSidePane({ children }: { children?: ReactNode }) {
   return (
-    <section className="col-start-3 row-start-1 min-h-0 border-l border-edge" data-testid="desk-pane-ticket">
-      {children}
-    </section>
+    <Card flush className="col-start-3 row-start-1 min-h-0 overflow-hidden">
+      <section className="h-full min-h-0" data-testid="desk-pane-ticket">
+        {children}
+      </section>
+    </Card>
   )
 }
 
