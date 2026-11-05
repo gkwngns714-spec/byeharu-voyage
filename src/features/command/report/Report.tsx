@@ -57,6 +57,7 @@ const KIND_KEYS: Record<string, TKey> = {
   SHARE: 'desk.kindShare',
   DIVIDEND: 'desk.kindDividend',
   DONATION: 'desk.kindDonation',
+  FINE: 'desk.kindFine',
   BUILD: 'desk.kindBuild',
   TUITION: 'desk.kindTuition',
   TOW: 'desk.kindTow',

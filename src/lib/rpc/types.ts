@@ -2662,7 +2662,19 @@ export interface PortDues {
   fee_base: number
   fee_pct: number
   prep_seconds: number
+  /** 0319 (docs/WORLD_POWERS.md §2.1) — what this country thinks of your company. Served only while `regard_enabled` is lit, for a human company, in a city a country holds. */
+  regard?: PortRegard
 }
+
+/** 0319: `factor` is already inside `PortDues.factor`. `fine`: what you may pay here, 0 away from the capital. */
+export interface PortRegard {
+  score: number
+  band: RegardBand
+  factor: number
+  fine: number
+}
+
+export type RegardBand = 'honoured' | 'friendly' | 'neutral' | 'wary' | 'hostile'
 
 export interface TownHallView {
   port: string
@@ -2779,6 +2791,16 @@ export interface DonateReceipt {
   points: number
   given_today: number
   cap: number
+}
+
+/** 0319: `cmd.pay_fine` — what was paid (held to what is owed and to your purse), and what is left. */
+export interface FineReceipt {
+  port: string
+  amount: number
+  purse: number
+  score: number
+  band: RegardBand
+  owed: number
 }
 
 /** `cmd.invest` — the stake bought (also the dry run's `estimate`). */

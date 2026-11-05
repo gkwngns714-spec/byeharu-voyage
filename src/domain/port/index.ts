@@ -62,4 +62,4 @@ export function buildingsOf(port: Keeper | null | undefined): readonly PortBuild
 export { nearbyHarbours, NEAR_PORTS } from './nearby'
 // 0237: what a harbour asks a company — "Tax 2× (rival) · Dock fee 110"
 export { cityKind, isIslandPort, KIND_FILTERS, kindFilterWord, matchesKind, type CityKind, type KindFilter } from './cityKind'
-export { duesWords, taxFactorWords } from './dues'
+export { duesWords, regardBandWord, taxFactorWords } from './dues'

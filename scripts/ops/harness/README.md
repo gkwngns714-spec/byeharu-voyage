@@ -16,6 +16,7 @@ These are the scratch tools behind the 2026-10-18/19 measurements, copied from `
 - `two-sides/` is 0320: `proof-0320.mjs` (mutations red, the real file and proof 28's pure half green, on `mini-world.mjs`, no chain needed), `on-image.mjs` (the file and the whole proof on a kept world image), `golden.sql` (read-only on prod, take it before and after the deploy), `prod-check.sql` (read-only), `sides.mjs` (`raid/sim.mjs --sides`: real hulls on both sides).
 - `a-day/` is 0317: `proof-0317.mjs` (mutations red, the real file and proof 26 green, cached world).
 - `merchants-invest/` is 0313: `proof-0313.mjs` (mutations red, the real file and proof 21 green, cached world), `before.sql` and `after-check.sql`, both read-only on prod.
+- `city-requests/proof-0318.mjs` is 0318: a draw's call count red first, mutations red, the real file green (`PROOF_WORLD=browser` uses the world image's cache where the preamble cache is short; it stops rather than replay from far back).
 - `live_*.sql` / `hunks*.sql` are dumps of live function bodies and migration hunks at the time. Re-dump from prod before re-using any of them.
 
 Every prod query here runs inside `begin transaction read only` and calls only `provolatile` 's'/'i' functions.

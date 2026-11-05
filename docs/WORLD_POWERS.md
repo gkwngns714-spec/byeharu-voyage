@@ -1,7 +1,7 @@
 # WORLD POWERS: standing, levels, armed cargo ships, player war fleets, timed battles, navies, pirates
 
 
-**Owner answers, 2026-11-05:** a player MAY join the pirates ("yes they can"); whether a pirate player may attack other players' merchants stays open, and the no-PvP law stands until answered. City reserve: capitals are sized and filled first. Bank #484 on hold.
+**Owner answers, 2026-11-05:** a player MAY join the pirates ("yes they can"); pirate players attacking other players' merchants: "not for now", and the no-PvP law stands. City reserve: capitals are sized and filled first. Bank #484 on hold.
 **Status: DESIGN, build-ready, 2026-11-05. Nothing here is built. No migration, no code, no prod write.**
 Prod head at writing: **0312**. All prod figures are pure SELECTs of 2026-11-05 about 08:30 UTC. Slices have names, not numbers: each takes prod head + 1 when cut.
 **Owner rows:** 282-288, plus the ship-looks order of the same day (row 291). Every "decided by default" is mine; the owner reverses afterwards.
@@ -108,6 +108,13 @@ The multiplier sits on `country_factor`'s result, in `world.tax_rate` and `publi
 **Money:** `FINE` is a moved kind, player to that country's capital, through `public.pay_city`. Nothing minted.
 **Cost on the beat:** none. One primary-key read per human tax quote. A merchant's quote short-circuits on `is_npc` before the read.
 **Dark:** `regard_enabled` false, multiplier 1, `regard_add` writes nothing.
+
+**Built as W1, migration 0319, dark. Decided by default while building (`docs/dev-log/2026-11-06-a-house-has-a-regard.md`):**
+- A fine is a way back, not a way up: it buys back earned bad points only, never the stance base, at that country's capital with a fleet docked there. At 200 d. a point it would otherwise be 50 × cheaper than a donation.
+- A fine buys no influence. It is held to what is owed and to her purse.
+- `tariff_rate_max` still caps the tax on top of the multiplier. The dock fee has no cap.
+- The gift row of the table above is hooked in W1. The attack, sink and pirate rows wait for W11, W18, W19.
+- Lit, the base alone sets a band for every company: home is Friendly (× 0.9), war is Wary (× 1.25).
 
 ### 2.2 Company levels and character levels
 
