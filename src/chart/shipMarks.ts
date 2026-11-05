@@ -29,6 +29,7 @@
 
 import { project, xOnSheet, type ViewBox } from '../lib/geo'
 import type { FleetOnChart, TrafficOnChart } from './chartModel'
+import { KIND_LOOK, shipKindOf } from './glyphs'
 
 /** Beyond the view's edge, as a fraction of its width and height — the same slack `portMarks`
  *  keeps, so a mark half off the glass is still drawn. */
@@ -63,7 +64,7 @@ export function shipMarks(
   const keep = keptOf(view.width)
   const out: TrafficOnChart[] = []
   for (const t of traffic) {
-    if (onSheet(t.at.lat, t.at.lon) && (t.merchant.cargo || stableSlot(t.fleet.id) < keep)) out.push(t)
+    if (onSheet(t.at.lat, t.at.lon) && (!KIND_LOOK[shipKindOf(t.merchant)].thin || stableSlot(t.fleet.id) < keep)) out.push(t)
   }
   return { fleets: mine, traffic: out }
 }

@@ -110,21 +110,9 @@ test.describe('the hull', () => {
     expect(hull.filter(([, y]) => y === last).length).toBeGreaterThanOrEqual(2)
   })
 
-  test('the crown is a hole cut in her by the path alone, so the renderer learns nothing', () => {
-    const [hull, crown] = subpaths(hullPath(CARGO_HULL))
-    expect(crown, 'a second subpath: the crown').toBeDefined()
-    // Wound the other way, so the default fill rule cuts it out with no attribute on the <path>.
-    expect(Math.sign(signedArea(crown))).toBe(-Math.sign(signedArea(hull)))
-    // Small, and inside her: three points on a base.
-    expect(Math.abs(signedArea(crown))).toBeLessThan(Math.abs(signedArea(hull)) * 0.2)
-    expect(crown.length).toBeGreaterThanOrEqual(7)
-    const b = Math.max(...hull.map(([x]) => x))
-    for (const [x, y] of crown) {
-      expect(Math.abs(x)).toBeLessThan(b)
-      expect(Math.abs(y)).toBeLessThan(Math.max(...hull.map(([, yy]) => yy)))
-    }
-    // Readable at the size the chart draws her: at least 3 px across.
-    expect(widthOf(crown)).toBeGreaterThanOrEqual(3)
+  test('no hole in her (W0a): the crown was 5.9 x 5 px at 1x and read as mush; two solid bars name her instead', () => {
+    // One subpath: the deck is whole. The mark is a second <path> the renderer draws from the kind table (tests/map.kinds.spec.ts).
+    expect(subpaths(hullPath(CARGO_HULL))).toHaveLength(1)
   })
 
   test('she scales like every hull, and one hull is one mark', () => {
