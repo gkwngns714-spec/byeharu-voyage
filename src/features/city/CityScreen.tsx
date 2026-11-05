@@ -6,6 +6,7 @@ import { NavBar } from '../../app/NavBar'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
+import { useCityKinds } from '../../live/useCityKind'
 import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
@@ -308,6 +309,7 @@ function CityFrame({
 }) {
   const t = useT()
   const { nowMs } = useShellState()
+  const kind = useCityKinds()(port.code)
   // THE LOADING METER, WHILE THE SCREEN IS STILL LOADING: the world steps ride `boot`, the hall
   // step is this screen's own read. It is NOT part of the frame (it is gone at ready, when every
   // frame proof runs), and it updates on step completion only.
@@ -342,6 +344,11 @@ function CityFrame({
             <span className="inline-flex items-center gap-3" data-testid="city-header">
               <PortFlag code={port.code} size="title" />
               <span data-testid="city-name">{port.name}</span>
+              {kind && (
+                <span className="text-t-label font-normal text-ink-muted" data-testid="city-kind">
+                  {t(kind.label)}
+                </span>
+              )}
             </span>
           }
           trailing={

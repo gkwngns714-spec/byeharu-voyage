@@ -4,6 +4,8 @@ import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsCities, type StatsCities, type StatsCityRow } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
+import { KIND_FILTERS, kindFilterWord, matchesKind, type KindFilter } from '../../domain/port'
+import { useCityKinds } from '../../live/useCityKind'
 import { CityDetail } from './CityDetail'
 import { SeriesCard } from './WorldSeries'
 import { useWorldSeries } from './useWorldSeries'
@@ -32,7 +34,8 @@ export function CitiesFace() {
   const [open, setOpen] = useState<StatsCityRow | null>(null)
   const [all, setAll] = useState(false)
   const nationByCode = useWorld((s) => s.nationByCode)
-  const [choice, choose] = useFilterChoice('stats.cities', { area: ALL, country: ALL, mine: '0', sort: 'richest' })
+  const [choice, choose] = useFilterChoice('stats.cities', { area: ALL, country: ALL, kind: ALL, mine: '0', sort: 'richest' })
+  const kindOf = useCityKinds()
   const sortOptions = useMemo(
     () =>
       CITY_SORTS.map((id) => ({
@@ -53,7 +56,15 @@ export function CitiesFace() {
     .map((code) => ({ id: code, label: nationNameOf(nationByCode, code) }))
     .sort((a, b) => a.label.localeCompare(b.label))
   const country = oneOf(choice.country, [ALL, ...countries.map((c) => c.id)], ALL)
-  const rows = sortCities(filterCities(v.cities, { area, country, mine: choice.mine === '1' }), sort, (c) => portName(c.name))
+  const kind = oneOf(choice.kind, [ALL, ...KIND_FILTERS], ALL)
+  const rows = sortCities(
+    filterCities(v.cities, { area, country, mine: choice.mine === '1' }).filter((c) => {
+      const k = kindOf(c.code)
+      return kind === ALL || (k !== null && matchesKind(k, kind as KindFilter))
+    }),
+    sort,
+    (c) => portName(c.name),
+  )
   const shown = all ? rows : rows.slice(0, FIRST)
 
   const sum = (pick: (c: StatsCityRow) => number) => v.cities.reduce((n, c) => n + pick(c), 0)
@@ -120,6 +131,13 @@ export function CitiesFace() {
                     onChange: (id) => choose({ area: id }),
                   },
                   {
+                    id: 'kind',
+                    label: t('port.kindLabel'),
+                    options: [{ id: ALL, label: t('port.kindAll') }, ...KIND_FILTERS.map((k) => ({ id: k, label: t(kindFilterWord(k)) }))],
+                    value: kind,
+                    onChange: (id) => choose({ kind: id }),
+                  },
+                  {
                     id: 'country',
                     label: t('stats.country'),
                     options: [{ id: ALL, label: t('stats.allCountries') }, ...countries],
@@ -160,6 +178,7 @@ export function CitiesFace() {
                 data-testid="stats-city-open"
               >
                 <FactsLine>
+                  {kindOf(c.code) && <span data-testid="stats-city-kind">{t(kindOf(c.code)!.label)}</span>}
                   <span>{t('stats.inFigure', { amount: formatDucatsDelta(c.income_1d ?? 0) })}</span>
                   <span>{t('stats.outFigure', { amount: formatDucatsDelta(-(c.spending_1d ?? 0)) })}</span>
                   <span>{t('stats.taxesFigure', { amount: formatDucats(c.taxes_1d ?? 0) })}</span>
@@ -196,6 +215,11 @@ export function CitiesFace() {
             <span className="flex items-center gap-2">
               {flag(open)}
               {portName(open.name)}
+              {kindOf(open.code) && (
+                <span className="text-t-label font-normal text-ink-muted" data-testid="stats-city-page-kind">
+                  {t(kindOf(open.code)!.label)}
+                </span>
+              )}
             </span>
           }
           figure={<Figure value={formatDucats(open.purse ?? 0)} />}
