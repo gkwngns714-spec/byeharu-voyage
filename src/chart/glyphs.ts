@@ -450,7 +450,38 @@ export interface HullClassFacts {
  */
 export const CARGO_HULL: HullClass = 'cargo-ship'
 
-const LIVE_SHAPES: Readonly<Record<string, HullShape>> = { barca: 'fore-1', carlat: 'fore-2', nau: 'square-3', [CARGO_HULL]: 'cargo' }
+/**
+ * W0a (docs/WORLD_POWERS.md section 9) — EVERY KIND OF SHIP HAS ITS LOOK, IN THIS ONE TABLE, and nothing else
+ * on the chart names a kind. `hull` pins a silhouette when the kind has one of her own (otherwise the class
+ * she sails draws it), `mark` is the solid shape laid on her deck (`kindMarkPath`), `fill` says how her day
+ * hull is inked (`dayShare`: how much of her nation's ink the day hull keeps, 0 = the pale deck every
+ * merchant wears; `inked`: she wears her nation's ink whatever the Regions filter says), `minHalfLength` is
+ * the shortest she is ever drawn, and `thin` whether the widest views may drop her.
+ *
+ * WHY THE DAY HULL KEEPS SOME INK: by day `.bv-sun-merchant-nation` mixed all the way to the pale deck, so at
+ * noon every merchant and every cargo ship was the same colour. Merchants keep that (it is how a hull reads
+ * on deep water); a kind that must be told from them keeps 45 % of her nation. The CSS mix is in sRGB and
+ * the spec reads the real figure (tests/map.kinds.spec.ts), so the 45 may move.
+ */
+export type ShipKind = 'merchant' | 'cargo' | 'yours'
+/** A solid shape laid over a hull, drawn by `kindMarkPath`. */
+export type KindMark = 'bars'
+export interface KindLook {
+  readonly hull: HullShape | null
+  readonly mark: KindMark | null
+  readonly fill: { readonly dayShare: number; readonly inked: boolean }
+  readonly minHalfLength: number
+  readonly thin: boolean
+}
+export const KIND_LOOK: Readonly<Record<ShipKind, KindLook>> = {
+  merchant: { hull: null, mark: null, fill: { dayShare: 0, inked: false }, minHalfLength: 0, thin: true },
+  cargo: { hull: 'cargo', mark: 'bars', fill: { dayShare: 0.45, inked: true }, minHalfLength: GLYPH.cargoHullHalfLength, thin: false },
+  yours: { hull: null, mark: null, fill: { dayShare: 0, inked: false }, minHalfLength: 0, thin: false },
+}
+/** The kind a served merchant row is: the server marks a cargo ship and no other (a merchant row has no key). */
+export const shipKindOf = (merchant: { readonly cargo?: true }): ShipKind => (merchant.cargo ? 'cargo' : 'merchant')
+
+const LIVE_SHAPES: Readonly<Record<string, HullShape>> = { barca: 'fore-1', carlat: 'fore-2', nau: 'square-3', [CARGO_HULL]: KIND_LOOK.cargo.hull! }
 let servedShapes: ReadonlyMap<string, HullShape> = new Map()
 
 /** The silhouette of a rig and a size — the one rule. */
@@ -645,21 +676,30 @@ function waveAHullPath(shape: Exclude<HullShape, 'cargo'>, l: number): string {
  * merchant has. A HIGH STERN: the waist tucks in and the after-castle steps out past the belly, ending in a
  * flat transom, so she is widest aft and reads as a tub with a castle on it at 18 px.
  *
- * THE CROWN IS PART OF THE PATH: a second subpath, wound the other way, so the default fill rule cuts it out
- * of her deck and the sea shows through. Three points on a base, on the after deck. No attribute, no second
- * `<path>` and no branch in the renderer; the nation ink is the fill the renderer already sets.
+ * NO HOLE IN HER (W0a): 0310's crown was cut out of the deck, 5.9 x 5 px at 1x, three points a pixel and a half
+ * wide, and read as mush. What names her at 1x is two solid bars (`kindMarkPath`); the crown stays on her card.
  */
 function cargoHullPath(l: number): string {
   const b = l * 0.74
   const hull = mirrored([[0, -l], [b * 0.56, -l * 0.92], [b * 0.88, -l * 0.66], [b, -l * 0.24], [b, l * 0.22],
     [b * 0.9, l * 0.42], [b * 1.08, l * 0.5], [b * 1.08, l], [0, l]])
-  const w = b * 0.44
-  const top = l * 0.1
-  const base = l * 0.66
-  const notch = l * 0.34
-  // Base left to base right, then back over the three points: the opposite way round from the hull.
-  const crown = [[-w, base], [w, base], [w, top], [w * 0.5, notch], [0, top - l * 0.08], [-w * 0.5, notch], [-w, top]]
-  return `${hull}M${crown.map(([x, y]) => `${x} ${y}`).join('L')}Z`
+  return hull
+}
+
+/**
+ * THE MARK A KIND WEARS ON HER DECK, centred on her hull, bow up, solid (never a hole). `bars`: two bars across
+ * the beam, each 0.3 of her half-length thick (2.7 px at the cargo ship's 9, so never under 2 px at her
+ * `minHalfLength`), kept just inside the hull's outline so her keyline still runs round her.
+ */
+export function kindMarkPath(mark: KindMark, halfLength: number): string {
+  const l = halfLength
+  const w = l * 0.74 * 0.86
+  const t = l * 0.3
+  const bar = (top: number) => `M${-w} ${top}L${w} ${top}L${w} ${top + t}L${-w} ${top + t}Z`
+  switch (mark) {
+    case 'bars':
+      return bar(l * 0.12) + bar(l * 0.12 + t + l * 0.14)
+  }
 }
 
 /** One hull of a fleet's mark: which class, how long, and where she sits in the group — the offset
