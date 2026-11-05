@@ -60,9 +60,9 @@ each hunk occurs exactly once before replacing it.
 8. **Works are built with other people's money.** A level of docks / market / production / inn is
    100 shares; houses buy them (players docked there, merchants at any stop of their loop from their
    surplus), the city subscribes the rest from its own surplus — paid to its region's other harbours
-   (stone and timber from the coast), never burned. A level pays its holders a fixed coupon per
-   game-day **out of what the city holds above its reserve** — a poor city skips its dividend; it
-   never owes.
+   (stone and timber from the coast), never burned. A level pays its holders a fixed coupon once a
+   real day **out of that day's profit and what the city holds above its reserve** (0312) — a poor or
+   losing city skips its dividend; it never owes.
 9. **The Town Hall** is the fourth building on the city panel: the purse, the works and what they
    offer, Invest, and the investors by name with amounts — one read, `world.town_hall(p_port)`.
 10. **Dark first, seeded once.** `city_treasury_enabled` false (the 0092:124-129 shape). Flows post
@@ -447,11 +447,16 @@ A level lives in its own row and composes into a reader. `public.city_level(p_po
   by `size_tier` (0002:91) as `WORKS_OUT` / `WORKS_IN` × `works_region_share` — stone, timber and
   hands bought from the coast; "the city must use it for the whole world". A region of one keeps it.
 - **A level completes** when `subscribed = 100`: `level + 1`, `subscribed = 0`.
-- **Coupon** (§4 step 6): each `city_shares` row earns `due = round(paid × wc_num('works_coupon_pct')
-  × (today − accrued_day))`. **A city pays what it holds above its reserve**: per harbour, `payable =
-  least(Σ due, greatest(0, balance − reserve))`, split pro rata over its rows; the shortfall is not
-  owed — a poor city skips its dividend, like a company that skips one. `accrued_day` advances
-  regardless. One UPDATE, one `DIVIDEND` flow per harbour. This is the "cannot grow for ever":
+- **Coupon** (0312, `public.city_coupons`, §4 step 6): once per real (UTC) day each `city_shares`
+  row earns `due = round(paid × wc_num('works_coupon_day') × days)`, where `days` is its time since
+  `accrued_day` in real days, floored at 0 and capped at the days since the harbour's last coupon, so
+  no clock change moves the rate or sweeps a purse. **A city pays from its own profit, and only what
+  it holds above its reserve**: per harbour, `payable = least(Σ due, greatest(0, balance − reserve),
+  greatest(0, port_treasury.profit))`, split pro rata over its rows. `profit` is the net added by the
+  roll since the last coupon (`public.flow_is_profit`: no CROWN_AID,
+  CROWN_CALL, CROWN_TAX, CONVOY_*, DIVIDEND). The shortfall is not owed — a poor city skips its
+  dividend, like a company that skips one; a loss pays nothing and is not carried. `accrued_day`,
+  `coupon_day` and `profit` close the period regardless. One UPDATE, one `DIVIDEND` flow per harbour. This is the "cannot grow for ever":
   a city whose trade cannot carry its investors' coupons stops paying them, and investors read that
   on the Town Hall.
 - **Payout rides an arrival** (the §2.4 arrival hunk): for each `city_shares` row of (f.player_id,
@@ -489,7 +494,7 @@ d. at Lisbon`.
 |---|---|---|
 | `works_cost_base` / `works_cost_growth` / `works_level_max` | 20,000 / 1.6 / 5 | level 5 = 131 k; the `port_buildings.tier` range (0067:109) |
 | `shares_per_level` | 100 | a share of a 20 k level is 200 d. |
-| `works_coupon_pct` | 0.003 per game-day of what was paid (≈ 9 % a real day) | the first lever if cities stop buying because they pay coupons |
+| `works_coupon_day` | 0.09 of what was paid per REAL day (0312; was `works_coupon_pct` 0.003 per game-day) | the first lever if cities stop buying because they pay coupons; it holds no clock, so `game_day_seconds` cannot move it |
 | `works_region_share` | 1.0 | how much of a city's own subscription goes to its region (0 keeps it home — then a rich city builds for free and the money pools) |
 | `invest_min_ducats` | 1,000 | no dust |
 | `npc_invest_above` / `npc_invest_keep` / `npc_invest_max_per_hour` | 2.0 / 1.5 × capital / 50 | a merchant invests only her surplus; ≤ 50 `credit()`s an hour inside the budget |
@@ -505,9 +510,9 @@ d. at Lisbon`.
 - Subscription: a probe harbour at reserve + 50 × price subscribes exactly 50 of its lowest work,
   pays `WORKS_OUT` = Σ `WORKS_IN` over its region to the ducat; under its reserve subscribes nothing;
   a region of one posts no flow.
-- Coupon: a probe row `paid 10,000`, warp one game-day → `accrued 30`, a `DIVIDEND` flow of −30; a
-  harbour holding reserve + 10 with two rows due 30 and 10 pays 7 and 3 (pro rata) and owes nothing
-  more; one holding its reserve exactly pays 0 and `accrued_day` still advances. Payout: settle a
+- Coupon (0312: `proof 22`, 0312's self-assert): `paid 1,000,000`, one real day → `accrued` 90,000 and
+  a `DIVIDEND` flow of −90,000, at either clock; limited by the profit and by the surplus, pro rata,
+  owing nothing more; a loss or a harbour at its reserve pays 0 and `accrued_day` still advances. Payout: settle a
   probe voyage into that harbour → `credit(DIVIDEND, 30)`, `accrued 0`, no new flow.
 - Composition against pre-images at level 0 (byte parity) and 5: `sail_refusal` admits `max_draft +
   2`; `daily_cap_remaining` × 1.5; `world.spread` − 5 × `spread_per_dev` (floored); the regen
@@ -540,7 +545,7 @@ Each step in its own `begin … exception when others` block with its error in t
  3. STATE    reserve := treasury_reserve_days × mean game-day SELL outflow; bid_factor := §2.3 — one UPDATE
  4. BUILD    (0123) own subscription → WORKS_OUT / WORKS_IN; level completions — one window UPDATE
  5. INN      (0123) crew_pool regeneration, skip locked
- 6. COUPONS  (0123) due per row; payable per harbour = least(Σ due, balance − reserve); pro rata; DIVIDEND flows
+ 6. COUPONS  (0123, 0312) once a real day per harbour, public.city_coupons: payable = least(Σ due, balance − reserve, profit); pro rata; DIVIDEND flows
  7. ASSERT   every harbour: ducats = Σ daybook; this hour's WORKS_OUT + WORKS_IN = 0; no ducats < 0
  8. RECEIPT  jsonb: flows_rolled, reserves, subscribed, levels_built, coupons_paid, coupons_skipped,
              world_ducats = Σ players.ducats + Σ port_treasury.ducats + Σ unrolled flows, ms per step
@@ -658,7 +663,7 @@ select start_time, (return_message::jsonb ->> 'world_ducats')::bigint as world_d
 
 | Drift | Turn |
 |---|---|
-| Many harbours thin or refusing | `works_coupon_pct` down; `npc_invest_above` 2.0 → 1.5 (merchants return money sooner); `profit_tax_scale` up (cities keep more of each profitable sale); `treasury_reserve_days` down (less held back) |
+| Many harbours thin or refusing | `works_coupon_day` down; `npc_invest_above` 2.0 → 1.5 (merchants return money sooner); `profit_tax_scale` up (cities keep more of each profitable sale); `treasury_reserve_days` down (less held back) |
 | Harbours hoard, merchants starve | `treasury_reserve_days` 3 → 1; `works_cost_base` down and `works_region_share` 1.0 (they build more and pay the coast) |
 | Merchants lose too often | `npc_min_return_pct` 5 → 8 (0120:88-92); `profit_tax_scale` down; `npc_cost_mult` 1 → 0.5 (the owner's call) |
 | One harbour runs away rich | its `ports.tax_rate` down within the band (0002:101); `works_region_share` 1.0 |

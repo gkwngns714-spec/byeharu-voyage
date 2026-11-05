@@ -467,7 +467,7 @@ rate  := case when influence_on() and p_player is not null
 
 ### 5.3 Dividends (O3, D10)
 
-`tick_city` step 6 (0123): `due = round(paid × works_coupon_pct × days × m)`, where `m =
+`public.city_coupons` (0123; 0312 moved it out of `tick_city` step 6): `due = round(paid × works_coupon_day × real days × m)`, where `m =
 influence_owner_coupon_mult` (1.5) when the holder's country holds the city and `influence_on()`,
 and 1 otherwise. A city still pays only what it holds above its reserve (0123's rule, unchanged), so
 the bonus makes a poor city skip sooner. That is stated, and visible on the Town Hall. This is one
