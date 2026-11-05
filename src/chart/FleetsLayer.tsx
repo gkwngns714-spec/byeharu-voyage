@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useRef, type CSSProperties, type ReactNode } from 'react'
 import { project, type LatLon, type Point } from '../lib/geo'
 import type { ChartModel, FleetOnChart, TrafficOnChart } from './chartModel'
 import {
@@ -7,6 +7,10 @@ import {
   hullGroup,
   hullGroupHalo,
   hullPath,
+  KIND_LOOK,
+  kindMarkPath,
+  shipKindOf,
+  type ShipKind,
 } from './glyphs'
 import type { MerchantInk } from './mapTypes'
 import { useRegionsFilter } from './regionsFilter'
@@ -355,6 +359,7 @@ function HullGroup({
   hooks,
   children,
   sun,
+  kind,
 }: {
   fleet: FleetOnChart
   unitsPerPx: number
@@ -367,8 +372,11 @@ function HullGroup({
   children?: ReactNode
   /** Where the Sun is overhead, for her `--night`. */
   sun: LatLon
+  /** Her kind: the one row of `KIND_LOOK` that says how she looks (mark, size floor). */
+  kind: ShipKind
 }) {
-  const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx)
+  const look = KIND_LOOK[kind]
+  const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx).map((m) => ({ ...m, halfLength: Math.max(m.halfLength, look.minHalfLength) }))
   // SHE GLIDES BETWEEN MODELS (./underway.ts): the same transform, written on a frame instead of on
   // a render, at ./drift.ts's point for that instant. Her `--night` is NOT rewritten with it — the
   // Sun moves a quarter of a degree a minute, and the group's night value is the model's.
@@ -407,17 +415,21 @@ function HullGroup({
         )
       })()}
       {marks.map((m, i) => (
-        <path
-          key={i}
-          d={hullPath(m.cls, m.halfLength)}
-          transform={`translate(${m.dx} ${m.dy})`}
-          className={className}
-          style={style}
-          strokeWidth={strokeWidth}
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-          data-hull-class={m.cls ?? 'unknown'}
-        />
+        <Fragment key={i}>
+          <path
+            d={hullPath(m.cls, m.halfLength)}
+            transform={`translate(${m.dx} ${m.dy})`}
+            className={className}
+            style={style}
+            strokeWidth={strokeWidth}
+            strokeLinejoin="round"
+            vectorEffect="non-scaling-stroke"
+            data-hull-class={m.cls ?? 'unknown'}
+          />
+          {look.mark && (
+            <path d={kindMarkPath(look.mark, m.halfLength)} transform={`translate(${m.dx} ${m.dy})`} className="bv-sun-kind-mark" data-kind-mark="" />
+          )}
+        </Fragment>
       ))}
     </g>
   )
@@ -467,16 +479,19 @@ export function FleetsLayer({
       {traffic.map((t) => {
         const selected = selectedMerchantId === t.fleet.id
         const nation = NATION_FILL[t.merchant.ink]
-        // 0310: a cargo ship wears her nation's ink whether or not the Regions filter is on.
-        const inked = regions || t.merchant.cargo === true
+        const kind = shipKindOf(t.merchant)
+        const look = KIND_LOOK[kind]
+        // 0310: a kind whose look says so wears her nation's ink whether or not the Regions filter is on.
+        const inked = regions || look.fill.inked
         return (
           <HullGroup
             key={`merchant-${t.fleet.id}`}
             fleet={t}
             unitsPerPx={unitsPerPx}
             sun={sun}
-            className={`${inked ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-keyline stroke-chart-sea'}`}
-            style={inked ? ({ '--nation-ink': nation.token } as CSSProperties) : undefined}
+            kind={kind}
+            className={`${inked ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-hull-keyline stroke-chart-sea'}`}
+            style={inked ? ({ '--nation-ink': nation.token, ...(look.fill.dayShare ? { '--kind-day-share': `${look.fill.dayShare * 100}%` } : {}) } as CSSProperties) : undefined}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
             hooks={{
               'data-testid': 'map-merchant',
@@ -485,7 +500,7 @@ export function FleetsLayer({
               // Her served arrival instant (epoch ms), copied; empty when she has no voyage. A spec
               // that must watch her AT SEA for a while picks a hull with time left on her leg.
               'data-merchant-eta': t.voyage ? String(t.voyage.etaMs) : '',
-              ...(t.merchant.cargo ? { 'data-cargo-ship': 'true' } : {}),
+              ...(kind !== 'merchant' ? { 'data-ship-kind': kind } : {}),
             }}
           />
         )
@@ -502,7 +517,8 @@ export function FleetsLayer({
             fleet={f}
             unitsPerPx={unitsPerPx}
             sun={sun}
-            className="fill-accent bv-sun-keyline stroke-chart-sea"
+            kind="yours"
+            className="fill-accent bv-sun-hull-keyline stroke-chart-sea"
             strokeWidth={GLYPH.glyphStroke * 0.6}
             hooks={{ 'data-testid': 'map-ship' }}
           >

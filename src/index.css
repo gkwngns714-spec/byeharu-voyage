@@ -189,6 +189,7 @@
   /* ONE COLOUR FOR EVERY TRADING MERCHANT (owner, 2026-10-13: *"make trading npc the same color —
      darker than blue but blue. dark blue"*). Their nation inks come back with the Regions toggle. */
   --color-merchant: #2a5bb8;
+  --color-kind-mark: #0b0f14;
 
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because
@@ -929,7 +930,20 @@ html:lang(ko) body {
   fill: color-mix(in srgb, var(--color-merchant) calc(var(--night, 1) * 100%), var(--color-chart-day-hull));
 }
 .bv-sun-merchant-nation {
-  fill: color-mix(in srgb, var(--nation-ink) calc(var(--night, 1) * 100%), var(--color-chart-day-hull));
+  /* By day the hull keeps `--kind-day-share` of her nation (glyphs.ts KIND_LOOK; 0 = the pale deck, as every
+     merchant always wore). */
+  fill: color-mix(
+    in srgb,
+    var(--nation-ink) calc(var(--night, 1) * 100%),
+    color-mix(in srgb, var(--nation-ink) var(--kind-day-share, 0%), var(--color-chart-day-hull))
+  );
+}
+/* THE MARK ON A KIND'S DECK: near-black by day and by night (the chart wears the night palette in both
+   schemes, `.bv-chart-night`, so there is no pale variant), turned over at the terminator (--night 0.5) like a
+   name, never a grey blend halfway. */
+.bv-sun-kind-mark {
+  --bv-mark-night: calc(clamp(0, (var(--night, 1) - 0.5) * 10000, 1) * 100%);
+  fill: color-mix(in srgb, var(--color-kind-mark) var(--bv-mark-night), var(--color-chart-day-mark));
 }
 .bv-sun-name-quiet {
   fill: color-mix(in srgb, var(--color-ink-faint) var(--bv-name-night), var(--color-chart-day-mark));
@@ -1000,6 +1014,9 @@ html:lang(ko) body {
 }
 .bv-sun-keyline {
   stroke: color-mix(in srgb, var(--color-chart-sea) calc(var(--night, 1) * 100%), var(--color-chart-day-sea));
+}
+.bv-sun-hull-keyline {
+  stroke: color-mix(in srgb, var(--color-chart-sea) calc(var(--night, 1) * 100%), var(--color-chart-day-mark));
 }
 .bv-sun-fleet-halo {
   fill: color-mix(
