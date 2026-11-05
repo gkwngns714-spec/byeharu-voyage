@@ -25,7 +25,7 @@ test('every frozen-assert patch fits its real file once, inside the final self-a
     expect(out.length - f!.sql.length).toBe(p.replace.length - p.find.length)
     expect(out.split(p.replace).length - 1).toBeGreaterThanOrEqual(1)
     // Everything before the final do-block is untouched: the schema the file builds is the same.
-    const block = f!.sql.lastIndexOf('\ndo $$\n')
+    const block = Math.max(...[...f!.sql.matchAll(/\ndo \$[A-Za-z_]*\$\n/g)].map((m) => m.index!))
     expect(out.slice(0, block)).toBe(f!.sql.slice(0, block))
   }
 })
@@ -40,6 +40,10 @@ test('the patched asserts can still fail', async () => {
   // The knob is set inside the probe's begin … exception block that 0019 rolls back, and the
   // to-the-ducat comparison that follows is unchanged.
   expect(out19).toContain("set value = to_jsonb(0.0) where key = 'hazard_p_max';\n    v_played   := world.trade_routes")
+  const f315 = files.find((x) => x.name.startsWith('20260818000315_'))!
+  // Cleared only below 1e6, so step (h)'s spent allowance (1e8) still refuses and its assert still fails.
+  expect(sqlToApply(f315)).toContain('qty < 1000000;\n  v_res := cmd.enqueue(')
+  expect(f315.sql).toContain("error_code' is distinct from 'E_DAILY_CAP'")
   expect(out19).toContain("the quay predicted % out / % in and the orders moved % / %")
 })
 
