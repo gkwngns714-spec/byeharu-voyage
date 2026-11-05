@@ -97,25 +97,18 @@ test('a faith wants what it wants: coffee dear and sherry cheap in an Islamic ci
   }
 })
 
-test('0190: a busy quay is seen — what changed hands here today, and by how many companies', async () => {
+test('0190, 0317: a busy quay is seen — what changed hands here in the last 24 hours', async () => {
   const r = await row('coffee', 'islamic')
   const before = await why(r.port_id, r.good_id)
-  const players = (await db.pg.query<{ id: string }>('select id from public.players order by id limit 2')).rows
-  expect(players.length, 'the built world has no company to trade').toBeGreaterThanOrEqual(1)
-  const day = (await db.pg.query<{ d: number }>('select world.game_day() as d')).rows[0].d
   await db.pg.query(
-    `insert into public.trade_daily (player_id, port_id, good_id, game_day, qty) values ($1, $2, $3, $4 - 1, 1000)
-     on conflict (player_id, port_id, good_id, game_day) do update set qty = public.trade_daily.qty + excluded.qty`,
-    [players[0].id, r.port_id, r.good_id, day])
-  await db.pg.query(
-    `insert into public.trade_daily (player_id, port_id, good_id, game_day, qty) values ($1, $2, $3, $4, 37)
-     on conflict (player_id, port_id, good_id, game_day) do update set qty = public.trade_daily.qty + excluded.qty`,
-    [players[0].id, r.port_id, r.good_id, day])
+    `insert into public.stats_city_good (port_id, good_id, slot, at, sold, bought, sold_ducats, bought_ducats) values
+       ($1, $2, 9100000000001, now() - interval '25 hours', 1000, 0, 0, 0),
+       ($1, $2, 9100000000002, now() - interval '1 hour', 30, 7, 0, 0)`,
+    [r.port_id, r.good_id])
   const after = await why(r.port_id, r.good_id)
   expect(Number(after.volume!.units) - Number(before.volume!.units)).toBe(37)
-  expect(after.volume!.houses).toBeGreaterThanOrEqual(1)
-  expect(volumeLine(after)).toMatch(/^Today: [\d,]+ units by \d+ compan(y|ies)$/)
-  expect(volumeLine({ ...after, volume: { game_day: day, units: 0, houses: 0 } })).toBe('No trades here today.')
+  expect(volumeLine(after)).toMatch(/^Last day: [\d,]+ units$/)
+  expect(volumeLine({ ...after, volume: { units: 0 } })).toBe('No trades in the last day.')
 })
 
 test('0191: a city\'s best friends trade cheaper — rank 1 among its givers is spared 10 % of the spread', async () => {

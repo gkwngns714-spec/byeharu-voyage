@@ -20,6 +20,7 @@ import {
   Skeleton,
   StackedBar,
   StatCell,
+  Tray,
   ALL,
   deltaTone,
   oneOf,
@@ -33,6 +34,8 @@ import { nationNameOf, useWorld } from '../../live/worldStore'
 import { CARD_CHART_H, toSeries } from './statsFaces'
 import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
+import { HistoryChart } from '../../live/HistoryChart'
+import { companyLines } from '../../live/historyLines'
 import { useChartSpan } from '../../store/chartSpan'
 import { MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 
@@ -55,6 +58,7 @@ export function MerchantsFace() {
   const [choice, choose] = useFilterChoice('stats.merchants', { country: ALL, sort: 'richest' })
   const [all, setAll] = useState(false)
   const [view, setView] = useState<View>('companies')
+  const [company, setCompany] = useState<string | null>(null)
 
   if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
   if (!v) return <Note tone="danger">{t('stats.merchantsFailed')}</Note>
@@ -203,6 +207,7 @@ export function MerchantsFace() {
                     label={<Clip>{name}</Clip>}
                     value={<Figure value={formatDucats(purse)} />}
                     hairline={false}
+                    onClick={() => setCompany(name)}
                     data-testid="stats-merchant"
                   >
                     <FactsLine>
@@ -215,6 +220,11 @@ export function MerchantsFace() {
               </>
             )}
           </ListPanel>
+          {company !== null && (
+            <Tray detent="full" onDetentChange={(next) => next === 'closed' && setCompany(null)} title={company} data-testid="stats-company-tray">
+              <HistoryChart what="company" subject={company} title={t('stats.yourHistory')} lines={companyLines(t)} data-testid="history-company" />
+            </Tray>
+          )}
         </>
       }
       side={
