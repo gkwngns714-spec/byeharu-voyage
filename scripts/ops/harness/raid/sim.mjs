@@ -1,3 +1,4 @@
+// sim.mjs --sides [runs] : real hulls on both sides through public.fight_sides (see ../two-sides/sides.mjs). Run from the repo root.
 // sim.mjs <image> <candidates.json> [seeds] — replay production's REAL raids (prod-raids.json: every PIRATES day,
 // its fleet's hulls read read-only from prod with world.ship_stats, its recorded raider strength) through
 // voyage.fight_resolve, dark table vs fight, for each candidate {name, sql?: file with a replacement body, knobs: {}}.
@@ -7,6 +8,7 @@ import { readFileSync } from 'node:fs'
 import { gunzipSync } from 'node:zlib'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
+if (process.argv[2] === '--sides') { await import('../two-sides/sides.mjs'); process.exit(0) } // 0320: real hulls on both sides, public.fight_sides
 const require = createRequire('C:/Users/gkwng/dev/bv-raid/package.json')
 const { PGlite } = await import(pathToFileURL(require.resolve('@electric-sql/pglite')).href)
 const [image, candArg, seedsArg = '20'] = process.argv.slice(2)

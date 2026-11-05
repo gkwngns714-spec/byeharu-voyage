@@ -155,6 +155,8 @@ The sheet changes no fight: the fight reads the same `crew_pct`. **Decided by de
 
 **Rollback:** the skin keeps the old answer; a forward migration restores the old body from the file's hunks.
 
+**Built, migration 0320, not deployed.** Three differences from the table above, each decided by default (`docs/dev-log/2026-11-06-a-fight-has-two-sides.md`): `voyage.raider_hulls` builds one squadron hull with a `shots` count, not whole xebecs, because whole hulls are a different fight; `public.fight_volley` is one more function, one firing rule for both sides; the old body is held whole in proof 28, not as hunks.
+
 ### 2.6 Part 1 slices
 
 | Slice | Content | Red-first proof |
