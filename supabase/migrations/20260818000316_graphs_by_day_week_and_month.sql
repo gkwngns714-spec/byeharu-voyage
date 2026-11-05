@@ -604,11 +604,12 @@ $body$
     -- earned and lost, as the ledger says, and the books stay their owner's
     insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc) values (c_a, 'Probe 0316 a', v_nat, 0, false) returning id into v_pa;
     insert into public.players (company_name, nation_id, ducats, is_npc) values ('Probe 0316 b', v_nat, 0, true) returning id into v_pb;
-    perform public.credit(v_pa, 'FOUNDING', 1000);
+    -- FOUNDING and NPC_REFOUND are minted kinds: prod's closed economy refuses them through credit (E_NO_NEW_GOLD, the first push of this file, 2026-11-05), so the probe writes their ledger rows itself
+    insert into public.ledger (player_id, kind, ducats_delta, balance_after) values (v_pa, 'FOUNDING', 1000, 1000);
     perform public.credit(v_pa, 'SELL', 500);
     perform public.credit(v_pa, 'BUY', -200);
     perform public.credit(v_pa, 'NPC_CARRIED', 77);
-    perform public.credit(v_pa, 'NPC_REFOUND', 5);
+    insert into public.ledger (player_id, kind, ducats_delta, balance_after) values (v_pa, 'NPC_REFOUND', 5, 1382);
     perform public.credit(v_pa, 'PROBE_0316', 3);
     perform public.credit(v_pb, 'DIVIDEND', 40);
     perform public.history_ledger_add(v_at, v_at + interval '1 second');   -- the window is (from, to]: these rows stand at its open end
