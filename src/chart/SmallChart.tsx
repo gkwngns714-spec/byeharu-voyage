@@ -289,7 +289,6 @@ export function SmallChart({
           coast={backdrop.coast}
           seas={backdrop.seas}
           regions={regionsOn ? backdrop.regions : null}
-          islets={backdrop.islets}
           selection={selection}
           // The zoom column is opaque and sits on the glass; these are its measured boxes, so the
           // label planner never prints a harbour's name underneath it (the Saint-Malo defect, found

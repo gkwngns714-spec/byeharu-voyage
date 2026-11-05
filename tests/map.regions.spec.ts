@@ -73,10 +73,9 @@ test.describe('data/region-tint.json is the build, not a hand', () => {
       expect(region.waterD.startsWith('M'), `${region.id} has no water`).toBe(true)
       expect(Number.isFinite(region.at.x) && Number.isFinite(region.at.y)).toBe(true)
     }
-    // MEASURED 2026-09-14: one region holds no drawn land — the Atlantic Isles, whose harbours
-    // stand on Portugal's and Spain's islands (tinted with the mainland's majority, Iberia) and on
-    // Cape Verde, which the 110m file has no polygon for. Its water is tinted; its name is set.
-    expect(REGIONS.filter((r) => r.landD === '').map((r) => r.id)).toEqual(['atlantic-isles'])
+    // MEASURED 2026-11-05: every region holds drawn land. The Atlantic Isles were the one that did
+    // not, until Cape Verde's island came into the file (owner row 92).
+    expect(REGIONS.filter((r) => r.landD === '').map((r) => r.id)).toEqual([])
     // The land is the BODY'S OWN rings: every country `d` in a region is a substring of the body.
     for (const region of REGIONS) {
       for (const piece of region.landD.split('Z').filter(Boolean)) expect(COAST.d).toContain(piece + 'Z')

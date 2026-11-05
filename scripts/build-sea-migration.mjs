@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// build-sea-migration.mjs — writes THE NAVIGABLE SEA, AS DATA. Currently migration 0091.
+// build-sea-migration.mjs — writes THE NAVIGABLE SEA, AS DATA. Currently migration 0319 (ISLANDS_CLOSE_WATER).
 //
 // IT WROTE 0046 FIRST, AND 0046 IS HISTORY NOW. An applied migration is never edited (README §1,
 // D23); when the sea moves, this generator emits the NEXT number and that file SUPERSEDES the data
@@ -121,10 +121,11 @@
 // Run:  node scripts/build-sea-migration.mjs        (applies the chain first; takes minutes)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { writeFileSync, existsSync } from 'node:fs'
+import { writeFileSync, existsSync, readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { buildSeaCarve, CHANNELS, landPolygons, COLS, ROWS, CELL_DEG, cellLat, cellLon, rowOf, colOf, inIce, inReclaimed, RECLAIMED } from './sea-grid.mjs'
+import { buildSeaCarve, CHANNELS, islandCells, landPolygons, COLS, ROWS, CELL_DEG, cellLat, cellLon, rowOf, colOf, inIce, inReclaimed, RECLAIMED } from './sea-grid.mjs'
 // NOTE THE TWO cellLat/cellLon PAIRS, and the aliases. scripts/sea-grid.mjs's take (row) and read
 // its own module-level CELL_DEG; src/lib/sea's take (nav, row). They are the same arithmetic with
 // different signatures, and calling one with the other's arguments returns NaN silently — which is
@@ -145,10 +146,11 @@ import {
   POLAR_BIT,
 } from '../src/lib/sea/index.ts'
 import { applyChain, MIGRATIONS_DIR } from './db/apply-chain.mjs'
+import { islandsMigrationSql } from './lib/sea-islands-emit.mjs'
 
 // The migration this run writes. 0046 was the first; an applied one is history, so this moves and
 // the emitted SQL supersedes what the previous number seeded.
-const MIGRATION = '20260818000217_the_far_north_australasia_and_new_england_have_harbours.sql'
+const MIGRATION = '20260818000319_the_harbours_have_their_islands.sql'
 const SHORT = MIGRATION.slice(10, 14)
 const OUT = path.join(MIGRATIONS_DIR, MIGRATION)
 const BITS = 2
@@ -170,7 +172,19 @@ const INTRODUCES_THE_ROADSTEAD = false
 // one pathfinder, for the new places only — and REFUSES when anything else moved (the raster, the
 // membership patch, an existing roadstead), because then the whole table must be re-measured.
 // Off, it emits the whole-table supersede exactly as before.
-const ADDS_PLACES_ONLY = true
+const ADDS_PLACES_ONLY = false
+
+// THE THIRD SWITCH: `ISLANDS_CLOSE_WATER` (owner row 92, 2026-11-05). Land was added and water closed,
+// and nothing else: no place is new, no channel moved. So only what the islands changed may change. The
+// pathfinder has moved since the table was measured (see the switch above), so a pair is measured TWICE
+// here, old water and new, by today's pathfinder, and it takes the new figure only if those two differ.
+// The emit is scripts/lib/sea-islands-emit.mjs. REFUSES when a place is new, when water opened, or when a
+// roadstead moved that is not a harbour island's own.
+const ISLANDS_CLOSE_WATER = true
+
+// `--image <world-*.tar.gz>` reads the world from a built image instead of a from-zero apply, which takes
+// over an hour here. It is the same chain: the image's own fingerprint names it.
+const IMAGE = process.argv.includes('--image') ? process.argv[process.argv.indexOf('--image') + 1] : null
 
 // ── 1. The navigable grid ──────────────────────────────────────────────────────────────────────
 // buildSeaGrid() is the WHOLE rule now — land, channels and the ice at both poles. Nothing is
@@ -206,7 +220,9 @@ console.log(`  ${COLS}×${ROWS} cells × ${BITS} bits, ${packed.length} bytes pa
 
 // ── 2. The world's own places, from the applied chain ──────────────────────────────────────────
 console.log('applying the chain to read the ports…')
-const { db } = await applyChain({ quiet: true })
+const db = IMAGE
+  ? await (await import('@electric-sql/pglite')).PGlite.create({ loadDataDir: new Blob([readFileSync(IMAGE)]) })
+  : (await applyChain({ quiet: true })).db
 const ports = (
   await db.query(`select code, name, kind, lat::float8 as lat, lon::float8 as lon
                     from public.ports order by code`)
@@ -427,6 +443,8 @@ const reclaimed = [] // { lat, lon, claim } — cells returned to land; membersh
   }
 
   let iced = 0
+  let shoals = 0
+  const shut = islandCells()
   const northWounds = []
   for (let i = 0; i < COLS * ROWS; i++) {
     if (cells[i] || membership[i] === 0) continue
@@ -435,6 +453,8 @@ const reclaimed = [] // { lat, lon, claim } — cells returned to land; membersh
     const lat = cellLat(row)
     const lon = cellLon(col)
     if (inIce(lat, lon)) { iced++; continue }
+    // A cell a harbour's island closed keeps its name, as ice does: most of it is still sea, nobody sails it.
+    if (shut.has(i)) { shoals++; continue }
     const claim = inReclaimed(lat, lon)
     if (claim) {
       // LAND AGAIN, so it carries no sea. The patch row is materialised the same way a heal's is,
@@ -479,7 +499,7 @@ const reclaimed = [] // { lat, lon, claim } — cells returned to land; membersh
       `(${healed.length} newly opened cell(s) healed to the nearest sea by water); ` +
       `${reclaimed.length} cell(s) reclaimed as land and their membership zeroed; ` +
       `${pools} unreachable pool cell(s) carry none (Caspian and friends); ` +
-      `${iced} named-but-closed cell(s), every one inside an authored ICE closure`,
+      `${iced} named-but-closed cell(s), every one inside an authored ICE closure; ${shoals} named cell(s) closed by a harbour island`,
   )
   for (const h of healed) {
     console.log(`    healed (${h.lat.toFixed(3)}, ${h.lon.toFixed(3)}) → sea ordinal ${h.ordinal}`)
@@ -819,6 +839,66 @@ for (const h of healed) {
 }
 const b64Row = (bytes) => Buffer.from(bytes).toString('base64')
 const nfmt = (x) => Math.round(x).toLocaleString('en')
+
+// ── ISLANDS_CLOSE_WATER: only what the islands moved ───────────────────────────────────────────
+if (ISLANDS_CLOSE_WATER) {
+  if (ADDS_PLACES_ONLY) throw new Error('ISLANDS_CLOSE_WATER and ADDS_PLACES_ONLY are two different migrations')
+  if (newPlaces.length > 0 || opened > 0 || seaPatch.size > 0) {
+    throw new Error(`ISLANDS_CLOSE_WATER: ${newPlaces.length} new place(s), ${opened} cell(s) opened, ${seaPatch.size} membership row(s): this is not only islands`)
+  }
+  const islandCodes = new Set(islandCells().values())
+  const stray = moved.filter(({ p }) => !islandCodes.has(p.code))
+  if (stray.length > 0 || moved.length !== islandCodes.size) {
+    throw new Error(`ISLANDS_CLOSE_WATER: ${moved.length} roadstead(s) moved, ${stray.map(({ p }) => p.code).join(' ')} not an island's own`)
+  }
+  console.log('measuring the old water with the same pathfinder…')
+  const oldRoad = (p) => {
+    const r = appliedReaches.get(p.code)
+    return { lat: Number(r.rlat), lon: Number(r.rlon) }
+  }
+  const patch = new Map(ports.map((p) => [p.code, {}]))
+  const changes = []
+  for (let i = 0; i < ports.length; i++) {
+    const a = ports[i]
+    const flood = floodFrom(applied, oldRoad(a))
+    if (!flood) throw new Error(`${a.code}: its applied roadstead reaches no old water`)
+    for (let k = i + 1; k < ports.length; k++) {
+      const b = ports[k]
+      const was = floodPathTo(flood, oldRoad(a), oldRoad(b))
+      if (!was) throw new Error(`${a.code}->${b.code}: no way on the OLD water`)
+      const now = reaches.get(a.code).get(b.code)
+      if (Number(was.nm.toFixed(1)) === Number(now.toFixed(1))) continue
+      const nm = Number(now.toFixed(1))
+      patch.get(a.code)[b.code] = nm
+      patch.get(b.code)[a.code] = nm
+      changes.push({ a: a.code, b: b.code, was: was.nm, now })
+    }
+    if ((i + 1) % 25 === 0) console.log(`  ${i + 1}/${ports.length} old floods…`)
+  }
+  for (const [code, keys] of patch) if (Object.keys(keys).length === 0) patch.delete(code)
+  const d = changes.map((c) => c.now - c.was)
+  const stats = {
+    changed: changes.length,
+    pairs: (ports.length * (ports.length - 1)) / 2,
+    mean: (d.reduce((t, x) => t + x, 0) / d.length).toFixed(2),
+    up: Math.max(...d).toFixed(1),
+    down: Math.min(...d).toFixed(1),
+    md5: createHash('md5').update(Buffer.from(packed)).digest('hex'),
+  }
+  console.log(`  ${stats.changed} of ${stats.pairs} pairs moved, mean ${stats.mean} nm, widest +${stats.up} / ${stats.down} nm`)
+  for (const c of changes.sort((x, y) => Math.abs(y.now - y.was) - Math.abs(x.now - x.was)).slice(0, 12)) {
+    console.log(`    ${c.a} -> ${c.b}: ${c.was.toFixed(1)} -> ${c.now.toFixed(1)} nm`)
+  }
+  const sqlOut = islandsMigrationSql({
+    SHORT, MIGRATION, b64, moved, patch, stats, nfmt, q, j, opened, closed, newWater, islandCount: islandCodes.size,
+  })
+  if (sqlOut.includes(String.fromCharCode(13))) throw new Error('CR found in generated SQL — refuse to emit')
+  if (existsSync(OUT)) throw new Error(`${OUT} already exists: delete an UNDEPLOYED draft by hand to regenerate it`)
+  writeFileSync(OUT, sqlOut, 'utf8')
+  console.log(`wrote ${OUT} — ${(sqlOut.length / 1024).toFixed(0)} KiB`)
+  await db.close()
+  process.exit(0)
+}
 
 // ── ADDS_PLACES_ONLY: the new places' rows, and their keys in every existing row ────────────────
 if (ADDS_PLACES_ONLY) {

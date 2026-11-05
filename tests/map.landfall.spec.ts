@@ -4,7 +4,6 @@ import path from 'node:path'
 import { haversineNm, project, unproject } from '../src/lib/geo'
 import {
   buildCoastline,
-  GLYPH,
   LANDFALL_CAP_NM,
   LANDFALL_INSET_DEG,
   landfallPoint,
@@ -23,13 +22,13 @@ import { ready, reachable } from './appReady.fixture'
 // The pure half MEASURES: every harbour the database holds (deriveWorld(), the rows world-guard
 // proves the applied world equals) against the land the chart actually draws (buildCoastline over
 // the vendored file — the same rings, the same decimation), prints the table, and holds the
-// rule: after landfall no harbour's mark is in drawn water unless it is an island the file has no
-// polygon for, and then it wears an islet. The browser half reads the DOM of the running chart
-// and asks the SVG itself (`isPointInFill`, the fill-rule the body is drawn with) whether every
-// harbour mark stands on the land body or on an islet — at the world view, where all 224 are on
-// the sheet, so the check is the whole table and not a sample.
+// rule: after landfall no harbour's mark is in drawn water, with no exception: the 28 islands the
+// 110m sheet lacked are in the file (HARBOUR_ISLAND). The browser half reads the DOM of the running
+// chart and asks the SVG itself (`isPointInFill`, the fill-rule the body is drawn with) whether
+// every harbour mark stands on the land body — at the world view, where every harbour is on the
+// sheet, so the check is the whole table and not a sample.
 //
-// THE BROWSER HALF IS WRITTEN TO RUN AGAINST MAIN AS IT WAS (no `data-port-x`, no islets): it
+// THE BROWSER HALF IS WRITTEN TO RUN AGAINST MAIN AS IT WAS (no `data-port-x`): it
 // derives the mark's anchor from the triangle's box (glyphs.ts: the tip is 0.6 h above the
 // anchor). Run unfixed it is red — 79 harbours in drawn water — which is the run the log records.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -44,9 +43,8 @@ test.describe('landfall, measured over the real world file', () => {
     const rows: string[] = []
     let inWater = 0
     let moved = 0
-    let islets = 0
+    let stranded = 0
     let widestMove = 0
-    let nearestIslet = Infinity
     for (const p of PORTS) {
       const at = project(p)
       if (onDrawnLand(COAST.rings, at)) continue
@@ -61,17 +59,14 @@ test.describe('landfall, measured over the real world file', () => {
         const total = haversineNm(p, unproject(r.at))
         expect(total).toBeLessThanOrEqual(r.nm + LANDFALL_INSET_DEG * 61)
       } else {
-        expect(r.stranded).toBe(true)
-        islets++
-        nearestIslet = Math.min(nearestIslet, r.nm)
-        expect(r.nm).toBeGreaterThan(LANDFALL_CAP_NM)
+        stranded++
       }
       rows.push(
-        `${p.code}\t${p.name}\t${p.country}\t${p.lat},${p.lon}\t${r.nm.toFixed(2)} nm\t${r.moved ? 'moved' : 'ISLET'}`,
+        `${p.code}\t${p.name}\t${p.country}\t${p.lat},${p.lon}\t${r.nm.toFixed(2)} nm\t${r.moved ? 'moved' : 'STRANDED'}`,
       )
     }
     console.log(
-      `harbours ${PORTS.length} · in drawn water ${inWater} · moved onto the shore ${moved} (widest ${widestMove.toFixed(2)} nm) · islets ${islets} (nearest shore ${nearestIslet.toFixed(2)} nm)\n` +
+      `harbours ${PORTS.length} · in drawn water ${inWater} · moved onto the shore ${moved} (widest ${widestMove.toFixed(2)} nm) · stranded ${stranded}\n` +
         rows.join('\n'),
     )
     // MEASURED 2026-09-14 over data/world-110m.json at COASTLINE_TOLERANCE_DEG 0.2 and the 224
@@ -86,24 +81,25 @@ test.describe('landfall, measured over the real world file', () => {
     // falls in drawn water and is moved onto the shore (80 → 81, 52 → 53, widest still 8.58 nm);
     // the islets stay 28. Measured by this test on 2026-10-25, not remembered.
     expect(PORTS.length).toBe(246)
-    expect(inWater).toBe(81)
-    expect(moved).toBe(53)
-    expect(islets).toBe(28)
-    // The cap sits in the gap the measurement found: every coarseness move is under it, every
-    // island the file lacks is over it. If either side crosses the cap, the cap is wrong — or a
-    // harbour is — and this is where it is found.
+    // Moved deliberately 2026-11-05 (owner row 92): the 28 stranded harbours' islands are in the
+    // file. 26 of the 28 stand inside their drawn island (81 -> 55 in drawn water); Santa Cruz and Banda
+    // Neira stand just off it (0.08 and 1.69 nm) and are moved onto it (53 -> 55 moved); NONE is stranded.
+    expect(inWater).toBe(55)
+    expect(moved).toBe(55)
+    // THE LAW: no harbour stands in drawn water. A new harbour on an island nobody drew turns this
+    // red, and the island goes in the file (scripts/build-world.mjs, HARBOUR_ISLANDS).
+    expect(stranded).toBe(0)
     expect(widestMove).toBeLessThan(LANDFALL_CAP_NM)
-    expect(nearestIslet).toBeGreaterThan(LANDFALL_CAP_NM)
   })
 
   test('landfallPorts: harbours move, sea places and roadsteads do not, identity is kept', () => {
     const served = mapPortsOf(REAL_PORTS)
     const landed = landfallPorts(served, COAST)
-    expect(landed.ports).toHaveLength(served.length)
+    expect(landed).toHaveLength(served.length)
     let movedCount = 0
     for (let i = 0; i < served.length; i++) {
       const before = served[i]
-      const after = landed.ports[i]
+      const after = landed[i]
       expect(after.code).toBe(before.code)
       expect(after.roadstead).toEqual(before.roadstead)
       expect(after.roadsteadNm).toBe(before.roadsteadNm)
@@ -113,39 +109,33 @@ test.describe('landfall, measured over the real world file', () => {
         expect(haversineNm(before, after)).toBeLessThanOrEqual(LANDFALL_CAP_NM + LANDFALL_INSET_DEG * 61)
         expect(onDrawnLand(COAST.rings, project(after))).toBe(true)
       } else if (before.kind === 'HARBOUR') {
-        // Unmoved: either on drawn land already, or an islet.
-        const at = project(before)
-        expect(onDrawnLand(COAST.rings, at) || landed.islets.some((i) => i.x === at.x && i.y === at.y)).toBe(true)
+        // Unmoved: on drawn land already. There is no other way to be unmoved.
+        expect(onDrawnLand(COAST.rings, project(before))).toBe(true)
       }
     }
     expect(movedCount).toBeGreaterThan(0)
     // Istanbul, the harbour the owner named: in drawn water at 110m (no Bosporus), moved.
     const ist = served.find((p) => p.code === 'IST')!
-    const istAfter = landed.ports.find((p) => p.code === 'IST')!
+    const istAfter = landed.find((p) => p.code === 'IST')!
     expect(onDrawnLand(COAST.rings, project(ist))).toBe(false)
     expect(onDrawnLand(COAST.rings, project(istAfter))).toBe(true)
     // With no coast, nothing moves and the list is the same object.
-    expect(landfallPorts(served, null).ports).toBe(served)
+    expect(landfallPorts(served, null)).toBe(served)
     // With nothing to move, the list is the same object.
-    expect(landfallPorts(landed.ports, COAST).ports).toBe(landed.ports)
+    expect(landfallPorts(landed, COAST)).toBe(landed)
   })
 })
 
 // ── THE RUNNING CHART ──────────────────────────────────────────────────────────────────────────
 
 /** Every harbour mark on the sheet: its anchor in chart units, and whether the SVG says that point
- *  is inside the land body (evenodd, the body's own rule) or inside an islet. */
+ *  is inside the land body (evenodd, the body's own rule). */
 async function harboursOnLand(page: Page) {
-  return page.evaluate((isletRadius) => {
+  return page.evaluate(() => {
     const svg = document.querySelector('[data-testid="map-chart"] svg') as SVGSVGElement | null
     const body = document.querySelector('[data-testid="map-coastline"]') as SVGGeometryElement | null
     if (!svg || !body) return null
-    const islets = [...document.querySelectorAll('[data-testid="map-islets"] circle')].map((c) => ({
-      x: Number(c.getAttribute('cx')),
-      y: Number(c.getAttribute('cy')),
-      r: Number(c.getAttribute('r')),
-    }))
-    const out: { code: string; x: number; y: number; land: boolean; islet: boolean }[] = []
+    const out: { code: string; x: number; y: number; land: boolean }[] = []
     for (const g of document.querySelectorAll('[data-testid="map-ports"] [data-port-code]')) {
       if (g.getAttribute('data-port-kind') !== 'HARBOUR') continue
       const code = g.getAttribute('data-port-code') ?? ''
@@ -162,12 +152,10 @@ async function harboursOnLand(page: Page) {
       const pt = svg.createSVGPoint()
       pt.x = x
       pt.y = y
-      const land = body.isPointInFill(pt)
-      const islet = islets.some((i) => Math.hypot(i.x - x, i.y - y) <= i.r)
-      out.push({ code, x, y, land, islet })
+      out.push({ code, x, y, land: body.isPointInFill(pt) })
     }
-    return { marks: out, islets: islets.length, isletRadius }
-  }, GLYPH.isletRadius)
+    return { marks: out }
+  })
 }
 
 async function openMap(page: Page) {
@@ -188,7 +176,7 @@ for (const viewport of [
   test.describe(`no harbour mark stands in drawn water at ${viewport.width}×${viewport.height}`, () => {
     test.use({ viewport })
 
-    test('at the opening frame and at the world view, every harbour is on the body or on an islet', async ({
+    test('at the opening frame and at the world view, every harbour is on the body', async ({
       page,
       request,
       baseURL,
@@ -202,7 +190,7 @@ for (const viewport of [
 
       const opening = await harboursOnLand(page)
       expect(opening).not.toBeNull()
-      const wetOpening = opening!.marks.filter((m) => !m.land && !m.islet).map((m) => m.code)
+      const wetOpening = opening!.marks.filter((m) => !m.land).map((m) => m.code)
       console.log(`opening frame: ${opening!.marks.length} harbours drawn, ${wetOpening.length} in drawn water: ${wetOpening.join(' ')}`)
 
       // Out to the world, so every harbour is on the sheet and the check is the whole table.
@@ -210,9 +198,9 @@ for (const viewport of [
       await page.waitForTimeout(300)
       const world = await harboursOnLand(page)
       expect(world).not.toBeNull()
-      const wet = world!.marks.filter((m) => !m.land && !m.islet).map((m) => m.code)
+      const wet = world!.marks.filter((m) => !m.land).map((m) => m.code)
       console.log(
-        `world view: ${world!.marks.length} harbours drawn, ${world!.islets} islets, ${wet.length} in drawn water: ${wet.join(' ')}`,
+        `world view: ${world!.marks.length} harbours drawn, ${wet.length} in drawn water: ${wet.join(' ')}`,
       )
       expect(wetOpening, 'harbours drawn in water at the opening frame').toEqual([])
       expect(wet, 'harbours drawn in water at the world view').toEqual([])

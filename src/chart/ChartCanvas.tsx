@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { CHART_WIDTH, sheetCopies, type Point, type ViewBox } from '../lib/geo'
+import { CHART_WIDTH, sheetCopies, type ViewBox } from '../lib/geo'
 import { CoastlineLayer } from './CoastlineLayer'
 import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
@@ -102,7 +102,6 @@ import { useSunlight } from './useSunlight'
 /** One frozen empty list, so a chart handed no seas does not allocate one per frame. */
 const NO_STOPS: readonly PathStop[] = []
 const NO_SEAS: readonly MapSea[] = []
-const NO_ISLETS: readonly Point[] = []
 
 /** The slack `portMarks` keeps beyond the glass, applied to a fleet's name request too. */
 const REQUEST_MARGIN = 0.06
@@ -127,7 +126,6 @@ export function ChartCanvas({
   seas = NO_SEAS,
   regions = null,
   portFlags = null,
-  islets = NO_ISLETS,
   selection,
   keepOut,
   plannedD = null,
@@ -153,8 +151,6 @@ export function ChartCanvas({
   /** 0143 — each harbour's flag by port code, set before its name (D14). The screen passes it only
    *  while the Regions filter is on; null is the map exactly as it was. */
   portFlags?: ReadonlyMap<string, string> | null
-  /** Harbours the drawn coast has no land for (row 92): a speck of land is painted under each. */
-  islets?: readonly Point[]
   selection: MapSelection
   /**
    * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
@@ -376,7 +372,6 @@ export function ChartCanvas({
         top={sheetTop}
         strokeWidth={coastStrokeWidth(box.width)}
         regions={regions}
-        islets={islets}
         unitsPerPx={unitsPerPx}
       />
       {/* THE DAY COAST — the same coast in the Earth's colours, where the Sun is up. Its mask stands
@@ -392,7 +387,6 @@ export function ChartCanvas({
             top={sheetTop}
             strokeWidth={coastStrokeWidth(box.width)}
             regions={regions}
-            islets={islets}
             unitsPerPx={unitsPerPx}
             face="day"
           />
@@ -482,7 +476,7 @@ export function ChartCanvas({
 
 /**
  * THE COAST'S SHEET — one face of the coast (./CoastlineLayer.tsx: shallows, body, relief, line,
- * tints, islets — or, `face="day"`, the same coast in the Earth's colours) in its own `<svg>` over
+ * tints — or, `face="day"`, the same coast in the Earth's colours) in its own `<svg>` over
  * `paper`, on its own compositor layer (`will-change: transform`), placed by a translate of
  * `left`/`top` CSS pixels. Memoised, and CoastlineLayer inside it too, so a pan — which changes only
  * `left`/`top` — writes one `transform` and the browser moves the layer. The svg's viewBox IS `paper`
@@ -513,7 +507,6 @@ const CoastSheet = memo(function CoastSheet({
   top,
   strokeWidth,
   regions,
-  islets,
   unitsPerPx,
   face = 'night',
 }: {
@@ -525,7 +518,6 @@ const CoastSheet = memo(function CoastSheet({
   top: number
   strokeWidth: number
   regions: readonly RegionTint[] | null
-  islets: readonly Point[]
   unitsPerPx: number
   face?: 'night' | 'day'
 }) {
@@ -554,8 +546,6 @@ const CoastSheet = memo(function CoastSheet({
           coast={coast}
           strokeWidth={strokeWidth}
           regions={regions}
-          islets={islets}
-          unitsPerPx={unitsPerPx}
           copies={copies}
           face={face}
         />

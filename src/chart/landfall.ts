@@ -18,10 +18,11 @@
 // WHAT IT IS   one concept: WHERE A HARBOUR'S MARK IS SET ON THIS CHART — the served coordinate
 //              when the drawn land holds it, otherwise the nearest point of the drawn shore, a
 //              hair inside it. A DISPLAY rule about a picture, with a hard cap (`LANDFALL_CAP_NM`)
-//              past which a harbour is not "a city the coast file is too coarse for" but an
-//              ISLAND THE FILE HAS NO POLYGON FOR — and then the mark stays where the data put it
-//              and a speck of land (an islet, GLYPH.isletRadius) is drawn under it, because the
-//              alternative, moving Rhodes onto Anatolia, is a lie at the scale a chart is read.
+//              past which the coast file is not too coarse but WRONG: an island it has no polygon
+//              for. Moving Rhodes onto Anatolia is a lie at the scale a chart is read, so the 28
+//              such islands were put in the file (scripts/build-world.mjs, HARBOUR_ISLAND).
+//              `stranded` is what the law test holds at zero: a new harbour on an island nobody
+//              drew turns it red, and the island goes in the file.
 // WHERE        src/chart — it is a fact about the drawn coast, which only the chart holds, and it
 //              needs `CoastlineData.rings`, which only the chart builds. Applied ONCE, in
 //              ./useBackdrop.ts, the moment the coast arrives, so the mark, the name, the tap
@@ -38,7 +39,8 @@
 //              the tap would land where the mark is not, and the roadstead line would start at a
 //              point nothing is drawn at. Or: replacing the 110m file with a finer coast, under
 //              roadstead rings (0076, 0085) and a nav grid (0038) that were all derived from the
-//              110m land — the rings would then draw on land. Measured and rejected in the log.
+//              110m land — the rings would then draw on land. Measured and rejected in the log. Only the harbours' own 28 islands
+//              were added, and the raster closes every cell they touch (scripts/sea-grid.mjs).
 //
 // ── WHAT IT DOES NOT TOUCH ─────────────────────────────────────────────────────────────────────
 // `ports.lat/lon` on the server: sailing, the roadsteads, the sea membership and every distance
@@ -55,7 +57,7 @@ import type { MapPort } from './mapTypes'
 /**
  * How far a harbour may be moved onto the drawn shore, in nautical miles — see THE CAP in the
  * header: 10 sits between the widest coarseness gap measured (8.6 nm) and the nearest island
- * the file lacks (14.3 nm). Beyond it the mark stays where the data put it and wears an islet.
+ * the file lacked (14.3 nm). Beyond it the mark stays where the data put it and reads `stranded`.
  */
 export const LANDFALL_CAP_NM = 10
 
@@ -118,8 +120,8 @@ export interface LandfallResult {
   /** True when the served point was in drawn water and a shore inside the cap was found. */
   readonly moved: boolean
   /** True when the served point was in drawn water and NO shore inside the cap was found: an
-   *  island the file has no polygon for (measured: every one of the 28 is). The mark is left
-   *  where the data put it and an islet is drawn under it. */
+   *  island the file has no polygon for. The mark is left where the data put it. The law test
+   *  holds this at zero over every harbour. */
   readonly stranded: boolean
 }
 
@@ -153,38 +155,23 @@ export function landfallPoint(rings: readonly (readonly Point[])[], p: Point): L
   return { at: p, nm, moved: false, stranded: true }
 }
 
-/** What the landfall makes of a port table. */
-export interface Landfall {
-  /** Every port, HARBOURS in drawn water moved onto the drawn shore; the same list object when
-   *  nothing moved, so memoised consumers do not re-render. */
-  readonly ports: readonly MapPort[]
-  /** The stranded harbours' chart points — islands the coast file has no polygon for. A speck
-   *  of land is drawn under each (CoastlineLayer); the mark stays where the data put it. */
-  readonly islets: readonly Point[]
-}
-
-const NO_ISLETS: readonly Point[] = []
-
 /**
  * THE PORT TABLE, SET ON THE DRAWN SHORE. Every HARBOUR whose served coordinate falls in drawn
- * water is returned with `lat`/`lon` moved by `landfallPoint`; a harbour with no shore inside
- * the cap is returned as it came and listed in `islets`; everything else is returned as it
+ * water is returned with `lat`/`lon` moved by `landfallPoint`; everything else is returned as it
  * came. With no coast yet (`null`) the list is returned untouched — the marks are drawn at the
  * served coordinate until the shore arrives, and move onto it in the same frame the shore does.
+ * The same list object comes back when nothing moved, so memoised consumers do not re-render.
  */
-export function landfallPorts(ports: readonly MapPort[], coast: Pick<CoastlineData, 'rings'> | null): Landfall {
-  if (!coast || coast.rings.length === 0) return { ports, islets: NO_ISLETS }
+export function landfallPorts(ports: readonly MapPort[], coast: Pick<CoastlineData, 'rings'> | null): readonly MapPort[] {
+  if (!coast || coast.rings.length === 0) return ports
   let changed = false
-  const islets: Point[] = []
   const out = ports.map((port) => {
     if (port.kind !== 'HARBOUR') return port
-    const at = project(port)
-    const result = landfallPoint(coast.rings, at)
-    if (result.stranded) islets.push(at)
+    const result = landfallPoint(coast.rings, project(port))
     if (!result.moved) return port
     changed = true
     const moved = unproject(result.at)
     return { ...port, lat: moved.lat, lon: moved.lon }
   })
-  return { ports: changed ? out : ports, islets: islets.length > 0 ? islets : NO_ISLETS }
+  return changed ? out : ports
 }

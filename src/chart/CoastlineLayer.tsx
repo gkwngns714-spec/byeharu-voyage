@@ -1,5 +1,5 @@
 import { memo, useId } from 'react'
-import { CHART_WIDTH, type Point } from '../lib/geo'
+import { CHART_WIDTH } from '../lib/geo'
 import type { CoastlineData } from './coastlineBuild'
 import { DAY_LAND_BANDS, GLYPH } from './glyphs'
 import type { RegionTint } from './regions'
@@ -70,11 +70,6 @@ import type { RegionTint } from './regions'
 // By day the two tints are painted again inside the day group, over the day water and the day
 // body, so the filter reads on both sides of the terminator.
 //
-// ── ROW 92 (2026-09-14): THE ISLETS, after the coast ──────────────────────────────────────────
-// A speck of land under each harbour whose island the 110m file lacks (./landfall.ts): a circle
-// of `GLYPH.isletRadius` in the land token with the coast's stroke, non-scaling, so it is the
-// same speck at every zoom. Ground, not a mark: painted here with the land, under every port.
-//
 // WHY THE LINE IS NOT THE BODY'S OWN STROKE. The file is countries, and neighbours share their
 // border's vertices exactly, so stroking the closed rings draws every inland border as a coast —
 // a thin one before row 90, and with the relief a shadowed one. The stroke is the outline with
@@ -97,8 +92,6 @@ const DAY_SHALLOW_INK = 'stroke-chart-day-shallow/45'
 export const WATER_TINT_ALPHA = 0.32
 export const LAND_TINT_ALPHA = 0.42
 
-/** One frozen empty list, so a chart with no islets does not allocate one per frame. */
-const NO_ISLETS: readonly Point[] = []
 const BASE_COPY: readonly number[] = [0]
 
 export const CoastlineLayer = memo(function CoastlineLayer({
@@ -106,8 +99,6 @@ export const CoastlineLayer = memo(function CoastlineLayer({
   strokeWidth = GLYPH.coastStroke,
   relief = true,
   regions = null,
-  islets = NO_ISLETS,
-  unitsPerPx = 0,
   copies = BASE_COPY,
   face = 'night',
 }: {
@@ -120,10 +111,6 @@ export const CoastlineLayer = memo(function CoastlineLayer({
   relief?: boolean
   /** The regions' tints (row 93), or null — which is the filter OFF and the map as it was. */
   regions?: readonly RegionTint[] | null
-  /** Harbours with no drawn land (row 92): a speck of land is painted under each. */
-  islets?: readonly Point[]
-  /** Chart units per CSS pixel — only the islets' radius needs it; 0 draws no islets. */
-  unitsPerPx?: number
   /** The copies of the sheet this layer is painted over (`sheetCopies` of the paper). */
   copies?: readonly number[]
   /** Which picture: the night chart (the default, and the minimap's only one), or the same coast in
@@ -216,22 +203,6 @@ export const CoastlineLayer = memo(function CoastlineLayer({
               vectorEffect="non-scaling-stroke"
               data-testid="map-coast"
             />
-            {/* 5. THE ISLETS (row 92) — land the file lacks, under the harbours that stand on it. */}
-            {unitsPerPx > 0 && islets.length > 0 && (
-              <g data-testid="map-islets">
-                {islets.map((at) => (
-                  <circle
-                    key={`${at.x},${at.y}`}
-                    cx={at.x}
-                    cy={at.y}
-                    r={GLYPH.isletRadius * unitsPerPx}
-                    className="fill-chart-land stroke-chart-coast"
-                    strokeWidth={strokeWidth}
-                    vectorEffect="non-scaling-stroke"
-                  />
-                ))}
-              </g>
-            )}
             </>
           )}
           {/* 6. THE DAY (`face="day"`) — the same picture in the Earth's colours, whole; the
@@ -297,21 +268,6 @@ export const CoastlineLayer = memo(function CoastlineLayer({
                   vectorEffect="non-scaling-stroke"
                   data-testid="map-coast-day-line"
                 />
-                {unitsPerPx > 0 && islets.length > 0 && (
-                  <g>
-                    {islets.map((at) => (
-                      <circle
-                        key={`${at.x},${at.y}`}
-                        cx={at.x}
-                        cy={at.y}
-                        r={GLYPH.isletRadius * unitsPerPx}
-                        className="fill-chart-day-temperate stroke-chart-day-coast"
-                        strokeWidth={strokeWidth}
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ))}
-                  </g>
-                )}
               </g>
             </>
           )}

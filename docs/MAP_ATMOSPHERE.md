@@ -192,9 +192,9 @@ is set on the drawn shore: `src/chart/landfall.ts` (pure), applied ONCE in `useB
 frame the coast arrives, so the mark, the name, the tap target, the roadstead's dotted line and a
 docked fleet's hull all read one moved coordinate off `MapPort`. The cap is 10 nm, chosen in the
 gap the measurement found (widest coarseness move 8.6 nm; nearest island-with-no-polygon 14.3 nm).
-The 28 harbours beyond it are islands the file has no polygon for; each wears an **islet** — a
-speck of land, `GLYPH.isletRadius` (4 px) in `chart-land` with the coast's stroke, painted by
-`CoastlineLayer` after the coast and under every port. `ports.lat/lon` on the server is untouched.
+The 28 harbours beyond it stood on islands the 110m file had no polygon for. Since 2026-11-05 those
+28 islands are in the file (`HARBOUR_ISLAND`, from the 10m sheet), drawn point for point, and the sea
+raster closes every cell they touch. The islet speck is gone; no harbour is stranded.
 
 ### 9.2 Every harbour, at every zoom (row 94)
 
@@ -258,7 +258,7 @@ but *Regions*, which the owner asked for by name.
 * `tests/map.landfall.spec.ts` — the table over the real file (79 · 51 · 28, cap in the gap);
   `landfallPorts` keeps identity, never moves a sea place or a roadstead; in the browser at both
   glasses, at the opening frame and the world view, every harbour mark is inside the land body
-  (`isPointInFill`, the body's own `evenodd`) or on an islet. Red on `main` (79 in water).
+  (`isPointInFill`, the body's own `evenodd`). Red on `main` as it was (79 in water).
 * `tests/map.regions.spec.ts` — the derived file is the build; 25 regions, 25 tokens in both
   schemes, 25 classes; names through the one planner; the filter's reader; in the browser at both
   glasses and both schemes: off by default and the sheet as it was, on tints and names with the
