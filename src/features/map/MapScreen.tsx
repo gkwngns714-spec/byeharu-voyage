@@ -422,7 +422,6 @@ function Chart({
           seas={backdrop.seas}
           regions={regionsOn ? backdrop.regions : null}
           portFlags={portFlags}
-          islets={backdrop.islets}
           selection={selection}
           plannedD={pathD}
           pathStops={shipPath.stops}

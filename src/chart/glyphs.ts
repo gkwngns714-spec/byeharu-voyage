@@ -319,13 +319,6 @@ export const GLYPH = {
    */
   shipLightBloomScale: 1.25,
   shipLightGlowScale: 0.9,
-  /**
-   * AN ISLET (row 92): the speck of land drawn under a harbour whose island the 110m coast file
-   * has no polygon for at all (Malta, Bermuda, the Azores… 28 of them, ./landfall.ts). A filled
-   * circle in the land token with the coast's stroke, 4 px — under the quiet mark's 7.2 px width
-   * and inside the great ring, so it is ground under the mark, never a mark of its own.
-   */
-  isletRadius: 4,
 } as const
 
 /**
@@ -539,7 +532,7 @@ export function hullHalfLengthOf(cls: HullClass | null): number {
  * NEITHER OF THE SHAPES ALREADY SPOKEN FOR IS REUSED. A triangle is a port and a lozenge is a sea
  * place (`trianglePath`, `lozengePath`): both are drawn AXIS-ALIGNED and HOLLOW, where every hull
  * here is FILLED and turned to a heading, and the barca's spindle is half the relative beam of the
- * lozenge the port ramps draw. A circle is a destination, a roadstead, an islet or a halo.
+ * lozenge the port ramps draw. A circle is a destination, a roadstead or a halo.
  */
 export function hullPath(cls: HullClass | null, halfLength: number = hullHalfLengthOf(cls)): string {
   const l = halfLength

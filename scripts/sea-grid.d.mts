@@ -52,3 +52,10 @@ export declare function rowOf(lat: number): number
 export declare function colOf(lon: number): number
 export declare function cellLat(row: number): number
 export declare function cellLon(col: number): number
+
+/** The 28 islands of the land file marked HARBOUR_ISLAND: the harbour's code and its [lon, lat] ring. */
+export declare function harbourIslands(): { code: string; ring: [number, number][] }[]
+
+/** Every raster cell an island touches, as cell index -> the harbour's code. All of them are closed. */
+export declare function islandCells(): Map<number, string>
+

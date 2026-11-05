@@ -248,7 +248,6 @@ export {
   landfallPoint,
   landfallPorts,
   onDrawnLand,
-  type Landfall,
   type LandfallResult,
 } from './landfall'
 // ROW 93 — the regions as ink, and the one switch that shows them. The decisions are exported

@@ -10,18 +10,19 @@
 // "no borders" is true of the picture only since the line was split from the body.
 //
 // WHY THE FILE IS FETCHED RATHER THAN IMPORTED (./coastline.ts does the fetching).
-// `data/world-110m.json` is 280,378 bytes. Imported, it would be parsed into the main JavaScript
+// `data/world-110m.json` is 292,884 bytes. Imported, it would be parsed into the main JavaScript
 // bundle and downloaded by every player on every tab, including the seven that are pure text.
 // Loaded through `?url` it is an ordinary build asset — `npm run build` emits
-// dist/assets/world-110m-*.json, 280.37 kB / 99.51 kB gzipped — so the browser fetches it the
+// dist/assets/world-110m-*.json, 292.9 kB / 101.7 kB gzipped — so the browser fetches it the
 // first time the Map tab is opened, caches it, and the other tabs never pay for it.
 //
 // WHY IT IS DECIMATED, AND WHAT IT COSTS — MEASURED by running THIS function over the real file:
 //
-//     rings    289 → 286                  points  10,654 → 6,111   (the body, `d`)
+//     rings    317 → 315                  points  11,172 → 6,627   (the body, `d`, re-measured
+//                                          2026-11-05 with the 28 harbour islands)
 //     the line (`coastD`, row 90)          3,251 points in 271 runs, 116 of them closed islands,
 //                                          42,772 bytes; 2,664 border segments left out
-//     rendered body   78,902 bytes (77.1 KB) of `d`, in ONE <path> element
+//     rendered body   85,535 bytes (83.5 KB) of `d`, in ONE <path> element
 //     build time      36.6 ms, once per map open (re-measured 2026-09-13 with the border pass;
 //                     it was 8.3 ms for the body alone)
 //
@@ -29,6 +30,13 @@
 // pinch-zoom. This is a BACKDROP; it does not earn that. Ramer–Douglas–Peucker at 0.2° (≈12 nm,
 // about 2 px at the opening view) is the trade, plus dropping rings whose whole bounding box is
 // under 0.35° — islets that can never be more than a speck at any zoom the chart offers.
+//
+// THE ONE EXCEPTION: A HARBOUR'S ISLAND (row 92). The 28 features marked `HARBOUR_ISLAND` come from
+// the 10m sheet, decimated once in scripts/build-world.mjs, and are drawn EXACTLY as the file has
+// them: never dropped for their size, never decimated again. scripts/sea-grid.mjs closes every
+// raster cell those same points touch, so a tolerance here would be a second opinion on the coast
+// and could draw land where the raster still has water. Added: 518 points, 12.5 KB of file
+// (3.8 KB over the wire), 6.6 KB of path.
 //
 // Every one of those figures comes back in `CoastlineData`, so the size is something the app can
 // print rather than a claim in a comment that nobody re-checks.
@@ -103,13 +111,15 @@ interface RingSource {
 }
 interface FeatureSource {
   readonly geometry?: RingSource
-  readonly properties?: { readonly ISO_A2_EH?: unknown }
+  readonly properties?: { readonly ISO_A2_EH?: unknown; readonly HARBOUR_ISLAND?: unknown }
 }
 
 /** A raw ring and the country code of the feature it came from ('' when the file gives none). */
 interface SourceRing {
   readonly points: LatLon[]
   readonly iso: string
+  /** A harbour's island: drawn point for point (see the header). */
+  readonly exact: boolean
 }
 
 const isNumberPair = (v: unknown): v is [number, number] =>
@@ -126,6 +136,7 @@ function extractRings(json: unknown): SourceRing[] {
     if (!geometry || !Array.isArray(geometry.coordinates)) continue
     const isoRaw = feature.properties?.ISO_A2_EH
     const iso = typeof isoRaw === 'string' && /^[A-Z]{2}$/.test(isoRaw) ? isoRaw : ''
+    const exact = typeof feature.properties?.HARBOUR_ISLAND === 'string'
     // Polygon: [ring][point]. MultiPolygon: [polygon][ring][point]. Normalise to the latter.
     const polygons =
       geometry.type === 'Polygon' ? [geometry.coordinates] : (geometry.coordinates as unknown[])
@@ -137,7 +148,7 @@ function extractRings(json: unknown): SourceRing[] {
         for (const position of ring) {
           if (isNumberPair(position)) points.push({ lon: position[0], lat: position[1] })
         }
-        if (points.length >= 3) rings.push({ points, iso })
+        if (points.length >= 3) rings.push({ points, iso, exact })
       }
     }
   }
@@ -214,6 +225,15 @@ export function buildCoastline(json: unknown): CoastlineData {
     const pts = closedPoints(source.points)
     if (pts.length < 3) continue
     const projected = pts.map(project)
+    if (source.exact) {
+      const ring = [...projected, projected[0]]
+      kept.push(ring)
+      keptIso.push(source.iso)
+      pointCount += ring.length
+      coastD += toPolylineD(ring) + 'Z'
+      coastPointCount += ring.length
+      continue
+    }
     const span = boundingSpan(projected)
     if (span.width < COASTLINE_MIN_SPAN_DEG && span.height < COASTLINE_MIN_SPAN_DEG) continue
 

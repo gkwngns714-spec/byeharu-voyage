@@ -92,7 +92,10 @@ test.describe('every port is on the sheet; the zoom decides dot or mark', () => 
     )
     // MEASURED 2026-09-14: 177 features, 175 with a two-letter code; every one of them keeps at
     // least one ring above COASTLINE_MIN_SPAN_DEG, so every country is in the one body path.
-    expect(codes.size).toBe(175)
+    // Moved deliberately 2026-11-05 (owner row 92): 205 features with the 28 harbour islands, whose
+    // countries Bahrain, Barbados, Bermuda, Cape Verde, Curacao, the Faroes, Guam, Malta, the
+    // Maldives, Mauritius and Sao Tome the 110m sheet never had: 186 codes.
+    expect(codes.size).toBe(186)
     expect(coast.countries.map((c) => c.iso).sort()).toEqual([...codes].sort())
     // …and the layer draws that one path whole: no per-zoom subset exists anywhere in the section.
     const layer = readFileSync(path.join(process.cwd(), 'src', 'chart', 'CoastlineLayer.tsx'), 'utf8')

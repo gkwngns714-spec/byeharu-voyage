@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Point } from '../lib/geo'
 import type { SnapshotPort } from '../lib/rpc'
 import type { CoastlineData } from './coastlineBuild'
 import { landfallPorts } from './landfall'
@@ -18,17 +17,12 @@ import type { RegionTint } from './regions'
 // "Some cities are in the ocean." The harbour table is served with the cities' true coordinates
 // and the coast is drawn from a 110m file, and at 110m a true coordinate can fall a few miles
 // into drawn water (./landfall.ts measures it: 79 of 224 harbours, 52 of them within 10 nm of
-// the drawn shore, 28 on islands the file has no polygon for at all). The mark, the name, the
+// the drawn shore; the 28 on islands the 110m sheet lacks now have their island in the file). The mark, the name, the
 // tap target, the roadstead's dotted line and a docked fleet's glyph all read ONE coordinate
 // off `MapPort`, so the move is made ONCE, here, where the served table and the drawn coast
 // first meet — and every surface that draws ports (the Map tab, `SmallChart`) gets its ports
 // from this hook and can never hold a second, unmoved copy. Until the coast arrives the ports
 // are the served coordinates; they step onto the shore in the frame the shore is drawn.
-//
-// `islets` are the 28: a harbour whose island the file lacks gets a speck of land under its
-// mark (CoastlineLayer draws them) — "a harbour is where land meets water" is already the rule
-// `openingBounds` frames by, and a mark on bare water where a town stands is the picture the
-// owner objected to.
 //
 // A failure is reported, not thrown: the map without a coastline is still a working map, and a
 // missing decoration may not take a tab down.
@@ -61,9 +55,6 @@ export interface BackdropState {
    *  set on the drawn shore once the coast is here. The one list every layer, the hit test and
    *  the frame read. */
   readonly ports: readonly MapPort[]
-  /** Harbours the drawn coast has no land for within `LANDFALL_CAP_NM` — an island the file
-   *  lacks — as chart points; a speck of land is drawn under each. Empty until the coast is here. */
-  readonly islets: readonly Point[]
   readonly error: string | null
 }
 
@@ -100,14 +91,13 @@ export function useBackdrop(snapshotPorts: readonly SnapshotPort[]): BackdropSta
   }, [])
 
   const served = useMemo(() => mapPortsOf(snapshotPorts), [snapshotPorts])
-  const landed = useMemo(() => landfallPorts(served, loaded.coast), [served, loaded.coast])
+  const ports = useMemo(() => landfallPorts(served, loaded.coast), [served, loaded.coast])
 
   return {
     coast: loaded.coast,
     seas: loaded.seas,
     regions: loaded.regions,
-    ports: landed.ports,
-    islets: landed.islets,
+    ports,
     error: loaded.error,
   }
 }

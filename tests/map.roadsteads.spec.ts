@@ -107,14 +107,14 @@ test.describe('zoom is the precision control', () => {
   })
 
   test('the ramp across the three zooms this chart has, measured', () => {
-    // Not a shape — the three numbers were taken off this fixture on 2026-09-04. 159 of the 214
+    // Not a shape — the three numbers were taken off this fixture (re-taken 2026-11-05: 0319). 180 of the 214
     // harbours carry roads off the quay; at the whole world in one frame NONE of them is longer
     // than the smallest mark the chart draws, and at the tightest zoom every one is.
     const drawnAt = (spanDeg: number) => roadsteadMarks(PORTS, unitsPerPxAt(spanDeg)).length
-    expect(PORTS.filter((p) => p.roadsteadNm > 0)).toHaveLength(159)
+    expect(PORTS.filter((p) => p.roadsteadNm > 0)).toHaveLength(180)
     expect(drawnAt(MAX_SPAN_X)).toBe(0)
-    expect(drawnAt(OPENING_MIN_SPAN_DEG)).toBe(132)
-    expect(drawnAt(MIN_SPAN_X)).toBe(159)
+    expect(drawnAt(OPENING_MIN_SPAN_DEG)).toBe(150)
+    expect(drawnAt(MIN_SPAN_X)).toBe(180)
   })
 
   test('the threshold is the smallest mark this chart draws, and it is stated in pixels', () => {

@@ -251,6 +251,72 @@ export function landPolygons() {
   return polys
 }
 
+/** THE HARBOUR ISLANDS (owner row 92): the features of the land file that carry `HARBOUR_ISLAND`,
+ *  as `{ code, ring }` with ring = [lon, lat] points. scripts/build-world.mjs writes them from the
+ *  10m sheet; src/chart/coastlineBuild.ts draws exactly these points. */
+export function harbourIslands() {
+  const fc = JSON.parse(readFileSync(join(DATA, 'world-110m.json'), 'utf8'))
+  return fc.features
+    .filter((f) => f.properties.HARBOUR_ISLAND)
+    .map((f) => ({ code: f.properties.HARBOUR_ISLAND, ring: f.geometry.coordinates[0] }))
+}
+
+/** Does the segment (x1,y1)-(x2,y2) touch the box? Liang-Barsky clipping. */
+function segmentTouchesBox(x1, y1, x2, y2, west, south, east, north) {
+  let t0 = 0
+  let t1 = 1
+  const dx = x2 - x1
+  const dy = y2 - y1
+  for (const [p, q] of [[-dx, x1 - west], [dx, east - x1], [-dy, y1 - south], [dy, north - y1]]) {
+    if (p === 0) {
+      if (q < 0) return false
+      continue
+    }
+    const r = q / p
+    if (p < 0) t0 = Math.max(t0, r)
+    else t1 = Math.min(t1, r)
+    if (t0 > t1) return false
+  }
+  return true
+}
+
+/**
+ * EVERY CELL AN ISLAND TOUCHES, as a Map of cell index -> the harbour's code.
+ *
+ * The scan-fill reads a polygon only along each row's centre line, so an island narrower than a row
+ * (St. George's, Malé, Banda Neira) can fall between two lines and close nothing: drawn, and sailed
+ * straight through. The owner's law (row 41) is that the fleet never touches land, so an island closes
+ * every cell any part of its drawn ring touches. That is more water than the island, and it is meant
+ * to be: the cell's rest stays named sea (it keeps its sea_cells byte, like ICE), nobody sails it.
+ */
+export function islandCells() {
+  const cells = new Map()
+  for (const { code, ring } of harbourIslands()) {
+    let west = 180, east = -180, south = 90, north = -90
+    for (const [x, y] of ring) {
+      west = Math.min(west, x); east = Math.max(east, x)
+      south = Math.min(south, y); north = Math.max(north, y)
+    }
+    for (let row = rowOf(north); row <= rowOf(south); row++) {
+      const lat = cellLat(row)
+      for (let col = colOf(west); col <= colOf(east); col++) {
+        const lon = cellLon(col)
+        const half = CELL_DEG / 2
+        let touches = false
+        let inside = false
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+          const [x1, y1] = ring[j]
+          const [x2, y2] = ring[i]
+          if (segmentTouchesBox(x1, y1, x2, y2, lon - half, lat - half, lon + half, lat + half)) touches = true
+          if (y1 > lat !== y2 > lat && lon < x1 + ((lat - y1) / (y2 - y1)) * (x2 - x1)) inside = !inside
+        }
+        if (touches || inside) cells.set(row * COLS + col, code)
+      }
+    }
+  }
+  return cells
+}
+
 /**
  * THE LAND DATA, AS THE GRID SEES IT — scan-fill plus ICE, and NO carve.
  *
@@ -295,6 +361,9 @@ export function preCarveGrid() {
       }
     }
   }
+
+  // The harbour islands close every cell they touch, not only the cells a row's centre line crosses.
+  for (const k of islandCells().keys()) water[k] = 0
 
   // The ice: authored CLOSED water (see ICE above) — the waters the period could not force, at
   // BOTH poles through the one list. `latAbove` runs from the north edge down to that parallel;
