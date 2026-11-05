@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { DetailPage, Figure, Note, Row, ScrollPane, Segmented, SignedBars, Skeleton, SummaryRow } from '../../../components/ui'
 import { useServedRead } from '../../../live/useServedRead'
-import { formatDucatsDelta } from '../../../lib/format'
+import { formatDucatsDelta, formatRealDay } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
 import { t as tNow, useT, type TKey } from '../../../lib/i18n'
 import type { DeskLayout } from '../DeskFrame'
@@ -111,7 +111,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
     p.kind === 'port'
       ? (p.name ?? p.code ?? t('desk.byPlace'))
       : p.kind === 'voyage'
-        ? `${t('desk.voyageWord')} ${p.from ?? '—'}→${p.to ?? '—'}${p.day === null ? '' : ` d${p.day}`}`
+        ? `${t('desk.voyageWord')} ${p.from ?? '—'}→${p.to ?? '—'}${p.day === null ? '' : ` ${formatRealDay(p.day)}`}`
         : t('desk.earlier')
 
   const section = (s: ReportSection) => (
@@ -171,7 +171,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
         </ScrollPane>
         {r.days.length > 0 && (
           <SignedBars
-            bars={r.days.map((d) => ({ id: String(d.game_day), value: d.net }))}
+            bars={r.days.map((d) => ({ id: String(d.day), value: d.net }))}
             label={t('desk.reportByDay')}
             className="mt-3"
             data-testid="report-bars"

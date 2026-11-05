@@ -385,8 +385,8 @@ begin
   insert into public.trade_daily (player_id, port_id, good_id, game_day, qty)
   select v_a, f.port_id, g.id, world.game_day(), 1
     from public.fleets f, public.goods g where f.id = v_fleet order by g.code limit 1;
-  insert into public.haggle_daily (player_id, port_id, good_id, game_day, attempts, wins, concession)
-  select v_a, f.port_id, g.id, world.game_day(), 1, 0, 0
+  insert into public.haggle_daily (player_id, port_id, good_id, day, attempts, wins, concession)
+  select v_a, f.port_id, g.id, public.real_day(now()), 1, 0, 0
     from public.fleets f, public.goods g where f.id = v_fleet order by g.code limit 1;
   insert into public.player_skills (player_id, skill_id, level)
   select v_a, s.id, 1 from public.skills s order by s.code limit 1;

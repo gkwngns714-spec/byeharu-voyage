@@ -192,24 +192,21 @@ export function formatGameDate(d: GameDate): string {
 // *"I want there to be a clock on command, map. There is one right now showing the time only, but
 //  I want to see the date, year, months and so on."*
 //
-// IT IS THE CALENDAR CLOCK, WHICH IS THE SERVER'S OWN DAY — not a new one. `gameDate` above runs
-// one game month per REAL day (D.1), so a game day is 86,400 / 30 = 2,880 real seconds, which is
-// exactly `world_config.game_day_seconds` and therefore exactly the day `world.game_day()` counts
-// (migration 0005). The date below rolls over at the same instants the server's day counter does,
-// so every `*_game_days` figure on the wire is counted in the unit this date is printed in. The
-// client reads no new thing to say it: the shell's ONE CLOCK is the server's (src/lib/serverClock.ts).
+// IT IS THE CALENDAR CLOCK. `gameDate` above runs one game month per REAL day (D.1), so a day of
+// this date is 86,400 / 30 = 2,880 real seconds. Until 2026-10-30 that was also
+// `world_config.game_day_seconds`; since then the server's game day is the market's tick, one real
+// minute, and this date no longer rolls over with it. Nothing a person reads as a day is counted in
+// it: those are real UTC days (public.real_day, 0312, 0317). The client reads no new thing to say
+// it: the shell's ONE CLOCK is the server's (src/lib/serverClock.ts).
 //
 // THE HOUR HAND IS THE OTHER CLOCK, and that is deliberate (D.3: *"we separate them and say so out
 // loud in the UI"*). `gameTimeOfDayMs` below runs at GAME_CLOCK_RATE because the owner set that
 // rate for the Sun on 2026-10-15 (*"make the clock twice slower"*, then twice again), so the hour
 // comes round faster than the date turns. The two are printed side by side rather than one being
-// bent to the other: bending the date to the hour hand would print a day that no rule in the game
-// counts in — a season, an ice closure, a buff's duration and the daily trade cap are all in THIS
-// day — and that is the second authority this file exists to refuse.
+// bent to the other.
 
-/** Game days to a game month: a game month is one REAL day (D.1) and a game day is
- *  `world_config.game_day_seconds` = 2,880 real seconds, so 86,400 / 2,880 = 30. Mirrored for
- *  DISPLAY ONLY, as TIME_COMPRESSION is — nothing is decided from it. */
+/** Days of this date to its month: a month is one REAL day (D.1) and a day of it 2,880 real seconds,
+ *  so 86,400 / 2,880 = 30. For DISPLAY ONLY, as TIME_COMPRESSION is — nothing is decided from it. */
 export const GAME_DAYS_PER_MONTH = 30
 
 /** WHERE THE WORLD'S CALENDAR STARTS: the real instant that is the first day of `CALENDAR_YEAR_0`.
@@ -243,6 +240,11 @@ export function formatGameToday(nowMs: number): string {
 }
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+/** A real UTC day number (`public.real_day`) as a short date: "11-05". The server names the day; this only prints it. */
+export function formatRealDay(day: number): string {
+  return new Date(day * MS_PER_DAY).toISOString().slice(5, 10)
+}
 
 /** THE GAME CLOCK'S RATE — an EIGHTH of the voyage clock. The owner, 2026-10-15: *"make the clock
  *  twice slower, but keep the ship speed to where it is"* (960× → 480×), then *"make the light zone
