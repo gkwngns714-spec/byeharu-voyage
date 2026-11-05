@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
--- 0316 — INSURANCE PAYS ITS WAY: a ship that reaches her port on her last cask has arrived, so the city does not pay for a hold she never lost
+-- 0314 — INSURANCE PAYS ITS WAY: a ship that reaches her port on her last cask has arrived, so the city does not pay for a hold she never lost
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 -- Owner, slice W0b of docs/WORLD_POWERS.md: cities paid out 29.5 M d. in 24 h and took in 7.4 M d. Measure, root cause. docs/dev-log/2026-11-05-insurance.md holds the numbers.
 --
@@ -27,11 +27,11 @@
 --
 -- SELF-ASSERT (own probe houses, every row rolled back; no real voyage, no world_config row): the bug reproduced on the pre-image body and gone on the new one, settled at once and day by day;
 -- a real dry day at sea still forced home with its claim; a dry final day still an arrival; the hunk reverses; nothing else moved.
--- Mutation controls: scripts/ops/harness/insurance/proof-0316.mjs (local).
+-- Mutation controls: scripts/ops/harness/insurance/proof-0314.mjs (local).
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): swap this file's v_old and v_new. Nothing else was changed, and no row of data was written.
--- VERSION: 0316, after 0313-0315. Cut from prod head 0312; the hunk must still occur once at the rebase (0313 does not touch voyage.settle).
+-- VERSION: 0314, after 0313. Cut from prod head 0312; the hunk must still occur once at the rebase (0313 does not touch voyage.settle).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -40,7 +40,7 @@ declare
     -- trailing day at the ETA, so a ship that drinks her last cask as she makes port docks there
     -- (the arrival arm below) instead of being turned away from a harbour she is entering.
     if v_end <= 0 and d < v_cap$h$;
-  v_new  text := $h$    -- A DRY DAY THAT ENDS ON THE ETA IS AN ARRIVAL, NOT A STRANDING (0316, was d < v_cap): voyage.day_ends_at
+  v_new  text := $h$    -- A DRY DAY THAT ENDS ON THE ETA IS AN ARRIVAL, NOT A STRANDING (0314, was d < v_cap): voyage.day_ends_at
     -- clamps at the ETA, and a delay stacks SEVERAL trailing days there, not one, because voyage.total_days
     -- counts it and every later boundary is pushed by it too. A ship that drinks her last cask on any of them
     -- docks (the arrival arm below) instead of being turned away from the harbour she is entering, and no
@@ -64,7 +64,7 @@ begin
 
   -- ── 0. GUARD ──
   if to_regprocedure('voyage.forced_home(uuid,integer,uuid)') is null or to_regprocedure('public.insurance_claim(uuid,integer,jsonb,text)') is null then
-    raise exception '0316 refuses: 0213 / 0279 (the insurance, the forced home) are not in this world';
+    raise exception '0314 refuses: 0213 / 0279 (the insurance, the forced home) are not in this world';
   end if;
 
   select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
@@ -79,13 +79,13 @@ begin
 
   -- ── 1. THE PRE-IMAGE, kept callable for the old-against-new probe ──
   if (length(v_def0) - length(replace(v_def0, 'CREATE OR REPLACE FUNCTION voyage.settle(', ''))) / length('CREATE OR REPLACE FUNCTION voyage.settle(') <> 1 then
-    raise exception '0316 self-assert FAIL: the head of voyage.settle is not where it was expected';
+    raise exception '0314 self-assert FAIL: the head of voyage.settle is not where it was expected';
   end if;
-  execute replace(v_def0, 'CREATE OR REPLACE FUNCTION voyage.settle(', 'CREATE OR REPLACE FUNCTION pg_temp.settle_b0316(');
+  execute replace(v_def0, 'CREATE OR REPLACE FUNCTION voyage.settle(', 'CREATE OR REPLACE FUNCTION pg_temp.settle_b0314(');
 
   -- ── 2. THE HUNK ──
   if (length(v_def0) - length(replace(v_def0, v_old, ''))) / length(v_old) <> 1 then
-    raise exception '0316 self-assert FAIL: the hunk of voyage.settle occurs % time(s), not once: the deployed body is not what this file was written against',
+    raise exception '0314 self-assert FAIL: the hunk of voyage.settle occurs % time(s), not once: the deployed body is not what this file was written against',
       (length(v_def0) - length(replace(v_def0, v_old, ''))) / length(v_old);
   end if;
   v_def := replace(v_def0, v_old, v_new);
@@ -94,21 +94,21 @@ begin
   -- ── 3. THE SELF-ASSERT: the hunk reverses, nothing else moved ──
   v_def := replace(pg_get_functiondef(v_settle), E'\r', '');
   if (length(v_def) - length(replace(v_def, v_new, ''))) / length(v_new) <> 1 then
-    raise exception '0316 self-assert FAIL: the hunk is not in the new body once';
+    raise exception '0314 self-assert FAIL: the hunk is not in the new body once';
   end if;
   if replace(v_def, v_new, v_old) <> v_def0 then
-    raise exception '0316 self-assert FAIL: voyage.settle does not reverse to its pre-image';
+    raise exception '0314 self-assert FAIL: voyage.settle does not reverse to its pre-image';
   end if;
   if (select coalesce(p.proacl::text, '') from pg_proc p where p.oid = v_settle) <> v_acl0
      or (select p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') from pg_proc p where p.oid = v_settle) <> v_cfg0 then
-    raise exception '0316 self-assert FAIL: the ACL, volatility, definer or config of voyage.settle moved';
+    raise exception '0314 self-assert FAIL: the ACL, volatility, definer or config of voyage.settle moved';
   end if;
 
   -- ── 4. THE SELF-ASSERT: one laden, insured voyage on a probe house, every row rolled back ──
   -- Lisbon to Funchal, a cargo of exactly 2,000, hazards off on HER OWN path. p: the settle to run ('new' or 'old'), `calm` hours of delay written on day 1, `days` of stores left
   -- when that day is done, `slow` to sail three times as long, `step` to settle every boundary in turn rather than once at the end. Answers what became of her.
   execute $f$
-create function pg_temp.scene_0316(p_uid uuid, p jsonb)
+create function pg_temp.scene_0314(p_uid uuid, p jsonb)
 returns jsonb
 language plpgsql
 as $b$
@@ -133,19 +133,19 @@ declare
 begin
   v_p := public.new_house(p_uid, 'Casa Enxuta ' || right(p_uid::text, 4), 'PRT', 'LIS', 'Enxuta ' || right(p_uid::text, 4), 'barca', 'Enxuta ' || right(p_uid::text, 4), null, false);
   select id into v_f from public.fleets where player_id = v_p;
-  perform public.credit(v_p, 'PROBE_0316', 1000000);
+  perform public.credit(v_p, 'PROBE_0314', 1000000);
   select code into v_a from public.goods where bulk = 1 order by code limit 1;
   select code into v_b from public.goods where bulk = 1 and code > v_a order by code limit 1;
   v_la := public.fleet_load(v_f, v_a, 40, 25);
   v_lb := public.fleet_load(v_f, v_b, 10, 100);
   if v_la <> 40 or v_lb <> 10 or public.fleet_stock_at_cost(v_f) <> 2000 then
-    raise exception '0316 self-assert FAIL: the probe''s cargo did not load (% of 40, % of 10, worth %)', v_la, v_lb, public.fleet_stock_at_cost(v_f);
+    raise exception '0314 self-assert FAIL: the probe''s cargo did not load (% of 40, % of 10, worth %)', v_la, v_lb, public.fleet_stock_at_cost(v_f);
   end if;
   v_voy := (cmd.do_sail(v_f, jsonb_build_object('dest', v_fnc, 'insured', true,
              'path', (select jsonb_build_array(jsonb_build_array(a.roadstead_lat, a.roadstead_lon), jsonb_build_array(b.roadstead_lat, b.roadstead_lon))
                         from public.sea_reaches a, public.sea_reaches b where a.port_id = v_lis and b.port_id = v_fnc)))->>'voyage_id')::uuid;
   if not exists (select 1 from public.insured_voyages i where i.voyage_id = v_voy and i.value = 2000) then
-    raise exception '0316 self-assert FAIL: the probe''s voyage is not insured for 2,000';
+    raise exception '0314 self-assert FAIL: the probe''s voyage is not insured for 2,000';
   end if;
   update public.voyages vo set path = (select jsonb_agg(e || jsonb_build_object('hazard_mult', 0) order by o) from jsonb_array_elements(vo.path) with ordinality t(e, o))
    where vo.id = v_voy;
@@ -174,7 +174,7 @@ begin
   select coalesce(sum(durability), 0) into v_hull from public.ships where fleet_id = v_f;
   v_eta := (select eta from public.voyages where id = v_voy);
   if p ->> 'run' = 'old' then
-    perform pg_temp.settle_b0316(v_f, v_eta + interval '1 second');
+    perform pg_temp.settle_b0314(v_f, v_eta + interval '1 second');
   elsif (p ->> 'step')::boolean then
     for v_at in select voyage.day_ends_at(v_voy, g.d) from generate_series(1, voyage.total_days(v_voy)) g(d) order by 1 loop
       perform voyage.settle(v_f, v_at);
@@ -201,53 +201,53 @@ $b$
 $f$;
 
   for s in select * from (values
-      ('bug_old',  '00000000-0316-4000-8000-000000000001'::uuid, '{"run":"old","calm":72,"step":false}'::jsonb),   -- the bug itself, on the pre-image body
-      ('fixed',    '00000000-0316-4000-8000-000000000002'::uuid, '{"run":"new","calm":72,"step":false}'::jsonb),   -- the same scene, the new body
-      ('stepped',  '00000000-0316-4000-8000-000000000003'::uuid, '{"run":"new","calm":72,"step":true}'::jsonb),    -- settled day by day: a late settle lands the same
-      ('storm',    '00000000-0316-4000-8000-000000000004'::uuid, '{"run":"new","calm":36,"step":false}'::jsonb),   -- a storm's 36 hours, the smallest delay on record
-      ('at_sea',   '00000000-0316-4000-8000-000000000005'::uuid, '{"run":"new","calm":0,"days":0,"step":false}'::jsonb),      -- dry on day 1, hours short of port: a real forced home
-      ('at_sea_c', '00000000-0316-4000-8000-000000000006'::uuid, '{"run":"new","calm":72,"days":0,"slow":true,"step":false}'::jsonb),     -- a long passage, no stores after a calm: dry with days of sailing left, delay or no delay
-      ('final',    '00000000-0316-4000-8000-000000000007'::uuid, '{"run":"new","calm":0,"step":false}'::jsonb)     -- no delay: dry on her true final day, as 0279 proved
+      ('bug_old',  '00000000-0314-4000-8000-000000000001'::uuid, '{"run":"old","calm":72,"step":false}'::jsonb),   -- the bug itself, on the pre-image body
+      ('fixed',    '00000000-0314-4000-8000-000000000002'::uuid, '{"run":"new","calm":72,"step":false}'::jsonb),   -- the same scene, the new body
+      ('stepped',  '00000000-0314-4000-8000-000000000003'::uuid, '{"run":"new","calm":72,"step":true}'::jsonb),    -- settled day by day: a late settle lands the same
+      ('storm',    '00000000-0314-4000-8000-000000000004'::uuid, '{"run":"new","calm":36,"step":false}'::jsonb),   -- a storm's 36 hours, the smallest delay on record
+      ('at_sea',   '00000000-0314-4000-8000-000000000005'::uuid, '{"run":"new","calm":0,"days":0,"step":false}'::jsonb),      -- dry on day 1, hours short of port: a real forced home
+      ('at_sea_c', '00000000-0314-4000-8000-000000000006'::uuid, '{"run":"new","calm":72,"days":0,"slow":true,"step":false}'::jsonb),     -- a long passage, no stores after a calm: dry with days of sailing left, delay or no delay
+      ('final',    '00000000-0314-4000-8000-000000000007'::uuid, '{"run":"new","calm":0,"step":false}'::jsonb)     -- no delay: dry on her true final day, as 0279 proved
     ) v(name, uid, p) loop
     begin
-      raise exception using errcode = 'ZX316', message = pg_temp.scene_0316(s.uid, s.p)::text;
-    exception when sqlstate 'ZX316' then v_res := v_res || jsonb_build_object(s.name, sqlerrm::jsonb); end;
+      raise exception using errcode = 'ZX314', message = pg_temp.scene_0314(s.uid, s.p)::text;
+    exception when sqlstate 'ZX314' then v_res := v_res || jsonb_build_object(s.name, sqlerrm::jsonb); end;
   end loop;
   v_all := v_res;
-  drop function pg_temp.scene_0316(uuid, jsonb);
-  drop function pg_temp.settle_b0316(uuid, timestamp with time zone);
+  drop function pg_temp.scene_0314(uuid, jsonb);
+  drop function pg_temp.settle_b0314(uuid, timestamp with time zone);
 
   -- THE SCENE IS THE BUG: on the old body a ship dry on a stacked day, at her own ETA, lost her hold and claimed all of it.
   v_x := v_all -> 'bug_old';
   if (v_x ->> 'bound')::boolean is not true or (v_x ->> 'dry_day')::int >= (v_x ->> 'cap')::int then
-    raise exception '0316 self-assert FAIL: the probe''s dry day is not a stacked day on the ETA: %', v_x;
+    raise exception '0314 self-assert FAIL: the probe''s dry day is not a stacked day on the ETA: %', v_x;
   end if;
   if v_x ->> 'voyage' <> 'ABORTED' or (v_x ->> 'hold')::numeric <> 0 or (v_x ->> 'claims')::int <> 1 or (v_x ->> 'owed')::bigint <> 1800 or (v_x ->> 'forced_events')::int <> 1 then
-    raise exception '0316 self-assert FAIL: the pre-image did not reproduce the bug: %', v_x;
+    raise exception '0314 self-assert FAIL: the pre-image did not reproduce the bug: %', v_x;
   end if;
 
   -- FIXED: the same ship has arrived, with everything she carried, and the city pays nothing. Whether she settles at once, day by day, or after a storm's 36 hours.
   foreach v_def in array array['fixed', 'stepped', 'storm'] loop
     v_x := v_all -> v_def;
     if (v_x ->> 'bound')::boolean is not true or (v_x ->> 'dry_day')::int >= (v_x ->> 'cap')::int then
-      raise exception '0316 self-assert FAIL: scene % is not a stacked dry day: %', v_def, v_x;
+      raise exception '0314 self-assert FAIL: scene % is not a stacked dry day: %', v_def, v_x;
     end if;
     if (v_x ->> 'stores')::numeric <> 0 then
-      raise exception '0316 self-assert FAIL: scene % did not run dry: %', v_def, v_x;
+      raise exception '0314 self-assert FAIL: scene % did not run dry: %', v_def, v_x;
     end if;
     if v_x ->> 'voyage' <> 'ARRIVED' or v_x ->> 'fleet' <> 'DOCKED' or (v_x ->> 'at_dest')::boolean is not true then
-      raise exception '0316 self-assert FAIL: a ship dry on the ETA did not arrive (%): %', v_def, v_x;
+      raise exception '0314 self-assert FAIL: a ship dry on the ETA did not arrive (%): %', v_def, v_x;
     end if;
     if (v_x ->> 'hold')::numeric <> 2000 or (v_x ->> 'hull_lost')::numeric <> 0 then
-      raise exception '0316 self-assert FAIL: a ship that arrived lost her hold or her hull (%): %', v_def, v_x;
+      raise exception '0314 self-assert FAIL: a ship that arrived lost her hold or her hull (%): %', v_def, v_x;
     end if;
     if (v_x ->> 'claims')::int <> 0 or (v_x ->> 'owed')::bigint <> 0 or (v_x ->> 'forced_events')::int <> 0 or (v_x ->> 'forced_days')::int <> 0 then
-      raise exception '0316 self-assert FAIL: the insurance paid for a hold she still has (%): %', v_def, v_x;
+      raise exception '0314 self-assert FAIL: the insurance paid for a hold she still has (%): %', v_def, v_x;
     end if;
   end loop;
   v_def := null;
   if (v_all -> 'stepped') - 'sim' is distinct from (v_all -> 'fixed') - 'sim' then   -- sim: her speed is rolled per voyage; the outcome is what must match
-    raise exception '0316 self-assert FAIL: a late settle lands differently from a day-by-day settle: % against %', v_all -> 'stepped', v_all -> 'fixed';
+    raise exception '0314 self-assert FAIL: a late settle lands differently from a day-by-day settle: % against %', v_all -> 'stepped', v_all -> 'fixed';
   end if;
 
   -- STILL A FORCED HOME: a ship dry on a day that ends before she arrives is exactly what 0279 and the owner's row 223 said. The hold, the claim, the hull.
@@ -255,7 +255,7 @@ $f$;
     v_x := v_all -> v_def;
     if v_x ->> 'voyage' <> 'ABORTED' or (v_x ->> 'forced_events')::int <> 1 or (v_x ->> 'forced_days')::int <> 1 or (v_x ->> 'hold')::numeric <> 0
        or (v_x ->> 'claims')::int <> 1 or (v_x ->> 'owed')::bigint <> 1800 or (v_x ->> 'hull_lost')::numeric <= 0 then
-      raise exception '0316 self-assert FAIL: a real dry day at sea is no longer a forced home (%): %', v_def, v_x;
+      raise exception '0314 self-assert FAIL: a real dry day at sea is no longer a forced home (%): %', v_def, v_x;
     end if;
   end loop;
   v_def := null;
@@ -264,26 +264,26 @@ $f$;
   v_x := v_all -> 'final';
   if v_x ->> 'voyage' <> 'ARRIVED' or (v_x ->> 'hold')::numeric <> 2000 or (v_x ->> 'forced_events')::int <> 0 or (v_x ->> 'stores')::numeric <> 0
      or (v_x ->> 'dry_day')::int <> (v_x ->> 'cap')::int then
-    raise exception '0316 self-assert FAIL: a dry final day is no longer an arrival: %', v_x;
+    raise exception '0314 self-assert FAIL: a dry final day is no longer an arrival: %', v_x;
   end if;
 
   -- ── 5. NOTHING ELSE MOVED, nothing of the probe survives ──
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> v_settle) <> v_fn_before then
-    raise exception '0316 self-assert FAIL: another function moved';
+    raise exception '0314 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c) <> v_cfg_before then
-    raise exception '0316 self-assert FAIL: a world_config row moved';
+    raise exception '0314 self-assert FAIL: a world_config row moved';
   end if;
   if exists (select 1 from public.players p where p.company_name like 'Casa Enxuta %') then
-    raise exception '0316 self-assert FAIL: the probe left rows behind';
+    raise exception '0314 self-assert FAIL: the probe left rows behind';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0316 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0314 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0316 self-assert ok: INSURANCE PAYS ITS WAY. voyage.settle: a dry day is a forced home only when it ends before the ETA. The pre-image: dry on stacked day % of %, % owed on a hold she still had. The new body: she arrives, hold 2000, nothing owed, the same day by day and after 36 hours of storm. A real dry day at sea: forced home, 1800 owed. A dry final day: an arrival. One hunk reverses; no other function, no knob. % ms',
+  raise notice '0314 self-assert ok: INSURANCE PAYS ITS WAY. voyage.settle: a dry day is a forced home only when it ends before the ETA. The pre-image: dry on stacked day % of %, % owed on a hold she still had. The new body: she arrives, hold 2000, nothing owed, the same day by day and after 36 hours of storm. A real dry day at sea: forced home, 1800 owed. A dry final day: an arrival. One hunk reverses; no other function, no knob. % ms',
     (v_all -> 'bug_old' ->> 'dry_day'), (v_all -> 'bug_old' ->> 'cap'), (v_all -> 'bug_old' ->> 'owed'), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;

@@ -1,10 +1,10 @@
 // ═════════════════════════════════════════════════════════════════
-// proof-0316.mjs — INSURANCE PAYS ITS WAY (migration 0316): the red-first proof. LOCAL ONLY (PGlite); not in CI.
+// proof-0314.mjs — INSURANCE PAYS ITS WAY (migration 0314): the red-first proof. LOCAL ONLY (PGlite); not in CI.
 // ═════════════════════════════════════════════════════════════════
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/insurance/proof-0316.mjs
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/insurance/proof-0314.mjs
 //
-// Restores the cached world at the head before 0316 (never from zero), then applies 0316 to it several times inside a transaction that is rolled back:
+// Restores the cached world at the head before 0314 (never from zero), then applies 0314 to it several times inside a transaction that is rolled back:
 //   MUTATION CONTROLS - deliberate breakages of the file, each required to FAIL its self-assert for the intended reason;
 //   POSITIVE CONTROL  - the real file, which must pass and print its receipt.
 // The harness reads the migration from supabase/migrations; it does not edit it.
@@ -14,7 +14,7 @@ import path from 'node:path'
 import { migrationFiles, MIGRATIONS_DIR, PREFIX_CACHE_DIR, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const NAME = '20260818000316_insurance_pays_its_way.sql'
+const NAME = '20260818000314_insurance_pays_its_way.sql'
 const failures = []
 const say = (...a) => console.log(...a)
 

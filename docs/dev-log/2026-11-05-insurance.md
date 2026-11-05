@@ -1,6 +1,6 @@
-# 2026-11-05 - Insurance pays its way (migration 0316)
+# 2026-11-05 - Insurance pays its way (migration 0314)
 
-Branch `insurance-0316` · migration `supabase/migrations/20260818000316_insurance_pays_its_way.sql` · mutation harness `scripts/ops/harness/insurance/proof-0316.mjs`. Prod head when cut: 0312. Deploys after 0313-0315. **Not deployed** (PR only). Alters live play: after-check below. Slice W0b of `docs/WORLD_POWERS.md`.
+Branch `insurance-0316` (first numbered 0316, renumbered next after 0313; the branch keeps its name so the PR stays open) · migration `supabase/migrations/20260818000314_insurance_pays_its_way.sql` · mutation harness `scripts/ops/harness/insurance/proof-0314.mjs`. Prod head when cut: 0312. Deploys after 0313. **Not deployed** (PR only). Alters live play: after-check below. Slice W0b of `docs/WORLD_POWERS.md`.
 
 ## The order
 Cities paid out 29.5 M d. in 24 h and took in 7.4 M d., cause unmeasured. Measure first; a bug is fixed at the root; a pricing choice goes to the owner as a proposal.
@@ -105,10 +105,10 @@ One hunk of `voyage.settle`: `if v_end <= 0 and d < v_cap` becomes `if v_end <= 
 - **A knock-on, not measured:** that cargo now reaches market. A sale is paid from the city's purse, so some of what insurance stops draining may leave as purchases instead, against goods the city then holds. Read purses a day after deploy, not only this line.
 
 ## PROD CHECKS (pure SELECTs from a file, one statement per file, before deploy)
-Prod head must be 0315 by then. Run after rebasing on 0313-0315.
+Prod head must be 0313 by then. Run after rebasing on 0313.
 
 ```sql
-select (select max(version) from supabase_migrations.schema_migrations) as head,                                                   -- 20260818000315
+select (select max(version) from supabase_migrations.schema_migrations) as head,                                                   -- 20260818000313
        md5(replace(pg_get_functiondef('voyage.settle(uuid,timestamp with time zone)'::regprocedure), E'\r', '')) as settle_md5,     -- e3adabaa9b4007b672b9600bb1129b16 at head 0312; a change means re-check the hunk
        position('    if v_end <= 0 and d < v_cap' in pg_get_functiondef('voyage.settle(uuid,timestamp with time zone)'::regprocedure)) > 0 as hunk_line;   -- true
 ```
@@ -145,7 +145,8 @@ Also: `bash scripts/ops/health.sh`, arrival lag under 5 s, `byeharu-voyage:arriv
 Swap this file's `v_old` and `v_new`. That brings the bug back, so it is not advised unless arrivals fail. No data was changed, and past claims stay paid.
 
 ## Tests
-- `BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/insurance/proof-0316.mjs`: from the cached world at head 0312 (297 of 297 restored, nothing from zero), **the real file green, 10 of 10 mutations red for the intended reason, the real file green again** (1.0 to 1.6 s an apply): the guard left at `d < v_cap`; `d + 1 < v_cap`; never forced home; forced only with no delay; `<=` for `<`; the eta before the delay; a scene not run dry; a scene with no delay; hunk drift; hunk reversal.
+- `BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/insurance/proof-0314.mjs`: from the cached world at head 0312 (297 of 297 restored, nothing from zero), **the real file green, 10 of 10 mutations red for the intended reason, the real file green again** (1.0 to 1.6 s an apply): the guard left at `d < v_cap`; `d + 1 < v_cap`; never forced home; forced only with no delay; `<=` for `<`; the eta before the delay; a scene not run dry; a scene with no delay; hunk drift; hunk reversal.
+- **The same run with 0313 in the chain,** #496's file byte for byte (hash checked), copied in for the run only, 297 restored and 1 applied: the real file green, 10 of 10 red, the real file green. This is the order deploy will use. An apply took 1 to 37 s here: the PC was loaded by other work (the same cache restore took 2 s, then 90 s), so read 1 to 3 s as its own cost.
 - **The self-assert reproduces the bug on the pre-image body:** dry on stacked day 2 of 5, her own ETA: ABORTED, hold 0, 1,800 owed. The new body on the same scene: ARRIVED, DOCKED at Funchal, hold 2,000, no hull lost, 0 owed. The same settled day by day, and after a storm's 36 hours. A real dry day at sea, with and without a calm first: forced home, 1,800 owed. A dry final day with no delay: an arrival.
 - The first runs failed on my own probes, each fixed: a load inside one `or`, a comparison that included `sim` (speed is rolled per voyage), and a scene whose "at sea" day was really a stacked one. One mutation survived because it was the same rule in other arithmetic (`d < total_days - ceil(delay / 24)`); it was replaced by a truly broken one rather than the assert being bent.
 - `npm run db:check-versions`, eslint on the harness.
@@ -155,4 +156,4 @@ Swap this file's `v_old` and `v_new`. That brings the bug back, so it is not adv
 - Prod's record holds 7.6 hours of policies, not a week. Before that, only the daily totals.
 - The estimate assumes today's raid and delay rates. How much of the saved cargo returns to purses through sales is not measured.
 - A calm rolled on a stacked day after she is dry is reasoned above, not run: no probe forces that roll.
-- Not re-proved on 0313-0315: re-run the harness at the rebase. Whether the full CI suite is green: see the PR.
+- Proved against #496's 0313 as it stands now, not against main with 0313 merged: re-run the harness at the rebase. Whether the full CI suite is green: see the PR.
