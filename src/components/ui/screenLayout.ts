@@ -44,6 +44,9 @@ export const SIDE_REM = { lg: 22, xl: 24, wide: 26 } as const
 /** THE GUTTER: 12 · 16 · 20 · 24 px at phone · 768 · 1,024 · 1,280. */
 export const PAGE_GAP = 'gap-3 md:gap-4 lg:gap-5 xl:gap-6'
 
+/** THE ONE SCROLLING REGION of a titled surface: the Tray's body and the phone desk's. It fills what the title leaves and scrolls itself. */
+export const scrollRegionClass = 'bv-scroll min-h-0 flex-1 overflow-y-auto px-gutter pb-2'
+
 /** The page's two custom properties, set ONCE for the whole app (App.tsx) and read by BOTH the split and the docked tray, so the tray's
  *  x and width cannot drift from the side column's: `--page-pad` is the margin at each glass, `--page-side` the side. */
 export function pageVarsClass(): string {

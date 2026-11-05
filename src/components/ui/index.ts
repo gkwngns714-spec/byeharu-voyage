@@ -219,7 +219,7 @@ export { Sparkline, type SparkTone } from './Sparkline'
 export { StockGauge } from './StockGauge'
 export { FilterBar, type FilterChips, type FilterOption, type FilterPick, type FilterToggle } from './FilterBar'
 export { ALL, filterStorageKey, oneOf, readFilterChoice, useFilterChoice, type FilterChoice } from './filterState'
-export { PAGE_GAP, PAGE_REM, SIDE_REM, pageBodyClass, pageColumnClass, pageSplitClass, pageVarsClass, trayDockPageClass } from './screenLayout'
+export { PAGE_GAP, PAGE_REM, SIDE_REM, pageBodyClass, pageColumnClass, pageSplitClass, pageVarsClass, scrollRegionClass, trayDockPageClass } from './screenLayout'
 export { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
 // THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a
 // side panel; a screen reads it when what a tray MEANS differs by glass — the basket panel is
