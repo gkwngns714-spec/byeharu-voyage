@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, LanguageSwitch, Note, Row, Segmented, Sheet, SheetSection } from '../../components/ui'
+import { Button, Card, LanguageSwitch, Note, PageSplit, Row, Segmented, Sheet } from '../../components/ui'
 import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
 import { NationPicker } from '../../live/NationPicker'
@@ -62,87 +62,98 @@ export function ProfileScreen() {
   }
 
   return (
-    <Sheet title={title} data-testid="profile">
-      <SheetSection surface>
-        {player ? (
-          <Row
-            data-testid="house-line"
-            hairline={false}
-            label={
-              <span className="text-t-body text-ink">
-                {[
-                  player.company_name,
-                  player.nation ? properName('nation', player.nation, player.nation_name ?? player.nation) : player.nation_name,
-                  t('profile.since', { date: founded(player.founded_at, nowMs) }),
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </span>
-            }
-          />
-        ) : (
-          <Row
-            label={t('profile.noCompany')}
-            tone="muted"
-            hairline={false}
-          />
-        )}
-      </SheetSection>
+    // THE PAGE (2026-11-05, owner row 267): MAIN the company and its country as cards, SIDE (the tray's column) the language, the
+    // appearance and the account. One column on a phone, the company first. The page scrolls; nothing inside it does.
+    <Sheet title={title} layout="page" data-testid="profile">
+      <PageSplit
+        data-testid="profile-page"
+        main={
+          <>
+            <Card>
+              {player ? (
+                <Row
+                  data-testid="house-line"
+                  hairline={false}
+                  label={
+                    <span className="text-t-body text-ink">
+                      {[
+                        player.company_name,
+                        player.nation ? properName('nation', player.nation, player.nation_name ?? player.nation) : player.nation_name,
+                        t('profile.since', {
+                          date: founded(player.founded_at, nowMs),
+                        }),
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </span>
+                  }
+                />
+              ) : (
+                <Row label={t('profile.noCompany')} tone="muted" hairline={false} />
+              )}
+            </Card>
 
-      {player && player.nation && (
-        <CountrySection nation={player.nation} changeAt={player.nation_change_at} nowMs={nowMs} />
-      )}
-
-      {/* ONE WORD FOR LANGUAGE: the switch's own accessible name is `common.language`; this
+            {player && player.nation && <CountrySection nation={player.nation} changeAt={player.nation_change_at} nowMs={nowMs} />}
+          </>
+        }
+        side={
+          <>
+            {/* ONE WORD FOR LANGUAGE: the switch's own accessible name is `common.language`; this
           heading read `profile.language`, a second key for the same idea (the audit, 2026-10-31). */}
-      <SheetSection heading={t('common.language')} inline>
-        <LanguageSwitch className="w-fit" />
-      </SheetSection>
+            <Card title={t('common.language')} data-testid="profile-language">
+              <LanguageSwitch className="w-fit" />
+            </Card>
 
-      <SheetSection heading={t('profile.appearance')} inline>
-        <Segmented
-          segments={APPEARANCES.map((a) => ({ id: a.id, label: t(`profile.${a.label}` as TKey) }))}
-          value={appearance}
-          onChange={choose}
-          label={t('profile.appearance')}
-          className="w-fit"
-        />
-      </SheetSection>
+            <Card title={t('profile.appearance')} data-testid="profile-appearance">
+              <Segmented
+                segments={APPEARANCES.map((a) => ({
+                  id: a.id,
+                  label: t(`profile.${a.label}` as TKey),
+                }))}
+                value={appearance}
+                onChange={choose}
+                label={t('profile.appearance')}
+                className="w-fit"
+              />
+            </Card>
 
-      <SheetSection surface>
-        {authMode === 'local' ? (
-          <Row
-            tone="muted"
-            hairline={false}
-            label={t('profile.localOnly')}
-            value={
-              <Button variant="secondary" disabled data-testid="sign-out">
-                {t('profile.signOut')}
-              </Button>
-            }
-          />
-        ) : (
-          <Row
-            hairline={false}
-            label={<span className="text-ink-muted">{user?.email ?? t('profile.signedIn')}</span>}
-            value={
-              <Button
-                variant="secondary"
-                busy={busy}
-                busyLabel={t('profile.signingOut')}
-                data-testid="sign-out"
-                onClick={async () => {
-                  setBusy(true)
-                  await signOut()
-                  setBusy(false)
-                }}
-              >
-                {t('profile.signOut')}
-              </Button>
-            }
-          />
-        )}
-      </SheetSection>
+            <Card data-testid="profile-account">
+              {authMode === 'local' ? (
+                <Row
+                  tone="muted"
+                  hairline={false}
+                  label={t('profile.localOnly')}
+                  value={
+                    <Button variant="secondary" disabled data-testid="sign-out">
+                      {t('profile.signOut')}
+                    </Button>
+                  }
+                />
+              ) : (
+                <Row
+                  hairline={false}
+                  label={<span className="text-ink-muted">{user?.email ?? t('profile.signedIn')}</span>}
+                  value={
+                    <Button
+                      variant="secondary"
+                      busy={busy}
+                      busyLabel={t('profile.signingOut')}
+                      data-testid="sign-out"
+                      onClick={async () => {
+                        setBusy(true)
+                        await signOut()
+                        setBusy(false)
+                      }}
+                    >
+                      {t('profile.signOut')}
+                    </Button>
+                  }
+                />
+              )}
+            </Card>
+          </>
+        }
+      />
     </Sheet>
   )
 }
@@ -171,14 +182,19 @@ function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt:
     setBusy(false)
   }
   return (
-    <SheetSection heading={t('profile.country')} surface data-testid="country">
+    <Card title={t('profile.country')} data-testid="country">
       <Row
         hairline={open}
         label={<HullCountry nation={nation} />}
         value={
           waiting ? (
             <span className="text-t-caption text-ink-faint" data-testid="country-next">
-              {t('profile.nextChange', { date: formatDate(Date.parse(changeAt), { month: 'short', day: 'numeric' }) })}
+              {t('profile.nextChange', {
+                date: formatDate(Date.parse(changeAt), {
+                  month: 'short',
+                  day: 'numeric',
+                }),
+              })}
             </span>
           ) : (
             <Button variant="secondary" data-testid="country-change" onClick={() => setOpen((o) => !o)}>
@@ -207,12 +223,14 @@ function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt:
               data-testid="country-confirm"
               onClick={() => void change()}
             >
-              {t('profile.sailFor', { nation: nationByCode[pick]?.name ?? pick })}
+              {t('profile.sailFor', {
+                nation: nationByCode[pick]?.name ?? pick,
+              })}
             </Button>
           </div>
         </div>
       )}
-    </SheetSection>
+    </Card>
   )
 }
 
@@ -222,5 +240,9 @@ function founded(iso: string, nowMs: number): string {
   const d = new Date(iso)
   if (!Number.isFinite(d.getTime())) return iso.slice(0, 10)
   const sameYear = d.getFullYear() === new Date(nowMs).getFullYear()
-  return formatDate(d.getTime(), { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })
+  return formatDate(d.getTime(), {
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  })
 }

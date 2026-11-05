@@ -1,4 +1,4 @@
-import { Bar, Clip, ListPanel, Row, SectionColumns, Sheet, SheetSection, StatCell } from '../../components/ui'
+import { Bar, Card, Clip, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import type { FleetView, LevelTrack, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -62,32 +62,36 @@ function YouBody({ title }: { title: string }) {
   const face = useYourCaptains()
 
   return (
-    <Sheet title={title} fill data-testid="you">
-      {player === null ? (
-        <SheetSection surface>
-          <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />
-        </SheetSection>
-      ) : (
-        <Levels player={player} />
-      )}
-      <ListPanel data-testid="you-list">
-        <SectionColumns count={2}>
-          <Ships fleets={fleets} />
-          <SheetSection
-            heading={t('books.captains')}
-            trailing={
-              face.captains.length === 0 ? undefined : (
-                <span className="text-t-caption text-ink-faint" data-testid="your-captains-count">
-                  {formatInt(face.captains.length)}
-                </span>
-              )
-            }
-            data-testid="your-captains"
-          >
-            <CaptainRows face={face} />
-          </SheetSection>
-        </SectionColumns>
-      </ListPanel>
+    // THE PAGE (2026-11-05, owner row 267): MAIN the ships and the captains as two card lists, SIDE (the tray's column) the levels. The page
+    // scrolls; nothing inside it does. On a phone the side stands AFTER the lists, so the first ship is on the first glass.
+    <Sheet title={title} layout="page" data-testid="you">
+      <PageSplit
+        data-testid="you-page"
+        stickySide
+        main={
+          <>
+            <Ships fleets={fleets} />
+            <ListPanel
+              look="card"
+              columns="fit"
+              title={t('books.captains')}
+              count={face.captains.length === 0 ? undefined : <span data-testid="your-captains-count">{formatInt(face.captains.length)}</span>}
+              data-testid="your-captains"
+            >
+              <CaptainRows face={face} />
+            </ListPanel>
+          </>
+        }
+        side={
+          player === null ? (
+            <Card data-testid="levels">
+              <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />
+            </Card>
+          ) : (
+            <Levels player={player} />
+          )
+        }
+      />
       <CaptainTray face={face} />
     </Sheet>
   )
@@ -102,21 +106,18 @@ function Levels({ player }: { player: PlayerHouse }) {
   const t = useT()
   const { trading, exploration, combat } = player.levels
   return (
-    <section className="mb-2 shrink-0" data-testid="levels">
-      <div className="mb-1 flex items-baseline justify-between gap-3">
-        <h2 className="text-t-label font-semibold text-ink">{t('you.levels')}</h2>
-        {!combat.playable && (
-          <span className="text-t-caption text-ink-faint" data-testid="combat-waits">
-            {t('you.combat')} · {t('you.noFighting')}
-          </span>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+    <Card title={t('you.levels')} data-testid="levels">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
         <Track name={t('you.trading')} track={trading} />
         <Track name={t('you.exploration')} track={exploration} />
         {combat.playable && <Track name={t('you.combat')} track={combat} />}
       </div>
-    </section>
+      {!combat.playable && (
+        <p className="mt-4 text-t-caption text-ink-faint" data-testid="combat-waits">
+          {t('you.combat')} · {t('you.noFighting')}
+        </p>
+      )}
+    </Card>
   )
 }
 
@@ -132,7 +133,7 @@ function Track({ name, track }: { name: string; track: LevelTrack }) {
   const t = useT()
   return (
     <div className="min-w-0" data-testid="level-track">
-      <StatCell inline label={name} value={track.level} format={formatInt} size="body" />
+      <StatCell look="stacked" label={name} value={track.level} format={formatInt} />
       <Bar value={track.level} of={LEVEL_CAP} label={t('you.levelOf', { name })} className="mt-1" />
     </div>
   )
@@ -144,12 +145,18 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
   const t = useT()
   const ships = fleets.flatMap((fleet) => fleet.ships.map((ship) => ({ ship, fleet })))
   return (
-    <SheetSection
-      heading={t('you.ships')}
-      trailing={
+    <ListPanel
+      look="card"
+      columns="fit"
+      title={t('you.ships')}
+      count={
         ships.length === 0 ? undefined : (
-          <span className="text-t-caption text-ink-faint" data-testid="you-ships-count">
-            {t('you.shipsCount', { ships: formatInt(ships.length), fleets: formatInt(fleets.length), count: fleets.length })}
+          <span data-testid="you-ships-count">
+            {t('you.shipsCount', {
+              ships: formatInt(ships.length),
+              fleets: formatInt(fleets.length),
+              count: fleets.length,
+            })}
           </span>
         )
       }
@@ -166,12 +173,10 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
-            <span className="block text-t-caption text-ink-faint">
-              {[ship.class, ship.is_flagship ? t('you.flagship') : null].filter(Boolean).join(' · ')}
-            </span>
+            <span className="block text-t-caption text-ink-faint">{[ship.class, ship.is_flagship ? t('you.flagship') : null].filter(Boolean).join(' · ')}</span>
           </Row>
         ))
       )}
-    </SheetSection>
+    </ListPanel>
   )
 }

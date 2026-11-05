@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
-import { GLASSES, phoneLaws, readGlass, type Flat, type Glass } from './unfold.fixture'
+import { GLASSES, phoneLaws, readGlass, type Glass } from './unfold.fixture'
 import { serveTwoFleets } from './twoFleets.fixture'
 import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets.fixture'
 
@@ -29,6 +29,8 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 // scrolls inside itself and fills the glass, "N rows whole in the panel", "the page never scrolls" — which row 267 reverses; the page's laws are
 // tests/fleets.design.spec.ts. What stays here is what this file was right about and still holds: YOU's panel, a fleet's page opening without
 // moving what is behind it, the 24-character name whole at 320, a fleet at sea.
+// 2026-11-05 (row 267): YOU left this file's panel laws the same way — U1/U2 and the GROW walk of YOU (levels over ONE scrolling panel) are gone;
+// the page's laws are tests/you.design.spec.ts. What stays of YOU: a captain's cut name read by a press, her tray outside the list card.
 //
 // The two worlds are throwaway images built from this build's own (tests/twoFleets.fixture.ts, tests/manyFleets.fixture.ts). A
 // spec may not skip for want of rows — CI fails any skipped test — so the rows are made, and the count of what stands is asserted:
@@ -37,100 +39,11 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 type World = 'two' | 'veteran'
 const WORLDS: Record<World, { serve: (page: Page) => Promise<void>; hulls: number; captains: number }> = {
   two: { serve: serveTwoFleets, hulls: 2, captains: 0 },
-  veteran: { serve: serveVeteranWorld, hulls: VETERAN_HULLS, captains: VETERAN_CAPTAINS },
-}
-
-/** Rows WHOLE in the panel's body, by glass width, for the veteran's world (the budget in the dev-log, held a little below what
- *  was measured so a different font on CI cannot fail it). */
-const NEED_SHIPS: Record<number, number> = { 390: 6, 320: 5, 1280: 8 }
-const NEED_CAPTAINS: Record<number, number> = { 390: 1, 320: 0, 1280: 6 }
-
-/** How many `id` rows stand whole inside the panel's body right now, and how many there are. */
-async function whole(page: Page, panel: string, id: string): Promise<{ whole: number; total: number }> {
-  return page.getByTestId(panel).evaluate((el, row) => {
-    const body = el.querySelector('[data-list-body]')
-    if (!body) return { whole: 0, total: 0 }
-    const b = body.getBoundingClientRect()
-    const rows = [...body.querySelectorAll(`[data-testid="${row}"]`)]
-    return {
-      total: rows.length,
-      whole: rows.filter((r) => {
-        const x = r.getBoundingClientRect()
-        return x.top >= b.top - 1 && x.bottom <= b.bottom + 1
-      }).length,
-    }
-  }, id)
-}
-
-/** Every row of the data and every control in the panel that is under the 44-px reach floor. */
-async function underFloor(page: Page, panel: string, rows: string[]): Promise<string[]> {
-  return page.getByTestId(panel).evaluate((el, ids) => {
-    const body = el.querySelector('[data-list-body]')
-    if (!body) return ['no body']
-    const small = (e: Element) => {
-      const r = e.getBoundingClientRect()
-      return r.width > 0 && r.height > 0 && r.height < 43.5
-    }
-    return [
-      ...ids.flatMap((id) => [...body.querySelectorAll(`[data-testid="${id}"]`)].filter(small).map((e) => `${id} ${Math.round(e.getBoundingClientRect().height)}px`)),
-      ...[...body.querySelectorAll('button, a')].filter(small).map((e) => `${e.tagName.toLowerCase()} "${(e.textContent ?? '').trim().slice(0, 24)}" ${Math.round(e.getBoundingClientRect().height)}px`),
-    ]
-  }, rows)
-}
-
-/** The panel, not the page, carries what does not fit: when the body is longer than itself, scroll it to its end and read the page. */
-async function panelScrolls(page: Page, panel: string, rowId: string, where: string, failures: string[]): Promise<{ overflow: boolean }> {
-  const body = page.getByTestId(panel).locator('[data-list-body]')
-  const sizes = await body.evaluate((el) => ({ sh: el.scrollHeight, ch: el.clientHeight }))
-  const overflow = sizes.sh > sizes.ch + 1
-  if (!overflow) return { overflow }
-  await body.evaluate((el) => {
-    el.scrollTop = el.scrollHeight
-  })
-  await page.waitForTimeout(150)
-  const after = await page.evaluate((row) => {
-    const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
-    const b = document.querySelector('[data-list-body]')!.getBoundingClientRect()
-    const rows = [...document.querySelectorAll(`[data-testid="${row}"]`)]
-    const last = rows[rows.length - 1]?.getBoundingClientRect()
-    return {
-      pageY: window.scrollY,
-      docTop: document.documentElement.scrollTop,
-      sheetTop: sheet?.scrollTop ?? -1,
-      lastReachable: last ? last.bottom <= b.bottom + 1 && last.top >= b.top - 1 : false,
-    }
-  }, rowId)
-  if (after.pageY !== 0 || after.docTop !== 0 || after.sheetTop !== 0) failures.push(`${where}: scrolling the panel moved the page (${JSON.stringify(after)})`)
-  if (!after.lastReachable) failures.push(`${where}: the last ${rowId} row is not reachable at the end of the panel`)
-  await body.evaluate((el) => {
-    el.scrollTop = 0
-  })
-  return { overflow }
-}
-
-/** THE GLASS IS THE PANEL'S: the panel stands on the glass from under the title to the Sheet's own bottom padding (8 px) — no glass
- *  is left empty under it (the sweep measured 508 px of it under two fleets at 390×844). Returns how far the panel's bottom stands above the glass's. */
-async function glassUnder(page: Page, panel: string): Promise<number> {
-  return page.evaluate((id) => {
-    const main = document.querySelector('[data-sheet]')?.closest('main')?.getBoundingClientRect()
-    const box = document.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()
-    return main && box ? Math.round(main.bottom - box.bottom) : -1
-  }, panel)
-}
-
-/** The failures every screen shares: the page is flat, the panel stands on the glass, nothing crosses, nothing is one letter wide. */
-function flat(m: Flat, where: string, failures: string[]): void {
-  if (m.doc.sh > m.doc.ch + 1) failures.push(`${where}: the document scrolls ${m.doc.sh}/${m.doc.ch}`)
-  if (m.sheet === null) failures.push(`${where}: no Sheet`)
-  else {
-    if (m.sheet.sh > m.sheet.ch + 1) failures.push(`${where}: the Sheet scrolls ${m.sheet.sh}/${m.sheet.ch}`)
-    if (m.sheet.top !== 0) failures.push(`${where}: the Sheet is scrolled to ${m.sheet.top}`)
-  }
-  if (!m.rows.found) failures.push(`${where}: no list panel`)
-  else if (!m.rows.inView) failures.push(`${where}: the panel is not inside the glass`)
-  // THE PHONE LAWS, spelled once in tests/unfold.fixture.ts (read for a named subtree): no two boxes overlap, no text stands one letter wide,
-  // nothing is cut without its full text and no row label is cut at all, nothing scrolls sideways
-  failures.push(...phoneLaws(where, m))
+  veteran: {
+    serve: serveVeteranWorld,
+    hulls: VETERAN_HULLS,
+    captains: VETERAN_CAPTAINS,
+  },
 }
 
 async function open(page: Page, glass: Glass, world: World, route: string, sheet: string): Promise<void> {
@@ -139,82 +52,8 @@ async function open(page: Page, glass: Glass, world: World, route: string, sheet
   await page.goto(route)
   await ready(page)
   await expect(page.getByTestId(sheet)).toBeVisible()
-  await page
-    .waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 120_000 })
-    .catch(() => {})
+  await page.waitForFunction(() => document.querySelectorAll('.animate-pulse').length === 0, undefined, { timeout: 120_000 }).catch(() => {})
 }
-
-/** One YOU state, every law. */
-async function checkYou(page: Page, glass: Glass, world: World, ko = false): Promise<void> {
-  const { hulls, captains } = WORLDS[world]
-  const where = `YOU ${ko ? 'ko ' : ''}${world === 'two' ? '2 hulls' : `${hulls} hulls`} at ${glass.width}×${glass.height}`
-  await open(page, glass, world, 'you', 'you')
-  const failures: string[] = []
-
-  // NON-VACUITY: the hulls and captains this world holds, and every id the old screen carried
-  await expect(page.getByTestId('you-ship'), `${where}: the world does not hold ${hulls} hulls`).toHaveCount(hulls)
-  if (captains > 0) {
-    await expect(page.getByTestId('your-captain'), `${where}: the world does not hold ${captains} captains`).toHaveCount(captains)
-    await expect(page.getByTestId('your-captains-none')).toHaveCount(0)
-  } else {
-    await expect(page.getByTestId('your-captains-none')).toContainText(ko ? '고용하세요' : 'Hire one at an inn')
-    await expect(page.getByTestId('your-captain')).toHaveCount(0)
-  }
-  for (const id of ['levels', 'you-list', 'you-ships', 'you-ships-count', 'your-captains']) await expect(page.getByTestId(id), `${where}: ${id} is gone`).toBeVisible()
-  // THE THREE TRACKS ARE ALL ON THE SCREEN: two bars and the combat line while the server says there is no fighting (0069), three bars the day it does
-  const tracks = await page.getByTestId('level-track').count()
-  const waits = await page.getByTestId('combat-waits').count()
-  expect(tracks + waits, `${where}: ${tracks} level bars and ${waits} combat lines — the three tracks are not all there`).toBe(3)
-  await expect(page.getByTestId('you-ships-count')).toContainText(ko ? `선단 ${hulls}개` : 'fleets')
-
-  const m = await readGlass(page, 'you-list', 'you-ship', '[data-sheet]')
-  const caps = await whole(page, 'you-list', 'your-captain')
-  console.log(`GROW ${where}: doc ${m.doc.sh}/${m.doc.ch}, sheet ${m.sheet?.sh}/${m.sheet?.ch}, ships ${m.rows.whole}/${m.rows.total}, captains ${caps.whole}/${caps.total}`)
-  flat(m, where, failures)
-  if (world === 'veteran') {
-    const ships = Math.min(m.rows.total, NEED_SHIPS[glass.width])
-    if (m.rows.whole < ships) failures.push(`${where}: ${m.rows.whole} whole ships of ${m.rows.total}; the law is ${ships}`)
-    const cap = Math.min(caps.total, NEED_CAPTAINS[glass.width])
-    if (caps.whole < cap) failures.push(`${where}: ${caps.whole} whole captains of ${caps.total}; the law is ${cap}`)
-  } else if (m.rows.whole !== m.rows.total) failures.push(`${where}: ${m.rows.whole} of ${m.rows.total} ships whole`)
-  for (const s of await underFloor(page, 'you-list', ['you-ship', 'your-captain'])) failures.push(`${where}: under the 44-px floor: ${s}`)
-  const under = await glassUnder(page, 'you-list')
-  if (under < 0 || under > 12) failures.push(`${where}: ${under} px of glass stand under the panel — the panel does not fill the glass`)
-  const scroll = await panelScrolls(page, 'you-list', world === 'veteran' ? 'your-captain' : 'you-ship', where, failures)
-  if (world === 'veteran' && glass.width === 320 && !scroll.overflow) failures.push(`${where}: eight hulls and six captains fit a 320×640 panel — the proof of an inner scroll is vacuous`)
-  // THE FIGURES STAND ON THE GLASS, ABOVE THE PANEL: the levels are not inside the scroller
-  const above = await page.evaluate(() => {
-    const levels = document.querySelector('[data-testid="levels"]')?.getBoundingClientRect()
-    const panel = document.querySelector('[data-testid="you-list"]')?.getBoundingClientRect()
-    return levels && panel ? { levelsBottom: levels.bottom, panelTop: panel.top, inside: !!document.querySelector('[data-list-body] [data-testid="levels"]') } : null
-  })
-  if (above === null) failures.push(`${where}: the levels or the panel is missing`)
-  else if (above.inside || above.levelsBottom > above.panelTop + 1) failures.push(`${where}: the levels are not above the panel (${JSON.stringify(above)})`)
-  expect(failures, `YOU grew past the glass: ${where}`).toEqual([])
-}
-
-for (const world of Object.keys(WORLDS) as World[]) {
-  for (const glass of GLASSES) {
-    const tag = `${world === 'two' ? '2 hulls' : `${VETERAN_HULLS} hulls`} at ${glass.width}×${glass.height}`
-
-    test(`YOU with ${tag}: the page is flat, levels over one panel of ships and captains, nothing removed`, async ({ page, request, baseURL }) => {
-      test.setTimeout(600_000)
-      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-      await checkYou(page, glass, world)
-    })
-  }
-}
-
-// THE OWNER PLAYS IN KOREAN: the words are shorter and break by word, so the veteran's two screens are walked in his language on
-// the narrowest glass the repo measures — the place a cut name and a wrapped line show first.
-test.describe('in Korean', () => {
-  test.use({ locale: 'ko-KR' })
-  test(`YOU with ${VETERAN_HULLS} hulls at 320×640: the page is flat, every law holds`, async ({ page, request, baseURL }) => {
-    test.setTimeout(600_000)
-    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-    await checkYou(page, GLASSES[1], 'veteran', true)
-  })
-})
 
 test('a press on a fleet opens her page and nothing behind it moves; Back leaves the panel as it was', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
@@ -255,7 +94,11 @@ test('FLEETS: the longest fleet name the chain allows stands whole at 320×640, 
   const stack = await row.evaluate((el) => {
     const label = el.querySelector('[data-row-cell="label"]')!
     const [nameBox, whereBox] = [...label.firstElementChild!.children].map((c) => c.getBoundingClientRect())
-    return { nameBottom: nameBox.bottom, whereTop: whereBox.top, whereText: (label.firstElementChild!.children[1].textContent ?? '').trim() }
+    return {
+      nameBottom: nameBox.bottom,
+      whereTop: whereBox.top,
+      whereText: (label.firstElementChild!.children[1].textContent ?? '').trim(),
+    }
   })
   expect(stack.whereText, 'the where line is gone').not.toBe('')
   expect(stack.whereTop, 'the where line is not under the long name').toBeGreaterThanOrEqual(stack.nameBottom - 1)
@@ -295,7 +138,11 @@ async function sendToSea(page: Page): Promise<void> {
   await page.waitForTimeout(3500)
 }
 
-test('FLEETS: a fleet AT SEA keeps her name whole at 320×640, with where she is bound under it, and the page stays flat', async ({ page, request, baseURL }) => {
+test('FLEETS: a fleet AT SEA keeps her name whole at 320×640, with where she is bound under it, and the page stays flat', async ({
+  page,
+  request,
+  baseURL,
+}) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(GLASSES[1])
@@ -311,10 +158,19 @@ test('FLEETS: a fleet AT SEA keeps her name whole at 320×640, with where she is
   // the row whose where line says she is BOUND somewhere ("to Cape St Vincent · 22s"), found by that line's own box: the row's TEXT runs the
   // name and the where line together ("Boa Esperançato Cape…"), so a word-boundary match on the row would miss her
   const atSea = () =>
-    page.getByTestId('fleet-row').evaluateAll((rows) =>
-      rows.flatMap((r, i) => ((r.querySelector('[data-row-cell="label"]')?.firstElementChild?.children[1]?.textContent ?? '').trim().startsWith('to ') ? [i] : [])),
-    )
-  await expect.poll(atSea, { message: 'no fleet is at sea — the voyage was not sent, or she has already arrived', timeout: 15_000 }).toHaveLength(1)
+    page
+      .getByTestId('fleet-row')
+      .evaluateAll((rows) =>
+        rows.flatMap((r, i) =>
+          (r.querySelector('[data-row-cell="label"]')?.firstElementChild?.children[1]?.textContent ?? '').trim().startsWith('to ') ? [i] : [],
+        ),
+      )
+  await expect
+    .poll(atSea, {
+      message: 'no fleet is at sea — the voyage was not sent, or she has already arrived',
+      timeout: 15_000,
+    })
+    .toHaveLength(1)
   const sailing = page.getByTestId('fleet-row').nth((await atSea())[0])
   const name = sailing.locator('.truncate').first()
   expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1), 'her name is cut beside where she is bound').toBe(false)
@@ -353,19 +209,22 @@ test.describe('a cut name is read in place by a press', () => {
   })
 })
 
-test('a press on a captain opens her tray, outside the panel; closing it leaves the panel as it was', async ({ page, request, baseURL }) => {
+test('a press on a captain opens her tray, outside the list card; closing it leaves the card as it was', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await open(page, GLASSES[0], 'veteran', 'you', 'you')
   await expect(page.getByTestId('your-captain')).toHaveCount(VETERAN_CAPTAINS)
-  const panel = async () => JSON.stringify(await page.getByTestId('you-list').boundingBox())
+  const panel = async () => JSON.stringify(await page.getByTestId('your-captains').boundingBox())
   const before = await panel()
   // the first captain's row may stand below the fold of the panel; a press brings it into view the way a player's scroll does
   await page.getByTestId('your-captain').first().click()
   const tray = page.getByTestId('your-captain-tray')
   await expect(tray).toBeVisible()
   expect(await tray.evaluate((el) => el.closest('[data-list-panel]') !== null), 'the captain tray stands inside the panel and its scroller').toBe(false)
-  expect(await page.evaluate(() => document.documentElement.scrollHeight <= document.documentElement.clientHeight + 1), 'opening her tray scrolled the page').toBe(true)
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight <= document.documentElement.clientHeight + 1),
+    'opening her tray scrolled the page',
+  ).toBe(true)
   expect(await panel(), 'opening her tray moved the panel').toEqual(before)
   await tray.getByRole('button', { name: /close/i }).first().click()
   await expect(tray).toHaveCount(0)
