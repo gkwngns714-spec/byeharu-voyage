@@ -63,13 +63,25 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
     replace: '    if v_ms > 1200 then\n',
     why: '0108 (d5): 400 ms -> 1,200 ms a call on PGlite (426/451 ms measured on a slower PC); real Postgres keeps 400',
   },
+  {
+    file: '20260818000315_merchants_answer_requests.sql',
+    find: '  v_res  jsonb;\nbegin\n  v_res := cmd.enqueue(p_player, jsonb_set(cmd.parse(p_player, p_fleet, v_line)',
+    replace:
+      '  v_res  jsonb;\nbegin\n' +
+      '  delete from public.trade_daily where player_id = p_player and qty < 1000000;\n' +
+      '  v_res := cmd.enqueue(p_player, jsonb_set(cmd.parse(p_player, p_fleet, v_line)',
+    why: "0315 (e): the probe's sales run through the drawn good's daily cap (0.35 x stock_target; the good is drawn from the game day, a minute here) -> E_DAILY_CAP on some minutes; each probe sale now starts with a fresh allowance, inside the rolled-back probe; step (h)'s spent allowance (1e8) is kept",
+  },
 ]
 
 const BY_FILE = new Map(FROZEN_ASSERT_PATCHES.map((p) => [p.file, p]))
 
 /** Where the file's final `do $$` block starts, or -1. */
 function lastDoBlock(sql: string): number {
-  return Math.max(sql.lastIndexOf('\ndo $$\n'), sql.startsWith('do $$\n') ? 0 : -1)
+  // `do $$` or a tagged `do $m$` (0315 wraps its whole file in one)
+  let at = sql.startsWith('do $$\n') ? 0 : -1
+  for (const m of sql.matchAll(/\ndo \$[A-Za-z_]*\$\n/g)) at = Math.max(at, m.index)
+  return at
 }
 
 /**
