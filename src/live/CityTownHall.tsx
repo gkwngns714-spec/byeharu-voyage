@@ -85,7 +85,8 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
       <Heading>{t('town.works')}</Heading>
       {hall.works.map((w) => {
         const mine = held.get(w.kind)
-        const built = w.level >= w.level_max
+        // 0313: a finished work may keep shares on sale; it reads Built only once it offers none.
+        const built = w.level >= w.level_max && w.offered === 0
         return (
           <Row
             key={w.kind}

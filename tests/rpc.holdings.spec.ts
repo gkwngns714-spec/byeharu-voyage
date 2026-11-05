@@ -51,3 +51,21 @@ test('a company with no shares reads empty; planted shares read back as the regi
   expect(r.value.held).toBe(400)
   expect(r.value.owed).toBe(9)
 })
+
+test('0313: a finished work that still sells serves its share price; with no lot on sale it serves none', async () => {
+  await db.callAs(`update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled' returning 1 as result`)
+  await db.callAs(`insert into public.city_works (port_id, kind, level, subscribed)
+                   select id, 'docks', public.wc_int('works_level_max'), 0 from public.ports where code = 'LIS'
+                   on conflict (port_id, kind) do update set level = excluded.level, subscribed = 0 returning 1 as result`)
+  const open = await worldHoldings()
+  expect(open.ok).toBe(true)
+  if (!open.ok) return
+  const row = open.value.rows.find((x) => x.port === 'LIS' && x.kind === 'docks')
+  expect(row?.level).toBe(row?.level_max)
+  const price = await db.callAs<number>(`select public.works_share_price(public.wc_int('works_level_max')) as result`)
+  expect(row?.share_price).toBe(Number(price))
+  await db.callAs(`update public.world_config set value = to_jsonb(0) where key = 'works_open_shares' returning 1 as result`)
+  const closed = await worldHoldings()
+  expect(closed.ok).toBe(true)
+  if (closed.ok) expect(closed.value.rows.find((x) => x.port === 'LIS' && x.kind === 'docks')?.share_price).toBeNull()
+})
