@@ -14,6 +14,7 @@ These are the scratch tools behind the 2026-10-18/19 measurements, copied from `
   `player.sql` measure a starter's day (days quoted, ducats per real hour and laps per real day by band, through the game's
   own speed authority) before and after the migration in one rolled-back transaction.
 - `merchants-invest/` is 0313: `proof-0313.mjs` (mutations red, the real file and proof 21 green, cached world), `before.sql` and `after-check.sql`, both read-only on prod.
+- `city-requests/proof-0318.mjs` is 0318: a draw's call count red first, mutations red, the real file green (`PROOF_WORLD=browser` uses the world image's cache where the preamble cache is short; it stops rather than replay from far back).
 - `live_*.sql` / `hunks*.sql` are dumps of live function bodies and migration hunks at the time. Re-dump from prod before re-using any of them.
 
 Every prod query here runs inside `begin transaction read only` and calls only `provolatile` 's'/'i' functions.
