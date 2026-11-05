@@ -1641,6 +1641,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-18 with migration 0176 (docs/COMMAND_DESK.md D6): WHAT YOU HOLD in every
       // city — a READ, no arguments (the caller's company). Landed WITH the face that reads it (the desk's Invest).
       'worldHoldings',
+      // Pin moved deliberately 2026-11-05 with migration 0316 (owner row 289): THE RECORD BY DAY, WEEK AND MONTH — world.history(what, subject, period),
+      // a READ over the small per-day history tables; no player id. Landed WITH the card that reads it (src/live/HistoryChart.tsx).
+      'worldHistory',
       // Pin moved deliberately 2026-10-31 with migration 0286 (docs/COMMAND_REDESIGN.md §4; owner rows
       // 192, 244): THE REPORT — the caller's ledger by the design's eight sections and by point (port,
       // else voyage, else Earlier), over a day / week / all span. A READ, no player id. Landed WITH the

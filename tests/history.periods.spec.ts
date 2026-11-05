@@ -130,6 +130,7 @@ test.describe('the page', () => {
       await page.goto('command')
       await ready(page)
       await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Report', exact: true }).click()
+      await page.getByTestId('report-history').click() // the Report keeps its record behind one door, so the face stays one glass tall
       const mine = page.getByTestId('history-me')
       await expect(mine).toBeVisible({ timeout: 120_000 })
       await mine.getByRole('tablist').scrollIntoViewIfNeeded()

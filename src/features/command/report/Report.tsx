@@ -23,7 +23,7 @@ import { companyLines } from '../../../live/historyLines'
 // with its lines whole (SummaryRow → DetailPage, the one mechanism). Nothing unfolds in place.
 
 type Span = ReportView['span']
-type Open = { kind: 'section'; id: ReportSection['id'] } | { kind: 'place'; index: number } | null
+type Open = { kind: 'section'; id: ReportSection['id'] } | { kind: 'place'; index: number } | { kind: 'history' } | null
 
 const SPANS = [
   { id: 'day' as const, get label() { return tNow('desk.spanDay') } },
@@ -179,7 +179,19 @@ export function Report({ layout }: { layout: DeskLayout }) {
             data-testid="report-bars"
           />
         )}
-        <HistoryChart what="me" title={t('stats.yourHistory')} lines={companyLines(t)} className="mt-3" data-testid="history-me" />
+        {/* a door, not a card: the record by day, week and month is a page of its own, so the face stays one glass tall at 390 px (tests/onepage.spec.ts) */}
+        <SummaryRow
+          title={t('stats.yourHistory')}
+          word={t('common.open')}
+          onClick={() => setOpen({ kind: 'history' })}
+          className="mt-3"
+          data-testid="report-history"
+        />
+        {open?.kind === 'history' && (
+          <DetailPage title={t('stats.yourHistory')} onClose={() => setOpen(null)} data-testid="report-history-page">
+            <HistoryChart what="me" title={t('stats.yourHistory')} lines={companyLines(t)} data-testid="history-me" />
+          </DetailPage>
+        )}
         {openSection !== null && (
           <DetailPage
             title={t(SECTION_KEYS[openSection.id])}
