@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE WIDE GLASS — the column is a column, and the tray stands beside it (owner row 80)
+// THE WIDE GLASS — the page's numbers, and a column that stays a column (owner row 80)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner, 2026-09-13, on PORT › Trade in a 1,545-px window: *"look. too much blank space."*
@@ -8,47 +8,25 @@
 //
 // Two proofs. The PURE one parses the literal Tailwind classes `screenLayout.ts` must type out
 // (Tailwind cannot see a class built from a number) and asserts the arithmetic against the named
-// constants, so the tray's edge and the column's edge cannot drift apart. The BROWSER one opens the
+// constants, so the tray's edge and the page's edge cannot drift apart. The BROWSER one opens the
 // Trade face wide, presses a price, and requires: the rows are no wider than the column; the tray
 // is a side panel to the RIGHT of the rows with no overlap; and — row 15, still — nothing moved.
 
 import { test, expect } from '@playwright/test'
 import {
-  GAP_REM,
   PAGE_REM,
-  PAIR_REM,
-  SHEET_REM,
   SIDE_REM,
-  TRAY_REM,
   pageColumnClass,
   pageSplitClass,
   pageVarsClass,
-  sheetBodyClass,
   trayDockPageClass,
-  trayDockWideClass,
 } from '../src/components/ui/screenLayout'
 import { reachable, ready } from './appReady.fixture'
 import { openCityFace } from './desk.fixture'
 
+/** A readable row, in rem: the gulf between a name and its price stays shut. A law of the desk's panes, not a layout constant. */
+const ROW_MAX_REM = 48
 const WIDE = { width: 1440, height: 900 }
-
-test('the literal wide classes encode the named constants — one rule, two readers', () => {
-  const rem = (cls: string, prefix: string) => {
-    const m = new RegExp(`${prefix}\\[([0-9.]+)rem\\]`).exec(cls)
-    expect(m, `${prefix}[…rem] missing from "${cls}"`).not.toBeNull()
-    return Number(m![1])
-  }
-  const sheet = sheetBodyClass()
-  const tray = trayDockWideClass()
-  expect(PAIR_REM).toBe(SHEET_REM + GAP_REM + TRAY_REM)
-  expect(rem(sheet, 'lg:max-w-')).toBe(PAIR_REM)
-  expect(rem(sheet, 'lg:pr-')).toBe(TRAY_REM + GAP_REM)
-  expect(rem(tray, 'lg:w-')).toBe(TRAY_REM)
-  // right offset = max(0, 50% − PAIR/2): the number inside the calc is half the pair.
-  const half = /calc\(50%-([0-9.]+)rem\)/.exec(tray)
-  expect(half, `the tray's right offset is not 50% − PAIR/2 in "${tray}"`).not.toBeNull()
-  expect(Number(half![1])).toBe(PAIR_REM / 2)
-})
 
 // THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE"): the same proof for the other shape. The page's side column IS the
 // tray's column, so the split and the docked tray must read ONE width — `--page-side`, set once on the Sheet from SIDE_REM — and the
@@ -73,7 +51,6 @@ test('the literal page classes encode the named page constants — the split and
   expect(vars).toContain(`[--page-side:${SIDE_REM.lg}rem]`)
   expect(vars).toContain(`xl:[--page-side:${SIDE_REM.xl}rem]`)
   expect(vars).toContain(`min-[90rem]:[--page-side:${SIDE_REM.wide}rem]`)
-  expect(SIDE_REM.wide).toBe(TRAY_REM) // … and from 1,440 it is exactly the tray's own width
   // … and read twice: by the split, and by the tray (its width, and its right edge at half the content)
   expect(pageSplitClass()).toContain('lg:grid-cols-[minmax(0,1fr)_var(--page-side)]')
   const tray = trayDockPageClass()
@@ -109,9 +86,9 @@ test.describe('wide glass', () => {
 
     const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
     const rowBox = (await rows.first().boundingBox())!
-    // 1. THE COLUMN. A row is no wider than SHEET_REM: the gulf between name and price is gone.
+    // 1. THE COLUMN. A row is no wider than ROW_MAX_REM: the gulf between name and price is gone.
     expect(rowBox.width, `a trade row is ${rowBox.width}px wide — the column cap is not applied`).toBeLessThanOrEqual(
-      SHEET_REM * remPx + 1,
+      ROW_MAX_REM * remPx + 1,
     )
 
     // 2. PRESS A PRICE. Nothing at or above the pressed row moves (row 15), and the tray opens.
@@ -281,7 +258,7 @@ test.describe('wide glass', () => {
     await expect(rows.first(), 'no request rows on the wide glass').toBeVisible({ timeout: 30_000 })
     await page.waitForTimeout(600)
 
-    // 1. THE COLUMN: every row no wider than SHEET_REM, and inside the strip's own x range.
+    // 1. THE COLUMN: every row no wider than ROW_MAX_REM, and inside the strip's own x range.
     const boxes = await page.evaluate(() =>
       [...document.querySelectorAll('[data-testid="request-row"]')].map((r) => {
         const b = r.getBoundingClientRect()
@@ -289,7 +266,7 @@ test.describe('wide glass', () => {
       }),
     )
     for (const b of boxes) {
-      expect(b.width, `a request row is ${b.width}px wide — the column cap is not applied`).toBeLessThanOrEqual(SHEET_REM * remPx + 1)
+      expect(b.width, `a request row is ${b.width}px wide — the column cap is not applied`).toBeLessThanOrEqual(ROW_MAX_REM * remPx + 1)
       expect(Math.abs(b.left - Math.round(facesBox.x)), 'a request row does not share the column\'s left edge').toBeLessThanOrEqual(1)
     }
     // 2. THE STRIP DID NOT MOVE, and the basket still stands in the slot where it stood.
@@ -405,7 +382,7 @@ test.describe('wide glass', () => {
     await page.waitForTimeout(400)
     const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
     const rowBox = (await row.boundingBox())!
-    expect(rowBox.width).toBeLessThanOrEqual(SHEET_REM * remPx + 1)
+    expect(rowBox.width).toBeLessThanOrEqual(ROW_MAX_REM * remPx + 1)
 
     const queueBox = (await page.getByTestId('command-queue').boundingBox())!
     await row.click()

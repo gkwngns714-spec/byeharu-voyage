@@ -1,83 +1,26 @@
 // Design-system layout logic — pure (no React) so the width contract is testable and
-// react-refresh keeps Sheet.tsx and Tray.tsx component-only. (`screenBodyClass` stood here for the
-// deprecated `Screen` scaffold and went with it, 2026-10-14.)
-
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE WIDE GLASS — a column you read, and the tray beside it instead of over it
-// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// react-refresh keeps Sheet.tsx and Tray.tsx component-only.
 //
-// The app is built phone-first (390 px is the viewport every geometry test is pinned to) and until
-// 2026-09-13 it had NO rule for a wide window: every `Sheet` stretched to the glass, so on the
-// owner's 1,545-px window a Trade row was a name at the left edge, two price cells at the right
-// edge and a thousand pixels of nothing between. The owner: *"look. too much blank space."* The
-// same day, on the same screen: *"i showed you the pictures and this is not what i've asked for"*
-// — the reference (docs/QUAY_LEDGER.md §1) has the goods list on the LEFT and the basket with the
-// hold bar on the RIGHT, and the owner had already said so on 2026-08-22: *"When buy, i want all
-// the trade goods on left side, and my fleet info on the right side."* A `splitClass()` trio was
-// written for that and never called by any screen; it is deleted here, and the rule it was meant to
-// carry is these three numbers.
-//
-// ── THE RULE ───────────────────────────────────────────────────────────────────────────────────
-// From `lg` (1024 px), a Sheet's content is a column of at most SHEET_REM, and a docked Tray is a
-// SIDE PANEL of TRAY_REM standing to the column's right with GAP_REM between — the pair centred on
-// the glass. Below `lg` nothing changes: the column is the glass and the tray rises from the bottom
-// edge, exactly as every phone test proves. One breakpoint, one pair of widths, and BOTH the Sheet
-// and the Tray read them from here, so the tray's left edge and the column's right edge cannot
-// drift apart.
-//
-// ── WHY THE CLASSES ARE LITERAL STRINGS ────────────────────────────────────────────────────────
-// Tailwind scans source for class names and cannot see a name built at runtime from a number, so
-// the arbitrary values below are typed out. The numbers they encode are stated once, beside them,
-// and `tests/wide.layout.spec.ts` parses the strings and asserts the arithmetic — which is the
-// only way a literal class can be held to a constant.
-
-/** The Sheet column's greatest width, in rem. 48 rem = 768 px: a Trade row keeps its name, mark,
- *  tide bar and two cells legible without a gulf between them. */
-export const SHEET_REM = 48
-/** The side tray's width, in rem. 26 rem = 416 px: a quantity stepper, its chips and a two-column
- *  figure row fit without wrapping. */
-export const TRAY_REM = 26
-/** Air between the column and the tray. */
-export const GAP_REM = 1.5
-/** The pair, centred: SHEET + GAP + TRAY. */
-export const PAIR_REM = SHEET_REM + GAP_REM + TRAY_REM
+// ONE SHAPE FOR A WIDE GLASS: THE PAGE below. (The "wide glass" it replaced — a 48-rem column with a 27.5-rem strip kept clear at
+// its right for a tray, `sheetColumnClass`, the pair arithmetic and `trayDockWideClass` — was retired 2026-11-05, the last
+// screen having moved to the page or off the Sheet.)
 
 /** The one media query the wide glass turns on. `lg` in Tailwind's scale; `useWide()` mirrors it. */
 export const WIDE_QUERY = '(min-width: 1024px)'
-
-/** The Sheet's content wrapper: full width on a phone; from `lg`, a centred block of PAIR_REM whose
- *  right TRAY_REM + GAP_REM is left empty for the tray to stand in, so the readable column is
- *  SHEET_REM at most and sits where the tray expects it. */
-export function sheetColumnClass(): string {
-  // 75.5rem = PAIR_REM · 27.5rem = TRAY_REM + GAP_REM
-  return 'lg:mx-auto lg:w-full lg:max-w-[75.5rem] lg:pr-[27.5rem]'
-}
-
-/** The Sheet's body — the column, padded. The header takes `sheetColumnClass()` on its own so the
- *  title stands over the column it titles, not over the whole glass.
- *
- *  `fill` (2026-11-01, the unfold slice) makes the body a flex column that takes the glass the header
- *  leaves, with 8 px under it instead of 24: a screen whose job is ONE list (a `ListPanel`) gives that
- *  list the rest of the height instead of letting the tab scroll. Every other caller keeps the old string. */
-export function sheetBodyClass(fill = false): string {
-  return fill
-    ? `flex min-h-0 flex-1 flex-col px-gutter pb-2 ${sheetColumnClass()}`
-    : `px-gutter pb-6 ${sheetColumnClass()}`
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PAGE — main and side on the whole glass (2026-11-02, owner row 267)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // *"i want you to redesign the looks of the game. for example stats, it looks so wrong. The past was better.
-// right now everything is on left, too packed. this was a mistake."* The wide glass above reserves the right
+// right now everything is on left, too packed. this was a mistake."* The wide glass before it reserved the right
 // 27.5 rem of every sheet for a tray that is shut almost always, and the unfold slice packed what was left.
 // docs/dev-log/2026-11-02-design-past-vs-now.md measured why the past (before #413) felt better: it DOCKED real
 // content in that tray column (the Stats Overview's Money log at x=908..1324) and set its figures at 24 and 34 px.
 //
 // THE PAGE is the shape every screen takes in its turn (Stats first; docs/dev-log/2026-11-02-stats-design.md has the
-// measured numbers and what the next screen copies). It is opt-in — `Sheet layout="page"` — and nothing above changes:
-// a screen that does not ask for it is exactly what it was.
+// measured numbers and what the next screen copies). It is `Sheet layout="page"`; a screen that is not a Sheet
+// (the Command desk, the map) docks its trays on the same page-level variables.
 //
 //   container   centred, the content at most PAGE_REM (80 rem = 1,280 px); side margins 16 px (phone), 24 (768),
 //               32 (1,024), 40 (1,280), and past 1,360 px centred — 80 px each side at 1,440
@@ -101,7 +44,7 @@ export const SIDE_REM = { lg: 22, xl: 24, wide: 26 } as const
 /** THE GUTTER: 12 · 16 · 20 · 24 px at phone · 768 · 1,024 · 1,280. */
 export const PAGE_GAP = 'gap-3 md:gap-4 lg:gap-5 xl:gap-6'
 
-/** The page's two custom properties, set once on the Sheet and read by BOTH the split and the docked tray, so the tray's
+/** The page's two custom properties, set ONCE for the whole app (App.tsx) and read by BOTH the split and the docked tray, so the tray's
  *  x and width cannot drift from the side column's: `--page-pad` is the margin at each glass, `--page-side` the side. */
 export function pageVarsClass(): string {
   // pad: 1rem = 16 · md 1.5rem = 24 · lg 2rem = 32 · xl 2.5rem = 40. side: 22rem · xl 24rem · 90rem (1,440) 26rem = SIDE_REM
@@ -132,22 +75,13 @@ export function trayDockPageClass(): string {
   return 'lg:inset-auto lg:top-8 lg:bottom-14 lg:right-[max(var(--page-pad),calc(50%-40rem))] lg:w-[var(--page-side)] lg:h-auto lg:rounded-sheet'
 }
 
-/** The docked Tray from `lg`: a side panel between the status strip (top-8) and the nav
- *  (bottom-14), TRAY_REM wide, its right edge where the centred pair's right edge is —
- *  `max(0, 50% − PAIR_REM/2)` from the glass's right — so it stands exactly in the space
- *  `sheetBodyClass` leaves. Square top corners, rounded on the side that faces the column. */
-export function trayDockWideClass(): string {
-  // 37.75rem = PAIR_REM / 2 · 26rem = TRAY_REM
-  return 'lg:inset-auto lg:top-8 lg:bottom-14 lg:right-[max(0px,calc(50%-37.75rem))] lg:w-[26rem] lg:h-auto lg:rounded-t-none lg:rounded-l-sheet'
-}
-
 /** THE MAP'S SLIDE-IN PANEL (owner, 2026-10-15: *"when i click location or a ship, i don't want a
  *  page to pop up randomly. instead i want the page to slide on the right side, and show info"*).
  *  Pinned to the glass's right edge, between the top bar (top-8) and the nav (bottom-14), and it
  *  slides in (index.css `bv-slide-in-right`). `Tray mode="side"` is its one user.
  *
  *  ── NARROW: THE PANEL IS THE GLASS (2026-10-16) ──────────────────────────────────────────────
- *  From `lg` (WIDE_QUERY, the one breakpoint this file turns on) it is 39rem (TRAY_REM × 1.5)
+ *  From `lg` (WIDE_QUERY, the one breakpoint this file turns on) it is `--page-side` × 1.5
  *  wide and the chart's corner chrome steps left to stand beside it (`chromeAsideSideTrayClass`).
  *  Below `lg` there is no room for a panel AND a usable chart beside it: at 390 px the old 92vw
  *  panel left the corner chrome a 31 px strip, and the fleets list rendered invisible inside it.
@@ -155,7 +89,7 @@ export function trayDockWideClass(): string {
  *  the chrome underneath keeps its full width — closing the panel gives the corners back intact,
  *  never squeezed. The same break `traySideNextClass` already used for "no room for two". */
 export function traySideEdgeClass(): string {
-  // 39rem = TRAY_REM × 1.5 (owner, 2026-10-15: "give more room, about 50% more")
+  // 39rem = 1.5 × the tray width (owner, 2026-10-15: "give more room, about 50% more")
   // 2026-11-04 (Map redesign, row 267): from `lg` it is `--page-side` wide (the Map's root sets the page vars, `pageVarsClass`).
   // 2026-11-05 (owner: "slide from the edge of the page"): its right edge is the WINDOW's edge (`right-0`, fixed), not the page's
   // right margin — that margin (up to 80 px at 1,440) was the gap. Rounded on the left only. Below `lg` it is the glass, as it was.
@@ -164,11 +98,11 @@ export function traySideEdgeClass(): string {
 
 /** THE SECOND PANEL, SLID OUT FROM THE FIRST (owner, 2026-10-15: *"i want it to show by sliding
  *  further, a new slide from the sliding panel"*): a ship opened from a fleet's or a merchant's
- *  panel stands to that panel's LEFT, 26rem (TRAY_REM) wide, one layer below it so it comes out
+ *  panel stands to that panel's LEFT, `--page-side` wide, one layer below it so it comes out
  *  from under its edge. Below `lg` there is no room for two side by side, so it covers the first
  *  — the whole width, as the first does there (`traySideEdgeClass`). */
 export function traySideNextClass(): string {
-  // 39rem = traySideEdgeClass's width · 26rem = TRAY_REM
+  // 39rem = traySideEdgeClass's width · `--page-side`
   // 2026-11-04: from `lg` its right edge is the first panel's left edge — the window's edge + `--page-side` + a 1-rem gap.
   return 'fixed top-8 bottom-14 right-0 w-full lg:right-[calc(var(--page-side)+1rem)] lg:w-[var(--page-side)] lg:rounded-sheet bv-slide-in-right lg:bv-slide-out-left'
 }
@@ -181,20 +115,4 @@ export function chromeAsideSideTrayClass(): string {
   // while one stands — read off the page, since the second panel is opened inside the first.
   // 2026-11-04: the panel's left edge = `--page-side` + 1 rem from the window's edge (a second panel: + `--page-side` + 1 rem more).
   return 'lg:right-[calc(var(--page-side)+1rem)] lg:[body:has([data-testid=map-ship-panel])_&]:right-[calc(2*var(--page-side)+2rem)]'
-}
-
-/**
- * THE RIGHT EDGE A CHART'S CORNER CHROME KEEPS WHILE A SIDE TRAY STANDS BESIDE IT — the mirror of
- * `trayDockWideClass`, built from the same two numbers so the two can never drift apart.
- *
- * A full-bleed picture with a floating side panel puts its top-RIGHT corner under that panel: at
- * 1280 the merchant sheet covered the Regions toggle completely (2026-10-08, the owner's reading of
- * `docs/npc-traders/merchant-sheet-1280.png`). A corner that cannot be reached is the defect
- * `cornerSlots.ts` exists to prevent, so the chrome layer moves instead of the panel. Only from
- * `lg`, where a tray IS a side panel; below it the tray is at the bottom edge and a top corner is
- * clear anyway.
- */
-export function chromeAsideTrayClass(): string {
-  // 26rem = TRAY_REM · 37.75rem = PAIR_REM / 2 — the tray's own left edge, measured from the right.
-  return 'lg:right-[calc(26rem+max(0px,50%-37.75rem))]'
 }

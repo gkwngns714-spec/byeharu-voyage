@@ -17,7 +17,7 @@ import { Card, DeskTraySlot, type TraySlot } from '../../components/ui'
 //     ticket pane). A face with nothing of its own for the right pane leaves it to THE SLOT: any tray
 //     its buildings open (a trade, a hire, an investment) is portalled there (trayContext.ts), and a
 //     one-line hint stands in it until one does.
-//   · PHONE: the Sheet the desk already is; the parts stand one under the other in the face's
+//   · PHONE: the desk's own scroll box; the parts stand one under the other in the face's
 //     `order`, in the same screen (the plan builder too, in flow on Plans). Pressing a face raises no
 //     tray. A press INSIDE a face on a price, a room or a job still raises the bottom tray that moves
 //     nothing: the owner's own rule for that press (rows 6/15/25/28/45, tests/layout.spec.ts).
@@ -36,7 +36,7 @@ export interface DeskParts {
   /** The centre pane scrolls by itself (default); the chart fills its pane instead. */
   mainScroll?: boolean
   /** ON A PHONE the centre part is a BOARD that takes the glass left under the list part (the City's building face): it stands on a flex column
-   *  that gives it the rest of the Sheet and scrolls inside itself, instead of its own height under a fixed cap. The wide desk lays it out in its pane
+   *  that gives it the rest of the scroll box and scrolls inside itself, instead of its own height under a fixed cap. The wide desk lays it out in its pane
    *  as always. */
   mainFill?: boolean
 }
@@ -122,7 +122,7 @@ export function DeskSidePane({ children }: { children?: ReactNode }) {
   )
 }
 
-/** The phone: the parts one under the other, in the Sheet. */
+/** The phone: the parts one under the other, in the desk's scroll box. */
 export function DeskStack({ testid, list, main, side, order = ['list', 'main', 'side'], mainFill = false }: DeskParts) {
   const parts = { list, main, side }
   return (
