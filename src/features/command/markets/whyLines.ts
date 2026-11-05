@@ -106,15 +106,12 @@ export function whyLines(why: PriceWhy): WhyLine[] {
   return out.sort((a, b) => Math.abs(Math.log(b.mult)) - Math.abs(Math.log(a.mult)))
 }
 
-/** 0190: the volume line under the terms — what changed hands here today (bought + sold) and by how many
- *  companies, players and merchants alike. Null before the server serves it. */
+/** 0190, 0317: the volume line under the terms — what changed hands here in the last 24 hours (bought + sold),
+ *  players and merchants alike. Null before the server serves it. */
 export function volumeLine(why: PriceWhy): string | null {
   const v = why.volume
   if (!v) return null
   const units = Number(v.units)
   if (!(units > 0)) return tw('markets.nobodyTraded')
-  return tw('markets.traded', {
-    units: tw('markets.units', { n: formatInt(units), count: units }),
-    houses: tw('markets.companies', { n: v.houses }),
-  })
+  return tw('markets.traded', { units: tw('markets.units', { n: formatInt(units), count: units }) })
 }

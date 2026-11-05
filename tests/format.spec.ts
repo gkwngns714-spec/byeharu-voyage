@@ -38,6 +38,7 @@ import {
   GAME_DAYS_PER_MONTH,
   gameDate,
   gameDayOfMonth,
+  formatRealDay,
   gameToday,
   realMsToVoyageDays,
   seasonOfMonth,
@@ -196,14 +197,19 @@ test('the LIVE clock and the countdown face tick by the second (0029)', () => {
   expect(formatCountdown(-5_000)).toBe('0:00')
 })
 
-test('the world’s date is the CALENDAR clock’s, and its day turns when world.game_day does (row 176)', () => {
+test('0317: a real day number prints as its UTC date', () => {
+  expect(formatRealDay(20762)).toBe('11-05')
+  expect(formatRealDay(0)).toBe('01-01')
+})
+
+test('the world’s date is the CALENDAR clock’s (row 176)', () => {
   // The owner, 2026-10-20: *"I want to see the date, year, months and so on."* The date printed is
-  // the calendar clock's — one game month per real day — which makes a game day 2,880 real seconds,
-  // the server's own `world_config.game_day_seconds`. These hold the rate, the epoch and the ROLLOVER
-  // instant, so the printed day can never drift from the day `world.game_day()` counts.
+  // the calendar clock's — one game month per real day — which makes a day of it 2,880 real seconds.
+  // These hold the rate, the epoch and the ROLLOVER instant. Since 2026-10-30 the server's game day
+  // is one minute, the market's tick: this date no longer turns with it.
   const DAY_MS = 24 * 60 * 60 * 1000
   const GAME_DAY_MS = DAY_MS / GAME_DAYS_PER_MONTH
-  expect(GAME_DAY_MS).toBe(2_880_000) // = game_day_seconds, the knob migration 0005 seeds
+  expect(GAME_DAY_MS).toBe(2_880_000)
   expect(formatGameToday(CALENDAR_EPOCH_MS)).toBe('1 January 1500')
   expect(gameToday(CALENDAR_EPOCH_MS).year).toBe(CALENDAR_YEAR_0)
 

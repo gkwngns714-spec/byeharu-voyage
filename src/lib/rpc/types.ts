@@ -186,10 +186,9 @@ export interface SnapshotConfig {
   /** THE VOYAGE CLOCK (DESIGN D.1). 480, so a voyage-day is 86_400 / 480 real seconds. It governs
    *  sailing, provisions, wages and hazard checkpoints — everything `formatVoyageDays` prints. */
   time_compression: number
-  /** THE CALENDAR CLOCK (DESIGN D.1), served from 0028. How many REAL seconds one game-day is. It
-   *  governs the season, the daily trade cap, stock regeneration and the buff calendar — so every
-   *  `*_game_days` figure on the wire (`BuffKind.duration_game_days`, `season_game_days`) is
-   *  counted in THIS unit and becomes real time by multiplying by this number.
+  /** THE CALENDAR CLOCK (DESIGN D.1), served from 0028. How many REAL seconds one game-day is, the
+   *  market's tick: 60 since 2026-10-30. It governs the daily trade cap and stock regeneration. A
+   *  figure a person reads as a day is a REAL day and never comes from this (0312, 0317).
    *
    *  IT IS A DIFFERENT RATE FROM `time_compression`, AND THAT IS THE POINT. Both clocks call their
    *  unit a "day" and they are not the same length: a voyage-day is minutes, a game-day is the
@@ -785,7 +784,7 @@ export interface HaggleOnQuay {
   /** Port and good CODES. */
   port: string
   good: string
-  game_day: number
+  day: number
   /** HOW MUCH NEGOTIATION CAN BE DONE — the literal answer, and the server's count, never ours. */
   attempts_used: number
   attempts_left: number
@@ -1977,13 +1976,12 @@ export interface BuffKind {
   subject_kind: string
   effect: BuffEffect
   magnitude_pct: number
-  /** How long one runs, counted on the CALENDAR clock — multiply by `SnapshotConfig
-   *  .game_day_seconds` for real time, never by `time_compression`. */
-  duration_game_days: number
+  /** How long one runs, in real seconds (0317). */
+  duration_seconds: number
   /** The calendar half. NULL in BOTH of these means "this kind is not on a calendar" — a buff some
    *  other rule awards (0026:173-176 makes that a CHECK). Nothing authored today is in that state,
    *  which is exactly why the null branch has to be handled rather than assumed away. */
-  season_game_days: number | null
+  season_seconds: number | null
   chance_per_season: number | null
   blurb: string
   /** False when no rule reads this effect yet. Nothing authored today is false. */
@@ -2695,7 +2693,8 @@ export interface TownHallView {
     /** The tax on the PROFIT of a sale here (lit), as a fraction. */
     tax_rate: number
   }
-  day: { game_day: number; in: Record<string, number>; out: Record<string, number> }
+  /** 0317: the last 24 hours by kind, as of the last count. */
+  day: { in: Record<string, number>; out: Record<string, number> }
   works: CityWork[]
   /** 0275 (docs/WEEKLY_ROLLOVER.md): THIS week's givers (the board resets weekly; the share register does not). */
   investors: CityInvestor[]
@@ -2965,8 +2964,8 @@ export interface PriceWhy {
   } | null
   terms: PriceTerm[]
   fee: { spread: number; tax: number; bid_factor: number; profit_tax: number }
-  /** 0190: what changed hands here in the current game day (bought + sold) and by how many companies. */
-  volume?: { game_day: number; units: number; houses: number }
+  /** 0190, 0317: what changed hands here in the last 24 hours (bought + sold), as of the last count. */
+  volume?: { units: number }
   clock: { now: string; next_change_at: string }
 }
 
@@ -3228,7 +3227,7 @@ export interface Holdings {
   owed: number
   /** Dividends collected, this game day and the last full one. */
   paid: { today: number; yesterday: number }
-  game_day: number
+  day: number
 }
 
 /** One line of a report (0286): a ledger kind, its one word (the server's fallback for an unlisted
@@ -3263,9 +3262,9 @@ export type ReportPlace =
     }
   | { kind: 'earlier'; ducats: number; lines: ReportLine[] }
 
-/** One bar of the report's day axis (0286): a game day and its net; Day/Week arrive zero-filled. */
+/** One bar of the report's day axis (0286, 0317): a real UTC day (`public.real_day`) and its net; Today/Week arrive zero-filled. */
 export interface ReportDay {
-  game_day: number
+  day: number
   net: number
 }
 
@@ -3322,13 +3321,13 @@ export interface History<P> {
   points: P[]
 }
 
-/** The report's three spans, in game days (0286). */
+/** The report's three spans, in real UTC days (0317). */
 export type ReportSpan = 'day' | 'week' | 'all'
 
 /** `world.report(span)` (0286) — the company's whole record by section and point, per read. */
 export interface Report {
   span: ReportSpan
-  game_day: number
+  day: number
   total: number
   sections: ReportSection[]
   places: ReportPlace[]

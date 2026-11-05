@@ -64,18 +64,18 @@ test('the report sums the ledger by section; the total moves by exactly the purs
   expect(after.value.places[0].kind).toBe('earlier')
   expect(after.value.places[0].ducats).toBe(270)
 
-  // the day axis: one game day, net = the total
+  // the day axis: one real day, net = the total
   expect(after.value.days).toHaveLength(1)
-  expect(after.value.days[0].game_day).toBe(after.value.game_day)
+  expect(after.value.days[0].day).toBe(after.value.day)
   expect(after.value.days[0].net).toBe(after.value.total)
 
-  // the week is seven game days and holds the same rows
+  // the week is seven real days and holds the same rows
   const week = await worldReport('week')
   expect(week.ok).toBe(true)
   if (week.ok) {
     expect(week.value.days).toHaveLength(7)
     expect(week.value.total).toBe(after.value.total)
-    expect(week.value.days[6].game_day).toBe(week.value.game_day)
+    expect(week.value.days[6].day).toBe(week.value.day)
   }
 
   // an unknown span is refused, not defaulted

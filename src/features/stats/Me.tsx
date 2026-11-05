@@ -38,8 +38,8 @@ export function MeFace() {
 
   const perDay = b ? Math.round(b.total / Math.max(1, b.days.length)) : null
   // oldest → newest across the bar row: the report's day axis arrives zero-filled, so it IS the row.
-  const today = b?.days.find((d) => d.game_day === b.game_day)?.net ?? 0
-  const bars = (b?.days ?? []).map((d) => ({ id: String(d.game_day), value: d.net }))
+  const today = b?.days.find((d) => d.day === b.day)?.net ?? 0
+  const bars = (b?.days ?? []).map((d) => ({ id: String(d.day), value: d.net }))
   const saleSort = oneOf(choice.sales, SALE_SORTS, 'profit')
   const sorted = [...v.best_trades].sort((a, b) =>
     saleSort === 'newest' ? Date.parse(b.at) - Date.parse(a.at) : saleSort === 'total' ? b.total - a.total : b.profit - a.profit,

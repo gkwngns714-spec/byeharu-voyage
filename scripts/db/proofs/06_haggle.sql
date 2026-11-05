@@ -118,7 +118,7 @@ begin
   v_player := public.new_house(c_auth, 'Casa do Regateio', 'PRT');
   perform cmd.assume_identity(c_auth);
   select f.id, f.port_id into v_fleet, v_port from public.fleets f where f.player_id = v_player;
-  v_day := world.game_day();
+  v_day := public.real_day(now());
   v_pub := world.spread(v_port);
 
   select pg.good_id, g.code into v_good, v_good_c

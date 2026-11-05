@@ -341,7 +341,7 @@ are untouched.
 | `npc_cost_mult` | 0 → **1** | round 2. Rollback: `update world_config set value = to_jsonb(0)` |
 | `profit_tax_scale` | 5 | 3 % on turnover becomes 15 % on profit; the owner's level to set (§11) |
 | `tax_rate_max` | 0.40 | the cap on the composed rate (8 % × 5) |
-| `treasury_days_kept` | 30 game-days (= 1 real day) | the daybook window |
+| `treasury_days_kept` | 30 game-days, 30 minutes since 2026-10-30 (was 1 real day; owner's choice, `docs/dev-log/2026-11-05-game-day-audit.md`) | the daybook window |
 | `treasury_reserve_days` | 3 | a city keeps 2.4 real hours of what it pays sellers before it refounds, posts or builds; also where the bid starts to fall |
 | `treasury_reserve_floor` | 50,000 (0306) | the crown tops a city up to at least this (`public.city_aid_target`), read by the aid alone: the reserve, the bid and every spender do not move. 0 = the reserve alone |
 | `crown_call_share` | 0.10 (0307) | in one run a capital may call at most this share of what a harbour of its nation holds above its aid target (`public.crown_call_room`). 0 = no call |
@@ -573,7 +573,7 @@ versions (0122 serves the first two blocks; 0123 restates the function whole):
   "port": "LIS", "enabled": true,
   "purse":  { "ducats": 123456, "reserve": 18000, "bid_factor": 1.0, "rolled_at": "…", "seeded_at": "…",
               "tax_rate": 0.15 },                       // world.tax_rate(p_port): the rate on profit in force
-  "day":    { "game_day": 61234,                       // the last FULL game-day's book, by kind
+  "day":    {                                          // 0317: the last 24 hours' book, by kind, as of the last count
               "in":  { "BUY": 41000, "TAX": 900, "WAGES": 2100, "PROVISION": 300, "HIRE": 200, "SHARE": 4000, "WORKS_IN": 0 },
               "out": { "SELL": 38000, "REFOUND": 5000, "BOUNTY": 0, "DIVIDEND": 600, "WORKS_OUT": 0 } },
   "works":  [ { "kind": "docks", "level": 2, "next_cost": 32000, "share_price": 320, "offered": 60, "subscribed": 40 }, … ],

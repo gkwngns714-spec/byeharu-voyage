@@ -29,7 +29,7 @@ export const deskDict = defineDict({
     reportNothing: 'Nothing in or out.',
     reportSpans: 'Report spans',
     reportByDay: 'Net by day',
-    spanDay: 'Day',
+    spanDay: 'Today',
     spanWeek: 'Week',
     spanAll: 'All',
     bySection: 'By section',

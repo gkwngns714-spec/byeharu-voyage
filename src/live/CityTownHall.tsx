@@ -199,7 +199,7 @@ function Gifts({ gifts }: { gifts: TownHallGift[] }) {
   )
 }
 
-/** The last full day's money, in a few short rows — only the ones that moved. */
+/** The last 24 hours' money, in a few short rows — only the ones that moved. */
 function DayBook({ hall }: { hall: TownHallView }) {
   const t = useT()
   const rows: [string, number][] = [
@@ -225,7 +225,7 @@ function DayBook({ hall }: { hall: TownHallView }) {
   if (!hall.enabled || moved.length === 0) return null
   return (
     <div data-testid="townhall-day">
-      <Heading>{t('town.yesterday')}</Heading>
+      <Heading>{t('town.lastDay')}</Heading>
       {moved.map(([label, n]) => (
         <Row key={label} label={label} value={<Figure value={formatDucats(n)} />} />
       ))}
