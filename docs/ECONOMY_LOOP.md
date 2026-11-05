@@ -343,6 +343,7 @@ are untouched.
 | `tax_rate_max` | 0.40 | the cap on the composed rate (8 % × 5) |
 | `treasury_days_kept` | 30 game-days (= 1 real day) | the daybook window |
 | `treasury_reserve_days` | 3 | a city keeps 2.4 real hours of what it pays sellers before it refounds, posts or builds; also where the bid starts to fall |
+| `treasury_reserve_floor` | 50,000 (0306) | the crown tops a city up to at least this (`public.city_aid_target`), read by the aid alone: the reserve, the bid and every spender do not move. 0 = the reserve alone |
 | `city_bid_floor` | 0.5 | the bid never falls below half the quay's price; below that the hard rule refuses anyway |
 | `bounty_reserve_mult` | 2 | a request is posted only when the surplus covers it twice (a lazy post between two rolls cannot overdraw) |
 | `city_seed_days` / `city_seed_min` | 10 / 20,000 | §6 |

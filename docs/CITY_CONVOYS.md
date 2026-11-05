@@ -25,7 +25,7 @@ Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_
 **Why 101 cities under 10,000 d. stay broke:** (a) 47 have a capital under 100,000 d. to draw on, often while the nation holds plenty in one other city (MRS capital 6,857 d., nation 3.36 B); (b) 16 have a capital over 1 M but already meet their reserve, because the reserve is 3 days of the city's own recent sale payouts, and a broke city pays out little (43 of the 101 show zero outflow), so a broke city is judged not short. (c) One nation (BUS) holds 49,145 d. in total: nothing inside it can help.
 
 **Better plan, in order:**
-1. **Fix the reserve floor** so a broke city counts as short (owner knob; one small migration).
+1. **Fix the reserve floor** so a broke city counts as short (owner knob; one small migration). Built as 0306, PR open, not deployed: the floor enters the aid decision only, not the reserve, because the reserve also sets the sale bid (`docs/dev-log/2026-11-05-reserve-floor.md`).
 2. **Let the capital draw on its nation's rich cities** before funding: `CROWN_CALL` already does this for merchant gifts; reuse it.
 3. **Cargo ships carry funds only**, and they **replace** the instant `CROWN_AID` delivery: one rule, one path, never both. Measure first: instant aid reaches about 160 cities a day, and 2 ships per nation cannot, so the ship count and a route that serves several cities on one trip must come from a prod read, and the extra `E_CITY_BROKE` during the delay must be watched.
 4. **Goods run (section 4): dropped for now.** No city is short by stock, and crown ships moving goods would take the player's own trade.
