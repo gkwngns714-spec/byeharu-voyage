@@ -92,7 +92,8 @@ export function warmRecord(db: Pick<LocalCaller, 'callAs'>): Promise<void> {
 
 /** How often this tab may play the stats job (0214). Its row is per slot; a re-ask inside a slot writes nothing. */
 const STATS_EVERY_MS = 60_000
-const STATS_SQL = 'select public.tick_stats(now()) as result'
+// 0316: the history job follows the count, in this tab as on the server
+const STATS_SQL = 'with s as materialized (select public.tick_stats(now()) as r) select public.tick_history(now()) as result from s'
 const STATS_READS: readonly RpcName[] = [
   'worldStatsOverview',
   'worldStatsMarkets',
@@ -100,6 +101,7 @@ const STATS_READS: readonly RpcName[] = [
   'worldStatsCity',
   'worldStatsMerchants',
   'worldStatsMe',
+  'worldHistory',
 ]
 
 /** The slice of LocalDb this needs — structural, so a spec can hand in its own engine. */

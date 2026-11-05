@@ -5,6 +5,8 @@ import { formatDucatsDelta } from '../../../lib/format'
 import { worldReport, type Report as ReportView, type ReportLine, type ReportPlace, type ReportSection } from '../../../lib/rpc'
 import { t as tNow, useT, type TKey } from '../../../lib/i18n'
 import type { DeskLayout } from '../DeskFrame'
+import { HistoryChart } from '../../../live/HistoryChart'
+import { companyLines } from '../../../live/historyLines'
 
 // REPORT — every earning and loss by SECTION and by POINT (0286, docs/COMMAND_REDESIGN.md §4–5;
 // owner rows 192, 244: *"the profit tab on command, change it to report, saving all the earnings and
@@ -177,6 +179,7 @@ export function Report({ layout }: { layout: DeskLayout }) {
             data-testid="report-bars"
           />
         )}
+        <HistoryChart what="me" title={t('stats.yourHistory')} lines={companyLines(t)} className="mt-3" data-testid="history-me" />
         {openSection !== null && (
           <DetailPage
             title={t(SECTION_KEYS[openSection.id])}

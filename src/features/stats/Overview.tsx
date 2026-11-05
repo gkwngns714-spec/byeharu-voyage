@@ -31,6 +31,8 @@ import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
 import { WatchCard } from './Watch'
 import { BonusCard } from './BonusCard'
+import { HistoryChart } from '../../live/HistoryChart'
+import { worldLines } from '../../live/historyLines'
 
 // OVERVIEW — the world's money, ALL ON THE FACE, in cards (owner, 2026-11-01, row 260: *"everything is folded in stats this
 // is soo wrong"*; 2026-11-02, row 267: *"it looks so wrong. The past was better. right now everything is on left,
@@ -183,6 +185,8 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
               />
             </Card>
           </CardRow>
+
+          <HistoryChart what="world" title={t('stats.moneyHistory')} lines={worldLines(t)} data-testid="history-world" />
         </>
       }
       side={
