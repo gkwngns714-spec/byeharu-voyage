@@ -1,14 +1,20 @@
 import { useMemo, useState } from 'react'
-import { ALL, Button, DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, ListPanel, Note, Row, Skeleton, oneOf, useFilterChoice } from '../../components/ui'
+import { ALL, Button, Card, CardRow, DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, ListPanel, Note, PageSplit, RankBars, Row, Skeleton, StatCell, deltaTone, oneOf, useFilterChoice, type RankRow } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsCities, type StatsCities, type StatsCityRow } from '../../lib/rpc'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { CityDetail } from './CityDetail'
+import { SeriesCard } from './WorldSeries'
+import { useWorldSeries } from './useWorldSeries'
 import { portName } from './statsFaces'
 import { useLiveRead } from '../../live/liveRead'
 import { CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sortCities, type CitySort } from './statsFilters'
 
+// ROW 2026-11-05 (*"in stats, make the cities tab like merchants"*): the page is Merchants' — MAIN is two chart cards (the cities'
+// money and the trade with them, over the shared span) over the ONE list card below; the SIDE (first on a phone) holds the cities'
+// day (in · out · taxes · traded: plain sums of the rows the list holds) and where the money sits (those purses summed by area).
+//
 // CITIES — every harbour, open to everyone (0223, owner row 197), ALL ON THE FACE (owner, 2026-11-01, row 260). It
 // was two summary rows — the filters on one page, the 246 cities on another. It is ONE list card across the whole page
 // (a face with ONE block and no second one has no side to fill, so the list takes both columns): the cities, with the
@@ -22,6 +28,7 @@ export function CitiesFace() {
   const t = useT()
   const read = useLiveRead<StatsCities>('stats:cities', () => worldStatsCities())
   const v = read.view
+  const world = useWorldSeries()
   const [open, setOpen] = useState<StatsCityRow | null>(null)
   const [all, setAll] = useState(false)
   const nationByCode = useWorld((s) => s.nationByCode)
@@ -49,83 +56,139 @@ export function CitiesFace() {
   const rows = sortCities(filterCities(v.cities, { area, country, mine: choice.mine === '1' }), sort, (c) => portName(c.name))
   const shown = all ? rows : rows.slice(0, FIRST)
 
+  const sum = (pick: (c: StatsCityRow) => number) => v.cities.reduce((n, c) => n + pick(c), 0)
+  const income = sum((c) => c.income_1d ?? 0)
+  const spending = sum((c) => c.spending_1d ?? 0)
+  const byArea: RankRow[] = STATS_AREAS.map((a) => ({
+    id: a,
+    label: t(areaWord(a)),
+    value: v.cities.filter((c) => c.area === a).reduce((n, c) => n + (c.purse ?? 0), 0),
+  }))
+    .filter((r) => r.value > 0)
+    .sort((x, y) => y.value - x.value)
+
   return (
     <>
-      <ListPanel
-        look="card"
-        columns="fit"
-        title={t('stats.citiesCount')}
-        count={formatInt(rows.length)}
-        trailing={
-          <FilterBar
-            compact
-            data-testid="stats-cities-sort"
-            sort={{ id: 'sort', label: t('stats.sortLabel'), options: sortOptions, value: sort, onChange: (id) => choose({ sort: id as CitySort }) }}
-          />
-        }
-        controls={
-          <FilterBar
-            compact
-            data-testid="stats-cities-filters"
-            picks={[
-              {
-                id: 'area',
-                label: t('stats.area'),
-                options: [{ id: ALL, label: t('stats.area') }, ...STATS_AREAS.map((a) => ({ id: a, label: t(areaWord(a)) }))],
-                value: area,
-                onChange: (id) => choose({ area: id }),
-              },
-              {
-                id: 'country',
-                label: t('stats.country'),
-                options: [{ id: ALL, label: t('stats.allCountries') }, ...countries],
-                value: country,
-                onChange: (id) => choose({ country: id }),
-              },
-            ]}
-            toggles={[{ id: 'mine', label: t('stats.myCities'), on: choice.mine === '1', onChange: (on) => choose({ mine: on ? '1' : '0' }) }]}
-          />
-        }
-        footer={
-          !all && rows.length > FIRST ? (
-            <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-cities-show-all">
-              {t('stats.showAll')}
-            </Button>
-          ) : undefined
-        }
-        data-testid="stats-cities"
-      >
-        {rows.length === 0 && (
-          <Empty className="my-1 md:col-span-full" data-testid="stats-no-match">
-            {t('stats.noMatch')}
-          </Empty>
-        )}
-        {shown.map((c) => (
-          <Row
-            key={c.id}
-            mark={flag(c)}
-            label={
-              <span data-testid="stats-city-name" data-area={c.area ?? ''} data-purse={c.purse ?? 0}>
-                {portName(c.name)}
-              </span>
+      <PageSplit
+        data-testid="stats-cities-page"
+        sideFirst
+        main={
+          <>
+          <CardRow>
+            <SeriesCard
+              title={t('stats.citiesHolder')}
+              value={world?.holders?.cities ?? 0}
+              format={formatDucats}
+              series={world?.series ?? []}
+              pick={(p) => p.cities}
+              tone="accent"
+              data-testid="stats-chart-city-purses"
+            />
+            <SeriesCard
+              title={t('stats.cityTrade')}
+              value={(world?.day?.sold ?? 0) + (world?.day?.bought ?? 0)}
+              format={formatDucats}
+              series={world?.series ?? []}
+              pick={(p) => p.sold + p.bought}
+              tone="info"
+              data-testid="stats-chart-city-trade"
+            />
+          </CardRow>
+
+          <ListPanel
+            look="card"
+            columns="fit"
+            title={t('stats.citiesCount')}
+            count={formatInt(rows.length)}
+            trailing={
+              <FilterBar
+                compact
+                data-testid="stats-cities-sort"
+                sort={{ id: 'sort', label: t('stats.sortLabel'), options: sortOptions, value: sort, onChange: (id) => choose({ sort: id as CitySort }) }}
+              />
             }
-            value={<Figure value={formatDucats(c.purse ?? 0)} />}
-            chevron
-            onClick={() => setOpen(c)}
-            hairline={false}
-            data-testid="stats-city-open"
+            controls={
+              <FilterBar
+                compact
+                data-testid="stats-cities-filters"
+                picks={[
+                  {
+                    id: 'area',
+                    label: t('stats.area'),
+                    options: [{ id: ALL, label: t('stats.area') }, ...STATS_AREAS.map((a) => ({ id: a, label: t(areaWord(a)) }))],
+                    value: area,
+                    onChange: (id) => choose({ area: id }),
+                  },
+                  {
+                    id: 'country',
+                    label: t('stats.country'),
+                    options: [{ id: ALL, label: t('stats.allCountries') }, ...countries],
+                    value: country,
+                    onChange: (id) => choose({ country: id }),
+                  },
+                ]}
+                toggles={[{ id: 'mine', label: t('stats.myCities'), on: choice.mine === '1', onChange: (on) => choose({ mine: on ? '1' : '0' }) }]}
+              />
+            }
+            footer={
+              !all && rows.length > FIRST ? (
+                <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-cities-show-all">
+                  {t('stats.showAll')}
+                </Button>
+              ) : undefined
+            }
+            data-testid="stats-cities"
           >
-            <FactsLine>
-              <span>{t('stats.inFigure', { amount: formatDucatsDelta(c.income_1d ?? 0) })}</span>
-              <span>{t('stats.outFigure', { amount: formatDucatsDelta(-(c.spending_1d ?? 0)) })}</span>
-              <span>{t('stats.taxesFigure', { amount: formatDucats(c.taxes_1d ?? 0) })}</span>
-              {sort === 'traded' && <span>{t('stats.tradedFigure', { n: formatInt((c.sold_1d ?? 0) + (c.bought_1d ?? 0)) })}</span>}
-              {sort === 'invested' && <span>{t('stats.investedFigure', { amount: formatDucats(c.invested ?? 0) })}</span>}
-              {sort === 'stock' && c.stock != null && <span>{t('stats.stockFigure', { n: formatInt(c.stock) })}</span>}
-            </FactsLine>
-          </Row>
-        ))}
-      </ListPanel>
+            {rows.length === 0 && (
+              <Empty className="my-1 md:col-span-full" data-testid="stats-no-match">
+                {t('stats.noMatch')}
+              </Empty>
+            )}
+            {shown.map((c) => (
+              <Row
+                key={c.id}
+                mark={flag(c)}
+                label={
+                  <span data-testid="stats-city-name" data-area={c.area ?? ''} data-purse={c.purse ?? 0}>
+                    {portName(c.name)}
+                  </span>
+                }
+                value={<Figure value={formatDucats(c.purse ?? 0)} />}
+                chevron
+                onClick={() => setOpen(c)}
+                hairline={false}
+                data-testid="stats-city-open"
+              >
+                <FactsLine>
+                  <span>{t('stats.inFigure', { amount: formatDucatsDelta(c.income_1d ?? 0) })}</span>
+                  <span>{t('stats.outFigure', { amount: formatDucatsDelta(-(c.spending_1d ?? 0)) })}</span>
+                  <span>{t('stats.taxesFigure', { amount: formatDucats(c.taxes_1d ?? 0) })}</span>
+                  {sort === 'traded' && <span>{t('stats.tradedFigure', { n: formatInt((c.sold_1d ?? 0) + (c.bought_1d ?? 0)) })}</span>}
+                  {sort === 'invested' && <span>{t('stats.investedFigure', { amount: formatDucats(c.invested ?? 0) })}</span>}
+                  {sort === 'stock' && c.stock != null && <span>{t('stats.stockFigure', { n: formatInt(c.stock) })}</span>}
+                </FactsLine>
+              </Row>
+            ))}
+          </ListPanel>
+
+          </>
+        }
+      side={
+        <>
+          <Card title={t('stats.citiesDay')} data-testid="stats-cities-day">
+            <StatCell look="stacked" label={t('stats.dayIn')} value={income} format={formatDucatsDelta} tone={deltaTone(income)} />
+            <div className="mt-3">
+              <StatCell look="line" label={t('stats.dayOut')} value={-spending} format={formatDucatsDelta} />
+              <StatCell look="line" label={t('stats.dayTaxes')} value={sum((c) => c.taxes_1d ?? 0)} format={formatDucats} />
+              <StatCell look="line" label={t('stats.dayTraded')} value={sum((c) => (c.sold_1d ?? 0) + (c.bought_1d ?? 0))} format={formatInt} />
+            </div>
+          </Card>
+          <Card title={t('stats.moneySits')} data-testid="stats-cities-fold">
+            <RankBars rows={byArea} format={formatDucats} empty={t('stats.noFigures')} />
+          </Card>
+        </>
+      }
+      />
 
       {open !== null && (
         <DetailPage
