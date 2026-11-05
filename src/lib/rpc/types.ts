@@ -2809,7 +2809,7 @@ export interface ShipMoved {
   empty: boolean
 }
 
-$(printf '%s' /**
+/** 0319: `cmd.pay_fine` — what was paid (held to what is owed and to your purse), and what is left. */
 export interface FineReceipt {
   port: string
   amount: number
