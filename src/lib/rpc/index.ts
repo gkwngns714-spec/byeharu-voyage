@@ -105,6 +105,7 @@ import type {
   AllegianceView,
   CountryChanged,
   DonateReceipt,
+  FineReceipt,
   TaxSet,
   NationStandings,
   WorkKind,
@@ -865,6 +866,11 @@ export async function cmdPreviewDonate(portId: string, coin: number): Promise<Rp
  *  country there; only while a fleet of yours lies docked there. */
 export function cmdDonate(portId: string, coin: number): Promise<RpcResult<DonateReceipt>> {
   return call<DonateReceipt>('cmdDonate', [portId, coin])
+}
+
+/** Pay a fine at a capital (0319): the server holds `coin` to what is owed and to your purse, and says what it took. */
+export function cmdPayFine(portId: string, coin: number): Promise<RpcResult<FineReceipt>> {
+  return call<FineReceipt>('cmdPayFine', [portId, coin])
 }
 
 /** The mayor sets the city's profit tax (0147) — 0 to the cap, once a day. */
