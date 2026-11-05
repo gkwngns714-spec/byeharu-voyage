@@ -22,6 +22,7 @@
 --   The wider matrix and a real fleet: proof 28, scripts/db/proofs/28_fight_sides.sql. Mutation controls: scripts/ops/harness/two-sides/proof-0320.mjs (local).
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. About 2,200 pure fights, no market row. Self-assert fails above 40 s.
 -- ROLLBACK (forward, a NEW migration, owner only): the pre-image is held whole in proof 28 (digest in the PR's PROD CHECK 1); put it back, drop the three new functions.
+-- SUPERSEDES (re-cut): voyage.fight_resolve (0189, re-cut by 0202, 0204, 0213, 0276) is replaced whole: its engine moves to public.fight_sides, its raiders to voyage.raider_hulls, its words stay. The self-assert proves the guard digest and the answers, not hunks: the whole body changes.
 -- VERSION: 0320, after 0318 (#514) and 0319 (#513), which touch none of these bodies. Prod head 0317 when cut.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
