@@ -28,6 +28,8 @@
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Deploy away from minute :37. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): docs/dev-log/2026-11-05-game-day-audit.md.
+-- SUPERSEDES (re-cut): public.traded_today and public.buff_season_of, created by earlier migrations, are dropped and created again here (items 3 and 5 above):
+--   traded_today now reads the last 24 hours, buff_season_of a season in real seconds. Their callers are re-cut in the same file; the self-assert proves each hunk once and reversing.
 -- VERSION: 0317 - prod head 0313 when cut (2026-11-05); follows 0314, 0315, 0316.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
