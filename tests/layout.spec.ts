@@ -1118,15 +1118,15 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
     const text = (el: HTMLElement) => (el.innerText || '').replace(/\s+/g, ' ').trim()
     return {
       rows: rows.length,
-      rowsWithLot: rows.filter((r) => /\d+ units? · ends (in |just now)/.test(text(r))).length,
-      rowsWithPremium: rows.filter((r) => /[+−]\d+% over market/.test(text(r))).length,
-      rowsWithShare: rows.filter((r) => /\d+ \/ \d+ units on board/.test(text(r))).length,
+      rowsWithLot: rows.filter((r) => /Wanted [\d,]+ · Held [\d,]+/.test(text(r))).length,
+      rowsWithPremium: rows.filter((r) => /Bonus [\d,.]+ 🪙 each · [\d,]+ 🪙 left/.test(text(r))).length,
+      rowsWithShare: rows.filter((r) => /Time left (\d+:)?\d+:\d\d/.test(text(r))).length,
       cells: cells.length,
       shortestCell: cells.length ? Math.min(...cells.map((c) => c.getBoundingClientRect().height)) : 0,
       cellsSayingFulfil: cells.filter((c) => /^deliver\b/i.test(text(c))).length,
       cellsWithFigure: cells.filter((c) => /[+−]?[\d,]+\s🪙/.test(text(c))).length,
       deadCells: cells.filter((c) => c.disabled).length,
-      deadSayingWhy: cells.filter((c) => c.disabled && /\d+ \/ \d+ units on board|no ship here/.test(text(c))).length,
+      deadSayingWhy: cells.filter((c) => c.disabled && /none on board|no ship here/.test(text(c))).length,
       rowWidth: rows[0] ? Math.round(rows[0].getBoundingClientRect().width) : 0,
       pageScrollW: document.documentElement.scrollWidth,
       pageClientW: document.documentElement.clientWidth,
@@ -1139,12 +1139,12 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
   })
   console.log(`PORT requests @${PHONE.width}px: ${JSON.stringify(report)}`)
   expect(report.rows).toBeGreaterThan(0)
-  expect(report.rowsWithLot, 'a request row does not say its lot and when it ends').toBe(report.rows)
-  expect(report.rowsWithPremium, 'a request row does not say its premium as a served percentage').toBe(report.rows)
-  expect(report.rowsWithShare, 'a request row does not say what is on board as a share of the lot').toBe(report.rows)
+  expect(report.rowsWithLot, 'a request row does not say what is wanted and held').toBe(report.rows)
+  expect(report.rowsWithPremium, 'a request row does not say its bonus each and its budget left').toBe(report.rows)
+  expect(report.rowsWithShare, 'a request row does not say its time left').toBe(report.rows)
   expect(report.cells, 'a request row does not carry exactly one cell').toBe(report.rows)
   expect(report.cellsSayingFulfil).toBe(report.rows)
-  expect(report.cellsWithFigure, 'a fulfil cell carries no served premium figure').toBe(report.rows)
+  expect(report.cellsWithFigure, 'a fulfil cell carries no served price').toBe(report.rows)
   expect(report.shortestCell, 'a fulfil cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
   expect(report.deadSayingWhy, 'a dead fulfil cell went grey without saying why').toBe(report.deadCells)
   expect(report.rowWidth, 'a request row is not a board row').toBeGreaterThanOrEqual(300)

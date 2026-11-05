@@ -1,5 +1,6 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-11-05 **A REQUEST STANDS A DAY (owner row 279) - migration 0311, PR open, NOT deployed, follows #492 (0310, live):** a request shows one price each (live sale price + bonus), wanted, held, bonus, budget left and a live time; it stands 24 h, a harbour keeps 3 open; budget least(1,000,000, surplus / 6) escrowed at posting; part deliveries from any house; closes `spent` when the budget cannot pay one more unit, unspent budget home by BOUNTY_LAPSED. Bonus on the Report, on Stats (world and city) and in the Money log. Held at most 142.8 M d.; 30-minute after-check, `docs/dev-log/2026-11-05-city-requests.md`.
 - 2026-11-05 MAP TRAY REDS (client-only PR, row 278): `tests/map.design.spec.ts` law (b) now says the tray stands 0 px from the window's edge; a leaving tray no longer swallows a tap meant for the chart (the race behind `map.sendfleet.spec.ts:436`, seen on #492); a close ends on a clock, never on `animationend`.
 - 2026-11-05 CITY LIVE (client-only PR): HQ gold, population and status, and the Town Hall, read `world.town_hall` every second through the one shared `useLiveRead` (now src/live/liveRead.ts); one ask a second per open page; tests/city.live.spec.ts.
 

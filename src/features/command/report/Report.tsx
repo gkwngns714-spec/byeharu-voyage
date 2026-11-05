@@ -42,6 +42,7 @@ const SECTION_KEYS: Record<ReportSection['id'], TKey> = {
 
 const KIND_KEYS: Record<string, TKey> = {
   SELL: 'desk.kindSell',
+  PREMIUM: 'desk.kindBonus',
   BUY: 'desk.kindBuy',
   TAX: 'desk.kindTax',
   PORT_FEE: 'desk.kindPortFee',

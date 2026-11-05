@@ -1,7 +1,7 @@
 import type { RankRow, SeriesPoint } from '../../components/ui'
 import { instantMs } from '../../lib/format'
 import { properName, t } from '../../lib/i18n'
-import type { StatsFlowLine } from '../../lib/rpc'
+import type { StatsBonus, StatsFlowLine } from '../../lib/rpc'
 
 // THE FACE TABLE of the Stats tab — pure data, so a spec can pin the five without reading JSX
 // (navTabs.ts's idiom). Order is the owner's sentence: the world, the goods, the cities, the
@@ -52,6 +52,13 @@ export function movePct(now: number | null, before: number | null): number | nul
 /** The money flows as ranked rows, biggest first: the server's word on the left, its side as the
  *  tone — new money green, burned money red, money that only changed hands neutral (§4.4 keeps
  *  green and red for gain and loss alone). */
+/** 0311: THE BONUS MONEY OF A PERIOD, off the lines the page already holds and the two figures the flows cannot say. One count: budget set and
+ *  returned ARE the BOUNTY and BOUNTY_LAPSED lines. */
+export function bonusBook(flows: readonly StatsFlowLine[], bonus: StatsBonus) {
+  const line = (kind: string) => flows.find((f) => f.kind === kind)?.ducats ?? 0
+  return { held: bonus.held, paid: bonus.paid, budget: -line('BOUNTY'), returned: line('BOUNTY_LAPSED') }
+}
+
 export function flowRanks(flows: readonly StatsFlowLine[]): RankRow[] {
   return [...flows]
     .sort((a, b) => Math.abs(b.ducats) - Math.abs(a.ducats))

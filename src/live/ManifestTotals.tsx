@@ -37,11 +37,11 @@ export function ManifestTotals({
       {totals.haggle_saved > 0 && (
         <Row label={t('trade.saved')} value={<Figure value={formatDucats(totals.haggle_saved)} tone="success" />} data-testid={testId} />
       )}
-      {/* 0087: a delivery's premium — the request board's own figure, paid as its own ledger
+      {/* 0087: a delivery's bonus — the request board's own figure, paid as its own ledger
           movement — is its own row here, for the tray, the receipt and any basket that ever
           carries one. A basket's receipt serves 0 and draws nothing. */}
       {totals.premium > 0 && (
-        <Row label={t('trade.premium')} value={<Figure value={formatDucatsDelta(totals.premium)} tone="success" />} data-testid={testId} />
+        <Row label={t('trade.bonus')} value={<Figure value={formatDucatsDelta(totals.premium)} tone="success" />} data-testid={testId} />
       )}
       {totals.sold > 0 &&
         (totals.profit !== null ? (

@@ -885,7 +885,7 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
   expect(isNum(board.game_day) && isNum(board.deadline_days)).toBe(true)
   expect(board.deadline_days).toBeGreaterThan(0)
   expect(board.contracts.length, 'a fresh port posted no request — the wind did not run').toBeGreaterThan(0)
-  expect(board.contracts.length).toBeLessThanOrEqual(board.deadline_days * 3)
+  expect(board.contracts.length, 'more open than the cap of 3 (0311)').toBeLessThanOrEqual(3)
   const offeredHere = new Set(market.goods.filter((g) => g.offered !== false).map((g) => g.code))
   for (const r of board.contracts) {
     expect(isStr(r.id) && isStr(r.good) && isStr(r.name) && isStr(r.category)).toBe(true)
@@ -895,6 +895,10 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
     expect(r.premium_per_unit).toBeGreaterThan(0)
     expect(r.premium_ducats).toBeGreaterThan(0)
     expect(r.mid_at_post).toBeGreaterThan(0)
+    // 0311: the budget left pays for what is served, and the price each is the quay's sale price plus the bonus
+    expect(r.qty).toBe(Math.floor(r.premium_ducats / r.premium_per_unit))
+    expect(isNum(r.sale_price) && r.sale_price > 0).toBe(true)
+    expect(Math.abs(r.price_each - (r.sale_price + r.premium_per_unit))).toBeLessThanOrEqual(0.011)
     expect(r.expires_day).toBeGreaterThan(r.posted_day)
     expect(r.days_left).toBe(r.expires_day - board.game_day)
     expect(r.days_left).toBeGreaterThanOrEqual(1)
@@ -922,8 +926,15 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
   expect(short.refusal.line).toBeUndefined()
   expect(expectOk(await worldLedger()).ducats).toBe(purse0)
 
+  // (3b) 0311: A PART IS A DELIVERY: one unit aboard previews one unit's bonus, and the rest of the budget stands.
+  await db.pg.query('select public.fleet_load($1::uuid, $2::text, 1::numeric)', [fleet.id, req.good])
+  const part = expectOk(await cmdPreviewFulfil(fleet.id, req.id)).estimate
+  expect(part.lines[0].qty).toBe(1)
+  expect(part.totals.premium).toBe(Math.ceil(req.premium_per_unit))
+  expect(expectOk(await worldLedger()).ducats).toBe(purse0)
+
   // (4) THE WHOLE LOT ABOARD: the dry run moves nothing and serves the board's own premium.
-  await db.pg.query('select public.fleet_load($1::uuid, $2::text, $3::numeric)', [fleet.id, req.good, req.qty])
+  await db.pg.query('select public.fleet_load($1::uuid, $2::text, $3::numeric)', [fleet.id, req.good, req.qty - 1])
   expect(fleetCargoByCode(expectOk(await worldFleets())[0])[req.good]).toBe(req.qty)
   const est = expectOk(await cmdPreviewFulfil(fleet.id, req.id)).estimate
   expect(est.kind).toBe('fulfil')

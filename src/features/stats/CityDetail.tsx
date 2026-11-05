@@ -25,6 +25,7 @@ import { worldStatsCity, worldStatsCityPeople, type StatsCity, type StatsCityPeo
 import { STEP_TONE, stepWords } from '../../domain/population'
 import { useWorld } from '../../live/worldStore'
 import { CARD_CHART_H, STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
+import { BonusCard } from './BonusCard'
 import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
@@ -185,6 +186,7 @@ export function CityDetail({ portId }: { portId: string }) {
               </div>
             </Card>
           </div>
+          {o.bonus && <BonusCard flows={o.flows_1d} bonus={o.bonus} />}
           {o.flows_1d.length > 0 && (
             <Card title={t('stats.cityMoney')}>
               <div>

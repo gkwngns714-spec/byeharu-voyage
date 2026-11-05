@@ -3,7 +3,7 @@
 // under; a kind not listed is `other`. Bought/Sold are by the ROW's side — a company's SELL is a sale, but the
 // city's side of the same move is a purchase (the same flip as the feed's c_SELL / c_BUY words).
 
-export const SECTORS = ['bought', 'sold', 'supplies', 'wages', 'repairs', 'insurance', 'tax', 'fees', 'gifts', 'shares', 'other'] as const
+export const SECTORS = ['bought', 'sold', 'supplies', 'wages', 'repairs', 'insurance', 'tax', 'fees', 'gifts', 'shares', 'bonus', 'other'] as const
 export type Sector = (typeof SECTORS)[number]
 
 const BY_KIND: Readonly<Record<string, Sector>> = {
@@ -23,6 +23,9 @@ const BY_KIND: Readonly<Record<string, Sector>> = {
   CROWN_AID: 'gifts',
   SHARE: 'shares',
   DIVIDEND: 'shares',
+  BOUNTY: 'bonus',
+  BOUNTY_LAPSED: 'bonus',
+  PREMIUM: 'bonus',
 }
 
 export function sectorOf(kind: string, holder: string): Sector {

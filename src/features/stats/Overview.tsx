@@ -30,6 +30,7 @@ import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
 import { WatchCard } from './Watch'
+import { BonusCard } from './BonusCard'
 
 // OVERVIEW — the world's money, ALL ON THE FACE, in cards (owner, 2026-11-01, row 260: *"everything is folded in stats this
 // is soo wrong"*; 2026-11-02, row 267: *"it looks so wrong. The past was better. right now everything is on left,
@@ -153,6 +154,8 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
               />
             </Card>
           </CardRow>
+
+          {v.bonus && <BonusCard flows={day?.flows ?? []} bonus={v.bonus} />}
 
           <CardRow>
             <Card title={t('stats.soldCities')} data-testid="stats-chart-sold">

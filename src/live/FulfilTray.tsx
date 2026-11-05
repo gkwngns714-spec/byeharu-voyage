@@ -3,7 +3,7 @@ import { Button, CargoBar, Figure, Note, Row, Tray, type TrayDetent } from '../c
 import { ManifestTotals } from './ManifestTotals'
 import { useShellState } from '../app/shellState'
 import { fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
-import { formatDucats, formatOfTotal, formatPctDelta, formatRelative, formatUnitPrice, formatUnits } from '../lib/format'
+import { formatCountdown, formatDucats, formatOfTotal, formatPrice, formatPriceFigure, formatUnitPrice, formatUnits } from '../lib/format'
 import type { FleetView, ManifestReceipt, Refusal, TradeRequest } from '../lib/rpc'
 import { useFulfilPreview } from './useFulfilPreview'
 import { useWorld } from './worldStore'
@@ -20,12 +20,13 @@ import { useT } from '../lib/i18n'
 // it; the receipt handed back to the slot on success.
 //
 // ── EVERY FIGURE IS THE DRY RUN'S (0087, cmd.preview_fulfil) ───────────────────────────────────
-// What you deliver is the request's lot; what you get is the sale line `cmd.do_sell` realised
-// inside the dry run (its total and per-unit figure); the premium is the board's own figure as
-// `totals.premium`, printed by the ONE totals block (ManifestTotals) as its own row beside Market
-// tax, Port fee, Profit vs bought at and Net — the same block the basket and the receipt print.
-// The cargo bar's "after" is the served `hold.free_after`. Nothing here adds a premium to a sale
-// or a bulk to a count.
+// What you deliver is what she holds, cut by the server to what the budget still pays for and to
+// today's allowance (0311); what you get is the sale line `cmd.do_sell` realised inside the dry run
+// (its quantity, total and per-unit figure); the bonus is `totals.premium`, printed by the ONE totals
+// block (ManifestTotals) as its own row beside Market tax, Port fee, Profit vs bought at and Net —
+// the same block the basket and the receipt print. The price each and the market under it are the
+// board's served figures. The cargo bar's "after" is the served `hold.free_after`. Nothing here adds
+// a bonus to a sale or a bulk to a count.
 //
 // A refusal is the answer, not the absence of one: E_CONTRACT_SHORT arrives with have / need in
 // units and the Note draws it; E_DAILY_CAP from the sale inside arrives in the server's own words.
@@ -98,12 +99,17 @@ export function FulfilTray({
         after={estimate ? estimate.hold.free_after : null}
         className="py-2"
       />
-      <Row label={t('trade.requested')} value={<Figure value={formatUnits(request.qty)} size="figure" />} data-testid="fulfil-requested">
-        <span className="block text-t-caption text-ink-faint">{`ends ${formatRelative(Date.parse(request.expires_at), nowMs)}`}</span>
+      <Row label={t('trade.price')} value={<Figure value={formatPrice(request.price_each)} size="figure" tone="success" />} data-testid="fulfil-price">
+        <span className="block text-t-caption text-ink-faint">{t('trade.eachMarket', { price: formatPriceFigure(request.sale_price) })}</span>
+      </Row>
+      <Row label={t('trade.wanted')} value={<Figure value={formatUnits(request.qty)} />} data-testid="fulfil-wanted">
+        <span className="block text-t-caption tabular-nums text-ink-faint" data-testid="fulfil-time">
+          {t('trade.timeLeft', { time: formatCountdown(Date.parse(request.expires_at) - nowMs) })}
+        </span>
       </Row>
       <Row label={t('trade.onBoard')} value={<Figure value={formatOfTotal(aboard, request.qty)} unit={t('trade.units')} />} data-testid="fulfil-aboard" />
-      <Row label={t('trade.premium')} value={<Figure value={formatPctDelta(request.premium_pct)} />} data-testid="fulfil-premium-pct">
-        <span className="block text-t-caption text-ink-faint">{t('trade.overMarket')}</span>
+      <Row label={t('trade.bonus')} value={<Figure value={formatUnitPrice(request.premium_per_unit)} />} data-testid="fulfil-bonus">
+        <span className="block text-t-caption text-ink-faint">{t('trade.budgetLeft', { left: formatDucats(request.premium_ducats) })}</span>
       </Row>
       {sale && (
         <Row label={t('trade.youGet')} value={<Figure value={formatDucats(sale.total)} />} data-testid="fulfil-sale">

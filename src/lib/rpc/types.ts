@@ -1464,11 +1464,16 @@ export interface TradeRequest {
   class?: GoodClass
   /** Tons one unit takes (`goods.bulk`), so a tray can say what the lot does to the ship. */
   bulk: number
-  /** The whole lot asked for, in units. A delivery is the whole lot or nothing. */
+  /** 0311 — what the budget still pays for, in units. A delivery may be part of it, from any house. */
   qty: number
-  /** The premium as a fraction of the posting mid (0.12 = 12%), per unit, and for the lot. */
+  /** 0311 — this quay's live bid for the good, what `world.market` serves as `sell`. */
+  sale_price: number
+  /** 0311 — THE price each: `sale_price` plus the bonus, served as one figure. The client adds nothing. */
+  price_each: number
+  /** The bonus as a fraction of the posting mid (0.12 = 12%), and per unit, fixed at posting. */
   premium_pct: number
   premium_per_unit: number
+  /** 0311 — WHAT IS LEFT of the request's budget, in ducats. */
   premium_ducats: number
   mid_at_post: number
   /** Calendar days (`world.game_day`): posted, and the first day it is no longer open. */
@@ -3279,6 +3284,12 @@ export interface StatsHolders {
   total: number
 }
 
+/** 0311 — what the flow lines cannot say: the money open requests hold now, and the bonus paid to houses in the last 24 h. */
+export interface StatsBonus {
+  held: number
+  paid: number
+}
+
 export interface StatsPeriod {
   since: string | null
   minted: number
@@ -3320,6 +3331,8 @@ export interface StatsOverview {
   holders: StatsHolders | null
   period: StatsPeriod | null
   day: StatsPeriod | null
+  /** 0311 — the world's bonus money; absent before the first count. */
+  bonus?: StatsBonus
   series: StatsWorldPoint[]
 }
 
@@ -3427,6 +3440,8 @@ export interface StatsCity {
     sold_1d: number
     bought_1d: number
     flows_1d: StatsFlowLine[]
+    /** 0311 — this city's bonus money. */
+    bonus?: StatsBonus
     series: { at: string; n?: number; purse: number; income: number; spending: number }[]
     top_sold: { code: string; name: string; units: number; ducats: number }[]
     top_bought: { code: string; name: string; units: number; ducats: number }[]
