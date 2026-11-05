@@ -67,6 +67,7 @@ Read-only on prod, a pure SELECT of the new shape: LIS, day 20000, seq 1 gives t
 - That removing the job's CPU gives the "before" column back: the cause is inferred from code, wait samples and per-buffer time. No controlled run was possible on prod.
 - The job's cold start: each run is a new session, and that compile cost stays.
 - The new draw's millisecond cost on prod.
+- The call-count check in the self-assert runs only where `track_functions` may be set. CI's real Postgres refuses it, so there the check of the body stands alone. The beats do set it on prod, but this migration's role there is not proven.
 - Compute size was not read from the platform; "processor" means the wait samples show no wait.
 
 ## PROD CHECKS (pure SELECTs from a file, one statement per file, before deploy)

@@ -252,7 +252,7 @@ $h$];
       raise exception '0318 self-assert FAIL: the draw moved where the cap decides: %, was %', v_a, v_b;
     end if;
 
-    -- (d) A DRAW ASKS ONCE, read by the server's own function counters (0262). Where the setting is refused, the body check in section 4 stands alone.
+    -- (d) A DRAW ASKS ONCE, read by the server's own function counters (0262). Where the setting is refused (a role that may not set it, as CI's), the body check in section 4 stands alone. The rollback below puts the setting back.
     begin
       perform set_config('track_functions', 'all', true);
       v_track := true;
@@ -293,7 +293,6 @@ $h$];
   exception when sqlstate 'ZX318' then
     null;
   end;
-  perform set_config('track_functions', 'none', true);
   drop function pg_temp.draw_0318(uuid, integer, integer);
   drop function pg_temp.cap_0318(uuid, uuid, uuid);
 
