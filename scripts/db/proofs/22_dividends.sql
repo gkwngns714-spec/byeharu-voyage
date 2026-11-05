@@ -9,6 +9,7 @@
 -- @pass DIV_PROFIT     a city that earned less than its coupon pays exactly what it earned
 -- @pass DIV_RATE       a city that earned plenty pays exactly 9 % of what was paid, at either clock
 -- @pass DIV_NO_LEAK    a city whose only money is crown aid, a crown call or a cargo ship pays nothing
+-- @pass DIV_CAPITAL    share money is not profit: a city that took 5,000,000 d. of it still pays only what it earned; a donation is income
 -- @pass DIV_LOSS       a city that lost pays nothing, owes nothing, and starts the next day at 0
 -- @pass DIV_OLD_FLOW   a flow older than the daybook's window still counts: the roll adds it, not the daybook
 -- @pass DIV_ONE_A_DAY  a later tick of the same real day pays nothing and keeps adding profit
@@ -51,6 +52,7 @@ begin
 
       update public.port_treasury set coupon_day = v_rday - 1, profit = 0, earned_day = world.game_day() - 1;
       perform public.treasury_post(v_h[1], 'BUY', 30000, null, null);                -- earned less than its coupon
+      perform public.treasury_post(v_h[1], 'SHARE', 5000000, null, null);            -- capital: it pays out none of this
       perform public.treasury_post(v_h[2], 'BUY', 500000, null, null);               -- earned plenty
       perform public.treasury_post(v_h[3], 'CROWN_AID', 5000000, null, null);        -- crown money, nothing earned
       perform public.treasury_post(v_h[3], 'CROWN_CALL', 1000000, null, null);
@@ -59,6 +61,7 @@ begin
       perform public.treasury_post(v_h[4], 'SELL', -5000, null, null);
       insert into public.treasury_flows (port_id, kind, ducats, created_at)          -- 50 minutes old: past the daybook's 30 game days at the 60 s clock
       values (v_h[5], 'BUY', 40000, now() - interval '50 minutes');
+      perform public.treasury_post(v_h[5], 'DONATION', 10000, null, null);           -- income
 
       v_r := public.tick_city(now());
       v_x := jsonb_build_object(
@@ -101,8 +104,8 @@ begin
     if v_x ->> 'p4' is not null or (v_x #>> '{owed,4}')::bigint <> 0 or (v_x ->> 'open')::bigint <> 0 then
       raise exception 'PROOF 22 FAIL: a loss paid, was owed, or a period stayed open at % s: %', v_gds, v_x;
     end if;
-    if (v_x ->> 'p5')::bigint is distinct from -40000 then
-      raise exception 'PROOF 22 FAIL: the old flow was not counted at % s: %', v_gds, v_x;
+    if (v_x ->> 'p5')::bigint is distinct from -50000 then
+      raise exception 'PROOF 22 FAIL: the old flow and the donation were not counted at % s: %', v_gds, v_x;
     end if;
     if (v_x ->> 'paid2')::bigint <> 0 or (v_x ->> 'profit2')::bigint <> 7000 then
       raise exception 'PROOF 22 FAIL: the second tick of the day at % s: %', v_gds, v_x;
@@ -114,8 +117,9 @@ begin
   raise notice 'PASS: DIV_PROFIT — earned 30,000 d., paid %', v_x ->> 'p1';
   raise notice 'PASS: DIV_RATE — due 90,000 d., paid % at 60 s, % at 2880 s', v_x ->> 'p2', v_all -> '2880' ->> 'p2';
   raise notice 'PASS: DIV_NO_LEAK — 7,000,000 d. of crown money, nothing paid';
+  raise notice 'PASS: DIV_CAPITAL — 5,000,000 d. of shares, paid %; 10,000 d. of donation counted', v_x ->> 'p1';
   raise notice 'PASS: DIV_LOSS — no dividend, owed %, no period left open', v_x #>> '{owed,4}';
-  raise notice 'PASS: DIV_OLD_FLOW — a 50-minute-old 40,000 d. flow, paid %', v_x ->> 'p5';
+  raise notice 'PASS: DIV_OLD_FLOW — a 50-minute-old 40,000 d. flow and a 10,000 d. donation, paid %', v_x ->> 'p5';
   raise notice 'PASS: DIV_ONE_A_DAY — second tick paid %, profit %', v_x ->> 'paid2', v_x ->> 'profit2';
 end
 $$;

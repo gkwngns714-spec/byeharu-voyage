@@ -454,7 +454,7 @@ A level lives in its own row and composes into a reader. `public.city_level(p_po
   it holds above its reserve**: per harbour, `payable = least(Σ due, greatest(0, balance − reserve),
   greatest(0, port_treasury.profit))`, split pro rata over its rows. `profit` is the net added by the
   roll since the last coupon (`public.flow_is_profit`: no CROWN_AID,
-  CROWN_CALL, CROWN_TAX, CONVOY_*, DIVIDEND). The shortfall is not owed — a poor city skips its
+  CROWN_CALL, CROWN_TAX, CONVOY_*, DIVIDEND, SHARE). The shortfall is not owed — a poor city skips its
   dividend, like a company that skips one; a loss pays nothing and is not carried. `accrued_day`,
   `coupon_day` and `profit` close the period regardless. One UPDATE, one `DIVIDEND` flow per harbour. This is the "cannot grow for ever":
   a city whose trade cannot carry its investors' coupons stops paying them, and investors read that

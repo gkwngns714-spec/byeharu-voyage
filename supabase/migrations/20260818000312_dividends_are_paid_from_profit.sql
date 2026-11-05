@@ -28,7 +28,8 @@
 --     the day netted 0 and paid 100. Paying once is the only exact form. Holders collect at arrival as before; their `accrued` simply grows daily.
 --   - NOTHING ACCRUES AS A DEBT, and a loss does not carry: tomorrow starts at 0. An unpaid profit does not carry either.
 --   - OUT OF PROFIT: CROWN_AID, CROWN_CALL, CROWN_TAX, DIVIDEND (the owner's list) and CONVOY_LOAD, CONVOY_DELIVER, CONVOY_RETURN (0309, dark: the same aid
---     by ship, "aid can never leak out as dividends"). DONATION and SHARE are in: the owner's words are income less spending. One function to change.
+--     by ship, "aid can never leak out as dividends"); and SHARE: share money is capital, not profit, or 0313's gold would leave again as dividends at the
+--     next 00:37. DONATION is in: the owner's words are income less spending. One function to change.
 --   - city_shares.accrued (1.53 B d. set aside) is the holders' money: never touched, still collected at arrival.
 -- accrued_day stays: public.invest_for stamps it, and it pro-rates a holder's first part-day. It is read only as a fraction of the days since the last
 -- coupon, floored at 0, so a clock change can neither sweep a purse nor stop a coupon.
@@ -43,7 +44,7 @@
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Deploy away from minute :37. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): docs/dev-log/2026-11-05-dividends.md. Stop paying at once: works_coupon_day = 0.
--- VERSION: 0312 - prod head 0310 (2026-11-05); 0311 (a request stands a day, #494) lands first and does not touch these bodies.
+-- VERSION: 0312 - prod head 0311 (2026-11-05).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -125,8 +126,9 @@ returns boolean
 language sql
 immutable
 as $body$
-  -- 0312: THE list of what is not a city's own profit: the crown's money in and out, the same money by cargo ship, and the dividend itself.
-  select p_kind not in ('CROWN_AID', 'CROWN_CALL', 'CROWN_TAX', 'DIVIDEND', 'CONVOY_LOAD', 'CONVOY_DELIVER', 'CONVOY_RETURN')
+  -- 0312: THE list of what is not a city's own profit: the crown's money in and out, the same money by cargo ship, the dividend itself, and share money
+  -- (capital: it must not leave again as dividends). A DONATION is income.
+  select p_kind not in ('CROWN_AID', 'CROWN_CALL', 'CROWN_TAX', 'DIVIDEND', 'CONVOY_LOAD', 'CONVOY_DELIVER', 'CONVOY_RETURN', 'SHARE')
 $body$
   $f$;
   revoke all on function public.flow_is_profit(text) from public, anon, authenticated;
@@ -315,11 +317,11 @@ $h$];
   end if;
 
   -- ── 7. THE SELF-ASSERT: the kinds ──
-  if (select string_agg(k, ',' order by k) from unnest(array['CROWN_AID', 'CROWN_CALL', 'CROWN_TAX', 'DIVIDEND', 'CONVOY_LOAD', 'CONVOY_DELIVER', 'CONVOY_RETURN']) k
+  if (select string_agg(k, ',' order by k) from unnest(array['CROWN_AID', 'CROWN_CALL', 'CROWN_TAX', 'DIVIDEND', 'CONVOY_LOAD', 'CONVOY_DELIVER', 'CONVOY_RETURN', 'SHARE']) k
        where public.flow_is_profit(k)) is not null then
-    raise exception '0312 self-assert FAIL: aid or a dividend counts as profit';
+    raise exception '0312 self-assert FAIL: aid, capital or a dividend counts as profit';
   end if;
-  if (select count(*) from unnest(array['BUY', 'SELL', 'TAX', 'WAGES', 'PORT_FEE', 'POPULATION_TAX', 'WORKS_OUT', 'BOUNTY', 'INSURANCE_PAID']) k where public.flow_is_profit(k)) <> 9 then
+  if (select count(*) from unnest(array['BUY', 'SELL', 'TAX', 'WAGES', 'PORT_FEE', 'POPULATION_TAX', 'WORKS_OUT', 'BOUNTY', 'INSURANCE_PAID', 'DONATION']) k where public.flow_is_profit(k)) <> 10 then
     raise exception '0312 self-assert FAIL: a city''s own trade is not profit';
   end if;
 
