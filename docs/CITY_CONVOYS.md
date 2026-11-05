@@ -12,7 +12,7 @@ Standing rules kept: closed economy (no minted gold; `mint_guard` untouched), a 
 
 ## REVIEW 2026-11-05: read this first; it overrides the sections below where they differ
 
-Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_goods`). The original draft got three things wrong: it said no `CROWN_AID` ran (it read `treasury_flows`, which keeps only about a minute; the daybook keeps about 30 minutes, since a game day is about a real minute), it treated capital funding of cities as new, and it assumed cities lack goods.
+Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_goods`). The original draft got three things wrong: it said no `CROWN_AID` ran (it read `treasury_flows` right after the hourly roll at :37, and that table only holds flows since the last roll; a 24 h figure comes from `stats_city`), it treated capital funding of cities as new, and it assumed cities lack goods.
 
 | Claim | Measured |
 |---|---|
@@ -23,6 +23,8 @@ Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_
 | Empty purses hurt | 217 of the 14,195 orders on file failed `E_CITY_BROKE` (1.5 %). Period not measured |
 
 **Why 101 cities under 10,000 d. stay broke:** (a) 47 have a capital under 100,000 d. to draw on, often while the nation holds plenty in one other city (MRS capital 6,857 d., nation 3.36 B); (b) 16 have a capital over 1 M but already meet their reserve, because the reserve is 3 days of the city's own recent sale payouts, and a broke city pays out little (43 of the 101 show zero outflow), so a broke city is judged not short. (c) One nation (BUS) holds 49,145 d. in total: nothing inside it can help.
+
+**Results so far (2026-11-05):** 0306 and 0307 are live. Run at 03:37: 7.60 M d. to 168 cities, gold conserved, cities under 50,000 d. 113 -> 63. By 04:08 it was back to 101, and `E_CITY_BROKE` did not fall (143 of 1,773 sale orders in 30 minutes). Funds arrive and are gone within the hour, because these cities pay out far more than 50,000 d. an hour. Dividends are the larger outflow: the 121 paying cities under 50,000 d. paid 115 M d. on their last daily record against 12 M of aid; 1.56 B of the 1.57 B "Set aside" in Stats is uncollected dividends, nearly all owed to merchants. Open owner decision: pause dividends while a city is broke.
 
 **Better plan, in order:**
 1. **Fix the reserve floor** so a broke city counts as short (owner knob; one small migration). Built as 0306, PR open, not deployed: the floor enters the aid decision only, not the reserve, because the reserve also sets the sale bid (`docs/dev-log/2026-11-05-reserve-floor.md`).
