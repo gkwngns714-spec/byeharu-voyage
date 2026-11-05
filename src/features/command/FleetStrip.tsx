@@ -33,13 +33,18 @@ export function FleetStrip({
         <FleetPicker fleets={fleets} fleet={fleet} onSelect={onSelect} />
         {fleet && (
           <div className="flex shrink-0 items-center gap-6" data-testid="command-line">
+            {/* THE PAGE'S FIGURE SCALE on the terminal's header (row 267): the key figures are 24 px (they were 14), their labels 14 (they were 12) */}
             <span className="flex items-baseline gap-2">
-              <span className="text-t-caption text-ink-faint">{t('command.supplies')}</span>
-              <Figure value={formatVoyageDays(fleet.endurance_days)} />
+              <span className="text-t-label text-ink-muted" data-desk-label="">
+                {t('command.supplies')}
+              </span>
+              <Figure value={formatVoyageDays(fleet.endurance_days)} size="figure" />
             </span>
             <span className="flex items-center gap-2">
-              <span className="text-t-caption text-ink-faint">{t('command.cargo')}</span>
-              <Figure value={formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} unit={tonsWord(fleetHoldTotal(fleet))} />
+              <span className="text-t-label text-ink-muted" data-desk-label="">
+                {t('command.cargo')}
+              </span>
+              <Figure value={formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))} unit={tonsWord(fleetHoldTotal(fleet))} size="figure" />
               <Bar
                 pct={fleetHoldTotal(fleet) > 0 ? (fleetHoldUsed(fleet) / fleetHoldTotal(fleet)) * 100 : 0}
                 tone={fleet.free_hold <= 0 ? 'warning' : 'accent'}

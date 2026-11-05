@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
-import { Note, Row, Segmented, Sheet, useWide } from '../../components/ui'
+import { Note, Segmented, Sheet, useWide } from '../../components/ui'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { useCommandDraft } from '../../domain/order'
 import { useWorld } from '../../live/worldStore'
 import type { FleetView } from '../../lib/rpc'
@@ -95,24 +96,15 @@ export function CommandScreen() {
   const wide = useWide()
 
   if (phase === 'failed' && fatal) {
-    return (
-      <Sheet title={t('command.title')}>
-        <Note tone="danger" code={fatal.code} figures={fatal.figures}>
-          {fatal.sentence}
-        </Note>
-      </Sheet>
-    )
+    // THE WORLD'S TWO NON-READY DOORS are written once (live/WorldGate.tsx), on the page grid — not a third copy here
+    return <WorldFailed title={t('command.title')} refusal={fatal} />
   }
   if (!snapshot) {
-    return (
-      <Sheet title={t('command.title')}>
-        <Row label={t('command.loading')} tone="muted" hairline={false} />
-      </Sheet>
-    )
+    return <WorldLoading title={t('command.title')} />
   }
   if (fleets.length === 0) {
     return (
-      <Sheet title={t('command.title')}>
+      <Sheet title={t('command.title')} layout="page">
         <Note tone="neutral">{t('command.noFleets')}</Note>
       </Sheet>
     )
@@ -138,9 +130,10 @@ export function CommandScreen() {
       <div className="flex h-full min-h-0 flex-col" data-testid="command" data-desk="terminal">
         {/* THE HEADER spans the glass, the same on every face: pressing a face changes the panes below
             it, never the header or the frame. */}
-        <header className="flex shrink-0 items-center gap-6 border-b border-edge px-6 py-2" data-testid="desk-header">
+        <header className="flex shrink-0 items-center gap-6 px-3 py-3 min-[90rem]:px-6" data-testid="desk-header">
           <div className="flex min-w-0 flex-1 items-center gap-6">
-            <h1 className="shrink-0 text-t-body font-semibold text-ink">{t('command.title')}</h1>
+            {/* THE PAGE'S CARD-TITLE VOICE (18 px; it was 14) — row 267, tests/command.design.spec.ts */}
+            <h1 className="shrink-0 text-t-card text-ink">{t('command.title')}</h1>
             <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} inline />
           </div>
           <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="shrink-0" />

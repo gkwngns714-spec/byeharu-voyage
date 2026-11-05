@@ -40,8 +40,10 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
     const ticket = await box(page, 'desk-pane-ticket')
     expect(list.x + list.w, 'the list and the centre overlap').toBeLessThanOrEqual(chart.x + 1)
     expect(chart.x + chart.w, 'the centre and the orders overlap').toBeLessThanOrEqual(ticket.x + 1)
-    expect(ticket.x + ticket.w, 'the orders do not reach the right edge').toBeGreaterThanOrEqual(1440 - 2)
-    expect(list.x, 'the list does not start at the left edge').toBeLessThanOrEqual(2)
+    // THE PANES ARE CARDS NOW (2026-11-05, owner row 267; tests/command.design.spec.ts): they stand on the page's own margin (24 px at 1,440) —
+    // not flush with the glass's edges, which was the packed terminal. They still use the glass: no more than the margin is left at either side.
+    expect(ticket.x + ticket.w, 'the orders do not reach the right margin').toBeGreaterThanOrEqual(1440 - 26)
+    expect(list.x, 'the list does not start at the left margin').toBeLessThanOrEqual(26)
     expect(chart.w, 'the centre pane is not the widest').toBeGreaterThan(Math.max(list.w, ticket.w))
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   })
