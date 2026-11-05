@@ -67,8 +67,8 @@ begin
   select id into v_fnc from public.ports where code = 'FNC';
   v_p := public.new_house(c_uid, 'Casa do Relatorio 0f13', 'PRT', 'LIS');
   select f.id into v_f from public.fleets f where f.player_id = v_p;
-  v_today := world.game_day();
-  v_gds   := public.wc_num('game_day_seconds');
+  v_today := public.real_day(now());
+  v_gds   := 86400;   -- 0317: the report's days are real UTC days
   v_start := to_timestamp((v_today * v_gds)::double precision);
   perform cmd.assume_identity(c_uid);
 
@@ -96,7 +96,7 @@ begin
 
   -- ── 2. THE EMPTY SHAPE ───────────────────────────────────────────────────────────────────────
   if (v_empty->>'total')::bigint <> 0
-     or (v_empty->>'game_day')::int <> v_today
+     or (v_empty->>'day')::int <> v_today
      or jsonb_array_length(v_empty->'sections') <> 8
      or exists (select 1 from jsonb_array_elements(v_empty->'sections') s
                  where (s->>'ducats')::bigint <> 0 or jsonb_array_length(s->'lines') <> 0)
@@ -127,7 +127,7 @@ begin
   values (v_voy, v_f, v_p, '[]', 100, '{}', now() - interval '1 day', now() + interval '1 day', 'SAILING',
           v_lis, v_fnc, now() - interval '1 day');
   update public.fleets set status = 'SAILING', port_id = null where id = v_f;
-  v_voy_day := world.game_day(now() - interval '1 day');
+  v_voy_day := public.real_day(now() - interval '1 day');
   v_e := public.emit_event(v_p, 'PROBE_13', jsonb_build_object('fleet', 'Gaivota'));
   perform public.credit(v_p, 'INSURANCE_PAID', 300, v_e);
 
@@ -232,11 +232,11 @@ begin
   if jsonb_array_length(v_day->'days') <> 1
      or (v_day->'days'->0->>'net')::bigint <> -1420
      or jsonb_array_length(v_week->'days') <> 7
-     or (v_week->'days'->0->>'game_day')::int <> v_today - 6
+     or (v_week->'days'->0->>'day')::int <> v_today - 6
      or (v_week->'days'->0->>'net')::bigint <> 222
      or (v_week->'days'->6->>'net')::bigint <> -1420
      or jsonb_array_length(v_all->'days') <> 8
-     or (v_all->'days'->0->>'game_day')::int <> v_today - 7
+     or (v_all->'days'->0->>'day')::int <> v_today - 7
      or (v_all->'days'->0->>'net')::bigint <> 333
      or (v_all->'days'->-1->>'net')::bigint <> -1420 then
     raise exception 'PROOF 13 FAILED: a day axis is not 1 / 7 / 8 at the right edges: % / % / %',

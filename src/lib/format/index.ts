@@ -50,6 +50,7 @@ export {
   CALENDAR_YEAR_0,
   gameToday,
   gameDayOfMonth,
+  formatRealDay,
   formatGameToday,
   GAME_CLOCK_RATE,
   gameTimeOfDayMs,

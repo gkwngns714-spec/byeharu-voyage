@@ -1106,7 +1106,7 @@ test('world.haggle_state() answers "how much negotiation can be done", in the se
   // Every field src/lib/rpc/types.ts declares, read back out of a payload a real PostgreSQL made.
   expect(state.port).toBe(port.code)
   expect(state.good).toBe(good.code)
-  expect(isNum(state.game_day)).toBe(true)
+  expect(isNum(state.day)).toBe(true)
   expect(state.attempts_used).toBe(0)
   expect(state.attempts_left).toBe(state.attempts_max)
   expect(state.attempts_max).toBeGreaterThan(0)
