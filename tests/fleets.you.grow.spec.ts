@@ -67,7 +67,9 @@ test('a press on a fleet opens her page and nothing behind it moves; Back leaves
         panel: r(document.querySelector('[data-testid="fleets-list"]')),
         first: r(document.querySelectorAll('[data-testid="fleet-row"]')[0] ?? null),
         second: r(document.querySelectorAll('[data-testid="fleet-row"]')[1] ?? null),
-        scroll: (document.querySelector('[data-list-body]') as HTMLElement).scrollTop,
+        // Fleets is a PAGE (2026-11-04, row 267): its list is a card that never scrolls inside itself, so the thing that could move
+        // under a press is the page's own scroll — the Sheet and the document — not the card's `[data-list-body]`.
+        scroll: [document.querySelector('[data-testid="fleets"]'), document.scrollingElement].map((e) => e?.scrollTop ?? null),
       }
     })
   const before = await boxes()
