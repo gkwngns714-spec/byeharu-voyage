@@ -6,7 +6,7 @@ import { worldStatsCities, type StatsCities, type StatsCityRow } from '../../lib
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { CityDetail } from './CityDetail'
 import { portName } from './statsFaces'
-import { useLiveRead } from './statsLive'
+import { useLiveRead } from '../../live/liveRead'
 import { CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sortCities, type CitySort } from './statsFilters'
 
 // CITIES — every harbour, open to everyone (0223, owner row 197), ALL ON THE FACE (owner, 2026-11-01, row 260). It

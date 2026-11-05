@@ -3,7 +3,7 @@ import { formatDucats, formatDucatsDelta, formatInt, formatRelative } from '../.
 import { useT } from '../../lib/i18n'
 import { worldReport, worldStatsMe, type Report, type StatsMe } from '../../lib/rpc'
 import { useShellState } from '../../app/shellState'
-import { useLiveRead } from './statsLive'
+import { useLiveRead } from '../../live/liveRead'
 
 // ME — your own week beside the world's, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267). MAIN |
 // SIDE (screenLayout.ts "THE PAGE"): the best sales are ONE list card in main, with their sort in its header, and the week —

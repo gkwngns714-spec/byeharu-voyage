@@ -26,7 +26,7 @@ import { worldStatsOverview, type StatsHolders, type StatsNow, type StatsOvervie
 import { CARD_CHART_H, STATS_BARS, flowRanks, toSeries, trendOf } from './statsFaces'
 import { MoneyLogControls, MoneyRows } from './MoneyLog'
 import { loadMoveFilter, saveMoveFilter, sliceMoves, useMoneyFeed, type MoveFilter } from './moneyFeed'
-import { useLiveRead } from './statsLive'
+import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
 import { WatchCard } from './Watch'

@@ -25,7 +25,7 @@ import { worldStatsCity, worldStatsCityPeople, type StatsCity, type StatsCityPeo
 import { STEP_TONE, stepWords } from '../../domain/population'
 import { useWorld } from '../../live/worldStore'
 import { CARD_CHART_H, STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
-import { useLiveRead } from './statsLive'
+import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
 
