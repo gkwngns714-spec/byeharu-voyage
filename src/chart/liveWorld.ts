@@ -111,6 +111,7 @@ function hullsOf(ships: readonly FleetShip[] | undefined): (HullClass | null)[] 
 export function mapFleetsOf(fleets: readonly FleetView[]): MapFleet[] {
   const out: MapFleet[] = []
   for (const f of fleets) {
+    if (f.ships.length === 0) continue   // 0321: an empty fleet has nothing on the water
     // Field for field rather than a spread, so the one thing this module DERIVES — her hulls,
     // flagship first, out of `ships[].class` (row 120) — is the only thing here that is not a copy.
     const m = mapFleetOf({

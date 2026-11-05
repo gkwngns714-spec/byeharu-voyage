@@ -1610,6 +1610,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // player id; the tow takes the version (E_STALE). Not a line of the grammar — a wreck cannot
       // run its queue. Landed WITH the face that reads them (src/live/TowNote.tsx, PORT and the city panel).
       'cmdPreviewTow', 'cmdTow',
+      // Pin moved deliberately 2026-11-06 with migration 0321 (docs/FLEETS_AND_SLOTS.md section 2.4): A SHIP CHANGES FLEETS, and what the fleet
+      // page may offer. No player id; dark (E_NOT_IN_USE, {on: false}) until fleet_room_bite. Landed WITH the face (src/features/fleets/MoveShip.tsx).
+      'worldShipMoves', 'cmdMoveShip',
       // Pin moved deliberately 2026-10-18 with migration 0157 (docs/SKILLS_AND_CAPTAINS.md K5): SEAT A
       // CAPTAIN in a cabin, move her, or put her ashore. Takes the officer code, a ship (the caller's
       // own, E_NOT_YOUR_SHIP otherwise) and a seat; no player id. Only in port (E_NOT_IN_PORT). Landed

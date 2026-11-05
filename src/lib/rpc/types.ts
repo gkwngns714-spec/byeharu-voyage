@@ -2781,6 +2781,22 @@ export interface DonateReceipt {
   cap: number
 }
 
+/** 0321: `world.ship_moves`: where this fleet's ships may go. `on` false while dark, or for a fleet not yours. */
+export type ShipMoves =
+  | { on: false }
+  | { on: true; targets: { id: string; name: string; empty: boolean }[]; can_new: boolean }
+
+/** 0321: `cmd.move_ship`. `empty`: the fleet she left has no ships now. */
+export interface ShipMoved {
+  ship: string
+  from: string
+  to: string
+  fleet_id: string
+  port: string
+  new_fleet: boolean
+  empty: boolean
+}
+
 /** `cmd.invest` — the stake bought (also the dry run's `estimate`). */
 export interface InvestReceipt {
   port: string
