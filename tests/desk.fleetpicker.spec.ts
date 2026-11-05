@@ -187,7 +187,7 @@ test.describe('several fleets', () => {
     await expect(picker.getByTestId('fleet-picker-alert')).toHaveAttribute('data-tone', 'danger')
 
     const before = {
-      header: await rect(page, '[data-testid="sheet-header"]'),
+      header: await rect(page, '[data-testid="desk-header"]'),
       picker: await rect(page, '[data-testid="fleet-picker"]'),
       line: await rect(page, '[data-testid="command-line"]'),
       faces: await rect(page, '[role="tablist"][aria-label="Desk faces"]'),
@@ -202,7 +202,7 @@ test.describe('several fleets', () => {
     await page.screenshot({ path: test.info().outputPath('fleet-list-phone.png') })
     expect(
       {
-        header: await rect(page, '[data-testid="sheet-header"]'),
+        header: await rect(page, '[data-testid="desk-header"]'),
         picker: await rect(page, '[data-testid="fleet-picker"]'),
         line: await rect(page, '[data-testid="command-line"]'),
         faces: await rect(page, '[role="tablist"][aria-label="Desk faces"]'),

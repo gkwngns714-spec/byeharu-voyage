@@ -168,7 +168,7 @@ async function snapshot(page: Page): Promise<Snapshot> {
       }))
 
     const de = document.documentElement
-    const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
+    const sheet = document.querySelector('[data-sheet], [data-testid="desk-scroll"]') as HTMLElement | null
     return {
       doc: { sw: de.scrollWidth, cw: de.clientWidth, sh: de.scrollHeight, ch: de.clientHeight },
       sheet: sheet ? { sh: sheet.scrollHeight, ch: sheet.clientHeight, top: sheet.scrollTop, page: sheet.getAttribute('data-sheet-layout') === 'page' } : null,

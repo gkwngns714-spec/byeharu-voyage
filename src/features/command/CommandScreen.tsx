@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Note, Segmented, Sheet, useWide } from '../../components/ui'
+import { Clip, Note, Segmented, Sheet, useWide } from '../../components/ui'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { useCommandDraft } from '../../domain/order'
 import { useWorld } from '../../live/worldStore'
@@ -16,7 +16,7 @@ import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
 // (≥ 1024 px, WIDE_QUERY) the desk is a TRADING TERMINAL — the fleet and the faces on one header line,
-// and every face in the three panes (DeskFrame.tsx) using the whole glass; on a phone it is the Sheet
+// and every face in the three panes (DeskFrame.tsx) using the whole glass; on a phone it is a titled scroll box
 // below, the parts one under the other. Which city and good are in hand and which face is up are the
 // same state in both.
 // The owner, 2026-10-17: *"i want you to delete
@@ -144,22 +144,29 @@ export function CommandScreen() {
   }
 
   return (
-    // THE GLASS IS THE FACE'S (2026-11-02, the HQ-on-a-phone slice; docs/dev-log/2026-11-02-city-phone-desk.md): the desk's body fills the height under the title,
-    // so a face that is ONE board (the City's building face) takes what the strip, the faces and its own header leave free instead of a 12-rem cap —
-    // for EVERY face, so pressing one never moves the title (the press law). A face that is taller than the glass still scrolls the Sheet, as before.
-    <Sheet title={t('command.title')} fill data-testid="command">
-      <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} />
-      {/* THE FACES (deskView.ts): one row in the body, not in the sticky title bar — a 44-px control
-          there makes the bar taller, and a taller sticky bar covers what a press lands on below it. */}
-      <Segmented<DeskFace>
-        segments={DESK_FACES}
-        value={face}
-        onChange={turnTo}
-        label={t('command.deskFaces')}
-        fill
-        className="mb-2 mt-1"
-      />
-      {fleet && faceBody(fleet)}
-    </Sheet>
+    // THE PHONE DESK IS ITS OWN ROOT, as the wide desk is (it is not a Sheet): a title line, then ONE scroll box that takes the glass the title
+    // leaves, so a face that is ONE board (the City's building face) takes what the strip, the faces and its own header leave free instead of a
+    // 12-rem cap — for EVERY face, so pressing one never moves the title (the press law). A face taller than the glass scrolls this box.
+    <div className="flex h-full min-h-0 flex-col" data-testid="command">
+      <header className="flex shrink-0 items-center px-gutter pb-1 pt-2" data-testid="desk-header">
+        <h1 className="min-w-0 text-t-title">
+          <Clip>{t('command.title')}</Clip>
+        </h1>
+      </header>
+      <div className="bv-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-gutter pb-2" data-testid="desk-scroll">
+        <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} />
+        {/* THE FACES (deskView.ts): one row in the body, not in the title line — a 44-px control
+            there makes the bar taller, and a taller bar covers what a press lands on below it. */}
+        <Segmented<DeskFace>
+          segments={DESK_FACES}
+          value={face}
+          onChange={turnTo}
+          label={t('command.deskFaces')}
+          fill
+          className="mb-2 mt-1"
+        />
+        {fleet && faceBody(fleet)}
+      </div>
+    </div>
   )
 }

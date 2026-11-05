@@ -219,7 +219,6 @@ export { Sparkline, type SparkTone } from './Sparkline'
 export { StockGauge } from './StockGauge'
 export { FilterBar, type FilterChips, type FilterOption, type FilterPick, type FilterToggle } from './FilterBar'
 export { ALL, filterStorageKey, oneOf, readFilterChoice, useFilterChoice, type FilterChoice } from './filterState'
-export { sheetBodyClass, sheetColumnClass } from './screenLayout'
 export { PAGE_GAP, PAGE_REM, SIDE_REM, pageBodyClass, pageColumnClass, pageSplitClass, pageVarsClass, trayDockPageClass } from './screenLayout'
 export { stockLevel, stockFillPct, type StockLevel } from './stockLevel'
 // THE ONE READING OF "IS THIS A WIDE GLASS?" (screenLayout.ts). The Tray reads it to stand as a
@@ -229,7 +228,7 @@ export { useWide } from './useWide'
 // WHERE A SIDE TRAY STANDS, and therefore where a chart's corner chrome has to stop (MAP's zoom
 // column and Regions were drawn UNDER the merchant sheet at 1280). The table is screenLayout.ts's;
 // this is the entrance a screen reads it through.
-export { chromeAsideTrayClass, chromeAsideSideTrayClass } from './screenLayout'
+export { chromeAsideSideTrayClass } from './screenLayout'
 // The one rendering of a good's SERVED rarity tier (0032): a colour token AND a shape per tier,
 // so the tier survives a colourblind player and a greyscale screenshot. §5 keeps the MARK.
 export { RarityMark } from './Rarity'
