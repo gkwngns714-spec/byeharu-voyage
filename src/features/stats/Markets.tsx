@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import {
   Button,
   Card,
+  CardRow,
   Empty,
   FactsLine,
   FilterBar,
@@ -25,14 +26,19 @@ import {
   RARITY_TIERS,
   useFilterChoice,
 } from '../../components/ui'
-import { formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
+import { formatDucats, formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
 import { t as tNow, useT } from '../../lib/i18n'
 import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { GoodTray } from './GoodTray'
+import { SeriesCard } from './WorldSeries'
+import { useWorldSeries } from './useWorldSeries'
 import { goodName, movePct } from './statsFaces'
 import { useLiveRead } from '../../live/liveRead'
 
+// ROW 2026-11-05 (*"same for markets, a general graph would be nice"*): MAIN opens on two chart cards, as Merchants' do — the money
+// sold to the cities and bought from them, across every city and every good, over the shared span (WorldSeries.tsx) — over the list.
+//
 // MARKETS — every good as a stock-market table, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267:
 // *"it looks so wrong … too packed"*). The face is MAIN | SIDE (screenLayout.ts "THE PAGE"): MAIN is ONE list card — the goods,
 // with the filters (kind · rarity · sort) in its own header, in as many columns as the main holds (1 on a phone, 2 from 768 and
@@ -55,6 +61,7 @@ export function MarketsFace() {
   const t = useT()
   const read = useLiveRead<StatsMarkets>('stats:markets', () => worldStatsMarkets())
   const v = read.view
+  const world = useWorldSeries()
   const [choice, choose] = useFilterChoice('stats.markets', { kind: ALL, rarity: ALL, sort: 'movers' })
   const goodByCode = useWorld((s) => s.goodByCode)
   const [win, setWin] = useState<Window>('1d')
@@ -99,69 +106,92 @@ export function MarketsFace() {
       sideFirst
       stickySide
       main={
-        <ListPanel
-          look="card"
-          columns="fit"
-          title={t('stats.everyGood')}
-          count={formatInt(rows.length)}
-          trailing={
-            <FilterBar
-              compact
-              data-testid="stats-markets-sort"
-              sort={{
-                id: 'sort',
-                label: t('stats.sortLabel'),
-                options: SORTS.map((id) => ({
-                  id,
-                  label: t(
-                    id === 'movers' ? 'stats.movers' : id === 'rose' ? 'stats.roseMost' : id === 'fell' ? 'stats.fellMost' : id === 'traded' ? 'stats.mostTraded' : id === 'price' ? 'stats.dearest' : id === 'class' ? 'stats.topClass' : 'stats.name',
-                  ),
-                })),
-                value: sort,
-                onChange: (id) => choose({ sort: id }),
-              }}
+        <>
+          <CardRow>
+            <SeriesCard
+              title={t('stats.soldCities')}
+              value={world?.day?.sold ?? 0}
+              format={formatDucats}
+              series={world?.series ?? []}
+              pick={(p) => p.sold}
+              tone="info"
+              data-testid="stats-chart-market-sold"
             />
-          }
-          controls={
-            <FilterBar
-              compact
-              data-testid="stats-markets-filters"
-              picks={[
-                {
-                  id: 'kind',
-                  label: t('stats.kind'),
-                  options: [{ id: ALL, label: t('stats.allKinds') }, ...kinds.map((k) => ({ id: k, label: categoryLabel(k) }))],
-                  value: kind,
-                  onChange: (id) => choose({ kind: id }),
-                },
-                {
-                  id: 'rarity',
-                  label: t('stats.rarity'),
-                  options: [{ id: ALL, label: t('stats.anyRarity') }, ...RARITY_TIERS.map((r) => ({ id: r, label: rarityLabel(r) }))],
-                  value: rarity,
-                  onChange: (id) => choose({ rarity: id }),
-                },
-              ]}
+            <SeriesCard
+              title={t('stats.boughtCities')}
+              value={world?.day?.bought ?? 0}
+              format={formatDucats}
+              series={world?.series ?? []}
+              pick={(p) => p.bought}
+              tone="accent"
+              data-testid="stats-chart-market-bought"
             />
-          }
-          footer={
-            !all && rows.length > FIRST ? (
-              <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">
-                {t('stats.showAll')}
-              </Button>
-            ) : undefined
-          }
-          data-testid="stats-goods"
-        >
-          {rows.length === 0 && (
-            <Empty className="my-1 md:col-span-full" data-testid="stats-no-match">
-              {t('stats.noMatch')}
-            </Empty>
-          )}
-          {shown.map((r) => (
-            <GoodRow key={r.g.code} g={r.g} move={r.move} goodClass={goodByCode[r.g.code]?.class} />
-          ))}
-        </ListPanel>
+          </CardRow>
+
+          <ListPanel
+            look="card"
+            columns="fit"
+            title={t('stats.everyGood')}
+            count={formatInt(rows.length)}
+            trailing={
+              <FilterBar
+                compact
+                data-testid="stats-markets-sort"
+                sort={{
+                  id: 'sort',
+                  label: t('stats.sortLabel'),
+                  options: SORTS.map((id) => ({
+                    id,
+                    label: t(
+                      id === 'movers' ? 'stats.movers' : id === 'rose' ? 'stats.roseMost' : id === 'fell' ? 'stats.fellMost' : id === 'traded' ? 'stats.mostTraded' : id === 'price' ? 'stats.dearest' : id === 'class' ? 'stats.topClass' : 'stats.name',
+                    ),
+                  })),
+                  value: sort,
+                  onChange: (id) => choose({ sort: id }),
+                }}
+              />
+            }
+            controls={
+              <FilterBar
+                compact
+                data-testid="stats-markets-filters"
+                picks={[
+                  {
+                    id: 'kind',
+                    label: t('stats.kind'),
+                    options: [{ id: ALL, label: t('stats.allKinds') }, ...kinds.map((k) => ({ id: k, label: categoryLabel(k) }))],
+                    value: kind,
+                    onChange: (id) => choose({ kind: id }),
+                  },
+                  {
+                    id: 'rarity',
+                    label: t('stats.rarity'),
+                    options: [{ id: ALL, label: t('stats.anyRarity') }, ...RARITY_TIERS.map((r) => ({ id: r, label: rarityLabel(r) }))],
+                    value: rarity,
+                    onChange: (id) => choose({ rarity: id }),
+                  },
+                ]}
+              />
+            }
+            footer={
+              !all && rows.length > FIRST ? (
+                <Button variant="secondary" onClick={() => setAll(true)} data-testid="stats-show-all">
+                  {t('stats.showAll')}
+                </Button>
+              ) : undefined
+            }
+            data-testid="stats-goods"
+          >
+            {rows.length === 0 && (
+              <Empty className="my-1 md:col-span-full" data-testid="stats-no-match">
+                {t('stats.noMatch')}
+              </Empty>
+            )}
+            {shown.map((r) => (
+              <GoodRow key={r.g.code} g={r.g} move={r.move} goodClass={goodByCode[r.g.code]?.class} />
+            ))}
+          </ListPanel>
+        </>
       }
       side={
         <>
