@@ -5,6 +5,8 @@
 > your cargo, damaged ship, but at that city you will receive your insurance if you've paid for it, and if it
 > is too much to handle, the city should give donations."**
 
+> **0314 (2026-11-05):** a dry day is a forced home only when it ends BEFORE the ETA. A delay stacks several days on the ETA, and 0279's `d < v_cap` turned ships away from the port they had reached: 280 of 283 forced homes, and every insured one (`docs/dev-log/2026-11-05-insurance.md`).
+
 This is the design for that mechanic, grounded in what already exists. It is a design, not a build: the build
 follows, one migration at a time, by the repo's own rules (self-assert, hunks, prod checks, `~/bin/bv-deploy.sh`).
 
