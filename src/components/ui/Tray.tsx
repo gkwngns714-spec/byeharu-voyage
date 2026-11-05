@@ -106,6 +106,8 @@ export function Tray({
   // the rest of the time it is one of the three CSS stops above.
   const [dragHeight, setDragHeight] = useState<number | null>(null)
   const drag = useRef<{ startY: number; startHeight: number } | null>(null)
+  // A SIDE PANEL SLIDES BACK OUT BEFORE IT IS GONE (owner, 2026-11-05): a close asks for the exit first and reports 'closed' when it ends.
+  const [leaving, setLeaving] = useState(false)
   // ON A WIDE GLASS A DOCKED TRAY IS A SIDE PANEL (screenLayout.ts, "the wide glass"): it stands
   // beside the column at full height, so the detent ladder — a bottom-edge idea — does not apply.
   // `detent` still says open or closed; the height is the panel's.
@@ -122,6 +124,12 @@ export function Tray({
   const side = mode === 'side' || mode === 'side-next' || mode === 'pane' || (wide && mode === 'docked')
 
   if (detent === 'closed') return null
+
+  const isSidePanel = mode === 'side' || mode === 'side-next'
+  const change = (next: TrayDetent) => {
+    if (next === 'closed' && isSidePanel && !leaving) setLeaving(true)
+    else if (!leaving) onDetentChange(next)
+  }
 
   const container = () =>
     mode === 'docked' ? window.innerHeight : document.documentElement.clientHeight
@@ -141,7 +149,7 @@ export function Tray({
     const landed = nearestDetent(dragHeight ?? drag.current.startHeight, container())
     drag.current = null
     setDragHeight(null)
-    if (landed !== detent) onDetentChange(landed)
+    if (landed !== detent) change(landed)
   }
 
   const height = side ? undefined : dragHeight !== null ? `${dragHeight}px` : HEIGHT[detent]
@@ -158,6 +166,9 @@ export function Tray({
       aria-label={typeof title === 'string' ? title : undefined}
       data-tray-mode={mode}
       data-tray-detent={detent}
+      onAnimationEnd={(e) => {
+        if (leaving && e.target === e.currentTarget) onDetentChange('closed')
+      }}
       style={{ height, transitionDuration: dragHeight !== null ? '0ms' : undefined }}
       className={[
         // THE LAYER ORDER OF THE TWO SIDE PANELS, the one place it is decided. From `lg` the second
@@ -184,6 +195,7 @@ export function Tray({
             : mode === 'pane'
               ? 'relative h-full w-full'
               : 'relative w-full',
+        leaving ? 'bv-slide-to-right' : '',
         className,
       ].join(' ')}
       {...rest}
@@ -205,8 +217,8 @@ export function Tray({
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
             onKeyDown={(e) => {
-              if (e.key === 'ArrowUp') onDetentChange(stepDetent(detent, 1))
-              if (e.key === 'ArrowDown') onDetentChange(stepDetent(detent, -1))
+              if (e.key === 'ArrowUp') change(stepDetent(detent, 1))
+              if (e.key === 'ArrowDown') change(stepDetent(detent, -1))
             }}
             // THE RING BELONGS TO THE HANDLE, NOT TO ITS REACH. The button is a full-width grab
             // surface on purpose, so the browser's own focus box drew an empty rectangle across
@@ -223,7 +235,7 @@ export function Tray({
             type="button"
             aria-label={t('ui.close')}
             data-testid="tray-close"
-            onClick={() => onDetentChange('closed')}
+            onClick={() => change('closed')}
             className="flex h-11 w-11 items-center justify-center rounded-control text-ink-muted"
           >
             <Icon name="close" size={20} />

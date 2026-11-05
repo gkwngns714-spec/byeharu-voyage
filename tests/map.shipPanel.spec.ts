@@ -114,9 +114,9 @@ test.describe('a ship opened from her fleet', () => {
 
     const t = await centre(tray)
     const p = await centre(panel)
-    // THE PAGE'S SIDE COLUMN (2026-11-04, Map redesign): the fleet tray stands at the page's right margin (40 px at 1,280), 24 rem
+    // THE PAGE'S SIDE COLUMN (2026-11-04, Map redesign): the fleet tray stands on the WINDOW's right edge (2026-11-05, tests/map.tray.edge.spec.ts), 24 rem
     // (`--page-side`) wide; the ship's panel to its left, the same width, a 1-rem gap between (traySideEdgeClass / traySideNextClass)
-    expect(Math.round(t.box.x + t.box.width)).toBe(WIDE.width - 40)
+    expect(Math.round(t.box.x + t.box.width)).toBe(WIDE.width)
     expect(Math.abs(t.box.width - 24 * rem)).toBeLessThanOrEqual(1)
     expect(Math.abs(p.box.width - 24 * rem)).toBeLessThanOrEqual(1)
     expect(Math.abs(p.box.x + p.box.width + rem - t.box.x)).toBeLessThanOrEqual(1)
