@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { Clip, Note, Segmented, Sheet, useWide } from '../../components/ui'
+import { Clip, Note, Segmented, Sheet, scrollRegionClass, useWide } from '../../components/ui'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { useCommandDraft } from '../../domain/order'
 import { useWorld } from '../../live/worldStore'
@@ -153,7 +153,7 @@ export function CommandScreen() {
           <Clip>{t('command.title')}</Clip>
         </h1>
       </header>
-      <div className="bv-scroll flex min-h-0 flex-1 flex-col overflow-y-auto px-gutter pb-2" data-testid="desk-scroll">
+      <div className={`flex flex-col ${scrollRegionClass}`} data-testid="desk-scroll">
         <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} />
         {/* THE FACES (deskView.ts): one row in the body, not in the title line — a 44-px control
             there makes the bar taller, and a taller bar covers what a press lands on below it. */}
