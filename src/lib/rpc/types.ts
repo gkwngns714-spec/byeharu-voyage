@@ -3246,6 +3246,59 @@ export interface ReportDay {
   net: number
 }
 
+/** 0316: how a history graph groups its days. Spoken by `HISTORY_PERIODS`, which the page's picker offers. */
+export type HistoryPeriod = 'day' | 'week' | 'month'
+/** 0316: whose history. `city` is named by port code, `good` by good code, `company` by a merchant company's name; `world` and `me` by nothing. */
+export type HistoryWhat = 'world' | 'city' | 'good' | 'company' | 'me'
+
+/** One period of `world.history('world')`. A holder is the period's last day's; a flow its sum, null where 0214's old retention lost it. */
+export interface HistoryWorldPoint {
+  at: string
+  players: number
+  merchants: number
+  cities: number
+  set_aside: number
+  minted: number | null
+  removed: number | null
+  sold: number | null
+  bought: number | null
+}
+
+/** One period of `world.history('city')`. */
+export interface HistoryCityPoint {
+  at: string
+  purse: number
+  income: number | null
+  spending: number | null
+  profit: number | null
+}
+
+/** One period of `world.history('good')`: the mean market price, and units sold and bought. Null: no market that period, or a day 0214's old retention thinned. */
+export interface HistoryGoodPoint {
+  at: string
+  open: number | null
+  high: number | null
+  low: number | null
+  close: number | null
+  sold: number | null
+  bought: number | null
+}
+
+/** One period of `world.history('me' | 'company')`: gold in and gold out. */
+export interface HistoryCompanyPoint {
+  at: string
+  earned: number
+  lost: number
+}
+
+/** `world.history(what, subject, period)`: the newest 120 periods of one subject, oldest first. */
+export interface History<P> {
+  what: HistoryWhat
+  subject: string | null
+  period: HistoryPeriod
+  points: P[]
+}
+
 /** The report's three spans, in real UTC days (0317). */
 export type ReportSpan = 'day' | 'week' | 'all'
 
