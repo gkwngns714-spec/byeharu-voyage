@@ -2635,9 +2635,9 @@ export interface CityWork {
   level_max: number
   /** What the next level costs whole, or null once the work is fully built. */
   next_cost: number | null
-  /** One share of the next level, or null once fully built. */
+  /** One share of the next level, or of a finished work's open lot (0313); null when it sells none. */
   share_price: number | null
-  /** Shares of the next level still for sale — 0 while the city's books are closed. */
+  /** Shares still for sale, of the next level or of a finished work's open lot (0313) — 0 while the city's books are closed. */
   offered: number
   subscribed: number
 }
@@ -3194,7 +3194,7 @@ export interface Holding {
   owed: number
   level: number
   level_max: number
-  /** A share's price there now (world.town_hall's leaf); null at the top level. */
+  /** A share's price there now (world.town_hall's leaf); null at the top level when no lot is on sale (0313). */
   share_price: number | null
 }
 

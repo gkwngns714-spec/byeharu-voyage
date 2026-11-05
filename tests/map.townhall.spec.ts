@@ -39,6 +39,9 @@ async function donateWorld(): Promise<{ body: Buffer; mayor: string }> {
     await pg.query(`select public.city_treasury_switch(true)`)
     await pg.query(`update public.world_config set value = $1::jsonb where key = 'npc_invest_above'`, [JSON.stringify(above.rows[0].v)])
     await pg.exec(`update public.world_config set value = 'true'::jsonb where key = 'influence_enabled'`)
+    // 0313: Lisbon's docks are finished, so they are selling an open lot
+    await pg.exec(`update public.city_works set level = public.wc_int('works_level_max'), subscribed = 0
+                     where kind = 'docks' and port_id = (select id from public.ports where code = 'LIS')`)
     // 0147: a Portuguese merchant gives Lisbon 1,000 and the daily count names it the mayor
     const giver = await pg.query<{ name: string; r: { ok: boolean } }>(
       `select pl.company_name as name, public.donate_for(pl.id, (select id from public.ports where code = 'LIS'), 1000) as r
@@ -157,6 +160,23 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await expect(page.getByTestId('townhall-donate-tray')).toHaveCount(0, { timeout: 30_000 })
   await expect(page.getByTestId('townhall-given-today')).toContainText('given today', { timeout: 30_000 })
   await expect(page.getByTestId('townhall-influence-share').filter({ hasText: 'Portugal' })).toHaveCount(1, { timeout: 30_000 })
+})
+
+test('0313: a finished work still sells: Invest stands on it, with its open lot and its price', async ({ page, request, baseURL }) => {
+  test.setTimeout(600_000)
+  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+  const lit = await donateWorld()
+  await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: lit.body, contentType: 'application/gzip' }))
+  await page.setViewportSize(PHONE)
+  await page.goto('map')
+  await ready(page)
+
+  await openCity(page, 'LIS', 'Lisbon')
+  await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
+  await expect(page.getByTestId('townhall-work-docks')).toContainText('0 of 100 sold', { timeout: 30_000 })
+  await expect(page.getByTestId('townhall-work-docks')).toContainText('10,486')
+  await expect(page.getByTestId('townhall-invest-docks')).toBeVisible()
+  await expect(page.getByTestId('townhall-work-docks')).not.toContainText('Built')
 })
 
 test('0278 (owner row 173): the city History tab folds the months — the current one open with the served total', async ({
