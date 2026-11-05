@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } from './trayDetents'
-import { trayDockPageClass, trayDockWideClass, traySideEdgeClass, traySideNextClass } from './screenLayout'
-import { useInPage } from './pageContext'
+import { trayDockPageClass, traySideEdgeClass, traySideNextClass } from './screenLayout'
 import { InTray, useTraySlot } from './trayContext'
 import { useWide } from './useWide'
 import { useT } from '../../lib/i18n'
@@ -125,13 +124,10 @@ export function Tray({
     }, slide || 0)
     return () => window.clearTimeout(end)
   }, [leaving])
-  // ON A WIDE GLASS A DOCKED TRAY IS A SIDE PANEL (screenLayout.ts, "the wide glass"): it stands
+  // ON A WIDE GLASS A DOCKED TRAY IS A SIDE PANEL (screenLayout.ts, "THE PAGE": the page-level dock, the side column's own x and width): it stands
   // beside the column at full height, so the detent ladder — a bottom-edge idea — does not apply.
   // `detent` still says open or closed; the height is the panel's.
   const wide = useWide()
-  // A TRAY OPENED INSIDE A PAGE (Sheet layout="page") STANDS OVER THE PAGE'S SIDE COLUMN — same x, same width, nothing under it moves
-  // (screenLayout.ts "THE PAGE", pageContext.ts). Any other screen docks where it always did.
-  const inPage = useInPage()
   // INSIDE THE COMMAND DESK, ON A WIDE GLASS, a docked tray is not a side panel over the glass: it
   // stands in the desk's right pane, as a pane (trayContext.ts — the owner, 2026-10-19: "no pop ups or
   // no new screen"). Only `docked` is redirected; a mode the caller named is kept.
@@ -206,7 +202,7 @@ export function Tray({
           : mode === 'side'
           ? traySideEdgeClass()
           : mode === 'docked'
-            ? `fixed inset-x-0 bottom-0 ${inPage ? trayDockPageClass() : trayDockWideClass()}`
+            ? `fixed inset-x-0 bottom-0 ${trayDockPageClass()}`
             : mode === 'pane'
               ? 'relative h-full w-full'
               : 'relative w-full',

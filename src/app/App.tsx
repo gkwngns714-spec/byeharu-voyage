@@ -5,6 +5,7 @@ import { RequireAuth } from './RequireAuth'
 import { AppShell } from './AppShell'
 import { NewVersionToast } from './NewVersionToast'
 import { HOME_TAB } from './navTabs'
+import { pageVarsClass } from '../components/ui'
 import { AuthPage } from '../features/auth/AuthPage'
 import { GalleryScreen } from '../features/gallery/GalleryScreen'
 import { PageGalleryScreen } from '../features/gallery/PageGalleryScreen'
@@ -43,6 +44,9 @@ export function App() {
           outside RequireAuth and AppShell on purpose, and it reads nothing from the world
           (src/app/NewVersionToast.tsx). */}
       <NewVersionToast />
+      {/* THE PAGE'S TWO VARIABLES, SET ONCE FOR EVERY ROUTE (screenLayout.ts "THE PAGE"): the split and the docked tray read them, so a tray
+          stands over the side column on any screen — page, desk, map, gallery. `contents` adds no box. */}
+      <div className={`contents ${pageVarsClass()}`}>
       <Routes>
         <Route path="/auth" element={<AuthPage />} />
         {/* THE DESIGN-SYSTEM GALLERY (docs/UI_DIRECTION.md §7 step 2). Outside RequireAuth and
@@ -99,6 +103,7 @@ export function App() {
         <Route path="/" element={<Navigate to={HOME_TAB} replace />} />
         <Route path="*" element={<Navigate to={HOME_TAB} replace />} />
       </Routes>
+      </div>
     </BrowserRouter>
   )
 }

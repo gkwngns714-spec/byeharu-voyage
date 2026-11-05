@@ -48,7 +48,7 @@ async function read(page: Page): Promise<DocReport> {
     }
     const main = document.querySelector('main')
     const box = main?.getBoundingClientRect() ?? null
-    const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
+    const sheet = document.querySelector('[data-sheet], [data-testid="desk-scroll"]') as HTMLElement | null
     const grids = [...document.querySelectorAll('[data-choice-grid]')]
       .filter(visible)
       .map((g) => ({

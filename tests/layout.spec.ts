@@ -663,7 +663,7 @@ test(`COMMAND: the route row opens the route page, the queue below it may not mo
       return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
     }
     return {
-      header: rect('[data-testid="sheet-header"]'),
+      header: rect('[data-testid="desk-header"]'),
       line: rect('[data-testid="command-line"]'),
       row: rect('[data-testid="route-row"]'),
       queue: rect('[data-testid="command-queue"]'),
@@ -1095,7 +1095,7 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
         return { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) }
       }
       return {
-        header: rect(document.querySelector('[data-testid="sheet-header"]')),
+        header: rect(document.querySelector('[data-testid="desk-header"]')),
         supplies: rect(document.querySelector('[data-testid="quay-stores"]')),
         field: rect(document.querySelector('[data-testid="desk-city"] h2')),
         faces: rect(document.querySelector('[role="tablist"][aria-label="Trade faces"]')),
