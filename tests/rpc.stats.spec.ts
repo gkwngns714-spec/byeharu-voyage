@@ -185,6 +185,8 @@ test('with nothing invested anywhere a city serves its overview and its detail, 
   for (const k of ['tier', 'paid', 'need', 'tier1', 'tier2']) expect(c.value).not.toHaveProperty(k)
   const purse = Number(await db.callAs<number>(`select public.treasury_balance($1::uuid)::bigint as result`, [port.id]))
   expect(c.value.overview!.purse).toBe(purse)
+  // 0311: the city's bonus money, served beside its flows
+  expect(c.value.overview!.bonus).toEqual({ held: expect.any(Number), paid: expect.any(Number) })
   expect(Array.isArray(c.value.overview!.works)).toBe(true)
   const offered = Number(await db.callAs<number>(`select count(*)::int as result from public.port_specialties where port_id = $1::uuid`, [port.id]))
   expect(c.value.detail!.goods.length).toBeGreaterThanOrEqual(offered)

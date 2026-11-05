@@ -131,6 +131,8 @@ export function PortTrade({
     () => (board.view ? board.view.contracts.filter((r) => foldedMatch(q, r.name, r.good, r.category)) : null),
     [board.view, q],
   )
+  // THE OPEN REQUEST, as the board now serves it: its price and its budget move while the tray stands. One gone from the board keeps its last row; the tray's dry run says why.
+  const openRequest = slot.kind === 'request' ? (board.view?.contracts.find((r) => r.id === slot.request.id) ?? slot.request) : null
   const settleReceipt = useManifest((s) => s.settle)
 
   // CLOSING ANYTHING RETURNS TO THE BASKET — the one rule, for the pick, the supplies and the
@@ -219,11 +221,11 @@ export function PortTrade({
         />
       )}
 
-      {slot.kind === 'request' && (
+      {openRequest && (
         <FulfilTray
           fleet={fleet}
-          request={slot.request}
-          aboard={aboard[slot.request.good] ?? 0}
+          request={openRequest}
+          aboard={aboard[openRequest.good] ?? 0}
           onClose={toBasket}
           onSettled={(receipt) => {
             settleReceipt(fleet.id, port.code, receipt)
