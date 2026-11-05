@@ -139,6 +139,12 @@ export const GLYPH = {
    * and the carraca grande's 1,500).
    */
   hullHalfLength: { 1: 2.85, 2: 3.25, 3: 5.35, 4: 6.1, 5: 7.0, 6: 8.3 } as Record<HullSize, number>,
+  /**
+   * THE CARGO SHIP (0310, docs/CITY_CONVOYS.md section 2): longer than the flagship by 0.7, and it is her
+   * beam that does the rest (`cargoHullPath`). Not off her burthen: she is the crown's ship, the map draws
+   * her by her kind and not by the class she is built on, and there are at most 50 of her.
+   */
+  cargoHullHalfLength: 9,
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
   fleetHaloRadius: 4,
@@ -427,7 +433,7 @@ export function shipPath(halfLength: number): string {
 /** The six sizes a silhouette is drawn at (`class_profile.size`, clamped to 1-6). */
 export type HullSize = 1 | 2 | 3 | 4 | 5 | 6
 /** A silhouette: rig family × size. */
-export type HullShape = `${'fore' | 'square'}-${HullSize}`
+export type HullShape = `${'fore' | 'square'}-${HullSize}` | 'cargo'
 
 /** The served facts a silhouette is read from — `world.snapshot().ship_classes` rows. */
 export interface HullClassFacts {
@@ -437,7 +443,14 @@ export interface HullClassFacts {
   readonly size?: number | null
 }
 
-const LIVE_SHAPES: Readonly<Record<string, HullShape>> = { barca: 'fore-1', carlat: 'fore-2', nau: 'square-3' }
+/**
+ * THE CARGO SHIP'S HULL, AS THE ONE WORD THE CHART USES FOR A HULL (0310). No served class has this code:
+ * ./liveWorld.ts names it for a row the server marks `kind: CARGO_SHIP`, and from there she goes through
+ * `hullGroup` and `hullPath` like anyone. So ./FleetsLayer.tsx learned nothing about her hull.
+ */
+export const CARGO_HULL: HullClass = 'cargo-ship'
+
+const LIVE_SHAPES: Readonly<Record<string, HullShape>> = { barca: 'fore-1', carlat: 'fore-2', nau: 'square-3', [CARGO_HULL]: 'cargo' }
 let servedShapes: ReadonlyMap<string, HullShape> = new Map()
 
 /** The silhouette of a rig and a size — the one rule. */
@@ -458,7 +471,7 @@ export function hullShapeOf(cls: HullClass | null): HullShape | null {
   return servedShapes.get(cls) ?? LIVE_SHAPES[cls] ?? null
 }
 
-const sizeOfShape = (shape: HullShape): HullSize => Number(shape.slice(-1)) as HullSize
+const sizeOfShape = (shape: Exclude<HullShape, 'cargo'>): HullSize => Number(shape.slice(-1)) as HullSize
 
 /**
  * HOW LONG THIS HULL IS DRAWN, centre to bow, in CSS px. A class the server did not name is the
@@ -467,7 +480,8 @@ const sizeOfShape = (shape: HullShape): HullSize => Number(shape.slice(-1)) as H
  */
 export function hullHalfLengthOf(cls: HullClass | null): number {
   const shape = hullShapeOf(cls)
-  return shape === null ? GLYPH.shipHalfLength : GLYPH.hullHalfLength[sizeOfShape(shape)]
+  if (shape === null) return GLYPH.shipHalfLength
+  return shape === 'cargo' ? GLYPH.cargoHullHalfLength : GLYPH.hullHalfLength[sizeOfShape(shape)]
 }
 
 /**
@@ -502,6 +516,7 @@ export function hullPath(cls: HullClass | null, halfLength: number = hullHalfLen
   // THE CLASS-LESS HULL IS `shipPath` AND NOT A NINTH SILHOUETTE. One hull-with-no-class on this
   // chart, drawn by the function the minimap and row 90's whole measurement already use.
   if (shape === null) return shipPath(l)
+  if (shape === 'cargo') return cargoHullPath(l)
   if (shape !== 'fore-1' && shape !== 'fore-2' && shape !== 'square-3') return waveAHullPath(shape, l)
   if (shape === 'fore-1') {
     const b = l * 0.33
@@ -580,7 +595,7 @@ function mirrored(half: readonly (readonly [number, number])[]): string {
  *   fore-6    the great galley (the Baştarda-i Hümayun) — the longest, slimmest hull: a long ram, an
  *             outrigger of oars down the whole waist, a raised poop at the stern.
  */
-function waveAHullPath(shape: HullShape, l: number): string {
+function waveAHullPath(shape: Exclude<HullShape, 'cargo'>, l: number): string {
   if (shape === 'square-1') {
     const b = l * 0.4
     return mirrored([[0, -l], [b * 0.7, -l * 0.6], [b, -l * 0.1], [b, l * 0.75], [b * 0.85, l * 0.9], [0, l * 0.9]])
@@ -622,6 +637,29 @@ function waveAHullPath(shape: HullShape, l: number): string {
   const b = l * 0.36
   return mirrored([[0, -l], [b * 0.8, -l * 0.7], [b, -l * 0.4], [b * 1.25, -l * 0.3], [b * 1.25, l * 0.3], [b, l * 0.4],
     [b, l * 0.8], [b * 0.6, l * 0.95], [0, l * 0.95]])
+}
+
+/**
+ * 0310 — THE CARGO SHIP (owner, 2026-11-05: *"cargo ship? with different graphics. npc like merchants but
+ * different."*). WIDE AND DEEP-BELLIED: a blunt bow and a beam three quarters of her half-length, which no
+ * merchant has. A HIGH STERN: the waist tucks in and the after-castle steps out past the belly, ending in a
+ * flat transom, so she is widest aft and reads as a tub with a castle on it at 18 px.
+ *
+ * THE CROWN IS PART OF THE PATH: a second subpath, wound the other way, so the default fill rule cuts it out
+ * of her deck and the sea shows through. Three points on a base, on the after deck. No attribute, no second
+ * `<path>` and no branch in the renderer; the nation ink is the fill the renderer already sets.
+ */
+function cargoHullPath(l: number): string {
+  const b = l * 0.74
+  const hull = mirrored([[0, -l], [b * 0.56, -l * 0.92], [b * 0.88, -l * 0.66], [b, -l * 0.24], [b, l * 0.22],
+    [b * 0.9, l * 0.42], [b * 1.08, l * 0.5], [b * 1.08, l], [0, l]])
+  const w = b * 0.44
+  const top = l * 0.1
+  const base = l * 0.66
+  const notch = l * 0.34
+  // Base left to base right, then back over the three points: the opposite way round from the hull.
+  const crown = [[-w, base], [w, base], [w, top], [w * 0.5, notch], [0, top - l * 0.08], [-w * 0.5, notch], [-w, top]]
+  return `${hull}M${crown.map(([x, y]) => `${x} ${y}`).join('L')}Z`
 }
 
 /** One hull of a fleet's mark: which class, how long, and where she sits in the group — the offset

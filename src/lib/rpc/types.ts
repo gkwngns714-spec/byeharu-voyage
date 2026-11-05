@@ -2234,6 +2234,8 @@ export interface TrafficFleet {
    * role), and the only reason it is on the wire at all is that the chart cannot invent it.
    */
   lane: [number, number][] | null
+  /** 0310: served on a crown's cargo ship alone, so a merchant's row is what it always was. Absent = a merchant. */
+  kind?: 'CARGO_SHIP'
 }
 
 /**
@@ -2521,6 +2523,20 @@ export interface MerchantCard {
   skills: MerchantSkill[]
 }
 
+/** 0310: `world.cargo_ship_card(fleet)`, one crown's cargo ship. `to` and `eta` while she sails. `funds` is what she
+ *  carries now; `next` the stops after this one, five at most; `stops_left` how many there are. */
+export interface CargoShipCard {
+  fleet: { id: string; name: string; status: FleetStatus; port: string | null }
+  nation_code: string | null
+  home: string
+  funds: number
+  to: string | null
+  eta: string | null
+  next: string[]
+  stops_left: number
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+}
+
 // ── 0121: ONE FLEET'S TRADING, LAP BY LAP (owner, 2026-10-15) ───────────────────────────────────
 // *"by clicking fleet, i want to be able to click on laps, so far, a lap and so on which tells me
 // what the ship has bought and sold, where it sold, and so on."* `world.fleet_trades(fleet)` — a
@@ -2647,6 +2663,9 @@ export interface PortDues {
 
 export interface TownHallView {
   port: string
+  /** 0310: what the nearest cargo ship will pay this city, served only while one is bound here and it is short.
+   *  `stops`: how many she makes first. `eta`: only while this is her very next stop. */
+  funds_on_way?: { ducats: number; stops: number; eta: string | null }
   /** False while the city purses are dark (0122): nothing is offered, nothing moves a purse. */
   enabled: boolean
   purse: {
@@ -3496,6 +3515,9 @@ export interface StatsNow {
   total: number
   at_sea: number
   at_sea_merchants: number
+  /** 0310: served only while a cargo ship exists. `funds_at_sea` is a part of `set_aside`, not a new sum. */
+  cargo_ships?: number
+  funds_at_sea?: number
   since_count: { trades: number; units: number; sold: number; bought: number }
   counted_at: string
   counted_through: string

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Icon, Note, Row, Skeleton, StatCell, Tray, type TrayDetent } from '../../components/ui'
 import { InvestorRow } from '../../live/CityInvestors'
+import { FundsOnWay } from '../../live/FundsOnWay'
 import { TownHallInfluence } from '../../live/TownHallInfluence'
 import type { CityInvestor, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, formatInt } from '../../lib/format'
@@ -166,6 +167,7 @@ export function CityHallPanel({
           data-nation={relation.nation ?? 'none'}
         />
       </div>
+      <FundsOnWay hall={hall} />
     </CityPanel>
   )
 }

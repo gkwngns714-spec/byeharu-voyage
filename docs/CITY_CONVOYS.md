@@ -2,7 +2,7 @@
 
 **Words (owner, 2026-11-05):** the ship is a **Cargo ship**; the gold is **Funds**; its load is a **Shipment**. Not "gift", not "aid".
 
-**Status: V1 live dark (0308, `docs/dev-log/2026-11-05-cargo-ships.md`): the fleet kind, the book of funds aboard, the sizing. V2 built dark (0309, `docs/dev-log/2026-11-05-cargo-funds.md`): loading from `crown_aid`'s same decision, one circuit of a realm, delivery, return, funds aboard in the total, no dock fee, hull rule. Client and goods are design.** Prod head at writing: **0305**.
+**Status: V1 live dark (0308, `docs/dev-log/2026-11-05-cargo-ships.md`): the fleet kind, the book of funds aboard, the sizing. V2 built dark (0309, `docs/dev-log/2026-11-05-cargo-funds.md`): loading from `crown_aid`'s same decision, one circuit of a realm, delivery, return, funds aboard in the total, no dock fee, hull rule. V4 built dark (0310, `docs/dev-log/2026-11-05-cargo-visible.md`): her hull, the map's reads, her card, the hall and Stats. Goods are design.** Prod head at writing: **0305**.
 **The owner (2026-11-05):** *"i need a transportation ship, cities moving trade goods to different cities, moving gold to gold. Capital city with its massive income, will provide other cities with gold when depleted."*
 Every "decided by default" is mine; the owner reverses afterwards.
 
@@ -82,7 +82,7 @@ Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_
 
 **Graphics (one renderer, no fork):** ships are drawn by `src/chart/glyphs.ts` (`hullPath`, one renderer for fleets and merchants, nation ink) and chosen by `src/chart/shipMarks.ts`. So:
 - `glyphs.ts` gains one new hull: wide, deep-bellied, a high stern, heavier than any merchant, and readable at small size.
-- `world.sea_traffic` serves a `kind` on each row; a cargo ship picks the new hull. Nothing else in the renderer branches.
+- `world.sea_roster` (the read the client uses since 0118) and `world.sea_traffic` serve a `kind` on a cargo ship's row, and on hers alone, so a merchant's row never changes; a cargo ship picks the new hull. Nothing else in the renderer branches.
 - `shipMarks.ts`: cargo ships are **never thinned** at wide zoom (there are at most 46), like your own ships.
 - The fleet card (like `src/live/MerchantSheet.tsx`) shows its load and destination: "Cargo ship - shipment: 420,000 d. to Bristol". `ShipTile` and the Codex Ships face get the same hull.
 

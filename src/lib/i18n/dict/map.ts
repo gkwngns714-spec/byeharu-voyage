@@ -3,6 +3,11 @@ import { defineDict } from '../define'
 // The Map tab (src/features/map): the chart, the city panel, sending a fleet, a fleet's tray.
 export const mapDict = defineDict({
   en: {
+    // 0310 (owner, 2026-11-05): the ship, the gold and her load, docs/CITY_CONVOYS.md.
+    cargoShip: 'Cargo ship',
+    funds: 'Funds',
+    shipment: 'Shipment',
+    nextCities: 'Next cities',
     Market: 'Market',
     Port: 'Port',
     Inn: 'Inn',
@@ -72,6 +77,10 @@ export const mapDict = defineDict({
     hull_ship: { one: 'ship', other: 'ships' },
   },
   ko: {
+    cargoShip: '화물선',
+    funds: '자금',
+    shipment: '수송',
+    nextCities: '다음 도시',
     Market: '시장',
     Port: '항구',
     Inn: '주점',

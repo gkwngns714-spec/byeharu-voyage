@@ -248,6 +248,9 @@ export type MapTraffic = MapFleet & {
    * nothing in this section may measure anything from it.
    */
   readonly lane: readonly LatLon[] | null
+  /** 0310: a crown's CARGO SHIP (`kind` on her served row). Set on her alone and absent on every merchant:
+   *  she draws the cargo hull, always in her nation's ink, is never thinned, and her card is her own. */
+  readonly cargo?: true
 }
 
 /**

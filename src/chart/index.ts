@@ -145,6 +145,7 @@ export {
   HULL_GROUP_MAX_UNITS_PER_PX,
   hullGroup,
   hullGroupHalo,
+  CARGO_HULL,
   hullHalfLengthOf,
   hullPath,
   // 0135 — eight silhouettes by rig family × size; the store registers the served classes.

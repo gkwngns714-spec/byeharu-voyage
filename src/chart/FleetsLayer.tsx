@@ -467,14 +467,16 @@ export function FleetsLayer({
       {traffic.map((t) => {
         const selected = selectedMerchantId === t.fleet.id
         const nation = NATION_FILL[t.merchant.ink]
+        // 0310: a cargo ship wears her nation's ink whether or not the Regions filter is on.
+        const inked = regions || t.merchant.cargo === true
         return (
           <HullGroup
             key={`merchant-${t.fleet.id}`}
             fleet={t}
             unitsPerPx={unitsPerPx}
             sun={sun}
-            className={`${regions ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-keyline stroke-chart-sea'}`}
-            style={regions ? ({ '--nation-ink': nation.token } as CSSProperties) : undefined}
+            className={`${inked ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-keyline stroke-chart-sea'}`}
+            style={inked ? ({ '--nation-ink': nation.token } as CSSProperties) : undefined}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
             hooks={{
               'data-testid': 'map-merchant',
@@ -483,6 +485,7 @@ export function FleetsLayer({
               // Her served arrival instant (epoch ms), copied; empty when she has no voyage. A spec
               // that must watch her AT SEA for a while picks a hull with time left on her leg.
               'data-merchant-eta': t.voyage ? String(t.voyage.etaMs) : '',
+              ...(t.merchant.cargo ? { 'data-cargo-ship': 'true' } : {}),
             }}
           />
         )

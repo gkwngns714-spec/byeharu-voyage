@@ -29,7 +29,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import type { FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
-import { hullShapeOf } from './glyphs'
+import { CARGO_HULL, hullShapeOf } from './glyphs'
 import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
 import { whereabouts } from '../domain/fleet'
 import { instantMs } from '../lib/format'
@@ -177,7 +177,8 @@ export function mapTrafficOf(
       // and not a derivation. Her `ships` count is the same list's length and is not re-read: one
       // served fact, one reading of it. A merchant with no list falls back to her count of
       // class-less hulls, which is what this chart drew for her before the read carried classes.
-      hulls: t.hulls && t.hulls.length > 0
+      // 0310: A CARGO SHIP IS DRAWN BY HER KIND, NOT THE CLASS SHE IS BUILT ON (docs/CITY_CONVOYS.md section 2).
+      hulls: t.kind === 'CARGO_SHIP' ? [CARGO_HULL] : t.hulls && t.hulls.length > 0
         ? hullCodesOf(t.hulls)
         : Array.from({ length: Math.max(0, Math.trunc(t.ships)) || 0 }, () => null),
     })
@@ -206,6 +207,7 @@ export function mapTrafficOf(
       // two points draws nothing rather than a guessed line, the same rule the loop above keeps.
       lane:
         t.lane && t.lane.length >= 2 ? t.lane.map(([lat, lon]) => ({ lat, lon })) : null,
+      ...(t.kind === 'CARGO_SHIP' ? { cargo: true as const } : {}),
     })
   }
   return out

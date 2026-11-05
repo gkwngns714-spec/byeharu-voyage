@@ -6,10 +6,10 @@
 --
 -- @pass CARGO_DARK_NOTHING  dark, the commission makes nothing for a real great power
 -- @pass CARGO_ALL_POWERS    lit, every great power with a harbour capital gets the knob's count, and no purse in the world moves
--- @pass CARGO_NOT_MERCHANT  no merchant roster and no map read names her
+-- @pass CARGO_NOT_MERCHANT  no merchant roster names her, and the map's reads serve her only with her kind (0310)
 -- @pass CARGO_SAILS         she departs with voyage.depart and docks with voyage.settle: no wage, no stores, no forced home, no dock fee (0309), no purse moved
 -- @pass CARGO_COMPACTED     her ended voyage is compacted with the merchants', so her history does not grow
--- @pass CARGO_KNOWN_LEAK    world.sea_traffic's `total` counts her, the one read V4 must close before she is lit on prod
+-- @pass CARGO_TOTAL_HONEST  world.sea_traffic's `total` counts her and so do its rows (0310; proof 20 reads the rest)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -86,14 +86,19 @@ begin
      or exists (select 1 from public.lap_starts_due() x join public.cargo_ships c on c.fleet_id = x.fleet_id) then
     raise exception 'PROOF 18 FAIL: a merchant roster names a cargo ship';
   end if;
-  v_map := jsonb_build_object('traffic', world.sea_traffic(null), 'roster', world.sea_roster(null), 'quay', world.port_merchants(v_cap));
+  v_map := world.sea_roster(null);
+  if (select count(*) from jsonb_array_elements(v_map -> 'fleets') e where e ->> 'kind' = 'CARGO_SHIP') <> v_made
+     or exists (select 1 from jsonb_array_elements(v_map -> 'fleets') e join public.cargo_ships c on c.fleet_id = (e ->> 'id')::uuid where e ->> 'kind' is distinct from 'CARGO_SHIP') then
+    raise exception 'PROOF 18 FAIL: the roster does not serve every cargo ship, with her kind';
+  end if;
+  v_map := world.port_merchants(v_cap);
   if exists (select 1 from public.cargo_ships c where position(c.fleet_id::text in v_map::text) > 0) then
-    raise exception 'PROOF 18 FAIL: a map read names a cargo ship';
+    raise exception 'PROOF 18 FAIL: the quay names a cargo ship';
   end if;
   if exists (select 1 from public.cargo_ships c where position(c.player_id::text in world.stats_merchants('1w')::text) > 0) then
     raise exception 'PROOF 18 FAIL: the merchants'' stats name a cargo ship';
   end if;
-  raise notice 'PASS: CARGO_NOT_MERCHANT — tend, invest, gifts, laps, sea traffic, sea roster, quay and merchant stats read none of % ships', v_made;
+  raise notice 'PASS: CARGO_NOT_MERCHANT — tend, invest, gifts, laps, quay and merchant stats read none of % ships; the roster serves each with her kind', v_made;
 
   -- she sails: the nearest harbour of her realm the fixture holds a course to
   select p.id, p.code, proof.course(v_capc, p.code) into v_city, v_cityc, v_course
@@ -146,11 +151,12 @@ begin
   end if;
   raise notice 'PASS: CARGO_COMPACTED — her ended voyage and its events are gone after the merchants'' retention';
 
-  -- the known leak, named so V4 cannot miss it
-  v_tot1 := (world.sea_traffic(null) ->> 'total')::int;
-  if v_tot1 - v_tot0 <> v_made then
-    raise exception 'PROOF 18 FAIL: sea_traffic total moved by %, not by the % ships: the dev-log is out of date', v_tot1 - v_tot0, v_made;
+  -- the leak 0308 named: her count and her rows now agree (0310)
+  v_map := world.sea_traffic(null);
+  v_tot1 := (v_map ->> 'total')::int;
+  if v_tot1 - v_tot0 <> v_made or v_tot1 - jsonb_array_length(v_map -> 'fleets') <> (v_map ->> 'omitted')::int then
+    raise exception 'PROOF 18 FAIL: sea_traffic total moved by %, not by the % ships, or it does not add up: %', v_tot1 - v_tot0, v_made, v_map - 'fleets';
   end if;
-  raise notice 'PASS: CARGO_KNOWN_LEAK — sea_traffic total is % over its rows: V4 serves her kind and closes this before any ship is lit', v_made;
+  raise notice 'PASS: CARGO_TOTAL_HONEST — sea_traffic total rose by her % ships, and total less rows is omitted', v_made;
 end
 $$;
