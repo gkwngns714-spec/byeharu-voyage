@@ -8,7 +8,7 @@
 --     0.75 s. pg_cron starts the job at :00 with arrivals, lap-starts, drift, compact and cargo-ships, every one a new session, so it adds 4-6.5 s of work to the only seconds that were already short.
 --   THE BEATS, THE SAME SECONDS BEFORE AND AFTER: the figures are in the dev-log. In short: seconds 0-4 of the minute got slower, second 13 on did not move, and a first beat over 1 s is OLDER than the job.
 --   LAP STARTS: lag p95 6.3 s -> 10.4-12.8 s: her job starts its minute later, behind the longer first beat.
--- THE FIX:
+-- THE FIX (THE RE-CUTS: public.contract_draw, world.daily_cap_remaining and public.tick_contract_wind, by hunks sliced from the live bodies, each once, each reversed to its pre-image, grants unchanged):
 --   public.daily_cap_base (new): what a daily cap is per unit of stock_target for a house at a port, the part that does not depend on the good. Not SECURITY DEFINER, no SET, one SELECT: the planner inlines it, so a reader of the cap pays nothing for it.
 --   world.daily_cap_remaining: one hunk: it reads that base. The same figure; still THE authority for one good's cap.
 --   public.contract_draw: two hunks: the base once, port_goods joined once, the port's offered goods anti-joined once (public.port_offered_goods, the roster's one reading). The same candidates in the same order, so the same good, quantity and bonus for every port, day and seq: a draw stays pure.
