@@ -26,7 +26,7 @@ Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_
 
 **Better plan, in order:**
 1. **Fix the reserve floor** so a broke city counts as short (owner knob; one small migration). Built as 0306, PR open, not deployed: the floor enters the aid decision only, not the reserve, because the reserve also sets the sale bid (`docs/dev-log/2026-11-05-reserve-floor.md`).
-2. **Let the capital draw on its nation's rich cities** before funding: `CROWN_CALL` already does this for merchant gifts; reuse it.
+2. **Let the capital draw on its nation's rich cities** before funding: `CROWN_CALL` already does this for merchant gifts; reuse it. Built as 0307, PR open, not deployed: a share of each donor's surplus per run, and a donor keeps about an hour of payouts above its reserve (`docs/dev-log/2026-11-05-crown-call.md`).
 3. **Cargo ships carry funds only**, and they **replace** the instant `CROWN_AID` delivery: one rule, one path, never both. Measure first: instant aid reaches about 160 cities a day, and 2 ships per nation cannot, so the ship count and a route that serves several cities on one trip must come from a prod read, and the extra `E_CITY_BROKE` during the delay must be watched.
 4. **Goods run (section 4): dropped for now.** No city is short by stock, and crown ships moving goods would take the player's own trade.
 
