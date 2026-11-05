@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Field, Hint, LanguageSwitch, Note, Row, Sheet, SheetSection } from '../../components/ui'
+import { Button, Card, Field, Hint, LanguageSwitch, Note, PageSplit, Row, Sheet } from '../../components/ui'
 import { cmdFoundHouse } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -56,18 +56,25 @@ export function SignTheBook() {
   }
 
   return (
-    <Sheet title={t('found.title')}>
-      <LanguageSwitch className="mb-3" />
-      {/* WHAT IS SET FOR YOU is a standing explanation, so it is behind `Hint`'s tray rather than
-          printed (it was `PageHeader`'s folded ⓘ); the subtitle stays printed, as it was. */}
-      <Hint
-        more={t('found.more', { capital: capital ?? t('found.yourCapital') })}
-        moreTitle={t('found.moreTitle')}
-      >
-        {t('found.hint')}
-      </Hint>
-
-      <SheetSection>
+    // THE PAGE (2026-11-05, owner row 267): MAIN the form as one card, SIDE (the tray's column) how you begin and the language. One
+    // column on a phone, the form first. "How you begin" was behind an (i) tray; the side column has the room, so it is printed.
+    <Sheet title={t('found.title')} layout="page" data-testid="found">
+      <PageSplit
+        data-testid="found-page"
+        side={
+          <>
+            <Card title={t('found.moreTitle')} data-testid="found-begin">
+              <p className="text-t-body text-ink">{t('found.more', { capital: capital ?? t('found.yourCapital') })}</p>
+              <p className="mt-2 text-t-caption text-ink-faint">{t('found.hint')}</p>
+            </Card>
+            <Card title={t('common.language')} data-testid="found-language">
+              <LanguageSwitch className="w-fit" />
+            </Card>
+          </>
+        }
+        main={
+          <>
+      <Card data-testid="found-form">
         <label htmlFor="house-name" className="block text-t-label text-ink-muted">
           {t('found.nameQ')}
         </label>
@@ -102,21 +109,23 @@ export function SignTheBook() {
             {refusal.sentence}
           </Note>
         )}
-      </SheetSection>
+        <div className="mt-4">
+          <Button variant="primary" disabled={busy || name.trim().length === 0} onClick={() => void sign()}>
+            {t(busy ? 'found.starting' : 'found.start')}
+          </Button>
+        </div>
+      </Card>
 
       {refusal && refusal.fixes.length > 0 && (
-        <SheetSection heading={t('found.try')}>
+        <Card title={t('found.try')} data-testid="found-try">
           {refusal.fixes.slice(0, 4).map((fix, i, shown) => (
             <Row key={fix} label={fix} hairline={i < shown.length - 1} />
           ))}
-        </SheetSection>
+        </Card>
       )}
-
-      <div className="mt-4">
-        <Button variant="primary" disabled={busy || name.trim().length === 0} onClick={() => void sign()}>
-          {t(busy ? 'found.starting' : 'found.start')}
-        </Button>
-      </div>
+          </>
+        }
+      />
     </Sheet>
   )
 }
