@@ -61,7 +61,7 @@ export function CityHallPanel({
   /** The crew aboard your hulls (the frame's old figure, now the block's). */
   employees: number
   /** The harbour's relationship, worded and carrying its served facts (for the spec's data attrs). */
-  relation: { word: string; stance: string | null; nation: string | null }
+  relation: { word: string; stance: string | null; nation: string | null; band: string | null }
 }) {
   const t = useT()
   const [investorsOpen, setInvestorsOpen] = useState(false)
@@ -164,6 +164,7 @@ export function CityHallPanel({
           className="col-span-2"
           data-testid="city-relationship"
           data-stance={relation.stance ?? 'none'}
+          data-band={relation.band ?? 'none'}
           data-nation={relation.nation ?? 'none'}
         />
       </div>
