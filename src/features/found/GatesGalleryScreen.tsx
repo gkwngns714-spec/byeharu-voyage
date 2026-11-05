@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, useParams } from 'react-router-dom'
-import { SignTheBook } from '../found/SignTheBook'
+import { SignTheBook } from './SignTheBook'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { useWorld } from '../../live/worldStore'
 import type { Refusal } from '../../lib/rpc'
