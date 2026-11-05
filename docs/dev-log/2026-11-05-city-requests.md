@@ -70,7 +70,7 @@ select (select max(version) from supabase_migrations.schema_migrations) as head,
   md5(replace(pg_get_functiondef('world.stats_overview(integer,text)'::regprocedure), E'\r', '')) as stats_overview,
   md5(replace(pg_get_functiondef('world.stats_city(uuid,text)'::regprocedure), E'\r', '')) as stats_city
 ```
--> head `20260818000310`, `MD5_PLACEHOLDER`.
+-> head `20260818000310`, `5a13d1e3d0b3bedc23dfdbfc3549abfb`, `b1515aa63d0d25e3184abb2352af8679`, `ac47fcc995c04c731a31f499d0db0399`, `f1d332515e05a97e9d3a1d3e74cf85bb`, `efc9be0bc59bed0c44ec9258d30b5bfe`, `874f6ab69cab22ab6a5de40dbb2b1925`. Run 2026-11-05 ~07:30 UTC: these six equal the local world at 0310, the bodies the hunks were cut against.
 
 2. Every row the migration touches, and no live row that could pay from nothing:
 ```sql
@@ -80,7 +80,7 @@ select count(*) filter (where status = 'open' and escrow = 0) as zero_escrow_ope
        count(*) filter (where status = 'open' and floor(premium_ducats / premium_per_unit) < 1) as pays_nothing
   from public.trade_contracts
 ```
--> `zero_escrow_live`, `other_mismatch`, `pays_nothing` all 0.
+-> `zero_escrow_live`, `other_mismatch`, `pays_nothing` all 0. Run: 0, 0, 0, with `zero_escrow_open` 32.
 
 3. The probe harbour draws (three draws, about 3 s):
 ```sql
@@ -89,7 +89,7 @@ select x.s, d.good_id is not null as draws, d.qty
  cross join lateral public.contract_draw(p.id, world.game_day(now()), x.s) d
  where p.code = 'LIS'
 ```
--> three rows, `draws` true.
+-> three rows, `draws` true. Run: three rows, lots of 10, 30 and 30. The draw changes each minute; only "draws" matters.
 
 ## After-check, 30 minutes (pure SELECTs, one statement per file)
 Stamp the deploy time as T. The world total must not move, except by what the closed economy's own kinds move.
