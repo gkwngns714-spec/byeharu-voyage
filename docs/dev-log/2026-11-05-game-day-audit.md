@@ -124,7 +124,7 @@ Stop the crown's share at once: `crown_tax_share` to 0. Back to the old rule: a 
 
 ## Not verified
 - Nothing is deployed. No prod `tick_city` has run this code; the crown's +1.4 M d. a day is an estimate from two days of `stats_city`.
-- Merged with main 2026-11-05 (docs conflicts only; no code conflict); the 14 bodies were checked by reading 0314-0316, not re-cut. The mutation harness was NOT re-run (needs the cached world; CI's disposable-chain and proof 26 are the proof). Owner row renumbered 293 -> 294 (#504 holds 293).
+- Merged with main 2026-11-05 (docs conflicts only; no code conflict); the 14 bodies were checked by reading 0314-0316, not re-cut. The mutation harness was NOT re-run (needs the cached world; CI's disposable-chain and proof 26 are the proof). Owner row renumbered 293 -> 296 (#504 holds 293, #508 holds 294 and 295).
 - The Report, hall and market screens were not looked at in a browser.
 - Whether the full CI suite is green: see the PR.
 - Report All's cost on prod, before or after.

@@ -1,7 +1,6 @@
 import { Clip } from './Clip'
 import { useRef, useState, type ReactNode } from 'react'
-import { pageBodyClass, pageColumnClass, pageVarsClass, sheetBodyClass, sheetColumnClass } from './screenLayout'
-import { InPage } from './pageContext'
+import { pageBodyClass, pageColumnClass } from './screenLayout'
 import { useInTray } from './trayContext'
 
 // THE SHEET — the one scrolling surface of a tab, and the end of the admin document.
@@ -36,7 +35,6 @@ import { useInTray } from './trayContext'
 export function Sheet({
   title,
   trailing,
-  fill = false,
   layout = 'column',
   children,
   className = '',
@@ -46,12 +44,7 @@ export function Sheet({
   title: ReactNode
   /** ONE control, on the title's line — a `Segmented`, a `Chip`, a `Button`. Never two. */
   trailing?: ReactNode
-  /** THE GLASS IS THE LIST'S (unfold slice, 2026-11-01): the body fills the height under the title, so a
-   *  `ListPanel` takes what the screen leaves free and the tab itself never scrolls. Off for every tab
-   *  whose content is its own height. */
-  fill?: boolean
-  /** THE SHAPE OF THE SHEET (2026-11-02, owner row 267). `column` (the default) is every screen as it was: a readable
-   *  column of at most SHEET_REM with the tray's space kept clear at its right. `page` is the pattern the owner asked
+  /** THE SHAPE OF THE SHEET (2026-11-02, owner row 267). `column` (the default) is the phone's plain column: the glass, padded to the gutter. `page` is the pattern the owner asked
    *  for — *"everything is on left, too packed"* — a centred container of at most 80 rem, MAIN | SIDE from 1,024 px
    *  (the side is the tray's column and carries the screen's second block; a tray slides over it), its blocks `Card`s,
    *  the title at 30 px, the page scrolling (never an inner scroll). Screens take it one at a time;
@@ -85,7 +78,7 @@ export function Sheet({
       // A PAGE IS POSITIONED (`relative`): a screen-reader label (`sr-only`, absolute, a FilterBar names its pickers with one) escapes the scroller
       // that holds it unless something between them is a containing block, and then stretches the DOCUMENT to where it stands in the
       // flow — the page scrolled 2,620 px under a 844-px glass on a phone (2026-11-02). The old list panels were `relative` themselves; a page's lists are not.
-      className={`bv-scroll h-full overflow-y-auto ${fill && !page ? 'flex flex-col' : ''} ${page ? `relative ${pageVarsClass()}` : ''} ${className}`}
+      className={`bv-scroll h-full overflow-y-auto ${page ? 'relative' : ''} ${className}`}
       data-sheet=""
       data-sheet-layout={page ? 'page' : undefined}
       {...rest}
@@ -113,9 +106,7 @@ export function Sheet({
           data-pinned={pinned}
           className={[
             'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter',
-            // A FILLED SHEET'S TITLE LINE IS 8 px SHORTER: the glass under it belongs to the list.
-            fill ? 'shrink-0 pb-1 pt-2' : 'pb-2 pt-3',
-            sheetColumnClass(),
+            'pb-2 pt-3',
             // AT REST THE TITLE STANDS ON THE WORLD; PINNED, IT IS A BAR. Measured on the gallery at
             // 390×844 (shots dark-1/light-1): an always-opaque header reads as a title bar even at
             // scrollTop 0, which is a header bar — the thing §3 rule 1 deletes — reintroduced by the
@@ -129,15 +120,12 @@ export function Sheet({
           {trailing !== undefined && <div className="shrink-0">{trailing}</div>}
         </header>
       )}
-      {/* THE READABLE COLUMN. On a phone it is the glass; from `lg` it is SHEET_REM at most with
-          the tray's space kept clear at its right — screenLayout.ts, "the wide glass". THE PAGE (`layout="page"`)
-          is the container of screenLayout.ts "THE PAGE": main | side, the side being the tray's own column. */}
+      {/* THE COLUMN is the glass, padded. THE PAGE (`layout="page"`) is the container of screenLayout.ts "THE PAGE":
+          main | side, the side being the tray's own column. */}
       {page ? (
-        <InPage.Provider value={true}>
-          <div className={pageBodyClass()}>{children}</div>
-        </InPage.Provider>
+        <div className={pageBodyClass()}>{children}</div>
       ) : (
-        <div className={sheetBodyClass(fill)}>{children}</div>
+        <div className="px-gutter pb-6">{children}</div>
       )}
     </div>
   )

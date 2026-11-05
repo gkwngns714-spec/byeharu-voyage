@@ -87,7 +87,7 @@ for (const size of SIZES) {
 
       // THE ONE-PAGE LAW: the document and the face's own Sheet do not travel.
       const m = await page.evaluate(() => {
-        const sheet = document.querySelector('[data-sheet]') as HTMLElement | null
+        const sheet = document.querySelector('[data-testid="desk-scroll"]') as HTMLElement | null
         return {
           dh: document.documentElement.scrollHeight,
           ch: document.documentElement.clientHeight,

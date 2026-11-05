@@ -334,7 +334,7 @@ function shutBecause(route: RouteBoardRow): string | null {
 
 /** THE LANE, OPENED: where she calls, in order, and what the laps say. Every figure is the
  *  server's — `public.route_nm` for the distance and `public.route_earnings` for the rest. It slides over the page's side
- *  column (`useInPage()` in Tray.tsx, the Stats mechanism; nothing here chose it) and moves nothing. */
+ *  column (the page-level dock in Tray.tsx; nothing here chose it) and moves nothing. */
 function LaneTray({
   route,
   detent,
