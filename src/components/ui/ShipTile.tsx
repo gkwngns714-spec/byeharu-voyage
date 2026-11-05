@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { formatInt, formatKnots, formatOfTotal, formatPct } from '../../lib/format'
 import { Bar } from './Bar'
 import { Figure } from './Figure'
@@ -17,6 +18,7 @@ export function ShipTile({
   name,
   className,
   flagship,
+  hull,
   hullPct,
   crew,
   crewMax,
@@ -31,6 +33,8 @@ export function ShipTile({
   /** The class NAME, as served (`Carlat`). */
   className: string
   flagship: boolean
+  /** 0310: a picture of her hull, the caller's, in the place of the flagship's mark. */
+  hull?: ReactNode
   /** 0–1. */
   hullPct: number
   crew: number
@@ -46,7 +50,7 @@ export function ShipTile({
   const short = crew < crewRequired
   return (
     <Tile
-      mark={flagship ? <Icon name="ship" size={20} className="text-accent" aria-label={t('ui.flagship')} /> : undefined}
+      mark={hull ?? (flagship ? <Icon name="ship" size={20} className="text-accent" aria-label={t('ui.flagship')} /> : undefined)}
       name={name}
       // 0074: HER OWN SPEED, because a fitting moves one hull and not the rest.
       meta={`${className} · ${formatKnots(speedKn)}`}

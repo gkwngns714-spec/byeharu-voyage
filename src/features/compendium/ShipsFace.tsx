@@ -1,7 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ALL, Card, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSplit, RankBars, Row, Tray, type TrayDetent } from '../../components/ui'
+import { CargoHull } from '../../live/CargoHull'
+import { useServedRead } from '../../live/useServedRead'
 import { formatFixed, formatInt, formatKnots, formatOfTotal, formatTons } from '../../lib/format'
-import type { SnapshotShipClass } from '../../lib/rpc'
+import { worldStatsNow, type SnapshotShipClass, type StatsNow } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { HullCountry } from '../../live/HullCountry'
 import { HullTech } from '../../live/HullTech'
@@ -47,6 +49,24 @@ const techWord = (t: string | null | undefined) => (t == null ? null : word(`tec
 
 type Filters = { line: string; size: string; role: string; tech: string }
 const NO_FILTER: Filters = { line: ALL, size: ALL, role: ALL, tech: ALL }
+
+/** 0310: THE CARGO SHIP, ONCE ONE EXISTS. She is no class of hull a company can buy, so she is no row of the list; asked once, on the face's mount. */
+function CargoShipEntry() {
+  const t = useT()
+  const ships = useServedRead<StatsNow>('codex-cargo', worldStatsNow, { name: 'worldStatsNow', trigger: 0 }).view?.cargo_ships
+  if (!ships) return null
+  return (
+    <Card title={t('map.cargoShip')} data-testid="codex-cargo-ship">
+      <div className="flex items-center gap-3">
+        <CargoHull size={64} />
+        <div className="min-w-0">
+          <Figure value={formatInt(ships)} />
+          <Hint>{t('codex.cargoNote')}</Hint>
+        </div>
+      </div>
+    </Card>
+  )
+}
 
 export function ShipsFace({ query, search }: { query: string; search: ReactNode }) {
   const t = useT()
@@ -144,6 +164,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
         }
         side={
           <>
+            <CargoShipEntry />
             <Card title={t('codex.biggestCargo')} data-testid="codex-ships-cargo">
               <RankBars
                 rules={false}

@@ -9,8 +9,10 @@ import { useShipPath } from '../../live/useShipPath'
 import { CityFlag } from '../../live/CityFlag'
 import { usePortFlags } from '../../live/usePortFlags'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
+import { CargoSheet } from '../../live/CargoSheet'
 import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantParts } from '../../live/merchantLine'
+import { useCargoShipCard } from '../../live/useCargoShipCard'
 import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
@@ -202,7 +204,10 @@ function Chart({
   // THE OPEN MERCHANT'S CARD — read once here, for the sheet AND for her leg on the chart (the
   // card serves her full course; every other merchant is served the current segment only).
   const merchantId = selection?.kind === 'merchant' ? selection.id : null
-  const { card } = useMerchantCard(merchantId)
+  // 0310: a cargo ship is tapped like a merchant, and has a card of her own.
+  const cargoId = merchantId !== null && trafficRows.find((t) => t.id === merchantId)?.kind === 'CARGO_SHIP' ? merchantId : null
+  const { card } = useMerchantCard(cargoId === null ? merchantId : null)
+  const cargoCard = useCargoShipCard(cargoId)
   const traffic = useMemo(
     () =>
       mapTrafficOf(
@@ -505,7 +510,16 @@ function Chart({
           onClose={() => setSelection(null)}
         />
       )}
-      {selectedMerchant && (
+      {selectedMerchant && cargoId !== null && (
+        <CargoSheet
+          key={selectedMerchant.id}
+          mode="side"
+          card={cargoCard && cargoCard.fleet.id === selectedMerchant.id ? cargoCard : null}
+          line={<PlaceLine parts={merchantParts(selectedMerchant, (c) => portsByCode.get(c)?.name ?? c, nowMs)} />}
+          onClose={() => setSelection(null)}
+        />
+      )}
+      {selectedMerchant && cargoId === null && (
         <MerchantSheet
           key={selectedMerchant.id}
           mode="side"

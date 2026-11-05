@@ -55,6 +55,10 @@ export function LiveNow({ live }: { live: StatsNow | null }) {
         text={live === null ? '—' : undefined}
         data-testid="stats-live-world"
       />
+      {/* 0310: a part of Set aside, served only while a cargo ship exists. */}
+      {live?.funds_at_sea !== undefined && (
+        <StatCard label={t('stats.fundsAtSea')} value={live.funds_at_sea} format={formatDucats} data-testid="stats-live-funds" />
+      )}
     </StatStrip>
   )
 }

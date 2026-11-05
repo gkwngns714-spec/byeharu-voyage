@@ -23,7 +23,8 @@
 //    Only at the widest spans (`THIN_TIERS`, measured: docs/dev-log/2026-10-26-ships-stay.md) are
 //    the merchants thinned, and then by a fact about the SHIP alone — `hash(id) % THIN_MOD < n` —
 //    so the same ships are kept wherever their neighbours sail. Never a cell contest on position.
-// 3. YOURS ARE NEVER THINNED.
+// 3. YOURS ARE NEVER THINNED, AND NEITHER IS A CARGO SHIP (0310): there are at most 50 of her, and she is
+//    the thing a player looks for at the widest span.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { project, xOnSheet, type ViewBox } from '../lib/geo'
@@ -62,7 +63,7 @@ export function shipMarks(
   const keep = keptOf(view.width)
   const out: TrafficOnChart[] = []
   for (const t of traffic) {
-    if (onSheet(t.at.lat, t.at.lon) && stableSlot(t.fleet.id) < keep) out.push(t)
+    if (onSheet(t.at.lat, t.at.lon) && (t.merchant.cargo || stableSlot(t.fleet.id) < keep)) out.push(t)
   }
   return { fleets: mine, traffic: out }
 }

@@ -71,6 +71,7 @@ import type {
   StandingRouteAssigned,
   StandingRouteBook,
   SeaRoster,
+  CargoShipCard,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -666,6 +667,10 @@ export function worldSeaRoster(since: string | null): Promise<RpcResult<SeaRoste
 
 /** One merchant fleet's card. A player's fleet, a stranger uuid and a dark world all refuse
  *  E_NOT_FOUND in the same words. */
+export function worldCargoShipCard(fleetId: string): Promise<RpcResult<CargoShipCard>> {
+  return call<CargoShipCard>('worldCargoShipCard', [fleetId])
+}
+
 export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCard>> {
   return call<MerchantCard>('worldNpcFleetCard', [fleetId])
 }
