@@ -91,7 +91,7 @@ export function TradeBoard({
     <div data-testid="trade-board" data-city={city ?? ''} data-docked={docked ? 'true' : 'false'}>
       {/* THE CITY PICKER IS A GRID (owner, 2026-10-31) — equal cells, fixed columns, in the same
           nearest-first order; a flag and a name per cell, never a ragged strip. */}
-      <TileGrid label={t('desk.cityChips')} columns={4} className="mb-2" data-testid="city-chips">
+      <TileGrid label={t('desk.cityChips')} columns={4} className="mb-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,7.5rem),1fr))]!" data-testid="city-chips">
         {chips.map((c) => (
           <TileChoice key={c} on={c === city} onClick={() => onCity(c)} data-testid="city-chip" data-port={c}>
             {/* one child: the flag and the name stay ONE group, centred — and no `truncate`, so a
@@ -121,7 +121,7 @@ export function TradeBoard({
             quay.refusal ? (
               <Note tone="danger">{quay.refusal.sentence}</Note>
             ) : (
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
                 {Array.from({ length: 6 }, (_, i) => (
                   <Skeleton key={i} className="h-28 w-full" />
                 ))}
@@ -134,7 +134,7 @@ export function TradeBoard({
             // glass, so they scroll inside their own bounded pane (the page above stays put).
             // From lg the desk's centre pane is already the scroller — no second bound there.
             <ScrollPane className="max-h-[9rem] lg:max-h-none">
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
                 {rows.map((r) => (
                   <TradeCard key={r.code} portId={portId} r={r} docked={docked} on={picked === r.code} onBuy={onBuy} onSell={onSell} />
                 ))}
@@ -185,7 +185,7 @@ function TradeCard({
       data-testid="trade-good"
       data-good={r.code}
     >
-      <span className="flex min-w-0 items-start gap-1.5">
+      <span className="flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5">
         <Icon name={goodIcon(r.code, r.category)} size={18} className="mt-px shrink-0 text-ink-muted" />
         <span className="min-w-0 break-words text-t-label font-medium leading-tight text-ink" data-testid="trade-good-name">{r.name}</span>
         <span className={`ml-auto shrink-0 text-t-caption tabular-nums ${r.units > 0 ? 'text-ink' : 'text-ink-faint'}`} data-testid="trade-good-aboard">

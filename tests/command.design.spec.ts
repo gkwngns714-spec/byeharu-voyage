@@ -19,8 +19,8 @@ import { phoneLaws, readGlass } from './unfold.fixture'
 //   (a) THE PANES ARE CARDS: the three panes stand in `[data-card]` surfaces, at least 12 px apart from one another, none touching
 //       the glass's edge (a margin of at least 12 px at the left and the right).
 //   (c) THE HIERARCHY: the desk's title is at least 18 px, the key figures (supplies, cargo) at least 24 px, their labels at least 14.
-//   (b) THE DEFECT RULES STAND (the unfold apparatus), from 1,280: no overlap, no one-letter wrap, no cut text without a way to read it, no
-//       sideways scroll. (At 1,024 the desk already breaks them on origin/main — see the note at the check.)
+//   (b) THE DEFECT RULES STAND (the unfold apparatus), from 1,024: no overlap, no one-letter wrap, no cut text without a way to read it, no
+//       sideways scroll.
 //   (g) A PHONE IS UNCHANGED: no sideways scroll and the desk still stands in its Sheet (`data-desk` absent).
 
 const SIZES = [
@@ -93,12 +93,18 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         if (d.labels.length === 0 || Math.min(...d.labels) < 13.5) failures.push(`${where}: (c) a label over a key figure is ${d.labels.join('/')} px — the law is 14`)
 
         // (b) THE DEFECT RULES
-        // From 1,280 only: at 1,024 the terminal's centre pane is 400 px on origin/main and ALREADY breaks these rules there (names one letter
-        // wide, a Buy and a Sell that cross; measured on main 2026-11-05 with this same spec, in both languages) — a defect older than this
-        // slice and not its to fix, recorded in the queue.
-        if (glass.width >= 1280) {
-          const flat = await readGlass(page, 'desk-pane-chart', 'trade-good', '[data-testid="command"]')
-          failures.push(...phoneLaws(where, flat).map((m) => m.replace(/: \([abcd]\) /, ': (b) ')))
+        // From 1,024, the terminal's smallest glass: the centre pane must keep its names and its Buy and Sell readable (2026-11-05: at 1,024 the
+        // centre pane was ~350 px and cut to three card columns, so a name stood one letter wide and, in Korean, Buy stood over Sell).
+        const flat = await readGlass(page, 'desk-pane-chart', 'trade-good', '[data-testid="command"]')
+        failures.push(...phoneLaws(where, flat).map((m) => m.replace(/: \([abcd]\) /, ': (b) ')))
+        const rows = await page.evaluate(() => [...document.querySelectorAll('[data-testid="trade-good"]')].slice(0, 12).map((c) => {
+          const r = (id: string) => c.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()
+          const n = r('trade-good-name'), b = r('trade-buy'), s = r('trade-sell')
+          return { w: Math.round(c.getBoundingClientRect().width), nameLines: n ? Math.round(n.height / parseFloat(getComputedStyle(c.querySelector('[data-testid="trade-good-name"]') as Element).lineHeight || '16')) : 0, side: !!b && !!s && Math.abs(b.top - s.top) < 4 }
+        }))
+        for (const c of rows) {
+          if (c.nameLines > 2) failures.push(`${where}: (b) a name runs ${c.nameLines} lines in a ${c.w} px card`)
+          if (!c.side) failures.push(`${where}: (b) Buy and Sell are stacked in a ${c.w} px card — they stand side by side`)
         }
 
         if (failures.length > 0) console.log(`LAWS ${where}: ${failures.length} lines\n  ${failures.join('\n  ')}`)

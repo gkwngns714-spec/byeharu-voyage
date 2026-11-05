@@ -50,7 +50,7 @@ import { useLocale, useT } from '../../lib/i18n'
 // ── ON THE GLASS (the sheets-grow slice, 2026-11-02; docs/dev-log/2026-11-02-sheets-grow.md) ──────
 // The fleets stood straight on a `Sheet`, so a veteran with eight hulls scrolled the PAGE (122 px at 390×844, 326 at 320×640)
 // and a company of two left two thirds of the glass empty. The unfold laws (docs/dev-log/2026-11-01-ui-unfold.md, U2) put a
-// list that can be long in ONE `ListPanel` that takes the glass the title leaves and scrolls INSIDE itself: `Sheet fill`,
+// list that can be long in ONE `ListPanel` that takes the glass the title leaves and scrolls INSIDE itself(a history: it is a page now),
 // one panel, its title the count, the rows exactly the rows below. The page behind a press is still the fixed `DetailPage`
 // (a sibling of the panel, never inside its scroller), so the row, the rows below it and the panel keep their boxes.
 //

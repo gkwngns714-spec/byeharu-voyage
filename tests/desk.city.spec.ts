@@ -118,7 +118,7 @@ test("the desk's City board stands on the glass at 390 and 320: no Sheet scroll,
     await settled(pane)
     await page.waitForTimeout(500)
     const m = await page.evaluate(() => {
-      const sheet = document.querySelector('[data-sheet]') as HTMLElement
+      const sheet = document.querySelector('[data-testid="desk-scroll"]') as HTMLElement
       const pane = document.querySelector('[data-testid="desk-city"] [role="tabpanel"] [data-scroll-pane]') as HTMLElement
       const s = sheet.getBoundingClientRect()
       const p = pane.getBoundingClientRect()
