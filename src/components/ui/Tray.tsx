@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, ty
 import { createPortal } from 'react-dom'
 import { Icon } from './Icon'
 import { detentHeight, nearestDetent, stepDetent, TRAY_PEEK, type TrayDetent } from './trayDetents'
-import { trayDockPageClass, traySideEdgeClass, traySideNextClass } from './screenLayout'
+import { scrollRegionClass, trayDockPageClass, traySideEdgeClass, traySideNextClass } from './screenLayout'
 import { InTray, useTraySlot } from './trayContext'
 import { useWide } from './useWide'
 import { useT } from '../../lib/i18n'
@@ -258,7 +258,7 @@ export function Tray({
 
       {/* The one scrolling region. The action below it never enters this box, per §6's sketch:
           "the ONE primary button, always at the bottom edge, never in the scroll". */}
-      <div className="bv-scroll min-h-0 flex-1 overflow-y-auto px-gutter pb-2">{children}</div>
+      <div className={scrollRegionClass}>{children}</div>
 
       {action !== undefined && <div className="shrink-0 px-gutter pb-4 pt-2">{action}</div>}
     </section>
