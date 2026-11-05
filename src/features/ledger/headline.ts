@@ -30,8 +30,8 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //   NATION_CHANGED {from, from_name, to, to_name}                 (0143 — codes and names)
 //   DONATED       {port, port_name, amount, nation}               (0144 — a gift to a city)
-//   FINE_PAID     {port, port_name, amount, nation}               (0318 — a fine paid at a capital)
-//   REGARD_CHANGED {nation, delta, reason, score, band}           (0318 — what a country thinks of the company moved)
+//   FINE_PAID     {port, port_name, amount, nation}               (0319 — a fine paid at a capital)
+//   REGARD_CHANGED {nation, delta, reason, score, band}           (0319 — what a country thinks of the company moved)
 //   FLAG_CHANGED  {port, port_name, from, from_name, to, to_name, share_to, share_from}  (0146)
 //   INSURED       {fleet, voyage_id, port, to, value, price, keep_pct}                      (0213 — port/to are CODES)
 //   INSURANCE_PAID {fleet, voyage_id, day, cause, port, lost, lost_value, keep_pct, owed, paid, short}  (0213)
@@ -254,7 +254,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         to: where ? t('history.toWhere', { where }) : '',
       })
     }
-    // 0318: a fine paid at a capital.
+    // 0319: a fine paid at a capital.
     case 'FINE_PAID': {
       const amount = num(p, 'amount')
       const where = cityName(p, portName)
@@ -263,7 +263,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         to: where ? t('history.toWhere', { where }) : '',
       })
     }
-    // 0318: what a country thinks of the company moved.
+    // 0319: what a country thinks of the company moved.
     case 'REGARD_CHANGED': {
       const band = str(p, 'band')
       const delta = num(p, 'delta')

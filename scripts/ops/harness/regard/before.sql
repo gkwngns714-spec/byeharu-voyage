@@ -1,4 +1,4 @@
--- 0318 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/regard/before.sql
+-- 0319 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/regard/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regclass, to_regprocedure, replace). No game function is called.
 -- Wanted: every `times` is 1; regard_keys, fine_word, ord_48 are 0; house_regard and regard_of are null.
 with h(fn, ord, old) as (values

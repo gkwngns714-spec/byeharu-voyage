@@ -7,7 +7,7 @@ import { duesWords, regardBandWord } from '../src/domain/port'
 import { headline } from '../src/features/ledger/headline'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// A HOUSE HAS A REGARD, THE SEAM (0318, docs/WORLD_POWERS.md §2.1): the real doors, through the client's one RPC layer, on the built world.
+// A HOUSE HAS A REGARD, THE SEAM (0319, docs/WORLD_POWERS.md §2.1): the real doors, through the client's one RPC layer, on the built world.
 // Proof 27 proves the server's arithmetic. This proves the client reads what the server serves: dark, the hall serves no line and the door refuses;
 // lit, the hall's line, the words, the door, and the receipt. The law: dark, nothing changes for anyone.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

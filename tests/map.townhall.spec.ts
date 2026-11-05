@@ -58,7 +58,7 @@ async function donateWorld(): Promise<{ body: Buffer; mayor: string }> {
   return litImage
 }
 
-/** 0318: the lit world with regard lit too. The company is founded when the page boots, so a fixture trigger plants her debt then: -150 with Portugal, 30,000 d. owed, inside her starting purse. */
+/** 0319: the lit world with regard lit too. The company is founded when the page boots, so a fixture trigger plants her debt then: -150 with Portugal, 30,000 d. owed, inside her starting purse. */
 let fineImage: Buffer | null = null
 async function fineWorld(): Promise<Buffer> {
   if (fineImage) return fineImage
@@ -187,7 +187,7 @@ test('0144: lit, a company docked at Lisbon donates, and its influence there is 
   await expect(page.getByTestId('townhall-influence-share').filter({ hasText: 'Portugal' })).toHaveCount(1, { timeout: 30_000 })
 })
 
-test('0318: lit, a company reads her band on the hall and pays her fine at the capital', async ({ page, request, baseURL }) => {
+test('0319: lit, a company reads her band on the hall and pays her fine at the capital', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
   test.skip(!(await reachable(request, baseURL ?? '')), 'nothing served at ' + baseURL + ' — run npm run preview and re-run')
   const body = await fineWorld()

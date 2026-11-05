@@ -857,7 +857,7 @@ export function cmdDonate(portId: string, coin: number): Promise<RpcResult<Donat
   return call<DonateReceipt>('cmdDonate', [portId, coin])
 }
 
-/** Pay a fine at a capital (0318): the server holds `coin` to what is owed and to your purse, and says what it took. */
+/** Pay a fine at a capital (0319): the server holds `coin` to what is owed and to your purse, and says what it took. */
 export function cmdPayFine(portId: string, coin: number): Promise<RpcResult<FineReceipt>> {
   return call<FineReceipt>('cmdPayFine', [portId, coin])
 }

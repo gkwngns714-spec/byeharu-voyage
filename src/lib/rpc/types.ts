@@ -2664,11 +2664,11 @@ export interface PortDues {
   fee_base: number
   fee_pct: number
   prep_seconds: number
-  /** 0318 (docs/WORLD_POWERS.md §2.1) — what this country thinks of your company. Served only while `regard_enabled` is lit, for a human company, in a city a country holds. */
+  /** 0319 (docs/WORLD_POWERS.md §2.1) — what this country thinks of your company. Served only while `regard_enabled` is lit, for a human company, in a city a country holds. */
   regard?: PortRegard
 }
 
-/** 0318: `factor` is already inside `PortDues.factor`. `fine`: what you may pay here, 0 away from the capital. */
+/** 0319: `factor` is already inside `PortDues.factor`. `fine`: what you may pay here, 0 away from the capital. */
 export interface PortRegard {
   score: number
   band: RegardBand
@@ -2794,7 +2794,7 @@ export interface DonateReceipt {
   cap: number
 }
 
-/** 0318: `cmd.pay_fine` — what was paid (held to what is owed and to your purse), and what is left. */
+/** 0319: `cmd.pay_fine` — what was paid (held to what is owed and to your purse), and what is left. */
 export interface FineReceipt {
   port: string
   amount: number

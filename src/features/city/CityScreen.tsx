@@ -328,7 +328,7 @@ function CityFrame({
   const houseNation = useWorld((s) => s.player?.nation ?? null)
   const portNation = allegiance?.nation ?? null
   const stance = hall?.dues?.stance ?? null
-  // 0318: lit, the Relationship reads what this country thinks of YOUR company, which the stance only starts (`dues.regard`, docs/WORLD_POWERS.md §2.1).
+  // 0319: lit, the Relationship reads what this country thinks of YOUR company, which the stance only starts (`dues.regard`, docs/WORLD_POWERS.md §2.1).
   const regard = hall?.dues?.regard ?? null
   const relation: Relation =
     stance ?? (houseNation === null ? 'none' : portNation === null ? 'free' : houseNation === portNation ? 'home' : 'different')

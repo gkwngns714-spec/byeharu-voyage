@@ -1,8 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 27 — A HOUSE HAS A REGARD  (migration 0318, slice W1 of docs/WORLD_POWERS.md)
+-- PROOF 27 — A HOUSE HAS A REGARD  (migration 0319, slice W1 of docs/WORLD_POWERS.md)
 --
---   0318's own self-assert reads the catalog only: a migration never runs a real game step (docs/OPS_HEALTH.md section 4). This proof runs the REAL quote, dock fee, gift, stake and fine on
---   probe companies, all rolled back. The pre-images are the live bodies with 0318's hunks taken out again, so "dark equals pre-image" is measured, not taken on trust.
+--   0319's own self-assert reads the catalog only: a migration never runs a real game step (docs/OPS_HEALTH.md section 4). This proof runs the REAL quote, dock fee, gift, stake and fine on
+--   probe companies, all rolled back. The pre-images are the live bodies with 0319's hunks taken out again, so "dark equals pre-image" is measured, not taken on trust.
 --
 -- @pass REGARD_DARK_QUOTE   dark, every stance × tax, fee and dues: byte-identical to the pre-images, for a human and a merchant, with a planted row ignored
 -- @pass REGARD_DARK_WRITES  dark, regard_add, a gift and a stake write no row and no event; the fine door refuses E_NOT_IN_USE and moves nothing
@@ -66,14 +66,14 @@ begin
     raise exception 'PROOF 27 FAIL: this world has no second Portuguese harbour (%) or no free city (%)', v_city, v_free;
   end if;
 
-  -- ── THE PRE-IMAGES: the live bodies, each with 0318's terms taken out ──
+  -- ── THE PRE-IMAGES: the live bodies, each with 0319's terms taken out ──
   for s in select distinct e ->> 0 as fn from jsonb_array_elements(c_hunks) e loop
     v_def := replace(pg_get_functiondef(s.fn::regprocedure), E'\r', '');
     declare e jsonb;
     begin
       for e in select x from jsonb_array_elements(c_hunks) x where x ->> 0 = s.fn loop
         if position(e ->> 1 in v_def) = 0 then
-          raise exception 'PROOF 27 FAIL: % does not carry its 0318 term %', s.fn, e ->> 1;
+          raise exception 'PROOF 27 FAIL: % does not carry its 0319 term %', s.fn, e ->> 1;
         end if;
         v_def := replace(v_def, e ->> 1, e ->> 2);
       end loop;

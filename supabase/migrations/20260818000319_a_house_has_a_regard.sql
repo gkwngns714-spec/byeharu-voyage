@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- 0318 — A HOUSE HAS A REGARD: how a country stands with one company, kept as earned points that fade. DARK
+-- 0319 — A HOUSE HAS A REGARD: how a country stands with one company, kept as earned points that fade. DARK
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- Owner row 288, slice W1 of docs/WORLD_POWERS.md (section 2.1): *"we need to build systems such as affinity prior to the system"*. It comes before anything fights. The word in the database
 -- is REGARD, because `affinity`, `stance` and `standings` are taken. The player reads the existing Relationship / 관계.
@@ -36,11 +36,11 @@
 --
 -- SELF-ASSERT: the catalog and the pure band table only: hunks once and reversing; ACL, volatility and config unmoved; no other function and no other knob; no row. THIS FILE RUNS NO GAME STEP,
 -- in every environment (docs/OPS_HEALTH.md section 4). THE LIVE PATHS ARE PROVED IN CI: proof 27, scripts/db/proofs/27_regard.sql, and tests/rpc.regard.spec.ts for the seam.
--- Mutation controls: scripts/ops/harness/regard/proof-0318.mjs (local).
+-- Mutation controls: scripts/ops/harness/regard/proof-0319.mjs (local).
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): `regard_enabled` false is the switch. To remove: swap this file's v_old and v_new, then drop what it created. FINE ledger rows stay.
--- VERSION: 0318 - prod head 0315 (2026-11-06); 0316 (#499) and 0317 (#505) deploy first. Neither touches a function hunked here (read, 2026-11-06).
+-- VERSION: 0319 - prod head 0315 (2026-11-06); 0316 (#499), 0317 (#505) and the fix for the 0315 job (0318) deploy first. 0316 and 0317 touch no function hunked here (read and applied in that order, 2026-11-06). The 0318 fix was not yet on any ref: before.sql proves the pre-images at deploy.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -68,10 +68,10 @@ begin
   if to_regclass('public.house_regard') is not null or to_regprocedure('public.regard_of(uuid,uuid)') is not null
      or exists (select 1 from public.world_config c where c.key like 'regard%')
      or exists (select 1 from public.stats_flow_words w where w.kind = 'FINE') then
-    raise exception '0318 refuses: something of it is already in this world';
+    raise exception '0319 refuses: something of it is already in this world';
   end if;
   if to_regprocedure('public.country_factor(text)') is null or to_regprocedure('public.power_stance(uuid,uuid)') is null or to_regprocedure('public.city_capital(uuid)') is null then
-    raise exception '0318 refuses: 0172 / 0196 / 0237 (the capital, the stance, the country factor) are not in this world';
+    raise exception '0319 refuses: 0172 / 0196 / 0237 (the capital, the stance, the country factor) are not in this world';
   end if;
 
   select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
@@ -96,19 +96,19 @@ begin
     primary key (player_id, nation_id)
   );
   comment on table public.house_regard is
-    '0318 (docs/WORLD_POWERS.md section 2.1): what a human company has EARNED with a country, as it stood at as_of. The stance base is derived, so a merchant has no row. One reader: public.regard_of. One writer: public.regard_add. Server-only.';
+    '0319 (docs/WORLD_POWERS.md section 2.1): what a human company has EARNED with a country, as it stood at as_of. The stance base is derived, so a merchant has no row. One reader: public.regard_of. One writer: public.regard_add. Server-only.';
   alter table public.house_regard enable row level security;
   revoke all on table public.house_regard from public, anon, authenticated;
 
   -- ── 2. THE KNOBS ──
   insert into public.world_config (key, value, description) values
-    ('regard_enabled', 'false'::jsonb, '0318: THE switch of a company''s regard with a country. False: multiplier 1, regard_add writes nothing, the hall serves no line, cmd.pay_fine refuses E_NOT_IN_USE.'),
-    ('regard_half_life_hours', '72'::jsonb, '0318: earned regard halves in this many real hours (public.regard_fold).'),
-    ('regard_stance_base', '{"home": 200, "ally": 100, "peace": 0, "rival": -100, "war": -200}'::jsonb, '0318: the score a company starts from with a country, by public.power_stance. Derived, never stored.'),
+    ('regard_enabled', 'false'::jsonb, '0319: THE switch of a company''s regard with a country. False: multiplier 1, regard_add writes nothing, the hall serves no line, cmd.pay_fine refuses E_NOT_IN_USE.'),
+    ('regard_half_life_hours', '72'::jsonb, '0319: earned regard halves in this many real hours (public.regard_fold).'),
+    ('regard_stance_base', '{"home": 200, "ally": 100, "peace": 0, "rival": -100, "war": -200}'::jsonb, '0319: the score a company starts from with a country, by public.power_stance. Derived, never stored.'),
     ('regard_bands', '[{"band": "honoured", "from": 500, "factor": 0.8}, {"band": "friendly", "from": 150, "factor": 0.9}, {"band": "neutral", "from": -149, "factor": 1}, {"band": "wary", "from": -299, "factor": 1.25}, {"band": "hostile", "from": null, "factor": 2}]'::jsonb,
-     '0318: the bands, highest first. The score is rounded, then the first band whose `from` it reaches applies; null `from` catches the rest. `factor` multiplies tax and dock fee.'),
-    ('regard_per_100k', '10'::jsonb, '0318: regard earned per 100,000 d. given to or invested in a city that country holds.'),
-    ('regard_fine_per_point', '200'::jsonb, '0318: ducats a fine costs per point of bad regard bought back.');
+     '0319: the bands, highest first. The score is rounded, then the first band whose `from` it reaches applies; null `from` catches the rest. `factor` multiplies tax and dock fee.'),
+    ('regard_per_100k', '10'::jsonb, '0319: regard earned per 100,000 d. given to or invested in a city that country holds.'),
+    ('regard_fine_per_point', '200'::jsonb, '0319: ducats a fine costs per point of bad regard bought back.');
 
   -- ── 3. THE MONEY KIND ──
   insert into public.stats_flow_words (kind, side, word, ord) values ('FINE', 'moved', 'Fines', 48);
@@ -122,7 +122,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0318: THE one reader of regard_enabled.
+  -- 0319: THE one reader of regard_enabled.
   select public.wc('regard_enabled') = 'true'::jsonb
 $$
   $f$;
@@ -135,7 +135,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0318: THE one fade: earned points as they stand now. Bounded at 1,000 half-lives so a very old row reads as nothing and never underflows. A future as_of does not grow.
+  -- 0319: THE one fade: earned points as they stand now. Bounded at 1,000 half-lives so a very old row reads as nothing and never underflows. A future as_of does not grow.
   select p_points * power(0.5::numeric,
            least(greatest(extract(epoch from now() - p_as_of) / 3600, 0)::numeric / public.wc_num('regard_half_life_hours'), 1000)::numeric)
 $$
@@ -149,7 +149,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0318: THE one reader of a company's regard with a country: the stance base (public.power_stance through regard_stance_base) plus her earned points, faded. One primary-key read of each table.
+-- 0319: THE one reader of a company's regard with a country: the stance base (public.power_stance through regard_stance_base) plus her earned points, faded. One primary-key read of each table.
 -- A stance the knob does not price RAISES (a defect, never a silent 0).
 declare
   v_stance text := public.power_stance((select pl.nation_id from public.players pl where pl.id = p_player), p_nation);
@@ -171,7 +171,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0318: THE bands: {band, from, factor}. The score is rounded first, so -149.5 is the -150 the player reads, and Wary.
+  -- 0319: THE bands: {band, from, factor}. The score is rounded first, so -149.5 is the -150 the player reads, and Wary.
   select b.value from jsonb_array_elements(public.wc('regard_bands')) with ordinality b(value, ord)
    where b.value ->> 'from' is null or round(p_score) >= (b.value ->> 'from')::numeric
    order by b.ord limit 1
@@ -186,7 +186,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0318: THE multiplier a company's regard puts on country_factor's result, in world.tax_rate and public.port_fee. Dark, a merchant, a free city: 1, before any read of public.house_regard.
+-- 0319: THE multiplier a company's regard puts on country_factor's result, in world.tax_rate and public.port_fee. Dark, a merchant, a free city: 1, before any read of public.house_regard.
 declare
   v_nation uuid;
 begin
@@ -212,7 +212,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0318: what a company may pay this country: her earned BAD points as they stand now, at regard_fine_per_point, rounded up to a whole point. Never the stance base. 0 with none.
+  -- 0319: what a company may pay this country: her earned BAD points as they stand now, at regard_fine_per_point, rounded up to a whole point. Never the stance base. 0 with none.
   select coalesce((select ceil(-x.p)::bigint * public.wc_int('regard_fine_per_point')
                      from (select public.regard_fold(r.points, r.as_of) as p from public.house_regard r
                             where r.player_id = p_player and r.nation_id = p_nation) x
@@ -228,7 +228,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0318: one term of public.port_dues: {regard: {score, band, factor, fine}}. `fine` is what she may pay here: only at that country's capital, else 0. Dark, a merchant, a free city: {}.
+-- 0319: one term of public.port_dues: {regard: {score, band, factor, fine}}. `fine` is what she may pay here: only at that country's capital, else 0. Dark, a merchant, a free city: {}.
 declare
   v_nation uuid;
   v_score  numeric;
@@ -260,7 +260,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0318: THE one writer of public.house_regard. Folds the fade in, adds, stamps as_of, writes event REGARD_CHANGED, answers the score. Dark, a merchant, no nation, no delta: writes nothing, answers null.
+-- 0319: THE one writer of public.house_regard. Folds the fade in, adds, stamps as_of, writes event REGARD_CHANGED, answers the score. Dark, a merchant, no nation, no delta: writes nothing, answers null.
 declare
   v_score numeric;
 begin
@@ -289,7 +289,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0318: a gift or a stake in a city earns regard with the country that holds it (regard_per_100k). Called by public.donate_for and public.invest_for, which merchants share: public.regard_add turns them away.
+-- 0319: a gift or a stake in a city earns regard with the country that holds it (regard_per_100k). Called by public.donate_for and public.invest_for, which merchants share: public.regard_add turns them away.
 begin
   if not public.regard_on() then
     return;
@@ -305,7 +305,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0318: THE one way a company pays a fine (docs/WORLD_POWERS.md sections 2.1, 4.5). At the capital of the country she owes, with a fleet docked there. She pays what she asked, held to what is owed
+-- 0319: THE one way a company pays a fine (docs/WORLD_POWERS.md sections 2.1, 4.5). At the capital of the country she owes, with a fleet docked there. She pays what she asked, held to what is owed
 -- and what her purse holds. FINE is moved: public.pay_city, house to capital, nothing made. +1 regard per regard_fine_per_point. Refuses before anything moves. Server-only.
 declare
   p       public.ports%rowtype;
@@ -361,7 +361,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0318: the caller's company pays a fine at p_port. The core is public.fine_for.
+-- 0319: the caller's company pays a fine at p_port. The core is public.fine_for.
 declare
   v_player uuid := public.current_player_id();
   v_det    text;
@@ -395,41 +395,41 @@ end $$
   grant execute on function cmd.pay_fine(uuid, bigint) to authenticated;
 
   -- ── 6. THE HUNKS (each occurs exactly once in the live body, and reverses) ──
-  create temp table hunks_0318 (fn text, ord int, old text, new text) on commit drop;
-  insert into hunks_0318 values
+  create temp table hunks_0319 (fn text, ord int, old text, new text) on commit drop;
+  insert into hunks_0319 values
   ('world.tax_rate(uuid,uuid)', 1,
 $h$    return least(v_base * public.country_factor(v_stance), greatest(v_base, public.wc_num('tariff_rate_max')));
 $h$,
-$h$    -- 0318 (docs/WORLD_POWERS.md section 2.1): her regard with the holder sits on the country factor, under the same cap. 1 while dark, for a merchant and in a free city.
+$h$    -- 0319 (docs/WORLD_POWERS.md section 2.1): her regard with the holder sits on the country factor, under the same cap. 1 while dark, for a merchant and in a free city.
     return least(v_base * public.country_factor(v_stance) * public.regard_factor(p_player, p_port), greatest(v_base, public.wc_num('tariff_rate_max')));
 $h$),
   ('public.port_fee(uuid,uuid,numeric)', 1,
 $h$                               (select pl.nation_id from public.players pl where pl.id = p_player), public.port_nation(p_port)))))::bigint;
 $h$,
 $h$                               (select pl.nation_id from public.players pl where pl.id = p_player), public.port_nation(p_port)))
-                           * public.regard_factor(p_player, p_port)))::bigint;   -- 0318: 1 while dark, for a merchant and in a free city. She still docks, whatever her band
+                           * public.regard_factor(p_player, p_port)))::bigint;   -- 0319: 1 while dark, for a merchant and in a free city. She still docks, whatever her band
 $h$),
   ('public.port_dues(uuid,uuid,numeric)', 1,
 $h$    'stance', v_stance, 'factor', public.country_factor(v_stance),
 $h$,
-$h$    'stance', v_stance, 'factor', public.country_factor(v_stance) * public.regard_factor(p_player, p_port),   -- 0318: the factor she really pays
+$h$    'stance', v_stance, 'factor', public.country_factor(v_stance) * public.regard_factor(p_player, p_port),   -- 0319: the factor she really pays
 $h$),
   ('public.port_dues(uuid,uuid,numeric)', 2,
 $h$    'prep_seconds', public.wc_num('port_prep_seconds')));
 $h$,
-$h$    'prep_seconds', public.wc_num('port_prep_seconds')) || public.regard_line(p_port, p_player));   -- 0318: served only while lit
+$h$    'prep_seconds', public.wc_num('port_prep_seconds')) || public.regard_line(p_port, p_player));   -- 0319: served only while lit
 $h$),
   ('public.donate_for(uuid,uuid,bigint)', 1,
 $h$  v_after := public.pay_city(p_player, p_port, 'DONATION', p_coin, v_event);
 $h$,
 $h$  v_after := public.pay_city(p_player, p_port, 'DONATION', p_coin, v_event);
-  perform public.regard_gift(p_player, p_port, p_coin, 'DONATION');   -- 0318: dark, nothing
+  perform public.regard_gift(p_player, p_port, p_coin, 'DONATION');   -- 0319: dark, nothing
 $h$),
   ('public.invest_for(uuid,uuid,text,integer)', 1,
 $h$  v_after := public.pay_city(p_player, p_port, 'SHARE', v_cost, v_event);
 $h$,
 $h$  v_after := public.pay_city(p_player, p_port, 'SHARE', v_cost, v_event);
-  perform public.regard_gift(p_player, p_port, v_cost, 'SHARE');   -- 0318: dark, nothing
+  perform public.regard_gift(p_player, p_port, v_cost, 'SHARE');   -- 0319: dark, nothing
 $h$),
   ('public.client_rpc_entry_points()', 1,
 $h$      ('cmd',         'donate',                'uuid, bigint'),
@@ -438,30 +438,30 @@ $h$      ('cmd',         'donate',                'uuid, bigint'),
       ('cmd',         'pay_fine',              'uuid, bigint'),
 $h$);
 
-  for v_h in select h.fn from hunks_0318 h group by h.fn order by h.fn loop
+  for v_h in select h.fn from hunks_0319 h group by h.fn order by h.fn loop
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
     declare
       x record;
       v_pre text := v_def;
     begin
-      for x in select * from hunks_0318 h where h.fn = v_h.fn order by h.ord loop
+      for x in select * from hunks_0319 h where h.fn = v_h.fn order by h.ord loop
         v_n := (length(v_def) - length(replace(v_def, x.old, ''))) / length(x.old);
         if v_n <> 1 then
-          raise exception '0318 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
+          raise exception '0319 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
         end if;
         v_def := replace(v_def, x.old, x.new);
       end loop;
       execute v_def;
       v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
-      for x in select * from hunks_0318 h where h.fn = v_h.fn order by h.ord desc loop
+      for x in select * from hunks_0319 h where h.fn = v_h.fn order by h.ord desc loop
         v_n := (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new);
         if v_n <> 1 then
-          raise exception '0318 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
+          raise exception '0319 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
         end if;
         v_def := replace(v_def, x.new, x.old);
       end loop;
       if v_def <> v_pre then
-        raise exception '0318 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
+        raise exception '0319 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
       end if;
     end;
   end loop;
@@ -472,43 +472,43 @@ $h$);
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and p.oid::regprocedure::text <> all (array(select x::regprocedure::text from unnest(c_hunked) x))
          and p.oid::regprocedure::text <> all (array(select x::regprocedure::text from unnest(c_new_fns) x))) <> v_fn_before then
-    raise exception '0318 self-assert FAIL: another function moved';
+    raise exception '0319 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c where c.key not like 'regard%') <> v_cfg_before then
-    raise exception '0318 self-assert FAIL: a world_config row moved';
+    raise exception '0319 self-assert FAIL: a world_config row moved';
   end if;
   if (select md5(string_agg(w.kind || ':' || w.side || ':' || w.word || ':' || w.ord, ',' order by w.kind)) from public.stats_flow_words w where w.kind <> 'FINE') <> v_words_before then
-    raise exception '0318 self-assert FAIL: a money word moved';
+    raise exception '0319 self-assert FAIL: a money word moved';
   end if;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p where p.oid::regprocedure::text = any (array(select x::regprocedure::text from unnest(c_hunked) x))) <> v_meta_before then
-    raise exception '0318 self-assert FAIL: the ACL, volatility, definer or config of a hunked function moved';
+    raise exception '0319 self-assert FAIL: the ACL, volatility, definer or config of a hunked function moved';
   end if;
   if public.regard_on() then
-    raise exception '0318 self-assert FAIL: regard is not dark';
+    raise exception '0319 self-assert FAIL: regard is not dark';
   end if;
   if (select w.side from public.stats_flow_words w where w.kind = 'FINE') <> 'moved' then
-    raise exception '0318 self-assert FAIL: FINE is not a moved kind';
+    raise exception '0319 self-assert FAIL: FINE is not a moved kind';
   end if;
   if exists (select 1 from unnest(c_new_fns) f
               where has_function_privilege('anon', f::regprocedure, 'execute')
                  or (has_function_privilege('authenticated', f::regprocedure, 'execute') <> (f = 'cmd.pay_fine(uuid,bigint)'))) then
-    raise exception '0318 self-assert FAIL: the grants are not the contract: only cmd.pay_fine, only to authenticated';
+    raise exception '0319 self-assert FAIL: the grants are not the contract: only cmd.pay_fine, only to authenticated';
   end if;
   if exists (select 1 from (values (500::numeric, 'honoured'), (499.5, 'honoured'), (499.4, 'friendly'), (150, 'friendly'), (149.5, 'friendly'), (149.4, 'neutral'), (0, 'neutral'), (-149, 'neutral'),
                                    (-149.4, 'neutral'), (-149.5, 'wary'), (-150, 'wary'), (-299, 'wary'), (-299.4, 'wary'), (-299.5, 'hostile'), (-300, 'hostile'), (-100000, 'hostile')) t(score, band)
               where public.regard_band(t.score) ->> 'band' is distinct from t.band) then
-    raise exception '0318 self-assert FAIL: a band is not where section 2.1 puts it';
+    raise exception '0319 self-assert FAIL: a band is not where section 2.1 puts it';
   end if;
   if (select count(*) from public.client_rpc_entry_points() e where e.function_name = 'pay_fine' and e.fn is not null) <> 1 then
-    raise exception '0318 self-assert FAIL: cmd.pay_fine is not in the client registry';
+    raise exception '0319 self-assert FAIL: cmd.pay_fine is not in the client registry';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0318 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0319 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0318 self-assert ok: A HOUSE HAS A REGARD, dark. % hunks once each and reversing; no other function, no other knob; no game step ran (proof 27 runs them in CI). % ms.',
-    (select count(*) from hunks_0318), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
-  drop table hunks_0318;
+  raise notice '0319 self-assert ok: A HOUSE HAS A REGARD, dark. % hunks once each and reversing; no other function, no other knob; no game step ran (proof 27 runs them in CI). % ms.',
+    (select count(*) from hunks_0319), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  drop table hunks_0319;
 end
 $m$;

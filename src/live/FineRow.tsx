@@ -6,7 +6,7 @@ import type { Refusal, SnapshotPort, TownHallView } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 import { useWorld } from './worldStore'
 
-/** 0318 (docs/WORLD_POWERS.md §2.1, §4.5): "Fine": what this capital asks of your company, and one button, only while a fleet of yours lies here.
+/** 0319 (docs/WORLD_POWERS.md §2.1, §4.5): "Fine": what this capital asks of your company, and one button, only while a fleet of yours lies here.
  *  Served only while one is owed, so a hall with none draws nothing. The server holds the coin to what is owed and to your purse. */
 export function FineRow({ port, hall }: { port: SnapshotPort; hall: TownHallView }) {
   const t = useT()

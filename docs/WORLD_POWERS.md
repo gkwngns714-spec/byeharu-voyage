@@ -109,7 +109,7 @@ The multiplier sits on `country_factor`'s result, in `world.tax_rate` and `publi
 **Cost on the beat:** none. One primary-key read per human tax quote. A merchant's quote short-circuits on `is_npc` before the read.
 **Dark:** `regard_enabled` false, multiplier 1, `regard_add` writes nothing.
 
-**Built as W1, migration 0318, dark. Decided by default while building (`docs/dev-log/2026-11-06-a-house-has-a-regard.md`):**
+**Built as W1, migration 0319, dark. Decided by default while building (`docs/dev-log/2026-11-06-a-house-has-a-regard.md`):**
 - A fine is a way back, not a way up: it buys back earned bad points only, never the stance base, at that country's capital with a fleet docked there. At 200 d. a point it would otherwise be 50 × cheaper than a donation.
 - A fine buys no influence. It is held to what is owed and to her purse.
 - `tariff_rate_max` still caps the tax on top of the multiplier. The dock fee has no cap.
