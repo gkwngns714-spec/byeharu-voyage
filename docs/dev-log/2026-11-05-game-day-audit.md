@@ -81,7 +81,7 @@ Branch `a-day-is-a-day` · migration `supabase/migrations/20260818000317_a_day_i
 **Old clients:** the client publishes minutes after the push. A tab open across it reads `day` where it wants `game_day`: bars without a key and the market line without a company count, until reload. Accepted: no money path.
 
 ## PROD CHECKS (pure SELECTs from a file, one statement per file, before deploy)
-Rebase on 0314-0316 first. Not within two minutes of :37 (the file takes `port_treasury`'s lock). 0314 and 0316 do not touch these 14 bodies as their PRs stand; 0315 was not on any branch when this was written. If the md5 differs, cut the hunks again against the live body.
+Rebase on 0314-0316 first. Not within two minutes of :37 (the file takes `port_treasury`'s lock). Re-read 2026-11-05 after the merge of main: 0314, 0315 (#504) and 0316 (#499) were searched for all 14 names and none of them replaces or patches any of the 14 bodies (0315 only calls cmd.do_sell and adds cmd.do_sell_answering; 0316 only reads public.city_day's table rows). The md5 below is still the one to confirm on prod. If the md5 differs, cut the hunks again against the live body.
 
 ```sql
 select (select max(version) from supabase_migrations.schema_migrations) as head,   -- 20260818000316
@@ -124,7 +124,7 @@ Stop the crown's share at once: `crown_tax_share` to 0. Back to the old rule: a 
 
 ## Not verified
 - Nothing is deployed. No prod `tick_city` has run this code; the crown's +1.4 M d. a day is an estimate from two days of `stats_city`.
-- Not re-cut on 0314-0316: rebase, re-run the harness and PROD CHECKS then.
+- Merged with main 2026-11-05 (docs conflicts only; no code conflict); the 14 bodies were checked by reading 0314-0316, not re-cut. The mutation harness was NOT re-run (needs the cached world; CI's disposable-chain and proof 26 are the proof). Owner row renumbered 293 -> 294 (#504 holds 293).
 - The Report, hall and market screens were not looked at in a browser.
 - Whether the full CI suite is green: see the PR.
 - Report All's cost on prod, before or after.
