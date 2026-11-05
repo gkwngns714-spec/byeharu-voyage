@@ -1,29 +1,15 @@
-import { useState } from "react";
-import {
-  Button,
-  Card,
-  LanguageSwitch,
-  Note,
-  PageSplit,
-  Row,
-  Segmented,
-  Sheet,
-} from "../../components/ui";
-import { cmdChangeCountry, type Refusal } from "../../lib/rpc";
-import { HullCountry } from "../../live/HullCountry";
-import { NationPicker } from "../../live/NationPicker";
-import { useAuthStore } from "../../store/authStore";
-import { useWorld } from "../../live/worldStore";
-import { formatDate } from "../../lib/format";
-import { useShellState } from "../../app/shellState";
-import {
-  APPEARANCES,
-  readAppearance,
-  writeAppearance,
-  type Appearance,
-} from "./appearance";
-import { tabWord } from "../../app/navTabs";
-import { properName, useLocale, useT, type TKey } from "../../lib/i18n";
+import { useState } from 'react'
+import { Button, Card, LanguageSwitch, Note, PageSplit, Row, Segmented, Sheet } from '../../components/ui'
+import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
+import { HullCountry } from '../../live/HullCountry'
+import { NationPicker } from '../../live/NationPicker'
+import { useAuthStore } from '../../store/authStore'
+import { useWorld } from '../../live/worldStore'
+import { formatDate } from '../../lib/format'
+import { useShellState } from '../../app/shellState'
+import { APPEARANCES, readAppearance, writeAppearance, type Appearance } from './appearance'
+import { tabWord } from '../../app/navTabs'
+import { properName, useLocale, useT, type TKey } from '../../lib/i18n'
 
 // PROFILE (in Cabin) — docs/UI_DIRECTION.md §6:
 //
@@ -58,22 +44,22 @@ import { properName, useLocale, useT, type TKey } from "../../lib/i18n";
 // losing a save: this house lives in this browser and clearing its storage ends it.
 
 export function ProfileScreen() {
-  const t = useT();
+  const t = useT()
   // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
-  const title = tabWord(useLocale(), "/profile");
+  const title = tabWord(useLocale(), '/profile')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
-  const player = useWorld((s) => s.player);
-  const user = useAuthStore((s) => s.user);
-  const authMode = useAuthStore((s) => s.mode);
-  const signOut = useAuthStore((s) => s.signOut);
-  const { nowMs } = useShellState();
-  const [busy, setBusy] = useState(false);
-  const [appearance, setAppearance] = useState<Appearance>(readAppearance);
+  const player = useWorld((s) => s.player)
+  const user = useAuthStore((s) => s.user)
+  const authMode = useAuthStore((s) => s.mode)
+  const signOut = useAuthStore((s) => s.signOut)
+  const { nowMs } = useShellState()
+  const [busy, setBusy] = useState(false)
+  const [appearance, setAppearance] = useState<Appearance>(readAppearance)
 
   const choose = (pref: Appearance) => {
-    writeAppearance(pref);
-    setAppearance(pref);
-  };
+    writeAppearance(pref)
+    setAppearance(pref)
+  }
 
   return (
     // THE PAGE (2026-11-05, owner row 267): MAIN the company and its country as cards, SIDE (the tray's column) the language, the
@@ -92,52 +78,33 @@ export function ProfileScreen() {
                     <span className="text-t-body text-ink">
                       {[
                         player.company_name,
-                        player.nation
-                          ? properName(
-                              "nation",
-                              player.nation,
-                              player.nation_name ?? player.nation,
-                            )
-                          : player.nation_name,
-                        t("profile.since", {
+                        player.nation ? properName('nation', player.nation, player.nation_name ?? player.nation) : player.nation_name,
+                        t('profile.since', {
                           date: founded(player.founded_at, nowMs),
                         }),
                       ]
                         .filter(Boolean)
-                        .join(" · ")}
+                        .join(' · ')}
                     </span>
                   }
                 />
               ) : (
-                <Row
-                  label={t("profile.noCompany")}
-                  tone="muted"
-                  hairline={false}
-                />
+                <Row label={t('profile.noCompany')} tone="muted" hairline={false} />
               )}
             </Card>
 
-            {player && player.nation && (
-              <CountrySection
-                nation={player.nation}
-                changeAt={player.nation_change_at}
-                nowMs={nowMs}
-              />
-            )}
+            {player && player.nation && <CountrySection nation={player.nation} changeAt={player.nation_change_at} nowMs={nowMs} />}
           </>
         }
         side={
           <>
             {/* ONE WORD FOR LANGUAGE: the switch's own accessible name is `common.language`; this
           heading read `profile.language`, a second key for the same idea (the audit, 2026-10-31). */}
-            <Card title={t("common.language")} data-testid="profile-language">
+            <Card title={t('common.language')} data-testid="profile-language">
               <LanguageSwitch className="w-fit" />
             </Card>
 
-            <Card
-              title={t("profile.appearance")}
-              data-testid="profile-appearance"
-            >
+            <Card title={t('profile.appearance')} data-testid="profile-appearance">
               <Segmented
                 segments={APPEARANCES.map((a) => ({
                   id: a.id,
@@ -145,44 +112,40 @@ export function ProfileScreen() {
                 }))}
                 value={appearance}
                 onChange={choose}
-                label={t("profile.appearance")}
+                label={t('profile.appearance')}
                 className="w-fit"
               />
             </Card>
 
             <Card data-testid="profile-account">
-              {authMode === "local" ? (
+              {authMode === 'local' ? (
                 <Row
                   tone="muted"
                   hairline={false}
-                  label={t("profile.localOnly")}
+                  label={t('profile.localOnly')}
                   value={
                     <Button variant="secondary" disabled data-testid="sign-out">
-                      {t("profile.signOut")}
+                      {t('profile.signOut')}
                     </Button>
                   }
                 />
               ) : (
                 <Row
                   hairline={false}
-                  label={
-                    <span className="text-ink-muted">
-                      {user?.email ?? t("profile.signedIn")}
-                    </span>
-                  }
+                  label={<span className="text-ink-muted">{user?.email ?? t('profile.signedIn')}</span>}
                   value={
                     <Button
                       variant="secondary"
                       busy={busy}
-                      busyLabel={t("profile.signingOut")}
+                      busyLabel={t('profile.signingOut')}
                       data-testid="sign-out"
                       onClick={async () => {
-                        setBusy(true);
-                        await signOut();
-                        setBusy(false);
+                        setBusy(true)
+                        await signOut()
+                        setBusy(false)
                       }}
                     >
-                      {t("profile.signOut")}
+                      {t('profile.signOut')}
                     </Button>
                   }
                 />
@@ -192,89 +155,62 @@ export function ProfileScreen() {
         }
       />
     </Sheet>
-  );
+  )
 }
 
 /** YOUR COMPANY'S COUNTRY (0143, owner 2026-10-17: like Uncharted Waters, a company belongs to a
  *  country and can change it). The flag it sails under, and a change through `cmd.change_country`
  *  — which decides (once every few days, `nation_change_at`) and whose refusal is printed as it
  *  arrives. After a change the house is read again; nothing here writes the store. */
-function CountrySection({
-  nation,
-  changeAt,
-  nowMs,
-}: {
-  nation: string;
-  changeAt: string | null;
-  nowMs: number;
-}) {
-  const t = useT();
-  const refresh = useWorld((s) => s.refresh);
-  const nationByCode = useWorld((s) => s.nationByCode);
-  const [open, setOpen] = useState(false);
-  const [pick, setPick] = useState(nation);
-  const [busy, setBusy] = useState(false);
-  const [refusal, setRefusal] = useState<Refusal | null>(null);
-  const waiting = changeAt !== null && Date.parse(changeAt) > nowMs;
+function CountrySection({ nation, changeAt, nowMs }: { nation: string; changeAt: string | null; nowMs: number }) {
+  const t = useT()
+  const refresh = useWorld((s) => s.refresh)
+  const nationByCode = useWorld((s) => s.nationByCode)
+  const [open, setOpen] = useState(false)
+  const [pick, setPick] = useState(nation)
+  const [busy, setBusy] = useState(false)
+  const [refusal, setRefusal] = useState<Refusal | null>(null)
+  const waiting = changeAt !== null && Date.parse(changeAt) > nowMs
   const change = async () => {
-    setBusy(true);
-    setRefusal(null);
-    const r = await cmdChangeCountry(pick);
+    setBusy(true)
+    setRefusal(null)
+    const r = await cmdChangeCountry(pick)
     if (r.ok) {
-      await refresh();
-      setOpen(false);
-    } else setRefusal(r.refusal);
-    setBusy(false);
-  };
+      await refresh()
+      setOpen(false)
+    } else setRefusal(r.refusal)
+    setBusy(false)
+  }
   return (
-    <Card title={t("profile.country")} data-testid="country">
+    <Card title={t('profile.country')} data-testid="country">
       <Row
         hairline={open}
         label={<HullCountry nation={nation} />}
         value={
           waiting ? (
-            <span
-              className="text-t-caption text-ink-faint"
-              data-testid="country-next"
-            >
-              {t("profile.nextChange", {
+            <span className="text-t-caption text-ink-faint" data-testid="country-next">
+              {t('profile.nextChange', {
                 date: formatDate(Date.parse(changeAt), {
-                  month: "short",
-                  day: "numeric",
+                  month: 'short',
+                  day: 'numeric',
                 }),
               })}
             </span>
           ) : (
-            <Button
-              variant="secondary"
-              data-testid="country-change"
-              onClick={() => setOpen((o) => !o)}
-            >
-              {t(open ? "profile.keep" : "profile.change")}
+            <Button variant="secondary" data-testid="country-change" onClick={() => setOpen((o) => !o)}>
+              {t(open ? 'profile.keep' : 'profile.change')}
             </Button>
           )
         }
       />
       {open && !waiting && (
         <div className="mt-3">
-          <NationPicker
-            value={pick}
-            onChange={setPick}
-            label={t("profile.country")}
-          />
-          <p
-            className="mt-2 text-t-caption text-ink-muted"
-            data-testid="country-cost"
-          >
-            {t("profile.influenceStays")}
+          <NationPicker value={pick} onChange={setPick} label={t('profile.country')} />
+          <p className="mt-2 text-t-caption text-ink-muted" data-testid="country-cost">
+            {t('profile.influenceStays')}
           </p>
           {refusal && (
-            <Note
-              tone="danger"
-              code={refusal.code}
-              figures={refusal.figures}
-              className="mt-3"
-            >
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-3">
               {refusal.sentence}
             </Note>
           )}
@@ -282,12 +218,12 @@ function CountrySection({
             <Button
               variant="primary"
               busy={busy}
-              busyLabel={t("profile.changing")}
+              busyLabel={t('profile.changing')}
               disabled={pick === nation}
               data-testid="country-confirm"
               onClick={() => void change()}
             >
-              {t("profile.sailFor", {
+              {t('profile.sailFor', {
                 nation: nationByCode[pick]?.name ?? pick,
               })}
             </Button>
@@ -295,18 +231,18 @@ function CountrySection({
         </div>
       )}
     </Card>
-  );
+  )
 }
 
 /** "Sep 9", and the year only when it is not this one — the register date, in the player's
  *  calendar rather than the game's. `nowMs` is the shell's clock (shellState), never Date.now(). */
 function founded(iso: string, nowMs: number): string {
-  const d = new Date(iso);
-  if (!Number.isFinite(d.getTime())) return iso.slice(0, 10);
-  const sameYear = d.getFullYear() === new Date(nowMs).getFullYear();
+  const d = new Date(iso)
+  if (!Number.isFinite(d.getTime())) return iso.slice(0, 10)
+  const sameYear = d.getFullYear() === new Date(nowMs).getFullYear()
   return formatDate(d.getTime(), {
-    month: "short",
-    day: "numeric",
-    ...(sameYear ? {} : { year: "numeric" }),
-  });
+    month: 'short',
+    day: 'numeric',
+    ...(sameYear ? {} : { year: 'numeric' }),
+  })
 }

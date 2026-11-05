@@ -1,21 +1,12 @@
-import {
-  Bar,
-  Card,
-  Clip,
-  ListPanel,
-  PageSplit,
-  Row,
-  Sheet,
-  StatCell,
-} from "../../components/ui";
-import { formatInt } from "../../lib/format";
-import type { FleetView, LevelTrack, PlayerHouse } from "../../lib/rpc";
-import { useWorld } from "../../live/worldStore";
-import { WorldFailed, WorldLoading } from "../../live/WorldGate";
-import { CaptainRows, CaptainTray } from "../../live/YourCaptains";
-import { useYourCaptains } from "../../live/useYourCaptains";
-import { tabWord } from "../../app/navTabs";
-import { useLocale, useT } from "../../lib/i18n";
+import { Bar, Card, Clip, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
+import { formatInt } from '../../lib/format'
+import type { FleetView, LevelTrack, PlayerHouse } from '../../lib/rpc'
+import { useWorld } from '../../live/worldStore'
+import { WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { CaptainRows, CaptainTray } from '../../live/YourCaptains'
+import { useYourCaptains } from '../../live/useYourCaptains'
+import { tabWord } from '../../app/navTabs'
+import { useLocale, useT } from '../../lib/i18n'
 
 // YOU — the owner, row 181 (2026-10-20): *"Create a tab for personal info, such as my level, my
 // ships, captains, achievements, levels etc."*
@@ -53,22 +44,22 @@ import { useLocale, useT } from "../../lib/i18n";
 
 export function YouScreen() {
   // THE TITLE IS THE TAB'S OWN WORD (navTabs.tabWord) — one authority with the lit nav cell.
-  const title = tabWord(useLocale(), "/you");
+  const title = tabWord(useLocale(), '/you')
   // FIELDS, NOT THE STORE (worldStore.ts rule 4).
-  const phase = useWorld((s) => s.phase);
-  const fatal = useWorld((s) => s.fatal);
-  if (phase === "failed") return <WorldFailed title={title} refusal={fatal} />;
-  if (phase !== "ready") return <WorldLoading title={title} />;
-  return <YouBody title={title} />;
+  const phase = useWorld((s) => s.phase)
+  const fatal = useWorld((s) => s.fatal)
+  if (phase === 'failed') return <WorldFailed title={title} refusal={fatal} />
+  if (phase !== 'ready') return <WorldLoading title={title} />
+  return <YouBody title={title} />
 }
 
 function YouBody({ title }: { title: string }) {
-  const t = useT();
-  const player = useWorld((s) => s.player);
-  const fleets = useWorld((s) => s.fleets);
+  const t = useT()
+  const player = useWorld((s) => s.player)
+  const fleets = useWorld((s) => s.fleets)
   // 0160: the one captains face — her grade, the traits she uses, the cabin she sits in. ONE read and ONE open captain; her rows
   // stand in the panel below and her tray beside it.
-  const face = useYourCaptains();
+  const face = useYourCaptains()
 
   return (
     // THE PAGE (2026-11-05, owner row 267): MAIN the ships and the captains as two card lists, SIDE (the tray's column) the levels. The page
@@ -83,14 +74,8 @@ function YouBody({ title }: { title: string }) {
             <ListPanel
               look="card"
               columns="fit"
-              title={t("books.captains")}
-              count={
-                face.captains.length === 0 ? undefined : (
-                  <span data-testid="your-captains-count">
-                    {formatInt(face.captains.length)}
-                  </span>
-                )
-              }
+              title={t('books.captains')}
+              count={face.captains.length === 0 ? undefined : <span data-testid="your-captains-count">{formatInt(face.captains.length)}</span>}
               data-testid="your-captains"
             >
               <CaptainRows face={face} />
@@ -100,12 +85,7 @@ function YouBody({ title }: { title: string }) {
         side={
           player === null ? (
             <Card data-testid="levels">
-              <Row
-                label={t("you.noCompany")}
-                tone="muted"
-                hairline={false}
-                data-testid="you-no-company"
-              />
+              <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />
             </Card>
           ) : (
             <Levels player={player} />
@@ -114,7 +94,7 @@ function YouBody({ title }: { title: string }) {
       />
       <CaptainTray face={face} />
     </Sheet>
-  );
+  )
 }
 
 /** THE THREE TRACKS (0069), as Bars — the hand-off this tab took from Profile. They are the screen's FIGURES: one heading line and
@@ -123,71 +103,56 @@ function YouBody({ title }: { title: string }) {
  *  fighting at sea in this game yet (0035) — and a bar at level 1 of an unbuilt track would make it look built. The server's flag
  *  decides: the day it flips, the third bar joins the grid with no edit here. Until then the heading line says what it waits on. */
 function Levels({ player }: { player: PlayerHouse }) {
-  const t = useT();
-  const { trading, exploration, combat } = player.levels;
+  const t = useT()
+  const { trading, exploration, combat } = player.levels
   return (
-    <Card title={t("you.levels")} data-testid="levels">
+    <Card title={t('you.levels')} data-testid="levels">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
-        <Track name={t("you.trading")} track={trading} />
-        <Track name={t("you.exploration")} track={exploration} />
-        {combat.playable && <Track name={t("you.combat")} track={combat} />}
+        <Track name={t('you.trading')} track={trading} />
+        <Track name={t('you.exploration')} track={exploration} />
+        {combat.playable && <Track name={t('you.combat')} track={combat} />}
       </div>
       {!combat.playable && (
-        <p
-          className="mt-4 text-t-caption text-ink-faint"
-          data-testid="combat-waits"
-        >
-          {t("you.combat")} · {t("you.noFighting")}
+        <p className="mt-4 text-t-caption text-ink-faint" data-testid="combat-waits">
+          {t('you.combat')} · {t('you.noFighting')}
         </p>
       )}
     </Card>
-  );
+  )
 }
 
 /** The cap of the ONE level curve, `public.level_from_points` (0069:111): floored at 1, capped at
  *  20. Mirrored here for DISPLAY ONLY, the way `TIME_COMPRESSION` mirrors a served knob in
  *  src/lib/format/time.ts — the server does not serve the cap, and a bar needs an end. When
  *  `world.snapshot().config` carries it, this constant goes and the bar reads the served value. */
-const LEVEL_CAP = 20;
+const LEVEL_CAP = 20
 
 /** One level track as §6 draws it: the name and the level hugging it, the bar of the ladder under them. A countable Bar (`of`)
  *  rather than a percentage: a level is a rung, not a proportion. */
 function Track({ name, track }: { name: string; track: LevelTrack }) {
-  const t = useT();
+  const t = useT()
   return (
     <div className="min-w-0" data-testid="level-track">
-      <StatCell
-        look="stacked"
-        label={name}
-        value={track.level}
-        format={formatInt}
-      />
-      <Bar
-        value={track.level}
-        of={LEVEL_CAP}
-        label={t("you.levelOf", { name })}
-        className="mt-1"
-      />
+      <StatCell look="stacked" label={name} value={track.level} format={formatInt} />
+      <Bar value={track.level} of={LEVEL_CAP} label={t('you.levelOf', { name })} className="mt-1" />
     </div>
-  );
+  )
 }
 
 /** EVERY HULL YOU OWN, with the fleet she sails in. The served rows, flattened — a flagship says
  *  so, because she is the one hull this game promises never to lose (DESIGN §C.6). The first section of the panel's body. */
 function Ships({ fleets }: { fleets: readonly FleetView[] }) {
-  const t = useT();
-  const ships = fleets.flatMap((fleet) =>
-    fleet.ships.map((ship) => ({ ship, fleet })),
-  );
+  const t = useT()
+  const ships = fleets.flatMap((fleet) => fleet.ships.map((ship) => ({ ship, fleet })))
   return (
     <ListPanel
       look="card"
       columns="fit"
-      title={t("you.ships")}
+      title={t('you.ships')}
       count={
         ships.length === 0 ? undefined : (
           <span data-testid="you-ships-count">
-            {t("you.shipsCount", {
+            {t('you.shipsCount', {
               ships: formatInt(ships.length),
               fleets: formatInt(fleets.length),
               count: fleets.length,
@@ -198,33 +163,20 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
       data-testid="you-ships"
     >
       {ships.length === 0 ? (
-        <Row
-          label={t("you.noShips")}
-          tone="muted"
-          hairline={false}
-          data-testid="you-no-ships"
-        />
+        <Row label={t('you.noShips')} tone="muted" hairline={false} data-testid="you-no-ships" />
       ) : (
         ships.map(({ ship, fleet }, i) => (
           <Row
             key={ship.id}
             label={<Clip>{ship.name}</Clip>}
-            value={
-              <span className="text-t-caption text-ink-muted">
-                {fleet.name}
-              </span>
-            }
+            value={<span className="text-t-caption text-ink-muted">{fleet.name}</span>}
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
-            <span className="block text-t-caption text-ink-faint">
-              {[ship.class, ship.is_flagship ? t("you.flagship") : null]
-                .filter(Boolean)
-                .join(" · ")}
-            </span>
+            <span className="block text-t-caption text-ink-faint">{[ship.class, ship.is_flagship ? t('you.flagship') : null].filter(Boolean).join(' · ')}</span>
           </Row>
         ))
       )}
     </ListPanel>
-  );
+  )
 }
