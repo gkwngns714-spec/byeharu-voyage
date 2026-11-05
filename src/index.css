@@ -1040,6 +1040,21 @@ html:lang(ko) body {
   }
 }
 
+/* THE MAP PANEL'S WAY OUT (Tray.tsx `leaving`): back off the right edge, held there until the tray unmounts. Declared after
+   the slide-in rules so it wins over both at equal specificity. */
+@keyframes bv-slide-to-right {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+.bv-slide-to-right,
+.lg\:bv-slide-out-left.bv-slide-to-right {
+  animation: bv-slide-to-right var(--duration-sheet) var(--ease-sheet) forwards;
+}
+
 @keyframes bv-fade-in {
   from {
     opacity: 0;
