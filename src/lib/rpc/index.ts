@@ -102,6 +102,7 @@ import type {
   IssueLinesResult,
   InvestReceipt,
   TowReceipt,
+  AttackReceipt,
   AllegianceView,
   CountryChanged,
   DonateReceipt,
@@ -829,6 +830,17 @@ export function worldShipMoves(fleetId: string): Promise<RpcResult<ShipMoves>> {
 /** Move a ship into `toFleetId`, or into a new fleet called `newName` (0321). Same port, no orders running; the server judges. */
 export function cmdMoveShip(shipId: string, toFleetId: string | null, newName: string | null): Promise<RpcResult<ShipMoved>> {
   return call<ShipMoved>('cmdMoveShip', [shipId, toFleetId, newName])
+}
+
+/** What `cmdAttack` would do (0327): the real attack, rolled back: the words, or the refusal it would give. */
+export async function cmdPreviewAttack(fleetId: string, targetId: string): Promise<RpcResult<AttackReceipt>> {
+  const r = await call<{ estimate: AttackReceipt }>('cmdPreviewAttack', [fleetId, targetId])
+  return r.ok ? ok(r.value.estimate) : r
+}
+
+/** Your fleet attacks a cargo ship (0327). A battle opens; its end comes as a report. */
+export function cmdAttack(fleetId: string, targetId: string, expectedVersion: number | null): Promise<RpcResult<AttackReceipt>> {
+  return call<AttackReceipt>('cmdAttack', [fleetId, targetId, expectedVersion])
 }
 
 /** What `cmdTow` would do (0152) — the real tow, rolled back — or the refusal it would give

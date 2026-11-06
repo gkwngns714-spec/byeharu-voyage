@@ -51,7 +51,7 @@ The owner's orders, short:
 | Captain stats | `captain_grades` C B A S, `captain_xp` (three levels per signing, capped by the company's), 25 traits, `crew_pct`, seats. Gunner and Boarder feed the fight (`combat_bite` on) | **Live, levels dark.** No sheet of figures | One read |
 | Affinity company-country | **None.** `affinity` in the chain means a good's price term. `power_relations` is nation to nation (13 rows: 5 ally, 6 rival, 2 war); `power_stance` reads it; `country_factor` (home 0.25, ally 0.5, peace 1, rival 2, war 2) is on tax and dock fee. `port_influence` is points per port, player, nation. The hall's "Relationship" shows the stance | Live, nation level only | **New: company standing** |
 | Fight engine | `voyage.fight_resolve` (0189, 0202), lit: sizing up, sighting, 6 rounds, boarding. Called only from `voyage.settle`'s PIRATES arm | **Live.** One sided: raiders are a number, built as xebecs inside | Hulls on both sides |
-| Player attack | **No command.** `cmd.*` has no attack verb | None | New |
+| Player attack | `cmd.attack`, `cmd.preview_attack`, migration 0327 | **Built, dark** (`attack_enabled` false) | Lighting, after W12-W14 |
 | Second player fleet | `form_fleet` exists; only founding calls it. No `house_room`, no `cmd.move_ship`. Prod: 19 humans, 19 fleets, 22 ships | **Not built** | F1, F2 of `FLEETS_AND_SLOTS` |
 | Cargo ships | 0308, 0309, 0310 live. Table, circuits, funds book, map, card, Stats. Job `byeharu-voyage:cargo-ships` active. **`convoys_enabled` true since 2026-11-05 18:46 UTC, 50 crewless `qpinnace` sail, wrecks can happen today** | Live | Rich-city loading, arms, crew. Wreck rule: 0322, dark |
 | Origin city | `npc_houses.home_port_id`, `cargo_ships.home_port_id` | Live | One reader |
@@ -293,6 +293,14 @@ Applies to every NPC ship: merchant, cargo, navy, pirate.
 
 **Preview** prints the sides, never a forecast: the word from `voyage.escort_score` bands (weaker, about even, stronger, far stronger), her funds as a band only, and **"Navy arrives in about 6 min"** when one would.
 
+**Built as W11, migration 0327, dark, 2026-11-06 (`docs/dev-log/2026-11-06-a-player-attacks.md`). Where the build differs:**
+- **A door, not a verb.** `cmd.attack` runs now, like `cmd.divert`. `cmd.issue` queues and a queue runs only in port, so a verb of `cmd.parse` could never fire at sea.
+- **Only cargo ships can be attacked,** because nothing else exists. `regard_attack_navy`, `regard_pirate` and the "60 minutes" rule come with W12, W17.
+- `E_NOT_A_TARGET` (a merchant), `E_HUMAN_TARGET` (a player) and `E_STALE` are added to the refusals.
+- A ship that has no lap counts as lap 0, so she too takes one attack until she next loads.
+- The reach refusal serves have = your reach and need = the distance: `cmd.figures` refuses have above need.
+- **Break off is not built.** BROKEN_OFF has no writer yet. The War fleet label on the fleet line is not built either. Neither was in this slice.
+
 ### 4.3 Who pays what, in order
 
 The battle runs (section 5). At its end:
@@ -317,7 +325,7 @@ Owner: players hold 3.3 M d. in all; a ship carries about 380,000 d. (0308's est
 
 **The worst day:** every human at the cap is 4.56 M d., moved from funds aboard to player purses, 1.4 × all players' money. It takes 19 war fleets; today one player can afford a pair. It is the owner's knob and a Stats line (`LOOT`, 24 h).
 
-**Money:** `LOOT` is moved. Funds aboard (inside `set_aside`) to the player through `credit`. `convoy_cargo` gains a closing state `LOOTED`; `tg_convoy_cargo_closes` accepts it; the rest sails on or returns. Σ purses + set aside unchanged to the ducat.
+**Money:** `LOOT` is moved. Funds aboard (inside `set_aside`) to the player through `credit`. `convoy_cargo` gains a closing state `LOOTED`; `tg_convoy_cargo_closes` accepts it; the rest sails on or returns. Σ purses + set aside unchanged to the ducat. A ransom a player takes is `LOOT` too, under the same caps. "A real day" is a rolling 24 hours, read from the ledger.
 
 **The real sinks** against loot: hull 160,000+ d., repair, crew, one battle in 30 minutes, the fine for regard.
 
@@ -786,9 +794,11 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 
 **Every migration slice:** one PR, number order, `~/bin/bv-deploy.sh`, self-assert on rolled-back probes only, red-first harness in `scripts/ops/harness/`, a `scripts/db/proofs/` file, hunks that reverse, dark byte parity, `docs/dev-log/` file. **Parallel:** W0a, W1, W4 and W5 can be built together, deployed in order. W9, W2 and the attack light each get a measured window of their own.
 
+**W11 is built, migration 0327, dark, not deployed** (`docs/dev-log/2026-11-06-a-player-attacks.md`). `attack_enabled` stays false.
+
 **W4 is built, migration 0321, dark, not deployed** (`docs/dev-log/2026-11-06-a-ship-changes-fleets.md`). Lighting it is `fleet_room_bite`, the owner's, in its own window.
 
-**Before lighting attack, simulate:** `scripts/ops/harness/raid/sim.mjs`, on W5's core, prod hulls exported read-only, printing win rates of 1 and 2 xebecs, a `nau`, 2 `galion` against `navire` and `galion`, 500 runs each. **Not simulated in this doc.** No claim here says who wins.
+**Before lighting attack, simulate:** `node scripts/ops/harness/raid/sim.mjs --sides 500`, on W5's core, prod's class figures, printing win rates of 1 and 2 xebecs, a `nau`, 2 `galion` against `navire`, `galion` and today's crewless `qpinnace`, 500 runs each. **Run 2026-11-06, the table is in the W11 dev-log.** Against the crewless ship that sails today every side wins at least 92 % of fights and takes no hit: do not light attacks before W8 arms her.
 
 **Not verified, anywhere here:** every speed and beat figure marked arithmetic or estimate; the 46-station list (one script, today's flags); contrast on land, on the region tints and on the twilight mix (`--night` steps computed only at ends). The battle hold on `voyage.progress_nm`: read, not run. Whether 10 minutes feels right: only play shows. Insurance's cause.
 

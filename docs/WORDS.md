@@ -7,6 +7,11 @@ COMMAND's `54.3 days stores · 9 t free`: *"wtf is this? the wording is too old 
 said twice means the wrong thing was built (the memory rule of that name), so this file is the
 law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it for words.
 
+## Fighting (0327)
+
+Attack, Foe, Loot. Foe reads Weaker, About even, Stronger, Far stronger: a word for the sides, never a forecast. Funds read None, Light, Heavy.
+Never "PvP", "affinity", "regard", "raid target". The full list is `docs/WORLD_POWERS.md` section 10.
+
 ## The three laws
 
 1. **Plain, modern words.** The player is a person with a phone, not a reader of logbooks. No

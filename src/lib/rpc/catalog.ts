@@ -429,6 +429,18 @@ const TABLE = {
   // 0321 (docs/FLEETS_AND_SLOTS.md section 2.4): a ship changes fleets in port, and what the fleet page may offer. Dark: E_NOT_IN_USE and {on: false}.
   worldShipMoves: { schema: 'world', fn: 'ship_moves', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdMoveShip: { schema: 'cmd', fn: 'move_ship', mutates: true, args: [{ name: 'p_ship', type: 'uuid' }, { name: 'p_to', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
+  // 0327 (docs/WORLD_POWERS.md §4.2): a fleet attacks a cargo ship, now, wherever she is, and its dry run. Dark: E_NOT_IN_USE. Not a line of the grammar: a queue runs only in port.
+  cmdAttack: {
+    schema: 'cmd',
+    fn: 'attack',
+    mutates: true,
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_target', type: 'uuid' },
+      { name: 'p_expected_version', type: 'int' },
+    ],
+  },
+  cmdPreviewAttack: { schema: 'cmd', fn: 'preview_attack', args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_target', type: 'uuid' }] },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',
