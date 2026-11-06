@@ -65,17 +65,15 @@ export type HistoryBucket = 'day' | 'week' | 'month'
 
 /** THE UNFINISHED PERIOD IS NOT A POINT OF A FLOW (owner, 2026-11-06). A day, a week, a month of money sold / earned / minted is a SUM;
  *  the newest bucket is the period so far, so drawn beside whole ones it plunges at the right edge (on 2026-11-06 a good's day: 6,728
- *  sold against 95,202 the day before). The bucket still open is left out; nothing is invented in its place. A bucket starts at `at`
- *  (UTC midnight; the week's Monday; the month's first, the server's `history_bucket`) and is finished once its period has run out.
+ *  sold against 95,202 the day before). The bucket still open is left out; nothing is invented in its place. Only the NEWEST bucket can
+ *  be open, and it is while its period could still be running: start + the period's LONGEST length is after now (a day 1, a week 7,
+ *  a month 31 days). The client does no month arithmetic (the month is the server's, tests/duplication.spec.ts), so a month is judged
+ *  by its longest length: in the last three days of a 28-30 day month its open bucket is still held back, never shown short.
  *  A level (a purse, a close) is not a sum: its newest reading is true, and the caller does not pass it here. */
 export function settledBuckets<P extends { atMs: number }>(points: readonly P[], period: HistoryBucket, nowMs: number): P[] {
-  const endOf = (startMs: number) => {
-    if (period === 'day') return startMs + 86_400_000
-    if (period === 'week') return startMs + 7 * 86_400_000
-    const d = new Date(startMs)
-    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1)
-  }
-  return points.filter((p) => endOf(p.atMs) <= nowMs)
+  const longest = (period === 'day' ? 1 : period === 'week' ? 7 : 31) * 86_400_000
+  const last = points[points.length - 1]
+  return last !== undefined && last.atMs + longest > nowMs ? points.slice(0, -1) : [...points]
 }
 
 export const SERIES_CHART_W = 340
