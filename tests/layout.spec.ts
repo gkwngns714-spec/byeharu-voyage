@@ -1215,6 +1215,8 @@ test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing
   await page.locator('[data-testid="port-production"]').getByRole('tab', { name: 'Cargo', exact: true }).click()
   const storageRows = page.locator('[data-testid="cargo-row"]')
   await expect(storageRows.first()).toBeVisible({ timeout: 20_000 })
+  // The page has landed: the hall's load meter leaves on its own, and a box read before that is the loading, not the press.
+  await expect(page.getByTestId('city-load-host')).toHaveCount(0, { timeout: 60_000 })
   const cells = await page.evaluate(() => {
     const all = [...document.querySelectorAll('[data-testid="cargo-row"] button')] as HTMLButtonElement[]
     return {

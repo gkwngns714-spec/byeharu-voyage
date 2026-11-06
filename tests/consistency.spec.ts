@@ -472,7 +472,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }] as
         return { t: Math.round(r.top), b: Math.round(r.bottom), l: Math.round(r.left), r: Math.round(r.right), w: Math.round(r.width), h: Math.round(r.height) }
       }
       const tiles = [...document.querySelectorAll('[data-testid^="city-building-"]')]
-        .filter((e) => /^city-building-(hall|market|storage|forge|port|inn)$/.test(e.getAttribute('data-testid') ?? ''))
+        .filter((e) => /^city-building-(hall|market|production|port|inn)$/.test(e.getAttribute('data-testid') ?? ''))
         .map((e) => {
           const r = e.getBoundingClientRect()
           return {
