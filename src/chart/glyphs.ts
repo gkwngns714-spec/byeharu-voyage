@@ -12,7 +12,7 @@
 //   2. THE FLEET     a dot on the dotted track, for a fleet at sea.
 //   3. THE DESTINATION  a ring around the port a fleet is bound for.
 //
-// Nothing else goes on this chart. No rival, no hazard zone, no wind arrow, no grid, no compass
+// Nothing else goes on this chart. No rival PLAYER (NPC ships are drawn, and may be attacked: docs/DESIGN.md J.3), no hazard zone, no wind arrow, no grid, no compass
 // rose, no scale bar with tick marks — every one of those is a thing to explain, and §E.5 asks for
 // a chart you understand without being told.
 //

@@ -9,6 +9,7 @@ const PROOF = 'scripts/db/proofs/28_fight_sides.sql'
 export const CLASSES = [
   ['xebec', 'Şebek (xebec)', 60, 35, 2, 530, 38, 26, 12, 11], ['nau', 'Nau / Carrack', 120, 60, 3, 1800, 55, 70, 30, 14],
   ['navire', 'Navire marchand', 130, 60, 3, 1800, 59, 70, 30, 15], ['galion', 'Galion', 250, 130, 4, 2800, 64, 78, 40, 15],
+  ['qpinnace', 'Pinnace', 0, 6, 1, 280, 0, 28, 2, 13],   // today's convoy_ship_class, read from prod 2026-11-06
 ]
 
 export function preImage() {

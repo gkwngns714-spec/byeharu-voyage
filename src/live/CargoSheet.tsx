@@ -6,11 +6,12 @@ import { hullFraction } from '../domain/fleet'
 import type { CargoShipCard } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
 import { CargoHull } from './CargoHull'
+import { AttackSection } from './AttackSection'
 import { HullCountry } from './HullCountry'
 import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CARGO SHIP SHEET — one crown's cargo ship, READ-ONLY (0310, docs/CITY_CONVOYS.md section 2)
+// THE CARGO SHIP SHEET — one crown's cargo ship (0310, docs/CITY_CONVOYS.md section 2). Read-only, but for Attack while attacks are lit (0327)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // What ./MerchantSheet.tsx is for a merchant, and only the part she has: no company, no earnings, no
@@ -128,6 +129,7 @@ function CargoBody({ card }: { card: CargoShipCard }) {
           ))}
         </div>
       </SheetSection>
+      <AttackSection card={card} />
     </div>
   )
 }

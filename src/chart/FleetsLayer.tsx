@@ -34,7 +34,7 @@ import { legOf, useUnderway } from './underway'
 // A fleet AT ANCHOR gets no dot: §E.5 draws it as the port's filled triangle plus a label, and the
 // label is placed with all the others by ./labels.ts.
 //
-// NO OTHER PLAYERS ARE DRAWN, EVER. §E.5 is explicit about why: a chart showing rivals is a
+// NO OTHER PLAYERS ARE DRAWN, EVER (NPC ships are, and may be attacked: docs/DESIGN.md J.3; a player is never a target). §E.5 is explicit about why: a chart showing rivals is a
 // targeting surface, and this game has no PvP (§J.2). There is no prop on this layer that could
 // carry one — the omission is structural, not a setting.
 //

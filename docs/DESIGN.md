@@ -590,7 +590,10 @@ The most important table in the game. It carries Origin's percent-of-neighbours 
 
 ### E.5 MAP — where things are, and the one place you can act on it
 
-**Law 3 — AMENDED 2026-08-23. You act FROM this tab; you do not COMPOSE on it.**
+**Law 3 — AMENDED 2026-08-23. You act FROM this tab; you do not COMPOSE on it.** Amended again by the owner
+2026-11-05, built dark in 0327: Attack is a second act from a tray, on the target's card. It is chrome, never a
+coordinate; the server judges it (`cmd.preview_attack`, `cmd.attack`) and the client decides nothing. As built it is a
+door of its own, like the helm's `cmd.divert`, and not a line of the composer's grammar: a queue runs only in port.
 
 This paragraph used to read: *"This tab has no interactive elements except pan, zoom and folding the two
 corner panels. There is no command, no drag, no target, no context menu."* The tab printed that law to the
@@ -1363,7 +1366,14 @@ paginated.
 
 **There is no player-versus-player combat of any kind.** No piracy against players, no blockades of
 players, no port capture by force, no fleet interception, no duels. This is law 4 and it is not
-negotiable. All the raiders in this game are NPC hazard rolls.
+negotiable.
+
+**AMENDED by the owner, 2026-11-05, built dark in 0327 (`docs/WORLD_POWERS.md` section 10):** players may
+now fight the world's ships. Today that means a cargo ship of another country, at sea. `attack_enabled`
+is false until the owner lights it. No player ever targets another player's fleet: `cmd.attack` refuses
+`E_HUMAN_TARGET`, and the owner's word on pirate players attacking player merchants is "not for now".
+Raiders are no longer only NPC hazard rolls once it is lit. No port capture, no blockade, no duel, no
+transfer. A hull is never taken from anyone (B.6).
 
 Also excluded at V1: direct ducat or goods transfers between players (§G.7 rule 6).
 
@@ -1388,6 +1398,10 @@ Presence is textual and ambient. It never interrupts.
   still never drawn: the rule above protected players' positions, and a merchant has none to protect.
   The plan, the privacy filter and the guards are `docs/NPC_TRADERS.md` (§1.4, §7, §8; revised after
   the 2026-10-08 design checks, §14 there).
+  **AMENDED by the owner, 2026-11-05, built dark in 0327:** NPC ships on the map are now targets, on
+  purpose: *"it should see on the map"*, *"people can attack these npc"*. A cargo ship's card offers
+  Attack while `attack_enabled` is lit. The map itself still composes nothing: the button is on the card
+  and the server judges it. Rival PLAYERS are still never drawn, and `sea_houses` stays the only door.
   **DECIDED 2026-10-08 — the spice geography is a random roll, and merchants will make it visible.**
   0058 re-rolled `public.port_specialties` to the owner's per-city counts ("randomly distributed",
   OWNER_REQUESTS row 48; 0061:14-18). Measured on the applied chain: black-pepper is produced at

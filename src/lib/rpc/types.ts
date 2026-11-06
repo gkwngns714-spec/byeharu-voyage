@@ -2548,6 +2548,8 @@ export interface CargoShipCard {
   next: string[]
   stops_left: number
   ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  /** 0327: served, true, only while attacks are lit. Absent, the card offers no Attack. */
+  attack?: true
 }
 
 // ── 0121: ONE FLEET'S TRADING, LAP BY LAP (owner, 2026-10-15) ───────────────────────────────────
@@ -2817,6 +2819,23 @@ export interface ShipMoved {
   port: string
   new_fleet: boolean
   empty: boolean
+}
+
+/** 0327: her side's word (`public.attack_word`) and her funds' band (`public.funds_band`). Words, never a forecast and never the figure. */
+export type AttackWord = 'weaker' | 'even' | 'stronger' | 'far_stronger'
+export type AttackFunds = 'none' | 'light' | 'heavy'
+
+/** 0327: `cmd.preview_attack`'s estimate, and `cmd.attack`'s receipt. The press adds the battle and the fleet's version. */
+export interface AttackReceipt {
+  fleet: string
+  target: string
+  nation: string
+  nm: number
+  word: AttackWord
+  funds: AttackFunds
+  resolves_at: string
+  battle_id?: string
+  version?: number
 }
 
 /** 0319: `cmd.pay_fine` — what was paid (held to what is owed and to your purse), and what is left. */

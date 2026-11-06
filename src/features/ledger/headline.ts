@@ -32,7 +32,7 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   DONATED       {port, port_name, amount, nation}               (0144 — a gift to a city)
 //   FINE_PAID     {port, port_name, amount, nation}               (0319 — a fine paid at a capital)
 //   REGARD_CHANGED {nation, delta, reason, score, band}           (0319 — what a country thinks of the company moved)
-//   BATTLE_REPORT {fleet, battle_id, outcome, lines[], fights[]}  (0323 — a timed battle is over; lines and fights as a VOYAGE_REPORT's)
+//   BATTLE_REPORT {fleet, battle_id, outcome, lines[], fights[], loot?, crew_lost?}  (0323 — a timed battle is over; lines and fights as a VOYAGE_REPORT's. 0327: an attack's gold and hands)
 //   FLAG_CHANGED  {port, port_name, from, from_name, to, to_name, share_to, share_from}  (0146)
 //   INSURED       {fleet, voyage_id, port, to, value, price, keep_pct}                      (0213 — port/to are CODES)
 //   INSURANCE_PAID {fleet, voyage_id, day, cause, port, lost, lost_value, keep_pct, owed, paid, short}  (0213)
@@ -161,8 +161,10 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     case 'SHIP_MOVED':
       return t('history.shipMoved', { ship: str(p, 'ship') ?? '', from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
     // 0323: a timed battle is over. The sentence and the rounds open under it, as a voyage's report does.
-    case 'BATTLE_REPORT':
-      return t('history.battle', { fleet })
+    case 'BATTLE_REPORT': {
+      const loot = num(p, 'loot')
+      return loot ? t('history.battleLoot', { fleet, amount: formatDucats(loot) }) : t('history.battle', { fleet })
+    }
     // 0152: a wreck towed to the nearest shipyard — or brought into the one where it lay (0 miles).
     case 'TOWED': {
       const to = str(p, 'to')
