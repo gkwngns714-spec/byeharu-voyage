@@ -19,7 +19,7 @@
 -- @pass NPC_STRAY          a wreck no settled day brought home (docked unable or docked abroad) is found by the job and brought home
 -- @pass NPC_SWITCH_OFF     the switch off mid-wait strands nobody: the tow and the patch take them back
 -- @pass NPC_TOW_PARITY     public.yards_from answers public.tow_for's old query, port by port
--- @pass NPC_RANSOM         the ransom share is a reader only: it moves no gold
+-- @pass NPC_RANSOM         the ransom share is a reader only: it moves no gold, and public.loot_due (0327) alone reads it
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -682,8 +682,8 @@ begin
     raise exception 'PROOF 30 FAIL: the ransom reader moved gold';
   end if;
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-              where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%ransom_take(%' and p.proname <> 'ransom_take') then
-    raise exception 'PROOF 30 FAIL: something calls the ransom reader before it has a payee';
+              where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%ransom_take(%' and p.proname not in ('ransom_take', 'loot_due')) then
+    raise exception 'PROOF 30 FAIL: something other than public.loot_due calls the ransom reader';
   end if;
   raise notice 'PASS: NPC_RANSOM — 8 per cent of 1,000,000 is 80,000; nothing calls it, nothing moved';
 end
