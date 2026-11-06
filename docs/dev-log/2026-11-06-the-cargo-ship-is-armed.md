@@ -38,7 +38,7 @@ Moved, same statements: `public.fleet_hands`, lifted from `npc_refit_step`, so h
 
 New: `cargo_armed_on`, `cargo_class`, `cargo_armed`, `fleet_hands`, `cargo_hull`, `cargo_upkeep`. Knobs: `convoy_armed_enabled` false, `convoy_armed_class` `navire`, `convoy_upkeep_per_leg` 500, `convoy_store_days` 90. Client: the word for the Money log, EN and KO, filed under Wages. No cron job, no table, no column.
 
-#527 (0325) and #529 (0327) cut none of these bodies; harness green with both applied first.
+#527 (0325) and #529 (0327) cut none of these bodies. #534 (0326) cuts `cargo_ships_commission`, not the line cut here, and retires `convoy_ships_per_nation`, so proof 36 assumes no count. Laid-up ships (0326) are out of the job, so no step reaches them and they keep the hull they lay up in; a woken ship takes her hull when next idle at home.
 
 ## Why off equals today
 
@@ -48,7 +48,7 @@ No live hull has guns, so `cargo_upkeep` stops at its first read. Every live hul
 
 Dark cost: one extra `fleet_kind` read per voyage-day of a crewed fleet, on the beat. Two reads per idle cargo ship per job run. One read per cargo departure. Not measured on prod.
 
-## Printed: the fight (proof 34, `voyage.fight`, 80 fights a strength, one run of one hull each)
+## Printed: the fight (proof 36, `voyage.fight`, 80 fights a strength, one run of one hull each)
 
 Old hull crewless, against the armed hull. Held means she saw them off.
 
@@ -63,13 +63,13 @@ Prod's seas: the median `piracy_index` is 0.2 and the highest 0.45, so the raide
 
 ## Printed: the speed
 
-Read from a voyage's own frozen speed and `voyage.fleet_speed` in proof 34, over this slice's runs: **14.6 to 15.6 kn crewless (233 to 249 nm a real minute), 11.9 to 14.5 kn armed with stores aboard (190 to 231 nm a real minute).** The spread is each hull's own roll. One ship against one ship, a lap took 1.08 and 1.23 × as long at sea in the two runs printed. The design's "about 7 %" was arithmetic for a hull with a level roll and empty casks.
+Read from a voyage's own frozen speed and `voyage.fleet_speed` in proof 36, over this slice's runs: **14.6 to 15.6 kn crewless (233 to 249 nm a real minute), 11.9 to 14.5 kn armed with stores aboard (190 to 231 nm a real minute).** The spread is each hull's own roll. One ship against one ship, a lap took 1.08 and 1.23 × as long at sea in the two runs printed. The design's "about 7 %" was arithmetic for a hull with a level roll and empty casks.
 
 ## Measured on prod (2026-11-06, read only, head 0324)
 
 - 100 ships, all `qpinnace`, 0 crew. `before.sql`: all 8 hunks occur once.
 - 218 cargo departures in the last hour, 1,094 in six hours: about 4,400 to 5,200 a day, so **at most about 2.2 to 2.6 M d. of upkeep a day**, against the design's 3.6 M. Leaving her origin pays nothing, and slower laps mean fewer legs.
-- Longest leg of any circuit: ESP 13,911 nm on prod. Proof 34 asserts the world's longest fits in `convoy_store_days` at her slowest crewed speed: 78.6 days on the proof's world against 90.
+- Longest leg of any circuit: ESP 13,911 nm on prod. Proof 36 asserts the world's longest fits in `convoy_store_days` at her slowest crewed speed: 78.6 days on the proof's world against 90.
 - **Hands on the quay at the ten capitals, above the floor: 2,080. 100 ships want 6,000.** KAR has 55, under one crew. All 246 harbours: 34,925 above the floor.
 - Origins' surplus today: LIS 307 M, SVQ 482 M, SAK 243 M; the other seven 108,228 to 486,446 d. Each pays its own ships' upkeep.
 
@@ -83,10 +83,11 @@ Read from a voyage's own frozen speed and `voyage.fleet_speed` in proof 34, over
 
 ## Proof
 
-- `scripts/db/proofs/34_armed_cargo.sql`: 16 markers, real `city_day`, step, voyage engine, fight, economy closed, starting from crewless ships lit at capitals as prod is. The lap sails the real sea, as proof 19's. Every count reads `convoy_ships_per_nation`.
-- `scripts/ops/harness/armed-cargo/proof-0328.mjs`: red first (proof 34 fails with no file), dark parity equal, real file green, 31 mutations each red for its own reason; also with 0325 and 0327 applied first.
+- `scripts/db/proofs/36_armed_cargo.sql`: 16 markers, real `city_day`, step, voyage engine, fight, economy closed, starting from crewless ships lit at capitals as prod is. The lap sails the real sea, as proof 19's. Every count reads `convoy_ships_per_nation`.
+- `scripts/ops/harness/armed-cargo/proof-0328.mjs`: red first (proof 36 fails with no file), dark parity equal, real file green, 31 mutations each red for its own reason; also with 0325 and 0327 applied first (31 mutations, before 0326 existed).
 - First runs found: a stable read in a self-assert's `WHERE` folded by the planner on the DO block's older snapshot, so it missed the new knob (now a variable); the proof's mistakes, a volatile call beside stable reads in one expression, and a day-long leg that arrived during the test.
 - Self-assert: catalog and stable reads only, no game step, 220 to 420 ms locally.
+- W8 deploys after 0325, 0326 and 0327. Its hunks must be re-checked against the bodies 0326 leaves, once #534 is on main.
 
 ## Decided by default
 

@@ -39,12 +39,12 @@
 -- DECIDED BY DEFAULT (owner may reverse): docs/dev-log/2026-11-06-the-cargo-ship-is-armed.md lists them.
 --
 -- SELF-ASSERT: the catalog and stable reads only: hunks once and reversing; ACL, volatility and config unmoved; no other function, knob, word or job; the switch off; no hull armed; the class is real and has guns.
--- THIS FILE RUNS NO GAME STEP, in every environment (docs/OPS_HEALTH.md section 4). THE LIVE PATHS ARE PROVED IN CI: proof 34, scripts/db/proofs/34_armed_cargo.sql. Mutation controls: scripts/ops/harness/armed-cargo/proof-0328.mjs (local).
+-- THIS FILE RUNS NO GAME STEP, in every environment (docs/OPS_HEALTH.md section 4). THE LIVE PATHS ARE PROVED IN CI: proof 36, scripts/db/proofs/36_armed_cargo.sql. Mutation controls: scripts/ops/harness/armed-cargo/proof-0328.mjs (local).
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): `convoy_armed_enabled` false is the switch; each ship goes back to the old class as she comes idle at home, her hands back on the quay. Nothing strands, no gold moves.
 -- To remove: swap this file's old and new, then drop what it created. CONVOY_UPKEEP rows stay.
--- VERSION: 0328 - prod head 0324 (2026-11-06). 0325 (#527) and 0327 (#529) deploy first and touch none of these bodies. 0326 is unused.
+-- VERSION: 0328 - prod head 0324 (2026-11-06). 0325 (#527), 0326 (#534) and 0327 (#529) deploy first. 0326 cuts public.cargo_ships_commission and none of the lines here; the others touch none of these bodies.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -105,7 +105,7 @@ begin
     ('convoy_armed_enabled', 'false'::jsonb, '0328: THE switch of armed cargo ships. False: a cargo ship is convoy_ship_class, as 0308. True, with convoys_enabled: she is convoy_armed_class, refitted free as she comes idle at home. Owner only.'),
     ('convoy_armed_class', to_jsonb('navire'::text), '0328: public.ship_classes.code of an armed cargo ship, read by public.cargo_class while convoy_armed_enabled is on. A class with no attack sails crewless and pays no upkeep.'),
     ('convoy_upkeep_per_leg', to_jsonb(500), '0328: ducats an armed cargo ship''s origin pays, from its surplus, to the harbour she leaves, each departure. Moved, kind CONVOY_UPKEEP. Her wages and stores count as paid by it.'),
-    ('convoy_store_days', to_jsonb(90), '0328: days of stores an armed cargo ship is topped up to, free, at each departure. Must cover her longest leg with room for delays: proof 34 checks it against every leg of the world.');
+    ('convoy_store_days', to_jsonb(90), '0328: days of stores an armed cargo ship is topped up to, free, at each departure. Must cover her longest leg with room for delays: proof 36 checks it against every leg of the world.');
   insert into public.stats_flow_words (kind, side, word, ord) values ('CONVOY_UPKEEP', 'moved', 'Cargo upkeep', 51);
 
   -- ── 2. THE NEW FUNCTIONS ──
@@ -425,7 +425,7 @@ $h$);
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0328 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0328 self-assert ok: THE CARGO SHIP IS ARMED, dark behind convoy_armed_enabled. % hunks once each and reversing; no other function, knob, word or job; no game step ran (proof 34 runs them in CI). % ms.',
+  raise notice '0328 self-assert ok: THE CARGO SHIP IS ARMED, dark behind convoy_armed_enabled. % hunks once each and reversing; no other function, knob, word or job; no game step ran (proof 36 runs them in CI). % ms.',
     (select count(*) from hunks_0328), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0328;
 end
