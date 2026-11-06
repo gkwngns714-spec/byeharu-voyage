@@ -105,6 +105,7 @@ import type {
   AllegianceView,
   CountryChanged,
   DonateReceipt,
+  LevelsView,
   ShipMoves,
   ShipMoved,
   FineReceipt,
@@ -819,6 +820,11 @@ export function worldMoneyFeed(after: string | null, limit = 50): Promise<RpcRes
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */
 export function worldWatchlist(fleetId: string | null): Promise<RpcResult<Watchlist>> {
   return call<Watchlist>('worldWatchlist', [fleetId])
+}
+
+/** 0325: the Levels page's one read: tracks, title, room, hulls, and regard while it is lit. */
+export function worldLevels(): Promise<RpcResult<LevelsView>> {
+  return call<LevelsView>('worldLevels', [])
 }
 
 /** What the fleet page may offer for this fleet's ships (0321). `on` false while dark: the page draws nothing. */
