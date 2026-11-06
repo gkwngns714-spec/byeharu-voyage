@@ -140,11 +140,12 @@ export const GLYPH = {
    */
   hullHalfLength: { 1: 2.85, 2: 3.25, 3: 5.35, 4: 6.1, 5: 7.0, 6: 8.3 } as Record<HullSize, number>,
   /**
-   * THE CARGO SHIP (0310, docs/CITY_CONVOYS.md section 2): longer than the flagship by 0.7, and it is her
-   * beam that does the rest (`cargoHullPath`). Not off her burthen: she is the crown's ship, the map draws
-   * her by her kind and not by the class she is built on, and there are at most 50 of her.
+   * THE CARGO SHIP (0310, docs/CITY_CONVOYS.md section 2): 7, the capital size, 15 % over the heavy galleon (6.1)
+   * and 31 % over the nau (5.35) that most merchants are (owner 2026-11-06: *"reduce size like normal ship but
+   * slightly bigger"*; it was 9). Her beam (`cargoHullPath`, 0.74 of her half-length against a merchant's 0.5)
+   * keeps her the stoutest hull on the sheet. Not off her burthen: the map draws her by her kind.
    */
-  cargoHullHalfLength: 9,
+  cargoHullHalfLength: 7,
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
   fleetHaloRadius: 4,
@@ -454,14 +455,14 @@ export const CARGO_HULL: HullClass = 'cargo-ship'
  * W0a (docs/WORLD_POWERS.md section 9) — EVERY KIND OF SHIP HAS ITS LOOK, IN THIS ONE TABLE, and nothing else
  * on the chart names a kind. `hull` pins a silhouette when the kind has one of her own (otherwise the class
  * she sails draws it), `mark` is the solid shape laid on her deck (`kindMarkPath`), `fill` says how her day
- * hull is inked (`dayShare`: how much of her nation's ink the day hull keeps, 0 = the pale deck every
- * merchant wears; `inked`: she wears her nation's ink whatever the Regions filter says), `minHalfLength` is
+ * hull is inked (`token`: the one colour she wears, day and night, whatever her nation; null = a merchant's own
+ * rule, the pale deck by day and the Regions filter's ink), `minHalfLength` is
  * the shortest she is ever drawn, and `thin` whether the widest views may drop her.
  *
- * WHY THE DAY HULL KEEPS SOME INK: by day `.bv-sun-merchant-nation` mixed all the way to the pale deck, so at
- * noon every merchant and every cargo ship was the same colour. Merchants keep that (it is how a hull reads
- * on deep water); a kind that must be told from them keeps 45 % of her nation. The CSS mix is in sRGB and
- * the spec reads the real figure (tests/map.kinds.spec.ts), so the 45 may move.
+ * WHY A KIND HAS A COLOUR OF HER OWN (owner 2026-11-06: *"unify the color of cargoship"*): by day every
+ * merchant is the pale deck, so a kind that must be told from them wears ONE token, the same by day and by
+ * night, and not her nation's (`--color-cargo-hull`, src/index.css). The renderer reads `token` and nothing
+ * else; the spec reads the real figures (tests/map.kinds.spec.ts).
  */
 export type ShipKind = 'merchant' | 'cargo' | 'yours'
 /** A solid shape laid over a hull, drawn by `kindMarkPath`. */
@@ -469,14 +470,14 @@ export type KindMark = 'bars'
 export interface KindLook {
   readonly hull: HullShape | null
   readonly mark: KindMark | null
-  readonly fill: { readonly dayShare: number; readonly inked: boolean }
+  readonly fill: { readonly token: string | null }
   readonly minHalfLength: number
   readonly thin: boolean
 }
 export const KIND_LOOK: Readonly<Record<ShipKind, KindLook>> = {
-  merchant: { hull: null, mark: null, fill: { dayShare: 0, inked: false }, minHalfLength: 0, thin: true },
-  cargo: { hull: 'cargo', mark: 'bars', fill: { dayShare: 0.45, inked: true }, minHalfLength: GLYPH.cargoHullHalfLength, thin: false },
-  yours: { hull: null, mark: null, fill: { dayShare: 0, inked: false }, minHalfLength: 0, thin: false },
+  merchant: { hull: null, mark: null, fill: { token: null }, minHalfLength: 0, thin: true },
+  cargo: { hull: 'cargo', mark: 'bars', fill: { token: 'var(--color-cargo-hull)' }, minHalfLength: GLYPH.cargoHullHalfLength, thin: false },
+  yours: { hull: null, mark: null, fill: { token: null }, minHalfLength: 0, thin: false },
 }
 /** The kind a served merchant row is: the server marks a cargo ship and no other (a merchant row has no key). */
 export const shipKindOf = (merchant: { readonly cargo?: true }): ShipKind => (merchant.cargo ? 'cargo' : 'merchant')

@@ -158,6 +158,18 @@ async function read(page: Page, night: number): Promise<Reading[]> {
   })
 }
 
+/** Dress every drawn cargo hull as a Regions-on merchant in her nation's ink: the FleetsLayer rule for a merchant when the filter is on (it is a hook, not a prop, so the server render cannot set it). */
+const asRegionsMerchant = () => {
+  for (const svg of Array.from(document.querySelectorAll<SVGSVGElement>('svg[data-ink]'))) {
+    for (const h of Array.from(svg.querySelectorAll<SVGPathElement>('path[data-hull-class]'))) {
+      h.classList.remove('bv-sun-kind-fill')
+      h.classList.add('bv-sun-merchant-nation')
+      h.style.setProperty('--nation-ink', `var(--color-nation-${svg.getAttribute('data-ink')})`)
+    }
+    for (const m of Array.from(svg.querySelectorAll('path[data-kind-mark]'))) m.remove()
+  }
+}
+
 const WHO: readonly Who[] = [
   { kind: 'merchant', ink: 'prt' },
   ...INKS.map((ink): Who => ({ kind: 'cargo', ink })),
@@ -204,13 +216,10 @@ test.describe('the contrast law, on the built stylesheet', () => {
     })
   }
 
-  test('Regions on: a merchant in her nation ink (the same rule, no day share) holds on every ground', async ({ page }) => {
+  test('Regions on: a merchant in her nation ink holds on every ground', async ({ page }) => {
     for (const g of GROUNDS) {
       await pageWith(page, g.theme, g.css, INKS.map((ink): Who => ({ kind: 'cargo', ink })))
-      await page.evaluate(() => {
-        for (const g of Array.from(document.querySelectorAll<SVGPathElement>('path[data-hull-class]'))) (g as unknown as HTMLElement).style.setProperty('--kind-day-share', '0%')
-        for (const m of Array.from(document.querySelectorAll('path[data-kind-mark]'))) m.remove()
-      })
+      await page.evaluate(asRegionsMerchant)
       for (const r of await read(page, g.night)) {
         expect(Math.max(contrast(r.fill, r.ground), contrast(r.line, r.ground)), `merchant ${r.ink} on ${g.name}`).toBeGreaterThanOrEqual(3)
       }
@@ -229,10 +238,20 @@ test.describe('the contrast law, on the built stylesheet', () => {
     }
   })
 
-  test('a kind is told from a merchant by day too: the cargo day hull keeps some nation, the merchant none', async ({ page }) => {
-    await pageWith(page, 'dark', 'var(--color-chart-day-sea)', [{ kind: 'cargo', ink: 'esp' }, { kind: 'cargo', ink: 'han' }])
-    const [a, b] = await read(page, 0)
-    expect(Math.abs(a.fill[0] - b.fill[0]) + Math.abs(a.fill[1] - b.fill[1]) + Math.abs(a.fill[2] - b.fill[2])).toBeGreaterThan(0.1)
+  test('one colour: every cargo ship is the same fill whatever her nation, by day and by night, and it is not a merchant colour', async ({ page }) => {
+    const fills: string[] = []
+    for (const night of [0, 1]) {
+      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+        ...INKS.map((ink): Who => ({ kind: 'cargo', ink })),
+        { kind: 'merchant', ink: 'prt' },
+      ])
+      const rows = await read(page, night)
+      const cargo = rows.filter((r) => r.kind === 'cargo').map((r) => r.fill.join())
+      expect(new Set(cargo).size, `cargo fills at --night ${night}`).toBe(1)
+      fills.push(cargo[0])
+      expect(rows.find((r) => r.kind === 'merchant')!.fill.join(), `merchant vs cargo at --night ${night}`).not.toBe(cargo[0])
+    }
+    expect(fills[0], 'day and night').toBe(fills[1])
   })
 })
 
@@ -296,6 +315,15 @@ test.describe('one renderer, one table', () => {
     expect(glyphs.KIND_LOOK.yours.mark).toBeNull()
   })
 
+  test('size: cargo is drawn at 7, above the heavy galleon, no longer than the flagship, and is never thinned', () => {
+    expect(glyphs.GLYPH.cargoHullHalfLength).toBe(7)
+    expect(glyphs.GLYPH.cargoHullHalfLength).toBeGreaterThan(glyphs.GLYPH.hullHalfLength[4])
+    expect(glyphs.GLYPH.cargoHullHalfLength).toBeLessThanOrEqual(glyphs.GLYPH.hullHalfLength[6])
+    expect(glyphs.KIND_LOOK.cargo.thin).toBe(false)
+    expect(glyphs.KIND_LOOK.cargo.fill.token).toBe('var(--color-cargo-hull)')
+    expect(glyphs.KIND_LOOK.merchant.fill.token).toBeNull()
+  })
+
   test('mark width: every bar is at least 2 CSS px thick at the shortest the kind is drawn', () => {
     const l = Math.max(glyphs.KIND_LOOK.cargo.minHalfLength, glyphs.hullHalfLengthOf(glyphs.CARGO_HULL))
     const bars = glyphs.kindMarkPath('bars', l).split('M').filter(Boolean)
@@ -324,7 +352,7 @@ test.describe('parity: nothing else moves', () => {
 })
 
 test.describe('the pictures', () => {
-  const OUT = path.join('docs', 'dev-log', '2026-11-05-ship-kinds')
+  const OUT = path.join('docs', 'dev-log', '2026-11-06-cargo-colour')
   const KINDS: readonly { label: string; who: Who; regionsOn?: boolean }[] = [
     { label: 'merchant (Regions off, the one blue)', who: { kind: 'merchant', ink: 'prt' } },
     { label: 'merchant (Regions on, Portugal)', who: { kind: 'cargo', ink: 'prt', hull: 'nau' }, regionsOn: true },
@@ -362,8 +390,14 @@ test.describe('the pictures', () => {
       await page.evaluate(() => {
         for (const svg of Array.from(document.querySelectorAll<SVGSVGElement>('svg[data-night]'))) {
           for (const g of Array.from(svg.querySelectorAll<SVGGElement>('g[data-hulls]'))) g.style.setProperty('--night', svg.getAttribute('data-night')!)
-          if (svg.hasAttribute('data-regions-on')) for (const h of Array.from(svg.querySelectorAll<SVGPathElement>('path[data-hull-class]'))) h.style.setProperty('--kind-day-share', '0%')
-          for (const m of Array.from(svg.querySelectorAll('path[data-kind-mark]'))) if (svg.hasAttribute('data-regions-on')) m.remove()
+          if (svg.hasAttribute('data-regions-on')) {
+            for (const h of Array.from(svg.querySelectorAll<SVGPathElement>('path[data-hull-class]'))) {
+              h.classList.remove('bv-sun-kind-fill')
+              h.classList.add('bv-sun-merchant-nation')
+              h.style.setProperty('--nation-ink', `var(--color-nation-${svg.getAttribute('data-ink')})`)
+            }
+            for (const m of Array.from(svg.querySelectorAll('path[data-kind-mark]'))) m.remove()
+          }
         }
       })
       await page.screenshot({ path: path.join(OUT, `kinds-${dpr}x.png`), fullPage: true })
