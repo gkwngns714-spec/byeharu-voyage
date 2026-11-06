@@ -14,7 +14,7 @@
 //      eight stats are identical to the snapshot. (A hull that earned experience in between is compared
 //      at her new level, so the snapshot stores xp and the check re-reads it.)
 //   4. Every human: title_level, trading level, exploration level, earned_caps unchanged.
-//   5. public.player_progress on the busiest human: Execution Time under 50 ms (the W2 cost bound).
+//   5. public.player_progress on the busiest human: median Execution Time of 5 reads under 50 ms (the W2 cost bound).
 //   6. Arrivals beats (public.arrivals_beats) over the last 30 minutes: avg <= 3 s, p95 < 5 s, no error.
 import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
@@ -105,10 +105,16 @@ say(badTitle === 0, `humans whose title, trading level, exploration level or fle
 // 5. cost of player_progress for the busiest human
 const busy = q(`select e.player_id from public.events e join public.players p on p.id = e.player_id
                  where e.kind = 'VOYAGE_REPORT' and not p.is_npc group by 1 order by count(*) desc limit 1`)[0];
-const ex = q(`explain (analyze, timing on) select public.player_progress('${busy.player_id}'::uuid)`)
-  .map((r) => r['QUERY PLAN']).find((t) => t.startsWith('Execution Time'));
-const ms = Number(/([\d.]+) ms/.exec(ex)[1]);
-say(ms < 50, `player_progress(busiest human) ${ex} (bound 50 ms; dark on 2026-11-06: 15 ms warm, 43 ms cold)`);
+// Five reads and their median: one read on a fresh connection is noise. Dark on 2026-11-06 19:46 UTC,
+// five reads gave 17.9, 16.2, 39.3, 60.1, 16.0 ms, so a single read can pass 50 with the switch off.
+const reads = [];
+for (let i = 0; i < 5; i++) {
+  const ex = q(`explain (analyze, timing on) select public.player_progress('${busy.player_id}'::uuid)`)
+    .map((r) => r['QUERY PLAN']).find((t) => t.startsWith('Execution Time'));
+  reads.push(Number(/([0-9.]+) ms/.exec(ex)[1]));
+}
+const ms = [...reads].sort((a, b) => a - b)[2];
+say(ms < 50, `player_progress(busiest human) median ${ms} ms of ${reads.join(', ')} (bound 50 ms; dark median 17.9 ms)`);
 
 // 6. the arrivals beat (public.arrivals_beats.ms; the cron row is a one-minute loop and says nothing)
 const arr = q(`select count(*) n, round(avg(ms)::numeric, 1) avg_ms, round((percentile_cont(0.95) within group (order by ms))::numeric, 1) p95_ms,
