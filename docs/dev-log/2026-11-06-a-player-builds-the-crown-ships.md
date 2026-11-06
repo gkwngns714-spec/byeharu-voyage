@@ -2,7 +2,7 @@
 
 The owner, 2026-11-06: *"you need to make ships too, so that players can build these cargo and navy ships too."*
 
-**State: built, PR open, not deployed.** Stacked on W12 (0331, #537), which deploys first: this file reads `navy_ship_class`.
+**State: built, PR open, not deployed.** Follows W12 (0331, #537), now on prod: this file reads `navy_ship_class`.
 
 ## What already existed
 
@@ -63,7 +63,7 @@ An ordinary player ship. `public.fleet_kind` asks `cargo_ships` and `navy_ships`
 - `scripts/db/proofs/39_a_player_builds_the_crown_ships.sql`: 10 markers. Every class comes from `public.crown_classes`, so a turned knob is proved too. Closed as on prod, one build open as CI's default world.
 - `scripts/ops/harness/crown-ships/proof-0332.mjs`: red first, parity equal (37 lines: the snapshot and every yard, with the new key off), real file green, 14 mutations each red for its own reason.
 - `tests/crown.ships.spec.ts`: 1440, 1024, 390 at DPR 2, plus Korean at 390: the badge, the order, no sideways scroll, a press moves nothing.
-- Prod read-only, 2026-11-06, head 0330: `before.sql` found all 4 hunks once. `after.sql` is the check after deploy.
+- Prod read-only, 2026-11-06, head 0331: `before.sql` found all 4 hunks once, no `crown_classes`, all 3 classes with a recipe. `after.sql` is the check after deploy.
 
 Reading the renders found what the spec could not, both fixed: at 1440 "Cargo ship" split across two lines inside its pill, now pinned by the spec; and the tray's note sat on the Type row's rule.
 
