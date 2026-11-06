@@ -491,7 +491,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }] as
     })
     expect(m.doc.sh, 'the HQ page scrolls down').toBeLessThanOrEqual(m.doc.ch + 1)
     expect(m.doc.sw, 'the HQ page scrolls sideways').toBeLessThanOrEqual(m.doc.cw + 1)
-    expect(m.tiles.length, 'the HQ frame must show all six doors (Hall · Market · Storage · Forge · Port · Inn)').toBe(6)
+    expect(m.tiles.length, 'the HQ frame must show all five doors (Hall · Market · Production · Port · Inn)').toBe(5)
     for (const t of m.tiles) {
       expect(t.inView, `${t.id} is pushed off the glass at ${size.width}`).toBe(true)
       expect(t.h, `${t.id} is ${t.h}px tall`).toBeGreaterThanOrEqual(44)
@@ -550,7 +550,8 @@ test('HQ: a building press changes only the split; the six doors and the frame s
       const fit = await page.getByTestId('city-hall-scroll').evaluate((el) => ({ sh: (el as HTMLElement).scrollHeight, ch: (el as HTMLElement).clientHeight }))
       expect(fit.sh, 'the hall panel scrolls at 390').toBeLessThanOrEqual(fit.ch + 1)
     }
-    for (const b of ['hall', 'market', 'storage', 'forge', 'port', 'inn']) {
+    // (Production takes the whole page under the doors, owner 2026-11-06: tests/city.production.spec.ts holds it.)
+    for (const b of ['hall', 'market', 'port', 'inn']) {
       await page.getByTestId(`city-building-${b}`).click()
       await page.waitForTimeout(350)
       if (b === 'hall') {

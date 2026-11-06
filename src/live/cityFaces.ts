@@ -42,9 +42,9 @@ export const PORT_FACES = [
     },
   },
   { id: 'city', building: null, get label() { return t('town.f_city') } },
-  // The id stays `warehouse` (it is the served building kind and a persisted byte); the player's
-  // word is Storage — owner row 87.
-  { id: 'warehouse', building: 'warehouse', get label() { return t('town.f_warehouse') } },
+  // The id stays `warehouse` (it is the served building kind and a persisted byte). The face is no longer on the desk: it is the HQ's
+  // Production page (owner, 2026-11-06), and the tab and the Town row are its door (`productionHref`).
+  { id: 'warehouse', building: 'warehouse', get label() { return t('city.production') } },
   { id: 'workstation', building: 'workstation', get label() { return t('town.f_workstation') } },
   { id: 'inn', building: 'inn', get label() { return t('town.f_inn') } },
   { id: 'building_yard', building: 'building_yard', get label() { return t('town.f_building_yard') } },
@@ -63,3 +63,9 @@ export const PORT_FACES = [
 }[]
 
 export type PortFace = (typeof PORT_FACES)[number]['id']
+
+/** The HQ's Production place, as a tile id and as `?place=`. */
+export const PRODUCTION_PLACE = 'production'
+
+/** The one link to it: every way to Storage or the Forge lands here. */
+export const productionHref = (portCode: string): string => `/city?port=${encodeURIComponent(portCode)}&place=${PRODUCTION_PLACE}`

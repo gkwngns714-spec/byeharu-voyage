@@ -88,7 +88,6 @@ for (const size of SIZES) {
       const names = await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab').allInnerTexts()
       const ids: Record<string, string> = {
         Town: 'desk-town-hall',
-        Storage: 'port-storage',
         Craft: 'port-workstation',
         Inn: 'port-inn',
         Build: 'port-yard',
@@ -103,10 +102,14 @@ for (const size of SIZES) {
         reached.push(name)
       }
       console.log(`@${size.width}: reached ${['Trade', ...reached].join(', ')} of ${names.join(', ')}`)
-      expect(reached).toEqual(expect.arrayContaining(['Town', 'Storage', 'Inn']))
-      // Storage: what was just bought can be put in storage
-      await face(page, 'Storage')
-      await expect(page.getByTestId('storage-row').first()).toBeVisible({ timeout: 30_000 })
+      expect(reached).toEqual(expect.arrayContaining(['Town', 'Inn']))
+      // Production: the tab goes to the HQ's page, and what was just bought stands in Cargo, to put in storage (owner, 2026-11-06)
+      await face(page, 'Production')
+      await expect(page.getByTestId('port-production')).toBeVisible({ timeout: 30_000 })
+      if (size.width < 1024) await page.getByTestId('port-production').getByRole('tab', { name: 'Cargo', exact: true }).click()
+      await expect(page.getByTestId('cargo-row').first()).toBeVisible({ timeout: 30_000 })
+      await page.goBack()
+      await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
       // Inn: hire crew
       await face(page, 'Inn')
       await expect(page.getByTestId('inn-crew')).toBeVisible({ timeout: 30_000 })

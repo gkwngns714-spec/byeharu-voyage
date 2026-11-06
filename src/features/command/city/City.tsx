@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button, Note, ScrollPane, Segmented, Skeleton } from '../../../components/ui'
 import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../../domain/fleet'
 import { buildingTier, hasBuilding } from '../../../domain/port'
-import { PORT_FACES, type PortFace } from '../../../live/cityFaces'
+import { PORT_FACES, productionHref, type PortFace } from '../../../live/cityFaces'
 import { CityTownHall } from '../../../live/CityTownHall'
 import { PortAcademy } from '../../../live/PortAcademy'
 import { QuayFair } from '../../../live/PortFair'
@@ -10,7 +10,6 @@ import { PortFlag } from '../../../live/PortFlag'
 import { PortInn } from '../../../live/PortInn'
 import { PortPrices } from '../../../live/PortPrices'
 import { PortShipyard } from '../../../live/PortShipyard'
-import { PortStorage } from '../../../live/PortStorage'
 import { PortTown } from '../../../live/PortTown'
 import { PortTrade } from '../../../live/PortTrade'
 import { PortWorkstation } from '../../../live/PortWorkstation'
@@ -69,8 +68,10 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
   const { docked } = alongsideAt(fleets, port.code, fleet.id)
   const here = where.kind === 'docked' && where.port === port.code
   const offered = PORT_FACES.filter((f) => f.building === null || hasBuilding(port, f.building))
-  const shown = offered.find((f) => f.id === face) ?? offered[0]
+  // Storage and the Forge are one page of the HQ now: the `warehouse` tab and Town row go there, and a saved `warehouse` face falls to the first.
+  const shown = offered.find((f) => f.id === face && f.id !== 'warehouse') ?? offered[0]
   const acting = here ? fleet : null
+  const openFace = (next: PortFace) => (next === 'warehouse' ? void navigate(productionHref(port.code)) : setFace(next))
 
   return layout({
     testid: 'desk-city',
@@ -104,7 +105,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
         label={t('desk.cityBuildings')}
         segments={offered.map((f) => ({ id: f.id, label: f.label }))}
         value={shown.id}
-        onChange={setFace}
+        onChange={openFace}
         // In the desk's narrow left pane every building stays in sight: the row wraps.
         className="mt-3 lg:flex-wrap"
       />
@@ -152,13 +153,12 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
           ))}
         {shown.id === 'city' && (
           <>
-            <PortTown port={port} onOpenFace={setFace} />
+            <PortTown port={port} onOpenFace={openFace} />
             <div className="mt-6" data-testid="desk-town-hall">
               <CityTownHall port={port} />
             </div>
           </>
         )}
-        {shown.id === 'warehouse' && <PortStorage portId={port.id} fleet={acting} />}
         {shown.id === 'workstation' && (
           <PortWorkstation portId={port.id} fleet={acting} tier={buildingTier(port, 'workstation')} />
         )}

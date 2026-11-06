@@ -232,11 +232,12 @@ test(`PORT › Trade (buy): the Max row, the stepper and the button hold still a
   // THE STORAGE TRAY — the useOrderPreview leg. Choose a count, wait for the dry run to answer,
   // then watch: the button must not flip `disabled`, the line must not change, no refusal may
   // mount, across more than two beats.
-  await page.getByRole('tab', { name: /^Storage$/i }).first().click()
-  await expect(page.locator('[data-testid="port-storage"]')).toBeVisible()
-  await expect(page.locator('[data-testid="storage-row"]').first()).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('tab', { name: /^Production$/i }).first().click()
+  await expect(page.locator('[data-testid="port-production"]')).toBeVisible()
+  await page.locator('[data-testid="port-production"]').getByRole('tab', { name: 'Cargo', exact: true }).click()
+  await expect(page.locator('[data-testid="cargo-row"]').first()).toBeVisible({ timeout: 20_000 })
   const put = await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('[data-testid="storage-row"] button:enabled')].find((b) =>
+    const cell = [...document.querySelectorAll('[data-testid="cargo-row"] button:enabled')].find((b) =>
       /^Put in storage/i.test(((b as HTMLElement).innerText || '').trim()),
     ) as HTMLButtonElement | undefined
     cell?.click()

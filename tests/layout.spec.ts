@@ -1171,14 +1171,12 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
 // with a stepper, nothing above the press moves, and the count on the button is the count moved
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// ADDED 2026-09-13, owner rows 87 and 88: *"there is warehourse and there is store. unify."* and
-// *"on your ship, make it like trading graphic, where i can put, or pull?"*. The face is `Storage`
-// (one word — the tab, the heading, the act), one row per good you have here with `Put in storage`
-// and `Take on board` as its two cells (the ledger's own `ActCell`), a dead cell saying why. A
+// ADDED 2026-09-13, owner rows 87 and 88; 2026-11-06 the owner merged Storage and the Forge into the HQ's Production page. A good
+// stands in its own column with one act, the ledger's own `ActCell`: `Put in storage` in Cargo, `Take on board` in Storage. A
 // press opens `storage-tray` with a `Stepper` for the COUNT and one button `Put N units in storage`.
 // The starter fleet carries nothing, so the proof BUYS first through the trade tray — the in-tab
 // PGlite world is disposable — then puts part of it in storage and reads the world back.
-test(`PORT › Storage: a cell opens the one tray with a stepper, moves nothing above it, and the button says the count`, async ({
+test(`HQ › Production: a cell opens the one tray with a stepper, moves nothing above it, and the button says the count`, async ({
   page,
   request,
   baseURL,
@@ -1211,36 +1209,32 @@ test(`PORT › Storage: a cell opens the one tray with a stepper, moves nothing 
   await expect(page.locator('[data-testid="trade-tray"]')).toHaveCount(0, { timeout: 30_000 })
   await expect(rows.filter({ hasText: bought }).first()).toContainText(/\d units? on board/, { timeout: 20_000 })
 
-  // THE STORAGE FACE. One word on the tab; one row per good; two cells per row; a dead cell says why.
-  await page.getByRole('tab', { name: /^Storage$/i }).first().click()
-  const face = page.locator('[data-testid="port-storage"]')
-  await expect(face).toBeVisible()
-  const storageRows = page.locator('[data-testid="storage-row"]')
+  // PRODUCTION: the desk's tab goes to the HQ's page; on a phone the columns stand under a segmented control. One row per good, one cell per row.
+  await page.getByRole('tab', { name: /^Production$/i }).first().click()
+  await expect(page.locator('[data-testid="port-production"]')).toBeVisible()
+  await page.locator('[data-testid="port-production"]').getByRole('tab', { name: 'Cargo', exact: true }).click()
+  const storageRows = page.locator('[data-testid="cargo-row"]')
   await expect(storageRows.first()).toBeVisible({ timeout: 20_000 })
   const cells = await page.evaluate(() => {
-    const all = [...document.querySelectorAll('[data-testid="storage-row"] button')] as HTMLButtonElement[]
+    const all = [...document.querySelectorAll('[data-testid="cargo-row"] button')] as HTMLButtonElement[]
     return {
       cells: all.length,
-      rows: document.querySelectorAll('[data-testid="storage-row"]').length,
+      rows: document.querySelectorAll('[data-testid="cargo-row"]').length,
       shortest: Math.min(...all.map((c) => c.getBoundingClientRect().height)),
       putCells: all.filter((c) => /^Put in storage/i.test((c.innerText || '').trim())).length,
-      takeCells: all.filter((c) => /^Take on board/i.test((c.innerText || '').trim())).length,
-      deadSayingNothing: all.filter((c) => c.disabled && !/none on board|none in storage|no ship here/i.test(c.innerText || '')).length,
       livePut: all.filter((c) => !c.disabled && /^Put in storage/i.test((c.innerText || '').trim())).length,
     }
   })
-  console.log(`PORT storage @${PHONE.width}px: ${JSON.stringify(cells)}`)
-  expect(cells.cells, 'a storage row does not carry two cells').toBe(cells.rows * 2)
+  console.log(`HQ production @${PHONE.width}px: ${JSON.stringify(cells)}`)
+  expect(cells.cells, 'a cargo row does not carry one cell').toBe(cells.rows)
   expect(cells.putCells).toBe(cells.rows)
-  expect(cells.takeCells).toBe(cells.rows)
-  expect(cells.shortest, 'a storage cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
-  expect(cells.deadSayingNothing, 'a dead storage cell went grey without saying why').toBe(0)
+  expect(cells.shortest, 'a cell is under the 44px reach floor').toBeGreaterThanOrEqual(44)
   expect(cells.livePut, 'nothing on board can be put in storage — did the buy land?').toBeGreaterThan(0)
 
   // PRESS `Put in storage`. The one tray opens with a stepper; nothing at or above the row moves.
-  const before = await page.evaluate(MEASURE_OFFSETS, 'storage-row')
+  const before = await page.evaluate(MEASURE_OFFSETS, 'cargo-row')
   await page.evaluate(() => {
-    const cell = [...document.querySelectorAll('[data-testid="storage-row"] button:enabled')].find((b) =>
+    const cell = [...document.querySelectorAll('[data-testid="cargo-row"] button:enabled')].find((b) =>
       /^Put in storage/i.test(((b as HTMLElement).innerText || '').trim()),
     ) as HTMLButtonElement | undefined
     cell?.click()
@@ -1250,7 +1244,7 @@ test(`PORT › Storage: a cell opens the one tray with a stepper, moves nothing 
   await expect(tray.locator('[data-testid="storage-qty"] input[type="range"]')).toHaveCount(1)
   await expect(tray.locator('[data-testid="cargo-bar"]')).toContainText(/\d+ \/ \d+ tons?/)
   await page.waitForTimeout(600)
-  const after = await page.evaluate(MEASURE_OFFSETS, 'storage-row')
+  const after = await page.evaluate(MEASURE_OFFSETS, 'cargo-row')
   expect(after.length, 'the storage list unmounted its rows on a press').toBe(before.length)
   expect(
     before.map((b, i) => ({ b, a: after[i] })).filter(({ b, a }) => a.top !== b.top || a.left !== b.left).length,
@@ -1262,11 +1256,12 @@ test(`PORT › Storage: a cell opens the one tray with a stepper, moves nothing 
   await expect(act, 'the move was never previewed — cmd.preview did not answer').toBeEnabled({ timeout: 20_000 })
   await expect(act).toHaveText(/^Put \d+ units? in storage$/)
 
-  // AND IT MOVES: the tray closes on success and the world is read back — the row now says what is
-  // in storage, which proves the line went through `cmd.issue` and not a patched store.
+  // AND IT MOVES: the tray closes on success and the world is read back — the good stands in Storage now, which proves the line went
+  // through `cmd.issue` and not a patched store.
   await act.click()
   await expect(tray).toHaveCount(0, { timeout: 30_000 })
-  await expect(storageRows.first()).toContainText(/\d units? · [\d.]+ tons? in storage/, { timeout: 20_000 })
+  await page.locator('[data-testid="port-production"]').getByRole('tab', { name: 'Storage', exact: true }).click()
+  await expect(page.locator('[data-testid="storage-row"]').first()).toBeVisible({ timeout: 20_000 })
 })
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════

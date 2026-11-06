@@ -211,7 +211,7 @@ not add a second check, it only says where the fleet is:
 | Trade → **Requests** (contracts, Fulfil) | **City → Requests**; and a `Wanted here · +12 %` row on the good page for that good | `live/RequestBoard.tsx`, `FulfilTray.tsx` |
 | Town (tax, port fee, buildings) | **City → Town** | `PortTown.tsx` |
 | Fair row | **City** (top of the face, only when a fair is on) and a marker on the good page's chart | `PortFair.tsx` |
-| Storage → **Put in storage / Take on board** | **City → Storage** | `PortStorage.tsx` |
+| Storage → **Put in storage / Take on board** | **HQ → Production** (the desk's tab is its door, owner 2026-11-06) | `PortProduction.tsx` |
 | Craft → **Make** | **City → Craft** | `PortWorkstation.tsx` |
 | Inn → **Hire / Dismiss crew, Resupply, Hire captain** | **City → Inn** | `live/PortInn.tsx` |
 | Build → **Build ship** | **City → Build** | `PortYard.tsx` |
