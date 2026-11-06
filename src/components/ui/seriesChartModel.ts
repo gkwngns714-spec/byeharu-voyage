@@ -36,12 +36,44 @@ export interface SeriesChartModel {
   /** The polyline, and the same closed to the floor for the wash under it. */
   line: string
   area: string
+  /** Where the wash under the line fades out: it ends at nothing, with no wall at the newest point. */
+  areaFade: WashFade | null
   /** Three y figures, served scale: low, mid, high. */
   yTicks: { y: number; value: number }[]
   /** The x axis's words: how long before the last point each tick stands. */
   xTicks: { x: number; label: string }[]
   /** Every point's pixel, for the hover layer: nearest-x lookup. */
   dots: { x: number; y: number; atMs: number; value: number }[]
+}
+
+/** The stretch, in plot px, over which a wash fades to nothing at its newest end. */
+export interface WashFade {
+  from: number
+  to: number
+}
+const WASH_FADE_PX = 28
+
+/** THE ONE SPELLING OF A WASH'S RIGHT EDGE, for every chart (series and price): the wash is opaque until `from` and gone at `to`, the
+ *  newest point. A wash shorter than twice the stretch fades over its half. Null: nothing to fade. */
+export function washFade(firstX: number, lastX: number): WashFade | null {
+  const len = lastX - firstX
+  if (!(len > 0)) return null
+  return { from: lastX - Math.min(WASH_FADE_PX, len / 2), to: lastX }
+}
+
+export type HistoryBucket = 'day' | 'week' | 'month'
+
+/** THE UNFINISHED PERIOD IS NOT A POINT OF A FLOW (owner, 2026-11-06). A day, a week, a month of money sold / earned / minted is a SUM;
+ *  the newest bucket is the period so far, so drawn beside whole ones it plunges at the right edge (on 2026-11-06 a good's day: 6,728
+ *  sold against 95,202 the day before). The bucket still open is left out; nothing is invented in its place. Only the NEWEST bucket can
+ *  be open, and it is while its period could still be running: start + the period's LONGEST length is after now (a day 1, a week 7,
+ *  a month 31 days). The client does no month arithmetic (the month is the server's, tests/duplication.spec.ts), so a month is judged
+ *  by its longest length: in the last three days of a 28-30 day month its open bucket is still held back, never shown short.
+ *  A level (a purse, a close) is not a sum: its newest reading is true, and the caller does not pass it here. */
+export function settledBuckets<P extends { atMs: number }>(points: readonly P[], period: HistoryBucket, nowMs: number): P[] {
+  const longest = (period === 'day' ? 1 : period === 'week' ? 7 : 31) * 86_400_000
+  const last = points[points.length - 1]
+  return last !== undefined && last.atMs + longest > nowMs ? points.slice(0, -1) : [...points]
 }
 
 export const SERIES_CHART_W = 340
@@ -91,13 +123,14 @@ export function seriesChartModel(
   const line = dots.map((d, i) => `${i === 0 ? 'M' : 'L'}${d.x.toFixed(1)} ${d.y.toFixed(1)}`).join(' ')
   const floor = plot.y + plot.h
   const area = `${line} L${dots[dots.length - 1].x.toFixed(1)} ${floor} L${dots[0].x.toFixed(1)} ${floor} Z`
+  const areaFade = washFade(dots[0].x, dots[dots.length - 1].x)
   const yTicks = [lo, (lo + hi) / 2, hi].map((v) => ({ y: y(v), value: v }))
   const xTicks = [
     { x: plot.x, label: agoLabel(t1 - t0) },
     { x: plot.x + plot.w / 2, label: agoLabel((t1 - t0) / 2) },
     { x: plot.x + plot.w, label: t('shell.now') },
   ]
-  return { width: size.width, height: size.height, plot, line, area, yTicks, xTicks, dots }
+  return { width: size.width, height: size.height, plot, line, area, areaFade, yTicks, xTicks, dots }
 }
 
 /** The dot nearest an x in plot pixels — the hover layer's one question. */

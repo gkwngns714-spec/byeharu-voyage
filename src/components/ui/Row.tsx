@@ -89,6 +89,7 @@ export function Row({
   className = '',
   under = 'row',
   pair = false,
+  end = false,
   children,
   ...rest
 }: {
@@ -116,6 +117,8 @@ export function Row({
   /** The value is a PAIR of act cells (`ActPair`, 14.25 rem). Such a row stands beside its label from 22 rem of room and wraps under it
    *  below (`pair:`, index.css); any other row wraps below 15 rem (`narrow:`). */
   pair?: boolean
+  /** The value is the row's ACT, not its figure: it stands at the right edge, so a list's cells make one straight column. */
+  end?: boolean
 } & { 'data-testid'?: string }) {
   // THE LINE, AND THE LINE UNDER IT (2026-10-25, owner rows 196 and 198: "it is not in the same
   // line"). The row is a GRID, not a flex box. Line 1 holds the mark, the label and the value in
@@ -150,7 +153,7 @@ export function Row({
   //     176 px with its cells drawing over each other. `max-content` reserves the value's whole width
   //     first; the label takes what is left — as it did under the `1fr` label — and the label alone
   //     wraps.
-  const columns = 'auto minmax(0, auto) max-content minmax(0, 1fr) auto'
+  const columns = end ? 'auto minmax(0, 1fr) max-content 0 auto' : 'auto minmax(0, auto) max-content minmax(0, 1fr) auto'
   // every line-1 cell is PLACED, not auto-flowed: a value spanning two lines would otherwise be
   // auto-placed into the label's column
   const labelCol = 2

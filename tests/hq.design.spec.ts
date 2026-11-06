@@ -38,15 +38,16 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledShe
 /** The root the walk reads: the HQ's own screen box, which stands in the packed frame and in the page alike. */
 const SHEET = '[data-testid="city-screen"]'
 
-/** The six places, by their tile; the figures a place carries, the summary rows it stands (all kept from the old frame, U3). */
+/** The five places, by their tile; the figures a place carries, the summary rows it stands (all kept from the old frame, U3). */
 const PLACES: readonly { id: string; panel: string; figures: readonly string[]; rows: readonly string[] }[] = [
   { id: 'hall', panel: 'city-hall-panel', figures: ['city-population', 'city-gold', 'city-status', 'city-employees', 'city-relationship'], rows: [] },
   { id: 'market', panel: 'city-face-panel', figures: [], rows: [] },
-  { id: 'storage', panel: 'city-face-panel', figures: [], rows: [] },
-  { id: 'forge', panel: 'city-face-panel', figures: [], rows: [] },
+  { id: 'production', panel: 'city-face-panel', figures: [], rows: [] },
   { id: 'port', panel: 'city-face-panel', figures: [], rows: ['city-port-yard', 'city-port-repair'] },
   { id: 'inn', panel: 'city-face-panel', figures: [], rows: ['city-inn-crew', 'city-inn-captains'] },
 ]
+/** Production takes the whole page under the row (owner, 2026-11-06), so the plan-and-side laws do not read it. */
+const WHOLE_PAGE = 'production'
 const FIGURES = PLACES[0].figures
 const ROWS = ['city-port-yard', 'city-port-repair', 'city-inn-crew', 'city-inn-captains'] as const
 
@@ -88,7 +89,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
     test.use({ locale })
 
     for (const glass of DESIGN_GLASSES) {
-      test(`all six places, at ${glass.width}×${glass.height}: the glass used, the side used, the hierarchy, no overlap, no trap`, async ({ page, request, baseURL }) => {
+      test(`all five places, at ${glass.width}×${glass.height}: the glass used, the side used, the hierarchy, no overlap, no trap`, async ({ page, request, baseURL }) => {
         test.setTimeout(900_000)
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
         await open(page, glass)
@@ -139,11 +140,11 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
 
           // (e) THE SIDE IS USED — your purse and the open panel in the side from 1,024; the plan in the main
           const blocks = await page.evaluate(IN_SIDE, { ids: ['city-summary', place.panel] })
-          for (const b of blocks) {
+          for (const b of place.id === WHOLE_PAGE ? [] : blocks) {
             if (!b.found) failures.push(`${where}: (e) the screen has no ${b.id} block`)
             else if (glass.width >= 1024 && !b.inSide) failures.push(`${where}: (e) ${b.id} does not stand in the side column`)
           }
-          if (glass.width >= 1024 && d.side === null) failures.push(`${where}: (e) the page has no side column`)
+          if (glass.width >= 1024 && d.side === null && place.id !== WHOLE_PAGE) failures.push(`${where}: (e) the page has no side column`)
           if (glass.width >= 1024) {
             const plan = (await page.evaluate(IN_SIDE, { ids: ['city-info-image'] }))[0]
             if (plan.inSide) failures.push(`${where}: (e) the plan stands in the side column`)
@@ -153,7 +154,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           const first = await page.evaluate(FIRST_GLASS, place.panel)
           if (glass.width < 1024) {
             if (first.panelTop === null || first.panelTop + 100 > first.glass) failures.push(`${where}: (g) the panel's card begins at ${first.panelTop === null ? '-' : Math.round(first.panelTop)} px of a ${first.glass}-px glass — it is not on the first glass`)
-          } else if (first.planBottom === null || first.planBottom > first.railTop + 1) {
+          } else if (place.id !== WHOLE_PAGE && (first.planBottom === null || first.planBottom > first.railTop + 1)) {
             failures.push(`${where}: (h) the plan ends at ${first.planBottom === null ? '-' : Math.round(first.planBottom)} px, the rail begins at ${Math.round(first.railTop)}`)
           }
 
@@ -162,10 +163,10 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           for (const s of d.scrollers.filter((x) => !x.startsWith('city-page '))) failures.push(`${where}: (f) a box scrolls inside itself — ${s}`)
 
           // U3 — NOTHING WAS REMOVED: the six tiles, the name, your purse, the rail, the open place's panel
-          for (const id of ['city-building-grid', 'city-name', 'city-phase', 'city-summary', 'city-rail', 'city-info-image', place.panel]) {
+          for (const id of ['city-building-grid', 'city-name', 'city-phase', 'city-rail', place.panel, ...(place.id === WHOLE_PAGE ? [] : ['city-summary', 'city-info-image'])]) {
             if ((await page.getByTestId(id).count()) === 0) failures.push(`${where}: U3 ${id} is gone`)
           }
-          if ((await page.getByTestId('city-building-grid').locator('button').count()) !== PLACES.length) failures.push(`${where}: U3 the six tiles are not all there`)
+          if ((await page.getByTestId('city-building-grid').locator('button').count()) !== PLACES.length) failures.push(`${where}: U3 the tiles are not all there`)
         }
 
         if (failures.length > 0) console.log(`LAWS ${locale} @${glass.width}×${glass.height}: ${failures.length} lines\n  ${failures.join('\n  ')}`)

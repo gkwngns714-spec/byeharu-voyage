@@ -43,7 +43,8 @@ law the client's text is written to, and `docs/UI_DIRECTION.md` §4 defers to it
 | distance | **miles** (`188 miles`) | nm, sea miles |
 | how far one leg can be (the captain's Navigation, 0188) | a city past it is **too far to sail in one go**; the figure is **days at sea** at the fleet's speed (`too far in one go: longest leg 14.2 days. Navigation 3 would reach it`; `longest leg 21.3 days, supplies last 12.0 days`; owner 2026-10-19: "make it in simple words"; owner row 202, 2026-10-25: one short line, no sentence) — `reachWords` in `src/features/command/plans/planLines.ts`, the one wording for the plan builder and the best-trade card | reach, her reach, `1,700 nm`, legs of N nm, passage |
 | speed | **knots** (`4.9 knots`) | kn |
-| the port's storage building | **storage** (tab: **Storage**; `In storage`) — ONE word for the building, the tab and the act (owner row 87, 2026-09-13: *"there is warehourse and there is store. unify."*) | warehouse, shed, store |
+| the HQ's page for storage, cargo and recipes | **Production** / **생산** (owner, 2026-11-06); its columns are **Storage**, **Cargo**, **Recipes** | Forge as a tab |
+| the port's storage building | **storage** (`In storage`) — ONE word for the building, the tab and the act (owner row 87, 2026-09-13: *"there is warehourse and there is store. unify."*) | warehouse, shed, store |
 | put cargo in it / take it out | **Put in storage** / **Take on board** (`Put 20 units in storage`) | Store here, Load onto ship, land it, take it aboard |
 | the crafting building | **workshop** (tab: **Craft**) | workstation |
 | the ship-building building | **build yard** (tab: **Build**; `This port can build up to level 3`) | shipyard, yard, lay down |

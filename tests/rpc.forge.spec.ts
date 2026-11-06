@@ -10,6 +10,7 @@
 //   3. a RAW good (tier 0 — what a city produces) refuses E_NOT_FORGEABLE.
 // Plus the two gates the verb shares with the rest of the port: E_NOT_DOCKED with no fleet here,
 // and E_SHED_FULL when the product does not fit (with the ingredients rolled back with it).
+// And the seam the HQ's Production page stands on (owner, 2026-11-06): what the forge made goes aboard by the one TAKE.
 //
 // The recipe is chosen from the SERVED data (lowest tier, fewest ingredients, first code) — never
 // named here, so a re-cut of the recipe table does not turn this red for no reason.
@@ -21,6 +22,7 @@ import { builtWorldImage } from './builtWorld.fixture'
 import {
   clearBackend,
   cmdForgeGood,
+  cmdIssue,
   createLocalBackend,
   expectOk,
   setBackend,
@@ -131,6 +133,38 @@ test('a stocked recipe forges: ingredients leave storage, the product lands, no 
   expect(await storedAt(player, lis.id, recipe.product_id)).toBe(1)
 
   // Leave the world as found.
+  await db.pg.query('delete from public.player_storage where player_id = $1 and port_id = $2', [player, lis.id])
+})
+
+test('what the forge made goes aboard by the one TAKE, the count asked for, and the rest stays ashore', async () => {
+  const snap = expectOk(await worldSnapshot())
+  const lis = snap.ports.find((p) => p.code === 'LIS')!
+  const player = await playerId()
+  const forge = expectOk(await worldGoodsForge(lis.id))
+  const recipe = [...forge.recipes].sort(
+    (a, b) => a.tier - b.tier || a.ingredients.length - b.ingredients.length || a.product.localeCompare(b.product),
+  )[0]
+  for (const i of recipe.ingredients) {
+    await db.pg.query('select public.storage_put($1::uuid, $2::uuid, $3::uuid, $4::numeric, 3.5)', [player, lis.id, await goodId(i.good), i.qty * 2])
+  }
+  expectOk(await cmdForgeGood(lis.id, recipe.product_id, 2))
+  expect(await storedAt(player, lis.id, recipe.product_id), 'the forge did not land its product in storage').toBe(2)
+
+  const fleet = (await db.pg.query<{ id: string }>("select id from public.fleets where player_id = $1 and port_id = $2 and status = 'DOCKED' limit 1", [player, lis.id])).rows[0]
+  const aboard = async () => {
+    const r = await db.pg.query<{ q: string }>('select public.fleet_cargo_qty($1::uuid, $2)::text as q', [fleet.id, recipe.product])
+    return Number(r.rows[0].q)
+  }
+  expect(await aboard()).toBe(0)
+  const purseBefore = expectOk(await worldLedger()).ducats
+  expectOk(await cmdIssue(fleet.id, `TAKE ${recipe.product} 1`))
+  expect(await aboard(), 'the finished good did not go aboard').toBe(1)
+  expect(await storedAt(player, lis.id, recipe.product_id), 'the rest did not stay ashore').toBe(1)
+  // NO MONEY MOVES: a move is not a sale.
+  expect(expectOk(await worldLedger()).ducats).toBe(purseBefore)
+
+  // Leave the world as found.
+  await db.pg.query('select public.fleet_unload($1::uuid, $2, 1)', [fleet.id, recipe.product])
   await db.pg.query('delete from public.player_storage where player_id = $1 and port_id = $2', [player, lis.id])
 })
 

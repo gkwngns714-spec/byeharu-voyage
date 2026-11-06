@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type PointerEvent, type ReactNode } from 'react'
+import { AreaWash } from './AreaWash'
 import { nearestDot, seriesChartModel, type SeriesPoint } from './seriesChartModel'
 
 // ONE FIGURE OVER TIME — the small-multiple line the Stats tab is made of (seriesChartModel.ts says why
@@ -112,7 +113,7 @@ export function SeriesChart({
           {model.yTicks.map((t, i) => (
             <line key={i} x1={plot.x} x2={plot.x + plot.w} y1={t.y} y2={t.y} className="stroke-edge" strokeWidth={1} />
           ))}
-          <path d={model.area} className={FILL[tone]} stroke="none" />
+          <AreaWash d={model.area} fade={model.areaFade} className={FILL[tone]} />
           <path d={model.line} fill="none" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className={STROKE[tone]} />
           {model.xTicks.map((t, i) => (
             <text

@@ -265,8 +265,8 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   // 2026-10-31: "the town hall screen is on the same HQ screen, but where the city is"). The panel
   // carries the treasury, the influence book (no market rows, no tax rows) and the Investors row.
   await expectHqSplit(page, '390×844')
-  // THE SIX TILES ARE THE FRAME: all six are visible at once, at the 44-px reach floor.
-  const six = ['hall', 'market', 'storage', 'forge', 'port', 'inn']
+  // THE FIVE TILES ARE THE FRAME: all five are visible at once, at the 44-px reach floor.
+  const six = ['hall', 'market', 'production', 'port', 'inn']
   for (const b of six) {
     const tile = page.getByTestId(`city-building-${b}`)
     await expect(tile, `building tile ${b} is missing from the frame`).toBeVisible()
@@ -321,7 +321,8 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   // place on the row the frame's boxes are IDENTICAL before and after, no page scroll appears, and
   // the right panel is the pressed place's — never a full-screen layer.
   const before = await frameBoxes(page)
-  for (const b of six) {
+  // (Production takes the whole page under the row, owner 2026-11-06: tests/city.production.spec.ts holds it.)
+  for (const b of six.filter((x) => x !== 'production')) {
     await page.getByTestId(`city-building-${b}`).click()
     // THE CITY IMAGE STAYS LEFT (owner, 2026-10-31) and the panel stands right of it: a press
     // changes the plan's mark and the right-hand panel only.
@@ -361,31 +362,23 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-hall-panel')).toBeVisible()
 
-  // The Forge is the goods forge (0281): the compact panel lists the product TIERS (audit row 39 —
-  // a product's control carries the product's name, never the whole recipe); a tier row opens its
-  // products as the one page (the audit's no-panel-scroll law), and a product's tray is the
-  // server's to answer.
-  await page.getByTestId('city-building-forge').click()
-  await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'forge')
-  const tierRows = page.getByTestId('city-face-panel').locator('[data-summary-row]')
-  await expect.poll(() => tierRows.count(), { timeout: 60_000 }).toBeGreaterThan(0)
-  const tierId = (await tierRows.first().getAttribute('data-testid'))!
-  const tier = tierId.replace('city-forge-tier-', '')
-  await tierRows.first().click()
-  const forgePage = page.locator('[data-detail-page]')
-  await expect(forgePage).toBeVisible()
+  // The Forge is the goods forge (0281), the Recipes column of Production: tiers on a segmented control, a product's control carries
+  // the product's name (audit row 39), and a product's tray is the server's to answer.
+  await page.getByTestId('city-building-production').click()
+  await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'production')
+  await page.getByTestId('port-production').getByRole('tab', { name: 'Recipes', exact: true }).click()
   await expect(page.getByTestId('port-forge')).toBeVisible()
   const forgeTiles = page.locator('[data-testid^="forge-product-"]')
   await expect.poll(() => forgeTiles.count(), { timeout: 60_000 }).toBeGreaterThan(0)
-  await expect(page.getByTestId(`forge-tier-${tier}`)).toBeVisible()
+  await expect(page.locator('[data-testid^="forge-tier-"]')).toBeVisible()
   const forgeScroll = await page.evaluate(() => ({
     w: document.documentElement.scrollWidth,
     cw: document.documentElement.clientWidth,
     h: document.documentElement.scrollHeight,
     ch: document.documentElement.clientHeight,
   }))
-  expect(forgeScroll.w, 'the Forge face scrolls sideways').toBeLessThanOrEqual(forgeScroll.cw)
-  expect(forgeScroll.h, 'the Forge face scrolls the page').toBeLessThanOrEqual(forgeScroll.ch)
+  expect(forgeScroll.w, 'the Recipes column scrolls sideways').toBeLessThanOrEqual(forgeScroll.cw)
+  expect(forgeScroll.h, 'the document scrolls, not the page').toBeLessThanOrEqual(forgeScroll.ch)
   // One recipe opens its tray: ingredients with a have/need figure, and one Forge button.
   const first = forgeTiles.first()
   const firstCode = (await first.getAttribute('data-testid'))!.replace('forge-product-', '')
@@ -397,9 +390,6 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await expect(page.getByTestId(`forge-make-${firstCode}`)).toBeDisabled()
   await expect(page.getByText(/^Missing:/)).toBeVisible()
   await page.getByTestId('tray-close').click()
-  // back from the tier's page to the compact panel, then the hall
-  await page.locator('[data-detail-back]').last().click()
-  await expect(forgePage).toHaveCount(0)
   await page.getByTestId('city-building-hall').click()
   await expect(page.getByTestId('city-face-panel')).toHaveCount(0)
 

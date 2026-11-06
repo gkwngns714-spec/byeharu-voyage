@@ -30,7 +30,7 @@ import { GLASSES, phoneLaws as defects, readGlass, type Glass } from './unfold.f
 // THE PANEL AT 1280×800 IS HELD TOO: the wide look must not change, and a defect that only the phone showed is a
 // defect that the wide glass proves it did not cause.
 
-const TILES = ['hall', 'market', 'storage', 'forge', 'port', 'inn'] as const
+const TILES = ['hall', 'market', 'production', 'port', 'inn'] as const
 type Tile = (typeof TILES)[number]
 
 /** Press one building tile and wait until its panel has been drawn and its first read has landed. */
@@ -119,9 +119,8 @@ test.describe('in Korean', () => {
   }
 })
 
-// THE STORAGE FACE WITH A GOOD IN THE HOLD. The canary's hold is empty, so the walk above saw "Nothing stored or on board" and never drew a `StorageRow` — the row
-// whose Put and Take cells (an `ActPair`, the Market's own pair) this slice reshaped. A lot is bought on the desk (the way a player does: City › Trade › a price › send),
-// the page is asked for again at the glass under test, and the Storage tile is pressed: the row stands, and the four laws hold on it.
+// PRODUCTION WITH A GOOD IN THE HOLD. The canary's hold is empty, so the walk above saw empty columns and never drew a cargo row. A lot is bought on the desk (the way a player does: City › Trade › a price › send),
+// the page is asked for again at the glass under test, and the Production tile is pressed: the row stands, and the four laws hold on it.
 async function stockOneLot(page: Page) {
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('command')
@@ -142,25 +141,26 @@ async function storageWithAGood(page: Page, glass: Glass): Promise<string[]> {
   await page.setViewportSize(glass)
   await page.goto('city')
   await ready(page)
-  await page.getByTestId('city-building-storage').click()
-  await expect(page.getByTestId('storage-row').first()).toBeVisible({ timeout: 30_000 })
+  await page.getByTestId('city-building-production').click()
+  if (glass.width < 1024) await page.getByTestId('port-production').getByRole('tab').nth(1).click()
+  await expect(page.getByTestId('cargo-row').first()).toBeVisible({ timeout: 30_000 })
   await settled(page.getByTestId('city-face-panel'))
   await page.waitForTimeout(500)
   return defects(`${glass.width}×${glass.height} storage · a good on board`, await readGlass(page, 'city-face-panel', null, '[data-testid="city-face-panel"]'))
 }
 
 for (const glass of GLASSES) {
-  test(`the HQ's Storage face with a good on board is clean at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
+  test(`the HQ's Production page with a good on board is clean at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     const found = await storageWithAGood(page, glass)
-    expect(found, `the Storage face is not clean on a ${glass.width}-px glass:\n${found.join('\n')}`).toEqual([])
+    expect(found, `the Production page is not clean on a ${glass.width}-px glass:\n${found.join('\n')}`).toEqual([])
   })
 }
 
 test.describe('in Korean, with a good on board', () => {
   test.use({ locale: 'ko-KR' })
-  test("the HQ's Storage face with a good on board is clean at 320×640", async ({ page, request, baseURL }) => {
+  test("the HQ's Production page with a good on board is clean at 320×640", async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     const found = await storageWithAGood(page, { width: 320, height: 640 })

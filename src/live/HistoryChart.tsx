@@ -1,7 +1,8 @@
 import type { ComponentType } from 'react'
-import { Card, FactsLine, Hint, Segmented, SeriesChart, Skeleton } from '../components/ui'
+import { Card, FactsLine, Hint, Segmented, SeriesChart, settledBuckets, Skeleton } from '../components/ui'
 import { formatPriceFigure, instantMs } from '../lib/format'
 import { useT } from '../lib/i18n'
+import { serverNow } from '../lib/serverClock'
 import { HISTORY_PERIODS, worldHistory, type HistoryGoodPoint, type HistoryPeriod, type HistoryWhat } from '../lib/rpc'
 import { useHistoryPeriod } from '../store/historyPeriod'
 import type { HistoryLine } from './historyLines'
@@ -73,11 +74,13 @@ export function HistoryChart<P extends { at: string }>({
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {lines.map((line) => {
-          const drawn = points.flatMap((p) => {
+          const every = points.flatMap((p) => {
             const value = line.pick(p)
             const atMs = instantMs(p.at)
             return value === null || atMs === null ? [] : [{ atMs, value }]
           })
+          // a SUM's open period is not drawn beside whole ones (it plunges at the right edge); a level's newest reading is true
+          const drawn = line.flow ? settledBuckets(every, read.view?.period ?? period, serverNow()) : every
           const newest = drawn.at(-1)
           return (
             <div key={line.id} className="min-w-0" data-testid="history-line" data-line={line.id} data-points={drawn.length}>

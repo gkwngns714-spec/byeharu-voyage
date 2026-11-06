@@ -118,7 +118,7 @@ export { ListHeading } from './ListPanel'
 // THE PAGE (2026-11-02, owner row 267; screenLayout.ts "THE PAGE", docs/dev-log/2026-11-02-stats-design.md): MAIN | SIDE on
 // the whole glass, the side being the tray's column. `Sheet layout="page"` is its container; `StatCell look="stacked|line"`
 // and `ListPanel look="card"` are its figure and its list. Stats is the first screen on it; the rest follow.
-export { Card, CardRow, PageSplit, StatCard, StatStrip } from './Card'
+export { Card, CardRow, PageSplit, PageThree, StatCard, StatStrip } from './Card'
 export { LanguageSwitch } from './LanguageSwitch'
 
 // 9. BUTTON — flat: primary / secondary / quiet / destructive, 44 and 36, icon.
@@ -186,7 +186,7 @@ export { panBackMs, clampPan, panView, panByDrag, panByKey, type ChartWindow, ty
 //     faces draw it (the Overview's holders, a city's purse, the merchants' day), so it is the system's.
 //     The geometry is `seriesChartModel`, pure, so tests/seriesChart.spec.ts proves the axis in Node.
 export { SeriesChart, type SeriesTone, type SeriesPoint } from './SeriesChart'
-export { seriesChartModel, agoLabel, nearestDot, SERIES_CHART_H, SERIES_CHART_W, type SeriesChartModel } from './seriesChartModel'
+export { seriesChartModel, settledBuckets, washFade, agoLabel, nearestDot, SERIES_CHART_H, SERIES_CHART_W, type SeriesChartModel } from './seriesChartModel'
 //     TRADE TRAY — the row unfolded: trend, range, stock, paid, the ceiling, the stepper, and the
 //     ONE button at the bottom edge.
 export { TradeTray, type TradeAct, type TradeControls, type TradePick, type TradeQuay } from './TradeTray'
