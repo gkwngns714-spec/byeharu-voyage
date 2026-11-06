@@ -292,6 +292,7 @@ $b$
     update public.world_config set value = to_jsonb(20) where key = 'crown_call_cover' and value is distinct from to_jsonb(20);
     update public.world_config set value = to_jsonb(50000) where key = 'treasury_reserve_floor' and value is distinct from to_jsonb(50000);
     insert into public.nations (code, name, flag_char, capital_port_code) values ('QX5', 'Probe 0335', 'Z', 'QZA') returning id into v_nat;
+    insert into public.great_powers (nation_id) values (v_nat);
     insert into public.ports (code, name, country, lat, lon, sea_id, region_id, culture, size_tier, max_draft, kind)
     select x.code, 'Probe ' || x.code, t.country, t.lat, t.lon, t.sea_id, t.region_id, t.culture, t.size_tier, t.max_draft, 'HARBOUR'
       from (values ('QZA'), ('QZB'), ('QZC'), ('QZZ')) x(code)
