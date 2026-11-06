@@ -1,4 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { AreaWash } from './AreaWash'
 import { panBackMs, panByDrag, panByKey, type ChartWindow, type PanLimits } from './chartPan'
 import { priceChartModel, type ChartOutlookInput } from './priceChartModel'
 import { stockLevel } from './stockLevel'
@@ -193,7 +194,7 @@ export function PriceChart({
         {/* EVERYTHING DRAWN STANDS INSIDE THE PLANE (the clip above) when there is a window */}
         <g clipPath={view ? `url(#${clip})` : undefined}>
           {/* the ground under the primary line, each side's low…high band, then both lines */}
-          <path d={model.area} className="fill-accent-soft" stroke="none" />
+          <AreaWash d={model.area} fade={model.areaFade} className="fill-accent-soft" />
           {model.bands.ask && <path d={model.bands.ask} className="fill-accent" fillOpacity={0.12} stroke="none" data-testid="price-chart-band-ask" />}
           {model.bands.bid && <path d={model.bands.bid} className="fill-info" fillOpacity={0.12} stroke="none" data-testid="price-chart-band-bid" />}
           {model.sides.bid && (
@@ -303,7 +304,7 @@ export function PriceChart({
                 strokeWidth={1}
                 strokeDasharray="3 3"
               />
-              {model.stock.area && <path d={model.stock.area} className="fill-info" fillOpacity={0.14} stroke="none" />}
+              <AreaWash d={model.stock.area} fade={model.stock.areaFade} className="fill-info" fillOpacity={0.14} />
               {model.stock.line && (
                 <path d={model.stock.line} fill="none" strokeWidth={1.5} className="stroke-info" strokeLinejoin="round" />
               )}

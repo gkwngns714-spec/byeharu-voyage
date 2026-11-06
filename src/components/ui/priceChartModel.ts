@@ -1,7 +1,7 @@
 import { MINUS, formatFixed, priceDigits } from '../../lib/format'
 import { t } from '../../lib/i18n'
 import type { ChartWindow } from './chartPan'
-import { agoLabel } from './seriesChartModel'
+import { agoLabel, washFade, type WashFade } from './seriesChartModel'
 import type { OutlookPoint, PricePoint } from '../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -121,6 +121,7 @@ export interface ChartStock {
   /** The record's stock, as a line and its ground ('' when the record carries none). */
   line: string
   area: string
+  areaFade: WashFade | null
   /** The estimate's stepped stock, dashed from now ('' without one). */
   estimate: string
   /** The normal level's rule. */
@@ -163,6 +164,8 @@ export interface PriceChartModel {
   bands: { ask: string; bid: string }
   /** The primary line closed down to the plot's floor, for the fill ('' when empty). */
   area: string
+  /** Where that fill fades out at its newest point (no wall: seriesChartModel's `washFade`). */
+  areaFade: WashFade | null
   /** Drawn min · round(mid) · drawn max, each with the y it sits at. Bottom to top. */
   yTicks: { y: number; label: string }[]
   /** `−N` at the left edge, `−N/2` in the middle (record only), `now`, and `+Nh` with an estimate. */
@@ -326,6 +329,7 @@ export function priceChartModel(
   const line = pathOf(xy)
   const floor = (plot.y + plot.h).toFixed(1)
   const area = xy.length ? `${line} L${xy[xy.length - 1].x.toFixed(1)} ${floor} L${xy[0].x.toFixed(1)} ${floor} Z` : ''
+  const areaFade = xy.length ? washFade(xy[0].x, xy[xy.length - 1].x) : null
   const sides = { ask: sideLine((p) => p.ask), bid: sideLine((p) => p.bid) }
   const bands = { ask: sideBand((p) => p.ask_lo, (p) => p.ask_hi), bid: sideBand((p) => p.bid_lo, (p) => p.bid_hi) }
 
@@ -435,6 +439,7 @@ export function priceChartModel(
       area: recS.length
         ? `${sline} L${xOf(recS[recS.length - 1].t).toFixed(1)} ${sfloor} L${xOf(recS[0].t).toFixed(1)} ${sfloor} Z`
         : '',
+      areaFade: recS.length ? washFade(xOf(recS[0].t), xOf(recS[recS.length - 1].t)) : null,
       estimate: path(estS),
       normalY: ys(stockTarget),
       now: nowS ? { x: xOf(nowS.t), y: ys(nowS.v), value: nowS.v } : null,
@@ -457,6 +462,7 @@ export function priceChartModel(
     sides,
     bands,
     area,
+    areaFade,
     yTicks,
     xTicks,
     spanHours,

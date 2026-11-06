@@ -311,3 +311,10 @@ test('on a narrow plane no two x labels stand on each other: the middle goes fir
     expect(ticks[ticks.length - 1].label).toBe('now')
   }
 })
+
+test("the price chart's ground fades out at its newest point, by the shared washFade", async () => {
+  const { washFade } = await import('../src/components/ui/seriesChartModel')
+  const m = priceChartModel(series([100, 120, 90, 130, 110], 600, NOW), 600, NOW)!
+  expect(m.areaFade).toEqual(washFade(m.points[0].x, m.points[m.points.length - 1].x))
+  expect(m.areaFade!.to).toBe(m.points[m.points.length - 1].x)
+})

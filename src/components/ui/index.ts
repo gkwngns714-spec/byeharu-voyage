@@ -186,7 +186,7 @@ export { panBackMs, clampPan, panView, panByDrag, panByKey, type ChartWindow, ty
 //     faces draw it (the Overview's holders, a city's purse, the merchants' day), so it is the system's.
 //     The geometry is `seriesChartModel`, pure, so tests/seriesChart.spec.ts proves the axis in Node.
 export { SeriesChart, type SeriesTone, type SeriesPoint } from './SeriesChart'
-export { seriesChartModel, agoLabel, nearestDot, SERIES_CHART_H, SERIES_CHART_W, type SeriesChartModel } from './seriesChartModel'
+export { seriesChartModel, settledBuckets, washFade, agoLabel, nearestDot, SERIES_CHART_H, SERIES_CHART_W, type SeriesChartModel } from './seriesChartModel'
 //     TRADE TRAY — the row unfolded: trend, range, stock, paid, the ceiling, the stepper, and the
 //     ONE button at the bottom edge.
 export { TradeTray, type TradeAct, type TradeControls, type TradePick, type TradeQuay } from './TradeTray'
