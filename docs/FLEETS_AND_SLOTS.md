@@ -229,6 +229,8 @@ at 0218 or later). Each migration self-asserts on its own probe rows only, and i
 
 F2 and F3 can be built in parallel worktrees after F1; F4 and F5 after F2/F3.
 
+**F1 and F2 are built, migration 0321, dark, not deployed.** What differs from this section is in `docs/dev-log/2026-11-06-a-ship-changes-fleets.md`: `fleet_ship_max` is not written (a new key, `fleet_ship_top`, holds the 7); moving a ship is dark too, on the one switch; an empty fleet lies `UNABLE_TO_SAIL`, so she is no presence in port; captains go with the ship, since seats are per ship; the Move press from F5 came with it.
+
 ---
 
 ## 4. Open questions, each with the default I will use

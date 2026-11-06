@@ -783,6 +783,8 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 
 **Every migration slice:** one PR, number order, `~/bin/bv-deploy.sh`, self-assert on rolled-back probes only, red-first harness in `scripts/ops/harness/`, a `scripts/db/proofs/` file, hunks that reverse, dark byte parity, `docs/dev-log/` file. **Parallel:** W0a, W1, W4 and W5 can be built together, deployed in order. W9, W2 and the attack light each get a measured window of their own.
 
+**W4 is built, migration 0321, dark, not deployed** (`docs/dev-log/2026-11-06-a-ship-changes-fleets.md`). Lighting it is `fleet_room_bite`, the owner's, in its own window.
+
 **Before lighting attack, simulate:** `scripts/ops/harness/raid/sim.mjs`, on W5's core, prod hulls exported read-only, printing win rates of 1 and 2 xebecs, a `nau`, 2 `galion` against `navire` and `galion`, 500 runs each. **Not simulated in this doc.** No claim here says who wins.
 
 **Not verified, anywhere here:** every speed and beat figure marked arithmetic or estimate; the 46-station list (one script, today's flags); contrast on land, on the region tints and on the twilight mix (`--night` steps computed only at ends). The battle hold on `voyage.progress_nm`: read, not run. Whether 10 minutes feels right: only play shows. Insurance's cause.
