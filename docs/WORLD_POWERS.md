@@ -53,7 +53,7 @@ The owner's orders, short:
 | Fight engine | `voyage.fight_resolve` (0189, 0202), lit: sizing up, sighting, 6 rounds, boarding. Called only from `voyage.settle`'s PIRATES arm | **Live.** One sided: raiders are a number, built as xebecs inside | Hulls on both sides |
 | Player attack | **No command.** `cmd.*` has no attack verb | None | New |
 | Second player fleet | `form_fleet` exists; only founding calls it. No `house_room`, no `cmd.move_ship`. Prod: 19 humans, 19 fleets, 22 ships | **Not built** | F1, F2 of `FLEETS_AND_SLOTS` |
-| Cargo ships | 0308, 0309, 0310 live. Table, circuits, funds book, map, card, Stats. Job `byeharu-voyage:cargo-ships` active. **`convoys_enabled` false, 0 ships exist** | Dark | Rich-city loading, arms, crew, wreck rule |
+| Cargo ships | 0308, 0309, 0310 live. Table, circuits, funds book, map, card, Stats. Job `byeharu-voyage:cargo-ships` active. **`convoys_enabled` true since 2026-11-05 18:46 UTC, 50 crewless `qpinnace` sail, wrecks can happen today** | Live | Rich-city loading, arms, crew. Wreck rule: 0322, dark |
 | Origin city | `npc_houses.home_port_id`, `cargo_ships.home_port_id` | Live | One reader |
 | `port_nation`, capitals, crown | `port_nation`, `city_capital`, `crown_aid`, `crown_call`, `treasury_post`, `mint_guard`, `credit`, `city_pays` | Live | Reused |
 | Economy closed | `economy_closed` true | Live | Every flow below must be moved |
@@ -221,6 +221,8 @@ The sheet changes no fight: the fight reads the same `crew_pct`. **Decided by de
 ### 3.3 One reader for origin
 
 `public.fleet_origin(fleet)`: `cargo_ships.home_port_id`, else `npc_houses.home_port_id`, else the new navy and pirate tables, else null for a human. **No new column.** It stands beside `public.fleet_kind`.
+
+**Built, dark, 2026-11-06: migration 0322 (W6), `npc_refits_enabled` false.** Sections 3.3 and 3.4 stand, with these additions: a wreck is every hull at 0; the switch is new; `npc_refits_per_run` 50 is new; a wreck is read from the fleet and her hulls, and `npc_refit_waits` holds only when the wait was last worded; hulls already at 0 are found by the hourly job. `ransom_share` has a reader and no payee until W11, W17. No crew for cargo ships until W8. See `docs/dev-log/2026-11-06-every-npc-ship-has-an-origin.md`.
 
 ### 3.4 What a loss is
 

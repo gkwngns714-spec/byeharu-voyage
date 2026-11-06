@@ -12,6 +12,7 @@ const BY_KIND: Readonly<Record<string, Sector>> = {
   HIRE: 'wages',
   REPAIR: 'repairs',
   TOW: 'repairs',
+  REFIT: 'repairs',
   INSURANCE: 'insurance',
   INSURANCE_PAID: 'insurance',
   TAX: 'tax',
