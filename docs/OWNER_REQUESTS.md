@@ -303,3 +303,4 @@ it taught.
 | 303 | Owner 2026-11-06: *"in chart, i don't like the right edge chart to drop verticley"* | **LIVE (client, #530, #531).** | Open bucket of a flow left out; the fill fades at its end. |
 | 304 | Owner 2026-11-06: *"bigger country with more cash - max 50, min 20"*, *"the country wealth will change, so will the cargoship numbers."* | **LIVE (0326, #534).** | 20 to 50 by realm cash, both ways, surplus laid up when idle at home. |
 | 305 | Owner 2026-11-06: *"you need to make ships too, so that players can build these cargo and navy ships too."* | **LIVE (0332, #538).** | All three hulls were already buildable; yard and Codex now mark them. Ordinary player ships, no PvP. Prices and yards unchanged. |
+| 306 | Owner 2026-11-06: *"light levels, use your recommended defaults for the rest"* | **PART DONE: levels lit 18:51 UTC, after-check pending.** | See the queue block of 18:55 UTC for what "the rest" was taken to mean. |
