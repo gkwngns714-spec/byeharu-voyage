@@ -14,7 +14,7 @@
 -- DARK IS NOT TOUCHED: levels_bite, regard_enabled, fleet_room_bite are read, never set. The read says which of them is lit, so the page can tell the truth.
 -- COST: one read per page open (player_progress scans the ledger once, as world.player already does on every poll), one primary-key read per hull and per great power (ten).
 -- ROLLBACK (forward, owner only): a new migration dropping world.levels(uuid-less) and public.level_line(numeric) and reversing the hunk. Nothing else depends on them.
--- SELF-ASSERT: the catalog only, rolled forward in one DO block (statement_timeout 45 s). The live read is proved in CI: scripts/db/proofs/32_levels_page.sql.
+-- SELF-ASSERT: the catalog only, rolled forward in one DO block (statement_timeout 45 s). The live read is proved in CI: scripts/db/proofs/33_levels_page.sql.
 -- VERSION: 0325, after 0324 (W7), before 0326 (HQ) and 0325 (W11); this file hunks only the registry, on the world.player row.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -202,7 +202,7 @@ end $$
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0325 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0325 self-assert ok: THE LEVELS PAGE READS ONE THING. One hunk, once and reversing; no other function, no knob, no row; the read is stable and granted to authenticated only. (proof 32 runs it in CI.) % ms.',
+  raise notice '0325 self-assert ok: THE LEVELS PAGE READS ONE THING. One hunk, once and reversing; no other function, no knob, no row; the read is stable and granted to authenticated only. (proof 33 runs it in CI.) % ms.',
     round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;

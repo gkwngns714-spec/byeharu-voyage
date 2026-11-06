@@ -23,7 +23,7 @@ A fifth face on the Command desk, after Report: **Levels** / 레벨. No control 
 `world.player` serves a track's points and level but not where the next level begins; `world.ship_view` serves the level in force (1 while dark), not the earned one; nothing served the title's next name, the room, or regard in one place. The client may not compute a level (the curve is `level_from_points`), so **migration 0325** adds, read-only and STABLE, no table, no knob, no row:
 - `public.level_line(points)`: the one cut of points into `{points, level, from, next_at}` (the same expression as 0127's `next_level_at`). Granted to nobody.
 - `world.levels()`: the page's one read, composing the readers above. Granted to `authenticated`. One hunk in `public.client_rpc_entry_points` (a row), once and reversing.
-- Proof 32 (`scripts/db/proofs/32_levels_page.sql`, 6 markers, green locally 6/6). It was red first: the proof found my first draft read `regions.min_exploration_level`, which 0218 removed. There is no region door; exploration opens nothing by itself, so "what opens" is the next **title's** sea zones.
+- Proof 33 (`scripts/db/proofs/33_levels_page.sql`, 6 markers, green locally 6/6). It was red first: the proof found my first draft read `regions.min_exploration_level`, which 0218 removed. There is no region door; exploration opens nothing by itself, so "what opens" is the next **title's** sea zones.
 
 **Not deployed.** Auto-merge is off for this PR; the owner's deploy script pushes 0325 first. Until it is pushed, prod has no `world.levels`, and the face would show "Levels did not load."
 
