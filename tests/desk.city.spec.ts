@@ -31,7 +31,15 @@ test('every building face opens on the desk, and a buy runs from its Trade face'
 
   const stripTop = async () => Math.round((await strip.boundingBox())!.y)
   const top = await stripTop()
-  for (const name of names) {
+  // Production is not a face of the desk: it is the HQ's page (owner, 2026-11-06), and the tab is its door. Press it, land there, come back.
+  await strip.getByRole('tab', { name: 'Production', exact: true }).click()
+  await expect(page).toHaveURL(/place=production/)
+  await expect(page.getByTestId('port-production')).toBeVisible({ timeout: 60_000 })
+  await page.goBack()
+  await expect(page.getByTestId('desk-city')).toBeVisible({ timeout: 30_000 })
+  expect(await stripTop(), 'the way back moved the strip').toBe(top)
+
+  for (const name of names.filter((n) => n !== 'Production')) {
     await strip.getByRole('tab', { name, exact: true }).click()
     await page.waitForTimeout(600)
     expect(await stripTop(), `pressing ${name} moved the strip`).toBe(top)
