@@ -2709,6 +2709,8 @@ export interface PortRegard {
   band: RegardBand
   factor: number
   fine: number
+  /** 0334 (docs/WORLD_POWERS.md §5.3): whole hours left of this country's WANTED mark on you. Absent without one. */
+  wanted_hours?: number
 }
 
 export type RegardBand = 'honoured' | 'friendly' | 'neutral' | 'wary' | 'hostile'
