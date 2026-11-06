@@ -1262,6 +1262,8 @@ export interface FleetView {
   /** [lat, lon] while ANCHORED at a bare point of open water (0039); null otherwise. */
   anchor: [number, number] | null
   busy_until: string | null
+  /** 0333: in a battle you started, when the first ship of the other side's country gets there. Absent when none will. */
+  navy_at?: string
   /** 0237 — her port time: she may not sail before this instant (a SAIL sent now waits in her queue). Served only
    *  while she is in it, and only while the economy is closed. */
   ready_at?: string
@@ -2557,12 +2559,15 @@ export interface NavyShipCard {
   fleet: { id: string; name: string; status: FleetStatus; port: string | null }
   nation_code: string | null
   station: string
-  mission: 'PATROL'
+  /** 0333: ESCORT and REINFORCE, a battle's call. Each has its word, `map.mission_*`. */
+  mission: 'PATROL' | 'ESCORT' | 'REINFORCE'
   laid_up: boolean
   to: string | null
   eta: string | null
   next: string[]
   ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  /** 0333: served, true, only while attacks are lit, as a cargo ship's. */
+  attack?: true
 }
 
 // ── 0121: ONE FLEET'S TRADING, LAP BY LAP (owner, 2026-10-15) ───────────────────────────────────
@@ -2847,6 +2852,8 @@ export interface AttackReceipt {
   word: AttackWord
   funds: AttackFunds
   resolves_at: string
+  /** 0333: minutes until the first of her country's ships would reach the fight. Absent when none would. */
+  navy_minutes?: number
   battle_id?: string
   version?: number
 }

@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
-import { clearBackend, cmdAttack, cmdPreviewAttack, createLocalBackend, setBackend, worldCargoShipCard, worldFleets, type CargoShipCard } from '../src/lib/rpc'
+import { clearBackend, cmdAttack, cmdPreviewAttack, createLocalBackend, setBackend, worldCargoShipCard, worldFleets, worldNavyShipCard, type CargoShipCard } from '../src/lib/rpc'
 import { headline } from '../src/features/ledger/headline'
 import { translateMaybe } from '../src/lib/i18n'
 import { sectorOf } from '../src/features/stats/moneySectors'
@@ -92,6 +92,25 @@ test('lit: the card says so, the dry run reads in plain words, and the press ope
   const again = await cmdAttack(fleet, target, null)
   expect(again.ok).toBe(false)
   if (!again.ok) expect(again.refusal.code).toBe('E_FLEET_BUSY')
+})
+
+test('a navy ship: lit, her card offers the attack, and every duty and the navy line have their words', async () => {
+  await light(['navy_enabled'], true)
+  const realm = await db.callAs<string>(`select c.nation_id as result from public.cargo_ships c where c.fleet_id = $1`, [target])
+  await db.callAs(`insert into public.navy_realms (nation_id, ships, read_at) values ($1, 2, now()) on conflict (nation_id) do update set ships = 2 returning 1 as result`, [realm])
+  const ship = await db.callAs<string>(
+    `select public.navy_commission($1, 1, public.realm_capital($1), public.refit_yard(public.realm_capital($1)), public.realm_capital($1), now()) as result`,
+    [realm],
+  )
+  const card = await worldNavyShipCard(ship)
+  expect(card.ok, JSON.stringify(card)).toBe(true)
+  if (!card.ok) return
+  expect(card.value.attack).toBe(true)
+  for (const locale of ['en', 'ko'] as const) {
+    for (const key of ['mission_PATROL', 'mission_ESCORT', 'mission_REINFORCE', 'attackNavy', 'attackNavyIn']) expect(translateMaybe(locale, 'map', key), `${locale} ${key}`).toBeTruthy()
+    expect(translateMaybe(locale, 'domain', 'navyArrives')).toBeTruthy()
+  }
+  await light(['navy_enabled'], false)
 })
 
 test('every refusal of the door has its words, English and Korean, and the figures their units', () => {
