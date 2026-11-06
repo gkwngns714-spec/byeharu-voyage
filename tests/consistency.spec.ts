@@ -74,7 +74,7 @@ const TITLED = [
 ] as const
 
 const STATS_FACES = ['Overview', 'Markets', 'Cities', 'Merchants', 'Me'] as const
-const DESK_FACES = ['Trade', 'City', 'Invest', 'Report'] as const
+const DESK_FACES = ['Trade', 'City', 'Invest', 'Report', 'Levels'] as const
 
 /** THE ONE DECLARED PLACE FOR A SUB-44 CONTROL — NOW EMPTY (consistency row 33 fixed: the Command
  *  desk City face's `City view` is the md 44-px size, and #426 removed the city faces' Back).
