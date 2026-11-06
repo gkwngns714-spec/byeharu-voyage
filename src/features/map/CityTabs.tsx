@@ -15,7 +15,7 @@ import { TowNote } from '../../live/TowNote'
 import { useT, type TKey } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE CITY PANEL'S FOUR TABS — Market | Port | Inn | Town Hall
+// THE CITY PANEL'S TABS — order owned by CITY_TABS (cityTab.ts): Info, Town Hall, Market, Port, Inn, Giving
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner, 2026-10-15:
