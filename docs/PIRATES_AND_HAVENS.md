@@ -157,6 +157,8 @@ piracy_index` **to the digit**. That is the dark parity Z1 proves for every sea.
 Nothing else may read `piracy_index` directly after Z1; the self-assert scans every live body for the
 token with a positive control, the 0184 method.
 
+**Built by 0330 (W15, Z1):** `world.sea_danger()` serves a `level`, 1 to 5, not a word, because `src/components/ui/dangerTiers.ts` already words those levels in EN and KO. The five words below are not in the game. `docs/dev-log/2026-11-06-danger-is-one-number.md` lists what was decided.
+
 **The word the player reads.** The five words are the authored `danger_level`'s, served once by
 `world.sea_danger()`: **Calm · Watchful · Dangerous · Severe · Deadly** — and the live number moves the
 word only when it crosses a band (bands at 0.1 / 0.25 / 0.4 / 0.6 of `sea_danger`). The player never sees
