@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Bar, Clip, FactsLine, Note, Row, ScrollPane, Skeleton, StatCell } from '../../../components/ui'
+import { Bar, Clip, FactsLine, Note, Row, ScrollPane, Skeleton, StatCell, useWide } from '../../../components/ui'
 import { regardBandWord } from '../../../domain/port'
 import { formatDucats, formatInt, formatMiles } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
@@ -27,6 +27,7 @@ const fill = (c: Pick<LevelCut, 'points' | 'from' | 'next_at'>): number =>
 
 export function Levels({ layout }: { layout: DeskLayout }) {
   const t = useT()
+  const wide = useWide()
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const captains = useYourCaptains().captains
   const v = read.view
@@ -41,14 +42,36 @@ export function Levels({ layout }: { layout: DeskLayout }) {
   if (!v.company) {
     return layout({ testid: 'desk-levels', list: <Note tone="neutral">{t('command.lvNoCompany')}</Note>, main: null })
   }
+  const banner = (
+    <Note tone={v.bite ? 'success' : 'neutral'} data-testid="levels-bite">
+      {v.bite ? t('command.lvLit') : t('command.lvDark')}
+    </Note>
+  )
+  if (!wide) {
+    // THE PHONE IS ONE GLASS (tests/onepage.spec.ts): the whole page is one board that takes what the strip and the faces leave and
+    // scrolls inside itself, so the desk's own box never grows.
+    return layout({
+      testid: 'desk-levels',
+      list: null,
+      mainFill: true,
+      main: (
+        <div className="bv-scroll min-h-0 flex-1 overflow-y-auto">
+          <Company v={v} />
+          <Room v={v} />
+          <Countries v={v} />
+          {banner}
+          <HullRows v={v} />
+          <CaptainRows captains={captains} />
+        </div>
+      ),
+    })
+  }
   return layout({
     testid: 'desk-levels',
     list: <Company v={v} />,
     main: (
       <>
-        <Note tone={v.bite ? 'success' : 'neutral'} data-testid="levels-bite">
-          {v.bite ? t('command.lvLit') : t('command.lvDark')}
-        </Note>
+        {banner}
         <HullRows v={v} />
         <CaptainRows captains={captains} />
       </>
@@ -59,7 +82,6 @@ export function Levels({ layout }: { layout: DeskLayout }) {
         <Countries v={v} />
       </div>
     ),
-    order: ['list', 'side', 'main'],
   })
 }
 
