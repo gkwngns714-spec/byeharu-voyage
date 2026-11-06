@@ -72,10 +72,11 @@ PGlite, this PC, `--cost`. **The scale:** 0331's dev-log uses about × 6.7 for p
 - `RP_BUSY` is the one that matters most: on paper the realm can pay, its richest city is busy, the second city's call is rolled back, no row.
 - Self-assert: catalog, then the draw on a probe nation of its own rolled-back harbours, a richer harbour outside it. Purses are written on the probe's own rows, so no minted kind is credited and it reads the same with the economy open or closed. About 170 ms locally on the small world.
 - `before.sql` on prod at head 0334: all 8 hunks once, `new_fns` 0, `navy_on` false, `navy_rows` 0, `probe_codes` 0, `CROWN_CALL` moved.
+- `npm run db:apply`, whole chain from zero on PGlite, this PC: 319 migrations, 331 receipts, the world guard ok, 0335's self-assert 167 ms.
 - `tsc -b`, `eslint`, `tests/sections.spec.ts` and `tests/duplication.spec.ts` clean.
 
 **What the runs found:**
-- The first apply died on the self-assert: `port_allegiance` wants a great power, so the probe nation is one now. It cost 42 minutes here, because this PC's cache stood at 96 files. The harness has `--snapshot` now and the cache holds 318.
+- The first apply died on the self-assert: `port_allegiance` wants a great power, so the probe nation is one now. `npm run db:apply` takes no cache, so that was a 42-minute answer on this PC. The harness's own cache stood at 96 files; it has `--snapshot` now and holds 318.
 - Proof 37 red, for a right reason: its capital-alone scene had a rich yard in the realm. Moved deliberately, with a dated comment: that scene now reads the realm bare. Nothing was loosened.
 - My own first mutations found five holes: a busy-capital stub that hid the capital's lock; a fold with no tie and no empty city; a rich-capital branch nothing proved. The proof now holds each. One was a line that did nothing: `capital_draw`'s early return repeated `crown_call`'s own test, so it was deleted.
 - `scripts/ops/harness/armed-cargo/dark-scene.sql` went red once at random on an unordered `jsonb_agg(s.crew)`: `[17,0,0]` against `[0,17,0]`, ship order, not money. It now sorts. No function it reads was touched by this file.
