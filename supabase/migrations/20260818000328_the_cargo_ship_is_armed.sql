@@ -44,7 +44,7 @@
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): `convoy_armed_enabled` false is the switch; each ship goes back to the old class as she comes idle at home, her hands back on the quay. Nothing strands, no gold moves.
 -- To remove: swap this file's old and new, then drop what it created. CONVOY_UPKEEP rows stay.
--- VERSION: 0328 - prod head 0324 (2026-11-06). 0325 (#527), 0326 (#534) and 0327 (#529) deploy first. 0326 cuts public.cargo_ships_commission and none of the lines here; the others touch none of these bodies.
+-- VERSION: 0328 - prod head 0326 (2026-11-06). 0327 (#529) deploys first and touches none of these bodies. 0326 cut public.cargo_ships_commission, on other lines, and its idle ships take one step in convoy_idle_every, so a refit may come that much later.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$

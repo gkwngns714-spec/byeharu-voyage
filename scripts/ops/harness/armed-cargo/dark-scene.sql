@@ -10,7 +10,6 @@ declare
   v_r    text;
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'npc_refits_enabled');
-  update public.world_config set value = to_jsonb(4) where key = 'convoy_ships_per_nation';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set ducats = 90000000, reserve = 0;
   select g.nation_id, p.id into v_nat, v_cap

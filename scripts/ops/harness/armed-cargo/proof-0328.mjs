@@ -68,7 +68,7 @@ const MUTATIONS = [
 `), /PROOF 36 FAIL: lit, a loaded ship was touched at the quay/],
   ['the refit never happens', (s) => swap(s, `      perform public.cargo_hull(p_fleet);   -- 0328: idle at home, no load: the one moment her hull may change\n`, ``), /PROOF 36 FAIL: her lap closed and she was not refitted/],
   ['a refit leaves the old hull', (s) => swap(s, `  delete from public.ships x where x.id = s.id;\n`, ``), /E_FLEET_SHIP_MAX|one_flagship|duplicate|unique/i],
-  ['a refit crews her free', (s) => swap(s, `perform public.commission_ship(s.player_id, p_fleet, v_class, s.name, true, false);`, `perform public.commission_ship(s.player_id, p_fleet, v_class, s.name, true, true);`), /PROOF 36 FAIL: ship 3 is not a fresh armed hull/],
+  ['a refit crews her free', (s) => swap(s, `perform public.commission_ship(s.player_id, p_fleet, v_class, s.name, true, false);`, `perform public.commission_ship(s.player_id, p_fleet, v_class, s.name, true, true);`), /PROOF 36 FAIL: (ship 3 is not a fresh armed hull|woken, she was not refitted)/],
   ['a refit loses her name', (s) => swap(s, `perform public.commission_ship(s.player_id, p_fleet, v_class, s.name, true, false);`, `perform public.commission_ship(s.player_id, p_fleet, v_class, 'Armed', true, false);`), /PROOF 36 FAIL: the refit changed who she is/],
   ['hands vanish at a refit', (s) => swap(s, `  if s.crew > 0 then\n    update public.ports p set crew_pool = p.crew_pool + s.crew where p.id = (select f.port_id from public.fleets f where f.id = p_fleet);\n  end if;\n`, ``), /PROOF 36 FAIL: off, she did not go back/],
   ['a commission keeps the old class', (s) => swap(s, `perform public.commission_ship(v_player, v_fleet, public.cargo_class(), format('Cargo ship %s', v_n), true, false);   -- 0328: the class she should be`, `perform public.commission_ship(v_player, v_fleet, public.wc_text('convoy_ship_class'), format('Cargo ship %s', v_n), true, false);   -- 0328: the class she should be`), /PROOF 36 FAIL: a new ship is/],
@@ -91,6 +91,7 @@ const MUTATIONS = [
   ['the kind is minted', (s) => swap(s, `values ('CONVOY_UPKEEP', 'moved', 'Cargo upkeep', 51)`, `values ('CONVOY_UPKEEP', 'minted', 'Cargo upkeep', 51)`), /0328 self-assert FAIL: CONVOY_UPKEEP is not a moved kind/],
   ['stores too few for the world', (s) => swap(s, `('convoy_store_days', to_jsonb(90),`, `('convoy_store_days', to_jsonb(30),`), /PROOF 36 FAIL: the longest leg/],
   ['the merchant refit gives no hands', (s) => swap(s, `  if public.fleet_kind(p_fleet) = 'MERCHANT' then\n    perform public.fleet_hands(p_fleet, v_home);\n  end if;\n$h$);`, `$h$);`), /DARK|.*/, 'scene'],
+  ['the job walks laid-up ships', (s) => `${s}\ndo $x$ begin execute replace(pg_get_functiondef('public.tick_cargo_ships(timestamp with time zone,uuid)'::regprocedure), 'for r in select c.fleet_id from public.cargo_ships_in_service c', 'for r in select c.fleet_id from public.cargo_ships c'); end $x$;`, /PROOF 36 FAIL: a laid-up ship was refitted/],
   ['a hunk is off its line', (s) => swap(s, `$h$  perform voyage.depart(p_fleet, l.segments, f.port_id, l.to_port, p_now);\n$h$,`, `$h$  perform voyage.depart(p_fleet,  l.segments, f.port_id, l.to_port, p_now);\n$h$,`), /0328 self-assert FAIL: hunk 3 of public.cargo_ship_step/],
 ]
 

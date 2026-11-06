@@ -8,6 +8,7 @@
 -- @pass ARMED_DARK       off: the class is the old one, an idle ship keeps her hull, her upkeep is 0 with no flow, and no hull has guns
 -- @pass ARMED_LOADED     lit: a ship with funds aboard sails her lap in her old hull, crewless, with no upkeep, and takes the new hull only when the lap has closed
 -- @pass ARMED_HULL       lit: an idle ship at home is refitted free, once: same fleet, house, number and name, the armed class, no purse moved, no ledger, flow or event row
+-- @pass ARMED_LAID_UP    a laid-up ship is not refitted by the real job, in the run that refits the ship beside her; woken, she is
 -- @pass ARMED_LAP        one real lap on the real sea: every stop in order, hands and stores at every departure, the funds delivered, the sum unmoved, no fold drift
 -- @pass ARMED_NO_DEBT    the lap leaves no dock fee, no wage, no ledger row, no forced home, purse 0, hull whole at home
 -- @pass ARMED_UPKEEP     her origin paid the knob for each leg but the one she left it by, two rows each, to the harbour she left, netting 0
@@ -207,10 +208,10 @@ $b$
   for v_n in 1 .. 12 loop
     perform public.tick_cargo_ships(now(), v_nat);
     v_k := (select count(*) from public.cargo_ships c where c.nation_id = v_nat);
-    exit when v_k >= 5;
+    exit when v_k >= 6;
   end loop;
-  if v_k < 5 then
-    raise exception 'PROOF 36 FAIL: the realm has % ships, and this proof needs 5', v_k;
+  if v_k < 6 then
+    raise exception 'PROOF 36 FAIL: the realm has % ships, and this proof needs 6', v_k;
   end if;
   v_fl := array(select c.fleet_id from public.cargo_ships c where c.nation_id = v_nat order by c.ord);
   v_pl := array(select c.player_id from public.cargo_ships c where c.nation_id = v_nat order by c.ord);
@@ -296,6 +297,31 @@ $b$
     raise exception 'PROOF 36 FAIL: she was refitted twice';
   end if;
   raise notice 'PASS: ARMED_HULL — % at home, same fleet and house, nothing moved, once', pg_temp.class_of(v_fl[1]);
+
+  -- ── LAID UP (0326). Every idle ship takes her step this run, so only the roster can spare her. Ship 3 is the control: the same run must refit her ──
+  update public.world_config set value = to_jsonb(1) where key = 'convoy_idle_every';
+  v_n := public.convoy_ships_of(v_nat);
+  update public.cargo_fleet_sizes z set ships = 4, read_at = now() where z.nation_id = v_nat;   -- her ord is above her country's number, or the job wakes her
+  update public.cargo_ships c set laid_up_at = now() where c.fleet_id = v_fl[5];
+  v_id := pg_temp.hull_of(v_fl[5]);
+  perform public.tick_cargo_ships(now(), v_nat);
+  if pg_temp.class_of(v_fl[3]) <> public.wc_text('convoy_armed_class') then
+    raise exception 'PROOF 36 FAIL: the control: the job did not refit an idle ship: %', pg_temp.class_of(v_fl[3]);
+  end if;
+  if pg_temp.hull_of(v_fl[5]) <> v_id or pg_temp.class_of(v_fl[5]) <> public.wc_text('convoy_ship_class') or public.cargo_armed(v_fl[5]) or pg_temp.crew_of(v_fl[5]) <> 0
+     or (select c.laid_up_at from public.cargo_ships c where c.fleet_id = v_fl[5]) is null then
+    raise exception 'PROOF 36 FAIL: a laid-up ship was refitted: %', pg_temp.class_of(v_fl[5]);
+  end if;
+  update public.cargo_fleet_sizes z set ships = v_n, read_at = now() where z.nation_id = v_nat;
+  perform public.cargo_ships_commission(v_nat);   -- the real wake
+  if (select c.laid_up_at from public.cargo_ships c where c.fleet_id = v_fl[5]) is not null then
+    raise exception 'PROOF 36 FAIL: she was not woken';
+  end if;
+  perform public.tick_cargo_ships(now(), v_nat);
+  if pg_temp.class_of(v_fl[5]) <> public.wc_text('convoy_armed_class') or pg_temp.crew_of(v_fl[5]) <> 0 then
+    raise exception 'PROOF 36 FAIL: woken, she was not refitted: %', pg_temp.class_of(v_fl[5]);
+  end if;
+  raise notice 'PASS: ARMED_LAID_UP — left in her old hull by the run that refitted ship 3; woken, refitted';
 
   -- ── ONE REAL LAP ON THE REAL SEA. Two cities short: the first stop and the last ──
   update public.port_treasury t set ducats = 1000 where t.port_id in (v_s1, v_s2);
