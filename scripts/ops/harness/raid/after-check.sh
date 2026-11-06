@@ -7,14 +7,19 @@
 # ratio table recomputed on that SAME raid (the fleet's class-figure escort, the day's own raider strength). That
 # is paired.sql, parameterised.
 #
-# Prints: the paired lost share and crew loss, lit vs the dark table on the same raids; the arrivals sweep's avg and
-# p95 (cron job byeharu-voyage:arrivals) with their bounds; the reconcile runs' durations; E_ENDURANCE refusals and
+# Prints: the paired lost share and crew loss, lit vs the dark table on the same raids; the arrivals BEATS' avg and
+# p95 (public.arrivals_beats.ms, one row a second) with their bounds, and the minute job's failures; the reconcile runs' durations; E_ENDURANCE refusals and
 # REPAIR orders in the window; and whether every PIRATES day carries `rounds`. Ends with one PASS / FAIL line.
 #
 # Bounds (a FAIL is a rollback — 0201's file, renumbered):
 #   paired lost (PLUNDERED + STRIPPED) share  <= dark table's on the same raids + 5 points
 #   paired crew lost per raid                 <= dark table's on the same raids + 1 point
-#   arrivals avg <= 3 s, arrivals p95 < 5 s
+#   arrivals beat avg <= 3 s, beat p95 < 5 s   (per beat: since 0248 the cron job byeharu-voyage:arrivals is ONE
+#       minute-long call of tick_arrivals_each_second(), ~58 s a run, so run duration is not a bound; the same 3 s / 5 s
+#       as 0201's, 2026-10-18, which bounded the one-second run of tick_arrivals. Beats come from the one-hour ring
+#       arrivals_beats plus arrivals_beats_kept (each hour's :06:30-:09:00, 7 days): a window older than the ring holds
+#       only those kept minutes, and a window with no beat at all FAILs rather than passes)
+#   no arrivals minute-job run failed (a run whose message is only 'job canceled' is printed, not counted)
 #   every PIRATES day in the window carries `rounds` (a day without one was not fought: the switch is not on)
 #   at least one PIRATES day in the window (else nothing was measured — widen the window)
 #
@@ -73,16 +78,25 @@ paired as (
     'outcomes_table', (select json_object_agg(o, n) from (select table_outcome o, count(*) n from t group by 1) z)) j
     from t),
 -- ── the sweeps ──
+beats as (
+  select b.at, b.ms, b.error from public.arrivals_beats b, w where b.at >= w.a and b.at < w.b
+  union
+  select k.at, k.ms, k.error from public.arrivals_beats_kept k, w where k.at >= w.a and k.at < w.b),
 runs as (
   select j.jobname, d.status, d.start_time, extract(epoch from d.end_time - d.start_time) s, d.return_message
     from cron.job j join cron.job_run_details d on d.jobid = j.jobid, w
    where j.jobname in ('byeharu-voyage:arrivals', 'byeharu-voyage:reconcile') and d.start_time >= w.a and d.start_time < w.b),
 arr as (
-  select json_build_object('n', count(*), 'avg', round(avg(s)::numeric, 2),
-           'p95', round((percentile_cont(0.95) within group (order by s))::numeric, 2), 'max', round(max(s)::numeric, 2),
-           'failed', count(*) filter (where status <> 'succeeded'),
+  select json_build_object('n', count(*), 'avg', round(avg(ms)::numeric / 1000, 2),
+           'p95', round((percentile_cont(0.95) within group (order by ms))::numeric / 1000, 2), 'max', round(max(ms)::numeric / 1000, 2),
+           'errors', count(*) filter (where error is not null),
+           'runs', (select count(*) from runs r where r.jobname = 'byeharu-voyage:arrivals'),
+           'run_failed', (select count(*) from runs r where r.jobname = 'byeharu-voyage:arrivals' and r.status <> 'succeeded'
+                             and coalesce(r.return_message, '') !~* '^\s*job canceled\s*$'),
+           'run_canceled', (select count(*) from runs r where r.jobname = 'byeharu-voyage:arrivals' and r.status <> 'succeeded'
+                             and coalesce(r.return_message, '') ~* '^\s*job canceled\s*$'),
            'failed_msgs', (select json_agg(distinct return_message) from runs r2 where r2.jobname = 'byeharu-voyage:arrivals' and r2.status <> 'succeeded')) j
-    from runs where jobname = 'byeharu-voyage:arrivals'),
+    from beats),
 rec as (
   select json_build_object('n', count(*), 'avg', round(avg(s)::numeric, 2), 'max', round(max(s)::numeric, 2),
            'failed', count(*) filter (where status <> 'succeeded'),
@@ -136,22 +150,25 @@ let s = ""; process.stdin.on("data", d => s += d).on("end", () => {
     if (P.without_rounds > 0) fails.push(P.without_rounds + " PIRATES day(s) in the window carry no rounds");
   }
   console.log("");
-  console.log("ARRIVALS SWEEP (cron byeharu-voyage:arrivals, runs started in the window): n = " + A.n);
-  if (A.n === 0) { fails.push("no arrivals run in the window"); console.log("  none"); }
+  console.log("ARRIVALS BEATS (public.arrivals_beats ring + kept :07 minutes, one row a second; cron byeharu-voyage:arrivals is one minute-long run): beats n = " + A.n + ", minute runs n = " + A.runs);
+  if (A.n === 0) { fails.push("no arrivals beat recorded in the window (the one-hour ring is overwritten; only the :06:30-:09:00 of each hour is kept 7 days): nothing measured"); console.log("  none"); }
   else {
     const avgOk = Number(A.avg) <= 3, p95Ok = Number(A.p95) < 5;
-    console.log("  avg " + f(A.avg) + " s   bound <= 3 s -> " + (avgOk ? "holds" : "BROKEN"));
-    console.log("  p95 " + f(A.p95) + " s   bound <  5 s -> " + (p95Ok ? "holds" : "BROKEN"));
-    console.log("  max " + f(A.max) + " s   failed runs " + A.failed + (A.failed > 0 ? " " + JSON.stringify(A.failed_msgs) : "") + "   (printed, not bounded)");
-    if (!avgOk) fails.push("arrivals avg " + f(A.avg) + " s > 3 s");
-    if (!p95Ok) fails.push("arrivals p95 " + f(A.p95) + " s >= 5 s");
+    console.log("  beat avg " + f(A.avg) + " s   bound <= 3 s -> " + (avgOk ? "holds" : "BROKEN"));
+    console.log("  beat p95 " + f(A.p95) + " s   bound <  5 s -> " + (p95Ok ? "holds" : "BROKEN"));
+    console.log("  beat max " + f(A.max) + " s   beats rolled back on an error " + A.errors + "   (printed, not bounded)");
+    if (!avgOk) fails.push("arrivals beat avg " + f(A.avg) + " s > 3 s");
+    if (!p95Ok) fails.push("arrivals beat p95 " + f(A.p95) + " s >= 5 s");
   }
+  const runOk = A.run_failed === 0;
+  console.log("  minute job: failed runs " + A.run_failed + " -> " + (runOk ? "holds" : "BROKEN") + "   job-canceled runs " + A.run_canceled + " (printed, not counted)" + (A.failed_msgs ? "   messages " + JSON.stringify(A.failed_msgs) : ""));
+  if (!runOk) fails.push(A.run_failed + " arrivals minute-job run(s) failed");
   console.log("");
   console.log("RECONCILE (cron byeharu-voyage:reconcile, :07 hourly): n = " + R.n + (R.n ? "   avg " + f(R.avg) + " s   max " + f(R.max) + " s   failed " + R.failed : ""));
   for (const x of (R.runs || [])) console.log("  " + x.at + " UTC  " + f(x.s) + " s  " + x.status);
   console.log("");
   console.log("QUEUE: E_ENDURANCE refusals " + O.e_endurance + " (" + O.e_endurance_fleets + " fleet(s)) of " + O.refused_orders + " refused order(s) answered in the window; REPAIR orders issued " + O.repair_issued + ", done " + O.repair_done);
   console.log("");
-  console.log(fails.length ? "FAIL: " + fails.join("; ") : "PASS: paired lost and crew within the dark table + 5 / + 1 on the same raids; arrivals avg <= 3 s and p95 < 5 s; every PIRATES day fought in rounds");
+  console.log(fails.length ? "FAIL: " + fails.join("; ") : "PASS: paired lost and crew within the dark table + 5 / + 1 on the same raids; arrivals beat avg <= 3 s and p95 < 5 s, no minute run failed; every PIRATES day fought in rounds");
   process.exit(fails.length ? 1 : 0);
 });' "$RC"
