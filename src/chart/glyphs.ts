@@ -140,12 +140,12 @@ export const GLYPH = {
    */
   hullHalfLength: { 1: 2.85, 2: 3.25, 3: 5.35, 4: 6.1, 5: 7.0, 6: 8.3 } as Record<HullSize, number>,
   /**
-   * THE CARGO SHIP (0310, docs/CITY_CONVOYS.md section 2): 7, the capital size, 15 % over the heavy galleon (6.1)
-   * and 31 % over the nau (5.35) that most merchants are (owner 2026-11-06: *"reduce size like normal ship but
-   * slightly bigger"*; it was 9). Her beam (`cargoHullPath`, 0.74 of her half-length against a merchant's 0.5)
+   * THE CARGO SHIP (0310, docs/CITY_CONVOYS.md section 2): 5.8, 8 % over the nau (5.35) that most merchants
+   * are and just under the heavy galleon (6.1) (owner 2026-11-06: *"reduce size like normal ship but slightly
+   * bigger"*, then *"change the size smaller too"*; it was 9, then 7). Her beam (`cargoHullPath`, 0.8 of her half-length against a merchant's 0.5)
    * keeps her the stoutest hull on the sheet. Not off her burthen: the map draws her by her kind.
    */
-  cargoHullHalfLength: 7,
+  cargoHullHalfLength: 5.8,
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
   fleetHaloRadius: 4,
@@ -673,7 +673,7 @@ function waveAHullPath(shape: Exclude<HullShape, 'cargo'>, l: number): string {
 
 /**
  * 0310 — THE CARGO SHIP (owner, 2026-11-05: *"cargo ship? with different graphics. npc like merchants but
- * different."*). WIDE AND DEEP-BELLIED: a blunt bow and a beam three quarters of her half-length, which no
+ * different."*). WIDE AND DEEP-BELLIED: a blunt bow and a beam four fifths of her half-length, which no
  * merchant has. A HIGH STERN: the waist tucks in and the after-castle steps out past the belly, ending in a
  * flat transom, so she is widest aft and reads as a tub with a castle on it at 18 px.
  *
@@ -681,7 +681,7 @@ function waveAHullPath(shape: Exclude<HullShape, 'cargo'>, l: number): string {
  * wide, and read as mush. What names her at 1x is two solid bars (`kindMarkPath`); the crown stays on her card.
  */
 function cargoHullPath(l: number): string {
-  const b = l * 0.74
+  const b = l * 0.8
   const hull = mirrored([[0, -l], [b * 0.56, -l * 0.92], [b * 0.88, -l * 0.66], [b, -l * 0.24], [b, l * 0.22],
     [b * 0.9, l * 0.42], [b * 1.08, l * 0.5], [b * 1.08, l], [0, l]])
   return hull
@@ -689,17 +689,17 @@ function cargoHullPath(l: number): string {
 
 /**
  * THE MARK A KIND WEARS ON HER DECK, centred on her hull, bow up, solid (never a hole). `bars`: two bars across
- * the beam, each 0.3 of her half-length thick (2.7 px at the cargo ship's 9, so never under 2 px at her
+ * the beam, each 0.36 of her half-length thick (2.1 px at the cargo ship's 5.8, so never under 2 px at her
  * `minHalfLength`), kept just inside the hull's outline so her keyline still runs round her.
  */
 export function kindMarkPath(mark: KindMark, halfLength: number): string {
   const l = halfLength
-  const w = l * 0.74 * 0.86
-  const t = l * 0.3
+  const w = l * 0.8 * 0.86
+  const t = l * 0.36
   const bar = (top: number) => `M${-w} ${top}L${w} ${top}L${w} ${top + t}L${-w} ${top + t}Z`
   switch (mark) {
     case 'bars':
-      return bar(l * 0.12) + bar(l * 0.12 + t + l * 0.14)
+      return bar(l * 0.12) + bar(l * 0.12 + t + l * 0.1)
   }
 }
 

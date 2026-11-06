@@ -191,7 +191,7 @@
   --color-merchant: #2a5bb8;
   --color-kind-mark: #0b0f14;
   /* The ONE colour of every cargo ship's hull, day and night (glyphs.ts KIND_LOOK.cargo.fill.token). */
-  --color-cargo-hull: #ff9460;
+  --color-cargo-hull: #2fd4b0;
 
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because
