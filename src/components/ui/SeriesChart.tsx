@@ -26,6 +26,9 @@ const FILL: Record<SeriesTone, string> = {
   muted: 'fill-surface-2',
 }
 
+/** The reading line above a chart of a stated height (Tailwind h-5), part of its box. */
+const READING_H = 20
+
 export function SeriesChart({
   points,
   format,
@@ -73,7 +76,10 @@ export function SeriesChart({
   const sheet = useMemo(() => (height !== undefined && boxW > 0 ? { width: boxW, height } : size), [height, boxW, size])
   const model = useMemo(() => seriesChartModel(points, sheet), [points, sheet])
   const [hover, setHover] = useState<number | null>(null)
-  if (!model) return <>{empty}</>
+  // A CHART OF A STATED HEIGHT RESERVES IT FROM FIRST PAINT: what stands where the line would be (the note, or nothing) is as tall as the
+  // chart that replaces it (reading line + `height`), so the answer landing late moves nothing under it. Found 2026-11-06: the
+  // Cities and Markets cards held a 44 px note until `world.stats_overview` answered, then grew 152 px and pushed the list down.
+  if (!model) return height === undefined ? <>{empty}</> : <div className={`flow-root w-full ${className}`} style={{ minHeight: READING_H + height }}>{empty}</div>
   const { plot } = model
   const floor = plot.y + plot.h
   const dot = hover === null ? null : nearestDot(model, hover)
@@ -93,7 +99,7 @@ export function SeriesChart({
   const reading = dot ?? model.dots[model.dots.length - 1]
   return (
     <div className={`w-full ${className}`} data-testid="series-chart" data-chart>
-      <div className="flex h-5 items-center justify-end text-t-caption tabular-nums">
+      <div className="flex items-center justify-end text-t-caption tabular-nums" style={{ height: READING_H }}>
         <span className={dot ? 'text-ink' : 'text-ink-faint'} data-testid="series-chart-reading">
           {format(reading.value)} · {new Date(reading.atMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
