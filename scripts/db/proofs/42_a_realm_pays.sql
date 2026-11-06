@@ -197,7 +197,8 @@ $b$
   perform public.navy_read(v_t);
   perform public.navy_stations_build(v_nat, v_t);
   update public.navy_realms r set stations_at = v_t + interval '1 day' where r.nation_id <> v_nat;
-  update public.navy_realms r set ships = 3, read_at = v_t where r.nation_id = v_nat;
+  update public.navy_realms r set read_at = v_t + interval '30 days';   -- the number is the proof's: no daily read in this scene
+  update public.navy_realms r set ships = 3 where r.nation_id = v_nat;
   v_st2 := public.navy_station_of(v_nat, 2);
   if v_st2 = v_cap then
     raise exception 'PROOF 42 FAIL: this proof needs a second station that is not the capital';
