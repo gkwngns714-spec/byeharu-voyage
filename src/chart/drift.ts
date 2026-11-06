@@ -35,6 +35,8 @@
 //     re-measuring a course the server has already measured is exactly the second mover.
 //   * It is thrown away on every read. Three seconds later the server's point replaces it whole,
 //     so nothing accumulates and no error can compound.
+//   * It does not move her while a battle holds her (0323). The clock this file reads starts at the
+//     later of the read and the hold's end: before that the served point is the answer.
 //
 // The rate is composed of served figures only — `(totalNm − sailedNm)` over `(etaMs − readAtMs)`.
 // Her `speed_kn` is deliberately NOT used: that is a LIVE reading of the hull (0074's fittings can
@@ -65,7 +67,7 @@ export interface Drift {
 export function driftedPoint(voyage: MapVoyage, drift: Drift | null): LatLon {
   if (!drift || drift.readAtMs === null) return voyage.at
 
-  const { segNm, segIndex, legFrac, course, totalNm, sailedNm, etaMs } = voyage
+  const { segNm, segIndex, legFrac, course, totalNm, sailedNm, etaMs, heldUntilMs } = voyage
   if (segNm === null || !(segNm > 0)) return voyage.at
 
   const a = course[segIndex]
@@ -77,7 +79,8 @@ export function driftedPoint(voyage: MapVoyage, drift: Drift | null): LatLon {
   // the time they have to run must be measured from the same instant or the pace drifts as the
   // read ages.
   const nmLeft = totalNm - sailedNm
-  const msLeft = etaMs - drift.readAtMs
+  const fromMs = heldUntilMs === null ? drift.readAtMs : Math.max(drift.readAtMs, heldUntilMs)   // 0323: a held ship's miles start when the hold ends
+  const msLeft = etaMs - fromMs
   if (!(nmLeft > 0) || !(msLeft > 0)) return voyage.at
 
   // SHE STOPS WHEN SHE ARRIVES. The clock this file is allowed to read runs out at the server's own
@@ -86,7 +89,7 @@ export function driftedPoint(voyage: MapVoyage, drift: Drift | null): LatLon {
   // The clamp below also stops her, at the far vertex — but only on the leg she is on, so on a
   // course with a corner still ahead of her the two are different instants, and this is the one
   // that is about arriving.
-  const elapsedMs = Math.min(drift.nowMs, etaMs) - drift.readAtMs
+  const elapsedMs = Math.min(drift.nowMs, etaMs) - fromMs
   if (!(elapsedMs > 0)) return voyage.at
 
   const advanced = legFrac + ((nmLeft / msLeft) * elapsedMs) / segNm

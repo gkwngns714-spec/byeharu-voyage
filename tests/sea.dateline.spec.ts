@@ -296,6 +296,7 @@ test.describe('the chart draws a straddling segment the short way', () => {
       sailedNm: 0.27 * 8615.2,
       totalNm: 8615.2,
       etaMs: 1_000_000,
+      heldUntilMs: null,
       departedMs: 0,
       destinationCode: 'CLL',
       destPoint: null,

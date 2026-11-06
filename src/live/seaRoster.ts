@@ -1,3 +1,4 @@
+import { heldMs } from '../domain/fleet'
 import { instantMs } from '../lib/format'
 import { lonLerp } from '../lib/geo'
 import type { RosterFleet, RosterVoyage, TrafficFleet } from '../lib/rpc'
@@ -17,6 +18,8 @@ import type { RosterFleet, RosterVoyage, TrafficFleet } from '../lib/rpc'
 // downstream changes. The PLACEMENT is linear in time, from departure to the served eta, along the
 // served legs. The eta is the server's and already carries every delay a hazard put on her, so she
 // arrives on the instant the server says.
+//
+// 0323: A BATTLE'S HOLD IS NOT SAILING. Time spent held comes out of both sides of the fraction, so she stands still for it and sails on from the same point (domain/fleet/hold).
 
 /** One roster row placed at `nowMs`, in the shape the chart draws. */
 export function trafficRowAt(f: RosterFleet, nowMs: number): TrafficFleet {
@@ -32,7 +35,8 @@ function voyageAt(v: RosterVoyage, nowMs: number): TrafficFleet['voyage'] {
   if (dep === null || eta === null || legs.length === 0 || course.length < legs.length + 1) {
     return null
   }
-  const frac = eta > dep ? Math.min(1, Math.max(0, (nowMs - dep) / (eta - dep))) : 1
+  const span = eta - dep - heldMs(v.holds, Infinity)
+  const frac = span > 0 ? Math.min(1, Math.max(0, (nowMs - dep - heldMs(v.holds, nowMs)) / span)) : 1
   const total = legs.reduce((a, b) => a + b, 0)
   const done = frac * total
   // THE LEG SHE IS ON — the walk voyage.position makes over the same frozen legs.
@@ -58,6 +62,7 @@ function voyageAt(v: RosterVoyage, nowMs: number): TrafficFleet['voyage'] {
     total_nm: v.total_nm,
     nm_done: done,
     waters: [],
+    holds: v.holds,
     position: {
       seg_index: 0,
       leg_frac: legFrac,

@@ -59,6 +59,7 @@ export function fleetStatusTone(
     case 'DOCKED':
       return 'success'
     case 'REPAIRING':
+    case 'IN_BATTLE':
       return 'warning'
     case 'ADRIFT':
     case 'UNABLE_TO_SAIL':

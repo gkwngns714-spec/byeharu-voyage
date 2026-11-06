@@ -853,7 +853,7 @@ export interface HaggleAttempt {
 
 // ── world.fleets() ─────────────────────────────────────────────────────────────────────────────
 
-export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL'
+export type FleetStatus = 'DOCKED' | 'ANCHORED' | 'SAILING' | 'REPAIRING' | 'ADRIFT' | 'UNABLE_TO_SAIL' | 'IN_BATTLE'
 
 /** 0074 — one fitting mounted on a hull. It has LEFT the player's store at the port to be here. */
 export interface MountedFitting {
@@ -1094,6 +1094,12 @@ export interface VoyageWater {
   now: boolean
 }
 
+/** 0323 — one battle's hold on a voyage: the two instants she stood still between (`voyage.holds_served`). */
+export interface VoyageHold {
+  from: string
+  until: string
+}
+
 export interface FleetVoyage {
   id: string
   /** Destination port CODE — null when she is bound for a bare point of open water (0039). */
@@ -1120,6 +1126,8 @@ export interface FleetVoyage {
    *  build talking to a server older than 0055; the chain always serves it, empty on arrival. */
   waters?: VoyageWater[]
   position: VoyagePosition | null
+  /** 0323 — the battles that held her, served only when there are any. She stands still between each pair (domain/fleet/hold). */
+  holds?: VoyageHold[]
 }
 
 export type OrderStatus = 'pending' | 'active' | 'done' | 'failed' | 'cancelled' | 'skipped'
@@ -2255,6 +2263,8 @@ export interface RosterVoyage {
   eta: string
   total_nm: number
   departed_at: string
+  /** 0323 — the battles that held her, served only when there are any: a roster row is placed from frozen facts, and these are among them. */
+  holds?: VoyageHold[]
 }
 
 /** One roster row — `world.sea_traffic`'s row with the voyage served as its frozen facts. */

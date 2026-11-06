@@ -38,6 +38,7 @@ export const FACE_OF: Record<string, Exclude<Face, 'all'>> = {
   PROVISION_REFUSED: 'voyage',
   REPAIRING: 'voyage',
   REPAIRED: 'voyage',
+  BATTLE_REPORT: 'voyage',
   TOWED: 'voyage',
   FORCED_HOME: 'voyage',
   ROUTE_LAP: 'voyage',
