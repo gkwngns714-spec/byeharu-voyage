@@ -86,6 +86,24 @@ test('lit: the hall reads her band and her fine, the door pays it, and the capit
   if (!again.ok) expect(again.refusal.code).toBe('E_NO_FINE')
 })
 
+test('0334: the hall says how long a country wants you, only that country, and the History line reads the mark', async () => {
+  await db.callAs(`with lit as (update public.world_config set value = 'true'::jsonb where key = 'regard_enabled' returning 1) select count(*)::int as result from lit`)
+  const before = await worldTownHall(lisbon)
+  expect(before.ok && before.value.dues?.regard?.band).toBeTruthy()
+  expect(before.ok && before.value.dues?.regard?.wanted_hours).toBeUndefined()
+  const battle = await db.callAs<string>(
+    `with b as (insert into public.battles (kind, site, started_at, resolves_at, status) values ('ATTACK', '{}'::jsonb, now(), now() + interval '1 minute', 'RESOLVED') returning id) select b.id as result from b`)
+  await db.callAs(`with m as (select public.wanted_mark($1, $2, $3) as w) select m.w as result from m`, [player, portugal, battle])
+  const wanted = await worldTownHall(lisbon)
+  expect(wanted.ok && wanted.value.dues?.regard?.wanted_hours).toBe(48)
+  const free = await db.callAs<string>(`select p.id as result from public.ports p where p.code = 'SVQ'`)
+  const spain = await worldTownHall(free)
+  expect(spain.ok && spain.value.dues?.regard?.wanted_hours).toBeUndefined()
+
+  const event = { id: 'x', kind: 'WANTED', at: '2026-11-06T00:00:00Z', ducats_delta: 0, balance_after: 0, payload: { nation: 'PRT', hours: 48 } }
+  expect(headline(event, (c) => c)).toContain('48')
+})
+
 test('the history lines read the two new events, in the country\'s name and the band\'s word', () => {
   const event = (kind: string, payload: Record<string, unknown>) => ({ id: 'x', kind, at: '2026-11-06T00:00:00Z', ducats_delta: 0, balance_after: 0, payload })
   const up = headline(event('REGARD_CHANGED', { nation: 'PRT', delta: 10, score: 210, band: 'friendly' }), (c) => c)

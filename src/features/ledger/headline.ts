@@ -30,7 +30,8 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //   NATION_CHANGED {from, from_name, to, to_name}                 (0143 — codes and names)
 //   DONATED       {port, port_name, amount, nation}               (0144 — a gift to a city)
-//   FINE_PAID     {port, port_name, amount, nation}               (0319 — a fine paid at a capital)
+//   FINE_PAID     {port, port_name, amount, nation, at_sea?}      (0319 — a fine paid at a capital; 0334: taken at sea by a navy)
+//   WANTED        {nation, battle_id, until, hours}               (0334 — a country marks the company after a battle)
 //   REGARD_CHANGED {nation, delta, reason, score, band}           (0319 — what a country thinks of the company moved)
 //   BATTLE_REPORT {fleet, battle_id, outcome, lines[], fights[], loot?, crew_lost?}  (0323 — a timed battle is over; lines and fights as a VOYAGE_REPORT's. 0327: an attack's gold and hands)
 //   FLAG_CHANGED  {port, port_name, from, from_name, to, to_name, share_to, share_from}  (0146)
@@ -281,6 +282,14 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         country: countryName(p, 'nation') ?? t('history.aCountry'),
         band: band ? regardBandWord(band as RegardBand) : '',
         score: score !== null ? formatInt(score) : '',
+      })
+    }
+    // 0334: a country remembers a battle it did not answer.
+    case 'WANTED': {
+      const hours = num(p, 'hours')
+      return t('history.wanted', {
+        country: countryName(p, 'nation') ?? t('history.aCountry'),
+        hours: hours !== null ? formatInt(hours) : '',
       })
     }
     // 0143: the company's change of country, in the country's own name.

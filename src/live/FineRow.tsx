@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { Button, Figure, Note, Row } from '../components/ui'
-import { formatDucats } from '../lib/format'
+import { formatDucats, formatInt } from '../lib/format'
 import { cmdPayFine } from '../lib/rpc'
 import type { Refusal, SnapshotPort, TownHallView } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 import { useWorld } from './worldStore'
+
+/** 0334 (docs/WORLD_POWERS.md §5.3): "Wanted": how long this country's mark on your company stands. Served only while one does. */
+export function WantedRow({ hall }: { hall: TownHallView }) {
+  const t = useT()
+  const hours = hall.dues?.regard?.wanted_hours
+  if (hours === undefined) return null
+  return <Row label={t('town.wanted')} value={<Figure value={t('town.wantedHours', { hours: formatInt(hours) })} />} data-testid="townhall-wanted" />
+}
 
 /** 0319 (docs/WORLD_POWERS.md §2.1, §4.5): "Fine": what this capital asks of your company, and one button, only while a fleet of yours lies here.
  *  Served only while one is owed, so a hall with none draws nothing. The server holds the coin to what is owed and to your purse. */

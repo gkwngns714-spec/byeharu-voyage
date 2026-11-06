@@ -409,6 +409,14 @@ public.battle_sides (battle_id, fleet_id, side, joined_at, arrives_at)
 
 **What the navy takes from a player's merchant fleet:** the PLUNDERED table, cargo 25-50 %, crew -10 %. Goods go to the nation's capital stock. A **fine** of 5 % of her cargo value, capped 100,000 d., capital's purse, moved. Hull by the fight, never below 25 % (`navy_hull_floor`). Insurance pays what it covers, from the same purses. Decided by default.
 
+**Built as W14, migration 0334, dark, 2026-11-06 (`docs/dev-log/2026-11-06-wanted.md`). Where the build differs:**
+- `navy_hunt_per_day` ships at 0 and is the only switch. No lit value is set: the owner's.
+- The row also holds the ship and her sheet, frozen, so a late settle fights the same fight. The waters are marked on the voyage's frozen segments as `navy`, so a merchant's roll reads nothing.
+- Paid off pays the fine alone. Thrown back costs no goods, no fine and no hands. The cargo value is `goods.base_value`.
+- A fine at sea buys back bad regard at the fine's price, capped at what is owed, and ends the mark when nothing is left owed.
+- The rollback above stops new voyages. A voyage already frozen keeps its row.
+- W13 calls `public.wanted_mark`. `public.attack_close` already calls it when she won or no ship reached the battle.
+
 ### 5.4 Cost, rollback, slices
 
 **Beat:** none for the job. One indexed read of `battles` a minute. `depart` gains one read per human departure. Expect a handful of battles a day. Worst case 19 at a time.
@@ -803,6 +811,8 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 **Every migration slice:** one PR, number order, `~/bin/bv-deploy.sh`, self-assert on rolled-back probes only, red-first harness in `scripts/ops/harness/`, a `scripts/db/proofs/` file, hunks that reverse, dark byte parity, `docs/dev-log/` file. **Parallel:** W0a, W1, W4 and W5 can be built together, deployed in order. W9, W2 and the attack light each get a measured window of their own.
 
 **W11 is built, migration 0327, dark, not deployed** (`docs/dev-log/2026-11-06-a-player-attacks.md`). `attack_enabled` stays false.
+
+**W14 is built, migration 0334, dark, not deployed** (`docs/dev-log/2026-11-06-wanted.md`). `navy_hunt_per_day` stays 0.
 
 **W4 is built, migration 0321, dark, not deployed** (`docs/dev-log/2026-11-06-a-ship-changes-fleets.md`). Lighting it is `fleet_room_bite`, the owner's, in its own window.
 
