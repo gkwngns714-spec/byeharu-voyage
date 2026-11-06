@@ -75,3 +75,4 @@ export {
 // compose. It lives in this section because what a stat decides is a fact about the fleet rules,
 // not about any screen that prints one (statGloss.ts's header carries the citations).
 export { SHIP_STATS, shipStatItems, type ShipStatGloss, type ShipStatKey } from './statGloss'
+export { heldMs, heldUntilMs, inBattle } from './hold'
