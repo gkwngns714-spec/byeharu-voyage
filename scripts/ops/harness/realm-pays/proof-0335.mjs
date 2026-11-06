@@ -2,7 +2,7 @@
 // proof-0335.mjs — A REALM PAYS FOR ITS NAVY (migration 0335): the red-first proof. LOCAL ONLY (PGlite); not in CI.
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/realm-pays/proof-0335.mjs [--no-mutations] [--cost] [--show] [--only=<text>] [--with=17,32,37,39,40,41]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/realm-pays/proof-0335.mjs [--no-mutations] [--cost] [--show] [--only=<text>] [--with=17,32,37,39,40,41] [--snapshot]
 //
 // Restores the cached world at the head before 0335 (never from zero), then inside transactions that are rolled back runs:
 //   RED FIRST         - proof 42 on the world with no file: it must fail;
@@ -11,6 +11,7 @@
 //   --with            - the real file followed by each named proof, one transaction each;
 //   MUTATION CONTROLS - deliberate breakages of the file, each required to FAIL its self-assert, or proof 42 right after it, for the intended reason;
 //   --cost            - public.crown_donors, public.capital_can_draw and public.capital_draw on the local world, what a lit run adds.
+//   --snapshot        - keep the world at the head before 0335 in the prefix cache, so the next run restores it. On this PC the cache stands at 96 files and an apply from there takes 40 minutes.
 // The harness reads the migration from supabase/migrations; it does not edit it.
 
 import { readFile, readdir } from 'node:fs/promises'
@@ -33,7 +34,7 @@ for (const name of await migrationFiles()) {
 const file = (await readFile(path.join(MIGRATIONS_DIR, NAME), 'utf8')).replaceAll('\r', '')
 const proof = (await readFile(PROOF, 'utf8')).replaceAll('\r', '')
 const scenes = await Promise.all(SCENES.map(async (s) => (await readFile(s, 'utf8')).replaceAll('\r', '')))
-const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir: PREFIX_CACHE_DIR, log: say, required: true, snapshots: false })
+const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir: PREFIX_CACHE_DIR, log: say, required: true, snapshots: process.argv.includes('--snapshot') })
 const db = out.db
 say(`world: head ${files.at(-1).name.slice(0, 14)}, ${out.restored} of ${files.length} restored, ${out.applied.filter((r) => !r.restored).length} applied`)
 

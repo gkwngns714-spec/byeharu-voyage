@@ -260,6 +260,7 @@ $b$
   perform pg_temp.purse(v_cap, 1000, 7777);
   perform pg_temp.room(v_d1, v_cost * 2);
   perform pg_temp.room(v_d2, v_cost / 2);
+  update public.navy_realms r set paid_at = v_t where r.nation_id = v_nat;   -- this hour is paid: the build is what is read here, RP_PAY reads the pay
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_sum := pg_temp.purses();
   v_led := (select count(*) from public.ledger);

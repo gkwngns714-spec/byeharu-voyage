@@ -432,6 +432,10 @@ as $b$ select false $b$
   raise notice 'PASS: NAVY_PAY — % d. to the harbour she lies at, moved; the ship at the capital moved nothing; a missed hour is not carried', v_slice;
 
   -- ── A CAPITAL THAT CAN PAY ONE ──
+  -- Moved deliberately 2026-11-07 with 0335: a capital now draws on its realm, so what its capital alone can pay is read with the realm bare. The build left the yard rich. Proof 42 is the realm's half.
+  for v_id in select p.id from public.ports p where p.kind = 'HARBOUR' and p.id <> v_cap and public.city_capital(p.id) = v_cap order by p.code loop
+    perform pg_temp.purse(v_id, 0);
+  end loop;
   perform pg_temp.purse(v_cap, v_slice * 2, v_slice);   -- two on the balance, one of them its reserve
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_t := v_t + interval '1 hour';
