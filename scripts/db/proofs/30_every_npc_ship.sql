@@ -320,6 +320,8 @@ begin
     from public.great_powers g join public.nations n on n.id = g.nation_id
     join public.ports p on p.code = n.capital_port_code and p.kind = 'HARBOUR' where n.code = 'PRT';
   update public.world_config set value = 'true'::jsonb where key = 'convoys_enabled';
+  update public.cargo_fleet_sizes set ships = 5, read_at = now();   -- 0326 re-cut: a country's number by hand; proof 35 proves the number
+  update public.world_config set value = to_jsonb(1) where key = 'convoy_idle_every';
   for v_n in 1 .. 3 loop
     perform public.tick_cargo_ships(now(), v_nat);
   end loop;

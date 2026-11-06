@@ -48,6 +48,8 @@ declare
   r       record;
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'npc_traders_enabled', 'standing_routes_enabled', 'combat_bite');
+  update public.cargo_fleet_sizes set ships = 5, read_at = now();   -- 0326 re-cut: a country's number by hand; proof 35 proves the number
+  update public.world_config set value = to_jsonb(1) where key = 'convoy_idle_every';
   update public.world_config set value = to_jsonb(50000) where key = 'treasury_reserve_floor';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set earned_day = v_last;   -- only the aid runs
@@ -85,7 +87,7 @@ begin
   end loop;
   v_ms := round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   if (select count(distinct k.nation_id) from public.cargo_circuits k) <> (select count(*) from public.great_powers)
-     or (select count(*) from public.cargo_ships) <> public.wc_int('convoy_ships_per_nation') * (select count(*) from public.great_powers) then
+     or (select count(*) from public.cargo_ships) <> (select sum(public.convoy_ships_of(g.nation_id)) from public.great_powers g) then
     raise exception 'PROOF 19 FAIL: not every realm got its circuit and ships: %', v_r;
   end if;
   for r in select k.id, k.nation_id, k.left_out, p.id as cap,
