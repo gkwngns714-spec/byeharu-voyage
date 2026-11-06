@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { Bar, Clip, FactsLine, Note, Row, ScrollPane, Skeleton, StatCell } from '../../../components/ui'
 import { regardBandWord } from '../../../domain/port'
-import { formatInt } from '../../../lib/format'
+import { formatDucats, formatInt, formatMiles } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { worldLevels, type CaptainLevel, type LevelCut, type LevelsView, type YourCaptain } from '../../../lib/rpc'
 import { useServedRead } from '../../../live/useServedRead'
@@ -93,12 +93,12 @@ function Company({ v }: { v: Ready }) {
   const sea = v.skills.seamanship
   return (
     <>
-      <Track name={t('command.lvTrading')} level={trading.level} cut={trading} line={t('command.lvTurnover', { n: formatInt(trading.turnover) })} testid="levels-trading" />
+      <Track name={t('command.lvTrading')} level={trading.level} cut={trading} line={t('command.lvTurnover', { n: formatDucats(trading.turnover) })} testid="levels-trading" />
       <Track
         name={t('command.lvExploration')}
         level={exploration.level}
         cut={exploration}
-        line={t('command.lvPorts', { ports: formatInt(exploration.ports_reached), nm: formatInt(exploration.nm_sailed) })}
+        line={t('command.lvPorts', { ports: formatInt(exploration.ports_reached), nm: formatMiles(exploration.nm_sailed) })}
         testid="levels-exploration"
       />
       {combat.playable ? (
