@@ -17,7 +17,7 @@ export const yardDict = defineDict({
     noFleetYard: 'No fleet of yours here.',
     elsewhere: 'Built abroad only',
     type: 'Type',
-    crownNote: 'Yours to run: you pay crew and stores.',
+    crownNote: 'Yours to run: you pay crew and supplies.',
     toBuild: 'to build',
     building: 'Building…',
     layDown: 'Build',

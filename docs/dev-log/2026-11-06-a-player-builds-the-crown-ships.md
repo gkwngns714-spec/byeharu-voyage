@@ -16,7 +16,7 @@ So this slice adds no shipyard path, no flag and no class row, and it moves no p
 
 - **`public.crown_classes()`** reads the three knobs that already decide a crown's class: `convoy_ship_class`, `convoy_armed_class`, `navy_ship_class`. A flag on the class would be a second copy of those knobs. No rule reads it: it is a label.
 - **`crown`, 'CARGO' or 'NAVY'**, served on `world.snapshot` `ship_classes[]` and `world.building_yard` `hulls[]`. Absent on every other class, so those rows are byte for byte what they were.
-- **Yard:** the badge on the tile, those hulls first in their group, a Type row and one line in the tray: "Yours to run: you pay crew and stores."
+- **Yard:** the badge on the tile, those hulls first in their group, a Type row and one line in the tray: "Yours to run: you pay crew and supplies."
 - **Codex:** the badge, a Type filter, the search finds "cargo ship" and "navy ship", a tray row, and each side card says which class to build. `HullCrown` is the one renderer. The word is the chart's own (`map.cargoShip`, `map.navyShip`).
 - **No switch.** Nothing a player could not already do is opened, so there is no balance change to hold back.
 
