@@ -16,6 +16,7 @@ export const DESK_FACES = [
   { id: 'city', get label() { return t('command.f_city') } },
   { id: 'invest', get label() { return t('command.f_invest') } },
   { id: 'report', get label() { return t('command.f_report') } },
+  { id: 'levels', get label() { return t('command.f_levels') } },
 ] as const
 
 export type DeskFace = (typeof DESK_FACES)[number]['id']

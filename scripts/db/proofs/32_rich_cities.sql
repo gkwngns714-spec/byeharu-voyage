@@ -3,7 +3,7 @@
 --
 --   0324's self-assert reads the catalog only (a migration never runs a real game step, docs/OPS_HEALTH.md section 4). This proof starts where prod is, ships lit and based at their capitals,
 --   lights convoy_rich_enabled and runs the REAL public.city_day, cargo step, job and voyage engine. The sea is stubbed quiet, so a lap is a lap. The economy is CLOSED here, as on prod.
---   Every count of ships reads convoy_ships_per_nation.
+--   Every count of ships reads public.convoy_ships_of (0326 re-cut: the flat number is gone; a number is set by hand and the idle ships step every run).
 --
 -- @pass RICH_DARK        off, ships lit: the capital calls on its realm and loads, every ship at her capital, every origin the capital, a capital never in the roster
 -- @pass RICH_ORIGINS     lit: the top convoy_rich_ports by room; the knob is read; no room is the capital; a port with no course or of another flag is not an origin
@@ -66,9 +66,10 @@ begin
   update public.world_config set value = to_jsonb(0.1) where key = 'crown_call_share';
   update public.world_config set value = to_jsonb(20) where key = 'crown_call_cover';
   update public.world_config set value = 'false'::jsonb where key = 'npc_refits_enabled';
-  update public.world_config set value = to_jsonb(greatest(5, public.wc_int('convoy_ships_per_nation'))) where key = 'convoy_ships_per_nation';
+  update public.cargo_fleet_sizes set ships = 10, read_at = now();
+  update public.world_config set value = to_jsonb(1) where key = 'convoy_idle_every';
   update public.world_config set value = to_jsonb(3) where key = 'convoy_rich_ports';
-  v_k := public.wc_int('convoy_ships_per_nation');
+  v_k := 10;
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set earned_day = v_last, ducats = 50000, reserve = 0;   -- only the aid runs; everyone exactly at target
 
@@ -520,7 +521,7 @@ as $b$ select false $b$
   raise notice 'PASS: RICH_STAYS — she waits out the days counted from her last book row, a home in the top holds, the move is one leg, a ship astray sails home';
 
   -- ── A SHIP MADE LIT ──
-  update public.world_config set value = to_jsonb(v_k + 1) where key = 'convoy_ships_per_nation';
+  update public.cargo_fleet_sizes s set ships = v_k + 1 where s.nation_id = v_nat;
   v_o := public.cargo_origins(v_nat);
   v_n := public.cargo_ships_commission(v_nat);
   if v_n <> 1 or (select c.home_port_id from public.cargo_ships c where c.nation_id = v_nat and c.ord = v_k + 1) <> v_o[v_k % cardinality(v_o) + 1]

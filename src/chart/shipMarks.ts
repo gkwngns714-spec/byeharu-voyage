@@ -23,8 +23,8 @@
 //    Only at the widest spans (`THIN_TIERS`, measured: docs/dev-log/2026-10-26-ships-stay.md) are
 //    the merchants thinned, and then by a fact about the SHIP alone — `hash(id) % THIN_MOD < n` —
 //    so the same ships are kept wherever their neighbours sail. Never a cell contest on position.
-// 3. YOURS ARE NEVER THINNED, AND NEITHER IS A CARGO SHIP (0310): there are at most 50 of her, and she is
-//    the thing a player looks for at the widest span.
+// 3. YOURS ARE NEVER THINNED, AND NEITHER IS A CARGO SHIP (0310): she is the thing a player looks for at the
+//    widest span. 0326: there may be 500 of her, but only the ones at sea are on the chart (tests/map.cargoload.spec.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { project, xOnSheet, type ViewBox } from '../lib/geo'

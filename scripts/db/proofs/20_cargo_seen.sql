@@ -37,6 +37,8 @@ declare
   v_view  jsonb := '{"south": 30, "north": 45, "west": -20, "east": 0}'::jsonb;
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'npc_traders_enabled', 'standing_routes_enabled');
+  update public.cargo_fleet_sizes set ships = 5, read_at = now();   -- 0326 re-cut: a country's number by hand; proof 35 proves the number
+  update public.world_config set value = to_jsonb(1) where key = 'convoy_idle_every';
   update public.world_config set value = to_jsonb(50000) where key = 'treasury_reserve_floor';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
 
