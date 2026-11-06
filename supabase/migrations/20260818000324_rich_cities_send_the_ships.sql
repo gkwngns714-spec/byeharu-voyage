@@ -20,7 +20,7 @@
 --   public.cargo_rebase      The one sailed leg to it. Never a teleport.
 --   cargo_circuits.start_port: where a circuit starts and ends. Existing rows take their last stop. cargo_ships.based_at: when the rule last based her. Null: never.
 --
--- THE HUNKS, each occurs once and reverses to its pre-image:
+-- THE RE-CUTS (hunks of the live bodies), each occurs once and reverses to its pre-image. public.cargo_circuit_plan and public.cargo_circuit_build are superseded with new signatures:
 --   public.crown_aid (3):      lit, the capital joins the roster, and the run returns the load before public.crown_call. The instant path is unreachable lit.
 --   public.capital_pays (1):   lit, no call. A gift pays from what the capital holds, else {waiting} (GIFT_WAITING). A founding keeps p_must, the world's richest harbour: a sign-up never fails.
 --   public.cargo_ships_load (6): any idle ship of the realm at her home, the most room first; a donor by public.treasury_try_lock, never waited for (0307's rule); at most public.cargo_load_room.
