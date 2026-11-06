@@ -65,7 +65,9 @@ export function CommandScreen() {
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
-  const fleets = useWorld((s) => s.fleets)
+  // 0321: an empty fleet takes no order, so Command does not offer her (the Fleets tab does).
+  const allFleets = useWorld((s) => s.fleets)
+  const fleets = useMemo(() => allFleets.filter((f) => f.ships.length > 0), [allFleets])
   const open = useWorld((s) => s.open)
 
   const fleetId = useCommandDraft((s) => s.fleetId)

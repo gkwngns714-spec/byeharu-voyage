@@ -137,7 +137,7 @@ function FleetsBody({ title }: { title: string }) {
                 <FleetRow
                   key={fleet.id}
                   fleet={fleet}
-                  where={[whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
+                  where={[fleet.ships.length === 0 ? t('fleets.noShips') : whereLine(whereabouts(fleet), portName), fleetDue(fleet, nowMs), routeCaption(routeOfFleet(routes, fleet.id))]
                     .filter(Boolean)
                     .join(' · ')}
                   selected={openFleetId === fleet.id}
@@ -204,7 +204,7 @@ function FleetRow({
 
   return (
     <Row
-      mark={<IconDisc name="ship" tone={MARK[fleetStatusTone(fleet.status)]} label={fleet.status.toLowerCase()} />}
+      mark={<IconDisc name="ship" tone={fleet.ships.length === 0 ? 'muted' : MARK[fleetStatusTone(fleet.status)]} label={fleet.status.toLowerCase()} />}
       /* WHERE SHE IS RIDES ON THE NAME'S LINE, not in the row's value slot. The value slot stands
          beside the WHOLE band, so with it filled the caption line under the name was squeezed to
          the label's width and the bars measured 12px — a mood ring. Composed as a stack (Row's
@@ -238,7 +238,7 @@ function FleetRow({
           390 they are (128 + 12 + 128 in about 290) and a veteran's eight rows stand whole in the panel;
           at 320 they are not, hull wraps under supplies as it always did. From `sm` all three share
           one line. The order is the order a phone reads them in; nothing is dropped. */}
-      <FactsLine data-testid="fleet-row-bars">
+      {fleet.ships.length > 0 && <FactsLine data-testid="fleet-row-bars">
         <span className="shrink-0 tabular-nums">{t('fleets.ofSupplies', { days: formatVoyageDays(fleet.endurance_days) })}</span>
         {/* §4.4: a hull that is merely sound is NEUTRAL — green is for gain, and a whole fleet
             painted green spends the one colour that means "cheap" on a hull that is fine. */}
@@ -255,7 +255,7 @@ function FleetRow({
         {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
             with its staged change washed on. */}
         <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-48 grow basis-full sm:basis-auto" />
-      </FactsLine>
+      </FactsLine>}
     </Row>
   )
 }

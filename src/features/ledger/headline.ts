@@ -156,6 +156,9 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     }
     case 'REPAIRED':
       return t('history.repaired', { fleet })
+    // 0321: a ship changed fleets in port.
+    case 'SHIP_MOVED':
+      return t('history.shipMoved', { ship: str(p, 'ship') ?? '', from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
     // 0152: a wreck towed to the nearest shipyard — or brought into the one where it lay (0 miles).
     case 'TOWED': {
       const to = str(p, 'to')

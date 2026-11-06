@@ -30,7 +30,7 @@ import { useT } from '../lib/i18n'
 
 /** One note per wrecked fleet among `docked` — the fleets of yours lying in this harbour. */
 export function TowNote({ docked }: { docked: readonly FleetView[] }) {
-  const wrecks = docked.filter((f) => f.status === 'UNABLE_TO_SAIL')
+  const wrecks = docked.filter((f) => f.status === 'UNABLE_TO_SAIL' && f.ships.length > 0)   // 0321: an empty fleet is no wreck
   if (wrecks.length === 0) return null
   return (
     <div className="space-y-2" data-testid="tow">

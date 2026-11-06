@@ -105,6 +105,8 @@ import type {
   AllegianceView,
   CountryChanged,
   DonateReceipt,
+  ShipMoves,
+  ShipMoved,
   FineReceipt,
   TaxSet,
   NationStandings,
@@ -817,6 +819,16 @@ export function worldMoneyFeed(after: string | null, limit = 50): Promise<RpcRes
 /** Every good once (0171): its cheapest seller, the record's line, what your fleet carries. */
 export function worldWatchlist(fleetId: string | null): Promise<RpcResult<Watchlist>> {
   return call<Watchlist>('worldWatchlist', [fleetId])
+}
+
+/** What the fleet page may offer for this fleet's ships (0321). `on` false while dark: the page draws nothing. */
+export function worldShipMoves(fleetId: string): Promise<RpcResult<ShipMoves>> {
+  return call<ShipMoves>('worldShipMoves', [fleetId])
+}
+
+/** Move a ship into `toFleetId`, or into a new fleet called `newName` (0321). Same port, no orders running; the server judges. */
+export function cmdMoveShip(shipId: string, toFleetId: string | null, newName: string | null): Promise<RpcResult<ShipMoved>> {
+  return call<ShipMoved>('cmdMoveShip', [shipId, toFleetId, newName])
 }
 
 /** What `cmdTow` would do (0152) — the real tow, rolled back — or the refusal it would give

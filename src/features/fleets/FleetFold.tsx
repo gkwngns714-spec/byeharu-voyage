@@ -88,6 +88,9 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
         </Row>
       )}
 
+      {fleet.ships.length === 0 ? (
+        <Row label={t('fleets.noShips')} tone="muted" hairline={false} data-testid="fleet-no-ships" />
+      ) : <>
       <SectionColumns count={3}>
         <SheetSection heading={t('fleets.ships')} data-testid="fleet-fold-section">
           <FleetShips fleet={fleet} />
@@ -108,6 +111,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       >
         {t('fleets.command', { name: fleet.name })}
       </Button>
+      </>}
     </div>
   )
 }

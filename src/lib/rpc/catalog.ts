@@ -426,6 +426,9 @@ const TABLE = {
   // real tow rolled back — the fee and the harbour printed are the ones charged, or the refusal the
   // press would get (E_NOT_WRECKED, E_TOW_FUNDS with have / need in ducats, …). Not a line of the
   // grammar: a wreck cannot run her queue (cmd.advance stops at a fleet that is not docked).
+  // 0321 (docs/FLEETS_AND_SLOTS.md section 2.4): a ship changes fleets in port, and what the fleet page may offer. Dark: E_NOT_IN_USE and {on: false}.
+  worldShipMoves: { schema: 'world', fn: 'ship_moves', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  cmdMoveShip: { schema: 'cmd', fn: 'move_ship', mutates: true, args: [{ name: 'p_ship', type: 'uuid' }, { name: 'p_to', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',

@@ -1,6 +1,8 @@
 import { ShipTile, TileField } from '../../components/ui'
 import type { FleetView } from '../../lib/rpc'
 import { hullFraction, shipHoldUsed } from '../../domain/fleet'
+import { MoveShip } from './MoveShip'
+import { useShipMoves } from './useShipMoves'
 // HER HULLS, AS TILES — what an eight-column table was.
 //
 // The table (Ship · Class · Hull · Crew · Speed · Hold · Load · Free) was 8 facts wide in a 358px
@@ -19,11 +21,12 @@ import { hullFraction, shipHoldUsed } from '../../domain/fleet'
 // same hull); what is DERIVED — the hull fraction and the tuns in use — stays here, through
 // domain/fleet, because the design system knows nothing above it.
 export function FleetShips({ fleet }: { fleet: FleetView }) {
+  const moves = useShipMoves(fleet.id)
   return (
     <TileField>
       {fleet.ships.map((ship) => (
+        <div key={ship.id} className="contents">
         <ShipTile
-          key={ship.id}
           name={ship.name}
           className={ship.class}
           flagship={ship.is_flagship}
@@ -36,6 +39,8 @@ export function FleetShips({ fleet }: { fleet: FleetView }) {
           holdTotal={ship.hold}
           fittings={ship.fittings}
         />
+        <MoveShip moves={moves} ship={ship} />
+        </div>
       ))}
     </TileField>
   )
