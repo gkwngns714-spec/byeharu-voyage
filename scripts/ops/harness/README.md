@@ -13,6 +13,7 @@ These are the scratch tools behind the 2026-10-18/19 measurements, copied from `
   then runs each arm on that dump (the after arm applies the migration under test before the kickoff); `players.mjs` +
   `player.sql` measure a starter's day (days quoted, ducats per real hour and laps per real day by band, through the game's
   own speed authority) before and after the migration in one rolled-back transaction.
+- `armed-cargo/` is 0328: `proof-0328.mjs` (red first, the `rich-cities` scene and its own `dark-scene.sql` equal before and after the file, mutations red, the real file and proof 34 green, cached world; `--first=` applies 0325 and 0327 before it), `before.sql` and `after.sql`, both read-only on prod.
 - `rich-cities/` is 0324: `proof-0324.mjs` (red first, `dark-scene.sql` equal before and after the file, mutations red, the real file and proof 32 green, cached world), `before.sql` and `after.sql`, both read-only on prod.
 - `battles/` is 0323: `proof-0323.mjs` (the file's absence red, mutations red, the real file and proof 31 green, cached world; `--first=` applies 0321 and 0322 before it), `before.sql`, read-only on prod.
 - `two-sides/` is 0320: `proof-0320.mjs` (mutations red, the real file and proof 28's pure half green, on `mini-world.mjs`, no chain needed), `on-image.mjs` (the file and the whole proof on a kept world image), `golden.sql` (read-only on prod, take it before and after the deploy), `prod-check.sql` (read-only), `sides.mjs` (`raid/sim.mjs --sides`: real hulls on both sides).
