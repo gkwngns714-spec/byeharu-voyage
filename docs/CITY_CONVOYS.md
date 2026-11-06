@@ -3,6 +3,7 @@
 **Words (owner, 2026-11-05):** the ship is a **Cargo ship**; the gold is **Funds**; its load is a **Shipment**. Not "gift", not "aid".
 
 **Status: V1 live dark (0308, `docs/dev-log/2026-11-05-cargo-ships.md`): the fleet kind, the book of funds aboard, the sizing. V2 built dark (0309, `docs/dev-log/2026-11-05-cargo-funds.md`): loading from `crown_aid`'s same decision, one circuit of a realm, delivery, return, funds aboard in the total, no dock fee, hull rule. V4 built dark (0310, `docs/dev-log/2026-11-05-cargo-visible.md`): her hull, the map's reads, her card, the hall and Stats. Goods are design.** Prod head at writing: **0305**.
+**0324 (W7, dark behind `convoy_rich_enabled`): where this doc says a ship loads at or returns to the capital, lit she does so at her origin, a rich city of her realm, and the capital is a stop. `docs/WORLD_POWERS.md` section 3.1.**
 **The owner (2026-11-05):** *"i need a transportation ship, cities moving trade goods to different cities, moving gold to gold. Capital city with its massive income, will provide other cities with gold when depleted."*
 Every "decided by default" is mine; the owner reverses afterwards.
 

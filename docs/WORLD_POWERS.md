@@ -198,6 +198,8 @@ The sheet changes no fight: the fight reads the same `crew_pct`. **Decided by de
 2. `cargo_ship_step`: `city_capital(port) = home` becomes `port_nation(port) = ship's nation`. A capital becomes a normal stop.
 3. **A second writer of `CROWN_CALL` exists:** the 0234 capital-pays body for gifts and starting money. Lit, a gift pays from what the capital holds, else `GIFT_WAITING`. Founding keeps `p_must` (the world's richest harbour), because a sign-up must never fail.
 
+**Built, dark, 2026-11-06: migration 0324 (W7), behind its own switch `convoy_rich_enabled`, false.** This section stands, with these differences. `convoys_enabled` was already lit, so a change behind it would have been live: the new switch is the one W9 lights. Hunk 1 adds a branch above the call instead of moving the old one, and the old branch dies in its own slice once the owner keeps the switch on. The 100 live ships at capitals sail to their origins, one leg each, at once; after that a ship moves only as written above. Knobs `convoy_rich_ports` 3, `convoy_rebase_idle_days` 7. Origin stays the port she loaded at, so a ship moves only with no funds aboard. See `docs/dev-log/2026-11-06-rich-cities-send-the-ships.md`.
+
 **Warning already in the dev-logs:** lighting stops instant aid at the next `:37`, and cities late on a circuit wait up to about 5 hours for the first ship. The 03:37 run also showed funds spent within the hour, so ships change when funds arrive, not how many are needed.
 
 ### 3.2 An armed class
@@ -258,7 +260,7 @@ Applies to every NPC ship: merchant, cargo, navy, pirate.
 | **W6** `every_npc_ship_has_an_origin` | `fleet_origin`, `npc_refits` job, `REFIT` moved kind, wreck rule, `refit_yard`, `ransom_share`, all dark | Probe wreck: book closes, every purse summed moves 0; broke city waits and retries; pays once; no hull restored unpaid |
 | **W7** `rich_cities_send_the_ships` | Origin at commissioning, circuit from a start, load at origin, the three hunks of 3.1 | Lit probe: no `CROWN_AID`, no `CROWN_CALL`; donor above its room; capital tops up as a stop; dark equals pre-image |
 | **W8** `the_cargo_ship_is_armed` | Class knob, crew, upkeep, stores, sim printed | A real lap in proof 19's shape: no debt, no forced home, upkeep moved; `voyage.fight` at four strengths; speed printed |
-| **W9** Light | Owner's switch, then `E_CITY_BROKE` and bids for 30 minutes | Forward rollback ready; 5-hour first-lap warning repeated to the owner |
+| **W9** Light | Owner's switch (`convoy_rich_enabled`, W7), then `E_CITY_BROKE` and bids for 30 minutes | Forward rollback ready; 5-hour first-lap warning repeated to the owner |
 
 ---
 
