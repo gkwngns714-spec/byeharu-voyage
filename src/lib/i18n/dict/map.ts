@@ -5,6 +5,12 @@ export const mapDict = defineDict({
   en: {
     // 0310 (owner, 2026-11-05): the ship, the gold and her load, docs/CITY_CONVOYS.md.
     cargoShip: 'Cargo ship',
+    // 0331 (docs/WORLD_POWERS.md Part 6): her card.
+    navyShip: 'Navy ship',
+    station: 'Station',
+    mission: 'Duty',
+    mission_PATROL: 'Patrol',
+    laidUp: 'Laid up',
     // 0327 (docs/WORLD_POWERS.md §4.2): the card's Attack. Words of the sides, never a forecast.
     attack: 'Attack',
     attackFoe: 'Foe',
@@ -91,6 +97,11 @@ export const mapDict = defineDict({
   },
   ko: {
     cargoShip: '화물선',
+    navyShip: '군함',
+    station: '기지',
+    mission: '임무',
+    mission_PATROL: '순찰',
+    laidUp: '정박 중',
     attack: '공격',
     attackFoe: '상대',
     attackMiles: '{n}마일',

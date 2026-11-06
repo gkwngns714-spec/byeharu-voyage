@@ -29,7 +29,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import type { FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
-import { CARGO_HULL, hullShapeOf } from './glyphs'
+import { CARGO_HULL, NAVY_HULL, hullShapeOf } from './glyphs'
 import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
 import { heldUntilMs, whereabouts } from '../domain/fleet'
 import { instantMs } from '../lib/format'
@@ -179,7 +179,7 @@ export function mapTrafficOf(
       // served fact, one reading of it. A merchant with no list falls back to her count of
       // class-less hulls, which is what this chart drew for her before the read carried classes.
       // 0310: A CARGO SHIP IS DRAWN BY HER KIND, NOT THE CLASS SHE IS BUILT ON (docs/CITY_CONVOYS.md section 2).
-      hulls: t.kind === 'CARGO_SHIP' ? [CARGO_HULL] : t.hulls && t.hulls.length > 0
+      hulls: t.kind === 'CARGO_SHIP' ? [CARGO_HULL] : t.kind === 'NAVY' ? [NAVY_HULL] : t.hulls && t.hulls.length > 0
         ? hullCodesOf(t.hulls)
         : Array.from({ length: Math.max(0, Math.trunc(t.ships)) || 0 }, () => null),
     })
@@ -209,6 +209,7 @@ export function mapTrafficOf(
       lane:
         t.lane && t.lane.length >= 2 ? t.lane.map(([lat, lon]) => ({ lat, lon })) : null,
       ...(t.kind === 'CARGO_SHIP' ? { cargo: true as const } : {}),
+      ...(t.kind === 'NAVY' ? { navy: true as const } : {}),
     })
   }
   return out

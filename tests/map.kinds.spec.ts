@@ -11,7 +11,7 @@
 // `vite build` first), and reads the computed fill, keyline and mark colours the browser resolved (CSS mixes
 // in sRGB, and so does this).
 //
-// WHAT IS NOT HERE YET: navy and pirate have no shape and no row (W12, W17: "same spec gains the row").
+// WHAT IS NOT HERE YET: pirate has no shape and no row (W17: "same spec gains the row"). Navy gained hers with W12, 0331.
 //
 // TWO THINGS THE DOC GOT WRONG ABOUT THE GROUND, FOUND BY READING THE CSS:
 //  - The doc's "light sea" ground does not occur on a chart: `.bv-chart-night` puts the night palette back on
@@ -64,7 +64,7 @@ test.beforeAll(async () => {
 })
 
 const AT = { lat: 0, lon: 0 }
-type Who = { readonly kind: 'merchant' | 'cargo' | 'yours'; readonly ink: MerchantInk; readonly hull?: string }
+type Who = { readonly kind: 'merchant' | 'cargo' | 'navy' | 'yours'; readonly ink: MerchantInk; readonly hull?: string }
 
 function fleetOf(id: string, heading = 0, hulls: string[] = ['nau']): FleetOnChart {
   return {
@@ -81,7 +81,7 @@ function fleetOf(id: string, heading = 0, hulls: string[] = ['nau']): FleetOnCha
 /** The real FleetsLayer drawing ONE ship on a 40-unit window centred on her, `scale` device px per CSS px. */
 function shipSvg(who: Who, ground: string, extra = '', size = 40, heading = 0): string {
   const p = project(AT)
-  const row = who.kind === 'yours' ? null : ({ ...fleetOf('t', heading, who.kind === 'cargo' ? [who.hull ?? glyphs.CARGO_HULL] : ['nau']), merchant: { ink: who.ink, ...(who.kind === 'cargo' ? { cargo: true } : {}) }, loopD: null, laneD: null } as unknown as TrafficOnChart)
+  const row = who.kind === 'yours' ? null : ({ ...fleetOf('t', heading, who.kind === 'cargo' ? [who.hull ?? glyphs.CARGO_HULL] : who.kind === 'navy' ? [glyphs.NAVY_HULL] : ['nau']), merchant: { ink: who.ink, ...(who.kind === 'cargo' ? { cargo: true } : who.kind === 'navy' ? { navy: true } : {}) }, loopD: null, laneD: null } as unknown as TrafficOnChart)
   const layer = {
     fleets: row ? [] : [fleetOf('f', heading)],
     traffic: row ? [row] : [],
@@ -173,6 +173,7 @@ const asRegionsMerchant = () => {
 const WHO: readonly Who[] = [
   { kind: 'merchant', ink: 'prt' },
   ...INKS.map((ink): Who => ({ kind: 'cargo', ink })),
+  ...INKS.map((ink): Who => ({ kind: 'navy', ink })),
   { kind: 'yours', ink: 'prt' },
 ]
 
@@ -255,6 +256,76 @@ test.describe('the contrast law, on the built stylesheet', () => {
   })
 })
 
+test.describe('the navy ship has a colour of her own', () => {
+  test.beforeAll(() => glyphs.registerHullClasses(CLASSES))
+
+  test('every navy ship is one fill, day and night, and it is not cargo teal or a merchant colour', async ({ page }) => {
+    for (const night of [0, 1]) {
+      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+        ...INKS.map((ink): Who => ({ kind: 'navy', ink })),
+        { kind: 'cargo', ink: 'prt' },
+        { kind: 'merchant', ink: 'prt' },
+        { kind: 'yours', ink: 'prt' },
+      ])
+      const rows = await read(page, night)
+      const navy = rows.filter((r) => r.kind === 'navy').map((r) => r.fill.join())
+      expect(new Set(navy).size, `navy fills at --night ${night}`).toBe(1)
+      for (const other of ['cargo', 'merchant', 'yours']) expect(rows.find((r) => r.kind === other)!.fill.join(), `${other} vs navy at --night ${night}`).not.toBe(navy[0])
+      // a hue apart, not a shade apart: a colour distance of at least 100 of 441 from cargo teal
+      const [r0, g0, b0] = rows.find((r) => r.kind === 'navy')!.fill
+      const [r1, g1, b1] = rows.find((r) => r.kind === 'cargo')!.fill
+      expect(Math.hypot((r0 - r1) * (r0 > 1 ? 1 : 255), (g0 - g1) * (r0 > 1 ? 1 : 255), (b0 - b1) * (r0 > 1 ? 1 : 255)), 'navy vs cargo').toBeGreaterThanOrEqual(100)
+    }
+  })
+
+  test('she differs from cargo and from every merchant hull by at least 20 % of her area, at 1x and 2x', async ({ page }) => {
+    const navy = glyphs.hullPath(glyphs.NAVY_HULL)
+    const others = [{ code: 'cargo', d: glyphs.hullPath(glyphs.CARGO_HULL) }, ...CLASSES.map((c) => ({ code: c.code, d: glyphs.hullPath(c.code) }))]
+    for (const dpr of [1, 2]) {
+      const res = await page.evaluate(
+        ({ navy, others, dpr }) => {
+          const raster = (d: string) => {
+            const cv = document.createElement('canvas')
+            cv.width = 40 * dpr
+            cv.height = 40 * dpr
+            const c = cv.getContext('2d')!
+            c.scale(dpr, dpr)
+            c.translate(20, 20)
+            c.fill(new Path2D(d))
+            return c.getImageData(0, 0, cv.width, cv.height).data
+          }
+          const a = raster(navy)
+          let area = 0
+          for (let i = 3; i < a.length; i += 4) if (a[i] > 127) area++
+          return others.map((o) => {
+            const b = raster(o.d)
+            let diff = 0
+            for (let i = 3; i < a.length; i += 4) if (a[i] > 127 !== b[i] > 127) diff++
+            return { code: o.code, share: diff / area }
+          })
+        },
+        { navy, others, dpr },
+      )
+      for (const r of res) expect(r.share, `navy vs ${r.code} at ${dpr}x`).toBeGreaterThanOrEqual(0.2)
+    }
+  })
+
+  test('she is drawn at 7, is never thinned, her stripe is 2 CSS px wide at the shortest she is drawn, and her row carries her kind', () => {
+    expect(glyphs.KIND_LOOK.navy.minHalfLength).toBe(7)
+    expect(glyphs.KIND_LOOK.navy.thin).toBe(false)
+    expect(glyphs.KIND_LOOK.navy.mark).toBe('stripe')
+    expect(glyphs.KIND_LOOK.navy.fill.token).toBe('var(--color-navy-hull)')
+    expect(glyphs.hullHalfLengthOf(glyphs.NAVY_HULL)).toBe(7)
+    expect(glyphs.hullPath(glyphs.NAVY_HULL).match(/M/g)).toHaveLength(1)
+    const stripe = glyphs.kindMarkPath('stripe', 7).replace('M', '').replace('Z', '').split('L').map((p) => p.trim().split(/\s+/).map(Number))
+    const xs = stripe.map((p) => p[0])
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThanOrEqual(2)
+    const [m] = mapTrafficOf([{ id: 'n1', company: 'c', nation_code: 'PRT', ink: 'prt', name: 'n', status: 'SAILING', ships: 1, hulls: ['galion'], port: null, roadstead: null, anchor: [38.7, -9.2], voyage: null, lane: null, kind: 'NAVY' } as unknown as TrafficFleet])
+    expect(glyphs.shipKindOf(m)).toBe('navy')
+    expect(m.hulls).toEqual([glyphs.NAVY_HULL])
+  })
+})
+
 test.describe('the silhouettes', () => {
   test.beforeAll(() => glyphs.registerHullClasses(CLASSES))
 
@@ -303,7 +374,7 @@ test.describe('one renderer, one table', () => {
   })
 
   test('every kind has one row, with the table fields', () => {
-    for (const k of ['merchant', 'cargo', 'yours']) {
+    for (const k of ['merchant', 'cargo', 'navy', 'yours']) {
       expect(Object.keys(glyphs.KIND_LOOK[k as 'merchant']).sort(), k).toEqual(['fill', 'hull', 'mark', 'minHalfLength', 'thin'])
     }
   })
@@ -359,6 +430,7 @@ test.describe('the pictures', () => {
     { label: 'CARGO, Portugal', who: { kind: 'cargo', ink: 'prt' } },
     { label: 'CARGO, England', who: { kind: 'cargo', ink: 'eng' } },
     { label: 'CARGO, Ottoman', who: { kind: 'cargo', ink: 'ott' } },
+    { label: 'NAVY, any country', who: { kind: 'navy', ink: 'prt' } },
     { label: 'yours (gold, on her halo)', who: { kind: 'yours', ink: 'prt' } },
   ]
   const SCENES = [

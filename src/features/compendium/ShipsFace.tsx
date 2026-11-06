@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ALL, Card, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSplit, RankBars, Row, Tray, type TrayDetent } from '../../components/ui'
-import { CargoHull } from '../../live/CargoHull'
+import { CargoHull, NavyHull } from '../../live/CargoHull'
 import { useServedRead } from '../../live/useServedRead'
 import { formatFixed, formatInt, formatKnots, formatOfTotal, formatTons } from '../../lib/format'
 import { worldStatsNow, type SnapshotShipClass, type StatsNow } from '../../lib/rpc'
@@ -53,18 +53,34 @@ const NO_FILTER: Filters = { line: ALL, size: ALL, role: ALL, tech: ALL }
 /** 0310: THE CARGO SHIP, ONCE ONE EXISTS. She is no class of hull a company can buy, so she is no row of the list; asked once, on the face's mount. */
 function CargoShipEntry() {
   const t = useT()
-  const ships = useServedRead<StatsNow>('codex-cargo', worldStatsNow, { name: 'worldStatsNow', trigger: 0 }).view?.cargo_ships
-  if (!ships) return null
+  const view = useServedRead<StatsNow>('codex-cargo', worldStatsNow, { name: 'worldStatsNow', trigger: 0 }).view
+  const ships = view?.cargo_ships
+  const navy = view?.navy_ships
   return (
-    <Card title={t('map.cargoShip')} data-testid="codex-cargo-ship">
-      <div className="flex items-center gap-3">
-        <CargoHull size={64} />
-        <div className="min-w-0">
-          <Figure value={formatInt(ships)} />
-          <Hint>{t('codex.cargoNote')}</Hint>
-        </div>
-      </div>
-    </Card>
+    <>
+      {ships ? (
+        <Card title={t('map.cargoShip')} data-testid="codex-cargo-ship">
+          <div className="flex items-center gap-3">
+            <CargoHull size={64} />
+            <div className="min-w-0">
+              <Figure value={formatInt(ships)} />
+              <Hint>{t('codex.cargoNote')}</Hint>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+      {navy ? (
+        <Card title={t('map.navyShip')} data-testid="codex-navy-ship">
+          <div className="flex items-center gap-3">
+            <NavyHull size={64} />
+            <div className="min-w-0">
+              <Figure value={formatInt(navy)} />
+              <Hint>{t('codex.navyNote')}</Hint>
+            </div>
+          </div>
+        </Card>
+      ) : null}
+    </>
   )
 }
 
