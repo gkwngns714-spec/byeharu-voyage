@@ -3674,3 +3674,32 @@ export interface StatsMe {
     board: { rank: number; name: string; nation: string | null; is_you: boolean }[]
   }
 }
+
+/** 0325: one cut of points into a level (`public.level_line`): where this level began and where the next does (null at the cap). */
+export interface LevelCut {
+  points: number
+  level: number
+  from: number
+  next_at: number | null
+}
+
+/** 0325: `world.levels()`. `bite` is levels_bite: false means a hull's or a captain's level changes no stat, slot or bonus yet. */
+export type LevelsView =
+  | { company: false }
+  | {
+      company: true
+      bite: boolean
+      tracks: {
+        trading: LevelCut & { turnover: number }
+        exploration: LevelCut & { ports_reached: number; nm_sailed: number }
+        combat: LevelCut & { playable: boolean }
+      }
+      skills: { seamanship: { level: number; max: number } }
+      /** `next.opens`: the sea zones that ask that title; `seas_bite` is sea_conditions_bite: false means no zone asks it yet. */
+      title: { level: number; name: string | null; max: number; next: { level: number; name: string; opens: string[] } | null; seas_bite: boolean }
+      /** The room as it stands now (`public.earned_caps`); `counted` is fleet_room_bite. */
+      room: { fleet_max: number; fleet_ship_max: number; earned: boolean; fleets: number; counted: boolean }
+      ships: Array<LevelCut & { id: string; name: string; class: string; fleet: string; flagship: boolean; in_force: number }>
+      /** Only while regard_enabled; null while it is dark. */
+      regard: Array<{ code: string; name: string; flag: string; score: number; band: RegardBand }> | null
+    }

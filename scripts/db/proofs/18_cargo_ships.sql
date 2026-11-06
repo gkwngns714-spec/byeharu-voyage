@@ -59,7 +59,8 @@ begin
 
   -- lit: every great power with a harbour capital
   update public.world_config set value = 'true'::jsonb where key = 'convoys_enabled';
-  v_want := public.wc_int('convoy_ships_per_nation');
+  update public.cargo_fleet_sizes set ships = 5, read_at = now();   -- 0326: a country's number by hand; proof 35 proves the number
+  v_want := 5;
   for r in select g.nation_id from public.great_powers g join public.nations n on n.id = g.nation_id
              join public.ports p on p.code = n.capital_port_code and p.kind = 'HARBOUR' order by n.code loop
     v_n := public.cargo_ships_commission(r.nation_id);

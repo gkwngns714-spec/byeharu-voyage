@@ -79,7 +79,7 @@ Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_
 | Invests, gets capital gifts, is refounded | yes | never |
 | On the map | merchant hull, nation ink | its own hull, nation ink plus a crown mark |
 
-- New fleet kind `CARGO_SHIP`; count per nation = knob `convoy_ships_per_nation` (default 2). Never takes a player's cargo, cannot be boarded in v1.
+- New fleet kind `CARGO_SHIP`; count per nation = `public.convoy_ships_of` (0326: 20 to 50 by the country's cash). Never takes a player's cargo, cannot be boarded in v1.
 - Upkeep per leg comes from the capital purse (`convoy_upkeep_per_leg`, a moved flow, not minted).
 
 **Graphics (one renderer, no fork):** ships are drawn by `src/chart/glyphs.ts` (`hullPath`, one renderer for fleets and merchants, nation ink) and chosen by `src/chart/shipMarks.ts`. So:
@@ -129,7 +129,7 @@ Measured on prod (pure reads, `treasury_balance`, `stats_city` last 24 h, `port_
 
 ## 6. Knobs (rows; all added dark)
 
-`convoys_enabled` false · `convoy_goods_enabled` false · `convoy_ships_per_nation` 2 · `convoy_low_water_days` 3 · `convoy_target_days` 7 · `convoy_floor` 50,000 · `convoy_cap_per_city_day` (decided at build from a prod read) · `convoy_capital_reserve_pct` 0.30 · `convoy_max_days` 10 · `convoy_surplus_pct` 0.80 · `convoy_lack_pct` 0.20 · `convoy_upkeep_per_leg`.
+`convoys_enabled` false · `convoy_goods_enabled` false · `convoy_ships_min` 20 · `convoy_ships_max` 50 · `convoy_low_water_days` 3 · `convoy_target_days` 7 · `convoy_floor` 50,000 · `convoy_cap_per_city_day` (decided at build from a prod read) · `convoy_capital_reserve_pct` 0.30 · `convoy_max_days` 10 · `convoy_surplus_pct` 0.80 · `convoy_lack_pct` 0.20 · `convoy_upkeep_per_leg`.
 
 ---
 

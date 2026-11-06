@@ -43,7 +43,7 @@ interface Screen {
 }
 
 const SCREENS: Screen[] = [
-  { name: 'Command', route: 'command', faces: [[null, 'Trade'], [null, 'City'], [null, 'Invest'], [null, 'Report']] },
+  { name: 'Command', route: 'command', faces: [[null, 'Trade'], [null, 'City'], [null, 'Invest'], [null, 'Report'], [null, 'Levels']] },
   { name: 'City', route: 'command', faces: [[null, 'City'], ['City buildings', '*']] },
   { name: 'Production', route: 'city?place=production' },
   { name: 'Fleets', route: 'fleets' },
