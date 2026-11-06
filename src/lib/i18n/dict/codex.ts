@@ -71,6 +71,9 @@ export const codexDict = defineDict({
     baseFigures: 'Before bonuses.',
     cargoNote: 'Crown ships. They carry funds to cities.',
     navyNote: 'A country\'s warships. Paid by its capital.',
+    type: 'Type',
+    buildAs: 'Build: {names}',
+    crownBuild: 'You can build one at a yard.',
   },
   ko: {
     all: '전체',
@@ -141,5 +144,8 @@ export const codexDict = defineDict({
     baseFigures: '보너스 전.',
     cargoNote: '왕실 선박. 도시에 자금을 나릅니다.',
     navyNote: '나라의 군함. 수도가 비용을 냅니다.',
+    type: '종류',
+    buildAs: '건조: {names}',
+    crownBuild: '조선소에서 건조할 수 있습니다.',
   },
 })
