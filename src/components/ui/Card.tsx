@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
-import { PAGE_GAP, pageSplitClass } from './screenLayout'
+import { PAGE_GAP, pageSplitClass, pageThreeClass } from './screenLayout'
 import { StatCell } from './StatCell'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -82,6 +82,15 @@ export function PageSplit({
       <aside className={`flex min-w-0 flex-col ${PAGE_GAP} ${sideFirst ? 'order-first lg:order-2' : ''} ${stickySide ? 'lg:sticky lg:top-16' : ''}`} data-page-side="">
         {side}
       </aside>
+    </div>
+  )
+}
+
+/** THREE COLUMNS OF THE WHOLE PAGE from 1,024 px, one under it (screenLayout.ts): for a page whose three lists are read side by side. */
+export function PageThree({ className = '', children, ...rest }: { className?: string; children: ReactNode } & { 'data-testid'?: string }) {
+  return (
+    <div className={`${pageThreeClass()} ${className}`} {...rest}>
+      {children}
     </div>
   )
 }

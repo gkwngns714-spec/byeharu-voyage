@@ -141,17 +141,20 @@ test('the stepped question has one home — the three building faces', () => {
 // PORT behind). The owner: *"delete port tab, and focus on command tab"*. Each building face is ONE component in
 // src/live, and the desk's City face composes every one of them, so PORT's folder holds no face of its own:
 //   Trade (buy · sell · bargain · basket · requests · resupply) PortTrade · Town PortTown · Town Hall (invest,
-//   donate, the purse) CityTownHall · Storage PortStorage · Craft PortWorkstation · Inn (hire, dismiss, resupply,
+//   donate, the purse) CityTownHall · Craft PortWorkstation · Inn (hire, dismiss, resupply,
 //   captains) PortInn · Build PortYard · Repair PortShipyard · Skills PortAcademy · the fair QuayFair · a tow TowNote.
 test("every building face is one component in src/live, and the desk's City face composes each one", () => {
-  const FACES = ['PortTrade', 'PortTown', 'CityTownHall', 'PortStorage', 'PortWorkstation', 'PortInn', 'PortYard',
+  const FACES = ['PortTrade', 'PortTown', 'CityTownHall', 'PortWorkstation', 'PortInn', 'PortYard',
     'PortShipyard', 'PortAcademy', 'QuayFair', 'TowNote']
   const city = readFileSync(path.join(SRC, 'features', 'command', 'city', 'City.tsx'), 'utf8')
   const missing = FACES.filter((name) => !city.includes(`import { ${name} } from '../../../live/`))
   expect(missing, `the desk's City face does not compose: ${missing.join(', ')}`).toEqual([])
+  // STORE, TAKE and the forge are the HQ's Production page (owner, 2026-11-06): the desk's tab and Town row are its door.
+  expect(city, 'the desk has no door to Production').toContain('productionHref(')
+  expect(readFileSync(path.join(SRC, 'features', 'city', 'CityScreen.tsx'), 'utf8'), 'the HQ does not compose Production').toContain(`import { PortProduction } from '../../live/PortProduction'`)
   // and no screen keeps a building face of its own (PORT's folder is its screen and its chrome)
   const portFaces = files(path.join(SRC, 'features')).filter((f) =>
-    /\/(Port(Trade|Town|Storage|Workstation|Yard|Shipyard|Academy|Fair)|CityTownHall|TownHallInfluence)\.tsx$/.test(f.split(path.sep).join('/')),
+    /\/(Port(Trade|Town|Production|Forge|Workstation|Yard|Shipyard|Academy|Fair)|CityTownHall|TownHallInfluence)\.tsx$/.test(f.split(path.sep).join('/')),
   )
   expect(portFaces.map(rel), 'a building face lives in a screen again').toEqual([])
 })

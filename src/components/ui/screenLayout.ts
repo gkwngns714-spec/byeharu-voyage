@@ -70,6 +70,11 @@ export function pageSplitClass(): string {
   return `grid grid-cols-1 ${PAGE_GAP} lg:grid-cols-[minmax(0,1fr)_var(--page-side)] lg:items-start`
 }
 
+/** THREE COLUMNS ACROSS from `lg`: one column below it (the HQ's Production: storage, cargo, recipes). */
+export function pageThreeClass(): string {
+  return `grid grid-cols-1 ${PAGE_GAP} lg:grid-cols-3 lg:items-start`
+}
+
 /** The docked Tray over a PAGE, from `lg`: the side column's own x and width, between the status strip (top-8) and the
  *  nav (bottom-14), rounded on every side (the margin shows beside it). Its right edge is the page's right margin —
  *  `max(--page-pad, 50% − PAGE_REM/2)` from the glass's right — and its width is `--page-side`. */

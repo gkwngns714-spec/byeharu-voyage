@@ -6,6 +6,8 @@ import { NavBar } from '../../app/NavBar'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
+import { PRODUCTION_PLACE } from '../../live/cityFaces'
+import { PortProduction } from '../../live/PortProduction'
 import { useCityKinds } from '../../live/useCityKind'
 import { useTownHall } from '../../live/useTownHall'
 import { PortFlag } from '../../live/PortFlag'
@@ -100,15 +102,14 @@ function loadStepsFor(t: ReturnType<typeof useT>, boot: number, hallDone: boolea
   ]
 }
 
-/** THE SIX PLACES — one row of the frame, the Town Hall first (the page's main panel), then the
- *  five buildings. A press changes the plan's mark and the right panel; it moves no cell (owner,
+/** THE FIVE PLACES — one row of the frame, the Town Hall first (the page's main panel), then the
+ *  buildings. Production takes the page under the row, storage, cargo and recipes across (owner, 2026-11-06). A press changes the plan's mark and the right panel; it moves no cell (owner,
  *  2026-10-31: the frame "stays the same"). */
-type CitySelection = 'hall' | CityBuilding
+type CitySelection = 'hall' | typeof PRODUCTION_PLACE | CityBuilding
 const CITY_TILES: readonly { id: CitySelection; icon: IconName; label: TKey }[] = [
   { id: 'hall', icon: 'wreath', label: 'city.cityHall' },
   { id: 'market', icon: 'chart', label: 'city.market' },
-  { id: 'storage', icon: 'cask', label: 'city.storage' },
-  { id: 'forge', icon: 'mallet', label: 'city.forge' },
+  { id: PRODUCTION_PLACE, icon: 'mallet', label: 'city.production' },
   { id: 'port', icon: 'ship', label: 'city.port' },
   { id: 'inn', icon: 'crew', label: 'city.inn' },
 ]
@@ -251,6 +252,7 @@ function CityBody({
   // The fleet acting for this city: one of yours lying here, else nobody (a read-only city).
   const { docked } = alongsideAt(fleets, port.code, draftFleetId)
   const fleet = docked[0] ?? null
+  const [params] = useSearchParams()
 
   // ONE HALL READ FEEDS THE WHOLE PAGE: the hall panel (the treasury, the influence book, the
   // investors board) and its five-figure block — the city's gold, YOUR STATUS
@@ -265,12 +267,14 @@ function CityBody({
   )
 
   // WHICH PLACE IS OPEN — the Town Hall until a tile is pressed.
-  const [selected, setSelected] = useState<CitySelection>('hall')
+  // `?place=production` is the door the desk's Production tab and every old Storage link goes through.
+  const [selected, setSelected] = useState<CitySelection>(params.get('place') === PRODUCTION_PLACE ? PRODUCTION_PLACE : 'hall')
 
   return (
     <CityFrame
       port={port}
       fleet={fleet}
+      docked={docked}
       hall={hall}
       hallRefusal={hallRefusal}
       employees={employees}
@@ -288,6 +292,7 @@ function CityBody({
 function CityFrame({
   port,
   fleet,
+  docked,
   hall,
   hallRefusal,
   employees,
@@ -299,6 +304,8 @@ function CityFrame({
   port: SnapshotPort
   /** A fleet of yours lying HERE (the city's acting fleet), or null — a read-only city. */
   fleet: FleetView | null
+  /** Your fleets lying here: Production picks among them. */
+  docked: readonly FleetView[]
   hall: TownHallView | null
   hallRefusal: Refusal | null
   employees: number
@@ -370,10 +377,10 @@ function CityFrame({
             </div>
           )}
 
-          {/* THE SIX PLACES — a row of cards across the page, always there: a press swaps the plan and the side panel and moves nothing here
+          {/* THE FIVE PLACES — a row of cards across the page, always there: a press swaps the plan and the side panel and moves nothing here
               (owner, 2026-10-31: "in buildings 6 building tappable should always be inside"). */}
           <nav aria-label={t('city.buildings')} data-testid="city-buildings">
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6 md:gap-4 xl:gap-6" data-testid="city-building-grid">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 md:gap-4 xl:gap-6" data-testid="city-building-grid">
               {CITY_TILES.map((b) => (
                 <button
                   key={b.id}
@@ -394,47 +401,55 @@ function CityFrame({
             </div>
           </nav>
 
-          <PageSplit
-            sideFirst
-            data-testid="city-top"
-            main={
-              <Card title={allegiance ? <CityFlag allegiance={allegiance} /> : undefined} data-testid="city-plan">
-                {/* THE PLAN, the full town, never cropped (CityScene fits the whole square plate inside the box with `xMidYMid meet`); the box is
-                    the same square for every place (the market's chart, on a phone, stands at its own height: it is a card that must not scroll inside itself), so a press moves the plan's mark and nothing else. The market's left region is its CHART
-                    (owner, 2026-10-31: "when pressing a market, instead of city, i would like to have a graph shown"). */}
-                <div
-                  className={`mx-auto w-full max-w-[clamp(20rem,calc(100dvh-22rem),44rem)] overflow-hidden ${selected === 'market' ? 'lg:aspect-square' : 'aspect-square'}`}
-                  data-testid="city-info-image"
-                >
-                  {selected === 'market' ? <MarketLeft port={port} /> : <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />}
-                </div>
-              </Card>
-            }
-            side={
-              <>
-                {/* YOUR purse — the frame's one line that repeats nothing from the hall (whose Gold is the CITY's purse). */}
-                <StatCard
-                  label={t('city.earnings')}
-                  text={ducats === null ? '—' : formatDucats(ducats)}
-                  tone={ducats === null ? 'faint' : 'ink'}
-                  data-testid="city-summary"
-                />
-                {selected === 'hall' ? (
-                  <CityHallPanel
-                    port={port}
-                    hall={hall}
-                    refusal={hallRefusal}
-                    employees={employees}
-                    relation={{ word: regard ? regardBandWord(regard.band) : t(RELATION_WORDS[relation]), stance, nation: portNation, band: regard?.band ?? null }}
-                  />
-                ) : (
-                  <div data-testid="city-open-panel">
-                    <CityFacePanel building={selected} port={port} fleet={fleet} />
+          {selected === PRODUCTION_PLACE ? (
+            <div data-testid="city-open-panel">
+              <div data-testid="city-face-panel" data-building={PRODUCTION_PLACE}>
+                <PortProduction key={port.id} port={port} docked={docked} />
+              </div>
+            </div>
+          ) : (
+            <PageSplit
+              sideFirst
+              data-testid="city-top"
+              main={
+                <Card title={allegiance ? <CityFlag allegiance={allegiance} /> : undefined} data-testid="city-plan">
+                  {/* THE PLAN, the full town, never cropped (CityScene fits the whole square plate inside the box with `xMidYMid meet`); the box is
+                      the same square for every place (the market's chart, on a phone, stands at its own height: it is a card that must not scroll inside itself), so a press moves the plan's mark and nothing else. The market's left region is its CHART
+                      (owner, 2026-10-31: "when pressing a market, instead of city, i would like to have a graph shown"). */}
+                  <div
+                    className={`mx-auto w-full max-w-[clamp(20rem,calc(100dvh-22rem),44rem)] overflow-hidden ${selected === 'market' ? 'lg:aspect-square' : 'aspect-square'}`}
+                    data-testid="city-info-image"
+                  >
+                    {selected === 'market' ? <MarketLeft port={port} /> : <CityScene sizeTier={port.size_tier} night={night} seed={port.code} />}
                   </div>
-                )}
-              </>
-            }
-          />
+                </Card>
+              }
+              side={
+                <>
+                  {/* YOUR purse — the frame's one line that repeats nothing from the hall (whose Gold is the CITY's purse). */}
+                  <StatCard
+                    label={t('city.earnings')}
+                    text={ducats === null ? '—' : formatDucats(ducats)}
+                    tone={ducats === null ? 'faint' : 'ink'}
+                    data-testid="city-summary"
+                  />
+                  {selected === 'hall' ? (
+                    <CityHallPanel
+                      port={port}
+                      hall={hall}
+                      refusal={hallRefusal}
+                      employees={employees}
+                      relation={{ word: regard ? regardBandWord(regard.band) : t(RELATION_WORDS[relation]), stance, nation: portNation, band: regard?.band ?? null }}
+                    />
+                  ) : (
+                    <div data-testid="city-open-panel">
+                      <CityFacePanel building={selected} port={port} fleet={fleet} />
+                    </div>
+                  )}
+                </>
+              }
+            />
+          )}
         </Sheet>
       </main>
 

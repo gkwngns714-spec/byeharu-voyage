@@ -463,9 +463,9 @@ for (const vp of [
     // 4. THE FORGE (a recipe names its goods by code: the class is read off the catalogue)
     await page.goto('city')
     await ready(page)
-    await page.getByTestId('city-building-forge').click()
-    await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'forge')
-    await page.locator('[data-testid^="city-forge-tier-"]').first().click()
+    await page.getByTestId('city-building-production').click()
+    await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'production')
+    if (!vp.wide) await page.getByTestId('port-production').getByRole('tab').nth(2).click()
     await expect(page.locator('[data-testid^="forge-product-"]').first()).toBeVisible({ timeout: 60_000 })
     expectList(`${vp.name} · Forge`, await page.evaluate(inspectRows, '[data-testid^="forge-product-"]'), colours)
 

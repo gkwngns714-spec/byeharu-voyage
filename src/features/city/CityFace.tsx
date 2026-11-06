@@ -1,15 +1,11 @@
 import { useState, type ReactNode } from 'react'
-import { DetailPage, Note, Skeleton, SummaryRow } from '../../components/ui'
+import { DetailPage, Note, SummaryRow } from '../../components/ui'
 import { buildingTier, hasBuilding } from '../../domain/port'
 import { fleetCrew, worstHullFraction } from '../../domain/fleet'
-import { PortForge } from '../../live/PortForge'
-import { groupsByTier } from '../../live/forgeGroups'
 import { PortInn } from '../../live/PortInn'
 import { PORT_FACES } from '../../live/cityFaces'
 import { PortShipyard } from '../../live/PortShipyard'
-import { PortStorage } from '../../live/PortStorage'
 import { PortYard } from '../../live/PortYard'
-import { useForge } from '../../live/useForge'
 import { useInn } from '../../live/useInn'
 import type { FleetView, SnapshotPort } from '../../lib/rpc'
 import { formatInt, formatOfTotal, formatPct } from '../../lib/format'
@@ -40,35 +36,30 @@ import { MarketFace } from './MarketFace'
 //             a compact summary IN THIS PANEL — the line count and the served total, the hold bar,
 //             one row to the board — never a screen-covering Sheet. The board (the quay ledger and
 //             the trade trays) is the page a face row opens.
-//   forge     one row per product tier, the count beside it; the tier opens its products. A
-//             product's control carries the product's NAME (1-2 words); its ingredients are in
-//             the tray the press opens (audit row 39).
 //   port      Build · Repair — the yard and the shipwright, each opening its own face.
-//   storage   the warehouse's own face (a short board at every served size).
+//   production  not here: it takes the whole page, not the side panel (live/PortProduction.tsx, CityScreen).
 //   inn       Crew · Captains here — the inn's face, packed, opening as a page.
 //
 // NO DUPLICATES OF THE HALL (owner, 2026-10-31): the Town Hall panel is the single home of
 // Population · Gold · Status · Relationship · Employees; none of these words appears on any other
 // face.
 //
-// THE FACES THEMSELVES ARE NOT REWRITTEN: the market is PortTrade/PortPrices, the forge PortForge,
-// the yard PortYard, the shipwright PortShipyard, the storage PortStorage, the inn PortInn — the
+// THE FACES THEMSELVES ARE NOT REWRITTEN: the market is PortTrade/PortPrices,
+// the yard PortYard, the shipwright PortShipyard, the inn PortInn — the
 // same components the desk and the map compose. This file adds only the compact rows, the in-panel
 // basket summary and the pages; nothing here is a second authority for a rule.
 
-export type CityBuilding = 'market' | 'storage' | 'forge' | 'port' | 'inn'
+export type CityBuilding = 'market' | 'port' | 'inn'
 
 /** One word per building, and the word's key beside it — never derived from the id. */
 const BUILDING_LABEL: Record<CityBuilding, TKey> = {
   market: 'city.market',
-  storage: 'city.storage',
-  forge: 'city.forge',
   port: 'city.port',
   inn: 'city.inn',
 }
 
 /** A face's own player word, read off the one face table (live/cityFaces.ts) — never restated. */
-function faceWord(id: 'market' | 'warehouse' | 'inn' | 'building_yard' | 'shipyard'): string {
+function faceWord(id: 'building_yard' | 'shipyard'): string {
   return PORT_FACES.find((f) => f.id === id)!.label
 }
 
@@ -93,55 +84,10 @@ export function CityFacePanel({
   return (
     <CityPanel testId="city-face-panel" building={building} title={t(BUILDING_LABEL[building])}>
       {building === 'market' && <MarketFace port={port} fleet={fleet} />}
-      {building === 'storage' && <StorageFace port={port} fleet={fleet} />}
-      {building === 'forge' && <ForgeFace port={port} fleet={fleet} />}
       {building === 'port' && <PortFace port={port} fleet={fleet} />}
       {building === 'inn' && <InnFace port={port} fleet={fleet} />}
     </CityPanel>
   )
-}
-
-/** THE FORGE — one row per product tier; a tier opens its products. The rows' grouping is
- *  PortForge's own fold (`groupsByTier`), so the counts and the page can never disagree. */
-function ForgeFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
-  const t = useT()
-  const { view, loading } = useForge(port.id)
-  const [openTier, setOpenTier] = useState<number | null>(null)
-  if (loading && !view) return <Skeleton className="h-28 w-full" />
-  if (!view) return <Note tone="neutral">{t('city.forgeNone')}</Note>
-  const groups = groupsByTier(view.recipes)
-  return (
-    <>
-      {groups.length === 0 && <Note tone="neutral">{t('city.forgeNone')}</Note>}
-      {groups.map(([tier, recipes]) => (
-        <SummaryRow
-          className="min-h-row!"
-          key={tier}
-          title={t('city.forgeTier', { n: formatInt(tier) })}
-          figure={formatInt(recipes.length)}
-          onClick={() => setOpenTier(tier)}
-          data-testid={`city-forge-tier-${tier}`}
-        />
-      ))}
-      {openTier !== null && (
-        <DetailPage
-          title={t('city.forgeTier', { n: formatInt(openTier) })}
-          onClose={() => setOpenTier(null)}
-          data-testid="city-forge-page"
-        >
-          <PageBody>
-            <PortForge portId={port.id} fleet={fleet} tier={openTier} />
-          </PageBody>
-        </DetailPage>
-      )}
-    </>
-  )
-}
-
-function StorageFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null }) {
-  const t = useT()
-  if (!hasBuilding(port, 'warehouse')) return <Note tone="neutral">{t('inn.noStorage')}</Note>
-  return <PortStorage portId={port.id} fleet={fleet} />
 }
 
 /** THE PORT — the yard and the shipwright as two rows; each opens its own face. The rows are the

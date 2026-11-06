@@ -1,23 +1,20 @@
 import { useState } from 'react'
 import {
   Button,
+  Clip,
   Figure,
   GoodClassMark,
   GoodKind,
-  Icon,
   Note,
   Row,
-  SheetSection,
-  Tile,
-  TileField,
+  Segmented,
   Tray,
   goodClassRow,
   type TrayDetent,
 } from '../components/ui'
-import { useForge } from './useForge'
 import { useWorld } from './worldStore'
 import { formatInt } from '../lib/format'
-import { cmdForgeGood, type FleetView, type ForgeRecipe, type Refusal } from '../lib/rpc'
+import { cmdForgeGood, type FleetView, type ForgeRecipe, type ForgeView, type Refusal } from '../lib/rpc'
 import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -35,14 +32,21 @@ import { useT, t as tNow } from '../lib/i18n'
 // `cmd.forge_good` enforces. A recipe short of materials still SHOWS, muted, with the shortfall in
 // its tray: hiding it would make the catalogue look smaller than it is.
 //
-// ── THE LIST SCROLLS INSIDE THE SHEET ─────────────────────────────────────────────────────────
-// The City page's own law (CityFace.tsx): the document never scrolls; a long list is read inside
-// the full-screen Sheet. There are 287 recipes, grouped by the product's tier, and the sheet is
-// what scrolls — never the page behind it.
+// ── THE RECIPES COLUMN (2026-11-06, owner: *"right side is recipes"*) ──────────────────────────
+// This is the right column of the HQ's Production page (PortProduction.tsx), which owns the one read and the one open tray. There are
+// 287 recipes, one tier on the glass at a time; a press on a tier selects, and only the rows under it change. In a tier, what the
+// server says can be made now stands first (`can_forge`), so it is not lost among the ones short of goods.
 
-/** One group per product tier, in the served order — `forgeGroups.ts`'s one fold, shared with the
- *  City page's compact Forge screen (its tier rows carry these same counts). */
-import { groupsByTier } from './forgeGroups'
+/** One group per product tier, in the served order (the query orders by tier, then name). */
+function groupsByTier(recipes: readonly ForgeRecipe[]): [number, ForgeRecipe[]][] {
+  const groups = new Map<number, ForgeRecipe[]>()
+  for (const r of recipes) {
+    const group = groups.get(r.tier)
+    if (group) group.push(r)
+    else groups.set(r.tier, [r])
+  }
+  return [...groups.entries()]
+}
 
 /** What is missing for one batch, in the server's own figures — a rendering of served numbers,
  *  never a re-derivation of `can_forge` (which the server sends). */
@@ -55,18 +59,22 @@ function shortfall(recipe: ForgeRecipe): string | null {
 export function PortForge({
   portId,
   fleet,
-  tier,
+  view,
+  open: openProduct,
+  onOpen,
+  onClose,
 }: {
   portId: string
-  /** A fleet of yours lying here, or null — storage is only reachable from one (0070). */
+  /** A fleet of yours lying here, or null: storage is only reachable from one (0070). */
   fleet: FleetView | null
-  /** ONE tier's products only, when the City page's tier row opened this face (CityFace.tsx).
-   *  Absent: every tier, as the desk's own caller composes it. */
-  tier?: number
+  view: ForgeView
+  /** The product whose tray stands open. The page owns it: one tray at a time, moves and recipes alike. */
+  open: string | null
+  onOpen: (product: string) => void
+  onClose: () => void
 }) {
   const t = useT()
-  const { view, loading } = useForge(portId)
-  const [open, setOpen] = useState<ForgeRecipe | null>(null)
+  const [tier, setTier] = useState<number | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
   const [sending, setSending] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
@@ -83,7 +91,7 @@ export function PortForge({
       const r = await cmdForgeGood(portId, recipe.product_id, 1)
       setSending(false)
       if (r.ok) {
-        setOpen(null)
+        onClose()
         await refresh()
       } else {
         setRefusal(r.refusal)
@@ -91,9 +99,10 @@ export function PortForge({
     })()
   }
 
-  if (loading && !view) return <Note tone="neutral">{t('city.forgeLoading')}</Note>
-  if (!view) return <Note tone="neutral">{t('city.forgeNone')}</Note>
-
+  const groups = groupsByTier(view.recipes)
+  const shown = groups.find(([group]) => group === tier) ?? groups[0]
+  // Read off the fresh answer, never a kept object: the have/need figures follow the world's re-read.
+  const open = view.recipes.find((r) => r.product === openProduct) ?? null
   const short = open ? shortfall(open) : null
 
   return (
@@ -104,43 +113,52 @@ export function PortForge({
         </Note>
       )}
 
-      {view.recipes.length === 0 && <Note tone="neutral">{t('city.forgeNone')}</Note>}
+      {groups.length === 0 && <Note tone="neutral">{t('city.forgeNone')}</Note>}
 
-      {groupsByTier(view.recipes)
-        .filter(([group]) => tier === undefined || group === tier)
-        .map(([group, recipes]) => (
-        <SheetSection key={group} heading={t('city.forgeTier', { n: formatInt(group) })} data-testid={`forge-tier-${group}`}>
-          <TileField>
-            {recipes.map((recipe) => (
-              <Tile
-                key={recipe.product}
-                {...goodClassRow(goodByCode[recipe.product]?.class)}
-                mark={<Icon name="mallet" size={20} />}
-                // THE CONTROL CARRIES THE PRODUCT'S NAME (1-2 plain words), never the whole recipe
-                // (audit row 39: "Adire Cloth Indigo · Potash · Raw Cotton"). The ingredients are
-                // listed in the tray this tile opens, and the tray's title is the product's name.
-                name={recipe.name}
-                // the control's text is the product's NAME, never more (tests/city.audit.spec.ts: the tray must contain it):
-                // the class is its meter alone, the word its accessible name and the first row of the tray this press opens
-                meta={goodByCode[recipe.product]?.class != null ? <GoodKind goodClass={goodByCode[recipe.product]?.class} classWord={false} /> : undefined}
-                state={recipe.can_forge ? 'rest' : 'muted'}
-                tap="whole"
-                onClick={() => {
-                  setRefusal(null)
-                  setDetent('half')
-                  setOpen(recipe)
-                }}
-                data-testid={`forge-product-${recipe.product}`}
-              />
-            ))}
-          </TileField>
-        </SheetSection>
-      ))}
+      {shown && (
+        <>
+          <Segmented<string>
+            fill
+            className="mb-3"
+            label={t('city.recipes')}
+            segments={groups.map(([group]) => ({ id: String(group), label: t('city.forgeTier', { n: formatInt(group) }) }))}
+            value={String(shown[0])}
+            onChange={(id) => setTier(Number(id))}
+          />
+          <div data-testid={`forge-tier-${shown[0]}`}>
+            {[...shown[1]]
+              .sort((a, b) => Number(b.can_forge) - Number(a.can_forge))
+              .map((recipe, i) => (
+                <Row
+                  key={recipe.product}
+                  {...goodClassRow(goodByCode[recipe.product]?.class)}
+                  // THE CONTROL CARRIES THE PRODUCT'S NAME (1-2 plain words), never the whole recipe (audit row 39): the ingredients are
+                  // listed in the tray this row opens, and the tray's title is the product's name.
+                  label={
+                    <span className="flex min-w-0 items-center gap-x-1.5">
+                      <Clip className="text-t-body">{recipe.name}</Clip>
+                      {goodByCode[recipe.product]?.class != null && <GoodKind goodClass={goodByCode[recipe.product]?.class} classWord={false} />}
+                    </span>
+                  }
+                  tone={recipe.can_forge ? 'default' : 'muted'}
+                  chevron
+                  hairline={i < shown[1].length - 1}
+                  onClick={() => {
+                    setRefusal(null)
+                    setDetent('half')
+                    onOpen(recipe.product)
+                  }}
+                  data-testid={`forge-product-${recipe.product}`}
+                />
+              ))}
+          </div>
+        </>
+      )}
 
       {open && (
         <Tray
           detent={detent}
-          onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
+          onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
           title={open.name}
           data-testid="forge-tray"
           action={

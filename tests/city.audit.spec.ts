@@ -33,8 +33,10 @@ const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
 ] as const
-const BUILDINGS = ['market', 'storage', 'forge', 'port', 'inn'] as const
+const BUILDINGS = ['market', 'production', 'port', 'inn'] as const
 const SIX = ['hall', ...BUILDINGS] as const
+/** The places that keep the plan beside a panel. Production takes the whole page under the row (tests/city.production.spec.ts holds it). */
+const SPLIT = SIX.filter((id) => id !== 'production')
 /** The five words the hall owns; no other face may print one of them. */
 const HALL_LABELS = ['Population', 'Gold', 'Status', 'Relationship', 'Employees'] as const
 
@@ -90,8 +92,7 @@ async function press(page: Page, id: (typeof SIX)[number]) {
   await settled(panel)
   const CONTENT: Record<string, string> = {
     market: 'city-market-buy',
-    storage: 'port-storage',
-    forge: '[data-testid^="city-forge-tier-"]',
+    production: 'port-production',
     port: '[data-testid^="city-port-"]',
     inn: 'city-inn-crew',
   }
@@ -182,7 +183,7 @@ for (const size of SIZES) {
     // screen dividends (city view, then right side the info) should stay the same for all"): the
     // left image region and the right panel region keep ONE shape across every press.
     const splits: { id: string; image: { x: number; y: number; w: number; h: number }; panel: { x: number; y: number; w: number; h: number }; top: { x: number; y: number; w: number; h: number } }[] = []
-    for (const id of SIX) {
+    for (const id of SPLIT) {
       const panel = await press(page, id)
       expect(await frameBoxes(page), `pressing ${id} re-flowed the frame`).toEqual(before)
       // THE CITY IMAGE STAYS ON THE GLASS (owner, 2026-10-31: the basket "opens inside the
@@ -230,7 +231,9 @@ for (const size of SIZES) {
       measured.push({ id, root, inner: innerScroll })
 
       // NO REPEATS OF THE HALL (owner, 2026-10-31): the five words are the hall's alone.
-      const text = await panel.innerText()
+      // (A served product's name is not a label: "Gold Leaf" among the recipes is not the hall's Gold.)
+      const products = await panel.locator('[data-testid^="forge-product-"]').allInnerTexts()
+      const text = products.reduce((all, name) => all.replace(name.trim(), ''), await panel.innerText())
       for (const label of HALL_LABELS) {
         expect(text.includes(label), `the ${id} face repeats the hall's "${label}"`).toBe(false)
       }
@@ -425,7 +428,7 @@ test('city audit: the Market Basket opens in the panel — no page, no tray, not
   // NOTHING COVERS THE SIX DOORS: each tile's centre still belongs to the tile.
   const covered = await page.evaluate(() => {
     const out: string[] = []
-    for (const id of ['hall', 'market', 'storage', 'forge', 'port', 'inn']) {
+    for (const id of ['hall', 'market', 'production', 'port', 'inn']) {
       const el = document.querySelector(`[data-testid="city-building-${id}"]`)
       if (!el) { out.push(id); continue }
       const r = el.getBoundingClientRect()
@@ -447,20 +450,19 @@ test('city audit: the Forge product controls carry the product name, never the r
   test.setTimeout(900_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await openCity(page, { width: 390, height: 844 })
-  await press(page, 'forge')
+  await press(page, 'production')
+  await page.getByTestId('port-production').getByRole('tab', { name: 'Recipes', exact: true }).click()
 
-  const rows = page.getByTestId('city-face-panel').locator('[data-summary-row]')
+  const rows = page.getByRole('tablist', { name: 'Recipes', exact: true }).last().getByRole('tab')
+  await expect.poll(() => rows.count(), { timeout: 60_000 }).toBeGreaterThan(0)
   const tiers = await rows.count()
-  console.log(`AUDIT forge: ${tiers} tier rows`)
-  expect(tiers, 'the Forge compact screen has no rows').toBeGreaterThan(0)
+  console.log(`AUDIT forge: ${tiers} tier tabs`)
   for (let i = 0; i < tiers; i++) {
-    const title = ((await rows.nth(i).locator('span').first().innerText()) ?? '').replace(/\s+/g, ' ').trim()
-    console.log(`AUDIT forge tier row ${i}: "${title}"`)
-    expect(words(title), `forge tier row "${title}" carries more than two words`).toBeLessThanOrEqual(2)
+    const title = ((await rows.nth(i).innerText()) ?? '').replace(/\s+/g, ' ').trim()
+    console.log(`AUDIT forge tier tab ${i}: "${title}"`)
+    expect(words(title), `forge tier tab "${title}" carries more than two words`).toBeLessThanOrEqual(2)
   }
 
-  await rows.first().click()
-  await expect(page.locator('[data-detail-page]')).toBeVisible()
   const tiles = page.locator('[data-testid^="forge-product-"]')
   await expect.poll(() => tiles.count(), { timeout: 60_000 }).toBeGreaterThan(0)
   const texts = await tiles.evaluateAll((els) => els.map((e) => (e as HTMLElement).innerText.replace(/\s+/g, ' ').trim()))
