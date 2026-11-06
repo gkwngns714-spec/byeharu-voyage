@@ -86,12 +86,12 @@ Not built, on purpose: Break off (`BROKEN_OFF` still has no writer), the War fle
 
 ## Proof
 
-- `scripts/db/proofs/33_a_player_attacks.sql`, 15 markers, **economy closed**, real `voyage.settle`, real cargo step, real battle close, real job. The outcome is asked for by name so each row of the table has its own test; `ATTACK_REAL_FIGHT` takes the real engine.
+- `scripts/db/proofs/34_a_player_attacks.sql`, 15 markers, **economy closed**, real `voyage.settle`, real cargo step, real battle close, real job. The outcome is asked for by name so each row of the table has its own test; `ATTACK_REAL_FIGHT` takes the real engine.
 - `scripts/ops/harness/attacks/proof-0327.mjs`: red on the world without the file; 49 mutations each red; real file and proof green, also with 0324 applied first. Five mutations first came back wrong, and three of those were the proof's fault: the live figure was read only after a fold, a null slipped past `<>`, and a probe's close was not proved here. All fixed.
 - One mutation was dropped: skipping `attack_for`'s settle cannot go red, because `battle_open` settles again and refuses the same way. The settle stands, as D.2 orders.
 - `tests/rpc.attack.spec.ts`: the seam, through the client's RPC layer, and `AttackSection` rendered to nothing while dark.
 - Self-assert: catalog and `loot_due`'s arithmetic only, about 120 ms locally. No game step.
-- **Dark parity:** proof 33 puts the old card and the old book back and compares: every cargo ship's card, and the book's two closing stages. Proof 31 runs the probe path on the new body in CI.
+- **Dark parity:** proof 34 puts the old card and the old book back and compares: every cargo ship's card, and the book's two closing stages. Proof 31 runs the probe path on the new body in CI.
 - **The race (one attack a lap, one day's room):** PGlite has one connection, so this is reasoned, not raced. The fleet row is locked before a lap or a load is read; the house is locked before the day is read; two attacks on one ship meet on her fleet row.
 
 ## Load

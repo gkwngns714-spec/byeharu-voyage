@@ -12,7 +12,7 @@ import { AttackSection } from '../src/live/AttackSection'
 
 // ═════════════════════════════════════════════════════════════════
 // A PLAYER ATTACKS, THE SEAM (0327, docs/WORLD_POWERS.md §4.2): the real doors, through the client's one RPC layer, on the built world.
-// Proof 33 proves the server's rules and the gold. This proves the client reads what the server serves: dark, the card serves no key, the section draws nothing and the doors
+// Proof 34 proves the server's rules and the gold. This proves the client reads what the server serves: dark, the card serves no key, the section draws nothing and the doors
 // refuse; lit, the card says so, the dry run's words all have labels, the press opens a battle, and a report with gold reads as gold. The law: dark, nothing changes for anyone.
 // ═════════════════════════════════════════════════════════════════
 

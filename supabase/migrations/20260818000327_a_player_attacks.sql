@@ -28,7 +28,7 @@
 --   on a closed economy, with no new exception. No city purse moves: the city paid when she loaded. A ransom (she paid off) is LOOT too, under the same caps: the design's RANSOM kind is a company paying pirates, the other way.
 --
 -- DARK IS BYTE-IDENTICAL: public.attack_for refuses E_NOT_IN_USE as its first line, the card serves no `attack` key, kind PROBE takes the old path and v_spoils is {}, and public.convoy_book's three old stages run the old statement.
---   Proof 33 compares the old bodies with the new. No hot path gains a read: none of these five bodies is on the beat.
+--   Proof 34 compares the old bodies with the new. No hot path gains a read: none of these five bodies is on the beat.
 --
 -- DECIDED BY DEFAULT (owner may reverse): docs/dev-log/2026-11-06-a-player-attacks.md lists them all. The ones that shape this file:
 --   - Gold only: no goods change hands, and a cargo ship's hold is left alone.
@@ -38,7 +38,7 @@
 --   - BREAK OFF is not built: the design's 5.2 has it, this slice's row does not. BROKEN_OFF still has no writer.
 --
 -- SELF-ASSERT: the catalog, plus public.loot_due's arithmetic, which reads knobs and writes nothing. THIS FILE RUNS NO GAME STEP, in every environment (docs/OPS_HEALTH.md section 4).
--- THE LIVE PATHS ARE PROVED IN CI: proof 33, scripts/db/proofs/33_a_player_attacks.sql, on a closed economy. Mutation controls: scripts/ops/harness/attacks/proof-0327.mjs (local).
+-- THE LIVE PATHS ARE PROVED IN CI: proof 34, scripts/db/proofs/34_a_player_attacks.sql, on a closed economy. Mutation controls: scripts/ops/harness/attacks/proof-0327.mjs (local).
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. convoy_cargo_stage_check and battles_kind_check are re-checked over their tables in it. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): `attack_enabled` false stops new attacks and running battles finish. Regard and loot already written stay. To remove: swap this file's old and new, then drop what it created.
@@ -587,7 +587,7 @@ $h$      ('cmd',         'preview_tow',           'uuid'),
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0327 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0327 self-assert ok: A PLAYER ATTACKS, dark. % hunks once each and reversing; no other function, no existing knob or word, no attack written; no game step ran (proof 33 runs them in CI). % ms.',
+  raise notice '0327 self-assert ok: A PLAYER ATTACKS, dark. % hunks once each and reversing; no other function, no existing knob or word, no attack written; no game step ran (proof 34 runs them in CI). % ms.',
     (select count(*) from hunks_0327), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0327;
 end
