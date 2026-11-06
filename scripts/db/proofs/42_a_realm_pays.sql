@@ -11,7 +11,7 @@
 -- @pass RP_BUSY         a busy richest city leaves the realm short: the second city's call is rolled back, nothing moved, no hull, no error, and a busy capital still is passed over
 -- @pass RP_BUILD        the richest city pays: exactly the need, by CROWN_CALL to the capital, then the capital pays the yard; nothing minted, no ledger row, the capital left with nothing above its reserve, a city outside the realm untouched
 -- @pass RP_TWO          the richest gives its room and the next the rest, each once
--- @pass RP_RICH         a capital that can pay calls nothing
+-- @pass RP_RICH         a capital that can pay calls nothing and reads no donor
 -- @pass RP_NO_FLOOR     no donor goes under its reserve, its aid target or its cover
 -- @pass RP_PAY          an hour: the realm fills the capital for every ship at work; a ship at the capital moves nothing, and her slice stays there, so the next call is smaller by it and it cannot climb
 -- @pass RP_PAY_PART     a realm that can pay one ship pays the lowest ord; the rest are unpaid, go home and lie up; no debt, no error
@@ -145,10 +145,15 @@ $b$
 
   -- ── THE FOLD ──
   perform pg_temp.purse(v_d1, 90000000);
-  perform pg_temp.purse(v_d2, 7050000, 1000);
+  perform pg_temp.purse(v_d2, 90000000);          -- a tie, so the order's second key is read
   perform pg_temp.purse(v_far, 90000000);
-  update public.port_treasury t set ducats = 3000000 + (abs(hashtextextended(t.port_id::text, 0)) % 1000000), reserve = abs(hashtextextended(t.port_id::text, 1)) % 50000
-   where t.port_id not in (v_cap, v_d1, v_d2, v_far);
+  update public.port_treasury t   -- a third have no room, so the room test is read; the rest differ by the harbour's code, never by chance
+     set ducats = case when x.n % 3 = 0 then 0 else 3000000 + x.n * 1000 end, reserve = x.n % 50000
+    from (select p.id, abs(hashtextextended(p.code, 0)) % 1000000 as n from public.ports p) x
+   where x.id = t.port_id and t.port_id not in (v_cap, v_d1, v_d2, v_far);
+  if not exists (select 1 from public.ports p where p.kind = 'HARBOUR' and public.city_capital(p.id) = v_cap and p.id <> v_cap and public.crown_call_room(p.id) = 0) then
+    raise exception 'PROOF 42 FAIL: the fold wants a harbour with no room in the realm it reads';
+  end if;
   v_n := 0;
   for v_r in select to_jsonb(g.nation_id) from public.great_powers g loop
     declare
@@ -177,7 +182,7 @@ $b$
     raise exception 'PROOF 42 FAIL: the fold was read over % donors', v_n;
   end if;
   update public.port_treasury set ducats = 0, reserve = 0;
-  for v_r in select to_jsonb(p.id) from public.ports p where p.kind = 'HARBOUR' and public.treasury_balance(p.id) <> 0 loop
+  for v_r in select to_jsonb(p.id) from public.ports p where p.kind = 'HARBOUR' and public.treasury_balance(p.id) <> 0 order by p.code loop
     perform pg_temp.purse((v_r #>> '{}')::uuid, 0);
   end loop;
   raise notice 'PASS: RP_FOLD — % donors over every capital, same harbours, same order, same room; can_draw stops at the last ducat', v_n;
@@ -246,7 +251,7 @@ $b$
     raise exception 'PROOF 42 FAIL: a busy donor: the short call stayed: %', v_r;
   end if;
   begin
-    execute 'create or replace function public.treasury_try_lock(p_port uuid) returns boolean language sql as $b$ select false $b$';
+    execute format('create or replace function public.treasury_try_lock(p_port uuid) returns boolean language sql as %L', format('select p_port <> %L::uuid', v_cap));   -- the capital alone: its realm could pay
     v_r := public.tick_navy(v_t, v_nat);
     raise exception using errcode = 'ZX342', message = jsonb_build_object('r', v_r, 'n', pg_temp.flows_from(v_mark))::text;
   exception when sqlstate 'ZX342' then
@@ -319,7 +324,24 @@ $b$
     raise exception 'PROOF 42 FAIL: a capital that could pay called: % %', v_r, pg_temp.moved(v_mark, 'CROWN_CALL');
   end if;
   v_fl3 := (select n.fleet_id from public.navy_ships n where n.nation_id = v_nat and n.ord = 3);
-  raise notice 'PASS: RP_RICH — a capital with the whole cost called nothing';
+  perform pg_temp.purse(v_cap, v_cost);
+  begin   -- what makes a rich capital cost what it cost: the realm is not read. A donor read here raises.
+    execute $f$
+create or replace function public.crown_donors(p_capital uuid)
+returns table (id uuid, room bigint, rank bigint)
+language plpgsql stable
+as $b$ begin raise exception 'the realm was read'; end $b$
+    $f$;
+    v_step := public.capital_can_draw(v_cap, v_cost)::text || public.capital_draw(v_cap, v_cost, true)::text;
+    raise exception using errcode = 'ZX342', message = v_step;
+  exception
+    when sqlstate 'ZX342' then v_step := sqlerrm;
+    when others then raise exception 'PROOF 42 FAIL: a rich capital read the realm: %', sqlerrm;
+  end;
+  if v_step <> 'truetrue' then
+    raise exception 'PROOF 42 FAIL: a rich capital could not pay: %', v_step;
+  end if;
+  raise notice 'PASS: RP_RICH — a capital with the whole cost called nothing and read no donor';
 
   -- ── THE FLOORS ──
   perform pg_temp.realm_bare(v_cap);
@@ -348,6 +370,16 @@ $b$
   end if;
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_sum := pg_temp.purses();
+  begin
+    execute format('create or replace function public.treasury_try_lock(p_port uuid) returns boolean language sql as %L', format('select p_port <> %L::uuid', v_cap));
+    v_a := public.navy_pay(v_t, v_nat);
+    raise exception using errcode = 'ZX342', message = jsonb_build_object('a', v_a, 'n', pg_temp.flows_from(v_mark))::text;
+  exception when sqlstate 'ZX342' then
+    v_r := sqlerrm::jsonb;
+  end;
+  if (v_r ->> 'a')::numeric <> 0 or (v_r ->> 'n')::int <> 0 then
+    raise exception 'PROOF 42 FAIL: a busy capital drew on its realm: %', v_r;
+  end if;
   v_a := public.navy_pay(v_t, v_nat);
   if v_a <> v_away * v_slice or pg_temp.moved(v_mark, 'CROWN_CALL') <> jsonb_build_object(v_c, 3 * v_slice, v_c1, -3 * v_slice) or pg_temp.purses() <> v_sum then
     raise exception 'PROOF 42 FAIL: the hour: paid %, called %', v_a, pg_temp.moved(v_mark, 'CROWN_CALL');

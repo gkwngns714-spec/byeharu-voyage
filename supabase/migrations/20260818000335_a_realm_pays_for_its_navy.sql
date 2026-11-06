@@ -129,15 +129,12 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0335: THE payer rule of a navy. The caller holds the capital's lock (public.treasury_try_lock) and is about to pay p_need from public.city_surplus. If the surplus covers it nothing happens. If not, the rest is called from the realm by
--- public.crown_call, as one line of its roster, so its order, its locks and its limits are the ones every other call has. Gold moves to the capital; the capital pays. Answers whether the surplus now covers p_need.
+-- 0335: THE payer rule of a navy. The caller holds the capital's lock (public.treasury_try_lock) and is about to pay p_need from public.city_surplus. What the surplus does not cover is called from the realm by
+-- public.crown_call, as one line of its roster, which calls nothing if the surplus covers it, so its order, its locks and its limits are the ones every other call has. Gold moves to the capital; the capital pays. Answers whether the surplus now covers p_need.
 -- p_whole: a payment that cannot be cut, a hull. If the realm falls short, a busy donor being the way that happens after public.capital_can_draw said yes, the call is rolled back and nothing has moved. Otherwise what came, stays.
 declare
   v_short jsonb;
 begin
-  if public.city_surplus(p_capital) >= p_need then
-    return true;
-  end if;
   v_short := jsonb_build_array(jsonb_build_object('port_id', p_capital, 'target', public.treasury_balance(p_capital) + p_need, 'cap', p_capital));
   begin
     perform public.crown_call(v_short);
