@@ -13,6 +13,7 @@ import {
   type TrayDetent,
 } from '../components/ui'
 import { HullCountry } from './HullCountry'
+import { HullCrown } from './HullCrown'
 import { HullTech } from './HullTech'
 import { useBuildingYard } from './useBuildingYard'
 import { useWorld } from './worldStore'
@@ -54,9 +55,16 @@ import { useT, t as tNow } from '../lib/i18n'
 // sentence as `needs` — the very one cmd.do_build refuses with (E_NEEDS_SKILL) — and folds it into
 // `buildable`; the tray prints it as served. null (nothing printed) while skills do not bite.
 //
+// ── A CROWN'S SHIP (0332) ──────────────────────────────────────────────────────────────────────
+// The cargo ship and the navy ship are classes like any other and go through the same order; the server names them (`crown`), they stand first
+// in their group so a player can find the hull he saw at sea, and the tray says she is his own to run. No price, gate or path differs.
+//
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** The crown's ships first, the served order otherwise. A presentation of the served list, not a rule. */
+const crownFirst = (list: readonly YardHull[]) => [...list.filter((h) => h.crown), ...list.filter((h) => !h.crown)]
 
 /** What is missing, in the server's own numbers, or null when everything is to hand. */
 function shortfall(hull: YardHull): string | null {
@@ -116,8 +124,8 @@ export function PortYard({
   // 0135 — 55 hulls, most of them another country's: the ones THIS port's country builds first (the
   // server's own `wrong_yard` is null for them), the rest after, under one caption. A split of the
   // served list, not a rule — the server already said which is which.
-  const here = view.hulls.filter((h) => !h.wrong_yard)
-  const elsewhere = view.hulls.filter((h) => h.wrong_yard)
+  const here = crownFirst(view.hulls.filter((h) => !h.wrong_yard))
+  const elsewhere = crownFirst(view.hulls.filter((h) => h.wrong_yard))
   const short = open ? shortfall(open) : null
   const ready = open !== null && open.buildable && fleet !== null && short === null
 
@@ -153,6 +161,7 @@ export function PortYard({
                       <HullCountry nation={hull.line_nation} compact />
                       {hull.line_nation ? ' ' : ''}
                       <HullTech tech={hull.tech} />
+                      <HullCrown crown={hull.crown} />
                       {formatTons(hull.hold)}
                     </>
                   }
@@ -200,6 +209,14 @@ export function PortYard({
             <Hint className="mb-2" data-testid="yard-history">
               {open.note}
             </Hint>
+          )}
+          {open.crown && (
+            <>
+              <Row label={t('yard.type')} value={<HullCrown crown={open.crown} />} hairline={false} />
+              <Hint className="mb-2" data-testid="yard-crown-note">
+                {t('yard.crownNote')}
+              </Hint>
+            </>
           )}
           {open.line_nation && <Row label={t('yard.country')} value={<HullCountry nation={open.line_nation} />} />}
           <Row label={t('yard.cargo')} value={<Figure value={formatInt(open.hold)} unit={t('yard.tons')} />} />

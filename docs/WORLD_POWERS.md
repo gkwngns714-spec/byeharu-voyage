@@ -765,6 +765,7 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 | Pirate ports attackable | Not in v1 | Question 7 |
 | Pirate merchants insured | No | |
 | Name | The Brethren | |
+| A player's cargo or navy hull | An ordinary player ship of that class, by the one BUILD verb, at the existing price, gates and yards (migration 0332) | Knobs name the classes |
 | Looks | Section 9.3 | |
 
 **This doc overrides, in earlier docs:** `CITY_CONVOYS` §0.7, §2 (boarded, crew 0), V1's no-crew default, ship class knob. `PIRATES_AND_HAVENS` §0.4-5, §3.1, §4.1, Q1, §3.4's RANSOM line (wrong for live). 0310's crown and "no second path". `GREAT_POWERS` "ten". `FLEETS_AND_SLOTS` unchanged.

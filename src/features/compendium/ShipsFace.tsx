@@ -3,9 +3,11 @@ import { ALL, Card, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSpl
 import { CargoHull, NavyHull } from '../../live/CargoHull'
 import { useServedRead } from '../../live/useServedRead'
 import { formatFixed, formatInt, formatKnots, formatOfTotal, formatTons } from '../../lib/format'
-import { worldStatsNow, type SnapshotShipClass, type StatsNow } from '../../lib/rpc'
+import { worldStatsNow, type CrownHull, type SnapshotShipClass, type StatsNow } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { HullCountry } from '../../live/HullCountry'
+import { CROWN_WORD } from '../../live/crownWord'
+import { HullCrown } from '../../live/HullCrown'
 import { HullTech } from '../../live/HullTech'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { optionsOf } from './codexFilters'
@@ -31,6 +33,9 @@ import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 // THE COUNTRY (0130): each class arrives with its line's flag nation; the row and the tray print
 // it through the one renderer, HullCountry.
 //
+// A CROWN'S SHIP (0332): the cargo ship and the navy ship are classes of this list, named by the server (`crown`): a badge on the row, a filter, the
+// search, a row of the tray, and the two cards at the side say which class to build.
+//
 // THE GRID (0135, Wave A: 55 hulls): four filters — country (line), size, role, tech — each a picker
 // of the values the SERVED classes carry (`line`, `size`, `role`, `tech` on the snapshot), plus
 // "All". Nothing is offered that no served hull has; the words for a size, a role and a tech are
@@ -46,13 +51,18 @@ const word = (key: string, served: string) => translateMaybe(getLocale(), 'codex
 const sizeWord = (n: number | null | undefined) => (n == null ? null : word(`size_${n}`, String(n)))
 const roleWord = (r: string | null | undefined) => (r == null ? null : word(`role_${r}`, r))
 const techWord = (t: string | null | undefined) => (t == null ? null : word(`tech_${t}`, t))
+const crownWord = (c: CrownHull) => tNow(CROWN_WORD[c])
 
-type Filters = { line: string; size: string; role: string; tech: string }
-const NO_FILTER: Filters = { line: ALL, size: ALL, role: ALL, tech: ALL }
+type Filters = { line: string; size: string; role: string; tech: string; crown: string }
+const NO_FILTER: Filters = { line: ALL, size: ALL, role: ALL, tech: ALL, crown: ALL }
 
-/** 0310: THE CARGO SHIP, ONCE ONE EXISTS. She is no class of hull a company can buy, so she is no row of the list; asked once, on the face's mount. */
-function CargoShipEntry() {
+/** 0310: THE CARGO SHIP, ONCE ONE EXISTS. The crown's fleet is no row of the list; asked once, on the face's mount. 0332: a company can build her class, and the card says which. */
+function CargoShipEntry({ classes }: { classes: readonly SnapshotShipClass[] }) {
   const t = useT()
+  const buildAs = (crown: CrownHull) => {
+    const names = classes.filter((c) => c.crown === crown).map((c) => c.name)
+    return names.length > 0 ? <Hint data-testid="codex-build-as">{t('codex.buildAs', { names: names.join(', ') })}</Hint> : null
+  }
   const view = useServedRead<StatsNow>('codex-cargo', worldStatsNow, { name: 'worldStatsNow', trigger: 0 }).view
   const ships = view?.cargo_ships
   const navy = view?.navy_ships
@@ -65,6 +75,7 @@ function CargoShipEntry() {
             <div className="min-w-0">
               <Figure value={formatInt(ships)} />
               <Hint>{t('codex.cargoNote')}</Hint>
+              {buildAs('CARGO')}
             </div>
           </div>
         </Card>
@@ -76,6 +87,7 @@ function CargoShipEntry() {
             <div className="min-w-0">
               <Figure value={formatInt(navy)} />
               <Hint>{t('codex.navyNote')}</Hint>
+              {buildAs('NAVY')}
             </div>
           </div>
         </Card>
@@ -100,6 +112,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
       size: optionsOf(tNow('codex.size'), classes, (s) => (s.size == null ? null : String(s.size)), (v) => sizeWord(Number(v)) ?? v, (a, b) => Number(a) - Number(b)),
       role: optionsOf(tNow('codex.role'), classes, (s) => s.role ?? null, (v) => roleWord(v) ?? v, (a, b) => a.localeCompare(b)),
       tech: optionsOf(tNow('codex.tech'), classes, (s) => s.tech ?? null, (v) => techWord(v) ?? v, (a, b) => a.localeCompare(b)),
+      crown: optionsOf(tNow('codex.type'), classes, (s) => s.crown ?? null, (v) => crownWord(v as CrownHull), (a, b) => a.localeCompare(b)),
     }),
     [classes, nationByCode],
   )
@@ -108,11 +121,12 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
     const needle = fold(query.trim())
     return classes.filter(
       (s) =>
-        foldedMatch(needle, s.name, s.code, s.family, s.rig) &&
+        foldedMatch(needle, s.name, s.code, s.family, s.rig, s.crown ? crownWord(s.crown) : '') &&
         (filters.line === ALL || s.line === filters.line) &&
         (filters.size === ALL || String(s.size) === filters.size) &&
         (filters.role === ALL || s.role === filters.role) &&
-        (filters.tech === ALL || s.tech === filters.tech),
+        (filters.tech === ALL || s.tech === filters.tech) &&
+        (filters.crown === ALL || s.crown === filters.crown),
     )
   }, [classes, query, filters])
 
@@ -120,11 +134,11 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
   const byHold = useMemo(() => [...rows].sort((a, b) => b.hold - a.hold || a.name.localeCompare(b.name)).slice(0, BOARD), [rows])
   const bySpeed = useMemo(() => [...rows].sort((a, b) => b.speed_kn - a.speed_kn || a.name.localeCompare(b.name)).slice(0, BOARD), [rows])
 
-  const picks = (['line', 'size', 'role', 'tech'] as const)
+  const picks = (['line', 'size', 'role', 'tech', 'crown'] as const)
     .filter((k) => facets[k].length > 2)
     .map((k) => ({
       id: k,
-      label: t(({ line: 'codex.country', size: 'codex.size', role: 'codex.role', tech: 'codex.tech' } as const)[k]),
+      label: t(({ line: 'codex.country', size: 'codex.size', role: 'codex.role', tech: 'codex.tech', crown: 'codex.type' } as const)[k]),
       options: facets[k],
       value: filters[k],
       onChange: (v: string) => setFilters((f) => ({ ...f, [k]: v })),
@@ -170,6 +184,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
                     <Figure value={formatFixed(s.speed_kn, 1)} unit={t('trade.knotsUnit')} />
                     {s.line_nation && <HullCountry nation={s.line_nation} compact />}
                     <HullTech tech={s.tech} />
+                    <HullCrown crown={s.crown} />
                     <span>{[sizeWord(s.size), roleWord(s.role), `${s.family} · ${s.rig}`].filter(Boolean).join(' · ')}</span>
                     <span>{`crew ${formatOfTotal(s.crew_required, s.crew_max)}`}</span>
                   </FactsLine>
@@ -180,7 +195,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
         }
         side={
           <>
-            <CargoShipEntry />
+            <CargoShipEntry classes={classes} />
             <Card title={t('codex.biggestCargo')} data-testid="codex-ships-cargo">
               <RankBars
                 rules={false}
@@ -208,6 +223,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
           title={open.name}
           data-testid="ship-tray"
         >
+          {open.crown && <Row label={t('codex.type')} value={<HullCrown crown={open.crown} />} />}
           {open.line_nation && <Row label={t('codex.country')} value={<HullCountry nation={open.line_nation} />} />}
           {open.size != null && <Row label={t('codex.size')} value={sizeWord(open.size)} />}
           {open.role && <Row label={t('codex.role')} value={roleWord(open.role)} />}
@@ -219,6 +235,11 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
           <Row label={t('codex.draft')} value={<Figure value={formatInt(open.draft)} />} />
           <Row label={t('codex.hull')} value={<Figure value={formatInt(open.durability)} />} />
           <Row label={t('codex.class')} value={<Figure value={formatInt(open.tier)} />} hairline={false} />
+          {open.crown && (
+            <Hint className="mt-2" data-testid="codex-crown-build">
+              {t('codex.crownBuild')}
+            </Hint>
+          )}
           <Hint className="mt-2">{t('codex.baseFigures')}</Hint>
         </Tray>
       )}
