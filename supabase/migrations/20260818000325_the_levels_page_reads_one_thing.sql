@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- 0327 — THE LEVELS PAGE READS ONE THING: world.levels(), a read. NO SWITCH, NO KNOB, NO ROW. Nothing a player does changes.
+-- 0325 — THE LEVELS PAGE READS ONE THING: world.levels(), a read. NO SWITCH, NO KNOB, NO ROW. Nothing a player does changes.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- Owner, 2026-11-06: "first create a tab on command - levels. This page will show you all the info." The page needs figures no reader serves yet:
 --   * where a company track's next level begins (world.player serves points and level, not where the next starts), and what the next title opens (the region door is gone, 0218: sea zones ask the title);
@@ -15,7 +15,7 @@
 -- COST: one read per page open (player_progress scans the ledger once, as world.player already does on every poll), one primary-key read per hull and per great power (ten).
 -- ROLLBACK (forward, owner only): a new migration dropping world.levels(uuid-less) and public.level_line(numeric) and reversing the hunk. Nothing else depends on them.
 -- SELF-ASSERT: the catalog only, rolled forward in one DO block (statement_timeout 45 s). The live read is proved in CI: scripts/db/proofs/32_levels_page.sql.
--- VERSION: 0327. 0324 (W7), 0325 (W11) and 0326 (HQ) are reserved; this file hunks only the registry, on the world.player row.
+-- VERSION: 0325, after 0324 (W7), before 0326 (HQ) and 0325 (W11); this file hunks only the registry, on the world.player row.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -29,7 +29,7 @@ declare
   c_old constant text := $h$      ('world',       'player',              ''),
 $h$;
   c_new constant text := $h$      ('world',       'player',              ''),
-      -- 0327: the Levels page of the Command desk reads one thing.
+      -- 0325: the Levels page of the Command desk reads one thing.
       ('world',       'levels',                ''),
 $h$;
 begin
@@ -38,15 +38,15 @@ begin
 
   -- ── 0. GUARD ──
   if to_regprocedure('world.levels()') is not null or to_regprocedure('public.level_line(numeric)') is not null then
-    raise exception '0327 refuses: it has been applied once';
+    raise exception '0325 refuses: it has been applied once';
   end if;
   if to_regprocedure('public.player_progress(uuid)') is null or to_regprocedure('public.earned_caps(uuid)') is null
      or to_regprocedure('public.regard_of(uuid,uuid)') is null or to_regprocedure('public.level_in_force(numeric)') is null
      or to_regprocedure('public.fleet_room_on()') is null or to_regprocedure('public.title_level(uuid)') is null then
-    raise exception '0327 refuses: a reader it composes is not in this world (0069 / 0107 / 0127 / 0215 / 0319 / 0321)';
+    raise exception '0325 refuses: a reader it composes is not in this world (0069 / 0107 / 0127 / 0215 / 0319 / 0321)';
   end if;
 
-  create temp table fn_before_0327 on commit drop as
+  create temp table fn_before_0325 on commit drop as
     select p.oid::regprocedure::text as fn, md5(replace(pg_get_functiondef(p.oid), chr(13), '')) as h
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
@@ -63,7 +63,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0327: THE one cut of points into a level line: the level on the one curve (public.level_from_points), where it began, and where the next begins (null at the cap).
+  -- 0325: THE one cut of points into a level line: the level on the one curve (public.level_from_points), where it began, and where the next begins (null at the cap).
   -- The same expression 0127's world.ship_view uses for `next_level_at`.
   select jsonb_build_object(
     'points', floor(greatest(coalesce(p_points, 0), 0)),
@@ -83,7 +83,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0327: THE LEVELS PAGE — everything about a company's levels, in one read. Nothing is computed here that another reader owns:
+-- 0325: THE LEVELS PAGE — everything about a company's levels, in one read. Nothing is computed here that another reader owns:
 --   tracks   public.player_progress (0069) cut by public.level_line
 --   skills   Seamanship, public.skill_level (0107), out of skill_max_level
 --   title    public.title_level (0215), the next title's name (public.title_names) and the sea zones it opens (public.sea_zones.title_min; they ask it only while sea_conditions_bite)
@@ -152,15 +152,15 @@ end $$
   v_pre := v_def;
   v_n := (length(v_def) - length(replace(v_def, c_old, ''))) / length(c_old);
   if v_n <> 1 then
-    raise exception '0327 self-assert FAIL: the registry hunk occurs % time(s), not once: the deployed body is not what this file was written against', v_n;
+    raise exception '0325 self-assert FAIL: the registry hunk occurs % time(s), not once: the deployed body is not what this file was written against', v_n;
   end if;
   execute replace(v_def, c_old, c_new);
   v_def := replace(pg_get_functiondef('public.client_rpc_entry_points()'::regprocedure), E'\r', '');
   if (length(v_def) - length(replace(v_def, c_new, ''))) / length(c_new) <> 1 then
-    raise exception '0327 self-assert FAIL: the registry hunk is not in the new body once';
+    raise exception '0325 self-assert FAIL: the registry hunk is not in the new body once';
   end if;
   if replace(v_def, c_new, c_old) <> v_pre then
-    raise exception '0327 self-assert FAIL: public.client_rpc_entry_points does not reverse to its pre-image';
+    raise exception '0325 self-assert FAIL: public.client_rpc_entry_points does not reverse to its pre-image';
   end if;
 
   -- ── 4. SELF-ASSERT: the catalog only ──
@@ -170,39 +170,39 @@ end $$
            where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
              and p.proname <> 'client_rpc_entry_points'
              and p.proname not in ('level_line', 'levels')) x
-    full join fn_before_0327 b on b.fn = x.fn
+    full join fn_before_0325 b on b.fn = x.fn
    where x.h is distinct from b.h limit 1;
   if v_moved is not null then
-    raise exception '0327 self-assert FAIL: another function moved: %', v_moved;
+    raise exception '0325 self-assert FAIL: another function moved: %', v_moved;
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c) <> v_cfg_before then
-    raise exception '0327 self-assert FAIL: a world_config row moved: this file sets no knob';
+    raise exception '0325 self-assert FAIL: a world_config row moved: this file sets no knob';
   end if;
   if exists (select 1 from pg_proc p where p.oid = any (array['public.level_line(numeric)'::regprocedure, 'world.levels()'::regprocedure]) and p.provolatile <> 's') then
-    raise exception '0327 self-assert FAIL: a new function is not STABLE';
+    raise exception '0325 self-assert FAIL: a new function is not STABLE';
   end if;
   if has_function_privilege('anon', 'world.levels()', 'execute') or not has_function_privilege('authenticated', 'world.levels()', 'execute')
      or has_function_privilege('authenticated', 'public.level_line(numeric)', 'execute') or has_function_privilege('anon', 'public.level_line(numeric)', 'execute') then
-    raise exception '0327 self-assert FAIL: the grants are not the contract: the read to authenticated only, the helper to nobody';
+    raise exception '0325 self-assert FAIL: the grants are not the contract: the read to authenticated only, the helper to nobody';
   end if;
   if not exists (select 1 from public.client_rpc_entry_points() e where e.function_name = 'levels' and e.fn is not null) then
-    raise exception '0327 self-assert FAIL: the read is not in the client registry';
+    raise exception '0325 self-assert FAIL: the read is not in the client registry';
   end if;
   if (public.level_line(0) ->> 'level')::int <> 1 or (public.level_line(0) ->> 'next_at')::numeric <> public.level_points(2) then
-    raise exception '0327 self-assert FAIL: level_line(0) is not level 1: %', public.level_line(0);
+    raise exception '0325 self-assert FAIL: level_line(0) is not level 1: %', public.level_line(0);
   end if;
   if (public.level_line(public.level_points(7)) ->> 'level')::int <> 7 or (public.level_line(public.level_points(7)) ->> 'from')::numeric <> public.level_points(7)
      or (public.level_line(public.level_points(7)) ->> 'next_at')::numeric <> public.level_points(8) then
-    raise exception '0327 self-assert FAIL: level_line does not cut level 7 at its own points: %', public.level_line(public.level_points(7));
+    raise exception '0325 self-assert FAIL: level_line does not cut level 7 at its own points: %', public.level_line(public.level_points(7));
   end if;
   if (public.level_line(public.level_points(1000)) ->> 'next_at') is not null then
-    raise exception '0327 self-assert FAIL: level_line names a next level above the cap: %', public.level_line(public.level_points(1000));
+    raise exception '0325 self-assert FAIL: level_line names a next level above the cap: %', public.level_line(public.level_points(1000));
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0327 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0325 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0327 self-assert ok: THE LEVELS PAGE READS ONE THING. One hunk, once and reversing; no other function, no knob, no row; the read is stable and granted to authenticated only. (proof 32 runs it in CI.) % ms.',
+  raise notice '0325 self-assert ok: THE LEVELS PAGE READS ONE THING. One hunk, once and reversing; no other function, no knob, no row; the read is stable and granted to authenticated only. (proof 32 runs it in CI.) % ms.',
     round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;

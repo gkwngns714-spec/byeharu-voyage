@@ -427,7 +427,7 @@ const TABLE = {
   // press would get (E_NOT_WRECKED, E_TOW_FUNDS with have / need in ducats, …). Not a line of the
   // grammar: a wreck cannot run her queue (cmd.advance stops at a fleet that is not docked).
   // 0321 (docs/FLEETS_AND_SLOTS.md section 2.4): a ship changes fleets in port, and what the fleet page may offer. Dark: E_NOT_IN_USE and {on: false}.
-  // 0327: the Levels page of the Command desk — every level of the company in one read.
+  // 0325: the Levels page of the Command desk — every level of the company in one read.
   worldLevels: { schema: 'world', fn: 'levels', args: [] },
   worldShipMoves: { schema: 'world', fn: 'ship_moves', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdMoveShip: { schema: 'cmd', fn: 'move_ship', mutates: true, args: [{ name: 'p_ship', type: 'uuid' }, { name: 'p_to', type: 'uuid' }, { name: 'p_name', type: 'text' }] },

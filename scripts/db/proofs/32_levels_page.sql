@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 32 — THE LEVELS PAGE READS ONE THING  (migration 0327, owner 2026-11-06: "first create a tab on command - levels")
+-- PROOF 32 — THE LEVELS PAGE READS ONE THING  (migration 0325, owner 2026-11-06: "first create a tab on command - levels")
 --
 --   world.levels() is a read that composes the readers that own each figure. This proof runs it for a probe company, as `authenticated`, dark and lit, and
 --   checks every figure against the reader that owns it. Everything rolls back with proof.mjs's transaction.

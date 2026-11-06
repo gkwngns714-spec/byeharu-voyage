@@ -1616,7 +1616,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-06 with migration 0321 (docs/FLEETS_AND_SLOTS.md section 2.4): A SHIP CHANGES FLEETS, and what the fleet
       // page may offer. No player id; dark (E_NOT_IN_USE, {on: false}) until fleet_room_bite. Landed WITH the face (src/features/fleets/MoveShip.tsx).
       'worldShipMoves', 'cmdMoveShip',
-      // Pin moved deliberately 2026-11-06 with migration 0327: THE LEVELS PAGE's one read, world.levels(). A READ, no arguments, no player id. Landed WITH the face (src/features/command/levels/Levels.tsx).
+      // Pin moved deliberately 2026-11-06 with migration 0325: THE LEVELS PAGE's one read, world.levels(). A READ, no arguments, no player id. Landed WITH the face (src/features/command/levels/Levels.tsx).
       'worldLevels',
       // Pin moved deliberately 2026-10-18 with migration 0157 (docs/SKILLS_AND_CAPTAINS.md K5): SEAT A
       // CAPTAIN in a cabin, move her, or put her ashore. Takes the officer code, a ship (the caller's

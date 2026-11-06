@@ -11,7 +11,7 @@ import type { DeskLayout } from '../DeskFrame'
 // LEVELS — one page with every level of the company (owner, 2026-11-06: *"first create a tab on command - levels. This page will
 // show you all the info."*, docs/dev-log/2026-11-06-the-levels-page.md).
 //
-// ONE READ, NO SUM: `world.levels()` (0327) serves the tracks with where each next level begins, the title, the room, every hull's
+// ONE READ, NO SUM: `world.levels()` (0325) serves the tracks with where each next level begins, the title, the room, every hull's
 // level, and regard while it is lit. The captains are the existing `world.captains` (the You tab's own read). Nothing here works out a
 // level, a threshold or a room: the bars are fills of served figures. `bite` (levels_bite) is the truth about whether a hull's or a
 // captain's level acts yet; while it is false the page says so and shows what each one counts as.

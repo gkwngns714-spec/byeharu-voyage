@@ -3675,7 +3675,7 @@ export interface StatsMe {
   }
 }
 
-/** 0327: one cut of points into a level (`public.level_line`): where this level began and where the next does (null at the cap). */
+/** 0325: one cut of points into a level (`public.level_line`): where this level began and where the next does (null at the cap). */
 export interface LevelCut {
   points: number
   level: number
@@ -3683,7 +3683,7 @@ export interface LevelCut {
   next_at: number | null
 }
 
-/** 0327: `world.levels()`. `bite` is levels_bite: false means a hull's or a captain's level changes no stat, slot or bonus yet. */
+/** 0325: `world.levels()`. `bite` is levels_bite: false means a hull's or a captain's level changes no stat, slot or bonus yet. */
 export type LevelsView =
   | { company: false }
   | {

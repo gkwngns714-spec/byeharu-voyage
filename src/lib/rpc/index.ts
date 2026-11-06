@@ -822,7 +822,7 @@ export function worldWatchlist(fleetId: string | null): Promise<RpcResult<Watchl
   return call<Watchlist>('worldWatchlist', [fleetId])
 }
 
-/** 0327: the Levels page's one read: tracks, title, room, hulls, and regard while it is lit. */
+/** 0325: the Levels page's one read: tracks, title, room, hulls, and regard while it is lit. */
 export function worldLevels(): Promise<RpcResult<LevelsView>> {
   return call<LevelsView>('worldLevels', [])
 }
