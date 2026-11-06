@@ -43,8 +43,9 @@ interface Screen {
 }
 
 const SCREENS: Screen[] = [
-  { name: 'Command', route: 'command', faces: [[null, 'Trade'], [null, 'City'], [null, 'Invest'], [null, 'Report']] },
+  { name: 'Command', route: 'command', faces: [[null, 'Trade'], [null, 'City'], [null, 'Invest'], [null, 'Report'], [null, 'Levels']] },
   { name: 'City', route: 'command', faces: [[null, 'City'], ['City buildings', '*']] },
+  { name: 'Production', route: 'city?place=production' },
   { name: 'Fleets', route: 'fleets' },
   { name: 'Map › Lisbon', route: 'map', open: (page) => openCityPanel(page, 'LIS', 'Lisbon') },
   { name: 'Stats', route: 'stats', faces: [[null, 'Overview'], [null, 'Markets'], [null, 'Cities'], [null, 'Merchants'], [null, 'Me']] },
@@ -323,7 +324,8 @@ async function audit(page: Page, vp: { width: number; height: number }): Promise
         await look(`${s.name} › ${tab}`)
         continue
       }
-      for (const name of await pressFace(page, list, '*')) {
+      // (Production is the HQ's page, not a desk face: its tab leaves the desk. It is walked as its own screen.)
+      for (const name of (await pressFace(page, list, '*')).filter((n) => n !== 'Production')) {
         await pressFace(page, list, name)
         await look(`${s.name} › ${name}`)
       }

@@ -22,6 +22,7 @@ const FACES = [
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
   { name: 'Report', id: 'desk-report' },
+  { name: 'Levels', id: 'desk-levels' },
 ] as const
 
 const SIZES = [

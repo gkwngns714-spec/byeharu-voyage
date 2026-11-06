@@ -12,6 +12,7 @@ import { Trade } from './buysell/Trade'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
 import { Report } from './report/Report'
+import { Levels } from './levels/Levels'
 import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
@@ -123,6 +124,8 @@ export function CommandScreen() {
       <City fleet={f} layout={layout} />
     ) : face === 'invest' ? (
       <Invest fleet={f} layout={layout} />
+    ) : face === 'levels' ? (
+      <Levels layout={layout} />
     ) : (
       <Report layout={layout} />
     )

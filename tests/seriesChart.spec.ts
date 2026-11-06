@@ -70,14 +70,16 @@ test('a sum\'s unfinished period is left out; whole ones stay; nothing is invent
   expect(settledBuckets(pts, 'day', today + DAY).map((p) => p.value)).toEqual([95_202, 100_000, 6_728])
 })
 
-test('a week runs Monday to Monday and a month to its own last day', async () => {
+test('only the newest bucket can be open; a week by 7 days, a month by its longest (31), no month arithmetic', async () => {
   const { settledBuckets } = await import('../src/components/ui/seriesChartModel')
   const mon = Date.UTC(2026, 10, 2)
   const wk = [{ atMs: mon - 7 * DAY, value: 1 }, { atMs: mon, value: 2 }]
   expect(settledBuckets(wk, 'week', NOON).map((p) => p.value)).toEqual([1])
+  expect(settledBuckets(wk, 'week', mon + 7 * DAY).map((p) => p.value)).toEqual([1, 2])
   const mo = [{ atMs: Date.UTC(2026, 9, 1), value: 1 }, { atMs: Date.UTC(2026, 10, 1), value: 2 }]
   expect(settledBuckets(mo, 'month', NOON).map((p) => p.value)).toEqual([1])
-  expect(settledBuckets(mo, 'month', Date.UTC(2026, 11, 1)).map((p) => p.value)).toEqual([1, 2])
+  expect(settledBuckets(mo, 'month', Date.UTC(2026, 11, 2)).map((p) => p.value)).toEqual([1, 2])
+  expect(settledBuckets([], 'day', NOON)).toEqual([])
 })
 
 test('the wash under the line fades out at the newest point: no vertical wall', async () => {
