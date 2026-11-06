@@ -100,7 +100,7 @@ A violet dart, `#c4a1ff`, day and night, whatever her nation, with one dark stri
 
 Contrast read from the built CSS: fill on day deep 3.88, keyline on shallows 8.81, mark on fill 7.68. All grounds and twilight pass the 3 : 1 law. Teal is a colour distance over 100 away; at least 20 % of her area differs from cargo and every merchant hull at 1x and 2x.
 
-**Differs from the design:** violet, not nation ink, following the owner's *"unify the color of cargoship"*. Beam 0.4, not 0.32: at 0.32 the 2 px stripe took nearly her whole deck at 1x and her colour went with it.
+**Differs from the design:** violet, not nation ink, following the owner's *"unify the color of cargoship"*. Beam 0.34, not 0.32: at 0.32 the 2 px stripe took nearly her whole deck at 1x and her colour went with it. Not wider: 0.36 and 0.4 fall under the 20 % silhouette law against a nau at 1x (0.11, 0.10). 0.4 went to CI that way, red in shard 2/3: my local run had printed only the last line of the spec's summary, which hid its one failure.
 
 ## Dark
 
@@ -110,6 +110,7 @@ Contrast read from the built CSS: fill on day deep 3.88, keyline on shallows 8.8
 
 - `scripts/db/proofs/37_a_country_has_a_navy.sql`: 20 markers, the real job, voyage engine, refit and purses, economy CLOSED as prod, and `NAVY_OPEN` with it open, as CI's own world.
 - `scripts/ops/harness/navy/proof-0331.mjs`: red first (fails with no file), scenes equal, real file green, 60 mutations each red for its own reason, on the world at head 0328.
+- CI found: the silhouette red above. Fixed in the hull, not the spec.
 - First runs found: a proof reading a stable function beside a volatile call in one expression (the same trap as 0328); `<>` on a null passing where `is distinct from` fails (three asserts); and that a capital left with 0 d. after a build lays its new ship up on the same run. That last is the rule working, so the proof gives the capital an hour's pay.
 - `tests/map.kinds.spec.ts` gains the row: 33 passed with `stats.moneySectors` and `cargo.design`. `tsc`, `eslint`, `vite build` clean.
 - Self-assert: catalog, stable reads and arithmetic on probe purses, no row, no game step, under 200 ms locally on the proof world, not on a populated one.

@@ -428,7 +428,7 @@ public.battle_sides (battle_id, fleet_id, side, joined_at, arrives_at)
 **Built as W12, migration 0331, dark, 2026-11-06 (`docs/dev-log/2026-11-06-a-country-has-a-navy.md`). Where the build differs:**
 - **A build waits for the capital's surplus, never mints** (owner question 9 stays open). Today only LIS, SVQ and SAK can pay: 31 of 75 hulls. The line below that cargo ships top poor capitals up does not hold: they top up to `city_aid_target`, 50,000-148,812 d., and a galion costs 1,156,000 d.
 - Off duty (over the number, unpaid, switch off) she sails straight to her station from her next port, rather than finishing the leg only.
-- Her look: violet `--color-navy-hull`, not nation ink; beam 0.4, not 0.32.
+- Her look: violet `--color-navy-hull`, not nation ink; beam 0.34, not 0.32.
 - Stations on the flags of the build: `public.navy_station_plan`, 46, listed in the dev-log. A few differ from the table below.
 
 ### 6.1 What a navy ship is

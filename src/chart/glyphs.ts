@@ -146,7 +146,7 @@ export const GLYPH = {
    * keeps her the stoutest hull on the sheet. Not off her burthen: the map draws her by her kind.
    */
   cargoHullHalfLength: 5.8,
-  /** THE NAVY SHIP (0331, docs/WORLD_POWERS.md section 9): 7, a capital hull's length on a narrow beam (0.4 of it), so she reads as a dart among tubs. */
+  /** THE NAVY SHIP (0331, docs/WORLD_POWERS.md section 9): 7, a capital hull's length on a narrow beam (0.34 of it), so she reads as a dart among tubs. */
   navyHullHalfLength: 7,
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
@@ -696,11 +696,12 @@ function cargoHullPath(l: number): string {
 }
 
 /**
- * 0331 — THE NAVY SHIP (W12, docs/WORLD_POWERS.md section 9): A LONG DART. A sharp bow, a beam 0.4 of her half-length, and a stern SWEPT back to two points,
- * so she reads as an arrow at 1x where the cargo ship reads as a tub. The design's 0.32 left the 2 px stripe almost her whole deck at 1x, and her colour with it (docs/dev-log/2026-11-06-cargo-colour/).
+ * 0331 — THE NAVY SHIP (W12, docs/WORLD_POWERS.md section 9): A LONG DART. A sharp bow, a beam 0.34 of her half-length, and a stern SWEPT back to two points,
+ * so she reads as an arrow at 1x where the cargo ship reads as a tub. The design's 0.32 left the 2 px stripe almost her whole deck at 1x, and her colour with it; 0.36 and up fall under the
+ * 20 % silhouette law against a nau at 1x (0.11 and 0.10, tests/map.kinds.spec.ts). 0.34 clears it, 0.27 at 1x and 0.24 at 2x.
  */
 function navyHullPath(l: number): string {
-  const b = l * 0.4
+  const b = l * 0.34
   return mirrored([[0, -l], [b * 0.62, -l * 0.55], [b, -l * 0.1], [b, l * 0.55], [b * 1.5, l], [b * 0.45, l * 0.72], [0, l * 0.72]])
 }
 
@@ -708,7 +709,7 @@ function navyHullPath(l: number): string {
  * THE MARK A KIND WEARS ON HER DECK, centred on her hull, bow up, solid (never a hole). `bars`: two bars across
  * the beam, each 0.36 of her half-length thick (2.1 px at the cargo ship's 5.8, so never under 2 px at her
  * `minHalfLength`), kept just inside the hull's outline so her keyline still runs round her. `stripe` (0331): one
- * stripe bow to stern, 2 px wide at her `minHalfLength`, down the middle of a beam of 5.6 px.
+ * stripe bow to stern, 2 px wide at her `minHalfLength`, down the middle of a beam of 4.8 px.
  */
 export function kindMarkPath(mark: KindMark, halfLength: number): string {
   const l = halfLength
