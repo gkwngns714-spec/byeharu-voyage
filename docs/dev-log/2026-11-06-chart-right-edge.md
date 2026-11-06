@@ -8,7 +8,7 @@ Both causes were true. Read from prod (read-only, one `begin read only` session)
 **A, the wall: true, on every chart.** The wash closed `L lastX floor`, so every chart ends in a vertical wall at the right edge.
 
 ## What changed (one helper each, shared)
-- `seriesChartModel.ts`: `settledBuckets(points, period, nowMs)` leaves out the bucket still open (day +1 d, week +7 d, month to the 1st; UTC like the server's `history_bucket`). Nothing is drawn in its place. `HistoryLine.flow` marks the twelve sums (minted, removed, sold, bought, profit, income, spending, earned, lost, net); `HistoryChart` applies it to those lines only, with `serverNow()`.
+- `seriesChartModel.ts`: `settledBuckets(points, period, nowMs)` leaves out the bucket still open (only the newest can be open: day 1 d, week 7 d, month 31 d (no client month arithmetic)). Nothing is drawn in its place. `HistoryLine.flow` marks the twelve sums (minted, removed, sold, bought, profit, income, spending, earned, lost, net); `HistoryChart` applies it to those lines only, with `serverNow()`.
 - `seriesChartModel.ts`: `washFade(firstX, lastX)` is the one spelling of the wash's right edge (opaque, then gone over the last 28 px, or half a short wash). `AreaWash.tsx` draws it (a mask, fill only; the line is untouched, nothing past the last point). `SeriesChart`, `PriceChart` and its stock strip all use it; `areaFade` is in both models.
 - Specs: `tests/seriesChart.spec.ts` (open bucket out, whole ones kept, week and month ends, fade), `tests/priceChart.spec.ts` (shared fade). The ten word-label specs in those two files fail locally in the Korean locale before and after this change; CI is English.
 
