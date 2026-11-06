@@ -10,9 +10,11 @@ import { CityFlag } from '../../live/CityFlag'
 import { usePortFlags } from '../../live/usePortFlags'
 // THE MERCHANTS (0099): their sheet and its card are live-data React shared with PORT.
 import { CargoSheet } from '../../live/CargoSheet'
+import { NavySheet } from '../../live/NavySheet'
 import { MerchantSheet } from '../../live/MerchantSheet'
 import { merchantParts } from '../../live/merchantLine'
 import { useCargoShipCard } from '../../live/useCargoShipCard'
+import { useNavyShipCard } from '../../live/useNavyShipCard'
 import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
@@ -206,8 +208,11 @@ function Chart({
   const merchantId = selection?.kind === 'merchant' ? selection.id : null
   // 0310: a cargo ship is tapped like a merchant, and has a card of her own.
   const cargoId = merchantId !== null && trafficRows.find((t) => t.id === merchantId)?.kind === 'CARGO_SHIP' ? merchantId : null
-  const { card } = useMerchantCard(cargoId === null ? merchantId : null)
+  // 0331: a navy ship too.
+  const navyId = merchantId !== null && trafficRows.find((t) => t.id === merchantId)?.kind === 'NAVY' ? merchantId : null
+  const { card } = useMerchantCard(cargoId === null && navyId === null ? merchantId : null)
   const cargoCard = useCargoShipCard(cargoId)
+  const navyCard = useNavyShipCard(navyId)
   const traffic = useMemo(
     () =>
       mapTrafficOf(
@@ -519,7 +524,16 @@ function Chart({
           onClose={() => setSelection(null)}
         />
       )}
-      {selectedMerchant && cargoId === null && (
+      {selectedMerchant && navyId !== null && (
+        <NavySheet
+          key={selectedMerchant.id}
+          mode="side"
+          card={navyCard && navyCard.fleet.id === selectedMerchant.id ? navyCard : null}
+          line={<PlaceLine parts={merchantParts(selectedMerchant, (c) => portsByCode.get(c)?.name ?? c, nowMs)} />}
+          onClose={() => setSelection(null)}
+        />
+      )}
+      {selectedMerchant && cargoId === null && navyId === null && (
         <MerchantSheet
           key={selectedMerchant.id}
           mode="side"

@@ -72,6 +72,7 @@ import type {
   StandingRouteBook,
   SeaRoster,
   CargoShipCard,
+  NavyShipCard,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -677,6 +678,11 @@ export function worldSeaRoster(since: string | null): Promise<RpcResult<SeaRoste
  *  E_NOT_FOUND in the same words. */
 export function worldCargoShipCard(fleetId: string): Promise<RpcResult<CargoShipCard>> {
   return call<CargoShipCard>('worldCargoShipCard', [fleetId])
+}
+
+/** 0331: one navy ship's card, read at a tap. Refuses E_NOT_FOUND for any other fleet. */
+export function worldNavyShipCard(fleetId: string): Promise<RpcResult<NavyShipCard>> {
+  return call<NavyShipCard>('worldNavyShipCard', [fleetId])
 }
 
 export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCard>> {

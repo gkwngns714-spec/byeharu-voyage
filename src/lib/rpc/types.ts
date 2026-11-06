@@ -2245,8 +2245,8 @@ export interface TrafficFleet {
    * role), and the only reason it is on the wire at all is that the chart cannot invent it.
    */
   lane: [number, number][] | null
-  /** 0310: served on a crown's cargo ship alone, so a merchant's row is what it always was. Absent = a merchant. */
-  kind?: 'CARGO_SHIP'
+  /** 0310: served on a crown's cargo ship, 0331: and on a navy ship, alone, so a merchant's row is what it always was. Absent = a merchant. */
+  kind?: 'CARGO_SHIP' | 'NAVY'
 }
 
 /**
@@ -2550,6 +2550,19 @@ export interface CargoShipCard {
   ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
   /** 0327: served, true, only while attacks are lit. Absent, the card offers no Attack. */
   attack?: true
+}
+
+/** 0331: `world.navy_ship_card(fleet)`, one crown's navy ship. `to` and `eta` while she sails; `next` her patrol's stops after this one, five at most. */
+export interface NavyShipCard {
+  fleet: { id: string; name: string; status: FleetStatus; port: string | null }
+  nation_code: string | null
+  station: string
+  mission: 'PATROL'
+  laid_up: boolean
+  to: string | null
+  eta: string | null
+  next: string[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
 }
 
 // ── 0121: ONE FLEET'S TRADING, LAP BY LAP (owner, 2026-10-15) ───────────────────────────────────
@@ -3652,6 +3665,8 @@ export interface StatsNow {
   /** 0310: served only while a cargo ship exists. `funds_at_sea` is a part of `set_aside`, not a new sum. */
   cargo_ships?: number
   funds_at_sea?: number
+  /** 0331: served only while a navy ship is at work. */
+  navy_ships?: number
   since_count: { trades: number; units: number; sold: number; bought: number }
   counted_at: string
   counted_through: string

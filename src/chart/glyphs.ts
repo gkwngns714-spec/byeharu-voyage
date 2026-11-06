@@ -146,6 +146,8 @@ export const GLYPH = {
    * keeps her the stoutest hull on the sheet. Not off her burthen: the map draws her by her kind.
    */
   cargoHullHalfLength: 5.8,
+  /** THE NAVY SHIP (0331, docs/WORLD_POWERS.md section 9): 7, a capital hull's length on a narrow beam (0.34 of it), so she reads as a dart among tubs. */
+  navyHullHalfLength: 7,
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
   fleetHaloRadius: 4,
@@ -434,7 +436,7 @@ export function shipPath(halfLength: number): string {
 /** The six sizes a silhouette is drawn at (`class_profile.size`, clamped to 1-6). */
 export type HullSize = 1 | 2 | 3 | 4 | 5 | 6
 /** A silhouette: rig family × size. */
-export type HullShape = `${'fore' | 'square'}-${HullSize}` | 'cargo'
+export type HullShape = `${'fore' | 'square'}-${HullSize}` | 'cargo' | 'navy'
 
 /** The served facts a silhouette is read from — `world.snapshot().ship_classes` rows. */
 export interface HullClassFacts {
@@ -450,6 +452,8 @@ export interface HullClassFacts {
  * `hullGroup` and `hullPath` like anyone. So ./FleetsLayer.tsx learned nothing about her hull.
  */
 export const CARGO_HULL: HullClass = 'cargo-ship'
+/** 0331: THE NAVY SHIP'S, on the same terms: ./liveWorld.ts names it for a row the server marks `kind: NAVY`. */
+export const NAVY_HULL: HullClass = 'navy-ship'
 
 /**
  * W0a (docs/WORLD_POWERS.md section 9) — EVERY KIND OF SHIP HAS ITS LOOK, IN THIS ONE TABLE, and nothing else
@@ -461,12 +465,12 @@ export const CARGO_HULL: HullClass = 'cargo-ship'
  *
  * WHY A KIND HAS A COLOUR OF HER OWN (owner 2026-11-06: *"unify the color of cargoship"*): by day every
  * merchant is the pale deck, so a kind that must be told from them wears ONE token, the same by day and by
- * night, and not her nation's (`--color-cargo-hull`, src/index.css). The renderer reads `token` and nothing
- * else; the spec reads the real figures (tests/map.kinds.spec.ts).
+ * night, and not her nation's (`--color-cargo-hull`, `--color-navy-hull`, src/index.css). The renderer reads `token`
+ * and nothing else; the spec reads the real figures (tests/map.kinds.spec.ts).
  */
-export type ShipKind = 'merchant' | 'cargo' | 'yours'
+export type ShipKind = 'merchant' | 'cargo' | 'navy' | 'yours'
 /** A solid shape laid over a hull, drawn by `kindMarkPath`. */
-export type KindMark = 'bars'
+export type KindMark = 'bars' | 'stripe'
 export interface KindLook {
   readonly hull: HullShape | null
   readonly mark: KindMark | null
@@ -477,12 +481,13 @@ export interface KindLook {
 export const KIND_LOOK: Readonly<Record<ShipKind, KindLook>> = {
   merchant: { hull: null, mark: null, fill: { token: null }, minHalfLength: 0, thin: true },
   cargo: { hull: 'cargo', mark: 'bars', fill: { token: 'var(--color-cargo-hull)' }, minHalfLength: GLYPH.cargoHullHalfLength, thin: false },
+  navy: { hull: 'navy', mark: 'stripe', fill: { token: 'var(--color-navy-hull)' }, minHalfLength: GLYPH.navyHullHalfLength, thin: false },
   yours: { hull: null, mark: null, fill: { token: null }, minHalfLength: 0, thin: false },
 }
-/** The kind a served merchant row is: the server marks a cargo ship and no other (a merchant row has no key). */
-export const shipKindOf = (merchant: { readonly cargo?: true }): ShipKind => (merchant.cargo ? 'cargo' : 'merchant')
+/** The kind a served merchant row is: the server marks a cargo ship or a navy ship and no other (a merchant row has no key). */
+export const shipKindOf = (merchant: { readonly cargo?: true; readonly navy?: true }): ShipKind => (merchant.cargo ? 'cargo' : merchant.navy ? 'navy' : 'merchant')
 
-const LIVE_SHAPES: Readonly<Record<string, HullShape>> = { barca: 'fore-1', carlat: 'fore-2', nau: 'square-3', [CARGO_HULL]: KIND_LOOK.cargo.hull! }
+const LIVE_SHAPES: Readonly<Record<string, HullShape>> = { barca: 'fore-1', carlat: 'fore-2', nau: 'square-3', [CARGO_HULL]: KIND_LOOK.cargo.hull!, [NAVY_HULL]: KIND_LOOK.navy.hull! }
 let servedShapes: ReadonlyMap<string, HullShape> = new Map()
 
 /** The silhouette of a rig and a size — the one rule. */
@@ -503,7 +508,7 @@ export function hullShapeOf(cls: HullClass | null): HullShape | null {
   return servedShapes.get(cls) ?? LIVE_SHAPES[cls] ?? null
 }
 
-const sizeOfShape = (shape: Exclude<HullShape, 'cargo'>): HullSize => Number(shape.slice(-1)) as HullSize
+const sizeOfShape = (shape: Exclude<HullShape, 'cargo' | 'navy'>): HullSize => Number(shape.slice(-1)) as HullSize
 
 /**
  * HOW LONG THIS HULL IS DRAWN, centre to bow, in CSS px. A class the server did not name is the
@@ -513,7 +518,9 @@ const sizeOfShape = (shape: Exclude<HullShape, 'cargo'>): HullSize => Number(sha
 export function hullHalfLengthOf(cls: HullClass | null): number {
   const shape = hullShapeOf(cls)
   if (shape === null) return GLYPH.shipHalfLength
-  return shape === 'cargo' ? GLYPH.cargoHullHalfLength : GLYPH.hullHalfLength[sizeOfShape(shape)]
+  if (shape === 'cargo') return GLYPH.cargoHullHalfLength
+  if (shape === 'navy') return GLYPH.navyHullHalfLength
+  return GLYPH.hullHalfLength[sizeOfShape(shape)]
 }
 
 /**
@@ -549,6 +556,7 @@ export function hullPath(cls: HullClass | null, halfLength: number = hullHalfLen
   // chart, drawn by the function the minimap and row 90's whole measurement already use.
   if (shape === null) return shipPath(l)
   if (shape === 'cargo') return cargoHullPath(l)
+  if (shape === 'navy') return navyHullPath(l)
   if (shape !== 'fore-1' && shape !== 'fore-2' && shape !== 'square-3') return waveAHullPath(shape, l)
   if (shape === 'fore-1') {
     const b = l * 0.33
@@ -627,7 +635,7 @@ function mirrored(half: readonly (readonly [number, number])[]): string {
  *   fore-6    the great galley (the Baştarda-i Hümayun) — the longest, slimmest hull: a long ram, an
  *             outrigger of oars down the whole waist, a raised poop at the stern.
  */
-function waveAHullPath(shape: Exclude<HullShape, 'cargo'>, l: number): string {
+function waveAHullPath(shape: Exclude<HullShape, 'cargo' | 'navy'>, l: number): string {
   if (shape === 'square-1') {
     const b = l * 0.4
     return mirrored([[0, -l], [b * 0.7, -l * 0.6], [b, -l * 0.1], [b, l * 0.75], [b * 0.85, l * 0.9], [0, l * 0.9]])
@@ -688,9 +696,20 @@ function cargoHullPath(l: number): string {
 }
 
 /**
+ * 0331 — THE NAVY SHIP (W12, docs/WORLD_POWERS.md section 9): A LONG DART. A sharp bow, a beam 0.34 of her half-length, and a stern SWEPT back to two points,
+ * so she reads as an arrow at 1x where the cargo ship reads as a tub. The design's 0.32 left the 2 px stripe almost her whole deck at 1x, and her colour with it; 0.36 and up fall under the
+ * 20 % silhouette law against a nau at 1x (0.11 and 0.10, tests/map.kinds.spec.ts). 0.34 clears it, 0.27 at 1x and 0.24 at 2x.
+ */
+function navyHullPath(l: number): string {
+  const b = l * 0.34
+  return mirrored([[0, -l], [b * 0.62, -l * 0.55], [b, -l * 0.1], [b, l * 0.55], [b * 1.5, l], [b * 0.45, l * 0.72], [0, l * 0.72]])
+}
+
+/**
  * THE MARK A KIND WEARS ON HER DECK, centred on her hull, bow up, solid (never a hole). `bars`: two bars across
  * the beam, each 0.36 of her half-length thick (2.1 px at the cargo ship's 5.8, so never under 2 px at her
- * `minHalfLength`), kept just inside the hull's outline so her keyline still runs round her.
+ * `minHalfLength`), kept just inside the hull's outline so her keyline still runs round her. `stripe` (0331): one
+ * stripe bow to stern, 2 px wide at her `minHalfLength`, down the middle of a beam of 4.8 px.
  */
 export function kindMarkPath(mark: KindMark, halfLength: number): string {
   const l = halfLength
@@ -700,6 +719,10 @@ export function kindMarkPath(mark: KindMark, halfLength: number): string {
   switch (mark) {
     case 'bars':
       return bar(l * 0.12) + bar(l * 0.12 + t + l * 0.1)
+    case 'stripe': {
+      const half = l / 7
+      return `M${-half} ${-l * 0.62}L${half} ${-l * 0.62}L${half} ${l * 0.62}L${-half} ${l * 0.62}Z`
+    }
   }
 }
 

@@ -297,7 +297,7 @@ Applies to every NPC ship: merchant, cargo, navy, pirate.
 
 **Built as W11, migration 0327, dark, 2026-11-06 (`docs/dev-log/2026-11-06-a-player-attacks.md`). Where the build differs:**
 - **A door, not a verb.** `cmd.attack` runs now, like `cmd.divert`. `cmd.issue` queues and a queue runs only in port, so a verb of `cmd.parse` could never fire at sea.
-- **Only cargo ships can be attacked,** because nothing else exists. `regard_attack_navy`, `regard_pirate` and the "60 minutes" rule come with W12, W17.
+- **Only cargo ships can be attacked,** because nothing else exists. `regard_attack_navy` and the "60 minutes" rule are NOT in W12 (0331, whose row does not list them): they come with W13 or W14, before `attack_enabled` is lit. `regard_pirate` comes with W17.
 - `E_NOT_A_TARGET` (a merchant), `E_HUMAN_TARGET` (a player) and `E_STALE` are added to the refusals.
 - A ship that has no lap counts as lap 0, so she too takes one attack until she next loads.
 - The reach refusal serves have = your reach and need = the distance: `cmd.figures` refuses have above need.
@@ -424,6 +424,12 @@ public.battle_sides (battle_id, fleet_id, side, joined_at, arrives_at)
 ## 6. Part 6: navies
 
 **This part comes before pirates in this doc because navies are built first** (section 12).
+
+**Built as W12, migration 0331, dark, 2026-11-06 (`docs/dev-log/2026-11-06-a-country-has-a-navy.md`). Where the build differs:**
+- **A build waits for the capital's surplus, never mints** (owner question 9 stays open). Today only LIS, SVQ and SAK can pay: 31 of 75 hulls. The line below that cargo ships top poor capitals up does not hold: they top up to `city_aid_target`, 50,000-148,812 d., and a galion costs 1,156,000 d.
+- Off duty (over the number, unpaid, switch off) she sails straight to her station from her next port, rather than finishing the leg only.
+- Her look: violet `--color-navy-hull`, not nation ink; beam 0.34, not 0.32.
+- Stations on the flags of the build: `public.navy_station_plan`, 46, listed in the dev-log. A few differ from the table below.
 
 ### 6.1 What a navy ship is
 

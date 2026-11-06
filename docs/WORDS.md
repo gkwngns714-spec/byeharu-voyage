@@ -119,6 +119,7 @@ Never "PvP", "affinity", "regard", "raid target". The full list is `docs/WORLD_P
 | its fleet on the map | the fleet's own name, with the company beside it (`Carreira da Índia · Casa da Índia`) | NPC ship |
 | what it makes | **≈ 37,200 🪙 a day** · **A lap ≈ 1,240 🪙** · **So far today** before a whole day of laps · **Last laps** `+1,240 🪙 · −18 🪙 · …` | earnings/day, per game-day, income |
 | its money | **Fortune** | purse, treasury |
+| a country's warship (0331) | **Navy ship** / **군함**; her base **Station** / **기지**; her duty **Duty** / **임무**: **Patrol** / **순찰**; not sailing **Laid up** / **정박 중**; the money **Navy build**, **Navy pay** | warship, man-of-war, garrison, mothballed |
 | cover for a cargo against pirates (0213; the owner, 2026-10-19: "what about insurance") | **Insurance** (the section, the ledger word); the press **Insure the cargo**, on: **Insured**; the price is a plain figure (`Insurance 12 🪙`); the payout **Insurance paid**; the loss `what pirates take`; History `Gaivota's cargo (2,000 🪙) insured at Lisbon for 12 🪙.` / `Lisbon's insurance paid Gaivota 1,800 🪙 for cargo lost to pirates.` | premium (that is a request's word), policy, underwriter, deductible, claim |
 | a merchant made whole after a loss (0213; the refound is retired) | **insurance paid** (`insurance paid twice, 1,800 🪙`) | refounded, bailed out, reset |
 | a merchant that cannot sail on | **laid up** | stranded, dead |

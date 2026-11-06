@@ -372,6 +372,7 @@ const TABLE = {
   worldNpcFleetCard: { schema: 'world', fn: 'npc_fleet_card', args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0310 — ONE CARGO SHIP'S CARD: where she is bound, the funds aboard, her next stops. A READ, at a tap.
   worldCargoShipCard: { schema: 'world', fn: 'cargo_ship_card', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  worldNavyShipCard: { schema: 'world', fn: 'navy_ship_card', args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0213 — INSURANCE: the caller's insured voyages under way and the last ones the insurance paid on.
   // A READ at a face (the desk's Plans), never on the beat. The price itself is `cmd.preview`'s: a SAIL's
   // estimate carries `insurance` (quoted unasked, charged with the word INSURED).

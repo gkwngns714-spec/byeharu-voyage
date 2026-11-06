@@ -192,6 +192,8 @@
   --color-kind-mark: #0b0f14;
   /* The ONE colour of every cargo ship's hull, day and night (glyphs.ts KIND_LOOK.cargo.fill.token). */
   --color-cargo-hull: #2fd4b0;
+  /* The ONE colour of every navy ship's hull, day and night (glyphs.ts KIND_LOOK.navy.fill.token). Violet: no merchant, cargo ship, player's fleet or nation wears it. tests/map.kinds.spec.ts holds it to 3 : 1. */
+  --color-navy-hull: #c4a1ff;
 
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because

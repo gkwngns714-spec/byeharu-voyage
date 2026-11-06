@@ -70,6 +70,7 @@ export const codexDict = defineDict({
     class: 'Class',
     baseFigures: 'Before bonuses.',
     cargoNote: 'Crown ships. They carry funds to cities.',
+    navyNote: 'A country\'s warships. Paid by its capital.',
   },
   ko: {
     all: '전체',
@@ -139,5 +140,6 @@ export const codexDict = defineDict({
     class: '등급',
     baseFigures: '보너스 전.',
     cargoNote: '왕실 선박. 도시에 자금을 나릅니다.',
+    navyNote: '나라의 군함. 수도가 비용을 냅니다.',
   },
 })

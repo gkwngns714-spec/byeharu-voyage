@@ -11,6 +11,7 @@ const BY_KIND: Readonly<Record<string, Sector>> = {
   WAGES: 'wages',
   HIRE: 'wages',
   CONVOY_UPKEEP: 'wages',
+  NAVY_PAY: 'wages',
   REPAIR: 'repairs',
   TOW: 'repairs',
   REFIT: 'repairs',

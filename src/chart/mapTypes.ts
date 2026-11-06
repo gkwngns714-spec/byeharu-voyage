@@ -253,6 +253,8 @@ export type MapTraffic = MapFleet & {
   /** 0310: a crown's CARGO SHIP (`kind` on her served row). Set on her alone and absent on every merchant:
    *  she draws the cargo hull, always in her nation's ink, is never thinned, and her card is her own. */
   readonly cargo?: true
+  /** 0331: a crown's NAVY SHIP, on the same terms. */
+  readonly navy?: true
 }
 
 /**

@@ -10,6 +10,7 @@ test('kinds file under their sector; the city side of a trade flips; unknown kin
   expect(sectorOf('PROVISION', 'company')).toBe('supplies')
   expect(sectorOf('WAGES', 'company')).toBe('wages')
   expect(sectorOf('CONVOY_UPKEEP', 'city')).toBe('wages')
+  expect(sectorOf('NAVY_PAY', 'city')).toBe('wages')
   expect(sectorOf('REPAIR', 'company')).toBe('repairs')
   expect(sectorOf('REFIT', 'city')).toBe('repairs')
   expect(sectorOf('INSURANCE', 'company')).toBe('insurance')
