@@ -20,7 +20,12 @@ export function fleetDue(fleet: FleetView, nowMs: number): string | null {
   if (ready !== null && ready > nowMs) return t('domain.readyIn', { t: formatCountdown(ready - nowMs) })
   // 0323 (docs/WORLD_POWERS.md 5.2): in a battle, in port or at sea, the clock on her card is the battle's. Past it she is due, or sailing on to her arrival.
   const until = inBattle(fleet) ? busyUntilMs(fleet) : null
-  if (until !== null && until > nowMs) return t('domain.inBattle', { t: formatCountdown(until - nowMs) })
+  if (until !== null && until > nowMs) {
+    // 0333: while the navy is still on her way, the card says so. Once there she is simply in the fight.
+    const navy = instantMs(fleet.navy_at)
+    const clock = t('domain.inBattle', { t: formatCountdown(until - nowMs) })
+    return navy !== null && navy > nowMs ? `${clock} · ${t('domain.navyArrives', { t: formatCountdown(navy - nowMs) })}` : clock
+  }
   const at = voyageEtaMs(fleet) ?? busyUntilMs(fleet)
   if (at === null) return null
   return nowMs >= at ? t('domain.due') : formatRealShort(at - nowMs)

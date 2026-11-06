@@ -90,6 +90,9 @@ test('the card counts the battle, in port and at sea, and only the battle', () =
   const sea = { ...base, busy_until: iso(T0 + 7 * MIN + 24_000) } as FleetView
   expect(inBattle(sea)).toBe(true)
   expect(fleetDue(sea, T0)).toBe('In battle 7:24')
+  // 0333: the navy on her way is on the card; arrived, or none coming, the card says only the battle
+  expect(fleetDue({ ...sea, navy_at: iso(T0 + 5 * MIN + 10_000) }, T0)).toBe('In battle 7:24 · Navy arrives 5:10')
+  expect(fleetDue({ ...sea, navy_at: iso(T0 - 1_000) }, T0)).toBe('In battle 7:24')
   // past the clock she is sailing on: the countdown is her arrival again
   expect(fleetDue(sea, T0 + 8 * MIN)).not.toContain('In battle')
 

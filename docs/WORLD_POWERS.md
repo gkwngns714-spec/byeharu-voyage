@@ -297,7 +297,7 @@ Applies to every NPC ship: merchant, cargo, navy, pirate.
 
 **Built as W11, migration 0327, dark, 2026-11-06 (`docs/dev-log/2026-11-06-a-player-attacks.md`). Where the build differs:**
 - **A door, not a verb.** `cmd.attack` runs now, like `cmd.divert`. `cmd.issue` queues and a queue runs only in port, so a verb of `cmd.parse` could never fire at sea.
-- **Only cargo ships can be attacked,** because nothing else exists. `regard_attack_navy` and the "60 minutes" rule are NOT in W12 (0331, whose row does not list them): they come with W13 or W14, before `attack_enabled` is lit. `regard_pirate` comes with W17.
+- **Cargo and navy ships can be attacked.** `regard_attack_navy` and the "60 minutes" rule (`attack_ship_minutes`) came with W13 (0333). `regard_pirate` comes with W17.
 - `E_NOT_A_TARGET` (a merchant), `E_HUMAN_TARGET` (a player) and `E_STALE` are added to the refusals.
 - A ship that has no lap counts as lap 0, so she too takes one attack until she next loads.
 - The reach refusal serves have = your reach and need = the distance: `cmd.figures` refuses have above need.
@@ -485,6 +485,12 @@ One job, `public.tick_navy`, a minute, own cron, `SKIP LOCKED`, like `tick_cargo
 **Navy against pirate:** both in one sea at a job pass: one `fight_sides`, no timer, nobody watching, at most once an hour a ship. Reported in the world feed.
 
 **Navy attacks a player:** only by section 5.3. Never a chase on the map. No player sees a ship turn to hunt her.
+
+**Built as W13, migration 0333, dark, 2026-11-06 (`docs/dev-log/2026-11-06-the-navy-comes.md`). Where the build differs:**
+- **A ship at sea is not turned.** She finishes her leg, then sails for the harbour. The server has no path from a point of open sea, only from port to port, and cutting a voyage is `cmd.divert`'s, a player's. So a ship near the end of a leg can come; one that has just left often cannot.
+- **Who comes:** the soonest `navy_call_ships` (3) on duty, and an escort on top. If none can be in time, the soonest sails anyway: she is the late ship. Beyond `navy_reach_nm`, none: "not at all".
+- **The escort** is the last ship of the realm's line on duty, so the capital's first station stays manned.
+- **`wanted` is W14's, all of it.** 0333 fills `public.battle_sides`; 0334's one hunk in `public.attack_close` reads it. Applied together, proofs 40 and 41 are green.
 
 ### 6.5 Cost, rollback, slices
 

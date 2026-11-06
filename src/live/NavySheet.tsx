@@ -5,11 +5,12 @@ import { hullFraction } from '../domain/fleet'
 import type { NavyShipCard } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
 import { NavyHull } from './CargoHull'
+import { AttackSection } from './AttackSection'
 import { HullCountry } from './HullCountry'
 import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE NAVY SHIP SHEET — one crown's navy ship (0331, docs/WORLD_POWERS.md Part 6). Read-only.
+// THE NAVY SHIP SHEET — one crown's navy ship (0331, docs/WORLD_POWERS.md Part 6). Read-only, but for Attack (0333).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // ./CargoSheet.tsx for a warship: her country, her station, her duty, where she is bound, the stops of
@@ -127,6 +128,7 @@ function NavyBody({ card }: { card: NavyShipCard }) {
           ))}
         </div>
       </SheetSection>
+      <AttackSection card={card} />
     </div>
   )
 }

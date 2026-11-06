@@ -2,19 +2,19 @@ import { useEffect, useState } from 'react'
 import { Button, Note, Row, SheetSection, Skeleton } from '../components/ui'
 import { formatInt } from '../lib/format'
 import { cmdAttack, cmdPreviewAttack } from '../lib/rpc'
-import type { AttackReceipt, CargoShipCard, Refusal } from '../lib/rpc'
+import type { AttackReceipt, Refusal } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 import { useWorld } from './worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// ATTACK, on a cargo ship's card (0327, docs/WORLD_POWERS.md §4.2)
+// ATTACK, on a cargo ship's card and a navy ship's (0327, 0333, docs/WORLD_POWERS.md §4.2)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The server judges everything here: `card.attack` is served only while attacks are lit, the dry run
 // (`cmd.preview_attack`) says the words or the refusal, and `cmd.attack` judges the press. Nothing here decides
 // who may attack whom. Your fleets are listed because the sheet must ask which one; a fleet that cannot go is told so by the server.
 
-export function AttackSection({ card }: { card: CargoShipCard }) {
+export function AttackSection({ card }: { card: { fleet: { id: string }; attack?: true } }) {
   if (!card.attack) return null
   return <Attack key={card.fleet.id} target={card.fleet.id} />
 }
@@ -76,7 +76,10 @@ function Attack({ target }: { target: string }) {
           <>
             <Row label={t('map.attackFoe')} value={t(`map.attackWord_${now.preview.word}`)} data-testid="cargo-attack-word" />
             <Row label={t('map.funds')} value={t(`map.attackFunds_${now.preview.funds}`)} data-testid="cargo-attack-funds" />
-            <Row label={t('map.attackRange')} value={t('map.attackMiles', { n: formatInt(now.preview.nm) })} hairline={false} />
+            <Row label={t('map.attackRange')} value={t('map.attackMiles', { n: formatInt(now.preview.nm) })} hairline={now.preview.navy_minutes != null} />
+            {now.preview.navy_minutes != null && (
+              <Row label={t('map.attackNavy')} value={t('map.attackNavyIn', { n: formatInt(now.preview.navy_minutes) })} hairline={false} data-testid="cargo-attack-navy" />
+            )}
             {!started && (
               <Button busy={busy} busyLabel={t('map.attack')} onClick={go} data-testid="cargo-attack-go">
                 {t('map.attack')}
