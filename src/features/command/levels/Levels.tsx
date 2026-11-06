@@ -55,14 +55,14 @@ export function Levels({ layout }: { layout: DeskLayout }) {
       list: null,
       mainFill: true,
       main: (
-        <div className="bv-scroll min-h-0 flex-1 overflow-y-auto">
+        <ScrollPane className="flex-1">
           <Company v={v} />
           <Room v={v} />
           <Countries v={v} />
           {banner}
           <HullRows v={v} />
           <CaptainRows captains={captains} />
-        </div>
+        </ScrollPane>
       ),
     })
   }
@@ -77,10 +77,10 @@ export function Levels({ layout }: { layout: DeskLayout }) {
       </>
     ),
     side: (
-      <div className="bv-scroll h-full min-h-0 overflow-y-auto p-4 min-[90rem]:p-5">
+      <ScrollPane className="h-full p-4 min-[90rem]:p-5">
         <Room v={v} />
         <Countries v={v} />
-      </div>
+      </ScrollPane>
     ),
   })
 }
