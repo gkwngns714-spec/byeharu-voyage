@@ -481,8 +481,9 @@ export function FleetsLayer({
         const nation = NATION_FILL[t.merchant.ink]
         const kind = shipKindOf(t.merchant)
         const look = KIND_LOOK[kind]
-        // 0310: a kind whose look says so wears her nation's ink whether or not the Regions filter is on.
-        const inked = regions || look.fill.inked
+        // A kind with a colour of her own (KIND_LOOK `fill.token`) wears it, day and night, whatever her nation
+        // and whatever the Regions filter says; everyone else follows the Regions filter.
+        const inked = regions && !look.fill.token
         return (
           <HullGroup
             key={`merchant-${t.fleet.id}`}
@@ -490,8 +491,8 @@ export function FleetsLayer({
             unitsPerPx={unitsPerPx}
             sun={sun}
             kind={kind}
-            className={`${inked ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-hull-keyline stroke-chart-sea'}`}
-            style={inked ? ({ '--nation-ink': nation.token, ...(look.fill.dayShare ? { '--kind-day-share': `${look.fill.dayShare * 100}%` } : {}) } as CSSProperties) : undefined}
+            className={`${look.fill.token ? 'bv-sun-kind-fill' : inked ? `bv-sun-merchant-nation ${nation.cls}` : 'bv-sun-merchant fill-merchant'} ${selected ? 'stroke-ink' : 'bv-sun-hull-keyline stroke-chart-sea'}`}
+            style={look.fill.token ? ({ '--kind-fill': look.fill.token } as CSSProperties) : inked ? ({ '--nation-ink': nation.token } as CSSProperties) : undefined}
             strokeWidth={GLYPH.glyphStroke * (selected ? 1.2 : 0.6)}
             hooks={{
               'data-testid': 'map-merchant',

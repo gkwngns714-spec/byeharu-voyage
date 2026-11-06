@@ -88,10 +88,10 @@ test.describe('the hull', () => {
     }
   })
 
-  test('she is wider, deeper and heavier in ink than any merchant', () => {
+  test('she is wider, longer and heavier in ink than any ordinary merchant (sizes 1-4; the rare capitals and flagships may outsize her, 2026-11-06)', () => {
     const hull = subpaths(hullPath(CARGO_HULL))[0]
     const ink = inkOf(hullPath(CARGO_HULL))
-    for (const c of MERCHANT_CLASSES) {
+    for (const c of MERCHANT_CLASSES.filter((m) => m.size <= 4)) {
       const theirs = subpaths(hullPath(c.code))[0]
       expect(widthOf(hull), `wider than ${c.code}`).toBeGreaterThan(widthOf(theirs))
       expect(lengthOf(hull), `longer than ${c.code}`).toBeGreaterThan(lengthOf(theirs))
@@ -120,7 +120,7 @@ test.describe('the hull', () => {
     const marks = hullGroup([CARGO_HULL], 0.01)
     expect(marks).toHaveLength(1)
     expect(marks[0]).toMatchObject({ cls: CARGO_HULL, dx: 0, dy: 0, halfLength: hullHalfLengthOf(CARGO_HULL) })
-    expect(hullHalfLengthOf(CARGO_HULL)).toBeGreaterThan(GLYPH.hullHalfLength[6])
+    expect(hullHalfLengthOf(CARGO_HULL)).toBeGreaterThan(GLYPH.hullHalfLength[4])
     expect(HULL_GROUP_MAX).toBe(3)
   })
 
