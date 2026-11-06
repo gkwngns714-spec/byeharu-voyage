@@ -136,6 +136,7 @@ const sailing = (id: string, lat: number, lon: number, hulls: readonly ('barca' 
     sailedNm: 0,
     totalNm: 100,
     etaMs: 1_000_000,
+    heldUntilMs: null,
     departedMs: 0,
     destinationCode: null,
     destPoint: null,

@@ -315,10 +315,10 @@ test.describe('one renderer, one table', () => {
     expect(glyphs.KIND_LOOK.yours.mark).toBeNull()
   })
 
-  test('size: cargo is drawn at 7, above the heavy galleon, no longer than the flagship, and is never thinned', () => {
-    expect(glyphs.GLYPH.cargoHullHalfLength).toBe(7)
-    expect(glyphs.GLYPH.cargoHullHalfLength).toBeGreaterThan(glyphs.GLYPH.hullHalfLength[4])
-    expect(glyphs.GLYPH.cargoHullHalfLength).toBeLessThanOrEqual(glyphs.GLYPH.hullHalfLength[6])
+  test('size: cargo is drawn at 5.8, above the nau (the ordinary merchant), just under the heavy galleon, and is never thinned', () => {
+    expect(glyphs.GLYPH.cargoHullHalfLength).toBe(5.8)
+    expect(glyphs.GLYPH.cargoHullHalfLength).toBeGreaterThan(glyphs.GLYPH.hullHalfLength[3])
+    expect(glyphs.GLYPH.cargoHullHalfLength).toBeLessThan(glyphs.GLYPH.hullHalfLength[4])
     expect(glyphs.KIND_LOOK.cargo.thin).toBe(false)
     expect(glyphs.KIND_LOOK.cargo.fill.token).toBe('var(--color-cargo-hull)')
     expect(glyphs.KIND_LOOK.merchant.fill.token).toBeNull()

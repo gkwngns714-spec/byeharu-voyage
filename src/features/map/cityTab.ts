@@ -2,8 +2,8 @@ import { create } from 'zustand'
 
 // WHICH TAB THE MAP'S CITY PANEL STANDS ON — Market | Port | Inn (CityTabs.tsx, owner 2026-10-15).
 // Its own file because two components set it: the tab bar, and `Send fleet` (SendFleet.tsx),
-// which turns to Port where her fleets are listed. Kept across cities, so a player reading prices
-// along a coast taps city after city and stays on Market. Session chrome, never game state.
+// which turns to Port where her fleets are listed. Kept across cities, so a player reading a coast
+// taps city after city and stays on the same tab. Session chrome, never game state.
 
 // The fourth, Town Hall (0123, owner 2026-10-15): the city's purse, its works, Invest, who invested.
 // The fifth, Info (owner row 174, 2026-10-20): the city itself in a handful of lines — its country,
@@ -13,16 +13,19 @@ import { create } from 'zustand'
 // `shell.tab_History`, a different word in Korean on purpose (내역 vs 기록).
 export type CityTab = 'market' | 'port' | 'inn' | 'townhall' | 'info' | 'history'
 
+// THE ORDER (owner 2026-11-06: "info should be at first order, then town hall, then whatever"):
+// Info, Town Hall, then the rest as they were. THIS ARRAY IS THE ONE AUTHORITY for the order and for
+// the tab the panel opens on (`CITY_TABS[0]`); CityTabs.tsx draws it as it stands.
 export const CITY_TABS: readonly { id: CityTab; label: string }[] = [
+  { id: 'info', label: 'Info' },
+  { id: 'townhall', label: 'Town Hall' },
   { id: 'market', label: 'Market' },
   { id: 'port', label: 'Port' },
   { id: 'inn', label: 'Inn' },
-  { id: 'townhall', label: 'Town Hall' },
-  { id: 'info', label: 'Info' },
   { id: 'history', label: 'History' },
 ]
 
 export const useCityTab = create<{ tab: CityTab; turnTo: (tab: CityTab) => void }>((set) => ({
-  tab: 'market',
+  tab: CITY_TABS[0].id,
   turnTo: (tab) => set({ tab }),
 }))

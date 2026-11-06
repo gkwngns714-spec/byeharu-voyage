@@ -149,12 +149,15 @@ export function CityInfo({ port }: { port: SnapshotPort }) {
       {/* the city's money, served to everyone (0223) */}
       {figures.loading && !v && <Skeleton className="mt-3 h-20 w-full" />}
       {o && (
-        <div className="mt-3" data-testid="city-info-economy">
-          <div className="grid grid-cols-2 gap-x-4 gap-y-3 lg:grid-cols-4">
-            <StatCell label={t('town.i_purse')} value={o.purse} format={formatDucats} size="body" tone="accent" />
-            <StatCell label={t('town.i_in')} value={o.income_1d} format={formatDucatsDelta} size="body" tone="success" />
-            <StatCell label={t('town.i_out')} value={-o.spending_1d} format={formatDucatsDelta} size="body" tone="danger" />
-            <StatCell label={t('town.i_taxes')} value={o.taxes_1d} format={formatDucats} size="body" />
+        <div className="mt-4 border-t border-edge pt-2" data-testid="city-info-economy">
+          {/* ONE COLUMN OF LINE CELLS (owner 2026-11-06, "too crowded"): the label at the left, the figure
+              at the right on one edge. Money here runs to nine digits plus the coin, and four of them in
+              a row (or a 2 x 2 grid on a phone) ran into one another. A line cell wraps, never overflows. */}
+          <div className="divide-y divide-edge" data-testid="city-info-figures">
+            <StatCell look="line" label={t('town.i_purse')} value={o.purse} format={formatDucats} size="body" tone="accent" />
+            <StatCell look="line" label={t('town.i_in')} value={o.income_1d} format={formatDucatsDelta} size="body" tone="success" />
+            <StatCell look="line" label={t('town.i_out')} value={-o.spending_1d} format={formatDucatsDelta} size="body" tone="danger" />
+            <StatCell look="line" label={t('town.i_taxes')} value={o.taxes_1d} format={formatDucats} size="body" />
           </div>
           <FactsLine>
             {o.top_sold[0] && <span>{t('town.i_buys', { good: goodName(o.top_sold[0]) })}</span>}

@@ -91,6 +91,8 @@ export interface MapVoyage {
   readonly totalNm: number
   /** Arrival instant, epoch ms, from `voyage.eta`. A countdown is display; arrival is the server's. */
   readonly etaMs: number
+  /** 0323 — when the last battle that held her ends, in ms, or null: ./drift.ts starts her clock there. Parsed once in `mapFleetsOf`, as `etaMs` is. */
+  readonly heldUntilMs: number | null
   /**
    * 0063 — the instant she left, in ms, or null when the server does not serve it. Parsed ONCE in
    * `mapFleetsOf`, the same discipline `etaMs` follows: a second `Date.parse` of a served string

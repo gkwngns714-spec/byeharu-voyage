@@ -1,4 +1,4 @@
-import { busyUntilMs, voyageEtaMs } from '../../domain/fleet'
+import { busyUntilMs, inBattle, voyageEtaMs } from '../../domain/fleet'
 import { formatCountdown, formatRealShort, instantMs } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
 import { t } from '../../lib/i18n'
@@ -18,6 +18,9 @@ export function fleetDue(fleet: FleetView, nowMs: number): string | null {
   // 0237 (docs/CLOSED_ECONOMY.md §4c): in her port time — "Ready in 0:42" (a live countdown; served only while in it)
   const ready = fleet.voyage ? null : instantMs(fleet.ready_at)
   if (ready !== null && ready > nowMs) return t('domain.readyIn', { t: formatCountdown(ready - nowMs) })
+  // 0323 (docs/WORLD_POWERS.md 5.2): in a battle, in port or at sea, the clock on her card is the battle's. Past it she is due, or sailing on to her arrival.
+  const until = inBattle(fleet) ? busyUntilMs(fleet) : null
+  if (until !== null && until > nowMs) return t('domain.inBattle', { t: formatCountdown(until - nowMs) })
   const at = voyageEtaMs(fleet) ?? busyUntilMs(fleet)
   if (at === null) return null
   return nowMs >= at ? t('domain.due') : formatRealShort(at - nowMs)

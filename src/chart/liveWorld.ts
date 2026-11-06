@@ -31,7 +31,7 @@
 import type { FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
 import { CARGO_HULL, hullShapeOf } from './glyphs'
 import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
-import { whereabouts } from '../domain/fleet'
+import { heldUntilMs, whereabouts } from '../domain/fleet'
 import { instantMs } from '../lib/format'
 
 /** The port table the chart draws. Field-for-field; nothing derived, nothing dropped but the
@@ -331,6 +331,7 @@ function mapFleetOf(f: ServedFleet): MapFleet | null {
         // always has an eta, so the null arm is unreachable here — it is spelt rather than
         // asserted because a second Date.parse is how the three copies happened.
         etaMs: where.etaMs ?? 0,
+        heldUntilMs: heldUntilMs(f.voyage.holds),   // 0323
         // 0063: an absent field is null, not 0 — a fleet whose server predates 0063 must draw no
         // elapsed figure rather than one counted from 1970.
         departedMs: instantMs(f.voyage.departed_at),

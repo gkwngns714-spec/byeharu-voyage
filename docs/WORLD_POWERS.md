@@ -374,6 +374,7 @@ public.battle_sides (battle_id, fleet_id, side, joined_at, arrives_at)
 - `battle_seconds` 600. The owner's "about 10 real minutes".
 - **Both fleets stop.** `fleets.status` gains `IN_BATTLE`; orders queue, as in `REPAIRING`.
 - **A sailing ship is held.** Her voyage takes a `BATTLE` row with `delay_hours` = battle length × `time_compression` / 3600, through `voyage.recompute_eta`, the path STORM uses. So law D.2 holds: position stays a pure function of the row and time. **This is the riskiest hunk here.** Prove the point stands still and arrival moves by exactly the delay.
+  - **As built (0323):** a day-keyed row cannot work, because every settled day has one and a delay throws the point back. The row stands above the days (`voyage.hold_floor()`), says its own `from_day`, and `voyage.hold_unserved` stops the point. `public.battles` has no fleet or seed column: the sides are the one list, and the seed is the battle's id. See `docs/dev-log/2026-11-06-a-battle-takes-ten-minutes.md`.
 - **Resolved once,** at `resolves_at`, by `public.tick_battles`, its own minute job. One call of `fight_sides`, every side present. Seed: (battle id, 1). No per-round state, so no beat cost and no drift.
 - **Reinforcement:** a ship joins if `arrives_at <= resolves_at`. She takes a real voyage to the nearest harbour of the site and is on the sheet.
 - **Break off:** the attacker may leave at any time: `BROKEN_OFF`, no loot, her fleet takes one round's fire at long range, regard loss stands.
