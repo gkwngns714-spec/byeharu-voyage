@@ -13,6 +13,7 @@ These are the scratch tools behind the 2026-10-18/19 measurements, copied from `
   then runs each arm on that dump (the after arm applies the migration under test before the kickoff); `players.mjs` +
   `player.sql` measure a starter's day (days quoted, ducats per real hour and laps per real day by band, through the game's
   own speed authority) before and after the migration in one rolled-back transaction.
+- `armed-cargo/` is 0328: `proof-0328.mjs` (red first, the `rich-cities` scene and its own `dark-scene.sql` equal before and after the file, mutations red, the real file and proof 36 green, cached world; `--first=` applies 0327 before it), `before.sql` and `after.sql`, both read-only on prod.
 - `fleet-follows-wealth/` is 0326: `proof-0326.mjs` (the file's absence red, 21 mutations red, the real file and proof 35 green, cached world; `--with=18,19,20,30,32` runs those after the file), `before.sql` (each hunk occurs once on prod, a pure SELECT).
 - `rich-cities/` is 0324: `proof-0324.mjs` (red first, `dark-scene.sql` equal before and after the file, mutations red, the real file and proof 32 green, cached world), `before.sql` and `after.sql`, both read-only on prod.
 - `attacks/` is 0327: `proof-0327.mjs` (the file's absence red, mutations red, the real file and proof 34 green, cached world; `--first=` applies what is not yet on main before it), `before.sql`, read-only on prod. Win rates: `raid/sim.mjs --sides 500`.
