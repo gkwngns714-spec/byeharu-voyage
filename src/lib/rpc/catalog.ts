@@ -524,6 +524,8 @@ const TABLE = {
   // 0160 (docs/SKILLS_AND_CAPTAINS.md K6): your captains — levels in three tracks, homesickness,
   // traits — and choosing the traits one of them uses (only ashore or in port).
   worldCaptains: { schema: 'world', fn: 'captains', args: [] },
+  // 0337 (docs/WORLD_POWERS.md 2.4, W3): one captain's sheet — five stats, derived, read when her card opens. By officer code, as the verbs below; null when you keep no such captain.
+  worldCaptainStats: { schema: 'world', fn: 'captain_stats', args: [{ name: 'p_code', type: 'text' }] },
   cmdCaptainTraitsSet: {
     schema: 'cmd',
     fn: 'captain_traits_set',

@@ -4,6 +4,7 @@ import { cmdCaptainTraitsSet, cmdPromoteCaptain } from '../lib/rpc'
 import type { Refusal, YourCaptain } from '../lib/rpc'
 import { formatInt, formatPctPoints } from '../lib/format'
 import type { YourCaptainsFace } from './useYourCaptains'
+import { CaptainStats } from './CaptainStats'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
 
@@ -101,6 +102,8 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
       <Row label={tl('books.job')} value={`${captain.job_word ?? ''} · ${captain.focus_word ?? ''}`} />
       <Row label={tl('books.where')} value={captain.ship ? `${captain.ship} · ${captain.cabin_word ?? ''}` : tl('books.ashore')} />
       {captain.homesick && <Row label={captain.homesick.line} tone="accent" data-testid="captain-homesick" />}
+
+      <CaptainStats code={captain.code} />
 
       {captain.levels.map((l) => (
         <Row key={l.track} label={l.word} value={`${formatInt(l.level)} / 20`} data-testid={`captain-level-${l.track}`}>

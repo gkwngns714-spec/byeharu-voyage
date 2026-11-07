@@ -129,7 +129,7 @@ Decided by default: **the company's level is its three tracks, a character's lev
 ### 2.3 Ship levels and stats
 
 All exist. Two additions:
-- `world.ship_view` serves a **Power** line: attack, accuracy, reach, armour, sighting, hull, crew, already all computed. Client only.
+- `world.ship_view` serves a **Power** line: attack, accuracy, reach, armour, sighting, hull, crew, already all computed. Client only. **Built with W3 (0337):** one caption line on `ShipTile` (a fleet's page, a merchant's, a cargo ship's, a navy ship's): the five fighting figures, the ship passed as served; her hull and crew are the tile's own bar and figure above it, not said twice.
 - `FLEETS_AND_SLOTS` §2.5's fleet line gives fleet totals.
 
 NPC hulls: merchants already have constant levels (`npc_fix_level`). Crown and pirate hulls take a fixed level by knob, `npc_ship_level` 5.
@@ -147,6 +147,13 @@ A sheet, derived, stored nowhere: `world.captain_stats(signing)`, read by the ex
 | Care / 돌봄 | Surgeon share + Hospitality | `crew_pct(crew_saved, homesick_relief)` |
 
 The sheet changes no fight: the fight reads the same `crew_pct`. **Decided by default:** no new stored stat, because a stored stat would be a second authority beside `trait_effects`. NPC crown ships have no captains; their hulls fight on class, level and gear.
+
+**Built as W3, migration 0337, not deployed (`docs/dev-log/2026-11-07-a-captain-has-a-sheet.md`). Where the build differs from the table above, each decided by default:**
+- **A stat is a level and its parts, not a blended score.** "Combat level + grade floor × share" added together is a number nothing reads. The grade floor and the cabin rate are inside each part already (`public.crew_terms`), so the sheet shows their sum once.
+- **A part is her own term from `public.crew_terms`**, the arithmetic `crew_pct` sums and `world.crew_bonuses` lists by source, not a slice of `crew_pct`. A cap is the crew's: below it, and without Command, a crew's parts add up to `crew_pct × 100` to the digit (proof 44); above it, `crew_pct × 100` is the least of their sum and the cap. A slice of `crew_pct` was built first and priced on prod: one `crew_pct` call per part, 45 to 134 ms each, so 150 to 500 ms an open.
+- **By officer code, not a signing id** (`world.captain_stats(p_code)`): every captain verb names the officer, and `world.captains` serves no signing id. Someone else's captain, a signed-out caller and a code nobody keeps read null.
+- **Blank, never 0:** she sits nowhere, parts null; no experience row, level null; a ship effect while `combat_bite` is off, null. She sits and the role is not hers: 0, no line.
+- **Trade counts hold and spread only** (the 17 category traders add per good); Care carries Hospitality as the company's number.
 
 ### 2.5 The fight takes two sides
 
@@ -820,6 +827,8 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 **W11 is built, migration 0327, dark, not deployed** (`docs/dev-log/2026-11-06-a-player-attacks.md`). `attack_enabled` stays false.
 
 **W14 is built, migration 0334, dark, not deployed** (`docs/dev-log/2026-11-06-wanted.md`). `navy_hunt_per_day` stays 0.
+
+**W3 is built, migration 0337, a read, not deployed** (`docs/dev-log/2026-11-07-a-captain-has-a-sheet.md`). `world.captain_stats`, the five lines on the captain card, the Power line on the ship tile. No switch is lit by it.
 
 **W4 is built, migration 0321, dark, not deployed** (`docs/dev-log/2026-11-06-a-ship-changes-fleets.md`). Lighting it is `fleet_room_bite`, the owner's, in its own window.
 

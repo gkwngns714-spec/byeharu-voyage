@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { formatInt, formatKnots, formatOfTotal, formatPct } from '../../lib/format'
 import { Bar } from './Bar'
+import { FactsLine } from './FactsLine'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
 import { Tile } from './Tile'
@@ -14,6 +15,20 @@ import { useT } from '../../lib/i18n'
 //
 // Who she is, what she is, how sound (the bar), how many hands and how much room. What IS mounted
 // is one caption line, only on a hull that carries something.
+//
+// HER POWER (0337, docs/WORLD_POWERS.md 2.3): the five figures a fight reads, one caption line under the bar, when the caller hands them over. They are
+// `world.ship_view`'s own, served on every hull (`FleetShip`), so a caller passes the ship itself: nothing is added up and no total is invented here. Her hull
+// and her crew are the bar and the figure above it, not said twice.
+export interface ShipPower {
+  attack: number
+  accuracy: number
+  reach: number
+  armour: number
+  sighting: number
+}
+
+const POWER = ['attack', 'accuracy', 'reach', 'armour', 'sighting'] as const
+
 export function ShipTile({
   name,
   className,
@@ -27,6 +42,7 @@ export function ShipTile({
   holdUsed,
   holdTotal,
   fittings = [],
+  power,
   testId = 'fleet-ship-tile',
 }: {
   name: string
@@ -44,6 +60,8 @@ export function ShipTile({
   holdUsed: number
   holdTotal: number
   fittings?: readonly { name: string; qty: number }[]
+  /** Her five fighting figures (0337). Absent: no Power line is drawn. */
+  power?: ShipPower
   testId?: string
 }) {
   const t = useT()
@@ -66,6 +84,16 @@ export function ShipTile({
       }
       data-testid={testId}
     >
+      {power && (
+        <FactsLine className="mt-0" data-testid="ship-power">
+          <span className="text-ink-muted">{t('ship.power')}</span>
+          {POWER.map((k) => (
+            <span key={k} className="whitespace-nowrap">
+              {t(`ship.${k}`)} <span className="tabular-nums text-ink-muted">{formatInt(power[k])}</span>
+            </span>
+          ))}
+        </FactsLine>
+      )}
       {fittings.length > 0 && (
         <span className="text-t-caption text-ink-faint">
           {fittings.map((f) => (f.qty > 1 ? `${f.name} ×${formatInt(f.qty)}` : f.name)).join(' · ')}
