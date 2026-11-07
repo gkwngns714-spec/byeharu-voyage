@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 48 — THE NAVY HUNTS  (migration 0341, owner rows 284, 285, W19 of docs/WORLD_POWERS.md 6.4)
+-- PROOF 48 — THE NAVY HUNTS  (migration 0340, owner rows 284, 285, W19 of docs/WORLD_POWERS.md 6.4)
 --
---   0341's self-assert reads the catalog only (a migration never runs a real game step, docs/OPS_HEALTH.md section 4). This proof lights both switches and runs the REAL job, the REAL step, the REAL voyage engine,
+--   0340's self-assert reads the catalog only (a migration never runs a real game step, docs/OPS_HEALTH.md section 4). This proof lights both switches and runs the REAL job, the REAL step, the REAL voyage engine,
 --   the REAL fight writer and the REAL wreck and refit. THE ECONOMY IS CLOSED HERE, as on prod. The sea is quiet (no hazard day). Instants are handed to every call.
 --   The fight is asked for by name where a scene needs a known hull loss (as proof 40 asks it); NH_REAL takes what the real engine gives. It builds on W17's contract: public.pirate_ships, public.pirates_on,
 --   public.pirate_ship_in_sea, public.pirate_side (0339), and makes its pirate ships by the hands every fleet is made by, their rows written straight, because W17's own doings (the hoard, the haunt) are W17's proof's.
@@ -126,7 +126,7 @@ returns uuid
 language plpgsql
 as $b$
 declare
-  v_uid uuid := ('00000000-0341-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid;
+  v_uid uuid := ('00000000-0340-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid;
   v_p   uuid := public.new_house(v_uid, 'Casa Caza ' || p_n, 'PRT', 'LIS', 'Caza ' || p_n,
                                  (select c.code from public.ship_classes c order by c.attack desc, c.code limit 1), 'Caza ' || p_n, null, false);
   v_f   uuid;

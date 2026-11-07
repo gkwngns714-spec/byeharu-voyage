@@ -1,17 +1,17 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// proof-0341.mjs — THE NAVY HUNTS (migration 0341, W19): the red-first proof. LOCAL ONLY (PGlite); not in CI.
+// proof-0340.mjs — THE NAVY HUNTS (migration 0340, W19): the red-first proof. LOCAL ONLY (PGlite); not in CI.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/the-navy-hunts/proof-0341.mjs [--first=a.sql,b.sql] [--no-mutations] [--no-old] [--only=<text>] [--with=31,34,37,40,41] [--cost] [--show]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/the-navy-hunts/proof-0340.mjs [--first=a.sql,b.sql] [--no-mutations] [--no-old] [--only=<text>] [--with=31,34,37,40,41] [--cost] [--show]
 //
-// Restores the cached world at the head before 0341 (never from zero; nothing is written to the cache), then inside transactions that are rolled back runs:
+// Restores the cached world at the head before 0340 (never from zero; nothing is written to the cache), then inside transactions that are rolled back runs:
 //   RED FIRST         - proof 48 on the world with no file: it must fail;
 //   DARK PARITY       - the navy, navy-comes and own scenes (dark-scene.sql), on the world before the file and after it: every SCENE line must be equal;
 //   POSITIVE CONTROL  - the real file followed by proof 48: every marker it declares;
 //   OLD PROOFS        - the real file followed by proofs 31, 34, 37 and 40, whose bodies it re-cuts under (--with= names others);
-//   MUTATION CONTROLS - deliberate breakages of the file (mutations-0341.mjs), each required to FAIL its self-assert, or proof 48 right after it, for the intended reason;
+//   MUTATION CONTROLS - deliberate breakages of the file (mutations-0340.mjs), each required to FAIL its self-assert, or proof 48 right after it, for the intended reason;
 //   --first           - files applied before everything else, in that order (W17's contract stub while 0339 is not in the tree; nothing once it is);
-//   --cost            - what the hunt pass costs, dark and lit, with the design's 75 hulls (cost-0341.mjs).
+//   --cost            - what the hunt pass costs, dark and lit, with the design's 75 hulls (cost-0340.mjs).
 // The harness reads the migration from supabase/migrations; it does not edit it.
 
 import { readFile } from 'node:fs/promises'
@@ -19,7 +19,7 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const NAME = '20260818000341_the_navy_hunts.sql'
+const NAME = '20260818000340_the_navy_hunts.sql'
 const PROOF = 'scripts/db/proofs/48_the_navy_hunts.sql'
 const OLD = ['scripts/db/proofs/31_battles.sql', 'scripts/db/proofs/34_a_player_attacks.sql', 'scripts/db/proofs/37_a_country_has_a_navy.sql', 'scripts/db/proofs/40_the_navy_comes.sql']
 const SCENES = ['scripts/ops/harness/navy/dark-scene.sql', 'scripts/ops/harness/navy-comes/dark-scene.sql', 'scripts/ops/harness/the-navy-hunts/dark-scene.sql']
@@ -67,7 +67,7 @@ async function attempt(...sqls) {
 }
 
 const only = arg('only')
-const MUTATIONS = (await import('./mutations-0341.mjs')).mutations(swap).filter(([label]) => !only || label.includes(only))
+const MUTATIONS = (await import('./mutations-0340.mjs')).mutations(swap).filter(([label]) => !only || label.includes(only))
 
 if (!only) {
   // RED FIRST
@@ -119,7 +119,7 @@ if (!only) {
 }
 
 if (process.argv.includes('--cost')) {
-  const { cost } = await import('./cost-0341.mjs')
+  const { cost } = await import('./cost-0340.mjs')
   await cost(db, before, file, say)
 }
 

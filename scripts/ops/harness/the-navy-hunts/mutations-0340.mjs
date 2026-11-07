@@ -1,4 +1,4 @@
-// mutations-0341.mjs — deliberate breakages of 0341, each required to FAIL the file's own self-assert, or proof 48 right after it, for the intended reason.
+// mutations-0340.mjs — deliberate breakages of 0340, each required to FAIL the file's own self-assert, or proof 48 right after it, for the intended reason.
 // `swap(sql, from, to)` throws when `from` is not in the file exactly once, so a mutation that no longer fits is loud.
 export function mutations(swap) {
   return [
@@ -16,7 +16,7 @@ export function mutations(swap) {
     ['the sides are swapped', (s) => swap(s, `  v_f := public.fight_sides(p_navy, v_round, v_a, v_b, '{}'::jsonb);\n`, `  v_f := public.fight_sides(p_navy, v_round, v_b, v_a, '{}'::jsonb);\n`), /hull loss did not land on both exactly/],
     // the hulls
     ['the hull writer skips side b', (s) => swap(s, `          select x.key::uuid, x.value::numeric from jsonb_each_text(coalesce(p_fight->'hull_lost'->'b', '{}'::jsonb)) x) l\n   where sh.id = l.id\n$$`, `          select x.key::uuid, x.value::numeric from jsonb_each_text('{}'::jsonb) x) l\n   where sh.id = l.id\n$$`), /hull loss did not land on both exactly/],
-    ['a battle writes no hull', (s) => swap(s, `$h$  perform public.fight_hulls_write(v_f);   -- 0341: these lines, lifted: THE hull writer, which the navy's fight with a pirate ship shares\n$h$`, `$h$  perform public.fight_hulls_write(v_f - 'hull_lost');   -- 0341: these lines, lifted: THE hull writer, which the navy's fight with a pirate ship shares\n$h$`), /sinking a pirate ship/],
+    ['a battle writes no hull', (s) => swap(s, `$h$  perform public.fight_hulls_write(v_f);   -- 0340: these lines, lifted: THE hull writer, which the navy's fight with a pirate ship shares\n$h$`, `$h$  perform public.fight_hulls_write(v_f - 'hull_lost');   -- 0340: these lines, lifted: THE hull writer, which the navy's fight with a pirate ship shares\n$h$`), /sinking a pirate ship/],
     ['a battle hunk is off its line', (s) => swap(s, `   where sh.id = l.id;\n$h$,`, `   where sh.id = l.id ;\n$h$,`), /occurs 0 time/],
     // the wreck
     ['a sunk pirate at sea is not wrecked', (s) => swap(s, `      if v_voy.id is not null then\n        perform voyage.npc_wreck(v_x, v_voy.id, v_voy.last_settled_day + 1);\n      end if;\n`, `\n`), /did not respawn at her home/],
@@ -24,8 +24,8 @@ export function mutations(swap) {
     // the line and the card
     ['the line names a player', (s) => swap(s, `  v_ev := public.emit_event(null, 'NAVY_FIGHT', jsonb_build_object(\n`, `  v_ev := public.emit_event(nf.player_id, 'NAVY_FIGHT', jsonb_build_object(\n`), /not one public NAVY_FIGHT naming both/],
     ['the result words are wrong', (s) => swap(s, `                when v_f ->> 'outcome' = 'DRIVEN_OFF' then 'LOST'\n`, `                when v_f ->> 'outcome' = 'DRIVEN_OFF' then 'WON'\n`), /not one public NAVY_FIGHT naming both|her card does not keep/],
-    ['the card serves the key dark', (s) => swap(s, `    || case when n.fought is null then '{}'::jsonb else jsonb_build_object('fought', n.fought) end;   -- 0341`, `    || jsonb_build_object('fought', n.fought);   -- 0341`), /her card serves a key/],
-    ['the job serves the key dark', (s) => swap(s, `    || case when v_fights is null then '{}'::jsonb else jsonb_build_object('fights', v_fights) end;   -- 0341`, `    || jsonb_build_object('fights', v_fights);   -- 0341`), /dark, the job answers/],
+    ['the card serves the key dark', (s) => swap(s, `    || case when n.fought is null then '{}'::jsonb else jsonb_build_object('fought', n.fought) end;   -- 0340`, `    || jsonb_build_object('fought', n.fought);   -- 0340`), /her card serves a key/],
+    ['the job serves the key dark', (s) => swap(s, `    || case when v_fights is null then '{}'::jsonb else jsonb_build_object('fights', v_fights) end;   -- 0340`, `    || jsonb_build_object('fights', v_fights);   -- 0340`), /dark, the job answers/],
     // the hunt
     ['the hunt ignores reach', (s) => swap(s, `                   where p.kind = 'HARBOUR' and not p.is_ice_closed and r.port_id <> p_station and r.nm <= public.wc_num('navy_reach_nm')\n`, `                   where p.kind = 'HARBOUR' and not p.is_ice_closed and r.port_id <> p_station\n`), /not in order, one a sea, within reach|pressed sea in reach is not the first target|did not sail for the pressed sea/],
     ['the hunt reads the sea as authored', (s) => swap(s, `            from (select p.sea_id, voyage.sea_danger(p.sea_id, p_now) as danger, r.port_id, r.nm, r.code\n`, `            from (select p.sea_id, voyage.sea_danger(p.sea_id, null) as danger, r.port_id, r.nm, r.code\n`), /pressed sea in reach is not the first target|did not sail for the pressed sea/],

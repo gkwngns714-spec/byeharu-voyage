@@ -1,7 +1,7 @@
--- 0341 PROD CHECK AFTER DEPLOY, read-only, one statement: supabase db query --linked -f scripts/ops/harness/the-navy-hunts/after.sql
+-- 0340 PROD CHECK AFTER DEPLOY, read-only, one statement: supabase db query --linked -f scripts/ops/harness/the-navy-hunts/after.sql
 -- Every function read here is STABLE (public.navy_on, public.pirates_on, public.navy_hunts_on, public.navy_hunt_targets, public.fleet_sea). No game function is called.
 -- Wanted: navy_on false; pirates_on false; hunts_on false; keys 3; columns 4; fns 7 (every new function present) and client_callable 0; navy_ships 0; hunt_rows 0; fought 0; public_fights 0;
---         lisbon_targets > 1 (the seas in reach of Lisbon, the most dangerous first) with lisbon_own true; head 20260818000341 (or 0340 if this slice became 0340).
+--         lisbon_targets > 1 (the seas in reach of Lisbon, the most dangerous first) with lisbon_own true; head 20260818000340.
 select public.navy_on() as navy_on,
        public.pirates_on() as pirates_on,
        public.navy_hunts_on() as hunts_on,

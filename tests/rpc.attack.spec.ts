@@ -106,7 +106,7 @@ test('a navy ship: lit, her card offers the attack, and every duty and the navy 
   expect(card.ok, JSON.stringify(card)).toBe(true)
   if (!card.ok) return
   expect(card.value.attack).toBe(true)
-  // 0341: no fight yet, no key; her last fight with a pirate ship, served once there was one, reads back with its words
+  // 0340: no fight yet, no key; her last fight with a pirate ship, served once there was one, reads back with its words
   expect('fought' in card.value).toBe(false)
   for (const locale of ['en', 'ko'] as const) {
     for (const key of ['mission_PATROL', 'mission_ESCORT', 'mission_REINFORCE', 'mission_HUNT', 'lastFight', 'fight_WON', 'fight_LOST', 'fight_DREW', 'fight_SUNK', 'attackNavy', 'attackNavyIn'])

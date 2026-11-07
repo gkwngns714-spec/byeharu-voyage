@@ -1,6 +1,6 @@
--- 0341 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/the-navy-hunts/before.sql
+-- 0340 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/the-navy-hunts/before.sql
 -- Generated from the migration's hunks. Every function read here is STABLE or immutable (pg_get_functiondef, to_regclass, to_regprocedure, replace, length). No game function is called.
--- Wanted: every `times` 1; keys 0; columns 0; fn_pass null; navy_on false; pirates_bite false (W17's knob, present); pirate_objects all present (W17 deployed); navy_ships 0; hunt_rows 0; public_fights 0; head 0340 (or 0339 if W18 is 0341).
+-- Wanted: every `times` 1; keys 0; columns 0; fn_pass null; navy_on false; pirates_bite false (W17's knob, present); pirate_objects all present (W17 deployed); navy_ships 0; hunt_rows 0; public_fights 0; head 20260818000339 (W17 deployed, this file not yet).
 with h(fn, ord, old) as (values
   ('public.tick_navy(timestamp with time zone,uuid)'::regprocedure, 1, $h$  v_s     text;
 begin

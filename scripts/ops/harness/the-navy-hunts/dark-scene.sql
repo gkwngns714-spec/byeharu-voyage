@@ -1,10 +1,10 @@
--- 0341 DARK PARITY SCENE: run by proof-0341.mjs on the world BEFORE the file and AFTER it, rolled back each time, beside the navy (0331) and navy-comes (0333) scenes.
--- It covers what 0341 cuts that those do not reach, in BOTH darks: the navy off (a ship's step, the job's answer, her card's keys) and the navy on with the pirates off (she patrols, the job's answer has the keys it had,
+-- 0340 DARK PARITY SCENE: run by proof-0340.mjs on the world BEFORE the file and AFTER it, rolled back each time, beside the navy (0331) and navy-comes (0333) scenes.
+-- It covers what 0340 cuts that those do not reach, in BOTH darks: the navy off (a ship's step, the job's answer, her card's keys) and the navy on with the pirates off (she patrols, the job's answer has the keys it had,
 -- her card the keys it had), and a PROBE battle's hulls written by the lifted statement (the outcome is seeded by the battle's random id, so what is compared is that hull was lost on a side and never grew). It names only
--- what existed before 0341 (W17's switch included: the pirates are off throughout).
+-- what existed before 0340 (W17's switch included: the pirates are off throughout).
 do $$
 declare
-  c_uid constant uuid := '00000000-0341-4000-8000-0000000000aa';
+  c_uid constant uuid := '00000000-0340-4000-8000-0000000000aa';
   v_t   timestamptz := now();
   v_nat uuid;
   v_cap uuid;
@@ -42,7 +42,7 @@ begin
   raise notice 'SCENE: step on %', public.navy_ship_step(v_n, v_t);   -- AWAY: she sailed
 
   -- A PROBE BATTLE through the real bodies: a company's fleet against a merchant at anchor; hull is lost on a side and never grows
-  v_p := public.new_house(c_uid, 'Casa Cena 0341', 'PRT', 'LIS', 'Cena', (select c.code from public.ship_classes c order by c.attack desc, c.code limit 1), 'Cena', null, false);
+  v_p := public.new_house(c_uid, 'Casa Cena 0340', 'PRT', 'LIS', 'Cena', (select c.code from public.ship_classes c order by c.attack desc, c.code limit 1), 'Cena', null, false);
   select id into v_f from public.fleets where player_id = v_p;
   update public.ships set crew = 100 where fleet_id = v_f;
   update public.world_config set value = 'true'::jsonb where key = 'attack_enabled';

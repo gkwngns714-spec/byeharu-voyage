@@ -1,4 +1,4 @@
-// cost-0341.mjs — what the hunt pass costs, on the probe world: dark (one knob read), lit with no pirate ship out (one read), and lit with the design's 75 navy hulls at work in port
+// cost-0340.mjs — what the hunt pass costs, on the probe world: dark (one knob read), lit with no pirate ship out (one read), and lit with the design's 75 navy hulls at work in port
 // and 30 pirate ships cruising, so every navy ship reads her sea and asks public.pirate_ship_in_sea. Each run is one rolled-back transaction. The dev-log's projection scales PGlite by 0331's x 6.7.
 export async function cost(db, before, file, say) {
   const scene = `

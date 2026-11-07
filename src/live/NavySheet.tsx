@@ -87,7 +87,7 @@ function NavyBody({ card }: { card: NavyShipCard }) {
           data-testid="navy-mission"
         />
         {card.fought !== undefined && (
-          // 0341: her last fight with a pirate ship, served only after one: how it went, and whom she met.
+          // 0340: her last fight with a pirate ship, served only after one: how it went, and whom she met.
           <Row
             mark={<IconDisc name="ship" />}
             label={t('map.lastFight')}

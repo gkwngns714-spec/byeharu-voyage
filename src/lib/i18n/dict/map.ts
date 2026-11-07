@@ -12,7 +12,7 @@ export const mapDict = defineDict({
     mission_PATROL: 'Patrol',
     mission_ESCORT: 'Escort',
     mission_REINFORCE: 'Called',
-    // 0341 (docs/WORLD_POWERS.md 6.4): the hunt, and her last fight with a pirate ship.
+    // 0340 (docs/WORLD_POWERS.md 6.4): the hunt, and her last fight with a pirate ship.
     mission_HUNT: 'Hunt',
     lastFight: 'Last fight',
     fight_WON: 'Won',

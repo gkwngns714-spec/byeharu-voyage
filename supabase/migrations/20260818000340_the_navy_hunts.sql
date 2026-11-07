@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- 0341 — THE NAVY HUNTS: a navy ship sails for the most dangerous sea in reach, and a navy ship and a pirate ship in one sea fight, once an hour, nobody watching. DARK
+-- 0340 — THE NAVY HUNTS: a navy ship sails for the most dangerous sea in reach, and a navy ship and a pirate ship in one sea fight, once an hour, nobody watching. DARK
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- Owner rows 284, 285 (2026-11-05): *"npcs that attack these ships as well as merchants"*; *"each country will also have battle ships. they defend or attack pirates"*; 2026-11-07: *"do it fast"*.
 -- Slice W19 of docs/WORLD_POWERS.md (6.4 Hunt, "Navy against pirate"; 7.7 row W19: "Hunt mission, navy against pirate, regard hooks"; proof: "at most once an hour; fight written on both hulls; arrivals bound").
@@ -46,11 +46,11 @@
 --   navy_fight, navy_hunt_pass. No new job, no new entry point, no new word of money. Nothing minted.
 --
 -- SELF-ASSERT: the catalog, stable reads and arithmetic only: hunks once and reversing; ACL, volatility and config unmoved; no other function, knob or job; both switches off; no row written; the targets of one station in order.
--- THIS FILE RUNS NO GAME STEP, in every environment (docs/OPS_HEALTH.md section 4). THE LIVE PATHS ARE PROVED IN CI: proof 48, scripts/db/proofs/48_the_navy_hunts.sql. Mutation controls: scripts/ops/harness/the-navy-hunts/proof-0341.mjs (local).
+-- THIS FILE RUNS NO GAME STEP, in every environment (docs/OPS_HEALTH.md section 4). THE LIVE PATHS ARE PROVED IN CI: proof 48, scripts/db/proofs/48_the_navy_hunts.sql. Mutation controls: scripts/ops/harness/the-navy-hunts/proof-0340.mjs (local).
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Self-assert fails above 45 s.
 -- ROLLBACK (forward, owner only): pirates_bite false: no hunt and no fight; a ship out on a hunt sails home at her next port and patrols. navy_enabled false: 0331's rollback. To remove: a NEW migration swapping old and new of each hunk.
--- VERSION: 0341 (provisional: W18 is 0340 and may swap with this one; the number is in this name, the dev-log, the harness and proof 48) - follows 0338 (W16) and 0339 (W17, whose contract this builds on).
+-- VERSION: 0340 (the coordinator's number, 2026-11-07: W19 deploys right after W17; W18 is 0341) - follows 0338 (W16) and 0339 (W17, whose contract this builds on).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -84,20 +84,20 @@ begin
   if to_regprocedure('public.navy_hunt_pass(timestamp with time zone,uuid)') is not null
      or exists (select 1 from public.world_config c where c.key = any (c_keys))
      or exists (select 1 from pg_attribute a where a.attrelid = 'public.navy_ships'::regclass and a.attname in ('fought_at', 'fought', 'hunt_port', 'hunt_until') and not a.attisdropped) then
-    raise exception '0341 refuses: something of it is already in this world';
+    raise exception '0340 refuses: something of it is already in this world';
   end if;
   if to_regclass('public.navy_ships') is null or to_regprocedure('public.navy_on_duty(uuid,integer,timestamp with time zone)') is null or to_regprocedure('public.navy_escort_step(uuid,uuid,boolean,timestamp with time zone)') is null then
-    raise exception '0341 refuses: 0331 / 0333 (the navy, its duty and its escort) are not in this world';
+    raise exception '0340 refuses: 0331 / 0333 (the navy, its duty and its escort) are not in this world';
   end if;
   if to_regprocedure('public.pirate_power(uuid)') is null then
-    raise exception '0341 refuses: 0338 (the pirates, the 11th power) is not in this world';
+    raise exception '0340 refuses: 0338 (the pirates, the 11th power) is not in this world';
   end if;
   if to_regclass('public.pirate_ships') is null or to_regprocedure('public.pirates_on()') is null or to_regprocedure('public.pirate_ship_in_sea(uuid)') is null
      or not exists (select 1 from pg_attribute a where a.attrelid = 'public.pirate_ships'::regclass and a.attname = 'fought_at' and not a.attisdropped) then
-    raise exception '0341 refuses: W17 (the pirate ships, their switch, public.pirate_ship_in_sea, pirate_ships.fought_at) is not in this world';
+    raise exception '0340 refuses: W17 (the pirate ships, their switch, public.pirate_ship_in_sea, pirate_ships.fought_at) is not in this world';
   end if;
   if to_regprocedure('voyage.sea_danger(uuid,timestamp with time zone)') is null or to_regprocedure('voyage.fleet_hulls(uuid)') is null or to_regprocedure('public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)') is null then
-    raise exception '0341 refuses: 0320 / 0323 / 0330 (the fight, a fleet as a side, the danger) are not in this world';
+    raise exception '0340 refuses: 0320 / 0323 / 0330 (the fight, a fleet as a side, the danger) are not in this world';
   end if;
 
   select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
@@ -116,19 +116,19 @@ begin
 
   -- ── 1. THE KNOBS AND THE COLUMNS (all new; no existing key is touched) ──
   insert into public.world_config (key, value, description) values
-    ('navy_hunt_hours', to_jsonb(6), '0341: how long a navy ship on the hunt lies at the harbour of the sea she hunts (or at her station, watching her own sea) before she sails home and picks again (public.navy_hunt_step).'),
-    ('navy_hunts_per_run', to_jsonb(5), '0341: the most navy-against-pirate fights one run of public.tick_navy resolves (public.navy_hunt_pass). The rest wait a minute. Each fight is at most once an hour a ship, which is no knob.'),
-    ('regard_pirate_beaten', to_jsonb(30), '0341 (docs/WORLD_POWERS.md 2.1, "drive off a pirate ship"): regard with EVERY great power but the pirates for beating a pirate ship in an attack (public.attack_close, reason DROVE_OFF_PIRATE). 0339''s regard_pirate is the press''s cost with the Brethren.');
+    ('navy_hunt_hours', to_jsonb(6), '0340: how long a navy ship on the hunt lies at the harbour of the sea she hunts (or at her station, watching her own sea) before she sails home and picks again (public.navy_hunt_step).'),
+    ('navy_hunts_per_run', to_jsonb(5), '0340: the most navy-against-pirate fights one run of public.tick_navy resolves (public.navy_hunt_pass). The rest wait a minute. Each fight is at most once an hour a ship, which is no knob.'),
+    ('regard_pirate_beaten', to_jsonb(30), '0340 (docs/WORLD_POWERS.md 2.1, "drive off a pirate ship"): regard with EVERY great power but the pirates for beating a pirate ship in an attack (public.attack_close, reason DROVE_OFF_PIRATE). 0339''s regard_pirate is the press''s cost with the Brethren.');
 
   alter table public.navy_ships
     add column fought_at  timestamptz,
     add column fought     jsonb,
     add column hunt_port  uuid references public.ports(id),
     add column hunt_until timestamptz;
-  comment on column public.navy_ships.fought_at is '0341: her last fight with a pirate ship (public.navy_fight). THE hour: a ship with a stamp inside the hour fights no pirate until it is past.';
-  comment on column public.navy_ships.fought is '0341: her last fight, for her card: {at, result (WON | LOST | DREW | SUNK), foe (the pirate ship''s name), sea (code)}. Null until one. The world''s record of each fight is the NAVY_FIGHT event.';
-  comment on column public.navy_ships.hunt_port is '0341: the harbour of her hunt while mission is HUNT: where she is bound, or lies (her station when her own sea is the most dangerous in reach).';
-  comment on column public.navy_ships.hunt_until is '0341: when her lie at hunt_port ends (her arrival + navy_hunt_hours). Null while she sails there, and when she is not hunting.';
+  comment on column public.navy_ships.fought_at is '0340: her last fight with a pirate ship (public.navy_fight). THE hour: a ship with a stamp inside the hour fights no pirate until it is past.';
+  comment on column public.navy_ships.fought is '0340: her last fight, for her card: {at, result (WON | LOST | DREW | SUNK), foe (the pirate ship''s name), sea (code)}. Null until one. The world''s record of each fight is the NAVY_FIGHT event.';
+  comment on column public.navy_ships.hunt_port is '0340: the harbour of her hunt while mission is HUNT: where she is bound, or lies (her station when her own sea is the most dangerous in reach).';
+  comment on column public.navy_ships.hunt_until is '0340: when her lie at hunt_port ends (her arrival + navy_hunt_hours). Null while she sails there, and when she is not hunting.';
 
   -- ── 2. THE NEW FUNCTIONS ──
   execute $f$
@@ -139,7 +139,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0341: THE one reader of "the hunt is lit" (docs/WORLD_POWERS.md 6.4: Hunt, lit with pirates): the navy's own switch AND the pirates'. Either off: no hunt is sailed and no fight is fought.
+  -- 0340: THE one reader of "the hunt is lit" (docs/WORLD_POWERS.md 6.4: Hunt, lit with pirates): the navy's own switch AND the pirates'. Either off: no hunt is sailed and no fight is fought.
   select public.navy_on() and public.pirates_on()
 $$
   $f$;
@@ -152,7 +152,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
--- 0341: THE sea a fleet is in now (W17's contract: her port's sea in port; at sea, the sea of her voyage's current segment, voyage.position's closed-form place; at anchor, the sea of her point). voyage.where_now says
+-- 0340: THE sea a fleet is in now (W17's contract: her port's sea in port; at sea, the sea of her voyage's current segment, voyage.position's closed-form place; at anchor, the sea of her point). voyage.where_now says
 -- where she is, so a passage whose true arrival has come reads as her harbour. Null for a fleet that is nowhere, or a leg frozen before 0047 (no sea on it). A pure read: nothing is settled or written.
 declare
   w   record;
@@ -189,7 +189,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0341: THE seas a hunt from this station may sail for, the most dangerous first (docs/WORLD_POWERS.md 6.4: "the sea with the highest sea_danger in reach"): the station's own sea and the sea of every open harbour within
+  -- 0340: THE seas a hunt from this station may sail for, the most dangerous first (docs/WORLD_POWERS.md 6.4: "the sea with the highest sea_danger in reach"): the station's own sea and the sea of every open harbour within
   -- navy_reach_nm sailed of it (voyage.reach_from, the figure every quote reads), each at voyage.sea_danger at p_now, so a pirate ship's pressure (0330, W17) counts. One row a sea: its nearest harbour (the station itself for
   -- its own sea), ties by code. A prod check may ask it: read only.
   select y.sea_id, y.danger, y.port_id, y.nm
@@ -213,7 +213,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0341: THE HUNT, what a navy ship does about it in port (docs/WORLD_POWERS.md 6.4). Called by public.navy_ship_step after her home is read; the caller holds her fleet row. Answers HUNTING (she lies, watching), HUNT (she
+-- 0340: THE HUNT, what a navy ship does about it in port (docs/WORLD_POWERS.md 6.4). Called by public.navy_ship_step after her home is read; the caller holds her fleet row. Answers HUNTING (she lies, watching), HUNT (she
 -- sailed for the most dangerous sea in reach), or null: she is no hunter now, and her step goes on (home, patrol, laid up) as before this file.
 --   Off duty or dark: a hunt is forgotten (mission PATROL), nothing else.
 --   Lying at her hunt harbour: until hunt_until she stays; past it, away from home she sails home (the step's own path); at home she picks again.
@@ -279,7 +279,7 @@ language sql
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0341: THE hull writer: what public.fight_sides answered lands on every hull of both sides, by ship id, never below 0. public.battle_resolve's own statement (0323), lifted, so a battle's close and the navy's fight with a pirate share one.
+  -- 0340: THE hull writer: what public.fight_sides answered lands on every hull of both sides, by ship id, never below 0. public.battle_resolve's own statement (0323), lifted, so a battle's close and the navy's fight with a pirate share one.
   update public.ships sh set durability = greatest(0, sh.durability - l.lost)
     from (select x.key::uuid as id, x.value::numeric as lost from jsonb_each_text(coalesce(p_fight->'hull_lost'->'a', '{}'::jsonb)) x
           union all
@@ -295,7 +295,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0341: NAVY AGAINST PIRATE, one fight (docs/WORLD_POWERS.md 6.4; W17's contract): public.fight_sides seeded by her fleet and keyed by the UTC hour, the pirate ship the side set upon, the navy ship the side that closes,
+-- 0340: NAVY AGAINST PIRATE, one fight (docs/WORLD_POWERS.md 6.4; W17's contract): public.fight_sides seeded by her fleet and keyed by the UTC hour, the pirate ship the side set upon, the navy ship the side that closes,
 -- both built by voyage.fleet_hulls (the one builder, as a battle builds every side), no sizing up, no timer. Hull loss lands on both (public.fight_hulls_write). Both hour-stamps are written. Then the lines a battle's close uses: a flagship
 -- at 0 in port cannot sail (0323); every hull at 0 at sea under 0322's rule is a wreck now (0333's lines): she respawns at her origin and her home pays the refit. A wreck in port is found by her step. One public event,
 -- NAVY_FIGHT, the world's line; her card keeps the last. No gold moves. The caller holds both fleet rows and has settled both. Answers {result, outcome, event, hull_lost{navy, pirate}, sunk{navy, pirate}}.
@@ -374,7 +374,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0341: THE PASS, from public.tick_navy, every minute: a navy ship and a pirate ship in one sea fight (docs/WORLD_POWERS.md 6.4), at most navy_hunts_per_run a run, at most once an hour a ship. Null while dark
+-- 0340: THE PASS, from public.tick_navy, every minute: a navy ship and a pirate ship in one sea fight (docs/WORLD_POWERS.md 6.4), at most navy_hunts_per_run a run, at most once an hour a ship. Null while dark
 -- (public.navy_hunts_on), so the job's answer is what it was; 0 when no pirate ship is out. Each navy ship at work, on duty, in no battle, with a hull left and no stamp inside the hour: her sea (public.fleet_sea), then
 -- THE reader of who is there, public.pirate_ship_in_sea (W17's). Both rows are taken SKIP LOCKED (a press on either just means no fight this minute), both settled first (D.2), then public.navy_fight in a block of its
 -- own: a fight that raises is warned of, and the rest go on. Answers the fights fought.
@@ -438,20 +438,20 @@ $$
   revoke all on function public.navy_hunt_pass(timestamptz, uuid) from public, anon, authenticated;
 
   -- ── 3. THE HUNKS (each occurs exactly once in the live body, and reverses) ──
-  create temp table hunks_0341 (fn text, ord int, old text, new text) on commit drop;
-  insert into hunks_0341 values
+  create temp table hunks_0340 (fn text, ord int, old text, new text) on commit drop;
+  insert into hunks_0340 values
   ('public.tick_navy(timestamp with time zone,uuid)', 1,
 $h$  v_s     text;
 begin
 $h$,
 $h$  v_s     text;
-  v_fights int;   -- 0341: null while the hunt is dark
+  v_fights int;   -- 0340: null while the hunt is dark
 begin
 $h$),
   ('public.tick_navy(timestamp with time zone,uuid)', 2,
 $h$  for r in select n.fleet_id from public.navy_ships_in_service n join public.fleets f on f.id = n.fleet_id
 $h$,
-$h$  if v_lit then   -- 0341: the hunt, behind both switches (public.navy_hunts_on): a navy ship and a pirate ship in one sea fight, before the steps; null while the pirates are dark
+$h$  if v_lit then   -- 0340: the hunt, behind both switches (public.navy_hunts_on): a navy ship and a pirate ship in one sea fight, before the steps; null while the pirates are dark
     begin
       v_fights := public.navy_hunt_pass(p_now, p_only_nation);
     exception when others then
@@ -464,21 +464,21 @@ $h$),
 $h$  return jsonb_build_object('plan', v_plan, 'steps', v_steps, 'added', v_add, 'paid', v_paid);
 $h$,
 $h$  return jsonb_build_object('plan', v_plan, 'steps', v_steps, 'added', v_add, 'paid', v_paid)
-    || case when v_fights is null then '{}'::jsonb else jsonb_build_object('fights', v_fights) end;   -- 0341: served only when the hunt ran, so a dark run answers byte for byte
+    || case when v_fights is null then '{}'::jsonb else jsonb_build_object('fights', v_fights) end;   -- 0340: served only when the hunt ran, so a dark run answers byte for byte
 $h$),
   ('public.navy_ship_step(uuid,timestamp with time zone)', 1,
 $h$  v_esc   text;   -- 0333
 begin
 $h$,
 $h$  v_esc   text;   -- 0333
-  v_hunt  text;   -- 0341
+  v_hunt  text;   -- 0340
 begin
 $h$),
   ('public.navy_ship_step(uuid,timestamp with time zone)', 2,
 $h$  v_home := case when v_duty then coalesce(public.navy_station_of(n.nation_id, n.ord), n.station_port) else n.station_port end;
 $h$,
 $h$  v_home := case when v_duty then coalesce(public.navy_station_of(n.nation_id, n.ord), n.station_port) else n.station_port end;
-  -- 0341: the hunt (docs/WORLD_POWERS.md 6.4), lit with the pirates: at her station she sails for the most dangerous sea in reach, or lies watching her own; answers null for every other ship
+  -- 0340: the hunt (docs/WORLD_POWERS.md 6.4), lit with the pirates: at her station she sails for the most dangerous sea in reach, or lies watching her own; answers null for every other ship
   v_hunt := public.navy_hunt_step(p_fleet, f.port_id, v_home, v_duty, p_now);
   if v_hunt is not null then
     return v_hunt;
@@ -491,12 +491,12 @@ $h$  update public.ships sh set durability = greatest(0, sh.durability - l.lost)
           select x.key::uuid, x.value::numeric from jsonb_each_text(coalesce(v_f->'hull_lost'->'b', '{}'::jsonb)) x) l
    where sh.id = l.id;
 $h$,
-$h$  perform public.fight_hulls_write(v_f);   -- 0341: these lines, lifted: THE hull writer, which the navy's fight with a pirate ship shares
+$h$  perform public.fight_hulls_write(v_f);   -- 0340: these lines, lifted: THE hull writer, which the navy's fight with a pirate ship shares
 $h$),
   ('public.attack_close(uuid,jsonb,timestamp with time zone)', 1,
 $h$  -- 0334: her country remembers what it did not answer (docs/WORLD_POWERS.md section 5.3): she won, or no ship of it came in time.
 $h$,
-$h$  -- 0341 (docs/WORLD_POWERS.md 2.1, the pirate row): a pirate ship beaten (boarded, paid off, or every hull at 0) earns the company regard_pirate_beaten with EVERY great power but the pirates, once a battle. Beaten by her: nothing.
+$h$  -- 0340 (docs/WORLD_POWERS.md 2.1, the pirate row): a pirate ship beaten (boarded, paid off, or every hull at 0) earns the company regard_pirate_beaten with EVERY great power but the pirates, once a battle. Beaten by her: nothing.
   if public.fleet_kind(v_d) = 'PIRATE'
      and (v_out in ('PLUNDERED', 'RANSOM') or not exists (select 1 from public.ships s where s.fleet_id = v_d and s.durability > 0)) then
     perform public.regard_add(v_a.player_id, g.nation_id, public.wc_num('regard_pirate_beaten'), 'DROVE_OFF_PIRATE')
@@ -510,33 +510,33 @@ $h$                from public.ships s where s.fleet_id = p_fleet))
 $h$,
 $h$                from public.ships s where s.fleet_id = p_fleet))
     || case when public.attack_on() then '{"attack": true}'::jsonb else '{}'::jsonb end   -- 0333: as a cargo ship's card: the key is served only while attacks are lit
-    || case when n.fought is null then '{}'::jsonb else jsonb_build_object('fought', n.fought) end;   -- 0341: her last fight with a pirate ship, {at, result, foe, sea}; absent until one, so the card is what it was
+    || case when n.fought is null then '{}'::jsonb else jsonb_build_object('fought', n.fought) end;   -- 0340: her last fight with a pirate ship, {at, result, foe, sea}; absent until one, so the card is what it was
 $h$);
 
-  for v_h in select h.fn from hunks_0341 h group by h.fn order by h.fn loop
+  for v_h in select h.fn from hunks_0340 h group by h.fn order by h.fn loop
     v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
     v_pre := v_def;
     declare
       x record;
     begin
-      for x in select * from hunks_0341 h where h.fn = v_h.fn order by h.ord loop
+      for x in select * from hunks_0340 h where h.fn = v_h.fn order by h.ord loop
         v_n := (length(v_def) - length(replace(v_def, x.old, ''))) / length(x.old);
         if v_n <> 1 then
-          raise exception '0341 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
+          raise exception '0340 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', x.ord, x.fn, v_n;
         end if;
         v_def := replace(v_def, x.old, x.new);
       end loop;
       execute v_def;
       v_def := replace(pg_get_functiondef(v_h.fn::regprocedure), E'\r', '');
-      for x in select * from hunks_0341 h where h.fn = v_h.fn order by h.ord desc loop
+      for x in select * from hunks_0340 h where h.fn = v_h.fn order by h.ord desc loop
         v_n := (length(v_def) - length(replace(v_def, x.new, ''))) / length(x.new);
         if v_n <> 1 then
-          raise exception '0341 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
+          raise exception '0340 self-assert FAIL: hunk % of % is not in the new body once', x.ord, x.fn;
         end if;
         v_def := replace(v_def, x.new, x.old);
       end loop;
       if v_def <> v_pre then
-        raise exception '0341 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
+        raise exception '0340 self-assert FAIL: % does not reverse to its pre-image', v_h.fn;
       end if;
     end;
   end loop;
@@ -546,57 +546,57 @@ $h$);
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and p.oid::regprocedure::text <> all (array(select x::regprocedure::text from unnest(c_hunked || c_new_fns) x))) <> v_fn_before then
-    raise exception '0341 self-assert FAIL: another function moved';
+    raise exception '0340 self-assert FAIL: another function moved';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c where c.key <> all (c_keys)) <> v_cfg_before then
-    raise exception '0341 self-assert FAIL: a world_config row moved';
+    raise exception '0340 self-assert FAIL: a world_config row moved';
   end if;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p where p.oid::regprocedure::text = any (array(select x::regprocedure::text from unnest(c_hunked) x))) <> v_meta_before then
-    raise exception '0341 self-assert FAIL: the ACL, volatility, definer or config of a hunked function moved';
+    raise exception '0340 self-assert FAIL: the ACL, volatility, definer or config of a hunked function moved';
   end if;
   if to_regclass('cron.job') is not null then
     execute $q$select md5(coalesce(string_agg(j.jobname || ':' || j.schedule || ':' || j.command || ':' || j.active::text, ',' order by j.jobname), '')) from cron.job j$q$ into v_cron_after;
     if v_cron_after is distinct from v_cron_before then
-      raise exception '0341 self-assert FAIL: a cron job moved';
+      raise exception '0340 self-assert FAIL: a cron job moved';
     end if;
   end if;
   if (select c.value from public.world_config c where c.key = 'navy_enabled') <> 'false'::jsonb or (select c.value from public.world_config c where c.key = 'pirates_bite') <> 'false'::jsonb then
-    raise exception '0341 self-assert FAIL: a switch is not off';
+    raise exception '0340 self-assert FAIL: a switch is not off';
   end if;
   if (select string_agg(c.key || '=' || c.value::text, ',' order by c.key) from public.world_config c where c.key = any (c_keys)) <> 'navy_hunt_hours=6,navy_hunts_per_run=5,regard_pirate_beaten=30' then
-    raise exception '0341 self-assert FAIL: the knobs are not as shipped: %', (select string_agg(c.key || '=' || c.value::text, ',' order by c.key) from public.world_config c where c.key = any (c_keys));
+    raise exception '0340 self-assert FAIL: the knobs are not as shipped: %', (select string_agg(c.key || '=' || c.value::text, ',' order by c.key) from public.world_config c where c.key = any (c_keys));
   end if;
   if exists (select 1 from public.navy_ships n where n.fought_at is not null or n.fought is not null or n.hunt_port is not null or n.hunt_until is not null)
      or exists (select 1 from public.navy_ships n where n.mission = 'HUNT')
      or exists (select 1 from public.events e where e.kind = 'NAVY_FIGHT') then
-    raise exception '0341 self-assert FAIL: a row was written dark';
+    raise exception '0340 self-assert FAIL: a row was written dark';
   end if;
   if (select string_agg(p.provolatile::text, '' order by p.oid::regprocedure::text) from pg_proc p
        where p.oid = any (array['public.navy_hunts_on()'::regprocedure, 'public.fleet_sea(uuid,timestamp with time zone)'::regprocedure, 'public.navy_hunt_targets(uuid,timestamp with time zone)'::regprocedure]::oid[])) <> 'sss' then
-    raise exception '0341 self-assert FAIL: a read is not stable';
+    raise exception '0340 self-assert FAIL: a read is not stable';
   end if;
   if (select string_agg(p.provolatile::text, '' order by p.oid::regprocedure::text) from pg_proc p
        where p.oid = any (array['public.navy_hunt_step(uuid,uuid,uuid,boolean,timestamp with time zone)'::regprocedure, 'public.fight_hulls_write(jsonb)'::regprocedure,
                                 'public.navy_fight(uuid,uuid,timestamp with time zone)'::regprocedure, 'public.navy_hunt_pass(timestamp with time zone,uuid)'::regprocedure]::oid[])) <> 'vvvv' then
-    raise exception '0341 self-assert FAIL: a writer is not volatile';
+    raise exception '0340 self-assert FAIL: a writer is not volatile';
   end if;
   if exists (select 1 from unnest(c_new_fns) f where has_function_privilege('anon', f::regprocedure, 'execute') or has_function_privilege('authenticated', f::regprocedure, 'execute')) then
-    raise exception '0341 self-assert FAIL: a new function can be called from a client';
+    raise exception '0340 self-assert FAIL: a new function can be called from a client';
   end if;
   if public.navy_hunts_on() then
-    raise exception '0341 self-assert FAIL: the hunt reads lit with both switches off';
+    raise exception '0340 self-assert FAIL: the hunt reads lit with both switches off';
   end if;
   -- the sea of a fleet in port is her harbour's, on the first docked fleet there is (a read of one row; none: proof 48 reads it on its own ships)
   select f.id, p.sea_id into v_fid, v_sea from public.fleets f join public.ports p on p.id = f.port_id where f.status = 'DOCKED' order by f.id limit 1;
   if v_fid is not null and public.fleet_sea(v_fid, now()) is distinct from v_sea then
-    raise exception '0341 self-assert FAIL: a docked fleet reads a sea that is not her harbour''s';
+    raise exception '0340 self-assert FAIL: a docked fleet reads a sea that is not her harbour''s';
   end if;
   -- the targets of one station, in order: the most dangerous first, one row a sea, none beyond reach, the station's own sea with the station as its harbour
   select p.id, p.sea_id into v_port, v_sea from public.ports p where p.code = 'LIS';
   if v_port is null then
-    raise exception '0341 self-assert FAIL: no Lisbon to read the targets from';
+    raise exception '0340 self-assert FAIL: no Lisbon to read the targets from';
   end if;
   if (select count(*) from public.navy_hunt_targets(v_port, now())) < 2
      or (select count(*) from public.navy_hunt_targets(v_port, now()) t where t.nm > public.wc_num('navy_reach_nm')) <> 0
@@ -604,13 +604,13 @@ $h$);
      or (select count(*) from public.navy_hunt_targets(v_port, now()) t where t.sea_id = v_sea and t.port_id = v_port and t.nm = 0) <> 1
      or exists (select 1 from (select t.danger, lag(t.danger) over (order by t.danger desc, t.nm, t.port_id) as prev from public.navy_hunt_targets(v_port, now()) t) z where z.prev < z.danger)
      or exists (select 1 from public.navy_hunt_targets(v_port, now()) t where t.danger is distinct from voyage.sea_danger(t.sea_id, now())) then
-    raise exception '0341 self-assert FAIL: the targets of Lisbon are not in order, one a sea, within reach, with her own sea at 0 nm';
+    raise exception '0340 self-assert FAIL: the targets of Lisbon are not in order, one a sea, within reach, with her own sea at 0 nm';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0341 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0340 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0341 self-assert ok: THE NAVY HUNTS, dark behind navy_enabled and pirates_bite. % hunks once each and reversing; no other function, knob or job; no row written; Lisbon reads % seas in reach; no game step ran (proof 48 runs them in CI). % ms.',
-    (select count(*) from hunks_0341), (select count(*) from public.navy_hunt_targets(v_port, now())), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
-  drop table hunks_0341;
+  raise notice '0340 self-assert ok: THE NAVY HUNTS, dark behind navy_enabled and pirates_bite. % hunks once each and reversing; no other function, knob or job; no row written; Lisbon reads % seas in reach; no game step ran (proof 48 runs them in CI). % ms.',
+    (select count(*) from hunks_0340), (select count(*) from public.navy_hunt_targets(v_port, now())), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  drop table hunks_0340;
 end
 $m$;
