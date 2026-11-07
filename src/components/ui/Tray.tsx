@@ -89,7 +89,7 @@ export function Tray({
   onDetentChange: (next: TrayDetent) => void
   /** What was tapped. `t-title`, one line, never a sentence. */
   title: ReactNode
-  /** 'side' — the map's slide-in panel at the right edge, at every width (traySideEdgeClass). */
+  /** 'side' — the slide-in panel at the WINDOW's right edge, at every width (traySideEdgeClass): the map's, and the HQ's Investors drawer. */
   mode?: TrayMode
   /** The ONE primary button, pinned to the bottom edge and never inside the scroll. */
   action?: ReactNode

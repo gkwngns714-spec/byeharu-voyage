@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { ready, reachable } from './appReady.fixture'
+import { arrivedAtEdge, ready, reachable } from './appReady.fixture'
 import { sampleWalkers, walkVerdict } from './cityWalk.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
@@ -19,14 +19,17 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 // Nothing here fixes product code: a red is a finding (docs/dev-log/2026-11-08-drive-audit.md).
 
 const OUT = 'docs/dev-log/2026-11-08-drive-audit'
+/** The pictures of the audit's D2 / D3 fix (the drawer's slide and edge), kept apart from the audit's own evidence. */
+const FIX_OUT = 'docs/dev-log/2026-11-08-hq-drawer-production'
 const WIDE = { width: 1280, height: 800 }
+const OWNER = { width: 1440, height: 900 }
 const PHONE = { width: 390, height: 844 }
 
 test.use({ deviceScaleFactor: 2 })
 
-async function shot(page: Page, name: string) {
+async function shot(page: Page, name: string, dir = OUT) {
   await page.waitForTimeout(300)
-  await page.screenshot({ path: `${OUT}/${name}.png` })
+  await page.screenshot({ path: `${dir}/${name}.png` })
 }
 
 async function openHq(page: Page, request: Parameters<typeof reachable>[0], baseURL: string | undefined, size: { width: number; height: number }) {
@@ -183,9 +186,9 @@ for (const size of [WIDE, PHONE]) {
     await openHq(page, request, baseURL, size)
     const before = await frame(page)
 
-    // (247) THE INVESTORS DRAWER: it SLIDES in (sampled frame by frame from BEFORE the press: its first painted left is
-    // right of its last), says what it is, and its own close takes it away — the frame behind it untouched. Where it
-    // LANDS is measured and printed; the window-edge law is the fixme below (a finding at the wide glass).
+    // (247) THE INVESTORS DRAWER: sampled frame by frame from BEFORE the press, it says what it is, and its own close takes
+    // it away — the frame behind it untouched. Where it LANDS and how it ENTERS are printed here and HELD by the two laws
+    // after this test (the slide, the window's edge).
     const sampler = page.evaluate(
       () =>
         new Promise<{ lefts: number[]; right: number; width: number; top: number }>((resolve) => {
@@ -287,18 +290,87 @@ for (const size of [WIDE, PHONE]) {
   })
 }
 
-// WHAT THE DRIVE FOUND AT 1280 (2026-11-08, twice): the Investors drawer lands at x 856-1240, 40 px short of the window's
-// right edge — it is docked over the page's side column (CityHallPanel.tsx:176-190 → trayDockPageClass, screenLayout.ts:81),
-// the look the owner refused for the map's pop-up a day later (row 278: *"not totally fully on the right. i want it to slide
-// from the right slide from the edge of the page"*, fixed for the map alone by #491/#493 with traySideEdgeClass). Held as a
-// law for the day the HQ's drawer takes the same edge.
-test.fixme('HQ @1280: the Investors drawer lands on the window\'s own right edge (row 247 / 278 — DEFECT: 40 px inset at 1280, docked over the side column)', async () => {})
+// ── ROWS 247 / 278: THE DRAWER SLIDES IN FROM THE WINDOW'S EDGE AND LANDS ON IT ─────────────────
+// WHAT THE DRIVE FOUND (2026-11-08, twice at 1280 and at 390; the audit's D2 and D3): the drawer APPEARED in place — sampled frame
+// by frame from before the press, its first painted frame was already where it lands (left 856 at 1280, 0 at 390), its
+// `data-tray-mode` "docked", its computed animation none — and at 1280 it landed at x 856-1240, 40 px short of the window's
+// right edge. The docked tray's page dock (`trayDockPageClass`, the side column's own x and width) carries no entering slide, and
+// its right edge is the page's MARGIN: the look the owner refused for the map's pop-up a day later (row 278: *"not totally fully on
+// the right. i want it to slide from the right slide from the edge of the page"*), which #491/#493 fixed for the map alone
+// (`traySideEdgeClass`, `right-0`, `bv-slide-in-right`). The owner's words for this drawer (row 247): *"investors - tappable where
+// when tapped, a list slides to the right where you can close"*.
+// FIXED after #560: the drawer IS the map's slide-in panel, `Tray mode="side"` (CityHallPanel.tsx), so `traySideEdgeClass` is the
+// one authority for both the slide and the edge. The two laws below hold it the way tests/map.tray.edge.spec.ts holds the map's:
+// the left edge recorded on every painted frame from before the press, the landing read off the running app.
 
-// AND IT DOES NOT SLIDE (2026-11-08, twice, at 1280 and at 390): sampled frame by frame from before the press, the drawer's
-// first painted frame is already where it lands (left 856 at 1280, 0 at 390); its `data-tray-mode` is `docked`, whose class
-// (trayDockPageClass, screenLayout.ts:81) has no entering animation — `bv-slide-in-right` belongs to `mode="side"` alone
-// (traySideEdgeClass). The owner's words (row 247): *"investors - tappable where when tapped, a list slides to the right"*.
-test.fixme('HQ: the Investors list SLIDES in when tapped (row 247 — DEFECT: the docked drawer appears in place, no slide, at 1280 and 390)', async () => {})
+type Probe = { __lefts: number[] }
+
+/** Record the drawer's left edge on every painted frame, from BEFORE the press (the map.tray.edge method). */
+async function watchDrawer(page: Page) {
+  await page.evaluate(() => {
+    const w = window as unknown as Probe
+    w.__lefts = []
+    const tick = () => {
+      const el = document.querySelector('[data-testid="city-investors-drawer"]')
+      if (el) w.__lefts.push(el.getBoundingClientRect().left)
+      requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
+}
+
+for (const size of [WIDE, PHONE]) {
+  test(`HQ @${size.width}: the Investors list SLIDES in when tapped — its first painted frame is off the window's right edge, then it travels in (row 247)`, async ({ page, request, baseURL }) => {
+    await openHq(page, request, baseURL, size)
+    await watchDrawer(page)
+    await page.getByTestId('city-hall-investors').click()
+    const drawer = page.getByTestId('city-investors-drawer')
+    await expect(drawer).toBeVisible()
+    // not a sleep (arrivedAtEdge): the slide's start follows the runner's speed; the frames below stay the verdict
+    await arrivedAtEdge(drawer, size.width)
+    const lefts = await page.evaluate(() => (window as unknown as Probe).__lefts)
+    const how = await drawer.evaluate((e) => ({ mode: e.getAttribute('data-tray-mode'), animation: getComputedStyle(e).animationName }))
+    console.log(
+      `investors slide @${size.width}: ${lefts.length} frames, lefts ${lefts.slice(0, 6).map(Math.round).join(',')}…${lefts.slice(-2).map(Math.round).join(',')} (window ${size.width}); mode ${how.mode}, animation ${how.animation}`,
+    )
+    expect(lefts.length, 'the drawer painted fewer than three frames').toBeGreaterThan(2)
+    expect(lefts[0], 'the first painted frame is not off the window: the drawer appeared in place instead of sliding').toBeGreaterThanOrEqual(size.width - 1)
+    expect(lefts[lefts.length - 1], 'the drawer never travelled in').toBeLessThan(size.width - 100)
+    await page.getByTestId('tray-close').first().click()
+    await expect(drawer).toHaveCount(0, { timeout: 5000 })
+  })
+}
+
+for (const size of [WIDE, OWNER, PHONE]) {
+  test(`HQ @${size.width}: the Investors drawer lands on the window's own right edge, the side column's width (rows 247 / 278)`, async ({ page, request, baseURL }) => {
+    await openHq(page, request, baseURL, size)
+    const before = await frame(page)
+    await page.getByTestId('city-hall-investors').click()
+    const drawer = page.getByTestId('city-investors-drawer')
+    await expect(drawer).toBeVisible()
+    await arrivedAtEdge(drawer, size.width)
+    const box = (await drawer.boundingBox())!
+    const read = await page.evaluate(() => ({
+      side: document.querySelector('[data-page-side]')?.getBoundingClientRect().width ?? null,
+      flow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }))
+    const inset = Math.round(size.width - box.x - box.width)
+    console.log(`investors drawer @${size.width}: x ${Math.round(box.x)}–${Math.round(box.x + box.width)} (window ${size.width}, inset ${inset}), width ${Math.round(box.width)}, side column ${read.side}`)
+    await shot(page, `hq-investors-${size.width}@2x`, FIX_OUT)
+    expect(Math.abs(size.width - box.x - box.width), `the drawer's right edge stands ${inset} px inside the window's`).toBeLessThanOrEqual(1)
+    if (size.width >= 1024) {
+      expect(read.side, 'the page has no side column to take the width of').not.toBeNull()
+      expect(Math.abs(box.width - read.side!), `the drawer is ${Math.round(box.width)} px wide and the side column ${Math.round(read.side!)}`).toBeLessThanOrEqual(2)
+    } else {
+      expect(Math.round(box.width), 'on a phone the drawer is the glass').toBe(size.width)
+    }
+    expect(read.flow, 'the page gained a sideways scroll').toBeLessThanOrEqual(0)
+    expect(await frame(page), 'opening the drawer moved the frame').toEqual(before)
+    await page.getByTestId('tray-close').first().click()
+    await expect(drawer).toHaveCount(0, { timeout: 5000 })
+    expect(await frame(page), 'closing the drawer moved the frame').toEqual(before)
+  })
+}
 
 // ── ROW 277 (AND THE PURSES OF 280/290): THE HALL IS LIVE ────────────────────────────────────────
 // A world whose city purses are LIT (the shipped image keeps them dark): one purchase at the Market must

@@ -83,10 +83,12 @@ export function trayDockPageClass(): string {
   return 'lg:inset-auto lg:top-8 lg:bottom-14 lg:right-[max(var(--page-pad),calc(50%-40rem))] lg:w-[var(--page-side)] lg:h-auto lg:rounded-sheet'
 }
 
-/** THE MAP'S SLIDE-IN PANEL (owner, 2026-10-15: *"when i click location or a ship, i don't want a
+/** THE SLIDE-IN PANEL (owner, 2026-10-15: *"when i click location or a ship, i don't want a
  *  page to pop up randomly. instead i want the page to slide on the right side, and show info"*).
  *  Pinned to the glass's right edge, between the top bar (top-8) and the nav (bottom-14), and it
- *  slides in (index.css `bv-slide-in-right`). `Tray mode="side"` is its one user.
+ *  slides in (index.css `bv-slide-in-right`). `Tray mode="side"` is its one user: the map's panel,
+ *  and since 2026-11-08 the HQ's Investors drawer (row 247, *"a list slides to the right where you
+ *  can close"*; the drive audit's D2/D3: the page dock above neither slides nor reaches the edge).
  *
  *  ── NARROW: THE PANEL IS THE GLASS (2026-10-16) ──────────────────────────────────────────────
  *  From `lg` (WIDE_QUERY, the one breakpoint this file turns on) it is `--page-side` × 1.5
