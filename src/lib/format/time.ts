@@ -241,9 +241,14 @@ export function formatGameToday(nowMs: number): string {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
+/** The instant a real UTC day number (`public.real_day` = floor(epoch / 86,400)) begins, in ms: the one place a day number becomes a time. */
+export function realDayMs(day: number): number {
+  return day * MS_PER_DAY
+}
+
 /** A real UTC day number (`public.real_day`) as a short date: "11-05". The server names the day; this only prints it. */
 export function formatRealDay(day: number): string {
-  return new Date(day * MS_PER_DAY).toISOString().slice(5, 10)
+  return new Date(realDayMs(day)).toISOString().slice(5, 10)
 }
 
 /** THE GAME CLOCK'S RATE — an EIGHTH of the voyage clock. The owner, 2026-10-15: *"make the clock

@@ -33,7 +33,7 @@ import { useWorld } from '../../live/worldStore'
 import { GoodTray } from './GoodTray'
 import { SeriesCard } from './WorldSeries'
 import { useWorldSeries } from './useWorldSeries'
-import { goodName, movePct } from './statsFaces'
+import { goodName, movePct, wholeRows } from './statsFaces'
 import { useLiveRead } from '../../live/liveRead'
 
 // ROW 2026-11-05 (*"same for markets, a general graph would be nice"*): MAIN opens on two chart cards, as Merchants' do — the money
@@ -99,6 +99,8 @@ export function MarketsFace() {
   const traded = rows.filter((r) => r.traded > 0).sort((a, b) => b.traded - a.traded).slice(0, 3)
   const shown = all ? rows : rows.slice(0, FIRST)
   const unitsTraded = rows.reduce((n, r) => n + r.traded, 0)
+  // the two cards are SUMS: they stop at the last whole period (owner, 2026-11-07: no right edge that goes down)
+  const flows = world ? wholeRows(world, world.series) : []
 
   return (
     <PageSplit
@@ -112,7 +114,7 @@ export function MarketsFace() {
               title={t('stats.soldCities')}
               value={world?.day?.sold ?? 0}
               format={formatDucats}
-              series={world?.series ?? []}
+              series={flows}
               pick={(p) => p.sold}
               tone="info"
               data-testid="stats-chart-market-sold"
@@ -121,7 +123,7 @@ export function MarketsFace() {
               title={t('stats.boughtCities')}
               value={world?.day?.bought ?? 0}
               format={formatDucats}
-              series={world?.series ?? []}
+              series={flows}
               pick={(p) => p.bought}
               tone="accent"
               data-testid="stats-chart-market-bought"

@@ -61,19 +61,49 @@ export function washFade(firstX: number, lastX: number): WashFade | null {
   return { from: lastX - Math.min(WASH_FADE_PX, len / 2), to: lastX }
 }
 
-export type HistoryBucket = 'day' | 'week' | 'month'
+/** WHAT A POINT OF A SUM STANDS FOR: the stretch of time whose money it adds. `quarter` is one of the Stats count's own rows (the quarter hour it adds,
+ *  stood at its END); `hour` and `day` are the buckets those rows fold into for the longer spans (stood at the last slot's own instant, anywhere inside
+ *  the bucket); `week` and `month` are the record's periods (world.history), each stood at its first day. */
+export type SumPeriod = 'quarter' | 'hour' | 'day' | 'week' | 'month'
 
-/** THE UNFINISHED PERIOD IS NOT A POINT OF A FLOW (owner, 2026-11-06). A day, a week, a month of money sold / earned / minted is a SUM;
- *  the newest bucket is the period so far, so drawn beside whole ones it plunges at the right edge (on 2026-11-06 a good's day: 6,728
- *  sold against 95,202 the day before). The bucket still open is left out; nothing is invented in its place. Only the NEWEST bucket can
- *  be open, and it is while its period could still be running: start + the period's LONGEST length is after now (a day 1, a week 7,
- *  a month 31 days). The client does no month arithmetic (the month is the server's, tests/duplication.spec.ts), so a month is judged
- *  by its longest length: in the last three days of a 28-30 day month its open bucket is still held back, never shown short.
- *  A level (a purse, a close) is not a sum: its newest reading is true, and the caller does not pass it here. */
-export function settledBuckets<P extends { atMs: number }>(points: readonly P[], period: HistoryBucket, nowMs: number): P[] {
-  const longest = (period === 'day' ? 1 : period === 'week' ? 7 : 31) * 86_400_000
-  const last = points[points.length - 1]
-  return last !== undefined && last.atMs + longest > nowMs ? points.slice(0, -1) : [...points]
+const HOUR_MS = 3_600_000
+const DAY_MS = 86_400_000
+
+/** Where a period ends, from the instant its point stands at: a count's row at its own instant; an hour or a day floored to its UTC hour or day (the server
+ *  buckets by the row's own UTC hour / day, public.stats_bucket); a week 7 days and a month its LONGEST length, 31 days, after the first day it stands at. */
+function periodEnd(atMs: number, period: SumPeriod): number {
+  switch (period) {
+    case 'quarter':
+      return atMs
+    case 'hour':
+      return Math.floor(atMs / HOUR_MS) * HOUR_MS + HOUR_MS
+    case 'day':
+      return Math.floor(atMs / DAY_MS) * DAY_MS + DAY_MS
+    case 'week':
+      return atMs + 7 * DAY_MS
+    case 'month':
+      return atMs + 31 * DAY_MS
+  }
+}
+
+/** THE ONE RULE OF WHICH POINTS OF A SUM ARE WHOLE (owner, 2026-11-06, and again 2026-11-07: *"i said i don't like the right edge of the chart goes down.
+ *  every chart"*). A quarter hour, an hour, a day of money sold / earned / minted is a SUM, and a sum is a figure only once its period is over. Drawn beside
+ *  whole ones, a period still running plunges at the right edge: a good's day on 2026-11-06 sold 6,728 against 95,202 the day before, and every Stats series
+ *  ends in a LIVE point at now() whose flows are only the minutes since the last count (prod, 2026-11-07 07:22 UTC: 1,821,942 sold against 26,122,487 in the
+ *  quarter hour before it, 93 % down). `reachMs` is the instant the figures are complete to.
+ *   1. Nothing that stands after the reach is a period: that is the live point.
+ *   2. Of what is left only the NEWEST can still be running: it is left out while its period ends after the reach, so an hour or a day still being counted
+ *      goes, and a quarter hour (a count's own row) never does. Nothing is drawn in a left-out period's place.
+ *  A Stats read's reach is its `counted_at` (the last count; the server says its live point adds "the minutes since" it), not the clock, so a count that has
+ *  not run leaves its hour open rather than showing it short. A record (world.history, the report's days) has no live point and is complete to now: its
+ *  reach is the server's now. The client does no month arithmetic (the month is the server's, tests/duplication.spec.ts), so a month is judged by its
+ *  longest length: it is held back for the minutes between its end and the new month's first row, never shown short.
+ *  A LEVEL (a purse, a price, a count of ships) is not a sum: its newest reading is true, and the caller does not pass it here. */
+export function wholePeriods<P extends { atMs: number }>(points: readonly P[], period: SumPeriod, reachMs: number): P[] {
+  const reached = points.filter((p) => p.atMs <= reachMs)
+  let newest = -Infinity
+  for (const p of reached) if (p.atMs > newest) newest = p.atMs
+  return reached.length > 0 && periodEnd(newest, period) > reachMs ? reached.filter((p) => p.atMs !== newest) : reached
 }
 
 export const SERIES_CHART_W = 340

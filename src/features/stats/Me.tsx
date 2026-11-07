@@ -6,6 +6,7 @@ import { useShellState } from '../../app/shellState'
 import { useLiveRead } from '../../live/liveRead'
 import { HistoryChart } from '../../live/HistoryChart'
 import { companyLines } from '../../live/historyLines'
+import { reportBars } from '../../live/reportBars'
 
 // ME — your own week beside the world's, ALL ON THE FACE (owner, 2026-11-01, row 260), in cards (2026-11-02, row 267). MAIN |
 // SIDE (screenLayout.ts "THE PAGE"): the best sales are ONE list card in main, with their sort in its header, and the week —
@@ -17,11 +18,11 @@ import { companyLines } from '../../live/historyLines'
 // leaderboard) still arrives; nothing here prints it.
 //
 // WHAT YOU MADE is world.report('week') — the same read the desk's Report face prints (one authority
-// for "what did I earn"). Its day axis arrives zero-filled, so the bars are the served days.
+// for "what did I earn"). Its day axis arrives zero-filled, and the bars are its days that are OVER (reportBars): today is a figure
+// (Today, above them), not a bar that stands short at the right edge (owner, 2026-11-07).
 // EVERY SECOND (0232, owner row 213): both reads are computed from the record at the moment they are
 // asked, and are asked again every second while the face is open.
 
-const DAYS = 7
 const SALE_SORTS = ['profit', 'newest', 'total'] as const
 
 export function MeFace() {
@@ -37,9 +38,9 @@ export function MeFace() {
   if (!v) return <Note tone="danger">{t('stats.meFailed')}</Note>
 
   const perDay = b ? Math.round(b.total / Math.max(1, b.days.length)) : null
-  // oldest → newest across the bar row: the report's day axis arrives zero-filled, so it IS the row.
+  // oldest → newest across the bar row: the report's day axis arrives zero-filled; its days that are over are the row, and today is the figure
   const today = b?.days.find((d) => d.day === b.day)?.net ?? 0
-  const bars = (b?.days ?? []).map((d) => ({ id: String(d.day), value: d.net }))
+  const bars = reportBars(b?.days ?? [])
   const saleSort = oneOf(choice.sales, SALE_SORTS, 'profit')
   const sorted = [...v.best_trades].sort((a, b) =>
     saleSort === 'newest' ? Date.parse(b.at) - Date.parse(a.at) : saleSort === 'total' ? b.total - a.total : b.profit - a.profit,
@@ -110,7 +111,7 @@ export function MeFace() {
             <StatCell look="line" label={t('stats.sold7')} value={v.sold_7d} format={formatDucats} />
             <StatCell look="line" label={t('stats.bought7')} value={v.bought_7d} format={formatDucats} />
           </div>
-          <SignedBars bars={bars} label={t('stats.earnedEach', { n: formatInt(DAYS) })} height="h-24" className="mt-5" data-testid="stats-me-bars" />
+          <SignedBars bars={bars} label={t('stats.earnedEach', { n: formatInt(bars.length) })} height="h-24" className="mt-5" data-testid="stats-me-bars" />
           <Hint className="mt-3">{t('stats.trades7', { n: formatInt(v.trades_7d) })}</Hint>
         </Card>
       }

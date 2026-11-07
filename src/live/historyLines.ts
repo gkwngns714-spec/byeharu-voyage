@@ -12,7 +12,7 @@ export interface HistoryLine<P> {
   tone: SeriesTone
   pick: (p: P) => number | null
   format: (v: number) => string
-  /** A SUM over the period (money sold, earned, minted), not a level: the period still open is left out of its line (`settledBuckets`). */
+  /** A SUM over the period (money sold, earned, minted), not a level: the period still open is left out of its line (`wholePeriods`). */
   flow?: true
 }
 

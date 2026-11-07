@@ -23,7 +23,7 @@ import {
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsOverview, type StatsHolders, type StatsNow, type StatsOverview, type StatsPeriod } from '../../lib/rpc'
-import { CARD_CHART_H, STATS_BARS, flowRanks, toSeries, trendOf } from './statsFaces'
+import { CARD_CHART_H, STATS_BARS, flowRanks, toSeries, trendOf, wholeRows } from './statsFaces'
 import { MoneyLogControls, MoneyRows } from './MoneyLog'
 import { loadMoveFilter, saveMoveFilter, sliceMoves, useMoneyFeed, type MoveFilter } from './moneyFeed'
 import { useLiveRead } from '../../live/liveRead'
@@ -86,7 +86,9 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
     { id: 'set_aside', label: t('stats.setAside'), value: h.set_aside, tone: 'neutral' as const },
   ]
   const newMoney = day === null ? null : day.minted - day.removed
+  // THE LEVELS RUN TO NOW (the world's money: the live point is true); THE SUMS STOP AT THE LAST WHOLE PERIOD (owner, 2026-11-07: no right edge that goes down)
   const totals = toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside)
+  const flows = wholeRows(v, v.series)
   const side = oneOf(choice.side, SIDES, ALL)
 
   const moves = feed.view === null ? null : sliceMoves(feed.view, filter)
@@ -132,7 +134,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
                 <StatCell look="line" label={t('stats.trades')} value={day?.trades ?? 0} format={formatInt} />
               </div>
               <SignedBars
-                bars={v.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
+                bars={flows.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.minted - p.removed }))}
                 label={t('stats.netBars')}
                 height="h-24"
                 className="mt-5"
@@ -164,7 +166,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
               <StatsChart
                 look="chart"
                 title={t('stats.soldCities')}
-                points={toSeries(v.series, (p) => p.sold)}
+                points={toSeries(flows, (p) => p.sold)}
                 format={formatDucats}
                 label={t('stats.soldSeries')}
                 tone="info"
@@ -176,7 +178,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
               <StatsChart
                 look="chart"
                 title={t('stats.boughtCities')}
-                points={toSeries(v.series, (p) => p.bought)}
+                points={toSeries(flows, (p) => p.bought)}
                 format={formatDucats}
                 label={t('stats.boughtSeries')}
                 tone="accent"
