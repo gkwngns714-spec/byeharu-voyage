@@ -107,12 +107,20 @@ export function CityDetail({ portId }: { portId: string }) {
                   data-kind={people.kind ?? 'none'}
                   data-reason={people.reason ?? 'none'}
                 />
+                {/* THE DIFFERENCE FROM THE REAL POPULATION (the owner's word, row 273: "vs real life"), signed, with the real figure
+                    and its year under it: a share never prints without its whole (the drive audit, 2026-11-08, O4 — the cell read
+                    "Real life (c. 1650) 0.0 %", as if real life were nought). */}
                 <StatCard
-                  label={t('stats.peopleOfBase', { year: String(people.year ?? '') })}
+                  label={t('stats.peopleOfBase')}
                   value={(people.population / people.baseline - 1) * 100}
                   format={formatPctChange}
                   tone={deltaTone(people.population - people.baseline)}
+                  delta={{
+                    text: people.year !== undefined ? t('stats.peopleReal', { n: formatInt(people.baseline), year: String(people.year) }) : formatInt(people.baseline),
+                    tone: 'muted',
+                  }}
                   data-testid="stats-city-people-base"
+                  data-baseline={people.baseline}
                 />
                 <StatCard
                   label={t('stats.peopleTax')}

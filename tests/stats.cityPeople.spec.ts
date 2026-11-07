@@ -5,6 +5,8 @@ import { reachable, ready } from './appReady.fixture'
 // A city's Stats page shows its people: the population at 24 px, how it stands against the real-world figure, the last step's arrow and why
 // (the City hall's words), the tax a day, its rank — and a chart of the kept day of steps. English and Korean; the phone glass has no sideways scroll.
 
+test.use({ deviceScaleFactor: 2 })
+
 for (const locale of ['en-US', 'ko-KR'] as const) {
   test.describe(`a city's people on Stats — ${locale}`, () => {
     test.use({ locale })
@@ -29,7 +31,19 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         expect(font).toBeGreaterThanOrEqual(24)
         // the step's words are the hall's: an arrow, then the reason or the kind
         await expect(pop).toContainText(/[↑→↓]/)
-        await expect(page.getByTestId('stats-city-people-base')).toContainText('%')
+        // O4 OF THE DRIVE AUDIT (2026-11-08; the row's own word, "vs real life"): the cell's figure is the DIFFERENCE from the real
+        // population, so its label says "vs", and the real figure stands with it, with its year — a share never prints without its whole
+        const base = page.getByTestId('stats-city-people-base')
+        await expect(base).toContainText('%')
+        console.log(`${locale} @${glass.width} real-life cell: ${(await base.innerText()).replace(/\s+/g, ' ')}`)
+        if (glass.width === 1280) await page.screenshot({ path: `docs/dev-log/2026-11-08-axis-map-load-words/stats-city-people-1280-${locale === 'ko-KR' ? 'ko' : 'en'}@2x.png` })
+        await expect(base).toContainText(locale === 'ko-KR' ? '실제 대비' : 'vs real life')
+        await expect(base).toHaveAttribute('data-baseline', /^\d+$/)
+        const baseline = Number(await base.getAttribute('data-baseline'))
+        await expect(base).toContainText(baseline.toLocaleString('en-US'))
+        // the figure keeps the difference's sign: + over the real figure, − under it, 0.0% on it
+        const diff = Math.round((Number(await pop.getAttribute('data-population')) / baseline - 1) * 1000) / 10
+        await expect(base.locator('.tabular-nums').first(), 'the figure lost the sign of the difference').toHaveText(diff > 0 ? /^\+/ : diff < 0 ? /^[−-]/ : /^0\.0%$/)
         await expect(page.getByTestId('stats-city-people-tax')).toHaveAttribute('data-per-day', /^\d+$/)
         await expect(page.getByTestId('stats-city-people-rank')).toHaveAttribute('data-rank', /^[1-9]\d*$/)
         // the words in the glass's language
