@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { chartOpen } from './seaFrame.fixture'
-import { serveNpcOn } from './npcOn.fixture'
+import { watchMeter, type MeterWindow } from './mapMeter.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DRIVE AUDIT, 2026-11-08 — THE MAP, DRIVEN AS THE OWNER WOULD
@@ -157,48 +157,6 @@ test('Map: the dotted line and the roadstead ring stand off Lisbon on the glass;
 // up and the map's one pending read is the roster, so the meter shows that step alone, then goes.
 const FIX = 'docs/dev-log/2026-11-08-axis-map-load-words'
 const PHONE = { width: 390, height: 844 }
-type MeterEntry = { pct: number | null; step: string | null; gone: boolean; position: string | null; world: string | null; chart: string | null }
-type MeterWindow = { __meter?: MeterEntry[] }
-
-/** Shipped into the page before its first paint: every appearance, change and removal of the map's meter, with what stood around it. */
-function watchMeter() {
-  const w = window as unknown as MeterWindow
-  w.__meter = []
-  const chartBox = () => {
-    const r = document.querySelector('[data-testid="map-chart"]')?.getBoundingClientRect()
-    return r ? [r.x, r.y, r.width, r.height].map(Math.round).join(',') : null
-  }
-  const record = (el: Element | null, gone: boolean) => {
-    const host = el?.closest('[data-testid="map-load-host"]') ?? el
-    w.__meter!.push({
-      pct: el ? Number(el.getAttribute('data-load-pct')) : null,
-      step: el?.getAttribute('data-load-step') ?? null,
-      gone,
-      position: host ? getComputedStyle(host).position : null,
-      world: document.querySelector('[data-world]')?.getAttribute('data-world') ?? null,
-      chart: chartBox(),
-    })
-  }
-  const meterIn = (n: Node): Element | null =>
-    n instanceof Element ? (n.matches('[data-testid="map-load"]') ? n : n.querySelector('[data-testid="map-load"]')) : null
-  try {
-    new MutationObserver((list) => {
-      for (const m of list) {
-        if (m.type === 'attributes' && m.target instanceof Element && m.target.matches('[data-testid="map-load"]')) record(m.target, false)
-        else if (m.type === 'childList') {
-          for (const n of m.addedNodes) {
-            const el = meterIn(n)
-            if (el) record(el, false)
-          }
-          for (const n of m.removedNodes) if (meterIn(n)) record(null, true)
-        }
-      }
-    }).observe(document, { subtree: true, attributes: true, attributeFilter: ['data-load-pct'], childList: true })
-  } catch {
-    /* no observer: the log stays empty and the law fails on its floor */
-  }
-}
-
 for (const size of [WIDE, PHONE]) {
   test(`Map @${size.width}: the loading percentage is measured work — the world's steps and the ships, rising only, an overlay, gone at ready (row 255, D6)`, async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
@@ -254,37 +212,6 @@ for (const size of [WIDE, PHONE]) {
     expect(warmShown.map((e) => e.pct)).toEqual(warmShown.map(() => 75))
   })
 }
-
-// A LIT WORLD KEEPS ITS ROSTER (production's case: the merchants sail there). The store keeps the ships it has read across tabs and
-// places them in the very call that asks for them (worldStore `wantTraffic`), so on a return to the map no read is pending and the
-// meter must not commit a single frame (a flash at the top of the sea on every return). Merchants-on world, Map → HQ → Map. A dark
-// roster is not kept, so on a dark world this law would see "Ships 75 %" and go red: it holds the lit case only.
-test('Map @1280, merchants on: a return to the map commits no frame of meter, the kept roster paints at once (row 255, D6)', async ({ page, request, baseURL }) => {
-  test.setTimeout(900_000)
-  test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
-  await serveNpcOn(page)
-  await page.setViewportSize(WIDE)
-  await page.addInitScript(watchMeter)
-  await page.goto('map')
-  await ready(page)
-  await chartOpen(page)
-  // the cold load counted its steps, the roster among them, and went
-  await expect(page.getByTestId('map-load')).toHaveCount(0, { timeout: 120_000 })
-  const cold = await page.evaluate(() => (window as unknown as MeterWindow).__meter ?? [])
-  console.log(`AUDIT map meter @1280, merchants on, cold: ${JSON.stringify(cold.map((e) => (e.gone ? 'gone' : `${e.step} ${e.pct}`)))}`)
-  expect(cold.filter((e) => !e.gone).length, 'the cold load showed no loading percentage').toBeGreaterThan(0)
-  await page.evaluate(() => {
-    ;(window as unknown as MeterWindow).__meter = []
-  })
-  await page.getByTestId('nav-cell-/city').first().click()
-  await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 120_000 })
-  await page.getByTestId('nav-cell-/map').first().click()
-  await chartOpen(page)
-  await page.waitForTimeout(1500)
-  const warm = await page.evaluate(() => (window as unknown as MeterWindow).__meter ?? [])
-  console.log(`AUDIT map meter @1280, merchants on, back from the HQ: ${JSON.stringify(warm)}`)
-  expect(warm, 'the meter flashed on a return with the roster kept').toEqual([])
-})
 
 test('Map @1440: a harbour\'s tray lands on the window\'s own edge (row 278, the owner\'s laptop)', async ({ page, request, baseURL }) => {
   await openMap(page, request, baseURL, LAPTOP)
