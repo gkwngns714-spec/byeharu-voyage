@@ -1,7 +1,7 @@
 # The flags — where each one comes from, and why it may be used
 
 Every file in this folder is `public/flags/<nation code>.svg`, one per row of `public.nations`
-(23 on 2026-10-18; `tests/flags.spec.ts` fails if a nation has no file here, or a file here has
+(23 on 2026-10-18, 24 with the pirates' flag added 2026-11-07 by 0338; `tests/flags.spec.ts` fails if a nation has no file here, or a file here has
 no row in this table). They are bundled with the game and never hotlinked.
 
 **The rule they were chosen by (the owner, 2026-10-18):** a flag is taken from Wikimedia Commons
@@ -20,7 +20,7 @@ namespaces removed by the preset), then scanned: no `<script>`, no `<style>`, no
 Commons file's; only the markup was minified (and JOS.svg's `svg:`-prefixed markup rewritten to
 the default namespace, its width and height turned into a viewBox, so it scales into the 3:2 box).
 
-Total: **23 files, 56,253 bytes (54.9 KB)**.
+Total: **24 files, 56952 bytes (55.6 KB)**.
 
 | Code | Nation | File here | Source | Licence | Author |
 |---|---|---|---|---|---|
@@ -42,6 +42,7 @@ Total: **23 files, 56,253 bytes (54.9 KB)**.
 | NLD | The Netherlands | NLD.svg | [File:Prinsenvlag.svg](https://commons.wikimedia.org/wiki/File:Prinsenvlag.svg) | Public domain (PD-self) | Miyamaki, Oren neu dag, Artem Karimov, Golradir |
 | OTT | Ottoman Empire | OTT.svg | original drawing: a white crescent on red; the PD Commons "1517-1793" file is in "Fictional flags of historical entities" | CC0 (this project) | byeharu-voyage |
 | PER | Safavid Persia | PER.svg | [File:Safavid Flag.svg](https://commons.wikimedia.org/wiki/File:Safavid_Flag.svg) — the lion and sun on green | Public domain (PD-user-w) | Orange Tuesday (en.wikipedia) |
+| PIR | The Brethren | PIR.svg | original drawing (2026-11-07, W16 `the_brethren`): a white skull and crossed bones on black, the plain pirate flag; no pirate flag of the age is attested (the jolly roger belongs to the 1700s), so no Commons file fits and the design is the one every player already reads as pirate | CC0 (this project) | byeharu-voyage |
 | POL | Poland-Lithuania | POL.svg | [File:Flag of the Kingdom of Poland.svg](https://commons.wikimedia.org/wiki/File:Flag_of_the_Kingdom_of_Poland.svg) | Public domain (PD-self) | Alex Tora |
 | PRT | Portugal | PRT.svg | original drawing after the PD design [File:Flag of Portugal (1521).svg](https://commons.wikimedia.org/wiki/File:Flag_of_Portugal_(1521).svg): the crowned royal shield on white, simplified (the Commons file is 335 KB); the shield drawn 15 % larger on 2026-10-18 | CC0 (this project) | byeharu-voyage |
 | RUS | Muscovy | RUS.svg | [File:Flag of Russia (1668–1693).svg](https://commons.wikimedia.org/wiki/File:Flag_of_Russia_(1668%E2%80%931693).svg) | Public domain (PD-RU-exempt) | Milop |

@@ -5559,6 +5559,10 @@
    "language": "PORTUGUESE"
   },
   {
+   "port": "DJE",
+   "language": "TURKISH"
+  },
+  {
    "port": "DUB",
    "language": "ENGLISH"
   },
@@ -5609,6 +5613,10 @@
   {
    "port": "GOR",
    "language": "GUINEAN"
+  },
+  {
+   "port": "GOT",
+   "language": "JAPANESE"
   },
   {
    "port": "GUA",
@@ -5773,6 +5781,10 @@
   {
    "port": "LEI",
    "language": "ENGLISH"
+  },
+  {
+   "port": "LGA",
+   "language": "MALAY"
   },
   {
    "port": "LIS",

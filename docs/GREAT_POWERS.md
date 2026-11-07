@@ -1,5 +1,7 @@
 # GREAT POWERS — ten powers compete; thirteen nations rule their own cities
 
+> **2026-11-07, migration 0338 (W16, `docs/WORLD_POWERS.md` Part 5): an ELEVENTH great power, the pirates, `PIR` "The Brethren".** It races for cities and has four homes like the ten, but it has no crown (`great_powers.pirate`: no cargo ships, no navy, no aid from a capital) and a company may not sail for it until the owner sets `pirates_joinable`. Every "the ten" below is the ten a company may sail for. Its homes are Port Royal and three new harbours; Sale was won by Spain on 2026-11-06 and is not taken (`docs/dev-log/2026-11-07-the-brethren.md`).
+
 **Status: BUILT as slice GP1, 2026-10-18 — migration 0187 (after 0185 faith pricing and 0186) + its client, on branch
 `osn-seven-powers`; not merged, not deployed.** The ten,
 their homes and every DEFAULT here are the coordinator's and mine; the owner may swap any of them.

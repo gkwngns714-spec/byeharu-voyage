@@ -85,10 +85,14 @@ test.describe('landfall, measured over the real world file', () => {
     // (migration 0217, owner row 186): 238 → 246 harbours; ONE of the eight (Fremantle, 0.43 nm)
     // falls in drawn water and is moved onto the shore (80 → 81, 52 → 53, widest still 8.58 nm);
     // the islets stay 28. Measured by this test on 2026-10-25, not remembered.
-    expect(PORTS.length).toBe(246)
-    expect(inWater).toBe(81)
-    expect(moved).toBe(53)
-    expect(islets).toBe(28)
+    // Moved deliberately 2026-11-07 with the pirate homes (migration 0338, W16): 246 → 249 harbours; all THREE fall in drawn
+    // water (81 → 84): Djerba (Houmt Souk, 6.68 nm off the shore the 110 m file draws) is moved onto it (53 → 54, widest still
+    // 8.58 nm), and Lingga (50.36 nm) and Goto (42.09 nm) are islands the file has no polygon for, so they wear islets (28 → 30,
+    // the nearest islet shore now 14.31 nm). Measured by this test on 2026-11-07, not remembered.
+    expect(PORTS.length).toBe(249)
+    expect(inWater).toBe(84)
+    expect(moved).toBe(54)
+    expect(islets).toBe(30)
     // The cap sits in the gap the measurement found: every coarseness move is under it, every
     // island the file lacks is over it. If either side crosses the cap, the cap is wrong — or a
     // harbour is — and this is where it is found.
@@ -223,8 +227,10 @@ for (const viewport of [
       // (src/chart/ChartCanvas.tsx, THE COPIES), and Auckland and Wellington, the first harbours
       // near the seam, are drawn in both copies at the world view (248 marks, measured by CI run
       // 40195840956 in tests/map.marks.spec.ts). Every mark, copies included, is checked for land above.
-      expect(new Set(world!.marks.map((m) => m.code)).size).toBe(246)
-      expect(world!.marks.length).toBe(248)
+      // Moved deliberately 2026-11-07: 246 → 249 harbours (the pirate homes Lingga, Goto and Djerba, migration
+      // 0338, W16). None stands near the seam (the nearest to ±180° stays Wellington), so each is drawn once: 251 marks.
+      expect(new Set(world!.marks.map((m) => m.code)).size).toBe(249)
+      expect(world!.marks.length).toBe(251)
     })
   })
 }

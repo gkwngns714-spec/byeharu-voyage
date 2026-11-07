@@ -62,7 +62,7 @@ begin
   update public.cargo_fleet_sizes set ships = 5, read_at = now();   -- 0326: a country's number by hand; proof 35 proves the number
   v_want := 5;
   for r in select g.nation_id from public.great_powers g join public.nations n on n.id = g.nation_id
-             join public.ports p on p.code = n.capital_port_code and p.kind = 'HARBOUR' order by n.code loop
+             join public.ports p on p.code = n.capital_port_code and p.kind = 'HARBOUR' where not g.pirate order by n.code loop   -- 0338: the pirates have no crown, so no cargo ship
     v_n := public.cargo_ships_commission(r.nation_id);
     if v_n <> v_want then
       raise exception 'PROOF 18 FAIL: nation % got % ships, not %', r.nation_id, v_n, v_want;

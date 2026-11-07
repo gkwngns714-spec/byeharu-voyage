@@ -1,5 +1,5 @@
 {
-  "_comment": "Every country's home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the ten great powers have homes (docs/GREAT_POWERS.md, 0185). Migrations 0143 and 0185 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.",
+  "_comment": "Every country's home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the great powers have homes (docs/GREAT_POWERS.md, 0185; the eleventh, the pirates PIR, was added by 0338 with Port Royal and three new harbours, never a city another country holds: docs/INFLUENCE.md D1, nobody loses a city). Migrations 0143, 0185 and 0338 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.",
   "homes": {
     "ENG": [
       "LON",
@@ -54,6 +54,12 @@
       "IZM",
       "THE",
       "RHO"
+    ],
+    "PIR": [
+      "POR",
+      "LGA",
+      "GOT",
+      "DJE"
     ],
     "PRT": [
       "LIS",

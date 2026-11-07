@@ -117,8 +117,8 @@ begin
   end if;
   update public.world_config set value = 'true'::jsonb where key = 'regard_enabled';
   v_r := world.levels();
-  if jsonb_array_length(v_r -> 'regard') <> (select count(*) from public.great_powers) then
-    raise exception 'PROOF 33 FAIL: lit, regard names % countries, not every great power', jsonb_array_length(v_r -> 'regard');
+  if jsonb_array_length(v_r -> 'regard') <> (select count(*) from public.great_powers g where not g.pirate) then   -- 0338: the pirates keep no regard list line
+    raise exception 'PROOF 33 FAIL: lit, regard names % countries, not every great power with a crown', jsonb_array_length(v_r -> 'regard');
   end if;
   v_x := (select e from jsonb_array_elements(v_r -> 'regard') e where e ->> 'code' = 'PRT');
   if (v_x ->> 'score')::numeric <> 200 or (v_x ->> 'band') <> 'friendly' or (v_r -> 'regard' -> 0 ->> 'score')::numeric < (v_r -> 'regard' -> -1 ->> 'score')::numeric then

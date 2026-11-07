@@ -84,6 +84,7 @@ cumana|2000|1650|C|
 darwin|500|1871|L|founded 1869 as Palmerston
 dili|1000|1650|N|a small Timorese coastal settlement; analogue: Kupang
 diu|10000|1650|C|Portuguese Diu
+djerba|3000|1650|C|Houmt Souk beside the Borj el-Kebir, the corsairs' island; the island held ~30,000
 dublin|20000|1650|B|after the 1650 plague; ~45,000 by 1680
 dubrovnik|6000|1650|B|the city; the republic held ~30,000
 el-realejo|1000|1650|C|
@@ -99,6 +100,7 @@ gdansk|70000|1650|A|
 genoa|75000|1650|B|before the 1656 plague
 gibraltar|4000|1650|B|the Spanish town before 1704
 goree|500|1650|C|
+goto|3000|1650|C|Fukue, seat of the Goto clan; the islands held far more
 guangzhou|400000|1650|C|late-Ming Canton; sacked by the Qing in 1650
 guayaquil|5000|1650|C|
 hadibu|500|1650|N|the chief village of Socotra; analogue: other Arabian Sea island towns
@@ -140,6 +142,7 @@ lagos-ng|5000|1650|C|Eko, a Benin outpost
 las-palmas|8000|1650|C|
 le-havre|15000|1650|C|
 leith|5000|1650|C|the port alone; Edinburgh (~30,000) lies inland
+lingga|2000|1650|C|the orang laut's anchorage; Daik, the sultan's seat from 1787, held ~3,000 by the 1830s
 lisbon|150000|1650|B|
 livorno|20000|1650|B|
 london|400000|1650|A|

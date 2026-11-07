@@ -8,7 +8,9 @@
 // THE RULE (D1), computed once from the applied chain's sailed distances (public.sea_reaches, the
 // miles the SAIL picker uses), then AUTHORED: data/home-ports.json is the one list, the owner may
 // edit it, and migrations 0143 / 0187 + the world guard hold the database equal to it.
-// Since GP1 (0187, docs/GREAT_POWERS.md) only the TEN GREAT POWERS have homes:
+// Since GP1 (0187, docs/GREAT_POWERS.md) only the great powers have homes. The TEN with a crown get them by this rule; the eleventh, the
+// pirates (W16, 0338), has four AUTHORED homes (Port Royal and three new harbours, never a city another country holds) that this script
+// carries over untouched and never offers to anyone else:
 //   1. Each great power takes its capital, then the harbours it FOUNDED in order of sailed miles from
 //      the capital (ties: port code), up to 4.
 //   2. A power left short takes the nearest harbours no great power founded (free, or founded by one
@@ -25,7 +27,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { applyWithPrefixCache } from './db/prefix-cache.mjs'
 import { BROWSER_VARIANT, IMAGE_CACHE_DIR, chainAndFingerprint } from './db/build-image.mjs'
-import { GREAT_POWERS } from './lib/world-derive.mjs'
+import { GREAT_POWERS, PIRATE_POWER } from './lib/world-derive.mjs'
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const OUT = path.resolve(HERE, '..', 'data', 'home-ports.json')
@@ -37,7 +39,9 @@ const { db } = await applyWithPrefixCache({
 })
 const q = async (s) => (await db.query(s)).rows
 
-const great = new Set(GREAT_POWERS)
+const authored = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')).homes : {}   // W16 (0338): the pirates' homes are authored, not computed
+const great = new Set(GREAT_POWERS.filter((c) => c !== PIRATE_POWER))
+const pirateHomes = new Set(authored[PIRATE_POWER] ?? [])
 const nations = (await q(`select n.code, n.name, n.capital_port_code as capital from public.nations n order by n.code`))
   .filter((n) => great.has(n.code))
 const harbours = await q(`select p.code, p.name, n.code as nation from public.ports p
@@ -56,7 +60,7 @@ for (const n of nations) {
   want[n.code] = 4
   homes[n.code] = own.slice(0, want[n.code]).map((h) => h.code)
 }
-const free = harbours.filter((h) => h.nation === null || !great.has(h.nation))
+const free = harbours.filter((h) => (h.nation === null || !great.has(h.nation)) && !pirateHomes.has(h.code))
 const offers = []
 for (const n of nations) {
   if (homes[n.code].length >= want[n.code]) continue
@@ -85,9 +89,11 @@ if (check) {
   if (diffs.length === 0) console.log('home-ports --check: data/home-ports.json equals the computed rule (D1).')
   for (const n of diffs) console.log(`home-ports --check: ${n.code} file ${JSON.stringify(file[n.code] ?? [])} vs rule ${JSON.stringify(homes[n.code])}`)
 } else {
+  const all = { ...homes }
+  if (authored[PIRATE_POWER]) all[PIRATE_POWER] = authored[PIRATE_POWER]   // W16 (0338): carried over, never computed
   writeFileSync(OUT, JSON.stringify({
-    _comment: 'Every country\'s home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the ten great powers have homes (docs/GREAT_POWERS.md, 0187). Migrations 0143 and 0187 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.',
-    homes,
+    _comment: 'Every country\'s home cities (docs/INFLUENCE.md §3, rule D1). AUTHORED after scripts/build-home-ports.mjs wrote it once; a home city never changes hands. Only the great powers have homes (docs/GREAT_POWERS.md, 0185; the eleventh, the pirates PIR, was added by 0338 with Port Royal and three new harbours, never a city another country holds: docs/INFLUENCE.md D1, nobody loses a city). Migrations 0143, 0185 and 0338 seed public.port_allegiance.home from it, and scripts/db/world-guard.mjs holds the database equal to it.',
+    homes: Object.fromEntries(Object.entries(all).sort(([a], [b]) => a.localeCompare(b))),
   }, null, 2) + '\n')
   console.log(table)
   console.log(`wrote ${OUT}: ${Object.values(homes).flat().length} home cities`)

@@ -265,9 +265,12 @@ export interface SnapshotNation {
   flag_char: string
   /** The port CODE of the capital, resolvable through `portByCode`. Null where none is authored. */
   capital: string | null
-  /** GP1 (0187, docs/GREAT_POWERS.md): one of the ten great powers a company may sail for. The other
+  /** GP1 (0187, docs/GREAT_POWERS.md): one of the great powers - the ten, and since W16 (0338) the pirates. The other
    *  thirteen are LOCAL RULERS of the cities they founded: never offered, never on the Countries board. */
   great: boolean
+  /** W16 (0338): a great power a company may sail for (public.nation_joinable): the ten, and the pirates only when the
+   *  owner sets `pirates_joinable`. The country picker lists exactly these; `great` is the Codex's word, not the picker's. */
+  joinable: boolean
 }
 
 export interface WorldSnapshot {
@@ -1635,7 +1638,7 @@ export interface DivertResult {
  * so a client can only ever have founded its own house. A refusal arrives as a `Refusal` through
  * the usual `RpcResult`, never as a field on this — E_ALREADY_FOUNDED, E_NAME_TAKEN, E_BAD_NAME,
  * E_NO_SUCH_NATION and E_NOT_SIGNED_IN are the five the migration can raise; 0187 adds E_MINOR_POWER
- * (a local ruler, not one of the ten great powers).
+ * (a local ruler, or the pirates until `pirates_joinable` is set: not a power a company may sail for).
  */
 export interface FoundedHouse {
   player_id: string

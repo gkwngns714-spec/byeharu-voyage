@@ -184,7 +184,7 @@ $b$
   end if;
   perform pg_temp.purse(v_cap, 1000000);
   v_n := public.navy_read(v_t);
-  if v_n <> (select count(*) from public.great_powers) or public.navy_size_of(v_nat) <> 2 then
+  if v_n <> (select count(*) from public.great_powers g where not g.pirate) or public.navy_size_of(v_nat) <> 2 then   -- 0338: the pirates keep no navy
     raise exception 'PROOF 37 FAIL: the first read: % rows, size %', v_n, public.navy_size_of(v_nat);
   end if;
   perform pg_temp.purse(v_cap, 4400000000);
@@ -714,7 +714,7 @@ as $b$ select false $b$
                           from public.navy_stations a join public.sea_reaches r on r.port_id = a.port_id
                           join public.navy_stations b on b.nation_id = a.nation_id and b.id <> a.id join public.ports p2 on p2.id = b.port_id));   -- a move between two stations of a realm, by the shortest water
   v_b := voyage.stores_need_days(v_a, (select k.speed_kn from public.ship_classes k where k.code = public.wc_text('navy_ship_class')) * public.wc_num('hull_speed_floor'));
-  if (select count(distinct s.nation_id) from public.navy_stations s) <> (select count(*) from public.great_powers) or v_b > public.wc_num('navy_store_days') then
+  if (select count(distinct s.nation_id) from public.navy_stations s) <> (select count(*) from public.great_powers g where not g.pirate) or v_b > public.wc_num('navy_store_days') then
     raise exception 'PROOF 37 FAIL: the longest patrol leg, % nm, asks % days of stores at her floor, and she carries %', v_a, v_b, public.wc_num('navy_store_days');
   end if;
   raise notice 'PASS: NAVY_STORES — the longest leg or move of % stations, % nm, asks % days; she carries %', (select count(*) from public.navy_stations), v_a, round(v_b, 1), public.wc_num('navy_store_days');

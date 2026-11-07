@@ -592,12 +592,12 @@ as $b$ select false $b$
 
   -- ── EVERY LEG OF THE WORLD ──
   update public.world_config set value = 'false'::jsonb where key = 'convoy_armed_enabled';   -- circuits only: no hull changes for this
-  for v_id in select g.nation_id from public.great_powers g where public.cargo_circuit_of(g.nation_id, public.realm_capital(g.nation_id)) is null loop
+  for v_id in select g.nation_id from public.great_powers g where not g.pirate and public.cargo_circuit_of(g.nation_id, public.realm_capital(g.nation_id)) is null loop   -- 0338: the crowns only
     perform public.cargo_circuit_build(v_id);
   end loop;
   select max(l.nm) into v_a from public.cargo_circuit_legs l;
   v_b := voyage.stores_need_days(v_a, (select k.speed_kn from public.ship_classes k where k.code = public.wc_text('convoy_armed_class')) * public.wc_num('hull_speed_floor'));
-  if (select count(distinct k.nation_id) from public.cargo_circuits k) <> (select count(*) from public.great_powers) or v_b > v_days then
+  if (select count(distinct k.nation_id) from public.cargo_circuits k) <> (select count(*) from public.great_powers g where not g.pirate) or v_b > v_days then
     raise exception 'PROOF 36 FAIL: the longest leg, % nm, asks % days of stores at her floor, and she carries %', v_a, v_b, v_days;
   end if;
   raise notice 'PASS: ARMED_STORES — the longest leg of the world, % nm, asks % days at the slowest she can sail; she carries %', v_a, round(v_b, 1), v_days;
