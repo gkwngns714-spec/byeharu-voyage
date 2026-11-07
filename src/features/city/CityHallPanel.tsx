@@ -173,14 +173,19 @@ export function CityHallPanel({
   )
 }
 
-/** THE INVESTORS DRAWER — the design system's docked Tray: from 1,024 px it slides over the page's SIDE column (the same x and width, nothing behind it
- *  moves — the page pattern's tray, Tray.tsx reads the page), below it a sheet up from the bottom edge. Its own 44-px ✕ closes it and the served
- *  board scrolls inside it. (2026-11-04: it was the map's full-height `side` panel, 39 rem wide, over the plan as much as the panel.) */
+/** THE INVESTORS DRAWER — the design system's slide-in panel, `Tray mode="side"` (the map's; `traySideEdgeClass` is its one authority): it
+ *  slides in from the WINDOW's right edge and lands on it, from 1,024 px the side column's width and below that the whole glass; it is fixed, so
+ *  nothing behind it moves; its own 44-px ✕ slides it back out, and the served board scrolls inside it. The owner (row 247): *"a list slides to
+ *  the right where you can close"*. 2026-11-04 docked it over the page's side column instead (the side panel was 39 rem wide then); the drive
+ *  audit of 2026-11-08 (D2, D3) found that dock neither slides nor reaches the window's edge — it stood at the page's margin, 40 px in at 1280,
+ *  the look the owner refused for the map's pop-up (row 278) — and the side panel has been `--page-side` wide since that same day, so the
+ *  reason for the dock was gone. */
 function InvestorsDrawer({ investors, onClose }: { investors: readonly CityInvestor[]; onClose: () => void }) {
   const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('full')
   return (
     <Tray
+      mode="side"
       detent={detent}
       onDetentChange={(next) => {
         if (next === 'closed') onClose()

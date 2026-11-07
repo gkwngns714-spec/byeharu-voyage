@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { reachable, ready } from './appReady.fixture'
+import { arrivedAtEdge, reachable, ready } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
 import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledSheet, trayBox } from './design.fixture'
 
@@ -24,7 +24,8 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledShe
 //   (b) THE DEFECT RULES STAND: no sideways scroll, no two text boxes crossing, no one-letter wrap, no cut text without its full text,
 //       every control at least 44 × 44, the document flat.
 //   (c) THE HIERARCHY: the hall's figures at least 24 px with their labels at least 13; a summary row at least 52 px, none wider than 36 rem.
-//   (d) THE INVESTORS DRAWER MOVES NOTHING BEHIND IT, and from 1,024 it slides over the page's SIDE column — the same x and width.
+//   (d) THE INVESTORS DRAWER MOVES NOTHING BEHIND IT, and it slides in to the WINDOW's own right edge (rows 247 / 278, the drive
+//       audit's D3; the map's panel, `Tray mode="side"`), from 1,024 the side column's width — never the page's margin inside it.
 //   (e) THE SIDE IS USED: your purse and the open place's panel stand in the side column from 1,024; the plan stands in the main.
 //   (f) NO SCROLL TRAP: nothing but the sheet scrolls — no panel, no chart card scrolls inside itself.
 //   (g) THE PANEL COMES BEFORE THE PLAN ON A PHONE: below the split, the open place's card begins on the first glass.
@@ -179,9 +180,11 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
   })
 }
 
-// (d) THE INVESTORS DRAWER MOVES NOTHING BEHIND IT; from 1,024 it stands over the SIDE column — same x, same width
+// (d) THE INVESTORS DRAWER MOVES NOTHING BEHIND IT; it lands on the WINDOW's right edge (2026-11-08, the drive audit's D3: it stood
+//     40 px inside it at 1280, docked over the side column at the page's margin — the look the owner refused for the map, row 278),
+//     from 1,024 the side column's width.
 for (const glass of DESIGN_GLASSES) {
-  test(`the investors drawer moves nothing behind it and stands over the side column, at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
+  test(`the investors drawer moves nothing behind it and lands on the window's right edge, the side column's width, at ${glass.width}×${glass.height}`, async ({ page, request, baseURL }) => {
     test.setTimeout(480_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await open(page, glass)
@@ -194,13 +197,14 @@ for (const glass of DESIGN_GLASSES) {
     await row.click()
     const tray = page.getByTestId('city-investors-drawer')
     await expect(tray).toBeVisible()
-    await page.waitForTimeout(500)
+    // the slide's end, read off the running app (never a sleep): the box is still and its right edge is the window's
+    await arrivedAtEdge(tray, glass.width)
     expect(await boxesOf(page, SHEET, ids), 'the drawer moved the page behind it').toEqual(before)
     const box = await trayBox(page)
     expect(box, 'the drawer has no box').not.toBeNull()
+    expect(Math.abs(box!.l + box!.w - glass.width), `the drawer's right edge stands ${Math.round(glass.width - box!.l - box!.w)} px inside the window's`).toBeLessThanOrEqual(1)
     if (glass.width >= 1024) {
-      expect(side, 'the page has no side column for the drawer to stand over').not.toBeNull()
-      expect(Math.abs(box!.l - side!.l), `the drawer stands at x=${Math.round(box!.l)} and the side column at x=${Math.round(side!.l)}`).toBeLessThanOrEqual(2)
+      expect(side, 'the page has no side column for the drawer to take the width of').not.toBeNull()
       expect(Math.abs(box!.w - side!.w), `the drawer is ${Math.round(box!.w)} px wide and the side column ${Math.round(side!.w)}`).toBeLessThanOrEqual(2)
     } else {
       expect(box!.t + box!.h, 'the drawer hangs below the glass').toBeLessThanOrEqual(glass.height + 1)

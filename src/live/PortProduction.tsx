@@ -18,10 +18,10 @@ import {
   goodClassRow,
   type TrayDetent,
 } from '../components/ui'
-import { fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
+import { fleetHoldBreakdown, fleetHoldTotal, fleetHoldUsed } from '../domain/fleet'
 import { findVerb, moveEstimate, orderText, useCommandDraft } from '../domain/order'
 import { hasBuilding } from '../domain/port'
-import { formatInt, formatOfTotal, formatTons, formatUnits } from '../lib/format'
+import { formatFixed, formatInt, formatOfTotal, formatTons, formatUnits, tonsWord } from '../lib/format'
 import type { FleetView, Refusal, SnapshotPort, StoredGood } from '../lib/rpc'
 import { PortForge } from './PortForge'
 import { useForge } from './useForge'
@@ -93,6 +93,9 @@ export function PortProduction({
 
   const stored = shed?.stored ?? []
   const aboard = read.view?.aboard ?? []
+  // THE SUPPLIES ARE IN THE SAME HOLD (DESIGN C.3) and the bar counts them (`fleetHoldUsed`: goods and supplies), so the list says them too:
+  // a goods-only list read "Cargo empty." under "4 / 180 tons" (the drive audit's D4, 2026-11-08). The same fold the Fleets page draws.
+  const supplies = fleet ? fleetHoldBreakdown(fleet).provisionsT : 0
   const free = shed ? Math.max(0, shed.cap - shed.used) : 0
   const products = new Set((forge.view?.recipes ?? []).map((r) => r.product))
   const finished = stored.filter((g) => products.has(g.good))
@@ -187,22 +190,33 @@ export function PortProduction({
                   <CargoBar used={fleetHoldUsed(fleet)} total={fleetHoldTotal(fleet)} free={fleet.free_hold} className="py-2" />
                   {read.view === null ? (
                     read.loading ? <Skeleton className="h-28 w-full" /> : null
-                  ) : aboard.length === 0 ? (
+                  ) : aboard.length === 0 && supplies <= 0 ? (
                     <Row label={t('city.cargoEmpty')} tone="muted" hairline={false} />
                   ) : (
-                    aboard.map((g, i) => (
-                      <GoodRow
-                        key={g.good}
-                        good={g}
-                        act={t('inn.put')}
-                        dead={null}
-                        selected={held?.code === g.good && held.move === 'put'}
-                        onPress={() => pickMove(g.good, 'put')}
-                        hairline={i < aboard.length - 1}
-                        testid="cargo-row"
-                        cellTestid={`storage-put-${g.good}`}
-                      />
-                    ))
+                    <>
+                      {aboard.map((g, i) => (
+                        <GoodRow
+                          key={g.good}
+                          good={g}
+                          act={t('inn.put')}
+                          dead={null}
+                          selected={held?.code === g.good && held.move === 'put'}
+                          onPress={() => pickMove(g.good, 'put')}
+                          hairline={i < aboard.length - 1 || supplies > 0}
+                          testid="cargo-row"
+                          cellTestid={`storage-put-${g.good}`}
+                        />
+                      ))}
+                      {/* The supplies' tons, a plain line: no act, since supplies are not stored (STORE and TAKE move goods). */}
+                      {supplies > 0 && (
+                        <Row
+                          label={t('fleets.holdProvisions')}
+                          value={<Figure value={formatFixed(supplies, 1)} unit={tonsWord(supplies)} />}
+                          hairline={false}
+                          data-testid="cargo-supplies"
+                        />
+                      )}
+                    </>
                   )}
                 </>
               )}
