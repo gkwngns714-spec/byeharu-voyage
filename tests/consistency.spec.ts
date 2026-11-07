@@ -407,6 +407,10 @@ for (const size of SIZES) {
       if (route === 'stats') {
         for (const face of STATS_FACES) {
           if (!(await pressFace(page.getByRole('tablist'), face, `${size.width} stats/${face}`, failures))) continue
+          // THE FACE'S LIST PANEL STANDS WHEN ITS READ HAS LANDED, NOT 500 MS AFTER THE PRESS. Main 195a01fd (run 42334341583, 2026-11-07) counted 4 of 5:
+          // the sleep below ended before one face's served list had drawn, and `panelsHere()` counted it as 0. Wait for a panel, bounded, and NEVER throw:
+          // a face that never stands one is still counted 0 below and the final expect still fails with its own message, after the wait.
+          await page.locator('[data-list-panel]:visible').first().waitFor({ timeout: 30_000 }).catch(() => undefined)
           await page.waitForTimeout(500)
           failures.push(...violations(await snapshot(page), `${size.width} stats/${face}`))
           statsPanels += await panelsHere()
