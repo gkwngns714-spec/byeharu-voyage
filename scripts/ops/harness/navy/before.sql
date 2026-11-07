@@ -1,6 +1,7 @@
 -- 0331 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/navy/before.sql
 -- Generated from the migration's hunks. Every function read here is STABLE (pg_get_functiondef, to_regclass, replace). No game function is called.
 -- Wanted: every `times` 1; navy_keys 0; navy_words 0; navy_table null; class_ok 1; head 0330.
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('public.fleet_kind(uuid)'::regprocedure, 1, $h$  -- 0308: THE answer to what a fleet is: CARGO_SHIP (public.cargo_ships), MERCHANT (public.npc_fleets), else COMPANY, a player's. Null for no such fleet.
 $h$),
@@ -60,3 +61,4 @@ select jsonb_build_object(
   'word_ords', (select count(*) from public.stats_flow_words w where w.ord in (52, 53)),
   'head', (select max(version) from supabase_migrations.schema_migrations)
 ) as checks;
+commit;

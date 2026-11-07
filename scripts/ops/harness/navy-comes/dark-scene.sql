@@ -1,6 +1,8 @@
 -- 0333 DARK PARITY SCENE: run by proof-0333.mjs on the world BEFORE the file and AFTER it, rolled back each time, beside the rich-cities, armed-cargo and navy scenes.
 -- It covers what 0333 cuts that those do not reach: a company's world.fleets, byte for byte with the clock taken out; a PROBE battle, opened and closed through the real bodies, as a sailing attacker against a merchant, every row it writes;
 -- both doors dark; and a free fleet's read while another is held. It names only what existed before 0333.
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   c_uid constant uuid := '00000000-0333-4000-8000-0000000000aa';

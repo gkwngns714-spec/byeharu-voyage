@@ -3,6 +3,7 @@
 -- after-call.sql, which cannot be parsed until the function exists.
 -- Wanted: head 20260818000337; fn.present true, fn.vol 's', fn.secdef true, fn.cfg {"search_path=public, pg_temp"}; acl_as_sibling true (== world.levels()); anon_can_execute false; authenticated_can_execute true;
 --         registered true; levels_bite true (read, never set); one_registry_row true.
+begin transaction read only;
 select jsonb_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'fn', (select jsonb_build_object('present', true, 'vol', p.provolatile::text, 'secdef', p.prosecdef, 'cfg', coalesce(p.proconfig::text, ''), 'acl', coalesce(p.proacl::text, ''))
@@ -17,3 +18,4 @@ select jsonb_build_object(
   'siblings_stable', (select jsonb_object_agg(p.oid::regprocedure::text, p.provolatile::text) from pg_proc p
                        where p.oid in ('public.crew_terms(uuid,timestamp with time zone)'::regprocedure, 'public.crew_pct(uuid,uuid,text,uuid,timestamp with time zone)'::regprocedure, 'world.levels()'::regprocedure))
 ) as checks;
+commit;

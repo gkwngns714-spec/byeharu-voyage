@@ -1,5 +1,6 @@
 -- 0335 AFTER DEPLOY, read-only, one statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/realm-pays/after.sql
 -- Every function called here is STABLE. Wanted: head 0335; navy_on false; navy_rows 0; navy_flows 0; crown_call_cut true; realms: what each realm could lay at its capital this minute, for the dev-log's table.
+begin transaction read only;
 select jsonb_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'navy_on', (select c.value from public.world_config c where c.key = 'navy_enabled'),
@@ -14,3 +15,4 @@ select jsonb_build_object(
               cross join lateral (select public.realm_capital(g.nation_id) as cap) c
               cross join (select s.build_cost from public.ship_classes s where s.code = (select x.value #>> '{}' from public.world_config x where x.key = 'navy_ship_class')) k)
 ) as checks;
+commit;

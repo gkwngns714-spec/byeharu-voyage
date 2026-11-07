@@ -1,5 +1,7 @@
 -- 0324 DARK PARITY SCENE: run by proof-0324.mjs on the world BEFORE the file and AFTER it, rolled back each time. It names only what existed before 0324, so it runs on both. Every SCENE line must be equal.
 -- Off (`convoy_rich_enabled` false, the default): the same flows, purses, book, ships, stops and answers, with convoys off and with convoys lit as prod is. The sea is stubbed quiet. Times and row ids are left out.
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_last int := world.game_day() - 1;

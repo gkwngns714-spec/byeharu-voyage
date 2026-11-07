@@ -2,6 +2,8 @@
 -- pirate merchants must NOT change while dark: the loops offered to the merchants whose homes touch a pirate home, the day cap at a pirate home and at a crown city, the gift roster, the invest roster, a crown
 -- founding and the capital that pays it, the sea roster's inks and kinds, the flow words the client reads, and W. Every SCENE line must be equal, byte for byte, before and after.
 -- (The pirate merchants' own changes, lit, are proved by scripts/db/proofs/47_pirate_merchants.sql; this scene is the other half of "a slice that cannot hurt a live world".)
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_prt  uuid := (select n.id from public.nations n where n.code = 'PRT');

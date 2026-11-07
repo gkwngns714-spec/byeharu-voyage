@@ -63,6 +63,9 @@
 -- VERSION: 0186 (provisional; renumbered to head + 1 at deploy).
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this is a migration draft kept as a record. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+-- A migration never carries this guard: strip these two lines before copying this draft into supabase/migrations.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $guard$
 begin
   perform set_config('statement_timeout', '20min', true);

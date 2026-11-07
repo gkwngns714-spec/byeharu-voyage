@@ -2,6 +2,8 @@
 -- It covers what 0340 cuts that those do not reach, in BOTH darks: the navy off (a ship's step, the job's answer, her card's keys) and the navy on with the pirates off (she patrols, the job's answer has the keys it had,
 -- her card the keys it had), and a PROBE battle's hulls written by the lifted statement (the outcome is seeded by the battle's random id, so what is compared is that hull was lost on a side and never grew). It names only
 -- what existed before 0340 (W17's switch included: the pirates are off throughout).
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   c_uid constant uuid := '00000000-0340-4000-8000-0000000000aa';

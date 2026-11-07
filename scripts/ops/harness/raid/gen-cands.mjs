@@ -4,6 +4,9 @@ const src = readFileSync('C:/Users/gkwng/dev/bv-raid/supabase/migrations/2026081
 const a = src.indexOf('create or replace function voyage.fight_resolve'), b = src.indexOf('end $$;', a) + 'end $$;'.length
 const body = src.slice(a, b)
 const once = (s, x, y) => { const n = s.split(x).length - 1; if (n !== 1) throw new Error(`occurs ${n}: ${x.slice(0, 60)}`); return s.replace(x, y) }
+// every cand-*.sql re-creates voyage.fight_resolve, so it is LOCAL ONLY and opens with the harness guard (README, "Two classes"; tests/harness.guard.spec.ts)
+const GUARD = '-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this file re-creates functions (a kept copy of live bodies / a candidate body). The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.\n' +
+  "do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;\n"
 const SIZE_OLD = `  r_n     := greatest(0, coalesce(p_raider, 0)) / v_one;
 `
 // K3: the raiders who close are sized to the prey — no more hulls than fight_prey_ratio × her boarding strength needs
@@ -26,7 +29,7 @@ const designBoard = (s) => once(once(s,
   `    b_they := r_n * (c.crew_required * v_hand + c.tier * 3) * r_hull / r_hull0;`,
   `    b_they := r_n * v_one * r_hull / r_hull0;`)
 const out = { prey: preySized(body), strike: strike(body), design: designBoard(body), design_prey: preySized(designBoard(body)) }
-for (const [k, v] of Object.entries(out)) writeFileSync(`cand-${k}.sql`, v + '\n')
+for (const [k, v] of Object.entries(out)) writeFileSync(`cand-${k}.sql`, GUARD + v + '\n')
 console.log('wrote', Object.keys(out).join(', '))
 // K5: outnumbered at the boarding (their fighting hands >= fight_strike_ratio x hers) — she strikes and pays: RANSOM
 const strikeRansom = (s) => once(s, `    v_outcome := case when v_ratio >= (v_bands->>0)::numeric then 'DRIVEN_OFF'`,
@@ -38,5 +41,5 @@ const giveUp = (s) => once(s, `  v_lines := v_lines || case when r_n < 0.75`, ` 
       'raiders', jsonb_build_object('class', c.code, 'ships', round(r_n, 2), 'crew', round(r_crew), 'damaged_pct', 0), 'hits', jsonb_build_object('yours', 0, 'theirs', 0));
   end if;
   v_lines := v_lines || case when r_n < 0.75`)
-writeFileSync('cand-strikeransom.sql', strikeRansom(body) + '\n'); writeFileSync('cand-giveup.sql', giveUp(body) + '\n')
+writeFileSync('cand-strikeransom.sql', GUARD + strikeRansom(body) + '\n'); writeFileSync('cand-giveup.sql', GUARD + giveUp(body) + '\n')
 console.log('wrote strikeransom, giveup')

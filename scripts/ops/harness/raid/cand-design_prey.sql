@@ -1,3 +1,5 @@
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this file re-creates functions (a kept copy of live bodies / a candidate body). The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 create or replace function voyage.fight_resolve(p_voyage uuid, p_day int, p_raider numeric, p_escort numeric, p_ships jsonb)
 returns jsonb
 language plpgsql

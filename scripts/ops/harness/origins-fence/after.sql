@@ -3,6 +3,7 @@
 -- Wanted: head 20260818000336; body_is_new true (body_md5 81997c67fc00c74f748aeab9c0bf2695: the live body of before.sql with the one hunk of 0336 in it, nothing else); hunk_old_times 0; fence_in_body true; volatility s; definer true;
 -- acl {postgres=X/postgres,service_role=X/postgres}; config {"search_path=public, pg_temp"}; overloads 1 (all as before.sql read them); switch false; rich_on false;
 -- off_capital 0 (with the switch off, every great power's origins are its capital, and not one is read from the cities); probe_codes 0.
+begin transaction read only;
 with h(old) as (values ($h$                                       from public.ports h
                                       cross join lateral (select public.crown_call_room(h.id) as room) x
                                       where h.kind = 'HARBOUR' and public.port_nation(h.id) = p_nation and x.room > 0
@@ -27,3 +28,4 @@ select jsonb_build_object(
   from (select replace(pg_get_functiondef('public.cargo_origins(uuid)'::regprocedure), E'\r', '') as def) d
  cross join h
  cross join (select p.provolatile, p.prosecdef, p.proacl, p.proconfig from pg_proc p where p.oid = 'public.cargo_origins(uuid)'::regprocedure) f;
+commit;

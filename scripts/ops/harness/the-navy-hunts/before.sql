@@ -1,6 +1,7 @@
 -- 0340 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/the-navy-hunts/before.sql
 -- Generated from the migration's hunks. Every function read here is STABLE or immutable (pg_get_functiondef, to_regclass, to_regprocedure, replace, length). No game function is called.
 -- Wanted: every `times` 1; keys 0; columns 0; fn_pass null; navy_on false; pirates_bite false (W17's knob, present); pirate_objects all present (W17 deployed); navy_ships 0; hunt_rows 0; public_fights 0; head 20260818000339 (W17 deployed, this file not yet).
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('public.tick_navy(timestamp with time zone,uuid)'::regprocedure, 1, $h$  v_s     text;
 begin
@@ -41,3 +42,4 @@ select (select jsonb_object_agg(b.fn::text || ' ' || b.ord, (length(b.def) - len
        (select count(*) from public.navy_ships n where n.mission = 'HUNT') as hunt_rows,
        (select count(*) from public.events e where e.player_id is null and e.kind = 'NAVY_FIGHT') as public_fights,
        (select max(version) from supabase_migrations.schema_migrations) as head;
+commit;

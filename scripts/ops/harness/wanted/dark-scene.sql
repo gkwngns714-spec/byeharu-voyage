@@ -1,6 +1,8 @@
 -- 0334 DARK PARITY SCENE: run by proof-0334.mjs on the world BEFORE the file and AFTER it, rolled back each time. Every line must be equal.
 -- A human company and a merchant each sail five fixed-id voyages through real seas on a hot sea (hazard_mult 1000), through the real depart, roll and settle, with the real fight: every day's roll, the frozen path, the quote, each day written, the hold,
 -- the hull, the crew, the purse. It names only what existed before 0334. The scene sets regard lit and a Hostile regard, so a dark hunt is proved dark for the very company it would hunt.
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_nat  uuid;

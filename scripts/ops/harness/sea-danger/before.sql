@@ -1,6 +1,7 @@
 -- 0330 PROD CHECK, read-only, one statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-danger/before.sql
 -- Every function read here is STABLE or IMMUTABLE (pg_get_functiondef, to_regclass, to_regprocedure, replace, length). No game function is called.
 -- Wanted: every `times` 1; seas 51; sea_danger_fn null; pressure_table null; old_mix 1; knobs 0; piracy_readers exactly voyage.sea_mix(uuid) and voyage.settle(uuid,timestamp with time zone); head 0329 (0328 until W12 lands).
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)'::regprocedure, 1, $h$  values (p_fleet, v_player, p_segments, v_total, v_profile, p_at,
 $h$),
@@ -36,4 +37,5 @@ select jsonb_build_object(
   'knobs', (select count(*) from public.world_config c where c.key in ('sea_pressure_decay', 'sea_danger_bands')),
   'piracy_readers', (select jsonb_agg(p.oid::regprocedure::text order by 1) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%piracy_index%'),
   'head', (select max(version) from supabase_migrations.schema_migrations)
-) as check_0330
+) as check_0330;
+commit;

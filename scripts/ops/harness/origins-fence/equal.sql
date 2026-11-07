@@ -3,6 +3,7 @@
 -- Every function called is STABLE (public.crown_call_room, public.port_nation, public.wc_int); no row is written. COST: the old shape asks crown_call_room of every harbour for each realm, so ten realms take what ten
 -- old reads take (about 0.3 to 1 s each); the new shape takes a fraction of that.
 -- Wanted: realms 10; unequal 0 (the two arrays are the same for every realm); empty is how many realms have no city with room and a course (their origin would be the capital); rosters are the codes, in order.
+begin transaction read only;
 select jsonb_build_object(
   'realms', count(*),
   'unequal', count(*) filter (where r.old_ids is distinct from r.new_ids),
@@ -31,3 +32,4 @@ select jsonb_build_object(
                  limit public.wc_int('convoy_rich_ports')) y
                ) as new_ids
           from public.great_powers g join public.nations n on n.id = g.nation_id) r;
+commit;

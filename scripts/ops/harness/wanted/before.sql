@@ -1,6 +1,7 @@
 -- 0334 PROD CHECK, read-only, one statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/wanted/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regclass, replace) or a count. No game function is called.
 -- Wanted: every `times` 1; keys 0; kind_navy 0; wanted_table null; side_table null; fine_side 'moved'; capitals_short 0; head the number before 0334. Re-run at the head before 0334: 0332 and 0333 land first, and W13 may cut these lines.
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)'::regprocedure, 1, $h$  e         jsonb;
 begin
@@ -35,3 +36,4 @@ select jsonb_build_object(
                       where not exists (select 1 from public.port_goods pg where pg.port_id = p.id and pg.good_id = x.id)),
   'head', (select max(version) from supabase_migrations.schema_migrations)
 ) as checks;
+commit;
