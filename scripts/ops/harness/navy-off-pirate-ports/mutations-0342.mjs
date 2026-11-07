@@ -1,0 +1,29 @@
+// mutations-0342.mjs — deliberate breakages of 0342, each required to FAIL the file's own self-assert, or proof 49 right after it, for the intended reason.
+// `swap(sql, from, to)` throws when `from` is not in the file exactly once, so a mutation that no longer fits is loud. One mutation a hunk, plus the reader, the drop and the catalog.
+export function mutations(swap) {
+  return [
+    // the hunks, one each
+    ['a patrol stop may be theirs (navy_patrol_build)', (s) => swap(s, `                 and public.navy_harbour_ok(r.port_id)   -- 0342: never a stop the pirates hold\n`, ``), /the patrol calls at a harbour the Brethren hold/],
+    ['a call may send her to their harbour (harbour_nearest)', (s) => swap(s, `   where public.navy_harbour_ok(x.id)   -- 0342: never a harbour the pirates hold\n`, `   where true\n`), /the call off Port Royal answers/],
+    ['a reinforcement sails to a harbour that fell (navy_reinforce)', (s) => swap(s, `  if v_leg is null or not public.navy_harbour_ok(n.called_to) then   -- 0342:`, `  if v_leg is null then   -- 0342:`), /the called ship was not freed/],
+    ['an escort follows into their harbour (navy_escort_step)', (s) => swap(s, `     where public.navy_harbour_ok(x.dest_port_id)   -- 0342: never a stop the pirates hold: a cargo ship bound for one sails unescorted\n`, `     where true\n`), /she escorted a cargo ship into a harbour the Brethren hold/],
+    ['the next patrol leg is sailed to a fallen stop (navy_ship_step 1)', (s) => swap(s, `      if l.station_id is not null and public.navy_harbour_ok(l.to_port) then\n        return public.navy_sail(p_fleet, f.port_id, l.segments, l.to_port, n.patrol, n.leg + 1, p_now);`, `      if l.station_id is not null then\n        return public.navy_sail(p_fleet, f.port_id, l.segments, l.to_port, n.patrol, n.leg + 1, p_now);`), /the next stop fallen, she did not end her patrol/],
+    ['her home may be a fallen station (navy_ship_step 2)', (s) => swap(s, `  if not public.navy_harbour_ok(v_home) then   -- 0342: her home fell`, `  if false then   -- 0342: her home fell`), /her station fallen, she did not sail for the capital/],
+    ['the first leg to a fallen stop is kept (navy_ship_step 3)', (s) => swap(s, `  if l.station_id is not null and not public.navy_harbour_ok(l.to_port) then\n    perform public.navy_patrol_drop(v_st);`, `  if false then\n    perform public.navy_patrol_drop(v_st);`), /the first stop fallen, she did not lie at her station/],
+    ['the hour is paid into their purse (navy_pay)', (s) => swap(s, `           case when public.navy_harbour_ok(h.port) then h.port else v_cap end as to_port`, `           h.port as to_port`), /the hour: /],
+    ['a hull is laid at a fallen station (navy_add)', (s) => swap(s, `or not public.navy_harbour_ok(v_st) or not public.capital_can_draw(v_cap, v_need);`, `or not public.capital_can_draw(v_cap, v_need);`), /a hull was laid at a station the Brethren hold/],
+    ['hands are taken from their quay (navy_sail)', (s) => swap(s, `  if public.navy_harbour_ok(p_port) then   -- 0342: no hands from a quay the pirates hold (the harbour fell to them under her): she sails as she is\n    perform public.fleet_hands(p_fleet, p_port);\n  end if;\n`, `  perform public.fleet_hands(p_fleet, p_port);\n`), /she took hands from a quay the Brethren hold/],
+    ['a hunt may target their harbour (navy_hunt_targets)', (s) => swap(s, `                   where public.navy_harbour_ok(q.port_id)   -- 0342: through the one reader\n`, `                   where true   -- 0342: through the one reader\n`), /the targets name a harbour the Brethren hold/],
+    // the reader and the drop
+    ['the reader refuses nobody', (s) => swap(s, `  select not public.pirate_power(public.port_nation(p_port))\n`, `  select true\n`), /the reader does not refuse exactly the harbours the pirates hold/],
+    ['the reader is volatile', (s) => swap(s, `create function public.navy_harbour_ok(p_port uuid)\nreturns boolean\nlanguage sql\nstable\n`, `create function public.navy_harbour_ok(p_port uuid)\nreturns boolean\nlanguage sql\nvolatile\n`), /the reader is not stable/],
+    ['the drop keeps legs_at (no patrol is written again)', (s) => swap(s, `  update public.navy_stations s set legs_at = null where s.id = p_station and s.retired_at is null;\n`, `\n`), /the dropped patrol was not written again|the patrol was not dropped/],
+    ['the drop keeps the legs', (s) => swap(s, `  delete from public.navy_patrol_legs l where l.station_id = p_station;\n`, `\n`), /the patrol was not dropped/],
+    // the catalog
+    ['a client can call the reader', (s) => swap(s, `  revoke all on function public.navy_harbour_ok(uuid) from public, anon, authenticated;\n`, `  grant execute on function public.navy_harbour_ok(uuid) to authenticated;\n`), /a new function can be called from a client/],
+    ['a client can call the drop', (s) => swap(s, `  revoke all on function public.navy_patrol_drop(bigint) from public, anon, authenticated;\n`, `  grant execute on function public.navy_patrol_drop(bigint) to authenticated;\n`), /a new function can be called from a client/],
+    ['a hunk is off its line', (s) => swap(s, `$h$  perform public.fleet_hands(p_fleet, p_port);\n  perform public.fleet_stores(p_fleet, public.wc_num('navy_store_days'));\n$h$,`, `$h$  perform public.fleet_hands(p_fleet, p_port);\n  perform  public.fleet_stores(p_fleet, public.wc_num('navy_store_days'));\n$h$,`), /occurs 0 time/],
+    ['the switch is lit by the file', (s) => swap(s, `  -- ── 1. THE NEW FUNCTIONS ──\n`, `  update public.world_config set value = 'true'::jsonb where key = 'navy_enabled';\n`), /a world_config row moved|the navy switch is not off/],
+    ['a knob is added by the file', (s) => swap(s, `  -- ── 1. THE NEW FUNCTIONS ──\n`, `  insert into public.world_config (key, value, description) values ('navy_x_0342', 'true'::jsonb, 'x');\n`), /a world_config row moved/],
+  ]
+}
