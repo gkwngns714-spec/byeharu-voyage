@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { sampleWalkers, walkVerdict } from './cityWalk.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PAGE, DRIVEN (2026-10-30, owner's "Game screen development") — local build, phone glass.
@@ -481,26 +482,8 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   }
   await page.setViewportSize({ width: 390, height: 844 })
 
-  // ── 3a. THE PEOPLE WALK (owner, 2026-10-30: "see people moving as dots"; 2026-10-31: the crowd
-  // also waits and turns back, but these walkers are the ones the spec measures — and the owner
-  // asked for the walk to be 3× slower, so the window is 2.5 s: a slower walker must still move).
-  // The drawing is NOT pressable: the six building tiles above are the only ways in.
-  // the people WALK: one dot's place on the glass changes while we watch.
-  // A HIDDEN DOCUMENT PAUSES THE SMIL TIMELINE (2026-11-01: run 41212925876 on main reported
-  // "moved 0.00 px in 2500 ms" on a loaded shard while this test passed locally, 21.8 s — the page
-  // had been backgrounded and animateMotion froze). Bring the page to the front and POLL for the
-  // movement instead of trusting one pair of samples; the law is unchanged (a walker must move).
-  await page.bringToFront()
-  const dot = page.getByTestId('city-dots').locator('circle').first()
-  const p0 = await dot.boundingBox()
-  expect(p0, 'a people dot has no box').toBeTruthy()
-  let moved = 0
-  for (let i = 0; i < 8 && moved <= 0.5; i++) {
-    await page.waitForTimeout(800)
-    const p1 = await dot.boundingBox()
-    if (p1) moved = Math.max(moved, Math.abs(p1.x - p0!.x) + Math.abs(p1.y - p0!.y))
-  }
-  expect(moved, `the people are still (moved ${moved.toFixed(2)} px in up to 6.4 s)`).toBeGreaterThan(0.5)
+  // (3a, the people walk, is its own test at the foot of this file: it needs a FRESH load with no
+  // viewport change — the read that stood here passed on a still city, see there.)
 
   // ── 3b. THE CITY IS THE APP'S HOME (owner, 2026-10-30: the new full-screen city IS the game's
   // face — "i keep getting the old screen"). The root route lands on the city; the rail has NO
@@ -537,4 +520,59 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.getByRole('tab', { name: 'City', exact: true }).click()
   await expect(page.getByTestId('desk-city')).toBeVisible()
   await expect(page.getByTestId('desk-city-open')).toBeVisible()
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 3a. THE PEOPLE WALK (owner, 2026-10-31, three times: "these dots are population, it can stop it
+// can go back and forth, random movements" · "make the dot speed 3 times slower" · "does this look
+// like a city with citizens?")
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// WHY THIS IS ITS OWN TEST, ON A FRESH LOAD, WITH NOTHING TOUCHED. Until 2026-11-08 this read stood
+// inside the entry test above, right after the viewport walk (390 → 320 → 360 → 1280 → 1440 → 390),
+// and it was GREEN on main while the drive audit (docs/dev-log/2026-11-08-drive-audit.md, D1) found
+// 0 of 36 walkers moving on every fresh load at 1280 and 390: the SMIL `animateMotion` timeline was
+// never serviced until seeked, and the old read saw the plate re-scale under the dot after the
+// viewport change and called that a walk. The law is now the owner's own look: open the HQ, watch
+// the plan for three seconds, and see the people walk — most of them move, none jumps a street, and
+// the picture itself changes. Read at the owner's desktop glass and at a phone, DPR 2, through the
+// one sampler in tests/cityWalk.fixture.ts (drive.hq.spec.ts reads the same law through it).
+test.describe('the people walk', () => {
+  test.use({ deviceScaleFactor: 2 })
+  for (const glass of [
+    { width: 1280, height: 800 },
+    { width: 390, height: 844 },
+  ] as const) {
+    test(`the people walk at ${glass.width}: on a fresh load, sampled over 3 s with no viewport change, most walkers move and none jumps`, async ({ page, request, baseURL }) => {
+      test.setTimeout(480_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+      await page.setViewportSize(glass)
+      await page.goto('city')
+      await ready(page)
+      await expect(page.getByTestId('city-hall-figures')).toBeVisible({ timeout: 120_000 })
+      await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
+      await page.bringToFront()
+      await page.waitForTimeout(500)
+      const r = await sampleWalkers(page)
+      console.log(`the people walk @${glass.width}: ${JSON.stringify(r)}`)
+      expect(walkVerdict(r, `@${glass.width}`)).toEqual([])
+
+      // THE WALK PAUSES WITH THE DOCUMENT (the gate in cityWalk.ts; the same fake the city.live spec uses for the
+      // hall's poll): hidden, nobody moves; visible again, they walk on from where they are.
+      const hide = (state: 'hidden' | 'visible') =>
+        page.evaluate((s) => {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => s })
+          document.dispatchEvent(new Event('visibilitychange'))
+        }, state)
+      await hide('hidden')
+      await page.waitForTimeout(200)
+      const hidden = await sampleWalkers(page, { samples: 5 })
+      expect(hidden.moved, `@${glass.width}: ${hidden.moved} walkers walked on in a hidden document`).toBe(0)
+      await hide('visible')
+      await page.waitForTimeout(200)
+      const back = await sampleWalkers(page, { samples: 5 })
+      console.log(`the people walk @${glass.width}: hidden ${hidden.moved} moved, visible again ${back.moved} moved`)
+      expect(back.moved, `@${glass.width}: the people did not walk on when the document came back`).toBeGreaterThan(0)
+    })
+  }
 })

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { sampleWalkers, walkVerdict } from './cityWalk.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -75,15 +76,16 @@ test('HQ: the plan is one closed walled city with the sea west, citizens scaled 
       if (!land || area > land.w * land.h) land = { x: +b.x.toFixed(1), y: +b.y.toFixed(1), w: +b.width.toFixed(1), h: +b.height.toFixed(1) }
     }
     // THE CITIZENS: the crowd is drawn as zero-length round-capped strokes (one path per radius bucket), so a
-    // citizen's diameter is the path's stroke width; the walkers are circles with animateMotion.
+    // citizen's diameter is the path's stroke width; the walkers are circles moved by cityWalk.ts, each naming its
+    // lap (one traverse, seconds) and its own start (`data-lap`, `data-begin`). A missing attribute reads 0, so the
+    // ×3 law below fails loudly rather than vacuously.
     const crowdPaths = [...svg.querySelectorAll('[data-testid="city-crowd"] path')]
     const crowdDiameters = crowdPaths.map((p) => parseFloat(getComputedStyle(p).strokeWidth)).filter((n) => Number.isFinite(n))
     const crowdCount = crowdPaths.reduce((n, p) => n + ((p.getAttribute('d') ?? '').match(/M/g)?.length ?? 0), 0)
     const walkers = [...svg.querySelectorAll('[data-testid="city-dots"] circle')]
     const walkerR = walkers.map((c) => parseFloat(c.getAttribute('r') ?? '0'))
-    const motions = [...svg.querySelectorAll('[data-testid="city-dots"] animateMotion')]
-    const durs = motions.map((a) => parseFloat((a.getAttribute('dur') ?? '0').replace('s', '')))
-    const begins = motions.map((a) => parseFloat((a.getAttribute('begin') ?? '0').replace('s', '')))
+    const durs = walkers.map((c) => parseFloat(c.getAttribute('data-lap') ?? '0'))
+    const begins = walkers.map((c) => parseFloat(c.getAttribute('data-begin') ?? '0'))
     // THE HOUSES: the smallest named-place mark against the ordinary houses — every rect in the scene that is not a
     // named place is a house, a hall or a storehouse.
     const rects = [...svg.querySelectorAll('rect')].map((r) => Math.min(parseFloat(r.getAttribute('width') ?? '0'), parseFloat(r.getAttribute('height') ?? '0'))).filter((n) => n > 0)
@@ -138,69 +140,12 @@ test('HQ: the plan is one closed walled city with the sea west, citizens scaled 
   expect(scene.teeming, 'no teeming stipple').toBeGreaterThan(0)
   // (246) the perf budget the merged slice set
   expect(scene.nodes, 'the scene grew past its 400-node budget').toBeLessThan(400)
-  // (248) THE WALKERS ARE SLOW: every animateMotion lasts at least 18 s (strollers 18-42 s, walkers 42-78 s after the ×3).
+  // (248) THE WALKERS ARE SLOW: every walker's lap (one traverse) lasts at least 18 s (strollers 18-42 s, walkers 42-78 s after the ×3).
+  expect(scene.walkers, 'no walkers to read a lap from').toBeGreaterThan(0)
   expect(scene.durs[0], 'a walker is faster than the ×3 slowdown allows').toBeGreaterThanOrEqual(18)
-  // ... and they do walk: a dot moves within 6.4 s (polled, with the page in front — animateMotion freezes in a
-  // backgrounded tab, which is how city.page.spec read "0.00 px" on a loaded shard once). Read at BOTH glasses, with the
-  // SMIL clock beside it, so a still dot says whether the timeline runs at all.
-  // EVERY moving dot is sampled IN the page (no driver round trips), 4 s apart, on a fresh load at each glass: a single
-  // dot can be a stroller waiting at the end of its line, and a resize restarts the SMIL paths (a jump, not a walk).
-  const walk = async (glass: string) => {
-    await page.bringToFront()
-    // every walker starts at its own `begin` phase: nobody moves before the earliest one, so the read waits for it
-    await page.waitForFunction((t) => (document.querySelector('[data-testid="city-scene"]') as SVGSVGElement).getCurrentTime() >= t, scene.begins[0] + 1, { timeout: 180_000 })
-    // the picture itself: two clips of the plan 3 s apart differ when anyone walks
-    const box = (await page.getByTestId('city-info-image').boundingBox())!
-    const f1 = await page.screenshot({ clip: box })
-    await page.waitForTimeout(3000)
-    const f2 = await page.screenshot({ clip: box })
-    const frames = Buffer.compare(f1, f2) === 0 ? 'identical' : 'differ'
-    const r = await page.evaluate(async () => {
-      const svg = document.querySelector('[data-testid="city-scene"]') as SVGSVGElement
-      const dots = [...svg.querySelectorAll('[data-testid="city-dots"] circle')]
-      // the same DOM nodes four seconds later? (a React remount would restart every path at its phase)
-      for (const d of dots) (d as unknown as { __drive: boolean }).__drive = true
-      const at = () => dots.map((c) => c.getBoundingClientRect()).map((b) => [b.x, b.y] as [number, number])
-      const a = at()
-      const t0 = svg.getCurrentTime()
-      // a fine read of the first dot every 100 ms: a sawtooth (moves, then jumps back) is a restart, a flat line is no motion
-      const fine: number[] = []
-      for (let i = 0; i < 40; i++) {
-        await new Promise((res) => setTimeout(res, 100))
-        const b = dots[0]?.getBoundingClientRect()
-        fine.push(b ? +b.x.toFixed(1) : -1)
-      }
-      const b = at()
-      const t1 = svg.getCurrentTime()
-      let moved = 0
-      let far = 0
-      for (let i = 0; i < dots.length; i++) {
-        const d = Math.abs(a[i][0] - b[i][0]) + Math.abs(a[i][1] - b[i][1])
-        if (d > 0.5) moved++
-        far = Math.max(far, d)
-      }
-      const now = [...svg.querySelectorAll('[data-testid="city-dots"] circle')]
-      const sameNodes = now.length === dots.length && now.every((d) => (d as unknown as { __drive?: boolean }).__drive === true)
-      return {
-        dots: dots.length,
-        moved,
-        far: +far.toFixed(1),
-        clock: +(t1 - t0).toFixed(1),
-        visible: document.visibilityState,
-        animations: document.getAnimations().length,
-        sameNodes,
-        fineDistinct: new Set(fine).size,
-        fineSpan: `${Math.min(...fine)}–${Math.max(...fine)}`,
-      }
-    })
-    console.log(
-      `@${glass}: ${r.moved} of ${r.dots} dots moved in 4 s (farthest ${r.far} px); the plan's frames 3 s apart ${frames}; SMIL clock ran ${r.clock} s from ${scene.begins[0]} s (begins ${scene.begins.join('–')} s); ${r.visible}; web animations ${r.animations}; same DOM nodes after 4 s: ${r.sameNodes}; the first dot's x every 100 ms: ${r.fineDistinct} distinct values, ${r.fineSpan}`,
-    )
-    return { ...r, frames }
-  }
-  const wide = await walk('1280')
+  expect(scene.begins[0], 'the walkers share one start: no phase spread').toBeLessThan(scene.begins[1])
 
-  // The same picture on a phone, for the reader — and the walk read there too on a fresh load, where city.page.spec reads it.
+  // The same picture on a phone, for the reader. (Whether the people WALK is the law below, read on its own fresh loads.)
   await page.setViewportSize(PHONE)
   await page.reload()
   await ready(page)
@@ -208,23 +153,29 @@ test('HQ: the plan is one closed walled city with the sea west, citizens scaled 
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
   await page.waitForTimeout(600)
   await shot(page, 'hq-hall-390@2x')
-  const phone = await walk('390')
-  // THE LAW (a walker must move) is the fixme below: read eight times on 2026-11-08, nobody moved (see it).
-  console.log(`the people walk: 1280 ${wide.moved > 0 || wide.frames === 'differ'}, 390 ${phone.moved > 0 || phone.frames === 'differ'}`)
   const noScroll = await page.evaluate(() => ({ docH: document.documentElement.scrollHeight, clientH: document.documentElement.clientHeight, docW: document.documentElement.scrollWidth, clientW: document.documentElement.clientWidth }))
   console.log(`HQ @390 document: ${JSON.stringify(noScroll)}`)
   expect(noScroll.docW, 'the HQ scrolls sideways on a phone').toBeLessThanOrEqual(noScroll.clientW)
 })
 
-// WHAT THE DRIVE FOUND (2026-11-08, eight runs, 1280 and 390, fresh loads): THE PEOPLE DO NOT WALK. 0 of 36 walkers moved
+// WHAT THE DRIVE FOUND (2026-11-08, eight runs, 1280 and 390, fresh loads): THE PEOPLE DID NOT WALK. 0 of 36 walkers moved
 // over 4 s (every dot's rect sampled in the page; the first dot's x read every 100 ms held one value), the plan's two clips
 // 3 s apart were byte-identical, the svg's SMIL clock ran, nothing was paused, the DOM nodes were the same. The same walker
-// markup alone on a blank page MOVES (x 100 → 121 in 3 s), and in the app `svg.setCurrentTime(svg.getCurrentTime())` wakes
-// them (9.6 px in the next 1.5 s), a cloned svg appended to the body stands still too — a timeline that is never serviced
-// until seeked, in this headless Chromium; whether the owner's Chrome shows the same is a read he can make at a glance.
-// tests/city.page.spec.ts's "the people walk" passes on main because it reads the dot right after a viewport change (the
-// plate re-scales under the dot). Rows 241 / 242 / 248: *"these dots are population, it can stop it can go back and forth"*.
-test.fixme('HQ: the people walk — a dot moves on a fresh load at 1280 and 390 (rows 241/248 — DEFECT: 0 of 36 walkers move until the svg timeline is seeked)', async () => {})
+// markup alone on a blank page MOVED, and in the app `svg.setCurrentTime(svg.getCurrentTime())` woke them — a SMIL timeline
+// that was never serviced until seeked. tests/city.page.spec.ts's "the people walk" passed because it read the dot right
+// after a viewport change (the plate re-scaled under the dot). Rows 241 / 242 / 248: *"these dots are population, it can
+// stop it can go back and forth"*. FIXED the same day (docs/dev-log/2026-11-08-city-walkers.md): the people are moved on the
+// page's own animation frame (src/features/city/cityWalk.ts), and this is the law that was the fixme — read through the one
+// sampler (tests/cityWalk.fixture.ts) on a fresh load at each glass, nothing touched for the three seconds it watches.
+for (const size of [WIDE, PHONE]) {
+  test(`HQ @${size.width}: the people walk — on a fresh load, sampled over 3 s, most walkers move, none jumps a street, the picture changes (rows 241/242/248)`, async ({ page, request, baseURL }) => {
+    await openHq(page, request, baseURL, size)
+    await page.bringToFront()
+    const r = await sampleWalkers(page)
+    console.log(`the people walk @${size.width}: ${JSON.stringify(r)}`)
+    expect(walkVerdict(r, `@${size.width}`)).toEqual([])
+  })
+}
 
 // ── ROWS 247, 251, 255, 262: THE HALL IN PLACE ───────────────────────────────────────────────────
 for (const size of [WIDE, PHONE]) {
