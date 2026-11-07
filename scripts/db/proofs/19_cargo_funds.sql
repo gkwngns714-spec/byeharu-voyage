@@ -86,8 +86,8 @@ begin
     v_r := public.tick_cargo_ships();
   end loop;
   v_ms := round(extract(epoch from clock_timestamp() - v_t0) * 1000);
-  if (select count(distinct k.nation_id) from public.cargo_circuits k) <> (select count(*) from public.great_powers)
-     or (select count(*) from public.cargo_ships) <> (select sum(public.convoy_ships_of(g.nation_id)) from public.great_powers g) then
+  if (select count(distinct k.nation_id) from public.cargo_circuits k) <> (select count(*) from public.great_powers g where not g.pirate)   -- 0338: the crowns only
+     or (select count(*) from public.cargo_ships) <> (select sum(public.convoy_ships_of(g.nation_id)) from public.great_powers g where not g.pirate) then
     raise exception 'PROOF 19 FAIL: not every realm got its circuit and ships: %', v_r;
   end if;
   for r in select k.id, k.nation_id, k.left_out, p.id as cap,

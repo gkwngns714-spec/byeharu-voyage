@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync, readdirSync } from 'node:fs'
 import path from 'node:path'
-import { GREAT_POWERS, NATIONS } from '../scripts/lib/world-derive.mjs'
+import { GREAT_POWERS, NATIONS, PIRATE_POWER } from '../scripts/lib/world-derive.mjs'
 import { PHONE, reachable, ready } from './appReady.fixture'
 import { openCityPanel } from './openCity.fixture'
 
@@ -9,16 +9,18 @@ import { openCityPanel } from './openCity.fixture'
 // THE GREAT POWERS (0187, docs/GREAT_POWERS.md slice GP1). The owner, 2026-10-18: "make it 7 big
 // power like uncharted island, spread mainly on europe and asia, as well as islamic region" … "in
 // asia add korea, in europe add more". Ten powers race for cities; the thirteen other nations are
-// LOCAL RULERS of the cities they founded. Names this spec selects by: public.great_powers,
+// LOCAL RULERS of the cities they founded. W16 (0338) adds the eleventh, the pirates (PIRATE_POWER): a great power
+// with four homes and no crown, which a company may NOT sail for while the knob pirates_joinable is false.
+// Names this spec selects by: public.great_powers,
 // public.great_power, public.port_ruler, public.port_countries, world.allegiance / worldAllegiance,
 // world.nation_standings / worldNationStandings, cmd.found_house / cmdFoundHouse,
 // cmd.change_country / cmdChangeCountry, world.snapshot.
 //
-//   * one list: world-derive.mjs GREAT_POWERS = the homes in data/home-ports.json = what 0187 seeds;
-//     four homes each, a capital first;
-//   * Start / Profile offer the ten and no ruler;
+//   * one list: world-derive.mjs GREAT_POWERS = the homes in data/home-ports.json = what 0187 seeds (the ten) and
+//     0338 seeds (the pirates); four homes each, a capital first;
+//   * Start / Profile offer the ten and no ruler, and not the pirates;
 //   * a ruler's city says so: Safi → "ruled by Morocco", with the ruler's flag;
-//   * the Codex lists the ten as Great powers and the thirteen as Local rulers.
+//   * the Codex lists the eleven as Great powers and the thirteen as Local rulers.
 // Preconditions are the data files the world guard holds the database to — never a literal count
 // of the world (proofs never assert ambient defaults).
 // Run it: npm run build && npx vite preview --port 4350, then
@@ -32,8 +34,9 @@ const homes = (JSON.parse(readFileSync(path.join(ROOT, 'data', 'home-ports.json'
 const minors = NATIONS.filter(([c]) => !GREAT_POWERS.includes(c))
 const nameOf = (code: string) => NATIONS.find(([c]) => c === code)?.[1] ?? code
 
-test('one list of ten: GREAT_POWERS = the home cities\' powers = what 0187 seeds, four homes each', () => {
-  expect(GREAT_POWERS).toHaveLength(10)
+test('one list of eleven: GREAT_POWERS = the home cities\' powers = what 0187 seeds (the ten) and 0338 seeds (the pirates), four homes each', () => {
+  expect(GREAT_POWERS).toHaveLength(11)
+  expect(GREAT_POWERS).toContain(PIRATE_POWER)
   expect(Object.keys(homes).sort()).toEqual([...GREAT_POWERS].sort())
   for (const c of GREAT_POWERS) expect(homes[c], c).toHaveLength(4)
   const all = Object.values(homes).flat()
@@ -45,15 +48,21 @@ test('one list of ten: GREAT_POWERS = the home cities\' powers = what 0187 seeds
   expect(file, 'the GP1 migration').toBeTruthy()
   const sql = readFileSync(path.join(dir, file as string), 'utf8')
   const seeded = /insert into public\.great_powers \(nation_id\)\s+select n\.id from public\.nations n\s+where n\.code in \(([^)]*)\)/.exec(sql)?.[1].match(/'([A-Z]{3})'/g)?.map((s) => s.slice(1, 4)) ?? []
-  expect(seeded.sort()).toEqual([...GREAT_POWERS].sort())
+  expect(seeded.sort()).toEqual(GREAT_POWERS.filter((c: string) => c !== PIRATE_POWER).sort())
   for (const [c, ports] of Object.entries(homes)) {
+    if (c === PIRATE_POWER) continue
     expect(sql, `0187 seeds ${c}'s homes as data/home-ports.json lists them`).toContain(
       `('${c}', array[${ports.map((p) => `'${p}'`).join(', ')}])`,
     )
   }
+  // the eleventh is 0338's: its four homes are the list that file claims
+  const brethren = readFileSync(path.join(dir, readdirSync(dir).find((f) => f.endsWith('_the_brethren.sql')) as string), 'utf8')
+  expect(brethren, "0338 claims the pirates' homes as data/home-ports.json lists them").toContain(
+    `array[${homes[PIRATE_POWER].map((p) => `'${p}'`).join(', ')}]`,
+  )
 })
 
-test('the picker offers the ten great powers and no local ruler', async ({ page, request, baseURL }) => {
+test('the picker offers the ten great powers a company may sail for, no local ruler and not the pirates', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(PHONE)
@@ -61,8 +70,10 @@ test('the picker offers the ten great powers and no local ruler', async ({ page,
   await ready(page)
   await page.getByTestId('country-change').click()
   const picker = page.getByTestId('nation-picker')
-  await expect(picker.locator('[data-testid^="nation-"]')).toHaveCount(GREAT_POWERS.length, { timeout: 60_000 })
-  for (const c of GREAT_POWERS) await expect(picker.getByTestId(`nation-${c}`)).toBeVisible()
+  const joinable = GREAT_POWERS.filter((c: string) => c !== PIRATE_POWER)   // W16 (0338): the knob pirates_joinable ships false
+  await expect(picker.locator('[data-testid^="nation-"]')).toHaveCount(joinable.length, { timeout: 60_000 })
+  for (const c of joinable) await expect(picker.getByTestId(`nation-${c}`)).toBeVisible()
+  await expect(picker.getByTestId(`nation-${PIRATE_POWER}`)).toHaveCount(0)
   for (const [c] of minors) await expect(picker.getByTestId(`nation-${c}`)).toHaveCount(0)
 })
 
@@ -83,7 +94,7 @@ test('a city a minor nation founded names its local ruler: Safi, ruled by Morocc
   // (a great power's home names no ruler: Lisbon, in map.flag.spec.ts's title-line test)
 })
 
-test('the Codex lists the ten as Great powers and the thirteen as Local rulers', async ({ page, request, baseURL }) => {
+test('the Codex lists the eleven as Great powers (the pirates among them) and the thirteen as Local rulers', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(PHONE)

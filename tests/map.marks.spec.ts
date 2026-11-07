@@ -17,7 +17,7 @@ import { ready, reachable, zoomStepMs } from './appReady.fixture'
 // first run with tappable dots opened Sanlúcar for a tap on the word "Cadiz"). The countries: the body is every kept ring of the file, at every
 // zoom — there is no culling to prove absent, only the count of countries the body carries.
 //
-// Browser: at the world view all 246 harbours (224 until 0090, 238 until 0217) are in the DOM — 248 marks, Auckland and Wellington drawn in both copies of the sheet at the seam — (dots and full marks together), and
+// Browser: at the world view all 249 harbours (224 until 0090, 238 until 0217, 246 until 0338) are in the DOM — 251 marks, Auckland and Wellington drawn in both copies of the sheet at the seam — (dots and full marks together), and
 // zoomed in on a harbour that was a dot it wears its full mark; both glasses, both schemes; the
 // frame cost of a zoom step at the world view with every dot on the sheet, printed.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -131,10 +131,10 @@ for (const scheme of ['dark', 'light'] as const) {
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
   ]) {
-    test.describe(`all 246 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
+    test.describe(`all 249 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
       test.use({ viewport, colorScheme: scheme })
 
-      test('246 harbours (248 marks: two at the seam) at the world view, and a dot becomes its full marker on the way in', async ({
+      test('249 harbours (251 marks: two at the seam) at the world view, and a dot becomes its full marker on the way in', async ({
         page,
         request,
         baseURL,
@@ -180,13 +180,16 @@ for (const scheme of ['dark', 'light'] as const) {
         // CI measured 248 marks for 246 harbours (run 40195840956, all four schemes and sizes). So:
         // every harbour is on the sheet (246 distinct codes), the sheet draws 248 marks, and the two
         // drawn twice are exactly the two at the seam — a third would be a duplicate, not a copy.
+        // Moved deliberately 2026-11-07: 246 → 249 harbours (the pirate homes, 0338, W16: Lingga 104.6° E, Goto 128.8° E,
+        // Djerba 10.9° E). None stands near the seam (the nearest to ±180° stays Wellington, 174.78° E), so each is drawn once: 251 marks
+        // for 249 harbours, and the two drawn twice are still exactly AUK and WLG. Measured in a browser on 2026-11-07, all four glasses: 251.
         const distinct = new Set(world.codes)
         const twice = [...distinct].filter((c) => world.codes.filter((x) => x === c).length > 1).sort()
-        expect(distinct.size, 'every harbour is on the sheet at the world view').toBe(246)
-        expect(world.harbours, 'one mark per harbour per copy of the sheet').toBe(248)
+        expect(distinct.size, 'every harbour is on the sheet at the world view').toBe(249)
+        expect(world.harbours, 'one mark per harbour per copy of the sheet').toBe(251)
         expect(twice, 'the harbours drawn in both copies are the two at the seam').toEqual(['AUK', 'WLG'])
         expect(world.full, 'past the dot rung a city is its dot and nothing else').toBe(0)
-        expect(world.dots).toBe(248)
+        expect(world.dots).toBe(251)
         // The whole body is drawn at the world view — the same path as at the opening frame.
         expect(world.coastBytes).toBe(opening.coastBytes)
         expect(world.coastBytes).toBeGreaterThan(70_000)

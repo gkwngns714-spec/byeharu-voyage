@@ -57,4 +57,6 @@ export const KO_PORTS: Readonly<Record<string, string>> = {
   // The far-north, Australasian and northern-US growth (0217, owner row 186).
   Mezen: '메젠', Pustozersk: '푸스토제르스크', Darwin: '다윈', Fremantle: '프리맨틀', Auckland: '오클랜드',
   Wellington: '웰링턴', Portland: '포틀랜드', Astoria: '아스토리아',
+  // The pirate homes (0338, W16): an island of the Riau-Lingga archipelago, the Goto islands off Kyushu, the island of Djerba.
+  Lingga: '링가', Goto: '고토', Djerba: '제르바',
 }

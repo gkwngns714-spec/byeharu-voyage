@@ -29,8 +29,11 @@ export declare function deriveWorld(): DerivedWorld
 /** The one rounding the seed applies to a coordinate. */
 export declare function round2(n: number): number
 
-/** The 23 nations: [code, name, flag glyph, fallback capital code]. */
+/** The 24 nations: [code, name, flag glyph, fallback capital code]. */
 export declare const NATIONS: readonly (readonly [string, string, string, string | null])[]
 
-/** GP1 (0187, docs/GREAT_POWERS.md): the ten great powers that race for cities. */
+/** GP1 (0187, docs/GREAT_POWERS.md): the great powers that race for cities - the ten, and since W16 (0338) the pirates. */
 export declare const GREAT_POWERS: readonly string[]
+
+/** W16 (0338): THE pirate power, the one great power without a crown (public.great_powers.pirate). */
+export declare const PIRATE_POWER: string

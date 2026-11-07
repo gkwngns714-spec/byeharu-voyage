@@ -7,7 +7,7 @@ export const KO_NATIONS: Readonly<Record<string, string>> = {
   VEN: '베네치아', GEN: '제노바', OTT: '오스만 제국', HAN: '한자 동맹', DNK: '덴마크-노르웨이',
   SWE: '스웨덴', POL: '폴란드-리투아니아', RUS: '모스크바 대공국', MAR: '모로코', PER: '사파비 페르시아',
   MUG: '무굴 제국', GUJ: '구자라트 술탄국', MLB: '말라바르', MNG: '명', JOS: '조선', JPN: '일본',
-  AYU: '아유타야', BAN: '반텐',
+  AYU: '아유타야', BAN: '반텐', PIR: '해적단',
 }
 
 export const KO_REGIONS: Readonly<Record<string, string>> = {

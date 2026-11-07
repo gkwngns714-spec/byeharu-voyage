@@ -94,7 +94,7 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { deriveWorld, goodsAtPriceLevel, GREAT_POWERS, REPO_ROOT, round2, waveResistance } from '../lib/world-derive.mjs'
+import { deriveWorld, goodsAtPriceLevel, GREAT_POWERS, PIRATE_POWER, REPO_ROOT, round2, waveResistance } from '../lib/world-derive.mjs'
 import { generateShips, SHIPS_FILE } from '../build-ships.mjs'
 import { generateGear, GEAR_FILE } from '../build-gear.mjs'
 import { captainInputs, generateCaptains, CAPTAINS_FILE } from '../build-captains.mjs'
@@ -266,6 +266,16 @@ function drift(db_, want) {
     // GP1: the home cities are the great powers' — four each, and nobody else's
     for (const c of want.great) if ((want.homes[c] ?? []).length !== 4) say(`home cities: great power ${c} has ${(want.homes[c] ?? []).length} in data/home-ports.json, the rule is 4`)
     for (const c of Object.keys(want.homes)) if (!want.great.includes(c)) say(`home cities: ${c} has homes in data/home-ports.json but is not a great power`)
+  }
+
+  // the pirate power (0338, W16) — world-derive.mjs PIRATE_POWER is the ONE great power without a crown; public.great_powers.pirate is true for exactly it, both directions
+  {
+    const dbPirate = new Set(db_.pirate)
+    for (const c of want.pirate) {
+      if (!want.great.includes(c)) say(`pirate power ${c} is in world-derive.mjs PIRATE_POWER but is not one of GREAT_POWERS`)
+      if (!dbPirate.has(c)) say(`pirate power ${c} is in world-derive.mjs PIRATE_POWER but public.great_powers.pirate is not true for it`)
+    }
+    for (const c of dbPirate) if (!want.pirate.includes(c)) say(`pirate power ${c} is flagged in public.great_powers.pirate but world-derive.mjs PIRATE_POWER does not name it`)
   }
 
   // home cities (0143) — data/home-ports.json, both directions; each flies its own country
@@ -575,6 +585,11 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const hasGreat = (await db.query(`select to_regclass('public.great_powers') is not null as ok`)).rows[0].ok
   if (!hasGreat) throw new Error('world-guard: public.great_powers is missing — the chain no longer reaches 0187, so the great powers cannot be checked')
   db_.great = (await db.query(`select n.code from public.great_powers g join public.nations n on n.id = g.nation_id order by n.code`)).rows.map((r) => r.code)
+  // 0338 (W16): which great power is the pirates. A chain that stops before 0338 has no such column, and then no power is flagged.
+  const hasPirate = (await db.query(`select 1 from information_schema.columns where table_schema = 'public' and table_name = 'great_powers' and column_name = 'pirate'`)).rows.length > 0
+  db_.pirate = hasPirate
+    ? (await db.query(`select n.code from public.great_powers g join public.nations n on n.id = g.nation_id where g.pirate order by n.code`)).rows.map((r) => r.code)
+    : []
   db_.homes = (await db.query(`
     select p.code as port, n.code as nation from public.port_allegiance a
       join public.ports p on p.id = a.port_id left join public.nations n on n.id = a.nation_id
@@ -690,6 +705,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   want.homes = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'home-ports.json'), 'utf8')).homes   // 0143
   want.seaZones = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-zones.json'), 'utf8'))   // 0215: zones, boxes, titles
   want.great = [...GREAT_POWERS].sort()   // 0187 (GP1)
+  want.pirate = [PIRATE_POWER]   // 0338 (W16)
 
   // 0135: THE GENERATORS, RE-RUN. Their output must equal the committed files (a stale file is drift)
   // and, with the live rows' data files, the database (below, in `drift`).
@@ -814,6 +830,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     waveA: { ...want.waveA, classes: want.waveA.classes.map((c, i) => (i === 0 ? { ...c, hold: c.hold + 5 } : c)) }, // 0135: one generated hull's hold bent
     homes: Object.fromEntries(Object.entries(want.homes).map(([n, ps], i) => [n, i === 0 ? ps.slice(1) : ps])), // 0143: one home city dropped
     great: want.great.slice(1), // 0187: one great power dropped
+    pirate: [], // 0338: the pirate power unnamed
     captains: { ...want.captains, gen: { ...want.captains.gen, captains: want.captains.gen.captains.map((x, i) => (i === 0
       ? { ...x, kit: x.kit.map((k, j) => (j === 1 ? { ...k, pct: k.pct + 1 } : k)) } : x)) } }, // 0156: one captain's second trait bent
   }
@@ -833,11 +850,12 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const droppedHome = Object.values(want.homes)[0][0]
   const sawHome = seen.some((s) => s.includes(`home city ${droppedHome} `))
   const sawGreat = seen.some((s) => s.includes(`great power ${want.great[0]} is in public.great_powers`))
+  const sawPirate = seen.some((s) => s.includes(`pirate power ${PIRATE_POWER} is flagged in public.great_powers.pirate`))
   const sawCaptain = seen.some((s) => s.includes(`captain trait ${want.captains.gen.captains[0].code}#2.pct:`))
-  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawUnmade || !sawLineHull || !sawPerk || !sawHull || !sawHome || !sawCaptain || !sawGreat) {
+  if (!sawDrop || !sawBend || !sawLine || !sawSkill || !sawGear || !sawEffect || !sawUse || !sawCity || !sawUnmade || !sawLineHull || !sawPerk || !sawHull || !sawHome || !sawCaptain || !sawGreat || !sawPirate) {
     throw new Error(
       'WORLD GUARD IS BLIND: a deliberately dropped harbour ' +
-        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city, bent captain trait or dropped great power was NOT reported by the comparator ` +
+        `(${want.ports[0].code}), bent good value, bent ship line, bent skill rank, bent item deck, bent skill effect, bent item trigger, bent Named city, dropped item made nowhere, bent merchant line hull, bent perk, bent generated hull, dropped home city, bent captain trait, dropped great power or unnamed pirate power was NOT reported by the comparator ` +
         `(saw ${seen.length} finding(s)). A guard that cannot see a planted drift certifies nothing.`,
     )
   }

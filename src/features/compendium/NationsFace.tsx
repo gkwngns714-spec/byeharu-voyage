@@ -12,9 +12,10 @@ import { useT } from '../../lib/i18n'
 // code is not one of them any more — every screen prints the name now (0028's catalogue is why), so the code is a filter word,
 // never a column.
 //
-// GP1 (0187, docs/GREAT_POWERS.md): two groups, in the server's words — the ten GREAT POWERS a company sails for (`great`, the
-// flags shown large), then the thirteen LOCAL RULERS, who rule the cities they founded and hold no influence. `great` is the
-// server's; nothing here decides it. The two groups are the face's two blocks, so they are its MAIN | SIDE: the great powers
+// GP1 (0187, docs/GREAT_POWERS.md): two groups, in the server's words — the GREAT POWERS (`great`, the flags shown large: the ten
+// a company sails for and, since W16 (0338), the eleventh, The Brethren, the pirates, whom a company may not join until the owner
+// says: `joinable` is the picker's word, not this list's), then the thirteen LOCAL RULERS, who rule the cities they founded and hold
+// no influence. `great` is the server's; nothing here decides it. The two groups are the face's two blocks, so they are its MAIN | SIDE: the great powers
 // in the main card (the search on its title line, two columns of rows at 1,440), the local rulers in the side card — the
 // tray's column, used. A nation has no detail to open, so its rows are read-only.
 

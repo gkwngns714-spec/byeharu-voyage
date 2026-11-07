@@ -1,6 +1,6 @@
 {
   "$doc": "HOW THE GREAT POWERS STAND WITH EACH OTHER - the tariff half of a company's profit tax (docs/PRICE_FACTORS.md §3.2, F4/F5, slice P4; migration 0195).",
-  "note": "The owner, 2026-10-18: 'is there a way for the prices move on many different factors? like relationship with other countries'. One row per UNORDERED pair of the ten great powers (public.great_powers, 0187) that is NOT at peace; every pair not listed is at peace. The stance multiplies the profit tax a company of one power pays in a city the other holds (world.tax_rate): ally x0.5, rival x1.5, war x2 (knob tariff_stance_mult), never above tariff_rate_max 35 %. Authored, not simulated (F5): the stances of the years 1580-1640 that the histories agree on, each defended in a line. NOT the owner's - confirm every row.",
+  "note": "The owner, 2026-10-18: 'is there a way for the prices move on many different factors? like relationship with other countries'. One row per UNORDERED pair of great powers (public.great_powers, 0187; the eleventh, the pirates PIR, since 0338) that is NOT at peace; every pair not listed is at peace. The pirates are at war with all ten, each defended in a line (0338). The stance multiplies the profit tax a company of one power pays in a city the other holds (world.tax_rate): ally x0.5, rival x1.5, war x2 (knob tariff_stance_mult), never above tariff_rate_max 35 %. Authored, not simulated (F5): the stances of the years 1580-1640 that the histories agree on, each defended in a line. NOT the owner's - confirm every row.",
   "relations": [
     { "a": "ENG", "b": "PRT", "stance": "ally", "why": "the Treaty of Windsor (1386), the oldest alliance in Europe, held through the century" },
     { "a": "ESP", "b": "PRT", "stance": "ally", "why": "the Iberian Union (1580-1640): one king in Madrid and Lisbon" },
@@ -14,6 +14,16 @@
     { "a": "JPN", "b": "MNG", "stance": "rival", "why": "the wokou raids and Ming's ban on trade with Japan; Ming fought Japan in Korea" },
     { "a": "JOS", "b": "JPN", "stance": "rival", "why": "the Imjin War (1592-98); trade reopened only by the Treaty of Giyu (1609)" },
     { "a": "ESP", "b": "NLD", "stance": "war", "why": "the Eighty Years' War (1568-1648), the Dutch revolt against the Spanish crown" },
-    { "a": "NLD", "b": "PRT", "stance": "war", "why": "the Dutch-Portuguese War (1602-1663) for the spice trade, from Malacca to Brazil" }
+    { "a": "NLD", "b": "PRT", "stance": "war", "why": "the Dutch-Portuguese War (1602-1663) for the spice trade, from Malacca to Brazil" },
+    { "a": "PIR", "b": "ENG", "stance": "war", "why": "English shipping was prey to Barbary corsairs and renegade captains, and the Crown hanged pirates at Execution Dock" },
+    { "a": "PIR", "b": "ESP", "stance": "war", "why": "the treasure fleets and the Spanish Main were the prey of Drake and Hawkins and then of the buccaneers; Spain armed the Armada de Barlovento against them (1635)" },
+    { "a": "PIR", "b": "FRA", "stance": "war", "why": "Barbary corsairs raided the Provencal and Languedoc coast for slaves and prizes, and Marseille armed galleys against them" },
+    { "a": "PIR", "b": "JOS", "stance": "war", "why": "the wokou raided the Korean coast for two centuries, and the Joseon navy was built to hunt them" },
+    { "a": "PIR", "b": "JPN", "stance": "war", "why": "the wokou sailed from Kyushu and the Goto islands, but Hideyoshi's sea-ban edict of 1588 made piracy a crime and the daimyo hunted the crews" },
+    { "a": "PIR", "b": "MNG", "stance": "war", "why": "the wokou raided the Ming coast for a century until Qi Jiguang broke them in the 1560s, and the court shut the sea trade" },
+    { "a": "PIR", "b": "MUG", "stance": "war", "why": "Mughal pilgrim ships to Jeddah and the Gujarat trade were prey to the corsairs of the Arabian Sea and the Malabar coast" },
+    { "a": "PIR", "b": "NLD", "stance": "war", "why": "Dutch merchantmen in the Mediterranean and the Indian Ocean were prey to Barbary and Malay corsairs, and the Republic convoyed its fleets" },
+    { "a": "PIR", "b": "OTT", "stance": "war", "why": "Maltese, Uskok and renegade crews raided the Levant coast and the Red Sea pilgrim ships, and the Porte sent its galleys against them" },
+    { "a": "PIR", "b": "PRT", "stance": "war", "why": "French, English and Barbary corsairs preyed on the Carreira da India and the Brazil ships, and Portugal armed escorts against them" }
   ]
 }

@@ -8,7 +8,7 @@
     "url": "https://www.wikidata.org/",
     "fetchedAt": "2026-08-18T08:40:20.399Z"
   },
-  "count": 246,
+  "count": 249,
   "ports": [
     {
       "id": "acapulco",
@@ -6976,6 +6976,91 @@
       "source": {
         "wikidata": "Q2222874",
         "enwiki": "Zanzibar City"
+      }
+    },
+    {
+      "id": "lingga",
+      "name": "Lingga",
+      "localName": "Lingga",
+      "country": "ID",
+      "countryName": "Indonesia",
+      "lat": -0.2,
+      "lon": 104.616667,
+      "sea": "south-china-sea",
+      "region": "southeast-asia",
+      "tier": 3,
+      "historicalNames": [
+        "Lingga",
+        "Daik",
+        "Linga"
+      ],
+      "goods": [
+        "songket",
+        "star-anise",
+        "tamarind",
+        "zedoary"
+      ],
+      "notes": "The Lingga islands on the equator, haunt of the orang laut, the sea people who served and raided for the Malay sultans of Melaka and Johor; the Johor-Riau-Lingga sultan took his seat at Daik only in 1787, outside the 1500-1650 era like Sydney.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Lingga Islands"
+      }
+    },
+    {
+      "id": "goto",
+      "name": "Goto",
+      "localName": "五島",
+      "country": "JP",
+      "countryName": "Japan",
+      "lat": 32.699722,
+      "lon": 128.841667,
+      "sea": "korea-strait",
+      "region": "japan",
+      "tier": 3,
+      "historicalNames": [
+        "Goto",
+        "Gotō",
+        "五島",
+        "Fukue"
+      ],
+      "goods": [
+        "sea-cucumber",
+        "abalone",
+        "shark",
+        "squid"
+      ],
+      "notes": "The Goto islands off west Kyushu on the sea road to Ming China and Korea, a wokou haunt of the 1540s-50s where the Chinese merchant-pirate Wang Zhi kept a base beside Hirado; the Goto clan ruled from Fukue.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Gotō, Nagasaki"
+      }
+    },
+    {
+      "id": "djerba",
+      "name": "Djerba",
+      "localName": "جربة",
+      "country": "TN",
+      "countryName": "Tunisia",
+      "lat": 33.875556,
+      "lon": 10.857222,
+      "sea": "mediterranean-sea",
+      "region": "maghreb",
+      "tier": 3,
+      "historicalNames": [
+        "Jerba",
+        "Gelves",
+        "Meninx"
+      ],
+      "goods": [
+        "sumac",
+        "maghreb-brass",
+        "saffian-leather",
+        "morocco-leather"
+      ],
+      "notes": "The island off the south coast of Tunisia, a base of the Barbary corsairs under Turgut Reis; in 1560 the Ottoman fleet destroyed a Spanish-led Christian fleet off it and a tower of skulls was raised, and Houmt Souk was its market town.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Djerba"
       }
     }
   ]

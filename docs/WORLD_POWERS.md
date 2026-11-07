@@ -550,6 +550,13 @@ Two new harbours are a data slice as 0217, purse 0, `port_goods` rows, spur legs
 
 The other seven havens of `PIRATES_AND_HAVENS` wait for later slices.
 
+**Built as W16, migration 0338, not deployed (`docs/dev-log/2026-11-07-the-brethren.md`). Where the build differs from the table above, each decided by default:**
+- **Sale is not the HQ.** The table says Sale has no holder. Spain won it at the 00:47 UTC count of 2026-11-06 (NPC merchants' influence, an NPC mayor, 99 M d.), and `docs/INFLUENCE.md` D1 says a home is topped up from FREE cities so nobody loses a city. The homes are **Port Royal** (free; the capital and the hoard), **Lingga**, **Goto** and **Djerba** (three new harbours, purse 0). The file refuses, loudly, if Port Royal is held when it runs. Sale can become a home in a slice of its own.
+- **The pirates are a great power without a crown:** `great_powers.pirate` (one row), read through `public.pirate_power`. No cargo ships, no navy, no aid: `city_capital` answers null for a pirate city and the four loops that make a crown's things skip them.
+- **Joining:** `pirates_joinable` (false), read only through `public.nation_joinable`. `found_house`, `change_country` and the picker (`joinable` in the snapshot) use it and nothing else.
+- **The free ports** answer to one reader, `public.port_is_free`, and to one lever, `pirate_ports_free` (true). `world.tax_rate` answers 0 through it (the stored rate is left, so the lever restores it), `port_fee` 0, `port_dues` factor 0, `cmd.set_tax` refuses (`E_FREE_PORT`), `depth_day` leaves the depth at 0.5.
+- **The flag clock does not move**, so no realm's cargo circuit or navy stations are rebuilt for nothing.
+
 ### 7.2 A pirate port
 
 | Owner's word | Rule |
@@ -781,7 +788,7 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 | Navy fine | 5 %, cap 100,000 | Knobs |
 | Navy size | Root of purse, cap 24, min 2 | Knobs |
 | Upkeep | 60,000 d. a day | Knob |
-| Pirate HQ | Salé; Port Royal; Lingga; Gotō | Question 5 |
+| Pirate HQ | Port Royal (capital); Lingga; Goto; Djerba. Sale was won by Spain on 2026-11-06, so it is not taken | Question 5 |
 | Cheap goods | Through stock, no term | Question 6 |
 | Pirate ports attackable | Not in v1 | Question 7 |
 | Pirate merchants insured | No | |
@@ -829,6 +836,8 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 **W14 is built, migration 0334, dark, not deployed** (`docs/dev-log/2026-11-06-wanted.md`). `navy_hunt_per_day` stays 0.
 
 **W3 is built, migration 0337, a read, not deployed** (`docs/dev-log/2026-11-07-a-captain-has-a-sheet.md`). `world.captain_stats`, the five lines on the captain card, the Power line on the ship tile. No switch is lit by it.
+
+**W16 is built, migration 0338, not deployed** (`docs/dev-log/2026-11-07-the-brethren.md`). The pirates, four free homes, ten wars, three new harbours; `pirates_joinable` false, `pirate_ports_free` true (the lever).
 
 **W4 is built, migration 0321, dark, not deployed** (`docs/dev-log/2026-11-06-a-ship-changes-fleets.md`). Lighting it is `fleet_room_bite`, the owner's, in its own window.
 

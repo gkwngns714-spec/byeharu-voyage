@@ -4,18 +4,20 @@
 // Kyushu, Hokkaido, Sri Lanka, Java, Sumatra, Luzon, Cuba, Hispaniola, Iceland, Greenland, Taiwan and the like are islands
 // in fact and count; Australia, Africa, Eurasia and the Americas are continents and do not. A port on a small island or a
 // causeway-joined island counts. A port on a river or lagoon islet, a peninsula, or a coast that merely faces an island does
-// not. Judged from each port's name, country, lat/lon, region and notes in data/ports.json (all 246 were read). NOT read from
+// not. Judged from each port's name, country, lat/lon, region and notes in data/ports.json (all 249 were read). NOT read from
 // the land polygon (#511 is not live), so this file stands alone.
 //
 // KEYED BY data/ports.json ID. The client holds the served NAME, not that id (the database mints its own), and world-derive
 // serves ports.json's name as it stands, so the value is the name the client matches on; tests/cityKind.law.spec.ts holds
-// every id to a real port, every name to its id's, and every island name to be unique among the 246 ports.
+// every id to a real port, every name to its id's, and every island name to be unique among the 249 ports.
 //
 // THE CLOSE CALLS (ruling in brackets). IN: hong-kong (the island, though the point is Kowloon side), mumbai (the Bombay
 // islands), mombasa (Mombasa Island), kilwa (Kilwa Kisiwani), saint-louis (N'Dar island), suakin and massawa (coral islets
 // joined by causeway), new-york (Manhattan), port-royal (Jamaica), hormuz, goree. OUT: macau (peninsula), lagos-ng (lagoon
 // coast), venice (lagoon islets), stockholm, lubeck, ayutthaya (river-bend islands), middelburg (Walcheren, joined since
 // 1871), jamestown (tidal island, now a peninsula), pulicat (sand spit), kochi, luanda, mokpo, aden, gibraltar.
+// 2026-11-07 (0338, the pirate homes): +djerba (the island of Djerba, joined to the mainland by a Roman causeway but an island in fact), +goto (the
+// Goto islands, Fukue), +lingga (Lingga island, Daik): three island towns, so 249 harbours were read.
 
 export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   ambon: "Ambon",
@@ -35,12 +37,14 @@ export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   corfu: "Corfu",
   cork: "Cork",
   dili: "Dili",
+  djerba: "Djerba",
   dublin: "Dublin",
   famagusta: "Famagusta",
   fukuoka: "Fukuoka",
   funchal: "Funchal",
   galle: "Galle",
   goree: "Goree",
+  goto: "Goto",
   hadibu: "Hadibu",
   hagatna: "Hagatna",
   havana: "Havana",
@@ -59,6 +63,7 @@ export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   kupang: "Kupang",
   "las-palmas": "Las Palmas",
   leith: "Leith",
+  lingga: "Lingga",
   london: "London",
   longyearbyen: "Longyearbyen",
   male: "Malé",

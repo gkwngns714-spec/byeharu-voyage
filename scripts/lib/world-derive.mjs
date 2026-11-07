@@ -318,6 +318,11 @@ const PORT_CODES = {
   'wellington': 'WLG',
   'portland-maine': 'PTL',
   'astoria': 'AST',
+  // W16 (the_brethren, migration 0338, 2026-11-07): three pirate harbours, the new homes of the 11th power (docs/WORLD_POWERS.md
+  // section 7.1). Authored free codes, first shipped by 0338; never change one.
+  'lingga': 'LGA',
+  'goto': 'GOT',
+  'djerba': 'DJE',
 }
 
 const fold = (s) =>
@@ -409,6 +414,8 @@ export const NATIONS = [
   ['GUJ', 'Gujarat Sultanate', '❁', null],
   ['MLB', 'Malabar', '✹', null],
   ['BAN', 'Banten', '✧', null],
+  // W16 (0338, docs/WORLD_POWERS.md section 7): the 24th nation and the 11th great power, the pirates. Its flag is the skull.
+  ['PIR', 'The Brethren', '☠', null],
 ]
 /**
  * THE GREAT POWERS (GP1, docs/GREAT_POWERS.md; the owner, 2026-10-18: "make it 7 big power like
@@ -417,8 +424,15 @@ export const NATIONS = [
  * of the cities they founded and hold no influence. Migration 0187 seeds public.great_powers from this
  * list and the world guard holds the database equal to it, both directions — so the list moves only
  * with a migration that moves the table.
+ *
+ * W16 (0338, docs/WORLD_POWERS.md section 7): the eleventh is the pirates, PIR, "The Brethren". It races for cities, and it has homes, like
+ * the ten; it has NO crown (no cargo ships, no navy, no aid from a capital: its purse is its cities'), and it is not a country a company
+ * may sail for until the owner sets the knob `pirates_joinable`. Which of the eleven is the pirate power is PIRATE_POWER below.
  */
-export const GREAT_POWERS = ['PRT', 'ESP', 'ENG', 'NLD', 'FRA', 'OTT', 'MUG', 'MNG', 'JOS', 'JPN']
+export const GREAT_POWERS = ['PRT', 'ESP', 'ENG', 'NLD', 'FRA', 'OTT', 'MUG', 'MNG', 'JOS', 'JPN', 'PIR']
+
+/** W16 (0338): THE pirate power — the one great power without a crown. public.great_powers.pirate is true for exactly this code (the world guard holds it). */
+export const PIRATE_POWER = 'PIR'
 
 // ── 0215: A HULL'S WAVE RESISTANCE (docs/SEA_CONDITIONS_AND_REGIONS.md §3.1) ────────────────────
 // `ship_classes.wave` is DERIVED from what the class already is: 12 × size (class_profile.size, 1–6) + the
@@ -470,6 +484,10 @@ const CAPITALS = {
   PER: 'bandar-abbas', MAR: 'safi', MUG: 'karachi', MNG: 'guangzhou', JPN: 'sakai',
   JOS: 'busan', AYU: 'ayutthaya',
   GUJ: 'khambhat', MLB: 'kozhikode', BAN: 'banten', // 0130: Cambay was Gujarat's great port in 1550; Calicut the Zamorin's seat
+  // W16 (0338): the Brethren's HQ is Port Royal, the one existing free city of the four homes that nobody held, nobody had paid influence
+  // into and no mayor ran when this was cut (docs/dev-log/2026-11-07-the-brethren.md: Sale, the design's HQ, was won by Spain at the
+  // 00:47 UTC count of 2026-11-06, so it is not taken).
+  PIR: 'port-royal',
   // 0140 (the owner's decision, 2026-10-17): Mughal India's capital is Karachi. It was Surat (0003),
   // but 0130 gave Surat to Gujarat, so the capital sat in another country. Karachi is the more
   // developed of Mughal India's two harbours (19 against Chittagong's 17) and on the Arabian Sea.
