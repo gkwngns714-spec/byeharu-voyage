@@ -113,7 +113,7 @@ The two live bodies, hashed on prod at head 0341 by `before.sql`, and what each 
 
 ## Older proofs
 
-(filled from the harness run `--with=all` below)
+`BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/city-reserve/proof-0343.mjs --with=all --no-mutations --only=none` (2026-11-07, the cached head world at 0341, the file applied, each proof in its own rolled-back transaction): **all 47 older proofs (01 to 48; there is no 24) green, every declared marker emitted**, including the ones that set the flat floor in their own scenes (16 reserve floor 5/5, 17 crown call 5/5, 18 to 20 cargo ships 6/6, 9/9, 8/8, 32 rich cities 13/13, 42 a realm pays 13/13, 43 origins fence 4/4) and the pirate and navy ones (45 to 48). Not one asserts the old world: the switch ships false, so 0306's flat floor is what they still read. About 4 minutes in all (05 and 12 take 55 s each).
 
 ## Not verified
 
