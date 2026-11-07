@@ -129,7 +129,7 @@ at 01:00:27, 01:07:55 and 01:41:07 UTC. 0226 plants two finished hours at `date_
 (n 8). At UTC hour 01 the first planted hour is 23:00 and the second 00:00, which are two days, so the day folds into
 two rows of n 4. The assert only passes when `now()` is not in UTC hour 01. Run 42314406184 applied 0226 at 00:59:39 UTC,
 21 s before the hour began, and so reached the baseline gate. GitHub starts the `47 19 * * *` schedule four to five
-hours late (these runs were created between 23:49 and 00:33 UTC), and the from-zero apply reaches 0226 35 to 67 minutes after
+hours late (these runs were created between 23:49 and 00:33 UTC), and the from-zero apply reaches 0226 35 to 70 minutes after
 the start, so the nightly lands in that hour often. (Checked in SQL: with `now()` at the three failing times and at 01:59:59 the
 planted hours fall on two days; at 00:00:00, 00:59:39, 02:00:00 and 02:54:12 on one. The rule follows: the first planted
 hour is 23:00 exactly when `now()` is in UTC hour 01.) **Until this is handled the nightly stays red on those nights whatever this
