@@ -232,8 +232,15 @@ for (const size of SIZES) {
 
       // NO REPEATS OF THE HALL (owner, 2026-10-31): the five words are the hall's alone.
       // (A served product's name is not a label: "Gold Leaf" among the recipes is not the hall's Gold.)
-      const products = await panel.locator('[data-testid^="forge-product-"]').allInnerTexts()
-      const text = products.reduce((all, name) => all.replace(name.trim(), ''), await panel.innerText())
+      // ONE READ, NOT TWO. These were two awaits: the product rows, then the panel's text. The recipe list renders by itself a moment after
+      // the panel is up, and when it landed BETWEEN the two, `products` was [] and the text already carried "Ashanti Goldwork": nothing was
+      // stripped and "Gold" was found (main 62b64f58, run 42327086583, 2026-11-07; reproduced locally, 1 in 16 under four workers, with the
+      // text printed). Both now come out of ONE synchronous turn inside the page, which no render can interleave.
+      const { products, whole } = await panel.evaluate((el) => ({
+        products: [...el.querySelectorAll('[data-testid^="forge-product-"]')].map((n) => (n as HTMLElement).innerText),
+        whole: (el as HTMLElement).innerText,
+      }))
+      const text = products.reduce((all, name) => all.replace(name.trim(), ''), whole)
       for (const label of HALL_LABELS) {
         expect(text.includes(label), `the ${id} face repeats the hall's "${label}"`).toBe(false)
       }
