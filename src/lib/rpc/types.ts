@@ -2280,8 +2280,8 @@ export interface TrafficFleet {
    * role), and the only reason it is on the wire at all is that the chart cannot invent it.
    */
   lane: [number, number][] | null
-  /** 0310: served on a crown's cargo ship, 0331: and on a navy ship, alone, so a merchant's row is what it always was. Absent = a merchant. */
-  kind?: 'CARGO_SHIP' | 'NAVY'
+  /** 0310: served on a crown's cargo ship, 0331: and on a navy ship, 0339: and on a pirate ship, alone, so a merchant's row is what it always was. Absent = a merchant. */
+  kind?: 'CARGO_SHIP' | 'NAVY' | 'PIRATE'
 }
 
 /**
@@ -2600,6 +2600,22 @@ export interface NavyShipCard {
   next: string[]
   ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
   /** 0333: served, true, only while attacks are lit, as a cargo ship's. */
+  attack?: true
+}
+
+/** 0339: `world.pirate_ship_card(fleet)`, one pirate ship of the Brethren. `home` her port; `haunt` the harbour of this cruise while she is out; `to` and `eta` while she sails. */
+export interface PirateShipCard {
+  fleet: { id: string; name: string; status: FleetStatus; port: string | null }
+  nation_code: string | null
+  home: string
+  haunt: string | null
+  /** HOME: at or bound for her home; CRUISE: out on her sea. Each has its word, `map.mission_*`. */
+  mission: 'HOME' | 'CRUISE'
+  laid_up: boolean
+  to: string | null
+  eta: string | null
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  /** served, true, only while attacks are lit, as a navy ship's. */
   attack?: true
 }
 
@@ -3709,6 +3725,8 @@ export interface StatsNow {
   funds_at_sea?: number
   /** 0331: served only while a navy ship is at work. */
   navy_ships?: number
+  /** 0339: served only while a pirate ship is at work. */
+  pirate_ships?: number
   since_count: { trades: number; units: number; sold: number; bought: number }
   counted_at: string
   counted_through: string

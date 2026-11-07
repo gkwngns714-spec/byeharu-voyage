@@ -1,4 +1,4 @@
-import { CARGO_HULL, NAVY_HULL, hullPath } from '../chart'
+import { CARGO_HULL, NAVY_HULL, PIRATE_HULL, hullPath } from '../chart'
 
 /** THE CARGO SHIP'S HULL AS A PICTURE: the chart's own path (`hullPath`), as ShipPanel's portrait draws any hull. 0310. */
 export function CargoHull({ size }: { size: number }) {
@@ -14,6 +14,15 @@ export function NavyHull({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="-15 -15 30 30" aria-hidden data-testid="navy-hull">
       <path d={hullPath(NAVY_HULL, 13)} className="stroke-chart-sea" fill="var(--color-navy-hull)" strokeWidth={0.7} strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+/** 0339: THE PIRATE SHIP'S, the same way. */
+export function PirateHull({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="-15 -15 30 30" aria-hidden data-testid="pirate-hull">
+      <path d={hullPath(PIRATE_HULL, 13)} className="stroke-chart-sea" fill="var(--color-pirate-hull)" strokeWidth={0.7} strokeLinejoin="round" />
     </svg>
   )
 }

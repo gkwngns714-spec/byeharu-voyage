@@ -74,6 +74,7 @@ import type {
   SeaRoster,
   CargoShipCard,
   NavyShipCard,
+  PirateShipCard,
   MerchantCard,
   InsuranceView,
   FleetTrades,
@@ -689,6 +690,11 @@ export function worldCargoShipCard(fleetId: string): Promise<RpcResult<CargoShip
 /** 0331: one navy ship's card, read at a tap. Refuses E_NOT_FOUND for any other fleet. */
 export function worldNavyShipCard(fleetId: string): Promise<RpcResult<NavyShipCard>> {
   return call<NavyShipCard>('worldNavyShipCard', [fleetId])
+}
+
+/** 0339: one pirate ship's card, read at a tap. Refuses E_NOT_FOUND for any other fleet. */
+export function worldPirateShipCard(fleetId: string): Promise<RpcResult<PirateShipCard>> {
+  return call<PirateShipCard>('worldPirateShipCard', [fleetId])
 }
 
 export function worldNpcFleetCard(fleetId: string): Promise<RpcResult<MerchantCard>> {

@@ -194,6 +194,10 @@
   --color-cargo-hull: #2fd4b0;
   /* The ONE colour of every navy ship's hull, day and night (glyphs.ts KIND_LOOK.navy.fill.token). Violet: no merchant, cargo ship, player's fleet or nation wears it. tests/map.kinds.spec.ts holds it to 3 : 1. */
   --color-navy-hull: #c4a1ff;
+  /* The ONE colour of every pirate ship's hull, day and night (glyphs.ts KIND_LOOK.pirate.fill.token; docs/WORLD_POWERS.md section 9.3: red). Coral, not the design's #ff6b6b: on the day deep
+     and at twilight 0.25 the dark keyline cannot carry a hull (1.98 and 2.5 to 1), so the fill must, and that takes a luminance near the navy violet's 0.44; #ff6b6b is 0.33 (2.97 on deep), this is 0.45
+     (3.9 on deep, 3.2 at twilight 0.25, 9.3 at night and under the near-black mark). No merchant, cargo ship, navy ship, player's fleet or nation wears it. tests/map.kinds.spec.ts holds her to 3 : 1. */
+  --color-pirate-hull: #ff9696;
 
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because

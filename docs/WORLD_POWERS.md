@@ -579,6 +579,15 @@ The other seven havens of `PIRATES_AND_HAVENS` wait for later slices.
 **Size:** `pirate_size` = min(30, 4 + floor(hoard / 100 M)). Paid from the hoard, `NAVY_PAY`. A hoard at 0: no new ships.
 **A player meets her:** attack on the map at sea. Loot from her book.
 
+**Built as W17, migration 0339, dark, not deployed (`docs/dev-log/2026-11-07-pirate-ships-sail.md`). Where the build differs, each decided by default:**
+- **She carries no book.** The plundered share of a cargo ship's funds leaves the ship's book LOOTED and is her home's purse the moment it is taken (kind `LOOT`, moved), not delivered when she docks: the book needed a fifth stage, two trigger hunks and three readers for one sum. So a player who boards her takes no gold yet.
+- **Her strength is her own.** A named raider fights at `voyage.pirate_strength` (her hulls' figure by the hull left), whatever the day's magnitude; the anonymous day is today's figure to the digit. Stow and RANSOM happen only when the raider is named: an anonymous xebec has no home.
+- **The cruise is one stored course out and back**, home to the harbour in reach whose sea is the most dangerous as authored (`public.pirate_haunt_of`), spread by ord; `pirate_ships.sea_id` is her position for "who raids" from the moment she leaves home to the moment she docks there; she lies `pirate_haunt_hours` (12) at the haunt.
+- **The hoard pays through one door**, `public.pirate_pay`, under the day's room `public.pirate_spend_room` (`pirate_spend_day_pct` 0.5 % of the hoard a UTC day): the hull (BUILD_NAVY to the nearest yard by sea, whoever holds it: a pirate home has none), the hour (NAVY_PAY, `navy_upkeep_day` reused), and W18's founding. Whole or nothing; a hoard at 0 has no room.
+- **A pirate ship in a sea is pressure 0.5** (`pirate_pressure`), refreshed each run so it does not decay while she is there: `public.sea_pressure`'s first and only writer.
+- **The navy's knobs are reused** (`navy_upkeep_day`, `navy_build_hours`, `navy_reach_nm`, `navy_store_days`, `navy_steps_per_run`), not copied. `regard_pirate` -50 with the Brethren for a player's attack on her; the pirates write no WANTED row.
+- **Her look:** coral `--color-pirate-hull` `#ff9696`, not `#ff6b6b`: on the day deep and at twilight 0.25 the dark keyline cannot carry a hull, so the fill must, and that takes a luminance near the navy violet's (the measured table is in the dev-log). A fish with a crescent tail (beam 0.46, waist 0.4 of it, a forked stern), an X on her deck.
+
 ### 7.4 Pirate merchants and investing
 
 - **Founded from the hoard**, through `npc_found` with PIR as her nation, paid by `city_pays`. `pirate_merchants_max` 30. Only from `pirate_spend_day_pct`.
@@ -838,6 +847,8 @@ export const KIND_LOOK: Record<ShipKind, { hull: HullShape | null; mark: KindMar
 **W3 is built, migration 0337, a read, not deployed** (`docs/dev-log/2026-11-07-a-captain-has-a-sheet.md`). `world.captain_stats`, the five lines on the captain card, the Power line on the ship tile. No switch is lit by it.
 
 **W16 is built, migration 0338, not deployed** (`docs/dev-log/2026-11-07-the-brethren.md`). The pirates, four free homes, ten wars, three new harbours; `pirates_joinable` false, `pirate_ports_free` true (the lever).
+
+**W17 is built, migration 0339, dark, not deployed** (`docs/dev-log/2026-11-07-pirate-ships-sail.md`). The ships, the hoard's one payer and the day's room, the frozen raider, stow, RANSOM, LOOT, the pressure, regen off at the homes, the look. `pirates_bite` stays false.
 
 **W4 is built, migration 0321, dark, not deployed** (`docs/dev-log/2026-11-06-a-ship-changes-fleets.md`). Lighting it is `fleet_room_bite`, the owner's, in its own window.
 

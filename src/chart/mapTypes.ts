@@ -255,6 +255,8 @@ export type MapTraffic = MapFleet & {
   readonly cargo?: true
   /** 0331: a crown's NAVY SHIP, on the same terms. */
   readonly navy?: true
+  /** 0339: a PIRATE SHIP of the Brethren, on the same terms. */
+  readonly pirate?: true
 }
 
 /**
