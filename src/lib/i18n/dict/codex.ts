@@ -71,6 +71,8 @@ export const codexDict = defineDict({
     baseFigures: 'Before bonuses.',
     cargoNote: 'Crown ships. They carry funds to cities.',
     navyNote: 'A country\'s warships. Paid by its capital.',
+    // 0339: the Codex's pirate ship entry.
+    pirateNote: 'The Brethren\'s ships. Paid from their hoard; they raid the seas round their homes.',
     type: 'Type',
     buildAs: 'Build: {names}',
     crownBuild: 'You can build one at a yard.',
@@ -144,6 +146,7 @@ export const codexDict = defineDict({
     baseFigures: '보너스 전.',
     cargoNote: '왕실 선박. 도시에 자금을 나릅니다.',
     navyNote: '나라의 군함. 수도가 비용을 냅니다.',
+    pirateNote: '해적단의 배. 금고에서 비용을 내고, 본거지 주변 바다를 노립니다.',
     type: '종류',
     buildAs: '건조: {names}',
     crownBuild: '조선소에서 건조할 수 있습니다.',

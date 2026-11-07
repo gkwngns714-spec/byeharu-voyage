@@ -18,7 +18,7 @@
 -- @pass SEA_DIVERT       a turn keeps the sailed water's frozen figures; the onward water is frozen at the turn
 -- @pass SEA_LEVEL        the served level is the authored level until the figure crosses a band, moves one step for each, and stays in 1 to 5
 -- @pass SEA_ONE_READER   no function or view but voyage.sea_danger reads piracy_index; the scan sees that one
--- @pass SEA_NO_CLIENT    no client can call what is new or read the table; the table is empty and nothing writes it
+-- @pass SEA_NO_CLIENT    no client can call what is new or read the table; the table is empty and nothing but public.pirate_pressure_write (0339, W17) writes it
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 -- byte copy of 0055's voyage.sea_mix(uuid), the body 0330 drops: the only "old" this proof trusts
@@ -531,12 +531,14 @@ begin
   if exists (select 1 from public.sea_pressure) then
     raise exception 'PROOF 38 FAIL: public.sea_pressure is not empty';
   end if;
+  -- THE one writer, by its signature: public.pirate_pressure_write(timestamp with time zone) (0339, W17: a pirate ship's presence in a sea; docs/WORLD_POWERS.md 7.6). Any other fails here.
   select string_agg(p.oid::regprocedure::text, ', ') into v_bad
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc ~* '(insert into|update|delete from)\s+public\.sea_pressure';
+   where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc ~* '(insert into|update|delete from)\s+public\.sea_pressure'
+     and p.oid is distinct from to_regprocedure('public.pirate_pressure_write(timestamp with time zone)');   -- by oid: regprocedure's text drops the schema on the search path
   if v_bad is not null then
-    raise exception 'PROOF 38 FAIL: something writes public.sea_pressure before W17: %', v_bad;
+    raise exception 'PROOF 38 FAIL: something other than public.pirate_pressure_write writes public.sea_pressure: %', v_bad;
   end if;
-  raise notice 'PASS: SEA_NO_CLIENT — closed, empty, unwritten';
+  raise notice 'PASS: SEA_NO_CLIENT — closed, empty, written by pirate_pressure_write alone';
 end
 $$;

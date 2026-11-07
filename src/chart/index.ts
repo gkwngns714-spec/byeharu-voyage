@@ -147,6 +147,7 @@ export {
   hullGroupHalo,
   CARGO_HULL,
   NAVY_HULL,
+  PIRATE_HULL,
   hullHalfLengthOf,
   hullPath,
   // 0135 — eight silhouettes by rig family × size; the store registers the served classes.

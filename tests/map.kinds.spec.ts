@@ -11,7 +11,7 @@
 // `vite build` first), and reads the computed fill, keyline and mark colours the browser resolved (CSS mixes
 // in sRGB, and so does this).
 //
-// WHAT IS NOT HERE YET: pirate has no shape and no row (W17: "same spec gains the row"). Navy gained hers with W12, 0331.
+// Navy gained her row with W12, 0331; the pirate ship hers with W17, 0339 (red by day and by night, a fork-sterned hull, an X on her deck).
 //
 // TWO THINGS THE DOC GOT WRONG ABOUT THE GROUND, FOUND BY READING THE CSS:
 //  - The doc's "light sea" ground does not occur on a chart: `.bv-chart-night` puts the night palette back on
@@ -64,7 +64,7 @@ test.beforeAll(async () => {
 })
 
 const AT = { lat: 0, lon: 0 }
-type Who = { readonly kind: 'merchant' | 'cargo' | 'navy' | 'yours'; readonly ink: MerchantInk; readonly hull?: string }
+type Who = { readonly kind: 'merchant' | 'cargo' | 'navy' | 'pirate' | 'yours'; readonly ink: MerchantInk; readonly hull?: string }
 
 function fleetOf(id: string, heading = 0, hulls: string[] = ['nau']): FleetOnChart {
   return {
@@ -81,7 +81,9 @@ function fleetOf(id: string, heading = 0, hulls: string[] = ['nau']): FleetOnCha
 /** The real FleetsLayer drawing ONE ship on a 40-unit window centred on her, `scale` device px per CSS px. */
 function shipSvg(who: Who, ground: string, extra = '', size = 40, heading = 0): string {
   const p = project(AT)
-  const row = who.kind === 'yours' ? null : ({ ...fleetOf('t', heading, who.kind === 'cargo' ? [who.hull ?? glyphs.CARGO_HULL] : who.kind === 'navy' ? [glyphs.NAVY_HULL] : ['nau']), merchant: { ink: who.ink, ...(who.kind === 'cargo' ? { cargo: true } : who.kind === 'navy' ? { navy: true } : {}) }, loopD: null, laneD: null } as unknown as TrafficOnChart)
+  const hulls = who.kind === 'cargo' ? [who.hull ?? glyphs.CARGO_HULL] : who.kind === 'navy' ? [glyphs.NAVY_HULL] : who.kind === 'pirate' ? [glyphs.PIRATE_HULL] : ['nau']
+  const kindKey = who.kind === 'cargo' ? { cargo: true } : who.kind === 'navy' ? { navy: true } : who.kind === 'pirate' ? { pirate: true } : {}
+  const row = who.kind === 'yours' ? null : ({ ...fleetOf('t', heading, hulls), merchant: { ink: who.ink, ...kindKey }, loopD: null, laneD: null } as unknown as TrafficOnChart)
   const layer = {
     fleets: row ? [] : [fleetOf('f', heading)],
     traffic: row ? [row] : [],
@@ -174,6 +176,7 @@ const WHO: readonly Who[] = [
   { kind: 'merchant', ink: 'prt' },
   ...INKS.map((ink): Who => ({ kind: 'cargo', ink })),
   ...INKS.map((ink): Who => ({ kind: 'navy', ink })),
+  ...INKS.map((ink): Who => ({ kind: 'pirate', ink })),
   { kind: 'yours', ink: 'prt' },
 ]
 
@@ -326,6 +329,92 @@ test.describe('the navy ship has a colour of her own', () => {
   })
 })
 
+// 0339 (W17, docs/WORLD_POWERS.md section 9): the pirate ship's row, measured as the navy's.
+test.describe('the pirate ship has a colour of her own', () => {
+  test.beforeAll(() => glyphs.registerHullClasses(CLASSES))
+
+  test('every pirate ship is one fill, day and night, and it is a hue apart from cargo teal, navy violet and the merchant blue', async ({ page }) => {
+    for (const night of [0, 1]) {
+      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+        ...INKS.map((ink): Who => ({ kind: 'pirate', ink })),
+        { kind: 'cargo', ink: 'prt' },
+        { kind: 'navy', ink: 'prt' },
+        { kind: 'merchant', ink: 'prt' },
+        { kind: 'yours', ink: 'prt' },
+      ])
+      const rows = await read(page, night)
+      const pirate = rows.filter((r) => r.kind === 'pirate').map((r) => r.fill.join())
+      expect(new Set(pirate).size, `pirate fills at --night ${night}`).toBe(1)
+      const [r0, g0, b0] = rows.find((r) => r.kind === 'pirate')!.fill
+      for (const other of ['cargo', 'navy', 'merchant', 'yours']) {
+        const row = rows.find((r) => r.kind === other)!
+        expect(row.fill.join(), `${other} vs pirate at --night ${night}`).not.toBe(pirate[0])
+        if (other === 'yours') continue
+        const [r1, g1, b1] = row.fill
+        expect(Math.hypot((r0 - r1) * (r0 > 1 ? 1 : 255), (g0 - g1) * (r0 > 1 ? 1 : 255), (b0 - b1) * (r0 > 1 ? 1 : 255)), `pirate vs ${other}`).toBeGreaterThanOrEqual(100)
+      }
+    }
+  })
+
+  test('she differs from cargo, from navy and from every merchant hull by at least 20 % of her area, at 1x and 2x', async ({ page }) => {
+    const pirate = glyphs.hullPath(glyphs.PIRATE_HULL)
+    const others = [
+      { code: 'cargo', d: glyphs.hullPath(glyphs.CARGO_HULL) },
+      { code: 'navy', d: glyphs.hullPath(glyphs.NAVY_HULL) },
+      ...CLASSES.map((c) => ({ code: c.code, d: glyphs.hullPath(c.code) })),
+    ]
+    for (const dpr of [1, 2]) {
+      const res = await page.evaluate(
+        ({ pirate, others, dpr }) => {
+          const raster = (d: string) => {
+            const cv = document.createElement('canvas')
+            cv.width = 40 * dpr
+            cv.height = 40 * dpr
+            const c = cv.getContext('2d')!
+            c.scale(dpr, dpr)
+            c.translate(20, 20)
+            c.fill(new Path2D(d))
+            return c.getImageData(0, 0, cv.width, cv.height).data
+          }
+          const a = raster(pirate)
+          let area = 0
+          for (let i = 3; i < a.length; i += 4) if (a[i] > 127) area++
+          return others.map((o) => {
+            const b = raster(o.d)
+            let diff = 0
+            for (let i = 3; i < a.length; i += 4) if (a[i] > 127 !== b[i] > 127) diff++
+            return { code: o.code, share: diff / area }
+          })
+        },
+        { pirate, others, dpr },
+      )
+      console.log(`pirate silhouette at ${dpr}x: ` + res.map((r) => `${r.code} ${r.share.toFixed(2)}`).join(', '))
+      for (const r of res) expect(r.share, `pirate vs ${r.code} at ${dpr}x`).toBeGreaterThanOrEqual(0.2)
+    }
+  })
+
+  test('she is drawn at 7, is never thinned, her X is two solid bars each 2 CSS px thick at the shortest she is drawn, and her row carries her kind', () => {
+    expect(glyphs.KIND_LOOK.pirate.minHalfLength).toBe(7)
+    expect(glyphs.KIND_LOOK.pirate.thin).toBe(false)
+    expect(glyphs.KIND_LOOK.pirate.mark).toBe('x')
+    expect(glyphs.KIND_LOOK.pirate.fill.token).toBe('var(--color-pirate-hull)')
+    expect(glyphs.hullHalfLengthOf(glyphs.PIRATE_HULL)).toBe(7)
+    expect(glyphs.hullPath(glyphs.PIRATE_HULL).match(/M/g)).toHaveLength(1)
+    const arms = glyphs.kindMarkPath('x', 7).split('M').filter(Boolean)
+    expect(arms).toHaveLength(2)
+    for (const arm of arms) {
+      // a turned rectangle: its thickness is the distance between its first and last corners (the short side)
+      const pts = arm.replace('Z', '').split('L').map((p) => p.trim().split(/\s+/).map(Number))
+      expect(pts).toHaveLength(4)
+      const short = Math.min(Math.hypot(pts[1][0] - pts[2][0], pts[1][1] - pts[2][1]), Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]))
+      expect(short).toBeGreaterThanOrEqual(2)
+    }
+    const [m] = mapTrafficOf([{ id: 'p1', company: 'c', nation_code: 'PIR', ink: 'east', name: 'p', status: 'SAILING', ships: 1, hulls: ['xebec'], port: null, roadstead: null, anchor: [17.9, -76.8], voyage: null, lane: null, kind: 'PIRATE' } as unknown as TrafficFleet])
+    expect(glyphs.shipKindOf(m)).toBe('pirate')
+    expect(m.hulls).toEqual([glyphs.PIRATE_HULL])
+  })
+})
+
 test.describe('the silhouettes', () => {
   test.beforeAll(() => glyphs.registerHullClasses(CLASSES))
 
@@ -374,7 +463,7 @@ test.describe('one renderer, one table', () => {
   })
 
   test('every kind has one row, with the table fields', () => {
-    for (const k of ['merchant', 'cargo', 'navy', 'yours']) {
+    for (const k of ['merchant', 'cargo', 'navy', 'pirate', 'yours']) {
       expect(Object.keys(glyphs.KIND_LOOK[k as 'merchant']).sort(), k).toEqual(['fill', 'hull', 'mark', 'minHalfLength', 'thin'])
     }
   })
@@ -431,6 +520,7 @@ test.describe('the pictures', () => {
     { label: 'CARGO, England', who: { kind: 'cargo', ink: 'eng' } },
     { label: 'CARGO, Ottoman', who: { kind: 'cargo', ink: 'ott' } },
     { label: 'NAVY, any country', who: { kind: 'navy', ink: 'prt' } },
+    { label: 'PIRATE (0339)', who: { kind: 'pirate', ink: 'east' } },
     { label: 'yours (gold, on her halo)', who: { kind: 'yours', ink: 'prt' } },
   ]
   const SCENES = [
@@ -475,5 +565,37 @@ test.describe('the pictures', () => {
       await page.screenshot({ path: path.join(OUT, `kinds-${dpr}x.png`), fullPage: true })
       await context.close()
     }
+  })
+
+  // 0339 (W17): THE FOUR KINDS SIDE BY SIDE, DAY AND NIGHT, AT DPR 2 (the owner's laptop): the real FleetsLayer on the real night sea and day sea, the built stylesheet.
+  test('the four kinds side by side, day and night, at DPR 2', async ({ browser }) => {
+    const OUT_W17 = path.join('docs', 'dev-log', '2026-11-07-pirate-ships-sail')
+    mkdirSync(OUT_W17, { recursive: true })
+    glyphs.registerHullClasses(CLASSES)
+    const FOUR: readonly { label: string; who: Who }[] = [
+      { label: 'merchant', who: { kind: 'merchant', ink: 'prt' } },
+      { label: 'cargo ship', who: { kind: 'cargo', ink: 'prt' } },
+      { label: 'navy ship', who: { kind: 'navy', ink: 'prt' } },
+      { label: 'pirate ship', who: { kind: 'pirate', ink: 'east' } },
+    ]
+    const cell = (k: (typeof FOUR)[number], sc: (typeof SCENES)[number], heading: number, size: number) =>
+      `<td style="padding:0">${shipSvg(k.who, sc.ground, '', size, heading).replace('<svg ', `<svg data-night="${sc.night}" `)}</td>`
+    const block = (sc: (typeof SCENES)[number]) =>
+      `<p style="font:13px sans-serif;color:#222;margin:10px 0 2px">${sc.name}: chart size (two headings), then 4x</p><table style="border-collapse:collapse">` +
+      `<tr>${FOUR.map((k) => `<th style="font:12px sans-serif;color:#222;font-weight:normal;padding:0 4px">${k.label}</th>`).join('')}</tr>` +
+      `<tr>${FOUR.map((k) => cell(k, sc, 0, 40)).join('')}</tr><tr>${FOUR.map((k) => cell(k, sc, 62, 40)).join('')}</tr>` +
+      `<tr>${FOUR.map((k) => cell(k, sc, 0, 160)).join('')}</tr></table>`
+    const html = `<!doctype html><html data-theme="dark"><head><style>${builtCss()}</style></head><body style="margin:0;background:#fff;padding:12px">${[SCENES[0], SCENES[1], SCENES[2]].map(block).join('')}</body></html>`
+    const context = await browser.newContext({ viewport: { width: 760, height: 900 }, deviceScaleFactor: 2, colorScheme: 'dark' })
+    const page = await context.newPage()
+    await page.setContent(html)
+    await page.evaluate(() => {
+      for (const svg of Array.from(document.querySelectorAll<SVGSVGElement>('svg[data-night]'))) {
+        for (const g of Array.from(svg.querySelectorAll<SVGGElement>('g[data-hulls]'))) g.style.setProperty('--night', svg.getAttribute('data-night')!)
+      }
+    })
+    expect(await page.locator('svg[data-kind="pirate"] path[data-kind-mark]').count()).toBe(9)
+    await page.screenshot({ path: path.join(OUT_W17, 'four-kinds-day-night-2x.png'), fullPage: true })
+    await context.close()
   })
 })

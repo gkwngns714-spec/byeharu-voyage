@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { ALL, Card, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSplit, RankBars, Row, Tray, type TrayDetent } from '../../components/ui'
-import { CargoHull, NavyHull } from '../../live/CargoHull'
+import { CargoHull, NavyHull, PirateHull } from '../../live/CargoHull'
 import { useServedRead } from '../../live/useServedRead'
 import { formatFixed, formatInt, formatKnots, formatOfTotal, formatTons } from '../../lib/format'
 import { worldStatsNow, type CrownHull, type SnapshotShipClass, type StatsNow } from '../../lib/rpc'
@@ -66,6 +66,7 @@ function CargoShipEntry({ classes }: { classes: readonly SnapshotShipClass[] }) 
   const view = useServedRead<StatsNow>('codex-cargo', worldStatsNow, { name: 'worldStatsNow', trigger: 0 }).view
   const ships = view?.cargo_ships
   const navy = view?.navy_ships
+  const pirates = view?.pirate_ships
   return (
     <>
       {ships ? (
@@ -88,6 +89,18 @@ function CargoShipEntry({ classes }: { classes: readonly SnapshotShipClass[] }) 
               <Figure value={formatInt(navy)} />
               <Hint>{t('codex.navyNote')}</Hint>
               {buildAs('NAVY')}
+            </div>
+          </div>
+        </Card>
+      ) : null}
+      {pirates ? (
+        // 0339: the pirate ship, served only while one is at work. Nobody builds her: no "build as" line.
+        <Card title={t('map.pirateShip')} data-testid="codex-pirate-ship">
+          <div className="flex items-center gap-3">
+            <PirateHull size={64} />
+            <div className="min-w-0">
+              <Figure value={formatInt(pirates)} />
+              <Hint>{t('codex.pirateNote')}</Hint>
             </div>
           </div>
         </Card>
