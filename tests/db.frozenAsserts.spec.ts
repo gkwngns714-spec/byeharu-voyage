@@ -1,10 +1,11 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// FROZEN-ASSERT PATCHES — the applier reads two frozen self-asserts differently, and only those
+// FROZEN-ASSERT PATCHES — the applier reads a few frozen self-asserts differently, and only those
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // PURE UNIT SPEC (no `page`). src/lib/db/frozenAsserts.ts lets the PGlite appliers run 0019's probe
-// without a pirate roll and 0108's stopwatch at 1,200 ms instead of 400, without editing either
-// file (an edited applied migration sends CI from zero). This proves, on the REAL files:
+// without a pirate roll and 0108's stopwatch at 1,200 ms instead of 400, 0315's probe sales with a
+// fresh daily allowance, and 0226's planted pair one hour earlier in UTC hour 01, without editing any
+// of those files (an edited applied migration sends CI from zero). This proves, on the REAL files:
 //   1. every patch fits its file exactly once, inside the final `do $$` self-assert block;
 //   2. a file with no patch is applied byte for byte, and the chain's identity is the FILE's;
 //   3. a patch that no longer fits is a loud failure, never a silent no-op.
@@ -45,6 +46,27 @@ test('the patched asserts can still fail', async () => {
   expect(sqlToApply(f315)).toContain('qty < 1000000;\n  v_res := cmd.enqueue(')
   expect(f315.sql).toContain("error_code' is distinct from 'E_DAILY_CAP'")
   expect(out19).toContain("the quay predicted % out / % in and the orders moved % / %")
+  // 0226: only the plant line moves, and only in UTC hour 01 (a pair planted 26 h back is 23:00 and 00:00
+  // there, two days, so the day folds into two rows of n 4). Every assertion that judges the hour rows, the
+  // day row and the pruning is the file's own, still in the patched text. The 24-hour proof, patched and
+  // unpatched, with the mutants that keep the assert able to fail, is scripts/ops/harness/frozen-0226/.
+  const f226 = files.find((x) => x.name.startsWith('20260818000226_'))!
+  const out226 = sqlToApply(f226)
+  expect(out226).toContain(
+    "v_h0 := date_trunc('hour', now()) - interval '26 hours' - case when extract(hour from now() at time zone 'UTC') = 1 then interval '1 hour' else interval '0' end;\n",
+  )
+  for (const keep of [
+    "raise exception '0226 self-assert FAIL: the day folded day % o % h % l % c % n %'",
+    "raise exception '0226 self-assert FAIL: % hour row(s) at the planted hours for the probe pair, expected 2 (run: %)'",
+    "raise exception '0226 self-assert FAIL: the planted fine rows outlived the fine window'",
+  ]) {
+    expect(f226.sql).toContain(keep)
+    expect(out226).toContain(keep)
+  }
+  const was = f226.sql.split('\n')
+  const now = out226.split('\n')
+  expect(now.length).toBe(was.length)
+  expect(was.filter((line, i) => line !== now[i])).toHaveLength(1)
 })
 
 test('a file with no patch is applied as written, and the chain identity is the files', async () => {
