@@ -79,6 +79,7 @@ export function MerchantSheet({
   /** MAP passes 'side' — its slide-in panel at the right edge (screenLayout traySideEdgeClass). */
   mode?: 'docked' | 'side'
 }) {
+  const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')
   // HER SHIPS OPEN ONE BY ONE (owner, 2026-10-15): a press slides that ship's panel in over this.
   const [openShip, setOpenShip] = useState<number | null>(null)
@@ -122,6 +123,8 @@ export function MerchantSheet({
           line={
             card ? (
               <>
+                {/* 0340: a merchant of the Brethren says so (her ink, served, is the pirates' own), as a cargo or navy ship says her kind */}
+                {card.company.ink === 'pir' ? <>{t('map.pirateMerchant')} · </> : null}
                 {card.company.name}
                 {line ? <> · {line}</> : null}
               </>

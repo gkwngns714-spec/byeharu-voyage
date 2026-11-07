@@ -64,7 +64,7 @@ test.beforeAll(async () => {
 })
 
 const AT = { lat: 0, lon: 0 }
-type Who = { readonly kind: 'merchant' | 'cargo' | 'navy' | 'pirate' | 'yours'; readonly ink: MerchantInk; readonly hull?: string }
+type Who = { readonly kind: 'merchant' | 'cargo' | 'navy' | 'pirate' | 'pirateMerchant' | 'yours'; readonly ink: MerchantInk; readonly hull?: string }
 
 function fleetOf(id: string, heading = 0, hulls: string[] = ['nau']): FleetOnChart {
   return {
@@ -177,6 +177,7 @@ const WHO: readonly Who[] = [
   ...INKS.map((ink): Who => ({ kind: 'cargo', ink })),
   ...INKS.map((ink): Who => ({ kind: 'navy', ink })),
   ...INKS.map((ink): Who => ({ kind: 'pirate', ink })),
+  { kind: 'pirateMerchant', ink: 'pir' },   // 0340: a merchant of the Brethren, in the pirates' ink, on a nau
   { kind: 'yours', ink: 'prt' },
 ]
 
@@ -463,7 +464,7 @@ test.describe('one renderer, one table', () => {
   })
 
   test('every kind has one row, with the table fields', () => {
-    for (const k of ['merchant', 'cargo', 'navy', 'pirate', 'yours']) {
+    for (const k of ['merchant', 'cargo', 'navy', 'pirate', 'pirateMerchant', 'yours']) {
       expect(Object.keys(glyphs.KIND_LOOK[k as 'merchant']).sort(), k).toEqual(['fill', 'hull', 'mark', 'minHalfLength', 'thin'])
     }
   })
@@ -493,6 +494,58 @@ test.describe('one renderer, one table', () => {
       const ys = pts.map((p) => p[1])
       expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThanOrEqual(2)
     }
+  })
+})
+
+// 0340 (docs/WORLD_POWERS.md 9.3, row "Pirate merchant"): a MERCHANT of the Brethren keeps her class silhouette and wears the pirates' one
+// colour with an X across her deck, named by her served ink alone (`npc_houses.ink` 'pir'); the server marks no kind on her row.
+test.describe('the pirate merchant has the Brethren\'s colour and an X', () => {
+  test.beforeAll(() => glyphs.registerHullClasses(CLASSES))
+
+  test('every pirate merchant is one fill, day and night, and it is not a merchant, cargo or navy colour', async ({ page }) => {
+    for (const night of [0, 1]) {
+      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+        { kind: 'pirateMerchant', ink: 'pir' },
+        { kind: 'navy', ink: 'prt' },
+        { kind: 'cargo', ink: 'prt' },
+        { kind: 'merchant', ink: 'prt' },
+        { kind: 'yours', ink: 'prt' },
+      ])
+      const rows = await read(page, night)
+      const pirate = rows.find((r) => r.kind === 'pirateMerchant')!
+      expect(pirate.mark, `an X on her deck at --night ${night}`).not.toBeNull()
+      for (const other of ['navy', 'cargo', 'merchant', 'yours']) expect(rows.find((r) => r.kind === other)!.fill.join(), `${other} vs pirate merchant at --night ${night}`).not.toBe(pirate.fill.join())
+      const [r0, g0, b0] = pirate.fill
+      for (const other of ['navy', 'cargo']) {
+        const [r1, g1, b1] = rows.find((r) => r.kind === other)!.fill
+        expect(Math.hypot((r0 - r1) * (r0 > 1 ? 1 : 255), (g0 - g1) * (r0 > 1 ? 1 : 255), (b0 - b1) * (r0 > 1 ? 1 : 255)), `pirate merchant vs ${other}`).toBeGreaterThanOrEqual(100)
+      }
+    }
+  })
+
+  test('her row: the class silhouette, the X, the pirates\' token, drawn at 7 and never thinned; her ink names her kind and nothing else does', () => {
+    expect(glyphs.KIND_LOOK.pirateMerchant.hull).toBeNull()
+    expect(glyphs.KIND_LOOK.pirateMerchant.mark).toBe('x')
+    expect(glyphs.KIND_LOOK.pirateMerchant.fill.token).toBe('var(--color-pirate-hull)')
+    expect(glyphs.KIND_LOOK.pirateMerchant.minHalfLength).toBe(7)
+    expect(glyphs.KIND_LOOK.pirateMerchant.thin).toBe(false)
+    // the X: two solid diagonals, each at least 2 CSS px thick at her floor (the thickness is the distance between a diagonal's two long edges)
+    const arms = glyphs.kindMarkPath('x', glyphs.KIND_LOOK.pirateMerchant.minHalfLength).split('M').filter(Boolean)
+    expect(arms).toHaveLength(2)
+    for (const arm of arms) {
+      const pts = arm.replace('Z', '').split('L').map((p) => p.trim().split(/\s+/).map(Number))
+      expect(pts).toHaveLength(4)
+      const [a, b, , d] = pts
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1])
+      const thick = Math.abs((b[0] - a[0]) * (d[1] - a[1]) - (b[1] - a[1]) * (d[0] - a[0])) / len
+      expect(thick).toBeGreaterThanOrEqual(2)
+    }
+    const [m] = mapTrafficOf([{ id: 'p1', company: 'c', nation_code: 'PIR', ink: 'pir', name: 'n', status: 'DOCKED', ships: 1, hulls: ['carlat'], port: 'POR', roadstead: [17.9, -76.8], anchor: null, voyage: null, next_lap_at: null, lane: null } as unknown as TrafficFleet])
+    expect('cargo' in m).toBe(false)
+    expect(glyphs.shipKindOf(m)).toBe('pirateMerchant')
+    expect(m.hulls).toEqual(['carlat'])
+    expect(glyphs.shipKindOf({ ink: 'prt' })).toBe('merchant')
+    expect(glyphs.shipKindOf({ ink: 'pir', navy: true })).toBe('navy')
   })
 })
 

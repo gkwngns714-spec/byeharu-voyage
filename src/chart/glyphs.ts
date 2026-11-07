@@ -472,7 +472,7 @@ export const PIRATE_HULL: HullClass = 'pirate-ship'
  * night, and not her nation's (`--color-cargo-hull`, `--color-navy-hull`, src/index.css). The renderer reads `token`
  * and nothing else; the spec reads the real figures (tests/map.kinds.spec.ts).
  */
-export type ShipKind = 'merchant' | 'cargo' | 'navy' | 'pirate' | 'yours'
+export type ShipKind = 'merchant' | 'cargo' | 'navy' | 'pirate' | 'pirateMerchant' | 'yours'
 /** A solid shape laid over a hull, drawn by `kindMarkPath`. */
 export type KindMark = 'bars' | 'stripe' | 'x'
 export interface KindLook {
@@ -488,11 +488,15 @@ export const KIND_LOOK: Readonly<Record<ShipKind, KindLook>> = {
   navy: { hull: 'navy', mark: 'stripe', fill: { token: 'var(--color-navy-hull)' }, minHalfLength: GLYPH.navyHullHalfLength, thin: false },
   // 0339 (docs/WORLD_POWERS.md section 9.3): the pirate ship, red by day and by night (`--color-pirate-hull`), a fork-sterned hull of her own and an X on her deck.
   pirate: { hull: 'pirate', mark: 'x', fill: { token: 'var(--color-pirate-hull)' }, minHalfLength: GLYPH.pirateHullHalfLength, thin: false },
+  // 0340 (W18, docs/WORLD_POWERS.md 9.3 "Pirate merchant"): a MERCHANT of the Brethren. The class she sails draws her silhouette (hull null, as a merchant),
+  // she wears the pirates' one colour (the ship's token) with the ship's X across her deck, is never thinned, and is drawn at the ship's floor so the X stays 2 px.
+  pirateMerchant: { hull: null, mark: 'x', fill: { token: 'var(--color-pirate-hull)' }, minHalfLength: GLYPH.pirateHullHalfLength, thin: false },
   yours: { hull: null, mark: null, fill: { token: null }, minHalfLength: 0, thin: false },
 }
-/** The kind a served merchant row is: the server marks a cargo ship, a navy ship or a pirate ship and no other (a merchant row has no key). */
-export const shipKindOf = (merchant: { readonly cargo?: true; readonly navy?: true; readonly pirate?: true }): ShipKind =>
-  merchant.cargo ? 'cargo' : merchant.navy ? 'navy' : merchant.pirate ? 'pirate' : 'merchant'
+/** The kind a served merchant row is: the server marks a cargo ship, a navy ship or a pirate ship and no other (a merchant row has no key);
+ *  0340: a merchant house in the pirates' ink (`npc_houses.ink` 'pir', served) is a pirate merchant. */
+export const shipKindOf = (merchant: { readonly cargo?: true; readonly navy?: true; readonly pirate?: true; readonly ink?: string }): ShipKind =>
+  merchant.cargo ? 'cargo' : merchant.navy ? 'navy' : merchant.pirate ? 'pirate' : merchant.ink === 'pir' ? 'pirateMerchant' : 'merchant'
 
 const LIVE_SHAPES: Readonly<Record<string, HullShape>> = {
   barca: 'fore-1',
@@ -738,7 +742,8 @@ function pirateHullPath(l: number): string {
  * the beam, each 0.36 of her half-length thick (2.1 px at the cargo ship's 5.8, so never under 2 px at her
  * `minHalfLength`), kept just inside the hull's outline so her keyline still runs round her. `stripe` (0331): one
  * stripe bow to stern, 2 px wide at her `minHalfLength`, down the middle of a beam of 4.8 px. `x` (0339): two bars
- * crossed at her centre, each 0.3 of her half-length thick (2.1 px at the pirate ship's 7) and 0.9 of it long.
+ * crossed at her centre, each 0.3 of her half-length thick (2.1 px at the pirate ship's 7) and 0.9 of it long; the
+ * pirate merchant (0340) wears the same X at the same floor.
  */
 export function kindMarkPath(mark: KindMark, halfLength: number): string {
   const l = halfLength
