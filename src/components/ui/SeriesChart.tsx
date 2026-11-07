@@ -97,6 +97,11 @@ export function SeriesChart({
   // moves nothing), and the high and low figures stand in a value column to its right. Every chart
   // this one component draws gets it; tests/align.spec.ts holds no text box over `[data-plot]`.
   const reading = dot ?? model.dots[model.dots.length - 1]
+  // THE FIGURES BESIDE THE PLOT: the high at its top and the low at its floor — or, for a flat line, the ONE figure the model gives,
+  // at the line itself (seriesChartModel.ts: a flat series invents no band; the drive audit's D5, 2026-11-08).
+  const single = model.yTicks.length === 1 ? model.yTicks[0] : null
+  const high = model.yTicks[model.yTicks.length - 1]
+  const low = model.yTicks[0]
   return (
     <div className={`w-full ${className}`} data-testid="series-chart" data-chart>
       <div className="flex items-center justify-end text-t-caption tabular-nums" style={{ height: READING_H }}>
@@ -139,20 +144,29 @@ export function SeriesChart({
             </g>
           )}
         </svg>
-        {/* the high and low figures, in a column of their own beside the plot, at its top and floor */}
+        {/* the high and low figures, in a column of their own beside the plot, at its top and floor — or a flat line's one figure, at the line */}
         <div className="relative shrink-0">
           {/* in flow but unseen: it gives the column the width of its wider figure */}
           <span className="invisible flex h-0 flex-col overflow-hidden text-t-caption tabular-nums" aria-hidden>
-            <span>{format(model.yTicks[2].value)}</span>
-            <span>{format(model.yTicks[0].value)}</span>
+            <span>{format(high.value)}</span>
+            {single === null && <span>{format(low.value)}</span>}
           </span>
-          <div
-            className="absolute inset-x-0 flex flex-col justify-between text-right"
-            style={{ top: `${(plot.y / model.height) * 100}%`, height: `${(plot.h / model.height) * 100}%` }}
-          >
-            <span className="-translate-y-1/2 text-t-caption tabular-nums text-ink-faint">{format(model.yTicks[2].value)}</span>
-            <span className="translate-y-1/2 text-t-caption tabular-nums text-ink-faint">{format(model.yTicks[0].value)}</span>
-          </div>
+          {single !== null ? (
+            <span
+              className="absolute inset-x-0 block -translate-y-1/2 text-right text-t-caption tabular-nums text-ink-faint"
+              style={{ top: `${(single.y / model.height) * 100}%` }}
+            >
+              {format(single.value)}
+            </span>
+          ) : (
+            <div
+              className="absolute inset-x-0 flex flex-col justify-between text-right"
+              style={{ top: `${(plot.y / model.height) * 100}%`, height: `${(plot.h / model.height) * 100}%` }}
+            >
+              <span className="-translate-y-1/2 text-t-caption tabular-nums text-ink-faint">{format(high.value)}</span>
+              <span className="translate-y-1/2 text-t-caption tabular-nums text-ink-faint">{format(low.value)}</span>
+            </div>
+          )}
         </div>
       </div>
     </div>

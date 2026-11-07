@@ -38,9 +38,9 @@ export interface SeriesChartModel {
   area: string
   /** Where the wash under the line fades out: it ends at nothing, with no wall at the newest point. */
   areaFade: WashFade | null
-  /** Three y figures, served scale: low, mid, high. */
+  /** The y figures, served scale: low, mid, high — or ONE, the value itself, for a flat series. */
   yTicks: { y: number; value: number }[]
-  /** The x axis's words: how long before the last point each tick stands. */
+  /** The x axis's words: how long before the last point each tick stands. No two neighbours say the same thing. */
   xTicks: { x: number; label: string }[]
   /** Every point's pixel, for the hover layer: nearest-x lookup. */
   dots: { x: number; y: number; atMs: number; value: number }[]
@@ -110,10 +110,15 @@ export const SERIES_CHART_W = 340
 export const SERIES_CHART_H = 120
 const PAD = { left: 8, right: 8, top: 8, bottom: 18 }
 
-/** "6h", "2d", "45m", "2.5y" — how far before the newest point an instant lies. THE one spelling of a
- *  stretch of time on a chart's axis: the price chart reads it too (0226, for days and years). */
+/** "30s", "45m", "6h", "2d", "2.5y" — how far before the newest point an instant lies, in ONE rule at any span: seconds under a
+ *  minute, minutes under an hour, hours under two days, days under two years, then years to a tenth. THE one spelling of a
+ *  stretch of time on a chart's axis: the price chart reads it too (0226, for days and years). Under a minute it used to say
+ *  "now", so a series counted within one minute labelled every tick "now" (the drive audit, 2026-11-08, D5). */
 export function agoLabel(ms: number): string {
-  if (ms < 60_000) return t('shell.now')
+  const s = Math.round(ms / 1000)
+  // nought seconds before the newest point IS the newest point
+  if (s === 0) return t('shell.now')
+  if (s < 60) return t('format.shortS', { n: s })
   const min = Math.round(ms / 60_000)
   if (min < 60) return t('format.shortM', { n: min })
   const h = Math.round(ms / 3_600_000)
@@ -141,8 +146,11 @@ export function seriesChartModel(
   const span = Math.max(1, t1 - t0)
   let lo = Math.min(...sorted.map((p) => p.value))
   let hi = Math.max(...sorted.map((p) => p.value))
-  if (hi === lo) {
-    // a flat line gets a band to sit in the middle of, rather than a division by zero
+  const flat = hi === lo
+  if (flat) {
+    // A FLAT LINE SITS IN THE MIDDLE of a band that is GEOMETRY ONLY (so nothing divides by zero) and is never printed as the
+    // data's: its axis is one figure, the value itself (below). The drive audit (2026-11-08, D5) found a young city's purse of 0
+    // drawn between the figures "1 🪙" and "−1 🪙" — this band, printed.
     const pad = Math.abs(hi) * 0.05 || 1
     lo -= pad
     hi += pad
@@ -154,11 +162,18 @@ export function seriesChartModel(
   const floor = plot.y + plot.h
   const area = `${line} L${dots[dots.length - 1].x.toFixed(1)} ${floor} L${dots[0].x.toFixed(1)} ${floor} Z`
   const areaFade = washFade(dots[0].x, dots[dots.length - 1].x)
-  const yTicks = [lo, (lo + hi) / 2, hi].map((v) => ({ y: y(v), value: v }))
+  const yTicks = flat ? [{ y: y(sorted[0].value), value: sorted[0].value }] : [lo, (lo + hi) / 2, hi].map((v) => ({ y: y(v), value: v }))
+  // THE X AXIS'S WORDS: the whole span at the left edge, half of it in the middle, "now" at the right. A label that would only
+  // repeat a neighbour's word says nothing, so it is dropped: the middle first (the edges are the axis's anchors, as the price
+  // chart's declutter keeps them), then the left when the whole span itself rounds to now — a series a second old reads
+  // "1s · now", one younger than that reads "now" alone, and no two labels ever say the same thing.
+  const left = { x: plot.x, label: agoLabel(t1 - t0) }
+  const mid = { x: plot.x + plot.w / 2, label: agoLabel((t1 - t0) / 2) }
+  const right = { x: plot.x + plot.w, label: t('shell.now') }
   const xTicks = [
-    { x: plot.x, label: agoLabel(t1 - t0) },
-    { x: plot.x + plot.w / 2, label: agoLabel((t1 - t0) / 2) },
-    { x: plot.x + plot.w, label: t('shell.now') },
+    ...(left.label === right.label ? [] : [left]),
+    ...(mid.label === left.label || mid.label === right.label ? [] : [mid]),
+    right,
   ]
   return { width: size.width, height: size.height, plot, line, area, areaFade, yTicks, xTicks, dots }
 }
