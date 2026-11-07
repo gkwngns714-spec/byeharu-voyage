@@ -38,7 +38,7 @@ export function mutations(swap) {
     ['the pirate row pays the pirates too', (s) => swap(s, `       from public.great_powers g join public.nations gn on gn.id = g.nation_id where not g.pirate order by gn.code;\n`, `       from public.great_powers g join public.nations gn on gn.id = g.nation_id order by gn.code;\n`), /beating a pirate ship earned/],
     ['the pirate row pays when beaten', (s) => swap(s, `     and (v_out in ('PLUNDERED', 'RANSOM') or not exists (select 1 from public.ships s where s.fleet_id = v_d and s.durability > 0)) then\n`, `     then\n`), /beaten by a pirate ship, regard moved/],
     ['the pirate row pays for a cargo ship', (s) => swap(s, `  if public.fleet_kind(v_d) = 'PIRATE'\n`, `  if public.fleet_kind(v_d) in ('PIRATE', 'CARGO_SHIP')\n`), /a cargo ship beaten earned the pirate row/],
-    ['the knob ships lit', (s) => swap(s, `    ('regard_pirate', to_jsonb(30),`, `    ('regard_pirate', to_jsonb(31),`), /the knobs are not as shipped/],
+    ['the knob ships lit', (s) => swap(s, `    ('regard_pirate_beaten', to_jsonb(30),`, `    ('regard_pirate_beaten', to_jsonb(31),`), /the knobs are not as shipped/],
     // the catalog
     ['a client can call the pass', (s) => swap(s, `  revoke all on function public.navy_hunt_pass(timestamptz, uuid) from public, anon, authenticated;\n`, `  grant execute on function public.navy_hunt_pass(timestamptz, uuid) to authenticated;\n`), /a new function can be called from a client/],
     ['the read is volatile', (s) => swap(s, `create function public.navy_hunts_on()\nreturns boolean\nlanguage sql\nstable\n`, `create function public.navy_hunts_on()\nreturns boolean\nlanguage sql\nvolatile\n`), /a read is not stable/],

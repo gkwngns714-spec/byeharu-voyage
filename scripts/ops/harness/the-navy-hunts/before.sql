@@ -29,12 +29,12 @@ $h$)
   select h.fn, h.ord, h.old, replace(pg_get_functiondef(h.fn), E'\r', '') as def from h
 )
 select (select jsonb_object_agg(b.fn::text || ' ' || b.ord, (length(b.def) - length(replace(b.def, b.old, ''))) / length(b.old)) from b) as times,
-       (select count(*) from public.world_config c where c.key in ('navy_hunt_hours', 'navy_hunts_per_run', 'regard_pirate')) as keys,
+       (select count(*) from public.world_config c where c.key in ('navy_hunt_hours', 'navy_hunts_per_run', 'regard_pirate_beaten')) as keys,
        (select count(*) from pg_attribute a where a.attrelid = 'public.navy_ships'::regclass and a.attname in ('fought_at', 'fought', 'hunt_port', 'hunt_until') and not a.attisdropped) as columns,
        to_regprocedure('public.navy_hunt_pass(timestamp with time zone,uuid)') as fn_pass,
        (select c.value from public.world_config c where c.key = 'navy_enabled') as navy_on,
        (select c.value from public.world_config c where c.key = 'pirates_bite') as pirates_bite,
-       jsonb_build_object('table', to_regclass('public.pirate_ships')::text, 'in_sea', to_regprocedure('public.pirate_ship_in_sea(uuid)')::text, 'side', to_regprocedure('public.pirate_side(uuid)')::text,
+       jsonb_build_object('table', to_regclass('public.pirate_ships')::text, 'in_sea', to_regprocedure('public.pirate_ship_in_sea(uuid)')::text,
                           'on', to_regprocedure('public.pirates_on()')::text, 'power', to_regprocedure('public.pirate_power(uuid)')::text,
                           'fought_at', (select count(*) from pg_attribute a where a.attrelid = to_regclass('public.pirate_ships') and a.attname = 'fought_at' and not a.attisdropped)) as pirate_objects,
        (select count(*) from public.navy_ships) as navy_ships,

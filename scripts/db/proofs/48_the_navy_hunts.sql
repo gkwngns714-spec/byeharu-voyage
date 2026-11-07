@@ -798,6 +798,7 @@ declare
   v_r0  numeric;
   v_n   int;
   v_ev  int;
+  v_sink int;
   d     uuid;
 begin
   update public.world_config set value = 'true'::jsonb where key in ('attack_enabled', 'regard_enabled');
@@ -820,8 +821,8 @@ begin
   select count(*) into v_n from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl and e.payload ->> 'reason' = 'DROVE_OFF_PIRATE';
   if v_n <> (select count(*) from public.great_powers g where not g.pirate) or (select count(*) from public.great_powers g where not g.pirate) < 10
      or exists (select 1 from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl and e.payload ->> 'nation' = 'PIR')
-     or round(public.regard_of(v_pl, v_nat) - v_r0) <> public.wc_num('regard_pirate')
-     or exists (select 1 from public.great_powers g where not g.pirate and round(public.regard_of(v_pl, g.nation_id) - (public.wc('regard_stance_base') ->> public.power_stance(v_nat, g.nation_id))::numeric) <> public.wc_num('regard_pirate')) then
+     or round(public.regard_of(v_pl, v_nat) - v_r0) <> public.wc_num('regard_pirate_beaten')
+     or exists (select 1 from public.great_powers g where not g.pirate and round(public.regard_of(v_pl, g.nation_id) - (public.wc('regard_stance_base') ->> public.power_stance(v_nat, g.nation_id))::numeric) <> public.wc_num('regard_pirate_beaten')) then
     raise exception 'PROOF 48 FAIL: beating a pirate ship earned % lines, PRT moved %', v_n, public.regard_of(v_pl, v_nat) - v_r0;
   end if;
   if (select count(*) from public.events e where e.kind = 'REGARD_CHANGED') - v_ev <> v_n then
@@ -844,7 +845,7 @@ begin
   if (select count(*) from public.events e where e.kind = 'REGARD_CHANGED') <> v_ev then
     raise exception 'PROOF 48 FAIL: beaten by a pirate ship, regard moved';
   end if;
-  -- sinking her: regard_pirate with each, and nothing with the pirates (no SINK line at all: she sails for no crown)
+  -- sinking her: regard_pirate_beaten with each of the ten; the only other line is 0333's sink with the Brethren (0339's crown_nation answers them for her), never a DROVE_OFF line with them
   perform pg_temp.clear_48(v_t);
   update public.world_config set value = 'true'::jsonb where key = 'npc_refits_enabled';
   a := pg_temp.house_48(4);
@@ -858,8 +859,11 @@ begin
   perform set_config('byeharu.proof_fight', 'SUNK', true);
   perform public.battle_resolve(b, v_t + interval '601 seconds');
   perform set_config('byeharu.proof_fight', '', true);
+  select count(*) into v_sink from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl and e.payload ->> 'reason' = 'SINK_CARGO' and e.payload ->> 'nation' = 'PIR';
   if (select count(*) from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl and e.payload ->> 'reason' = 'DROVE_OFF_PIRATE') <> (select count(*) from public.great_powers g where not g.pirate)
-     or exists (select 1 from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl and e.payload ->> 'reason' <> 'DROVE_OFF_PIRATE')
+     or exists (select 1 from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl and e.payload ->> 'reason' = 'DROVE_OFF_PIRATE' and e.payload ->> 'nation' = 'PIR')
+     or (select count(*) from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl and e.payload ->> 'reason' <> 'DROVE_OFF_PIRATE') <> v_sink
+     or v_sink <> (select count(*) from public.pirate_ships x join public.nations n on n.id = public.crown_nation(x.fleet_id) where x.fleet_id = p and n.code = 'PIR')   -- 0339's crown_nation: one sink line with the Brethren; the contract's null: none
      or (select f.status from public.fleets f where f.id = p) <> 'UNABLE_TO_SAIL' then
     raise exception 'PROOF 48 FAIL: sinking a pirate ship: %', (select jsonb_agg(e.payload) from public.events e where e.kind = 'REGARD_CHANGED' and e.player_id = v_pl);
   end if;
@@ -883,6 +887,7 @@ begin
     raise exception 'PROOF 48 FAIL: a cargo ship beaten earned the pirate row';
   end if;
   update public.world_config set value = 'false'::jsonb where key in ('attack_enabled', 'regard_enabled');
-  raise notice 'PASS: NH_REGARD — beaten: +% with % powers, none with the pirates; beaten by her: none; sunk: the same, no SINK line; a cargo ship: none of it', public.wc_num('regard_pirate'), v_n;
+  raise notice 'PASS: NH_REGARD — beaten: +% with % powers, none with the pirates; beaten by her: none; sunk: the same ten and % sink line with the Brethren (0333''s line, 0339''s nation); a cargo ship: none of it',
+    public.wc_num('regard_pirate_beaten'), v_n, v_sink;
 end
 $$;

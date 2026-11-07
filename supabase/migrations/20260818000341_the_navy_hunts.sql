@@ -20,8 +20,9 @@
 -- NAVY AGAINST PIRATE (6.4): public.navy_hunt_pass, from public.tick_navy, every minute, before the ships' steps, at most navy_hunts_per_run fights a run, null while dark. For each navy ship at work and on duty, in no battle,
 --   with a hull left and no fight within the hour: her sea now (public.fleet_sea: her port's sea in port; at sea the sea of her voyage's current segment, voyage.position's closed form; at anchor the sea of her point), then
 --   THE one reader of who is there, public.pirate_ship_in_sea(sea) (W17's). Null: no fight. Found, whole, in no battle, no fight of hers within the hour: public.navy_fight, both settled first (D.2), both rows taken SKIP LOCKED.
---   THE FIGHT IS ONE CALL, no timer, nobody watching: public.fight_sides(p_seed := her fleet, p_round := the UTC hour, p_a := public.pirate_side(pirate), p_b := voyage.fleet_hulls(navy ship), '{}'), as the contract says:
---   the same hour fought twice is the same fight. Hull loss lands on BOTH through public.fight_hulls_write, THE hull writer, lifted from public.battle_resolve (the statement 0323 wrote and 0327 / 0333 close battles with).
+--   THE FIGHT IS ONE CALL, no timer, nobody watching: public.fight_sides(p_seed := her fleet, p_round := the UTC hour, p_a := the pirate ship's hulls, p_b := the navy ship's, '{}'), as the contract says, both sides built
+--   by voyage.fleet_hulls, THE one builder of a fleet as a side (0323; the contract's public.pirate_side is not in 0339, and a second builder would be a second authority): the same hour fought twice is the same fight.
+--   Hull loss lands on BOTH through public.fight_hulls_write, THE hull writer, lifted from public.battle_resolve (the statement 0323 wrote and 0327 / 0333 close battles with).
 --   THE HOUR: navy_ships.fought_at (new, this file's) and pirate_ships.fought_at (W17's column, W19's to write) are both stamped; a ship with either stamp inside the hour is passed over. One row each, no table of fights.
 --   AFTER THE HULLS, the lines a battle's close uses and no new path: a ship in port whose flagship is at 0 is UNABLE_TO_SAIL (0323's line); every hull at 0 at sea under 0322's rule is voyage.npc_wreck (0333's lines):
 --   a pirate ship respawns at her home, UNABLE_TO_SAIL, and public.npc_refit_step pays her REFIT from her home's purse (public.fleet_origin, W17's hunk); a navy ship at her station's cost. A wreck in port is found by her step.
@@ -29,9 +30,11 @@
 --   last fight on her card: navy_ships.fought {at, result, foe, sea}, served as `fought` by world.navy_ship_card only after one. result: WON (she boarded or was paid off), LOST (thrown back, or she broke off), DREW (stood off,
 --   slipped, nobody touched), SUNK (every pirate hull at 0). NO GOLD MOVES in a fight: no purse, no book, no ledger row. W (players + merchants + purses + set aside + funds aboard) is unchanged, proved.
 --
--- THE REGARD HOOK (2.1, the pirate row that is a fight's: "Drive off a pirate ship | +30, every great power | regard_pirate"): in public.attack_close, a company whose attack beat a pirate ship (boarded, paid off, or every
---   hull at 0) earns regard_pirate with EVERY great power but the pirates, reason DROVE_OFF_PIRATE, once a battle, through public.regard_add (dark with regard_enabled: writes nothing). Beaten by her: nothing. Sinking her
---   costs nothing with the pirates: public.crown_nation answers null for her, so 0333's sink line writes nothing. The trade row (-5 at a pirate port) is the pirate port's limit, W18's table (7.6). A navy's fight moves no regard.
+-- THE REGARD HOOK (2.1, the pirate row that is a fight's: "Drive off a pirate ship | +30, every great power"): in public.attack_close, a company whose attack beat a pirate ship (boarded, paid off, or every hull at 0) earns
+--   regard_pirate_beaten (30) with EVERY great power but the pirates, reason DROVE_OFF_PIRATE, once a battle, through public.regard_add (dark with regard_enabled: writes nothing). Beaten by her: nothing. The design's knob
+--   name regard_pirate is 0339's: the press-time cost with the Brethren (-50, reason ATTACK_PIRATE); this is the close's reward with the ten, so it has its own name. Sinking her costs regard_sink with the Brethren through
+--   0333's sink line, because 0339's public.crown_nation answers the Brethren for her (and 0339 keeps the pirates off the WANTED list). The trade row (-5 at a pirate port) is the pirate port's limit, W18's table (7.6).
+--   A navy's own fight moves no regard: no company is party to it.
 --
 -- THE RE-CUTS (hunks of the live bodies, read on the world at head 0338 + W17; each occurs once and reverses to its pre-image; these supersede the same lines of 0323, 0327, 0331, 0333 and 0334):
 --   public.tick_navy (3):          v_fights; the hunt pass before the steps, lit only; the answer gains `fights` only when the pass ran.
@@ -39,7 +42,7 @@
 --   public.battle_resolve (1):     the hull statement lifted into public.fight_hulls_write. Same statement.
 --   public.attack_close (1):       the regard hook, before 0334's mark.
 --   world.navy_ship_card (1):      `fought`, after a fight only.
--- NEW: navy_ships.fought_at, fought, hunt_port, hunt_until. Knobs navy_hunt_hours 6, navy_hunts_per_run 5, regard_pirate 30. Functions navy_hunts_on, fleet_sea, navy_hunt_targets, navy_hunt_step, fight_hulls_write,
+-- NEW: navy_ships.fought_at, fought, hunt_port, hunt_until. Knobs navy_hunt_hours 6, navy_hunts_per_run 5, regard_pirate_beaten 30. Functions navy_hunts_on, fleet_sea, navy_hunt_targets, navy_hunt_step, fight_hulls_write,
 --   navy_fight, navy_hunt_pass. No new job, no new entry point, no new word of money. Nothing minted.
 --
 -- SELF-ASSERT: the catalog, stable reads and arithmetic only: hunks once and reversing; ACL, volatility and config unmoved; no other function, knob or job; both switches off; no row written; the targets of one station in order.
@@ -65,7 +68,7 @@ declare
   v_meta_before  text;
   v_cron_before  text;
   v_cron_after   text;
-  c_keys constant text[] := array['navy_hunt_hours', 'navy_hunts_per_run', 'regard_pirate'];
+  c_keys constant text[] := array['navy_hunt_hours', 'navy_hunts_per_run', 'regard_pirate_beaten'];
   c_new_fns constant text[] := array[
     'public.navy_hunts_on()', 'public.fleet_sea(uuid,timestamp with time zone)', 'public.navy_hunt_targets(uuid,timestamp with time zone)',
     'public.navy_hunt_step(uuid,uuid,uuid,boolean,timestamp with time zone)', 'public.fight_hulls_write(jsonb)', 'public.navy_fight(uuid,uuid,timestamp with time zone)',
@@ -90,9 +93,8 @@ begin
     raise exception '0341 refuses: 0338 (the pirates, the 11th power) is not in this world';
   end if;
   if to_regclass('public.pirate_ships') is null or to_regprocedure('public.pirates_on()') is null or to_regprocedure('public.pirate_ship_in_sea(uuid)') is null
-     or to_regprocedure('public.pirate_side(uuid)') is null
      or not exists (select 1 from pg_attribute a where a.attrelid = 'public.pirate_ships'::regclass and a.attname = 'fought_at' and not a.attisdropped) then
-    raise exception '0341 refuses: W17 (the pirate ships, their switch, public.pirate_ship_in_sea, public.pirate_side, pirate_ships.fought_at) is not in this world';
+    raise exception '0341 refuses: W17 (the pirate ships, their switch, public.pirate_ship_in_sea, pirate_ships.fought_at) is not in this world';
   end if;
   if to_regprocedure('voyage.sea_danger(uuid,timestamp with time zone)') is null or to_regprocedure('voyage.fleet_hulls(uuid)') is null or to_regprocedure('public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)') is null then
     raise exception '0341 refuses: 0320 / 0323 / 0330 (the fight, a fleet as a side, the danger) are not in this world';
@@ -116,7 +118,7 @@ begin
   insert into public.world_config (key, value, description) values
     ('navy_hunt_hours', to_jsonb(6), '0341: how long a navy ship on the hunt lies at the harbour of the sea she hunts (or at her station, watching her own sea) before she sails home and picks again (public.navy_hunt_step).'),
     ('navy_hunts_per_run', to_jsonb(5), '0341: the most navy-against-pirate fights one run of public.tick_navy resolves (public.navy_hunt_pass). The rest wait a minute. Each fight is at most once an hour a ship, which is no knob.'),
-    ('regard_pirate', to_jsonb(30), '0341 (docs/WORLD_POWERS.md 2.1): regard with EVERY great power but the pirates for beating a pirate ship in an attack (public.attack_close, reason DROVE_OFF_PIRATE).');
+    ('regard_pirate_beaten', to_jsonb(30), '0341 (docs/WORLD_POWERS.md 2.1, "drive off a pirate ship"): regard with EVERY great power but the pirates for beating a pirate ship in an attack (public.attack_close, reason DROVE_OFF_PIRATE). 0339''s regard_pirate is the press''s cost with the Brethren.');
 
   alter table public.navy_ships
     add column fought_at  timestamptz,
@@ -293,13 +295,13 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0341: NAVY AGAINST PIRATE, one fight (docs/WORLD_POWERS.md 6.4; W17's contract): public.fight_sides seeded by her fleet and keyed by the UTC hour, the pirate ship the side set upon (public.pirate_side), the navy ship the
--- side that closes (voyage.fleet_hulls, as a player's fleet is built), no sizing up, no timer. Hull loss lands on both (public.fight_hulls_write). Both hour-stamps are written. Then the lines a battle's close uses: a flagship
+-- 0341: NAVY AGAINST PIRATE, one fight (docs/WORLD_POWERS.md 6.4; W17's contract): public.fight_sides seeded by her fleet and keyed by the UTC hour, the pirate ship the side set upon, the navy ship the side that closes,
+-- both built by voyage.fleet_hulls (the one builder, as a battle builds every side), no sizing up, no timer. Hull loss lands on both (public.fight_hulls_write). Both hour-stamps are written. Then the lines a battle's close uses: a flagship
 -- at 0 in port cannot sail (0323); every hull at 0 at sea under 0322's rule is a wreck now (0333's lines): she respawns at her origin and her home pays the refit. A wreck in port is found by her step. One public event,
 -- NAVY_FIGHT, the world's line; her card keeps the last. No gold moves. The caller holds both fleet rows and has settled both. Answers {result, outcome, event, hull_lost{navy, pirate}, sunk{navy, pirate}}.
 declare
   v_round  int := floor(extract(epoch from p_now) / 3600)::int;
-  v_a      jsonb := public.pirate_side(p_pirate);
+  v_a      jsonb := voyage.fleet_hulls(p_pirate);
   v_b      jsonb := voyage.fleet_hulls(p_navy);
   v_f      jsonb;
   v_res    text;
@@ -494,10 +496,10 @@ $h$),
   ('public.attack_close(uuid,jsonb,timestamp with time zone)', 1,
 $h$  -- 0334: her country remembers what it did not answer (docs/WORLD_POWERS.md section 5.3): she won, or no ship of it came in time.
 $h$,
-$h$  -- 0341 (docs/WORLD_POWERS.md 2.1, the pirate row): a pirate ship beaten (boarded, paid off, or every hull at 0) earns the company regard_pirate with EVERY great power but the pirates, once a battle. Beaten by her: nothing.
+$h$  -- 0341 (docs/WORLD_POWERS.md 2.1, the pirate row): a pirate ship beaten (boarded, paid off, or every hull at 0) earns the company regard_pirate_beaten with EVERY great power but the pirates, once a battle. Beaten by her: nothing.
   if public.fleet_kind(v_d) = 'PIRATE'
      and (v_out in ('PLUNDERED', 'RANSOM') or not exists (select 1 from public.ships s where s.fleet_id = v_d and s.durability > 0)) then
-    perform public.regard_add(v_a.player_id, g.nation_id, public.wc_num('regard_pirate'), 'DROVE_OFF_PIRATE')
+    perform public.regard_add(v_a.player_id, g.nation_id, public.wc_num('regard_pirate_beaten'), 'DROVE_OFF_PIRATE')
        from public.great_powers g join public.nations gn on gn.id = g.nation_id where not g.pirate order by gn.code;
   end if;
   -- 0334: her country remembers what it did not answer (docs/WORLD_POWERS.md section 5.3): she won, or no ship of it came in time.
@@ -563,7 +565,7 @@ $h$);
   if (select c.value from public.world_config c where c.key = 'navy_enabled') <> 'false'::jsonb or (select c.value from public.world_config c where c.key = 'pirates_bite') <> 'false'::jsonb then
     raise exception '0341 self-assert FAIL: a switch is not off';
   end if;
-  if (select string_agg(c.key || '=' || c.value::text, ',' order by c.key) from public.world_config c where c.key = any (c_keys)) <> 'navy_hunt_hours=6,navy_hunts_per_run=5,regard_pirate=30' then
+  if (select string_agg(c.key || '=' || c.value::text, ',' order by c.key) from public.world_config c where c.key = any (c_keys)) <> 'navy_hunt_hours=6,navy_hunts_per_run=5,regard_pirate_beaten=30' then
     raise exception '0341 self-assert FAIL: the knobs are not as shipped: %', (select string_agg(c.key || '=' || c.value::text, ',' order by c.key) from public.world_config c where c.key = any (c_keys));
   end if;
   if exists (select 1 from public.navy_ships n where n.fought_at is not null or n.fought is not null or n.hunt_port is not null or n.hunt_until is not null)
