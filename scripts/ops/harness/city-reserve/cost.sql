@@ -1,4 +1,6 @@
 -- 0343 COST SCENE: the price of the two re-cut readers, DARK (the switch off, as the file ships), run by proof-0343.mjs --cost before and after the file on the same world, rolled back. A stopwatch on wasm: read for the order of the cost.
+-- LOCAL PGlite WORLD ONLY: this scene WRITES (switches set, purse rows made). Its first statement refuses on a real server (PGlite has no server address; a Supabase connection has one). proof-0343.mjs refuses to run it without this guard.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_t0 timestamptz;

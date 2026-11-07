@@ -2,6 +2,9 @@
 -- It covers what 0343 cuts, with the switch off (as the file ships): the aid target, a donor's room and the hall's funds on the way at every harbour; the load room and the origins of every realm;
 -- the REAL public.crown_aid over the whole world (the instant path, every flow digested); and the REAL wind procedure, one pass over the world with its count holding the pace (not the clock),
 -- every request and rest row it wrote digested. It names only what existed before 0343.
+-- LOCAL PGlite WORLD ONLY: this scene WRITES (purses rewritten, switches flipped, the real aid and the real wind run). Its first statement refuses on a real server: PGlite has no server address, a
+-- Supabase connection has one, and `db query --linked -f` would COMMIT what the harness rolls back. proof-0343.mjs refuses to run a scene file without this guard.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_mark bigint := coalesce((select max(id) from public.treasury_flows), 0);

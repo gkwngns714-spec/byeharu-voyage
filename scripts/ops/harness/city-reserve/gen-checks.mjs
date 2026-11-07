@@ -58,10 +58,11 @@ ${values}
     from bodies b join applied a on a.fn = b.fn join removed r on r.fn = b.fn
     join pg_proc p on p.oid = to_regprocedure(b.fn)
 ), k as (
-  -- the live world's figures, read, never written: what the switch would do today (the formula inline before the deploy; the reader itself after it)
+  -- the live world's figures, read, never written: what the switch would do today (the formula inline before the deploy; the reader itself after it); a harbour of no crown keeps the flat knob
   select p.id, p.code, p.size_tier, coalesce(t.reserve, 0) as reserve, public.treasury_balance(p.id) as bal, public.city_capital(p.id) as cap,
          case when public.city_capital(p.id) is null then 'no_crown' when public.city_capital(p.id) = p.id then 'capital' else 'city' end as cls,
-         p.size_tier * 100000 * case when public.city_capital(p.id) = p.id then 5 else 1 end as size_d
+         case when public.city_capital(p.id) is null then round(public.wc_num('treasury_reserve_floor'))::bigint
+              else p.size_tier * 100000 * case when public.city_capital(p.id) = p.id then 5 else 1 end end as size_d
     from public.ports p left join public.port_treasury t on t.port_id = p.id
    where p.kind = 'HARBOUR'
 )`
@@ -88,7 +89,7 @@ ${figures}
 commit;
 `
 
-const after = `${head('after', 'Wanted (head 0343): every fns[].times entry [ord, 0, 1] except hunk 2 of tick_contract_wind ([2, 0, 1] as well: its old text is gone); now_md5 = before\'s with_hunks_md5 and without_hunks_md5 = before\'s now_md5; attr_md5 equal to before\'s; present all true; switch false; city_reserve_on false; knobs 100000 and 5; dark_parity_rows = harbours (the floor is the knob and the target is 0306\'s formula at every harbour); wind_reads_floor true; readers_server_only true; sizes: the formula at a tier-2 city, a tier-5 capital and the pirates\' capital (read, not written).')}
+const after = `${head('after', 'Wanted (head 0343): every fns[].times entry [ord, 0, 1] except hunk 2 of tick_contract_wind ([2, 0, 1] as well: its old text is gone); now_md5 = before\'s with_hunks_md5 and without_hunks_md5 = before\'s now_md5; attr_md5 equal to before\'s; present all true; switch false; city_reserve_on false; knobs 100000 and 5; dark_parity_rows = harbours (the floor is the knob and the target is 0306\'s formula at every harbour); wind_reads_floor true; readers_server_only true; sizes: the formula at a tier-2 city [city, 2, 200000, 200000] and a tier-5 capital [capital, 5, 2500000, 2500000], and the richest crownless harbour unsized with the flat floor [no_crown, 2, null, 50000] (read, not written).')}
 select jsonb_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'fns', (select jsonb_agg(jsonb_build_object('fn', x.fn, 'times', x.times, 'now_md5', x.now_md5, 'without_hunks_md5', x.without_hunks_md5, 'attr_md5', x.attr_md5) order by x.fn) from x),

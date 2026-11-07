@@ -14,10 +14,12 @@
 -- WHAT THIS FILE DOES (decided by default, each in the dev-log with its consequence):
 --   1. public.city_default_reserve(port): THE default reserve a harbour keeps by its size: ports.size_tier x city_reserve_per_tier (100,000 d.: tier 2 = 200,000, tier 3 = 300,000, tier 5 = 500,000),
 --      a capital's times city_reserve_capital_mult (5: the owner's "capital comes first", so 1.0 M / 1.5 M / 2.5 M). size_tier is the one size the world keeps for a harbour (stock and production
---      derive from it); the rolled reserve is NOT in it (the owner: "not by recent payouts"). A harbour of no crown (a free city, a pirate home, a city the pirates hold) is sized as a city of its tier:
---      nobody fills it (public.city_capital is null, so public.crown_aid's roster, a cargo ship and a donor's call never reach it: no crown money can move into the pirates through a reserve).
+--      derive from it); the rolled reserve is NOT in it (the owner: "not by recent payouts"). The size table and the capital's multiple are a CROWN'S: a harbour of no crown (a free city, a pirate
+--      home, a city the pirates hold) is NOT sized (null), and its floor stays the flat knob lit as dark, so nothing of theirs changes with the switch (the review of this file, 2026-11-07: sized
+--      at 200,000 while nobody can fill it, a pirate home holding 120,000 d. would stop posting requests). Nobody fills a crownless harbour (public.city_capital is null there, so public.crown_aid's
+--      roster, a cargo ship and a donor's call never reach it): no crown money can move into the pirates through a reserve, and no pirate purse reads a different floor.
 --   2. public.city_floor(port): THE level under which a harbour is short whatever its rolled reserve. Dark: the flat knob of 0306, every harbour alike, so the world reads byte for byte as before.
---      Lit: public.city_default_reserve. It REPLACES the flat floor exactly where that floor is read, and nowhere else.
+--      Lit: public.city_default_reserve for a crown city, the flat knob for a harbour of no crown. It REPLACES the flat floor exactly where that floor is read, and nowhere else.
 --   3. public.city_reserve_on(): THE one reader of the switch city_reserve_enabled (false; the owner lights it).
 --   4. THE RE-CUTS (hunks sliced from the LIVE bodies read in the cached head world at 0341, each asserted to occur exactly once and to reverse to its pre-image, ACL and settings unchanged;
 --      this file supersedes those lines of 0306's public.city_aid_target and of 0318's public.tick_contract_wind):
@@ -35,7 +37,7 @@
 -- SELF-ASSERT (the catalog, stable reads and arithmetic; a probe realm of its own rolled-back harbours, a pirate-held probe city and a crownless one; no real city is written, no real game step runs,
 -- docs/OPS_HEALTH.md section 4): the hunks once and reversing; no other function, ACL, knob, trigger or job moved; the switch false; the new functions STABLE, definer, server-only; DARK PARITY on the
 -- live world: public.city_floor is the knob and public.city_aid_target is 0306's formula at every harbour; on the probe: the sizes by tier, the capital's multiple, the crownless and the pirate-held
--- city sized as cities, a city that grows or shrinks, the knobs at 0 and 1, the floor dark 50,000 and lit the size, the target greatest(rolled, floor), bid / surplus / reserve the same at both
+-- city unsized at the flat floor at both states, a city that grows or shrinks, the knobs at 0 and 1, the floor dark 50,000 and lit the size, the target greatest(rolled, floor), bid / surplus / reserve the same at both
 -- states; then public.crown_aid narrowed to the probe realm (the instant path, with both ship switches set false inside the rolled-back probe): dark it is 0306's arithmetic to the ducat, lit each
 -- city is topped up to its default reserve, a second pass gives nothing, a broke capital gives nothing with no error, a poorer capital stops exactly at its rolled reserve, the pirate-held city and
 -- the crownless city are never aided, the sum of every probe purse is unchanged in every pass. THE REAL PATHS (public.city_day over the world, the cargo ships lit, the wind's gate, prices) ARE
@@ -116,7 +118,7 @@ begin
     ('city_reserve_enabled', 'false'::jsonb,
      '0343: THE switch of the default city reserve (owner row 281). False: a harbour''s floor is the flat treasury_reserve_floor of 0306. True: its default reserve by size (public.city_default_reserve). Read through public.city_reserve_on alone. Owner only.'),
     ('city_reserve_per_tier', to_jsonb(100000),
-     '0343: ducats of default reserve a harbour keeps per size tier (ports.size_tier 1-5): tier 2 = 200,000, tier 3 = 300,000, tier 5 = 500,000. Measured 2026-11-07: about 2 hours of a tier-2 city''s sale payouts. An aid target only: never a bid, never a spending lock. Read through public.city_default_reserve alone.'),
+     '0343: ducats of default reserve a crown city keeps per size tier (ports.size_tier 1-5): tier 2 = 200,000, tier 3 = 300,000, tier 5 = 500,000; a harbour of no crown keeps the flat treasury_reserve_floor. Measured 2026-11-07: about 2 hours of a tier-2 city''s sale payouts. An aid target only: never a bid, never a spending lock. Read through public.city_default_reserve alone.'),
     ('city_reserve_capital_mult', to_jsonb(5),
      '0343: a capital''s default reserve is this multiple of a city''s of its tier (owner 2026-11-05: "capital comes first"). Read through public.city_default_reserve alone.');
 
@@ -144,17 +146,18 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0343: THE default reserve a harbour keeps by its size (owner row 281: "cities should have gold reserve as default", "capital comes first"): ports.size_tier x city_reserve_per_tier,
-  -- a capital's times city_reserve_capital_mult. Not by recent payouts (the owner's word): the rolled reserve is not in it. A harbour of no crown (a free city, a pirate home, a city the pirates
-  -- hold) is sized as a city of its tier; nobody fills it (public.city_capital is null there, so no aid, no ship, no call reaches it). An AID TARGET and nothing else: public.city_bid_factor and
-  -- public.city_surplus do not read it. Null for a port that is no harbour.
+  -- 0343: THE default reserve a crown city keeps by its size (owner row 281: "cities should have gold reserve as default", "capital comes first"): ports.size_tier x city_reserve_per_tier,
+  -- a capital's times city_reserve_capital_mult. Not by recent payouts (the owner's word): the rolled reserve is not in it. NULL for a harbour of no crown (a free city, a pirate home, a city
+  -- the pirates hold: public.city_capital is null there): the size table is a crown's, nobody fills such a harbour (no aid, no ship, no call reaches it), and its floor stays the flat knob
+  -- (public.city_floor), so nothing of theirs changes with the switch. An AID TARGET and nothing else: public.city_bid_factor and public.city_surplus do not read it. Null for a port that is no harbour.
   select round(p.size_tier * public.wc_num('city_reserve_per_tier')
-               * case when public.city_capital(p.id) = p.id then public.wc_num('city_reserve_capital_mult') else 1 end)::bigint
-    from public.ports p where p.id = p_port and p.kind = 'HARBOUR'
+               * case when c.cap is null then null when c.cap = p.id then public.wc_num('city_reserve_capital_mult') else 1 end)::bigint
+    from public.ports p cross join lateral (select public.city_capital(p.id) as cap) c
+   where p.id = p_port and p.kind = 'HARBOUR'
 $body$
   $f$;
   revoke all on function public.city_default_reserve(uuid) from public, anon, authenticated;
-  comment on function public.city_default_reserve(uuid) is '0343: THE default reserve a harbour keeps by its size: size_tier x city_reserve_per_tier, a capital''s x city_reserve_capital_mult. An aid target only. Server-only.';
+  comment on function public.city_default_reserve(uuid) is '0343: THE default reserve a crown city keeps by its size: size_tier x city_reserve_per_tier, a capital''s x city_reserve_capital_mult; null for a harbour of no crown. An aid target only. Server-only.';
 
   execute $f$
 create function public.city_floor(p_port uuid)
@@ -166,13 +169,13 @@ set search_path = public, pg_temp
 as $body$
   -- 0343: THE level under which a harbour is short whatever its rolled reserve. Read by public.city_aid_target (the crown's aid: the roster, a cargo ship's delivery, a donor's room, the hall's
   -- funds on the way) and by public.tick_contract_wind (a short harbour posts no request), and by nothing else. Dark (city_reserve_enabled false): the flat knob treasury_reserve_floor of 0306,
-  -- every harbour alike. Lit: its default reserve by size (public.city_default_reserve).
-  select case when public.city_reserve_on() then coalesce(public.city_default_reserve(p_port), 0)
+  -- every harbour alike. Lit: a crown city's default reserve by size (public.city_default_reserve); a harbour of no crown (null there) keeps the flat knob, so nothing of the pirates' changes.
+  select case when public.city_reserve_on() then coalesce(public.city_default_reserve(p_port), round(public.wc_num('treasury_reserve_floor'))::bigint)
               else round(public.wc_num('treasury_reserve_floor'))::bigint end
 $body$
   $f$;
   revoke all on function public.city_floor(uuid) from public, anon, authenticated;
-  comment on function public.city_floor(uuid) is '0343: THE floor under which a harbour is short: 0306''s flat knob dark, its default reserve by size lit. Read by city_aid_target and tick_contract_wind alone. Server-only.';
+  comment on function public.city_floor(uuid) is '0343: THE floor under which a harbour is short: 0306''s flat knob dark; lit, a crown city''s default reserve by size and still the flat knob for a harbour of no crown. Read by city_aid_target and tick_contract_wind alone. Server-only.';
 
   -- ── 4. THE HUNKS: sliced from the live bodies, each once ──
   create temp table hunks_0343 (fn text, ord int, old text, new text) on commit drop;
@@ -391,12 +394,12 @@ $b$
   if (v_all ->> 'capital_of_p') is not null or (v_all ->> 'capital_of_x') is not null or not (v_all ->> 'capital_of_b')::boolean then
     raise exception '0343 self-assert FAIL: the probe''s crowns are not as planned: %', v_all;
   end if;
-  -- dark: every size is already the formula; every floor is 50,000; every target is greatest(rolled, 50,000)
-  if v_all -> 'dark' <> '{"QXA": [2500000, 50000, 50000], "QXB": [200000, 50000, 50000], "QXC": [300000, 50000, 50000], "QXD": [500000, 50000, 80000], "QXE": [200000, 50000, 777777], "QXP": [300000, 50000, 50000], "QXN": [200000, 50000, 50000]}'::jsonb then
+  -- dark: every crown size is already the formula and a crownless harbour has none; every floor is 50,000; every target is greatest(rolled, 50,000)
+  if v_all -> 'dark' <> '{"QXA": [2500000, 50000, 50000], "QXB": [200000, 50000, 50000], "QXC": [300000, 50000, 50000], "QXD": [500000, 50000, 80000], "QXE": [200000, 50000, 777777], "QXP": [null, 50000, 50000], "QXN": [null, 50000, 50000]}'::jsonb then
     raise exception '0343 self-assert FAIL: dark, the sizes, floors or targets are not as planned: %', v_all -> 'dark';
   end if;
-  -- lit: the floor is the size (tier x 100,000; the capital x 5; the pirate-held and the crownless sized as cities); the target is greatest(rolled, floor)
-  if v_all -> 'lit' <> '{"QXA": [2500000, 2500000, 2500000], "QXB": [200000, 200000, 200000], "QXC": [300000, 300000, 300000], "QXD": [500000, 500000, 500000], "QXE": [200000, 200000, 777777], "QXP": [300000, 300000, 300000], "QXN": [200000, 200000, 200000]}'::jsonb then
+  -- lit: a crown city's floor is its size (tier x 100,000; the capital x 5); the pirate-held and the crownless harbour keep the flat 50,000; the target is greatest(rolled, floor)
+  if v_all -> 'lit' <> '{"QXA": [2500000, 2500000, 2500000], "QXB": [200000, 200000, 200000], "QXC": [300000, 300000, 300000], "QXD": [500000, 500000, 500000], "QXE": [200000, 200000, 777777], "QXP": [null, 50000, 50000], "QXN": [null, 50000, 50000]}'::jsonb then
     raise exception '0343 self-assert FAIL: lit, the sizes, floors or targets are not as planned: %', v_all -> 'lit';
   end if;
   if (v_all ->> 'grown')::bigint <> 500000 or (v_all ->> 'shrunk')::bigint <> 100000 then
@@ -446,7 +449,7 @@ $b$
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0343 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0343 self-assert ok: THE DEFAULT CITY RESERVE, dark behind city_reserve_enabled. % hunks over % bodies, each once and reversing, grants unmoved; % readers made, server-only; % knobs; no other function, knob, trigger or job moved. Dark parity on the live world at every harbour. Probe realm: dark = 0306 (% d.), lit each city to its size (% d.), a capital stopped at its rolled reserve, a broke one gave nothing, the pirate-held and crownless cities never aided, purses summed moved 0. The real paths: proof 50, in CI. Printed, never asserted: % ms.',
+  raise notice '0343 self-assert ok: THE DEFAULT CITY RESERVE, dark behind city_reserve_enabled. % hunks over % bodies, each once and reversing, grants unmoved; % readers made, server-only; % knobs; no other function, knob, trigger or job moved. Dark parity on the live world at every harbour. Probe realm: dark = 0306 (% d.), lit each crown city to its size (% d.), a capital stopped at its rolled reserve, a broke one gave nothing, the pirate-held and crownless harbours unsized at the flat floor and never aided, purses summed moved 0. The real paths: proof 50, in CI. Printed, never asserted: % ms.',
     (select count(*) from hunks_0343), (select count(distinct h.fn) from hunks_0343 h), cardinality(c_new_fns), cardinality(c_keys),
     v_dark ->> 'aid', v_full ->> 'aid', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0343;

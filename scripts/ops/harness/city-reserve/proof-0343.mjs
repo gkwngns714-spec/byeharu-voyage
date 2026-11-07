@@ -32,9 +32,17 @@ for (const name of await migrationFiles()) {
   if (name >= NAME) continue
   files.push({ name, sql: await readFile(path.join(MIGRATIONS_DIR, name), 'utf8') })
 }
-const file = (await readFile(path.join(MIGRATIONS_DIR, NAME), 'utf8')).replaceAll('\r', '')
+const file = (await readFile(MIGRATIONS_DIR + path.sep + NAME, 'utf8')).replaceAll('\r', '')
 const proof = (await readFile(PROOF, 'utf8')).replaceAll('\r', '')
-const scene = (await readFile(SCENE, 'utf8')).replaceAll('\r', '')
+// a scene WRITES; it may run only on the local PGlite world, so its first statement must refuse a real server (the repo's harness files are read-only on prod)
+const GUARD = "do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;"
+const guarded = async (name) => {
+  const text = (await readFile(name, 'utf8')).replaceAll('\r', '')
+  const firstStatement = text.split('\n').find((l) => !l.startsWith('--') && l.trim() !== '')
+  if (firstStatement !== GUARD) throw new Error(`${name} does not start with the local-only guard; a scene that writes must refuse a real server`)
+  return text
+}
+const scene = await guarded(SCENE)
 const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir: PREFIX_CACHE_DIR, log: say, required: true, snapshots: false })
 const db = out.db
 say(`world: head ${files.at(-1).name.slice(0, 14)}, ${out.restored} of ${files.length} restored, ${out.applied.filter((r) => !r.restored).length} applied`)
@@ -104,7 +112,7 @@ if (!only) {
 
 // THE COST OF THE TWO READERS, DARK
 if (process.argv.includes('--cost')) {
-  const cost = (await readFile(COST, 'utf8')).replaceAll('\r', '')
+  const cost = await guarded(COST)
   const before = await attempt(cost)
   const after = await attempt(file, cost)
   for (const [label, r] of [['before', before], ['after ', after]]) {

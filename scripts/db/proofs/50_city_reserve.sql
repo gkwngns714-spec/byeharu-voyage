@@ -6,14 +6,14 @@
 --   REAL price terms, on real harbours of Portugal's realm, the pirates' harbours and a free city, every pass rolled back by proof.mjs. The economy is CLOSED and the purses lit, as on prod.
 --
 -- @pass RES_DARK    off: at every harbour the floor is the flat knob and the target is 0306's formula; the real city_day over the world is 0306's rule to the ducat (a broke city to 50,000, a city under a higher rolled reserve to it)
--- @pass RES_SIZE    lit: the size is tier x 100,000 at real harbours of tiers 2, 3 and 5, a capital's x 5 and the realm's largest, a pirate home and a free city sized as cities, a city that grows or shrinks reads its new size, the knobs move it
--- @pass RES_TARGET  lit: at every harbour the target is greatest(rolled reserve, size); the rolled reserve wins where it is higher
+-- @pass RES_SIZE    lit: the size is tier x 100,000 at real harbours of tiers 2, 3 and 5, a capital's x 5 and the realm's largest; a harbour of no crown (the pirates' capital, a pirate home, a taken city, a free city) has no size and keeps the flat floor; a city that grows or shrinks reads its new size; the knobs move it
+-- @pass RES_TARGET  lit: at every crown harbour the target is greatest(rolled reserve, size), at every crownless one greatest(rolled reserve, the flat knob); the rolled reserve wins where it is higher
 -- @pass RES_FILL    lit, the instant path (ships off): the real city_day tops the realm's short cities up to their sizes from the capital, exactly, the answer equal to its flows; a second run gives nothing; a poorer capital stops exactly at its rolled reserve
 -- @pass RES_BROKE   lit: a capital under its rolled reserve with no donor lays nothing off, no error, on both paths (nothing instant, nothing loaded)
 -- @pass RES_SHIPS   lit, rich cities send the ships (as prod runs): the roster holds the capital with its size, one ship loads the realm's whole need at the donor, the donor keeps its own size (crown_call_room), no CROWN_AID and no CROWN_CALL
 -- @pass RES_PIRATE  the pirates' capital, a pirate home and a crown city the pirates took, all under their size: no aid, no load, no call reaches them on either path, the hoard does not move; the realm's own city is still aided
 -- @pass RES_PRICE   never a price: world.price_terms, city_bid_factor, city_surplus and the rolled reserve are the same at both states for a city under its size, with and without a rolled reserve; a broke city's bid is 1 with no rolled reserve
--- @pass RES_WIND    the wind's gate: dark, a harbour at 49,999 posts no request and one at 50,000 is asked; lit, one at its size less 1 is left alone and one at its size is asked
+-- @pass RES_WIND    the wind's gate: dark, a harbour at 49,999 posts no request and one at 50,000 is asked; lit, a crown city at its size less 1 is left alone and one at its size is asked, and a pirate home is still judged by the flat 50,000 (left alone at 49,999, asked at 120,000)
 -- @pass RES_MONEY   W (purses + companies + funds aboard) unchanged to the ducat across every aid pass above; the switch and the knobs end as the file shipped them
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -179,11 +179,9 @@ $b$
     raise exception 'PROOF 50 FAIL: the size is not tier x 100,000, the capital x 5 and the realm''s largest: % % % cap % a %',
       public.city_default_reserve(v_t2), public.city_default_reserve(v_t3), public.city_default_reserve(v_t5), v_size_cap, v_size_a;
   end if;
-  if public.city_default_reserve(v_por) <> (select p.size_tier from public.ports p where p.id = v_por) * 100000
-     or public.city_default_reserve(v_home) <> (select p.size_tier from public.ports p where p.id = v_home) * 100000
-     or public.city_default_reserve(v_taken) <> (select p.size_tier from public.ports p where p.id = v_taken) * 100000
-     or public.city_default_reserve(v_free) <> (select p.size_tier from public.ports p where p.id = v_free) * 100000 then
-    raise exception 'PROOF 50 FAIL: a harbour of no crown is not sized as a city of its tier';
+  if public.city_default_reserve(v_por) is not null or public.city_default_reserve(v_home) is not null or public.city_default_reserve(v_taken) is not null or public.city_default_reserve(v_free) is not null
+     or public.city_floor(v_por) <> 50000 or public.city_floor(v_home) <> 50000 or public.city_floor(v_taken) <> 50000 or public.city_floor(v_free) <> 50000 then
+    raise exception 'PROOF 50 FAIL: a harbour of no crown is sized, or does not keep the flat floor lit: % % % %', public.city_floor(v_por), public.city_floor(v_home), public.city_floor(v_taken), public.city_floor(v_free);
   end if;
   update public.ports set size_tier = 5 where id = v_t2;
   v_n := public.city_default_reserve(v_t2);
@@ -199,17 +197,17 @@ $b$
   end if;
   update public.world_config set value = to_jsonb(100000) where key = 'city_reserve_per_tier';
   update public.world_config set value = to_jsonb(5) where key = 'city_reserve_capital_mult';
-  raise notice 'PASS: RES_SIZE — tiers 2/3/5 = 200,000 / 300,000 / 500,000; the capital % (x5, the realm''s largest); the pirates'' capital, a pirate home, a taken city and a free city sized as cities; grown 500,000, shrunk 100,000; knobs 70,000 x 3 read', v_size_cap;
+  raise notice 'PASS: RES_SIZE — tiers 2/3/5 = 200,000 / 300,000 / 500,000; the capital % (x5, the realm''s largest); the pirates'' capital, a pirate home, a taken city and a free city unsized, their floor the flat 50,000 lit; grown 500,000, shrunk 100,000; knobs 70,000 x 3 read', v_size_cap;
 
   -- ── RES_TARGET ──
   update public.port_treasury set reserve = 777777 where port_id = v_t2;   -- a rolled reserve above its size
   select count(*) into v_bad from public.ports p join public.port_treasury t on t.port_id = p.id
-   where p.kind = 'HARBOUR' and (public.city_floor(p.id) <> public.city_default_reserve(p.id) or public.city_aid_target(p.id) <> greatest(t.reserve, public.city_default_reserve(p.id)));
-  if v_bad <> 0 or public.city_aid_target(v_t2) <> 777777 or public.city_aid_target(v_b) <> v_size_b then
-    raise exception 'PROOF 50 FAIL: lit, % harbour(s) do not read greatest(rolled, size); t2 %, b %', v_bad, public.city_aid_target(v_t2), public.city_aid_target(v_b);
+   where p.kind = 'HARBOUR' and (public.city_floor(p.id) <> coalesce(public.city_default_reserve(p.id), 50000) or public.city_aid_target(p.id) <> greatest(t.reserve, coalesce(public.city_default_reserve(p.id), 50000)));
+  if v_bad <> 0 or public.city_aid_target(v_t2) <> 777777 or public.city_aid_target(v_b) <> v_size_b or public.city_aid_target(v_home) <> 50000 then
+    raise exception 'PROOF 50 FAIL: lit, % harbour(s) do not read greatest(rolled, size or the flat knob); t2 %, b %, home %', v_bad, public.city_aid_target(v_t2), public.city_aid_target(v_b), public.city_aid_target(v_home);
   end if;
   update public.port_treasury set reserve = 0 where port_id = v_t2;
-  raise notice 'PASS: RES_TARGET — every harbour at greatest(rolled reserve, size); a 777,777 rolled reserve wins over a 200,000 size';
+  raise notice 'PASS: RES_TARGET — every crown harbour at greatest(rolled reserve, size), every crownless one at greatest(rolled reserve, 50,000); a 777,777 rolled reserve wins over a 200,000 size';
 
   -- ── RES_FILL: the instant path through the real city_day (ships still off) ──
   -- v_a is at 1,000 + 49,000 = 50,000 and v_b at 60,000 after RES_DARK; the pirate harbours at 100
@@ -324,7 +322,7 @@ $b$
      or public.treasury_balance(v_por) <> 100 or public.treasury_balance(v_home) <> 100 or public.treasury_balance(v_taken) <> 100 or public.pirate_hoard() <> (v_y ->> 'hoard')::bigint or pg_temp.w() <> v_w then
     raise exception 'PROOF 50 FAIL: instant, the pirates were reached, or the realm''s city was not aided: % % %', v_r, pg_temp.flows(v_mark), v_y;
   end if;
-  raise notice 'PASS: RES_PIRATE — the pirates'' capital, a home and a taken city at 100 d. under their sizes: no flow on either path, the hoard % unmoved; the realm''s city aided % (ships: loaded for)', v_y ->> 'hoard', v_size_a - 1000;
+  raise notice 'PASS: RES_PIRATE — the pirates'' capital, a home and a taken city at 100 d. under the flat floor: no flow on either path, the hoard % unmoved; the realm''s city aided % (ships: loaded for)', v_y ->> 'hoard', v_size_a - 1000;
 
   -- ── RES_PRICE: never a price ──
   perform pg_temp.purse(v_t3, 100);   -- under its size, no rolled reserve
@@ -361,7 +359,14 @@ $b$
   if v_n <> 0 or pg_temp.wind(v_t2, v_slot) <> 1 then
     raise exception 'PROOF 50 FAIL: lit, the wind''s gate is not the city''s size (199,999 tried %, 200,000 tried %)', v_n, pg_temp.wind(v_t2, v_slot);
   end if;
-  raise notice 'PASS: RES_WIND — dark: 49,999 left alone, 50,000 asked; lit: 199,999 left alone, 200,000 asked (a tier-2 city)';
+  -- a pirate home lit is still judged by the flat floor: nothing of the pirates' changes with the switch
+  perform pg_temp.purse(v_home, 49999);
+  v_n := pg_temp.wind(v_home, v_slot);
+  perform pg_temp.purse(v_home, 120000);
+  if v_n <> 0 or pg_temp.wind(v_home, v_slot) <> 1 then
+    raise exception 'PROOF 50 FAIL: lit, a pirate home is not judged by the flat floor (49,999 tried %, 120,000 tried %)', v_n, pg_temp.wind(v_home, v_slot);
+  end if;
+  raise notice 'PASS: RES_WIND — dark: 49,999 left alone, 50,000 asked; lit: a tier-2 city 199,999 left alone, 200,000 asked; a pirate home lit 49,999 left alone, 120,000 asked (the flat floor)';
 
   -- ── RES_MONEY ──
   if public.wc_num('city_reserve_per_tier') <> 100000 or public.wc_num('city_reserve_capital_mult') <> 5 or not public.city_reserve_on() then

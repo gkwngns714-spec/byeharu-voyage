@@ -54,10 +54,11 @@ $h$)
     from bodies b join applied a on a.fn = b.fn join removed r on r.fn = b.fn
     join pg_proc p on p.oid = to_regprocedure(b.fn)
 ), k as (
-  -- the live world's figures, read, never written: what the switch would do today (the formula inline before the deploy; the reader itself after it)
+  -- the live world's figures, read, never written: what the switch would do today (the formula inline before the deploy; the reader itself after it); a harbour of no crown keeps the flat knob
   select p.id, p.code, p.size_tier, coalesce(t.reserve, 0) as reserve, public.treasury_balance(p.id) as bal, public.city_capital(p.id) as cap,
          case when public.city_capital(p.id) is null then 'no_crown' when public.city_capital(p.id) = p.id then 'capital' else 'city' end as cls,
-         p.size_tier * 100000 * case when public.city_capital(p.id) = p.id then 5 else 1 end as size_d
+         case when public.city_capital(p.id) is null then round(public.wc_num('treasury_reserve_floor'))::bigint
+              else p.size_tier * 100000 * case when public.city_capital(p.id) = p.id then 5 else 1 end end as size_d
     from public.ports p left join public.port_treasury t on t.port_id = p.id
    where p.kind = 'HARBOUR'
 )
