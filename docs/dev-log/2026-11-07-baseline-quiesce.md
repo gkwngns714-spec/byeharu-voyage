@@ -47,9 +47,13 @@ again for every new job that writes data.
 **Why D-chain had 0 runs in its 74 minutes of apply although the job was active for the tail (measured, not guessed):**
 the job did not exist for 74 minutes. 0315 scheduled it about 01:04:12, which is 35 s before `supabase start` returned
 (01:04:47) and 48 s before the first minute boundary (01:05:00). No boundary fell inside the apply, so nothing had fired
-when the lines began. It is not that pg_cron waits for `supabase start`, and no migration removes a receipt. A chain
-whose tail crosses a boundary would show earlier runs; the new `quiesce` report prints `cron.job_run_details` per job
-(count, first and last start) right after `supabase start`, so each run settles it (the from-zero run is below).
+when the lines began. It is not that pg_cron waits for `supabase start`, and no migration removes a receipt. The from-zero
+run below shows the other case: there 0315 scheduled `contract-wind` about 03:10:52, the boundary 03:11:00 fell 8 s later,
+inside the tail, and the `quiesce` report (it prints `cron.job_run_details` per job right after `supabase start`) lists
+3 runs, all `succeeded` at 03:11:00.009 to 03:11:00.014: `cargo-ships`, `contract-wind` and `battles`, the three every-minute
+jobs that existed by then (`navy`, scheduled by 0331 a second later, did not). The `contract-wind` receipt survived the
+migrations that started after it (0328 onward) and is in both D-chain and D-base. So pg_cron fires during the apply, and
+whether D-chain holds runs when the lines begin is only a matter of where the minute boundary falls.
 
 ## The design
 
@@ -105,10 +109,12 @@ gate proves that pair.
    and what `docs/CHAIN_BASELINE.md` §1.2 says the baseline does ("jobs start inactive … `wind_the_clock()` remains the
    one switch"); the six running jobs come from 0309..0331, whose scheduling lines do not stop their jobs as 0078's rule asks.
    `wind_the_clock()` starts all 19, not only the six.
-2. The baseline carries any receipt a job wrote between the last migration and the pause. `quiet-mark.json` says how many
-   runs there were (`runs_before_pause`). Cut S2's baseline from a from-zero run where it is 0.
+2. The baseline carries any receipt a job wrote before the pause, mid-tail or while `supabase start` finished its services.
+   `quiet-mark.json` says how many runs there were (`runs_before_pause`): 3 in the from-zero run below (one `contract_wind_runs`
+   row among its effects), 0 in the failing night's. Cut S2's baseline from a from-zero run where it is 0, or accept those rows.
 3. While the six jobs stay active at the end of the chain, the tail migrations after them apply with ticks running
-   (0078's hazard). The tail is 22 s today, shorter than a minute; a longer tail can cross a boundary. Not changed here.
+   (0078's hazard). The tail from 0309 to the last migration took 22 s and 17 s in the two from-zero runs measured, so it
+is shorter than a minute, so it crosses a boundary only some of the time (one of the two runs measured did). Not changed here.
 
 ## Not fixed here: three of the four reds were migration 0226, not this
 
@@ -155,11 +161,17 @@ minute boundary (`hh:mm:00`) fall between the quiet mark and the D-chain quiet-c
 | 42327716328 | snapshot | 54206b8 | 02:11:07 to 02:11:30, none inside | 02:12:30 to 02:12:47, none inside | 4 runs at 02:13:00 |
 | 42328768805 | snapshot | 54206b8 | 02:23:35 to 02:24:09, **02:24:00 inside** | 02:25:20 to 02:25:44, none inside | 4 runs at 02:26:00 |
 | 42329312354 | snapshot | 54206b8 | 02:29:53 to 02:30:27, **02:30:00 inside** | 02:31:47 to 02:32:12, **02:32:00 inside** | 4 runs at 02:33:00 |
-| 42327697869 | **zero** | 54206b8 | (below) | (below) | (below) |
+| 42327697869 | **zero** | 54206b8 | 03:11:31 to 03:12:00, 03:12:00 inside (the check ran 1 s after it) | 03:13:11 to 03:13:31, none inside | 4 runs at 03:14:00 |
 
-All four snapshot runs are green: the five gate compares (catalog, content-exact, content-stable, cron, the as-left
-cron lines) EQUAL, and both D-base = D-pglite compares EQUAL. In the three runs with a boundary inside a window the
-jobs would have fired under the old workflow (four are `* * * * *`); under this one `quiet-check` found no active job
-and no run after the mark. The positive control shows the other half: once `baseline-clock.sql` starts the jobs, the
+All five runs are green (snapshot x4, zero x1): the five gate compares (catalog, content-exact, content-stable, cron, the as-left
+cron lines) EQUAL, and both D-base = D-pglite compares EQUAL. In the four runs with a boundary inside a window the
+jobs would have fired under the old workflow (four of them are `* * * * *`); under this one `quiet-check` found no active
+job and no run after the mark. The positive control shows the other half: once `baseline-clock.sql` starts the jobs, the
 next boundary writes four `succeeded` rows into `cron.job_run_details` with start times a few milliseconds after
 `hh:mm:00`, so the guard reads a real record.
+
+**The from-zero run, 42327697869** (started 02:08:18 UTC, 62 min of apply, job green in 66 min): 0226 applied at 03:07:23
+(hour 03, outside the 0226 window above). `supabase start` returned 03:11:25; `quiesce` ran 03:11:28 to 03:11:32, found
+6 of 19 jobs active and 3 runs so far (the 03:11:00 boundary, mid-tail), paused, marked run id 3. All five gate compares and
+both PGlite compares are EQUAL, `quiet (D-chain)` and both `quiet (D-base, …)` checks passed, the PGlite receipt reads
+"19 cron job(s) defined and none running", and the control saw the four every-minute jobs fire at 03:14:00.
