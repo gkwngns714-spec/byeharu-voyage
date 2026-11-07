@@ -106,10 +106,25 @@ test('a navy ship: lit, her card offers the attack, and every duty and the navy 
   expect(card.ok, JSON.stringify(card)).toBe(true)
   if (!card.ok) return
   expect(card.value.attack).toBe(true)
+  // 0340: no fight yet, no key; her last fight with a pirate ship, served once there was one, reads back with its words
+  expect('fought' in card.value).toBe(false)
   for (const locale of ['en', 'ko'] as const) {
-    for (const key of ['mission_PATROL', 'mission_ESCORT', 'mission_REINFORCE', 'attackNavy', 'attackNavyIn']) expect(translateMaybe(locale, 'map', key), `${locale} ${key}`).toBeTruthy()
+    for (const key of ['mission_PATROL', 'mission_ESCORT', 'mission_REINFORCE', 'mission_HUNT', 'lastFight', 'fight_WON', 'fight_LOST', 'fight_DREW', 'fight_SUNK', 'attackNavy', 'attackNavyIn'])
+      expect(translateMaybe(locale, 'map', key), `${locale} ${key}`).toBeTruthy()
     expect(translateMaybe(locale, 'domain', 'navyArrives')).toBeTruthy()
   }
+  await db.callAs(
+    `with f as (update public.navy_ships n set mission = 'HUNT', fought_at = now(), fought = jsonb_build_object('at', now(), 'result', 'WON', 'foe', 'Pirate ship 1', 'sea', 'MED') where n.fleet_id = $1 returning 1)
+     select count(*)::int as result from f`,
+    [ship],
+  )
+  const fought = await worldNavyShipCard(ship)
+  expect(fought.ok, JSON.stringify(fought)).toBe(true)
+  if (!fought.ok) return
+  expect(fought.value.mission).toBe('HUNT')
+  expect(fought.value.fought?.result).toBe('WON')
+  expect(fought.value.fought?.foe).toBe('Pirate ship 1')
+  expect(fought.value.fought?.sea).toBe('MED')
   await light(['navy_enabled'], false)
 })
 

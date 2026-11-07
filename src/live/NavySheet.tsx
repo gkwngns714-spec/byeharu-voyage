@@ -83,9 +83,23 @@ function NavyBody({ card }: { card: NavyShipCard }) {
           mark={<IconDisc name="history" />}
           label={t('map.mission')}
           value={card.laid_up ? t('map.laidUp') : t(`map.mission_${card.mission}`)}
-          hairline={card.next.length > 0}
+          hairline={card.next.length > 0 || card.fought !== undefined}
           data-testid="navy-mission"
         />
+        {card.fought !== undefined && (
+          // 0340: her last fight with a pirate ship, served only after one: how it went, and whom she met.
+          <Row
+            mark={<IconDisc name="ship" />}
+            label={t('map.lastFight')}
+            value={
+              <>
+                {t(`map.fight_${card.fought.result}`)} · {card.fought.foe}
+              </>
+            }
+            hairline={card.next.length > 0}
+            data-testid="navy-fought"
+          />
+        )}
         {card.next.length > 0 && (
           <Row
             mark={<IconDisc name="compass" />}
