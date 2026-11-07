@@ -38,6 +38,7 @@
 // USAGE (every command reads/writes plain files; DB_URL is a postgres:// URL to a local database)
 //   node scripts/db/baseline/baseline.mjs quiesce     --db-url URL --out-dir DIR   (save the as-left cron flags, pause every job, wait for runs in flight, mark)
 //   node scripts/db/baseline/baseline.mjs quiet-check --db-url URL --label NAME [--mark FILE]   (exit 1 if a job is active or a run started after the mark)
+//   node scripts/db/baseline/baseline.mjs see-a-run   --db-url URL [--wait-seconds N]   (positive control: with jobs active, a real run must show up)
 //   node scripts/db/baseline/baseline.mjs cron-lines  --db-url URL --out FILE
 //   node scripts/db/baseline/baseline.mjs build   --db-url URL --container NAME --out FILE --cron-as-left FILE --clock-out FILE
 //   node scripts/db/baseline/baseline.mjs lines   --db-url URL --out-dir DIR      (catalog, content, cron)
@@ -254,15 +255,20 @@ async function quiesceDb(pg, outDir, { settleMs = 3000, waitSeconds = 120 } = {}
   return mark
 }
 
+/** The runs that started after `runid`, oldest first. A run still 'starting' has no start time yet, so the run id is the test. */
+async function runsAfter(pg, runid) {
+  if (!/^\d+$/.test(String(runid))) throw new Error(`bad mark run id: ${runid}`)
+  return (
+    await pg.query(`select r.runid::text as runid, coalesce(j.jobname, '(job ' || r.jobid || ' gone)') as job, r.status, coalesce(r.start_time::text, 'not started') as started
+                      from cron.job_run_details r left join cron.job j on j.jobid = r.jobid where r.runid > ${runid} order by r.runid`)
+  ).rows
+}
+
 /** true when no job is active and no run started after the mark; otherwise prints one ::error:: per finding. */
 async function quietCheckDb(pg, label, mark) {
   await needCron(pg, `quiet-check (${label})`)
-  if (!/^\d+$/.test(String(mark.runid))) throw new Error(`bad mark run id: ${mark.runid}`)
   const active = (await pg.query(`select jobname from cron.job where active order by 1`)).rows.map((r) => r.jobname)
-  const fired = (
-    await pg.query(`select r.runid::text as runid, coalesce(j.jobname, '(job ' || r.jobid || ' gone)') as job, r.status, coalesce(r.start_time::text, 'not started') as started
-                      from cron.job_run_details r left join cron.job j on j.jobid = r.jobid where r.runid > ${mark.runid} order by r.runid`)
-  ).rows
+  const fired = await runsAfter(pg, mark.runid)
   for (const r of fired.slice(0, 10)) {
     console.log(`::error::cron fired during sampling (${label}): ${r.job}, run ${r.runid}, started ${r.started} (${r.status}); the quiet mark was run id ${mark.runid} at ${mark.at}`)
   }
@@ -271,6 +277,27 @@ async function quietCheckDb(pg, label, mark) {
   const jobs = (await pg.query(`select count(*)::int as n from cron.job`)).rows[0].n
   if (!fired.length && !active.length) console.log(`quiet (${label}): ${jobs} job(s) defined, none active, no run after run id ${mark.runid} (${mark.at})`)
   return !fired.length && !active.length
+}
+
+/**
+ * POSITIVE CONTROL for quiet-check: with jobs active, a real cron run must show up in cron.job_run_details within
+ * `waitSeconds`. A guard that has never been seen to fire proves nothing (cron.log_run off, or a launcher that does not
+ * run, would make it pass on every night for the wrong reason).
+ */
+async function seeARunDb(pg, { waitSeconds = 90 } = {}) {
+  await needCron(pg, 'see-a-run')
+  const active = (await pg.query(`select count(*)::int as n from cron.job where active`)).rows[0].n
+  if (!active) throw new Error('see-a-run: no job is active, so there is nothing to see')
+  const mark = (await pg.query(`select coalesce(max(runid), 0)::text as runid from cron.job_run_details`)).rows[0].runid
+  for (let t = 0; t <= waitSeconds; t += 1) {
+    const fired = await runsAfter(pg, mark)
+    if (fired.length) {
+      console.log(`control ok: the guard sees a real cron run after ${t} s: ${fired[0].job}, run ${fired[0].runid}, started ${fired[0].started} (${fired[0].status}); ${fired.length} run(s) after run id ${mark}`)
+      return fired
+    }
+    await sleep(1000)
+  }
+  throw new Error(`control FAILED: ${active} job(s) active for ${waitSeconds} s and cron.job_run_details shows no new run, so quiet-check could not have seen one`)
 }
 
 async function quiesce() {
@@ -284,6 +311,10 @@ async function quietCheck() {
   const markFile = arg('--mark')
   const mark = markFile ? JSON.parse(await readFile(markFile, 'utf8')) : { runid: '0', at: 'when the database was created' }
   if (!(await quietCheckDb(psqlClient(need('--db-url'), "''"), need('--label'), mark))) process.exit(1)
+}
+
+async function seeARun() {
+  await seeARunDb(psqlClient(need('--db-url'), "''"), { waitSeconds: Number(arg('--wait-seconds', '90')) })
 }
 
 async function cronLinesCommand() {
@@ -793,7 +824,7 @@ async function prodLines() {
 const cmd = process.argv[2]
 const commands = {
   build, lines, pglite, compare, 'prod-lines': prodLines, 'prod-compare': prodCompare,
-  quiesce, 'quiet-check': quietCheck, 'cron-lines': cronLinesCommand,
+  quiesce, 'quiet-check': quietCheck, 'see-a-run': seeARun, 'cron-lines': cronLinesCommand,
 }
 if (!commands[cmd]) {
   console.error(`usage: baseline.mjs ${Object.keys(commands).join('|')} ...`)

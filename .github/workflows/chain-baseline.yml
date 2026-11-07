@@ -25,7 +25,8 @@ name: Chain baseline — fold 0001..N into one file and prove it (S1, dark)
 #             time, if any cron run started after the pause
 #   D-base    the baseline schedules every job INACTIVE (0078's rule), so nothing can fire from the load on; after its
 #             lines the job fails if any cron run exists at all. baseline-clock.sql (built from the saved flags) then
-#             starts the jobs the chain left running, and the flags read back are compared with the saved ones
+#             starts the jobs the chain left running, the flags read back are compared with the saved ones, and a
+#             positive control waits for a real cron run to appear (a guard never seen to fire proves nothing)
 # N is whatever the chain's head is when the run starts.
 
 on:
@@ -181,11 +182,14 @@ jobs:
           done
           echo "default-ACL proof: 2 markers; lockdown: 8 markers"
 
-      - name: D-base — the clock as the chain left it (baseline-clock.sql), its flags read back
+      - name: D-base — the clock as the chain left it (baseline-clock.sql), its flags read back, and the control
         run: |
           set -euo pipefail
           psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/out/baseline-clock.sql"
           node scripts/db/baseline/baseline.mjs cron-lines --db-url "$DB_URL" --out "$RUNNER_TEMP/out/d-base/cron-as-left.txt"
+          # POSITIVE CONTROL for the cron-fired-during-sampling guards: with the chain's jobs running, a real run must
+          # show up in cron.job_run_details within 90 s, or those guards could have passed for the wrong reason
+          node scripts/db/baseline/baseline.mjs see-a-run --db-url "$DB_URL" --wait-seconds 90
 
       - name: GATE — D-chain = D-base, exactly (catalog, every row/sequence/ACL, pg_cron)
         run: |
