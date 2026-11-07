@@ -93,6 +93,12 @@ file and proves it: the chain from zero on a disposable Supabase (D-chain), `pg_
 (D-base) and on PGlite + the preamble (D-pglite). Gates: D-chain = D-base exactly (catalog, every row,
 sequence, ACL, policy, default ACL, pg_cron job); D-base = D-pglite beyond
 `scripts/db/baseline/pglite-allow.txt`; 0018's default ACL by behaviour on both; proof 03 on D-base.
+Both databases are sampled with the pg_cron clock stopped (the chain leaves six jobs active, 0309..0331):
+D-chain's jobs are saved as left and paused before the first sample, the baseline schedules every job
+inactive, and the job fails, naming the job and the time, if a cron run starts between the pause (or the
+load) and the last sample. `baseline-clock.sql` (artifact) starts the jobs the chain left running on D-base
+after the last sample, and its flags are compared with the saved ones
+(`docs/dev-log/2026-11-07-baseline-quiesce.md`).
 The baseline is an ARTIFACT, never committed, and the job is not a required check and runs on no PR.
 Dispatch input `chain: snapshot` builds D-chain from main's kept snapshot instead (minutes; for
 debugging the builder, never the gate). `scripts/db/baseline/**` is in no snapshot key and is not chain
