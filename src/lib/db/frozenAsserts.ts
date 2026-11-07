@@ -18,6 +18,14 @@
 //     OFFERED is the price CHARGED; the sea leaving the cargo alone is another question, and
 //     0034/0092/0093/0096 close that door the same way inside their own probes.
 //
+// 2026-11-07, 0226: the third kind, the CLOCK OF THE DAY. 0226 (g) plants two finished hours at
+// `date_trunc('hour', now()) - interval '26 hours'` and expects ONE day row over both (n 8). In UTC
+// hour 01 that pair is 23:00 and 00:00, two days, so the day folds into two rows of n 4 and the
+// assert fails ("the day folded day … n 4"). From-zero applies that reached 0226 at 01:00, 01:07
+// and 01:41 UTC died there (chain-baseline runs of 11-04, 11-05, 11-06), and so would any PGlite
+// replay in that hour (10:xx on PC gkwng). The patch moves the pair one hour earlier in UTC hour
+// 01 and nowhere else. scripts/ops/harness/frozen-0226/ proves it for all 24 hours.
+//
 // WHY NOT EDIT THE FILES. An applied migration is history (supabase/migrations/README.md §1), and
 // editing one moves every prefix-cache key after it, prunes every kept snapshot and sends CI from
 // zero — the owner's law is that a pull request's CI never does that. So the files stay byte for
@@ -30,8 +38,10 @@
 //   * Every patch names the exact text it replaces, and that text must occur EXACTLY ONCE — a
 //     patch that no longer fits is a loud failure, never a silent no-op.
 //   * Each patch keeps the assert able to fail.
-//   * Real PostgreSQL (CI's disposable-chain on Supabase, and production) applies the files as
-//     written, through `supabase db push`, which never reads this module; 0108's 400 ms holds there.
+//   * Production applies the files as written, through `supabase db push`, which never reads this
+//     module; 0108's 400 ms holds there. CI's from-zero applies on real PostgreSQL (the nightly net,
+//     chain-baseline) read this same list through scripts/ci/patch-frozen-asserts.mjs, in the
+//     runner's working copy only, restored before anything hashes the files.
 //
 // This is not a place for new migrations' problems: a migration that is not yet applied anywhere
 // is fixed in its own file. A patch belongs here only when the file is frozen (<= prod head).
@@ -71,6 +81,14 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
       '  delete from public.trade_daily where player_id = p_player and qty < 1000000;\n' +
       '  v_res := cmd.enqueue(p_player, jsonb_set(cmd.parse(p_player, p_fleet, v_line)',
     why: "0315 (e): the probe's sales run through the drawn good's daily cap (0.35 x stock_target; the good is drawn from the game day, a minute here) -> E_DAILY_CAP on some minutes; each probe sale now starts with a fresh allowance, inside the rolled-back probe; step (h)'s spent allowance (1e8) is kept",
+  },
+  {
+    file: '20260818000226_a_price_is_kept_for_years_both_ways.sql',
+    find: "    v_h0 := date_trunc('hour', now()) - interval '26 hours';\n",
+    replace:
+      "    v_h0 := date_trunc('hour', now()) - interval '26 hours'" +
+      " - case when extract(hour from now() at time zone 'UTC') = 1 then interval '1 hour' else interval '0' end;\n",
+    why: "0226 (g): the probe's planted pair is 26 h back; in UTC hour 01 that is 23:00 and 00:00, two days, so the day folds into two rows of n 4 and the assert fails; one hour earlier in UTC hour 01 only, inside the rolled-back probe",
   },
 ]
 
