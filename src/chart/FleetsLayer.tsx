@@ -83,6 +83,8 @@ const NATION_STROKE: Record<MerchantInk, string> = {
   ita: 'stroke-nation-ita',
   ott: 'stroke-nation-ott',
   east: 'stroke-nation-east',
+  // 0341: the ninth family, the Brethren's own (her hull wears her kind's token from the one table; her lane wears this)
+  pir: 'stroke-nation-pir',
 }
 
 /**
@@ -110,6 +112,8 @@ const NATION_FILL: Record<MerchantInk, { readonly cls: string; readonly token: s
   ita: { cls: 'fill-nation-ita', token: 'var(--color-nation-ita)' },
   ott: { cls: 'fill-nation-ott', token: 'var(--color-nation-ott)' },
   east: { cls: 'fill-nation-east', token: 'var(--color-nation-east)' },
+  // 0341: the ninth family, the Brethren's; her hull wears her kind's token, so this is her lane's ink and the table's completeness
+  pir: { cls: 'fill-nation-pir', token: 'var(--color-nation-pir)' },
 }
 
 /**

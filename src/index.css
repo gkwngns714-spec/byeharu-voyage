@@ -196,7 +196,8 @@
   --color-navy-hull: #c4a1ff;
   /* The ONE colour of every pirate ship's hull, day and night (glyphs.ts KIND_LOOK.pirate.fill.token; docs/WORLD_POWERS.md section 9.3: red). Coral, not the design's #ff6b6b: on the day deep
      and at twilight 0.25 the dark keyline cannot carry a hull (1.98 and 2.5 to 1), so the fill must, and that takes a luminance near the navy violet's 0.44; #ff6b6b is 0.33 (2.97 on deep), this is 0.45
-     (3.9 on deep, 3.2 at twilight 0.25, 9.3 at night and under the near-black mark). No merchant, cargo ship, navy ship, player's fleet or nation wears it. tests/map.kinds.spec.ts holds her to 3 : 1. */
+     (3.9 on deep, 3.2 at twilight 0.25, 9.3 at night and under the near-black mark). No merchant, cargo ship, navy ship, player's fleet or nation wears it. tests/map.kinds.spec.ts holds her to 3 : 1.
+     0341: every pirate MERCHANT's hull wears the same token (KIND_LOOK.pirateMerchant.fill.token), under the same X. */
   --color-pirate-hull: #ff9696;
 
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
@@ -260,6 +261,8 @@
   --color-nation-ita: oklch(0.78 0.11 200);
   --color-nation-ott: oklch(0.8 0.14 118);
   --color-nation-east: oklch(0.74 0.14 295);
+  /* 0341: the ninth family, the Brethren's: her hull wears --color-pirate-hull (her kind's token) whatever the filter says; this is her lane's ink. */
+  --color-nation-pir: #ff9999;
 
   /* ── THE REGIONS' TINTS (2026-09-14, owner row 93: "create regions on map, show it using
      different color of the sea and country") — one token per region of data/regions.json,
@@ -577,6 +580,7 @@
     --color-nation-ita: oklch(0.4 0.09 210);
     --color-nation-ott: oklch(0.42 0.11 118);
     --color-nation-east: oklch(0.4 0.15 295);
+    --color-nation-pir: #b3122a;   /* 0341: the Brethren's lane by day (the light red of docs/WORLD_POWERS.md 9.3) */
 
     /* THE DAY TINTS — the same 25 hues a step darker, so a tint reads on paper land and on the
        day's blue water (validated the same way; the dark block says how). */
@@ -680,6 +684,7 @@
     --color-nation-ita: oklch(0.78 0.11 200);
     --color-nation-ott: oklch(0.8 0.14 118);
     --color-nation-east: oklch(0.74 0.14 295);
+    --color-nation-pir: #ff9999;   /* 0341: the Brethren's */
 
     /* The 25 region tints, for when the Regions filter is on. */
     --color-chart-region-iberia: oklch(0.8 0.11 105);
