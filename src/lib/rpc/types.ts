@@ -2592,8 +2592,8 @@ export interface NavyShipCard {
   fleet: { id: string; name: string; status: FleetStatus; port: string | null }
   nation_code: string | null
   station: string
-  /** 0333: ESCORT and REINFORCE, a battle's call. Each has its word, `map.mission_*`. */
-  mission: 'PATROL' | 'ESCORT' | 'REINFORCE'
+  /** 0333: ESCORT and REINFORCE, a battle's call. 0341: HUNT, the most dangerous sea in reach, lit with the pirates. Each has its word, `map.mission_*`. */
+  mission: 'PATROL' | 'ESCORT' | 'REINFORCE' | 'HUNT'
   laid_up: boolean
   to: string | null
   eta: string | null
@@ -2601,6 +2601,8 @@ export interface NavyShipCard {
   ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
   /** 0333: served, true, only while attacks are lit, as a cargo ship's. */
   attack?: true
+  /** 0341: her last fight with a pirate ship (docs/WORLD_POWERS.md 6.4), served only after one: when, how it went (`map.fight_*`), the pirate ship's name, the sea's code. */
+  fought?: { at: string; result: 'WON' | 'LOST' | 'DREW' | 'SUNK'; foe: string; sea: string | null }
 }
 
 /** 0339: `world.pirate_ship_card(fleet)`, one pirate ship of the Brethren. `home` her port; `haunt` the harbour of this cruise while she is out; `to` and `eta` while she sails. */
