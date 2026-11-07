@@ -92,7 +92,7 @@ begin
 
   -- ── 0. GUARD: nothing of this file exists, and the premises it was cut against hold (else NOTHING is applied) ──
   if to_regprocedure('public.pirate_home(uuid)') is not null or to_regprocedure('public.pirate_merchant(uuid)') is not null
-     or to_regprocedure('public.npc_legs_open(jsonb, uuid)') is not null or to_regprocedure('public.pirate_merchant_spec(integer)') is not null
+     or to_regprocedure('public.npc_legs_open(jsonb, uuid)') is not null or to_regprocedure('public.pirate_merchant_spec(integer, integer)') is not null
      or to_regprocedure('public.pirate_found(timestamp with time zone)') is not null or to_regprocedure('public.tick_pirate_merchants(timestamp with time zone)') is not null
      or exists (select 1 from public.world_config where key = any (c_knobs))
      or exists (select 1 from public.stats_flow_words w where w.kind = 'PIRATE_FOUND') then
@@ -106,7 +106,7 @@ begin
      or to_regprocedure('public.npc_found(jsonb)') is null or to_regprocedure('public.npc_known_legs(uuid)') is null
      or to_regprocedure('public.npc_leg_days(numeric, numeric)') is null or to_regprocedure('public.npc_traders_on()') is null
      or to_regclass('public.pirate_spend_day') is null or to_regclass('public.npc_houses') is null or to_regclass('public.trade_daily') is null
-     or not exists (select 1 from public.world_config where key in ('pirates_bite', 'navy_upkeep_day', 'npc_fleet_max', 'skill_study_base_cost'))
+     or (select count(*) from public.world_config where key in ('pirates_bite', 'navy_upkeep_day', 'npc_fleet_max', 'skill_study_base_cost')) <> 4
      or not exists (select 1 from public.nations n where n.code = 'PIR' and n.capital_port_code = 'POR' and public.pirate_power(n.id))
      or not exists (select 1 from public.skills s where s.code = 'HAGGLING')
      or not exists (select 1 from public.ship_classes c join public.npc_loadouts l on l.class_code = c.code where c.code = 'carlat') then
@@ -219,7 +219,7 @@ $body$
   comment on function public.npc_legs_open(jsonb, uuid) is '0341 (W18): THE planner''s rule about pirate homes: dark, the legs unchanged; lit, a pirate home is no destination unless it is the merchant''s own home. Server-only.';
 
   execute $f$
-create function public.pirate_merchant_spec(p_slot integer)
+create function public.pirate_merchant_spec(p_slot integer, p_skip integer default 0)
 returns jsonb
 language plpgsql
 stable
@@ -229,9 +229,12 @@ as $body$
 -- 0341 (W18): THE founding spec of the pirate merchant of slot p_slot (the count of pirate merchants + 1), in the shape public.npc_found takes (0097, 0098's literal): company and alt_company, nation PIR,
 -- ink 'pir', master, blurb, capital (pirate_merchant_capital), patience 0.30, wares none (the planner's "every good"), skills Haggling 1, roster_ord (the next free), ONE fleet of ONE hull
 -- (pirate_merchant_class) at her home, no officer, stores for her first leg, and her first loop: out and back to the nearest known harbour of her home (public.npc_known_legs both ways; public.npc_plan
--- re-plans her at her first lap as it does every merchant's). HER HOME: the ring of 0339's one reader public.pirate_home_of(ord) (the capital for slot 1, then the other homes by code, wrapping), the first
--- from her slot's place with a known leg out; null when no home has a leg (said in the job's receipt). THE NAMES: thirty houses of the era's pirate coasts (the Caribbean, the Barbary coast, the wokou of
--- Kyushu, the lanun of the Strait), one a slot; past thirty the slot is appended. A plain read: nothing is written here.
+-- re-plans her at her first lap as it does every merchant's); and `cost`, what public.founding_credit really pays for her (capital + the tuition of her skills, public.npc_found's arithmetic).
+-- HER HOME: the ring of 0339's one reader public.pirate_home_of(ord) (the capital for slot 1, then the other homes by code, wrapping), the first from her slot's place PLUS p_skip (public.pirate_found
+-- passes the homes a refusal was met at) with a known leg out; null when no home has a leg (said in the job's receipt). THE NAMES: thirty houses of the era's pirate coasts (the Caribbean, the Barbary
+-- coast, the wokou of Kyushu, the lanun of the Strait), one a slot; past thirty the slot is appended; A NAME SOME COMPANY ALREADY HOLDS NEVER BLOCKS THE SLOT: the first free of the slot's name,
+-- ' II', ' 3' to ' 5', and a plain 'Pirate house <slot>' is taken, every spelling cut to the 24 characters a company's name may have (a refusal that repeats every run would be a stuck roster).
+-- A plain read: nothing is written here.
 declare
   v_class   text := public.wc_text('pirate_merchant_class');
   v_capital bigint := public.wc_int('pirate_merchant_capital');
@@ -241,7 +244,10 @@ declare
   v_leg     record;
   v_back    jsonb;
   v_speed   numeric;
+  v_base    text;
+  v_cands   text[];
   v_name    text;
+  v_alt     text;
   v_master  text;
   v_ord     int;
   v_ford    int;
@@ -257,9 +263,9 @@ begin
   if v_speed is null then
     raise exception 'pirate_merchant_spec: pirate_merchant_class % is no ship class', v_class;
   end if;
-  -- her home: the ring from her slot's place, the first with a known leg out, both ways
+  -- her home: the ring from her slot's place (plus the homes passed over), the first with a known leg out, both ways
   for v_k in 0 .. v_n - 1 loop
-    select p.id, p.code into v_home from public.ports p where p.id = public.pirate_home_of(p_slot + v_k);
+    select p.id, p.code into v_home from public.ports p where p.id = public.pirate_home_of(p_slot + coalesce(p_skip, 0) + v_k);
     select l.to_port, l.code, l.course, l.nm into v_leg
       from public.npc_known_legs(v_home.id) l
       join public.ports p on p.id = l.to_port
@@ -273,7 +279,7 @@ begin
     return null;
   end if;
   select b.course into v_back from public.npc_known_legs(v_leg.to_port) b where b.to_port = v_home.id;
-  select v.company, v.master into v_name, v_master
+  select v.company, v.master into v_base, v_master
     from (values
       (1, 'Brethren of the Coast', 'Captain Pierre le Grand'),
       (2, 'Reis of Djerba', 'Turgut Reis'),
@@ -307,14 +313,30 @@ begin
       (30, 'Corsairs of Algiers', 'Hayreddin Reis')) v(slot, company, master)
    where v.slot = 1 + ((p_slot - 1) % 30);
   if p_slot > 30 then
-    v_name := v_name || ' ' || p_slot;
+    v_base := v_base || ' ' || p_slot;
   end if;
+  -- a FREE name, and the next free one as the spelling npc_found falls back to: a name some company holds never blocks the slot. Every spelling fits players.company_name (3 to 24): the base is cut to make room for its suffix.
+  select array_agg(x.n order by x.k) into v_cands
+    from (select s.k, left(v_base, 24 - length(s.suffix)) || s.suffix as n
+            from (values (1, ''), (2, ' II'), (3, ' 3'), (4, ' 4'), (5, ' 5')) s(k, suffix)
+          union all
+          select 5 + s.k, 'Pirate house ' || p_slot || s.suffix from (values (1, ''), (2, ' II'), (3, ' 3')) s(k, suffix)) x;
+  select c.n into v_name from unnest(v_cands) with ordinality c(n, k)
+   where not exists (select 1 from public.players pl where pl.company_name = c.n)
+   order by c.k limit 1;
+  if v_name is null then
+    return null;
+  end if;
+  select c.n into v_alt from unnest(v_cands) with ordinality c(n, k)
+   where c.n <> v_name and not exists (select 1 from public.players pl where pl.company_name = c.n)
+   order by c.k limit 1;
   select coalesce(max(h.roster_ord), 0) + 1 into v_ord from public.npc_houses h;
   select coalesce(max(f.roster_ord), 0) + 1 into v_ford from public.npc_fleets f;
   return jsonb_build_object(
-    'company', v_name, 'alt_company', v_name || ' II', 'nation', 'PIR', 'ink', 'pir', 'master', v_master,
+    'company', v_name, 'alt_company', coalesce(v_alt, left(v_name, 22) || ' 6'), 'nation', 'PIR', 'ink', 'pir', 'master', v_master,
     'blurb', format('A merchant of the Brethren out of %s, fencing what the sea gives.', (select p.name from public.ports p where p.id = v_home.id)),
     'capital', v_capital, 'patience', 0.30, 'wares', '[]'::jsonb, 'skills', jsonb_build_object('HAGGLING', 1),
+    'cost', v_capital + public.wc_int('skill_study_base_cost') * 1,   -- what founding_credit really pays: her capital and the tuition of Haggling 1 (npc_found's arithmetic: base x level(level + 1) / 2); no officer, so no wage
     'roster_ord', greatest(v_ord, v_ford), 'slot', p_slot, 'home', v_home.code,
     'fleets', jsonb_build_array(jsonb_build_object(
       'name', left(v_name, 24), 'roster_ord', greatest(v_ord, v_ford), 'home', v_home.code,
@@ -325,8 +347,8 @@ begin
                                  jsonb_build_object('port', v_leg.code, 'course', v_back)))));   -- no alt_stops key: npc_fleets.alt_loop stays SQL null (its check wants null or an array)
 end $body$
   $f$;
-  revoke all on function public.pirate_merchant_spec(integer) from public, anon, authenticated;
-  comment on function public.pirate_merchant_spec(integer) is '0341 (W18): the founding spec (public.npc_found''s shape) of the pirate merchant of a slot: name, home in the ring of homes, the Brethren''s hull, her first out-and-back loop. A read. Server-only.';
+  revoke all on function public.pirate_merchant_spec(integer, integer) from public, anon, authenticated;
+  comment on function public.pirate_merchant_spec(integer, integer) is '0341 (W18): the founding spec (public.npc_found''s shape) of the pirate merchant of a slot: a free name, her home in the ring of homes (from the slot''s place plus the homes passed over), the Brethren''s hull, her first out-and-back loop, her cost. A read. Server-only.';
 
   execute $f$
 create function public.pirate_found(p_now timestamp with time zone)
@@ -339,17 +361,22 @@ as $body$
 -- 0341 (W18, docs/WORLD_POWERS.md 7.4): AT MOST ONE PIRATE MERCHANT IS FOUNDED, from the hoard, through public.npc_found (the one way a merchant is made) whose starting money public.founding_credit takes from
 -- public.pirate_pay (THE one payer, inside THE one cap public.pirate_spend_room) as PIRATE_FOUND. The gates, in order, each a reason in the answer: dark (public.pirates_on() false, or the merchants dark);
 -- full (pirate_merchants_max); paced (the newest founded inside pirate_found_hours); no berth (public.npc_fleets at npc_fleet_max: she would lie paused 'dark', 0105); no home with a known leg; the room
--- (pirate_spend_room under her capital PLUS what the ships are owed for the rest of the UTC day, pirate_size x navy_upkeep_day pro rata: a founding never starves 0339's hourly pay); then the founding, in a
--- sub-transaction of its own: a founding pirate_pay refuses (E_HOARD_SHORT, the exact amount judged there), a name taken, a route refused, roll back WHOLE and are said, never raised. Answers
--- {founded: her house or null, why, slot, company, home}.
+-- (pirate_spend_room under her COST, capital plus tuition, PLUS what the ships are owed for the rest of the UTC day, pirate_size x navy_upkeep_day pro rata: a founding never starves 0339's hourly pay);
+-- then the founding, in a sub-transaction of its own: a founding pirate_pay refuses (E_HOARD_SHORT, the exact amount judged there) or a route refused roll back WHOLE and are said, never raised; A HOME
+-- THAT REFUSES IS PASSED OVER IN THE SAME RUN (the next home in the ring is tried, each once), so one broken home never holds the roster; a name taken never refuses (the spec picks a free one). Answers
+-- {founded: her house or null, why, slot, company, home, tried: [{home, error}]}.
 declare
   v_pir     uuid := public.pirate_nation();
   v_n       int;
+  v_homes   int;
+  v_k       int;
   v_last    timestamptz;
   v_spec    jsonb;
   v_player  uuid;
   v_reserve bigint;
   v_room    bigint;
+  v_tried   text[] := '{}';
+  v_errs    jsonb := '[]'::jsonb;
 begin
   if v_pir is null or not public.pirates_on() or not public.npc_traders_on() then
     return jsonb_build_object('founded', null, 'why', 'dark');
@@ -373,15 +400,27 @@ begin
   v_reserve := ceil(public.pirate_size() * public.wc_int('navy_upkeep_day')
                     * extract(epoch from (date_trunc('day', p_now at time zone 'UTC') + interval '1 day' - (p_now at time zone 'UTC'))) / 86400)::bigint;
   v_room := public.pirate_spend_room(p_now);
-  if v_room < (v_spec->>'capital')::bigint + v_reserve then
-    return jsonb_build_object('founded', null, 'why', 'room', 'merchants', v_n, 'room', v_room, 'reserve', v_reserve, 'capital', (v_spec->>'capital')::bigint);
+  if v_room < (v_spec->>'cost')::bigint + v_reserve then
+    return jsonb_build_object('founded', null, 'why', 'room', 'merchants', v_n, 'room', v_room, 'reserve', v_reserve, 'cost', (v_spec->>'cost')::bigint);
   end if;
-  begin
-    v_player := public.npc_found(v_spec);
-  exception when others then
-    return jsonb_build_object('founded', null, 'why', 'refused', 'merchants', v_n, 'slot', v_spec->>'slot', 'company', v_spec->>'company', 'home', v_spec->>'home', 'error', sqlerrm);
-  end;
-  return jsonb_build_object('founded', v_player, 'why', 'founded', 'merchants', v_n + 1, 'slot', v_spec->>'slot', 'company', v_spec->>'company', 'home', v_spec->>'home');
+  -- the founding, home by home round the ring from her slot's place: a home that refuses is passed over in this run, each home tried once
+  select count(*) into v_homes from public.ports p where p.kind = 'HARBOUR' and public.pirate_home(p.id);
+  for v_k in 0 .. v_homes - 1 loop
+    if v_k > 0 then
+      v_spec := public.pirate_merchant_spec(v_n + 1, v_k);
+      exit when v_spec is null;
+      continue when (v_spec->>'home') = any (v_tried);
+    end if;
+    v_tried := v_tried || (v_spec->>'home');
+    begin
+      v_player := public.npc_found(v_spec);
+    exception when others then
+      v_errs := v_errs || jsonb_build_object('home', v_spec->>'home', 'error', sqlerrm);
+      continue;
+    end;
+    return jsonb_build_object('founded', v_player, 'why', 'founded', 'merchants', v_n + 1, 'slot', v_spec->>'slot', 'company', v_spec->>'company', 'home', v_spec->>'home', 'tried', v_errs);
+  end loop;
+  return jsonb_build_object('founded', null, 'why', 'refused', 'merchants', v_n, 'slot', v_n + 1, 'tried', v_errs);
 end $body$
   $f$;
   revoke all on function public.pirate_found(timestamp with time zone) from public, anon, authenticated;

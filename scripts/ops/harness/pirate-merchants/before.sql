@@ -78,7 +78,7 @@ select jsonb_build_object(
     'pirate_home', to_regprocedure('public.pirate_home(uuid)') is null,
     'pirate_merchant', to_regprocedure('public.pirate_merchant(uuid)') is null,
     'npc_legs_open', to_regprocedure('public.npc_legs_open(jsonb, uuid)') is null,
-    'pirate_merchant_spec', to_regprocedure('public.pirate_merchant_spec(integer)') is null,
+    'pirate_merchant_spec', to_regprocedure('public.pirate_merchant_spec(integer, integer)') is null,
     'pirate_found', to_regprocedure('public.pirate_found(timestamp with time zone)') is null,
     'tick_pirate_merchants', to_regprocedure('public.tick_pirate_merchants(timestamp with time zone)') is null,
     'knobs', not exists (select 1 from public.world_config c where c.key in ('pirate_merchants_max', 'pirate_merchant_capital', 'pirate_merchant_class', 'pirate_found_hours', 'pirate_port_day_cap')),

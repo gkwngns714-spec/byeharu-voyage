@@ -16,7 +16,7 @@ if (hunks.length !== 8) throw new Error(`${hunks.length} hunks parsed, the migra
 for (const h of hunks) if (h.old.includes('$h$') || h.new.includes('$h$')) throw new Error('a hunk holds the dollar tag')
 
 const values = hunks.map((h) => `  ('${h.fn}'::text, ${h.ord}, $h$${h.old}$h$, $h$${h.new}$h$)`).join(',\n')
-const FNS = ['pirate_home(uuid)', 'pirate_merchant(uuid)', 'npc_legs_open(jsonb, uuid)', 'pirate_merchant_spec(integer)', 'pirate_found(timestamp with time zone)', 'tick_pirate_merchants(timestamp with time zone)']
+const FNS = ['pirate_home(uuid)', 'pirate_merchant(uuid)', 'npc_legs_open(jsonb, uuid)', 'pirate_merchant_spec(integer, integer)', 'pirate_found(timestamp with time zone)', 'tick_pirate_merchants(timestamp with time zone)']
 const KNOBS = ['pirate_merchants_max', 'pirate_merchant_capital', 'pirate_merchant_class', 'pirate_found_hours', 'pirate_port_day_cap']
 
 // a body with several hunks: apply them in order (old -> new) for the "with" hash, and in reverse order (new -> old) for the "without" hash, as the file does
@@ -76,7 +76,7 @@ ${FNS.map((f) => `    '${f.split('(')[0]}', to_regprocedure('public.${f}') is nu
 commit;
 `
 
-const after = `${head('after', `Wanted: head 20260818000341 (or 0341 if renumbered); every fns[].new_times 1 and old_times as the hunk implies (0 where the old text is not inside the new); bodies[].now_md5 = before's with_hunk_md5 and without_hunk_md5 = before's now_md5; attr_md5 equal to before's; present: all true, with volatility s s s s v v; knobs as shipped (30, 250000, "carlat", 2, 0.05); word PIRATE_FOUND moved; ink_check with 'pir'; pirate_home_count 4; pirate_merchants 0 (nothing founded while dark); cron job */10 * * * * active; entry_points as before; dark: npc_legs_open identity, day_cap_por = day_cap_base (a probe uuid, no row); pirates_bite false.`)}
+const after = `${head('after', `Wanted: head 20260818000341 (or 0341 if renumbered); every fns[].new_times 1 and old_times as the hunk implies (0 where the old text is not inside the new); bodies[].now_md5 = before's with_hunk_md5 and without_hunk_md5 = before's now_md5; attr_md5 equal to before's; present: all true, with volatility s s s s v v; knobs as shipped (30, 250000, "carlat", 2, 0.05); word PIRATE_FOUND moved at ord 55 (0339 took 54 for RANSOM); ink_check with 'pir'; pirate_home_count 4; pirate_merchants 0 (nothing founded while dark); cron job */10 * * * * active; entry_points as before; dark: npc_legs_open identity, day_cap_por = day_cap_base (a probe uuid, no row); pirates_bite false.`)}
 select jsonb_build_object(
   'head', (select max(version) from supabase_migrations.schema_migrations),
   'fns', (select jsonb_agg(jsonb_build_object('fn', x.fn, 'ord', x.ord, 'old_times', x.old_times, 'new_times', x.new_times) order by x.fn, x.ord) from x),

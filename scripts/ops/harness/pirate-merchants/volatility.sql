@@ -6,7 +6,7 @@ select jsonb_object_agg(f.fn, (select p.provolatile from pg_proc p where p.oid =
                ('public.pirate_home(uuid)'),
                ('public.pirate_merchant(uuid)'),
                ('public.npc_legs_open(jsonb, uuid)'),
-               ('public.pirate_merchant_spec(integer)'),
+               ('public.pirate_merchant_spec(integer, integer)'),
                ('public.pirate_found(timestamp with time zone)'),
                ('public.tick_pirate_merchants(timestamp with time zone)')) f(fn);
 commit;

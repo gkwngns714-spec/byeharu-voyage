@@ -6,10 +6,10 @@
 --   It owns every switch it needs and writes them here. The hoard is Port Royal's purse, funded by a probe company founded while the economy is open (its money is minted then, before W is taken).
 --
 -- @pass PM_DARK        pirates_bite false (as shipped): the job answers enabled false and founds nobody; pirate_found says dark; no house of the pirates exists; the planner rule is the identity and a crown merchant near a pirate home is offered a loop through it; the day cap at a home is the base
--- @pass PM_FOUNDED     lit: ONE run founds ONE merchant of the pirates at the capital (slot 1, Port Royal): a merchant house in ink pir, nation PIR, capital 250,000, one carlat docked at Port Royal, a two-stop route out and back, her purse her capital; pirate_merchant true for her and for nobody else
+-- @pass PM_FOUNDED     lit: ONE run founds ONE merchant of the pirates at the capital (slot 1, Port Royal): a merchant house in ink pir, nation PIR, capital 250,000, one carlat docked at Port Royal, a two-stop route out and back, her purse her capital; named by the first FREE spelling (two companies already hold the slot's name and its ' II'), nothing tried and refused; pirate_merchant true for her and for nobody else
 -- @pass PM_PAID        her founding is paid by Port Royal's purse as PIRATE_FOUND and nothing else: her ledger holds PIRATE_FOUND credits equal to the purse's PIRATE_FOUND outflow, 0339's spend book holds the same, no FOUNDING ledger row of hers, no CROWN_CALL, and W is unchanged to the ducat
--- @pass PM_GATES       the gates, each said: a run a minute later is paced; pirate_merchants_max reached is full; the merchant roster full is no_berth; the day's room spent is room; and a founding the hoard cannot pay is refused WHOLE (E_HOARD_SHORT) leaving no house
--- @pass PM_SECOND      two hours later the second is founded at the next home in the ring (Djerba, slot 2)
+-- @pass PM_GATES       the gates, each said: a run a minute later is paced; pirate_merchants_max reached is full; the merchant roster full is no_berth; the day's room spent is room, and so is a room just under what founding_credit really pays (capital + tuition, 252,500) plus the ships' reserve; and a founding the hoard cannot pay is refused WHOLE (E_HOARD_SHORT) leaving no house
+-- @pass PM_SECOND      two hours later the second (slot 2) is founded at Goto: its home in the ring, Djerba, refuses (its courses pointed off the sphere: E_BAD_PATH inside npc_found) and the SAME run passes it over, saying what it tried
 -- @pass PM_NO_GIFT     a broke merchant of the pirates is not on the capital's gift roster; a broke crown merchant is
 -- @pass PM_INVESTS     lit she is on the invest roster and her turn in the real pass gives for the pirates at the closest race on her loop (a port_influence row under PIR, by her); dark she is off the roster
 -- @pass PM_COUNT       the daily count runs with 11 powers: the free city she gave to flies the skull, she is its mayor, the Countries board counts it won; the city is NOT free (tax quoted, dock fee charged, no crown)
@@ -30,6 +30,7 @@ declare
   v_pir    uuid := (select n.id from public.nations n where n.code = 'PIR');
   v_por    uuid := (select p.id from public.ports p where p.code = 'POR');
   v_dje    uuid := (select p.id from public.ports p where p.code = 'DJE');
+  v_got    uuid := (select p.id from public.ports p where p.code = 'GOT');
   v_lis    uuid := (select p.id from public.ports p where p.code = 'LIS');
   v_rich   uuid;
   v_t0     timestamptz := now();
@@ -46,6 +47,7 @@ declare
   v_fleet_max int;
   v_spent  bigint;
   v_room   bigint;
+  v_reserve bigint;
   v_cap    numeric;
   v_base   numeric;
   v_good   uuid;
@@ -65,6 +67,8 @@ begin
   update public.world_config set value = 'true'::jsonb where key = 'city_treasury_enabled';
   v_rich := public.new_house(c_uid1, 'Casa Rica 0f47', 'PRT', 'LIS', 'Rica', 'barca', 'Rica', 2000000000, false);
   perform public.pay_city(v_rich, v_por, 'TAX', 1000000000);
+  -- two companies already hold slot 1's name and its second spelling: a taken name must never block the slot (the spec picks the first free spelling)
+  insert into public.players (company_name, nation_id, ducats, is_npc) values ('Brethren of the Coast', (select n.id from public.nations n where n.code = 'PRT'), 0, false), ('Brethren of the Coast II', (select n.id from public.nations n where n.code = 'PRT'), 0, false);
   update public.world_config set value = 'true'::jsonb where key in ('economy_closed', 'npc_traders_enabled', 'standing_routes_enabled', 'influence_enabled');
   if public.pirates_on() then
     raise exception 'PROOF 47 FAIL: pirates_bite is on as shipped';
@@ -114,8 +118,10 @@ begin
   update public.world_config set value = 'true'::jsonb where key = 'pirates_bite';
   v_r := public.tick_pirate_merchants(v_t0);
   v_m1 := (v_r->>'founded')::uuid;
-  if v_m1 is null or v_r->>'why' <> 'founded' or (v_r->>'slot')::int <> 1 or v_r->>'home' <> 'POR' then
-    raise exception 'PROOF 47 FAIL: lit, the first run answered %', v_r;
+  if v_m1 is null or v_r->>'why' <> 'founded' or (v_r->>'slot')::int <> 1 or v_r->>'home' <> 'POR'
+     or v_r->>'company' <> 'Brethren of the Coast 3' or jsonb_array_length(v_r->'tried') <> 0
+     or not exists (select 1 from public.players pl where pl.id = v_m1 and pl.company_name = 'Brethren of the Coast 3') then
+    raise exception 'PROOF 47 FAIL: lit, the first run answered % (slot 1 at Port Royal, named by the first free spelling, nothing tried and refused)', v_r;
   end if;
   select nf.fleet_id, nf.route_id into v_f1, v_route1 from public.npc_fleets nf where nf.player_id = v_m1;
   select count(*) into v_n from public.standing_route_stops st where st.route_id = v_route1;
@@ -188,25 +194,38 @@ begin
   if (select count(*) from public.players) <> v_n or exists (select 1 from public.players pl where pl.company_name = 'Probe Corsair 0f47') then
     raise exception 'PROOF 47 FAIL: a refused founding left a house behind';
   end if;
+  -- the room just under what founding_credit really pays (her capital AND her tuition, 252,500) plus the ships' reserve: refused for room by the gate, never handed to the payer to refuse
+  v_reserve := ceil(public.pirate_size() * public.wc_int('navy_upkeep_day')
+                    * extract(epoch from (date_trunc('day', (v_t0 + interval '3 hours') at time zone 'UTC') + interval '1 day' - ((v_t0 + interval '3 hours') at time zone 'UTC'))) / 86400)::bigint;
+  update public.pirate_spend_day d set spent = floor(public.pirate_hoard() * public.wc_num('pirate_spend_day_pct'))::bigint - (252500 - 1000 + v_reserve) where d.day = v_day;
+  v_room := public.pirate_spend_room(v_t0 + interval '3 hours');
+  v_r := public.pirate_found(v_t0 + interval '3 hours');
+  if v_room <> 252500 - 1000 + v_reserve or v_r->>'why' <> 'room' or (v_r->>'cost')::bigint <> 252500 or v_r->>'founded' is not null then
+    raise exception 'PROOF 47 FAIL: with the room just under her cost (room %, reserve %) the founding was not refused for room: %', v_room, v_reserve, v_r;
+  end if;
   update public.pirate_spend_day d set spent = v_spent where d.day = v_day;
   if pg_temp.w_47() <> v_w0 then
     raise exception 'PROOF 47 FAIL: the gates moved money: W % -> %', v_w0, pg_temp.w_47();
   end if;
-  raise notice 'PASS: PM_GATES — paced a minute later; full at max 1; no_berth with the roster full; room with the day spent (room 0); E_HOARD_SHORT refused whole, no house left, W unchanged';
+  raise notice 'PASS: PM_GATES — paced a minute later; full at max 1; no_berth with the roster full; room with the day spent (room 0) and with the room just under her cost of 252,500 plus the ships'' reserve of % d.; E_HOARD_SHORT refused whole, no house left, W unchanged', v_reserve;
 
-  -- ── 5 THE SECOND, two hours on, at the next home in the ring ──
+  -- ── 5 THE SECOND, two hours on: slot 2's home in the ring is Djerba, and Djerba REFUSES (its only courses are pointed off the sphere, so the route door answers E_BAD_PATH inside npc_found) ──
+  -- a home that refuses must not hold the roster: the same run passes it over and founds at the next home, Goto, saying what it tried
+  update public.npc_courses c set course = '[[999, 999], [999, 999]]'::jsonb where c.from_port = v_dje or c.to_port = v_dje;
   v_r := public.tick_pirate_merchants(v_t0 + interval '3 hours');
   v_m2 := (v_r->>'founded')::uuid;
-  if v_m2 is null or (v_r->>'slot')::int <> 2 or v_r->>'home' <> 'DJE'
-     or not exists (select 1 from public.npc_houses h where h.player_id = v_m2 and h.home_port_id = v_dje and h.ink = 'pir')
+  if v_m2 is null or (v_r->>'slot')::int <> 2 or v_r->>'home' <> 'GOT'
+     or jsonb_array_length(v_r->'tried') <> 1 or v_r->'tried'->0->>'home' <> 'DJE' or v_r->'tried'->0->>'error' !~ 'E_BAD_PATH'
+     or not exists (select 1 from public.npc_houses h where h.player_id = v_m2 and h.home_port_id = v_got and h.ink = 'pir')
      or (select count(*) from public.npc_houses h where public.pirate_merchant(h.player_id)) <> 2
+     or exists (select 1 from public.players pl where pl.is_npc and pl.nation_id = v_pir and pl.id not in (v_m1, v_m2) and exists (select 1 from public.npc_houses h where h.player_id = pl.id))
      or pg_temp.w_47() <> v_w0 then
-    raise exception 'PROOF 47 FAIL: the second founding is not slot 2 at Djerba: % (W % -> %)', v_r, v_w0, pg_temp.w_47();
+    raise exception 'PROOF 47 FAIL: the second founding is not slot 2 at Goto after Djerba refused: % (W % -> %)', v_r, v_w0, pg_temp.w_47();
   end if;
-  raise notice 'PASS: PM_SECOND — % (slot 2) founded at Djerba three hours on, W unchanged', v_r->>'company';
+  raise notice 'PASS: PM_SECOND — % (slot 2) founded at Goto three hours on: Djerba refused (%) and was passed over in the same run; W unchanged', v_r->>'company', v_r->'tried'->0->>'error';
 
-  -- ── 6 NO GIFT: the second is made broke (her purse to Djerba, moved); a crown merchant made broke the same way is on the roster, she is not ──
-  perform public.pay_city(v_m2, v_dje, 'TAX', 245000);
+  -- ── 6 NO GIFT: the second is made broke (her purse to Goto, moved); a crown merchant made broke the same way is on the roster, she is not ──
+  perform public.pay_city(v_m2, v_got, 'TAX', 245000);
   perform public.pay_city(v_ctl.player_id, v_ctl.home_port_id, 'TAX', (select pl.ducats - 1000 from public.players pl where pl.id = v_ctl.player_id));
   if (select pl.ducats from public.players pl where pl.id = v_m2) <> 5000
      or exists (select 1 from public.capital_gift_roster(v_t0 + interval '4 hours', v_m2) g)
