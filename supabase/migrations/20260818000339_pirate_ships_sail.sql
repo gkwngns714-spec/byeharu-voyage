@@ -20,8 +20,9 @@
 --   when the capital's surplus is short, or when the capital is busy. A hoard at 0 has no room and builds none. BUILD_NAVY the class's cost, capital to the nearest yard by sea (public.refit_yard; a pirate home has none);
 --   NAVY_PAY navy_upkeep_day / 24 a ship an hour, capital to the harbour she lies at; paying herself at the capital moves nothing. Never a debt, never minted. W18's founding goes through the same payer (p_player).
 -- THE CRUISE (public.pirate_ship_step): from her home she sails one stored merchant course (public.npc_courses, the way back required) to a HAUNT within navy_reach_nm, the harbour whose sea is the most dangerous as
---   authored (voyage.sea_danger at no moment), spread by ord; her `sea_id` is that sea from the moment she leaves to the moment she docks home: THE POSITION FOR "WHO RAIDS". At the haunt she lies pirate_haunt_hours, then sails
---   home, is mended free, delivers nothing (below), and sails again. Off duty (switch off, unpaid, ord above the size) she sails straight home and is laid up: one path for all three.
+--   authored (voyage.sea_danger at no moment), spread by ord; her `sea_id` is that sea WHILE SHE CRUISES OUT AND LIES AT HER HAUNT: THE POSITION FOR "WHO RAIDS" (public.pirate_ships_cruising, the one rule: at work, sea_id set,
+--   free to fight, a hull left). On the home leg she is in no sea: she names nobody, adds no pressure, and W19's hunt cannot find her. In any port that is not her haunt (her home, a wreck's respawn, a stranding) the step clears
+--   her position. At the haunt she lies pirate_haunt_hours, then sails home, is mended free, delivers nothing (below), and sails again. Off duty (switch off, unpaid, ord above the size) she sails straight home and is laid up: one path for all three.
 -- POSITION DECIDES WHO RAIDS (docs/PIRATES_AND_HAVENS.md 2.3): voyage.depart freezes, beside each segment's danger, the pirate ship cruising that sea, if any (voyage.freeze_raiders, through public.pirate_ship_in_sea; a pirate
 --   ship's own voyage is never given one). voyage.settle's PIRATES arm reads it (voyage.leg_raider): a named raider's strength is HER OWN hulls' figure (voyage.pirate_strength: attack / 10 + crew x 0.02 + tier x 3 a hull, by the
 --   hull left), so the one fight engine builds her as hulls of fight_raider_class and no second path exists; an anonymous day is today's figure, to the digit. A voyage frozen lit and settled dark fights what it departed into
@@ -177,6 +178,15 @@ begin
       from public.pirate_ships n where n.laid_up_at is null;
   comment on view public.pirate_ships_at_work is '0339: THE ships at work: public.pirate_ships less the laid up. Server-only.';
   revoke all on table public.pirate_ships_at_work from public, anon, authenticated;
+
+  create view public.pirate_ships_cruising as
+    select n.fleet_id, n.player_id, n.ord, n.home_port, n.sea_id, n.haunt_port
+      from public.pirate_ships n join public.fleets f on f.id = n.fleet_id
+     where n.laid_up_at is null and n.sea_id is not null
+       and f.status in ('SAILING', 'DOCKED', 'ANCHORED')
+       and exists (select 1 from public.ships s where s.fleet_id = n.fleet_id and s.durability > 0);
+  comment on view public.pirate_ships_cruising is '0339: THE ONE RULE of "she is in a sea": at work, cruising (sea_id set: out for her haunt or lying at it), free to fight (not in a battle, not a wreck, not under repair) and with a hull left. Read by public.pirate_ship_in_sea (the freeze, W19''s hunt) and public.pirate_pressure_write, and by nothing else. Server-only.';
+  revoke all on table public.pirate_ships_cruising from public, anon, authenticated;
 
   create table public.pirate_spend_day (
     day   date primary key,
@@ -357,9 +367,9 @@ stable
 security definer
 set search_path = public, pg_temp
 as $$
-  -- 0339: THE one reader of "which pirate ship is in this sea": the lowest-ord ship at work cruising it (pirate_ships.sea_id) whose fleet is not in a battle. Null if none. Read by voyage.freeze_raiders, and by W19's hunt with a navy ship's own sea.
-  select n.fleet_id from public.pirate_ships_at_work n join public.fleets f on f.id = n.fleet_id
-   where n.sea_id = p_sea and f.status <> 'IN_BATTLE' order by n.ord limit 1
+  -- 0339: THE one reader of "which pirate ship is in this sea": the lowest-ord ship cruising it (public.pirate_ships_cruising: at work, sea_id set, free to fight, a hull left; so a wreck, a ship in a battle or under repair, and a
+  -- hulk are never named). Null if none. Read by voyage.freeze_raiders, and by W19's hunt with a navy ship's own sea.
+  select n.fleet_id from public.pirate_ships_cruising n where n.sea_id = p_sea order by n.ord limit 1
 $$
   $f$;
 
@@ -448,7 +458,7 @@ begin
   for r in select e.key as code, (e.value)::text::numeric as qty from jsonb_each(p_taken) e
             where jsonb_typeof(e.value) = 'number' and (e.value)::text::numeric > 0 order by e.key loop
     select pg.stock, pg.stock_target into v_s, v_t
-      from public.port_goods pg join public.goods g on g.id = pg.good_id where pg.port_id = n.home_port and g.code = r.code for update;
+      from public.port_goods pg join public.goods g on g.id = pg.good_id where pg.port_id = n.home_port and g.code = r.code for update of pg;   -- the market row alone: never a lock on the goods catalogue inside the beat
     continue when v_s is null;
     v_in := greatest(0, least(r.qty, 2 * v_t - v_s));
     if v_in > 0 then
@@ -535,15 +545,16 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0339: THE first and only writer of public.sea_pressure (0330): lit, one row a sea with pirate ships at work cruising it, pirate_pressure a ship, refreshed to p_now each run so it does not decay while she is there; a sea with none
--- loses its row; off, the table empties. voyage.sea_danger reads it as 0330 wrote, so a departure into her sea freezes a higher figure. Answers the rows standing. Called by public.tick_pirates only.
+-- 0339: THE first and only writer of public.sea_pressure (0330): lit, one row a sea with pirate ships cruising it (public.pirate_ships_cruising, the same rule that names a raider: a wreck or a hulk presses on nothing), pirate_pressure a
+-- ship, refreshed to p_now each run so it does not decay while she is there; a sea with none loses its row; off, the table empties. voyage.sea_danger reads it as 0330 wrote, so a departure into her sea freezes a higher figure.
+-- Answers the rows standing. Called by public.tick_pirates only.
 declare
   v_lit boolean := public.pirates_on();
 begin
-  delete from public.sea_pressure sp where not v_lit or not exists (select 1 from public.pirate_ships_at_work x where x.sea_id = sp.sea_id);
+  delete from public.sea_pressure sp where not v_lit or not exists (select 1 from public.pirate_ships_cruising x where x.sea_id = sp.sea_id);
   if v_lit then
     insert into public.sea_pressure (sea_id, value, updated_at)
-    select x.sea_id, public.wc_num('pirate_pressure') * count(*), p_now from public.pirate_ships_at_work x where x.sea_id is not null group by x.sea_id
+    select x.sea_id, public.wc_num('pirate_pressure') * count(*), p_now from public.pirate_ships_cruising x group by x.sea_id
     on conflict (sea_id) do update set value = excluded.value, updated_at = excluded.updated_at;
   end if;
   return (select count(*) from public.sea_pressure);
@@ -726,6 +737,11 @@ begin
   select * into n from public.pirate_ships x where x.fleet_id = p_fleet;
   if n.fleet_id is null then
     raise exception 'E_NOT_A_PIRATE_SHIP: fleet %', p_fleet using errcode = 'P0001';
+  end if;
+  -- IN A PORT THAT IS NOT HER HAUNT (her home, a wreck's respawn at it, a stranding) SHE IS IN NO SEA: her position is cleared before anything else, so a stale sea_id can name nobody and press on nothing
+  if f.port_id is distinct from n.haunt_port and (n.sea_id is not null or n.haunt_port is not null or n.haunt_since is not null or n.mission <> 'HOME') then
+    update public.pirate_ships x set sea_id = null, haunt_port = null, haunt_since = null, mission = 'HOME' where x.fleet_id = p_fleet;
+    select * into n from public.pirate_ships x where x.fleet_id = p_fleet;
   end if;
   if public.npc_wrecked(p_fleet) then
     return 'WRECK';
@@ -1179,8 +1195,16 @@ $h$         stock = case when pg.last_regen_day < v_day and not f.held then publ
     raise exception '0339 self-assert FAIL: the card is not registered';
   end if;
   if has_table_privilege('authenticated', 'public.pirate_ships', 'select') or has_table_privilege('anon', 'public.pirate_ships', 'select')
-     or has_table_privilege('authenticated', 'public.pirate_ships_at_work', 'select') or has_table_privilege('authenticated', 'public.pirate_spend_day', 'select') then
+     or has_table_privilege('authenticated', 'public.pirate_ships_at_work', 'select') or has_table_privilege('authenticated', 'public.pirate_spend_day', 'select')
+     or has_table_privilege('authenticated', 'public.pirate_ships_cruising', 'select') or has_table_privilege('anon', 'public.pirate_ships_cruising', 'select') then
     raise exception '0339 self-assert FAIL: a client can read a pirate table';
+  end if;
+  -- the one rule of "she is in a sea" is read by exactly its two readers, and the stow locks the market row alone (never the goods catalogue, inside the beat)
+  if (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%pirate_ships_cruising%') <> 2
+     or (select p.prosrc from pg_proc p where p.oid = 'public.pirate_stow(uuid,jsonb)'::regprocedure) !~ 'for update of pg;'
+     or (select p.prosrc from pg_proc p where p.oid = 'public.pirate_stow(uuid,jsonb)'::regprocedure) ~ 'for update;' then
+    raise exception '0339 self-assert FAIL: the cruising rule has a third reader, or the stow locks more than the market row';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0339 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;

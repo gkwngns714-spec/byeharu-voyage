@@ -582,7 +582,7 @@ The other seven havens of `PIRATES_AND_HAVENS` wait for later slices.
 **Built as W17, migration 0339, dark, not deployed (`docs/dev-log/2026-11-07-pirate-ships-sail.md`). Where the build differs, each decided by default:**
 - **She carries no book.** The plundered share of a cargo ship's funds leaves the ship's book LOOTED and is her home's purse the moment it is taken (kind `LOOT`, moved), not delivered when she docks: the book needed a fifth stage, two trigger hunks and three readers for one sum. So a player who boards her takes no gold yet.
 - **Her strength is her own.** A named raider fights at `voyage.pirate_strength` (her hulls' figure by the hull left), whatever the day's magnitude; the anonymous day is today's figure to the digit. Stow and RANSOM happen only when the raider is named: an anonymous xebec has no home.
-- **The cruise is one stored course out and back**, home to the harbour in reach whose sea is the most dangerous as authored (`public.pirate_haunt_of`), spread by ord; `pirate_ships.sea_id` is her position for "who raids" from the moment she leaves home to the moment she docks there; she lies `pirate_haunt_hours` (12) at the haunt.
+- **The cruise is one stored course out and back**, home to the harbour in reach whose sea is the most dangerous as authored (`public.pirate_haunt_of`), spread by ord; she lies `pirate_haunt_hours` (12) at the haunt. **Her position for "who raids" (`pirate_ships.sea_id`) holds while she cruises out and lies at her haunt; on the home leg she is in no sea**: she names nobody, adds no pressure, and W19's hunt cannot find her on the way home. The one rule of "she is in a sea" is the view `public.pirate_ships_cruising` (at work, `sea_id` set, free to fight, a hull left), read by `pirate_ship_in_sea` and `pirate_pressure_write`: a wreck, a ship under repair, one in a battle or a hulk is never named and presses on nothing; in any port that is not her haunt the step clears her position.
 - **The hoard pays through one door**, `public.pirate_pay`, under the day's room `public.pirate_spend_room` (`pirate_spend_day_pct` 0.5 % of the hoard a UTC day): the hull (BUILD_NAVY to the nearest yard by sea, whoever holds it: a pirate home has none), the hour (NAVY_PAY, `navy_upkeep_day` reused), and W18's founding. Whole or nothing; a hoard at 0 has no room.
 - **A pirate ship in a sea is pressure 0.5** (`pirate_pressure`), refreshed each run so it does not decay while she is there: `public.sea_pressure`'s first and only writer.
 - **The navy's knobs are reused** (`navy_upkeep_day`, `navy_build_hours`, `navy_reach_nm`, `navy_store_days`, `navy_steps_per_run`), not copied. `regard_pirate` -50 with the Brethren for a player's attack on her; the pirates write no WANTED row.
@@ -648,8 +648,8 @@ Every one is **moved** in `stats_flow_words`. `mint_guard` is untouched. **No ne
 | Kind | From | To |
 |---|---|---|
 | `FINE` | Player | Capital |
-| `LOOT` | Funds aboard, pirate book | Player |
-| `RANSOM` | Company | PIR home, or a pirate ship's book |
+| `LOOT` | Funds aboard, pirate book | Player. **As built (W17, 0339):** also a cargo ship's book → the pirate HOME's purse, at once (a pirate ship carries no book; 7.3) |
+| `RANSOM` | Company | PIR home, or a pirate ship's book. **As built (W17, 0339):** the PIR home only (no book) |
 | `REFIT` | Origin purse | Refit yard |
 | `NAVY_PAY` | Capital, or PIR home | Harbour last called at |
 | `BUILD_NAVY` | Capital | Yard city |

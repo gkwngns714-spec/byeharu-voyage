@@ -32,7 +32,7 @@ export const mutations = (swap) => [
   ['the ransom ignores the cap', (s) => swap(s, `  if n.fleet_id is null or p_company is null or not public.city_treasury_on() or public.pirate_hoard() >= public.wc_num('pirate_hoard_cap') then`, `  if n.fleet_id is null or p_company is null or not public.city_treasury_on() then`), /PROOF 46 FAIL: a hoard at the cap took gold/],
   ['the loot is minted', (s) => swap(s, `  perform public.convoy_book('LOOTED', p_victim, c.player_id, (select l.port_id from public.convoy_cargo l where l.id = v_load), v_take, v_load);\n`, ``), /PROOF 46 FAIL: the cargo ship's gold did not land/],
   ['the loot never lands', (s) => swap(s, `  perform public.treasury_post(n.home_port, 'LOOT', v_take, null, p_event, true);\n`, ``), /PROOF 46 FAIL: the cargo ship's gold did not land/],
-  ['the pressure outlives her', (s) => swap(s, `  delete from public.sea_pressure sp where not v_lit or not exists (select 1 from public.pirate_ships_at_work x where x.sea_id = sp.sea_id);`, `  delete from public.sea_pressure sp where false;`), /PROOF 46 FAIL: off, a departure named her, the pressure stood/],
+  ['the pressure outlives her', (s) => swap(s, `  delete from public.sea_pressure sp where not v_lit or not exists (select 1 from public.pirate_ships_cruising x where x.sea_id = sp.sea_id);`, `  delete from public.sea_pressure sp where false;`), /PROOF 46 FAIL: (off, a departure named her, the pressure stood|unpaid, she did not sail home, or on the home leg she is still in her sea|a wreck pressed on her sea)/],
   ['the regen holds dark', (s) => swap(s, `  v_pir    boolean := public.pirates_on();   -- 0339: with the pirates lit, a pirate home's stock is plunder, not production (docs/WORLD_POWERS.md 7.6)`, `  v_pir    boolean := true;`), /PROOF 46 FAIL: off, Port Royal's stock did not regenerate/],
   ['the regen never holds', (s) => swap(s, `         stock = case when pg.last_regen_day < v_day and not f.held then public.depth_stock(`, `         stock = case when pg.last_regen_day < v_day then public.depth_stock(`), /PROOF 46 FAIL: lit, Port Royal's stock moved/],
   ['paid twice an hour', (s) => swap(s, `  if (select c.paid_at from public.pirate_clock c) > p_now - interval '1 hour' then
@@ -40,6 +40,17 @@ export const mutations = (swap) => [
   end if;
 `, ``), /PROOF 46 FAIL: paid twice in an hour/],
   ['unpaid she is never marked', (s) => swap(s, `    update public.pirate_ships n set unpaid_since = case when v_paid > 0 then null else coalesce(n.unpaid_since, p_now) end where n.fleet_id = r.fleet_id;`, `    update public.pirate_ships n set unpaid_since = null where n.fleet_id = r.fleet_id;`), /PROOF 46 FAIL: a hoard at 0 paid .*or she was not marked unpaid/],
+  ['a hulk is named', (s) => swap(s, `     where n.laid_up_at is null and n.sea_id is not null
+       and f.status in ('SAILING', 'DOCKED', 'ANCHORED')
+       and exists (select 1 from public.ships s where s.fleet_id = n.fleet_id and s.durability > 0);`, `     where n.laid_up_at is null and n.sea_id is not null;`), /PROOF 46 FAIL: a wreck with a stale position was named a raider/],
+  ['a wreck keeps her position', (s) => swap(s, `  if f.port_id is distinct from n.haunt_port and (n.sea_id is not null or n.haunt_port is not null or n.haunt_since is not null or n.mission <> 'HOME') then
+    update public.pirate_ships x set sea_id = null, haunt_port = null, haunt_since = null, mission = 'HOME' where x.fleet_id = p_fleet;
+    select * into n from public.pirate_ships x where x.fleet_id = p_fleet;
+  end if;
+`, ``), /PROOF 46 FAIL: a wreck kept her position at home/],
+  ['the stow locks the catalogue', (s) => swap(s, `where pg.port_id = n.home_port and g.code = r.code for update of pg;`, `where pg.port_id = n.home_port and g.code = r.code for update;`), /0339 self-assert FAIL: the cruising rule has a third reader, or the stow locks more than the market row/],
+  // the insert reads the ships at work instead of the one rule (its delete still names the view, so the reader count holds): a wreck with a stale position presses on her sea, and proof 46's wreck scene says so
+  ['the pressure skips the one rule', (s) => swap(s, `    select x.sea_id, public.wc_num('pirate_pressure') * count(*), p_now from public.pirate_ships_cruising x group by x.sea_id`, `    select x.sea_id, public.wc_num('pirate_pressure') * count(*), p_now from public.pirate_ships_at_work x where x.sea_id is not null group by x.sea_id`), /PROOF 46 FAIL: a wreck pressed on her sea/],
   ['the card serves anyone', (s) => swap(s, `  if n.fleet_id is null then
     raise exception 'E_NOT_FOUND: there is no such pirate ship' using errcode = 'P0001';
   end if;

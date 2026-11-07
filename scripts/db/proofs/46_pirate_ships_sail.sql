@@ -20,7 +20,8 @@
 -- @pass PIR_REGEN       lit, a pirate home's stock neither regenerates nor decays, a control city's does; off, the home regenerates as any
 -- @pass PIR_PAY         an hour of upkeep: the hoard pays the harbour she lies at, two rows, moved; once an hour; at the capital nothing moves; unpaid, she goes home and is laid up; money back, she wakes (WOKEN), the same fleet
 -- @pass PIR_OFF         switch off with her out: she sails home and is laid up; a new departure through her sea names nobody; nothing is built or paid
--- @pass PIR_WRECK       wrecked at home with the refit rule dark she is patched free; lit, her home pays the refit, moved
+-- @pass PIR_WRECK       a wreck respawned at home with the position of her lost cruise names nobody, presses on nothing, and the step clears her position; with the refit rule dark she is patched free; lit, her home pays the refit, moved
+-- @pass PIR_POSITION    the one rule of "she is in a sea": lying at her haunt with a hull she is named and presses; a hulk, a ship under repair and one in a battle are not; stranded at another port the step clears her; on the home leg she is in no sea
 -- @pass PIR_CARD        her card serves what she is (home, haunt, mission) and refuses anything else; it is a client entry point
 -- @pass PIR_ATTACK      attacks lit: a player at sea may attack her (regard_pirate with the Brethren, reason ATTACK_PIRATE); the battle resolves; no WANTED row is written for the pirates
 -- @pass PIR_MONEY       W (purses + companies + funds aboard) is unchanged to the ducat across everything above
@@ -542,8 +543,9 @@ begin
   update public.fleets f set ready_at = null where f.id = v_her;
   v_s := public.pirate_ship_step(v_her, v_t + interval '5 hours');
   if v_s <> 'SAILED' or (select v.dest_port_id from public.voyages v where v.fleet_id = v_her and v.status = 'SAILING') <> v_por
-     or (select n.sea_id is null and n.mission = 'HOME' from public.pirate_ships n where n.fleet_id = v_her) is not true then
-    raise exception 'PROOF 46 FAIL: unpaid, she did not sail home: %', v_s;
+     or (select n.sea_id is null and n.mission = 'HOME' from public.pirate_ships n where n.fleet_id = v_her) is not true
+     or public.pirate_ship_in_sea(v_sea) is not null or public.pirate_pressure_write(v_t + interval '5 hours') <> 0 then   -- on the home leg she is in no sea
+    raise exception 'PROOF 46 FAIL: unpaid, she did not sail home, or on the home leg she is still in her sea: %', v_s;
   end if;
   perform pg_temp.reach_port(v_her);
   v_s := public.pirate_ship_step(v_her, v_t + interval '6 hours');
@@ -587,14 +589,29 @@ begin
   update public.world_config set value = 'true'::jsonb where key = 'pirates_bite';
   raise notice 'PASS: PIR_OFF — home, laid up, nobody named, nothing paid';
 
-  -- ── WRECK ──
-  update public.pirate_ships n set laid_up_at = null, unpaid_since = null where n.fleet_id = v_her;
+  -- ── WRECK: respawned at her home with the position of the cruise she was lost on (0322 puts her there UNABLE_TO_SAIL; the row keeps sea_id until the step clears it) ──
+  update public.pirate_ships n set laid_up_at = null, unpaid_since = null, sea_id = v_sea, mission = 'CRUISE', haunt_port = v_haunt, haunt_since = null where n.fleet_id = v_her;
   update public.ships s set durability = 0 where s.fleet_id = v_her;
   update public.fleets f set status = 'UNABLE_TO_SAIL', ready_at = null where f.id = v_her;
+  if public.pirate_ship_in_sea(v_sea) is not null then
+    raise exception 'PROOF 46 FAIL: a wreck with a stale position was named a raider';
+  end if;
+  v_n := public.pirate_pressure_write(v_t + interval '11 hours');
+  if v_n <> 0 or exists (select 1 from public.sea_pressure) then
+    raise exception 'PROOF 46 FAIL: a wreck pressed on her sea: % row(s)', v_n;
+  end if;
+  v_voy := voyage.depart(v_hfl, pg_temp.through(v_hfl, v_sea, 1), v_lis, v_lis, v_t + interval '11 hours');
+  if exists (select 1 from public.voyages o cross join lateral jsonb_array_elements(o.path) e where o.id = v_voy and e ? 'raider') then
+    raise exception 'PROOF 46 FAIL: a departure through a wreck''s stale sea was frozen with her';
+  end if;
+  perform pg_temp.reach_port(v_hfl);
   v_s := public.pirate_ship_step(v_her, v_t + interval '11 hours');
   if v_s <> 'IN_PORT' or (select f.status = 'DOCKED' and f.ready_at > v_t + interval '11 hours' from public.fleets f where f.id = v_her) is not true
      or (select s.durability from public.ships s where s.fleet_id = v_her) <= 0 then
     raise exception 'PROOF 46 FAIL: refits dark, she was not patched free: %', v_s;
+  end if;
+  if (select n.sea_id is null and n.haunt_port is null and n.haunt_since is null and n.mission = 'HOME' from public.pirate_ships n where n.fleet_id = v_her) is not true then
+    raise exception 'PROOF 46 FAIL: a wreck kept her position at home: %', (select jsonb_build_array(n.sea_id, n.haunt_port, n.haunt_since, n.mission) from public.pirate_ships n where n.fleet_id = v_her);
   end if;
   update public.world_config set value = 'true'::jsonb where key = 'npc_refits_enabled';
   update public.ships s set durability = 0 where s.fleet_id = v_her;
@@ -608,7 +625,48 @@ begin
     raise exception 'PROOF 46 FAIL: refits lit, her home did not pay the refit, moved: % (% d.)', v_s, v_a;
   end if;
   update public.world_config set value = 'false'::jsonb where key = 'npc_refits_enabled';
-  raise notice 'PASS: PIR_WRECK — patched free dark; lit, Port Royal paid % d. REFIT, moved', v_a;
+  raise notice 'PASS: PIR_WRECK — a wreck names nobody, presses on nothing, and the step clears her position; patched free dark; lit, Port Royal paid % d. REFIT, moved', v_a;
+
+  -- ── POSITION: the one rule of "she is in a sea" (public.pirate_ships_cruising), read by the freeze and the pressure alike ──
+  update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_her;
+  update public.fleets f set status = 'DOCKED', port_id = v_haunt, ready_at = null, busy_until = null where f.id = v_her;
+  update public.pirate_ships n set sea_id = v_sea, mission = 'CRUISE', haunt_port = v_haunt, haunt_since = v_t, laid_up_at = null, unpaid_since = null where n.fleet_id = v_her;
+  v_n := public.pirate_pressure_write(v_t + interval '12 hours 30 minutes');
+  if public.pirate_ship_in_sea(v_sea) is distinct from v_her or v_n <> 1 then
+    raise exception 'PROOF 46 FAIL: lying at her haunt with a hull she is not in her sea (% row(s))', v_n;
+  end if;
+  update public.ships s set durability = 0 where s.fleet_id = v_her;   -- a hulk at her haunt
+  v_n := public.pirate_pressure_write(v_t + interval '12 hours 31 minutes');
+  if public.pirate_ship_in_sea(v_sea) is not null or v_n <> 0 or exists (select 1 from public.sea_pressure) then
+    raise exception 'PROOF 46 FAIL: a hulk at her haunt was named, or pressed on her sea (% row(s))', v_n;
+  end if;
+  update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_her;
+  update public.fleets f set status = 'UNABLE_TO_SAIL' where f.id = v_her;   -- under repair at her haunt
+  v_n := public.pirate_pressure_write(v_t + interval '12 hours 32 minutes');
+  if public.pirate_ship_in_sea(v_sea) is not null or v_n <> 0 then
+    raise exception 'PROOF 46 FAIL: a ship under repair was named, or pressed on her sea';
+  end if;
+  update public.fleets f set status = 'IN_BATTLE', busy_until = v_t + interval '13 hours' where f.id = v_her;   -- in a battle at her haunt
+  v_n := public.pirate_pressure_write(v_t + interval '12 hours 33 minutes');
+  if public.pirate_ship_in_sea(v_sea) is not null or v_n <> 0 then
+    raise exception 'PROOF 46 FAIL: a ship in a battle was named, or pressed on her sea';
+  end if;
+  update public.fleets f set status = 'DOCKED', busy_until = null where f.id = v_her;
+  v_n := public.pirate_pressure_write(v_t + interval '12 hours 34 minutes');
+  if public.pirate_ship_in_sea(v_sea) is distinct from v_her or v_n <> 1 then
+    raise exception 'PROOF 46 FAIL: free again at her haunt she is not in her sea';
+  end if;
+  update public.fleets f set port_id = v_lis where f.id = v_her;   -- stranded: docked at a port that is not her haunt, with a position still set
+  v_s := public.pirate_ship_step(v_her, v_t + interval '12 hours 35 minutes');
+  v_n := public.pirate_pressure_write(v_t + interval '12 hours 36 minutes');
+  if (select n.sea_id is null and n.haunt_port is null and n.haunt_since is null and n.mission = 'HOME' from public.pirate_ships n where n.fleet_id = v_her) is not true
+     or public.pirate_ship_in_sea(v_sea) is not null or v_n <> 0 then
+    raise exception 'PROOF 46 FAIL: stranded, the step kept her position (%): %', v_s, (select jsonb_build_array(n.sea_id, n.haunt_port, n.haunt_since, n.mission) from public.pirate_ships n where n.fleet_id = v_her);
+  end if;
+  if v_s = 'SAILED' then
+    perform pg_temp.reach_port(v_her);
+  end if;
+  raise notice 'PASS: PIR_POSITION — a hulk, a ship under repair and one in a battle are in no sea; stranded, the step clears her (%)', v_s;
 
   -- ── CARD ──
   update public.ships s set durability = (select b.durability from public.ship_base(s.id) b) where s.fleet_id = v_her;
