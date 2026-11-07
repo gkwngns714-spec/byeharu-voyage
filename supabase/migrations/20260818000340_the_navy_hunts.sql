@@ -14,6 +14,8 @@
 --   At her station, on duty, lit: public.navy_hunt_targets reads every sea within navy_reach_nm sailed of the station (her own too), each at voyage.sea_danger NOW (0330; W17's pirate ships press on it), the most dangerous first.
 --   If that is her own sea she lies at her station (HUNTING) for navy_hunt_hours; else she sails for the nearest open harbour of it that a course reaches, a real voyage through public.navy_sail (hands, free stores, voyage.depart),
 --   mission HUNT, and lies there navy_hunt_hours from her arrival; then she sails home, and at her station picks again. Nothing is in reach, or nothing lit: she patrols as before (mission PATROL). She is never turned at sea (W13's rule).
+--   A harbour the pirates hold is never a hunt's harbour (their quay would man her and public.navy_pay would pay her upkeep into the hoard). A call or an escort that takes her off the hunt takes the hunt's fields with it.
+--   A pirate ship is found by her sea_id, which 0339 sets while she sails out and lies at her haunt and nulls on her home leg: a hunt meets her out or at the haunt, never on her way home.
 --   ARRIVALS BOUND: a patrol is navy_patrol_stops + 1 legs (4) in about 45 minutes; a hunt is 2 legs and a lie of navy_hunt_hours (6 h) or 0 legs and a lie. So a hunting ship makes FEWER arrivals than a patrolling one; the
 --   design's estimate for 75 ships (about 7 arrivals a minute, 6.5) stands as the bound. Proof 48 measures a hunter's legs against her patrol's.
 --
@@ -191,13 +193,15 @@ set search_path = public, pg_temp
 as $$
   -- 0340: THE seas a hunt from this station may sail for, the most dangerous first (docs/WORLD_POWERS.md 6.4: "the sea with the highest sea_danger in reach"): the station's own sea and the sea of every open harbour within
   -- navy_reach_nm sailed of it (voyage.reach_from, the figure every quote reads), each at voyage.sea_danger at p_now, so a pirate ship's pressure (0330, W17) counts. One row a sea: its nearest harbour (the station itself for
-  -- its own sea), ties by code. A prod check may ask it: read only.
+  -- its own sea), ties by code. NEVER A HARBOUR THE PIRATES HOLD (public.pirate_power of its holder: the homes and any city they win): their quay would man her and public.navy_pay would pay her upkeep into their purse,
+  -- which is the hoard (0339). A sea whose every harbour in reach is theirs is no target. A prod check may ask it: read only.
   select y.sea_id, y.danger, y.port_id, y.nm
     from (select distinct on (x.sea_id) x.sea_id, x.danger, x.port_id, x.nm, x.code
             from (select p.sea_id, voyage.sea_danger(p.sea_id, p_now) as danger, r.port_id, r.nm, r.code
                     from voyage.reach_from(p_station) r
                     join public.ports p on p.id = r.port_id
                    where p.kind = 'HARBOUR' and not p.is_ice_closed and r.port_id <> p_station and r.nm <= public.wc_num('navy_reach_nm')
+                     and not public.pirate_power(public.port_nation(p.id))
                   union all
                   select p.sea_id, voyage.sea_danger(p.sea_id, p_now), p.id, 0::numeric, p.code
                     from public.ports p where p.id = p_station) x
@@ -215,7 +219,8 @@ set search_path = public, pg_temp
 as $$
 -- 0340: THE HUNT, what a navy ship does about it in port (docs/WORLD_POWERS.md 6.4). Called by public.navy_ship_step after her home is read; the caller holds her fleet row. Answers HUNTING (she lies, watching), HUNT (she
 -- sailed for the most dangerous sea in reach), or null: she is no hunter now, and her step goes on (home, patrol, laid up) as before this file.
---   Off duty or dark: a hunt is forgotten (mission PATROL), nothing else.
+--   A call or an escort took her off the hunt (0333's navy_call, navy_escort_step and navy_close set mission alone): the hunt's fields go the moment she steps as anything but a hunter, so none is ever stale.
+--   Off duty or dark: a hunt is forgotten (mission PATROL, the fields cleared whatever her mission), nothing else.
 --   Lying at her hunt harbour: until hunt_until she stays; past it, away from home she sails home (the step's own path); at home she picks again.
 --   At home, on duty, lit: the most dangerous sea in reach (public.navy_hunt_targets). Her own: she lies at her station navy_hunt_hours. Another: the nearest harbour of it a course reaches (the first three seas are tried),
 --   a real voyage through public.navy_sail, mission HUNT, her lie set from her arrival. She is mended free at her station as she sets out, as a patrol's end mends her. No sea, no course: she patrols (mission PATROL).
@@ -228,10 +233,14 @@ declare
   v_tries int := 0;
 begin
   select * into n from public.navy_ships x where x.fleet_id = p_fleet;
+  if n.mission <> 'HUNT' and (n.hunt_port is not null or n.hunt_until is not null) then
+    update public.navy_ships x set hunt_port = null, hunt_until = null where x.fleet_id = p_fleet;
+    n.hunt_port := null;
+    n.hunt_until := null;
+  end if;
   if not (p_duty and public.navy_hunts_on()) then
-    if n.mission = 'HUNT' then
-      update public.navy_ships x set mission = 'PATROL', hunt_port = null, hunt_until = null where x.fleet_id = p_fleet;
-    end if;
+    update public.navy_ships x set mission = case when x.mission = 'HUNT' then 'PATROL' else x.mission end, hunt_port = null, hunt_until = null
+     where x.fleet_id = p_fleet and (x.mission = 'HUNT' or x.hunt_port is not null or x.hunt_until is not null);
     return null;
   end if;
   if n.mission = 'HUNT' and n.hunt_port = p_port then
@@ -264,9 +273,8 @@ begin
      where x.fleet_id = p_fleet;
     return 'HUNT';
   end loop;
-  if n.mission = 'HUNT' then
-    update public.navy_ships x set mission = 'PATROL', hunt_port = null, hunt_until = null where x.fleet_id = p_fleet;
-  end if;
+  update public.navy_ships x set mission = case when x.mission = 'HUNT' then 'PATROL' else x.mission end, hunt_port = null, hunt_until = null
+   where x.fleet_id = p_fleet and (x.mission = 'HUNT' or x.hunt_port is not null or x.hunt_until is not null);
   return null;
 end
 $$
@@ -401,18 +409,18 @@ begin
               and exists (select 1 from public.ships s where s.fleet_id = n.fleet_id and s.durability > 0)
             order by n.fought_at nulls first, n.nation_id, n.ord loop
     exit when v_n >= v_max;
-    v_sea := public.fleet_sea(r.fleet_id, p_now);
-    continue when v_sea is null;
-    v_p := public.pirate_ship_in_sea(v_sea);
-    continue when v_p is null;
-    continue when exists (select 1 from public.pirate_ships x where x.fleet_id = v_p and x.fought_at > p_now - interval '1 hour')
-               or not exists (select 1 from public.ships s where s.fleet_id = v_p and s.durability > 0)
-               or exists (select 1 from public.fleets f where f.id = v_p and (f.busy_until is not null or f.status not in ('DOCKED', 'SAILING', 'ANCHORED')));
-    perform 1 from public.fleets x where x.id = r.fleet_id for update skip locked;
-    continue when not found;
-    perform 1 from public.fleets x where x.id = v_p for update skip locked;
-    continue when not found;
-    begin
+    begin   -- everything of one ship inside her own block: a sea that cannot be read (voyage.sea_near raises E_NO_SEA for a point no sea claims) skips her with a warning, and the rest go on
+      v_sea := public.fleet_sea(r.fleet_id, p_now);
+      continue when v_sea is null;
+      v_p := public.pirate_ship_in_sea(v_sea);
+      continue when v_p is null;
+      continue when exists (select 1 from public.pirate_ships x where x.fleet_id = v_p and x.fought_at > p_now - interval '1 hour')
+                 or not exists (select 1 from public.ships s where s.fleet_id = v_p and s.durability > 0)
+                 or exists (select 1 from public.fleets f where f.id = v_p and (f.busy_until is not null or f.status not in ('DOCKED', 'SAILING', 'ANCHORED')));
+      perform 1 from public.fleets x where x.id = r.fleet_id for update skip locked;
+      continue when not found;
+      perform 1 from public.fleets x where x.id = v_p for update skip locked;
+      continue when not found;
       perform voyage.settle(r.fleet_id, p_now);
       perform voyage.settle(v_p, p_now);
       continue when exists (select 1 from public.fleets f where f.id in (r.fleet_id, v_p) and (f.busy_until is not null or f.status not in ('DOCKED', 'SAILING', 'ANCHORED')))
@@ -421,7 +429,7 @@ begin
       perform public.navy_fight(r.fleet_id, v_p, p_now);
       v_n := v_n + 1;
     exception when others then
-      raise warning 'navy_hunt_pass: fleet % and % did not fight (SQLSTATE %: %)', r.fleet_id, v_p, sqlstate, sqlerrm;
+      raise warning 'navy_hunt_pass: fleet % did not fight (SQLSTATE %: %)', r.fleet_id, sqlstate, sqlerrm;
     end;
   end loop;
   return v_n;
@@ -570,7 +578,7 @@ $h$);
   end if;
   if exists (select 1 from public.navy_ships n where n.fought_at is not null or n.fought is not null or n.hunt_port is not null or n.hunt_until is not null)
      or exists (select 1 from public.navy_ships n where n.mission = 'HUNT')
-     or exists (select 1 from public.events e where e.kind = 'NAVY_FIGHT') then
+     or exists (select 1 from public.events e where e.player_id is null and e.kind = 'NAVY_FIGHT') then   -- by the (player_id, created_at) index: the public events are a handful; never a scan of the table
     raise exception '0340 self-assert FAIL: a row was written dark';
   end if;
   if (select string_agg(p.provolatile::text, '' order by p.oid::regprocedure::text) from pg_proc p
@@ -598,19 +606,23 @@ $h$);
   if v_port is null then
     raise exception '0340 self-assert FAIL: no Lisbon to read the targets from';
   end if;
-  if (select count(*) from public.navy_hunt_targets(v_port, now())) < 2
-     or (select count(*) from public.navy_hunt_targets(v_port, now()) t where t.nm > public.wc_num('navy_reach_nm')) <> 0
-     or (select count(*) - count(distinct t.sea_id) from public.navy_hunt_targets(v_port, now()) t) <> 0
-     or (select count(*) from public.navy_hunt_targets(v_port, now()) t where t.sea_id = v_sea and t.port_id = v_port and t.nm = 0) <> 1
-     or exists (select 1 from (select t.danger, lag(t.danger) over (order by t.danger desc, t.nm, t.port_id) as prev from public.navy_hunt_targets(v_port, now()) t) z where z.prev < z.danger)
-     or exists (select 1 from public.navy_hunt_targets(v_port, now()) t where t.danger is distinct from voyage.sea_danger(t.sea_id, now())) then
-    raise exception '0340 self-assert FAIL: the targets of Lisbon are not in order, one a sea, within reach, with her own sea at 0 nm';
+  create temp table targets_0340 on commit drop as
+    select t.sea_id, t.danger, t.port_id, t.nm, row_number() over () as ord from public.navy_hunt_targets(v_port, now()) t;   -- read ONCE (about 250 ms: a holder's read for every harbour in reach), then judged
+  if (select count(*) from targets_0340) < 2
+     or (select count(*) from targets_0340 t where t.nm > public.wc_num('navy_reach_nm')) <> 0
+     or (select count(*) - count(distinct t.sea_id) from targets_0340 t) <> 0
+     or (select count(*) from targets_0340 t where t.sea_id = v_sea and t.port_id = v_port and t.nm = 0) <> 1
+     or exists (select 1 from (select t.danger, lag(t.danger) over (order by t.ord) as prev from targets_0340 t) z where z.prev < z.danger)
+     or exists (select 1 from targets_0340 t where t.danger is distinct from voyage.sea_danger(t.sea_id, now()))
+     or exists (select 1 from targets_0340 t where public.pirate_power(public.port_nation(t.port_id))) then
+    raise exception '0340 self-assert FAIL: the targets of Lisbon are not in order, one a sea, within reach, none the pirates'' harbour, with her own sea at 0 nm';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0340 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
   raise notice '0340 self-assert ok: THE NAVY HUNTS, dark behind navy_enabled and pirates_bite. % hunks once each and reversing; no other function, knob or job; no row written; Lisbon reads % seas in reach; no game step ran (proof 48 runs them in CI). % ms.',
-    (select count(*) from hunks_0340), (select count(*) from public.navy_hunt_targets(v_port, now())), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+    (select count(*) from hunks_0340), (select count(*) from targets_0340), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  drop table targets_0340;
   drop table hunks_0340;
 end
 $m$;

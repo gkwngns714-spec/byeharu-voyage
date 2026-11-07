@@ -44,5 +44,9 @@ export function mutations(swap) {
     ['the read is volatile', (s) => swap(s, `create function public.navy_hunts_on()\nreturns boolean\nlanguage sql\nstable\n`, `create function public.navy_hunts_on()\nreturns boolean\nlanguage sql\nvolatile\n`), /a read is not stable/],
     ['a hunk is off its line', (s) => swap(s, `$h$  v_esc   text;   -- 0333\nbegin\n$h$,`, `$h$  v_esc   text;    -- 0333\nbegin\n$h$,`), /occurs 0 time/],
     ['the switch is lit by the file', (s) => swap(s, `  -- ── 1. THE KNOBS AND THE COLUMNS (all new; no existing key is touched) ──\n`, `  update public.world_config set value = 'true'::jsonb where key = 'navy_enabled';\n`), /a switch is not off|a world_config row moved/],
+    // the review of 2026-11-07 (one mutation a fix; the events clause's index is a cost, which no proof can see)
+    ['a pirate harbour is a hunt\'s harbour', (s) => swap(s, `                     and not public.pirate_power(public.port_nation(p.id))\n`, `\n`), /a harbour the pirates hold is a target|she hunted a harbour the pirates hold/],
+    ['a stale hunt survives a call', (s) => swap(s, `  if n.mission <> 'HUNT' and (n.hunt_port is not null or n.hunt_until is not null) then\n`, `  if false then\n`), /a stale hunt survived a call/],
+    ['the sea is read outside the ship\'s block', (s) => swap(s, `    begin   -- everything of one ship inside her own block: a sea that cannot be read (voyage.sea_near raises E_NO_SEA for a point no sea claims) skips her with a warning, and the rest go on\n      v_sea := public.fleet_sea(r.fleet_id, p_now);\n`, `    v_sea := public.fleet_sea(r.fleet_id, p_now);\n    begin\n`), /E_NO_SEA/],
   ]
 }

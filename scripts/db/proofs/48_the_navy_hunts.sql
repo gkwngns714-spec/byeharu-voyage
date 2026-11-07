@@ -338,13 +338,18 @@ declare
   v_nat uuid := (select g.nation_id from public.great_powers g join public.nations n on n.id = g.nation_id where n.code = 'PRT');
   v_cap uuid := public.realm_capital((select g.nation_id from public.great_powers g join public.nations n on n.id = g.nation_id where n.code = 'PRT'));
   v_own uuid := (select p.sea_id from public.ports p where p.id = public.realm_capital((select g.nation_id from public.great_powers g join public.nations n on n.id = g.nation_id where n.code = 'PRT')));
+  v_por uuid := (select p.id from public.ports p where p.code = 'POR');
+  v_pir uuid := (select n.id from public.nations n where n.code = 'PIR');
   t1    record;
   t2    record;
   v_far uuid;
+  v_h1  uuid;
+  v_hold uuid;
   n     uuid;
   v_s   text;
   v_vo  public.voyages%rowtype;
   v_leg int;
+  v_homeleg int;
   v_pat int;
   v_hours numeric := public.wc_num('navy_hunt_hours');
 begin
@@ -380,7 +385,29 @@ begin
   if (select s.crew from public.ships s where s.fleet_id = n) <= 0 then
     raise exception 'PROOF 48 FAIL: she sailed with no hands';
   end if;
-  raise notice 'PASS: NH_HUNT — % nm to % in the pressed sea; the sea beyond reach pressed ten times harder did not count', round(v_vo.total_nm), (select p.code from public.ports p where p.id = v_vo.dest_port_id);
+  -- a harbour the pirates hold is never a hunt's harbour (their quay would man her, navy_pay would feed the hoard): the harbour she just sailed for given to the Brethren, no target names it or any of theirs,
+  -- and from her station she hunts another (the next harbour of that sea, or the next sea, or lies at station)
+  v_h1 := v_vo.dest_port_id;
+  v_hold := (select a.nation_id from public.port_allegiance a where a.port_id = v_h1);
+  alter table public.port_allegiance disable trigger port_allegiance_home_never_changes;   -- a proof's fixture: the harbour may be a home city; the trigger is back on two lines down
+  update public.port_allegiance a set nation_id = v_pir where a.port_id = v_h1;
+  alter table public.port_allegiance enable trigger port_allegiance_home_never_changes;
+  if not public.pirate_power(public.port_nation(v_h1)) or exists (select 1 from public.navy_hunt_targets(v_cap, v_t) t where public.pirate_power(public.port_nation(t.port_id))) then
+    raise exception 'PROOF 48 FAIL: a harbour the pirates hold is a target: %', (select jsonb_agg(t.port_id) from public.navy_hunt_targets(v_cap, v_t) t where public.pirate_power(public.port_nation(t.port_id)));
+  end if;
+  perform pg_temp.dock_48(n, v_cap);
+  update public.navy_ships x set mission = 'PATROL', hunt_port = null, hunt_until = null where x.fleet_id = n;
+  v_s := public.navy_ship_step(n, v_t + interval '1 second');
+  if v_s not in ('HUNT', 'HUNTING') or (select x.hunt_port from public.navy_ships x where x.fleet_id = n) is distinct from (select x.hunt_port from public.navy_ships x where x.fleet_id = n and x.hunt_port <> v_h1)
+     or public.pirate_power(public.port_nation((select x.hunt_port from public.navy_ships x where x.fleet_id = n))) then
+    raise exception 'PROOF 48 FAIL: she hunted a harbour the pirates hold: % %', v_s, (select to_jsonb(x) - 'fleet_id' - 'player_id' from public.navy_ships x where x.fleet_id = n);
+  end if;
+  alter table public.port_allegiance disable trigger port_allegiance_home_never_changes;
+  update public.port_allegiance a set nation_id = v_hold where a.port_id = v_h1;
+  alter table public.port_allegiance enable trigger port_allegiance_home_never_changes;
+  raise notice 'PASS: NH_HUNT — % nm to % in the pressed sea; the sea beyond reach pressed ten times harder did not count; % given to the Brethren, she hunts % instead',
+    round(v_vo.total_nm), (select p.code from public.ports p where p.id = v_h1), (select p.code from public.ports p where p.id = v_h1),
+    (select p.code from public.ports p join public.navy_ships x on x.hunt_port = p.id where x.fleet_id = n);
 
   -- her own sea the most dangerous: she lies at her station, watching, for the hours, then picks again
   delete from public.sea_pressure;
@@ -430,16 +457,35 @@ begin
     raise exception 'PROOF 48 FAIL: off duty she hunted: % %', v_s, (select to_jsonb(x) - 'fleet_id' - 'player_id' from public.navy_ships x where x.fleet_id = n);
   end if;
   update public.navy_ships x set unpaid_since = null, laid_up_at = null where x.fleet_id = n;
-  raise notice 'PASS: NH_LIES — lies to hunt_until, home still hunting, patrols when the pirates go dark, lies up unpaid';
+  -- a call or an escort took her off the hunt (0333 sets mission alone, as navy_close leaves her): the hunt's fields go at her next step as anything but a hunter, wherever she is. Port Royal, the pirates', can be no
+  -- fresh target, so a stale Port Royal is told from a new pick.
+  perform pg_temp.dock_48(n, t1.port_id);
+  update public.navy_ships x set mission = 'PATROL', hunt_port = v_por, hunt_until = v_t - interval '1 hour', last_port = t1.port_id where x.fleet_id = n;
+  v_s := public.navy_ship_step(n, v_t + interval '9 hours');
+  if v_s <> 'SAILED' or (select (x.hunt_port is null and x.hunt_until is null)::text || ':' || x.mission from public.navy_ships x where x.fleet_id = n) <> 'true:PATROL' then
+    raise exception 'PROOF 48 FAIL: a stale hunt survived a call: % %', v_s, (select to_jsonb(x) - 'fleet_id' - 'player_id' from public.navy_ships x where x.fleet_id = n);
+  end if;
+  -- the pirates gone dark (a forward rollback) with a stale hunt on a ship at her station: cleared, and she patrols
+  perform pg_temp.dock_48(n, v_cap);
+  update public.navy_ships x set mission = 'PATROL', hunt_port = v_por, hunt_until = v_t + interval '1 hour', patrol = null, leg = 0 where x.fleet_id = n;
+  update public.world_config set value = 'false'::jsonb where key = 'pirates_bite';
+  v_s := public.navy_ship_step(n, v_t + interval '10 hours');
+  if v_s <> 'SAILED' or (select (x.hunt_port is null and x.hunt_until is null)::text || ':' || x.mission || ':' || (x.patrol is not null)::text from public.navy_ships x where x.fleet_id = n) <> 'true:PATROL:true' then
+    raise exception 'PROOF 48 FAIL: a stale hunt survived the rollback: % %', v_s, (select to_jsonb(x) - 'fleet_id' - 'player_id' from public.navy_ships x where x.fleet_id = n);
+  end if;
+  update public.world_config set value = 'true'::jsonb where key = 'pirates_bite';
+  raise notice 'PASS: NH_LIES — lies to hunt_until, home still hunting, patrols when the pirates go dark, lies up unpaid; a stale hunt after a call or a rollback is cleared';
 
   -- arrivals bound: a hunt is 2 legs (out and home) and a lie; her patrol is navy_patrol_stops + 1 legs
-  -- the scene's hunt: one leg out (v_t) and one home (v_t + 6 h), nothing between: her legs in the hunt's window
-  select count(*) into v_leg from public.voyages v where v.fleet_id = n and v.departed_at >= v_t and v.departed_at < v_t + interval '7 hours';
+  -- her legs in the window: two hunts begun from her station (one out-leg each: NH_HUNT's, and the one after a harbour went to the Brethren), one home-leg (NH_LIES), nothing else: a hunt is one leg out and one home
+  select count(*) filter (where v.origin_port_id = v_cap and v.dest_port_id <> v_cap), count(*) filter (where v.dest_port_id = v_cap)
+    into v_leg, v_homeleg
+    from public.voyages v where v.fleet_id = n and v.departed_at >= v_t and v.departed_at < v_t + interval '7 hours';
   select count(*) into v_pat from public.navy_patrol_legs l join public.navy_stations s on s.id = l.station_id where s.nation_id = v_nat and s.port_id = v_cap and s.retired_at is null;
-  if v_leg <> 2 or v_pat < 2 or v_leg > v_pat then
-    raise exception 'PROOF 48 FAIL: a hunt''s legs (%) are not within her patrol''s (%)', v_leg, v_pat;
+  if v_leg <> 2 or v_homeleg <> 1 or v_pat < 2 or 2 > v_pat then
+    raise exception 'PROOF 48 FAIL: a hunt''s legs are not one out and one home (% out, % home), within her patrol''s (%)', v_leg, v_homeleg, v_pat;
   end if;
-  raise notice 'PASS: NH_ARRIVALS — a hunt is % legs and a lie of % h; her patrol is % legs in about 45 min; the hunt adds no leg beyond the patrol''s rate', v_leg, v_hours, v_pat;
+  raise notice 'PASS: NH_ARRIVALS — a hunt is 2 legs (% out-legs for 2 hunts begun, % home-leg) and a lie of % h; her patrol is % legs in about 45 min; the hunt adds no leg beyond the patrol''s rate', v_leg, v_homeleg, v_hours, v_pat;
 end
 $$;
 
@@ -736,11 +782,22 @@ begin
   if v_k <> 0 or exists (select 1 from public.navy_ships x where x.fleet_id in (n1, n3) and x.fought_at is not null) then
     raise exception 'PROOF 48 FAIL: a ship in a battle, or one whose pirate is in a battle, fought: %', v_k;
   end if;
-  perform set_config('byeharu.proof_fight', '', true);
+  perform set_config('byeharu.proof_fight', 'DRIVEN_OFF', true);   -- by name, so the pirate keeps her hull for the scene below
   perform public.battle_resolve(b, v_t + interval '601 seconds');
+  perform set_config('byeharu.proof_fight', '', true);
   update public.navy_ships x set battle_id = null where x.fleet_id = n3;
   update public.world_config set value = 'false'::jsonb where key = 'attack_enabled';
-  raise notice 'PASS: NH_BOUND — navy_hunts_per_run 1 held, the rest next run; laid up, unpaid, over the number and in a battle: none fought';
+  -- a ship whose sea cannot be read (at anchor where no sea claims the point: voyage.sea_near raises E_NO_SEA) is skipped with a warning, and the rest fight
+  update public.navy_ships x set laid_up_at = null, fought_at = null, fought = null where x.fleet_id in (n1, n4);
+  update public.pirate_ships x set fought_at = null where x.fleet_id = p1;
+  update public.fleets f set status = 'ANCHORED', port_id = null, lat = 46, lon = 90, version = f.version + 1 where f.id = n4;   -- Dzungaria: no sea within two degrees
+  perform set_config('byeharu.proof_fight', 'HIT', true);
+  v_k := pg_temp.pass_48(v_t + interval '4 minutes', v_nat);
+  perform set_config('byeharu.proof_fight', '', true);
+  if v_k <> 1 or (select x.fought_at from public.navy_ships x where x.fleet_id = n1) is distinct from v_t + interval '4 minutes' or (select x.fought_at from public.navy_ships x where x.fleet_id = n4) is not null then
+    raise exception 'PROOF 48 FAIL: a ship with no sea stopped the pass: % fight(s)', v_k;
+  end if;
+  raise notice 'PASS: NH_BOUND — navy_hunts_per_run 1 held, the rest next run; laid up, unpaid, over the number and in a battle: none fought; a ship with no sea is skipped, the rest fight';
 end
 $$;
 
