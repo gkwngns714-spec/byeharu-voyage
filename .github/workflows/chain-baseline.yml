@@ -18,6 +18,14 @@ name: Chain baseline — fold 0001..N into one file and prove it (S1, dark)
 #   D-base  = D-pglite, stable content + catalog, beyond scripts/db/baseline/pglite-allow.txt
 #   0018's schema-less default ACL holds on D-base and D-pglite BY BEHAVIOUR, with a positive
 #   control (scripts/db/baseline/default-acl-proof.sql), plus proof 03's 8 lockdown markers on D-base
+# THE SAMPLES ARE QUIET (2026-11-07). The chain's last migrations leave pg_cron jobs ACTIVE (0309..0331 schedule six,
+# `contract-wind` among them, every minute), and an active job rewrites tables between one sample and the next. So:
+#   D-chain   the jobs are saved as the chain left them (active flags included), THEN every job in cron.job is paused and
+#             no run is left in flight, BEFORE the first sample; after the dump the job fails, naming the job and the
+#             time, if any cron run started after the pause
+#   D-base    the baseline schedules every job INACTIVE (0078's rule), so nothing can fire from the load on; after its
+#             lines the job fails if any cron run exists at all. baseline-clock.sql (built from the saved flags) then
+#             starts the jobs the chain left running, and the flags read back are compared with the saved ones
 # N is whatever the chain's head is when the run starts.
 
 on:
@@ -106,6 +114,9 @@ jobs:
           diff /tmp/ondisk.txt /tmp/recorded.txt || { echo "::error::D-chain's applied list is not supabase/migrations/"; exit 1; }
           echo "D-chain: $(wc -l < /tmp/recorded.txt) migrations, head $(tail -1 /tmp/recorded.txt)"
 
+      - name: D-chain — quiesce the clock (flags saved as the chain left them, every job paused, no run in flight)
+        run: node scripts/db/baseline/baseline.mjs quiesce --db-url "$DB_URL" --out-dir "$RUNNER_TEMP/out/d-chain"
+
       - name: D-chain — its lines
         run: node scripts/db/baseline/baseline.mjs lines --db-url "$DB_URL" --out-dir "$RUNNER_TEMP/out/d-chain"
 
@@ -115,8 +126,12 @@ jobs:
           node scripts/db/baseline/baseline.mjs build --db-url "$DB_URL" \
             --container "supabase_db_$(sed -n 's/^project_id *= *"\(.*\)".*/\1/p' supabase/config.toml)" \
             --out "$RUNNER_TEMP/out/baseline.sql" --chain-digests "$RUNNER_TEMP/out/d-chain/digests.json" \
+            --cron-as-left "$RUNNER_TEMP/out/d-chain/cron-as-left.json" --clock-out "$RUNNER_TEMP/out/baseline-clock.sql" \
             --stats "$RUNNER_TEMP/out/build.json"
           grep -c $'\r' "$RUNNER_TEMP/out/baseline.sql" && { echo "::error::CR in the baseline"; exit 1; } || true
+
+      - name: D-chain — the clock stayed paused through its lines and the dump (cron fired during sampling = red)
+        run: node scripts/db/baseline/baseline.mjs quiet-check --db-url "$DB_URL" --label D-chain --mark "$RUNNER_TEMP/out/d-chain/quiet-mark.json"
 
       - name: D-base — a fresh Supabase whose only migration is the baseline, under N's version
         run: |
@@ -142,8 +157,12 @@ jobs:
           [ "$rec" = "$version" ] || { echo "::error::D-base recorded '$rec', expected exactly $version"; exit 1; }
           echo "D-base: recorded exactly $rec"
 
-      - name: D-base — its lines
-        run: node scripts/db/baseline/baseline.mjs lines --db-url "$DB_URL" --out-dir "$RUNNER_TEMP/out/d-base"
+      - name: D-base — its lines (cron fired during sampling = red)
+        run: |
+          set -euo pipefail
+          node scripts/db/baseline/baseline.mjs quiet-check --db-url "$DB_URL" --label "D-base, before its lines"
+          node scripts/db/baseline/baseline.mjs lines --db-url "$DB_URL" --out-dir "$RUNNER_TEMP/out/d-base"
+          node scripts/db/baseline/baseline.mjs quiet-check --db-url "$DB_URL" --label "D-base, after its lines"
 
       - name: D-base — 0018's default ACL by behaviour (with a positive control) and proof 03's lockdown
         run: |
@@ -162,12 +181,20 @@ jobs:
           done
           echo "default-ACL proof: 2 markers; lockdown: 8 markers"
 
+      - name: D-base — the clock as the chain left it (baseline-clock.sql), its flags read back
+        run: |
+          set -euo pipefail
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/out/baseline-clock.sql"
+          node scripts/db/baseline/baseline.mjs cron-lines --db-url "$DB_URL" --out "$RUNNER_TEMP/out/d-base/cron-as-left.txt"
+
       - name: GATE — D-chain = D-base, exactly (catalog, every row/sequence/ACL, pg_cron)
         run: |
           set -euo pipefail
           for f in catalog content-exact content-stable cron; do
             node scripts/db/baseline/baseline.mjs compare "$RUNNER_TEMP/out/d-chain/$f.txt" "$RUNNER_TEMP/out/d-base/$f.txt"
           done
+          # the flags the chain LEFT (read before the pause) against the flags baseline-clock.sql gives D-base
+          node scripts/db/baseline/baseline.mjs compare "$RUNNER_TEMP/out/d-chain/cron-as-left.txt" "$RUNNER_TEMP/out/d-base/cron-as-left.txt"
 
       - name: D-pglite — the baseline on PGlite + the preamble, its receipt, the default-ACL proof, its lines
         run: |
@@ -191,6 +218,7 @@ jobs:
             echo "## Chain baseline ($MODE)"
             echo '```'
             cat "$RUNNER_TEMP/out/build.json" 2>/dev/null || true
+            echo "D-chain quiet mark:"; cat "$RUNNER_TEMP/out/d-chain/quiet-mark.json" 2>/dev/null || true
             echo "D-chain digests:"; cat "$RUNNER_TEMP/out/d-chain/digests.json" 2>/dev/null || true
             echo "D-base digests:";  cat "$RUNNER_TEMP/out/d-base/digests.json" 2>/dev/null || true
             echo "D-pglite digests:"; cat "$RUNNER_TEMP/out/d-pglite/digests.json" 2>/dev/null || true
