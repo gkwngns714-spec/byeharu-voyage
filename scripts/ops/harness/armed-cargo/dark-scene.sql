@@ -41,7 +41,7 @@ begin
   update public.fleets f set status = 'UNABLE_TO_SAIL', port_id = v_cap, lat = null, lon = null where f.id = v_hfl;
   update public.ports p set crew_pool = public.wc_int('npc_crew_pool_floor') + 17 where p.id = v_cap;
   v_r := public.npc_refit_step(v_hfl, now());
-  raise notice 'SCENE: refit_merchant % % %', v_r, (select jsonb_agg(s.crew) from public.ships s where s.fleet_id = v_hfl), (select p.crew_pool from public.ports p where p.id = v_cap);
+  raise notice 'SCENE: refit_merchant % % %', v_r, (select jsonb_agg(s.crew order by s.crew desc) from public.ships s where s.fleet_id = v_hfl), (select p.crew_pool from public.ports p where p.id = v_cap);
 
   raise exception using errcode = 'ZY328';
 exception when sqlstate 'ZY328' then

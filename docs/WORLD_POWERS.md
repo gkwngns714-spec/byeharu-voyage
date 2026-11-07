@@ -434,7 +434,7 @@ public.battle_sides (battle_id, fleet_id, side, joined_at, arrives_at)
 **This part comes before pirates in this doc because navies are built first** (section 12).
 
 **Built as W12, migration 0331, dark, 2026-11-06 (`docs/dev-log/2026-11-06-a-country-has-a-navy.md`). Where the build differs:**
-- **A build waits for the capital's surplus, never mints** (owner question 9 stays open). Today only LIS, SVQ and SAK can pay: 31 of 75 hulls. The line below that cargo ships top poor capitals up does not hold: they top up to `city_aid_target`, 50,000-148,812 d., and a galion costs 1,156,000 d.
+- **A build never mints, and a capital that cannot pay draws on its realm** (owner question 9, answered 2026-11-07, migration 0335, dark, `docs/dev-log/2026-11-07-a-realm-pays.md`). `public.capital_draw`: CROWN_CALL from the realm's cities, the most `crown_call_room` first, then the capital pays. A hull is drawn whole or not at all; an hour's pay as far as the realm goes; a wake moves no gold. The line below that cargo ships top poor capitals up does not hold: they top up to `city_aid_target`, 50,000-148,812 d., and a galion costs 1,156,000 d.
 - Off duty (over the number, unpaid, switch off) she sails straight to her station from her next port, rather than finishing the leg only.
 - Her look: violet `--color-navy-hull`, not nation ink; beam 0.34, not 0.32.
 - Stations on the flags of the build: `public.navy_station_plan`, 46, listed in the dev-log. A few differ from the table below.
