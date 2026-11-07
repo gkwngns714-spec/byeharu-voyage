@@ -9,7 +9,7 @@ import { useCityKinds } from '../../live/useCityKind'
 import { CityDetail } from './CityDetail'
 import { SeriesCard } from './WorldSeries'
 import { useWorldSeries } from './useWorldSeries'
-import { portName } from './statsFaces'
+import { portName, wholeRows } from './statsFaces'
 import { useLiveRead } from '../../live/liveRead'
 import { CITY_SORTS, STATS_AREAS, areaWord, countriesOf, filterCities, sortCities, type CitySort } from './statsFilters'
 
@@ -77,6 +77,8 @@ export function CitiesFace() {
   }))
     .filter((r) => r.value > 0)
     .sort((x, y) => y.value - x.value)
+  // the trade card is a SUM: it stops at the last whole period; the cities' money is a level and runs to now (owner, 2026-11-07: no right edge that goes down)
+  const flows = world ? wholeRows(world, world.series) : []
 
   return (
     <>
@@ -99,7 +101,7 @@ export function CitiesFace() {
               title={t('stats.cityTrade')}
               value={(world?.day?.sold ?? 0) + (world?.day?.bought ?? 0)}
               format={formatDucats}
-              series={world?.series ?? []}
+              series={flows}
               pick={(p) => p.sold + p.bought}
               tone="info"
               data-testid="stats-chart-city-trade"

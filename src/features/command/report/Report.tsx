@@ -7,6 +7,7 @@ import { t as tNow, useT, type TKey } from '../../../lib/i18n'
 import type { DeskLayout } from '../DeskFrame'
 import { HistoryChart } from '../../../live/HistoryChart'
 import { companyLines } from '../../../live/historyLines'
+import { reportBars } from '../../../live/reportBars'
 
 // REPORT — every earning and loss by SECTION and by POINT (0286, docs/COMMAND_REDESIGN.md §4–5;
 // owner rows 192, 244: *"the profit tab on command, change it to report, saving all the earnings and
@@ -93,6 +94,8 @@ export function Report({ layout }: { layout: DeskLayout }) {
   }
 
   const nothing = r.sections.every((s) => s.lines.length === 0) && r.places.length === 0
+  // the bars are the days that are over; today stands in the total (reportBars: owner, 2026-11-07, no right edge that goes down)
+  const bars = reportBars(r.days)
   // a known kind is the dictionary's word; an unlisted one keeps the server's own-name fallback.
   const lineWord = (l: ReportLine) => {
     const key = KIND_KEYS[l.kind]
@@ -176,9 +179,9 @@ export function Report({ layout }: { layout: DeskLayout }) {
             <div className="flex flex-col gap-1.5">{r.places.map(place)}</div>
           )}
         </ScrollPane>
-        {r.days.length > 0 && (
+        {bars.length > 0 && (
           <SignedBars
-            bars={r.days.map((d) => ({ id: String(d.day), value: d.net }))}
+            bars={bars}
             label={t('desk.reportByDay')}
             className="mt-3"
             data-testid="report-bars"

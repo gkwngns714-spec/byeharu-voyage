@@ -1,7 +1,7 @@
-import type { RankRow, SeriesPoint } from '../../components/ui'
+import { wholePeriods, type RankRow, type SeriesPoint, type SumPeriod } from '../../components/ui'
 import { instantMs } from '../../lib/format'
 import { properName, t } from '../../lib/i18n'
-import type { StatsBonus, StatsFlowLine } from '../../lib/rpc'
+import type { PriceSpan, StatsBonus, StatsFlowLine } from '../../lib/rpc'
 
 // THE FACE TABLE of the Stats tab — pure data, so a spec can pin the five without reading JSX
 // (navTabs.ts's idiom). Order is the owner's sentence: the world, the goods, the cities, the
@@ -20,6 +20,32 @@ export function toSeries<T extends { at: string }>(rows: readonly T[], pick: (ro
     if (ms !== null) out.push({ atMs: ms, value: pick(r) })
   }
   return out
+}
+
+/** WHAT A STATS READ'S POINTS SUM, by the span it answered: 1d the count's own rows (a quarter hour each), 1w and 1m hourly buckets, 1y and all daily ones
+ *  (`public.stats_span_unit`, 0246, spoken once here). A read of no span is its own window of the count's rows. */
+const SPAN_PERIOD: Record<PriceSpan, SumPeriod> = { '1d': 'quarter', '1w': 'hour', '1m': 'hour', '1y': 'day', all: 'day' }
+
+/** What a stats read says about its series: the span it answered, and how far the counts reach (`counted_at`: its live point adds the minutes since). */
+export interface ReadStamp {
+  span?: string | null
+  counted_at: string | null
+}
+
+/** THE ROWS OF A SUM THAT MAY BE DRAWN (owner, 2026-11-06 and 2026-11-07: no chart's right edge goes down). A stats read's series ends in a LIVE point at now()
+ *  whose flows are only the minutes since the last count, and for a week, a month or longer its newest hour or day is still being counted. The rows that are
+ *  WHOLE, by the one rule of every sum (`wholePeriods`, the figures reaching the read's `counted_at`), oldest first. A LEVEL (a holder, a purse, a count of
+ *  ships) is not a sum: its live point is true, and the face keeps drawing `read.series` whole for it. A row whose instant does not parse is left out, as
+ *  `toSeries` leaves it; a span this table does not know draws nothing rather than something short. */
+export function wholeRows<T extends { at: string }>(read: ReadStamp, rows: readonly T[]): T[] {
+  const reachMs = instantMs(read.counted_at)
+  const period: SumPeriod | undefined = read.span == null ? 'quarter' : SPAN_PERIOD[read.span as PriceSpan]
+  if (reachMs === null || period === undefined) return []
+  const stamped = rows.flatMap((row) => {
+    const atMs = instantMs(row.at)
+    return atMs === null ? [] : [{ row, atMs }]
+  })
+  return wholePeriods(stamped, period, reachMs).map((s) => s.row)
 }
 
 /** The same rows as a sparkline's readings, oldest first — the line without an axis, for a figure

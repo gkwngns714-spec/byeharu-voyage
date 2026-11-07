@@ -9,7 +9,9 @@ import { useT } from '../../lib/i18n'
 // general graph would be nice"*). stats_cities and stats_markets serve no series of their own, but the world read already serves
 // one across every city and every good — `world.stats_overview`'s `series`, per count, over the shared span (`useChartSpan`).
 // Cities and Markets read THAT, under the Overview's own subject (liveRead: one ask per subject, so the same RPC with the same
-// arguments), and draw it the way Merchants draws its two chart cards. Nothing is computed here but what `pick` returns.
+// arguments), and draw it the way Merchants draws its two chart cards. Nothing is computed here but what `pick` returns. A card of
+// a SUM (sold, bought, trade) is handed the read's WHOLE rows (`wholeRows`), a card of a level (the cities' money) the series as
+// served, its live point included: the card draws what it is given.
 
 /** One chart card of a list face: the card's title is its label, the current figure above a 176 px line (Merchants' pattern). */
 export function SeriesCard({

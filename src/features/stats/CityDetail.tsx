@@ -24,7 +24,7 @@ import { useT } from '../../lib/i18n'
 import { worldStatsCity, worldStatsCityPeople, type StatsCity, type StatsCityPeople } from '../../lib/rpc'
 import { STEP_TONE, stepWords } from '../../domain/population'
 import { useWorld } from '../../live/worldStore'
-import { CARD_CHART_H, STATS_BARS, flowRanks, goodName, movePct, portName, toSeries } from './statsFaces'
+import { CARD_CHART_H, STATS_BARS, flowRanks, goodName, movePct, portName, toSeries, wholeRows } from './statsFaces'
 import { BonusCard } from './BonusCard'
 import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
@@ -159,7 +159,7 @@ export function CityDetail({ portId }: { portId: string }) {
             </Card>
             <Card title={t('stats.netShort')}>
               <SignedBars
-                bars={o.series.slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.income - p.spending }))}
+                bars={wholeRows(v, o.series).slice(-STATS_BARS).map((p) => ({ id: p.at, value: p.income - p.spending }))}
                 label={t('stats.cityNet', { city: portName(v.city.name) })}
                 height="h-28"
               />

@@ -17,7 +17,9 @@ import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
 import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
+import { wholeRows } from '../src/features/stats/statsFaces'
 import {
+  PRICE_SPANS,
   clearBackend,
   createLocalBackend,
   setBackend,
@@ -313,5 +315,35 @@ test('a 1d and a 1w overview answer with the sections and holders intact', async
     expect(Array.isArray(o.value.series)).toBe(true)
     expect(o.value.series.length).toBeGreaterThanOrEqual(1)
     expect(o.value.series[o.value.series.length - 1].at).toBe(o.value.at)
+  }
+})
+
+// ── NO CHART'S RIGHT EDGE GOES DOWN (owner, 2026-11-06 and 2026-11-07: "every chart") ──────────────
+// Every series above ends in a live point at the read's now() whose flows are only the minutes since the last count, and for a week or longer its newest hour or day is
+// still being counted: drawn beside whole periods they plunge at the right edge (prod, 2026-11-07 07:22 UTC: 1,821,942 sold against 26,122,487 a quarter hour before).
+// The sums a face draws are `wholeRows`. tests/wholePeriods.spec.ts holds the rule on its own; this holds it on the server's real reads, over every span: the live point is
+// never whole, no whole row stands after the last count, and on an hourly or daily span the hour or day the last count stands in is left out.
+test('the sums a chart draws stop at the last whole period, over every span of the world and of a city', async () => {
+  const reads: { what: string; bucket: number; read: { span?: string | null; counted_at: string | null }; rows: { at: string }[] }[] = []
+  for (const span of PRICE_SPANS) {
+    const o = await worldStatsOverview(24, span)
+    const c = await worldStatsCity(port.id, span)
+    expect(o.ok && c.ok, `the reads for ${span} failed`).toBe(true)
+    if (!o.ok || !c.ok) return
+    const bucket = span === '1w' || span === '1m' ? 3_600_000 : span === '1y' || span === 'all' ? 86_400_000 : 0
+    reads.push({ what: `world ${span}`, bucket, read: o.value, rows: o.value.series })
+    reads.push({ what: `city ${span}`, bucket, read: c.value, rows: c.value.overview!.series })
+  }
+  for (const { what, bucket, read, rows } of reads) {
+    const counted = Date.parse(read.counted_at!)
+    const whole = wholeRows(read, rows)
+    // the live point stands after the last count, so it is never whole
+    expect(Date.parse(rows[rows.length - 1].at), `${what}: the series no longer ends in a live point`).toBeGreaterThan(counted)
+    expect(whole.every((r) => Date.parse(r.at) <= counted), `${what}: a whole row stands after the last count`).toBe(true)
+    if (bucket > 0) {
+      expect(whole.every((r) => Math.floor(Date.parse(r.at) / bucket) < Math.floor(counted / bucket)), `${what}: the hour or day still being counted is drawn`).toBe(true)
+    } else {
+      expect(whole.length, `${what}: a quarter hour is whole once it is counted`).toBe(rows.length - 1)
+    }
   }
 })
