@@ -129,8 +129,10 @@ test('Map: the dotted line and the roadstead ring stand off Lisbon on the glass;
   await expect(row).toBeVisible({ timeout: 60_000 })
   const t0 = Date.now()
   const underWay = (await row.innerText()).replace(/\s+/g, ' ')
-  console.log(`under way, the fleet row reads: ${underWay}`)
-  expect(underWay, 'the send did not put her to sea').toMatch(new RegExp(`\\bto\\s+${placeName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`))
+  console.log(`the fleet row reads (right after the send, on the Fleets page): ${underWay}`)
+  // NOT asserted: that this first read still says "to <harbour>". A short hop (Lisbon to Setubal) can be over before the Fleets page has
+  // loaded on a shared CI runner (it was: "Gaivota Setubal ..." with no "to", in plain shard 1/3 and in the npc pool). The proof that the
+  // send put her to sea is the line below: she started at Lisbon and ends lying at the NEW harbour; had the send failed she would never get there.
   // she lies at the harbour when the row names it WITHOUT "to": the roadstead is her landfall
   await expect
     .poll(
