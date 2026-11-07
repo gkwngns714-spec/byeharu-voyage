@@ -1,5 +1,6 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment, useMemo, useRef } from 'react'
 import { useT } from '../../lib/i18n'
+import { placeAt, routeOf, useCityWalk, walkAt, walkOf, type Pt, type Walk } from './cityWalk'
 
 // THE ORGANIC WALLED HARBOUR CITY — a coastal town seen from above, complete inside its own wall
 // (owner, 2026-10-31: *"west edge is good, but the rest edge is too rigid. maybe have something
@@ -111,8 +112,6 @@ const LAND = (() => {
   const up = coastPts(SEA_BOTTOM, SEA_TOP)
   return WALL_PATH + ' ' + up.slice(1).map((p) => `L${p.x.toFixed(2)} ${p.y}`).join(' ') + ' Z'
 })()
-
-type Pt = { x: number; y: number }
 
 /** Sample a wall's cubics into a fine polyline — every lookup and the land test use one set. */
 function sampleCubics(segs: readonly Cubic[], per: number): Pt[] {
@@ -303,6 +302,9 @@ const ROADS = [QUAY_ROAD, STREET_N, STREET_M, STREET_S] as const
 const LANES = [LANE_W, LANE_E, LANE_F] as const
 const ROAD_PATHS = ROADS.map(pathOf)
 const LANE_PATHS = LANES.map(pathOf)
+/** The walkers' routes: the same streets and lanes, sampled by distance so a step is paced the way
+ *  animateMotion paced it (cityWalk.ts). The first route is the middle street, the spec's witness. */
+const WALKER_ROUTES = [...ROADS, ...LANES].map((segs) => routeOf(sampleCubics(segs, 24)))
 
 /** The blocks inside the wall: the six named places and the ordinary town, all complete — the outer
  *  rows are CUT TO THE ORGANIC WALL, so the town fills the shape (its top steps with the north
@@ -477,8 +479,7 @@ function blockBuildings(block: Block, seed: number, bi: number): Building[] {
   return out
 }
 
-type Move = { d: string; dur: number; begin: number; back: boolean }
-type Citizen = { x: number; y: number; r: number; o: number; move: Move | null }
+type Citizen = { x: number; y: number; r: number; o: number; move: Walk | null }
 type Lamp = { x: number; y: number; r: number; b: number }
 type Speck = { x: number; y: number; r: number; o: number }
 
@@ -515,38 +516,40 @@ function sceneOf(seed: number) {
     const y = 178 + rand(seed, 74001 + k * 7) * 28
     if (insideLand(x, y) && !inRiver(x, y)) addCitizen(x, y, 74002 + k * 7)
   }
-  // a few people strolling a short line at the market and the quay
+  // a few people strolling a short line at the market and the quay, there and back (the same lines,
+  // laps and starts as the SMIL strollers had; the walk itself is cityWalk.ts)
   for (let k = 0; k < 24; k++) {
     const atMarket = k % 2 === 0
     const x = atMarket ? 128 + rand(seed, 75000 + k * 7) * 20 : coastX(110) + 2 + rand(seed, 75000 + k * 7) * 4
     const y = atMarket ? 86 + rand(seed, 75001 + k * 7) * 16 : 82 + rand(seed, 75001 + k * 7) * 60
     const a = rand(seed, 75002 + k * 7) * Math.PI * 2
     const len = 2.5 + rand(seed, 75003 + k * 7) * 4
+    const line = routeOf([
+      { x, y },
+      { x: x + Math.cos(a) * len, y: y + Math.sin(a) * len },
+    ])
     crowd.push({
       x,
       y,
       r: 0.95 + rand(seed, 75004 + k * 7) * 0.3,
       o: 0.92,
-      move: {
-        d: `M${x.toFixed(2)} ${y.toFixed(2)} l${(Math.cos(a) * len).toFixed(2)} ${(Math.sin(a) * len).toFixed(2)}`,
-        dur: (6 + rand(seed, 75005 + k * 7) * 8) * 3,
-        begin: -rand(seed, 75006 + k * 7) * 10,
-        back: true,
-      },
+      move: walkOf(line, (6 + rand(seed, 75005 + k * 7) * 8) * 3, -rand(seed, 75006 + k * 7) * 10, true, (n) => rand(seed, 78000 + k * 7 + n)),
     })
   }
 
-  // the walkers along the road network; the first one is on the middle street (the spec's witness)
-  const walkerPaths = [...ROAD_PATHS, ...LANE_PATHS]
+  // the walkers along the road network; the first one is on the middle street (the spec's witness).
+  // One traverse lasts 42-78 s (the owner's ×3, row 248) and each starts at its own phase; where a
+  // walker stops on the way, and for how long, is the seed's (owner: "it can stop it can go back
+  // and forth, random movements").
   const walkers: Citizen[] = []
   for (let k = 0; k < 54; k++) {
-    const pi = k === 0 ? 2 : Math.floor(rand(seed, 76000 + k * 7) * walkerPaths.length)
+    const pi = k === 0 ? 2 : Math.floor(rand(seed, 76000 + k * 7) * WALKER_ROUTES.length)
     walkers.push({
       x: 0,
       y: 0,
       r: 0.95 + rand(seed, 76001 + k * 7) * 0.3,
       o: 0.92 + rand(seed, 76002 + k * 7) * 0.08,
-      move: { d: walkerPaths[pi], dur: (14 + rand(seed, 76003 + k * 7) * 12) * 3, begin: -rand(seed, 76004 + k * 7) * 24, back: false },
+      move: walkOf(WALKER_ROUTES[pi], (14 + rand(seed, 76003 + k * 7) * 12) * 3, -rand(seed, 76004 + k * 7) * 24, false, (n) => rand(seed, 79000 + k * 7 + n)),
     })
   }
 
@@ -758,10 +761,20 @@ export function CityScene({
   const stipple = useMemo(() => stippleGroups(teeming), [teeming])
   const lights = useMemo(() => lightGroups(lamps), [lamps])
   const stillCrowd = useMemo(() => crowdGroups(crowd), [crowd])
+  // THE PEOPLE WHO MOVE — the strollers, then the served walkers — are moved by cityWalk.ts on the
+  // page's own animation frame; each circle names its walk by index (`data-walk`). React renders
+  // every one at its document-time-0 place, a value that never changes between renders, so no
+  // re-render of this scene (the hall's 1 Hz figures re-render the page) ever writes a position
+  // back under the loop; the loop places them before the first paint and thereafter.
+  const strollers = useMemo(() => crowd.filter((c) => c.move !== null), [crowd])
+  const walks = useMemo(() => [...strollers, ...servedWalkers].flatMap((c) => (c.move ? [c.move] : [])), [strollers, servedWalkers])
+  const svgRef = useRef<SVGSVGElement>(null)
+  useCityWalk(svgRef, walks)
   const dim = night ? 0.72 : 1
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${VIEW} ${VIEW}`}
       preserveAspectRatio="xMidYMid meet"
       role="group"
@@ -974,35 +987,34 @@ export function CityScene({
         ))}
       </g>
 
-      {/* THE CROWD — the still people as one path per bucket; the ones who stroll keep a circle and
-          their own animateMotion (they are the people who must move). */}
+      {/* THE CROWD — the still people as one path per bucket; the ones who stroll keep a circle each,
+          moved along their short line by cityWalk.ts (they are the people who must move). */}
       <g data-testid="city-crowd" pointerEvents="none" className="fill-accent stroke-accent" strokeLinecap="round">
         {stillCrowd.map((g, i) => (
           <path key={`s${i}`} d={g.d} fill="none" strokeWidth={g.w.toFixed(2)} opacity={g.o} />
         ))}
-        {crowd.map((c, i) =>
-          c.move ? (
-            <circle key={i} r={c.r} opacity={c.o}>
-              <animateMotion
-                path={c.move.d}
-                dur={`${c.move.dur.toFixed(1)}s`}
-                begin={`${c.move.begin.toFixed(1)}s`}
-                repeatCount="indefinite"
-                {...(c.move.back ? { keyPoints: '0;1;0', keyTimes: '0;0.5;1' } : {})}
-              />
-            </circle>
-          ) : null,
+        {strollers.map((c, i) =>
+          c.move ? <circle key={i} r={c.r} opacity={c.o} data-walk={i} transform={placeAt(walkAt(c.move, 0))} /> : null,
         )}
       </g>
 
-      {/* THE WALKERS — the served tier's people on the road network. No cx/cy: animateMotion
-          positions each one along its path, and a centre would offset it twice. */}
+      {/* THE WALKERS — the served tier's people on the road network. No cx/cy: the walk's
+          `transform` places each one on its street, and a centre would offset it twice. `data-lap`
+          is one traverse in seconds (the owner's ×3, row 248) and `data-begin` the walker's own
+          start, both read by the specs. */}
       <g data-testid="city-dots" pointerEvents="none" className="fill-accent">
         {servedWalkers.map((c, i) =>
           c.move ? (
-            <circle key={i} r={c.r} opacity={c.o} data-dot={i}>
-              <animateMotion path={c.move.d} dur={`${c.move.dur.toFixed(1)}s`} begin={`${c.move.begin.toFixed(1)}s`} repeatCount="indefinite" />
-            </circle>
+            <circle
+              key={i}
+              r={c.r}
+              opacity={c.o}
+              data-dot={i}
+              data-walk={strollers.length + i}
+              data-lap={c.move.lap.toFixed(1)}
+              data-begin={c.move.phase.toFixed(1)}
+              transform={placeAt(walkAt(c.move, 0))}
+            />
           ) : null,
         )}
       </g>
