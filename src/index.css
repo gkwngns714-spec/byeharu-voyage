@@ -580,7 +580,8 @@
     --color-nation-ita: oklch(0.4 0.09 210);
     --color-nation-ott: oklch(0.42 0.11 118);
     --color-nation-east: oklch(0.4 0.15 295);
-    --color-nation-pir: #b3122a;   /* 0341: the Brethren's lane by day (the light red of docs/WORLD_POWERS.md 9.3) */
+    /* 0341: the Brethren's lane by day (the light red of docs/WORLD_POWERS.md 9.3). */
+    --color-nation-pir: #b3122a;
 
     /* THE DAY TINTS — the same 25 hues a step darker, so a tint reads on paper land and on the
        day's blue water (validated the same way; the dark block says how). */
@@ -684,7 +685,8 @@
     --color-nation-ita: oklch(0.78 0.11 200);
     --color-nation-ott: oklch(0.8 0.14 118);
     --color-nation-east: oklch(0.74 0.14 295);
-    --color-nation-pir: #ff9999;   /* 0341: the Brethren's */
+    /* 0341: the Brethren's (the declaration stays alone on its line: tests/map.atmosphere.spec.ts reads one per line). */
+    --color-nation-pir: #ff9999;
 
     /* The 25 region tints, for when the Regions filter is on. */
     --color-chart-region-iberia: oklch(0.8 0.11 105);
