@@ -2233,7 +2233,7 @@ export interface StandingRoutePaused {
 // which one reaches a client: where its fleets are (`world.sea_traffic`) and one fleet's card
 // (`world.npc_fleet_card`). Neither carries a queue, a cost basis, a version or a ledger line.
 
-/** The nation family a merchant's hull is inked in (`npc_houses.ink`, authored world data). 0340: and 'pir', a merchant of the Brethren. */
+/** The nation family a merchant's hull is inked in (`npc_houses.ink`, authored world data). 0341: and 'pir', a merchant of the Brethren. */
 export type MerchantInk = 'prt' | 'esp' | 'nld' | 'eng' | 'han' | 'ita' | 'ott' | 'east' | 'pir'
 
 /** One merchant fleet on the sea, in the voyage shape the chart already draws. At sea `voyage` is

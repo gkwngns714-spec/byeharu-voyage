@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 47 — PIRATE MERCHANTS  (migration 0340, slice W18 of docs/WORLD_POWERS.md; owner row 284: "pirates are like countries - power, where they can also invest. pirate merchants too")
+-- PROOF 47 — PIRATE MERCHANTS  (migration 0341, slice W18 of docs/WORLD_POWERS.md; owner row 284: "pirates are like countries - power, where they can also invest. pirate merchants too")
 --
---   0340's own self-assert reads the catalog and cheap pure functions only: a migration never runs a real game step (docs/OPS_HEALTH.md section 4). This proof runs the REAL job, founding, payer, gift roster,
+--   0341's own self-assert reads the catalog and cheap pure functions only: a migration never runs a real game step (docs/OPS_HEALTH.md section 4). This proof runs the REAL job, founding, payer, gift roster,
 --   invest pass, daily count, route planner, day cap and sail door on a world it lights itself (purses, closed economy, merchants, influence, the pirates' switch), all rolled back with proof.mjs's transaction.
 --   It owns every switch it needs and writes them here. The hoard is Port Royal's purse, funded by a probe company founded while the economy is open (its money is minted then, before W is taken).
 --

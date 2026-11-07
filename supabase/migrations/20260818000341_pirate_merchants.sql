@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
--- 0340 — PIRATE MERCHANTS (W18): the Brethren's merchants. Founded from the hoard, routed among the pirate homes' waters, investing for the pirates. DARK behind 0339's one switch `pirates_bite`
+-- 0341 — PIRATE MERCHANTS (W18): the Brethren's merchants. Founded from the hoard, routed among the pirate homes' waters, investing for the pirates. DARK behind 0339's one switch `pirates_bite`
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
 -- THE OWNER (docs/OWNER_REQUESTS.md row 284, 2026-11-05): "pirates are like countries - power, where they can also invest. pirate merchants too. they will have pirate port that has no tax, cheaper products etc".
 -- 2026-11-06 (row 306): "use your recommended defaults for the rest". 2026-11-07: "do it fast". The design is docs/WORLD_POWERS.md Part 5, sections 7.4 (pirate merchants and investing), 7.6 (the limits) and 7.7 (row W18:
@@ -52,11 +52,11 @@
 -- row to players, npc_houses, npc_fleets, fleets, ships, treasury_flows, treasury_daybook, ledger, port_influence, events, trade_daily, insured_voyages or pirate_spend_day (pg_stat_xact_user_tables, with a positive
 -- control on world_config). THE LIVE PATHS (a founding paid by Port Royal within the cap and refused whole without it; the pace, the max, the berth, the reserve for the ships; no gift, no insurer; her stake and gift
 -- for PIR and the count flipping a city to the skull that keeps its tax; a crown merchant's planner skipping a pirate home and hers keeping her way home; the day cap at a home; dark parity; W unchanged to the ducat)
--- ARE PROVED IN CI: scripts/db/proofs/47_pirate_merchants.sql and the local harness scripts/ops/harness/pirate-merchants/proof-0340.mjs; the file says so in a printed notice in every environment.
+-- ARE PROVED IN CI: scripts/db/proofs/47_pirate_merchants.sql and the local harness scripts/ops/harness/pirate-merchants/proof-0341.mjs; the file says so in a printed notice in every environment.
 --
 -- ROLLBACK: the switch (pirates_bite false, owner only): nothing more is founded, the pirates invest nothing, the planner and the day cap are what they were; a pirate merchant already founded goes on trading as a
 -- merchant (she is a merchant; laying her up is a decision for the owner). The rest, forward, a NEW migration, owner only: hunks are reversible (each OLD text is in this file); the knobs, the word and the cron job are data.
--- VERSION: 0340 = provisional (0338 = W16 PR #552, 0339 = W17; the coordinator settles 0340 / 0341 between W18 and W19 by readiness).
+-- VERSION: 0341 = 0338 (W16, LIVE) + 0339 (W17) + 0340 (W19, ready first) + 1: the coordinator's numbering of 2026-11-07.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -73,6 +73,7 @@ declare
   v_rev        text;
   v_fn_before  text;
   v_cfg_before text;
+  v_cfg_probe  text;
   v_words      int;
   v_entry      int;
   v_cron       text;
@@ -80,7 +81,7 @@ declare
   v_open       jsonb;
   v_cap        numeric;
   v_base       numeric;
-  v_probe      uuid := '00000000-0340-4000-8000-000000000001';
+  v_probe      uuid := '00000000-0341-4000-8000-000000000001';
   v_good       uuid;
   r_d          record;
   r_hk         record;
@@ -95,11 +96,11 @@ begin
      or to_regprocedure('public.pirate_found(timestamp with time zone)') is not null or to_regprocedure('public.tick_pirate_merchants(timestamp with time zone)') is not null
      or exists (select 1 from public.world_config where key = any (c_knobs))
      or exists (select 1 from public.stats_flow_words w where w.kind = 'PIRATE_FOUND') then
-    raise exception '0340 refuses: the pirate merchants are already in this world';
+    raise exception '0341 refuses: the pirate merchants are already in this world';
   end if;
   if to_regprocedure('public.pirate_power(uuid)') is null or to_regprocedure('public.port_is_free(uuid)') is null
      or to_regprocedure('public.pirates_on()') is null or to_regprocedure('public.pirate_nation()') is null or to_regprocedure('public.pirate_capital()') is null
-     or to_regprocedure('public.pirate_hoard()') is null or to_regprocedure('public.pirate_size()') is null
+     or to_regprocedure('public.pirate_hoard()') is null or to_regprocedure('public.pirate_size()') is null or to_regprocedure('public.pirate_home_of(integer)') is null
      or to_regprocedure('public.pirate_spend_room(timestamp with time zone)') is null
      or to_regprocedure('public.pirate_pay(text, bigint, timestamp with time zone, uuid, uuid)') is null
      or to_regprocedure('public.npc_found(jsonb)') is null or to_regprocedure('public.npc_known_legs(uuid)') is null
@@ -109,18 +110,18 @@ begin
      or not exists (select 1 from public.nations n where n.code = 'PIR' and n.capital_port_code = 'POR' and public.pirate_power(n.id))
      or not exists (select 1 from public.skills s where s.code = 'HAGGLING')
      or not exists (select 1 from public.ship_classes c join public.npc_loadouts l on l.class_code = c.code where c.code = 'carlat') then
-    raise exception '0340 refuses: a function, table, knob, nation, skill or class this file reads is not in this world (0338 the Brethren, 0339 the pirate ships, 0097 the merchants, 0120 the planner, 0318 the day cap)';
+    raise exception '0341 refuses: a function, table, knob, nation, skill or class this file reads is not in this world (0338 the Brethren, 0339 the pirate ships, 0097 the merchants, 0120 the planner, 0318 the day cap)';
   end if;
   if (select pg_get_constraintdef(c.oid) from pg_constraint c where c.conrelid = 'public.npc_houses'::regclass and c.conname = 'npc_houses_ink_check')
      <> $c$CHECK ((ink = ANY (ARRAY['prt'::text, 'esp'::text, 'nld'::text, 'eng'::text, 'han'::text, 'ita'::text, 'ott'::text, 'east'::text])))$c$ then
-    raise exception '0340 refuses: npc_houses.ink is not checked against the eight inks this file was cut against';
+    raise exception '0341 refuses: npc_houses.ink is not checked against the eight inks this file was cut against';
   end if;
   select n.id into v_pir from public.nations n where n.code = 'PIR';
 
   -- ── 1. THE PRE-IMAGES ──
   v_entry := (select count(*) from public.client_rpc_entry_points());   -- no new door: every new function is server-only (the job runs under cron)
   v_words := (select count(*) from public.stats_flow_words);
-  create temp table defs_0340 on commit drop as
+  create temp table defs_0341 on commit drop as
   select f.fn, f.ord, p.oid,
          replace(pg_get_functiondef(p.oid), E'\r', '') as def,
          coalesce(p.proacl::text, '') as acl, p.provolatile as vol, p.prosecdef as secdef,
@@ -134,31 +135,31 @@ begin
       ('world.daily_cap_remaining(uuid, uuid, uuid)', 6)) f(fn, ord)
     join pg_proc p on p.oid = to_regprocedure(f.fn)
     join pg_language l on l.oid = p.prolang;
-  if (select count(*) from defs_0340) <> 6 then
-    raise exception '0340 self-assert FAIL: % of the 6 bodies this file re-cuts are in this world', (select count(*) from defs_0340);
+  if (select count(*) from defs_0341) <> 6 then
+    raise exception '0341 self-assert FAIL: % of the 6 bodies this file re-cuts are in this world', (select count(*) from defs_0341);
   end if;
   select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
     into v_fn_before
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0340 t);
+   where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0341 t);
   select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key)) into v_cfg_before
     from public.world_config c;
-  create temp table xact0_0340 on commit drop as
+  create temp table xact0_0341 on commit drop as
   select s.relname::text as relname, s.n_tup_ins, s.n_tup_upd, s.n_tup_del from pg_stat_xact_user_tables s;
   v_ms := v_ms || jsonb_build_object('pre', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
   -- ── 2. THE KNOBS, THE WORD, THE INK ──
   insert into public.world_config (key, value, description) values
-    ('pirate_merchants_max', '30'::jsonb, '0340 (W18, docs/WORLD_POWERS.md 7.4): the most merchant houses of the pirates that may exist. public.pirate_found founds none beyond it. Owner only.'),
-    ('pirate_merchant_capital', '250000'::jsonb, '0340 (W18): the capital a pirate merchant is founded with, in ducats, paid from the hoard through public.pirate_pay (PIRATE_FOUND) inside pirate_spend_room. Her founding costs this plus her tuition (Haggling 1). Owner only.'),
-    ('pirate_merchant_class', '"carlat"'::jsonb, '0340 (W18): ship_classes.code of the hull a pirate merchant is founded with: the lateen caravel of the Barbary corsairs. It must be a hull a merchant loadout is authored for (public.npc_loadouts: barca, carlat, nau), else public.npc_found refuses E_NO_LOADOUT and nothing is founded. No PIR line, so public.npc_hull_for lays this class itself. Owner only.'),
-    ('pirate_found_hours', '2'::jsonb, '0340 (W18): hours between two foundings of pirate merchants (one a run of byeharu-voyage:pirate-merchants at most, and none inside this many hours of the newest). Owner only.'),
-    ('pirate_port_day_cap', '0.05'::jsonb, '0340 (W18, docs/WORLD_POWERS.md 7.6): at a pirate home, while the pirates bite, the share of a good''s most stock (twice its target, 0339''s stow ceiling) one company may trade there in a day (world.daily_cap_remaining). Owner only.');
+    ('pirate_merchants_max', '30'::jsonb, '0341 (W18, docs/WORLD_POWERS.md 7.4): the most merchant houses of the pirates that may exist. public.pirate_found founds none beyond it. Owner only.'),
+    ('pirate_merchant_capital', '250000'::jsonb, '0341 (W18): the capital a pirate merchant is founded with, in ducats, paid from the hoard through public.pirate_pay (PIRATE_FOUND) inside pirate_spend_room. Her founding costs this plus her tuition (Haggling 1). Owner only.'),
+    ('pirate_merchant_class', '"carlat"'::jsonb, '0341 (W18): ship_classes.code of the hull a pirate merchant is founded with: the lateen caravel of the Barbary corsairs. It must be a hull a merchant loadout is authored for (public.npc_loadouts: barca, carlat, nau), else public.npc_found refuses E_NO_LOADOUT and nothing is founded. No PIR line, so public.npc_hull_for lays this class itself. Owner only.'),
+    ('pirate_found_hours', '2'::jsonb, '0341 (W18): hours between two foundings of pirate merchants (one a run of byeharu-voyage:pirate-merchants at most, and none inside this many hours of the newest). Owner only.'),
+    ('pirate_port_day_cap', '0.05'::jsonb, '0341 (W18, docs/WORLD_POWERS.md 7.6): at a pirate home, while the pirates bite, the share of a good''s most stock (twice its target, 0339''s stow ceiling) one company may trade there in a day (world.daily_cap_remaining). Owner only.');
   insert into public.stats_flow_words (kind, side, word, ord)
   select 'PIRATE_FOUND', 'moved', 'Pirate founding', coalesce(max(w.ord), 0) + 1 from public.stats_flow_words w;
   alter table public.npc_houses drop constraint npc_houses_ink_check;
   alter table public.npc_houses add constraint npc_houses_ink_check check (ink = any (array['prt', 'esp', 'nld', 'eng', 'han', 'ita', 'ott', 'east', 'pir']));
-  comment on constraint npc_houses_ink_check on public.npc_houses is '0098: the eight nation ink families a merchant hull is drawn in. 0340 (W18): and ''pir'', the Brethren''s own (the chart draws it as the pirate merchant look).';
+  comment on constraint npc_houses_ink_check on public.npc_houses is '0098: the eight nation ink families a merchant hull is drawn in. 0341 (W18): and ''pir'', the Brethren''s own (the chart draws it as the pirate merchant look).';
   v_ms := v_ms || jsonb_build_object('data', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
   -- ── 3. THE READERS AND THE FOUNDING ──
@@ -170,13 +171,13 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0340 (W18): THE one reader of "this harbour is a PIRATE HOME" (public.port_allegiance.home under the pirate power, 0338's data; public.port_is_free is this AND the lever pirate_ports_free). Plunder lands in a home's
+  -- 0341 (W18): THE one reader of "this harbour is a PIRATE HOME" (public.port_allegiance.home under the pirate power, 0338's data; public.port_is_free is this AND the lever pirate_ports_free). Plunder lands in a home's
   -- stock (0339's pirate_stow), so the planner's rule and the day cap of docs/WORLD_POWERS.md 7.6 read this, not the lever. A city the pirates WIN is not a home.
   select exists (select 1 from public.port_allegiance a join public.great_powers g on g.nation_id = a.nation_id where a.port_id = p_port and a.home and g.pirate)
 $body$
   $f$;
   revoke all on function public.pirate_home(uuid) from public, anon, authenticated;
-  comment on function public.pirate_home(uuid) is '0340 (W18): THE one reader of whether a harbour is a pirate home (plunder lands there). Server-only.';
+  comment on function public.pirate_home(uuid) is '0341 (W18): THE one reader of whether a harbour is a pirate home (plunder lands there). Server-only.';
 
   execute $f$
 create function public.pirate_merchant(p_player uuid)
@@ -186,14 +187,14 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0340 (W18): THE one reader of "this house is a MERCHANT OF THE PIRATES": a merchant house (public.npc_houses) whose company sails for the pirate power. A pirate SHIP's house (0339) has no npc_houses row and is
+  -- 0341 (W18): THE one reader of "this house is a MERCHANT OF THE PIRATES": a merchant house (public.npc_houses) whose company sails for the pirate power. A pirate SHIP's house (0339) has no npc_houses row and is
   -- not one; a company (a player) sailing for the pirates is not one. Read by public.insure_voyage (nobody insures her) and by the proofs.
   select exists (select 1 from public.npc_houses h join public.players pl on pl.id = h.player_id
                   where h.player_id = p_player and pl.is_npc and public.pirate_power(pl.nation_id))
 $body$
   $f$;
   revoke all on function public.pirate_merchant(uuid) from public, anon, authenticated;
-  comment on function public.pirate_merchant(uuid) is '0340 (W18): THE one reader of whether a house is a merchant of the pirates. Server-only.';
+  comment on function public.pirate_merchant(uuid) is '0341 (W18): THE one reader of whether a house is a merchant of the pirates. Server-only.';
 
   execute $f$
 create function public.npc_legs_open(p_legs jsonb, p_home uuid)
@@ -203,7 +204,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0340 (W18, docs/WORLD_POWERS.md 7.6 "Merchants: cannot buy there: their route planner skips PIR ports unless she is PIR"): THE one rule, read by public.npc_loop_candidates on every set of feasible legs it
+  -- 0341 (W18, docs/WORLD_POWERS.md 7.6 "Merchants: cannot buy there: their route planner skips PIR ports unless she is PIR"): THE one rule, read by public.npc_loop_candidates on every set of feasible legs it
   -- builds. Dark: the legs, byte for byte. Lit: a PIRATE HOME is no destination, unless it is p_home (the merchant's own home: her way back). The only pirate home a pirate merchant's loop ever holds is her own,
   -- because no course joins two homes (public.npc_courses, 0338), so "unless she is PIR" and "except her own home" are one rule, and the cheaper one is kept: no read of the merchant, one read of the homes a call.
   select case when not public.pirates_on() then p_legs
@@ -215,7 +216,7 @@ as $body$
 $body$
   $f$;
   revoke all on function public.npc_legs_open(jsonb, uuid) from public, anon, authenticated;
-  comment on function public.npc_legs_open(jsonb, uuid) is '0340 (W18): THE planner''s rule about pirate homes: dark, the legs unchanged; lit, a pirate home is no destination unless it is the merchant''s own home. Server-only.';
+  comment on function public.npc_legs_open(jsonb, uuid) is '0341 (W18): THE planner''s rule about pirate homes: dark, the legs unchanged; lit, a pirate home is no destination unless it is the merchant''s own home. Server-only.';
 
   execute $f$
 create function public.pirate_merchant_spec(p_slot integer)
@@ -225,16 +226,16 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0340 (W18): THE founding spec of the pirate merchant of slot p_slot (the count of pirate merchants + 1), in the shape public.npc_found takes (0097, 0098's literal): company and alt_company, nation PIR,
+-- 0341 (W18): THE founding spec of the pirate merchant of slot p_slot (the count of pirate merchants + 1), in the shape public.npc_found takes (0097, 0098's literal): company and alt_company, nation PIR,
 -- ink 'pir', master, blurb, capital (pirate_merchant_capital), patience 0.30, wares none (the planner's "every good"), skills Haggling 1, roster_ord (the next free), ONE fleet of ONE hull
 -- (pirate_merchant_class) at her home, no officer, stores for her first leg, and her first loop: out and back to the nearest known harbour of her home (public.npc_known_legs both ways; public.npc_plan
--- re-plans her at her first lap as it does every merchant's). HER HOME: the capital for slot 1, then the other homes by code, wrapping; a home with no known leg out is passed over (the next in the ring is
--- taken). Null when no home has a leg (said in the job's receipt). THE NAMES: thirty houses of the era's pirate coasts (the Caribbean, the Barbary coast, the wokou of Kyushu, the lanun of the Strait),
--- one a slot; past thirty the slot is appended. A plain read: nothing is written here.
+-- re-plans her at her first lap as it does every merchant's). HER HOME: the ring of 0339's one reader public.pirate_home_of(ord) (the capital for slot 1, then the other homes by code, wrapping), the first
+-- from her slot's place with a known leg out; null when no home has a leg (said in the job's receipt). THE NAMES: thirty houses of the era's pirate coasts (the Caribbean, the Barbary coast, the wokou of
+-- Kyushu, the lanun of the Strait), one a slot; past thirty the slot is appended. A plain read: nothing is written here.
 declare
   v_class   text := public.wc_text('pirate_merchant_class');
   v_capital bigint := public.wc_int('pirate_merchant_capital');
-  v_homes   uuid[];
+  v_n       int;
   v_k       int;
   v_home    record;
   v_leg     record;
@@ -248,10 +249,8 @@ begin
   if p_slot is null or p_slot < 1 then
     return null;
   end if;
-  select array_agg(p.id order by (p.id = public.pirate_capital()) desc, p.code) into v_homes
-    from public.ports p join public.port_allegiance a on a.port_id = p.id
-   where p.kind = 'HARBOUR' and public.pirate_home(p.id);
-  if v_homes is null then
+  select count(*) into v_n from public.ports p where p.kind = 'HARBOUR' and public.pirate_home(p.id);
+  if v_n = 0 then
     return null;
   end if;
   select c.speed_kn into v_speed from public.ship_classes c where c.code = v_class;
@@ -259,8 +258,8 @@ begin
     raise exception 'pirate_merchant_spec: pirate_merchant_class % is no ship class', v_class;
   end if;
   -- her home: the ring from her slot's place, the first with a known leg out, both ways
-  for v_k in 0 .. array_length(v_homes, 1) - 1 loop
-    select p.id, p.code into v_home from public.ports p where p.id = v_homes[1 + ((p_slot - 1 + v_k) % array_length(v_homes, 1))];
+  for v_k in 0 .. v_n - 1 loop
+    select p.id, p.code into v_home from public.ports p where p.id = public.pirate_home_of(p_slot + v_k);
     select l.to_port, l.code, l.course, l.nm into v_leg
       from public.npc_known_legs(v_home.id) l
       join public.ports p on p.id = l.to_port
@@ -327,7 +326,7 @@ begin
 end $body$
   $f$;
   revoke all on function public.pirate_merchant_spec(integer) from public, anon, authenticated;
-  comment on function public.pirate_merchant_spec(integer) is '0340 (W18): the founding spec (public.npc_found''s shape) of the pirate merchant of a slot: name, home in the ring of homes, the Brethren''s hull, her first out-and-back loop. A read. Server-only.';
+  comment on function public.pirate_merchant_spec(integer) is '0341 (W18): the founding spec (public.npc_found''s shape) of the pirate merchant of a slot: name, home in the ring of homes, the Brethren''s hull, her first out-and-back loop. A read. Server-only.';
 
   execute $f$
 create function public.pirate_found(p_now timestamp with time zone)
@@ -337,7 +336,7 @@ volatile
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0340 (W18, docs/WORLD_POWERS.md 7.4): AT MOST ONE PIRATE MERCHANT IS FOUNDED, from the hoard, through public.npc_found (the one way a merchant is made) whose starting money public.founding_credit takes from
+-- 0341 (W18, docs/WORLD_POWERS.md 7.4): AT MOST ONE PIRATE MERCHANT IS FOUNDED, from the hoard, through public.npc_found (the one way a merchant is made) whose starting money public.founding_credit takes from
 -- public.pirate_pay (THE one payer, inside THE one cap public.pirate_spend_room) as PIRATE_FOUND. The gates, in order, each a reason in the answer: dark (public.pirates_on() false, or the merchants dark);
 -- full (pirate_merchants_max); paced (the newest founded inside pirate_found_hours); no berth (public.npc_fleets at npc_fleet_max: she would lie paused 'dark', 0105); no home with a known leg; the room
 -- (pirate_spend_room under her capital PLUS what the ships are owed for the rest of the UTC day, pirate_size x navy_upkeep_day pro rata: a founding never starves 0339's hourly pay); then the founding, in a
@@ -386,7 +385,7 @@ begin
 end $body$
   $f$;
   revoke all on function public.pirate_found(timestamp with time zone) from public, anon, authenticated;
-  comment on function public.pirate_found(timestamp with time zone) is '0340 (W18): at most one pirate merchant founded from the hoard (public.npc_found; the money through public.pirate_pay inside public.pirate_spend_room), with its gates said in the answer. Server-only.';
+  comment on function public.pirate_found(timestamp with time zone) is '0341 (W18): at most one pirate merchant founded from the hoard (public.npc_found; the money through public.pirate_pay inside public.pirate_spend_room), with its gates said in the answer. Server-only.';
 
   execute $f$
 create function public.tick_pirate_merchants(p_now timestamp with time zone default now())
@@ -396,7 +395,7 @@ volatile
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0340 (W18): THE JOB of the pirate merchants: pg_cron byeharu-voyage:pirate-merchants, every ten minutes, never in the beat. Dark: one knob read and nothing else. Lit: at most one founding (public.pirate_found).
+-- 0341 (W18): THE JOB of the pirate merchants: pg_cron byeharu-voyage:pirate-merchants, every ten minutes, never in the beat. Dark: one knob read and nothing else. Lit: at most one founding (public.pirate_found).
 -- Everything after a founding is the merchants' own machinery (public.npc_tend, hourly; the arrivals sweep): nothing of it lives here.
 begin
   if not public.pirates_on() then
@@ -406,18 +405,18 @@ begin
 end $body$
   $f$;
   revoke all on function public.tick_pirate_merchants(timestamp with time zone) from public, anon, authenticated;
-  comment on function public.tick_pirate_merchants(timestamp with time zone) is '0340 (W18): the pirate merchants'' job (cron, every ten minutes): dark nothing; lit at most one founding a run. Server-only.';
+  comment on function public.tick_pirate_merchants(timestamp with time zone) is '0341 (W18): the pirate merchants'' job (cron, every ten minutes): dark nothing; lit at most one founding a run. Server-only.';
   v_ms := v_ms || jsonb_build_object('fns', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
   -- ── 4. THE RE-CUTS: hunks sliced from the live bodies ──
-  create temp table hunks_0340 (fn text, ord int, old text, new text) on commit drop;
-  insert into hunks_0340 values
+  create temp table hunks_0341 (fn text, ord int, old text, new text) on commit drop;
+  insert into hunks_0341 values
   ('public.founding_credit(uuid, text, bigint, uuid)', 1,
 $h$begin
   if not public.economy_closed() or not public.city_treasury_on() or coalesce(p_delta, 0) <= 0 then
 $h$,
 $h$begin
-  -- 0340 (W18): A MERCHANT OF THE PIRATES is founded from the hoard through THE one payer, public.pirate_pay, inside THE one cap public.pirate_spend_room (docs/WORLD_POWERS.md 7.4), as PIRATE_FOUND,
+  -- 0341 (W18): A MERCHANT OF THE PIRATES is founded from the hoard through THE one payer, public.pirate_pay, inside THE one cap public.pirate_spend_room (docs/WORLD_POWERS.md 7.4), as PIRATE_FOUND,
   -- whatever the economy's state (a dark hoard pays nothing, so no pirate merchant is ever minted). 0 means the hoard cannot pay her now: the founding is refused WHOLE (E_HOARD_SHORT), so nothing of
   -- her stays written. A company (a player) sailing for the pirates is paid as every founding is, below.
   if coalesce(p_delta, 0) > 0 and exists (select 1 from public.players pl where pl.id = p_player and pl.is_npc and public.pirate_power(pl.nation_id)) then
@@ -433,21 +432,21 @@ $h$     where (p_only is null or h.player_id = p_only)
        and pl.ducats < h.capital * v_pct               -- 0236: BROKE = her purse (cash) under the line; cargo aboard does not count
 $h$,
 $h$     where (p_only is null or h.player_id = p_only)
-       and (h.human or not public.pirate_power(pl.nation_id))   -- 0340 (W18): a merchant of the pirates is never gifted: the hoard pays her founding and nothing after (docs/WORLD_POWERS.md 7.4, decided by default)
+       and (h.human or not public.pirate_power(pl.nation_id))   -- 0341 (W18): a merchant of the pirates is never gifted: the hoard pays her founding and nothing after (docs/WORLD_POWERS.md 7.4, decided by default)
        and pl.ducats < h.capital * v_pct               -- 0236: BROKE = her purse (cash) under the line; cargo aboard does not count
 $h$),
   ('public.npc_invest_roster(uuid)', 1,
 $h$             where pl.ducats > h.capital * (select public.wc_num('npc_invest_above'))   -- 0313: read once, not once a row
 $h$,
 $h$             where pl.ducats > h.capital * (select public.wc_num('npc_invest_above'))   -- 0313: read once, not once a row
-               and (pl.nation_id is distinct from (select public.pirate_nation()) or (select public.pirates_on()))   -- 0340 (W18): a merchant of the pirates invests and gives only while the pirates bite (both read once a query)
+               and (pl.nation_id is distinct from (select public.pirate_nation()) or (select public.pirates_on()))   -- 0341 (W18): a merchant of the pirates invests and gives only while the pirates bite (both read once a query)
 $h$),
   ('public.insure_voyage(uuid, boolean)', 1,
 $h$  select f.name into v_fleet from public.fleets f where f.id = v.fleet_id;
   if po.id is null or po.kind <> 'HARBOUR' then
 $h$,
 $h$  select f.name into v_fleet from public.fleets f where f.id = v.fleet_id;
-  if pl.is_npc and public.pirate_merchant(pl.id) then   -- 0340 (W18): NOBODY INSURES A MERCHANT OF THE PIRATES: no city takes her premium, so no city pays for her cargo (docs/WORLD_POWERS.md 7.4, decided by default)
+  if pl.is_npc and public.pirate_merchant(pl.id) then   -- 0341 (W18): NOBODY INSURES A MERCHANT OF THE PIRATES: no city takes her premium, so no city pays for her cargo (docs/WORLD_POWERS.md 7.4, decided by default)
     return jsonb_build_object('insured', false, 'why', 'pirate', 'value', 0, 'price', 0);
   end if;
   if po.id is null or po.kind <> 'HARBOUR' then
@@ -455,41 +454,41 @@ $h$),
   ('public.npc_loop_candidates(uuid, uuid, uuid, numeric, numeric)', 1,
 $h$  v_legs := public.npc_feasible_legs(p_home, p_speed, v_days_cap);
 $h$,
-$h$  v_legs := public.npc_legs_open(public.npc_feasible_legs(p_home, p_speed, v_days_cap), p_home);   -- 0340 (W18): while the pirates bite a pirate home is no destination, unless it is hers (docs/WORLD_POWERS.md 7.6)
+$h$  v_legs := public.npc_legs_open(public.npc_feasible_legs(p_home, p_speed, v_days_cap), p_home);   -- 0341 (W18): while the pirates bite a pirate home is no destination, unless it is hers (docs/WORLD_POWERS.md 7.6)
 $h$),
   ('public.npc_loop_candidates(uuid, uuid, uuid, numeric, numeric)', 2,
 $h$      v_cache := v_cache || jsonb_build_object(b->>'port_id',
                    public.npc_feasible_legs((b->>'port_id')::uuid, p_speed, v_days_cap));
 $h$,
 $h$      v_cache := v_cache || jsonb_build_object(b->>'port_id',
-                   public.npc_legs_open(public.npc_feasible_legs((b->>'port_id')::uuid, p_speed, v_days_cap), p_home));   -- 0340 (W18): the same rule on every leg set
+                   public.npc_legs_open(public.npc_feasible_legs((b->>'port_id')::uuid, p_speed, v_days_cap), p_home));   -- 0341 (W18): the same rule on every leg set
 $h$),
   ('public.npc_loop_candidates(uuid, uuid, uuid, numeric, numeric)', 3,
 $h$      v_cache := v_cache || jsonb_build_object(t->>'d', public.npc_feasible_legs((t->>'d')::uuid, p_speed, v_days_cap));
 $h$,
-$h$      v_cache := v_cache || jsonb_build_object(t->>'d', public.npc_legs_open(public.npc_feasible_legs((t->>'d')::uuid, p_speed, v_days_cap), p_home));   -- 0340 (W18): the same rule on every leg set
+$h$      v_cache := v_cache || jsonb_build_object(t->>'d', public.npc_legs_open(public.npc_feasible_legs((t->>'d')::uuid, p_speed, v_days_cap), p_home));   -- 0341 (W18): the same rule on every leg set
 $h$),
   ('world.daily_cap_remaining(uuid, uuid, uuid)', 1,
 $h$  select greatest(0,
            public.daily_cap_base(p_player, p_port) * pg.stock_target   -- 0318
 $h$,
 $h$  select greatest(0,
-           case when public.pirates_on() and public.pirate_home(p_port)   -- 0340 (W18, docs/WORLD_POWERS.md 7.6): at a pirate home, while the pirates bite, a company trades a good up to pirate_port_day_cap x its most stock (twice the target: 0339's stow ceiling) a day
+           case when public.pirates_on() and public.pirate_home(p_port)   -- 0341 (W18, docs/WORLD_POWERS.md 7.6): at a pirate home, while the pirates bite, a company trades a good up to pirate_port_day_cap x its most stock (twice the target: 0339's stow ceiling) a day
                 then least(public.daily_cap_base(p_player, p_port) * pg.stock_target, public.wc_num('pirate_port_day_cap') * 2 * pg.stock_target)
                 else public.daily_cap_base(p_player, p_port) * pg.stock_target end   -- 0318
 $h$);
 
   -- every hunk is checked against its live body BEFORE anything is replaced; then the bodies are replaced
-  if (select count(distinct h.fn) from hunks_0340 h) <> (select count(*) from defs_0340)
-     or exists (select 1 from hunks_0340 h where h.fn not in (select t.fn from defs_0340 t)) then
-    raise exception '0340 self-assert FAIL: a pre-imaged body has no hunk, or a hunk names a body not pre-imaged';
+  if (select count(distinct h.fn) from hunks_0341 h) <> (select count(*) from defs_0341)
+     or exists (select 1 from hunks_0341 h where h.fn not in (select t.fn from defs_0341 t)) then
+    raise exception '0341 self-assert FAIL: a pre-imaged body has no hunk, or a hunk names a body not pre-imaged';
   end if;
-  for r_d in select * from defs_0340 t order by t.ord loop
+  for r_d in select * from defs_0341 t order by t.ord loop
     v_def := r_d.def;
-    for r_hk in select * from hunks_0340 h where h.fn = r_d.fn order by h.ord loop
+    for r_hk in select * from hunks_0341 h where h.fn = r_d.fn order by h.ord loop
       v_n := (length(v_def) - length(replace(v_def, r_hk.old, ''))) / length(r_hk.old);
       if v_n <> 1 then
-        raise exception '0340 self-assert FAIL: hunk % of % occurs % time(s), not once: the live body is not what this file was cut against', r_hk.ord, r_hk.fn, v_n;
+        raise exception '0341 self-assert FAIL: hunk % of % occurs % time(s), not once: the live body is not what this file was cut against', r_hk.ord, r_hk.fn, v_n;
       end if;
       v_def := replace(v_def, r_hk.old, r_hk.new);
     end loop;
@@ -504,17 +503,17 @@ $h$);
 
   -- ── 6. THE SELF-ASSERT: the catalog, then cheap pure reads, then probes that roll back ──
   -- 6a every re-cut reverses to its pre-image; attributes unmoved
-  for r_d in select * from defs_0340 t order by t.ord loop
+  for r_d in select * from defs_0341 t order by t.ord loop
     v_rev := replace(pg_get_functiondef(r_d.oid), E'\r', '');
-    for r_hk in select * from hunks_0340 h where h.fn = r_d.fn order by h.ord desc loop
+    for r_hk in select * from hunks_0341 h where h.fn = r_d.fn order by h.ord desc loop
       v_n := (length(v_rev) - length(replace(v_rev, r_hk.new, ''))) / length(r_hk.new);
       if v_n <> 1 then
-        raise exception '0340 self-assert FAIL: % - the new text of hunk % is not in the live body exactly once', r_d.fn, r_hk.ord;
+        raise exception '0341 self-assert FAIL: % - the new text of hunk % is not in the live body exactly once', r_d.fn, r_hk.ord;
       end if;
       v_rev := replace(v_rev, r_hk.new, r_hk.old);
     end loop;
     if v_rev <> r_d.def then
-      raise exception '0340 self-assert FAIL: % does not reverse to its pre-image', r_d.fn;
+      raise exception '0341 self-assert FAIL: % does not reverse to its pre-image', r_d.fn;
     end if;
     if (select coalesce(p.proacl::text, '') from pg_proc p where p.oid = r_d.oid) <> r_d.acl
        or (select p.provolatile from pg_proc p where p.oid = r_d.oid) <> r_d.vol
@@ -523,16 +522,16 @@ $h$);
        or (select p.proparallel from pg_proc p where p.oid = r_d.oid) <> r_d.par
        or (select p.proowner from pg_proc p where p.oid = r_d.oid) <> r_d.owner
        or (select l.lanname from pg_proc p join pg_language l on l.oid = p.prolang where p.oid = r_d.oid) <> r_d.lang then
-      raise exception '0340 self-assert FAIL: % - ACL, volatility, definer, config, parallel safety, owner or language moved', r_d.fn;
+      raise exception '0341 self-assert FAIL: % - ACL, volatility, definer, config, parallel safety, owner or language moved', r_d.fn;
     end if;
   end loop;
 
   -- 6b no other function moved; the six new ones are server-only, definer, pinned, of the declared volatility; only the five knobs were added, as shipped; the one word; the ink
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-       where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0340 t)
+       where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0341 t)
          and not (n.nspname = 'public' and p.proname = any (c_fns))) is distinct from v_fn_before then
-    raise exception '0340 self-assert FAIL: a function this file does not re-cut moved';
+    raise exception '0341 self-assert FAIL: a function this file does not re-cut moved';
   end if;
   for r_x in select p.proname, p.provolatile, p.prosecdef, coalesce(p.proconfig::text, '') as cfg, p.oid
              from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -541,26 +540,26 @@ $h$);
        or not r_x.prosecdef or r_x.cfg <> '{"search_path=public, pg_temp"}'
        or has_function_privilege('anon', r_x.oid, 'execute') or has_function_privilege('authenticated', r_x.oid, 'execute')
        or exists (select 1 from aclexplode(coalesce((select p.proacl from pg_proc p where p.oid = r_x.oid), acldefault('f', (select p.proowner from pg_proc p where p.oid = r_x.oid)))) a where a.grantee = 0) then
-      raise exception '0340 self-assert FAIL: public.% is not of its declared volatility, definer, search_path-pinned and server-only', r_x.proname;
+      raise exception '0341 self-assert FAIL: public.% is not of its declared volatility, definer, search_path-pinned and server-only', r_x.proname;
     end if;
   end loop;
   if (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = any (c_fns)) <> 6 then
-    raise exception '0340 self-assert FAIL: the six new functions are not exactly six';
+    raise exception '0341 self-assert FAIL: the six new functions are not exactly six';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c where c.key <> all (c_knobs)) is distinct from v_cfg_before
      or (select md5(string_agg(c.key || ':' || c.value::text, ',' order by c.key)) from public.world_config c where c.key = any (c_knobs))
         is distinct from md5('pirate_found_hours:2,pirate_merchant_capital:250000,pirate_merchant_class:"carlat",pirate_merchants_max:30,pirate_port_day_cap:0.05') then
-    raise exception '0340 self-assert FAIL: a knob moved, or the knobs are not shipped as planned (max 30, capital 250000, class carlat, hours 2, day cap 0.05)';
+    raise exception '0341 self-assert FAIL: a knob moved, or the knobs are not shipped as planned (max 30, capital 250000, class carlat, hours 2, day cap 0.05)';
   end if;
   if (select count(*) from public.stats_flow_words) <> v_words + 1
      or not exists (select 1 from public.stats_flow_words w where w.kind = 'PIRATE_FOUND' and w.side = 'moved' and w.word = 'Pirate founding'
                       and w.ord = (select max(x.ord) from public.stats_flow_words x)) then
-    raise exception '0340 self-assert FAIL: the word PIRATE_FOUND is not one moved word at the end of the list';
+    raise exception '0341 self-assert FAIL: the word PIRATE_FOUND is not one moved word at the end of the list';
   end if;
   if (select pg_get_constraintdef(c.oid) from pg_constraint c where c.conrelid = 'public.npc_houses'::regclass and c.conname = 'npc_houses_ink_check')
      <> $c$CHECK ((ink = ANY (ARRAY['prt'::text, 'esp'::text, 'nld'::text, 'eng'::text, 'han'::text, 'ita'::text, 'ott'::text, 'east'::text, 'pir'::text])))$c$ then
-    raise exception '0340 self-assert FAIL: npc_houses.ink is not checked against the eight inks and ''pir''';
+    raise exception '0341 self-assert FAIL: npc_houses.ink is not checked against the eight inks and ''pir''';
   end if;
 
   -- the posture (supabase/migrations/README.md section 3): no new door for a client, and both halves of the wall read zero
@@ -568,12 +567,12 @@ $h$);
      or (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0340 self-assert FAIL: the registry or a wall moved (no new door; the posture must read zero)';
+    raise exception '0341 self-assert FAIL: the registry or a wall moved (no new door; the posture must read zero)';
   end if;
   if to_regclass('cron.job') is not null then
     execute $q$select count(*) from cron.job j where j.jobname = 'byeharu-voyage:pirate-merchants' and j.schedule = '*/10 * * * *' and j.command = 'select public.tick_pirate_merchants()' and j.active$q$ into v_n;
     if v_n <> 1 then
-      raise exception '0340 self-assert FAIL: the cron job byeharu-voyage:pirate-merchants is not scheduled every ten minutes';
+      raise exception '0341 self-assert FAIL: the cron job byeharu-voyage:pirate-merchants is not scheduled every ten minutes';
     end if;
   end if;
 
@@ -581,13 +580,13 @@ $h$);
   if (select count(*) from public.ports p where p.kind = 'HARBOUR' and public.pirate_home(p.id)) <> 4
      or exists (select 1 from public.ports p where p.code = any (c_homes) and not public.pirate_home(p.id))
      or exists (select 1 from public.ports p where p.code in ('LIS', 'SVQ') and public.pirate_home(p.id)) then
-    raise exception '0340 self-assert FAIL: pirate_home does not answer exactly the four homes';
+    raise exception '0341 self-assert FAIL: pirate_home does not answer exactly the four homes';
   end if;
   if exists (select 1 from public.npc_houses h where public.pirate_merchant(h.player_id)) then
-    raise exception '0340 self-assert FAIL: a house of this world already reads as a pirate merchant';
+    raise exception '0341 self-assert FAIL: a house of this world already reads as a pirate merchant';
   end if;
   if public.pirates_on() then
-    raise exception '0340 self-assert FAIL: pirates_bite is on while this file is applied (it is cut for a dark world; the owner lights the switch)';
+    raise exception '0341 self-assert FAIL: pirates_bite is on while this file is applied (it is cut for a dark world; the owner lights the switch)';
   end if;
   select jsonb_build_array(jsonb_build_object('port_id', (select p.id from public.ports p where p.code = 'POR'), 'code', 'POR', 'nm', 10),
                            jsonb_build_object('port_id', (select p.id from public.ports p where p.code = 'LIS'), 'code', 'LIS', 'nm', 20),
@@ -595,63 +594,68 @@ $h$);
     into v_legs;
   if public.npc_legs_open(v_legs, (select p.id from public.ports p where p.code = 'LIS')) <> v_legs
      or public.npc_legs_open('[]'::jsonb, (select p.id from public.ports p where p.code = 'LIS')) <> '[]'::jsonb then
-    raise exception '0340 self-assert FAIL: dark, npc_legs_open is not the identity';
+    raise exception '0341 self-assert FAIL: dark, npc_legs_open is not the identity';
   end if;
   select g.id into v_good from public.port_goods pg join public.goods g on g.id = pg.good_id join public.ports p on p.id = pg.port_id
    where p.code = 'POR' and pg.stock_target > 0 order by g.code limit 1;
   if v_good is null then
-    raise exception '0340 self-assert FAIL: Port Royal has no market row with a target to read the day cap on';
+    raise exception '0341 self-assert FAIL: Port Royal has no market row with a target to read the day cap on';
   end if;
   v_base := world.daily_cap_remaining(v_probe, (select p.id from public.ports p where p.code = 'POR'), v_good);
   if v_base is distinct from (select greatest(0, public.daily_cap_base(v_probe, p.id) * pg.stock_target) from public.ports p join public.port_goods pg on pg.port_id = p.id and pg.good_id = v_good where p.code = 'POR') then
-    raise exception '0340 self-assert FAIL: dark, the day cap at a pirate home is not the base (0318)';
+    raise exception '0341 self-assert FAIL: dark, the day cap at a pirate home is not the base (0318)';
   end if;
+  v_cfg_probe := (select md5(string_agg(c.key || ':' || c.value::text, ',' order by c.key)) from public.world_config c);
   begin   -- the switch, lit INSIDE A PROBE THAT ROLLS BACK: a pirate home is stripped from a leg set and the own home kept; the day cap at a home is bounded by pirate_port_day_cap x twice the target
-    update public.world_config set value = 'true'::jsonb where key = 'pirates_bite';
+    -- 0339's pirates_on() is pirates_bite AND the city purses lit (on prod they are; a dark world lights them here, inside the probe, and the probe rolls both back)
+    update public.world_config set value = 'true'::jsonb where key in ('pirates_bite', 'city_treasury_enabled');
+    if not public.pirates_on() then
+      raise exception '0341 self-assert FAIL: the probe lit pirates_bite and the purses, and pirates_on() still answers false';
+    end if;
     v_open := public.npc_legs_open(v_legs, (select p.id from public.ports p where p.code = 'LIS'));
     if jsonb_array_length(v_open) <> 1 or v_open->0->>'code' <> 'LIS' then
-      raise exception '0340 self-assert FAIL: lit, npc_legs_open kept % (two pirate homes should be stripped, LIS kept)', v_open;
+      raise exception '0341 self-assert FAIL: lit, npc_legs_open kept % (two pirate homes should be stripped, LIS kept)', v_open;
     end if;
     v_open := public.npc_legs_open(v_legs, (select p.id from public.ports p where p.code = 'DJE'));
     if jsonb_array_length(v_open) <> 2 or v_open->0->>'code' <> 'LIS' or v_open->1->>'code' <> 'DJE' then
-      raise exception '0340 self-assert FAIL: lit, npc_legs_open from Djerba kept % (Port Royal stripped, LIS and the own home kept, in order)', v_open;
+      raise exception '0341 self-assert FAIL: lit, npc_legs_open from Djerba kept % (Port Royal stripped, LIS and the own home kept, in order)', v_open;
     end if;
     v_cap := world.daily_cap_remaining(v_probe, (select p.id from public.ports p where p.code = 'POR'), v_good);
     if v_cap is distinct from (select greatest(0, least(public.daily_cap_base(v_probe, p.id) * pg.stock_target, 0.05 * 2 * pg.stock_target))
                                  from public.ports p join public.port_goods pg on pg.port_id = p.id and pg.good_id = v_good where p.code = 'POR')
        or v_cap > v_base then
-      raise exception '0340 self-assert FAIL: lit, the day cap at Port Royal is % (base %), not the lesser of the base and 5 %% of twice the target', v_cap, v_base;
+      raise exception '0341 self-assert FAIL: lit, the day cap at Port Royal is % (base %), not the lesser of the base and 5 %% of twice the target', v_cap, v_base;
     end if;
     if world.daily_cap_remaining(v_probe, (select p.id from public.ports p where p.code = 'LIS'), v_good)
        is distinct from (select greatest(0, public.daily_cap_base(v_probe, p.id) * pg.stock_target) from public.ports p join public.port_goods pg on pg.port_id = p.id and pg.good_id = v_good where p.code = 'LIS') then
-      raise exception '0340 self-assert FAIL: lit, the day cap at Lisbon moved';
+      raise exception '0341 self-assert FAIL: lit, the day cap at Lisbon moved';
     end if;
-    raise exception 'PROBE_ROLLBACK_0340';
+    raise exception 'PROBE_ROLLBACK_0341';
   exception when others then
-    if sqlerrm <> 'PROBE_ROLLBACK_0340' then raise; end if;
+    if sqlerrm <> 'PROBE_ROLLBACK_0341' then raise; end if;
   end;
-  if public.pirates_on() then
-    raise exception '0340 self-assert FAIL: the probe left pirates_bite on';
+  if public.pirates_on() or (select md5(string_agg(c.key || ':' || c.value::text, ',' order by c.key)) from public.world_config c) is distinct from v_cfg_probe then
+    raise exception '0341 self-assert FAIL: the probe left pirates_bite on, or a knob changed';
   end if;
 
   -- 6d THE MONEY PROOF BY CONSTRUCTION: this transaction wrote no row to any table of money, houses, ships, books or events; the knobs are the positive control
   for r_x in select a.relname, a.n_tup_ins - coalesce(b.n_tup_ins, 0) as i, a.n_tup_upd - coalesce(b.n_tup_upd, 0) as u, a.n_tup_del - coalesce(b.n_tup_del, 0) as dl
-             from pg_stat_xact_user_tables a left join xact0_0340 b on b.relname = a.relname
+             from pg_stat_xact_user_tables a left join xact0_0341 b on b.relname = a.relname
             where a.relname in ('players', 'npc_houses', 'npc_fleets', 'fleets', 'ships', 'treasury_flows', 'treasury_daybook', 'ledger', 'port_influence', 'events', 'trade_daily', 'insured_voyages', 'pirate_spend_day', 'standing_routes') loop
     if r_x.i <> 0 or r_x.u <> 0 or r_x.dl <> 0 then
-      raise exception '0340 self-assert FAIL: this file wrote % row(s) to %, which it must never touch (ins %, upd %, del %)', r_x.i + r_x.u + r_x.dl, r_x.relname, r_x.i, r_x.u, r_x.dl;
+      raise exception '0341 self-assert FAIL: this file wrote % row(s) to %, which it must never touch (ins %, upd %, del %)', r_x.i + r_x.u + r_x.dl, r_x.relname, r_x.i, r_x.u, r_x.dl;
     end if;
   end loop;
-  select a.n_tup_ins - coalesce(b.n_tup_ins, 0) into v_n from pg_stat_xact_user_tables a left join xact0_0340 b on b.relname = a.relname where a.relname = 'world_config';
-  select a.n_tup_ins - coalesce(b.n_tup_ins, 0) into v_x from pg_stat_xact_user_tables a left join xact0_0340 b on b.relname = a.relname where a.relname = 'stats_flow_words';
+  select a.n_tup_ins - coalesce(b.n_tup_ins, 0) into v_n from pg_stat_xact_user_tables a left join xact0_0341 b on b.relname = a.relname where a.relname = 'world_config';
+  select a.n_tup_ins - coalesce(b.n_tup_ins, 0) into v_x from pg_stat_xact_user_tables a left join xact0_0341 b on b.relname = a.relname where a.relname = 'stats_flow_words';
   if v_n <> 5 or v_x <> 1 then   -- the positive control: the counters DO see this block's writes (five knobs, one word)
-    raise exception '0340 self-assert FAIL: the transaction counters saw % knobs and % words inserted, not 5 and 1 (the money proof would be vacuous)', v_n, v_x;
+    raise exception '0341 self-assert FAIL: the transaction counters saw % knobs and % words inserted, not 5 and 1 (the money proof would be vacuous)', v_n, v_x;
   end if;
   v_ms := v_ms || jsonb_build_object('assert', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
   -- ── 7. RECEIPT ──
-  raise notice '0340 NOTE: the live paths (a founding paid by Port Royal within the cap and refused whole without it; the pace, the max, the berth and the reserve for the ships; no gift and no insurer; her stake and gift for the pirates and the daily count flipping a city to the skull that keeps its tax; a crown merchant''s planner skipping a pirate home and hers keeping her way home; the day cap at a home; dark parity; W unchanged) are proved in CI by scripts/db/proofs/47_pirate_merchants.sql and locally by scripts/ops/harness/pirate-merchants/proof-0340.mjs, not in this block';
-  raise notice '0340 timings ms (cumulative): %', v_ms;
-  raise notice '0340 self-assert ok: PIRATE MERCHANTS - 6 bodies re-cut by 8 hunks (every hunk once, each reverses, attributes unmoved), no other function moved, 6 server-only functions, 5 knobs as shipped (max 30, capital 250000, class carlat, hours 2, day cap 0.05), the word PIRATE_FOUND moved, the ink pir, pirate_home exactly the 4 homes, no pirate merchant in the world, dark: the planner rule the identity and the day cap the base; lit (probe rolled back): a home stripped and the own home kept, the cap bounded; cron job scheduled where cron exists; no row written to players / houses / fleets / ships / flows / daybook / ledger / influence / events / trade_daily / insurance / spend book';
+  raise notice '0341 NOTE: the live paths (a founding paid by Port Royal within the cap and refused whole without it; the pace, the max, the berth and the reserve for the ships; no gift and no insurer; her stake and gift for the pirates and the daily count flipping a city to the skull that keeps its tax; a crown merchant''s planner skipping a pirate home and hers keeping her way home; the day cap at a home; dark parity; W unchanged) are proved in CI by scripts/db/proofs/47_pirate_merchants.sql and locally by scripts/ops/harness/pirate-merchants/proof-0341.mjs, not in this block';
+  raise notice '0341 timings ms (cumulative): %', v_ms;
+  raise notice '0341 self-assert ok: PIRATE MERCHANTS - 6 bodies re-cut by 8 hunks (every hunk once, each reverses, attributes unmoved), no other function moved, 6 server-only functions, 5 knobs as shipped (max 30, capital 250000, class carlat, hours 2, day cap 0.05), the word PIRATE_FOUND moved, the ink pir, pirate_home exactly the 4 homes, no pirate merchant in the world, dark: the planner rule the identity and the day cap the base; lit (probe rolled back): a home stripped and the own home kept, the cap bounded; cron job scheduled where cron exists; no row written to players / houses / fleets / ships / flows / daybook / ledger / influence / events / trade_daily / insurance / spend book';
 end
 $m$;

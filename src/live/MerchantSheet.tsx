@@ -123,7 +123,7 @@ export function MerchantSheet({
           line={
             card ? (
               <>
-                {/* 0340: a merchant of the Brethren says so (her ink, served, is the pirates' own), as a cargo or navy ship says her kind */}
+                {/* 0341: a merchant of the Brethren says so (her ink, served, is the pirates' own), as a cargo or navy ship says her kind */}
                 {card.company.ink === 'pir' ? <>{t('map.pirateMerchant')} · </> : null}
                 {card.company.name}
                 {line ? <> · {line}</> : null}

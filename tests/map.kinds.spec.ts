@@ -177,7 +177,7 @@ const WHO: readonly Who[] = [
   ...INKS.map((ink): Who => ({ kind: 'cargo', ink })),
   ...INKS.map((ink): Who => ({ kind: 'navy', ink })),
   ...INKS.map((ink): Who => ({ kind: 'pirate', ink })),
-  { kind: 'pirateMerchant', ink: 'pir' },   // 0340: a merchant of the Brethren, in the pirates' ink, on a nau
+  { kind: 'pirateMerchant', ink: 'pir' },   // 0341: a merchant of the Brethren, in the pirates' ink, on a nau
   { kind: 'yours', ink: 'prt' },
 ]
 
@@ -497,7 +497,7 @@ test.describe('one renderer, one table', () => {
   })
 })
 
-// 0340 (docs/WORLD_POWERS.md 9.3, row "Pirate merchant"): a MERCHANT of the Brethren keeps her class silhouette and wears the pirates' one
+// 0341 (docs/WORLD_POWERS.md 9.3, row "Pirate merchant"): a MERCHANT of the Brethren keeps her class silhouette and wears the pirates' one
 // colour with an X across her deck, named by her served ink alone (`npc_houses.ink` 'pir'); the server marks no kind on her row.
 test.describe('the pirate merchant has the Brethren\'s colour and an X', () => {
   test.beforeAll(() => glyphs.registerHullClasses(CLASSES))

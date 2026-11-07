@@ -208,7 +208,7 @@ export type MapFleet =
   | ({ readonly kind: 'anchored'; readonly id: string; readonly name: string; readonly at: LatLon } & FleetStores &
       FleetHulls)
 
-/** The nation family a merchant hull is inked in — `npc_houses.ink`, served; never derived here. 0340: and 'pir', the Brethren's own (the pirate merchant look). */
+/** The nation family a merchant hull is inked in — `npc_houses.ink`, served; never derived here. 0341: and 'pir', the Brethren's own (the pirate merchant look). */
 export type MerchantInk = 'prt' | 'esp' | 'nld' | 'eng' | 'han' | 'ita' | 'ott' | 'east' | 'pir'
 
 /**

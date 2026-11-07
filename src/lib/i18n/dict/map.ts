@@ -7,7 +7,7 @@ export const mapDict = defineDict({
     cargoShip: 'Cargo ship',
     // 0331 (docs/WORLD_POWERS.md Part 6): her card.
     navyShip: 'Navy ship',
-    // 0340 (docs/WORLD_POWERS.md 7.4): a merchant of the Brethren, on her card.
+    // 0341 (docs/WORLD_POWERS.md 7.4): a merchant of the Brethren, on her card.
     pirateMerchant: 'Pirate merchant',
     station: 'Station',
     mission: 'Duty',

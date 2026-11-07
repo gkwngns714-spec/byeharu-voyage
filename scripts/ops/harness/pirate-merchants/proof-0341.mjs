@@ -1,16 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// proof-0340.mjs — PIRATE MERCHANTS (migration 0340): the red-first proof. LOCAL ONLY (PGlite); not in CI.
+// proof-0341.mjs — PIRATE MERCHANTS (migration 0341): the red-first proof. LOCAL ONLY (PGlite); not in CI.
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/pirate-merchants/proof-0340.mjs [--first=<sql file>] [--no-mutations] [--only=<text>] [--with=12,21,32,36,45]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/pirate-merchants/proof-0341.mjs [--first=<sql file>] [--no-mutations] [--only=<text>] [--with=12,21,32,36,45]
 //
-// Restores the cached world at the head before 0340 (never from zero; nothing is written to the cache), then inside transactions that are rolled back runs:
+// Restores the cached world at the head before 0341 (never from zero; nothing is written to the cache), then inside transactions that are rolled back runs:
 //   RED FIRST         - proof 47 on the world with no file: it must fail (the readers it calls do not exist yet);
 //   DARK PARITY       - dark-scene.sql on the world before the file and after it, pirates_bite false: every SCENE line equal (the loops offered to the merchants near a pirate home, the day cap at a home and a
 //                       crown city, the gift and invest rosters, a crown founding and its payer, the sea's inks and kinds, the old flow words, W, the insurer's quote);
 //   POSITIVE CONTROL  - the real file, then proof 47: every marker it declares;
 //   --with            - the real file followed by each named existing proof (the proofs that share its re-cut bodies), one transaction each;
-//   MUTATION CONTROLS - deliberate breakages (mutations-0340.mjs), each required to FAIL the file's own self-assert, or proof 47 right after it, for the intended reason.
+//   MUTATION CONTROLS - deliberate breakages (mutations-0341.mjs), each required to FAIL the file's own self-assert, or proof 47 right after it, for the intended reason.
 // --first=<file> applies that SQL on the restored world before everything (used while 0339 is not yet in the chain: a stub of W17's CONTRACT, never committed). Once 0339 is in supabase/migrations the
 // restored head carries it and --first is not needed. The harness reads the migration from supabase/migrations; it does not edit it. Time: about 1.7 s a run of the file and proof 47, so the mutations take about a minute.
 
@@ -19,7 +19,7 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const NAME = '20260818000340_pirate_merchants.sql'
+const NAME = '20260818000341_pirate_merchants.sql'
 const PROOF = 'scripts/db/proofs/47_pirate_merchants.sql'
 const SCENE = 'scripts/ops/harness/pirate-merchants/dark-scene.sql'
 const failures = []
@@ -64,7 +64,7 @@ async function attempt(...sqls) {
   return { err, notes }
 }
 
-const MUTATIONS = (await import('./mutations-0340.mjs')).mutations(swap)
+const MUTATIONS = (await import('./mutations-0341.mjs')).mutations(swap)
 const only = arg('only')
 
 if (!only) {
