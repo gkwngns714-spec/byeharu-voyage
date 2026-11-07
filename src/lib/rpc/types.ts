@@ -1241,6 +1241,29 @@ export interface CaptainsView {
   captains: YourCaptain[]
 }
 
+/** 0337 — ONE PART of a stat: an effect her seat adds, in per cent (`pct`), as `public.crew_terms` gives it for her, and the server's own words for it (`line`, "+9.5% speed"; null when there is nothing to say).
+ *  `pct` is null where there is no crew to read: she sits nowhere, or it is a ship effect while combat is off. 0 is a true zero: she sits and the role is not hers. */
+export interface CaptainPart {
+  effect: string
+  pct: number | null
+  line: string | null
+}
+
+/** 0337 — one of her five stats: her level in its track (`level`; null for Care, and for a signing with no experience row) and the parts she adds. */
+export interface CaptainStat {
+  stat: 'gunnery' | 'boarding' | 'seamanship' | 'trade' | 'care'
+  track: 'combat' | 'exploration' | 'trading' | null
+  level: number | null
+  parts: CaptainPart[]
+}
+
+/** 0337 — A CAPTAIN'S SHEET (`world.captain_stats`, docs/WORLD_POWERS.md 2.4): YOUR signing of one captain, derived and stored nowhere. null when you keep no such captain. */
+export interface CaptainStatsView {
+  code: string
+  seated: boolean
+  stats: CaptainStat[]
+}
+
 /** 0160 — what cmd.captain_traits_set answers. */
 export interface TraitsSet {
   officer: string

@@ -123,6 +123,7 @@ function NavyBody({ card }: { card: NavyShipCard }) {
               speedKn={s.speed}
               holdUsed={s.cargo_tuns}
               holdTotal={s.hold}
+              power={s}
               testId="navy-ship-tile"
             />
           ))}

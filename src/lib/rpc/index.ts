@@ -55,6 +55,7 @@ import type {
   PlayerView,
   SeatedCaptain,
   CaptainsView,
+  CaptainStatsView,
   TraitsSet,
   PromotedCaptain,
   AugmentedFitting,
@@ -580,6 +581,11 @@ export function cmdHireOfficer(code: string, fleetId: string | null = null) {
  *  and homesickness in words (`world.captains`). */
 export function worldCaptains(): Promise<RpcResult<CaptainsView>> {
   return call<CaptainsView>('worldCaptains')
+}
+
+/** 0337 — one captain's SHEET (`world.captain_stats`): her five stats, each her level in its track and the parts she adds, every figure the server's. By officer code; null when you keep no such captain. */
+export function worldCaptainStats(code: string): Promise<RpcResult<CaptainStatsView | null>> {
+  return call<CaptainStatsView | null>('worldCaptainStats', [code])
 }
 
 /** 0160 — the traits a captain USES (up to her grade's slots, among those she knows). Only ashore or

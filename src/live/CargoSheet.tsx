@@ -124,6 +124,7 @@ function CargoBody({ card }: { card: CargoShipCard }) {
               speedKn={s.speed}
               holdUsed={s.cargo_tuns}
               holdTotal={s.hold}
+              power={s}
               testId="cargo-ship-tile"
             />
           ))}

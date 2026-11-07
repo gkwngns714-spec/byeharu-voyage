@@ -38,6 +38,7 @@ export function FleetShips({ fleet }: { fleet: FleetView }) {
           holdUsed={shipHoldUsed(ship)}
           holdTotal={ship.hold}
           fittings={ship.fittings}
+          power={ship}
         />
         <MoveShip moves={moves} ship={ship} />
         </div>

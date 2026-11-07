@@ -354,6 +354,7 @@ function MerchantBody({
               holdUsed={s.cargo_tuns}
               holdTotal={s.hold}
               fittings={s.fittings}
+              power={s}
               testId="merchant-ship-tile"
             />
             </button>
