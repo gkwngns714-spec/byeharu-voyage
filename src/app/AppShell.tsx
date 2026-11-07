@@ -95,7 +95,7 @@ export function AppShell() {
           over it, so the horizon stays put the way it would from a deck. The bar and the tab rail
           paint their own opaque material on top.
           `data-world` IS THE STORE'S LOAD PHASE, said on the shell (2026-10-18). Each screen draws
-          its own "not yet" — COMMAND a "Loading…" row, the map "opening the chart…", the other tabs
+          its own "not yet" — COMMAND a "Loading…" row, the map its loading percentage, the other tabs
           WorldLoading's skeleton — so nothing screen-shaped can say "the world is up" for every
           route. The phase can: it is the one authority every screen gates on. The browser specs'
           ready() (tests/appReady.fixture.ts) waits on it; nothing in the app reads it. */}

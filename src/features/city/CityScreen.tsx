@@ -14,6 +14,7 @@ import { PortFlag } from '../../live/PortFlag'
 import { CityFlag } from '../../live/CityFlag'
 import { portNameOf, portNationOf, useWorld } from '../../live/worldStore'
 import { useWorldBeat } from '../../live/worldStore'
+import { worldLoadSteps } from '../../live/loadSteps'
 import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
 import { formatDucats, gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
@@ -91,15 +92,10 @@ const RELATION_WORDS: Record<Relation, TKey> = {
 
 /** THE LOADING METER'S STEPS (owner, 2026-10-31: "show percentage of its loading time") — the
  *  screen's REAL reads, each `done` at its own completion event and nothing else. The world's
- *  three boot completions ride the store's `boot` (snapshot · sea · first beat read); the fourth
- *  is the city's own served read, the hall. Four equal steps until a caller knows a size. */
+ *  three boot completions are every screen's (live/loadSteps.ts, which the map composes too);
+ *  the fourth is the city's own served read, the hall. Four equal steps until a caller knows a size. */
 function loadStepsFor(t: ReturnType<typeof useT>, boot: number, hallDone: boolean): readonly LoadStep[] {
-  return [
-    { id: 'world', label: t('city.loadWorld'), done: boot >= 1 },
-    { id: 'sea', label: t('city.loadSea'), done: boot >= 2 },
-    { id: 'fleets', label: t('city.loadFleets'), done: boot >= 3 },
-    { id: 'hall', label: t('city.loadHall'), done: hallDone },
-  ]
+  return [...worldLoadSteps(t, boot), { id: 'hall', label: t('city.loadHall'), done: hallDone }]
 }
 
 /** THE FIVE PLACES — one row of the frame, the Town Hall first (the page's main panel), then the
