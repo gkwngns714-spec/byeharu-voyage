@@ -47,8 +47,9 @@ again for every new job that writes data.
 **Why D-chain had 0 runs in its 74 minutes of apply although the job was active for the tail (measured, not guessed):**
 the job did not exist for 74 minutes. 0315 scheduled it about 01:04:12, which is 35 s before `supabase start` returned
 (01:04:47) and 48 s before the first minute boundary (01:05:00). No boundary fell inside the apply, so nothing had fired
-when the lines began. It is not that pg_cron waits for `supabase start`, and no migration removes a receipt. A chain whose tail crosses a boundary would show earlier runs; the new `quiesce` report prints
-`cron.job_run_details` per job (count, first and last start) right after `supabase start`, so each run settles it.
+when the lines began. It is not that pg_cron waits for `supabase start`, and no migration removes a receipt. A chain
+whose tail crosses a boundary would show earlier runs; the new `quiesce` report prints `cron.job_run_details` per job
+(count, first and last start) right after `supabase start`, so each run settles it (the from-zero run is below).
 
 ## The design
 
@@ -70,8 +71,8 @@ The samples are made quiet, and the quiet is proven. No list of "the tables cron
 3. **D-base is born paused.** The baseline's cron block schedules every job and leaves every job **inactive**. A job
    cannot fire between the load and our first step, because none is active. `supabase start` returns about 40 s after
    the file starts applying (run 42314406184: 01:05:53 to 01:06:33), so a baseline that started the clock at load would
-   almost always have fired, at the next boundary, before a workflow step could pause it. `quiet-check` runs on D-base before and after its lines with no mark: any run since
-   the database was created fails the job. The baseline's closing self-assert now also states it: `cron.job` has no
+   almost always have fired, at the next boundary, before a workflow step could pause it. `quiet-check` runs on D-base
+   before and after its lines with no mark: any run since the database was created fails the job. The baseline's closing self-assert now also states it: `cron.job` has no
    active job (receipt: "N cron job(s) defined and none running").
 4. **The flags the chain left running travel as DATA, not as load-time state.** `build` writes
    `baseline-clock.sql` (a separate file, one `cron.alter_job(..., active := true)` per job in `cron-as-left.json`).
@@ -102,7 +103,8 @@ gate proves that pair.
    file (a fresh world equals the chain's, jobs ticking from the commit), or leave the clock stopped. Stopped is what
    0078 says a database built from the chain should be ("a database built from scratch now ends with its clock stopped")
    and what `docs/CHAIN_BASELINE.md` §1.2 says the baseline does ("jobs start inactive … `wind_the_clock()` remains the
-   one switch"); the six running jobs are 0309..0331 not following that rule. `wind_the_clock()` starts all 19, not only the six.
+   one switch"); the six running jobs come from 0309..0331, whose scheduling lines do not stop their jobs as 0078's rule asks.
+   `wind_the_clock()` starts all 19, not only the six.
 2. The baseline carries any receipt a job wrote between the last migration and the pause. `quiet-mark.json` says how many
    runs there were (`runs_before_pause`). Cut S2's baseline from a from-zero run where it is 0.
 3. While the six jobs stay active at the end of the chain, the tail migrations after them apply with ticks running
@@ -120,9 +122,11 @@ at 01:00:27, 01:07:55 and 01:41:07 UTC. 0226 plants two finished hours at `date_
 (`supabase/migrations/20260818000226_a_price_is_kept_for_years_both_ways.sql:612`) and expects one day row over both
 (n 8). At UTC hour 01 the first planted hour is 23:00 and the second 00:00, which are two days, so the day folds into
 two rows of n 4. The assert only passes when `now()` is not in UTC hour 01. Run 42314406184 applied 0226 at 00:59:39 UTC,
-21 s before the hour began, and so reached the baseline gate. GitHub starts the `47 19 * * *` schedule about four and a half
-hours late (these runs were created 00:13 to 00:33 UTC), and the from-zero apply reaches 0226 35 to 67 minutes after the
-start, so the nightly lands in that hour often. **Until this is handled the nightly stays red on those nights whatever this
+21 s before the hour began, and so reached the baseline gate. GitHub starts the `47 19 * * *` schedule four to five
+hours late (these runs were created between 23:49 and 00:33 UTC), and the from-zero apply reaches 0226 35 to 67 minutes after
+the start, so the nightly lands in that hour often. (Checked in SQL: with `now()` at the three failing times and at 01:59:59 the
+planted hours fall on two days; at 00:00:00, 00:59:39, 02:00:00 and 02:54:12 on one. The rule follows: the first planted
+hour is 23:00 exactly when `now()` is in UTC hour 01.) **Until this is handled the nightly stays red on those nights whatever this
 change does.** It is a frozen migration, so the fix is a patch in `src/lib/db/frozenAsserts.ts` (the one patch list; 0315
 has one), which is chain machinery with its own CI cost, and it is not in this change.
 
@@ -141,4 +145,21 @@ has one), which is chain machinery with its own CI cost, and it is not in this c
 
 ## Validation
 
-(run ids below once the runs are green)
+The code under test is commit 54206b8 (the first snapshot run, 42326939657, ran 70456fe: the same quiesce and guards,
+before the positive control and the dev-log). "Boundary inside" is read from the runner's own log times: did a
+minute boundary (`hh:mm:00`) fall between the quiet mark and the D-chain quiet-check, and between D-base's two checks?
+
+| run | mode | commit | D-chain window | D-base window | positive control |
+|---|---|---|---|---|---|
+| 42326939657 | snapshot | 70456fe | 02:02:48 to 02:03:24, **02:03:00 inside** | 02:04:38 to 02:05:03, **02:05:00 inside** | (not yet written) |
+| 42327716328 | snapshot | 54206b8 | 02:11:07 to 02:11:30, none inside | 02:12:30 to 02:12:47, none inside | 4 runs at 02:13:00 |
+| 42328768805 | snapshot | 54206b8 | 02:23:35 to 02:24:09, **02:24:00 inside** | 02:25:20 to 02:25:44, none inside | 4 runs at 02:26:00 |
+| 42329312354 | snapshot | 54206b8 | 02:29:53 to 02:30:27, **02:30:00 inside** | 02:31:47 to 02:32:12, **02:32:00 inside** | 4 runs at 02:33:00 |
+| 42327697869 | **zero** | 54206b8 | (below) | (below) | (below) |
+
+All four snapshot runs are green: the five gate compares (catalog, content-exact, content-stable, cron, the as-left
+cron lines) EQUAL, and both D-base = D-pglite compares EQUAL. In the three runs with a boundary inside a window the
+jobs would have fired under the old workflow (four are `* * * * *`); under this one `quiet-check` found no active job
+and no run after the mark. The positive control shows the other half: once `baseline-clock.sql` starts the jobs, the
+next boundary writes four `succeeded` rows into `cron.job_run_details` with start times a few milliseconds after
+`hh:mm:00`, so the guard reads a real record.
