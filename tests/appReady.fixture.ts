@@ -68,6 +68,39 @@ export async function settled(scope: import('@playwright/test').Locator): Promis
 }
 
 /**
+ * A SLIDING PANEL HAS ARRIVED: its box has stopped moving AND its right edge stands on the window's edge.
+ *
+ * WHY NOT A SLEEP. map.design.spec.ts slept 700 ms after the tray opened and then measured it. On main 0d8c8e0f
+ * (run 42323982968, 2026-11-07) the runner ran every test 60 % slower than the next one (17.3 s a test against 10.7 s,
+ * shard 24.8 min against 15.2) and the tray was read 6 px short of the edge, which is what a 240-ms ease-out looks
+ * like about 170 ms in: the slide had begun late. The next run, same client code, passed. A sleep is a guess about a
+ * machine; this waits for the panel to say it is there.
+ *
+ * PATIENT, NOT LENIENT. It never throws and never widens a law: the caller's own assertion is still the verdict, so a
+ * panel that never arrives (a real positional bug) still fails, with the caller's own message, after `timeout`.
+ * "Stopped" is two reads 150 ms apart that agree to a hundredth of a pixel, and the edge test is 1 px, so a tray that
+ * waits OFF-SCREEN for a late first frame (still, but not there) is not mistaken for one that has arrived.
+ */
+export async function arrivedAtEdge(
+  panel: import('@playwright/test').Locator,
+  windowWidth: number,
+  timeout = 10_000,
+): Promise<void> {
+  const read = async () => {
+    const b = await panel.boundingBox()
+    return b === null ? null : { key: [b.x, b.y, b.width, b.height].map((n) => n.toFixed(2)).join(','), right: b.x + b.width }
+  }
+  let last = await read()
+  const t0 = Date.now()
+  while (Date.now() - t0 < timeout) {
+    await panel.page().waitForTimeout(150)
+    const now = await read()
+    if (now !== null && last !== null && now.key === last.key && Math.abs(windowWidth - now.right) <= 1) return
+    last = now
+  }
+}
+
+/**
  * OPEN A SUMMARY'S PAGE, the way a player does: one press on its 44-px summary row. The one-page
  * slice (owner, 2026-10-31: *"make everything small, compact and once clicked show new page
  * popping up"*) puts every block's detail on a full-screen `DetailPage`; its test id is `${row}-page`.
