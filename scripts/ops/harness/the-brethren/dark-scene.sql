@@ -1,6 +1,8 @@
 -- 0338 PARITY SCENE: run by proof-0338.mjs on the world BEFORE the file and AFTER it, rolled back each time. It names only what existed before 0338, and it reads everything the pirates must NOT change:
 -- the ten realms, every harbour but the four pirate homes and the three new ones, the old fields of the nations, the old money. Every SCENE line must be equal, byte for byte, before and after.
 -- (The pirates' own changes are proved by scripts/db/proofs/45_the_brethren.sql; this scene is the other half of "a slice that cannot hurt a live world".)
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   c_skip constant text[] := array['POR', 'LGA', 'GOT', 'DJE'];

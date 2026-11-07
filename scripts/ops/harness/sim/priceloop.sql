@@ -1,4 +1,6 @@
 -- the loop pricing of public.npc_plan (head 0181), verbatim math, for measurement only
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this file re-creates functions (a kept copy of live bodies / a candidate body). The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 create or replace function pg_temp.price_loop(p_route uuid, p_fleet uuid, p_loop jsonb)
 returns jsonb language plpgsql as $$
 declare

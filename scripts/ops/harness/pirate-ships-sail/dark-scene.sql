@@ -2,6 +2,8 @@
 -- It covers what 0339 cuts: the map's two reads, byte for byte with the clock taken out; who is on the sea; the kind, origin, wage and dock fee of a merchant, a cargo ship and a company; a departure's FROZEN PATH, byte for
 -- byte; 960 RAID DAYS settled through the real engine with the voyage id pinned (the fight's seed), every payload digested; the lifted share; a pirate home's market after one regen run at a pinned clock (stock, target, glut, day);
 -- the money figures; the attack door's refusal of a merchant; and the job with the switch off. It names only what existed before 0339, except the job, which is skipped when absent.
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   c_t    constant timestamptz := '2026-11-07 12:00:00+00';

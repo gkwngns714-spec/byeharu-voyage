@@ -2,6 +2,8 @@
 -- It covers what 0342 cuts that those do not reach, where NO harbour the pirates hold is involved (the rule is then a no-op): in the dark prod has (navy off) the job's answer, her step, the hunt's targets of
 -- Lisbon and the call's reader at two points of sea; and with the navy on and the pirates off, the capital's patrol as written (its stops), her first leg, an hour of upkeep to the harbour she lies at, and the escort's
 -- answer for a ward bound for a crown harbour. It names only what existed before 0342.
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_t    timestamptz := now();

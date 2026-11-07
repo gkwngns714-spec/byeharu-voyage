@@ -2,6 +2,8 @@
 -- Two voyages with fixed ids, so their rolls are the same streams, on two hulls of the built world, so their rolled stats are the same. Each sails all 51 seas, one sea a day, every day an event, through the REAL
 -- voyage.settle, voyage.fight, voyage.hazard_roll and voyage.sea_mix. The first meets the real mix. The second has a catalogue that breeds nearly only raiders, so every sea is fought in.
 -- Each day's kind and payload, each quote and the panel's mix are printed. Every SCENE line must be equal, byte for byte.
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   c_voy  constant uuid[] := array['30000000-0000-4000-8000-000000000330'::uuid, '30000000-0000-4000-8000-000000000331'::uuid];

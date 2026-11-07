@@ -1,6 +1,8 @@
 -- 0339 COST SCENE: run by proof-0339.mjs --cost on the world BEFORE the file and AFTER it, rolled back each time. The hot paths this file touches, DARK (the switch off, as on prod), priced per call:
 --   voyage.depart (one more stable read: voyage.freeze_raiders on the frozen segments), voyage.settle on a PIRATES day (voyage.leg_raider on the day's segment), public.tick_market_drift on one harbour (one constant column).
 -- Prints COST: lines; the harness prints them side by side. Not a verdict: a stopwatch on shared wasm hardware, read for the ORDER of the cost, never asserted.
+-- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server (inet_server_addr() is not null there, null on PGlite), so `db query --linked -f` can never commit it on production.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $$
 declare
   v_nat  uuid;
