@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { reachable, ready } from './appReady.fixture'
+import { arrivedAtEdge, reachable, ready } from './appReady.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MAP'S SIDE TRAY SLIDES FROM THE EDGE OF THE PAGE (owner, 2026-11-05: *"when pressing a
@@ -78,9 +78,10 @@ for (const size of SIZES) {
     const tray = page.getByTestId('map-detail-tray')
     await expect(tray).toBeVisible()
     await expect(tray).toHaveAttribute('data-tray-mode', 'side')
-    await page.waitForTimeout(800)
-
     const win = await page.evaluate(() => window.innerWidth)
+    // Not a sleep (see arrivedAtEdge): the slide's start follows the runner's speed. The assertions below stay the verdict.
+    await arrivedAtEdge(tray, win)
+
     const box = await tray.boundingBox()
     expect(box).not.toBeNull()
     expect(box!.x + box!.width, 'tray right edge vs window width').toBeCloseTo(win, 1)

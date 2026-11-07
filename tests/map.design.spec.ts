@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { reachable, ready } from './appReady.fixture'
+import { arrivedAtEdge, reachable, ready } from './appReady.fixture'
 import { DESIGN_GLASSES } from './design.fixture'
 import { pressCity } from './deskMap.fixture'
 
@@ -42,7 +42,9 @@ for (const glass of DESIGN_GLASSES) {
     await pressLisbon(page)
     const tray = page.locator('[data-tray-mode="side"]')
     await expect(tray).toBeVisible({ timeout: 60_000 })
-    await page.waitForTimeout(700)
+    // Not a sleep: on a slow runner the slide began late and the tray was read 6 px short (run 42323982968). Below `lg` the tray is the
+    // glass and arrives at once; from `lg` it slides to the window's edge, which is law (b) below, still judged by this spec alone.
+    await arrivedAtEdge(tray, glass.width)
     const t = (await tray.boundingBox())!
     const open = await chart.boundingBox()
     const failures: string[] = []
