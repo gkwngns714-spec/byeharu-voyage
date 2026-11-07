@@ -12,14 +12,16 @@ import { ready, reachable } from './appReady.fixture'
 // one fleet (Gaivota) docked there, 40,000 ducats, an empty hold.
 
 const OUT = 'docs/dev-log/2026-11-08-drive-audit'
+/** The pictures of the audit's D4 fix (the cargo column), kept apart from the audit's own evidence. */
+const FIX_OUT = 'docs/dev-log/2026-11-08-hq-drawer-production'
 const WIDE = { width: 1280, height: 800 }
 const PHONE = { width: 390, height: 844 }
 
 test.use({ deviceScaleFactor: 2 })
 
-async function shot(page: Page, name: string) {
+async function shot(page: Page, name: string, dir = OUT) {
   await page.waitForTimeout(300)
-  await page.screenshot({ path: `${OUT}/${name}.png` })
+  await page.screenshot({ path: `${dir}/${name}.png` })
 }
 
 async function openCity(page: Page, request: Parameters<typeof reachable>[0], baseURL: string | undefined, size: { width: number; height: number }, port?: string) {
@@ -172,18 +174,35 @@ for (const size of [WIDE, PHONE]) {
 }
 
 // ── ROW 302: THE PRODUCTION PAGE'S CARGO COLUMN ──────────────────────────────────────────────────
-// WHAT THE OWNER SEES on a fresh company: the cargo bar reads "4 / 180 tons" and the column under it
-// "Cargo empty." — the four tons are her supplies (15 days), which the bar counts and the list does not.
-// Marked fixme: a real finding (two words for one hold), not a spec to fix. Lifted when the words agree.
-test.fixme('Production: the cargo bar and the cargo list agree about an empty hold (row 302 — DEFECT: bar says 4 / 180 tons, list says Cargo empty)', async ({ page, request, baseURL }) => {
+// WHAT THE DRIVE FOUND (2026-11-08, the audit's D4) on a fresh company: the cargo bar read "4 / 180 tons" and the column under
+// it "Cargo empty." — the four tons are her supplies (15 days), which the bar counts (`fleetHoldUsed`: goods AND supplies, the
+// one hold of DESIGN C.3) and the goods-only list did not. FIXED after #560: the list carries the supplies as a plain line
+// (PortProduction.tsx, `cargo-supplies`), and "Cargo empty." stands only over a hold with nothing in it.
+// THE LAW: the bar's tons on board are the sum of the list's lines (each good's tons, the supplies' tons), to the ton; the
+// bar never counts tons over a list that says the cargo is empty.
+test('Production: the cargo bar and the cargo list agree about the hold (row 302)', async ({ page, request, baseURL }) => {
   await openCity(page, request, baseURL, WIDE)
   await page.getByTestId('city-building-production').click()
   await expect(page.getByTestId('port-production')).toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('[data-testid="production-cargo"] [data-testid="cargo-bar"]')).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 60_000 })
   const cargo = (await page.getByTestId('production-cargo').innerText()).replace(/\s+/g, ' ')
   console.log(`production cargo column: ${cargo}`)
-  await shot(page, 'production-cargo-1280@2x')
-  const tons = cargo.match(/(\d+)\s*\/\s*(\d+)\s*tons/)
-  expect(tons, 'no cargo bar figure').not.toBeNull()
-  if (/Cargo empty|빈 화물/.test(cargo)) expect(Number(tons![1]), 'the bar counts tons while the list says the cargo is empty').toBe(0)
+  await shot(page, 'production-cargo-1280@2x', FIX_OUT)
+  const bar = /(\d[\d,]*)\s*\/\s*(\d[\d,]*)\s*(?:tons?|톤)/.exec(cargo)
+  expect(bar, 'no cargo bar figure').not.toBeNull()
+  const used = Number(bar![1].replace(/,/g, ''))
+  // every line of the list and the tons it says: a good's caption ("12.5 tons"), the supplies' figure
+  const lines = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-testid="production-cargo"] [data-testid="cargo-row"], [data-testid="production-cargo"] [data-testid="cargo-supplies"]')].map((l) => {
+      const m = /(\d[\d,]*(?:\.\d+)?)\s*(?:tons?|톤)/.exec(l.textContent ?? '')
+      return { id: l.getAttribute('data-testid'), tons: m ? Number(m[1].replace(/,/g, '')) : null }
+    }),
+  )
+  const listed = lines.reduce((n, l) => n + (l.tons ?? 0), 0)
+  console.log(`cargo bar: ${used} tons on board; the list: ${JSON.stringify(lines)} = ${listed}`)
+  for (const l of lines) expect(l.tons, `${l.id} carries no tons figure`).not.toBeNull()
+  if (/Cargo empty|화물 없음/.test(cargo)) expect(used, 'the bar counts tons while the list says the cargo is empty').toBe(0)
+  else expect(lines.length, `the bar counts ${used} tons and the list names nothing`).toBeGreaterThan(0)
+  expect(Math.abs(listed - used), `the bar says ${used} tons on board, the list adds up to ${listed}`).toBeLessThanOrEqual(1)
 })
