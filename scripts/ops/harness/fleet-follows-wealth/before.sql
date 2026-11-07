@@ -1,4 +1,5 @@
 -- 0326 before: every hunk's pre-image occurs exactly once in the body deployed. A pure SELECT, one statement, stable catalog reads only. Generated from the migration's hunks.
+begin transaction read only;
 select h.fn::regprocedure::text as fn, h.n,
        (length(d.body) - length(replace(d.body, h.old, ''))) / length(h.old) as occurs
   from (values
@@ -47,3 +48,4 @@ $h$)
   ) h(fn, n, old)
   cross join lateral (select replace(pg_get_functiondef(h.fn), E'\r', '') as body) d
  order by 1, 2;
+commit;

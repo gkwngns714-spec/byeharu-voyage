@@ -1,6 +1,7 @@
 -- 0328 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/armed-cargo/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regprocedure, replace). No game function is called.
 -- Wanted: every `times` 1; armed_keys 0; upkeep_word 0; armed_on null; armed_hulls 0; class_ok 1; head 0327 (0324 until #527 and #529 land).
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('public.cargo_ship_step(uuid,timestamp with time zone)'::regprocedure, 1, $h$--   Then, port time done (fleets.ready_at), the next leg. Off she still sails: she is carrying funds home, and the circuit is the only way she knows.
 $h$),
@@ -39,3 +40,4 @@ select jsonb_build_object(
   'class_ok', (select count(*) from public.ship_classes k where k.code = 'navire' and k.attack > 0 and k.crew_required > 0),
   'head', (select max(version) from supabase_migrations.schema_migrations)
 ) as checks;
+commit;

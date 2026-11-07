@@ -2,6 +2,7 @@
 -- Every function read here is STABLE (public.navy_on, public.pirates_on, public.navy_hunts_on, public.navy_hunt_targets, public.fleet_sea). No game function is called.
 -- Wanted: navy_on false; pirates_on false; hunts_on false; keys 3; columns 4; fns 7 (every new function present) and client_callable 0; navy_ships 0; hunt_rows 0; fought 0; public_fights 0;
 --         lisbon_targets > 1 (the seas in reach of Lisbon, the most dangerous first) with lisbon_own true; head 20260818000340.
+begin transaction read only;
 select public.navy_on() as navy_on,
        public.pirates_on() as pirates_on,
        public.navy_hunts_on() as hunts_on,
@@ -23,3 +24,4 @@ select public.navy_on() as navy_on,
        (select t.nm = 0 and t.port_id = (select p.id from public.ports p where p.code = 'LIS') from public.navy_hunt_targets((select p.id from public.ports p where p.code = 'LIS'), now()) t
          where t.sea_id = (select p.sea_id from public.ports p where p.code = 'LIS')) as lisbon_own,
        (select max(version) from supabase_migrations.schema_migrations) as head;
+commit;

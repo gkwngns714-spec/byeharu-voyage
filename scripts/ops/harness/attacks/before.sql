@@ -1,5 +1,6 @@
 -- 0327, BEFORE: read-only, a pure SELECT of catalog and rows. It calls pg_get_functiondef and count only, no volatile game function. Run with: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/attacks/before.sql
 -- Wanted: every hunk `times` 1; keys, words, column and rows of 0327 all 0; `attack_enabled` false; no battle of kind ATTACK. Re-run at the head before 0327: 0325 and 0326 may cut these bodies.
+begin transaction read only;
 with bodies as (
   select n.name, replace(pg_get_functiondef(n.name::regprocedure), E'\r', '') as def
     from (values ('public.battle_open(text,uuid,uuid,timestamp with time zone)'), ('public.battle_resolve(uuid,timestamp with time zone)'),
@@ -27,4 +28,5 @@ union all select 'attack_enabled (want false)', c.value::text, null from public.
 union all select 'battles of kind ATTACK (want 0)', count(*)::text, null from public.battles b where b.kind <> 'PROBE'
 union all select 'book rows', count(*)::text, null from public.convoy_cargo
 union all select 'cargo ships', count(*)::text, null from public.cargo_ships
-order by 1, 2
+order by 1, 2;
+commit;

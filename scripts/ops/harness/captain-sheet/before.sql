@@ -2,6 +2,7 @@
 -- Nothing is called but the catalog (to_regprocedure, pg_get_functiondef, pg_proc) and plain SELECTs; every type is cast. No game function runs.
 -- Wanted: head 20260818000335 or 20260818000336 (the number before 0337); fn_absent true; registry_anchor_times 1 and registry_row_present false; levels_bite true; readers all 's' or 'i';
 --         sibling_acl {postgres=X/postgres,authenticated=X/postgres}; captain_xp_rows and seated_humans printed for the dev-log.
+begin transaction read only;
 with h(old) as (values ($h$      ('world',       'navy_ship_card',        'uuid'),
 $h$))
 select jsonb_build_object(
@@ -25,3 +26,4 @@ select jsonb_build_object(
   'signings_of_humans', (select count(*) from public.player_officers po join public.players pl on pl.id = po.player_id where not pl.is_npc)
 ) as checks
 from h;
+commit;

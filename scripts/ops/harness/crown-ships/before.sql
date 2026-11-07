@@ -1,6 +1,7 @@
 -- 0332 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/crown-ships/before.sql
 -- Generated from the migration's hunks. Every function read here is STABLE (pg_get_functiondef, to_regprocedure, replace). No game function is called.
 -- Wanted: every `times` 1; crown_fn null; classes_with_recipe 2 before 0331 is deployed (navy_ship_class is not on prod yet), 3 after; head 0330 or 0331.
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('world.snapshot()'::regprocedure, 1, $h$        || jsonb_build_object('size', cp.size, 'role', cp.role, 'tech', cp.tech)     -- 0135: the Codex grid's filters
 $h$),
@@ -18,3 +19,4 @@ select jsonb_build_object(
   'classes_with_recipe', (select count(*) from public.world_config c join public.hull_recipes r on r.class_code = c.value #>> '{}' where c.key in ('convoy_ship_class', 'convoy_armed_class', 'navy_ship_class')),
   'head', (select max(version) from supabase_migrations.schema_migrations)
 )::text as j;
+commit;

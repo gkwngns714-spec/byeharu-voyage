@@ -3,6 +3,7 @@
 -- PASS: failed 0, deferred 0; companies_ms not above its week (8,000-17,000); hold_max_ms under ~130; buyers about 15-25 an hour;
 --       share_gold no more than ~4.2 M an hour; level_above_max 0; merchants_paused about 35, all laid_up (2026-11-05, before the deploy).
 -- FAIL: forward rollback, owner only: update public.world_config set value = '0' where key in ('npc_invest_day_cap', 'works_open_shares');
+begin transaction read only;
 with r as (
   select at, ms, receipt -> 'ms' ->> 'companies' as companies_ms,
          receipt #>> '{merchant_upkeep,tend,invested}' as bought,
@@ -25,3 +26,4 @@ select (select jsonb_agg(to_jsonb(r) order by r.at desc) from r) as hours,
        (select count(*) from public.standing_routes sr join public.npc_fleets nf on nf.route_id = sr.id where sr.paused_reason is not null) as merchants_paused,
        (select jsonb_object_agg(x.paused_reason, x.n) from (select sr.paused_reason, count(*) as n from public.standing_routes sr join public.npc_fleets nf on nf.route_id = sr.id
                                                               where sr.paused_reason is not null group by 1) x) as paused_why;
+commit;

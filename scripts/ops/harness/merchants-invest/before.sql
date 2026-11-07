@@ -1,6 +1,7 @@
 -- 0313 PROD CHECK, BEFORE THE PUSH. One pure SELECT, read-only; it calls only stable functions (provolatile 's').
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/merchants-invest/before.sql
 -- Expect: head 20260818000312; every `hunk_*` true; maxed about 924; knobs_already_there 0; cohort_laps_ms under 100 (prod 2026-11-05: see the dev-log).
+begin transaction read only;
 with c as materialized (select clock_timestamp() as t0),
 roster as materialized (select count(*) as n from public.npc_invest_roster()),
 t1 as materialized (select clock_timestamp() as t),
@@ -32,3 +33,4 @@ select (select max(version) from supabase_migrations.schema_migrations) as head,
        position($h$'share_price', case when coalesce(w.level, 0) < v_max$h$ in pg_get_functiondef('world.holdings()'::regprocedure)) > 0 as hunk_holdings,
        (select count(*) from public.world_config k where k.key in ('works_open_shares', 'npc_invest_day_cap', 'npc_invest_keep_laps')) as knobs_already_there
   from c, roster, t1, lapsum, t2;
+commit;

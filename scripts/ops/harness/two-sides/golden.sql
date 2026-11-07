@@ -1,6 +1,7 @@
 -- golden.sql: READ-ONLY on prod, one pure SELECT of a STABLE function (voyage.fight_resolve, provolatile 's').
 -- The digest of every answer of 0320's parity probe: 960 days of 0202's hulls and 120 of a convoy. Take it before the deploy and after it: the two must be the same text.
 -- Run: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/two-sides/golden.sql
+begin transaction read only;
 with s(ships, esc) as (values
   ('[{"id":"00000000-0320-4000-8000-0000000000a1","name":"Probe Carlat","tier":1,"hull":550,"maxd":550,"crew":12,"attack":55,"accuracy":40,"reach":25,"armour":12,"sighting":10,"gear":["Boarding Gear"]}]'::jsonb, 11.74::numeric),
   ('[{"id":"00000000-0320-4000-8000-0000000000a2","name":"Probe Barca","tier":1,"hull":400,"maxd":400,"crew":8,"attack":35,"accuracy":0,"reach":0,"armour":5,"sighting":8}]'::jsonb, 6.66::numeric)),
@@ -14,3 +15,4 @@ f as materialized (
 select (select count(*) from f) as fights,
        (select md5(string_agg(j::text, E'\n' order by o, esc, r, d)) from f) as digest,
        (select jsonb_object_agg(k, n) from (select j->>'outcome' k, count(*) n from f group by 1) e) as endings;
+commit;

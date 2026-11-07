@@ -1,6 +1,7 @@
 -- 0333 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/navy-comes/before.sql
 -- Generated from the migration's hunks. Every function read here is STABLE or immutable (pg_get_functiondef, to_regclass, replace, length). No game function is called.
 -- Wanted: every `times` 1; keys 0; how_column 0; fn_call null; attack_on false; navy_on false; ships 0; battles_attack 0; sides_rows as read; head 0332.
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('public.battle_open(text,uuid,uuid,timestamp with time zone)'::regprocedure, 1, $h$    if (select f.status from public.fleets f where f.id = v_fleet) = 'SAILING' then
       perform voyage.hold(v_fleet, v_until, p_now);
@@ -67,3 +68,4 @@ select (select jsonb_object_agg(b.fn::text || ' ' || b.ord, (length(b.def) - len
        (select count(*) from public.battles b2 where b2.kind = 'ATTACK') as battles_attack,
        (select count(*) from public.battle_sides) as sides_rows,
        (select max(version) from supabase_migrations.schema_migrations) as head;
+commit;

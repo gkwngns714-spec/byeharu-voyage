@@ -1,6 +1,7 @@
 -- 0319 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/regard/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regclass, to_regprocedure, replace). No game function is called.
 -- Wanted: every `times` is 1; regard_keys, fine_word, ord_48 are 0; house_regard and regard_of are null.
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('world.tax_rate(uuid,uuid)'::regprocedure, 1, $h$    return least(v_base * public.country_factor(v_stance), greatest(v_base, public.wc_num('tariff_rate_max')));
 $h$),
@@ -24,4 +25,5 @@ select (select jsonb_agg(jsonb_build_object('fn', h.fn::text, 'hunk', h.ord,
        (select count(*) from public.stats_flow_words w where w.ord = 48) as ord_48,
        to_regclass('public.house_regard')::text as house_regard,
        to_regprocedure('public.regard_of(uuid,uuid)')::text as regard_of,
-       (select max(version) from supabase_migrations.schema_migrations) as head
+       (select max(version) from supabase_migrations.schema_migrations) as head;
+commit;

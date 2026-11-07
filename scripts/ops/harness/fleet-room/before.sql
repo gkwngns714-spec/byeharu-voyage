@@ -1,6 +1,7 @@
 -- 0321 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/fleet-room/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regclass, to_regprocedure, replace). No game function is called.
 -- Wanted: every `times` is 1; room_keys 0; house_room and move_ship null; empty_fleets 0; most_in_fleet at or under 7; fleet_ship_max 8; move_verbs 0.
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('public.earned_caps(uuid)'::regprocedure, 1, $h$  select case when exists (select 1 from public.players p where p.id = p_player and p.is_npc)
 $h$),
@@ -28,4 +29,5 @@ select (select jsonb_agg(jsonb_build_object('fn', h.fn::text, 'hunk', h.ord,
        (select max(n) from (select count(*) as n from public.ships group by fleet_id) x) as most_in_fleet,
        (select c.value from public.world_config c where c.key = 'fleet_ship_max') as fleet_ship_max,
        (select count(*) from public.events e where e.kind = 'SHIP_MOVED' and e.created_at > now() - interval '1 day') as move_verbs,
-       (select max(version) from supabase_migrations.schema_migrations) as head
+       (select max(version) from supabase_migrations.schema_migrations) as head;
+commit;

@@ -1,6 +1,7 @@
 -- 0324 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/rich-cities/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regclass, to_regprocedure, replace). No game function is called.
 -- Wanted: every `times` is 1; rich_keys 0; start_port and based_at 0; rich_on and plan2 null; no_start 0; head 0323 (0322 until #520 lands).
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('public.crown_aid(uuid)'::regprocedure, 1, $h$-- 0309: cargo ships lit, the same roster and the same call, then the capital loads a ship (public.cargo_ships_load) and this run pays nobody: one path per state of the switch.
 $h$),
@@ -124,4 +125,5 @@ select (select jsonb_agg(jsonb_build_object('fn', h.fn::text, 'hunk', h.ord,
            and (select p.id from public.nations n join public.ports p on p.code = n.capital_port_code and p.kind = 'HARBOUR' where n.id = k.nation_id) is null) as no_start,
        (select count(*) from public.cargo_ships c join public.cargo_circuits k on k.id = c.circuit_id
          where (select l.to_port from public.cargo_circuit_legs l where l.circuit_id = k.id order by l.ord desc limit 1) <> c.home_port_id) as lap_elsewhere,
-       (select max(version) from supabase_migrations.schema_migrations) as head
+       (select max(version) from supabase_migrations.schema_migrations) as head;
+commit;

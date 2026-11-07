@@ -1,6 +1,7 @@
 -- 0322 PROD CHECK, read-only, one statement: supabase db query --linked -f scripts/ops/harness/npc-origin/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regclass, to_regprocedure, replace). No game function is called.
 -- Wanted: every `times` is 1; npc_keys, refit_word, ord_49, job are 0; npc_refit_waits and fleet_origin are null; head is 0321 (0320 until #516 lands).
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('voyage.settle(uuid,timestamp with time zone)'::regprocedure, 1, $h$    v_resolved := v_resolved + 1;
   end loop;
@@ -52,4 +53,5 @@ select (select jsonb_agg(jsonb_build_object('fn', h.fn::text, 'hunk', h.ord,
        (select count(*) from cron.job j where j.jobname = 'byeharu-voyage:npc-refits' or j.schedule like '18 %') as job,
        to_regclass('public.npc_refit_waits')::text as npc_refit_waits,
        to_regprocedure('public.fleet_origin(uuid)')::text as fleet_origin,
-       (select max(version) from supabase_migrations.schema_migrations) as head
+       (select max(version) from supabase_migrations.schema_migrations) as head;
+commit;

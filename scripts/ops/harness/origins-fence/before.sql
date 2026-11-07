@@ -2,6 +2,7 @@
 -- Every function read here is STABLE (pg_get_functiondef, md5, replace, position, public.rich_cities_on). No game function is called and no row is written.
 -- Wanted: head the number before 0336 (20260818000335); hunk_times 1 (the body is the one this file was cut against); body_md5 def287f3dddbd58407122cee2ca04f5b (the live body the dev-log names); fence_in_body false;
 -- volatility s; definer true; acl {postgres=X/postgres,service_role=X/postgres}; config {"search_path=public, pg_temp"}; overloads 1; switch false; rich_on false; probe_codes 0.
+begin transaction read only;
 with h(old) as (values ($h$                                       from public.ports h
                                       cross join lateral (select public.crown_call_room(h.id) as room) x
                                       where h.kind = 'HARBOUR' and public.port_nation(h.id) = p_nation and x.room > 0
@@ -24,3 +25,4 @@ select jsonb_build_object(
   from (select replace(pg_get_functiondef('public.cargo_origins(uuid)'::regprocedure), E'\r', '') as def) d
  cross join h
  cross join (select p.provolatile, p.prosecdef, p.proacl, p.proconfig from pg_proc p where p.oid = 'public.cargo_origins(uuid)'::regprocedure) f;
+commit;

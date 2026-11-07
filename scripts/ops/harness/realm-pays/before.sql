@@ -1,6 +1,7 @@
 -- 0335 PROD CHECK, read-only, one statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/realm-pays/before.sql
 -- Every function read here is STABLE (pg_get_functiondef, to_regprocedure, replace) or a count. No game function is called.
 -- Wanted: every `times` 1; new_fns 0; navy_on false; navy_rows 0; probe_codes 0; call_kind 'moved'; head the number before 0335.
+begin transaction read only;
 with h(fn, ord, old) as (values
   ('public.crown_call(jsonb)'::regprocedure, 1, $h$-- that lock; a busy one is passed over till the next hour. Answers {called, donors}.
 $h$),
@@ -37,3 +38,4 @@ select jsonb_build_object(
   'call_kind', (select w.side from public.stats_flow_words w where w.kind = 'CROWN_CALL'),
   'head', (select max(version) from supabase_migrations.schema_migrations)
 ) as checks;
+commit;
