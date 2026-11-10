@@ -40,6 +40,8 @@ These are the scratch tools behind the 2026-10-18/19 measurements, copied from `
 
 - `city-reserve/` is 0343 (owner row 281): `proof-0343.mjs` (red first; `dark-scene.sql` equal before and after the file with the switch off: the aid target, a donor's room and the hall's figure at every harbour, every realm's origins and load room, the real instant aid over the world and the real wind's one pass, every flow and request digested; the real file and proof 50 green; 21 mutations red; `--with=all` runs every older proof after the file; `--cost` prices the two re-cut readers dark), `gen-checks.mjs` writes `volatility.sql`, `before.sql` and `after.sql`, the read-only prod checks. **`dark-scene.sql` and `cost.sql` WRITE (purses, switches, the real aid and wind) and are LOCAL ONLY: their first statement refuses on a real server (`inet_server_addr()` is not null there; PGlite has none), and `proof-0343.mjs` refuses to run a scene file without that guard**: a scene run through `db query --linked -f` would otherwise commit on production what the harness rolls back.
 
+- `crown-level/` is 0344 (owner row 288, docs/WORLD_POWERS.md 2.3): `proof-0344.mjs` (red first; the real file and proof 51 green; 15 mutations red, 12 caught by the file's own self-assert and 3 by proof 51). No prod scene: the prod checks are the premise read in the dev-log.
+
 Every prod query here runs inside `begin transaction read only` and calls only `provolatile` 's'/'i' functions. A harness SCENE (a file that writes and is rolled back by its runner) is local only and opens with the guard above; it is never a prod query.
 
 ## Two classes: every SQL file here says which one it is (2026-11-08)

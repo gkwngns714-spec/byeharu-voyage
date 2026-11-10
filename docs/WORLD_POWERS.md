@@ -134,6 +134,8 @@ All exist. Two additions:
 
 NPC hulls: merchants already have constant levels (`npc_fix_level`). Crown and pirate hulls take a fixed level by knob, `npc_ship_level` 5.
 
+**Built as 0344, dark, 2026-11-10 (`docs/dev-log/2026-11-10-crown-hulls-have-a-level.md`).** One writer, `public.crown_hull_level_fix`, over every hull of a `public.crown_house` (cargo, navy, pirate ship; never a merchant, a pirate merchant or a player who built a crown class), run by the job `byeharu-voyage:crown-hull-level` every ten minutes. **Decided by default: a switch, `npc_ship_level_enabled` false**, because lit it moves every navy, pirate and armed cargo fight on prod (+4 handling, +6 accuracy, +0.6 sighting at level 5). Dark, no such hull has a `ship_xp` row, which is level 1, as before.
+
 ### 2.4 Captain stats
 
 A sheet, derived, stored nowhere: `world.captain_stats(signing)`, read by the existing captain card.
