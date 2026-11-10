@@ -226,16 +226,36 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
   // is at 787px, the first row starts at 322px under title · faces · port field · Stores · filter,
   // and FIVE complete rows fit above it. The floor is that measured figure; the first row must
   // carry its range meter, and so must every other.
+  //
+  // THE FAIR IS NOT THE DESK'S CHROME (2026-11-10, main's Acceptance on #568). While a fair is on at the quay,
+  // `QuayFair` (src/live/PortFair.tsx) stands one 52-px accent Row above the trade pane — "only when true"
+  // (docs/UI_DIRECTION.md §6), ~1.6% of port-days, and whether it is true is the clock and the world's seed
+  // (0026 `buff_season_of`), not anything this build decides. Once `openCityFace` waited for the fair read (#568)
+  // the row was reliably on the glass whenever CI's world had a fair live: the first row went 584 → 636 px and
+  // only one fit (run 42822227533). A floor that passes only when no fair happens to be on is a flake, so the
+  // floor is measured on the layout with the fair row taken out of flow — the same glass in every season — and
+  // the fair's own cost is held separately below, whenever one is on.
   const fold = await page.evaluate(() => {
     const nav = document.querySelector('nav')
     const foldY = nav ? nav.getBoundingClientRect().top : window.innerHeight
     const rows = [...document.querySelectorAll('[data-testid="trade-row"]')]
-    const complete = rows.filter((t) => t.getBoundingClientRect().bottom <= foldY)
+    const below = () => rows.filter((t) => t.getBoundingClientRect().bottom <= foldY).length
+    // Measured with the fair in, then out of flow (synchronous: getBoundingClientRect forces the layout, and
+    // nothing renders between the two reads), then put back exactly as it was.
+    const fair = document.querySelector<HTMLElement>('[data-testid="quay-fair"]')
+    const withFair = fair ? below() : null
+    const shown = fair?.style.display ?? ''
+    if (fair) fair.style.display = 'none'
+    const complete = below()
+    const firstRowTop = rows[0]?.getBoundingClientRect().top ?? 0
+    if (fair) fair.style.display = shown
     return {
       foldY: Math.round(foldY),
-      firstRowTop: Math.round(rows[0]?.getBoundingClientRect().top ?? 0),
+      fairOn: fair !== null,
+      completeRowsWithFair: withFair,
+      firstRowTop: Math.round(firstRowTop),
       rowHeight: Math.round(rows[0]?.getBoundingClientRect().height ?? 0),
-      completeRowsAboveFold: complete.length,
+      completeRowsAboveFold: complete,
       // 2026-10-18 (owner: "i don't see stock of the trade goods"): the row's meter is the city's STOCK
       // against its normal level (StockGauge), which replaced the tide-in-range bar.
       firstRowHasRange: rows[0]?.querySelector('[data-testid="stock-gauge"]') !== null,
@@ -261,6 +281,15 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
     `only ${fold.completeRowsAboveFold} complete good rows above the fold at ${fold.foldY}px ` +
       `(first row at ${fold.firstRowTop}px, ${fold.rowHeight}px each) — two fit on City › Trade on 2026-10-30`,
   ).toBeGreaterThanOrEqual(2)
+  // WITH A FAIR ON, it costs its own row and no more: MEASURED 2026-11-10 (run 42822227533) the first row stood
+  // at 636 px and ONE complete row fit above the 787-px fold. The floor is that measured one — a fair may push
+  // the second row under the fold, it may not push the goods off the glass.
+  if (fold.completeRowsWithFair !== null) {
+    expect(
+      fold.completeRowsWithFair,
+      `no complete good row above the fold at ${fold.foldY}px while a fair is on — one fit on 2026-11-10`,
+    ).toBeGreaterThanOrEqual(1)
+  }
   // 0071: this used to require a `%` — the nearby index. That figure is gone, and with it the
   // only thing on the row that was a comparison rather than a fact. What must be on screen now is
   // the RANGE, which is what replaced it: how far this price can travel, here — on EVERY row.
