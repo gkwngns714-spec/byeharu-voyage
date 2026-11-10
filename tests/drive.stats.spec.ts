@@ -40,7 +40,7 @@ const face = (page: Page, name: string) => page.getByRole('tablist').first().get
 /** Every series chart on the glass, read off what is DRAWN: the line's points, the plot box, the x labels. */
 async function drawnCharts(page: Page, scope: string) {
   return page.evaluate((sel) => {
-    const out: { card: string; label: string; points: [number, number][]; plot: { x: number; w: number } | null; xLabels: string[] }[] = []
+    const out: { card: string; record: boolean; label: string; points: [number, number][]; plot: { x: number; w: number } | null; xLabels: string[] }[] = []
     for (const chart of document.querySelectorAll(`${sel} [data-testid="series-chart"]`)) {
       const svg = chart.querySelector('svg[role="img"]')
       if (!svg) continue
@@ -53,6 +53,7 @@ async function drawnCharts(page: Page, scope: string) {
       const card = chart.closest('[data-card], [data-testid]')
       out.push({
         card: card?.getAttribute('data-testid') ?? '?',
+        record: chart.closest('[data-testid="history-line"]') !== null,
         label: svg.getAttribute('aria-label') ?? '',
         points,
         plot: plot ? { x: Number(plot.getAttribute('x')), w: Number(plot.getAttribute('width')) } : null,
@@ -129,8 +130,12 @@ test('Stats: a counted world — every drawn series ends at its right edge on a 
       // (3) THE X LABELS SAY DIFFERENT THINGS: an axis that reads "now now now" tells the time nowhere
       const labels = c.xLabels.filter((l) => l !== '')
       if (labels.length >= 2 && new Set(labels).size === 1) findings.push(`${name} ${c.card}: every x label reads "${labels[0]}"`)
-      // (4) THE WHOLE SERIES IS THERE: the eight counts, each a whole quarter
-      if (n < COUNTS - 1) findings.push(`${name} ${c.card}: only ${n} points for ${COUNTS} counts`)
+      // (4) THE WHOLE SERIES IS THERE: the eight counts, each a whole quarter. A history RECORD (Money record, Market record...) is not
+      //     drawn per count: it has one point per calendar day/week/month the world has lived, so its point count is the UTC days
+      //     the eight counts touch (one when they sit in one day, two when the run crosses midnight) — never eight. It was held to
+      //     eight here and failed exactly when CI ran across 00:00 UTC (run 42427011790, 00:05 UTC), and passed the rest of the day
+      //     because a one-point line is skipped above. Rules (1) to (3) still hold for it.
+      if (!c.record && n < COUNTS - 1) findings.push(`${name} ${c.card}: only ${n} points for ${COUNTS} counts`)
     }
     for (const id of cards) {
       const card = page.getByTestId(id)
