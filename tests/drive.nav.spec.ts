@@ -89,15 +89,9 @@ test('Tabs: HQ → Fleets → Map → Stats → HQ, twice — the world and the 
   for (const name of ['world.snapshot', 'world.sea_raster', 'world.reaches', 'world.sea_conditions']) {
     expect(counts[1][name] ?? 0, `${name} was asked again on the second cycle`).toBe(0)
   }
-  // and nothing is drawn as a skeleton on the way back to a screen already seen. The Stats screen is NOT held to
-  // this: it reads its OWN live figures (`world.stats_*`, a second-by-second poll), so on a slower machine (CI's
-  // shared runners) its placeholders are still up 150 ms after the press even though the world and the sea (the
-  // row's subject: downloaded once, kept across tabs) were never asked again. The law above (no static read asked
-  // again) is what row 250 owes; this one holds the screens that draw from the kept world alone.
-  for (const [to] of steps) {
-    if (to === '/stats') continue
-    expect(skeletons[1][to], `${to} showed a loading skeleton on its second visit`).toBe(0)
-  }
+  // and nothing is drawn as a skeleton on the way back to a screen already seen (Stats included: its live reads `keep` their
+  // last answer across a remount, src/live/liveRead.ts, and draw it at once while the next ask is on the wire)
+  for (const [to] of steps) expect(skeletons[1][to], `${to} showed a loading skeleton on its second visit`).toBe(0)
 })
 
 // ── ROW 180: ONE FLEET OF SEVEN, EACH SHIP'S STATS AND THE FLEET'S ───────────────────────────────

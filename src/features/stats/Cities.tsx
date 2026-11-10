@@ -28,7 +28,7 @@ const FIRST = 60
 
 export function CitiesFace() {
   const t = useT()
-  const read = useLiveRead<StatsCities>('stats:cities', () => worldStatsCities())
+  const read = useLiveRead<StatsCities>('stats:cities', () => worldStatsCities(), '', true)
   const v = read.view
   const world = useWorldSeries()
   const [open, setOpen] = useState<StatsCityRow | null>(null)

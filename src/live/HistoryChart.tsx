@@ -53,7 +53,7 @@ export function HistoryChart<P extends { at: string }>({
 }) {
   const t = useT()
   const { period, setPeriod } = useHistoryPeriod()
-  const read = useLiveRead(`history:${what}:${subject ?? ''}`, () => worldHistory<P>(what, subject, period), period)
+  const read = useLiveRead(`history:${what}:${subject ?? ''}`, () => worldHistory<P>(what, subject, period), period, what !== 'me')
   const word: Record<HistoryPeriod, string> = { day: t('stats.periodDay'), week: t('stats.periodWeek'), month: t('stats.periodMonth') }
   const points = read.view?.points ?? []
   return (

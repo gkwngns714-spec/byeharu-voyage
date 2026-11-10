@@ -23,7 +23,7 @@ export interface StatsLive {
 
 /** The RIGHT NOW band's read (world.stats_now, 0224), on the tab's one rule. */
 export function useStatsLive(): StatsLive {
-  const { view: live } = useLiveRead<StatsNow>('stats:now', worldStatsNow)
+  const { view: live } = useLiveRead<StatsNow>('stats:now', worldStatsNow, '', true)
   const liveAtMs = live === null ? null : Date.parse(live.at)
   return { live, liveAtMs: liveAtMs !== null && Number.isFinite(liveAtMs) ? liveAtMs : null }
 }
