@@ -2569,7 +2569,7 @@ export interface MerchantCard {
   /** 0124 — ONE SERVED SHIP TYPE: `world.ship_view`, as your own fleet's ships are served, less what
    *  a stranger is not — her id and her water and food. (Before 0124 the card built its own poorer
    *  object, with no slots and no stats; the panel still renders that, its keys being optional there.) */
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   officers: MerchantOfficer[]
   skills: MerchantSkill[]
 }
@@ -2585,7 +2585,7 @@ export interface CargoShipCard {
   eta: string | null
   next: string[]
   stops_left: number
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   /** 0327: served, true, only while attacks are lit. Absent, the card offers no Attack. */
   attack?: true
 }
@@ -2601,7 +2601,7 @@ export interface NavyShipCard {
   to: string | null
   eta: string | null
   next: string[]
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   /** 0333: served, true, only while attacks are lit, as a cargo ship's. */
   attack?: true
   /** 0340: her last fight with a pirate ship (docs/WORLD_POWERS.md 6.4), served only after one: when, how it went (`map.fight_*`), the pirate ship's name, the sea's code. */
@@ -2619,7 +2619,7 @@ export interface PirateShipCard {
   laid_up: boolean
   to: string | null
   eta: string | null
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   /** served, true, only while attacks are lit, as a navy ship's. */
   attack?: true
 }

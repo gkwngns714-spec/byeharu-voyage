@@ -5,7 +5,7 @@
 -- written at head 0235), slice V2, checked against the live chain at head 0344. Row 222 (the roll, 0276) is live: every hull already carries roll_stores, read by nothing until this file.
 -- TODAY (0007, 0150, 0225, 0231): one pool. public.fleet_free_hold = hold - cargo - water - food, and every top-up (public.stores_topup) fills "the room beside her cargo". A full hold means short stores.
 --
--- WHAT THIS FILE ADDS (two knobs, five small readers, thirteen hunks over eleven live bodies; no table, no column, no row written):
+-- WHAT THIS FILE ADDS (two knobs, five small readers, seventeen hunks over fifteen live bodies; no table, no column, no row written):
 --   ship_stores_separate  false   THE switch (owner only). ship_stores_days  36   the days of stores her space holds for a FULL crew (class crew_max), the design's figure.
 --   public.ship_stores_separate()          THE one reader of the switch.
 --   public.ship_stores_space(ship)         HER STORES SPACE in tuns: floor(ceil(class crew_max x (water_per_crew_day + food_per_crew_day) x ship_stores_days) x her roll_stores (0276)). Barca 26 t, carlat 38 t,
@@ -17,16 +17,19 @@
 --   public.fleet_free_hold, public.fleet_load (the cargo room: hold - cargo, lit), cmd.do_provision (both passes), public.supply_needs (0225's `fits`, `tons`, `cost`), public.supply_reach (0231's cap),
 --   public.npc_provision_for, public.fleet_stores (a crown's free top-up) — room and FULL read her stores space, lit; public.npc_casks_blocked (lit: selling cargo frees no stores room, so never
 --   blocked for it); world.good_board (`units_fit` no longer subtracts the stores, lit); world.ship_view (+ `stores_cap`, lit); voyage.leg_refusal (lit: the words say the stores space, and the
---   figures carry `stores_space: true` so the desk words it "Supplies short").
+--   figures carry `stores_space: true` so the desk words it "Supplies short"); world.npc_fleet_card, world.cargo_ship_card, world.navy_ship_card, world.pirate_ship_card (a stranger's card strips
+--   `stores_cap` beside id, water_t and food_t).
 -- DARK PARITY BY CONSTRUCTION: dark every new reader answers its argument (or '{}', or false), so every re-cut body computes what it did. Asserted below twice: the whole world's free hold, supply
--- reach, supply needs and ship views read the same md5 before and after the hunks; a probe company's provision, load, needs, refusal and ship view run before the hunks and again after them, dark,
--- and answer the same jsonb.
+-- reach, supply needs and ship views of every human fleet and 20 NPC fleets (by id), new against pg_temp copies of the pre-images IN ONE STATEMENT (one snapshot: a live trade during the deploy
+-- cannot fail it; bounded, because the whole world's reads take about a minute on prod); a probe company's provision,
+-- load, needs, refusal, crown top-up, uneven casks and ship view run before the hunks and again after them, dark, and answer the same jsonb.
 -- NOT TOUCHED: voyage.ship_speed_at (stores still WEIGH: the fill stays (cargo + stores) / hold, so speed is byte-identical lit too, decided by default), voyage.settle (consumption), stores_topup
--- itself, store_ratio (unread lit; dropping it is a later slice), the client's own words besides 'stores short' and the stores space row.
--- DECIDED BY DEFAULT: no ship is backfilled. A hull that carries more stores than her space keeps them until she eats them; a top-up then adds nothing (stores_topup's free room is 0).
+-- itself, store_ratio (unread lit; dropping it is a later slice).
+-- DECIDED BY DEFAULT: no ship is backfilled. A hull that carries more stores than her space keeps them until she eats them. Lit, her top-up room is the tuns at which her short store matches her long
+--   one in days (public.ship_stores_room): an uneven hull over her space (a cask lost, 0059) evens up and is never stuck; she never takes on past her long store's days.
 --   One rule for every house (players, merchants, crown and pirate ships): lit, a crown's 90-day top-up fills her stores space, no more.
 -- SELF-ASSERT (the catalog, the world read only, then a probe company of its own rolled-back rows): see sections 5 to 7. THE REAL PATHS ARE PROVED IN CI: proof 52, scripts/db/proofs/52_stores_have_their_own_space.sql.
--- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 60 s, lock_timeout 5 s first. Reads: the catalog, every fleet's free hold, reach and needs, every ship's view, twice (about 5 s on wasm).
+-- BUDGET (docs/OPS_HEALTH.md section 4: the whole file within 45 s on prod): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Reads: the catalog; the free hold, reach and needs of every human fleet and 20 NPC fleets and the view of every ship in them, new and pre-image, in ONE statement (its ms printed in the receipt); the probe's own rows.
 -- ROLLBACK (forward, owner only): lit, update public.world_config set value = 'false'::jsonb where key = 'ship_stores_separate'; every reader is the world before this file at once.
 --   To remove: a new migration swapping this file's hunks back (each OLD text is here verbatim) and dropping the five readers and the two knobs.
 -- VERSION: 0345 - prod head 0344 (read 2026-11-10).
@@ -47,10 +50,11 @@ declare
   v_cron_before text;
   v_cron_after  text;
   v_entry       int;
-  v_world0      text;
-  v_world1      text;
-  v_ships0      text;
-  v_ships1      text;
+  v_badf        int;
+  v_bads        int;
+  v_tw          timestamptz;
+  v_world_ms    int;
+  v_nsel        int;
   v_pre_probe   jsonb;
   v_dark        jsonb;
   v_lit         jsonb;
@@ -61,9 +65,10 @@ declare
   c_hunked    constant text[] := array['public.fleet_free_hold(uuid)', 'public.fleet_load(uuid,text,numeric,numeric)', 'cmd.do_provision(uuid,jsonb)',
                                        'public.supply_needs(uuid,numeric[])', 'public.supply_reach(uuid)', 'public.npc_provision_for(uuid,numeric)',
                                        'public.npc_casks_blocked(uuid,uuid,numeric,numeric)', 'public.fleet_stores(uuid,numeric)',
-                                       'world.good_board(uuid,uuid,uuid,numeric)', 'world.ship_view(uuid)', 'voyage.leg_refusal(uuid,uuid,numeric,jsonb)'];
+                                       'world.good_board(uuid,uuid,uuid,numeric)', 'world.ship_view(uuid)', 'voyage.leg_refusal(uuid,uuid,numeric,jsonb)',
+                                       'world.npc_fleet_card(uuid)', 'world.cargo_ship_card(uuid)', 'world.navy_ship_card(uuid)', 'world.pirate_ship_card(uuid)'];
 begin
-  perform set_config('statement_timeout', '60s', true);
+  perform set_config('statement_timeout', '45s', true);
   perform set_config('lock_timeout', '5s', true);
 
   -- ── 0. GUARD: nothing of this file exists, and every body it cuts does ──
@@ -98,12 +103,23 @@ begin
   end if;
   v_entry := (select count(*) from public.client_rpc_entry_points());
 
-  -- THE WORLD, READ ONLY, BEFORE: every fleet's free hold, supply reach and supply needs (two legs), every ship's view
-  select md5(coalesce(string_agg(f.id::text || ':' || public.fleet_free_hold(f.id)::text
-                     || ':' || coalesce((select r::text from public.supply_reach(f.id) r), '')
-                     || ':' || coalesce((select string_agg(x::text, ';' order by x.nm) from public.supply_needs(f.id, array[500, 2000]::numeric[]) x), ''), ',' order by f.id), ''))
-    into v_world0 from public.fleets f;
-  select md5(coalesce(string_agg(world.ship_view(s.id)::text, ',' order by s.id), '')) into v_ships0 from public.ships s;
+  -- THE PRE-IMAGES KEPT AS pg_temp COPIES (0250's way): section 6 reads old and new in ONE statement, one snapshot, so a live trade between two reads cannot fail the deploy.
+  -- The four readers it compares call nothing this file re-cuts, so each copy is the whole pre-image of its reading.
+  declare
+    d record;
+    v_d text;
+  begin
+    for d in select * from (values ('public.fleet_free_hold(uuid)', 'public.fleet_free_hold', 'pg_temp.fleet_free_hold_old_0345'),
+                                   ('public.supply_reach(uuid)', 'public.supply_reach', 'pg_temp.supply_reach_old_0345'),
+                                   ('public.supply_needs(uuid,numeric[])', 'public.supply_needs', 'pg_temp.supply_needs_old_0345'),
+                                   ('world.ship_view(uuid)', 'world.ship_view', 'pg_temp.ship_view_old_0345')) x(fn, name, old_name) loop
+      v_d := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
+      if (length(v_d) - length(replace(v_d, 'FUNCTION ' || d.name || '(', ''))) / length('FUNCTION ' || d.name || '(') <> 1 then
+        raise exception '0345 refuses: %''s definition does not name itself once', d.fn;
+      end if;
+      execute replace(v_d, 'FUNCTION ' || d.name || '(', 'FUNCTION ' || d.old_name || '(');
+    end loop;
+  end;
 
   -- ── 2. THE PROBE (defined now, run before the hunks, after them dark, and lit; each run in a sub-block rolled back whole) ──
   -- A company of its own (never a real one), one barca with a FIXED id (so her 0276 roll is the same in every run), 20 hands, empty casks, docked at Lisbon. It provisions 20 days, loads a bulk-1
@@ -152,6 +168,18 @@ begin
   perform public.fleet_stores(v_fl, 90);
   v_out := v_out || jsonb_build_object('crown90', (select jsonb_build_object('water_t', s.water_t, 'food_t', s.food_t) from public.ships s where s.id = v_sh),
     'view', world.ship_view(v_sh), 'space', public.ship_stores_space(v_sh));
+  -- an UNEVEN hull OVER her space (water for 0.9 of her space, food for 0.5: 140 %): PROVISION to her water's days, and the days her stores carry before and after
+  update public.ships set water_t = round(public.ship_stores_space(v_sh) * 0.9, 3), food_t = round(public.ship_stores_space(v_sh) * 0.5, 3) where id = v_sh;
+  v_out := v_out || jsonb_build_object('uneven0', (select jsonb_build_object('water_t', s.water_t, 'food_t', s.food_t) from public.ships s where s.id = v_sh),
+    'uneven_reach0', (select to_jsonb(r) from public.supply_reach(v_fl) r));
+  begin
+    v_r := cmd.do_provision(v_fl, jsonb_build_object('mode', 'DAYS', 'days',
+             (select floor(s.water_t / (s.crew * public.wc_num('water_per_crew_day'))) from public.ships s where s.id = v_sh)));
+  exception when others then v_r := to_jsonb(sqlerrm);
+  end;
+  v_out := v_out || jsonb_build_object('uneven_prov', v_r,
+    'uneven1', (select jsonb_build_object('water_t', s.water_t, 'food_t', s.food_t, 'crew', s.crew) from public.ships s where s.id = v_sh));
+  v_out := v_out || jsonb_build_object('uneven_reach1', (select to_jsonb(r) from public.supply_reach(v_fl) r));
   return v_out;
 end
 $b$
@@ -200,7 +228,15 @@ security definer
 set search_path = public, pg_temp
 as $body$
   -- 0345: THE ROOM A TOP-UP MAY FILL on this hull (public.stores_topup's p_room and p_full). Dark: p_dark, the caller's own figure, untouched. Lit: her stores space, whatever her cargo.
-  select case when public.ship_stores_separate() then public.ship_stores_space(p_ship) else p_dark end
+  -- A hull lit OVER her space (stores aboard from before the switch, or a crown's; a cask lost since, 0059, leaves the split uneven): the room is the tuns at which her short store matches her
+  -- long one in days, so the short store may rise to the long one's days and never past them. Without it the top-up's free room is 0 for good, a leg longer than her short store is refused,
+  -- and a docked merchant never sails again. She never takes on more than that, and as she eats she falls back to her space.
+  select case when not public.ship_stores_separate() then p_dark
+              when coalesce(s.water_t + s.food_t, 0) <= sp.space + 0.01 then sp.space
+              else greatest(sp.space, s.water_t * (k.w + k.f) / k.w, s.food_t * (k.w + k.f) / k.f) end
+    from (select public.ship_stores_space(p_ship) as space) sp
+    left join public.ships s on s.id = p_ship
+   cross join (select public.wc_num('water_per_crew_day') as w, public.wc_num('food_per_crew_day') as f) k
 $body$
   $f$;
   execute $f$
@@ -333,6 +369,11 @@ $h$  v_view := v_view || world.ship_set_card(p_ship);
   -- 0345 (owner row 221): … plus `stores_cap`, her stores space in tuns, only while ship_stores_separate is lit (public.ship_stores_card)
   v_view := v_view || public.ship_stores_card(p_ship);
 $h$),
+  -- a stranger's card strips her stores as it strips her casks (0124, 0333, 0339): stores_cap joins id, water_t and food_t (dark the key is absent, so nothing moves)
+  ('world.npc_fleet_card(uuid)', 1, $h$ - array['id', 'water_t', 'food_t']$h$, $h$ - array['id', 'water_t', 'food_t', 'stores_cap']$h$),
+  ('world.cargo_ship_card(uuid)', 1, $h$ - array['id', 'water_t', 'food_t']$h$, $h$ - array['id', 'water_t', 'food_t', 'stores_cap']$h$),
+  ('world.navy_ship_card(uuid)', 1, $h$ - array['id', 'water_t', 'food_t']$h$, $h$ - array['id', 'water_t', 'food_t', 'stores_cap']$h$),
+  ('world.pirate_ship_card(uuid)', 1, $h$ - array['id', 'water_t', 'food_t']$h$, $h$ - array['id', 'water_t', 'food_t', 'stores_cap']$h$),
   -- the leg judge: the words and a figure, lit
   ('voyage.leg_refusal(uuid,uuid,numeric,jsonb)', 1,
 $h$           format('that leg is %s days at sea and asks %s days of supplies; beside the cargo the hold carries %s — sell some, or stop to resupply',
@@ -430,14 +471,26 @@ $h$);
     raise exception '0345 self-assert FAIL: a caller of stores_topup was not re-cut onto ship_stores_room';
   end if;
 
-  -- ── 6. DARK PARITY ON THE LIVE WORLD (read only): the same free hold, reach, needs and ship views as before the hunks ──
-  select md5(coalesce(string_agg(f.id::text || ':' || public.fleet_free_hold(f.id)::text
-                     || ':' || coalesce((select r::text from public.supply_reach(f.id) r), '')
-                     || ':' || coalesce((select string_agg(x::text, ';' order by x.nm) from public.supply_needs(f.id, array[500, 2000]::numeric[]) x), ''), ',' order by f.id), ''))
-    into v_world1 from public.fleets f;
-  select md5(coalesce(string_agg(world.ship_view(s.id)::text, ',' order by s.id), '')) into v_ships1 from public.ships s;
-  if v_world1 <> v_world0 or v_ships1 <> v_ships0 then
-    raise exception '0345 self-assert FAIL: dark, the world reads differently after the hunks (fleets % / ships %)', v_world1 = v_world0, v_ships1 = v_ships0;
+  -- ── 6. DARK PARITY ON THE LIVE WORLD (read only, ONE statement, one snapshot): a BOUNDED set, new against the pg_temp pre-image ──
+  -- Every human company's fleet (19 on prod) and the first 20 merchant / crown / pirate fleets by id, and every ship of those fleets. Not the whole world: on prod the whole world's reads take
+  -- about 24 s (fleets) and 39 s (ship views) each, which no 45 s file can afford (measured read only 2026-11-10). The probe below walks every re-cut path on its own rows.
+  v_tw := clock_timestamp();
+  with sel as (
+    select f.id from public.fleets f join public.players p on p.id = f.player_id where not p.is_npc
+    union
+    select x.id from (select f.id from public.fleets f join public.players p on p.id = f.player_id where p.is_npc order by f.id limit 20) x
+  )
+  select (select count(*) from sel f
+           where public.fleet_free_hold(f.id) is distinct from pg_temp.fleet_free_hold_old_0345(f.id)
+              or (select r::text from public.supply_reach(f.id) r) is distinct from (select r::text from pg_temp.supply_reach_old_0345(f.id) r)
+              or (select string_agg(x::text, ';' order by x.nm) from public.supply_needs(f.id, array[500, 2000]::numeric[]) x)
+                   is distinct from (select string_agg(x::text, ';' order by x.nm) from pg_temp.supply_needs_old_0345(f.id, array[500, 2000]::numeric[]) x)),
+         (select count(*) from (select s.id from public.ships s join sel on sel.id = s.fleet_id offset 0) s where world.ship_view(s.id) is distinct from pg_temp.ship_view_old_0345(s.id)),
+         (select count(*) from sel)
+    into v_badf, v_bads, v_nsel;
+  v_world_ms := round(extract(epoch from clock_timestamp() - v_tw) * 1000);
+  if v_badf <> 0 or v_bads <> 0 then
+    raise exception '0345 self-assert FAIL: dark, % fleet(s) and % ship(s) read differently after the hunks', v_badf, v_bads;
   end if;
 
   -- ── 7. THE PROBE AFTER THE HUNKS: dark = the pre-image; lit = the stores space ──
@@ -486,15 +539,32 @@ $h$);
      or (v_lit->'crown90'->>'water_t')::numeric + (v_lit->'crown90'->>'food_t')::numeric > v_space + 0.01 then
     raise exception '0345 self-assert FAIL: lit, FULL does not fill her stores space exactly, or a crown top-up passes it (% / %, space %)', v_lit->'after_full', v_lit->'crown90', v_space;
   end if;
+  -- an uneven hull over her space: lit, her short store rises to her long one's days and never past them; her water is untouched; the leg judge reads her long store's days
+  if (v_lit->'uneven0'->>'water_t')::numeric + (v_lit->'uneven0'->>'food_t')::numeric <= v_space
+     or (v_lit->'uneven1'->>'water_t')::numeric <> (v_lit->'uneven0'->>'water_t')::numeric
+     or (v_lit->'uneven1'->>'food_t')::numeric <= (v_lit->'uneven0'->>'food_t')::numeric
+     or (v_lit->'uneven1'->>'food_t')::numeric / ((v_lit->'uneven1'->>'crew')::numeric * public.wc_num('food_per_crew_day'))
+        < floor((v_lit->'uneven0'->>'water_t')::numeric / ((v_lit->'uneven1'->>'crew')::numeric * public.wc_num('water_per_crew_day'))) - 0.01
+     or (v_lit->'uneven1'->>'food_t')::numeric / ((v_lit->'uneven1'->>'crew')::numeric * public.wc_num('food_per_crew_day'))
+        > (v_lit->'uneven0'->>'water_t')::numeric / ((v_lit->'uneven1'->>'crew')::numeric * public.wc_num('water_per_crew_day')) + 0.01
+     or (v_lit->'uneven_reach0'->>'carry_days')::numeric   -- the leg judge already reads her evened days (not her short store's), so a leg within them is never refused
+        < (v_lit->'uneven0'->>'water_t')::numeric / ((v_lit->'uneven1'->>'crew')::numeric * public.wc_num('water_per_crew_day')) - 0.01 then
+    raise exception '0345 self-assert FAIL: lit, an uneven hull over her space is not evened up to her long store and no further: % -> % (%), reach % -> %',
+      v_lit->'uneven0', v_lit->'uneven1', v_lit->'uneven_prov', v_lit->'uneven_reach0', v_lit->'uneven_reach1';
+  end if;
   -- dark, the same full hold leaves FULL nothing to take on (the pre-image's own answer)
   if jsonb_typeof(v_dark->'full') <> 'string' or v_dark->>'full' not like '%E_HOLD_FULL%' then
     raise exception '0345 self-assert FAIL: dark, FULL on a brimming hold is not refused as before: %', v_dark->'full';
   end if;
 
-  raise notice '0345 self-assert ok: STORES HAVE THEIR OWN SPACE, dark behind ship_stores_separate. % hunks over % bodies, each once and reversing, grants unmoved; % readers made, server-only; % knobs; no other function, knob, table, trigger or job moved. Dark parity: the whole world''s free hold, reach, needs and ship views, and the probe''s every path, read the same before and after. Lit probe barca: space % t, loaded % vs % dark, free hold 0, reach and needs unmoved by cargo, FULL to the space. Printed, never asserted: % ms.',
-    (select count(*) from hunks_0345), (select count(distinct h.fn) from hunks_0345 h), cardinality(c_new_fns), cardinality(c_keys),
-    v_space, v_lit->>'loaded', v_dark->>'loaded', round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  raise notice '0345 self-assert ok: STORES HAVE THEIR OWN SPACE, dark behind ship_stores_separate. % hunks over % bodies, each once and reversing, grants unmoved; % readers made, server-only; % knobs; no other function, knob, table, trigger or job moved. Dark parity: % fleets (every human one, 20 NPC) and their ships read the same new and pre-image in one statement, and the probe''s every path reads the same before and after. Lit probe barca: space % t, loaded % vs % dark, free hold 0, reach and needs unmoved by cargo, FULL to the space, an uneven hull over her space evened up to her long store. Printed, never asserted: world compare % ms, whole file % ms.',
+    (select count(*) from hunks_0345), (select count(distinct h.fn) from hunks_0345 h), cardinality(c_new_fns), cardinality(c_keys), v_nsel,
+    v_space, v_lit->>'loaded', v_dark->>'loaded', v_world_ms, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   drop table hunks_0345;
   drop function pg_temp.probe_0345();
+  drop function pg_temp.fleet_free_hold_old_0345(uuid);
+  drop function pg_temp.supply_reach_old_0345(uuid);
+  drop function pg_temp.supply_needs_old_0345(uuid, numeric[]);
+  drop function pg_temp.ship_view_old_0345(uuid);
 end
 $m$;
