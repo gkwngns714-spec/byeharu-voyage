@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { ready, reachable, settled } from './appReady.fixture'
+import { ready, reachable, settled, WORLD_BOOT_MS } from './appReady.fixture'
 import { phoneLaws, readGlass } from './unfold.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -124,25 +124,61 @@ test("the desk's City board stands on the glass at 390 and 320: no Sheet scroll,
     const pane = page.locator('[data-testid="desk-city"] [role="tabpanel"] [data-scroll-pane]')
     await expect(pane).toBeVisible()
     await settled(pane)
+    // THE QUAY'S FAIR (2026-11-10, main red on #569, run 42830913234). While a fair is on, `QuayFair` (src/live/PortFair.tsx) stands one accent
+    // Row above the pane (52 px at 390) — "only when true" (docs/UI_DIRECTION.md §6), and whether it is true is the clock and the world's
+    // seed (0026 `buff_season_of`). It is read apart from the market and draws nothing until it lands, so the old 500-ms sleep measured whichever
+    // way the race fell, and with a fair live the pane measured 327 px and held one good (379 px and two without). A floor that holds only when no
+    // fair is on is a flake. So: wait for the fair read to land (the mark tests/desk.fixture.ts waits on), measure the floors with the fair row out
+    // of flow — the same glass in every season — and hold the fair to costing its own row and no more, whenever one is on.
+    await expect(page.getByTestId('desk-city'), "the quay's fair read has not landed").toHaveAttribute('data-fair-loaded', '', { timeout: WORLD_BOOT_MS })
     await page.waitForTimeout(500)
     const m = await page.evaluate(() => {
       const sheet = document.querySelector('[data-testid="desk-scroll"]') as HTMLElement
       const pane = document.querySelector('[data-testid="desk-city"] [role="tabpanel"] [data-scroll-pane]') as HTMLElement
-      const s = sheet.getBoundingClientRect()
-      const p = pane.getBoundingClientRect()
-      const whole = [...pane.querySelectorAll('[data-testid="trade-row"]')].filter((r) => {
-        const b = r.getBoundingClientRect()
-        return b.top >= p.top - 1 && b.bottom <= p.bottom + 1
-      }).length
-      return { sheetScroll: sheet.scrollHeight - sheet.clientHeight, paneH: p.height, gap: s.bottom - p.bottom, whole }
+      const read = () => {
+        const s = sheet.getBoundingClientRect()
+        const p = pane.getBoundingClientRect()
+        const whole = [...pane.querySelectorAll('[data-testid="trade-row"]')].filter((r) => {
+          const b = r.getBoundingClientRect()
+          return b.top >= p.top - 1 && b.bottom <= p.bottom + 1
+        }).length
+        return { sheetScroll: sheet.scrollHeight - sheet.clientHeight, paneH: p.height, gap: s.bottom - p.bottom, whole }
+      }
+      // One synchronous read: with the fair in, then out of flow, then put back exactly as it was (getBoundingClientRect forces the layout,
+      // and nothing renders between the reads).
+      const fair = document.querySelector<HTMLElement>('[data-testid="quay-fair"]')
+      let withFair: (ReturnType<typeof read> & { fairH: number }) | null = null
+      if (fair) {
+        const cs = getComputedStyle(fair)
+        withFair = { ...read(), fairH: fair.getBoundingClientRect().height + parseFloat(cs.marginTop) + parseFloat(cs.marginBottom) }
+      }
+      const shown = fair?.style.display ?? ''
+      if (fair) fair.style.display = 'none'
+      const without = read()
+      if (fair) fair.style.display = shown
+      return { ...without, withFair }
     })
-    console.log(`DESK CITY ${where}: Sheet scroll ${m.sheetScroll}, pane ${Math.round(m.paneH)} px, ${Math.round(m.gap)} px above the Sheet's bottom, ${m.whole} goods whole`)
-    if (m.sheetScroll > 1) found.push(`${where}: the Sheet scrolls by ${m.sheetScroll} px`)
-    if (m.gap > 16) found.push(`${where}: the pane stops ${Math.round(m.gap)} px short of the Sheet's bottom`)
+    const w = m.withFair
+    console.log(
+      `DESK CITY ${where}: Sheet scroll ${m.sheetScroll}, pane ${Math.round(m.paneH)} px, ${Math.round(m.gap)} px above the Sheet's bottom, ${m.whole} goods whole` +
+        (w ? ` · with the fair on (${Math.round(w.fairH)} px): Sheet scroll ${w.sheetScroll}, pane ${Math.round(w.paneH)} px, ${Math.round(w.gap)} px above, ${w.whole} goods whole` : ' · no fair on'),
+    )
+    for (const [state, r] of [['', m], [' (fair on)', w]] as const) {
+      if (!r) continue
+      if (r.sheetScroll > 1) found.push(`${where}${state}: the Sheet scrolls by ${r.sheetScroll} px`)
+      if (r.gap > 16) found.push(`${where}${state}: the pane stops ${Math.round(r.gap)} px short of the Sheet's bottom`)
+    }
     if (size.width === 390) {
       if (m.paneH < 350) found.push(`${where}: the pane is ${Math.round(m.paneH)} px (under 350)`)
       if (m.whole < 2) found.push(`${where}: ${m.whole} goods stand whole in the pane (under 2)`)
-    } else if (m.paneH < 112) found.push(`${where}: the pane is ${Math.round(m.paneH)} px (under the 7 rem floor)`)
+      // With a fair on, the pane gives up the fair's own row and no more, and a good still stands whole (MEASURED 2026-11-10: 327 px, one).
+      if (w && w.paneH < 350 - w.fairH - 1) found.push(`${where} (fair on): the pane is ${Math.round(w.paneH)} px (under 350 less the ${Math.round(w.fairH)}-px fair)`)
+      if (w && w.whole < 1) found.push(`${where} (fair on): no good stands whole in the pane`)
+    } else {
+      if (m.paneH < 112) found.push(`${where}: the pane is ${Math.round(m.paneH)} px (under the 7 rem floor)`)
+      // The 7 rem floor is the pane's own min-height: a fair may not take it (MEASURED 2026-11-10: 112 px with the fair on).
+      if (w && w.paneH < 112) found.push(`${where} (fair on): the pane is ${Math.round(w.paneH)} px (under the 7 rem floor)`)
+    }
     // the Trade face's three boards, by the HQ's laws
     const faces = page.getByRole('tablist', { name: 'Trade faces' })
     for (const name of ['Buy', 'Sell', 'Requests']) {
