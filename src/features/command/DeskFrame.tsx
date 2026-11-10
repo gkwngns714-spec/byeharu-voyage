@@ -39,6 +39,10 @@ export interface DeskParts {
    *  that gives it the rest of the scroll box and scrolls inside itself, instead of its own height under a fixed cap. The wide desk lays it out in its pane
    *  as always. */
   mainFill?: boolean
+  /** `data-*` marks on the frame element, for a read the face makes that DRAWS NOTHING while pending (the
+   *  quay's fair, src/live/PortFair.tsx: its quiet state is no element, so no Skeleton says it is still
+   *  being read). A spec waits on the mark; nothing is painted by it. */
+  marks?: Record<`data-${string}`, string>
 }
 
 /** How the desk lays a face out — the one decision a face does not make. */
@@ -53,6 +57,7 @@ export function DeskPanes({
   side,
   sideHint,
   mainScroll = true,
+  marks,
 }: DeskParts & {
   face: string
 }) {
@@ -69,6 +74,7 @@ export function DeskPanes({
       data-testid={testid}
       data-desk-frame=""
       data-face={face}
+      {...marks}
     >
       <DeskTraySlot.Provider value={value}>
         <Card flush className="min-h-0 overflow-hidden">
@@ -123,10 +129,10 @@ export function DeskSidePane({ children }: { children?: ReactNode }) {
 }
 
 /** The phone: the parts one under the other, in the desk's scroll box. */
-export function DeskStack({ testid, list, main, side, order = ['list', 'main', 'side'], mainFill = false }: DeskParts) {
+export function DeskStack({ testid, list, main, side, order = ['list', 'main', 'side'], mainFill = false, marks }: DeskParts) {
   const parts = { list, main, side }
   return (
-    <div data-testid={testid} className={mainFill ? 'flex min-h-0 flex-1 flex-col' : undefined}>
+    <div data-testid={testid} className={mainFill ? 'flex min-h-0 flex-1 flex-col' : undefined} {...marks}>
       {order.map((k) => (
         <div key={k} className={mainFill ? (k === 'main' ? 'flex min-h-0 flex-1 flex-col' : 'shrink-0') : undefined}>
           {parts[k]}

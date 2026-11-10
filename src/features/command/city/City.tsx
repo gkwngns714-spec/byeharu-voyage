@@ -51,6 +51,11 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
   const code = fleetPortCode(fleet)
   const port = code ? (portByCode[code] ?? null) : null
   const quay = usePortMarket(port?.kind === 'HARBOUR' ? port.id : null)
+  // THE QUAY'S FAIR READ HAS LANDED (QuayFair, src/live/PortFair.tsx, owns the read; this only reports the store).
+  // Its quiet state draws nothing, so unlike the market there is no Skeleton saying "not yet" — and a fair's
+  // row arriving late is 52 px that moves everything under it. The frame carries the mark for a spec to wait on
+  // (tests/desk.fixture.ts `openCityFace`), and the mark paints nothing.
+  const fairRead = useWorld((s) => (port?.kind === 'HARBOUR' ? s.buffs[port.id] !== undefined : false))
 
   if (!port || port.kind !== 'HARBOUR') {
     return layout({
@@ -77,6 +82,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
     testid: 'desk-city',
     mainFill: true,
     sideHint: t('desk.citySide'),
+    marks: fairRead ? { 'data-fair-loaded': '' } : undefined,
     list: (
     <>
       {/* THE CITY PAGE'S DOOR (2026-10-30): the full-screen city, for the city in hand. The press
