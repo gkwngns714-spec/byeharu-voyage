@@ -73,6 +73,8 @@ export const mapDict = defineDict({
     here: 'here',
     headingHere: 'heading here',
     chartLabel: 'Chart of the world: ports, sea lanes, your fleets',
+    // the loading meter's last step (owner row 255): the first roster of the ships at sea; the world's three are common.load*
+    loadShips: 'Ships',
     findFleets: 'Find fleets',
     noCoast: 'no coastline',
     overview: 'Whole world. Tap a place to look.',
@@ -177,6 +179,7 @@ export const mapDict = defineDict({
     here: '정박 중',
     headingHere: '이곳으로 항해 중',
     chartLabel: '세계 해도: 항구, 뱃길, 내 선단',
+    loadShips: '배',
     findFleets: '선단 찾기',
     noCoast: '해안선 없음',
     overview: '세계 전체. 누르면 그곳으로.',

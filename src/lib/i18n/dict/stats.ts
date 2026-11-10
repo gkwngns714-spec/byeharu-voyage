@@ -128,7 +128,10 @@ export const statsDict = defineDict({
     bonusBack: 'Returned',
     // 0305: the city page's people card
     people: 'People',
-    peopleOfBase: 'Real life (c. {year})',
+    // the cell's figure is the DIFFERENCE from the real-world population (the owner's own word for it, row 273: "vs real life"); the
+    // real figure stands under it with its year, so the share is never printed without its whole (the drive audit, 2026-11-08, O4)
+    peopleOfBase: 'vs real life',
+    peopleReal: '{n} in {year}',
     peopleTax: 'Tax a day',
     peopleRank: 'Rank',
     peopleRankOf: '#{rank} of {of}',
@@ -341,7 +344,8 @@ export const statsDict = defineDict({
     bonusPaid: '지급',
     bonusBack: '반환',
     people: '주민',
-    peopleOfBase: '실제(약 {year}년) 대비',
+    peopleOfBase: '실제 대비',
+    peopleReal: '{year}년 {n}명',
     peopleTax: '하루 세금',
     peopleRank: '순위',
     peopleRankOf: '{of}곳 중 {rank}위',

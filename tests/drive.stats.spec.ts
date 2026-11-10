@@ -40,7 +40,7 @@ const face = (page: Page, name: string) => page.getByRole('tablist').first().get
 /** Every series chart on the glass, read off what is DRAWN: the line's points, the plot box, the x labels. */
 async function drawnCharts(page: Page, scope: string) {
   return page.evaluate((sel) => {
-    const out: { card: string; label: string; points: [number, number][]; plot: { x: number; w: number } | null; xLabels: string[] }[] = []
+    const out: { card: string; record: boolean; label: string; points: [number, number][]; plot: { x: number; w: number } | null; xLabels: string[] }[] = []
     for (const chart of document.querySelectorAll(`${sel} [data-testid="series-chart"]`)) {
       const svg = chart.querySelector('svg[role="img"]')
       if (!svg) continue
@@ -53,6 +53,7 @@ async function drawnCharts(page: Page, scope: string) {
       const card = chart.closest('[data-card], [data-testid]')
       out.push({
         card: card?.getAttribute('data-testid') ?? '?',
+        record: chart.closest('[data-testid="history-line"]') !== null,
         label: svg.getAttribute('aria-label') ?? '',
         points,
         plot: plot ? { x: Number(plot.getAttribute('x')), w: Number(plot.getAttribute('width')) } : null,
@@ -129,8 +130,12 @@ test('Stats: a counted world — every drawn series ends at its right edge on a 
       // (3) THE X LABELS SAY DIFFERENT THINGS: an axis that reads "now now now" tells the time nowhere
       const labels = c.xLabels.filter((l) => l !== '')
       if (labels.length >= 2 && new Set(labels).size === 1) findings.push(`${name} ${c.card}: every x label reads "${labels[0]}"`)
-      // (4) THE WHOLE SERIES IS THERE: the eight counts, each a whole quarter
-      if (n < COUNTS - 1) findings.push(`${name} ${c.card}: only ${n} points for ${COUNTS} counts`)
+      // (4) THE WHOLE SERIES IS THERE: the eight counts, each a whole quarter. A history RECORD (Money record, Market record...) is not
+      //     drawn per count: it has one point per calendar day/week/month the world has lived, so its point count is the UTC days
+      //     the eight counts touch (one when they sit in one day, two when the run crosses midnight) — never eight. It was held to
+      //     eight here and failed exactly when CI ran across 00:00 UTC (run 42427011790, 00:05 UTC), and passed the rest of the day
+      //     because a one-point line is skipped above. Rules (1) to (3) still hold for it.
+      if (!c.record && n < COUNTS - 1) findings.push(`${name} ${c.card}: only ${n} points for ${COUNTS} counts`)
     }
     for (const id of cards) {
       const card = page.getByTestId(id)
@@ -178,9 +183,43 @@ test('Stats: the live band asks once a second and its Updated stamp moves every 
   await shot(page, 'stats-cities-young-1280@2x')
 })
 
-// WHAT THE WALK SAW ON A YOUNG WORLD (2026-11-08, twice): the City purses chart's three x labels all read "now".
-// A real finding, held here as a law for the day it is fixed; the counted test above holds the same law on a counted series.
-test.fixme('Stats: a chart whose points lie minutes apart still labels its axis with different words (DEFECT: "now now now" on the City purses chart of a young world)', async () => {})
+// ── D5 OF THE DRIVE AUDIT: A YOUNG WORLD'S CHART TELLS THE TIME AND INVENTS NO RANGE ─────────────
+// WHAT THE WALK SAW ON A YOUNG WORLD (2026-11-08, twice): the City purses chart — the boot's own count and the live point, seconds
+// to a minute apart, both 0 — labelled all three x ticks "now" and drew its flat 0 line between the y figures "1 🪙" and "−1 🪙".
+// The axis tells the time at any span (seconds under a minute, one rule: tests/seriesChart.spec.ts), and a flat line has ONE y
+// figure, its own value. The counted test above holds the same axis law on a counted series.
+const FIX = 'docs/dev-log/2026-11-08-axis-map-load-words'
+test('Stats: a young world\'s City purses chart labels its x ticks with different stretches of time, and a flat line gets one y figure, its own value (D5)', async ({ page, request, baseURL }) => {
+  await open(page, request, baseURL, 'stats')
+  await face(page, 'Cities').click()
+  await expect(page.getByTestId('stats-cities')).toBeVisible({ timeout: 60_000 })
+  await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 60_000 })
+  const card = page.getByTestId('stats-chart-city-purses')
+  await expect(card.locator('svg[role="img"]'), 'the young world drew no City purses line to judge').toHaveCount(1, { timeout: 60_000 })
+  await page.waitForTimeout(500)
+  await page.screenshot({ path: `${FIX}/stats-cities-young-1280@2x.png` })
+  const [chart] = await drawnCharts(page, '[data-testid="stats-chart-city-purses"]')
+  const xLabels = chart.xLabels.filter((l) => l !== '')
+  // the y figures beside the plot: every visible figure of the chart but its reading line
+  const yFigures = await card.locator('[data-testid="series-chart"] span.tabular-nums:not([data-testid="series-chart-reading"]):visible').allInnerTexts()
+  const flat = chart.points.every((p) => Math.abs(p[1] - chart.points[0][1]) < 0.5)
+  const reading = (await card.getByTestId('series-chart-reading').innerText()).split('·')[0]
+  console.log(`young world City purses: ${chart.points.length} points${flat ? ', flat' : ''}; x labels [${xLabels.join(' | ')}]; y figures [${yFigures.join(' | ')}]; reading ${reading.trim()}`)
+  // (1) THE X LABELS TELL THE TIME: each a different word, the last "now", the others a stretch of time ("40s", "3m", "2h") — a
+  //     series younger than a second (the boot's count and its live point can be) is "now" alone, never "now" three times
+  expect(xLabels.length).toBeGreaterThanOrEqual(1)
+  expect(new Set(xLabels).size, `the x labels repeat themselves: ${xLabels.join(' | ')}`).toBe(xLabels.length)
+  expect(xLabels[xLabels.length - 1]).toMatch(/^(now|지금)$/)
+  for (const l of xLabels.slice(0, -1)) expect(l, `"${l}" is not a stretch of time`).toMatch(/^\d+(\.\d+)?([smhdy]|초|분|시간|일|년)$/)
+  // (2) THE Y FIGURES ARE THE DATA'S OWN: a flat line has exactly one, its value — never a band invented around it
+  const value = (s: string) => Number(s.replace(/−/g, '-').replace(/[^\d.-]/g, ''))
+  if (flat) {
+    expect(yFigures, `a flat line drawn between ${yFigures.join(' and ')}`).toHaveLength(1)
+    expect(value(yFigures[0])).toBe(value(reading))
+  } else {
+    expect(yFigures).toHaveLength(2)
+  }
+})
 
 // ── ROWS 273, 298, 247: A CITY'S PAGE, ITS KIND, THE MONEY LOG'S CONTROLS ────────────────────────
 test('Stats: a city row opens its page with its kind in the title and the People block, Back returns; the Money log\'s filters (rows 273, 298, 247)', async ({ page, request, baseURL }) => {

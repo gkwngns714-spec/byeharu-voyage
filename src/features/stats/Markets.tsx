@@ -59,7 +59,7 @@ interface GoodRank {
 
 export function MarketsFace() {
   const t = useT()
-  const read = useLiveRead<StatsMarkets>('stats:markets', () => worldStatsMarkets())
+  const read = useLiveRead<StatsMarkets>('stats:markets', () => worldStatsMarkets(), '', true)
   const v = read.view
   const world = useWorldSeries()
   const [choice, choose] = useFilterChoice('stats.markets', { kind: ALL, rarity: ALL, sort: 'movers' })

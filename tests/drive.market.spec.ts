@@ -173,6 +173,46 @@ for (const size of [WIDE, PHONE]) {
   })
 }
 
+// ── ROW 76, THE PHONE: THE BUTTON SAYS WHAT YOU PAY ──────────────────────────────────────────────
+// O7 of the drive audit read "Buy 10 units" at 390 where 1280 read "Buy 10 units · 5,748 🪙". The sum is the server's own for the
+// quantity (the dry run, src/live/useTrade.ts: a 200 ms settle plus the wire), and it reaches the phone too: replayed at both widths
+// (2026-11-08) the button carried it ~250 ms after it went live; the audit read it 300 ms plus one screenshot after the tray opened,
+// and the phone's screenshot was the faster one. THE LAW: a phone's button carries the sum once it is served, and it FITS — never
+// cut, on the 44-px reach floor, inside its panel. In both languages.
+const FIX = 'docs/dev-log/2026-11-08-axis-map-load-words'
+for (const locale of ['en-US', 'ko-KR'] as const) {
+  test.describe(`in ${locale}`, () => {
+    test.use({ locale })
+    test('Market @390: the send button carries the sum once the price is served, and it fits (row 76, O7)', async ({ page, request, baseURL }) => {
+      await openCity(page, request, baseURL, PHONE)
+      await openMarket(page)
+      const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-row"]')
+      await expect(rows.nth(1)).toBeVisible({ timeout: 30_000 })
+      await rows.nth(1).locator('button:enabled').first().click()
+      const send = page.getByTestId('trade-tray-send')
+      await expect(send).toBeEnabled({ timeout: 60_000 })
+      const live = Date.now()
+      await expect(send, 'the sum never reached the phone\'s button').toContainText('🪙', { timeout: 60_000 })
+      const text = (await send.innerText()).replace(/\s+/g, ' ')
+      console.log(`@390 ${locale}: "${text}" — the sum landed ${Date.now() - live} ms after the button went live`)
+      await send.scrollIntoViewIfNeeded()
+      await shot(page, `market-tray-send-390-${locale === 'ko-KR' ? 'ko' : 'en'}@2x`, FIX)
+      const fit = await send.evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        const panel = el.closest('[data-testid="city-face-panel"]')?.getBoundingClientRect()
+        return {
+          height: r.height,
+          inside: !!panel && r.left >= panel.left - 1 && r.right <= panel.right + 1,
+          cut: el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1,
+        }
+      })
+      expect(fit.height, 'the button is under the 44-px reach floor').toBeGreaterThanOrEqual(44)
+      expect(fit.inside, 'the button stands outside its panel').toBe(true)
+      expect(fit.cut, 'the button\'s words are cut').toBe(false)
+    })
+  })
+}
+
 // ── ROW 302: THE PRODUCTION PAGE'S CARGO COLUMN ──────────────────────────────────────────────────
 // WHAT THE DRIVE FOUND (2026-11-08, the audit's D4) on a fresh company: the cargo bar read "4 / 180 tons" and the column under
 // it "Cargo empty." — the four tons are her supplies (15 days), which the bar counts (`fleetHoldUsed`: goods AND supplies, the

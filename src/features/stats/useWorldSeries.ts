@@ -7,5 +7,5 @@ const HOURS = 24 // the Overview's own window — the subject 'stats:overview' n
 
 export function useWorldSeries(): StatsOverview | null {
   const { span } = useChartSpan()
-  return useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span).view
+  return useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span, true).view
 }

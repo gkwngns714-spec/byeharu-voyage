@@ -62,7 +62,8 @@ import {
   type MapSelection,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideSideTrayClass, Icon } from '../../components/ui'
+import { chromeAsideSideTrayClass, Icon, LoadMeter } from '../../components/ui'
+import { worldLoadSteps } from '../../live/loadSteps'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
@@ -95,6 +96,7 @@ import { useT, t as tNow } from '../../lib/i18n'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 export function MapScreen() {
+  const t = useT()
   const phase = useWorld((s) => s.phase)
   const fatal = useWorld((s) => s.fatal)
   const snapshot = useWorld((s) => s.snapshot)
@@ -108,20 +110,45 @@ export function MapScreen() {
   const wantTraffic = useWorld((s) => s.wantTraffic)
   useEffect(() => wantTraffic(), [wantTraffic])
 
-  // A FAILURE IS RENDERED, NEVER SPUN ON (DESIGN §F.5); an opening is one quiet line on the sea.
+  // THE LOADING METER (owner row 255, 2026-10-31: *"when reloading, for example opening the city,
+  // or loading the map, show percentage of its loading time"*) — the city's meter, composed here
+  // the same way: the world's three real steps ride the store's `boot` (live/loadSteps.ts, the one
+  // list), and the fourth is this screen's own read, the first roster of the ships at sea
+  // (`traffic`, null until it lands — dark or lit). One component (LoadMeter), measured work, no
+  // timer. It stands ON the sea as an overlay — before the chart, and over it for the beat the
+  // roster still takes — so it moves nothing when it goes, and it is gone the instant every step is.
+  // The roster is a step from the first frame while the world opens (the effect above asks for it at
+  // once); once the world is up, only from the moment it is asked (`trafficWanted`, this screen's
+  // alone): a roster the store keeps is placed in the very call that asks for it, so a return to the
+  // map commits no frame of meter for a read that is not pending.
+  const boot = useWorld((s) => s.boot)
+  const asked = useWorld((s) => s.trafficWanted > 0)
+  const world = worldLoadSteps(t, boot)
+  const ships = { id: 'ships', label: t('map.loadShips'), done: traffic !== null }
+  const steps = asked || world.some((s) => !s.done) ? [...world, ships] : world
+
+  // A FAILURE IS RENDERED, NEVER SPUN ON (DESIGN §F.5); an opening is the sea with the meter on it.
   if (phase === 'failed') return <ChartMessage refusal={fatal} />
-  if (phase !== 'ready' || !snapshot || !seaNav) return <ChartMessage refusal={null} />
 
   // The chart mounts ONLY with the world in hand, so it can freeze its opening frame on real fleets.
   return (
-    <Chart
-      ports={snapshot.ports}
-      seaNav={seaNav}
-      fleets={fleets}
-      traffic={traffic?.enabled ? traffic.fleets : NO_TRAFFIC}
-      readAt={readAt}
-      trafficReadAt={trafficReadAt}
-    />
+    <div className="relative h-full w-full">
+      {phase !== 'ready' || !snapshot || !seaNav ? (
+        <ChartMessage refusal={null} />
+      ) : (
+        <Chart
+          ports={snapshot.ports}
+          seaNav={seaNav}
+          fleets={fleets}
+          traffic={traffic?.enabled ? traffic.fleets : NO_TRAFFIC}
+          readAt={readAt}
+          trafficReadAt={trafficReadAt}
+        />
+      )}
+      <div className="pointer-events-none absolute inset-x-0 top-3 z-20 flex justify-center" data-testid="map-load-host">
+        <LoadMeter steps={steps} className="w-56 max-w-[calc(100%-7rem)] rounded-chip bg-surface/90 px-3 shadow-sheet" data-testid="map-load" />
+      </div>
+    </div>
   )
 }
 

@@ -57,7 +57,7 @@ type View = 'moves' | 'kinds'
 export function OverviewFace({ live }: { live: StatsNow | null }) {
   const t = useT()
   const { span } = useChartSpan()
-  const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span)
+  const read = useLiveRead<StatsOverview>('stats:overview', () => worldStatsOverview(HOURS, span), span, true)
   const v = read.view
 
   if (read.loading && !v) return <Waiting />

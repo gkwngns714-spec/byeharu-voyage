@@ -52,7 +52,7 @@ type View = 'companies' | 'best' | 'worst'
 export function MerchantsFace() {
   const t = useT()
   const { span } = useChartSpan()
-  const read = useLiveRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants(span), span)
+  const read = useLiveRead<StatsMerchants>('stats:merchants', () => worldStatsMerchants(span), span, true)
   const v = read.view
   const nationByCode = useWorld((s) => s.nationByCode)
   const [choice, choose] = useFilterChoice('stats.merchants', { country: ALL, sort: 'richest' })

@@ -46,8 +46,8 @@ const VIEW_SHEET = '[data-testid="map-view"]'
 
 /**
  * THE CHART IS OPEN: its view sheet is on the glass. `ready()` (./appReady.fixture.ts) cannot see
- * this. On the map route the world's boot shows as the chart's own "opening the chart…" line
- * (src/features/map/ChartMessage.tsx), not as the gate's "Opening the world." that `ready()` waits
+ * this. On the map route the world's boot shows on the chart's own sea (the line "opening the chart…"
+ * until 2026-11-08, its loading percentage since: src/features/map/MapScreen.tsx), not as the gate's "Opening the world." that `ready()` waits
  * out — so `ready()` returns while PGlite is still loading the world image, and a spec that counts
  * merchants next counts them on a chart that is not there. CI runs 39088373678 and 39092641268
  * (map.merchants "wide" and "Porto lists …"): the first count came 0.8 s after the goto, every one

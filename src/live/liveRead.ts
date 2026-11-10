@@ -19,6 +19,7 @@ import type { RpcResult } from '../lib/rpc'
 //
 // `keep` (default off): a remount of the subject draws the last answer at once, then refreshes it — the
 // tab-switch rule (src/store/resourceCache.ts) for a face that must not go back to a skeleton.
+// Every Stats read keeps (the player's own `me` record excepted): row 250, *"keep it even though you move from tab to tab"*; tests/drive.nav.spec.ts holds it.
 
 export const LIVE_READ_MS = 1_000
 

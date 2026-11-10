@@ -42,6 +42,29 @@ test('a flat line sits in the middle, and one point is no chart', () => {
   expect(seriesChartModel([])).toBeNull()
 })
 
+// A FLAT SERIES INVENTS NO RANGE (the drive audit, 2026-11-08, D5): a young city's purse of 0 was drawn between the y figures
+// "1 🪙" and "−1 🪙" — a band the model padded in so as not to divide by zero, printed as if it were the data's. A flat line
+// has ONE y figure, its own value, at the line (the price chart's rule for a flat price); the padding stays geometry.
+test('a flat series has one y figure, its own value — never a ±1 band around a purse of 0', () => {
+  const zero = seriesChartModel([
+    { atMs: 0, value: 0 },
+    { atMs: 30_000, value: 0 },
+  ])!
+  expect(zero.yTicks.map((t) => t.value)).toEqual([0])
+  expect(zero.yTicks[0].y).toBeCloseTo(zero.dots[0].y, 5)
+  const flat = seriesChartModel([
+    { atMs: 0, value: 50 },
+    { atMs: H, value: 50 },
+  ])!
+  expect(flat.yTicks).toEqual([{ y: flat.dots[0].y, value: 50 }])
+  // a series that moves keeps its three figures, the data's own
+  const moving = seriesChartModel([
+    { atMs: 0, value: 10 },
+    { atMs: H, value: 30 },
+  ])!
+  expect(moving.yTicks.map((t) => t.value)).toEqual([10, 20, 30])
+})
+
 test('the hover layer finds the nearest point, and the "ago" words round honestly', () => {
   const m = seriesChartModel([
     { atMs: 0, value: 1 },
@@ -50,10 +73,41 @@ test('the hover layer finds the nearest point, and the "ago" words round honestl
   ])!
   expect(nearestDot(m, m.dots[1].x + 1).atMs).toBe(H)
   expect(nearestDot(m, 0).atMs).toBe(0)
-  expect(agoLabel(30_000)).toBe('now')
   expect(agoLabel(14 * 60_000)).toBe('14m')
   expect(agoLabel(6 * H)).toBe('6h')
   expect(agoLabel(3 * 24 * H)).toBe('3d')
+})
+
+// THE AXIS TELLS THE TIME AT ANY SPAN (the drive audit, 2026-11-08, D5): a series counted within one minute labelled all three
+// x ticks "now" (`walk/w-stats-cities.png`), since anything under a minute was rounded to "now". ONE rule for every stretch:
+// seconds under a minute, minutes under an hour, then hours, days, years — and two neighbouring labels never say the same thing.
+test('a stretch under a minute is labelled in seconds, and no two x labels say the same thing', () => {
+  expect(agoLabel(30_000)).toBe('30s')
+  expect(agoLabel(5_000)).toBe('5s')
+  expect(agoLabel(59_600)).toBe('1m')
+  // nought seconds before the newest point is the newest point
+  expect(agoLabel(400)).toBe('now')
+  const young = seriesChartModel([
+    { atMs: 0, value: 0 },
+    { atMs: 20_000, value: 0 },
+    { atMs: 40_000, value: 0 },
+  ])!
+  expect(young.xTicks.map((t) => t.label)).toEqual(['40s', '20s', 'now'])
+  // a span whose half rounds to the same word as an edge loses its middle, never an edge
+  const blink = seriesChartModel([
+    { atMs: 0, value: 1 },
+    { atMs: 1_000, value: 2 },
+  ])!
+  expect(blink.xTicks.map((t) => t.label)).toEqual(['1s', 'now'])
+  expect(blink.xTicks[0].x).toBe(blink.plot.x)
+  expect(blink.xTicks[1].x).toBe(blink.plot.x + blink.plot.w)
+  // a span that itself rounds to now is "now" alone, at the right edge
+  const instant = seriesChartModel([
+    { atMs: 0, value: 1 },
+    { atMs: 300, value: 2 },
+  ])!
+  expect(instant.xTicks.map((t) => t.label)).toEqual(['now'])
+  expect(instant.xTicks[0].x).toBe(instant.plot.x + instant.plot.w)
 })
 
 // THE RIGHT EDGE DOES NOT DROP (owner, 2026-11-06, 2026-11-07). Which points of a SUM may be drawn is tests/wholePeriods.spec.ts; the wall is here.

@@ -78,7 +78,7 @@ export function useMoneyFeed(): { view: MoneyMove[] | null; loading: boolean } {
       drip.current = enqueue(drip.current, fresh.filter((m) => !m.own))
     }
     return { ok: true, value: held.current }
-  })
+  }, '', true)
   useEffect(() => {
     const id = setInterval(() => {
       const { released, next } = step(drip.current)
