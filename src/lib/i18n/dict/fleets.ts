@@ -39,6 +39,8 @@ export const fleetsDict = defineDict({
     // WORDS.md law: food and water aboard are SUPPLIES, never "provisions" (the audit, 2026-10-31).
     holdProvisions: 'Supplies',
     holdFree: 'Empty',
+    // 0345 (owner row 221): lit, her own space for water and food, apart from the hold
+    storesSpace: 'Supply room',
     holdFigure: '{pct} · {tons} {word}',
     holdShare: '{what}, {pct}',
   },
@@ -74,6 +76,7 @@ export const fleetsDict = defineDict({
     holdGoods: '교역품',
     holdProvisions: '보급',
     holdFree: '빈 공간',
+    storesSpace: '보급 창고',
     holdFigure: '{pct} · {tons}{word}',
     holdShare: '{what}, {pct}',
   },

@@ -40,6 +40,7 @@ export {
   fleetSignal,
   fleetStatusTone,
   fleetStores,
+  fleetStoresSpace,
   housePortCode,
   // WHAT SHE PAID PER TUN for a good aboard — the one reading of the served `cargo_basis` (0081).
   paidPerTun,
@@ -47,6 +48,7 @@ export {
   hullFraction,
   shipHoldFree,
   shipHoldUsed,
+  shipStoresInHold,
   // TONS A CREW NEEDS FOR SO MANY DAYS AT SEA (owner row 183) — the server's consumption, for a plan.
   voyageFraction,
   worstHullFraction,

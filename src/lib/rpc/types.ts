@@ -1055,6 +1055,9 @@ export interface FleetShip {
   cargo_tuns: number
   water_t: number
   food_t: number
+  /** 0345 (owner row 221) — her STORES SPACE in tuns, served only while `ship_stores_separate` is lit: water and
+   *  food then live in it and take no cargo room. Absent: they share the hold, as before. */
+  stores_cap?: number
 }
 
 /** The closed-form position of DESIGN D.2 — computed, never simulated. 0039: the point sits on
@@ -3129,6 +3132,8 @@ export interface BoardShut {
     /** 0238 — a sell row bought first: the buy city, when the way there is past her stores (no seller is within them). */
     buy_at?: string
     buy_at_name?: string
+    /** 0345 — lit only: the stores have their own space, so the leg is short of STORES, not of hold room. */
+    stores_space?: boolean
   }
 }
 
