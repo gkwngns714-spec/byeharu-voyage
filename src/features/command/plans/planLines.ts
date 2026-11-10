@@ -193,8 +193,10 @@ export function reachWords(row: BoardPassage & { miles: number | null }, board: 
       const carry = formatVoyageDays(shut.carry_days)
       const need = formatVoyageDays(shut.need_days)
       // 0238 (owner, Port Royal): the crossing is on the way to the city it is bought at — name that city
-      if (shut.buy_at) return t('desk.holdTooFullBuy', { city: shut.buy_at_name ?? shut.buy_at, carry, need })
-      return t('desk.holdTooFull', { carry, need })
+      // 0345 (owner row 221): lit, the stores have their own space, so it is the stores that are short, not the hold
+      if (shut.buy_at)
+        return t(shut.stores_space ? 'desk.storesShortBuy' : 'desk.holdTooFullBuy', { city: shut.buy_at_name ?? shut.buy_at, carry, need })
+      return t(shut.stores_space ? 'desk.storesShort' : 'desk.holdTooFull', { carry, need })
     }
     const own =
       t('desk.tooFar') +

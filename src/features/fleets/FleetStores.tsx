@@ -1,7 +1,7 @@
 import { Figure, Row } from '../../components/ui'
-import { formatFixed, formatInt } from '../../lib/format'
+import { formatFixed, formatInt, tonsWord } from '../../lib/format'
 import type { FleetView } from '../../lib/rpc'
-import { fleetCrew } from '../../domain/fleet'
+import { fleetCrew, fleetStoresSpace } from '../../domain/fleet'
 import { useT } from '../../lib/i18n'
 
 // THE STORES — one line (owner row 203, 2026-10-25: *"what is this 'keep supply at'? this is useless"*).
@@ -15,8 +15,17 @@ import { useT } from '../../lib/i18n'
 export function FleetStores({ fleet }: { fleet: FleetView }) {
   const t = useT()
   const crew = fleetCrew(fleet)
+  // 0345 (owner row 221): lit, each ship carries her supplies in her own stores space — what is in it, of how much.
+  const space = fleetStoresSpace(fleet)
   return (
     <>
+      {space && (
+        <Row
+          label={t('fleets.storesSpace')}
+          value={<Figure value={`${formatInt(space.aboardT)}/${formatInt(space.capT)}`} unit={tonsWord(space.capT)} />}
+          data-testid="fleet-stores-space"
+        />
+      )}
       {/* BARE FIGURES, THE UNIT ON THE FIGURE: `Figure` sets the unit small and dim beside the value. */}
       <Row
         label={t('fleets.supplies')}

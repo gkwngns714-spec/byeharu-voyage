@@ -42,6 +42,8 @@ These are the scratch tools behind the 2026-10-18/19 measurements, copied from `
 
 - `crown-level/` is 0344 (owner row 288, docs/WORLD_POWERS.md 2.3): `proof-0344.mjs` (red first; the real file and proof 51 green; 15 mutations red, 12 caught by the file's own self-assert and 3 by proof 51). No prod scene: the prod checks are the premise read in the dev-log.
 
+- `ship-stores/` is 0345 (owner row 221): `gen-checks.mjs` writes `before.sql` (each of the 17 hunks once on the live bodies, nothing of 0345 there yet); `volatility.sql`; `impact.sql` (read only: what lighting `ship_stores_separate` would do, by side); `compare-cost.sql` (read only: the cost of the file's bounded dark-parity compare). All four are prod reads.
+
 Every prod query here runs inside `begin transaction read only` and calls only `provolatile` 's'/'i' functions. A harness SCENE (a file that writes and is rolled back by its runner) is local only and opens with the guard above; it is never a prod query.
 
 ## Two classes: every SQL file here says which one it is (2026-11-08)

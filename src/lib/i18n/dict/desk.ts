@@ -102,6 +102,9 @@ export const deskDict = defineDict({
     longest: 'longest leg {days}',
     suppliesOnly: '{leg}, can carry {days}',
     holdTooFull: 'Hold too full: {carry} of supplies, crossing needs {need}',
+    // 0345 (owner row 221): lit, the supplies have their own space; it is the space, not the hold, that is short
+    storesShort: 'Supplies short: can carry {carry}, crossing needs {need}',
+    storesShortBuy: 'Supplies short: bought at {city}, the trip has a crossing that needs {need} of supplies; you can carry {carry}',
     holdTooFullBuy: 'Hold too full: bought at {city}, the trip has a crossing that needs {need} of supplies; you can carry {carry}',
     longerThan: '{leg}, more than supplies last',
     orSupplies: 'too far, or supplies run out',
@@ -268,6 +271,8 @@ export const deskDict = defineDict({
     longest: '최장 구간 {days}',
     suppliesOnly: '{leg}, 보급 최대 {days}',
     holdTooFull: '화물 과다: 보급 {carry}, 횡단엔 {need} 필요',
+    storesShort: '보급 부족: 보급 {carry}, 횡단엔 {need} 필요',
+    storesShortBuy: '보급 부족: {city}에서 사 오는 길에 보급 {need}이 드는 횡단이 있음; 보급 최대 {carry}',
     holdTooFullBuy: '화물 과다: {city}에서 사 오는 길에 보급 {need}이 드는 횡단이 있음; 보급 최대 {carry}',
     longerThan: '{leg}, 보급보다 긺',
     orSupplies: '너무 멀거나 보급 부족',

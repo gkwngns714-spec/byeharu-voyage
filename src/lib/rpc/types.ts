@@ -1055,6 +1055,9 @@ export interface FleetShip {
   cargo_tuns: number
   water_t: number
   food_t: number
+  /** 0345 (owner row 221) — her STORES SPACE in tuns, served only while `ship_stores_separate` is lit: water and
+   *  food then live in it and take no cargo room. Absent: they share the hold, as before. */
+  stores_cap?: number
 }
 
 /** The closed-form position of DESIGN D.2 — computed, never simulated. 0039: the point sits on
@@ -2566,7 +2569,7 @@ export interface MerchantCard {
   /** 0124 — ONE SERVED SHIP TYPE: `world.ship_view`, as your own fleet's ships are served, less what
    *  a stranger is not — her id and her water and food. (Before 0124 the card built its own poorer
    *  object, with no slots and no stats; the panel still renders that, its keys being optional there.) */
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   officers: MerchantOfficer[]
   skills: MerchantSkill[]
 }
@@ -2582,7 +2585,7 @@ export interface CargoShipCard {
   eta: string | null
   next: string[]
   stops_left: number
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   /** 0327: served, true, only while attacks are lit. Absent, the card offers no Attack. */
   attack?: true
 }
@@ -2598,7 +2601,7 @@ export interface NavyShipCard {
   to: string | null
   eta: string | null
   next: string[]
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   /** 0333: served, true, only while attacks are lit, as a cargo ship's. */
   attack?: true
   /** 0340: her last fight with a pirate ship (docs/WORLD_POWERS.md 6.4), served only after one: when, how it went (`map.fight_*`), the pirate ship's name, the sea's code. */
@@ -2616,7 +2619,7 @@ export interface PirateShipCard {
   laid_up: boolean
   to: string | null
   eta: string | null
-  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t'>[]
+  ships: Omit<FleetShip, 'id' | 'water_t' | 'food_t' | 'stores_cap'>[]
   /** served, true, only while attacks are lit, as a navy ship's. */
   attack?: true
 }
@@ -3129,6 +3132,8 @@ export interface BoardShut {
     /** 0238 — a sell row bought first: the buy city, when the way there is past her stores (no seller is within them). */
     buy_at?: string
     buy_at_name?: string
+    /** 0345 — lit only: the stores have their own space, so the leg is short of STORES, not of hold room. */
+    stores_space?: boolean
   }
 }
 

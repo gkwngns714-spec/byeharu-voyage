@@ -150,7 +150,23 @@ export function hullFraction(ship: Pick<FleetShip, 'durability' | 'max_durabilit
  *  that compete with it for the same hold. DESIGN C.3 — "every tun of water is a tun of pepper you
  *  did not carry" — and it is exactly the term `public.fleet_free_hold` subtracts (0007:127). */
 export function shipHoldUsed(ship: FleetShip): number {
-  return ship.cargo_tuns + ship.water_t + ship.food_t
+  return ship.cargo_tuns + shipStoresInHold(ship)
+}
+
+/** 0345 (owner row 221): the tuns of stores that take HOLD room — all of them while they share the hold, none while
+ *  the server serves her own stores space (`stores_cap`, only while `ship_stores_separate` is lit). The client's
+ *  mirror of `public.stores_in_hold`; the server's `free_hold` stays the only figure anything decides on. */
+export function shipStoresInHold(ship: Pick<FleetShip, 'water_t' | 'food_t' | 'stores_cap'>): number {
+  return ship.stores_cap == null ? ship.water_t + ship.food_t : 0
+}
+
+/** 0345: her stores space, when the server serves one (lit), as `aboard / cap` tuns. Null while the stores share the hold. */
+export function fleetStoresSpace(fleet: FleetView): { aboardT: number; capT: number } | null {
+  if (fleet.ships.length === 0 || fleet.ships.some((s) => s.stores_cap == null)) return null
+  return {
+    aboardT: fleet.ships.reduce((n, s) => n + s.water_t + s.food_t, 0),
+    capT: fleet.ships.reduce((n, s) => n + (s.stores_cap ?? 0), 0),
+  }
 }
 
 /**
@@ -214,7 +230,7 @@ export interface HoldBreakdown {
 export function fleetHoldBreakdown(fleet: FleetView): HoldBreakdown {
   const totalT = fleetHoldTotal(fleet)
   const goodsT = fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0)
-  const provisionsT = fleet.ships.reduce((n, s) => n + s.water_t + s.food_t, 0)
+  const provisionsT = fleet.ships.reduce((n, s) => n + shipStoresInHold(s), 0)   // 0345: none, lit (their own space)
   const freeT = Math.max(0, totalT - goodsT - provisionsT)
   if (totalT <= 0) {
     return { goodsT, provisionsT, freeT, totalT, goodsShare: 0, provisionsShare: 0, freeShare: 0 }

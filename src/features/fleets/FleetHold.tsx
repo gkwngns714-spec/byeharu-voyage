@@ -1,5 +1,5 @@
 import { Bar } from '../../components/ui'
-import { fleetHoldBreakdown } from '../../domain/fleet'
+import { fleetHoldBreakdown, fleetStoresSpace } from '../../domain/fleet'
 import { formatInt, formatPct, tonsWord } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import type { FleetView } from '../../lib/rpc'
@@ -36,9 +36,13 @@ export function FleetHold({ fleet }: { fleet: FleetView }) {
   if (hold.totalT <= 0) return null
   const word = tonsWord(hold.totalT)
 
+  // 0345 (owner row 221): while the server serves her own stores space, the supplies leave the hold, and so its bar.
+  const separate = fleetStoresSpace(fleet) !== null
   const shares = [
     { key: 'goods', share: hold.goodsShare, tons: hold.goodsT, tone: 'accent' as const, label: t('fleets.holdGoods') },
-    { key: 'provisions', share: hold.provisionsShare, tons: hold.provisionsT, tone: 'info' as const, label: t('fleets.holdProvisions') },
+    ...(separate
+      ? []
+      : [{ key: 'provisions', share: hold.provisionsShare, tons: hold.provisionsT, tone: 'info' as const, label: t('fleets.holdProvisions') }]),
     { key: 'free', share: hold.freeShare, tons: hold.freeT, tone: 'neutral' as const, label: t('fleets.holdFree') },
   ]
 
