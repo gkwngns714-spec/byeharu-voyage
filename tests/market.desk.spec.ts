@@ -40,12 +40,13 @@ test('market @390: the chart is the city’s left region and follows the pressed
   expect(before.length).toBeGreaterThan(0)
 
   // press ANOTHER good's price cell: the chart follows it
-  const rows = page.getByTestId('trade-row')
+  // THE ONE GOODS CARD (S5): the name is the card's name line's own first text
+  const rows = page.getByTestId('city-face-panel').getByTestId('trade-good')
   const n = await rows.count()
   expect(n).toBeGreaterThan(1)
   let target: string | null = null
   for (let i = 0; i < n; i++) {
-    const name = (await rows.nth(i).innerText()).split('\n')[0].trim()
+    const name = await rows.nth(i).getByTestId('trade-good-name').evaluate((e) => (e.firstChild?.textContent ?? '').trim())
     if (name.length > 0 && name !== before) {
       target = name
       await rows.nth(i).getByRole('button').first().click()
@@ -71,7 +72,7 @@ test('market @390: BUY and SELL are doors in the panel — no page — and SELL 
   await expect(page.getByTestId('city-market-sell')).toBeVisible()
   await expect(page.getByTestId('city-market-sell-page')).toHaveCount(0)
   // nothing aboard at a fresh house: the sell face says exactly that
-  const rows = page.getByTestId('trade-row')
+  const rows = page.getByTestId('city-face-panel').getByTestId('trade-good')
   const empty = page.getByText(/No cargo to sell|팔 화물이 없습니다/)
   await expect(rows.or(empty).first()).toBeVisible()
 })

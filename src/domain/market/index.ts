@@ -49,3 +49,7 @@ export function buyableHere(good: MarketGood): boolean {
 export function listedHere(good: MarketGood, aboard: number): boolean {
   return good.available || aboard > 0
 }
+
+// The section's other files, through the one entrance (tests/sections.spec.ts).
+export { tradeRows, type TradeGoodRow } from './tradeRows'
+export { dayLine, type DayLine } from './dayLine'

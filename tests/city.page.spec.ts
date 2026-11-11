@@ -401,7 +401,7 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
   await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
-  await expect(page.getByTestId('trade-row').first()).toBeVisible({ timeout: 60_000 })
+  await expect(page.getByTestId('city-market-buy').getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
   await expect(page.getByTestId('city-market-chart')).toBeVisible()
   await expect(page.locator('[data-detail-page]')).toHaveCount(0)
   await page.getByTestId('city-building-hall').click()
@@ -501,7 +501,7 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   await page.getByTestId('city-building-market').click()
   await expect(page.getByTestId('city-face-panel')).toHaveAttribute('data-building', 'market')
   await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 60_000 })
-  await expect(page.getByTestId('trade-row').first(), 'the market face is not the goods list').toBeVisible({
+  await expect(page.getByTestId('city-market-buy').getByTestId('trade-good').first(), 'the market face is not the goods list').toBeVisible({
     timeout: 60_000,
   })
   await page.getByTestId('city-building-hall').click()

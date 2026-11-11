@@ -70,6 +70,11 @@ export const uiDict = defineDict({
     skillLevel: '{name}, level {level} of {max}',
     readings: '{n} readings, {lo} to {hi}',
     less: 'Less',
+    // the trade tray's detail row (S5): what is not quantity, total or the button opens under it
+    trayMore: 'More',
+    trayLess: 'Less',
+    // its spoken name: the stepper's + is already called More
+    trayMoreSpoken: 'Show details',
     typed: '{label}, typed',
     clear: 'Clear',
     tabs: 'Tabs',
@@ -168,6 +173,9 @@ export const uiDict = defineDict({
     skillLevel: '{name}, {max}단계 중 {level}단계',
     readings: '기록 {n}개, {lo}~{hi}',
     less: '덜',
+    trayMore: '더보기',
+    trayLess: '접기',
+    trayMoreSpoken: '자세히 보기',
     typed: '{label}, 직접 입력',
     clear: '지우기',
     tabs: '탭',

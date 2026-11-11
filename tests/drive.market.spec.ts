@@ -46,11 +46,10 @@ async function buyRows(page: Page): Promise<string[]> {
   const tab = page.getByRole('tab', { name: /^(Buy|구매)$/ })
   if (await tab.count()) await tab.first().click()
   await expect(page.getByTestId('city-market-buy')).toBeVisible({ timeout: 30_000 })
-  const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-row"]')
+  // THE ONE GOODS CARD (S5): the name is the card's name line's own first text, before its class mark and any Wanted word
+  const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
   await expect(rows.first()).toBeVisible({ timeout: 30_000 })
-  const names: string[] = []
-  for (const text of await rows.allInnerTexts()) names.push(text.split('\n')[0].trim())
-  return names
+  return rows.getByTestId('trade-good-name').evaluateAll((els) => els.map((e) => (e.firstChild?.textContent ?? '').trim()))
 }
 
 // ── ROW 48: THE ROSTER, AS THE QUAY LISTS IT ─────────────────────────────────────────────────────
@@ -69,7 +68,7 @@ test('Market: a capital lists 10 goods, every quay 4 to 10, and the Requests doo
     const r = (sel: string) => document.querySelector(sel)?.getBoundingClientRect() ?? null
     const chart = r('[data-testid="city-market-chart"]')
     const card = r('[data-testid="city-plan"]')
-    const row = r('[data-testid="city-market-buy"] [data-testid="trade-row"]')
+    const row = r('[data-testid="city-market-buy"] [data-testid="trade-good"]')
     const panel = r('[data-testid="city-face-panel"]')
     return {
       chartW: chart ? Math.round(chart.width) : null,
@@ -113,7 +112,7 @@ for (const size of [WIDE, PHONE]) {
     await openMarket(page)
     const names = await buyRows(page)
     expect(names.length).toBeGreaterThanOrEqual(2)
-    const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-row"]')
+    const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
     const chartGood = page.getByTestId('city-market-chart-good')
 
     // press the SECOND good's buy cell: the chart follows it, the tray opens IN THE PANEL (no DetailPage, no Tray overlay)
@@ -158,7 +157,7 @@ for (const size of [WIDE, PHONE]) {
     // SELL lists the cargo: the good just bought, and nothing else
     await page.getByRole('tab', { name: /^(Sell|판매)$/ }).click()
     await expect(page.getByTestId('city-market-sell')).toBeVisible({ timeout: 30_000 })
-    const sellRows = page.locator('[data-testid="city-market-sell"] [data-testid="trade-row"]')
+    const sellRows = page.locator('[data-testid="city-market-sell"] [data-testid="trade-good"]')
     await expect(sellRows).toHaveCount(1, { timeout: 30_000 })
     await expect(sellRows.first()).toContainText(names[1])
     await shot(page, `market-sell-${size.width}@2x`)
@@ -186,7 +185,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
     test('Market @390: the send button carries the sum once the price is served, and it fits (row 76, O7)', async ({ page, request, baseURL }) => {
       await openCity(page, request, baseURL, PHONE)
       await openMarket(page)
-      const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-row"]')
+      const rows = page.locator('[data-testid="city-market-buy"] [data-testid="trade-good"]')
       await expect(rows.nth(1)).toBeVisible({ timeout: 30_000 })
       await rows.nth(1).locator('button:enabled').first().click()
       const send = page.getByTestId('trade-tray-send')
