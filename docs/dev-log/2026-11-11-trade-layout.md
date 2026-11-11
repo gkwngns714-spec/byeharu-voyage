@@ -1,6 +1,6 @@
 # Trade layout — the city picker keeps its words, and the wide desk uses its left pane (2026-11-11)
 
-Two leftovers of the remaster, named in `2026-11-11-s4-type-and-surface.md` and `2026-11-11-s9-shell-look.md`. Client only; no migration, knob or flag. Stacked on S5 (#578): it changes the same files.
+Two leftovers of the remaster, named in `2026-11-11-s4-type-and-surface.md` and `2026-11-11-s9-shell-look.md`. Client only; no migration, knob or flag. Built on S5 (#578, merged): it changes the same files.
 
 ## What was there (measured before, local world, a new company docked at Lisbon)
 
@@ -81,10 +81,76 @@ Before and after, in `img/trade-layout/`:
 
 - **The right pane is still one line ("Press a good.") until a good is pressed.** It is the desk's slot for the trade panel on every face, by the same frame rule. Filling it needs something this slice may not add: new content, a good opened by itself, or the orders moved there (which would take about 100 px of height from the trade panel each time it opens). It is left as it was and named here.
 - **At 1,920 the centre pane is 326 px of cards in 902.** Ten goods are ten cards; nothing was added to fill it.
-- **A best sale's city is still cut inside a goods card** ("Hag…" at 1,280, one letter at 1,920), read whole from the card's title: S5's choice in `TradeCard.tsx`, in a 191-px card. Not part of this slice; it conflicts with the owner's "show full names" and is worth its own decision.
+- A best sale's city was cut inside a goods card: fixed in the second part below.
 - **The picker's names are measured against the seeded list** (`data/ports.json`), not against the live world's own rows. `tests/db.image.spec.ts` holds the built world to that file; a port added only by a later migration would not be in this measurement.
 - `TradeToast.tsx` still centres on the window (another open PR owns it).
 
 ## Checks (local, the served build)
 
 `tsc -b`, `eslint .`, `vite build`: clean. `tests/trade.layout.spec.ts` (new, 8 tests: the two widths, two languages, and 1,920 for the cards) passes; it fails on the build before this slice (prices at two heights in every row at 1,280) and with the picker's rule taken out (8 broken names at 390). `tests/command.bestSale.spec.ts` (updated: it read the picker inside the board; it reads it off the face now), `tests/sections.spec.ts`, `tests/duplication.spec.ts`, and the neighbours `command.design`, `desk.terminal`, `desk.inplace`, `command.sellCargo`, `command.buySell`: all pass.
+
+---
+
+# Second part — a best sale's city is printed whole (2026-11-12)
+
+The owner's standing rule: a name is never cut with "…". The goods card cut its best sale's city.
+
+## What was there (measured, the ten Lisbon cards)
+
+The best-sale line was one 18-px line holding the city, the profit and the day line, the city cut with an ellipsis:
+
+| glass | card | room the city got | example |
+|---|---|---|---|
+| 390 | 175 px | 19 to 36 px | "Matsumae" needs 65: shown as about three letters |
+| 1,280 | 191 px | 35 to 52 px | "Hag…", "Momb…" |
+| 1,920 | 158 px | 3 to 19 px | one letter, or none |
+
+In English all ten were cut at all three widths; in Korean ten at 390 and 1,920, eight at 1,280.
+
+## What changed
+
+- `src/live/TradeCard.tsx`: the line under the prices is a wrapping line. The city (flag and name) keeps its words by the design system's rule (`KEEP_WORDS_CLASS`, `src/components/ui/tileStyles.ts`: the one rule the city picker's grid uses); the profit and the day line stay together at the right. Where all three fit they stand on one line; in these cards the city takes the first line and the profit and day line the second. A name too long for the flag beside it takes the next line whole.
+- The card's four lines (head, prices, best sale, buttons) are rows of the board's own grid (`grid-rows-subgrid`), so in a row of cards each line is one height whatever a neighbour's name does. This replaces the first part's `flex-1` on the head.
+- Where a sale can land (Trade) the line holds two lines' height whatever has landed, so a card does not grow when its sale lands (`tests/command.bestSale.spec.ts` holds that). At the HQ Market, which never asks for a sale, it holds the one line the day line needs.
+
+## Measured after
+
+| | before | after |
+|---|---|---|
+| best-sale cities cut, Trade, 390 / 1,280 / 1,920, English | 10 / 10 / 10 of 10 | 0 / 0 / 0 |
+| the same, Korean | 10 / 8 / 10 of 10 | 0 / 0 / 0 |
+| every seeded port name (248) put in the cards' lines, 390, 1,280 and 1,920, English and Korean: a word broken, a name cut or outside its card | not measured | 0 |
+| Trade card height, English / Korean | 151 / 131 px | 165 / 145 px (+14) |
+| HQ Market card height, English / Korean | 151 / 131 px | 147 / 127 px (-4) |
+| rows of cards with prices or buttons at two heights, Trade at 1,280 English (before = main before this branch) | 4 of 5 | 0 |
+| the same, HQ Market at 1,280 / 1,920 English | 1 / 2 of 6 | 0 / 0 |
+| goods cards whole in the centre pane at 1,280 × 800 | 4 (6 after the first part) | 6 |
+| goods cards whole above the bar at 390 | 2 | 2 |
+| sideways scroll, Trade and HQ Market, three widths | none | none |
+
+The longest name, 산타크루스데테네리페 (130 px), does not fit beside its flag in a 158-px card (142 inside): it stands whole on the line under the flag. The spec found this; the first try put it 16 px outside the card.
+
+| | before | after |
+|---|---|---|
+| Trade 1,280, English | ![](img/trade-layout/sale-before-1280-en.jpg) | ![](img/trade-layout/sale-after-1280-en.jpg) |
+| Trade 1,920, English | ![](img/trade-layout/sale-before-1920-en.jpg) | ![](img/trade-layout/sale-after-1920-en.jpg) |
+| Trade 390, Korean | ![](img/trade-layout/sale-before-390-ko.jpg) | ![](img/trade-layout/sale-after-390-ko.jpg) |
+| HQ Market 1,280, English | ![](img/trade-layout/hq-before-1280-en.jpg) | ![](img/trade-layout/hq-after-1280-en.jpg) |
+| HQ Market 390, English | ![](img/trade-layout/hq-before-390-en.jpg) | ![](img/trade-layout/hq-after-390-en.jpg) |
+
+## Decided by default
+
+1. **Two lines, not a wider card.** A card would need about 240 px to hold "Matsumae", its profit and the day line on one line; the centre pane at 1,280 holds two 191-px cards. The card is 14 px taller instead.
+2. **The HQ card is 4 px shorter**, not 14 taller: it never shows a sale, so it does not hold a second line for one.
+3. **The block's hover title stays** (the whole sentence, for a mouse and a screen reader); the name no longer depends on it.
+
+## Other cuts on a name, found and left
+
+Searched `TradeCard.tsx`, `TradeBoard.tsx` and `TradePanel.tsx` for `truncate`, `text-ellipsis`, `line-clamp`: the best-sale city was the only one. Found next door and left:
+
+- `src/features/command/buysell/CargoBest.tsx:101` (a good's name) and `:173` (a city's name, `cargo-place-name`) carry `truncate`, on the "Your cargo" page. Not one of the three files named for this slice, and that page was not rendered or measured here: it needs its own pass.
+- `TradeCard.tsx`: a good's name carries `break-words`. It is never cut; a single word wider than the card would turn inside the word. No good name does at these widths (`tests/desk.terminal.spec.ts`, "names are whole").
+
+## Checks (local, the served build, after the rebase onto main)
+
+`tsc -b`, `eslint .`, `vite build`: clean. `tests/trade.layout.spec.ts` (16 tests now) passes; the new law fails when the city is given an ellipsis again (injected). `sections`, `duplication`, `command.bestSale`, `command.design`, `desk.terminal`, `desk.inplace`, `command.sellCargo`, `command.buySell`, `layout`, `align`, `good.class`, `consistency`, `market.shortTray`: 96 passed.

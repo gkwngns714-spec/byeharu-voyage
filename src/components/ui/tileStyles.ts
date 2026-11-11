@@ -58,6 +58,10 @@ export const WORDS_COLUMN_WIDE_CLASS: Record<WordColumns, string> = {
   3: 'lg:[--tile-w:calc((100%-0.75rem)/3)]',
 }
 
+/** THE SAME RULE FOR ONE NAME outside a grid (a best sale's city in a goods card, live/TradeCard.tsx): the box is never narrower
+ *  than the name's longest word, and the name turns only at a space. Never `truncate` beside it: a name is printed whole. */
+export const KEEP_WORDS_CLASS = 'min-w-min break-keep'
+
 /** The words grid and what it asks of each cell: a column wide, never under its longest word, words never broken. The cell rules
  *  are `!important` because a cell's own recipe (`tileCellClass`) says `min-w-0` at the same weight. */
 export function tileWordsGridClass(): string {

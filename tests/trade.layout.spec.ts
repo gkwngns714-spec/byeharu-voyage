@@ -25,6 +25,11 @@ import { ready } from './appReady.fixture'
 //   (4) NOTHING SCROLLS SIDEWAYS: not the page, not the picker.
 //   (5) ON THE WIDE DESK the left pane carries the picker and the doors (cargo, map, the route's line, orders), and the centre pane
 //       the goods.
+//   (6) NO BEST SALE'S CITY IS CUT IN A GOODS CARD (the owner's rule: a name is never cut with "…"; it was "Hag…" at 1,280 and
+//       one letter at 1,920). Measured on the cards' own best-sale lines, as they stand and with every seeded port name put in
+//       them, at 390, 1,280 and 1,920: each word on one line, the name inside its card, no ellipsis, no clip, and (3) still
+//       holds with the longest names in.
+//   (7) THE HQ MARKET DRAWS THE SAME CARD: its rows are one height with prices and buttons level, and no name in a card is cut.
 // Nothing here asserts a price or which cities are near: only names, boxes and lines.
 
 const SEEDED: string[] = (JSON.parse(readFileSync(path.resolve('data', 'ports.json'), 'utf8')) as { ports: { name: string }[] }).ports.map((p) => p.name)
@@ -95,6 +100,50 @@ const READ_CARDS = () =>
     const r = c.getBoundingClientRect()
     const top = (id: string) => Math.round((c.querySelector(`[data-testid="${id}"]`) as HTMLElement).getBoundingClientRect().top)
     return { good: c.getAttribute('data-good') ?? '', top: Math.round(r.top), height: Math.round(r.height), price: top('trade-good-buy'), buy: top('trade-buy') }
+  })
+
+/** Put `names` into the cards' best-sale lines (cycled over the cards that carry a sale) and read law (6) off them. The names
+ *  STAY IN until the next call, so the rows can be measured with them; a call with the names it returned as `own` puts the
+ *  players' own back. Self-contained, shipped into the page. With no names it reads the lines as they stand. */
+const SET_SALES = (names: string[] | null) => {
+  const spans = [...document.querySelectorAll('[data-testid="best-sale"][data-state="sale"] [data-testid="best-sale-city-name"]')] as HTMLElement[]
+  const own = spans.map((s) => s.textContent ?? '')
+  if (names) spans.forEach((s, i) => ((s.firstChild as Text).data = names[i % names.length]))
+  const faults: string[] = []
+  for (const span of spans) {
+    const card = span.closest('[data-testid="trade-good"]') as HTMLElement
+    const text = span.textContent ?? ''
+    const node = span.firstChild as Text
+    const c = card.getBoundingClientRect()
+    for (const m of text.matchAll(/[^\s-]+-?/g)) {
+      const range = document.createRange()
+      range.setStart(node, m.index)
+      range.setEnd(node, m.index + m[0].length)
+      const lines = new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top)))
+      if (lines.size !== 1) faults.push(`"${text}": the word "${m[0]}" stands on ${lines.size} lines in a ${Math.round(c.width)}-px card`)
+    }
+    for (let e: HTMLElement | null = span; e && e !== card.parentElement; e = e.parentElement) {
+      const cs = getComputedStyle(e)
+      if (cs.textOverflow === 'ellipsis') faults.push(`"${text}": an ellipsis rule stands on it`)
+      if (e.scrollWidth > e.clientWidth + 1 && cs.overflowX !== 'visible') faults.push(`"${text}": clipped (${e.scrollWidth} px in ${e.clientWidth})`)
+    }
+    // the name, the profit and the day line all stand inside the card
+    const line = span.closest('[data-testid="best-sale"]') as HTMLElement
+    for (const e of [span, ...line.querySelectorAll('[data-testid="best-sale-profit"], [data-testid="trade-good-spark"]')]) {
+      const r = e.getBoundingClientRect()
+      if (r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.top < c.top - 0.5 || r.bottom > c.bottom + 0.5) faults.push(`"${text}": a part of its line stands outside the ${Math.round(c.width)}-px card`)
+    }
+  }
+  if (document.documentElement.scrollWidth > document.documentElement.clientWidth) faults.push(`the page scrolls sideways with ${JSON.stringify(names)}`)
+  return { faults, own, lines: spans.length }
+}
+
+/** Any text inside a goods card that is cut: an ellipsis rule or a clip on a box narrower than its words. */
+const CUT_IN_CARDS = () =>
+  [...document.querySelectorAll('[data-testid="trade-good"] *')].flatMap((e) => {
+    const cs = getComputedStyle(e)
+    const cut = e.scrollWidth > e.clientWidth + 1 && (cs.textOverflow === 'ellipsis' || (cs.overflowX !== 'visible' && (e.textContent ?? '').trim() !== ''))
+    return cut ? [`"${(e.textContent ?? '').trim().slice(0, 40)}" is cut (${e.scrollWidth} px in ${e.clientWidth})`] : []
   })
 
 function cardFaults(cards: Awaited<ReturnType<typeof READ_CARDS>>): string[] {
@@ -186,6 +235,56 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           const wide = await page.evaluate(READ_CARDS)
           expect(cardFaults(wide), `${locale} @1920: a row of cards is uneven`).toEqual([])
           expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${locale} @1920: the page scrolls sideways`).toBe(true)
+        }
+      })
+
+      test("no best sale's city is cut in a goods card, for every port the world has", async ({ page }) => {
+        await openTrade(page)
+        await expect(page.locator('[data-testid="best-sale"][data-state="sale"]').first(), 'no best sale landed').toBeVisible({ timeout: 180_000 })
+        const names = [...new Set(SEEDED.map((n) => shown(n, ko)))].sort((a, b) => b.length - a.length)
+        for (const width of glass.width >= 1024 ? [glass.width, 1920] : [glass.width]) {
+          if (width !== glass.width) {
+            await page.setViewportSize({ width, height: 1080 })
+            await page.waitForTimeout(600)
+          }
+          const where = `${locale} @${width}`
+          const live = await page.evaluate(SET_SALES, null)
+          expect(live.lines, `${where}: no card carries a best sale`).toBeGreaterThan(0)
+          expect(live.faults, `${where}: a best sale's city as it stands`).toEqual([])
+          expect(await page.evaluate(CUT_IN_CARDS), `${where}: a text in a goods card is cut`).toEqual([])
+          const faults: string[] = []
+          for (let i = 0; i < names.length; i += live.lines) {
+            faults.push(...(await page.evaluate(SET_SALES, names.slice(i, i + live.lines))).faults)
+            // (3) holds with these names in: the first batch is the longest names the world has
+            if (i === 0) faults.push(...cardFaults(await page.evaluate(READ_CARDS)).map((f) => `with the longest names in, ${f}`))
+          }
+          await page.evaluate(SET_SALES, live.own)
+          if (faults.length > 0) console.log(`SALES ${where}: ${faults.length} lines\n  ${faults.join('\n  ')}`)
+          expect(faults, `${where}: a best sale's city is broken or cut in its card`).toEqual([])
+        }
+      })
+
+      test('the HQ Market draws the same card: rows level, no name cut', async ({ page }) => {
+        test.setTimeout(480_000)
+        await page.goto('city')
+        await ready(page)
+        await page.getByTestId('city-building-market').click()
+        await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
+        await page.evaluate(() => document.fonts.ready)
+        for (const width of glass.width >= 1024 ? [glass.width, 1920] : [glass.width]) {
+          if (width !== glass.width) await page.setViewportSize({ width, height: 1080 })
+          const where = `${locale} HQ Market @${width}`
+          let cards = await page.evaluate(READ_CARDS)
+          for (let i = 0; i < 40; i++) {
+            await page.waitForTimeout(300)
+            const next = await page.evaluate(READ_CARDS)
+            if (JSON.stringify(next) === JSON.stringify(cards)) break
+            cards = next
+          }
+          expect(cards.length, `${where}: no goods cards`).toBeGreaterThan(2)
+          expect(cardFaults(cards), `${where}: a row of cards is uneven`).toEqual([])
+          expect(await page.evaluate(CUT_IN_CARDS), `${where}: a text in a goods card is cut`).toEqual([])
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${where}: the page scrolls sideways`).toBe(true)
         }
       })
     })
