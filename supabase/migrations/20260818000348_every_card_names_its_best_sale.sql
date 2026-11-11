@@ -32,7 +32,8 @@
 --   best_sales reads none (sea_conditions_bite is false on prod; the trip's Go gates on `sailable`, which the seas do not move).
 -- ROLLBACK (forward): a new migration reversing the hunks (each OLD text is here verbatim) and dropping the five new functions; nothing else depends on them.
 -- SELF-ASSERT: the catalog, then a probe house of its own rolled-back rows. BUDGET: ONE DO block, statement_timeout 120 s, lock_timeout 5 s.
--- VERSION: 0348 - prod head 0345 (read 2026-11-11). 0346 (route builder) and 0347 (news markers) deploy first and touch neither world.good_board nor the registry line this file anchors on.
+-- NEWS: this file posts its own UPDATE row, public.news_update('0348', 'Best sale', '최고 판매처') (0347's law, tests/news.lint.spec.ts).
+-- VERSION: 0348 - prod head 0347 (read 2026-11-11). 0346 (route builder) and 0347 (news markers) touch neither world.good_board nor the registry line this file anchors on.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -81,8 +82,9 @@ begin
     raise exception '0348 refuses: something of it is already in this world';
   end if;
   if to_regprocedure('world.good_board(uuid,uuid,uuid,numeric)') is null or to_regprocedure('public.stores_in_hold(numeric)') is null
-     or to_regprocedure('voyage.reach_passage(uuid,uuid,uuid,numeric)') is null or to_regprocedure('public.client_rpc_entry_points()') is null then
-    raise exception '0348 refuses: 0171 / 0231 / 0345 (the board it cuts, the stores) are not all in this world';
+     or to_regprocedure('voyage.reach_passage(uuid,uuid,uuid,numeric)') is null or to_regprocedure('public.client_rpc_entry_points()') is null
+     or to_regprocedure('public.news_update(text,text,text)') is null then
+    raise exception '0348 refuses: 0171 / 0231 / 0345 / 0347 (the board it cuts, the stores, the news) are not all in this world';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
@@ -966,6 +968,8 @@ $h$);
   if public.current_player_id() is not null then
     raise exception '0348 self-assert FAIL: the probe''s identity outlived its rollback';
   end if;
+  -- THE NEWS: this file's own UPDATE row (0347's law), once — after the probe, so it is the world's, not the probe's
+  perform public.news_update('0348', 'Best sale', '최고 판매처');
   raise notice '0348 probe (a): %', r_a;
   raise notice '0348 probe (b): %', r_b;
   raise notice '0348 probe (c): %', r_c;
