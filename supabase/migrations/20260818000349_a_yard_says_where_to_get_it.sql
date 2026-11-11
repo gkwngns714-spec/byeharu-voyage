@@ -20,12 +20,13 @@
 --     null where no harbour qualifies (0072's self-assert keeps every hull material sold, and every fitting made, somewhere).
 --   Grants like its sibling readers (0305): revoke from public/anon/authenticated, then execute to authenticated.
 --   No table, column, knob, cron job or other function is touched (asserted).
+-- news: this file posts its own UPDATE row (public.news_update('0349', ...)), as 0347's law asks — "Build: where to buy".
 --
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Work: one function, one
 --   ACL, catalog reads, one probe call per hull class at one yard. Self-assert fails above 45 s.
 -- ROLLBACK (forward, a NEW migration, owner only): drop function world.yard_sources(uuid, text); the yard sheet then shows the
 --   materials without a seller line.
--- VERSION: 0349 - prod head 0346 (2026-11-11); 0347 and 0348 are ahead of it in the deploy order.
+-- VERSION: 0349 - prod head 0347 (2026-11-11); 0348 is ahead of it in the deploy order.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -50,6 +51,9 @@ begin
      or not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = 'culture_refuses')
      or to_regclass('public.sea_reaches') is null or to_regclass('public.hull_recipe_goods') is null then
     raise exception '0349 refuses: a function or table it reads is not in this world';
+  end if;
+  if to_regprocedure('public.news_update(text, text, text)') is null then
+    raise exception '0349 refuses: 0347 (the world keeps its news) is not in this world';
   end if;
   if to_regprocedure('world.yard_sources(uuid, text)') is not null then
     raise exception '0349 refuses: it has been applied once';
@@ -192,10 +196,15 @@ $body$
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key)) from public.world_config c) <> v_cfg_before then
     raise exception '0349 self-assert FAIL: a world_config row moved';
   end if;
+  -- THIS FILE'S OWN UPDATE ROW (0347's news law, tests/news.lint.spec.ts), counted by its own key
+  perform public.news_update('0349', 'Build: where to buy', '건조: 구매처');
+  if (select count(*) from public.world_news w where w.key = 'update:0349') <> 1 then
+    raise exception '0349 self-assert FAIL: this file''s UPDATE row is not one row';
+  end if;
   v_ms := round(extract(epoch from clock_timestamp() - v_t0) * 1000);
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0349 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0349 self-assert ok: world.yard_sources is STABLE, definer-owned, executable by authenticated alone; at Lisbon, % hull class(es) each serve one row per recipe line, every seller passes do_buy''s roster and culture gates and none nearer does, every maker passes do_make''s workstation and made-only-in gates; a good sold at the yard is served there at 0 miles; an unknown class serves empty lists; nothing else moved. Printed, never asserted: % ms.', v_n, v_ms;
+  raise notice '0349 self-assert ok: world.yard_sources is STABLE, definer-owned, executable by authenticated alone; at Lisbon, % hull class(es) each serve one row per recipe line, every seller passes do_buy''s roster and culture gates and none nearer does, every maker passes do_make''s workstation and made-only-in gates; a good sold at the yard is served there at 0 miles; an unknown class serves empty lists; its UPDATE row is one row; nothing else moved. Printed, never asserted: % ms.', v_n, v_ms;
 end
 $m$;
