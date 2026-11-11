@@ -85,6 +85,7 @@ import type {
   PriceWhy,
   SeaConditions,
   GoodBoard,
+  BestSales,
   Watchlist,
   PlanLine,
   Holdings,
@@ -761,6 +762,11 @@ export function worldPriceWhy(portId: string, goodId: string): Promise<RpcResult
  *  The client prints these figures and derives none of them. */
 export function worldSeaConditions(): Promise<RpcResult<SeaConditions>> {
   return call<SeaConditions>('worldSeaConditions', [])
+}
+
+/** The best sale of every good a city sells, for your fleet (0348): the city and the served profit. */
+export function worldBestSales(fleetId: string, portId: string): Promise<RpcResult<BestSales>> {
+  return call<BestSales>('worldBestSales', [fleetId, portId])
 }
 
 /** One good at every city, for your fleet (0171): where it is sold and what it costs, where it is

@@ -38,6 +38,10 @@ import { firstAtMs, useChartNews } from '../../../live/useChartNews'
 //                                             useTripGo — with its estimate: days, supplies, fees, profit)
 //   why the price is what it is (0185) · who bought what here (0227) · on a trip, can she go there (PlanVoyage)
 //
+// 0348 (owner row 307): a card's best sale pressed opens the TRIP — Buy & sell: bought at the city in hand, sold at
+// `sellAt` — in this same panel, with the sale's wages, dues and profit (the served sell row, as Sail & sell shows them).
+// A good whose best sale does not pay (`noGain`, world.best_sales) says so above the units, before Max is pressed.
+//
 // The button stands in the same place, the same size, the same colour in all four cases; only its word changes.
 // A phone: a bottom sheet (Tray, docked). A wide glass: the desk's right pane. EVERY FIGURE IS SERVED.
 
@@ -65,6 +69,8 @@ export function TradePanel({
   good,
   market,
   docked,
+  sellAt = null,
+  noGain = false,
   trip,
   mode,
   onClose,
@@ -79,6 +85,10 @@ export function TradePanel({
   market: MarketGood | null
   /** She lies at this city. */
   docked: boolean
+  /** 0348: the trip's sell city (port CODE) — a buy that is sold there, one press; null for a one-ended trade. */
+  sellAt?: string | null
+  /** 0348: Buy only — no city she can sail to pays more than this costs (world.best_sales' `pays`). */
+  noGain?: boolean
   /** The trip's board (BuySell.tsx reads it once; the map draws its legs). Only read when not docked. */
   trip: Trip
   mode: TrayMode
@@ -89,9 +99,21 @@ export function TradePanel({
   const port = portByCode[city] ?? null
   if (!port) return null
   return docked ? (
-    market && <DockedAct side={side} fleet={fleet} portId={port.id} city={city} good={market} mode={mode} onClose={onClose} onDone={onDone} />
+    market && <DockedAct side={side} fleet={fleet} portId={port.id} city={city} good={market} noGain={noGain} mode={mode} onClose={onClose} onDone={onDone} />
   ) : (
-    <SailAct side={side} fleet={fleet} portId={port.id} city={city} good={good} trip={trip} mode={mode} onClose={onClose} onDone={onDone} />
+    <SailAct
+      side={side}
+      fleet={fleet}
+      portId={port.id}
+      city={city}
+      good={good}
+      sellAt={side === 'buy' ? sellAt : null}
+      noGain={noGain}
+      trip={trip}
+      mode={mode}
+      onClose={onClose}
+      onDone={onDone}
+    />
   )
 }
 
@@ -104,6 +126,8 @@ function Frame({
   good,
   mode,
   onClose,
+  warn = false,
+  sellAt = null,
   units,
   total,
   extra,
@@ -117,6 +141,10 @@ function Frame({
   good: PanelGood
   mode: TrayMode
   onClose: () => void
+  /** 0348: Buy only — say, above the units, that no city she can sail to pays more than this costs. */
+  warn?: boolean
+  /** 0348: Buy & sell — the city the buy is sold at. */
+  sellAt?: string | null
   /** The units row: the stepper, or why there is none. */
   units: ReactNode
   /** The money the units come to, signed (−paid / +got), or null while unknown. */
@@ -157,6 +185,7 @@ function Frame({
       data-good={good.code}
       data-side={side}
       data-city={city}
+      data-sell-at={sellAt ?? undefined}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-1">
         <span className="text-t-caption text-ink-muted" data-testid="good-detail-city">
@@ -175,6 +204,12 @@ function Frame({
         data-testid="good-detail-price"
       />
       <Row label={t('desk.aboardLabel')} value={<Figure value={formatInt(fleetCargoByCode(fleet)[good.code] ?? 0)} />} data-testid="good-detail-aboard" />
+      {/* 0348: before the units (and their Max), when no sale pays */}
+      {warn && (
+        <Note tone="warning" className="mt-2" data-testid="trade-no-gain">
+          {t('desk.noGainWarn')}
+        </Note>
+      )}
       {/* the units first, where a half-raised sheet shows them; the chart they are read against under them */}
       {units}
       <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
@@ -246,6 +281,7 @@ function DockedAct({
   portId,
   city,
   good,
+  noGain,
   mode,
   onClose,
   onDone,
@@ -255,6 +291,7 @@ function DockedAct({
   portId: string
   city: string
   good: MarketGood
+  noGain: boolean
   mode: TrayMode
   onClose: () => void
   onDone: (done: TradeDone) => void
@@ -287,6 +324,7 @@ function DockedAct({
       good={{ ...good, price: side === 'buy' ? good.buy : good.sell }}
       mode={mode}
       onClose={onClose}
+      warn={side === 'buy' && noGain}
       total={chosen > 0 ? total : null}
       units={
         ceiling > 0 ? (
@@ -345,6 +383,8 @@ function SailAct({
   portId,
   city,
   good,
+  sellAt,
+  noGain,
   trip,
   mode,
   onClose,
@@ -355,6 +395,9 @@ function SailAct({
   portId: string
   city: string
   good: PanelGood
+  /** 0348: Buy & sell — the city the buy is sold at; null for Sail & buy / Sail & sell. */
+  sellAt: string | null
+  noGain: boolean
   trip: Trip
   mode: TrayMode
   onClose: () => void
@@ -366,13 +409,16 @@ function SailAct({
   const b = trip.board
   const aboard = fleetCargoByCode(fleet)[good.code] ?? 0
   // the plan for THIS good and THIS city (BuySell.tsx opens it); until it stands, the panel waits for it
-  const mine = plan && plan.good === good.code && (side === 'buy' ? plan.buyAt === city && plan.sellAt === null : plan.sellAt === city && plan.buyAt === null) ? plan : null
+  const mine =
+    plan && plan.good === good.code && (side === 'buy' ? plan.buyAt === city && plan.sellAt === sellAt : plan.sellAt === city && plan.buyAt === null) ? plan : null
+  // the sale's rows (wages, dues, profit): Sail & sell, and Buy & sell (0348) — the served sell row either way
+  const sells = side === 'sell' || sellAt !== null
   const go = useTripGo({
     fleet,
     plan: mine ?? { good: good.code, buyAt: null, sellAt: null, units: null, max: null, min: null },
     board: mine ? b : null,
     units: trip.units,
-    onQueued: () => onDone({ side, units: side === 'buy' ? (mine?.units ?? cap ?? 0) : aboard, good: good.name, total: total, sailTo: city }),
+    onQueued: () => onDone({ side, units: side === 'buy' ? (mine?.units ?? cap ?? 0) : aboard, good: good.name, total: total, sailTo: sellAt ?? city }),
   })
   // THE MOST SHE CAN TAKE THERE: the board sized by her free hold (asked for no units), kept while units are asked
   const capNow = b && (b.qty.basis === 'capacity' || b.qty.basis === 'step') ? b.qty.units : null
@@ -396,8 +442,8 @@ function SailAct({
         ? -go.buyRow.cost
         : null
       : (go.sellRow?.proceeds ?? null)
-  const profit = side === 'sell' ? (go.sellRow?.profit ?? null) : null
-  const label = go.stop ?? t(side === 'buy' ? 'desk.sailBuy' : 'desk.sailSell')
+  const profit = sells ? (go.sellRow?.profit ?? null) : null
+  const label = go.stop ?? t(sellAt !== null ? 'desk.buySell' : side === 'buy' ? 'desk.sailBuy' : 'desk.sailSell')
   return (
     <Frame
       side={side}
@@ -407,6 +453,8 @@ function SailAct({
       good={good}
       mode={mode}
       onClose={onClose}
+      warn={side === 'buy' && noGain}
+      sellAt={sellAt}
       total={mine ? total : null}
       units={
         units !== null && units > 0 ? (
@@ -444,7 +492,7 @@ function SailAct({
           {go.onCredit > 0 && (
             <Row label={t('desk.onCredit')} value={<Figure value={formatPriceDelta(-go.onCredit)} tone="warning" />} data-testid="plan-on-credit" />
           )}
-          {side === 'sell' && (
+          {sells && (
             <>
               <Row label={t('desk.wages')} value={<Figure value={go.sellRow?.wages != null ? formatPriceDelta(-go.sellRow.wages) : '—'} />} data-testid="trade-wages" />
               <Row
@@ -494,7 +542,7 @@ function SailAct({
           )}
         </div>
       }
-      button={<BigButton act={side === 'buy' ? 'sail-buy' : 'sail-sell'} label={label} disabled={!mine || !go.ready} busy={go.pending} onClick={go.go} />}
+      button={<BigButton act={sellAt !== null ? 'buy-sell' : side === 'buy' ? 'sail-buy' : 'sail-sell'} label={label} disabled={!mine || !go.ready} busy={go.pending} onClick={go.go} />}
       after={mine ? <PlanVoyage fleet={fleet} board={b} buyRow={go.buyRow} sellRow={go.sellRow} /> : undefined}
     />
   )

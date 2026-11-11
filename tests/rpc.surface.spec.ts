@@ -1651,6 +1651,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // every good once. All READS, no player id (the board refuses a fleet that is not yours
       // E_NOT_YOURS). Landed WITH the face that reads them (features/command/markets).
       'worldPriceOutlook', 'worldGoodBoard', 'worldWatchlist',
+      // Pin moved deliberately 2026-11-11 with migration 0348 (owner row 307): THE BEST SALE OF EVERY GOOD A CITY SELLS,
+      // world.best_sales(fleet, port) — a READ built from world.good_board's own sell rows; no player id (a fleet that is not
+      // yours: E_NOT_YOURS). Landed WITH the line that prints it (features/command/buysell/TradeBoard.tsx).
+      'worldBestSales',
       // Pin moved deliberately 2026-10-18 with migration 0175 (docs/COMMAND_DESK.md D4): a PLAN's lines,
       // queued together or not at all — every line parsed by the one grammar and queued by the one
       // enqueuer. No player id; the fleet must be yours (E_NO_SUCH_FLEET), as cmd.issue's. Landed WITH

@@ -18,8 +18,8 @@
 import { useCallback, useState } from 'react'
 import { useReaskAtEdge } from '../components/ui'
 import { useShellState } from '../app/shellState'
-import { worldGoodBoard, worldPriceWhy } from '../lib/rpc'
-import type { GoodBoard, PriceWhy, RpcResult } from '../lib/rpc'
+import { worldBestSales, worldGoodBoard, worldPriceWhy } from '../lib/rpc'
+import type { BestSales, GoodBoard, PriceWhy, RpcResult } from '../lib/rpc'
 import { useServedRead, type ServedRead } from './useServedRead'
 import { msUntilEdge } from '../store/resourceCache'
 
@@ -84,6 +84,23 @@ export function useGoodBoard(
   fromPortId: string | null = null,
 ): ServedRead<GoodBoard> {
   return useEdgeRead('good_board', goodBoardRead(goodId, fleetId, fleetVersion, qty, fromPortId))
+}
+
+function bestSalesRead(fleetId: string | null, fleetVersion: number | null, portId: string | null): DeskRead<BestSales> {
+  const subject = fleetId && portId ? `${fleetId}:${portId}` : null
+  return {
+    subject,
+    // a trade moves her hold, and so the units that fit and the figures: a new question, as good_board's
+    question: subject ? `${subject}:${fleetVersion ?? '-'}` : null,
+    ask: () => worldBestSales(fleetId as string, portId as string),
+  }
+}
+
+/** The best sale of every good the city in hand sells, for this fleet (world.best_sales, 0348) — ONE read for the
+ *  whole board, never one per card; kept until the market's edge, asked again there, never on the beat. A refusal
+ *  or a timeout is no view: the cards simply draw no line. */
+export function useBestSales(fleetId: string | null, fleetVersion: number | null, portId: string | null): ServedRead<BestSales> {
+  return useEdgeRead('best_sales', bestSalesRead(fleetId, fleetVersion, portId))
 }
 
 /** Why a good's market price at one city is what it is (world.price_why, 0185). */

@@ -598,6 +598,16 @@ const TABLE = {
       { name: 'p_qty', type: 'numeric' },
     ],
   },
+  // 0348 (owner row 307) — THE BEST SALE OF EVERY GOOD A CITY SELLS, for your fleet: one read per city in hand
+  // (the Command board's cards), asked at the market's edge, never on the beat. world.good_board's own rows.
+  worldBestSales: {
+    schema: 'world',
+    fn: 'best_sales',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_port', type: 'uuid' },
+    ],
+  },
   worldWatchlist: { schema: 'world', fn: 'watchlist', args: [{ name: 'p_fleet', type: 'uuid' }] },
   // 0176 — WHAT YOU HOLD, in every city: the share register's rows, a share's price there now, the dividends
   // collected (docs/COMMAND_DESK.md §3.7). No arguments: the company is the caller's.
