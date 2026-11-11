@@ -234,9 +234,9 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
         sellAt={tripNow?.sellAt ?? null}
         // "no sale pays" is not the word for a good she cannot pay for (0351 `short`): that one's card says "No money"
         noGain={side === 'buy' && pickedSale !== undefined && !pickedSale.pays && !pickedSale.short}
-        otherSale={otherSale}
         trip={trip}
         mode={wide ? 'pane' : 'docked'}
+        otherSale={otherSale}
         onClose={() => pickGood(null)}
         onDone={done}
       />
