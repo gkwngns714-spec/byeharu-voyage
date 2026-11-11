@@ -59,7 +59,8 @@ for (const size of SIZES) {
       await page.locator('[data-testid="trade-row"] button:enabled').first().click()
       const tray = page.getByTestId('trade-tray')
       await expect(tray).toBeVisible()
-      // bargain and basket stand in the same tray
+      // bargain and basket stand in the same tray (the bargain under its More, S5)
+      await tray.getByTestId('trade-tray-more').click()
       await expect(tray.getByTestId('haggle-row')).toBeVisible({ timeout: 30_000 })
       await expect(tray.getByTestId('trade-tray-stage')).toBeVisible()
       await expect(tray.getByTestId('trade-tray-send')).toBeEnabled({ timeout: 30_000 })

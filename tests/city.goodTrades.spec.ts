@@ -54,6 +54,11 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
 
   // PRESS THE SAME GOOD: the list carries the buy, as mine
   await pressBuy(page, good)
+  // the city's trades stand under the tray's More (S5, 2026-11-11: the short tray)
+  const more = async () => {
+    if ((await tray.locator('[data-testid="trade-tray-detail"]').count()) === 0) await tray.locator('[data-testid="trade-tray-more"]').click()
+  }
+  await more()
   const list = tray.locator('[data-testid="city-good-trades"]')
   await expect(list).toBeVisible({ timeout: 30_000 })
   const first = list.locator('[data-testid="city-good-trade"]').first()
@@ -79,6 +84,7 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   // final page had no tray). Ask again until the list stands: press only when the tray is not there.
   await expect(async () => {
     if ((await tray.count()) === 0) await pressBuy(page, good)
+    await more()
     await expect(first).toBeVisible({ timeout: 2_000 })
   }).toPass({ timeout: 30_000 })
   await expect(first).toContainText(/you/i)

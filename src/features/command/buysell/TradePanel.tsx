@@ -18,7 +18,7 @@ import { PlanVoyage } from '../plans/PlanVoyage'
 import { useTripGo } from '../plans/useTripGo'
 import type { useTripBoard } from '../plans/useTripBoard'
 import { DayChange } from './TradeBoard'
-import { dayLine } from './dayLine'
+import { dayLine } from '../../../domain/market/dayLine'
 import type { TradeDone } from './tradeDone'
 import { firstAtMs, useChartNews } from '../../../live/useChartNews'
 
