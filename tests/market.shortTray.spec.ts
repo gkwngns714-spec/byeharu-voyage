@@ -62,7 +62,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) 
     await noSideways(page, 'the Market')
 
     // 2. THE SHORT TRAY
-    const purse = (await page.getByTestId('city-summary').innerText()).replace(/\s+/g, ' ')
+    const purse = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
     await cards.nth(1).getByTestId('trade-buy').click()
     const tray = page.getByTestId('trade-tray')
     await expect(tray).toBeVisible({ timeout: 30_000 })
@@ -103,7 +103,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 1280, height: 800 }]) 
     // 2b. …and the buy completes through the short tray
     await send.click()
     await expect(tray).toHaveCount(0, { timeout: 60_000 })
-    await expect.poll(async () => (await page.getByTestId('city-summary').innerText()).replace(/\s+/g, ' '), { timeout: 30_000 }).not.toBe(purse)
+    await expect.poll(async () => (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' '), { timeout: 30_000 }).not.toBe(purse)
     await expect(cards.first()).toBeVisible()
   })
 }
