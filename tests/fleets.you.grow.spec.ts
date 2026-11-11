@@ -217,8 +217,12 @@ test('a press on a captain opens her tray, outside the list card; closing it lea
   await open(page, GLASSES[0], 'veteran', 'you', 'you')
   await expect(page.getByTestId('your-captain')).toHaveCount(VETERAN_CAPTAINS)
   const panel = async () => JSON.stringify(await page.getByTestId('your-captains').boundingBox())
+  // the first captain's row may stand below the fold of the panel; the player scrolls it into view BEFORE the press, so the
+  // press is measured from there. (2026-11-11, S4: with the 13-px caption the row's foot stands under the fold at the
+  // first glass, so Playwright's own click scrolled it in and that scroll, not the press, moved the panel 6 px. Reading
+  // `before` after the scroll keeps the law — a press moves nothing — and takes the scroll out of it.)
+  await page.getByTestId('your-captain').first().scrollIntoViewIfNeeded()
   const before = await panel()
-  // the first captain's row may stand below the fold of the panel; a press brings it into view the way a player's scroll does
   await page.getByTestId('your-captain').first().click()
   const tray = page.getByTestId('your-captain-tray')
   await expect(tray).toBeVisible()
