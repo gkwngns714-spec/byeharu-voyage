@@ -28,6 +28,29 @@ own city, an amount, another city, and her cargo), and every card's profit and u
 | prod | `world.quote` x 225 | 594 / 1,354 ms |
 | prod (dev log 0222, 0231) | one `good_board` | ~350 ms (0222 receipt) to ~900 ms (0231) |
 
+The two prod part reads (pure, read-only, STABLE functions only; not harness files, since the harness guard counts
+EXPLAIN ANALYZE as a write):
+
+```sql
+begin transaction read only;
+explain (analyze, format json) select count(m) from (select world.mid_price(p.id, pg.good_id, pg.stock) m
+  from public.port_goods pg join public.ports p on p.id = pg.port_id
+ where p.kind = 'HARBOUR' and pg.good_id in (select id from public.goods order by code limit 15)) x;
+commit;
+-- and, one file each:
+begin transaction read only;
+explain (analyze, format json) select count(q.total) from (select pg.port_id, pg.good_id,
+       row_number() over (partition by pg.good_id order by pg.port_id) rn
+  from public.port_goods pg join public.ports p on p.id = pg.port_id
+ where p.kind = 'HARBOUR' and pg.good_id in (select id from public.goods order by code limit 15)) s
+ cross join lateral world.quote(s.port_id, s.good_id, 50, 'sell', null, null) q where s.rn <= 15;
+commit;
+```
+
+## The card
+The best sale and the good's day line are ONE 44-px block (the tap-target floor): a card grows 28 px, and the phone's
+bounded goods pane grows the same (9rem to 10.75rem), so the first row's Buy and Sell stand inside it as before.
+
 ## The prod estimate, composed (NOT measured: `best_sales` needs a signed-in player, which a read-only prod check is not)
 * By the parts (prod is 1.9–2.1x local on `mid_price`, 2.3–6.7x on `quote`): Lisbon's 10 goods 2.7–6 s.
 * By whole boards (prod `good_board` ~0.35–0.9 s against local 0.75–1.04 s): 0.5–2.5 s.

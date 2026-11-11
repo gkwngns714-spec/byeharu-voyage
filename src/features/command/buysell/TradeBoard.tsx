@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Button, Hint, Icon, Note, ScrollPane, Skeleton, Sparkline, TileChoice, TileGrid, goodIcon } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { usePriceWhy } from '../../../live/useDesk'
@@ -142,7 +142,8 @@ export function TradeBoard({
             // THE CARDS ARE THE ONE LONG LIST ON THIS FACE: at a busy quay they run past the
             // glass, so they scroll inside their own bounded pane (the page above stays put).
             // From lg the desk's centre pane is already the scroller — no second bound there.
-            <ScrollPane className="max-h-[9rem] lg:max-h-none">
+            // 0348: the bound grew by what the best sale added to a card (28 px), so the first row's buttons stand inside it as before
+            <ScrollPane className="max-h-[10.75rem] lg:max-h-none">
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
                 {rows.map((r) => (
                   <TradeCard
@@ -224,17 +225,18 @@ function TradeCard({
           {sellDead ? t('desk.noBuyer') : formatPriceFigure(sell as number)}
         </span>
       </span>
-      <BestLine sale={sale} onPress={onBest} />
-      {/* THE SPARK ROW RESERVES ITS HEIGHT WHATEVER THE READ HAS LANDED (2026-10-31). `h-4` alone
-          did not: `flex-1` set a flex-basis of 0 and the item's automatic minimum came from its
-          CHILD, so a card whose price series had not landed was 16 px SHORTER — the card grew the
-          moment the read arrived, and a press that opened the ticket moved the rows below it
-          (desk.terminal's "a press moved the list": measured spark 0→16 px, card 113→129 px).
-          `shrink-0` makes h-4 the height in every state, so the list is the same list before and
-          after any read or press. */}
-      <span className="flex h-4 min-w-0 shrink-0 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
-        {!buyDead && <Sparkline values={line.values} width={96} height={16} className="h-4 w-full" />}
-      </span>
+      <SaleBlock sale={sale} onPress={onBest}>
+        {/* THE SPARK ROW RESERVES ITS HEIGHT WHATEVER THE READ HAS LANDED (2026-10-31). `h-4` alone
+            did not: `flex-1` set a flex-basis of 0 and the item's automatic minimum came from its
+            CHILD, so a card whose price series had not landed was 16 px SHORTER — the card grew the
+            moment the read arrived, and a press that opened the ticket moved the rows below it
+            (desk.terminal's "a press moved the list": measured spark 0→16 px, card 113→129 px).
+            `shrink-0` makes h-4 the height in every state, so the list is the same list before and
+            after any read or press. */}
+        <span className="flex h-4 min-w-0 shrink-0 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
+          {!buyDead && <Sparkline values={line.values} width={96} height={16} className="h-4 w-full" />}
+        </span>
+      </SaleBlock>
       <span className="flex items-center gap-2">
         <Button variant="secondary" className="flex-1" onClick={() => onBuy(r.code)} disabled={buyDead} data-testid="trade-buy">
           {t('desk.buy')}
@@ -247,43 +249,58 @@ function TradeCard({
   )
 }
 
-/** 0348: ONE GOOD'S BEST SALE — the city and the served profit (world.best_sales), in ONE text line whose height is held
- *  whatever has landed (h-5, shrink-0), so the card is the same card before and after the read: nothing below moves.
- *  Green: it pays. Red "No gain": no city she can sail to pays (the figure is the least loss, and still pressable — the
- *  tray says why). Red "No gain" with no city: no city she can sail to is priced at all; "Cargo full": no room for one. */
-function BestLine({ sale, onPress }: { sale: BestSale | undefined; onPress: (sale: BestSale) => void }) {
+/** 0348: ONE GOOD'S BEST SALE — the city and the served profit (world.best_sales) — over the good's day line, the two as
+ *  ONE 44-px block (the tap-target floor) whose height is held whatever has landed, so the card is the same card before and
+ *  after the read: nothing below moves. With a sale the whole block is the press. Green: it pays. Red "No gain": no city she
+ *  can sail to pays (the figure is the least loss, still pressable — the tray says why); with no city at all, no press;
+ *  "Cargo full": no room for one. A long city name is cut and read whole from the block's title. */
+function SaleBlock({ sale, onPress, children }: { sale: BestSale | undefined; onPress: (sale: BestSale) => void; children: ReactNode }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
-  const box = 'flex h-5 min-w-0 shrink-0 items-center gap-1 text-t-caption tabular-nums'
-  if (!sale) return <span className={box} data-testid="best-sale" data-state="wait" aria-hidden="true" />
-  if (sale.port === null || sale.profit === null) {
+  const block = 'flex h-11 w-full min-w-0 shrink-0 flex-col justify-center gap-1'
+  const line = 'flex h-5 w-full min-w-0 items-center gap-1 text-t-caption tabular-nums'
+  if (!sale || sale.port === null || sale.profit === null) {
     return (
-      <span className={`${box} text-danger`} data-testid="best-sale" data-state="none" data-pays="false">
-        {t(sale.basis === 'step' ? 'desk.holdFull' : 'desk.noGain')}
-      </span>
+      <div className={block}>
+        {sale ? (
+          <span className={`${line} text-danger`} data-testid="best-sale" data-state="none" data-pays="false">
+            {t(sale.basis === 'step' ? 'desk.holdFull' : 'desk.noGain')}
+          </span>
+        ) : (
+          <span className={line} data-testid="best-sale" data-state="wait" aria-hidden="true" />
+        )}
+        {children}
+      </div>
     )
   }
   const city = portNameOf(portByCode, sale.port)
+  const words = `${sale.pays ? '' : `${t('desk.noGain')} · `}${city} ${formatPriceDelta(sale.profit)}`
   return (
     <button
       type="button"
       onClick={() => onPress(sale)}
-      aria-label={`${t('desk.bestSale')}: ${city} ${formatPriceDelta(sale.profit)}`}
-      className={`${box} w-full rounded text-left transition hover:bg-surface-1 active:scale-[0.99] ${sale.pays ? 'text-success' : 'text-danger'}`}
-      data-testid="best-sale"
-      data-state="sale"
-      data-port={sale.port}
-      data-pays={sale.pays ? 'true' : 'false'}
-      data-profit={sale.profit}
-      data-units={sale.units ?? ''}
+      title={words}
+      aria-label={`${t('desk.bestSale')}: ${words}`}
+      className={`${block} rounded text-left transition hover:bg-surface-1 active:scale-[0.99]`}
     >
-      {!sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
-      <span className="min-w-0 truncate">
-        <PortFlag code={sale.port} /> {city}
+      <span
+        className={`${line} ${sale.pays ? 'text-success' : 'text-danger'}`}
+        data-testid="best-sale"
+        data-state="sale"
+        data-port={sale.port}
+        data-pays={sale.pays ? 'true' : 'false'}
+        data-profit={sale.profit}
+        data-units={sale.units ?? ''}
+      >
+        {!sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
+        <span className="min-w-0 truncate">
+          <PortFlag code={sale.port} /> {city}
+        </span>
+        <span className="ml-auto shrink-0 font-semibold" data-testid="best-sale-profit">
+          {formatPriceDelta(sale.profit)}
+        </span>
       </span>
-      <span className="ml-auto shrink-0 font-semibold" data-testid="best-sale-profit">
-        {formatPriceDelta(sale.profit)}
-      </span>
+      {children}
     </button>
   )
 }
