@@ -81,10 +81,13 @@ export function Tile({
   tap = 'none',
   onClick,
   disabled = false,
+  wrapName = false,
   className = '',
   children,
   ...rest
 }: {
+  /** The name keeps every word and wraps at its spaces, never cut (the owner: a name is never ended with dots). For a name the player gave: a ship, a fleet. */
+  wrapName?: boolean
   /** The identity glyph — a good's own drawn mark, a verb icon, a rarity mark. */
   mark?: ReactNode
   /** What it is called, in `t-body`. */
@@ -111,7 +114,7 @@ export function Tile({
     <>
       {mark !== undefined && <span className="flex shrink-0 items-center">{mark}</span>}
       <span className="min-w-0 flex-1">
-        <Clip className="text-t-body">{name}</Clip>
+        {wrapName ? <span className="block break-words text-t-body">{name}</span> : <Clip className="text-t-body">{name}</Clip>}
         {meta !== undefined && <span className="block break-words text-t-caption text-ink-faint">{meta}</span>}
       </span>
     </>
@@ -132,7 +135,8 @@ export function Tile({
         <span className="flex items-center gap-2">{head}</span>
       )}
       {(figure !== undefined || second !== undefined) && (
-        <span className="flex items-baseline justify-between gap-2">
+        // THE TWO FIGURES WRAP RATHER THAN RUN OUT OF THE TILE (2026-11-11): in a 160-px tile "8/20 crew 4 / 189 tons" lost its unit under the next tile.
+        <span className="flex flex-wrap items-baseline justify-between gap-x-2">
           {figure}
           {second}
         </span>

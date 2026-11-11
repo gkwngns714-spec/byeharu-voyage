@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Bar, Button, Figure, Row, SectionColumns, SheetSection } from '../../components/ui'
+import { Bar, Button, Figure, Note, Row, SectionColumns, SheetSection } from '../../components/ui'
 import { formatOfTotal } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
@@ -54,7 +54,7 @@ import { useT } from '../../lib/i18n'
 // stands at the fold's foot, in flow, never pinned. (The keep button went with the standing order,
 // owner row 203 / 0225: supplies are bought automatically at every SAIL.)
 
-export function FleetFold({ fleet }: { fleet: FleetView }) {
+export function FleetFold({ fleet, onOpenShip }: { fleet: FleetView; onOpenShip: (shipId: string) => void }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
@@ -93,6 +93,10 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       {fleet.ships.length === 0 ? (
         <>
           <Row label={t('fleets.noShips')} tone="muted" hairline={false} data-testid="fleet-no-ships" />
+          {/* F5: the server leaves an empty fleet unable to sail; say so, and say how a ship comes to it */}
+          <Note tone="neutral" data-testid="fleet-empty-how">
+            {t('fleets.emptyFleet')}
+          </Note>
           {/* 0354: an empty fleet keeps her name, and may take a new one */}
           <RenameFleet fleet={fleet} className="mt-4 w-full" />
         </>
@@ -101,7 +105,7 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       <FleetTotals fleet={fleet} />
       <SectionColumns count={3}>
         <SheetSection heading={t('fleets.ships')} data-testid="fleet-fold-section">
-          <FleetShips fleet={fleet} />
+          <FleetShips fleet={fleet} onOpenShip={onOpenShip} />
         </SheetSection>
         <SheetSection heading={t('fleets.cargo')} data-testid="fleet-fold-section">
           <FleetCargo fleet={fleet} />

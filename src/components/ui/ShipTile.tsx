@@ -43,8 +43,14 @@ export function ShipTile({
   holdTotal,
   fittings = [],
   power,
+  wrapName,
+  children,
   testId = 'fleet-ship-tile',
 }: {
+  /** Her name whole, wrapped at its spaces (Tile's `wrapName`). */
+  wrapName?: boolean
+  /** The caller's own presses for this hull (Fleets: Stats and Move), at the tile's foot. */
+  children?: ReactNode
   name: string
   /** The class NAME, as served (`Carlat`). */
   className: string
@@ -70,6 +76,7 @@ export function ShipTile({
     <Tile
       mark={hull ?? (flagship ? <Icon name="ship" size={20} className="text-accent" aria-label={t('ui.flagship')} /> : undefined)}
       name={name}
+      wrapName={wrapName}
       // 0074: HER OWN SPEED, because a fitting moves one hull and not the rest.
       meta={`${className} · ${formatKnots(speedKn)}`}
       figure={<Figure value={`${formatInt(crew)}/${formatInt(crewMax)}`} unit={t('ui.unitCrew')} tone={short ? 'danger' : 'ink'} />}
@@ -99,6 +106,7 @@ export function ShipTile({
           {fittings.map((f) => (f.qty > 1 ? `${f.name} ×${formatInt(f.qty)}` : f.name)).join(' · ')}
         </span>
       )}
+      {children}
     </Tile>
   )
 }

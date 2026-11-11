@@ -410,7 +410,10 @@ export function ShipPanel({
   levelFixed = false,
   nation = null,
   seating,
+  overPage = false,
 }: {
+  /** Opened from a detail page (a fleet's page on Fleets), not from a side panel: she stands at the window's edge, one layer over that page, and Escape leaves her first. */
+  overPage?: boolean
   /** 0157: one of YOUR ships — her cabins can be seated while she is docked. A merchant's: omitted. */
   seating?: Seating
   ship: ShipView
@@ -447,7 +450,8 @@ export function ShipPanel({
 
   return (
     <Tray
-      mode="side-next"
+      mode={overPage ? 'side' : 'side-next'}
+      className={overPage ? 'z-60!' : undefined}
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={

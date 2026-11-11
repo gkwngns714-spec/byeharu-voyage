@@ -1,4 +1,4 @@
-import { Bar, Card, Clip, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
+import { Bar, Card, Clip, Icon, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import type { FleetView, LevelTrack, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -7,6 +7,8 @@ import { CaptainRows, CaptainTray } from '../../live/YourCaptains'
 import { useYourCaptains } from '../../live/useYourCaptains'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
+import { Link } from 'react-router-dom'
+import { companyRoom, useHouseRoom } from '../../live/houseRoom'
 
 // YOU — the owner, row 181 (2026-10-20): *"Create a tab for personal info, such as my level, my
 // ships, captains, achievements, levels etc."*
@@ -70,6 +72,7 @@ function YouBody({ title }: { title: string }) {
         stickySide
         main={
           <>
+            <RoomLine />
             <Ships fleets={fleets} />
             <ListPanel
               look="card"
@@ -94,6 +97,27 @@ function YouBody({ title }: { title: string }) {
       />
       <CaptainTray face={face} />
     </Sheet>
+  )
+}
+
+/** THE ROOM THE COMPANY HAS, ONE LINE (F5, 2026-11-11; docs/FLEETS_AND_SLOTS.md 2.7): fleets she has of the fleets she may have, ships of the ships she may have, as
+ *  `world.house_room` serves them (the caps the server enforces now, lit or dark). The line is the link to Fleets, where the room is used and opened. */
+function RoomLine() {
+  const t = useT()
+  const room = companyRoom(useHouseRoom())
+  if (!room) return null
+  return (
+    <Link to="/fleets" className="mb-4 flex min-h-11 flex-wrap items-center gap-x-2 rounded-control text-t-body text-ink hover:text-accent" data-testid="you-room">
+      <span className="tabular-nums">
+        {t('you.room', {
+          a: formatInt(room.fleets.used),
+          b: formatInt(room.fleets.have),
+          c: formatInt(room.hulls.used),
+          d: formatInt(room.hulls.have),
+        })}
+      </span>
+      <Icon name="chevron" size={16} className="text-ink-muted" />
+    </Link>
   )
 }
 
