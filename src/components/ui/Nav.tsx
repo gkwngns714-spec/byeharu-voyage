@@ -33,6 +33,15 @@ import { useT } from '../../lib/i18n'
 // keeps its href for everything else. Modified clicks are deliberately NOT intercepted: those are
 // the ones that mean "open this somewhere else", and the browser is right about them.
 
+// ── ON A WIDE GLASS THE CELLS STAND TOGETHER IN THE MIDDLE (2026-11-11, the remaster's S4) ──────────
+// The playtest at 1280: five cells spread across 1,280 px put 256 px between one tab and the next, and the
+// bar read as a footer rather than a control. From `lg` (WIDE_QUERY) each cell takes a fixed 7 rem and the
+// row stands centred on the band; the band itself (its surface, its hairline, its 56-px height) is the same
+// at every width, because every tray and panel in the game stops `bottom-14` above it (screenLayout.ts).
+// A left RAIL was the proposal and was NOT done here: the Menu tray hangs off the bar's top edge in
+// NavBar.tsx and the docked trays read the bar's height from screenLayout.ts, so a rail is a shell change,
+// not a primitive's. Driven only by `items`, so it holds whatever cells the shell passes.
+
 export interface NavItem {
   id: string
   label: ReactNode
@@ -76,13 +85,13 @@ export function Nav({
   return (
     <nav
       aria-label={t('ui.tabs')}
-      className={`flex shrink-0 items-stretch border-t border-edge bg-surface ${className}`}
+      className={`flex shrink-0 items-stretch border-t border-edge bg-surface lg:justify-center ${className}`}
       {...rest}
     >
       {items.map((item) => {
         const on = item.id === current
         const cell = [
-          'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1',
+          'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 lg:w-28 lg:flex-none',
           on ? 'text-accent' : 'text-ink-faint',
         ].join(' ')
         const label = (

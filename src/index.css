@@ -72,7 +72,8 @@
    Accent   gold — the ONE interactive colour: selected, primary action, your fleet on the chart.
             Semantic: success (cheap/gain/safe) / danger (dear/loss) / warning (short, halted) /
             info (moving). Green-red ONLY ever mean cheap-dear or gain-loss.
-   Type     ONE family, Inter, self-hosted. Six sizes, `--text-t-*`, §4.1. No serif, no mono, no
+   Type     ONE family, Inter, self-hosted. Six sizes (13 · 14 · 16 · 20 · 24 · 28, 2026-11-11) under eight
+            `--text-t-*` names, §4.1. No serif, no mono, no
             uppercase voice, no letter-spacing. Figures are tabular.
    Space    4-pt base, 8-pt rhythm: 4 · 8 · 12 · 16 · 24 · 32 · 48 and nothing else.
    Shape    sheet 16 · tile 12 · control 10 · chip 999. NO cut corners.
@@ -102,15 +103,19 @@
   --color-edge: rgb(255 255 255 / 0.08);
 
   /* the three inks, and only three. Measured on --color-surface:
-       ink        15.72 : 1     ink-muted   8.09 : 1     ink-faint   6.06 : 1
+       ink        15.72 : 1     ink-muted   9.32 : 1     ink-faint   5.78 : 1
      ink-faint is the ONE deviation from the direction's §4.4 table, which asks for #6c7684. That
      value measures 3.73 : 1 on this surface — below AA for the 10-11px text it is used on at 93
      sites — and it also breaks the chart: the quiet port mark is `stroke-ink-faint/85`, and at
      #6c7684 the mark stops out-contrasting the land it sits on (measured 1.88 : 1 against a
      2.05 : 1 ground, which tests/chart.ink.spec.ts fails on purpose). The value kept is the one
-     the tree already shipped and the chart is already tuned against. */
+     the tree already shipped and the chart is already tuned against.
+     2026-11-11 (S4): ink-muted lifted #a9b3c0 → #b6c0cc, so the secondary voice reads as text and not as grey on navy:
+     10.36 on bg · 9.32 on surface · 8.30 on surface-2 · 9.42 on sea-1. ink-faint stays where it is ON PURPOSE: the chart
+     is mixed from it (land, coast, marks, names) and the map does not move; it measures 6.42 · 5.78 · 5.15 · 5.84 on
+     those four, all clear of AA. */
   --color-ink: #f3f5f8;
-  --color-ink-muted: #a9b3c0;
+  --color-ink-muted: #b6c0cc;
   --color-ink-faint: #8b97a5;
 
   /* the one interactive colour, and the four meanings. Measured on --color-surface, and as the
@@ -327,7 +332,7 @@
      lit bars out of five (GoodClassMark), so the class survives a colourblind player and a
      greyscale screenshot.
      Measured by tests/good.class.spec.ts from THIS file's own figures — contrast on --color-surface
-     and on the inset --color-surface-2, night: 1 ink-faint 5.78 / 5.15 · 2 ink-muted 8.09 / 7.21 ·
+     and on the inset --color-surface-2, night: 1 ink-faint 5.78 / 5.15 · 2 ink-muted 9.32 / 8.30 ·
      3 ink 15.72 / 14.00 · 4 #ee9a5c 7.70 / 6.85 · 5 #ffdc6a 12.83 / 11.43 (all ≥ 4.5). */
   --color-class-1: var(--color-ink-faint);
   --color-class-2: var(--color-ink-muted);
@@ -345,20 +350,38 @@
      uppercase, no letter-spacing, no italics. The scale is the whole vocabulary — a screen that
      needs a seventh size has a layout problem, not a type problem.
 
-       t-caption  12/16  500   units, secondary meta, chip text
+       t-caption  13/18  500   units, secondary meta, chip text
        t-label    14/20  400   row labels, body copy, a tile's second line
        t-body     16/22  500   row values, tile name, button text
        t-title    20/26  600   sheet title, section heading
        t-figure   24/28  600   the ONE figure a block is about (price, ETA, purse)
-       t-hero     34/38  600   the headline figure of a sheet (capacity, passage days)
-     (+ t-card and t-page below: the page layout's two voices, 2026-11-02)
+       t-hero     28/32  600   the headline figure of a sheet (capacity, passage days)
+     (+ t-card 20/26 and t-page 28/32 below: the page layout's two voices, 2026-11-02)
 
      Figures are tabular: `t-figure` and `t-hero` carry `tabular-nums` themselves (further down),
      and Tailwind's own `tabular-nums` utility is available anywhere else a column must line up. */
   --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
-  --text-t-caption: 0.75rem;
-  --text-t-caption--line-height: 1rem;
+  /* ── SIX SIZES, NOT EIGHT (2026-11-11, the remaster's S4; owner: *"much more simpler, easy to handle"* and *"visually
+     appealing too"*). The playtest at 390 and 1280 counted 41-48 nodes of 12-px grey text on one screen and up to eight
+     sizes (12 14 16 18 20 24 30 34) with no clear order. The eight names stay — 400+ call sites say them, and renaming is
+     not the job — but they now land on six sizes: the words in three levels (small, value, heading) and two figures.
+       13   small     caption: units, meta, chip and tab text (was 12)
+       14   small     label: row labels, body copy, a tile's second line
+       16   value     body: row values, tile names, button text
+       20   heading   title and card: a sheet's, a section's and a card's title (card was 18)
+       24   figure    figure: the one number a row or a block is about
+       28   headline  hero and page: a sheet's headline figure, and a page's own title (were 34 and 30)
+     MEASURED, NOT CHOSEN — why the scale is not the four steps 14 / 16 / 20 / 28 the brief asked about:
+       · caption at 14 put "Merchants" 4 px over its neighbour in the Stats tabs at 320 (a 51-px segment;
+         tests/stats.design.spec.ts) and broke "Lisbon" mid-word in Command's port chips at 390. At 13 the tabs fit.
+       · figure at 28 outgrows a Row's one 24-px line (`.bv-row-line`, end of this file) and its baseline drags the row
+         off true: tests/align.spec.ts measured the shipyard's Damage row at 4.5 px and a stat line at 10.5 px against a
+         2-px law. So the figure keeps the line's own size and the headline takes the step above it.
+       · title at line 28 made the Menu tray's head 2 px taller than NavBar's tray arithmetic (tests/nav.geometry.spec.ts),
+         so the heading keeps its 26-px line. */
+  --text-t-caption: 0.8125rem;
+  --text-t-caption--line-height: 1.125rem;
   --text-t-caption--font-weight: 500;
   --text-t-label: 0.875rem;
   --text-t-label--line-height: 1.25rem;
@@ -372,8 +395,8 @@
   --text-t-figure: 1.5rem;
   --text-t-figure--line-height: 1.75rem;
   --text-t-figure--font-weight: 600;
-  --text-t-hero: 2.125rem;
-  --text-t-hero--line-height: 2.375rem;
+  --text-t-hero: 1.75rem;
+  --text-t-hero--line-height: 2rem;
   --text-t-hero--font-weight: 600;
 
   /* ── THE PAGE'S TWO EXTRA VOICES (2026-11-02, owner row 267: *"it looks so wrong … right now everything is
@@ -383,11 +406,12 @@
      everything else.
        t-card     18/24  600   a card's title (the page layout; 16 px `t-body` on a phone)
        t-page     30/36  600   the page's own title (the page layout, from 768; 24 px `t-figure` on a phone) */
-  --text-t-card: 1.125rem;
-  --text-t-card--line-height: 1.5rem;
+  /* 2026-11-11 (S4, the six sizes above): card joins the heading's 20 and page the headline's 28. */
+  --text-t-card: 1.25rem;
+  --text-t-card--line-height: 1.625rem;
   --text-t-card--font-weight: 600;
-  --text-t-page: 1.875rem;
-  --text-t-page--line-height: 2.25rem;
+  --text-t-page: 1.75rem;
+  --text-t-page--line-height: 2rem;
   --text-t-page--font-weight: 600;
 
   /* ── SPACE — 4-pt base, 8-pt rhythm ─────────────────────────────────────────────────────────
@@ -523,10 +547,13 @@
        the tree are still parted by `border-edge` until step 2 replaces them. */
     --color-edge: rgb(16 24 40 / 0.14);
 
-    /* ink 17.74 : 1 · ink-muted 7.56 : 1 · ink-faint 4.83 : 1, all on --color-surface. */
+    /* ink 17.74 : 1 · ink-muted 7.56 : 1 · ink-faint 5.98 : 1, all on --color-surface.
+       2026-11-11 (S4): ink-faint #6b7280 → #5b6472. The old value cleared AA on white only (4.83) and fell under it on every
+       other day surface — 4.42 on surface-2, 4.30 on bg, 3.88 on sea-1. Now 5.98 · 5.47 · 5.32 · 4.80. The day chart is
+       untouched: it wears the night's inks (`.bv-chart-night`, below). */
     --color-ink: #111827;
     --color-ink-muted: #4b5563;
-    --color-ink-faint: #6b7280;
+    --color-ink-faint: #5b6472;
 
     /* By day a hover DARKENS: the ink gets heavier on paper rather than brighter in the dark. */
     --color-accent: #8a6011;
@@ -655,7 +682,7 @@
     --color-sea-2: #070c14;
     --color-edge: rgb(255 255 255 / 0.08);
     --color-ink: #f3f5f8;
-    --color-ink-muted: #a9b3c0;
+    --color-ink-muted: #b6c0cc;
     --color-ink-faint: #8b97a5;
     --color-accent: #e2b45c;
     --color-info: #6aa9f5;
