@@ -39,7 +39,10 @@ test("You → a hired captain's tray keeps every trait's name on one line and th
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.goto('city')
-  await ready(page)
+  // The Inn's room turns over on the real quarter hour (0119, `inn_captain_rotate_minutes` 15): a guest whose tray was opened before
+  // the edge is refused E_NOT_IN_THE_ROOM after it, and the tray stays open (main's run on 3e1abcf7 pressed at 20:00:00 UTC). So step
+  // across a near edge first. `quietMs` waits out the drift slot's edge (900 s), which is the Inn's edge today; they are two knobs.
+  await ready(page, { quietMs: 30_000 })
   // HIRE: HQ → Inn → Captains → the first guest → the tray's one button. The tray closes on the server's yes.
   await page.getByTestId('city-building-inn').click()
   await page.getByTestId('city-inn-captains').click()
