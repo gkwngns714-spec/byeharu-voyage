@@ -306,3 +306,4 @@ it taught.
 | 307 | Owner 2026-11-11: *"continue work, remaster the game - make it playable, make it fun"* | **OPEN.** Playtest audit running (new player, local world, 390 and 1280); slices follow from its report. | Nothing built yet. |
 | 308 | Owner 2026-11-11: *"first 10 minute is very important. make quests, guides, etc. step by step"* | **OPEN.** The audit was re-aimed at the first 10 minutes and must return a step-by-step quest/guide chain. | Nothing built yet. |
 | 309 | Owner 2026-11-11: *"and overall, if necessary, change the UI (graphics, frontend) of the game so that it is much more simpler, easy to handle"* | **OPEN.** The audit now also returns a per-screen simplicity read and UI slices. | Nothing built yet. No feature the owner asked for is deleted; it may move behind a later step. |
+| 310 | Owner 2026-11-11: *"and visually appealing too"* (the UI) | **OPEN.** The audit also judges the look and proposes a shared visual slice. | Nothing built yet. |
