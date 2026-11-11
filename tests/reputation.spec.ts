@@ -62,6 +62,10 @@ for (const size of SIZES) {
         }
         await insideGlass()
 
+        // the Trade screen's goal card carries the same served balance on its second line (the phone's place for it)
+        await expect(page.getByTestId('goal-reputation')).toHaveAttribute('data-value', '0')
+        await expect(page.getByTestId('goal-reputation')).toHaveText(/^Reputation\s+0$/)
+
         const { code, city } = await findCarry(page)
         await buyHere(page, code)
         await sailAndSell(page, code, city)

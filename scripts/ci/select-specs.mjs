@@ -35,7 +35,13 @@
 //      the spec that reads that folder (tests/flags.spec.ts, `'public', 'flags'`) is the one it
 //      selects; a change to Flag.tsx itself is still rule A.
 //   I  TEST IDS: a browser spec that names a data-testid which a changed (or rule-S-affected) src
-//      file declares, or declared before the change.
+//      file declares, or declared before the change. "Before" is the BASE version of the file, read
+//      whole and under its OLD path when the diff renamed it (2026-11-11), so an id a PR removes,
+//      renames, or drops while moving the file still selects the specs that name it.
+//      WHAT NO RULE HERE CAN SEE: a spec that is not in the judged tree. #583's one PR run judged a
+//      merge onto a main 56 minutes older than #578, which added tests/market.shortTray.spec.ts;
+//      #583 merged four hours later on that stale green
+//      (docs/dev-log/2026-11-11-ci-selector-removed-ids.md).
 //   L  FACES: a changed .tsx/.css under src/features, src/live or src/components → layout.spec,
 //      wide.layout.spec and align.spec, which measure every tab's tables, and every list's rows
 //      (one line per row, one column per list, no cut sentence, no label on a chart line — owner
@@ -229,7 +235,16 @@ function catalogKeys(tree) {
   return keys
 }
 
-const wordIn = (text, w) => new RegExp(`(^|[^A-Za-z0-9_])${w.replace(/[.$]/g, '\\$&')}([^A-Za-z0-9_]|$)`).test(text)
+/** Rule I's ids: every data-testid a file's text declares (a template id gives its fixed prefix). */
+export function testIdsIn(text) {
+  const ids = new Set()
+  for (const m of (text ?? '').matchAll(/data-testid=["'{`]+([\w-]+)/g)) ids.add(m[1])
+  return ids
+}
+/** The ids rule I follows for one changed file: what it declares now, and what its base version declared. */
+export const ruleIIds = (headText, baseText) => new Set([...testIdsIn(headText), ...testIdsIn(baseText)])
+
+const wordIn =(text, w) => new RegExp(`(^|[^A-Za-z0-9_])${w.replace(/[.$]/g, '\\$&')}([^A-Za-z0-9_]|$)`).test(text)
 
 // ── THE SELECTION ──────────────────────────────────────────────────────────────────────────────
 const FULL_RULES = [
@@ -338,6 +353,8 @@ export function select({ base, head, full = false }) {
     const deps = buildGraph(tree)
     const reach = new Map(specs.map((s) => [s, reachOf(deps, s)]))
     const affected = new Map() // src file → why it counts as changed
+    const oldPathOf = new Map(changed.filter((c) => c.oldPath).map((c) => [c.path, c.oldPath]))
+    const added = new Set(changed.filter((c) => c.status === 'A').map((c) => c.path))
     for (const c of changed) affected.set(c.path, 'changed')
 
     // S — added migrations
@@ -420,11 +437,14 @@ export function select({ base, head, full = false }) {
       if (FLAGS_RE.test(f)) for (const [s, t] of text) if (t.includes("'public', 'flags'")) pick(s, `A: ${f} is a flag picture this spec holds to the nations`)
       if (FACE_RE.test(f)) for (const s of ['tests/layout.spec.ts', 'tests/wide.layout.spec.ts', 'tests/align.spec.ts']) if (text.has(s)) pick(s, `L: ${f} is a face this spec measures${tag}`)
       if (!/^src\/.*\.(tsx?|mjs)$/.test(f)) continue
-      const ids = new Set()
-      for (const m of (tree.read(f) ?? '').matchAll(/data-testid=["'{`]+([\w-]+)/g)) ids.add(m[1])
-      if (why === 'changed') {
-        try { for (const m of fileDiff(base, head, f).matchAll(/^-.*?data-testid=["'{`]+([\w-]+)/gm)) ids.add(m[1]) } catch { /* a new file has no old side */ }
+      // The base version is read whole, under its OLD path when the diff renamed the file: `git diff --
+      // <new path>` shows a renamed file as all added, with no '-' line, so an id dropped in the same
+      // commit as the move was invisible before 2026-11-11.
+      let before = null
+      if (why === 'changed' && !added.has(f)) {
+        try { before = git(['show', `${base}:${oldPathOf.get(f) ?? f}`]) } catch { /* no old side */ }
       }
+      const ids = ruleIIds(tree.read(f), before)
       for (const id of ids) {
         for (const s of browser) {
           const t = text.get(s)
@@ -604,6 +624,20 @@ const CONTROLS = [
       [has('route.stopface.spec.ts'), 'route.stopface selected'],
     ],
   },
+  // #583 REMOVED the HQ's earnings card and its data-testid="city-summary". Main went red on
+  // market.shortTray (it reads that id), city.phone and hq.design (they measure the HQ). The rules DO
+  // select all three on this commit; the PR's own run never saw market.shortTray because it judged a
+  // main older than the PR that added the spec. This pins the answer so no rule change can lose it.
+  {
+    name: 'a removed test id (67681824, #583: CityScreen drops city-summary) → the spec that reads it, and the HQ specs',
+    sha: '67681824',
+    check: (s, has) => [
+      [s.mode === 'scoped', 'scoped'],
+      [s.specs.find((x) => x.file === 'market.shortTray.spec.ts')?.why.some((w) => w.startsWith('I: names data-testid "city-summary"')) === true, 'market.shortTray selected by rule I for "city-summary", an id only the base version declares'],
+      [has('city.phone.spec.ts') && has('hq.design.spec.ts'), 'city.phone + hq.design selected (they measure the HQ)'],
+      [s.specs.length < 120, `still scoped in size (got ${s.specs.length})`],
+    ],
+  },
   {
     name: 'chain machinery (8c73c0f: src/lib/db, scripts/db) → full suite + growth test',
     sha: '8c73c0f',
@@ -614,8 +648,22 @@ const CONTROLS = [
   },
 ]
 
+// Rule I's id reading, on fixed texts (no commit needed): every shape a diff can give one file.
+const ID_CONTROLS = [
+  ['an id only ADDED: the head ids, nothing else', ruleIIds('<a data-testid="new-id" /><b data-testid="kept" />', '<b data-testid="kept" />'), ['kept', 'new-id']],
+  ['an id REMOVED: still followed, from the base version', ruleIIds('<b data-testid="kept" />', '<a data-testid="gone" /><b data-testid="kept" />'), ['gone', 'kept']],
+  ['an id RENAMED: both names followed', ruleIIds("<a data-testid='new-name' />", "<a data-testid='old-name' />"), ['new-name', 'old-name']],
+  ['a file MOVED and an id dropped on the way (the base text is read under the old path)', ruleIIds('<b data-testid={`row-${i}`} />', '<a data-testid="dropped" /><b data-testid={`row-${i}`} />'), ['dropped', 'row-']],
+  ['a NEW file (no base version)', ruleIIds('<a data-testid="only" />', null), ['only']],
+]
+
 function selfTest() {
   let ok = true
+  for (const [name, got, want] of ID_CONTROLS) {
+    const pass = JSON.stringify([...got].sort()) === JSON.stringify(want)
+    console.log(`${pass ? 'ok  ' : 'FAIL'}  rule I ids: ${name}${pass ? '' : ` (got ${[...got].sort().join(', ')})`}`)
+    if (!pass) ok = false
+  }
   for (const c of CONTROLS) {
     let s
     try {
@@ -632,7 +680,7 @@ function selfTest() {
     for (const [pass, what] of results) console.log(`      ${pass ? '✓' : '✗'} ${what}`)
     if (bad.length) ok = false
   }
-  console.log(ok ? `OK: all ${CONTROLS.length} positive controls hold` : 'FAILED: the selector no longer gives the known answer for a real commit')
+  console.log(ok ? `OK: all ${CONTROLS.length} positive controls and ${ID_CONTROLS.length} id controls hold` : 'FAILED: the selector no longer gives the known answer for a real commit')
   return ok
 }
 

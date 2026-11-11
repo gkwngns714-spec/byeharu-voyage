@@ -117,4 +117,18 @@ Every slice runs `npx tsc -b`, `npx eslint .`, the pure specs, `duplication` and
 - **Decided by default: Confirm's reason for E_LEG_TOO_FAR reads `Too far / 너무 멂`, not `Navigation N`.** The level a leg needs is not served, and working it out in the client would copy the reach rule. Also `Supplies short / 보급 부족` (E_ENDURANCE), `Sea shut / 바다 막힘` (E_SEA_CLOSED), `No water / 물길 없음`, `Same city / 같은 도시`, `Max N / 최대 N`.
 - **Decided by default: one bar shape at every width.** The bar stands at the foot of the chart (centred, 26 rem wide from `lg`). Its leg list is a fixed-height box that scrolls inside itself, so adding or undoing a stop moves nothing; the "tap the line to open the list" of §1 is not built. The kept and the next stop are both drawn with the chart's one planned-course line (dashed); the next stop is marked `?` instead of a number.
 - The leg lines are one component, `src/live/LegLines.tsx`, used by the Trade mini map and the bar.
-- `via` is served (B1) but not printed: that is B3.
+- `via` is served (B1) and printed by B3 (§8).
+
+## 8. As built: B3 (Via) and B4 (Repeat), 2026-11-11
+
+Client only, no migration. Dev-log: `docs/dev-log/2026-11-11-route-via-repeat.md`.
+
+- **B3, Via.** When the server calls the tapped leg shut and serves `via`, Confirm reads `Via N / 경유 N` and is enabled. One press keeps the N harbours and the city (N+1 stops). The harbours are the server's; the client searches for none.
+- **Decided by default: a kept leg the server calls shut holds Final and Repeat back.** The server re-judges every kept leg with the course the client proposes. If it calls one shut (a via harbour it measures longer, a hold that filled since), that leg's line shows the reason, and Final and Repeat stay disabled until Undo removes it. Before, Final did not look at kept legs again.
+- **Decided by default: `Via N` is not offered when N+1 more stops would pass the cap** (`stop_max`). The button then shows the shut reason as before.
+- **B4, Repeat.** A fifth button on the same bar. It opens the one route editor (`src/live/RouteEditor.tsx`, seeded through `seedRoute` in `src/live/standingRouteDraft.ts`) on the one pop-up page over the chart. Back, or the editor's Cancel, returns to the builder with every stop still kept. Start route saves and assigns through `cmd.standing_route_save` / `_assign`; route mode then ends and the fleet is selected.
+- **Decided by default: the loop is her harbour first, then the kept stops.** The server starts a route only on a docked fleet at one of the route's stops, and the editor has always put her harbour first. A trip that already ends at her harbour is not given it twice. So "the closing leg" is last stop → her harbour. It is judged by `world.route_legs` in the same read as the other legs, with the course the editor's save will propose.
+- **Decided by default: Repeat is disabled** with no stop kept, with the fleet at sea, when routes are switched off, and when the fleet already runs a route (the server would refuse each). When the closing leg is shut the button shows that reason in its place; over the cap it shows `Max N`.
+- **Decided by default: the seeded editor's harbours are fixed.** They are changed on the map, where they were chosen. Goods per stop are set in the editor as for any route.
+- **The editor moved** from `src/features/command/` to `src/live/` (`RouteEditor.tsx`, `RouteStop.tsx`, `standingRouteDraft.ts`), because a screen may not import another screen (`tests/sections.spec.ts`). It is still one editor.
+- **Not built:** `Navigation N` as the reason (unchanged from §7), and the `leg_refusal` hunks in `cmd.standing_route_save_for` (§7, their own PR). So a loop's save is still checked by `passage_gate` only; the builder's own judgement of every leg, the closing one included, is what stands in front of it.

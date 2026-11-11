@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { Figure, Icon, Row, goodIcon } from '../../components/ui'
-import { routeStopLines, type StopLine } from '../../domain/route'
-import { portNameOf, useWorld } from '../../live/worldStore'
-import type { StandingRouteStop } from '../../lib/rpc'
-import { useT } from '../../lib/i18n'
+import { Figure, Icon, Row, goodIcon } from '../components/ui'
+import { routeStopLines, type StopLine } from '../domain/route'
+import { portNameOf, useWorld } from './worldStore'
+import type { StandingRouteStop } from '../lib/rpc'
+import { useT } from '../lib/i18n'
 
 // ONE STOP OF A ROUTE — its port, what it SELLS, what it BUYS, and the quiet line under both.
 //

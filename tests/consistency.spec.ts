@@ -489,7 +489,7 @@ for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }] as
       const de = document.documentElement
       return {
         tiles,
-        boxes: { header: pick('city-header'), buildings: pick('city-buildings'), summary: pick('city-summary'), grid: pick('city-building-grid'), rail: pick('city-rail'), hall: pick('city-hall-panel'), image: pick('city-info-image') },
+        boxes: { header: pick('city-header'), buildings: pick('city-buildings'), split: pick('city-top'), grid: pick('city-building-grid'), rail: pick('city-rail'), hall: pick('city-hall-panel'), image: pick('city-info-image') },
         doc: { sw: de.scrollWidth, cw: de.clientWidth, sh: de.scrollHeight, ch: de.clientHeight },
       }
     })
@@ -503,12 +503,12 @@ for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }] as
     }
     // THE FRAME'S ORDER AND AIR (owner, 2026-10-31: "Pack them up … without scrolling down"): the
     // six doors stand above the split, the figures below it, and the rail follows the figures with
-    // no dead band. (The earnings block is INSIDE the figures card since #426.)
+    // no dead band. (2026-11-11: the frame's "Your earnings" card is gone, the status strip prints the purse; the split is read by its own box.)
     const b = m.boxes
-    expect(b.header !== null && b.buildings !== null && b.grid !== null && b.summary !== null && b.rail !== null, 'a HQ frame block is missing').toBe(true)
-    expect(b.grid!.b, 'the six doors overlap the split below them').toBeLessThanOrEqual(b.summary!.t + 1)
+    expect(b.header !== null && b.buildings !== null && b.grid !== null && b.split !== null && b.rail !== null, 'a HQ frame block is missing').toBe(true)
+    expect(b.grid!.b, 'the six doors overlap the split below them').toBeLessThanOrEqual(b.split!.t + 1)
     // (2026-11-04, the HQ is a page: row 267 reverses the packed frame — the page scrolls above a rail that stays on the glass's foot, so the "no dead band"
-    // law of the 100dvh frame becomes "the rail stands at the glass's bottom edge"; the doors stand above the purse and the panel.)
+    // law of the 100dvh frame becomes "the rail stands at the glass's bottom edge"; the doors stand above the panel.)
     expect(Math.abs(b.rail!.b - size.height), 'the rail is not at the glass foot').toBeLessThanOrEqual(1)
     expect(b.rail!.b, 'the rail hangs below the glass').toBeLessThanOrEqual(size.height + 1)
   })
@@ -533,7 +533,7 @@ test('the City rail equals the shell rail, cell for cell', async ({ page, reques
 test('HQ: a building press changes only the split; the six doors and the frame stay at 390 and 320', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
-  const FRAME = ['city-header', 'city-buildings', 'city-building-grid', 'city-summary', 'city-rail']
+  const FRAME = ['city-header', 'city-buildings', 'city-building-grid', 'city-rail']
   for (const size of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
     await page.setViewportSize(size)
     await screen(page, 'city')

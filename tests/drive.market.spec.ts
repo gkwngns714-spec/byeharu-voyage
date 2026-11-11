@@ -108,7 +108,7 @@ test('Market: a capital lists 10 goods, every quay 4 to 10, and the Requests doo
 for (const size of [WIDE, PHONE]) {
   test(`Market @${size.width}: the chart follows the pressed good, a buy completes in the panel, SELL then lists the cargo, no page pops up`, async ({ page, request, baseURL }) => {
     await openCity(page, request, baseURL, size)
-    const purseBefore = (await page.getByTestId('city-summary').innerText()).replace(/\s+/g, ' ')
+    const purseBefore = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
     await openMarket(page)
     const names = await buyRows(page)
     expect(names.length).toBeGreaterThanOrEqual(2)
@@ -140,9 +140,9 @@ for (const size of [WIDE, PHONE]) {
     await send.click()
     await expect(tray).toHaveCount(0, { timeout: 60_000 })
     await expect
-      .poll(async () => (await page.getByTestId('city-summary').innerText()).replace(/\s+/g, ' '), { timeout: 30_000 })
+      .poll(async () => (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' '), { timeout: 30_000 })
       .not.toBe(purseBefore)
-    console.log(`@${size.width}: purse ${purseBefore} → ${(await page.getByTestId('city-summary').innerText()).replace(/\s+/g, ' ')}`)
+    console.log(`@${size.width}: purse ${purseBefore} → ${(await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')}`)
 
     // the list is back beneath BUY; the FIRST good's press moves the chart to it
     await expect(rows.first()).toBeVisible({ timeout: 30_000 })
