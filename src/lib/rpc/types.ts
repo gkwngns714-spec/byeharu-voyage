@@ -1820,6 +1820,26 @@ export interface PlayerHouse {
   owed?: number
   /** 0241: true while a SAIL's stores may run on credit (the economy closed) — absent otherwise. */
   on_credit?: boolean
+  /** 0352 — her Reputation (`public.reputation_card`). Absent before 0352. */
+  reputation?: ReputationCard
+}
+
+/** 0352 — one row of the Reputation book, as the card serves it. `delta` is positive for an earn, negative for a spend. */
+export interface ReputationRow {
+  seq: number
+  kind: string
+  delta: number
+  at: string
+}
+
+/** 0352 — `public.reputation_card`: the balance, what the capped kinds earned today against the day's cap, the newest
+ *  book row's number, and the 8 newest rows (newest first). A company that has earned nothing reads zeros. */
+export interface ReputationCard {
+  balance: number
+  today: number
+  cap: number
+  seq: number
+  recent: ReputationRow[]
 }
 
 /** One track of DESIGN 8. `level` is the same curve for all three, so "level 4" means one amount
