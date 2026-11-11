@@ -57,6 +57,8 @@ import type {
   SeatedCaptain,
   CaptainsView,
   CaptainStatsView,
+  CaptainSkillsView,
+  CaptainSkillUp,
   TraitsSet,
   PromotedCaptain,
   AugmentedFitting,
@@ -601,6 +603,16 @@ export function worldCaptains(): Promise<RpcResult<CaptainsView>> {
 /** 0337 — one captain's SHEET (`world.captain_stats`): her five stats, each her level in its track and the parts she adds, every figure the server's. By officer code; null when you keep no such captain. */
 export function worldCaptainStats(code: string): Promise<RpcResult<CaptainStatsView | null>> {
   return call<CaptainStatsView | null>('worldCaptainStats', [code])
+}
+
+/** 0355 — one captain's SKILLS (`world.captain_skills`): each skill's step, her grade's ceiling, the next step's cost and whether the door would take it. By officer code; null when you keep no such captain. */
+export function worldCaptainSkills(code: string): Promise<RpcResult<CaptainSkillsView | null>> {
+  return call<CaptainSkillsView | null>('worldCaptainSkills', [code])
+}
+
+/** 0355 — one step of one skill of a captain, bought with Reputation. Only ashore or in port; the refusal says why (the same reading `worldCaptainSkills` prints). */
+export function cmdCaptainSkillUp(code: string, trait: string) {
+  return call<CaptainSkillUp>('cmdCaptainSkillUp', [code, trait])
 }
 
 /** 0160 — the traits a captain USES (up to her grade's slots, among those she knows). Only ashore or

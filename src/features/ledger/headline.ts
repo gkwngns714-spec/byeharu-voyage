@@ -9,6 +9,7 @@ import { routePausedEventWords } from '../../domain/route'
 import { num, str } from '../../lib/json'
 import type { LedgerEvent, RegardBand } from '../../lib/rpc'
 import { getLocale, properName, t, type TKey } from '../../lib/i18n'
+import { skillWord } from '../../live/skillWords'
 
 // ── THE ONE HEADLINE COMPOSER ───────────────────────────────────────────────────────────────────
 // One sentence per server kind, built from that kind's payload and nothing else. The payloads are
@@ -26,6 +27,7 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
 //   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
 //   ENROLLED      {skill, code, port, cost}                       (0131 — enrolment in a skill)
+//   CAPTAIN_SKILL {officer, name, trait, word, rank, cost}        (0355 — a step of a captain's skill, bought with Reputation; trait is the CODE, word the server's word)
 //   ROUTE_LAP     {route, fleet, lap, stops, sold, bought, supplies, repairs, wages, net, skipped, skipped_lines}  (0092)
 //   ROUTE_PAUSED  {route, fleet, reason, code?, sentence?}        (0092; 0093: sentence names ports)
 //   NATION_CHANGED {from, from_name, to, to_name}                 (0143 — codes and names)
@@ -198,6 +200,17 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
       const level = num(p, 'level')
       const lv = level === null ? '' : t('history.toLevel', { n: formatInt(level) })
       return t('history.trained', { skill, level: lv, at: at(str(p, 'port')) })
+    }
+    case 'CAPTAIN_SKILL': {
+      // 0355: a step of a captain's skill, bought with Reputation. Who, which skill, the step she now stands at, what it cost. No gold moved.
+      const rank = num(p, 'rank')
+      const cost = num(p, 'cost')
+      return t('history.captainSkill', {
+        captain: str(p, 'name') ?? t('history.anOfficer'),
+        skill: skillWord(str(p, 'trait') ?? '', str(p, 'word') ?? ''),
+        rank: rank === null ? '' : formatInt(rank),
+        cost: cost === null ? '' : formatInt(cost),
+      })
     }
     case 'ENROLLED': {
       // 0131: the tuition of a skill, paid once where it is taught; its levels then train by time.
