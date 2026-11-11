@@ -78,9 +78,11 @@ The design's worked example was 28 + 12 + 25 = 65; the self-assert reproduces th
 - The migration on the cached prefix: green 6 times; once more in a world with `city_treasury_enabled` and
   `economy_closed` set (the door refused the probe, printed, and the file still applied).
 - Proof 55 alone: 8 of 8 markers.
-- `tests/reputation.spec.ts`: 4 of 4 (390 and 1280, EN and KO), headless, a preview on port 47352.
+- `tests/reputation.spec.ts`: 4 of 4 (390 and 1280, EN and KO), headless, a preview on port 47352. At 390 px in Korean the game hour is
+  cut in the top bar on main already (the bar's Korean words are wider); the spec holds that line in English only.
 - `tests/sections.spec.ts`, `tests/duplication.spec.ts`, `tests/words.spec.ts`, `tests/i18n.keys.spec.ts`,
-  `tests/i18n.ko.spec.ts`: 26 of 26. `rpc.surface`, `arrival.card`, `you.design`, `fleets.you.grow`: see the PR.
+  `tests/i18n.ko.spec.ts`: 26 of 26. `tests/rpc.surface.spec.ts`: 29 of 29. `arrival.card`, `shell.kstClock`,
+  `you.design`, `fleets.you.grow`: 20 of 20 (the first build, with the figure in the phone bar, failed `shell.kstClock` at 390 px: deviation 12).
 - The four PROD CHECK files were run on the local world (before: 5 hunks once each, nothing made; after: 5 new texts
   once, 3 tables, 12 kinds, 8 functions, 0 client functions, 4 triggers, 14 knobs).
 
