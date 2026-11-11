@@ -15,6 +15,7 @@
 import { test, expect } from '@playwright/test'
 import {
   PAGE_REM,
+  RAIL_REM,
   SIDE_REM,
   pageColumnClass,
   pageSplitClass,
@@ -396,7 +397,10 @@ test.describe('wide glass', () => {
     expect(await page.getByTestId('command-queue').boundingBox(), 'the route page re-flowed the row below').toEqual(queueBox)
     const pageBox = (await routePage.boundingBox())!
     console.log(`COMMAND route page @${WIDE.width}px: row ${JSON.stringify(rowBox)} page ${JSON.stringify(pageBox)}`)
-    expect(pageBox.width, 'the page is not the full-screen overlay').toBeGreaterThanOrEqual(WIDE.width - 1)
+    // 2026-11-11 (S9): from `lg` a detail page stands on the glass beside the rail (screenLayout.ts `glassBesideRailClass`), so it is
+    // the whole window less the rail's RAIL_REM — still the full glass the page has, not a panel inside it
+    expect(pageBox.x, 'the page does not stand at the rail edge').toBeCloseTo(RAIL_REM * remPx, 0)
+    expect(pageBox.width, 'the page is not the full glass beside the rail').toBeGreaterThanOrEqual(WIDE.width - RAIL_REM * remPx - 1)
 
     await routePage.locator('[data-detail-back]').click()
     await expect(page.getByTestId('route-page')).toHaveCount(0)
