@@ -218,7 +218,8 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
         market={pickedRow.row}
         docked={here && !tripNow}
         sellAt={tripNow?.sellAt ?? null}
-        noGain={side === 'buy' && pickedSale !== undefined && !pickedSale.pays}
+        // "no sale pays" is not the word for a good she cannot pay for (0351 `short`): that one's card says "No money"
+        noGain={side === 'buy' && pickedSale !== undefined && !pickedSale.pays && !pickedSale.short}
         trip={trip}
         mode={wide ? 'pane' : 'docked'}
         onClose={() => pickGood(null)}

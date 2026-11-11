@@ -16,13 +16,17 @@ name: Acceptance (the whole spec suite, against a served build)
 #     C  a changed spec;  G  a spec importing a changed file (transitively);  N  a spec naming a
 #        changed file;  T  a directory-walking spec when its tree changed;  A  the app shell
 #        (src/app, index.css, components/ui, public) → every browser spec;  I  a browser spec naming
-#        a data-testid a changed src file declares;  L  a changed face → layout + wide.layout
+#        a data-testid a changed src file declares NOW OR DECLARED IN ITS BASE VERSION (a removed or
+#        renamed id, a moved file: 2026-11-11);  L  a changed face → layout + wide.layout + align
 #     S  an ADDED migration: the functions/tables it defines (and the names it mentions) → the specs
 #        naming them, and through the RPC catalogue into the src that calls them; npc_* → the npc
 #        pool; always db.chain + db.image
 #   The script's own positive controls (real commits with known answers: docs-only → nothing,
-#   0136 → the trade_routes/port_offers specs, #141 → its three map specs, appReady → full) run
-#   first in `select`; a rule change that breaks one is red there.
+#   0136 → the trade_routes/port_offers specs, #141 → its three map specs, appReady → full,
+#   #583's removed test id → market.shortTray + city.phone + hq.design) run first in `select`; a
+#   rule change that breaks one is red there.
+#   WHAT NO RULE SEES: a spec main gained AFTER the PR's last run. The run judges the merge onto
+#   main as it stood then, and nothing re-runs it when main moves (#583, docs/CI.md).
 #
 #   THE SAME CHECK NAMES, ALWAYS: every job below still runs and reports. A shard whose share of
 #   the selection is empty plans nothing, skips its build, logs "no affected specs in this pool"
