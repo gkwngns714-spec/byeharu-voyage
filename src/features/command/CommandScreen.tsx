@@ -136,13 +136,16 @@ export function CommandScreen() {
       <div className="flex h-full min-h-0 flex-col" data-testid="command" data-desk="terminal">
         {/* THE HEADER spans the glass, the same on every face: pressing a face changes the panes below
             it, never the header or the frame. */}
-        <header className="flex shrink-0 items-center gap-6 px-3 py-3 min-[90rem]:px-6" data-testid="desk-header">
-          <div className="flex min-w-0 flex-1 items-center gap-6">
+        {/* 2026-11-11 (S9): from `lg` the nav is a rail at the left and takes 96 px of this line; where the title, the fleet strip and the
+            faces no longer fit one line (1,024-1,069 px with one fleet), the faces step to a second line at the right instead of the
+            strip being cut — the strip's basis is its own content (`flex-[1_1_auto]`), so the line breaks before anything is clipped. */}
+        <header className="flex shrink-0 flex-wrap items-center gap-x-6 gap-y-2 px-3 py-3 min-[90rem]:px-6" data-testid="desk-header">
+          <div className="flex min-w-0 flex-[1_1_auto] items-center gap-6">
             {/* THE PAGE'S CARD-TITLE VOICE (18 px; it was 14) — row 267, tests/command.design.spec.ts */}
             <h1 className="shrink-0 text-t-card text-ink">{t('shell.tab_Trade')}</h1>
             <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} inline />
           </div>
-          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="shrink-0" />
+          <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="ml-auto shrink-0" />
         </header>
         {fleet && <GoalCard />}
         {fleet && faceBody(fleet)}
