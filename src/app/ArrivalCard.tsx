@@ -41,6 +41,8 @@ interface Card {
   levels: { track: 'trading' | 'exploration'; level: number }[]
   /** How many new ports the served count gained on the read(s) this card holds. */
   newPorts: number
+  /** 0352: the Reputation the served book gained on the read(s) this card holds (earns only). */
+  reputation: number
 }
 
 const TRACKS = ['trading', 'exploration'] as const
@@ -71,7 +73,10 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
     }
   }
   const newPorts = before && now ? Math.max(0, now.levels.exploration.ports_reached - before.levels.exploration.ports_reached) : 0
-  return { arrivals, levels, newPorts }
+  // 0352: the served book's rows past the row the read before ended on. Earns only; the server's own amounts, added.
+  const seenSeq = before?.reputation?.seq ?? 0
+  const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 ? n + r.delta : n), 0)
+  return { arrivals, levels, newPorts, reputation }
 }
 
 function merge(a: Card | null, b: Card): Card {
@@ -80,6 +85,7 @@ function merge(a: Card | null, b: Card): Card {
     arrivals: [...a.arrivals, ...b.arrivals],
     levels: [...a.levels.filter((x) => !b.levels.some((y) => y.track === x.track)), ...b.levels],
     newPorts: a.newPorts + b.newPorts,
+    reputation: a.reputation + b.reputation,
   }
 }
 
@@ -149,6 +155,11 @@ export function ArrivalCard() {
             {t('feed.levelUp', { track: t(l.track === 'trading' ? 'command.lvTrading' : 'command.lvExploration'), n: l.level })}
           </p>
         ))}
+        {card.reputation > 0 && (
+          <p className="mt-1 text-t-body text-accent" data-testid="arrival-reputation" data-reputation={card.reputation}>
+            {t('feed.repEarned', { n: formatInt(card.reputation) })}
+          </p>
+        )}
         <div className="mt-3 flex gap-2">
           <Button
             variant="primary"
