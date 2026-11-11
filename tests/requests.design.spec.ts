@@ -33,6 +33,7 @@ async function rowsOf(page: Page) {
         each: Number(e.dataset.priceEach),
         sale: Number(e.dataset.salePrice),
         bonus: Number(e.dataset.bonus),
+        name: (e.innerText.split('\n')[0] ?? '').trim(),
         cell: text('request-fulfil'),
         want: text('request-want'),
         budget: text('request-budget'),
@@ -80,10 +81,14 @@ for (const glass of GLASSES) {
       // THE TIME IS LIVE, AND THE ROW HOLDS STILL UNDER IT
       await page.waitForTimeout(3_000)
       const later = await rowsOf(page)
-      expect(later.length).toBe(first.length)
-      for (const [i, r] of later.entries()) {
-        expect(seconds(r.time), 'the time did not count down').toBeLessThan(seconds(first[i].time))
-        expect(r.h, 'a tick re-flowed the row').toBe(first[i].h)
+      // The read winds new jobs onto a young board (0087), so the board may GROW under the wait: each
+      // row we first saw is found again by its good and fixed bonus, and its clock has run down.
+      expect(later.length).toBeGreaterThanOrEqual(first.length)
+      for (const f of first) {
+        const r = later.find((x) => x.name === f.name && x.bonus === f.bonus)
+        expect(r, `"${f.name}" left the board`).toBeTruthy()
+        expect(seconds(r!.time), 'the time did not count down').toBeLessThan(seconds(f.time))
+        expect(r!.h, 'a tick re-flowed the row').toBe(f.h)
       }
 
       // NOTHING SCROLLS SIDEWAYS
