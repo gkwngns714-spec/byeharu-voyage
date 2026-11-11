@@ -56,7 +56,7 @@ async function frameBoxes(page: Page) {
       const r = el.getBoundingClientRect()
       return { top: Math.round(r.top), left: Math.round(r.left), w: Math.round(r.width), h: Math.round(r.height) }
     }
-    return { header: pick('city-header'), grid: pick('city-building-grid'), summary: pick('city-summary'), rail: pick('city-rail') }
+    return { header: pick('city-header'), grid: pick('city-building-grid'), rail: pick('city-rail') }
   })
 }
 

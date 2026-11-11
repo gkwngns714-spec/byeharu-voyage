@@ -16,7 +16,7 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledShe
 // its rows pitched at the 44-px floor, its five figures at 16 px hugging their words — the hall panel was a 700-px card with 130 px of
 // text in it. It is now a PAGE (`Sheet layout="page"`): the city's name for the title, the six places as a row of cards across the
 // page, then MAIN | SIDE from 1,024 px — MAIN the plan (the market's chart when the market is open; the owner's 2026-10-31 order, the
-// plan on the left, stands), SIDE the tray's column: your purse over the open place's panel. The page scrolls; nothing inside it does.
+// plan on the left, stands), SIDE the tray's column: the open place's panel (your purse is the status strip's since 2026-11-11). The page scrolls; nothing inside it does.
 //
 // THE LAWS (docs/dev-log/2026-11-04-hq-design.md; screenLayout.ts "THE PAGE"):
 //   (a) USE THE WIDTH. From 1,024 px the content block is centred — the band empty at its right is no wider than the margin at its left
@@ -26,7 +26,7 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, settled as settledShe
 //   (c) THE HIERARCHY: the hall's figures at least 24 px with their labels at least 13; a summary row at least 52 px, none wider than 36 rem.
 //   (d) THE INVESTORS DRAWER MOVES NOTHING BEHIND IT, and it slides in to the WINDOW's own right edge (rows 247 / 278, the drive
 //       audit's D3; the map's panel, `Tray mode="side"`), from 1,024 the side column's width — never the page's margin inside it.
-//   (e) THE SIDE IS USED: your purse and the open place's panel stand in the side column from 1,024; the plan stands in the main.
+//   (e) THE SIDE IS USED: the open place's panel stands in the side column from 1,024; the plan stands in the main.
 //   (f) NO SCROLL TRAP: nothing but the sheet scrolls — no panel, no chart card scrolls inside itself.
 //   (g) THE PANEL COMES BEFORE THE PLAN ON A PHONE: below the split, the open place's card begins on the first glass.
 //   (h) THE PLAN STANDS WHOLE ON THE FIRST GLASS from 1,024 px: its card ends above the rail.
@@ -142,8 +142,8 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
             if (wide.length > 0) failures.push(`${where}: (c) ${wide.length} rows are wider than ${ROW_MAX_REM} rem — ${wide[0].id} is ${Math.round(wide[0].w)} px`)
           }
 
-          // (e) THE SIDE IS USED — your purse and the open panel in the side from 1,024; the plan in the main
-          const blocks = await page.evaluate(IN_SIDE, { ids: ['city-summary', place.panel] })
+          // (e) THE SIDE IS USED — the open panel in the side from 1,024; the plan in the main
+          const blocks = await page.evaluate(IN_SIDE, { ids: [place.panel] })
           for (const b of place.id === WHOLE_PAGE ? [] : blocks) {
             if (!b.found) failures.push(`${where}: (e) the screen has no ${b.id} block`)
             else if (glass.width >= 1024 && !b.inSide) failures.push(`${where}: (e) ${b.id} does not stand in the side column`)
@@ -166,8 +166,8 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
           // the page's own sheet is the one box that scrolls (it stands inside the screen box this walk reads)
           for (const s of d.scrollers.filter((x) => !x.startsWith('city-page '))) failures.push(`${where}: (f) a box scrolls inside itself — ${s}`)
 
-          // U3 — NOTHING WAS REMOVED: the six tiles, the name, your purse, the rail, the open place's panel
-          for (const id of ['city-building-grid', 'city-name', 'city-phase', 'city-rail', place.panel, ...(place.id === WHOLE_PAGE ? [] : ['city-summary', 'city-info-image'])]) {
+          // U3 — NOTHING WAS REMOVED: the six tiles, the name, your purse (the status strip's, once: the frame's own copy left 2026-11-11), the rail, the open place's panel
+          for (const id of ['city-building-grid', 'city-name', 'city-phase', 'city-rail', 'purse', place.panel, ...(place.id === WHOLE_PAGE ? [] : ['city-info-image'])]) {
             if ((await page.getByTestId(id).count()) === 0) failures.push(`${where}: U3 ${id} is gone`)
           }
           if ((await page.getByTestId('city-building-grid').locator('button').count()) !== PLACES.length) failures.push(`${where}: U3 the tiles are not all there`)
@@ -191,7 +191,7 @@ for (const glass of DESIGN_GLASSES) {
     test.setTimeout(480_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await open(page, glass)
-    const ids = ['city-hall-panel', 'city-summary', 'city-info-image', 'city-building-grid']
+    const ids = ['city-hall-panel', 'city-info-image', 'city-building-grid']
     const row = page.getByTestId('city-hall-investors')
     await row.scrollIntoViewIfNeeded()
     await settled(page).catch(() => {})
