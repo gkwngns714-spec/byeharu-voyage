@@ -148,6 +148,7 @@ indexes: (scope, at desc) · (port_id, at desc) where port_id is not null · (go
 |---|---|
 | Dot | r = 3 px on the plot's time axis (the floor line) at the news instant; `accent` for imp. 3, `ink-muted` for 1–2. Hit target 24 px. Pure geometry in a new `newsMarksModel.ts` (both charts call it; the two chart models stay separate, NO_SPAGHETTI §5) |
 | Cluster | dots closer than 12 px merge into one dot with a count ("3"); the dot takes the highest importance in it |
+| *2026-11-11, as built* | *the hit target is **44 px** (the law of every control) and so is the merging distance, in px of the glass: `docs/dev-log/2026-11-11-news-dot-size.md`. The 24 and 12 of the two rows above were the first build.* |
 | Press a dot | a `Popover` card: **headline** (EN/KO) · **"5 min ago"** (`agoLabel`-style, plus the UTC time small) · **before → after** when `detail` has them (e.g. "Pepper 412 → 506") · **link** to the city (city view) or the company (merchant sheet) |
 | Press a cluster | the same card listing up to 5 items, newest first; "+N more" opens the News face filtered to that window |
 | Panning / spans | marks are re-read with the chart's window (`useChartSpan`'s span, `chartPan` window); on the daily tier a mark still stands at its own instant |
