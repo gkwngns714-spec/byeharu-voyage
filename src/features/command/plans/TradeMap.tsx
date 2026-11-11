@@ -13,6 +13,7 @@ import { orderTrips, tripOf, type OrderTrip } from '../../../domain/order'
 import { daysAt, type PlanLeg } from '../../../domain/passage'
 import { seaTagWords, tripRows } from './planLines'
 import { useSailLegs } from '../../../live/useSailLegs'
+import { LegLines } from '../../../live/LegLines'
 
 // THE MAP ON TOP OF THE BUY AND SELL FACES, AND THE ORDER'S ESTIMATE UNDER IT — the owner, 2026-10-26 (row 217):
 //
@@ -228,30 +229,22 @@ function PlanLegs({
   speedKn: number
   name: (code: string) => string
 }) {
-  const t = useT()
   return (
-    <ol className="mt-2 flex flex-col" data-testid="plan-legs">
-      {legs.map((leg, i) => {
+    <LegLines
+      name={name}
+      legs={legs.map((leg) => {
         const row =
           board && ends.includes(leg.to)
             ? (board.buy.find((r) => r.port === leg.to) ?? board.sell.find((r) => r.port === leg.to) ?? null)
             : null
-        const tag = row?.sea && board?.sea ? seaTagWords(row.sea, board.sea.bite) : null
-        const days = speedKn > 0 ? formatVoyageDays(daysAt(leg.nm, speedKn)) : '—'
-        return (
-          <li
-            key={`${i}:${leg.to}`}
-            className="text-t-caption tabular-nums text-ink-muted"
-            data-testid="plan-leg"
-            data-n={i + 1}
-            data-from={leg.from ?? ''}
-            data-to={leg.to}
-          >
-            {`${i + 1} ${t('desk.legLine', { from: leg.from ? name(leg.from) : t('desk.atSea'), to: name(leg.to) })} · ${days}${tag ? ` · ${tag}` : ''}`}
-          </li>
-        )
+        return {
+          from: leg.from,
+          to: leg.to,
+          days: speedKn > 0 ? formatVoyageDays(daysAt(leg.nm, speedKn)) : '—',
+          tag: row?.sea && board?.sea ? seaTagWords(row.sea, board.sea.bite) : null,
+        }
       })}
-    </ol>
+    />
   )
 }
 

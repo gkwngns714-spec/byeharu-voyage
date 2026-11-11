@@ -657,6 +657,15 @@ const TABLE = {
       { name: 'p_expected_version', type: 'int' },
     ],
   },
+  // 0346 (owner row 209, docs/ROUTE_BUILDER.md B1): a route's legs judged as the map's route builder taps them. A read; null for a fleet not yours.
+  worldRouteLegs: {
+    schema: 'world',
+    fn: 'route_legs',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_legs', type: 'jsonb' },
+    ],
+  },
 } as const satisfies Record<string, RpcSpec>
 
 export type RpcName = keyof typeof TABLE

@@ -3804,3 +3804,28 @@ export type LevelsView =
       /** Only while regard_enabled; null while it is dark. */
       regard: Array<{ code: string; name: string; flag: string; score: number; band: RegardBand }> | null
     }
+
+/** 0346 (owner row 209, docs/ROUTE_BUILDER.md B1) — one leg asked of `world.route_legs`: harbour codes (from null when she
+ *  starts at sea) and the course the one course author proposed (null: the server measures the sailed miles). */
+export interface RouteLegAsk {
+  from: string | null
+  to: string
+  course: [number, number][] | null
+}
+
+/** 0346 — one leg as the server judged it. `shut` is `voyage.leg_refusal` (the one leg judge), null when open; `via` the
+ *  harbours between, served only for a leg shut by its length or its stores. The client prints these; it never compares them. */
+export interface RouteLeg {
+  from: string | null
+  to: string
+  nm: number | null
+  days: number | null
+  supplies: { days: number; cost: number; fits: boolean } | null
+  shut: ServedRefusal | null
+  via: string[] | null
+}
+
+/** 0346 — `world.route_legs`: the legs in the order asked. null when the fleet is not yours. */
+export interface RouteLegs {
+  legs: RouteLeg[]
+}

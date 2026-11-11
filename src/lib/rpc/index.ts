@@ -128,6 +128,8 @@ import type {
   StudiedSkill,
   VerbSpec,
   WorldSnapshot,
+  RouteLegAsk,
+  RouteLegs,
 } from './types'
 
 /**
@@ -776,6 +778,12 @@ export function cmdIssueLines(
   expectedVersion: number | null = null,
 ): Promise<RpcResult<IssueLinesResult>> {
   return call<IssueLinesResult>('cmdIssueLines', [fleetId, lines, expectedVersion])
+}
+
+/** 0346 (owner row 209, docs/ROUTE_BUILDER.md B1) — a route's legs judged for your fleet (`world.route_legs`): each leg's
+ *  days, supplies and `shut` (the one leg judge, voyage.leg_refusal). null when the fleet is not yours. */
+export function worldRouteLegs(fleetId: string, legs: readonly RouteLegAsk[]): Promise<RpcResult<RouteLegs | null>> {
+  return call<RouteLegs | null>('worldRouteLegs', [fleetId, legs])
 }
 
 /** What your company holds in every city (0176): the register's rows, a share's price now, the dividends. */
