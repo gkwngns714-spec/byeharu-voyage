@@ -1,5 +1,5 @@
-import { buyableHere, listedHere } from '../../../domain/market'
-import type { MarketGood } from '../../../lib/rpc'
+import { buyableHere, listedHere } from '.'
+import type { MarketGood } from '../../lib/rpc'
 
 // THE COMBINED TRADE LIST, PURE (owner 2026-10-30) — the docked city's goods in ONE list, both sides in each row.
 // It merges the two sides the mirrored Buy / Sell cards drew apart (CityBoard.tsx, deleted 2026-10-30):

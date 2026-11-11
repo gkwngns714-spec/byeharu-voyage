@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from './Button'
 import { deltaTone } from './deltaTone'
 import { Figure } from './Figure'
@@ -36,9 +36,10 @@ import { t as tNow, useT, type TKey } from '../../lib/i18n'
 // ── THE BODY, TOP TO BOTTOM (QUAY_LEDGER §3 B), SINCE 2026-09-14 ───────────────────────────────
 //   SELL: the Stepper · Bought at (per unit; the served cost of the chosen units under it) ·
 //         Sells at (served per unit, this quantity) · You get (served total; the gain as a share of
-//         the cost under it) · the caller's rows (the haggle thread) · the server's refusal.
-//   BUY:  refused · Max · the Stepper · Cargo space · Bought at · Trend · Range · In stock · the
-//         caller's rows · the server's refusal.
+//         the cost under it) · More · the server's refusal.
+//   BUY:  refused · Max · the Stepper · Bought at (only with some aboard) · More · the server's refusal.
+//   MORE (S5, 2026-11-11), a layer over the body: Cargo space · none aboard · Kind · Trend · Range ·
+//         In stock (buy) · the caller's rows (the bargain, the city's trades).
 //   The Profit row (ducats AND the share) and the ONE button ride in the pinned action region, so
 //   the figure a sale is a decision ABOUT cannot scroll apart from the button that commits it (row
 //   74's follow-up, measured on a short desktop window).
@@ -166,7 +167,7 @@ export function TradeTray({
   trade: TradeControls
   qty: { value: number | null; onChange: (next: number) => void }
   onClose: () => void
-  /** The caller's own rows under the stepper — the bargain. */
+  /** The caller's own rows, under More — the bargain, the city's trades. */
   children?: ReactNode
 }) {
   const t = useT()
@@ -219,6 +220,33 @@ export function TradeTray({
   const sale = intent === 'sell' && chosen > 0 ? act.preview : null
   const gainShare = sale !== null && sale.profit !== null && sale.cost !== null && sale.cost > 0 ? sale.profit / sale.cost : null
   const dim = act.previewLoading ? 'faint' : undefined
+
+  // MORE is open for ONE pick: a new good or side opens on the short body again.
+  const pickKey = `${good.code}:${intent}`
+  const [moreFor, setMoreFor] = useState<string | null>(null)
+  const more = moreFor === pickKey
+  // the finger's place follows the layer: into it on More, back to More on Less
+  const body = useRef<HTMLDivElement>(null)
+  const opened = useRef(false)
+  useEffect(() => {
+    if (more) body.current?.querySelector<HTMLElement>('[data-testid="trade-tray-less"]')?.focus()
+    else if (opened.current) body.current?.querySelector<HTMLElement>('[data-testid="trade-tray-more"]')?.focus()
+    opened.current = more
+  }, [more])
+
+  // What this good cost her, per unit — served, never remembered here: the figure, or why there is none.
+  const paidRow =
+    act.paid !== null ? (
+      <Row label={t('ui.boughtAt')} value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
+        {intent === 'sell' && sale !== null && sale.cost !== null && sale.qty !== null ? (
+          <span className="block text-t-caption text-ink-faint">{t('ui.costFor', { cost: formatDucats(sale.cost), units: formatUnits(sale.qty) })}</span>
+        ) : intent === 'buy' ? (
+          <span className="block text-t-caption text-ink-faint">{t('ui.forAboard', { units: formatUnits(aboard) })}</span>
+        ) : null}
+      </Row>
+    ) : (
+      <Row label={t('ui.paidUnknown')} tone="muted" data-testid="trade-tray-paid-unknown" />
+    )
 
   const stepper = (
     <div className="py-3">
@@ -287,107 +315,118 @@ export function TradeTray({
         </>
       }
     >
-      {intent === 'sell' ? (
-        <>
-          {/* THE SELL FACE, in the owner's order (2026-09-14): *"i will be able to choose first how
-              many i sell, then it will show only how much bought price, selling price with
-              underneath showing the percentage."* The count first; then what those units cost her
-              (per unit, and the served cost of the chosen units — the whole the share below is
-              of); what they sell at (the served per-unit figure for THIS quantity, which is the
-              only price a screen may show once a bargain is open); what she gets, with the gain as
-              a share of the cost under it. No trend, no range, no stock, no cargo-space row: what
-              is on board is the stepper's end and its `All` chip. */}
-          {stepper}
-          {act.paid !== null ? (
-            <Row label={t('ui.boughtAt')} value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
-              {sale !== null && sale.cost !== null && sale.qty !== null && (
-                <span className="block text-t-caption text-ink-faint">{t('ui.costFor', { cost: formatDucats(sale.cost), units: formatUnits(sale.qty) })}</span>
-              )}
-            </Row>
-          ) : (
-            <Row label={t('ui.paidUnknown')} tone="muted" data-testid="trade-tray-paid-unknown" />
-          )}
-          {sale !== null && sale.avg_price !== null && (
-            <Row label={t('ui.sellsAt')} value={<Figure value={formatUnitPrice(sale.avg_price)} tone={dim} />} data-testid="trade-tray-sells-at" />
-          )}
-          {sale !== null && sale.total !== null && (
-            <Row label={t('ui.youGet')} value={<Figure value={formatDucats(sale.total)} tone={dim} />} data-testid="trade-tray-fetches">
-              {gainShare !== null && (
-                <span className="block text-t-caption text-ink-faint" data-testid="trade-tray-gain-share">
-                  {t('ui.onCost', { pct: formatPctDelta(gainShare) })}
+      {/* THE BODY IS SHORT, AND "MORE" HOLDS THE REST (S5, 2026-11-11 — the owner's remaster: "much more simpler,
+          easy to handle"; a playtest counted 18 controls and 35 numbers in this tray where a new player needs the
+          quantity, the total and the button). What stays: the count, what the order comes to, and what an owner row
+          wants in sight (below). Everything else — Cargo space, Kind, Trend, Range, In stock, the bargain, the city's
+          trades — is ONE press away under More, nothing deleted.
+          MORE OPENS AS A LAYER OVER THIS BODY, never below it: the layer is absolute over the body's own box, so the
+          tray keeps its height, the page behind it does not re-flow, and the pinned button does not move (the owner's
+          law: a press never restructures the page). The layer scrolls inside that box; Less closes it. */}
+      <div ref={body} className="relative" data-testid="trade-tray-body">
+        {intent === 'sell' ? (
+          <>
+            {/* THE SELL FACE, in the owner's order (2026-09-14): *"i will be able to choose first how
+                many i sell, then it will show only how much bought price, selling price with
+                underneath showing the percentage."* The count first; then what those units cost her
+                (per unit, and the served cost of the chosen units — the whole the share below is
+                of; row 74 asked to see what she paid); what they sell at (the served per-unit figure
+                for THIS quantity, which is the only price a screen may show once a bargain is open);
+                what she gets, with the gain as a share of the cost under it. */}
+            {stepper}
+            {paidRow}
+            {sale !== null && sale.avg_price !== null && (
+              <Row label={t('ui.sellsAt')} value={<Figure value={formatUnitPrice(sale.avg_price)} tone={dim} />} data-testid="trade-tray-sells-at" />
+            )}
+            {sale !== null && sale.total !== null && (
+              <Row label={t('ui.youGet')} value={<Figure value={formatDucats(sale.total)} tone={dim} />} data-testid="trade-tray-fetches">
+                {gainShare !== null && (
+                  <span className="block text-t-caption text-ink-faint" data-testid="trade-tray-gain-share">
+                    {t('ui.onCost', { pct: formatPctDelta(gainShare) })}
+                  </span>
+                )}
+              </Row>
+            )}
+          </>
+        ) : (
+          <>
+            {refusedBy !== null && (
+              <Note tone="warning" data-testid="trade-tray-refused">
+                {refusedBy}
+              </Note>
+            )}
+
+            {/* THE CEILING STAYS IN SIGHT (row 63: the gauge spans the stock and "the server's capacity stays
+                visible as the point past which it clamps"; the owner, 2026-09-18: "Max limited by cargo space.
+                Just show cargo space of how much it is in max."). It stays drawn while it is re-asked on the
+                world's beat: useBuyCapacity keeps the last answer for the same good, so this row only gives way
+                to the waiting line before the FIRST answer (tests/trade.ceiling.spec.ts watches it across three
+                world reads; the owner: "when i press buy, the max keeps refreshing"). */}
+            {capacity.bound ? (
+              <Row label={t('ui.max')} value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />} data-testid="trade-tray-max">
+                {/* When something other than the hold binds (money, stock, the day's limit) that reason
+                    follows the figure, since the figure alone would read as free space. */}
+                <span className="block text-t-caption text-ink-faint" data-testid="trade-tray-max-space">
+                  {capacity.bound.binding === 'cargo space'
+                    ? t('ui.ofSpace', { tons: formatTons(capacity.bound.max * bulk, 1) })
+                    : t('ui.ofSpaceLimited', { tons: formatTons(capacity.bound.max * bulk, 1), by: boundWord(capacity.bound.binding) })}
                 </span>
-              )}
-            </Row>
-          )}
-        </>
-      ) : (
-        <>
-          {refusedBy !== null && (
-            <Note tone="warning" data-testid="trade-tray-refused">
-              {refusedBy}
-            </Note>
-          )}
+              </Row>
+            ) : (
+              <Row
+                label={t(capacity.loading ? 'ui.checkingMax' : 'ui.maxUnknown')}
+                tone="muted"
+                data-testid="trade-tray-max-unknown"
+              />
+            )}
 
-          {/* THE CEILING STAYS DRAWN while it is re-asked on the world's beat: useBuyCapacity
-              keeps the last answer for the same good, so this row only gives way to the waiting
-              line before the FIRST answer. Until 2026-09-14 it unmounted every 3 s — the owner:
-              "when i press buy, the max keeps refreshing". tests/trade.ceiling.spec.ts watches it
-              across three world reads. The beat's re-ask is not `capacity.loading` either
-              (useServedRead.ts, 2026-09-30), so an UNKNOWN ceiling below holds its words too
-              instead of flipping to "Checking…" on every read (A2 adds tests/flicker.spec.ts). */}
-          {capacity.bound ? (
-            <Row label={t('ui.max')} value={<Figure value={formatUnits(capacity.bound.max)} size="figure" />} data-testid="trade-tray-max">
-              {/* The ceiling in the ship's own measure — the owner, 2026-09-18: "Max limited by
-                  cargo space. Just show cargo space of how much it is in max." When something
-                  other than the hold binds (money, stock, the day's limit) that reason still
-                  follows the figure, since the figure alone would read as free space. */}
-              <span className="block text-t-caption text-ink-faint" data-testid="trade-tray-max-space">
-                {capacity.bound.binding === 'cargo space'
-                  ? t('ui.ofSpace', { tons: formatTons(capacity.bound.max * bulk, 1) })
-                  : t('ui.ofSpaceLimited', { tons: formatTons(capacity.bound.max * bulk, 1), by: boundWord(capacity.bound.binding) })}
-              </span>
-            </Row>
-          ) : (
-            <Row
-              label={t(capacity.loading ? 'ui.checkingMax' : 'ui.maxUnknown')}
-              tone="muted"
-              data-testid="trade-tray-max-unknown"
-            />
-          )}
+            {stepper}
 
-          {stepper}
+            {/* What this good cost her, per unit, for what is on board (row 74: "i would like to know how much
+                i bought the item") — in sight when she HAS some aboard; "none aboard" is detail, under More. */}
+            {aboard > 0 && paidRow}
+          </>
+        )}
 
-          {/* WHAT IT DOES TO THE SHIP — the chosen count in the unit the ship is measured in. This
-              is the line that lets "Buy 20 units" be read against "Cargo 51 / 60 tons" on COMMAND. */}
-          {chosen > 0 && (
-            <Row
-              label={t('ui.cargoSpace')}
-              tone="muted"
-              value={<Figure value={formatTons(chosen * bulk, 1)} />}
-              data-testid="trade-tray-space"
-            />
-          )}
+        <Row
+          label={t('ui.trayMore')}
+          chevron
+          onClick={() => setMoreFor(pickKey)}
+          aria-expanded={more}
+          aria-label={t('ui.trayMoreSpoken')}
+          hairline={false}
+          data-testid="trade-tray-more"
+        />
 
-          {/* What this good cost her, per unit, for what is on board — served, never remembered
-              here. Always a row, so the eye finds the same line: the figure, or why there is none. */}
-          {aboard === 0 ? (
-            <Row label={t('ui.boughtAt')} tone="muted" value={t('ui.noneOnBoard')} data-testid="trade-tray-paid-none" />
-          ) : act.paid !== null ? (
-            <Row label={t('ui.boughtAt')} value={<Figure value={formatUnitPrice(act.paid)} />} data-testid="trade-tray-paid">
-              <span className="block text-t-caption text-ink-faint">{t('ui.forAboard', { units: formatUnits(aboard) })}</span>
-            </Row>
-          ) : (
-            <Row label={t('ui.paidUnknown')} tone="muted" data-testid="trade-tray-paid-unknown" />
-          )}
-
-          {/* THE MARKET'S CONTEXT — trend, range, stock — BELOW the decision, since 2026-09-14:
-              the ceiling and the count are what a buy is decided on; these are what it is read
-              against. They used to open the tray. */}
-          <PriceRows good={good} trend={history} />
-        </>
-      )}
-
-      {children}
+        {more && (
+          <div
+            className="bv-scroll absolute inset-0 z-10 overflow-y-auto overflow-x-hidden bg-surface"
+            role="group"
+            aria-label={t('ui.trayMoreSpoken')}
+            data-testid="trade-tray-detail"
+          >
+            <Row label={t('ui.trayLess')} chevron onClick={() => setMoreFor(null)} aria-expanded data-testid="trade-tray-less" />
+            {intent === 'buy' && (
+              <>
+                {/* WHAT IT DOES TO THE SHIP — the chosen count in the unit the ship is measured in. */}
+                {chosen > 0 && (
+                  <Row
+                    label={t('ui.cargoSpace')}
+                    tone="muted"
+                    value={<Figure value={formatTons(chosen * bulk, 1)} />}
+                    data-testid="trade-tray-space"
+                  />
+                )}
+                {aboard === 0 && <Row label={t('ui.boughtAt')} tone="muted" value={t('ui.noneOnBoard')} data-testid="trade-tray-paid-none" />}
+                {/* THE MARKET'S CONTEXT — kind, trend, range, stock: what a buy is read against. */}
+                <PriceRows good={good} trend={history} />
+              </>
+            )}
+            {/* the caller's rows: the bargain, the city's trades */}
+            {children}
+          </div>
+        )}
+      </div>
 
       {/* The server's refusal, in the server's own sentence. The CODE goes to console.debug and
           never to the quay (§5's Note contract, and §2 item 13: a code is for a log). */}

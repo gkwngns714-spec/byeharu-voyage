@@ -69,9 +69,10 @@ create function pg_temp.flows(p_mark bigint, p_kind text) returns jsonb language
     from public.treasury_flows f join public.ports p on p.id = f.port_id where f.id > p_mark and f.kind = p_kind
 $b$;
 
--- a path of p_days voyage-days, every day in sea p_sea (0 nm of real water: the voyage engine reads nm, the sea and the frozen keys)
+-- a path of p_days voyage-days, every day in sea p_sea (0 nm of real water: the voyage engine reads nm, the sea and the frozen keys).
+-- A day is her speed x 24 to the digit, never rounded: p_days legs are p_days voyage-days exactly, for any speed (proof 41's red, 2026-11-11).
 create function pg_temp.through(p_fleet uuid, p_sea uuid, p_days int) returns jsonb language sql stable as $b$
-  select jsonb_agg(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', round(voyage.fleet_speed(p_fleet) * 24, 2), 'sea_id', p_sea, 'hazard_mult', 1000))
+  select jsonb_agg(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', voyage.fleet_speed(p_fleet) * 24, 'sea_id', p_sea, 'hazard_mult', 1000))
     from generate_series(1, p_days)
 $b$;
 
