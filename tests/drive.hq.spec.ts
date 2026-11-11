@@ -52,7 +52,7 @@ async function frame(page: Page) {
       const r = el.getBoundingClientRect()
       return [Math.round(r.top), Math.round(r.left), Math.round(r.width), Math.round(r.height)]
     }
-    return { header: pick('city-header'), grid: pick('city-building-grid'), rail: pick('city-rail'), earnings: pick('city-summary') }
+    return { header: pick('city-header'), grid: pick('city-building-grid'), rail: pick('city-rail') }
   })
 }
 
@@ -275,15 +275,14 @@ for (const size of [WIDE, PHONE]) {
     }
 
     // (251) EVERY TILE PRESS LEAVES THE FRAME WHERE IT WAS, and the page never scrolls. Production takes the whole page by
-    // the owner's 2026-11-06 order (storage · cargo · recipes across it), so the earnings card leaves with the split there;
+    // the owner's 2026-11-06 order (storage · cargo · recipes across it);
     // the header, the tiles and the rail still may not move.
     for (const tile of ['market', 'port', 'inn', 'production', 'hall']) {
       await page.getByTestId(`city-building-${tile}`).click()
       await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
       await page.waitForTimeout(400)
       const after = await frame(page)
-      if (tile === 'production') expect({ ...after, earnings: null }, `pressing ${tile} moved the frame`).toEqual({ ...before, earnings: null })
-      else expect(after, `pressing ${tile} moved the frame`).toEqual(before)
+      expect(after, `pressing ${tile} moved the frame`).toEqual(before)
       const scrolled = await page.evaluate(() => window.scrollY)
       expect(scrolled, `pressing ${tile} scrolled the page`).toBe(0)
     }
@@ -392,7 +391,7 @@ test('HQ: with the purses lit, a purchase at the Market shows on the hall\'s Gol
   await openHq(page, request, baseURL, WIDE)
   const gold = page.getByTestId('city-gold')
   const goldBefore = (await gold.innerText()).replace(/\s+/g, ' ')
-  const purseBefore = (await page.getByTestId('city-summary').innerText()).replace(/\s+/g, ' ')
+  const purseBefore = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
   console.log(`hall before: gold "${goldBefore}", your purse "${purseBefore}"`)
 
   // buy ONE unit of the first good on the Buy face, through the City page's own Market face
@@ -418,7 +417,7 @@ test('HQ: with the purses lit, a purchase at the Market shows on the hall\'s Gol
     .poll(async () => (await gold.innerText()).replace(/\s+/g, ' '), { timeout: 15_000, intervals: [500] })
     .not.toBe(goldBefore)
   const goldAfter = (await gold.innerText()).replace(/\s+/g, ' ')
-  const purseAfter = (await page.getByTestId('city-summary').innerText()).replace(/\s+/g, ' ')
+  const purseAfter = (await page.getByTestId('purse').innerText()).replace(/\s+/g, ' ')
   console.log(`hall after: gold "${goldAfter}", your purse "${purseAfter}"`)
   expect(purseAfter, 'your purse did not fall after the purchase').not.toBe(purseBefore)
   await shot(page, 'hq-hall-live-gold-1280@2x')

@@ -13,7 +13,7 @@ import { sampleWalkers, walkVerdict } from './cityWalk.fixture'
 //      320×568, 360×640, 1280×900 and 1440×900 (owner, 2026-10-31: "i told you that i need to see
 //      all the city, a closed one").
 //   1. NO page scroll, vertical or horizontal — the document does not overflow at 390×844, and the
-//      rail and the earnings block sit inside the viewport.
+//      rail sits inside the viewport.
 //   2. ONE FRAME, TWO REGIONS (owner, 2026-10-31: *"in buildings 6 building tappable should always
 //      be inside. when pressed each building, HQ stays the same, but the the location where the
 //      city image is, as well as the right side should only change."*). The six building tiles sit

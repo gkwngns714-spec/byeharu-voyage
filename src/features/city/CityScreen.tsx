@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, StatCard, type IconName, type LoadStep } from '../../components/ui'
+import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
@@ -16,7 +16,7 @@ import { portNameOf, portNationOf, useWorld } from '../../live/worldStore'
 import { useWorldBeat } from '../../live/worldStore'
 import { worldLoadSteps } from '../../live/loadSteps'
 import type { FleetView, Refusal, SnapshotPort, TownHallView } from '../../lib/rpc'
-import { formatDucats, gameSunInstantMs } from '../../lib/format'
+import { gameSunInstantMs } from '../../lib/format'
 import { daylightAt, subsolarPoint } from '../../chart'
 import { serverNow } from '../../lib/serverClock'
 import { useT, type TKey } from '../../lib/i18n'
@@ -50,9 +50,12 @@ import { CityScene } from './CityScene'
 // full-width figures card printed Population · Gold · Status · Relationship · Your earnings above
 // every building face, repeating the hall. The five are now the hall panel's own compact block
 // (Population · Gold · Status · Relationship · Employees) and no other face prints them. The frame
-// keeps ONE line of its own — YOUR purse ("Your earnings"), which the hall does not show — so the
-// frame is header + six tiles + earnings + rail, identical across every press, and the room the
-// card gave back is what lets the hall show its book and its fold at 390×568 without scrolling.
+// is header + six tiles + rail, identical across every press, and the room the card gave back is
+// what lets the hall show its book and its fold at 390×568 without scrolling.
+//
+// YOUR purse is the STATUS STRIP's (app/TopBar.tsx), as on every other screen. The frame kept a
+// "Your earnings" line of its own while the HQ had no strip; S9 (2026-11-11) gave it the shell's
+// frame, the line then printed the same `ducats` twice on one glass, and it was removed.
 //
 // ── WHAT IS REAL ON THIS SLICE, AND WHAT IS NOT ────────────────────────────────────────────────
 // This is the SHELL. It is client-only: there is no migration and no new served field.
@@ -236,9 +239,6 @@ function CityBody({
 }) {
   const fleets = useWorld((s) => s.fleets)
   const allegiance = useWorld((s) => s.allegiance)
-  /** YOUR OWN PURSE — the frame's one line that repeats nothing from the hall (whose Gold is the
-   *  CITY's purse). It is what the old earnings line carried, kept alone. */
-  const ducats = useWorld((s) => s.ducats)
 
   // The fleet acting for this city: one of yours lying here, else nobody (a read-only city).
   const { docked } = alongsideAt(fleets, port.code, draftFleetId)
@@ -269,7 +269,6 @@ function CityBody({
       hall={hall}
       hallRefusal={hallRefusal}
       employees={employees}
-      ducats={ducats}
       allegiance={portNationOf(allegiance, port.code)}
       selected={selected}
       onSelect={setSelected}
@@ -287,7 +286,6 @@ function CityFrame({
   hall,
   hallRefusal,
   employees,
-  ducats,
   allegiance,
   selected,
   onSelect,
@@ -300,8 +298,6 @@ function CityFrame({
   hall: TownHallView | null
   hallRefusal: Refusal | null
   employees: number
-  /** YOUR purse — the frame's one earnings line; nothing else of the old figures card remains. */
-  ducats: number | null
   allegiance: ReturnType<typeof portNationOf>
   selected: CitySelection
   onSelect: (s: CitySelection) => void
@@ -416,28 +412,19 @@ function CityFrame({
                 </Card>
               }
               side={
-                <>
-                  {/* YOUR purse — the frame's one line that repeats nothing from the hall (whose Gold is the CITY's purse). */}
-                  <StatCard
-                    label={t('city.earnings')}
-                    text={ducats === null ? '—' : formatDucats(ducats)}
-                    tone={ducats === null ? 'faint' : 'ink'}
-                    data-testid="city-summary"
+                selected === 'hall' ? (
+                  <CityHallPanel
+                    port={port}
+                    hall={hall}
+                    refusal={hallRefusal}
+                    employees={employees}
+                    relation={{ word: regard ? regardBandWord(regard.band) : t(RELATION_WORDS[relation]), stance, nation: portNation, band: regard?.band ?? null }}
                   />
-                  {selected === 'hall' ? (
-                    <CityHallPanel
-                      port={port}
-                      hall={hall}
-                      refusal={hallRefusal}
-                      employees={employees}
-                      relation={{ word: regard ? regardBandWord(regard.band) : t(RELATION_WORDS[relation]), stance, nation: portNation, band: regard?.band ?? null }}
-                    />
-                  ) : (
-                    <div data-testid="city-open-panel">
-                      <CityFacePanel building={selected} port={port} fleet={fleet} />
-                    </div>
-                  )}
-                </>
+                ) : (
+                  <div data-testid="city-open-panel">
+                    <CityFacePanel building={selected} port={port} fleet={fleet} />
+                  </div>
+                )
               }
             />
           )}

@@ -1,7 +1,7 @@
 import { defineDict } from '../define'
 
 // THE CITY PAGE (src/features/city) — a full-screen city: its scene, its four figures, its six
-// buildings, your earnings, and its own bottom rail. One word per idea, EN and KO.
+// buildings, and its own bottom rail. One word per idea, EN and KO.
 export const cityDict = defineDict({
   en: {
     title: 'City',
@@ -67,7 +67,6 @@ export const cityDict = defineDict({
     forgeOf: '/ {n}',
     forgeMake: 'Forge {name}',
     forgeMaking: 'Forging…',
-    earnings: 'Your earnings',
     employees: 'Employees',
     noYard: 'This city has no yard.',
     noInn: 'This city has no inn.',
@@ -135,7 +134,6 @@ export const cityDict = defineDict({
     forgeOf: '/ {n}',
     forgeMake: '{name} 제작',
     forgeMaking: '제작하는 중…',
-    earnings: '내 수익',
     employees: '고용',
     noYard: '이 도시에는 조선소가 없습니다.',
     noInn: '이 도시에는 주점이 없습니다.',
