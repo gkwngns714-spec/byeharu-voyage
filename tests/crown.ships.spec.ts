@@ -39,6 +39,8 @@ async function yard(page: Page) {
   await ready(page)
   await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: 'Build', exact: true }).click()
   await expect(page.getByTestId('port-yard')).toBeVisible({ timeout: 60_000 })
+  // S8: the hulls not buildable here and now wait under one "More" row (the crown hulls are built abroad, at Lisbon)
+  await page.getByTestId('yard-more').click()
 }
 
 async function ships(page: Page) {
@@ -127,6 +129,7 @@ test.describe('the words, in Korean', () => {
     await page.goto('port')
     await ready(page)
     await page.getByRole('tablist').getByRole('tab', { name: '건조', exact: true }).click()
+    await page.getByTestId('yard-more').click()
     await expect(page.getByTestId('hull-navire').getByTestId('hull-crown')).toHaveText('화물선')
     await expect(page.getByTestId('hull-galion').getByTestId('hull-crown')).toHaveText('군함')
     await page.getByTestId('hull-navire').click()

@@ -1475,6 +1475,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // It lands in the SAME commit as the face that reads it, which is 0022's lesson written
       // down: a complete server mechanic with no client at all is a door nobody opens.
       'worldWorkstation',
+      'worldYardSources',
       // 0070 — world.warehouse(p_port, p_fleet). A READ, no player id: what is ashore comes from
       // current_player_id(), so naming another house's port tells you the shed's SIZE and nothing
       // about what is in it. Lands with the face that reads it.

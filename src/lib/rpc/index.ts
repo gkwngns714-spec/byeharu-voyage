@@ -29,6 +29,7 @@ import { ok, type RpcResult } from './result'
 import type {
   InnView,
   BuildingYardView,
+  YardSources,
   WarehouseView,
   WorkstationView,
   ForgeView,
@@ -189,6 +190,12 @@ export function worldInn(portId: string): Promise<RpcResult<InnView>> {
  */
 export function worldBuildingYard(portId: string): Promise<RpcResult<BuildingYardView>> {
   return call<BuildingYardView>('worldBuildingYard', [portId])
+}
+
+/** WHERE TO GET IT (0349) — for one hull at this yard, the nearest harbour that sells each of her goods and
+ *  makes each of her fittings, with the sailed miles. The gates are the verbs' own, answered on the server. */
+export function worldYardSources(portId: string, classCode: string): Promise<RpcResult<YardSources>> {
+  return call<YardSources>('worldYardSources', [portId, classCode])
 }
 
 /**
