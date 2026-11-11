@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react'
-import { Button, DetailPage, Field, Figure, Note, Row, SummaryRow } from '../../components/ui'
-import { formatDucats, formatUnitPrice } from '../../lib/format'
-import { cmdRequestPlace, type MarketGood, type SnapshotPort } from '../../lib/rpc'
+import { Button, DetailPage, Field, Figure, Note, Row, Skeleton, SummaryRow } from '../../components/ui'
+import { formatDucats, formatInt, formatUnitPrice } from '../../lib/format'
+import { cmdRequestCancel, cmdRequestPlace, type MarketGood, type PortRequests, type SnapshotPort } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 import { fold, foldedMatch } from '../../lib/text'
 import { MarketLeft } from '../../live/MarketLeft'
 import { useMarketPick } from '../../live/marketPick'
+import { RequestBoard } from '../../live/RequestBoard'
+import { useRequests } from '../../live/useRequests'
 
 // THE REQUEST PAGE — the owner's flow, one page (2026-10-31: *"Request i press, a page shows up,
 // where i search trade good - press it, shows up chart, choose price to buy, and then the put the
@@ -141,5 +143,74 @@ export function RequestPage({
         )}
       </div>
     </DetailPage>
+  )
+}
+
+// THE REQUESTS FACE OF THE HQ MARKET — two ideas, two headings (2026-11-11, remaster S7).
+// "City requests" are the harbour's delivery jobs (world.contracts, the ONE RequestBoard Trade >
+// City draws and the Map tray draws, read-only here: nobody delivers from HQ). "Your orders" are
+// the player's own requests (world.requests, passed in by the caller, which already reads it for
+// `home`) with the New request door under them.
+export function RequestsFace({
+  port,
+  goods,
+  own,
+  aboard,
+}: {
+  port: SnapshotPort
+  goods: readonly MarketGood[]
+  own: PortRequests | null
+  aboard: Readonly<Record<string, number>>
+}) {
+  const t = useT()
+  const jobs = useRequests(port.id)
+  const [requestPage, setRequestPage] = useState(false)
+  const [cancelling, setCancelling] = useState<string | null>(null)
+  return (
+    <div className="mt-2" data-testid="city-market-requests">
+      <div className="text-t-caption text-ink-faint" data-testid="city-jobs-heading">
+        {t('city.jobsHeading')}
+      </div>
+      <RequestBoard
+        requests={jobs.view?.contracts ?? null}
+        loading={jobs.loading}
+        aboard={aboard}
+        docked={false}
+        pick={null}
+        onPick={() => undefined}
+      />
+      <div className="mt-4 text-t-caption text-ink-faint" data-testid="city-own-heading">
+        {t('city.ownHeading')}
+      </div>
+      {own === null ? (
+        <Skeleton className="h-20 w-full" />
+      ) : own.requests.length === 0 ? (
+        <Note tone="neutral">{t('city.requestNone')}</Note>
+      ) : (
+        own.requests.map((r) => (
+          <div key={r.id} className="border-b border-edge py-1" data-testid={`city-open-request-${r.id}`}>
+            <Row label={`${r.name} ×${formatInt(r.qty)}`} value={<Figure value={formatUnitPrice(r.unit_price)} />} />
+            {/* THE LINE WRAPS (2026-11-02, the HQ-on-a-phone slice): word, sum held and Cancel are 190 px and the panel's room 139 at 390, 104 at 320 — the
+                Cancel stood 43 px past the panel's edge at 390 and 78 at 320, cut off and unpressable. Under the sum, at the right edge, when they do not fit. */}
+            <div className="flex min-h-11 flex-wrap items-center gap-x-2">
+              <span className="text-t-caption text-ink-faint">{t('city.requestPay')}</span>
+              <Figure value={formatDucats(r.escrow)} />
+              <Button
+                className="ml-auto"
+                onClick={() => {
+                  setCancelling(r.id)
+                  void cmdRequestCancel(r.id).finally(() => setCancelling(null))
+                }}
+                disabled={cancelling === r.id}
+              >
+                {t('city.requestCancel')}
+              </Button>
+            </div>
+          </div>
+        ))
+      )}
+      <SummaryRow title={t('city.requestNew')} onClick={() => setRequestPage(true)} data-testid="city-request-new" />
+      {requestPage && <RequestPage port={port} goods={goods} onClose={() => setRequestPage(false)} />}
+    </div>
   )
 }
