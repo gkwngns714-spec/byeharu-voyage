@@ -48,8 +48,11 @@ commit;
 ```
 
 ## The card
-The best sale and the good's day line are ONE 44-px block (the tap-target floor): a card grows 28 px, and the phone's
-bounded goods pane grows the same (9rem to 10.75rem), so the first row's Buy and Sell stand inside it as before.
+The card's two prices, the best sale and the good's day line (now 48 px wide, beside the best sale) are ONE 44-px block,
+the tap-target floor, in the room the prices and the day line took before (22 + 4 + 16 px): a card grows 2 px. Measured at
+390x844 on the local world: the fold at 787 px, the first card at 451 px, so two rows of cards (K.1's four, layout.spec)
+fit only while a card is at most ~164 px; a separate 44-px row (+28 px) or even a plain text line (+22 px) breaks it.
+With a sale the whole block is the press that opens its trip.
 
 ## The prod estimate, composed (NOT measured: `best_sales` needs a signed-in player, which a read-only prod check is not)
 * By the parts (prod is 1.9–2.1x local on `mid_price`, 2.3–6.7x on `quote`): Lisbon's 10 goods 2.7–6 s.
