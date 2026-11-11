@@ -3935,3 +3935,67 @@ export interface RouteLeg {
 export interface RouteLegs {
   legs: RouteLeg[]
 }
+
+/** 0353 (docs/COMBAT_LOG.md 1.1): how a raid ended, as its log says it. */
+export type FightEnd = 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'
+/** 0353: a fleet's standing order when raiders close. FIGHT is no row on the server. */
+export type RaidOrderWord = 'FIGHT' | 'FLEE' | 'PAY'
+
+/** 0353: one side's guns in one round of a log: how many hulls could fire, shots, hits, hull points dealt. */
+export interface FightVolley {
+  can: number
+  fired: number
+  hits: number
+  dealt: number
+}
+
+/** 0353: one round of a raid's log. `hull` and `foeHull` are the hull LEFT after the round; `slip` the chance she
+ *  rolled to get away, only on a round she ran. */
+export interface FightRound {
+  round: number
+  range: 'L' | 'M' | 'C'
+  you: FightVolley
+  them: FightVolley
+  hull: number
+  foeHull: number
+  /** Her ships struck this round: [ship index from 1, percent of her size]. */
+  struck: [number, number][]
+  slip: number | null
+}
+
+/** 0353: A RAID'S LOG (`voyage.raid_extras`, shape v 1), read by `parseFightLog` (src/live/fightLines.ts): the
+ *  engine's own numbers. Kept for a company's raid only, in the day's payload and in the VOYAGE_REPORT's fight entry. */
+export interface FightLog {
+  order: RaidOrderWord
+  /** A Pay that was refused before the fight, and why. */
+  noPay: 'EMPTY' | 'NO_PAYEE' | null
+  first: 'YOU' | 'THEY' | 'BOTH'
+  foe: { name: string; ships: number; crew: number; hull: number; ship: string | null }
+  you: { name: string; hull: number; full: number; crew: number }[]
+  rounds: FightRound[]
+  end: FightEnd
+  board: { crew: number; foeCrew: number; ratio: number } | null
+  after: { name: string; hull: number }[]
+}
+
+/** 0353: what a raid day cost, beside its log in the report: the hands before and lost, the units carried off, the ransom paid. */
+export interface FightLoss {
+  crewBefore: number | null
+  crew: number | null
+  cargo: Record<string, number>
+  ransom: number
+}
+
+/** 0353 `world.raid_read(fleet)`: the read beside the order's picker. `on` false (the switch is off, or the fleet is
+ *  not the caller's): nothing else is served and no picker is drawn. A read of the sides, never a forecast. */
+export interface RaidRead {
+  on: boolean
+  order?: RaidOrderWord
+  /** Whether any hull of hers can fire. */
+  guns?: boolean
+  slip?: 'poor' | 'fair' | 'good'
+  /** What Pay would cost now; 0 is nothing aboard. */
+  pay?: number
+  /** One row a danger level on the sea now: the raiders' word against her. */
+  foes?: { danger: number; word: AttackWord }[]
+}
