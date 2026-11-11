@@ -92,14 +92,16 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const openSide = useCallback(
     (s: 'buy' | 'sell', code: string) => {
+      // the same good's Buy pressed while its best-sale trip is open switches to the plain Buy, never closes (0348)
+      const fromTrip = tripTo !== null && tripTo.good === code
       setTripTo(null)
-      if (picked === code && side === s) pickGood(null)
+      if (picked === code && side === s && !fromTrip) pickGood(null)
       else {
         setSide(s)
         pickGood(code)
       }
     },
-    [picked, side, pickGood],
+    [picked, side, pickGood, tripTo],
   )
 
   // Sell at a city she is NOT at: a carried good its quay does not list is bid for by world.price_why (owner row 231).

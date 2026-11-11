@@ -11,7 +11,8 @@ import { ready } from './appReady.fixture'
 //   · pressing that line opens THE trip — bought here, sold there (data-sell-at) — whose served profit is
 //     the card's figure to the coin (same row of world.good_board, same units);
 //   · a good that does not pay is marked "No gain" BEFORE any buy (a nearly full hold: a few units cannot
-//     carry a long voyage's wages), and its Buy tray says so above the units and their Max.
+//     carry a voyage's wages — from her own city, else from a farther one), and its Buy tray says so above the
+//     units and their Max.
 // Nothing here asserts a price: the claim is that the card and the tray print the same served figure.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -53,7 +54,7 @@ for (const size of SIZES) {
       expect((await first.boundingBox())!.height, 'the card grew when its best sale landed').toBe(before)
       await expect(board).toHaveAttribute('data-city', home!)
       const line = named.first()
-      const card = board.locator('[data-testid="trade-good"]').filter({ has: line })
+      const card = line.locator('xpath=ancestor::*[@data-testid="trade-good"][1]')
       const good = (await card.getAttribute('data-good'))!
       const port = (await line.getAttribute('data-port'))!
       expect(port).not.toBe(home)
@@ -77,6 +78,9 @@ for (const size of SIZES) {
 
       // A LOSS, MARKED BEFORE BUYING. Fill the hold with the first good but for five units of it: what is left
       // is a few tuns, and a few units cannot carry a long voyage's wages.
+      // the trip's tray closed first (on a phone it covers the board)
+      await panel.getByTestId('tray-close').click()
+      await expect(panel).toHaveCount(0)
       const filler = cards.first()
       await filler.getByTestId('trade-buy').click()
       const buyPanel = page.getByTestId('good-detail')
@@ -95,11 +99,23 @@ for (const size of SIZES) {
       await act.click()
       await expect(page.getByTestId('trade-toast')).toContainText(/^Bought /, { timeout: 60_000 })
 
+      // the board re-asks for her new hold (a trade is a new question). Where a few units still pay at her own city,
+      // a farther city in hand adds the sail there to the wages: the chips are pressed farthest first until one shows it.
       const loss = board.locator('[data-testid="best-sale"][data-pays="false"]')
-      await expect(loss.first()).toBeVisible({ timeout: 180_000 })
+      const landed = board.locator('[data-testid="best-sale"]:not([data-state="wait"])')
+      await expect(landed.first()).toBeVisible({ timeout: 180_000 })
+      // the strip re-orders as a city is pressed (the city in hand leads), so its codes are read once, nearest first
+      const codes = await board.getByTestId('city-chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-port') ?? ''))
+      for (const code of codes.filter((c) => c !== home).reverse()) {
+        if ((await loss.count()) > 0) break
+        await board.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
+        await expect(board).toHaveAttribute('data-city', code)
+        await expect(landed.first()).toBeVisible({ timeout: 180_000 })
+      }
+      await expect(loss.first()).toBeVisible()
       await expect(loss.first()).toContainText('No gain')
       await expect(loss.first()).toHaveClass(/text-danger/)
-      const lossCard = board.locator('[data-testid="trade-good"]').filter({ has: loss.first() })
+      const lossCard = loss.first().locator('xpath=ancestor::*[@data-testid="trade-good"][1]')
       const lossGood = (await lossCard.getAttribute('data-good'))!
 
       // its Buy tray says so ABOVE the units and their Max — before anything is bought
