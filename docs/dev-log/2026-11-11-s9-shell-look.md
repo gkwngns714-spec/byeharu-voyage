@@ -10,9 +10,16 @@ S4 (#571) reached only the tokens. This pass does what lives outside them, once,
 - **Detail pages** (a fleet's page, the yard's, the inn's) stand beside the rail and hold their header and body in one centred 64-rem column (`detailColumnClass`) instead of three islands across 1,280 px.
 - **The card, once** (`src/components/ui/cardStyles.ts`, shared by `Card` and `ListPanel look="card"`, which had two copies): 16-px corners, the hairline, one faint raise (`--shadow-raise`, both schemes), 24-px padding from 768 (16 on a phone, unchanged), the title at 20 px from 768 over a hairline that closes the head.
 
+- **The Trade desk's header** (`CommandScreen.tsx`, one class): from 1,024 to about 1,100 px the rail's 96 px left the title, the fleet strip and the five faces too little room and the strip was cut (measured: 527 px of content in a 481-px box at 1,024). The faces now step to a second line at the right where the line is full; at 1,280 it is one line, as before.
+
 ## Measured laws moved (and why)
 - `tests/wide.layout.spec.ts`: the docked tray's right offset is now `max(--page-pad, 50% − rail/2 − PAGE_REM/2)`: the page is centred on what the rail leaves.
+- `tests/wide.layout.spec.ts` (COMMAND Route at 1440): a detail page is the full glass BESIDE the rail (x = 96, width = window − 96), not the whole window.
+- `tests/map.wrap.spec.ts`: the antimeridian drive pans EAST as its own comment says; it took "the short way", and the rail's narrower chart moved the fitted opening frame across 0°, so the short way became west (copies −1, 0 instead of 0, 1). The law (the seam on the glass, both copies drawn, a tap works) is unchanged.
 - `tests/hq.design.spec.ts` (h) and `tests/profile.design.spec.ts` (b): "the rail's top" is the bottom bar's top only when the nav is a bar (wider than tall); from `lg` the rail takes nothing off the glass's foot, so the page's limit there is the glass.
+
+## Proved locally (local world, headless)
+wide.layout, nav.geometry, nav.rails, hq.design, profile.design: 36 tests, 35 passed and the one red (the detail page's width, above) moved and re-run green. Shots at 1024×768, 667×375, 320×568, 1920×1080: no screen scrolls sideways; the Menu tray stands whole beside the rail (1024: x 96..448, foot on the window's edge) and on the bar (phones).
 
 ## Not done
 - `src/features/command/buysell/TradeToast.tsx` still centres on the window, not on the page beside the rail (48 px off at 1280): another slice owns the file.
