@@ -177,7 +177,9 @@ export interface PriceChartModel {
   now: ChartMark
   outlook: ChartOutlook | null
   /** The stock strip, when a normal level was given and any point carries a stock. */
-  stock: ChartStock | null
+  stock: ChartStock | null  /** The stretch of time the plot's width spans (a window's edges, or the record's start to its end), for anything drawn on the
+   *  time axis (newsMarksModel). */
+  axis: { fromMs: number; toMs: number }
 }
 
 /** A stretch of time as an axis label: hours to a tenth under two days (`8h`, `7.5h` — a tray's record
@@ -471,5 +473,6 @@ export function priceChartModel(
     now: est ? mark(-1) : mark(prim.length - 1),
     outlook: chartOutlook,
     stock: chartStock,
+    axis: { fromMs: startMs, toMs: startMs + totalMs },
   }
 }

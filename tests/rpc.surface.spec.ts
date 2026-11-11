@@ -1693,6 +1693,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-10-26 with migration 0235 (owner row 219, "the live log of each happenings that
       // cause money"): every money move of both books, newest first, asked each second beside World money. A READ.
       'worldMoneyFeed',
+      // Pin moved deliberately 2026-11-11 with migration 0347 (owner row 216, "a point on the chart ... press it to see what
+      // caused it"): the News face's read and the news a chart is about (its dots). Both READS.
+      'worldNewsFeed', 'worldNewsMarks',
       // Pin moved deliberately 2026-10-20 with migration 0215 (docs/SEA_CONDITIONS_AND_REGIONS.md, S1): THE SEA
       // CONDITIONS — every zone's title and wave asks, the caller's title, her fleets' wave, the switch. A READ, no
       // arguments. Served dark (sea_conditions_bite false) ahead of the Codex "Seas" face and the map's shading (C3).

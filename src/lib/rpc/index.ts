@@ -101,6 +101,10 @@ import type {
   StatsMerchants,
   StatsMe,
   StatsNow,
+  NewsFeed,
+  NewsFilter,
+  NewsMarks,
+  NewsChart,
   MoneyFeed,
   IssueLinesResult,
   InvestReceipt,
@@ -838,6 +842,14 @@ export function worldStatsMe(): Promise<RpcResult<StatsMe>> {
 /** The live figures this second (0224): money by holder, fleets at sea, trades since the last count. */
 export function worldStatsNow(): Promise<RpcResult<StatsNow>> {
   return call<StatsNow>('worldStatsNow')
+}
+/** The news, newest first (0347): `world` (importance 2+) or `cities` (yours); ids above `after`, below `before`. */
+export function worldNewsFeed(filter: NewsFilter, after: number | null = null, before: number | null = null, limit = 50): Promise<RpcResult<NewsFeed>> {
+  return call<NewsFeed>('worldNewsFeed', [filter, after, before, limit])
+}
+/** The news a chart is about between two instants (0347); a null bound is open. */
+export function worldNewsMarks(chart: NewsChart, portId: string | null, goodId: string | null, from: string | null, to: string | null = null): Promise<RpcResult<NewsMarks>> {
+  return call<NewsMarks>('worldNewsMarks', [chart, portId, goodId, from, to])
 }
 /** Every money move after `after` (0235, owner row 219): both books, newest first, at most `limit`. Null = the newest. */
 export function worldMoneyFeed(after: string | null, limit = 50): Promise<RpcResult<MoneyFeed>> {

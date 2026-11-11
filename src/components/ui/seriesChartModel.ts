@@ -44,6 +44,8 @@ export interface SeriesChartModel {
   xTicks: { x: number; label: string }[]
   /** Every point's pixel, for the hover layer: nearest-x lookup. */
   dots: { x: number; y: number; atMs: number; value: number }[]
+  /** The stretch of time the plot's width spans (the first point to the last), for anything drawn on the time axis (newsMarksModel). */
+  axis: { fromMs: number; toMs: number }
 }
 
 /** The stretch, in plot px, over which a wash fades to nothing at its newest end. */
@@ -175,7 +177,7 @@ export function seriesChartModel(
     ...(mid.label === left.label || mid.label === right.label ? [] : [mid]),
     right,
   ]
-  return { width: size.width, height: size.height, plot, line, area, areaFade, yTicks, xTicks, dots }
+  return { width: size.width, height: size.height, plot, line, area, areaFade, yTicks, xTicks, dots, axis: { fromMs: t0, toMs: t0 + span } }
 }
 
 /** The dot nearest an x in plot pixels — the hover layer's one question. */

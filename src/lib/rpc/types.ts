@@ -3740,7 +3740,45 @@ export interface StatsNow {
   drift: Record<string, number>
   /** 0229 (docs/CLOSED_ECONOMY.md §7): the closed economy's watch figures; null before the first count. */
   watch?: StatsWatch | null
+  /** 0347: the newest news row's id (null before the first). The News face asks `world.news_feed` when it moves. */
+  news_head?: number | null
 }
+
+/** A word of a news headline (0347, `world_news.detail.words`): plain text, the two languages, or a proper name the
+ *  client localises (`properName(kind, key, name)`). */
+export type NewsWord = string | number | { en: string; ko: string } | { kind: 'port' | 'nation' | 'good'; key: string; name: string }
+
+/** One news item (0347, `public.news_item`): its kind's two headline templates (`{name}` filled from `detail.words`),
+ *  importance 3 headline · 2 notable · 1 local, and the widest place it shows. */
+export interface NewsItem {
+  id: number
+  at: string
+  kind: string
+  importance: number
+  scope: 'world' | 'power' | 'port' | 'good' | 'company'
+  port_id: string | null
+  good_id: string | null
+  company_id: string | null
+  power: string | null
+  en: string
+  ko: string
+  detail: { words?: Record<string, NewsWord>; before?: NewsWord; after?: NewsWord; [key: string]: unknown }
+}
+
+/** `world.news_feed(filter, after, before, limit)` (0347): newest first, at most 50; `head` is the newest id of all. */
+export interface NewsFeed {
+  filter: NewsFilter
+  items: NewsItem[]
+  head: number | null
+}
+export type NewsFilter = 'world' | 'cities'
+
+/** `world.news_marks(chart, port, good, from, to)` (0347): the news a chart is about inside its window, newest first. */
+export interface NewsMarks {
+  chart: NewsChart
+  items: NewsItem[]
+}
+export type NewsChart = 'price' | 'city' | 'world' | 'merchants'
 
 /** `world.stats_now().watch` (0229): the newest count's watch figures, its new money, and the world total's
  *  move over 24 h. The count's own figures are absent on a count made before 0229. */

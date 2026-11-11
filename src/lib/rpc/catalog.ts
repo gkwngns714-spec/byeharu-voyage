@@ -631,6 +631,29 @@ const TABLE = {
   // 0224 — THE FIGURES KEEP TO THE SECOND (owner row 200; docs/dev-log/2026-10-26-stats-live.md): the one LIVE read,
   // asked every second while the Stats tab is open. Base row + the journal since the last count; no aggregate scan.
   worldStatsNow: { schema: 'world', fn: 'stats_now', args: [] },
+  // 0347 — THE NEWS (owner row 216; docs/NEWS_AND_MARKERS.md): the News face's read (newest first, paged by id), and the news a
+  // chart is about inside its window — the dots on its time axis.
+  worldNewsFeed: {
+    schema: 'world',
+    fn: 'news_feed',
+    args: [
+      { name: 'p_filter', type: 'text' },
+      { name: 'p_after', type: 'bigint' },
+      { name: 'p_before', type: 'bigint' },
+      { name: 'p_limit', type: 'int' },
+    ],
+  },
+  worldNewsMarks: {
+    schema: 'world',
+    fn: 'news_marks',
+    args: [
+      { name: 'p_chart', type: 'text' },
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_good', type: 'uuid' },
+      { name: 'p_from', type: 'timestamptz' },
+      { name: 'p_to', type: 'timestamptz' },
+    ],
+  },
   // 0235 — EVERY COIN THAT MOVES IS TOLD (owner row 219; docs/dev-log/2026-10-26-money-feed.md): both money books'
   // moves after `p_after` (null = no bound), newest first, at most `p_limit` (1…200). Asked every second beside World money.
   worldMoneyFeed: {

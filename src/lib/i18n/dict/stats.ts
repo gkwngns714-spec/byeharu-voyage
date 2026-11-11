@@ -6,6 +6,7 @@ export const statsDict = defineDict({
   en: {
     facesLabel: 'Stats faces',
     overview: 'Overview',
+    news: 'News',
     markets: 'Markets',
     cities: 'Cities',
     merchants: 'Merchants',
@@ -232,6 +233,7 @@ export const statsDict = defineDict({
     cities: '도시',
     merchants: '상인',
     me: '나',
+    news: '소식',
     updated: '{time} 갱신',
     live: '실시간',
     rightNow: '지금',

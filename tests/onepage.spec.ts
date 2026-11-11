@@ -215,7 +215,7 @@ for (const size of SIZES) {
 
       // 3b. EVERY FACE INSIDE THE TAB, AND EVERY PAGE ITS SUMMARIES OPEN.
       if (route === 'command') pagesMeasured += await walkFaces(page, size, /desk faces/i, ['City', 'Invest', 'Report', 'Levels', 'Goods'])
-      else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
+      else if (route === 'stats') pagesMeasured += await walkFaces(page, size, null, ['News', 'Markets', 'Cities', 'Merchants', 'Me', 'Overview'])
       else pagesMeasured += await walkPages(page, size)
 
       // 3c. A FACE KEEPS ITS INFORMATION WHERE IT STANDS (the unfold slice, 2026-11-02, owner row 260: Stats has no
