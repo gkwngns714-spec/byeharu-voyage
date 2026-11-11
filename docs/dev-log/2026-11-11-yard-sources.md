@@ -22,7 +22,7 @@ button, only "Missing: ...", and nothing said where Timber (or any material) is 
 
 ## Measured
 - Prod, read-only, the function body as a plain SELECT at Lisbon for the Barca (EXPLAIN ANALYZE of STABLE functions,
-  `scripts/ops/harness/yard-sources/parts.sql`): 72.8, 64.9, 73.3 ms execution. Answer identical to the local world.
+  `explain (analyze, buffers)` of the body in `scripts/ops/harness/yard-sources/answer.sql`, run by hand — the harness guard keeps EXPLAIN ANALYZE out of the repo): 72.8, 64.9, 73.3 ms execution. Answer identical to the local world.
 - Local (PGlite): ~40 ms a call with fittings, ~3 ms without; self-assert over 103 hull classes 4.5 s.
 
 ## What the data says (reported, not changed)

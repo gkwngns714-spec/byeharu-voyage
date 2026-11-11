@@ -1,7 +1,8 @@
 -- 0349 PROD CHECK (read-only): the body of world.yard_sources at Lisbon's yard for the Barca, as a plain SELECT
 -- (every function it calls is STABLE: port_offered_goods, culture_refuses, made_only_in). Run BEFORE the deploy:
---   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/yard-sources/parts.sql
+--   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/yard-sources/answer.sql
 -- Wanted: one row; goods = 4 rows with a seller each, items = 2 rows with a maker each; the answer itself.
+begin transaction read only;
   with dist as materialized (
     select p.id, p.code, p.name, p.culture,
            case when p.id = (select id from public.ports where code = 'LIS') then 0::numeric else (sr.reaches ->> p.code)::numeric end as miles
@@ -41,4 +42,5 @@
       select jsonb_agg(jsonb_build_object('code', k.code, 'port', m.code, 'name', m.name, 'miles', round(m.miles)) order by k.code)
         from public.hull_recipe_items hi join public.item_kinds k on k.code = hi.item_code
         left join made m on m.item = k.code
-       where hi.class_code = 'barca'), '[]'::jsonb))
+       where hi.class_code = 'barca'), '[]'::jsonb));
+commit;
