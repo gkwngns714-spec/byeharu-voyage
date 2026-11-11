@@ -36,6 +36,7 @@ import { useLiveRead } from '../../live/liveRead'
 import { StatsChart } from './StatsChart'
 import { HistoryChart } from '../../live/HistoryChart'
 import { companyLines } from '../../live/historyLines'
+import { firstAtMs, useChartNews } from '../../live/useChartNews'
 import { useChartSpan } from '../../store/chartSpan'
 import { MERCHANT_SORTS, countriesOf, sortMerchants } from './statsFilters'
 
@@ -59,6 +60,8 @@ export function MerchantsFace() {
   const [all, setAll] = useState(false)
   const [view, setView] = useState<View>('companies')
   const [company, setCompany] = useState<string | null>(null)
+  // 0347 (owner row 216): the world's headlines and the companies' news on the merchants' charts, a dot each; a press opens the card
+  const merchantNews = useChartNews('merchants', null, null, firstAtMs(v ? toSeries(v.series, (p) => p.purse) : []))
 
   if (read.loading && !v) return <Skeleton className="h-64 w-full" data-testid="stats-waiting" />
   if (!v) return <Note tone="danger">{t('stats.merchantsFailed')}</Note>
@@ -110,6 +113,7 @@ export function MerchantsFace() {
                 points={toSeries(v.series, (p) => p.purse)}
                 format={formatDucats}
                 label={t('stats.theirPurses')}
+                news={merchantNews.news}
                 tone="accent"
                 height={CARD_CHART_H}
                 className="mt-3"
@@ -220,6 +224,7 @@ export function MerchantsFace() {
               </>
             )}
           </ListPanel>
+          {merchantNews.card}
           {company !== null && (
             <Tray detent="full" onDetentChange={(next) => next === 'closed' && setCompany(null)} title={company} data-testid="stats-company-tray">
               <HistoryChart what="company" subject={company} title={t('stats.yourHistory')} lines={companyLines(t)} data-testid="history-company" />
@@ -237,6 +242,7 @@ export function MerchantsFace() {
               points={toSeries(v.series, (p) => p.profit_day)}
               format={formatDucats}
               label={t('stats.earnedLabel')}
+              news={merchantNews.news}
               tone="info"
               height={CARD_CHART_H}
               className="mt-3"

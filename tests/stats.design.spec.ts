@@ -39,10 +39,12 @@ import { DESIGN_GLASSES, ROW_MAX_REM, boxesOf, readDesign, trayBox } from './des
 const FIGURES = ['stats-live-purse', 'stats-live-sea', 'stats-live-trades', 'stats-live-world'] as const
 const ROWS = ['money-move', 'stats-good', 'stats-city-open', 'stats-merchant'] as const
 
-/** The five faces, by their place in the tab strip (a Korean strip has other words), the panel and row each stands, and every
+/** The six faces, by their place in the tab strip (a Korean strip has other words), the panel and row each stands, and every
  *  figure / block the old faces had by test id — still on the face (U3). */
 const FACES = [
   { name: 'Overview', panel: 'money-log', row: 'money-move', ids: ['stats-live', 'stats-live-purse', 'stats-live-world', 'stats-live-sea', 'stats-live-trades', 'stats-money', 'stats-holder', 'stats-new-money', 'stats-watch', 'stats-overview'] },
+  // 0347 (owner row 216): the news, newest first; a fresh world holds at least the UPDATE row of 0347 itself
+  { name: 'News', panel: 'stats-news', row: 'news-item', ids: ['stats-news'] },
   { name: 'Markets', panel: 'stats-goods', row: 'stats-good', ids: ['stats-markets', 'stats-markets-day', 'stats-markets-window', 'stats-risers', 'stats-fallers', 'stats-most-traded', 'stats-markets-filters', 'stats-markets-sort'] },
   { name: 'Cities', panel: 'stats-cities', row: 'stats-city-open', ids: ['stats-cities', 'stats-cities-filters', 'stats-cities-sort'] },
   { name: 'Merchants', panel: 'stats-merchants-all', row: 'stats-merchant', ids: ['stats-merchants', 'stats-merchant-figures', 'stats-merchant-fold', 'stats-merchant-states', 'stats-merchants-filters', 'stats-merchants-sort'] },

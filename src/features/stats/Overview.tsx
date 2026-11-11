@@ -33,6 +33,7 @@ import { WatchCard } from './Watch'
 import { BonusCard } from './BonusCard'
 import { HistoryChart } from '../../live/HistoryChart'
 import { worldLines } from '../../live/historyLines'
+import { firstAtMs, useChartNews } from '../../live/useChartNews'
 
 // OVERVIEW — the world's money, ALL ON THE FACE, in cards (owner, 2026-11-01, row 260: *"everything is folded in stats this
 // is soo wrong"*; 2026-11-02, row 267: *"it looks so wrong. The past was better. right now everything is on left,
@@ -89,6 +90,8 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
   // THE LEVELS RUN TO NOW (the world's money: the live point is true); THE SUMS STOP AT THE LAST WHOLE PERIOD (owner, 2026-11-07: no right edge that goes down)
   const totals = toSeries(v.series, (p) => p.players + p.merchants + p.cities + p.set_aside)
   const flows = wholeRows(v, v.series)
+  // 0347 (owner row 216): the world's news on the world's charts, a dot each; a press opens the card
+  const worldNews = useChartNews('world', null, null, firstAtMs(totals))
   const side = oneOf(choice.side, SIDES, ALL)
 
   const moves = feed.view === null ? null : sliceMoves(feed.view, filter)
@@ -152,6 +155,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
                 points={totals}
                 format={formatDucats}
                 label={t('stats.purseSeries')}
+                news={worldNews.news}
                 tone="accent"
                 height={CARD_CHART_H}
                 empty={<Hint>{t('stats.lineSoon')}</Hint>}
@@ -169,6 +173,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
                 points={toSeries(flows, (p) => p.sold)}
                 format={formatDucats}
                 label={t('stats.soldSeries')}
+                news={worldNews.news}
                 tone="info"
                 height={CARD_CHART_H}
                 empty={<Hint>{t('stats.lineSoon')}</Hint>}
@@ -181,6 +186,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
                 points={toSeries(flows, (p) => p.bought)}
                 format={formatDucats}
                 label={t('stats.boughtSeries')}
+                news={worldNews.news}
                 tone="accent"
                 height={CARD_CHART_H}
                 empty={<Hint>{t('stats.lineSoon')}</Hint>}
@@ -189,6 +195,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
           </CardRow>
 
           <HistoryChart what="world" title={t('stats.moneyHistory')} lines={worldLines(t)} data-testid="history-world" />
+          {worldNews.card}
         </>
       }
       side={

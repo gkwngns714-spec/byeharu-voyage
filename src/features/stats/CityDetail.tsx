@@ -31,6 +31,7 @@ import { StatsChart } from './StatsChart'
 import { useChartSpan } from '../../store/chartSpan'
 import { HistoryChart } from '../../live/HistoryChart'
 import { cityLines } from '../../live/historyLines'
+import { firstAtMs, useChartNews } from '../../live/useChartNews'
 
 // ONE CITY, OPEN TO EVERYONE — the row the Cities face opens (0214; 0223 removed the investment gate, the
 // owner's row 197: *"on cities, i want to see all the info without investment"*).
@@ -75,6 +76,8 @@ export function CityDetail({ portId }: { portId: string }) {
   useEffect(() => {
     void loadMarket(portId)
   }, [portId, loadMarket])
+  // 0347 (owner row 216): this city's news and the world's headlines on its purse, a dot each; a press opens the card
+  const cityNews = useChartNews('city', portId, null, firstAtMs(v?.overview ? toSeries(v.overview.series, (p) => p.purse) : []))
   if (read.loading && !v) return <Skeleton className="mt-4 h-40 w-full" />
   if (!v) return <Note tone="danger" className="mt-4">{t('stats.cityFailed')}</Note>
   const o = v.overview
@@ -159,6 +162,7 @@ export function CityDetail({ portId }: { portId: string }) {
                 points={toSeries(o.series, (p) => p.purse)}
                 format={formatDucats}
                 label={t('stats.citySeries', { city: portName(v.city.name) })}
+                news={cityNews.news}
                 tone="accent"
                 look="chart"
                 height={CARD_CHART_H}
@@ -176,6 +180,7 @@ export function CityDetail({ portId }: { portId: string }) {
               </span>
             </Card>
           </div>
+          {cityNews.card}
           <HistoryChart what="city" subject={v.city.code} title={t('stats.cityHistory')} lines={cityLines(t)} data-testid="history-city" />
           <div className={PAIR}>
             <Card title={t('stats.soldCityMost')}>

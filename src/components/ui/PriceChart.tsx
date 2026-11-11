@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { AreaWash } from './AreaWash'
 import { panBackMs, panByDrag, panByKey, type ChartWindow, type PanLimits } from './chartPan'
+import { NewsDots } from './NewsDots'
+import type { ChartNews } from './newsMarksModel'
 import { priceChartModel, type ChartOutlookInput } from './priceChartModel'
 import { stockLevel } from './stockLevel'
 import { formatInt } from '../../lib/format'
@@ -61,6 +63,7 @@ export function PriceChart({
   view = null,
   pan = null,
   compact = false,
+  news,
 }: {
   /** The served points for ONE good at ONE port, oldest first. */
   points: readonly PricePoint[]
@@ -84,6 +87,8 @@ export function PriceChart({
   /** A compact panel (owner row 226, the COMMAND good page): the plane is drawn at the column's own width (so the
    *  labels stay their size and are not magnified with it) and a modest fixed height. Ignored with `size`. */
   compact?: boolean
+  /** THE NEWS this chart is about (0347, owner row 216): a dot on the time axis at each item's instant; a press is the caller's. */
+  news?: ChartNews
 }) {
   const t = useT()
   const clip = useId()
@@ -142,6 +147,8 @@ export function PriceChart({
 
   return (
     <div ref={box} className="mt-1 w-full" data-testid="price-chart">
+      {/* the plane and its news dots share one box: the dots are a layer over the svg, out of the flow (0347) */}
+      <div className="relative">
       <svg
         viewBox={`0 0 ${model.width} ${model.height}`}
         className={`block h-auto w-full ${pannable ? 'cursor-grab touch-pan-y' : ''}`}
@@ -354,6 +361,8 @@ export function PriceChart({
           />
         </g>
       </svg>
+      {news && <NewsDots news={news} plot={plot} axis={model.axis} width={model.width} height={model.height} />}
+      </div>
       <p className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-t-caption text-ink-faint" data-testid="price-chart-legend">
         {model.sides.ask && (
           <span className="inline-flex items-center gap-1">

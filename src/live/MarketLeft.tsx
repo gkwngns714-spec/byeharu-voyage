@@ -6,6 +6,7 @@ import { useT } from '../lib/i18n'
 import { usePickedGood } from './marketPick'
 import { usePortMarket } from './usePortMarket'
 import { usePriceSeries } from './usePriceSeries'
+import { firstAtMs, useChartNews } from './useChartNews'
 
 // THE MARKET'S LEFT REGION — the chart, instead of the city picture (owner, 2026-10-31: *"when
 // pressing a market, instead of city, i would like to have a graph shown, that is changed when
@@ -26,6 +27,8 @@ export function MarketLeft({ port, good: given = null }: { port: SnapshotPort; g
   const picked = usePickedGood(port.id, goods)
   const good = given ?? picked
   const trend = usePriceSeries(port.id, good?.good_id ?? null)
+  // 0347 (owner row 216): this city's news of this good and the world's headlines, a dot each on the time axis; a press opens the card
+  const news = useChartNews('price', port.id, good?.good_id ?? null, firstAtMs((trend.series?.points ?? []).map((p) => ({ atMs: Date.parse(p.at) }))))
 
   if (!good) {
     return (
@@ -61,11 +64,13 @@ export function MarketLeft({ port, good: given = null }: { port: SnapshotPort; g
             nowMs={nowMs}
             compact
             label={good.name}
+            news={news.news}
           />
         ) : (
           <Skeleton className="mt-1 h-24 w-full" />
         )}
         <SpanPicker value={trend.span} onChange={trend.setSpan} className="mt-1" />
+        {news.card}
       </div>
       <div className="shrink-0">
         <Row

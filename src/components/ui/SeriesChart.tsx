@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState, type PointerEvent, type ReactNode } from 'react'
 import { AreaWash } from './AreaWash'
+import { NewsDots } from './NewsDots'
+import type { ChartNews } from './newsMarksModel'
 import { nearestDot, seriesChartModel, type SeriesPoint } from './seriesChartModel'
 
 // ONE FIGURE OVER TIME — the small-multiple line the Stats tab is made of (seriesChartModel.ts says why
@@ -37,6 +39,7 @@ export function SeriesChart({
   size,
   height,
   empty = null,
+  news,
   className = '',
 }: {
   /** Served instants and values; any order. Fewer than two and `empty` is drawn in its place. */
@@ -59,6 +62,8 @@ export function SeriesChart({
    *  that can say why ("the line starts with the next count") passes that line here; a caller that
    *  cannot leaves it null, which is the old behaviour exactly. */
   empty?: ReactNode
+  /** THE NEWS this chart is about (0347, owner row 216): a dot on the time axis at each item's instant; a press is the caller's. */
+  news?: ChartNews
   className?: string
 }) {
   // THE BOX'S OWN WIDTH, for a chart of a stated `height`: measured on the svg (a flex child, so its width is what the card leaves).
@@ -110,6 +115,8 @@ export function SeriesChart({
         </span>
       </div>
       <div className="flex items-stretch gap-2">
+        {/* the plot and its news dots share one box: the dots are a layer over the svg, out of the flow (0347) */}
+        <div className="relative flex min-w-0 flex-1">
         <svg
           ref={setNode}
           viewBox={`0 0 ${model.width} ${model.height}`}
@@ -144,6 +151,8 @@ export function SeriesChart({
             </g>
           )}
         </svg>
+        {news && <NewsDots news={news} plot={plot} axis={model.axis} width={model.width} height={model.height} />}
+        </div>
         {/* the high and low figures, in a column of their own beside the plot, at its top and floor — or a flat line's one figure, at the line */}
         <div className="relative shrink-0">
           {/* in flow but unseen: it gives the column the width of its wider figure */}

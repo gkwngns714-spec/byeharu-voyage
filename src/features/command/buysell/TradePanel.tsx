@@ -20,6 +20,7 @@ import type { useTripBoard } from '../plans/useTripBoard'
 import { DayChange } from './TradeBoard'
 import { dayLine } from './dayLine'
 import type { TradeDone } from './tradeDone'
+import { firstAtMs, useChartNews } from '../../../live/useChartNews'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TRADE PANEL — ONE GOOD AT ONE CITY, THE SAME PANEL ON BUY AND ON SELL (owner row 229, 2026-10-26)
@@ -176,7 +177,7 @@ function Frame({
       <Row label={t('desk.aboardLabel')} value={<Figure value={formatInt(fleetCargoByCode(fleet)[good.code] ?? 0)} />} data-testid="good-detail-aboard" />
       {/* the units first, where a half-raised sheet shows them; the chart they are read against under them */}
       {units}
-      <Chart name={good.name} trend={trend} />
+      <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
       {extra}
       <WhyThisPrice why={why.view ?? null} loading={why.loading} />
       <CityGoodTrades portId={portId} goodId={good.good_id} refresh={fleet.version} />
@@ -186,10 +187,12 @@ function Frame({
 }
 
 /** THE BIGGER CHART: the span picker and the compact PriceChart over the chosen span. */
-function Chart({ name, trend }: { name: string; trend: ReturnType<typeof usePriceSeries> }) {
+function Chart({ name, trend, portId, goodId }: { name: string; trend: ReturnType<typeof usePriceSeries>; portId: string; goodId: string }) {
   const t = useT()
   const [openedAt] = useState(() => Date.now())
   const points = trend.series?.points ?? []
+  // 0347 (owner row 216): this city's news of this good and the world's headlines, a dot each on the time axis; a press opens the card
+  const news = useChartNews('price', portId, goodId, firstAtMs(points.map((p) => ({ atMs: Date.parse(p.at) }))))
   const values = points.map((p) => p.ask ?? p.bid)
   return (
     <div className="py-2" data-testid="trend-row">
@@ -207,10 +210,12 @@ function Chart({ name, trend }: { name: string; trend: ReturnType<typeof usePric
             slotSeconds={(trend.series as PriceSeries).step_seconds}
             nowMs={openedAt}
             compact
+            news={news.news}
             label={t('ui.pastPricesAxis', { name, n: values.length, lo: formatPriceFigure(Math.min(...values)), hi: formatPriceFigure(Math.max(...values)) })}
           />
         </div>
       )}
+      {news.card}
     </div>
   )
 }
