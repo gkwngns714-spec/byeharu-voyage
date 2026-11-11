@@ -26,6 +26,10 @@ export {
   formatPctDelta,
   formatOfTotal,
   rollMark,
+  moneyWord,
+  moneyFigure,
+  moneyWords,
+  type MoneyKind,
 } from './numbers'
 export {
   TIME_COMPRESSION,
@@ -39,6 +43,7 @@ export {
   formatRealShort,
   formatCountdown,
   formatTwoClocks,
+  formatDaysReal,
   formatRelative,
   formatClock,
   formatDate,

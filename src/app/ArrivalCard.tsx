@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button, glassBesideRailClass } from '../components/ui'
-import { formatDucatsDelta, formatInt } from '../lib/format'
+import { formatInt, moneyFigure, moneyWord, type MoneyKind } from '../lib/format'
 import { num, str } from '../lib/json'
 import { useT } from '../lib/i18n'
 import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
@@ -27,6 +27,8 @@ interface Sale {
   qty: number | null
   /** The server's profit for the sale, or its total when no profit was on record. */
   figure: number | null
+  /** Which of the two the figure is, so it is printed with its word: Profit / Loss, or Total. */
+  kind: MoneyKind
 }
 
 interface Arrival {
@@ -47,7 +49,7 @@ const TRACKS = ['trading', 'exploration'] as const
 
 function saleOf(e: LedgerEvent): Sale {
   const profit = num(e.payload, 'profit')
-  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: profit ?? num(e.payload, 'total') }
+  return { id: e.id, good: str(e.payload, 'good') ?? '', qty: num(e.payload, 'qty'), figure: profit ?? num(e.payload, 'total'), kind: profit === null ? 'total' : 'profit' }
 }
 
 /** The facts of one read: the events not seen before, against the house as it stood on the read before. */
@@ -136,7 +138,16 @@ export function ArrivalCard() {
         {sales.map((s) => (
           <p key={s.id} className="mt-1 flex justify-between gap-3 text-t-body" data-testid="arrival-sale">
             <span className="min-w-0 break-words">{t('feed.arrSold', { n: s.qty === null ? '' : formatInt(s.qty), good: s.good })}</span>
-            {s.figure !== null && <span className="shrink-0 font-semibold tabular-nums">{formatDucatsDelta(s.figure)}</span>}
+            {/* THE FIGURE HAS ITS WORD (2026-11-11, the trade-flow slice): "−1,182" stood bare. It is the sale's served profit
+                ("Profit" / "Loss": the sale's money less what the goods cost, before the voyage's wages), or its total. */}
+            {s.figure !== null && (
+              <span className="flex shrink-0 items-baseline gap-2" data-testid="arrival-figure" data-kind={s.kind}>
+                <span className="text-t-caption text-ink-muted" data-testid="arrival-figure-word">
+                  {moneyWord(s.kind, s.figure)}
+                </span>
+                <span className={`font-semibold tabular-nums ${s.kind !== 'profit' ? '' : s.figure < 0 ? 'text-danger' : 'text-success'}`}>{moneyFigure(s.kind, s.figure)}</span>
+              </span>
+            )}
           </p>
         ))}
         {card.newPorts > 0 && (

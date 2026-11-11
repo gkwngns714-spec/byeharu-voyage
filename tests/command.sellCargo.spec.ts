@@ -112,8 +112,8 @@ for (const size of SIZES) {
       if ((await away.count()) > 0) {
         const to = (await away.getAttribute('data-port'))!
         await away.click()
-        await expect(away).toHaveAttribute('aria-pressed', 'true')
-        await closeDetail(page)
+        // 2026-11-11 (the trade-flow slice): the row closes its page, so the tray it opened shows (tests/trade.flow.spec.ts)
+        await expect(page.locator('[data-detail-page]'), 'a cargo row pressed closes its page, so the tray shows (2026-11-11)').toHaveCount(0)
         await expect(board).toHaveAttribute('data-city', to)
         await expect(panel).toHaveAttribute('data-city', to)
         await expect(panel).toHaveAttribute('data-good', code)
@@ -125,9 +125,11 @@ for (const size of SIZES) {
         await openTradeMap(face)
         await expect(face.getByTestId('trade-map').locator(`[data-port-code="${to}"]`).first()).toBeAttached({ timeout: 30_000 })
         await closeTradeMap(face)
-        // closed (the panel lets the good go)
+        // closed (the panel lets the good go), and she is back on the page she pressed the row on
         await panel.getByTestId('tray-close').click()
         await expect(panel).toHaveCount(0)
+        await expect(page.getByTestId('cargo-open-page')).toBeVisible()
+        await closeDetail(page)
       }
 
       // THE NEAR CITIES: what she carries is bid for at every one (no "No buyer" where the quay lists no row)
@@ -153,11 +155,10 @@ for (const size of SIZES) {
       await panel.getByTestId('tray-close').click()
       await expect(panel).toHaveCount(0)
 
-      // HERE: Sell, all aboard, one press — the cargo is its own page; press the row, then close
-      // the page to work the panel behind it.
+      // HERE: Sell, all aboard, one press — the cargo is its own page; the row pressed closes it and the panel shows.
       await openDetail(page, 'cargo-open')
       await block.locator('[data-testid="cargo-place"][data-port="LIS"]').click()
-      await closeDetail(page)
+      await expect(page.locator('[data-detail-page]'), 'a cargo row pressed closes its page, so the tray shows (2026-11-11)').toHaveCount(0)
       await expect(panel).toHaveAttribute('data-city', 'LIS')
       await expect(act).toHaveAttribute('data-act', 'sell')
       await expect(panel.getByTestId('stepper-figure')).toHaveValue('1')
