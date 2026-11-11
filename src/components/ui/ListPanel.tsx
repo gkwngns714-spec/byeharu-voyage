@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { CARD_HEAD, CARD_PAD, CARD_SURFACE, CARD_TITLE } from './cardStyles'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE LIST PANEL — a list that is ON the screen, not behind a press (owner, 2026-11-01)
@@ -197,17 +198,17 @@ export function ListPanel({
         data-list-panel=""
         data-list-look="card"
         aria-label={named}
-        className={`min-w-0 rounded-tile border border-edge bg-surface p-4 md:p-5 xl:p-6 ${className}`}
+        className={`${CARD_SURFACE} ${CARD_PAD} ${className}`}
         {...rest}
       >
         {(title !== undefined || count !== undefined || trailing !== undefined || controls !== undefined) && (
-          <header className="mb-4 flex flex-col gap-3" data-list-header="">
+          <header className={`${CARD_HEAD} flex flex-col gap-3`} data-list-header="">
             {(title !== undefined || count !== undefined || trailing !== undefined) && (
               <div className="flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2">
                 {/* THE TITLE KEEPS 8 REM (2026-11-02, the Codex at 320×640): beside a 176-px search the title of a 256-px card was
                     squeezed to 68 px, "Great powers" wrapped and its count ran under the control. A control that does not fit beside
                     8 rem of title wraps UNDER it (the line wraps) — the title is never the thing that gives way. */}
-                <h2 className="flex min-w-32 flex-1 items-baseline gap-2 text-t-body font-semibold text-ink md:text-t-card">
+                <h2 className={`flex min-w-32 flex-1 items-baseline gap-2 ${CARD_TITLE}`}>
                   {title}
                   {count !== undefined && (
                     <span className="shrink-0 whitespace-nowrap text-t-label font-normal tabular-nums text-ink-muted" data-list-count="">

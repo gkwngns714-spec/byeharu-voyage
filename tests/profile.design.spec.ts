@@ -109,7 +109,8 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
                 bottom: b.bottom,
                 top: b.top,
                 sheetBottom: s.bottom,
-                railTop: r.top,
+                // 2026-11-11 (S9): from `lg` the nav is a rail at the left edge — only a bar at the foot has a top to stay above
+                railTop: r.width > r.height ? r.top : innerHeight,
               }
             : null
         })

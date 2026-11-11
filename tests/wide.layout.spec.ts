@@ -55,8 +55,10 @@ test('the literal page classes encode the named page constants — the split and
   expect(pageSplitClass()).toContain('lg:grid-cols-[minmax(0,1fr)_var(--page-side)]')
   const tray = trayDockPageClass()
   expect(tray).toContain('lg:w-[var(--page-side)]')
-  const half = /calc\(50%-([0-9.]+)rem\)/.exec(tray)
-  expect(half, `the tray's right offset is not 50% − PAGE_REM/2 in "${tray}"`).not.toBeNull()
+  // 2026-11-11 (S9): the page is centred on what the RAIL leaves from `lg` (screenLayout.ts THE SHELL), so the margin is
+  // (glass − rail)/2 − PAGE_REM/2
+  const half = /calc\(50%-var\(--rail-w\)\/2-([0-9.]+)rem\)/.exec(tray)
+  expect(half, `the tray's right offset is not (100% − rail)/2 − PAGE_REM/2 in "${tray}"`).not.toBeNull()
   expect(Number(half![1])).toBe(PAGE_REM / 2)
   expect(tray).toContain('max(var(--page-pad)')
 })

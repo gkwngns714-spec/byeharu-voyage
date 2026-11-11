@@ -76,7 +76,7 @@
             `--text-t-*` names, §4.1. No serif, no mono, no
             uppercase voice, no letter-spacing. Figures are tabular.
    Space    4-pt base, 8-pt rhythm: 4 · 8 · 12 · 16 · 24 · 32 · 48 and nothing else.
-   Shape    sheet 16 · tile 12 · control 10 · chip 999. NO cut corners.
+   Shape    sheet 16 (and the page's card) · tile 12 · control 10 · chip 999. NO cut corners.
    Motion   240ms rise, 180ms fold, one curve, and nothing else animates.
    Schemes  BOTH ARE FIRST-CLASS. Dark is the default (a night sea); `:root[data-theme='light']`
             selects the day sea. ONE resolver writes that attribute — src/features/profile/
@@ -441,12 +441,16 @@
   --radius-chip: 999px;
   --radius-md: var(--radius-control);
 
-  /* ── ELEVATION — exactly two levels, and a card is neither ──────────────────────────────────
+  /* ── ELEVATION — two levels for what floats, and one faint raise for a card (S9, below) ───────────
      A docked sheet casts upward from the bottom edge; a floating corner panel casts down. Every
      other surface is separated by TONE, which is why `--shadow-card` below is `none`: thirty-
      three drop-shadowed boxes is the "page with panels" look this step is here to end. */
   --shadow-sheet: 0 -8px 32px -16px rgb(0 0 0 / 0.45);
   --shadow-float: 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  /* 2026-11-11 (the remaster's S9): THE CARD'S RAISE, the faintest level — a 1-px light along its top edge and a soft cast under
+     it, so a card stands ON the sea instead of being printed on it (src/components/ui/cardStyles.ts). Still no box shadow on a
+     row, a tile or a control: tone separates those. */
+  --shadow-raise: inset 0 1px 0 0 rgb(255 255 255 / 0.04), 0 1px 2px 0 rgb(0 0 0 / 0.3), 0 16px 32px -24px rgb(0 0 0 / 0.7);
 
   /* ── MOTION ─────────────────────────────────────────────────────────────────────────────────
      One curve. Sheets rise and fall in 240ms; a fold opens in 180ms; nothing else animates.
@@ -655,6 +659,7 @@
     /* The night sea's elevation is a black cast; on paper it has to be a softer, cooler one. */
     --shadow-sheet: 0 -8px 32px -16px rgb(16 24 40 / 0.18);
     --shadow-float: 0 8px 24px -12px rgb(16 24 40 / 0.22);
+    --shadow-raise: 0 1px 2px 0 rgb(16 24 40 / 0.06), 0 16px 32px -24px rgb(16 24 40 / 0.22);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════════════════
