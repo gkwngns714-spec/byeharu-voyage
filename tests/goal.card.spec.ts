@@ -42,6 +42,7 @@ for (const size of SIZES) {
       expect(loaded, 'the card moved when the read landed').toEqual(first)
 
       // the card's text, read before the press
+      const header = await box(page, '[data-testid="desk-header"]')
       const text = (await card.innerText()).replace(/\s+/g, ' ')
       const m = /^(\S+): Trading (\d+)\/(\d+), Exploration (\d+)\/(\d+)/.exec(text)
       expect(m, `the card says: ${text}`).not.toBeNull()
@@ -59,9 +60,12 @@ for (const size of SIZES) {
       expect(await level('levels-trading')).toBe(Number(m![2]))
       expect(await level('levels-exploration')).toBe(Number(m![4]))
       await expect(page.getByTestId('levels-title')).toContainText(`${m![1]}`)
-      // the press did not move the card
+      // the press did not move the desk's header; wide, the card stands in it on every face and did not move; on a phone it is the
+      // Goods face's own (the other faces keep every pixel for themselves)
+      expect(await box(page, '[data-testid="desk-header"]'), 'the press moved the header').toEqual(header)
       const after = await box(page, '[data-testid="goal-card"]')
-      expect(after, 'the press moved the card').toEqual(loaded)
+      if (size.width >= 1024) expect(after, 'the press moved the card').toEqual(loaded)
+      else expect(after, 'the card stands on a face that is not Goods').toBeNull()
     })
   })
 }
