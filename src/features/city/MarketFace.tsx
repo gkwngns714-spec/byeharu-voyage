@@ -28,7 +28,7 @@ import { TRADE_FACES, useTradeFace, type TradeFace } from '../../live/tradeFace'
 import { useWorld } from '../../live/worldStore'
 import { RequestsFace } from './RequestPage'
 import { TradeCard } from '../../live/TradeCard'
-import { tradeRows, type TradeGoodRow } from '../../domain/market/tradeRows'
+import { tradeRows, type TradeGoodRow } from '../../domain/market'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MARKET FACE — the chart on the left region, BUY · SELL · REQUEST in the right panel

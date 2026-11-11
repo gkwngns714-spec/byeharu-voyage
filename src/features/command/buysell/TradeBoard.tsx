@@ -8,7 +8,7 @@ import { sailOrigin } from '../../../domain/passage'
 import { useT } from '../../../lib/i18n'
 import type { BestSale, FleetView } from '../../../lib/rpc'
 import type { PortMarketState } from '../../../live/usePortMarket'
-import type { TradeGoodRow } from '../../../domain/market/tradeRows'
+import type { TradeGoodRow } from '../../../domain/market'
 
 // THE COMBINED TRADE BOARD (owner 2026-10-30: *"removing the map, just have combined buy and sell tab with trade
 // goods when docked"*) — the city in hand's goods in ONE list, each row showing the city's ASK (Buy) and BID (Sell)
