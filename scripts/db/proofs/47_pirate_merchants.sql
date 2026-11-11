@@ -58,6 +58,8 @@ declare
   v_pirate_stop boolean;
   v_ord    int;
   v_day    date;
+  v_pay_day date;     -- the UTC day the payer books a founding on: the wall clock's (founding_credit hands public.pirate_pay now()), not the gate's p_now
+  v_pay_spent bigint;
 begin
   if v_pir is null or v_por is null or v_dje is null then
     raise exception 'PROOF 47 FAIL: the pirates or their homes are not in this world (0338)';
@@ -184,6 +186,18 @@ begin
     raise exception 'PROOF 47 FAIL: with the day''s room spent (room %) the founding was not refused for room: %', v_room, v_r;
   end if;
   -- and the payer itself, asked directly through the one founding path: refused WHOLE, nothing of her stays
+  -- THE PAYER'S DAY IS THE WALL CLOCK'S: public.founding_credit pays through public.pirate_pay(..., now(), ...), so its room is the room of now()'s UTC day, whatever hour the gate above was asked about.
+  -- From 21:00 UTC on, v_t0 + 3 hours is TOMORROW: the row spent above is then not the payer's, the payer still had its whole day's room, and the probe house was founded (nightly runs 42418402614,
+  -- 42529316649 and 42923963630, all started after 21:00 UTC). So the room is spent on the payer's own day too, shown to be 0 by the one reader, and put back after the probe.
+  v_pay_day := (now() at time zone 'UTC')::date;
+  if v_pay_day <> v_day then
+    select d.spent into v_pay_spent from public.pirate_spend_day d where d.day = v_pay_day;
+    insert into public.pirate_spend_day (day, spent) values (v_pay_day, floor(public.pirate_hoard() * public.wc_num('pirate_spend_day_pct'))::bigint)
+    on conflict (day) do update set spent = excluded.spent;
+  end if;
+  if public.pirate_spend_room(now()) <> 0 then
+    raise exception 'PROOF 47 FAIL: the payer''s own day (%) still has % d. of room: the probe below would prove nothing', v_pay_day, public.pirate_spend_room(now());
+  end if;
   select count(*) into v_n from public.players;
   begin
     perform public.new_house(null, 'Probe Corsair 0f47', 'PIR', 'POR', 'Probe', 'carlat', 'Probe', 250000, true);
@@ -193,6 +207,9 @@ begin
   end;
   if (select count(*) from public.players) <> v_n or exists (select 1 from public.players pl where pl.company_name = 'Probe Corsair 0f47') then
     raise exception 'PROOF 47 FAIL: a refused founding left a house behind';
+  end if;
+  if v_pay_day <> v_day then
+    update public.pirate_spend_day d set spent = coalesce(v_pay_spent, 0) where d.day = v_pay_day;
   end if;
   -- the room just under what founding_credit really pays (her capital AND her tuition, 252,500) plus the ships' reserve: refused for room by the gate, never handed to the payer to refuse
   v_reserve := ceil(public.pirate_size() * public.wc_int('navy_upkeep_day')
