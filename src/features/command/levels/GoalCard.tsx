@@ -11,7 +11,7 @@ import { useDeskView } from '../deskView'
 //
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
-const CARD = 'mx-gutter mb-2 flex h-14 min-w-0 shrink-0 flex-col justify-center rounded-control px-3 text-left'
+const CARD = 'mx-gutter flex h-11 min-w-0 shrink-0 flex-col justify-center rounded-control px-3 text-left'
 
 export function GoalCard() {
   const t = useT()

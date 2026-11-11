@@ -38,7 +38,7 @@ for (const size of SIZES) {
       await expect(card).toBeVisible({ timeout: 120_000 })
       await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
       const loaded = await box(page, '[data-testid="goal-card"]')
-      expect(loaded!.h, 'the card is not a fixed two-line height').toBe(56)
+      expect(loaded!.h, 'the card is not a fixed two-line height').toBe(44)
       expect(loaded, 'the card moved when the read landed').toEqual(first)
 
       // the card's text, read before the press
