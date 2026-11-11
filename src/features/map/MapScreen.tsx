@@ -63,13 +63,14 @@ import {
   type PathStop,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideSideTrayClass, Icon, LoadMeter } from '../../components/ui'
+import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter } from '../../components/ui'
 import { worldLoadSteps } from '../../live/loadSteps'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
 import { RouteBar } from './RouteBar'
+import { RouteEditor } from '../../live/RouteEditor'
 import { useRouteBuilder } from './useRouteBuilder'
 import { CityHarbour } from './CityHarbour'
 import { merchantsSummary } from '../../live/merchantGroups'
@@ -260,6 +261,19 @@ function Chart({
     if (!(await route.final()) || id === null) return
     endRoute()
     // her track now shows the queue: the fleet is selected, as a tap on her hull does
+    selectFleet(id)
+    setSelection({ kind: 'fleet', id })
+  }
+  // REPEAT (B4): the kept stops, as a loop, in THE route editor (live/RouteEditor.tsx) on the one pop-up page, over the
+  // chart. Back (or the editor's Cancel) returns to the builder with every stop still kept; a route that started ends
+  // route mode and selects her, so her lap is what the chart draws.
+  const [repeatStops, setRepeatStops] = useState<readonly string[] | null>(null)
+  const closeRepeat = useCallback(() => setRepeatStops(null), [])
+  const repeatDone = (started?: boolean) => {
+    const id = routeFor
+    setRepeatStops(null)
+    if (!started || id === null) return
+    endRoute()
     selectFleet(id)
     setSelection({ kind: 'fleet', id })
   }
@@ -491,6 +505,7 @@ function Chart({
   }, [mark])
 
   return (
+    <>
     <div
       ref={chartRef}
       {...surface.handlers}
@@ -599,6 +614,7 @@ function Chart({
           name={(code) => portsByCode.get(code)?.name ?? code}
           onCancel={endRoute}
           onFinal={() => void finalRoute()}
+          onRepeat={setRepeatStops}
         />
       )}
       {selectedFleet && !routeView && (
@@ -679,5 +695,13 @@ function Chart({
         />
       )}
     </div>
+    {/* REPEAT'S PAGE stands BESIDE the chart's surface, not in it: a press or a wheel on the page is the page's, never
+        a pan, a zoom or a tap on the sea under it. */}
+    {routeView && repeatStops && (
+      <DetailPage title={t('map.routeTitle')} onClose={closeRepeat} data-testid="route-repeat-page">
+        <RouteEditor fleet={routeView} route={null} seed={repeatStops} onDone={repeatDone} />
+      </DetailPage>
+    )}
+    </>
   )
 }

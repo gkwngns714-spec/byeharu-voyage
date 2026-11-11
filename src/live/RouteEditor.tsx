@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Button, Chip, Field, Icon, Note, goodIcon } from '../../components/ui'
-import { whereabouts } from '../../domain/fleet'
-import { routeStopQuiet, stopLine, type StopLine } from '../../domain/route'
-import { PortField } from '../../live/PortField'
-import { usePress } from '../../live/usePress'
-import { portNameOf, useWorld } from '../../live/worldStore'
-import type { FleetView, Refusal, StandingRoute } from '../../lib/rpc'
-import { draftOfRoute, emptyStop, routeName, routePayload, type RouteStopDraft } from './standingRouteDraft'
+import { Button, Chip, Field, Icon, Note, goodIcon } from '../components/ui'
+import { whereabouts } from '../domain/fleet'
+import { routeStopQuiet, stopLine, type StopLine } from '../domain/route'
+import { PortField } from './PortField'
+import { usePress } from './usePress'
+import { portNameOf, useWorld } from './worldStore'
+import type { FleetView, Refusal, StandingRoute } from '../lib/rpc'
+import { draftOfRoute, emptyStop, routeName, routePayload, seedRoute, type RouteStopDraft } from './standingRouteDraft'
 import { RouteStopBlock, StopLineRow, StopPortRow } from './RouteStop'
-import { useT } from '../../lib/i18n'
+import { useT } from '../lib/i18n'
 
 // THE ROUTE EDITOR — inside RouteFold, on the route's page (docs/TRADE_ROUTES.md §7; the one
-// pop-up page since consistency row 38). Slice 1's scope, and
+// pop-up page since consistency row 38), and — the SAME editor, seeded — behind the map route builder's Repeat
+// (owner row 209, docs/ROUTE_BUILDER.md B4; which is why it lives in src/live and not in a screen's folder). Slice 1's scope, and
 // no more: two stops — where the fleet lies, and one port picked with THE port field (the same
 // field PORT uses, src/live/PortField.tsx) — and at each stop "sell all" and one BUY (a good this
 // port's market offers, how many units, the Max each). Each stop is RouteStop.tsx's block — its
@@ -28,12 +29,17 @@ import { useT } from '../../lib/i18n'
 export function RouteEditor({
   fleet,
   route,
+  seed,
   onDone,
 }: {
   fleet: FleetView
   /** The route being changed, or null for a new one. */
   route: StandingRoute | null
-  onDone: () => void
+  /** Row 209 (Repeat): the harbours of a NEW route, already chosen on the map — her own harbour first. The stops are
+   *  fixed here (they are changed where they were chosen); what each sells and buys is set as for any route. */
+  seed?: readonly string[]
+  /** Called when the editor is left; `started` is true when the route was saved and is running on this fleet. */
+  onDone: (started?: boolean) => void
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
@@ -51,7 +57,7 @@ export function RouteEditor({
   const whereHome = whereabouts(fleet)
   const home = whereHome.kind === 'docked' ? whereHome.port : null
   const [stops, setStops] = useState<RouteStopDraft[]>(() =>
-    route ? draftOfRoute(route) : home ? [emptyStop(home), emptyStop('')] : [],
+    route ? draftOfRoute(route) : seed ? seedRoute(seed) : home ? [emptyStop(home), emptyStop('')] : [],
   )
   // A route saved but not yet started (its assign was refused) is saved AGAIN on the next press,
   // never duplicated: the id is kept here. Once this editor closes, the fold lists that route
@@ -94,10 +100,10 @@ export function RouteEditor({
     setSavedId(id)
     // An edit of the route this fleet already runs takes effect at the next stop; nothing to start.
     if (route?.fleet?.id === fleet.id) {
-      onDone()
+      onDone(true)
       return
     }
-    if (await assignRoute(id, fleet.id)) onDone()
+    if (await assignRoute(id, fleet.id)) onDone(true)
     else setRefusal(useWorld.getState().refusal)
   }
 
@@ -112,7 +118,7 @@ export function RouteEditor({
               data-testid="route-editor-stop"
               last={i === stops.length - 1}
               header={
-                i === 0 || route ? (
+                i === 0 || route || seed ? (
                   <StopPortRow port={stop.port} />
                 ) : (
                   <PortField
@@ -216,7 +222,7 @@ export function RouteEditor({
         >
           {t(route?.fleet ? 'command.saveRoute' : 'command.startRoute')}
         </Button>
-        <Button variant="quiet" className="flex-1" onClick={onDone}>
+        <Button variant="quiet" className="flex-1" onClick={() => onDone()} data-testid="route-editor-cancel">
           {t('command.cancel')}
         </Button>
       </div>
