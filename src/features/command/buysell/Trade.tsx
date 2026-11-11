@@ -17,7 +17,7 @@ import { TradeMap, type OrderPick } from '../plans/TradeMap'
 import { useTripBoard } from '../plans/useTripBoard'
 import { CargoBest } from './CargoBest'
 import { ShipInfo } from './ShipInfo'
-import { TradeBoard } from './TradeBoard'
+import { CityChips, TradeBoard } from './TradeBoard'
 import { tradeRows, type TradeGoodRow } from '../../../domain/market'
 import { TradePanel } from './TradePanel'
 import { doneWords, type TradeDone } from './tradeDone'
@@ -181,9 +181,11 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const mapFigure = city ? portNameOf(portByCode, city) : undefined
   const cargo = <CargoBest fleet={fleet} city={city} picked={pickedRow ? pickedRow.code : null} onPress={pressCargo} />
 
+  // THE CITY PICKER stands at the head of the board on a phone, and in the wide desk's left pane (the layout below)
+  const chips = <CityChips fleet={fleet} city={city} onCity={pressCity} />
   const board = (
     <TradeBoard
-      fleet={fleet}
+      strip={wide ? undefined : chips}
       city={city}
       docked={here}
       quay={quay}
@@ -191,7 +193,6 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
       picked={pickedRow ? pickedRow.code : null}
       onBuy={(code) => openSide('buy', code)}
       onSell={(code) => openSide('sell', code)}
-      onCity={pressCity}
       sales={sales}
       onBest={pressBest}
     />
@@ -281,9 +282,17 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   return layout(
     wide
       ? {
+          // THE WIDE DESK'S THREE PANES (2026-11-11, the trade-layout slice; docs/dev-log/2026-11-11-trade-layout.md). Measured
+          // at 1,280 before it: the left pane held two rows (Route, Orders) in 626 px of height, and the centre pane, 430 px
+          // wide, held everything else. The frame is the desk's and the same on every face (DeskFrame.tsx), so the parts move,
+          // not the panes: WHERE AND WHAT SHE HAS on the left (the city picker, her cargo, the map, the route, the orders), THE
+          // GOODS alone in the centre, the trade panel on the right.
           testid: 'desk-trade',
           list: (
             <>
+              {chips}
+              {cargoRow}
+              {mapRow}
               {routeRow}
               {ordersRow}
             </>
@@ -291,8 +300,6 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           main: (
             <>
               {board}
-              {cargoRow}
-              {mapRow}
               {toastLine}
               {pages}
             </>

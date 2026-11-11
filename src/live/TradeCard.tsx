@@ -68,7 +68,10 @@ export function TradeCard({
       data-testid="trade-good"
       data-good={r.code}
     >
-      <span className="flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5">
+      {/* THE HEAD TAKES THE CARD'S SPARE HEIGHT (`flex-1`, 2026-11-11): cards in one row are one height (the grid's), and a
+          name that runs two lines made its row's other cards taller without moving their prices or buttons down, so a row's
+          prices stood at two heights. Now the prices and the buttons stand at the card's foot, level across the row. */}
+      <span className="flex min-w-0 flex-1 flex-wrap content-start items-start gap-x-1.5 gap-y-0.5">
         <Icon name={goodIcon(r.code, r.category)} size={18} className="mt-px shrink-0 text-ink-muted" />
         <span className="min-w-0 break-words text-t-label font-medium leading-tight text-ink" data-testid="trade-good-name">
           {r.name}

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Hint, Note, ScrollPane, Skeleton, TileChoice, TileGrid } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { TradeCard } from '../../../live/TradeCard'
@@ -17,7 +17,8 @@ import type { TradeGoodRow } from '../../../domain/market'
 //
 //   CITY CHIPS  a short strip of the harbours nearest her, for a thumb that misses on the small map — names only,
 //               never a price: what a city pays is found by pressing it (owner row 229, no cross-city list on Buy).
-//               The short strip of nearest harbours CityBoard drew.
+//               The short strip of nearest harbours CityBoard drew. `CityChips` below: on a phone it stands at the head
+//               of the board; on the wide desk Trade.tsx stands it in the left pane, the cards alone in the centre.
 //   CARDS       ONE card per good: its icon and name, BOTH prices (the city's ask on the left, its bid on the right),
 //               ▲▼ against a day ago, the day's line, and her units aboard. At a city she is NOT at, a carried good
 //               its quay does not list is bid for by world.price_why — the server buys it there all the same (owner
@@ -50,8 +51,43 @@ function formatFixed(pts: number, d: number) {
 /** How many harbours the chip strip names — a short strip, not a directory. */
 const CHIPS = 8
 
+/** THE CITY PICKER: the city in hand, where she lies, then the harbours nearest where she departs from.
+ *
+ *  A GRID THAT KEEPS ITS WORDS (2026-11-11; components/ui/tileStyles.ts): three columns on a phone, two in the wide desk's left
+ *  pane. Four columns at 390 px left a name 41 px, so "Lisbon" broke inside the word. A name here wraps only at its spaces and is
+ *  never cut; a cell whose longest word is wider than a column is as wide as that word. tests/trade.layout.spec.ts measures it
+ *  for every port name the world has, in English and Korean. */
+export function CityChips({ fleet, city, onCity }: { fleet: FleetView; city: string | null; onCity: (code: string) => void }) {
+  const t = useT()
+  const portByCode = useWorld((s) => s.portByCode)
+  const ports = useWorld((s) => s.snapshot?.ports)
+  const chips = useMemo(() => {
+    const from = sailOrigin(fleet, portByCode)
+    // harbours only: a sea place (a cape, a strait) keeps no market
+    const harbours = (ports ?? []).filter((p) => p.kind !== 'SEA_PLACE')
+    const near = from ? [...harbours].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code) : harbours.map((p) => p.code)
+    const head = [fleet.status === 'DOCKED' ? fleet.port : null, city].filter((c): c is string => !!c)
+    return [...new Set([...head, ...near])].slice(0, CHIPS)
+  }, [fleet, portByCode, ports, city])
+  return (
+    // THE CITY PICKER IS A GRID (owner, 2026-10-31) — equal cells on fixed columns, in the same nearest-first order; a flag and
+    // a name per cell, never a ragged strip.
+    <TileGrid label={t('desk.cityChips')} words={3} wordsWide={2} className="mb-2" data-testid="city-chips">
+      {chips.map((c) => (
+        <TileChoice key={c} on={c === city} onClick={() => onCity(c)} data-testid="city-chip" data-port={c}>
+          {/* one child: the flag and the name stay ONE group, centred. No `truncate` and no break inside a word: a long
+              harbour wraps at its spaces (tests/align.spec.ts's CUT rule, tests/trade.layout.spec.ts). */}
+          <span className="flex items-center gap-1">
+            <PortFlag code={c} /> <span data-testid="city-chip-name">{portNameOf(portByCode, c)}</span>
+          </span>
+        </TileChoice>
+      ))}
+    </TileGrid>
+  )
+}
+
 export function TradeBoard({
-  fleet,
+  strip,
   city,
   docked,
   quay,
@@ -59,11 +95,11 @@ export function TradeBoard({
   picked,
   onBuy,
   onSell,
-  onCity,
   sales,
   onBest,
 }: {
-  fleet: FleetView
+  /** The city picker (`CityChips`) at the head of the board, on a phone; the wide desk stands it in its left pane instead. */
+  strip?: ReactNode
   /** The city in hand (port CODE); the board reads its market. */
   city: string | null
   /** She lies at the city in hand. */
@@ -74,41 +110,17 @@ export function TradeBoard({
   picked: string | null
   onBuy: (code: string) => void
   onSell: (code: string) => void
-  onCity: (code: string) => void
   /** 0348: each good's best sale from the city in hand, by good CODE; null while it has not landed. */
   sales: ReadonlyMap<string, BestSale> | null
   onBest: (sale: BestSale) => void
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
-  const ports = useWorld((s) => s.snapshot?.ports)
   const portId = city ? (portByCode[city]?.id ?? null) : null
-
-  // THE CHIPS: the city in hand, where she lies, then the harbours nearest where she departs from
-  const chips = useMemo(() => {
-    const from = sailOrigin(fleet, portByCode)
-    // harbours only: a sea place (a cape, a strait) keeps no market
-    const harbours = (ports ?? []).filter((p) => p.kind !== 'SEA_PLACE')
-    const near = from ? [...harbours].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code) : harbours.map((p) => p.code)
-    const head = [fleet.status === 'DOCKED' ? fleet.port : null, city].filter((c): c is string => !!c)
-    return [...new Set([...head, ...near])].slice(0, CHIPS)
-  }, [fleet, portByCode, ports, city])
 
   return (
     <div data-testid="trade-board" data-city={city ?? ''} data-docked={docked ? 'true' : 'false'}>
-      {/* THE CITY PICKER IS A GRID (owner, 2026-10-31) — equal cells, fixed columns, in the same
-          nearest-first order; a flag and a name per cell, never a ragged strip. */}
-      <TileGrid label={t('desk.cityChips')} columns={4} className="mb-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,7.5rem),1fr))]!" data-testid="city-chips">
-        {chips.map((c) => (
-          <TileChoice key={c} on={c === city} onClick={() => onCity(c)} data-testid="city-chip" data-port={c}>
-            {/* one child: the flag and the name stay ONE group, centred — and no `truncate`, so a
-                long harbour wraps rather than hiding its tail (tests/align.spec.ts's CUT rule). */}
-            <span className="flex min-w-0 items-center gap-1">
-              <PortFlag code={c} /> <span className="min-w-0 break-words">{portNameOf(portByCode, c)}</span>
-            </span>
-          </TileChoice>
-        ))}
-      </TileGrid>
+      {strip}
       {!city ? (
         <Hint>{t('desk.pickCity')}</Hint>
       ) : (

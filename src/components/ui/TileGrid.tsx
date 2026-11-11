@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { COLUMN_CLASS, tileCellClass, type ChoiceColumns } from './tileStyles'
+import { COLUMN_CLASS, WORDS_COLUMN_CLASS, WORDS_COLUMN_WIDE_CLASS, tileCellClass, tileWordsGridClass, type ChoiceColumns, type WordColumns } from './tileStyles'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE GRID FOR EVERY SET OF TAPPABLE CHOICES (owner, 2026-10-31)
@@ -30,10 +30,15 @@ import { COLUMN_CLASS, tileCellClass, type ChoiceColumns } from './tileStyles'
 type DataAttrs = { [K in `data-${string}`]?: string | number | boolean | undefined }
 
 /** The grid itself: `role` and `label` are the caller's, because a set of choices may be a group,
- *  a radio set or a set of faces. The cells are equal by construction (`1fr` columns). */
+ *  a radio set or a set of faces. The cells are equal by construction (`1fr` columns).
+ *
+ *  `words` (tileStyles.ts, THE GRID THAT KEEPS ITS WORDS): for a set of proper names. The cells stand on `words` equal columns
+ *  (`wordsWide` of them from `lg`), a name wraps only at its spaces, and a cell is never narrower than its longest word. */
 export function TileGrid({
   label,
   columns = 4,
+  words,
+  wordsWide,
   role = 'group',
   className = '',
   children,
@@ -42,6 +47,10 @@ export function TileGrid({
   /** Names the set for assistive tech. Not painted. */
   label?: string
   columns?: ChoiceColumns
+  /** A grid of names that keeps every word whole: its column count (it replaces `columns`). */
+  words?: WordColumns
+  /** The words grid's column count from `lg`; omitted, the same count at every glass. */
+  wordsWide?: WordColumns
   role?: 'group' | 'radiogroup' | 'tablist'
   className?: string
   children: ReactNode
@@ -51,7 +60,12 @@ export function TileGrid({
       role={role}
       aria-label={label}
       data-choice-grid=""
-      className={`grid ${COLUMN_CLASS[columns]} gap-1.5 narrow:flex narrow:flex-wrap narrow:gap-1 ${className}`}
+      data-words={words ? '' : undefined}
+      className={
+        words
+          ? `${tileWordsGridClass()} ${WORDS_COLUMN_CLASS[words]} ${wordsWide ? WORDS_COLUMN_WIDE_CLASS[wordsWide] : ''} ${className}`
+          : `grid ${COLUMN_CLASS[columns]} gap-1.5 narrow:flex narrow:flex-wrap narrow:gap-1 ${className}`
+      }
       {...rest}
     >
       {children}
