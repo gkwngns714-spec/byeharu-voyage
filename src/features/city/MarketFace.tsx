@@ -12,8 +12,8 @@ import {
 } from '../../components/ui'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { hasBuilding } from '../../domain/port'
-import { formatDucats, formatInt, formatUnitPrice } from '../../lib/format'
-import { cmdRequestCancel, type FleetView, type MarketGood, type SnapshotPort } from '../../lib/rpc'
+import { formatDucats, formatInt } from '../../lib/format'
+import { type FleetView, type MarketGood, type SnapshotPort } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 import { linesFor, useManifest } from '../../store/manifest'
 import { CityGoodTrades } from '../../live/CityGoodTrades'
@@ -27,7 +27,7 @@ import { usePortMarket } from '../../live/usePortMarket'
 import { useManifestPreview } from '../../live/useManifestPreview'
 import { TRADE_FACES, useTradeFace, type TradeFace } from '../../live/tradeFace'
 import { useWorld } from '../../live/worldStore'
-import { RequestPage } from './RequestPage'
+import { RequestsFace } from './RequestPage'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MARKET FACE — the chart on the left region, BUY · SELL · REQUEST in the right panel
@@ -70,8 +70,6 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
   const pin = useMarketPick((s) => s.pick)
   const [slot, setSlot] = useState<Slot>({ kind: 'none' })
   const [qty, setQty] = useState<number | null>(null)
-  const [requestPage, setRequestPage] = useState(false)
-  const [cancelling, setCancelling] = useState<string | null>(null)
 
   // ALL HOOKS UNCONDITIONALLY, before any early return.
   const goods = useMemo(() => quay.market?.goods ?? [], [quay.market])
@@ -166,37 +164,7 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
         className="mt-2"
       />
       {shown === 'requests' ? (
-        <div className="mt-2" data-testid="city-market-requests">
-          {board.view === null ? (
-            <Skeleton className="h-20 w-full" />
-          ) : board.view.requests.length === 0 ? (
-            <Note tone="neutral">{t('city.requestNone')}</Note>
-          ) : (
-            board.view.requests.map((r) => (
-              <div key={r.id} className="border-b border-edge py-1" data-testid={`city-open-request-${r.id}`}>
-                <Row label={`${r.name} ×${formatInt(r.qty)}`} value={<Figure value={formatUnitPrice(r.unit_price)} />} />
-                {/* THE LINE WRAPS (2026-11-02, the HQ-on-a-phone slice): word, sum held and Cancel are 190 px and the panel's room 139 at 390, 104 at 320 — the
-                    Cancel stood 43 px past the panel's edge at 390 and 78 at 320, cut off and unpressable. Under the sum, at the right edge, when they do not fit. */}
-                <div className="flex min-h-11 flex-wrap items-center gap-x-2">
-                  <span className="text-t-caption text-ink-faint">{t('city.requestPay')}</span>
-                  <Figure value={formatDucats(r.escrow)} />
-                  <Button
-                    className="ml-auto"
-                    onClick={() => {
-                      setCancelling(r.id)
-                      void cmdRequestCancel(r.id).finally(() => setCancelling(null))
-                    }}
-                    disabled={cancelling === r.id}
-                  >
-                    {t('city.requestCancel')}
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
-          <SummaryRow title={t('city.requestNew')} onClick={() => setRequestPage(true)} data-testid="city-request-new" />
-          {requestPage && <RequestPage port={port} goods={goods} onClose={() => setRequestPage(false)} />}
-        </div>
+        <RequestsFace port={port} goods={goods} own={board.view} aboard={aboard} />
       ) : (
         <div className="mt-2" data-testid={`city-market-${shown}`}>
           {matching.length === 0 ? (
