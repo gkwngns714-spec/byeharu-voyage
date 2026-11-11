@@ -4,7 +4,7 @@
 -- WHY (docs/SUCCESS_PLAN.md, slice T5). world.best_sales (0348, re-cut by 0350) picked, for every good, the sale with the biggest TOTAL profit at the units her hold takes. Played by a new
 -- company at Lisbon with 40,000 coins it names Matsumae, Hagatna and Salvador (weeks at sea, hours of real time), most cards cost more than her purse (the tray they open says "No money"),
 -- the card shows no time and no cost, and the hop to Setubal that pays is never named.
--- WHAT. world.best_sales RE-CUT (3 hunks), and nothing else:
+-- WHAT. world.best_sales RE-CUT (3 hunks):
 --   * THE UNITS ARE THE TRAY'S MAX. For a good bought where she lies, public.fleet_buy_capacity (the one authority behind the docked tray's Max: her hold, the city's stock, the day's cap and
 --     her purse at the price she would really pay) is asked. Where her hold binds it the sale is priced as before (the units that fit beside each leg's stores). Where anything else binds it
 --     (her purse, the stock, the day's cap) every sale is priced for THAT count: world.board_sell asked exactly as world.good_board asks it for an amount, so the card is still the board's row.
@@ -13,12 +13,22 @@
 --   * THE ANSWER IS THE BEST PROFIT PER DAY among the candidates that gain (the row's own arrive_at is the time); with none that gains, the least loss (pays false: "No gain", as before).
 --   * SERVED WITH IT: cost (what the buy costs), seconds (the real time to that sale, from the row's own arrive_at), short (sales are priced and none is within her purse), and far —
 --     the candidate with the biggest total profit (what the card named before this file) when it is another city: {port, units, profit, days, cost, seconds}.
--- ONE AUTHORITY, STILL. world.good_board, world.board_sell, world.board_legs, world.good_mids, world.quote and public.fleet_buy_capacity are not edited (asserted: every other function is
+-- AND public.fleet_buy_capacity RE-CUT (2 hunks): THE SAME WALK, BISECTED. Asked once a good by this read, its purse walk would have made the read slower for exactly the company it is
+-- for: it tried the structural limit (hold, stock, day's cap), then every whole trade_step_tuns below it, then one tun at a time below a step, and answered the first count her purse
+-- pays for — up to 60 and more quotes a good. WHY IT STEPPED BY TEN (0007, its first body): for speed alone. The step is the resolution of the price walk (0207: "not a quantity a
+-- trade may move"), any count is a legal buy, and the one-tun tail was added so a dear good is not answered "0". There is no lot rule and no tie rule: the answer is the FIRST count,
+-- in the walk's order, with world.quote's total within her purse. The bisect searches THOSE SAME counts in that same order, so it returns the walk's answer wherever a larger count
+-- never costs less — which a buy's quote guarantees (the same shelves and then more, each above nought; a lit price press only raises a later shelf) and which is PROVEN below, not
+-- reasoned: a pg_temp copy of the walk against a pg_temp copy of the bisect over a matrix (purses from nought to past the hold, every good at two harbours, the stock and the day's
+-- cap forced to bind, other steps, cargo aboard), every pair equal in max_qty, est_total and bound_by.
+-- WHO ASKS THE CAP AUTHORITY (asserted to be exactly these): world.buy_capacity (the docked tray's Max), cmd.resolve_qty (a BUY with no quantity: ALL / HALF / PCT; a merchant's BUY
+-- lines carry a quantity, 0129, and return before it), world.trade_routes (a fleet lying at the quay), and now world.best_sales. None is edited; each answers the same and no slower.
+-- ONE AUTHORITY, STILL. world.good_board, world.board_sell, world.board_legs, world.good_mids and world.quote are not edited (asserted: every function but the two re-cut bodies is
 -- byte for byte what it was), so the board and the tray's figures cannot move; a card's profit, units and cost are world.good_board(good, fleet, here, units)'s row for that city (asserted).
--- THE COST. One public.fleet_buy_capacity a good bought where she lies: one quote when her hold binds, and its walk down (a quote a step) when her purse does. Measured in
+-- THE COST. One public.fleet_buy_capacity a good bought where she lies: one quote when her hold binds, three to six when her purse does. Measured in
 -- docs/dev-log/2026-11-11-near-sale.md. The 2.5 s budget is unmoved.
--- NOT TOUCHED: every table, knob, switch, job; every function but world.best_sales.
--- ROLLBACK (forward): a new migration reversing the 3 hunks (each OLD text is here verbatim). The client reads the new keys as optional.
+-- NOT TOUCHED: every table, knob, switch, job; every function but world.best_sales and public.fleet_buy_capacity.
+-- ROLLBACK (forward): a new migration reversing the 5 hunks (each OLD text is here verbatim). The client reads the new keys as optional.
 -- SELF-ASSERT: the catalog, then a probe house of its own rolled-back rows. BUDGET: ONE DO block, statement_timeout 90 s, lock_timeout 5 s; it fails above 45 s.
 -- news: none
 -- VERSION: 0351 - prod head 0350 (2026-11-12).
@@ -59,9 +69,20 @@ declare
   v_sum_new     numeric := 0;
   v_pairs       int := 0;
   v_k           int;
-  r_b text; r_r text; r_c text; r_d text; r_e text;
+  r_b text; r_r text; r_c text; r_d text; r_e text; r_m text; r_t text;
+  cf            record;
+  mx            record;
+  v_mx_pairs    int := 0;
+  v_mx_cells    int := 0;
+  v_mx_skipped  int := 0;
+  v_mx_edge     int := 0;
+  v_mx_bounds   text := '';
+  v_mx_t0       timestamptz;
+  v_cap_old     text;
+  v_cap_new     text;
+  c_mx_budget constant interval := interval '8 seconds';
   c_uid  constant uuid := '00000000-0351-4000-8000-000000000001';
-  c_recut constant text[] := array['world.best_sales(uuid,uuid)'];
+  c_recut constant text[] := array['world.best_sales(uuid,uuid)', 'public.fleet_buy_capacity(uuid,uuid)'];
   c_keys constant text[] := array['good', 'basis', 'port', 'units', 'profit', 'days', 'pays', 'cost', 'seconds', 'short', 'far'];
 begin
   perform set_config('statement_timeout', '90s', true);
@@ -69,11 +90,13 @@ begin
 
   -- ── 0. GUARD ──
   if exists (select 1 from unnest(c_recut || array['world.good_board(uuid,uuid,uuid,numeric)', 'world.board_sell(uuid,uuid,jsonb)', 'world.board_legs(uuid,jsonb)', 'world.good_mids(uuid)',
-                                                   'public.fleet_buy_capacity(uuid,uuid)', 'public.credit_on(uuid)', 'cmd.assume_identity(uuid)']) f
+                                                   'public.credit_on(uuid)', 'cmd.assume_identity(uuid)', 'world.buy_capacity(uuid,uuid)', 'cmd.resolve_qty(uuid,text,text,jsonb)',
+                                                   'world.quote(uuid,uuid,numeric,text,numeric,uuid)']) f
               where to_regprocedure(f) is null) then
     raise exception '0351 refuses: 0350 (the read and its pieces), the tray''s Max (public.fleet_buy_capacity) or public.credit_on is not in this world';
   end if;
-  if (select p.prosrc from pg_proc p where p.oid = 'world.best_sales(uuid,uuid)'::regprocedure) like '%fleet_buy_capacity%' then
+  if (select p.prosrc from pg_proc p where p.oid = 'world.best_sales(uuid,uuid)'::regprocedure) like '%fleet_buy_capacity%'
+     or (select p.prosrc from pg_proc p where p.oid = 'public.fleet_buy_capacity(uuid,uuid)'::regprocedure) like '%BISECTED%' then
     raise exception '0351 refuses: something of it is already in this world';
   end if;
 
@@ -97,7 +120,7 @@ begin
     execute $q$select md5(coalesce(string_agg(j.jobname || ':' || j.schedule || ':' || j.command || ':' || j.active::text, ',' order by j.jobname), '')) from cron.job j$q$ into v_job_before;
   end if;
 
-  -- ── 2. THE HUNKS: world.best_sales asks the tray's Max, keeps the sales within her purse, and answers the best per day (each hunk once, and reversing) ──
+  -- ── 2. THE HUNKS: world.best_sales asks the tray's Max, keeps the sales within her purse, and answers the best per day; public.fleet_buy_capacity bisects its walk (each hunk once, and reversing) ──
   create temp table hunks_0351 (fn text, n int, old text, new text) on commit drop;
   insert into hunks_0351 values
 ('world.best_sales(uuid,uuid)', 1,
@@ -118,7 +141,8 @@ $h$  v_legs_own jsonb;                 -- 0350: world.board_legs for her cargo, 
   v_credit  boolean;                -- 0351: her stores for this sail may be owed (public.credit_on): they are not asked of her purse
   v_cap     jsonb;                  -- 0351: public.fleet_buy_capacity's answer — the docked tray's Max
   v_u       numeric;                -- 0351: that Max, when anything but her hold binds it
-  v_buy     record;                 -- 0351: the buy of v_u here, as world.good_board quotes it
+  v_credit_buy boolean;             -- 0351: public.credit_on at p_port, asked once a call
+  v_credit_own boolean;             -- 0351: public.credit_on where she sails from, asked once a call
   v_far     jsonb;                  -- 0351: the sale within her purse with the biggest total profit
   v_short   boolean;                -- 0351: sales are priced, none within her purse
 $h$),
@@ -148,11 +172,12 @@ $h$    -- 0351: THE UNITS ARE THE TRAY'S MAX. Bought where she lies: public.flee
     elsif v_u <= 0 then
       v_rows := '[]'::jsonb;
     else
-      -- the buy of that count here, and the sell rows for it, exactly as world.good_board(good, fleet, p_port, v_u) asks them (basis asked, no FIT)
-      select q.units, q.total::numeric as total into v_buy from world.quote(p_port, gd.id, v_u, 'buy', null, p_fleet) q;
+      -- the sell rows for that count, exactly as world.good_board(good, fleet, p_port, v_u) asks them (basis asked, no FIT). THE BUY IS NOT QUOTED AGAIN: the Max is a count the
+      -- authority has just quoted here for this fleet (never above the stock, so every unit of it fills), and est_total is that quote's whole-coin total — the cost
+      -- world.good_board's own buy quote of the same count comes to (the card = the board's row, units and cost, is asserted where this was made).
       v_rows := world.board_sell(gd.id, p_fleet, v_ctx || jsonb_build_object(
                   'units', v_u, 'basis', 'asked', 'fit', false,
-                  'src', jsonb_build_object('code', v_port.code, 'units', v_buy.units, 'cost', v_buy.total)));
+                  'src', jsonb_build_object('code', v_port.code, 'units', v_u, 'cost', (v_cap->>'est_total')::numeric)));
       -- a leg whose stores leave room for fewer than that count is priced for what fits beside them (FIT, as before): fewer units, so within her purse too
       if exists (select 1 from jsonb_array_elements(v_rows) e
                   where (e->>'sailable')::boolean and (e->'supplies'->>'units_fit')::numeric < v_u) then
@@ -167,7 +192,17 @@ $h$    -- 0351: THE UNITS ARE THE TRAY'S MAX. Bought where she lies: public.flee
     -- 0351: WITHIN HER PURSE, THE BEST PER DAY. The candidates: the rows she can sail to, priced, not p_port, loaded with no more than fits, and paid for with the coins she has —
     -- the buy, and her stores unless they may be owed where she takes them on (public.credit_on). The answer: the best profit per day of those that gain (the row's own arrive_at is
     -- the time), else the least loss. far: the biggest total profit (the pick before 0351), served when it is another city.
-    v_credit := public.credit_on(case when a.basis = 'on_board' then v_origin else p_port end);
+    if a.basis = 'on_board' then
+      if v_credit_own is null then
+        v_credit_own := coalesce(public.credit_on(v_origin), false);
+      end if;
+      v_credit := v_credit_own;
+    else
+      if v_credit_buy is null then
+        v_credit_buy := coalesce(public.credit_on(p_port), false);
+      end if;
+      v_credit := v_credit_buy;
+    end if;
     with pool as materialized (
       select e, (e->>'profit')::numeric as profit,
              greatest(extract(epoch from ((e->>'arrive_at')::timestamptz - now())), 1) as secs,
@@ -197,6 +232,95 @@ $h$    -- 0351: THE UNITS ARE THE TRAY'S MAX. Bought where she lies: public.flee
                         'port', v_far->>'port', 'units', (v_far->>'units')::numeric, 'profit', (v_far->>'profit')::numeric,
                         'days', (v_far->>'days')::numeric, 'cost', (v_far->>'cost')::numeric,
                         'seconds', round(extract(epoch from ((v_far->>'arrive_at')::timestamptz - now())))) end));
+$h$),
+('public.fleet_buy_capacity(uuid,uuid)', 4,
+$h$  q         record;
+begin
+$h$,
+$h$  q         record;
+  r         record;                 -- 0351: one quote of the bisected walk
+  v_q0      numeric;                -- 0351: the count the walk starts from (the structural limit)
+  v_m       numeric;                -- 0351: how many whole steps the walk has below it
+  v_n       numeric;                -- 0351: how many counts the walk has after the first
+  v_lo      numeric;                -- 0351: the last place of the walk known too dear
+  v_hi      numeric;                -- 0351: the first place of the walk known within her purse (v_n + 1: none yet)
+  v_i       numeric;
+  v_try     numeric;
+  v_g       numeric;                -- 0351: the place the search starts at
+  v_way     int;                    -- 0351: 0 not started, -1 striding to larger counts, 1 to smaller, 2 halving
+  v_d       numeric;                -- 0351: the stride
+begin
+$h$),
+('public.fleet_buy_capacity(uuid,uuid)', 5,
+$h$  while v_qty > 0 loop
+    select * into q from world.quote(f.port_id, p_good, v_qty, 'buy', null, p_fleet);
+    exit when q.units > 0 and q.total <= v_purse;
+    v_bound := 'purse';
+    -- Down a whole step while there is more than a step left, then ONE TUN AT A TIME. A pure
+    -- ten-step walk answers "0" for anything dearer than 800 ducats a tun — she could afford two
+    -- diamonds and the picker would offer her none.
+    if v_qty > v_step then
+      v_qty := floor((v_qty - 1) / v_step) * v_step;
+    else
+      v_qty := v_qty - 1;
+    end if;
+  end loop;
+$h$,
+$h$  -- 0351: THE SAME WALK, BISECTED. The walk this replaces tried the structural limit, then every whole step below it
+  -- (floor((q - 1) / step) * step, down to one step), then ONE TUN AT A TIME below a step (a pure ten-step walk answers
+  -- "0" for anything dearer than 800 ducats a tun — she could afford two diamonds and the picker would offer her none),
+  -- and answered the FIRST of those counts her purse pays for: up to 60 and more quotes a good for a poor company.
+  -- The counts are the same counts, in the same order, numbered 0 .. v_n; a larger count never costs less (a buy walks
+  -- the same shelves and then more of them, each at a price above nought), so the first count she can pay for is found
+  -- by halving: the limit itself, then about log2(v_n) quotes — fewer, because the halving STARTS where her purse would
+  -- land if every tun cost what the limit's did (v_g: a little short of the answer, fewer tuns being cheaper each) and
+  -- feels its way from there in doubling strides before it halves. Where it starts changes only how many quotes are
+  -- asked, never the answer: v_lo is always a place known too dear and v_hi a place known within her purse. Same
+  -- answer, same est_total, same bound_by — asserted against the walk itself where this was made (0351), over purses,
+  -- goods, harbours, limits and steps.
+  if v_qty > 0 then
+    select * into q from world.quote(f.port_id, p_good, v_qty, 'buy', null, p_fleet);
+    if not (q.units > 0 and q.total <= v_purse) then
+      v_bound := 'purse';
+      v_q0 := v_qty;
+      -- the walk's counts after the first: place i (1 .. v_n) is (v_m - i + 1) whole steps while i <= v_m, then
+      -- step - (i - v_m) while that is above nought; from a limit of a step or less: v_q0 - i
+      if v_q0 > v_step then
+        v_m := floor((v_q0 - 1) / v_step);
+        v_n := case when v_m >= 1 then v_m + greatest(ceil(v_step) - 1, 0) else 0 end;
+      else
+        v_m := 0;
+        v_n := greatest(ceil(v_q0) - 1, 0);
+      end if;
+      v_lo := 0; v_hi := v_n + 1; v_qty := 0;
+      -- where to start: the first place whose count is no more than (limit × purse / the limit's total)
+      v_g := case when q.total > 0 then v_q0 * greatest(v_purse, 0) / q.total else 0 end;
+      v_g := case when v_q0 <= v_step then ceil(v_q0 - v_g)
+                  when v_g >= v_step then v_m - floor(v_g / v_step) + 1
+                  else v_m + ceil(v_step - v_g) end;
+      v_g := greatest(1, least(v_n, v_g));
+      v_way := 0; v_d := 1;
+      while v_hi - v_lo > 1 loop
+        v_i := case when v_g is not null then v_g
+                    when v_way = -1 then greatest(v_lo + 1, v_hi - v_d)    -- the last was within her purse: stride toward the larger counts
+                    when v_way = 1 then least(v_hi - 1, v_lo + v_d)        -- the last was too dear: stride toward the smaller counts
+                    else floor((v_lo + v_hi) / 2) end;                     -- both sides found: halve
+        v_d := case when v_g is null and v_way in (-1, 1) then v_d * 2 else v_d end;
+        v_g := null;
+        v_try := case when v_q0 <= v_step then v_q0 - v_i
+                      when v_i <= v_m then (v_m - v_i + 1) * v_step
+                      else v_step - (v_i - v_m) end;
+        select * into r from world.quote(f.port_id, p_good, v_try, 'buy', null, p_fleet);
+        if r.units > 0 and r.total <= v_purse then
+          v_hi := v_i; v_qty := v_try; q := r;
+          v_way := case when v_way in (0, -1) then -1 else 2 end;
+        else
+          v_lo := v_i;
+          v_way := case when v_way in (0, 1) then 1 else 2 end;
+        end if;
+      end loop;
+    end if;
+  end if;
 $h$);
 
   for rf in select * from pre_0351 order by 1 loop
@@ -224,17 +348,18 @@ $h$);
       raise exception '0351 self-assert FAIL: % changed its ACL, volatility, definer, config or owner', rf.fn;
     end if;
   end loop;
-  if (select count(*) from hunks_0351) <> 3 or (select count(distinct x.fn) from hunks_0351 x join pre_0351 p on p.fn = x.fn) <> 1 then
-    raise exception '0351 self-assert FAIL: the hunks are not the 3 of the one re-cut body';
+  if (select count(*) from hunks_0351) <> 5 or (select count(distinct x.fn) from hunks_0351 x join pre_0351 p on p.fn = x.fn) <> 2 then
+    raise exception '0351 self-assert FAIL: the hunks are not the 5 of the two re-cut bodies';
   end if;
 
   -- ── 3. THE SELF-ASSERT: the catalog ──
-  -- every other function is byte for byte what it was: world.good_board (the tray's figures), world.board_sell, world.quote and public.fleet_buy_capacity (the tray's Max) among them
+  -- every function but the two re-cut bodies is byte for byte what it was: world.good_board (the tray's figures), world.board_sell, world.quote, world.buy_capacity (the tray's door to the
+  -- Max), cmd.resolve_qty (BUY ALL) and world.trade_routes among them
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and p.oid <> all (array(select f::regprocedure::oid from unnest(c_recut) f))) <> v_fn_before then
-    raise exception '0351 self-assert FAIL: another function moved (world.good_board, world.board_sell, world.quote and public.fleet_buy_capacity among them must not)';
+    raise exception '0351 self-assert FAIL: a function other than world.best_sales and public.fleet_buy_capacity moved (world.good_board, world.board_sell, world.quote, world.buy_capacity among them must not)';
   end if;
   v_def := (select p.prosrc from pg_proc p where p.oid = 'world.best_sales(uuid,uuid)'::regprocedure);
   -- ONE cap authority, asked once a good; no walk, no step and no knob of its own here; the budget and 0350's legs unmoved
@@ -243,6 +368,25 @@ $h$);
      or v_def not like '%interval ''2.5 seconds''%'
      or (length(v_def) - length(replace(v_def, 'world.board_legs(p_fleet, v_ctx)', ''))) / length('world.board_legs(p_fleet, v_ctx)') <> 2 then
     raise exception '0351 self-assert FAIL: world.best_sales does not ask the tray''s Max exactly once, or carries a cap rule of its own, or its budget or its legs moved';
+  end if;
+  -- THE CAP AUTHORITY: still the one walk's counts (the step knob read once, no second purse rule), bisected; and WHO ASKS IT is who asked it before, and world.best_sales
+  v_def := (select p.prosrc from pg_proc p where p.oid = 'public.fleet_buy_capacity(uuid,uuid)'::regprocedure);
+  if (length(v_def) - length(replace(v_def, 'world.quote(', ''))) / length('world.quote(') <> 2
+     or (length(v_def) - length(replace(v_def, 'trade_step_tuns', ''))) / length('trade_step_tuns') <> 1
+     or v_def like '%exit when q.units%' or v_def not like '%else floor((v_lo + v_hi) / 2) end;%' then
+    raise exception '0351 self-assert FAIL: public.fleet_buy_capacity is not the bisected walk';
+  end if;
+  if (select string_agg(n.nspname || '.' || p.proname, ', ' order by n.nspname || '.' || p.proname)
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%fleet_buy_capacity(%' and p.oid <> 'public.fleet_buy_capacity(uuid,uuid)'::regprocedure)
+     is distinct from 'cmd.resolve_qty, world.best_sales, world.buy_capacity, world.trade_routes' then
+    raise exception '0351 self-assert FAIL: the callers of public.fleet_buy_capacity are not the four this file was written against (cmd.resolve_qty, world.best_sales, world.buy_capacity, world.trade_routes): %',
+      (select string_agg(n.nspname || '.' || p.proname, ', ' order by n.nspname || '.' || p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%fleet_buy_capacity(%' and p.oid <> 'public.fleet_buy_capacity(uuid,uuid)'::regprocedure);
+  end if;
+  if has_function_privilege('authenticated', 'public.fleet_buy_capacity(uuid,uuid)', 'execute') or has_function_privilege('anon', 'public.fleet_buy_capacity(uuid,uuid)', 'execute')
+     or (select p.provolatile from pg_proc p where p.oid = 'public.fleet_buy_capacity(uuid,uuid)'::regprocedure) <> 's' then
+    raise exception '0351 self-assert FAIL: public.fleet_buy_capacity is no longer STABLE and server only';
   end if;
   if not has_function_privilege('authenticated', 'world.best_sales(uuid,uuid)', 'execute') or has_function_privilege('anon', 'world.best_sales(uuid,uuid)', 'execute')
      or (select p.provolatile from pg_proc p where p.oid = 'world.best_sales(uuid,uuid)'::regprocedure) <> 's' then
@@ -289,6 +433,128 @@ $h$);
     if v_g1 is null or v_near is null or v_purse is null then
       raise exception '0351 self-assert FAIL: the probe found no good at %, no harbour near it, or has no purse', v_hcode;
     end if;
+
+    -- (m) THE BISECT IS THE WALK — proven, not reasoned. Two pg_temp copies, the body BEFORE this file (the walk) and the body AFTER it (the bisect), each with the same three lines
+    -- swapped so the probe can set what the function reads WITHOUT writing a purse, a market row or a knob: her purse, the city's stock and the day's cap (each only ever LOWERED
+    -- to the set figure), the walk's step, and the harbour she lies at. With nothing set a copy reads what the real body reads. Every pair must be equal: max_qty, est_total, bound_by.
+    v_cap_old := (select def from pre_0351 where fn = 'public.fleet_buy_capacity(uuid,uuid)');
+    v_cap_new := replace(pg_get_functiondef('public.fleet_buy_capacity(uuid,uuid)'::regprocedure), E'\r', '');
+    for cf in select * from (values
+        ('  v_step    numeric := greatest(1, public.wc_num(''trade_step_tuns''));' || E'\n',
+         '  v_step    numeric := greatest(1, coalesce(nullif(current_setting(''p0351.step'', true), '''')::numeric, public.wc_num(''trade_step_tuns'')));' || E'\n'),
+        ('  select ducats into v_purse from public.players where id = f.player_id;' || E'\n',
+         '  select ducats into v_purse from public.players where id = f.player_id;' || E'\n'
+         || '  v_purse := coalesce(nullif(current_setting(''p0351.purse'', true), '''')::numeric, v_purse);' || E'\n'),
+        ('  v_cap  := world.daily_cap_remaining(f.player_id, f.port_id, p_good);' || E'\n',
+         '  v_cap  := world.daily_cap_remaining(f.player_id, f.port_id, p_good);' || E'\n'
+         || '  v_stock := least(v_stock, coalesce(nullif(current_setting(''p0351.stock'', true), '''')::numeric, v_stock));' || E'\n'
+         || '  v_cap := least(v_cap, coalesce(nullif(current_setting(''p0351.cap'', true), '''')::numeric, v_cap));' || E'\n'),
+        ('  select * into f from public.fleets where id = p_fleet;' || E'\n',
+         '  select * into f from public.fleets where id = p_fleet;' || E'\n'
+         || '  f.port_id := coalesce(nullif(current_setting(''p0351.port'', true), '''')::uuid, f.port_id);' || E'\n')) x(a, b)
+    loop
+      if (length(v_cap_old) - length(replace(v_cap_old, cf.a, ''))) / length(cf.a) <> 1 or (length(v_cap_new) - length(replace(v_cap_new, cf.a, ''))) / length(cf.a) <> 1 then
+        raise exception '0351 self-assert FAIL: the probe''s copies cannot be made: a line it swaps is not in both bodies once: %', cf.a;
+      end if;
+      v_cap_old := replace(v_cap_old, cf.a, cf.b);
+      v_cap_new := replace(v_cap_new, cf.a, cf.b);
+    end loop;
+    execute replace(v_cap_old, 'FUNCTION public.fleet_buy_capacity(', 'FUNCTION pg_temp.cap_walk_0351(');
+    execute replace(v_cap_new, 'FUNCTION public.fleet_buy_capacity(', 'FUNCTION pg_temp.cap_bisect_0351(');
+    execute $f$
+create function pg_temp.mx_0351(p_fleet uuid, p_port uuid, p_goods int)
+returns table(pairs int, bad text, bounds text, real_differs int, exact int)
+language sql
+as $body$
+  -- every good the harbour sells (the first p_goods by code): the walk beside the bisect, and the real body beside the bisect's copy
+  select count(*)::int,
+         string_agg(format('%s: walk %s, bisect %s', g.code, x.o, x.n), '; ') filter (where x.o is distinct from x.n),
+         string_agg(distinct x.n->>'bound_by', ','),
+         (count(*) filter (where x.live is distinct from x.n))::int,
+         (count(*) filter (where (x.n->>'max_qty')::numeric > 0 and (x.n->>'est_total')::numeric = nullif(current_setting('p0351.purse', true), '')::numeric))::int
+    from (select gd.id, gd.code, row_number() over (order by gd.code) as rn
+            from public.port_goods pg join public.goods gd on gd.id = pg.good_id
+           where pg.port_id = p_port and public.port_offers(p_port, gd.id)) g
+   cross join lateral (select pg_temp.cap_walk_0351(p_fleet, g.id) as o, pg_temp.cap_bisect_0351(p_fleet, g.id) as n,
+                              public.fleet_buy_capacity(p_fleet, g.id) as live) x
+   where g.rn <= p_goods
+$body$
+    $f$;
+    -- THE MATRIX, the cells that matter most first; '' = not set (what the real body reads). A cell is one statement over the harbour's goods.
+    create temp table mx_0351_cells (ord int generated always as identity, purse text, stock text, cap text, step text, port text, goods int, grp text) on commit drop;
+    -- A. where she lies, nothing set (the copies ARE the real body), then seven purses from nought to past any hold
+    insert into mx_0351_cells (purse, stock, cap, step, port, goods, grp)
+    select pu, '', '', '', '', 1000, 'home' from unnest(array['', '40000', '4000000', '400000', '5000', '500', '1', '0']) with ordinality u(pu, o) order by o;
+    -- B. the stock binds, the day's cap binds (each forced low), under three purses
+    insert into mx_0351_cells (purse, stock, cap, step, port, goods, grp)
+    select pu, st, ca, '', '', 1000, 'limits'
+      from (values ('7', ''), ('55', ''), ('', '3'), ('', '25'), ('12', '9')) l(st, ca) cross join unnest(array['4000000', '40000', '500']) pu;
+    -- X. THE EDGE: a purse of EXACTLY what a count costs (a whole step's count, one below a step, and one tun) — the walk takes that count (total <= purse), and so must the bisect
+    insert into mx_0351_cells (purse, stock, cap, step, port, goods, grp)
+    -- (once with nothing else set: the count is found down the walk; once with the stock set to that count: it is the limit itself, the walk's first quote)
+    select q.total::text, lim.st, '', '', '', 3, 'edge'
+      from (select gd.id, row_number() over (order by gd.code) as rn
+              from public.port_goods pg join public.goods gd on gd.id = pg.good_id
+             where pg.port_id = v_home and public.port_offers(v_home, gd.id) and pg.stock >= 50) g
+     cross join unnest(array[20, 7, 1]) n
+     cross join lateral world.quote(v_home, g.id, n, 'buy', null, v_fl) q
+     cross join lateral (values (''), (n::text)) lim(st)
+     where g.rn <= 3;
+    -- E. another harbour (she is read as lying there), the seven purses
+    insert into mx_0351_cells (purse, stock, cap, step, port, goods, grp)
+    select pu, '', '', '', v_near::text, 1000, 'other harbour' from unnest(array['40000', '4000000', '400000', '5000', '500', '1', '0']) with ordinality u(pu, o) order by o;
+    -- C. another step than the knob's (the walk's counts are made of it): a whole one, a broken one, one tun; a limit above and below a step
+    insert into mx_0351_cells (purse, stock, cap, step, port, goods, grp)
+    select pu, st, '', sp, '', 3, 'steps'
+      from unnest(array['7', '2.5', '1', '25']) sp cross join unnest(array['30', '3']) st cross join unnest(array['5000', '200', '40', '1']) pu;
+    -- and a step of one tun over the whole hold: the walk's places are single tuns, so the place the search starts at stands several places short of the answer and its
+    -- strides and its halving are both walked (the cells that catch a search that stops early)
+    insert into mx_0351_cells (purse, stock, cap, step, port, goods, grp)
+    select pu, '', '', '1', '', 3, 'steps' from unnest(array['400000', '300000', '40000', '15000']) pu;
+    v_mx_t0 := clock_timestamp();
+    for cf in select * from mx_0351_cells order by ord loop
+      -- a busy world: past the matrix's own budget the cells left are counted, not run (the first cells are the purses of a real company where she lies)
+      if clock_timestamp() - v_mx_t0 > c_mx_budget then
+        v_mx_skipped := v_mx_skipped + 1;
+        continue;
+      end if;
+      perform set_config('p0351.purse', cf.purse, true), set_config('p0351.stock', cf.stock, true), set_config('p0351.cap', cf.cap, true),
+              set_config('p0351.step', cf.step, true), set_config('p0351.port', cf.port, true);
+      select * into mx from pg_temp.mx_0351(v_fl, coalesce(nullif(cf.port, '')::uuid, v_home), cf.goods);
+      if mx.bad is not null or mx.pairs = 0 then
+        raise exception '0351 self-assert FAIL: THE BISECT IS NOT THE WALK (% : purse %, stock %, cap %, step %, % goods): %', cf.grp, cf.purse, cf.stock, cf.cap, cf.step, mx.pairs, mx.bad;
+      end if;
+      if cf.purse = '' and cf.stock = '' and cf.cap = '' and cf.step = '' and cf.port = '' and mx.real_differs <> 0 then
+        raise exception '0351 self-assert FAIL: with nothing set the probe''s copy is not the real body (% of % goods differ)', mx.real_differs, mx.pairs;
+      end if;
+      v_mx_pairs := v_mx_pairs + mx.pairs; v_mx_cells := v_mx_cells + 1;
+      if cf.grp = 'edge' then v_mx_edge := v_mx_edge + mx.exact; end if;
+      v_mx_bounds := (select string_agg(distinct b, ',' order by b) from unnest(string_to_array(v_mx_bounds || ',' || mx.bounds, ',')) b where b <> '');
+    end loop;
+    perform set_config('p0351.purse', '', true), set_config('p0351.stock', '', true), set_config('p0351.cap', '', true), set_config('p0351.step', '', true), set_config('p0351.port', '', true);
+    -- positive controls: the matrix was not empty, and (run whole) each of the four things that can stop her did bind somewhere in it
+    if v_mx_cells < 8 or v_mx_pairs < 40 then
+      raise exception '0351 self-assert FAIL: the matrix ran % cell(s), % pair(s) inside its budget: too few to say the bisect is the walk', v_mx_cells, v_mx_pairs;
+    end if;
+    if v_mx_skipped = 0 and not (string_to_array(v_mx_bounds, ',') @> array['hold', 'purse', 'stock', 'daily cap']) then
+      raise exception '0351 self-assert FAIL: positive control — the matrix did not make each limit bind (saw: %)', v_mx_bounds;
+    end if;
+    if v_mx_skipped = 0 and v_mx_edge = 0 then
+      raise exception '0351 self-assert FAIL: positive control — no edge cell answered a count that costs her whole purse exactly';
+    end if;
+    -- THE TIME, the walk beside the bisect, her real purse, every good where she lies (one statement each, the walk first)
+    v_mx_t0 := clock_timestamp();
+    perform pg_temp.cap_walk_0351(v_fl, pg.good_id) from public.port_goods pg where pg.port_id = v_home and public.port_offers(v_home, pg.good_id);
+    v_ms_old := extract(epoch from clock_timestamp() - v_mx_t0) * 1000;
+    v_mx_t0 := clock_timestamp();
+    perform pg_temp.cap_bisect_0351(v_fl, pg.good_id) from public.port_goods pg where pg.port_id = v_home and public.port_offers(v_home, pg.good_id);
+    v_ms_new := extract(epoch from clock_timestamp() - v_mx_t0) * 1000;
+    if v_ms_new > v_ms_old * 2 + 100 then
+      raise exception '0351 self-assert FAIL: the bisect is slower than the walk: % ms against % ms', round(v_ms_new), round(v_ms_old);
+    end if;
+    r_m := format('the bisect = the walk on %s pair(s) in %s cell(s) (%s cell(s) not run: past the matrix''s %s budget); limits that bound: %s; %s answer(s) cost her whole purse to the coin', v_mx_pairs, v_mx_cells, v_mx_skipped,
+                  c_mx_budget, v_mx_bounds, v_mx_edge);
+    r_t := format('the tray''s Max, every good at %s, her purse %s: the walk %s ms, the bisect %s ms', v_hcode, v_purse, round(v_ms_old, 1), round(v_ms_new, 1));
 
     -- (b) WHERE SHE LIES: old then new in ONE statement (one snapshot), each timed, with the tray's Max for every good. A cut answer (the 2.5 s budget, on a busy world) is judged
     -- over the goods it answered.
@@ -459,11 +725,23 @@ $h$);
     if v_bad is not null or (not (v_new->>'cut')::boolean and not exists (select 1 from jsonb_array_elements(v_new->'goods') e where e->>'good' = v_g1code)) then
       raise exception '0351 self-assert FAIL: her cargo: %', coalesce(v_bad, 'no card for ' || v_g1code);
     end if;
-    r_d := format('%s aboard: its card reads her cargo and is good_board''s row', v_g1code);
+    -- with cargo aboard (her hold is smaller, her purse lighter): the bisect is the walk again, her own purse and three set ones
+    v_cnt := 0;
+    for cf in select pu from unnest(array['', '4000000', '40000', '500']) with ordinality u(pu, o) order by o loop
+      continue when cf.pu <> '' and clock_timestamp() - v_t0 > interval '30 seconds';   -- a busy world: her own purse always, the set ones while there is time
+      perform set_config('p0351.purse', cf.pu, true);
+      select * into mx from pg_temp.mx_0351(v_fl, v_home, 1000);
+      if mx.bad is not null or mx.pairs = 0 or (cf.pu = '' and mx.real_differs <> 0) then
+        raise exception '0351 self-assert FAIL: THE BISECT IS NOT THE WALK with cargo aboard (purse %): % (real body differs on %)', cf.pu, mx.bad, mx.real_differs;
+      end if;
+      v_cnt := v_cnt + mx.pairs;
+    end loop;
+    perform set_config('p0351.purse', '', true);
+    r_d := format('%s aboard: its card reads her cargo and is good_board''s row; the bisect = the walk on %s more pair(s)', v_g1code, v_cnt);
 
-    -- (e) THE TIME: a bound that is safe on a busy world. Over the pairs neither of which was cut, the new read may not take more than three times the old (it measures about 1.3 for a
-    -- purse-bound company where she lies: the tray's Max walks her purse down a quote a step; the same from another city)
-    if v_pairs > 0 and v_sum_new > v_sum_old * 3 then
+    -- (e) THE TIME: a bound that is safe on a busy world. Over the pairs neither of which was cut, the new read may not take more than twice the old (it measures about the same:
+    -- the tray's Max is one quote a good where her hold binds and three to six where her purse does)
+    if v_pairs > 0 and v_sum_new > v_sum_old * 2 then
       raise exception '0351 self-assert FAIL: best_sales is far slower than before: new % ms against old % ms over % pair(s)', round(v_sum_new), round(v_sum_old), v_pairs;
     end if;
     r_e := format('%s pair(s) uncut: old %s ms, new %s ms (%s %%)', v_pairs, round(v_sum_old), round(v_sum_new),
@@ -482,18 +760,21 @@ $h$);
   if public.current_player_id() is not null then
     raise exception '0351 self-assert FAIL: the probe''s identity outlived its rollback';
   end if;
-  if to_regprocedure('pg_temp.best_sales_old_0351(uuid,uuid)') is not null then
+  if to_regprocedure('pg_temp.best_sales_old_0351(uuid,uuid)') is not null or to_regprocedure('pg_temp.cap_walk_0351(uuid,uuid)') is not null
+     or to_regprocedure('pg_temp.cap_bisect_0351(uuid,uuid)') is not null or to_regprocedure('pg_temp.mx_0351(uuid,uuid,integer)') is not null then
     raise exception '0351 self-assert FAIL: a copy of the pre-image outlived the probe';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0351 self-assert FAIL: the file ran % s, over its 45 s budget', round(extract(epoch from clock_timestamp() - v_t0));
   end if;
+  raise notice '0351 probe (m): %', r_m;
+  raise notice '0351 probe (t): %', r_t;
   raise notice '0351 probe (b): %', r_b;
   raise notice '0351 probe (r): %', r_r;
   raise notice '0351 probe (c): %', r_c;
   raise notice '0351 probe (d): %', r_d;
   raise notice '0351 probe (e): %', r_e;
-  raise notice '0351 self-assert ok: A BEST SALE SHE CAN PAY FOR. world.best_sales asks the tray''s Max (public.fleet_buy_capacity) for a good bought where she lies, keeps the sales within her purse, and answers the best profit per day with its cost and real seconds, and the dearest as far. Each card is still world.good_board''s row; no other function, knob, table, row or job moved. % ms.',
+  raise notice '0351 self-assert ok: A BEST SALE SHE CAN PAY FOR. world.best_sales asks the tray''s Max (public.fleet_buy_capacity) for a good bought where she lies, keeps the sales within her purse, and answers the best profit per day with its cost and real seconds, and the dearest as far. public.fleet_buy_capacity bisects its own walk: the same answer on every pair of the matrix. Each card is still world.good_board''s row; no other function, knob, table, row or job moved. % ms.',
     round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;
