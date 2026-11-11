@@ -124,7 +124,8 @@ test('a tab cycle asks a cached resource once — Market → Stats → Map → C
   }
   const goStatsFromCity = async () => {
     // #426: the City rail is the shell NavBar, so its cells live under city-rail too.
-    await page.getByTestId('city-rail').getByTestId('nav-cell-/stats').click()
+    await page.getByTestId('city-rail').getByTestId('nav-cell-cabin').click()
+    await page.getByTestId('nav-group-panel').getByRole('link', { name: 'Stats' }).click()
   }
   const goCodex = async () => {
     await navBar('nav-cell-cabin').click()

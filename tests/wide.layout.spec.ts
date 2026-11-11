@@ -78,7 +78,7 @@ test.describe('wide glass', () => {
     await ready(page)
     await openCityFace(page)
     // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
-    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
+    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Market/i }).first().click()
     await page.waitForTimeout(400)
 
     const rows = page.locator('[data-testid="trade-row"]')
@@ -147,7 +147,7 @@ test.describe('wide glass', () => {
     await ready(page)
     await openCityFace(page)
     // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
-    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
+    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Market/i }).first().click()
     await page.waitForTimeout(400)
 
     const rows = page.locator('[data-testid="trade-row"]')
@@ -242,7 +242,7 @@ test.describe('wide glass', () => {
     await ready(page)
     await openCityFace(page)
     // the CITY's Trade building (0225: the desk's own faces have a Trade tab too — Plans became Trade)
-    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Trade/i }).first().click()
+    await page.getByRole('tablist', { name: 'City buildings' }).getByRole('tab', { name: /^Market/i }).first().click()
     await page.waitForTimeout(400)
 
     const remPx = await page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))
@@ -376,7 +376,7 @@ test.describe('wide glass', () => {
     await page.goto('command')
     await ready(page)
     // the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
-    await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+    await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
     const row = page.getByTestId('route-row')
     await expect(row).toContainText(/Not open yet|No route|Route ·/)
     await page.waitForTimeout(400)

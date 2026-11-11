@@ -53,7 +53,7 @@ for (const size of SIZES) {
       await expect(page.getByRole('navigation').getByText('Port', { exact: true })).toHaveCount(0)
 
       // Trade · Buy — runs
-      await face(page, 'Trade')
+      await face(page, 'Market')
       const cargo = page.getByTestId('command-line')
       const before = await cargo.innerText()
       await page.locator('[data-testid="trade-row"] button:enabled').first().click()
@@ -101,7 +101,7 @@ for (const size of SIZES) {
         await expect(page.getByTestId(id), `City › ${name}`).toBeVisible({ timeout: 30_000 })
         reached.push(name)
       }
-      console.log(`@${size.width}: reached ${['Trade', ...reached].join(', ')} of ${names.join(', ')}`)
+      console.log(`@${size.width}: reached ${['Market', ...reached].join(', ')} of ${names.join(', ')}`)
       expect(reached).toEqual(expect.arrayContaining(['Town', 'Inn']))
       // Production: the tab goes to the HQ's page, and what was just bought stands in Cargo, to put in storage (owner, 2026-11-06)
       await face(page, 'Production')
@@ -119,7 +119,7 @@ for (const size of SIZES) {
       await expect(page.getByTestId('invest-hall')).toBeVisible({ timeout: 30_000 })
 
       // Trade — the docked city's goods as priced cards, and its Buy button in the trade panel (owner 2026-10-30)
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
       const tradeFace = page.getByTestId('desk-trade')
       await tradeFace.getByTestId('trade-buy').first().click()
       await expect(page.getByTestId('good-detail-price')).toContainText(/\d/, { timeout: 60_000 })

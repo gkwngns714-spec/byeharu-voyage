@@ -5,7 +5,7 @@ export const shellDict = defineDict({
   en: {
     tab_HQ: 'HQ',
     tab_Menu: 'Menu',
-    tab_Command: 'Command',
+    tab_Trade: 'Trade',
     tab_Fleets: 'Fleets',
     tab_Map: 'Map',
     tab_Stats: 'Stats',
@@ -41,7 +41,7 @@ export const shellDict = defineDict({
   ko: {
     tab_HQ: '본부',
     tab_Menu: '메뉴',
-    tab_Command: '지휘',
+    tab_Trade: '무역',
     tab_Fleets: '선단',
     tab_Map: '지도',
     tab_Stats: '통계',

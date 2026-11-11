@@ -16,6 +16,8 @@ export const historyDict = defineDict({
     byKind: 'By kind',
     biggest: 'Biggest moves',
     other: 'Other',
+    // 'Trades', not Codex's 'Trade': the bar's Trade cell is a label on this screen too (consistency law: no two controls share one).
+    f_trade: 'Trades',
     noMoney: 'No money moved.',
     aFleet: 'A fleet',
     yourCompany: 'Your company',
@@ -118,6 +120,7 @@ export const historyDict = defineDict({
     byKind: '종류별',
     biggest: '큰 변동',
     other: '기타',
+    f_trade: '교역',
     noMoney: '돈의 변동 없음.',
     aFleet: '한 선단',
     yourCompany: '내 회사',

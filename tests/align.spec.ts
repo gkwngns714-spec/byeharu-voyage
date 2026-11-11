@@ -43,13 +43,13 @@ interface Screen {
 }
 
 const SCREENS: Screen[] = [
-  { name: 'Command', route: 'command', faces: [[null, 'Trade'], [null, 'City'], [null, 'Invest'], [null, 'Report'], [null, 'Levels']] },
+  { name: 'Command', route: 'command', faces: [[null, 'Goods'], [null, 'City'], [null, 'Invest'], [null, 'Report'], [null, 'Levels']] },
   { name: 'City', route: 'command', faces: [[null, 'City'], ['City buildings', '*']] },
   { name: 'Production', route: 'city?place=production' },
   { name: 'Fleets', route: 'fleets' },
   { name: 'Map › Lisbon', route: 'map', open: (page) => openCityPanel(page, 'LIS', 'Lisbon') },
   { name: 'Stats', route: 'stats', faces: [[null, 'Overview'], [null, 'Markets'], [null, 'Cities'], [null, 'Merchants'], [null, 'Me']] },
-  { name: 'Ledger', route: 'ledger', faces: [[null, 'All'], [null, 'Trade'], [null, 'Voyage'], [null, 'Crew']] },
+  { name: 'Ledger', route: 'ledger', faces: [[null, 'All'], [null, 'Trades'], [null, 'Voyage'], [null, 'Crew']] },
   { name: 'Rank', route: 'rank', faces: [[null, 'Captains'], [null, 'Countries']] },
   // THE BOARD STANDS ON THE GLASS (the unfold slice, 2026-11-02, owner row 260): it was a page behind `routes-open`, which this walk
   // pressed to reach the sort strip; the strip is now in the panel's header, the first tablist, where the walk finds it.

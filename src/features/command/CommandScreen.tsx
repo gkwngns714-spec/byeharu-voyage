@@ -100,14 +100,14 @@ export function CommandScreen() {
 
   if (phase === 'failed' && fatal) {
     // THE WORLD'S TWO NON-READY DOORS are written once (live/WorldGate.tsx), on the page grid — not a third copy here
-    return <WorldFailed title={t('command.title')} refusal={fatal} />
+    return <WorldFailed title={t('shell.tab_Trade')} refusal={fatal} />
   }
   if (!snapshot) {
-    return <WorldLoading title={t('command.title')} />
+    return <WorldLoading title={t('shell.tab_Trade')} />
   }
   if (fleets.length === 0) {
     return (
-      <Sheet title={t('command.title')} layout="page">
+      <Sheet title={t('shell.tab_Trade')} layout="page">
         <Note tone="neutral">{t('command.noFleets')}</Note>
       </Sheet>
     )
@@ -138,7 +138,7 @@ export function CommandScreen() {
         <header className="flex shrink-0 items-center gap-6 px-3 py-3 min-[90rem]:px-6" data-testid="desk-header">
           <div className="flex min-w-0 flex-1 items-center gap-6">
             {/* THE PAGE'S CARD-TITLE VOICE (18 px; it was 14) — row 267, tests/command.design.spec.ts */}
-            <h1 className="shrink-0 text-t-card text-ink">{t('command.title')}</h1>
+            <h1 className="shrink-0 text-t-card text-ink">{t('shell.tab_Trade')}</h1>
             <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} inline />
           </div>
           <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="shrink-0" />
@@ -155,7 +155,7 @@ export function CommandScreen() {
     <div className="flex h-full min-h-0 flex-col" data-testid="command">
       <header className="flex shrink-0 items-center px-gutter pb-1 pt-2" data-testid="desk-header">
         <h1 className="min-w-0 text-t-title">
-          <Clip>{t('command.title')}</Clip>
+          <Clip>{t('shell.tab_Trade')}</Clip>
         </h1>
       </header>
       <div className={`flex flex-col ${scrollRegionClass}`} data-testid="desk-scroll">

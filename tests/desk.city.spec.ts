@@ -27,7 +27,7 @@ test('every building face opens on the desk, and a buy runs from its Trade face'
   const tabs = strip.getByRole('tab')
   const names = await tabs.allInnerTexts()
   console.log(`city faces: ${names.join(', ')}`)
-  expect(names).toEqual(expect.arrayContaining(['Trade', 'Town', 'Inn']))
+  expect(names).toEqual(expect.arrayContaining(['Market', 'Town', 'Inn']))
 
   const stripTop = async () => Math.round((await strip.boundingBox())!.y)
   const top = await stripTop()
@@ -53,7 +53,7 @@ test('every building face opens on the desk, and a buy runs from its Trade face'
   await expect(page.getByTestId('desk-town-hall')).toBeVisible({ timeout: 30_000 })
 
   // a BUY from the Trade face: the quay's own tray, the one door
-  await strip.getByRole('tab', { name: 'Trade', exact: true }).click()
+  await strip.getByRole('tab', { name: 'Market', exact: true }).click()
   const cargo = page.getByTestId('command-line')
   const before = await cargo.innerText()
   await page.locator('[data-testid="trade-row"] button:enabled').first().click()

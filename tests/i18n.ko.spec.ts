@@ -8,7 +8,7 @@
 // captains, merchant companies and fleets, seas and regions, skills and fittings. Those words are
 // read from data/*.json here, never typed, and matched as WHOLE names; a served name that is also
 // an English UI string in the dictionaries is dropped, so the list cannot cover a leaked UI word.
-// Broken on purpose 2026-10-20 (Korean `command.title` set to `Command`) and watched red.
+// Broken on purpose 2026-10-20 (Korean `command.title` set to `Command`) and watched red; the probe word moved to 'Fleets' 2026-11-11 when that key went (Command stopped being a dictionary word).
 //
 // SCOPE: chrome, not prose. A row's served content (a captain's blurb, a trait line, the server's
 // own sentences without a code) stays English in v1 and is out of this sweep by construction — the
@@ -95,7 +95,7 @@ test('in Korean, no tab shows an English UI word outside the served proper nouns
   test.setTimeout(WORLD_BOOT_MS + 240_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   expect(NAMES.length, 'no served names were read — the data files moved').toBeGreaterThan(200)
-  expect(leftover('Command'), 'a UI word is never excused as a served name').toEqual(['Command'])
+  expect(leftover('Fleets'), 'a UI word is never excused as a served name').toEqual(['Fleets'])
   await page.setViewportSize(PHONE)
 
   const leaks: string[] = []

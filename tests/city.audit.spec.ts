@@ -28,7 +28,7 @@ import { ready, reachable, settled } from './appReady.fixture'
 // and 320×568 for the hall in BOTH fold states, with the state that fits and the state that
 // scrolls printed.
 
-const EXPECTED_RAIL = ['HQ', 'Fleets', 'Map', 'Stats', 'Menu']
+const EXPECTED_RAIL = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },

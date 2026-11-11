@@ -156,7 +156,7 @@ test.describe('several fleets', () => {
     await expect(list).toHaveCount(0)
     await picker.click()
     await expect(list).toBeVisible()
-    await page.getByRole('heading', { name: 'Command', exact: true }).click()
+    await page.getByRole('heading', { name: 'Trade', exact: true }).first().click()
     await expect(list).toHaveCount(0)
 
     // ← / → SWITCH, WRAPPING: Segunda → (right) Gaivota → (left) Segunda.

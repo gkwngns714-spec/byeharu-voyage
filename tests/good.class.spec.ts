@@ -423,7 +423,7 @@ for (const vp of [
     await page.goto('command')
     await ready(page)
     // the desk remembers the face it was left on (City): turn to Trade, then press the first Buy that is alive
-    await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+    await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
     const buy = page.locator('[data-testid="trade-buy"]:not([disabled])').first()
     await expect(buy, 'the Trade face has no good to buy').toBeVisible({ timeout: 60_000 })
     await buy.click()

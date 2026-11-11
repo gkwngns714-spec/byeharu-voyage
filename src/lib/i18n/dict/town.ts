@@ -85,7 +85,7 @@ export const townDict = defineDict({
     w_market: 'Market',
     w_production: 'Workshops',
     w_inn: 'Inn',
-    f_market: 'Trade',
+    f_market: 'Market',
     f_city: 'Town',
     f_workstation: 'Craft',
     f_inn: 'Inn',

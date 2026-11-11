@@ -62,7 +62,7 @@ const KEPT = ['ledger-list', 'ledger-row', 'ledger-day'] as const
  *  (a Korean strip has other words). */
 const FACES = [
   { name: 'All', served: 50 },
-  { name: 'Trade', served: 10 },
+  { name: 'Trades', served: 10 },
   { name: 'Voyage', served: 20 },
   { name: 'Crew', served: 20 },
 ] as const

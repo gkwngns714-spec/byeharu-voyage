@@ -73,7 +73,7 @@ import { translateMaybe, type Locale } from '../lib/i18n'
 // re-measures the row on every run. 2026-10-31: still FIVE — HQ leads the bar and the COMMAND tab
 // is GONE (owner: *"it is a game you dick. and i told you to remove the command tab"*): the City is
 // the game's home and its Market building is the desk's door. The label is "HQ", the City rail's
-// own word; the bar is HQ · Fleets · Map · Stats · Menu.
+// own word; the bar was HQ · Fleets · Map · Stats · Menu; since 2026-11-11 it is HQ · Trade · Fleets · Map · Menu.
 
 export interface NavTab {
   to: string
@@ -108,20 +108,17 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   // carry it). Five cells: 390 ÷ 5 = 78 px, clear of the 44 px floor and the 46 px the widest
   // label needs, and nav.geometry.spec re-measures the row on every run.
   { to: '/city', label: 'HQ', icon: 'wreath', enabled: true },
-  // THE DESK HAS NO TAB (owner, 2026-10-31: *"it is a game you dick. and i told you to remove the
-  // command tab. wtf are you going on about"* — said before and not done). The trading desk is
-  // reached from the CITY: its Market building opens the trade face (`features/city/CityFace.tsx`,
-  // `PortTrade`). The /command route itself is kept for the desk screen and old links (App.tsx) —
-  // it is not a destination in this table, and the rail never carries it. Bar: HQ · Fleets · Map ·
-  // Stats · Menu.
+  // TRADE (owner remaster, 2026-11-11, S1: a new captain landed on HQ with nothing to press and the desk
+  // — where you buy, pick a city and sail & sell — was six presses away). The desk IS the first screen
+  // now: its own cell, one press from everywhere, and HOME_TAB. The route is still `/command` (old links,
+  // FLEETS' "Command her"); the word is "Trade", the desk's own first face. Bar: HQ · Trade · Fleets · Map · Menu.
+  { to: '/command', label: 'Trade', icon: 'compass', enabled: true },
   { to: '/fleets', label: 'Fleets', icon: 'ship', enabled: true },
   { to: '/map', label: 'Map', icon: 'chart', enabled: true },
-  // STATS (owner, 2026-10-20: *"a statistic tab along with command, map etc. where i can see the world
-  // economy, npc economy, cities, trade good stocks … updated regularly"*). ONE TAP, not the cabin: the
-  // owner named it beside Command and Map, and a trader reads the market's figures as often as the map.
-  // The bar draws FIVE cells: 390 ÷ 5 = 78 px and 320 ÷ 5 = 64 px, both clear of the 44 px reach floor
-  // and the 46 px the widest label needs; nav.geometry.spec re-measures the row.
-  { to: '/stats', label: 'Stats', icon: 'stats', enabled: true },
+  // STATS (owner, 2026-10-20) moved INTO the Menu on 2026-11-11 (S1): the top bar is for the loop you play
+  // (Trade · Fleets · Map); the world's figures are consulted, so they sit with the cabin. Every Stats
+  // face stays reachable from here.
+  { to: '/stats', label: 'Stats', icon: 'stats', enabled: true, group: 'cabin' },
   { to: '/ledger', label: 'History', icon: 'ledger', enabled: true, group: 'cabin' },
   { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
   // ROUTES (owner row 115, 2026-10-11): every lane the world sails, ranked. In the CABIN for this
@@ -187,10 +184,9 @@ export const NAV_CELLS: readonly NavCell[] = (() => {
   return cells
 })()
 
-/** The landing destination. The CITY is the game's face (owner, 2026-10-30: the new full-screen
- *  city — "i keep getting the old screen"): the app opens on it, and its rail carries the desk
- *  (Command), the map, the stats and the menu. */
-export const HOME_TAB = '/city'
+/** The landing destination: the TRADE desk (owner remaster, 2026-11-11, S1) — a player lands where the
+ *  buy buttons are. The City page stays one press away on the HQ cell. */
+export const HOME_TAB = '/command'
 
 /** The URL a destination actually has in the browser. The router is mounted on
  *  `import.meta.env.BASE_URL` (App.tsx passes it as the basename, and vite.config.ts sets it to

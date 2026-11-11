@@ -125,7 +125,7 @@ test('COMMAND: a route stop is a Sell group above a Buy group, a buy press moves
   await page.goto('command')
   await ready(page)
   // the route is on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
   // the city's goods load after the press; let them land, so nothing above the route moves later
   await settled(page.getByTestId('desk-trade'))
 
