@@ -88,7 +88,7 @@ export function RouteBar({
   return (
     <div
       {...CHART_CHROME}
-      className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 border-t border-rule bg-surface px-4 pb-3 pt-2 shadow-sheet lg:inset-x-auto lg:bottom-3 lg:left-1/2 lg:w-[26rem] lg:-translate-x-1/2 lg:rounded-sheet lg:border"
+      className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 rounded-t-sheet bg-surface px-4 pb-3 pt-2 shadow-sheet lg:inset-x-auto lg:bottom-3 lg:left-1/2 lg:w-[26rem] lg:-translate-x-1/2 lg:rounded-sheet"
       role="region"
       aria-label={t('map.routeTitle')}
       data-testid="route-bar"

@@ -246,13 +246,10 @@ function Chart({
   useEffect(() => {
     routeTap.current = routeView ? route.tap : null
   })
-  const loadRoutes = useWorld((s) => s.loadRoutes)
-  const routesBook = useWorld((s) => s.routes)
+  // the stop cap is the routes book's served stop_max (the standing-route knob), which the store reads on every beat
   const startRoute = (id: string) => {
     setSelection(null)
     setRouteFor(id)
-    // the stop cap is the routes book's served stop_max (the standing-route knob); read it if the shell has not
-    if (routesBook === null) void loadRoutes()
   }
   const endRoute = () => {
     route.reset()
