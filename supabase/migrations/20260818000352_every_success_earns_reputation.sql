@@ -52,6 +52,8 @@
 -- hunks takes the hooks out. The tables stay.
 -- SELF-ASSERT: the catalog, then probe houses of this file's own rows, every one rolled back by a raised sentinel. No
 -- table is counted or summed. The real arrival (voyage.settle) is proved in CI: scripts/db/proofs/55_reputation.sql.
+-- NEWS: this file posts its own UPDATE row, public.news_update('0352', 'Reputation: earned by success', '평판: 성공하면 얻음')
+-- (0347's law, tests/news.lint.spec.ts): written once, outside the rolled-back probe, and counted by its own key.
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. Fails above 45 s.
 -- LOCKS: the three tables reference public.players (a brief SHARE ROW EXCLUSIVE on players, under lock_timeout 5 s).
 -- VERSION: 0352. 0351 (world.best_sales only) shares no function with this file.
@@ -124,9 +126,9 @@ begin
      or to_regprocedure('public.voyage_xp_tracks(uuid)') is null or to_regprocedure('public.promotion_credit(uuid,uuid,text,numeric)') is null
      or to_regprocedure('public.wc_num(text)') is null or to_regprocedure('public.wc_int(text)') is null
      or to_regprocedure('cmd.refuse(text,text,jsonb)') is null or to_regprocedure('cmd.figures(numeric,numeric,text)') is null
-     or to_regprocedure('public.client_write_grants()') is null
+     or to_regprocedure('public.client_write_grants()') is null or to_regprocedure('public.news_update(text,text,text)') is null
      or exists (select 1 from unnest(c_cut_fns) f where to_regprocedure(f) is null) then
-    raise exception '0352 refuses: a function it calls or cuts is not in this world (0004 / 0127 / 0160 / 0162 / 0311)';
+    raise exception '0352 refuses: a function it calls or cuts is not in this world (0004 / 0127 / 0160 / 0162 / 0311 / 0347)';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
@@ -976,6 +978,11 @@ $body$
   end if;
   if public.current_player_id() is not null then
     raise exception '0352 self-assert FAIL: the probe''s identity outlived its rollback';
+  end if;
+  -- THIS FILE'S OWN UPDATE ROW (0347's news law, tests/news.lint.spec.ts), counted by its own key
+  perform public.news_update('0352', 'Reputation: earned by success', '평판: 성공하면 얻음');
+  if (select count(*) from public.world_news w where w.key = 'update:0352') <> 1 then
+    raise exception '0352 self-assert FAIL: this file''s UPDATE row is not one row';
   end if;
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0352 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
