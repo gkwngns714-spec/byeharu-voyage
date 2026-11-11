@@ -142,9 +142,9 @@ export function CommandScreen() {
             <h1 className="shrink-0 text-t-card text-ink">{t('shell.tab_Trade')}</h1>
             <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} inline />
           </div>
-          {fleet && <GoalCard />}
           <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="shrink-0" />
         </header>
+        {fleet && <GoalCard />}
         {fleet && faceBody(fleet)}
       </div>
     )

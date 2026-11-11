@@ -13,11 +13,11 @@ import { useDeskView } from '../deskView'
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
 // A control is 44 px (tests/consistency.spec.ts), so the card is 44 px. On a phone every pixel above the goods is bought, so it stands on the
-// Goods face only (the City and Report faces would lose room: tests/layout.spec.ts K.1, desk.city.spec.ts); on a wide glass it stands in the
-// header, which is on every face, so the panes never move.
+// Goods face only (the City and Report faces would lose room: tests/layout.spec.ts K.1, desk.city.spec.ts); on a wide glass it stands under the
+// header on every face, so the panes never move between faces (the header has no room for it at 1024 px).
 const CARD = 'flex h-11 min-w-0 shrink-0 flex-col justify-center rounded-control px-3 text-left'
 const PHONE = 'mx-gutter'
-const WIDE = 'w-[22rem] min-[90rem]:w-[26rem]'
+const WIDE = 'mx-3 mb-2 w-[22rem] min-[90rem]:mx-6'
 
 export function GoalCard() {
   const t = useT()
