@@ -25,6 +25,7 @@ async function jobs(page: Page) {
       return {
         name: (e.innerText.split('\n')[0] ?? '').trim(),
         each: e.dataset.priceEach,
+        sale: e.dataset.salePrice,
         bonus: e.dataset.bonus,
         want: txt('request-want').replace(/ · Held.*/, ''),
         budget: txt('request-budget'),
@@ -35,13 +36,22 @@ async function jobs(page: Page) {
 }
 
 type Job = Awaited<ReturnType<typeof jobs>>[number]
-// A young world winds more jobs onto the board as it is read (0087), so a later face may list MORE
-// jobs than Trade did; what must hold is that every job Trade showed stands there, figure for figure.
+// A BOARD IS LIVE, so two reads of it a minute apart are never the same figures (found on main's
+// Acceptance run 42967806442: the Map's Sperm Oil row was there, its figures were not Trade's).
+// `price_each` is the quay's live bid + the bonus (0311), so it moves with the market; the read also
+// winds new jobs onto the board and runs deliveries (0087), so the wanted quantity, the budget left
+// and the set of rows move too. What is FIXED when a job is posted is the good and the bonus each
+// (`premium_per_unit`). So across surfaces: every job Trade listed is listed again, found by its
+// good and its fixed bonus, with its time left on the same clock; and on EACH surface the printed
+// reward is that surface's own served price + bonus (the row's own two figures, one read).
 const same = (a: Job[], b: Job[], what: string) => {
   for (const j of a) {
-    const found = b.find((x) => x.name === j.name && x.each === j.each && x.bonus === j.bonus && x.want === j.want && x.budget === j.budget)
-    expect(found, `${what}: Trade's "${j.name}" job is missing or differs`).toBeTruthy()
+    const found = b.find((x) => x.name === j.name && x.bonus === j.bonus)
+    expect(found, `${what}: Trade's "${j.name}" job (bonus ${j.bonus}) is not on this board: ${JSON.stringify(b.map((x) => [x.name, x.bonus]))}`).toBeTruthy()
     expect(Math.abs(found!.secs - j.secs), `${what}: time left differs`).toBeLessThan(180)
+  }
+  for (const j of b) {
+    expect(Math.abs(Number(j.each) - (Number(j.sale) + Number(j.bonus))), `${what}: "${j.name}" reward is not its own price + bonus`).toBeLessThanOrEqual(0.011)
   }
 }
 
