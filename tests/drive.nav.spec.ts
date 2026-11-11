@@ -41,6 +41,13 @@ function hookAsks(page: Page) {
 
 const cell = (page: Page, to: string) => page.getByTestId(`nav-cell-${to}`).first()
 
+/** Stats lives in the Menu (S1, 2026-11-11), so it is reached through the cabin's tray, the one door every member has. */
+const press = async (page: Page, to: string) => {
+  if (to !== '/stats') return cell(page, to).click()
+  await cell(page, 'cabin').click()
+  await page.getByTestId('nav-group-panel').getByRole('link', { name: 'Stats' }).click()
+}
+
 // ── ROW 250: DOWNLOAD ONCE, KEEP IT ACROSS THE TABS THE OWNER PRESSES ────────────────────────────
 test('Tabs: HQ → Fleets → Map → Stats → HQ, twice — the world and the sea are asked once, the second cycle asks no more than the first and shows no skeleton (row 250)', async ({ page, request, baseURL }) => {
   test.setTimeout(600_000)
@@ -64,7 +71,7 @@ test('Tabs: HQ → Fleets → Map → Stats → HQ, twice — the world and the 
     const t0 = await page.evaluate(() => performance.now())
     const pulses: Record<string, number> = {}
     for (const [to, marker] of steps) {
-      await cell(page, to).click()
+      await press(page, to)
       await expect(page.getByTestId(marker)).toBeVisible({ timeout: 120_000 })
       // what the owner sees right after the press: a skeleton means it is downloading again
       await page.waitForTimeout(150)
@@ -174,7 +181,7 @@ test('Fleets: one fleet of seven ships — the company counts 7 hulls, her page 
 
 // ── ROWS 249 / 252 / 246: EVERY CELL BOTH WAYS, FROM THE HQ ──────────────────────────────────────
 for (const size of [PHONE, LAPTOP]) {
-  test(`Tabs @${size.width}: from the HQ each cell goes and comes back; the bar is HQ · Fleets · Map · Stats · Menu; the document never scrolls sideways`, async ({ page, request, baseURL }) => {
+  test(`Tabs @${size.width}: from the HQ each cell goes and comes back; the bar is HQ · Trade · Fleets · Map · Menu; the document never scrolls sideways`, async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     await page.setViewportSize(size)
@@ -183,7 +190,7 @@ for (const size of [PHONE, LAPTOP]) {
     await expect(page.getByTestId('city-rail')).toBeVisible({ timeout: 120_000 })
     const labels = (await page.getByTestId('city-rail').locator('[data-testid^="nav-label-"]').allInnerTexts()).map((s) => s.trim())
     console.log(`@${size.width} rail: ${labels.join(' · ')}`)
-    expect(labels).toEqual(['HQ', 'Fleets', 'Map', 'Stats', 'Menu'])
+    expect(labels).toEqual(['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
     const scrolls: Record<string, string> = {}
     const read = async (name: string) => {
       scrolls[name] = await page.evaluate(() => {
@@ -199,7 +206,7 @@ for (const size of [PHONE, LAPTOP]) {
       ['/map', 'map-chart'],
       ['/stats', 'stats'],
     ] as const) {
-      await cell(page, to).click()
+      await press(page, to)
       await expect(page.getByTestId(marker)).toBeVisible({ timeout: 120_000 })
       await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
       await read(to)
@@ -211,7 +218,7 @@ for (const size of [PHONE, LAPTOP]) {
     await page.getByTestId('nav-bar').getByText('Menu').click()
     const panel = page.getByTestId('nav-group-panel')
     await expect(panel).toBeVisible()
-    await expect(panel.getByRole('link')).toHaveCount(6)
+    await expect(panel.getByRole('link')).toHaveCount(7)
     await panel.getByRole('link', { name: /History|기록/ }).click()
     await expect(page.getByTestId('ledger')).toBeVisible({ timeout: 120_000 })
     await cell(page, '/city').click()

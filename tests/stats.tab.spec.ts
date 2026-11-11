@@ -82,17 +82,17 @@ for (const vp of [PHONE, WIDE]) {
   })
 }
 
-test('the bar reaches Stats in one tap, beside Map', async ({ page, request, baseURL }) => {
+test('Stats is reached from the Menu, not the bar (S1, 2026-11-11)', async ({ page, request, baseURL }) => {
   test.setTimeout(420_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(PHONE)
   await page.goto('command')
   await ready(page)
-  // FIVE cells since 2026-10-31, and NO Command tab (owner: "it is a game you dick. and i told you
-  // to remove the command tab" — the desk is reached from the City's Market building): HQ leads.
+  // FIVE cells since 2026-11-11: HQ · Trade · Fleets · Map · Menu; Stats lives in the Menu.
   const labels = await page.getByTestId('nav-bar').locator('a, button').allInnerTexts()
-  expect(labels.map((l) => l.trim())).toEqual(['HQ', 'Fleets', 'Map', 'Stats', 'Menu'])
-  await page.getByTestId('nav-bar').getByText('Stats').click()
+  expect(labels.map((l) => l.trim())).toEqual(['HQ', 'Trade', 'Fleets', 'Map', 'Menu'])
+  await page.getByTestId('nav-bar').getByText('Menu').click()
+  await page.getByTestId('nav-group-panel').getByRole('link', { name: 'Stats' }).click()
   await expect(page.getByTestId('stats')).toBeVisible()
   await expect(page).toHaveURL(/\/stats$/)
 })

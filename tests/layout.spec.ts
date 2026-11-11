@@ -303,7 +303,7 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
   // 787-px fold — two rows of two. Five would need a third row: 3 × 129 px = 387 px in the 381 px left
   // below the highest card start, so five is arithmetically out of reach of this shape, not a regression.
   // The floor is the measured four.
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
   const buy = await page.evaluate(() => {
     const nav = document.querySelector('nav')
@@ -672,7 +672,7 @@ test(`COMMAND: the route row opens the route page, the queue below it may not mo
   await page.goto('command')
   await ready(page)
   // 2026-10-18: the route and the queue are on the desk's trading faces (docs/COMMAND_DESK.md §3.5); Trade since 2026-10-30
-  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+  await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
   // the city's goods load after the press; let them land before measuring
   await settled(page.getByTestId('desk-trade'))
   const row = page.getByTestId('route-row')

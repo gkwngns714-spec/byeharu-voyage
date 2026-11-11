@@ -44,7 +44,7 @@ for (const size of SIZES) {
 
       // the desk stays on Trade, and the trade is made there
       await expect(
-        page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }),
+        page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }),
       ).toHaveAttribute('aria-selected', 'true')
       const card = page.getByTestId('good-detail')
       await expect(card).toBeVisible({ timeout: 30_000 })

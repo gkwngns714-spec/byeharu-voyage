@@ -18,7 +18,7 @@ import { ready, reachable } from './appReady.fixture'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 const FACES = [
-  { name: 'Trade', id: 'desk-trade' },
+  { name: 'Goods', id: 'desk-trade' },
   { name: 'City', id: 'desk-city' },
   { name: 'Invest', id: 'desk-invest' },
   { name: 'Report', id: 'desk-report' },

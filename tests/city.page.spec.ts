@@ -489,7 +489,11 @@ test('the City page: entry, the six-tile frame, the hall in place, and no scroll
   // face — "i keep getting the old screen"). The root route lands on the city; the rail has NO
   // Command cell (owner, 2026-10-31: "i told you to remove the command tab"), and the desk's door
   // from here is the MARKET building, whose face composes the trade face.
+  // (S1, 2026-11-11: the ROOT now lands on Trade — tests/trade.home.spec.ts — so the city is reached by its own cell.)
   await page.goto('/')
+  await expect(page).toHaveURL(/\/command$/)
+  await ready(page)
+  await page.getByTestId('nav-cell-/city').first().click()
   await expect(page).toHaveURL(/\/city(\?|$)/)
   await ready(page)
   await expect(page.getByTestId('city-screen')).toBeVisible()

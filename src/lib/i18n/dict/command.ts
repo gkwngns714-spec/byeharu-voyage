@@ -4,13 +4,13 @@ import { defineDict } from '../define'
 // the route fold and editor. 대항해시대 words: 시세 · 계획 · 도시 · 투자 · 보고.
 export const commandDict = defineDict({
   en: {
-    title: 'Command',
     loading: 'Loading…',
     noFleets: 'No fleets yet.',
     deskFaces: 'Desk faces',
     f_buy: 'Buy',
     f_sell: 'Sell',
-    f_trade: 'Trade',
+    // 'Goods', not 'Trade': the bar's Trade cell is this desk's own word, and two controls may not share a label (tests/consistency.spec.ts).
+    f_trade: 'Goods',
     f_city: 'City',
     f_invest: 'Invest',
     f_report: 'Report',
@@ -106,7 +106,6 @@ export const commandDict = defineDict({
     lvNoCompany: 'No company yet.',
   },
   ko: {
-    title: '지휘',
     loading: '불러오는 중…',
     noFleets: '아직 선단 없음.',
     deskFaces: '지휘 분류',

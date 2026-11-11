@@ -14,7 +14,7 @@ import { ready, reachable } from './appReady.fixture'
 
 test.use({ viewport: { width: 390, height: 844 } })
 
-const EXPECTED = ['HQ', 'Fleets', 'Map', 'Stats', 'Menu']
+const EXPECTED = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
 
 async function labels(page: Page, rail: string): Promise<string[]> {
   return page.getByTestId(rail).locator('[data-testid^="nav-label-"]').allInnerTexts()

@@ -19,10 +19,10 @@ import type { TKey } from '../../lib/i18n'
 
 export type Face = 'all' | 'trade' | 'voyage' | 'crew'
 
-/** The four faces, by id and the dictionary key of their word (the Codex's words: one spelling of Trade / Voyage / Crew). */
+/** The four faces, by id and the dictionary key of their word (the Codex's words for Voyage / Crew; Trade is spelt Trades here, the bar's Trade being on this screen). */
 export const FACES: readonly { id: Face; label: TKey }[] = [
   { id: 'all', label: 'codex.all' },
-  { id: 'trade', label: 'codex.trade' },
+  { id: 'trade', label: 'history.f_trade' },
   { id: 'voyage', label: 'codex.voyage' },
   { id: 'crew', label: 'codex.crew' },
 ]
