@@ -283,3 +283,34 @@ The 5:
 
 `city.phone` and `hq.design` (the two 320 reds) pass.
 
+---
+
+# Sixth part — two CI reds placed: neither is this branch's (2026-11-12)
+
+Main (3baa2983, with #595 and #596) merged in again, no conflicts. No source change in this part.
+
+What this branch changes in `src/`, against main: `components/ui/TileGrid.tsx`, `tileStyles.ts`, `index.ts` (one export), `features/command/buysell/Trade.tsx`, `TradeBoard.tsx`, `live/TradeCard.tsx`. `TileGrid` without `words` builds the class string it built before, so every other caller (filters, faces) is drawn the same. Stats and the Map draw none of the other five.
+
+## 1. `news.dotSize.spec.ts:169` at 390: "pressing "4 news" moved its chart", 255 to 611
+
+- Run 5 times at 390 on a build of main: 5 passed. On this branch: 5 passed. With the scroll state logged around the press (branch): the chart at y 255 before and after, the Stats scroller at 1,622 before and after.
+- The move is not the press. On Stats > Overview the Economy Watch card stands directly above the world chart (`src/features/stats/Overview.tsx:150`, the chart at `:151`) and draws NOTHING until its read lands (`src/features/stats/Watch.tsx:22`, `if (!watch) return null`). Measured at 390: the card is 345 px and the gap under it 12, 357 together.
+- Made to happen on a build of MAIN: with the card not yet drawn and the chart scrolled into view, the chart's dots stand at y 269; when the card is drawn they stand at 626, 357 px lower. CI's move was 356.
+- So: in CI the watch read landed between the spec's two measurements (it waits up to 10 s for the news card in between). A player sees the same jump whenever that read lands after the page is on the glass.
+- Verdict: main's, in files this branch does not touch. The cure is the card holding its place while its read is out (a Skeleton of its height), in `Watch.tsx`.
+
+## 2. `map.merchants.spec.ts:677` at 1,280: `tray-close` detached in a loop for 40 minutes
+
+- Run 3 times on a build of main: 3 passed (17 s each). On this branch: 3 passed. A probe on main that opens a merchant's sheet and two harbours' trays and watches the close button for 15 s each: replaced 0 times, and each closed on the first press.
+- Why 40 minutes: the test's own 10, plus the 30 the merchants-on fixture adds (`tests/npcOn.fixture.ts:226`), and the helper's `close.click()` has no timeout of its own (`tests/map.merchants.spec.ts:510`, also `:549` and `:784`), so a button that keeps being replaced is retried until the test's clock runs out.
+- What can replace it, read from the code, NOT reproduced: the sheet a pressed hull opens is one of four components chosen by the hull's kind in the current traffic read (`src/features/map/MapScreen.tsx:298-302`, drawn at `:630-664`). A hull that is missing from one traffic read has no kind, so a cargo, navy or pirate hull's sheet falls through to the merchant's sheet (`:657`) and comes back on the next read; each swap is a new tray and a new close button. The traffic read is capped to a window, so a hull at its edge can do this on every beat.
+- Verdict: not this branch's (it passes here and on main, and the branch draws nothing on the Map). A flake of main's map under load, with the candidate cause above for whoever owns the map; a bounded `click` in the helper would turn 40 minutes into a sentence.
+
+## Checks (local, the merged build)
+
+`tsc -b`, `eslint .`, `vite build`: clean. One run of the same 326 tests as the fifth part: 323 passed, 3 failed.
+
+- `market.shortTray` (2) passes now: main's #595 repointed it.
+- `route.stopface.spec.ts:47` and `:77`: the plain-Node word specs and this machine's Korean locale, as before.
+- `city.goodTrades.spec.ts:40`: failed in this full run and in the last one, at the same place (its resize to 1,280, 36 s). Run beside the same neighbours (`align`, `city.audit`, two workers) on a build of MAIN it fails the same way, twelfth test, 36.2 s; alone it passes on both. So it is main's, and it depends on what runs beside it, not on this branch. It exercises the desk's City face, which draws none of this branch's files.
+
