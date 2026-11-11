@@ -33,7 +33,7 @@ for (const size of SIZES) {
       test.setTimeout(600_000)
       await page.goto('command')
       await ready(page)
-      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Trade', exact: true }).click()
+      await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
       const face = page.getByTestId('desk-trade')
       const board = face.getByTestId('trade-board')
       await expect(board).toBeVisible()
