@@ -1,5 +1,33 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+## HAND-OFF 2026-11-11 ~08:45 UTC: continue on another computer from here
+
+**To resume (in order):**
+1. `cd` to the clone, `git pull`. New computer: do `docs/NEW_COMPUTER.md` once. Pull the `claude-memory` repo and read `byeharu-voyage-resume-2026-11-11.md`.
+2. Tell Claude: "continue the remaster from the hand-off on top of docs/WORK_QUEUE.md".
+3. Check the facts first: `gh pr list`, `gh pr checks 578`, the prod head (expect 0349), main's Acceptance (green on 56007457).
+4. Agents, previews and worktrees from the 디폴리스 PC do not carry over. Nothing is left running there except CI.
+
+**State.** Prod head 0349. Main Acceptance GREEN on 56007457 (also on fc68cbac). Health check after 0349: no thresholds tripped. Live site version `5600745`.
+
+**Live from the remaster (10):** Trade is home (#574), arrival card (#572), route builder 0346 (#575), type/surface pass (#571), city requests on HQ Market (#579), news 0347 (#573), goal card (#577), wide-screen rail and shell S9 (#581), best sale 0348 (#576), shipyard sources 0349 (#580). #582 fixed the one red spec on main (test only).
+
+**One PR open from this work: #578 (S5, branch `s5-one-card`): one goods card at HQ Market + a short trade tray with More.** Client only. Its last run had ONE red: `tests/sections.spec.ts:194` (features imported `domain/market/tradeRows` and `dayLine` past the section entrance). Fixed in 82b2c411 (re-exported from `src/domain/market/index.ts`); the sections spec passes locally; CI on 82b2c411 was NOT read. Next: `gh pr checks 578`; ALL green → `gh pr merge 578 --squash`, wait for Pages, grep the live bundle; a red → read it to its last error, never re-run to green. Worktree on the 디폴리스 PC: `~/dev/wt-s5-one-card` (remove after merge; unlink `node_modules` first).
+
+**Owner's plan (row 312): steps 1-5 only.** 1 playtest, 2 playable, 3 simpler UI, 4 better look, 5 more things to do. Guides (6) and quests (7) WAIT by the owner's order (row 311).
+
+**Next slices, not started (each: own worktree, client PRs watch ALL checks, no edits to this file or OWNER_REQUESTS.md inside a PR):**
+- `world.best_sales` is slow on prod: health shows mean ~2.6 s, max ~4.4 s over 68 calls. Build a precomputed dearest-buyers list (migration 0350).
+- Trade city chips: 3 columns at 390 ("Lisbon" breaks mid-word), `src/features/command/buysell/TradeBoard.tsx`.
+- Trade on desktop: near-empty side panes, uneven card heights; TradeToast off-centre on wide.
+- HQ "Your earnings" repeats the top bar.
+- Route builder Via / Repeat (B3/B4, row 209). News dots on the map goods panel and quay trays (N4-N6, row 216).
+- Captains: close/long-range roles and a roster (rows 61/66; the bite is dark behind `crew_bite`).
+
+**Owner's to decide (nothing here was touched):** the goal card costs two goods above the fold on a phone; switches `crew_bite`, `sea_conditions_bite`, `regard_enabled`, `fleet_room_bite`, `npc_ship_level_enabled`, `ship_stores_separate`; `city_reserve_enabled` reads TRUE on prod; Barca needs four long voyages.
+
+**Not done:** ledger row states for 180/305, 209, 216, 279/293, 307-312 were not updated after the merges; row 192 (Report) is built and can close once seen working.
+
 - 2026-11-11 ~07:10 UTC **MAIN IS RED ON ONE SPEC (top of queue); 0348, 0349 AND S9 ARE LIVE.** RED: main Acceptance run 42967806442 (36094611), plain 3/3, `tests/requests.hq.spec.ts:49` at 1280: `Map: Trade's "Sperm Oil" job is missing or differs` (S7's own new spec; 1 of 327; the 390 case passed). The S7 agent is diagnosing by cause (real Map/Trade difference, a job leaving a live board between reads, or the goal card moving Trade at 1280), not re-running. **0348 best sale (#576):** push rc 0, head 0348, merged, after.sql as wanted (hunks 1,2,registry old 1 new 1; 3,4 old 0 new 1; new_fns 5); health right after showed WAL 73 MB/min (alert > 70), 13 min later 59 and no thresholds tripped, lag 0.5 s. Prod cost of `world.best_sales` NOT measured (needs a signed-in player; builder's range 0.5-6 s, 2.5 s cap inside). **0349 yard (#580):** push rc 0, head 0349, merged, `world.yard_sources` is `s`/secdef true. **S9 (#581, ef04186):** left rail from 1024, one shell frame (HQ gets the top bar), detail pages capped at 64 rem, one card look; version.json read ef04186. Leftovers: TradeToast off-centre on wide, HQ 'Your earnings' repeats the top bar, Trade desktop's left and right panes near-empty, port chips break names at 390. Open: #578 S5 one card + short tray (reds being fixed).
 - 2026-11-11 **S2 BEST SALE ON EVERY GOODS CARD: MIGRATION 0348 PR OPEN (row 307).** `world.best_sales(fleet, port)`, one read per city in hand, built from `world.good_board`'s own sell rows (moved into four server-only functions good_board now calls; its answer asserted byte for byte). Each card names the city and the served profit; red "No gain" before any buy; the press opens Buy & sell at the card's units, same figure as the tray; a losing Buy tray warns above Max. Cost: local 1.3-2.1 s for a 10-good city, prod composed 0.5-6 s (not measured: needs a signed-in player); a 2.5 s budget fails soft. Deploy after 0346 and 0347; measure the real call then; over ~1.5 s, the dearest-buyers list follows.
 - 2026-11-11 ~06:10 UTC **0347 NEWS LIVE; S6 GOAL CARD LIVE; 0349 YARD READY BEHIND 0348.** 0347 (#573, row 216): push rc 0, head 0347, merged, live bundle carries `news_feed`, `world_news` holds its first row; lit, no switch; N4-N6 unbuilt, no dots yet on the map's good panel or quay trays. S6 (#577, 36094611): goal card on Trade shows the next Title and Trading/Exploration progress from `world.levels`; press opens Levels; phone Goods face only, wide under the header. **COST, owner to judge:** on a phone the Goods face shows 2 whole goods above the fold instead of 4 (floor lowered in `layout.spec`). S8 yard (#580, 0349 `world.yard_sources`, rows 180/305): all green, PROD CHECKS in body, deploys after 0348; fact found: a Barca from Lisbon needs four voyages (Funchal 505, La Rochelle 665, Portsmouth 867, Bergen 1,517 miles). In checks: #576 0348 best sale (head 91b9e7cb), #578 S5 one card + short tray, #581 S9 left rail and shell.
