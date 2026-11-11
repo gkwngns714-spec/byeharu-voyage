@@ -4,6 +4,7 @@ import { ShellStateContext } from './shellState'
 import { NavBar } from './NavBar'
 import { TopBar } from './TopBar'
 import { RebuildNotice } from './RebuildNotice'
+import { ArrivalCard } from '../components/ui/ArrivalCard'
 import { SignTheBook } from '../features/found/SignTheBook'
 import { useWorld } from '../live/worldStore'
 import { readIntervalMs } from '../domain/readClock'
@@ -134,6 +135,8 @@ export function AppShell() {
             <NavBar />
           </>
         )}
+        {/* THE ARRIVAL CARD: an overlay over any tab (components/ui/ArrivalCard.tsx); never in the flow. */}
+        <ArrivalCard />
       </div>
     </ShellStateContext.Provider>
   )

@@ -67,6 +67,14 @@ export const feedDict = defineDict({
     c_BUY: 'Sold',
     c_SHARE: 'Investment',
     c_FOUNDING: 'Founding',
+    // THE ARRIVAL CARD (src/components/ui/ArrivalCard.tsx)
+    arrived: 'Arrived',
+    arrivedAt: 'Arrived at {port}',
+    arrSold: 'Sold {n} {good}',
+    newPort: 'New port',
+    levelUp: '{track} level {n}',
+    next: 'Next',
+    close: 'Close',
   },
   ko: {
     heading: '돈 기록',
@@ -128,5 +136,12 @@ export const feedDict = defineDict({
     c_BUY: '판매',
     c_SHARE: '투자금',
     c_FOUNDING: '창업 자금',
+    arrived: '도착',
+    arrivedAt: '{port} 도착',
+    arrSold: '{good} {n} 판매',
+    newPort: '새 항구',
+    levelUp: '{track} {n}레벨',
+    next: '다음',
+    close: '닫기',
   },
 })
