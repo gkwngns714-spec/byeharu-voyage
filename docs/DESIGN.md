@@ -13,7 +13,7 @@ These come from the owner's brief and override anything else in this document.
 
 1. **Words, not pixels.** Every screen is text, tables and lists.
 2. **Commands live on their own tab.** All player agency is exercised there.
-3. **The map is an output device.** It renders position and heading. It never accepts input.
+3. **The map is an output device.** It renders position and heading. It never accepts input. Two exceptions, both the owner's word: the **Send fleet** tray (2026-08-24), and **route mode** (row 209, 2026-10-26; docs/ROUTE_BUILDER.md), where after **Set route** a city tap adds a stop until Final or Cancel. Outside those, a tap only selects.
 4. **No visual combat, ever.** Danger resolves server-side and is reported as written prose.
 5. **Fleets, plural.** Many ships, organised into many fleets, commanded simultaneously.
 6. **Real world.** Real countries, real ports, real coordinates, real goods, 1500–1650.

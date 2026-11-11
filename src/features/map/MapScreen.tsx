@@ -60,6 +60,7 @@ import {
   type ChartModel,
   type MapPort,
   type MapSelection,
+  type PathStop,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
 import { chromeAsideSideTrayClass, Icon, LoadMeter } from '../../components/ui'
@@ -68,6 +69,8 @@ import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
+import { RouteBar } from './RouteBar'
+import { useRouteBuilder } from './useRouteBuilder'
 import { CityHarbour } from './CityHarbour'
 import { merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
@@ -232,6 +235,48 @@ function Chart({
   const shipPath = useShipPath(pressedView, nowMs)
   const pathD = useMemo(() => (shipPath.courses.length > 0 ? loopD(shipPath.courses) : null), [shipPath.courses])
 
+  // ROUTE MODE (owner row 209, docs/ROUTE_BUILDER.md): the ONE exception to "the map never takes an order" beside the
+  // Send fleet tray. Started from a fleet's tray (Set route); while it lasts a city tap adds a stop (nothing else answers
+  // a tap), no tray opens, and the chart draws the route being built — numbered stops, the start said "Now", the stop
+  // not yet kept "?". Cancel or Final ends it, and a tap selects exactly as before. useRouteBuilder.ts decides.
+  const [routeFor, setRouteFor] = useState<string | null>(null)
+  const routeView = routeFor !== null ? (fleetViews.find((f) => f.id === routeFor) ?? null) : null
+  const route = useRouteBuilder(routeView)
+  const routeTap = useRef<((code: string) => void) | null>(null)
+  useEffect(() => {
+    routeTap.current = routeView ? route.tap : null
+  })
+  // the stop cap is the routes book's served stop_max (the standing-route knob), which the store reads on every beat
+  const startRoute = (id: string) => {
+    setSelection(null)
+    setRouteFor(id)
+  }
+  const endRoute = () => {
+    route.reset()
+    setRouteFor(null)
+  }
+  const finalRoute = async () => {
+    const id = routeFor
+    if (!(await route.final()) || id === null) return
+    endRoute()
+    // her track now shows the queue: the fleet is selected, as a tap on her hull does
+    selectFleet(id)
+    setSelection({ kind: 'fleet', id })
+  }
+  const routeCourses = useMemo(() => route.legs.map((l) => l.path.map(([lat, lon]) => ({ lat, lon }))), [route.legs])
+  const routeD = useMemo(() => (routeCourses.length > 0 ? loopD(routeCourses) : null), [routeCourses])
+  const keptCount = route.kept.length
+  const routeStops = useMemo<readonly PathStop[]>(() => {
+    const out: PathStop[] = []
+    const first = route.legs[0]?.path[0]
+    if (first) out.push({ at: { lat: first[0], lon: first[1] }, n: 0, days: null, label: tNow('desk.now') })
+    route.legs.forEach((leg, i) => {
+      const end = leg.path[leg.path.length - 1]
+      if (end) out.push({ at: { lat: end[0], lon: end[1] }, n: i + 1, days: null, ...(i >= keptCount ? { label: '?' } : {}) })
+    })
+    return out
+  }, [route.legs, keptCount])
+
   // THE OPEN MERCHANT'S CARD — read once here, for the sheet AND for her leg on the chart (the
   // card serves her full course; every other merchant is served the current segment only).
   const merchantId = selection?.kind === 'merchant' ? selection.id : null
@@ -285,6 +330,12 @@ function Chart({
       // can only land on a hull that is actually on the paper.
       const drawn = shipMarks(model.fleets, model.traffic, view)
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, drawn.traffic, placedNames())
+      // ROUTE MODE: only a harbour answers (no hull, no merchant can steal the tap), and it is the next stop.
+      if (routeTap.current) {
+        const city = hitTest({ ...model, fleets: [] }, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, [], placedNames())
+        if (city?.kind === 'port') routeTap.current(city.code)
+        return
+      }
       // A MERCHANT IS READ, NEVER COMMANDED: her tap selects her and leaves the command draft alone.
       if (hit?.kind === 'fleet') selectFleet(hit.id)
       if (hit) {
@@ -461,8 +512,8 @@ function Chart({
           portFlags={portFlags}
           islets={backdrop.islets}
           selection={selection}
-          plannedD={pathD}
-          pathStops={shipPath.stops}
+          plannedD={routeView ? routeD : pathD}
+          pathStops={routeView ? routeStops : shipPath.stops}
           // Every `CHART_CHROME` box, so no harbour's name prints under the pill, the zoom column,
           // the minimap or the tray.
           keepOut={surface.chromeBoxes}
@@ -491,8 +542,11 @@ function Chart({
             nowMs={nowMs}
             // Selecting from the LIST also brings the chart to her — a view change and nothing else.
             onSelect={(id) => {
-              selectFleet(id)
-              setSelection((current) => toggleSelection(current, { kind: 'fleet', id }))
+              // in route mode the list only brings the chart to her: no tray opens until the route is ended
+              if (routeFor === null) {
+                selectFleet(id)
+                setSelection((current) => toggleSelection(current, { kind: 'fleet', id }))
+              }
               const target = model.fleets.find((f) => f.fleet.id === id)
               if (target) surface.centreOn(target.at)
             }}
@@ -538,13 +592,23 @@ function Chart({
       )}
 
       {/* THE TRAY — one at a time, keyed by what was tapped so the next tap starts it at peek. */}
-      {selectedFleet && (
+      {routeView && (
+        <RouteBar
+          fleetName={routeView.name}
+          route={route}
+          name={(code) => portsByCode.get(code)?.name ?? code}
+          onCancel={endRoute}
+          onFinal={() => void finalRoute()}
+        />
+      )}
+      {selectedFleet && !routeView && (
         <VoyageTray
           key={selectedFleet.fleet.id}
           fleet={selectedFleet}
           portsByCode={portsByCode}
           nowMs={nowMs}
           onClose={() => setSelection(null)}
+          onSetRoute={() => startRoute(selectedFleet.fleet.id)}
         />
       )}
       {selectedMerchant && cargoId !== null && (

@@ -109,3 +109,12 @@ Every slice runs `npx tsc -b`, `npx eslint .`, the pure specs, `duplication` and
 - **Tap noise on a phone.** Route mode uses the existing hit test (`hitTest.ts`). Only cities answer, so ships near a city cannot steal the tap.
 - **A merged queue.** If she already has queued orders, Final appends after them, and the queue cap (`order_queue_max`, 48) refuses the overflow all or none.
 - **Law drift.** Route mode must not leak. After Cancel or Final, a tap selects exactly as before (B2's spec asserts this).
+
+## 7. As built: B1 (0346) and B2, 2026-11-11
+
+- **B1 is migration 0346** `a_route_is_judged_leg_by_leg`, not 0228: 0231 already added `voyage.leg_refusal`, so 0346 adds only `world.route_legs` and its registry row. Self-assert (a), (b), (d), (f) as §5; (c) runs when the world has a leg from Lisbon her navigation reaches and her stores do not; `issue_lines` is not asked in it (next point).
+- **Decided by default: `cmd.issue_lines` and `cmd.standing_route_save_for` are NOT re-cut to ask `leg_refusal`.** That would refuse at plan time (E_ENDURANCE) plans every player can queue today, a change for players who never open the builder. The builder only keeps legs the server calls open, and the SAIL's own gate still refuses at departure. The two hunks wait for their own PR and window.
+- **Decided by default: Confirm's reason for E_LEG_TOO_FAR reads `Too far / 너무 멂`, not `Navigation N`.** The level a leg needs is not served, and working it out in the client would copy the reach rule. Also `Supplies short / 보급 부족` (E_ENDURANCE), `Sea shut / 바다 막힘` (E_SEA_CLOSED), `No water / 물길 없음`, `Same city / 같은 도시`, `Max N / 최대 N`.
+- **Decided by default: one bar shape at every width.** The bar stands at the foot of the chart (centred, 26 rem wide from `lg`). Its leg list is a fixed-height box that scrolls inside itself, so adding or undoing a stop moves nothing; the "tap the line to open the list" of §1 is not built. The kept and the next stop are both drawn with the chart's one planned-course line (dashed); the next stop is marked `?` instead of a number.
+- The leg lines are one component, `src/live/LegLines.tsx`, used by the Trade mini map and the bar.
+- `via` is served (B1) but not printed: that is B3.

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Bar, Figure, Icon, Row, Tray, TrayTitle, type TrayDetent, Clip } from '../../components/ui'
+import { Bar, Button, Figure, Icon, Row, Tray, TrayTitle, type TrayDetent, Clip } from '../../components/ui'
 import {
   formatCountdown,
   formatDucatsDelta,
@@ -226,11 +226,14 @@ export function VoyageTray({
   portsByCode,
   nowMs,
   onClose,
+  onSetRoute,
 }: {
   fleet: FleetOnChart
   portsByCode: ReadonlyMap<string, MapPort>
   nowMs: number
   onClose: () => void
+  /** Row 209 (docs/ROUTE_BUILDER.md): start the chart's route mode for her. */
+  onSetRoute: () => void
 }) {
   const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')
@@ -281,6 +284,12 @@ export function VoyageTray({
             </span>
           }
           line={<PlaceLine parts={fleetParts(fleet, portsByCode, nowMs)} />}
+          trailing={
+            // Row 209: the route builder starts here, for this fleet (her own: the chart's fleets are yours).
+            <Button variant="primary" size="sm" onClick={onSetRoute} data-testid="map-set-route">
+              {t('map.setRoute')}
+            </Button>
+          }
         />
       }
       data-testid="map-detail-tray"
