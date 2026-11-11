@@ -410,6 +410,8 @@ for (const vp of [
     await row.getByRole('button').first().click()
     const tray = page.getByTestId('trade-tray')
     await expect(tray).toBeVisible()
+    // the Kind row stands under the tray's More (S5, 2026-11-11: the short tray)
+    await tray.getByTestId('trade-tray-more').click()
     const spoken = tray.getByTestId('good-kind-row').locator('[data-good-class-mark]')
     await expect(spoken, "the trade tray names the good's class").toHaveCount(1)
     await expect(spoken).toHaveAttribute('data-good-class-mark', String(rowClass))
@@ -474,8 +476,9 @@ for (const vp of [
       await page.goto('city')
       await ready(page)
       await page.getByTestId('city-building-market').click()
-      await expect(page.getByTestId('trade-row').first()).toBeVisible({ timeout: 60_000 })
-      expectList(`${vp.name} · City market`, await page.evaluate(inspectRows, '[data-testid="trade-row"]'), colours)
+      // THE ONE GOODS CARD (S5, 2026-11-11): the HQ Market draws the Trade screen's card, and the card wears the class
+      await expect(page.getByTestId('city-market-buy').getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
+      expectList(`${vp.name} · City market`, await page.evaluate(inspectRows, '[data-testid="city-market-buy"] [data-testid="trade-good"]'), colours)
     }
 
     expectOneTable(colours)
@@ -517,8 +520,8 @@ test.describe('in Korean', () => {
     await page.goto('city')
     await ready(page)
     await page.getByTestId('city-building-market').click()
-    await expect(page.getByTestId('trade-row').first()).toBeVisible({ timeout: 60_000 })
-    expectList('ko · City market', await page.evaluate(inspectRows, '[data-testid="trade-row"]'), colours, KO_WORDS)
+    await expect(page.getByTestId('city-market-buy').getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
+    expectList('ko · City market', await page.evaluate(inspectRows, '[data-testid="city-market-buy"] [data-testid="trade-good"]'), colours, KO_WORDS)
     expectOneTable(colours)
   })
 })

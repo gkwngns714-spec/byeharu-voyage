@@ -1,4 +1,4 @@
-import type { PriceSeries } from '../../../lib/rpc'
+import type { PriceSeries } from '../../lib/rpc'
 
 // A GOOD'S LAST DAY ON ONE SIDE (owner row 229) — the card's line and its ▲▼, read off the served 1-day record
 // (world.price_series, 0226). Pure. BUY reads the city's ask (what she pays), SELL its bid (what she gets). The change

@@ -888,6 +888,8 @@ test(`PORT: the haggle is a thread on BUY and on SELL — it unfolds in place, m
   // the unit is matched with optional whitespace before it.
   const TRIES = /(\d+) \/ (\d+)\s*tries left/
   const threadOn = async (face: 'buy' | 'sell') => {
+    // the bargain stands under the tray's More (S5, 2026-11-11: the short tray) — a layer over the body
+    if ((await tray.locator('[data-testid="trade-tray-detail"]').count()) === 0) await tray.locator('[data-testid="trade-tray-more"]').click()
     const row = tray.locator('[data-testid="haggle-row"]')
     await expect(row, `no haggle row on the ${face} face`).toBeVisible({ timeout: 20_000 })
     // The folded form: the label, the tries as a share of their whole, the odds as a percentage.
@@ -1035,6 +1037,8 @@ test(`PORT: the Trend row opens the price chart with an axis, and closes back to
     const name = (await row.innerText()).split('\n')[0].trim()
     await row.locator('button:enabled').first().click()
     await expect(tray).toBeVisible()
+    // the trend stands under the tray's More (S5, 2026-11-11: the short tray)
+    await tray.locator('[data-testid="trade-tray-more"]').click()
     await expect(trend).toBeVisible()
     // The record is READ on the press since 0226 (one series per city and good): wait for the read to
     // land — a sparkline, or the row's "No data yet" — before judging it.

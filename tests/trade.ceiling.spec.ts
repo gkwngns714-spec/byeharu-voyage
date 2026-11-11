@@ -197,11 +197,19 @@ test(`PORT › Trade (buy): the Max row, the stepper and the button hold still a
   const at = (id: string) => order.indexOf(id)
   expect(at('trade-tray-max'), 'no Max row on the buy face').toBeGreaterThanOrEqual(0)
   expect(at('trade-tray-qty'), 'no stepper on the buy face').toBeGreaterThan(at('trade-tray-max'))
-  expect(at('trade-tray-space'), 'Cargo space is not under the count on buy').toBeGreaterThan(at('trade-tray-qty'))
-  expect(at('trend-row'), 'the trend is not BELOW the count on buy').toBeGreaterThan(at('trade-tray-qty'))
-  expect(at('quay-stock'), 'In stock is not BELOW the count on buy').toBeGreaterThan(at('trade-tray-qty'))
+  // THE SHORT TRAY (S5, 2026-11-11): the market's context is under More, below the count — not in the body
+  expect(at('trade-tray-more'), 'no More row under the count on buy').toBeGreaterThan(at('trade-tray-qty'))
+  for (const detail of ['trade-tray-space', 'trend-row', 'quay-stock']) expect(order, `${detail} stands in the short body`).not.toContain(detail)
   expect(order).not.toContain('trade-tray-profit')
   await page.screenshot({ path: testInfo.outputPath('buy-tray.png') })
+  await tray.locator('[data-testid="trade-tray-more"]').click()
+  const detailOrder = await page.evaluate(ORDER, 'trade-tray')
+  const inMore = (id: string) => detailOrder.indexOf(id)
+  expect(inMore('trade-tray-space'), 'Cargo space is not under More on buy').toBeGreaterThan(inMore('trade-tray-less'))
+  expect(inMore('trend-row'), 'the trend is not under More on buy').toBeGreaterThan(inMore('trade-tray-less'))
+  expect(inMore('quay-stock'), 'In stock is not under More on buy').toBeGreaterThan(inMore('trade-tray-less'))
+  await tray.locator('[data-testid="trade-tray-less"]').click()
+  await expect(tray.locator('[data-testid="trade-tray-detail"]')).toHaveCount(0)
 
   const armed = await page.evaluate(ARM, {
     trayId: 'trade-tray',

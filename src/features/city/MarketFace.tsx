@@ -13,12 +13,11 @@ import {
 import { fleetCargoByCode } from '../../domain/fleet'
 import { hasBuilding } from '../../domain/port'
 import { formatDucats, formatInt } from '../../lib/format'
-import { type FleetView, type MarketGood, type SnapshotPort } from '../../lib/rpc'
+import { type FleetView, type SnapshotPort } from '../../lib/rpc'
 import { useT } from '../../lib/i18n'
 import { linesFor, useManifest } from '../../store/manifest'
 import { CityGoodTrades } from '../../live/CityGoodTrades'
 import { HaggleThread } from '../../live/HaggleThread'
-import { QuayLedger } from '../../live/QuayLedger'
 import { useMarketPick } from '../../live/marketPick'
 import { useMarketRequests } from '../../live/useMarketRequests'
 import { useTrade } from '../../live/useTrade'
@@ -28,6 +27,8 @@ import { useManifestPreview } from '../../live/useManifestPreview'
 import { TRADE_FACES, useTradeFace, type TradeFace } from '../../live/tradeFace'
 import { useWorld } from '../../live/worldStore'
 import { RequestsFace } from './RequestPage'
+import { TradeCard } from '../../live/TradeCard'
+import { tradeRows, type TradeGoodRow } from '../../domain/market'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MARKET FACE — the chart on the left region, BUY · SELL · REQUEST in the right panel
@@ -42,8 +43,9 @@ import { RequestsFace } from './RequestPage'
 // request, should only be done in your home country- home city. get it?"
 //
 // SO: no pop-up page for Buy or Sell. The doors are a `Segmented`; beneath the pressed door the
-// goods are listed, grouped by the SERVED category, each group the one `QuayLedger` (the board's
-// one order and membership rule, never re-spelt here). A press on a good pins it for the chart
+// goods are listed, grouped by the SERVED category, each good THE one goods card the Trade screen draws
+// (`TradeCard`, from tradeRows — the Trade board's one order and membership rule, never re-spelt here;
+// S5, 2026-11-11: the HQ's own `TradeRow` ledger was a second card for the same good). A press on a good pins it for the chart
 // (marketPick.ts) AND opens the trade tray as a PANE inside this panel (mode="pane" — the same
 // TradeTray/useTrade every quay composes, never a screen-covering sheet: the owner's Basket
 // objection, kept). With no fleet of yours here the press only pins the good — the board is read-
@@ -74,15 +76,16 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
   // ALL HOOKS UNCONDITIONALLY, before any early return.
   const goods = useMemo(() => quay.market?.goods ?? [], [quay.market])
   const aboard = useMemo(() => (fleet ? fleetCargoByCode(fleet) : {}), [fleet])
+  const goodByCode = useWorld((s) => s.goodByCode)
   const staged = useManifest((s) => (fleet ? linesFor(s, fleet.id, port.code).length : 0))
   const home = board.view?.home ?? false
   const shown: TradeFace = face === 'requests' && !home ? 'buy' : face
   const matching = useMemo(
-    () => goods.filter((g) => shown !== 'sell' || (aboard[g.code] ?? 0) > 0),
-    [goods, shown, aboard],
+    () => tradeRows(goods, aboard, goodByCode).filter((r) => shown !== 'sell' || r.units > 0),
+    [goods, shown, aboard, goodByCode],
   )
   const groups = useMemo(() => {
-    const m = new Map<string, MarketGood[]>()
+    const m = new Map<string, TradeGoodRow[]>()
     for (const g of matching) {
       const k = g.category ?? ''
       const arr = m.get(k)
@@ -112,7 +115,9 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
     )
   }
 
-  const openGood = (good: MarketGood, intent: 'buy' | 'sell') => {
+  const openGood = (code: string, intent: 'buy' | 'sell') => {
+    const good = goods.find((g) => g.code === code)
+    if (!good) return
     pin(port.id, good)
     if (!fleet) return
     setQty(null)
@@ -177,7 +182,19 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
                     {category}
                   </div>
                 )}
-                <QuayLedger goods={rows} aboard={aboard} pick={null} onPick={openGood} empty={null} />
+                <div className="mt-1 grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
+                  {rows.map((r) => (
+                    <TradeCard
+                      key={r.code}
+                      portId={port.id}
+                      r={r}
+                      docked={fleet !== null}
+                      on={false}
+                      onBuy={(code) => openGood(code, 'buy')}
+                      onSell={(code) => openGood(code, 'sell')}
+                    />
+                  ))}
+                </div>
               </div>
             ))
           )}
