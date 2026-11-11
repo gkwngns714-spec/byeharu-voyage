@@ -62,14 +62,21 @@ Through `Clip` (fixed by the change to `Clip` itself; the caller is unchanged un
 | `live/YourCaptains.tsx:48` | a captain |
 | `features/map/CityHarbour.tsx:178`, `features/map/VoyageTray.tsx:147` | a fleet, a ship. These two FILES belong to another open PR and are not edited; the names in them are whole because `Clip` is |
 
-### (N) cuts a name — NOT FIXED, in a file another open PR owns
+### (N) cut a name in a file another PR owned — FIXED after #584 merged (2026-11-12)
 
-| where | what | why not |
+When this slice was built these two stood in files #584 owned, and were listed as not fixed. #584 is on main; both are fixed here.
+
+| where | what it was | fix |
 |---|---|---|
-| `features/map/RouteBar.tsx:104` (`route-summary`) | `truncate` on "Route · {the fleet's name} · N stops" | `src/features/map/*` is owned by another open PR |
-| `features/command/standingRouteDraft.ts:84` (`routeName`) | a route's name is its ports joined by " ⇄ ", then `name.slice(0, 23) + "…"` past 24 characters | owned by another open PR (the brief names it as `src/live/standingRouteDraft.ts`; the file is here). It is also not a client-only fix: the cut is "to the server's 24", so printing it whole needs the server's limit raised (a migration) or a name that is not the port list |
+| `features/map/RouteBar.tsx:129` (`route-summary`) | `truncate` on "Route · {the fleet's name} · N stops" | `KEEP_WORDS_CLASS`, `data-name`: the line takes a second line when it must |
+| `live/standingRouteDraft.ts:93` (`routeName`; it was in `features/command/`) | a route's name is its ports joined by " ⇄ ", then `name.slice(0, 23) + "…"` past 24 characters | see "A route's name" below |
 
-Both are on the lint's allow-list with this reason, so they stay in sight.
+**A route's name.** The 24 is the server's: `standing_routes_name_length check (length(btrim(name)) between 2 and 24)` (migration 0092). A player never types this name; the game makes it from the route's ports, and three ports already pass 24 characters. Decided by default, with no migration:
+
+- The stored name is a KEY, not what the player reads. `routeName` keeps the first 24 characters of the ports line and no longer adds "…" (nothing pretends).
+- What the player reads is `routeTitle(name, stops, portByCode)` (`src/domain/route/index.ts`), the one place that answers "what is this route called": when the stored name is the cut start of the route's own ports (with or without the old "…"), it answers with the WHOLE line of ports; a name the server holds whole (a merchant house's route, a short route) is printed as it is. So routes saved before this slice are whole too.
+- Asked at the three places a route with stops is named: the desk's spare routes (`RouteFold.tsx:157`), your fleet's tray on the map (`VoyageTray.tsx:366`, "Trading of …"), the trade history tray's line (`TradeHistoryPanel.tsx:55`).
+- The owner may prefer the server to hold the whole name (a migration raising the limit); then `routeTitle` becomes a pass-through.
 
 ### (O) cuts something that is not a name — LEFT
 
@@ -77,8 +84,8 @@ Both are on the lint's allow-list with this reason, so they stay in sight.
 |---|---|
 | `components/ui/Clip.tsx` (`cut` mode) + `app/TopBar.tsx:83` | the game date, hour and price countdown in the 32-px top bar on a phone: figures; read whole by hover or press |
 | `components/ui/LoadMeter.tsx:64` | the loading step in hand ("Opening the world"): a status line |
-| `features/map/RouteBar.tsx:100` | why Final was refused: the server's sentence (has a `title`); another PR's file |
-| `features/map/RouteBar.tsx:121` | the confirm button's verb; another PR's file |
+| `features/map/RouteBar.tsx:125` | why Final was refused: the server's sentence, one line in the bar (has a `title`). By the game's older rule a sentence should wrap too; left as it is, listed |
+| `features/map/RouteBar.tsx:146`, `:167` | the Confirm and Repeat buttons' words (a verb, or "Via 2", "No water") |
 
 `whitespace-nowrap` with no clip (a long text would run, not be cut; none holds a name): `Figure.tsx:66`, `GoodClassMark.tsx:65`, `GoodKind.tsx:74`, `Rarity.tsx:59` (a class or rarity word and its mark); `ListPanel.tsx:214`, `:246` (a count); `PricePair.tsx:73`, `StockGauge.tsx:80`, `Invest.tsx:84`, `:86`, `WhyThisPrice.tsx:41`, `:49`, `TradeBoard.tsx:41` (figures); `Row.tsx:193` (a row's value: a figure), `Row.tsx:284` (a fixed column); `ShipTile.tsx:91` (a power word and its figure); `StatCell.tsx:130` (a stat's label); `TradePanel.tsx:521` (the Insure chip); `HullCrown.tsx:14` (a crown word); `VoyageTray.tsx:180`, `MerchantSheet.tsx:273` (a lap's profit pill).
 
@@ -88,7 +95,7 @@ Both are on the lint's allow-list with this reason, so they stay in sight.
 
 ## The law: `tests/names.whole.spec.ts`
 
-**The lint (plain Node).** No cutting class (`truncate`, `line-clamp-*`, `text-ellipsis`), no `<Clip cut>` and no "slice and add …" may stand in `src/` unless its file is on the allow-list with its reason and its count; none at all may stand on an element marked as a name (`data-name`, or a `<Clip>` without `cut`). The allow-list is the five files of the two tables above. A second case proves the scan sees a cut when there is one.
+**The lint (plain Node).** No cutting class (`truncate`, `line-clamp-*`, `text-ellipsis`), no `<Clip cut>` and no "slice and add …" may stand in `src/` unless its file is on the allow-list with its reason and its count; none at all may stand on an element marked as a name (`data-name`, or a `<Clip>` without `cut`). The allow-list is four files: `Clip.tsx`, `TopBar.tsx`, `LoadMeter.tsx`, `RouteBar.tsx` (the refusal sentence and two button words). A second case proves the scan sees a cut when there is one.
 
 **The walk (the served build).** At 390 × 844 and 1,280 × 800, in English and Korean, in the veteran's world (`tests/manyFleets.fixture.ts`: eight fleets, one with the longest name the chain allows — "Nossa Senhora da Estrela", 24 characters — and a captain with a 47-character name), after buying one unit so the hold has cargo. Every `data-name` on each screen is read: not cut (no ellipsis, no clip, no overflow of its own box), no word on two lines, inside every box around it, over none of its neighbours, nothing scrolling sideways. Then the same again with the longest real names put in its own text: a slot showing a city gets the longest cities (data/ports.json), a good the longest goods (data/goods.json), a hull the longest hulls (data/ships.generated.json), each in the language shown; anything else gets the longest of the fleets, captains (data/officers.json) and houses, masters and merchant fleets (data/npc-houses.json).
 
@@ -154,7 +161,7 @@ In every row, at every glass, with every name: the price stands 6 px under the r
 - **320 px.** The walk holds 390 and 1,280 (and 1,920 by hand). At 320 only the specs that already ran there were run (`fleets.you.grow`, `city.phone`).
 - **Screens the walk does not open**: the Ledger, the Profile, the Inn's and the Yard's pop-up pages, a ship's augment page, the Forge, the request board, the trade history panel, the merchant / navy / pirate / cargo sheets on the map, and your own fleet's tray on the map (`VoyageTray`). Their names go through the same `Clip`, so they follow the same rule, but their rows were not measured with long names. `align.spec` walks several of them for alignment and is green.
 - **Names that never went through `Clip`** and carry no `data-name` (a goods card's name in `TradeCard`, `TradeRow`'s name, the chart's own labels): they were not in the sweep's hits (they wrap already, with `break-words`) and are not walked by the new spec. `break-words` can still break a word inside itself when the word is wider than its box; that is a different defect from "cut with …" and was not measured here.
-- **The two not-fixed names** (the route bar's summary line, a route's own name) are still cut.
+- **A route's name on a real long route**: `routeTitle` is proven by type-check and by `map.routebuilder`'s own assertion that the desk's route row lists the harbours; no spec saves a route of three long ports and reads the three places that name it.
 - **Before numbers** for "Your cargo" were not measured on the old build; the old state is read from the code (`truncate` on both names).
 - **CI** was not waited for.
 
@@ -163,3 +170,19 @@ In every row, at every glass, with every name: the price stands 6 px under the r
 - `Clip` keeps its name although it no longer clips by default. Renaming it would touch 35 call sites, two of them in files another PR owns. The owner may ask for the rename once those PRs are in.
 - The summary row's title and the pop-up page's title carry `data-name` although many of them are plain words ("Cargo", "Map"): a title is where a name can stand, so the law reads all of them.
 - A name may turn after its own hyphen or middle dot, as in #589's spec.
+
+## After the merge with main (2026-11-12)
+
+Main moved under this branch (#583, #584, #586) and #589 gained two commits. CI on the merge showed three reds of this slice's own; each read to its element:
+
+| red | cause | fix |
+|---|---|---|
+| the lint | #584 moved `standingRouteDraft.ts` to `src/live/` and gave the route bar a fifth button with `truncate` (4 marks, the list said 3) | the fleet's line and the route's name are fixed (above); the allow-list names what is left |
+| the walk at 390, English and Korean | #589 (ca0d69ef) put the "Your cargo" and "Map" doors side by side, 187 px each. With "Nordlandsfarten" put in the Map door's title the row could not go under 219 px, and the desk scrolled sideways (407 px in 390; 399 in Korean) | `SummaryRow` (`Detail.tsx:59-74`) is a wrapping line on every glass: the title takes what the figure and the word leave, never under its longest word and never over its own width (the figure still hugs it), and where the longest word does not fit beside them the word and the chevron stand on the next line |
+
+The walk gained two screens: your fleet's tray on the map (`VoyageTray`, listed above as not walked) and the route bar. 32 screens now; 0 faults at 390, 1,280 and 1,920 in both languages.
+
+Checks on the merge (local, headless, one Playwright at a time): `tsc -b`, `eslint .`, `vite build` clean. `names.whole` 8 of 8 with `NAMES_WIDE=1`. Then `trade.layout`, `desk.layout`, `onepage`, `layout`, `map.routebuilder`, `shell.polish`, `fleets.you.grow`, `sections`, `duplication`, `align`, `command.sellCargo`, `trade.map`, `city.phone`, `drive.routes`, `route.stopface`, `hq.design`, `market.shortTray`: 117 of 123. The six reds are not this slice's:
+
+- four are the HQ Market reds this branch inherits from #589 (`city.phone:113`, `hq.design:96`, `market.shortTray:53` at 390 and 1,280), with #589's builder;
+- two are `route.stopface`'s plain-Node word tests (`:47`, `:77`): they expect English words ("All", "Any price") and this machine's locale is Korean ("전부", "가격 무관"), the case CLAUDE.md names; its browser tests are green.

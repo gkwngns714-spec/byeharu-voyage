@@ -58,11 +58,7 @@ const ALLOW: Record<string, { n: number; why: string }> = {
   },
   'src/features/map/RouteBar.tsx': {
     n: 3,
-    why: "another open PR owns this file. The refusal is the server's sentence and the confirm word a verb; the summary line DOES carry the fleet's name and is listed as not fixed in docs/dev-log/2026-11-11-full-names.md",
-  },
-  'src/features/command/standingRouteDraft.ts': {
-    n: 1,
-    why: "another open PR owns this file. A route's name is cut to the server's 24 characters with \"…\": listed as not fixed in docs/dev-log/2026-11-11-full-names.md (lifting it needs the server's limit raised)",
+    why: "why Final was refused: the server's SENTENCE, one line in the bar, read whole from its title; and the Confirm and Repeat buttons' own words (a verb or a two-word reason: \"Via 2\", \"No water\"). None is a name: the line that carries the fleet's name is printed whole",
   },
 }
 
@@ -453,6 +449,18 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         await open('map')
         await openCityPanel(page, 'LIS', ko ? (KO_PORTS.Lisbon ?? 'Lisbon') : 'Lisbon')
         await look('Map › Lisbon')
+
+        // YOUR FLEET'S TRAY ON THE MAP (her name, her ships), THEN THE ROUTE BAR (its line carries the fleet's name)
+        await open('map')
+        const pill = page.getByTestId('map-fleets-corner').locator('button[aria-expanded]')
+        await pill.click()
+        await page.getByTestId('map-fleet-row').first().click()
+        await expect(page.getByTestId('map-detail-tray')).toBeVisible()
+        await look('Map › your fleet', '[data-testid="map-detail-tray"]')
+        await page.getByTestId('map-set-route').click()
+        if ((await pill.getAttribute('aria-expanded')) === 'true') await pill.click()
+        await expect(page.getByTestId('route-bar')).toBeVisible()
+        await look('Map › route bar', '[data-testid="route-bar"]')
 
         await info.attach(`names-${locale}-${glass.width}.txt`, { body: [...log, '', ...faults].join('\n'), contentType: 'text/plain' })
         console.log(`${locale} @${glass.width}\n${log.join('\n')}\n${faults.length} faults\n${faults.join('\n')}`)

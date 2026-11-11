@@ -54,19 +54,22 @@ export function SummaryRow({
   // THE TITLE IS NEVER CUT ON ANY GLASS (2026-11-11, the full-names slice): a title is often a NAME (a good, a city, a fleet), and the
   // owner's rule is that a name is printed whole. It keeps its words (`KEEP_WORDS_CLASS`): it turns only at a space and its box is never
   // narrower than its longest word. The pop-up page's own title, below, follows the same rule.
+  // THE ROW IS A WRAPPING LINE ON EVERY GLASS: the title takes what the figure and the word leave (never under its longest word, never
+  // over its own width, so the figure still hugs it), and where its longest word does not fit beside them (two rows side by side on a
+  // phone: 187 px each on Trade) the word and the chevron stand on the next line, at the right, instead of the row running off the glass.
   return (
     <button
       type="button"
       onClick={onClick}
       data-summary-row=""
-      className={`flex min-h-11 w-full items-center justify-between gap-3 rounded-control bg-surface px-3 py-2 text-left transition hover:bg-surface-2 narrow:relative narrow:flex-wrap narrow:content-center narrow:justify-start narrow:gap-y-0 narrow:px-0 narrow:pr-6 ${className}`}
+      className={`flex min-h-11 w-full flex-wrap items-center justify-between gap-x-3 rounded-control bg-surface px-3 py-2 text-left transition hover:bg-surface-2 narrow:relative narrow:flex-wrap narrow:content-center narrow:justify-start narrow:gap-y-0 narrow:px-0 narrow:pr-6 ${className}`}
       {...rest}
     >
       <span
         title={typeof title === 'string' ? title : undefined}
         data-row-cell="label"
         data-name=""
-        className={`${KEEP_WORDS_CLASS} text-t-body font-semibold text-ink narrow:max-w-max narrow:flex-[1_1_5rem]`}
+        className={`${KEEP_WORDS_CLASS} max-w-max flex-[1_1_0%] text-t-body font-semibold text-ink narrow:flex-[1_1_5rem]`}
       >
         {title}
       </span>

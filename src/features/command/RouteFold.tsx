@@ -10,6 +10,7 @@ import {
   routePorts,
   routesWithoutFleet,
   routeStateWord,
+  routeTitle,
 } from '../../domain/route'
 import type { FleetView, Refusal } from '../../lib/rpc'
 import { RouteEditor } from '../../live/RouteEditor'
@@ -153,7 +154,7 @@ export function RouteFold({
             <>
               {spare.map((r) => (
                 <div key={r.id} data-testid="route-spare">
-                  <Row label={r.name} hairline={false}>
+                  <Row label={routeTitle(r.name, r.stops.map((s) => s.port), portByCode)} hairline={false}>
                     <span className="block text-t-caption text-ink-faint">{routeStateWord(r, portByCode)}</span>
                   </Row>
                   <div className="flex gap-2">
