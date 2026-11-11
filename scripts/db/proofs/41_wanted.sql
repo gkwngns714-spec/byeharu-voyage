@@ -104,13 +104,17 @@ as $b$
   select (select sum(public.treasury_balance(t.port_id)) from public.port_treasury t)::bigint + (select sum(p.ducats) from public.players p)::bigint + public.funds_aboard()
 $b$
   $f$;
-  -- one voyage day to a leg, the sea quiet: the leg's own hazard_mult is 0
+  -- one voyage day to a leg, the sea quiet: the leg's own hazard_mult is 0.
+  -- A leg is her speed x 24 TO THE DIGIT, never rounded: n legs are then n voyage-days exactly, for any
+  -- speed (nm / speed is 24, an exact numeric division). round(speed * 24, 2) was a no-op for a house
+  -- (her speed x 24 has two decimals) but not for a merchant: 14.4245 kn gave 346.19 nm for 346.188, six
+  -- legs ran 3 ms into a seventh day and the merchant block below counted 7 days for 6 (main, 2026-11-11).
   execute $f$
 create function pg_temp.legs(p_fleet uuid, p_seas uuid[])
 returns jsonb
 language sql
 as $b$
-  select jsonb_agg(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', round(voyage.fleet_speed(p_fleet) * 24, 2), 'sea_id', x.s, 'hazard_mult', 0) order by x.n)
+  select jsonb_agg(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', voyage.fleet_speed(p_fleet) * 24, 'sea_id', x.s, 'hazard_mult', 0) order by x.n)
     from unnest(p_seas) with ordinality x(s, n)
 $b$
   $f$;

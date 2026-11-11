@@ -71,12 +71,14 @@ begin
 end
 $b$;
 
--- all 51 seas, one a voyage-day, so day d is in the d-th sea by code
+-- all 51 seas, one a voyage-day, so day d is in the d-th sea by code. A leg is her speed x 24 to the digit,
+-- never rounded (proof 41's red, 2026-11-11: a rounded leg is a hair more or less than a day for a speed
+-- whose 24 hours do not fall on a hundredth of a mile, and the days then slip against the legs).
 create function pg_temp.fifty_one(p_fleet uuid)
 returns jsonb
 language sql stable
 as $b$
-  select jsonb_agg(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', round(voyage.fleet_speed(p_fleet) * 24, 2), 'sea_id', s.id, 'hazard_mult', 1000) order by s.code)
+  select jsonb_agg(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', voyage.fleet_speed(p_fleet) * 24, 'sea_id', s.id, 'hazard_mult', 1000) order by s.code)
     from public.seas s
 $b$;
 
@@ -286,7 +288,7 @@ begin
   -- FROZEN: she leaves, then the sea changes
   update public.world_config set value = to_jsonb(1) where key = 'hazard_p_max';
   perform set_config('byeharu.proof_sea', 'REAL', true);
-  v_seg := jsonb_build_array(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', round(voyage.fleet_speed(v_f) * 24 * 12, 2), 'sea_id', v_sea, 'hazard_mult', 1000));
+  v_seg := jsonb_build_array(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', voyage.fleet_speed(v_f) * 24 * 12, 'sea_id', v_sea, 'hazard_mult', 1000));
   v_voy := voyage.depart(v_f, v_seg, (select id from public.ports where code = 'LIS'), null, now());
   v_q0  := voyage.risk_quote(v_voy);
   v_w0  := voyage.waters_ahead(v_voy)::text;
@@ -347,7 +349,7 @@ begin
   update public.world_config set value = to_jsonb(1) where key = 'hazard_p_max';
   perform set_config('byeharu.proof_sea', 'REAL', true);
   select s.id into v_sea from public.seas s where s.danger_level >= 3 order by s.piracy_index desc, s.code limit 1;
-  v_seg := jsonb_build_array(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', round(voyage.fleet_speed(v_f) * 24 * 8, 2), 'sea_id', v_sea, 'hazard_mult', 1000));
+  v_seg := jsonb_build_array(jsonb_build_object('a', jsonb_build_array(0, 0), 'b', jsonb_build_array(0, 0), 'nm', voyage.fleet_speed(v_f) * 24 * 8, 'sea_id', v_sea, 'hazard_mult', 1000));
   v_voy := voyage.depart(v_f, v_seg, (select id from public.ports where code = 'LIS'), null, now());
   update public.ships s set water_t = 100000, food_t = 100000 where s.fleet_id = v_f;
 
