@@ -176,7 +176,7 @@ export { PricePair } from './PricePair'
 //     geometry is `priceChartModel`, pure, so tests/priceChart.spec.ts proves the axis in Node.
 export { PriceChart } from './PriceChart'
 export { NewsDots } from './NewsDots'
-export { newsMarksModel, CLUSTER_PX, type ChartNews, type ChartNewsMark, type NewsDot } from './newsMarksModel'
+export { newsMarksModel, NEWS_HIT_PX, type ChartNews, type ChartNewsMark, type NewsDot } from './newsMarksModel'
 //     The span every price chart is read over (0226): five plain words, one press each.
 export { SpanPicker } from './SpanPicker'
 export { priceChartModel, primarySide, primaryValue, PRICE_CHART_H, PRICE_CHART_W, type PriceChartModel, type PriceSide } from './priceChartModel'
