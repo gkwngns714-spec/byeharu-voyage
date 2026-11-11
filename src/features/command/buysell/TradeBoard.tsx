@@ -152,7 +152,10 @@ export function TradeBoard({
             // THE CARDS ARE THE ONE LONG LIST ON THIS FACE: at a busy quay they run past the
             // glass, so they scroll inside their own bounded pane (the page above stays put).
             // From lg the desk's centre pane is already the scroller — no second bound there.
-            <ScrollPane className="max-h-[9rem] lg:max-h-none">
+            // THE BOUND HOLDS ONE WHOLE ROW OF CARDS (10.5 rem = 168 px; a card is 165-166 px since its best sale's city
+            // is printed whole). At 9 rem (sized for the 151-px card) the row's Buy and Sell buttons stood 13 px under the
+            // pane's edge, so a press on one first scrolled the cards 13 px (tests/desk.layout.spec.ts, "a press … moved the cards").
+            <ScrollPane className="max-h-[10.5rem] lg:max-h-none">
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
                 {rows.map((r) => (
                   <TradeCard

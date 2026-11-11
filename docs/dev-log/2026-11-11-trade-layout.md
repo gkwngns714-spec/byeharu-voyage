@@ -196,3 +196,49 @@ The second part made the card a grid so its four lines could share the board's r
 
 `tsc -b`, `eslint .`, `vite build`: clean. `tests/trade.layout.spec.ts`: 24 passed. `tests/city.phone.spec.ts` (the whole file, the failing test included), `command.bestSale`, `desk.terminal`, `command.design`, `consistency`, `good.class`, `market.shortTray`, `sections`, `duplication`: 80 passed.
 
+---
+
+# Fourth part — a press moves nothing at 390 (2026-11-12)
+
+CI's first full browser run on this branch: `tests/desk.layout.spec.ts:62` at 390×844, "opening a good moved the cards": every card 13 px up (529 to 516) when a good's Buy is pressed. This spec was not in the local runs of the first three parts.
+
+## The cause, measured (390 × 844, English)
+
+On a phone the goods cards stand in their own bounded pane, 9 rem = 144 px tall, sized for the 151-px card: its Buy button ended at 143, one pixel inside.
+
+| | main | a5976458 | now |
+|---|---|---|---|
+| goods card | 151 px | 165 px (the best sale's city on its own line) | 165 px |
+| the cards' pane | 144 px | 144 px | 168 px |
+| the first row's Buy button, from the pane's top | 99..143 | 113..157: 13 px under the pane's edge | 113..157, inside |
+| a press on Buy | nothing moves | the pane scrolls 13 px to show the button (529 to 516) | nothing moves |
+
+Nothing changed height on the press: the picker, the board and the doors had the same boxes before and after. The cards' own pane scrolled, because the pressed button was partly under its edge. A player saw the same thing as the test: the bottom 13 px of Buy and Sell cut off. Korean was not affected (its card is 145 px: the name and "적재 0" share one line).
+
+## The fix
+
+1. `src/features/command/buysell/TradeBoard.tsx`: the pane holds one whole row of cards, 10.5 rem (168 px).
+2. That alone made the face 22 px taller than a 390 × 844 glass (739 px of content in 717: `tests/onepage.spec.ts` red, "command scrolls its own Sheet"). So the face had at most 2 px to spare before it.
+3. `src/features/command/buysell/Trade.tsx`: on a phone the two doors, Your cargo and Map, stand side by side on ONE line instead of two (44 px back). Half a line has no room for the word "Open" beside "Your cargo" (177 px of words in 171: it would cut the title), so there that door is its title and its chevron; nor for the map's city (the lit cell of the picker right under it). The Map door keeps "Open": alone it read "Map", the nav's own cell, and `tests/consistency.spec.ts` refused it (two controls never share a label). The wide desk's doors are unchanged.
+
+| 390 × 844, English | main | a5976458 | now |
+|---|---|---|---|
+| the face scrolls its own sheet | no | no | no (739 px in 717 with the taller pane alone; 44 px less with the doors on one line) |
+| the cards' pane on the glass | 495..639 | 529..673 | 485..653 |
+| the first row's Buy button on the glass | 594..638 | 642..686 | 598..642 |
+| card tops before and after a press on Buy | 495, 654 both times | 529 to 516 | 485, 658 both times |
+
+## Decided by default
+
+- **The two phone doors share a line; there the cargo door drops "Open" and the Map door drops its city.** The other ways to find 22 px were a smaller card (the name would be cut again), fewer cities in the picker, or letting the face scroll.
+
+## Found and left
+
+- At 320 × 640 the face is taller than the glass (715 px in 513 on a5976458, 695 now), so there a press scrolls the desk itself to bring the button above the tray (card tops 485 to 303). Not measured on main at 320. No spec holds 320 for this law.
+
+## Checks (local, the final build)
+
+`tsc -b`, `eslint .`, `vite build`: clean. One run of 215 tests, 213 passed: every `desk.*`, `command.*` and `trade.*` spec, `layout`, `wide.layout`, `align`, `city.phone`, `city.page`, `city.audit`, `good.class`, `consistency`, `onepage`, `i18n.keys`, `i18n.ko`, `market.desk`, `market.shortTray`, `drive.market`, `drive.hq`, `requests.hq`, `route.stopface`, `sections`, `duplication`. The 2 that failed are `route.stopface.spec.ts:47` and `:77`, plain-Node word specs that expect English ("All") and get this machine's Korean ("전부"): the known local-only failure, in files this branch does not touch.
+
+The first full run, on the build one step earlier, found one more fault of this part's own: with no word on it the Map door read "Map", the nav cell's label (`consistency.spec.ts`). Fixed above before the final run.
+
