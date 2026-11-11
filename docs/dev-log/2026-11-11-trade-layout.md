@@ -154,3 +154,45 @@ Searched `TradeCard.tsx`, `TradeBoard.tsx` and `TradePanel.tsx` for `truncate`, 
 ## Checks (local, the served build, after the rebase onto main)
 
 `tsc -b`, `eslint .`, `vite build`: clean. `tests/trade.layout.spec.ts` (16 tests now) passes; the new law fails when the city is given an ellipsis again (injected). `sections`, `duplication`, `command.bestSale`, `command.design`, `desk.terminal`, `desk.inplace`, `command.sellCargo`, `command.buySell`, `layout`, `align`, `good.class`, `consistency`, `market.shortTray`: 96 passed.
+
+---
+
+# Third part — the card's lines stay inside a 123-px card (2026-11-12)
+
+`tests/city.phone.spec.ts` ("in Korean, the HQ's six faces at 320×640") failed on this branch with `"안 삼" × "574"` crossing. It passes on main (f04d47b1) and failed on 524d3870, so it was this branch's.
+
+## The cause, measured (HQ Market, Korean, 320 × 640; two cards side by side, 33..156 and 164..287)
+
+| | main | 524d3870 | now |
+|---|---|---|---|
+| the first card's "안 삼" (No buyer) | 112..148 | 141..177 | 112..148 |
+| the second card's price "574" | 172..203 | 172..203 | 172..203 |
+| crossing | none | 5 px (172..177), on the same line | none |
+
+The second part made the card a grid so its four lines could share the board's rows. A grid's own column is as wide as its widest line wants; the old flex column was as wide as the card. The buttons line wants 136 px (two 64-px buttons and 8 px between), the card has 107 inside, so the whole column, and the prices line with it, stood 29 px wider than the card and its right end crossed the next card. The same on Trade at 320 (card 140 px: "안 삼" at 124..160, past the 156 edge).
+
+## What changed
+
+- `src/live/TradeCard.tsx`: the card and its middle block have ONE column as wide as the card (`grid-cols-1`, minmax(0, 1fr)).
+- `src/live/TradeCard.tsx`: in a card too narrow for a six-figure profit and the 48-px day line together (140 px), the day line gives way (36 to 45 px wide there); the figure never does.
+- `tests/trade.layout.spec.ts`: 320 × 640 added to every law (24 tests now), and a new clause in law (3): no word or figure of a card stands past the card's edge. It fails on 524d3870 at 320 in both languages.
+
+## Measured at 320 after (the gap the second part named as not tested)
+
+| | Trade | HQ Market |
+|---|---|---|
+| card | 140 px, 165 tall (English 166) | 123 px, 147 tall |
+| words and figures past the card's edge | 0 | 0 |
+| rows with prices or buttons at two heights | 0 | 0 |
+| best-sale cities cut, as they stand and with all 248 names put in, both languages | 0 | no sale line there |
+| city picker, all 248 names, both languages: broken or cut | 0 | not on that screen |
+| sideways scroll | none | none |
+
+## Found and left
+
+- **The Sell button stands past the card's edge at 320 px, on main too.** HQ Market, Korean: the card ends at 156 and the button is 113..177 (21 px past, onto the next card's first 13 px); Trade: 96..160 (4 px past). It is two 64-px buttons in a 107-px line, the same before this slice (measured on main: identical boxes). Nothing reports it: `city.phone` looks for crossing texts, and the button's word does not reach the next card's. Making the buttons fit means changing their padding or stacking them in a narrow card, which is its own decision.
+
+## Checks
+
+`tsc -b`, `eslint .`, `vite build`: clean. `tests/trade.layout.spec.ts`: 24 passed. `tests/city.phone.spec.ts` (the whole file, the failing test included), `command.bestSale`, `desk.terminal`, `command.design`, `consistency`, `good.class`, `market.shortTray`, `sections`, `duplication`: 80 passed.
+

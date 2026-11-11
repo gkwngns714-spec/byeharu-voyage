@@ -65,7 +65,10 @@ export function TradeCard({
         // four is one height: the prices stand level, the buttons stand level, and a card whose name or whose best sale's
         // city runs a second line makes that line taller for its whole row instead of standing out of step. Where the
         // card is not in a grid the four rows are simply its own.
-        'row-span-4 grid min-w-0 grid-rows-subgrid gap-y-1 rounded-md p-2 text-left transition',
+        // ONE COLUMN, AS WIDE AS THE CARD AND NO WIDER (`grid-cols-1` = minmax(0, 1fr)): a grid's own column is as wide as
+        // its widest line wants, so in a 123-px card (the HQ Market at 320 px) the prices line stood 21 px past the card's
+        // edge and "안 삼" crossed the next card's price (tests/city.phone.spec.ts caught it).
+        'row-span-4 grid min-w-0 grid-cols-1 grid-rows-subgrid gap-y-1 rounded-md p-2 text-left transition',
         on ? 'bg-accent-soft ring-1 ring-accent' : 'bg-surface-2',
         wash,
       ].join(' ')}
@@ -119,7 +122,7 @@ export function TradeCard({
           // THE SPARK SLOT RESERVES ITS SIZE WHATEVER THE READ HAS LANDED (2026-10-31): `shrink-0` with a fixed h-4 (and,
           // since 0348, a fixed w-12 beside the best sale), so a card is the same card before and after any read or press
           // (desk.terminal's "a press moved the list": a spark that landed late once grew a card 16 px).
-          <span className="flex h-4 w-12 shrink-0 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
+          <span className="flex h-4 w-12 min-w-0 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
             {!buyDead && <Sparkline values={line.values} width={48} height={16} className="h-4 w-full" />}
           </span>
         }
@@ -164,12 +167,13 @@ function SaleBlock({
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   // two of the card's four shared rows: the prices, and the line under them
-  const block = 'row-span-2 grid w-full min-w-0 grid-rows-subgrid gap-y-0'
+  const block = 'row-span-2 grid w-full min-w-0 grid-cols-1 grid-rows-subgrid gap-y-0'
   const top = 'flex h-[1.375rem] w-full items-baseline justify-between gap-1'
   // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
   const line = `flex ${canLand ? 'min-h-9' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
   // the profit and the day line stay together, at the right of whichever line they stand on
-  const tail = 'ml-auto flex shrink-0 items-center gap-1'
+  // (in a 140-px card a six-figure profit and the 48-px day line are 13 px too many: the day line gives way, the figure never)
+  const tail = 'ml-auto flex min-w-0 max-w-full items-center gap-1'
   if (!sale || sale.port === null || sale.profit === null) {
     return (
       <div className={block}>
@@ -208,7 +212,7 @@ function SaleBlock({
           <PortFlag code={sale.port} /> <span data-testid="best-sale-city-name">{city}</span>
         </span>
         <span className={tail}>
-          <span className="font-semibold" data-testid="best-sale-profit">
+          <span className="shrink-0 font-semibold" data-testid="best-sale-profit">
             {formatPriceDelta(sale.profit)}
           </span>
           {spark}

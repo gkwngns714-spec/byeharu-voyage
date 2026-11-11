@@ -14,14 +14,15 @@ import { ready } from './appReady.fixture'
 //   · on the wide desk the left pane held two rows and the centre pane everything else, and in a row of goods cards the
 //     prices and the buttons stood at two heights (a name on two lines pushed its own card's down, not its neighbours').
 //
-// THE LAWS, at 390 and 1,280 px, in English and Korean:
+// THE LAWS, at 320, 390 and 1,280 px, in English and Korean:
 //   (1) NO CITY NAME IS BROKEN INSIDE A WORD OR CUT. Measured on the picker itself, for EVERY port name the world is seeded
 //       with (data/ports.json, 249 names; Korean through the game's own table) and not for three samples: each name is put
 //       in the picker's own cells, eight at a time, and each word of it must stand on one line, inside its cell, with no
 //       ellipsis. A name may turn at a space or after its own hyphen ("Saint-" / "Louis"), nowhere else. A Korean name has no
 //       spaces, so it is one word.
 //   (2) THE PICKER STAYS A GRID: a line that holds no over-long name is equal cells on the same column lines.
-//   (3) IN A ROW OF GOODS CARDS every card is one height, and the prices and the Buy buttons stand level (also at 1,920).
+//   (3) IN A ROW OF GOODS CARDS every card is one height, the prices and the Buy buttons stand level (also at 1,920), and no
+//       part of a card stands past its own edge.
 //   (4) NOTHING SCROLLS SIDEWAYS: not the page, not the picker.
 //   (5) ON THE WIDE DESK the left pane carries the picker and the doors (cargo, map, the route's line, orders), and the centre pane
 //       the goods.
@@ -99,7 +100,15 @@ const READ_CARDS = () =>
   [...document.querySelectorAll('[data-testid="trade-good"]')].map((c) => {
     const r = c.getBoundingClientRect()
     const top = (id: string) => Math.round((c.querySelector(`[data-testid="${id}"]`) as HTMLElement).getBoundingClientRect().top)
-    return { good: c.getAttribute('data-good') ?? '', top: Math.round(r.top), height: Math.round(r.height), price: top('trade-good-buy'), buy: top('trade-buy') }
+    // a part of the card past its own edge stands on the next card (at 320 px "안 삼" crossed the next card's price)
+    // (the card's WORDS AND FIGURES; its two buttons are not in this law: each is as wide as its padding and word, 64 px in
+    //  Korean, so in a 123-px card the Sell button stands 21 px past the edge on main too, before this slice: measured and named
+    //  in the dev-log, not fixed here)
+    const past = ['trade-good-name', 'trade-good-aboard', 'trade-good-buy', 'trade-good-sell', 'trade-good-spark', 'best-sale-profit'].filter((id) => {
+      const b = c.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()
+      return b !== undefined && b.width > 0 && (b.left < r.left - 0.5 || b.right > r.right + 0.5)
+    })
+    return { good: c.getAttribute('data-good') ?? '', top: Math.round(r.top), height: Math.round(r.height), price: top('trade-good-buy'), buy: top('trade-buy'), past }
   })
 
 /** Put `names` into the cards' best-sale lines (cycled over the cards that carry a sale) and read law (6) off them. The names
@@ -150,6 +159,7 @@ function cardFaults(cards: Awaited<ReturnType<typeof READ_CARDS>>): string[] {
   const faults: string[] = []
   const rows = new Map<number, typeof cards>()
   for (const c of cards) rows.set(c.top, [...(rows.get(c.top) ?? []), c])
+  for (const c of cards) if (c.past.length > 0) faults.push(`${c.good}: ${c.past.join(', ')} stand${c.past.length === 1 ? 's' : ''} past the card's edge`)
   for (const row of rows.values()) {
     for (const key of ['height', 'price', 'buy'] as const) {
       const seen = [...new Set(row.map((c) => c[key]))]
@@ -162,6 +172,8 @@ function cardFaults(cards: Awaited<ReturnType<typeof READ_CARDS>>): string[] {
 for (const locale of ['en-US', 'ko-KR'] as const) {
   const ko = locale === 'ko-KR'
   for (const glass of [
+    // the narrowest phone the HQ's own spec holds (tests/city.phone.spec.ts): a goods card is 140 px on Trade, 123 at the HQ
+    { width: 320, height: 640 },
     { width: 390, height: 844 },
     { width: 1280, height: 800 },
   ] as const) {
