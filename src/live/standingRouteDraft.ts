@@ -6,9 +6,10 @@
 // §7B — the four questions (docs/NO_SPAGHETTI.md):
 //   CONCEPT       "the editor's draft of a standing route, and its one translation into the
 //                 `p_stops` payload of cmd.standing_route_save" (migration 0092).
-//   LIVES HERE    features/command, beside RouteFold, because COMMAND is the one tab that changes
-//                 the world (DESIGN §E.1) and the route is a standing ORDER; nothing here is a rule
-//                 of the game (the server owns every rule: the grammar, the caps, the prices).
+//   LIVES HERE    src/live, beside RouteEditor: the editor has two doors since row 209's Repeat (COMMAND's
+//                 RouteFold and the MAP's route builder), and a screen never imports another screen
+//                 (tests/sections.spec.ts). Nothing here is a rule of the game (the server owns every
+//                 rule: the grammar, the caps, the prices).
 //   SECOND CALLER the MAP's route line (slice 3) reads the SERVED route (`world.standing_routes`),
 //                 never this draft — a draft is what is being typed, the served route is what runs.
 //   WRONG SHAPE   a figure computed here (a lap's profit, a price, "how many fit") — every figure is
@@ -16,9 +17,9 @@
 //                 ROADSTEADS `sailTarget` reads, which is how a typed SAIL proposes its course too.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { proposeCourse, sailTarget } from '../../domain/passage'
-import type { SeaNav } from '../../lib/sea'
-import type { SnapshotPort, StandingRoute, StandingRouteLine, StandingRouteStopDraft } from '../../lib/rpc'
+import { proposeCourse, sailTarget } from '../domain/passage'
+import type { SeaNav } from '../lib/sea'
+import type { SnapshotPort, StandingRoute, StandingRouteLine, StandingRouteStopDraft } from '../lib/rpc'
 
 /** One stop as the editor holds it. Slice 1 SHOWS: sell everything or not, and at most one BUY. */
 export interface RouteStopDraft {
@@ -56,6 +57,12 @@ export function emptyStop(port: string): RouteStopDraft {
     sellAllFloor: { price_limit: null, at_profit: false },
     kept: [],
   }
+}
+
+/** THE SEED (owner row 209, docs/ROUTE_BUILDER.md B4): the stops kept on the map's route builder, as a fresh draft —
+ *  each sells what is on board and buys nothing until the player says so in the editor. */
+export function seedRoute(ports: readonly string[]): RouteStopDraft[] {
+  return ports.map(emptyStop)
 }
 
 /** The editor's draft of a served route — for Edit. Reads the saved lines back, and keeps every
