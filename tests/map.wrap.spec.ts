@@ -319,7 +319,11 @@ test('panned across the antimeridian, the sheet continues: land, harbours and sh
     const { viewX, spanDeg } = await wrapOnTheGlass(page)
     const cx = viewX + spanDeg / 2
     const want = 180
-    const delta = ((want - cx + 540) % 360) - 180 // the short way, in degrees
+    // EAST, as the comment above says — not "the short way": from an opening centre a little west of 0° the short way to the seam
+    // is WEST, to −180°, and the sheet then shows copies −1 and 0 (2026-11-11, S9: from `lg` the rail narrows the chart by 96 px,
+    // which moved the fitted opening frame across that line). A small overshoot past 180° still comes back west.
+    const east = (((want - cx) % 360) + 360) % 360
+    const delta = east > 300 ? east - 360 : east
     if (Math.abs(delta) < spanDeg * 0.05) break
     const stepDeg = Math.sign(delta) * Math.min(Math.abs(delta), spanDeg * 0.4)
     const stepPx = (stepDeg / spanDeg) * chart.width
