@@ -162,3 +162,12 @@ with `Needs 300 Reputation: you have 60.` under it; Korean `항해사 · 2 / 5 �
   every browser spec on the PR.
 - The Korean words 선장 스킬, 스킬, 강화 and the 25 job words (항해사, 도선사, 보급관, 의사, 화물장, 사무장, 포수,
   백병대장, and `… 상인` for the goods traders) are the builder's: the owner sees them on the screenshots.
+
+## After the news law (2026-11-12)
+
+`tests/news.lint.spec.ts` asks every migration from 0347 on for one `public.news_update(` call. 0355 now posts its row,
+`'Captain skills'` / `'선장 스킬'`, outside the rolled-back probe (the guard refuses a world without
+`public.news_update(text,text,text)`; nothing counts the news table). Re-applied on the cached prefix 3 times (841 to
+884 ms), the image rebuilt, proof 54 4 of 4, proof 58 8 of 8, `sections` and `duplication` green. `news.lint` is green
+for 0355 and still red for 0352 on this branch: R1's own news call had not landed on `origin/reputation` (head 8c2b9bd3)
+when this was pushed, so **the merge of `origin/reputation` into `captain-skills` is still owed**.

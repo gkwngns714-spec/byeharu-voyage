@@ -37,6 +37,9 @@
 --                 `('cmd', 'promote_captain', 'text'),`: 0353 anchors on the pirate_ship_card line and 0354 on the
 --                 ship_moves line, so this hunk reads the same whether or not either has been applied.
 --
+-- NEWS: this file posts its own UPDATE row, 'Captain skills' / '선장 스킬' (0347's law, tests/news.lint.spec.ts): raising a captain's skill with
+-- Reputation is live for a player at this deploy.
+--
 -- SUPERSEDES (re-cut): public.crew_terms (created 0157; 0160, 0161 and 0166 cut it too, on other lines) and
 -- public.client_rpc_entry_points (0162's line; many files cut it on other lines). By hunks, not whole bodies. The re-cut of
 -- public.crew_terms is a no-op when the new input is absent: with no row in public.captain_trait_rank every term is what it was.
@@ -156,8 +159,9 @@ begin
      or to_regprocedure('cmd.promote_captain(text)') is null or to_regprocedure('public.client_write_grants()') is null
      or to_regprocedure('voyage.fleet_speed_at(uuid,numeric)') is null or to_regprocedure('public.ship_hold_capacity(uuid)') is null
      or to_regprocedure('world.spread_effective(uuid,uuid,uuid,boolean)') is null
+     or to_regprocedure('public.news_update(text,text,text)') is null
      or exists (select 1 from unnest(c_cut_fns) f where to_regprocedure(f) is null) then
-    raise exception '0355 refuses: a function it calls or cuts is not in this world (0157 / 0160 / 0162 / 0168 / 0325)';
+    raise exception '0355 refuses: a function it calls or cuts is not in this world (0157 / 0160 / 0162 / 0168 / 0325 / 0347)';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
@@ -899,6 +903,8 @@ $body$
         from public.world_config c where c.key <> all (c_knobs)) <> v_cfg_before then
     raise exception '0355 self-assert FAIL: a world_config row moved (the probe''s switches were not put back)';
   end if;
+  -- THE NEWS (0347's law): one UPDATE row, outside the probe, idempotent by its number. What is live at this deploy.
+  perform public.news_update('0355', 'Captain skills', '선장 스킬');
   drop function pg_temp.crew_terms_old_0355(uuid, timestamp with time zone);
   drop function pg_temp.pass_0355(text);
   if clock_timestamp() - v_t0 > interval '45 seconds' then
