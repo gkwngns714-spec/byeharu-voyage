@@ -109,3 +109,11 @@ The design's worked example was 28 + 12 + 25 = 65; the self-assert reproduces th
   for the figure the top bar cannot hold (deviation 12); `tests/reputation.spec.ts` holds it.
 - On the merged build: `reputation`, `arrival.card`, `shell.kstClock`, `you.design`, `goal.card`, `sections`, `duplication`,
   `words`, `i18n.keys`, `rpc.surface`: 74 of 74, then `reputation` again with the goal-card check: 4 of 4.
+
+## The news row (2026-11-12, after CI's first run)
+
+CI's one red of this PR's own: `tests/news.lint.spec.ts:19` (0347's law: every migration posts its UPDATE row or says it is not
+news). 0352 now posts one, as 0348 and 0349 do: `public.news_update('0352', 'Reputation: earned by success', '평판: 성공하면 얻음')`,
+after the rolled-back probe, counted by its own key (`update:0352` = one row), and guarded on 0347 being in the world.
+`after.sql` reads that key (`news` 1). On the merged tree: the migration green 3 times (0.62 to 0.64 s), proof 54 4 of 4, proof 55
+8 of 8, `reputation`, `news.lint`, `news.chart`, `news.dotSize`, `sections`, `duplication`, `words`: 34 of 34.
