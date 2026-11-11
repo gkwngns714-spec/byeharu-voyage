@@ -113,8 +113,17 @@ export function TradeCard({
             <span className={`text-t-body font-semibold tabular-nums ${buyDead ? 'text-ink-faint' : 'text-ink'}`} data-testid="trade-good-buy">
               {buyDead ? '—' : formatPriceFigure(r.buy as number)}
             </span>
-            <span className={`text-t-body font-semibold tabular-nums ${sellDead ? 'text-ink-faint' : 'text-ink'}`} data-testid="trade-good-sell">
-              {sellDead ? t('desk.noBuyer') : formatPriceFigure(sell as number)}
+            {/* THE CITY'S BID IS PRINTED WHEREVER IT IS SERVED (2026-11-11, the trade-flow slice). With none aboard this cell said
+                "No buyer", which was false: the city buys it, at the bid the Map's tray printed for the same good. It is the bid
+                now, quiet, and its title says why Sell is dead ("None on board"; the card's own "On board 0" stands above it).
+                "No buyer" stays for the one case it is true: the city serves no bid for the good. */}
+            <span
+              className={`text-t-body font-semibold tabular-nums ${sellDead ? 'text-ink-faint' : 'text-ink'}`}
+              data-testid="trade-good-sell"
+              data-state={sell === null ? 'no-buyer' : r.units <= 0 ? 'none-aboard' : 'sell'}
+              title={sell !== null && r.units <= 0 ? t('desk.noneAboard') : undefined}
+            >
+              {sell === null ? t('desk.noBuyer') : formatPriceFigure(sell)}
             </span>
           </>
         }

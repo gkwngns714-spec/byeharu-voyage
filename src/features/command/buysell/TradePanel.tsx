@@ -9,7 +9,7 @@ import { usePriceSeries } from '../../../live/usePriceSeries'
 import { useTrade } from '../../../live/useTrade'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
-import { formatCountdown, formatInt, formatPriceDelta, formatPriceFigure, formatVoyageDays, instantMs } from '../../../lib/format'
+import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
 import type { FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import { WhyThisPrice } from '../markets/WhyThisPrice'
@@ -172,9 +172,10 @@ function Frame({
       action={
         <>
           {/* THE MONEY rides with the button, pinned: the figure a trade is decided on never scrolls apart from it */}
+          {/* 2026-11-11 (the trade-flow slice): a buy's money is its COST, unsigned; it stood as "Total −856", the way a loss is drawn */}
           <Row
-            label={t('desk.total')}
-            value={<Figure value={total === null ? '—' : formatPriceDelta(total)} size="figure" tone={total === null ? 'faint' : total >= 0 ? 'success' : 'ink'} />}
+            label={total === null ? t('desk.total') : moneyWord(side === 'buy' ? 'cost' : 'total', total)}
+            value={<Figure value={total === null ? '—' : moneyFigure(side === 'buy' ? 'cost' : 'total', total)} size="figure" tone={total === null ? 'faint' : total >= 0 ? 'success' : 'ink'} />}
             hairline={false}
             data-testid="good-detail-total"
           />
@@ -418,7 +419,7 @@ function SailAct({
     plan: mine ?? { good: good.code, buyAt: null, sellAt: null, units: null, max: null, min: null },
     board: mine ? b : null,
     units: trip.units,
-    onQueued: () => onDone({ side, units: side === 'buy' ? (mine?.units ?? cap ?? 0) : aboard, good: good.name, total: total, sailTo: sellAt ?? city }),
+    onQueued: () => onDone({ side, units: side === 'buy' ? (mine?.units ?? cap ?? 0) : aboard, good: good.name, total: total, sailTo: sellAt ?? city, profit }),
   })
   // THE MOST SHE CAN TAKE THERE: the board sized by her free hold (asked for no units), kept while units are asked
   const capNow = b && (b.qty.basis === 'capacity' || b.qty.basis === 'step') ? b.qty.units : null
@@ -483,7 +484,7 @@ function SailAct({
       }
       extra={
         <div data-testid="plan-estimate">
-          <Row label={t('desk.days')} value={<Figure value={go.days !== null ? formatVoyageDays(go.days) : '—'} />} data-testid="plan-days" />
+          <Row label={t('desk.days')} value={<Figure value={go.days !== null ? formatDaysReal(go.days) : '—'} />} data-testid="plan-days" />
           <Row
             label={t('desk.supplies')}
             value={<Figure value={go.supplies ? formatPriceDelta(-go.supplies.cost) : '—'} tone={go.supplies && !go.supplies.fits ? 'danger' : 'ink'} />}
