@@ -104,7 +104,7 @@ const READ_CARDS = () =>
     // (the card's WORDS AND FIGURES; its two buttons are not in this law: each is as wide as its padding and word, 64 px in
     //  Korean, so in a 123-px card the Sell button stands 21 px past the edge on main too, before this slice: measured and named
     //  in the dev-log, not fixed here)
-    const past = ['trade-good-name', 'trade-good-aboard', 'trade-good-buy', 'trade-good-sell', 'trade-good-spark', 'best-sale-profit'].filter((id) => {
+    const past = ['trade-good-name', 'trade-good-aboard', 'trade-good-buy', 'trade-good-sell', 'trade-good-spark', 'best-sale-profit', 'best-sale-time'].filter((id) => {
       const b = c.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()
       return b !== undefined && b.width > 0 && (b.left < r.left - 0.5 || b.right > r.right + 0.5)
     })
@@ -138,7 +138,7 @@ const SET_SALES = (names: string[] | null) => {
     }
     // the name, the profit and the day line all stand inside the card
     const line = span.closest('[data-testid="best-sale"]') as HTMLElement
-    for (const e of [span, ...line.querySelectorAll('[data-testid="best-sale-profit"], [data-testid="trade-good-spark"]')]) {
+    for (const e of [span, ...line.querySelectorAll('[data-testid="best-sale-profit"], [data-testid="best-sale-time"], [data-testid="trade-good-spark"]')]) {
       const r = e.getBoundingClientRect()
       if (r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.top < c.top - 0.5 || r.bottom > c.bottom + 0.5) faults.push(`"${text}": a part of its line stands outside the ${Math.round(c.width)}-px card`)
     }

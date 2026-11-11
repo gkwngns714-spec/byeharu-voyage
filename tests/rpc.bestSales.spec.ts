@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE BEST SALE READS THE SEA ONCE — world.best_sales after 0350 (the same answer, faster)
+// THE BEST SALE READS THE SEA ONCE — world.best_sales after 0350 (the same answer, faster) and 0351 (a sale she can pay for)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // 0348 gave every goods card its best sale (world.best_sales); on prod a call took ~2.6 s. 0350 takes out the
@@ -14,6 +14,14 @@
 //   * world.board_sell answers the same whether the legs are handed over or asked there;
 //   * the pieces are server-only (authenticated may run world.best_sales and none of them), and the body no
 //     longer prices a harbour at a time.
+// 0351 (docs/SUCCESS_PLAN.md T5) made the answer A SALE SHE CAN PAY FOR, THE BEST PER DAY: where she lies the units are
+// the tray's own Max (world.buy_capacity -> public.fleet_buy_capacity) when anything but her hold binds it; a sale is
+// a candidate when the buy (and her stores, unless they may be owed) is within her purse; the answer is the best profit
+// per day of those, served with its cost and real seconds, and the dearest of them as `far`. The laws added:
+//   * every card with a sale costs no more than her purse and asks for no more than the tray's Max;
+//   * on world.good_board at the card's units, no sale within her purse has a better profit per day than the card's,
+//     and none a bigger profit than its far choice;
+//   * the body asks the one cap authority once and carries no cap rule of its own.
 // It names best_sales, good_board, board_sell, board_legs and good_mids so CI's rule S selects it when a
 // migration re-defines any of them. Nothing here asserts a price or a time: prices move, and the time is
 // measured where it can be compared (the migration's own probe; docs/dev-log/2026-11-11-dearest-buyers.md).
@@ -31,6 +39,11 @@ interface Card {
   profit: number | null
   days: number | null
   pays: boolean
+  // 0351
+  cost: number | null
+  seconds: number | null
+  short: boolean
+  far: { port: string; units: number | null; profit: number | null; days: number | null; cost: number | null; seconds: number | null } | null
 }
 interface Sales {
   port: string
@@ -42,6 +55,7 @@ interface SellRow {
   sailable: boolean
   units: number | null
   profit: number | null
+  cost: number | null
 }
 
 let db: LocalDb
@@ -72,6 +86,8 @@ test.afterAll(async () => {
 })
 
 const sales = (port: string) => db.callAs<Sales>('select world.best_sales($1::uuid, $2::uuid) as result', [fleet, port])
+const purseNow = async () => Number(await db.callAs<number | string>(`select (select p.ducats from public.players p where p.id = public.current_player_id()) as result`))
+const KEYS_0351 = ['cost', 'seconds', 'short', 'far'] as const
 
 /** Every card with a sale against world.good_board's row for that city, read in ONE statement (one snapshot). */
 async function cardsAgainstBoard(port: string) {
@@ -113,12 +129,96 @@ test('world.best_sales: every good the city sells, and each card is world.good_b
     expect(row!.sailable).toBe(true)
     expect(row!.profit, `${card.good} at ${card.port}: the card's profit is not the board's`).toBe(card.profit)
     expect(row!.units, `${card.good} at ${card.port}: the card's units are not the board's`).toBe(card.units)
+    expect(row!.cost, `${card.good} at ${card.port}: the card's cost is not the board's`).toBe(card.cost)
   }
+})
+
+interface Judged {
+  card: Card
+  cap: { max_qty: number; bound_by: string }
+  row: (SellRow & { arrive_at: string }) | null
+  pool: { port: string; profit: number; secs: number }[] | null
+}
+
+test('0351: where she lies every card is a sale she can pay for: the tray\'s Max, the best per day on the board, the dearest as far', async () => {
+  test.setTimeout(300_000)
+  const purse = await purseNow()
+  expect(purse).toBeGreaterThan(0)
+  // ONE statement (one snapshot): the read, the tray's Max for every good (world.buy_capacity: the RPC the docked tray reads), and for
+  // every card priced at a Max her hold does not bind the board at the card's units — its row for the card's city and the sales on it
+  // that are within her purse (the buy, and her stores unless they may be owed), each with its real seconds
+  const judged = await db.callAs<Judged[]>(
+    `with bs as materialized (select world.best_sales($1::uuid, $2::uuid) as b),
+          cards as materialized (
+            select x.e, g.id as gid, world.buy_capacity($1::uuid, g.id) as cap
+              from bs cross join lateral jsonb_array_elements(bs.b->'goods') x(e) join public.goods g on g.code = x.e->>'good'),
+          gb as materialized (
+            select c.*, case when c.e->>'port' is not null and c.cap->>'bound_by' <> 'hold'
+                             then world.good_board(c.gid, $1::uuid, $2::uuid, (c.e->>'units')::numeric) end as gb
+              from cards c)
+     select coalesce(jsonb_agg(jsonb_build_object('card', g.e, 'cap', g.cap,
+              'row', (select s from jsonb_array_elements(g.gb->'sell') s where s->>'port' = g.e->>'port'),
+              'pool', (select coalesce(jsonb_agg(jsonb_build_object('port', s->>'port', 'profit', (s->>'profit')::numeric,
+                                'secs', greatest(extract(epoch from ((s->>'arrive_at')::timestamptz - now())), 1))), '[]'::jsonb)
+                         from jsonb_array_elements(g.gb->'sell') s
+                        where (s->>'quoted')::boolean and (s->>'sailable')::boolean and jsonb_typeof(s->'profit') = 'number' and s->>'port' <> 'LIS'
+                          and (s->>'units')::numeric <= (s->'supplies'->>'units_fit')::numeric
+                          and (s->>'cost')::numeric + case when public.credit_on($2::uuid) then 0 else coalesce((s->'supplies'->>'cost')::numeric, 0) end <= $3::numeric))
+              order by g.e->>'good'), '[]'::jsonb) as result
+       from gb g`,
+    [fleet, lisbon, purse],
+  )
+  expect(judged.length).toBeGreaterThan(0)
+  let atMax = 0
+  let chosen = 0
+  for (const { card, cap, row, pool } of judged) {
+    for (const k of KEYS_0351) expect(card, `${card.good}: 0351 serves ${k}`).toHaveProperty(k)
+    if (card.port === null) {
+      expect(card.far).toBeNull()
+      expect(card.pays).toBe(false)
+      continue
+    }
+    expect(card.short, `${card.good}: short is only for a good with no sale`).toBe(false)
+    expect(card.cost, `${card.good} at ${card.port}: the buy is within her purse`).toBeLessThanOrEqual(purse)
+    expect(card.units, `${card.good}: no more than the tray's Max`).toBeLessThanOrEqual(cap.max_qty)
+    expect(card.seconds, `${card.good}: the real time is served`).toBeGreaterThanOrEqual(1)
+    if (card.far) {
+      expect(card.far.port).not.toBe(card.port)
+      expect(card.far.port).not.toBe('LIS')
+      expect(card.far.cost, `${card.good}: the far sale is within her purse too`).toBeLessThanOrEqual(purse)
+      expect(card.far.units).toBeLessThanOrEqual(cap.max_qty)
+      expect(card.far.profit, `${card.good}: the far sale is the dearer one`).toBeGreaterThanOrEqual(card.profit!)
+      if (card.pays) expect(card.far.seconds, `${card.good}: and no nearer`).toBeGreaterThanOrEqual(card.seconds!)
+    }
+    if (cap.bound_by === 'hold' || card.units !== cap.max_qty) continue
+    // priced at the tray's Max: on the board at those units the card is its row, the best per day within her purse, and far the dearest
+    atMax += 1
+    expect(row, `${card.good}: the board does not price ${card.port}`).not.toBeNull()
+    expect(row!.profit).toBe(card.profit)
+    expect(row!.units).toBe(card.units)
+    expect(row!.cost).toBe(card.cost)
+    const mine = pool!.find((s) => s.port === card.port)
+    expect(mine, `${card.good}: the card's city is one of the sales within her purse`).toBeTruthy()
+    if (pool!.length > 1) chosen += 1
+    const dearest = card.far?.profit ?? card.profit!
+    for (const s of pool!) {
+      expect(s.profit, `${card.good}: ${s.port} pays more than the far choice`).toBeLessThanOrEqual(dearest)
+      if (card.pays && s.profit > 0) {
+        const rate = mine!.profit / mine!.secs
+        expect(s.profit / s.secs, `${card.good}: ${s.port} pays more per day than ${card.port}`).toBeLessThanOrEqual(rate * (1 + 1e-9))
+      }
+      if (!card.pays) expect(s.profit, `${card.good}: ${s.port} gains and the card says no gain`).toBeLessThanOrEqual(0)
+    }
+  }
+  // a new company's purse binds the Max of some good at Lisbon (the case 0351 is for), and the card had other sales to be chosen from
+  expect(atMax, 'no card is priced at a Max her purse, the stock or the day binds').toBeGreaterThan(0)
+  expect(chosen, 'no such card had another sale within her purse').toBeGreaterThan(0)
 })
 
 test('from another city in hand (bought there, sailed to first) the card is still the board\'s row', async () => {
   test.setTimeout(300_000)
   const s = await sales(other.id)
+  const purse = await purseNow()
   expect(s.port).toBe(other.code)
   expect(s.goods.length).toBeGreaterThan(0)
   const pairs = await cardsAgainstBoard(other.id)
@@ -128,6 +228,12 @@ test('from another city in hand (bought there, sailed to first) the card is stil
     expect(row, `${card.good}: the board does not price ${card.port}`).not.toBeNull()
     expect(row!.profit).toBe(card.profit)
     expect(row!.units).toBe(card.units)
+    // 0351: no tray Max where she does not lie — the units are what her hold takes, and only the sales her purse buys are named
+    expect(card.cost, `${card.good} at ${card.port}: the buy is within her purse`).toBeLessThanOrEqual(purse)
+  }
+  for (const g of s.goods) {
+    for (const k of KEYS_0351) expect(g, `${g.good}: 0351 serves ${k}`).toHaveProperty(k)
+    if (g.short) expect(g.port, `${g.good}: short means no sale is named`).toBeNull()
   }
 })
 
@@ -199,6 +305,11 @@ test('the pieces are server-only, and world.board_sell no longer prices a harbou
   expect(src.rows[0].best).toContain('world.board_legs(p_fleet, v_ctx)')
   // the soft budget 0348 set is still there: a slow call fails soft, never raises
   expect(src.rows[0].best).toContain(`interval '2.5 seconds'`)
+  // 0351: the units are the tray's Max — the one cap authority, asked once a good; no walk, step or knob of its own
+  expect(src.rows[0].best.split('public.fleet_buy_capacity(').length - 1).toBe(1)
+  expect(src.rows[0].best).not.toContain('trade_step_tuns')
+  expect(src.rows[0].best).not.toContain('wc_num(')
+  expect(src.rows[0].best).toContain('public.credit_on(')
 })
 
 test('her cargo reads as cargo, beside the goods bought here, and is the Sail & sell row', async () => {
