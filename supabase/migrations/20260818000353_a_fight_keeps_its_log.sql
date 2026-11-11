@@ -50,6 +50,8 @@
 --   voyage.fight_resolve (0189; re-cut 0202, 0204, 0213, 0276; whole 0320; 0323 x2): replaced whole by the one-line wrapper, its body moved to voyage.raid_report (same answer, proved by
 --   answers), voyage.fight_round_line (0323), voyage.fight (0323's line), voyage.depart (0339's line), voyage.settle (0339's and 0189's lines, cut after 0352),
 --   public.client_rpc_entry_points (0348). Each is a no-op when the new input is absent: no order row, the switch off, a ship of the world.
+-- NEWS: this file posts its own UPDATE row, public.news_update('0353', 'Fight log', '전투 기록') (0347's law, tests/news.lint.spec.ts): the log is live at the deploy. Standing orders are
+--   dark and are not announced; the file that lights raid_orders_enabled posts that news.
 -- LOCKS: the new table references public.fleets (a brief SHARE ROW EXCLUSIVE on fleets, under lock_timeout 5 s).
 -- VERSION: 0353, cut after 0352 (R1), which cut voyage.settle first. 0351 shares no function with this file.
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -150,7 +152,7 @@ begin
      or to_regprocedure('public.city_treasury_on()') is null or to_regprocedure('public.attack_word(numeric,numeric)') is null
      or to_regprocedure('world.sea_danger()') is null or to_regprocedure('voyage.fleet_hulls(uuid)') is null
      or to_regprocedure('cmd.refuse(text,text,jsonb)') is null or to_regprocedure('cmd.refused_envelope(text,text)') is null
-     or to_regprocedure('cmd.assume_identity(uuid)') is null or to_regprocedure('public.reputation_arrival(uuid,uuid)') is null
+     or to_regprocedure('cmd.assume_identity(uuid)') is null or to_regprocedure('public.news_update(text,text,text)') is null or to_regprocedure('public.reputation_arrival(uuid,uuid)') is null
      or exists (select 1 from unnest(c_cut_fns) f where to_regprocedure(f) is null) then
     raise exception '0353 refuses: a function it calls or cuts is not in this world (0320 / 0323 / 0330 / 0339 / 0352)';
   end if;
@@ -1196,6 +1198,9 @@ $f$;
   if public.current_player_id() is not null then
     raise exception '0353 self-assert FAIL: the probe''s identity outlived its rollback';
   end if;
+
+  -- ── 13. THE NEWS (0347's law): C1 is live at the deploy and is news. C2 is dark and is not announced here: its news belongs to the file that lights raid_orders_enabled. ──
+  perform public.news_update('0353', 'Fight log', '전투 기록');
 
   if extract(epoch from clock_timestamp() - v_t0) > 40 then
     raise exception '0353 self-assert FAIL: the file took % (budget 40 s)', clock_timestamp() - v_t0;
