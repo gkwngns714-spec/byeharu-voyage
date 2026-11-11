@@ -2,6 +2,8 @@ import { useWide } from '../../../components/ui'
 import { useT } from '../../../lib/i18n'
 import { worldLevels, type LevelsView } from '../../../lib/rpc'
 import { useServedRead } from '../../../live/useServedRead'
+import { useWorld } from '../../../live/worldStore'
+import { formatInt } from '../../../lib/format'
 import { useDeskView } from '../deskView'
 
 // THE GOAL CARD (remaster S6): one line on the Trade face saying what to aim for: the next Title and how far along you are.
@@ -9,6 +11,9 @@ import { useDeskView } from '../deskView'
 // prints its figures: the next title (`title.next`), and the two tracks' levels. The rule "a title needs Trading and Exploration at
 // the title's level" is the Levels face's own sentence (command.lvTitleNext); this card shows it as progress and invents no other
 // threshold. What the title opens is `title.next.opens`, worded as the Levels face words it, and only while sea limits are lit. Pressing it turns to Levels.
+//
+// 0352: ITS SECOND LINE ALSO CARRIES HER REPUTATION (the served balance, world.player(): the store's own read, no second call). A phone's
+// top bar has no room for that figure, and this is the first screen she sees.
 //
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
@@ -26,6 +31,7 @@ export function GoalCard() {
   const turnTo = useDeskView((s) => s.turnTo)
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const v = read.view
+  const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
   if (!v || !v.company) return <div className={`${CARD} ${place}`} data-testid="goal-card-hold" aria-hidden />
 
   const next = v.title.next
@@ -42,7 +48,17 @@ export function GoalCard() {
   return (
     <button type="button" onClick={() => turnTo('levels')} className={`${CARD} ${place} bg-surface-2`} data-testid="goal-card">
       <span className="block break-words text-t-body text-ink">{first}</span>
-      {second && <span className="block break-words text-t-caption text-ink-faint">{second}</span>}
+      {(second || reputation !== null) && (
+        <span className="block break-words text-t-caption text-ink-faint">
+          {second}
+          {second && reputation !== null && ' · '}
+          {reputation !== null && (
+            <span data-testid="goal-reputation" data-value={reputation}>
+              {t('shell.reputation')} {formatInt(reputation)}
+            </span>
+          )}
+        </span>
+      )}
     </button>
   )
 }
