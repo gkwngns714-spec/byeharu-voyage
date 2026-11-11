@@ -33,14 +33,13 @@ import { useT } from '../../lib/i18n'
 // keeps its href for everything else. Modified clicks are deliberately NOT intercepted: those are
 // the ones that mean "open this somewhere else", and the browser is right about them.
 
-// ── ON A WIDE GLASS THE CELLS STAND TOGETHER IN THE MIDDLE (2026-11-11, the remaster's S4) ──────────
-// The playtest at 1280: five cells spread across 1,280 px put 256 px between one tab and the next, and the
-// bar read as a footer rather than a control. From `lg` (WIDE_QUERY) each cell takes a fixed 7 rem and the
-// row stands centred on the band; the band itself (its surface, its hairline, its 56-px height) is the same
-// at every width, because every tray and panel in the game stops `bottom-14` above it (screenLayout.ts).
-// A left RAIL was the proposal and was NOT done here: the Menu tray hangs off the bar's top edge in
-// NavBar.tsx and the docked trays read the bar's height from screenLayout.ts, so a rail is a shell change,
-// not a primitive's. Driven only by `items`, so it holds whatever cells the shell passes.
+// ── ON A WIDE GLASS IT IS A RAIL (2026-11-11, the remaster's S9; S4 had only centred the band) ─────────
+// The playtest at 1280: five cells along a 1,280-px footer read as a footer, not a control. From `lg`
+// (WIDE_QUERY) the same cells stand in a column down the window's left edge: each 64 px tall across the
+// rail's width, the lit one on a soft gold plate, the GROUP (the Menu) at the rail's foot, where its tray
+// opens beside it. Where the rail stands and how wide it is is the shell's (screenLayout.ts THE SHELL,
+// src/app/ShellFrame.tsx); this primitive only draws the column. Below `lg` the bar is exactly as it was.
+// Driven only by `items`, so it holds whatever cells the shell passes.
 
 export interface NavItem {
   id: string
@@ -85,14 +84,16 @@ export function Nav({
   return (
     <nav
       aria-label={t('ui.tabs')}
-      className={`flex shrink-0 items-stretch border-t border-edge bg-surface lg:justify-center ${className}`}
+      className={`flex shrink-0 items-stretch border-t border-edge bg-surface lg:h-full lg:flex-col lg:gap-1 lg:border-r lg:border-t-0 lg:px-2 lg:py-3 ${className}`}
       {...rest}
     >
       {items.map((item) => {
         const on = item.id === current
         const cell = [
-          'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 lg:w-28 lg:flex-none',
-          on ? 'text-accent' : 'text-ink-faint',
+          'flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 lg:min-h-16 lg:flex-none lg:gap-1 lg:rounded-tile lg:transition-colors',
+          on ? 'text-accent lg:bg-accent-soft' : 'text-ink-faint lg:hover:bg-surface-2 lg:hover:text-ink',
+          // the group stands at the rail's foot, beside where its tray opens
+          item.href === undefined ? 'lg:mt-auto' : '',
         ].join(' ')
         const label = (
           <span data-testid={`nav-label-${item.id}`} className="text-t-caption">
@@ -130,9 +131,10 @@ export function Nav({
             data-testid={`nav-cell-${item.id}`}
             aria-expanded={isOpen}
             onClick={() => onGroup?.(item.id)}
-            className={cell}
+            className={`${cell} ${isOpen ? 'lg:bg-surface-2 lg:text-ink' : ''}`}
           >
-            <Icon name={item.icon} size={22} className={isOpen ? 'rotate-90' : '-rotate-90'} />
+            {/* On the bar it points UP at the tray it opens; on the rail it points RIGHT, where the tray stands beside it. */}
+            <Icon name={item.icon} size={22} className={isOpen ? 'rotate-90 lg:rotate-180' : '-rotate-90 lg:rotate-0'} />
             {label}
           </button>
         )

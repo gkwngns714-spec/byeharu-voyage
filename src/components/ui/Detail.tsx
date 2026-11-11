@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Icon } from './Icon'
 import { ScrollPane } from './ScrollPane'
+import { detailColumnClass, glassBesideRailClass } from './screenLayout'
 import { useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -111,24 +112,31 @@ export function DetailPage({
       data-detail-page=""
       // A QUERY CONTAINER OF ITS OWN (index.css, `narrow:`): the page is the whole glass, however narrow the HQ panel it was
       // opened from — its rows must ask the page, not the panel under it.
-      className="@container fixed inset-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink"
+      // ON THE GLASS BESIDE THE RAIL (screenLayout.ts THE SHELL): the whole window on a phone, all but the rail from `lg`, so the
+      // rail stays in view and pressable. Its header and body stand in ONE centred column (`detailColumnClass`, 64 rem): a fleet's
+      // ships, cargo and supplies read as one block on a laptop instead of three islands across 1,280 px (the S9 playtest).
+      className={`@container ${glassBesideRailClass()} inset-y-0 z-50 flex h-[100dvh] flex-col overflow-hidden bg-bg text-ink`}
       {...rest}
     >
-      <header className="flex min-h-14 shrink-0 items-center gap-2 border-b border-edge px-gutter py-1">
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label={t('common.back')}
-          data-detail-back=""
-          className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-control text-ink-muted transition hover:text-ink"
-        >
-          <Icon name="chevron" size={20} className="rotate-180" />
-        </button>
-        <h1 className="min-w-0 flex-1 truncate text-t-title">{title}</h1>
-        {figure !== undefined && <span className="shrink-0 text-t-body font-semibold tabular-nums text-ink">{figure}</span>}
-        {word !== undefined && <span className="shrink-0 text-t-caption text-ink-muted">{word}</span>}
+      <header className="shrink-0 border-b border-edge px-gutter">
+        <div className={`${detailColumnClass()} flex min-h-14 items-center gap-2 py-1`}>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={t('common.back')}
+            data-detail-back=""
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-control text-ink-muted transition hover:text-ink"
+          >
+            <Icon name="chevron" size={20} className="rotate-180" />
+          </button>
+          <h1 className="min-w-0 flex-1 truncate text-t-title">{title}</h1>
+          {figure !== undefined && <span className="shrink-0 text-t-body font-semibold tabular-nums text-ink">{figure}</span>}
+          {word !== undefined && <span className="shrink-0 text-t-caption text-ink-muted">{word}</span>}
+        </div>
       </header>
-      <ScrollPane className="flex-1 px-gutter pb-6 pt-3">{children}</ScrollPane>
+      <ScrollPane className="flex-1 px-gutter pb-6 pt-3">
+        <div className={detailColumnClass()}>{children}</div>
+      </ScrollPane>
     </div>
   )
 }

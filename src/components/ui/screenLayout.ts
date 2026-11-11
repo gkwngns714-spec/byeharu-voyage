@@ -9,6 +9,75 @@
 export const WIDE_QUERY = '(min-width: 1024px)'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE SHELL — a bottom bar on a phone, a left rail from `lg` (2026-11-11, the remaster's S9)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// The owner's remaster: *"change the UI … so that it is much more simpler, easy to handle"*, *"visually appealing too"*. The
+// playtest at 1280: five cells spread along a 1,280-px footer read as a footer, not a control, and every page stood over it.
+// From `lg` (WIDE_QUERY) the SAME NavBar stands as a RAIL down the window's left edge, RAIL_REM wide, and everything else — the
+// status strip, the page, a tray, a slide-in panel, the arrival card, a detail page — stands on the glass to its right. Below
+// `lg` the shell is exactly what it was: the strip on top, the page, the 56-px bar at the foot.
+//
+// Two variables carry it, set once (`pageVarsClass` for every route; the rail's width by the frame), so no screen and no tray spells the bar's height
+// or the rail's width a second time:
+//   --nav-h    what the bar takes off the glass's FOOT: 3.5 rem (56 px) on a phone, 0 from `lg` (the rail is at the side)
+//   --rail-w   what the rail takes off the glass's LEFT: 0 on a phone, RAIL_REM from `lg` — inside the shell's frame only
+//              (`shellFrameClass`); a route outside the shell (the /ui gallery) has no rail and reads 0
+// The NavBar stays AFTER the content in the DOM (a phone's reading order, and the order every spec walks) and is drawn first
+// from `lg` (`railSlotClass`'s `lg:order-first`): one rendering, two places, decided here. AppShell and the HQ (which stands
+// outside AppShell for its own clock and world beat) both draw this frame through ONE component, src/app/ShellFrame.tsx.
+
+/** The rail's width from `lg`, in rem: 6 rem = 96 px (a 22-px icon over a 13-px word, with air). */
+export const RAIL_REM = 6
+
+/** The shell's root: one column on a phone (strip · page · bar), a row from `lg` (rail | strip over page). */
+export function shellFrameClass(): string {
+  // 6rem = RAIL_REM: the rail's width exists only inside the frame that draws the rail (pageVarsClass sets 0 for every route)
+  return 'flex h-[100dvh] flex-col overflow-hidden lg:flex-row lg:[--rail-w:6rem]'
+}
+
+/** The column beside the rail: the status strip over the page. It takes what the rail leaves. */
+export function shellColumnClass(): string {
+  return 'flex min-h-0 min-w-0 flex-1 flex-col'
+}
+
+/** The nav's slot: the foot of the column on a phone; the window's left edge, full height, from `lg` — on the detail page's
+ *  layer (z-50) and later in the DOM, so the rail stays pressable while a detail page is open. */
+export function railSlotClass(): string {
+  // 6rem = RAIL_REM (the width is `--rail-w`, set in pageVarsClass)
+  return 'shrink-0 lg:z-50 lg:order-first lg:w-[var(--rail-w)]'
+}
+
+/** THE GLASS BESIDE THE RAIL: a fixed layer across the window on a phone, across all but the rail from `lg`. The detail page and
+ *  the arrival card stand on it, so neither covers the rail nor centres on the window's middle instead of the page's. */
+export function glassBesideRailClass(): string {
+  return 'fixed inset-x-0 lg:left-[var(--rail-w)]'
+}
+
+/** The Menu's tray, anchored to the nav: on a phone it stands on the bar's top edge across the glass (as it always has); from
+ *  `lg` it stands beside the rail, `--page-side` wide, on the window's bottom edge — flush with the rail and the glass's foot. */
+export function navTrayAnchorClass(): string {
+  return 'absolute inset-x-0 bottom-full z-20 lg:inset-x-auto lg:bottom-0 lg:left-full lg:w-[var(--page-side)]'
+}
+
+/** The tap-away plane under an open Menu tray: the glass above the bar on a phone, the glass beside the rail from `lg` — never
+ *  over the nav itself, so the cell that opened the tray still shuts it. */
+export function navTapAwayClass(): string {
+  return 'absolute inset-x-0 bottom-full h-screen lg:fixed lg:inset-y-0 lg:left-[var(--rail-w)] lg:right-0 lg:h-auto'
+}
+
+/** The Menu tray's ceiling: the glass under the status strip (2 rem) and above the bar (`--nav-h`), less the bar's 1-px edge. */
+export const NAV_TRAY_CEILING = 'calc(100dvh - 2rem - var(--nav-h) - 1px)'
+
+/** A DETAIL PAGE's column (a fleet's page, the yard's, the inn's): its header and its body stand in one centred column at most
+ *  DETAIL_REM wide, so a three-section page reads as one block in the middle of a laptop, not three islands across it. */
+export const DETAIL_REM = 64
+export function detailColumnClass(): string {
+  // 64rem = DETAIL_REM (1,024 px)
+  return 'mx-auto w-full max-w-[64rem]'
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PAGE — main and side on the whole glass (2026-11-02, owner row 267)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
@@ -51,7 +120,9 @@ export const scrollRegionClass = 'bv-scroll min-h-0 flex-1 overflow-y-auto px-gu
  *  x and width cannot drift from the side column's: `--page-pad` is the margin at each glass, `--page-side` the side. */
 export function pageVarsClass(): string {
   // pad: 1rem = 16 · md 1.5rem = 24 · lg 2rem = 32 · xl 2.5rem = 40. side: 22rem · xl 24rem · 90rem (1,440) 26rem = SIDE_REM
-  return '[--page-pad:1rem] md:[--page-pad:1.5rem] lg:[--page-pad:2rem] xl:[--page-pad:2.5rem] [--page-side:22rem] xl:[--page-side:24rem] min-[90rem]:[--page-side:26rem]'
+  // the shell (THE SHELL above): the bar's 3.5 rem at the foot on a phone and none from `lg`; NO rail here — a route outside the
+  // shell (the /ui gallery) has none, so its tray stands where the page's side column is. The shell's frame sets the rail's width.
+  return '[--page-pad:1rem] md:[--page-pad:1.5rem] lg:[--page-pad:2rem] xl:[--page-pad:2.5rem] [--page-side:22rem] xl:[--page-side:24rem] min-[90rem]:[--page-side:26rem] [--nav-h:3.5rem] lg:[--nav-h:0rem] [--rail-w:0rem]'
 }
 
 /** The page container: centred, content at most PAGE_REM, margins 16 · 24 · 32 · 40 (`--page-pad`). */
@@ -75,17 +146,18 @@ export function pageThreeClass(): string {
   return `grid grid-cols-1 ${PAGE_GAP} lg:grid-cols-3 lg:items-start`
 }
 
-/** The docked Tray over a PAGE, from `lg`: the side column's own x and width, between the status strip (top-8) and the
- *  nav (bottom-14), rounded on every side (the margin shows beside it). Its right edge is the page's right margin —
- *  `max(--page-pad, 50% − PAGE_REM/2)` from the glass's right — and its width is `--page-side`. */
+/** The docked Tray over a PAGE, from `lg`: the side column's own x and width, from under the status strip (top-8) down to the
+ *  window's bottom edge (from `lg` the nav is a rail at the side, THE SHELL above), rounded at its top. Its right edge is the
+ *  page's right margin — `max(--page-pad, (glass − rail)/2 − PAGE_REM/2)` from the glass's right, the page being centred on what
+ *  the rail leaves — and its width is `--page-side`. */
 export function trayDockPageClass(): string {
   // 40rem = PAGE_REM / 2
-  return 'lg:inset-auto lg:top-8 lg:bottom-14 lg:right-[max(var(--page-pad),calc(50%-40rem))] lg:w-[var(--page-side)] lg:h-auto lg:rounded-sheet'
+  return 'lg:inset-auto lg:top-8 lg:bottom-0 lg:right-[max(var(--page-pad),calc(50%-var(--rail-w)/2-40rem))] lg:w-[var(--page-side)] lg:h-auto'
 }
 
 /** THE SLIDE-IN PANEL (owner, 2026-10-15: *"when i click location or a ship, i don't want a
  *  page to pop up randomly. instead i want the page to slide on the right side, and show info"*).
- *  Pinned to the glass's right edge, between the top bar (top-8) and the nav (bottom-14), and it
+ *  Pinned to the glass's right edge, between the top bar (top-8) and the bar (`--nav-h`; the window's foot from `lg`), and it
  *  slides in (index.css `bv-slide-in-right`). `Tray mode="side"` is its one user: the map's panel,
  *  and since 2026-11-08 the HQ's Investors drawer (row 247, *"a list slides to the right where you
  *  can close"*; the drive audit's D2/D3: the page dock above neither slides nor reaches the edge).
@@ -103,7 +175,7 @@ export function traySideEdgeClass(): string {
   // 2026-11-04 (Map redesign, row 267): from `lg` it is `--page-side` wide (the Map's root sets the page vars, `pageVarsClass`).
   // 2026-11-05 (owner: "slide from the edge of the page"): its right edge is the WINDOW's edge (`right-0`, fixed), not the page's
   // right margin — that margin (up to 80 px at 1,440) was the gap. Rounded on the left only. Below `lg` it is the glass, as it was.
-  return 'fixed top-8 bottom-14 right-0 w-full lg:w-[var(--page-side)] lg:rounded-l-sheet bv-slide-in-right'
+  return 'fixed top-8 bottom-[var(--nav-h)] right-0 w-full lg:w-[var(--page-side)] lg:rounded-l-sheet bv-slide-in-right'
 }
 
 /** THE SECOND PANEL, SLID OUT FROM THE FIRST (owner, 2026-10-15: *"i want it to show by sliding
@@ -114,7 +186,7 @@ export function traySideEdgeClass(): string {
 export function traySideNextClass(): string {
   // 39rem = traySideEdgeClass's width · `--page-side`
   // 2026-11-04: from `lg` its right edge is the first panel's left edge — the window's edge + `--page-side` + a 1-rem gap.
-  return 'fixed top-8 bottom-14 right-0 w-full lg:right-[calc(var(--page-side)+1rem)] lg:w-[var(--page-side)] lg:rounded-sheet bv-slide-in-right lg:bv-slide-out-left'
+  return 'fixed top-8 bottom-[var(--nav-h)] right-0 w-full lg:right-[calc(var(--page-side)+1rem)] lg:w-[var(--page-side)] bv-slide-in-right lg:bv-slide-out-left'
 }
 
 /** The chart's corner chrome beside that panel — its right edge where the panel's left edge is.

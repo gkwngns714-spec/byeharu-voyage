@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { ShellStateContext } from './shellState'
-import { NavBar } from './NavBar'
-import { TopBar } from './TopBar'
+import { ShellFrame } from './ShellFrame'
 import { RebuildNotice } from './RebuildNotice'
 import { ArrivalCard } from './ArrivalCard'
 import { SignTheBook } from '../features/found/SignTheBook'
@@ -100,12 +99,16 @@ export function AppShell() {
           WorldLoading's skeleton — so nothing screen-shaped can say "the world is up" for every
           route. The phase can: it is the one authority every screen gates on. The browser specs'
           ready() (tests/appReady.fixture.ts) waits on it; nothing in the app reads it. */}
-      <div className="bv-sea flex h-[100dvh] flex-col text-ink" data-world={worldPhase}>
-        {/* The persistent game chrome, and since step 3 it is a 32px STATUS STRIP: the purse, and
-            the market countdown while you are on a trade screen. TopBar.tsx carries what the
-            wordmark and the live-read dot were costing, and why neither is missed. */}
-        <TopBar />
-
+      {/* THE FRAME — the status strip, the page and the nav (a bar on a phone, a rail from `lg`) — is ShellFrame.tsx's, shared
+          with the HQ. A captain with no house has nothing to navigate to, so the register door draws no nav. */}
+      <ShellFrame
+        data-world={worldPhase}
+        nav={!(worldPhase === 'ready' && houseUnfounded)}
+        overlay={
+          /* THE ARRIVAL CARD: an overlay over any tab (src/app/ArrivalCard.tsx); never in the flow. */
+          <ArrivalCard />
+        }
+      >
         {/* A world that was demolished and rebuilt says so, once, above everything — one `Note`,
             see RebuildNotice.tsx. It renders nothing on an ordinary boot. */}
         <RebuildNotice />
@@ -125,19 +128,13 @@ export function AppShell() {
             <SignTheBook />
           </main>
         ) : (
-          <>
-            {/* Tab content gets the viewport minus header and tab bar; each screen owns its own
-                scroll (see the Screen primitive), so the page itself never scrolls. */}
-            <main className="min-h-0 flex-1 overflow-hidden">
-              <Outlet />
-            </main>
-
-            <NavBar />
-          </>
+          /* Tab content gets the glass the strip and the nav leave; each screen owns its own
+             scroll (see the Screen primitive), so the page itself never scrolls. */
+          <main className="min-h-0 flex-1 overflow-hidden">
+            <Outlet />
+          </main>
         )}
-        {/* THE ARRIVAL CARD: an overlay over any tab (components/ui/ArrivalCard.tsx); never in the flow. */}
-        <ArrivalCard />
-      </div>
+      </ShellFrame>
     </ShellStateContext.Provider>
   )
 }

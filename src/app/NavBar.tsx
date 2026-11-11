@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Icon, Nav, Row, TapAway, Tray, type NavItem, type TrayDetent } from '../components/ui'
+import { Icon, NAV_TRAY_CEILING, Nav, Row, TapAway, Tray, navTrayAnchorClass, type NavItem, type TrayDetent } from '../components/ui'
 import { NAV_CELLS, navWord, tabHref } from './navTabs'
 import { useT, useLocale } from '../lib/i18n'
 
@@ -57,7 +57,7 @@ const CABIN_DETENT: TrayDetent = 'half'
 // `height`, so the tray is `half` wherever `half` is enough and its rows' height wherever it is not.
 // The rows are counted from the table (`--cabin-floor` on the wrapper below carries the member
 // count), never typed. The floor is `min()`ed with the glass between the status strip (`top-8`) and
-// the bar (`bottom-14` and its 1-px edge — screenLayout.ts `traySideEdgeClass`), so a glass too short
+// the bar (`--nav-h` and its 1-px edge — screenLayout.ts `NAV_TRAY_CEILING`), so a glass too short
 // for six rows lifts nothing off the top and falls back to the inner scroll it always had. It applies
 // at `half` only: a drag down to `peek` must still be a peek.
 const CABIN_FLOOR = 'min-h-[var(--cabin-floor)]'
@@ -66,7 +66,7 @@ const CABIN_FLOOR = 'min-h-[var(--cabin-floor)]'
  *  the Tray's 5.875rem of chrome (3.25 handle row + 2.125 head + 0.5 foot), capped at the free glass. */
 const cabinFloor = (rows: number) =>
   ({
-    '--cabin-floor': `min(calc(var(--spacing-row) * ${rows} + 5.875rem), calc(100dvh - 5.5rem - 1px))`,
+    '--cabin-floor': `min(calc(var(--spacing-row) * ${rows} + 5.875rem), ${NAV_TRAY_CEILING})`,
   }) as CSSProperties
 
 export function NavBar() {
@@ -129,12 +129,13 @@ export function NavBar() {
   }
 
   return (
-    <div data-testid="app-nav" className="relative shrink-0">
+    <div data-testid="app-nav" className="relative shrink-0 lg:h-full">
       {openMembers && (
         <>
           {/* Tap anywhere else to dismiss (TapAway: the one recipe, shared with the City page's rail). */}
           <TapAway label={t('shell.closeGroup', { name: word(openMembers.label) })} onClick={closeGroup} />
-          <div className="absolute inset-x-0 bottom-full z-20" style={cabinFloor(openMembers.members.length)}>
+          {/* ON THE BAR'S TOP EDGE on a phone; BESIDE THE RAIL, on the window's foot, from `lg` (screenLayout.ts THE SHELL). */}
+          <div className={navTrayAnchorClass()} style={cabinFloor(openMembers.members.length)}>
             <Tray
               data-testid="nav-group-panel"
               mode="inline"

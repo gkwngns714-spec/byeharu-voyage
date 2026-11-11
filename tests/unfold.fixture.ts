@@ -138,7 +138,11 @@ export async function readGlass(page: Page, panel: string, row: string | null, s
       const onGlass = (e: Element, r: Box): Box | null => {
         let box: Box | null = { left: r.left, top: r.top, right: r.right, bottom: r.bottom }
         if (getComputedStyle(e).position === 'fixed') return box
-        for (let a: Element | null = e.parentElement; a && a !== document.body && box; a = a.parentElement) {
+        // FROM THE ELEMENT ITSELF (2026-11-11, S9): a text's host can be its own clip — a `truncate` name (Clip.tsx) cuts its text at its own
+        // box, and the text's range runs on past the cut, unseen. Starting at the parent read that hidden tail as text standing on the next
+        // column's row (You at 1,280: "Ana Maria da Conceiç…" 46 px into "Duarte Pacheco", nothing of it drawn). For an element's own box
+        // the first step clips the box to itself, which changes nothing.
+        for (let a: Element | null = e; a && a !== document.body && box; a = a.parentElement) {
           const st = getComputedStyle(a)
           if (st.overflowX !== 'visible' || st.overflowY !== 'visible') {
             const c = a.getBoundingClientRect()

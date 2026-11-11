@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, StatCard, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
-import { NavBar } from '../../app/NavBar'
+import { ShellFrame } from '../../app/ShellFrame'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
@@ -68,8 +68,8 @@ import { CityScene } from './CityScene'
 //              served block — no cell asks a second read.
 //
 // ── WHY IT SITS OUTSIDE AppShell ──────────────────────────────────────────────────────────────
-// The page draws its OWN header and fills its own viewport, and it renders the shell's own NavBar
-// as its rail (ONE tab table, app/NavBar.tsx — never a second nav). It is a sibling of `/ui`,
+// The page draws its OWN header, and it stands in the shell's own FRAME (app/ShellFrame.tsx: the status
+// strip, the page, and the one NavBar as its rail — never a second nav). It is a sibling of `/ui`,
 // inside `RequireAuth` but not inside `AppShell` (src/app/App.tsx) — and for the same reason it
 // provides the one thing the shell normally provides to a face: the clock (`ShellStateContext`).
 // It opens the world itself, idempotently. `data-world` is on the root so the browser specs' one
@@ -148,13 +148,11 @@ export function CityScreen() {
 
   const gate = (body: ReactNode) => (
     <ShellStateContext.Provider value={shell}>
-      <div
-        className="bv-sea flex h-[100dvh] flex-col overflow-hidden text-ink"
-        data-world={phase}
-        data-testid="city-screen"
-      >
+      {/* THE SHELL'S FRAME (2026-11-11, S9): the same status strip every tab has over the page, and the nav — a bar on a phone,
+          the rail from `lg` — in its slot, named `city-rail`. Every state below draws inside it, so none is a dead end. */}
+      <ShellFrame data-world={phase} data-testid="city-screen" navTestId="city-rail">
         {body}
-      </div>
+      </ShellFrame>
     </ShellStateContext.Provider>
   )
 
@@ -170,7 +168,6 @@ export function CityScreen() {
             {fatal?.sentence ?? t('city.failed')}
           </Note>
         </div>
-        <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
     )
   }
@@ -180,14 +177,12 @@ export function CityScreen() {
         <div className="flex-1 p-gutter">
           <LoadMeter steps={loadStepsFor(t, boot, false)} data-testid="city-load" />
         </div>
-        <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
     )
   if (!port || port.kind !== 'HARBOUR')
     return gate(
       <>
         <NoCity fleets={fleets} inHand={draftPort ?? null} />
-        <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
       </>,
     )
 
@@ -448,8 +443,6 @@ function CityFrame({
           )}
         </Sheet>
       </main>
-
-      <div data-testid="city-rail" className="shrink-0"><NavBar /></div>
     </>
   )
 }

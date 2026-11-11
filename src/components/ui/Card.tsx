@@ -1,4 +1,5 @@
 import type { ComponentProps, ReactNode } from 'react'
+import { CARD_HEAD, CARD_PAD, CARD_PAD_COMPACT, CARD_SURFACE, CARD_TITLE } from './cardStyles'
 import { PAGE_GAP, pageSplitClass, pageThreeClass } from './screenLayout'
 import { StatCell } from './StatCell'
 
@@ -19,8 +20,9 @@ import { StatCell } from './StatCell'
 //   StatStrip             a row of stat cards across the page (the live band): 1 · 2 · 4 across
 //   PageSplit             MAIN | SIDE from 1,024 px; the SIDE is the tray's column and is always used
 //   CardRow               two cards across inside a column (from 768; one under it at 1,024-1,279, where main is 584)
-//   Card                  a block with ROOM: 12-px corners, one tone step and one hairline, 16 px of padding on a
-//                         phone, 20 from 768 and 24 from 1,280, a title at 16 px (18 from 768)
+//   Card                  a block with ROOM: 16-px corners, one tone step, one hairline and one faint raise, 16 px of
+//                         padding on a phone and 24 from 768, a title at 16 px (20 from 768) over a hairline
+//                         (cardStyles.ts, 2026-11-11 S9 — shared with ListPanel's card)
 //   StatCard              a card that is ONE figure: the label at 14 px over the figure at 24 px
 //   StatCell look=…       the same figure inside a card: `stacked` (label over figure) or `line` (label left,
 //                         figure right) — never a label and a figure hugging at 8 px
@@ -134,16 +136,16 @@ export function Card({
   return (
     <section
       className={[
-        'min-w-0 rounded-tile border border-edge bg-surface',
-        flush ? '' : compact ? 'p-4 md:px-5 md:py-4 xl:px-6 xl:py-5' : 'p-4 md:p-5 xl:p-6',
+        CARD_SURFACE,
+        flush ? '' : compact ? CARD_PAD_COMPACT : CARD_PAD,
         className,
       ].join(' ')}
       data-card=""
       {...rest}
     >
       {(title !== undefined || aside !== undefined) && (
-        <header className="mb-4 flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          {title !== undefined && <h2 className="min-w-0 text-t-body font-semibold text-ink md:text-t-card">{title}</h2>}
+        <header className={`${CARD_HEAD} flex min-h-8 flex-wrap items-center justify-between gap-x-3 gap-y-2`}>
+          {title !== undefined && <h2 className={`min-w-0 ${CARD_TITLE}`}>{title}</h2>}
           {aside !== undefined && <div className="ml-auto shrink-0">{aside}</div>}
         </header>
       )}

@@ -15,6 +15,7 @@
 import { test, expect } from '@playwright/test'
 import {
   PAGE_REM,
+  RAIL_REM,
   SIDE_REM,
   pageColumnClass,
   pageSplitClass,
@@ -55,8 +56,10 @@ test('the literal page classes encode the named page constants — the split and
   expect(pageSplitClass()).toContain('lg:grid-cols-[minmax(0,1fr)_var(--page-side)]')
   const tray = trayDockPageClass()
   expect(tray).toContain('lg:w-[var(--page-side)]')
-  const half = /calc\(50%-([0-9.]+)rem\)/.exec(tray)
-  expect(half, `the tray's right offset is not 50% − PAGE_REM/2 in "${tray}"`).not.toBeNull()
+  // 2026-11-11 (S9): the page is centred on what the RAIL leaves from `lg` (screenLayout.ts THE SHELL), so the margin is
+  // (glass − rail)/2 − PAGE_REM/2
+  const half = /calc\(50%-var\(--rail-w\)\/2-([0-9.]+)rem\)/.exec(tray)
+  expect(half, `the tray's right offset is not (100% − rail)/2 − PAGE_REM/2 in "${tray}"`).not.toBeNull()
   expect(Number(half![1])).toBe(PAGE_REM / 2)
   expect(tray).toContain('max(var(--page-pad)')
 })
@@ -394,7 +397,10 @@ test.describe('wide glass', () => {
     expect(await page.getByTestId('command-queue').boundingBox(), 'the route page re-flowed the row below').toEqual(queueBox)
     const pageBox = (await routePage.boundingBox())!
     console.log(`COMMAND route page @${WIDE.width}px: row ${JSON.stringify(rowBox)} page ${JSON.stringify(pageBox)}`)
-    expect(pageBox.width, 'the page is not the full-screen overlay').toBeGreaterThanOrEqual(WIDE.width - 1)
+    // 2026-11-11 (S9): from `lg` a detail page stands on the glass beside the rail (screenLayout.ts `glassBesideRailClass`), so it is
+    // the whole window less the rail's RAIL_REM — still the full glass the page has, not a panel inside it
+    expect(pageBox.x, 'the page does not stand at the rail edge').toBeCloseTo(RAIL_REM * remPx, 0)
+    expect(pageBox.width, 'the page is not the full glass beside the rail').toBeGreaterThanOrEqual(WIDE.width - RAIL_REM * remPx - 1)
 
     await routePage.locator('[data-detail-back]').click()
     await expect(page.getByTestId('route-page')).toHaveCount(0)

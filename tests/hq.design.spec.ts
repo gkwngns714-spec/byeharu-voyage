@@ -64,7 +64,10 @@ const FIRST_GLASS = (panel: string) => {
   const rail = top('city-rail')
   const card = top(panel)
   const plan = top('city-plan') ?? top('city-info-image')
-  return { panelTop: card?.top ?? null, planBottom: plan?.bottom ?? null, railTop: rail?.top ?? innerHeight, glass: innerHeight }
+  // 2026-11-11 (S9): from `lg` the nav is a RAIL down the left edge and takes nothing off the glass's foot — only a bar (wider than
+  // tall) has a top the page must end above.
+  const footBar = rail !== null && rail.width > rail.height
+  return { panelTop: card?.top ?? null, planBottom: plan?.bottom ?? null, railTop: footBar ? rail.top : innerHeight, glass: innerHeight }
 }
 
 async function open(page: Page, glass: { width: number; height: number }) {

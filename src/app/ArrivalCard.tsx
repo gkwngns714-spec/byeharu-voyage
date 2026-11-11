@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '../components/ui'
+import { Button, glassBesideRailClass } from '../components/ui'
 import { formatDucatsDelta, formatInt } from '../lib/format'
 import { num, str } from '../lib/json'
 import { useT } from '../lib/i18n'
@@ -122,7 +122,9 @@ export function ArrivalCard() {
   const only = card.arrivals.length === 1 ? card.arrivals[0].to : null
   const port = only ? portNameOf(portByCode, only) : null
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-24 z-60 flex justify-center px-4" data-testid="arrival-card-wrap">
+    // Over the page, clear of the bar on a phone (bottom-24) and beside the rail from `lg`, centred on the page and not the window
+    // (screenLayout.ts `glassBesideRailClass`, THE SHELL).
+    <div className={`pointer-events-none ${glassBesideRailClass()} bottom-24 z-60 flex justify-center px-4 lg:bottom-10`} data-testid="arrival-card-wrap">
       <div
         role="status"
         aria-live="polite"

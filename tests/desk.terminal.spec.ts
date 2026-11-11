@@ -1,3 +1,4 @@
+import { RAIL_REM } from '../src/components/ui/screenLayout'
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 
@@ -43,7 +44,8 @@ test.describe('the terminal at 1440×731 (the owner\'s glass)', () => {
     // THE PANES ARE CARDS NOW (2026-11-05, owner row 267; tests/command.design.spec.ts): they stand on the page's own margin (24 px at 1,440) —
     // not flush with the glass's edges, which was the packed terminal. They still use the glass: no more than the margin is left at either side.
     expect(ticket.x + ticket.w, 'the orders do not reach the right margin').toBeGreaterThanOrEqual(1440 - 26)
-    expect(list.x, 'the list does not start at the left margin').toBeLessThanOrEqual(26)
+    // 2026-11-11 (S9): from `lg` the glass's left edge is the RAIL's right edge (screenLayout.ts THE SHELL), and the margin is measured from it
+    expect(list.x, 'the list does not start at the left margin').toBeLessThanOrEqual(RAIL_REM * 16 + 26)
     expect(chart.w, 'the centre pane is not the widest').toBeGreaterThan(Math.max(list.w, ticket.w))
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   })
