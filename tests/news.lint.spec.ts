@@ -3,13 +3,13 @@
 // THE LAW (§2.2, decided by default): every migration after 0347 tells the world it happened — ONE `public.news_update(` call (its
 // "Update: {title}" row, idempotent by its number) — or says plainly that it is not news with a `-- news: none` line. A file with
 // neither fails here, so no update slips past the News face and the charts' dots. 0347 itself posts its own row.
-// THE DOTS: newsMarksModel.ts (pure): a mark stands on the floor at its instant, none outside the axis, marks closer than 12 px are one
-// dot, newest first, at the highest importance. THE WORDS: newsWords.ts fills a template from the item's words, in each language.
+// THE DOTS: newsMarksModel.ts (pure): a mark stands on the floor at its instant, none outside the axis, marks closer than a press target (44 px) are one
+// dot, newest first, at the highest importance; each dot's target is 44 px square, inside the chart's box, and no two targets overlap. THE WORDS: newsWords.ts fills a template from the item's words, in each language.
 
 import { test, expect } from '@playwright/test'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { CLUSTER_PX, newsMarksModel } from '../src/components/ui/newsMarksModel'
+import { NEWS_HIT_PX, newsMarksModel } from '../src/components/ui/newsMarksModel'
 import { newsHeadline, newsMove } from '../src/live/newsWords'
 import type { NewsItem } from '../src/lib/rpc'
 
@@ -54,10 +54,36 @@ test('a dot stands on the floor at its instant; none outside the axis; close one
   expect(dots.every((d) => d.y === 105)).toBe(true)
   expect(dots[1].importance).toBe(3)
   expect(Math.abs(dots[1].x - 112)).toBeLessThan(0.01)
-  // two marks CLUSTER_PX apart are two dots
-  const apart = newsMarksModel([{ id: 1, atMs: 0, importance: 1 }, { id: 2, atMs: (CLUSTER_PX / plot.w) * 1000, importance: 1 }], plot, axis)
+  // two marks NEWS_HIT_PX apart are two dots; a hair closer and they are one
+  const at = (px: number) => (px / plot.w) * 1000
+  const apart = newsMarksModel([{ id: 1, atMs: 0, importance: 1 }, { id: 2, atMs: at(NEWS_HIT_PX), importance: 1 }], plot, axis)
   expect(apart).toHaveLength(2)
+  expect(newsMarksModel([{ id: 1, atMs: 0, importance: 1 }, { id: 2, atMs: at(NEWS_HIT_PX - 1), importance: 1 }], plot, axis)).toHaveLength(1)
+  // without a box a target is centred on its mark
+  expect(dots.every((d) => d.hitX === d.x && d.hitY === d.y)).toBe(true)
   expect(newsMarksModel([{ id: 1, atMs: 0, importance: 1 }], plot, { fromMs: 5, toMs: 5 })).toEqual([])
+})
+
+test('a press target is 44 px square: inside the chart box, never over its neighbour, and its mark is inside it', () => {
+  expect(NEWS_HIT_PX).toBe(44)
+  const half = NEWS_HIT_PX / 2
+  // the plot fills its box edge to edge and its floor is 8 px above the box's foot: the worst case for a target
+  const tight = { x: 0, y: 0, w: 300, h: 100 }
+  const box = { w: 300, h: 108 }
+  for (const xs of [[0, 45, 300], [0, 300], [150], [0, 50, 100, 150, 200, 250], [255, 300], [0, 45, 90, 135, 180, 225]]) {
+    const dots = newsMarksModel(xs.map((x, i) => ({ id: i + 1, atMs: (x / tight.w) * 1000, importance: 1 })), tight, axis, box)
+    expect(dots.length, `marks at ${xs.join(', ')}`).toBe(xs.length)
+    dots.forEach((d, i) => {
+      const where = `marks at ${xs.join(', ')}, dot ${i}`
+      expect(d.hitX - half, where).toBeGreaterThanOrEqual(0)
+      expect(d.hitX + half, where).toBeLessThanOrEqual(box.w)
+      expect(d.hitY - half, where).toBeGreaterThanOrEqual(0)
+      expect(d.hitY + half, where).toBeLessThanOrEqual(box.h)
+      expect(Math.abs(d.x - d.hitX), `${where}: the mark is outside its target`).toBeLessThanOrEqual(half)
+      expect(Math.abs(d.y - d.hitY), `${where}: the mark is outside its target`).toBeLessThanOrEqual(half)
+      if (i > 0) expect(d.hitX - dots[i - 1].hitX, `${where}: its target lies over the one before`).toBeGreaterThanOrEqual(NEWS_HIT_PX)
+    })
+  }
 })
 
 const item = (en: string, ko: string, detail: NewsItem['detail']): NewsItem => ({

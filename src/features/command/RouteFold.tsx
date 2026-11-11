@@ -12,8 +12,8 @@ import {
   routeStateWord,
 } from '../../domain/route'
 import type { FleetView, Refusal } from '../../lib/rpc'
-import { RouteEditor } from './RouteEditor'
-import { RouteStopFace } from './RouteStop'
+import { RouteEditor } from '../../live/RouteEditor'
+import { RouteStopFace } from '../../live/RouteStop'
 import { useDeskView } from './deskView'
 import { useT } from '../../lib/i18n'
 
