@@ -302,7 +302,8 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
   // city chips wrap above them (owner: no sideways scrolling), and FOUR complete cards stand above the
   // 787-px fold — two rows of two. Five would need a third row: 3 × 129 px = 387 px in the 381 px left
   // below the highest card start, so five is arithmetically out of reach of this shape, not a regression.
-  // The floor is the measured four.
+  // The floor was the measured four. 2026-11-11 (remaster S6): the goal card (levels/GoalCard.tsx, one 44-px control, the game's
+  // one stated goal) stands on this face and takes the second row, so the floor is the two that stand whole beside the card.
   await page.getByRole('tablist', { name: 'Desk faces' }).getByRole('tab', { name: 'Goods', exact: true }).click()
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 60_000 })
   const buy = await page.evaluate(() => {
@@ -313,7 +314,7 @@ test('the desk puts complete priced goods above the fold, per K.1 — Buy, and C
     return { complete: above.length, priced: above.filter((r) => /\d/.test(r.querySelector('[data-testid="trade-good-buy"]')?.textContent ?? '')).length }
   })
   console.log(`TRADE fold @${PHONE.width}px: ${JSON.stringify(buy)}`)
-  expect(buy.complete, 'fewer than four goods above the fold on Trade').toBeGreaterThanOrEqual(4)
+  expect(buy.complete, 'fewer than two goods above the fold on Trade').toBeGreaterThanOrEqual(2)
   expect(buy.priced, 'a good above the fold on Trade carries no price').toBe(buy.complete)
 })
 

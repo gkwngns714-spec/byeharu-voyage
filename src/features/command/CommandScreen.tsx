@@ -13,6 +13,7 @@ import { City } from './city/City'
 import { Invest } from './invest/Invest'
 import { Report } from './report/Report'
 import { Levels } from './levels/Levels'
+import { GoalCard } from './levels/GoalCard'
 import { useT } from '../../lib/i18n'
 
 // COMMAND — THE DESK (docs/COMMAND_DESK.md, 2026-10-18). TWO SHAPES, ONE STATE (§3.9): on a wide glass
@@ -143,6 +144,7 @@ export function CommandScreen() {
           </div>
           <Segmented<DeskFace> segments={DESK_FACES} value={face} onChange={turnTo} label={t('command.deskFaces')} className="shrink-0" />
         </header>
+        {fleet && <GoalCard />}
         {fleet && faceBody(fleet)}
       </div>
     )
@@ -170,6 +172,7 @@ export function CommandScreen() {
           fill
           className="mb-2 mt-1"
         />
+        {fleet && face === 'trade' && <GoalCard />}
         {fleet && faceBody(fleet)}
       </div>
     </div>

@@ -39,7 +39,7 @@ const SERVED = new Set<string>()
 for (const f of [
   'data/officers.json', 'data/captains.generated.json', 'data/npc-houses.json', 'data/npc-roster.generated.json',
   'data/ships.generated.json', 'data/seas.json', 'data/regions.json', 'data/ports.json', 'data/skills.json',
-  'data/fittings.json', 'data/gear.generated.json', 'data/ship-lines.json', 'data/faiths.json',
+  'data/fittings.json', 'data/gear.generated.json', 'data/ship-lines.json', 'data/faiths.json', 'data/sea-zones.json',
 ])
   namesIn(read(f), SERVED)
 
