@@ -101,10 +101,7 @@ const READ_CARDS = () =>
     const r = c.getBoundingClientRect()
     const top = (id: string) => Math.round((c.querySelector(`[data-testid="${id}"]`) as HTMLElement).getBoundingClientRect().top)
     // a part of the card past its own edge stands on the next card (at 320 px "안 삼" crossed the next card's price)
-    // (the card's WORDS AND FIGURES; its two buttons are not in this law: each is as wide as its padding and word, 64 px in
-    //  Korean, so in a 123-px card the Sell button stands 21 px past the edge on main too, before this slice: measured and named
-    //  in the dev-log, not fixed here)
-    const past = ['trade-good-name', 'trade-good-aboard', 'trade-good-buy', 'trade-good-sell', 'trade-good-spark', 'best-sale-profit'].filter((id) => {
+    const past = ['trade-good-name', 'trade-good-aboard', 'trade-good-buy', 'trade-good-sell', 'trade-good-spark', 'best-sale-profit', 'trade-buy', 'trade-sell'].filter((id) => {
       const b = c.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()
       return b !== undefined && b.width > 0 && (b.left < r.left - 0.5 || b.right > r.right + 0.5)
     })

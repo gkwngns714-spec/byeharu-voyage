@@ -242,3 +242,44 @@ Nothing changed height on the press: the picker, the board and the doors had the
 
 The first full run, on the build one step earlier, found one more fault of this part's own: with no word on it the Map door read "Map", the nav cell's label (`consistency.spec.ts`). Fixed above before the final run.
 
+---
+
+# Fifth part — merged with main; the card's two buttons fit a 123-px card (2026-11-12)
+
+CI tests this branch merged with main, and main had moved (#583 took the "Your earnings" card off the HQ, #584, #586). Four reds on the merge, all on the HQ Market. Main (66fafeda) was merged into the branch (a merge commit, no conflicts) and each red was run on a build of main alone and on the merged build.
+
+| red | on main alone | cause |
+|---|---|---|
+| `city.phone.spec.ts:113`, Korean, 320 × 640 | fails the same way | the card's Sell button over the next card's Buy |
+| `hq.design.spec.ts:96`, ko-KR, 320 × 640 | fails the same way | the same pair |
+| `market.shortTray.spec.ts:53` at 390 and at 1,280 | fails the same way (10 minutes each) | the spec reads `city-summary`, which main no longer draws |
+
+## The buttons (fixed here: the card is this branch's file)
+
+Measured, HQ Market, Korean, 320 × 640, two cards at 33..156 and 164..287:
+
+| | main | merged, before the fix | now |
+|---|---|---|---|
+| first card's Buy / Sell | 41..105 / 113..177 | 41..105 / 113..177 | 41..91 / 99..148 |
+| second card's Buy | 172..236 | 172..236 | 172..221 |
+| Sell over the next card's Buy | 5 px wide (60 px² on the glass) | 5 px wide (80 px²) | none |
+
+This is the fault the third part found and left ("the Sell button stands past the card's edge at 320, on main too"). The boxes were the same before #583 (measured on the earlier main: 41..105 / 113..177, the cards 74 px lower, at 546 instead of 472), and both specs passed then; the specs count only what stands on the glass, so most likely the buttons were under its foot until #583 (67681824) took the earnings card away and the Market moved up. Not proven beyond those two measurements.
+
+`src/live/TradeCard.tsx`: each button fills half the card's line, so its side padding only decides how narrow it can go. At the button's own 16 px a Korean button is 64 px and two are 136 in a 107-px line. At 8 px it is 48 px (over the 44-px reach floor) and two are 104. In every wider card the buttons are the boxes they were. `tests/trade.layout.spec.ts`: the two buttons are back in the law "nothing of a card stands past its edge", at 320, 390, 1,280 and 1,920.
+
+## The short tray spec (main's own, not patched here)
+
+`tests/market.shortTray.spec.ts:65` asks `page.getByTestId('city-summary').innerText()` to read the purse before a buy. No file in `src/` carries that test id since #583 (67681824, which removed the earnings card that carried it), so the locator waits out the whole 600-second test. It fails identically on a build of main alone. It needs main's owner to say where the purse is read now; this branch does not touch it.
+
+## Checks (local, the merged build with the fix)
+
+`tsc -b`, `eslint .`, `vite build`: clean. One run of 326 tests, 321 passed, 5 failed: every `desk.*`, `command.*`, `trade.*`, `hq.*`, `city.*`, `market.*`, `drive.*`, `news.*`, `stats.*` spec, plus `layout`, `wide.layout`, `align`, `good.class`, `consistency`, `onepage`, `shell.polish`, `i18n.keys`, `i18n.ko`, `requests.hq`, `requests.design`, `route.stopface`, `sections`, `duplication`.
+
+The 5:
+- `market.shortTray.spec.ts:53` at 390 and 1,280: main's own, above.
+- `route.stopface.spec.ts:47` and `:77`: plain-Node word specs that expect English and get this machine's Korean locale.
+- `city.goodTrades.spec.ts:40`: timed out once in the full run (36 s, at its resize to 1,280). Run alone it passes on main and on this branch, and 4 times of 4 repeated: a timing miss under load, on the desk's City face, which does not draw this card.
+
+`city.phone` and `hq.design` (the two 320 reds) pass.
+

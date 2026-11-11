@@ -127,11 +127,15 @@ export function TradeCard({
           </span>
         }
       />
-      <span className="flex items-center gap-2">
-        <Button variant="secondary" className="flex-1" onClick={() => onBuy(r.code)} disabled={buyDead} data-testid="trade-buy">
+      {/* THE TWO BUTTONS FIT THE NARROWEST CARD (2026-11-12): each fills half the line, so its side padding only decides how
+          narrow it can go. At the button's own 16 px a Korean button is 64 px and two of them are 136 px in a 107-px line (the
+          HQ Market at 320 px): Sell stood 21 px past the card, over the next card's Buy. At 8 px it is 48 px (still over the
+          44-px reach floor) and two are 104. In every wider card the buttons are the same boxes as before. */}
+      <span className="flex min-w-0 items-center gap-2">
+        <Button variant="secondary" className="min-w-0 flex-1 px-2!" onClick={() => onBuy(r.code)} disabled={buyDead} data-testid="trade-buy">
           {t('desk.buy')}
         </Button>
-        <Button variant="secondary" className="flex-1" onClick={() => onSell(r.code)} disabled={sellDead} data-testid="trade-sell">
+        <Button variant="secondary" className="min-w-0 flex-1 px-2!" onClick={() => onSell(r.code)} disabled={sellDead} data-testid="trade-sell">
           {t('desk.sell')}
         </Button>
       </span>
