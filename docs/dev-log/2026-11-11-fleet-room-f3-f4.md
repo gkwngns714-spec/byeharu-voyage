@@ -16,6 +16,7 @@ Owner rows 180 and 316: *"multiple fleets, with multiple ships"*; *"unlock slots
 | A fleet is renamed | `public.rename_fleet(player, fleet, name)`, door `cmd.rename_fleet(fleet, name)` |
 | The gold | ledger kind `SLOT`, `public.stats_flow_words` side `removed`, word "Fleet room" |
 | Events | `ROOM_OPENED {kind, step, price, room}`, `FLEET_RENAMED {from, to}` |
+| The news | one `public.news_update('0354', 'Fleet totals, rename', '선단 합계, 이름 변경')` row, outside the probe (0347's law, `tests/news.lint.spec.ts`). Buying room is dark and is not announced: that news belongs to the step that lights `fleet_room_bite` |
 | The registry | three rows in `public.client_rpc_entry_points` (one hunk) |
 | The client | `src/features/fleets/FleetTotals.tsx`, `RenameFleet.tsx`, `FleetRoom.tsx`; types, catalogue, words EN and KO |
 

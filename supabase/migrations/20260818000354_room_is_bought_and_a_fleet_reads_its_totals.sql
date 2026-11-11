@@ -42,6 +42,9 @@
 --   - `totals` carries no berth count: that is public.earned_caps, which reads public.player_progress, and world.fleets() is asked every 30 s by every client. world.house_room() serves the berths.
 --   - `attack` is the sum of the ships' attack (world.ship_stats through world.ship_view). No ship read serves a count of guns, so none is summed.
 --
+-- NEWS: this file posts its own UPDATE row, 'Fleet totals, rename' / '선단 합계, 이름 변경' (0347's law, tests/news.lint.spec.ts): what is live for a player at this deploy.
+--   Buying room is NOT announced: it is dark, and its news belongs to the step that lights fleet_room_bite.
+--
 -- LIGHTING IS NOT HERE. Whether any company would stand over its lit caps is a prod read: scripts/ops/harness/fleet-room/over-caps.sql.
 --
 -- SELF-ASSERT: the catalog (hunks once and reversing; ACL, volatility, definer and config unmoved; no other function; no knob; the registry; the grants), then ONE probe of this file's own rows, rolled back by
@@ -103,6 +106,7 @@ begin
   if to_regclass('public.house_room') is null or to_regprocedure('public.fleet_room_caps(uuid)') is null or to_regprocedure('public.fleet_room_on()') is null
      or to_regprocedure('public.fleet_wage(uuid,boolean,integer)') is null or to_regprocedure('world.ship_view(uuid)') is null
      or to_regprocedure('public.credit(uuid,text,bigint,uuid)') is null or to_regprocedure('cmd.refused_envelope(text,text)') is null
+     or to_regprocedure('public.news_update(text,text,text)') is null
      or not exists (select 1 from public.world_config c where c.key = 'fleet_room_prices') or not exists (select 1 from public.world_config c where c.key = 'ship_room_prices') then
     raise exception '0354 refuses: 0321 (the room) or a function this file calls is not in this world';
   end if;
@@ -669,6 +673,8 @@ $h$);
   if public.current_player_id() is not null then
     raise exception '0354 self-assert FAIL: the probe''s identity outlived its rollback';
   end if;
+  -- THE NEWS (0347's law): one UPDATE row, outside the probe, idempotent by its number. What is live at this deploy; buying room is dark and is not announced.
+  perform public.news_update('0354', 'Fleet totals, rename', '선단 합계, 이름 변경');
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0354 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
