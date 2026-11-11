@@ -460,6 +460,29 @@ export interface BuildingYardView {
   hulls: YardHull[]
 }
 
+// ── world.yard_sources(port, class) — where each material of a hull is had nearest (0349) ────────
+
+/** The nearest harbour that sells a material (a good) or makes it (a fitting), from THIS yard. `port`,
+ *  `name` and `miles` are null where no harbour does (a famous hull's part waits on the owner). */
+export interface YardSource {
+  /** The good's code, or the fitting's — the `HullMaterial.code` it answers. */
+  code: string
+  /** The harbour's code. */
+  port: string | null
+  name: string | null
+  /** Sailed miles from this yard (`sea_reaches`); 0 for the yard itself, null where unknown. */
+  miles: number | null
+}
+
+export interface YardSources {
+  port_id: string
+  class: string
+  /** Where each good is SOLD nearest (cmd.do_buy's roster and culture gates). */
+  goods: YardSource[]
+  /** Where each fitting is MADE nearest (cmd.do_make's workstation and made-only-in gates). */
+  items: YardSource[]
+}
+
 // ── world.warehouse(port, fleet) — what this city is keeping for you (0070) ────────────────────
 
 /** One line of a shed, or one line of a hold — the same shape, because the screen moves between them. */

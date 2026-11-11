@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Button,
   Field,
@@ -16,9 +17,13 @@ import { HullCountry } from './HullCountry'
 import { HullCrown } from './HullCrown'
 import { HullTech } from './HullTech'
 import { useBuildingYard } from './useBuildingYard'
+import { useYardSources } from './useYardSources'
 import { useWorld } from './worldStore'
-import { formatDucats, formatInt, formatTons } from '../lib/format'
-import type { FleetView, HullMaterial, Refusal, YardHull } from '../lib/rpc'
+import { formatDucats, formatInt, formatMiles, formatTons } from '../lib/format'
+import type { FleetView, HullMaterial, Refusal, YardHull, YardSource } from '../lib/rpc'
+import { goTo, useGoTo } from '../chart'
+import { useDeskGood } from '../store/deskGood'
+import { useDeskView } from '../features/command/deskView'
 import { useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -59,6 +64,16 @@ import { useT, t as tNow } from '../lib/i18n'
 // The cargo ship and the navy ship are classes like any other and go through the same order; the server names them (`crown`), they stand first
 // in their group so a player can find the hull he saw at sea, and the tray says she is his own to run. No price, gate or path differs.
 //
+// ── A YARD A PLAYER CAN FINISH (S8, 2026-11-11; owner rows 180, 305) ───────────────────────────
+// The playtest: 50+ hulls, the cheapest wanting six materials, and nothing saying where any of them is had, so
+// no player could plan a second ship. Now (1) the hulls the server says are buildable HERE AND NOW (`buildable`)
+// stand first and every other hull waits under one "More" row, which opens below itself and moves nothing above
+// it; nothing is removed. (2) Each missing material carries the nearest harbour that sells it (a good) or makes
+// it (a fitting), served by world.yard_sources (0349) with the sailed miles, and a press that goes there by the
+// doors that already exist: a good opens the Trade desk on that city with that good in hand (the map's own
+// "Open in Command" hand-over, store/deskGood.ts); a fitting made here opens this city's Workshop face; one made
+// elsewhere shows that harbour on the map (chart/goTo.ts). (3) The Build button stands when nothing is short.
+//
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -95,6 +110,9 @@ export function PortYard({
   // hull is standard, or when the server is older than 0276 and serves no grade).
   const [built, setBuilt] = useState<{ name: string; grade: string } | null>(null)
   const issue = useWorld((s) => s.issue)
+  // S8: the hulls you cannot build here and now wait under one row; it opens once and stays open (a press never collapses the page).
+  const [more, setMore] = useState(false)
+  const sources = useYardSources(portId, open?.class ?? null)
 
   const build = (hull: YardHull) => {
     if (!fleet || sending || name.trim().length < 3) return
@@ -121,11 +139,40 @@ export function PortYard({
   if (loading && !view) return <Note tone="neutral">{t('yard.loading')}</Note>
   if (!view) return <Note tone="neutral">{t('yard.noYard')}</Note>
 
-  // 0135 — 55 hulls, most of them another country's: the ones THIS port's country builds first (the
-  // server's own `wrong_yard` is null for them), the rest after, under one caption. A split of the
-  // served list, not a rule — the server already said which is which.
-  const here = crownFirst(view.hulls.filter((h) => !h.wrong_yard))
-  const elsewhere = crownFirst(view.hulls.filter((h) => h.wrong_yard))
+  // S8 — WHAT YOU CAN BUILD HERE AND NOW FIRST: the server's own `buildable` (this yard's tier and country, your
+  // skills, one famous ship to a house) splits the list; the rest wait under one "More" row — the hulls this
+  // port's country builds that you cannot yet (0135: `wrong_yard` null), then the ones built abroad, under their
+  // caption. A split of the served list, not a rule.
+  const now = crownFirst(view.hulls.filter((h) => h.buildable))
+  const later = crownFirst(view.hulls.filter((h) => !h.buildable && !h.wrong_yard))
+  const elsewhere = crownFirst(view.hulls.filter((h) => !h.buildable && h.wrong_yard))
+  const hidden = later.length + elsewhere.length
+  const tile = (hull: YardHull) => (
+    <Tile
+      key={hull.class}
+      mark={<Icon name="ship" size={20} />}
+      name={hull.name}
+      meta={
+        <>
+          <HullCountry nation={hull.line_nation} compact />
+          {hull.line_nation ? ' ' : ''}
+          <HullTech tech={hull.tech} />
+          <HullCrown crown={hull.crown} />
+          {formatTons(hull.hold)}
+        </>
+      }
+      state={hull.buildable ? 'rest' : 'muted'}
+      tap="whole"
+      onClick={() => {
+        setRefusal(null)
+        setBuilt(null)   // 0276: a fresh look at a hull clears the last build's toast
+        setDetent('half')
+        setOpen(hull)
+      }}
+      figure={<Figure value={formatDucats(hull.ducats)} unit={t('yard.toBuild')} />}
+      data-testid={`hull-${hull.class}`}
+    />
+  )
   const short = open ? shortfall(open) : null
   const ready = open !== null && open.buildable && fleet !== null && short === null
 
@@ -142,44 +189,32 @@ export function PortYard({
         </Note>
       )}
 
-      {[here, elsewhere].map((group, gi) =>
-        group.length === 0 ? null : (
-          <div
-            key={gi}
-            className={gi === 1 ? 'mt-4' : undefined}
-            data-testid={gi === 0 ? 'yard-here' : 'yard-elsewhere'}
-          >
-            {gi === 1 && <Hint className="mb-2">{t('yard.elsewhere')}</Hint>}
-            <TileField>
-              {group.map((hull) => (
-                <Tile
-                  key={hull.class}
-                  mark={<Icon name="ship" size={20} />}
-                  name={hull.name}
-                  meta={
-                    <>
-                      <HullCountry nation={hull.line_nation} compact />
-                      {hull.line_nation ? ' ' : ''}
-                      <HullTech tech={hull.tech} />
-                      <HullCrown crown={hull.crown} />
-                      {formatTons(hull.hold)}
-                    </>
-                  }
-                  state={hull.buildable ? 'rest' : 'muted'}
-                  tap="whole"
-                  onClick={() => {
-                    setRefusal(null)
-                    setBuilt(null)   // 0276: a fresh look at a hull clears the last build's toast
-                    setDetent('half')
-                    setOpen(hull)
-                  }}
-                  figure={<Figure value={formatDucats(hull.ducats)} unit={t('yard.toBuild')} />}
-                  data-testid={`hull-${hull.class}`}
-                />
-              ))}
-            </TileField>
-          </div>
-        ),
+      {now.length > 0 && (
+        <div data-testid="yard-now">
+          <TileField>{now.map(tile)}</TileField>
+        </div>
+      )}
+      {hidden > 0 && (
+        <Row
+          label={t('yard.moreN', { n: formatInt(hidden) })}
+          chevron={!more}
+          onClick={more ? undefined : () => setMore(true)}
+          aria-expanded={more}
+          className={now.length > 0 ? 'mt-3' : undefined}
+          hairline={false}
+          data-testid="yard-more"
+        />
+      )}
+      {more && later.length > 0 && (
+        <div data-testid="yard-later">
+          <TileField>{later.map(tile)}</TileField>
+        </div>
+      )}
+      {more && elsewhere.length > 0 && (
+        <div className={later.length > 0 ? 'mt-4' : undefined} data-testid="yard-elsewhere">
+          <Hint className="mb-2">{t('yard.elsewhere')}</Hint>
+          <TileField>{elsewhere.map(tile)}</TileField>
+        </div>
       )}
 
       {open && (
@@ -231,8 +266,13 @@ export function PortYard({
               data-testid="yard-variety"
             />
           )}
-          <Materials label={t('yard.materials')} list={open.goods} />
-          <Materials label={t('yard.parts')} list={open.items} />
+          <Materials label={t('yard.materials')} list={open.goods} sources={sources.view?.goods} kind="good" />
+          <Materials label={t('yard.parts')} list={open.items} sources={sources.view?.items} kind="item" />
+          {open.goods.some((m) => m.have < m.qty) && (
+            <Hint className="mb-2" data-testid="yard-store-hint">
+              {t('yard.storeHint')}
+            </Hint>
+          )}
 
           {open.wrong_yard && (
             <Note tone="warning" data-testid="yard-country">
@@ -288,24 +328,89 @@ export function PortYard({
   )
 }
 
-/** One material line: what she wants, against what is ashore in this city. */
-function Materials({ label, list }: { label: string; list: readonly HullMaterial[] }) {
+/** One material line: what she wants, against what is ashore in this city — and, while she is short of it, where it
+ *  is had nearest (0349), as a press that goes there. */
+function Materials({
+  label,
+  list,
+  sources,
+  kind,
+}: {
+  label: string
+  list: readonly HullMaterial[]
+  /** world.yard_sources' rows for this list; undefined while the read is on the wire. */
+  sources: readonly YardSource[] | undefined
+  kind: 'good' | 'item'
+}) {
   if (list.length === 0) return null
   return (
     <>
-      {list.map((m, i) => (
-        <Row
-          key={m.name}
-          label={i === 0 ? `${label} · ${m.name}` : m.name}
-          value={
-            <Figure
-              value={formatInt(m.qty)}
-              unit={tNow('yard.inStorageN', { n: formatInt(m.have) })}
-              tone={m.have < m.qty ? 'warning' : 'ink'}
+      {list.map((m, i) => {
+        const short = m.have < m.qty
+        const source = short ? sources?.find((s) => s.code === m.code) : undefined
+        return (
+          <div key={m.code}>
+            <Row
+              label={i === 0 ? `${label} · ${m.name}` : m.name}
+              hairline={!source}
+              value={
+                <Figure
+                  value={formatInt(m.qty)}
+                  unit={tNow('yard.inStorageN', { n: formatInt(m.have) })}
+                  tone={short ? 'warning' : 'ink'}
+                />
+              }
             />
-          }
-        />
-      ))}
+            {source && <SourceRow source={source} kind={kind} />}
+          </div>
+        )
+      })}
     </>
+  )
+}
+
+/** Where a missing material is had nearest, and the press that goes there by a door that already exists. */
+function SourceRow({ source, kind }: { source: YardSource; kind: 'good' | 'item' }) {
+  const t = useT()
+  const navigate = useNavigate()
+  const openOnDesk = useDeskGood((s) => s.open)
+  if (source.port === null || source.name === null) {
+    return <Row label={t('yard.nowhere')} data-testid={`yard-source-${source.code}`} />
+  }
+  const here = source.miles === 0
+  const port = source.port
+  const go = () => {
+    if (kind === 'good') {
+      // the map's own hand-over (live/PriceTray.tsx "Open in Command"): the Trade desk reads this city, this good in hand
+      openOnDesk(source.code, port)
+      navigate('/command')
+    } else if (here) {
+      // a fitting is made at this city's Workshop face
+      useDeskView.getState().setCityFace('workstation')
+      useDeskView.getState().turnTo('city')
+      navigate('/command')
+    } else {
+      // a fitting made elsewhere: that harbour on the map (outside the shell no tab answers the request, so the route does)
+      goTo({ kind: 'port', code: port })
+      if (!useGoTo.getState().openMap) navigate('/map')
+    }
+  }
+  const words =
+    kind === 'good'
+      ? here
+        ? t('yard.buyHere')
+        : t('yard.buyAt', { name: source.name })
+      : here
+        ? t('yard.makeHere')
+        : t('yard.makeAt', { name: source.name })
+  return (
+    <Row
+      label={words}
+      value={here || source.miles === null ? undefined : <Figure value={formatMiles(source.miles)} />}
+      chevron
+      onClick={go}
+      data-testid={`yard-source-${source.code}`}
+      data-port={port}
+    />
   )
 }

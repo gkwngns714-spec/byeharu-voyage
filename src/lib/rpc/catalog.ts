@@ -75,6 +75,15 @@ const TABLE = {
     fn: 'building_yard',
     args: [{ name: 'p_port', type: 'uuid' }],
   },
+  // 0349: where each material of a hull is had nearest to this yard
+  worldYardSources: {
+    schema: 'world',
+    fn: 'yard_sources',
+    args: [
+      { name: 'p_port', type: 'uuid' },
+      { name: 'p_class', type: 'text' },
+    ],
+  },
   worldWorkstation: {
     schema: 'world',
     fn: 'workstation',
