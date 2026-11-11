@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from 'react'
 import { Icon } from './Icon'
 import { ScrollPane } from './ScrollPane'
 import { detailColumnClass, glassBesideRailClass } from './screenLayout'
+import { KEEP_WORDS_CLASS } from './tileStyles'
 import { useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -49,7 +50,10 @@ export function SummaryRow({
   // to read it). Inside a query container narrower than 15 rem (`narrow:`, index.css — the HQ's panel at 390 and 320)
   // the row is a WRAPPING line, as `Row` is: the title keeps its words (up to 5 rem before it wraps), the figure drops
   // under it when the two do not fit one line, and the chevron is laid over the right edge of line 1. A summary row
-  // that is not inside such a container is the single truncating line it has always been.
+  // that is not inside such a container is one line while its title fits.
+  // THE TITLE IS NEVER CUT ON ANY GLASS (2026-11-11, the full-names slice): a title is often a NAME (a good, a city, a fleet), and the
+  // owner's rule is that a name is printed whole. It keeps its words (`KEEP_WORDS_CLASS`): it turns only at a space and its box is never
+  // narrower than its longest word. The pop-up page's own title, below, follows the same rule.
   return (
     <button
       type="button"
@@ -61,7 +65,8 @@ export function SummaryRow({
       <span
         title={typeof title === 'string' ? title : undefined}
         data-row-cell="label"
-        className="min-w-0 truncate text-t-body font-semibold text-ink narrow:max-w-max narrow:flex-[1_1_5rem] narrow:overflow-visible narrow:whitespace-normal narrow:break-words narrow:text-clip"
+        data-name=""
+        className={`${KEEP_WORDS_CLASS} text-t-body font-semibold text-ink narrow:max-w-max narrow:flex-[1_1_5rem]`}
       >
         {title}
       </span>
@@ -129,7 +134,7 @@ export function DetailPage({
           >
             <Icon name="chevron" size={20} className="rotate-180" />
           </button>
-          <h1 className="min-w-0 flex-1 truncate text-t-title">{title}</h1>
+          <h1 data-name="" className={`flex-1 ${KEEP_WORDS_CLASS} text-t-title`}>{title}</h1>
           {figure !== undefined && <span className="shrink-0 text-t-body font-semibold tabular-nums text-ink">{figure}</span>}
           {word !== undefined && <span className="shrink-0 text-t-caption text-ink-muted">{word}</span>}
         </div>

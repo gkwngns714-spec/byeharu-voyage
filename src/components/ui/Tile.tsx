@@ -110,7 +110,9 @@ export function Tile({
   const head = (
     <>
       {mark !== undefined && <span className="flex shrink-0 items-center">{mark}</span>}
-      <span className="min-w-0 flex-1">
+      {/* THE NAME KEEPS ITS WORDS (2026-11-11): the block is never narrower than the name's longest word, and where that word
+          does not fit beside the mark (a 15-letter word in a phone's half-width tile) the block stands under the mark. */}
+      <span className="min-w-min flex-1">
         <Clip className="text-t-body">{name}</Clip>
         {meta !== undefined && <span className="block break-words text-t-caption text-ink-faint">{meta}</span>}
       </span>
@@ -124,12 +126,12 @@ export function Tile({
           type="button"
           onClick={onClick}
           disabled={disabled}
-          className="flex min-h-11 w-full items-center gap-2 text-left disabled:opacity-45"
+          className="flex min-h-11 w-full flex-wrap items-center gap-x-2 text-left disabled:opacity-45"
         >
           {head}
         </button>
       ) : (
-        <span className="flex items-center gap-2">{head}</span>
+        <span className="flex flex-wrap items-center gap-x-2">{head}</span>
       )}
       {(figure !== undefined || second !== undefined) && (
         <span className="flex items-baseline justify-between gap-2">

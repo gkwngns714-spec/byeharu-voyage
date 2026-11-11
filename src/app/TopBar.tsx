@@ -80,7 +80,7 @@ export function TopBar() {
           nothing true to say, so the purse does not slide across the bar between tabs. */}
       {/* Cut only through Clip (row 201): on a phone the date, hour and price countdown can outrun
           the bar, and the full line must stay readable by hover or press. */}
-      <Clip className="text-t-caption text-ink-muted">
+      <Clip cut className="text-t-caption text-ink-muted">
         {/* THE GAME CLOCK — the world's DATE and its hour (owner row 176, 2026-10-20: *"There is
             one right now showing the time only, but I want to see the date, year, months and so
             on."*). Two clocks, side by side and in that order, because they run at different rates

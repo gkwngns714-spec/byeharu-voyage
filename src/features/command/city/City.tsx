@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Button, Note, ScrollPane, Segmented, Skeleton } from '../../../components/ui'
+import { Button, Clip, Note, ScrollPane, Segmented, Skeleton } from '../../../components/ui'
 import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../../domain/fleet'
 import { buildingTier, hasBuilding } from '../../../domain/port'
 import { PORT_FACES, productionHref, type PortFace } from '../../../live/cityFaces'
@@ -90,7 +90,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
       <div className="flex items-center justify-between gap-3">
         <h2 className="flex min-w-0 items-center gap-2 text-t-body font-semibold text-ink">
           <PortFlag code={port.code} />
-          <span className="truncate">{port.name}</span>
+          <Clip>{port.name}</Clip>
         </h2>
         <Button
           variant="secondary"

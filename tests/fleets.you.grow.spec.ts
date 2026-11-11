@@ -20,8 +20,8 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 //       stays where it was;
 //   U1  the panel stands inside the glass with at least min(rows, N) rows WHOLE before any press;
 //   U3  nothing removed: every old test id is on the screen, with as many of them as the world has hulls and captains;
-//   U5  no two text boxes cross, no sibling box overlaps another, no text stands one letter to a line, no row label is cut; cut text
-//       carries its full text, and on a glass with no hover a press reads it whole; every row of the data is at least 44 px tall;
+//   U5  no two text boxes cross, no sibling box overlaps another, no text stands one letter to a line, no row label is cut; a NAME is
+//       never cut at all (2026-11-11: it is printed whole, on as many lines as it needs); every row of the data is at least 44 px tall;
 //   U8  a press on a fleet opens her page and nothing behind it moves; a press on a captain opens her tray, and the tray stands
 //       OUTSIDE the panel's scroller.
 //
@@ -30,7 +30,7 @@ import { serveVeteranWorld, VETERAN_CAPTAINS, VETERAN_HULLS } from './manyFleets
 // tests/fleets.design.spec.ts. What stays here is what this file was right about and still holds: YOU's panel, a fleet's page opening without
 // moving what is behind it, the 24-character name whole at 320, a fleet at sea.
 // 2026-11-05 (row 267): YOU left this file's panel laws the same way — U1/U2 and the GROW walk of YOU (levels over ONE scrolling panel) are gone;
-// the page's laws are tests/you.design.spec.ts. What stays of YOU: a captain's cut name read by a press, her tray outside the list card.
+// the page's laws are tests/you.design.spec.ts. What stays of YOU: a captain's long name whole (it was cut and read by a press until 2026-11-11), her tray outside the list card.
 //
 // The two worlds are throwaway images built from this build's own (tests/twoFleets.fixture.ts, tests/manyFleets.fixture.ts). A
 // spec may not skip for want of rows — CI fails any skipped test — so the rows are made, and the count of what stands is asserted:
@@ -91,7 +91,7 @@ test('FLEETS: the longest fleet name the chain allows stands whole at 320×640, 
   await open(page, GLASSES[1], 'veteran', 'fleets', 'fleets')
   const row = page.getByTestId('fleet-row').filter({ hasText: 'Nossa Senhora da Estrela' })
   await expect(row).toHaveCount(1)
-  const name = row.locator('.truncate').first()
+  const name = row.locator('[data-name]').first()
   expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1), 'the 24-character name is cut at 320').toBe(false)
   const stack = await row.evaluate((el) => {
     const label = el.querySelector('[data-row-cell="label"]')!
@@ -174,7 +174,7 @@ test('FLEETS: a fleet AT SEA keeps her name whole at 320×640, with where she is
     })
     .toHaveLength(1)
   const sailing = page.getByTestId('fleet-row').nth((await atSea())[0])
-  const name = sailing.locator('.truncate').first()
+  const name = sailing.locator('[data-name]').first()
   expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1), 'her name is cut beside where she is bound').toBe(false)
   expect(await name.evaluate((el) => el.clientWidth), 'her name is a few pixels wide').toBeGreaterThan(60)
   // FLEETS is a page now (tests/fleets.design.spec.ts holds its laws): the document is flat and the defect rules stand
@@ -184,30 +184,49 @@ test('FLEETS: a fleet AT SEA keeps her name whole at 320×640, with where she is
   expect(failures, 'a fleet at sea broke the page').toEqual([])
 })
 
-// A NAME THE GLASS DOES CUT IS READ BY A PRESS, on a glass with no hover (which has no `title` to hover over): `Clip`
-// (src/components/ui/Clip.tsx) opens the full name IN PLACE as a layer over the cell. A captain's row is PRESSABLE, and her name is
-// cut at every phone glass (47 characters): a press on the cut name must read it and must not open her tray.
-test.describe('a cut name is read in place by a press', () => {
+// A NAME IS PRINTED WHOLE (2026-11-11, the full-names slice; the owner's rule: a name is never cut with "…"). Until then a captain's
+// 47-character name was CUT at every phone glass and read by a press that opened it in place (`Clip`). `Clip` now prints a name
+// whole, turning only at a space (src/components/ui/Clip.tsx), so the same name at the same glass is read here the other way round:
+// nothing is cut, no word is broken, and the press on her name is the row's own press again (it opens her tray).
+test.describe('a long name is printed whole', () => {
   test.use({ hasTouch: true, isMobile: true })
 
-  test("YOU: a captain's long name is cut at 320×640, a press reads it whole and opens no tray", async ({ page, request, baseURL }) => {
+  test("YOU: a captain's 47-character name stands whole at 320×640, on more than one line, and a press on it opens her tray", async ({ page, request, baseURL }) => {
     test.setTimeout(600_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
     const full = 'Ana Maria da Conceição Fernandes de Albuquerque'
     await open(page, GLASSES[1], 'veteran', 'you', 'you')
-    const touch = await page.evaluate(() => window.matchMedia('(hover: none)').matches)
-    expect(touch, 'the context is not a touch glass — press-to-read cannot be proved').toBe(true)
     await expect(page.getByTestId('your-captain')).toHaveCount(VETERAN_CAPTAINS)
-    const name = page.locator('[data-testid="your-captain"] .truncate').filter({ hasText: full })
+    const name = page.locator('[data-testid="your-captain"] [data-name]').filter({ hasText: full })
     await name.scrollIntoViewIfNeeded()
-    expect(await name.evaluate((el) => el.scrollWidth > el.clientWidth + 1), 'the long name is not cut at 320 — the proof is vacuous').toBe(true)
+    await expect(name).toHaveText(full)
+    const read = await name.evaluate((el) => {
+      const node = el.firstChild as Text
+      const tops = (from: number, to: number) => {
+        const range = document.createRange()
+        range.setStart(node, from)
+        range.setEnd(node, to)
+        return new Set([...range.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size
+      }
+      const text = node.data
+      const row = el.closest('[data-testid="your-captain"]')!.getBoundingClientRect()
+      const box = el.getBoundingClientRect()
+      return {
+        cut: el.scrollWidth > el.clientWidth + 1 || getComputedStyle(el).textOverflow === 'ellipsis',
+        lines: tops(0, text.length),
+        brokenWords: [...text.matchAll(/\S+/g)].filter((m) => tops(m.index, m.index + m[0].length) !== 1).map((m) => m[0]),
+        inRow: box.left >= row.left - 0.5 && box.right <= row.right + 0.5 && box.top >= row.top - 0.5 && box.bottom <= row.bottom + 0.5,
+        sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+      }
+    })
+    expect(read.cut, 'the long name is cut').toBe(false)
+    expect(read.lines, 'the 47-character name stands on one line at 320 px: the proof is vacuous').toBeGreaterThan(1)
+    expect(read.brokenWords, 'a word of her name is broken inside itself').toEqual([])
+    expect(read.inRow, 'her name stands outside her row').toBe(true)
+    expect(read.sideways, 'the page scrolls sideways').toBe(false)
+    await expect(page.getByTestId('clip-full'), 'a name opens no layer any more: it is already whole').toHaveCount(0)
     await name.tap()
-    const layer = page.getByTestId('clip-full')
-    await expect(layer).toBeVisible()
-    await expect(layer).toHaveText(full)
-    await expect(page.getByTestId('your-captain-tray'), 'reading a cut name opened her tray').toHaveCount(0)
-    await page.keyboard.press('Escape')
-    await expect(layer).toHaveCount(0)
+    await expect(page.getByTestId('your-captain-tray'), 'a press on her name is the press on her row').toBeVisible()
   })
 })
 
