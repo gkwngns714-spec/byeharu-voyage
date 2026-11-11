@@ -342,7 +342,7 @@ test('a tray does not animate for a player who asked it not to', async ({ page, 
 //
 // *"it looks so wrong … right now everything is on left, too packed."* The page layout (screenLayout.ts "THE PAGE", Card.tsx) is
 // numbers too, and /ui/page draws it with literal figures so they are read here without the 78 s boot of a screen: the stat strip's
-// figures are 24 px and their labels 14, a card has 16 px of padding on a phone, 20 from 768, 24 from 1,280, with 12-px corners; the
+// figures are 24 px and their labels 14, a card has 16 px of padding on a phone and 24 from 768, with 16-px corners (S9); the
 // page is MAIN | SIDE from 1,024 — 840 | 416 at 1,440, 792 | 384 at 1,280, 588 | 352 at 1,024 (the gutter 24 · 24 · 20) — and one column
 // below it, the side FIRST on the phone; a list row is 52 px on a phone and 60 from 1,024 and never wider than 35 rem; and a docked
 // tray opened inside the page stands over the side column — the same x and width — and moves nothing.
@@ -352,7 +352,7 @@ test('the page: 24-px figures, cards with room, main | side with the tray over t
   const glasses = [
     { width: 1440, height: 900, main: 840, side: 416, pad: 24, row: 60 },
     { width: 1280, height: 800, main: 792, side: 384, pad: 24, row: 60 },
-    { width: 1024, height: 768, main: 588, side: 352, pad: 20, row: 60 },
+    { width: 1024, height: 768, main: 588, side: 352, pad: 24, row: 60 },
     { width: 390, height: 844, main: null, side: null, pad: 16, row: 52 },
   ]
   let measured = 0
@@ -388,7 +388,8 @@ test('the page: 24-px figures, cards with room, main | side with the tray over t
     for (const l of m.label) expect(l, `${where}: a stat label is ${l} px — the law is 13`).toBeGreaterThanOrEqual(13)
     expect(m.figure.length, `${where}: the strip drew no stat cards`).toBe(4)
     expect(m.padding, `${where}: a card's padding`).toBe(g.pad)
-    expect(m.radius, `${where}: a card's corner`).toBe(12)
+    // 2026-11-11 (S9, cardStyles.ts): the card's corner is the sheet's 16 px, and its padding 24 from 768 (16 on a phone)
+    expect(m.radius, `${where}: a card's corner`).toBe(16)
     for (const r of m.rows) {
       expect(r.h, `${where}: a list row is ${r.h} px — the law is ${g.row}`).toBeGreaterThanOrEqual(g.row - 0.5)
       expect(r.w, `${where}: a list row is ${r.w} px wide — never wider than ${ROW_MAX_REM} rem`).toBeLessThanOrEqual(ROW_MAX_REM * 16 + 1)

@@ -18,10 +18,11 @@ export const WIDE_QUERY = '(min-width: 1024px)'
 // status strip, the page, a tray, a slide-in panel, the arrival card, a detail page — stands on the glass to its right. Below
 // `lg` the shell is exactly what it was: the strip on top, the page, the 56-px bar at the foot.
 //
-// Two variables carry it, set once with the page's (`pageVarsClass`, App.tsx), so no screen and no tray spells the bar's height
+// Two variables carry it, set once (`pageVarsClass` for every route; the rail's width by the frame), so no screen and no tray spells the bar's height
 // or the rail's width a second time:
 //   --nav-h    what the bar takes off the glass's FOOT: 3.5 rem (56 px) on a phone, 0 from `lg` (the rail is at the side)
-//   --rail-w   what the rail takes off the glass's LEFT: 0 on a phone, RAIL_REM from `lg`
+//   --rail-w   what the rail takes off the glass's LEFT: 0 on a phone, RAIL_REM from `lg` — inside the shell's frame only
+//              (`shellFrameClass`); a route outside the shell (the /ui gallery) has no rail and reads 0
 // The NavBar stays AFTER the content in the DOM (a phone's reading order, and the order every spec walks) and is drawn first
 // from `lg` (`railSlotClass`'s `lg:order-first`): one rendering, two places, decided here. AppShell and the HQ (which stands
 // outside AppShell for its own clock and world beat) both draw this frame through ONE component, src/app/ShellFrame.tsx.
@@ -31,7 +32,8 @@ export const RAIL_REM = 6
 
 /** The shell's root: one column on a phone (strip · page · bar), a row from `lg` (rail | strip over page). */
 export function shellFrameClass(): string {
-  return 'flex h-[100dvh] flex-col overflow-hidden lg:flex-row'
+  // 6rem = RAIL_REM: the rail's width exists only inside the frame that draws the rail (pageVarsClass sets 0 for every route)
+  return 'flex h-[100dvh] flex-col overflow-hidden lg:flex-row lg:[--rail-w:6rem]'
 }
 
 /** The column beside the rail: the status strip over the page. It takes what the rail leaves. */
@@ -118,8 +120,9 @@ export const scrollRegionClass = 'bv-scroll min-h-0 flex-1 overflow-y-auto px-gu
  *  x and width cannot drift from the side column's: `--page-pad` is the margin at each glass, `--page-side` the side. */
 export function pageVarsClass(): string {
   // pad: 1rem = 16 · md 1.5rem = 24 · lg 2rem = 32 · xl 2.5rem = 40. side: 22rem · xl 24rem · 90rem (1,440) 26rem = SIDE_REM
-  // the shell (THE SHELL above): the bar's 3.5 rem at the foot on a phone and none from `lg`; the rail's RAIL_REM from `lg`, none below
-  return '[--page-pad:1rem] md:[--page-pad:1.5rem] lg:[--page-pad:2rem] xl:[--page-pad:2.5rem] [--page-side:22rem] xl:[--page-side:24rem] min-[90rem]:[--page-side:26rem] [--nav-h:3.5rem] lg:[--nav-h:0rem] [--rail-w:0rem] lg:[--rail-w:6rem]'
+  // the shell (THE SHELL above): the bar's 3.5 rem at the foot on a phone and none from `lg`; NO rail here — a route outside the
+  // shell (the /ui gallery) has none, so its tray stands where the page's side column is. The shell's frame sets the rail's width.
+  return '[--page-pad:1rem] md:[--page-pad:1.5rem] lg:[--page-pad:2rem] xl:[--page-pad:2.5rem] [--page-side:22rem] xl:[--page-side:24rem] min-[90rem]:[--page-side:26rem] [--nav-h:3.5rem] lg:[--nav-h:0rem] [--rail-w:0rem]'
 }
 
 /** The page container: centred, content at most PAGE_REM, margins 16 · 24 · 32 · 40 (`--page-pad`). */

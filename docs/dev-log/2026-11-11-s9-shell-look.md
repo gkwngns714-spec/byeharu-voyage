@@ -12,10 +12,16 @@ S4 (#571) reached only the tokens. This pass does what lives outside them, once,
 
 - **The Trade desk's header** (`CommandScreen.tsx`, one class): from 1,024 to about 1,100 px the rail's 96 px left the title, the fleet strip and the five faces too little room and the strip was cut (measured: 527 px of content in a 481-px box at 1,024). The faces now step to a second line at the right where the line is full; at 1,280 it is one line, as before.
 
+- **The desk's middle pane keeps 16 rem** (`DeskFrame.tsx`, one class): the side panes grew to their 22-rem caps before the middle got anything, so at 1,024 the rail left it 176 px and "Your cargo" and the small map were cut (command.design). With a 16-rem floor the sides give way first; from 1,280 every pane is as it was.
+- **The rail's width lives only in the shell's frame** (`shellFrameClass`); a route outside the shell (the /ui gallery) has no rail, so its docked tray still stands over its side column.
+
 ## Measured laws moved (and why)
 - `tests/wide.layout.spec.ts`: the docked tray's right offset is now `max(--page-pad, 50% − rail/2 − PAGE_REM/2)`: the page is centred on what the rail leaves.
 - `tests/wide.layout.spec.ts` (COMMAND Route at 1440): a detail page is the full glass BESIDE the rail (x = 96, width = window − 96), not the whole window.
 - `tests/map.wrap.spec.ts`: the antimeridian drive pans EAST as its own comment says; it took "the short way", and the rail's narrower chart moved the fitted opening frame across 0°, so the short way became west (copies −1, 0 instead of 0, 1). The law (the seam on the glass, both copies drawn, a tap works) is unchanged.
+- `tests/primitives.geometry.spec.ts` (the page): a card's corner is 16 px (was 12) and its padding 24 from 768 (was 20 at 768-1,279): the new card look.
+- `tests/desk.terminal.spec.ts` (1440×731): the list starts at the margin measured from the rail's edge (96 + 26), not the window's.
+- `tests/unfold.fixture.ts` (the text-on-control measure): a text is clipped by its own host too. A `truncate` name's hidden tail was read as text standing on the next column's row (You at 1,280, nothing of it drawn). A measurement fix, not a law moved.
 - `tests/hq.design.spec.ts` (h) and `tests/profile.design.spec.ts` (b): "the rail's top" is the bottom bar's top only when the nav is a bar (wider than tall); from `lg` the rail takes nothing off the glass's foot, so the page's limit there is the glass.
 
 ## Proved locally (local world, headless)
