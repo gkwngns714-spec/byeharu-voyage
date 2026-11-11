@@ -156,6 +156,11 @@ export const deskDict = defineDict({
     // THE MIRRORED SCREEN (owner row 229)
     sailBuy: 'Sail & buy',
     sailSell: 'Sail & sell',
+    // 0348 (owner row 307): each card names its best sale — the city and the served profit; a buy-and-sell trip from it
+    bestSale: 'Best sale',
+    noGain: 'No gain',
+    buySell: 'Buy & sell',
+    noGainWarn: 'No city you can sail to pays more than this costs.',
     max: 'Max',
     aboardLabel: 'On board',
     aboardN: 'On board {n}',
@@ -319,6 +324,10 @@ export const deskDict = defineDict({
     tradeNotDocked: '정박 중 아님 — 거래하려면 도시로 항해하세요.',
     sailBuy: '가서 사기',
     sailSell: '가서 팔기',
+    bestSale: '최고 판매처',
+    noGain: '이익 없음',
+    buySell: '사서 팔기',
+    noGainWarn: '갈 수 있는 도시 중 이보다 비싸게 사 주는 곳이 없어요.',
     max: '최대',
     aboardLabel: '적재',
     aboardN: '적재 {n}',

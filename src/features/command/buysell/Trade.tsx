@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DetailPage, SummaryRow, useWide } from '../../../components/ui'
 import { fleetCargoByCode, fleetHoldTotal, fleetHoldUsed } from '../../../domain/fleet'
-import { usePriceWhy } from '../../../live/useDesk'
+import { useBestSales, usePriceWhy } from '../../../live/useDesk'
 import { usePortMarket } from '../../../live/usePortMarket'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import type { FleetView } from '../../../lib/rpc'
+import type { BestSale, FleetView } from '../../../lib/rpc'
 import { useDeskGood } from '../../../store/deskGood'
 import { formatInt, formatOfTotal } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
@@ -46,6 +46,11 @@ import { TradeToast } from './TradeToast'
 //   ORDERS     the standing route, the queue, the insured voyages, and the ship under them.
 //
 // A city pressed MOVES the map to it (row 231); an order pressed draws its route and estimate on it (row 217).
+//
+// THE BEST SALE (0348, owner row 307): each card names the good's best sale from the city in hand (world.best_sales, ONE
+// read here for the whole board). Pressed: a good aboard opens Sail & sell at that city (as a cargo row does); a good
+// not aboard opens THE TRIP — bought here (the city in hand), sold there — at the units the figure was priced for, in the
+// same panel, even where she lies: its first profit is the card's, from the same served row.
 
 export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }) {
   const t = useT()
@@ -72,11 +77,22 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // THE CARDS: the city's goods in one list, both sides' prices in each row.
   const rows = useMemo<TradeGoodRow[]>(() => tradeRows(quay.market?.goods ?? [], aboard, goodByCode), [quay.market, aboard, goodByCode])
 
+  // THE BEST SALES (0348): one read for the board — per city in hand, at the market's edge, never on the beat
+  const best = useBestSales(fleet.id, fleet.version, cityPort?.id ?? null)
+  const sales = useMemo<ReadonlyMap<string, BestSale> | null>(
+    () => (best.view && best.view.port === city ? new Map(best.view.goods.map((g) => [g.good, g])) : null),
+    [best.view, city],
+  )
+
+  // THE TRIP A BEST SALE OPENS (0348): bought at the city in hand, sold at its best city, for the units it was priced at
+  const [tripTo, setTripTo] = useState<{ good: string; buyAt: string; sellAt: string; units: number } | null>(null)
+
   // THE SIDE OF THE OPEN PANEL — the combined board's Buy and Sell buttons each open one; the same good pressed on
   // the side already open closes it.
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
   const openSide = useCallback(
     (s: 'buy' | 'sell', code: string) => {
+      setTripTo(null)
       if (picked === code && side === s) pickGood(null)
       else {
         setSide(s)
@@ -92,12 +108,17 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const pickedBid = usePriceWhy(sellUnlisted ? (cityPort?.id ?? null) : null, pickedAny?.goodId ?? null)
   const price = pickedAny ? (side === 'buy' ? pickedAny.buy : (pickedAny.sell ?? (sellUnlisted ? (pickedBid.view?.bid ?? null) : null))) : null
   const pickedRow = pickedAny && pickedAny.goodId && price !== null && (side === 'buy' || pickedAny.sell !== null || sellUnlisted) ? pickedAny : null
+  // the best-sale trip stands while its good is the one open, on Buy, at the city it was opened from
+  const tripNow = tripTo && pickedRow && tripTo.good === pickedRow.code && tripTo.buyAt === city && side === 'buy' ? tripTo : null
 
   // THE TRIP (not docked at the city in hand): Sail & buy plans buy there; Sail & sell plans sell what is aboard there.
+  // A best sale pressed (0348) plans buy here AND sell there, docked or not.
   const want: PlanDraft | null =
-    pickedRow && city && !here
-      ? { good: pickedRow.code, buyAt: side === 'buy' ? city : null, sellAt: side === 'sell' ? city : null, units: null, max: null, min: null, insure: false }
-      : null
+    pickedRow && city && tripNow
+      ? { good: pickedRow.code, buyAt: city, sellAt: tripNow.sellAt, units: tripNow.units, max: null, min: null, insure: false }
+      : pickedRow && city && !here
+        ? { good: pickedRow.code, buyAt: side === 'buy' ? city : null, sellAt: side === 'sell' ? city : null, units: null, max: null, min: null, insure: false }
+        : null
   const matches = (p: PlanDraft | null, w: PlanDraft) => p !== null && p.good === w.good && p.buyAt === w.buyAt && p.sellAt === w.sellAt
   const tripPlan = want && matches(plan, want) ? plan : null
   useEffect(() => {
@@ -121,10 +142,27 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // It always OPENS for that city — never the board buttons' toggle (a second row for the same good must switch the
   // city, not close: openSide's `picked === good && side === 'sell'` would read the stale good and close instead).
   const pressCargo = (code: string, good: string) => {
+    setTripTo(null)
     pressCity(code)
     setSide('sell')
     pickGood(good)
   }
+
+  // A BEST SALE PRESSED (0348): her cargo — Sail & sell there (the cargo row's press); else the trip from the city in
+  // hand, its plan opened at the card's units (the effect above keeps it while its good, buy and sell cities stand)
+  const pressBest = (s: BestSale) => {
+    if (!city || s.port === null) return
+    if (s.basis === 'on_board') {
+      pressCargo(s.port, s.good)
+      return
+    }
+    const units = s.units ?? 0
+    setTripTo({ good: s.good, buyAt: city, sellAt: s.port, units })
+    openPlan({ good: s.good, buyAt: city, sellAt: s.port, units, max: null, min: null, insure: false })
+    setSide('buy')
+    pickGood(s.good)
+  }
+  const pickedSale = pickedRow ? sales?.get(pickedRow.code) : undefined
 
   // THE TOAST after a trade or a trip queued
   const [toast, setToast] = useState<string | null>(null)
@@ -152,13 +190,15 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
       onBuy={(code) => openSide('buy', code)}
       onSell={(code) => openSide('sell', code)}
       onCity={pressCity}
+      sales={sales}
+      onBest={pressBest}
     />
   )
 
   const panel =
     pickedRow && city ? (
       <TradePanel
-        key={`${city}:${pickedRow.code}:${side}:${here ? 'here' : 'trip'}`}
+        key={`${city}:${pickedRow.code}:${side}:${here && !tripNow ? 'here' : 'trip'}:${tripNow?.sellAt ?? ''}`}
         side={side}
         fleet={fleet}
         city={city}
@@ -173,7 +213,9 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           price: price as number,
         }}
         market={pickedRow.row}
-        docked={here}
+        docked={here && !tripNow}
+        sellAt={tripNow?.sellAt ?? null}
+        noGain={side === 'buy' && pickedSale !== undefined && !pickedSale.pays}
         trip={trip}
         mode={wide ? 'pane' : 'docked'}
         onClose={() => pickGood(null)}

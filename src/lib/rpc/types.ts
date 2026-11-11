@@ -3292,6 +3292,31 @@ export interface GoodBoard {
   clock: { now: string; next_change_at: string }
 }
 
+/** 0348 `world.best_sales(fleet, port)` — one good's best sale from the city in hand. Every figure is a
+ *  world.good_board row's: a good NOT aboard is bought at the city for `units` (what fits beside the stores of
+ *  that leg) and sold at `port`; a good aboard (`basis` on_board) is her cargo sold there. */
+export interface BestSale {
+  good: string
+  basis: GoodBoard['qty']['basis']
+  /** The city it sells best at (port CODE); null when no city she can sail to is priced. */
+  port: string | null
+  units: number | null
+  /** The served profit — the trip tray's `profit` row for the same units, to the coin. */
+  profit: number | null
+  days: number | null
+  /** The profit is above nought. */
+  pays: boolean
+}
+
+/** 0348 `world.best_sales(fleet, port)`: every good the city sells, by code. `cut`: the server's time budget ran
+ *  out and the goods after it are not answered. */
+export interface BestSales {
+  port: string
+  goods: BestSale[]
+  cut: boolean
+  clock: { now: string; next_change_at: string }
+}
+
 /** One good on the watchlist (0171). The price is the record's newest (or live, `recorded: false`). */
 export interface WatchGood {
   code: string

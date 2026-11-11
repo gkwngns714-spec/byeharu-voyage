@@ -6,9 +6,9 @@ import { usePriceSeries } from '../../../live/usePriceSeries'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { haversineNm } from '../../../lib/geo/greatCircle'
 import { sailOrigin } from '../../../domain/passage'
-import { formatInt, formatPriceFigure } from '../../../lib/format'
+import { formatInt, formatPriceDelta, formatPriceFigure } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
-import type { FleetView } from '../../../lib/rpc'
+import type { BestSale, FleetView } from '../../../lib/rpc'
 import type { PortMarketState } from '../../../live/usePortMarket'
 import { dayLine } from './dayLine'
 import type { TradeGoodRow } from './tradeRows'
@@ -25,6 +25,10 @@ import type { TradeGoodRow } from './tradeRows'
 //               ▲▼ against a day ago, the day's line, and her units aboard. At a city she is NOT at, a carried good
 //               its quay does not list is bid for by world.price_why — the server buys it there all the same (owner
 //               row 231: "i can't sell because i can't dock").
+//   BEST SALE   0348 (owner row 307): under the prices, the good's best sale from the city in hand — the city and the
+//               served PROFIT (world.best_sales: ONE read for the board, never one per card — Trade.tsx asks it). Green
+//               when it pays, red "No gain" when no city she can sail to pays. A press opens the trip to that city at
+//               the units the figure was priced for, so the tray's first figure is the card's.
 //
 // The rows are tradeRows.ts — a pure function, so this file holds only the cards and the strip.
 
@@ -58,6 +62,8 @@ export function TradeBoard({
   onBuy,
   onSell,
   onCity,
+  sales,
+  onBest,
 }: {
   fleet: FleetView
   /** The city in hand (port CODE); the board reads its market. */
@@ -71,6 +77,9 @@ export function TradeBoard({
   onBuy: (code: string) => void
   onSell: (code: string) => void
   onCity: (code: string) => void
+  /** 0348: each good's best sale from the city in hand, by good CODE; null while it has not landed. */
+  sales: ReadonlyMap<string, BestSale> | null
+  onBest: (sale: BestSale) => void
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
@@ -136,7 +145,17 @@ export function TradeBoard({
             <ScrollPane className="max-h-[9rem] lg:max-h-none">
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
                 {rows.map((r) => (
-                  <TradeCard key={r.code} portId={portId} r={r} docked={docked} on={picked === r.code} onBuy={onBuy} onSell={onSell} />
+                  <TradeCard
+                    key={r.code}
+                    portId={portId}
+                    r={r}
+                    docked={docked}
+                    on={picked === r.code}
+                    onBuy={onBuy}
+                    onSell={onSell}
+                    sale={sales?.get(r.code)}
+                    onBest={onBest}
+                  />
                 ))}
               </div>
             </ScrollPane>
@@ -156,6 +175,8 @@ function TradeCard({
   on,
   onBuy,
   onSell,
+  sale,
+  onBest,
 }: {
   portId: string | null
   r: TradeGoodRow
@@ -165,6 +186,9 @@ function TradeCard({
   on: boolean
   onBuy: (code: string) => void
   onSell: (code: string) => void
+  /** 0348: its best sale from the city in hand; undefined while the read is out (or for a good the city does not sell). */
+  sale: BestSale | undefined
+  onBest: (sale: BestSale) => void
 }) {
   const t = useT()
   // Sell, at a city she is NOT at: a carried good its quay does not list is bid for by world.price_why (owner row 231)
@@ -200,6 +224,7 @@ function TradeCard({
           {sellDead ? t('desk.noBuyer') : formatPriceFigure(sell as number)}
         </span>
       </span>
+      <BestLine sale={sale} onPress={onBest} />
       {/* THE SPARK ROW RESERVES ITS HEIGHT WHATEVER THE READ HAS LANDED (2026-10-31). `h-4` alone
           did not: `flex-1` set a flex-basis of 0 and the item's automatic minimum came from its
           CHILD, so a card whose price series had not landed was 16 px SHORTER — the card grew the
@@ -219,5 +244,46 @@ function TradeCard({
         </Button>
       </span>
     </div>
+  )
+}
+
+/** 0348: ONE GOOD'S BEST SALE — the city and the served profit (world.best_sales), in ONE text line whose height is held
+ *  whatever has landed (h-5, shrink-0), so the card is the same card before and after the read: nothing below moves.
+ *  Green: it pays. Red "No gain": no city she can sail to pays (the figure is the least loss, and still pressable — the
+ *  tray says why). Red "No gain" with no city: no city she can sail to is priced at all; "Cargo full": no room for one. */
+function BestLine({ sale, onPress }: { sale: BestSale | undefined; onPress: (sale: BestSale) => void }) {
+  const t = useT()
+  const portByCode = useWorld((s) => s.portByCode)
+  const box = 'flex h-5 min-w-0 shrink-0 items-center gap-1 text-t-caption tabular-nums'
+  if (!sale) return <span className={box} data-testid="best-sale" data-state="wait" aria-hidden="true" />
+  if (sale.port === null || sale.profit === null) {
+    return (
+      <span className={`${box} text-danger`} data-testid="best-sale" data-state="none" data-pays="false">
+        {t(sale.basis === 'step' ? 'desk.holdFull' : 'desk.noGain')}
+      </span>
+    )
+  }
+  const city = portNameOf(portByCode, sale.port)
+  return (
+    <button
+      type="button"
+      onClick={() => onPress(sale)}
+      aria-label={`${t('desk.bestSale')}: ${city} ${formatPriceDelta(sale.profit)}`}
+      className={`${box} w-full rounded text-left transition hover:bg-surface-1 active:scale-[0.99] ${sale.pays ? 'text-success' : 'text-danger'}`}
+      data-testid="best-sale"
+      data-state="sale"
+      data-port={sale.port}
+      data-pays={sale.pays ? 'true' : 'false'}
+      data-profit={sale.profit}
+      data-units={sale.units ?? ''}
+    >
+      {!sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
+      <span className="min-w-0 truncate">
+        <PortFlag code={sale.port} /> {city}
+      </span>
+      <span className="ml-auto shrink-0 font-semibold" data-testid="best-sale-profit">
+        {formatPriceDelta(sale.profit)}
+      </span>
+    </button>
   )
 }
