@@ -5,7 +5,8 @@
 // see what caused it (major event, real time news-like feature)"*.
 //
 // THE HAPPENING is real: the served world is the built world with two great powers' stance changed in public.power_relations, so the
-// RELATIONS writer (0347's trigger) wrote its news row in that transaction. Then, at 390 and at 1,280, at DPR 2:
+// RELATIONS writer (0347's trigger) wrote its news row in that transaction (after the world's first count, so the chart's record
+// starts before it). Then, at 390 and at 1,280, at DPR 2:
 //   1. Stats → Overview: the world's money chart carries a dot on its time axis; pressing it opens the card (a Tray, out of the flow:
 //      the chart's card does not move by a pixel and nothing scrolls sideways), and the card says what happened, and what moved.
 //   2. Stats → News: the face lists the happening, newest first, beside 0347's own "Update: News" row; nothing scrolls sideways.
@@ -31,6 +32,9 @@ async function happenedWorld(): Promise<Buffer> {
   const { PGlite } = await import('@electric-sql/pglite')
   const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(readFileSync(path.join(dir, name)))) })
   try {
+    // the world's first count, so its money chart has a record that starts BEFORE the happening (a built world has none: the browser's
+    // own job writes the first count after the page opens, and a dot outside a chart's time is not drawn)
+    await pg.query(`select public.tick_stats(now())::text`)
     const before = await pg.query<{ n: number }>(`select count(*)::int as n from public.world_news where kind = 'RELATIONS'`)
     await pg.exec(`update public.power_relations r set stance = case when r.stance = 'ally' then 'rival' else 'ally' end
                     where (r.a, r.b) = (select x.a, x.b from public.power_relations x order by x.a, x.b limit 1)`)
