@@ -181,7 +181,7 @@ test('a city row opens its page and Back returns; the Merchants views are views,
   test.setTimeout(480_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await open(page, { width: 1280, height: 800 })
-  await openFace(page, 2)
+  await openFace(page, 3)   // Cities: the 4th face since 0347 put News after Overview
   const rows = page.getByTestId('stats-city-open')
   await expect.poll(() => rows.count(), { timeout: 60_000 }).toBeGreaterThan(10)
   const first = (await rows.first().getByTestId('stats-city-name').innerText()).trim()
@@ -196,7 +196,7 @@ test('a city row opens its page and Back returns; the Merchants views are views,
   await expect(page.getByTestId('stats-cities')).toBeVisible()
   expect(await rows.count(), 'Back returned to a shorter list').toBeGreaterThan(10)
 
-  await openFace(page, 3)
+  await openFace(page, 4)   // Merchants
   await page.getByRole('tab', { name: 'Best day', exact: true }).click()
   await expect(page.getByTestId('stats-merchants-top')).toBeVisible()
   await page.getByRole('tab', { name: 'Worst day', exact: true }).click()
