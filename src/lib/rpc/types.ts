@@ -3335,13 +3335,29 @@ export interface GoodBoard {
   clock: { now: string; next_change_at: string }
 }
 
+/** 0351: the other sale of a good `world.best_sales` serves beside its answer — the one within her purse with the
+ *  biggest TOTAL profit (the far choice), when it is another city than the answer's. A world.good_board row's figures. */
+export interface FarSale {
+  port: string
+  units: number | null
+  profit: number | null
+  days: number | null
+  /** What the buy costs (for her cargo: what it cost her). */
+  cost: number | null
+  /** The real seconds to that sale (the served row's own arrival). */
+  seconds: number | null
+}
+
 /** 0348 `world.best_sales(fleet, port)` — one good's best sale from the city in hand. Every figure is a
- *  world.good_board row's: a good NOT aboard is bought at the city for `units` (what fits beside the stores of
- *  that leg) and sold at `port`; a good aboard (`basis` on_board) is her cargo sold there. */
+ *  world.good_board row's: a good NOT aboard is bought at the city for `units` and sold at `port`; a good aboard
+ *  (`basis` on_board) is her cargo sold there.
+ *  0351: the answer is the sale with the best profit PER DAY among the sales within her purse; `units` is the tray's
+ *  own Max (world.buy_capacity's authority) where she lies and anything but her hold binds it, else what fits beside
+ *  the stores of that leg. The keys 0351 added are optional: a server before it does not serve them. */
 export interface BestSale {
   good: string
   basis: GoodBoard['qty']['basis']
-  /** The city it sells best at (port CODE); null when no city she can sail to is priced. */
+  /** The city it sells best at (port CODE); null when no city she can sail to is priced, or none is within her purse. */
   port: string | null
   units: number | null
   /** The served profit — the trip tray's `profit` row for the same units, to the coin. */
@@ -3349,6 +3365,14 @@ export interface BestSale {
   days: number | null
   /** The profit is above nought. */
   pays: boolean
+  /** 0351: what the buy costs — the trip tray's total for the same units. */
+  cost?: number | null
+  /** 0351: the real seconds to that sale (the served row's own arrival). */
+  seconds?: number | null
+  /** 0351: sales are priced, and none is within her purse (`port` is null). */
+  short?: boolean
+  /** 0351: the dearest sale within her purse, when it is another city; null when the answer is that sale. */
+  far?: FarSale | null
 }
 
 /** 0348 `world.best_sales(fleet, port)`: every good the city sells, by code. `cut`: the server's time budget ran

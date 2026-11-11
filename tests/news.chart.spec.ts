@@ -84,14 +84,18 @@ for (const glass of [PHONE, WIDE]) {
     for (let i = 0; i < n && !found; i++) {
       const dot = dots.nth(i)
       const box = await dot.boundingBox()
+      // THE MARK is what stands at the instant; its 44-px target is kept inside the chart's box (tests/news.dotSize.spec.ts)
+      const mark = await dot.getByTestId('news-dot-mark').boundingBox()
       expect(box, 'a dot has no box').not.toBeNull()
+      expect(mark, 'a dot draws no mark').not.toBeNull()
       expect(plot).not.toBeNull()
-      const cx = box!.x + box!.width / 2
-      const cy = box!.y + box!.height / 2
+      const cx = mark!.x + mark!.width / 2
+      const cy = mark!.y + mark!.height / 2
       expect(cx).toBeGreaterThanOrEqual(plot!.x - 1)
       expect(cx).toBeLessThanOrEqual(plot!.x + plot!.width + 1)
       expect(Math.abs(cy - (plot!.y + plot!.height))).toBeLessThan(2)
-      expect(box!.width, 'a dot is a 24-px target').toBeGreaterThanOrEqual(24)
+      expect(box!.width, 'a dot is a 44-px target').toBeGreaterThanOrEqual(43.5)
+      expect(box!.height, 'a dot is a 44-px target').toBeGreaterThanOrEqual(43.5)
 
       // PRESS IT: the card opens over the page; the chart's card does not move
       const before = await card.boundingBox()
