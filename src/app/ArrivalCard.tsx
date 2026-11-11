@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from './Button'
-import { formatDucatsDelta, formatInt } from '../../lib/format'
-import { num, str } from '../../lib/json'
-import { useT } from '../../lib/i18n'
-import type { LedgerEvent, PlayerHouse } from '../../lib/rpc'
-import { portNameOf, useWorld } from '../../live/worldStore'
+import { Button } from '../components/ui'
+import { formatDucatsDelta, formatInt } from '../lib/format'
+import { num, str } from '../lib/json'
+import { useT } from '../lib/i18n'
+import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
+import { portNameOf, useWorld } from '../live/worldStore'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
 // card, over whatever tab is open, says what the arrival did. It reads FACTS THE SERVER ALREADY REPORTS and adds none:

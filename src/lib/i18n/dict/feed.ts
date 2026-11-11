@@ -67,7 +67,7 @@ export const feedDict = defineDict({
     c_BUY: 'Sold',
     c_SHARE: 'Investment',
     c_FOUNDING: 'Founding',
-    // THE ARRIVAL CARD (src/components/ui/ArrivalCard.tsx)
+    // THE ARRIVAL CARD (src/app/ArrivalCard.tsx)
     arrived: 'Arrived',
     arrivedAt: 'Arrived at {port}',
     arrSold: 'Sold {n} {good}',

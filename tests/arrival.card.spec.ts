@@ -3,7 +3,7 @@ import { ready, reachable } from './appReady.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// THE ARRIVAL CARD (owner row 307, S3; src/components/ui/ArrivalCard.tsx). A new company buys at Lisbon and presses
+// THE ARRIVAL CARD (owner row 307, S3; src/app/ArrivalCard.tsx). A new company buys at Lisbon and presses
 // Sail & sell, then SITS ON ANOTHER TAB (Fleets). When the fleet comes in and sells, one card appears over that tab:
 // the port, what was sold with the server's profit, and what the server's reads say moved (a new port, a level). Its
 // profit is the Report's own figure; it is an overlay (the page does not move, nothing scrolls sideways); Next lands
