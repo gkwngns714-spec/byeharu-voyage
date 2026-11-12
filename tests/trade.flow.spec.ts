@@ -121,8 +121,15 @@ const GLASSES = [
   { width: 1280, height: 800 },
 ] as const
 
+/** HOW LONG A NEAR TRIP MAY TAKE TO LAND. The passage itself is seconds (0.1 voyage-days at 90 real seconds a day), but the sea
+ *  may delay any voyage: a calm adds 1 to 4 voyage-days and a storm 1.5 (`voyage.day_delay_hours`, DESIGN B.6), so the served
+ *  arrival can stand up to 6 real minutes out from the moment she leaves. CI met one on 2026-11-12 (run 43137152187, ko-KR at
+ *  390: the line read "arrives 02:28 · 5분" seventeen seconds after she sailed, and a 300-second wait ran out 31 seconds before
+ *  she landed). The wait is the worst served delay and a margin, not a guess at the usual one. */
+const LANDS_WITHIN_MS = 480_000
+
 async function openTrade(page: Page) {
-  test.setTimeout(600_000)
+  test.setTimeout(900_000)
   await page.goto('command')
   await ready(page)
   await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
@@ -342,8 +349,10 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         })
 
         await test.step('T9 + T8: the arrival card names its figure; landing does not sort the chips again', async () => {
+          // watched from the moment the trip is sent (the step above ends within seconds of it), so the card cannot come and go
+          // unseen: it stands 20 s (ArrivalCard.tsx SHOWN_MS) and this polls it every second or less
           const card = page.getByTestId('arrival-card')
-          await expect(card).toBeVisible({ timeout: 300_000 })
+          await expect(card, `${where}: no arrival card ${LANDS_WITHIN_MS / 1000} s after she sailed; the line read ${JSON.stringify(oneLine(await status.innerText()))}`).toBeVisible({ timeout: LANDS_WITHIN_MS })
           const figure = card.getByTestId('arrival-figure').first()
           await expect(figure).toHaveAttribute('data-kind', 'profit')
           const word = (await figure.getByTestId('arrival-figure-word').innerText()).trim()
@@ -367,21 +376,32 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         const status = page.getByTestId('trade-status')
         const act = page.getByTestId('trade-act')
         // a best sale pressed is a trip: bought here, sold at its city. The first one her purse can pay for.
-        const sales = face.locator('[data-testid="best-sale"][data-state="sale"]')
-        await expect(sales.first()).toBeVisible({ timeout: 180_000 })
+        // Since 0351 the card's own sale is the NEAR one she can pay for (one leg), and its dearer, farther sale is the tray's
+        // quiet second row ("Far"). The far one is the trip this law is about, so it is the one sent: the first good whose far
+        // sale makes a trip she can sail.
+        const sales = face.locator('[data-testid="best-sale"][data-state="sale"][data-far]')
+        await expect(sales.first(), `${where}: no card serves a far sale`).toBeVisible({ timeout: 180_000 })
+        const panel = page.getByTestId('good-detail')
         let to = ''
         for (let i = 0; i < (await sales.count()); i++) {
-          to = (await sales.nth(i).getAttribute('data-port'))!
+          const far = (await sales.nth(i).getAttribute('data-far'))!
           await sales.nth(i).click()
           await expect(act).toHaveAttribute('data-act', 'buy-sell')
+          const other = panel.locator('[data-testid="trade-other-sale"][data-kind="far"]')
+          // the far row lands with the trip's board; a good with no far row is not this law's
+          if (!(await other.waitFor({ timeout: 15_000 }).then(() => true, () => false))) continue
+          await other.click()
+          await expect(panel).toHaveAttribute('data-sell-at', far)
           const ready = await expect(act).toBeEnabled({ timeout: 20_000 }).then(
             () => true,
             () => false,
           )
-          if (ready) break
-          to = ''
+          if (ready) {
+            to = far
+            break
+          }
         }
-        expect(to, `${where}: no best sale made a trip she can sail`).not.toBe('')
+        expect(to, `${where}: no far sale made a trip she can sail`).not.toBe('')
         await act.click()
         await expect(page.getByTestId('trade-toast')).toContainText(W.sailed, { timeout: 60_000 })
         await expect(status).toHaveAttribute('data-state', 'sailing', { timeout: 60_000 })
