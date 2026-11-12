@@ -482,8 +482,7 @@ test('the sea shows how many ships each merchant is, and lets go of it when pull
     // drawn, correctly, for 60 s. Pulled back a press at a time instead, and never past the density
     // at which a group collapses to its flagship, because every claim below is about the group.
     await pullBackUntilMerchants(page, { maxUnitsPerPx: HULL_GROUP_MAX_UNITS_PER_PX })
-    for (const theme of ['dark', 'light'] as const) {
-      await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme)
+    for (const theme of ['dark'] as const) {
       await page.waitForTimeout(200)
 
       // EVERY MARK DRAWS EXACTLY THE HULLS IT CLAIMS, and claims at least one: a merchant is never
@@ -530,7 +529,6 @@ test('the sea shows how many ships each merchant is, and lets go of it when pull
   // PULLED BACK PAST THE STATED DENSITY, EVERY GROUP ON THE SHEET LETS GO. Zoom out to the globe:
   // 0.115 °/px is crossed long before the last press, so no mark may still be drawing a squadron.
   await page.setViewportSize(PHONE)
-  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
   const out = page.getByLabel('Zoom out')
   for (let i = 0; i < 12; i++) await out.click()
   await page.waitForTimeout(600)

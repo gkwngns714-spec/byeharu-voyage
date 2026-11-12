@@ -11,10 +11,10 @@ import { DESIGN_GLASSES, readDesign } from './design.fixture'
 // everything is on left, too packed. this was a mistake."* (owner, 2026-11-02, row 267.) The Profile was one narrow column of five
 // sections kept to the left of the glass (and held to "no scroll at 320×640" by tests/profile.phone.spec.ts — the compaction row 267
 // reverses; that spec is replaced by this file, which keeps its one still-true guard: the sign-out button is whole, clear of the rail).
-// It is now a PAGE (`Sheet layout="page"`): MAIN the company and its country as cards, SIDE (the tray's column) the language, the
-// appearance and the account (sign-out). One column on a phone, the company first. The page scrolls; nothing inside it does.
+// It is now a PAGE (`Sheet layout="page"`): MAIN the company and its country as cards, SIDE (the tray's column) the language and
+// the account (sign-out). One column on a phone, the company first. The page scrolls; nothing inside it does.
 //
-// THE LAWS: (a) the width used · (b) the defect rules (incl. every control 44 px) · (e) the side is used: language, appearance and
+// THE LAWS: (a) the width used · (b) the defect rules (incl. every control 44 px) · (e) the side is used: language and
 // sign-out stand in the side column from 1,024, the company and country in the main · (f) no scroll trap · (g) the company is on the
 // first glass of a phone · U3 every old id stays · and the sign-out button is whole and clear of the rail once scrolled to (320×568).
 // The Profile has no list and no key figure, so the hierarchy law (c) has nothing of its own to measure.
@@ -79,7 +79,7 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         // (e) THE SIDE IS USED
         if (glass.width >= 1024 && d.side === null) failures.push(`${where}: (e) the page has no side column`)
         for (const b of await page.evaluate(IN_SIDE, {
-          ids: ['house-line', 'country', 'profile-language', 'profile-appearance', 'profile-account', 'sign-out'],
+          ids: ['house-line', 'country', 'profile-language', 'profile-account', 'sign-out'],
         })) {
           const sideBlock = b.id !== 'house-line' && b.id !== 'country'
           if (!b.found) failures.push(`${where}: (e) the screen has no ${b.id}`)
@@ -129,3 +129,43 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
     }
   })
 }
+
+// ── DARK ONLY (the owner, 2026-11-12: *"the dark stting is default. remove the light one."*) ─────
+// The Appearance card is gone and there is one palette. Held on the two roads the light scheme
+// used to arrive by: the DEVICE's light setting, and a returning player's kept choice of Light
+// (`byeharu-voyage.appearance`, which nothing reads any more). The design gallery, so no world boots.
+test.describe('dark only: a light device and a kept Light choice still get the dark game', () => {
+  test.use({ colorScheme: 'light' })
+
+  test('the root wears no theme, the ground is the night sea, and the Profile has no Appearance card', async ({ page, request, baseURL }) => {
+    test.setTimeout(600_000)
+    test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    await page.addInitScript(() => localStorage.setItem('byeharu-voyage.appearance', 'light'))
+    await page.goto('ui')
+    await expect(page.getByTestId('gallery-class-legend')).toBeVisible()
+    const painted = await page.evaluate(() => ({
+      device: matchMedia('(prefers-color-scheme: light)').matches,
+      kept: localStorage.getItem('byeharu-voyage.appearance'),
+      theme: document.documentElement.getAttribute('data-theme'),
+      scheme: getComputedStyle(document.documentElement).colorScheme,
+      ground: getComputedStyle(document.body).backgroundColor,
+      ink: getComputedStyle(document.body).color,
+      surface: getComputedStyle(document.documentElement).getPropertyValue('--color-surface').trim(),
+    }))
+    console.log(`dark only: ${JSON.stringify(painted)}`)
+    // the test is honest only if both roads were actually open
+    expect(painted.device, 'the browser is not emulating a light device').toBe(true)
+    expect(painted.kept).toBe('light')
+    expect(painted.theme).toBeNull()
+    expect(painted.scheme).toBe('dark')
+    expect(painted.ground).toBe('rgb(10, 16, 24)') // --color-bg #0a1018
+    expect(painted.ink).toBe('rgb(243, 245, 248)') // --color-ink #f3f5f8
+    expect(painted.surface).toBe('#131c27')
+
+    await open(page, { width: 390, height: 844 })
+    await expect(page.getByTestId('profile-language')).toBeVisible()
+    await expect(page.getByTestId('profile-appearance')).toHaveCount(0)
+    expect(await page.evaluate(() => document.documentElement.getAttribute('data-theme'))).toBeNull()
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(10, 16, 24)')
+  })
+})
