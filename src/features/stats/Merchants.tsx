@@ -10,6 +10,7 @@ import {
   FilterBar,
   Figure,
   Flag,
+  FlagSlot,
   Hint,
   ListPanel,
   Note,
@@ -151,7 +152,8 @@ export function MerchantsFace() {
                   onChange={setView}
                   label={t('stats.everyCompany')}
                   columns={3}
-                  className="shrink-0"
+                  // "Worst day" / "최악의 하루" on ONE line at 320 px: the cell gives its word 4 px a side, not 8
+                  className="shrink-0 [&>button]:px-1"
                 />
                 {view === 'companies' && (
                   <>
@@ -207,7 +209,7 @@ export function MerchantsFace() {
                 {shown.map(([name, nation, purse, fleets, day, laps]) => (
                   <Row
                     key={name}
-                    mark={nation === null ? undefined : <Flag code={nation} name={nationNameOf(nationByCode, nation)} size="body" />}
+                    mark={nation === null ? <FlagSlot /> : <Flag code={nation} name={nationNameOf(nationByCode, nation)} size="body" />}
                     label={<Clip>{name}</Clip>}
                     value={<Figure value={formatDucats(purse)} />}
                     hairline={false}

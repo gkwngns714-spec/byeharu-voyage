@@ -3,6 +3,7 @@ import { Button, Note } from '../components/ui'
 import { cmdSeatCaptain } from '../lib/rpc'
 import type { Officer, Refusal, ShipSeats } from '../lib/rpc'
 import { useWorld } from './worldStore'
+import { jobWord } from './captainWords'
 import { useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -72,7 +73,7 @@ export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; s
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className="min-w-0 break-words text-t-label text-ink">
-                {s.captain ? `${s.captain.grade} · ${s.captain.name} · ${s.captain.job_word}` : t('yard.empty')}
+                {s.captain ? `${s.captain.grade} · ${s.captain.name} · ${jobWord(s.captain.job_word)}` : t('yard.empty')}
               </span>
               {canSeat && s.captain && (
                 <Button variant="quiet" size="sm" disabled={busy} onClick={() => seat(s.captain!.code, null, null)}

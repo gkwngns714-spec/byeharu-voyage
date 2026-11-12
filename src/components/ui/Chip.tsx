@@ -88,13 +88,15 @@ export function Segmented<T extends string>({
   columns?: ChoiceColumns
   className?: string
 }) {
-  const cols: ChoiceColumns = columns ?? (segments.length <= 5 ? (Math.max(2, segments.length) as 2 | 3 | 4 | 5) : 4)
+  // SIX IS THREE OVER THREE ON A PHONE (owner, 2026-11-12: four over two left a ragged second row), and one row of six from 640 px.
+  const six = columns === undefined && segments.length === 6
+  const cols: ChoiceColumns = columns ?? (six ? 3 : segments.length <= 5 ? (Math.max(2, segments.length) as 2 | 3 | 4 | 5) : 4)
   return (
     <TileGrid
       role="tablist"
       label={label}
       columns={cols}
-      className={['rounded-control bg-surface-2 p-1', fill ? 'w-full' : 'w-fit max-w-full', className].filter(Boolean).join(' ')}
+      className={['rounded-control bg-surface-2 p-1', six ? 'sm:grid-cols-6' : '', fill ? 'w-full' : 'w-fit max-w-full', className].filter(Boolean).join(' ')}
     >
       {segments.map((s) => {
         const on = s.id === value

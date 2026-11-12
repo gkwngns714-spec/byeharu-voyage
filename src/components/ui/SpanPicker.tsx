@@ -25,6 +25,11 @@ export function SpanPicker({ value, onChange, className = '' }: { value: PriceSp
         value={value}
         onChange={onChange}
         label={t('ui.chartSpan')}
+        // EACH SPAN ON ONE LINE (owner, 2026-11-12: "1 / week", "1 / month" stood on two lines at 390 and 320). Five equal
+        // columns gave "1 month" 33 px at 320. The strip is a wrapping line instead: a cell is as wide as its own word and they
+        // share what is left, so all five stand on one line where they fit (267 px of the Market card's 280) and the last ones
+        // go to a second line where they do not (a tray inside the City's panel is 218 px). No word is broken or cut.
+        className="flex! flex-wrap [&>button]:flex-auto [&>button]:whitespace-nowrap [&>button]:px-1.5"
       />
     </div>
   )

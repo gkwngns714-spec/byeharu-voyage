@@ -46,6 +46,10 @@ export function FleetHold({ fleet }: { fleet: FleetView }) {
     { key: 'free', share: hold.freeShare, tons: hold.freeT, tone: 'neutral' as const, label: t('fleets.holdFree') },
   ]
 
+  // ONE FIGURE COLUMN (owner, 2026-11-12): "0% · 0 tons" and "98% · 176 tons" are not one width, so each row's bar ended
+  // somewhere else. Every figure takes the widest one's room and the three bars end on one line.
+  const figure = (s: (typeof shares)[number]) => t('fleets.holdFigure', { pct: formatPct(s.share), tons: formatInt(s.tons), word })
+  const widest = Math.max(...shares.map((s) => figure(s).length))
   return (
     <div className="mt-3 space-y-1.5" data-testid="hold-breakdown">
       <p className="text-t-caption text-ink-faint">
@@ -59,8 +63,8 @@ export function FleetHold({ fleet }: { fleet: FleetView }) {
             tone={s.tone}
             label={t('fleets.holdShare', { what: s.label, pct: formatPct(s.share) })}
             figure={
-              <span className="tabular-nums">
-                {t('fleets.holdFigure', { pct: formatPct(s.share), tons: formatInt(s.tons), word })}
+              <span className="inline-block whitespace-nowrap text-right tabular-nums" style={{ minWidth: `${widest + 1}ch` }}>
+                {figure(s)}
               </span>
             }
             className="min-w-0 flex-1"
