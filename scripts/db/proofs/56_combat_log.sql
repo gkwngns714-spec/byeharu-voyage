@@ -4,7 +4,7 @@
 --   The migration's self-assert proves the engine and the skin on crafted hulls (parity as text, Flee, Pay, the prefix). This proof plays the game: real fleets of real hulls,
 --   the REAL departure (voyage.depart), the REAL day (voyage.settle's PIRATES arm), the REAL door (cmd.raid_order), the REAL purses. The sea is stubbed on one setting, as proofs 37,
 --   38 and 46 stub it: '' quiet, 'PIRATES' a raid of magnitude 0.5. OLD AGAINST NEW is not taken on trust: the migration's own 20 hunks are held below (written by
---   scripts/ops/harness/combat-log/gen-checks.mjs --proof from the migration's text), each is found once in the live body and reversed, every old body is held to its digest, and the
+--   scripts/ops/harness/combat-log/gen-checks.mjs --proof from the migration's text), each is found once in the live body and reversed, the rebuild is judged as a round trip on the live body (no fixed digest: a later file may re-cut these bodies), and the
 --   same passage (the voyage id pinned: it is the fight's seed) is sailed under the old bodies and the new, each in a subtransaction that is rolled back.
 --   Everything rolls back with proof.mjs's transaction; every switch this proof needs it writes here.
 --
@@ -171,38 +171,54 @@ $h$, $h$    'hits', jsonb_build_object('yours', (v_f->'hits'->>'a')::int, 'their
     || case when p_opts = '{}'::jsonb then '{}'::jsonb else voyage.raid_extras(p_ships, v_r, v_f, p_opts) end;   -- 0353: `paid`, `fled` and the log, for a company's raid only
 $h$);
 
--- the pre-images 0353 was cut against, by digest (pg_get_functiondef, LF)
-create temp table pre_56 (fn text primary key, md5 text) on commit drop;
-insert into pre_56 values
-  ('public.client_rpc_entry_points()', '04141692005b6e8a22b36c7483e576f9'),
-  ('voyage.fight(uuid,integer,uuid,numeric)', 'a4694aca0f213537d184a319f7ef75d9'),
-  ('voyage.settle(uuid,timestamp with time zone)', '7e3233a44e9ad1ba9fe17adae2f544ce'),
-  ('public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)', '2fd7ebc8a572ed14a792f72eeda9dd37'),
-  ('voyage.fight_resolve(uuid,integer,numeric,numeric,jsonb)', '97bbb6d8cd557853e1e3246fcfba15fe'),
-  ('voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)', 'd8cb03b14dddffb1adbacf1997a09e73'),
-  ('voyage.fight_round_line(jsonb,integer,text,jsonb,numeric,text)', '3952c3fd7ca19295117a0d5886899a9b');
+-- THE BODIES AS THEY ARE NOW, by digest: what a rolled-back rebuild must come back to. Never a fixed digest of an old body: a later migration may re-cut any of these
+-- (0354 adds a row to the registry), and a proof that pinned a body another slice is allowed to change went red on that slice's PR (2026-11-12, #602).
+create temp table live_56 on commit drop as
+select f.fn, md5(replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '')) as md5
+  from unnest(array['public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)', 'voyage.fight_resolve(uuid,integer,numeric,numeric,jsonb)',
+                    'voyage.raid_report(uuid,integer,numeric,numeric,jsonb,jsonb)', 'voyage.fight_round_line(jsonb,integer,text,jsonb,numeric,text)',
+                    'voyage.fight(uuid,integer,uuid,numeric)', 'voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)',
+                    'voyage.settle(uuid,timestamp with time zone)']) f(fn);
 
--- THE OLD BODIES, put back from the live ones: each hunk's NEW text once, reversed; each result held to its digest. voyage.raid_report reversed IS the old voyage.fight_resolve.
+-- THE OLD BODIES, rebuilt from the live ones, whatever a later migration has made of them. JUDGED BY THE HUNKS, as a round trip on the body as it is now:
+--   each hunk's NEW text occurs exactly once in the live body and is reversed; each OLD text then occurs exactly once in the result; and putting the NEW texts back gives
+--   the live body again, to the character. So the rebuilt body is the live one less exactly what 0353 added, and nothing a later file added is lost or judged.
+-- voyage.raid_report reversed IS the old voyage.fight_resolve (it replaces the one-line wrapper). The registry (public.client_rpc_entry_points) is NOT rebuilt: no fight
+-- reads it, every later slice adds rows to it, and ORDER_DOOR holds that the two doors are registered once each.
 -- Called only inside a subtransaction that is rolled back.
 create function pg_temp.to_old_56() returns void language plpgsql as $b$
 declare
-  f     record;
-  h     record;
-  v_def text;
+  f      record;
+  h      record;
+  v_live text;
+  v_def  text;
+  v_back text;
 begin
-  for f in select distinct x.fn from hunks_56 x order by x.fn loop
-    v_def := replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '');
+  for f in select distinct x.fn from hunks_56 x where x.fn <> 'public.client_rpc_entry_points()' order by x.fn loop
+    v_live := replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '');
+    v_def := v_live;
     for h in select * from hunks_56 x where x.fn = f.fn order by x.n desc loop
       if (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new) <> 1 then
-        raise exception 'PROOF 56 FAIL: hunk % of % is not in the live body exactly once', h.n, f.fn;
+        raise exception 'PROOF 56 FAIL: hunk % of % is not in the live body exactly once: a later migration re-cut the very text 0353 added, and must amend this proof''s copy of the hunk', h.n, f.fn;
       end if;
       v_def := replace(v_def, h.new, h.old);
     end loop;
+    v_back := v_def;
+    for h in select * from hunks_56 x where x.fn = f.fn order by x.n loop
+      if (length(v_back) - length(replace(v_back, h.old, ''))) / length(h.old) <> 1 then
+        raise exception 'PROOF 56 FAIL: hunk % of %: its OLD text is not in the rebuilt body exactly once', h.n, f.fn;
+      end if;
+      v_back := replace(v_back, h.old, h.new);
+    end loop;
+    if v_back is distinct from v_live or v_def = v_live then
+      raise exception 'PROOF 56 FAIL: the rebuilt % does not come back to the live body when 0353''s hunks are put back (or nothing was reversed)', f.fn;
+    end if;
     execute v_def;
   end loop;
-  if exists (select 1 from pre_56 p where md5(replace(pg_get_functiondef(p.fn::regprocedure), E'\r', '')) <> p.md5) then
-    raise exception 'PROOF 56 FAIL: an old body did not go back to its digest: %',
-      (select string_agg(p.fn, ', ') from pre_56 p where md5(replace(pg_get_functiondef(p.fn::regprocedure), E'\r', '')) <> p.md5);
+  -- the rebuild took: every body 0353 cut now differs from the live one (no name is looked for inside a body: a later file may add any)
+  if exists (select 1 from live_56 l where l.fn not like 'voyage.raid_report%' and md5(replace(pg_get_functiondef(l.fn::regprocedure), E'\r', '')) = l.md5) then
+    raise exception 'PROOF 56 FAIL: the old bodies were not rebuilt: % still stands as it was',
+      (select string_agg(l.fn, ', ') from live_56 l where l.fn not like 'voyage.raid_report%' and md5(replace(pg_get_functiondef(l.fn::regprocedure), E'\r', '')) = l.md5);
   end if;
 end
 $b$;
@@ -326,7 +342,7 @@ $b$;
 
 -- ── THE WHOLE MATRIX, EVERY TIME (PARITY_FULL, ORDERS_FULL). The migration's own self-assert reads 0320's matrix under clock bounds (prod is about six times slower than a
 --    builder's PC, and its first deploy refused itself at 49 s); here time is free, so every fight is fought: the new bodies' answers are kept as text, the old bodies are put back
---    in a subtransaction (pg_temp.to_old_56, each to its digest) and every answer is compared. Pure fights on 0320's probe hulls: no row of the game is read or written. ──
+--    in a subtransaction (pg_temp.to_old_56, a round trip of the hunks on the live bodies) and every answer is compared. Pure fights on 0320's probe hulls: no row of the game is read or written. ──
 do $p$
 declare
   c_seed constant uuid := '00000000-0353-4000-8000-0000000000ff';
@@ -438,10 +454,10 @@ begin
      or not coalesce(v_kinds ?& array['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED'], false) then
     raise exception 'PROOF 56 FAIL: PARITY on the whole matrix: % engine pair(s) of 3320, % fight(s) changed; % raid(s) of 1082 through the skins, % changed; endings %; first: %', v_pairs, v_bad, v_skin, v_sbad, v_kinds, v_ex;
   end if;
-  if md5(replace(pg_get_functiondef('public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)'::regprocedure), E'\r', '')) = (select p.md5 from pre_56 p where p.fn like 'public.fight_sides%') then
+  if exists (select 1 from live_56 l where md5(replace(pg_get_functiondef(l.fn::regprocedure), E'\r', '')) is distinct from l.md5) then
     raise exception 'PROOF 56 FAIL: the old engine outlived its rollback';
   end if;
-  raise notice 'PASS: PARITY_FULL — 0320''s whole matrix, 1,120 fights: 3,320 engine pairs (no option, the sizing-up, a_order FIGHT said) and 1,082 raids through the wrapper and the moved skin, the old bodies (each to its digest) against the new, all equal as text; every ending met';
+  raise notice 'PASS: PARITY_FULL — 0320''s whole matrix, 1,120 fights: 3,320 engine pairs (no option, the sizing-up, a_order FIGHT said) and 1,082 raids through the wrapper and the moved skin, the old bodies (rebuilt from the live ones by the hunks) against the new, all equal as text; every ending met';
 
   -- FLEE, PAY AND EVERY ROUND LIMIT, on the whole matrix (the new bodies)
   for v_x in select * from mx_56 m order by m.i loop
@@ -586,10 +602,10 @@ begin
     raise exception 'PROOF 56 FAIL: with the switch lit a merchant''s raid passage changed';
   end if;
   update public.world_config set value = 'false'::jsonb where key = 'raid_orders_enabled';
-  if exists (select 1 from public.voyages o where o.fleet_id = v_nfl) or (select md5(replace(pg_get_functiondef('voyage.settle(uuid,timestamp with time zone)'::regprocedure), E'\r', '')) = (select p.md5 from pre_56 p where p.fn like 'voyage.settle%')) then
+  if exists (select 1 from public.voyages o where o.fleet_id = v_nfl) or exists (select 1 from live_56 l where md5(replace(pg_get_functiondef(l.fn::regprocedure), E'\r', '')) is distinct from l.md5) then
     raise exception 'PROOF 56 FAIL: a passage outlived its rollback, or the old bodies stayed';
   end if;
-  raise notice 'PASS: LOG_NPC_PARITY — 12 raid days of a merchant, the 7 old bodies (each to its digest) against the new: days, report, purse and hulls byte for byte (% bytes); no log; the same with the switch lit', length(v_a::text);
+  raise notice 'PASS: LOG_NPC_PARITY — 12 raid days of a merchant, the old bodies (rebuilt from the live ones by the hunks) against the new: days, report, purse and hulls byte for byte (% bytes); no log; the same with the switch lit', length(v_a::text);
 
   -- ── LOG_HUMAN: a company's 6 raid days, new against old ──
   v_a := pg_temp.passage_56(v_hfl, v_sea, 6, v_t, false, false);
