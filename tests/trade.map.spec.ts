@@ -37,12 +37,12 @@ for (const size of SIZES) {
       const panel = page.getByTestId('good-detail')
       const act = page.getByTestId('trade-act')
 
-      // THE CARGO PAGE: choose the first sell row; the panel behind takes the city.
+      // THE CARGO PAGE: choose the first sell row; the page closes and the panel takes the city.
       await openDetail(page, 'cargo-open')
       await expect(cargoBlock().first()).toBeVisible({ timeout: 120_000 })
       const to0 = (await cargoBlock().first().getAttribute('data-port'))!
       await cargoBlock().first().click()
-      await closeDetail(page)
+      await expect(page.locator('[data-detail-page]'), 'a cargo row pressed closes its page, so the tray shows (2026-11-11)').toHaveCount(0)
       await expect(panel).toHaveAttribute('data-city', to0)
 
       // THE MAP PAGE: the plan's stops only, still, no zoom controls.
@@ -69,7 +69,7 @@ for (const size of SIZES) {
       await expect(cargoBlock().nth(1)).toBeVisible({ timeout: 60_000 })
       const to1 = (await cargoBlock().nth(1).getAttribute('data-port'))!
       await cargoBlock().nth(1).click()
-      await closeDetail(page)
+      await expect(page.locator('[data-detail-page]'), 'a cargo row pressed closes its page, so the tray shows (2026-11-11)').toHaveCount(0)
       await expect(panel).toHaveAttribute('data-city', to1)
       await openTradeMap(face)
       const box1 = await face.getByTestId('trade-map').getByTestId('small-chart').boundingBox()
@@ -91,7 +91,7 @@ for (const size of SIZES) {
         }
         const days = Number.parseFloat((await cargoBlock().nth(i).getByTestId('cargo-place-days').innerText()).replace(',', '.')) || 0
         await cargoBlock().nth(i).click()
-        await closeDetail(page)
+        await expect(page.locator('[data-detail-page]'), 'a cargo row pressed closes its page, so the tray shows (2026-11-11)').toHaveCount(0)
         await expect(act).toHaveText(/Sail & sell|Too far|Cargo full|Shut|No money/, { timeout: 60_000 })
         if ((await act.innerText()).trim() === 'Sail & sell' && (await act.isEnabled())) {
           if (!best || days > best.days) best = { i, days }
@@ -102,7 +102,7 @@ for (const size of SIZES) {
       // Choose the longest, read its legs on the map page, then SEND.
       await openDetail(page, 'cargo-open')
       await cargoBlock().nth(best!.i).click()
-      await closeDetail(page)
+      await expect(page.locator('[data-detail-page]'), 'a cargo row pressed closes its page, so the tray shows (2026-11-11)').toHaveCount(0)
       await expect(act).toHaveText(/^Sail & sell$/, { timeout: 60_000 })
       await expect(act).toBeEnabled()
       await openTradeMap(face)

@@ -3,7 +3,7 @@ import { fleetCargoByCode } from '../../../domain/fleet'
 import { PortFlag } from '../../../live/PortFlag'
 import { useGoodBoard, usePriceWhy } from '../../../live/useDesk'
 import { portNameOf, useWorld } from '../../../live/worldStore'
-import { formatInt, formatPriceDelta, formatPriceFigure, formatVoyageDays } from '../../../lib/format'
+import { formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure } from '../../../lib/format'
 import type { BoardSellRow, FleetView } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 
@@ -115,6 +115,7 @@ function CargoGood({
               port={docked}
               name={t('desk.here')}
               price={here}
+              avg={false}
               days={null}
               profit={null}
               on={city === docked && picked === code}
@@ -127,6 +128,7 @@ function CargoGood({
               port={r.port}
               name={portNameOf(portByCode, r.port)}
               price={r.price_each as number}
+              avg
               days={r.days}
               profit={r.profit ?? null}
               on={city === r.port && picked === code}
@@ -144,6 +146,7 @@ function PlaceRow({
   port,
   name,
   price,
+  avg,
   days,
   profit,
   on,
@@ -152,11 +155,15 @@ function PlaceRow({
   port: string
   name: string
   price: number
+  /** The price is the AVERAGE a unit of what is aboard fetches there (the served `price_each`: the bid slides as she sells),
+   *  and says so; her own quay's is the bid now, for one unit, and carries no word. */
+  avg: boolean
   days: number | null
   profit: number | null
   on: boolean
   onPress: () => void
 }) {
+  const t = useT()
   return (
     <li>
       <button
@@ -174,7 +181,10 @@ function PlaceRow({
         data-testid="cargo-place"
         data-port={port}
       >
-        <Clip className="flex-1 text-t-caption text-ink" data-testid="cargo-place-name">
+        {/* A 9-REM START (2026-11-11, the trade-flow slice): the figures grew ("84.8 avg", "0.1 days · 10s"), and beside them a
+            name was squeezed to its longest word, the flag alone on the line above it (tests/names.whole.spec.ts). The name
+            now asks for 9 rem first; where the figures do not fit beside that they take the next line, whole, at the right. */}
+        <Clip className="flex-1 basis-36 text-t-caption text-ink" data-testid="cargo-place-name">
           {/* the flag and the name's first word are one piece (a no-break space): the flag never stands alone on a line */}
           <PortFlag code={port} />
           {' '}
@@ -183,9 +193,16 @@ function PlaceRow({
         <span className="ml-auto flex shrink-0 items-baseline gap-x-3">
           <span className="text-t-caption font-semibold tabular-nums text-ink" data-testid="cargo-place-price">
             {formatPriceFigure(price)}
+            {avg && (
+              <span className="font-normal text-ink-faint" data-testid="cargo-place-avg">
+                {' '}
+                {t('desk.avg')}
+              </span>
+            )}
           </span>
           <span className="text-t-caption tabular-nums text-ink-muted" data-testid="cargo-place-days">
-            {days === null ? '' : formatVoyageDays(days)}
+            {/* the days at sea and the real wait beside them (lib/format/time.ts: the one rate) */}
+            {days === null ? '' : formatDaysReal(days)}
           </span>
           <span
             className={`text-t-caption tabular-nums ${profit === null ? 'text-ink-faint' : profit >= 0 ? 'text-success' : 'text-danger'}`}
