@@ -1,4 +1,4 @@
-import { Hint, Icon, Skeleton, goodIcon } from '../../../components/ui'
+import { Clip, Hint, Icon, Skeleton, goodIcon } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { PortFlag } from '../../../live/PortFlag'
 import { useGoodBoard, usePriceWhy } from '../../../live/useDesk'
@@ -98,7 +98,7 @@ function CargoGood({
       <div className="mb-1 flex items-baseline justify-between gap-2">
         <span className="flex min-w-0 items-center gap-1.5">
           <Icon name={goodIcon(code, good?.category ?? '')} size={16} className="shrink-0 text-ink-muted" />
-          <span className="truncate text-t-label font-medium text-ink">{good?.name ?? code}</span>
+          <Clip className="text-t-label font-medium text-ink">{good?.name ?? code}</Clip>
         </span>
         <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">{t('desk.aboardN', { n: formatInt(units) })}</span>
       </div>
@@ -164,26 +164,35 @@ function PlaceRow({
         onClick={onPress}
         aria-pressed={on}
         className={[
-          'grid w-full grid-cols-[minmax(0,1fr)_auto_auto_auto] items-baseline gap-x-3 rounded px-1.5 py-1.5 text-left transition active:scale-[0.99]',
+          // ONE WRAPPING LINE (2026-11-11, the full-names slice): the city, then its three figures together at the right. The city is
+          // printed WHOLE: it keeps its longest word (`Clip`), takes what the figures leave and turns at a space; where even its
+          // longest word does not fit beside the figures (a Korean name is one word: 산타크루스데테네리페 at 390 px)
+          // the figures stand on the next line, still at the right, instead of the name running under them.
+          'flex w-full flex-wrap items-baseline gap-x-3 rounded px-1.5 py-1.5 text-left transition active:scale-[0.99]',
           on ? 'bg-accent-soft ring-1 ring-accent' : 'hover:bg-surface-1',
         ].join(' ')}
         data-testid="cargo-place"
         data-port={port}
       >
-        <span className="truncate text-t-caption text-ink" data-testid="cargo-place-name">
-          <PortFlag code={port} /> {name}
-        </span>
-        <span className="text-t-caption font-semibold tabular-nums text-ink" data-testid="cargo-place-price">
-          {formatPriceFigure(price)}
-        </span>
-        <span className="text-t-caption tabular-nums text-ink-muted" data-testid="cargo-place-days">
-          {days === null ? '' : formatVoyageDays(days)}
-        </span>
-        <span
-          className={`text-t-caption tabular-nums ${profit === null ? 'text-ink-faint' : profit >= 0 ? 'text-success' : 'text-danger'}`}
-          data-testid="cargo-place-profit"
-        >
-          {profit === null ? '—' : formatPriceDelta(profit)}
+        <Clip className="flex-1 text-t-caption text-ink" data-testid="cargo-place-name">
+          {/* the flag and the name's first word are one piece (a no-break space): the flag never stands alone on a line */}
+          <PortFlag code={port} />
+          {' '}
+          {name}
+        </Clip>
+        <span className="ml-auto flex shrink-0 items-baseline gap-x-3">
+          <span className="text-t-caption font-semibold tabular-nums text-ink" data-testid="cargo-place-price">
+            {formatPriceFigure(price)}
+          </span>
+          <span className="text-t-caption tabular-nums text-ink-muted" data-testid="cargo-place-days">
+            {days === null ? '' : formatVoyageDays(days)}
+          </span>
+          <span
+            className={`text-t-caption tabular-nums ${profit === null ? 'text-ink-faint' : profit >= 0 ? 'text-success' : 'text-danger'}`}
+            data-testid="cargo-place-profit"
+          >
+            {profit === null ? '—' : formatPriceDelta(profit)}
+          </span>
         </span>
       </button>
     </li>

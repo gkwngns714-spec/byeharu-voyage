@@ -103,7 +103,7 @@ function OnBoardRow({
   return (
     // THE ROW, THEN THE PICTURE UNDER IT AT FULL WIDTH. Row's own child slot sits under the label
     // column, which in a 26-rem panel beside two price cells is too narrow for a bar to be read.
-    <div data-testid={`on-board-${code}`} className={last ? '' : 'border-b border-edge'}>
+    <div data-testid={`on-board-${code}`} className={`@container ${last ? '' : 'border-b border-edge'}`}>
       <Row
         label={
           <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
@@ -122,6 +122,11 @@ function OnBoardRow({
           )
         }
         hairline={false}
+        // A NAME IS PRINTED WHOLE (2026-11-11): beside the two price cells the label had 78 px in the wide desk's 318-px pane, and
+        // "Palm-leaf Manuscripts" ran under the buy cell. `pair` is Row's own rule for a pair of act cells in a narrow container:
+        // under 22 rem the cells stand UNDER the label, which then has the whole line. The row is its own query container, so the
+        // rule asks the row's width wherever the panel stands.
+        pair
       />
       {here && (
         <div className="flex items-center gap-2 pb-2" data-testid={`on-board-sale-${code}`}>

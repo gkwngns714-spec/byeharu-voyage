@@ -105,10 +105,11 @@ for (const size of SIZES) {
       const landed = board.locator('[data-testid="best-sale"]:not([data-state="wait"])')
       await expect(landed.first()).toBeVisible({ timeout: 180_000 })
       // the strip re-orders as a city is pressed (the city in hand leads), so its codes are read once, nearest first
-      const codes = await board.getByTestId('city-chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-port') ?? ''))
+      // (the strip stands in the board on a phone and in the desk's left pane on a wide glass: it is read off the face)
+      const codes = await face.getByTestId('city-chip').evaluateAll((els) => els.map((e) => e.getAttribute('data-port') ?? ''))
       for (const code of codes.filter((c) => c !== home).reverse()) {
         if ((await loss.count()) > 0) break
-        await board.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
+        await face.locator(`[data-testid="city-chip"][data-port="${code}"]`).click()
         await expect(board).toHaveAttribute('data-city', code)
         await expect(landed.first()).toBeVisible({ timeout: 180_000 })
       }

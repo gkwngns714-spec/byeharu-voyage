@@ -5,6 +5,7 @@ import { useShellState } from '../app/shellState'
 import { formatDucats, formatDucatsDelta, formatInt, formatRealShort, formatRelative } from '../lib/format'
 import { worldFleetTrades, type FleetTrades, type TradeDay, type TradeLap, type TradeLine, type TradeStop } from '../lib/rpc'
 import { portNameOf, useWorld } from './worldStore'
+import { routeTitle } from '../domain/route'
 import { useServedRead } from './useServedRead'
 import { t as tl } from '../lib/i18n'
 
@@ -43,6 +44,7 @@ export function TradeHistoryPanel({
 }) {
   const [detent, setDetent] = useState<TrayDetent>('half')
   const read = useServedRead<FleetTrades>(fleetId, () => worldFleetTrades(fleetId), { name: 'worldFleetTrades' })
+  const portByCode = useWorld((s) => s.portByCode)
   const t = read.view
 
   return (
@@ -50,7 +52,7 @@ export function TradeHistoryPanel({
       mode="side-next"
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={<TrayTitle name={tl('books.trading')} line={t?.route?.name ?? ''} testId="trade-history-name" />}
+      title={<TrayTitle name={tl('books.trading')} line={t?.route ? routeTitle(t.route.name, t.route.stops, portByCode) : ''} testId="trade-history-name" />}
       data-testid="trade-history"
       {...CHART_CHROME}
     >
