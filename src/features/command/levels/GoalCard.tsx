@@ -25,7 +25,7 @@ import { useDeskView } from '../deskView'
 // took two lines and pushed Reputation out of the box. Now the title's name and Reputation share the first line and the two tracks
 // are the second, each short enough for a 320-px glass with the longest served title; the box stands on the page's own margin.
 const CARD = 'grid min-h-11 min-w-0 shrink-0 grid-cols-[minmax(0,1fr)_auto] content-center items-baseline gap-x-3 rounded-control px-3 text-left'
-const PHONE = 'mb-2'
+const PHONE = 'mb-1'
 const WIDE = 'mx-3 mb-2 w-[22rem] min-[90rem]:mx-6'
 
 export function GoalCard() {

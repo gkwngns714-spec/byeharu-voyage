@@ -182,8 +182,10 @@ export function CommandScreen() {
           onChange={turnTo}
           label={t('command.deskFaces')}
           fill
-          className="mb-2 mt-1"
+          className={face === 'trade' && fleet ? 'mb-1 mt-1' : 'mb-2 mt-1'}
         />
+        {/* the goal card stands 4 px under the faces and 4 px over the board: the 8 px the faces kept, shared, so the Trade
+            face is not a pixel taller (under way it must not scroll its sheet, tests/trade.flow.spec.ts T3) */}
         {fleet && face === 'trade' && <GoalCard />}
         {fleet && faceBody(fleet)}
       </div>
