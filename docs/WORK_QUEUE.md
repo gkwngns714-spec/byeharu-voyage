@@ -1,6 +1,36 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
-## HAND-OFF 2026-11-11 ~08:45 UTC: continue on another computer from here
+## HAND-OFF 2026-11-13 (PC gkwng → another computer): continue from here
+
+**To resume (in order):**
+1. `cd` to the clone, `git pull`. New computer: do `docs/NEW_COMPUTER.md` once (also copy `scripts/ops/bv-queue-push.sh` to `~/bin/`; it expects the clone at `~/dev/byeharu-voyage`). Pull the `claude-memory` repo and read `byeharu-voyage-resume-2026-11-13.md`.
+2. Tell Claude: "continue from the hand-off on top of docs/WORK_QUEUE.md".
+3. Check the facts first: `gh pr list`, the prod head (the queue says 0353 is the last deployed), main's Acceptance (green on cd040411, run 43193553760), `version.json` (reads `cd04041`).
+4. Agents, previews and worktrees from PC gkwng do not carry over. Nothing is left running there. Every branch below is on GitHub: `git fetch`, then one worktree per branch.
+
+**Live since the last hand-off:** #598, #599, #600 (client trade pass), 0353 (#597, a fight keeps its log; standing orders dark), #605 (dark only, row 319), #606 and #607 (phone tidy, row 318: map names, top bar, Trade, every other screen at 390 / 320, EN / KO).
+
+**Open PRs, all checks green when last read (2026-11-13), NOT merged:**
+- #602 `fleet-room` f6014d47: 0354, room is bought, fleet totals, rename (F3 + F4, dark). A migration: deploy only via `~/bin/bv-deploy.sh`, with the before / after checks in the entries below. It is stacked as one tree with #603 and #604.
+- #603 `proof-56-later-chains` 3ace9538: proof 56 judged by 0353's hunks.
+- #604 `small-fixes` 5bdb8449: the ops guard reads the first statement; a landing is waited for ten voyage-days.
+- Main has moved since their greens (three client merges): `gh pr update-branch` and a fresh green before any merge.
+- #566 (docs only), and the owner's holds: #511 island map, #484 bank. Do not merge the holds.
+
+**Unfinished, cut off by the reboot of 2026-11-12 05:35 UTC, pushed as WIP, no PR, NOT reviewed, NOT deployed:**
+- `level-up` 4a8d9060: 0356, R4 a level crossed is a moment (row 317). Committed work; needs its checks and a PR.
+- `live-rounds` f9adecba: 0357, a battle fought round by round (C3, dark behind `attack_enabled`). One WIP commit of whatever the builder had written; read it before trusting it.
+- `yard-plan` 9adffc16: 0358, the yard plans the build (S1 of `docs/SECOND_SHIP.md`). Same: one WIP commit, read it first.
+- Lane order was: 0354 → 0355 captain skills (`captain-skills`) → 0356 → 0357 → 0358; client `fleets-page` (F5) after 0354.
+
+**Next small slices, not started:**
+- `tests/news.dotSize.spec.ts:169` at 390 px: pressing a news dot sometimes moves its chart (about 1 run in 6, older than the phone tidy; a late block pushes the chart down).
+- 320 px leftovers: long names breaking mid-word (goods on a Stats city page, "Spiegelretourschip", "산타크루스데테네리페" in the all-cities list); the city Market buy button on two lines; goods card "On board 0" on a second line.
+- Korean sea names, sea places, captain titles and job words are Claude's translations; the owner has not checked them.
+
+**Left on PC gkwng only (not needed):** two scratch diagnostic specs in `~/dev/wt-hire-red` (`tests/zz.buydiag.spec.ts`, `tests/zz.hirediag.spec.ts`), and about 28 old worktrees under `~/dev/` whose branches are all pushed.
+
+## HAND-OFF 2026-11-11 ~08:45 UTC — superseded by the block above
 
 **To resume (in order):**
 1. `cd` to the clone, `git pull`. New computer: do `docs/NEW_COMPUTER.md` once. Pull the `claude-memory` repo and read `byeharu-voyage-resume-2026-11-11.md`.
