@@ -6,6 +6,7 @@ import { num, str } from '../lib/json'
 import { useT } from '../lib/i18n'
 import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
 import { portNameOf, useWorld } from '../live/worldStore'
+import { ArrivalRaids } from '../live/ArrivalRaids'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
 // card, over whatever tab is open, says what the arrival did. It reads FACTS THE SERVER ALREADY REPORTS and adds none:
@@ -97,6 +98,7 @@ export function ArrivalCard() {
   const portByCode = useWorld((s) => s.portByCode)
   const [card, setCard] = useState<Card | null>(null)
   const seen = useRef<Set<string> | null>(null)
+  const [logOpen, setLogOpen] = useState(false)   // 0353: a raid's log is open on the card, and the card waits
 
   useEffect(() => {
     let before: PlayerHouse | null = null
@@ -119,10 +121,10 @@ export function ArrivalCard() {
   }, [])
 
   useEffect(() => {
-    if (card === null) return
+    if (card === null || logOpen) return
     const id = window.setTimeout(() => setCard(null), SHOWN_MS)
     return () => window.clearTimeout(id)
-  }, [card])
+  }, [card, logOpen])
 
   if (card === null) return null
   const sales = card.arrivals.flatMap((a) => a.sales)
@@ -156,6 +158,7 @@ export function ArrivalCard() {
             )}
           </p>
         ))}
+        <ArrivalRaids ids={card.arrivals.map((a) => a.id)} onOpen={setLogOpen} />
         {card.newPorts > 0 && (
           <p className="mt-1 text-t-body text-accent" data-testid="arrival-newport">
             {t('feed.newPort')}
