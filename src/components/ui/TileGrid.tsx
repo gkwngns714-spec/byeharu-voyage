@@ -136,13 +136,19 @@ function useWordSpans(grid: { current: HTMLDivElement | null }, base: number | u
       const spans = needs.map((w) => Math.min(columns, Math.max(1, Math.ceil((w - 0.5 + gap) / (column + gap)))))
       // a wide cell that does not fit the rest of its line starts the next; the cell before it takes the rest
       let at = 0
+      let lines = 1
       spans.forEach((span, i) => {
         if (at + span > columns) {
           if (i > 0) spans[i - 1] += columns - at
           at = 0
         }
+        if (at === 0 && i > 0) lines++
         at = (at + span) % columns
       })
+      // NEVER A LINE MORE THAN THE PLAIN GRID: two or three long names would cost the picker a whole line (eight Brazilian
+      // harbours in Korean stood on four lines and the Trade face scrolled under way, tests/trade.flow.spec.ts T3). Then the
+      // wrapping line stands as it is, where a long cell is a little over its column and the line still holds its count.
+      if (lines > Math.ceil(cells.length / columns)) return
       cells.forEach((c, i) => {
         const n = spans[i]
         if (n === 1) return
