@@ -204,6 +204,9 @@ function Board({
       value={<Figure value={formatInt(r.total_fame)} tone={r.mine ? 'accent' : 'ink'} />}
       tone={r.mine ? 'accent' : 'default'}
       chevron={r.mine}
+      // ONE FIGURE COLUMN (owner, 2026-11-12): your own row carries a chevron (32 px) and the others do not, so your fame stood
+      // 32 px left of the column above it. A row without the chevron keeps the chevron's room.
+      className={r.mine ? '' : 'pr-8'}
       hairline={false}
       onClick={r.mine ? () => show(r) : undefined}
       data-testid={r.mine ? 'rank-you' : 'rank-row'}

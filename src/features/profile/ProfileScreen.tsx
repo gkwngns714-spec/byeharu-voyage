@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, LanguageSwitch, Note, PageSplit, Row, Segmented, Sheet } from '../../components/ui'
+import { Button, Card, Facts, LanguageSwitch, Note, PageSplit, Row, Segmented, Sheet } from '../../components/ui'
 import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
 import { NationPicker } from '../../live/NationPicker'
@@ -75,17 +75,15 @@ export function ProfileScreen() {
                   data-testid="house-line"
                   hairline={false}
                   label={
-                    <span className="text-t-body text-ink">
-                      {[
+                    // THE THREE FACTS TURN ONLY AT A DOT (owner, 2026-11-12): "11월 / 12일 설립" and "since / Nov 12" broke a date in two
+                    <Facts
+                      className="block text-t-body text-ink"
+                      items={[
                         player.company_name,
                         player.nation ? properName('nation', player.nation, player.nation_name ?? player.nation) : player.nation_name,
-                        t('profile.since', {
-                          date: founded(player.founded_at, nowMs),
-                        }),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
+                        <span className="whitespace-nowrap">{t('profile.since', { date: founded(player.founded_at, nowMs) })}</span>,
+                      ]}
+                    />
                   }
                 />
               ) : (
@@ -119,16 +117,14 @@ export function ProfileScreen() {
 
             <Card data-testid="profile-account">
               {authMode === 'local' ? (
-                <Row
-                  tone="muted"
-                  hairline={false}
-                  label={t('profile.localOnly')}
-                  value={
-                    <Button variant="secondary" disabled data-testid="sign-out">
-                      {t('profile.signOut')}
-                    </Button>
-                  }
-                />
+                // THE SENTENCE TAKES THE CARD'S WIDTH AND THE BUTTON STANDS UNDER IT (owner, 2026-11-12): beside the button it was
+                // three cramped lines in half a card at 320 px
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                  <p className="min-w-0 flex-[1_1_16rem] text-t-label text-ink-faint [text-wrap:balance]">{t('profile.localOnly')}</p>
+                  <Button variant="secondary" disabled data-testid="sign-out">
+                    {t('profile.signOut')}
+                  </Button>
+                </div>
               ) : (
                 <Row
                   hairline={false}
