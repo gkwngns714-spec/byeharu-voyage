@@ -56,7 +56,8 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   await pressBuy(page, good)
   // the city's trades stand under the tray's More (S5, 2026-11-11: the short tray)
   const more = async () => {
-    if ((await tray.locator('[data-testid="trade-tray-detail"]').count()) === 0) await tray.locator('[data-testid="trade-tray-more"]').click()
+    // BOUNDED: a press with no timeout waits the whole test out for a tray that has closed, and a retry block cannot interrupt it
+    if ((await tray.locator('[data-testid="trade-tray-detail"]').count()) === 0) await tray.locator('[data-testid="trade-tray-more"]').click({ timeout: 5_000 })
   }
   await more()
   const list = tray.locator('[data-testid="city-good-trades"]')
@@ -79,14 +80,21 @@ test('City › a good pressed lists who bought it: my buy shows as mine, Bought,
   // WIDE GLASS: the desk re-lays out (the tray closes with the swap); the same press opens the same
   // list beside the ledger, with no sideways scroll
   await page.setViewportSize({ width: 1280, height: 900 })
-  // The swap closes the tray a beat AFTER the resize lands (matchMedia -> React -> the desk remounts), so
-  // "is it closed yet?" read once can still say "open" just before it closes (main run 40577531374: the
-  // final page had no tray). Ask again until the list stands: press only when the tray is not there.
+  // WAIT FOR THE SWAP ITSELF, NOT FOR A BEAT (2026-11-12). The swap lands AFTER the resize returns (matchMedia -> React -> the
+  // desk remounts and the tray closes with it): measured 33 ms later on an idle machine, 204 ms with the CPU slowed 6x, 1.4 s
+  // at 20x. The old wait asked "is the tray there?" and "is it unfolded?" as two reads, and beside two busy workers the swap
+  // fell between them: the tray was counted, then gone, and the press on its More (no timeout) waited for a tray that had
+  // closed until the retry block's 30 s ran out — the block never retried (the red: "Timeout 30000ms exceeded while waiting
+  // on the predicate", with the press still unfinished in the trace). The desk says when it is the wide one
+  // (`data-desk="terminal"`, CommandScreen.tsx), and the phone's tray is gone with it: wait for both, then press.
+  await expect(page.locator('[data-testid="command"][data-desk="terminal"]'), 'the desk did not re-lay out for the wide glass').toBeVisible({ timeout: 60_000 })
+  await expect(tray, "the phone's tray outlived the swap to the wide desk").toHaveCount(0, { timeout: 30_000 })
+  // the wide desk's ledger is a fresh mount: press when its row is live (every step inside is bounded, so a miss is retried)
   await expect(async () => {
     if ((await tray.count()) === 0) await pressBuy(page, good)
     await more()
     await expect(first).toBeVisible({ timeout: 2_000 })
-  }).toPass({ timeout: 30_000 })
+  }).toPass({ timeout: 60_000 })
   await expect(first).toContainText(/you/i)
   expect(await noSideways(page), 'the page scrolls sideways at 1280').toBe(true)
   await page.screenshot({ path: testInfo.outputPath('trades-wide.png') })

@@ -6,7 +6,7 @@ import { usePriceSeries } from './usePriceSeries'
 import { portNameOf, useWorld } from './worldStore'
 import { dayLine } from '../domain/market'
 import type { TradeGoodRow } from '../domain/market'
-import { formatInt, formatPriceDelta, formatPriceFigure } from '../lib/format'
+import { formatInt, formatPriceDelta, formatPriceFigure, formatRealShort } from '../lib/format'
 import { useT } from '../lib/i18n'
 import type { BestSale } from '../lib/rpc'
 
@@ -148,6 +148,12 @@ export function TradeCard({
  *  sale the block is the press that opens its trip. Green: it pays. Red "No gain": no city she can sail to pays (the figure
  *  is the least loss, still pressable — the tray says why); with no city at all, no press; "Cargo full": no room for one.
  *
+ *  0351 (docs/SUCCESS_PLAN.md T5): THE SALE NAMED IS ONE SHE CAN PAY FOR, THE BEST PER DAY, AND IT SAYS HOW LONG — "City
+ *  +profit · time": the real time to that sale (the served seconds) stands beside the profit. What the buy costs is the
+ *  tray's own Total, one press away (and in the line's title): a fourth figure does not fit a 140-px card. "No money":
+ *  sales are priced and none is within her purse (`short`). The dearer, farther sale (`far`) is not a second line here —
+ *  the card is two lines at a phone's width already; it is the quiet "Far" row in the tray this press opens.
+ *
  *  THE CITY IS PRINTED WHOLE (2026-11-11; the owner's rule: a name is never cut with "…"). The line under the prices is a
  *  wrapping line: the city (its flag and its name, by the design system's keeps-its-words rule: it turns only at a space
  *  and is never narrower than its longest word), then the profit and the day line together at the right. Where the three
@@ -175,16 +181,19 @@ function SaleBlock({
   const top = 'flex h-[1.375rem] w-full items-baseline justify-between gap-1'
   // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
   const line = `flex ${canLand ? 'min-h-9' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
-  // the profit and the day line stay together, at the right of whichever line they stand on
-  // (in a 140-px card a six-figure profit and the 48-px day line are 13 px too many: the day line gives way, the figure never)
-  const tail = 'ml-auto flex min-w-0 max-w-full items-center gap-1'
+  // the profit, the time (0351) and the day line stay together, at the right of whichever line they stand on, and WHAT DOES NOT
+  // FIT GIVES WAY WHOLE, LAST FIRST: the tail is ONE line high and wraps out of sight (the row gap puts a wrapped part a full
+  // line below the cut), so in a 140-px card the day line goes first, then — only where a five-figure profit and an hours-long
+  // time are a few px too many (measured at a 320-px glass: "+29,085" beside "1h02m") — the time, which the line's title still
+  // says. At 390 px and wider all three stand. The figure never gives way.
+  const tail = 'ml-auto flex h-[1.125rem] min-w-0 max-w-full flex-wrap items-center justify-end gap-x-0.5 gap-y-4 overflow-hidden'
   if (!sale || sale.port === null || sale.profit === null) {
     return (
       <div className={block}>
         <span className={top}>{prices}</span>
         {sale ? (
-          <span className={`${line} text-danger`} data-testid="best-sale" data-state="none" data-pays="false">
-            {t(sale.basis === 'step' ? 'desk.holdFull' : 'desk.noGain')}
+          <span className={`${line} text-danger`} data-testid="best-sale" data-state="none" data-pays="false" data-short={sale.short ? 'true' : undefined}>
+            {t(sale.basis === 'step' ? 'desk.holdFull' : sale.short ? 'desk.noMoney' : 'desk.noGain')}
             <span className={tail}>{spark}</span>
           </span>
         ) : (
@@ -196,7 +205,10 @@ function SaleBlock({
     )
   }
   const city = portNameOf(portByCode, sale.port)
-  const words = `${t('desk.bestSale')}: ${sale.pays ? '' : `${t('desk.noGain')} · `}${city} ${formatPriceDelta(sale.profit)}`
+  // 0351: the real time to that sale and what the buy costs (served; absent from a server before 0351)
+  const time = sale.seconds != null ? formatRealShort(sale.seconds * 1000) : null
+  const cost = sale.cost != null && sale.basis !== 'on_board' ? `${t('desk.cost')} ${formatPriceDelta(-sale.cost)}` : null
+  const words = [`${t('desk.bestSale')}: ${sale.pays ? '' : `${t('desk.noGain')} · `}${city} ${formatPriceDelta(sale.profit)}`, time, cost].filter(Boolean).join(' · ')
   return (
     <button type="button" onClick={() => onPress(sale)} title={words} className={`${block} rounded text-left transition hover:bg-surface-1 active:scale-[0.99]`}>
       <span className={top}>{prices}</span>
@@ -208,6 +220,9 @@ function SaleBlock({
         data-pays={sale.pays ? 'true' : 'false'}
         data-profit={sale.profit}
         data-units={sale.units ?? ''}
+        data-cost={sale.cost ?? undefined}
+        data-seconds={sale.seconds ?? undefined}
+        data-far={sale.far?.port}
       >
         {!sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
         {/* the flag and the name stand together; in a card too narrow for both (산타크루스데테네리페 is 130 px, a 158-px card
@@ -219,6 +234,12 @@ function SaleBlock({
           <span className="shrink-0 font-semibold" data-testid="best-sale-profit">
             {formatPriceDelta(sale.profit)}
           </span>
+          {/* 0351: how long it takes, in real time — after the day line, the next to give way (the tail, above) */}
+          {time !== null && (
+            <span className="shrink-0" data-testid="best-sale-time">
+              ·<span className="ml-0.5">{time}</span>
+            </span>
+          )}
           {spark}
         </span>
       </span>
