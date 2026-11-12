@@ -275,6 +275,32 @@ export const LABEL_PRIORITY = {
 /** JetBrains Mono's advance is 0.6 em; the extra 6% is headroom for a wider fallback face. */
 const ADVANCE_EM = 0.6 * 1.06
 
+/**
+ * A FULL-WIDTH LETTER IS A WHOLE EM (2026-11-12, the owner on a phone, in Korean: *"word box
+ * overlapping"*). The rule above counted every character as one Latin advance, and a Hangul
+ * syllable is set a full em wide in every face a phone has, so a Korean name was drawn about one
+ * and a half times as wide as the box the planner had kept clear for it: `산루카르데바라메다` ran
+ * across Seville's flag, `카디스` into `지브롤터`. The box is now the sum of each letter's own
+ * advance: a full em for Hangul, kana, Han and the full-width forms, the Latin advance for the rest.
+ */
+const WIDE_EM = 1
+const WIDE = /[ᄀ-ᇿ⺀-鿿가-힯豈-﫿＀-￯]/
+
+/**
+ * A PLACE'S NAME IS TALLER THAN ITS FONT SIZE (2026-11-12, the same complaint). The box kept clear was one em tall; what is drawn
+ * in it is a flag 1.25 em tall (FLAG_HEIGHT_EM) and letters with a halo round them, and a Hangul syllable fills the whole em where
+ * a Latin lower-case letter fills half of it. Two names on neighbouring lines therefore touched: `지브롤터 해협` stood on Ceuta's
+ * flag. The box is now the flag's height (at 1.35 em five harbours lost their names at 47 %, tests/map.labels.spec.ts). A sea's or a region's name (ground, centred, no flag) keeps its em.
+ */
+const NAME_HEIGHT_EM = 1.25
+
+/** The width of a name, in em, at the given letter-spacing: the planner's one measure of text. */
+export function textEm(text: string, spacingEm = 0): number {
+  let em = 0
+  for (const ch of text) em += (WIDE.test(ch) ? WIDE_EM : ADVANCE_EM) + spacingEm
+  return em
+}
+
 const DEFAULTS = { fontSizePx: 10.5, gapPx: 9, glyphRadiusPx: 7, edgeInsetPx: 4 }
 
 /** One frozen empty list, so a chart with no chrome over it does not allocate one per frame. */
@@ -496,10 +522,10 @@ export function planLabels(
     const sizePx = request.sizePx ?? options.fontSizePx ?? DEFAULTS.fontSizePx
     const spacingEm = request.spacingEm ?? 0
     const size = sizePx * u
-    const width = request.text.length * (ADVANCE_EM + spacingEm) * size + (request.flag ? FLAG_ADVANCE_EM * size : 0)
+    const width = textEm(request.text, spacingEm) * size + (request.flag ? FLAG_ADVANCE_EM * size : 0)
     const options_ = centredName
       ? centredNear(request.at, width, size, request.slackLines ?? 0)
-      : candidates(request.at, width, size, gap, options.rings ?? LABEL_RINGS).filter(
+      : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, options.rings ?? LABEL_RINGS).filter(
           (c) => (c.stepped ?? false) === stepOut,
         )
 
