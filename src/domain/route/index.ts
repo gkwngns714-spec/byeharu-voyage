@@ -111,7 +111,26 @@ export function routePausedEventWords(route: string, reason: string | null, sent
 
 /** The ports of a route in order, joined by the loop mark: `Lisbon ⇄ Funchal`. */
 export function routePorts(route: StandingRoute, portByCode: Record<string, SnapshotPort>): string {
-  return route.stops.map((s) => portByCode[s.port]?.name ?? s.port).join(' ⇄ ')
+  return portsLine(route.stops.map((s) => s.port), portByCode)
+}
+
+/** Port codes in order as one line of names: `Lisbon ⇄ Funchal`. */
+export function portsLine(codes: readonly string[], portByCode: Record<string, SnapshotPort>): string {
+  return codes.map((code) => portByCode[code]?.name ?? code).join(' ⇄ ')
+}
+
+/** WHAT A ROUTE IS CALLED ON THE GLASS (2026-11-11, the full-names slice; the owner's rule: a name is never cut with "…").
+ *
+ *  The server keeps a route's name in 2 to 24 characters (0092, `standing_routes_name_length`). A player's route is named by the
+ *  game, not typed: its ports in order (`routeName`, live/standingRouteDraft.ts), and three ports already pass 24 characters, so the
+ *  name the server holds is only the START of that line ("Lisbon ⇄ Seville ⇄ Cadi", and before this slice "…⇄ Cad…"). That stored
+ *  name is a key and is never printed as it is: wherever a route is named, this is asked, and when the stored name is the cut start
+ *  of the route's own ports it answers with the WHOLE line of ports instead. A name the server holds whole (a merchant house's
+ *  "Carreira da Índia", a short route) is printed as it is. */
+export function routeTitle(name: string, stopCodes: readonly string[], portByCode: Record<string, SnapshotPort>): string {
+  const ports = portsLine(stopCodes, portByCode)
+  const start = name.replace(/…$/, '').trimEnd()
+  return ports !== name && start !== '' && ports.startsWith(start) ? ports : name
 }
 
 /** One trade line of a stop, ready to draw: the good (null for everything on board) and its words. */

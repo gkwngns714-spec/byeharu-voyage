@@ -91,7 +91,7 @@ export function FieldButton({
       {...rest}
     >
       {icon !== null && <Icon name={icon} size={20} className="shrink-0 text-ink-faint" />}
-      <Clip className="min-w-0 flex-1">{value}</Clip>
+      <Clip className="flex-1">{value}</Clip>
       <Icon name="chevron" size={18} className="shrink-0 rotate-90 text-ink-faint" />
     </button>
   )

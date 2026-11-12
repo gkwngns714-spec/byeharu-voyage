@@ -6,6 +6,7 @@ import { num, str } from '../lib/json'
 import { useT } from '../lib/i18n'
 import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
 import { portNameOf, useWorld } from '../live/worldStore'
+import { ArrivalRaids } from '../live/ArrivalRaids'
 
 // THE ARRIVAL CARD (owner row 307, the remaster's S3): a fleet comes in, sells, and the player was told nothing. One
 // card, over whatever tab is open, says what the arrival did. It reads FACTS THE SERVER ALREADY REPORTS and adds none:
@@ -41,6 +42,8 @@ interface Card {
   levels: { track: 'trading' | 'exploration'; level: number }[]
   /** How many new ports the served count gained on the read(s) this card holds. */
   newPorts: number
+  /** 0352: the Reputation the served book gained on the read(s) this card holds (earns only). */
+  reputation: number
 }
 
 const TRACKS = ['trading', 'exploration'] as const
@@ -71,7 +74,10 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
     }
   }
   const newPorts = before && now ? Math.max(0, now.levels.exploration.ports_reached - before.levels.exploration.ports_reached) : 0
-  return { arrivals, levels, newPorts }
+  // 0352: the served book's rows past the row the read before ended on. Earns only; the server's own amounts, added.
+  const seenSeq = before?.reputation?.seq ?? 0
+  const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 ? n + r.delta : n), 0)
+  return { arrivals, levels, newPorts, reputation }
 }
 
 function merge(a: Card | null, b: Card): Card {
@@ -80,6 +86,7 @@ function merge(a: Card | null, b: Card): Card {
     arrivals: [...a.arrivals, ...b.arrivals],
     levels: [...a.levels.filter((x) => !b.levels.some((y) => y.track === x.track)), ...b.levels],
     newPorts: a.newPorts + b.newPorts,
+    reputation: a.reputation + b.reputation,
   }
 }
 
@@ -89,6 +96,7 @@ export function ArrivalCard() {
   const portByCode = useWorld((s) => s.portByCode)
   const [card, setCard] = useState<Card | null>(null)
   const seen = useRef<Set<string> | null>(null)
+  const [logOpen, setLogOpen] = useState(false)   // 0353: a raid's log is open on the card, and the card waits
 
   useEffect(() => {
     let before: PlayerHouse | null = null
@@ -111,10 +119,10 @@ export function ArrivalCard() {
   }, [])
 
   useEffect(() => {
-    if (card === null) return
+    if (card === null || logOpen) return
     const id = window.setTimeout(() => setCard(null), SHOWN_MS)
     return () => window.clearTimeout(id)
-  }, [card])
+  }, [card, logOpen])
 
   if (card === null) return null
   const sales = card.arrivals.flatMap((a) => a.sales)
@@ -139,6 +147,7 @@ export function ArrivalCard() {
             {s.figure !== null && <span className="shrink-0 font-semibold tabular-nums">{formatDucatsDelta(s.figure)}</span>}
           </p>
         ))}
+        <ArrivalRaids ids={card.arrivals.map((a) => a.id)} onOpen={setLogOpen} />
         {card.newPorts > 0 && (
           <p className="mt-1 text-t-body text-accent" data-testid="arrival-newport">
             {t('feed.newPort')}
@@ -149,6 +158,11 @@ export function ArrivalCard() {
             {t('feed.levelUp', { track: t(l.track === 'trading' ? 'command.lvTrading' : 'command.lvExploration'), n: l.level })}
           </p>
         ))}
+        {card.reputation > 0 && (
+          <p className="mt-1 text-t-body text-accent" data-testid="arrival-reputation" data-reputation={card.reputation}>
+            {t('feed.repEarned', { n: formatInt(card.reputation) })}
+          </p>
+        )}
         <div className="mt-3 flex gap-2">
           <Button
             variant="primary"

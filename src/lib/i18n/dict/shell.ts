@@ -37,6 +37,8 @@ export const shellDict = defineDict({
     owed: 'Owed',
     gift: 'Gift',
     gameDate: 'Game date',
+    reputation: 'Reputation',
+    repToday: 'Today {a} / {b}',
   },
   ko: {
     tab_HQ: '본부',
@@ -73,5 +75,7 @@ export const shellDict = defineDict({
     owed: '빚',
     gift: '지원금',
     gameDate: '게임 날짜',
+    reputation: '평판',
+    repToday: '오늘 {a} / {b}',
   },
 })

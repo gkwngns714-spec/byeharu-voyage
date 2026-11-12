@@ -51,6 +51,8 @@ export function TopBar() {
   const ducats = useWorld((s) => s.ducats)
   // 0241 (owner row 230): what she owes the cities (a SAIL's stores on credit, dock fees) — paid from her next sale.
   const owed = useWorld((s) => s.player?.owed ?? 0)
+  // 0352 (owner row 317): her Reputation, the served balance (public.reputation_card). null: no company, or a server before 0352.
+  const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
   // 0241: her capital's gift, for two minutes after it lands — one string, so the bar re-renders only when it changes.
   const giftKey = useWorld((s) => {
     const e = s.events.find((x) => x.kind === 'CAPITAL_GIFT')
@@ -80,7 +82,7 @@ export function TopBar() {
           nothing true to say, so the purse does not slide across the bar between tabs. */}
       {/* Cut only through Clip (row 201): on a phone the date, hour and price countdown can outrun
           the bar, and the full line must stay readable by hover or press. */}
-      <Clip className="text-t-caption text-ink-muted">
+      <Clip cut className="text-t-caption text-ink-muted">
         {/* THE GAME CLOCK — the world's DATE and its hour (owner row 176, 2026-10-20: *"There is
             one right now showing the time only, but I want to see the date, year, months and so
             on."*). Two clocks, side by side and in that order, because they run at different rates
@@ -126,6 +128,15 @@ export function TopBar() {
       {owed > 0 && (
         <span data-testid="owed" className="shrink-0 text-t-caption text-warning">
           {t('shell.owed')} {formatInt(owed)}
+        </span>
+      )}
+      {/* 0352: Reputation, left of the purse. The second number every screen is true of: what her successes have earned.
+          FROM `sm` UP ONLY: at 390 px the date, the hour, the Korea clock and the purse leave 17 px, and a figure here
+          cuts the game hour off (tests/shell.kstClock.spec.ts holds that line whole). On a phone it stands on the You tab
+          and on the arrival card. */}
+      {reputation !== null && (
+        <span data-testid="reputation" data-value={reputation} className="hidden shrink-0 sm:inline">
+          <Figure value={formatInt(reputation)} unit={t('shell.reputation')} />
         </span>
       )}
       <span data-testid="purse" className="shrink-0">

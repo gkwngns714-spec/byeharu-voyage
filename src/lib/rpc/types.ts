@@ -1839,6 +1839,26 @@ export interface PlayerHouse {
   owed?: number
   /** 0241: true while a SAIL's stores may run on credit (the economy closed) — absent otherwise. */
   on_credit?: boolean
+  /** 0352 — her Reputation (`public.reputation_card`). Absent before 0352. */
+  reputation?: ReputationCard
+}
+
+/** 0352 — one row of the Reputation book, as the card serves it. `delta` is positive for an earn, negative for a spend. */
+export interface ReputationRow {
+  seq: number
+  kind: string
+  delta: number
+  at: string
+}
+
+/** 0352 — `public.reputation_card`: the balance, what the capped kinds earned today against the day's cap, the newest
+ *  book row's number, and the 8 newest rows (newest first). A company that has earned nothing reads zeros. */
+export interface ReputationCard {
+  balance: number
+  today: number
+  cap: number
+  seq: number
+  recent: ReputationRow[]
 }
 
 /** One track of DESIGN 8. `level` is the same curve for all three, so "level 4" means one amount
@@ -3376,13 +3396,29 @@ export interface GoodBoard {
   clock: { now: string; next_change_at: string }
 }
 
+/** 0351: the other sale of a good `world.best_sales` serves beside its answer — the one within her purse with the
+ *  biggest TOTAL profit (the far choice), when it is another city than the answer's. A world.good_board row's figures. */
+export interface FarSale {
+  port: string
+  units: number | null
+  profit: number | null
+  days: number | null
+  /** What the buy costs (for her cargo: what it cost her). */
+  cost: number | null
+  /** The real seconds to that sale (the served row's own arrival). */
+  seconds: number | null
+}
+
 /** 0348 `world.best_sales(fleet, port)` — one good's best sale from the city in hand. Every figure is a
- *  world.good_board row's: a good NOT aboard is bought at the city for `units` (what fits beside the stores of
- *  that leg) and sold at `port`; a good aboard (`basis` on_board) is her cargo sold there. */
+ *  world.good_board row's: a good NOT aboard is bought at the city for `units` and sold at `port`; a good aboard
+ *  (`basis` on_board) is her cargo sold there.
+ *  0351: the answer is the sale with the best profit PER DAY among the sales within her purse; `units` is the tray's
+ *  own Max (world.buy_capacity's authority) where she lies and anything but her hold binds it, else what fits beside
+ *  the stores of that leg. The keys 0351 added are optional: a server before it does not serve them. */
 export interface BestSale {
   good: string
   basis: GoodBoard['qty']['basis']
-  /** The city it sells best at (port CODE); null when no city she can sail to is priced. */
+  /** The city it sells best at (port CODE); null when no city she can sail to is priced, or none is within her purse. */
   port: string | null
   units: number | null
   /** The served profit — the trip tray's `profit` row for the same units, to the coin. */
@@ -3390,6 +3426,14 @@ export interface BestSale {
   days: number | null
   /** The profit is above nought. */
   pays: boolean
+  /** 0351: what the buy costs — the trip tray's total for the same units. */
+  cost?: number | null
+  /** 0351: the real seconds to that sale (the served row's own arrival). */
+  seconds?: number | null
+  /** 0351: sales are priced, and none is within her purse (`port` is null). */
+  short?: boolean
+  /** 0351: the dearest sale within her purse, when it is another city; null when the answer is that sale. */
+  far?: FarSale | null
 }
 
 /** 0348 `world.best_sales(fleet, port)`: every good the city sells, by code. `cut`: the server's time budget ran
@@ -3975,4 +4019,68 @@ export interface RouteLeg {
 /** 0346 — `world.route_legs`: the legs in the order asked. null when the fleet is not yours. */
 export interface RouteLegs {
   legs: RouteLeg[]
+}
+
+/** 0353 (docs/COMBAT_LOG.md 1.1): how a raid ended, as its log says it. */
+export type FightEnd = 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'
+/** 0353: a fleet's standing order when raiders close. FIGHT is no row on the server. */
+export type RaidOrderWord = 'FIGHT' | 'FLEE' | 'PAY'
+
+/** 0353: one side's guns in one round of a log: how many hulls could fire, shots, hits, hull points dealt. */
+export interface FightVolley {
+  can: number
+  fired: number
+  hits: number
+  dealt: number
+}
+
+/** 0353: one round of a raid's log. `hull` and `foeHull` are the hull LEFT after the round; `slip` the chance she
+ *  rolled to get away, only on a round she ran. */
+export interface FightRound {
+  round: number
+  range: 'L' | 'M' | 'C'
+  you: FightVolley
+  them: FightVolley
+  hull: number
+  foeHull: number
+  /** Her ships struck this round: [ship index from 1, percent of her size]. */
+  struck: [number, number][]
+  slip: number | null
+}
+
+/** 0353: A RAID'S LOG (`voyage.raid_extras`, shape v 1), read by `parseFightLog` (src/live/fightLines.ts): the
+ *  engine's own numbers. Kept for a company's raid only, in the day's payload and in the VOYAGE_REPORT's fight entry. */
+export interface FightLog {
+  order: RaidOrderWord
+  /** A Pay that was refused before the fight, and why. */
+  noPay: 'EMPTY' | 'NO_PAYEE' | null
+  first: 'YOU' | 'THEY' | 'BOTH'
+  foe: { name: string; ships: number; crew: number; hull: number; ship: string | null }
+  you: { name: string; hull: number; full: number; crew: number }[]
+  rounds: FightRound[]
+  end: FightEnd
+  board: { crew: number; foeCrew: number; ratio: number } | null
+  after: { name: string; hull: number }[]
+}
+
+/** 0353: what a raid day cost, beside its log in the report: the hands before and lost, the units carried off, the ransom paid. */
+export interface FightLoss {
+  crewBefore: number | null
+  crew: number | null
+  cargo: Record<string, number>
+  ransom: number
+}
+
+/** 0353 `world.raid_read(fleet)`: the read beside the order's picker. `on` false (the switch is off, or the fleet is
+ *  not the caller's): nothing else is served and no picker is drawn. A read of the sides, never a forecast. */
+export interface RaidRead {
+  on: boolean
+  order?: RaidOrderWord
+  /** Whether any hull of hers can fire. */
+  guns?: boolean
+  slip?: 'poor' | 'fair' | 'good'
+  /** What Pay would cost now; 0 is nothing aboard. */
+  pay?: number
+  /** One row a danger level on the sea now: the raiders' word against her. */
+  foes?: { danger: number; word: AttackWord }[]
 }

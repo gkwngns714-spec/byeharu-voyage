@@ -12,6 +12,7 @@ import { FleetStores } from './FleetStores'
 import { FleetTotals } from './FleetTotals'
 import { RenameFleet } from './RenameFleet'
 import { fleetDue } from './fleetLine'
+import { RaidOrder } from '../../live/RaidOrder'
 import { useT } from '../../lib/i18n'
 
 // ONE FLEET'S PAGE — owner row 89's SHAPE (2026-09-13): *"when folded, ships cargo supplies should
@@ -110,6 +111,9 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
           <FleetStores fleet={fleet} />
         </SheetSection>
       </SectionColumns>
+
+      {/* 0353: her standing order when raiders close (Fight, Flee, Pay). Draws nothing while orders are dark. */}
+      <RaidOrder fleetId={fleet.id} className="mt-6" />
 
       {/* 0354: Rename stands beside the hand-off, on its line: the foot grows by nothing */}
       <div className="mt-6 flex flex-wrap gap-3">

@@ -10,6 +10,7 @@ import { commonDict } from './common'
 import { deskDict } from './desk'
 import { domainDict } from './domain'
 import { feedDict } from './feed'
+import { fightDict } from './fight'
 import { fleetsDict } from './fleets'
 import { formatDict } from './format'
 import { foundDict } from './found'
@@ -43,6 +44,7 @@ export const DICT = {
   desk: deskDict,
   domain: domainDict,
   feed: feedDict,
+  fight: fightDict,
   fleets: fleetsDict,
   format: formatDict,
   found: foundDict,

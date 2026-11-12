@@ -1,4 +1,4 @@
-import { Figure, Note, PriceChart, Row, Skeleton, SpanPicker, StockGauge } from '../components/ui'
+import { Clip, Figure, Note, PriceChart, Row, Skeleton, SpanPicker, StockGauge } from '../components/ui'
 import { useShellState } from '../app/shellState'
 import { formatOfTotal, formatPriceFigure } from '../lib/format'
 import type { MarketGood, SnapshotPort } from '../lib/rpc'
@@ -48,10 +48,12 @@ export function MarketLeft({ port, good: given = null }: { port: SnapshotPort; g
     // the chart, a three-line legend, the span picker and the two rows are 450 px of a 395-px card) — nothing is clipped out of reach; at
     // 390×844 and 1280×800 it all stands at once and nothing scrolls.
     <div className="@container bv-scroll flex h-full min-h-0 flex-col overflow-y-auto rounded-tile bg-surface px-2 py-1" data-testid="city-market-chart">
-      <div className="flex min-h-6 shrink-0 items-baseline justify-between gap-2">
-        <span className="min-w-0 truncate text-t-caption text-ink-faint" data-testid="city-market-chart-good">
+      {/* THE GOOD'S NAME IS PRINTED WHOLE (2026-11-11): it was cut to make room for the two prices. The line wraps instead: where the
+          name and the prices do not fit one line (a long name in a phone's 128-px card) the prices stand under the name. */}
+      <div className="flex min-h-6 shrink-0 flex-wrap items-baseline justify-between gap-x-2">
+        <Clip className="text-t-caption text-ink-faint" data-testid="city-market-chart-good">
           {good.name}
-        </span>
+        </Clip>
         <span className="shrink-0 text-t-caption tabular-nums text-ink-muted">
           {formatPriceFigure(good.buy)} · {formatPriceFigure(good.sell)}
         </span>

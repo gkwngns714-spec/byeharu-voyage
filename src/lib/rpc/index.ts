@@ -112,6 +112,8 @@ import type {
   InvestReceipt,
   TowReceipt,
   AttackReceipt,
+  RaidOrderWord,
+  RaidRead,
   AllegianceView,
   CountryChanged,
   DonateReceipt,
@@ -911,6 +913,16 @@ export function cmdRenameFleet(fleetId: string, name: string): Promise<RpcResult
 export async function cmdPreviewAttack(fleetId: string, targetId: string): Promise<RpcResult<AttackReceipt>> {
   const r = await call<{ estimate: AttackReceipt }>('cmdPreviewAttack', [fleetId, targetId])
   return r.ok ? ok(r.value.estimate) : r
+}
+
+/** Set a fleet's standing order when raiders close (0353): FIGHT, FLEE or PAY. It takes hold at her next departure. */
+export function cmdRaidOrder(fleetId: string, order: RaidOrderWord): Promise<RpcResult<{ order: RaidOrderWord }>> {
+  return call<{ order: RaidOrderWord }>('cmdRaidOrder', [fleetId, order])
+}
+
+/** The read beside the order's picker (0353): her order, her guns, her slip, what Pay costs, the raiders' word by danger. */
+export function worldRaidRead(fleetId: string): Promise<RpcResult<RaidRead>> {
+  return call<RaidRead>('worldRaidRead', [fleetId])
 }
 
 /** Your fleet attacks a cargo ship (0327). A battle opens; its end comes as a report. */

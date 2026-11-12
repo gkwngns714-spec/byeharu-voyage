@@ -19,7 +19,7 @@
 -- @pass NPC_STRAY          a wreck no settled day brought home (docked unable or docked abroad) is found by the job and brought home
 -- @pass NPC_SWITCH_OFF     the switch off mid-wait strands nobody: the tow and the patch take them back
 -- @pass NPC_TOW_PARITY     public.yards_from answers public.tow_for's old query, port by port
--- @pass NPC_RANSOM         the ransom share is a reader only: it moves no gold, and public.loot_due (0327) and public.pirate_ransom (0339) alone read it
+-- @pass NPC_RANSOM         the ransom share is a reader only: it moves no gold, and public.loot_due (0327), public.pirate_ransom (0339) and Pay's public.raid_ransom and public.raid_price (0353) alone read it
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -683,13 +683,14 @@ begin
   if pg_temp.purses() <> v_sum or exists (select 1 from public.treasury_flows t where t.id > v_f) then
     raise exception 'PROOF 30 FAIL: the ransom reader moved gold';
   end if;
-  -- the callers, by name: public.loot_due (0327: a player's attack) and public.pirate_ransom (0339, W17: a named raider's ransom, company to her home). A third fails here.
+  -- the callers, by name: public.loot_due (0327: a player's attack) and public.pirate_ransom (0339, W17: a named raider's ransom, company to her home).
+  -- 0353 (C2, docs/COMBAT_LOG.md 2.4): and Pay, a company's standing order: public.raid_ransom (the payment) and public.raid_price (the figure shown and the refusal). A sixth fails here.
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-              where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%ransom_take(%' and p.proname not in ('ransom_take', 'loot_due', 'pirate_ransom')) then
+              where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%ransom_take(%' and p.proname not in ('ransom_take', 'loot_due', 'pirate_ransom', 'raid_ransom', 'raid_price')) then
     raise exception 'PROOF 30 FAIL: something other than public.loot_due or public.pirate_ransom calls the ransom reader: %',
       (select string_agg(p.oid::regprocedure::text, ', ') from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%ransom_take(%' and p.proname not in ('ransom_take', 'loot_due', 'pirate_ransom'));
+        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%ransom_take(%' and p.proname not in ('ransom_take', 'loot_due', 'pirate_ransom', 'raid_ransom', 'raid_price'));
   end if;
-  raise notice 'PASS: NPC_RANSOM — 8 per cent of 1,000,000 is 80,000; only loot_due and pirate_ransom call it, nothing moved';
+  raise notice 'PASS: NPC_RANSOM — 8 per cent of 1,000,000 is 80,000; only loot_due, pirate_ransom and the two of Pay (raid_ransom, raid_price) call it, nothing moved';
 end
 $$;

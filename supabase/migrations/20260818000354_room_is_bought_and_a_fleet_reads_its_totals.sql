@@ -588,7 +588,7 @@ $h$);
 
     -- (e) THE COST of the 30-second read, OLD against NEW, interleaved on the probe's two fleets, 40 pairs
     v_old := pg_temp.fleets_old_0354(); v_new := world.fleets();
-    while v_pairs < 40 and clock_timestamp() - v_t0 < interval '20 seconds' loop
+    while v_pairs < 40 and clock_timestamp() - v_t0 < interval '8 seconds' loop
       v_t := clock_timestamp(); v_old := pg_temp.fleets_old_0354(); v_old_ms := v_old_ms + extract(epoch from clock_timestamp() - v_t) * 1000;
       v_t := clock_timestamp(); v_new := world.fleets();            v_new_ms := v_new_ms + extract(epoch from clock_timestamp() - v_t) * 1000;
       v_pairs := v_pairs + 1;

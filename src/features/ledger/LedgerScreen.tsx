@@ -23,6 +23,7 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { headline, payloadFights, payloadLines } from './headline'
+import { FightLog } from '../../live/FightLog'
 import { FACES, FACE_OF, biggestOf, byDay, kindsOf, moneyOf, onFace, type Face } from './ledgerFigures'
 import { useLocale, useT } from '../../lib/i18n'
 import { tabWord } from '../../app/navTabs'
@@ -195,7 +196,9 @@ function LedgerBody({ title }: { title: string }) {
               return (
                 <div key={i}>
                   <p className="text-t-label text-ink-muted">{line}</p>
-                  {fight && fight.rounds.length > 0 && (
+                  {/* 0353: a fight that kept its log draws its numbers; any other draws the server's sentences, as before */}
+                  {fight && fight.log && <FightLog log={fight.log} loss={fight.loss} />}
+                  {fight && !fight.log && fight.rounds.length > 0 && (
                     <ol data-testid="battle-report" className="mt-2 space-y-1 border-l border-edge pl-3">
                       {fight.rounds.map((round, j) => (
                         <li key={j} className="text-t-caption text-ink-muted">
