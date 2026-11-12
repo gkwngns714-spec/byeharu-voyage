@@ -14,9 +14,8 @@
 // Navy gained her row with W12, 0331; the pirate ship hers with W17, 0339 (red by day and by night, a fork-sterned hull, an X on her deck).
 //
 // TWO THINGS THE DOC GOT WRONG ABOUT THE GROUND, FOUND BY READING THE CSS:
-//  - The doc's "light sea" ground does not occur on a chart: `.bv-chart-night` puts the night palette back on
-//    the chart in BOTH schemes (src/index.css). So "light sea" here is the light theme's chart, which must
-//    measure the same as the dark one, and does.
+//  - The doc's "light sea" ground does not occur on a chart, and since 2026-11-12 nowhere: the owner removed
+//    the light scheme, so its row ("night sea, light theme") left this table.
 //  - Regions OFF is the default, and then a merchant is the one blue (`--color-merchant`), not her nation's ink.
 //    The server-rendered default is Regions off; "Regions on" is the same CSS rule the cargo ship wears with no
 //    day share, and is measured that way (named in the table).
@@ -91,7 +90,7 @@ function shipSvg(who: Who, ground: string, extra = '', size = 40, heading = 0): 
     unitsPerPx: 1,
     sun: { lat: 90, lon: 0 },
   }
-  return `<svg class="bv-chart-night" data-kind="${who.kind}" data-ink="${who.ink}" width="${size}" height="${size}" viewBox="${p.x - 20} ${p.y - 20} 40 40" style="background:${ground};${extra}">${render.renderLayer(layer)}</svg>`
+  return `<svg data-kind="${who.kind}" data-ink="${who.ink}" width="${size}" height="${size}" viewBox="${p.x - 20} ${p.y - 20} 40 40" style="background:${ground};${extra}">${render.renderLayer(layer)}</svg>`
 }
 
 // ── colour arithmetic (WCAG 2.x), on what the browser resolved ─────────────────────────────────────
@@ -182,17 +181,15 @@ const WHO: readonly Who[] = [
 ]
 
 const GROUNDS = [
-  { name: 'night sea', css: 'var(--color-chart-sea)', night: 1, theme: 'dark' },
-  { name: 'night sea, light theme', css: 'var(--color-chart-sea)', night: 1, theme: 'light' },
-  { name: 'day sea', css: 'var(--color-chart-day-sea)', night: 0, theme: 'dark' },
-  { name: 'day deep', css: 'var(--color-chart-day-deep)', night: 0, theme: 'dark' },
-  { name: 'day shallow', css: 'var(--color-chart-day-shallow)', night: 0, theme: 'dark' },
+  { name: 'night sea', css: 'var(--color-chart-sea)', night: 1 },
+  { name: 'day sea', css: 'var(--color-chart-day-sea)', night: 0 },
+  { name: 'day deep', css: 'var(--color-chart-day-deep)', night: 0 },
+  { name: 'day shallow', css: 'var(--color-chart-day-shallow)', night: 0 },
 ] as const
 
-async function pageWith(page: Page, theme: string, ground: string, who: readonly Who[] = WHO): Promise<void> {
-  await page.emulateMedia({ colorScheme: theme === 'light' ? 'light' : 'dark' })
+async function pageWith(page: Page, ground: string, who: readonly Who[] = WHO): Promise<void> {
   await page.setContent(
-    `<!doctype html><html data-theme="${theme}"><head><style>${builtCss()}</style></head><body style="margin:0">` +
+    `<!doctype html><html><head><style>${builtCss()}</style></head><body style="margin:0">` +
       who.map((w) => shipSvg(w, ground)).join('') +
       '</body></html>',
   )
@@ -203,7 +200,7 @@ test.describe('the contrast law, on the built stylesheet', () => {
 
   for (const g of GROUNDS) {
     test(`on the ${g.name}: every kind's fill or keyline is 3 : 1, her mark 3 : 1 on her fill`, async ({ page }) => {
-      await pageWith(page, g.theme, g.css)
+      await pageWith(page, g.css)
       const rows = await read(page, g.night)
       const table = rows.map((r) => ({
         kind: r.kind,
@@ -223,7 +220,7 @@ test.describe('the contrast law, on the built stylesheet', () => {
 
   test('Regions on: a merchant in her nation ink holds on every ground', async ({ page }) => {
     for (const g of GROUNDS) {
-      await pageWith(page, g.theme, g.css, INKS.map((ink): Who => ({ kind: 'cargo', ink })))
+      await pageWith(page, g.css, INKS.map((ink): Who => ({ kind: 'cargo', ink })))
       await page.evaluate(asRegionsMerchant)
       for (const r of await read(page, g.night)) {
         expect(Math.max(contrast(r.fill, r.ground), contrast(r.line, r.ground)), `merchant ${r.ink} on ${g.name}`).toBeGreaterThanOrEqual(3)
@@ -234,7 +231,7 @@ test.describe('the contrast law, on the built stylesheet', () => {
   test('twilight: at --night 0, 0.25, 0.5, 0.75, 1 the fill or keyline holds on the mixed sea, and the mark on her fill', async ({ page }) => {
     for (const night of [0, 0.25, 0.5, 0.75, 1]) {
       const sea = `color-mix(in srgb, var(--color-chart-sea) ${night * 100}%, var(--color-chart-day-sea))`
-      await pageWith(page, 'dark', sea)
+      await pageWith(page, sea)
       for (const r of await read(page, night)) {
         const best = Math.max(contrast(r.fill, r.ground), contrast(r.line, r.ground))
         expect(best, `${r.kind} ${r.ink} at --night ${night}`).toBeGreaterThanOrEqual(3)
@@ -246,7 +243,7 @@ test.describe('the contrast law, on the built stylesheet', () => {
   test('one colour: every cargo ship is the same fill whatever her nation, by day and by night, and it is not a merchant colour', async ({ page }) => {
     const fills: string[] = []
     for (const night of [0, 1]) {
-      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+      await pageWith(page, night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
         ...INKS.map((ink): Who => ({ kind: 'cargo', ink })),
         { kind: 'merchant', ink: 'prt' },
       ])
@@ -265,7 +262,7 @@ test.describe('the navy ship has a colour of her own', () => {
 
   test('every navy ship is one fill, day and night, and it is not cargo teal or a merchant colour', async ({ page }) => {
     for (const night of [0, 1]) {
-      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+      await pageWith(page, night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
         ...INKS.map((ink): Who => ({ kind: 'navy', ink })),
         { kind: 'cargo', ink: 'prt' },
         { kind: 'merchant', ink: 'prt' },
@@ -336,7 +333,7 @@ test.describe('the pirate ship has a colour of her own', () => {
 
   test('every pirate ship is one fill, day and night, and it is a hue apart from cargo teal, navy violet and the merchant blue', async ({ page }) => {
     for (const night of [0, 1]) {
-      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+      await pageWith(page, night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
         ...INKS.map((ink): Who => ({ kind: 'pirate', ink })),
         { kind: 'cargo', ink: 'prt' },
         { kind: 'navy', ink: 'prt' },
@@ -504,7 +501,7 @@ test.describe('the pirate merchant has the Brethren\'s colour and an X', () => {
 
   test('every pirate merchant is one fill, day and night, and it is not a merchant, cargo or navy colour', async ({ page }) => {
     for (const night of [0, 1]) {
-      await pageWith(page, 'dark', night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
+      await pageWith(page, night ? 'var(--color-chart-sea)' : 'var(--color-chart-day-sea)', [
         { kind: 'pirateMerchant', ink: 'pir' },
         { kind: 'navy', ink: 'prt' },
         { kind: 'cargo', ink: 'prt' },
@@ -558,7 +555,7 @@ test.describe('parity: nothing else moves', () => {
     expect('cargo' in m).toBe(false)
     expect(glyphs.shipKindOf(m)).toBe('merchant')
     glyphs.registerHullClasses(CLASSES)
-    await pageWith(page, 'dark', 'var(--color-chart-sea)', [{ kind: 'merchant', ink: 'prt' }, { kind: 'yours', ink: 'prt' }])
+    await pageWith(page, 'var(--color-chart-sea)', [{ kind: 'merchant', ink: 'prt' }, { kind: 'yours', ink: 'prt' }])
     expect(await page.locator('path[data-kind-mark]').count()).toBe(0)
     expect(await page.locator('path[data-hull-class]').count()).toBe(2)
   })
@@ -590,7 +587,7 @@ test.describe('the pictures', () => {
     const cell = (k: (typeof KINDS)[number], sc: (typeof SCENES)[number], heading: number, size: number) =>
       `<td style="padding:0">${shipSvg(k.who, sc.ground, '', size, heading).replace('<svg ', `<svg data-night="${sc.night}" ${k.regionsOn ? 'data-regions-on="1" ' : ''}`)}</td>`
     const html =
-      `<!doctype html><html data-theme="dark"><head><style>${builtCss()} td,th{font:12px sans-serif;color:#222}</style></head><body style="margin:0;background:#fff;padding:12px"><table style="border-collapse:collapse">` +
+      `<!doctype html><html><head><style>${builtCss()} td,th{font:12px sans-serif;color:#222}</style></head><body style="margin:0;background:#fff;padding:12px"><table style="border-collapse:collapse">` +
       `<tr><th></th>${SCENES.map((s) => `<th colspan="2">${s.name}</th>`).join('')}</tr>` +
       KINDS.map(
         (k) =>
@@ -638,7 +635,7 @@ test.describe('the pictures', () => {
       `<tr>${FOUR.map((k) => `<th style="font:12px sans-serif;color:#222;font-weight:normal;padding:0 4px">${k.label}</th>`).join('')}</tr>` +
       `<tr>${FOUR.map((k) => cell(k, sc, 0, 40)).join('')}</tr><tr>${FOUR.map((k) => cell(k, sc, 62, 40)).join('')}</tr>` +
       `<tr>${FOUR.map((k) => cell(k, sc, 0, 160)).join('')}</tr></table>`
-    const html = `<!doctype html><html data-theme="dark"><head><style>${builtCss()}</style></head><body style="margin:0;background:#fff;padding:12px">${[SCENES[0], SCENES[1], SCENES[2]].map(block).join('')}</body></html>`
+    const html = `<!doctype html><html><head><style>${builtCss()}</style></head><body style="margin:0;background:#fff;padding:12px">${[SCENES[0], SCENES[1], SCENES[2]].map(block).join('')}</body></html>`
     const context = await browser.newContext({ viewport: { width: 760, height: 900 }, deviceScaleFactor: 2, colorScheme: 'dark' })
     const page = await context.newPage()
     await page.setContent(html)
