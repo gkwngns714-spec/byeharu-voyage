@@ -1,4 +1,4 @@
-import { Button } from '../../components/ui'
+import { Button, KEEP_WORDS_CLASS } from '../../components/ui'
 import { CHART_CHROME } from '../../chart'
 import { formatVoyageDays } from '../../lib/format'
 import { useT } from '../../lib/i18n'
@@ -118,13 +118,15 @@ export function RouteBar({
       data-judged={served !== null || undefined}
       data-blocked={route.blocked || undefined}
     >
-      {/* ONE LINE, always: the route's name and its stops, or — in the same place — why Final was refused (the server's sentence). */}
+      {/* The route's line: whose it is and its stops, or — in the same place — why Final was refused (the server's sentence).
+          THE FLEET'S NAME IS PRINTED WHOLE (2026-11-11, the full-names slice): the line was one `truncate` line, which cut a
+          24-character fleet name at 390 px. It keeps its words now and takes a second line when it must. */}
       {route.refusal ? (
         <p className="truncate text-t-body text-warning" role="status" title={route.refusal} data-testid="route-refusal">
           {route.refusal}
         </p>
       ) : (
-        <p className="truncate text-t-body font-medium text-ink" data-testid="route-summary">
+        <p data-name="" className={`${KEEP_WORDS_CLASS} text-t-body font-medium text-ink`} data-testid="route-summary">
           {`${t('map.routeTitle')} · ${fleetName} · ${t('map.routeStops', { n: kept.length })}`}
         </p>
       )}

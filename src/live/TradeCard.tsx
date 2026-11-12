@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Button, GoodKind, Icon, Sparkline, goodClassRow, goodIcon } from '../components/ui'
+import { Button, GoodKind, Icon, KEEP_WORDS_CLASS, Sparkline, goodClassRow, goodIcon } from '../components/ui'
 import { PortFlag } from './PortFlag'
 import { usePriceWhy } from './useDesk'
 import { usePriceSeries } from './usePriceSeries'
@@ -60,7 +60,15 @@ export function TradeCard({
   return (
     <div
       className={[
-        'flex min-w-0 flex-col gap-1 rounded-md p-2 text-left transition',
+        // FOUR LINES, SHARED ACROSS A ROW OF CARDS (2026-11-11, the trade-layout slice): the head, the prices, the best sale
+        // and the buttons are four rows of the board's own grid (`grid-rows-subgrid`), so in a row of cards each of the
+        // four is one height: the prices stand level, the buttons stand level, and a card whose name or whose best sale's
+        // city runs a second line makes that line taller for its whole row instead of standing out of step. Where the
+        // card is not in a grid the four rows are simply its own.
+        // ONE COLUMN, AS WIDE AS THE CARD AND NO WIDER (`grid-cols-1` = minmax(0, 1fr)): a grid's own column is as wide as
+        // its widest line wants, so in a 123-px card (the HQ Market at 320 px) the prices line stood 21 px past the card's
+        // edge and "안 삼" crossed the next card's price (tests/city.phone.spec.ts caught it).
+        'row-span-4 grid min-w-0 grid-cols-1 grid-rows-subgrid gap-y-1 rounded-md p-2 text-left transition',
         on ? 'bg-accent-soft ring-1 ring-accent' : 'bg-surface-2',
         wash,
       ].join(' ')}
@@ -68,7 +76,7 @@ export function TradeCard({
       data-testid="trade-good"
       data-good={r.code}
     >
-      <span className="flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5">
+      <span className="flex min-w-0 flex-wrap content-start items-start gap-x-1.5 gap-y-0.5">
         <Icon name={goodIcon(r.code, r.category)} size={18} className="mt-px shrink-0 text-ink-muted" />
         <span className="min-w-0 break-words text-t-label font-medium leading-tight text-ink" data-testid="trade-good-name">
           {r.name}
@@ -92,12 +100,13 @@ export function TradeCard({
           {t('desk.aboardN', { n: formatInt(r.units) })}
         </span>
       </span>
-      {/* 0348: THE PRICES, THE BEST SALE AND THE DAY LINE ARE ONE 44-PX BLOCK (the tap-target floor) in the room the prices
-          and the day line took before (22 + 4 + 16 px): a card grows 2 px, so four cards still stand above a phone's fold
-          (tests/layout.spec.ts, K.1). With a sale, the block is the press that opens its trip. */}
+      {/* 0348: THE PRICES, THE BEST SALE AND THE DAY LINE ARE ONE BLOCK, never under 44 px (the tap-target floor). With a
+          sale, the block is the press that opens its trip. Since 2026-11-11 the best sale's city is printed WHOLE (it was
+          cut to "Hag…"), so the block holds room for two lines: the city, then the profit and the day line. */}
       <SaleBlock
         // no press to open (the HQ Market): no sale is drawn either — the line's place stays held, empty
         sale={onBest ? sale : undefined}
+        canLand={onBest !== undefined}
         onPress={onBest ?? NO_TRIP}
         prices={
           <>
@@ -113,16 +122,20 @@ export function TradeCard({
           // THE SPARK SLOT RESERVES ITS SIZE WHATEVER THE READ HAS LANDED (2026-10-31): `shrink-0` with a fixed h-4 (and,
           // since 0348, a fixed w-12 beside the best sale), so a card is the same card before and after any read or press
           // (desk.terminal's "a press moved the list": a spark that landed late once grew a card 16 px).
-          <span className="flex h-4 w-12 shrink-0 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
+          <span className="flex h-4 w-12 min-w-0 items-center" data-testid="trade-good-spark" data-points={line.values.length}>
             {!buyDead && <Sparkline values={line.values} width={48} height={16} className="h-4 w-full" />}
           </span>
         }
       />
-      <span className="flex items-center gap-2">
-        <Button variant="secondary" className="flex-1" onClick={() => onBuy(r.code)} disabled={buyDead} data-testid="trade-buy">
+      {/* THE TWO BUTTONS FIT THE NARROWEST CARD (2026-11-12): each fills half the line, so its side padding only decides how
+          narrow it can go. At the button's own 16 px a Korean button is 64 px and two of them are 136 px in a 107-px line (the
+          HQ Market at 320 px): Sell stood 21 px past the card, over the next card's Buy. At 8 px it is 48 px (still over the
+          44-px reach floor) and two are 104. In every wider card the buttons are the same boxes as before. */}
+      <span className="flex min-w-0 items-center gap-2">
+        <Button variant="secondary" className="min-w-0 flex-1 px-2!" onClick={() => onBuy(r.code)} disabled={buyDead} data-testid="trade-buy">
           {t('desk.buy')}
         </Button>
-        <Button variant="secondary" className="flex-1" onClick={() => onSell(r.code)} disabled={sellDead} data-testid="trade-sell">
+        <Button variant="secondary" className="min-w-0 flex-1 px-2!" onClick={() => onSell(r.code)} disabled={sellDead} data-testid="trade-sell">
           {t('desk.sell')}
         </Button>
       </span>
@@ -131,41 +144,54 @@ export function TradeCard({
 }
 
 /** 0348: THE CARD'S MIDDLE — its two prices over ONE GOOD'S BEST SALE (world.best_sales: the city and the served profit)
- *  and its day line — as ONE 44-px block (the tap-target floor) whose height is held whatever has landed. With a sale the
- *  block is the press that opens its trip. Green: it pays. Red "No gain": no city she can sail to pays (the figure is the
- *  least loss, still pressable — the tray says why); with no city at all, no press; "Cargo full": no room for one. A long
- *  city name is cut and read whole from the block's title. */
+ *  and its day line — as ONE block of at least 44 px (the tap-target floor) whose height is held whatever has landed. With a
+ *  sale the block is the press that opens its trip. Green: it pays. Red "No gain": no city she can sail to pays (the figure
+ *  is the least loss, still pressable — the tray says why); with no city at all, no press; "Cargo full": no room for one.
+ *
+ *  THE CITY IS PRINTED WHOLE (2026-11-11; the owner's rule: a name is never cut with "…"). The line under the prices is a
+ *  wrapping line: the city (its flag and its name, by the design system's keeps-its-words rule: it turns only at a space
+ *  and is never narrower than its longest word), then the profit and the day line together at the right. Where the three
+ *  fit one line they stand on one; in a 175-px card the city takes the first line and the profit and the day line the
+ *  second. Where a sale can land the line holds two lines' height (36 px) whatever has landed, so a card does not grow
+ *  when its sale lands; at the HQ Market, where none ever does, it holds the one line the day line needs. */
 function SaleBlock({
   sale,
+  canLand,
   onPress,
   prices,
   spark,
 }: {
   sale: BestSale | undefined
+  /** A sale may land here (the Trade board asks world.best_sales); false at the HQ Market, which never asks. */
+  canLand: boolean
   onPress: (sale: BestSale) => void
   prices: ReactNode
   spark: ReactNode
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
-  const block = 'flex h-11 w-full min-w-0 shrink-0 flex-col justify-between'
+  // two of the card's four shared rows: the prices, and the line under them
+  const block = 'row-span-2 grid w-full min-w-0 grid-cols-1 grid-rows-subgrid gap-y-0'
   const top = 'flex h-[1.375rem] w-full items-baseline justify-between gap-1'
-  const row = 'flex h-[1.125rem] w-full min-w-0 items-center gap-1'
-  const line = 'flex min-w-0 flex-1 items-center gap-1 text-t-caption tabular-nums'
+  // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
+  const line = `flex ${canLand ? 'min-h-9' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
+  // the profit and the day line stay together, at the right of whichever line they stand on
+  // (in a 140-px card a six-figure profit and the 48-px day line are 13 px too many: the day line gives way, the figure never)
+  const tail = 'ml-auto flex min-w-0 max-w-full items-center gap-1'
   if (!sale || sale.port === null || sale.profit === null) {
     return (
       <div className={block}>
         <span className={top}>{prices}</span>
-        <span className={row}>
-          {sale ? (
-            <span className={`${line} text-danger`} data-testid="best-sale" data-state="none" data-pays="false">
-              {t(sale.basis === 'step' ? 'desk.holdFull' : 'desk.noGain')}
-            </span>
-          ) : (
-            <span className={line} data-testid="best-sale" data-state="wait" aria-hidden="true" />
-          )}
-          {spark}
-        </span>
+        {sale ? (
+          <span className={`${line} text-danger`} data-testid="best-sale" data-state="none" data-pays="false">
+            {t(sale.basis === 'step' ? 'desk.holdFull' : 'desk.noGain')}
+            <span className={tail}>{spark}</span>
+          </span>
+        ) : (
+          <span className={line} data-testid="best-sale" data-state="wait">
+            <span className={tail}>{spark}</span>
+          </span>
+        )}
       </div>
     )
   }
@@ -174,25 +200,27 @@ function SaleBlock({
   return (
     <button type="button" onClick={() => onPress(sale)} title={words} className={`${block} rounded text-left transition hover:bg-surface-1 active:scale-[0.99]`}>
       <span className={top}>{prices}</span>
-      <span className={row}>
-        <span
-          className={`${line} ${sale.pays ? 'text-success' : 'text-danger'}`}
-          data-testid="best-sale"
-          data-state="sale"
-          data-port={sale.port}
-          data-pays={sale.pays ? 'true' : 'false'}
-          data-profit={sale.profit}
-          data-units={sale.units ?? ''}
-        >
-          {!sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
-          <span className="min-w-0 truncate">
-            <PortFlag code={sale.port} /> {city}
-          </span>
-          <span className="ml-auto shrink-0 font-semibold" data-testid="best-sale-profit">
+      <span
+        className={`${line} ${sale.pays ? 'text-success' : 'text-danger'}`}
+        data-testid="best-sale"
+        data-state="sale"
+        data-port={sale.port}
+        data-pays={sale.pays ? 'true' : 'false'}
+        data-profit={sale.profit}
+        data-units={sale.units ?? ''}
+      >
+        {!sale.pays && <span className="shrink-0 font-medium">{t('desk.noGain')}</span>}
+        {/* the flag and the name stand together; in a card too narrow for both (산타크루스데테네리페 is 130 px, a 158-px card
+            has 142 inside) the name takes the next line whole rather than being cut */}
+        <span className={`flex flex-wrap items-center gap-x-1 ${KEEP_WORDS_CLASS}`} data-testid="best-sale-city">
+          <PortFlag code={sale.port} /> <span data-testid="best-sale-city-name">{city}</span>
+        </span>
+        <span className={tail}>
+          <span className="shrink-0 font-semibold" data-testid="best-sale-profit">
             {formatPriceDelta(sale.profit)}
           </span>
+          {spark}
         </span>
-        {spark}
       </span>
     </button>
   )
