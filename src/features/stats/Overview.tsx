@@ -147,7 +147,7 @@ function OverviewReady({ live, v, holders: h }: { live: StatsNow | null; v: Stat
           </CardRow>
 
           <CardRow>
-            <WatchCard watch={live?.watch} />
+            <WatchCard live={live} />
             <Card title={t('stats.purseSeries')} data-testid="stats-chart-world">
               <StatsChart
                 look="chart"
