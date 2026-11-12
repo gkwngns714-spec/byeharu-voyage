@@ -9,7 +9,7 @@ import { usePriceSeries } from '../../../live/usePriceSeries'
 import { useTrade } from '../../../live/useTrade'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
-import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
+import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, formatRealShort, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
 import type { FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import { WhyThisPrice } from '../markets/WhyThisPrice'
@@ -42,6 +42,10 @@ import { firstAtMs, useChartNews } from '../../../live/useChartNews'
 // `sellAt` — in this same panel, with the sale's wages, dues and profit (the served sell row, as Sail & sell shows them).
 // A good whose best sale does not pay (`noGain`, world.best_sales) says so above the units, before Max is pressed.
 //
+// 0351 (SUCCESS_PLAN T5): the card names the sale that pays best per day within her purse; the trip's tray carries the
+// OTHER served sale of the good as one quiet row under the units — "Far  City +profit · time" (the dearest she can
+// pay for), and on that trip "Near" back. Pressed, it is the same trip to that city, at that sale's served units.
+//
 // The button stands in the same place, the same size, the same colour in all four cases; only its word changes.
 // A phone: a bottom sheet (Tray, docked). A wide glass: the desk's right pane. EVERY FIGURE IS SERVED.
 
@@ -62,6 +66,17 @@ export interface PanelGood {
   price: number
 }
 
+/** 0351: the good's other served sale (world.best_sales' `far`, or its answer when the far trip is open). */
+export interface OtherSale {
+  kind: 'far' | 'near'
+  /** Port CODE. */
+  port: string
+  profit: number | null
+  /** The real seconds to that sale. */
+  seconds: number | null
+  onPress: () => void
+}
+
 export function TradePanel({
   side,
   fleet,
@@ -71,6 +86,7 @@ export function TradePanel({
   docked,
   sellAt = null,
   noGain = false,
+  otherSale = null,
   trip,
   mode,
   onClose,
@@ -89,6 +105,8 @@ export function TradePanel({
   sellAt?: string | null
   /** 0348: Buy only — no city she can sail to pays more than this costs (world.best_sales' `pays`). */
   noGain?: boolean
+  /** 0351: Buy & sell only — the good's other served sale, a quiet row under the units. */
+  otherSale?: OtherSale | null
   /** The trip's board (BuySell.tsx reads it once; the map draws its legs). Only read when not docked. */
   trip: Trip
   mode: TrayMode
@@ -109,6 +127,7 @@ export function TradePanel({
       good={good}
       sellAt={side === 'buy' ? sellAt : null}
       noGain={noGain}
+      otherSale={side === 'buy' && sellAt !== null ? otherSale : null}
       trip={trip}
       mode={mode}
       onClose={onClose}
@@ -128,6 +147,7 @@ function Frame({
   onClose,
   warn = false,
   sellAt = null,
+  otherSale = null,
   units,
   total,
   extra,
@@ -145,6 +165,8 @@ function Frame({
   warn?: boolean
   /** 0348: Buy & sell — the city the buy is sold at. */
   sellAt?: string | null
+  /** 0351: Buy & sell — the good's other served sale, a quiet pressable row under the units. */
+  otherSale?: OtherSale | null
   /** The units row: the stepper, or why there is none. */
   units: ReactNode
   /** The money the units come to, signed (−paid / +got), or null while unknown. */
@@ -213,6 +235,25 @@ function Frame({
       )}
       {/* the units first, where a half-raised sheet shows them; the chart they are read against under them */}
       {units}
+      {/* 0351: the other served sale — quiet (muted, one row), under the units; pressed, the same trip to that city */}
+      {otherSale && (
+        <Row
+          label={t(otherSale.kind === 'far' ? 'desk.farSale' : 'desk.nearSale')}
+          tone="muted"
+          chevron
+          onClick={otherSale.onPress}
+          value={
+            <span className="text-t-caption tabular-nums" data-testid="trade-other-sale-figure">
+              <PortFlag code={otherSale.port} /> {portNameOf(portByCode, otherSale.port)}
+              {otherSale.profit !== null && ` ${formatPriceDelta(otherSale.profit)}`}
+              {otherSale.seconds !== null && ` · ${formatRealShort(otherSale.seconds * 1000)}`}
+            </span>
+          }
+          data-testid="trade-other-sale"
+          data-kind={otherSale.kind}
+          data-port={otherSale.port}
+        />
+      )}
       <Chart name={good.name} trend={trend} portId={portId} goodId={good.good_id} />
       {extra}
       <WhyThisPrice why={why.view ?? null} loading={why.loading} />
@@ -386,6 +427,7 @@ function SailAct({
   good,
   sellAt,
   noGain,
+  otherSale,
   trip,
   mode,
   onClose,
@@ -399,6 +441,7 @@ function SailAct({
   /** 0348: Buy & sell — the city the buy is sold at; null for Sail & buy / Sail & sell. */
   sellAt: string | null
   noGain: boolean
+  otherSale: OtherSale | null
   trip: Trip
   mode: TrayMode
   onClose: () => void
@@ -456,6 +499,7 @@ function SailAct({
       onClose={onClose}
       warn={side === 'buy' && noGain}
       sellAt={sellAt}
+      otherSale={otherSale}
       total={mine ? total : null}
       units={
         units !== null && units > 0 ? (

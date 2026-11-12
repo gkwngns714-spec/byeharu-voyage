@@ -101,7 +101,7 @@ const READ_CARDS = () =>
     const r = c.getBoundingClientRect()
     const top = (id: string) => Math.round((c.querySelector(`[data-testid="${id}"]`) as HTMLElement).getBoundingClientRect().top)
     // a part of the card past its own edge stands on the next card (at 320 px "안 삼" crossed the next card's price)
-    const past = ['trade-good-name', 'trade-good-aboard', 'trade-good-buy', 'trade-good-sell', 'trade-good-spark', 'best-sale-profit', 'trade-buy', 'trade-sell'].filter((id) => {
+    const past = ['trade-good-name', 'trade-good-aboard', 'trade-good-buy', 'trade-good-sell', 'trade-good-spark', 'best-sale-profit', 'best-sale-time', 'trade-buy', 'trade-sell'].filter((id) => {
       const b = c.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect()
       return b !== undefined && b.width > 0 && (b.left < r.left - 0.5 || b.right > r.right + 0.5)
     })
@@ -135,7 +135,7 @@ const SET_SALES = (names: string[] | null) => {
     }
     // the name, the profit and the day line all stand inside the card
     const line = span.closest('[data-testid="best-sale"]') as HTMLElement
-    for (const e of [span, ...line.querySelectorAll('[data-testid="best-sale-profit"], [data-testid="trade-good-spark"]')]) {
+    for (const e of [span, ...line.querySelectorAll('[data-testid="best-sale-profit"], [data-testid="best-sale-time"], [data-testid="trade-good-spark"]')]) {
       const r = e.getBoundingClientRect()
       if (r.left < c.left - 0.5 || r.right > c.right + 0.5 || r.top < c.top - 0.5 || r.bottom > c.bottom + 0.5) faults.push(`"${text}": a part of its line stands outside the ${Math.round(c.width)}-px card`)
     }
