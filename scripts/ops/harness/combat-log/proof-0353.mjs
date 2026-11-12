@@ -156,7 +156,44 @@ if (!has('no-mutations') && failures.length === 0) {
   }
 }
 
+// THE SLOW MACHINE (--bounded). Prod ran the first 0353 about six times slower than this PC and the file refused itself at 49 s. The self-assert's pure fights are now cut by the clock
+// (7 s, 4 s, 4 s, 1 s). Here the four bounds are cut to a sixth, which on this PC is what prod's bounds are on prod: the real file must still pass with every least met, and a
+// mutant ENGINE must still go red inside that subset. And each mutant engine is put under the REAL file (by replacing the live body) and must go red in proof 56's whole matrix.
+if (has('bounded')) {
+  const sixth = (s) =>
+    swap(swap(swap(swap(s, `c_guard_parity constant interval := interval '7 seconds'`, `c_guard_parity constant interval := interval '1170 milliseconds'`),
+      `c_guard_orders constant interval := interval '4 seconds'`, `c_guard_orders constant interval := interval '670 milliseconds'`),
+      `c_guard_skin   constant interval := interval '4 seconds'`, `c_guard_skin   constant interval := interval '670 milliseconds'`),
+      `c_guard_words  constant interval := interval '1 second'`, `c_guard_words  constant interval := interval '170 milliseconds'`)
+  say('\nTHE SLOW MACHINE: the four clock bounds cut to a sixth')
+  for (let i = 0; i < 3; i++) {
+    const r = await attempt(sixth(file))
+    if (r.err) failures.push(`bounded: the real file failed: ${r.err.slice(0, 300)}`)
+    const ok = r.notes.find((x) => /self-assert ok/.test(x)) ?? ''
+    say(`  ${r.err ? 'RED ' + r.err.slice(0, 300) : 'green'}: ${(r.notes.find((x) => /0353 timings/.test(x)) ?? '').slice(0, 260)}`)
+    say(`    ${(ok.match(/ENGINE PARITY, bounded by the clock: (\d+ pairs on \d+)/)?.[1] ?? '?')} fights; skin ${ok.match(/SKIN PARITY: (\d+) raids/)?.[1] ?? '?'} raids; orders on ${ok.match(/ORDERS on (\d+) fights/)?.[1] ?? '?'} fights`)
+  }
+  const engine = hunks.filter((h) => h.fn === 'public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)')
+  for (const [label, from, to, expected] of MUTATIONS) {
+    if (!engine.some((h) => h.new.includes(from))) continue
+    const r = await attempt(swap(sixth(file), from, to))
+    const hit = r.err && expected.test(r.err)
+    say(`  ${hit ? 'red inside the bounded subset' : 'WRONG'}: ${label}${hit ? '' : ` -- ${(r.err ?? 'it passed').slice(0, 300)}`}`)
+    if (!hit) failures.push(`bounded: mutant engine not caught: ${label}`)
+    if (/names a table/.test(String(expected))) continue   // a guard of the text, not of what a fight answers: proof 56 fights, it does not read the body
+    const q = (t) => `'${t.replaceAll("'", "''")}'`
+    const under = await attempt(
+      file,
+      `do $$ begin execute replace(replace(pg_get_functiondef('public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)'::regprocedure), chr(13), ''), ${q(from)}, ${q(to)}); end $$;`,
+      proof.includes(from) ? proof.replace(from, () => to) : proof,
+    )
+    const caught = under.err && /PROOF 56 FAIL/.test(under.err)
+    say(`  ${caught ? 'red in proof 56' : 'WRONG'}: ${label} under the real file${caught ? ': ' + under.err.slice(0, 110) : ` -- ${(under.err ?? 'it passed').slice(0, 300)}`}`)
+    if (!caught) failures.push(`proof 56 did not catch the mutant engine: ${label}`)
+  }
+}
+
 await db.close()
-const ran = has('no-mutations') ? 'mutations NOT run' : `${MUTATIONS.length} mutations red`
+const ran =has('no-mutations') ? 'mutations NOT run' : `${MUTATIONS.length} mutations red`
 say(failures.length ? `\nFAILED:\n  ${failures.join('\n  ')}` : `\nALL GREEN: ${ran}, red first, the real file and proof 56 green, nothing from zero.`)
 process.exit(failures.length ? 1 : 0)

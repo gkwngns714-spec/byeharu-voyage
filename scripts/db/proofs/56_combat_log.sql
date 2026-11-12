@@ -8,6 +8,8 @@
 --   same passage (the voyage id pinned: it is the fight's seed) is sailed under the old bodies and the new, each in a subtransaction that is rolled back.
 --   Everything rolls back with proof.mjs's transaction; every switch this proof needs it writes here.
 --
+-- @pass PARITY_FULL        0320's whole matrix, 1,120 fights, every time: 3,320 engine pairs (no option, the sizing-up, a_order FIGHT said) and 1,082 raids through the wrapper and the moved skin, old bodies against new, equal as text
+-- @pass ORDERS_FULL        the whole matrix under Flee and under Pay, and every round limit 1 to 7 on twelve days of it: the rules the migration's bounded self-assert samples
 -- @pass LOG_NPC_PARITY     a merchant's forced raid passage (12 raid days), old bodies against new: every day's payload, the report, the purse and the hulls, byte for byte; no log anywhere; the same with the switch lit
 -- @pass LOG_HUMAN          a company's raid keeps fight.log (v 1): its rounds are rounds_fought, `after` is her hull, the report's entry carries the same log and the day's losses; without the log every day and the report are the old bodies', word for word
 -- @pass LOG_LATE           for each order (Fight, Flee, Pay): settled day by day and settled once at the eta are identical: days, events, ledger, purse, hulls
@@ -321,6 +323,193 @@ begin
   return v_out;
 end
 $b$;
+
+-- ── THE WHOLE MATRIX, EVERY TIME (PARITY_FULL, ORDERS_FULL). The migration's own self-assert reads 0320's matrix under clock bounds (prod is about six times slower than a
+--    builder's PC, and its first deploy refused itself at 49 s); here time is free, so every fight is fought: the new bodies' answers are kept as text, the old bodies are put back
+--    in a subtransaction (pg_temp.to_old_56, each to its digest) and every answer is compared. Pure fights on 0320's probe hulls: no row of the game is read or written. ──
+do $p$
+declare
+  c_seed constant uuid := '00000000-0353-4000-8000-0000000000ff';
+  v_carlat jsonb := jsonb_build_array(jsonb_build_object('id', '00000000-0320-4000-8000-0000000000a1', 'name', 'Probe Carlat',
+                      'tier', 1, 'hull', 550, 'maxd', 550, 'crew', 12, 'attack', 55, 'accuracy', 40, 'reach', 25, 'armour', 12,
+                      'sighting', 10, 'gear', jsonb_build_array('Boarding Gear')));
+  v_barca  jsonb := jsonb_build_array(jsonb_build_object('id', '00000000-0320-4000-8000-0000000000a2', 'name', 'Probe Barca',
+                      'tier', 1, 'hull', 400, 'maxd', 400, 'crew', 8, 'attack', 35, 'accuracy', 0, 'reach', 0, 'armour', 5,
+                      'sighting', 8));
+  v_three  jsonb := jsonb_build_array(
+                      jsonb_build_object('id', '00000000-0320-4000-8000-0000000000a3', 'name', 'Probe Nau', 'tier', 3, 'hull', 1500, 'maxd', 1800, 'crew', 90, 'attack', 180,
+                        'accuracy', 55, 'reach', 60, 'armour', 30, 'sighting', 40, 'boarder_pct', 0.12, 'boarder', 'Probe Boarder', 'gunner', 'Probe Gunner', 'gear', jsonb_build_array('Swivel Guns', 'Boarding Gear')),
+                      jsonb_build_object('id', '00000000-0320-4000-8000-0000000000a4', 'name', 'Probe Galion', 'tier', 4, 'hull', 2400, 'maxd', 2400, 'crew', 140, 'attack', 260,
+                        'accuracy', 48, 'reach', 40, 'armour', 44, 'sighting', 22),
+                      jsonb_build_object('id', '00000000-0320-4000-8000-0000000000a5', 'name', 'Probe Wreck', 'tier', 1, 'hull', 0, 'maxd', 500, 'crew', 6, 'attack', 40,
+                        'accuracy', 40, 'reach', 90, 'armour', 0, 'sighting', 5));
+  v_two    jsonb := jsonb_build_array(
+                      jsonb_build_object('id', '00000000-0320-4000-8000-0000000000b1', 'name', 'Probe One', 'tier', 2, 'hull', 9000, 'maxd', 9000, 'crew', 40, 'attack', 120,
+                        'accuracy', 60, 'reach', 50, 'armour', 20, 'sighting', 22),
+                      jsonb_build_object('id', '00000000-0320-4000-8000-0000000000b2', 'name', 'Probe Two', 'tier', 2, 'hull', 9000, 'maxd', 9000, 'crew', 40, 'attack', 120,
+                        'accuracy', 60, 'reach', 50, 'armour', 20, 'sighting', 22));
+  v_x      record;
+  v_f      jsonb;
+  v_g      jsonb;
+  v_b      jsonb;
+  v_base   jsonb;
+  v_full   jsonb;
+  v_m      int;
+  v_pf     numeric;
+  v_pairs  int := 0;
+  v_bad    int := 0;
+  v_skin   int := 0;
+  v_sbad   int := 0;
+  v_kinds  jsonb;
+  v_ex     text;
+  v_fled   int := 0;
+  v_caught int := 0;
+  v_paid   int := 0;
+  v_same   int := 0;
+  v_pre    int := 0;
+  v_open   int := 0;
+begin
+  create temp table mx_56 on commit drop as
+  with rh as materialized (select r.r, voyage.raider_hulls(r.r) as b from (values (6.0), (12.0), (18.0), (24.0), (10.0), (60.0), (120.0)) r(r))
+  select row_number() over (order by m.d, m.k)::int as i, m.*
+    from (select s.k * 10 + r.k as k, s.ships as a, (select rh.b from rh where rh.r = r.r) as b, s.esc, r.r, d
+            from (values (1, v_carlat, 11.74::numeric), (2, v_barca, 6.66::numeric)) s(k, ships, esc)
+           cross join (values (1, 6.0), (2, 12.0), (3, 18.0), (4, 24.0)) r(k, r)
+           cross join generate_series(1, 120) d
+          union all
+          select 30 + r.k, v_three, (select rh.b from rh where rh.r = r.r), 30.5::numeric, r.r, d
+            from (values (1, 10.0), (2, 24.0), (3, 60.0), (4, 120.0)) r(k, r)
+           cross join generate_series(1, 30) d
+          union all
+          select 40, v_three, v_two, null::numeric, null::numeric, d from generate_series(1, 40) d) m;
+  if (select count(*) from mx_56) is distinct from 1120 then
+    raise exception 'PROOF 56 FAIL: the matrix is not 1120 fights';
+  end if;
+
+  -- the NEW bodies' answers, as text: no option; the sizing-up; a_order FIGHT said; the wrapper; the moved skin with {}
+  create temp table new_56 on commit drop as
+  select m.i,
+         public.fight_sides(c_seed, m.d, m.a, m.b, '{}'::jsonb)::text as n0,
+         case when m.r is not null then public.fight_sides(c_seed, m.d, m.a, m.b, jsonb_build_object('a_score', m.esc, 'b_score', m.r))::text end as n1,
+         public.fight_sides(c_seed, m.d, m.a, m.b, case when m.r is null then '{}'::jsonb else jsonb_build_object('a_score', m.esc, 'b_score', m.r) end || '{"a_order": "FIGHT"}'::jsonb)::text as n2,
+         case when m.r is not null then voyage.fight_resolve(c_seed, m.d, m.r, m.esc, m.a)::text end as s1,
+         case when m.r is not null then voyage.raid_report(c_seed, m.d, m.r, m.esc, m.a, '{}'::jsonb)::text end as s2
+    from mx_56 m;
+  -- the two empty seas, through both skins
+  create temp table sea_56 on commit drop as
+  select q.r, q.esc, voyage.fight_resolve(c_seed, 7, q.r, q.esc, v_carlat)::text as s1, voyage.raid_report(c_seed, 7, q.r, q.esc, v_carlat, '{}'::jsonb)::text as s2
+    from (values (0::numeric, 5::numeric), (null::numeric, null::numeric)) q(r, esc);
+
+  begin
+    perform pg_temp.to_old_56();   -- public.fight_sides and voyage.fight_resolve are now the bodies 0353 was cut against
+    for v_x in
+      select m.i, m.d, m.r, n.n0, n.n1, n.n2, n.s1, n.s2,
+             public.fight_sides(c_seed, m.d, m.a, m.b, '{}'::jsonb) as o0,
+             case when m.r is not null then public.fight_sides(c_seed, m.d, m.a, m.b, jsonb_build_object('a_score', m.esc, 'b_score', m.r)) end as o1,
+             case when m.r is not null then voyage.fight_resolve(c_seed, m.d, m.r, m.esc, m.a)::text end as os
+        from mx_56 m join new_56 n on n.i = m.i order by m.i
+    loop
+      v_kinds := jsonb_set(coalesce(v_kinds, '{}'::jsonb), array[coalesce(v_x.o1, v_x.o0) ->> 'outcome'], 'true'::jsonb);
+      v_pairs := v_pairs + case when v_x.r is null then 2 else 3 end;
+      if v_x.n0 is distinct from v_x.o0::text or (v_x.r is not null and v_x.n1 is distinct from v_x.o1::text) or v_x.n2 is distinct from coalesce(v_x.o1, v_x.o0)::text then
+        v_bad := v_bad + 1;
+        v_ex := coalesce(v_ex, format('fight %s (day %s, raid %s): new %s | old %s', v_x.i, v_x.d, v_x.r, v_x.n0, v_x.o0));
+      end if;
+      if v_x.r is not null then
+        v_skin := v_skin + 1;
+        if v_x.s1 is distinct from v_x.os or v_x.s2 is distinct from v_x.os then
+          v_sbad := v_sbad + 1;
+          v_ex := coalesce(v_ex, format('raid %s (day %s, raid %s): wrapper %s | old %s', v_x.i, v_x.d, v_x.r, v_x.s1, v_x.os));
+        end if;
+      end if;
+    end loop;
+    for v_x in select q.*, voyage.fight_resolve(c_seed, 7, q.r, q.esc, v_carlat)::text as os from sea_56 q loop
+      v_skin := v_skin + 1;
+      if v_x.s1 is distinct from v_x.os or v_x.s2 is distinct from v_x.os then
+        v_sbad := v_sbad + 1;
+        v_ex := coalesce(v_ex, format('an empty sea changed: %s | old %s', v_x.s1, v_x.os));
+      end if;
+    end loop;
+    raise exception using errcode = 'ZX356', message = 'PARITY_ROLLBACK_56';
+  exception when sqlstate 'ZX356' then
+    null;
+  end;
+  if v_pairs is distinct from 3320 or v_skin is distinct from 1082 or v_bad is distinct from 0 or v_sbad is distinct from 0
+     or not coalesce(v_kinds ?& array['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED'], false) then
+    raise exception 'PROOF 56 FAIL: PARITY on the whole matrix: % engine pair(s) of 3320, % fight(s) changed; % raid(s) of 1082 through the skins, % changed; endings %; first: %', v_pairs, v_bad, v_skin, v_sbad, v_kinds, v_ex;
+  end if;
+  if md5(replace(pg_get_functiondef('public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)'::regprocedure), E'\r', '')) = (select p.md5 from pre_56 p where p.fn like 'public.fight_sides%') then
+    raise exception 'PROOF 56 FAIL: the old engine outlived its rollback';
+  end if;
+  raise notice 'PASS: PARITY_FULL — 0320''s whole matrix, 1,120 fights: 3,320 engine pairs (no option, the sizing-up, a_order FIGHT said) and 1,082 raids through the wrapper and the moved skin, the old bodies (each to its digest) against the new, all equal as text; every ending met';
+
+  -- FLEE, PAY AND EVERY ROUND LIMIT, on the whole matrix (the new bodies)
+  for v_x in select * from mx_56 m order by m.i loop
+    v_b := case when v_x.r is null then '{}'::jsonb else jsonb_build_object('a_score', v_x.esc, 'b_score', v_x.r) end;
+    v_base := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_b);
+    v_f := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_b || '{"a_order": "FLEE"}'::jsonb);
+    v_g := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_b || '{"a_order": "PAY"}'::jsonb);
+    if (v_base ->> 'stood_off')::boolean or (v_base ->> 'slipped')::boolean then
+      v_same := v_same + 1;
+      if v_f::text is distinct from v_base::text or v_g::text is distinct from v_base::text then
+        raise exception 'PROOF 56 FAIL: an order changed a day that stood off or that she slipped (fight %): % and % against %', v_x.i, v_f, v_g, v_base;
+      end if;
+    else
+      v_pf := round(public.fight_flee_chance((select max((e ->> 'sighting')::numeric) from jsonb_array_elements(v_x.a) e)
+                                             - (select max((e ->> 'sighting')::numeric) from jsonb_array_elements(v_x.b) e)), 4);
+      if v_f -> 'hull_lost' -> 'b' is distinct from '{}'::jsonb or (v_f -> 'hits' ->> 'a')::int is distinct from 0 or jsonb_array_length(v_f -> 'rounds') is distinct from (v_f ->> 'rounds_fought')::int
+         or exists (select 1 from jsonb_array_elements(v_f -> 'rounds') e where (e -> 'a' ->> 'fired')::int is distinct from 0 or (e ->> 'flee')::numeric is distinct from v_pf) then
+        raise exception 'PROOF 56 FAIL: a fleeing side fired, or a round''s flee is not the rule''s % (fight %): %', v_pf, v_x.i, v_f;
+      end if;
+      if coalesce((v_f ->> 'fled')::boolean, false) then
+        v_fled := v_fled + 1;
+        if v_f ->> 'outcome' is distinct from 'EVADED' or v_f -> 'board' is distinct from 'null'::jsonb or (v_f ->> 'broke_off')::boolean is not false then
+          raise exception 'PROOF 56 FAIL: a flight that got away is not EVADED with no boarding (fight %): %', v_x.i, v_f;
+        end if;
+      else
+        v_caught := v_caught + 1;
+        if jsonb_typeof(v_f -> 'board') is distinct from 'object' or (v_f ->> 'rounds_fought')::int is distinct from jsonb_array_length(public.wc('fight_ranges'))
+           or coalesce(v_f ->> 'outcome', '') not in ('DRIVEN_OFF', 'RANSOM', 'PLUNDERED') then
+          raise exception 'PROOF 56 FAIL: a flight that was caught was not boarded after every round (fight %): %', v_x.i, v_f;
+        end if;
+      end if;
+      v_paid := v_paid + 1;
+      if v_g ->> 'outcome' is distinct from 'RANSOM' or (v_g ->> 'paid')::boolean is not true or (v_g ->> 'rounds_fought')::int is distinct from 0 or v_g -> 'rounds' is distinct from '[]'::jsonb
+         or v_g -> 'hull_lost' is distinct from '{"a": {}, "b": {}}'::jsonb or v_g -> 'board' is distinct from 'null'::jsonb
+         or (v_g -> 'hull' ->> 'a')::numeric is distinct from (v_g -> 'hull' ->> 'a_start')::numeric
+         or (v_g -> 'hull' ->> 'b')::numeric is distinct from (v_g -> 'hull' ->> 'b_start')::numeric then
+        raise exception 'PROOF 56 FAIL: a Pay is not RANSOM, paid, no round, no hull (fight %): %', v_x.i, v_g;
+      end if;
+    end if;
+    -- every round limit 1 to 7, with no order and under Flee, on the fights of twelve days
+    if v_x.d <= 12 then
+      for v_m in 1 .. 7 loop
+        foreach v_g in array array[v_b, v_b || '{"a_order": "FLEE"}'::jsonb] loop
+          v_full := case when v_g ? 'a_order' then v_f else v_base end;
+          v_pre := v_pre + 1;
+          declare
+            v_cut jsonb := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_g || jsonb_build_object('rounds', v_m));
+          begin
+            if (v_full ->> 'rounds_fought')::int > v_m then
+              v_open := v_open + 1;
+              if (v_cut ->> 'open')::boolean is not true or v_cut -> 'outcome' is distinct from 'null'::jsonb or v_cut -> 'board' is distinct from 'null'::jsonb or (v_cut ->> 'rounds_fought')::int is distinct from v_m
+                 or (v_cut -> 'rounds')::text is distinct from (select jsonb_agg(e order by o) from jsonb_array_elements(v_full -> 'rounds') with ordinality q(e, o) where o <= v_m)::text then
+                raise exception 'PROOF 56 FAIL: a run to round % is not the first rows of the full run, left open (fight %): % against %', v_m, v_x.i, v_cut, v_full;
+              end if;
+            elsif v_cut::text is distinct from v_full::text then
+              raise exception 'PROOF 56 FAIL: a round limit the fight never reached changed it (limit %, fight %): % against %', v_m, v_x.i, v_cut, v_full;
+            end if;
+          end;
+        end loop;
+      end loop;
+    end if;
+  end loop;
+  if v_fled + v_caught + v_same is distinct from 1120 or v_paid is distinct from v_fled + v_caught or v_fled = 0 or v_caught = 0 or v_same = 0 or v_pre is distinct from 2184 or v_open = 0 or v_open = v_pre then
+    raise exception 'PROOF 56 FAIL: the orders on the whole matrix: % away, % caught, % unchanged, % paid, % round limits of 2184, % open', v_fled, v_caught, v_same, v_paid, v_pre, v_open;
+  end if;
+  raise notice 'PASS: ORDERS_FULL — the whole matrix under Flee (% away, % caught and boarded, no shot of hers, every round''s chance the rule''s) and under Pay (% RANSOM before a shot); % that stood off or slipped unchanged; % round limits, % left open, each the first rows of the full run', v_fled, v_caught, v_paid, v_same, v_pre, v_open;
+end
+$p$;
 
 do $p$
 declare

@@ -44,8 +44,13 @@
 --   assembly. A departure: one knob read; lit, one primary-key probe of a near-empty table. Measured by scripts/ops/harness/combat-log/proof-0353.mjs --cost (dev-log).
 -- ROLLBACK (forward, owner only): orders: raid_orders_enabled false (voyage.leg_order answers null, the door refuses; rows and logs stay). The whole slice: a migration that swaps
 --   this file's OLD and NEW, puts voyage.fight_resolve's body back (voyage.raid_report with its hunks reversed is that body), and drops what this file created. Old logs stay readable.
--- SELF-ASSERT: ONE DO block, statement_timeout 45 s, lock_timeout 5 s first; fails above 40 s. Pure fights (about 12,000) and the catalog; no table is counted or summed; the probe of the
---   doors writes only its own rows and is rolled back. The real raid through voyage.settle is proved in CI: scripts/db/proofs/56_combat_log.sql.
+-- SELF-ASSERT: ONE DO block, statement_timeout 45 s, lock_timeout 5 s first; fails above 40 s. Pure fights and the catalog; no table is counted or summed; the probe of the doors writes
+--   only its own rows and is rolled back. THE PURE FIGHTS ARE BOUNDED BY THE CLOCK (the first deploy, 2026-11-12, took 49 s on prod against 7.8 s locally and refused itself; nothing
+--   was applied): engine parity 7 s, Flee / Pay / the prefix 4 s, skin parity 4 s, the words 1 s: 16 s at the most, on any machine. 0320's matrix is read day by day across every cell,
+--   so the first fights cross every kind; each part fails under its least (200 engine pairs, 20 fights under the orders, 60 raids through the skins, every ending met) and never
+--   passes on nothing. A notice prints the milliseconds of every part. THE WHOLE MATRIX, every time (3,320 engine pairs, 1,082 raids through the skins, Flee, Pay and every round
+--   limit), is proof 56 in CI: scripts/db/proofs/56_combat_log.sql, with the real raid through voyage.settle. ON PROD byte-parity is held again by
+--   scripts/ops/harness/two-sides/golden.sql before and after the deploy (digest 89ee59988714e9794df244ef70883257 over 1,080 fights, recorded before this deploy).
 -- SUPERSEDES (re-cut): public.fight_sides (0320; six hunks: with no order and no round limit its answer is byte for byte what it was, proved on 0320's matrix),
 --   voyage.fight_resolve (0189; re-cut 0202, 0204, 0213, 0276; whole 0320; 0323 x2): replaced whole by the one-line wrapper, its body moved to voyage.raid_report (same answer, proved by
 --   answers), voyage.fight_round_line (0323), voyage.fight (0323's line), voyage.depart (0339's line), voyage.settle (0339's and 0189's lines, cut after 0352),
@@ -59,6 +64,21 @@
 do $m$
 declare
   v_t0         timestamptz := clock_timestamp();
+  v_tp         timestamptz := clock_timestamp();   -- the part now running, for the split printed at the end
+  v_tg         timestamptz;                        -- a bounded part's own start
+  v_ms         jsonb := '{}'::jsonb;               -- milliseconds a part
+  v_pairs      int := 0;
+  v_ord_n      int := 0;
+  v_skin_kinds jsonb := '{}'::jsonb;
+  -- THE CLOCK BOUNDS OF THE PURE FIGHTS (2026-11-12: the first deploy took 49 s on prod against 7.8 s here and refused itself at its 40 s budget). Each part stops at its bound
+  -- and fails under its least; together 16 s, whatever the machine. The whole matrix is proof 56's.
+  c_guard_parity constant interval := interval '7 seconds';
+  c_guard_orders constant interval := interval '4 seconds';
+  c_guard_skin   constant interval := interval '4 seconds';
+  c_guard_words  constant interval := interval '1 second';
+  c_min_pairs    constant int := 200;   -- engine pairs compared as text
+  c_min_orders   constant int := 20;    -- fights put under Flee, Pay and a round limit
+  c_min_skin     constant int := 60;    -- raids through the old skin, the wrapper and the moved skin
   v_fn_before  text;
   v_cfg_before text;
   v_def        text;
@@ -184,6 +204,8 @@ begin
      or (select p.prosrc from pg_proc p where p.oid = 'pg_temp.fight_resolve_old_0353(uuid,integer,numeric,numeric,jsonb)'::regprocedure) not like '%pg_temp.fight_sides_old_0353(p_voyage,%' then
     raise exception '0353 refuses: the kept copy of the skin does not call the kept copy of the engine';
   end if;
+
+  v_ms := v_ms || jsonb_build_object('guard_and_pre_images', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
 
   -- ── 2. THE HUNKS (each OLD text once in its live body; the rows under voyage.raid_report are cut on voyage.fight_resolve's live text) ──
   create temp table hunks_0353 (fn text, n int, old text, new text) on commit drop;
@@ -821,19 +843,33 @@ $f$;
     raise exception '0353 self-assert FAIL: % hunks, not 20', (select count(*) from hunks_0353);
   end if;
 
-  -- ── 9. ENGINE PARITY: the kept copy of the live engine against the new one, as text, on 0320's matrix, three ways ──
-  for v_x in
-    select s.ships as a, voyage.raider_hulls(r.r) as b, s.esc, r.r, d
-      from (values (v_carlat, 11.74::numeric), (v_barca, 6.66::numeric)) s(ships, esc)
-     cross join (values (6.0), (12.0), (18.0), (24.0)) r(r)
-     cross join generate_series(1, 120) d
-    union all
-    select v_three, voyage.raider_hulls(r.r), 30.5::numeric, r.r, d
-      from (values (10.0), (24.0), (60.0), (120.0)) r(r)
-     cross join generate_series(1, 30) d
-    union all
-    select v_three, v_two, null::numeric, null::numeric, d from generate_series(1, 40) d
-  loop
+  v_ms := v_ms || jsonb_build_object('made_and_cut', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
+
+  -- ── 9. ENGINE PARITY, BOUNDED BY THE CLOCK: the kept copy of the live engine against the new one, as text, on 0320's matrix, three ways ──
+  -- The matrix is 0320's 1,120 fights, read DAY BY DAY across every cell (both probe hulls x four raids, the convoy x four raids, three real hulls against two), so the first
+  -- fights already cross every kind of fight. It runs until it ends or until c_guard_parity has passed, whichever is first, and FAILS if fewer than c_min_pairs pairs were
+  -- compared or an ending was not met: it never passes on nothing. The whole matrix, every time, is proof 56's (CI), and prod's byte-parity is held again by
+  -- scripts/ops/harness/two-sides/golden.sql before and after the deploy.
+  create temp table matrix_0353 on commit drop as
+  with rh as materialized (select r.r, voyage.raider_hulls(r.r) as b from (values (6.0), (12.0), (18.0), (24.0), (10.0), (60.0), (120.0)) r(r))
+  select row_number() over (order by m.d, m.k)::int as i, m.*
+    from (select s.k * 10 + r.k as k, s.ships as a, (select rh.b from rh where rh.r = r.r) as b, s.esc, r.r, d
+            from (values (1, v_carlat, 11.74::numeric), (2, v_barca, 6.66::numeric)) s(k, ships, esc)
+           cross join (values (1, 6.0), (2, 12.0), (3, 18.0), (4, 24.0)) r(k, r)
+           cross join generate_series(1, 120) d
+          union all
+          select 30 + r.k, v_three, (select rh.b from rh where rh.r = r.r), 30.5::numeric, r.r, d
+            from (values (1, 10.0), (2, 24.0), (3, 60.0), (4, 120.0)) r(k, r)
+           cross join generate_series(1, 30) d
+          union all
+          select 40, v_three, v_two, null::numeric, null::numeric, d from generate_series(1, 40) d) m;
+  if (select count(*) from matrix_0353) is distinct from 1120 then
+    raise exception '0353 self-assert FAIL: the matrix is % fights, not 1120', (select count(*) from matrix_0353);
+  end if;
+
+  v_tg := clock_timestamp();
+  for v_x in select * from matrix_0353 m order by m.i loop
+    exit when clock_timestamp() - v_tg > c_guard_parity;
     v_n := v_n + 1;
     -- (i) no options
     v_old := pg_temp.fight_sides_old_0353(c_seed, v_x.d, v_x.a, v_x.b, '{}'::jsonb);
@@ -841,6 +877,7 @@ $f$;
     if v_old::text is distinct from v_new::text then
       raise exception '0353 self-assert FAIL: ENGINE PARITY: with no option a fight changed (day %): % against %', v_x.d, v_old, v_new;
     end if;
+    v_pairs := v_pairs + 1;
     v_kinds := jsonb_set(v_kinds, array[v_old ->> 'outcome'], to_jsonb(coalesce((v_kinds ->> (v_old ->> 'outcome'))::int, 0) + 1));
     if v_x.r is not null then
       -- (ii) the sizing-up; (iii) and a_order FIGHT said aloud
@@ -850,16 +887,32 @@ $f$;
       if v_old::text is distinct from v_new::text or v_old::text is distinct from v_f::text then
         raise exception '0353 self-assert FAIL: ENGINE PARITY: with the sizing-up, or with a_order FIGHT said, a fight changed (day %, raid %): % against % and %', v_x.d, v_x.r, v_old, v_new, v_f;
       end if;
+      v_pairs := v_pairs + 2;
       v_kinds := jsonb_set(v_kinds, array[v_old ->> 'outcome'], to_jsonb(coalesce((v_kinds ->> (v_old ->> 'outcome'))::int, 0) + 1));
     else
       v_f := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, jsonb_build_object('a_order', 'FIGHT'));
       if v_old::text is distinct from v_f::text then
         raise exception '0353 self-assert FAIL: ENGINE PARITY: with a_order FIGHT said a fight of real hulls changed (day %): % against %', v_x.d, v_old, v_f;
       end if;
-      v_new := v_old;
+      v_pairs := v_pairs + 1;
     end if;
-    -- v_new is now the fight as it is with no order (with the sizing-up where there is one): the base of what follows
+  end loop;
+  if v_pairs < c_min_pairs then
+    raise exception '0353 self-assert FAIL: ENGINE PARITY compared only % pair(s) in % (the least that proves anything is %): this database is too slow now, deploy it again', v_pairs, c_guard_parity, c_min_pairs;
+  end if;
+  if not (v_kinds ?& array['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED']) then
+    raise exception '0353 self-assert FAIL: the % fights compared met too few endings to prove anything: %', v_n, v_kinds;
+  end if;
+  v_ms := v_ms || jsonb_build_object('engine_parity', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
+
+  -- ── 9b. FLEE, PAY AND THE PREFIX, on the same matrix in the same order, bounded by c_guard_orders. The whole matrix: proof 56. ──
+  v_tg := clock_timestamp();
+  for v_x in select * from matrix_0353 m order by m.i loop
+    exit when clock_timestamp() - v_tg > c_guard_orders;
+    v_ord_n := v_ord_n + 1;
     v_b := case when v_x.r is null then '{}'::jsonb else jsonb_build_object('a_score', v_x.esc, 'b_score', v_x.r) end;
+    -- the fight as it is with no order (with the sizing-up where there is one): the base of what follows
+    v_new := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_b);
 
     -- ── FLEE ──
     v_f := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_b || '{"a_order": "FLEE"}'::jsonb);
@@ -907,57 +960,49 @@ $f$;
       end if;
     end if;
 
-    -- ── PREFIX (docs/COMBAT_LOG.md 3.1): a run to round N is the first N rows of the full run; open exactly when the full run went further ──
-    if v_x.d <= 12 then
-      for v_m in 1 .. 7 loop
-        foreach v_g in array array[v_b, v_b || '{"a_order": "FLEE"}'::jsonb] loop
-          v_old := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_g);
-          v_f := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_g || jsonb_build_object('rounds', v_m));
-          v_pre_n := v_pre_n + 1;
-          if (v_old ->> 'rounds_fought')::int > v_m then
-            v_open_n := v_open_n + 1;
-            if not coalesce((v_f ->> 'open')::boolean, false) or v_f -> 'outcome' is distinct from 'null'::jsonb or v_f -> 'board' is distinct from 'null'::jsonb or (v_f ->> 'rounds_fought')::int is distinct from v_m
-               or (v_f -> 'rounds')::text is distinct from (select jsonb_agg(e order by o) from jsonb_array_elements(v_old -> 'rounds') with ordinality q(e, o) where o <= v_m)::text then
-              raise exception '0353 self-assert FAIL: a run to round % is not the first % rows of the full run, left open: % against %', v_m, v_m, v_f, v_old;
-            end if;
-          elsif v_f::text is distinct from v_old::text then
-            raise exception '0353 self-assert FAIL: a round limit the fight never reached changed it (limit %): % against %', v_m, v_f, v_old;
-          end if;
-        end loop;
-      end loop;
-    end if;
+    -- ── PREFIX (docs/COMBAT_LOG.md 3.1): a run to round N is the first N rows of the full run; open exactly when the full run went further. One limit a fight here (the
+    --    limit turns with the fight, 1 to 7), with no order and under Flee; every limit on every fight of twelve days is proof 56's. ──
+    v_m := 1 + (v_x.i % 7);
+    foreach v_g in array array[v_b, v_b || '{"a_order": "FLEE"}'::jsonb] loop
+      v_old := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_g);
+      v_f := public.fight_sides(c_seed, v_x.d, v_x.a, v_x.b, v_g || jsonb_build_object('rounds', v_m));
+      v_pre_n := v_pre_n + 1;
+      if (v_old ->> 'rounds_fought')::int > v_m then
+        v_open_n := v_open_n + 1;
+        if not coalesce((v_f ->> 'open')::boolean, false) or v_f -> 'outcome' is distinct from 'null'::jsonb or v_f -> 'board' is distinct from 'null'::jsonb or (v_f ->> 'rounds_fought')::int is distinct from v_m
+           or (v_f -> 'rounds')::text is distinct from (select jsonb_agg(e order by o) from jsonb_array_elements(v_old -> 'rounds') with ordinality q(e, o) where o <= v_m)::text then
+          raise exception '0353 self-assert FAIL: a run to round % is not the first % rows of the full run, left open: % against %', v_m, v_m, v_f, v_old;
+        end if;
+      elsif v_f::text is distinct from v_old::text then
+        raise exception '0353 self-assert FAIL: a round limit the fight never reached changed it (limit %): % against %', v_m, v_f, v_old;
+      end if;
+    end loop;
   end loop;
-  if v_n is distinct from 1120 then
-    raise exception '0353 self-assert FAIL: the matrix is % fights, not 1120', v_n;
+  if v_ord_n < c_min_orders or v_fled = 0 or v_caught = 0 or v_paid = 0 or v_open_n = 0 or v_open_n = v_pre_n then
+    raise exception '0353 self-assert FAIL: in % the orders ran on % fight(s) (the least is %) and must meet a flight away (%), a flight caught (%), a Pay (%) and both an open and a finished prefix (% of %)',
+      c_guard_orders, v_ord_n, c_min_orders, v_fled, v_caught, v_paid, v_open_n, v_pre_n;
   end if;
-  if not (v_kinds ?& array['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED']) then
-    raise exception '0353 self-assert FAIL: the matrix met too few endings to prove anything: %', v_kinds;
-  end if;
-  if v_fled = 0 or v_caught = 0 or v_paid = 0 or v_open_n = 0 or v_open_n = v_pre_n then
-    raise exception '0353 self-assert FAIL: the matrix must meet a flight away (%), a flight caught (%), a Pay (%) and both an open and a finished prefix (% of %)', v_fled, v_caught, v_paid, v_open_n, v_pre_n;
-  end if;
+  v_ms := v_ms || jsonb_build_object('orders', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
 
-  -- ── 10. SKIN PARITY: the kept copy of the live skin (over the kept engine) against the wrapper and against voyage.raid_report with {}, as text ──
-  v_bad := 0; v_ex := null;
+  -- ── 10. SKIN PARITY, BOUNDED BY c_guard_skin: the kept copy of the live skin (over the kept engine) against the wrapper and against voyage.raid_report with {}, as text.
+  --    The two empty seas first, then the scored fights of the matrix in its order. All 1,082: proof 56. ──
+  v_tg := clock_timestamp();
   for v_x in
-    select s.ships, s.esc, r.r, d
-      from (values (v_carlat, 11.74::numeric), (v_barca, 6.66::numeric)) s(ships, esc)
-     cross join (values (6.0), (12.0), (18.0), (24.0)) r(r)
-     cross join generate_series(1, 120) d
-    union all
-    select v_three, 30.5::numeric, r.r, d
-      from (values (10.0), (24.0), (60.0), (120.0)) r(r)
-     cross join generate_series(1, 30) d
-    union all select v_carlat, 5::numeric, 0::numeric, 7
-    union all select v_carlat, null::numeric, null::numeric, 7
+    select q.ships, q.esc, q.r, q.d
+      from (select 0 as i, v_carlat as ships, 5::numeric as esc, 0::numeric as r, 7 as d
+            union all select 0, v_carlat, null::numeric, null::numeric, 7
+            union all select m.i, m.a, m.esc, m.r, m.d from matrix_0353 m where m.r is not null) q
+     order by q.i, q.r nulls last
   loop
+    exit when clock_timestamp() - v_tg > c_guard_skin;
     v_old := pg_temp.fight_resolve_old_0353(c_seed, v_x.d, v_x.r, v_x.esc, v_x.ships);
     v_new := voyage.fight_resolve(c_seed, v_x.d, v_x.r, v_x.esc, v_x.ships);
     v_f   := voyage.raid_report(c_seed, v_x.d, v_x.r, v_x.esc, v_x.ships, '{}'::jsonb);
     v_skin_n := v_skin_n + 1;
     if v_old::text is distinct from v_new::text or v_old::text is distinct from v_f::text then
-      v_bad := v_bad + 1; v_ex := coalesce(v_ex, jsonb_build_object('old', v_old, 'new', v_new, 'report', v_f));
+      raise exception '0353 self-assert FAIL: SKIN PARITY: a raid changed (day %, raid %): % against % and %', v_x.d, v_x.r, v_old, v_new, v_f;
     end if;
+    v_skin_kinds := jsonb_set(v_skin_kinds, array[v_old ->> 'outcome'], 'true'::jsonb);
     -- and the log leaves the words alone: with {log} the English rounds, the sentence and every old key are the old body's; the log's rounds are the fight's
     if v_x.r > 0 then
       v_g := voyage.raid_report(c_seed, v_x.d, v_x.r, v_x.esc, v_x.ships, '{"log": true}'::jsonb);
@@ -972,12 +1017,16 @@ $f$;
       end if;
     end if;
   end loop;
-  if v_skin_n is distinct from 1082 or v_bad > 0 then
-    raise exception '0353 self-assert FAIL: SKIN PARITY: % of % raid(s) changed: %', v_bad, v_skin_n, v_ex;
+  if v_skin_n < c_min_skin or not (v_skin_kinds ?& array['EVADED', 'DRIVEN_OFF', 'RANSOM', 'PLUNDERED']) then
+    raise exception '0353 self-assert FAIL: SKIN PARITY compared only % raid(s) in % (the least is %), or met too few endings (%)', v_skin_n, c_guard_skin, c_min_skin, v_skin_kinds;
   end if;
-  -- the words of Flee and Pay through the skin: a paid day and a day she got away, each by its sentence, its flag and its log
+  v_ms := v_ms || jsonb_build_object('skin_parity', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
+
+  -- the words of Flee and Pay through the skin: a paid day and a day she got away, each by its sentence, its flag and its log. It stops when both were met and c_guard_words has passed.
   v_m := 0; v_bad := 0;
+  v_tg := clock_timestamp();
   for v_x in select d from generate_series(1, 60) d loop
+    exit when v_m > 0 and v_bad > 0 and clock_timestamp() - v_tg > c_guard_words;
     v_f := voyage.raid_report(c_seed, v_x.d, 12, 6.66, v_barca, '{"log": true, "order": "PAY"}'::jsonb);
     v_g := voyage.raid_report(c_seed, v_x.d, 12, 6.66, v_barca, '{"log": true, "order": "FLEE"}'::jsonb);
     if (v_f ->> 'paid')::boolean then
@@ -1004,6 +1053,7 @@ $f$;
      or (v_f - 'log' - 'rounds')::text is distinct from (voyage.fight_resolve(c_seed, 3, 12, 6.66, v_barca) - 'rounds')::text then
     raise exception '0353 self-assert FAIL: a refused Pay is not the fight she would have had, with the reason in the log: %', v_f;
   end if;
+  v_ms := v_ms || jsonb_build_object('words', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
 
   -- ── 11. THE GUARDS ──
   -- 0320's own test on the new engine body, the same allow-list: it names no table
@@ -1078,6 +1128,8 @@ $f$;
      or public.raid_orders_on() then
     raise exception '0353 self-assert FAIL: an existing world_config row moved, a knob of this file is missing, or the switch is not off';
   end if;
+
+  v_ms := v_ms || jsonb_build_object('guards', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
 
   -- ── 12. THE DOORS, on a probe of this file's own rows, rolled back ──
   begin
@@ -1199,13 +1251,16 @@ $f$;
     raise exception '0353 self-assert FAIL: the probe''s identity outlived its rollback';
   end if;
 
+  v_ms := v_ms || jsonb_build_object('doors_probe', round(extract(epoch from clock_timestamp() - v_tp) * 1000)); v_tp := clock_timestamp();
+
   -- ── 13. THE NEWS (0347's law): C1 is live at the deploy and is news. C2 is dark and is not announced here: its news belongs to the file that lights raid_orders_enabled. ──
   perform public.news_update('0353', 'Fight log', '전투 기록');
 
   if extract(epoch from clock_timestamp() - v_t0) > 40 then
     raise exception '0353 self-assert FAIL: the file took % (budget 40 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0353 self-assert ok: A FIGHT KEEPS ITS LOG, AND A FLEET HAS A STANDING ORDER (C1 + C2). ENGINE PARITY: % fights of 0320''s matrix, the kept live engine against the new one as text, with no option, with the sizing-up and with a_order FIGHT said: all equal (%). SKIN PARITY: % raids, the kept live skin against voyage.fight_resolve and voyage.raid_report with {}: all equal, and a log moves no word. FLEE on % fights: no shot of hers, every round''s chance the rule''s, % away, % caught and boarded. PAY on %: % RANSOM before a shot, the rest stood off or slipped unchanged. PREFIX: % runs to rounds 1 to 7, % left open, each the first rows of the full run. 20 hunks, each once and reversing; ACL, volatility, definer and config unmoved; the engine names no table; no other function and no existing knob moved; the switch is off and no order row exists. The doors (probe, rolled back): %. % ms.',
-    v_n, v_kinds, v_skin_n, v_flee_n, v_fled, v_caught, v_pay_n, v_paid, v_pre_n, v_open_n, v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  raise notice '0353 timings (ms a part): %; total % ms. Bounds: engine parity %, orders %, skin %, words %.', v_ms, round(extract(epoch from clock_timestamp() - v_t0) * 1000), c_guard_parity, c_guard_orders, c_guard_skin, c_guard_words;
+  raise notice '0353 self-assert ok: A FIGHT KEEPS ITS LOG, AND A FLEET HAS A STANDING ORDER (C1 + C2). ENGINE PARITY, bounded by the clock: % pairs on % of the 1,120 fights of 0320''s matrix (the least is %), the kept live engine against the new one as text, with no option, with the sizing-up and with a_order FIGHT said: all equal (%). SKIN PARITY: % raids of 1,082 (the least is %), the kept live skin against voyage.fight_resolve and voyage.raid_report with {}: all equal, and a log moves no word. ORDERS on % fights (the least is %): Flee, no shot of hers, every round''s chance the rule''s, % away, % caught and boarded; Pay, % RANSOM before a shot, the rest stood off or slipped unchanged; % round limits, % left open, each the first rows of the full run. The whole matrix every time: proof 56. 20 hunks, each once and reversing; ACL, volatility, definer and config unmoved; the engine names no table; no other function and no existing knob moved; the switch is off and no order row exists. The doors (probe, rolled back): %. % ms.',
+    v_pairs, v_n, c_min_pairs, v_kinds, v_skin_n, c_min_skin, v_ord_n, c_min_orders, v_fled, v_caught, v_paid, v_pre_n, v_open_n, v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;
