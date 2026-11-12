@@ -13,6 +13,10 @@ import { ready } from './appReady.fixture'
 //   · a good that does not pay is marked "No gain" BEFORE any buy (a nearly full hold: a few units cannot
 //     carry a voyage's wages — from her own city, else from a farther one), and its Buy tray says so above the
 //     units and their Max.
+// 0351 (docs/SUCCESS_PLAN.md T5): A BEST SALE A NEW PLAYER CAN USE. The sale a card names is one her purse can buy, the
+// best per day, and the line says how long it takes in real time; its tray's Total is the card's cost and its button is
+// NOT stopped by "No money"; the dearer, farther sale is one quiet row in that tray ("Far"), pressed: the same trip
+// to that city, still within her purse, with the way back ("Near").
 // Nothing here asserts a price: the claim is that the card and the tray print the same served figure.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -53,7 +57,9 @@ for (const size of SIZES) {
       await expect(named.first()).toBeVisible({ timeout: 180_000 })
       expect((await first.boundingBox())!.height, 'the card grew when its best sale landed').toBe(before)
       await expect(board).toHaveAttribute('data-city', home!)
-      const line = named.first()
+      // 0351: a card whose near sale is not its dearest (a new company's purse at Lisbon: the hop that pays, and the far city)
+      const line = board.locator('[data-testid="best-sale"][data-state="sale"][data-pays="true"][data-far]').first()
+      await expect(line).toBeVisible()
       const card = line.locator('xpath=ancestor::*[@data-testid="trade-good"][1]')
       const good = (await card.getAttribute('data-good'))!
       const port = (await line.getAttribute('data-port'))!
@@ -61,6 +67,13 @@ for (const size of SIZES) {
       const figure = (await line.getByTestId('best-sale-profit').textContent())!.trim()
       expect(figure).toMatch(/^\+\d/)
       await expect(line).toContainText(/\p{L}/u) // the city's name
+      // 0351: how long, in real time, beside the profit; what it costs, served
+      await expect(line.getByTestId('best-sale-time')).toHaveText(/^·[0-9]+(s|m|h[0-9][0-9]m)$/)
+      const cost = Number((await line.getAttribute('data-cost'))!)
+      expect(cost).toBeGreaterThan(0)
+      const far = (await line.getAttribute('data-far'))!
+      expect(far).not.toBe(port)
+      expect(far).not.toBe(home)
 
       // PRESSED: the trip — bought here, sold there — and its served profit is the card's
       await line.click()
@@ -73,6 +86,32 @@ for (const size of SIZES) {
       await expect(page.getByTestId('trade-act')).toHaveAttribute('data-act', 'buy-sell')
       await expect(panel.getByTestId('trade-profit')).toContainText(figure, { timeout: 120_000 })
       await expect(panel.getByTestId('stepper-figure')).toHaveValue(Number((await line.getAttribute('data-units'))!).toLocaleString('en-US'))
+      // 0351: the tray's Total is the card's cost, and the trip is one she can pay for: the button is Buy & sell, not "No money"
+      await expect(panel.getByTestId('good-detail-total')).toContainText(cost.toLocaleString('en-US'))
+      const go = page.getByTestId('trade-act')
+      await expect(go).toBeEnabled({ timeout: 120_000 })
+      await expect(go).toHaveText('Buy & sell')
+      // THE FAR SALE: one quiet row in the tray — pressed, the same trip to the dearer city, still within her purse; and the way back
+      const other = panel.getByTestId('trade-other-sale')
+      await expect(other).toHaveAttribute('data-kind', 'far')
+      await expect(other).toHaveAttribute('data-port', far)
+      await expect(other).toContainText('Far')
+      // the row's own figure (the served far profit) is the figure the far trip's tray prints
+      const farFigure = ((await other.getByTestId('trade-other-sale-figure').textContent()) ?? '').match(/\+[\d,]+/)?.[0]
+      expect(farFigure, 'the far row prints its profit').toBeTruthy()
+      await other.click()
+      const farPanel = page.getByTestId('good-detail')
+      await expect(farPanel).toHaveAttribute('data-sell-at', far)
+      await expect(farPanel).toHaveAttribute('data-good', good)
+      await expect(farPanel.getByTestId('trade-profit')).toContainText(farFigure!, { timeout: 120_000 })
+      await expect(page.getByTestId('trade-act')).toBeEnabled({ timeout: 120_000 })
+      await expect(page.getByTestId('trade-act')).toHaveText('Buy & sell')
+      const back = farPanel.getByTestId('trade-other-sale')
+      await expect(back).toHaveAttribute('data-kind', 'near')
+      await expect(back).toHaveAttribute('data-port', port)
+      await back.click()
+      await expect(page.getByTestId('good-detail')).toHaveAttribute('data-sell-at', port)
+      await expect(page.getByTestId('good-detail').getByTestId('trade-profit')).toContainText(figure, { timeout: 120_000 })
       // the board did not move to the sell city: the press opened a trip, it did not pick a chip
       await expect(board).toHaveAttribute('data-city', home!)
 
@@ -101,7 +140,8 @@ for (const size of SIZES) {
 
       // the board re-asks for her new hold (a trade is a new question). Where a few units still pay at her own city,
       // a farther city in hand adds the sail there to the wages: the chips are pressed farthest first until one shows it.
-      const loss = board.locator('[data-testid="best-sale"][data-pays="false"]')
+      // (0351: a good she cannot pay for says "No money", not "No gain": it is not the loss looked for here)
+      const loss = board.locator('[data-testid="best-sale"][data-pays="false"]:not([data-short])')
       const landed = board.locator('[data-testid="best-sale"]:not([data-state="wait"])')
       await expect(landed.first()).toBeVisible({ timeout: 180_000 })
       // the strip re-orders as a city is pressed (the city in hand leads), so its codes are read once, nearest first
