@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
+import { WIDE_QUERY } from './screenLayout'
 import { COLUMN_CLASS, WORDS_COLUMN_CLASS, WORDS_COLUMN_WIDE_CLASS, tileCellClass, tileWordsGridClass, type ChoiceColumns, type WordColumns } from './tileStyles'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -55,8 +56,11 @@ export function TileGrid({
   className?: string
   children: ReactNode
 } & { 'data-testid'?: string } & DataAttrs) {
+  const grid = useRef<HTMLDivElement | null>(null)
+  useWordSpans(grid, words, wordsWide)
   return (
     <div
+      ref={grid}
       role={role}
       aria-label={label}
       data-choice-grid=""
@@ -98,4 +102,63 @@ export function TileChoice({
       {children}
     </button>
   )
+}
+
+/**
+ * A CELL THAT DOES NOT FIT ONE COLUMN ON ONE LINE TAKES TWO (tileStyles.ts, "ONE LINE A NAME"). Measured off the cells as they
+ * stand, never guessed from a letter count: each cell's one-line width against the grid's own column, re-read when the grid's
+ * width, its cells or their words change. It writes one inline `flex` (and lifts the one-column cap) on a cell that spans, and
+ * nothing on a cell that does not: without it the grid is the wrapping line it always was.
+ */
+function useWordSpans(grid: { current: HTMLDivElement | null }, base: number | undefined, wide: number | undefined) {
+  useLayoutEffect(() => {
+    const el = grid.current
+    if (base === undefined || !el) return
+    const clear = (c: HTMLElement) => {
+      for (const p of ['flex', 'max-width', 'width', 'white-space']) c.style.removeProperty(p)
+    }
+    const lay = () => {
+      const cells = [...el.children].filter((c): c is HTMLElement => c instanceof HTMLElement)
+      if (cells.length === 0) return
+      // every cell at its one-line width, read in one layout
+      for (const c of cells) {
+        c.style.setProperty('flex', '0 0 auto', 'important')
+        c.style.setProperty('max-width', 'none', 'important')
+        c.style.width = 'max-content'
+        c.style.whiteSpace = 'nowrap'
+      }
+      const needs = cells.map((c) => c.getBoundingClientRect().width)
+      cells.forEach(clear)
+      const columns = wide !== undefined && window.matchMedia(WIDE_QUERY).matches ? wide : base
+      const gap = parseFloat(getComputedStyle(el).columnGap) || 0
+      const column = (el.clientWidth - gap * (columns - 1)) / columns
+      if (!(column > 0)) return
+      const spans = needs.map((w) => Math.min(columns, Math.max(1, Math.ceil((w - 0.5 + gap) / (column + gap)))))
+      // a wide cell that does not fit the rest of its line starts the next; the cell before it takes the rest
+      let at = 0
+      spans.forEach((span, i) => {
+        if (at + span > columns) {
+          if (i > 0) spans[i - 1] += columns - at
+          at = 0
+        }
+        at = (at + span) % columns
+      })
+      cells.forEach((c, i) => {
+        const n = spans[i]
+        if (n === 1) return
+        c.style.setProperty('flex', `0 0 calc(var(--tile-w) * ${n} + ${gap * (n - 1)}px)`, 'important')
+        c.style.setProperty('max-width', 'none', 'important')
+      })
+    }
+    lay()
+    const resized = new ResizeObserver(lay)
+    resized.observe(el)
+    const changed = new MutationObserver(lay)
+    changed.observe(el, { childList: true, characterData: true, subtree: true })
+    void document.fonts?.ready.then(lay)
+    return () => {
+      resized.disconnect()
+      changed.disconnect()
+    }
+  }, [grid, base, wide])
 }

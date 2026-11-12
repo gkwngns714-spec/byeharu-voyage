@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { Bar, Clip, FactsLine, Note, Row, ScrollPane, Skeleton, StatCell, useWide } from '../../../components/ui'
 import { regardBandWord } from '../../../domain/port'
 import { formatDucats, formatInt, formatMiles } from '../../../lib/format'
-import { useT } from '../../../lib/i18n'
+import { properName, useT } from '../../../lib/i18n'
 import { worldLevels, type CaptainLevel, type LevelCut, type LevelsView, type YourCaptain } from '../../../lib/rpc'
 import { useServedRead } from '../../../live/useServedRead'
 import { useYourCaptains } from '../../../live/useYourCaptains'
@@ -136,9 +136,9 @@ function Company({ v }: { v: Ready }) {
         <span className="mt-1 block text-t-caption text-ink-faint">{t('command.lvSkillNote')}</span>
       </div>
       <div className="min-w-0 border-t border-edge py-2" data-testid="levels-title">
-        <Words label={t('command.lvTitle')} value={`${v.title.name ?? ''} ${t('command.lvLevel', { n: v.title.level })}`.trim()} />
+        <Words label={t('command.lvTitle')} value={`${v.title.name ? properName('title', v.title.name, v.title.name) : ''} ${t('command.lvLevel', { n: v.title.level })}`.trim()} />
         <span className="mt-1 block text-t-caption text-ink-faint">
-          {v.title.next ? t('command.lvTitleNext', { name: v.title.next.name, n: v.title.next.level }) : t('command.lvTitleTop')}
+          {v.title.next ? t('command.lvTitleNext', { name: properName('title', v.title.next.name, v.title.next.name), n: v.title.next.level }) : t('command.lvTitleTop')}
         </span>
         {v.title.next && v.title.next.opens.length > 0 && (
           <span className="mt-1 block text-t-caption text-ink-muted" data-testid="levels-opens">

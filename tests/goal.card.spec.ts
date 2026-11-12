@@ -44,7 +44,8 @@ for (const size of SIZES) {
       // the card's text, read before the press
       const header = await box(page, '[data-testid="desk-header"]')
       const text = (await card.innerText()).replace(/\s+/g, ' ')
-      const m = /^(\S+): Trading (\d+)\/(\d+), Exploration (\d+)\/(\d+)/.exec(text)
+      // two lines since 2026-11-12: the title's name and Reputation, then the two tracks (no line of it may break at 320 px)
+      const m = /^(.+?) (?:Reputation [\d,]+ )?Trading (\d+)\/(\d+) · Exploration (\d+)\/(\d+)/.exec(text)
       expect(m, `the card says: ${text}`).not.toBeNull()
       expect(m![3]).toBe(m![5])
 
