@@ -6,6 +6,7 @@ import {
   Figure,
   Hint,
   Icon,
+  KEEP_WORDS_CLASS,
   Note,
   Row,
   Tile,
@@ -17,10 +18,14 @@ import { HullCountry } from './HullCountry'
 import { HullCrown } from './HullCrown'
 import { HullTech } from './HullTech'
 import { useBuildingYard } from './useBuildingYard'
+import { useServedRead } from './useServedRead'
 import { useYardSources } from './useYardSources'
 import { useWorld } from './worldStore'
-import { formatDucats, formatInt, formatMiles, formatTons } from '../lib/format'
-import type { FleetView, HullMaterial, Refusal, YardHull, YardSource } from '../lib/rpc'
+import { yardPlan, type PlanGood, type PlanPart } from './yardPlan'
+import { fleetCargoByCode, fleetCrew } from '../domain/fleet/derive'
+import { formatDucats, formatInt, formatMiles, formatRealShort, formatTons, voyageDaysToRealMs } from '../lib/format'
+import { worldLevels } from '../lib/rpc'
+import type { FleetView, LevelsView, PlanLine, Refusal, YardHull, YardInput, YardSource } from '../lib/rpc'
 import { goTo, useGoTo } from '../chart'
 import { useDeskGood } from '../store/deskGood'
 import { useDeskView } from '../features/command/deskView'
@@ -74,6 +79,19 @@ import { useT, t as tNow } from '../lib/i18n'
 // "Open in Command" hand-over, store/deskGood.ts); a fitting made here opens this city's Workshop face; one made
 // elsewhere shows that harbour on the map (chart/goTo.ts). (3) The Build button stands when nothing is short.
 //
+// ── THE YARD PLANS THE BUILD (S1 of docs/SECOND_SHIP.md, 0358; owner rows 180, 305, 316) ──────────────────────
+// The playtest of the above: a new company could still not finish. The two parts hide three more goods (flax, hemp,
+// iron), nothing said that hull goods must be STORED here while parts are MADE from the hold, no price or weight was
+// added up, the Build button was hidden until everything was there, a full fleet refused only after the whole errand,
+// and the new ship came with no crew. So the sheet now carries ONE button, always there for a hull this yard builds,
+// whose label is the next thing she can do (./yardPlan.ts: Make parts, Store, Build; else Build off beside
+// "Ready 2 / 6"; "Hire crew" once she is laid down). Each line reads need / in storage / on board and, while short, the
+// seller with miles, real time and cost; a part unfolds into its goods; a totals row adds the cost and weighs the errand
+// against her free hold; "Fleet full" is said first. world.yard_sources serves the goods, weights and prices (0358);
+// the fleet's room is world.levels()'s (`room.fleet_ship_max`, public.earned_caps: the cap cmd.do_build's ship insert
+// is refused by). A press moves nothing above it: the totals stand above the lines, a part opens below itself, and the
+// button is the tray's pinned action.
+//
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -113,6 +131,30 @@ export function PortYard({
   // S8: the hulls you cannot build here and now wait under one row; it opens once and stays open (a press never collapses the page).
   const [more, setMore] = useState(false)
   const sources = useYardSources(portId, open?.class ?? null)
+  const issueLines = useWorld((s) => s.issueLines)
+  const navigate = useNavigate()
+  // S1: which parts stand unfolded (a part opens below itself), and whether a hull was laid down from this sheet
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(new Set())
+  const [laid, setLaid] = useState(false)
+  // the fleet's room: the same cached read the Levels face asks (world.levels, 0325)
+  const levels = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
+
+  const send = (lines: readonly PlanLine[]) => {
+    if (!fleet || sending || lines.length === 0) return
+    setSending(true)
+    setRefusal(null)
+    void (async () => {
+      const okay = await issueLines(fleet.id, lines)
+      setSending(false)
+      if (!okay) setRefusal(useWorld.getState().refusal)
+    })()
+  }
+  /** The hire door that exists: this city's Inn face on the desk. */
+  const toInn = () => {
+    useDeskView.getState().setCityFace('inn')
+    useDeskView.getState().turnTo('city')
+    navigate('/command')
+  }
 
   const build = (hull: YardHull) => {
     if (!fleet || sending || name.trim().length < 3) return
@@ -123,7 +165,8 @@ export function PortYard({
       const okay = await issue(fleet.id, `BUILD ${hull.class} ${wanted}`, null)
       setSending(false)
       if (okay) {
-        setOpen(null)
+        // S1: the sheet stays: its one button now reads "Hire crew", the next thing she can do
+        setLaid(true)
         setName('')
         // The world was read back on success: the ship just laid down is the one the order named,
         // and her grade word is the server's — nothing is derived from the roll here.
@@ -166,6 +209,8 @@ export function PortYard({
       onClick={() => {
         setRefusal(null)
         setBuilt(null)   // 0276: a fresh look at a hull clears the last build's toast
+        setLaid(false)
+        setUnfolded(new Set())
         setDetent('half')
         setOpen(hull)
       }}
@@ -173,8 +218,23 @@ export function PortYard({
       data-testid={`hull-${hull.class}`}
     />
   )
-  const short = open ? shortfall(open) : null
-  const ready = open !== null && open.buildable && fleet !== null && short === null
+  // The sheet reads the hull as the yard serves it NOW (a STORE or a MAKE moves `have`), not as it was when pressed.
+  const hull = open ? (view.hulls.find((h) => h.class === open.class) ?? open) : null
+  const short = hull ? shortfall(hull) : null
+  const plan = hull ? yardPlan(hull, sources.view ?? undefined, fleet ? fleetCargoByCode(fleet) : {}) : null
+  const room = levels.view?.company ? levels.view.room.fleet_ship_max : null
+  const full = fleet !== null && room !== null && fleet.ships.length >= room
+  const crewShort = fleet ? fleetCrew(fleet).short : 0
+  // THE ONE BUTTON: the next thing she can do. A full fleet takes no hull, so nothing is offered but the crew she lacks.
+  const step =
+    !hull || !plan || !hull.buildable || !fleet
+      ? 'wait'
+      : crewShort > 0 && (full || laid)
+        ? 'hire'
+        : full
+          ? 'full'
+          : plan.step
+  const ready = step === 'build'
 
   return (
     <div data-testid="port-yard">
@@ -217,89 +277,155 @@ export function PortYard({
         </div>
       )}
 
-      {open && (
+      {open && hull && plan && (
         <Tray
           detent={detent}
           onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
-          title={open.name}
+          title={hull.name}
           data-testid="yard-tray"
           action={
-            ready ? (
-              <Button
-                variant="primary"
-                className="w-full"
-                busy={sending}
-                busyLabel={t('yard.building')}
-                disabled={name.trim().length < 3}
-                onClick={() => build(open)}
-                data-testid={`lay-down-${open.class}`}
-              >
-                {t('yard.layDown')}
-              </Button>
+            hull.buildable ? (
+              <>
+                {/* always one line and one button, so a change of the label moves nothing */}
+                <div className="mb-2 text-center text-t-label text-ink-dim" data-testid="yard-ready">
+                  {t('yard.ready', { n: formatInt(plan.ready), of: formatInt(plan.of) })}
+                </div>
+                <Button
+                  variant="primary"
+                  className="w-full"
+                  busy={sending}
+                  busyLabel={step === 'build' ? t('yard.building') : undefined}
+                  disabled={step === 'wait' || step === 'full' || (step === 'build' && name.trim().length < 3)}
+                  onClick={() =>
+                    step === 'build' ? build(hull) : step === 'hire' ? toInn() : step === 'make' || step === 'store' ? send(plan.lines) : undefined
+                  }
+                  data-testid="yard-next"
+                  data-step={step}
+                >
+                  {step === 'make'
+                    ? t('yard.makeParts')
+                    : step === 'store'
+                      ? t('yard.store')
+                      : step === 'hire'
+                        ? t('yard.hireCrewN', { n: formatInt(crewShort) })
+                        : step === 'full'
+                          ? t('yard.fleetFull')
+                          : t('yard.layDown')}
+                </Button>
+              </>
             ) : undefined
           }
         >
+          {/* S1: a full fleet is said FIRST, before she fetches anything */}
+          {full && hull.buildable && (
+            <Note tone="warning" className="mb-2" data-testid="yard-fleet-full">
+              {t('yard.fleetFull')}
+            </Note>
+          )}
           {/* 0166 (S17): a famous ship carries her history line — the hull's served note, printed as served */}
-          {open.tech === 'F' && (
+          {hull.tech === 'F' && (
             <Hint className="mb-2" data-testid="yard-history">
-              {open.note}
+              {hull.note}
             </Hint>
           )}
-          {open.crown && (
+          {hull.crown && (
             <>
-              <Row label={t('yard.type')} value={<HullCrown crown={open.crown} />} hairline={false} />
+              <Row label={t('yard.type')} value={<HullCrown crown={hull.crown} />} hairline={false} />
               <Hint className="mb-2" data-testid="yard-crown-note">
                 {t('yard.crownNote')}
               </Hint>
             </>
           )}
-          {open.line_nation && <Row label={t('yard.country')} value={<HullCountry nation={open.line_nation} />} />}
-          <Row label={t('yard.cargo')} value={<Figure value={formatInt(open.hold)} unit={t('yard.tons')} />} />
-          <Row label={t('yard.speed')} value={<Figure value={open.speed_kn} unit={t('yard.knots')} />} />
-          <Row label={t('yard.crewNeeded')} value={<Figure value={formatInt(open.crew_required)} />} />
+          {hull.line_nation && <Row label={t('yard.country')} value={<HullCountry nation={hull.line_nation} />} />}
+          <Row label={t('yard.cargo')} value={<Figure value={formatInt(hull.hold)} unit={t('yard.tons')} />} />
+          <Row label={t('yard.speed')} value={<Figure value={hull.speed_kn} unit={t('yard.knots')} />} />
+          <Row label={t('yard.crewNeeded')} value={<Figure value={formatInt(hull.crew_required)} />} />
           {/* 0276 — the blind roll, said before you build: the class figures above are the average,
               and a new hull strays by this much (the rare Poor and Fine beyond). */}
-          {open.variety_pct !== undefined && open.variety_pct > 0 && (
+          {hull.variety_pct !== undefined && hull.variety_pct > 0 && (
             <Row
               label={t('yard.variety')}
-              value={<Figure value={`±${formatInt(open.variety_pct)} %`} />}
+              value={<Figure value={`±${formatInt(hull.variety_pct)} %`} />}
               data-testid="yard-variety"
             />
           )}
-          <Materials label={t('yard.materials')} list={open.goods} sources={sources.view?.goods} kind="good" />
-          <Materials label={t('yard.parts')} list={open.items} sources={sources.view?.items} kind="item" />
-          {open.goods.some((m) => m.have < m.qty) && (
+          {/* S1 — THE TOTALS, above the lines so a part unfolding moves neither: what is still to buy at the sellers'
+              prices now plus the yard's labour, and the weight of what is still to fetch against her free hold. */}
+          <Row
+            label={t('yard.total')}
+            value={<Figure value={plan.goodsCost === null ? '…' : formatDucats(Math.round(plan.goodsCost) + hull.ducats)} />}
+            data-testid="yard-total"
+            data-cost={plan.goodsCost === null ? undefined : Math.round(plan.goodsCost) + hull.ducats}
+          />
+          <Row
+            label={t('yard.weight')}
+            value={
+              <Figure
+                value={plan.weight === null ? '…' : formatTons(plan.weight, 1)}
+                unit={plan.weight === null || !fleet ? undefined : plan.weight <= fleet.free_hold ? t('yard.fits') : t('yard.tooHeavy')}
+                tone={plan.weight !== null && fleet && plan.weight > fleet.free_hold ? 'warning' : 'ink'}
+              />
+            }
+            data-testid="yard-weight"
+            data-fits={plan.weight === null || !fleet ? undefined : plan.weight <= fleet.free_hold}
+          />
+          {plan.goods.map((g, i) => (
+            <GoodLine
+              key={g.code}
+              good={g}
+              label={i === 0 ? `${t('yard.materials')} · ${g.name}` : g.name}
+              speed={fleet?.speed_kn ?? null}
+              id={g.code}
+            />
+          ))}
+          {plan.parts.map((p, i) => (
+            <PartLine
+              key={p.code}
+              part={p}
+              label={i === 0 ? `${t('yard.parts')} · ${p.name}` : p.name}
+              speed={fleet?.speed_kn ?? null}
+              open={unfolded.has(p.code)}
+              onToggle={() =>
+                setUnfolded((was) => {
+                  const next = new Set(was)
+                  if (!next.delete(p.code)) next.add(p.code)
+                  return next
+                })
+              }
+            />
+          ))}
+          {hull.goods.some((m) => m.have < m.qty) && (
             <Hint className="mb-2" data-testid="yard-store-hint">
               {t('yard.storeHint')}
             </Hint>
           )}
 
-          {open.wrong_yard && (
+          {hull.wrong_yard && (
             <Note tone="warning" data-testid="yard-country">
-              {open.wrong_yard}
+              {hull.wrong_yard}
             </Note>
           )}
-          {open.needs && (
+          {hull.needs && (
             <Note tone="warning" data-testid="yard-needs">
-              {open.needs}
+              {hull.needs}
             </Note>
           )}
-          {open.unmade && (
+          {hull.unmade && (
             <Note tone="warning" data-testid="yard-unmade">
-              {open.unmade}
+              {hull.unmade}
             </Note>
           )}
-          {open.famous_held && (
+          {hull.famous_held && (
             <Note tone="warning" data-testid="yard-famous-held">
-              {open.famous_held}
+              {hull.famous_held}
             </Note>
           )}
-          {open.tier_ok === false && (
+          {hull.tier_ok === false && (
             <Note tone="warning">
-              {t('yard.yardTier', { have: formatInt(tier), need: formatInt(open.yard_tier) })}
+              {t('yard.yardTier', { have: formatInt(tier), need: formatInt(hull.yard_tier) })}
             </Note>
           )}
-          {open.buildable && short !== null && (
+          {hull.buildable && short !== null && (
             <Note tone="warning">{t('yard.missing', { list: short })}</Note>
           )}
 
@@ -328,54 +454,116 @@ export function PortYard({
   )
 }
 
-/** One material line: what she wants, against what is ashore in this city — and, while she is short of it, where it
- *  is had nearest (0349), as a press that goes there. */
-function Materials({
+/** One good's line: what the recipe wants, what is in storage here and what is on board for it — and, while she is
+ *  short of it, where it is sold nearest (0349) with the miles, the real time and the cost (0358), as a press. */
+function GoodLine({
+  good,
   label,
-  list,
-  sources,
-  kind,
+  speed,
+  id,
+  part,
 }: {
+  good: PlanGood
   label: string
-  list: readonly HullMaterial[]
-  /** world.yard_sources' rows for this list; undefined while the read is on the wire. */
-  sources: readonly YardSource[] | undefined
-  kind: 'good' | 'item'
+  /** The fleet's speed in knots, for the real time to the seller; null with no fleet here. */
+  speed: number | null
+  id: string
+  /** Set for a part's input: it is made from the hold, so storage is not printed. */
+  part?: string
 }) {
-  if (list.length === 0) return null
+  const source = good.short > 0 ? good.source : undefined
+  const testid = part ? `yard-input-${part}-${id}` : `yard-good-${id}`
   return (
-    <>
-      {list.map((m, i) => {
-        const short = m.have < m.qty
-        const source = short ? sources?.find((s) => s.code === m.code) : undefined
-        return (
-          <div key={m.code}>
-            <Row
-              label={i === 0 ? `${label} · ${m.name}` : m.name}
-              hairline={!source}
-              value={
-                <Figure
-                  value={formatInt(m.qty)}
-                  unit={tNow('yard.inStorageN', { n: formatInt(m.have) })}
-                  tone={short ? 'warning' : 'ink'}
-                />
-              }
-            />
-            {source && <SourceRow source={source} kind={kind} />}
-          </div>
-        )
-      })}
-    </>
+    <div className={part ? 'pl-4' : undefined}>
+      <Row
+        label={<span className={KEEP_WORDS_CLASS}>{label}</span>}
+        hairline={!source}
+        value={
+          <Figure
+            value={formatInt(good.need)}
+            unit={
+              part
+                ? tNow('yard.onBoardN', { n: formatInt(good.aboard) })
+                : `${tNow('yard.inStorageN', { n: formatInt(good.stored) })} ${tNow('yard.onBoardN', { n: formatInt(good.aboard) })}`
+            }
+            tone={good.short > 0 ? 'warning' : 'ink'}
+          />
+        }
+        data-testid={testid}
+        data-short={good.short}
+      />
+      {source && <SourceRow source={source} kind="good" speed={speed} units={good.short} testid={part ? `yard-input-source-${part}-${id}` : undefined} />}
+    </div>
+  )
+}
+
+/** One part's line: how many she wants and keeps here; where it is made while she lacks it; and, unfolded, the goods it
+ *  is made of (0358), each with its own seller. It opens below itself. */
+function PartLine({
+  part,
+  label,
+  speed,
+  open,
+  onToggle,
+}: {
+  part: PlanPart
+  label: string
+  speed: number | null
+  open: boolean
+  onToggle: () => void
+}) {
+  const short = part.have < part.need
+  const folds = part.inputs.length > 0
+  return (
+    <div>
+      <Row
+        label={<span className={KEEP_WORDS_CLASS}>{label}</span>}
+        hairline={!(short && part.source) && !open}
+        chevron={folds && !open}
+        onClick={folds ? onToggle : undefined}
+        aria-expanded={folds ? open : undefined}
+        value={
+          <Figure
+            value={formatInt(part.need)}
+            unit={tNow('yard.inStorageN', { n: formatInt(part.have) })}
+            tone={short ? 'warning' : 'ink'}
+          />
+        }
+        data-testid={`yard-part-${part.code}`}
+      />
+      {short && part.source && <SourceRow source={part.source} kind="item" speed={speed} />}
+      {open && (
+        <div data-testid={`yard-inputs-${part.code}`}>
+          {part.inputs.map((g) => (
+            <GoodLine key={g.code} good={g} label={g.name} speed={speed} id={g.code} part={part.code} />
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
 /** Where a missing material is had nearest, and the press that goes there by a door that already exists. */
-function SourceRow({ source, kind }: { source: YardSource; kind: 'good' | 'item' }) {
+function SourceRow({
+  source,
+  kind,
+  speed,
+  units,
+  testid,
+}: {
+  source: YardSource | YardInput
+  kind: 'good' | 'item'
+  /** The fleet's speed in knots: the real time to the seller is the miles at that speed (a calm estimate). */
+  speed: number | null
+  /** How many are still to buy there: the cost is that many at the seller's price now (0358). */
+  units?: number
+  testid?: string
+}) {
   const t = useT()
   const navigate = useNavigate()
   const openOnDesk = useDeskGood((s) => s.open)
   if (source.port === null || source.name === null) {
-    return <Row label={t('yard.nowhere')} data-testid={`yard-source-${source.code}`} />
+    return <Row label={t('yard.nowhere')} data-testid={testid ?? `yard-source-${source.code}`} />
   }
   const here = source.miles === 0
   const port = source.port
@@ -403,14 +591,21 @@ function SourceRow({ source, kind }: { source: YardSource; kind: 'good' | 'item'
       : here
         ? t('yard.makeHere')
         : t('yard.makeAt', { name: source.name })
+  const ask = 'ask' in source ? source.ask : null
+  const figures = [
+    here || source.miles === null ? null : formatMiles(source.miles),
+    here || source.miles === null || speed === null || speed <= 0 ? null : `~${formatRealShort(voyageDaysToRealMs(source.miles / (speed * 24)))}`,
+    typeof ask === 'number' && units !== undefined ? formatDucats(Math.round(ask * units)) : null,
+  ].filter((x): x is string => x !== null)
   return (
     <Row
-      label={words}
-      value={here || source.miles === null ? undefined : <Figure value={formatMiles(source.miles)} />}
+      label={<span className={KEEP_WORDS_CLASS}>{words}</span>}
+      value={figures.length > 0 ? <Figure value={figures.join(' · ')} /> : undefined}
       chevron
       onClick={go}
-      data-testid={`yard-source-${source.code}`}
+      data-testid={testid ?? `yard-source-${source.code}`}
       data-port={port}
+      data-seller={source.name}
     />
   )
 }

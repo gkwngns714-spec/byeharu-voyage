@@ -13,6 +13,7 @@ import { reachable, ready } from './appReady.fixture'
 //     on a good opens the Trade desk on that city with that good in hand; a fitting made here opens this city's Workshop;
 //   - nothing scrolls sideways.
 // The Build button itself is proven where the world can be given the materials: tests/rpc.yardSources.spec.ts.
+// The sheet's one button, its totals and a part's own goods (S1, 0358): tests/yard.plan.spec.ts.
 
 const GLASSES = [
   { width: 1280, height: 800 },
@@ -85,7 +86,8 @@ for (const glass of GLASSES) {
       await expect(tray.getByTestId('yard-source-suit-of-sails')).toContainText(/^Make (here|at .+)/)
       await noSideways(page, 'the yard sheet')
       await page.screenshot({ path: info.outputPath('yard-sheet.png') })
-      const sellerName = ((await timber.textContent()) ?? '').replace(/^Buy at /, '').replace(/\d[\d,.]*\s*\S+$/, '').trim()
+      // the seller's name as the row carries it (since 0358 the row also prints the real time and the cost)
+      const sellerName = (await timber.getAttribute('data-seller')) ?? ''
 
       // 4. the press goes where it is bought: the Trade desk, reading that city, the Timber in hand
       await timber.click()

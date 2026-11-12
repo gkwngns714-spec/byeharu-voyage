@@ -472,6 +472,26 @@ export interface YardSource {
   name: string | null
   /** Sailed miles from this yard (`sea_reaches`); 0 for the yard itself, null where unknown. */
   miles: number | null
+  /** 0358, a good's row: the recipe's count, the good's weight a unit, and what the named seller asks for one now
+   *  (`world.price(port, good).ask`; null where no harbour sells it). Absent before 0358. */
+  qty?: number
+  bulk?: number
+  ask?: number | null
+  /** 0358, a fitting's row: the goods it is made of, one row per `item_recipes` row. Absent before 0358. */
+  inputs?: YardInput[]
+}
+
+/** 0358: one good a fitting is made of, with its nearest seller. `qty` is the recipe's count times the number of that
+ *  fitting the hull takes. `good` is the good's name; `name` is the seller's, as on a `YardSource`. */
+export interface YardInput {
+  code: string
+  good: string
+  qty: number
+  bulk: number
+  port: string | null
+  name: string | null
+  miles: number | null
+  ask: number | null
 }
 
 export interface YardSources {
