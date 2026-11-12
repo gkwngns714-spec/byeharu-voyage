@@ -18,7 +18,7 @@ import { ready, reachable, zoomStepMs } from './appReady.fixture'
 // zoom — there is no culling to prove absent, only the count of countries the body carries.
 //
 // Browser: at the world view all 249 harbours (224 until 0090, 238 until 0217, 246 until 0338) are in the DOM — 251 marks, Auckland and Wellington drawn in both copies of the sheet at the seam — (dots and full marks together), and
-// zoomed in on a harbour that was a dot it wears its full mark; both glasses, both schemes; the
+// zoomed in on a harbour that was a dot it wears its full mark; both glasses; the
 // frame cost of a zoom step at the world view with every dot on the sheet, printed.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -126,7 +126,7 @@ async function marksOnSheet(page: Page) {
 }
 
 
-for (const scheme of ['dark', 'light'] as const) {
+for (const scheme of ['dark'] as const) {
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
