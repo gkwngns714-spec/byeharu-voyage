@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { arrivalCard, LANDING_TEST_TIMEOUT_MS } from './arrivalWait.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 import { serveRaidWorld } from './raidWorld.fixture'
 
@@ -23,7 +24,8 @@ for (const size of SIZES) {
     test.use({ viewport: size })
 
     test('a sale landing on another tab shows one card with the Report profit; Next opens Trade', async ({ page, request, baseURL }) => {
-      test.setTimeout(480_000)
+      // the sea may delay any voyage: the wait and its arithmetic are tests/arrivalWait.fixture.ts
+      test.setTimeout(LANDING_TEST_TIMEOUT_MS)
       test.skip(
         !(await reachable(request, baseURL ?? '')),
         `nothing served at ${baseURL} — run \`npm run preview\` (or set PLAYWRIGHT_BASE_URL) and re-run`,
@@ -41,8 +43,7 @@ for (const size of SIZES) {
       const main = page.locator('main')
       const before = await main.boundingBox()
 
-      const card = page.getByTestId('arrival-card')
-      await expect(card).toBeVisible({ timeout: 300_000 })
+      const card = await arrivalCard(page, `the arrival card at ${size.width}×${size.height}`)
       await expect(page.getByTestId('arrival-card')).toHaveCount(1)
       await expect(page.getByTestId('arrival-sale').first()).toContainText(/^Sold \d/)
       const net = Number(await card.getAttribute('data-net'))
@@ -95,6 +96,8 @@ test.describe('the arrival card with a raid at 390×844', () => {
     const main = page.locator('main')
     const before = await main.boundingBox()
 
+    // NOT the shared wait: this passage is the fixture's pinned 30 seconds and its one day's roll is the raid, so no
+    // calm or storm can delay it (tests/raidWorld.fixture.ts)
     const card = page.getByTestId('arrival-card')
     await expect(card).toBeVisible({ timeout: 300_000 })
     // she sold nothing: the card is the port, the raid, and what the server's reads say moved
