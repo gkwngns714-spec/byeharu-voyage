@@ -316,7 +316,6 @@ test('at the globe the ships are hulls, the day picture is on the sheet, and eve
   await page.setViewportSize(PHONE)
   await page.goto('map')
   await ready(page)
-  await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
 
   // The merchants have to be on the glass before pulling back, or a hull count of zero would be
   // true for the honest reason that nobody is at sea yet.
