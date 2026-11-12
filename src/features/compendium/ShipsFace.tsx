@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { ALL, Card, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSplit, RankBars, Row, Tray, type TrayDetent } from '../../components/ui'
+import { ALL, Card, Facts, FactsLine, FilterBar, Figure, Hint, Icon, ListPanel, PageSplit, RankBars, Row, Tray, type TrayDetent } from '../../components/ui'
 import { CargoHull, NavyHull, PirateHull } from '../../live/CargoHull'
 import { useServedRead } from '../../live/useServedRead'
 import { formatFixed, formatInt, formatKnots, formatOfTotal, formatTons } from '../../lib/format'
@@ -50,6 +50,8 @@ const BOARD = 5
 const word = (key: string, served: string) => translateMaybe(getLocale(), 'codex', key) ?? served
 const sizeWord = (n: number | null | undefined) => (n == null ? null : word(`size_${n}`, String(n)))
 const roleWord = (r: string | null | undefined) => (r == null ? null : word(`role_${r}`, r))
+const familyWord = (f: string) => word(`family_${f.toLowerCase().replace(/[^a-z]+/g, '_')}`, f)
+const rigWord = (r: string) => word(`rig_${r.toLowerCase().replace(/[^a-z]+/g, '_')}`, r)
 const techWord = (t: string | null | undefined) => (t == null ? null : word(`tech_${t}`, t))
 const crownWord = (c: CrownHull) => tNow(CROWN_WORD[c])
 
@@ -198,8 +200,8 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
                     {s.line_nation && <HullCountry nation={s.line_nation} compact />}
                     <HullTech tech={s.tech} />
                     <HullCrown crown={s.crown} />
-                    <span>{[sizeWord(s.size), roleWord(s.role), `${s.family} · ${s.rig}`].filter(Boolean).join(' · ')}</span>
-                    <span>{`crew ${formatOfTotal(s.crew_required, s.crew_max)}`}</span>
+                    <Facts items={[sizeWord(s.size), roleWord(s.role), familyWord(s.family), rigWord(s.rig)]} />
+                    <span className="whitespace-nowrap">{t('codex.crewOf', { n: formatOfTotal(s.crew_required, s.crew_max) })}</span>
                   </FactsLine>
                 </Row>
               ))

@@ -116,8 +116,8 @@ export function StatCell({
           {drawn && !line && <Sparkline values={trend} tone={trendTone} width={96} height={20} className="h-7 min-w-12 flex-1" />}
         </span>
         {delta !== undefined && (
-          <span className="block">
-            <Figure value={delta.text} tone={delta.tone} />
+          <span className="block min-w-0">
+            <Figure value={delta.text} tone={delta.tone} className="max-w-full whitespace-normal! [text-wrap:balance]" />
           </span>
         )}
         {children}
@@ -144,8 +144,8 @@ export function StatCell({
         figure
       )}
       {delta !== undefined && (
-        <span className="block">
-          <Figure value={delta.text} tone={delta.tone} />
+        <span className="block min-w-0">
+          <Figure value={delta.text} tone={delta.tone} className="max-w-full whitespace-normal! [text-wrap:balance]" />
         </span>
       )}
       {drawn && !trendBeside && <Sparkline values={trend} tone={trendTone} width={96} height={20} className="mt-1 w-full" />}

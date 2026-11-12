@@ -149,9 +149,9 @@ export function GoodsFace({ query, search }: { query: string; search: ReactNode 
                 label={
                   // THE NAME IS NEVER CUT: it wraps at its spaces, and the rarity word drops under it when the two do not
                   // fit one line — a short name keeps one line, a long one (or a 320-px glass) takes a second.
-                  <span className="flex flex-wrap items-center gap-x-2">
+                  <span className="block">
                     <span>{g.name}</span>
-                    {g.rarity && <RarityMark rarity={g.rarity} size={10} withWord />}
+                    {g.rarity && <> <RarityMark rarity={g.rarity} size={10} withWord className="ml-1 align-baseline" /></>}
                   </span>
                 }
                 value={<Figure value={anchor(g.base_value)} unit={COIN} />}
