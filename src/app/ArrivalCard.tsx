@@ -12,7 +12,9 @@ import { ArrivalRaids } from '../live/ArrivalRaids'
 // card, over whatever tab is open, says what the arrival did. It reads FACTS THE SERVER ALREADY REPORTS and adds none:
 //   - an arrival is a new VOYAGE_REPORT event (the player's OWN ledger, so another player's fleet is never in it);
 //   - its sales are the new SOLD events of that fleet at that port: qty, good and the server's own `profit` (0081);
-//   - a level-up is a served level (house.levels.*.level) that is higher than on the read before;
+//   - a level-up is a LEVEL_UP event (0356: `public.level_marks_settle` writes one a level crossed, with the Reputation it
+//     gave): the ones on the read that brings the arrival, the ones that land while the card is open, and the ones that came
+//     since the last card (a level crossed at the quay has no card of its own);
 //   - "New port" is the served `ports_reached` going up on that same read.
 // It never computes profit or a level. A sale whose profit the server did not record prints the sale's total instead
 // (also served), never a guess. Arrivals that land while a card is open MERGE into it. Next goes to the Trade desk.
@@ -39,14 +41,37 @@ interface Arrival {
 
 interface Card {
   arrivals: Arrival[]
-  levels: { track: 'trading' | 'exploration'; level: number }[]
+  /** 0356: each track's LEVEL_UP events on this card, as one line: the highest level reached and the Reputation they gave. */
+  levels: LevelLine[]
   /** How many new ports the served count gained on the read(s) this card holds. */
   newPorts: number
   /** 0352: the Reputation the served book gained on the read(s) this card holds (earns only). */
   reputation: number
 }
 
-const TRACKS = ['trading', 'exploration'] as const
+interface LevelLine {
+  track: 'trading' | 'exploration' | 'combat'
+  level: number
+  reputation: number
+}
+
+const TRACK_WORD = { trading: 'command.lvTrading', exploration: 'command.lvExploration', combat: 'command.lvCombat' } as const
+
+/** The LEVEL_UP events among these, one line a track: the highest level, and the Reputation of all its crossings added. */
+function levelLines(events: LedgerEvent[], into: LevelLine[] = []): LevelLine[] {
+  const lines = [...into]
+  for (const e of events) {
+    if (e.kind !== 'LEVEL_UP') continue
+    const track = str(e.payload, 'track')
+    const level = num(e.payload, 'level')
+    if ((track !== 'trading' && track !== 'exploration' && track !== 'combat') || level === null) continue
+    const reputation = num(e.payload, 'reputation') ?? 0
+    const at = lines.findIndex((l) => l.track === track)
+    if (at < 0) lines.push({ track, level, reputation })
+    else lines[at] = { track, level: Math.max(lines[at].level, level), reputation: lines[at].reputation + reputation }
+  }
+  return lines
+}
 
 function saleOf(e: LedgerEvent): Sale {
   const profit = num(e.payload, 'profit')
@@ -54,7 +79,7 @@ function saleOf(e: LedgerEvent): Sale {
 }
 
 /** The facts of one read: the events not seen before, against the house as it stood on the read before. */
-function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: PlayerHouse | null): Card | null {
+function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: PlayerHouse | null, held: LevelLine[]): Card | null {
   const reports = fresh.filter((e) => e.kind === 'VOYAGE_REPORT')
   if (reports.length === 0) return null
   const arrivals = reports.map((r): Arrival => {
@@ -66,17 +91,12 @@ function readArrival(fresh: LedgerEvent[], before: PlayerHouse | null, now: Play
       sales: fresh.filter((e) => e.kind === 'SOLD' && str(e.payload, 'fleet') === fleet && str(e.payload, 'port') === to).map(saleOf),
     }
   })
-  const levels: Card['levels'] = []
-  if (before && now) {
-    for (const track of TRACKS) {
-      const level = now.levels[track].level
-      if (level > before.levels[track].level) levels.push({ track, level })
-    }
-  }
+  const levels = levelLines(fresh, held)
   const newPorts = before && now ? Math.max(0, now.levels.exploration.ports_reached - before.levels.exploration.ports_reached) : 0
   // 0352: the served book's rows past the row the read before ended on. Earns only; the server's own amounts, added.
+  // 0356: a level's gift is not in this sum: it stands on its own level line.
   const seenSeq = before?.reputation?.seq ?? 0
-  const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 ? n + r.delta : n), 0)
+  const reputation = (now?.reputation?.recent ?? []).reduce((n, r) => (r.seq > seenSeq && r.delta > 0 && r.kind !== 'level' ? n + r.delta : n), 0)
   return { arrivals, levels, newPorts, reputation }
 }
 
@@ -84,7 +104,13 @@ function merge(a: Card | null, b: Card): Card {
   if (!a) return b
   return {
     arrivals: [...a.arrivals, ...b.arrivals],
-    levels: [...a.levels.filter((x) => !b.levels.some((y) => y.track === x.track)), ...b.levels],
+    levels: b.levels.reduce(
+      (lines, y) =>
+        lines.some((x) => x.track === y.track)
+          ? lines.map((x) => (x.track === y.track ? { track: x.track, level: Math.max(x.level, y.level), reputation: x.reputation + y.reputation } : x))
+          : [...lines, y],
+      a.levels,
+    ),
     newPorts: a.newPorts + b.newPorts,
     reputation: a.reputation + b.reputation,
   }
@@ -96,10 +122,13 @@ export function ArrivalCard() {
   const portByCode = useWorld((s) => s.portByCode)
   const [card, setCard] = useState<Card | null>(null)
   const seen = useRef<Set<string> | null>(null)
+  const open = useRef(false)   // 0356: a card is on the glass (read by the store's listener, which outlives a render)
   const [logOpen, setLogOpen] = useState(false)   // 0353: a raid's log is open on the card, and the card waits
 
   useEffect(() => {
     let before: PlayerHouse | null = null
+    // 0356: the level-ups that came on a read with no arrival and no open card. The next arrival's card says them.
+    let held: LevelLine[] = []
     const read = (s: ReturnType<typeof useWorld.getState>) => {
       if (s.phase !== 'ready') return
       if (seen.current === null) {
@@ -110,9 +139,18 @@ export function ArrivalCard() {
       }
       const fresh = s.events.filter((e) => !seen.current!.has(e.id))
       fresh.forEach((e) => seen.current!.add(e.id))
-      const found = readArrival(fresh, before, s.player)
+      const found = readArrival(fresh, before, s.player, held)
       before = s.player
-      if (found) setCard((c) => merge(c, found))
+      if (found) {
+        held = []
+        setCard((c) => merge(c, found))
+        return
+      }
+      // No arrival on this read. A level-up joins the card that is open; with no card open it is held for the next one.
+      const lines = levelLines(fresh)
+      if (lines.length === 0) return
+      if (open.current) setCard((c) => (c ? merge(c, { arrivals: [], levels: lines, newPorts: 0, reputation: 0 }) : c))
+      else held = levelLines(fresh, held)
     }
     read(useWorld.getState())
     return useWorld.subscribe(read)
@@ -123,6 +161,10 @@ export function ArrivalCard() {
     const id = window.setTimeout(() => setCard(null), SHOWN_MS)
     return () => window.clearTimeout(id)
   }, [card, logOpen])
+
+  useEffect(() => {
+    open.current = card !== null
+  }, [card])
 
   if (card === null) return null
   const sales = card.arrivals.flatMap((a) => a.sales)
@@ -154,8 +196,10 @@ export function ArrivalCard() {
           </p>
         )}
         {card.levels.map((l) => (
-          <p key={l.track} className="mt-1 text-t-body text-accent" data-testid="arrival-level">
-            {t('feed.levelUp', { track: t(l.track === 'trading' ? 'command.lvTrading' : 'command.lvExploration'), n: l.level })}
+          <p key={l.track} className="mt-1 text-t-body text-accent" data-testid="arrival-level" data-track={l.track} data-level={l.level} data-reputation={l.reputation}>
+            {l.reputation > 0
+              ? t('feed.levelUpRep', { track: t(TRACK_WORD[l.track]), n: l.level, rep: formatInt(l.reputation) })
+              : t('feed.levelUp', { track: t(TRACK_WORD[l.track]), n: l.level })}
           </p>
         ))}
         {card.reputation > 0 && (

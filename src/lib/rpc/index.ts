@@ -118,6 +118,7 @@ import type {
   CountryChanged,
   DonateReceipt,
   LevelsView,
+  LevelCrossing,
   ShipMoves,
   ShipMoved,
   FineReceipt,
@@ -879,6 +880,12 @@ export function worldWatchlist(fleetId: string | null): Promise<RpcResult<Watchl
 /** 0325: the Levels page's one read: tracks, title, room, hulls, and regard while it is lit. */
 export function worldLevels(): Promise<RpcResult<LevelsView>> {
   return call<LevelsView>('worldLevels', [])
+}
+
+/** Pay the caller's level crossings (0356): one `LEVEL_UP` event and its Reputation gift a level, once ever. Asked by the
+ *  shell alone (worldStore), once, when a served level stands above its served mark. */
+export function cmdLevelUp(): Promise<RpcResult<{ levels: LevelCrossing[] }>> {
+  return call<{ levels: LevelCrossing[] }>('cmdLevelUp', [])
 }
 
 /** What the fleet page may offer for this fleet's ships (0321). `on` false while dark: the page draws nothing. */

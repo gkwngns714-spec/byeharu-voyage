@@ -39,6 +39,7 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   INSURED       {fleet, voyage_id, port, to, value, price, keep_pct}                      (0213 — port/to are CODES)
 //   INSURANCE_PAID {fleet, voyage_id, day, cause, port, lost, lost_value, keep_pct, owed, paid, short}  (0213)
 //   FORCED_HOME   {fleet, voyage_id, day, port, port_name, cargo_lost, hull_lost, insurance, repair}   (0279)
+//   LEVEL_UP      {track, level, reputation}                      (0356 — a company level crossed, and the Reputation it gave)
 //
 // An unknown kind falls through to the kind itself rather than to an invented sentence — a new
 // migration's event shows up as a legible row on the day it lands, without lying about its content.
@@ -354,6 +355,16 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
         lost: lost === null ? '' : t('history.lostWorth', { amount: formatDucats(lost) }),
         short: short !== null && short > 0 ? t('history.owed', { amount: formatDucats(short) }) : '',
       })
+    }
+    case 'LEVEL_UP': {
+      // 0356: {track, level, reputation}. The arrival card's own sentence (dict/feed.ts), so a level-up reads the same in both places.
+      const track = str(p, 'track')
+      const level = num(p, 'level')
+      const word =
+        track === 'trading' ? t('command.lvTrading') : track === 'exploration' ? t('command.lvExploration') : track === 'combat' ? t('command.lvCombat') : null
+      if (word === null || level === null) return t('history.bare', { what: kindWords(event.kind) })
+      const rep = num(p, 'reputation') ?? 0
+      return rep > 0 ? t('feed.levelUpRep', { track: word, n: level, rep: formatInt(rep) }) : t('feed.levelUp', { track: word, n: level })
     }
     default: {
       const named = str(p, 'fleet')

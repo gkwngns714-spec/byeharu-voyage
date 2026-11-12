@@ -76,6 +76,7 @@ Never "PvP", "affinity", "regard", "raid target". The full list is `docs/WORLD_P
 | moving a captain up a grade (0162) | **Promote** (button `Promote to B`); the server's line `Promote to B · 10 Sea Charts · Exploration level 5`, `6 / 10 here`; refusals in the server's words (`Needs 10 Sea Charts here: you have 6 at Lisbon.`) | rank up, ascend, transcend |
 | promotion items (0162) | **Sea Chart** · **Trade Seal** · **Battle Honour** (in Storage, like any item) | contract, astrolabe, certificate |
 | what every success earns, to be spent on captain skills (0352) | **Reputation** / **평판**: the top bar's figure (`104 Reputation`), the arrival card's `+65 Reputation` / `평판 +65`, You's `Today 41 / 600` / `오늘 41 / 600` | fame (Fame is the Rank board's, 명성), honour (명예 is a regard band), rep, renown, RP |
+| a company level crossed, and its gift (0356) | **Trading level 5 · +50 Reputation** / **교역 5레벨 · 평판 +50** on the arrival card and in History; the Levels page ends each bar's line with the next level's gift, **Next +60** / **다음 +60** | level up!, reward, bonus, prize, XP |
 | the languages she speaks (0156) | the server's sentence **Speaks Portuguese, Spanish** | LV, fluency |
 | the market | **market** / **here** | the quay |
 | the trading screen (2026-10-18, docs/COMMAND_DESK.md §9) | the tab stays **Command**; its faces **Markets · Plans** (City, Invest, Profit join with their slices) | desk, terminal, exchange |

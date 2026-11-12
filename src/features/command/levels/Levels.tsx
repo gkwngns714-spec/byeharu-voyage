@@ -5,6 +5,7 @@ import { formatDucats, formatInt, formatMiles } from '../../../lib/format'
 import { useT } from '../../../lib/i18n'
 import { worldLevels, type CaptainLevel, type LevelCut, type LevelsView, type YourCaptain } from '../../../lib/rpc'
 import { useServedRead } from '../../../live/useServedRead'
+import { useWorld } from '../../../live/worldStore'
 import { useYourCaptains } from '../../../live/useYourCaptains'
 import type { DeskLayout } from '../DeskFrame'
 
@@ -85,15 +86,27 @@ export function Levels({ layout }: { layout: DeskLayout }) {
   })
 }
 
-/** One ladder: its name and level, the bar to the next, and the line under it. */
-function Track({ name, level, cut, line, testid, children }: { name: string; level: number; cut: LevelCut; line?: string; testid: string; children?: ReactNode }) {
+/** One ladder: its name and level, the bar to the next, and the line under it. `gift` (0356) is the served Reputation a level
+ *  (`reputation.level_gift`): the next level's gift, gift x (level + 1), ends the line. No gift at the top level or while it is 0. */
+function Track({ name, level, cut, line, gift, testid, children }: { name: string; level: number; cut: LevelCut; line?: string; gift?: number | null; testid: string; children?: ReactNode }) {
   const t = useT()
   const toNext = cut.next_at === null ? t('command.lvTop') : t('command.lvToNext', { n: formatInt(Math.ceil(cut.next_at - cut.points)), next: level + 1 })
+  const nextGift = cut.next_at === null || !gift ? 0 : gift * (level + 1)
   return (
     <div className="min-w-0 py-2" data-testid={testid}>
       <StatCell look="stacked" label={name} value={level} format={formatInt} />
       <Bar pct={fill(cut)} label={t('you.levelOf', { name })} tone="accent" className="mt-1" />
-      <span className="mt-1 block text-t-caption text-ink-faint">{[t('command.lvPoints', { n: formatInt(cut.points) }), toNext, line].filter(Boolean).join(' · ')}</span>
+      <span className="mt-1 block text-t-caption text-ink-faint">
+        {[t('command.lvPoints', { n: formatInt(cut.points) }), toNext, line].filter(Boolean).join(' · ')}
+        {nextGift > 0 && (
+          <>
+            {' · '}
+            <span className="text-accent" data-testid="levels-gift" data-value={nextGift}>
+              {t('command.lvNextGift', { n: formatInt(nextGift) })}
+            </span>
+          </>
+        )}
+      </span>
       {children}
     </div>
   )
@@ -113,18 +126,21 @@ function Company({ v }: { v: Ready }) {
   const t = useT()
   const { trading, exploration, combat } = v.tracks
   const sea = v.skills.seamanship
+  // 0356: the Reputation a level, served on the house read (public.reputation_card). null before 0356: no gift is printed.
+  const gift = useWorld((s) => s.player?.reputation?.level_gift ?? null)
   return (
     <>
-      <Track name={t('command.lvTrading')} level={trading.level} cut={trading} line={t('command.lvTurnover', { n: formatDucats(trading.turnover) })} testid="levels-trading" />
+      <Track name={t('command.lvTrading')} level={trading.level} cut={trading} line={t('command.lvTurnover', { n: formatDucats(trading.turnover) })} gift={gift} testid="levels-trading" />
       <Track
         name={t('command.lvExploration')}
         level={exploration.level}
         cut={exploration}
         line={t('command.lvPorts', { ports: formatInt(exploration.ports_reached), nm: formatMiles(exploration.nm_sailed) })}
+        gift={gift}
         testid="levels-exploration"
       />
       {combat.playable ? (
-        <Track name={t('command.lvCombat')} level={combat.level} cut={combat} testid="levels-combat" />
+        <Track name={t('command.lvCombat')} level={combat.level} cut={combat} gift={gift} testid="levels-combat" />
       ) : (
         <div className="py-2" data-testid="levels-combat">
           <Words label={t('command.lvCombat')} value={t('command.lvCombatDark')} />
