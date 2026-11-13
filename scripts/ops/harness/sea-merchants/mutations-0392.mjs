@@ -1,6 +1,6 @@
-// mutations-0377.mjs: the mutation controls of proof-0377.mjs: deliberate breakages of 0377, each REQUIRED to fail for its own reason.
+// mutations-0392.mjs: the mutation controls of proof-0392.mjs: deliberate breakages of 0392, each REQUIRED to fail for its own reason.
 // Each entry: [label, mutate(sql) -> sql, the error it must raise]. SELF = the file's own self-assert must catch it; AFTER = the file is clean in itself and
-// only proof 70 (run right after it) can see it. A mutation that passes, or fails for another reason, fails the harness.
+// only proof 92 (run right after it) can see it. A mutation that passes, or fails for another reason, fails the harness.
 
 export function mutations(swap) {
   return [
@@ -15,7 +15,7 @@ export function mutations(swap) {
     ['SELF dark judges the sea (the switch is not read)', (s) => swap(s, '   where case when (select public.sea_conditions_npc_on())\n', '   where case when true\n'), /with the switch off the feasible legs .* are not what they were/],
     ['SELF lit, nothing is taken away (the rule is not asked)', (s) => swap(s, 'then public.npc_sea_shut((select public.fleet_wave(p_fleet)), l.to_port, l.course) is null\n              else true end\n$body$', 'then true\n              else true end\n$body$'), /lit, the feasible legs are not the dark ones less those her hull cannot hold/],
     // AFTER
-    ['AFTER the merchant is judged on a title too (title 1 passed to the one rule)', (s) => swap(s, 'select public.sea_refusal(null, p_wave,', 'select public.sea_refusal(1, p_wave,'), /PROOF 70 FAIL/],
-    ['AFTER the planner does not mark her present loop (hunk 2 does nothing)', (s) => swap(s, '          v_unsail := v_unsail or v_sea;\n', ''), /PROOF 70 FAIL: lit, the planner left a merchant buying into a loop her hull cannot hold/],
+    ['AFTER the merchant is judged on a title too (title 1 passed to the one rule)', (s) => swap(s, 'select public.sea_refusal(null, p_wave,', 'select public.sea_refusal(1, p_wave,'), /PROOF 92 FAIL/],
+    ['AFTER the planner does not mark her present loop (hunk 2 does nothing)', (s) => swap(s, '          v_unsail := v_unsail or v_sea;\n', ''), /PROOF 92 FAIL: lit, the planner left a merchant buying into a loop her hull cannot hold/],
   ]
 }

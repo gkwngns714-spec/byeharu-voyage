@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
--- 0377 - A MERCHANT SAILS THE SEAS HER HULL CAN HOLD  (slice S3 of docs/SEA_CONDITIONS_AND_REGIONS.md; owner row 166). DARK behind its own switch.
+-- 0392 - A MERCHANT SAILS THE SEAS HER HULL CAN HOLD  (slice S3 of docs/SEA_CONDITIONS_AND_REGIONS.md; owner row 166). DARK behind its own switch.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
 -- news: none (dark: nothing a player can see changes; the file that lights sea_conditions_bite_npc carries the news)
 --
@@ -44,12 +44,12 @@
 -- merchant fleets spread over hull sizes and seas, digested before the cut (the old function) and after it (the new one, switch off), are the same text; and,
 -- with the switch lit INSIDE A PROBE THAT ROLLS BACK, a caravel's feasible legs out of a European harbour lose the Western Ocean and keep her coast, and the
 -- door still answers null for a merchant. THE LIVE PATHS (the planner dropping a closed loop, a nau keeping the Atlantic, a barca keeping her coast, a
--- merchant mid-voyage not refused, dark parity of a real plan pass) ARE PROVED IN CI by scripts/db/proofs/70_a_merchant_sails_the_seas_her_hull_can_hold.sql
--- and locally by scripts/ops/harness/sea-merchants/ (proof-0377.mjs: the dark scene equal before and after; sim.mjs: every merchant planned lit and dark).
+-- merchant mid-voyage not refused, dark parity of a real plan pass) ARE PROVED IN CI by scripts/db/proofs/92_a_merchant_sails_the_seas_her_hull_can_hold.sql
+-- and locally by scripts/ops/harness/sea-merchants/ (proof-0392.mjs: the dark scene equal before and after; sim.mjs: every merchant planned lit and dark).
 --
 -- ROLLBACK: the switch (sea_conditions_bite_npc false, owner only): at once every feasible-leg set and every plan is what it was before this file. The
--- rest, forward, a NEW migration, owner only: scripts/ops/harness/sea-merchants/rollback-0377.sql (a draft).
--- VERSION: 0377. 0376 is held by the players' side of the same design (a wall says what is short); neither file reads the other.
+-- rest, forward, a NEW migration, owner only: scripts/ops/harness/sea-merchants/rollback-0392.sql (a draft).
+-- VERSION: 0392. 0391 is held by the players' side of the same design (a wall says what is short); neither file reads the other.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -84,7 +84,7 @@ begin
      or to_regprocedure('public.npc_sea_shut(numeric, uuid, jsonb)') is not null or to_regprocedure('public.npc_loop_sea_shut(uuid, jsonb)') is not null
      or to_regprocedure('public.npc_feasible_legs(uuid, uuid, numeric, integer)') is not null or to_regclass('public.npc_course_zones_memo') is not null
      or exists (select 1 from public.world_config where key = 'sea_conditions_bite_npc') then
-    raise exception '0377 refuses: the merchants'' sea rule is already in this world';
+    raise exception '0392 refuses: the merchants'' sea rule is already in this world';
   end if;
   if to_regprocedure('public.sea_refusal(integer, numeric, text[])') is null or to_regprocedure('public.course_zones(jsonb)') is null
      or to_regprocedure('public.harbour_zone(uuid)') is null or to_regprocedure('public.fleet_wave(uuid)') is null
@@ -93,12 +93,12 @@ begin
      or to_regprocedure('public.npc_legs_open(jsonb, uuid)') is null or to_regprocedure('public.passage_gate(uuid, uuid, numeric, uuid, jsonb)') is null
      or to_regclass('public.npc_courses') is null or to_regclass('public.sea_zones') is null
      or not exists (select 1 from public.world_config where key = 'sea_conditions_bite') then
-    raise exception '0377 refuses: a function, table or knob this file reads is not in this world (0215 the seas, 0216 the gate, 0120 and 0203 the planner, 0341 the pirate homes)';
+    raise exception '0392 refuses: a function, table or knob this file reads is not in this world (0215 the seas, 0216 the gate, 0120 and 0203 the planner, 0341 the pirate homes)';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
   v_entry := (select count(*) from public.client_rpc_entry_points());
-  create temp table defs_0377 on commit drop as
+  create temp table defs_0392 on commit drop as
   select f.fn, f.ord, p.oid,
          replace(pg_get_functiondef(p.oid), E'\r', '') as def,
          coalesce(p.proacl::text, '') as acl, p.provolatile as vol, p.prosecdef as secdef,
@@ -108,23 +108,23 @@ begin
       ('public.npc_plan(timestamp with time zone, uuid)', 2)) f(fn, ord)
     join pg_proc p on p.oid = to_regprocedure(f.fn)
     join pg_language l on l.oid = p.prolang;
-  if (select count(*) from defs_0377) <> 2 then
-    raise exception '0377 self-assert FAIL: % of the 2 bodies this file re-cuts are in this world', (select count(*) from defs_0377);
+  if (select count(*) from defs_0392) <> 2 then
+    raise exception '0392 self-assert FAIL: % of the 2 bodies this file re-cuts are in this world', (select count(*) from defs_0392);
   end if;
   select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
     into v_fn_before
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-   where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0377 t)
+   where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0392 t)
      and p.oid <> to_regprocedure('public.npc_feasible_legs(uuid, numeric, integer)');
   select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key)) into v_cfg_before
     from public.world_config c;
-  create temp table xact0_0377 on commit drop as
+  create temp table xact0_0392 on commit drop as
   select s.relname::text as relname, s.n_tup_ins, s.n_tup_upd, s.n_tup_del from pg_stat_xact_user_tables s;
 
   -- THE SAMPLE OF "OFF = UNCHANGED": 48 merchant fleets, 16 of each hull size where the world has them, spread over the roster; each one's feasible legs
   -- out of the first stop of her loop at her own speed, with 10 days of stores (the stores test binds) and with 60, read through the OLD function now and
   -- through the new one after the cut.
-  create temp table sample_0377 on commit drop as
+  create temp table sample_0392 on commit drop as
   select q.fleet_id, q.port_id, q.speed
     from (select nf.fleet_id,
                  (select st.port_id from public.standing_route_stops st where st.route_id = nf.route_id order by st.ord limit 1) as port_id,
@@ -136,12 +136,12 @@ begin
            where nf.route_id is not null and sz.size is not null) q
    where q.port_id is not null and (q.k - 1) % greatest(q.of / 16, 1) = 0 and (q.k - 1) / greatest(q.of / 16, 1) < 16;
   select md5(coalesce(string_agg(s.fleet_id::text || ':' || public.npc_feasible_legs(s.port_id, s.speed, 10)::text || public.npc_feasible_legs(s.port_id, s.speed, 60)::text, ';' order by s.fleet_id), '')) into v_legs_before
-    from sample_0377 s;
+    from sample_0392 s;
   v_ms := v_ms || jsonb_build_object('pre', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
   -- ── 2. THE SWITCH ──
   insert into public.world_config (key, value, description) values
-    ('sea_conditions_bite_npc', 'false'::jsonb, '0377 (docs/SEA_CONDITIONS_AND_REGIONS.md, S3): THE switch of the sea conditions for MERCHANTS. false = the merchant planner is what it was before 0377; true = a known leg whose seas ask more wave resistance than her fleet holds is not offered to her, and a present loop with such a leg is unsailable (public.npc_plan). A merchant has no title; the sail door never refuses her. Independent of sea_conditions_bite. Owner only.');
+    ('sea_conditions_bite_npc', 'false'::jsonb, '0392 (docs/SEA_CONDITIONS_AND_REGIONS.md, S3): THE switch of the sea conditions for MERCHANTS. false = the merchant planner is what it was before 0392; true = a known leg whose seas ask more wave resistance than her fleet holds is not offered to her, and a present loop with such a leg is unsailable (public.npc_plan). A merchant has no title; the sail door never refuses her. Independent of sea_conditions_bite. Owner only.');
 
   execute $f$
 create function public.sea_conditions_npc_on()
@@ -149,13 +149,13 @@ returns boolean
 language sql
 stable
 as $body$
-  -- 0377: THE switch of the sea conditions for merchants, read as public.sea_conditions_on reads the players' own: a plain SQL read of world_config,
+  -- 0392: THE switch of the sea conditions for merchants, read as public.sea_conditions_on reads the players' own: a plain SQL read of world_config,
   -- inlinable, missing row = off.
   select coalesce((select c.value = 'true'::jsonb from public.world_config c where c.key = 'sea_conditions_bite_npc'), false)
 $body$
   $f$;
   revoke all on function public.sea_conditions_npc_on() from public, anon, authenticated;
-  comment on function public.sea_conditions_npc_on() is '0377 (S3): THE one reader of sea_conditions_bite_npc. Server-only.';
+  comment on function public.sea_conditions_npc_on() is '0392 (S3): THE one reader of sea_conditions_bite_npc. Server-only.';
 
   -- ── 3. THE MEMO OF A KNOWN COURSE'S ZONES ──
   create table public.npc_course_zones_memo (
@@ -163,7 +163,7 @@ $body$
     zones      text[] not null
   );
   comment on table public.npc_course_zones_memo is
-    '0377 (S3): the zones a merchant course crosses, remembered: public.course_zones (the one sampler) of every course of public.npc_courses and of every merchant route, both ways, keyed by md5(course::text). Derived, never authored: written by public.npc_course_zones_fill only, read by public.npc_course_zones only. A file that changes public.sea_zones or its boxes runs the fill again. Server-only.';
+    '0392 (S3): the zones a merchant course crosses, remembered: public.course_zones (the one sampler) of every course of public.npc_courses and of every merchant route, both ways, keyed by md5(course::text). Derived, never authored: written by public.npc_course_zones_fill only, read by public.npc_course_zones only. A file that changes public.sea_zones or its boxes runs the fill again. Server-only.';
   alter table public.npc_course_zones_memo enable row level security;
   revoke all on table public.npc_course_zones_memo from public, anon, authenticated;
 
@@ -175,13 +175,13 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0377 (S3): THE ZONES A MERCHANT'S COURSE CROSSES: the memo's row for this very course (its own text is the key), else public.course_zones, the one
+  -- 0392 (S3): THE ZONES A MERCHANT'S COURSE CROSSES: the memo's row for this very course (its own text is the key), else public.course_zones, the one
   -- sampler the sail door reads. The memo holds what that sampler answered; a course it has not seen is sampled, so the answer is the sampler's either way.
   select coalesce((select m.zones from public.npc_course_zones_memo m where m.course_md5 = md5(p_course::text)), public.course_zones(p_course))
 $body$
   $f$;
   revoke all on function public.npc_course_zones(jsonb) from public, anon, authenticated;
-  comment on function public.npc_course_zones(jsonb) is '0377 (S3): the zones a merchant course crosses, from the memo or the one sampler. Server-only.';
+  comment on function public.npc_course_zones(jsonb) is '0392 (S3): the zones a merchant course crosses, from the memo or the one sampler. Server-only.';
 
   execute $f$
 create function public.npc_course_zones_fill()
@@ -190,9 +190,9 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0377 (S3): WRITE THE MEMO AFRESH from the one sampler: every course the merchant planner can be handed (public.npc_known_legs: the courses the world has
+-- 0392 (S3): WRITE THE MEMO AFRESH from the one sampler: every course the merchant planner can be handed (public.npc_known_legs: the courses the world has
 -- held, and every merchant route's legs), forwards and backwards (a known leg is also sailed the other way: the same water, so the same zones). Returns the
--- rows written. Run by 0377 once; run it again whenever public.sea_zones or its boxes change.
+-- rows written. Run by 0392 once; run it again whenever public.sea_zones or its boxes change.
 declare
   v_n int;
 begin
@@ -220,7 +220,7 @@ end
 $body$
   $f$;
   revoke all on function public.npc_course_zones_fill() from public, anon, authenticated;
-  comment on function public.npc_course_zones_fill() is '0377 (S3): rewrites public.npc_course_zones_memo from public.course_zones. Server-only; a migration that changes the sea zones calls it.';
+  comment on function public.npc_course_zones_fill() is '0392 (S3): rewrites public.npc_course_zones_memo from public.course_zones. Server-only; a migration that changes the sea zones calls it.';
   v_memo := public.npc_course_zones_fill();
   v_ms := v_ms || jsonb_build_object('memo', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
@@ -233,14 +233,14 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0377 (S3, the design's Q3): MAY A MERCHANT FLEET OF THIS WAVE RESISTANCE SAIL THIS LEG? Null when she may; otherwise public.sea_refusal's own refusal.
+  -- 0392 (S3, the design's Q3): MAY A MERCHANT FLEET OF THIS WAVE RESISTANCE SAIL THIS LEG? Null when she may; otherwise public.sea_refusal's own refusal.
   -- The zones are the ones public.sea_gate gathers for a player: every zone the course crosses and the destination harbour's own. Her title is null (a
   -- merchant has none), so the one rule judges the wave alone. Nothing is compared here. It does not read the switch: its callers do.
   select public.sea_refusal(null, p_wave, public.npc_course_zones(p_course) || array_remove(array[public.harbour_zone(p_dest)], null))
 $body$
   $f$;
   revoke all on function public.npc_sea_shut(numeric, uuid, jsonb) from public, anon, authenticated;
-  comment on function public.npc_sea_shut(numeric, uuid, jsonb) is '0377 (S3): the one rule (public.sea_refusal) asked of a merchant leg on wave only. Server-only.';
+  comment on function public.npc_sea_shut(numeric, uuid, jsonb) is '0392 (S3): the one rule (public.sea_refusal) asked of a merchant leg on wave only. Server-only.';
 
   execute $f$
 create function public.npc_loop_sea_shut(p_fleet uuid, p_loop jsonb)
@@ -250,7 +250,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0377 (S3): HAS THIS LOOP A LEG HER HULL CANNOT HOLD? p_loop is public.npc_plan's own shape: [{port_id, code, course, nm}], stop i's course the leg to
+  -- 0392 (S3): HAS THIS LOOP A LEG HER HULL CANNOT HOLD? p_loop is public.npc_plan's own shape: [{port_id, code, course, nm}], stop i's course the leg to
   -- stop i + 1, the last leg home. Her wave is read once. It does not read the switch: public.npc_plan does.
   select exists (
     select 1
@@ -260,7 +260,7 @@ as $body$
 $body$
   $f$;
   revoke all on function public.npc_loop_sea_shut(uuid, jsonb) from public, anon, authenticated;
-  comment on function public.npc_loop_sea_shut(uuid, jsonb) is '0377 (S3): whether a merchant loop has a leg whose seas her fleet''s wave resistance cannot hold. Server-only.';
+  comment on function public.npc_loop_sea_shut(uuid, jsonb) is '0392 (S3): whether a merchant loop has a leg whose seas her fleet''s wave resistance cannot hold. Server-only.';
 
   drop function public.npc_feasible_legs(uuid, numeric, integer);
   execute $f$
@@ -276,7 +276,7 @@ as $body$
   -- the draft gate — any hull enters any harbour), and a passage her stores cover at
   -- endurance_margin, one day spare — the stores gate as the sail gate judges it. Nearest first,
   -- then the port id.
-  -- 0377 (S3): AND, WHILE THE SEA CONDITIONS BITE FOR MERCHANTS, a leg whose seas her hull can hold (public.npc_sea_shut: the one rule, on wave only). The
+  -- 0392 (S3): AND, WHILE THE SEA CONDITIONS BITE FOR MERCHANTS, a leg whose seas her hull can hold (public.npc_sea_shut: the one rule, on wave only). The
   -- function gained p_fleet for it. The switch and her wave are read once a call; with the switch off the leg's seas are never read.
   -- The legs the old rule allows are gathered first (a materialised step: the sea is asked of those legs only, once each, whatever the planner would prefer).
   with legs as materialized (
@@ -297,8 +297,8 @@ $body$
   v_ms := v_ms || jsonb_build_object('fns', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
 
   -- ── 5. THE RE-CUTS: hunks sliced from the live bodies ──
-  create temp table hunks_0377 (fn text, ord int, old text, new text) on commit drop;
-  insert into hunks_0377 values
+  create temp table hunks_0392 (fn text, ord int, old text, new text) on commit drop;
+  insert into hunks_0392 values
   ('public.npc_loop_candidates(uuid, uuid, uuid, numeric, numeric)', 1,
 $h$public.npc_feasible_legs(p_home, p_speed, v_days_cap)$h$,
 $h$public.npc_feasible_legs(p_home, p_fleet, p_speed, v_days_cap)$h$),
@@ -314,7 +314,7 @@ begin
   if not public.npc_traders_on() then
 $h$,
 $h$  v_notes   jsonb := '[]'::jsonb;
-  v_sea     boolean := false;   -- 0377 (S3): her present loop has a leg her hull cannot hold (only while sea_conditions_bite_npc is on)
+  v_sea     boolean := false;   -- 0392 (S3): her present loop has a leg her hull cannot hold (only while sea_conditions_bite_npc is on)
 begin
   if not public.npc_traders_on() then
 $h$),
@@ -322,7 +322,7 @@ $h$),
 $h$        v_unsail := coalesce(v_unsail, true);
 $h$,
 $h$        v_unsail := coalesce(v_unsail, true);
-        -- 0377 (S3, docs/SEA_CONDITIONS_AND_REGIONS.md section 4): WHILE THE SEA CONDITIONS BITE FOR MERCHANTS, HER PRESENT LOOP WITH A LEG HER HULL CANNOT
+        -- 0392 (S3, docs/SEA_CONDITIONS_AND_REGIONS.md section 4): WHILE THE SEA CONDITIONS BITE FOR MERCHANTS, HER PRESENT LOOP WITH A LEG HER HULL CANNOT
         -- HOLD IS UNSAILABLE (public.npc_loop_sea_shut: the one rule, on wave only). The loops on offer need no such test: public.npc_feasible_legs never
         -- offers her such a leg. The sail door stays exempt for a merchant, so she finishes the lap she is on.
         if i = 0 then
@@ -333,19 +333,19 @@ $h$),
   ('public.npc_plan(timestamp with time zone, uuid)', 3,
 $h$        if i = 0 and v_choose and (v_net <= 0 or v_off or sr.lap_no % greatest(v_review, 1) = 0) then
 $h$,
-$h$        if i = 0 and v_choose and (v_net <= 0 or v_off or v_sea or sr.lap_no % greatest(v_review, 1) = 0) then   -- 0377 (S3): a loop the sea closes to her is reviewed at this lap start, not at the next review lap
+$h$        if i = 0 and v_choose and (v_net <= 0 or v_off or v_sea or sr.lap_no % greatest(v_review, 1) = 0) then   -- 0392 (S3): a loop the sea closes to her is reviewed at this lap start, not at the next review lap
 $h$);
 
-  if (select count(distinct h.fn) from hunks_0377 h) <> (select count(*) from defs_0377)
-     or exists (select 1 from hunks_0377 h where h.fn not in (select t.fn from defs_0377 t)) then
-    raise exception '0377 self-assert FAIL: a pre-imaged body has no hunk, or a hunk names a body not pre-imaged';
+  if (select count(distinct h.fn) from hunks_0392 h) <> (select count(*) from defs_0392)
+     or exists (select 1 from hunks_0392 h where h.fn not in (select t.fn from defs_0392 t)) then
+    raise exception '0392 self-assert FAIL: a pre-imaged body has no hunk, or a hunk names a body not pre-imaged';
   end if;
-  for r_d in select * from defs_0377 t order by t.ord loop
+  for r_d in select * from defs_0392 t order by t.ord loop
     v_def := r_d.def;
-    for r_hk in select * from hunks_0377 h where h.fn = r_d.fn order by h.ord loop
+    for r_hk in select * from hunks_0392 h where h.fn = r_d.fn order by h.ord loop
       v_n := (length(v_def) - length(replace(v_def, r_hk.old, ''))) / length(r_hk.old);
       if v_n <> 1 then
-        raise exception '0377 self-assert FAIL: hunk % of % occurs % time(s), not once: the live body is not what this file was cut against', r_hk.ord, r_hk.fn, v_n;
+        raise exception '0392 self-assert FAIL: hunk % of % occurs % time(s), not once: the live body is not what this file was cut against', r_hk.ord, r_hk.fn, v_n;
       end if;
       v_def := replace(v_def, r_hk.old, r_hk.new);
     end loop;
@@ -355,17 +355,17 @@ $h$);
 
   -- ── 6. THE SELF-ASSERT ──
   -- 6a every re-cut reverses to its pre-image; attributes unmoved
-  for r_d in select * from defs_0377 t order by t.ord loop
+  for r_d in select * from defs_0392 t order by t.ord loop
     v_rev := replace(pg_get_functiondef(r_d.oid), E'\r', '');
-    for r_hk in select * from hunks_0377 h where h.fn = r_d.fn order by h.ord desc loop
+    for r_hk in select * from hunks_0392 h where h.fn = r_d.fn order by h.ord desc loop
       v_n := (length(v_rev) - length(replace(v_rev, r_hk.new, ''))) / length(r_hk.new);
       if v_n <> 1 then
-        raise exception '0377 self-assert FAIL: % - the new text of hunk % is not in the live body exactly once', r_d.fn, r_hk.ord;
+        raise exception '0392 self-assert FAIL: % - the new text of hunk % is not in the live body exactly once', r_d.fn, r_hk.ord;
       end if;
       v_rev := replace(v_rev, r_hk.new, r_hk.old);
     end loop;
     if v_rev <> r_d.def then
-      raise exception '0377 self-assert FAIL: % does not reverse to its pre-image', r_d.fn;
+      raise exception '0392 self-assert FAIL: % does not reverse to its pre-image', r_d.fn;
     end if;
     if (select coalesce(p.proacl::text, '') from pg_proc p where p.oid = r_d.oid) <> r_d.acl
        or (select p.provolatile from pg_proc p where p.oid = r_d.oid) <> r_d.vol
@@ -374,23 +374,23 @@ $h$);
        or (select p.proparallel from pg_proc p where p.oid = r_d.oid) <> r_d.par
        or (select p.proowner from pg_proc p where p.oid = r_d.oid) <> r_d.owner
        or (select l.lanname from pg_proc p join pg_language l on l.oid = p.prolang where p.oid = r_d.oid) <> r_d.lang then
-      raise exception '0377 self-assert FAIL: % - ACL, volatility, definer, config, parallel safety, owner or language moved', r_d.fn;
+      raise exception '0392 self-assert FAIL: % - ACL, volatility, definer, config, parallel safety, owner or language moved', r_d.fn;
     end if;
   end loop;
 
   -- 6b no other function moved; the new ones are server-only, of the declared volatility; the three-argument npc_feasible_legs is gone; one knob, false
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-       where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0377 t)
+       where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p') and p.oid <> all (select t.oid from defs_0392 t)
          and not (n.nspname = 'public' and p.proname = any (c_fns))) is distinct from v_fn_before then
-    raise exception '0377 self-assert FAIL: a function this file does not re-cut moved';
+    raise exception '0392 self-assert FAIL: a function this file does not re-cut moved';
   end if;
   if to_regprocedure('public.npc_feasible_legs(uuid, numeric, integer)') is not null
      or (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.proname = any (c_fns)) <> 6
      or exists (select 1 from pg_proc p where p.prosrc like '%npc_feasible_legs(%' and p.oid::regprocedure::text not in
                   ('npc_loop_candidates(uuid,uuid,uuid,numeric,numeric)', 'npc_leg_days(numeric,numeric)', 'npc_feasible_legs(uuid,uuid,numeric,integer)')
                   and p.pronamespace in (select n.oid from pg_namespace n where n.nspname in ('public', 'cmd', 'world', 'voyage'))) then
-    raise exception '0377 self-assert FAIL: the old npc_feasible_legs still stands, the new functions are not exactly six, or a caller this file did not re-cut names npc_feasible_legs';
+    raise exception '0392 self-assert FAIL: the old npc_feasible_legs still stands, the new functions are not exactly six, or a caller this file did not re-cut names npc_feasible_legs';
   end if;
   for r_x in select p.proname, p.provolatile, p.prosecdef, coalesce(p.proconfig::text, '') as cfg, p.oid
              from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -399,29 +399,29 @@ $h$);
        or (r_x.proname <> 'sea_conditions_npc_on' and (not r_x.prosecdef or r_x.cfg <> '{"search_path=public, pg_temp"}'))
        or has_function_privilege('anon', r_x.oid, 'execute') or has_function_privilege('authenticated', r_x.oid, 'execute')
        or exists (select 1 from aclexplode(coalesce((select p.proacl from pg_proc p where p.oid = r_x.oid), acldefault('f', (select p.proowner from pg_proc p where p.oid = r_x.oid)))) a where a.grantee = 0) then
-      raise exception '0377 self-assert FAIL: public.% is not of its declared volatility, pinned and server-only', r_x.proname;
+      raise exception '0392 self-assert FAIL: public.% is not of its declared volatility, pinned and server-only', r_x.proname;
     end if;
   end loop;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c where c.key <> 'sea_conditions_bite_npc') is distinct from v_cfg_before
      or (select c.value from public.world_config c where c.key = 'sea_conditions_bite_npc') is distinct from 'false'::jsonb
      or public.sea_conditions_npc_on() then
-    raise exception '0377 self-assert FAIL: a knob moved, or sea_conditions_bite_npc is not shipped false';
+    raise exception '0392 self-assert FAIL: a knob moved, or sea_conditions_bite_npc is not shipped false';
   end if;
   if has_table_privilege('anon', 'public.npc_course_zones_memo', 'select') or has_table_privilege('authenticated', 'public.npc_course_zones_memo', 'select')
      or not (select c.relrowsecurity from pg_class c where c.oid = 'public.npc_course_zones_memo'::regclass) then
-    raise exception '0377 self-assert FAIL: public.npc_course_zones_memo is readable by a client or has no row level security';
+    raise exception '0392 self-assert FAIL: public.npc_course_zones_memo is readable by a client or has no row level security';
   end if;
   if (select count(*) from public.client_rpc_entry_points()) <> v_entry
      or (select count(*) from public.client_write_grants()) <> 0
      or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0377 self-assert FAIL: the registry or a wall moved (no new door; the posture must read zero)';
+    raise exception '0392 self-assert FAIL: the registry or a wall moved (no new door; the posture must read zero)';
   end if;
 
   -- 6c the memo: written, and equal to the one sampler on a sample of the courses the world holds, forwards and backwards
   if v_memo < 1 or v_memo <> (select count(*) from public.npc_course_zones_memo) then
-    raise exception '0377 self-assert FAIL: the memo holds % rows and the fill said %', (select count(*) from public.npc_course_zones_memo), v_memo;
+    raise exception '0392 self-assert FAIL: the memo holds % rows and the fill said %', (select count(*) from public.npc_course_zones_memo), v_memo;
   end if;
   select count(*) into v_n
     from (select c.course from public.npc_courses c order by c.from_port, c.to_port limit 60) q
@@ -430,27 +430,27 @@ $h$);
       or not exists (select 1 from public.npc_course_zones_memo m
                       where m.course_md5 = md5((select jsonb_agg(t.x order by t.i desc) from jsonb_array_elements(q.course) with ordinality t(x, i))::text));
   if v_n <> 0 then
-    raise exception '0377 self-assert FAIL: % of 60 sampled courses are not in the memo both ways, or the memo disagrees with public.course_zones', v_n;
+    raise exception '0392 self-assert FAIL: % of 60 sampled courses are not in the memo both ways, or the memo disagrees with public.course_zones', v_n;
   end if;
   if public.npc_course_zones('[[38.6,-9.3],[23.1,-82.4]]'::jsonb) is distinct from public.course_zones('[[38.6,-9.3],[23.1,-82.4]]'::jsonb) then
-    raise exception '0377 self-assert FAIL: a course the memo has not seen is not answered by the sampler';
+    raise exception '0392 self-assert FAIL: a course the memo has not seen is not answered by the sampler';
   end if;
 
   -- 6d OFF = UNCHANGED: the sample's feasible legs through the new function, switch off, are the text the old function gave
-  if (select count(*) from sample_0377) < 40 then
-    raise notice '0377 NOTE: this world has % merchant fleets on a loop to sample (40 wanted): the parity sample is what it has', (select count(*) from sample_0377);
+  if (select count(*) from sample_0392) < 40 then
+    raise notice '0392 NOTE: this world has % merchant fleets on a loop to sample (40 wanted): the parity sample is what it has', (select count(*) from sample_0392);
   end if;
   select md5(coalesce(string_agg(s.fleet_id::text || ':' || public.npc_feasible_legs(s.port_id, s.fleet_id, s.speed, 10)::text || public.npc_feasible_legs(s.port_id, s.fleet_id, s.speed, 60)::text, ';' order by s.fleet_id), '')) into v_legs_after
-    from sample_0377 s;
+    from sample_0392 s;
   if v_legs_after is distinct from v_legs_before then
-    raise exception '0377 self-assert FAIL: with the switch off the feasible legs of the % sampled merchant fleets are not what they were before this file', (select count(*) from sample_0377);
+    raise exception '0392 self-assert FAIL: with the switch off the feasible legs of the % sampled merchant fleets are not what they were before this file', (select count(*) from sample_0392);
   end if;
 
   -- 6e LIT, INSIDE A PROBE THAT ROLLS BACK: a merchant fleet of a size-2 hull (wave under 30) with a known leg across the Western Ocean loses it and keeps
   -- another; a fleet whose wave covers every leg keeps every leg; the door still answers null for a merchant. Skipped, and said, in a world with no such fleet.
   v_cfg_probe := (select md5(string_agg(c.key || ':' || c.value::text, ',' order by c.key)) from public.world_config c);
   select s.fleet_id, s.port_id into v_car, v_port
-    from sample_0377 s
+    from sample_0392 s
    where public.fleet_wave(s.fleet_id) < 30
      and exists (select 1 from jsonb_array_elements(public.npc_feasible_legs(s.port_id, s.fleet_id, s.speed, 400)) x
                   where public.npc_sea_shut(public.fleet_wave(s.fleet_id), (x->>'port_id')::uuid, x->'course') is not null)
@@ -458,54 +458,54 @@ $h$);
                   where public.npc_sea_shut(public.fleet_wave(s.fleet_id), (x->>'port_id')::uuid, x->'course') is null)
    order by s.fleet_id limit 1;
   if v_car is null then
-    raise notice '0377 NOTE: no sampled merchant fleet has both a leg her hull cannot hold and one it can: the lit probe is proof 70''s alone in this world';
+    raise notice '0392 NOTE: no sampled merchant fleet has both a leg her hull cannot hold and one it can: the lit probe is proof 92''s alone in this world';
   else
     v_dark := public.npc_feasible_legs(v_port, v_car, 5, 400);
     begin
       update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite_npc';
       if not public.sea_conditions_npc_on() then
-        raise exception '0377 self-assert FAIL: the probe lit sea_conditions_bite_npc and the reader still answers false';
+        raise exception '0392 self-assert FAIL: the probe lit sea_conditions_bite_npc and the reader still answers false';
       end if;
       v_lit := public.npc_feasible_legs(v_port, v_car, 5, 400);
       if jsonb_array_length(v_lit) >= jsonb_array_length(v_dark) or jsonb_array_length(v_lit) < 1
          or exists (select 1 from jsonb_array_elements(v_lit) x where public.npc_sea_shut(public.fleet_wave(v_car), (x->>'port_id')::uuid, x->'course') is not null)
          or v_lit <> (select jsonb_agg(x order by o) from jsonb_array_elements(v_dark) with ordinality t(x, o)
                        where public.npc_sea_shut(public.fleet_wave(v_car), (x->>'port_id')::uuid, x->'course') is null) then
-        raise exception '0377 self-assert FAIL: lit, the feasible legs are not the dark ones less those her hull cannot hold (% lit, % dark)', jsonb_array_length(v_lit), jsonb_array_length(v_dark);
+        raise exception '0392 self-assert FAIL: lit, the feasible legs are not the dark ones less those her hull cannot hold (% lit, % dark)', jsonb_array_length(v_lit), jsonb_array_length(v_dark);
       end if;
       if public.passage_gate((select f.player_id from public.fleets f where f.id = v_car), v_car, 999999, null, null) is not null then
-        raise exception '0377 self-assert FAIL: lit, the sail door refuses a merchant (0107''s exemption must stand: a fleet at sea finishes her trip)';
+        raise exception '0392 self-assert FAIL: lit, the sail door refuses a merchant (0107''s exemption must stand: a fleet at sea finishes her trip)';
       end if;
-      raise exception 'PROBE_ROLLBACK_0377';
+      raise exception 'PROBE_ROLLBACK_0392';
     exception when others then
-      if sqlerrm <> 'PROBE_ROLLBACK_0377' then raise; end if;
+      if sqlerrm <> 'PROBE_ROLLBACK_0392' then raise; end if;
     end;
   end if;
   if public.sea_conditions_npc_on() or (select md5(string_agg(c.key || ':' || c.value::text, ',' order by c.key)) from public.world_config c) is distinct from v_cfg_probe then
-    raise exception '0377 self-assert FAIL: the probe left sea_conditions_bite_npc on, or a knob changed';
+    raise exception '0392 self-assert FAIL: the probe left sea_conditions_bite_npc on, or a knob changed';
   end if;
 
   -- 6f BY CONSTRUCTION: this transaction wrote no row to any table of money, houses, ships, routes or events; the knob and the memo are the positive control
   for r_x in select a.relname, a.n_tup_ins - coalesce(b.n_tup_ins, 0) as i, a.n_tup_upd - coalesce(b.n_tup_upd, 0) as u, a.n_tup_del - coalesce(b.n_tup_del, 0) as dl
-             from pg_stat_xact_user_tables a left join xact0_0377 b on b.relname = a.relname
+             from pg_stat_xact_user_tables a left join xact0_0392 b on b.relname = a.relname
             where a.relname in ('players', 'npc_houses', 'npc_fleets', 'fleets', 'ships', 'ledger', 'events', 'standing_routes', 'standing_route_stops', 'standing_route_lines', 'npc_courses', 'voyages', 'orders') loop
     if r_x.i <> 0 or r_x.u <> 0 or r_x.dl <> 0 then
-      raise exception '0377 self-assert FAIL: this file wrote % row(s) to %, which it must never touch', r_x.i + r_x.u + r_x.dl, r_x.relname;
+      raise exception '0392 self-assert FAIL: this file wrote % row(s) to %, which it must never touch', r_x.i + r_x.u + r_x.dl, r_x.relname;
     end if;
   end loop;
-  select a.n_tup_ins - coalesce(b.n_tup_ins, 0) into v_n from pg_stat_xact_user_tables a left join xact0_0377 b on b.relname = a.relname where a.relname = 'world_config';
+  select a.n_tup_ins - coalesce(b.n_tup_ins, 0) into v_n from pg_stat_xact_user_tables a left join xact0_0392 b on b.relname = a.relname where a.relname = 'world_config';
   select a.n_tup_ins into v_x from pg_stat_xact_user_tables a where a.relname = 'npc_course_zones_memo';
   if v_n <> 1 or coalesce(v_x, 0) < v_memo then
-    raise exception '0377 self-assert FAIL: the transaction counters saw % knob(s) and % memo rows inserted, not 1 and % (the proof by construction would be vacuous)', v_n, v_x, v_memo;
+    raise exception '0392 self-assert FAIL: the transaction counters saw % knob(s) and % memo rows inserted, not 1 and % (the proof by construction would be vacuous)', v_n, v_x, v_memo;
   end if;
   v_ms := v_ms || jsonb_build_object('assert', round(extract(epoch from clock_timestamp() - v_t0) * 1000));
   if clock_timestamp() - v_t0 > interval '45 seconds' then
-    raise exception '0377 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
+    raise exception '0392 self-assert FAIL: the file took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
 
   -- ── 7. RECEIPT ──
-  raise notice '0377 NOTE: the live paths (the planner dropping a loop the sea closes and choosing one her hull can hold, a nau keeping the Atlantic, a barca keeping her coast, a merchant mid-voyage not refused, a real plan pass equal dark) are proved in CI by scripts/db/proofs/70_a_merchant_sails_the_seas_her_hull_can_hold.sql and locally by scripts/ops/harness/sea-merchants/.';
-  raise notice '0377 timings ms (cumulative): %', v_ms;
-  raise notice '0377 self-assert ok: A MERCHANT SAILS THE SEAS HER HULL CAN HOLD - 2 bodies re-cut by 6 hunks (every hunk once, each reverses, attributes unmoved), npc_feasible_legs now takes the fleet, no other function moved, 5 new server-only functions, the switch sea_conditions_bite_npc shipped false, the memo % rows and equal to the sampler, off = unchanged on % sampled fleets, lit probe %, nothing of money, ships or routes written', v_memo, (select count(*) from sample_0377), case when v_car is null then 'skipped (said above)' else 'ok' end;
+  raise notice '0392 NOTE: the live paths (the planner dropping a loop the sea closes and choosing one her hull can hold, a nau keeping the Atlantic, a barca keeping her coast, a merchant mid-voyage not refused, a real plan pass equal dark) are proved in CI by scripts/db/proofs/92_a_merchant_sails_the_seas_her_hull_can_hold.sql and locally by scripts/ops/harness/sea-merchants/.';
+  raise notice '0392 timings ms (cumulative): %', v_ms;
+  raise notice '0392 self-assert ok: A MERCHANT SAILS THE SEAS HER HULL CAN HOLD - 2 bodies re-cut by 6 hunks (every hunk once, each reverses, attributes unmoved), npc_feasible_legs now takes the fleet, no other function moved, 5 new server-only functions, the switch sea_conditions_bite_npc shipped false, the memo % rows and equal to the sampler, off = unchanged on % sampled fleets, lit probe %, nothing of money, ships or routes written', v_memo, (select count(*) from sample_0392), case when v_car is null then 'skipped (said above)' else 'ok' end;
 end
 $m$;

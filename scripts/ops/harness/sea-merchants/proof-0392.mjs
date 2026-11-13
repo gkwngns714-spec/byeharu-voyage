@@ -1,16 +1,16 @@
 // ═══════════════════════════════════════════════════════════════════════════════
-// proof-0377.mjs — A MERCHANT SAILS THE SEAS HER HULL CAN HOLD (migration 0377): the red-first proof. LOCAL ONLY (PGlite); not in CI.
+// proof-0392.mjs — A MERCHANT SAILS THE SEAS HER HULL CAN HOLD (migration 0392): the red-first proof. LOCAL ONLY (PGlite); not in CI.
 // ═══════════════════════════════════════════════════════════════════════════════
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/sea-merchants/proof-0377.mjs [--first=<sql file>] [--no-mutations] [--only=<text>] [--with=12,47]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/sea-merchants/proof-0392.mjs [--first=<sql file>] [--no-mutations] [--only=<text>] [--with=12,47]
 //
-// Restores the cached world at the head before 0377 (never from zero; nothing is written to the cache), then inside transactions that are rolled back runs:
-//   RED FIRST         - proof 70 on the world with no file: it must fail (the readers it calls do not exist yet);
+// Restores the cached world at the head before 0392 (never from zero; nothing is written to the cache), then inside transactions that are rolled back runs:
+//   RED FIRST         - proof 92 on the world with no file: it must fail (the readers it calls do not exist yet);
 //   DARK PARITY       - dark-scene.sql on the world before the file and after it, sea_conditions_bite_npc false: every SCENE line equal (the loops offered to every
 //                       fourth merchant of the roster, and a REAL plan pass over 60 merchants at their lap start: every stop, course and line written, the counters);
-//   POSITIVE CONTROL  - the real file, then proof 70: every marker it declares;
+//   POSITIVE CONTROL  - the real file, then proof 92: every marker it declares;
 //   --with            - the real file followed by each named existing proof (12 and 47 share its re-cut bodies), one transaction each;
-//   MUTATION CONTROLS - deliberate breakages (mutations-0377.mjs), each required to FAIL the file's own self-assert, or proof 70 right after it, for the intended reason.
+//   MUTATION CONTROLS - deliberate breakages (mutations-0392.mjs), each required to FAIL the file's own self-assert, or proof 92 right after it, for the intended reason.
 // The harness reads the migration from supabase/migrations; it does not edit it. The dark scene takes about two minutes a side. sim.mjs is the lit simulation.
 
 import { readFile, readdir } from 'node:fs/promises'
@@ -18,8 +18,8 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const NAME = '20260818000377_a_merchant_sails_the_seas_her_hull_can_hold.sql'
-const PROOF = 'scripts/db/proofs/70_a_merchant_sails_the_seas_her_hull_can_hold.sql'
+const NAME = '20260818000392_a_merchant_sails_the_seas_her_hull_can_hold.sql'
+const PROOF = 'scripts/db/proofs/92_a_merchant_sails_the_seas_her_hull_can_hold.sql'
 const SCENE = 'scripts/ops/harness/sea-merchants/dark-scene.sql'
 const failures = []
 const say = (...a) => console.log(...a)
@@ -63,14 +63,14 @@ async function attempt(...sqls) {
   return { err, notes }
 }
 
-const MUTATIONS = (await import('./mutations-0377.mjs')).mutations(swap)
+const MUTATIONS = (await import('./mutations-0392.mjs')).mutations(swap)
 const only = arg('only')
 
 if (!only) {
   // RED FIRST
   const red = await attempt(proof)
   say(`RED FIRST, no file: ${red.err ? 'red: ' + red.err.slice(0, 160) : 'IT PASSED'}`)
-  if (!red.err) failures.push('proof 70 passed with no file')
+  if (!red.err) failures.push('proof 92 passed with no file')
 
   // DARK PARITY
   const lines = (r) => r.notes.filter((n) => n.startsWith('SCENE: '))
@@ -93,7 +93,7 @@ if (!only) {
   const t0 = Date.now()
   const whole = await attempt(file, proof)
   say(`whole: ${Date.now() - t0} ms`)
-  if (whole.err) failures.push(`proof 70 failed: ${whole.err}`)
+  if (whole.err) failures.push(`proof 92 failed: ${whole.err}`)
   for (const n of whole.notes.filter((x) => /^(PASS:)/.test(x) || /self-assert ok|timings/.test(x))) say('  ', n.slice(0, 400))
   if (whole.err) say('   ERROR', whole.err)
   const want = [...proof.matchAll(/^--\s*@pass\s+([A-Z0-9_]+)/gm)].map((m) => m[1])
@@ -127,5 +127,5 @@ if (!process.argv.includes('--no-mutations') && failures.length === 0) {
 
 await db.close()
 const ran = process.argv.includes('--no-mutations') ? 'mutations NOT run' : `${MUTATIONS.length} mutations red`
-say(failures.length ? `\nFAILED:\n  ${failures.join('\n  ')}` : `\nALL GREEN: ${ran}, red first, dark parity equal, the real file and proof 70 green, nothing from zero.`)
+say(failures.length ? `\nFAILED:\n  ${failures.join('\n  ')}` : `\nALL GREEN: ${ran}, red first, dark parity equal, the real file and proof 92 green, nothing from zero.`)
 process.exit(failures.length ? 1 : 0)
