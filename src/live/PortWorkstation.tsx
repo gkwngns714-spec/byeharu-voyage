@@ -175,8 +175,15 @@ export function PortWorkstation({
         >
           {/* DESIGN 1.3, where a player reads it: every fitting buys one stat and spends another,
               so the choice is a choice and not a shopping list. */}
-          <Row label={t('yard.gives')} value={open.buys} />
-          <Row label={t('yard.uses')} value={open.spends} />
+          {/* THE SENTENCE STANDS UNDER ITS WORD (2026-11-13, owner row 318): as the row's VALUE it was one unbroken line (a row's
+              figure never wraps), so on a phone "Weather-holding, and a faster turnaround" ran 98 px off the glass and pushed its
+              label "Gives" to one letter a line. Line 2 of a row wraps between words. */}
+          <Row label={t('yard.gives')}>
+            <span className="block break-words text-t-label text-ink">{open.buys}</span>
+          </Row>
+          <Row label={t('yard.uses')}>
+            <span className="block break-words text-t-label text-ink">{open.spends}</span>
+          </Row>
           {open.recipe.map((r, i) => (
             <Row
               key={r.name}
