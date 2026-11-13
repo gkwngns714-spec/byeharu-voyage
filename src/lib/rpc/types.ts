@@ -1850,6 +1850,8 @@ export interface SeaZone {
   wave_min: number
   /** Requirement order: the first zone that refuses, in this order, is the one named. */
   ord: number
+  /** 0376 — how many harbours lie in it. Absent before 0376 is deployed. */
+  harbours?: number
   /** The boxes that cut it out of its raster sea(s); a box with no bounds is the rest of that sea. */
   boxes: Array<{
     sea: string
@@ -1859,8 +1861,6 @@ export interface SeaZone {
     lon_min: number | null
     lon_max: number | null
   }>
-  /** 0376 — how many harbours lie in it. Absent before 0376. */
-  harbours?: number
 }
 
 /** 0215 — `world.sea_conditions()`: the zones, the caller's title, her fleets' wave, and the switch. The client
@@ -1876,22 +1876,23 @@ export interface SeaConditions {
     id: string
     name: string
     wave: number | null
-    /** 0376 — the harbour she lies at; null at sea. */
+    /** 0376 — the code of the harbour she lies at; null at sea. Absent before 0376 is deployed. */
     port?: string | null
-    /** 0376 — the seas that refuse her, by zone code: `public.sea_refusal`'s own figures for that sea (read them with
-     *  `readSeaWall`). A sea not named is open to her. Served dark too; `bite` says whether it binds. Absent before 0376. */
-    seas?: Record<string, unknown>
+    /** 0376 — ONLY the zones that refuse her, keyed by zone code: each is the one rule's own figures for that zone
+     *  (`public.sea_refusal`), with which of the two asks is short. A zone not here is open to her. Served whether
+     *  or not the conditions bite (`bite` says if it binds). Absent before 0376 is deployed. */
+    seas?: Record<string, SeaRefusal['figures']>
   }>
-  /** 0376 — the countries whose capital's sea asks a title above the first: no company is founded there while the
-   *  conditions bite. Absent before 0376. */
-  far_powers?: string[]
   /** How often a course is sampled for the zones it crosses, in nautical miles (`sea_sample_nm`). */
   sample_nm: number
+  /** 0376 — the codes of the countries whose capital lies in a sea that asks a title: while the conditions bite no
+   *  company is founded under one (`cmd.found_house` answers E_FAR_POWER). Absent before 0376 is deployed. */
+  far_powers?: string[]
 }
 
-/** 0376 — `world.sea_zone_map()`: the zone of every cell of the sea raster. Row 0 is the north edge, column 0 is
- *  180° W, a cell is `cell_deg` degrees. `runs[row]` is that row as `value:count,value:count,…`; `codes[value]` is the
- *  zone's code, null where the cell is in no zone (land). */
+/** 0376 — `world.sea_zone_map()`: where each sea lies. The grid is the sea raster's (row 0 the north edge, column 0
+ *  at -180, `cell_deg` a cell). `runs[row]` is "value:count,value:count,…" across that row; `codes[value]` is the
+ *  zone's code, and value 0 (`codes[0]` null) is land or water with no zone. */
 export interface SeaZoneMap {
   cols: number
   rows: number
@@ -3415,6 +3416,9 @@ export interface SeaRefusal {
     /** Null for a merchant (no title) or a fleet with no hull. */
     title?: number | null
     wave?: number | null
+    /** 0376 — which of the two asks is above hers (false when her figure is null). Absent before 0376 is deployed. */
+    short_title?: boolean
+    short_wave?: boolean
   }
 }
 
@@ -4179,8 +4183,9 @@ export interface RouteLeg {
   supplies: { days: number; cost: number; fits: boolean } | null
   shut: ServedRefusal | null
   via: string[] | null
-  /** 0376 — lit only: the sea on the direct course that refuses her, when the leg is too far in one go and no chain
-   *  of harbours opens it. Absent before 0376. */
+  /** 0376 — lit only, for a leg shut by its length or its stores with no harbours between: the sea on the direct
+   *  course that refuses her (`public.sea_gate`), or null when no sea does. Null in every other case and while the
+   *  conditions are dark. Absent before 0376 is deployed. */
   sea?: ServedRefusal | null
 }
 
