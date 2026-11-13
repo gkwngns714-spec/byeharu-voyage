@@ -37,7 +37,10 @@ test.afterAll(async () => {
   await db?.close()
 })
 
-test('dark, as the world ships: the read says off, the door refuses, no row is written', async () => {
+test('dark (the world before 0371, and after its rollback): the read says off, the door refuses, no row is written', async () => {
+  // 0371 lit standing orders in the built world: this test sets them back in its own database first (the lit tests below light them again)
+  expect(await one<boolean>(`select public.raid_orders_on()`)).toBe(true)
+  await db.pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'raid_orders_enabled'`)
   expect(await one<boolean>(`select public.raid_orders_on()`)).toBe(false)
   const read = await worldRaidRead(fleet)
   expect(read.ok, JSON.stringify(read)).toBe(true)
