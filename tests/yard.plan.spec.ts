@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
+import { barcaWithParts, putBarcaPartsBack } from './barcaParts.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // S1 — THE YARD PLANS THE BUILD (docs/SECOND_SHIP.md; world.yard_sources re-cut by 0358; owner rows 180, 305, 316)
@@ -17,6 +18,10 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 //      (the hull's goods into this city's storage) → Build (named) → Hire crew · 8, whose press opens the Inn.
 //      "Fleet full" is said once she has two ships.
 // The Korean words are read on the same sheet. The server half: tests/rpc.yardSources.spec.ts and proof 61.
+//
+// SINCE 0363 (S2: the Barca needs no parts) the shipped Barca takes four goods and no part. This spec is the proof of
+// the sheet for a hull WITH parts, so every test here runs on a copy of the shipped world with her two part rows put
+// back (tests/barcaParts.fixture.ts). The shipped Barca's sheet and her three-press flow: tests/second.ship.spec.ts.
 
 const GLASSES = [
   { width: 390, height: 844 },
@@ -27,6 +32,7 @@ const GLASSES = [
 /** The seven goods of a Barca and her two parts, counted as world.yard_sources serves them (hull + parts). */
 function ladenHold(): Promise<Buffer> {
   return patchedWorldImage('yard-plan-laden', async (pg) => {
+    await putBarcaPartsBack(pg)
     await pg.exec(`
       create function public.spec_yard_plan_laden() returns trigger
       language plpgsql security definer set search_path = public, pg_temp as $$
@@ -103,6 +109,7 @@ for (const glass of GLASSES) {
     test('a new company: Build is off beside Ready 0 / 6, the totals stand, the sails unfold to Riga, and the press moves nothing', async ({ page, request, baseURL }, info) => {
       test.setTimeout(300_000)
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+      await serveWorldImage(page, await barcaWithParts())
       const tray = await barcaSheet(page, 'Build')
 
       // the one button: Build, off, beside the count of ready lines
@@ -220,6 +227,7 @@ test.describe('the plan in Korean', () => {
   test('the sheet reads in Korean', async ({ page, request, baseURL }, info) => {
     test.setTimeout(300_000)
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
+    await serveWorldImage(page, await barcaWithParts())
     const tray = await barcaSheet(page, '건조')
     await expect(tray.getByTestId('yard-next')).toHaveText('건조')
     await expect(tray.getByTestId('yard-next')).toBeDisabled()

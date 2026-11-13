@@ -137,3 +137,17 @@ export function yardPlan(hull: YardHull, sources: YardSources | undefined, aboar
     weight: waiting || !weighed ? null : toFetch.reduce((sum, g) => sum + g.short * ((g.source as { bulk: number }).bulk), 0),
   }
 }
+
+/** THE TRIP THAT FETCHES WHAT IS SHORT (S3 of docs/SECOND_SHIP.md): the harbours that sell what she still lacks, the
+ *  nearest to this yard first, each once. The yard's own quay is not a stop, and a good no harbour sells names none.
+ *  A list of the served sellers in the served miles' order, not a rule of the sea: the Map's route builder takes it
+ *  as a draft, and the server judges every leg there (world.route_legs). */
+export function planStops(plan: YardPlan): string[] {
+  const miles = new Map<string, number>()
+  for (const g of [...plan.goods, ...plan.parts.flatMap((p) => p.inputs)]) {
+    const s = g.source
+    if (g.short <= 0 || !s || s.port === null || s.miles === null || s.miles <= 0) continue
+    miles.set(s.port, s.miles)
+  }
+  return [...miles.entries()].sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0])).map(([code]) => code)
+}

@@ -10,6 +10,8 @@
 --     * PLACED: the five goods of the far north and the Mediterranean (nails, cordage, tar, flax, hemp) are put in
 --       her hold by public.fleet_load, the one cargo mover, at the sellers' asks. Riga lies beyond a new company's
 --       reach in one leg; six more voyages would prove the sea again, not the yard.
+--   SINCE 0363 (the Barca needs no parts) the Barca is no longer a hull with a part. This proof is about the plan of a hull WITH parts, and the Barca is the one a new company can pay
+--   for, so its first statement puts her two part rows back (the rows 0363 deleted, the forward rollback's own) for this transaction alone. The errand as it is played today: proof 65.
 --   Everything rolls back with proof.mjs's transaction. The knobs set here (hazard_p_max 0, as proofs 04 and 55; city_treasury_enabled for the one BUILD)
 --   go back with it.
 --
@@ -106,6 +108,9 @@ declare
 begin
   select id into v_lis from public.ports where code = 'LIS';
   select id into v_fnc from public.ports where code = 'FNC';
+
+  -- the Barca as she was before 0363: a hull with two parts (see the header). Rolled back with everything else.
+  insert into public.hull_recipe_items (class_code, item_code, qty) values ('barca', 'suit-of-sails', 1), ('barca', 'anchor-and-cable', 1);
 
   -- ── YARD_PLAN_PARITY: every hull at every build yard ──
   v_t := clock_timestamp();

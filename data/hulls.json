@@ -8,17 +8,14 @@
       "class": "barca",
       "yard_tier": 1,
       "ducats": 15000,
-      "note": "A coaster. Two fittings and a stack of deal boards - the hull a house builds first.",
+      "note": "A coaster. A stack of deal boards, tar, cordage and nails - the hull a house builds first.",
       "goods": [
         { "in": "timber", "qty": 40 },
         { "in": "tar", "qty": 8 },
         { "in": "cordage", "qty": 6 },
         { "in": "ships-nails", "qty": 10 }
       ],
-      "items": [
-        { "in": "suit-of-sails", "qty": 1 },
-        { "in": "anchor-and-cable", "qty": 1 }
-      ]
+      "items": []
     },
     {
       "class": "carlat",

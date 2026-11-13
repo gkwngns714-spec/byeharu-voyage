@@ -6,6 +6,9 @@ import { ready, reachable } from './appReady.fixture'
 //   · a fresh player sees the card, and its figures are the Levels face's own (the next title, Trading and Exploration levels);
 //   · the card stands at the same height and place before and after the read lands (no re-flow), and nothing scrolls sideways;
 //   · pressing it lands on the Levels face.
+// 0363 (S3 of docs/SECOND_SHIP.md): while the company has ONE ship the second line is "Second ship n / of" in place of the two
+// tracks (one line for the other, no height added); a fresh player at Lisbon reads "Second ship 0 / 4". The tracks are then the
+// Levels face's alone, and come back to the card with the second ship (tests/second.ship.spec.ts plays that).
 
 const SIZES = [
   { width: 390, height: 844 },
@@ -44,10 +47,11 @@ for (const size of SIZES) {
       // the card's text, read before the press
       const header = await box(page, '[data-testid="desk-header"]')
       const text = (await card.innerText()).replace(/\s+/g, ' ')
-      // two lines since 2026-11-12: the title's name and Reputation, then the two tracks (no line of it may break at 320 px)
-      const m = /^(.+?) (?:Reputation [\d,]+ )?Trading (\d+)\/(\d+) · Exploration (\d+)\/(\d+)/.exec(text)
+      // two lines since 2026-11-12: the title's name and Reputation, then (0363, a company of one ship) the second ship
+      const m = /^(.+?) (?:Reputation [\d,]+ )?Second ship (\d+) \/ (\d+)$/.exec(text)
       expect(m, `the card says: ${text}`).not.toBeNull()
-      expect(m![3]).toBe(m![5])
+      expect([m![2], m![3]], 'a fresh company at Lisbon has none of the Barca\'s four lines stored').toEqual(['0', '4'])
+      await expect(page.getByTestId('goal-tracks')).toHaveCount(0)
 
       expect(
         await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth),
@@ -57,9 +61,8 @@ for (const size of SIZES) {
       // press it: the Levels face, and its figures are the card's
       await card.click()
       await expect(page.getByTestId('desk-levels').first()).toBeVisible({ timeout: 60_000 })
-      const level = async (id: string) => Number((await page.getByTestId(id).first().innerText()).match(/\d+/)![0])
-      expect(await level('levels-trading')).toBe(Number(m![2]))
-      expect(await level('levels-exploration')).toBe(Number(m![4]))
+      await expect(page.getByTestId('levels-trading').first()).toBeVisible()
+      await expect(page.getByTestId('levels-exploration').first()).toBeVisible()
       await expect(page.getByTestId('levels-title')).toContainText(`${m![1]}`)
       // the press did not move the desk's header; wide, the card stands in it on every face and did not move; on a phone it is the
       // Goods face's own (the other faces keep every pixel for themselves)
