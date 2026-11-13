@@ -13,8 +13,9 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const NAME = '20260818000397'
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
+// --name=20260818000400 runs the same simulation on the world before 0400 with 0400 applied (a merchant keeps her home waters); default: 0397
+const NAME = arg('name') ?? '20260818000397'
 const say = (...a) => console.log(...a)
 const files = []
 let mine = null
