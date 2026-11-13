@@ -41,8 +41,12 @@ begin
     join public.sea_zones z on z.code = a.zones[1]
     join public.fleets f on f.id = nf.fleet_id and f.port_id = st.port_id and f.status = 'DOCKED'
    where nf.route_id is not null and z.title_min >= 4 and z.wave_min > 6
-   order by (select count(*) from public.sea_leg_asks x join public.sea_zones zx on zx.code = x.zones[1]
-              where x.from_port = st.port_id and x.to_port <> st.port_id and zx.title_min = z.title_min) desc, nf.roster_ord
+   -- (0403: counted on her KNOWN legs and the seas their courses cross, as the readers below judge them. Until 0403 this read the first sea of the
+   -- pair table's straight-line row, a stand-in that the plotted rows no longer are.)
+   order by (select count(*) from public.npc_known_legs(st.port_id) k
+              where not exists (select 1 from public.sea_zones zx
+                                 where zx.code = any (public.npc_course_zones(k.course) || array_remove(array[public.harbour_zone(k.to_port)], null))
+                                   and (zx.title_min <> z.title_min or zx.wave_min > z.wave_min))) desc, nf.roster_ord
    limit 1;
   if v_m.fleet_id is null or v_fusta is null then
     raise exception 'PROOF 95 FAIL: the world has no merchant lying at a home in a far sea, or no fusta';

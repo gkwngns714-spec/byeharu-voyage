@@ -3,8 +3,10 @@
 --
 --   Two real companies founded here and rolled back, each a title-1 barca: one of Portugal moved to lie at Acapulco (a far sea: the way home), one of
 --   Japan at her capital (a far power at home: home waters). For each, the real world.good_board of three goods, dark and then lit. Every buy row and
---   every sell row is taken apart into its legs (where she sails from, its stops, the city) and each leg is asked of the real door, public.sea_gate,
---   for the same fleet on the straight line between the two roadsteads (the line the board reads). Nothing here depends on which goods the market
+--   every sell row is taken apart into its legs (where she sails from, its stops, the city) and each leg is asked of the door's own judge
+--   (public.sea_judge with her floors from public.sea_floor, what public.sea_gate asks) over the seas of the leg's pair row and its destination's sea.
+--   Since 0403 a pair row holds the seas of the course a fleet really sails, not of the straight line: that the row is the plotted course's seas, and
+--   that public.sea_gate on that very course answers as the tag does, is proof 98's. Nothing here depends on which goods the market
 --   favours or on the world's secret: the goods are three her harbour's roster sells (world data), first by code, and every row served is checked.
 --
 -- @pass TAG_FAR_FLEET   lit, lying at Acapulco: every board row is shut exactly when the door refuses one of its legs; a row of one leg wears the door's refusal to the letter; rows the plain rule would shut are open (the way home) and seas of another rank are shut still
@@ -75,14 +77,16 @@ begin
       end loop;
     end loop;
 
-    -- every leg of every row, asked ONCE of the door (lit) for this fleet on the straight line; and the plain rule's reading, recomputed
+    -- every leg of every row, asked ONCE of the door's judge (lit) for this fleet over the seas of its pair row; and the plain rule's reading, recomputed
     with leg as (
       select q.id, q.a, q.b from (select r.id, x.code as a, lead(x.code) over (partition by r.id order by x.k) as b
                                     from r97 r cross join lateral jsonb_array_elements_text(r.route) with ordinality x(code, k) where r.co = v_co) q
        where q.b is not null and q.a <> q.b),
     door as materialized (
-      select d.a, d.b, public.sea_gate(v_pl, v_fl, rb.port_id, jsonb_build_array(jsonb_build_array(ra.roadstead_lat, ra.roadstead_lon), jsonb_build_array(rb.roadstead_lat, rb.roadstead_lon))) as gate
-        from (select distinct l.a, l.b from leg l) d join public.sea_reaches ra on ra.code = d.a join public.sea_reaches rb on rb.code = d.b),
+      select d.a, d.b, public.sea_judge(v_title, v_wave, s.zones || public.harbour_zone(rb.port_id), fl.title_min, fl.wave_min, fl.home_title, fl.home_wave) as gate
+        from (select distinct l.a, l.b from leg l) d join public.sea_reaches ra on ra.code = d.a join public.sea_reaches rb on rb.code = d.b
+        join public.sea_leg_asks s on s.from_port = ra.port_id and s.to_port = rb.port_id
+       cross join (select * from public.sea_floor(v_fl, null) offset 0) fl),
     asks as (
       select l.id, s.title_min, s.wave_min,
              case when s.title_min > greatest(za.title_min, zb.title_min) or s.wave_min > greatest(za.wave_min, zb.wave_min) then s.zones else array[za.code, zb.code] end as zones
