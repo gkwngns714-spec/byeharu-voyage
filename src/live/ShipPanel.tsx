@@ -351,7 +351,7 @@ function Stat({ label, value, unit, mark, title }: { label: string; value: strin
     <div className="min-w-0 rounded-control bg-surface-2 px-3 py-2" title={title}>
       <dt className="break-words text-t-caption text-ink-faint">{label}</dt>
       <dd className="break-words">
-        <span className="text-t-title tabular-nums">{value}</span>
+        <span className="whitespace-nowrap text-t-title tabular-nums">{value}</span>
         {unit && <span className="ml-1 whitespace-nowrap text-t-caption text-ink-faint">{unit}</span>}
         {/* the bracket goes to the next line whole: a narrow cell printed "(+1" over "%)" (2026-11-13) */}
         {mark && <span className={`ml-1 inline-block whitespace-nowrap text-t-caption tabular-nums ${rollTone(mark)}`}>{mark}</span>}

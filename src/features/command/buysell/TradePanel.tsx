@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Button, Chip, Figure, GoodKind, Hint, Note, PriceChart, Row, Skeleton, SpanPicker, Stepper, Tray, type TrayDetent, type TrayMode } from '../../../components/ui'
+import { Button, Chip, Figure, GoodKind, Hint, Note, PriceChart, Row, Skeleton, SpanPicker, Stepper, Tray, type TrayDetent, type TrayMode, WRAP_ROW_CLASS } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { taxFactorWords } from '../../../domain/port'
 import { CityGoodTrades } from '../../../live/CityGoodTrades'
@@ -10,7 +10,7 @@ import { useTrade } from '../../../live/useTrade'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { useShellState } from '../../../app/shellState'
 import { formatCountdown, formatDaysReal, formatInt, formatPriceDelta, formatPriceFigure, formatRealShort, instantMs, moneyFigure, moneyWord } from '../../../lib/format'
-import type { FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
+import type { BoardSellRow, FleetView, MarketGood, PriceSeries } from '../../../lib/rpc'
 import { useT } from '../../../lib/i18n'
 import { WhyThisPrice } from '../markets/WhyThisPrice'
 import { useDeskPlan } from '../plans/planDraft'
@@ -210,7 +210,7 @@ function Frame({
       data-city={city}
       data-sell-at={sellAt ?? undefined}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-1">
+      <div className={`${WRAP_ROW_CLASS} pt-1`}>
         <span className="text-t-caption text-ink-muted" data-testid="good-detail-city">
           <PortFlag code={city} /> {portNameOf(portByCode, city)}
         </span>
@@ -241,6 +241,9 @@ function Frame({
           label={t(otherSale.kind === 'far' ? 'desk.farSale' : 'desk.nearSale')}
           tone="muted"
           chevron
+          // under 375 px the city, the profit and the time are wider than the row leaves beside the word: the word kept one
+          // letter a line ("F / a / r"). There the row is a wrapping line and the figure stands under its word (Row.tsx).
+          wholeName
           onClick={otherSale.onPress}
           value={
             <span className="text-t-caption tabular-nums" data-testid="trade-other-sale-figure">
@@ -544,13 +547,7 @@ function SailAct({
                 label={t('desk.dockFee')}
                 value={
                   <Figure
-                    value={
-                      go.sellRow?.dues
-                        ? `${formatPriceDelta(-go.sellRow.dues.fee)} · ${taxFactorWords(go.sellRow.dues)}`
-                        : go.sellRow?.port_fee != null
-                          ? formatPriceDelta(-go.sellRow.port_fee)
-                          : '—'
-                    }
+                    value={dockFeeWords(go.sellRow)}
                   />
                 }
                 data-testid="trade-dues"
@@ -591,6 +588,16 @@ function SailAct({
       after={mine ? <PlanVoyage fleet={fleet} board={b} buyRow={go.buyRow} sellRow={go.sellRow} /> : undefined}
     />
   )
+}
+
+/** THE TRIP'S DOCK FEE as the tray prints it: the served row's own `dock_fee` (0361: every harbour she calls at, the last
+ *  included; it is in the profit under it), with the destination's tax factor beside it while the economy is closed. A
+ *  world before 0361 serves no `dock_fee`: the destination's fee, as it was printed then. Nothing is added up here. */
+function dockFeeWords(row: BoardSellRow | null): string {
+  if (!row) return '—'
+  const fee = row.dock_fee !== undefined ? row.dock_fee : (row.dues?.fee ?? row.port_fee)
+  if (fee == null) return '—'
+  return row.dues ? `${formatPriceDelta(-fee)} · ${taxFactorWords(row.dues)}` : formatPriceDelta(-fee)
 }
 
 /** 0237: "Ready in 0:42" while she is in her port time — a live countdown to the served `ready_at`. */

@@ -1570,6 +1570,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-12 with migration 0356 (docs/REPUTATION.md section 5, R4): THE CALLER'S LEVEL CROSSINGS PAID, cmd.level_up().
       // No argument and no player id. Asked by the shell alone (src/live/worldStore.ts), once, when a served level stands above its served mark.
       'cmdLevelUp',
+      // Pin moved deliberately with migration 0357 (docs/COMBAT_LOG.md 3.3, 3.4): a battle fought round by round: her stance, and the read the battle card polls. No player id; dark
+      // (E_NOT_IN_USE, {on: false}) until attack_enabled. Landed WITH the face (src/live/BattleCard.tsx).
+      'cmdBattleStance', 'worldBattle',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's
@@ -1677,6 +1680,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-11 with migration 0346 (owner row 209, docs/ROUTE_BUILDER.md B1): A ROUTE'S LEGS JUDGED, world.route_legs(fleet, legs).
       // A READ; no player id; null for a fleet not yours. Landed WITH the face that reads it (src/features/map/RouteBar.tsx, the map's route mode).
       'worldRouteLegs',
+      // Pin moved deliberately 2026-11-13 with migration 0360 (owner, the Map's Send fleet): WHAT A TRIP TAKES AND COSTS, world.trip_cost(fleet, legs).
+      // A READ; no player id; null for a fleet not yours. Landed WITH the faces that read it (src/features/map/SendFleetRow.tsx; the Trade panel's days).
+      'worldTripCost',
       // Pin moved deliberately 2026-10-18 with migration 0176 (docs/COMMAND_DESK.md D6): WHAT YOU HOLD in every
       // city — a READ, no arguments (the caller's company). Landed WITH the face that reads it (the desk's Invest).
       'worldHoldings',

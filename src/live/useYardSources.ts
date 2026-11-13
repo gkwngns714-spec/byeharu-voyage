@@ -4,17 +4,17 @@
 //
 // Asked when a hull's sheet opens, once per (yard, hull): who sells a good and who makes a fitting are
 // the city rosters and workstations, which a beat of the world does not move, so the answer is not
-// re-asked on the beat (trigger 0) and is kept for the session.
+// re-asked on the beat (trigger 0). Since 0358 the answer carries each seller's price now, so it is no
+// longer kept for the session: a sheet opened again after the beat asks again.
 
 import { worldYardSources } from '../lib/rpc'
 import type { YardSources } from '../lib/rpc'
-import { SESSION_MS } from '../store/resourceCache'
 import { useServedRead, type ServedRead } from './useServedRead'
 
 export function useYardSources(portId: string, classCode: string | null): ServedRead<YardSources> {
   return useServedRead(
     classCode === null ? null : `${portId}:${classCode}`,
     () => worldYardSources(portId, classCode as string),
-    { name: 'worldYardSources', trigger: 0, freshMs: SESSION_MS },
+    { name: 'worldYardSources', trigger: 0 },
   )
 }
