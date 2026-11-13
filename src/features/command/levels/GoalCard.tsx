@@ -2,6 +2,7 @@ import { useWide } from '../../../components/ui'
 import { properName, useT } from '../../../lib/i18n'
 import { worldLevels, type LevelsView } from '../../../lib/rpc'
 import { useServedRead } from '../../../live/useServedRead'
+import { useSecondShip } from '../../../live/useSecondShip'
 import { useWorld } from '../../../live/worldStore'
 import { formatInt } from '../../../lib/format'
 import { useDeskView } from '../deskView'
@@ -14,6 +15,12 @@ import { useDeskView } from '../deskView'
 //
 // 0352: ITS SECOND LINE ALSO CARRIES HER REPUTATION (the served balance, world.player(): the store's own read, no second call). A phone's
 // top bar has no room for that figure, and this is the first screen she sees.
+//
+// 0363 (S3 of docs/SECOND_SHIP.md): WHILE THE COMPANY HAS ONE SHIP, THE SECOND LINE IS THE SECOND SHIP ("Second ship 1 / 4"), IN PLACE OF
+// THE TWO TRACKS. One line replaces the other by that one rule; no line is added (the Trade face has no pixel to spare at 390 px,
+// tests/trade.flow.spec.ts T3), and the two do not fit one line at 320 px in English. The title's name stays on the first line and the
+// tracks are one press away (the card opens Levels, where they are whole); they come back to the card with her second ship. The count is the
+// build yard's own "Ready 1 / 4" (live/useSecondShip.ts). While no yard has been read for her the tracks stand as before.
 //
 // THE PRESS LAW: a fixed height in every state (loading, shown, nothing to show), so nothing moves when the read lands or on a press.
 
@@ -36,6 +43,7 @@ export function GoalCard() {
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const v = read.view
   const reputation = useWorld((s) => s.player?.reputation?.balance ?? null)
+  const second = useSecondShip()
   if (!v || !v.company) return <div className={`${CARD} ${place}`} data-testid="goal-card-hold" aria-hidden />
 
   const next = v.title.next
@@ -53,7 +61,16 @@ export function GoalCard() {
       ) : (
         <span />
       )}
-      {next && (
+      {second ? (
+        <span
+          className="col-span-2 min-w-0 whitespace-nowrap text-t-caption text-ink-faint"
+          data-testid="goal-second-ship"
+          data-ready={second.ready}
+          data-of={second.of}
+        >
+          {t('yard.secondShip', { n: formatInt(second.ready), of: formatInt(second.of) })}
+        </span>
+      ) : next && (
         <span className="col-span-2 min-w-0 break-words text-t-caption text-ink-faint" data-testid="goal-tracks">
           <span className="whitespace-nowrap">
             {t('command.goalTracks', { a: v.tracks.trading.level, b: v.tracks.exploration.level, n: next.level })}
