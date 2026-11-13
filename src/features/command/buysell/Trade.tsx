@@ -21,6 +21,8 @@ import { CityChips, TradeBoard } from './TradeBoard'
 import { tradeRows, type TradeGoodRow } from '../../../domain/market'
 import { TradePanel, type OtherSale } from './TradePanel'
 import { doneWords, type TradeDone } from './tradeDone'
+import { useTradeCity } from './tradeCity'
+import { TradeStatus } from './TradeStatus'
 import { TradeToast } from './TradeToast'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -61,16 +63,13 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const goodByCode = useWorld((s) => s.goodByCode)
   const picked = useDeskGood((s) => s.code)
   const pickGood = useDeskGood((s) => s.pick)
-  const focus = useDeskGood((s) => s.focus)
   const setFocus = useDeskGood((s) => s.setFocus)
   const plan = useDeskPlan((s) => s.plan)
   const openPlan = useDeskPlan((s) => s.open)
 
-  // The city in hand: pressed on the map or the strip, else where she lies, else her next port.
-  const docked = fleet.status === 'DOCKED' ? fleet.port : null
-  const city = focus && portByCode[focus] ? focus : (docked ?? fleet.voyage?.to ?? null)
+  // The city in hand (tradeCity.ts: the one reading; the line that says where she is reads the same)
+  const { home, city, here } = useTradeCity(fleet)
   const cityPort = city ? (portByCode[city] ?? null) : null
-  const here = docked !== null && docked === city
   const quay = usePortMarket(cityPort?.id ?? null)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
 
@@ -90,11 +89,15 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // THE SIDE OF THE OPEN PANEL — the combined board's Buy and Sell buttons each open one; the same good pressed on
   // the side already open closes it.
   const [side, setSide] = useState<'buy' | 'sell'>('buy')
+  // THE PAGES (the compact face, below) and the page a tray was opened from: closing that tray goes back to it
+  const [page, setPage] = useState<'cargo' | 'map' | 'orders' | null>(null)
+  const [backTo, setBackTo] = useState<'cargo' | null>(null)
   const openSide = useCallback(
     (s: 'buy' | 'sell', code: string) => {
       // the same good's Buy pressed while its best-sale trip is open switches to the plain Buy, never closes (0348)
       const fromTrip = tripTo !== null && tripTo.good === code
       setTripTo(null)
+      setBackTo(null)
       if (picked === code && side === s && !fromTrip) pickGood(null)
       else {
         setSide(s)
@@ -143,11 +146,17 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   // a cargo row: that city and that good, ready to go — it is a SELL there (CargoBest is the sell aid, owner row 231).
   // It always OPENS for that city — never the board buttons' toggle (a second row for the same good must switch the
   // city, not close: openSide's `picked === good && side === 'sell'` would read the stale good and close instead).
+  //
+  // IT CLOSES THE PAGE IT WAS PRESSED ON (2026-11-11, the trade-flow slice). Your cargo is a full-screen page and the panel
+  // stands on the Trade screen under it, so a row pressed lit up and showed nothing: the tray had opened behind the page.
+  // The page closes, the tray shows; closing the tray (its Back) opens the page again, so she is back where she pressed.
   const pressCargo = (code: string, good: string) => {
     setTripTo(null)
     pressCity(code)
     setSide('sell')
     pickGood(good)
+    setBackTo(page === 'cargo' ? 'cargo' : null)
+    setPage(null)
   }
 
   // A BEST SALE PRESSED (0348): her cargo — Sail & sell there (the cargo row's press); else the trip from the city in
@@ -165,6 +174,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
     openPlan({ good: s.good, buyAt: city, sellAt, units, max: null, min: null, insure: false })
     setSide('buy')
     pickGood(s.good)
+    setBackTo(null)
   }
   const pickedSale = pickedRow ? sales?.get(pickedRow.code) : undefined
   // THE OTHER SALE (0351): the open trip is the card's sale — its far sale is the quiet second choice in the tray; the
@@ -186,17 +196,26 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
   const done = (d: TradeDone) => {
     setToast(doneWords(t, d, (c) => portNameOf(portByCode, c)))
     pickGood(null)
+    setBackTo(null)
+  }
+  // the tray's Back: the good is put down, and a tray opened from a page goes back to that page
+  const closePanel = () => {
+    pickGood(null)
+    if (backTo) setPage(backTo)
+    setBackTo(null)
   }
 
   // THE COMPACT FACE (owner, 2026-10-31): the board is the subject; Cargo, Map and Orders are
   // summary rows with their key figures, each opening a full-screen page. Nothing unfolds in place.
-  const [page, setPage] = useState<'cargo' | 'map' | 'orders' | null>(null)
   const cargoFigure = formatOfTotal(fleetHoldUsed(fleet), fleetHoldTotal(fleet))
   const mapFigure = city ? portNameOf(portByCode, city) : undefined
   const cargo = <CargoBest fleet={fleet} city={city} picked={pickedRow ? pickedRow.code : null} onPress={pressCargo} />
 
   // THE CITY PICKER stands at the head of the board on a phone, and in the wide desk's left pane (the layout below)
-  const chips = <CityChips fleet={fleet} city={city} onCity={pressCity} />
+  const chips = <CityChips home={home} city={city} onCity={pressCity} />
+  // WHERE SHE IS, at the head of the wide desk's left pane: in port, or under way to her destination (TradeStatus.tsx).
+  // On a phone the same line stands beside her name (CommandScreen.tsx): the glass has no line to spare (tests/onepage.spec.ts).
+  const status = <TradeStatus fleet={fleet} />
   const board = (
     <TradeBoard
       strip={wide ? undefined : chips}
@@ -237,7 +256,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
         trip={trip}
         mode={wide ? 'pane' : 'docked'}
         otherSale={otherSale}
-        onClose={() => pickGood(null)}
+        onClose={closePanel}
         onDone={done}
       />
     ) : null
@@ -310,6 +329,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
           testid: 'desk-trade',
           list: (
             <>
+              {status}
               {chips}
               {cargoRow}
               {mapRow}

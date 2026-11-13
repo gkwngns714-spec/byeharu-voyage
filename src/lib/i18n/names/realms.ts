@@ -37,3 +37,26 @@ export const KO_HULLS: Readonly<Record<string, string>> = {
   Hyeopseon: '협선', Sangseon: '상선', Byeongseon: '병선', Jounseon: '조운선', Panokseon: '판옥선',
   'Dae-panokseon': '대판옥선', Tamangseon: '탐망선', Bangpaeseon: '방패선', 'Geobukseon (turtle ship)': '거북선',
 }
+
+// A COMPANY'S TITLE (`public.title_names`, eleven rungs), keyed by the served English name. They were the one English word on
+// the Korean Trade screen (2026-11-12: "Mate: 교역 1/2").
+export const KO_TITLES: Readonly<Record<string, string>> = {
+  Apprentice: '견습', Mate: '항해사', Master: '선임', Captain: '선장', Shipmaster: '선주', Commodore: '제독 대리',
+  Admiral: '제독', 'Grand Admiral': '대제독', 'Sea Lord': '해군경', 'Prince of the Seas': '바다의 왕자', 'Legend of the Age': '시대의 전설',
+}
+
+// THE SEAS (data/seas.json, 51 waters), keyed by the served English name: set on the chart's water and on a city's Info face.
+// They were English on a Korean chart (2026-11-12).
+export const KO_SEAS: Readonly<Record<string, string>> = {
+  'Arctic Ocean': '북극해', 'North Atlantic Ocean': '북대서양', 'South Atlantic Ocean': '남대서양', 'Indian Ocean': '인도양',
+  'North Pacific Ocean': '북태평양', 'South Pacific Ocean': '남태평양', 'Norwegian Sea': '노르웨이해', 'Barents Sea': '바렌츠해',
+  'White Sea': '백해', 'North Sea': '북해', 'English Channel': '영국 해협', 'Irish Sea': '아일랜드해', 'Bay of Biscay': '비스케이만',
+  'Baltic Sea': '발트해', 'Mediterranean Sea': '지중해', 'Adriatic Sea': '아드리아해', 'Ionian Sea': '이오니아해', 'Aegean Sea': '에게해',
+  'Sea of Marmara': '마르마라해', 'Black Sea': '흑해', 'Gulf of Guinea': '기니만', 'Mozambique Channel': '모잠비크 해협', 'Red Sea': '홍해',
+  'Gulf of Aden': '아덴만', 'Gulf of Oman': '오만만', 'Persian Gulf': '페르시아만', 'Arabian Sea': '아라비아해', 'Laccadive Sea': '래카다이브해',
+  'Bay of Bengal': '벵골만', 'Andaman Sea': '안다만해', 'Strait of Malacca': '믈라카 해협', 'Java Sea': '자바해',
+  'Makassar Strait': '마카사르 해협', 'Molucca Sea': '몰루카해', 'Banda Sea': '반다해', 'Timor Sea': '티모르해', 'Gulf of Thailand': '타이만',
+  'South China Sea': '남중국해', 'Gulf of Tonkin': '통킹만', 'Taiwan Strait': '대만 해협', 'Visayan Sea': '비사얀해', 'Philippine Sea': '필리핀해',
+  'East China Sea': '동중국해', 'Yellow Sea': '황해', 'Korea Strait': '대한 해협', 'Sea of Japan': '동해', 'Seto Inland Sea': '세토 내해',
+  'Caribbean Sea': '카리브해', 'Gulf of Mexico': '멕시코만', 'Gulf of Saint Lawrence': '세인트로렌스만', 'Tasman Sea': '태즈먼해',
+}

@@ -114,6 +114,14 @@ export function formatTwoClocks(voyageDays: number): string {
   })
 }
 
+/** A TRIP'S DAYS WITH THE REAL TIME BESIDE THEM, compact: "0.1 days · 9s", "54.1 days · 1h21m" (2026-11-11, the trade-flow
+ *  slice). The same pair `formatTwoClocks` prints, for a line with no room for its words: the days as every list prints
+ *  them (`formatVoyageDays`) and the real wait in the table-cell form (`formatRealShort`), through the one rate above. */
+export function formatDaysReal(voyageDays: number): string {
+  if (!Number.isFinite(voyageDays)) return '—'
+  return `${formatVoyageDays(voyageDays)} · ${formatRealShort(voyageDaysToRealMs(voyageDays))}`
+}
+
 /** Relative time against a supplied `now`, in ONE whole plain unit: "24 min ago", "1 h ago", "3 d ago";
  *  future → "in 24 min"; under 45 s → "just now". The owner, 2026-10-26 (docs/OWNER_REQUESTS.md row 206):
  *  *"i want to see time, like 24 minutes ago, or 1 hour ago"*. THE ONE relative-time formatter: every

@@ -379,17 +379,17 @@ export function PriceChart({
         {model.low.index >= 0 && (
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-chip bg-danger" aria-hidden />
-            low
+            {t('ui.markLow')}
           </span>
         )}
         <span className="inline-flex items-center gap-1">
           <span className="inline-block h-2 w-2 rounded-chip border-2 border-accent" aria-hidden />
-          now
+          {t('ui.markNow')}
         </span>
         {model.high.index >= 0 && (
           <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-chip bg-success" aria-hidden />
-            high
+            {t('ui.markHigh')}
           </span>
         )}
         {model.outlook && (

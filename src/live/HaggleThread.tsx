@@ -109,7 +109,11 @@ export function HaggleThread({
 
   return (
     <>
+      {/* ITS OWN QUERY CONTAINER, AND THE PAIR FLOW (owner, 2026-11-12): in the City's market panel at 320 px the tries and the
+          odds squeezed "Bargain" onto two lines; where they do not fit beside the word they go under it. */}
+      <div className="@container">
       <Row
+        pair
         label={t('trade.bargain')}
         chevron
         onClick={() => setOpen((o) => !o)}
@@ -122,6 +126,7 @@ export function HaggleThread({
           </span>
         }
       />
+      </div>
       {open && (
         <div data-testid="haggle-thread">
           {turns.map((t, i) => (

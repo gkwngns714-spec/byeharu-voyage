@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, Card, LanguageSwitch, Note, PageSplit, Row, Segmented, Sheet } from '../../components/ui'
+import { Button, Card, Facts, LanguageSwitch, Note, PageSplit, Row, Sheet } from '../../components/ui'
 import { cmdChangeCountry, type Refusal } from '../../lib/rpc'
 import { HullCountry } from '../../live/HullCountry'
 import { NationPicker } from '../../live/NationPicker'
@@ -7,16 +7,15 @@ import { useAuthStore } from '../../store/authStore'
 import { useWorld } from '../../live/worldStore'
 import { formatDate } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
-import { APPEARANCES, readAppearance, writeAppearance, type Appearance } from './appearance'
 import { tabWord } from '../../app/navTabs'
-import { properName, useLocale, useT, type TKey } from '../../lib/i18n'
+import { properName, useLocale, useT } from '../../lib/i18n'
 
 // PROFILE (in Cabin) — docs/UI_DIRECTION.md §6:
 //
 //   Casa de Aveiro · Portugal · since 9 Sep
 //   Trading     ▔▔▔▔▔▔▔▔▔▔ 1
 //   Exploration ▔▔▔▔▔▔▔▔▔▔ 1               ← levels live here, as Bars
-//   Appearance  [Dark ◆][Light][Auto]
+//   (no Appearance row: the game is dark only; the owner removed the light scheme on 2026-11-12)
 //   [Sign out]
 //
 // ── WHAT §2 ITEM 18 COUNTED, AND WHERE EACH THING WENT ─────────────────────────────────────────
@@ -54,16 +53,10 @@ export function ProfileScreen() {
   const signOut = useAuthStore((s) => s.signOut)
   const { nowMs } = useShellState()
   const [busy, setBusy] = useState(false)
-  const [appearance, setAppearance] = useState<Appearance>(readAppearance)
-
-  const choose = (pref: Appearance) => {
-    writeAppearance(pref)
-    setAppearance(pref)
-  }
 
   return (
-    // THE PAGE (2026-11-05, owner row 267): MAIN the company and its country as cards, SIDE (the tray's column) the language, the
-    // appearance and the account. One column on a phone, the company first. The page scrolls; nothing inside it does.
+    // THE PAGE (2026-11-05, owner row 267): MAIN the company and its country as cards, SIDE (the tray's column) the language and
+    // the account. One column on a phone, the company first. The page scrolls; nothing inside it does.
     <Sheet title={title} layout="page" data-testid="profile">
       <PageSplit
         data-testid="profile-page"
@@ -75,17 +68,15 @@ export function ProfileScreen() {
                   data-testid="house-line"
                   hairline={false}
                   label={
-                    <span className="text-t-body text-ink">
-                      {[
+                    // THE THREE FACTS TURN ONLY AT A DOT (owner, 2026-11-12): "11월 / 12일 설립" and "since / Nov 12" broke a date in two
+                    <Facts
+                      className="block text-t-body text-ink"
+                      items={[
                         player.company_name,
                         player.nation ? properName('nation', player.nation, player.nation_name ?? player.nation) : player.nation_name,
-                        t('profile.since', {
-                          date: founded(player.founded_at, nowMs),
-                        }),
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}
-                    </span>
+                        <span className="whitespace-nowrap">{t('profile.since', { date: founded(player.founded_at, nowMs) })}</span>,
+                      ]}
+                    />
                   }
                 />
               ) : (
@@ -104,31 +95,16 @@ export function ProfileScreen() {
               <LanguageSwitch className="w-fit" />
             </Card>
 
-            <Card title={t('profile.appearance')} data-testid="profile-appearance">
-              <Segmented
-                segments={APPEARANCES.map((a) => ({
-                  id: a.id,
-                  label: t(`profile.${a.label}` as TKey),
-                }))}
-                value={appearance}
-                onChange={choose}
-                label={t('profile.appearance')}
-                className="w-fit"
-              />
-            </Card>
-
             <Card data-testid="profile-account">
               {authMode === 'local' ? (
-                <Row
-                  tone="muted"
-                  hairline={false}
-                  label={t('profile.localOnly')}
-                  value={
-                    <Button variant="secondary" disabled data-testid="sign-out">
-                      {t('profile.signOut')}
-                    </Button>
-                  }
-                />
+                // THE SENTENCE TAKES THE CARD'S WIDTH AND THE BUTTON STANDS UNDER IT (owner, 2026-11-12): beside the button it was
+                // three cramped lines in half a card at 320 px
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                  <p className="min-w-0 flex-[1_1_16rem] text-t-label text-ink-faint [text-wrap:balance]">{t('profile.localOnly')}</p>
+                  <Button variant="secondary" disabled data-testid="sign-out">
+                    {t('profile.signOut')}
+                  </Button>
+                </div>
               ) : (
                 <Row
                   hairline={false}

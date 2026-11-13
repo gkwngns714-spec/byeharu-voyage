@@ -9,7 +9,7 @@
 //   PURE (no browser, the design system's tables and its tokens):
 //     · the class table is complete for 1-5, distinct from the rarity table, and speaks in words that
 //       do not collide with docs/WORDS.md (`premium` is a REQUEST's word);
-//     · every class colour clears 4.5 : 1 on the sheet and on the inset, in BOTH schemes, MEASURED
+//     · every class colour clears 4.5 : 1 on the sheet and on the inset, MEASURED
 //       from src/index.css's own figures; the two premium classes are the only chroma and every
 //       class is its own colour.
 //   BROWSER (the built image, headless, at 390×844 and 1280×800):
@@ -127,7 +127,6 @@ function declarations(block: string): Map<string, string> {
 }
 
 const NIGHT = declarations(blockOf('@theme {'))
-const DAY = new Map([...NIGHT, ...declarations(blockOf(":root[data-theme='light'] {"))])
 
 /** A token's colour as #rrggbb, following `var(--other)` aliases through its scheme. */
 function resolve(scheme: Map<string, string>, token: string): string {
@@ -155,7 +154,8 @@ function colourfulness(h: string): number {
   return Math.max(...c) - Math.min(...c)
 }
 
-for (const [scheme, tokens] of [['night', NIGHT], ['day', DAY]] as const) {
+// ONE SCHEME: the owner removed the light one on 2026-11-12, and its `day` case went with it.
+for (const [scheme, tokens] of [['night', NIGHT]] as const) {
   test(`${scheme}: every class colour clears 4.5 : 1 on the sheet and on the inset, is its own colour, and only 4 and 5 are chroma`, () => {
     const sheet = resolve(tokens, '--color-surface')
     const inset = resolve(tokens, '--color-surface-2')
@@ -179,16 +179,15 @@ for (const [scheme, tokens] of [['night', NIGHT], ['day', DAY]] as const) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// BROWSER — the design gallery (no world to boot): both schemes, MEASURED in the running page
+// BROWSER — the design gallery (no world to boot): MEASURED in the running page
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-for (const scheme of ['dark', 'light'] as const) {
+for (const scheme of ['dark'] as const) {
   test(`gallery (${scheme}): the five class marks render in their own token, and clear 4.5 : 1 on the sheet AND the inset`, async ({ page, request, baseURL }) => {
     test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
     await page.setViewportSize(PHONE)
     await page.goto('ui')
     await expect(page.getByTestId('gallery-class-legend')).toBeVisible()
-    await page.evaluate((s) => document.documentElement.setAttribute('data-theme', s), scheme)
     const report = await page.evaluate(() => {
       const root = getComputedStyle(document.documentElement)
       /** any CSS colour → [r, g, b] by painting it on a 1-px canvas */

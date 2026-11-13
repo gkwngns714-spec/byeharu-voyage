@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Bar, Figure } from '../../components/ui'
 import { fleetHoldTotal, fleetHoldUsed } from '../../domain/fleet'
 import { formatOfTotal, formatVoyageDays, tonsWord } from '../../lib/format'
@@ -19,12 +20,16 @@ export function FleetStrip({
   onSelect,
   fleet,
   inline = false,
+  trailing,
 }: {
   fleets: readonly FleetView[]
   onSelect: (id: string) => void
   fleet: FleetView | null
   /** The wide desk's header: the picker and the two figures on ONE line (docs/COMMAND_DESK.md §3.9). */
   inline?: boolean
+  /** The phone: what stands at the right of her name, in the picker's own 44-px row (the line that says where she is,
+   *  buysell/TradeStatus.tsx): it costs the glass no line. */
+  trailing?: ReactNode
 }) {
   const t = useT()
   if (inline) {
@@ -61,8 +66,9 @@ export function FleetStrip({
     <div data-testid="fleet-strip">
       {/* The picker's own 16px of padding is pulled back to the gutter, so her name starts where the
           chips used to. One row of the 44 floor; the figures' 52 follow it. */}
-      <div className="-ml-4 flex min-h-11 items-center">
+      <div className="-ml-4 flex min-h-11 items-center gap-2">
         <FleetPicker fleets={fleets} fleet={fleet} onSelect={onSelect} />
+        {trailing}
       </div>
       {fleet && <FleetFigures fleet={fleet} />}
     </div>

@@ -117,6 +117,22 @@ export function formatPriceDelta(n: number): string {
   return `${r > 0 ? '+' : MINUS}${formatPrice(Math.abs(r))}`
 }
 
+/** A MONEY FIGURE WITH ITS WORD (2026-11-11, the trade-flow slice): the one spelling for the trade toast, the tray's pinned
+ *  figure and the arrival card, so a figure is never printed bare and a cost is never drawn as a loss.
+ *    profit  "Profit +1,230 🪙" / "Loss −1,183 🪙"   signed: a gain or a loss
+ *    cost    "Cost 856 🪙"                            unsigned: money paid for goods is not a loss
+ *    total   "Total +24,145 🪙"                       signed: money in */
+export type MoneyKind = 'profit' | 'cost' | 'total'
+export function moneyWord(kind: MoneyKind, n: number): string {
+  return kind === 'profit' ? t(n < 0 ? 'ui.loss' : 'ui.profit') : t(kind === 'cost' ? 'desk.cost' : 'desk.total')
+}
+export function moneyFigure(kind: MoneyKind, n: number): string {
+  return kind === 'cost' ? formatPrice(Math.abs(n)) : formatPriceDelta(n)
+}
+export function moneyWords(kind: MoneyKind, n: number): string {
+  return `${moneyWord(kind, n)} ${moneyFigure(kind, n)}`
+}
+
 /** A signed movement in points already (4.1 → "+4.1%", −2 → "−2.0%", 0 → "0.0%"): the change chip. */
 export function formatPctChange(points: number): string {
   if (!Number.isFinite(points)) return '—'
