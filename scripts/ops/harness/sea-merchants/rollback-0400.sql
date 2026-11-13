@@ -17,6 +17,15 @@ begin
   end if;
   create temp table hunks_back (fn text, n int, old text, new text) on commit drop;
   insert into hunks_back (fn, n, old, new) values
+  ('public.npc_feasible_legs(uuid,uuid,numeric,integer)', 0, $h$      from public.npc_known_legs(p_port) l
+      join public.ports p on p.id = l.to_port
+$h$, $h$      -- 0400: and, while the switch is on, the coast legs out of this harbour (public.npc_coast_legs): a way along her own coast where the world
+      -- remembers only ocean legs. With the switch off they are not read.
+      from (select k.to_port, k.code, k.course, k.nm from public.npc_known_legs(p_port) k
+            union all
+            select c.to_port, c.code, c.course, c.nm from public.npc_coast_legs(p_port) c where (select public.sea_conditions_npc_on())) l
+      join public.ports p on p.id = l.to_port
+$h$),
   ('public.npc_feasible_legs(uuid,uuid,numeric,integer)', 1, $h$    from legs l
    where case when (select public.sea_conditions_npc_on())
               then public.npc_sea_shut((select public.fleet_wave(p_fleet)), l.to_port, l.course) is null
@@ -38,21 +47,22 @@ $h$),
 $h$, $h$           -- 0400: counted as the planner will judge them, with her two floors (public.npc_sea_floor)
            (select count(*) from jsonb_array_elements(l.legs) x
              where (select public.npc_sea_shut(w.wave, (x ->> 'port_id')::uuid, x -> 'course', w.lie_title, w.lie_wave, w.home_title, w.home_wave)
-                      from public.npc_sea_floor(m.fleet_id) w) is null) as open
+                      from public.npc_sea_floor(m.fleet_id) w) is null)
+           -- and the coast legs out of the harbour her loop starts at, which the planner is offered once the switch is on
+           + (select count(*) from public.npc_coast_legs(m.home) c cross join public.npc_sea_floor(m.fleet_id) w
+               where public.npc_sea_shut(w.wave, c.to_port, c.course, w.lie_title, w.lie_wave, w.home_title, w.home_wave) is null) as open
 $h$);
-  for h in select * from hunks_back order by n loop
+  for h in select * from hunks_back order by n desc loop
     v_live := replace(pg_get_functiondef(h.fn::regprocedure), chr(13), '');
     if (length(v_live) - length(replace(v_live, h.new, ''))) / length(h.new) <> 1 then
       raise exception '0400 rollback: hunk % of % is not in the live body exactly once: a later migration re-cut it; cut this rollback again from the live body', h.n, h.fn;
     end if;
-    v_def := replace(v_live, h.new, h.old);
-    if replace(v_def, h.old, h.new) <> v_live then
-      raise exception '0400 rollback: % does not come back to the live body when the hunk is put back', h.fn;
-    end if;
-    execute v_def;
+    execute replace(v_live, h.new, h.old);
   end loop;
   drop function public.npc_sea_shut(numeric, uuid, jsonb, integer, integer, integer, integer);
   drop function public.npc_sea_floor(uuid);
-  raise notice '0400 rollback ok: 3 bodies less 0400''s 3 hunks (a round trip on each), the 2 new functions gone';
+  drop function public.npc_coast_legs(uuid);
+  drop table public.npc_coast_courses;
+  raise notice '0400 rollback ok: 3 bodies less 0400''s 4 hunks, the 3 new functions and the coast table gone';
 end
 $r$;

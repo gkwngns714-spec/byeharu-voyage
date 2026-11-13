@@ -1,14 +1,15 @@
 -- PROD CHECK (read-only, ONE statement): npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/no-open-leg.sql
 -- WHO ARE THE MERCHANTS WITH NO OPEN LEG? The merchants' guard (public.sea_conditions_npc_ready, 0399) read `merchants_with_no_open_leg` 8 on prod on
 -- 2026-11-14: merchants whose loop has a leg their hull cannot hold AND who have no known leg from home that it can. This names each one, counted exactly as
--- the guard counts (0397's readers, the plain rule on wave only), so it runs at head 0399, before 0400:
+-- the guard counts SINCE 0400 (with her two floors and the coast legs), so it NEEDS 0400 IN THE WORLD. Its first form, for head 0399 (the plain rule),
+-- is this file at commit 5a58e7c3; that form named the eight of 2026-11-14 (one-barca fleets whose loop starts at Cape Coast). Wanted after 0400: no row.
 --   company, fleet, status, hulls (class and wave), her fleet's wave
 --   home (the first stop of her route), its sea and what that sea asks (title rank / wave); her house's home port when it is another harbour
 --   known_legs, and the nearest of them with the sea that refuses it and the wave it asks
 --   nearest_open: the nearest harbour whose pair row (public.sea_leg_asks, the straight line from her home) her wave holds, and its miles
---   held_with_home_waters: how many of her known legs 0400's floor would open (seas of her home's rank asking no more wave than her home's sea)
+--   coast_legs: the coast legs out of her loop's start (public.npc_coast_legs, 0400), which the planner is offered once the switch is on
 -- Every function called is STABLE or IMMUTABLE (public.fleet_wave, voyage.fleet_speed_at, public.npc_loop_sea_shut, public.npc_feasible_legs,
--- public.npc_sea_shut, public.npc_course_zones, public.harbour_zone, voyage.gc_distance_nm): public.sea_conditions_npc_ready, itself STABLE, calls the same.
+-- public.npc_sea_shut, public.npc_sea_floor, public.npc_coast_legs, voyage.gc_distance_nm): public.sea_conditions_npc_ready, itself STABLE, calls the same.
 begin transaction read only;
 with m as materialized (
   select nf.fleet_id, nf.player_id, f.status, public.fleet_wave(nf.fleet_id) as wave,
@@ -25,7 +26,10 @@ with m as materialized (
 ), stuck as (
   select g.* from legs g
    where jsonb_array_length(g.legs) > 0
-     and not exists (select 1 from jsonb_array_elements(g.legs) x where public.npc_sea_shut(g.wave, (x ->> 'port_id')::uuid, x -> 'course') is null)
+     and not exists (select 1 from jsonb_array_elements(g.legs) x cross join public.npc_sea_floor(g.fleet_id) w
+                      where public.npc_sea_shut(w.wave, (x ->> 'port_id')::uuid, x -> 'course', w.lie_title, w.lie_wave, w.home_title, w.home_wave) is null)
+     and not exists (select 1 from public.npc_coast_legs(g.home) c cross join public.npc_sea_floor(g.fleet_id) w
+                      where public.npc_sea_shut(w.wave, c.to_port, c.course, w.lie_title, w.lie_wave, w.home_title, w.home_wave) is null)
 )
 select pl.company_name as company, f.name as fleet, s.status, s.wave,
        (select string_agg(c.code || ' ' || c.wave, ', ' order by c.wave desc) from public.ships sh join public.ship_classes c on c.id = sh.class_id where sh.fleet_id = s.fleet_id) as hulls,
@@ -42,10 +46,7 @@ select pl.company_name as company, f.name as fleet, s.status, s.wave,
           join public.sea_reaches ra on ra.port_id = a.from_port join public.sea_reaches rb on rb.port_id = a.to_port
          where a.from_port = s.home and a.to_port <> s.home and a.wave_min <= s.wave
          order by voyage.gc_distance_nm(ra.roadstead_lat, ra.roadstead_lon, rb.roadstead_lat, rb.roadstead_lon) limit 1) as nearest_open,
-       (select count(*) from jsonb_array_elements(s.legs) x
-         where not exists (select 1 from public.sea_zones z
-                            where z.code = any (public.npc_course_zones(x -> 'course') || array_remove(array[public.harbour_zone((x ->> 'port_id')::uuid)], null))
-                              and z.wave_min > case when z.title_min = hz.title_min then greatest(s.wave, hz.wave_min) else s.wave end)) as held_with_home_waters
+       (select string_agg(c.code, ' ' order by c.nm) from public.npc_coast_legs(s.home) c) as coast_legs
   from stuck s
   join public.players pl on pl.id = s.player_id
   join public.fleets f on f.id = s.fleet_id

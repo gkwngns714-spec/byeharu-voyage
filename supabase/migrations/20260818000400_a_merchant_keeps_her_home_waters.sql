@@ -14,16 +14,25 @@
 --        (public.npc_houses.home_port_id), else the first stop of her route.
 --   2. public.npc_sea_shut(wave, dest, course, lie_title, lie_wave, home_title, home_wave)   NEW overload, STABLE, server-only: 0397's question asked
 --        through public.sea_judge (0396) with a null title. The three-argument public.npc_sea_shut of 0397 is not touched.
---   3. THREE HUNKS, each once and reversing:
+--   3. FOUR HUNKS, each once and reversing (two on public.npc_feasible_legs):
 --        public.npc_feasible_legs    the legs out of a harbour her hull can hold: judged with her floors, read once a call, only while the switch is on
 --        public.npc_loop_sea_shut    whether a loop has a leg she cannot hold: the same
 --        public.sea_conditions_npc_ready (0399)   `merchants_with_no_open_leg` counts with the same judge, so the guard reads what the planner will do
 --   OFF = UNCHANGED: public.npc_feasible_legs reads the floors only while sea_conditions_bite_npc is on (asserted: 40 merchants' legs are the same text
 --   before and after this file with the switch off). public.npc_loop_sea_shut is called by the planner only while the switch is on (0397).
 --
+--   4. THE COAST LEGS (added after the prod read of 2026-11-14 16:19 UTC named the eight: barcas whose loop starts at Cape Coast, where every leg the
+--        world remembers crosses The Doldrums (asks 24) although Lagos lies 279 nm along her own coast). A merchant sails only courses the world
+--        remembers (public.npc_known_legs), and at seventeen harbours it remembers no leg that stays in water asking no more than the harbour's own
+--        sea. public.npc_coast_courses (NEW TABLE, derived here, never hand-written) holds, for each such harbour, the straight course between the
+--        two roadsteads to up to three nearest harbours of seas of the same rank, where that line is open water (voyage.path_refusal) and crosses no
+--        sea asking more wave than her own. public.npc_coast_legs(port) (NEW) reads them both ways. public.npc_feasible_legs offers them ONLY WHILE
+--        THE SWITCH IS ON (one more hunk), and the guard counts them. So a merchant lying at such a harbour has a way along her own coast; she is
+--        judged by the same rule as every other.
+--
 -- WHAT IT DOES NOT DO: it does not light anything; it does not found the far-trader houses (S4); it does not move a merchant. A merchant at sea when the
 --   switch is lit finishes her trip (the sail door never asks a merchant, 0107) and is re-planned at her next lap start (0397).
--- LOCKS: CREATE OR REPLACE of three functions and two creates. No table, no row, no knob.
+-- LOCKS: CREATE OR REPLACE of three functions, three creates, one small new table and its rows (a few dozen). No existing table is written, no knob.
 -- COST: public.npc_feasible_legs, lit: one public.npc_sea_floor a call (two primary-key reads and public.sea_floor), then public.sea_judge a leg in
 --   place of public.sea_refusal a leg. Timed below on 20 merchants, lit, before and after.
 -- news: none (nothing a player can see changes with this file; the news of the merchants' wall is 0399's step).
@@ -55,8 +64,11 @@ declare
   v_other     record;
   v_port      uuid;
   v_port2     uuid;
+  v_coast     int;
+  v_gap       int;
+  v_cap       text;
   c_cut constant text[] := array['public.npc_feasible_legs(uuid,uuid,numeric,integer)', 'public.npc_loop_sea_shut(uuid,jsonb)', 'public.sea_conditions_npc_ready()'];
-  c_new constant text[] := array['public.npc_sea_floor(uuid)', 'public.npc_sea_shut(numeric,uuid,jsonb,integer,integer,integer,integer)'];
+  c_new constant text[] := array['public.npc_sea_floor(uuid)', 'public.npc_sea_shut(numeric,uuid,jsonb,integer,integer,integer,integer)', 'public.npc_coast_legs(uuid)'];
 begin
   perform set_config('statement_timeout', '45s', true);
   perform set_config('lock_timeout', '5s', true);
@@ -145,9 +157,96 @@ $body$
   comment on function public.npc_sea_shut(numeric, uuid, jsonb, integer, integer, integer, integer) is
     '0400: public.npc_sea_shut (0397) asked with a merchant''s two floors through public.sea_judge. Server-only.';
 
-  -- ── 3. THE THREE HUNKS: each once on the live body, each reversing to its pre-image ──
+  -- ── 2b. THE COAST LEGS: the table, derived; its reader ──
+  create table public.npc_coast_courses (
+    from_port uuid not null references public.ports(id),
+    to_port   uuid not null references public.ports(id),
+    course    jsonb not null,
+    nm        numeric not null check (nm > 0),
+    primary key (from_port, to_port)
+  );
+  alter table public.npc_coast_courses enable row level security;
+  revoke all on table public.npc_coast_courses from public, anon, authenticated;
+  comment on table public.npc_coast_courses is
+    '0400: straight courses along her own coast for the harbours where the world remembers no leg that stays in water asking no more than the harbour''s own sea. Derived by 0400; read by public.npc_coast_legs while sea_conditions_bite_npc is on.';
+  with hz as materialized (
+    select p.id, p.code, z.title_min, z.wave_min, r.roadstead_lat as lat, r.roadstead_lon as lon
+      from public.ports p
+      join public.sea_leg_asks a on a.from_port = p.id and a.to_port = p.id
+      join public.sea_zones z on z.code = a.zones[1]
+      join public.sea_reaches r on r.port_id = p.id
+     where p.kind = 'HARBOUR' and not p.is_ice_closed),
+  gap as materialized (       -- a harbour with remembered legs, every one of which touches a sea asking more wave than her own sea
+    select hh.*
+      from hz hh
+     where exists (select 1 from public.npc_known_legs(hh.id))
+       and not exists (select 1 from public.npc_known_legs(hh.id) l
+                        where not exists (select 1 from public.sea_zones z
+                                           where z.code = any (public.npc_course_zones(l.course) || array_remove(array[public.harbour_zone(l.to_port)], null))
+                                             and z.wave_min > hh.wave_min))),
+  cand as (
+    select g.id as from_port, b.id as to_port, r.nm as sailed,
+           jsonb_build_array(jsonb_build_array(g.lat, g.lon), jsonb_build_array(b.lat, b.lon)) as course,
+           row_number() over (partition by g.id order by r.nm, b.code) as k
+      from gap g
+      join voyage.reach_from(g.id) r on r.nm > 0 and r.nm <= 400
+      join hz b on b.id = r.port_id and b.id <> g.id and b.title_min = g.title_min and b.wave_min <= g.wave_min
+     where voyage.path_refusal(jsonb_build_array(jsonb_build_array(g.lat, g.lon), jsonb_build_array(b.lat, b.lon)), g.lat, g.lon, b.lat, b.lon, public.wc_num('course_join_nm'), 0, 0) is null
+       and not exists (select 1 from public.sea_zones z
+                        where z.code = any (public.course_zones(jsonb_build_array(jsonb_build_array(g.lat, g.lon), jsonb_build_array(b.lat, b.lon))))
+                          and z.wave_min > g.wave_min))
+  insert into public.npc_coast_courses (from_port, to_port, course, nm)
+  select c.from_port, c.to_port, c.course, (select sum((x ->> 'nm')::numeric) from jsonb_array_elements(voyage.segments_from_course(c.course)) x)
+    from cand c
+   where c.k <= 3
+     and (select sum((x ->> 'nm')::numeric) from jsonb_array_elements(voyage.segments_from_course(c.course)) x) > 0;
+  -- their seas are remembered like every merchant course's (0397's memo), both ways; a later refill of the memo forgets them and they are sampled again
+  insert into public.npc_course_zones_memo (course_md5, zones)
+  select distinct md5(x.course::text), public.course_zones(x.course)
+    from (select c.course from public.npc_coast_courses c
+          union all
+          select jsonb_build_array(c.course -> 1, c.course -> 0) from public.npc_coast_courses c) x
+  on conflict (course_md5) do nothing;
+  select count(*), count(distinct from_port) into v_coast, v_gap from public.npc_coast_courses;
+  select string_agg(b.code, ' ' order by b.code) into v_cap
+    from public.npc_coast_courses c join public.ports a on a.id = c.from_port join public.ports b on b.id = c.to_port where a.code = 'CAP';
+
+  execute $f$
+create function public.npc_coast_legs(p_port uuid)
+returns table (to_port uuid, code text, course jsonb, nm numeric)
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $body$
+  -- 0400: THE COAST LEGS out of a harbour (public.npc_coast_courses), both ways (the same line, the same water), less any harbour the world already
+  -- remembers a leg to (public.npc_known_legs keeps its own). It does not read the switch: public.npc_feasible_legs does.
+  select q.to_port, p.code, q.course, q.nm
+    from (select c.to_port, c.course, c.nm from public.npc_coast_courses c where c.from_port = p_port
+          union
+          select c.from_port, jsonb_build_array(c.course -> 1, c.course -> 0), c.nm from public.npc_coast_courses c
+           where c.to_port = p_port and not exists (select 1 from public.npc_coast_courses d where d.from_port = p_port and d.to_port = c.from_port)) q
+    join public.ports p on p.id = q.to_port
+   where not exists (select 1 from public.npc_known_legs(p_port) k where k.to_port = q.to_port)
+$body$
+  $f$;
+  revoke all on function public.npc_coast_legs(uuid) from public, anon, authenticated;
+  comment on function public.npc_coast_legs(uuid) is '0400: the coast legs out of a harbour (public.npc_coast_courses), both ways, less the harbours the world already remembers a leg to. Server-only.';
+
+  -- ── 3. THE FOUR HUNKS: each once on the live body, each reversing to its pre-image ──
   create temp table hunk_0400 (ord int primary key, fn text, old text, new text) on commit drop;
   insert into hunk_0400 values
+      (0, 'public.npc_feasible_legs(uuid,uuid,numeric,integer)',
+$h$      from public.npc_known_legs(p_port) l
+      join public.ports p on p.id = l.to_port
+$h$,
+$h$      -- 0400: and, while the switch is on, the coast legs out of this harbour (public.npc_coast_legs): a way along her own coast where the world
+      -- remembers only ocean legs. With the switch off they are not read.
+      from (select k.to_port, k.code, k.course, k.nm from public.npc_known_legs(p_port) k
+            union all
+            select c.to_port, c.code, c.course, c.nm from public.npc_coast_legs(p_port) c where (select public.sea_conditions_npc_on())) l
+      join public.ports p on p.id = l.to_port
+$h$),
       (1, 'public.npc_feasible_legs(uuid,uuid,numeric,integer)',
 $h$    from legs l
    where case when (select public.sea_conditions_npc_on())
@@ -175,7 +274,10 @@ $h$,
 $h$           -- 0400: counted as the planner will judge them, with her two floors (public.npc_sea_floor)
            (select count(*) from jsonb_array_elements(l.legs) x
              where (select public.npc_sea_shut(w.wave, (x ->> 'port_id')::uuid, x -> 'course', w.lie_title, w.lie_wave, w.home_title, w.home_wave)
-                      from public.npc_sea_floor(m.fleet_id) w) is null) as open
+                      from public.npc_sea_floor(m.fleet_id) w) is null)
+           -- and the coast legs out of the harbour her loop starts at, which the planner is offered once the switch is on
+           + (select count(*) from public.npc_coast_legs(m.home) c cross join public.npc_sea_floor(m.fleet_id) w
+               where public.npc_sea_shut(w.wave, c.to_port, c.course, w.lie_title, w.lie_wave, w.home_title, w.home_wave) is null) as open
 $h$);
   for h in select * from hunk_0400 order by ord loop
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
@@ -188,12 +290,19 @@ $h$);
     if (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new) <> 1 then
       raise exception '0400 self-assert FAIL: hunk % of % is not in the new body once', h.ord, h.fn;
     end if;
-    if replace(v_def, h.new, h.old) <> (select p.def from pre_0400 p where p.fn = h.fn) then
-      raise exception '0400 self-assert FAIL: % does not reverse to its pre-image', h.fn;
-    end if;
     if (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
           from pg_proc p where p.oid = h.fn::regprocedure) <> (select p.meta from pre_0400 p where p.fn = h.fn) then
       raise exception '0400 self-assert FAIL: the grants, volatility, definer, search path or owner of % moved', h.fn;
+    end if;
+  end loop;
+
+  for h in select p.fn, p.def from pre_0400 p loop
+    v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
+    for v_z in select x.old, x.new from hunk_0400 x where x.fn = h.fn order by x.ord desc loop
+      v_def := replace(v_def, v_z.new, v_z.old);
+    end loop;
+    if v_def <> h.def then
+      raise exception '0400 self-assert FAIL: % does not reverse to its pre-image', h.fn;
     end if;
   end loop;
 
@@ -207,6 +316,16 @@ $h$);
   if exists (select 1 from unnest(c_new) f join pg_proc p on p.oid = f::regprocedure
               where p.provolatile <> 's' or has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('anon', p.oid, 'execute')) then
     raise exception '0400 self-assert FAIL: a new function is not STABLE and server-only';
+  end if;
+
+  if has_table_privilege('authenticated', 'public.npc_coast_courses', 'select') or has_table_privilege('anon', 'public.npc_coast_courses', 'select')
+     or not (select c.relrowsecurity from pg_class c where c.oid = 'public.npc_coast_courses'::regclass) then
+    raise exception '0400 self-assert FAIL: public.npc_coast_courses is readable by a client, or has no row security';
+  end if;
+  if exists (select 1 from public.npc_coast_courses c
+              where voyage.path_refusal(c.course, (c.course -> 0 ->> 0)::numeric, (c.course -> 0 ->> 1)::numeric, (c.course -> 1 ->> 0)::numeric, (c.course -> 1 ->> 1)::numeric,
+                                        public.wc_num('course_join_nm'), 0, 0) is not null) then
+    raise exception '0400 self-assert FAIL: a coast course is not open water';
   end if;
 
   -- ── 5. LIT: the cost after the cut (the switch turned inside a block that is rolled back) ──
@@ -257,8 +376,8 @@ $h$);
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0400 self-assert FAIL: over its budget of 45 s';
   end if;
-  raise notice '0400 self-assert ok: A MERCHANT KEEPS HER HOME WATERS. Three hunks, each once and reversing; two new functions; no other function moved. Dark, the legs offered to 40 merchants are the same text. Lit, a call of npc_feasible_legs: % ms before, % ms after (mean of 20). The guard reads merchants_with_no_open_leg % of % loops closed in this world. A hull of 6 is held by % (asks %) as her home''s or her lying rank, and not by % of another rank. % ms in all.',
-    v_ms_before, v_ms_after, v_r ->> 'merchants_with_no_open_leg', v_r ->> 'loops_closed', v_z.code, v_z.wave_min, v_other.code,
+  raise notice '0400 self-assert ok: A MERCHANT KEEPS HER HOME WATERS. Four hunks, each once and reversing; three new functions and one table (% coast courses out of % harbours; from Cape Coast: %); no other function moved. Dark, the legs offered to 40 merchants are the same text. Lit, a call of npc_feasible_legs: % ms before, % ms after (mean of 20). The guard reads merchants_with_no_open_leg % of % loops closed in this world. A hull of 6 is held by % (asks %) as her home''s or her lying rank, and not by % of another rank. % ms in all.',
+    v_coast, v_gap, coalesce(v_cap, 'none'), v_ms_before, v_ms_after, v_r ->> 'merchants_with_no_open_leg', v_r ->> 'loops_closed', v_z.code, v_z.wave_min, v_other.code,
     round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;

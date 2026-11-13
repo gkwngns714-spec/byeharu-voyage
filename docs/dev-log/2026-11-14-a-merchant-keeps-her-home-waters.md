@@ -85,3 +85,51 @@ judge can be asked once a leg with the zones split in SQL; not done here.
 1. A merchant's home is her house's home port, else her route's first stop.
 2. The floors open a rank, as for players (0396): not every easier sea.
 3. S4 (far-trader houses) is still not built; see the PR body for what the simulation says it would restore.
+
+## Later on 2026-11-14: the eight are named, and the floor did not save them
+
+The lead ran `no-open-leg.sql` on prod (16:19 UTC). All eight are ONE case: a fleet of one barca (wave 12) whose loop starts at **Cape Coast**. Cape
+Coast's own sea (Gulf of Guinea, rank 3) asks 12 and holds her. But every leg the world remembers out of Cape Coast crosses The Doldrums (asks 24):
+Recife, Agadir, Dublin, Palermo, Bristol, Rotterdam, Lübeck, and Ilha de Moçambique by the Cape. Their houses are elsewhere (Accra, Messina, Cidade Velha,
+Las Palmas, Valencia, Alexandria). `held_with_home_waters` was 0 on every row: the floor raises the wave she is taken to hold in seas of a rank, and The
+Doldrums is of another rank.
+
+**What the planner does with such a fleet today** (read in `public.npc_plan`, 0203 and 0397): it plans from the harbour where she LIES at her lap start,
+which is her loop's first stop, never from her house's home port. It can only offer legs the world remembers (`public.npc_known_legs`: the courses of
+merchant loops and `public.npc_courses`). Lit, every remembered leg out of Cape Coast is closed, so she is offered nothing, is laid up where she lies, and
+is planned again at every tend with the same answer: laid up at Cape Coast for good. Her house's port never enters it; a merchant has no way to a harbour
+the world remembers no course to.
+
+**The gap is in what the world remembers, and Cape Coast is not alone.** A harbour is in the gap when every leg remembered out of it touches a sea that
+asks more wave than the harbour's own sea. Local world, 248 harbours with remembered legs: **17** such harbours (AMB AUK CAP HAN INC KOL LAG MAL MAN MOK
+NAM OSA OUI PLO SAK TER TID); for a barca (wave 12) **11** of them leave her nothing (AMB AUK CAP KOL LAG OSA OUI PLO SAK TER TID). A neighbour is often
+close by on the same coast (Lagos is 279 nm from Cape Coast; Elmina shares its roadstead) with no course remembered to it.
+
+**The fix in 0400: coast legs.** A new derived table `public.npc_coast_courses`: for each gap harbour, the straight course between the two roadsteads to
+up to three nearest harbours of seas of the same rank, within 400 sailed miles, kept only where that line is open water (`voyage.path_refusal`) and
+touches no sea asking more wave than the harbour's own. `public.npc_coast_legs(port)` reads them both ways. `public.npc_feasible_legs` offers them only
+while the merchants' switch is on (a fourth hunk), and the guard counts them. Locally the derivation writes 12 courses out of 7 harbours; from Cape Coast:
+Lagos. No rule is bent: she is judged like every other merchant, on a leg her hull holds.
+
+What it does not reach: harbours whose every straight line to a neighbour crosses land (locally Osaka and Sakai, Auckland, Port Louis and others of the
+17). A merchant re-planned to start there got there on a leg she holds, and that leg sailed backwards is remembered, so the planner cannot strand a
+merchant there after the light; only loops planned while the rule was dark can, and the guard counts those before the light.
+
+**Not done, and why:** re-planning her from her house's home port. She cannot get there: the planner moves no fleet, and no remembered leg she holds
+leads out of Cape Coast.
+
+**Proved** (proof 95 `MH_CAPE_COAST`): a one-barca merchant of a European house is put on a loop Cape Coast to its nearest remembered harbour and back,
+lying at Cape Coast. Every remembered leg is refused, by the plain rule and with her floors. The guard, read with the switch off, counts 0 merchants
+without an open leg. Lit, she is offered Lagos; the real planner at her lap start writes her the loop Cape Coast, Lagos. In the local world it then lays
+her up, as it lays up any merchant whose loop does not pay on that static market (0181): a lay-up of trade, planned again at every tend, not of the sea.
+
+**The simulation again, with the coast legs** (same pass): unchanged from the table above (lit: 0 closed after, 55 laid up, 16 harbours without a
+merchant call, 2,871 stops, lap start 197 ms mean and 450 ms max). The local world has no merchant whose loop starts at a gap harbour, so no coast leg
+was used in it.
+
+**A finding beyond merchants:** the coast of West Africa between about 10 degrees north and the Gulf of Guinea lies in the zone The Doldrums (asks 24).
+So, judging by the merchant courses (every remembered course from Europe to Guinea crosses it), a PLAYER's barca cannot reach the Gulf of Guinea from
+Europe either, at any title: the Trade board's pair table shows it open (a straight line) and the door would refuse the real course. Not driven as a player. The design meant Guinea for a titled barca. The fix is a box in the zone data for that coast, a data slice of its own.
+
+`no-open-leg.sql` now counts as the guard does since 0400 (floors and coast legs) and so needs 0400 in the world; wanted after the deploy: no row. Its
+first form, which the lead ran at head 0399, is at commit 5a58e7c3.
