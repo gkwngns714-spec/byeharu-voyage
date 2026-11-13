@@ -72,6 +72,7 @@ import { SendFleet } from './SendFleet'
 import { RouteBar } from './RouteBar'
 import { RouteEditor } from '../../live/RouteEditor'
 import { useRouteBuilder } from './useRouteBuilder'
+import { useRouteSeed } from './routeSeed'
 import { CityHarbour } from './CityHarbour'
 import { merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
@@ -256,6 +257,31 @@ function Chart({
     route.reset()
     setRouteFor(null)
   }
+  // A TRIP HANDED IN (routeSeed.ts; the build yard's "Plan trip"): route mode opens for that fleet with the stops kept.
+  // Taken on the first frame the map is up, and whenever one is handed while it is up, as a go-to is.
+  const takeSeed = useRef<() => void>(() => {})
+  useEffect(() => {
+    takeSeed.current = () => {
+      const waiting = useRouteSeed.getState().request
+      if (!waiting || !fleetViews.some((f) => f.id === waiting.fleetId)) return
+      useRouteSeed.getState().take()
+      setSelection(null)
+      setRouteFor(waiting.fleetId)
+      route.seed(waiting.fleetId, waiting.stops)
+    }
+  })
+  const fleetsRead = fleetViews.length > 0
+  useEffect(() => {
+    if (!fleetsRead) return
+    const frame = requestAnimationFrame(() => takeSeed.current())
+    const unsubscribe = useRouteSeed.subscribe((s) => {
+      if (s.request) takeSeed.current()
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      unsubscribe()
+    }
+  }, [fleetsRead])
   const finalRoute = async () => {
     const id = routeFor
     if (!(await route.final()) || id === null) return

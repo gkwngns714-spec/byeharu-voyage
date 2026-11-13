@@ -10,7 +10,8 @@
 //      read says nothing is short, the hull is buildable, and BUILD lays her down — the materials leave the city.
 //   3. (0358, S1 of docs/SECOND_SHIP.md) the read plans the build: a good's row carries the recipe's count, the good's
 //      weight and the seller's price now (world.price, the one price authority); a part's row carries the goods it is
-//      made of, one row per item_recipes row, each with its nearest seller; at Lisbon the Barca's sails name flax at Riga.
+//      made of, one row per item_recipes row, each with its nearest seller; at Lisbon the Caravela latina's sails name
+//      flax at Riga. (Since 0363 the Barca takes no part: the read serves her four goods and an empty list of parts.)
 // RED before 0349 (the reader is not in the world), GREEN with it; test 3 is RED before 0358 (no `qty`, no `inputs`).
 
 import { test, expect } from '@playwright/test'
@@ -95,8 +96,9 @@ test('each material of a hull is named with the nearest harbour that hands it ov
 test('0358: a good carries its count, weight and price now; a part carries the goods it is made of, each with a seller', async () => {
   const snap = expectOk(await worldSnapshot())
   const lis = snap.ports.find((p) => p.code === 'LIS')!
-  const hull = expectOk(await worldBuildingYard(lis.id)).hulls.find((h) => h.class === 'barca')!
-  const src = expectOk(await worldYardSources(lis.id, 'barca'))
+  const hull = expectOk(await worldBuildingYard(lis.id)).hulls.find((h) => h.class === 'carlat')!
+  const src = expectOk(await worldYardSources(lis.id, 'carlat'))
+  expect(src.items.length, 'the Caravela latina lost her parts').toBeGreaterThan(0)
 
   // every key 0349 served is still there, beside the new ones
   for (const g of src.goods) expect(Object.keys(g).sort()).toEqual(['ask', 'bulk', 'code', 'miles', 'name', 'port', 'qty'])
@@ -125,7 +127,7 @@ test('0358: a good carries its count, weight and price now; a part carries the g
       await db.pg.query<{ code: string; name: string; qty: string; bulk: string }>(
         `select g.code, g.name, (ir.qty * hi.qty)::text as qty, g.bulk::text as bulk
            from public.hull_recipe_items hi join public.item_recipes ir on ir.item_code = hi.item_code join public.goods g on g.id = ir.good_id
-          where hi.class_code = 'barca' and hi.item_code = $1 order by g.code`,
+          where hi.class_code = 'carlat' and hi.item_code = $1 order by g.code`,
         [i.code],
       )
     ).rows
@@ -144,8 +146,9 @@ test('0358: a good carries its count, weight and price now; a part carries the g
       seen.add(u.code)
     }
   }
-  // the errand is seven goods, three of them only in the parts; the sails name flax at Riga
-  expect([...seen].sort()).toEqual(['cordage', 'flax', 'hemp', 'iron', 'ships-nails', 'tar', 'timber'])
+  // the errand is more goods than the hull's own: flax, hemp and iron are only in the parts; the sails name flax at Riga
+  expect([...seen]).toEqual(expect.arrayContaining(['cordage', 'flax', 'hemp', 'iron', 'ships-nails', 'tar', 'timber']))
+  for (const only of ['flax', 'hemp', 'iron']) expect(src.goods.map((g) => g.code)).not.toContain(only)
   const flax = src.items.find((i) => i.code === 'suit-of-sails')!.inputs!.find((u) => u.code === 'flax')!
   expect(flax.port).toBe('RIG')
   expect(flax.name).toBe('Riga')
@@ -155,6 +158,12 @@ test('0358: a good carries its count, weight and price now; a part carries the g
   const plainSrc = expectOk(await worldYardSources(lis.id, plain.class))
   expect(plainSrc.items).toEqual([])
   for (const g of plainSrc.goods) expect(typeof g.qty).toBe('number')
+  // 0363: the Barca takes four goods and no part, and the read says so
+  const barca = expectOk(await worldYardSources(lis.id, 'barca'))
+  expect(barca.items).toEqual([])
+  expect(barca.goods.map((g) => g.code).sort()).toEqual(['cordage', 'ships-nails', 'tar', 'timber'])
+  for (const g of barca.goods) expect(g.port, `${g.code} has no seller`).not.toBeNull()
+  expect(expectOk(await worldBuildingYard(lis.id)).hulls.find((h) => h.class === 'barca')!.items).toEqual([])
   // still a read
   expect(await db.callAs<boolean>(`select provolatile = 's' and prosecdef as result from pg_proc where oid = 'world.yard_sources(uuid, text)'::regprocedure`)).toBe(true)
 })

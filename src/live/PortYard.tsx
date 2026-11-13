@@ -21,7 +21,7 @@ import { useBuildingYard } from './useBuildingYard'
 import { useServedRead } from './useServedRead'
 import { useYardSources } from './useYardSources'
 import { useWorld } from './worldStore'
-import { yardPlan, type PlanGood, type PlanPart } from './yardPlan'
+import { planStops, yardPlan, type PlanGood, type PlanPart } from './yardPlan'
 import { fleetCargoByCode, fleetCrew } from '../domain/fleet/derive'
 import { formatDucats, formatInt, formatMiles, formatRealShort, formatTons, voyageDaysToRealMs } from '../lib/format'
 import { worldLevels } from '../lib/rpc'
@@ -29,6 +29,7 @@ import type { FleetView, LevelsView, PlanLine, Refusal, YardHull, YardInput, Yar
 import { goTo, useGoTo } from '../chart'
 import { useDeskGood } from '../store/deskGood'
 import { useDeskView } from '../features/command/deskView'
+import { useRouteSeed } from '../features/map/routeSeed'
 import { properName, useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -91,6 +92,12 @@ import { properName, useT, t as tNow } from '../lib/i18n'
 // the fleet's room is world.levels()'s (`room.fleet_ship_max`, public.earned_caps: the cap cmd.do_build's ship insert
 // is refused by). A press moves nothing above it: the totals stand above the lines, a part opens below itself, and the
 // button is the tray's pinned action.
+//
+// ── THE BARCA NEEDS NO PARTS, AND THE TRIP IS ONE PRESS (S2 + S3, 0363) ────────────────────────────────────────
+// Since 0363 the first hull a house builds takes four goods and no part ("Ready 0 / 4"); the Caravela latina, the Nau
+// and the famous ships keep theirs, so everything above about parts still stands. "Plan trip" (under the totals,
+// while something is still to fetch by sea) hands the sellers of what is short, nearest first and then this quay
+// again, to the Map's route builder as a draft (features/map/routeSeed.ts). Nothing is sent by the press.
 //
 // ── WHAT THIS FILE DOES NOT KNOW ───────────────────────────────────────────────────────────────
 // Whether a hull can be built here. All of that is `cmd.do_build`'s and arrives answered.
@@ -238,6 +245,16 @@ export function PortYard({
           ? 'full'
           : plan.step
   const ready = step === 'build'
+  // S3 — PLAN TRIP: the harbours that sell what is still short, nearest first, then back to this quay (the goods count
+  // once stored HERE). Handed to the Map's route builder as a draft: nothing is sent, and the server judges each leg there.
+  const trip = hull && plan && hull.buildable && fleet?.port && step === 'wait' ? planStops(plan) : []
+  const planTrip = () => {
+    if (!fleet?.port || trip.length === 0) return
+    useRouteSeed.getState().plan(fleet.id, [...trip, fleet.port])
+    const { openMap } = useGoTo.getState()
+    if (openMap) openMap()
+    else navigate('/map')
+  }
 
   return (
     <div data-testid="port-yard">
@@ -372,6 +389,18 @@ export function PortYard({
             data-testid="yard-weight"
             data-fits={plan.weight === null || !fleet ? undefined : plan.weight <= fleet.free_hold}
           />
+          {/* S3: one press from the totals to the trip that fetches what is short. It stands above the lines, with the
+              totals, so a part unfolding does not move it; it goes when nothing is left to fetch by sea. */}
+          {trip.length > 0 && (
+            <Row
+              label={t('yard.planTrip')}
+              value={<Figure value={formatInt(trip.length)} unit={t('yard.stops')} />}
+              chevron
+              onClick={planTrip}
+              data-testid="yard-plan-trip"
+              data-stops={trip.join(' ')}
+            />
+          )}
           {plan.goods.map((g, i) => (
             <GoodLine
               key={g.code}
