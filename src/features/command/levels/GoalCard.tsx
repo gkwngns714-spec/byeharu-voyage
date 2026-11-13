@@ -50,7 +50,12 @@ export function GoalCard() {
   // While sea limits are not on (`seas_bite` false) the title opens nothing yet, so the card promises nothing.
   const opens = next && v.title.seas_bite && next.opens.length > 0 ? t('command.lvOpens', { what: next.opens.join(', ') }) : null
   return (
-    <button type="button" onClick={() => turnTo('levels')} className={`${CARD} ${place} bg-surface-2`} data-testid="goal-card">
+    <button type="button" onClick={() => turnTo('levels')} className={`${CARD} ${place} bg-surface-2`}
+      data-testid="goal-card"
+      // her two track levels stand on the card whatever its second line says (the second ship's count hides the words; a test reads these)
+      data-trading={v.tracks.trading.level}
+      data-exploration={v.tracks.exploration.level}
+    >
       <span className="min-w-0 whitespace-nowrap text-t-body text-ink" data-testid="goal-title">
         {next ? properName('title', next.name, next.name) : t('command.lvTitleTop')}
       </span>
