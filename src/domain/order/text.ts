@@ -25,7 +25,7 @@
 // schema arrived.
 
 import { formatUnitPrice, formatUnits, formatVoyageDays } from '../../lib/format'
-import type { QueuedOrder, Refusal, VerbArg, VerbSpec } from '../../lib/rpc'
+import { SEA_CLOSED, readSeaWall, type QueuedOrder, type Refusal, type VerbArg, type VerbSpec } from '../../lib/rpc'
 import { t, translateMaybe, getLocale } from '../../lib/i18n'
 
 /**
@@ -276,7 +276,10 @@ export function refusalOfOrder(order: QueuedOrder): Refusal | null {
     // The fixes ride on the ISSUE envelope, not on the order row — a row read back later has no
     // fix attached, and inventing one here would be a second author of "→ do this instead".
     fixes: [],
-    figures: order.figures ?? undefined,
+    // 0376: a row the SEA refused carries the sea rule's figures in the same field; they are read as the wall, and the
+    // have / need pair is kept only when it is one (a bar is never drawn from a sea's figures)
+    figures: order.figures && typeof order.figures.have === 'number' && typeof order.figures.need === 'number' ? order.figures : undefined,
+    sea: (order.error_code === SEA_CLOSED ? readSeaWall(order.figures) : null) ?? undefined,
     source: 'server',
   }
 }
