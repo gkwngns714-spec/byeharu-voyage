@@ -420,7 +420,7 @@ test('city audit: the Market Basket opens in the panel — no page, no tray, not
   await page.getByTestId('city-market-basket').click()
   const basket = page.getByTestId('city-basket')
   await expect(basket).toBeVisible()
-  console.log(`AUDIT basket summary: "${(await basket.innerText()).replace(/\s+/g, ' ').slice(0, 100)}"`)
+  console.log(`AUDIT basket summary: "${[...(await basket.innerText()).replace(/\s+/g, ' ')].slice(0, 100).join('')}"`)
   // NO PAGE, NO TRAY (owner, 2026-10-31: "BASKET? WTF IS THIS POPPING UP BLOCKING THE WHOLE
   // SCREEN?"): the summary stands in the panel itself.
   await expect(page.locator('[data-detail-page]'), 'the Basket opened a page').toHaveCount(0)

@@ -116,6 +116,9 @@ import type {
   AttackReceipt,
   RaidOrderWord,
   RaidRead,
+  BattleRead,
+  BattleStanceReceipt,
+  BattleStanceWord,
   AllegianceView,
   CountryChanged,
   DonateReceipt,
@@ -949,6 +952,16 @@ export function cmdRaidOrder(fleetId: string, order: RaidOrderWord): Promise<Rpc
 /** The read beside the order's picker (0353): her order, her guns, her slip, what Pay costs, the raiders' word by danger. */
 export function worldRaidRead(fleetId: string): Promise<RpcResult<RaidRead>> {
   return call<RaidRead>('worldRaidRead', [fleetId])
+}
+
+/** Her stance in a battle fought round by round (0357): FIGHT or FLEE. It takes hold from the next round. */
+export function cmdBattleStance(battleId: string, stance: BattleStanceWord): Promise<RpcResult<BattleStanceReceipt>> {
+  return call<BattleStanceReceipt>('cmdBattleStance', [battleId, stance])
+}
+
+/** The read the battle card polls (0357): her fleet's battle, its clock, her stance and the log so far. */
+export function worldBattle(fleetId: string): Promise<RpcResult<BattleRead>> {
+  return call<BattleRead>('worldBattle', [fleetId])
 }
 
 /** Your fleet attacks a cargo ship (0327). A battle opens; its end comes as a report. */
