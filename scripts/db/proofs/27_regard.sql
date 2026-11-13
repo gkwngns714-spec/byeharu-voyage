@@ -49,6 +49,8 @@ begin
   -- the switches a closed world runs on; nothing here is regard's
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'influence_enabled', 'economy_closed');
   update public.world_config set value = '0'::jsonb where key = 'invest_min_ducats';   -- one share is the smallest probe stake
+  -- 0373 lit regard in the chain. This proof starts from the dark world it was written for: the switch is set back here, for this rolled-back transaction only.
+  update public.world_config set value = 'false'::jsonb where key = 'regard_enabled';
   if public.regard_on() then
     raise exception 'PROOF 27 FAIL: regard is not dark in this world';
   end if;
