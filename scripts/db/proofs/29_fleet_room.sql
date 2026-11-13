@@ -46,6 +46,8 @@ declare
   v_route uuid;
   s     record;
 begin
+  -- 0370 lit fleet room in the chain. This proof starts from the dark world it was written for: the switch is set back here, for this rolled-back transaction only.
+  update public.world_config set value = 'false'::jsonb where key = 'fleet_room_bite';
   if public.fleet_room_on() then
     raise exception 'PROOF 29 FAIL: the room is not dark in this world';
   end if;
