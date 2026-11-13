@@ -59,3 +59,21 @@ As a migration: `scripts/ops/harness/ship-stores/rollback-0369.sql` (a draft; st
 ## Not proven
 - Nothing ran on prod. The precondition read's time on real Postgres with prod's fleets is not known; `after-light.sql` is the same read and can be timed read-only before the deploy.
 - Two human ships in one fleet with different rolls were not walked in a browser.
+
+## After the first push: two proofs assumed supplies share the hold (CI, `pglite-gate`)
+I ran only the proofs that name the switch before pushing. CI's full proof run found two more, both red for the same reason and both changed here:
+
+| Proof | What it assumed | Change |
+|---|---|---|
+| `04_first_session.sql` | the room for a BUY is the hold less the supplies aboard, so "room + 20" cannot fit | The room reads `public.stores_in_hold` (the game's own answer: dark all the supplies, lit none), so it is right in both worlds |
+| `36_armed_cargo.sql` | a crown cargo ship leaves with `convoy_store_days` (90) of supplies | Lit she leaves with 90 days or what her supply room holds, whichever is less (0345: "a crown's 90-day free top-up fills her stores space and no more"), and never less than the leg she is leaving on asks |
+
+### What proof 36 showed about the crown's cargo ships (read this before lighting)
+Lit, a crown cargo ship (an armed navire, 60 hands, a class of 140) is topped up to her supply room, not to 90 days:
+- her supply room at a stores roll of 1.000 is 177 t = **84.3 days** at her crew; a hull's own roll scales it (CI's ship: 82.9 days);
+- the longest leg of any crown's circuit on this world is 13,584 nm: **47.2 days** of supplies at her class speed, **78.6 days** at her speed floor (60 % of it, the worst case 0328's knob was sized for);
+- so she carries the longest leg with room to spare at any normal speed. Only a hull with a stores roll under 0.933 that also sails that one leg at her floor speed would be short.
+
+On prod, 2026-11-10 (`impact.sql`): the least lit supply-days of any merchant or crown fleet was 71.4 and the longest leg asked 53.8 days, with 0 fleets short lit. 71.4 days covers the longest leg down to 66 % of class speed.
+
+Not a reason to hold the light. It is the reason `after-light.sql` reads `merchant_fleets_short` (crown cargo ships under way are in it) at once and at +30 minutes: wanted 0. If the owner wants the old margin back for the crown's ships, `ship_stores_days` 36 -> 39 gives a navire 91 days (a knob, owner only; not done).
