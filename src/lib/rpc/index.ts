@@ -137,6 +137,7 @@ import type {
   VerbSpec,
   WorldSnapshot,
   RouteLegAsk,
+  TripCost,
   RouteLegs,
 } from './types'
 
@@ -803,6 +804,12 @@ export function cmdIssueLines(
  *  days, supplies and `shut` (the one leg judge, voyage.leg_refusal). null when the fleet is not yours. */
 export function worldRouteLegs(fleetId: string, legs: readonly RouteLegAsk[]): Promise<RpcResult<RouteLegs | null>> {
   return call<RouteLegs | null>('worldRouteLegs', [fleetId, legs])
+}
+
+/** 0360 (owner, 2026-11-13) — what a trip of SAILs takes and costs for your fleet (`world.trip_cost`): the whole time with
+ *  the calls on the way, and supplies, wages and dock fees. null when the fleet is not yours. */
+export function worldTripCost(fleetId: string, legs: readonly RouteLegAsk[]): Promise<RpcResult<TripCost | null>> {
+  return call<TripCost | null>('worldTripCost', [fleetId, legs])
 }
 
 /** What your company holds in every city (0176): the register's rows, a share's price now, the dividends. */

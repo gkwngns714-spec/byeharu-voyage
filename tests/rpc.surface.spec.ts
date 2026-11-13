@@ -1666,6 +1666,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-11 with migration 0346 (owner row 209, docs/ROUTE_BUILDER.md B1): A ROUTE'S LEGS JUDGED, world.route_legs(fleet, legs).
       // A READ; no player id; null for a fleet not yours. Landed WITH the face that reads it (src/features/map/RouteBar.tsx, the map's route mode).
       'worldRouteLegs',
+      // Pin moved deliberately 2026-11-13 with migration 0360 (owner, the Map's Send fleet): WHAT A TRIP TAKES AND COSTS, world.trip_cost(fleet, legs).
+      // A READ; no player id; null for a fleet not yours. Landed WITH the faces that read it (src/features/map/SendFleetRow.tsx; the Trade panel's days).
+      'worldTripCost',
       // Pin moved deliberately 2026-10-18 with migration 0176 (docs/COMMAND_DESK.md D6): WHAT YOU HOLD in every
       // city — a READ, no arguments (the caller's company). Landed WITH the face that reads it (the desk's Invest).
       'worldHoldings',

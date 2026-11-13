@@ -1,5 +1,5 @@
 import { Bar, Button, Figure, Icon, Note, Row } from '../../components/ui'
-import { formatDaysReal, formatPriceDelta } from '../../lib/format'
+import { formatDaysReal, formatPriceDelta, voyageDaysToRealMs } from '../../lib/format'
 import type { FleetView, Refusal } from '../../lib/rpc'
 import { sailEstimate } from '../../domain/order'
 import { whereabouts, whereParts } from '../../domain/fleet'
@@ -19,8 +19,9 @@ import { useT } from '../../lib/i18n'
 // keep control.
 //
 // THE FINAL ANSWER, AND ONLY THAT (the owner, 2026-11-13: *"just tell me the final time, price reaching the
-// destination"*): the row's figure is the whole trip's days with the real wait beside them, and under it what its
-// supplies cost. A far city reached through harbours between reads the same two figures for the whole chain, with
+// destination"*): the row's figure is the whole trip's days with the real wait beside them (the calls on the
+// way counted), and under it what it costs: Supplies, Wages, Dock fee, each named as Trade's Sail & sell names them
+// (the owner: "but separately"), and their Total. A far city reached through harbours between reads the same two figures for the whole chain, with
 // the harbours named on one small line (`via A, B`); they ask for no press. Both are the server's figures
 // (useSendFleet.ts), added up by the one passage planner (domain/passage/chain.ts).
 //
@@ -53,10 +54,19 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
         : where
   const plan = pressable ? flow.planOf(f) : null
   const name = (code: string | null) => (code === null ? '' : portNameOf(portByCode, code))
-  // the whole trip's days: the dry run's own for one leg, the planner's sum for a chain
-  const days = !pressable ? null : v?.kind === 'ok' ? sailEstimate(v.result.estimate).days : v?.kind === 'chain' ? v.plan.days : null
   const sails = pressable && (v?.kind === 'ok' || v?.kind === 'chain')
-  const cost = sails && plan?.kind === 'open' ? plan.cost : null
+  // THE WHOLE TRIP AS THE SERVER PRICES IT (0360, world.trip_cost): its days WITH the calls on the way, and supplies, wages
+  // and dock fees each their own figure. A world without that read: the legs' own days and supplies, as before.
+  const trip = sails && plan?.kind === 'open' ? plan.trip : null
+  const days = !sails
+    ? null
+    : (trip?.days ?? (v?.kind === 'ok' ? sailEstimate(v.result.estimate).days : v?.kind === 'chain' ? v.plan.days : null))
+  const supplies = !sails ? null : (trip?.supplies ?? (plan?.kind === 'open' ? plan.cost : null))
+  const costs: { id: string; label: string; amount: number; strong?: boolean }[] = []
+  if (supplies !== null) costs.push({ id: 'supplies', label: t('desk.supplies'), amount: supplies })
+  if (trip && trip.wages !== null) costs.push({ id: 'wages', label: t('desk.wages'), amount: trip.wages })
+  if (trip && trip.dock_fee !== null) costs.push({ id: 'dock', label: t('desk.dockFee'), amount: trip.dock_fee })
+  if (trip && trip.total !== null) costs.push({ id: 'total', label: t('desk.total'), amount: trip.total, strong: true })
   const via = pressable && v?.kind === 'chain' ? v.plan.stops : null
   // 0241 (owner row 230): her purse is short of this passage's stores — the SAIL still goes, and the rest is owed
   const first = !pressable ? null : v?.kind === 'ok' ? v.result : v?.kind === 'chain' ? v.first : null
@@ -78,7 +88,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
           <Icon name={sailing ? 'ship' : 'anchor'} size={20} className={on ? 'text-accent' : 'text-ink-faint'} />
         }
         label={<GoToLink to={{ kind: 'fleet', id: f.id, where: whereAt }}>{f.name}</GoToLink>}
-        value={days !== null ? <Figure value={<span data-testid="map-send-passage">{formatDaysReal(days)}</span>} /> : undefined}
+        value={days !== null ? <Figure value={<span data-testid="map-send-passage" data-days={days} data-real-ms={Math.round(voyageDaysToRealMs(days))}>{formatDaysReal(days)}</span>} /> : undefined}
         tone={on ? 'accent' : pressable ? 'default' : 'muted'}
         hairline={!on}
         onClick={pressable ? () => flow.pick(f) : undefined}
@@ -95,9 +105,19 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
             {t('map.sendVia', { stops: via.map(name).join(', ') })}
           </span>
         )}
-        {cost !== null && (
-          <span className="block text-t-caption text-ink-muted" data-testid="map-send-cost">
-            {t('map.sendSupplies', { amount: cost > 0 ? formatPriceDelta(-cost) : formatPriceDelta(0) })}
+        {costs.length > 0 && (
+          <span className="mt-1 block" data-testid="map-send-costs">
+            {costs.map((c) => (
+              <span
+                key={c.id}
+                className={`flex items-baseline justify-between gap-3 text-t-caption ${c.strong ? 'text-ink' : 'text-ink-muted'}`}
+                data-testid={`map-send-cost-${c.id}`}
+                data-amount={c.amount}
+              >
+                <span className="whitespace-nowrap">{c.label}</span>
+                <span className="whitespace-nowrap tabular-nums">{formatPriceDelta(c.amount > 0 ? -c.amount : 0)}</span>
+              </span>
+            ))}
           </span>
         )}
       </Row>

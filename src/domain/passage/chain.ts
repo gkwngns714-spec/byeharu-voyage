@@ -12,11 +12,15 @@
 //                          the cheaper)
 //   the courses            the one course author's (`sailLegs`, as a plan's and the route builder's)
 //   open or shut           the SERVER's — voyage.leg_refusal, asked of every leg of the chain before it is offered
-//   the days and the cost  the SERVER's per leg (`days`, `supplies.cost`), added up here and nowhere else
+//   the time and the price the SERVER's — world.trip_cost (0360), asked of the legs it called open: the sailing of every leg
+//                          AND the real time she lies at each harbour between; supplies (her casks walked along the
+//                          trip), wages and the dock fee of every call, each its own figure, and their total. Before
+//                          0360 is in a world the read is missing: `trip` is null and the row falls back to the legs'
+//                          own days and supplies (world.route_legs), added up in `passageOf`
 //
 // Pure: no React, no store, no call. `live/passagePlan.ts` asks the server; the Map's place tray prints the answer.
 
-import type { PlanLine, RouteLeg, RouteLegAsk, ServedRefusal } from '../../lib/rpc'
+import type { PlanLine, RouteLeg, RouteLegAsk, ServedRefusal, TripCost } from '../../lib/rpc'
 import type { PlanLeg } from './legs'
 
 export type PassagePlan =
@@ -30,6 +34,8 @@ export type PassagePlan =
       days: number
       /** What the supplies for every leg cost her as her hold stands now (the server's figures, summed). */
       cost: number
+      /** THE WHOLE TRIP'S TIME AND PRICE as world.trip_cost serves them (0360); null where that read is not answered. */
+      trip: TripCost | null
     }
   | {
       kind: 'shut'
@@ -67,7 +73,7 @@ export function passageOf(legs: readonly PlanLeg[], served: readonly RouteLeg[])
     days += s.days
     cost += s.supplies?.cost ?? 0
   }
-  return { kind: 'open', stops: legs.slice(0, -1).map((l) => l.to), legs, days, cost }
+  return { kind: 'open', stops: legs.slice(0, -1).map((l) => l.to), legs, days, cost, trip: null }
 }
 
 /** The plan as the grammar's lines: one SAIL a leg, each with its proposed course (cmd.issue_lines queues all or none). */
