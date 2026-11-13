@@ -688,3 +688,19 @@ figures); the client never compares a number.
    hold. Then decide S4 from the harbours that lost their callers.
 
 Rollback of either light is the switch set false: every answer returns to its pre-image at once (asserted dark in 0216, 0396 and 0397).
+
+---
+
+## 11. Corrections to the sea table after it was lit (0401, 2026-11-14; docs/dev-log/2026-11-14-a-coast-sails-as-a-coast.md)
+
+Section 2 drew four coasts inside a crossing, against its own rule ("coastal means any hull sails it; the crossings carry the weight"). Measured on the
+remembered courses and corrected in `data/sea-zones.json` and migration 0401:
+
+- The North Atlantic south of 10 N is The Doldrums only between 45 W and 20 W. East of 20 W it is the Gulf of Guinea's coast (title 3, wave 12); west of
+  45 W the Caribbean Sea's (title 4, wave 12). Paramaribo's own sea is the Caribbean Sea.
+- The Philippine Sea west of 128 E is the Visayan Sea's coast (title 7, wave 12); the open sea east of it still asks 50.
+- The Kuroshio off Shikoku and Kyushu asks wave 12, not 16: at 16 no barca left the Seto Inland Sea, Japan's home water.
+- The South Atlantic has an ocean: north of 30 S, between 30 W and the meridian of Greenwich, is The Doldrums (wave 24). Section 2 cut it in two coastal
+  zones at 20 W; with Guinea open that was a way across on wave 12.
+
+The table of section 2 has 64 zones still; it now has 71 boxes.
