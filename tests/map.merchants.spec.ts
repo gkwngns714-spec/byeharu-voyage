@@ -6,7 +6,7 @@
 // player's fleets — `model.fleets`, the roles, the opening frame's focus and motion points — ever
 // sees one; `buildChartModel.length` stays 2; an own fleet wins a tie hit; a merchant's position is
 // COPIED from the served one; only the open merchant (the card lent her whole course — even a
-// straight two-vertex leg) draws a track; the eight nation inks exist and stand off the sea in both schemes.
+// straight two-vertex leg) draws a track; the eight nation inks exist and stand off the sea.
 //
 // BROWSER, with the merchants switched on (tests/npcOn.fixture.ts): at 390 × 844 from a Lisbon
 // start, merchant hulls are on the opening frame; a sailing one MOVES between beats; a tap opens the
@@ -727,14 +727,13 @@ test('with the shipped image (merchants dark) there are no merchant hulls and no
   // (PORT's "Merchants in port" section went with PORT, 2026-10-18; the map's list is the one list.)
 })
 
-test('the eight nation inks exist in both schemes and stand off the sea', async ({ page, request, baseURL }) => {
+test('the eight nation inks exist and stand off the sea', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.goto('map')
   await ready(page)
-  for (const theme of ['dark', 'light'] as const) {
-    const ratios = await page.evaluate((t) => {
-      document.documentElement.setAttribute('data-theme', t)
+  for (const theme of ['dark'] as const) {
+    const ratios = await page.evaluate(() => {
       const css = getComputedStyle(document.documentElement)
       const canvas = document.createElement('canvas')
       canvas.width = canvas.height = 1
@@ -763,7 +762,7 @@ test('the eight nation inks exist in both schemes and stand off the sea', async 
         out[n] = (Math.max(l, sea) + 0.05) / (Math.min(l, sea) + 0.05)
       }
       return out
-    }, theme)
+    })
     for (const [n, ratio] of Object.entries(ratios)) {
       expect(ratio, `${theme}: --color-nation-${n} against the sea`).toBeGreaterThanOrEqual(3)
     }

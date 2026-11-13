@@ -200,6 +200,8 @@ Colour on type: primary `ink`, secondary `ink-2`, tertiary `ink-3` (units, disab
 ### 4.4 Colour tokens — light and dark, both first-class
 Both palettes ship; `prefers-color-scheme` picks, the Cabin toggles. Dark stays the default for a night sea; light is a day sea.
 
+**2026-11-12: the owner removed the light scheme** ("the dark setting is default. remove the light one"). The game ships dark only: the `light` column below, the Cabin's Appearance control and the `prefers-color-scheme` pick are history, not law.
+
 | token | dark | light | meaning |
 |---|---|---|---|
 | `bg` | `#0A1018` | `#EEF2F6` | the ground under the sea gradient |

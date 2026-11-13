@@ -24,6 +24,8 @@ import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 //   REPAIRING     {fleet, points, cost, sim_hours}
 //   REPAIRED      {fleet}
 //   TOWED         {fleet, from, to, nm, fee}                  (0152 — from / to are CODES)
+//   FLEET_RENAMED {from, to}                                  (0354)
+//   ROOM_OPENED   {kind, step, price, room}                   (0354 — kind is FLEET or SHIP)
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
 //   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
 //   ENROLLED      {skill, code, port, cost}                       (0131 — enrolment in a skill)
@@ -163,6 +165,11 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     // 0321: a ship changed fleets in port.
     case 'SHIP_MOVED':
       return t('history.shipMoved', { ship: str(p, 'ship') ?? '', from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
+    // 0354: a fleet took a new name; a step of room was bought (kind FLEET or SHIP).
+    case 'FLEET_RENAMED':
+      return t('history.fleetRenamed', { from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
+    case 'ROOM_OPENED':
+      return t(str(p, 'kind') === 'SHIP' ? 'history.roomShip' : 'history.roomFleet', { amount: formatDucats(num(p, 'price') ?? 0) })
     // 0323: a timed battle is over. The sentence and the rounds open under it, as a voyage's report does.
     case 'BATTLE_REPORT': {
       const loot = num(p, 'loot')

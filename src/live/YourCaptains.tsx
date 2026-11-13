@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar, Button, Clip, FactsLine, Figure, Icon, Note, Row, Tray } from '../components/ui'
+import { Bar, Button, Clip, Facts, FactsLine, Figure, Icon, Note, Row, Tray } from '../components/ui'
 import { cmdCaptainTraitsSet, cmdPromoteCaptain } from '../lib/rpc'
 import type { Refusal, YourCaptain } from '../lib/rpc'
 import { formatInt, formatPctPoints } from '../lib/format'
@@ -7,6 +7,7 @@ import type { YourCaptainsFace } from './useYourCaptains'
 import { CaptainStats } from './CaptainStats'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
+import { focusWord, jobWord } from './captainWords'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // YOUR CAPTAINS — levels, homesickness and the traits each one uses (0160, docs/SKILLS_AND_CAPTAINS.md K6).
@@ -40,7 +41,6 @@ export function CaptainRows({ face }: { face: YourCaptainsFace }) {
       {captains.map((c, i) => {
         // her first trait speaks for her on the row, as it did on the tile; muted when nothing reads it yet
         const takesEffect = c.traits?.[0]?.in_use ?? false
-        const where = c.ship ? [c.ship, c.cabin_word].filter(Boolean).join(' · ') : tl('books.ashore')
         return (
           <Row
             key={c.code}
@@ -54,7 +54,7 @@ export function CaptainRows({ face }: { face: YourCaptainsFace }) {
             data-testid="your-captain"
           >
             <FactsLine>
-              <span>{[c.grade, c.job_word, where].filter(Boolean).join(' · ')}</span>
+              <Facts items={[c.grade, jobWord(c.job_word), c.ship, c.ship ? c.cabin_word : tl('books.ashore')]} />
             </FactsLine>
           </Row>
         )
@@ -99,7 +99,7 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
   return (
     <div data-testid="captain-sheet">
       <Row label={tl('books.grade')} value={captain.grade ?? ''} />
-      <Row label={tl('books.job')} value={`${captain.job_word ?? ''} · ${captain.focus_word ?? ''}`} />
+      <Row label={tl('books.job')} value={`${jobWord(captain.job_word) ?? ''} · ${focusWord(captain.focus_word) ?? ''}`} />
       <Row label={tl('books.where')} value={captain.ship ? `${captain.ship} · ${captain.cabin_word ?? ''}` : tl('books.ashore')} />
       {captain.homesick && <Row label={captain.homesick.line} tone="accent" data-testid="captain-homesick" />}
 
@@ -122,7 +122,7 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
         return (
           <Row
             key={t.code}
-            label={t.word}
+            label={jobWord(t.word)}
             tone={on ? 'default' : 'muted'}
             onClick={captain.can_change ? () => toggle(t.code) : undefined}
             data-testid={`captain-trait-${t.code}`}

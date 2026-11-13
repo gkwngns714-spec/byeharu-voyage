@@ -83,7 +83,7 @@ test.describe('data/region-tint.json is the build, not a hand', () => {
     }
   })
 
-  test('every region token is defined in BOTH schemes, and painted through its class', () => {
+  test('every region token is defined, and painted through its class', () => {
     const css = read('src/index.css')
     const tokensIn = (opener: string) => {
       const start = css.indexOf(opener)
@@ -97,9 +97,7 @@ test.describe('data/region-tint.json is the build, not a hand', () => {
       return [...css.slice(from, i).matchAll(/^\s*(--color-chart-region-[a-z-]+)\s*:/gm)].map((m) => m[1]).sort()
     }
     const night = tokensIn('@theme')
-    const day = tokensIn(":root[data-theme='light']")
     expect(night).toHaveLength(25)
-    expect(day).toEqual(night)
     for (const region of REGIONS) expect(night).toContain(`--color-chart-region-${region.id}`)
     // The class the JIT sees is written out in regions.ts, one per token.
     const source = read('src/chart/regions.ts')
@@ -213,7 +211,7 @@ async function openMap(page: Page) {
   await page.waitForTimeout(300)
 }
 
-for (const scheme of ['dark', 'light'] as const) {
+for (const scheme of ['dark'] as const) {
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
@@ -232,11 +230,6 @@ for (const scheme of ['dark', 'light'] as const) {
           `nothing served at ${baseURL} — run \`npm run build && npm run preview\` and re-run.`,
         )
         await openMap(page)
-        if (scheme === 'light') {
-          // The day sea is the app's own choice (features/profile/appearance.ts); the emulated
-          // preference decides it when nothing was chosen.
-          expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe('light')
-        }
 
         const off = await sheet(page)
         expect(off.pressed).toBe('false')

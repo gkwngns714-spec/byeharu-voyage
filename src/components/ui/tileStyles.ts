@@ -42,6 +42,15 @@ export function tileCellClass(): string {
 // the next cell.
 //
 // The column width is one custom property, set on the grid and read by its cells, so a second count from `lg` is one more class.
+//
+// ONE LINE A NAME, AND A LONG NAME TAKES TWO COLUMNS (2026-11-12, the owner on a phone: *"long words and sentences making new
+// messy lines"*). The wrapping line above is the floor: with nothing else it never breaks or cuts a word. But on a phone's three
+// columns it left a hole behind a long cell (`산루카르데바라메다` at 390 px: two cells and a gap where three stand), and a name
+// with spaces took three lines in one column (`Sanlucar / de / Barrameda`) and made its whole line taller. So `useWordSpans`
+// (TileGrid.tsx) measures each cell's one-line width and gives a cell that does not fit ONE column exactly TWO (or the line):
+// the name stands on one line and every cell stays on the column lines. Where a wide cell does not fit the rest of a line, the
+// cell before it takes that rest, so no hole is left inside the grid. Under 375 px a column is 92 px, so a cell gives its name
+// the room it can: 4 px of padding a side, not 8.
 
 /** The column counts a words grid may take. */
 export type WordColumns = 2 | 3
@@ -65,5 +74,5 @@ export const KEEP_WORDS_CLASS = 'min-w-min break-keep'
 /** The words grid and what it asks of each cell: a column wide, never under its longest word, words never broken. The cell rules
  *  are `!important` because a cell's own recipe (`tileCellClass`) says `min-w-0` at the same weight. */
 export function tileWordsGridClass(): string {
-  return 'flex flex-wrap gap-1.5 break-keep *:min-w-min! *:max-w-[var(--tile-w)]! *:shrink! *:grow! *:basis-[calc(var(--tile-w)-1rem)]!'
+  return 'flex flex-wrap gap-1.5 break-keep *:min-w-min! *:max-w-[var(--tile-w)]! *:shrink! *:grow! *:basis-[calc(var(--tile-w)-1rem)]! max-[374px]:*:px-1!'
 }

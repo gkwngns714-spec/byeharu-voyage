@@ -75,9 +75,11 @@ export function TopBar() {
   })
 
   const showCountdown = isTradeRoute(pathname) && priceEdgeMs !== null
+  const korea = formatKoreaTime(nowMs)
+  const bigPurse = ducats !== null && ducats >= 1_000_000
 
   return (
-    <header className="flex h-8 shrink-0 items-center justify-between gap-3 px-gutter">
+    <header className="flex h-8 shrink-0 items-center justify-between gap-2 px-gutter sm:gap-3">
       {/* Left: how long the quay's prices stand. An empty span holds the slot when there is
           nothing true to say, so the purse does not slide across the bar between tabs. */}
       {/* Cut only through Clip (row 201): on a phone the date, hour and price countdown can outrun
@@ -101,7 +103,10 @@ export function TopBar() {
         </span>
         {showCountdown && (
           <>
-            {' · '}{t('shell.prices')} <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText={t('shell.now')} />
+            {' · '}
+            {/* The countdown's word is for a glass with room for it (2026-11-12): at 320 px it cut the hour off. */}
+            <span className="hidden min-[375px]:inline">{t('shell.prices')} </span>
+            <Countdown untilMs={priceEdgeMs} nowMs={nowMs} dueText={t('shell.now')} />
           </>
         )}
       </Clip>
@@ -113,10 +118,17 @@ export function TopBar() {
           korea since i am in korea"*) — the same instant as the game's clocks on the left, printed
           in Asia/Seoul (lib/format/time.ts formatKoreaTime) and ticking with the shell's one-second
           beat. Fixed width digits, so the bar does not shift as the seconds turn. */}
-      <span className="ml-auto shrink-0 text-t-caption text-ink-muted">
-        {t('shell.kst')}{' '}
+      {/* A PHONE'S STRIP HOLDS EVERY FIGURE WHOLE (2026-11-12, the owner: *"word box overlapping"*). Measured at 390 px in
+          Korean on Trade: the date, the hour, the price countdown, this clock with its word and the purse are 409 px in a
+          358-px bar, and the date was cut to "12:…". So the clock's WORD stands only where there is room for it: from 375
+          px on a screen with no price countdown, from `sm` on one with it; and under 375 px beside the countdown the
+          clock itself gives way (the phone's own status bar shows the hour), as it does on any phone once the purse is
+          seven figures; beside the countdown on a phone, and under 375 px, it reads to the minute. The digits are never cut. */}
+      <span className={`ml-auto shrink-0 text-t-caption text-ink-muted ${showCountdown ? (bigPurse ? 'max-sm:hidden' : 'max-[374px]:hidden') : ''}`}>
+        <span className={showCountdown ? 'hidden sm:inline' : 'hidden min-[375px]:inline'}>{t('shell.kst')} </span>
         <span data-testid="kst-clock" className="tabular-nums text-ink">
-          {formatKoreaTime(nowMs)}
+          {korea.slice(0, 5)}
+          <span className={showCountdown ? 'max-sm:hidden' : 'max-[374px]:hidden'}>{korea.slice(5)}</span>
         </span>
       </span>
 

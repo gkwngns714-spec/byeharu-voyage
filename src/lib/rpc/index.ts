@@ -121,6 +121,9 @@ import type {
   LevelCrossing,
   ShipMoves,
   ShipMoved,
+  HouseRoom,
+  RoomBought,
+  FleetRenamed,
   FineReceipt,
   TaxSet,
   NationStandings,
@@ -896,6 +899,21 @@ export function worldShipMoves(fleetId: string): Promise<RpcResult<ShipMoves>> {
 /** Move a ship into `toFleetId`, or into a new fleet called `newName` (0321). Same port, no orders running; the server judges. */
 export function cmdMoveShip(shipId: string, toFleetId: string | null, newName: string | null): Promise<RpcResult<ShipMoved>> {
   return call<ShipMoved>('cmdMoveShip', [shipId, toFleetId, newName])
+}
+
+/** The room a company has, and how more opens (0354). `on` false while fleet room is dark: nothing can be bought. */
+export function worldHouseRoom(): Promise<RpcResult<HouseRoom>> {
+  return call<HouseRoom>('worldHouseRoom', [])
+}
+
+/** Buy one step of room, for fleets or for ships in a fleet (0354). The price is the server's; dark it refuses E_NOT_IN_USE. */
+export function cmdBuyRoom(kind: 'FLEET' | 'SHIP'): Promise<RpcResult<RoomBought>> {
+  return call<RoomBought>('cmdBuyRoom', [kind])
+}
+
+/** Rename a fleet of yours (0354). The name's rules are the server's: 3 to 24 letters, not one you already use. */
+export function cmdRenameFleet(fleetId: string, name: string): Promise<RpcResult<FleetRenamed>> {
+  return call<FleetRenamed>('cmdRenameFleet', [fleetId, name])
 }
 
 /** What `cmdAttack` would do (0327): the real attack, rolled back: the words, or the refusal it would give. */
