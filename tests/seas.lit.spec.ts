@@ -80,6 +80,9 @@ for (const glass of [
       await expect(page.locator('[data-testid="sea-row"][data-open="yes"]')).toHaveCount(12)
       await expect(page.locator('[data-testid="sea-row"][data-open="no"]')).toHaveCount(52)
       await expect(page.locator('[data-testid="sea-row"][data-sea="MED"]')).toHaveAttribute('data-open', 'yes')
+      // HOME WATERS: a company of Portugal: her capital's sea is of the first rank, so the twelve seas of that rank say so and no other does
+      await expect(page.locator('[data-testid="sea-row"][data-home="yes"]')).toHaveCount(12)
+      await expect(page.locator('[data-testid="sea-row"][data-sea="MED"]').getByTestId('sea-row-home')).toHaveText(ko ? '본국 바다' : 'Home waters')
       const ocean = page.locator('[data-testid="sea-row"][data-sea="NOR-MID"]')
       await expect(ocean).toHaveAttribute('data-open', 'no')
       // title AND hull are short there: both asks and both pieces of advice are said

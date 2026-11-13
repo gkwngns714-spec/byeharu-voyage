@@ -1,7 +1,7 @@
 import type { SeaZoneMap } from '../../lib/rpc'
 
 // THE SEAS ON THE CHART, UNPACKED — which zone a point of water is in, as the server's own zone raster says
-// (`world.sea_zone_map`, 0391: public.sea_zone_cells, the raster the sail door samples a course on).
+// (`world.sea_zone_map`, 0396: public.sea_zone_cells, the raster the sail door samples a course on).
 //
 // The client never works out a zone from a sea and its boxes: it reads the cell. Row 0 is the north edge, column 0
 // is 180° W. Pure: no React, no store, no canvas (the chart turns `closedMask` into a picture).

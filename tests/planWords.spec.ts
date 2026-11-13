@@ -91,13 +91,13 @@ const lit = reachBoard({ fleet: { speed_kn: 5 } as never, reach: { navigation: 2
 
 test('lit, a city the sea closes says what the sea asks, not "too far"', () => {
   const words = reachWords({ ...noLeg, needs: null, sea: closed }, lit)
-  // the one wording of a closed sea (components/ui/seaWallWords.ts). These figures are a world's before 0391: it does
+  // the one wording of a closed sea (components/ui/seaWallWords.ts). These figures are a world's before 0396: it does
   // not say which ask is short, so both are printed beside both of hers and no advice is given
   expect(words).toBe('Macaronesia and the Canary Current is closed to this fleet. It asks title 2 and wave resistance 10. You have title 1 and wave resistance 12')
   expect(words).not.toContain('too far')
 })
 
-test('lit, the server says which ask is short (0391): the wall names that one and what to do', () => {
+test('lit, the server says which ask is short (0396): the wall names that one and what to do', () => {
   const short = { ...closed, refusal: { ...closed.refusal, figures: { ...closed.refusal.figures, short_title: true, short_wave: false } } }
   expect(reachWords({ ...noLeg, needs: null, sea: short }, lit)).toBe(
     'Macaronesia and the Canary Current is closed to this fleet. It asks title 2. Yours is 1. Raise Trading and Exploration to level 2',

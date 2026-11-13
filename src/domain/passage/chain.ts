@@ -48,7 +48,7 @@ export type PassagePlan =
       noStops: boolean
       /** A SEA CLOSED TO HER is what stops it (the server's own figures, lib/rpc/seaWall.ts): the leg that is shut is
        *  shut by a sea, or it is too far in one go and the sea on the direct course is why no harbours between open it
-       *  (world.route_legs `sea`, 0391). Null when the sea is not the reason. */
+       *  (world.route_legs `sea`, 0396). Null when the sea is not the reason. */
       sea: SeaWall | null
     }
 

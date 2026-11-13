@@ -11,27 +11,20 @@ import { useWorld } from './worldStore'
 // as chips — the flag and the name through HullCountry. Two callers: Start your company
 // (SignTheBook) and Profile's change of country. It chooses; the server decides (cmd.found_house,
 // cmd.change_country) and its refusal is printed by the caller.
-const NONE: readonly string[] = []
-
 export function NationPicker({
   value,
   onChange,
   label,
-  closed = NONE,
 }: {
   value: string
   onChange: (code: string) => void
   /** Names the set for assistive tech. Not painted. */
   label: string
-  /** Countries not offered here: those whose capital's sea is closed to a new company while the sea conditions bite
-   *  (the server's list, world.sea_conditions `far_powers`; cmd.found_house refuses them). The Start sheet passes it;
-   *  a company changing country is offered every one. */
-  closed?: readonly string[]
 }) {
   const t = useT()
   const nationByCode = useWorld((s) => s.nationByCode)
   const nations = Object.values(nationByCode)
-    .filter((n) => n.joinable && !closed.includes(n.code))
+    .filter((n) => n.joinable)
     .sort((a, b) => a.name.localeCompare(b.name))
   return (
     <>

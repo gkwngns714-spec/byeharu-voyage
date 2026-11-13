@@ -10,7 +10,7 @@ import { NoAnswer } from './NoAnswer'
 
 // THE SEAS — every sea with what it asks, and whether it is open to the fleet in hand (design C3).
 //
-// Everything printed is served (world.sea_conditions, 0215 + 0391): the two asks, her title, the fleet's wave
+// Everything printed is served (world.sea_conditions, 0215 + 0396): the two asks, her title, the fleet's wave
 // resistance, and for each sea that refuses her the rule's own figures. A closed sea says what it asks that she does
 // not hold and what to do, in the one wording (components/ui/seaWallWords.ts). While the sea conditions are dark the
 // face lists what each sea asks and calls none closed.
@@ -23,6 +23,9 @@ export function SeasFace({ query, search }: { query: string; search: ReactNode }
   const seas = useFleetSeas(picked)
   const fleets = conditions.view?.fleets ?? []
   const title = conditions.view?.title ?? null
+  // HOME WATERS (0396): seas of the rank of her capital's sea never ask her title. Which seas is the server's (`home_sea`): the rank is read, never compared with hers.
+  const homeRank = conditions.view?.home_sea?.title_min ?? null
+  const isHome = (r: SeaRow) => homeRank !== null && r.zone.title_min === homeRank
 
   const rows = useMemo(() => {
     const needle = fold(query.trim())
@@ -48,7 +51,13 @@ export function SeasFace({ query, search }: { query: string; search: ReactNode }
           data-testid="sea-row"
           data-sea={r.zone.code}
           data-open={walled ? (r.wall === null ? 'yes' : 'no') : undefined}
+          data-home={isHome(r) ? 'yes' : undefined}
         >
+          {isHome(r) && (
+            <span className="block text-t-caption text-accent" data-testid="sea-row-home">
+              {t('seas.homeWaters')}
+            </span>
+          )}
           {r.zone.harbours !== undefined && (
             <span className="block text-t-caption text-ink-faint">{t('seas.harbours', { n: formatInt(r.zone.harbours), count: r.zone.harbours })}</span>
           )}
@@ -91,6 +100,7 @@ export function SeasFace({ query, search }: { query: string; search: ReactNode }
       )}
       <Hint>{t('seas.howTitle')}</Hint>
       <Hint>{t('seas.howWaves')}</Hint>
+      {homeRank !== null && <Hint>{t('seas.howHome')}</Hint>}
     </div>
   )
 

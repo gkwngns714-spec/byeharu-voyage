@@ -4,7 +4,6 @@ import { cmdFoundHouse } from '../../lib/rpc'
 import type { Refusal } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { NationPicker } from '../../live/NationPicker'
-import { useSeaConditions } from '../../live/useSeaConditions'
 import { useT } from '../../lib/i18n'
 
 // SIGN THE BOOK — the first thing a captain on a real server ever sees, and until 2026-08-20 it
@@ -40,10 +39,6 @@ export function SignTheBook() {
   const [nation, setNation] = useState('PRT')
   const capitalCode = nationByCode[nation]?.capital ?? null
   const capital = capitalCode ? (portByCode[capitalCode]?.name ?? capitalCode) : null
-  // WHILE THE SEA CONDITIONS BITE a company is founded in open water only: the countries whose capital's sea asks a
-  // title above the first are not offered (the server's list, 0391; cmd.found_house refuses them with E_FAR_POWER).
-  const sea = useSeaConditions().view
-  const farPowers = sea?.bite ? sea.far_powers : undefined
   const [busy, setBusy] = useState(false)
   const [refusal, setRefusal] = useState<Refusal | null>(null)
 
@@ -103,7 +98,7 @@ export function SignTheBook() {
 
         <p className="mt-4 text-t-label text-ink-muted">{t('found.countryQ')}</p>
         <div className="mt-2">
-          <NationPicker value={nation} onChange={setNation} label={t('found.country')} closed={farPowers} />
+          <NationPicker value={nation} onChange={setNation} label={t('found.country')} />
         </div>
 
         {/* A refusal is DATA (DESIGN F.5): a sentence and at least one fix, printed as it arrives —

@@ -1,7 +1,7 @@
 // A SEA THAT IS CLOSED TO HER, AS THE SERVER SAID IT — the one reading of the sea rule's answer.
 //
 // `public.sea_refusal` (0215) is the only place a title or a wave is compared with what a sea asks. It answers a
-// refusal `E_SEA_CLOSED` whose figures name the sea, its two asks, her two figures and (0391) which of the two is
+// refusal `E_SEA_CLOSED` whose figures name the sea, its two asks, her two figures and (0396) which of the two is
 // short. The same figures arrive four ways: on a refused order or dry run (the envelope, `Refusal.sea`), on a Trade
 // board row (`sea.refusal`), on a leg of `world.route_legs` (`shut`) and on a standing route that stopped. Every
 // screen reads them HERE and prints them with `seaWallWords` (components/ui): nothing compares a number on the
@@ -18,7 +18,7 @@ export interface SeaWall {
   /** Hers; null for a fleet with no hull, or when the server judged the title alone. */
   title: number | null
   wave: number | null
-  /** 0391: which ask is above hers. Null on a world before 0391: the wall then prints both asks beside both of hers. */
+  /** 0396: which ask is above hers. Null on a world before 0396: the wall then prints both asks beside both of hers. */
   shortTitle: boolean | null
   shortWave: boolean | null
 }
