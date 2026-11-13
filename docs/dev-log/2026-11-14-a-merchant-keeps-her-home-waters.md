@@ -133,3 +133,20 @@ Europe either, at any title: the Trade board's pair table shows it open (a strai
 
 `no-open-leg.sql` now counts as the guard does since 0400 (floors and coast legs) and so needs 0400 in the world; wanted after the deploy: no row. Its
 first form, which the lead ran at head 0399, is at commit 5a58e7c3.
+
+## Proof 95 was red on CI, and why (2026-11-14, evening)
+
+`MH_LAP_START` called the real planner and asserted that the merchant was not laid up and sailed an open loop. On CI's world the planner chose a loop that
+did not pay (net -16) and laid her up by the old rule (0181). That is the market's doing, not the sea's: every built world has its own `world_secret` and its
+own prices. It was not a fault in the guard: its `ready: false` in that message is only the switch being on inside the proof (`ready` is "not lit and ...").
+
+The proof now asserts only what the sea rule guarantees, for the probe merchant where she lies: lit, she is offered at least one leg and every offered leg
+is held with her floors; no offered leg touches a sea her floors do not hold; the guard's count of merchants without an open leg does not rise because of
+her; dark, her legs are the same text. It no longer calls `public.npc_plan`, and no longer reads `paused_reason`. `MH_CAPE_COAST` lost its planner call
+too. Proof 92 (0397) still plays the planner for the sea's own claim there.
+
+`scripts/ops/harness/sea-merchants/dice-0400.mjs` runs proof 95 on the cached world under N other secrets and markets (every harbour's stock of every
+good multiplied by its own random factor between 0.2 and 1.8): 12 of 12 green.
+
+`MH_CAPE_COAST` also holds on a world where 0401 (a coast sails as a coast) is in: there a barca at Cape Coast holds remembered legs again, the case
+cannot be made, and the marker asserts that outcome instead.
