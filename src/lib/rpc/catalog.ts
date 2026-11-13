@@ -441,6 +441,9 @@ const TABLE = {
   // 0321 (docs/FLEETS_AND_SLOTS.md section 2.4): a ship changes fleets in port, and what the fleet page may offer. Dark: E_NOT_IN_USE and {on: false}.
   // 0325: the Levels page of the Command desk — every level of the company in one read.
   worldLevels: { schema: 'world', fn: 'levels', args: [] },
+  // 0356 (docs/REPUTATION.md section 5, R4): the caller's level crossings paid (the LEVEL_UP events and their Reputation gifts). No argument.
+  // NOT `mutates`: it moves no kept live read (no market, purse, fleet or town hall); the shell re-reads the house and the ledger itself.
+  cmdLevelUp: { schema: 'cmd', fn: 'level_up', args: [] },
   worldShipMoves: { schema: 'world', fn: 'ship_moves', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdMoveShip: { schema: 'cmd', fn: 'move_ship', mutates: true, args: [{ name: 'p_ship', type: 'uuid' }, { name: 'p_to', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
   // 0354 (docs/FLEETS_AND_SLOTS.md sections 2.2, 2.3): the room a company has and how more opens; one step bought with gold (dark: E_NOT_IN_USE); a fleet renamed.
@@ -552,6 +555,19 @@ const TABLE = {
     args: [
       { name: 'p_code', type: 'text' },
       { name: 'p_traits', type: 'text[]' },
+    ],
+  },
+  // 0355 (docs/REPUTATION.md R2): one captain's skills, each with its step, her grade's ceiling and what the next step costs; and the step itself,
+  // bought with Reputation (the officer code and the skill; no player id). The server refuses by the same reading the read prints (`can`, `why`).
+  worldCaptainSkills: { schema: 'world', fn: 'captain_skills', args: [{ name: 'p_code', type: 'text' }] },
+  cmdCaptainSkillUp: {
+    schema: 'cmd',
+    fn: 'captain_skill_up',
+    mutates: true,
+    invalidates: ['worldCaptains'],
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_trait', type: 'text' },
     ],
   },
   // 0162 (K8): promote a captain — her ship docked, her level, the items in storage there.

@@ -76,28 +76,38 @@ export function TradeCard({
       data-testid="trade-good"
       data-good={r.code}
     >
-      <span className="flex min-w-0 flex-wrap content-start items-start gap-x-1.5 gap-y-0.5">
-        <Icon name={goodIcon(r.code, r.category)} size={18} className="mt-px shrink-0 text-ink-muted" />
-        <span className="min-w-0 break-words text-t-label font-medium leading-tight text-ink" data-testid="trade-good-name">
-          {r.name}
-          {/* 0255 (E6b): the city wants this good and pays a multiple for it this period */}
-          {r.row?.wanted != null && (
-            <span className="text-t-caption text-accent" data-testid="trade-good-wanted">
-              {' '}
-              {t('ui.wanted', { mult: String(Number(r.row.wanted)) })}
+      {/* THE HEAD IS TWO LINES, THE SAME TWO IN EVERY CARD (2026-11-13). It was one wrapping line: the name, the class marks
+          and "On board 0" stood together where they fit, and where they did not (a longer name, a narrower card) the marks or
+          the count dropped to a second line. So in one board "On board 0" stood beside one name and under the next, and a row
+          whose heads all fit was 20 px shorter than the row under it (measured at 1,440: rows of 153 and 173 px). Now the
+          name has the first line to itself (so it turns less often, and only at a space: `KEEP_WORDS_CLASS`), and the marks
+          and the count stand on the second, the count always at the right. Every row of cards is one height. */}
+      <span className="flex min-w-0 flex-col gap-y-0.5">
+        <span className="flex min-w-0 flex-wrap items-start gap-x-1.5 gap-y-0.5">
+          <Icon name={goodIcon(r.code, r.category)} size={18} className="mt-px shrink-0 text-ink-muted" />
+          <span className={`flex-1 ${KEEP_WORDS_CLASS} text-t-label font-medium leading-tight text-ink`} data-testid="trade-good-name">
+            {r.name}
+            {/* 0255 (E6b): the city wants this good and pays a multiple for it this period */}
+            {r.row?.wanted != null && (
+              <span className="text-t-caption text-accent" data-testid="trade-good-wanted">
+                {' '}
+                {t('ui.wanted', { mult: String(Number(r.row.wanted)) })}
+              </span>
+            )}
+          </span>
+        </span>
+        <span className="flex min-h-[1.1875rem] min-w-0 flex-wrap items-center gap-x-1.5">
+          {/* THE CLASS MARKS under the name, in a box the height of the icon's line: the stacked cluster (GoodKind compact,
+              20 px) may stand past it by a pixel but never grows the card, and the name's own box never carries the cluster's
+              give-back margin (which read as a cut name: tests/desk.terminal.spec.ts). */}
+          {r.row && (
+            <span className="flex h-[1.1875rem] shrink-0 items-center" data-testid="trade-good-marks">
+              <GoodKind compact rarity={r.row.rarity} goodClass={r.row.class} />
             </span>
           )}
-        </span>
-        {/* THE CLASS MARKS beside the name, in a box the height of the icon's line: the stacked cluster (GoodKind compact,
-            20 px) may stand past it by a pixel but never grows the card, and the name's own box never carries the cluster's
-            give-back margin (which read as a cut name: tests/desk.terminal.spec.ts). */}
-        {r.row && (
-          <span className="flex h-[1.1875rem] shrink-0 items-center" data-testid="trade-good-marks">
-            <GoodKind compact rarity={r.row.rarity} goodClass={r.row.class} />
+          <span className={`ml-auto shrink-0 text-t-caption tabular-nums ${r.units > 0 ? 'text-ink' : 'text-ink-faint'}`} data-testid="trade-good-aboard">
+            {t('desk.aboardN', { n: formatInt(r.units) })}
           </span>
-        )}
-        <span className={`ml-auto shrink-0 text-t-caption tabular-nums ${r.units > 0 ? 'text-ink' : 'text-ink-faint'}`} data-testid="trade-good-aboard">
-          {t('desk.aboardN', { n: formatInt(r.units) })}
         </span>
       </span>
       {/* 0348: THE PRICES, THE BEST SALE AND THE DAY LINE ARE ONE BLOCK, never under 44 px (the tap-target floor). With a

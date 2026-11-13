@@ -57,6 +57,8 @@ import type {
   SeatedCaptain,
   CaptainsView,
   CaptainStatsView,
+  CaptainSkillsView,
+  CaptainSkillUp,
   TraitsSet,
   PromotedCaptain,
   AugmentedFitting,
@@ -118,6 +120,7 @@ import type {
   CountryChanged,
   DonateReceipt,
   LevelsView,
+  LevelCrossing,
   ShipMoves,
   ShipMoved,
   HouseRoom,
@@ -609,6 +612,16 @@ export function worldCaptainStats(code: string): Promise<RpcResult<CaptainStatsV
   return call<CaptainStatsView | null>('worldCaptainStats', [code])
 }
 
+/** 0355 — one captain's SKILLS (`world.captain_skills`): each skill's step, her grade's ceiling, the next step's cost and whether the door would take it. By officer code; null when you keep no such captain. */
+export function worldCaptainSkills(code: string): Promise<RpcResult<CaptainSkillsView | null>> {
+  return call<CaptainSkillsView | null>('worldCaptainSkills', [code])
+}
+
+/** 0355 — one step of one skill of a captain, bought with Reputation. Only ashore or in port; the refusal says why (the same reading `worldCaptainSkills` prints). */
+export function cmdCaptainSkillUp(code: string, trait: string) {
+  return call<CaptainSkillUp>('cmdCaptainSkillUp', [code, trait])
+}
+
 /** 0160 — the traits a captain USES (up to her grade's slots, among those she knows). Only ashore or
  *  in port; the refusal says why. */
 export function cmdCaptainTraitsSet(code: string, traits: readonly string[]) {
@@ -889,6 +902,12 @@ export function worldWatchlist(fleetId: string | null): Promise<RpcResult<Watchl
 /** 0325: the Levels page's one read: tracks, title, room, hulls, and regard while it is lit. */
 export function worldLevels(): Promise<RpcResult<LevelsView>> {
   return call<LevelsView>('worldLevels', [])
+}
+
+/** Pay the caller's level crossings (0356): one `LEVEL_UP` event and its Reputation gift a level, once ever. Asked by the
+ *  shell alone (worldStore), once, when a served level stands above its served mark. */
+export function cmdLevelUp(): Promise<RpcResult<{ levels: LevelCrossing[] }>> {
+  return call<{ levels: LevelCrossing[] }>('cmdLevelUp', [])
 }
 
 /** What the fleet page may offer for this fleet's ships (0321). `on` false while dark: the page draws nothing. */

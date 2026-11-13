@@ -6,7 +6,7 @@ import { ShellFrame } from '../../app/ShellFrame'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
 import { useCommandDraft } from '../../domain/order'
 import { MarketLeft } from '../../live/MarketLeft'
-import { PRODUCTION_PLACE } from '../../live/cityFaces'
+import { PORT_PLACE, PRODUCTION_PLACE } from '../../live/cityFaces'
 import { PortProduction } from '../../live/PortProduction'
 import { useCityKinds } from '../../live/useCityKind'
 import { useTownHall } from '../../live/useTownHall'
@@ -259,7 +259,7 @@ function CityBody({
 
   // WHICH PLACE IS OPEN — the Town Hall until a tile is pressed.
   // `?place=production` is the door the desk's Production tab and every old Storage link goes through.
-  const [selected, setSelected] = useState<CitySelection>(params.get('place') === PRODUCTION_PLACE ? PRODUCTION_PLACE : 'hall')
+  const [selected, setSelected] = useState<CitySelection>(params.get('place') === PRODUCTION_PLACE ? PRODUCTION_PLACE : params.get('place') === PORT_PLACE ? PORT_PLACE : 'hall')
 
   return (
     <CityFrame
