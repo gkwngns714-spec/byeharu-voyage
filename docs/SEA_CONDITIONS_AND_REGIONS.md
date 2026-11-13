@@ -704,3 +704,16 @@ remembered courses and corrected in `data/sea-zones.json` and migration 0401:
   zones at 20 W; with Guinea open that was a way across on wave 12.
 
 The table of section 2 has 64 zones still; it now has 71 boxes.
+
+## 12. S4 as built (0404, 2026-11-14; docs/dev-log/2026-11-14-far-traders.md)
+
+Sections 4 and 6 planned 24 far-trader houses at the seven European yards. Built: 24 houses, 20 hulls of size 4 and 4 of size 5, as counted there, but:
+
+- **Homed at the far harbours themselves** (15 of them; nine have two houses). The planner plans a merchant from her loop's first stop and every loop it
+  offers returns there, so only a house homed at the harbour is sure to call there. A Lisbon house would reach Ambon only if Ambon ranked among her six
+  trade candidates.
+- **Trade hulls**: taforeia, retour, nao, hourque (size 4, wave 51) and indiaman, naucarr (size 5, wave 63), each with deal planking and a sheet anchor
+  (+6). The galeao the design named is a fighting hull; batavia and caracca are not used.
+- **Port Royal has no house**: it is a pirate home, served by the pirates' own merchants (0341). The sea does not close it.
+- **`npc_fleet_max` rises by 24**: the room the design counted was taken by the pirate merchants.
+- **The assert** is on the houses themselves (wave, an open loop from home), not on `sea_leg_asks` from each home.

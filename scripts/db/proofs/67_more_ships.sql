@@ -11,7 +11,7 @@
 -- @pass MORE_SHIPS_REACH     two built fleets fight through the engine: at long range only the longer reach fires, and the same fight twice is the same fight
 -- @pass MORE_SHIPS_CREW      a built boarder with her full crew is never taken by a raid of one xebec, and throws it back
 -- @pass MORE_SHIPS_ESCORT    a built cargo carrier's fleet alone is taken by a raid of one xebec every time; the same side with a built escort beside it holds in most fights
--- @pass MORE_SHIPS_NPC       no merchant, loadout, crown knob or NPC ship is given a new class, and the classes the NPC knobs name have the figures they had
+-- @pass MORE_SHIPS_NPC       no merchant, loadout, crown knob or NPC ship is given a new class (but 0404's far traders: taforeia, nao, hourque), and the classes the NPC knobs name have the figures they had
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -282,11 +282,12 @@ $b$
 
   -- ── NO NPC IS GIVEN ONE ──
   if exists (select 1 from public.npc_line_hulls x where x.class_code = any (v_new) or x.live_class = any (v_new))
-     or exists (select 1 from public.npc_loadouts x where x.class_code = any (v_new))
+     or exists (select 1 from public.npc_loadouts x where x.class_code = any (v_new) and x.class_code not in ('taforeia', 'nao', 'hourque'))   -- 0404: the far traders' three cargo carriers (slice S4) are the one exception
      or exists (select 1 from public.world_config k where jsonb_typeof(k.value) = 'string' and k.value #>> '{}' = any (v_new))
      or exists (select 1 from public.crown_classes() c where c.class_code = any (v_new))
      or exists (select 1 from public.ships s join public.ship_classes c on c.id = s.class_id
-                 where c.code = any (v_new) and s.fleet_id <> all (v_fleets)) then
+                 where c.code = any (v_new) and s.fleet_id <> all (v_fleets)
+                   and not (c.code in ('taforeia', 'nao', 'hourque') and exists (select 1 from public.npc_fleets nf where nf.fleet_id = s.fleet_id))) then   -- 0404
     raise exception 'PROOF 67 FAIL: a merchant, a loadout, a knob, a crown or a ship that is not this proof''s names a new class';
   end if;
   -- the raiders' class, as docs/COMBAT_LOG.md 2.5 reads it, and one xebec of raid is one xebec
