@@ -1,4 +1,4 @@
-# 2026-11-13: a merchant sails the seas her hull can hold (0392, slice S3, dark)
+# 2026-11-13: a merchant sails the seas her hull can hold (0397, slice S3, dark)
 
 **Owner row 166** (2026-10-20): far seas ask a title and the fleet's wave resistance, a hard wall, and *"NPCs under the same rule"*. Design:
 docs/SEA_CONDITIONS_AND_REGIONS.md sections 1, 4 and the S3 row of section 6. 0215 built the data and the one rule, 0216 the player's gate. This is the
@@ -19,7 +19,7 @@ merchants' half. **Nothing is lit and nothing is deployed by this PR**: `sea_con
 - `public.npc_loop_candidates`: 0120 (written), 0186, 0264, 0341. The three hunks are the three calls of `npc_feasible_legs`, each inside a line 0341 wrapped in `npc_legs_open`. Substring hunks, each once.
 - `public.npc_plan`: 0142, 0150, 0152, 0181, 0186, 0203 (by the comments in its live body). Hunks: the last declared variable (`v_notes`), 0203's `v_unsail := coalesce(v_unsail, true);`, 0186's candidate condition.
 - `public.npc_feasible_legs`: 0120, 0139, 0203. Dropped and recreated (arity).
-- Overlap with open branches: none of 0364, 0366, 0367 (in batch-6) or 0391 (the players' side, another branch) touches these three bodies.
+- Overlap with open branches: none of 0364, 0366, 0367 (in batch-6) or 0396 (the players' side, another branch) touches these three bodies.
 
 ## One correction to the design
 
@@ -27,7 +27,7 @@ The design said (section 4) that "a loop that cannot be sailed is reviewed at on
 only when her loop leaves her nothing, when she lies off it, or on every sixth lap. Without the third hunk a merchant on a paying loop the sea closes would be
 written with no BUY and, with an empty hold, **laid up** until her sixth lap. The third hunk fetches the candidates at once for that case (lit only).
 
-## The "no open loop" simulation (local cached world, head 0367 + 0392; `scripts/ops/harness/sea-merchants/sim.mjs`)
+## The "no open loop" simulation (local cached world, head 0367 + 0397; `scripts/ops/harness/sea-merchants/sim.mjs`)
 
 Every one of the 837 merchants started on her route where she lies and planned alone at her lap start by the real `public.npc_plan`, once with the switch
 off and once lit, each arm rolled back. "Closed" is the planner's own reading (`npc_loop_sea_shut`), asked in both arms.
@@ -60,9 +60,9 @@ off and once lit, each arm rolled back. "Closed" is the planner's own reading (`
 
 | | loops on offer (`npc_loop_candidates`) avg / max | a lap start (`npc_plan`, alone) avg / max |
 |---|---|---|
-| before 0392 | 16 ms / 114 ms | 234 ms / 404 ms |
-| 0392, switch off | 14 ms / 27 ms | 230 ms / 359 ms |
-| 0392, lit | 21 ms / 47 ms | 214 ms / 434 ms |
+| before 0397 | 16 ms / 114 ms | 234 ms / 404 ms |
+| 0397, switch off | 14 ms / 27 ms | 230 ms / 359 ms |
+| 0397, lit | 21 ms / 47 ms | 214 ms / 434 ms |
 
 Whole pass (837 plans): dark 170 s, lit 160 s; per plan 201 ms dark, 189 ms lit. No growth, so 0203's 277 ms line is not crossed by this file.
 
@@ -80,7 +80,7 @@ The file itself: 3.3 to 5.3 s locally, 2.6 s of it the memo's fill (budget 45 s;
   dark ones less those her hull cannot hold; the door answers null for a merchant); nothing of money, ships or routes written.
 - `scripts/db/proofs/92_a_merchant_sails_the_seas_her_hull_can_hold.sql`, 9 markers, on the world's own merchants. SM_PLAN's subject is a merchant the OLD
   planner keeps buying on a closed loop (planned dark first), so the marker fails if the planner does not mark her loop.
-- `scripts/ops/harness/sea-merchants/proof-0392.mjs`: red first; the dark scene equal before and after (the loops offered to every fourth merchant, and a
+- `scripts/ops/harness/sea-merchants/proof-0397.mjs`: red first; the dark scene equal before and after (the loops offered to every fourth merchant, and a
   real plan pass over 60 merchants: counters, stops, lines, pauses, presets, all equal); proof 92 green; **proofs 12 and 47 green on it** (the only proofs that
   name the planner); 11 mutations red.
 - `tests/news.lint.spec.ts`, `tests/harness.guard.spec.ts` green. Nothing is registered for clients (`rpc.surface` untouched: the entry-point count is asserted
@@ -100,7 +100,7 @@ at +5, +15, +30 minutes. Rollback: the switch.
 4. Nine more lay-ups are accepted and watched (`after-lit.sql`, `laid_up`); no softer rule.
 5. The two switches are independent in code. The order to light them is the lighting file's matter.
 6. S4 (far traders) is not built; its absence costs fourteen harbours their merchant calls (above).
-7. Proof number 70 (69 is left for 0391).
+7. Proof number 70 (69 is left for 0396).
 
 ## Not verified
 
@@ -112,4 +112,4 @@ at +5, +15, +30 minutes. Rollback: the switch.
 - A merchant founded after the deploy with a course the memo has not seen is sampled live (correct, slower); `after.sql` and `after-lit.sql` count such
   courses, but no test founds one.
 - Pirate merchants (0341) lit together with this rule: proof 47 is green with the switch off; the two lit together were not run.
-- `rollback-0392.sql` was run once locally (the bodies return to their pre-image by `before.sql`'s reading); it is a draft, not a migration.
+- `rollback-0397.sql` was run once locally (the bodies return to their pre-image by `before.sql`'s reading); it is a draft, not a migration.

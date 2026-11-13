@@ -1,5 +1,5 @@
--- 0392 PARITY SCENE: run by proof-0392.mjs on the world BEFORE the file and AFTER it, rolled back each time, with sea_conditions_bite_npc FALSE (as shipped).
--- It names only what existed before 0392 and reads what the merchants' sea rule must NOT change while dark: the loops offered to every fourth merchant of the
+-- 0397 PARITY SCENE: run by proof-0397.mjs on the world BEFORE the file and AFTER it, rolled back each time, with sea_conditions_bite_npc FALSE (as shipped).
+-- It names only what existed before 0397 and reads what the merchants' sea rule must NOT change while dark: the loops offered to every fourth merchant of the
 -- roster (public.npc_loop_candidates, the one caller of the re-cut public.npc_feasible_legs), and a REAL plan pass (public.npc_plan, each merchant alone at her
 -- lap start) over 60 merchants spread over the roster: every stop, course and line it wrote and its counters. Every SCENE line must be equal before and after.
 -- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server.

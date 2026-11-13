@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 92 - A MERCHANT SAILS THE SEAS HER HULL CAN HOLD  (migration 0392, slice S3 of docs/SEA_CONDITIONS_AND_REGIONS.md; owner row 166: "NPCs under the same rule")
+-- PROOF 92 - A MERCHANT SAILS THE SEAS HER HULL CAN HOLD  (migration 0397, slice S3 of docs/SEA_CONDITIONS_AND_REGIONS.md; owner row 166: "NPCs under the same rule")
 --
---   0392's own self-assert reads the catalog and cheap pure functions only: a migration never runs a real game step (docs/OPS_HEALTH.md section 4). This proof
+--   0397's own self-assert reads the catalog and cheap pure functions only: a migration never runs a real game step (docs/OPS_HEALTH.md section 4). This proof
 --   runs the REAL planner (public.npc_plan, public.npc_loop_candidates) and the real sail door on the world's own merchants, with the switch it lights itself,
 --   all rolled back with proof.mjs's transaction. It picks its merchants from the roster by what they are (a hull size, a leg the sea closes), never by name.
 --
@@ -32,7 +32,7 @@ declare
   v_loop    jsonb;
 begin
   if to_regprocedure('public.sea_conditions_npc_on()') is null then
-    raise exception 'PROOF 92 FAIL: 0392 is not in this world';
+    raise exception 'PROOF 92 FAIL: 0397 is not in this world';
   end if;
   update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
 

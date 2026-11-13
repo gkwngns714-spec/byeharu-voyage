@@ -1,4 +1,4 @@
-// mutations-0392.mjs: the mutation controls of proof-0392.mjs: deliberate breakages of 0392, each REQUIRED to fail for its own reason.
+// mutations-0397.mjs: the mutation controls of proof-0397.mjs: deliberate breakages of 0397, each REQUIRED to fail for its own reason.
 // Each entry: [label, mutate(sql) -> sql, the error it must raise]. SELF = the file's own self-assert must catch it; AFTER = the file is clean in itself and
 // only proof 92 (run right after it) can see it. A mutation that passes, or fails for another reason, fails the harness.
 
