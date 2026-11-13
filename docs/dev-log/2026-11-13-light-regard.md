@@ -80,3 +80,8 @@ One line (owner only): `update public.world_config set value = 'false'::jsonb wh
 - Nothing ran on prod. Who really pays more is `before-light.sql`'s answer on prod, not this file's.
 - `Pay fine` with a real player: nothing lowers regard until attacks are lit, so no fine can be owed yet (`tests/map.townhall.spec.ts` plants one and pays it).
 - Whether the bands and the half-life feel right: only play shows.
+
+## Found on the combined tree (batch-7): the port dues seam assumed regard dark
+`tests/rpc.portDues.spec.ts`, "a Dutch company at Lisbon reads tax 2x (at war)", pinned `factor: 2, fee: 500` and received `factor: 2.5, fee: 625`. **The server is right.** 0319 cut the regard factor into `public.port_dues` and `public.port_fee`: a company at war stands Wary on day one, so she reads the war factor 2 times 1.25 = 2.5, and a dock fee of 250 x 2 x 1.25 = 625. The hall's words say what she pays: "Tax 2.5x (at war) · Dock fee 625 · Wary -200". The spec was written before regard and I had not run it (it does not name the switch).
+
+It now states both arms by name: regard put off in its own world (factor 2, fee 500, no regard line: the figures before 0373 and after its rollback), and regard as the world ships (factor 2 x the war band's factor, fee 250 x that, the regard line with her band, and three parts in the words). The band's factor is read from the knob, never pinned.
