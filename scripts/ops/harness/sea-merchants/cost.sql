@@ -1,4 +1,4 @@
--- 0377 COST SCENE (sim.mjs --scene=scripts/ops/harness/sea-merchants/cost.sql runs it dark and lit; sea-conditions/run.mjs runs it before the file): 60 merchants
+-- 0392 COST SCENE (sim.mjs --scene=scripts/ops/harness/sea-merchants/cost.sql runs it dark and lit; sea-conditions/run.mjs runs it before the file): 60 merchants
 -- spread over the roster, each one's loops on offer timed (public.npc_loop_candidates) and then her lap start (public.npc_plan, alone). One COST line.
 -- LOCAL PGlite WORLD ONLY (scripts/ops/harness/README.md): this scene writes and its runner rolls it back. The first statement refuses a real server.
 do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;

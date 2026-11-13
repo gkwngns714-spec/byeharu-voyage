@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { OLD_ROUNDS, serveRaidWorld } from './raidWorld.fixture'
+import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE FIGHT LOG AND THE STANDING ORDER ON THE GLASS (migration 0353, slices C1 + C2 of docs/COMBAT_LOG.md; owner row 315).
@@ -182,12 +183,20 @@ for (const run of RUNS) {
   })
 }
 
-test.describe('the world as it ships: standing orders are dark', () => {
+// 0371 lit standing orders in the shipped world (tests/raid.order.lit.spec.ts drives that picker). The dark page is still proven, on a copy of the image with the switch
+// set back: what a rollback of 0371 would show.
+test.describe('a world set dark (before 0371, and after its rollback): standing orders are off', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
   test('the fleet page draws no order picker', async ({ page, request, baseURL }) => {
     test.setTimeout(480_000)
     expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
+    await serveWorldImage(
+      page,
+      await patchedWorldImage('raid-orders-dark', async (pg) => {
+        await pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'raid_orders_enabled'`)
+      }),
+    )
     await page.goto('fleets')
     await ready(page)
     await page.getByTestId('fleet-row').first().click()

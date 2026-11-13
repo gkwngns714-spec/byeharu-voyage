@@ -742,7 +742,7 @@ const TABLE = {
   // resistance it asks, the caller's title, each of her fleets' wave, and whether the conditions bite yet. A
   // READ, no arguments (the company is the caller's). The Codex "Seas" face and the map's shading (C3) read it.
   worldSeaConditions: { schema: 'world', fn: 'sea_conditions', args: [] },
-  // 0376 — WHERE EACH SEA LIES: the zone raster (0.25° cells, the client's own sea grid), run-length coded by row,
+  // 0391 — WHERE EACH SEA LIES: the zone raster (0.25° cells, the client's own sea grid), run-length coded by row,
   // with the zone code of each byte value. World data, no arguments; the map's shading reads it once a session.
   worldSeaZoneMap: { schema: 'world', fn: 'sea_zone_map', args: [] },
   // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,

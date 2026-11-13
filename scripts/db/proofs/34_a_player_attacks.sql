@@ -889,7 +889,8 @@ begin
   end if;
   v_r := (select b.result from public.battles b where b.id = v_b);
   v_got := (select pl.ducats from public.players pl where pl.id = p) - v_was;
-  if v_got <> public.loot_due(v_r ->> 'outcome', 100000, 0) or (v_r ->> 'loot')::bigint <> v_got then
+  -- 0374: loot follows the risk taken: what is aboard counts for the share of her own hull the attacker lost in this fight (public.loot_risk of the kept result)
+  if v_got <> public.loot_due(v_r ->> 'outcome', floor(100000 * public.loot_risk(v_r))::bigint, 0) or (v_r ->> 'loot')::bigint <> v_got then
     raise exception 'PROOF 34 FAIL: the real fight said %, and she took %', v_r ->> 'outcome', v_got;
   end if;
   if pg_temp.purses() <> v_sum then

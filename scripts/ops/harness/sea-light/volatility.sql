@@ -1,5 +1,5 @@
--- 0378 PROD CHECK (volatility), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-light/volatility.sql
--- Run AFTER 0378 is deployed and before before.sql, after.sql or after-check.sql. Wanted: public.sea_conditions_ready() 's' and every other row 's' or 'i';
+-- 0393 PROD CHECK (volatility), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-light/volatility.sql
+-- Run AFTER 0393 is deployed and before before.sql, after.sql or after-check.sql. Wanted: public.sea_conditions_ready() 's' and every other row 's' or 'i';
 -- public.sea_conditions_light() 'v' (it is THE STEP: never called by a check, only by the lead to light).
 begin transaction read only;
 select p.oid::regprocedure::text as fn, p.provolatile

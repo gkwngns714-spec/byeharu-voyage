@@ -105,8 +105,9 @@ function captainsRead() {
 /** The veteran's image: eight hulls (the founding flagship and seven formed at its commissioning) and six captains. */
 export function veteranWorld(): Promise<Buffer> {
   return patchedWorldImage('veteran', async (pg) => {
-    const raised = await pg.query(`update public.world_config set value = '${VETERAN_HULLS}'::jsonb where key = 'fleet_max' returning key`)
-    if (raised.rows.length !== 1) throw new Error('world_config has no fleet_max row')
+    // `fleet_hard_max` too: since 0370 fleet room is lit in the shipped world, and lit that knob is the top of the fleets (6). This world is a LAYOUT world of eight rows, not a rule.
+    const raised = await pg.query(`update public.world_config set value = '${VETERAN_HULLS}'::jsonb where key in ('fleet_max', 'fleet_hard_max') returning key`)
+    if (raised.rows.length !== 2) throw new Error('world_config has no fleet_max or no fleet_hard_max row')
     const names = `array[${VETERAN_FLEETS.map((n) => `'${n.replace(/'/g, "''")}'`).join(', ')}]`
     await pg.exec(`
       create function public.spec_veteran_fleets() returns trigger

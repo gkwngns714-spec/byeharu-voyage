@@ -476,12 +476,27 @@ test('world.fleets() reports the fleet, its ships, its stores and its empty queu
   // that carries nothing bought knows nothing — an empty map, never a map of zeroes.
   expect(f.cargo_basis).toEqual({})
 
-  // AND THE RELATIONSHIP, not merely the presence. Free hold is the stowed capacity minus what is
-  // already aboard — cargo AND stores — so on a provisioned hull with an empty cargo bay it must be
-  // strictly LESS than the hold. A free_hold that equalled `hold` would be the exact defect the
-  // client copy had: stores forgotten.
-  expect(f.free_hold).toBeLessThan(s.hold)
-  expect(f.free_hold).toBeCloseTo(s.hold - s.cargo_tuns - s.water_t - s.food_t, 5)
+  // AND THE RELATIONSHIP, not merely the presence — IN BOTH WORLDS, each said by name.
+  // LIT, AS THE WORLD SHIPS (0369 lit ship_stores_separate, 0345): her supplies lie in her own supply room, served as `stores_cap`, and take NO cargo room. Free hold is the
+  // stowed capacity minus her cargo alone; what is aboard fits her room. The client's one reader of this (domain/fleet shipStoresInHold) counts no supplies in the hold exactly
+  // when `stores_cap` is served, so the page and this figure cannot disagree.
+  expect(typeof s.stores_cap).toBe('number')
+  expect(s.stores_cap!).toBeGreaterThan(0)
+  expect(s.water_t + s.food_t).toBeLessThanOrEqual(s.stores_cap! + 0.01)
+  expect(f.free_hold).toBeCloseTo(s.hold - s.cargo_tuns, 5)
+  // DARK (the world before 0369, and after its rollback), set in this spec's own database and put back: no `stores_cap`, and free hold is the stowed capacity minus what is
+  // already aboard — cargo AND stores — so on a provisioned hull with an empty cargo bay it is strictly LESS than the hold. A free_hold that equalled `hold` there would be
+  // the exact defect the client copy had: stores forgotten.
+  await db.pg.exec(`update public.world_config set value = 'false'::jsonb where key = 'ship_stores_separate'`)
+  try {
+    const [fd] = expectOk(await worldFleets())
+    const sd = fd.ships[0]
+    expect('stores_cap' in sd).toBe(false)
+    expect(fd.free_hold).toBeLessThan(sd.hold)
+    expect(fd.free_hold).toBeCloseTo(sd.hold - sd.cargo_tuns - sd.water_t - sd.food_t, 5)
+  } finally {
+    await db.pg.exec(`update public.world_config set value = 'true'::jsonb where key = 'ship_stores_separate'`)
+  }
 
   // No officer is posted on a new house, so the quartermaster's share is zero and the stowed hold
   // is the rated hold. This is the no-op 0017 promises, checked from the client's side of the wire.
@@ -1731,7 +1746,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // CONDITIONS — every zone's title and wave asks, the caller's title, her fleets' wave, the switch. A READ, no
       // arguments. Served dark (sea_conditions_bite false) ahead of the Codex "Seas" face and the map's shading (C3).
       'worldSeaConditions',
-      // Pin moved deliberately 2026-11-13 with migration 0376 (owner rows 166 and 324, the sea conditions made workable):
+      // Pin moved deliberately 2026-11-13 with migration 0391 (owner rows 166 and 324, the sea conditions made workable):
       // WHERE EACH SEA LIES — the zone raster run-length coded, for the map's shading of closed seas. A READ, no arguments.
       'worldSeaZoneMap',
     ].sort(),

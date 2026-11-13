@@ -335,8 +335,8 @@ test('every ops shell script that sends a file to production asks read-only.mjs 
     const ask = code.findIndex((l) => /^\s*node ".*\/\.\.\/read-only\.mjs" "\$\w+" \|\| exit 3\b/.test(l))
     if (ask < 0 || ask > send) wrong.push(`${rel}: sends a file to production without asking read-only.mjs before it`)
   }
-  // The five that send a file today; a sixth must ask too (the loop above), this list only proves the scan sees them.
-  expect(senders).toEqual(['harness/arrfast/pq.sh', 'harness/combat-log/after-check.sh', 'harness/raid/after-check.sh', 'harness/raid/pq.sh', 'harness/sim/pq.sh'])
+  // The six that send a file today; a seventh must ask too (the loop above), this list only proves the scan sees them.
+  expect(senders).toEqual(['harness/arrfast/pq.sh', 'harness/attacks/after-check.sh', 'harness/combat-log/after-check.sh', 'harness/raid/after-check.sh', 'harness/raid/pq.sh', 'harness/sim/pq.sh'])
   expect(
     wrong,
     'An ops script sends a SQL file to production and does not ask the one judge first. Put this line before the ' +

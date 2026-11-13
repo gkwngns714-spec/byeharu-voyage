@@ -327,6 +327,10 @@ $b$
   raise notice 'PASS: ARMADA_REFUSALS — at anchor, two ports, an order waiting, one fleet, another company''s fleet, a bad name, nobody, another company, already in an armada: each refused whole; a fleet of an armada did not sail alone';
 
   -- ══ ARMADA_SAILS_AS_ONE ══
+  -- Every new ship rolls her own speed from her id (0276: 0.80 to 1.20), so two barcas are not the same speed. One run in fifty the first fleet rolled slow
+  -- enough and the second fast enough that 0.6 of a hull did not make the second the slower, and this proof was red for no fault (measured: 8 of 400 pairs).
+  -- The two rolls are made equal here, so the worn hull alone decides which is the slower.
+  update public.ships set roll_speed = 1 where fleet_id in (v_f1, v_f2);
   update public.ships set durability = durability * 0.6 where fleet_id = v_f2;   -- the second fleet is the slower: her speed is the armada's
   if voyage.fleet_speed(v_f1) <> voyage.fleet_speed_alone_at(v_f2, null) or voyage.fleet_speed_alone_at(v_f1, null) <= voyage.fleet_speed_alone_at(v_f2, null) then
     raise exception 'PROOF 68 FAIL: the armada does not read her slowest fleet''s speed';
@@ -506,7 +510,7 @@ $b$
   raise notice 'PASS: ARMADA_ARRIVES_DISBANDS — both fleets made Funchal at one instant; the armada read PORT there and could be sent again; disbanded, the lead fleet sailed alone and her sister stayed';
 
   -- ══ ARMADA_OF_SIX ══ (the owner's number: with room for seven fleets, seven is refused and six sail as one)
-  update public.world_config set value = to_jsonb(7) where key = 'fleet_max';
+  update public.world_config set value = to_jsonb(7) where key in ('fleet_max', 'fleet_hard_max');   -- fleet_hard_max too: since 0370 fleet room is lit and that knob is the top (unread while dark)
   insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc) values (c_uc, 'Casa dos Seis 68', v_prt, 800000, false) returning id into v_c;
   v_six := '{}';
   for i in 1 .. 7 loop
