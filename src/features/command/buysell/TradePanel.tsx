@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { Button, Chip, Figure, GoodKind, Hint, Note, PriceChart, Row, Skeleton, SpanPicker, Stepper, Tray, type TrayDetent, type TrayMode } from '../../../components/ui'
+import { Button, Chip, Figure, GoodKind, Hint, Note, PriceChart, Row, Skeleton, SpanPicker, Stepper, Tray, type TrayDetent, type TrayMode, WRAP_ROW_CLASS } from '../../../components/ui'
 import { fleetCargoByCode } from '../../../domain/fleet'
 import { taxFactorWords } from '../../../domain/port'
 import { CityGoodTrades } from '../../../live/CityGoodTrades'
@@ -210,7 +210,7 @@ function Frame({
       data-city={city}
       data-sell-at={sellAt ?? undefined}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 pt-1">
+      <div className={`${WRAP_ROW_CLASS} pt-1`}>
         <span className="text-t-caption text-ink-muted" data-testid="good-detail-city">
           <PortFlag code={city} /> {portNameOf(portByCode, city)}
         </span>

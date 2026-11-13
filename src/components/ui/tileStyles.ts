@@ -76,3 +76,7 @@ export const KEEP_WORDS_CLASS = 'min-w-min break-keep'
 export function tileWordsGridClass(): string {
   return 'flex flex-wrap gap-1.5 break-keep *:min-w-min! *:max-w-[var(--tile-w)]! *:shrink! *:grow! *:basis-[calc(var(--tile-w)-1rem)]! max-[374px]:*:px-1!'
 }
+
+/** A HEAD LINE THAT MAY TURN: words at the left, a control or a figure at the right, and where the glass is too narrow for both the
+ *  right one goes under, whole (2026-11-13: the Trade panel's other sale and the City face's heading wrote it twice). */
+export const WRAP_ROW_CLASS = 'flex flex-wrap items-center justify-between gap-x-3 gap-y-1'
