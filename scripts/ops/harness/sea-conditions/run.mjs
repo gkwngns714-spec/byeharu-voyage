@@ -1,8 +1,8 @@
-// run.mjs: scenes on the LOCAL cached world (PGlite) for the sea conditions (0376 and after). LOCAL ONLY; not in CI.
+// run.mjs: scenes on the LOCAL cached world (PGlite) for the sea conditions (0391 and after). LOCAL ONLY; not in CI.
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/sea-conditions/run.mjs [--apply=0376,0377] [--commit] [--proofs=68] [--dump=<dir> --fns=<a;b>] [--set=key:value,...] <scene.sql> [...]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/sea-conditions/run.mjs [--apply=0391,0392] [--commit] [--proofs=68] [--dump=<dir> --fns=<a;b>] [--set=key:value,...] <scene.sql> [...]
 //
-// Restores the cached world at the head before 0376 (never from zero; the cache is only read), then, in ONE transaction that is
+// Restores the cached world at the head before 0391 (never from zero; the cache is only read), then, in ONE transaction that is
 // ROLLED BACK: applies the named migrations of this tree in name order, sets the named world_config keys, writes the live bodies
 // named by --fns to --dump (LF), and runs each scene at a savepoint, printing its notices and its last rows. A PROD CHECK file
 // runs here too (its read-only wrapper is taken off), to see what it will answer. --proofs runs the named proofs, each in its own
@@ -12,7 +12,7 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const FIRST = '20260818000376'
+const FIRST = '20260818000391'
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
 const say = (...a) => console.log(...a)
 const files = []
