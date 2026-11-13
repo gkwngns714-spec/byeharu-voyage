@@ -152,6 +152,23 @@ permissions:
 # verdict now requires all six shards' counts to sum to `playwright test --list`.
 #
 #
+# ── THE PLAIN POOL ON SIX RUNNERS (2026-11-13) ──────────────────────────────────────────────────
+# The owner: "who decides how long it takes? make it faster". What decided it: the plain pool —
+# about 1,240 of the 1,333 tests — sat on THREE runners, 33-40 minutes of suite each on main run
+# 43389406419 (and 81 minutes on a slow runner, run 43410177257), while the db and npc pools were
+# done in 5-8. So the plain pool is now cut over SIX runners, and tests/shard-weights.json was
+# re-measured from that run for every file (only 58 of 203 files had a weight; the rest were
+# planned at a 30 s default, so the "even" split was not). Planned: 35 summed test-minutes per
+# shard, which two workers run in about 19 minutes, plus ~2 of setup. What bounds a shard now is
+# the pool's total divided by six; the longest single file (consistency.spec.ts, ~9 min on its one
+# worker) would only bound it past a dozen runners. The npc pool stays on two: its shards take 5-6
+# minutes and wait ~6 for npc-on-world, so a third runner would save nothing.
+# Nothing else moved: the same action runs every shard with the same floors, and the verdict now
+# requires NINE shards' stats (db 1, plain 6, npc 2) to arrive and sum to `playwright test --list`.
+# The required checks on main are `build` and `disposable-chain` — no shard name is one of them.
+# A run now asks for up to 9 runners at once (plain 6 + db + npc-on-world + select); the
+# concurrency group above is what keeps a branch from holding two runs' worth.
+#
 # THE GROWTH TEST (stated, not hidden): db.chain's "the world grows under a live house" applies the
 # whole growth (0041 → the head) under a live house and proves the house survives it. Applied from
 # scratch it was 32-78 min — 95 % of the db shard (measured: runs 39092641268, 39095043069) — so since
@@ -324,13 +341,13 @@ jobs:
           prefix-cache: ${{ github.event_name == 'pull_request' && needs.select.outputs.cold != 'true' && 'required' || '' }}
 
   acceptance-shard:
-    name: acceptance-shard (${{ matrix.shard }}/3)
+    name: acceptance-shard (${{ matrix.shard }}/6)
     needs: select
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3]
+        shard: [1, 2, 3, 4, 5, 6]
     # The budget history (25 -> 40 -> 75 -> 120, 2026-08-25 to 2026-10-12) is in git history; every
     # raise was a world being built inside a shard — db.chain's from-zero builds, three rpc/sea
     # specs applying the whole chain in a beforeAll (~40 min each since 0105, hidden from every
@@ -344,7 +361,7 @@ jobs:
         with:
           kind: plain
           index: ${{ matrix.shard }}
-          total: 3
+          total: 6
           prefix-cache: ${{ github.event_name == 'pull_request' && needs.select.outputs.cold != 'true' && 'required' || '' }}
 
   acceptance-npc:
@@ -401,7 +418,7 @@ jobs:
           name: spec-selection
           path: spec-selection
 
-      - name: All six shards ran, and together they ran EVERY selected test
+      - name: All nine shards ran, and together they ran EVERY selected test
         env:
           SELECT_RESULT: ${{ needs.select.result }}
           NPC_WORLD_RESULT: ${{ needs.npc-on-world.result }}
@@ -420,7 +437,7 @@ jobs:
           echo "selection: $mode — $(jq -r '.specs | length' spec-selection/selection.json) spec file(s)"
           total_expected=0
           total_planned=0
-          for i in plain-1 plain-2 plain-3 npc-1 npc-2 db-1; do
+          for i in plain-1 plain-2 plain-3 plain-4 plain-5 plain-6 npc-1 npc-2 db-1; do
             f="shard-stats/shard-$i.json"
             if [ ! -f "$f" ]; then
               echo "::error title=Missing shard::shard $i handed back no counts — it did not run to the end"; fail=1; continue
@@ -464,7 +481,7 @@ jobs:
           fi
           echo "$what: ${listed:-?}   planned across the shards: $total_planned   passed across the shards: $total_expected"
           if [ "$total_expected" -ne "$listed" ]; then
-            echo "::error title=Tests unaccounted for::$listed test(s) to run but $total_expected passed across the six shards"; fail=1
+            echo "::error title=Tests unaccounted for::$listed test(s) to run but $total_expected passed across the nine shards"; fail=1
           fi
           for r in "select:$SELECT_RESULT" "npc-on-world:$NPC_WORLD_RESULT" "the shard matrix:$SHARDS_RESULT" "the npc pool:$NPC_RESULT" "the db pool:$DB_RESULT"; do
             if [ "${r##*:}" != "success" ]; then
@@ -475,5 +492,5 @@ jobs:
           if [ "$mode" = "scoped" ] && [ "$listed" -eq 0 ]; then
             echo "OK: no affected specs — this PR changes nothing a spec can reach (the select job says why); every shard reported, none ran a test. Main's full run checks that claim."
           else
-            echo "OK: $total_expected of $listed test(s) passed across the db, plain and npc pools (6 shards), none skipped ($mode)."
+            echo "OK: $total_expected of $listed test(s) passed across the db, plain and npc pools (9 shards), none skipped ($mode)."
           fi
