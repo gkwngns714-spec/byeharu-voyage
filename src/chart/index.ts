@@ -78,7 +78,7 @@ export {
   type PortRole,
 } from './chartModel'
 // 0099 — the merchants, through the same per-fleet mapping (docs/NPC_TRADERS.md §8.2).
-export { hullClassOfCode, mapFleetsOf, mapPortsOf, mapTrafficOf } from './liveWorld'
+export { hullClassOfCode, mapFightsOf, mapFleetsOf, mapPortsOf, mapTrafficOf } from './liveWorld'
 // ROW 90 — the seas' names: how data/seas.json is read, and which waters ask to be named at a
 // zoom. The DECISION, exported for the same reason `roadsteadMarks` is; the paint is LabelsLayer's.
 export { mapSeasOf, seaNameRequests } from './seaNames'
@@ -190,6 +190,8 @@ export {
   type Rect,
 } from './labels'
 export { hitTest, toggleSelection } from './hitTest'
+// 0364 (owner row 321) — A BATTLE'S RED RING: the geometry (pure, for tests/map.fightRings.spec.ts) and the press.
+export { FIGHT_RING, fightAt, fightCountRadiusPx, fightRing, fightRings, fightTapWins, type FightRing, type MapFight } from './fightRings'
 // The harbour names as last drawn (LabelsLayer), so a tap on a name — flag and letters — opens it.
 export { placedNames } from './placedNames'
 // 2026-10-14 — WHICH SHIPS A VIEW DRAWS (every one of them as a ship): the decision, exported like

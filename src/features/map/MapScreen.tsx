@@ -19,6 +19,8 @@ import { useNavyShipCard } from '../../live/useNavyShipCard'
 import { usePirateShipCard } from '../../live/usePirateShipCard'
 import { useMerchantCard } from '../../live/useMerchantCard'
 import { useMerchantsHere } from '../../live/useMerchantsHere'
+import { useFights } from '../../live/useFights'
+import { FightSheet } from '../../live/FightSheet'
 // WHICH HULL IS IN HAND — `domain/order`'s draft, the SAME one FLEETS points at.
 import { useCommandDraft } from '../../domain/order'
 // THE CHART IS A SECTION OF ITS OWN (src/chart) and this screen composes it; nothing here draws.
@@ -42,8 +44,12 @@ import {
   type FleetOnChart,
   type GoToTarget,
   dotPorts,
+  fightAt,
+  fightRings,
+  fightTapWins,
   hitTest,
   placedNames,
+  mapFightsOf,
   mapFleetsOf,
   loopD,
   mapTrafficOf,
@@ -354,6 +360,11 @@ function Chart({
   )
   const chartRef = useRef<HTMLDivElement>(null)
 
+  // THE BATTLES BEING FOUGHT (0364, owner row 321): each is a red ring round its fleets (src/chart/fightRings.ts),
+  // and a press on a ring opens the fight (src/live/FightSheet.tsx). Asked only while this screen is mounted.
+  const fightCards = useFights()
+  const fights = useMemo(() => mapFightsOf(fightCards), [fightCards])
+
   // THE ONLY THING A TAP ON THE CHART DOES: a selection. Nearest glyph within reach wins (the
   // reach is src/chart/glyphs.ts's); the same thing again, or deep inland, clears it; open water
   // SELECTS that water, snapped to the nearest sailable cell (0039) — water by construction, and
@@ -377,6 +388,15 @@ function Chart({
         return
       }
       // A MERCHANT IS READ, NEVER COMMANDED: her tap selects her and leaves the command draft alone.
+      // A BATTLE'S RING (0364): the whole circle is its press target. A city's NAME under it is still the city (the
+      // name is what the thumb was on); a small ring takes every other press inside it, and a wide one leaves a
+      // harbour, a merchant or a fleet that is not in the battle its own press (`fightTapWins`).
+      const onName = placedNames().some((n) => at.x >= n.box.x && at.x <= n.box.x + n.box.width && at.y >= n.box.y && at.y <= n.box.y + n.box.height)
+      const ring = onName ? null : fightAt(fightRings(fights, unitsPerPx), at, unitsPerPx)
+      if (ring && fightTapWins(ring, hit === null ? null : hit.kind === 'port' ? { kind: 'port' } : hit.kind === 'fleet' || hit.kind === 'merchant' ? { kind: hit.kind, id: hit.id } : null)) {
+        setSelection((current) => toggleSelection(current, { kind: 'fight', id: ring.id }))
+        return
+      }
       if (hit?.kind === 'fleet') selectFleet(hit.id)
       if (hit) {
         setSelection((current) => toggleSelection(current, hit))
@@ -397,7 +417,7 @@ function Chart({
       const sea = snapSeaPoint(seaNav, unproject(at))
       setSelection(sea ? { kind: 'sea', at: sea } : null)
     },
-    [model, ports, selectFleet, seaNav],
+    [model, ports, selectFleet, seaNav, fights],
   )
 
   const surface = useChartSurface(chartRef, frameBounds, onTap)
@@ -454,7 +474,14 @@ function Chart({
   const selectedMerchant = merchantId
     ? (trafficRows.find((t) => t.id === merchantId) ?? harbourRows.find((t) => t.id === merchantId) ?? null)
     : null
-  const panelOpen = selectedFleet !== null || selectedMerchant !== null || place !== null
+  // the battle whose ring was pressed: its served card, kept as last served once the ring has left the map, so a
+  // reader of the result is not shut out when the server stops serving it
+  const fightId = selection?.kind === 'fight' ? selection.id : null
+  const servedFight = fightId !== null ? (fightCards.find((c) => c.id === fightId) ?? null) : null
+  const [keptFight, setKeptFight] = useState(servedFight)
+  if (servedFight !== null && servedFight !== keptFight) setKeptFight(servedFight)
+  const openFight = fightId !== null ? (servedFight ?? (keptFight?.id === fightId ? keptFight : null)) : null
+  const panelOpen = selectedFleet !== null || selectedMerchant !== null || place !== null || openFight !== null
 
   // ── GO TO (src/chart/goTo.ts) — this screen is the one taker ──────────────────────────────────
   // A request is resolved to a coordinate through THIS chart's model — `goToPoint`'s rule, handed
@@ -552,6 +579,7 @@ function Chart({
           regions={regionsOn ? backdrop.regions : null}
           portFlags={portFlags}
           islets={backdrop.islets}
+          fights={fights}
           selection={selection}
           plannedD={routeView ? routeD : pathD}
           pathStops={routeView ? routeStops : shipPath.stops}
@@ -689,6 +717,7 @@ function Chart({
           onClose={() => setSelection(null)}
         />
       )}
+      {openFight && !routeView && <FightSheet key={openFight.id} mode="side" card={openFight} onClose={() => setSelection(null)} />}
       {place && (
         <SendFleet
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}

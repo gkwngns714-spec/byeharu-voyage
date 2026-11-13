@@ -888,6 +888,21 @@ html:lang(ko) body {
   animation: bv-goto-ring 1.1s var(--ease-sheet) infinite;
 }
 
+/* A BATTLE'S RING (src/chart/FightRingsLayer.tsx, 0364): the line breathes, slowly. Its own keyframes, for the
+   reason the go-to ring has its own. Reduced motion (the sweep below) lands it on the 100% stop: full strength, still. */
+@keyframes bv-fight-ring {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+.bv-fight-ring {
+  animation: bv-fight-ring 2.4s ease-in-out infinite;
+}
+
 /* A side panel FOLDED for a go-to on a narrow glass (MapScreen): slid out past the right edge,
    still mounted, so its state is all there when the tab beside the edge brings it back. */
 [data-panels-folded] [data-tray-mode='side'],

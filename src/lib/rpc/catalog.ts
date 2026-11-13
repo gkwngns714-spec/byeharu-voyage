@@ -468,6 +468,9 @@ const TABLE = {
   // 0357 (docs/COMBAT_LOG.md 3.3, 3.4): a battle fought round by round: her stance (FIGHT, FLEE), and the read the battle card polls. Dark: E_NOT_IN_USE and {on: false}.
   cmdBattleStance: { schema: 'cmd', fn: 'battle_stance', mutates: true, args: [{ name: 'p_battle', type: 'uuid' }, { name: 'p_stance', type: 'text' }] },
   worldBattle: { schema: 'world', fn: 'battle', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  // 0364 (owner row 321): every battle being fought, for the map's rings, and any battle's log for a watcher. Dark: {on: false}.
+  worldFights: { schema: 'world', fn: 'fights', args: [] },
+  worldFight: { schema: 'world', fn: 'fight', args: [{ name: 'p_battle', type: 'uuid' }] },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',
