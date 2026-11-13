@@ -56,7 +56,7 @@ $h$, $h$    v_fought := g;
     -- 0357: a called ship comes on the sheet at her round, whole; and the stance of the side that closes for this round
     if v_late then
       for i in 1 .. v_na loop
-        if a_from[i] = g then
+        if a_from[i] > 1 and a_from[i] = g then   -- only a ship that was called: a hull of round 1 is counted where the sides are read
           a_hull[i] := a_hull0[i];
           v_h0a := v_h0a + a_hull0[i];
           v_sa := greatest(v_sa, coalesce((p_a -> (i - 1) ->> 'sighting')::numeric, 0));
