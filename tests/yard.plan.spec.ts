@@ -6,7 +6,7 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 // S1 — THE YARD PLANS THE BUILD (docs/SECOND_SHIP.md; world.yard_sources re-cut by 0358; owner rows 180, 305, 316)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
-// A new company at Lisbon, at 390×844 and 1280×800:
+// A new company at Lisbon, at 390×844, 320×844 (the narrowest phone the game holds its lines on) and 1280×800:
 //   1. THE SHEET PLANS. The Barca's sheet carries ONE button. With nothing fetched it reads Build, off, beside
 //      "Ready 0 / 6". A totals row stands (cost: what is still to buy at the sellers' prices now plus the labour;
 //      weight, against her free hold: Fits). The Suit of Sails unfolds into the goods it is made of, and the flax
@@ -20,6 +20,7 @@ import { patchedWorldImage, serveWorldImage } from './worldImage.fixture'
 
 const GLASSES = [
   { width: 390, height: 844 },
+  { width: 320, height: 844 },
   { width: 1280, height: 800 },
 ] as const
 
@@ -55,6 +56,25 @@ function ladenHold(): Promise<Buffer> {
 async function noSideways(page: Page, what: string) {
   const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
   expect(over, `${what} scrolls sideways by ${over} px`).toBeLessThanOrEqual(0)
+}
+
+/** No word of the sheet is broken inside itself: every word of every text leaf stands in ONE line box. */
+async function noBrokenWord(tray: Locator, what: string) {
+  const broken = await tray.evaluate((root) => {
+    const out: string[] = []
+    const range = document.createRange()
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const text = node.textContent ?? ''
+      for (const m of text.matchAll(/\S+/g)) {
+        range.setStart(node, m.index)
+        range.setEnd(node, m.index + m[0].length)
+        if (range.getClientRects().length > 1) out.push(`"${m[0]}" in "${text}"`)
+      }
+    }
+    return out
+  })
+  expect(broken, `${what}: a word is broken inside itself`).toEqual([])
 }
 
 async function barcaSheet(page: Page, buildTab: string): Promise<Locator> {
@@ -131,6 +151,7 @@ for (const glass of GLASSES) {
       // no name is cut
       for (const text of await tray.locator('[data-testid^="yard-"]').allTextContents()) expect(text, 'a name is cut').not.toContain('...')
       await noSideways(page, 'the yard sheet')
+      await noBrokenWord(tray, 'the yard sheet')
       await page.screenshot({ path: info.outputPath('yard-plan.png') })
     })
 
@@ -193,7 +214,8 @@ for (const glass of GLASSES) {
 }
 
 test.describe('the plan in Korean', () => {
-  test.use({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, locale: 'ko-KR' })
+  // 320: the narrowest phone, where a Korean line is the first to break
+  test.use({ viewport: { width: 320, height: 844 }, deviceScaleFactor: 2, locale: 'ko-KR' })
 
   test('the sheet reads in Korean', async ({ page, request, baseURL }, info) => {
     test.setTimeout(300_000)
@@ -209,7 +231,11 @@ test.describe('the plan in Korean', () => {
     await sails.scrollIntoViewIfNeeded()
     await sails.click()
     await expect(tray.getByTestId('yard-input-source-suit-of-sails-flax')).toHaveAttribute('data-port', 'RIG')
+    // the names are hers: the good and its seller read in Korean
+    await expect(tray.getByTestId('yard-good-timber')).toContainText('목재')
+    await expect(tray.getByTestId('yard-input-source-suit-of-sails-flax')).toContainText('리가')
     await noSideways(page, 'the Korean yard sheet')
+    await noBrokenWord(tray, 'the Korean yard sheet')
     await page.screenshot({ path: info.outputPath('yard-plan-ko.png') })
   })
 

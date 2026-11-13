@@ -43,7 +43,8 @@ export interface PlanPart {
   inputs: PlanGood[]
   /** Where the part is made nearest (0349). */
   source?: YardSource
-  /** Every input of the parts still to make is on board. */
+  /** Every input of the parts still to make is on board, and the part is made in THIS city (the read names this
+   *  yard's own port, 0 miles). A part made elsewhere is never offered as "Make parts" here: MAKE would refuse. */
   makeable: boolean
 }
 
@@ -93,7 +94,7 @@ export function yardPlan(hull: YardHull, sources: YardSources | undefined, aboar
       have: item.have,
       inputs,
       source,
-      makeable: missing > 0 && inputs.length > 0 && inputs.every((i) => i.short <= 0),
+      makeable: missing > 0 && source?.miles === 0 && inputs.length > 0 && inputs.every((i) => i.short <= 0),
     }
   })
 

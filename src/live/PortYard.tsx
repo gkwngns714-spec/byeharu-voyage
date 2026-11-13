@@ -29,7 +29,7 @@ import type { FleetView, LevelsView, PlanLine, Refusal, YardHull, YardInput, Yar
 import { goTo, useGoTo } from '../chart'
 import { useDeskGood } from '../store/deskGood'
 import { useDeskView } from '../features/command/deskView'
-import { useT, t as tNow } from '../lib/i18n'
+import { properName, useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE YARD — where a hull is laid down (0072), as a field of tiles.
@@ -101,7 +101,10 @@ const crownFirst = (list: readonly YardHull[]) => [...list.filter((h) => h.crown
 
 /** What is missing, in the server's own numbers, or null when everything is to hand. */
 function shortfall(hull: YardHull): string | null {
-  const short = [...hull.goods, ...hull.items].filter((m) => m.have < m.qty)
+  const short = [
+    ...hull.goods.map((m) => ({ ...m, name: properName('good', m.code, m.name) })),
+    ...hull.items,
+  ].filter((m) => m.have < m.qty)
   if (short.length === 0) return null
   return short.map((m) => `${m.name} ${formatInt(m.have)}/${formatInt(m.qty)}`).join(' · ')
 }
@@ -373,7 +376,7 @@ export function PortYard({
             <GoodLine
               key={g.code}
               good={g}
-              label={i === 0 ? `${t('yard.materials')} · ${g.name}` : g.name}
+              label={i === 0 ? `${t('yard.materials')} · ${properName('good', g.code, g.name)}` : properName('good', g.code, g.name)}
               speed={fleet?.speed_kn ?? null}
               id={g.code}
             />
@@ -535,7 +538,7 @@ function PartLine({
       {open && (
         <div data-testid={`yard-inputs-${part.code}`}>
           {part.inputs.map((g) => (
-            <GoodLine key={g.code} good={g} label={g.name} speed={speed} id={g.code} part={part.code} />
+            <GoodLine key={g.code} good={g} label={properName('good', g.code, g.name)} speed={speed} id={g.code} part={part.code} />
           ))}
         </div>
       )}
@@ -567,6 +570,8 @@ function SourceRow({
   }
   const here = source.miles === 0
   const port = source.port
+  // the seller's name in her language (the one map of port names); `data-seller` keeps the served one
+  const seller = properName('port', source.name, source.name)
   const go = () => {
     if (kind === 'good') {
       // the map's own hand-over (live/PriceTray.tsx "Open in Command"): the Trade desk reads this city, this good in hand
@@ -587,10 +592,10 @@ function SourceRow({
     kind === 'good'
       ? here
         ? t('yard.buyHere')
-        : t('yard.buyAt', { name: source.name })
+        : t('yard.buyAt', { name: seller })
       : here
         ? t('yard.makeHere')
-        : t('yard.makeAt', { name: source.name })
+        : t('yard.makeAt', { name: seller })
   const ask = 'ask' in source ? source.ask : null
   const figures = [
     here || source.miles === null ? null : formatMiles(source.miles),
@@ -600,12 +605,14 @@ function SourceRow({
   return (
     <Row
       label={<span className={KEEP_WORDS_CLASS}>{words}</span>}
-      value={figures.length > 0 ? <Figure value={figures.join(' · ')} /> : undefined}
       chevron
       onClick={go}
       data-testid={testid ?? `yard-source-${source.code}`}
       data-port={port}
       data-seller={source.name}
-    />
+    >
+      {/* the figures stand UNDER the words, on their own line: beside them a seller's name broke inside itself at 320 px */}
+      {figures.length > 0 ? <span className="whitespace-nowrap tabular-nums text-ink-dim">{figures.join(' · ')}</span> : null}
+    </Row>
   )
 }
