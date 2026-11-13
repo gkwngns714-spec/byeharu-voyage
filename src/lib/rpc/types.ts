@@ -3352,7 +3352,11 @@ export interface BoardBuyRow extends BoardPassage {
   /** The city's normal stock — the level the price is centred on (0183). */
   stock_target?: number
   miles: number | null
+  /** THE WHOLE TRIP THERE in voyage-days: the sailing AND the calls on the way (0361; before it, the sailing alone). */
   days: number | null
+  /** 0361 — the sailing alone, and the real seconds she lies in port on the way (0 while the economy is open). */
+  sail_days?: number | null
+  stop_seconds?: number | null
   arrive_at: string | null
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
@@ -3381,7 +3385,12 @@ export interface BoardSellRow extends BoardPassage {
   stock?: number
   stock_target?: number
   miles: number | null
+  /** THE WHOLE TRIP THERE in voyage-days, from where she is and through the buy city when the good is bought first:
+   *  the sailing AND the calls on the way (0361; before it, the sailing alone). */
   days: number | null
+  /** 0361 — the sailing alone, and the real seconds she lies in port on the way (0 while the economy is open). */
+  sail_days?: number | null
+  stop_seconds?: number | null
   arrive_at: string | null
   units: number | null
   price_each: number | null
@@ -3390,17 +3399,23 @@ export interface BoardSellRow extends BoardPassage {
   profit_tax: number | null
   /** Inside `proceeds` already — shown, never subtracted again. */
   port_fee: number | null
+  /** What her crew will be owed over the trip: the day's wage for every day begun on every leg (0361, as
+   *  `voyage.settle` owes it and `world.trip_cost` says it; before it, the wage times the days with their fraction). */
   wages: number | null
+  /** 0361 — THE TRIP'S DOCK FEES: `public.port_fee` of every harbour she calls at, the last included, on the cargo
+   *  aboard then (0 while the economy is open). It is taken off `profit`. Absent before 0361. */
+  dock_fee?: number | null
   net: number | null
   net_per_ton: number | null
-  /** 0225 — `net` less the supplies the passage asks (`supplies.cost`): what the trip leaves. Null when either
-   *  is unknown. Absent before 0225. */
+  /** WHAT THE TRIP LEAVES: `net` less the trip's supplies (`supplies.cost`) and, from 0361, its dock fees
+   *  (`dock_fee`). Null when a part is unknown. Absent before 0225. */
   profit?: number | null
   cap_left: number | null
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
   request: { premium_pct: number; days_left: number } | null
-  /** 0237 — the dock fee for this parcel there and the country factor on its tax. Closed economy only. */
+  /** 0237 — her standing at the destination and the country factor on its tax. Closed economy only. Its `fee` is the
+   *  destination's for the parcel alone: the trip's dock fee is `dock_fee` (0361), and that is the one Trade prints. */
   dues?: PortDues
   /** THE PASSAGE SHE CAN SAIL (0188): the harbours between, in order (every leg within her captain's reach);
    *  null when no chain of legs within reach gets there. */
@@ -3415,7 +3430,9 @@ export interface BoardSellRow extends BoardPassage {
   /** 0225 — THE SUPPLIES THIS PASSAGE ASKS, from `public.supply_need` (the same rule `cmd.do_sail` buys by):
    *  the days of stores its longest leg needs at the sail door's margin, what topping her casks up to them costs
    *  now (0 when they already cover it), and whether they fit her hold beside what she carries. Null when the
-   *  row has no passage. Absent before 0225. */
+   *  row has no passage. Absent before 0225. 0361: `cost` is THE WHOLE TRIP'S supplies, her casks walked along it
+   *  (topped up before every leg, each leg's days eaten), as `world.trip_cost` says them; `days` and `fits` are
+   *  still the longest leg's. */
   supplies?: BoardSupplies | null
 }
 

@@ -59,7 +59,7 @@ for (const size of SIZES) {
         await expect(est.getByTestId('est-route-stops')).toContainText('→')
         await expect(est.getByTestId('est-time')).toContainText(/\d/, { timeout: 60_000 })
         await expect(est.getByTestId('est-profit')).toBeVisible()
-        for (const id of ['est-supplies', 'est-wages', 'est-tax', 'est-fee', 'est-cost']) await expect(est.getByTestId(id)).toBeVisible()
+        for (const id of ['est-supplies', 'est-wages', 'est-tax', 'est-fee', 'est-dock', 'est-cost']) await expect(est.getByTestId(id)).toBeVisible()
         const chartBox = await map.getByTestId('small-chart').boundingBox()
         const estBox = await est.boundingBox()
         expect(estBox!.y).toBeGreaterThanOrEqual(chartBox!.y + chartBox!.height - 1)
