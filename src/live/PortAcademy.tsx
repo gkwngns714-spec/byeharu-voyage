@@ -18,7 +18,7 @@ import { useShellState } from '../app/shellState'
 import { formatDucats, formatRealDuration } from '../lib/format'
 import { useWorld } from './worldStore'
 import type { Skill, SkillBook } from '../lib/rpc'
-import { useT } from '../lib/i18n'
+import { properName, useT } from '../lib/i18n'
 
 // THE ACADEMY → SKILLS (0016; re-made by 0131, docs/SHIPS_AND_SKILLS.md §5): the skills in their
 // groups, and the training QUEUE with a timer on every entry. A skill is ENROLLED once where it is
@@ -132,7 +132,7 @@ export function PortAcademy() {
         <Tray
           detent={detent}
           onDetentChange={(next) => (next === 'closed' ? setOpenCode(null) : setDetent(next))}
-          title={open.name}
+          title={properName('skill', open.code, open.name)}
           data-testid="school-tray"
           action={
             open.next_level === null ? undefined : !open.enrolled ? (

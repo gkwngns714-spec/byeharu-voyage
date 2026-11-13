@@ -133,7 +133,11 @@ export function CityHallPanel({
 
       {/* THE FIVE FIGURES — Population · Gold · Status · Relationship · Employees, at 24 px with their labels over them, two across
           (the page pattern's stacked figure; the hall is their single home, no other city face prints one of these words). */}
-      <div data-testid="city-hall-figures" className="mt-5 grid grid-cols-2 gap-x-4 gap-y-5">
+      {/* TWO ACROSS WHERE BOTH FIT, AND NEVER NARROWER THAN ITS FIGURE (2026-11-14, owner row 318): the two were equal grid columns, and on
+          a 320-px glass a rich city's gold ("99,960,000" and its coin, 170 px in a 119-px column) stood past the card's edge. A cell
+          is now half the line at least, as wide as its figure when that is wider, and the cell that no longer fits beside it takes
+          the next line. */}
+      <div data-testid="city-hall-figures" className="mt-5 flex flex-wrap gap-x-4 gap-y-5 *:min-w-min! *:flex-[1_1_calc(50%-0.5rem)]">
         <StatCell
           look="stacked"
           label={t('city.population')}
@@ -161,7 +165,7 @@ export function CityHallPanel({
           label={t('city.relationship')}
           text={relation.word}
           tone="ink"
-          className="col-span-2"
+          className="basis-full!"
           data-testid="city-relationship"
           data-stance={relation.stance ?? 'none'}
           data-band={relation.band ?? 'none'}

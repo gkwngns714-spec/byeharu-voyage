@@ -188,6 +188,8 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
         label={t('ship.onBoard')}
         value={<Figure value={t('ship.waterFood', { water: formatTons(stores.waterT), food: formatTons(stores.foodT) })} />}
         hairline={false}
+        // under 375 px the two tonnages go under the label (Row, wholeName): beside them 'On board' stood on two lines
+        wholeName
       />
     </>
   )

@@ -176,8 +176,10 @@ export function PortProduction({
               ) : (
                 <>
                   {docked.length > 1 ? (
+                    // FLEETS' NAMES, WHOLE (2026-11-14): eight fleets stood in four 76-px columns, "Nossa Senhora da Estrela" on four lines. Two to a line, so a two-word name is one line.
                     <Segmented<string>
                       fill
+                      words={2}
                       className="mb-3"
                       label={t('command.fleets')}
                       segments={docked.map((f) => ({ id: f.id, label: f.name }))}

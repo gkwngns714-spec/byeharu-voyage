@@ -192,7 +192,7 @@ export {
 } from './labels'
 export { hitTest, toggleSelection } from './hitTest'
 // 0364 (owner row 321) — A BATTLE'S RED RING: the geometry (pure, for tests/map.fightRings.spec.ts) and the press.
-export { FIGHT_RING, fightAt, fightCountRadiusPx, fightRing, fightRings, fightTapWins, type FightRing, type MapFight } from './fightRings'
+export { FIGHT_RING, fightAt, fightCountRadiusPx, fightRing, fightRimWins, fightRings, fightTapWins, type FightRing, type MapFight } from './fightRings'
 // The harbour names as last drawn (LabelsLayer), so a tap on a name — flag and letters — opens it.
 export { placedNames } from './placedNames'
 // 2026-10-14 — WHICH SHIPS A VIEW DRAWS (every one of them as a ship): the decision, exported like

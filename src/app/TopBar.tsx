@@ -79,7 +79,7 @@ export function TopBar() {
   const bigPurse = ducats !== null && ducats >= 1_000_000
 
   return (
-    <header className="flex h-8 shrink-0 items-center justify-between gap-2 px-gutter sm:gap-3">
+    <header className="flex h-8 shrink-0 items-center gap-2 px-gutter sm:gap-3">
       {/* Left: how long the quay's prices stand. An empty span holds the slot when there is
           nothing true to say, so the purse does not slide across the bar between tabs. */}
       {/* Cut only through Clip (row 201): on a phone the date, hour and price countdown can outrun
@@ -124,36 +124,47 @@ export function TopBar() {
           px on a screen with no price countdown, from `sm` on one with it; and under 375 px beside the countdown the
           clock itself gives way (the phone's own status bar shows the hour), as it does on any phone once the purse is
           seven figures; beside the countdown on a phone, and under 375 px, it reads to the minute. The digits are never cut. */}
-      <span className={`ml-auto shrink-0 text-t-caption text-ink-muted ${showCountdown ? (bigPurse ? 'max-sm:hidden' : 'max-[374px]:hidden') : ''}`}>
-        <span className={showCountdown ? 'hidden sm:inline' : 'hidden min-[375px]:inline'}>{t('shell.kst')} </span>
-        <span data-testid="kst-clock" className="tabular-nums text-ink">
-          {korea.slice(0, 5)}
-          <span className={showCountdown ? 'max-sm:hidden' : 'max-[374px]:hidden'}>{korea.slice(5)}</span>
+      {/* WHAT DOES NOT FIT GIVES WAY WHOLE, THE CLOCK'S WORD FIRST (2026-11-14, owner row 318). The widths above are fixed steps, and a
+          line that fits one purse and one language does not fit the next: in Korean at 390 px, with a purse of six figures, the
+          date was cut to "06:…" (and at 320 px by 2 px). So the right side is ONE WRAPPING LINE, written from the right: the
+          purse, then what is owed, the gift, the clock, and last the clock's word. Whatever does not fit goes to a second line,
+          and the box is one line high, so it is not drawn: nothing is ever cut in half, and the date is cut only when the date
+          and the purse alone do not fit the glass. The first child is a strut: it makes the line the bar's own height, so the
+          rest are centred in the bar. */}
+      <div className="flex h-8 min-w-min flex-1 flex-row-reverse flex-wrap content-start items-center gap-x-2 overflow-hidden sm:gap-x-3" data-testid="top-bar-right">
+        <span aria-hidden className="-ml-2 h-8 w-0 sm:-ml-3" />
+        <span data-testid="purse" className="shrink-0">
+          <Figure value={ducats === null ? '—' : formatInt(ducats)} unit={COIN} />
         </span>
-      </span>
-
-      {showGift && (
-        <span data-testid="gift-toast" className="shrink-0 text-t-caption text-success">
-          {t('shell.gift')} {formatDucatsDelta(Number(giftDucats))}
+        {/* 0352: Reputation, left of the purse. The second number every screen is true of: what her successes have earned.
+            FROM `sm` UP ONLY: at 390 px the date, the hour, the Korea clock and the purse leave 17 px, and a figure here
+            cuts the game hour off (tests/shell.kstClock.spec.ts holds that line whole). On a phone it stands on the You tab
+            and on the arrival card. */}
+        {reputation !== null && (
+          <span data-testid="reputation" data-value={reputation} className="hidden shrink-0 sm:inline">
+            <Figure value={formatInt(reputation)} unit={t('shell.reputation')} />
+          </span>
+        )}
+        {owed > 0 && (
+          <span data-testid="owed" className="shrink-0 text-t-caption text-warning">
+            {t('shell.owed')} {formatInt(owed)}
+          </span>
+        )}
+        {showGift && (
+          <span data-testid="gift-toast" className="shrink-0 text-t-caption text-success">
+            {t('shell.gift')} {formatDucatsDelta(Number(giftDucats))}
+          </span>
+        )}
+        <span className={`shrink-0 text-t-caption text-ink-muted ${showCountdown ? (bigPurse ? 'max-sm:hidden' : 'max-[374px]:hidden') : ''}`}>
+          <span data-testid="kst-clock" className="tabular-nums text-ink">
+            {korea.slice(0, 5)}
+            <span className={showCountdown ? 'max-sm:hidden' : 'max-[374px]:hidden'}>{korea.slice(5)}</span>
+          </span>
         </span>
-      )}
-      {owed > 0 && (
-        <span data-testid="owed" className="shrink-0 text-t-caption text-warning">
-          {t('shell.owed')} {formatInt(owed)}
+        <span className={`-mr-1 shrink-0 text-t-caption text-ink-muted sm:-mr-2 ${showCountdown ? 'hidden sm:inline' : 'hidden min-[375px]:inline'}`} data-testid="kst-word">
+          {t('shell.kst')}
         </span>
-      )}
-      {/* 0352: Reputation, left of the purse. The second number every screen is true of: what her successes have earned.
-          FROM `sm` UP ONLY: at 390 px the date, the hour, the Korea clock and the purse leave 17 px, and a figure here
-          cuts the game hour off (tests/shell.kstClock.spec.ts holds that line whole). On a phone it stands on the You tab
-          and on the arrival card. */}
-      {reputation !== null && (
-        <span data-testid="reputation" data-value={reputation} className="hidden shrink-0 sm:inline">
-          <Figure value={formatInt(reputation)} unit={t('shell.reputation')} />
-        </span>
-      )}
-      <span data-testid="purse" className="shrink-0">
-        <Figure value={ducats === null ? '—' : formatInt(ducats)} unit={COIN} />
-      </span>
+      </div>
     </header>
   )
 }

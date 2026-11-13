@@ -219,7 +219,8 @@ export function PortYard({
           <HullTech tech={hull.tech} />
           <HullCrown crown={hull.crown} />
           <HullJob code={hull.class} />
-          {formatTons(hull.hold)}
+          {/* the tonnage is one figure: "1,275 tons" stood as "1,275" over "tons" in a half-width tile (2026-11-14) */}
+          <span className="whitespace-nowrap">{formatTons(hull.hold)}</span>
         </>
       }
       state={hull.buildable ? 'rest' : 'muted'}

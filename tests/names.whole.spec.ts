@@ -56,10 +56,6 @@ const ALLOW: Record<string, { n: number; why: string }> = {
     n: 1,
     why: 'the loading step in hand ("Opening the world"): a status line, not a name',
   },
-  'src/features/map/RouteBar.tsx': {
-    n: 3,
-    why: "why Final was refused: the server's SENTENCE, one line in the bar, read whole from its title; and the Confirm and Repeat buttons' own words (a verb or a two-word reason: \"Via 2\", \"No water\"). None is a name: the line that carries the fleet's name is printed whole",
-  },
 }
 
 function sourceFiles(dir: string): string[] {

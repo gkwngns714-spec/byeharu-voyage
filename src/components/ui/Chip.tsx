@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { TileGrid } from './TileGrid'
-import { tileCellClass, type ChoiceColumns } from './tileStyles'
+import { tileCellClass, type ChoiceColumns, type WordColumns } from './tileStyles'
 
 // THE CHIP, AND THE SEGMENTED CONTROL — one token in a set, and one set of faces.
 //
@@ -75,6 +75,7 @@ export function Segmented<T extends string>({
   label,
   fill = false,
   columns,
+  words,
   className = '',
 }: {
   segments: readonly SegmentSpec<T>[]
@@ -86,6 +87,9 @@ export function Segmented<T extends string>({
   fill?: boolean
   /** Fixed column count; default: the set's own size up to five, four beyond it. */
   columns?: ChoiceColumns
+  /** THE SEGMENTS ARE NAMES SOMEONE CHOSE (fleets): the grid that keeps its words (TileGrid `words`), this many columns. A name
+   *  turns only at a space and a cell is never narrower than its longest word. It replaces `columns`. */
+  words?: WordColumns
   className?: string
 }) {
   // SIX IS THREE OVER THREE ON A PHONE (owner, 2026-11-12: four over two left a ragged second row), and one row of six from 640 px.
@@ -96,7 +100,8 @@ export function Segmented<T extends string>({
       role="tablist"
       label={label}
       columns={cols}
-      className={['rounded-control bg-surface-2 p-1', six ? 'sm:grid-cols-6' : '', fill ? 'w-full' : 'w-fit max-w-full', className].filter(Boolean).join(' ')}
+      words={words}
+      className={['rounded-control bg-surface-2 p-1', six && !words ? 'sm:grid-cols-6' : '', fill ? 'w-full' : 'w-fit max-w-full', className].filter(Boolean).join(' ')}
     >
       {segments.map((s) => {
         const on = s.id === value

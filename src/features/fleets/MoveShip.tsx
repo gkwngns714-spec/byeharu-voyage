@@ -21,7 +21,16 @@ type Ship = FleetView['ships'][number]
 export function MoveShip({ moves, fleet, ship }: { moves: ShipMoves | null; fleet: FleetView; ship: Ship }) {
   const t = useT()
   const [open, setOpen] = useState(false)
-  if (!moves?.on || (moves.targets.length === 0 && !moves.can_new)) return null
+  // THE BUTTON'S PLACE IS KEPT WHILE THE READ IS ON ITS WAY (2026-11-14, owner row 318): it landed a moment after the page and, on a phone's
+  // half-width tile, went under Stats, so every tile grew by a line and the page's foot moved. The same button, not drawn and not pressable.
+  if (moves === null) {
+    return (
+      <Button variant="secondary" className="invisible flex-1" disabled aria-hidden tabIndex={-1} data-testid="ship-move-waiting">
+        {t('fleets.move')}
+      </Button>
+    )
+  }
+  if (!moves.on || (moves.targets.length === 0 && !moves.can_new)) return null
   return (
     <>
       <Button variant="secondary" className="flex-1" onClick={() => setOpen(true)} data-testid="ship-move">

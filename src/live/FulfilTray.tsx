@@ -7,7 +7,7 @@ import { formatCountdown, formatDucats, formatOfTotal, formatPrice, formatPriceF
 import type { FleetView, ManifestReceipt, Refusal, TradeRequest } from '../lib/rpc'
 import { useFulfilPreview } from './useFulfilPreview'
 import { useWorld } from './worldStore'
-import { useT } from '../lib/i18n'
+import { properName, useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DELIVERY — a request, unfolded: the served preview of meeting it, and ONE button.
@@ -76,7 +76,7 @@ export function FulfilTray({
     <Tray
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={`${request.name} · request`}
+      title={`${properName('good', request.good, request.name)} · ${t('city.request')}`}
       data-testid="fulfil-tray"
       action={
         <Button

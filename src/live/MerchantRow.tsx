@@ -4,6 +4,7 @@ import { formatInt } from '../lib/format'
 import type { PortMerchant } from '../lib/rpc'
 import { GoToLink } from '../chart'
 import { whereabouts } from '../domain/fleet'
+import { useT } from '../lib/i18n'
 import { DOING_WORD, levelOf, restEndsAt, restLeft } from './merchantWords'
 import { HullCountry } from './HullCountry'
 
@@ -51,11 +52,15 @@ export function MerchantRow({
   const level = levelOf(m)
   const ends = restEndsAt(m)
   const word = DOING_WORD[m.doing]
+  const t = useT()
   return (
     <Row
       mark={<IconDisc name="ship" tone={here ? 'info' : 'muted'} />}
       label={
-        <span className="block min-w-0">
+        // UNDER 375 PX THE NAME KEEPS NINE REM (2026-11-14, owner row 318): beside her mark, her level and her state the label had
+        // 55 px on a 320-px glass, and her company stood a syllable a line ("Herma / nos / Ocam / po"). With the row a `wholeName`
+        // row, the two figures go under the name there, at the right.
+        <span className="block min-w-0 max-[374px]:min-w-36">
           <Clip className="text-t-body text-ink" data-testid="merchant-row-name">
             <GoToLink to={{ kind: 'fleet', id: m.id, where: whereabouts(m) }}>{m.name}</GoToLink>
           </Clip>
@@ -67,14 +72,15 @@ export function MerchantRow({
               </span>
             )}
             {m.company}
-            {` · ${formatInt(m.ships)} ${m.ships === 1 ? 'ship' : 'ships'}`}
+            {' · '}
+            <span className="whitespace-nowrap">{t('port.shipsOf', { n: formatInt(m.ships), count: m.ships })}</span>
             {detail !== undefined && <> · {detail}</>}
           </span>
         </span>
       }
       value={
         <span className="flex items-start gap-4">
-          <Stat figure={level === null ? '—' : formatInt(level)} caption="level" testId="merchant-row-level" />
+          <Stat figure={level === null ? '—' : formatInt(level)} caption={t('port.level')} testId="merchant-row-level" />
           {ends !== null ? (
             <Stat figure={restLeft(ends, nowMs)} caption={word} captionTestId="merchant-row-doing" testId="merchant-row-rest" />
           ) : (
@@ -83,6 +89,7 @@ export function MerchantRow({
         </span>
       }
       chevron
+      wholeName
       hairline={hairline}
       onClick={() => onOpen(m.id)}
       data-testid="merchant-row"

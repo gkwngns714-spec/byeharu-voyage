@@ -48,6 +48,7 @@ import {
   dotPorts,
   fightAt,
   fightRings,
+  fightRimWins,
   fightTapWins,
   hitTest,
   placedNames,
@@ -408,7 +409,17 @@ function Chart({
       // harbour, a merchant or a fleet that is not in the battle its own press (`fightTapWins`).
       const onName = placedNames().some((n) => at.x >= n.box.x && at.x <= n.box.x + n.box.width && at.y >= n.box.y && at.y <= n.box.y + n.box.height)
       const ring = onName ? null : fightAt(fightRings(fights, unitsPerPx), at, unitsPerPx)
-      if (ring && fightTapWins(ring, hit === null ? null : hit.kind === 'port' ? { kind: 'port' } : hit.kind === 'fleet' || hit.kind === 'merchant' ? { kind: hit.kind, id: hit.id } : null)) {
+      // THE RIM of a wide ring is the fight's too, off the mark's own centre (fightRimWins): where the mark under the press stands
+      const under: LatLon | null =
+        hit?.kind === 'port'
+          ? ([...tappable, ...dots].find((p) => p.code === hit.code) ?? null)
+          : hit?.kind === 'fleet'
+            ? (model.fleets.find((f) => f.fleet.id === hit.id)?.at ?? null)
+            : hit?.kind === 'merchant'
+              ? (drawn.traffic.find((f) => f.fleet.id === hit.id)?.at ?? null)
+              : null
+      const tapWins = ring !== null && fightTapWins(ring, hit === null ? null : hit.kind === 'port' ? { kind: 'port' } : hit.kind === 'fleet' || hit.kind === 'merchant' ? { kind: hit.kind, id: hit.id } : null)
+      if (ring && (tapWins || fightRimWins(ring, at, under, unitsPerPx))) {
         setSelection((current) => toggleSelection(current, { kind: 'fight', id: ring.id }))
         return
       }

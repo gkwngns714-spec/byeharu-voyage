@@ -1,4 +1,4 @@
-import { BonusRows } from '../components/ui'
+import { BonusRows, WRAP_ROW_CLASS } from '../components/ui'
 import type { CrewBonuses as Bonuses } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 
@@ -11,8 +11,10 @@ export function CrewBonuses({ crew }: { crew: Bonuses | undefined }) {
   if (!crew || crew.lines.length === 0) return null
   return (
     <section data-testid="crew-bonuses">
-      <div className="flex items-baseline justify-between pb-2 pt-4">
-        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{t('town.crewBonuses')}</h3>
+      {/* THE TOTALS GO UNDER THE HEADING WHERE THEY DO NOT FIT BESIDE IT (2026-11-14, owner row 318): on a phone "CREW BONUSES" stood on two
+          lines with four totals run up against it. The heading is one line. */}
+      <div className={`${WRAP_ROW_CLASS} pb-2 pt-4`}>
+        <h3 className="whitespace-nowrap text-t-caption uppercase tracking-wider text-ink-faint">{t('town.crewBonuses')}</h3>
         <span className="text-t-caption tabular-nums text-accent">{crew.totals.map((t) => t.line).join(' · ')}</span>
       </div>
       <BonusRows
