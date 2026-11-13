@@ -800,7 +800,7 @@ export function worldSeaConditions(): Promise<RpcResult<SeaConditions>> {
   return call<SeaConditions>('worldSeaConditions', [])
 }
 
-/** Where each sea lies (0376, `world.sea_zone_map`): the zone raster on the client's own sea grid, run-length coded
+/** Where each sea lies (0391, `world.sea_zone_map`): the zone raster on the client's own sea grid, run-length coded
  *  by row, and the zone code of each byte value. World data; the map's shading decodes it and decides nothing. */
 export function worldSeaZoneMap(): Promise<RpcResult<SeaZoneMap>> {
   return call<SeaZoneMap>('worldSeaZoneMap', [])

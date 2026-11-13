@@ -20,15 +20,19 @@ import { useWorld } from './worldStore'
 // `BattleView` (src/live/BattleView.tsx) is the face, with no clock and no network of its own.
 
 const POLL_MS = 5000
+// A round she nudged for and that was not fought (the answer was lost, or another read's answer landed between the nudge and its own) is nudged for again after this long.
+const RENUDGE_MS = 5000
 
 export function BattleCard({ fleetId, className = '' }: { fleetId: string; className?: string }) {
   const refresh = useWorld((s) => s.refresh)
+  // 0333: when the other side's navy reaches this battle, as the world's read of her fleet says it (the fleet row's own clock)
+  const navyAt = useWorld((s) => s.fleets.find((f) => f.id === fleetId)?.navy_at ?? null)
   // a read, with the device's clock at the moment it landed: the server's clock now is its `now` plus what has passed since
   const [got, setGot] = useState<{ fleet: string; value: BattleRead; at: number } | null>(null)
   const [tick, setTick] = useState(() => Date.now())
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const busy = useRef(false)
-  const nudged = useRef<string | null>(null)
+  const nudged = useRef<{ at: string; ms: number } | null>(null)
   const closed = useRef<string | null>(null)
 
   const now = got?.fleet === fleetId ? got : null
@@ -77,19 +81,35 @@ export function BattleCard({ fleetId, className = '' }: { fleetId: string; class
     })()
   }
 
-  // a round fell due while she watched: her own stance again, once a round, so the door fights it now
+  // a round fell due while she watched: her own stance again, so the door fights it now.
+  // ASKED AGAIN EVERY SECOND WHILE IT IS DUE (`tick`), not only when "due" first turns true: seen in a browser on 2026-11-13, a nudge that found the card busy (the last
+  // nudge's own read still out) was dropped and nothing ever asked again, so the battle stood at round 3 until the minute job (which a private world has not). One nudge a round,
+  // and one more every RENUDGE_MS while that round is still the next one.
   const due = nextAt !== null && serverNow >= Date.parse(nextAt) + 500
   useEffect(() => {
-    if (!due || !battle || !stance || nextAt === null || nudged.current === nextAt || busy.current) return
-    nudged.current = nextAt
+    if (!due || !battle || !stance || nextAt === null || busy.current) return
+    if (nudged.current !== null && nudged.current.at === nextAt && tick - nudged.current.ms < RENUDGE_MS) return
+    nudged.current = { at: nextAt, ms: tick }
     busy.current = true
     void (async () => {
-      await cmdBattleStance(battle, stance)
-      const again = await worldBattle(fleetId)
-      if (again.ok) setGot({ fleet: fleetId, value: again.value, at: Date.now() })
-      busy.current = false
+      try {
+        await cmdBattleStance(battle, stance)
+        const again = await worldBattle(fleetId)
+        if (again.ok) setGot({ fleet: fleetId, value: again.value, at: Date.now() })
+      } finally {
+        // whatever the door answered, the card is free to ask again: a nudge must never leave it deaf
+        busy.current = false
+      }
     })()
-  }, [due, battle, stance, nextAt, fleetId])
+  }, [due, battle, stance, nextAt, fleetId, tick])
+
+  // opened: the world's read of her fleet is asked once for this battle, so the navy's clock (her fleet's `navy_at`) is on the card from its first round and does not wait for the shell's beat
+  const opened = useRef<string | null>(null)
+  useEffect(() => {
+    if (!fighting || battle === null || opened.current === battle) return
+    opened.current = battle
+    void refresh()
+  }, [fighting, battle, refresh])
 
   // closed: the fleet is free again, and the world's own read says so
   useEffect(() => {
@@ -99,5 +119,5 @@ export function BattleCard({ fleetId, className = '' }: { fleetId: string; class
   }, [over, battle, refresh])
 
   if (!read) return null
-  return <BattleView read={read} nowMs={serverNow} refusal={refusal} onStance={(s) => battle && s !== stance && send(battle, s, true)} className={className} />
+  return <BattleView read={read} nowMs={serverNow} refusal={refusal} navyAt={navyAt} onStance={(s) => battle && s !== stance && send(battle, s, true)} className={className} />
 }

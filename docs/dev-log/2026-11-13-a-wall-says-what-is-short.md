@@ -1,4 +1,4 @@
-# 2026-11-13: a wall says what is short (migration 0376, branch `seas-wall`)
+# 2026-11-13: a wall says what is short (migration 0391, branch `seas-wall`)
 
 **Owner rows 166** ("in order to sail far distance, one needs better ship and levels") **and 324** ("do all, make everything work. open them if everything is built and is workable"). Design: docs/SEA_CONDITIONS_AND_REGIONS.md. The wall itself (0215, 0216, 0219, 0222) is on prod, dark behind `sea_conditions_bite`. This file serves what a screen needs before the wall can be lit. **It lights nothing and is not deployed by this PR.**
 
@@ -45,9 +45,9 @@ Not touched: `world.good_board` (0361), `voyage.settle` (0362, 0367), `public.se
 ## Checks run
 
 - Apply + self-assert on the cached world: green.
-- Proof 69 (`scripts/db/proofs/69_a_wall_says_what_is_short.sql`): 7 of 7 markers. Proofs 33, 45, 54, 56, 57, 62, 63 after the file: green.
+- Proof 91 (`scripts/db/proofs/91_a_wall_says_what_is_short.sql`): 7 of 7 markers. Proofs 33, 45, 54, 56, 57, 62, 63 after the file: green.
 - `cmd.refusal_caught` is the only function that filters a refusal's figures (searched the live bodies of `public`, `cmd`, `world`, `voyage` for a read of `->'have'`): `cmd.execute_order`, `cmd.preview`, `cmd.issue` and `cmd.run_standing_provision` all call it.
-- `before.sql`, `after.sql`, `volatility.sql` answer as their headers say, before and after the file. `rollback-0376.sql` followed by `before.sql` in one scene: every `old_times` 1, `new_times` 0, `new_functions` 0.
+- `before.sql`, `after.sql`, `volatility.sql` answer as their headers say, before and after the file. `rollback-0391.sql` followed by `before.sql` in one scene: every `old_times` 1, `new_times` 0, `new_functions` 0.
 - `tsc -b`; the three specs named in the PR.
 
 ## Decided by default
@@ -65,8 +65,27 @@ Not touched: `world.good_board` (0361), `voyage.settle` (0362, 0367), `public.se
 
 - Nothing was read on prod. `before.sql` has not been run there: whether each hunk occurs once on prod's live bodies is unproven until it is (prod head is 0363; 0364, 0366 and 0367 cut `public.client_rpc_entry_points` on other lines).
 - Prod's timings of the two reads.
-- No client screen reads the new keys yet; the shapes are held by the self-assert and proof 69 only.
+- No client screen reads the new keys yet; the shapes are held by the self-assert and proof 91 only.
 - With the catcher's cut, a client that reads `figures` on a refused order may now receive the sea's shape where it only ever received `{have, need, unit}` or nothing. Every reader of `figures.have` on the client was not audited here.
 - `world.route_legs.sea` judges the DIRECT course the client proposed (or, with no course, only the destination's own sea). A far city whose own sea is open but which lies behind a closed crossing, asked with no course, reads `sea` null.
 - A company already sailing for a far power is not touched by this file (`before.sql` counts them: 0 locally). What happens to it at lighting is the lighting file's to judge.
 - The full proof suite and a from-zero chain were not run locally (CI's job).
+
+## Later the same day: renumbered to 0391, merged onto main (head 0375), and the way home
+
+- **0376 became 0391** (the lead's order: 0379 to 0390 deploy first; 0391 meets 0390). The file, proof (now 91), the rollback draft and every check were renamed.
+  `origin/main` was merged in: five switches and attacks are lit on that chain. All ten hunks still occur once; the self-assert, proofs 91 and 68 and the three
+  check files run green on it.
+- **The way home (two more hunks and one new function, `public.sea_floor`).** The lead read prod: one company, title 1, lies at Acapulco with two barcas, in a
+  sea that asks title 8. Lit as first written, every departure of hers would be refused, and the lighting step's guard would refuse to light while she lay there.
+  The rule now: **a fleet is judged as holding at least what the sea she lies in asks.** She is in that water already, so that water and any that asks no more
+  never refuse her. It is read at the door (`public.sea_gate`), by the board's pathfinder (`voyage.reach_passage`, from the harbour she leaves) and in
+  `world.sea_conditions` (her own sea is not called closed, so the map does not shade it). A refusal's figures still carry her own title and her fleet's own wave.
+  Where she lies is the server's fact (her port, or her position at sea), never the course the client proposes.
+  What it does not do: take her home across water her hull cannot hold (from Acapulco the open Pacific still refuses two barcas). She keeps her own coast.
+  Not chosen: moving idle fleets home at lighting (it moves a player's ships and cargo without her).
+  Known gap: `public.sea_routes` (a Trade row's `sea` tag) still reads the plain rule, so a row in her own far sea can wear "Shut" while the passage is offered.
+- **Proof 68 (the armada) was red on this PR's CI and it was not this file.** Every new ship rolls her own speed from her id (0276, 0.80 to 1.20). Proof 68 wears
+  the second fleet's hull to 0.6 and asserts she is then the slower; with an unlucky pair of rolls she is not. Measured on 400 random pairs: 8 are the wrong way
+  round (2 %). The proof now makes the two rolls equal before it wears the hull. **0367's own self-assert has the same pattern (0.5 of a hull)**: it is an applied
+  file, so a from-zero replay can fail there by the same chance; that wants a line in `src/lib/db/frozenAsserts.ts`, not done here.

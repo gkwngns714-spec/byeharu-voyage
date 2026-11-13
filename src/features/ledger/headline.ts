@@ -64,8 +64,10 @@ import { skillWord } from '../../live/skillWords'
 // This file MOVED out of LedgerScreen.tsx on 2026-09-09 (docs/UI_DIRECTION.md §5: a screen file is
 // ≤ 250 lines and contains one exported component; sub-views are files). Not one sentence changed.
 
-export function headline(event: LedgerEvent, portName: (code: string) => string): string {
+export function headline(event: LedgerEvent, portName: (code: string) => string, nationName?: (code: string) => string): string {
   const p = event.payload
+  // A country an event names by its CODE alone (REGARD_CHANGED, WANTED: 0319, 0334) is said by its name, never "ESP" (seen in a browser, 2026-11-13: "ESP wants you").
+  const countryName = (q: Record<string, unknown>, key: 'to' | 'from' | 'nation') => countryOf(q, key, nationName)
   // The fallback for a payload that IS about a fleet and has lost the key. Not read by the
   // default branch: see the note above.
   const fleet = str(p, 'fleet') ?? t('history.aFleet')
@@ -417,9 +419,9 @@ function cityName(p: Record<string, unknown>, portName: (code: string) => string
 }
 
 /** A country named by the payload (`to` / `from` are codes; `*_name` the server's English). */
-function countryName(p: Record<string, unknown>, key: 'to' | 'from' | 'nation'): string | null {
+function countryOf(p: Record<string, unknown>, key: 'to' | 'from' | 'nation', nationName?: (code: string) => string): string | null {
   const code = str(p, key)
-  const served = str(p, `${key}_name`) ?? code
+  const served = str(p, `${key}_name`) ?? (code && nationName ? nationName(code) : code)
   return code && served ? properName('nation', code, served) : served
 }
 

@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 69 — A WALL SAYS WHAT IS SHORT  (migration 0376, owner rows 166 and 324)
+-- PROOF 91 — A WALL SAYS WHAT IS SHORT  (migration 0391, owner rows 166 and 324)
 --
 --   The migration's self-assert reads the rule with typed figures and one probe company. Here the companies are real (the real founding door, the real
 --   passage gate, the real leg judge), the switch is turned both ways, and each new key is held to the authority it copies. Everything rolls back with
@@ -10,16 +10,17 @@
 -- @pass WALL_CONDITIONS  her read: every zone is in a fleet's `seas` exactly when the one rule refuses that zone alone, with the rule's own figures; the nau's fleet has fewer closed seas than the barca's and none of them short of wave below 39; `port` is where she lies; `harbours` adds up to every harbour; nobody signed in reads no fleet and the same far powers
 -- @pass WALL_ORDER       lit, the real order paths: cmd.preview and cmd.issue of SAIL LPA for the title-1 barca answer E_SEA_CLOSED with the rule's own figures (Macaronesia, title 2 asked, 1 held, short of title and not of wave); the catcher (cmd.refusal_caught) still keeps cmd.figures' shape (have, need, unit) and still drops every other: a leg's own figures, a PostgreSQL DETAIL, half the sea's shape, the sea's keys with the wrong types
 -- @pass WALL_LEGS        lit, a leg from Lisbon to Honolulu is shut by its length with no harbours between and names the sea the gate refuses on; Porto names none; no leg names a sea while it has harbours between; dark, no leg names a sea and the other keys are the same text as lit
+-- @pass WALL_WAY_HOME    lit, the way home (public.sea_floor): the same title-1 barca lying at Acapulco (a sea that asks title 8) may sail on in her own waters, is refused the open Pacific on her hull alone, with her own title and wave in the figures; her read does not call her own sea closed; back at Lisbon the wall is as before
 -- @pass WALL_MAP         world.sea_zone_map decoded at every harbour's roadstead names the harbour's own sea (public.harbour_zone), and at three points of land names none; anon may not call it, a signed-in caller may; it is registered
 -- @pass WALL_COST        the conditions read for a company of five fleets and the map, timed (printed, never judged)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
 declare
-  c_a constant uuid := '00000000-0376-4000-8000-0000000000a1';
-  c_b constant uuid := '00000000-0376-4000-8000-0000000000b1';
-  c_c constant uuid := '00000000-0376-4000-8000-0000000000c1';
-  c_d constant uuid := '00000000-0376-4000-8000-0000000000d1';
+  c_a constant uuid := '00000000-0391-4000-8000-0000000000a1';
+  c_b constant uuid := '00000000-0391-4000-8000-0000000000b1';
+  c_c constant uuid := '00000000-0391-4000-8000-0000000000c1';
+  c_d constant uuid := '00000000-0391-4000-8000-0000000000d1';
   v_pa  uuid;
   v_pb  uuid;
   v_fa  uuid;
@@ -46,12 +47,12 @@ begin
   select id into v_fa from public.fleets where player_id = v_pa;
   select id into v_fb from public.fleets where player_id = v_pb;
   if public.title_level(v_pa) <> 1 or public.fleet_wave(v_fa) <> 12 or public.fleet_wave(v_fb) <> 39 then
-    raise exception 'PROOF 69 FAIL: the two companies are not title 1 in a barca (12) and a nau (39): title %, waves % and %', public.title_level(v_pa), public.fleet_wave(v_fa), public.fleet_wave(v_fb);
+    raise exception 'PROOF 91 FAIL: the two companies are not title 1 in a barca (12) and a nau (39): title %, waves % and %', public.title_level(v_pa), public.fleet_wave(v_fa), public.fleet_wave(v_fb);
   end if;
 
   -- ── WALL_SHORT ──
   if public.passage_gate(v_pa, v_fa, 100, v_hav, null) is not null then
-    raise exception 'PROOF 69 FAIL: dark, the passage gate refuses a short leg to Havana';
+    raise exception 'PROOF 91 FAIL: dark, the passage gate refuses a short leg to Havana';
   end if;
   update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
   v_ra := public.passage_gate(v_pa, v_fa, 100, null, '[[38.0,-36.0],[36.0,-42.0]]'::jsonb);   -- a course inside the Western Ocean
@@ -63,7 +64,7 @@ begin
      or (select count(*) from jsonb_object_keys(v_ra -> 'figures')) <> 8
      or (v_ra ->> 'sentence') <> format('%s asks title %s and wave resistance %s — you are title 1 and your fleet holds 12',
                                         v_ra -> 'figures' ->> 'zone_name', v_ra -> 'figures' ->> 'needs_title', v_ra -> 'figures' ->> 'needs_wave') then
-    raise exception 'PROOF 69 FAIL: lit, the gate on a course into the ocean: barca % ; nau %', v_ra, v_rb;
+    raise exception 'PROOF 91 FAIL: lit, the gate on a course into the ocean: barca % ; nau %', v_ra, v_rb;
   end if;
   raise notice 'PASS: WALL_SHORT — the gate refuses % to both: the barca is short of title and wave, the nau of title only; eight figures, the sentence unmoved', v_ra -> 'figures' ->> 'zone_name';
 
@@ -72,7 +73,7 @@ begin
   perform cmd.assume_identity(c_c);
   v_r := cmd.found_house('Casa Muro Longe', 'JPN');
   if (v_r ->> 'ok') <> 'true' then
-    raise exception 'PROOF 69 FAIL: dark, founding under Japan answered %', v_r;
+    raise exception 'PROOF 91 FAIL: dark, founding under Japan answered %', v_r;
   end if;
   update public.world_config set value = 'true'::jsonb where key in ('sea_conditions_bite', 'pirates_joinable');
   select count(*) into v_n from public.players;
@@ -87,14 +88,14 @@ begin
      or exists (select 1 from jsonb_array_elements_text(v_r -> 'fixes') x, unnest(public.far_powers()) fp where x like '(sail under ' || fp || ' %')
      or (v_r -> 'fixes')::text !~ 'PRT' or (v_r -> 'fixes')::text !~ 'OTT'
      or (select count(*) from public.players) <> v_n then
-    raise exception 'PROOF 69 FAIL: lit, founding under Japan % ; under the Brethren %', v_r, v_r2;
+    raise exception 'PROOF 91 FAIL: lit, founding under Japan % ; under the Brethren %', v_r, v_r2;
   end if;
   if (cmd.found_house('Casa Muro Perto', 'VEN') ->> 'error_code') <> 'E_MINOR_POWER' or (cmd.found_house('Casa Muro Perto', 'ZZZ') ->> 'error_code') <> 'E_NO_SUCH_NATION' then
-    raise exception 'PROOF 69 FAIL: lit, the doors before the far-power door moved';
+    raise exception 'PROOF 91 FAIL: lit, the doors before the far-power door moved';
   end if;
   v_r := cmd.found_house('Casa Muro Perto', 'OTT');
   if (v_r ->> 'ok') <> 'true' then
-    raise exception 'PROOF 69 FAIL: lit, founding under the Ottomans answered %', v_r;
+    raise exception 'PROOF 91 FAIL: lit, founding under the Ottomans answered %', v_r;
   end if;
   update public.world_config set value = 'false'::jsonb where key = 'pirates_joinable';
   raise notice 'PASS: WALL_FAR_POWER — dark Japan is let in; lit Japan (her sea asks title %) and the Brethren are refused E_FAR_POWER, % fixes in open water, no row written; the Ottomans are let in',
@@ -114,7 +115,7 @@ begin
       or (q.a is not null and (v_ra -> 'fleets' -> 0 -> 'seas' -> z.code) <> (q.a -> 'figures'))
       or (q.b is not null and (v_rb -> 'fleets' -> 0 -> 'seas' -> z.code) <> (q.b -> 'figures'));
   if v_bad is not null then
-    raise exception 'PROOF 69 FAIL: `seas` is not the rule''s verdict at: %', v_bad;
+    raise exception 'PROOF 91 FAIL: `seas` is not the rule''s verdict at: %', v_bad;
   end if;
   if (v_ra -> 'fleets' -> 0 ->> 'port') <> 'LIS' or (v_ra -> 'fleets' -> 0 ->> 'wave')::numeric <> 12 or (v_rb -> 'fleets' -> 0 ->> 'wave')::numeric <> 39
      or (select count(*) from jsonb_object_keys(v_rb -> 'fleets' -> 0 -> 'seas')) > (select count(*) from jsonb_object_keys(v_ra -> 'fleets' -> 0 -> 'seas'))
@@ -122,18 +123,18 @@ begin
      or (v_ra -> 'fleets' -> 0 -> 'seas') ? 'NOR-EU'
      or (select sum((z ->> 'harbours')::int) from jsonb_array_elements(v_ra -> 'zones') z) <> (select count(*) from public.ports where kind = 'HARBOUR')
      or (v_ra -> 'far_powers') <> to_jsonb(public.far_powers()) or not (v_ra ->> 'bite')::boolean then
-    raise exception 'PROOF 69 FAIL: her conditions: barca % ; nau %', v_ra -> 'fleets', v_rb -> 'fleets';
+    raise exception 'PROOF 91 FAIL: her conditions: barca % ; nau %', v_ra -> 'fleets', v_rb -> 'fleets';
   end if;
   update public.fleets set port_id = null, status = 'SAILING' where id = v_fa;   -- at sea: no port
   perform cmd.assume_identity(c_a);
   if (world.sea_conditions() -> 'fleets' -> 0 -> 'port') <> 'null'::jsonb then
-    raise exception 'PROOF 69 FAIL: a fleet at sea reads a port';
+    raise exception 'PROOF 91 FAIL: a fleet at sea reads a port';
   end if;
   update public.fleets set port_id = v_lis, status = 'DOCKED' where id = v_fa;
   perform cmd.assume_identity(null);
   v_r := world.sea_conditions();
   if jsonb_array_length(v_r -> 'fleets') <> 0 or (v_r -> 'far_powers') <> (v_ra -> 'far_powers') or (v_r -> 'zones') <> (v_ra -> 'zones') or (v_r -> 'title') <> 'null'::jsonb then
-    raise exception 'PROOF 69 FAIL: nobody signed in reads fleets, a title, or other zones';
+    raise exception 'PROOF 91 FAIL: nobody signed in reads fleets, a title, or other zones';
   end if;
   raise notice 'PASS: WALL_CONDITIONS — `seas` is the rule''s verdict at all % zones for both fleets: % closed to the barca, % to the nau; port LIS, null at sea; harbours add up; nobody reads no fleet',
     (select count(*) from public.sea_zones), (select count(*) from jsonb_object_keys(v_ra -> 'fleets' -> 0 -> 'seas')), (select count(*) from jsonb_object_keys(v_rb -> 'fleets' -> 0 -> 'seas'));
@@ -147,7 +148,7 @@ begin
      or (v_r -> 'figures' ->> 'zone') <> 'NOR-MAC' or (v_r -> 'figures' ->> 'needs_title')::int <> 2 or (v_r -> 'figures' ->> 'title')::int <> 1
      or (v_r -> 'figures' -> 'short_title') <> 'true'::jsonb or (v_r -> 'figures' -> 'short_wave') <> 'false'::jsonb
      or (v_r2 ->> 'error_code') is distinct from 'E_SEA_CLOSED' or (v_r2 -> 'figures') is distinct from (v_r -> 'figures') then
-    raise exception 'PROOF 69 FAIL: lit, SAIL LPA at title 1: preview % ; issue %', v_r, v_r2;
+    raise exception 'PROOF 91 FAIL: lit, SAIL LPA at title 1: preview % ; issue %', v_r, v_r2;
   end if;
   v_ra := cmd.refusal_caught('E_INSUFFICIENT_FUNDS: you hold 5 d. and it costs 9 d.', '{"have": 5, "need": 9, "unit": "d."}');
   v_rb := cmd.refusal_caught('E_ENDURANCE: too long', '{"nm": 500, "leg_days": 3, "need_days": 4}');
@@ -155,7 +156,7 @@ begin
      or cmd.refusal_caught('E_NAME_TAKEN: taken', 'Key (id)=(1) already exists') ? 'figures'
      or cmd.refusal_caught('E_SEA_CLOSED: half', '{"zone": "NOR-MID", "needs_title": 4}') ? 'figures'
      or cmd.refusal_caught('E_SEA_CLOSED: wrong types', '{"zone": 3, "needs_title": 4, "needs_wave": 30}') ? 'figures' then
-    raise exception 'PROOF 69 FAIL: the catcher: have/need/unit % ; another shape %', v_ra, v_rb;
+    raise exception 'PROOF 91 FAIL: the catcher: have/need/unit % ; another shape %', v_ra, v_rb;
   end if;
   raise notice 'PASS: WALL_ORDER — preview and issue of SAIL LPA answer E_SEA_CLOSED with the rule''s figures (% asks title %, she is %); have/need/unit kept as before; other shapes dropped',
     v_r -> 'figures' ->> 'zone_name', v_r -> 'figures' ->> 'needs_title', v_r -> 'figures' ->> 'title';
@@ -168,19 +169,69 @@ begin
      or (v_r -> 'legs' -> 0 -> 'sea' ->> 'code') is distinct from 'E_SEA_CLOSED'
      or (v_r -> 'legs' -> 1 -> 'shut') <> 'null'::jsonb or (v_r -> 'legs' -> 1 -> 'sea') <> 'null'::jsonb
      or exists (select 1 from jsonb_array_elements(v_r -> 'legs') l where (l -> 'sea') <> 'null'::jsonb and (l -> 'via') <> 'null'::jsonb) then
-    raise exception 'PROOF 69 FAIL: lit, the legs from Lisbon: %', v_r;
+    raise exception 'PROOF 91 FAIL: lit, the legs from Lisbon: %', v_r;
   end if;
   update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
   v_r2 := world.route_legs(v_fa, '[{"from":"LIS","to":"HNL"},{"from":"LIS","to":"OPO"},{"from":"LIS","to":"STO"},{"from":"LIS","to":"NAG"},{"from":"LIS","to":"HAV"}]'::jsonb);
   if exists (select 1 from jsonb_array_elements(v_r2 -> 'legs') l where (l -> 'sea') <> 'null'::jsonb)
      -- Porto is open both ways: its row is the same text dark and lit
      or (v_r2 -> 'legs' -> 1) <> (v_r -> 'legs' -> 1) then
-    raise exception 'PROOF 69 FAIL: dark, a leg names a sea, or an open leg''s row moved: %', v_r2;
+    raise exception 'PROOF 91 FAIL: dark, a leg names a sea, or an open leg''s row moved: %', v_r2;
   end if;
   update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
   raise notice 'PASS: WALL_LEGS — lit, Lisbon to Honolulu is shut % with no harbours between and names %; Porto names none; % of 5 legs name a sea; dark none does',
     v_r -> 'legs' -> 0 -> 'shut' ->> 'code', v_r -> 'legs' -> 0 -> 'sea' -> 'figures' ->> 'zone_name',
     (select count(*) from jsonb_array_elements(v_r -> 'legs') l where (l -> 'sea') <> 'null'::jsonb);
+
+  -- ── WALL_WAY_HOME ──
+  declare
+    v_aca  uuid := (select id from public.ports where code = 'ACA');
+    v_hnl  uuid := (select id from public.ports where code = 'HNL');
+    v_zone text := (select a.zones[1] from public.sea_leg_asks a join public.ports p on p.id = a.from_port and p.id = a.to_port where p.code = 'ACA');
+    v_near uuid;
+    v_code text;
+    v_reach int;
+  begin
+    -- a neighbour in her own sea, the nearest
+    select p.id, p.code into v_near, v_code
+      from public.ports p join public.sea_leg_asks a on a.from_port = p.id and a.to_port = p.id
+      join voyage.reach_from(v_aca) r on r.port_id = p.id
+     where p.kind = 'HARBOUR' and a.zones[1] = v_zone and p.id <> v_aca order by r.nm limit 1;
+    if v_near is null or (select z.title_min from public.sea_zones z where z.code = v_zone) <= 1 then
+      raise exception 'PROOF 91 FAIL: Acapulco has no neighbour in its own sea, or its sea asks no title: the premise of the way home is gone';
+    end if;
+    -- at Lisbon her own figures refuse Acapulco's sea
+    if public.sea_gate(v_pa, v_fa, v_near, null) is null then
+      raise exception 'PROOF 91 FAIL: from Lisbon, a harbour of the Pacific coast is open to a title-1 barca';
+    end if;
+    update public.fleets set port_id = v_aca where id = v_fa;
+    perform cmd.assume_identity(c_a);
+    v_r  := public.sea_gate(v_pa, v_fa, v_near, null);
+    v_r2 := public.sea_gate(v_pa, v_fa, v_hnl, null);
+    v_ra := cmd.preview(v_fa, 'SAIL ' || v_code, null);
+    v_rb := world.sea_conditions();
+    select count(*) into v_reach from voyage.reach_passage(v_pa, v_fa, v_aca, null) r where r.nm is not null and r.port_id <> v_aca;
+    if v_r is not null or (v_ra ->> 'error_code') is not distinct from 'E_SEA_CLOSED'
+       or v_r2 is null or (v_r2 -> 'figures' ->> 'title')::int <> 1 or (v_r2 -> 'figures' ->> 'wave')::numeric <> 12
+       or (v_r2 -> 'figures' -> 'short_wave') <> 'true'::jsonb or (v_r2 -> 'figures' -> 'short_title') <> 'false'::jsonb
+       or (v_rb -> 'fleets' -> 0 ->> 'port') <> 'ACA' or (v_rb -> 'fleets' -> 0 -> 'seas') ? v_zone
+       or not ((v_rb -> 'fleets' -> 0 -> 'seas') ? 'NRT-OPEN') or (v_rb -> 'fleets' -> 0 -> 'seas' -> 'NRT-OPEN' ->> 'title')::int <> 1
+       or v_reach < 1 then
+      raise exception 'PROOF 91 FAIL: the way home at Acapulco: own sea %, preview %, the open Pacific %, reach %, her read %', v_r, v_ra, v_r2, v_reach, v_rb -> 'fleets' -> 0;
+    end if;
+    -- dark, the floor is not asked: the gate answers nothing at all
+    update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
+    if public.sea_gate(v_pa, v_fa, v_hnl, null) is not null then
+      raise exception 'PROOF 91 FAIL: dark, the gate refused';
+    end if;
+    update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
+    -- back at Lisbon the wall is the plain rule again
+    update public.fleets set port_id = v_lis where id = v_fa;
+    if (public.sea_gate(v_pa, v_fa, (select id from public.ports where code = 'LPA'), null) -> 'figures') is distinct from (public.sea_refusal(1, 12, array['NOR-MAC']) -> 'figures') then
+      raise exception 'PROOF 91 FAIL: back at Lisbon the gate is not the plain rule';
+    end if;
+    raise notice 'PASS: WALL_WAY_HOME — lying at Acapulco (%) the title-1 barca may sail to % and reaches % harbours; the open Pacific refuses her on her hull alone (title 1, wave 12 in the figures); her read does not call % closed; at Lisbon the wall is the plain rule', v_zone, v_code, v_reach, v_zone;
+  end;
 
   -- ── WALL_MAP ──
   v_map := world.sea_zone_map();
@@ -210,15 +261,15 @@ $b$
    where p.kind = 'HARBOUR'
      and pg_temp.map_at_69(v_map, r.roadstead_lat, r.roadstead_lon) is distinct from public.sea_zone_at(r.roadstead_lat::float8, r.roadstead_lon::float8);
   if v_bad is not null then
-    raise exception 'PROOF 69 FAIL: the map decoded at % roadsteads does not name the sea public.sea_zone_at names: %', v_n, v_bad;
+    raise exception 'PROOF 91 FAIL: the map decoded at % roadsteads does not name the sea public.sea_zone_at names: %', v_n, v_bad;
   end if;
   if pg_temp.map_at_69(v_map, 40.4, -3.7) is not null or pg_temp.map_at_69(v_map, 15.0, 20.0) is not null or pg_temp.map_at_69(v_map, 35.0, 100.0) is not null
      or pg_temp.map_at_69(v_map, 36.0, -40.0) is distinct from public.sea_zone_at(36.0, -40.0) or pg_temp.map_at_69(v_map, 36.0, -40.0) is null then
-    raise exception 'PROOF 69 FAIL: the map names a sea at Madrid, in the Sahara or in China, or none in the mid-Atlantic';
+    raise exception 'PROOF 91 FAIL: the map names a sea at Madrid, in the Sahara or in China, or none in the mid-Atlantic';
   end if;
   if has_function_privilege('anon', 'world.sea_zone_map()', 'execute') or not has_function_privilege('authenticated', 'world.sea_zone_map()', 'execute')
      or not exists (select 1 from public.client_rpc_entry_points() e where e.schema_name = 'world' and e.function_name = 'sea_zone_map') then
-    raise exception 'PROOF 69 FAIL: world.sea_zone_map is not to authenticated only, or not registered';
+    raise exception 'PROOF 91 FAIL: world.sea_zone_map is not to authenticated only, or not registered';
   end if;
   raise notice 'PASS: WALL_MAP — decoded at % roadsteads the map names each harbour''s own sea; land names none; % rows of %, % codes, % bytes; authenticated only, registered',
     (select count(*) from public.ports where kind = 'HARBOUR'), v_map ->> 'rows', v_map ->> 'cols', jsonb_array_length(v_map -> 'codes'), length(v_map::text);
@@ -236,7 +287,7 @@ $b$
   for i in 1 .. 3 loop v_map := world.sea_zone_map(); end loop;
   v_ms2 := round(extract(epoch from clock_timestamp() - v_t) * 1000 / 3, 1);
   if jsonb_array_length(v_r -> 'fleets') <> 5 then
-    raise exception 'PROOF 69 FAIL: the company of five fleets reads %', jsonb_array_length(v_r -> 'fleets');
+    raise exception 'PROOF 91 FAIL: the company of five fleets reads %', jsonb_array_length(v_r -> 'fleets');
   end if;
   raise notice 'PASS: WALL_COST — world.sea_conditions for five fleets % ms (% bytes); world.sea_zone_map % ms (% bytes)', v_ms1, length(v_r::text), v_ms2, length(v_map::text);
 end
