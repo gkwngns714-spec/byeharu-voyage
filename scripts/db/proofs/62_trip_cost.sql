@@ -1,5 +1,5 @@
 -- ════════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 57 — A TRIP SAYS ITS TIME AND ITS PRICE  (migration 0360, world.trip_cost)
+-- PROOF 62 — A TRIP SAYS ITS TIME AND ITS PRICE  (migration 0360, world.trip_cost)
 --
 --   0360's own self-assert proves the read against the authorities it composes. This proof SAILS the trip and compares what the read said BEFORE
 --   she left with what the game then did: a probe house's fleet, her casks empty, the economy closed, queues Lisbon -> a harbour a day away ->
@@ -51,7 +51,7 @@ begin
   update public.world_config set value = 'true'::jsonb where key in ('economy_closed', 'city_treasury_enabled');
   v_lis := (select h.id from public.ports h where h.code = 'LIS' and h.kind = 'HARBOUR');
   insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc)
-  values (c_auth, 'Casa da Prova 57', (select n.id from public.nations n where n.code = 'PRT'), 100000, false)
+  values (c_auth, 'Casa da Prova 62', (select n.id from public.nations n where n.code = 'PRT'), 100000, false)
   returning id into v_pl;
   v_fl := public.form_fleet(v_pl, 'Prova', v_lis);
   perform public.commission_ship(v_pl, v_fl, 'barca', 'Prova', true, true);
@@ -66,7 +66,7 @@ begin
      and exists (select 1 from public.port_treasury t where t.port_id = r.port_id)
    order by r.nm limit 1;
   if v_near.port_id is null then
-    raise exception 'PROOF 57 FAIL: no harbour a day from Lisbon is open to the probe';
+    raise exception 'PROOF 62 FAIL: no harbour a day from Lisbon is open to the probe';
   end if;
 
   v_speed := greatest(voyage.fleet_speed(v_fl), 0.1);   -- her speed in port, before the stores are aboard: what the read and the top-up read
@@ -76,14 +76,14 @@ begin
   v_out := proof.course('LIS', v_near.code);
   v_back := proof.course(v_near.code, 'LIS');
   if v_out is null or v_back is null then
-    raise exception 'PROOF 57 FAIL: the proofs hold no course between Lisbon and %', v_near.code;
+    raise exception 'PROOF 62 FAIL: the proofs hold no course between Lisbon and %', v_near.code;
   end if;
   select sum((s ->> 'nm')::numeric) into v_nm1 from jsonb_array_elements(voyage.segments_from_course(v_out)) s;
   v_trip := world.trip_cost(v_fl, jsonb_build_array(jsonb_build_object('from', 'LIS', 'to', v_near.code, 'course', v_out),
                                                     jsonb_build_object('from', v_near.code, 'to', 'LIS', 'course', v_back)));
   if v_trip -> 'total' = 'null'::jsonb or (v_trip -> 'legs' -> 0 ->> 'supplies')::bigint <= 0 or (v_trip ->> 'stop_seconds')::numeric <= 0
      or (v_trip -> 'legs' -> 0 ->> 'dock_fee')::bigint <= 0 or (v_trip -> 'legs' -> 1 ->> 'dock_fee')::bigint <= 0 then
-    raise exception 'PROOF 57 FAIL: the read prices nothing to prove (empty casks buy nothing, or the closed economy asks no port time or no dock fee): %', v_trip;
+    raise exception 'PROOF 62 FAIL: the read prices nothing to prove (empty casks buy nothing, or the closed economy asks no port time or no dock fee): %', v_trip;
   end if;
   select coalesce(sum(w.owed), 0) into v_owed0 from public.fleet_wages w where w.fleet_id = v_fl;
   select ducats into v_p0 from public.players where id = v_pl;
@@ -92,11 +92,11 @@ begin
   v_r := cmd.issue_lines(v_fl, jsonb_build_array(jsonb_build_object('text', 'SAIL ' || v_near.code, 'path', v_out),
                                                  jsonb_build_object('text', 'SAIL LIS', 'path', v_back)), null);
   if (v_r ->> 'ok')::boolean is not true or exists (select 1 from jsonb_array_elements(v_r -> 'orders') o where o ->> 'status' in ('failed', 'cancelled')) then
-    raise exception 'PROOF 57 FAIL: the two SAILs were not queued: %', v_r;
+    raise exception 'PROOF 62 FAIL: the two SAILs were not queued: %', v_r;
   end if;
   select ducats into v_p1 from public.players where id = v_pl;
   if v_p0 - v_p1 <> (v_trip -> 'legs' -> 0 ->> 'supplies')::bigint then
-    raise exception 'PROOF 57 FAIL: the first SAIL''s supplies cost % and the read said %', v_p0 - v_p1, v_trip -> 'legs' -> 0 ->> 'supplies';
+    raise exception 'PROOF 62 FAIL: the first SAIL''s supplies cost % and the read said %', v_p0 - v_p1, v_trip -> 'legs' -> 0 ->> 'supplies';
   end if;
   raise notice 'PASS: TRIP_SUPPLIES_FIRST — % at departure, as read', v_p0 - v_p1;
 
@@ -108,24 +108,24 @@ begin
     select v.eta, v.delay_hours into v_voy.eta, v_voy.delay_hours from public.voyages v where v.id = v_voy.id;
   end loop;
   if (select f.status from public.fleets f where f.id = v_fl) = 'SAILING' or (select f.port_id from public.fleets f where f.id = v_fl) is distinct from v_near.port_id then
-    raise exception 'PROOF 57 FAIL: she did not make %', v_near.code;
+    raise exception 'PROOF 62 FAIL: she did not make %', v_near.code;
   end if;
   v_eta1 := v_voy.eta;
   v_delay := v_delay + coalesce(v_voy.delay_hours, 0);
   select ducats into v_p2 from public.players where id = v_pl;
   if v_p1 - v_p2 <> (v_trip -> 'legs' -> 0 ->> 'dock_fee')::bigint then
-    raise exception 'PROOF 57 FAIL: % charged a dock fee of % and the read said %', v_near.code, v_p1 - v_p2, v_trip -> 'legs' -> 0 ->> 'dock_fee';
+    raise exception 'PROOF 62 FAIL: % charged a dock fee of % and the read said %', v_near.code, v_p1 - v_p2, v_trip -> 'legs' -> 0 ->> 'dock_fee';
   end if;
 
   -- HER PORT TIME: she is still there, the next SAIL waiting, until the read's stop_seconds have passed
   select f.ready_at into v_ready from public.fleets f where f.id = v_fl;
   if v_ready is null or extract(epoch from v_ready - v_eta1) <> (v_trip -> 'legs' -> 0 ->> 'stop_seconds')::numeric
      or (select f.status from public.fleets f where f.id = v_fl) <> 'DOCKED' then
-    raise exception 'PROOF 57 FAIL: her port time is % after the arrival and the read said % s', v_ready - v_eta1, v_trip -> 'legs' -> 0 ->> 'stop_seconds';
+    raise exception 'PROOF 62 FAIL: her port time is % after the arrival and the read said % s', v_ready - v_eta1, v_trip -> 'legs' -> 0 ->> 'stop_seconds';
   end if;
   perform public.port_time_wake(v_ready - interval '1 second', clock_timestamp() + interval '20 seconds', v_fl);
   if (select f.status from public.fleets f where f.id = v_fl) <> 'DOCKED' then
-    raise exception 'PROOF 57 FAIL: she left before her port time was up';
+    raise exception 'PROOF 62 FAIL: she left before her port time was up';
   end if;
   -- what the sea left in her casks: the first leg's settled days eaten from what she was topped up to, and nothing else gone
   select s.water_t into v_w_now from public.ships s where s.id = v_sh;
@@ -141,14 +141,14 @@ begin
   perform public.port_time_wake(v_ready, clock_timestamp() + interval '20 seconds', v_fl);
   -- (the SAIL stamps its departure with the transaction's clock, not the job's instant, so the proof reads her state, not that stamp)
   if (select f.status from public.fleets f where f.id = v_fl) <> 'SAILING' then
-    raise exception 'PROOF 57 FAIL: her port time was up at % and the second SAIL did not leave', v_ready;
+    raise exception 'PROOF 62 FAIL: her port time was up at % and the second SAIL did not leave', v_ready;
   end if;
   raise notice 'PASS: TRIP_PORT_TIME — in port until % s after the first arrival (still docked a second before), then the second SAIL left: as read', extract(epoch from v_ready - v_eta1);
 
   -- THE SECOND LEG'S SUPPLIES: the walked figure
   select ducats into v_p3 from public.players where id = v_pl;
   if v_clean and v_p2 - v_p3 <> (v_trip -> 'legs' -> 1 ->> 'supplies')::bigint then
-    raise exception 'PROOF 57 FAIL: the second SAIL''s supplies cost % and the read walked her casks to %', v_p2 - v_p3, v_trip -> 'legs' -> 1 ->> 'supplies';
+    raise exception 'PROOF 62 FAIL: the second SAIL''s supplies cost % and the read walked her casks to %', v_p2 - v_p3, v_trip -> 'legs' -> 1 ->> 'supplies';
   end if;
   raise notice 'PASS: TRIP_SUPPLIES_WALKED — % at the second departure, read % (%)', v_p2 - v_p3, v_trip -> 'legs' -> 1 ->> 'supplies',
     case when v_clean then 'held: the sea took nothing' else 'not held: the sea delayed her or took from her casks on the first leg' end;
@@ -161,26 +161,26 @@ begin
     select v.eta, v.delay_hours into v_voy.eta, v_voy.delay_hours from public.voyages v where v.id = v_voy.id;
   end loop;
   if (select f.status from public.fleets f where f.id = v_fl) = 'SAILING' or (select f.port_id from public.fleets f where f.id = v_fl) is distinct from v_lis then
-    raise exception 'PROOF 57 FAIL: she did not make Lisbon again';
+    raise exception 'PROOF 62 FAIL: she did not make Lisbon again';
   end if;
   v_delay := v_delay + coalesce(v_voy.delay_hours, 0);
   select ducats into v_p4 from public.players where id = v_pl;
   if v_p3 - v_p4 <> (v_trip -> 'legs' -> 1 ->> 'dock_fee')::bigint then
-    raise exception 'PROOF 57 FAIL: Lisbon charged a dock fee of % and the read said %', v_p3 - v_p4, v_trip -> 'legs' -> 1 ->> 'dock_fee';
+    raise exception 'PROOF 62 FAIL: Lisbon charged a dock fee of % and the read said %', v_p3 - v_p4, v_trip -> 'legs' -> 1 ->> 'dock_fee';
   end if;
   raise notice 'PASS: TRIP_DOCK_FEES — % at % and % at Lisbon, as read', v_p1 - v_p2, v_near.code, v_p3 - v_p4;
 
   -- THE WAGES OWED over the two legs (public.owe_wages keeps them in public.fleet_wages; paid from her next sale's profit)
   select coalesce(sum(w.owed), 0) into v_owed1 from public.fleet_wages w where w.fleet_id = v_fl;
   if v_delay = 0 and round(v_owed1 - v_owed0) <> (v_trip ->> 'wages')::numeric then
-    raise exception 'PROOF 57 FAIL: she owes her crew % for the trip and the read said %', v_owed1 - v_owed0, v_trip ->> 'wages';
+    raise exception 'PROOF 62 FAIL: she owes her crew % for the trip and the read said %', v_owed1 - v_owed0, v_trip ->> 'wages';
   end if;
   raise notice 'PASS: TRIP_WAGES — % owed, read % (%)', round(v_owed1 - v_owed0), v_trip ->> 'wages',
     case when v_delay = 0 then 'held: no leg was delayed' else 'not held: the sea delayed a leg' end;
 
   if (v_trip ->> 'total')::bigint <> (v_trip ->> 'supplies')::bigint + (v_trip ->> 'wages')::bigint + (v_trip ->> 'dock_fee')::bigint
      or (v_clean and v_p0 - v_p4 <> (v_trip ->> 'supplies')::bigint + (v_trip ->> 'dock_fee')::bigint) then
-    raise exception 'PROOF 57 FAIL: the purse fell by % and the read''s supplies + dock fees are %: %', v_p0 - v_p4,
+    raise exception 'PROOF 62 FAIL: the purse fell by % and the read''s supplies + dock fees are %: %', v_p0 - v_p4,
       (v_trip ->> 'supplies')::bigint + (v_trip ->> 'dock_fee')::bigint, v_trip;
   end if;
   raise notice 'PASS: TRIP_TOTAL — the purse fell by %; read: supplies % + wages % + dock fees % = %', v_p0 - v_p4,

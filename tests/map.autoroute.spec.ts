@@ -22,7 +22,7 @@ import { ready, reachable, WORLD_BOOT_MS } from './appReady.fixture'
 //      way TO THAT CITY (which she can only be if every SAIL of the chain is queued behind the leg she is on). THEN THE
 //      TRIP IS WAITED OUT (about nine minutes): she arrives within a stated tolerance of the time shown, and the purse
 //      fell by the supplies and dock fees shown. A trip with nonzero supplies, dock fees and port time is sailed on the
-//      server in scripts/db/proofs/57_trip_cost.sql, where the economy can be closed for one transaction.
+//      server in scripts/db/proofs/62_trip_cost.sql, where the economy can be closed for one transaction.
 //   3. DRIVEN, 320 px, Korean: the same row holds the glass (no sideways scroll), and a city no chain reaches says so.
 //
 // The browser half drives the real game (PGlite, the whole chain); it SKIPS with a reason when nothing is served.
