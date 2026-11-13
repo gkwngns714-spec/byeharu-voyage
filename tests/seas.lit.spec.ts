@@ -111,6 +111,13 @@ for (const glass of [
       const veil = page.getByTestId('map-closed-seas').first()
       await expect(veil).toBeAttached({ timeout: 120_000 })
       expect(Number(await veil.getAttribute('data-closed'))).toBe(52)
+      // the shade has its key: one line in the chart's corner, inside the glass
+      const key = page.getByTestId('map-closed-seas-key')
+      await expect(key).toHaveText(ko ? '닫힌 바다' : 'Closed seas')
+      const keyBox = (await key.boundingBox())!
+      expect(keyBox.x).toBeGreaterThanOrEqual(0)
+      expect(keyBox.x + keyBox.width).toBeLessThanOrEqual(glass.width)
+      expect(keyBox.height).toBeLessThanOrEqual(20)
 
       // LAS PALMAS lies in Macaronesia (title 2): closed to a title-1 company
       await askCity(page, 'LPA')
@@ -170,5 +177,6 @@ test.describe('the shipped world: the sea conditions are dark', () => {
     await openChart(page)
     await page.waitForTimeout(3000)
     await expect(page.getByTestId('map-closed-seas')).toHaveCount(0)
+    await expect(page.getByTestId('map-closed-seas-key')).toHaveCount(0)
   })
 })

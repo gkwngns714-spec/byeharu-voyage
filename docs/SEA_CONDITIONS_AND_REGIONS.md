@@ -663,10 +663,10 @@ figures); the client never compares a number.
 | S4 | 24 far-trader houses with size-4 and size-5 hulls | Needed only once S3 is lit and only for the harbours that then lose every merchant (LOCAL: 14 after a planning pass, 3.5 % of merchant stops). Players are unaffected by its absence at the players' light. It must be measured on prod's loops first. | medium (data + founding path + proof) |
 | S5, the column | `great_powers.starting`, `nations[].starting` | Replaced by the derived rule of 10.4 (1). | none |
 | S6 + C5 | The capital, `cmd.move_capital` | A new verb with a 20,000 d. price; nothing about lighting needs it. | medium |
-| S7 | **The way home**: BUILT in 0396 after the prod read (10.4, row 2). What is left of it: a Trade row's `sea` tag (`public.sea_routes`) still reads the plain rule, so a row in her own far sea can wear "Shut" while the passage is offered; and the pathfinder takes the sea of the harbour she LEAVES for the whole chain, where the door judges each leg from where she then lies. | The door is the last word and says why. | small |
+| S7 | **The way home**: BUILT in 0396 after the prod read (10.4, row 2). The Trade row's `sea` tag is the door's own answer since **0402** (`public.sea_routes` takes the fleet: `public.sea_judge` with her floors, once per distinct sea of the board; proof 97). What is left of it: the pathfinder takes the sea of the harbour she LEAVES for the whole chain, where the door judges each leg from where she then lies. | The door is the last word and says why. | small |
 | The board and the door | Re-derive `sea_leg_asks` from sailed courses, not straight lines, so Trade never shows a city the door refuses (10.2: 11 of 703 one-leg courses) | The Map's row is already the door's own answer, and Trade's press is refused with the reason before anything is spent. | medium (246 x 246 courses; a derivation job, not a migration statement) |
 | S1b | The lower first walls of 10.3 | The owner's choice. | small (data, one derivation) |
-| A legend on the map | A word for the shade without a press | The tray says it on a press; the corner chrome is full at 320 px. | small |
+| A legend on the map | BUILT with 0402's client: one line, "Closed seas" with the shade's swatch, in the chart's bottom-left corner while a sea is shaded (390 and 320 px, EN and KO; `tests/seas.lit.spec.ts`). | | done |
 
 ### 10.7 The order of lighting, and what stands in the way
 
