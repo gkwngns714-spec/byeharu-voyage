@@ -1570,6 +1570,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-12 with migration 0356 (docs/REPUTATION.md section 5, R4): THE CALLER'S LEVEL CROSSINGS PAID, cmd.level_up().
       // No argument and no player id. Asked by the shell alone (src/live/worldStore.ts), once, when a served level stands above its served mark.
       'cmdLevelUp',
+      // Pin moved deliberately with migration 0357 (docs/COMBAT_LOG.md 3.3, 3.4): a battle fought round by round: her stance, and the read the battle card polls. No player id; dark
+      // (E_NOT_IN_USE, {on: false}) until attack_enabled. Landed WITH the face (src/live/BattleCard.tsx).
+      'cmdBattleStance', 'worldBattle',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's

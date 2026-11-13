@@ -4,6 +4,7 @@ import { formatInt } from '../lib/format'
 import { cmdAttack, cmdPreviewAttack } from '../lib/rpc'
 import type { AttackReceipt, Refusal } from '../lib/rpc'
 import { useT } from '../lib/i18n'
+import { BattleCard } from './BattleCard'
 import { useWorld } from './worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -98,6 +99,8 @@ function Attack({ target }: { target: string }) {
           </Note>
         )}
         {started && <Note data-testid="cargo-attack-started">{t('map.attackStarted')}</Note>}
+        {/* 0357: the battle she just opened, round by round: the log, the clock, Fight and Flee */}
+        {started && pick && <BattleCard fleetId={pick} />}
       </div>
     </SheetSection>
   )

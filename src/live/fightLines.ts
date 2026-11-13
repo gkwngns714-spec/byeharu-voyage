@@ -9,7 +9,9 @@ import type { FightEnd, FightLog, FightLoss, FightRound, FightVolley } from '../
 // before (an old event, an NPC's, a shape this bundle does not know). Nothing here computes an outcome: `fightRows`
 // only says which of the server's figures a cell prints, and `barCells` turns a percent into text cells.
 
-const ENDS: readonly FightEnd[] = ['STOOD', 'SLIP', 'BROKE', 'THREW', 'TERMS', 'TAKEN', 'GAVE', 'FLED', 'PAID']
+// 0357: a battle she started speaks from her deck (public.battle_log, `atk`): its own endings. OPEN is never sent:
+// a battle still being fought has NO `end`, and only a caller that asks for an open log (the battle card) gets one.
+const ENDS: readonly FightEnd[] = ['STOOD', 'SLIP', 'BROKE', 'THREW', 'TERMS', 'TAKEN', 'GAVE', 'FLED', 'PAID', 'A_NONE', 'A_LOST', 'A_BROKE', 'A_THROWN', 'A_TERMS', 'A_TOOK']
 const ROUND_CELLS = 14
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v)
@@ -33,18 +35,22 @@ function round(v: unknown): FightRound | null {
   return { round: v[0], range, you, them, hull: v[10], foeHull: v[11], struck: struck as [number, number][], slip }
 }
 
-/** The log of a fight entry, or null when it is absent or not a shape this bundle knows. */
-export function parseFightLog(v: unknown): FightLog | null {
+/** The log of a fight entry, or null when it is absent or not a shape this bundle knows. `open`: a log with no
+ *  ending is a fight still being fought (end OPEN); without it such a log is not a shape this bundle knows. */
+export function parseFightLog(v: unknown, opts: { open?: boolean } = {}): FightLog | null {
   if (!isRec(v) || v['v'] !== 1) return null
   const order = v['order'] ?? 'FIGHT'
   const noPay = v['no_pay'] ?? null
   const first = v['first']
-  const end = v['end']
+  if (v['end'] === 'OPEN') return null
+  const end = v['end'] === undefined && opts.open ? 'OPEN' : v['end']
+  const atk = v['atk'] ?? false
   const foe = v['foe']
+  if (typeof atk !== 'boolean') return null
   if (order !== 'FIGHT' && order !== 'FLEE' && order !== 'PAY') return null
   if (noPay !== null && noPay !== 'EMPTY' && noPay !== 'NO_PAYEE') return null
   if (first !== 'YOU' && first !== 'THEY' && first !== 'BOTH') return null
-  if (typeof end !== 'string' || !ENDS.includes(end as FightEnd)) return null
+  if (typeof end !== 'string' || (end !== 'OPEN' && !ENDS.includes(end as FightEnd))) return null
   if (!isRec(foe) || typeof foe['n'] !== 'string' || !isNum(foe['k']) || !isNum(foe['crew']) || !isNum(foe['hull'])) return null
   const ship = foe['ship'] ?? null
   if (ship !== null && typeof ship !== 'string') return null
@@ -79,6 +85,7 @@ export function parseFightLog(v: unknown): FightLog | null {
     order,
     noPay,
     first,
+    attacker: atk,
     foe: { name: foe['n'], ships: foe['k'], crew: foe['crew'], hull: foe['hull'], ship },
     you,
     rounds,
