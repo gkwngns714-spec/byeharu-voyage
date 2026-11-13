@@ -272,4 +272,6 @@ export type MapSelection =
   | { readonly kind: 'sea'; readonly at: LatLon }
   /** A merchant fleet (0099) — read-only: selecting one never touches the command draft. */
   | { readonly kind: 'merchant'; readonly id: string }
+  /** A battle's ring (0364) — read-only: it opens the fight to watch. */
+  | { readonly kind: 'fight'; readonly id: string }
   | null

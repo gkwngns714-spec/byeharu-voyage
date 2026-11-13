@@ -76,3 +76,36 @@ So a tray's chart shows this city's news of this good and the world's headlines.
 
 Decided by default: the tray asks for news whenever its series has landed, folded or not (one small read, again each half minute while
 open), so the dots are there the moment the chart unfolds.
+
+## 3. The same spec red in the combined tree (batch-5, #626): a dot that was no longer there
+
+**Seen:** `tests/news.dotSize.spec.ts` at 390 px ran 15.1 minutes on CI and hit its 900 s clock, waiting for the third dot of the
+Stats city chart (`news-dot` `nth(2)`). The chart had been read as `"5 news" · "1 news" · "3 news"`.
+
+**Cause (the spec's method, met by two facts of the world):**
+
+- **Dots regroup as a live chart's time stretches.** Marks closer than a 44-px target are one dot, and a Stats chart's time ends at
+  now, so the gap between two marks shrinks every second. The probe's headlines 10 and 5 minutes old stand about 46 px apart on a
+  Stats city page at 390 px, and come under 44 px about a minute after the seed. Sampled on a build of batch-5: the chart read
+  `"1 news" · "8 news"` until 36 s after the seed and `"9 news"` from 44 s on. CI reached that chart 62 s after the test began. The
+  spec counted the dots once and then pressed them by position, and a wait with no limit used the whole 900 s.
+- **The image's own news joins the probe's.** Every lit migration writes one "Update" row when the world image is BUILT. On an image
+  minutes old those rows stand inside the charts' time: on the local batch-5 build five of them, 44 to 58 s old, joined the probe's
+  last dot ("8 news"); on CI they were the extra "5 news" dot. This is also the "no chart drew two dots" red an integrator saw once.
+
+A dot merging into its neighbour once, as the record grows, is what grouping by distance means; a player would have to press in that
+very frame, and the merged dot opens the same news. The app's grouping is left as it is.
+
+**The fix (the spec, and one attribute):**
+
+- The probe's world holds ONLY the probe's four headlines: the image's own news rows are taken out of the test's private copy. The
+  number of migrations no longer changes what the test reads or how long it runs.
+- A dot carries `data-news-ids` (`NewsDots.tsx`). The spec reads the chart again before each press, asks for the next unpressed dot
+  by its own news, and treats a dot that is gone at its turn as a regrouping: it reads again and presses what stands there now.
+- Every step has a 10 s limit; a surface gets at most 24 reads; the whole test has 300 s (was 900 s).
+- The laws are the same, and one is tighter: each chart's dots must hold exactly the probe's four headlines, each once (it was "at
+  least four").
+- The card's count stops at five (the same line as `news-kinds`, so the two merge).
+
+A forced case (35 s of waiting before each press, Stats city only): read `"1 news" [51] · "3 news" [54 53 52]`, the second was gone at
+its turn, read again `"4 news" [54 53 52 51]`, pressed, green.

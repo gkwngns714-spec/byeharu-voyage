@@ -5,6 +5,8 @@ import { defineDict } from '../define'
 // The raiders' word (Weaker, About even, Stronger, Far stronger) is `map.attackWord_*`, the one set.
 // 0357: a battle she started is drawn by the same log (src/live/BattleCard.tsx): its title, her stance, and how it
 // ended from her deck (`end_A_*`; `end_OPEN` is a battle still being fought).
+// 0364: a battle somebody else is fighting, watched from the map (src/live/FightSheet.tsx): the two sides' names
+// (`sideA`, `sideD`), how it ended for a reader who is neither (`watch_*`), and the sheet's own few words.
 export const fightDict = defineDict({
   en: {
     raid: 'Raid',
@@ -69,6 +71,25 @@ export const fightDict = defineDict({
     end_A_TERMS: 'They paid',
     end_A_TOOK: 'Boarded',
     end_OPEN: 'Fighting',
+    sideA: 'Attacker',
+    sideD: 'Defender',
+    sawFirstA: 'Attacker saw first',
+    sawFirstD: 'Defender saw first',
+    lostA: 'Attacker lost',
+    watch_A_NONE: 'No fight',
+    watch_A_LOST: 'Defender escaped',
+    watch_FLED: 'Attacker fled',
+    watch_A_BROKE: 'Attacker broke off',
+    watch_A_THROWN: 'Attacker thrown back',
+    watch_A_TERMS: 'Defender paid',
+    watch_A_TOOK: 'Attacker boarded',
+    watching: 'Watching',
+    navyFight: 'Navy fight',
+    raiders: 'Raiders',
+    yours: 'Your battle',
+    fleetsShips: '{f} fleets · {s} ships',
+    shipsN: 'Ships {n}',
+    onWay: 'On her way',
   },
   ko: {
     raid: '습격',
@@ -133,5 +154,24 @@ export const fightDict = defineDict({
     end_A_TERMS: '몸값 받음',
     end_A_TOOK: '나포',
     end_OPEN: '전투 중',
+    sideA: '공격 측',
+    sideD: '방어 측',
+    sawFirstA: '공격 측 먼저 발견',
+    sawFirstD: '방어 측 먼저 발견',
+    lostA: '공격 측 손실',
+    watch_A_NONE: '전투 없음',
+    watch_A_LOST: '방어 측 도주',
+    watch_FLED: '공격 측 도주',
+    watch_A_BROKE: '공격 측 이탈',
+    watch_A_THROWN: '공격 측 격퇴당함',
+    watch_A_TERMS: '방어 측 몸값 지불',
+    watch_A_TOOK: '공격 측 나포',
+    watching: '관전 중',
+    navyFight: '해군 교전',
+    raiders: '해적',
+    yours: '내 해전',
+    fleetsShips: '함대 {f} · 선박 {s}',
+    shipsN: '선박 {n}',
+    onWay: '오는 중',
   },
 })

@@ -25,6 +25,9 @@ import { barCells, fightHull, fightRows, type FightCell } from './fightLines'
 // 0357: THE SAME COMPONENT DRAWS A BATTLE SHE STARTED (src/live/BattleCard.tsx, and its report in History): the log
 // says whose deck it is (`attacker`), so the title is Battle and no standing order is named. A battle still being
 // fought (end OPEN) has its rounds and nothing after them: no result is told before the server has one.
+// 0364: AND A BATTLE SOMEBODY ELSE IS FIGHTING (`watch`, src/live/FightSheet.tsx): the same log from the deck of the
+// side that attacked, with the two sides named Attacker and Defender instead of You and Them, and the ending said for
+// a reader who is neither. The figures and the rows are the same ones.
 
 const STEP_MS = 600
 const RESULT_MS = 1200
@@ -54,8 +57,22 @@ function HullCells({ pct, dense, testId }: { pct: number; dense: boolean; testId
   )
 }
 
-export function FightLog({ log, loss, dense = false, paced = false }: { log: Log; loss: FightLoss | null; dense?: boolean; paced?: boolean }) {
+const WATCH_END = {
+  A_NONE: 'fight.watch_A_NONE',
+  A_LOST: 'fight.watch_A_LOST',
+  FLED: 'fight.watch_FLED',
+  A_BROKE: 'fight.watch_A_BROKE',
+  A_THROWN: 'fight.watch_A_THROWN',
+  A_TERMS: 'fight.watch_A_TERMS',
+  A_TOOK: 'fight.watch_A_TOOK',
+} as const
+
+export function FightLog({ log, loss, dense = false, paced = false, watch = false }: { log: Log; loss: FightLoss | null; dense?: boolean; paced?: boolean; watch?: boolean }) {
   const t = useT()
+  // the two sides' words: hers and theirs, or, for a watcher, the side that attacked and the side set upon
+  const youWord = t(watch ? 'fight.sideA' : 'fight.you')
+  const themWord = t(watch ? 'fight.sideD' : 'fight.them')
+  const foeWord = t(watch ? 'fight.sideD' : 'fight.foe')
   const rows = fightRows(log)
   const hull = fightHull(log)
   // the lines that come one at a time: the foe, the order, each round, then the result and what follows it together
@@ -70,7 +87,8 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
     return () => window.clearTimeout(id)
   }, [shown, total])
 
-  const ended = t(`fight.end_${log.end}`)
+  const watchEnd = watch && log.end in WATCH_END ? WATCH_END[log.end as keyof typeof WATCH_END] : null
+  const ended = watchEnd ? t(watchEnd) : t(`fight.end_${log.end}`)
   // a fight that ended in a round (they broke off, she got away) names the round
   const result = (log.end === 'FLED' || log.end === 'BROKE' || log.end === 'A_BROKE') && rows.length > 0 ? t('fight.resultRound', { end: ended, n: rows.length }) : ended
   const cargo = loss ? Object.values(loss.cargo).reduce((n, q) => n + q, 0) : 0
@@ -83,7 +101,7 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
   const order = [
     log.attacker ? null : `${t('fight.order')} ${t(log.order === 'FLEE' ? 'fight.orderFlee' : log.order === 'PAY' ? 'fight.orderPay' : 'fight.orderFight')}`,
     log.noPay ? t(`fight.noPay_${log.noPay}`) : null,
-    t(log.first === 'YOU' ? 'fight.sawFirstYou' : log.first === 'THEY' ? 'fight.sawFirstThey' : 'fight.sawFirstBoth'),
+    t(log.first === 'YOU' ? (watch ? 'fight.sawFirstA' : 'fight.sawFirstYou') : log.first === 'THEY' ? (watch ? 'fight.sawFirstD' : 'fight.sawFirstThey') : 'fight.sawFirstBoth'),
   ].filter(Boolean)
   // THE ROUND'S GRID. Narrow: the number, then two lines that wrap by themselves when the box is very small (320 px):
   // range, you, them; her bar, theirs. Wide (a container query): the two lines dissolve (`contents`) and the six
@@ -102,6 +120,7 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
       data-deck={log.attacker ? 'attacker' : 'raided'}
       data-order={log.order}
       data-rounds={rows.length}
+      data-watch={watch || undefined}
     >
       <p data-testid="fight-log-foe">
         {[t(log.attacker ? 'fight.battle' : 'fight.raid'), t('fight.foeLine', { n: formatInt(Math.max(1, Math.round(log.foe.ships))), name: log.foe.name, crew: formatInt(log.foe.crew) }), log.foe.ship]
@@ -117,19 +136,20 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
               <span className={line}>
                 <span>{t(`fight.range${r.range}`)}</span>
                 <span data-testid="fight-log-you" data-kind={r.you.kind}>
-                  <span className={word}>{t('fight.you')}</span> {cellText(t, r.you)}
+                  <span className={word}>{youWord}</span> {cellText(t, r.you)}
                   {r.slipPct !== null && ` · ${t('fight.slip', { n: r.slipPct })}`}
                 </span>
                 <span data-testid="fight-log-them" data-kind={r.them.kind}>
-                  <span className={word}>{t('fight.them')}</span> {cellText(t, r.them)}
+                  <span className={word}>{themWord}</span> {cellText(t, r.them)}
                 </span>
               </span>
               <span className={line}>
-                <span>
+                <span className="whitespace-nowrap">
+                  {watch && <span className={word}>{youWord} </span>}
                   <HullCells pct={r.hullPct} dense={dense} testId="fight-log-hull" />
                 </span>
                 <span className="whitespace-nowrap">
-                  <span className={word}>{t('fight.foe')}</span> <HullCells pct={r.foePct} dense={dense} testId="fight-log-foe-hull" />
+                  <span className={word}>{foeWord}</span> <HullCells pct={r.foePct} dense={dense} testId="fight-log-foe-hull" />
                 </span>
               </span>
             </li>
@@ -147,7 +167,7 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
             <span className={word}>{t('fight.result')}</span> <span className="font-semibold text-ink">{result}</span>
           </p>
           <p data-testid="fight-log-lost" data-hull-lost={Math.round(hull.lost)} data-hull-pct={hull.lostPct}>
-            <span className={word}>{t('fight.lost')}</span> {lost.join(' · ')}
+            <span className={word}>{t(watch ? 'fight.lostA' : 'fight.lost')}</span> {lost.join(' · ')}
           </p>
           {log.you.map((s, i) => (
             <Fragment key={i}>
