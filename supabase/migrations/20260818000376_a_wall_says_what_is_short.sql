@@ -187,7 +187,7 @@ begin
   return jsonb_build_object(
     'cols', v_cols,
     'rows', coalesce(array_length(v_runs, 1), 0),
-    'cell_deg', case when v_cols > 0 then 360.0 / v_cols end,
+    'cell_deg', case when v_cols > 0 then (360.0 / v_cols)::float8 end,
     'codes', (select jsonb_agg(z.code order by g.o)
                 from generate_series(0, (select coalesce(max(ord), 0) from public.sea_zones)) g(o)
                 left join public.sea_zones z on z.ord = g.o),
