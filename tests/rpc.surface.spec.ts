@@ -1651,6 +1651,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // player id; her ship docked, her level, the items in storage there). Landed WITH its button
       // (src/live/YourCaptains.tsx).
       'cmdPromoteCaptain',
+      // Pin moved deliberately 2026-11-12 with migration 0355 (docs/REPUTATION.md R2, owner row 317): A CAPTAIN'S SKILLS, world.captain_skills(code), a READ (the officer
+      // code, no player id; null when the caller keeps no such captain), and THE STEP, cmd.captain_skill_up(code, skill): one step of one skill bought with Reputation
+      // (no player id; only ashore or in port; refused by the same reading the read prints). Landed WITH the rows that print and press them (src/live/CaptainSkills.tsx).
+      'worldCaptainSkills', 'cmdCaptainSkillUp',
       // Pin moved deliberately 2026-10-18 with migration 0163 (docs/SHIPS_AND_SKILLS.md S16): AUGMENT A
       // FITTING with a perk the player chooses, paid in kits. Takes a ship (the caller's own,
       // E_NOT_YOUR_SHIP otherwise), the item, the perk and the rank; no player id. Only docked at a level 3

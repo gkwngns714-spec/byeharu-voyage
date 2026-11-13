@@ -557,6 +557,19 @@ const TABLE = {
       { name: 'p_traits', type: 'text[]' },
     ],
   },
+  // 0355 (docs/REPUTATION.md R2): one captain's skills, each with its step, her grade's ceiling and what the next step costs; and the step itself,
+  // bought with Reputation (the officer code and the skill; no player id). The server refuses by the same reading the read prints (`can`, `why`).
+  worldCaptainSkills: { schema: 'world', fn: 'captain_skills', args: [{ name: 'p_code', type: 'text' }] },
+  cmdCaptainSkillUp: {
+    schema: 'cmd',
+    fn: 'captain_skill_up',
+    mutates: true,
+    invalidates: ['worldCaptains'],
+    args: [
+      { name: 'p_code', type: 'text' },
+      { name: 'p_trait', type: 'text' },
+    ],
+  },
   // 0162 (K8): promote a captain — her ship docked, her level, the items in storage there.
   cmdPromoteCaptain: { schema: 'cmd', fn: 'promote_captain', mutates: true, invalidates: ['worldCaptains'], args: [{ name: 'p_code', type: 'text' }] },
   cmdSeatCaptain: {

@@ -1,11 +1,11 @@
 {
   "_": "THE CAPTAINS' CATALOGUE (K4, docs/SKILLS_AND_CAPTAINS.md §4.1, §4.2, §4.9) — authored. Who the captains ARE is data/officers.json; what a grade, a trait and a language ARE is this file. scripts/build-captains.mjs reads both and generates data/captains.generated.json (every captain's grade, kit of ten traits and languages, and every harbour's language); migration 0156 loads them and scripts/db/world-guard.mjs holds the database to all three files on every apply.",
-  "_grades": "OWNER O3 (row 61): S 5 slots / 10 traits, A 4 / 8, you get the pattern — B 3 / 6, C 2 / 4. `floor_pct` is DEFAULT D10 / D12: a captain's grade at birth is the highest grade whose floor her job value reaches (C 4-5 %, B 5.5-6.5 %, A 7-8 %, S 8.5-9 %), and a promotion (K8) lifts every trait to at least the new floor. A grade above S costs one row (\"for now\").",
+  "_grades": "OWNER O3 (row 61): S 5 slots / 10 traits, A 4 / 8, you get the pattern — B 3 / 6, C 2 / 4. `floor_pct` is DEFAULT D10 / D12: a captain's grade at birth is the highest grade whose floor her job value reaches (C 4-5 %, B 5.5-6.5 %, A 7-8 %, S 8.5-9 %), and a promotion (K8) lifts every trait to at least the new floor. A grade above S costs one row (\"for now\"). `max_rank` (0355, docs/REPUTATION.md section 3): the most steps a captain of the grade holds in one skill, bought with Reputation; a promotion keeps every step and raises the ceiling.",
   "grades": [
-    { "code": "C", "ord": 1, "slots": 2, "known": 4, "floor_pct": 4, "promote_level": null, "promote_items": null },
-    { "code": "B", "ord": 2, "slots": 3, "known": 6, "floor_pct": 5.5, "promote_level": 5, "promote_items": 10 },
-    { "code": "A", "ord": 3, "slots": 4, "known": 8, "floor_pct": 7, "promote_level": 10, "promote_items": 20 },
-    { "code": "S", "ord": 4, "slots": 5, "known": 10, "floor_pct": 8.5, "promote_level": 15, "promote_items": 40 }
+    { "code": "C", "ord": 1, "slots": 2, "known": 4, "floor_pct": 4, "promote_level": null, "promote_items": null, "max_rank": 3 },
+    { "code": "B", "ord": 2, "slots": 3, "known": 6, "floor_pct": 5.5, "promote_level": 5, "promote_items": 10, "max_rank": 5 },
+    { "code": "A", "ord": 3, "slots": 4, "known": 8, "floor_pct": 7, "promote_level": 10, "promote_items": 20, "max_rank": 7 },
+    { "code": "S", "ord": 4, "slots": 5, "known": 10, "floor_pct": 8.5, "promote_level": 15, "promote_items": 40, "max_rank": 10 }
   ],
   "_kit": "DEFAULT D15: every captain carries TEN ordered traits — her job first at her own value, then up to `same_focus` more of her job's focus, then the rest, each at `extra_pct` % of her job's value (rounded to 0.1). The order after the first is a pure function of her code (md5), so the kit is the same on every build.",
   "kit": { "size": 10, "extra_pct": 60, "same_focus": 3 },

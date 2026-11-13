@@ -5,6 +5,7 @@ import type { Refusal, YourCaptain } from '../lib/rpc'
 import { formatInt, formatPctPoints } from '../lib/format'
 import type { YourCaptainsFace } from './useYourCaptains'
 import { CaptainStats } from './CaptainStats'
+import { CaptainSkills } from './CaptainSkills'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
 import { focusWord, jobWord } from './captainWords'
@@ -113,6 +114,8 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
       ))}
 
       {captain.promote && <Promote captain={captain} />}
+
+      <CaptainSkills code={captain.code} />
 
       <h4 className="pb-1 pt-4 text-t-caption text-ink-faint">{tl('books.traits', { n: chosen.length, slots })}</h4>
       {(captain.traits ?? []).map((t) => {

@@ -131,6 +131,8 @@ export { Stepper } from './Stepper'
 
 // 11. NOTE — one line, a tone, at most one action. The code goes to console.debug, never on screen.
 export { Note, type NoteTone } from './Note'
+//    A refusal in the viewer's language (the code's Korean entry with its figures): Note's own rule, read also by a caption under a greyed button.
+export { refusalWords } from './refusalWords'
 
 // 12. HINT — the caption voice, printed rather than hidden, one per section. Long text opens a Tray.
 export { Hint } from './Hint'
