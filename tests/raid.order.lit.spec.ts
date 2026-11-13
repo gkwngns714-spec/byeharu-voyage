@@ -44,8 +44,18 @@ for (const glass of GLASSES) {
         await ready(page)
         await page.getByTestId('fleet-row').first().click()
         await expect(page.getByTestId('fleet-fold')).toBeVisible()
+        // THE PICKER LANDS IN PLACE: while its read is on its way the same rows stand with no figures (raid-order-waiting), and the answer fills them without changing
+        // the picker's height by a pixel, so nothing under it moves. Measured as the picker's own height at first sight (waiting, when the read is still out) against its
+        // height once the figures are in: other parts of the page land on their own reads and are not this law's.
+        const either = page.locator('[data-testid="raid-order"], [data-testid="raid-order-waiting"]')
+        await expect(either).toBeVisible()
+        const first = await either.evaluate((el) => ({ h: el.getBoundingClientRect().height, waiting: el.getAttribute('data-testid') === 'raid-order-waiting' }))
         const picker = page.getByTestId('raid-order')
         await expect(picker).toBeVisible()
+        await expect(page.getByTestId('raid-order-waiting')).toHaveCount(0)
+        const landed = await picker.evaluate((el) => el.getBoundingClientRect().height)
+        console.log(`picker ${glass.width} ${lang}: first seen ${first.waiting ? 'waiting' : 'landed'} at ${first.h} px, landed at ${landed} px`)
+        expect(landed, `the picker changed height when its read landed (first seen ${first.waiting ? 'waiting' : 'landed'})`).toBe(first.h)
         await picker.scrollIntoViewIfNeeded()
         await expect(picker).toHaveAttribute('data-order', 'FIGHT') // a fleet that never chose fights
         expect(await words(page)).toEqual([...WORDS[lang].orders])
