@@ -4089,6 +4089,33 @@ export interface RouteLegs {
   legs: RouteLeg[]
 }
 
+/** 0360 (owner, 2026-11-13) — one leg of `world.trip_cost`: the days it sails, what its supplies cost when she gets to it
+ *  (her casks walked along the trip), the dock fee of the harbour it ends at, and the real seconds she lies there before
+ *  the next leg leaves (0 on the last). */
+export interface TripCostLeg {
+  from: string | null
+  to: string
+  nm: number | null
+  days: number | null
+  supplies: number | null
+  dock_fee: number | null
+  stop_seconds: number
+}
+
+/** 0360 — `world.trip_cost`: what a trip of SAILs takes and costs, every figure the server's. `days` is the whole trip in
+ *  voyage-days: the sailing (`sail_days`) and the calls on the way (`stop_seconds`, real seconds). `total` is
+ *  supplies + wages + dock fees. A figure is null when a leg could not be measured. null when the fleet is not yours. */
+export interface TripCost {
+  legs: TripCostLeg[]
+  sail_days: number | null
+  stop_seconds: number
+  days: number | null
+  supplies: number | null
+  wages: number | null
+  dock_fee: number | null
+  total: number | null
+}
+
 /** 0353 (docs/COMBAT_LOG.md 1.1): how a raid ended, as its log says it. */
 export type FightEnd =
   | 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'

@@ -734,6 +734,15 @@ const TABLE = {
       { name: 'p_legs', type: 'jsonb' },
     ],
   },
+  // 0360 (owner, 2026-11-13): what a trip of SAILs takes and costs: days with the calls on the way, supplies, wages, dock fees. A read; null for a fleet not yours.
+  worldTripCost: {
+    schema: 'world',
+    fn: 'trip_cost',
+    args: [
+      { name: 'p_fleet', type: 'uuid' },
+      { name: 'p_legs', type: 'jsonb' },
+    ],
+  },
 } as const satisfies Record<string, RpcSpec>
 
 export type RpcName = keyof typeof TABLE
