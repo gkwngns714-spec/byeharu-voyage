@@ -73,7 +73,8 @@
 //                 byte for byte AND the database: captain_profile, captain_traits, captain_languages and
 //                 port_language, every row, both directions; (0157, K5) each effect's cap, the cabin kinds
 //                 and the rotation of cabins by hull role; (0162, K8) the grades' promotion gates, the
-//                 promotion items (item_kinds rows of kind 'promotion' + public.promotion_items)
+//                 promotion items (item_kinds rows of kind 'promotion' + public.promotion_items); (0355, R2) each grade's
+//                 max_rank, the ceiling of a skill's steps
 //
 //   * hauls       (0173) every port_goods row's haul_nm / haul EQUALS world.haul_rows() — derived from the
 //                 roster, public.sea_reaches and the haul_* knobs, and refilled by no later apply
@@ -468,7 +469,7 @@ function drift(db_, want) {
     both(keyed(db_.captains.foci, (r) => r.code), keyed(c.cat.foci.map((x, i) => ({ ...x, ord: i + 1 })), (r) => r.code), 'trait focus',
       ['word', 'ord'].map(same), CAT)
     both(keyed(db_.captains.grades, (r) => r.code), keyed(c.cat.grades, (r) => r.code), 'captain grade',
-      ['ord', 'slots', 'known', 'floor_pct', 'promote_level', 'promote_items'].map(same), CAT)
+      ['ord', 'slots', 'known', 'floor_pct', 'promote_level', 'promote_items', 'max_rank'].map(same), CAT)   // 0355 (R2): max_rank, the ceiling of a skill's steps
     // 0162 (K8): the promotion items, their focus and the points that earn one
     both(keyed(db_.captains.promotion, (r) => r.code), keyed(c.cat.promotion_items, (r) => r.code), 'promotion item',
       ['focus', 'points'].map(same), CAT)
@@ -673,7 +674,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         left join public.captain_job j on j.officer_id = o.id
         left join public.nations n on n.id = o.nation_id left join public.ports p on p.id = o.home_port_id`)).rows,
     foci: (await db.query(`select code, word, ord from public.trait_foci`)).rows,
-    grades: (await db.query(`select code, ord, slots, known, floor_pct::float8 as floor_pct, promote_level, promote_items from public.captain_grades`)).rows,
+    grades: (await db.query(`select code, ord, slots, known, floor_pct::float8 as floor_pct, promote_level, promote_items, max_rank from public.captain_grades`)).rows,
     promotion: (await db.query(`select item_code as code, focus, points::float8 as points from public.promotion_items`)).rows,
     effects: (await db.query(`select code, ord, scope, live, cap_pct::float8 as cap_pct, words, waits, reader from public.crew_effects`)).rows,
     cabinKinds: (await db.query(`select code, word, ord from public.cabin_kinds`)).rows,

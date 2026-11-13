@@ -15,6 +15,9 @@ import {
 import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
+import { FleetRoom } from './FleetRoom'
+import { FleetShipSheet } from './FleetShipSheet'
+import { NewFleet } from './NewFleet'
 import { fleetDue } from './fleetLine'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
@@ -105,6 +108,12 @@ function FleetsBody({ title }: { title: string }) {
   // block; the row behind it never moves.
   const [openFleetId, setOpenFleetId] = useState<string | null>(null)
   const openFleet = fleets.find((f) => f.id === openFleetId) ?? null
+  // F5: ONE SHIP'S SHEET over her fleet's page, by id. It is a sibling of that page (never inside its scroller), so closing it gives the page back as it stood.
+  const [openShipId, setOpenShipId] = useState<string | null>(null)
+  const closeFleet = () => {
+    setOpenShipId(null)
+    setOpenFleetId(null)
+  }
   // The one authority for code → name (worldStore.portNameOf).
   const portName = (code: string) => portNameOf(portByCode, code)
 
@@ -146,9 +155,12 @@ function FleetsBody({ title }: { title: string }) {
                 />
               ))
             )}
+            {/* F5: a new fleet is made from here (NewFleet.tsx). Dark, it is a line that says "Not open yet", never a button. */}
+            {fleets.length > 0 && <NewFleet />}
           </ListPanel>
         }
         side={
+          <>
           <Card title={t('fleets.company')} data-testid="fleets-company">
             <div className="grid grid-cols-2 gap-4">
               <StatCell look="stacked" label={title} value={fleets.length} format={formatInt} data-testid="fleets-total" />
@@ -159,13 +171,17 @@ function FleetsBody({ title }: { title: string }) {
               <StatCell look="line" label={t('fleets.cargo')} text={`${formatOfTotal(holdUsed, holdTotal)} ${tonsWord(holdTotal)}`} data-testid="fleets-hold" />
             </div>
           </Card>
+          {/* 0354: the room she has and how more opens (world.house_room). Dark, it says "Not open yet" and offers no press. */}
+          <FleetRoom />
+          </>
         }
       />
       {openFleet !== null && (
-        <DetailPage title={openFleet.name} onClose={() => setOpenFleetId(null)} data-testid="fleet-page">
-          <FleetFold fleet={openFleet} />
+        <DetailPage title={openFleet.name} onClose={closeFleet} data-testid="fleet-page">
+          <FleetFold fleet={openFleet} onOpenShip={setOpenShipId} />
         </DetailPage>
       )}
+      {openFleet !== null && openShipId !== null && <FleetShipSheet fleet={openFleet} shipId={openShipId} onClose={() => setOpenShipId(null)} />}
     </Sheet>
   )
 }

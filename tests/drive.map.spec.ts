@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { LANDS_WITHIN_MS } from './arrivalWait.fixture'
 import { chartOpen } from './seaFrame.fixture'
 import { watchMeter, type MeterWindow } from './mapMeter.fixture'
 
@@ -123,6 +124,8 @@ test('Map: the dotted line and the roadstead ring stand off Lisbon on the glass;
   await page.waitForTimeout(3000)
 
   // SHE COMES TO LIE AT THE HARBOUR: Fleets names the destination as where she is, no longer "to …"
+  // The sea may delay any voyage (tests/arrivalWait.fixture.ts): the test's ten minutes kept, with the old 300 s wait replaced by the shared one.
+  test.setTimeout(600_000 - 300_000 + LANDS_WITHIN_MS)
   await page.goto('fleets')
   await ready(page)
   const row = page.getByTestId('fleet-row').first()
@@ -140,7 +143,7 @@ test('Map: the dotted line and the roadstead ring stand off Lisbon on the glass;
         const text = (await row.innerText()).replace(/\s+/g, ' ')
         return !/\bto\s+\S/.test(text) && text.includes(placeName) ? 'docked' : text
       },
-      { timeout: 300_000, intervals: [2000] },
+      { timeout: LANDS_WITHIN_MS, intervals: [2000], message: 'she did not come to lie at the harbour; the value below is what her Fleets row still says' },
     )
     .toBe('docked')
   const where = (await row.innerText()).replace(/\s+/g, ' ')

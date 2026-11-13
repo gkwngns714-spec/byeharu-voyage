@@ -1,6 +1,6 @@
 import { Bar, Button, Figure, Icon, Note, Row } from '../../components/ui'
-import { formatMiles, formatPriceDelta, formatVoyageDays } from '../../lib/format'
-import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
+import { formatDaysReal, formatPriceDelta } from '../../lib/format'
+import type { FleetView, Refusal } from '../../lib/rpc'
 import { sailEstimate } from '../../domain/order'
 import { whereabouts, whereParts } from '../../domain/fleet'
 import { GoToLink, PlaceLine } from '../../chart'
@@ -16,7 +16,15 @@ import { useT } from '../../lib/i18n'
 // A row carries its own truth (useSendFleet.ts): her name, where she lies, and the passage's own
 // figures from the dry run — or the server's refusal as a `Note`, with the fixes as real presses.
 // Pressing the row picks her (and points the app-wide draft at her); under the picked row is the
-// keep control. She is never a silently dead entry: a fleet that cannot be sent says why, on her
+// keep control.
+//
+// THE FINAL ANSWER, AND ONLY THAT (the owner, 2026-11-13: *"just tell me the final time, price reaching the
+// destination"*): the row's figure is the whole trip's days with the real wait beside them, and under it what its
+// supplies cost. A far city reached through harbours between reads the same two figures for the whole chain, with
+// the harbours named on one small line (`via A, B`); they ask for no press. Both are the server's figures
+// (useSendFleet.ts), added up by the one passage planner (domain/passage/chain.ts).
+//
+// She is never a silently dead entry: a fleet that cannot be sent says why, on her
 // row, as a note instead of a press.
 
 export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendFlow }) {
@@ -43,9 +51,25 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
       : v === undefined
         ? <>{where} · {t('map.checkingRoute')}</>
         : where
-  const passage = pressable && v?.kind === 'ok' ? passageOf(v.result) : null
+  const plan = pressable ? flow.planOf(f) : null
+  const name = (code: string | null) => (code === null ? '' : portNameOf(portByCode, code))
+  // the whole trip's days: the dry run's own for one leg, the planner's sum for a chain
+  const days = !pressable ? null : v?.kind === 'ok' ? sailEstimate(v.result.estimate).days : v?.kind === 'chain' ? v.plan.days : null
+  const sails = pressable && (v?.kind === 'ok' || v?.kind === 'chain')
+  const cost = sails && plan?.kind === 'open' ? plan.cost : null
+  const via = pressable && v?.kind === 'chain' ? v.plan.stops : null
   // 0241 (owner row 230): her purse is short of this passage's stores — the SAIL still goes, and the rest is owed
-  const onCredit = pressable && v?.kind === 'ok' ? (sailEstimate(v.result.estimate).onCredit ?? 0) : 0
+  const first = !pressable ? null : v?.kind === 'ok' ? v.result : v?.kind === 'chain' ? v.first : null
+  const onCredit = first ? (sailEstimate(first.estimate).onCredit ?? 0) : 0
+  // NO CHAIN OPENS IT: the plain reason beside the server's sentence
+  const noWay =
+    pressable && v?.kind === 'refused' && plan?.kind === 'shut'
+      ? plan.noStops
+        ? t('map.sendNoStops')
+        : plan.from !== null && plan.refusal
+          ? t('map.sendLegShut', { from: name(plan.from), to: name(plan.to) })
+          : null
+      : null
 
   return (
     <div data-testid="map-send-row">
@@ -54,7 +78,7 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
           <Icon name={sailing ? 'ship' : 'anchor'} size={20} className={on ? 'text-accent' : 'text-ink-faint'} />
         }
         label={<GoToLink to={{ kind: 'fleet', id: f.id, where: whereAt }}>{f.name}</GoToLink>}
-        value={passage !== null ? <Figure value={<span data-testid="map-send-passage">{passage}</span>} /> : undefined}
+        value={days !== null ? <Figure value={<span data-testid="map-send-passage">{formatDaysReal(days)}</span>} /> : undefined}
         tone={on ? 'accent' : pressable ? 'default' : 'muted'}
         hairline={!on}
         onClick={pressable ? () => flow.pick(f) : undefined}
@@ -66,10 +90,25 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
         >
           {line}
         </span>
+        {via !== null && (
+          <span className="block text-t-caption text-ink-muted" data-testid="map-send-via" data-stops={via.join(' ')}>
+            {t('map.sendVia', { stops: via.map(name).join(', ') })}
+          </span>
+        )}
+        {cost !== null && (
+          <span className="block text-t-caption text-ink-muted" data-testid="map-send-cost">
+            {t('map.sendSupplies', { amount: cost > 0 ? formatPriceDelta(-cost) : formatPriceDelta(0) })}
+          </span>
+        )}
       </Row>
 
       {pressable && v?.kind === 'refused' && (
         <Refused refusal={v.refusal} fixes={flow.fixesOf(f, v.refusal)} testId="map-send-refusal" />
+      )}
+      {noWay !== null && (
+        <span className="block pb-2 text-t-caption text-warning" data-testid="map-send-no-way">
+          {noWay}
+        </span>
       )}
 
       {onCredit > 0 && (
@@ -138,15 +177,4 @@ function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; t
       )}
     </div>
   )
-}
-
-
-/** The two figures a SAIL estimate carries — the SERVER's own sailed miles and voyage-days over
- *  the proposed course, read once for the whole app in `domain/order/estimate.ts`. */
-function passageOf(result: PreviewResult): string | null {
-  const { nm, days } = sailEstimate(result.estimate)
-  if (nm === null && days === null) return null
-  return [nm === null ? null : formatMiles(nm), days === null ? null : formatVoyageDays(days)]
-    .filter(Boolean)
-    .join(' · ')
 }

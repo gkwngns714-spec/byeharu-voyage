@@ -1,8 +1,9 @@
-import { useEffect, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 import { ScrollPane } from './ScrollPane'
 import { detailColumnClass, glassBesideRailClass } from './screenLayout'
 import { KEEP_WORDS_CLASS } from './tileStyles'
+import { useBackLayer } from './useBackLayer'
 import { useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -105,13 +106,7 @@ export function DetailPage({
 } & { 'data-testid'?: string }) {
   const t = useT()
   // Escape is the keyboard's back press; the visible back control is the thumb's.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [onClose])
+  useBackLayer(onClose)
   return (
     <div
       role="dialog"

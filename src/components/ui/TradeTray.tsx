@@ -293,15 +293,19 @@ export function TradeTray({
               the whole width where there is no basket to stage into. */}
           {/* The basket button takes its own width; the send button, which carries the count and
               the price, takes the rest — halves wrapped `Buy 10 units · 822 🪙` onto two lines. */}
-          <div className={act.stage ? 'grid grid-cols-[auto_1fr] gap-2' : ''}>
+          {/* ONE LINE A BUTTON (2026-11-13; the owner: *"long words and sentences making new messy lines"*). In the HQ Market's
+              panel at 320 px the send button had 151 px beside the basket button and stood on two lines ("Buy 10 units ·" /
+              "5,078"). The two are a wrapping line now: side by side wherever the send button's words fit one line (it takes
+              all the spare width, as before), and where they do not, each button takes a line of its own, whole. */}
+          <div className={act.stage ? 'flex flex-wrap gap-2' : ''}>
             {act.stage && (
-              <Button variant="secondary" className="w-full" onClick={act.stage} disabled={!live} data-testid="trade-tray-stage">
+              <Button variant="secondary" className="flex-[1_0_auto]" onClick={act.stage} disabled={!live} data-testid="trade-tray-stage">
                 {t('ui.addToBasket')}
               </Button>
             )}
             <Button
               variant="primary"
-              className="w-full"
+              className={act.stage ? 'max-w-full flex-[9999_1_auto]' : 'w-full'}
               onClick={act.send}
               disabled={!live}
               busy={act.sending}
