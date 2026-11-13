@@ -8,6 +8,7 @@
 -- @pass WALL_SHORT       the real passage gate, lit: a barca company at title 1 is refused the Western Ocean with short_title and short_wave true; in a nau (wave 39) the same sea says short_title only; the six old figures and the sentence are the rule's as before
 -- @pass WALL_FAR_POWER   dark, the real founding door lets Japan in; lit, Japan and (pirates joinable) the Brethren are refused E_FAR_POWER with the sea and the title it asks, the fixes name only powers in open water, no row is written; Portugal and the Ottomans are let in; the doors before it answer first
 -- @pass WALL_CONDITIONS  her read: every zone is in a fleet's `seas` exactly when the one rule refuses that zone alone, with the rule's own figures; the nau's fleet has fewer closed seas than the barca's and none of them short of wave below 39; `port` is where she lies; `harbours` adds up to every harbour; nobody signed in reads no fleet and the same far powers
+-- @pass WALL_ORDER       lit, the real order paths: cmd.preview and cmd.issue of SAIL LPA for the title-1 barca answer E_SEA_CLOSED with the rule's own figures (Macaronesia, title 2 asked, 1 held, short of title and not of wave); the catcher (cmd.refusal_caught) still keeps cmd.figures' shape (have, need, unit) and still drops every other: a leg's own figures, a PostgreSQL DETAIL, half the sea's shape, the sea's keys with the wrong types
 -- @pass WALL_LEGS        lit, a leg from Lisbon to Honolulu is shut by its length with no harbours between and names the sea the gate refuses on; Porto names none; no leg names a sea while it has harbours between; dark, no leg names a sea and the other keys are the same text as lit
 -- @pass WALL_MAP         world.sea_zone_map decoded at every harbour's roadstead names the harbour's own sea (public.harbour_zone), and at three points of land names none; anon may not call it, a signed-in caller may; it is registered
 -- @pass WALL_COST        the conditions read for a company of five fleets and the map, timed (printed, never judged)
@@ -136,6 +137,28 @@ begin
   end if;
   raise notice 'PASS: WALL_CONDITIONS — `seas` is the rule''s verdict at all % zones for both fleets: % closed to the barca, % to the nau; port LIS, null at sea; harbours add up; nobody reads no fleet',
     (select count(*) from public.sea_zones), (select count(*) from jsonb_object_keys(v_ra -> 'fleets' -> 0 -> 'seas')), (select count(*) from jsonb_object_keys(v_rb -> 'fleets' -> 0 -> 'seas'));
+
+  -- ── WALL_ORDER ──
+  perform cmd.assume_identity(c_a);
+  v_r := cmd.preview(v_fa, 'SAIL LPA', null);
+  v_r2 := cmd.issue(v_fa, 'SAIL LPA', null, null);
+  if (v_r ->> 'ok') <> 'false' or (v_r ->> 'error_code') is distinct from 'E_SEA_CLOSED'
+     or (v_r -> 'figures') is distinct from (public.sea_refusal(1, 12, array['NOR-MAC']) -> 'figures')
+     or (v_r -> 'figures' ->> 'zone') <> 'NOR-MAC' or (v_r -> 'figures' ->> 'needs_title')::int <> 2 or (v_r -> 'figures' ->> 'title')::int <> 1
+     or (v_r -> 'figures' -> 'short_title') <> 'true'::jsonb or (v_r -> 'figures' -> 'short_wave') <> 'false'::jsonb
+     or (v_r2 ->> 'error_code') is distinct from 'E_SEA_CLOSED' or (v_r2 -> 'figures') is distinct from (v_r -> 'figures') then
+    raise exception 'PROOF 69 FAIL: lit, SAIL LPA at title 1: preview % ; issue %', v_r, v_r2;
+  end if;
+  v_ra := cmd.refusal_caught('E_INSUFFICIENT_FUNDS: you hold 5 d. and it costs 9 d.', '{"have": 5, "need": 9, "unit": "d."}');
+  v_rb := cmd.refusal_caught('E_ENDURANCE: too long', '{"nm": 500, "leg_days": 3, "need_days": 4}');
+  if (v_ra -> 'figures') is distinct from '{"have": 5, "need": 9, "unit": "d."}'::jsonb or v_rb ? 'figures'
+     or cmd.refusal_caught('E_NAME_TAKEN: taken', 'Key (id)=(1) already exists') ? 'figures'
+     or cmd.refusal_caught('E_SEA_CLOSED: half', '{"zone": "NOR-MID", "needs_title": 4}') ? 'figures'
+     or cmd.refusal_caught('E_SEA_CLOSED: wrong types', '{"zone": 3, "needs_title": 4, "needs_wave": 30}') ? 'figures' then
+    raise exception 'PROOF 69 FAIL: the catcher: have/need/unit % ; another shape %', v_ra, v_rb;
+  end if;
+  raise notice 'PASS: WALL_ORDER — preview and issue of SAIL LPA answer E_SEA_CLOSED with the rule''s figures (% asks title %, she is %); have/need/unit kept as before; other shapes dropped',
+    v_r -> 'figures' ->> 'zone_name', v_r -> 'figures' ->> 'needs_title', v_r -> 'figures' ->> 'title';
 
   -- ── WALL_LEGS ──
   perform cmd.assume_identity(c_a);
