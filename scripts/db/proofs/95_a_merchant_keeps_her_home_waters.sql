@@ -1,0 +1,198 @@
+-- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
+-- PROOF 95 - A MERCHANT KEEPS HER HOME WATERS  (migration 0400; the merchants' side of 0396's home waters; owner rows 166, 324)
+--
+--   0400's self-assert reads the catalog and pure figures only. This proof plays THE PROD CASE on the world's own merchants, rolled back with proof.mjs's
+--   transaction: a merchant homed in a far sea whose hull is too weak for every sea about her (her hull is changed to a fusta, wave 6, here), then the
+--   real readers the planner asks at her lap start, dark and lit. Nothing here depends on prices or on a world's dice: what the planner CHOOSES is the
+--   market's (the first cut asserted it, and was red on a world whose market paid nothing on the loop it happened to choose).
+--
+-- @pass MH_DARK       the switch off: the weak merchant is still offered every known leg her stores allow, the ones her hull cannot hold among them; the plain rule (0397) refuses every one of them
+-- @pass MH_HOME       lit: she keeps the known legs that stay in seas of her home's rank and ask no more wave than her home's sea; without the floor she would keep none
+-- @pass MH_OTHER      lit: a leg that touches a sea of ANOTHER rank asking more than her hull is not offered; her floors raise her wave nowhere else
+-- @pass MH_LAP_START  lit, where she lies at her lap start: she is offered at least one leg, every offered leg is one her hull holds with her floors, and the guard does not count her as a merchant without an open leg (the planner's CHOICE and whether a loop pays are the market's, not the sea's: they are not judged here)
+-- @pass MH_STRONG     lit: a merchant whose hull holds every sea of her loop is offered the same legs as under 0397's plain rule (the floors take nothing away and add nothing she lacked)
+-- @pass MH_CAPE_COAST THE EIGHT ON PROD, REPRODUCED: a one-barca merchant of a European house whose loop starts at Cape Coast, where every remembered leg crosses The Doldrums: the plain rule and her floors both refuse all of them; the guard (read with the switch off, as the lead reads it) counts NO merchant without an open leg, because a coast leg to Lagos is hers; lit, she is offered that coast leg and no other
+-- @pass MH_OFF        the switch off again: her legs are byte for byte the dark ones
+-- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+do $$
+declare
+  v_m      record;
+  v_s      record;
+  v_fl     record;
+  v_dark   jsonb;
+  v_lit    jsonb;
+  v_r      jsonb;
+  v_n      int;
+  v_fusta  uuid := (select id from public.ship_classes where code = 'fusta');
+  v_g0     int;
+begin
+  if to_regprocedure('public.npc_sea_floor(uuid)') is null then
+    raise exception 'PROOF 95 FAIL: 0400 is not in this world';
+  end if;
+  update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
+  update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc';
+
+  -- THE MERCHANT: homed in a sea of a far rank that asks more wave than a fusta holds, with the most known legs inside seas of that rank
+  select nf.fleet_id, nf.route_id, nf.player_id, st.port_id as home, z.code as zone, z.title_min, z.wave_min into v_m
+    from public.npc_fleets nf
+    join lateral (select s.port_id from public.standing_route_stops s where s.route_id = nf.route_id order by s.ord limit 1) st on true
+    join public.sea_leg_asks a on a.from_port = st.port_id and a.to_port = st.port_id
+    join public.sea_zones z on z.code = a.zones[1]
+    join public.fleets f on f.id = nf.fleet_id and f.port_id = st.port_id and f.status = 'DOCKED'
+   where nf.route_id is not null and z.title_min >= 4 and z.wave_min > 6
+   order by (select count(*) from public.sea_leg_asks x join public.sea_zones zx on zx.code = x.zones[1]
+              where x.from_port = st.port_id and x.to_port <> st.port_id and zx.title_min = z.title_min) desc, nf.roster_ord
+   limit 1;
+  if v_m.fleet_id is null or v_fusta is null then
+    raise exception 'PROOF 95 FAIL: the world has no merchant lying at a home in a far sea, or no fusta';
+  end if;
+  v_g0 := (public.sea_conditions_npc_ready() ->> 'merchants_with_no_open_leg')::int;   -- the guard's count before she is made weak
+  update public.ships set class_id = v_fusta where fleet_id = v_m.fleet_id;
+  if public.fleet_wave(v_m.fleet_id) >= v_m.wave_min then
+    raise exception 'PROOF 95 FAIL: a fusta holds % and her home sea asks only %', public.fleet_wave(v_m.fleet_id), v_m.wave_min;
+  end if;
+  select * into v_fl from public.npc_sea_floor(v_m.fleet_id);
+  if v_fl.home_title is distinct from v_m.title_min or v_fl.home_wave is distinct from v_m.wave_min or v_fl.lie_title is distinct from v_m.title_min
+     or v_fl.wave is distinct from public.fleet_wave(v_m.fleet_id) then
+    raise exception 'PROOF 95 FAIL: her floors % are not her home sea''s asks (% / %)', to_jsonb(v_fl), v_m.title_min, v_m.wave_min;
+  end if;
+
+  -- ── MH_DARK ──
+  v_dark := public.npc_feasible_legs(v_m.home, v_m.fleet_id, 5, 400);
+  if jsonb_array_length(v_dark) < 2
+     or exists (select 1 from jsonb_array_elements(v_dark) x where public.npc_sea_shut(v_fl.wave, (x ->> 'port_id')::uuid, x -> 'course') is null) then
+    raise exception 'PROOF 95 FAIL: dark, she is offered % legs, or the plain rule holds one of them for a hull of %', jsonb_array_length(v_dark), v_fl.wave;
+  end if;
+  raise notice 'PASS: MH_DARK — dark, a fusta (wave %) homed in % (asks %) is offered % known legs; the plain rule refuses every one', v_fl.wave, v_m.zone, v_m.wave_min, jsonb_array_length(v_dark);
+
+  -- ── MH_HOME ──
+  update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite_npc';
+  v_lit := public.npc_feasible_legs(v_m.home, v_m.fleet_id, 5, 400);
+  if jsonb_array_length(v_lit) < 1
+     or exists (select 1 from jsonb_array_elements(v_lit) x
+                 where exists (select 1 from public.sea_zones z
+                                where z.code = any (public.npc_course_zones(x -> 'course') || array_remove(array[public.harbour_zone((x ->> 'port_id')::uuid)], null))
+                                  and (z.wave_min > v_fl.wave and (z.title_min <> v_m.title_min or z.wave_min > v_m.wave_min))))
+     or exists (select 1 from jsonb_array_elements(v_lit) x where not (v_dark @> jsonb_build_array(x))) then
+    raise exception 'PROOF 95 FAIL: lit, her legs are % of the dark %: none, or one that touches a sea her floors do not hold, or one that was not offered dark', jsonb_array_length(v_lit), jsonb_array_length(v_dark);
+  end if;
+  raise notice 'PASS: MH_HOME — lit, she keeps % of her % known legs: every one stays in seas of rank % asking no more than %; the plain rule would leave her none', jsonb_array_length(v_lit), jsonb_array_length(v_dark), v_m.title_min, v_m.wave_min;
+
+  -- ── MH_OTHER ──
+  select count(*) into v_n from jsonb_array_elements(v_dark) x
+   where exists (select 1 from public.sea_zones z
+                  where z.code = any (public.npc_course_zones(x -> 'course') || array_remove(array[public.harbour_zone((x ->> 'port_id')::uuid)], null))
+                    and z.wave_min > v_fl.wave and (z.title_min <> v_m.title_min or z.wave_min > v_m.wave_min));
+  if v_n <> jsonb_array_length(v_dark) - jsonb_array_length(v_lit) then
+    raise exception 'PROOF 95 FAIL: % dark legs touch a sea her floors do not hold, and % were taken away', v_n, jsonb_array_length(v_dark) - jsonb_array_length(v_lit);
+  end if;
+  raise notice 'PASS: MH_OTHER — the % legs taken away are exactly those that touch a sea of another rank, or of her rank asking more than her home''s sea', v_n;
+
+  -- ── MH_LAP_START ──
+  -- (the switch is on) what the planner is offered where she lies; then the guard, which is read with the switch off and counts as the planner will judge
+  if jsonb_array_length(v_lit) < 1
+     or exists (select 1 from jsonb_array_elements(v_lit) x cross join public.npc_sea_floor(v_m.fleet_id) w
+                 where public.npc_sea_shut(w.wave, (x ->> 'port_id')::uuid, x -> 'course', w.lie_title, w.lie_wave, w.home_title, w.home_wave) is not null) then
+    raise exception 'PROOF 95 FAIL: lit, she is offered no leg, or a leg her floors do not hold: %', (select jsonb_agg(x -> 'code') from jsonb_array_elements(v_lit) x);
+  end if;
+  update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc';
+  if (public.sea_conditions_npc_ready() ->> 'merchants_with_no_open_leg')::int > v_g0 then
+    raise exception 'PROOF 95 FAIL: the guard counts her as a merchant with no open leg (% before she was made weak, % now)', v_g0, public.sea_conditions_npc_ready() ->> 'merchants_with_no_open_leg';
+  end if;
+  update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite_npc';
+  raise notice 'PASS: MH_LAP_START — lit, she is offered % leg(s) where she lies, each one held with her floors; the guard''s count of merchants without an open leg did not rise (%)', jsonb_array_length(v_lit), v_g0;
+
+  -- ── MH_STRONG ──
+  select nf.fleet_id, st.port_id as home into v_s
+    from public.npc_fleets nf
+    join lateral (select s.port_id from public.standing_route_stops s where s.route_id = nf.route_id order by s.ord limit 1) st on true
+   where nf.route_id is not null and nf.fleet_id <> v_m.fleet_id and public.fleet_wave(nf.fleet_id) >= 39
+   order by nf.roster_ord limit 1;
+  v_r := public.npc_feasible_legs(v_s.home, v_s.fleet_id, 5, 400);
+  update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc';
+  if v_s.fleet_id is null
+     or v_r is distinct from (select coalesce(jsonb_agg(x order by (x ->> 'nm')::numeric, x ->> 'port_id'), '[]'::jsonb)
+                                from jsonb_array_elements(public.npc_feasible_legs(v_s.home, v_s.fleet_id, 5, 400)) x
+                               where public.npc_sea_shut(public.fleet_wave(v_s.fleet_id), (x ->> 'port_id')::uuid, x -> 'course') is null
+                                  or exists (select 1 from public.npc_sea_floor(v_s.fleet_id) w
+                                              where public.npc_sea_shut(w.wave, (x ->> 'port_id')::uuid, x -> 'course', w.lie_title, w.lie_wave, w.home_title, w.home_wave) is null)) then
+    raise exception 'PROOF 95 FAIL: lit, a nau house''s legs are not the dark ones less those neither rule holds';
+  end if;
+  raise notice 'PASS: MH_STRONG — lit, a nau house is offered % legs: the dark ones less those her hull and her floors do not hold', jsonb_array_length(v_r);
+
+  -- ── MH_CAPE_COAST ──
+  declare
+    v_cap   uuid := (select id from public.ports where code = 'CAP');
+    v_b     record;
+    v_out   record;
+    v_legs  jsonb;
+  begin
+    update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc';
+    -- a one-barca merchant whose house is in Europe (her home's sea is of the first rank)
+    select nf.fleet_id, nf.route_id, nf.player_id into v_b
+      from public.npc_fleets nf
+      join public.npc_houses nh on nh.player_id = nf.player_id
+      join public.sea_leg_asks a on a.from_port = nh.home_port_id and a.to_port = nh.home_port_id
+      join public.sea_zones z on z.code = a.zones[1] and z.title_min = 1
+     where nf.route_id is not null and nf.fleet_id <> v_m.fleet_id and public.fleet_wave(nf.fleet_id) = 12
+       and (select count(*) from public.ships s where s.fleet_id = nf.fleet_id) = 1
+     order by nf.roster_ord limit 1;
+    -- the nearest leg the world remembers out of Cape Coast (Recife on prod), and its way back
+    select l.to_port, l.course, l.nm into v_out from public.npc_known_legs(v_cap) l order by l.nm limit 1;
+    if v_b.fleet_id is null or v_out.to_port is null then
+      raise exception 'PROOF 95 FAIL: no one-barca merchant of a European house, or Cape Coast has no remembered leg';
+    end if;
+    -- her loop: Cape Coast, that harbour, and home again; she lies at Cape Coast at a lap start
+    delete from public.standing_route_stops where route_id = v_b.route_id;
+    insert into public.standing_route_stops (route_id, ord, port_id, course, course_nm)
+    values (v_b.route_id, 0, v_cap, v_out.course, v_out.nm),
+           (v_b.route_id, 1, v_out.to_port, (select jsonb_agg(t.x order by t.i desc) from jsonb_array_elements(v_out.course) with ordinality t(x, i)), v_out.nm);
+    update public.fleets set port_id = v_cap, status = 'DOCKED' where id = v_b.fleet_id;
+    update public.standing_routes sr set fleet_id = v_b.fleet_id, lap_id = null, paused_reason = null, stop_cursor = 0 where sr.id = v_b.route_id;
+
+    -- SINCE 0401 (a coast sails as a coast) the Guinea coast is no longer inside The Doldrums: a barca at Cape Coast holds remembered legs again, and the
+    -- case below cannot be made there. Then this marker holds the outcome instead: she has an open remembered leg, and the guard counts nobody.
+    if exists (select 1 from jsonb_array_elements(public.npc_feasible_legs(v_cap, v_b.fleet_id, 5, 400)) x
+                where public.npc_sea_shut(12, (x ->> 'port_id')::uuid, x -> 'course') is null) then
+      if (public.sea_conditions_npc_ready() ->> 'merchants_with_no_open_leg')::int > v_g0 then
+        raise exception 'PROOF 95 FAIL: a barca at Cape Coast holds a remembered leg and the guard still counts a merchant with no open leg: %', public.sea_conditions_npc_ready();
+      end if;
+      raise notice 'PASS: MH_CAPE_COAST — since 0401 a barca at Cape Coast holds % of her % remembered legs (the Guinea coast is a coast again); the guard counts 0 without an open leg',
+        (select count(*) from jsonb_array_elements(public.npc_feasible_legs(v_cap, v_b.fleet_id, 5, 400)) x where public.npc_sea_shut(12, (x ->> 'port_id')::uuid, x -> 'course') is null),
+        jsonb_array_length(public.npc_feasible_legs(v_cap, v_b.fleet_id, 5, 400));
+    else
+    -- the prod read, as no-open-leg.sql made it at head 0399: every remembered leg refused, by the plain rule and with her floors
+    v_legs := public.npc_feasible_legs(v_cap, v_b.fleet_id, 5, 400);
+    if jsonb_array_length(v_legs) < 1
+       or exists (select 1 from jsonb_array_elements(v_legs) x where public.npc_sea_shut(12, (x ->> 'port_id')::uuid, x -> 'course') is null)
+       or exists (select 1 from jsonb_array_elements(v_legs) x cross join public.npc_sea_floor(v_b.fleet_id) w
+                   where public.npc_sea_shut(w.wave, (x ->> 'port_id')::uuid, x -> 'course', w.lie_title, w.lie_wave, w.home_title, w.home_wave) is null)
+       or not public.npc_loop_sea_shut(v_b.fleet_id, (select jsonb_agg(jsonb_build_object('port_id', st.port_id, 'course', st.course) order by st.ord)
+                                                       from public.standing_route_stops st where st.route_id = v_b.route_id)) then
+      raise exception 'PROOF 95 FAIL: the premise: a barca at Cape Coast holds one of her % remembered legs, or her loop is not closed', jsonb_array_length(v_legs);
+    end if;
+    -- THE GUARD, switch off: she is not counted, because a coast leg is hers
+    v_r := public.sea_conditions_npc_ready();
+    if (v_r ->> 'merchants_with_no_open_leg')::int > v_g0 or not exists (select 1 from public.npc_coast_legs(v_cap)) then
+      raise exception 'PROOF 95 FAIL: the guard counts % merchant(s) with no open leg, or Cape Coast has no coast leg: %', v_r ->> 'merchants_with_no_open_leg', v_r;
+    end if;
+    -- LIT: the coast leg is offered, and the planner at her lap start leaves her on a loop her hull holds
+    update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite_npc';
+    v_legs := public.npc_feasible_legs(v_cap, v_b.fleet_id, 5, 400);
+    if jsonb_array_length(v_legs) < 1
+       or exists (select 1 from jsonb_array_elements(v_legs) x where not exists (select 1 from public.npc_coast_legs(v_cap) c where c.to_port = (x ->> 'port_id')::uuid)) then
+      raise exception 'PROOF 95 FAIL: lit, her legs out of Cape Coast are not the coast legs alone: %', (select jsonb_agg(x -> 'code') from jsonb_array_elements(v_legs) x);
+    end if;
+    raise notice 'PASS: MH_CAPE_COAST — a barca of a European house at Cape Coast: her % remembered legs all refused; the guard counts 0 without an open leg; lit she is offered % (coast legs alone)',
+      (select count(*) from public.npc_known_legs(v_cap)), (select string_agg(x ->> 'code', ' ') from jsonb_array_elements(v_legs) x);
+    end if;
+    update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc';
+  end;
+
+  -- ── MH_OFF ──
+  if public.npc_feasible_legs(v_m.home, v_m.fleet_id, 5, 400) is distinct from v_dark then
+    raise exception 'PROOF 95 FAIL: the switch off again, her legs are not the dark ones';
+  end if;
+  raise notice 'PASS: MH_OFF — the switch off again: her % legs are the dark ones, byte for byte', jsonb_array_length(v_dark);
+end $$;

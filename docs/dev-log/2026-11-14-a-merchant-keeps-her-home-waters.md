@@ -1,0 +1,152 @@
+# 2026-11-14: a merchant keeps her home waters (0400, so the merchants' sea light can be lit)
+
+Owner rows 166 ("NPCs under the same rule") and 324. Design: `docs/SEA_CONDITIONS_AND_REGIONS.md` section 10.
+
+**State on prod when this was written:** head 0399. `sea_conditions_bite` (players) lit 2026-11-14 15:56 UTC. `sea_conditions_bite_npc` is FALSE. Nothing
+here is deployed and nothing is lit by this file.
+
+## Why
+
+The merchants' guard refused on prod, rightly (`sea-light/before-npc.sql`, 16:04 UTC): `merchants_with_no_open_leg` 8, `loops_closed` 309 of 861,
+`closed_at_sea` 236. Eight merchants have no known leg from home that their hull holds; lit, each would be laid up for good. The local world has none
+like them (0 of 179 closed loops), so what they are is unknown until the lead runs the new read:
+
+```
+npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/no-open-leg.sql
+```
+
+It names each one: company, fleet, hulls and wave, home and its sea with what that sea asks, her known legs, the nearest of them with the sea that refuses
+it, the nearest harbour her wave holds, and how many of her legs the floor of 0400 opens. It counts exactly as the guard counts and runs at head 0399.
+Checked locally on an analogue: 300 merchants put into fustas (wave 6) in a scratch world; it listed the houses of Callao and Panama, refused by their own
+coast (asks 12), with 6 and 7 of 7 legs opened by the floor.
+
+The likely shape, from the code: a hull whose wave is under what her OWN home sea asks. Oared hulls read 6 to 8 and 18; every coastal sea outside Europe
+asks 8 to 16. A size-1 hull homed at Tokyo, Banda, Timor or the Sea of Japan (they ask 16) is another. Either way she is refused at her own quay.
+
+## What 0400 does
+
+Merchants get the two floors the players got in 0396, judged on wave only as 0397 judges them:
+
+- `public.npc_sea_floor(fleet)`: her wave, what the sea she lies in asks, what her home's sea asks (her house's home port, else her route's first stop).
+- `public.npc_sea_shut(wave, dest, course, lie_title, lie_wave, home_title, home_wave)`: 0397's question through `public.sea_judge` (0396). A sea of the
+  rank of the sea she lies in, or of her home's sea, asks her hull no more than that sea asked.
+- Three hunks, each once and reversing: `public.npc_feasible_legs` (the legs offered), `public.npc_loop_sea_shut` (is her loop closed) and
+  `public.sea_conditions_npc_ready` (the guard counts as the planner will judge).
+- Off = unchanged: the floors are read only while the switch is on (self-assert: 40 merchants' legs the same text; proof 95 `MH_OFF`).
+
+"No merchant without an open leg, by construction" holds when a merchant has at least one known leg that stays in seas of her home's rank and asks no
+more wave than her home's sea. That is every merchant whose home has a neighbour in the same sea. It is not a theorem for a home that is alone in its
+sea: the guard still counts, and the lead reads it after the deploy.
+
+## A merchant at sea when the switch is lit (the 236)
+
+Read in the code, not changed: the sail door never asks a merchant (`public.passage_gate` returns null for `is_npc`, 0107; proof 92 `SM_DOOR`), so she
+finishes the leg she is on and every later leg of her lap. At her next lap start `public.npc_plan` finds her loop closed and reviews it at once (0397):
+she takes the best open loop on offer, or is laid up by the rule that already exists (0181) and is planned again at every tend. With 0400 the loops on
+offer to her include those in the waters of the rank she then lies in and of her home's rank.
+
+## The simulation, with the floor
+
+`sim.mjs --name=20260818000400`: the local cached world, 837 merchants, each planned once at a lap start by the real planner.
+
+| | Dark pass | Lit, before 0400 (2026-11-13) | Lit, with 0400 |
+|---|---|---|---|
+| Loops with a closed leg after the pass | 469 | 0 | 0 |
+| Laid up | 54 | 62 | 55 |
+| Plans that failed | 0 | 0 | 0 |
+| Harbours that lose every merchant call | 0 | 14 | 16 |
+| Merchant stops after the pass (3,302 before it) | 3,175 | 2,857 | 2,871 |
+| A lap start, mean / max | 197 / 447 ms | 214 / 434 ms | 197 / 416 ms |
+
+The 16: AMB BND CPT DIL GAL HAG HOB KOL MAK OLD PLO POR STG SYD TER TID, 142 of 3,302 stops (4.3 %). None has a local house; S4 restores them. Stops fall
+9.6 % lit against dark; about a third of the loss is at those 16 harbours, the rest is loops that became shorter.
+
+## Cost
+
+`public.npc_feasible_legs`, lit, mean of 20 merchants on PGlite: 2.1 ms before, 6.4 ms after (the judge is three calls of the rule a leg where it was
+one). A lap start asks it for up to sixteen harbours, so a lit lap start grows by up to about 70 ms. If the lit window shows lap starts past budget, the
+judge can be asked once a leg with the zones split in SQL; not done here.
+
+## Checks
+
+- 0400 applies on the cached chain at head 0399 with its self-assert (2.6 s; budget 45 s).
+- Proof 95; proofs 92 and 94 after it.
+- `before-0400.sql`, `after-0400.sql`, `no-open-leg.sql` pass the read-only reader; the rollback draft returns the three bodies to their pre-images.
+
+## Not verified
+
+- What the eight on prod are.
+- Whether `merchants_with_no_open_leg` reads 0 on prod after 0400: read `sea-light/before-npc.sql` after the deploy.
+- Prod cost. Pirate merchants under the floor were not looked at separately.
+- The simulation is one planning pass at lap 0 on a static local market, as before.
+
+## Decided by default
+
+1. A merchant's home is her house's home port, else her route's first stop.
+2. The floors open a rank, as for players (0396): not every easier sea.
+3. S4 (far-trader houses) is still not built; see the PR body for what the simulation says it would restore.
+
+## Later on 2026-11-14: the eight are named, and the floor did not save them
+
+The lead ran `no-open-leg.sql` on prod (16:19 UTC). All eight are ONE case: a fleet of one barca (wave 12) whose loop starts at **Cape Coast**. Cape
+Coast's own sea (Gulf of Guinea, rank 3) asks 12 and holds her. But every leg the world remembers out of Cape Coast crosses The Doldrums (asks 24):
+Recife, Agadir, Dublin, Palermo, Bristol, Rotterdam, Lübeck, and Ilha de Moçambique by the Cape. Their houses are elsewhere (Accra, Messina, Cidade Velha,
+Las Palmas, Valencia, Alexandria). `held_with_home_waters` was 0 on every row: the floor raises the wave she is taken to hold in seas of a rank, and The
+Doldrums is of another rank.
+
+**What the planner does with such a fleet today** (read in `public.npc_plan`, 0203 and 0397): it plans from the harbour where she LIES at her lap start,
+which is her loop's first stop, never from her house's home port. It can only offer legs the world remembers (`public.npc_known_legs`: the courses of
+merchant loops and `public.npc_courses`). Lit, every remembered leg out of Cape Coast is closed, so she is offered nothing, is laid up where she lies, and
+is planned again at every tend with the same answer: laid up at Cape Coast for good. Her house's port never enters it; a merchant has no way to a harbour
+the world remembers no course to.
+
+**The gap is in what the world remembers, and Cape Coast is not alone.** A harbour is in the gap when every leg remembered out of it touches a sea that
+asks more wave than the harbour's own sea. Local world, 248 harbours with remembered legs: **17** such harbours (AMB AUK CAP HAN INC KOL LAG MAL MAN MOK
+NAM OSA OUI PLO SAK TER TID); for a barca (wave 12) **11** of them leave her nothing (AMB AUK CAP KOL LAG OSA OUI PLO SAK TER TID). A neighbour is often
+close by on the same coast (Lagos is 279 nm from Cape Coast; Elmina shares its roadstead) with no course remembered to it.
+
+**The fix in 0400: coast legs.** A new derived table `public.npc_coast_courses`: for each gap harbour, the straight course between the two roadsteads to
+up to three nearest harbours of seas of the same rank, within 400 sailed miles, kept only where that line is open water (`voyage.path_refusal`) and
+touches no sea asking more wave than the harbour's own. `public.npc_coast_legs(port)` reads them both ways. `public.npc_feasible_legs` offers them only
+while the merchants' switch is on (a fourth hunk), and the guard counts them. Locally the derivation writes 12 courses out of 7 harbours; from Cape Coast:
+Lagos. No rule is bent: she is judged like every other merchant, on a leg her hull holds.
+
+What it does not reach: harbours whose every straight line to a neighbour crosses land (locally Osaka and Sakai, Auckland, Port Louis and others of the
+17). A merchant re-planned to start there got there on a leg she holds, and that leg sailed backwards is remembered, so the planner cannot strand a
+merchant there after the light; only loops planned while the rule was dark can, and the guard counts those before the light.
+
+**Not done, and why:** re-planning her from her house's home port. She cannot get there: the planner moves no fleet, and no remembered leg she holds
+leads out of Cape Coast.
+
+**Proved** (proof 95 `MH_CAPE_COAST`): a one-barca merchant of a European house is put on a loop Cape Coast to its nearest remembered harbour and back,
+lying at Cape Coast. Every remembered leg is refused, by the plain rule and with her floors. The guard, read with the switch off, counts 0 merchants
+without an open leg. Lit, she is offered Lagos; the real planner at her lap start writes her the loop Cape Coast, Lagos. In the local world it then lays
+her up, as it lays up any merchant whose loop does not pay on that static market (0181): a lay-up of trade, planned again at every tend, not of the sea.
+
+**The simulation again, with the coast legs** (same pass): unchanged from the table above (lit: 0 closed after, 55 laid up, 16 harbours without a
+merchant call, 2,871 stops, lap start 197 ms mean and 450 ms max). The local world has no merchant whose loop starts at a gap harbour, so no coast leg
+was used in it.
+
+**A finding beyond merchants:** the coast of West Africa between about 10 degrees north and the Gulf of Guinea lies in the zone The Doldrums (asks 24).
+So, judging by the merchant courses (every remembered course from Europe to Guinea crosses it), a PLAYER's barca cannot reach the Gulf of Guinea from
+Europe either, at any title: the Trade board's pair table shows it open (a straight line) and the door would refuse the real course. Not driven as a player. The design meant Guinea for a titled barca. The fix is a box in the zone data for that coast, a data slice of its own.
+
+`no-open-leg.sql` now counts as the guard does since 0400 (floors and coast legs) and so needs 0400 in the world; wanted after the deploy: no row. Its
+first form, which the lead ran at head 0399, is at commit 5a58e7c3.
+
+## Proof 95 was red on CI, and why (2026-11-14, evening)
+
+`MH_LAP_START` called the real planner and asserted that the merchant was not laid up and sailed an open loop. On CI's world the planner chose a loop that
+did not pay (net -16) and laid her up by the old rule (0181). That is the market's doing, not the sea's: every built world has its own `world_secret` and its
+own prices. It was not a fault in the guard: its `ready: false` in that message is only the switch being on inside the proof (`ready` is "not lit and ...").
+
+The proof now asserts only what the sea rule guarantees, for the probe merchant where she lies: lit, she is offered at least one leg and every offered leg
+is held with her floors; no offered leg touches a sea her floors do not hold; the guard's count of merchants without an open leg does not rise because of
+her; dark, her legs are the same text. It no longer calls `public.npc_plan`, and no longer reads `paused_reason`. `MH_CAPE_COAST` lost its planner call
+too. Proof 92 (0397) still plays the planner for the sea's own claim there.
+
+`scripts/ops/harness/sea-merchants/dice-0400.mjs` runs proof 95 on the cached world under N other secrets and markets (every harbour's stock of every
+good multiplied by its own random factor between 0.2 and 1.8): 12 of 12 green.
+
+`MH_CAPE_COAST` also holds on a world where 0401 (a coast sails as a coast) is in: there a barca at Cape Coast holds remembered legs again, the case
+cannot be made, and the marker asserts that outcome instead.
