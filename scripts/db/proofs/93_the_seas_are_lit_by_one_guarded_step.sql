@@ -1,7 +1,7 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 93 - THE SEAS ARE LIT BY ONE GUARDED STEP  (migration 0393; owner rows 166 and 324)
+-- PROOF 93 - THE SEAS ARE LIT BY ONE GUARDED STEP  (migration 0398; owner rows 166 and 324)
 --
---   0393 lights nothing: it installs public.sea_conditions_ready (the guards, as figures) and public.sea_conditions_light (the step). This proof runs the
+--   0398 lights nothing: it installs public.sea_conditions_ready (the guards, as figures) and public.sea_conditions_light (the step). This proof runs the
 --   step on a world it makes ready itself, breaks each guard in turn, lights, reads the wall and the news, and throws the switch back. All rolled back with
 --   proof.mjs's transaction. The companies it reads are the chain's own (title 1, a barca or a barca and a caravel, some lying in far seas).
 --
@@ -10,8 +10,8 @@
 -- @pass SL_GUARD_FLEET  a company's fleet lying in a sea her title does not open: refused, naming one fleet and her company; a fleet under way to such a harbour is counted the same
 -- @pass SL_GUARD_HOME   a company whose country's capital lies in a sea her title does not open: refused, naming it
 -- @pass SL_GUARD_ROUTE  a company's standing route with a leg into such a sea: refused, naming one leg
--- @pass SL_LIT          a ready world: the step lights sea_conditions_bite, posts exactly one news row (update:0393, English and Korean) and answers its figures; asked again it refuses (already lit) and posts nothing
--- @pass SL_WALL         lit: a title-1 barca at Lisbon may sail Funchal and is refused Las Palmas E_SEA_CLOSED by Macaronesia (title 2 asked, 1 held; 0391: the title is short, the wave is not); voyage.sail_refusal says the same at the door
+-- @pass SL_LIT          a ready world: the step lights sea_conditions_bite, posts exactly one news row (update:0398, English and Korean) and answers its figures; asked again it refuses (already lit) and posts nothing
+-- @pass SL_WALL         lit: a title-1 barca at Lisbon may sail Funchal and is refused Las Palmas E_SEA_CLOSED by Macaronesia (title 2 asked, 1 held; 0396: the title is short, the wave is not); voyage.sail_refusal says the same at the door
 -- @pass SL_BACK         the switch thrown back: the same passage is open again
 -- ═══════════════════════════════════════════════════════════════════════════════
 
@@ -34,7 +34,7 @@ declare
   v_was    uuid;
 begin
   if to_regprocedure('public.sea_conditions_light()') is null then
-    raise exception 'PROOF 93 FAIL: 0393 is not in this world';
+    raise exception 'PROOF 93 FAIL: 0398 is not in this world';
   end if;
   select jsonb_build_array(jsonb_build_array(a.roadstead_lat, a.roadstead_lon), jsonb_build_array(b.roadstead_lat, b.roadstead_lon)) into v_cf
     from public.sea_reaches a, public.sea_reaches b where a.code = 'LIS' and b.code = 'FNC';
@@ -91,7 +91,7 @@ begin
   raise notice 'PASS: SL_GUARD_ROOM - fleet room off alone: refused, naming it';
 
   -- ── SL_GUARD_FLEET ──
-  -- THE WAY HOME (0391): she is told, not a guard. The read counts and names her, and the world is still ready with her there.
+  -- THE WAY HOME (0396): she is told, not a guard. The read counts and names her, and the world is still ready with her there.
   update public.fleets set port_id = v_acc where id = v_a.fleet_id;
   v_r := public.sea_conditions_ready();
   if (v_r ->> 'fleets_in_closed_seas')::int <> 1 or (v_r -> 'first_fleets' ->> 0) <> v_a.company_name || ' / ' || v_a.name || ' at ACC' or not (v_r ->> 'ready')::boolean then
@@ -109,18 +109,21 @@ begin
   raise notice 'PASS: SL_GUARD_FLEET - a title-1 fleet at Accra, and the same under way to it: told by name and counted, and the light is not held by her (the way home)';
 
   -- ── SL_GUARD_HOME ──
+  -- HOME WATERS (0396): a title-1 company of Japan is told, not a guard: the world is still ready with her in it, and (the switch forced on in this
+  -- rolled-back world) her own capital's sea does not refuse her.
   select p.nation_id into v_was from public.players p where p.id = v_a.player_id;
   update public.players set nation_id = v_jpn where id = v_a.player_id;
-  begin
-    perform public.sea_conditions_light();
-    v_err := null;
-  exception when sqlstate 'P0001' then v_err := sqlerrm;
-  end;
-  if v_jpn is null or v_err is null or v_err not like '%1 company(ies) have a capital in a sea their title does not open%' or public.sea_conditions_on() then
-    raise exception 'PROOF 93 FAIL: a title-1 company of Japan was not the guard named: %', v_err;
+  v_r := public.sea_conditions_ready();
+  if v_jpn is null or (v_r ->> 'capitals_closed')::int <> 1 or not (v_r ->> 'ready')::boolean then
+    raise exception 'PROOF 93 FAIL: a title-1 company of Japan is not told, or holds the light: %', v_r;
   end if;
+  update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
+  if public.sea_gate(v_a.player_id, v_a.fleet_id, (select cap.id from public.nations n join public.ports cap on cap.code = n.capital_port_code where n.id = v_jpn), null) is not null then
+    raise exception 'PROOF 93 FAIL: lit, a company of Japan is refused her own capital''s sea';
+  end if;
+  update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
   update public.players set nation_id = v_was where id = v_a.player_id;
-  raise notice 'PASS: SL_GUARD_HOME - a title-1 company whose capital is Sakai: refused, naming it';
+  raise notice 'PASS: SL_GUARD_HOME - a title-1 company whose capital is Sakai: told and counted, the light is not held by her, and lit her home sea is open (home waters)';
 
   -- ── SL_GUARD_ROUTE ──
   insert into public.standing_routes (player_id, name, fleet_id) values (v_a.player_id, 'Rota 0f71', v_a.fleet_id) returning id into v_route;
@@ -142,7 +145,7 @@ begin
   v_g := public.sea_conditions_light();
   if not public.sea_conditions_on() or not (v_g ->> 'lit')::boolean
      or (select count(*) from public.world_news) <> v_news + 1
-     or not exists (select 1 from public.world_news n where n.key = 'update:0393' and n.kind = 'UPDATE'
+     or not exists (select 1 from public.world_news n where n.key = 'update:0398' and n.kind = 'UPDATE'
                       and n.detail -> 'words' -> 'title' ->> 'en' = 'Seas ask a title and a sturdy ship' and n.detail -> 'words' -> 'title' ->> 'ko' = '바다마다 작위와 내파 필요') then
     raise exception 'PROOF 93 FAIL: the step did not light a ready world with one news row in both languages: %', v_g;
   end if;
