@@ -481,6 +481,26 @@ export interface YardSource {
   name: string | null
   /** Sailed miles from this yard (`sea_reaches`); 0 for the yard itself, null where unknown. */
   miles: number | null
+  /** 0358, a good's row: the recipe's count, the good's weight a unit, and what the named seller asks for one now
+   *  (`world.price(port, good).ask`; null where no harbour sells it). Absent before 0358. */
+  qty?: number
+  bulk?: number
+  ask?: number | null
+  /** 0358, a fitting's row: the goods it is made of, one row per `item_recipes` row. Absent before 0358. */
+  inputs?: YardInput[]
+}
+
+/** 0358: one good a fitting is made of, with its nearest seller. `qty` is the recipe's count times the number of that
+ *  fitting the hull takes. `good` is the good's name; `name` is the seller's, as on a `YardSource`. */
+export interface YardInput {
+  code: string
+  good: string
+  qty: number
+  bulk: number
+  port: string | null
+  name: string | null
+  miles: number | null
+  ask: number | null
 }
 
 export interface YardSources {
@@ -3341,7 +3361,11 @@ export interface BoardBuyRow extends BoardPassage {
   /** The city's normal stock — the level the price is centred on (0183). */
   stock_target?: number
   miles: number | null
+  /** THE WHOLE TRIP THERE in voyage-days: the sailing AND the calls on the way (0361; before it, the sailing alone). */
   days: number | null
+  /** 0361 — the sailing alone, and the real seconds she lies in port on the way (0 while the economy is open). */
+  sail_days?: number | null
+  stop_seconds?: number | null
   arrive_at: string | null
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
@@ -3370,7 +3394,12 @@ export interface BoardSellRow extends BoardPassage {
   stock?: number
   stock_target?: number
   miles: number | null
+  /** THE WHOLE TRIP THERE in voyage-days, from where she is and through the buy city when the good is bought first:
+   *  the sailing AND the calls on the way (0361; before it, the sailing alone). */
   days: number | null
+  /** 0361 — the sailing alone, and the real seconds she lies in port on the way (0 while the economy is open). */
+  sail_days?: number | null
+  stop_seconds?: number | null
   arrive_at: string | null
   units: number | null
   price_each: number | null
@@ -3379,17 +3408,23 @@ export interface BoardSellRow extends BoardPassage {
   profit_tax: number | null
   /** Inside `proceeds` already — shown, never subtracted again. */
   port_fee: number | null
+  /** What her crew will be owed over the trip: the day's wage for every day begun on every leg (0361, as
+   *  `voyage.settle` owes it and `world.trip_cost` says it; before it, the wage times the days with their fraction). */
   wages: number | null
+  /** 0361 — THE TRIP'S DOCK FEES: `public.port_fee` of every harbour she calls at, the last included, on the cargo
+   *  aboard then (0 while the economy is open). It is taken off `profit`. Absent before 0361. */
+  dock_fee?: number | null
   net: number | null
   net_per_ton: number | null
-  /** 0225 — `net` less the supplies the passage asks (`supplies.cost`): what the trip leaves. Null when either
-   *  is unknown. Absent before 0225. */
+  /** WHAT THE TRIP LEAVES: `net` less the trip's supplies (`supplies.cost`) and, from 0361, its dock fees
+   *  (`dock_fee`). Null when a part is unknown. Absent before 0225. */
   profit?: number | null
   cap_left: number | null
   at_arrival: OutlookAtArrival | null
   best: OutlookBest | null
   request: { premium_pct: number; days_left: number } | null
-  /** 0237 — the dock fee for this parcel there and the country factor on its tax. Closed economy only. */
+  /** 0237 — her standing at the destination and the country factor on its tax. Closed economy only. Its `fee` is the
+   *  destination's for the parcel alone: the trip's dock fee is `dock_fee` (0361), and that is the one Trade prints. */
   dues?: PortDues
   /** THE PASSAGE SHE CAN SAIL (0188): the harbours between, in order (every leg within her captain's reach);
    *  null when no chain of legs within reach gets there. */
@@ -3404,7 +3439,9 @@ export interface BoardSellRow extends BoardPassage {
   /** 0225 — THE SUPPLIES THIS PASSAGE ASKS, from `public.supply_need` (the same rule `cmd.do_sail` buys by):
    *  the days of stores its longest leg needs at the sail door's margin, what topping her casks up to them costs
    *  now (0 when they already cover it), and whether they fit her hold beside what she carries. Null when the
-   *  row has no passage. Absent before 0225. */
+   *  row has no passage. Absent before 0225. 0361: `cost` is THE WHOLE TRIP'S supplies, her casks walked along it
+   *  (topped up before every leg, each leg's days eaten), as `world.trip_cost` says them; `days` and `fits` are
+   *  still the longest leg's. */
   supplies?: BoardSupplies | null
 }
 
@@ -4078,8 +4115,39 @@ export interface RouteLegs {
   legs: RouteLeg[]
 }
 
+/** 0360 (owner, 2026-11-13) — one leg of `world.trip_cost`: the days it sails, what its supplies cost when she gets to it
+ *  (her casks walked along the trip), the dock fee of the harbour it ends at, and the real seconds she lies there before
+ *  the next leg leaves (0 on the last). */
+export interface TripCostLeg {
+  from: string | null
+  to: string
+  nm: number | null
+  days: number | null
+  supplies: number | null
+  dock_fee: number | null
+  stop_seconds: number
+}
+
+/** 0360 — `world.trip_cost`: what a trip of SAILs takes and costs, every figure the server's. `days` is the whole trip in
+ *  voyage-days: the sailing (`sail_days`) and the calls on the way (`stop_seconds`, real seconds). `total` is
+ *  supplies + wages + dock fees. A figure is null when a leg could not be measured. null when the fleet is not yours. */
+export interface TripCost {
+  legs: TripCostLeg[]
+  sail_days: number | null
+  stop_seconds: number
+  days: number | null
+  supplies: number | null
+  wages: number | null
+  dock_fee: number | null
+  total: number | null
+}
+
 /** 0353 (docs/COMBAT_LOG.md 1.1): how a raid ended, as its log says it. */
-export type FightEnd = 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'
+export type FightEnd =
+  | 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'
+  // 0357: a battle she started, from her deck (public.battle_log): no fight, the other got away, she broke off under
+  // fire, thrown back at the boarding, the other paid, boarded. OPEN is a battle still being fought: no ending yet.
+  | 'A_NONE' | 'A_LOST' | 'A_BROKE' | 'A_THROWN' | 'A_TERMS' | 'A_TOOK' | 'OPEN'
 /** 0353: a fleet's standing order when raiders close. FIGHT is no row on the server. */
 export type RaidOrderWord = 'FIGHT' | 'FLEE' | 'PAY'
 
@@ -4112,6 +4180,8 @@ export interface FightLog {
   /** A Pay that was refused before the fight, and why. */
   noPay: 'EMPTY' | 'NO_PAYEE' | null
   first: 'YOU' | 'THEY' | 'BOTH'
+  /** 0357: the log of a battle SHE started, from her deck (`atk` on the server). False: a raid on her. */
+  attacker: boolean
   foe: { name: string; ships: number; crew: number; hull: number; ship: string | null }
   you: { name: string; hull: number; full: number; crew: number }[]
   rounds: FightRound[]
@@ -4140,4 +4210,44 @@ export interface RaidRead {
   pay?: number
   /** One row a danger level on the sea now: the raiders' word against her. */
   foes?: { danger: number; word: AttackWord }[]
+}
+
+/** 0357: her stance in a battle fought round by round. PAY is for a side set upon only. */
+export type BattleStanceWord = 'FIGHT' | 'FLEE' | 'PAY'
+
+/** 0357 `world.battle(fleet)`: the read the battle card polls: her fleet's latest battle fought round by round.
+ *  `on` false (no such battle, or not her fleet): nothing else is served and no card is drawn. `log` is the fight so
+ *  far from her deck, in a raid log's shape (v 1); while FIGHTING it has no ending. */
+export interface BattleRead {
+  on: boolean
+  battle?: string
+  status?: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
+  side?: 'ATTACKER' | 'DEFENDER'
+  foe?: string | null
+  word?: AttackWord | null
+  started_at?: string
+  resolves_at?: string
+  /** The server's clock at the read: the countdown is drawn against it, never against the device's. */
+  now?: string
+  round_seconds?: number
+  rounds?: number
+  rounds_done?: number
+  /** When the next round, or the boarding, is due. Null once closed. */
+  next_at?: string | null
+  /** LONG, MEDIUM or CLOSE; null at the boarding. */
+  next_range?: string | null
+  stance?: BattleStanceWord
+  may?: BattleStanceWord[]
+  log?: unknown
+  outcome?: string | null
+  loot?: number
+  crew_lost?: number
+  navy?: string | null
+}
+
+/** 0357 `cmd.battle_stance`: the stance kept, the round it takes hold from, and when that round is due. */
+export interface BattleStanceReceipt {
+  stance: BattleStanceWord
+  round_next: number
+  next_at: string
 }

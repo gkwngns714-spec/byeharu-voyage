@@ -3,6 +3,8 @@ import { defineDict } from '../define'
 // THE FIGHT (0353, owner row 315; docs/COMBAT_LOG.md 1.6): the words of a raid's log (src/live/FightLog.tsx) and of a
 // fleet's standing order (src/live/RaidOrder.tsx). The numbers are the server's; these are the labels around them.
 // The raiders' word (Weaker, About even, Stronger, Far stronger) is `map.attackWord_*`, the one set.
+// 0357: a battle she started is drawn by the same log (src/live/BattleCard.tsx): its title, her stance, and how it
+// ended from her deck (`end_A_*`; `end_OPEN` is a battle still being fought).
 export const fightDict = defineDict({
   en: {
     raid: 'Raid',
@@ -55,6 +57,18 @@ export const fightDict = defineDict({
     oddsSlip_fair: 'Fair',
     oddsSlip_good: 'Good',
     nextSail: 'From next sail',
+    battle: 'Battle',
+    stance: 'Stance',
+    nextRound: 'From next round',
+    loot: 'Loot',
+    crewLost: 'Crew lost',
+    end_A_NONE: 'No fight',
+    end_A_LOST: 'They escaped',
+    end_A_BROKE: 'Broke off',
+    end_A_THROWN: 'Thrown back',
+    end_A_TERMS: 'They paid',
+    end_A_TOOK: 'Boarded',
+    end_OPEN: 'Fighting',
   },
   ko: {
     raid: '습격',
@@ -107,5 +121,17 @@ export const fightDict = defineDict({
     oddsSlip_fair: '보통',
     oddsSlip_good: '높음',
     nextSail: '다음 출항부터',
+    battle: '해전',
+    stance: '태세',
+    nextRound: '다음 라운드부터',
+    loot: '전리품',
+    crewLost: '선원 손실',
+    end_A_NONE: '전투 없음',
+    end_A_LOST: '적 도주',
+    end_A_BROKE: '이탈',
+    end_A_THROWN: '격퇴당함',
+    end_A_TERMS: '몸값 받음',
+    end_A_TOOK: '나포',
+    end_OPEN: '전투 중',
   },
 })

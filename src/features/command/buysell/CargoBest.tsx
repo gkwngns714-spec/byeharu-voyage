@@ -15,7 +15,8 @@ import { useT } from '../../../lib/i18n'
 //   · HERE — where she lies, when that city buys it: its bid now (world.price_why, the served price), 0 days;
 //   · the few BEST cities she can sail to for it, and the few NEAREST: the served board's own rows (world.good_board
 //     for what is aboard — the rows it prices in full, `price_each`; that she can sail, `sailable`): the price, the
-//     days, and the PROFIT after wages, supplies and tax (the row's `profit`, served — nothing is added up here).
+//     days (0361: the whole trip, the calls on the way in them), and the PROFIT after wages, supplies, dock fees and
+//     tax (the row's `profit`, served — nothing is added up here).
 //     The board prices in full its `good_board_quoted` dearest cities (10) and its `good_board_quoted_near` nearest
 //     she can sail to (5, 0251), so "best" is the best of those and "near" the nearest of them. Nearest first.
 // One press on a row is that city and that good, ready to go (BuySell.tsx: the city in hand, the map glides to it,
@@ -201,7 +202,7 @@ function PlaceRow({
             )}
           </span>
           <span className="text-t-caption tabular-nums text-ink-muted" data-testid="cargo-place-days">
-            {/* the days at sea and the real wait beside them (lib/format/time.ts: the one rate) */}
+            {/* the trip's days and the real wait beside them (lib/format/time.ts: the one rate) */}
             {days === null ? '' : formatDaysReal(days)}
           </span>
           <span
