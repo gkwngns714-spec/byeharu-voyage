@@ -19,6 +19,14 @@ const DARK_MS = 60_000
 
 export const NO_FIGHTS: readonly FightCard[] = []
 
+/** THE POLL TOUCHES THE MAP ONLY WHEN THE ANSWER CHANGED. `next` when it differs from `prev` in anything served, else `prev` itself: React then skips the map's
+ *  render altogether, so an answer that says what the last one said (the usual case: no fight, or the same rings standing) re-renders no layer, no tray and no
+ *  sheet. Exported for the spec. */
+export function sameOrNext(next: readonly FightCard[], prev: readonly FightCard[]): readonly FightCard[] {
+  if (next.length === 0 && prev.length === 0) return prev
+  return JSON.stringify(next) === JSON.stringify(prev) ? prev : next
+}
+
 /** The served card with the places it had while it was fought, for one that is now over. Exported for the spec. */
 export function keepPlaces(next: readonly FightCard[], prev: readonly FightCard[]): FightCard[] {
   return next.map((card) => {
@@ -42,7 +50,7 @@ export function useFights(active = true): readonly FightCard[] {
         if (!live) return
         if (r?.ok) {
           const served = r.value.fights ?? []
-          setFights((prev) => (served.length === 0 && prev.length === 0 ? prev : keepPlaces(served, prev)))
+          setFights((prev) => sameOrNext(keepPlaces(served, prev), prev))
           wait = served.some((c) => c.status === 'FIGHTING') ? FAST_MS : r.value.on || served.length > 0 ? IDLE_MS : DARK_MS
         }
       } else wait = FAST_MS
