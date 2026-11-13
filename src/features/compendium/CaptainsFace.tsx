@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import {
   ALL,
   Card,
+  Facts,
   FactsLine,
   FilterBar,
   Figure,
@@ -21,7 +22,7 @@ import { COIN, formatInt, formatPctPoints } from '../../lib/format'
 import type { Officer } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
-import { focusWord, jobWord } from '../../live/captainWords'
+import { jobWord, roleKeyWord, roleOf, roleRank, roleWord } from '../../live/captainWords'
 import { optionsOf } from './codexFilters'
 import { NoAnswer } from './NoAnswer'
 import { useT, t as tNow } from '../../lib/i18n'
@@ -42,7 +43,8 @@ import { useT, t as tNow } from '../../lib/i18n'
 // and the "Speaks …" sentence come from world.captain_card through world.officers. The three
 // filters — Grade, Role, Job — are pickers of the values the SERVED captains carry, plus "All":
 // nothing is offered that no captain has, and every label is a served word. The two boards count the
-// served grade and the served focus; counting is presentation, not authorship.
+// served grade and the role (the served focus, with combat as its two ranges: captainWords `roleOf`, owner row 66);
+// counting is presentation, not authorship.
 
 type Filters = { grade: string; focus: string; job: string }
 const NO_FILTER: Filters = { grade: ALL, focus: ALL, job: ALL }
@@ -81,7 +83,8 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
   const facets = useMemo(
     () => ({
       grade: optionsOf(tNow('codex.grade'), all, (o) => o.grade, (v) => v, byGrade),
-      focus: optionsOf(tNow('codex.role'), all, (o) => o.focus, (_v, o) => focusWord(o.focus_word) ?? o.focus_word),
+      // THE ROLE IS THE ROSTER'S (captainWords `roleOf`, owner row 66): combat stands as its two ranges, in the roster's order
+      focus: optionsOf(tNow('codex.role'), all, (o) => roleOf(o), (v) => roleKeyWord(v), (a, b) => roleRank(a) - roleRank(b)),
       job: optionsOf(tNow('codex.job'), all, (o) => o.job, (_v, o) => jobWord(o.job_word) ?? o.job_word),
     }),
     [all, byGrade],
@@ -100,7 +103,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
           ...(o.languages ?? []),
         ) &&
         (filters.grade === ALL || o.grade === filters.grade) &&
-        (filters.focus === ALL || o.focus === filters.focus) &&
+        (filters.focus === ALL || roleOf(o) === filters.focus) &&
         (filters.job === ALL || o.job === filters.job),
     )
   }, [all, query, filters, portByCode, nationByCode])
@@ -108,7 +111,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
   // THE TWO BOARDS: the rows on the face by grade (best first) and by role (the biggest count first)
   const grades = useMemo(() => countBy(rows, (o) => o.grade, (o) => o.grade, byGrade), [rows, byGrade])
   const roles = useMemo(() => {
-    const counted = countBy(rows, (o) => o.focus, (o) => focusWord(o.focus_word) ?? o.focus_word, (a, b) => a.localeCompare(b))
+    const counted = countBy(rows, (o) => roleOf(o) ?? undefined, (o) => roleWord(o) ?? undefined, (a, b) => a.localeCompare(b))
     return counted.sort((a, b) => b.value - a.value || String(a.label).localeCompare(String(b.label)))
   }, [rows])
 
@@ -212,7 +215,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
         >
           {open.grade && <Row label={t('codex.grade')} value={open.grade} data-testid="captain-grade" />}
           <Row
-            label={open.job_word ? `${jobWord(open.job_word)} · ${focusWord(open.focus_word) ?? ''}` : open.specialty.toLowerCase()}
+            label={open.job_word ? <Facts items={[jobWord(open.job_word), roleWord(open)]} /> : open.specialty.toLowerCase()}
             value={
               <Figure
                 value={`+${formatPctPoints(open.bonus_pct)}`}
