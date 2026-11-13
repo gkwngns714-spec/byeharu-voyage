@@ -3961,7 +3961,11 @@ export interface RouteLegs {
 }
 
 /** 0353 (docs/COMBAT_LOG.md 1.1): how a raid ended, as its log says it. */
-export type FightEnd = 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'
+export type FightEnd =
+  | 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'
+  // 0357: a battle she started, from her deck (public.battle_log): no fight, the other got away, she broke off under
+  // fire, thrown back at the boarding, the other paid, boarded. OPEN is a battle still being fought: no ending yet.
+  | 'A_NONE' | 'A_LOST' | 'A_BROKE' | 'A_THROWN' | 'A_TERMS' | 'A_TOOK' | 'OPEN'
 /** 0353: a fleet's standing order when raiders close. FIGHT is no row on the server. */
 export type RaidOrderWord = 'FIGHT' | 'FLEE' | 'PAY'
 
@@ -3994,6 +3998,8 @@ export interface FightLog {
   /** A Pay that was refused before the fight, and why. */
   noPay: 'EMPTY' | 'NO_PAYEE' | null
   first: 'YOU' | 'THEY' | 'BOTH'
+  /** 0357: the log of a battle SHE started, from her deck (`atk` on the server). False: a raid on her. */
+  attacker: boolean
   foe: { name: string; ships: number; crew: number; hull: number; ship: string | null }
   you: { name: string; hull: number; full: number; crew: number }[]
   rounds: FightRound[]
@@ -4022,4 +4028,44 @@ export interface RaidRead {
   pay?: number
   /** One row a danger level on the sea now: the raiders' word against her. */
   foes?: { danger: number; word: AttackWord }[]
+}
+
+/** 0357: her stance in a battle fought round by round. PAY is for a side set upon only. */
+export type BattleStanceWord = 'FIGHT' | 'FLEE' | 'PAY'
+
+/** 0357 `world.battle(fleet)`: the read the battle card polls: her fleet's latest battle fought round by round.
+ *  `on` false (no such battle, or not her fleet): nothing else is served and no card is drawn. `log` is the fight so
+ *  far from her deck, in a raid log's shape (v 1); while FIGHTING it has no ending. */
+export interface BattleRead {
+  on: boolean
+  battle?: string
+  status?: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
+  side?: 'ATTACKER' | 'DEFENDER'
+  foe?: string | null
+  word?: AttackWord | null
+  started_at?: string
+  resolves_at?: string
+  /** The server's clock at the read: the countdown is drawn against it, never against the device's. */
+  now?: string
+  round_seconds?: number
+  rounds?: number
+  rounds_done?: number
+  /** When the next round, or the boarding, is due. Null once closed. */
+  next_at?: string | null
+  /** LONG, MEDIUM or CLOSE; null at the boarding. */
+  next_range?: string | null
+  stance?: BattleStanceWord
+  may?: BattleStanceWord[]
+  log?: unknown
+  outcome?: string | null
+  loot?: number
+  crew_lost?: number
+  navy?: string | null
+}
+
+/** 0357 `cmd.battle_stance`: the stance kept, the round it takes hold from, and when that round is due. */
+export interface BattleStanceReceipt {
+  stance: BattleStanceWord
+  round_next: number
+  next_at: string
 }

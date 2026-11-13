@@ -1,12 +1,12 @@
-// run.mjs — scenes on the LOCAL cached world (PGlite) for 0357 (the fight log, standing orders). LOCAL ONLY; not in CI.
+// run.mjs — scenes on the LOCAL cached world (PGlite) for 0357 (a battle is fought round by round). LOCAL ONLY; not in CI.
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/combat-log/run.mjs [--apply] [--dump=<dir>] [--proofs=28,46] <scene.sql> [...]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/live-rounds/run.mjs [--apply] [--dump=<dir>] [--fns=<a;b>] [--proofs=60,56] [--notes] <scene.sql> [...]
 //
 // Restores the cached world at the head before 0357 (never from zero; the cache is only read), then, in ONE transaction that is
-// ROLLED BACK: applies 0357 when --apply is given, writes the live bodies of the functions 0357 cuts to --dump (LF), and runs each scene
-// at a savepoint, printing its notices and its last rows. A PROD CHECK file can be run here too, to see what it will answer.
-// --proofs runs the named proofs (each in its own rolled-back transaction, after 0357 when --apply is given), with the proof courses
-// and the market fixture installed as scripts/db/proof.mjs installs them.
+// ROLLED BACK: applies 0357 when --apply is given, writes the live bodies of the functions 0357 cuts (and any named by --fns) to
+// --dump (LF), and runs each scene at a savepoint, printing its notices and its last rows. A PROD CHECK file can be run here too,
+// to see what it will answer. --proofs runs the named proofs (each in its own rolled-back transaction, after 0357 when --apply is
+// given), with the proof courses and the market fixture installed as scripts/db/proof.mjs installs them.
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
@@ -30,15 +30,8 @@ const apply = process.argv.includes('--apply')
 const file = apply ? (await readFile(path.join(MIGRATIONS_DIR, mine), 'utf8')).replaceAll('\r', '') : null
 let failed = false
 
-export const CUT = [
-  'public.fight_sides(uuid,integer,jsonb,jsonb,jsonb)',
-  'voyage.fight_resolve(uuid,integer,numeric,numeric,jsonb)',
-  'voyage.fight_round_line(jsonb,integer,text,jsonb,numeric,text)',
-  'voyage.fight(uuid,integer,uuid,numeric)',
-  'voyage.depart(uuid,jsonb,uuid,uuid,timestamp with time zone)',
-  'voyage.settle(uuid,timestamp with time zone)',
-  'public.client_rpc_entry_points()',
-]
+// the bodies 0357 cuts, read from the migration's own hunks (gen-checks.mjs)
+import { CUT } from './gen-checks.mjs'
 
 if (arg('proofs')) {
   await (await import('../../../db/proof-courses.mjs')).installProofCourses(db)

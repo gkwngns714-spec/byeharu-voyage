@@ -1567,6 +1567,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       'cmdAttack', 'cmdPreviewAttack',
       // 0353: a fleet's standing order when raiders close, and the read beside its picker
       'cmdRaidOrder', 'worldRaidRead',
+      // Pin moved deliberately with migration 0357 (docs/COMBAT_LOG.md 3.3, 3.4): a battle fought round by round: her stance, and the read the battle card polls. No player id; dark
+      // (E_NOT_IN_USE, {on: false}) until attack_enabled. Landed WITH the face (src/live/BattleCard.tsx).
+      'cmdBattleStance', 'worldBattle',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's

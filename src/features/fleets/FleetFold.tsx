@@ -5,12 +5,13 @@ import { portNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
 import type { FleetView } from '../../lib/rpc'
 import { useCommandDraft, type CommandIntent } from '../../domain/order'
-import { voyageFraction, whereabouts, whereLine } from '../../domain/fleet'
+import { inBattle, voyageFraction, whereabouts, whereLine } from '../../domain/fleet'
 import { FleetCargo } from './FleetCargo'
 import { FleetShips } from './FleetShips'
 import { FleetStores } from './FleetStores'
 import { fleetDue } from './fleetLine'
 import { RaidOrder } from '../../live/RaidOrder'
+import { BattleCard } from '../../live/BattleCard'
 import { useT } from '../../lib/i18n'
 
 // ONE FLEET'S PAGE — owner row 89's SHAPE (2026-09-13): *"when folded, ships cargo supplies should
@@ -106,6 +107,9 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
 
       {/* 0353: her standing order when raiders close (Fight, Flee, Pay). Draws nothing while orders are dark. */}
       <RaidOrder fleetId={fleet.id} className="mt-6" />
+
+      {/* 0357: a battle she is in, round by round. Mounted (and its read asked) only while she is in one. */}
+      {inBattle(fleet) && <BattleCard fleetId={fleet.id} className="mt-6" />}
 
       <Button
         variant="primary"

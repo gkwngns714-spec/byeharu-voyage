@@ -458,6 +458,9 @@ const TABLE = {
   // 0353 (docs/COMBAT_LOG.md 2.1, 6.2): a fleet's standing order when raiders close (FIGHT, FLEE, PAY), and the read beside its picker. Dark: E_NOT_IN_USE and {on: false}.
   cmdRaidOrder: { schema: 'cmd', fn: 'raid_order', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_order', type: 'text' }] },
   worldRaidRead: { schema: 'world', fn: 'raid_read', args: [{ name: 'p_fleet', type: 'uuid' }] },
+  // 0357 (docs/COMBAT_LOG.md 3.3, 3.4): a battle fought round by round: her stance (FIGHT, FLEE), and the read the battle card polls. Dark: E_NOT_IN_USE and {on: false}.
+  cmdBattleStance: { schema: 'cmd', fn: 'battle_stance', mutates: true, args: [{ name: 'p_battle', type: 'uuid' }, { name: 'p_stance', type: 'text' }] },
+  worldBattle: { schema: 'world', fn: 'battle', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',

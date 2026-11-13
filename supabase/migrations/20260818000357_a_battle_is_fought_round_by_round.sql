@@ -33,7 +33,7 @@
 --   knob battle_round_seconds 60   one round a minute, in step with the minute job: six rounds and the boarding are 420 s. `battle_seconds` (600) is not written: it still times a
 --                                PROBE, and it is the most an attack may take (the lesser of the two), so a world that shortens battle_seconds shortens an attack as it did.
 --
--- THE HUNKS (each OLD text once in its live body, each reversing):
+-- SUPERSEDES, BY RE-CUT (hunks sliced from the live bodies: each OLD text once in its live body, each reversing; with attack_enabled off no re-cut body takes a new branch):
 --   public.fight_sides (8)    `b_order` (the side that closes may run: silent guns, that round's fire, then a roll on her own stream 'fight:<g>:flee:b', the flee rule with the lead
 --                             turned round; away is `b_fled` with broke_off) and a hull's `from` (a called ship is not on the sheet before her round). ABSENT = BYTE-IDENTICAL, proved
 --                             on 0320's matrix against a kept copy of the live body, with every option 0353 added.
@@ -41,7 +41,7 @@
 --   public.battle_resolve (5) a sheet's battle advances first; its fight is the sheet's, not a new reading of the hulls; BROKEN_OFF has its writer (her Flee got her away:
 --                             docs/WORLD_POWERS.md 5.2); a hold that outlasts the battle is cut; the report carries the log.
 --   public.tick_battles (1)   what is due is the next ROUND (coalesce(next_round_at, resolves_at)): one read of one partial index, LIMIT 50, SKIP LOCKED, as before.
---   public.battle_words (2)   a round she ran reads "you run before them"; the report's fight entry carries the log and what it cost.
+--   public.battle_words (2)   a round she ran reads "you run before them"; the report's fight entry carries the log.
 --   voyage.hold (1)           the row says `free`.
 --   voyage.total_days, voyage.days_complete, voyage.arrival_at (1 each)   the day count leaves free hold hours out, never below the voyage's own days.
 --   public.client_rpc_entry_points (1)   the two doors, anchored on 0327's `preview_attack` line.
@@ -71,7 +71,7 @@
 --
 -- COST: dark, one index probe of an empty range on the day count (voyage.hold_free_hours) per voyage.total_days, voyage.days_complete and past-eta voyage.arrival_at call; the job is
 -- one read of one partial index a minute, as before. Lit: a battle is at most 7 advances; round g re-runs the fight to g (21 round computations in all); each writes one
--- battle_rounds row (about 0.4 kB). NO ROUND RUNS IN THE ARRIVALS BEAT. Measured: scripts/ops/harness/live-rounds/proof-0357.mjs --cost (dev-log).
+-- battle_rounds row (about 0.4 kB). NO ROUND RUNS IN THE ARRIVALS BEAT. Local timings: docs/dev-log/2026-11-12-live-rounds.md (the day count's probe was not measured).
 -- ROLLBACK (forward, owner only): attack_enabled false stops new battles and the stance door; running ones finish under their last stance. The whole slice: a migration that swaps
 --   this file's OLD and NEW and drops what it created (scripts/ops/harness/live-rounds/rollback-0357.sql is the draft).
 -- SELF-ASSERT: ONE DO block, statement_timeout 45 s, lock_timeout 5 s first; fails above 40 s. THE PURE FIGHTS ARE BOUNDED BY THE CLOCK FROM THE START (0353's first deploy took 49 s
@@ -119,6 +119,7 @@ declare
   v_src        text;
   v_pf         numeric;
   v_lived      boolean := false;
+  v_lit        boolean;
   v_entry      int;
   v_pl         uuid;
   v_pl2        uuid;
@@ -735,7 +736,7 @@ as $body$
 -- 0357: A BATTLE'S LOG FROM ONE SIDE'S DECK, in the one shape a raid's log has (voyage.raid_extras, shape v 1: 0353), so ONE client component draws both. p_fight is
 -- public.fight_sides' answer, where a is the side set upon. FOR THE SIDE THAT ATTACKED it is turned round (her rounds, her hull, her slip chance, her crew at the boarding) and handed
 -- to the same leaf, and `end` is how it ended FOR HER: A_NONE (no fight), A_LOST (the other got away), FLED (her Flee got her away), A_BROKE (she broke off under fire), A_THROWN
--- (thrown back at the boarding), A_TERMS (the other paid), A_TOOK (boarded). FOR THE SIDE SET UPON it is a raid's log as it stands (no door opens such a battle on a company yet).
+-- (thrown back at the boarding), A_TERMS (the other paid), A_TOOK (boarded); and the log says `atk` so a reader knows whose deck it is. FOR THE SIDE SET UPON it is a raid's log as it stands (no door opens such a battle on a company yet).
 -- A fight still open has no `end`. Numbers only; names no table.
 declare
   v_open  boolean := coalesce((p_fight->>'open')::boolean, false);
@@ -774,7 +775,7 @@ begin
                 when coalesce((p_fight->>'broke_off')::boolean, false) then 'A_BROKE'
                 when coalesce((p_fight->>'paid')::boolean, false) then 'A_TERMS'
                 else case p_fight->>'outcome' when 'DRIVEN_OFF' then 'A_THROWN' when 'RANSOM' then 'A_TERMS' else 'A_TOOK' end end;
-  return (v_log - 'end') || case when v_end is null then '{}'::jsonb else jsonb_build_object('end', v_end) end;
+  return (v_log - 'end') || '{"atk": true}'::jsonb || case when v_end is null then '{}'::jsonb else jsonb_build_object('end', v_end) end;
 end
 $body$;
 $f$;
@@ -1284,9 +1285,11 @@ $f$;
     end if;
     perform cmd.assume_identity(c_uid);
     -- round 1 under FIGHT (the stance she opened with), at its instant
-    if public.battle_resolve(v_bat, v_t + interval '60 seconds') is not false
-       or (select count(*) from public.battle_rounds r where r.battle_id = v_bat) is distinct from 1 then
-      raise exception '0357 self-assert FAIL: at the first round''s instant the closer closed the battle, or did not log exactly one row';
+    -- (the closer's answer is kept first: a statement does not see what a function it calls has just written)
+    v_lit := public.battle_resolve(v_bat, v_t + interval '60 seconds');
+    if v_lit is not false or (select count(*) from public.battle_rounds r where r.battle_id = v_bat) is distinct from 1 then
+      raise exception '0357 self-assert FAIL: at the first round''s instant the closer closed the battle (%), or did not log exactly one row (%)',
+        v_lit, (select count(*) from public.battle_rounds r where r.battle_id = v_bat);
     end if;
     if (select b.status from public.battles b where b.id = v_bat) = 'FIGHTING' then
       -- a stance written before round 2's instant is read by round 2 and not by round 1 (the row is this probe's own, at an instant of its choosing)
