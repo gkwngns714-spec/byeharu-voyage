@@ -50,6 +50,13 @@ async function worldWithNews(): Promise<Buffer> {
   try {
     // the Stats charts' record starts BEFORE the news (a built world has no count; a dot outside a chart's time is not drawn)
     await pg.query(`select public.tick_stats(now() - interval '30 minutes')::text`)
+    // THE PROBE'S HEADLINES ARE THE ONLY NEWS OF THIS WORLD (2026-11-13). The image carries one "Update" row per lit migration, written
+    // when the image was BUILT: on an image minutes old they stand inside the charts' time and join, or bridge, the probe's dots (seen
+    // as "no chart drew two dots", and as a fifth dot beside the probe's), and every migration adds one. This is the test's own copy
+    // of the world, served to this one page: its append-only guard is stepped over for this one statement.
+    await pg.exec(`set session_replication_role = replica; delete from public.world_news; set session_replication_role = default;`)
+    const left = await pg.query<{ n: number }>(`select count(*)::int as n from public.world_news`)
+    if (left.rows[0].n !== 0) throw new Error(`the image's own news was not taken out: ${left.rows[0].n} rows left`)
     for (const [i, ago] of PROBE_AGO_S.entries()) {
       await pg.query(
         `insert into public.world_news (at, kind, importance, scope, key, detail)
@@ -69,6 +76,10 @@ async function worldWithNews(): Promise<Buffer> {
 
 interface DotRead {
   label: string
+  /** The news it holds (`data-news-ids`): the dot's own name. */
+  ids: string
+  /** Which of the scope's charts it stands on, in the page's order. */
+  chart: number
   n: number
   box: [number, number, number, number]
   mark: [number, number, number, number] | null
@@ -82,14 +93,18 @@ const READ_DOTS = (scope: string): { glass: number; dots: DotRead[] } => {
     return [r.left, r.top, r.width, r.height]
   }
   const dots: DotRead[] = []
+  let chart = -1
   for (const root of document.querySelectorAll(scope)) {
     for (const layer of root.querySelectorAll('[data-testid="news-dots"]')) {
+      chart++
       for (const dot of layer.querySelectorAll('[data-testid="news-dot"]')) {
         const b = rect(dot)
         const label = dot.getAttribute('aria-label') ?? ''
         const mark = dot.querySelector('[data-testid="news-dot-mark"]')
         dots.push({
           label,
+          ids: dot.getAttribute('data-news-ids') ?? '',
+          chart,
           n: Number(/\d+/.exec(label)?.[0] ?? NaN),
           box: b,
           mark: mark ? rect(mark) : null,
@@ -114,75 +129,121 @@ const placeOf = (e: Element): { x: number; y: number; width: number; height: num
   return { x, y, width: r.width, height: r.height }
 }
 
-/** The laws of the dots of one surface, as sentences; and each dot pressed. */
+/** The most reads one surface is given: a chart holds a dot per 44 px at most, and a regrouping costs one more read. */
+const MAX_ROUNDS = 24
+/** Every step of a press says within this long whether it could be done. */
+const STEP_MS = 10_000
+
+/** The laws of the dots of one surface, as sentences; and each dot pressed.
+ *
+ *  A DOT IS ASKED FOR BY ITS OWN NEWS, AND THE CHART IS READ AGAIN BEFORE EACH PRESS (2026-11-13). The dots of a chart are not a fixed
+ *  list: marks closer than a target are one dot, and a live chart's time stretches with the clock, so two neighbours come together
+ *  and become one. Counting once and then pressing "the third" waited for a dot that no longer was, until the test's own clock ran
+ *  out (15 minutes on CI). A dot that is gone when its turn comes was regrouped: the chart is read again and what stands there now is
+ *  measured and pressed. */
 async function measure(page: Page, where: string, scope: string, o: { headlines: number; most: number }): Promise<string[]> {
   const first = page.locator(scope).getByTestId('news-dot').first()
   await expect(first, `${where}: the chart shows no news dot`).toBeVisible({ timeout: 90_000 })
-  await first.scrollIntoViewIfNeeded()
+  await first.scrollIntoViewIfNeeded({ timeout: STEP_MS })
   await page.waitForTimeout(300)
-  const { glass, dots } = await page.evaluate(READ_DOTS, scope)
+  // a law is read again at every read of the chart: a sentence said twice is returned once
   const bad: string[] = []
   const px = (b: readonly number[]) => `${Math.round(b[2] * 10) / 10}×${Math.round(b[3] * 10) / 10} at ${Math.round(b[0])},${Math.round(b[1])}`
-  console.log(`DOTS ${where}: ${dots.map((d) => `"${d.label}" ${px(d.box)} mark ${d.mark ? px(d.mark) : '-'}`).join(' · ')}`)
-  dots.forEach((d, i) => {
-    const [l, t, w, h] = d.box
-    const [ll, lt, lw, lh] = d.layer
-    if (w < NEWS_HIT_PX - 0.5 || h < NEWS_HIT_PX - 0.5) bad.push(`${where}: the target of "${d.label}" is ${px(d.box)} — the law is ${NEWS_HIT_PX} × ${NEWS_HIT_PX}`)
-    if (l < ll - 0.5 || t < lt - 0.5 || l + w > ll + lw + 0.5 || t + h > lt + lh + 0.5) bad.push(`${where}: the target of "${d.label}" (${px(d.box)}) hangs out of its chart's box (${px(d.layer)})`)
-    if (l < -0.5 || l + w > glass + 0.5) bad.push(`${where}: the target of "${d.label}" (${px(d.box)}) hangs off the ${glass}-px glass`)
-    if (d.mark === null) bad.push(`${where}: "${d.label}" draws no mark`)
-    else {
-      const [ml, mt, mw, mh] = d.mark
-      if (ml < l - 0.5 || mt < t - 0.5 || ml + mw > l + w + 0.5 || mt + mh > t + h + 0.5) bad.push(`${where}: the mark of "${d.label}" (${px(d.mark)}) stands outside its target (${px(d.box)})`)
-      if (mw > 24 || mh > 24) bad.push(`${where}: the mark of "${d.label}" is ${px(d.mark)} — the mark stays small`)
-    }
-    if (!Number.isFinite(d.n) || d.n < 1) bad.push(`${where}: the dot's label "${d.label}" carries no count`)
-    for (const e of dots.slice(i + 1)) {
-      if (e.layer[0] !== ll || e.layer[1] !== lt) continue
-      const ox = Math.min(l + w, e.box[0] + e.box[2]) - Math.max(l, e.box[0])
-      const oy = Math.min(t + h, e.box[1] + e.box[3]) - Math.max(t, e.box[1])
-      if (ox > 0.5 && oy > 0.5) bad.push(`${where}: the targets of "${d.label}" and "${e.label}" overlap by ${Math.round(ox)} × ${Math.round(oy)} px`)
-    }
-  })
-  // the probe's headlines stand on every chart: no dot of this chart was lost to another's target
-  const layers = new Map<string, number>()
-  for (const d of dots) layers.set(d.layer.join(','), (layers.get(d.layer.join(',')) ?? 0) + d.n)
-  o.most = Math.max(o.most, ...[...layers.keys()].map((k) => dots.filter((d) => d.layer.join(',') === k).length))
-  for (const [, n] of layers) if (n < o.headlines) bad.push(`${where}: a chart's dots carry ${n} news — the probe wrote ${o.headlines}`)
-
-  // PRESS EACH: the card holds exactly that dot's news, and the chart's box does not move
-  const all = page.locator(scope).getByTestId('news-dot')
-  for (let i = 0; i < dots.length; i++) {
-    const dot = all.nth(i)
-    await dot.scrollIntoViewIfNeeded()
-    // what a press at the target's centre reaches: this dot, or the name of what lies over it
-    const reaches = await dot.evaluate((e) => {
-      const r = e.getBoundingClientRect()
-      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
-      return hit === null ? 'nothing' : hit.closest('[data-testid="news-dot"]') === e ? 'itself' : (hit.getAttribute('data-testid') ?? hit.tagName.toLowerCase())
+  const pressed = new Set<string>()
+  let regrouped = 0
+  for (let round = 0; ; round++) {
+    const { glass, dots } = await page.evaluate(READ_DOTS, scope)
+    if (round === 0) console.log(`DOTS ${where}: ${dots.map((d) => `"${d.label}" ${px(d.box)} mark ${d.mark ? px(d.mark) : '-'}`).join(' · ')}`)
+    // THE LAWS, of the chart as it stands at this read
+    dots.forEach((d, i) => {
+      const [l, t, w, h] = d.box
+      const [ll, lt, lw, lh] = d.layer
+      if (w < NEWS_HIT_PX - 0.5 || h < NEWS_HIT_PX - 0.5) bad.push(`${where}: the target of "${d.label}" is ${px(d.box)} — the law is ${NEWS_HIT_PX} × ${NEWS_HIT_PX}`)
+      if (l < ll - 0.5 || t < lt - 0.5 || l + w > ll + lw + 0.5 || t + h > lt + lh + 0.5) bad.push(`${where}: the target of "${d.label}" (${px(d.box)}) hangs out of its chart's box (${px(d.layer)})`)
+      if (l < -0.5 || l + w > glass + 0.5) bad.push(`${where}: the target of "${d.label}" (${px(d.box)}) hangs off the ${glass}-px glass`)
+      if (d.mark === null) bad.push(`${where}: "${d.label}" draws no mark`)
+      else {
+        const [ml, mt, mw, mh] = d.mark
+        if (ml < l - 0.5 || mt < t - 0.5 || ml + mw > l + w + 0.5 || mt + mh > t + h + 0.5) bad.push(`${where}: the mark of "${d.label}" (${px(d.mark)}) stands outside its target (${px(d.box)})`)
+        if (mw > 24 || mh > 24) bad.push(`${where}: the mark of "${d.label}" is ${px(d.mark)} — the mark stays small`)
+      }
+      if (!Number.isFinite(d.n) || d.n < 1) bad.push(`${where}: the dot's label "${d.label}" carries no count`)
+      if (d.n !== d.ids.split(' ').length) bad.push(`${where}: the dot "${d.label}" holds ${d.ids.split(' ').length} news`)
+      for (const e of dots.slice(i + 1)) {
+        if (e.chart !== d.chart) continue
+        const ox = Math.min(l + w, e.box[0] + e.box[2]) - Math.max(l, e.box[0])
+        const oy = Math.min(t + h, e.box[1] + e.box[3]) - Math.max(t, e.box[1])
+        if (ox > 0.5 && oy > 0.5) bad.push(`${where}: the targets of "${d.label}" and "${e.label}" overlap by ${Math.round(ox)} × ${Math.round(oy)} px`)
+      }
     })
-    if (reaches !== 'itself') bad.push(`${where}: a press at the centre of "${dots[i].label}" reaches ${reaches}`)
-    const layer = dot.locator('xpath=..')
-    const before = await layer.evaluate(placeOf)
-    // a dot another target lies over cannot be pressed: said as a sentence, not left to run the clock out
-    const pressed = await dot.click({ timeout: 10_000 }).then(() => true, () => false)
-    if (!pressed) {
-      bad.push(`${where}: "${dots[i].label}" (dot ${i + 1} of ${dots.length}) cannot be pressed — something lies over it`)
-      continue
+    // the probe's headlines stand on every chart, each in one dot only: no dot of this chart was lost to another's target
+    const charts = [...new Set(dots.map((d) => d.chart))]
+    for (const c of charts) {
+      const ids = dots.filter((d) => d.chart === c).flatMap((d) => d.ids.split(' '))
+      if (ids.length !== o.headlines || new Set(ids).size !== o.headlines) bad.push(`${where}: a chart's dots carry ${ids.length} news (${new Set(ids).size} different) — the probe wrote ${o.headlines}`)
+      o.most = Math.max(o.most, dots.filter((d) => d.chart === c).length)
     }
+
+    // PRESS THE NEXT ONE NOT YET PRESSED: the card holds exactly that dot's news, and the chart's box does not move
+    const i = dots.findIndex((d) => !pressed.has(`${d.chart}:${d.ids}`))
+    if (i < 0) break
+    const next = dots[i]
+    if (round >= MAX_ROUNDS) {
+      bad.push(`${where}: the chart's dots did not settle in ${MAX_ROUNDS} reads (${regrouped} regroupings)`)
+      break
+    }
+    pressed.add(`${next.chart}:${next.ids}`)
+    const layer = page.locator(scope).getByTestId('news-dots').nth(next.chart)
+    const dot = layer.locator(`[data-testid="news-dot"][data-news-ids="${next.ids}"]`)
+    const name = `"${next.label}" (news ${next.ids})`
+    // each step answers in STEP_MS; a step that could not be done because the dot is no longer there was a regrouping, not a fault
+    const step = async <T,>(what: string, run: () => Promise<T>): Promise<T | undefined> => {
+      try {
+        return await run()
+      } catch {
+        if ((await dot.count()) === 0) regrouped++
+        else bad.push(`${where}: ${name} ${what}`)
+        return undefined
+      }
+    }
+    if ((await step('cannot be scrolled to', () => dot.scrollIntoViewIfNeeded({ timeout: STEP_MS }).then(() => true))) === undefined) continue
+    // what a press at the target's centre reaches: this dot, or the name of what lies over it
+    const reaches = await step('cannot be read', () =>
+      dot.evaluate(
+        (e) => {
+          const r = e.getBoundingClientRect()
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+          return hit === null ? 'nothing' : hit.closest('[data-testid="news-dot"]') === e ? 'itself' : (hit.getAttribute('data-testid') ?? hit.tagName.toLowerCase())
+        },
+        undefined,
+        { timeout: STEP_MS },
+      ),
+    )
+    if (reaches === undefined) continue
+    if (reaches !== 'itself') bad.push(`${where}: a press at the centre of ${name} reaches ${reaches}`)
+    const before = await layer.evaluate(placeOf, undefined, { timeout: STEP_MS })
+    // a dot another target lies over cannot be pressed: said as a sentence, not left to run the clock out
+    if ((await step('cannot be pressed — something lies over it', () => dot.click({ timeout: STEP_MS }).then(() => true))) === undefined) continue
     const card = page.getByTestId('news-card')
-    await expect(card, `${where}: pressing "${dots[i].label}" opened no card`).toBeVisible({ timeout: 10_000 })
+    await expect(card, `${where}: pressing ${name} opened no card`).toBeVisible({ timeout: STEP_MS })
     const items = await card.getByTestId('news-item').count()
     // the card lists at most five (NewsCard's CARD_MAX) and says how many more the dot holds: every migration's own "Update" row lands in one dot, and 0362's made it six
     if (items !== Math.min(dots[i].n, 5)) bad.push(`${where}: "${dots[i].label}" opened a card of ${items} news`)
     const after = await layer.evaluate(placeOf)
-    if (JSON.stringify(after) !== JSON.stringify(before)) bad.push(`${where}: pressing "${dots[i].label}" moved its chart: ${JSON.stringify(before)} → ${JSON.stringify(after)}`)
-    if (!(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))) bad.push(`${where}: the page scrolls sideways with the card of "${dots[i].label}" open`)
-    await card.getByTestId('tray-close').click()
-    await expect(card).toHaveCount(0, { timeout: 10_000 })
+    if (JSON.stringify(after) !== JSON.stringify(before)) bad.push(`${where}: pressing ${name} moved its chart: ${JSON.stringify(before)} → ${JSON.stringify(after)}`)
+    if (!(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))) bad.push(`${where}: the page scrolls sideways with the card of ${name} open`)
+    await card.getByTestId('tray-close').click({ timeout: STEP_MS })
+    await expect(card).toHaveCount(0, { timeout: STEP_MS })
   }
-  return bad
+  if (regrouped > 0) console.log(`DOTS ${where}: regrouped ${regrouped} time(s) under the presses; read again each time`)
+  if (pressed.size === 0) bad.push(`${where}: no dot was pressed`)
+  return [...new Set(bad)]
 }
+
+/** THE WHOLE TEST'S TIME, STATED: five minutes. A run is about half a minute here and a minute on CI, and it does not grow with the
+ *  migrations (the image's own news is taken out of the probe's world, in `worldWithNews`). It was 900 s, and a wait with no limit
+ *  used all of it. */
+const TEST_MS = 300_000
 
 const face = (page: Page, name: string) => page.getByRole('tablist').first().getByRole('tab', { name, exact: true })
 
@@ -190,7 +251,7 @@ test.use({ deviceScaleFactor: 2 })
 
 for (const glass of [PHONE, WIDE]) {
   test(`every news dot on every chart is a 44-px target that opens its own news — ${glass.width}px`, async ({ page, request, baseURL }) => {
-    test.setTimeout(900_000)
+    test.setTimeout(TEST_MS)
     expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`).toBe(true)
     const world = await worldWithNews()
     await page.route('**/db/world-*.tar.gz', (route) => route.fulfill({ body: world, contentType: 'application/gzip' }))
