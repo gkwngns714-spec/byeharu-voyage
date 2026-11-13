@@ -343,6 +343,8 @@ function TripEstimate({ fleet, trip, name }: { fleet: FleetView; trip: OrderTrip
       <Money label={t('desk.wages')} value={sellRow?.wages} id="est-wages" />
       <Money label={t('desk.tax')} value={sellRow?.profit_tax} id="est-tax" />
       <Money label={t('desk.fee')} value={sellRow?.port_fee} id="est-fee" />
+      {/* 0361: the dock fee of every harbour the trip calls at (the served row's own; it is in the profit below) */}
+      <Money label={t('desk.dockFee')} value={sellRow?.dock_fee} id="est-dock" />
       <Money label={t('desk.profit')} value={sellRow?.profit} id="est-profit" profit last />
     </>
   )

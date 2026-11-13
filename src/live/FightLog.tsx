@@ -22,6 +22,9 @@ import { barCells, fightHull, fightRows, type FightCell } from './fightLines'
 // Caught unready, Run. Law 4 stands: no board, no art, no dice. Text.
 // `dense` is the arrival card: always the narrow form. `paced` (the card) lets the lines come one at a time, 600 ms a
 // round and a longer beat before the result; a player who asked for less motion gets them all at once.
+// 0357: THE SAME COMPONENT DRAWS A BATTLE SHE STARTED (src/live/BattleCard.tsx, and its report in History): the log
+// says whose deck it is (`attacker`), so the title is Battle and no standing order is named. A battle still being
+// fought (end OPEN) has its rounds and nothing after them: no result is told before the server has one.
 
 const STEP_MS = 600
 const RESULT_MS = 1200
@@ -56,8 +59,11 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
   const rows = fightRows(log)
   const hull = fightHull(log)
   // the lines that come one at a time: the foe, the order, each round, then the result and what follows it together
-  const total = 2 + rows.length + 1
-  const [shown, setShown] = useState(() => (paced && !lessMotion() ? 1 : total))
+  const open = log.end === 'OPEN'
+  const total = 2 + rows.length + (open ? 0 : 1)
+  const [step, setShown] = useState(() => (paced && !lessMotion() ? 1 : total))
+  // only a paced log counts its lines in: a log that grows as it is read (a battle) shows each new round at once
+  const shown = paced ? step : total
   useEffect(() => {
     if (shown >= total) return
     const id = window.setTimeout(() => setShown((n) => n + 1), shown === total - 1 ? RESULT_MS : STEP_MS)
@@ -66,7 +72,7 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
 
   const ended = t(`fight.end_${log.end}`)
   // a fight that ended in a round (they broke off, she got away) names the round
-  const result = (log.end === 'FLED' || log.end === 'BROKE') && rows.length > 0 ? t('fight.resultRound', { end: ended, n: rows.length }) : ended
+  const result = (log.end === 'FLED' || log.end === 'BROKE' || log.end === 'A_BROKE') && rows.length > 0 ? t('fight.resultRound', { end: ended, n: rows.length }) : ended
   const cargo = loss ? Object.values(loss.cargo).reduce((n, q) => n + q, 0) : 0
   const lost = [
     `${t('fight.hull')} ${MINUS}${formatInt(Math.round(hull.lost))} (${hull.lostPct}%)`,
@@ -75,7 +81,7 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
     loss && loss.ransom > 0 ? `${t('fight.ransom')} ${MINUS}${formatInt(loss.ransom)}` : null,
   ].filter(Boolean)
   const order = [
-    `${t('fight.order')} ${t(log.order === 'FLEE' ? 'fight.orderFlee' : log.order === 'PAY' ? 'fight.orderPay' : 'fight.orderFight')}`,
+    log.attacker ? null : `${t('fight.order')} ${t(log.order === 'FLEE' ? 'fight.orderFlee' : log.order === 'PAY' ? 'fight.orderPay' : 'fight.orderFight')}`,
     log.noPay ? t(`fight.noPay_${log.noPay}`) : null,
     t(log.first === 'YOU' ? 'fight.sawFirstYou' : log.first === 'THEY' ? 'fight.sawFirstThey' : 'fight.sawFirstBoth'),
   ].filter(Boolean)
@@ -93,11 +99,12 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
       className={`@container mt-2 border-l border-edge pl-3 text-t-caption text-ink-muted ${dense ? 'max-h-64 overflow-y-auto' : ''}`}
       data-testid="fight-log"
       data-end={log.end}
+      data-deck={log.attacker ? 'attacker' : 'raided'}
       data-order={log.order}
       data-rounds={rows.length}
     >
       <p data-testid="fight-log-foe">
-        {[t('fight.raid'), t('fight.foeLine', { n: formatInt(Math.max(1, Math.round(log.foe.ships))), name: log.foe.name, crew: formatInt(log.foe.crew) }), log.foe.ship]
+        {[t(log.attacker ? 'fight.battle' : 'fight.raid'), t('fight.foeLine', { n: formatInt(Math.max(1, Math.round(log.foe.ships))), name: log.foe.name, crew: formatInt(log.foe.crew) }), log.foe.ship]
           .filter(Boolean)
           .join(' · ')}
       </p>
@@ -129,7 +136,7 @@ export function FightLog({ log, loss, dense = false, paced = false }: { log: Log
           ))}
         </ol>
       )}
-      {shown >= total && (
+      {!open && shown >= total && (
         <div className="mt-1 space-y-0.5">
           {log.board && (
             <p data-testid="fight-log-board">

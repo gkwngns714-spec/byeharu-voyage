@@ -132,7 +132,8 @@ test('a bar rounds DOWN, is full only at 100 %, and is never empty while anythin
   for (const w of [5, 10]) for (let p = 0; p <= 100; p++) expect([...barCells(p, w)]).toHaveLength(w)
 })
 
-const WORDS: Record<'en' | 'ko', Record<FightEnd, string>> = {
+// a raid's endings; a battle she started has its own (tests/battle.card.spec.ts)
+const WORDS: Record<'en' | 'ko', Record<Exclude<FightEnd, `A_${string}` | 'OPEN'>, string>> = {
   en: { STOOD: 'Stood off', SLIP: 'Slipped away', BROKE: 'Drove off', THREW: 'Threw back', TERMS: 'Paid off', TAKEN: 'Plundered', GAVE: 'Surrendered', FLED: 'Fled', PAID: 'Paid' },
   ko: { STOOD: '대치', SLIP: '따돌림', BROKE: '격퇴', THREW: '격퇴', TERMS: '몸값 지불', TAKEN: '약탈당함', GAVE: '항복', FLED: '도주 성공', PAID: '지불함' },
 }
@@ -172,7 +173,7 @@ for (const lang of ['en', 'ko'] as const) {
 
   test(`every ending has its word, ${lang}, and a ransom, a boarding and a refused Pay are said`, () => {
     render.setLocale(lang)
-    for (const end of Object.keys(WORDS[lang]) as FightEnd[]) {
+    for (const end of Object.keys(WORDS[lang]) as (keyof (typeof WORDS)[typeof lang])[]) {
       expect(translate(lang, `fight.end_${end}`)).toBe(WORDS[lang][end])
       const boarded = end === 'THREW' || end === 'TERMS' || end === 'TAKEN' || end === 'GAVE'
       const log = parseFightLog({ ...RAID_LOG, end, order: end === 'PAID' ? 'PAY' : undefined, r: end === 'PAID' || end === 'STOOD' || end === 'SLIP' ? [] : RAID_LOG.r, board: boarded ? [8, 50, 0.31] : undefined })!
