@@ -17,6 +17,8 @@ export const SECOND_SHIP = 'Andorinha do Mar'
 export const EXTRA_PURSE = 200_000
 
 const LIGHT = `update public.world_config set value = 'true'::jsonb where key = 'fleet_room_bite'`
+// 0370 lit fleet room in the shipped world, so the dark world is made here too: the switch set back in the copy (what a rollback of 0370 would show).
+const DARK = `update public.world_config set value = 'false'::jsonb where key = 'fleet_room_bite'`
 
 const SECOND_SHIP_TRIGGER = `
   create function public.spec_second_ship() returns trigger
@@ -44,11 +46,12 @@ export async function serveLitTwoShips(page: Page): Promise<void> {
   )
 }
 
-/** Fleet room DARK (the real state until the switch is lit), a founding fleet of two ships: everything a lit page would offer has something to offer it on. */
+/** Fleet room DARK (the state before 0370, and after its rollback), a founding fleet of two ships: everything a lit page would offer has something to offer it on. */
 export async function serveDarkTwoShips(page: Page): Promise<void> {
   await serveWorldImage(
     page,
     await patchedWorldImage('fleets-page-dark-two', async (pg) => {
+      await pg.exec(DARK)
       await pg.exec(SECOND_SHIP_TRIGGER)
     }),
   )
