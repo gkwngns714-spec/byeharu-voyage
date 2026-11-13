@@ -17,6 +17,9 @@ import {
 import { HullCountry } from './HullCountry'
 import { HullCrown } from './HullCrown'
 import { HullTech } from './HullTech'
+import { HullJob } from './HullJob'
+import { hullJobOf } from './hullJobWord'
+import { HullFight } from './HullFight'
 import { useBuildingYard } from './useBuildingYard'
 import { useServedRead } from './useServedRead'
 import { useYardSources } from './useYardSources'
@@ -30,7 +33,7 @@ import { goTo, useGoTo } from '../chart'
 import { useDeskGood } from '../store/deskGood'
 import { useDeskView } from '../features/command/deskView'
 import { useRouteSeed } from '../features/map/routeSeed'
-import { properName, useT, t as tNow } from '../lib/i18n'
+import { properName, useLocale, useT, t as tNow } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE YARD — where a hull is laid down (0072), as a field of tiles.
@@ -129,6 +132,8 @@ export function PortYard({
 }) {
   const t = useT()
   const { view, loading } = useBuildingYard(portId)
+  const locale = useLocale()
+  const classes = useWorld((s) => s.snapshot?.ship_classes)
   const [open, setOpen] = useState<YardHull | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('half')
   const [name, setName] = useState('')
@@ -200,17 +205,20 @@ export function PortYard({
   const later = crownFirst(view.hulls.filter((h) => !h.buildable && !h.wrong_yard))
   const elsewhere = crownFirst(view.hulls.filter((h) => !h.buildable && h.wrong_yard))
   const hidden = later.length + elsewhere.length
+  // 0366: a hull is named in the viewer's language here as in the Codex (the one name map; a name with no entry prints as served)
+  const hullName = (served: string) => properName('hull', served, served, locale)
   const tile = (hull: YardHull) => (
     <Tile
       key={hull.class}
       mark={<Icon name="ship" size={20} />}
-      name={hull.name}
+      name={hullName(hull.name)}
       meta={
         <>
           <HullCountry nation={hull.line_nation} compact />
           {hull.line_nation ? ' ' : ''}
           <HullTech tech={hull.tech} />
           <HullCrown crown={hull.crown} />
+          <HullJob code={hull.class} />
           {formatTons(hull.hold)}
         </>
       }
@@ -301,7 +309,7 @@ export function PortYard({
         <Tray
           detent={detent}
           onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
-          title={hull.name}
+          title={hullName(hull.name)}
           data-testid="yard-tray"
           action={
             hull.buildable ? (
@@ -357,9 +365,13 @@ export function PortYard({
             </>
           )}
           {hull.line_nation && <Row label={t('yard.country')} value={<HullCountry nation={hull.line_nation} />} />}
+          {/* 0366: what she is built to do */}
+          {hullJobOf(hull.class) && <Row label={t('codex.hullJob')} value={<HullJob code={hull.class} />} data-testid="yard-job" />}
           <Row label={t('yard.cargo')} value={<Figure value={formatInt(hull.hold)} unit={t('yard.tons')} />} />
           <Row label={t('yard.speed')} value={<Figure value={hull.speed_kn} unit={t('yard.knots')} />} />
           <Row label={t('yard.crewNeeded')} value={<Figure value={formatInt(hull.crew_required)} />} />
+          {/* 0366: the five figures the fight reads, from the class's own row (the snapshot's) */}
+          <HullFight cls={classes?.find((c) => c.code === hull.class)} />
           {/* 0276 — the blind roll, said before you build: the class figures above are the average,
               and a new hull strays by this much (the rare Poor and Fine beyond). */}
           {hull.variety_pct !== undefined && hull.variety_pct > 0 && (
