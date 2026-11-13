@@ -12,7 +12,7 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const FIRST = '20260818000401'
+const FIRST = '20260818000400'
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
 const say = (...a) => console.log(...a)
 const files = []
