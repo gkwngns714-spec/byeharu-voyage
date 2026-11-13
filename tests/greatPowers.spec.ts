@@ -10,7 +10,7 @@ import { openCityPanel } from './openCity.fixture'
 // power like uncharted island, spread mainly on europe and asia, as well as islamic region" … "in
 // asia add korea, in europe add more". Ten powers race for cities; the thirteen other nations are
 // LOCAL RULERS of the cities they founded. W16 (0338) adds the eleventh, the pirates (PIRATE_POWER): a great power
-// with four homes and no crown, which a company may NOT sail for while the knob pirates_joinable is false.
+// with four homes and no crown, which a company MAY sail for since 0381 lit the knob pirates_joinable (it was false from 0338 to 0380).
 // Names this spec selects by: public.great_powers,
 // public.great_power, public.port_ruler, public.port_countries, world.allegiance / worldAllegiance,
 // world.nation_standings / worldNationStandings, cmd.found_house / cmdFoundHouse,
@@ -18,7 +18,7 @@ import { openCityPanel } from './openCity.fixture'
 //
 //   * one list: world-derive.mjs GREAT_POWERS = the homes in data/home-ports.json = what 0187 seeds (the ten) and
 //     0338 seeds (the pirates); four homes each, a capital first;
-//   * Start / Profile offer the ten and no ruler, and not the pirates;
+//   * Start / Profile offer the eleven a company may sail for (the pirates among them since 0381) and no ruler;
 //   * a ruler's city says so: Safi → "ruled by Morocco", with the ruler's flag;
 //   * the Codex lists the eleven as Great powers and the thirteen as Local rulers.
 // Preconditions are the data files the world guard holds the database to — never a literal count
@@ -62,7 +62,7 @@ test('one list of eleven: GREAT_POWERS = the home cities\' powers = what 0187 se
   )
 })
 
-test('the picker offers the ten great powers a company may sail for, no local ruler and not the pirates', async ({ page, request, baseURL }) => {
+test('the picker offers the eleven great powers a company may sail for, the pirates among them, and no local ruler', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.setViewportSize(PHONE)
@@ -70,10 +70,10 @@ test('the picker offers the ten great powers a company may sail for, no local ru
   await ready(page)
   await page.getByTestId('country-change').click()
   const picker = page.getByTestId('nation-picker')
-  const joinable = GREAT_POWERS.filter((c: string) => c !== PIRATE_POWER)   // W16 (0338): the knob pirates_joinable ships false
+  const joinable: readonly string[] = GREAT_POWERS   // 0381 lit the knob pirates_joinable: the pirates are on the picker
   await expect(picker.locator('[data-testid^="nation-"]')).toHaveCount(joinable.length, { timeout: 60_000 })
   for (const c of joinable) await expect(picker.getByTestId(`nation-${c}`)).toBeVisible()
-  await expect(picker.getByTestId(`nation-${PIRATE_POWER}`)).toHaveCount(0)
+  await expect(picker.getByTestId(`nation-${PIRATE_POWER}`)).toBeVisible()
   for (const [c] of minors) await expect(picker.getByTestId(`nation-${c}`)).toHaveCount(0)
 })
 

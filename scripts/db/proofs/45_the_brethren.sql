@@ -60,11 +60,13 @@ begin
   v_b := public.new_house(c_uid3, 'Casa Espanhola 0f45', 'ESP', 'SVQ');
   -- the switches a closed world runs on; nothing here is the pirates'
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'influence_enabled', 'economy_closed');
+  -- 0381 lit the knob in the chain; the proof owns its start and writes it false here, as it writes every switch it needs (the doors below are asked both ways)
+  update public.world_config set value = 'false'::jsonb where key = 'pirates_joinable';
   -- 0373 lit regard in the chain. This proof reads the stance factors alone (its Lisbon control is the home factor, with no regard on top) and lights regard itself where it
   -- reads the Levels list, so it starts from the dark world it was written for: the switch is set back here, for this rolled-back transaction only.
   update public.world_config set value = 'false'::jsonb where key = 'regard_enabled';
   if public.nation_joinable(v_pir) or (select c.value from public.world_config c where c.key = 'pirates_joinable') <> 'false'::jsonb then
-    raise exception 'PROOF 45 FAIL: pirates_joinable is not false in this world; the proof owns the start';
+    raise exception 'PROOF 45 FAIL: pirates_joinable written false and public.nation_joinable still lets the pirates in';
   end if;
 
   -- ── SHAPE ──
