@@ -79,11 +79,21 @@ begin
 
   -- ── Find a voyage that actually meets weather. hazard_roll() is pure, so looking ahead costs
   --    nothing and changes nothing.
-  --    THE CAP IS 120, AND IT IS A MEASUREMENT. 2026-08-22, PGlite 0.5.5: of 120 Lisboa-Tunis
-  --    voyages, 20 carried at least one hazard — 17 per cent, over 11 voyage-days. At the old cap
-  --    of 25 the chance of finding none was 0.83^25, ONE RUN IN NINETY, and this file duly went red
-  --    on a correct system, which is a proof that gates nothing. At 120 it is 1 in 70 million. An
-  --    attempt costs ~17 ms and the median run needs about six of them.
+  --    THE PROOF PINS ITS OWN ODDS (2026-11-14). It used to take the world's odds as it found them:
+  --    on 2026-08-22 a Lisboa-Tunis voyage was 11 voyage-days and 17 per cent of them carried a
+  --    hazard, so 120 attempts finding none was 1 run in 70 million. The chain has moved since: the
+  --    same voyage is 4 voyage-days at about 1 per cent a day (0.012, 0.0096, 0.0096, 0.0096), and
+  --    14 of 300 voyages carried a hazard, measured on the chain at 0395. At that rate 120 attempts
+  --    find none in about 1 run in 150 to 300, and this file went red on a correct system
+  --    (PR #640's run). So the two numbers the chance is made of are set here, inside this proof's
+  --    own rolled-back transaction: every sea's base is 0.05 (the ceiling its CHECK allows) and the
+  --    cap is 0.05, so a voyage-day is 0.04 to 0.05 (a leg's multiplier is 0.8 near land and 1.0
+  --    off it). Three or four such days carry a hazard on about one voyage in seven, close to the
+  --    rate the cap of 120 was measured for, and 120 attempts finding none is 1 run in tens of
+  --    millions. The rule under test (voyage.hazard_roll, voyage.settle) is the chain's own,
+  --    untouched; only how often the dice say yes is pinned. The loop is kept as the guard: none in 120 now means the rule.
+  update public.world_config set value = to_jsonb(0.05) where key = 'hazard_p_max';
+  update public.seas set hazard_base = 0.05;
   while v_try < 120 and not v_found loop
     v_try := v_try + 1;
     v_retry := false;
@@ -113,7 +123,7 @@ begin
   end loop;
 
   if not v_found then
-    raise exception 'PROOF 1 FAILED: no voyage in % attempts carried a hazard; the comparison would have been vacuous. At the measured rate of ~17%% that is a 1-in-70-million run, so suspect the hazard rule rather than the dice', v_try;
+    raise exception 'PROOF 1 FAILED: no voyage in % attempts carried a hazard; the comparison would have been vacuous. This proof pins the chance at 0.04 to 0.05 a voyage-day, so suspect the hazard rule rather than the dice', v_try;
   end if;
   raise notice 'PASS: OFFLINE_EQUIV_HAZARD_PRESENT — voyage % over % voyage-days carries % hazard day(s) (found on attempt %)',
     v_voyage, v_days, v_haz, v_try;
