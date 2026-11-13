@@ -28,6 +28,7 @@ import { SKILL_CAPTAIN, SKILL_REPUTATION, serveCaptainSkillsWorld } from './capt
 // Run it: npm run build && npx vite preview --port 47355 --strictPort, then PLAYWRIGHT_BASE_URL=http://localhost:47355/byeharu-voyage/ npx playwright test captain.skills.spec.ts
 
 const SIZES = [
+  { width: 320, height: 568 },
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
 ] as const

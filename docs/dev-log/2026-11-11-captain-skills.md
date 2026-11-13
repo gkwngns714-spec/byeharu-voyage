@@ -180,3 +180,23 @@ commit, no conflict; the owed merge is done. 0352 and 0355 re-applied on the cac
 for byte. Proof 58 8 of 8, proof 54 4 of 4, proof 55 8 of 8. `tsc -b`, `eslint .`, `vite build` clean. One Playwright run
 of `news.lint` (fully green now), `rpc.surface`, `sections`, `duplication`, `words`, `i18n.keys`, `i18n.ko`,
 `captains.sheet`, `captains.roster`, `you.design`, `fleets.you.grow` and `captain.skills`: 86 of 86.
+
+## On the chain with 0354 (2026-11-13)
+
+`origin/main` (a453c389: 0353 and 0354 live, #603, #604, the phone work) merged in as a merge commit.
+
+- **Conflicts.** `GoalCard.tsx`, `YouScreen.tsx` and `tests/reputation.spec.ts` are main's (this branch had only R1's
+  older copies). `YourCaptains.tsx`: main's `jobWord(t.word)` stays on the skill row; this branch adds one import
+  (`CaptainSkills`) and one element (`<CaptainSkills code={captain.code} />`), nothing else.
+- **One authority for a skill's word (decided by default).** Main gave every job word one dictionary
+  (`books.job_*`, `src/live/captainWords.ts`); this branch had a second one for the same words (`books.skill_<CODE>`),
+  and the two disagreed in Korean (Provisioner 식량 담당 against 보급관, Surgeon 선의 against 의사, Boarder 돌격대 against
+  백병대장, and four traders). `skillWord` now reads through `jobWord`, and the 50 `books.skill_*` entries are gone, so an
+  upgrade row, the row under it and History say the same word.
+- **Hunks.** None re-anchored: 0355 applied on the chain at 0354 as written (the registry hunk on 0162's
+  `promote_captain` line, the four on `public.crew_terms`), and `gen-checks.mjs` rewrote the check files byte for byte.
+  0353 and 0354 cut no function this file cuts but the registry, on other lines.
+- **Proved here.** Proof 58 8 of 8, and its neighbours 55 (8 of 8), 56 (main's, 11 of 11), 57 (8 of 8). `tsc -b`,
+  `eslint .`, `vite build` clean. `captain.skills` now also runs at 320 px: 320, 390 and 1280, EN and KO, 6 of 6;
+  `news.lint`, `duplication`, `rpc.surface`, `harness.guard` green.
+- **Not done here.** No prod read; the PROD CHECK files have not been run. No from-zero replay (CI's).
