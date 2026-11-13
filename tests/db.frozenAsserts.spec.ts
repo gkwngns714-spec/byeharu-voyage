@@ -4,7 +4,8 @@
 //
 // PURE UNIT SPEC (no `page`). src/lib/db/frozenAsserts.ts lets the PGlite appliers run 0019's probe
 // without a pirate roll and 0108's stopwatch at 1,200 ms instead of 400, 0315's probe sales with a
-// fresh daily allowance, and 0226's planted pair one hour earlier in UTC hour 01, without editing any
+// fresh daily allowance, 0226's planted pair one hour earlier in UTC hour 01, and 0367's two fleets
+// with equal speed rolls before one hull is worn, without editing any
 // of those files (an edited applied migration sends CI from zero). This proves, on the REAL files:
 //   1. every patch fits its file exactly once, inside the final `do $$` self-assert block;
 //   2. a file with no patch is applied byte for byte, and the chain's identity is the FILE's;
@@ -63,6 +64,18 @@ test('the patched asserts can still fail', async () => {
     expect(f226.sql).toContain(keep)
     expect(out226).toContain(keep)
   }
+  // 0367: the two speed rolls are made equal just before the probe wears the second fleet's hull; the comparison
+  // that judges "both sail at the slower fleet's speed, and she is the slower" is the file's own, right after it.
+  const f367 = files.find((x) => x.name.startsWith('20260818000367_'))!
+  const out367 = sqlToApply(f367)
+  expect(out367).toContain(
+    '    update public.ships set roll_speed = 1 where fleet_id in (v_f1, v_f2);\n' +
+      '    update public.ships set durability = durability * 0.5 where fleet_id = v_f2;   -- the second fleet is the slower now\n' +
+      '    if voyage.fleet_speed(v_f1) <> voyage.fleet_speed(v_f2) or voyage.fleet_speed(v_f1) <> voyage.fleet_speed_alone_at(v_f2, null)\n' +
+      '       or voyage.fleet_speed_alone_at(v_f1, null) <= voyage.fleet_speed_alone_at(v_f2, null) then\n' +
+      "      raise exception '0367 self-assert FAIL: both fleets of an armada do not sail at the slower fleet''s speed';\n",
+  )
+  expect(out367.split('\n').length).toBe(f367.sql.split('\n').length + 1)
   const was = f226.sql.split('\n')
   const now = out226.split('\n')
   expect(now.length).toBe(was.length)

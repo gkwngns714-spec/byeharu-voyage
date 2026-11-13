@@ -90,6 +90,14 @@ export const FROZEN_ASSERT_PATCHES: readonly FrozenAssertPatch[] = [
       " - case when extract(hour from now() at time zone 'UTC') = 1 then interval '1 hour' else interval '0' end;\n",
     why: "0226 (g): the probe's planted pair is 26 h back; in UTC hour 01 that is 23:00 and 00:00, two days, so the day folds into two rows of n 4 and the assert fails; one hour earlier in UTC hour 01 only, inside the rolled-back probe",
   },
+  {
+    file: '20260818000367_an_armada_sails_as_one.sql',
+    find: '    update public.ships set durability = durability * 0.5 where fleet_id = v_f2;   -- the second fleet is the slower now\n',
+    replace:
+      '    update public.ships set roll_speed = 1 where fleet_id in (v_f1, v_f2);\n' +
+      '    update public.ships set durability = durability * 0.5 where fleet_id = v_f2;   -- the second fleet is the slower now\n',
+    why: "0367 (b): the probe halves the second fleet's hull to make her the slower, but each flagship rolls her own speed and hull from her id (0276: 1.000 to 1.200 here), and a halved hull that rolled 1.2 still sails at 0.84 of her speed: 0.84 x 1.2 = 1.008, so a first fleet that rolled 1.000 against a second that rolled both near 1.2 is not the faster and the assert raises. Rare (0 of 8,000 pairs measured; the same step at 0.6 of a hull, proof 68's, 15 of 8,000), but it is the dice and not the chain; the two speed rolls are made equal first, inside the rolled-back probe, so the worn hull alone decides (at most 0.84 against 1)",
+  },
 ]
 
 const BY_FILE = new Map(FROZEN_ASSERT_PATCHES.map((p) => [p.file, p]))
