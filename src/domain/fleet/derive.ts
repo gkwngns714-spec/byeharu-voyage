@@ -34,7 +34,7 @@
 
 import { instantMs } from '../../lib/format'
 import { whereabouts } from './where'
-import type { FleetShip, FleetStatus, FleetView, QueuedOrder } from '../../lib/rpc'
+import type { FleetShip, FleetStatus, FleetView, QueuedOrder, ShipRack } from '../../lib/rpc'
 
 /**
  * WHAT A STATUS MEANS — good, in hand, wanting attention, or wrong.
@@ -252,6 +252,27 @@ export function fleetHoldBreakdown(fleet: FleetView): HoldBreakdown {
 export function worstHullFraction(fleet: FleetView): number {
   if (fleet.ships.length === 0) return 1
   return Math.min(...fleet.ships.map(hullFraction))
+}
+
+/**
+ * THE ONE READING OF A FLEET'S WORN FITTINGS (0158, served only while gear wear bites): how many mounted
+ * units carry wear, and how well the weakest of them works (per cent). `units` 0 when nothing is worn, or
+ * when the server serves no wear at all (the switch off): the ship sheet, the yard's face and the repair
+ * tray all ask this, so they cannot count differently.
+ */
+export function wornFittings(fleet: { readonly ships: readonly { readonly racks?: readonly ShipRack[] }[] }): { units: number; worstWorks: number | null } {
+  let units = 0
+  let worst: number | null = null
+  for (const ship of fleet.ships) {
+    for (const rack of ship.racks ?? []) {
+      for (const u of rack.fitted) {
+        if (u.wear === undefined || u.wear <= 0) continue
+        units += 1
+        if (u.works_pct !== undefined) worst = worst === null ? u.works_pct : Math.min(worst, u.works_pct)
+      }
+    }
+  }
+  return { units, worstWorks: worst }
 }
 
 /**
