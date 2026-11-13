@@ -22,6 +22,7 @@ import {
 } from '../../chart'
 import { fleetParts } from './fleetLine'
 import { useWorld } from '../../live/worldStore'
+import { routeTitle } from '../../domain/route'
 import type { FleetShip } from '../../lib/rpc'
 import { ShipPanel } from '../../live/ShipPanel'
 import { HullCountry } from '../../live/HullCountry'
@@ -259,6 +260,7 @@ export function VoyageTray({
   // nothing is asked to decide whether to show them. A press opens her trading beside this tray
   // (owner, 2026-10-15), in the slot a ship's panel uses: one of the two at a time.
   const route = useWorld((s) => s.routes?.routes.find((r) => r.fleet?.id === fleet.fleet.id) ?? null)
+  const portByCode = useWorld((s) => s.portByCode)
   const [trades, setTrades] = useState<TradePick | null>(null)
   const openShipPanel = (id: string) => {
     setTrades(null)
@@ -361,7 +363,7 @@ export function VoyageTray({
       <CrewBonuses crew={own?.crew} />
       {route && (
         <RouteLaps
-          name={route.name}
+          name={routeTitle(route.name, route.stops.map((s) => s.port), portByCode)}
           laps={route.laps.slice(0, 7).map((l) => l.net)}
           underWay={route.lap !== null}
           total={route.earnings?.total}

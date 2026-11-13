@@ -23,6 +23,7 @@ import { fleetCrew } from '../domain/fleet'
 import { useCrewCost } from './useCrewCost'
 import { useInn } from './useInn'
 import { useWorld } from './worldStore'
+import { focusWord, jobWord } from './captainWords'
 import { cmdHireOfficer } from '../lib/rpc'
 import {
   formatDucats,
@@ -94,7 +95,7 @@ import { properName, t as tNow, useT } from '../lib/i18n'
 /** The tile's line: `S · Navigator`. A server before 0156 sends no card, and the job code is all
  *  there is to say. */
 function guestMeta(guest: InnGuest): string {
-  return guest.grade && guest.job_word ? `${guest.grade} · ${guest.job_word}` : guest.specialty.toLowerCase()
+  return guest.grade && guest.job_word ? `${guest.grade} · ${jobWord(guest.job_word)}` : guest.specialty.toLowerCase()
 }
 
 /** Her nation and home port — the port a go-to link when the world names it (the inn serves the
@@ -403,13 +404,13 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
           {open.grade && open.job_word ? (
             <>
               <Row label={t('inn.grade')} value={open.grade} data-testid="inn-grade" />
-              <Row label={t('inn.job')} value={`${open.job_word} · ${open.focus_word ?? ''}`} data-testid="inn-job" />
+              <Row label={t('inn.job')} value={`${jobWord(open.job_word)} · ${focusWord(open.focus_word) ?? ''}`} data-testid="inn-job" />
               {/* A TRAIT IS ITS NAME ON LINE 1 AND ITS SENTENCE ON LINE 2 (2026-11-02, the same pattern as the captain tray's — CaptainsFace). The sentence is a clause
                   or two of prose ("−4.2% crew lost to pirates · −4.2 points of homesickness", 436 px) and `Row` keeps a `value` on one line, so as the value it
                   shoved the tray sideways and left the trait's name one letter wide; on line 2 it wraps under its label and the row is as wide as the tray. The
                   row's tone and the served `in_use` still colour it. */}
               {(open.traits ?? []).map((t) => (
-                <Row key={t.code} label={t.word} tone={t.in_use ? 'default' : 'muted'} data-testid={`inn-trait-${t.code}`}>
+                <Row key={t.code} label={jobWord(t.word)} tone={t.in_use ? 'default' : 'muted'} data-testid={`inn-trait-${t.code}`}>
                   <span className={`block text-t-body ${t.in_use ? 'text-success' : ''}`}>{t.lines.join(' · ')}</span>
                   {t.note && <Hint>{t.note}</Hint>}
                 </Row>
@@ -419,7 +420,7 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
           ) : (
             <Row label={t('inn.job')} value={open.specialty.toLowerCase()} />
           )}
-          <Row label={t('inn.from')} value={whereFrom(open, ports)} hairline={!open.signed} />
+          <Row pair label={t('inn.from')} value={whereFrom(open, ports)} hairline={!open.signed} />
           {/* 0157: where she will sit — the fleet docked here, by the server's picker; else ashore */}
           {!open.signed && (
             <Row label={fleet ? t('inn.joins', { fleet: fleet.name }) : t('inn.ashore')} tone="muted" data-testid="inn-joins" />

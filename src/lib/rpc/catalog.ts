@@ -459,6 +459,9 @@ const TABLE = {
     ],
   },
   cmdPreviewAttack: { schema: 'cmd', fn: 'preview_attack', args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_target', type: 'uuid' }] },
+  // 0353 (docs/COMBAT_LOG.md 2.1, 6.2): a fleet's standing order when raiders close (FIGHT, FLEE, PAY), and the read beside its picker. Dark: E_NOT_IN_USE and {on: false}.
+  cmdRaidOrder: { schema: 'cmd', fn: 'raid_order', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_order', type: 'text' }] },
+  worldRaidRead: { schema: 'world', fn: 'raid_read', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdPreviewTow: { schema: 'cmd', fn: 'preview_tow', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdTow: {
     schema: 'cmd',

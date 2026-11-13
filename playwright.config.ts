@@ -19,12 +19,9 @@ export default defineConfig({
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: BASE,
-    // THE SUITE MEASURES THE SKIN THE GAME ACTUALLY SHIPS. src/index.css carries two schemes since
-    // 2026-09-09 and DARK IS THE DEFAULT; Playwright's own default is to emulate a LIGHT system
-    // preference, which would have silently repointed every colour proof at the day palette —
-    // tests/chart.ink.spec.ts would then measure a chart nobody sees first and report it as the
-    // chart. Pinned here rather than per-spec so there is one answer. A spec that wants the day
-    // sea overrides it with `test.use({ colorScheme: 'light' })`.
+    // THE GAME SHIPS ONE SCHEME, DARK (the owner removed the light one on 2026-11-12), and reads no
+    // system preference. Playwright's own default is to emulate a LIGHT system; this pins the
+    // browser's own furniture (scrollbars, form controls) to the scheme the game declares.
     colorScheme: 'dark',
     screenshot: 'on',
     trace: 'on',

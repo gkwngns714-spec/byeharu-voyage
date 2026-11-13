@@ -105,7 +105,7 @@ export { Chip, Segmented, type SegmentSpec } from './Chip'
 //    number of equal cells with aligned edges — one grid, composed by Segmented and by every
 //    filter row, never a ragged row of shrink-wrapped pills.
 export { TileChoice, TileGrid } from './TileGrid'
-export { tileCellClass, type ChoiceColumns } from './tileStyles'
+export { KEEP_WORDS_CLASS, tileCellClass, type ChoiceColumns } from './tileStyles'
 //    THE BOUNDED PANE: a long list scrolls inside its own box while the tab's composition stands.
 export { ScrollPane } from './ScrollPane'
 //    THE LIST PANEL (owner, 2026-11-01: *"everything is folded … make things unfolded"*): a list that
@@ -139,7 +139,7 @@ export { Hint } from './Hint'
 export { Empty } from './Empty'
 //     FACTS LINE — small facts under a row's label, wrapping. The fleet row and the Stats tab's rows had
 //     hand-written it three times (2026-10-20).
-export { FactsLine } from './FactsLine'
+export { Facts, FactsLine } from './FactsLine'
 
 //     NAV — the tab rail: six cells, one row, 22px icon, no uppercase. Step 3 repoints the shell.
 export { Nav, type NavItem } from './Nav'
@@ -202,7 +202,7 @@ export { Icon, IconDisc, type IconDiscTone } from './Icon'
 // A NATION'S FLAG (2026-10-18) — the bundled picture for a server nation code, one 3:2 box in three
 // sizes. Pure: HullCountry and PortFlag (src/live) decide WHICH nation; the chart's names draw the
 // same file through `flagSrc`. Sources and licences: public/flags/SOURCES.md.
-export { Flag } from './Flag'
+export { Flag, FlagSlot } from './Flag'
 export { flagSrc, FLAG_SIZES, type FlagSize } from './flagSrc'
 export { ICON_NAMES, ICON_PATHS, type IconName } from './icons'
 // A mark for a trade good, and the human spelling of its category. Every good in data/goods.json

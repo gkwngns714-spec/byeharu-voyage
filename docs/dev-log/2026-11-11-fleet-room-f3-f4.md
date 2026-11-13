@@ -16,6 +16,7 @@ Owner rows 180 and 316: *"multiple fleets, with multiple ships"*; *"unlock slots
 | A fleet is renamed | `public.rename_fleet(player, fleet, name)`, door `cmd.rename_fleet(fleet, name)` |
 | The gold | ledger kind `SLOT`, `public.stats_flow_words` side `removed`, word "Fleet room" |
 | Events | `ROOM_OPENED {kind, step, price, room}`, `FLEET_RENAMED {from, to}` |
+| The news | one `public.news_update('0354', 'Fleet totals, rename', '선단 합계, 이름 변경')` row, outside the probe (0347's law, `tests/news.lint.spec.ts`). Buying room is dark and is not announced: that news belongs to the step that lights `fleet_room_bite` |
 | The registry | three rows in `public.client_rpc_entry_points` (one hunk) |
 | The client | `src/features/fleets/FleetTotals.tsx`, `RenameFleet.tsx`, `FleetRoom.tsx`; types, catalogue, words EN and KO |
 
@@ -114,3 +115,9 @@ No after-check window is owed for the deploy: dark, the only things that change 
 - Two real clients buying at once: PGlite has one connection. The house row lock is reasoned, not raced.
 - The room card with the room lit on a wide screen, and in Korean: the lit browser test runs at 390 wide in English and reads no picture.
 - A rename while the fleet is in a battle or under repair: the proof renames docked, at sea and empty.
+
+## 2026-11-12: merged with main at 0353, and the file's parts timed
+- Merged `origin/main` (0351, 0352, 0353 and the client slices). Two conflicts, both kept whole on both sides: `src/features/fleets/FleetFold.tsx` (0353's raid-order picker, then the Command and Rename line) and `scripts/ops/harness/README.md` (two list entries).
+- The three hunks' old texts each occur exactly once on the live bodies at head 0353 (`before-0354.sql` on the local world): `world.fleets()` ×2, `public.client_rpc_entry_points()` ×1. 0353's registry rows stand on another line.
+- The file's parts, local, two runs: catalog hashes, functions and hunks 56 ms; probe set-up and the dark checks 80 ms; the old-against-new timing loop 620 to 640 ms (82 reads of the probe's own two fleets); the lit steps 18 ms; whole file 0.78 to 0.80 s. Nothing reads every house: the "every house" parity is proof 57's, in CI, not the file's. What grows with the world is only the two catalog hashes (about 50 ms, the number of functions). On a database 6 times slower: about 5 s, against the 45 s guard. The timing loop's cap was lowered from 20 s to 8 s after the file's start, so a slow `world.fleets()` cannot carry the file near its guard.
+- Proofs 57 (8), 29 (9) and 54 (4) green; 23 mutations red; the PROD CHECK files regenerated and unchanged.

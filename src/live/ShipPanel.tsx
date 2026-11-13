@@ -352,8 +352,9 @@ function Stat({ label, value, unit, mark, title }: { label: string; value: strin
       <dt className="break-words text-t-caption text-ink-faint">{label}</dt>
       <dd className="break-words">
         <span className="text-t-title tabular-nums">{value}</span>
-        {unit && <span className="ml-1 text-t-caption text-ink-faint">{unit}</span>}
-        {mark && <span className={`ml-1 text-t-caption tabular-nums ${rollTone(mark)}`}>{mark}</span>}
+        {unit && <span className="ml-1 whitespace-nowrap text-t-caption text-ink-faint">{unit}</span>}
+        {/* the bracket goes to the next line whole: a narrow cell printed "(+1" over "%)" (2026-11-13) */}
+        {mark && <span className={`ml-1 inline-block whitespace-nowrap text-t-caption tabular-nums ${rollTone(mark)}`}>{mark}</span>}
       </dd>
     </div>
   )
@@ -451,7 +452,8 @@ export function ShipPanel({
   return (
     <Tray
       mode={overPage ? 'side' : 'side-next'}
-      className={overPage ? 'z-60!' : undefined}
+      // Over a detail page the bottom tabs are covered, so she stands to the glass's foot: the gap kept for the tabs showed the page under her (2026-11-13).
+      className={overPage ? 'z-60! bottom-0!' : undefined}
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={

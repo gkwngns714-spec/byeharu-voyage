@@ -6,6 +6,7 @@ import { whereabouts, whereParts } from '../../domain/fleet'
 import { GoToLink, PlaceLine } from '../../chart'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { SendInsurance } from './SendInsurance'
+import { RaidOrder } from '../../live/RaidOrder'
 import { canGo, type Fix } from './sendRules'
 import type { SendFlow } from './useSendFleet'
 import { useT } from '../../lib/i18n'
@@ -78,6 +79,8 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
       )}
 
       {on && pressable && <SendInsurance fleet={f} flow={flow} />}
+      {/* 0353: her standing order when raiders close, chosen where the passage is chosen. Draws nothing while orders are dark. */}
+      {on && pressable && <RaidOrder fleetId={f.id} />}
 
       {acted?.state === 'busy' && (
         <Note tone="neutral" data-testid="map-send-busy">

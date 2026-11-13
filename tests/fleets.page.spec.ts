@@ -7,7 +7,7 @@ import { EXTRA_PURSE, SECOND_SHIP, serveDarkTwoShips, serveLitOneShip, serveLitT
 // THE FLEETS PAGE A PLAYER CAN BUILD FLEETS WITH (F5, 2026-11-11; owner rows 180 and 316; docs/dev-log/2026-11-11-fleets-page.md).
 //
 // Every world here is a throwaway copy of this build's image with the room lit (or left dark) inside the copy only (tests/fleetsPage.fixture.ts). What is proven, at a
-// phone (390×844) and a laptop (1280×800), in English and in Korean:
+// phone (390×844), a narrow phone (320×640) and a laptop (1280×800), in English and in Korean:
 //
 //   THE FLOW   New fleet from the list (3 presses and a name) → a second fleet stands with the chosen name → a ship place is bought (the purse falls by the served price and
 //              a locked tile opens) → a ship's Stats opens her sheet and leaves back to the same fleet → the ship is moved back, with the figures the page shows before the
@@ -20,6 +20,8 @@ import { EXTRA_PURSE, SECOND_SHIP, serveDarkTwoShips, serveLitOneShip, serveLitT
 
 const GLASSES = [
   { width: 390, height: 844 },
+  // the narrow phone of the phone tidy (owner, 2026-11-12): nothing overlaps and no word is broken there either
+  { width: 320, height: 640 },
   { width: 1280, height: 800 },
 ] as const
 const LOCALES = ['en-US', 'ko-KR'] as const
@@ -32,11 +34,14 @@ const WORDS = {
 const NEW_FLEET = 'Armada do Sul Dourado'
 const SHOTS = path.resolve('docs', 'dev-log', 'img')
 
-/** The dev-log's pictures (docs/dev-log/2026-11-11-fleets-page.md), written only when FLEETS_PAGE_SHOTS is set. */
+/** The dev-log's pictures (docs/dev-log/2026-11-11-fleets-page.md), written only when FLEETS_PAGE_SHOTS is set: `1` writes them beside the dev-log, any other value is
+ *  the folder to write them to. */
 async function shot(page: Page, name: string) {
-  if (!process.env.FLEETS_PAGE_SHOTS) return
-  mkdirSync(SHOTS, { recursive: true })
-  await page.screenshot({ path: path.join(SHOTS, `2026-11-11-fleets-page-${name}.jpg`), type: 'jpeg', quality: 82 })
+  const to = process.env.FLEETS_PAGE_SHOTS
+  if (!to) return
+  const dir = to === '1' ? SHOTS : path.resolve(to)
+  mkdirSync(dir, { recursive: true })
+  await page.screenshot({ path: path.join(dir, `2026-11-11-fleets-page-${name}.jpg`), type: 'jpeg', quality: 82 })
 }
 
 async function served(request: Parameters<typeof reachable>[0], baseURL: string | undefined) {
@@ -55,7 +60,8 @@ async function purse(page: Page): Promise<number> {
   return Number(((await page.getByTestId('purse').first().textContent()) ?? '').replace(/[^\d]/g, ''))
 }
 
-/** THE LOOK LAWS, read off the glass as it stands: nothing scrolls sideways, and no text in the Fleets screen or a layer over it is cut or ended with dots. */
+/** THE LOOK LAWS, read off the glass as it stands: nothing scrolls sideways, no text in the Fleets screen or a layer over it is cut or ended with dots, no word is
+ *  broken inside itself, and no two texts stand on each other (the phone tidy, owner 2026-11-12). */
 async function laws(page: Page, where: string) {
   const broken = await page.evaluate(() => {
     const out: string[] = []
@@ -78,6 +84,39 @@ async function laws(page: Page, where: string) {
         }
         const r = el.getBoundingClientRect()
         if (r.width > 0 && (r.right > window.innerWidth + 1 || r.left < -1)) out.push(`"${text}" stands outside the glass`)
+      }
+    }
+    // A WORD KEEPS ITS LINE, AND NO TEXT STANDS ON ANOTHER: every piece of text on the glass, read as it is drawn. A text under an open layer is not on the glass
+    // (the point in its middle belongs to the layer), so it is not read.
+    const drawn: { text: string; left: number; top: number; right: number; bottom: number }[] = []
+    const seen = new Set<Node>()
+    for (const scope of scopes) {
+      const walk = document.createTreeWalker(scope, NodeFilter.SHOW_TEXT)
+      for (let node = walk.nextNode(); node; node = walk.nextNode()) {
+        const raw = node.textContent ?? ''
+        const host = node.parentElement
+        if (seen.has(node) || raw.trim() === '' || !host) continue
+        seen.add(node)
+        const range = document.createRange()
+        range.selectNodeContents(node)
+        const r = range.getBoundingClientRect()
+        if (r.width === 0 || r.height === 0) continue
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)
+        if (!hit || !(hit === host || host.contains(hit) || hit.contains(host))) continue
+        drawn.push({ text: raw.trim(), left: r.left, top: r.top, right: r.right, bottom: r.bottom })
+        for (const word of raw.matchAll(/\S{2,}/g)) {
+          range.setStart(node, word.index)
+          range.setEnd(node, word.index + word[0].length)
+          const tops = new Set([...range.getClientRects()].filter((q) => q.width > 0).map((q) => Math.round(q.top)))
+          if (tops.size > 1) out.push(`"${word[0]}" is broken inside the word (in "${raw.trim()}")`)
+        }
+      }
+    }
+    for (let i = 0; i < drawn.length; i++) {
+      for (let j = i + 1; j < drawn.length; j++) {
+        const a = drawn[i]
+        const b = drawn[j]
+        if (Math.min(a.right, b.right) - Math.max(a.left, b.left) > 2 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 2) out.push(`"${a.text}" stands on "${b.text}"`)
       }
     }
     return out
@@ -163,7 +202,10 @@ for (const glass of GLASSES) {
         await expect(fleetPage.getByTestId('fleet-place-locked').nth(1)).toContainText('20,000')
         await laws(page, "the fleet's page")
         await shot(page, `fleet-page-${name}`)
-        const tiles = ['fleet-ship-tile', 'fleet-totals', 'fleet-rename', 'fleet-command']
+        // The Buy is brought onto the glass first, so the press itself scrolls nothing. Where the tiles stand two across, the foot may not move either; in one column
+        // (320 px) the bought place's tile is a shorter one (Empty has no price and no Buy), so what stands under the places follows it and only what stands above is held.
+        await fleetPage.getByTestId('fleet-place-buy').scrollIntoViewIfNeeded()
+        const tiles = glass.width >= 390 ? ['fleet-ship-tile', 'fleet-totals', 'fleet-rename', 'fleet-command'] : ['fleet-ship-tile', 'fleet-totals']
         const tilesBefore = await boxes(page, tiles)
         const purseBefore = await purse(page)
         expect(purseBefore, 'the purse the fixture paid').toBeGreaterThanOrEqual(EXTRA_PURSE)
@@ -318,6 +360,8 @@ for (const glass of GLASSES) {
         await page.goto('you')
         await ready(page)
         await expect(page.getByTestId('you-room')).toHaveText(w.youDark)
+        await laws(page, 'You, dark')
+        await shot(page, `you-dark-${name}`)
       })
 
       test(`lit, one ship: New fleet says a second ship comes from a build yard, and goes there — ${tag}`, async ({ page, request, baseURL }) => {

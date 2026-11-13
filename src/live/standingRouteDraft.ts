@@ -18,6 +18,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { proposeCourse, sailTarget } from '../domain/passage'
+import { portsLine } from '../domain/route'
 import type { SeaNav } from '../lib/sea'
 import type { SnapshotPort, StandingRoute, StandingRouteLine, StandingRouteStopDraft } from '../lib/rpc'
 
@@ -85,10 +86,13 @@ export function draftOfRoute(route: StandingRoute): RouteStopDraft[] {
   })
 }
 
-/** The route's name: its ports in order, joined by the loop mark, cut to the server's 24. */
+/** The name the SERVER keeps for the route: its ports in order, joined by the loop mark, and no more than the 24 characters the
+ *  server allows (0092, `standing_routes_name_length`). It is a stored key, NOT what the player reads: a longer line of ports is
+ *  kept as its first 24 characters, and every place that names a route prints the whole line through `routeTitle`
+ *  (domain/route), so nothing on the glass is cut and nothing here pretends with an ellipsis. */
 export function routeName(stops: readonly RouteStopDraft[], portByCode: Record<string, SnapshotPort>): string {
-  const name = stops.map((s) => portByCode[s.port]?.name ?? s.port).join(' ⇄ ')
-  return name.length <= 24 ? name : `${name.slice(0, 23)}…`
+  const name = portsLine(stops.map((s) => s.port), portByCode)
+  return name.length <= 24 ? name : name.slice(0, 24).trimEnd()
 }
 
 export type RoutePayload =

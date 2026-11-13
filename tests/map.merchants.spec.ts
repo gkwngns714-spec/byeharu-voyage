@@ -6,7 +6,7 @@
 // player's fleets — `model.fleets`, the roles, the opening frame's focus and motion points — ever
 // sees one; `buildChartModel.length` stays 2; an own fleet wins a tie hit; a merchant's position is
 // COPIED from the served one; only the open merchant (the card lent her whole course — even a
-// straight two-vertex leg) draws a track; the eight nation inks exist and stand off the sea in both schemes.
+// straight two-vertex leg) draws a track; the eight nation inks exist and stand off the sea.
 //
 // BROWSER, with the merchants switched on (tests/npcOn.fixture.ts): at 390 × 844 from a Lisbon
 // start, merchant hulls are on the opening frame; a sailing one MOVES between beats; a tap opens the
@@ -506,8 +506,7 @@ async function openMerchantWorthReading(page: Page, sailing: boolean | null, flo
     // what made it bite now. The contract in this helper's own doc comment — settle for the last one
     // if none has a figure — is what is kept here; nothing about the assertion is loosened.
     if (attempt === MAX_HULLS || !(await hullInView(page, sailing, tried, floorMs))) break
-    const close = page.getByTestId('tray-close')
-    if (await close.isVisible().catch(() => false)) await close.click()
+    await closeOpenTray(page)
     opened = ''
   }
   if (!opened) opened = lastOpened
@@ -546,11 +545,35 @@ async function tapHull(page: Page, id: string): Promise<boolean> {
       // only a few times: if the thing that took it is a harbour or one of your own fleets, which
       // both outrank a merchant by the chart's own rule, aiming at the same hull again will keep
       // losing. The caller moves to a DIFFERENT hull, which is the only thing that can help.
-      const close = page.getByTestId('tray-close')
-      if (await close.isVisible().catch(() => false)) await close.click()
+      await closeOpenTray(page)
     }
   }
   return false
+}
+
+/** A press on a tray's ✕ that says so within a minute when the tray is stuck, instead of holding a shard for the whole test. */
+const CLOSE_MS = 60_000
+
+/**
+ * Close whatever tray is open AND WAIT UNTIL IT IS GONE, before the next aim.
+ *
+ * A side panel slides out for 240 ms before it is gone (Tray.tsx, `leaving`), and for that time three things are true at once:
+ * the sheet is still on the page (so "is a merchant sheet visible?" says yes), it takes no tap, and the chart's corner controls
+ * still stand shifted to its left edge — over water the hunt for the next hull counts as open (measured at 1,280: with a sheet
+ * open or leaving, (865, 165) is `map-view-controls`, which answers no tap; with none it is the sea). Run 43103929440 (npc 1/2,
+ * 2026-11-11) hit all three: it closed one sheet, tapped the next hull 174 ms later at (865, 166) — on the controls, so nothing
+ * was selected and no card was asked — took the LEAVING sheet for hers, read it, pressed its ✕ as the slide ended ("element was
+ * detached from the DOM, retrying", once) and then waited the whole 40-minute test for a tray that was never coming back.
+ * Waiting for the tray to be gone is the real condition: the controls are back at the edge and no old sheet can answer for a new one.
+ */
+async function closeOpenTray(page: Page): Promise<void> {
+  const close = page.getByTestId('tray-close')
+  if (!(await close.isVisible().catch(() => false))) return
+  // a tray that went on its own between the look and the press is closed, which is what was wanted
+  await close.click({ timeout: CLOSE_MS }).catch(async (err: unknown) => {
+    if ((await close.count()) > 0) throw err
+  })
+  await expect(close, 'the tray did not go when its ✕ was pressed').toHaveCount(0, { timeout: CLOSE_MS })
 }
 
 test('the merchants sail on the chart, and a tap opens a read-only sheet', async ({ page, request, baseURL }) => {
@@ -704,14 +727,13 @@ test('with the shipped image (merchants dark) there are no merchant hulls and no
   // (PORT's "Merchants in port" section went with PORT, 2026-10-18; the map's list is the one list.)
 })
 
-test('the eight nation inks exist in both schemes and stand off the sea', async ({ page, request, baseURL }) => {
+test('the eight nation inks exist and stand off the sea', async ({ page, request, baseURL }) => {
   test.setTimeout(300_000)
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   await page.goto('map')
   await ready(page)
-  for (const theme of ['dark', 'light'] as const) {
-    const ratios = await page.evaluate((t) => {
-      document.documentElement.setAttribute('data-theme', t)
+  for (const theme of ['dark'] as const) {
+    const ratios = await page.evaluate(() => {
       const css = getComputedStyle(document.documentElement)
       const canvas = document.createElement('canvas')
       canvas.width = canvas.height = 1
@@ -740,7 +762,7 @@ test('the eight nation inks exist in both schemes and stand off the sea', async 
         out[n] = (Math.max(l, sea) + 0.05) / (Math.min(l, sea) + 0.05)
       }
       return out
-    }, theme)
+    })
     for (const [n, ratio] of Object.entries(ratios)) {
       expect(ratio, `${theme}: --color-nation-${n} against the sea`).toBeGreaterThanOrEqual(3)
     }
@@ -782,7 +804,7 @@ async function harbourLabels(page: Page): Promise<{ id: string; x: number; y: nu
 
 async function closeTray(page: Page): Promise<void> {
   const x = page.getByTestId('tray-close')
-  if (await x.isVisible().catch(() => false)) await x.click()
+  if (await x.isVisible().catch(() => false)) await x.click({ timeout: CLOSE_MS })
   await page.waitForTimeout(300)
 }
 

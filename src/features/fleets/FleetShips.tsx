@@ -61,7 +61,6 @@ export function FleetShips({ fleet, onOpenShip }: { fleet: FleetView; onOpenShip
             holdTotal={ship.hold}
             fittings={ship.fittings}
             power={ship}
-            wrapName
           >
             <span className="mt-auto flex flex-wrap gap-2 pt-1">
               <Button variant="secondary" className="flex-1" onClick={() => onOpenShip(ship.id)} data-testid="ship-stats">

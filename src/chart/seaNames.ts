@@ -27,6 +27,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { project } from '../lib/geo'
+import { properName } from '../lib/i18n'
 import { SEA_NAME_SPAN_LIMIT } from './chartView'
 import { GLYPH } from './glyphs'
 import { LABEL_PRIORITY, type LabelRequest } from './labels'
@@ -77,7 +78,7 @@ export function seaNameRequests(seas: readonly MapSea[], view: { x: number; y: n
     if (at.x < view.x || at.x > view.x + view.width || at.y < view.y || at.y > view.y + view.height) continue
     requests.push({
       id: `sea:${sea.id}`,
-      text: sea.name,
+      text: properName('sea', sea.name, sea.name),
       at,
       priority: LABEL_PRIORITY.sea,
       tone: 'sea',

@@ -1,4 +1,4 @@
-import { Bar, Card, Clip, Icon, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
+import { Bar, Card, Clip, Facts, Figure, Icon, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
 import { formatInt } from '../../lib/format'
 import type { FleetView, LevelTrack, PlayerHouse } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
@@ -91,7 +91,10 @@ function YouBody({ title }: { title: string }) {
               <Row label={t('you.noCompany')} tone="muted" hairline={false} data-testid="you-no-company" />
             </Card>
           ) : (
-            <Levels player={player} />
+            <>
+              <Reputation player={player} />
+              <Levels player={player} />
+            </>
           )
         }
       />
@@ -118,6 +121,24 @@ function RoomLine() {
       </span>
       <Icon name="chevron" size={16} className="text-ink-muted" />
     </Link>
+  )
+}
+
+/** REPUTATION (0352, owner row 317): the served balance, and what today's capped earnings stand at against the day's cap
+ *  (`public.reputation_card`). Nothing is computed here. A server before 0352 serves none, and the card is not drawn. */
+function Reputation({ player }: { player: PlayerHouse }) {
+  const t = useT()
+  const rep = player.reputation
+  if (!rep) return null
+  return (
+    <Card title={t('shell.reputation')} data-testid="you-reputation">
+      <span data-testid="you-reputation-balance" data-value={rep.balance}>
+        <Figure value={formatInt(rep.balance)} size="figure" />
+      </span>
+      <p className="mt-1 text-t-caption text-ink-muted" data-testid="you-reputation-today">
+        {t('shell.repToday', { a: formatInt(rep.today), b: formatInt(rep.cap) })}
+      </p>
+    </Card>
   )
 }
 
@@ -193,11 +214,15 @@ function Ships({ fleets }: { fleets: readonly FleetView[] }) {
           <Row
             key={ship.id}
             label={<Clip>{ship.name}</Clip>}
-            value={<span className="text-t-caption text-ink-muted">{fleet.name}</span>}
+            // IN A NARROW ROW HER FLEET GOES UNDER HER NAME (owner, 2026-11-12): beside a 24-letter fleet name the ship's own name
+            // stood on three lines ("Nossa / Senhora da / Estrela") in a 320-px card, and on two at 390. The row is its own query
+            // container (ListPanel `columns="fit"`), so the row's width decides, never the window's.
+            value={<span className="text-t-caption text-ink-muted pair:hidden">{fleet.name}</span>}
             hairline={i < ships.length - 1}
             data-testid="you-ship"
           >
-            <span className="block text-t-caption text-ink-faint">{[ship.class, ship.is_flagship ? t('you.flagship') : null].filter(Boolean).join(' · ')}</span>
+            <Facts className="block text-t-caption text-ink-faint pair:hidden" items={[ship.class, ship.is_flagship ? t('you.flagship') : null]} />
+            <Facts className="hidden text-t-caption text-ink-faint pair:block" items={[fleet.name, ship.class, ship.is_flagship ? t('you.flagship') : null]} />
           </Row>
         ))
       )}

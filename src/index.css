@@ -78,16 +78,15 @@
    Space    4-pt base, 8-pt rhythm: 4 · 8 · 12 · 16 · 24 · 32 · 48 and nothing else.
    Shape    sheet 16 (and the page's card) · tile 12 · control 10 · chip 999. NO cut corners.
    Motion   240ms rise, 180ms fold, one curve, and nothing else animates.
-   Schemes  BOTH ARE FIRST-CLASS. Dark is the default (a night sea); `:root[data-theme='light']`
-            selects the day sea. ONE resolver writes that attribute — src/features/profile/
-            appearance.ts: the device's `prefers-color-scheme` by default, the Cabin's Appearance
-            control over it. Every light value below is measured, not translated.
+   Scheme   ONE: DARK (a night sea). The owner removed the light scheme on 2026-11-12 ("the dark
+            setting is default. remove the light one"): no second palette, no Appearance control,
+            and the device's own scheme is not read.
    Mobile   every interactive target is ≥44px; the shell is 100dvh with its own scroll regions.
    ═══════════════════════════════════════════════════════════════════════════════════════════ */
 @theme {
-  /* ── COLOUR — the night sea (default). The day sea is the media query further down. ─────────
-     Both palettes are stated as flat literals in ONE place each. A token that is a var() of
-     another token (below: panel, hairline, cheap, …) tracks the scheme for free. */
+  /* ── COLOUR — the night sea, the one palette. ────────────────────────────────────────────────
+     Stated as flat literals in ONE place. A token that is a var() of another token (below:
+     panel, hairline, cheap, …) follows its source for free. */
 
   /* ground and world layer. `bg` is under everything; sea-1 → sea-2 is the gradient `.bv-sea`
      paints, and sea-2 is also the chart's own water. */
@@ -133,7 +132,7 @@
   --color-info: #6aa9f5;
 
   /* soft alpha tints — the selected wash. Derived via color-mix so they TRACK their semantic
-     token AND the scheme: retune --color-accent once, or switch to the day sea, and these
+     token: retune --color-accent once and these
      follow. §4.3: a selected tile is this wash plus an accent hairline, never a box. */
   --color-accent-soft: color-mix(in srgb, var(--color-accent) 14%, transparent);
   --color-success-soft: color-mix(in srgb, var(--color-success) 14%, transparent);
@@ -156,13 +155,7 @@
        coast  ink-faint 65%   #5d6672   3.37 : 1   the BOUNDARY, at WCAG 1.4.11's 3 : 1 floor for
                                                    a graphic that carries meaning.
      …and the quiet port mark (`stroke-ink-faint/85`) then reads 2.75 : 1 against that land,
-     which is the third assertion: a mark must always out-shout the ground it sits on.
-
-     THE DAY CHART INVERTS THE PEN, and that is why these three are restated in the light block
-     rather than derived once. At night the land is INK mixed into deep water. By day the water
-     is the darker body and the land is PAPER: mixing ink into a pale sea can only reach 1.24 : 1
-     (measured against the direction's own §4.4 light values), which is the 2026-08 defect all
-     over again. One rule cannot spell both polarities, so each scheme states its own pen. */
+     which is the third assertion: a mark must always out-shout the ground it sits on. */
   --color-chart-sea: var(--color-sea-2);
   --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
   --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 65%, var(--color-chart-sea));
@@ -173,10 +166,7 @@
      Lamplight, not white: a warm near-white reads as a town seen from the sea at night, where a
      pure #fff reads as a UI dot somebody forgot to style. It is the ONE new ink this adds, and it
      is deliberately not a nation colour — a city belongs to the chart, and the eight nation inks
-     already spoken for are the SHIPS' channel (MAP_ATMOSPHERE §4: two channels, no legend).
-
-     On the day sea the same name holds a DEEP ink instead of a bright one: a glow on white is a
-     smudge, so the light scheme states its own pen exactly as the sea and the coast above do. */
+     already spoken for are the SHIPS' channel (MAP_ATMOSPHERE §4: two channels, no legend). */
   --color-harbour-light: #ffe9c2;
 
   /* ── THE SHIP LIGHT (owner, 2026-10-12: *"I want ships to be in blue light"*) ─────────────────
@@ -208,9 +198,7 @@
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because
      tests/chart.ink.spec.ts pins their contrast and the picture is built around them, not on
-     top of them. docs/MAP_ATMOSPHERE.md is the design; every one of these is restated in the
-     day block below, and tests/map.atmosphere.spec.ts refuses a chart token that one scheme
-     defines and the other does not.
+     top of them. docs/MAP_ATMOSPHERE.md is the design.
        deep      the open ocean — a vignette darker than the water at the frame's edge
        shallow   the water within a few miles of a coast — the sea's one tone step, mixed from
                  `info` (blue is water and movement on this palette) into the sea
@@ -233,8 +221,8 @@
      deep blue going deeper toward the frame's edge, shallows paler toward every shore, and the
      land in the colours its latitude wears — ice at the poles, boreal and temperate green,
      the arid belt tan at ±25°, the tropics green again — laid as one gradient down the sheet.
-     THE SAME IN BOTH SCHEMES, because daylight is not a colour scheme: the scheme is what the
-     night looks like. The day's marks and names are set in `chart-day-mark`, a near-black that
+     Daylight is the Sun's, not a colour scheme (there is one scheme, dark: it is what the
+     night looks like). The day's marks and names are set in `chart-day-mark`, a near-black that
      holds on green and on blue alike, and a merchant hull is `chart-day-hull`, the pale deck a
      ship shows the sky, because the dark-blue merchant ink of the night sea vanishes on the
      day's water. src/chart/CoastlineLayer.tsx and SeaLayer.tsx paint these; PortsLayer,
@@ -257,7 +245,7 @@
      the nation family its company sails for (npc_houses.ink, served; never chosen on the client).
      Eight families, hues spread round the wheel AWAY from the accent's gold (yours stay the only
      gold hulls on the sea), one lightness and chroma so no family shouts over another. Measured
-     against --color-chart-sea in both schemes by tests/map.merchants.spec.ts (≥ 3 : 1). */
+     against --color-chart-sea by tests/map.merchants.spec.ts (≥ 3 : 1). */
   --color-nation-prt: oklch(0.76 0.14 150);
   --color-nation-esp: oklch(0.72 0.15 25);
   --color-nation-nld: oklch(0.78 0.14 55);
@@ -466,7 +454,7 @@
   /* ── THE NAMES THE SCREENS ALREADY SAY ──────────────────────────────────────────────────────
      Step 1 changes no screen's class strings, so every utility name the tree uses today has to
      keep resolving. These are the old names REMAPPED onto the tokens above — never a second
-     value, always a var() of the one authority, so they track both the palette and the scheme.
+     value, always a var() of the one authority, so they track the palette.
      Step 10 deletes them together with their last caller.
 
        app        the ground              → bg
@@ -502,250 +490,6 @@
   color-scheme: dark;
   /* how strong the premium rows' wash is at the row's start edge (.bv-class-4 / .bv-class-5) */
   --class-wash: 10%;
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════════════════
-   THE DAY SEA — the light scheme, measured rather than translated.
-   Only the flat literals are restated; everything derived (the soft washes, cheap/dear/even,
-   every old name in the block above) is a var() and follows on its own.
-
-   SELECTED BY AN ATTRIBUTE, NOT A MEDIA QUERY (2026-09-09). A media query cannot be toggled, and
-   the Cabin's Appearance control (docs/UI_DIRECTION.md §4.4, "the Cabin toggles") must have the
-   last word over the device. The device's preference is read by the one resolver
-   (src/features/profile/appearance.ts) and written here as the same attribute a chosen scheme
-   writes, so these values are stated ONCE and reached by both roads.
-
-   Every value here was measured against the surface it is used on, and four of the direction's
-   §4.4 light values were moved because they did not clear AA at the sizes this game prints:
-     accent  #b07e1f → #8a6011   3.59 → 5.58 on white, and 4.96 under a `text-app` button label
-     success #1e9e5f → #12874d   3.44 → 4.57
-     warning #c98a1b → #96660c   2.94 → 5.00   (the worst of them: below AA-large as shipped)
-     danger  #d64545 → #c13636   4.38 → 5.46
-   The rarity hues are restated for the same reason — sea-glass, violet and orchid measure
-   2.0-2.3 : 1 on white, which is a decoration and not a tier.
-   ═══════════════════════════════════════════════════════════════════════════════════════════ */
-:root[data-theme='light'] {
-    color-scheme: light;
-    --class-wash: 16%;
-
-    --color-bg: #eef2f6;
-    --color-sea-1: #dce8f2;
-    --color-sea-2: #c9dae8;
-
-    /* Row 125's harbour light, inverted for the day sea: a warm glow on white is a smudge, so the
-       light here is a deep amber that reads as a dense point rather than a bloom. The halo's low
-       opacity then does the opposite job it does at night — it softens the mark into the water
-       instead of bleeding out of it. */
-    --color-harbour-light: #8a5a12;
-
-    /* The ship light on the day sea: a deep marine blue, for the same reason the harbour light
-       goes deep amber here — a pale glow on white is a smudge, so the light scheme states its own
-       pen rather than inheriting a bloom built for a dark ground. */
-    --color-ship-light: #0b4f7a;
-    --color-merchant: #1d3f86;
-
-    --color-surface: #ffffff;
-    --color-surface-2: #f2f5f8;
-
-    /* 14%, not the direction's 8%: on white an 8% rule is a rumour, and thirty-three cards in
-       the tree are still parted by `border-edge` until step 2 replaces them. */
-    --color-edge: rgb(16 24 40 / 0.14);
-
-    /* ink 17.74 : 1 · ink-muted 7.56 : 1 · ink-faint 5.98 : 1, all on --color-surface.
-       2026-11-11 (S4): ink-faint #6b7280 → #5b6472. The old value cleared AA on white only (4.83) and fell under it on every
-       other day surface — 4.42 on surface-2, 4.30 on bg, 3.88 on sea-1. Now 5.98 · 5.47 · 5.32 · 4.80. The day chart is
-       untouched: it wears the night's inks (`.bv-chart-night`, below). */
-    --color-ink: #111827;
-    --color-ink-muted: #4b5563;
-    --color-ink-faint: #5b6472;
-
-    /* By day a hover DARKENS: the ink gets heavier on paper rather than brighter in the dark. */
-    --color-accent: #8a6011;
-    --color-accent-hover: #6e4c0d;
-    --color-success: #12874d;
-    --color-success-hover: #0f7a45;
-    --color-warning: #96660c;
-    --color-warning-hover: #7e5509;
-    --color-danger: #c13636;
-    --color-danger-hover: #a82c2c;
-    --color-info: #215fc0;
-
-    /* THE DAY CHART, and the inverted pen the dark block explains: a paper coast on blue water,
-       the coastline drawn in ink. The sea is deeper than the app's own sea-2 on purpose — a
-       chart at [sea-2] cannot put land 1.9 : 1 clear of its water without going darker than the
-       page it sits on. Measured: land 2.02 : 1 · coast 3.68 : 1 · quiet mark on land 3.51 : 1. */
-    --color-chart-sea: #95b8d6;
-    --color-chart-land: color-mix(in srgb, var(--color-surface) 96%, var(--color-chart-sea));
-    --color-chart-coast: color-mix(in srgb, var(--color-ink) 62%, var(--color-chart-sea));
-
-    /* THE DAY PICTURE — the same five inks, in the day's polarity (row 90; the dark block says
-       what each one is). Deep water is darker than the sea, shallows paler; the relief is a step
-       down from paper toward the water; the grid and the sea names are ink thinned into the sea. */
-    --color-chart-deep: #7ea6c9;
-    --color-chart-shallow: color-mix(in srgb, var(--color-surface) 30%, var(--color-chart-sea));
-    --color-chart-relief: color-mix(in srgb, var(--color-chart-coast) 30%, var(--color-chart-land));
-    --color-chart-grid: color-mix(in srgb, var(--color-ink) 12%, transparent);
-    --color-chart-sea-name: color-mix(in srgb, var(--color-ink) 52%, var(--color-chart-sea));
-
-    /* THE DAY SIDE is the Earth by day in this scheme too — the @theme block says why the twelve
-       are the same values: daylight is the Sun's, not the scheme's. */
-    --color-chart-day-sea: #3d7ab8;
-    --color-chart-day-deep: #1d4f8c;
-    --color-chart-day-shallow: #8ec6e4;
-    --color-chart-day-coast: #14283d;
-    --color-chart-day-ice: #eef3f5;
-    --color-chart-day-boreal: #5f8a58;
-    --color-chart-day-temperate: #86a85f;
-    --color-chart-day-arid: #c9b77f;
-    --color-chart-day-tropic: #5e9650;
-    --color-chart-day-mark: #16212c;
-    --color-chart-day-hull: #eef2f4;
-    --color-chart-day-name-halo: #eef3f5;
-
-    /* THE DAY NATION INKS — the same eight hues, dark enough to stand on the day's blue water. */
-    --color-nation-prt: oklch(0.42 0.13 150);
-    --color-nation-esp: oklch(0.42 0.15 25);
-    --color-nation-nld: oklch(0.45 0.13 55);
-    --color-nation-eng: oklch(0.42 0.15 330);
-    --color-nation-han: oklch(0.38 0.13 260);
-    --color-nation-ita: oklch(0.4 0.09 210);
-    --color-nation-ott: oklch(0.42 0.11 118);
-    --color-nation-east: oklch(0.4 0.15 295);
-    /* 0341: the Brethren's lane by day (the light red of docs/WORLD_POWERS.md 9.3). */
-    --color-nation-pir: #b3122a;
-
-    /* THE DAY TINTS — the same 25 hues a step darker, so a tint reads on paper land and on the
-       day's blue water (validated the same way; the dark block says how). */
-    --color-chart-region-iberia: oklch(0.64 0.12 105);
-    --color-chart-region-atlantic-isles: oklch(0.48 0.12 255);
-    --color-chart-region-british-isles: oklch(0.48 0.12 295);
-    --color-chart-region-france-low-countries: oklch(0.64 0.12 255);
-    --color-chart-region-baltic: oklch(0.48 0.12 288);
-    --color-chart-region-scandinavia-arctic: oklch(0.48 0.12 55);
-    --color-chart-region-western-mediterranean: oklch(0.48 0.12 302);
-    --color-chart-region-adriatic-ionian: oklch(0.48 0.12 48);
-    --color-chart-region-aegean-anatolia: oklch(0.64 0.12 98);
-    --color-chart-region-levant: oklch(0.48 0.12 248);
-    --color-chart-region-maghreb: oklch(0.64 0.12 295);
-    --color-chart-region-west-africa: oklch(0.64 0.12 288);
-    --color-chart-region-east-africa: oklch(0.48 0.12 165);
-    --color-chart-region-arabia-gulf: oklch(0.64 0.12 248);
-    --color-chart-region-western-india: oklch(0.64 0.12 112);
-    --color-chart-region-eastern-india: oklch(0.48 0.12 20);
-    --color-chart-region-southeast-asia: oklch(0.64 0.12 262);
-    --color-chart-region-china-coast: oklch(0.48 0.12 262);
-    --color-chart-region-korea: oklch(0.64 0.12 20);
-    --color-chart-region-japan: oklch(0.48 0.12 105);
-    --color-chart-region-caribbean: oklch(0.48 0.12 98);
-    --color-chart-region-north-america-atlantic: oklch(0.64 0.12 165);
-    --color-chart-region-south-america-atlantic: oklch(0.64 0.12 55);
-    --color-chart-region-pacific-americas: oklch(0.48 0.12 241);
-    --color-chart-region-oceania: oklch(0.64 0.12 48);
-
-    /* uncommon 4.16 · rare 5.71 · exotic 5.06, on white. */
-    --color-rarity-uncommon: #0f8c7a;
-    --color-rarity-rare: #6d4fd0;
-    --color-rarity-exotic: #b4409b;
-
-    /* The day's class ramp. 2 and 3 are the day's own ink-muted and ink (they follow the block above).
-       Class 1 is NOT the day's ink-faint — #6b7280 measures 4.42 on the inset surface-2, under AA —
-       so it takes its own; 4 and 5 are copper and a deep gold, a step darker than the night's.
-       On white / the inset: 1 #646c79 5.30 / 4.84 · 2 ink-muted 7.56 / 6.91 · 3 ink 17.74 / 16.21 ·
-       4 #a8501c 5.48 / 5.01 · 5 #7a5a00 6.38 / 5.83 (tests/good.class.spec.ts re-measures them). */
-    --color-class-1: #646c79;
-    --color-class-4: #a8501c;
-    --color-class-5: #7a5a00;
-
-    /* The night sea's elevation is a black cast; on paper it has to be a softer, cooler one. */
-    --shadow-sheet: 0 -8px 32px -16px rgb(16 24 40 / 0.18);
-    --shadow-float: 0 8px 24px -12px rgb(16 24 40 / 0.22);
-    --shadow-raise: 0 1px 2px 0 rgb(16 24 40 / 0.06), 0 16px 32px -24px rgb(16 24 40 / 0.22);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════════════════════
-   THE MAP IS THE NIGHT MAP IN BOTH SCHEMES — the owner, row 171 (2026-10-20): *"The light mode
-   map color should be same as dark."*
-
-   The chart is a PICTURE of the sea, not a sheet of the app: the day sea was a second picture of
-   the same world, and the owner wants the one he knows. So every colour the chart draws with is
-   restated here, on the chart's own element, for the day scheme only — the page around it (its
-   sheets, its trays, the zoom column, the panel that slides in) keeps the scheme the player
-   chose, because those are paper and this is water.
-
-   ON THE ELEMENT, NOT THE ROOT, and that is the whole trick: a custom property is substituted
-   where it is USED, so `--color-chart-land` restated here mixes the night's `--color-ink-faint`
-   restated here, and nothing outside the chart sees either. Written as the night block's own
-   declarations, character for character, so tests/map.atmosphere.spec.ts can hold the two
-   together: retune the night map and the day map goes red until it is retuned with it.
-
-   THE DAY SIDE OF THE TERMINATOR IS UNTOUCHED (`--color-chart-day-*`): it is the same in both
-   schemes already, because daylight is the Sun's and not the scheme's.
-   ═══════════════════════════════════════════════════════════════════════════════════════════ */
-:root[data-theme='light'] .bv-chart-night {
-    /* The night's own ground and its three inks, because every mark, name and halo on this chart
-       is mixed from them: a day-scheme ink on the night's water is dark on dark. */
-    --color-sea-2: #070c14;
-    --color-edge: rgb(255 255 255 / 0.08);
-    --color-ink: #f3f5f8;
-    --color-ink-muted: #b6c0cc;
-    --color-ink-faint: #8b97a5;
-    --color-accent: #e2b45c;
-    --color-info: #6aa9f5;
-
-    /* The water, the land, the coast and the five of the picture — the night block's own
-       expressions, which mix the inks above. */
-    --color-chart-sea: var(--color-sea-2);
-    --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
-    --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 65%, var(--color-chart-sea));
-    --color-chart-deep: #03060b;
-    --color-chart-shallow: color-mix(in srgb, var(--color-info) 22%, var(--color-chart-sea));
-    --color-chart-relief: color-mix(in srgb, var(--color-chart-sea) 55%, var(--color-chart-land));
-    --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
-    --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
-
-    /* The two lamps and the trading merchant's hull. */
-    --color-harbour-light: #ffe9c2;
-    --color-ship-light: #8fd8ff;
-    --color-merchant: #2a5bb8;
-
-    /* The eight nation inks a hull is drawn in. */
-    --color-nation-prt: oklch(0.76 0.14 150);
-    --color-nation-esp: oklch(0.72 0.15 25);
-    --color-nation-nld: oklch(0.78 0.14 55);
-    --color-nation-eng: oklch(0.74 0.14 330);
-    --color-nation-han: oklch(0.74 0.12 250);
-    --color-nation-ita: oklch(0.78 0.11 200);
-    --color-nation-ott: oklch(0.8 0.14 118);
-    --color-nation-east: oklch(0.74 0.14 295);
-    /* 0341: the Brethren's (the declaration stays alone on its line: tests/map.atmosphere.spec.ts reads one per line). */
-    --color-nation-pir: #ff9999;
-
-    /* The 25 region tints, for when the Regions filter is on. */
-    --color-chart-region-iberia: oklch(0.8 0.11 105);
-    --color-chart-region-atlantic-isles: oklch(0.64 0.11 255);
-    --color-chart-region-british-isles: oklch(0.64 0.11 295);
-    --color-chart-region-france-low-countries: oklch(0.8 0.11 255);
-    --color-chart-region-baltic: oklch(0.64 0.11 288);
-    --color-chart-region-scandinavia-arctic: oklch(0.64 0.11 55);
-    --color-chart-region-western-mediterranean: oklch(0.64 0.11 302);
-    --color-chart-region-adriatic-ionian: oklch(0.64 0.11 48);
-    --color-chart-region-aegean-anatolia: oklch(0.8 0.11 98);
-    --color-chart-region-levant: oklch(0.64 0.11 248);
-    --color-chart-region-maghreb: oklch(0.8 0.11 295);
-    --color-chart-region-west-africa: oklch(0.8 0.11 288);
-    --color-chart-region-east-africa: oklch(0.64 0.11 165);
-    --color-chart-region-arabia-gulf: oklch(0.8 0.11 248);
-    --color-chart-region-western-india: oklch(0.8 0.11 112);
-    --color-chart-region-eastern-india: oklch(0.64 0.11 20);
-    --color-chart-region-southeast-asia: oklch(0.8 0.11 262);
-    --color-chart-region-china-coast: oklch(0.64 0.11 262);
-    --color-chart-region-korea: oklch(0.8 0.11 20);
-    --color-chart-region-japan: oklch(0.64 0.11 105);
-    --color-chart-region-caribbean: oklch(0.64 0.11 98);
-    --color-chart-region-north-america-atlantic: oklch(0.8 0.11 165);
-    --color-chart-region-south-america-atlantic: oklch(0.8 0.11 55);
-    --color-chart-region-pacific-americas: oklch(0.64 0.11 241);
-    --color-chart-region-oceania: oklch(0.8 0.11 48);
 }
 
 html,
@@ -824,7 +568,7 @@ html:lang(ko) body {
   /* THE SLIDER (Stepper.tsx). The track and the fill are drawn by the control under a transparent
      input, so the thumb is all this dresses: 28 px across (the reach floor is 44 px and the row it
      sits in is; the thumb itself must be big enough to find with a thumb), a surface-coloured rim
-     so it reads on the accent fill in either scheme, a float shadow, and a ring when focused by
+     so it reads on the accent fill, a float shadow, and a ring when focused by
      keyboard. `touch-action: pan-y`: a sideways drag moves the slider, an up-down drag still
      scrolls the tray. The owner, 2026-09-14: "the marker when selling unit is shitty". */
   .bv-range {
@@ -934,7 +678,7 @@ html:lang(ko) body {
    Every harbour, hull, road and name on the chart carries `--night` — 1 where the Sun is down,
    0 where it is up, the twilights between (`daylightAt`, set per element by its layer) — and
    these rules are the ONE place that says what each kind of ink becomes by day. The night value
-   is the token the dark or light scheme already defines; the day value is the day picture's
+   is the token the @theme block defines; the day value is the day picture's
    (`chart-day-mark`, `chart-day-hull`); the mix is CSS's, computed where the element stands, so
    no layer holds a second palette and no colour literal leaves this file.
    `--night` defaults to 1 so anything not yet told about the Sun draws its night ink. */
@@ -983,8 +727,7 @@ html:lang(ko) body {
 .bv-sun-kind-fill {
   fill: var(--kind-fill);
 }
-/* THE MARK ON A KIND'S DECK: near-black by day and by night (the chart wears the night palette in both
-   schemes, `.bv-chart-night`, so there is no pale variant), turned over at the terminator (--night 0.5) like a
+/* THE MARK ON A KIND'S DECK: near-black by day and by night (there is no pale variant), turned over at the terminator (--night 0.5) like a
    name, never a grey blend halfway. */
 .bv-sun-kind-mark {
   --bv-mark-night: calc(clamp(0, (var(--night, 1) - 0.5) * 10000, 1) * 100%);

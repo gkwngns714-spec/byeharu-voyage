@@ -78,7 +78,10 @@ export function CityDetail({ portId }: { portId: string }) {
   }, [portId, loadMarket])
   // 0347 (owner row 216): this city's news and the world's headlines on its purse, a dot each; a press opens the card
   const cityNews = useChartNews('city', portId, null, firstAtMs(v?.overview ? toSeries(v.overview.series, (p) => p.purse) : []))
-  if (read.loading && !v) return <Skeleton className="mt-4 h-40 w-full" />
+  // THE PAGE WAITS FOR BOTH READS (2026-11-12; nothing re-flows under the player): the people block stands in the middle of the
+  // page and its read is a second one, so drawn the moment the first landed it arrived late and pushed the cards under it down.
+  // `loading` ends when the ask answers, either way: a failed people read is a page without the block, never a page that waits.
+  if ((read.loading && !v) || peopleRead.loading) return <Skeleton className="mt-4 h-40 w-full" />
   if (!v) return <Note tone="danger" className="mt-4">{t('stats.cityFailed')}</Note>
   const o = v.overview
 

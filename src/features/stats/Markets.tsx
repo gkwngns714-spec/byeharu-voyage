@@ -312,7 +312,7 @@ function GoodRow({ g, move, goodClass }: { g: StatsGood; move: number | null; go
       <FactsLine>
         <span>{t('stats.sold', { n: formatInt(g.sold_1d) })}</span>
         <span>{t('stats.bought', { n: formatInt(g.bought_1d) })}</span>
-        {g.markets > 0 && <StockGauge stock={g.stock} target={g.stock_target} label={t('stats.everyMarket', { name: goodName(g) })} className="shrink-0" />}
+        {g.markets > 0 && <StockGauge stock={g.stock} target={g.stock_target} label={t('stats.everyMarket', { name: goodName(g) })} className="shrink-0 @max-[24rem]:basis-full" />}
         {g.markets === 0 && <span>{t('stats.noCitySells')}</span>}
       </FactsLine>
     </Row>

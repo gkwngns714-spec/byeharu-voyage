@@ -135,7 +135,7 @@ export function PortProduction({
                 <>
                   <Row
                     label={t('inn.space')}
-                    value={<Figure value={formatOfTotal(shed.used, shed.cap)} unit="tons" size="figure" />}
+                    value={<Figure value={formatOfTotal(shed.used, shed.cap)} unit={t('trade.tonsUnit')} size="figure" />}
                     hairline={false}
                     data-testid="storage-space"
                   />

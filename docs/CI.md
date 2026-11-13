@@ -154,7 +154,9 @@ The script header holds the exact patterns.
 - **A, app shell.** A change to `src/app/**`, `src/index.css`, `src/components/ui/**` or `public/**`
   selects every browser spec.
 - **I, test ids.** A browser spec is selected if it names a `data-testid` that a changed src file
-  declares now, or declared before the change.
+  declares now, or declared before the change. "Before" is the file's base version, read whole and
+  under its old path when the diff renamed it (2026-11-11). So an id a PR removes, renames, or drops
+  while moving the file still selects the specs that name it.
 - **L, faces.** A changed `.tsx` or `.css` file under `src/features`, `src/live` or `src/components`
   selects `layout.spec` and `wide.layout.spec`, because those two measure every tab.
 - **S, an added migration.**
@@ -198,7 +200,17 @@ changed is reachable by a spec.
 - Rule S matches by name. A migration that changes behaviour a spec only observes through another
   function selects that spec only if the migration's text names that function. Re-cuts usually do,
   because their header lists the callers.
-- Both gaps close on main's full run. A red there after a green PR means a rule is missing. Add the
+- **A spec that is not in the tree the run judged.** A PR's run judges the merge of the PR onto main
+  as main stood when the run started. Nothing re-runs it when main moves. #583's one run started at
+  13:52 UTC on 2026-11-11; #578, which added `tests/market.shortTray.spec.ts` and changed the HQ
+  Market, merged at 14:48; #583 merged at 18:05 on its 13:52 green. The new spec read the
+  `city-summary` id #583 removed, and the two HQ layout specs that had passed on the PR failed on
+  the two changes together. The selector picks all three on #583's squash commit (a positive
+  control holds it to that). No selection rule closes this: the PR needs a fresh run on the main it
+  merges into (`gh pr update-branch <n>` before the merge, when main has taken a client or spec
+  change since the PR's last run). Not enforced yet; see
+  `docs/dev-log/2026-11-11-ci-selector-removed-ids.md`.
+- These gaps close on main's full run. A red there after a green PR means a rule is missing. Add the
   rule, plus a positive control for it, to `select-specs.mjs`.
 
 ## The non-vacuity floors
@@ -212,5 +224,7 @@ None of these were loosened:
   denominator counted from `playwright test --list`, never from the shard plan.
 - `select` first runs the selector's positive controls against real commits with known answers:
   docs-only selects nothing, 0136 selects the `trade_routes`/`port_offers` specs, #141 selects its
-  three map specs, `appReady` and `src/lib/db` select the full suite. A rule change that breaks one
+  three map specs, `appReady` and `src/lib/db` select the full suite, #583 (a removed test id)
+  selects `market.shortTray`, `city.phone` and `hq.design`. Five fixed-text controls hold rule I's
+  id reading: an added id, a removed one, a renamed one, a moved file, a new file. A rule change that breaks one
   fails there.

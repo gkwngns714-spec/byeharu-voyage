@@ -1,6 +1,6 @@
 # 2026-11-11 - The Fleets page a player can build fleets with (F5, client only, on top of 0354, DARK on prod)
 
-Branch `fleets-page`, cut from `fleet-room` (migration 0354, built, not deployed). No migration, no new server door, no new read. **No pull request is open: the base migration is not deployed.** Nothing here was run on production and no switch or knob was touched; every lit flow below ran in a headless browser on a throwaway copy of the local world with `fleet_room_bite` set true inside the copy only (`tests/fleetsPage.fixture.ts`).
+Branch `fleets-page`, cut from `fleet-room` (migration 0354, built, not deployed). No migration, no new server door, no new read. (When this was written no pull request was open, because the base migration was not deployed; see the last section for 2026-11-13.) Nothing here was run on production and no switch or knob was touched; every lit flow below ran in a headless browser on a throwaway copy of the local world with `fleet_room_bite` set true inside the copy only (`tests/fleetsPage.fixture.ts`).
 
 ## The order
 Owner rows 180 and 316: *"fleets - multiple fleets, with multiple ships"*; *"create multiple fleet... assign multiple ships (total of 7). Show stats of individual ship and also as a fleet... unlock slots by purchasing with gold, and some with levels."* `docs/SUCCESS_PLAN.md` section D, F5. Design: `docs/FLEETS_AND_SLOTS.md` 2.7. The look rules: screens not packed, names never cut, a press selects and moves nothing, every screen leavable both ways.
@@ -18,7 +18,7 @@ Owner rows 180 and 316: *"fleets - multiple fleets, with multiple ships"*; *"cre
 | **You**: one line, "Fleets a / b · Ships c / d", a link to Fleets | `src/features/you/YouScreen.tsx` `RoomLine` |
 | The room read, the Buy press and a step's words, in ONE place for the Room card, the tiles and the New fleet page | `src/live/houseRoom.ts` (the Room card `FleetRoom.tsx` now reads it too) |
 | Escape leaves ONE layer, the one opened last (before, every open page heard the key and all of them closed) | `src/components/ui/useBackLayer.ts`, used by `DetailPage` |
-| A tile can keep a name whole, wrapped at its spaces; a tile's two figures wrap instead of running out of the tile | `src/components/ui/Tile.tsx` (`wrapName`), `ShipTile.tsx` |
+| A tile's two figures wrap instead of running out of the tile (a name is whole in every tile since main's full-names slice, so the `wrapName` option written here was dropped on 2026-11-13) | `src/components/ui/Tile.tsx` |
 | Words, EN and KO | `src/lib/i18n/dict/fleets.ts`, `you.ts` |
 
 ## The flows, as measured (headless Chromium, 390×844 and 1280×800, English and Korean)
@@ -74,3 +74,29 @@ They are written by the spec itself when `FLEETS_PAGE_SHOTS=1` is set.
 - The yard link when no fleet is in a port (all at sea): it goes to `/city?place=port`, the HQ's own choice of port. Not walked.
 - Seven real ship tiles with the locked tiles gone (a full fleet) at 390: the tiles are the same `ShipTile` field `tests/drive.nav.spec.ts` already draws seven of, but that spec was not run here.
 - Korean on the laptop width was run and passed the laws, but its pictures were not kept.
+
+## 2026-11-13: brought onto main, after 0354 was deployed (PR #602)
+The branch was cut from `fleet-room` before 0354 was deployed. Main now carries 0354 (dark), the dark-only palette (#605) and the phone tidy (#606, #607). This slice is F5's own changes laid on today's main; it is still client only, and `fleet_room_bite` was not touched.
+
+**What a player on the live game sees on merge, with the switch off** (measured on a world whose switch is off, `tests/fleets.page.spec.ts` "dark", at 390, 320 and 1280 px, English and Korean):
+- The Fleets list gains one grey line under her fleets: "New fleet · Not open yet". It is a line, not a button.
+- The Room card is main's own: "Not open yet", the steps listed, no button.
+- A fleet's page gains one line over her ships ("2 / 2 ships · 7 at most") and, after her ships, a grey tile for each place still shut: "Locked · Not open yet", with no level, no price and no Buy.
+- Each ship's tile gains a Stats button, which opens the game's one ship sheet over the fleet's page. This works with the switch off: it reads only.
+- There is no Move, no Buy and no Make fleet anywhere. Nothing on the page asks the server for anything it would refuse.
+- You gains one line, "Fleets 1 / 2 · Ships 2 / 8" (the caps the server enforces now), a link to Fleets.
+- Escape now leaves one layer at a time, on every pop-up page in the game.
+
+**Merge.** Three files needed a hand: `Detail.tsx` (both imports kept), `Tile.tsx` (main's name block kept, `wrapName` dropped), `YouScreen.tsx` (the room line and main's Reputation card both kept). Everything F5 did not write is main's.
+
+**Found on the glass and fixed here:**
+- A ship's sheet opened from a fleet's page left a strip at the foot of a phone (the room kept for the bottom tabs, which that page covers), and the page under it showed through. She now stands to the foot of the glass (`ShipPanel.tsx`, `overPage`).
+- In a narrow tile "Barca · 15.4" stood over "knots". The class and the speed now turn only at the dot (`ShipTile.tsx`, through `Facts`).
+- In the ship sheet's Cargo cell at 1280 px "(+1" stood over "%)". The bracket now goes to the next line whole (`ShipPanel.tsx`, `Stat`).
+
+**The spec is wider.** `tests/fleets.page.spec.ts` now also runs at 320×640, and its look laws also fail on a word broken inside itself and on one text standing on another. `FLEETS_PAGE_SHOTS=<folder>` writes the pictures to that folder.
+
+**Decided by default:** at 320 px the tiles stand one to a row, so when a ship place is bought the tile that was Locked becomes the shorter Empty tile and what stands under the places moves up by about 30 px. The ships and the totals above do not move. Holding every place tile at the Buy tile's height would cost five tall grey tiles on a phone, so it was not done.
+
+**Not proven, as before:** nothing here has met the real lit server. The pictures in `docs/dev-log/img/` are the first run's, taken before the dark-only palette; they were not taken again.
+

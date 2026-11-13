@@ -7,7 +7,8 @@ import { routePausedEventWords } from '../../domain/route'
 // the pair as debt to fold. See src/lib/json.ts for why the stronger version is the one that
 // survived.
 import { num, str } from '../../lib/json'
-import type { LedgerEvent, RegardBand } from '../../lib/rpc'
+import type { FightLog, FightLoss, LedgerEvent, RegardBand } from '../../lib/rpc'
+import { parseFightLog, parseFightLoss } from '../../live/fightLines'
 import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 
 // ── THE ONE HEADLINE COMPOSER ───────────────────────────────────────────────────────────────────
@@ -406,6 +407,11 @@ export function payloadLines(payload: Record<string, unknown>): string[] {
 export interface ReportFight {
   line: number
   rounds: string[]
+  /** 0353: the fight's own numbers (a company's raid since 0353), read strictly by `parseFightLog`; null on an old
+   *  event, a merchant's, or a shape this bundle does not know, and then the screen draws `rounds` as it always did. */
+  log: FightLog | null
+  /** 0353: what the day cost, beside a log. */
+  loss: FightLoss | null
 }
 export function payloadFights(payload: Record<string, unknown>): ReportFight[] {
   const v = payload['fights']
@@ -415,7 +421,9 @@ export function payloadFights(payload: Record<string, unknown>): ReportFight[] {
     const line = (f as Record<string, unknown>)['line']
     const rounds = (f as Record<string, unknown>)['rounds']
     if (typeof line !== 'number' || !Array.isArray(rounds)) return []
-    return [{ line, rounds: rounds.filter((r): r is string => typeof r === 'string') }]
+    const log = parseFightLog((f as Record<string, unknown>)['log'])
+    const loss = log ? parseFightLoss((f as Record<string, unknown>)['loss']) : null
+    return [{ line, rounds: rounds.filter((r): r is string => typeof r === 'string'), log, loss }]
   })
 }
 

@@ -168,8 +168,7 @@ export function Minimap({
       // big chart's `.bv-sea` does.
       {...CHART_CHROME}
       onClick={jump}
-      // `bv-chart-night`: the same night palette the big chart wears in both schemes (owner row 171).
-      className={`bv-chart-night pointer-events-auto relative overflow-hidden rounded-sm border border-edge bg-chart-sea ${onJump ? 'cursor-pointer' : ''} ${className}`}
+      className={`pointer-events-auto relative overflow-hidden rounded-sm border border-edge bg-chart-sea ${onJump ? 'cursor-pointer' : ''} ${className}`}
       data-testid="map-minimap"
     >
       {box && (
