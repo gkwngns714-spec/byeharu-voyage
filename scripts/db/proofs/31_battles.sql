@@ -142,8 +142,10 @@ declare
   v_case record;
   v_b    uuid;
 begin
+  -- 0375 lights attack_enabled in the chain. This proof begins from the switch OFF, as every other proof of the family sets it: the dark seam is what the rollback restores.
+  update public.world_config set value = 'false'::jsonb where key = 'attack_enabled';
   if public.attack_on() then
-    raise exception 'PROOF 31 FAIL: attack_enabled is on in this world';
+    raise exception 'PROOF 31 FAIL: attack_enabled could not be put off in this world';
   end if;
   begin
     perform public.battle_open('PROBE', v_h, v_n, v_t);

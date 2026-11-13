@@ -43,6 +43,8 @@ test.afterAll(async () => {
 })
 
 test('dark: the hall serves no regard, the words are the old words, and the door refuses', async () => {
+  // 0373 lit regard in the built world: this test sets it back in its own database first (the lit tests below light it again)
+  await db.callAs(`with dark as (update public.world_config set value = 'false'::jsonb where key = 'regard_enabled' returning 1) select count(*)::int as result from dark`)
   const hall = await worldTownHall(lisbon)
   expect(hall.ok).toBe(true)
   if (!hall.ok) return

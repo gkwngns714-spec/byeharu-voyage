@@ -132,6 +132,30 @@ language sql
 as $b$ select sum(s.crew)::int from public.ships s where s.fleet_id = p_fleet $b$
   $f$;
   execute $f$
+create function pg_temp.class_store_days(p_days numeric)
+returns numeric
+language sql
+as $b$
+  -- 0369: what an armed cargo hull of the class carries at the crew she needs and a stores roll of 1.000: lit, her supply room (0345's formula) or p_days if that is less; dark, p_days.
+  select case when public.ship_stores_separate()
+              then least(p_days, ceil(k.crew_max * (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')) * public.wc_num('ship_stores_days'))
+                                 / (k.crew_required * (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day'))))
+              else p_days end
+    from public.ship_classes k where k.code = public.wc_text('convoy_armed_class')
+$b$
+  $f$;
+  execute $f$
+create function pg_temp.store_days_of(p_fleet uuid, p_days numeric)
+returns numeric
+language sql
+as $b$
+  -- 0369 lit ship_stores_separate: the crown's free top-up fills her SUPPLY ROOM and no more (0345: one rule for every house), so a cargo ship is topped up to convoy_store_days
+  -- or to what her room holds at her crew, whichever is less. public.ship_stores_room answers the caller's own figure while dark, so dark this is p_days, as before 0369.
+  select least(p_days, coalesce(min(public.ship_stores_room(s.id, 1000000000) / (s.crew * (public.wc_num('water_per_crew_day') + public.wc_num('food_per_crew_day')))), p_days))
+    from public.ships s where s.fleet_id = p_fleet and s.crew > 0
+$b$
+  $f$;
+  execute $f$
 create function pg_temp.hull_of(p_fleet uuid)
 returns uuid
 language sql
@@ -347,7 +371,9 @@ $b$
     if v_step = 'SAILED' then
       v_dep := v_dep + 1;
       select o.id into v_voy from public.voyages o where o.fleet_id = v_fl[1] and o.status = 'SAILING';
-      if pg_temp.crew_of(v_fl[1]) <> v_need or voyage.endurance_days(v_fl[1]) < v_days - 0.01 then
+      -- 0369: she leaves with convoy_store_days or what her supply room holds (pg_temp.store_days_of), and never with less than the leg she is leaving on asks
+      if pg_temp.crew_of(v_fl[1]) <> v_need or voyage.endurance_days(v_fl[1]) < pg_temp.store_days_of(v_fl[1], v_days) - 0.01
+         or voyage.endurance_days(v_fl[1]) < voyage.stores_need_days((select o.total_nm from public.voyages o where o.id = v_voy), greatest(voyage.fleet_speed(v_fl[1]), 0.1)) - 0.01 then
         raise exception 'PROOF 36 FAIL: she left with % hands and % days of stores', pg_temp.crew_of(v_fl[1]), voyage.endurance_days(v_fl[1]);
       end if;
       if v_dep = 1 then
@@ -431,7 +457,7 @@ $b$
   update public.ports p set crew_pool = v_floor + 10 where p.id = v_cap;
   perform public.cargo_upkeep(v_fl[3], v_cap);
   v_a := voyage.fleet_speed(v_fl[3]);
-  if pg_temp.crew_of(v_fl[3]) <> 10 or (select p.crew_pool from public.ports p where p.id = v_cap) <> v_floor or voyage.endurance_days(v_fl[3]) < v_days - 0.01 then
+  if pg_temp.crew_of(v_fl[3]) <> 10 or (select p.crew_pool from public.ports p where p.id = v_cap) <> v_floor or voyage.endurance_days(v_fl[3]) < pg_temp.store_days_of(v_fl[3], v_days) - 0.01 then
     raise exception 'PROOF 36 FAIL: the quay gave % hands, down to %', pg_temp.crew_of(v_fl[3]), (select p.crew_pool from public.ports p where p.id = v_cap);
   end if;
   update public.ports p set crew_pool = 500 where p.id = v_cap;
@@ -455,7 +481,7 @@ $b$
   update public.ships s set water_t = 0, food_t = 0 where s.fleet_id = v_fl[3];
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_load := public.cargo_upkeep(v_fl[3], v_s1);
-  if v_load <> 0 or pg_temp.upkeep_rows(v_mark) <> 0 or voyage.endurance_days(v_fl[3]) < v_days - 0.01 then
+  if v_load <> 0 or pg_temp.upkeep_rows(v_mark) <> 0 or voyage.endurance_days(v_fl[3]) < pg_temp.store_days_of(v_fl[3], v_days) - 0.01 then
     raise exception 'PROOF 36 FAIL: a broke origin paid, or she has no stores';
   end if;
   perform pg_temp.purse(v_cap, 1000000, 1000000);
@@ -481,7 +507,7 @@ as $b$ select false $b$
   exception when sqlstate 'ZX336' then
     v_r := sqlerrm::jsonb;
   end;
-  if (v_r ->> 'pay')::bigint <> 0 or (v_r ->> 'rows')::bigint <> 0 or (v_r ->> 'days')::numeric < v_days - 0.01 then
+  if (v_r ->> 'pay')::bigint <> 0 or (v_r ->> 'rows')::bigint <> 0 or (v_r ->> 'days')::numeric < pg_temp.store_days_of(v_fl[3], v_days) - 0.01 then
     raise exception 'PROOF 36 FAIL: a busy donor: %', v_r;
   end if;
   update public.fleets f set port_id = v_cap where f.id = v_fl[3];
@@ -492,7 +518,7 @@ as $b$ select false $b$
   update public.fleets f set port_id = v_s1, ready_at = null where f.id = v_fl[4];
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_step := public.cargo_ship_step(v_fl[4], now());
-  if v_step <> 'SAILED' or pg_temp.crew_of(v_fl[4]) <> v_need or voyage.endurance_days(v_fl[4]) < v_days - 0.01 or pg_temp.upkeep_rows(v_mark) <> 2 then
+  if v_step <> 'SAILED' or pg_temp.crew_of(v_fl[4]) <> v_need or voyage.endurance_days(v_fl[4]) < pg_temp.store_days_of(v_fl[4], v_days) - 0.01 or pg_temp.upkeep_rows(v_mark) <> 2 then
     raise exception 'PROOF 36 FAIL: a rebase leg passed no upkeep: % % %', v_step, pg_temp.crew_of(v_fl[4]), pg_temp.upkeep_rows(v_mark);
   end if;
   v_end := pg_temp.reach_port(v_fl[4]);
@@ -558,7 +584,7 @@ as $b$ select false $b$
   v_end := pg_temp.reach_port(v_fl[4]);
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_step := public.cargo_ship_step(v_fl[4], v_end + interval '61 seconds');
-  if v_step <> 'SAILED' or pg_temp.upkeep_rows(v_mark) <> 2 or voyage.endurance_days(v_fl[4]) < v_days - 0.01 then
+  if v_step <> 'SAILED' or pg_temp.upkeep_rows(v_mark) <> 2 or voyage.endurance_days(v_fl[4]) < pg_temp.store_days_of(v_fl[4], v_days) - 0.01 then
     raise exception 'PROOF 36 FAIL: off, a ship at sea was dropped: % %', v_step, pg_temp.upkeep_rows(v_mark);
   end if;
   v_end := pg_temp.reach_port(v_fl[4]);
@@ -597,10 +623,10 @@ as $b$ select false $b$
   end loop;
   select max(l.nm) into v_a from public.cargo_circuit_legs l;
   v_b := voyage.stores_need_days(v_a, (select k.speed_kn from public.ship_classes k where k.code = public.wc_text('convoy_armed_class')) * public.wc_num('hull_speed_floor'));
-  if (select count(distinct k.nation_id) from public.cargo_circuits k) <> (select count(*) from public.great_powers g where not g.pirate) or v_b > v_days then
-    raise exception 'PROOF 36 FAIL: the longest leg, % nm, asks % days of stores at her floor, and she carries %', v_a, v_b, v_days;
+  if (select count(distinct k.nation_id) from public.cargo_circuits k) <> (select count(*) from public.great_powers g where not g.pirate) or v_b > pg_temp.class_store_days(v_days) then
+    raise exception 'PROOF 36 FAIL: the longest leg, % nm, asks % days of stores at her floor, and she carries %', v_a, v_b, pg_temp.class_store_days(v_days);
   end if;
-  raise notice 'PASS: ARMED_STORES — the longest leg of the world, % nm, asks % days at the slowest she can sail; she carries %', v_a, round(v_b, 1), v_days;
+  raise notice 'PASS: ARMED_STORES — the longest leg of the world, % nm, asks % days at the slowest she can sail; she carries % (0369, lit: what her supply room holds at her crew and a stores roll of 1.000; dark: convoy_store_days)', v_a, round(v_b, 1), round(pg_temp.class_store_days(v_days), 1);
 
   -- ── THE KNOB ALONE ──
   update public.world_config set value = 'true'::jsonb where key = 'convoy_armed_enabled';

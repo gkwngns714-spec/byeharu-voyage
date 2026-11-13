@@ -93,7 +93,8 @@ export function FightLog({ log, loss, dense = false, paced = false, watch = fals
   const result = (log.end === 'FLED' || log.end === 'BROKE' || log.end === 'A_BROKE') && rows.length > 0 ? t('fight.resultRound', { end: ended, n: rows.length }) : ended
   const cargo = loss ? Object.values(loss.cargo).reduce((n, q) => n + q, 0) : 0
   const lost = [
-    `${t('fight.hull')} ${MINUS}${formatInt(Math.round(hull.lost))} (${hull.lostPct}%)`,
+    // nothing lost is "0", never "−0" (seen on a break-off before a shot landed, 2026-11-13)
+    `${t('fight.hull')} ${Math.round(hull.lost) > 0 ? MINUS : ''}${formatInt(Math.round(hull.lost))} (${hull.lostPct}%)`,
     loss && loss.crew !== null ? `${t('fight.crew')} ${loss.crew > 0 ? MINUS : ''}${formatInt(loss.crew)}` : null,
     loss ? `${t('fight.cargo')} ${cargo > 0 ? MINUS : ''}${formatInt(cargo)}` : null,
     loss && loss.ransom > 0 ? `${t('fight.ransom')} ${MINUS}${formatInt(loss.ransom)}` : null,
@@ -123,7 +124,12 @@ export function FightLog({ log, loss, dense = false, paced = false, watch = fals
       data-watch={watch || undefined}
     >
       <p data-testid="fight-log-foe">
-        {[t(log.attacker ? 'fight.battle' : 'fight.raid'), t('fight.foeLine', { n: formatInt(Math.max(1, Math.round(log.foe.ships))), name: log.foe.name, crew: formatInt(log.foe.crew) }), log.foe.ship]
+        {/* a raid's foe is a kind and a count ("2 Şebek"); a battle's is ONE NAMED SHIP and whoever stands with her, so her name comes first and the count after it */}
+        {[
+          t(log.attacker ? 'fight.battle' : 'fight.raid'),
+          t(log.attacker ? 'fight.foeLineBattle' : 'fight.foeLine', { n: formatInt(Math.max(1, Math.round(log.foe.ships))), name: log.foe.name, crew: formatInt(log.foe.crew) }),
+          log.foe.ship,
+        ]
           .filter(Boolean)
           .join(' · ')}
       </p>
@@ -132,6 +138,12 @@ export function FightLog({ log, loss, dense = false, paced = false, watch = fals
         <ol className="mt-1 space-y-1" data-testid="fight-log-rounds">
           {rows.slice(0, shown - 2).map((r) => (
             <li key={r.round} className={grid} data-testid="fight-log-round" data-round={r.round}>
+              {/* 0357: a ship called to the other side came up for this round: said on its own line, above the round she first fights in */}
+              {r.joined !== null && (
+                <span className="col-span-full font-semibold text-ink" data-testid="fight-log-joined" data-hull={Math.round(r.joined)}>
+                  {t('fight.joined')}
+                </span>
+              )}
               <span className="tabular-nums">{r.round}</span>
               <span className={line}>
                 <span>{t(`fight.range${r.range}`)}</span>

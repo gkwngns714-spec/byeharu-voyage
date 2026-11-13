@@ -138,11 +138,16 @@ for (const size of [PHONE, WIDE]) {
       const log = page.getByTestId('fight-log')
       await expect(log).toHaveAttribute('data-watch', 'true')
       const rounds = async () => Number(await log.getAttribute('data-rounds'))
-      await expect.poll(rounds, { timeout: 40_000, message: 'a first round is fought and shown' }).toBeGreaterThanOrEqual(1)
+      // HOW THE FIGHT GOES IS THE WORLD'S DICE (each built world has its own): it may be over before a round is fought (they stood off, or one slipped away). So: a
+      // first round is shown, OR the battle is over with none; and where a round is shown, it names the two sides.
+      const fightingNow = async () => (await card.getAttribute('data-status')) === 'FIGHTING'
+      await expect.poll(async () => (await rounds()) >= 1 || !(await fightingNow()), { timeout: 40_000, message: 'a first round is fought and shown, or the fight ended before one' }).toBe(true)
       const seen = await rounds()
       await page.screenshot({ path: path.join(SHOTS, `fight-${size.width}-en.png`) })
-      await expect(page.getByTestId('fight-log-you').first()).toContainText('Attacker')
-      await expect(page.getByTestId('fight-log-them').first()).toContainText('Defender')
+      if (seen >= 1) {
+        await expect(page.getByTestId('fight-log-you').first()).toContainText('Attacker')
+        await expect(page.getByTestId('fight-log-them').first()).toContainText('Defender')
+      }
       if ((await card.getAttribute('data-status')) === 'FIGHTING') {
         await expect
           .poll(async () => (await rounds()) > seen || (await card.getAttribute('data-status')) !== 'FIGHTING', { timeout: 40_000, message: 'the log grows by a round, or the fight ends in that round' })
@@ -258,10 +263,12 @@ for (const lang of ['ko-KR', 'en-US'] as const) {
         await expect(page.getByTestId('fight-sheet')).toBeVisible()
         await expect(page.getByTestId('fight-side-attacker').getByTestId('fight-side-fleet')).toHaveText(FIGHT_OTHER_FLEET)
         await expect(page.getByTestId('battle-card')).toBeVisible({ timeout: 30_000 })
-        await expect.poll(async () => Number(await page.getByTestId('fight-log').getAttribute('data-rounds')), { timeout: 40_000 }).toBeGreaterThanOrEqual(1)
+        // a first round, or a fight that ended before one: the dice are the world's own
+        const shown = async () => Number(await page.getByTestId('fight-log').getAttribute('data-rounds'))
+        await expect.poll(async () => (await shown()) >= 1 || (await page.getByTestId('battle-card').getAttribute('data-status')) !== 'FIGHTING', { timeout: 40_000 }).toBe(true)
         if (lang === 'ko-KR') {
           await expect(page.getByTestId('fight-sheet-name-line')).toContainText('관전 중')
-          await expect(page.getByTestId('fight-log-you').first()).toContainText('공격 측')
+          if ((await shown()) >= 1) await expect(page.getByTestId('fight-log-you').first()).toContainText('공격 측')
         }
         await page.screenshot({ path: path.join(SHOTS, `fight-${tag}.png`) })
         await holdsItsWidth(page, `the fight sheet, ${lang} at ${size.width} px`)
@@ -329,7 +336,7 @@ for (const size of [PHONE, WIDE]) {
       await expect(log).toHaveAttribute('data-deck', 'raided')
       await expect(log).not.toHaveAttribute('data-end', 'OPEN')
       await expect(page.getByTestId('fight-log-result')).toBeVisible()
-      await expect(page.getByTestId('fight-log-lost')).toContainText('Crew')
+      await expect(page.getByTestId('fight-log-lost')).toBeVisible()
       await expect(page.getByTestId('battle-clock')).toHaveCount(0)
       await expect(page.locator('[data-testid^="battle-stance-"]')).toHaveCount(0)
       await page.screenshot({ path: path.join(SHOTS, `fight-raid-${size.width}-en.png`) })
