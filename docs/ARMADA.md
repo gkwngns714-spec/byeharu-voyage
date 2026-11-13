@@ -13,7 +13,7 @@ changes nothing about how many ships a fleet holds, and no player ever fights a 
 Every rule below that is mine and not the owner's is listed again in section 14, each as a default.
 
 Built: sections 1 to 11 for sailing and raids, migration 0367, **lit**; and the battle she starts (section 7),
-migration 0379, behind the owner's switch `attack_enabled` (off: nothing changes; on: a lone fleet fights as she did).
+migration 0395, behind the owner's switch `attack_enabled` (off: nothing changes; on: a lone fleet fights as she did).
 
 ---
 
@@ -152,7 +152,7 @@ Read it this way:
 - **Plunder across holds:** each fleet loses her own roll's share of her own hold. In proof 68's run the
   lead lost 14 of 40 and 3 of 9 (35 %), her sister 5 of 21 (24 %), on the same PLUNDERED day.
 
-## 7. A battle she starts (built: 0379, behind `attack_enabled`)
+## 7. A battle she starts (built: 0395, behind `attack_enabled`)
 
 Battles (`public.battles`, `public.battle_sides`) exist only behind `attack_enabled`. With the switch off
 nothing below runs for anyone; with it on, a fleet in no armada attacks exactly as she did. Built on the
@@ -290,7 +290,7 @@ The owner's number is six. A company holds `fleet_max` = **2** fleets while `fle
 | D15 | The map | One mark at sea under her name with every hull; fleets at the quay in port |
 | D16 | Trade's sail | A one-passage trip sends the armada; longer trips are refused |
 | D17 | Lit or dark | Lit, with a switch `armada_enabled` for a forward rollback |
-| D18 | The battle | Built in 0379 on 0357 + 0364, behind `attack_enabled` |
+| D18 | The battle | Built in 0395 on 0357 + 0364, behind `attack_enabled` |
 | D19 | Several armadas a company | Allowed |
 | D20 | Who sees the Armadas list | A company of two fleets or more |
 | D21 | Who is "there" for a battle | Same port; or the same lead voyage and within `attack_reach_nm` of her. Nobody for a fleet at anchor |

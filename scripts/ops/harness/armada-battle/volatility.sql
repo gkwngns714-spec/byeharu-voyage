@@ -1,4 +1,4 @@
--- 0379 PROD CHECK (volatility), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/armada-battle/volatility.sql
+-- 0395 PROD CHECK (volatility), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/armada-battle/volatility.sql
 -- Run it BEFORE before.sql and after.sql. Prints provolatile of every function they call; wanted: all 's' or 'i'.
 begin transaction read only;
 select jsonb_object_agg(f.fn, (select p.provolatile::text from pg_proc p where p.oid = to_regprocedure(f.fn))) as provolatile

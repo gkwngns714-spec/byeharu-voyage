@@ -1,5 +1,5 @@
 // THE SHIPPED WORLD WITH ONE BATTLE STARTED BY AN ARMADA OF SIX (the owner's number), OPENED WHEN THE MAP FIRST ASKS — for the armada's
-// battle spec (0379, docs/ARMADA.md section 7, owner row 323).
+// battle spec (0395, docs/ARMADA.md section 7, owner row 323).
 //
 // The same seam as tests/fightWorld.fixture.ts (which says why): attacks ship dark, so a COPY of the built image is
 // patched and the chain is left alone. In the copy `attack_enabled`, `convoys_enabled` and `city_treasury_enabled` are
@@ -11,7 +11,7 @@
 //     every fleet is made by (`public.form_fleet`, `public.commission_ship`); all six lie docked in the cargo ship's
 //     home port, so the six fleets and the ship are close together on the glass and the ring's size is the count's;
 //   · the six fleets are formed into an armada by 0367's own core (`public.armada_form_for`);
-//   · the real `public.battle_open` opens the battle for her FIRST fleet. 0379 puts her five sisters on her side.
+//   · the real `public.battle_open` opens the battle for her FIRST fleet. 0395 puts her five sisters on her side.
 // Everything the page then shows is the chain's own reads of that real battle. The fleets' and the armada's names are
 // the longest the tables take (24 letters): a name is never cut on the sheet.
 

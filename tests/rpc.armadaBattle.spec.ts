@@ -7,7 +7,7 @@ import { fightCountRadiusPx } from '../src/chart/fightRings'
 import { parseFightLog } from '../src/live/fightLines'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// AN ARMADA FIGHTS AS ONE, THE SEAM (0379, docs/ARMADA.md section 7, owner row 323): the real doors, through the
+// AN ARMADA FIGHTS AS ONE, THE SEAM (0395, docs/ARMADA.md section 7, owner row 323): the real doors, through the
 // client's one RPC layer, on the built world. Proof 69 proves the server's rules under any dice. This proves the client
 // reads what the server serves: dark, the dry run refuses and nothing is read; lit, the dry run names the armada and
 // her fleets, the press opens ONE battle that every fleet of hers reads, the map's read counts each fleet (so the ring
@@ -69,6 +69,8 @@ test.afterAll(async () => {
 })
 
 test('the armada is formed by her own door; dark, the dry run refuses and neither fleet reads a battle', async () => {
+  // the shipped world has attacks LIT since 0375: this test is the other arm, the owner's switch off
+  await light(['attack_enabled'], false)
   const formed = await cmdArmadaForm([fleet, sister], ARMADA)
   expect(formed.ok, JSON.stringify(formed)).toBe(true)
   const dry = await cmdPreviewAttack(fleet, target)

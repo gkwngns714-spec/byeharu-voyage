@@ -27,6 +27,8 @@ begin
   v_p := public.new_house(c_uid, 'Casa dos Niveis 0f33', 'PRT', 'LIS');
   select s.id into v_ship from public.ships s where s.player_id = v_p order by s.created_at limit 1;
   perform cmd.assume_identity(c_uid);
+  -- 0373 lit regard in the chain. This proof owns the dark start: the switch is set back here, for this rolled-back transaction only.
+  update public.world_config set value = 'false'::jsonb where key = 'regard_enabled';
   if public.levels_bite_on() or public.regard_on() then
     raise exception 'PROOF 33 FAIL: levels_bite or regard_enabled is lit in this world; the proof owns the dark start';
   end if;

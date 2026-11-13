@@ -1,5 +1,5 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 69 — AN ARMADA FIGHTS AS ONE  (migration 0379; docs/ARMADA.md section 7; owner row 323)
+-- PROOF 69 — AN ARMADA FIGHTS AS ONE  (migration 0395; docs/ARMADA.md section 7; owner row 323)
 --
 --   The migration's self-assert plays barcas on its own rows and does not close a battle. Here the game is real: real companies with gunned fleets, the REAL forming door
 --   (cmd.armada_form), the REAL order (cmd.armada_sail), the REAL attack and its dry run (cmd.attack, cmd.preview_attack), a real cargo ship at sea with gold aboard and a real
@@ -19,6 +19,7 @@
 -- @pass AB_WHO_IS_THERE     who takes part: the fleets of her armada docked in her port, or sailing under her lead voyage within reach; not a fleet in another port (she is not held and reads no battle), not when she lies at anchor, not once the armada is disbanded
 -- @pass AB_GATES_PREVIEW    the dry run reads the whole armada: its word is the armada's, it names her and her fleets, and it is the attack's own answer; it leaves no trace; a sister with cargo, a sister not free and a sister inside the cooldown each refuse the attack AND the dry run under the sister's name, and nothing moved
 -- @pass AB_TWO_TICK_LATE    an armada of two attacks a cargo ship: both fleets on the sheet in order, both held and both freed; the map's card counts three fleets; each tick logs at most one row and both fleets read one battle; tick by tick, one late call and a re-run leave the same rows, result, hulls, hands, purse, ledger and report; one report; the shares are the rule's
+-- @pass AB_LOOT_RISK       with 0374 (loot follows the risk taken): the gold that reaches the purse is 0374's own figure, public.loot_due over floor(aboard x public.loot_risk(the battle's result)), where the risk is read on the WHOLE armada's hull; it is then shared by the guns each fleet brought, to the ducat; held with the rule as shipped, with a floor of 0.4 (gold moves) and with the rule off
 -- @pass AB_STANCE_FLEE      Flee set before round 3: the first rows are the battle's fought through; from round 3 not a gun of the whole side fires; Flee from the first round: away is BROKEN_OFF with no loot and every fleet's hands by the beaten row; the door's one press is the stance both fleets read, and another company's press is refused
 -- @pass AB_NAVY             the armada attacks a navy ship: no gold, the shares say so, her own fleets are never counted as the navy that came, the ship set upon is freed; tick by tick is one late call
 -- @pass AB_OF_SIX           six fleets formed by the door: the fleet that attacks first, then the armada's own order; seven fleets on the map's card; six fleets held and freed; six shares that add up; the seventh fleet of the company takes no part
@@ -29,51 +30,51 @@ create temp table hunks_69 (fn text, n int, old text, new text) on commit drop;
 insert into hunks_69 (fn, n, old, new) values
 -- hunks:begin
   ('public.attack_for(uuid,uuid,uuid,integer,timestamp with time zone)', 1, $h$  foreach v_fleet in array array[least(p_fleet, p_target), greatest(p_fleet, p_target)] loop
-$h$, $h$  -- 0379 (docs/ARMADA.md section 7): a fleet of an armada attacks with every fleet of hers that is there. Each of them is judged before anything moves, and one refused
+$h$, $h$  -- 0395 (docs/ARMADA.md section 7): a fleet of an armada attacks with every fleet of hers that is there. Each of them is judged before anything moves, and one refused
   -- refuses the attack under her name (public.attack_armada_gates). A fleet in no armada: one primary-key probe, and nothing.
   perform public.attack_armada_gates(p_player, p_fleet, p_now);
   foreach v_fleet in array array[least(p_fleet, p_target), greatest(p_fleet, p_target)] loop
 $h$),
   ('public.attack_for(uuid,uuid,uuid,integer,timestamp with time zone)', 2, $h$    'resolves_at', (select b.resolves_at from public.battles b where b.id = v_battle));
 $h$, $h$    'resolves_at', (select b.resolves_at from public.battles b where b.id = v_battle))
-    || public.battle_armada_note(v_battle);   -- 0379: an armada's battle says her name and her fleets, and the word is the armada's; any other battle: {}
+    || public.battle_armada_note(v_battle);   -- 0395: an armada's battle says her name and her fleets, and the word is the armada's; any other battle: {}
 $h$),
   ('public.battle_open(text,uuid,uuid,timestamp with time zone)', 1, $h$  foreach v_fleet in array array[p_attacker, p_defender] loop
-$h$, $h$  -- 0379 (docs/ARMADA.md section 7): the fleets of her armada that are there join her side now, before the sheet is frozen, and are stopped by this same loop
+$h$, $h$  -- 0395 (docs/ARMADA.md section 7): the fleets of her armada that are there join her side now, before the sheet is frozen, and are stopped by this same loop
   foreach v_fleet in array array[p_attacker, p_defender] || public.battle_armada_join(v_id, p_kind, p_attacker, p_now) loop
 $h$),
   ('public.battle_sheet_freeze(uuid,timestamp with time zone)', 1, $h$  v_st := public.battle_opening_stance(v_def);
-$h$, $h$  perform public.battle_armada_sheet(p_battle);   -- 0379: an armada's sheet names her and her fleets, and its word reads all of them; any other sheet: nothing
+$h$, $h$  perform public.battle_armada_sheet(p_battle);   -- 0395: an armada's sheet names her and her fleets, and its word reads all of them; any other sheet: nothing
   v_st := public.battle_opening_stance(v_def);
 $h$),
   ('public.battle_resolve(uuid,timestamp with time zone)', 1, $h$    if s.side = 'ATTACKER' and not s.is_npc then
-$h$, $h$    if s.side = 'ATTACKER' and not s.is_npc   -- 0379: one report a battle, under the fleet that attacked: a fleet that joined as her armada sends none
+$h$, $h$    if s.side = 'ATTACKER' and not s.is_npc   -- 0395: one report a battle, under the fleet that attacked: a fleet that joined as her armada sends none
        and not exists (select 1 from public.battle_sides x where x.battle_id = p_battle and x.fleet_id = s.fleet_id and x.how = 'ARMADA') then
 $h$),
   ('public.attack_close(uuid,jsonb,timestamp with time zone)', 1, $h$   where bs.battle_id = p_battle and bs.side = 'ATTACKER';
-$h$, $h$   where bs.battle_id = p_battle and bs.side = 'ATTACKER' and bs.how = 'OPENED';   -- 0379: the fleet that attacked; her armada's fleets are public.attack_armada_close's
+$h$, $h$   where bs.battle_id = p_battle and bs.side = 'ATTACKER' and bs.how = 'OPENED';   -- 0395: the fleet that attacked; her armada's fleets are public.attack_armada_close's
 $h$),
   ('public.attack_close(uuid,jsonb,timestamp with time zone)', 2, $h$  return jsonb_build_object('loot', v_gold, 'crew_lost', v_lost);
 $h$, $h$  return jsonb_build_object('loot', v_gold, 'crew_lost', v_lost)
-      || public.attack_armada_close(p_battle, p_fight, v_gold, v_lost);   -- 0379: her armada's fleets lose their hands by the same row, and each fleet's share is said; no armada: {}
+      || public.attack_armada_close(p_battle, p_fight, v_gold, v_lost);   -- 0395: her armada's fleets lose their hands by the same row, and each fleet's share is said; no armada: {}
 $h$),
   ('public.battle_log(jsonb,jsonb,text)', 1, $h$  return (v_log - 'end') || '{"atk": true}'::jsonb || case when v_end is null then '{}'::jsonb else jsonb_build_object('end', v_end) end;
 $h$, $h$  return (v_log - 'end') || '{"atk": true}'::jsonb || case when v_end is null then '{}'::jsonb else jsonb_build_object('end', v_end) end
-      || case when p_sheet ? 'fleets' then jsonb_build_object('fleets', p_sheet->'fleets') else '{}'::jsonb end;   -- 0379: an armada's log names her fleets above their ships, as a raid's does (0367)
+      || case when p_sheet ? 'fleets' then jsonb_build_object('fleets', p_sheet->'fleets') else '{}'::jsonb end;   -- 0395: an armada's log names her fleets above their ships, as a raid's does (0367)
 $h$),
   ('world.battle(uuid)', 1, $h$   where bs.fleet_id = p_fleet and bs.how = 'OPENED' and f.player_id = v_player and bt.sheet is not null
-$h$, $h$   where bs.fleet_id = p_fleet and bs.how in ('OPENED', 'ARMADA') and f.player_id = v_player and bt.sheet is not null   -- 0379: any fleet of hers in it reads the battle
+$h$, $h$   where bs.fleet_id = p_fleet and bs.how in ('OPENED', 'ARMADA') and f.player_id = v_player and bt.sheet is not null   -- 0395: any fleet of hers in it reads the battle
 $h$),
   ('world.battle(uuid)', 2, $h$                                    'navy', b.result #> '{navy,line}') end;
 $h$, $h$                                    'navy', b.result #> '{navy,line}') end
-    || public.battle_armada_view(b.id, p_fleet);   -- 0379: her armada's name, her fleets, the side's stance and, closed, each fleet's share; no armada: {}
+    || public.battle_armada_view(b.id, p_fleet);   -- 0395: her armada's name, her fleets, the side's stance and, closed, each fleet's share; no armada: {}
 $h$),
   ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at),
-$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at),   -- 0379: her own armada is no navy
+$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy
 $h$),
   ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at or ($h$),
   ('public.battle_navy_served(uuid)', 1, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how <> 'OPENED' and o.arrives_at <= b.resolves_at
-$h$, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how not in ('OPENED', 'ARMADA') and o.arrives_at <= b.resolves_at   -- 0379: her own armada is no help coming to the other side
+$h$, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how not in ('OPENED', 'ARMADA') and o.arrives_at <= b.resolves_at   -- 0395: her own armada is no help coming to the other side
 $h$)
 -- hunks:end
 ;
@@ -98,7 +99,7 @@ begin
     v_def := v_live;
     for h in select * from hunks_69 x where x.fn = f.fn order by x.n desc loop
       if (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new) <> 1 then
-        raise exception 'PROOF 69 FAIL: hunk % of % is not in the live body exactly once: a later migration re-cut the very text 0379 added, and must amend this proof''s copy of the hunk', h.n, f.fn;
+        raise exception 'PROOF 69 FAIL: hunk % of % is not in the live body exactly once: a later migration re-cut the very text 0395 added, and must amend this proof''s copy of the hunk', h.n, f.fn;
       end if;
       v_def := replace(v_def, h.new, h.old);
     end loop;
@@ -110,7 +111,7 @@ begin
       v_back := replace(v_back, h.old, h.new);
     end loop;
     if v_back is distinct from v_live or v_def = v_live then
-      raise exception 'PROOF 69 FAIL: the rebuilt % does not come back to the live body when 0379''s hunks are put back (or nothing was reversed)', f.fn;
+      raise exception 'PROOF 69 FAIL: the rebuilt % does not come back to the live body when 0395''s hunks are put back (or nothing was reversed)', f.fn;
     end if;
     if v_def ~ 'armada' then
       raise exception 'PROOF 69 FAIL: the rebuilt % still names an armada', f.fn;
@@ -134,7 +135,7 @@ create function pg_temp.as_house(p_uid uuid) returns void language sql as $b$
 $b$;
 
 create function pg_temp.uid_69(p_n int) returns uuid language sql immutable as $b$
-  select ('00000000-0379-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid
+  select ('00000000-0395-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid
 $b$;
 
 -- ══ THE GAME ══
@@ -142,7 +143,7 @@ do $$
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite');
   update public.world_config set value = 'false'::jsonb where key in ('attack_enabled', 'regard_enabled', 'npc_refits_enabled', 'navy_enabled', 'pirates_bite', 'raid_orders_enabled');
-  update public.world_config set value = to_jsonb(7) where key = 'fleet_max';   -- room for the six, and one more that stays out (proof 68 sets it so)
+  update public.world_config set value = to_jsonb(7) where key in ('fleet_max', 'fleet_hard_max');   -- room for the six, and one more that stays out (proof 68 sets it so; fleet_hard_max too since 0370 lit fleet room)
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set ducats = 50000000, reserve = 0;
   update public.ports p set crew_pool = 2000;
@@ -299,6 +300,9 @@ declare
   v_trace boolean;
   v_s0    jsonb;
   v_p0    bigint;
+  v_ab0   bigint;
+  v_td0   bigint;
+  v_res   jsonb;
   v_open  jsonb;
   v_sides jsonb;
   v_f0    jsonb;
@@ -318,6 +322,8 @@ begin
     v_s0 := (select jsonb_agg(jsonb_build_object('id', s.id, 'fleet', s.fleet_id, 'hull', s.durability, 'crew', s.crew, 'beaten', public.raid_crew_lost(s.fleet_id, s.crew, v_rate)) order by s.id)
                from public.ships s where s.fleet_id = any (v_mine) or s.fleet_id = p_d);
     v_p0 := (select p.ducats from public.players p where p.id = v_pl);
+    v_ab0 := coalesce((select x.aboard from public.cargo_ship_aboard(p_d) x), 0);   -- what the ship carries, and what the company has taken today, before the battle: 0374's inputs
+    v_td0 := public.loot_today(v_pl, v_t);
     execute format('alter table public.battles alter column id set default %L::uuid', p_id);
     perform pg_temp.as_house(v_uid);
     v_pre := cmd.preview_attack(p_a, p_d);
@@ -356,7 +362,12 @@ begin
     else
       v_closed := public.tick_battles(v_t + interval '1 hour');
     end if;
+    v_res := (select b.result from public.battles b where b.id = v_b);
     v_out := jsonb_build_object(
+      -- 0374's own figure for this battle, computed here from its own leaves: what must have reached the purse
+      'risk', public.loot_risk(v_res), 'aboard0', v_ab0,
+      'want_loot', case when v_res ->> 'outcome' in ('PLUNDERED', 'RANSOM') and v_ab0 > 0
+                        then public.loot_due(v_res ->> 'outcome', floor(v_ab0 * public.loot_risk(v_res))::bigint, v_td0) else 0 end,
       'pre', v_pre, 'trace', v_trace, 'attack', v_x, 'open', v_open, 'sides', v_sides, 'fleets0', v_f0, 'card', v_card, 'door', v_door,
       'ticks', v_ticks, 'grow', to_jsonb(v_grow), 'closed', v_closed, 'mine', to_jsonb(v_mine), 'a', p_a, 'd', p_d,
       'battle', (select to_jsonb(b) - 'next_round_at' from public.battles b where b.id = v_b),
@@ -507,6 +518,10 @@ begin
      or (select coalesce(sum((e ->> 'crew_lost')::numeric), 0) from jsonb_array_elements(v_res -> 'shares') e) is distinct from (v_res ->> 'crew_lost')::numeric then
     return format('the shares do not add up to the loot (%s, purse moved %s) or to the hands lost (%s): %s', v_res ->> 'loot', (p ->> 'purse')::bigint - (p ->> 'purse0')::bigint, v_res ->> 'crew_lost', v_res -> 'shares');
   end if;
+  -- THE GOLD IS 0374's FIGURE (loot follows the risk taken, read on the whole armada's hull), untouched by the sharing
+  if (v_res ->> 'loot')::bigint is distinct from (p ->> 'want_loot')::bigint then
+    return format('the gold that reached the purse is %s, and 0374''s rule says %s (aboard %s, risk %s, outcome %s)', v_res ->> 'loot', p ->> 'want_loot', p ->> 'aboard0', p ->> 'risk', v_res ->> 'outcome');
+  end if;
   if coalesce((v_res ->> 'b_fled')::boolean, false) and ((v_res ->> 'loot')::bigint <> 0 or p -> 'battle' ->> 'status' <> 'BROKEN_OFF') then
     return 'she got away and took gold, or the battle is not BROKEN_OFF';
   end if;
@@ -525,13 +540,13 @@ declare
   v_n     int := jsonb_array_length(public.wc('fight_ranges'));
   v_lis   uuid := (select id from public.ports where code = 'LIS');
   v_fnc   uuid := (select id from public.ports where code = 'FNC');
-  c_none  constant uuid := '00000000-0379-4000-8000-0000000000ff';
-  c_b1    constant uuid := '00000000-0379-4000-8000-0000000000b1';
-  c_b2    constant uuid := '00000000-0379-4000-8000-0000000000b2';
-  c_b3    constant uuid := '00000000-0379-4000-8000-0000000000b3';
-  c_b4    constant uuid := '00000000-0379-4000-8000-0000000000b4';
-  c_b5    constant uuid := '00000000-0379-4000-8000-0000000000b5';
-  c_b6    constant uuid := '00000000-0379-4000-8000-0000000000b6';
+  c_none  constant uuid := '00000000-0395-4000-8000-0000000000ff';
+  c_b1    constant uuid := '00000000-0395-4000-8000-0000000000b1';
+  c_b2    constant uuid := '00000000-0395-4000-8000-0000000000b2';
+  c_b3    constant uuid := '00000000-0395-4000-8000-0000000000b3';
+  c_b4    constant uuid := '00000000-0395-4000-8000-0000000000b4';
+  c_b5    constant uuid := '00000000-0395-4000-8000-0000000000b5';
+  c_b6    constant uuid := '00000000-0395-4000-8000-0000000000b6';
   h1      uuid;   -- a company with an armada of two
   h2      uuid;   -- a company with one fleet, in no armada
   h3      uuid;   -- a company with seven fleets: an armada of six, and one that stays out
@@ -675,7 +690,7 @@ begin
   if jsonb_array_length(v_tick -> 'sides') <> 2 or v_tick -> 'open' -> 'sheet' ?| array['armada', 'fleets'] or v_tick -> 'attack' ? 'armada' or v_tick -> 'battle' -> 'result' ? 'shares'
      or v_tick -> 'ticks' -> 0 -> 0 ? 'armada' or jsonb_array_length(v_tick -> 'events') <> 1 or (v_tick ->> 'trace')::boolean
      or v_tick -> 'pre' -> 'estimate' is distinct from (v_tick -> 'attack') - 'ok' - 'version' - 'battle_id' or v_tick -> 'battle' ->> 'status' not in ('RESOLVED', 'BROKEN_OFF') then
-    raise exception 'PROOF 69 FAIL: a fleet in no armada took something of 0379: %', v_tick - 'ticks' - 'rerun';
+    raise exception 'PROOF 69 FAIL: a fleet in no armada took something of 0395: %', v_tick - 'ticks' - 'rerun';
   end if;
   v_m := jsonb_array_length(v_tick -> 'rounds');
   v_st := pg_temp.play_69(c_b2, f2, nv, 'TICK');
@@ -816,6 +831,32 @@ begin
   raise notice 'PASS: AB_TWO_TICK_LATE — an armada of two against a cargo ship with % aboard: % (% rounds), loot % shared % / %, hands lost %; both fleets on the sheet, held and freed; the card counts 3 fleets; tick by tick = one late call = a re-run; both fleets read one battle at every tick; one report with the shares; opened by her sister it is the same armada, the sister first (%)',
     v_tick ->> 'aboard', v_tick -> 'battle' -> 'result' ->> 'outcome', jsonb_array_length(v_tick -> 'rounds'), v_tick -> 'battle' -> 'result' ->> 'loot',
     v_tick -> 'battle' -> 'result' -> 'shares' -> 0 ->> 'loot', v_tick -> 'battle' -> 'result' -> 'shares' -> 1 ->> 'loot', v_tick -> 'battle' -> 'result' ->> 'crew_lost', v_x -> 'battle' -> 'result' ->> 'outcome';
+
+  -- ══ AB_LOOT_RISK ══ (0374). As shipped (floor 0, whole at 7.5 % of her hull) the plays above already held the gold to 0374's figure, whatever it was. Here the two other
+  -- settings an owner has, so gold is seen to move through both rules at once: a floor of 0.4, and the rule off.
+  v_e1 := format('%s of %s aboard at risk %s', v_tick -> 'battle' -> 'result' ->> 'loot', v_tick ->> 'aboard0', v_tick ->> 'risk');
+  update public.world_config set value = '0.4'::jsonb where key = 'loot_risk_floor';
+  v_st := pg_temp.play_69(c_b1, f1[1], d, 'TICK');
+  v_e := pg_temp.judge_69(v_st, array[f1[1], f1[2]]);
+  if v_e is not null or (v_st ->> 'risk')::numeric < 0.4 or (v_st ->> 'risk')::numeric > 1
+     or (v_st -> 'battle' -> 'result' ->> 'outcome' in ('PLUNDERED', 'RANSOM') and (v_st -> 'battle' -> 'result' ->> 'loot')::bigint <= 0) then
+    raise exception 'PROOF 69 FAIL: loot at a floor of 0.4: % (risk %, result %)', v_e, v_st ->> 'risk', (v_st -> 'battle' -> 'result') - 'rounds';
+  end if;
+  -- the risk is the WHOLE armada's: the hull all her fleets lost over the hull all her fleets brought, as public.loot_risk reads side b of the kept result
+  if (v_st -> 'battle' -> 'result' #>> '{hull,b_start}')::numeric is distinct from (select sum((e ->> 'hull')::numeric) from jsonb_array_elements(v_st -> 'open' -> 'sheet' -> 'b') e) then
+    raise exception 'PROOF 69 FAIL: the hull the risk is read on is not the whole armada''s: % against the sheet', v_st -> 'battle' -> 'result' -> 'hull';
+  end if;
+  update public.world_config set value = '0'::jsonb where key = 'loot_risk_floor';
+  update public.world_config set value = '0'::jsonb where key = 'loot_risk_full';
+  v_stl := pg_temp.play_69(c_b1, f1[1], d, 'TICK');
+  v_e := pg_temp.judge_69(v_stl, array[f1[1], f1[2]]);
+  if v_e is not null or (v_stl ->> 'risk')::numeric <> 1 then
+    raise exception 'PROOF 69 FAIL: loot with the rule off: % (risk %)', v_e, v_stl ->> 'risk';
+  end if;
+  update public.world_config set value = '0.075'::jsonb where key = 'loot_risk_full';
+  raise notice 'PASS: AB_LOOT_RISK — the gold is 0374''s figure in every play, then shared by guns to the ducat. As shipped: %. Floor 0.4: % (risk %): loot % shared %. Rule off: % (risk 1): loot % shared %',
+    v_e1, v_st -> 'battle' -> 'result' ->> 'outcome', v_st ->> 'risk', v_st -> 'battle' -> 'result' ->> 'loot', (select jsonb_agg(e -> 'loot') from jsonb_array_elements(v_st -> 'battle' -> 'result' -> 'shares') e),
+    v_stl -> 'battle' -> 'result' ->> 'outcome', v_stl -> 'battle' -> 'result' ->> 'loot', (select jsonb_agg(e -> 'loot') from jsonb_array_elements(v_stl -> 'battle' -> 'result' -> 'shares') e);
 
   -- ══ AB_STANCE_FLEE ══
   -- Flee set 150 s in (before round 3): the first rows are the fought-through battle's; from round 3 on not a gun of her whole side fires and each row carries her chance

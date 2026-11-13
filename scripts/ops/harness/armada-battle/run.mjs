@@ -1,11 +1,11 @@
-// run.mjs — scenes on the LOCAL cached world (PGlite) for 0379 (an armada fights as one). LOCAL ONLY; not in CI.
+// run.mjs — scenes on the LOCAL cached world (PGlite) for 0395 (an armada fights as one). LOCAL ONLY; not in CI.
 //
 //   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/armada-battle/run.mjs [--apply] [--dump=<dir>] [--fns=<a;b>] [--proofs=69,60] [--after=<dir>] [--secrets=<n>] [--secret=<word>] [--lit] [--notes] <scene.sql> [...]
 //
-// Restores the cached world at the head before 0379 (never from zero; the cache is only read), then, in ONE transaction that is
-// ROLLED BACK: applies 0379 when --apply is given, writes the live bodies of the functions 0379 cuts (and any named by --fns) to
+// Restores the cached world at the head before 0395 (never from zero; the cache is only read), then, in ONE transaction that is
+// ROLLED BACK: applies 0395 when --apply is given, writes the live bodies of the functions 0395 cuts (and any named by --fns) to
 // --dump (LF), and runs each scene at a savepoint, printing its notices and its last rows. A PROD CHECK file can be run here too,
-// to see what it will answer. --proofs runs the named proofs (each in its own rolled-back transaction, after 0379 when --apply is
+// to see what it will answer. --proofs runs the named proofs (each in its own rolled-back transaction, after 0395 when --apply is
 // given), with the proof courses and the market fixture installed as scripts/db/proof.mjs installs them.
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
@@ -13,7 +13,7 @@ import { createHash } from 'node:crypto'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const NAME = '20260818000379'
+const NAME = '20260818000395'
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
 const say = (...a) => console.log(...a)
 // a world_secret of a word: 128 hex characters, as 0031 makes them (the table refuses a short one)
@@ -33,7 +33,7 @@ const apply = process.argv.includes('--apply')
 const file = apply ? (await readFile(path.join(MIGRATIONS_DIR, mine), 'utf8')).replaceAll('\r', '') : null
 let failed = false
 
-// the bodies 0379 cuts, read from the migration's own hunks (gen-checks.mjs)
+// the bodies 0395 cuts, read from the migration's own hunks (gen-checks.mjs)
 import { CUT } from './gen-checks.mjs'
 
 if (arg('proofs')) {
@@ -44,7 +44,7 @@ if (arg('proofs')) {
     await db.exec(file, { onNotice })
     say(`applied ${mine} in ${Date.now() - t} ms (committed in this throwaway world)`)
   }
-  // --after=<dir>: the migrations of a tree that is ahead of this one (a batch branch), applied after 0379 in name order, so a proof can be run beneath them
+  // --after=<dir>: the migrations of a tree that is ahead of this one (a batch branch), applied after 0395 in name order, so a proof can be run beneath them
   if (arg('after')) {
     for (const n of (await readdir(arg('after'))).filter((x) => x.endsWith('.sql')).sort()) {
       const t = Date.now()
@@ -54,7 +54,7 @@ if (arg('proofs')) {
   }
   const all = await readdir('scripts/db/proofs')
   for (const n of arg('proofs').split(',')) {
-    const f = all.find((x) => x.startsWith(`${n}_`))
+    const f = all.find((x) => x.startsWith(`${n}_`)) ?? all.find((x) => x.startsWith(n))   // two proofs may share a number: name more of the file
     const sql = (await readFile(path.join('scripts/db/proofs', f), 'utf8')).replaceAll('\r', '')
     const want = [...sql.matchAll(/^--\s*@pass\s+([A-Z0-9_]+)/gm)].map((m) => m[1])
     // --secrets=N: the proof N times, the first under the world's own world_secret and each other under one of its own (every roll of a fight is keyed by it: 0031),
@@ -80,7 +80,7 @@ if (arg('proofs')) {
 await db.exec('begin')
 // --secret=<word>: the file applied under another world_secret (the self-assert's probe fights real rounds: it must hold under any dice)
 if (arg('secret')) await db.exec(`update public.world_config set value = to_jsonb('${secretOf(arg('secret'))}'::text), updated_at = updated_at where key = 'world_secret'`)
-// --lit: the file applied on a world where the owner has lit attacks (0379 may deploy after the lighting: it takes the switch as it finds it)
+// --lit: the file applied on a world where the owner has lit attacks (0395 may deploy after the lighting: it takes the switch as it finds it)
 if (process.argv.includes('--lit')) await db.exec("update public.world_config set value = 'true'::jsonb where key = 'attack_enabled'")
 if (file) {
   const t = Date.now()

@@ -56,6 +56,8 @@ function Attack({ target }: { target: string }) {
         await refresh()
       } else {
         setPress(r.refusal)
+        // her fleet moved on since this sheet read it (she arrived, a job touched her): read the world back NOW, so the next press sends the fresh version and not the same stale one
+        if (r.refusal.code === 'E_STALE') await refresh()
       }
     })()
   }
@@ -73,9 +75,10 @@ function Attack({ target }: { target: string }) {
           </div>
         )}
         {!now && <Skeleton className="h-10 w-full" />}
-        {now?.preview && (
+        {/* the pre-fight read stands until the press; after it the battle card below says all of it live (her word, the navy's own clock), so the frozen rows go */}
+        {now?.preview && !started && (
           <>
-            {/* 0379: a fleet of an armada attacks with every fleet of hers that is there; the word below is read with all of them */}
+            {/* 0395: a fleet of an armada attacks with every fleet of hers that is there; the word below is read with all of them */}
             {now.preview.armada && (
               <Row
                 label={t('fight.armada')}
@@ -96,21 +99,20 @@ function Attack({ target }: { target: string }) {
             {now.preview.navy_minutes != null && (
               <Row label={t('map.attackNavy')} value={t('map.attackNavyIn', { n: formatInt(now.preview.navy_minutes) })} hairline={false} data-testid="cargo-attack-navy" />
             )}
-            {!started && (
-              <Button busy={busy} busyLabel={t('map.attack')} onClick={go} data-testid="cargo-attack-go">
-                {t('map.attack')}
-              </Button>
+            {/* what the press was refused for stands ABOVE the button: under it, it lay below the fold of a phone's sheet and was never seen */}
+            {press && (
+              <Note tone="danger" code={press.code} figures={press.figures} data-testid="cargo-attack-refused">
+                {press.sentence}
+              </Note>
             )}
+            <Button busy={busy} busyLabel={t('map.attack')} onClick={go} data-testid="cargo-attack-go">
+              {t('map.attack')}
+            </Button>
           </>
         )}
         {now?.refusal && (
-          <Note tone="danger" code={now.refusal.code} figures={now.refusal.figures}>
+          <Note tone="danger" code={now.refusal.code} figures={now.refusal.figures} data-testid="cargo-attack-cannot">
             {now.refusal.sentence}
-          </Note>
-        )}
-        {press && (
-          <Note tone="danger" code={press.code} figures={press.figures}>
-            {press.sentence}
           </Note>
         )}
         {started && <Note data-testid="cargo-attack-started">{t('map.attackStarted')}</Note>}

@@ -6,7 +6,7 @@ import { ARMADA_NAME, ARMADA_SISTERS, serveArmadaBattleWorld } from './armadaBat
 import { fightCountRadiusPx } from '../src/chart/fightRings'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// AN ARMADA'S BATTLE ON THE PAGE (0379, docs/ARMADA.md section 7, owner row 323: "with more than one fleet, max 6
+// AN ARMADA'S BATTLE ON THE PAGE (0395, docs/ARMADA.md section 7, owner row 323: "with more than one fleet, max 6
 // fleet - an armada").
 // ═══════════════════════════════════════════════════════════════════════════════
 // The world is tests/armadaBattleWorld.fixture.ts: the shipped image with attacks lit in a COPY, and one real battle

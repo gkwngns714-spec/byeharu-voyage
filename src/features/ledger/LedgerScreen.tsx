@@ -19,7 +19,7 @@ import {
   type TrayDetent,
 } from '../../components/ui'
 import { MINUS, formatClock, formatDate, formatDucatsDelta, formatInt } from '../../lib/format'
-import { portNameOf, useWorld } from '../../live/worldStore'
+import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import type { LedgerEvent } from '../../lib/rpc'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { headline, payloadFights, payloadLines } from './headline'
@@ -80,12 +80,14 @@ function LedgerBody({ title }: { title: string }) {
   const t = useT()
   const events = useWorld((s) => s.events)
   const portByCode = useWorld((s) => s.portByCode)
+  const nationByCode = useWorld((s) => s.nationByCode)
   const [face, setFace] = useState<Face>('all')
   const [open, setOpen] = useState<LedgerEvent | null>(null)
   const [detent, setDetent] = useState<TrayDetent>('closed')
 
   const shown = useMemo(() => onFace(events, face), [events, face])
   const portName = (code: string) => portNameOf(portByCode, code)
+  const nationName = (code: string) => nationNameOf(nationByCode, code)
   const fights = open === null ? [] : payloadFights(open.payload)
 
   // the entries under their day (one date per group, spanning the card's columns), and the side's three readings
@@ -104,7 +106,7 @@ function LedgerBody({ title }: { title: string }) {
   }))
   const biggestRows: RankRow[] = biggest.map(({ event, move }) => ({
     id: event.id,
-    label: headline(event, portName),
+    label: headline(event, portName, nationName),
     value: move,
     tone: move > 0 ? 'success' : 'danger',
   }))
@@ -145,7 +147,7 @@ function LedgerBody({ title }: { title: string }) {
                         key={event.id}
                         data-testid="ledger-row"
                         mark={<IconDisc name={markOf(event.kind)} />}
-                        label={headline(event, portName)}
+                        label={headline(event, portName, nationName)}
                         value={movement(event.ducats_delta)}
                         chevron={report.length > 0}
                         onClick={report.length > 0 ? () => show(event) : undefined}
@@ -189,7 +191,7 @@ function LedgerBody({ title }: { title: string }) {
       />
 
       {open !== null && (
-        <Tray detent={detent} onDetentChange={setDetent} title={headline(open, portName)} data-testid="ledger-report">
+        <Tray detent={detent} onDetentChange={setDetent} title={headline(open, portName, nationName)} data-testid="ledger-report">
           <div className="space-y-3 pb-2">
             {payloadLines(open.payload).map((line, i) => {
               const fight = fights.find((f) => f.line === i)

@@ -3137,7 +3137,7 @@ export interface AttackReceipt {
   resolves_at: string
   /** 0333: minutes until the first of her country's ships would reach the fight. Absent when none would. */
   navy_minutes?: number
-  /** 0379: present when the fleet is of an armada and others of her fleets are there: every one of them fights, the
+  /** 0395: present when the fleet is of an armada and others of her fleets are there: every one of them fights, the
    *  `word` above is read with all of them, and `fleets` are their names, the fleet that attacks first. */
   armada?: { name: string; fleets: string[]; ships: number }
   battle_id?: string
@@ -4294,7 +4294,7 @@ export interface BattleRead {
   loot?: number
   crew_lost?: number
   navy?: string | null
-  /** 0379: an armada's battle (the side that attacked): her name, the fleet that attacked (`lead`), her fleets in the
+  /** 0395: an armada's battle (the side that attacked): her name, the fleet that attacked (`lead`), her fleets in the
    *  sheet's order and, once closed, each fleet's share. `stance` is then the side's: one press acts for all of them.
    *  Absent for a fleet that fights alone. */
   armada?: string | null
@@ -4309,7 +4309,7 @@ export interface BattleRead {
   mine?: string | null
 }
 
-/** 0379: one fleet of an armada in her battle. */
+/** 0395: one fleet of an armada in her battle. */
 export interface BattleFleet {
   id: string
   name: string
@@ -4317,7 +4317,7 @@ export interface BattleFleet {
   lead: boolean
 }
 
-/** 0379: one fleet's share of an armada's battle: the gold counted to her (by the guns she brought; the purse is the
+/** 0395: one fleet's share of an armada's battle: the gold counted to her (by the guns she brought; the purse is the
  *  company's one), the hands and the hull her own ships lost. */
 export interface BattleShare {
   fleet: string
@@ -4332,7 +4332,7 @@ export interface FightSide {
   fleet: string
   name: string
   side: 'ATTACKER' | 'DEFENDER'
-  /** 0379: ARMADA is a fleet of the attacker's armada: she joined at the open and is there. */
+  /** 0395: ARMADA is a fleet of the attacker's armada: she joined at the open and is there. */
   how: 'OPENED' | 'ESCORT' | 'CALLED' | 'ARMADA'
   kind: 'COMPANY' | 'MERCHANT' | 'CARGO_SHIP' | 'NAVY' | 'PIRATE'
   company: string | null

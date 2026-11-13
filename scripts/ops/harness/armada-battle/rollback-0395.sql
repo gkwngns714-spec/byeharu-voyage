@@ -1,7 +1,7 @@
--- 0379 FORWARD ROLLBACK, A DRAFT (docs/ARMADA.md section 7; docs/dev-log/2026-11-13-armada-battle.md). NOT a prod check and NOT a migration yet: to use it, strip the guard line, give it
+-- 0395 FORWARD ROLLBACK, A DRAFT (docs/ARMADA.md section 7; docs/dev-log/2026-11-13-armada-battle.md). NOT a prod check and NOT a migration yet: to use it, strip the guard line, give it
 -- the next number, and deploy it as any migration (owner only). THE FIRST ROLLBACK IS THE SWITCH: attack_enabled false stops new battles; a running battle finishes with the sides it has.
 -- This draft is the second: it refuses while a battle is FIGHTING or a side row says ARMADA (the constraint could not go back over such a row: those rows are the record of battles
--- fought as an armada, and whoever uses this decides what becomes of them first), then swaps 0379's OLD and NEW (each NEW text once, reversed; judged as a round trip on the live
+-- fought as an armada, and whoever uses this decides what becomes of them first), then swaps 0395's OLD and NEW (each NEW text once, reversed; judged as a round trip on the live
 -- body, since a later file may have re-cut the same bodies), drops the seven functions and puts the constraint back to its three words.
 -- Tested locally: run.mjs --apply on ONE scene file holding this draft and then before.sql's statement (a scene is rolled back at its end, so the two must share one file):
 -- 13 rows, every old_times 1, new_times 0, made 0, how_check without ARMADA.
@@ -19,69 +19,69 @@ begin
   perform set_config('statement_timeout', '45s', true);
   perform set_config('lock_timeout', '5s', true);
   if to_regprocedure('public.battle_armada_join(uuid,text,uuid,timestamp with time zone)') is null then
-    raise exception '0379 rollback refuses: 0379 is not applied in this world';
+    raise exception '0395 rollback refuses: 0395 is not applied in this world';
   end if;
   if exists (select 1 from public.battles b where b.status = 'FIGHTING') then
-    raise exception '0379 rollback refuses: a battle is being fought. Set attack_enabled false, wait for it to close, and deploy this again.';
+    raise exception '0395 rollback refuses: a battle is being fought. Set attack_enabled false, wait for it to close, and deploy this again.';
   end if;
   if exists (select 1 from public.battle_sides bs where bs.how = 'ARMADA') then
-    raise exception '0379 rollback refuses: a side row says ARMADA (a battle was fought as an armada). Decide what becomes of those rows first.';
+    raise exception '0395 rollback refuses: a side row says ARMADA (a battle was fought as an armada). Decide what becomes of those rows first.';
   end if;
   create temp table hunks_back (fn text, n int, old text, new text) on commit drop;
   insert into hunks_back (fn, n, old, new) values
   ('public.attack_for(uuid,uuid,uuid,integer,timestamp with time zone)', 1, $h$  foreach v_fleet in array array[least(p_fleet, p_target), greatest(p_fleet, p_target)] loop
-$h$, $h$  -- 0379 (docs/ARMADA.md section 7): a fleet of an armada attacks with every fleet of hers that is there. Each of them is judged before anything moves, and one refused
+$h$, $h$  -- 0395 (docs/ARMADA.md section 7): a fleet of an armada attacks with every fleet of hers that is there. Each of them is judged before anything moves, and one refused
   -- refuses the attack under her name (public.attack_armada_gates). A fleet in no armada: one primary-key probe, and nothing.
   perform public.attack_armada_gates(p_player, p_fleet, p_now);
   foreach v_fleet in array array[least(p_fleet, p_target), greatest(p_fleet, p_target)] loop
 $h$),
   ('public.attack_for(uuid,uuid,uuid,integer,timestamp with time zone)', 2, $h$    'resolves_at', (select b.resolves_at from public.battles b where b.id = v_battle));
 $h$, $h$    'resolves_at', (select b.resolves_at from public.battles b where b.id = v_battle))
-    || public.battle_armada_note(v_battle);   -- 0379: an armada's battle says her name and her fleets, and the word is the armada's; any other battle: {}
+    || public.battle_armada_note(v_battle);   -- 0395: an armada's battle says her name and her fleets, and the word is the armada's; any other battle: {}
 $h$),
   ('public.battle_open(text,uuid,uuid,timestamp with time zone)', 1, $h$  foreach v_fleet in array array[p_attacker, p_defender] loop
-$h$, $h$  -- 0379 (docs/ARMADA.md section 7): the fleets of her armada that are there join her side now, before the sheet is frozen, and are stopped by this same loop
+$h$, $h$  -- 0395 (docs/ARMADA.md section 7): the fleets of her armada that are there join her side now, before the sheet is frozen, and are stopped by this same loop
   foreach v_fleet in array array[p_attacker, p_defender] || public.battle_armada_join(v_id, p_kind, p_attacker, p_now) loop
 $h$),
   ('public.battle_sheet_freeze(uuid,timestamp with time zone)', 1, $h$  v_st := public.battle_opening_stance(v_def);
-$h$, $h$  perform public.battle_armada_sheet(p_battle);   -- 0379: an armada's sheet names her and her fleets, and its word reads all of them; any other sheet: nothing
+$h$, $h$  perform public.battle_armada_sheet(p_battle);   -- 0395: an armada's sheet names her and her fleets, and its word reads all of them; any other sheet: nothing
   v_st := public.battle_opening_stance(v_def);
 $h$),
   ('public.battle_resolve(uuid,timestamp with time zone)', 1, $h$    if s.side = 'ATTACKER' and not s.is_npc then
-$h$, $h$    if s.side = 'ATTACKER' and not s.is_npc   -- 0379: one report a battle, under the fleet that attacked: a fleet that joined as her armada sends none
+$h$, $h$    if s.side = 'ATTACKER' and not s.is_npc   -- 0395: one report a battle, under the fleet that attacked: a fleet that joined as her armada sends none
        and not exists (select 1 from public.battle_sides x where x.battle_id = p_battle and x.fleet_id = s.fleet_id and x.how = 'ARMADA') then
 $h$),
   ('public.attack_close(uuid,jsonb,timestamp with time zone)', 1, $h$   where bs.battle_id = p_battle and bs.side = 'ATTACKER';
-$h$, $h$   where bs.battle_id = p_battle and bs.side = 'ATTACKER' and bs.how = 'OPENED';   -- 0379: the fleet that attacked; her armada's fleets are public.attack_armada_close's
+$h$, $h$   where bs.battle_id = p_battle and bs.side = 'ATTACKER' and bs.how = 'OPENED';   -- 0395: the fleet that attacked; her armada's fleets are public.attack_armada_close's
 $h$),
   ('public.attack_close(uuid,jsonb,timestamp with time zone)', 2, $h$  return jsonb_build_object('loot', v_gold, 'crew_lost', v_lost);
 $h$, $h$  return jsonb_build_object('loot', v_gold, 'crew_lost', v_lost)
-      || public.attack_armada_close(p_battle, p_fight, v_gold, v_lost);   -- 0379: her armada's fleets lose their hands by the same row, and each fleet's share is said; no armada: {}
+      || public.attack_armada_close(p_battle, p_fight, v_gold, v_lost);   -- 0395: her armada's fleets lose their hands by the same row, and each fleet's share is said; no armada: {}
 $h$),
   ('public.battle_log(jsonb,jsonb,text)', 1, $h$  return (v_log - 'end') || '{"atk": true}'::jsonb || case when v_end is null then '{}'::jsonb else jsonb_build_object('end', v_end) end;
 $h$, $h$  return (v_log - 'end') || '{"atk": true}'::jsonb || case when v_end is null then '{}'::jsonb else jsonb_build_object('end', v_end) end
-      || case when p_sheet ? 'fleets' then jsonb_build_object('fleets', p_sheet->'fleets') else '{}'::jsonb end;   -- 0379: an armada's log names her fleets above their ships, as a raid's does (0367)
+      || case when p_sheet ? 'fleets' then jsonb_build_object('fleets', p_sheet->'fleets') else '{}'::jsonb end;   -- 0395: an armada's log names her fleets above their ships, as a raid's does (0367)
 $h$),
   ('world.battle(uuid)', 1, $h$   where bs.fleet_id = p_fleet and bs.how = 'OPENED' and f.player_id = v_player and bt.sheet is not null
-$h$, $h$   where bs.fleet_id = p_fleet and bs.how in ('OPENED', 'ARMADA') and f.player_id = v_player and bt.sheet is not null   -- 0379: any fleet of hers in it reads the battle
+$h$, $h$   where bs.fleet_id = p_fleet and bs.how in ('OPENED', 'ARMADA') and f.player_id = v_player and bt.sheet is not null   -- 0395: any fleet of hers in it reads the battle
 $h$),
   ('world.battle(uuid)', 2, $h$                                    'navy', b.result #> '{navy,line}') end;
 $h$, $h$                                    'navy', b.result #> '{navy,line}') end
-    || public.battle_armada_view(b.id, p_fleet);   -- 0379: her armada's name, her fleets, the side's stance and, closed, each fleet's share; no armada: {}
+    || public.battle_armada_view(b.id, p_fleet);   -- 0395: her armada's name, her fleets, the side's stance and, closed, each fleet's share; no armada: {}
 $h$),
   ('public.navy_close(uuid,timestamp with time zone)', 1, $h$  select count(*) filter (where bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at),
-$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at),   -- 0379: her own armada is no navy
+$h$, $h$  select count(*) filter (where bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at),   -- 0395: her own armada is no navy
 $h$),
   ('public.navy_close(uuid,timestamp with time zone)', 2, $h$         bool_or(bs.how <> 'OPENED' and bs.arrives_at <= b.resolves_at or ($h$, $h$         bool_or(bs.how not in ('OPENED', 'ARMADA') and bs.arrives_at <= b.resolves_at or ($h$),
   ('public.battle_navy_served(uuid)', 1, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how <> 'OPENED' and o.arrives_at <= b.resolves_at
-$h$, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how not in ('OPENED', 'ARMADA') and o.arrives_at <= b.resolves_at   -- 0379: her own armada is no help coming to the other side
+$h$, $h$                     join public.battle_sides o on o.battle_id = b.id and o.how not in ('OPENED', 'ARMADA') and o.arrives_at <= b.resolves_at   -- 0395: her own armada is no help coming to the other side
 $h$);
   for f in select distinct x.fn from hunks_back x order by x.fn loop
     v_live := replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '');
     v_def := v_live;
     for h in select * from hunks_back x where x.fn = f.fn order by x.n desc loop
       if (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new) <> 1 then
-        raise exception '0379 rollback: hunk % of % is not in the live body exactly once: the deployed body is not the one 0379 left', h.n, f.fn;
+        raise exception '0395 rollback: hunk % of % is not in the live body exactly once: the deployed body is not the one 0395 left', h.n, f.fn;
       end if;
       v_def := replace(v_def, h.new, h.old);
     end loop;
@@ -90,7 +90,7 @@ $h$);
       v_back := replace(v_back, h.old, h.new);
     end loop;
     if v_back is distinct from v_live then
-      raise exception '0379 rollback: % does not come back to the live body when the hunks are put back', f.fn;
+      raise exception '0395 rollback: % does not come back to the live body when the hunks are put back', f.fn;
     end if;
     execute v_def;
   end loop;
@@ -103,6 +103,6 @@ $h$);
   drop function public.battle_armada(uuid, timestamp with time zone);
   alter table public.battle_sides drop constraint battle_sides_how_check;
   alter table public.battle_sides add constraint battle_sides_how_check check (how = any (array['OPENED'::text, 'ESCORT'::text, 'CALLED'::text]));
-  raise notice '0379 rollback ok: 9 bodies at their pre-images, 7 functions gone, the constraint at its three words';
+  raise notice '0395 rollback ok: 9 bodies at their pre-images, 7 functions gone, the constraint at its three words';
 end
 $r$;
