@@ -92,3 +92,20 @@ Section 3.6 of the design lists what the one switch opens. The known open point 
 Forward, owner only. The switch off stops new battles and the stance door; running ones finish under their last stance. The whole slice: `scripts/ops/harness/live-rounds/rollback-0357.sql` is the draft of the reversing migration.
 
 The draft was run locally on 2026-11-13 after the file, in one scene with `before.sql`'s statement: 23 rows, every `old_times` 1, `new_times` 0, `made` 0.
+
+## 2026-11-13: proof 60 red on CI, green on every desk: the dice are the world's own
+
+**What happened.** `60_live_rounds.sql` went red on CI at CALLED_FROM (8 of 14 markers) on #612 and on the batch tree #626, and stayed green locally through 30 runs, the whole catch-all leg in CI's order, and five clock offsets.
+
+**The cause.** Migration 0031 gives every built world its own `world_secret`, and every roll of a fight is keyed by it. So CI's cached world and a desk's cached world throw different dice for the same battle id. The proof assumed one outcome of them in two places:
+
+- CALLED_FROM asserted that with a called ship the side's hull after round 3 is *greater* than without her. On CI's dice the first shot sank the target in round 1 and the round-3 shot sank the called ship (a cargo ship dies to one hit): 0 against 0.
+- CLOSED_ONCE asserted that the job's call an hour on closes the battle. When her Flee gets her away in round 3 itself, the job's round-3 call is the one that closes it.
+
+Read from CI itself: a draft PR (#627, closed) carried only a wider failure message. It printed the same seed, the same two sides, and hits in rounds 1 and 3 where this desk has them in rounds 4 and 6. Under 8 other secrets locally the old proof was green 2 times of 8, failing at one of the two places.
+
+**A real fault found on the way.** CI's figures showed the side's starting hull as 790 for hulls of 261 + 268. With a called ship on the sheet, the engine counted every round-1 hull into the side's starting hull a second time (`a_from[i] = g` is true for a hull of round 1 at round 1). It moved `hull.a_start` in the answer, and the EVADED / DRIVEN_OFF word when the attacker broke off or fled having hit nothing. Fixed in hunk 3 (`a_from[i] > 1 and a_from[i] = g`); the self-assert and proof 60 now hold the starting hull to each hull once. Red first: the new proof on the old hunk fails at "the side's starting hull is not each hull once" (5,400 for 1,500 + 2,400).
+
+**The proof now.** CALLED_FROM holds what is true under any dice: hull after round 3 = hull after round 2 + hers − what round 3 took, never more than was fired, and she is there (struck, or whole in what is left). CLOSED_ONCE counts the close over both calls. A failure prints which line and its figures. The secret is not pinned: a proof that holds on one world's dice only would go red again at the next cache rebuild.
+
+**Not changed, and worth knowing.** A called ship's hulls are read when her round is fought. A job that runs late settles her to its own instant first, so a ship damaged on the way in between would join with the later hull. On the proof's quiet sea the two agree.

@@ -58,7 +58,7 @@ $h$, $h$    v_fought := g;
     -- 0357: a called ship comes on the sheet at her round, whole; and the stance of the side that closes for this round
     if v_late then
       for i in 1 .. v_na loop
-        if a_from[i] = g then
+        if a_from[i] > 1 and a_from[i] = g then   -- only a ship that was called: a hull of round 1 is counted where the sides are read
           a_hull[i] := a_hull0[i];
           v_h0a := v_h0a + a_hull0[i];
           v_sa := greatest(v_sa, coalesce((p_a -> (i - 1) ->> 'sighting')::numeric, 0));
@@ -386,6 +386,11 @@ begin
          or exists (select 1 from jsonb_array_elements(v_f -> 'rounds') e where (e ->> 'round')::int = 3 and (e -> 'a' ->> 'left')::numeric + (e -> 'b' ->> 'dealt')::numeric < (v_x.a -> 1 ->> 'hull')::numeric - 0.01) then
         raise exception 'PROOF 60 FAIL: a called ship fought before her round, or not from it (fight %): %', v_x.i, v_f;
       end if;
+      -- the side's starting hull is each hull once: those there from round 1, and she from round 3 if the fight came to it (it counted round 1's hulls twice once)
+      if (v_f -> 'hull' ->> 'a_start')::numeric is distinct from
+           (select sum((e ->> 'hull')::numeric) from jsonb_array_elements(v_x.a) with ordinality q(e, o) where o <> 2 or (v_f ->> 'rounds_fought')::int >= 3) then
+        raise exception 'PROOF 60 FAIL: with a called ship the side''s starting hull is not each hull once (fight %): %', v_x.i, v_f -> 'hull';
+      end if;
       v_g := public.fight_sides(c_seed, v_x.d, jsonb_set(v_x.a, '{1,from}', to_jsonb(v_n + 1)), v_x.b, '{}'::jsonb);
       v_cut := public.fight_sides(c_seed, v_x.d, jsonb_set(v_x.a, '{1,from}', '99'::jsonb), v_x.b, '{}'::jsonb);
       if v_cut -> 'hull_lost' -> 'a' ? (v_x.a -> 1 ->> 'id') or v_g -> 'hull_lost' -> 'a' ? (v_x.a -> 1 ->> 'id')
@@ -597,6 +602,21 @@ begin
 end
 $b$;
 
+-- WHAT A SHIP CALLED FOR ROUND 3 ADDS, judged on a play's own rows so it holds under any dice: null when it holds, else the figures. L2 and L3 are the side's hull left after rounds
+-- 2 and 3, H hers on the sheet, D3 what the other side's guns dealt in round 3 (a shot can deal more than the hull it sinks, so the loss is at most D3):
+--   L3 <= L2 + H (she is whole when she comes up) and L3 >= L2 + H - D3 (the round took no more than was fired);
+--   and she is THERE: either the round struck her (her place on the sheet is in the row's `struck`), or it did not and her whole hull stands in what is left (L3 >= H).
+create function pg_temp.called_60(p_play jsonb, p_fleet uuid) returns jsonb language sql stable as $b$
+  with s as (select e, o from jsonb_array_elements(p_play -> 'battle' -> 'sheet' -> 'a') with ordinality q(e, o)),
+       f as (select (p_play -> 'rounds' -> 1 -> 'row' -> 'a' ->> 'left')::numeric as l2, (p_play -> 'rounds' -> 2 -> 'row' -> 'a' ->> 'left')::numeric as l3,
+                    (p_play -> 'rounds' -> 2 -> 'row' -> 'b' ->> 'dealt')::numeric as d3,
+                    (select sum((s.e ->> 'hull')::numeric) from s where s.e ->> 'fleet' = p_fleet::text) as h,
+                    exists (select 1 from jsonb_array_elements(p_play -> 'rounds' -> 2 -> 'row' -> 'a' -> 'struck') st join s on s.o = (st ->> 0)::int where s.e ->> 'fleet' = p_fleet::text) as struck)
+  select case when f.l2 is not null and f.l3 is not null and f.h > 0 and f.l3 <= f.l2 + f.h + 0.01 and f.l3 >= f.l2 + f.h - f.d3 - 0.01 and (f.struck or f.l3 >= f.h - 0.01)
+              then null else to_jsonb(f) end
+    from f
+$b$;
+
 -- ONE BATTLE, PLAYED ONE WAY, in a subtransaction that is rolled back. The battle's id is pinned (it is the fight's seed), the attack is the real one at p_t, the stances are rows
 -- at instants of the scene's choosing ([[seconds after the open, stance], ...]: what the door writes at that instant), and it is played by the real job: 'TICK' at every round's
 -- instant and the clock's end, 'LATE' by one call an hour after, 'OLD' under the rebuilt old bodies (one call at the old clock's end), 'OPEN' not at all. p_called: fleets written
@@ -719,6 +739,7 @@ declare
   v_id    uuid;
   v_i     int;
   v_m     int;
+  v_m3    int;
   v_e1    text;
   v_e2    text;
   v_e3    text;
@@ -945,12 +966,26 @@ begin
      or (jsonb_array_length(v_c -> 'rounds') = v_n and not exists (select 1 from jsonb_array_elements(v_r) e where e ->> 'fleet' = d3::text and (e ->> 'from')::int = v_n + 1))
      or exists (select 1 from jsonb_array_elements(v_r) e where e ->> 'fleet' = v_nfl::text)
      or (v_c -> 'rounds' -> 0)::text is distinct from (v_tick -> 'rounds' -> 0)::text or (v_c -> 'rounds' -> 1)::text is distinct from (v_tick -> 'rounds' -> 1)::text
-     or (v_c -> 'rounds' -> 2 -> 'row' -> 'a' ->> 'left')::numeric <= (v_tick -> 'rounds' -> 2 -> 'row' -> 'a' ->> 'left')::numeric
+     -- ROUND 3 HAS HER HULL TOO, whatever the dice did (the world's secret is its own: a shot may have sunk the target before her round, and round 3's may sink her):
+     -- the side's hull after round 3 is its hull after round 2 plus hers, less what round 3 took, and round 3 took no more than was fired at the side;
+     or pg_temp.called_60(v_c, d2) is not null
+     -- and the side's starting hull is each hull once: the target's, and hers if the fight came to her round (a ship there only for the boarding is not in it)
+     or (v_c -> 'battle' -> 'result' -> 'hull' ->> 'a_start')::numeric is distinct from
+          (select sum((e ->> 'hull')::numeric) from jsonb_array_elements(v_r) e where coalesce((e ->> 'from')::int, 1) <= jsonb_array_length(v_c -> 'rounds'))
      or exists (select 1 from jsonb_array_elements(v_c -> 'rounds') r where (r -> 'row')::text is distinct from (v_c -> 'rerun' -> 'rounds' -> ((r ->> 'g')::int - 1))::text)
      or (v_c -> 'battle' -> 'result' -> 'navy' ->> 'came')::int < 1 then
-    raise exception 'PROOF 60 FAIL: the called ships: sheet %, navy %', (select jsonb_agg(jsonb_build_array(e -> 'name', e -> 'fleet', e -> 'from')) from jsonb_array_elements(v_r) e), v_c -> 'battle' -> 'result' -> 'navy';
+    -- the message says WHICH line failed and with what figures: a red on CI must be readable there (the dice are the world's own, and CI's world is not this desk's)
+    raise exception 'PROOF 60 FAIL: the called ships: % | sheet % | navy % | with her [hull left, fired at her side] % | without her %',
+      jsonb_build_object('round_3', pg_temp.called_60(v_c, d2),
+        'round_1_same', (v_c -> 'rounds' -> 0)::text is not distinct from (v_tick -> 'rounds' -> 0)::text,
+        'round_2_same', (v_c -> 'rounds' -> 1)::text is not distinct from (v_tick -> 'rounds' -> 1)::text,
+        'rows_not_the_rerun', (select jsonb_agg(r -> 'g') from jsonb_array_elements(v_c -> 'rounds') r where (r -> 'row')::text is distinct from (v_c -> 'rerun' -> 'rounds' -> ((r ->> 'g')::int - 1))::text),
+        'hull', v_c -> 'battle' -> 'result' -> 'hull', 'seed', v_id),
+      (select jsonb_agg(jsonb_build_array(e -> 'name', e -> 'fleet', e -> 'from', e -> 'hull')) from jsonb_array_elements(v_r) e), v_c -> 'battle' -> 'result' -> 'navy',
+      (select jsonb_agg(jsonb_build_array(r -> 'row' -> 'a' -> 'left', r -> 'row' -> 'b' -> 'dealt') order by (r ->> 'g')::int) from jsonb_array_elements(v_c -> 'rounds') r),
+      (select jsonb_agg(jsonb_build_array(r -> 'row' -> 'a' -> 'left', r -> 'row' -> 'b' -> 'dealt') order by (r ->> 'g')::int) from jsonb_array_elements(v_tick -> 'rounds') r);
   end if;
-  raise notice 'PASS: CALLED_FROM — a ship that came up 150 s in is on the sheet from round 3 (rounds 1 and 2 are the rows of the battle without her, as text; from round 3 the side set upon has her hull too); one that came up 400 s in is there for the boarding (from %); one that never came is never on the sheet; every row is the re-run''s; tick by tick and late agree; the report says %',
+  raise notice 'PASS: CALLED_FROM — a ship that came up 150 s in is on the sheet from round 3 (rounds 1 and 2 are the rows of the battle without her, as text; from round 3 the side set upon has her hull too: its hull after round 3 is its hull after round 2 plus hers less what the round took, whatever the dice; the side''s starting hull is each hull once); one that came up 400 s in is there for the boarding (from %); one that never came is never on the sheet; every row is the re-run''s; tick by tick and late agree; the report says %',
     v_n + 1, v_c -> 'battle' -> 'result' -> 'navy' ->> 'line';
 
   -- ══ STANCE_DOOR, BATTLE_READ, CLOSED_ONCE: one battle kept (not rolled back), opened 130 s ago by the real clock, so the door's own clock finds two rounds due ══
@@ -1014,15 +1049,16 @@ begin
     raise exception 'PROOF 60 FAIL: the read between rounds: %', v_r;
   end if;
   -- the job fights on under her last stance (she is gone: the offline case): round 3 at its instant, her guns silent
-  v_m := public.tick_battles(v_t + interval '180 seconds');
+  v_m3 := public.tick_battles(v_t + interval '180 seconds');
   if not exists (select 1 from public.battle_rounds r where r.battle_id = v_bat and r.g = 3 and r."row" ? 'b_flee' and (r."row" -> 'b' ->> 'fired')::int = 0)
      or exists (select 1 from public.battle_rounds r where r.battle_id = v_bat and r.g <= 2 and r."row" ? 'b_flee') then
     raise exception 'PROOF 60 FAIL: the job did not fight round 3 under the stance the door kept: %', (select jsonb_agg(r."row" order by r.g) from public.battle_rounds r where r.battle_id = v_bat);
   end if;
   raise notice 'PASS: STANCE_DOOR — the door advances first (two rounds were due by the real clock: both logged under FIGHT), keeps FLEE from round 3 (one row, set between the two instants), writes nothing for the stance she holds; the job then fights round 3 with her guns silent (the offline case: her last stance stands); E_BAD_STANCE (a bad word, none, PAY by the side that attacked), E_NO_BATTLE, E_NOT_YOUR_BATTLE';
 
-  -- to its end by the job, an hour on; then nothing closes twice
-  v_m := public.tick_battles(v_t + interval '1 hour');
+  -- to its end by the job, an hour on; then nothing closes twice. HER FLEE MAY HAVE GOT HER AWAY IN ROUND 3 ITSELF (the roll is the world's own dice): then the job's round-3 call
+  -- above is the one that closed it, and the call an hour on closes nothing. Either way it is closed by exactly one of the two.
+  v_m := v_m3 + public.tick_battles(v_t + interval '1 hour');
   select count(*) into v_i from public.events e where e.player_id = p and e.kind = 'BATTLE_REPORT' and (e.payload ->> 'battle_id')::uuid = v_bat;
   v_x := cmd.battle_stance(v_bat, 'FIGHT');
   if v_m is distinct from 1 or v_i is distinct from 1 or v_x ->> 'error_code' is distinct from 'E_BATTLE_OVER'

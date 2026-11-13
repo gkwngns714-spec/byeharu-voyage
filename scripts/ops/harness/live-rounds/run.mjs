@@ -1,6 +1,6 @@
 // run.mjs — scenes on the LOCAL cached world (PGlite) for 0357 (a battle is fought round by round). LOCAL ONLY; not in CI.
 //
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/live-rounds/run.mjs [--apply] [--dump=<dir>] [--fns=<a;b>] [--proofs=60,56] [--notes] <scene.sql> [...]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/live-rounds/run.mjs [--apply] [--dump=<dir>] [--fns=<a;b>] [--proofs=60,56] [--after=<dir>] [--notes] <scene.sql> [...]
 //
 // Restores the cached world at the head before 0357 (never from zero; the cache is only read), then, in ONE transaction that is
 // ROLLED BACK: applies 0357 when --apply is given, writes the live bodies of the functions 0357 cuts (and any named by --fns) to
@@ -40,6 +40,14 @@ if (arg('proofs')) {
     const t = Date.now()
     await db.exec(file, { onNotice })
     say(`applied ${mine} in ${Date.now() - t} ms (committed in this throwaway world)`)
+  }
+  // --after=<dir>: the migrations of a tree that is ahead of this one (a batch branch), applied after 0357 in name order, so a proof can be run beneath them
+  if (arg('after')) {
+    for (const n of (await readdir(arg('after'))).filter((x) => x.endsWith('.sql')).sort()) {
+      const t = Date.now()
+      await db.exec((await readFile(path.join(arg('after'), n), 'utf8')).replaceAll('\r', ''), { onNotice: () => {} })
+      say(`applied after it: ${n} in ${Date.now() - t} ms`)
+    }
   }
   const all = await readdir('scripts/db/proofs')
   for (const n of arg('proofs').split(',')) {

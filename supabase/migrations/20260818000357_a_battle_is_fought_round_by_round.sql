@@ -270,7 +270,7 @@ $n$    v_fought := g;
     -- 0357: a called ship comes on the sheet at her round, whole; and the stance of the side that closes for this round
     if v_late then
       for i in 1 .. v_na loop
-        if a_from[i] = g then
+        if a_from[i] > 1 and a_from[i] = g then   -- only a ship that was called: a hull of round 1 is counted where the sides are read
           a_hull[i] := a_hull0[i];
           v_h0a := v_h0a + a_hull0[i];
           v_sa := greatest(v_sa, coalesce((p_a -> (i - 1) ->> 'sighting')::numeric, 0));
@@ -1078,6 +1078,11 @@ $f$;
          -- at her round she is there whole: the side's hull left is at least hers, less what that round took
          or exists (select 1 from jsonb_array_elements(v_f -> 'rounds') e where (e ->> 'round')::int = 3 and (e -> 'a' ->> 'left')::numeric + (e -> 'b' ->> 'dealt')::numeric < (v_g -> 1 ->> 'hull')::numeric - 0.01) then
         raise exception '0357 self-assert FAIL: a called ship fought before her round, or was not there at it: %', v_f;
+      end if;
+      -- the side's starting hull is each hull once: those there from the first round, and she from her own round if the fight came to it
+      if (v_f -> 'hull' ->> 'a_start')::numeric is distinct from
+           (select sum((e ->> 'hull')::numeric) from jsonb_array_elements(v_g) e where coalesce((e ->> 'from')::int, 1) <= greatest(1, (v_f ->> 'rounds_fought')::int)) then
+        raise exception '0357 self-assert FAIL: with a called ship the side''s starting hull is not each hull once: % of %', v_f -> 'hull', v_g;
       end if;
       v_f := public.fight_sides(c_seed, v_x.d, jsonb_set(v_x.a, '{1,from}', '99'::jsonb), v_x.b, '{}'::jsonb);
       if v_f -> 'hull_lost' -> 'a' ? (v_x.a -> 1 ->> 'id') or (v_f -> 'board' ->> 'a_crew')::numeric > (v_x.a -> 0 ->> 'crew')::numeric + (v_x.a -> 2 ->> 'crew')::numeric then
