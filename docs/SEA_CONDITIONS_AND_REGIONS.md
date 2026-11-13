@@ -545,8 +545,26 @@ LOCAL answer (first estimate):
 | The seas that close them | Indian Ocean crossing 72, Philippine Sea 66, Western Ocean 54, the Cape 31, Tasman 10, South Pacific 10, North Pacific 5, Roaring Forties 4 |
 | Harbours no merchant loop would still call at | 18: AMB BND CPT DIL HAG HAN HIR HOB JAF KOL MAN PLO QUE STA SYD TER TID YEO |
 
-The design's section 4 estimated 548 closed loops from the 2026-10-20 export. Today's loops are different loops (the planner has re-planned
-them since, 0186 to 0341): 179 is today's LOCAL figure and prod's own is the one that counts.
+The design's section 4 estimated 548 closed loops from the 2026-10-20 export. The local world's loops are the roster as founded, at lap 0:
+179 is its figure. One planning pass with the rule dark moves merchants onto far loops and leaves 468 closed, so **prod, where the planner
+has run for weeks, will read nearer 468 to 548 than 179**. Prod's own figure is the one that counts.
+
+**The "no open loop" simulation** (0377's `scripts/ops/harness/sea-merchants/sim.mjs`; LOCAL, every one of the 837 merchants planned once
+at a lap start by the real `public.npc_plan`, dark and then lit):
+
+| Hull size | Fleets | Closed loops before | Dark pass: closed after, laid up | Lit pass: closed after, laid up |
+|---|---|---|---|---|
+| 1 | 158 | 2 | 110, 8 | 0, 15 |
+| 2 | 497 | 92 | 271, 37 | 0, 37 |
+| 3 | 182 | 85 | 87, 8 | 0, 10 |
+| all | 837 | 179 | 468, 53 | **0**, 62 |
+
+Lit, every merchant on a closed loop was moved to an open one, no plan failed and none strands. Nine more merchants wait in port lit than
+dark (seven small hulls, two naus): their only paying loops crossed closed water; they are laid up by the rule that already exists (0181)
+and re-planned at every tend. Fourteen harbours lose every merchant call after the pass (AMB BND CPT DIL GAL HAG HOB KOL MAK OLD PLO SYD
+TER TID: 115 of 3,302 stops, 3.5 %), and merchant stops fall by 10 % in all (2,857 lit against 3,175 dark). A lap start costs the same lit
+as dark (214 ms against 230 ms on PGlite) because the seas a course crosses are remembered (`public.npc_course_zones_memo`). A design
+correction found there: the live planner did not review an unsailable loop at once, as section 4 says; 0377 makes it do so, lit only.
 
 **The ladder, measured** (harbours a fleet lying at Lisbon can sail to, hop by hop, with no navigation; LOCAL, from `public.sea_leg_asks`):
 
@@ -610,7 +628,7 @@ first wall. Not built: it reverses an approved number and it is the owner's to c
 | # | Gap found | What was done |
 |---|---|---|
 | 1 | **A company founded far from Europe is born walled in.** Eleven countries' capitals lie in seas that ask a title (Japan's asks 7; the Brethren's Port Royal asks 4). S5 was not built, so a new company there could not leave her quay. | 0376: while the sea conditions bite, `cmd.found_house` refuses a country in `public.far_powers()` (derived from the sea table, no new column) with `E_FAR_POWER` and the open countries as fixes; the Start sheet does not offer them. Dark, founding is unchanged. This is S5 by derivation, and it covers the Brethren too. |
-| 2 | **A fleet already lying in a sea that closes cannot leave it.** LOCAL: 4 of 13. The design said "fleets at sea finish their trip" and stopped there. | The lighting file (0378) refuses to light while any human fleet lies in, or sails for, a sea that would refuse her. The lead reads `impact.sql` first; a fleet in that state is sailed home (or her company levelled) before the window. A standing rule for after the light ("a fleet may always sail to water that asks no more than where she lies") is a later slice, S7 below. |
+| 2 | **A fleet already lying in a sea that closes cannot leave it.** LOCAL: 4 of 13. The design said "fleets at sea finish their trip" and stopped there. | The lighting step (0378) refuses to light while any human fleet lies in, or sails for, a sea that would refuse her. The lead reads `impact.sql` first; a fleet in that state is sailed home (or her company levelled) before the window. A standing rule for after the light ("a fleet may always sail to water that asks no more than where she lies") is a later slice, S7 below. |
 | 3 | **The fleet's figure is an average, and a company cannot split a fleet** while `fleet_room_bite` is dark: a caravel that sails with the starter barca reads 19 and cannot cross the Doldrums. | 0378 refuses to light unless `fleet_room_bite` is true. Light fleet room first. |
 | 4 | **Nobody could see the figures or the reason.** No remastered screen printed a wave resistance; a refusal was the server's English sentence; a far city behind a closed sea read "too far". | 0376 + the client: see 10.5. |
 | 5 | **Merchants roamed seas closed to players** (row 166: "NPCs under the same rule"). | 0377 (S3), behind its own switch, lit in its own window after the players' (10.7). |
@@ -642,7 +660,7 @@ figures); the client never compares a number.
 
 | Slice | What | Why it can wait | Size |
 |---|---|---|---|
-| S4 | 24 far-trader houses with size-4 and size-5 hulls | Needed only once S3 is lit and only for the harbours that then lose every merchant (LOCAL: 18). Players are unaffected by its absence at the players' light. It must be measured on prod's loops first. | medium (data + founding path + proof) |
+| S4 | 24 far-trader houses with size-4 and size-5 hulls | Needed only once S3 is lit and only for the harbours that then lose every merchant (LOCAL: 14 after a planning pass, 3.5 % of merchant stops). Players are unaffected by its absence at the players' light. It must be measured on prod's loops first. | medium (data + founding path + proof) |
 | S5, the column | `great_powers.starting`, `nations[].starting` | Replaced by the derived rule of 10.4 (1). | none |
 | S6 + C5 | The capital, `cmd.move_capital` | A new verb with a 20,000 d. price; nothing about lighting needs it. | medium |
 | S7 (new) | **The way home**: a leg is never refused when every sea it touches asks no more than the sea she lies in. So a fleet whose wave drops abroad (a ship lost, a fitting unmounted) can always sail back toward easier water. | The lighting guard covers the day of the light. After it, a company can only strand herself by her own act, and is told why. Wanted before attacks are lit (a sunk nau can leave a barca alone in Asia). | small to medium (the gate, `reach_passage`, `sea_routes`: three cut bodies) |
@@ -659,8 +677,13 @@ figures); the client never compares a number.
    closed to her; every human fleet can reach her capital; no company's capital sea is closed to her title; no human standing route has a
    closing leg (or its owner has been told); and the owner has seen the "company" row of his own company (title 10 by the last read: every
    title wall is open to him, so his fleets' wave resistance decides where he may go).
-5. Light `sea_conditions_bite` with 0378 (its guards re-check step 4 inside the deploy and fail closed). 30-minute after-check.
-6. Merchants: run `impact.sql` again for the "merchants" rows; light `sea_conditions_bite_npc` with 0379 in its own window when "closed
-   loops with no open leg from home" is 0. Then decide S4 from "far_harbours".
+5. Light `sea_conditions_bite`. 0378 does NOT throw the switch when it is deployed: it installs `public.sea_conditions_ready()` (the
+   guard figures, read-only) and `public.sea_conditions_light()`, a step the lead calls once. The step re-checks step 4 itself and refuses,
+   naming each failed guard, or lights the switch and posts the news row. (A migration that raised at apply would fail on every CI world,
+   where fleet room is dark and probe fleets lie at Accra and Acapulco; one that lit at apply would close the far sails of every older
+   proof.) 30-minute after-check.
+6. Merchants: run `impact.sql` again for the "merchants" rows; light `sea_conditions_bite_npc` with 0379's step
+   (`public.sea_conditions_npc_light()`) in its own window, after the players' light, when no merchant is left without a leg her hull can
+   hold. Then decide S4 from the harbours that lost their callers.
 
 Rollback of either light is the switch set false: every answer returns to its pre-image at once (asserted dark in 0216, 0376 and 0377).
