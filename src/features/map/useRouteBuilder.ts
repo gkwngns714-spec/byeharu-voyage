@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { seaWallWords } from '../../components/ui'
+import { getLocale } from '../../lib/i18n'
 import { whereabouts } from '../../domain/fleet'
 import { proposeCourse, sailTarget } from '../../domain/passage'
 import { routeOfFleet } from '../../domain/route'
@@ -189,7 +191,11 @@ export function useRouteBuilder(fleet: FleetView | null) {
       keptLegs.map((l) => ({ text: `SAIL ${l.to}`, path: l.path })),
     )
     setSending(false)
-    if (!done) edit(() => ({ refusal: useWorld.getState().refusal?.sentence ?? null }))
+    if (!done) {
+      const said = useWorld.getState().refusal
+      // a sea closed to her is said in the one wording (components/ui/seaWallWords.ts), every other refusal in the server's
+      edit(() => ({ refusal: said?.sea ? seaWallWords(getLocale(), said.sea) : (said?.sentence ?? null) }))
+    }
     return done
   }
 

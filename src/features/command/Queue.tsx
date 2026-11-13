@@ -7,6 +7,7 @@ import { usePress } from '../../live/usePress'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { FleetView, QueuedOrder } from '../../lib/rpc'
 import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
+import { seaWallOf } from '../../lib/rpc'
 
 // HER QUEUE, AS ROWS ON THE SHEET — the whole of what COMMAND shows about a fleet now.
 //
@@ -91,7 +92,7 @@ export function Queue({
   return (
     <>
       {failedRefusal && (
-        <Note tone="danger" code={failedRefusal.code} figures={failedRefusal.figures} data-testid="queue-halt">
+        <Note tone="danger" code={failedRefusal.code} figures={failedRefusal.figures} sea={seaWallOf(failedRefusal)} data-testid="queue-halt">
           Order {failed?.seq} was refused: {failedRefusal.sentence.replace(/\.$/, '')}. Anything that depended on it was cancelled;
           {' '}{fleet.name} is free.
         </Note>

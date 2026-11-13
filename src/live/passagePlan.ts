@@ -22,7 +22,7 @@ export async function planPassage(
   portByCode: Record<string, SnapshotPort>,
 ): Promise<PassagePlan | null> {
   const direct = sailLegs(fleet, nav, portByCode, [dest])
-  if (direct.length !== 1) return { kind: 'shut', from: null, to: dest, refusal: null, noStops: false }
+  if (direct.length !== 1) return { kind: 'shut', from: null, to: dest, refusal: null, noStops: false, sea: null }
   const first = await worldRouteLegs(fleet.id, passageAsk(direct))
   if (!first.ok || !first.value) return null
   const plan = passageOf(direct, first.value.legs)
@@ -32,7 +32,7 @@ export async function planPassage(
 
   const chain = sailLegs(fleet, nav, portByCode, [...via, dest])
   if (chain.length !== via.length + 1) {
-    return { kind: 'shut', from: chain[chain.length - 1]?.to ?? direct[0].from, to: [...via, dest][chain.length], refusal: null, noStops: false }
+    return { kind: 'shut', from: chain[chain.length - 1]?.to ?? direct[0].from, to: [...via, dest][chain.length], refusal: null, noStops: false, sea: null }
   }
   const second = await worldRouteLegs(fleet.id, passageAsk(chain))
   if (!second.ok || !second.value) return null

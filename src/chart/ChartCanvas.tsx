@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { CHART_WIDTH, sheetCopies, type Point, type ViewBox } from '../lib/geo'
+import { ClosedSeasLayer } from './ClosedSeasLayer'
 import { CoastlineLayer } from './CoastlineLayer'
 import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
@@ -132,6 +133,7 @@ export function ChartCanvas({
   portFlags = null,
   islets = NO_ISLETS,
   fights = NO_FIGHTS,
+  closedSeas = null,
   selection,
   keepOut,
   plannedD = null,
@@ -161,6 +163,9 @@ export function ChartCanvas({
   islets?: readonly Point[]
   /** 0364 — the battles being fought: each is ringed (./fightRings.ts). Absent on a chart that shows none. */
   fights?: readonly MapFight[]
+  /** The seas closed to the fleet in hand, as a picture (./ClosedSeasLayer.tsx): shaded under every mark. Null on a
+   *  chart that shades none, which is every chart while the sea conditions are dark. */
+  closedSeas?: { url: string; count: number } | null
   selection: MapSelection
   /**
    * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
@@ -417,6 +422,7 @@ export function ChartCanvas({
           const fullPorts = marks.filter((m) => m.full).map((m) => m.port)
           return (
             <g key={k} transform={k === 0 ? undefined : `translate(${k * CHART_WIDTH} 0)`} data-sheet-copy={k}>
+              {closedSeas && <ClosedSeasLayer url={closedSeas.url} count={closedSeas.count} />}
               <TracksLayer model={model} unitsPerPx={unitsPerPx} lanes={laneBand} />
               {plannedD && (
                 <path

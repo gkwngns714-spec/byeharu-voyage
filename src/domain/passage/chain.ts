@@ -20,7 +20,7 @@
 //
 // Pure: no React, no store, no call. `live/passagePlan.ts` asks the server; the Map's place tray prints the answer.
 
-import type { PlanLine, RouteLeg, RouteLegAsk, ServedRefusal, TripCost } from '../../lib/rpc'
+import { seaWallOf, type PlanLine, type RouteLeg, type RouteLegAsk, type SeaWall, type ServedRefusal, type TripCost } from '../../lib/rpc'
 import type { PlanLeg } from './legs'
 
 export type PassagePlan =
@@ -46,6 +46,10 @@ export type PassagePlan =
       refusal: ServedRefusal | null
       /** Too far or past her stores in one go, and the server names no harbours between. */
       noStops: boolean
+      /** A SEA CLOSED TO HER is what stops it (the server's own figures, lib/rpc/seaWall.ts): the leg that is shut is
+       *  shut by a sea, or it is too far in one go and the sea on the direct course is why no harbours between open it
+       *  (world.route_legs `sea`, 0376). Null when the sea is not the reason. */
+      sea: SeaWall | null
     }
 
 /** The codes of a leg shut by its LENGTH or its STORES: the two a call on the way can open (0346 serves `via` for them). */
@@ -64,7 +68,8 @@ export function passageOf(legs: readonly PlanLeg[], served: readonly RouteLeg[])
   const shut = served.findIndex((s) => s.shut !== null)
   if (shut >= 0) {
     const s = served[shut]
-    return { kind: 'shut', from: legs[shut].from, to: legs[shut].to, refusal: s.shut, noStops: legs.length === 1 && shutByReach(s.shut?.code) && !(s.via && s.via.length > 0) }
+    const noStops = legs.length === 1 && shutByReach(s.shut?.code) && !(s.via && s.via.length > 0)
+    return { kind: 'shut', from: legs[shut].from, to: legs[shut].to, refusal: s.shut, noStops, sea: seaWallOf(s.shut) ?? (noStops ? seaWallOf(s.sea) : null) }
   }
   let days = 0
   let cost = 0

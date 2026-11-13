@@ -742,6 +742,9 @@ const TABLE = {
   // resistance it asks, the caller's title, each of her fleets' wave, and whether the conditions bite yet. A
   // READ, no arguments (the company is the caller's). The Codex "Seas" face and the map's shading (C3) read it.
   worldSeaConditions: { schema: 'world', fn: 'sea_conditions', args: [] },
+  // 0376 — THE SEAS ON THE CHART: which zone every cell of the sea raster is in, run-length packed by row. World data,
+  // the same for every caller; the map's shading and a press on open water read it.
+  worldSeaZoneMap: { schema: 'world', fn: 'sea_zone_map', args: [] },
   // 0175 — A PLAN'S LINES AS ONE (docs/COMMAND_DESK.md §7.4): every line parsed by the one grammar,
   // queued by the one enqueuer, all or none. The plan builder's "Queue it once".
   cmdIssueLines: {

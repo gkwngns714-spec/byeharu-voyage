@@ -69,6 +69,7 @@ import {
   type MapPort,
   type MapSelection,
   type PathStop,
+  useClosedSeasVeil,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
 import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter } from '../../components/ui'
@@ -77,6 +78,8 @@ import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
+import { useFleetSeas, useSeaZoneCells } from '../../live/useFleetSeas'
+import { zoneAt } from '../../domain/seas'
 import { RouteBar } from './RouteBar'
 import { RouteEditor } from '../../live/RouteEditor'
 import { useRouteBuilder } from './useRouteBuilder'
@@ -240,6 +243,13 @@ function Chart({
   const armadaList = useArmadas().armadas
   const fleets = useMemo(() => armadaMarks(mapFleetsOf(fleetViews), armadaList), [fleetViews, armadaList])
   const [selection, setSelection] = useState<MapSelection>(null)
+
+  // THE SEAS CLOSED TO THE FLEET IN HAND (docs/SEA_CONDITIONS_AND_REGIONS.md C3): shaded on the chart while the sea
+  // conditions bite. Which seas is the server's verdict (useFleetSeas), which cells its zone raster (0376).
+  const seas = useFleetSeas()
+  const seaCells = useSeaZoneCells(seas.bite && seas.judged)
+  const veil = useClosedSeasVeil(seaCells, seas.closed)
+  const closedSeas = useMemo(() => (veil ? { url: veil, count: seas.closed.size } : null), [veil, seas.closed])
 
   // HER WHOLE PATH WHEN ONE OF YOURS IS PRESSED (owner row 225): the leg she is on is her track; the queued stops
   // after it, or her standing route's lap, are drawn as the planned course with each stop numbered.
@@ -459,6 +469,15 @@ function Chart({
     if (selection?.kind === 'sea') return { dest: { kind: 'sea' as const, at: selection.at }, port: null }
     return null
   }, [selection, portsByCode])
+  // THE SEA THE PLACE IS IN, and the wall in it for the fleet in hand: named on the tray, so a press on shaded water
+  // says why it is shaded. A harbour is judged at its roads, as the sail door judges it.
+  const placeSea = useMemo(() => {
+    if (!place || !seaCells) return null
+    const at = place.port ? place.port.roadstead : place.dest.kind === 'sea' ? place.dest.at : null
+    const code = at ? zoneAt(seaCells, at.lat, at.lon) : null
+    const row = code === null ? null : (seas.rows.find((r) => r.zone.code === code) ?? null)
+    return row ? { name: row.zone.name, wall: row.wall } : null
+  }, [place, seaCells, seas.rows])
   const placePortCode = place?.port?.code ?? null
   const placePortId = placePortCode ? (snapshotPorts.find((p) => p.code === placePortCode)?.id ?? null) : null
   // A MERCHANT OPENED FROM THE CITY'S LIST (2026-10-13) is remembered WITH the harbour she was
@@ -584,6 +603,7 @@ function Chart({
           portFlags={portFlags}
           islets={backdrop.islets}
           fights={fights}
+          closedSeas={closedSeas}
           selection={selection}
           plannedD={routeView ? routeD : pathD}
           pathStops={routeView ? routeStops : shipPath.stops}
@@ -726,6 +746,7 @@ function Chart({
         <SendFleet
           key={place.dest.kind === 'port' ? place.dest.code : pointToken(place.dest.at)}
           dest={place.dest}
+          sea={placeSea}
           line={place.port ? portLine(model, place.port, harbourRows, portNationOf(allegiance, place.port.code)) : t('map.openSea')}
           harbour={
             place.port && (

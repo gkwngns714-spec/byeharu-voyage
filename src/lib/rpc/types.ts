@@ -1859,6 +1859,8 @@ export interface SeaZone {
     lon_min: number | null
     lon_max: number | null
   }>
+  /** 0376 — how many harbours lie in it. Absent before 0376. */
+  harbours?: number
 }
 
 /** 0215 — `world.sea_conditions()`: the zones, the caller's title, her fleets' wave, and the switch. The client
@@ -1870,9 +1872,32 @@ export interface SeaConditions {
   title: { level: number; name: string | null; max: number } | null
   titles: Array<{ level: number; name: string }>
   zones: SeaZone[]
-  fleets: Array<{ id: string; name: string; wave: number | null }>
+  fleets: Array<{
+    id: string
+    name: string
+    wave: number | null
+    /** 0376 — the harbour she lies at; null at sea. */
+    port?: string | null
+    /** 0376 — the seas that refuse her, by zone code: `public.sea_refusal`'s own figures for that sea (read them with
+     *  `readSeaWall`). A sea not named is open to her. Served dark too; `bite` says whether it binds. Absent before 0376. */
+    seas?: Record<string, unknown>
+  }>
+  /** 0376 — the countries whose capital's sea asks a title above the first: no company is founded there while the
+   *  conditions bite. Absent before 0376. */
+  far_powers?: string[]
   /** How often a course is sampled for the zones it crosses, in nautical miles (`sea_sample_nm`). */
   sample_nm: number
+}
+
+/** 0376 — `world.sea_zone_map()`: the zone of every cell of the sea raster. Row 0 is the north edge, column 0 is
+ *  180° W, a cell is `cell_deg` degrees. `runs[row]` is that row as `value:count,value:count,…`; `codes[value]` is the
+ *  zone's code, null where the cell is in no zone (land). */
+export interface SeaZoneMap {
+  cols: number
+  rows: number
+  cell_deg: number
+  codes: Array<string | null>
+  runs: string[]
 }
 
 /** The signed-in house, reading itself (0014). */
@@ -4154,6 +4179,9 @@ export interface RouteLeg {
   supplies: { days: number; cost: number; fits: boolean } | null
   shut: ServedRefusal | null
   via: string[] | null
+  /** 0376 — lit only: the sea on the direct course that refuses her, when the leg is too far in one go and no chain
+   *  of harbours opens it. Absent before 0376. */
+  sea?: ServedRefusal | null
 }
 
 /** 0346 — `world.route_legs`: the legs in the order asked. null when the fleet is not yours. */
