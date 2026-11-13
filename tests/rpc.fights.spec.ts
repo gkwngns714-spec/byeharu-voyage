@@ -19,6 +19,10 @@ import { RAID_LOG } from './raidWorld.fixture'
 // `attack_enabled` is lit in this throwaway world only (memory://), as rpc.battle.spec.ts lights it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+// ONE STORY, TOLD IN ORDER: each test stands on the one before it (the battle the second opens is the one the third and fourth read). Serial, so a failure
+// skips what follows instead of failing it on a world the next worker has built anew.
+test.describe.configure({ mode: 'serial' })
+
 let db: LocalDb
 let target: string
 let attacker: string
@@ -35,6 +39,11 @@ test.beforeAll(async () => {
   test.setTimeout(360_000)
   db = await openLocalDb({ loadChain, loadImage: builtWorldImage, dataDir: 'memory://', log: () => {} })
   setBackend(createLocalBackend(db))
+  // EVERY BUILT WORLD HAS ITS OWN DICE (0031's world_secret; docs/dev-log/2026-11-12-live-rounds.md): nothing below may hold on one world's dice only. To prove it,
+  // SPEC_WORLD_SECRET gives this throwaway world another secret (scripts/ops/harness/fight-rings/dice.sh runs it under many).
+  if (process.env.SPEC_WORLD_SECRET) {
+    await db.callAs(`with u as (update public.world_config set value = to_jsonb($1::text) where key = 'world_secret' returning 1) select count(*)::int as result from u`, [process.env.SPEC_WORLD_SECRET])
+  }
   await db.callAs(`select cmd.found_house('Watcher Spec', 'PRT') as result`)
   await db.callAs(`with t as (update public.port_treasury set ducats = 50000000, reserve = 0 returning 1) select count(*)::int as result from t`)
   await light(['city_treasury_enabled', 'convoys_enabled'], true)
@@ -109,11 +118,18 @@ test('lit: a battle another company opened is on the watcher’s map, with its p
   expect(card.sides[0].nation).toBe('PRT')
   expect(card.sides[1].company).toBeNull()
   expect(card.sides[1].nation).not.toBe('PRT')
-  // where each lies: the ship set upon at the battle's place, the attacker a fifth of a degree north of it
+  // WHERE EACH LIES, AS THE READ GUARANTEES IT:
+  //   · the attacker lies at her anchor, and the read serves that anchor to the digit (voyage.fleet_point of a fleet at anchor is her stored lat and lon);
+  //   · the ship set upon is HELD at the battle's place: the place is voyage.position at the open and her point is voyage.position now, both rounded to 4 places, and a
+  //     held ship does not move, so the two agree to within one unit of that rounding each way.
+  // NOT asserted: how far the anchor is from the battle's place. The anchor was laid by the ship's point in beforeAll and the battle opened later, and a cargo ship
+  // under sail covers about 0.02 degrees a real second (960x): that distance is the runner's speed, not a rule (it read 0.1993 for 0.2 on CI, 2026-11-13).
   const [a, d] = card.sides.map((s) => s.at as [number, number])
-  expect(Math.abs(d[0] - card.lat)).toBeLessThan(0.01)
-  expect(Math.abs(d[1] - card.lon)).toBeLessThan(0.01)
-  expect(a[0] - card.lat).toBeCloseTo(0.2, 3)
+  const anchor = await db.callAs<{ lat: number; lon: number }>(`select jsonb_build_object('lat', f.lat, 'lon', f.lon) as result from public.fleets f where f.id = $1`, [attacker])
+  expect(a).toEqual([anchor.lat, anchor.lon])
+  expect(Math.abs(d[0] - card.lat)).toBeLessThanOrEqual(0.0002)
+  expect(Math.abs(d[1] - card.lon)).toBeLessThanOrEqual(0.0002)
+  expect(a[0]).toBeGreaterThan(card.lat)
   // and the ring the chart draws from exactly this goes round both, at a close zoom and a wide one
   const [fight] = mapFightsOf(read.value.fights)
   for (const upp of [0.002, 0.2]) {
@@ -258,11 +274,13 @@ test('her own raid: a PIRATES day that kept its log is on HER map for 300 s, wit
 })
 
 test('a navy fight kept by the server is on EVERY map for 300 s, with its two ships and its log cut to nine keys', async () => {
-  // the keeper on a real fight of two fleets of this world (the real pass and old-against-new are proof 66's)
+  // the keeper on a real fight (the engine's own answer) of two whole hulls written here, named after two fleets of this world: what the battle above left of
+  // those fleets' own hulls is the dice's, and this test is about the read (the real pass and old-against-new are proof 66's)
+  const navyHull = JSON.stringify([{ id: '00000000-0364-4000-8000-0000000000d1', name: 'Spec Galion', tier: 4, hull: 2400, maxd: 2400, crew: 140, attack: 260, accuracy: 48, reach: 40, armour: 44, sighting: 22 }])
+  const pirateHull = JSON.stringify([{ id: '00000000-0364-4000-8000-0000000000d2', name: 'Spec Xebec', tier: 2, hull: 900, maxd: 900, crew: 60, attack: 120, accuracy: 50, reach: 40, armour: 15, sighting: 25 }])
   await db.callAs(
-    `select public.navy_fight_keep($1::uuid, $2::uuid, voyage.fleet_hulls($2::uuid), voyage.fleet_hulls($1::uuid),
-                                    public.fight_sides($1::uuid, 7, voyage.fleet_hulls($2::uuid), voyage.fleet_hulls($1::uuid), '{}'::jsonb), now() - interval '10 seconds') is null as result`,
-    [attacker, target],
+    `select public.navy_fight_keep($1::uuid, $2::uuid, $4::jsonb, $3::jsonb, public.fight_sides($1::uuid, 7, $4::jsonb, $3::jsonb, '{}'::jsonb), now() - interval '10 seconds') is null as result`,
+    [attacker, target, navyHull, pirateHull],
   )
   const read = await worldFights()
   expect(read.ok, JSON.stringify(read)).toBe(true)
@@ -272,7 +290,8 @@ test('a navy fight kept by the server is on EVERY map for 300 s, with its two sh
   const card = navy[0]
   expect(card.mine).toBeNull()
   expect(card.status).toBe('RESOLVED')
-  expect(card.size).toBe(card.ships)
+  expect(card.size).toBe(2)
+  expect(card.ships).toBe(2)
   expect(card.sides.map((s) => [s.fleet, s.side, s.kind])).toEqual([[attacker, 'ATTACKER', 'NAVY'], [target, 'DEFENDER', 'PIRATE']])
   expect('loss' in card).toBe(false)
   const log = parseFightLog(card.log)
