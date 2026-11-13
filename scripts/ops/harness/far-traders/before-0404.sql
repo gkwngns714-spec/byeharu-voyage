@@ -17,7 +17,7 @@ select (select max(version) from supabase_migrations.schema_migrations) as head,
        (select count(*) from public.ports p where p.kind = 'HARBOUR' and p.code in ('AMB','BND','CPT','DIL','GAL','HAG','HOB','KOL','MAK','OLD','PLO','STG','SYD','TER','TID')) as harbours_found,
        (select count(*) from public.port_allegiance a join public.great_powers g on g.nation_id = a.nation_id join public.ports p on p.id = a.port_id
          where a.home and g.pirate and p.code in ('AMB','BND','CPT','DIL','GAL','HAG','HOB','KOL','MAK','OLD','PLO','STG','SYD','TER','TID')) as pirate_homes_among_the_15,
-       (select string_agg(pr.proname || ' ' || pr.provolatile, ', ' order by pr.proname) from pg_proc pr join pg_namespace n on n.oid = pr.pronamespace
+       (select string_agg(pr.proname || ' ' || pr.provolatile::text, ', ' order by pr.proname) from pg_proc pr join pg_namespace n on n.oid = pr.pronamespace
          where n.nspname = 'public' and pr.proname in ('npc_known_legs', 'npc_sea_shut', 'npc_course_zones', 'sea_refusal', 'sea_judge')) as volatility,
        (select count(*) from public.npc_fleets) as fleets,
        (select value from public.world_config where key = 'npc_fleet_max') as npc_fleet_max,
