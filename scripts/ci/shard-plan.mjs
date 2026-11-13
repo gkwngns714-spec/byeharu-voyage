@@ -135,7 +135,7 @@ if (isMain) {
   }
   const shards = planShards(tests, n, weights)
   shards.forEach((s, k) =>
-    console.log(`shard ${k + 1}/${n}: ~${Math.round(s.seconds / 60)} min of measured test time, ${s.tests} test(s), ${s.entries.length} group(s)`),
+    console.log(`shard ${k + 1}/${n}: ~${Math.round(s.seconds / 60)} min of measured test time (summed over its tests: two workers take about half on the clock), ${s.tests} test(s), ${s.entries.length} group(s)`),
   )
   const mine = shards[i - 1]
   if (mine.tests === 0) {

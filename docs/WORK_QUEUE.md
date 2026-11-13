@@ -1,5 +1,7 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-11-13 CI (row 325, branch `ci-six`): the browser suite's big pool runs on six runners instead of three, with every spec file timed again; about 21 minutes a shard expected instead of 33-40. CI only.
+
 ## HAND-OFF 2026-11-13 (PC gkwng → another computer): continue from here
 
 **To resume (in order):**
