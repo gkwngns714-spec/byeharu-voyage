@@ -78,6 +78,21 @@ function Attack({ target }: { target: string }) {
         {/* the pre-fight read stands until the press; after it the battle card below says all of it live (her word, the navy's own clock), so the frozen rows go */}
         {now?.preview && !started && (
           <>
+            {/* 0395: a fleet of an armada attacks with every fleet of hers that is there; the word below is read with all of them */}
+            {now.preview.armada && (
+              <Row
+                label={t('fight.armada')}
+                value={<span className="break-words text-right" data-testid="cargo-attack-armada-name">{now.preview.armada.name}</span>}
+                data-testid="cargo-attack-armada"
+                data-fleets={now.preview.armada.fleets.length}
+              >
+                <span className="break-words text-t-caption text-ink-muted">
+                  <span data-testid="cargo-attack-armada-size">{t('fight.fleetsShips', { f: formatInt(now.preview.armada.fleets.length), s: formatInt(now.preview.armada.ships) })}</span>
+                  {' · '}
+                  <span data-testid="cargo-attack-armada-fleets">{now.preview.armada.fleets.join(' · ')}</span>
+                </span>
+              </Row>
+            )}
             <Row label={t('map.attackFoe')} value={t(`map.attackWord_${now.preview.word}`)} data-testid="cargo-attack-word" />
             <Row label={t('map.funds')} value={t(`map.attackFunds_${now.preview.funds}`)} data-testid="cargo-attack-funds" />
             <Row label={t('map.attackRange')} value={t('map.attackMiles', { n: formatInt(now.preview.nm) })} hairline={now.preview.navy_minutes != null} />
