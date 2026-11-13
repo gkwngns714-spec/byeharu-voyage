@@ -133,6 +133,8 @@ export interface FightRow {
   foePct: number
   /** The chance she rolled to slip that round, in percent; null when she did not run. */
   slipPct: number | null
+  /** 0357: a ship called to the other side came up for THIS round (a navy ship answering a battle): the hull points she brought. Null in every other round. */
+  joined: number | null
 }
 
 const pct = (part: number, whole: number): number => (whole > 0 ? Math.max(0, Math.min(100, Math.round((part / whole) * 100))) : 0)
@@ -145,17 +147,39 @@ function cell(v: FightVolley, unready: boolean, ran: boolean): FightCell {
   return { kind: 'shots', hits: v.hits, fired: v.fired, dealt: v.dealt }
 }
 
+/**
+ * THE OTHER SIDE'S HULL A ROUND IS MEASURED AGAINST. The log's `foe.hull` is every hull on the sheet, and a ship CALLED
+ * to a battle (0333, 0357: a navy ship) is on the sheet only from the round she comes up for. Measured against the whole
+ * sheet, the rounds before her read far too low and then jumped (seen in a browser, 2026-11-13: 29 %, 21 %, then 82 %).
+ * A round in which the other side's hull ROSE is a round a ship came up for: nothing else can raise it. What she brought
+ * is that rise plus what was shot away in the same round, and the rounds before it are measured without her. The
+ * server's figures are not changed and no outcome is computed: this only says what each bar is a share OF.
+ */
+function foeSheet(log: FightLog): { whole: number[]; joined: (number | null)[] } {
+  const n = log.rounds.length
+  const joined: (number | null)[] = log.rounds.map((r, i) => {
+    if (i === 0) return null
+    const rise = r.foeHull - log.rounds[i - 1].foeHull
+    return rise > 0.5 ? rise + r.you.dealt : null
+  })
+  const whole: number[] = new Array<number>(n).fill(log.foe.hull)
+  for (let i = n - 2; i >= 0; i--) whole[i] = Math.max(log.rounds[i].foeHull, whole[i + 1] - (joined[i + 1] ?? 0))
+  return { whole, joined }
+}
+
 /** The log as rows: which figure each cell prints. The side that saw second is caught unready in round 1. */
 export function fightRows(log: FightLog): FightRow[] {
   const full = log.you.reduce((n, s) => n + s.full, 0)
-  return log.rounds.map((r) => ({
+  const foe = foeSheet(log)
+  return log.rounds.map((r, i) => ({
     round: r.round,
     range: r.range,
     you: cell(r.you, r.round === 1 && log.first === 'THEY', r.slip !== null),
     them: cell(r.them, r.round === 1 && log.first === 'YOU', false),
     hullPct: pct(r.hull, full),
-    foePct: pct(r.foeHull, log.foe.hull),
+    foePct: pct(r.foeHull, foe.whole[i]),
     slipPct: r.slip === null ? null : Math.round(r.slip * 100),
+    joined: foe.joined[i],
   }))
 }
 

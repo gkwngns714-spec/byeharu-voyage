@@ -285,7 +285,9 @@ begin
   -- 0276: the room is HER OWN hold (public.ship_hold_capacity reads world.ship_stats → ship_base),
   -- not the class's — a rolled hull can hold more than her class's figure, so the class column
   -- would understate the room and a "+20" overflow could slip through for a Fine hold.
-  select greatest(1, floor((public.ship_hold_capacity(s.id) - s.water_t - s.food_t) / g.bulk))
+  -- 0369 lit ship_stores_separate: her supplies no longer take cargo room. public.stores_in_hold is the game's own answer to how many of their tuns do (dark all, lit none),
+  -- so the room is right in both worlds.
+  select greatest(1, floor((public.ship_hold_capacity(s.id) - public.stores_in_hold(s.water_t + s.food_t)) / g.bulk))
     into v_room
     from public.ships s
     join public.ship_classes c on c.id = s.class_id
