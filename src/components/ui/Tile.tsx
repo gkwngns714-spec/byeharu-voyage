@@ -134,7 +134,8 @@ export function Tile({
         <span className="flex flex-wrap items-center gap-x-2">{head}</span>
       )}
       {(figure !== undefined || second !== undefined) && (
-        <span className="flex items-baseline justify-between gap-2">
+        // THE TWO FIGURES WRAP RATHER THAN RUN OUT OF THE TILE (2026-11-11): in a 160-px tile "8/20 crew 4 / 189 tons" lost its unit under the next tile.
+        <span className="flex flex-wrap items-baseline justify-between gap-x-2">
           {figure}
           {second}
         </span>
