@@ -1,4 +1,5 @@
 import {
+  KEEP_WORDS_CLASS,
   Card,
   Empty,
   FactsLine,
@@ -228,14 +229,21 @@ export function CityDetail({ portId }: { portId: string }) {
                 return (
                   <Row
                     key={g.code}
+                    // A GOOD'S NAME IS NEVER TURNED INSIDE A WORD (2026-11-13): at 320 px the kind beside it and the 156-px
+                    // figures left the name 21 px ("Balsam of Peru" stood a letter a line). The kind goes under the name where
+                    // the two do not fit, the figures give 32 px back on a glass under 375, and past that the row puts the
+                    // figures under the name (Row, `wholeName`).
+                    wholeName
                     label={
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="min-w-0 break-words text-ink">{goodName(g)}</span>
+                      <span className="flex min-w-0 flex-wrap items-center gap-x-2">
+                        <span className={`${KEEP_WORDS_CLASS} text-ink`} data-testid="stats-city-good-name">
+                          {goodName(g)}
+                        </span>
                         <span className="shrink-0 text-t-caption text-ink-faint">{categoryLabel(g.category)}</span>
                       </span>
                     }
                     value={
-                      <span className="flex items-center gap-3">
+                      <span className="flex items-center gap-3 max-[374px]:gap-2">
                         <Sparkline
                           values={g.spark}
                           tone={move === null || move === 0 ? 'even' : move > 0 ? 'dear' : 'cheap'}
@@ -243,7 +251,7 @@ export function CityDetail({ portId }: { portId: string }) {
                           height={18}
                           label={t('stats.atCity', { name: goodName(g), city: portName(v.city.name), n: g.spark.length })}
                         />
-                        <span className="flex w-24 flex-col items-end">
+                        <span className="flex w-24 flex-col items-end max-[374px]:w-[4.5rem]">
                           <Figure value={g.mid === null ? '—' : formatPriceFigure(g.mid)} />
                           <Figure value={move === null ? '—' : formatPctChange(move)} tone={move === null ? 'faint' : deltaTone(move)} />
                         </span>

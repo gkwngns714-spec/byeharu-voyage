@@ -188,6 +188,9 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
                   label={s.name}
                   value={<Figure value={formatInt(s.hold)} unit={t('trade.tonsUnit')} />}
                   chevron
+                  // at 320 px "Spiegelretourschip" had 101 px beside the hold and was turned inside the word: there the hold
+                  // goes under the name (Row, `wholeName`)
+                  wholeName
                   hairline={false}
                   onClick={() => {
                     setDetent('half')

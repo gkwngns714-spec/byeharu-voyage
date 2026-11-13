@@ -349,9 +349,17 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               {panel}
             </div>
           ) : (
-            <p className="px-4 pt-4 text-t-caption text-ink-faint" data-testid="desk-slot-hint">
-              {t('desk.pickGood')}
-            </p>
+            // THE PANE WITH NO GOOD PRESSED CARRIES HER SHIP (2026-11-13). It was one line, "Press a good.", in a pane 350 px
+            // wide and the whole desk tall: 34 px of it used. The ship block (owner row 233: cargo, crew, wages, stores,
+            // provisions, the buying skills) stood only behind the Orders door; on the wide desk it stands here until a good
+            // is pressed, under the same line. Not while a page is open: the Orders page draws the same block, and one
+            // screen never holds two of it.
+            <div className="bv-scroll h-full min-h-0 overflow-y-auto px-4 pb-4" data-testid="desk-idle">
+              <p className="pt-4 text-t-caption text-ink-faint" data-testid="desk-slot-hint">
+                {t('desk.pickGood')}
+              </p>
+              {page === null && <ShipInfo fleet={fleet} />}
+            </div>
           ),
         }
       : {
