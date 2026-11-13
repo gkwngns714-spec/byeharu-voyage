@@ -8,7 +8,10 @@
 //      sailed miles from the yard (0 for the yard itself);
 //   2. the end of the path the sheet points down: with every material ashore here and the labour in the purse, the yard
 //      read says nothing is short, the hull is buildable, and BUILD lays her down — the materials leave the city.
-// RED before 0349 (the reader is not in the world), GREEN with it.
+//   3. (0358, S1 of docs/SECOND_SHIP.md) the read plans the build: a good's row carries the recipe's count, the good's
+//      weight and the seller's price now (world.price, the one price authority); a part's row carries the goods it is
+//      made of, one row per item_recipes row, each with its nearest seller; at Lisbon the Barca's sails name flax at Riga.
+// RED before 0349 (the reader is not in the world), GREEN with it; test 3 is RED before 0358 (no `qty`, no `inputs`).
 
 import { test, expect } from '@playwright/test'
 import { openLocalDb, type LocalDb } from '../src/lib/db/localDb'
@@ -87,6 +90,73 @@ test('each material of a hull is named with the nearest harbour that hands it ov
   }
   // the reader is a read
   expect(await db.callAs<boolean>(`select provolatile = 's' as result from pg_proc where oid = 'world.yard_sources(uuid, text)'::regprocedure`)).toBe(true)
+})
+
+test('0358: a good carries its count, weight and price now; a part carries the goods it is made of, each with a seller', async () => {
+  const snap = expectOk(await worldSnapshot())
+  const lis = snap.ports.find((p) => p.code === 'LIS')!
+  const hull = expectOk(await worldBuildingYard(lis.id)).hulls.find((h) => h.class === 'barca')!
+  const src = expectOk(await worldYardSources(lis.id, 'barca'))
+
+  // every key 0349 served is still there, beside the new ones
+  for (const g of src.goods) expect(Object.keys(g).sort()).toEqual(['ask', 'bulk', 'code', 'miles', 'name', 'port', 'qty'])
+  for (const i of src.items) expect(Object.keys(i).sort()).toEqual(['code', 'inputs', 'miles', 'name', 'port'])
+
+  const priceAt = async (port: string, good: string) =>
+    Number(
+      (
+        await one<{ ask: string }>(
+          `select pr.ask from public.ports p join public.goods g on g.code = $2 cross join lateral world.price(p.id, g.id) pr where p.code = $1`,
+          [port, good],
+        )
+      ).ask,
+    )
+  for (const g of src.goods) {
+    const line = hull.goods.find((m) => m.code === g.code)!
+    expect(g.qty, `${g.code}: not the recipe's count`).toBe(line.qty)
+    const good = await one<{ bulk: string }>('select bulk from public.goods where code = $1', [g.code])
+    expect(g.bulk).toBe(Number(good.bulk))
+    expect(g.ask, `${g.code}: the ask is not world.price's at ${g.port}`).toBe(await priceAt(g.port!, g.code))
+  }
+
+  const seen = new Set(src.goods.map((g) => g.code))
+  for (const i of src.items) {
+    const recipe = (
+      await db.pg.query<{ code: string; name: string; qty: string; bulk: string }>(
+        `select g.code, g.name, (ir.qty * hi.qty)::text as qty, g.bulk::text as bulk
+           from public.hull_recipe_items hi join public.item_recipes ir on ir.item_code = hi.item_code join public.goods g on g.id = ir.good_id
+          where hi.class_code = 'barca' and hi.item_code = $1 order by g.code`,
+        [i.code],
+      )
+    ).rows
+    expect(recipe.length, `${i.code} has no recipe`).toBeGreaterThan(0)
+    expect(i.inputs!.map((u) => u.code)).toEqual(recipe.map((r) => r.code))
+    for (const u of i.inputs!) {
+      const r = recipe.find((x) => x.code === u.code)!
+      expect(u.good).toBe(r.name)
+      expect(u.qty).toBe(Number(r.qty))
+      expect(u.bulk).toBe(Number(r.bulk))
+      expect(u.port, `${u.code} of ${i.code} has no seller`).not.toBeNull()
+      expect(u.ask).toBe(await priceAt(u.port!, u.code))
+      // a good that is also a hull good is sent to the same seller
+      const same = src.goods.find((g) => g.code === u.code)
+      if (same) expect([u.port, u.name, u.miles, u.ask]).toEqual([same.port, same.name, same.miles, same.ask])
+      seen.add(u.code)
+    }
+  }
+  // the errand is seven goods, three of them only in the parts; the sails name flax at Riga
+  expect([...seen].sort()).toEqual(['cordage', 'flax', 'hemp', 'iron', 'ships-nails', 'tar', 'timber'])
+  const flax = src.items.find((i) => i.code === 'suit-of-sails')!.inputs!.find((u) => u.code === 'flax')!
+  expect(flax.port).toBe('RIG')
+  expect(flax.name).toBe('Riga')
+  expect(flax.miles).toBeGreaterThan(0)
+  // a hull with no part still serves its goods with the new keys, and no inputs anywhere
+  const plain = expectOk(await worldBuildingYard(lis.id)).hulls.find((h) => h.goods.length > 0 && h.items.length === 0)!
+  const plainSrc = expectOk(await worldYardSources(lis.id, plain.class))
+  expect(plainSrc.items).toEqual([])
+  for (const g of plainSrc.goods) expect(typeof g.qty).toBe('number')
+  // still a read
+  expect(await db.callAs<boolean>(`select provolatile = 's' and prosecdef as result from pg_proc where oid = 'world.yard_sources(uuid, text)'::regprocedure`)).toBe(true)
 })
 
 test('with every material ashore here, nothing is short and BUILD lays her down', async () => {
