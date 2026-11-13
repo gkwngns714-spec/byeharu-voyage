@@ -37,6 +37,9 @@ test.beforeAll(async () => {
   await db.callAs(`select cmd.found_house('Battle Spec', 'PRT') as result`)
   await db.callAs(`with t as (update public.port_treasury set ducats = 50000000, reserve = 0 returning 1) select count(*)::int as result from t`)
   await light(['city_treasury_enabled', 'convoys_enabled'], true)
+  // 0375 lights attack_enabled in the chain, so the built world opens with attacks ON. The first test below is the DARK seam (what the switch off does: the state after a
+  // rollback), so the switch is put off here; the next test lights it again, as it always did.
+  await light(['attack_enabled'], false)
   // rpc.attack.spec's scene: a cargo ship of another country at sea with funds, and the company's fleet at anchor on her point
   const realm = await db.callAs<string>(`select g.nation_id as result from public.great_powers g join public.nations n on n.id = g.nation_id where n.code <> 'PRT' order by n.code limit 1`)
   for (let i = 0; i < 3; i++) await db.callAs(`select public.tick_cargo_ships(now(), $1::uuid) is null as result`, [realm])
