@@ -42,17 +42,16 @@ export interface PlanPassage {
   toSell: readonly string[]
 }
 
-/** THE TRIP'S ROWS ON THE BOARD — the buy row (the plan's buy city), the sell row (its sell city), the days to sail
- *  both (to the buy city, then on: the board's own days, 0 when she is there or sells what is aboard), and the
- *  supplies the passage asks. A trip that only BUYS (Sail & buy, owner row 229: no sell city) ends at the buy city:
- *  its days and supplies are the buy row's. THE ONE READING: the Buy / Sell panel and the order's estimate both print it. */
+/** THE TRIP'S ROWS ON THE BOARD — the buy row (the plan's buy city), the sell row (its sell city), the trip's days and
+ *  the supplies it asks. THE TRIP'S END ROW SAYS BOTH, WHOLE (0361): a trip that ends in a sale reads its sell row (the
+ *  server measures that row from where she is, through the buy city when the good is bought first, the calls on the way
+ *  in its days and her casks walked along it); a trip that only BUYS (Sail & buy, owner row 229: no sell city) reads its
+ *  buy row. Nothing is added up here. THE ONE READING: the Buy / Sell panel and the order's estimate both print it. */
 export function tripRows(b: GoodBoard | null, plan: Pick<PlanDraft, 'buyAt' | 'sellAt'>) {
   const buyRow = b && plan.buyAt ? (b.buy.find((r) => r.port === plan.buyAt) ?? null) : null
   const sellRow = b && plan.sellAt ? (b.sell.find((r) => r.port === plan.sellAt) ?? null) : null
-  const toBuyDays = !plan.buyAt ? 0 : !buyRow ? null : buyRow.here ? 0 : buyRow.days
-  if (plan.buyAt && !plan.sellAt) return { buyRow, sellRow, days: toBuyDays, supplies: buyRow?.supplies ?? null }
-  const days = sellRow && sellRow.days !== null && toBuyDays !== null ? toBuyDays + sellRow.days : null
-  return { buyRow, sellRow, days, supplies: sellRow?.supplies ?? null }
+  if (plan.buyAt && !plan.sellAt) return { buyRow, sellRow, days: !buyRow ? null : buyRow.here ? 0 : buyRow.days, supplies: buyRow?.supplies ?? null }
+  return { buyRow, sellRow, days: plan.buyAt && !buyRow ? null : (sellRow?.days ?? null), supplies: sellRow?.supplies ?? null }
 }
 
 export function planLines(
