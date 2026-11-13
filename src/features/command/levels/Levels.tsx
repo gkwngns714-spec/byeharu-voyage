@@ -5,6 +5,7 @@ import { formatDucats, formatInt, formatMiles } from '../../../lib/format'
 import { properName, useT } from '../../../lib/i18n'
 import { worldLevels, type CaptainLevel, type LevelCut, type LevelsView, type YourCaptain } from '../../../lib/rpc'
 import { useServedRead } from '../../../live/useServedRead'
+import { HullCountry } from '../../../live/HullCountry'
 import { useWorld } from '../../../live/worldStore'
 import { useYourCaptains } from '../../../live/useYourCaptains'
 import type { DeskLayout } from '../DeskFrame'
@@ -190,7 +191,7 @@ function Countries({ v }: { v: Ready }) {
         rows.map((r, i) => (
           <Row
             key={r.code}
-            label={<Clip>{`${r.flag} ${r.name}`}</Clip>}
+            label={<Clip><HullCountry nation={r.code} /></Clip>}
             value={`${regardBandWord(r.band)} ${formatInt(r.score)}`}
             hairline={i < rows.length - 1}
             data-testid="levels-country"
