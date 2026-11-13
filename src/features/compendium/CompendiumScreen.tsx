@@ -5,6 +5,7 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainsFace } from './CaptainsFace'
 import { GoodsFace } from './GoodsFace'
 import { NationsFace } from './NationsFace'
+import { SeasFace } from './SeasFace'
 import { ShipsFace } from './ShipsFace'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
@@ -28,6 +29,7 @@ const FACES = [
   { id: 'ships', label: 'codex.ships', noun: 'codex.filter_ships' },
   { id: 'captains', label: 'codex.captains', noun: 'codex.filter_captains' },
   { id: 'nations', label: 'codex.nations', noun: 'codex.filter_nations' },
+  { id: 'seas', label: 'seas.seas', noun: 'seas.filter' },
 ] as const
 type FaceId = (typeof FACES)[number]['id']
 
@@ -98,6 +100,7 @@ function CompendiumBody({ title }: { title: string }) {
       {face === 'ships' && <ShipsFace query={query} search={search} />}
       {face === 'captains' && <CaptainsFace query={query} search={search} answered={rosterAnswered} />}
       {face === 'nations' && <NationsFace query={query} search={search} />}
+      {face === 'seas' && <SeasFace query={query} search={search} />}
     </Sheet>
   )
 }

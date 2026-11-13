@@ -21,6 +21,7 @@ import { DayChange } from './TradeBoard'
 import { dayLine } from '../../../domain/market'
 import type { TradeDone } from './tradeDone'
 import { firstAtMs, useChartNews } from '../../../live/useChartNews'
+import { seaWallOf } from '../../../lib/rpc'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE TRADE PANEL — ONE GOOD AT ONE CITY, THE SAME PANEL ON BUY AND ON SELL (owner row 229, 2026-10-26)
@@ -399,7 +400,7 @@ function DockedAct({
       }
       extra={
         act.refusal ? (
-          <Note tone="danger" code={act.refusal.code} figures={act.refusal.figures} data-testid="trade-tray-refusal">
+          <Note tone="danger" code={act.refusal.code} figures={act.refusal.figures} sea={seaWallOf(act.refusal)} data-testid="trade-tray-refusal">
             {act.refusal.sentence}
           </Note>
         ) : undefined
@@ -572,7 +573,7 @@ function SailAct({
           )}
           {fleet.ready_at && !fleet.voyage && <ReadyIn at={fleet.ready_at} />}
           {go.refusal && (
-            <Note tone="danger" className="mt-3" code={go.refusal.code} figures={go.refusal.figures}>
+            <Note tone="danger" className="mt-3" code={go.refusal.code} figures={go.refusal.figures} sea={seaWallOf(go.refusal)}>
               {go.refusal.sentence}
             </Note>
           )}

@@ -27,7 +27,9 @@ import { formatMiles, formatVoyageDays } from '../../../lib/format'
 import type { SeaNav } from '../../../lib/sea'
 import type { BoardPassage, BoardSea, FleetView, GoodBoard, PlanLine, SnapshotPort } from '../../../lib/rpc'
 import type { PlanDraft } from './planDraft'
-import { t } from '../../../lib/i18n'
+import { getLocale, t } from '../../../lib/i18n'
+import { seaWallWords } from '../../../components/ui'
+import { seaWallOf } from '../../../lib/rpc'
 
 export type PlanText = { ok: true; lines: PlanLine[]; legs: PlanLeg[] } | { ok: false; noCourseTo: string }
 
@@ -182,6 +184,10 @@ export function reachWords(row: BoardPassage & { miles: number | null }, board: 
     // 0219: lit, a city the SEA closes has no voyage either — the server says so; say that, not "too far"
     const sea = row.sea
     if (board.seaBite && sea?.refusal) {
+      // THE ONE WORDING of a closed sea (components/ui/seaWallWords.ts): the sea, what it asks that she does not hold,
+      // what to do. The callers close the sentence, so the last stop is left off here.
+      const wall = seaWallOf(sea.refusal)
+      if (wall) return seaWallWords(getLocale(), wall).replace(/[.]$/, '')
       const f = sea.refusal.figures
       const held = f.title != null && f.wave != null ? t('desk.seaHeld', { title: f.title, wave: f.wave }) : ''
       return seaAsksWords(sea) + held

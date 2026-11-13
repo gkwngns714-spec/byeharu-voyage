@@ -6,6 +6,7 @@ import { armadaTotals, cmdArmadaDisband, cmdArmadaForm, fleetsOf, useArmadas } f
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { whereabouts, whereLine } from '../../domain/fleet'
 import { useT } from '../../lib/i18n'
+import { seaWallOf } from '../../lib/rpc'
 
 // ARMADAS, ON THE FLEETS PAGE (0367, docs/ARMADA.md; owner row 323: "with more than one fleet, max 6 fleet - an armada").
 // An armada is two to six of her fleets that sail on one order, at the slowest fleet's speed, and meet a raid as one side. This is where one is formed and disbanded.
@@ -175,7 +176,7 @@ function ArmadaPage({ armada, members, onClose }: { armada: ArmadaView; members:
         {t('fleets.armadaDisband')}
       </Button>
       {refusal && (
-        <Note tone="danger" code={refusal.code} figures={refusal.figures}>
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={seaWallOf(refusal)}>
           {refusal.sentence}
         </Note>
       )}
@@ -270,7 +271,7 @@ function NewArmadaPage({ read, onClose }: { read: ArmadasRead; onClose: () => vo
         </div>
       )}
       {refusal && (
-        <Note tone="danger" code={refusal.code} figures={refusal.figures}>
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={seaWallOf(refusal)}>
           {refusal.sentence}
         </Note>
       )}

@@ -8,6 +8,7 @@ import { fleetsOf } from '../../live/armadas'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import type { SailDest } from './sendRules'
 import { useT } from '../../lib/i18n'
+import { seaWallOf } from '../../lib/rpc'
 
 // ONE SEND FOR AN ARMADA (0367, docs/ARMADA.md section 4; owner row 323). In the city panel's send list an armada is ONE row above the fleets: her name, her fleets by
 // name, the time of the passage and what the order costs for all of them. Her fleets are not listed again under her: a fleet of an armada sails on the armada's order only.
@@ -130,7 +131,7 @@ export function SendArmadaRow({ armada, dest, open }: { armada: ArmadaView; dest
           <Note
             tone="danger"
             code={said.code}
-            figures={said.figures}
+            figures={said.figures} sea={seaWallOf(said)}
             data-testid="map-send-armada-refusal"
             figure={
               said.figures ? (

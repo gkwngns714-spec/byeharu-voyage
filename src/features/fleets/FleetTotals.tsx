@@ -25,6 +25,12 @@ export function FleetTotals({ fleet }: { fleet: FleetView }) {
       <span data-testid="fleet-total-wages">
         {t('fleets.wages')} <span className="tabular-nums text-ink">{t('fleets.perDay', { amount: formatDucats(Math.round(s.wages_day)) })}</span>
       </span>
+      {/* 0215: the fleet's wave resistance, the average of her ships' (public.fleet_wave): what a sea asks of her */}
+      {fleet.wave != null && (
+        <span data-testid="fleet-total-wave">
+          {t('desk.waveResistance')} <span className="tabular-nums text-ink">{formatInt(fleet.wave)}</span>
+        </span>
+      )}
       {s.slowest && (
         <span className="break-words" data-testid="fleet-total-slowest">
           {t('fleets.slowest')} <span className="text-ink">{s.slowest.name}</span> <span className="tabular-nums">{formatKnots(s.slowest.speed)}</span>

@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import { Button, Hint, Row, SheetSection, Tray, TrayTitle, type TrayDetent } from '../../components/ui'
+import { Button, Hint, Row, SheetSection, Tray, TrayTitle, seaName, seaWallTag, type TrayDetent } from '../../components/ui'
+import type { SeaWall } from '../../lib/rpc'
 import { PortFlag } from '../../live/PortFlag'
 import { CHART_CHROME, GoToLink } from '../../chart'
 import { CityTabs } from './CityTabs'
@@ -9,7 +10,7 @@ import { SendArmadaRow } from './SendArmadaRow'
 import { useArmadas } from '../../live/armadas'
 import { canGo, type SailDest } from './sendRules'
 import { useSendFleet } from './useSendFleet'
-import { useT } from '../../lib/i18n'
+import { useLocale, useT } from '../../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CITY PANEL — a tapped place: its three tabs, and the map's one act, as a panel at the right.
@@ -47,11 +48,16 @@ import { useT } from '../../lib/i18n'
 // never pans, and the label planner keeps a harbour's name from under it.
 export function SendFleet({
   dest,
+  sea = null,
   line,
   harbour,
   onClose,
 }: {
   dest: SailDest
+  /** The sea this place is in, and the wall in it for the fleet in hand (null: open to her): named on the title's line,
+   *  with the short reason when closed. Each fleet's own row says the whole wall. Null while the sea conditions are dark:
+   *  the tray is then exactly as it was. */
+  sea?: { name: string; wall: SeaWall | null } | null
   /** The one line under the name — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
   line: ReactNode
   /** The Port tab's ships — in port and incoming (CityHarbour), built by MapScreen, which holds
@@ -60,6 +66,7 @@ export function SendFleet({
   onClose: () => void
 }) {
   const t = useT()
+  const locale = useLocale()
   const [detent, setDetent] = useState<TrayDetent>('peek')
   const open = detent !== 'peek'
   const flow = useSendFleet(dest, open)
@@ -127,7 +134,16 @@ export function SendFleet({
               </GoToLink>
             </span>
           }
-          line={line}
+          line={
+            sea ? (
+              <span data-testid="map-place-sea" data-closed={sea.wall ? 'yes' : 'no'}>
+                {line} · {seaName(locale, { zoneName: sea.name })}
+                {sea.wall && <span className="text-warning"> · {seaWallTag(locale, sea.wall)}</span>}
+              </span>
+            ) : (
+              line
+            )
+          }
           testId="map-place-name"
           trailing={
             !open && (

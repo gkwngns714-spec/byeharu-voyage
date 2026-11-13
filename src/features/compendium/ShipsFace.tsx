@@ -266,6 +266,8 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
           <Row label={t('codex.crewNeeded')} value={<Figure value={formatOfTotal(open.crew_required, open.crew_max)} />} />
           <Row label={t('codex.draft')} value={<Figure value={formatInt(open.draft)} />} />
           <Row label={t('codex.hull')} value={<Figure value={formatInt(open.durability)} />} />
+          {/* 0215: what the sea conditions read of her. A fleet's figure is the average of her ships' (the Seas face). */}
+          {open.wave != null && <Row label={t('desk.waveResistance')} value={<Figure value={formatInt(open.wave)} />} data-testid="codex-ship-wave" />}
           {/* 0366: the five figures the fight reads, as the class has them */}
           <HullFight cls={open} />
           <Row label={t('codex.class')} value={<Figure value={formatInt(open.tier)} />} hairline={false} />

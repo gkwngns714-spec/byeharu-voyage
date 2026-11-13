@@ -17,6 +17,7 @@ import { RouteEditor } from '../../live/RouteEditor'
 import { RouteStopFace } from '../../live/RouteStop'
 import { useDeskView } from './deskView'
 import { useT } from '../../lib/i18n'
+import { seaWallOf } from '../../lib/rpc'
 
 // THE ROUTE, A ROW ABOVE HER QUEUE — owner, 2026-09-30: *"i want this game to be a simulating
 // based - meaning i set up route, trade routes - going back and forth, afk, running all the time"*.
@@ -179,7 +180,7 @@ export function RouteFold({
               {route.state === 'stopped' && route.stopped && (
                 <Note
                   tone="danger"
-                  code={route.stopped.code} figures={route.stopped.figures}
+                  code={route.stopped.code} figures={route.stopped.figures} sea={seaWallOf(route.stopped)}
                   action={
                     <Button variant="secondary" size="sm" busy={press.pending} onClick={() => void act(() => clearQueue(fleet.id))}>
                       {t('command.clear')}
@@ -253,7 +254,7 @@ export function RouteFold({
             </>
           )}
           {refusal && (
-            <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2">
+            <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={seaWallOf(refusal)} className="mt-2">
               {refusal.sentence}
             </Note>
           )}

@@ -15,6 +15,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import type { ParsedCommand, QueuedOrder } from './types'
+import { readRawSeaWall, readSeaWall, type SeaWall } from './seaWall'
 
 /**
  * THE FIGURES BEHIND AN ARITHMETIC REFUSAL — what the owner's concise law (2026-08-24: *"make it
@@ -46,6 +47,8 @@ export interface Refusal {
   fixes: string[]
   /** The served numbers behind the sentence, when the refusal is arithmetic. See RefusalFigures. */
   figures?: RefusalFigures
+  /** A sea closed to her (E_SEA_CLOSED): what it asks and what she holds, read by the one reader (./seaWall.ts). */
+  sea?: SeaWall
   /**
    * `server`    — the chain refused, in the words the chain chose.
    * `raised`    — the chain raised an exception carrying `E_CODE: sentence` (the parser's codes).
@@ -125,6 +128,7 @@ export function fromPayload<T>(payload: unknown): RpcResult<T> {
           : 'The server refused, without a reason.',
       fixes: Array.isArray(p.fixes) ? p.fixes.filter((f): f is string => typeof f === 'string') : [],
       figures: readFigures(p.figures),
+      sea: readSeaWall(p.figures) ?? undefined,
       source: 'server',
       queue: Array.isArray(p.queue) ? (p.queue as QueuedOrder[]) : undefined,
       parsed: (p.parsed as ParsedCommand | undefined) ?? undefined,
@@ -166,6 +170,7 @@ export function fromError(err: unknown): Refusal {
       sentence: m[2].trim() || raw,
       fixes: [],
       figures: readRawFigures(e.details),
+      sea: readRawSeaWall(e.details) ?? undefined,
       source: 'raised',
       detail: detailParts.join('; ') || undefined,
     }

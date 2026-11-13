@@ -12,6 +12,7 @@ import { formatDucats, formatDucatsDelta, formatInt, formatPctDelta, formatTons,
 import type { MarketGood, Refusal } from '../../lib/rpc'
 import type { BuyCapacityState } from '../../lib/trade'
 import { t as tNow, useT, type TKey } from '../../lib/i18n'
+import { seaWallOf } from '../../lib/rpc'
 
 // THE TRADE TRAY — the ledger row, unfolded: where a price becomes a quantity, and the quantity
 // becomes an order. docs/QUAY_LEDGER.md §3 screen B (owner row 76).
@@ -435,7 +436,7 @@ export function TradeTray({
       {/* The server's refusal, in the server's own sentence. The CODE goes to console.debug and
           never to the quay (§5's Note contract, and §2 item 13: a code is for a log). */}
       {act.refusal && (
-        <Note tone="danger" code={act.refusal.code} figures={act.refusal.figures} data-testid="trade-tray-refusal">
+        <Note tone="danger" code={act.refusal.code} figures={act.refusal.figures} sea={seaWallOf(act.refusal)} data-testid="trade-tray-refusal">
           {act.refusal.sentence}
         </Note>
       )}

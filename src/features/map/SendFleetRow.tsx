@@ -10,6 +10,7 @@ import { RaidOrder } from '../../live/RaidOrder'
 import { canGo, type Fix } from './sendRules'
 import type { SendFlow } from './useSendFleet'
 import { useT } from '../../lib/i18n'
+import { seaWallOf } from '../../lib/rpc'
 
 // ONE FLEET ON THE PLACE TRAY — her row, its verdict, and what unfolds under it when pressed.
 //
@@ -81,6 +82,8 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
           : null
       : null
 
+  const seaStops = pressable && v?.kind === 'refused' && plan?.kind === 'shut' ? plan.sea : null
+
   return (
     <div data-testid="map-send-row">
       <Row
@@ -122,10 +125,19 @@ export function SendFleetRow({ fleet: f, flow }: { fleet: FleetView; flow: SendF
         )}
       </Row>
 
-      {pressable && v?.kind === 'refused' && (
+      {pressable && v?.kind === 'refused' && seaStops === null && (
         <Refused refusal={v.refusal} fixes={flow.fixesOf(f, v.refusal)} testId="map-send-refusal" />
       )}
-      {noWay !== null && (
+      {/* A SEA CLOSED TO HER IS THE REASON (the leg of the chain it shuts, or the direct course when nothing between
+          opens it): said as the sea's wall, not as a leg too long. */}
+      {seaStops !== null && (
+        <div className="py-2">
+          <Note tone="danger" code="E_SEA_CLOSED" sea={seaStops} data-testid="map-send-refusal">
+            {seaStops.zoneName}
+          </Note>
+        </div>
+      )}
+      {noWay !== null && seaStops === null && (
         <span className="block pb-2 text-t-caption text-warning" data-testid="map-send-no-way">
           {noWay}
         </span>
@@ -171,7 +183,7 @@ function Refused({ refusal, fixes, testId }: { refusal: Refusal; fixes: Fix[]; t
     <div className="py-2">
       <Note
         tone="danger"
-        code={refusal.code} figures={refusal.figures}
+        code={refusal.code} figures={refusal.figures} sea={seaWallOf(refusal)}
         data-testid={testId}
         figure={
           figures ? (

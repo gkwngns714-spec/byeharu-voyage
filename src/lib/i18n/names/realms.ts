@@ -71,4 +71,13 @@ export const KO_SEAS: Readonly<Record<string, string>> = {
   'South China Sea': '남중국해', 'Gulf of Tonkin': '통킹만', 'Taiwan Strait': '대만 해협', 'Visayan Sea': '비사얀해', 'Philippine Sea': '필리핀해',
   'East China Sea': '동중국해', 'Yellow Sea': '황해', 'Korea Strait': '대한 해협', 'Sea of Japan': '동해', 'Seto Inland Sea': '세토 내해',
   'Caribbean Sea': '카리브해', 'Gulf of Mexico': '멕시코만', 'Gulf of Saint Lawrence': '세인트로렌스만', 'Tasman Sea': '태즈먼해',
+  // THE ZONES CUT OUT OF THE OCEANS (data/sea-zones.json, 0215): the seas of the sea conditions that are not one of the 51
+  // waters above. Unchecked translations, as the rest of this table.
+  'European Atlantic': '유럽 대서양', 'Macaronesia and the Canary Current': '마카로네시아와 카나리아 해류', 'Angola and the Skeleton Coast': '앙골라와 해골 해안',
+  'Iceland and Greenland waters': '아이슬란드·그린란드 해역', 'Brazil and the Plate': '브라질과 라플라타', 'The American shore': '아메리카 연안',
+  'The Doldrums': '적도 무풍대', 'The Western Ocean': '서쪽 대양', 'East African coast': '동아프리카 연안', 'The Cape': '희망봉 해역',
+  'The Roaring Forties': '노호하는 40도대', 'The Indian Ocean crossing': '인도양 횡단로', 'Japan, Pacific side': '일본 태평양 연안',
+  'The Kuroshio off Shikoku and Kyushu': '시코쿠·규슈 앞 구로시오', 'Pacific Americas, north coast': '아메리카 태평양 북부 연안',
+  'Pacific Americas, south coast': '아메리카 태평양 남부 연안', 'The North Pacific crossing': '북태평양 횡단로',
+  'The South Pacific and the Drake Passage': '남태평양과 드레이크 해협',
 }

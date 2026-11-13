@@ -13,6 +13,7 @@ import { num, str } from '../lib/json'
 import { sailEstimate } from '../domain/order'
 import type { PreviewResult, Refusal } from '../lib/rpc'
 import { useT } from '../lib/i18n'
+import { seaWallOf } from '../lib/rpc'
 
 // THE CHECK, COMPACT — the server's dry run, drawn as Rows and one Note.
 //
@@ -50,7 +51,7 @@ export function OrderCheck({
 
   if (check.status === 'refused') {
     return (
-      <Note tone="danger" code={check.refusal.code} figures={check.refusal.figures} data-testid="order-check-refusal">
+      <Note tone="danger" code={check.refusal.code} figures={check.refusal.figures} sea={seaWallOf(check.refusal)} data-testid="order-check-refusal">
         {check.refusal.sentence}
       </Note>
     )

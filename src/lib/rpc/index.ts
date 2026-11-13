@@ -514,6 +514,7 @@ export type { RpcName, RpcSpec } from './catalog'
 export { expectOk, fromError, fromPayload, ok, refused } from './result'
 export { lineDelta, readManifestReceipt } from './manifest'
 export type { Refusal, RefusalFigures, RpcResult } from './result'
+export { SEA_CLOSED, readSeaWall, seaWallOf, type SeaWall } from './seaWall'
 export type * from './types'
 
 /**

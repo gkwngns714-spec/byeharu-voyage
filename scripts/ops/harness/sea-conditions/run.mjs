@@ -42,7 +42,7 @@ const applyAll = async () => {
   }
   for (const kv of (arg('set') ?? '').split(',').filter(Boolean)) {
     const [k, v] = kv.split(':')
-    await db.query(`insert into public.world_config (key, value) values ($1, $2::jsonb) on conflict (key) do update set value = excluded.value`, [k, v])
+    await db.query(`update public.world_config set value = $2::jsonb where key = $1`, [k, v])
     say(`set ${k} = ${v}`)
   }
 }
