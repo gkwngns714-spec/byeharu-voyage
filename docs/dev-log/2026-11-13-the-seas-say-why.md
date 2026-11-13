@@ -51,9 +51,19 @@ gives no advice.
 
 See section 10.2 of the design for the impact figures and the ladder. `impact.sql` runs in about 9 s on PGlite.
 
-## Checks run
+## Checks run (local; preview on port 4423, the private in-browser world)
 
-See the PR body.
+- `tsc -b`, `eslint src`, `npm run build` (the world image is built from the cached chain with 0376 applied, so its self-assert ran).
+- `tests/seas.lit.spec.ts` (new), 9 of 9: the Codex's Seas face and the Map, lit, at 390 and 320 px in English and Korean (64 seas,
+  12 open and 52 closed for the founding company; the shade covers 52 seas; Las Palmas is refused by Macaronesia with the wall's words
+  and no passage figure; Funchal is priced and, at 390 px in English, sails); and the shipped dark world (no shade, no closed sea).
+- One run of `trade.flow`, `trade.layout`, `map.sendfleet`, `map.autoroute` (without its sailed trip), `map.labels`, `codex.design`,
+  `captains.codex`, `names.whole`, `onepage`, `sections`, `i18n.keys`, `i18n.ko`, `rpc.surface`, `news.lint`, `duplication`,
+  `harness.guard`, `planWords`: 181 passed, 12 failed. All 12 are `planWords.spec.ts`, a plain-Node word spec that reads the machine's
+  locale: this PC is Korean, so it prints Korean where the spec expects English. 7 of them fail the same way on the branch's base;
+  the other 5 are this slice's sea cases, which print the right Korean sentence. CI (English) is the judge.
+- A mistake to record: two `playwright` runs were started at once in this worktree and wiped each other's `test-results`; that run's
+  11 "ENOENT" reds were the harness, not the code. Every run after it was one at a time.
 
 ## Not verified
 

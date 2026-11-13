@@ -121,7 +121,19 @@ for (const glass of [
       expect(await noSideScroll(page), `the tray scrolls sideways at ${glass.tag}`).toBe(true)
       await page.screenshot({ path: shot(`map-closed-city-${glass.tag}`) })
       await page.getByTestId('map-detail-tray').getByTestId('tray-close').click()
+      await expect(page.getByTestId('map-detail-tray')).toHaveCount(0)
+      // the picture of the shade: Europe's waters clear, the ocean beyond them veiled
+      const glassBox = (await page.getByTestId('map-chart').boundingBox())!
+      for (let i = 0; i < 2; i++) {
+        await page.mouse.move(glassBox.x + glassBox.width / 2, glassBox.y + glassBox.height / 2)
+        await page.mouse.wheel(0, 600)
+        await page.waitForTimeout(700)
+      }
       await page.screenshot({ path: shot(`map-shaded-${glass.tag}`) })
+      for (let i = 0; i < 2; i++) {
+        await page.mouse.wheel(0, -600)
+        await page.waitForTimeout(700)
+      }
 
       // FUNCHAL lies in the European Atlantic (title 1): open, priced, and it sails
       await askCity(page, 'FNC')

@@ -4,7 +4,7 @@ import { closedMask, type ZoneCells } from '../domain/seas'
 // THE PICTURE OF THE CLOSED SEAS (./ClosedSeasLayer.tsx paints it): one pixel a cell of the server's zone raster.
 
 /** The veil's colour: the night sea, darker, with a faint warm cast so a closed sea reads as shut and not as deep. */
-const VEIL: readonly [number, number, number, number] = [8, 6, 10, 150]
+const VEIL: readonly [number, number, number, number] = [8, 6, 10, 125]
 
 /** The picture of the closed seas as an image URL; null when nothing is closed, or before the raster is in hand. */
 export function useClosedSeasVeil(cells: ZoneCells | null, closed: ReadonlySet<string>): string | null {
