@@ -123,7 +123,10 @@ async function findChain(page: Page, codes: readonly string[]): Promise<string |
   return null
 }
 
-const FAR = ['IST', 'HAV', 'ALE', 'KOC', 'GUA', 'BUS']
+/** Cities one leg cannot reach from Lisbon at Navigation 1 (1,700 nm), THE NEAREST FIRST: the trip that is waited out is the
+ *  shortest chained trip there is (Lübeck 1,732 nm, Dubrovnik 1,748, Heraklion 1,799), so the one drive that sails to the end
+ *  costs the suite as little as a chained trip can. The farther ones stand behind them if the world's reach ever grows. */
+const FAR = ['LUB', 'DBR', 'HER', 'IST', 'HAV', 'ALE', 'KOC']
 /** Past every chain from Lisbon at Navigation 1: the Pacific coast of the Americas, Hawaii. */
 const NO_WAY = ['CLL', 'ACA', 'HNL'
 ]
