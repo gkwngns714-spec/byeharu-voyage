@@ -13,6 +13,9 @@ import { reachable, ready } from './appReady.fixture'
 //     on a good opens the Trade desk on that city with that good in hand; a fitting made here opens this city's Workshop;
 //   - nothing scrolls sideways.
 // The Build button itself is proven where the world can be given the materials: tests/rpc.yardSources.spec.ts.
+// The sheet's one button, its totals and a part's own goods (S1, 0358): tests/yard.plan.spec.ts.
+// Since 0363 the Barca takes no fitting, so the sheet read here is the Caravela latina's: the cheapest hull a new
+// company can build at Lisbon that still takes one (timber is in both recipes).
 
 const GLASSES = [
   { width: 1280, height: 800 },
@@ -70,9 +73,10 @@ for (const glass of GLASSES) {
       expect(moreAfter.y, 'More moved itself').toBe(moreBefore.y)
       await noSideways(page, 'the yard, opened')
 
-      // 3. the Barca's sheet: a missing good names its nearest seller with the miles, and a fitting where it is made
-      await barca.scrollIntoViewIfNeeded()
-      await barca.click()
+      // 3. the Caravela latina's sheet: a missing good names its nearest seller with the miles, and a fitting where it is made
+      const latina = now.getByTestId('hull-carlat')
+      await latina.scrollIntoViewIfNeeded()
+      await latina.click()
       const tray = page.getByTestId('yard-tray')
       await expect(tray).toBeVisible()
       const timber = tray.getByTestId('yard-source-timber')
@@ -85,7 +89,8 @@ for (const glass of GLASSES) {
       await expect(tray.getByTestId('yard-source-suit-of-sails')).toContainText(/^Make (here|at .+)/)
       await noSideways(page, 'the yard sheet')
       await page.screenshot({ path: info.outputPath('yard-sheet.png') })
-      const sellerName = ((await timber.textContent()) ?? '').replace(/^Buy at /, '').replace(/\d[\d,.]*\s*\S+$/, '').trim()
+      // the seller's name as the row carries it (since 0358 the row also prints the real time and the cost)
+      const sellerName = (await timber.getAttribute('data-seller')) ?? ''
 
       // 4. the press goes where it is bought: the Trade desk, reading that city, the Timber in hand
       await timber.click()
@@ -109,7 +114,7 @@ test.describe('a fitting made here, and the words in Korean', () => {
     await ready(page)
     await page.getByRole('tablist').getByRole('tab', { name: '건조', exact: true }).click()
     await expect(page.getByTestId('yard-more')).toContainText('더보기')
-    await page.getByTestId('yard-now').getByTestId('hull-barca').click()
+    await page.getByTestId('yard-now').getByTestId('hull-carlat').click()
     const sails = page.getByTestId('yard-tray').getByTestId('yard-source-suit-of-sails')
     await expect(sails).toBeVisible({ timeout: 30_000 })
     await expect(page.getByTestId('yard-tray').getByTestId('yard-source-timber')).toContainText('구매')
