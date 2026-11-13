@@ -54,9 +54,13 @@ test('the fleet reads its totals, and they are the sums of her ships', async () 
 })
 
 test('dark: the room read says so, and the buying door refuses and takes nothing', async () => {
+  // 0370 lit fleet room in the built world: this test sets it back in its own database first (the lit test below lights it again)
+  await db.callAs(`
+    with dark as (update public.world_config set value = 'false'::jsonb where key = 'fleet_room_bite' returning 1)
+    select count(*)::int as result from dark`)
   const before = await room()
   expect(before.on).toBe(false)
-  expect(before.fleets).toMatchObject({ used: 1, top: 5, free: 2, bought: 0, full: false, price: 60000 })
+  expect(before.fleets).toMatchObject({ used: 1, top: 6, free: 2, bought: 0, full: false, price: 60000 })
   expect(before.ships).toMatchObject({ used: 1, top: 7, free: 2, bought: 0, full: false, price: 10000 })
   expect(before.fleets.steps.map((s) => (s.how === 'level' ? `${s.tracks.join('+')} ${s.level}` : s.price))).toEqual(['trading 3', 'trading 6', 60000, 1000000])
   expect(before.ships.steps.filter((s) => s.how === 'level')).toHaveLength(5)

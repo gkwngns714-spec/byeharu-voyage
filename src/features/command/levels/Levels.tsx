@@ -190,7 +190,8 @@ function Countries({ v }: { v: Ready }) {
         rows.map((r, i) => (
           <Row
             key={r.code}
-            label={<Clip>{`${r.flag} ${r.name}`}</Clip>}
+            // the country's name in her language (properName, the one authority for a proper noun): found when regard was lit, 0373 — the list was dark until then
+            label={<Clip>{`${r.flag} ${properName('nation', r.code, r.name)}`}</Clip>}
             value={`${regardBandWord(r.band)} ${formatInt(r.score)}`}
             hairline={i < rows.length - 1}
             data-testid="levels-country"

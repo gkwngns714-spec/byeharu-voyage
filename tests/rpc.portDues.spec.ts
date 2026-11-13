@@ -11,6 +11,10 @@ import { formatDucats } from '../src/lib/format'
 // Lisbon's dues — at war with Portugal: tax 2×, and the dock fee the world charges (port_fee_base × the war factor;
 // 0285 re-based every absolute ducat ×5, so 250 × 2 = 500 now — read from the knob, never pinned) — and her fleet,
 // just in port, serves `ready_at`. The client's new lines read exactly these keys.
+//
+// 0373 LIT REGARD IN THE BUILT WORLD, AND THE DUES CARRY IT: `factor` and `fee` are the stance's figures TIMES her regard's factor with the city's holder (0319: one hunk in
+// public.port_dues and one in public.port_fee). A company at war stands Wary on day one (x1.25), so she reads tax 2.5x and a dock fee of 625, not 2x and 500. Both arms are
+// held here, each said by name: regard put off in this spec's own world (the stance alone, the figures before 0373 and after its rollback), and regard as the world ships it.
 
 let db: LocalDb
 let lisbon: string
@@ -51,10 +55,14 @@ test('dark: the Town Hall serves no dues and no fleet a port time', async () => 
   expect(fleets.ok && fleets.value.some((f) => 'ready_at' in f)).toBe(false)
 })
 
-test('lit: a Dutch company at Lisbon reads tax 2× (at war) and the dock fee the world charges, and her fleet is making ready', async () => {
+test('lit: a Dutch company at Lisbon reads tax 2× (at war) and the dock fee the world charges — 2.5× and a quarter more with her regard — and her fleet is making ready', async () => {
   await db.callAs(`
     with lit as (update public.world_config set value = 'true'::jsonb where key = 'economy_closed' returning 1)
     select count(*)::int as result from lit`)
+  const regard = (on: boolean) =>
+    db.callAs(`with x as (update public.world_config set value = '${on}'::jsonb where key = 'regard_enabled' returning 1) select count(*)::int as result from x`)
+  // ── REGARD OFF (in this world only): the stance alone ──
+  await regard(false)
   // THE FEE IS THE WORLD'S, NOT A LITERAL. It is (port_fee_base + port_fee_pct × the cargo's value) × the
   // country factor (0237 §4c); this house's hold is empty, so the pct term is zero and the fee is exactly
   // fee_base × the war factor. The base is read from the knob 0285 re-based (50 → 250), never pinned.
@@ -67,6 +75,26 @@ test('lit: a Dutch company at Lisbon reads tax 2× (at war) and the dock fee the
   const words = duesWords(hall.value.dues!)
   expect(words).toMatch(/2× \(.+\) · /)
   expect(words).toContain(formatDucats(hall.value.dues!.fee))
+  expect(hall.value.dues!.regard, 'with regard off the hall serves no regard line').toBeUndefined()
+
+  // ── REGARD ON, AS THE WORLD SHIPS (0373): the same figures times her band's factor. At war her score is the war base, and its band is read from the knob, never pinned ──
+  await regard(true)
+  const band = JSON.parse(
+    await db.callAs<string>(`select public.regard_band((public.wc('regard_stance_base') ->> 'war')::numeric)::text as result`),
+  ) as { band: string; factor: number }
+  expect(band.factor, 'the war base is a band that costs more').toBeGreaterThan(1)
+  const litHall = await worldTownHall(lisbon)
+  expect(litHall.ok).toBe(true)
+  if (!litHall.ok) return
+  const lit = litHall.value.dues!
+  expect(lit).toMatchObject({ stance: 'war', factor: 2 * band.factor, fee: Math.round(feeBase * 2 * band.factor), fee_base: feeBase, prep_seconds: 60 })
+  expect(lit.regard).toMatchObject({ band: band.band, factor: band.factor, fine: 0 })
+  expect(lit.regard!.score).toBeLessThan(0)
+  // the one reading of it says the factor she really pays, the fee the world charges, and her band
+  const litWords = duesWords(lit)
+  expect(litWords).toContain(`${2 * band.factor}×`)
+  expect(litWords).toContain(formatDucats(lit.fee))
+  expect(litWords.split(' · ')).toHaveLength(3)
   // she has just made her harbour: the one writer of a port call sets her port time
   await db.callAs(
     `select public.port_call($1, (select f.port_id from public.fleets f where f.id = $1), $2, now(), now(), null) as result`,

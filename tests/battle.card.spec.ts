@@ -174,3 +174,39 @@ test('dark, or no battle of hers: the card draws nothing', () => {
   expect(render.renderBattle({ read: { on: false }, nowMs: NOW })).toBe('')
   expect(render.renderBattle({ read: { on: true }, nowMs: NOW })).toBe('')
 })
+
+// 0333 / 0357: a navy ship called to the battle is on the sheet only from the round she comes up for. Seen in a browser on 2026-11-13 (tests/battle.live.spec.ts): measured
+// against the whole sheet, the rounds before her read 29 % and 21 % and then jumped to 82 %. A round is measured against the hulls that were there in it.
+test('a ship that comes up in a later round: the rounds before her are measured without her, and her round says she joined', () => {
+  const log = parseFightLog(
+    {
+      v: 1,
+      atk: true,
+      first: 'YOU',
+      // the cargo ship (1,690) and the navy ship that came up for round 3 (2,769): the sheet's whole hull is both
+      foe: { n: 'Cargo ship 1', k: 2, crew: 190, hull: 4459 },
+      you: [['Gaivota', 7730, 7730, 862]],
+      r: [
+        [1, 'L', 2, 2, 1, 414, 1, 0, 0, 0, 7730, 1276, [], null],
+        [2, 'L', 2, 2, 1, 389, 1, 0, 0, 0, 7730, 887, [], null],
+        [3, 'L', 2, 2, 0, 0, 2, 0, 0, 0, 7730, 3656, [], null],
+        [4, 'M', 2, 2, 1, 464, 2, 2, 1, 66, 7664, 3192, [[1, 1]], null],
+      ],
+      after: [['Gaivota', 7664]],
+    },
+    { open: true },
+  )
+  expect(log).not.toBeNull()
+  if (!log) return
+  const rows = fightRows(log)
+  expect(rows.map((r) => r.joined === null)).toEqual([true, true, false, true])
+  expect(Math.round(rows[2].joined ?? 0)).toBe(2769)
+  // before she came: against the cargo ship alone (1,690); from her round: against both (4,459)
+  expect(rows.map((r) => r.foePct)).toEqual([76, 52, 82, 72])
+  // a fight nobody joins is measured as it always was
+  const plain = parseFightLog(OPEN_LOG, { open: true })
+  expect(plain && fightRows(plain).map((r) => [r.joined, r.foePct])).toEqual([
+    [null, 92],
+    [null, 92],
+  ])
+})
