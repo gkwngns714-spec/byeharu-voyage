@@ -3,6 +3,8 @@ import { CHART_WIDTH, sheetCopies, type Point, type ViewBox } from '../lib/geo'
 import { CoastlineLayer } from './CoastlineLayer'
 import { project } from '../lib/geo'
 import { FleetsLayer, TracksLayer } from './FleetsLayer'
+import { FightRingsLayer } from './FightRingsLayer'
+import { fightRings, type MapFight } from './fightRings'
 import { LabelsLayer } from './LabelsLayer'
 import { PortsLayer } from './PortsLayer'
 import { RoadsteadsLayer } from './RoadsteadsLayer'
@@ -34,7 +36,7 @@ import { useSunlight } from './useSunlight'
 // WHAT IS ON THE PAPER, AND IN WHAT ORDER — the whole chart, drawn once, wherever it is drawn.
 //
 // PAINT ORDER IS THE ONLY STACKING SVG HAS, so it is a RULE and not a preference: sea, coast,
-// tracks, ROADSTEADS, port marks, fleet hulls, names. Every name therefore sits on top of every
+// tracks, ROADSTEADS, a battle's RING (0364), port marks, fleet hulls, names. Every name therefore sits on top of every
 // mark and no mark sits on a name; the roads go under the ports, because a dotted line crossing a
 // harbour should pass behind it.
 //
@@ -103,6 +105,7 @@ import { useSunlight } from './useSunlight'
 const NO_STOPS: readonly PathStop[] = []
 const NO_SEAS: readonly MapSea[] = []
 const NO_ISLETS: readonly Point[] = []
+const NO_FIGHTS: readonly MapFight[] = []
 
 /** The slack `portMarks` keeps beyond the glass, applied to a fleet's name request too. */
 const REQUEST_MARGIN = 0.06
@@ -128,6 +131,7 @@ export function ChartCanvas({
   regions = null,
   portFlags = null,
   islets = NO_ISLETS,
+  fights = NO_FIGHTS,
   selection,
   keepOut,
   plannedD = null,
@@ -155,6 +159,8 @@ export function ChartCanvas({
   portFlags?: ReadonlyMap<string, string> | null
   /** Harbours the drawn coast has no land for (row 92): a speck of land is painted under each. */
   islets?: readonly Point[]
+  /** 0364 — the battles being fought: each is ringed (./fightRings.ts). Absent on a chart that shows none. */
+  fights?: readonly MapFight[]
   selection: MapSelection
   /**
    * OPAQUE CHROME THE SCREEN HAS PUT OVER THIS CHART, in CSS pixels from the chart's top-left
@@ -317,6 +323,8 @@ export function ChartCanvas({
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
   const selectedMerchantId = selection?.kind === 'merchant' ? selection.id : null
   const selectedPortCode = selection?.kind === 'port' ? selection.code : null
+  const selectedFightId = selection?.kind === 'fight' ? selection.id : null
+  const rings = useMemo(() => fightRings(fights, unitsPerPx), [fights, unitsPerPx])
 
   // Where the coast's sheet sits on the glass, in CSS pixels: its top-left corner relative to the
   // view's, rounded to the DEVICE pixel so the composited layer is never sampled between pixels
@@ -449,6 +457,9 @@ export function ChartCanvas({
                     </g>
                   )
                 })()}
+              {/* THE BATTLES' RINGS (0364) — under the harbours, the hulls and the names: a ring goes ROUND its
+                  fleets and never covers one, nor a city's name. */}
+              <FightRingsLayer rings={rings} selectedId={selectedFightId} unitsPerPx={unitsPerPx} />
               <PortsLayer
                 marks={marks}
                 portRoles={portRoles}

@@ -4243,6 +4243,67 @@ export interface BattleRead {
   loot?: number
   crew_lost?: number
   navy?: string | null
+  /** 0364 `world.fight(battle)`: true on a watcher's read. It has no stance, word, loot, hands or navy line; the log is
+   *  from the deck of the side that attacked, and `you` names that side. */
+  watch?: boolean
+  you?: string | null
+  /** 0364: the caller's own fleet in this battle, or null. */
+  mine?: string | null
+}
+
+/** 0364: one fleet of a battle on the map's read. `at` is [lat, lon], served while the battle is fought and she is there. */
+export interface FightSide {
+  fleet: string
+  name: string
+  side: 'ATTACKER' | 'DEFENDER'
+  how: 'OPENED' | 'ESCORT' | 'CALLED'
+  kind: 'COMPANY' | 'MERCHANT' | 'CARGO_SHIP' | 'NAVY' | 'PIRATE'
+  company: string | null
+  nation: string | null
+  ships: number
+  here: boolean
+  at?: [number, number]
+}
+
+/** 0364: one fight as the map draws it. `kind` BATTLE (public.fight_card: a timed battle, `fleets` and `ships` count the
+ *  sides that are there), RAID (the caller's OWN raid day, just settled: served with its `log` and `loss`) or NAVY (a navy
+ *  ship against a pirate ship, just fought: served with its `log`, cut to nine keys). Absent `kind` is a battle. */
+export interface FightCard {
+  id: string
+  kind?: 'BATTLE' | 'RAID' | 'NAVY'
+  /** What the ring is sized by: a battle's fleets that are there; a raid's fleet and its raiders' ships; a navy fight's ships. */
+  size?: number
+  status: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
+  lat: number
+  lon: number
+  started_at: string
+  resolves_at: string
+  /** RAID and NAVY: when the server stops serving it. */
+  until?: string
+  round_seconds?: number
+  rounds?: number
+  rounds_done: number
+  /** RAID and NAVY: the whole log (shape v 1), read by `parseFightLog`. */
+  log?: unknown
+  /** RAID: what the day cost her, read by `parseFightLoss`. */
+  loss?: unknown
+  next_at: string | null
+  fleets: number
+  ships: number
+  mine: string | null
+  sides: FightSide[]
+  /** How it ended, from the deck of the side that attacked; absent while it is fought. */
+  end?: string | null
+}
+
+/** 0364 `world.fights()`: the read the map polls. `on` false: attacks are dark and nothing is served. */
+export interface FightsRead {
+  on: boolean
+  now?: string
+  keep_seconds?: number
+  /** How long a raid's or a navy fight's ring stays, in seconds (300). */
+  raid_seconds?: number
+  fights: FightCard[]
 }
 
 /** 0357 `cmd.battle_stance`: the stance kept, the round it takes hold from, and when that round is due. */
