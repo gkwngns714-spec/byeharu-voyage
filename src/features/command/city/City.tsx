@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Button, Clip, Note, ScrollPane, Segmented, Skeleton } from '../../../components/ui'
+import { Button, Clip, Note, ScrollPane, Segmented, Skeleton, WRAP_ROW_CLASS } from '../../../components/ui'
 import { alongsideAt, boundForLabel, fleetPortCode, whereabouts } from '../../../domain/fleet'
 import { buildingTier, hasBuilding } from '../../../domain/port'
 import { PORT_FACES, productionHref, type PortFace } from '../../../live/cityFaces'
@@ -90,7 +90,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
       {/* A WRAPPING LINE (2026-11-13): the name is never narrower than its longest word, and where the name and the door do not
           fit one line (the wide desk's left pane is 240 px inside at 1,280 px: "Machilipatnam" stood over "City view") the
           door stands on the next line, at the right. */}
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <div className={WRAP_ROW_CLASS}>
         <h2 className="flex min-w-min items-center gap-2 text-t-body font-semibold text-ink">
           <PortFlag code={port.code} />
           <Clip>{port.name}</Clip>
