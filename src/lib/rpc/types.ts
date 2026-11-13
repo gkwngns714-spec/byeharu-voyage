@@ -3400,8 +3400,8 @@ export interface BoardShut {
 }
 
 /** 0219 — what a board row's seas ask (`public.sea_routes`): the most any leg of the route asks, and the one
- *  rule's verdict (`public.sea_refusal`) for her title and her fleet's wave. The client prints these; it never
- *  compares them. */
+ *  rule's verdict (`public.sea_refusal`) for her title and her fleet's wave. 0402: lit, the verdict is the sail door's
+ *  own for the fleet in hand, with her two floors (`public.sea_judge`). The client prints these; it never compares them. */
 export interface BoardSea {
   /** The zone that refuses, else the route's most demanding zone. */
   zone: string

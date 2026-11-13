@@ -6,6 +6,9 @@ import { closedMask, type ZoneCells } from '../domain/seas'
 /** The veil's colour: the night sea, darker, with a faint warm cast so a closed sea reads as shut and not as deep. */
 const VEIL: readonly [number, number, number, number] = [8, 6, 10, 125]
 
+/** The same colour for CSS: the swatch of the map's key (the one place that names the shade). */
+export const CLOSED_SEAS_VEIL_CSS = `rgba(${VEIL[0]}, ${VEIL[1]}, ${VEIL[2]}, ${(VEIL[3] / 255).toFixed(2)})`
+
 /** The picture of the closed seas as an image URL; null when nothing is closed, or before the raster is in hand. */
 export function useClosedSeasVeil(cells: ZoneCells | null, closed: ReadonlySet<string>): string | null {
   // The picture is remade when the SET of closed seas changes, not when the read that carries it is asked again.

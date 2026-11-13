@@ -70,6 +70,7 @@ import {
   type MapSelection,
   type PathStop,
   useClosedSeasVeil,
+  CLOSED_SEAS_VEIL_CSS,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
 import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter } from '../../components/ui'
@@ -653,9 +654,24 @@ function Chart({
           testId="map-view-controls"
         />
 
-        {(zoomed || backdrop.error) && (
+        {(zoomed || backdrop.error || closedSeas) && (
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
             {backdrop.error && <p className="text-t-caption text-ink-faint">{t('map.noCoast')}</p>}
+            {/* THE KEY TO THE SHADE: one line, only while a sea is shaded for the fleet in hand. */}
+            {closedSeas && (
+              <p
+                {...CHART_CHROME}
+                data-testid="map-closed-seas-key"
+                className="pointer-events-none flex items-center gap-1 text-t-caption text-ink-muted"
+              >
+                <span
+                  aria-hidden
+                  className="inline-block h-3 w-3 rounded-sm border border-ink-faint"
+                  style={{ backgroundColor: CLOSED_SEAS_VEIL_CSS }}
+                />
+                {t('map.closedSeasKey')}
+              </p>
+            )}
             {zoomed && (
               <Minimap
                 model={model}
