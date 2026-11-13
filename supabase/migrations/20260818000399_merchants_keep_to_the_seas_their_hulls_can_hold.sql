@@ -1,14 +1,14 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
--- 0394 - MERCHANTS KEEP TO THE SEAS THEIR HULLS CAN HOLD: the one guarded step that lights sea_conditions_bite_npc  (owner rows 166 and 324)
+-- 0399 - MERCHANTS KEEP TO THE SEAS THEIR HULLS CAN HOLD: the one guarded step that lights sea_conditions_bite_npc  (owner rows 166 and 324)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
 -- THE OWNER (docs/OWNER_REQUESTS.md row 166, 2026-10-20): "NPCs under the same rule". Row 324 (2026-11-13): "open them if everything is built and is workable."
--- 0392 built the merchants' half of the sea conditions, dark behind sea_conditions_bite_npc. This file is the step that lights it, as 0393 is the players'.
+-- 0397 built the merchants' half of the sea conditions, dark behind sea_conditions_bite_npc. This file is the step that lights it, as 0398 is the players'.
 --
--- THIS FILE LIGHTS NOTHING. It installs the step, with its guards, and the read of those guards (why a step and not a switch thrown here: 0393's header and
+-- THIS FILE LIGHTS NOTHING. It installs the step, with its guards, and the read of those guards (why a step and not a switch thrown here: 0398's header and
 -- docs/dev-log/2026-11-13-lighting-the-seas.md):
 --   public.sea_conditions_npc_ready() -> jsonb   STABLE, server-only:
 --        lit                         the merchants' switch as it stands
---        planner_in                  0392 is in (public.npc_sea_shut, public.npc_loop_sea_shut, public.npc_feasible_legs with the fleet)
+--        planner_in                  0397 is in (public.npc_sea_shut, public.npc_loop_sea_shut, public.npc_feasible_legs with the fleet)
 --        players_lit                 sea_conditions_bite is on. THE ORDER IS THE DESIGN'S (section 6: "lit after S2's window"): players first, in their own
 --                                    measured window, then merchants in theirs, so each after-check reads one change.
 --        merchant_loops, loops_closed, closed_at_sea   the loops with a leg her hull cannot hold (the planner moves each at her next lap start), and those at sea now (they finish)
@@ -17,9 +17,9 @@
 --        courses_not_remembered      merchant courses the memo does not hold (told, not a guard: such a course is sampled live)
 --        ready                       not lit, and planner_in, players_lit and merchants_with_no_open_leg = 0
 --   public.sea_conditions_npc_light() -> jsonb   VOLATILE, server-only, THE STEP: refuses (raises, nothing changed) when already lit or when a guard fails, naming
---        each; otherwise sets sea_conditions_bite_npc true and posts the news row public.news_update('0394', ...) (players will see fewer merchants on the far
+--        each; otherwise sets sea_conditions_bite_npc true and posts the news row public.news_update('0399', ...) (players will see fewer merchants on the far
 --        seas and in fourteen far harbours: that is told), and returns the figures.
--- The verdicts are 0392's own readers (public.npc_loop_sea_shut, public.npc_sea_shut: the one rule, on wave only). Nothing is compared here.
+-- The verdicts are 0397's own readers (public.npc_loop_sea_shut, public.npc_sea_shut: the one rule, on wave only). Nothing is compared here.
 --
 -- TO LIGHT (the lead, on the owner's word, never an agent), after the players' window is closed and clean:
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-light/before-npc.sql        (read-only: wanted guards.ready true)
@@ -27,14 +27,14 @@
 --   npx --yes supabase@2.120.0 db query --linked "select public.sea_conditions_npc_light()"
 --   then sea-merchants/after-lit.sql at +5, +15 and +30 minutes.
 -- ROLLBACK, at once (owner): update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc' returning key, value;
---   every plan after it is the old planner's (0392's assert, proof 92 SM_OFF). Forward removal: scripts/ops/harness/sea-light/rollback-0394.sql (a draft).
+--   every plan after it is the old planner's (0397's assert, proof 92 SM_OFF). Forward removal: scripts/ops/harness/sea-light/rollback-0399.sql (a draft).
 --
--- NOT TOUCHED: any function of 0392, any switch, any knob, any row. Two new functions and nothing else.
+-- NOT TOUCHED: any function of 0397, any switch, any knob, any row. Two new functions and nothing else.
 -- ALL OR NOTHING: ONE `do` block; statement_timeout 60 s and lock_timeout 5 s first; BUDGET 30 s (the read walks every merchant loop once: locally about 1 s).
 -- SELF-ASSERT (this block): the two functions server-only, pinned, of the declared volatility; no other function, knob or news row moved; the read answers
 -- its figures and agrees with both switches; the step, called INSIDE A PROBE THAT ROLLS BACK, refuses naming its guards and changes nothing, or (a ready
 -- world) lights and posts one news row. THE LIVE PATHS are proved in CI by scripts/db/proofs/94_merchants_are_lit_by_one_guarded_step.sql.
--- VERSION: 0394 = 0392 (the merchants' rule, dark) + 0393 (the players' step) + 1.
+-- VERSION: 0399 = 0397 (the merchants' rule, dark) + 0398 (the players' step) + 1.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -56,14 +56,14 @@ begin
 
   -- ── 0. GUARD ──
   if to_regprocedure('public.sea_conditions_npc_ready()') is not null or to_regprocedure('public.sea_conditions_npc_light()') is not null then
-    raise exception '0394 refuses: the merchants'' lighting step is already in this world';
+    raise exception '0399 refuses: the merchants'' lighting step is already in this world';
   end if;
   if to_regprocedure('public.sea_conditions_npc_on()') is null or to_regprocedure('public.npc_sea_shut(numeric, uuid, jsonb)') is null
      or to_regprocedure('public.npc_loop_sea_shut(uuid, jsonb)') is null or to_regprocedure('public.npc_feasible_legs(uuid, uuid, numeric, integer)') is null
      or to_regprocedure('public.sea_conditions_on()') is null or to_regprocedure('public.fleet_wave(uuid)') is null
      or to_regprocedure('public.news_update(text, text, text)') is null or to_regclass('public.npc_course_zones_memo') is null
      or not exists (select 1 from public.world_config where key = 'sea_conditions_bite_npc') then
-    raise exception '0394 refuses: a function, table or knob this file reads is not in this world (0392 the merchants'' rule, 0215 the seas, 0347 the news)';
+    raise exception '0399 refuses: a function, table or knob this file reads is not in this world (0397 the merchants'' rule, 0215 the seas, 0347 the news)';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
@@ -85,7 +85,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0394: WHAT STANDS BETWEEN THIS WORLD AND LIGHTING THE SEA CONDITIONS FOR MERCHANTS, as figures (the header of 0394 names each). A read, through 0392's own
+  -- 0399: WHAT STANDS BETWEEN THIS WORLD AND LIGHTING THE SEA CONDITIONS FOR MERCHANTS, as figures (the header of 0399 names each). A read, through 0397's own
   -- readers. `merchants_with_no_open_leg` is read while the switch is off: public.npc_feasible_legs then answers every known leg her stores allow, and the sea
   -- is asked of each here; lit, that function has already taken the closed ones away, and the world is not `ready` anyway.
   with m as materialized (
@@ -121,7 +121,7 @@ as $body$
 $body$
   $f$;
   revoke all on function public.sea_conditions_npc_ready() from public, anon, authenticated;
-  comment on function public.sea_conditions_npc_ready() is '0394: the figures that stand between this world and lighting sea_conditions_bite_npc. A read; server-only.';
+  comment on function public.sea_conditions_npc_ready() is '0399: the figures that stand between this world and lighting sea_conditions_bite_npc. A read; server-only.';
 
   -- ── 3. THE STEP ──
   execute $f$
@@ -131,7 +131,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0394: THE ONE STEP THAT LIGHTS THE SEA CONDITIONS FOR MERCHANTS. It refuses, changing nothing, when the switch is already lit or when a guard of
+-- 0399: THE ONE STEP THAT LIGHTS THE SEA CONDITIONS FOR MERCHANTS. It refuses, changing nothing, when the switch is already lit or when a guard of
 -- public.sea_conditions_npc_ready fails, and says every guard that fails. Otherwise: sea_conditions_bite_npc true, and the news row of this step.
 -- Server-only: the lead runs it on the owner's word. Its rollback is the switch.
 declare
@@ -152,20 +152,20 @@ begin
       using errcode = 'P0001';
   end if;
   update public.world_config set value = 'true'::jsonb, updated_at = now() where key = 'sea_conditions_bite_npc';
-  perform public.news_update('0394', 'Merchants keep to seas their ships hold', '상선도 내파에 맞는 바다만 항해');
+  perform public.news_update('0399', 'Merchants keep to seas their ships hold', '상선도 내파에 맞는 바다만 항해');
   return v || jsonb_build_object('lit', public.sea_conditions_npc_on(), 'ready', false, 'lit_at', now());
 end
 $body$
   $f$;
   revoke all on function public.sea_conditions_npc_light() from public, anon, authenticated;
-  comment on function public.sea_conditions_npc_light() is '0394: THE guarded step that lights sea_conditions_bite_npc and posts its news. Refuses, changing nothing, while a guard of public.sea_conditions_npc_ready fails. Server-only; the lead runs it on the owner''s word.';
+  comment on function public.sea_conditions_npc_light() is '0399: THE guarded step that lights sea_conditions_bite_npc and posts its news. Refuses, changing nothing, while a guard of public.sea_conditions_npc_ready fails. Server-only; the lead runs it on the owner''s word.';
 
   -- ── 4. THE SELF-ASSERT ──
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and not (n.nspname = 'public' and p.proname in ('sea_conditions_npc_ready', 'sea_conditions_npc_light'))) is distinct from v_fn_before then
-    raise exception '0394 self-assert FAIL: a function this file does not write moved';
+    raise exception '0399 self-assert FAIL: a function this file does not write moved';
   end if;
   for r_x in select p.proname, p.provolatile, p.prosecdef, coalesce(p.proconfig::text, '') as cfg, p.oid
              from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -174,13 +174,13 @@ $body$
     if r_x.provolatile <> (case when r_x.proname = 'sea_conditions_npc_light' then 'v' else 's' end)
        or not r_x.prosecdef or r_x.cfg <> '{"search_path=public, pg_temp"}'
        or has_function_privilege('anon', r_x.oid, 'execute') or has_function_privilege('authenticated', r_x.oid, 'execute') then
-      raise exception '0394 self-assert FAIL: public.% is not of its declared volatility, definer, pinned and server-only', r_x.proname;
+      raise exception '0399 self-assert FAIL: public.% is not of its declared volatility, definer, pinned and server-only', r_x.proname;
     end if;
   end loop;
   if v_n <> 2 or (select count(*) from public.client_rpc_entry_points()) <> v_entry
      or (select count(*) from public.client_write_grants()) <> 0 or (select count(*) from public.client_executable_writers()) <> 0
      or (select count(*) from public.caller_evaluated_functions()) <> 0 then
-    raise exception '0394 self-assert FAIL: the two functions are not exactly two, or the registry or a wall moved';
+    raise exception '0399 self-assert FAIL: the two functions are not exactly two, or the registry or a wall moved';
   end if;
 
   v_r := public.sea_conditions_npc_ready();
@@ -188,7 +188,7 @@ $body$
      or (v_r ->> 'lit')::boolean is distinct from v_lit or (v_r ->> 'players_lit')::boolean is distinct from public.sea_conditions_on()
      or (v_r ->> 'loops_closed')::int > (v_r ->> 'merchant_loops')::int
      or ((v_r ->> 'ready')::boolean and ((v_r ->> 'lit')::boolean or not (v_r ->> 'players_lit')::boolean or (v_r ->> 'merchants_with_no_open_leg')::int > 0)) then
-    raise exception '0394 self-assert FAIL: the read does not answer its figures, or calls a world ready that is not: %', v_r;
+    raise exception '0399 self-assert FAIL: the read does not answer its figures, or calls a world ready that is not: %', v_r;
   end if;
 
   begin
@@ -201,29 +201,29 @@ $body$
     end;
     if v_refused then
       if (v_r ->> 'ready')::boolean or public.sea_conditions_npc_on() is distinct from v_lit or (select count(*) from public.world_news) <> v_news then
-        raise exception '0394 self-assert FAIL: the step refused a world its own read calls ready, or refused and still changed something';
+        raise exception '0399 self-assert FAIL: the step refused a world its own read calls ready, or refused and still changed something';
       end if;
     else
-      if not (v_r ->> 'ready')::boolean or not public.sea_conditions_npc_on() or (select count(*) from public.world_news where key = 'update:0394') <> 1 then
-        raise exception '0394 self-assert FAIL: the step lit a world its own read does not call ready, or lit without the switch and one news row';
+      if not (v_r ->> 'ready')::boolean or not public.sea_conditions_npc_on() or (select count(*) from public.world_news where key = 'update:0399') <> 1 then
+        raise exception '0399 self-assert FAIL: the step lit a world its own read does not call ready, or lit without the switch and one news row';
       end if;
     end if;
-    raise exception 'PROBE_ROLLBACK_0394';
+    raise exception 'PROBE_ROLLBACK_0399';
   exception when others then
-    if sqlerrm <> 'PROBE_ROLLBACK_0394' then raise; end if;
+    if sqlerrm <> 'PROBE_ROLLBACK_0399' then raise; end if;
   end;
 
   if public.sea_conditions_npc_on() is distinct from v_lit
      or (select md5(string_agg(c.key || ':' || c.value::text || ':' || c.updated_at::text, ',' order by c.key)) from public.world_config c) is distinct from v_cfg_before
      or (select count(*) from public.world_news) <> v_news then
-    raise exception '0394 self-assert FAIL: the switch, a knob or the news moved (this file lights nothing)';
+    raise exception '0399 self-assert FAIL: the switch, a knob or the news moved (this file lights nothing)';
   end if;
   if clock_timestamp() - v_t0 > interval '30 seconds' then
-    raise exception '0394 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
+    raise exception '0399 self-assert FAIL: the file took % (budget 30 s)', clock_timestamp() - v_t0;
   end if;
 
-  raise notice '0394 NOTE: this file lights nothing. The lead lights with: select public.sea_conditions_npc_light()  (docs/dev-log/2026-11-13-lighting-the-seas.md). The guards as this world stands: %', v_r;
-  raise notice '0394 self-assert ok: MERCHANTS KEEP TO THE SEAS THEIR HULLS CAN HOLD - the read and the step installed, server-only; no other function, knob or news row moved; the step, probed and rolled back, %; % ms',
+  raise notice '0399 NOTE: this file lights nothing. The lead lights with: select public.sea_conditions_npc_light()  (docs/dev-log/2026-11-13-lighting-the-seas.md). The guards as this world stands: %', v_r;
+  raise notice '0399 self-assert ok: MERCHANTS KEEP TO THE SEAS THEIR HULLS CAN HOLD - the read and the step installed, server-only; no other function, knob or news row moved; the step, probed and rolled back, %; % ms',
     case when v_refused then 'refused naming its guards and changed nothing' else 'lit a ready world with one news row' end,
     round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end

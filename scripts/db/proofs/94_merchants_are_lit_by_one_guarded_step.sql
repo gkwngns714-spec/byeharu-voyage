@@ -1,12 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 94 - MERCHANTS ARE LIT BY ONE GUARDED STEP  (migration 0394; owner rows 166 and 324)
+-- PROOF 94 - MERCHANTS ARE LIT BY ONE GUARDED STEP  (migration 0399; owner rows 166 and 324)
 --
---   0394 lights nothing: it installs public.sea_conditions_npc_ready (the guards, as figures) and public.sea_conditions_npc_light (the step). This proof
+--   0399 lights nothing: it installs public.sea_conditions_npc_ready (the guards, as figures) and public.sea_conditions_npc_light (the step). This proof
 --   breaks each guard, lights a ready world, reads the planner and the news, and throws the switch back. All rolled back with proof.mjs's transaction.
 --
 -- @pass NL_AS_SHIPPED  the chain's world is not ready (the players' seas are dark): the read says so, the step refuses naming that guard, the merchants' switch stays dark and no news row is written
 -- @pass NL_NO_LEG      the players' seas lit and every sea made to ask a wave no hull holds: the read counts merchants left with no known leg, and the step refuses naming them
--- @pass NL_LIT         a ready world: the step lights sea_conditions_bite_npc, posts exactly one news row (update:0394, English and Korean) and answers its figures; asked again it refuses (already lit) and posts nothing
+-- @pass NL_LIT         a ready world: the step lights sea_conditions_bite_npc, posts exactly one news row (update:0399, English and Korean) and answers its figures; asked again it refuses (already lit) and posts nothing
 -- @pass NL_PLANNER     lit by the step: a merchant with a known leg her hull cannot hold is no longer offered it, and is offered others
 -- @pass NL_BACK        the switch thrown back: she is offered it again
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -22,7 +22,7 @@ declare
   v_lit  jsonb;
 begin
   if to_regprocedure('public.sea_conditions_npc_light()') is null then
-    raise exception 'PROOF 94 FAIL: 0394 is not in this world';
+    raise exception 'PROOF 94 FAIL: 0399 is not in this world';
   end if;
   select count(*) into v_news from public.world_news;
 
@@ -84,7 +84,7 @@ begin
   v_g := public.sea_conditions_npc_light();
   if not public.sea_conditions_npc_on() or not (v_g ->> 'lit')::boolean
      or (select count(*) from public.world_news) <> v_news + 1
-     or not exists (select 1 from public.world_news n where n.key = 'update:0394' and n.kind = 'UPDATE'
+     or not exists (select 1 from public.world_news n where n.key = 'update:0399' and n.kind = 'UPDATE'
                       and n.detail -> 'words' -> 'title' ->> 'en' = 'Merchants keep to seas their ships hold'
                       and n.detail -> 'words' -> 'title' ->> 'ko' = '상선도 내파에 맞는 바다만 항해') then
     raise exception 'PROOF 94 FAIL: the step did not light a ready world with one news row in both languages: %', v_g;
