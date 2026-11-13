@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button, Figure, Note, Row, Stepper, Tray, type TrayDetent, type TrayMode } from '../components/ui'
 import { OrderCheck } from './orderCheck'
 import type { StepOrder } from './useStepOrder'
-import { fleetStores, worstHullFraction } from '../domain/fleet'
+import { fleetStores, worstHullFraction, wornFittings } from '../domain/fleet'
 import { enumNaming } from '../domain/order'
 import { hasBuilding } from '../domain/port'
 import { formatInt, formatPct, formatTons, formatVoyageDays } from '../lib/format'
@@ -163,11 +163,14 @@ function Reading({ fleet, port, verb }: { fleet: FleetView; port: SnapshotPort |
   const t = useT()
   if (verb === 'REPAIR') {
     const worst = Math.round(worstHullFraction(fleet) * 100)
+    const worn = wornFittings(fleet)
     const yard = port && hasBuilding(port, 'shipyard')
     return (
       <>
         {/* Row 86: damage TAKEN, as PortShipyard prints it — `13% damaged` is a reading; `87%` was a quiz. */}
         <Row label={t('ship.damage')} value={<Figure value={formatPct(1 - worst / 100, 0)} unit={t('ship.damaged')} tone={worst < 50 ? 'danger' : 'ink'} size="figure" />} />
+        {/* 0158: the worn fittings a repair mends with the hull (served only while gear wear bites) */}
+        {worn.units > 0 && <Row label={t('ship.wornFittings')} value={<Figure value={formatInt(worn.units)} tone="warning" />} data-testid="step-worn" />}
         <Row
           label={t('ship.repairHere')}
           tone={yard ? 'default' : 'muted'}
