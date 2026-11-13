@@ -90,6 +90,11 @@ export const fightDict = defineDict({
     fleetsShips: '{f} fleets · {s} ships',
     shipsN: 'Ships {n}',
     onWay: 'On her way',
+    // 0379 (docs/ARMADA.md section 7): an armada fights as one. Her name on the card and the preview, the stance that
+    // acts for every fleet of hers, and each fleet's share once it is over.
+    armada: 'Armada',
+    stanceAll: 'Whole armada',
+    hullLost: 'Hull lost',
   },
   ko: {
     raid: '습격',
@@ -173,5 +178,8 @@ export const fightDict = defineDict({
     fleetsShips: '함대 {f} · 선박 {s}',
     shipsN: '선박 {n}',
     onWay: '오는 중',
+    armada: '대함대',
+    stanceAll: '대함대 전체',
+    hullLost: '선체 손실',
   },
 })
