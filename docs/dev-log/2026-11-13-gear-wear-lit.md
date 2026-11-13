@@ -53,7 +53,7 @@ The trading-15 company: a level changes nothing in wear (no rule reads it); what
 
 ## What a player sees when it is lit
 
-- Her ship's sheet (Fleets, a ship, Stats): a thin bar under each fitting that wears (full is new; amber from half worn), and under the racks one line: "Worn fittings: 2 worn, weakest works at 69%. Repair in port mends them." Nothing when nothing is worn.
+- Her ship's sheet (Fleets, a ship, Stats): a thin bar under each worn fitting (what is left of it; amber from half worn; a new piece draws none, so a merchant's card looks as it did), and under the racks one line: "Worn fittings: 2 worn, weakest works at 69%. Repair in port mends them." Nothing when nothing is worn.
 - The city's Repair face: under Damage, a row "Worn fittings 2" when something is worn, even with a whole hull. Either row opens the repair tray; the tray shows the count, and its price check a row "Fittings: 2 repaired, 12 d." inside the total.
 - A new company with a founding barca sees nothing: she carries no fitting.
 - Her figures (speed, handling, sighting, attack) fall by the worn share at the minute of lighting, by at most half of each worn piece's buys. `before-light.sql` says how far the most worn piece on prod has gone.
@@ -63,7 +63,7 @@ The trading-15 company: a level changes nothing in wear (no rule reads it); what
 | Found | Fix |
 |---|---|
 | The wear was drawn only as a 2-pixel bar with its words in a hover title: nothing readable on a phone. | The sheet says it in a line under the racks (`ship-worn`). |
-| Every word about wear came from the server in English only ("12% worn · works at 94%", "4 worn fittings repaired too"): English on a Korean screen. | The client words them from the served figures, EN and KO (`ship.wearNew`, `ship.wearWorn`, `ship.wornFittings`, `ship.wornCount`, `ship.wornWeakest`, `ship.wornHelp`, `books.fittingsRepaired`). The server's sentences are no longer drawn. |
+| Every word about wear came from the server in English only ("12% worn · works at 94%", "4 worn fittings repaired too"): English on a Korean screen. | The client words them from the served figures, EN and KO (`ship.wearWorn`, `ship.wornFittings`, `ship.wornCount`, `ship.wornWeakest`, `ship.wornHelp`, `books.fittingsRepaired`). The server's sentences are no longer drawn. |
 | The Repair face showed only hull damage: "0% damaged" with worn fittings gave no reason to press. | A "Worn fittings" row on the face and in the tray (`shipyard-worn`, `step-worn`), from one count (`wornFittings`, `src/domain/fleet`). |
 | No lit browser check existed (0158's dev-log: "no browser spec drives the lit wear bar"). | `tests/gear.wear.spec.ts`: lit at 390 and 320, EN and KO (sheet, yard, tray, a real repair), and dark. |
 

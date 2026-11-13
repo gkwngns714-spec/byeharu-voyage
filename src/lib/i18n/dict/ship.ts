@@ -46,7 +46,6 @@ export const shipDict = defineDict({
     repairToLabel: 'repair to',
     noDamage: 'No damage.',
     /** 0158 — a fitting's wear, from the served figures (the server's own sentence is English only). */
-    wearNew: 'New',
     wearWorn: '{n}% worn, works at {m}%',
     wornFittings: 'Worn fittings',
     wornCount: '{n} worn',
@@ -110,7 +109,6 @@ export const shipDict = defineDict({
     resupplyN: '{n}일치 보급',
     repairToLabel: '수리 목표',
     noDamage: '손상 없음.',
-    wearNew: '새것',
     wearWorn: '{n}% 닳음, 성능 {m}%',
     wornFittings: '닳은 장비',
     wornCount: '{n}개 닳음',

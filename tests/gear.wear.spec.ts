@@ -12,7 +12,7 @@ import { wornFittings } from '../src/domain/fleet'
 // `gear`), wornFittings (src/domain/fleet, the one count), live/ShipPanel (the wear bar and the worn line),
 // live/PortShipyard (the yard's Worn fittings row), live/StepQuestion and live/orderCheck (the repair tray).
 //
-//   lit:  her ship's sheet draws a wear bar under each fitting that wears, named in the reader's language, and says in
+//   lit:  her ship's sheet draws a wear bar under each WORN fitting (none under a new one), named in the reader's language, and says in
 //         words how many are worn and how well the weakest works; the Repair face says how many are worn although the
 //         hull is whole; the repair tray prices them; a repair mends them and the row is gone;
 //   dark: the same worn ship, and nothing of it on the sheet or at the yard (the world as it ships).
@@ -78,11 +78,10 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         const sheet = page.getByTestId('map-ship-panel')
         await expect(sheet).toBeVisible()
         const bars = sheet.getByTestId('unit-wear')
-        await expect(bars).toHaveCount(WORN_SHIP.units.length, { timeout: 60_000 })
+        // a bar under each WORN piece, none under the new one (the server serves a card for every piece that can wear)
+        await expect(bars).toHaveCount(WORN_SHIP.worn, { timeout: 60_000 })
         const names = await bars.evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')))
-        const want = WORN_SHIP.units.map((u) =>
-          u.wear === 0 ? translate(lang, 'ship.wearNew') : translate(lang, 'ship.wearWorn', { n: String(u.wear), m: String(100 - u.wear / 2) }),
-        )
+        const want = WORN_SHIP.units.filter((u) => u.wear > 0).map((u) => translate(lang, 'ship.wearWorn', { n: String(u.wear), m: String(100 - u.wear / 2) }))
         expect([...names].sort(), 'each bar is named in the language shown').toEqual([...want].sort())
         const line = sheet.getByTestId('ship-worn')
         await line.scrollIntoViewIfNeeded()

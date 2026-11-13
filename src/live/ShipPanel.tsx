@@ -197,12 +197,10 @@ function Heading({ children, trailing }: { children: ReactNode; trailing?: React
  *  level opens later is dimmed with the level. */
 function Box({ b }: { b: SlotBox }) {
   const t = useT()
-  // 0158: the wear in the reader's language, from the served figures (the server's own sentence is English only)
-  const worn = b.wear
-    ? b.wear.wear <= 0
-      ? t('ship.wearNew')
-      : t('ship.wearWorn', { n: formatInt(Math.round(b.wear.wear)), m: formatInt(b.wear.works) })
-    : null
+  // 0158: the wear in the reader's language, from the served figures (the server's own sentence is English only).
+  // A NEW piece draws nothing: the server serves a card for every piece that CAN wear, a merchant's included, and a
+  // full bar under every fitting of every hull would say nothing.
+  const worn = b.wear && b.wear.wear > 0 ? t('ship.wearWorn', { n: formatInt(Math.round(b.wear.wear)), m: formatInt(b.wear.works) }) : null
   const on = b.fitted !== null
   const shut = b.opensAt !== null
   return (
@@ -222,7 +220,7 @@ function Box({ b }: { b: SlotBox }) {
         {on ? b.fitted : shut ? `Lv ${b.opensAt}` : b.word}
       </span>
       {/* 0158 (S13): THE WEAR BAR — what is left of the piece (100 − its served wear), named in the reader's
-          language; drawn only when the server serves a wear for it (gear wear on, and a piece that wears). */}
+          language; drawn only for a piece that is worn (gear wear on, and a wear above nothing). */}
       {on && b.wear && worn && (
         <span
           data-testid="unit-wear"
