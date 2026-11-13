@@ -18,7 +18,14 @@ import { useT } from '../lib/i18n'
 // THE RAIDERS' ROW names the water it speaks of: `danger` when the caller knows the course's worst water, otherwise
 // the most dangerous water on the chart now, by its own tier word (the read takes no course).
 
+// THE PICKER NEVER MOVES THE PAGE UNDER IT (found when the five lights were tested as one tree: on a fleet's page the picker landed after its read and pushed the foot down
+// 351 px, under a press on Move). While the read is on its way the SAME rows stand with no figures (`RaidOrderWaiting`), so the answer fills them and nothing shifts; the last
+// line (No guns) keeps its place whether or not it has words. Only a world where orders are off draws nothing, and it is remembered for the session (`ordersOff`), so there the
+// rows are held open on the first mount alone.
+
 const ORDERS: readonly RaidOrderWord[] = ['FIGHT', 'FLEE', 'PAY']
+/** Orders answered `on: false` this session: later mounts hold no room open while their read is on its way. */
+let ordersOff = false
 
 export function RaidOrder({ fleetId, danger = null, className = '' }: { fleetId: string; danger?: number | null; className?: string }) {
   const t = useT()
@@ -29,6 +36,7 @@ export function RaidOrder({ fleetId, danger = null, className = '' }: { fleetId:
   useEffect(() => {
     let live = true
     void worldRaidRead(fleetId).then((r) => {
+      if (r.ok) ordersOff = !r.value.on
       if (live && r.ok) setRead({ fleet: fleetId, value: r.value })
     })
     return () => {
@@ -37,7 +45,8 @@ export function RaidOrder({ fleetId, danger = null, className = '' }: { fleetId:
   }, [fleetId])
 
   const now = read?.fleet === fleetId ? read.value : null
-  if (!now || !now.on || !now.order) return null
+  if (!now) return ordersOff ? null : <RaidOrderWaiting className={className} />
+  if (!now.on || !now.order) return null
 
   const press = (order: RaidOrderWord) => {
     if (busy || order === now.order) return
@@ -96,7 +105,36 @@ export function RaidOrder({ fleetId, danger = null, className = '' }: { fleetId:
         }
         hairline={now.guns === false}
       />
-      {now.guns === false && <Row tone="muted" hairline={false} label={t('fight.noGuns')} data-testid="raid-order-noguns" />}
+      {now.guns === false ? (
+        <Row tone="muted" hairline={false} label={t('fight.noGuns')} data-testid="raid-order-noguns" />
+      ) : (
+        <Row hairline={false} label={BLANK} aria-hidden data-testid="raid-order-guns-line" />
+      )}
+    </div>
+  )
+}
+
+/** A line's worth of nothing: a row that keeps its height and says no word. */
+const BLANK = '\u00a0'
+
+/** THE PICKER'S ROWS WITH NO FIGURES, while `world.raid_read` is on its way: the same primitives in the same order, so the answer lands in place. No order is marked and no
+ *  press is taken. */
+function RaidOrderWaiting({ className }: { className: string }) {
+  const t = useT()
+  const segments: SegmentSpec<RaidOrderWord>[] = ORDERS.map((id) => ({
+    id,
+    label: <span>{t(id === 'FLEE' ? 'fight.orderFlee' : id === 'PAY' ? 'fight.orderPay' : 'fight.orderFight')}</span>,
+  }))
+  return (
+    <div className={`pb-2 ${className}`} data-testid="raid-order-waiting" aria-busy="true">
+      <Row hairline={false} label={t('fight.orders')} value={<span className="text-t-caption text-ink-faint">{t('fight.nextSail')}</span>} />
+      <Segmented segments={segments} value={'' as RaidOrderWord} onChange={() => {}} label={t('fight.orders')} fill columns={3} />
+      <Row label={t('fight.oddsFoe')} value={<Figure value={BLANK} />}>
+        <span className="block text-t-caption text-ink-faint">{BLANK}</span>
+      </Row>
+      <Row label={t('fight.oddsSlip')} value={<Figure value={BLANK} />} />
+      <Row label={t('fight.orderPay')} value={<Figure value={BLANK} />} hairline={false} />
+      <Row hairline={false} label={BLANK} aria-hidden />
     </div>
   )
 }
