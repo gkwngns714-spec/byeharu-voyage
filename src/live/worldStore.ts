@@ -69,6 +69,7 @@ import {
   cmdTradeBasket,
   initRpc,
   worldFleets,
+  worldArmadas,
   worldLedger,
   worldMarket,
   worldOfficers,
@@ -111,6 +112,7 @@ import type {
   RpcResult,
   AllegianceView,
   StandingRouteBook,
+  Armadas,
   StandingRouteStopDraft,
   ReachPayload,
   RouteBoard,
@@ -188,6 +190,9 @@ export interface LiveWorld {
    *  reads them with the fleets, on the same beat. A route runs on the server whether or not
    *  anyone is looking; this is only the reading of it. */
   routes: StandingRouteBook | null
+  /** HER ARMADAS (0367, docs/ARMADA.md): `world.armadas()`, read by `refresh()` after the routes, on the same beat, and only for a company of two fleets or more (an
+   *  armada is at least two, so a company of one asks nothing). Before the first read, and for a company of one: none, switched off. */
+  armadas: Armadas
   /** THE MERCHANTS AT SEA AND IN PORT (0099, docs/NPC_TRADERS.md §8.1) — the last
    *  `world.sea_traffic()` reading, or null before the first. Read by `refresh()` on the shell's
    *  beat, AFTER the routes, and ONLY while a screen wants it (`trafficWanted > 0`): a captain on the
@@ -449,6 +454,9 @@ const ROSTER_FULL_EVERY_MS = 10 * 60_000
 /** A kept roster is written to storage at most this often — it is half a megabyte of text. */
 const ROSTER_SAVE_EVERY_MS = 60_000
 
+/** No armadas, switched off: what a company of one fleet reads, and everyone before the first world read. One object, so a selector's answer does not change between reads. */
+const NO_ARMADAS: Armadas = { on: false, max: 0, raid_scale: 0, armadas: [] }
+
 export const useWorld = create<LiveWorld>((set, get) => {
   /**
    * WHAT IS READ BACK AFTER A TRADE — the one spelling, for the two verbs that trade (`issue` and
@@ -662,6 +670,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
   skills: null,
   standings: null,
   routes: null,
+  armadas: NO_ARMADAS,
   routeBoard: null,
   routeBoardAt: null,
   routeBoardFailed: false,
@@ -791,6 +800,8 @@ export const useWorld = create<LiveWorld>((set, get) => {
     // the routes read's settle is a no-op. On the fatal branch above the routes are not read at
     // all and the last book stands.
     await readRoutes()
+    // 0367: HER ARMADAS ride the same beat, after the routes (the one order). A company of one fleet has none to read and asks nothing; a failed read keeps none.
+    const armadas = fleets.value.length >= 2 ? await worldArmadas() : null
     // 0143: THE FLAGS — a read that takes no lock and changes once a day. The cache keeps the
     // answer for the hour (loadAllegiance's lifetime), so this call is a memory read on 59 beats
     // out of 60; the hour now lives with the answer it describes, not in a second counter here.
@@ -804,6 +815,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
     }
     set({
       fleets: fleets.value,
+      armadas: armadas?.ok ? armadas.value : NO_ARMADAS,
       // A failed player read leaves the house NULL rather than fatal, for the same reason a failed
       // ledger read only nulls the purse: the world is still playable without it.
       player: player.ok ? player.value.player : null,

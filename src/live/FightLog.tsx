@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { formatInt, MINUS } from '../lib/format'
 import type { FightLog as Log, FightLoss } from '../lib/rpc'
 import { useT, type T } from '../lib/i18n'
@@ -170,12 +170,30 @@ export function FightLog({ log, loss, dense = false, paced = false, watch = fals
             <span className={word}>{t(watch ? 'fight.lostA' : 'fight.lost')}</span> {lost.join(' · ')}
           </p>
           {log.you.map((s, i) => (
-            <p key={i} className="tabular-nums" data-testid="fight-log-ship">
-              {s.name} <span className={word}>{t('fight.hull')}</span> {formatInt(Math.round(s.hull))} → {formatInt(Math.round(log.after[i].hull))}
-            </p>
+            <Fragment key={i}>
+              {/* 0367: an armada's raid: each fleet is named above her own ships, whole */}
+              {fleetAt(log, i) !== null && (
+                <p className="break-words font-semibold text-ink" data-testid="fight-log-fleet">
+                  {fleetAt(log, i)}
+                </p>
+              )}
+              <p className="tabular-nums" data-testid="fight-log-ship">
+                {s.name} <span className={word}>{t('fight.hull')}</span> {formatInt(Math.round(s.hull))} → {formatInt(Math.round(log.after[i].hull))}
+              </p>
+            </Fragment>
           ))}
         </div>
       )}
     </div>
   )
+}
+
+/** 0367: the name of the fleet whose ships start at row `i` of the log's `you`, or null (a row inside a fleet, or a fight with no fleets named). */
+function fleetAt(log: Log, i: number): string | null {
+  let at = 0
+  for (const f of log.fleets ?? []) {
+    if (at === i) return f.name
+    at += f.ships
+  }
+  return null
 }

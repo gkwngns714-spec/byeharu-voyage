@@ -3,7 +3,9 @@ import { fleetCargoByCode } from '../../../domain/fleet'
 import { usePress } from '../../../live/usePress'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatPrice } from '../../../lib/format'
+import { cmdArmadaSail } from '../../../lib/rpc'
 import type { FleetView, GoodBoard, Refusal } from '../../../lib/rpc'
+import { armadaOf, useArmadas } from '../../../live/armadas'
 import { useT } from '../../../lib/i18n'
 import { useDeskPlan, type PlanDraft } from './planDraft'
 import { planLines, reachBoard, reachWords, tripRows } from './planLines'
@@ -55,6 +57,8 @@ export function useTripGo({
   const [refusal, setRefusal] = useState<Refusal | null>(null)
   const [noCourse, setNoCourse] = useState<string | null>(null)
   const press = usePress()
+  // 0367 (docs/ARMADA.md section 5): a fleet of an armada sails on the armada's order only, so her trip's one SAIL is sent as the armada's (below). Null for any other fleet.
+  const armada = armadaOf(useArmadas(), fleet.id)
 
   const aboard = fleetCargoByCode(fleet)[plan.good] ?? 0
   const rows = tripRows(b, plan)
@@ -114,6 +118,35 @@ export function useTripGo({
         return
       }
       setNoCourse(null)
+      // 0367: THE TRIP OF A FLEET IN AN ARMADA. A trip of one passage is sent in three steps: what she buys here (her own lines, run at the quay), then the ARMADA's one
+      // order to the trip's city (every fleet of hers, or none), then what she sells there (her own lines, kept in her queue until she lands). A refusal at any step is
+      // printed and nothing after it is sent. A trip of several passages is left to the plain path below, where the server says in its own words that she sails with her armada.
+      const sails = text.lines.filter((l) => l.text.startsWith('SAIL '))
+      if (armada && sails.length === 1) {
+        const at = text.lines.indexOf(sails[0])
+        const before = text.lines.slice(0, at)
+        const after = text.lines.slice(at + 1)
+        if (before.length > 0 && !(await issueLines(fleet.id, before))) {
+          setRefusal(useWorld.getState().refusal)
+          return
+        }
+        const words = sails[0].text.split(' ')
+        const sent = await cmdArmadaSail(armada.id, words[1], sails[0].path ?? null, words.includes('INSURED'))
+        if (!sent.ok) {
+          setRefusal(sent.refusal)
+          await useWorld.getState().refresh()
+          return
+        }
+        await useWorld.getState().refresh()
+        if (after.length > 0 && !(await issueLines(fleet.id, after))) {
+          setRefusal(useWorld.getState().refusal)
+          return
+        }
+        setRefusal(null)
+        close()
+        onQueued()
+        return
+      }
       if (await issueLines(fleet.id, text.lines)) {
         setRefusal(null)
         close()
