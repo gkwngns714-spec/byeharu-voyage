@@ -21,6 +21,7 @@ import { COIN, formatInt, formatPctPoints } from '../../lib/format'
 import type { Officer } from '../../lib/rpc'
 import { fold, foldedMatch } from '../../lib/text'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
+import { focusWord, jobWord } from '../../live/captainWords'
 import { optionsOf } from './codexFilters'
 import { NoAnswer } from './NoAnswer'
 import { useT, t as tNow } from '../../lib/i18n'
@@ -80,8 +81,8 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
   const facets = useMemo(
     () => ({
       grade: optionsOf(tNow('codex.grade'), all, (o) => o.grade, (v) => v, byGrade),
-      focus: optionsOf(tNow('codex.role'), all, (o) => o.focus, (_v, o) => o.focus_word),
-      job: optionsOf(tNow('codex.job'), all, (o) => o.job, (_v, o) => o.job_word),
+      focus: optionsOf(tNow('codex.role'), all, (o) => o.focus, (_v, o) => focusWord(o.focus_word) ?? o.focus_word),
+      job: optionsOf(tNow('codex.job'), all, (o) => o.job, (_v, o) => jobWord(o.job_word) ?? o.job_word),
     }),
     [all, byGrade],
   )
@@ -107,7 +108,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
   // THE TWO BOARDS: the rows on the face by grade (best first) and by role (the biggest count first)
   const grades = useMemo(() => countBy(rows, (o) => o.grade, (o) => o.grade, byGrade), [rows, byGrade])
   const roles = useMemo(() => {
-    const counted = countBy(rows, (o) => o.focus, (o) => o.focus_word, (a, b) => a.localeCompare(b))
+    const counted = countBy(rows, (o) => o.focus, (o) => focusWord(o.focus_word) ?? o.focus_word, (a, b) => a.localeCompare(b))
     return counted.sort((a, b) => b.value - a.value || String(a.label).localeCompare(String(b.label)))
   }, [rows])
 
@@ -175,7 +176,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
                   <FactsLine>
                     {[
                       o.grade ?? null,
-                      o.job_word ?? o.specialty.toLowerCase(),
+                      jobWord(o.job_word) ?? o.specialty.toLowerCase(),
                       o.hired ? t('ui.signed') : null,
                       o.level != null ? t('ui.level', { n: o.level }) : null,
                       o.port ? portNameOf(portByCode, o.port) : null,
@@ -211,7 +212,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
         >
           {open.grade && <Row label={t('codex.grade')} value={open.grade} data-testid="captain-grade" />}
           <Row
-            label={open.job_word ? `${open.job_word} · ${open.focus_word ?? ''}` : open.specialty.toLowerCase()}
+            label={open.job_word ? `${jobWord(open.job_word)} · ${focusWord(open.focus_word) ?? ''}` : open.specialty.toLowerCase()}
             value={
               <Figure
                 value={`+${formatPctPoints(open.bonus_pct)}`}
@@ -224,7 +225,7 @@ export function CaptainsFace({ query, search, answered }: { query: string; searc
               as the value it shoved the tray 74 px sideways at 390 and left "Surgeon" one letter wide; on line 2 it wraps
               under its label and the row is as wide as the tray. The row's tone and the served `in_use` still colour it. */}
           {(open.traits ?? []).map((t) => (
-            <Row key={t.code} label={t.word} tone={t.in_use ? 'default' : 'muted'} data-testid={`captain-trait-${t.code}`}>
+            <Row key={t.code} label={jobWord(t.word)} tone={t.in_use ? 'default' : 'muted'} data-testid={`captain-trait-${t.code}`}>
               <span className={`block text-t-body ${t.in_use ? 'text-success' : ''}`}>{t.lines.join(' · ')}</span>
               {t.note && <Hint>{t.note}</Hint>}
             </Row>

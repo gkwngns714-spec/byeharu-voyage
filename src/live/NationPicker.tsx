@@ -27,7 +27,10 @@ export function NationPicker({
   return (
     // THE POWERS A COMPANY MAY SAIL FOR AS ONE ORDERED GRID (owner, 2026-10-31) — equal cells on fixed column lines,
     // alphabetical, never a ragged wall of pills.
-    <TileGrid label={label} columns={3} data-testid="nation-picker">
+    // A WORDS GRID (owner, 2026-11-12): in three fixed columns at 320 px "카스티야-에스파냐", "The Netherlands" and "Portugal" stood
+    // out of their tiles and over their neighbours. Two columns on a phone, three from the desk, and a cell is never narrower
+    // than its flag and name.
+    <TileGrid label={label} words={2} wordsWide={3} data-testid="nation-picker">
       {nations.map((n) => (
         <TileChoice key={n.code} on={n.code === value} onClick={() => onChange(n.code)} data-testid={`nation-${n.code}`}>
           <HullCountry nation={n.code} />

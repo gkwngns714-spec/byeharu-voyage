@@ -4,9 +4,8 @@ import { PortFlag } from '../../../live/PortFlag'
 import { TradeCard } from '../../../live/TradeCard'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { haversineNm } from '../../../lib/geo/greatCircle'
-import { sailOrigin } from '../../../domain/passage'
 import { useT } from '../../../lib/i18n'
-import type { BestSale, FleetView } from '../../../lib/rpc'
+import type { BestSale } from '../../../lib/rpc'
 import type { PortMarketState } from '../../../live/usePortMarket'
 import type { TradeGoodRow } from '../../../domain/market'
 
@@ -51,24 +50,31 @@ function formatFixed(pts: number, d: number) {
 /** How many harbours the chip strip names — a short strip, not a directory. */
 const CHIPS = 8
 
-/** THE CITY PICKER: the city in hand, where she lies, then the harbours nearest where she departs from.
+/** THE CITY PICKER: where she lies (under way: the city she is bound for), then the harbours nearest it.
  *
  *  A GRID THAT KEEPS ITS WORDS (2026-11-11; components/ui/tileStyles.ts): three columns on a phone, two in the wide desk's left
  *  pane. Four columns at 390 px left a name 41 px, so "Lisbon" broke inside the word. A name here wraps only at its spaces and is
  *  never cut; a cell whose longest word is wider than a column is as wide as that word. tests/trade.layout.spec.ts measures it
- *  for every port name the world has, in English and Korean. */
-export function CityChips({ fleet, city, onCity }: { fleet: FleetView; city: string | null; onCity: (code: string) => void }) {
+ *  for every port name the world has, in English and Korean.
+ *
+ *  A PRESS MOVES NO CHIP (2026-11-11, the trade-flow slice). The pressed city used to be put in the second cell, so the cell
+ *  under the thumb changed its name as it was pressed, and the list was sorted again from each leg's end as she sailed. The
+ *  order is now a fact of HER PLACE alone (`home`: her port, or under way her destination — the same city on every leg and
+ *  after she lands), nearest first, and the city in hand is only MARKED. A city in hand that is not one of the nearest (pressed
+ *  on the map, or a cargo row's far city) takes the LAST cell, so the count and every other cell stay as they were. */
+export function CityChips({ home, city, onCity }: { home: string | null; city: string | null; onCity: (code: string) => void }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const ports = useWorld((s) => s.snapshot?.ports)
-  const chips = useMemo(() => {
-    const from = sailOrigin(fleet, portByCode)
+  const near = useMemo(() => {
+    // nearest to the harbour itself: which harbours are her neighbours is a fact of the map, not of a course
+    const from = home ? (portByCode[home] ?? null) : null
     // harbours only: a sea place (a cape, a strait) keeps no market
     const harbours = (ports ?? []).filter((p) => p.kind !== 'SEA_PLACE')
-    const near = from ? [...harbours].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code) : harbours.map((p) => p.code)
-    const head = [fleet.status === 'DOCKED' ? fleet.port : null, city].filter((c): c is string => !!c)
-    return [...new Set([...head, ...near])].slice(0, CHIPS)
-  }, [fleet, portByCode, ports, city])
+    const sorted = from ? [...harbours].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code) : harbours.map((p) => p.code)
+    return [...new Set([...(home ? [home] : []), ...sorted])].slice(0, CHIPS)
+  }, [home, portByCode, ports])
+  const chips = city && !near.includes(city) ? [...near.slice(0, CHIPS - 1), city] : near
   return (
     // THE CITY PICKER IS A GRID (owner, 2026-10-31) — equal cells on fixed columns, in the same nearest-first order; a flag and
     // a name per cell, never a ragged strip.
@@ -125,17 +131,19 @@ export function TradeBoard({
         <Hint>{t('desk.pickCity')}</Hint>
       ) : (
         <>
-          {/* where she lies, the strip's lit chip says it all; anywhere else the city is named, "Not docked" */}
-          {!docked && (
-            <div className="mb-2 flex flex-wrap items-baseline gap-x-2" data-testid="trade-board-head">
-              <span className="text-t-body font-semibold text-ink" data-testid="trade-board-name">
-                <PortFlag code={city} /> {portNameOf(portByCode, city)}
-              </span>
-              <span className="text-t-caption text-ink-faint" data-testid="trade-board-not-docked">
-                {t('desk.notDocked')}
-              </span>
-            </div>
-          )}
+          {/* THE BOARD'S OWN LINE, ALWAYS IN ITS PLACE (2026-11-11, the trade-flow slice): whose goods these are, and whether
+              she lies there. It stood only where she did not lie, so pressing another city pushed every card 30 px down and
+              pressing her own pulled them back up. */}
+          {/* FROM lg ONLY: a phone has no line for it (tests/onepage.spec.ts leaves this face 22 px), so there the same words
+              stand beside her name (TradeStatus.tsx, compact) and no line comes or goes above the cards at all. */}
+          <div className="mb-2 hidden min-h-6 flex-wrap items-baseline gap-x-2 lg:flex" data-testid="trade-board-head">
+            <span className="text-t-body font-semibold text-ink" data-testid="trade-board-name">
+              <PortFlag code={city} /> {portNameOf(portByCode, city)}
+            </span>
+            <span className="text-t-caption text-ink-faint" data-testid={docked ? 'trade-board-docked' : 'trade-board-not-docked'}>
+              {t(docked ? 'desk.docked' : 'desk.notDocked')}
+            </span>
+          </div>
           {quay.market === undefined ? (
             quay.refusal ? (
               <Note tone="danger">{quay.refusal.sentence}</Note>

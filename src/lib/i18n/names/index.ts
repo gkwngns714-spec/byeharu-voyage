@@ -5,9 +5,9 @@
 import { getLocale, type Locale } from '../locale'
 import { KO_PORTS } from './ports'
 import { KO_GOODS } from './goods'
-import { KO_CATEGORIES, KO_CULTURES, KO_HULLS, KO_NATIONS, KO_REGIONS } from './realms'
+import { KO_CATEGORIES, KO_CULTURES, KO_HULLS, KO_NATIONS, KO_REGIONS, KO_SEAS, KO_TITLES } from './realms'
 
-export type NameKind = 'port' | 'nation' | 'region' | 'good' | 'category' | 'culture' | 'hull'
+export type NameKind = 'port' | 'nation' | 'region' | 'good' | 'category' | 'culture' | 'hull' | 'title' | 'sea'
 
 const KO: Record<NameKind, Readonly<Record<string, string>>> = {
   port: KO_PORTS,
@@ -17,6 +17,8 @@ const KO: Record<NameKind, Readonly<Record<string, string>>> = {
   category: KO_CATEGORIES,
   culture: KO_CULTURES,
   hull: KO_HULLS,
+  title: KO_TITLES,
+  sea: KO_SEAS,
 }
 
 /** `key` is the map's key (a code, or for ports and hulls the served name); `served` is what the

@@ -1,4 +1,24 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
+
+/** FACTS ON ONE RUNNING LINE, JOINED BY A MIDDLE DOT, THAT TURN ONLY AT A DOT (owner, 2026-11-12: "long words and sentences
+ *  making new messy lines"). Each fact is one box: "Chart room" goes to the next line whole, never "Chart" / "room". A fact
+ *  wider than the whole line still wraps inside itself, so nothing is cut. */
+export function Facts({ items, className = '' }: { items: readonly (ReactNode | null | undefined | false)[]; className?: string }) {
+  const shown = items.filter((x) => x !== null && x !== undefined && x !== false && x !== '')
+  return (
+    <span className={className} data-facts="">
+      {shown.map((x, i) => (
+        <Fragment key={i}>
+          <span className="inline-block max-w-full align-top">
+            {x}
+            {i < shown.length - 1 && ' ·'}
+          </span>
+          {i < shown.length - 1 && ' '}
+        </Fragment>
+      ))}
+    </span>
+  )
+}
 
 // THE FACTS LINE — small facts under a row's label, in the caption voice, wrapping rather than
 // overlapping: "54 days of supplies · 4 / 60 tons · hull 80 %", "sold 120 · bought 40 · 240 / 300".

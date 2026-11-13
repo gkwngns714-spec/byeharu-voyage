@@ -90,7 +90,12 @@ export function PriceRows({
   return (
     <>
       {/* WHAT IT IS, before what it costs — the kind, then how rare a source is (owner row 177), then its class (0294). */}
-      <Row label={t('ui.kind')} value={<GoodKind category={good.category} rarity={good.rarity} goodClass={good.class} />} data-testid="good-kind-row" />
+      {/* ITS OWN QUERY CONTAINER, AND THE PAIR FLOW (owner, 2026-11-12): in the City's market panel at 320 px (218 px of row) the
+          three words ("cloth · uncommon · superior", 260 px on one line) pushed the label to one letter a line ("K / i / n / d")
+          and ran out of the panel. Where they do not fit beside the label they go under it, and turn between words. */}
+      <div className="@container">
+        <Row pair label={t('ui.kind')} value={<GoodKind category={good.category} rarity={good.rarity} goodClass={good.class} />} data-testid="good-kind-row" />
+      </div>
       <Row
         label={t('ui.trend')}
         tone={trend.series !== undefined && values.length < 2 ? 'muted' : 'default'}
