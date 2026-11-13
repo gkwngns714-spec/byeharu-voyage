@@ -23,6 +23,7 @@ import { useMarketPick } from '../../live/marketPick'
 import { useMarketRequests } from '../../live/useMarketRequests'
 import { useTrade } from '../../live/useTrade'
 import { usePriceSeries } from '../../live/usePriceSeries'
+import { useTrendNews } from '../../live/useChartNews'
 import { usePortMarket } from '../../live/usePortMarket'
 import { useManifestPreview } from '../../live/useManifestPreview'
 import { TRADE_FACES, useTradeFace, type TradeFace } from '../../live/tradeFace'
@@ -261,10 +262,12 @@ function MarketTray({
     onClose()
   }
   const trade = useTrade(fleet, pick.intent, pick.good, qty, onClose, stage)
-  const history = usePriceSeries(port.id, pick.good.good_id)
+  // the tray's chart carries its news (owner row 216); the card a dot opens is a tray of its own, out of the flow
+  const { trend: history, card: newsCard } = useTrendNews(port.id, pick.good.good_id, usePriceSeries(port.id, pick.good.good_id))
   const aboard = fleetCargoByCode(fleet)
   const goodByCode = useWorld((s) => s.goodByCode)
   return (
+    <>
     <TradeTray
       mode="pane"
       pick={pick}
@@ -287,5 +290,7 @@ function MarketTray({
       />
       <CityGoodTrades portId={port.id} goodId={pick.good.good_id} refresh={fleet.version} />
     </TradeTray>
+    {newsCard}
+    </>
   )
 }
