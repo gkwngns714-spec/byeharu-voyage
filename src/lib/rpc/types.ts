@@ -1293,6 +1293,41 @@ export interface CaptainStatsView {
   stats: CaptainStat[]
 }
 
+/** 0355 — ONE SKILL of one of your captains (`world.captain_skills`): its step of her grade's ceiling, what the steps add (`pct_now`, per cent of the skill's own
+ *  value), what the next step costs in Reputation (null at the ceiling), whether a rule reads it today, and whether the door would take a step now. When it would
+ *  not, `why` is the server's sentence, `why_code` its code and `figures` the have / need it served. Nothing here is computed by the client. */
+export interface CaptainSkill {
+  trait: string
+  word: string
+  rank: number
+  max: number
+  pct_now: number
+  cost: number | null
+  in_use: boolean
+  can: boolean
+  why: string | null
+  why_code: string | null
+  figures: { have: number; need: number; unit: string } | null
+}
+
+/** 0355 — YOUR signing of one captain: the company's Reputation and her skills in her kit's order. null when you keep no such captain. */
+export interface CaptainSkillsView {
+  code: string
+  reputation: number
+  skills: CaptainSkill[]
+}
+
+/** 0355 — what cmd.captain_skill_up answers: the step she now stands at, what it cost and the Reputation left. */
+export interface CaptainSkillUp {
+  officer: string
+  trait: string
+  rank: number
+  max: number
+  cost: number
+  reputation: number
+  sentence: string
+}
+
 /** 0160 — what cmd.captain_traits_set answers. */
 export interface TraitsSet {
   officer: string
@@ -1859,6 +1894,19 @@ export interface ReputationCard {
   cap: number
   seq: number
   recent: ReputationRow[]
+  /** 0356 — the level of each track whose crossing was PAID (`public.house_level_marks`; no row reads 1). Not a level: a
+   *  level is `PlayerHouse.levels`. A served level above its mark is a crossing `cmd.level_up` will pay. Absent before 0356. */
+  level_marks?: { trading: number; exploration: number; combat: number }
+  /** 0356 — the gift a level (`rep_level_per_level`): reaching level L pays `level_gift × L`. 0: no gift. Absent before 0356. */
+  level_gift?: number
+}
+
+/** 0356 — one level crossing as `public.level_marks_settle` paid it: the `LEVEL_UP` event's payload, and a row of `cmd.level_up`'s answer. */
+export interface LevelCrossing {
+  track: 'trading' | 'exploration' | 'combat'
+  level: number
+  /** The Reputation the crossing booked (0 while the gift is off). */
+  reputation: number
 }
 
 /** One track of DESIGN 8. `level` is the same curve for all three, so "level 4" means one amount

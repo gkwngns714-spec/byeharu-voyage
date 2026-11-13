@@ -53,6 +53,7 @@ export function NewsCard({ items, onClose }: { items: readonly NewsItem[] | null
         } else setDetent(next)
       }}
       title={t('news.heading')}
+      over
       data-testid="news-card"
     >
       <div className="px-gutter">

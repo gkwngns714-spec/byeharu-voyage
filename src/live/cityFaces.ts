@@ -68,4 +68,10 @@ export type PortFace = (typeof PORT_FACES)[number]['id']
 export const PRODUCTION_PLACE = 'production'
 
 /** The one link to it: every way to Storage or the Forge lands here. */
+/** The HQ's Port place (the yard where a ship is built, and the repair dock), as `?place=`. */
+export const PORT_PLACE = 'port'
+
+/** The one link to where a ship is built: the HQ of that port with its Port place open, or the HQ in hand when no port is named. */
+export const yardHref = (portCode: string | null): string => (portCode ? `/city?port=${encodeURIComponent(portCode)}&place=${PORT_PLACE}` : `/city?place=${PORT_PLACE}`)
+
 export const productionHref = (portCode: string): string => `/city?port=${encodeURIComponent(portCode)}&place=${PRODUCTION_PLACE}`

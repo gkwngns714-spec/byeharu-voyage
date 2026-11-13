@@ -3,6 +3,7 @@ import { StockGauge } from './StockGauge'
 import { Figure } from './Figure'
 import { GoodKind } from './GoodKind'
 import { PriceChart } from './PriceChart'
+import type { ChartNews } from './newsMarksModel'
 import { primarySide, primaryValue } from './priceChartModel'
 import { Row } from './Row'
 import { Skeleton } from './Skeleton'
@@ -60,6 +61,9 @@ export interface PriceTrend {
   /** The span every chart is on (`useChartSpan`). */
   span: PriceSpan
   setSpan: (span: PriceSpan) => void
+  /** This chart's news, a dot each on its time axis (0347, owner row 216); undefined where there is none, or where the reader of
+   *  the trend does not show news. Read above the design system (`src/live/useChartNews.tsx`), which also owns the card a press opens. */
+  news?: ChartNews
 }
 
 export function PriceRows({
@@ -120,6 +124,7 @@ export function PriceRows({
             slotSeconds={(trend.series as PriceSeries).step_seconds}
             nowMs={openedAt as number}
             compact={compactChart}
+            news={trend.news}
             label={t('ui.pastPricesAxis', { name: good.name, n: values.length, lo: formatPriceFigure(Math.min(...values)), hi: formatPriceFigure(Math.max(...values)) })}
           />
         ) : (

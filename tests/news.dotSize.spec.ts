@@ -17,7 +17,15 @@
 //   • the small mark stands inside its target, and the target is what a press at its centre reaches;
 //   • pressing it opens the card with exactly that dot's news, and the chart's box does not move.
 // It names NewsDots.tsx, newsMarksModel.ts, useChartNews.tsx, NewsCard.tsx, PriceChart.tsx, SeriesChart.tsx, MarketLeft.tsx,
-// TradePanel.tsx, Overview.tsx, Merchants.tsx and CityDetail.tsx so CI's rule N selects it.
+// TradePanel.tsx, Overview.tsx, Merchants.tsx, CityDetail.tsx, PriceRows.tsx, PriceTray.tsx, PortPrices.tsx, PortTrade.tsx,
+// TradeTray.tsx and MarketFace.tsx so CI's rule N selects it.
+//
+// 2026-11-13 (docs/dev-log/2026-11-13-news-dots-trays.md): TWO MORE SURFACES, the trays' chart (PriceRows): the quay's trade tray
+// (More, then Trend) and the map's good panel. AND "THE CHART'S BOX DOES NOT MOVE" IS READ IN THE PAGE'S OWN TERMS (`placeOf`): the
+// box plus how far everything it scrolls in is scrolled. This test was red about one run in twenty, "pressing moved its chart" by
+// 372 px, and nothing had moved in the page: a dot's target crept a fraction of a px with the clock, Playwright found it "not stable"
+// under the press and tried again, and its second try scrolls the dot to the glass's foot. The target now stands still (the lattice,
+// newsMarksModel), and a scroll is no longer read as a re-flow. A block that lands late above a chart still moves its place.
 
 import { test, expect, type Page } from '@playwright/test'
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
@@ -25,6 +33,7 @@ import path from 'node:path'
 import { asWorldImageFile } from '../src/lib/db/worldImage'
 import { NEWS_HIT_PX } from '../src/components/ui/newsMarksModel'
 import { PHONE, reachable, ready } from './appReady.fixture'
+import { openCityPanel } from './openCity.fixture'
 
 const WIDE = { width: 1280, height: 800 }
 /** The probe's headlines: seconds before the seed. The last two are 5 s apart: one dot on any chart. */
@@ -92,6 +101,19 @@ const READ_DOTS = (scope: string): { glass: number; dots: DotRead[] } => {
   return { glass: innerWidth, dots }
 }
 
+/** WHERE A BOX STANDS IN ITS PAGE: its box on the glass plus how far each thing it scrolls in (and the page) is scrolled. A scroll
+ *  does not change it; a block above it that grows, lands or leaves does. Self-contained, shipped into the page. */
+const placeOf = (e: Element): { x: number; y: number; width: number; height: number } => {
+  const r = e.getBoundingClientRect()
+  let x = r.left + scrollX
+  let y = r.top + scrollY
+  for (let p = e.parentElement; p !== null; p = p.parentElement) {
+    x += p.scrollLeft
+    y += p.scrollTop
+  }
+  return { x, y, width: r.width, height: r.height }
+}
+
 /** The laws of the dots of one surface, as sentences; and each dot pressed. */
 async function measure(page: Page, where: string, scope: string, o: { headlines: number; most: number }): Promise<string[]> {
   const first = page.locator(scope).getByTestId('news-dot').first()
@@ -141,7 +163,7 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
     })
     if (reaches !== 'itself') bad.push(`${where}: a press at the centre of "${dots[i].label}" reaches ${reaches}`)
     const layer = dot.locator('xpath=..')
-    const before = await layer.boundingBox()
+    const before = await layer.evaluate(placeOf)
     // a dot another target lies over cannot be pressed: said as a sentence, not left to run the clock out
     const pressed = await dot.click({ timeout: 10_000 }).then(() => true, () => false)
     if (!pressed) {
@@ -153,7 +175,7 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
     const items = await card.getByTestId('news-item').count()
     // the card lists at most five (NewsCard's CARD_MAX) and says how many more the dot holds: every migration's own "Update" row lands in one dot, and 0362's made it six
     if (items !== Math.min(dots[i].n, 5)) bad.push(`${where}: "${dots[i].label}" opened a card of ${items} news`)
-    const after = await layer.boundingBox()
+    const after = await layer.evaluate(placeOf)
     if (JSON.stringify(after) !== JSON.stringify(before)) bad.push(`${where}: pressing "${dots[i].label}" moved its chart: ${JSON.stringify(before)} → ${JSON.stringify(after)}`)
     if (!(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))) bad.push(`${where}: the page scrolls sideways with the card of "${dots[i].label}" open`)
     await card.getByTestId('tray-close').click()
@@ -183,6 +205,30 @@ for (const glass of [PHONE, WIDE]) {
     await expect(page.getByTestId('city-hall-panel')).toBeVisible({ timeout: 180_000 })
     await page.getByTestId('city-building-market').click()
     bad.push(...(await measure(page, at('hq market'), '[data-testid="city-market-chart"]', all)))
+
+    // THE QUAY'S TRADE TRAY (PriceRows in TradeTray; owner row 216): the same city's market, a good's Buy, More, then the Trend row
+    // unfolds the chart. Its dots are the same dots; the card a press opens is a tray of its own.
+    await page.getByTestId('trade-buy').first().click()
+    const quayTray = page.getByTestId('trade-tray')
+    await expect(quayTray).toBeVisible({ timeout: 60_000 })
+    await quayTray.getByTestId('trade-tray-more').click()
+    const trend = quayTray.getByTestId('trend-row')
+    await expect(trend).toHaveAttribute('aria-expanded', 'false', { timeout: 60_000 })
+    // the row's own corner: its middle is the span picker, whose press picks a span and does not unfold the row
+    await trend.click({ position: { x: 12, y: 12 } })
+    await expect(quayTray.getByTestId('price-chart')).toBeVisible({ timeout: 60_000 })
+    bad.push(...(await measure(page, at('quay tray'), '[data-testid="trade-tray"]', all)))
+
+    // THE MAP'S GOOD PANEL (PriceRows in PriceTray; owner row 216): Map, Lisbon, Market, a good: its chart stands unfolded
+    await page.goto('map')
+    await ready(page)
+    await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
+    await openCityPanel(page, 'LIS', 'Lisbon')
+    await page.getByRole('tab', { name: 'Market' }).click()
+    await expect(page.getByTestId('quay-ledger')).toBeVisible({ timeout: 60_000 })
+    await page.locator('[data-testid="trade-row"] button:enabled').filter({ hasText: /^buy/i }).first().click()
+    await expect(page.getByTestId('price-tray').getByTestId('price-chart')).toBeVisible({ timeout: 60_000 })
+    bad.push(...(await measure(page, at('map good'), '[data-testid="price-tray"]', all)))
 
     // THE DESK'S GOOD CHART (PriceChart, TradePanel)
     await page.goto('command')
