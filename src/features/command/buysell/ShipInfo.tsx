@@ -69,8 +69,11 @@ export function ShipInfo({ fleet }: { fleet: FleetView }) {
         data-testid="buy-ship-provisions"
       />
       {book && skills.length > 0 && (
-        <div className="px-4 pb-3" data-testid="buy-ship-skills" aria-label={t('port.skills')}>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        // TWO TILES A LINE ONLY WHERE THE BLOCK ITSELF HAS THE ROOM (28 rem), asked of the block and not of the glass: in the wide
+        // desk's right pane (2026-11-13) the block is 318 px on a 1,280-px glass, and two tiles there were 97 px each, a long
+        // name standing past its tile (tests/names.whole.spec.ts).
+        <div className="@container px-4 pb-3" data-testid="buy-ship-skills" aria-label={t('port.skills')}>
+          <div className="grid grid-cols-1 gap-2 @md:grid-cols-2">
             {skills.map((sk) => (
               <SkillTile key={sk.code} code={sk.code} name={sk.name} level={sk.level} max={book.max_level} />
             ))}
