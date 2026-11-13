@@ -9,6 +9,7 @@ import {
   SummaryRow,
   TradeTray,
   type TradePick,
+  categoryLabel,
 } from '../../components/ui'
 import { fleetCargoByCode } from '../../domain/fleet'
 import { hasBuilding } from '../../domain/port'
@@ -178,8 +179,8 @@ export function MarketFace({ port, fleet }: { port: SnapshotPort; fleet: FleetVi
             groups.map(([category, rows]) => (
               <div key={category || 'all'}>
                 {category !== '' && (
-                  <div className="pt-2 text-t-caption text-ink-faint" data-testid="city-market-group">
-                    {category}
+                  <div className="pt-2 text-t-caption text-ink-faint" data-testid="city-market-group" data-category={category}>
+                    {categoryLabel(category)}
                   </div>
                 )}
                 <div className="mt-1 grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">

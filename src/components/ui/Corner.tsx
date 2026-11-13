@@ -62,7 +62,7 @@ export function Corner({
         className="flex h-11 w-full items-center gap-2 px-3 text-left text-t-caption text-ink-muted"
       >
         {mark}
-        <Clip className="min-w-0 flex-1">{label}</Clip>
+        <Clip className="flex-1">{label}</Clip>
         {foldable && (
           <Icon
             name="chevron"

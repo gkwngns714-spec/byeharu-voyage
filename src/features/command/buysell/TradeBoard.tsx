@@ -1,12 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import { Hint, Note, ScrollPane, Skeleton, TileChoice, TileGrid } from '../../../components/ui'
 import { PortFlag } from '../../../live/PortFlag'
 import { TradeCard } from '../../../live/TradeCard'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { haversineNm } from '../../../lib/geo/greatCircle'
-import { sailOrigin } from '../../../domain/passage'
 import { useT } from '../../../lib/i18n'
-import type { BestSale, FleetView } from '../../../lib/rpc'
+import type { BestSale } from '../../../lib/rpc'
 import type { PortMarketState } from '../../../live/usePortMarket'
 import type { TradeGoodRow } from '../../../domain/market'
 
@@ -17,7 +16,8 @@ import type { TradeGoodRow } from '../../../domain/market'
 //
 //   CITY CHIPS  a short strip of the harbours nearest her, for a thumb that misses on the small map — names only,
 //               never a price: what a city pays is found by pressing it (owner row 229, no cross-city list on Buy).
-//               The short strip of nearest harbours CityBoard drew.
+//               The short strip of nearest harbours CityBoard drew. `CityChips` below: on a phone it stands at the head
+//               of the board; on the wide desk Trade.tsx stands it in the left pane, the cards alone in the centre.
 //   CARDS       ONE card per good: its icon and name, BOTH prices (the city's ask on the left, its bid on the right),
 //               ▲▼ against a day ago, the day's line, and her units aboard. At a city she is NOT at, a carried good
 //               its quay does not list is bid for by world.price_why — the server buys it there all the same (owner
@@ -50,8 +50,50 @@ function formatFixed(pts: number, d: number) {
 /** How many harbours the chip strip names — a short strip, not a directory. */
 const CHIPS = 8
 
+/** THE CITY PICKER: where she lies (under way: the city she is bound for), then the harbours nearest it.
+ *
+ *  A GRID THAT KEEPS ITS WORDS (2026-11-11; components/ui/tileStyles.ts): three columns on a phone, two in the wide desk's left
+ *  pane. Four columns at 390 px left a name 41 px, so "Lisbon" broke inside the word. A name here wraps only at its spaces and is
+ *  never cut; a cell whose longest word is wider than a column is as wide as that word. tests/trade.layout.spec.ts measures it
+ *  for every port name the world has, in English and Korean.
+ *
+ *  A PRESS MOVES NO CHIP (2026-11-11, the trade-flow slice). The pressed city used to be put in the second cell, so the cell
+ *  under the thumb changed its name as it was pressed, and the list was sorted again from each leg's end as she sailed. The
+ *  order is now a fact of HER PLACE alone (`home`: her port, or under way her destination — the same city on every leg and
+ *  after she lands), nearest first, and the city in hand is only MARKED. A city in hand that is not one of the nearest (pressed
+ *  on the map, or a cargo row's far city) takes the LAST cell, so the count and every other cell stay as they were. */
+export function CityChips({ home, city, onCity }: { home: string | null; city: string | null; onCity: (code: string) => void }) {
+  const t = useT()
+  const portByCode = useWorld((s) => s.portByCode)
+  const ports = useWorld((s) => s.snapshot?.ports)
+  const near = useMemo(() => {
+    // nearest to the harbour itself: which harbours are her neighbours is a fact of the map, not of a course
+    const from = home ? (portByCode[home] ?? null) : null
+    // harbours only: a sea place (a cape, a strait) keeps no market
+    const harbours = (ports ?? []).filter((p) => p.kind !== 'SEA_PLACE')
+    const sorted = from ? [...harbours].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code) : harbours.map((p) => p.code)
+    return [...new Set([...(home ? [home] : []), ...sorted])].slice(0, CHIPS)
+  }, [home, portByCode, ports])
+  const chips = city && !near.includes(city) ? [...near.slice(0, CHIPS - 1), city] : near
+  return (
+    // THE CITY PICKER IS A GRID (owner, 2026-10-31) — equal cells on fixed columns, in the same nearest-first order; a flag and
+    // a name per cell, never a ragged strip.
+    <TileGrid label={t('desk.cityChips')} words={3} wordsWide={2} className="mb-2" data-testid="city-chips">
+      {chips.map((c) => (
+        <TileChoice key={c} on={c === city} onClick={() => onCity(c)} data-testid="city-chip" data-port={c}>
+          {/* one child: the flag and the name stay ONE group, centred. No `truncate` and no break inside a word: a long
+              harbour wraps at its spaces (tests/align.spec.ts's CUT rule, tests/trade.layout.spec.ts). */}
+          <span className="flex items-center gap-1">
+            <PortFlag code={c} /> <span data-testid="city-chip-name">{portNameOf(portByCode, c)}</span>
+          </span>
+        </TileChoice>
+      ))}
+    </TileGrid>
+  )
+}
+
 export function TradeBoard({
-  fleet,
+  strip,
   city,
   docked,
   quay,
@@ -59,11 +101,11 @@ export function TradeBoard({
   picked,
   onBuy,
   onSell,
-  onCity,
   sales,
   onBest,
 }: {
-  fleet: FleetView
+  /** The city picker (`CityChips`) at the head of the board, on a phone; the wide desk stands it in its left pane instead. */
+  strip?: ReactNode
   /** The city in hand (port CODE); the board reads its market. */
   city: string | null
   /** She lies at the city in hand. */
@@ -74,56 +116,34 @@ export function TradeBoard({
   picked: string | null
   onBuy: (code: string) => void
   onSell: (code: string) => void
-  onCity: (code: string) => void
   /** 0348: each good's best sale from the city in hand, by good CODE; null while it has not landed. */
   sales: ReadonlyMap<string, BestSale> | null
   onBest: (sale: BestSale) => void
 }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
-  const ports = useWorld((s) => s.snapshot?.ports)
   const portId = city ? (portByCode[city]?.id ?? null) : null
-
-  // THE CHIPS: the city in hand, where she lies, then the harbours nearest where she departs from
-  const chips = useMemo(() => {
-    const from = sailOrigin(fleet, portByCode)
-    // harbours only: a sea place (a cape, a strait) keeps no market
-    const harbours = (ports ?? []).filter((p) => p.kind !== 'SEA_PLACE')
-    const near = from ? [...harbours].sort((a, b) => haversineNm(from, a) - haversineNm(from, b)).map((p) => p.code) : harbours.map((p) => p.code)
-    const head = [fleet.status === 'DOCKED' ? fleet.port : null, city].filter((c): c is string => !!c)
-    return [...new Set([...head, ...near])].slice(0, CHIPS)
-  }, [fleet, portByCode, ports, city])
 
   return (
     <div data-testid="trade-board" data-city={city ?? ''} data-docked={docked ? 'true' : 'false'}>
-      {/* THE CITY PICKER IS A GRID (owner, 2026-10-31) — equal cells, fixed columns, in the same
-          nearest-first order; a flag and a name per cell, never a ragged strip. */}
-      <TileGrid label={t('desk.cityChips')} columns={4} className="mb-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,7.5rem),1fr))]!" data-testid="city-chips">
-        {chips.map((c) => (
-          <TileChoice key={c} on={c === city} onClick={() => onCity(c)} data-testid="city-chip" data-port={c}>
-            {/* one child: the flag and the name stay ONE group, centred — and no `truncate`, so a
-                long harbour wraps rather than hiding its tail (tests/align.spec.ts's CUT rule). */}
-            <span className="flex min-w-0 items-center gap-1">
-              <PortFlag code={c} /> <span className="min-w-0 break-words">{portNameOf(portByCode, c)}</span>
-            </span>
-          </TileChoice>
-        ))}
-      </TileGrid>
+      {strip}
       {!city ? (
         <Hint>{t('desk.pickCity')}</Hint>
       ) : (
         <>
-          {/* where she lies, the strip's lit chip says it all; anywhere else the city is named, "Not docked" */}
-          {!docked && (
-            <div className="mb-2 flex flex-wrap items-baseline gap-x-2" data-testid="trade-board-head">
-              <span className="text-t-body font-semibold text-ink" data-testid="trade-board-name">
-                <PortFlag code={city} /> {portNameOf(portByCode, city)}
-              </span>
-              <span className="text-t-caption text-ink-faint" data-testid="trade-board-not-docked">
-                {t('desk.notDocked')}
-              </span>
-            </div>
-          )}
+          {/* THE BOARD'S OWN LINE, ALWAYS IN ITS PLACE (2026-11-11, the trade-flow slice): whose goods these are, and whether
+              she lies there. It stood only where she did not lie, so pressing another city pushed every card 30 px down and
+              pressing her own pulled them back up. */}
+          {/* FROM lg ONLY: a phone has no line for it (tests/onepage.spec.ts leaves this face 22 px), so there the same words
+              stand beside her name (TradeStatus.tsx, compact) and no line comes or goes above the cards at all. */}
+          <div className="mb-2 hidden min-h-6 flex-wrap items-baseline gap-x-2 lg:flex" data-testid="trade-board-head">
+            <span className="text-t-body font-semibold text-ink" data-testid="trade-board-name">
+              <PortFlag code={city} /> {portNameOf(portByCode, city)}
+            </span>
+            <span className="text-t-caption text-ink-faint" data-testid={docked ? 'trade-board-docked' : 'trade-board-not-docked'}>
+              {t(docked ? 'desk.docked' : 'desk.notDocked')}
+            </span>
+          </div>
           {quay.market === undefined ? (
             quay.refusal ? (
               <Note tone="danger">{quay.refusal.sentence}</Note>
@@ -140,7 +160,10 @@ export function TradeBoard({
             // THE CARDS ARE THE ONE LONG LIST ON THIS FACE: at a busy quay they run past the
             // glass, so they scroll inside their own bounded pane (the page above stays put).
             // From lg the desk's centre pane is already the scroller — no second bound there.
-            <ScrollPane className="max-h-[9rem] lg:max-h-none">
+            // THE BOUND HOLDS ONE WHOLE ROW OF CARDS (10.5 rem = 168 px; a card is 165-166 px since its best sale's city
+            // is printed whole). At 9 rem (sized for the 151-px card) the row's Buy and Sell buttons stood 13 px under the
+            // pane's edge, so a press on one first scrolled the cards 13 px (tests/desk.layout.spec.ts, "a press … moved the cards").
+            <ScrollPane className="max-h-[10.5rem] lg:max-h-none">
               <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
                 {rows.map((r) => (
                   <TradeCard

@@ -93,6 +93,27 @@ test('lit, every raid day is fought in rounds and the report hangs each fight un
     expect(lines[f.line], `fight ${i} points at a line that is not its day's`).toMatch(new RegExp(`^Day ${raids[i].day}\\. Sail sighted`))
     expect(f.rounds).toEqual(raids[i].rounds)
   })
+  // 0353: a company's raid keeps its log beside the sentences, and the reader takes it: as many rounds as were fought,
+  // her hull before and after, the day's losses. The sentences above are untouched by it.
+  const kept = (await db.pg.query<{ day: number; fought: number; lost: number; log: unknown }>(
+    `select day_index as day, (payload->'fight'->>'rounds_fought')::int as fought, (payload->'fight'->>'hull_lost')::float8 as lost, payload->'fight'->'log' as log
+       from public.voyage_events where voyage_id = $1 and kind = 'PIRATES' order by day_index`, [voyage])).rows
+  fights.forEach((f, i) => {
+    expect(f.log, `fight ${i} kept no log the reader takes: ${JSON.stringify(kept[i].log)}`).not.toBeNull()
+    expect(f.log!.rounds).toHaveLength(kept[i].fought)
+    expect(f.log!.order).toBe('FIGHT')
+    expect(f.loss).not.toBeNull()
+    const before = f.log!.you.reduce((n, s) => n + s.hull, 0)
+    const after = f.log!.after.reduce((n, s) => n + s.hull, 0)
+    expect(before - after).toBeCloseTo(kept[i].lost, 1)
+  })
+})
+
+test('an old report (a fight in sentences, no log) reads as it always did', () => {
+  const rounds = ['Raiders: about 2 × Şebek (xebec), 81 crew.', 'They saw you before your lookout saw them.', 'They break off and run.']
+  const old = { lines: ['Day 1. Sail sighted to windward. They broke off and ran.'], fights: [{ line: 0, rounds }] }
+  expect(payloadFights(old)).toEqual([{ line: 0, rounds, log: null, loss: null }])
+  expect(payloadLines(old)).toEqual(old.lines)
 })
 
 test('dark, a raided passage reads as it always did: no rounds, no fights in the report', async () => {

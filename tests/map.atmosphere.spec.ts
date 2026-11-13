@@ -378,7 +378,7 @@ test.describe('the ship is one hull, and the course points where it goes', () =>
   })
 })
 
-// ── 4. BOTH SCHEMES DEFINE EVERY CHART TOKEN ───────────────────────────────────────────────────
+// ── 4. ONE SCHEME, AND EVERY CHART TOKEN IS SPENT ───────────────────────────────────────────────────
 
 /** The `--color-chart-*` names declared inside the block that starts at `opener`. */
 function chartTokensIn(css: string, opener: string): string[] {
@@ -395,19 +395,17 @@ function chartTokensIn(css: string, opener: string): string[] {
   return [...block.matchAll(/^\s*(--color-chart-[a-z0-9-]+)\s*:/gm)].map((m) => m[1]).sort()
 }
 
-test('every --color-chart-* token the night sea defines, the day sea defines too', () => {
+test('every --color-chart-* token the night sea defines is drawn', () => {
   const css = read('src/index.css')
   const night = chartTokensIn(css, '@theme')
-  const day = chartTokensIn(css, ":root[data-theme='light']")
   expect(night.length).toBeGreaterThanOrEqual(8) // sea, land, coast + deep, shallow, relief, grid, sea-name
-  expect(day).toEqual(night)
-  // …and every one of them is spent: a token nobody paints with is a second palette waiting.
+  // Every one of them is spent: a token nobody paints with is a second palette waiting.
   // A token is drawn by a chart file, or — since 2026-10-14 — by one of the `.bv-sun-*` rules
   // at the end of src/index.css, which mix a mark's night ink toward the day's by its `--night`
-  // (docs/MAP_ATMOSPHERE.md §11.3). The rules follow the two token blocks, so they are read from
+  // (docs/MAP_ATMOSPHERE.md §11.3). The rules follow the token block, so they are read from
   // the first `.bv-sun-` rule on and never from the definitions themselves.
   const firstRule = css.indexOf('\n.bv-sun-light {')
-  expect(firstRule, 'the .bv-sun-* rules exist').toBeGreaterThan(css.indexOf(":root[data-theme='light']"))
+  expect(firstRule, 'the .bv-sun-* rules exist').toBeGreaterThan(css.indexOf('@theme'))
   const sunRules = css.slice(firstRule)
   const painted =
     readdirSync(path.join(SRC, 'chart'))
@@ -437,24 +435,29 @@ function declarationsIn(css: string, opener: string): Map<string, string> {
   return out
 }
 
-test('the day map is the NIGHT map, declaration for declaration (owner row 171)', () => {
+test('there is ONE scheme, dark: no light palette, no scheme switch, and the Sun keeps its day tokens (owner, 2026-11-12)', () => {
+  // The owner, 2026-11-12: *"the dark stting is default. remove the light one."* This replaces the
+  // law that held the light scheme's chart to the night map (owner row 171): there is no second
+  // palette left to drift. A phone in light mode gets the dark game, because nothing reads the
+  // device's preference and nothing selects on a theme attribute.
   const css = read('src/index.css')
-  // The owner, 2026-10-20: *"The light mode map color should be same as dark."* The chart's own
-  // element restates the night palette for the day scheme (src/index.css, `.bv-chart-night`), and
-  // a copy drifts — so this holds every line of it against the night block it was copied from:
-  // retune the night map and the day map goes red until it is retuned with it.
-  const night = declarationsIn(css, '@theme')
-  const chart = declarationsIn(css, ":root[data-theme='light'] .bv-chart-night")
-  expect(chart.size, 'the chart rule restates nothing').toBeGreaterThanOrEqual(40)
-  for (const [token, value] of chart) {
-    expect(night.get(token), `${token} is restated for the day chart; the night sea does not define it`).toBe(value)
-  }
-  // …and it covers the whole picture: every chart ink, both lamps, the merchant and all eight
-  // nation inks, so nothing on the water is left wearing a day colour.
-  for (const token of night.keys()) {
-    if (/^--color-(chart-(?!day-)|nation-|harbour-light|ship-light|merchant)/.test(token)) {
-      expect(chart.has(token), `${token} is a map colour the day chart does not restate`).toBe(true)
+  expect(css.includes('data-theme'), 'src/index.css selects on a theme attribute').toBe(false)
+  expect(css.includes('prefers-color-scheme'), 'src/index.css reads the device scheme').toBe(false)
+  expect(css.includes('bv-chart-night'), 'the chart rule of the light scheme is back').toBe(false)
+  expect([...css.matchAll(/^\s*color-scheme\s*:\s*([a-z ]+);/gm)].map((m) => m[1])).toEqual(['dark'])
+  expect(read('index.html')).toContain('<meta name="color-scheme" content="dark"')
+  for (const dir of ['features/profile', 'chart', 'app']) {
+    for (const f of readdirSync(path.join(SRC, dir))) {
+      if (!/\.tsx?$/.test(f)) continue
+      const source = read(path.join('src', dir, f))
+      expect(/dataset\.theme|data-theme|prefers-color-scheme/.test(source), `src/${dir}/${f} switches the scheme`).toBe(false)
     }
+  }
+  // DAYLIGHT IS NOT THE LIGHT SCHEME: the twelve tokens the Sun paints the day side with are the
+  // @theme block's own, and they stay.
+  const night = declarationsIn(css, '@theme')
+  for (const t of ['sea', 'deep', 'shallow', 'coast', 'ice', 'boreal', 'temperate', 'arid', 'tropic', 'mark', 'hull', 'name-halo']) {
+    expect(night.has(`--color-chart-day-${t}`), `--color-chart-day-${t} is gone`).toBe(true)
   }
 })
 

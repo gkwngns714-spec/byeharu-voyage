@@ -25,6 +25,13 @@
 
 import { FLAG_SIZES, flagSrc, type FlagSize } from './flagSrc'
 
+/** THE ROOM A FLAG TAKES, EMPTY: a row with no flag (a free town, a house with no country) keeps its name on the same
+ *  column as the rows around it (owner, 2026-11-12: a list read ragged where one row in three had no flag). */
+export function FlagSlot({ size = 'body' }: { size?: FlagSize }) {
+  const height = FLAG_SIZES[size]
+  return <span aria-hidden="true" className="inline-block shrink-0" style={{ width: height * 1.5, height }} data-flag-slot="" />
+}
+
 export function Flag({
   code,
   name,

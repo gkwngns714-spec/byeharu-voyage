@@ -8,6 +8,7 @@ import { useDeskGood } from '../../store/deskGood'
 import { DeskPanes, DeskStack, type DeskLayout } from './DeskFrame'
 import { DESK_FACES, useDeskView, type DeskFace } from './deskView'
 import { FleetStrip } from './FleetStrip'
+import { TradeStatus } from './buysell/TradeStatus'
 import { Trade } from './buysell/Trade'
 import { City } from './city/City'
 import { Invest } from './invest/Invest'
@@ -164,7 +165,15 @@ export function CommandScreen() {
         </h1>
       </header>
       <div className={`flex flex-col ${scrollRegionClass}`} data-testid="desk-scroll">
-        <FleetStrip fleets={fleets} onSelect={selectFleet} fleet={fleet ?? null} />
+        {/* WHERE SHE IS stands beside her name (2026-11-11, the trade-flow slice): in port, or under way to where and until
+            when. In the picker's own row, on every face, so turning a face moves nothing; on Trade its second line also says
+            when the board is another city's. */}
+        <FleetStrip
+          fleets={fleets}
+          onSelect={selectFleet}
+          fleet={fleet ?? null}
+          trailing={fleet ? <TradeStatus fleet={fleet} compact board={face === 'trade'} /> : undefined}
+        />
         {/* THE FACES (deskView.ts): one row in the body, not in the title line — a 44-px control
             there makes the bar taller, and a taller bar covers what a press lands on below it. */}
         <Segmented<DeskFace>
@@ -173,8 +182,10 @@ export function CommandScreen() {
           onChange={turnTo}
           label={t('command.deskFaces')}
           fill
-          className="mb-2 mt-1"
+          className={face === 'trade' && fleet ? 'mb-1 mt-1' : 'mb-2 mt-1'}
         />
+        {/* the goal card stands 4 px under the faces and 4 px over the board: the 8 px the faces kept, shared, so the Trade
+            face is not a pixel taller (under way it must not scroll its sheet, tests/trade.flow.spec.ts T3) */}
         {fleet && face === 'trade' && <GoalCard />}
         {fleet && faceBody(fleet)}
       </div>

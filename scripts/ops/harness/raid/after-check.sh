@@ -50,7 +50,9 @@ d as (
          (select coalesce(sum(c.guns + sh.crew * 0.02 + c.tier * 3), 0) from public.ships sh join public.ship_classes c on c.id = sh.class_id
            where sh.fleet_id = v.fleet_id) as esc_dark
     from public.voyage_events ve join public.voyages v on v.id = ve.voyage_id, w
-   where ve.kind = 'PIRATES' and ve.resolved_at >= w.a and ve.resolved_at < w.b),
+   where ve.kind = 'PIRATES' and ve.resolved_at >= w.a and ve.resolved_at < w.b
+     -- 0353 (docs/COMBAT_LOG.md 5.1): a raid fought under a standing order (Flee, Pay) is her choice and not the engine's balance: left out of the pairing. No day carries one while raid_orders_enabled is off.
+     and not coalesce(ve.payload->'fight'->'log' ? 'order', false)),
 t as (
   select d.*, (d.p->>'raider')::numeric r,
          case when (d.p->>'raider')::numeric <= 0 then 'EVADED'
@@ -119,7 +121,7 @@ select json_build_object(
 rollback;
 EOF
 
-head -c 40 "$SQL" | grep -qi "begin transaction read only" || { echo "REFUSING: the query is not read only"; exit 3; }
+node "$(cd "$(dirname "$0")" && pwd)/../read-only.mjs" "$SQL" || exit 3   # the one judge of "read only": first statement, last statement, no write verb
 WIN="$SQL"; command -v cygpath >/dev/null && WIN="$(cygpath -w "$SQL")"
 OUT="$(cd "$REPO" && npx --yes supabase@2.120.0 db query --linked --output-format json -f "$WIN" 2>&1)"
 RC=$?

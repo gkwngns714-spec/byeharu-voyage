@@ -97,3 +97,20 @@ export function tripOf(trips: readonly OrderTrip[], fleet: FleetView, pick: { ki
   if (!id) return null
   return trips.find((t) => t.orders.includes(id)) ?? null
 }
+
+/** WHERE SHE IS BOUND, PAST THE STOPS ON THE WAY (2026-11-11, the trade-flow slice). A far trip is written as several SAILs
+ *  (planLines.ts: the harbours she calls at for supplies, then the city she trades at), and the voyage under way names only
+ *  the leg she is on (`voyage.to`), so a screen that read it alone opened a waypoint's market as if it were her destination.
+ *  This is the last harbour of the run of SAILs at the head of her live orders: the SAILs that follow the leg she is on (the
+ *  one under way too, while the queue still lists it), up to her next order that is not a SAIL — the place she next acts at.
+ *  Null when she is not under way or no SAIL follows the leg; the caller then reads the voyage's own end. */
+export function boundFor(fleet: FleetView, isPort: (code: string) => boolean): string | null {
+  if (!fleet.voyage) return null
+  let to: string | null = null
+  for (const order of fleet.queue) {
+    if (!LIVE.includes(order.status)) continue
+    if (order.verb.toUpperCase() !== 'SAIL') break
+    to = sailTo(order, fleet.name, isPort) ?? to
+  }
+  return to
+}

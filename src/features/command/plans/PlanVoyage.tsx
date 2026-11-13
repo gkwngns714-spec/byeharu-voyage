@@ -4,7 +4,7 @@ import { useSeaConditions } from '../../../live/useSeaConditions'
 import { portNameOf, useWorld } from '../../../live/worldStore'
 import { formatInt } from '../../../lib/format'
 import type { BoardBuyRow, BoardSellRow, FleetView, GoodBoard } from '../../../lib/rpc'
-import { useT } from '../../../lib/i18n'
+import { properName, useT } from '../../../lib/i18n'
 import { reachBoard, reachWords, seaAsksWords } from './planLines'
 
 // THE PLAN'S VOYAGE — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 183):
@@ -85,7 +85,7 @@ export function PlanVoyage({
           label={t('desk.yourTitle')}
           value={
             <Figure
-              value={s?.title ? (s.title.name ? t('desk.titleOf', { level: s.title.level, name: s.title.name }) : String(s.title.level)) : '—'}
+              value={s?.title ? (s.title.name ? t('desk.titleOf', { level: s.title.level, name: properName('title', s.title.name, s.title.name) }) : String(s.title.level)) : '—'}
             />
           }
         />

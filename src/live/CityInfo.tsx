@@ -125,7 +125,7 @@ export function CityInfo({ port }: { port: SnapshotPort }) {
         </FactsLine>
       </Row>
 
-      <Row label={t('town.i_sea')} value={port.sea} data-testid="city-info-sea">
+      <Row label={t('town.i_sea')} value={properName('sea', port.sea, port.sea)} data-testid="city-info-sea">
         <FactsLine>
           <span>{t('town.i_culture', { culture: properName('culture', port.culture, port.culture) })}</span>
           {/* A rank this build has never heard of says nothing, rather than guessing a middling one. */}

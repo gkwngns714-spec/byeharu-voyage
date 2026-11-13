@@ -164,7 +164,7 @@ export function SheetSection({
   surface?: boolean
   /** THE SECTION IS ONE SMALL CONTROL (a switch of two or three words), so its heading and the control stand on ONE line, the control right behind
    *  the word, and drop under it only when the two do not fit (2026-11-02, the Profile at 320×640: Language and Appearance were 92 px each for a
-   *  44-px control and a 24-px word — 80 px that pushed the sign-out card onto the rail). Two callers: Language and Appearance. */
+   *  44-px control and a 24-px word — 80 px that pushed the sign-out card onto the rail). One caller now: Language (Appearance went with the light scheme, 2026-11-12). */
   inline?: boolean
   children: ReactNode
   className?: string

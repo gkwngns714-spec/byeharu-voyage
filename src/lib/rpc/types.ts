@@ -1343,7 +1343,26 @@ export interface SeatedCaptain {
   sentence: string
 }
 
+/** 0354: what a fleet adds up to (`public.fleet_totals`): sums of her ships' own served figures, the wage authority's figure for a day, and her slowest ship. */
+export interface FleetTotals {
+  ships: number
+  attack: number
+  hull: number
+  hull_max: number
+  crew: number
+  crew_required: number
+  crew_max: number
+  /** The names of her ships with fewer hands than they need. */
+  short_crew: string[]
+  /** `public.fleet_wage`: what her crew costs a day at sea, in ducats (to 4 places; a cargo, navy or pirate ship reads 0). */
+  wages_day: number
+  /** Null for a fleet with no ship. */
+  slowest: { id: string; name: string; speed: number } | null
+}
+
 export interface FleetView {
+  /** 0354: the fleet's totals. Absent before 0354. */
+  totals?: FleetTotals
   /** 0157 — what the captains seated in her ships add (`world.crew_bonuses`). Absent before 0157. */
   crew?: CrewBonuses
   id: string
@@ -2962,6 +2981,48 @@ export type ShipMoves =
   | { on: false }
   | { on: true; targets: { id: string; name: string; empty: boolean }[]; can_new: boolean }
 
+/** 0354: one row of a room ladder (`public.room_steps`): a level rung, or a price. `open`: reached, or bought. `next`: the price a press would buy now. */
+export type RoomStep =
+  | { how: 'level'; tracks: string[]; level: number; open: boolean }
+  | { how: 'gold'; price: number; open: boolean; next: boolean; can_pay: boolean }
+
+/** 0354: one kind of room. `have` is what the caps enforce now, `ladder` what the steps add up to (the same while lit), `top` the most there is.
+ *  `price` is the next step's, null at the top or when only a level opens more. */
+export interface RoomLadder {
+  have: number
+  ladder: number
+  top: number
+  free: number
+  used: number
+  bought: number
+  full: boolean
+  price: number | null
+  steps: RoomStep[]
+}
+
+/** 0354: `world.house_room`. `on` false: fleet room is not lit, nothing can be bought and the rungs do not count yet. */
+export type HouseRoom =
+  | { company: false; on: boolean }
+  | { company: true; on: boolean; purse: number; fleets: RoomLadder; ships: RoomLadder; hulls: { have: number; used: number } }
+
+/** 0354: `cmd.buy_room`: one step bought, what it cost, the purse after, and the two caps as they now stand. */
+export interface RoomBought {
+  kind: 'FLEET' | 'SHIP'
+  step: number
+  price: number
+  purse: number
+  fleet_max: number
+  fleet_ship_max: number
+}
+
+/** 0354: `cmd.rename_fleet`. `changed` false: the same name again, nothing written. */
+export interface FleetRenamed {
+  fleet_id: string
+  from: string
+  to: string
+  changed: boolean
+}
+
 /** 0321: `cmd.move_ship`. `empty`: the fleet she left has no ships now. */
 export interface ShipMoved {
   ship: string
@@ -3993,4 +4054,68 @@ export interface RouteLeg {
 /** 0346 — `world.route_legs`: the legs in the order asked. null when the fleet is not yours. */
 export interface RouteLegs {
   legs: RouteLeg[]
+}
+
+/** 0353 (docs/COMBAT_LOG.md 1.1): how a raid ended, as its log says it. */
+export type FightEnd = 'STOOD' | 'SLIP' | 'BROKE' | 'THREW' | 'TERMS' | 'TAKEN' | 'GAVE' | 'FLED' | 'PAID'
+/** 0353: a fleet's standing order when raiders close. FIGHT is no row on the server. */
+export type RaidOrderWord = 'FIGHT' | 'FLEE' | 'PAY'
+
+/** 0353: one side's guns in one round of a log: how many hulls could fire, shots, hits, hull points dealt. */
+export interface FightVolley {
+  can: number
+  fired: number
+  hits: number
+  dealt: number
+}
+
+/** 0353: one round of a raid's log. `hull` and `foeHull` are the hull LEFT after the round; `slip` the chance she
+ *  rolled to get away, only on a round she ran. */
+export interface FightRound {
+  round: number
+  range: 'L' | 'M' | 'C'
+  you: FightVolley
+  them: FightVolley
+  hull: number
+  foeHull: number
+  /** Her ships struck this round: [ship index from 1, percent of her size]. */
+  struck: [number, number][]
+  slip: number | null
+}
+
+/** 0353: A RAID'S LOG (`voyage.raid_extras`, shape v 1), read by `parseFightLog` (src/live/fightLines.ts): the
+ *  engine's own numbers. Kept for a company's raid only, in the day's payload and in the VOYAGE_REPORT's fight entry. */
+export interface FightLog {
+  order: RaidOrderWord
+  /** A Pay that was refused before the fight, and why. */
+  noPay: 'EMPTY' | 'NO_PAYEE' | null
+  first: 'YOU' | 'THEY' | 'BOTH'
+  foe: { name: string; ships: number; crew: number; hull: number; ship: string | null }
+  you: { name: string; hull: number; full: number; crew: number }[]
+  rounds: FightRound[]
+  end: FightEnd
+  board: { crew: number; foeCrew: number; ratio: number } | null
+  after: { name: string; hull: number }[]
+}
+
+/** 0353: what a raid day cost, beside its log in the report: the hands before and lost, the units carried off, the ransom paid. */
+export interface FightLoss {
+  crewBefore: number | null
+  crew: number | null
+  cargo: Record<string, number>
+  ransom: number
+}
+
+/** 0353 `world.raid_read(fleet)`: the read beside the order's picker. `on` false (the switch is off, or the fleet is
+ *  not the caller's): nothing else is served and no picker is drawn. A read of the sides, never a forecast. */
+export interface RaidRead {
+  on: boolean
+  order?: RaidOrderWord
+  /** Whether any hull of hers can fire. */
+  guns?: boolean
+  slip?: 'poor' | 'fair' | 'good'
+  /** What Pay would cost now; 0 is nothing aboard. */
+  pay?: number
+  /** One row a danger level on the sea now: the raiders' word against her. */
+  foes?: { danger: number; word: AttackWord }[]
 }

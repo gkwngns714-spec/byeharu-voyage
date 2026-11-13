@@ -7,7 +7,8 @@ import { routePausedEventWords } from '../../domain/route'
 // the pair as debt to fold. See src/lib/json.ts for why the stronger version is the one that
 // survived.
 import { num, str } from '../../lib/json'
-import type { LedgerEvent, RegardBand } from '../../lib/rpc'
+import type { FightLog, FightLoss, LedgerEvent, RegardBand } from '../../lib/rpc'
+import { parseFightLog, parseFightLoss } from '../../live/fightLines'
 import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 import { skillWord } from '../../live/skillWords'
 
@@ -24,6 +25,8 @@ import { skillWord } from '../../live/skillWords'
 //   REPAIRING     {fleet, points, cost, sim_hours}
 //   REPAIRED      {fleet}
 //   TOWED         {fleet, from, to, nm, fee}                  (0152 — from / to are CODES)
+//   FLEET_RENAMED {from, to}                                  (0354)
+//   ROOM_OPENED   {kind, step, price, room}                   (0354 — kind is FLEET or SHIP)
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
 //   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
 //   ENROLLED      {skill, code, port, cost}                       (0131 — enrolment in a skill)
@@ -163,6 +166,11 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     // 0321: a ship changed fleets in port.
     case 'SHIP_MOVED':
       return t('history.shipMoved', { ship: str(p, 'ship') ?? '', from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
+    // 0354: a fleet took a new name; a step of room was bought (kind FLEET or SHIP).
+    case 'FLEET_RENAMED':
+      return t('history.fleetRenamed', { from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
+    case 'ROOM_OPENED':
+      return t(str(p, 'kind') === 'SHIP' ? 'history.roomShip' : 'history.roomFleet', { amount: formatDucats(num(p, 'price') ?? 0) })
     // 0323: a timed battle is over. The sentence and the rounds open under it, as a voyage's report does.
     case 'BATTLE_REPORT': {
       const loot = num(p, 'loot')
@@ -412,6 +420,11 @@ export function payloadLines(payload: Record<string, unknown>): string[] {
 export interface ReportFight {
   line: number
   rounds: string[]
+  /** 0353: the fight's own numbers (a company's raid since 0353), read strictly by `parseFightLog`; null on an old
+   *  event, a merchant's, or a shape this bundle does not know, and then the screen draws `rounds` as it always did. */
+  log: FightLog | null
+  /** 0353: what the day cost, beside a log. */
+  loss: FightLoss | null
 }
 export function payloadFights(payload: Record<string, unknown>): ReportFight[] {
   const v = payload['fights']
@@ -421,7 +434,9 @@ export function payloadFights(payload: Record<string, unknown>): ReportFight[] {
     const line = (f as Record<string, unknown>)['line']
     const rounds = (f as Record<string, unknown>)['rounds']
     if (typeof line !== 'number' || !Array.isArray(rounds)) return []
-    return [{ line, rounds: rounds.filter((r): r is string => typeof r === 'string') }]
+    const log = parseFightLog((f as Record<string, unknown>)['log'])
+    const loss = log ? parseFightLoss((f as Record<string, unknown>)['loss']) : null
+    return [{ line, rounds: rounds.filter((r): r is string => typeof r === 'string'), log, loss }]
   })
 }
 

@@ -1,15 +1,11 @@
 import { defineDict } from '../define'
 
-// Profile (src/features/profile): the company, its country, the look, signing out. The LEVEL words
+// Profile (src/features/profile): the company, its country, signing out. The LEVEL words
 // went with the levels to the You tab (dict/you.ts, owner row 181).
 export const profileDict = defineDict({
   en: {
     since: 'since {date}',
     noCompany: 'No company yet.',
-    appearance: 'Appearance',
-    Dark: 'Dark',
-    Light: 'Light',
-    Auto: 'Auto',
     localOnly: 'Not signed in: clearing browser data ends this game.',
     signOut: 'Sign out',
     signedIn: 'Signed in',
@@ -25,10 +21,6 @@ export const profileDict = defineDict({
   ko: {
     since: '{date} 설립',
     noCompany: '아직 회사가 없습니다.',
-    appearance: '화면',
-    Dark: '어둡게',
-    Light: '밝게',
-    Auto: '자동',
     localOnly: '로그인 안 됨: 브라우저 데이터를 지우면 게임이 끝남.',
     signOut: '로그아웃',
     signedIn: '로그인됨',

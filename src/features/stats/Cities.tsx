@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { ALL, Button, Card, CardRow, DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, ListPanel, Note, PageSplit, RankBars, Row, Skeleton, StatCell, deltaTone, oneOf, useFilterChoice, type RankRow } from '../../components/ui'
+import { ALL, Button, Card, CardRow, DetailPage, Empty, FactsLine, FilterBar, Figure, Flag, FlagSlot, ListPanel, Note, PageSplit, RankBars, Row, Skeleton, StatCell, deltaTone, oneOf, useFilterChoice, type RankRow } from '../../components/ui'
 import { formatDucats, formatDucatsDelta, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { worldStatsCities, type StatsCities, type StatsCityRow } from '../../lib/rpc'
@@ -49,7 +49,7 @@ export function CitiesFace() {
   if (!v) return <Note tone="danger">{t('stats.citiesFailed')}</Note>
 
   const flag = (c: StatsCityRow) =>
-    c.nation === null ? undefined : <Flag code={c.nation} name={nationNameOf(nationByCode, c.nation)} size="body" />
+    c.nation === null ? <FlagSlot /> : <Flag code={c.nation} name={nationNameOf(nationByCode, c.nation)} size="body" />
   const sort = oneOf(choice.sort, CITY_SORTS, 'richest')
   const area = oneOf(choice.area, [ALL, ...STATS_AREAS], ALL)
   const countries = countriesOf(v.cities.map((c) => c.nation))
