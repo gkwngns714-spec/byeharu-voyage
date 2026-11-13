@@ -118,7 +118,8 @@ for (const size of SIZES) {
         await sailAndSell(page, code, city)
         // 0356: a buy and a departure earn nothing by themselves. The buy is turnover: the Trading level it made (the goal card's
         // own served figure) is paid once at the quay, 10 x each level crossed, and nothing else is.
-        const tradingNow = async () => Number(/Trading (\d+)\//.exec((await page.getByTestId('goal-card').innerText()).replace(/\s+/g, ' '))?.[1] ?? Number.NaN)
+        // read from the card's own attribute: its second line is the tracks, or the second ship's count while she has one ship (0363)
+        const tradingNow = async () => Number((await page.getByTestId('goal-card').getAttribute('data-trading')) ?? Number.NaN)
         await expect
           .poll(async () => Number(await bar.getAttribute('data-value')) - giftsTo(await tradingNow()), { timeout: 60_000, message: 'at the quay the bar is not the gifts of her Trading level' })
           .toBe(0)

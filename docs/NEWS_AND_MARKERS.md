@@ -1,6 +1,6 @@
 # NEWS_AND_MARKERS — every chart kept, news markers you can press
 
-**Status: N1 live (0226, 0246, 0316); N2 + N3 built as 0347 (2026-11-11, `docs/dev-log/2026-11-11-news-and-markers.md`); N4-N6 not built.** Design text below unchanged (2026-10-26). Owner row 216. Prod head at writing:
+**Status: N1 live (0226, 0246, 0316); N2 + N3 built as 0347 (2026-11-11, `docs/dev-log/2026-11-11-news-and-markers.md`); N4, N5 and the gift of N6 built as 0362 (2026-11-13, `docs/dev-log/2026-11-13-news-kinds.md`: big trades, price spikes, pirates, gifts; with a cap on the merchants' rows an hour that the design does not have); `MERCHANT_BROKE`, `WANTS`, `RESTOCK` and the "My goods" filter not built.** Design text below unchanged (2026-10-26). Owner row 216. Prod head at writing:
 **0226** (870 MB of 8 GB). Slices are numbered "next" at build time. Every **(D)** is decided by default —
 the owner reverses.
 

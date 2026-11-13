@@ -7,7 +7,9 @@
 // (the build's own world) as a company founded at Lisbon, and holds them to what the desk will print:
 //   * where it is sold (Buy at), with Lisbon "here" at 0 miles, and every harbour that buys it (Sell at);
 //   * the quoted rows first, best net first, and each net the money's own parts added up;
-//   * the watchlist names every good once, with its cheapest seller.
+//   * the watchlist names every good once, with its cheapest seller;
+//   * 0361: a priced row she can sail to says what the trip really costs: its wages, supplies, dock fee and days are
+//     world.trip_cost's for the same harbours (the Map's read), and its profit takes all three off.
 // It names good_board and watchlist so CI's rule S selects it when a migration re-defines them.
 
 import { test, expect } from '@playwright/test'
@@ -27,8 +29,17 @@ interface BuyRow {
   arrive_at: string | null
   at_arrival: { value: number; lo: number; hi: number } | null
   best: { at: string; value: number; gain_pct: number } | null
+  stops?: string[] | null
 }
 interface SellRow {
+  // 0361: the trip as the game charges it
+  days?: number | null
+  sail_days?: number | null
+  stop_seconds?: number | null
+  dock_fee?: number | null
+  profit?: number | null
+  stops?: string[] | null
+  supplies?: { days: number; cost: number; fits: boolean } | null
   sailable?: boolean   // 0188
   port: string
   mid: number
@@ -132,6 +143,34 @@ test('world.good_board: where it is sold, and every harbour that buys it, best n
   for (const r of b.sell.filter((x) => !x.quoted)) {
     expect(r.net).toBeNull()
     expect(r.mid).toBeGreaterThan(0)
+  }
+})
+
+test('0361: a priced row she can sail to is world.trip_cost\'s trip through the same harbours, and its profit takes the trip\'s costs off', async () => {
+  const b = await board()
+  const rows = b.sell.filter((r) => r.quoted && r.sailable && r.port !== 'LIS' && r.net !== null)
+  expect(rows.length, 'no priced row she can sail to: nothing is compared').toBeGreaterThan(0)
+  // to the buy city first, when it is not where she lies
+  const src = b.buy.find((r) => r.port === b.qty.bought_at)!
+  const lead = src.here ? [] : [...(src.stops ?? []), src.port]
+  for (const r of rows) {
+    const codes = [...lead, ...(r.port === src.port ? [] : [...(r.stops ?? []), r.port])]
+    const legs = codes.map((to, i) => ({ from: i === 0 ? 'LIS' : codes[i - 1], to }))
+    const trip = await db.callAs<{ sail_days: number; stop_seconds: number; days: number; supplies: number; wages: number; dock_fee: number; total: number }>(
+      'select world.trip_cost($1::uuid, $2::jsonb) as result',
+      [fleet, JSON.stringify(legs)],
+    )
+    expect(r.wages, `${r.port}: wages`).toBe(trip.wages)
+    expect(r.supplies!.cost, `${r.port}: supplies`).toBe(trip.supplies)
+    expect(r.dock_fee, `${r.port}: dock fee`).toBe(trip.dock_fee)
+    expect(r.stop_seconds, `${r.port}: port time`).toBe(trip.stop_seconds)
+    expect(Math.abs(r.sail_days! - trip.sail_days), `${r.port}: sailing days`).toBeLessThanOrEqual(0.011)
+    expect(Math.abs(r.days! - trip.days), `${r.port}: days`).toBeLessThanOrEqual(0.011)
+    // a day begun is a whole day owed, on every leg: never the fraction
+    expect(r.wages! % 1).toBe(0)
+    expect(r.wages!).toBeGreaterThanOrEqual(Math.round(b.fleet.wage_per_day * legs.length))
+    expect(r.profit, `${r.port}: profit`).toBe(r.net! - trip.supplies - trip.dock_fee)
+    expect(r.profit).toBe(r.proceeds! - r.cost! - r.profit_tax! - trip.total)
   }
 })
 
