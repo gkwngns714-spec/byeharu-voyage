@@ -506,7 +506,7 @@ $b$
   raise notice 'PASS: ARMADA_ARRIVES_DISBANDS — both fleets made Funchal at one instant; the armada read PORT there and could be sent again; disbanded, the lead fleet sailed alone and her sister stayed';
 
   -- ══ ARMADA_OF_SIX ══ (the owner's number: with room for seven fleets, seven is refused and six sail as one)
-  update public.world_config set value = to_jsonb(7) where key = 'fleet_max';
+  update public.world_config set value = to_jsonb(7) where key in ('fleet_max', 'fleet_hard_max');   -- fleet_hard_max too: since 0370 fleet room is lit and that knob is the top (unread while dark)
   insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc) values (c_uc, 'Casa dos Seis 68', v_prt, 800000, false) returning id into v_c;
   v_six := '{}';
   for i in 1 .. 7 loop

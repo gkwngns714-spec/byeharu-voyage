@@ -253,6 +253,10 @@ begin
 
   -- ══ FIGHTS_KEPT: to its end by the real job ══
   v_k := public.tick_battles(v_t + interval '1 hour');
+  -- WHEN it ended is the dice's (a fight may end in its first round, which was 70 s ago by this battle's clock, or at the boarding, which is 290 s ahead): the map keeps it
+  -- keep_seconds from its end, so its end is put 5 s ago (its own row) before the card is read. Under any dice it is then "just over".
+  update public.battles b set started_at = now() - interval '10 minutes', resolves_at = now() - interval '5 seconds' where b.id = v_bat;
+  update public.battle_sides bs set joined_at = now() - interval '10 minutes', arrives_at = now() - interval '10 minutes' where bs.battle_id = v_bat;   -- both were there from its start
   v_w := world.fight(v_bat);
   select e into v_c from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'id' = v_bat::text;
   perform cmd.assume_identity(c_uid);
@@ -274,7 +278,7 @@ begin
      or exists (select 1 from jsonb_array_elements(v_c -> 'sides') s where s ? 'at') or (v_c ->> 'fleets')::int is distinct from 2 then
     raise exception 'PROOF 66 FAIL: the card of a battle just over: %', v_c;
   end if;
-  update public.battles b set started_at = now() - interval '10 minutes', resolves_at = now() - interval '59 seconds' where b.id = v_bat;
+  update public.battles b set resolves_at = now() - interval '59 seconds' where b.id = v_bat;
   if not exists (select 1 from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'id' = v_bat::text) then
     raise exception 'PROOF 66 FAIL: a battle over for 59 s is not on the map';
   end if;
@@ -539,6 +543,8 @@ begin
   v_t := date_trunc('second', now()) - interval '20 seconds';
   n := pg_temp.navy_66(v_nat, v_cap, v_t);
   p := pg_temp.pirate_66(v_cap, (select x.sea_id from public.ports x where x.id = v_cap), v_t);
+  -- where she lies BEFORE any fight: a fight that sinks her sends her home (voyage.npc_wreck), so the place is read now and never after
+  select pt.lat, pt.lon into v_pos from voyage.fleet_point(n, v_t) pt;
   v_new := pg_temp.navy_fight_66(n, p, v_t, false);
   v_old := pg_temp.navy_fight_66(n, p, v_t, true);
   if v_new is null or v_old is null or (v_new - 'kept')::text is distinct from (v_old - 'kept')::text or v_old -> 'kept' is distinct from 'null'::jsonb or jsonb_typeof(v_new -> 'kept') is distinct from 'object'
@@ -565,7 +571,7 @@ begin
      or (select count(*) from public.navy_fight_log) is distinct from 1
      or v_c ->> 'status' is distinct from 'RESOLVED' or v_c -> 'mine' is distinct from 'null'::jsonb or v_c ? 'loss'
      or (v_c ->> 'started_at')::timestamptz is distinct from v_t or (v_c ->> 'until')::timestamptz is distinct from v_t + interval '300 seconds'
-     or (v_c ->> 'lat')::numeric is distinct from (select pt.lat from voyage.fleet_point(n, v_t) pt) or (v_c ->> 'lon')::numeric is distinct from (select pt.lon from voyage.fleet_point(n, v_t) pt)
+     or (v_c ->> 'lat')::numeric is distinct from v_pos.lat or (v_c ->> 'lon')::numeric is distinct from v_pos.lon or v_pos.lat is null
      or (v_c ->> 'size')::int is distinct from (select count(*)::int from public.ships s where s.fleet_id in (n, p)) or (v_c ->> 'ships')::int is distinct from (v_c ->> 'size')::int
      or v_c -> 'sides' -> 0 is distinct from jsonb_build_object('fleet', n, 'name', (select f.name from public.fleets f where f.id = n), 'side', 'ATTACKER', 'how', 'OPENED', 'kind', 'NAVY', 'company', null,
                                                'nation', 'PRT', 'ships', (select count(*)::int from public.ships s where s.fleet_id = n), 'here', true)
@@ -576,7 +582,9 @@ begin
      or exists (select 1 from jsonb_object_keys(v_c -> 'log') k where k <> all (c_keys))
      -- the log is the fight that was fought: the same log the old-against-new scene kept, and its hull after is the hull she has
      or v_c -> 'log' is distinct from v_new -> 'kept' -> 'card' -> 'log'
-     or (select sum((e ->> 1)::numeric) from jsonb_array_elements(v_c -> 'log' -> 'after') e) is distinct from (select sum(round(s.durability, 2)) from public.ships s where s.fleet_id = n)
+     -- (what she lost by the log is what the fight's own answer took from her hulls: held on the answer, not on her ships, which a sinking sends home)
+     or abs((select sum((e ->> 1)::numeric) from jsonb_array_elements(v_c -> 'log' -> 'you') e) - (select sum((e ->> 1)::numeric) from jsonb_array_elements(v_c -> 'log' -> 'after') e)
+            - (select coalesce(sum(h.value::numeric), 0) from jsonb_each_text(coalesce(v_new -> 'answer' -> 'hull_lost' -> 'navy', '{}'::jsonb)) h)) > 0.1
      or v_c::text ~* '"[a-z_]*(ducat|cargo|purse|funds|loot)[a-z_]*":' then
     raise exception 'PROOF 66 FAIL: the navy''s fight on a neighbour''s map: % (pass %)', v_c, v_k;
   end if;
@@ -584,7 +592,7 @@ begin
   if exists (select 1 from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'NAVY') then
     raise exception 'PROOF 66 FAIL: a navy fight 301 s old is still on the map';
   end if;
-  raise notice 'PASS: NAVY_KEPT — one navy fight under the body before 0364 and after it: the answer, both ships'' hulls, both fleets, the navy ship''s row and stamp, the pirate ship''s, the NAVY_FIGHT event, both voyages, every purse and the ledger are the same text; only the kept row differs. With the keeper''s table gone the fight is still that fight. The real pass (public.navy_hunt_pass) fights once and keeps it: every player reads it at the navy ship''s place, sized by the % ships, both ships named, the log (% round(s), %) cut to nine keys and its hull after is the hull she has; gone at 301 s',
+  raise notice 'PASS: NAVY_KEPT — one navy fight under the body before 0364 and after it: the answer, both ships'' hulls, both fleets, the navy ship''s row and stamp, the pirate ship''s, the NAVY_FIGHT event, both voyages, every purse and the ledger are the same text; only the kept row differs. With the keeper''s table gone the fight is still that fight. The real pass (public.navy_hunt_pass) fights once and keeps it: every player reads it at the navy ship''s place, sized by the % ships, both ships named, the log (% round(s), %) cut to nine keys, and what she lost by it is what the answer took from her hulls; gone at 301 s',
     v_c ->> 'size', jsonb_array_length(v_c -> 'log' -> 'r'), v_c ->> 'end';
 
   -- ══ FIGHTS_LIVE_COST: the read as prod would ask it (a measurement, printed): 75 navy ships' rows of which 5 fought in the last 300 s, and her fleet at sea with one raid day in it ══
