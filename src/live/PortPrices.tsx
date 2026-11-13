@@ -3,6 +3,7 @@ import { Note, type TradePick, type TrayMode } from '../components/ui'
 import { fleetCargoByCode, fleetPortCode } from '../domain/fleet'
 import type { FleetView, MarketGood, SnapshotPort } from '../lib/rpc'
 import { usePriceSeries } from './usePriceSeries'
+import { useTrendNews } from './useChartNews'
 import { useRequests } from './useRequests'
 import { useWorld } from './worldStore'
 import { PriceTray } from './PriceTray'
@@ -57,7 +58,8 @@ export function PortPrices({
   const portByCode = useWorld((s) => s.portByCode)
   const reaches = useWorld((s) => s.reaches)
   const [pick, setPick] = useState<TradePick | null>(null)
-  const trend = usePriceSeries(port.id, pick?.good.good_id ?? null)
+  // the good's chart carries its news (owner row 216): this city's of this good and the world's headlines, a dot each; a press opens the card
+  const { trend, card: newsCard } = useTrendNews(port.id, pick?.good.good_id ?? null, usePriceSeries(port.id, pick?.good.good_id ?? null))
 
   // Where she lies (or is bound), and the sailed distance from there to this quay — a figure,
   // never a passage ordered here.
@@ -106,6 +108,7 @@ export function PortPrices({
       {pick && (
         <PriceTray key={pick.good.code} portId={port.id} good={pick.good} trend={trend} passage={passage} mode={trayMode} onClose={() => setPick(null)} />
       )}
+      {newsCard}
     </>
   )
 }

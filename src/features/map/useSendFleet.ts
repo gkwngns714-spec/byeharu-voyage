@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, Refusal, VerbSpec } from '../../lib/rpc'
 import { findVerb, fixAction, isComplete, orderText, sailEstimate, useCommandDraft, verbWord, type SailInsurance } from '../../domain/order'
-import { fleetNow, proposeCourse, roadsteadCourseNote, sailOrigin, sailTarget } from '../../domain/passage'
+import { fleetNow, passageLines, proposeCourse, roadsteadCourseNote, sailOrigin, sailTarget, shutByReach, type PassagePlan } from '../../domain/passage'
+import { planPassage } from '../../live/passagePlan'
 import { useWorld } from '../../live/worldStore'
 import {
   destArgs,
@@ -39,6 +40,14 @@ import {
 // `cmd.preview` over the same course the send will carry — once, sequentially (every preview
 // writes the store's one `refusal` slot), and only once the tray is open past its peek.
 //
+// A FAR CITY IS SENT IN ONE PRESS (the owner, 2026-11-13: *"i want the game to calculate which cities to cross
+// automatically, and just tell me the final time, price reaching the destination when pressed send fleet"*). A harbour
+// one leg cannot reach used to end the row at the server's "Leg too far". Now the one passage planner
+// (domain/passage/chain.ts, live/passagePlan.ts) is asked: the harbours between are the SERVER's, every leg is one it
+// calls open, and the row prints the whole trip's days and supplies. Send queues every SAIL through the one plan path
+// (`worldStore.issueLines` → cmd.issue_lines), all or none. Her navigation still bounds each leg; only when no chain
+// exists does the refusal stay, and it says so. A fleet under way still turns in one leg (cmd.divert), as before.
+//
 // STATE IS NOT STAMPED WITH THE PLACE ANY MORE. The tray is keyed by its destination, so a tap on
 // the next harbour REMOUNTS it and every piece of state below starts clean by construction.
 
@@ -48,6 +57,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const fleets = useWorld((s) => s.fleets)
   const preview = useWorld((s) => s.preview)
   const issue = useWorld((s) => s.issue)
+  const issueLines = useWorld((s) => s.issueLines)
   const divert = useWorld((s) => s.divert)
   const portByCode = useWorld((s) => s.portByCode)
   const seaNav = useWorld((s) => s.seaNav)
@@ -61,6 +71,8 @@ export function useSendFleet(dest: SailDest, open: boolean) {
 
   const [picked, setPicked] = useState<string | null>(null)
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({})
+  // What the one passage planner said of each row's trip: its days and supplies, or why no chain of harbours opens it.
+  const [plans, setPlans] = useState<Record<string, PassagePlan>>({})
   const [act, setAct] = useState<Act | null>(null)
   // 0213: whether to insure her cargo on THIS passage. Off until pressed; the price is the dry run's
   // (`sailEstimate(...).insurance`, quoted by the server on the unasked SAIL), never worked out here.
@@ -72,7 +84,10 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   const target: LatLon | null = useMemo(() => sailTarget(args, portByCode), [args, portByCode])
   const roads = dest.kind === 'port' ? roadsteadCourseNote(portByCode[dest.code]?.roadstead.nm ?? 0) : null
   const spec = findVerb(verbs, 'SAIL')
-  const standingOf = useCallback((f: FleetView): Standing => standingFor(dest, f), [dest])
+  const standingOf = useCallback(
+    (f: FleetView): Standing => standingFor(dest, f, (code) => portByCode[code] !== undefined),
+    [dest, portByCode],
+  )
 
   // ── THE DRY RUNS — sequential, once per fleet, only while the tray is open past its peek.
   useEffect(() => {
@@ -87,18 +102,36 @@ export function useSendFleet(dest: SailDest, open: boolean) {
         const result = await preview(f.id, orderText(spec, args, f.name), course)
         if (!alive) return
         const refusal = useWorld.getState().refusal
-        const verdict: Verdict = result
+        let verdict: Verdict = result
           ? { kind: 'ok', result }
           : refusal
             ? { kind: 'refused', refusal }
             : { kind: 'silent' }
-        setVerdicts((v) => ({ ...v, [f.id]: verdict }))
+        // THE WHOLE TRIP, from the one passage planner: for a passage that sails, its supplies; for one refused by its
+        // length or its stores, the way through the harbours between. Then the FIRST SAIL of that way is dry-run like
+        // any other, so a row never offers a trip her first leg would refuse (short of crew, in debt).
+        let plan: PassagePlan | null = null
+        if (dest.kind === 'port' && (verdict.kind === 'ok' || (verdict.kind === 'refused' && shutByReach(verdict.refusal.code)))) {
+          plan = await planPassage(f, dest.code, seaNav, portByCode)
+          if (!alive) return
+          if (verdict.kind === 'refused' && plan?.kind === 'open' && plan.stops.length > 0) {
+            const leg = plan.legs[0]
+            const first = await preview(f.id, orderText(spec, { dest: leg.to }, f.name), leg.path)
+            if (!alive) return
+            const why = useWorld.getState().refusal
+            verdict = first ? { kind: 'chain', plan, first } : why ? { kind: 'refused', refusal: why } : { kind: 'silent' }
+          }
+        }
+        const told = plan
+        if (told) setPlans((p) => ({ ...p, [f.id]: told }))
+        const said = verdict
+        setVerdicts((v) => ({ ...v, [f.id]: said }))
       }
     })()
     return () => {
       alive = false
     }
-  }, [open, fleets, spec, seaNav, target, args, portByCode, preview, verdicts, standingOf])
+  }, [open, fleets, spec, seaNav, target, args, dest, portByCode, preview, verdicts, standingOf])
 
 
   const pick = (f: FleetView) => {
@@ -116,6 +149,9 @@ export function useSendFleet(dest: SailDest, open: boolean) {
   }
   const insureOf = (f: FleetView): boolean => insured[f.id] === true && insuranceOf(f) !== null
   const setInsure = (f: FleetView, on: boolean) => setInsured((d) => ({ ...d, [f.id]: on }))
+
+  /** What the one passage planner said of her trip here; null before it answered (or for a point of open sea). */
+  const planOf = (f: FleetView): PassagePlan | null => plans[f.id] ?? null
 
   const busyOn = (f: FleetView) => act?.state === 'busy' && act.fleetId === f.id
   const fail = (f: FleetView) => setAct({ fleetId: f.id, state: 'refused', refusal: useWorld.getState().refusal })
@@ -142,6 +178,10 @@ export function useSendFleet(dest: SailDest, open: boolean) {
           dest.kind === 'sea' ? { lat: dest.at.lat, lon: dest.at.lon } : null,
           course,
         )
+      } else if (verdicts[f.id]?.kind === 'chain') {
+        // THE WHOLE CHAIN IN ONE PRESS: every SAIL of the plan, queued all or none by the one plan path
+        const v = verdicts[f.id]
+        okay = v.kind === 'chain' && (await issueLines(f.id, passageLines(v.plan)))
       } else {
         const origin = sailOrigin(f, portByCode)
         const course = origin ? proposeCourse(seaNav, origin, target) : null
@@ -177,6 +217,11 @@ export function useSendFleet(dest: SailDest, open: boolean) {
       // forgotten, so the dry run asks the server again and the row says what is true NOW — a
       // passage, or the next refusal — instead of a stale "no" beside a fix that has already run.
       setAct(null)
+      setPlans((p) => {
+        const next = { ...p }
+        delete next[f.id]
+        return next
+      })
       setVerdicts((v) => {
         const next = { ...v }
         delete next[f.id]
@@ -209,6 +254,7 @@ export function useSendFleet(dest: SailDest, open: boolean) {
     roads,
     standingOf,
     verdicts,
+    planOf,
     picked,
     pick,
     act,

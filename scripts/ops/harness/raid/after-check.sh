@@ -121,7 +121,7 @@ select json_build_object(
 rollback;
 EOF
 
-head -c 40 "$SQL" | grep -qi "begin transaction read only" || { echo "REFUSING: the query is not read only"; exit 3; }
+node "$(cd "$(dirname "$0")" && pwd)/../read-only.mjs" "$SQL" || exit 3   # the one judge of "read only": first statement, last statement, no write verb
 WIN="$SQL"; command -v cygpath >/dev/null && WIN="$(cygpath -w "$SQL")"
 OUT="$(cd "$REPO" && npx --yes supabase@2.120.0 db query --linked --output-format json -f "$WIN" 2>&1)"
 RC=$?

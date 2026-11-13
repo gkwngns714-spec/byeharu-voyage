@@ -1567,6 +1567,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       'cmdAttack', 'cmdPreviewAttack',
       // 0353: a fleet's standing order when raiders close, and the read beside its picker
       'cmdRaidOrder', 'worldRaidRead',
+      // Pin moved deliberately 2026-11-12 with migration 0356 (docs/REPUTATION.md section 5, R4): THE CALLER'S LEVEL CROSSINGS PAID, cmd.level_up().
+      // No argument and no player id. Asked by the shell alone (src/live/worldStore.ts), once, when a served level stands above its served mark.
+      'cmdLevelUp',
       // Pin moved deliberately with migration 0357 (docs/COMBAT_LOG.md 3.3, 3.4): a battle fought round by round: her stance, and the read the battle card polls. No player id; dark
       // (E_NOT_IN_USE, {on: false}) until attack_enabled. Landed WITH the face (src/live/BattleCard.tsx).
       'cmdBattleStance', 'worldBattle',
@@ -1629,6 +1632,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-06 with migration 0321 (docs/FLEETS_AND_SLOTS.md section 2.4): A SHIP CHANGES FLEETS, and what the fleet
       // page may offer. No player id; dark (E_NOT_IN_USE, {on: false}) until fleet_room_bite. Landed WITH the face (src/features/fleets/MoveShip.tsx).
       'worldShipMoves', 'cmdMoveShip',
+      // Pin moved deliberately 2026-11-11 with migration 0354 (docs/FLEETS_AND_SLOTS.md F3 + F4): THE ROOM a company has and how more opens (a read, no arguments), ONE STEP OF ROOM
+      // bought with gold (FLEET or SHIP; dark, E_NOT_IN_USE, until fleet_room_bite), and A FLEET RENAMED (the caller's own, E_NO_SUCH_FLEET otherwise). None takes a player id.
+      // Landed WITH the faces (src/features/fleets/FleetRoom.tsx, RenameFleet.tsx).
+      'worldHouseRoom', 'cmdBuyRoom', 'cmdRenameFleet',
       // Pin moved deliberately 2026-11-06 with migration 0325: THE LEVELS PAGE's one read, world.levels(). A READ, no arguments, no player id. Landed WITH the face (src/features/command/levels/Levels.tsx).
       'worldLevels',
       // Pin moved deliberately 2026-10-18 with migration 0157 (docs/SKILLS_AND_CAPTAINS.md K5): SEAT A
@@ -1647,6 +1654,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // player id; her ship docked, her level, the items in storage there). Landed WITH its button
       // (src/live/YourCaptains.tsx).
       'cmdPromoteCaptain',
+      // Pin moved deliberately 2026-11-12 with migration 0355 (docs/REPUTATION.md R2, owner row 317): A CAPTAIN'S SKILLS, world.captain_skills(code), a READ (the officer
+      // code, no player id; null when the caller keeps no such captain), and THE STEP, cmd.captain_skill_up(code, skill): one step of one skill bought with Reputation
+      // (no player id; only ashore or in port; refused by the same reading the read prints). Landed WITH the rows that print and press them (src/live/CaptainSkills.tsx).
+      'worldCaptainSkills', 'cmdCaptainSkillUp',
       // Pin moved deliberately 2026-10-18 with migration 0163 (docs/SHIPS_AND_SKILLS.md S16): AUGMENT A
       // FITTING with a perk the player chooses, paid in kits. Takes a ship (the caller's own,
       // E_NOT_YOUR_SHIP otherwise), the item, the perk and the rank; no player id. Only docked at a level 3

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Bar, Button, Figure, Row, SectionColumns, SheetSection } from '../../components/ui'
+import { Bar, Button, Figure, Note, Row, SectionColumns, SheetSection } from '../../components/ui'
 import { formatOfTotal } from '../../lib/format'
 import { portNameOf, useWorld } from '../../live/worldStore'
 import { useShellState } from '../../app/shellState'
@@ -9,6 +9,8 @@ import { inBattle, voyageFraction, whereabouts, whereLine } from '../../domain/f
 import { FleetCargo } from './FleetCargo'
 import { FleetShips } from './FleetShips'
 import { FleetStores } from './FleetStores'
+import { FleetTotals } from './FleetTotals'
+import { RenameFleet } from './RenameFleet'
 import { fleetDue } from './fleetLine'
 import { RaidOrder } from '../../live/RaidOrder'
 import { BattleCard } from '../../live/BattleCard'
@@ -54,7 +56,7 @@ import { useT } from '../../lib/i18n'
 // stands at the fold's foot, in flow, never pinned. (The keep button went with the standing order,
 // owner row 203 / 0225: supplies are bought automatically at every SAIL.)
 
-export function FleetFold({ fleet }: { fleet: FleetView }) {
+export function FleetFold({ fleet, onOpenShip }: { fleet: FleetView; onOpenShip: (shipId: string) => void }) {
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
@@ -91,11 +93,21 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       )}
 
       {fleet.ships.length === 0 ? (
-        <Row label={t('fleets.noShips')} tone="muted" hairline={false} data-testid="fleet-no-ships" />
+        <>
+          <Row label={t('fleets.noShips')} tone="muted" hairline={false} data-testid="fleet-no-ships" />
+          {/* F5: the server leaves an empty fleet unable to sail; say so, and say how a ship comes to it */}
+          <Note tone="neutral" data-testid="fleet-empty-how">
+            {t('fleets.emptyFleet')}
+          </Note>
+          {/* 0354: an empty fleet keeps her name, and may take a new one */}
+          <RenameFleet fleet={fleet} className="mt-4 w-full" />
+        </>
       ) : <>
+      {/* 0354: what the fleet adds up to, above the ships it is the sum of */}
+      <FleetTotals fleet={fleet} />
       <SectionColumns count={3}>
         <SheetSection heading={t('fleets.ships')} data-testid="fleet-fold-section">
-          <FleetShips fleet={fleet} />
+          <FleetShips fleet={fleet} onOpenShip={onOpenShip} />
         </SheetSection>
         <SheetSection heading={t('fleets.cargo')} data-testid="fleet-fold-section">
           <FleetCargo fleet={fleet} />
@@ -111,14 +123,18 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       {/* 0357: a battle she is in, round by round. Mounted (and its read asked) only while she is in one. */}
       {inBattle(fleet) && <BattleCard fleetId={fleet.id} className="mt-6" />}
 
-      <Button
-        variant="primary"
-        className="mt-6 w-full"
-        onClick={() => command({ fleetId: fleet.id })}
-        data-testid="fleet-command"
-      >
-        {t('fleets.command', { name: fleet.name })}
-      </Button>
+      {/* 0354: Rename stands beside the hand-off, on its line: the foot grows by nothing */}
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Button
+          variant="primary"
+          className="flex-1"
+          onClick={() => command({ fleetId: fleet.id })}
+          data-testid="fleet-command"
+        >
+          {t('fleets.command', { name: fleet.name })}
+        </Button>
+        <RenameFleet fleet={fleet} />
+      </div>
       </>}
     </div>
   )

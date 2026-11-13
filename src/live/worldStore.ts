@@ -58,6 +58,7 @@ import {
   cmdHireOfficer,
   cmdIssue,
   cmdIssueLines,
+  cmdLevelUp,
   cmdPreview,
   cmdStandingRouteAssign,
   cmdStandingRouteDelete,
@@ -584,6 +585,25 @@ export const useWorld = create<LiveWorld>((set, get) => {
   // THE LEDGER'S LAST READ: what moved the last time it was read, and when (see `refresh`).
   let ledgerSig = ''
   let ledgerReadAtMs = 0
+  // 0356 (R4): A LEVEL CROSSED AT THE QUAY. Levels are derived, so a buy or a sale can cross one with no arrival to pay it.
+  // The house read serves each track's level beside the level already paid (`reputation.level_marks`); when one stands above
+  // its mark the shell asks `cmd.level_up()` ONCE for that set of levels (the server pays each crossing once ever, so a
+  // second ask would only be wasted), then reads the ledger again so the LEVEL_UP events reach the arrival card and History.
+  let levelAsked = ''
+  const askLevelUp = (house: PlayerHouse | null): void => {
+    const marks = house?.reputation?.level_marks
+    if (!house || !marks) return
+    const { trading, exploration, combat } = house.levels
+    if (!(trading.level > marks.trading || exploration.level > marks.exploration || (combat.playable && combat.level > marks.combat))) return
+    const asked = `${house.id}|${trading.level}|${exploration.level}|${combat.playable ? combat.level : 0}`
+    if (asked === levelAsked) return
+    levelAsked = asked
+    void cmdLevelUp().then((r) => {
+      if (!r.ok || r.value.levels.length === 0) return
+      ledgerSig = ''
+      get().beat()
+    })
+  }
   let trafficAsked = 0
   let trafficApplied = 0
   /** THE LAST WANTER ALSO CANCELS WHAT IS ALREADY ON THE WIRE. Clearing `traffic` on release is not
@@ -793,6 +813,7 @@ export const useWorld = create<LiveWorld>((set, get) => {
       reading: false,
       readAt: Date.now(),
     })
+    askLevelUp(player.ok ? player.value.player : null)
   },
 
   loadMarket: async (portId, force = false) => {

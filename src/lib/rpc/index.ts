@@ -57,6 +57,8 @@ import type {
   SeatedCaptain,
   CaptainsView,
   CaptainStatsView,
+  CaptainSkillsView,
+  CaptainSkillUp,
   TraitsSet,
   PromotedCaptain,
   AugmentedFitting,
@@ -121,8 +123,12 @@ import type {
   CountryChanged,
   DonateReceipt,
   LevelsView,
+  LevelCrossing,
   ShipMoves,
   ShipMoved,
+  HouseRoom,
+  RoomBought,
+  FleetRenamed,
   FineReceipt,
   TaxSet,
   NationStandings,
@@ -608,6 +614,16 @@ export function worldCaptainStats(code: string): Promise<RpcResult<CaptainStatsV
   return call<CaptainStatsView | null>('worldCaptainStats', [code])
 }
 
+/** 0355 — one captain's SKILLS (`world.captain_skills`): each skill's step, her grade's ceiling, the next step's cost and whether the door would take it. By officer code; null when you keep no such captain. */
+export function worldCaptainSkills(code: string): Promise<RpcResult<CaptainSkillsView | null>> {
+  return call<CaptainSkillsView | null>('worldCaptainSkills', [code])
+}
+
+/** 0355 — one step of one skill of a captain, bought with Reputation. Only ashore or in port; the refusal says why (the same reading `worldCaptainSkills` prints). */
+export function cmdCaptainSkillUp(code: string, trait: string) {
+  return call<CaptainSkillUp>('cmdCaptainSkillUp', [code, trait])
+}
+
 /** 0160 — the traits a captain USES (up to her grade's slots, among those she knows). Only ashore or
  *  in port; the refusal says why. */
 export function cmdCaptainTraitsSet(code: string, traits: readonly string[]) {
@@ -884,6 +900,12 @@ export function worldLevels(): Promise<RpcResult<LevelsView>> {
   return call<LevelsView>('worldLevels', [])
 }
 
+/** Pay the caller's level crossings (0356): one `LEVEL_UP` event and its Reputation gift a level, once ever. Asked by the
+ *  shell alone (worldStore), once, when a served level stands above its served mark. */
+export function cmdLevelUp(): Promise<RpcResult<{ levels: LevelCrossing[] }>> {
+  return call<{ levels: LevelCrossing[] }>('cmdLevelUp', [])
+}
+
 /** What the fleet page may offer for this fleet's ships (0321). `on` false while dark: the page draws nothing. */
 export function worldShipMoves(fleetId: string): Promise<RpcResult<ShipMoves>> {
   return call<ShipMoves>('worldShipMoves', [fleetId])
@@ -892,6 +914,21 @@ export function worldShipMoves(fleetId: string): Promise<RpcResult<ShipMoves>> {
 /** Move a ship into `toFleetId`, or into a new fleet called `newName` (0321). Same port, no orders running; the server judges. */
 export function cmdMoveShip(shipId: string, toFleetId: string | null, newName: string | null): Promise<RpcResult<ShipMoved>> {
   return call<ShipMoved>('cmdMoveShip', [shipId, toFleetId, newName])
+}
+
+/** The room a company has, and how more opens (0354). `on` false while fleet room is dark: nothing can be bought. */
+export function worldHouseRoom(): Promise<RpcResult<HouseRoom>> {
+  return call<HouseRoom>('worldHouseRoom', [])
+}
+
+/** Buy one step of room, for fleets or for ships in a fleet (0354). The price is the server's; dark it refuses E_NOT_IN_USE. */
+export function cmdBuyRoom(kind: 'FLEET' | 'SHIP'): Promise<RpcResult<RoomBought>> {
+  return call<RoomBought>('cmdBuyRoom', [kind])
+}
+
+/** Rename a fleet of yours (0354). The name's rules are the server's: 3 to 24 letters, not one you already use. */
+export function cmdRenameFleet(fleetId: string, name: string): Promise<RpcResult<FleetRenamed>> {
+  return call<FleetRenamed>('cmdRenameFleet', [fleetId, name])
 }
 
 /** What `cmdAttack` would do (0327): the real attack, rolled back: the words, or the refusal it would give. */

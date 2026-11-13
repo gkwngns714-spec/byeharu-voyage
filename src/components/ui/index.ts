@@ -23,6 +23,7 @@ export { SectionColumns, Sheet, SheetSection } from './Sheet'
 //    once clicked show new page popping up"*): a 44-px SummaryRow and the full-screen DetailPage it
 //    opens — a back press, its own bounded scroll, the tab untouched behind. SectionFold is retired.
 export { DetailPage, SummaryRow } from './Detail'
+export { useBackLayer } from './useBackLayer'
 //    THE LOADING METER (owner, 2026-10-31): a screen's REAL progress as a percentage — steps in,
 //    completed steps / total out (weighted where a size is known), gone the instant it is ready.
 export { LoadMeter, type LoadStep } from './LoadMeter'
@@ -131,6 +132,8 @@ export { Stepper } from './Stepper'
 
 // 11. NOTE — one line, a tone, at most one action. The code goes to console.debug, never on screen.
 export { Note, type NoteTone } from './Note'
+//    A refusal in the viewer's language (the code's Korean entry with its figures): Note's own rule, read also by a caption under a greyed button.
+export { refusalWords } from './refusalWords'
 
 // 12. HINT — the caption voice, printed rather than hidden, one per section. Long text opens a Tray.
 export { Hint } from './Hint'

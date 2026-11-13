@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { formatInt, formatKnots, formatOfTotal, formatPct } from '../../lib/format'
 import { Bar } from './Bar'
-import { FactsLine } from './FactsLine'
+import { Facts, FactsLine } from './FactsLine'
 import { Figure } from './Figure'
 import { Icon } from './Icon'
 import { Tile } from './Tile'
@@ -43,8 +43,11 @@ export function ShipTile({
   holdTotal,
   fittings = [],
   power,
+  children,
   testId = 'fleet-ship-tile',
 }: {
+  /** The caller's own presses for this hull (Fleets: Stats and Move), at the tile's foot. */
+  children?: ReactNode
   name: string
   /** The class NAME, as served (`Carlat`). */
   className: string
@@ -71,7 +74,8 @@ export function ShipTile({
       mark={hull ?? (flagship ? <Icon name="ship" size={20} className="text-accent" aria-label={t('ui.flagship')} /> : undefined)}
       name={name}
       // 0074: HER OWN SPEED, because a fitting moves one hull and not the rest.
-      meta={`${className} · ${formatKnots(speedKn)}`}
+      // The class and the speed turn only at the dot (2026-11-13): a narrow tile printed "Barca · 15.4" over "knots".
+      meta={<Facts items={[className, formatKnots(speedKn)]} />}
       figure={<Figure value={`${formatInt(crew)}/${formatInt(crewMax)}`} unit={t('ui.unitCrew')} tone={short ? 'danger' : 'ink'} />}
       second={<Figure value={formatOfTotal(holdUsed, holdTotal)} unit={t('ui.unitTons')} />}
       bar={
@@ -99,6 +103,7 @@ export function ShipTile({
           {fittings.map((f) => (f.qty > 1 ? `${f.name} ×${formatInt(f.qty)}` : f.name)).join(' · ')}
         </span>
       )}
+      {children}
     </Tile>
   )
 }

@@ -1,13 +1,14 @@
-import { useState } from 'react'
-import { Bar, Button, Clip, Facts, FactsLine, Figure, Icon, Note, Row, Tray } from '../components/ui'
+import { Fragment, useState } from 'react'
+import { Bar, Button, Clip, Facts, FactsLine, Figure, Icon, ListHeading, Note, Row, Tray } from '../components/ui'
 import { cmdCaptainTraitsSet, cmdPromoteCaptain } from '../lib/rpc'
 import type { Refusal, YourCaptain } from '../lib/rpc'
 import { formatInt, formatPctPoints } from '../lib/format'
 import type { YourCaptainsFace } from './useYourCaptains'
 import { CaptainStats } from './CaptainStats'
+import { CaptainSkills } from './CaptainSkills'
 import { useWorld } from './worldStore'
 import { t as tl } from '../lib/i18n'
-import { focusWord, jobWord } from './captainWords'
+import { ROLE_ORDER, jobWord, roleKeyWord, roleOf, roleRank, roleWord } from './captainWords'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // YOUR CAPTAINS — levels, homesickness and the traits each one uses (0160, docs/SKILLS_AND_CAPTAINS.md K6).
@@ -36,29 +37,50 @@ export function CaptainRows({ face }: { face: YourCaptainsFace }) {
   if (captains.length === 0) {
     return <Row label={tl('books.noCaptains')} tone="muted" hairline={false} data-testid="your-captains-none" />
   }
+  // THE ROSTER STANDS BY ROLE (owner row 66: "role based on combat, exploration, trading … combat close, long range"): one heading
+  // a role, in the roster's own order, her rows under it, best grade first. A role nobody fills keeps its heading and says so,
+  // because what a roster is FOR is seeing which seat is empty. Grouping is presentation: the role is the served card's.
+  const groups = new Map<string, YourCaptain[]>(ROLE_ORDER.map((r) => [r, []]))
+  for (const c of captains) {
+    const role = roleOf(c) ?? ''
+    groups.set(role, [...(groups.get(role) ?? []), c])
+  }
+  const ordered = [...groups.entries()]
+    .filter(([role, list]) => role !== '' || list.length > 0)
+    .sort(([a], [b]) => roleRank(a) - roleRank(b))
   return (
     <>
-      {captains.map((c, i) => {
-        // her first trait speaks for her on the row, as it did on the tile; muted when nothing reads it yet
-        const takesEffect = c.traits?.[0]?.in_use ?? false
-        return (
-          <Row
-            key={c.code}
-            mark={<Icon name="crew" size={20} />}
-            label={<Clip>{c.name}</Clip>}
-            value={<Figure value={`+${formatPctPoints(c.traits?.[0]?.pct ?? 0)}`} tone={takesEffect ? 'success' : 'faint'} />}
-            tone={takesEffect ? 'default' : 'muted'}
-            chevron
-            onClick={() => press(c.code)}
-            hairline={i < captains.length - 1}
-            data-testid="your-captain"
-          >
-            <FactsLine>
-              <Facts items={[c.grade, jobWord(c.job_word), c.ship, c.ship ? c.cabin_word : tl('books.ashore')]} />
-            </FactsLine>
-          </Row>
-        )
-      })}
+      {ordered.map(([role, list]) => (
+        <Fragment key={role}>
+          <ListHeading data-testid="captain-role" data-role={role} data-count={list.length}>
+            {role === '' ? tl('books.captains') : roleKeyWord(role)}
+          </ListHeading>
+          {list.length === 0 && <Row label={tl('books.roleEmpty')} tone="muted" hairline={false} data-testid="captain-role-empty" />}
+          {[...list]
+            .sort((a, b) => (b.grade_ord ?? 0) - (a.grade_ord ?? 0) || a.name.localeCompare(b.name))
+            .map((c, i) => {
+              // her first trait speaks for her on the row, as it did on the tile; muted when nothing reads it yet
+              const takesEffect = c.traits?.[0]?.in_use ?? false
+              return (
+                <Row
+                  key={c.code}
+                  mark={<Icon name="crew" size={20} />}
+                  label={<Clip>{c.name}</Clip>}
+                  value={<Figure value={`+${formatPctPoints(c.traits?.[0]?.pct ?? 0)}`} tone={takesEffect ? 'success' : 'faint'} />}
+                  tone={takesEffect ? 'default' : 'muted'}
+                  chevron
+                  onClick={() => press(c.code)}
+                  hairline={i < list.length - 1}
+                  data-testid="your-captain"
+                >
+                  <FactsLine>
+                    <Facts items={[c.grade, jobWord(c.job_word), c.ship, c.ship ? c.cabin_word : tl('books.ashore')]} />
+                  </FactsLine>
+                </Row>
+              )
+            })}
+        </Fragment>
+      ))}
     </>
   )
 }
@@ -99,7 +121,8 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
   return (
     <div data-testid="captain-sheet">
       <Row label={tl('books.grade')} value={captain.grade ?? ''} />
-      <Row label={tl('books.job')} value={`${jobWord(captain.job_word) ?? ''} · ${focusWord(captain.focus_word) ?? ''}`} />
+      <Row label={tl('books.job')} value={jobWord(captain.job_word) ?? ''} />
+      <Row label={tl('codex.role')} value={roleWord(captain) ?? ''} data-testid="captain-role-word" />
       <Row label={tl('books.where')} value={captain.ship ? `${captain.ship} · ${captain.cabin_word ?? ''}` : tl('books.ashore')} />
       {captain.homesick && <Row label={captain.homesick.line} tone="accent" data-testid="captain-homesick" />}
 
@@ -113,6 +136,8 @@ function CaptainSheet({ captain }: { captain: YourCaptain }) {
       ))}
 
       {captain.promote && <Promote captain={captain} />}
+
+      <CaptainSkills code={captain.code} />
 
       <h4 className="pb-1 pt-4 text-t-caption text-ink-faint">{tl('books.traits', { n: chosen.length, slots })}</h4>
       {(captain.traits ?? []).map((t) => {
