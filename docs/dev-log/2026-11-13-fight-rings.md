@@ -114,3 +114,35 @@ Run locally on 2026-11-13 against the cached world: all read as wanted, and afte
 ## Rollback
 
 Forward, owner only. `scripts/ops/harness/fight-rings/rollback-0364.sql` is the draft: both hunks reversed, the four functions, the table and the index dropped. The navy's fights go on exactly as they did.
+
+## 2026-11-13: `rpc.fights` red on CI, green on the desk: a distance that was the runner's speed
+
+**What happened.** On #628's run `tests/rpc.fights.spec.ts` failed at `expect(a[0] - card.lat).toBeCloseTo(0.2, 3)`: received 0.1993. The two tests after it failed too.
+
+**The cause.** Not the dice. The spec lays the attacker at anchor 0.2 degrees north of the cargo ship's point in `beforeAll`, and opens the battle in a later test. A cargo ship under sail covers about 0.02 degrees a real second (960x), so by the time the battle opened she had moved on, and the battle's place is where she was at the open. The gap between the anchor and the battle's place is therefore 0.2 less whatever the ship sailed in between: 0.0007 on CI, under 0.0005 on a faster desk. The read never promised that distance.
+
+**The two tests after it were cascades.** Playwright starts a new worker after a failure, the new worker builds a new world, and the battle the failed test had opened is not in it. Proved by reading: both use `battle`, which only the second test sets.
+
+**What changed in the spec.**
+- It now asserts what the read guarantees: the attacker's served place is her stored anchor to the digit; the ship set upon is held at the battle's place to within 0.0002 (both are `voyage.position` rounded to 4 places, one unit each way). The distance between the two is no longer asserted.
+- The file is serial, so a failure skips what follows instead of failing it on another world.
+- The navy test no longer fights with what the earlier battle left of two fleets' hulls (the dice's); it fights two whole hulls written in the spec.
+
+**Other places that held on one world's dice or one clock, found by reading and fixed.**
+- Proof 66, FIGHTS_KEPT: the card of a battle "just over" was read where the dice ended it. A fight that ends in its first round ended 70 s ago by that battle's clock, which is past the 60 s the map keeps it. The proof now puts the end 5 s ago before it reads.
+- Proof 66, NAVY_KEPT: the place and the hull after the fight were compared with the navy ship as she is after the pass. A fight that sinks her sends her home. They are now compared with her place read before the fight and with what the fight's own answer took.
+- `tests/map.fight.spec.ts`: it waited for a first round to be shown. A fight may end before one. It now waits for a round or for the end, and reads the round's words only when there is one. The raid's "Lost" line is asserted to be there, not to name the crew.
+
+**Proved under other worlds' dice.** `scripts/ops/harness/fight-rings/dice.mjs` gives the world another `world_secret` (64 random hex characters, as 0031 requires) and runs the proof, the RPC spec and, with `--browser`, the browser spec. `SPEC_WORLD_SECRET` is the knob the spec and the fixtures read. The figures are in the PR.
+
+## 2026-11-13: `map.tray.edge` at 1440 on the combined tree: not this change
+
+`tests/map.tray.edge.spec.ts:49` failed once on #632 at 1440 with `1024` against `> 1074`. Its own header records the same failure with the same two numbers on main on 2026-11-05 and 2026-11-07, before this branch existed.
+
+What was checked in this change:
+- The poll (`useFights`) sets state only when the answer differs. With no fight served it hands React the very list it already holds, so the map does not render. That was already so for an empty answer; it is now so for any unchanged answer (`sameOrNext`, held by `tests/map.fightRings.spec.ts`).
+- Nothing of this change keys, wraps or re-mounts the map's detail tray. `FightSheet` is a sibling that is mounted only when a ring is pressed.
+- `call()` has no side effect for a read: no store is written, nothing is invalidated.
+- The poll adds two short statements to the tab's one database queue every 15 s. The tray's slide is a CSS animation and its removal a timer; neither waits on that queue.
+
+So the spec was left alone.
