@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { HullCountry } from '../../../live/HullCountry'
 import { Bar, Clip, FactsLine, Note, Row, ScrollPane, Skeleton, StatCell, useWide } from '../../../components/ui'
 import { regardBandWord } from '../../../domain/port'
 import { formatDucats, formatInt, formatMiles } from '../../../lib/format'
@@ -190,8 +191,8 @@ function Countries({ v }: { v: Ready }) {
         rows.map((r, i) => (
           <Row
             key={r.code}
-            // the country's name in her language (properName, the one authority for a proper noun): found when regard was lit, 0373 — the list was dark until then
-            label={<Clip>{`${r.flag} ${properName('nation', r.code, r.name)}`}</Clip>}
+            // the country's flag and its name in her language, by the game's one nation-flag renderer (HullCountry): found when regard was lit, 0373 — the list was dark until then
+            label={<Clip><HullCountry nation={r.code} /></Clip>}
             value={`${regardBandWord(r.band)} ${formatInt(r.score)}`}
             hairline={i < rows.length - 1}
             data-testid="levels-country"
