@@ -122,6 +122,8 @@ const DERIVED: Readonly<Record<string, Volatility>> = {
   // 20260818000203…:299 rewrites voyage.ship_speed_at's definition into voyage.fleet_speed_at; both pure reads.
   'voyage.fleet_speed_at': 's',
   'voyage.ship_speed_at': 's',
+  // 20260818000367… moves voyage.fleet_speed_at's live definition to voyage.fleet_speed_alone_at by its header (read off the cached world at head 0367, 2026-11-13: 's').
+  'voyage.fleet_speed_alone_at': 's',
   // 20260818000169…:514-560 re-creates world.quote_priced from a hunk-edited definition.
   'world.quote_priced': 's',
   'public.standing_route_state': 's',

@@ -27,6 +27,7 @@ import { skillWord } from '../../live/skillWords'
 //   TOWED         {fleet, from, to, nm, fee}                  (0152 — from / to are CODES)
 //   FLEET_RENAMED {from, to}                                  (0354)
 //   ROOM_OPENED   {kind, step, price, room}                   (0354 — kind is FLEET or SHIP)
+//   ARMADA_FORMED {armada, fleets}  ARMADA_DISBANDED {armada}  ARMADA_SAILED {armada, fleets, dest, eta}   (0367 — fleets are names, or a count on SAILED; dest is a CODE)
 //   SIGNED_OFFICER {officer, code, specialty, bonus_pct, cost}   (0015:231 — NO fleet key)
 //   STUDIED       {skill, code, level, port, cost}               (0016:239 — port is a CODE)
 //   ENROLLED      {skill, code, port, cost}                       (0131 — enrolment in a skill)
@@ -170,6 +171,17 @@ export function headline(event: LedgerEvent, portName: (code: string) => string)
     // 0354: a fleet took a new name; a step of room was bought (kind FLEET or SHIP).
     case 'FLEET_RENAMED':
       return t('history.fleetRenamed', { from: str(p, 'from') ?? '', to: str(p, 'to') ?? '' })
+    // 0367: an armada formed, disbanded, sent on one order.
+    case 'ARMADA_FORMED': {
+      const names = Array.isArray(p['fleets']) ? p['fleets'].filter((x): x is string => typeof x === 'string').join(', ') : ''
+      return t('history.armadaFormed', { armada: str(p, 'armada') ?? '', fleets: names })
+    }
+    case 'ARMADA_DISBANDED':
+      return t('history.armadaDisbanded', { armada: str(p, 'armada') ?? '' })
+    case 'ARMADA_SAILED': {
+      const dest = str(p, 'dest')
+      return t('history.armadaSailed', { armada: str(p, 'armada') ?? '', bound: dest ? t('history.boundFor', { dest: portName(dest) }) : '' })
+    }
     case 'ROOM_OPENED':
       return t(str(p, 'kind') === 'SHIP' ? 'history.roomShip' : 'history.roomFleet', { amount: formatDucats(num(p, 'price') ?? 0) })
     // 0323: a timed battle is over. The sentence and the rounds open under it, as a voyage's report does.

@@ -14,6 +14,7 @@ import {
 } from '../../domain/fleet'
 import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
+import { Armadas } from './Armadas'
 import { FleetFold } from './FleetFold'
 import { FleetRoom } from './FleetRoom'
 import { FleetShipSheet } from './FleetShipSheet'
@@ -132,7 +133,8 @@ function FleetsBody({ title }: { title: string }) {
         // on the first glass (the Codex's lesson, 2026-11-02)
         stickySide
         main={
-          /* THE TITLE IS THE COUNT (as RANK's is): the rows it holds. An empty company has no count to say — its one row does. */
+          <>
+          {/* THE TITLE IS THE COUNT (as RANK's is): the rows it holds. An empty company has no count to say — its one row does. */}
           <ListPanel
             look="card"
             columns="fit"
@@ -158,6 +160,9 @@ function FleetsBody({ title }: { title: string }) {
             {/* F5: a new fleet is made from here (NewFleet.tsx). Dark, it is a line that says "Not open yet", never a button. */}
             {fleets.length > 0 && <NewFleet />}
           </ListPanel>
+          {/* 0367: her armadas, and the door to form one (Armadas.tsx). Nothing is drawn while armadas are switched off. */}
+          <Armadas />
+          </>
         }
         side={
           <>
