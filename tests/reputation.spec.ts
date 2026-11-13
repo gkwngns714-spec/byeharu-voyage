@@ -28,6 +28,7 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 test.use({ locale: 'en-US', deviceScaleFactor: 2 })
 
 const SIZES = [
+  { width: 320, height: 568 },
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
 ] as const

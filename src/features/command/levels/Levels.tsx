@@ -101,7 +101,7 @@ function Track({ name, level, cut, line, gift, testid, children }: { name: strin
         {nextGift > 0 && (
           <>
             {' · '}
-            <span className="text-accent" data-testid="levels-gift" data-value={nextGift}>
+            <span className="whitespace-nowrap text-accent" data-testid="levels-gift" data-value={nextGift}>
               {t('command.lvNextGift', { n: formatInt(nextGift) })}
             </span>
           </>
