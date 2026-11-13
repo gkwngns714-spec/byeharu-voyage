@@ -242,6 +242,22 @@ function drift(db_, want) {
       if (rests.length !== 1) say(`sea ${s.code} has ${rests.length} rest boxes in ${SZ}; every sea has exactly one`)
     }
   }
+  // 0403: THE PAIR TABLE (public.sea_leg_asks.zones) EQUALS data/sea-legs.json: the seas of the course a fleet really sails between every two
+  // harbours, plotted by scripts/build-sea-legs.mjs. A slice that moves a sea box, the raster, a roadstead or a harbour re-runs that script.
+  if (want.seaLegs && db_.seaLegs) {
+    const SL = 'data/sea-legs.json'
+    const at = new Map(want.seaLegs.harbours.map((c, i) => [c, i]))
+    let bad = 0
+    for (const r of db_.seaLegs) {
+      const i = at.get(r.a)
+      const j = at.get(r.b)
+      const k = i === undefined || j === undefined ? undefined : want.seaLegs.legs[i][j]
+      if (k === undefined) { if (bad++ < 5) say(`sea leg ${r.a} to ${r.b} is in the database but not in ${SL}`); continue }
+      if (k >= 0 && want.seaLegs.sets[k].split(' ').sort().join(' ') !== r.zones.split(' ').sort().join(' ') && bad++ < 5) say(`sea leg ${r.a} to ${r.b}: database has ${r.zones}, ${SL} says ${want.seaLegs.sets[k]}`)
+    }
+    if (db_.seaLegs.length !== want.seaLegs.harbours.length ** 2) say(`the database has ${db_.seaLegs.length} sea legs, ${SL} has ${want.seaLegs.harbours.length ** 2}`)
+    if (bad > 5) say(`${bad} sea legs in all differ from ${SL}`)
+  }
   // 0215: every ship class's wave resistance IS the one derivation (world-derive.mjs waveResistance), the live three too
   if (db_.waveA && db_.waveA.classWaves) {
     for (const c of db_.waveA.classWaves) {
@@ -562,6 +578,10 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
         from public.sea_zone_boxes b join public.seas s on s.id = b.sea_id`)).rows,
     titles: (await db.query(`select level, name from public.title_names`)).rows,
   }
+  // 0403: the pair table's seas, one row a pair (data/sea-legs.json)
+  db_.seaLegs = (await db.query(`
+    select a.code as a, b.code as b, array_to_string(s.zones, ' ') as zones
+      from public.sea_leg_asks s join public.ports a on a.id = s.from_port join public.ports b on b.id = s.to_port`)).rows
   db_.regions = (await db.query(`select code, name from public.regions`)).rows
   db_.nations = (await db.query(`select code, name, flag_char, capital_port_code from public.nations`)).rows
   // 0130: the eleven lines and every hull's profile (numeric jsonb values read back as numbers)
@@ -705,6 +725,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   want.gear = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'gear.json'), 'utf8'))
   want.homes = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'home-ports.json'), 'utf8')).homes   // 0143
   want.seaZones = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-zones.json'), 'utf8'))   // 0215: zones, boxes, titles
+  want.seaLegs = JSON.parse(readFileSync(join(REPO_ROOT, 'data', 'sea-legs.json'), 'utf8'))   // 0403: the seas of every pair's plotted course
   want.great = [...GREAT_POWERS].sort()   // 0187 (GP1)
   want.pirate = [PIRATE_POWER]   // 0338 (W16)
 
