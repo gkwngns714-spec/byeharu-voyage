@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
+import { arrivalCard, LANDING_TEST_TIMEOUT_MS } from './arrivalWait.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -30,7 +31,8 @@ for (const size of SIZES) {
       test.use({ viewport: size })
 
       test('a first voyage earns Reputation: the top bar, the arrival card and You agree', async ({ page, request, baseURL }) => {
-        test.setTimeout(480_000)
+        // the sea may delay any voyage: the wait and its arithmetic are tests/arrivalWait.fixture.ts
+        test.setTimeout(LANDING_TEST_TIMEOUT_MS)
         expect(await reachable(request, baseURL ?? ''), `nothing served at ${baseURL}: run a preview (or set PLAYWRIGHT_BASE_URL)`).toBe(true)
         const words = WORDS[lang]
         await page.goto('command')
@@ -84,8 +86,7 @@ for (const size of SIZES) {
         await expect(page.getByTestId('arrival-card')).toHaveCount(0)
 
         // she comes in and sells: one line on the card
-        const card = page.getByTestId('arrival-card')
-        await expect(card).toBeVisible({ timeout: 300_000 })
+        const card = await arrivalCard(page, `Reputation at ${size.width}×${size.height}, ${lang}`)
         const line = page.getByTestId('arrival-reputation')
         await expect(line).toHaveCount(1)
         const text = (await line.innerText()).trim()
