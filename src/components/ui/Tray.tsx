@@ -81,6 +81,7 @@ export function Tray({
   mode: asked = 'docked',
   action,
   dismissible = true,
+  over = false,
   children,
   className = '',
   ...rest
@@ -97,6 +98,9 @@ export function Tray({
    *  panel beside the column on a wide glass (ManifestPanel.tsx), which has nothing to close to.
    *  The ✕ is not drawn; the caller still receives `'closed'` from a drag or the keyboard. */
   dismissible?: boolean
+  /** A tray opened FROM a tray (the news card a chart's dot opens): it stands one layer over every other tray, under the toasts.
+   *  Without it the card of a dot pressed in the map's good panel (a phone's `side-next`, z-50) opened behind that panel. */
+  over?: boolean
   children?: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
@@ -190,7 +194,7 @@ export function Tray({
         // last must be on top, or a ship pressed in her fleet's tray opens behind it, invisible
         // and unpressable (2026-10-18, every phone). Closing it gives the first panel back as it
         // stood. tests/map.shipPanel.spec.ts asks the browser which panel a finger lands on.
-        mode === 'side-next' ? 'z-50 lg:z-30' : 'z-40',
+        over ? 'z-[55]' : mode === 'side-next' ? 'z-50 lg:z-30' : 'z-40',
         // A TRAY THAT STANDS OVER THE PAGE IS A QUERY CONTAINER OF ITS OWN (index.css, `narrow:`): its rows ask the tray, never the
         // HQ panel it was opened from. A pane stands IN a panel and asks the panel.
         mode === 'pane'

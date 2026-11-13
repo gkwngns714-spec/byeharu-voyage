@@ -155,6 +155,9 @@ begin
 
   -- ── REP_ARRIVAL: a new house's first voyage, through the doors ──
   update public.world_config set value = to_jsonb(0) where key = 'hazard_p_max';
+  -- 0356 (R4) pays a gift when a level is crossed, at the arrival: that is proof 59's. Here the gift is 0 (the knob's own
+  -- "no gift"; it goes back with the rollback), so every figure below is R1's own.
+  update public.world_config set value = to_jsonb(0) where key = 'rep_level_per_level';
   v_a := public.new_house(c_a, 'Casa da Viagem 55', 'PRT');
   perform cmd.assume_identity(c_a);
   select id into v_fleet from public.fleets where player_id = v_a;
