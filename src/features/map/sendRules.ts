@@ -1,7 +1,8 @@
 import type { LatLon } from '../../lib/geo'
 import type { FleetView, PreviewResult, Refusal } from '../../lib/rpc'
 import { whereabouts } from '../../domain/fleet'
-import { pointToken } from '../../domain/passage'
+import { boundFor } from '../../domain/order'
+import { pointToken, type PassagePlan } from '../../domain/passage'
 import { pointLabel } from '../../lib/format'
 
 // THE SEND FLOW'S RULES AS DATA — no React, no store, so each one can be read without a browser.
@@ -27,6 +28,9 @@ export type Standing = 'send' | 'turn' | 'lies' | 'bound'
 /** The server's verdict on one fleet's passage to this place — the dry run's answer, kept whole. */
 export type Verdict =
   | { kind: 'ok'; result: PreviewResult }
+  /** TOO FAR IN ONE GO, AND THE GAME FOUND THE WAY (owner, 2026-11-13): the harbours between are the server's, every
+   *  leg is one it calls open, and `first` is the dry run of the first SAIL (the real verb, rolled back). */
+  | { kind: 'chain'; plan: Extract<PassagePlan, { kind: 'open' }>; first: PreviewResult }
   | { kind: 'refused'; refusal: Refusal }
   /** The call came back with neither an estimate nor a refusal; the row stops saying "checking". */
   | { kind: 'silent' }
@@ -56,7 +60,7 @@ export function destArgs(dest: SailDest): Record<string, string> {
   return dest.kind === 'port' ? { dest: dest.code } : { dest_point: pointToken(dest.at) }
 }
 
-export function standingOf(dest: SailDest, f: FleetView): Standing {
+export function standingOf(dest: SailDest, f: FleetView, isPort: (code: string) => boolean = () => false): Standing {
   const key = destKey(dest)
   // In port, at anchor or at sea is `domain/fleet`'s one rule; this only matches the place to `dest`.
   const where = whereabouts(f)
@@ -66,7 +70,10 @@ export function standingOf(dest: SailDest, f: FleetView): Standing {
       : where.kind === 'anchored' && pointToken(where.at) === key
   const bound =
     where.kind === 'sailing' &&
-    (dest.kind === 'port' ? where.to === dest.code : where.point !== null && pointToken(where.point) === key)
+    // a far city is several SAILs: she is bound for it while the SAILs queued behind the leg she is on end there
+    (dest.kind === 'port'
+      ? where.to === dest.code || boundFor(f, isPort) === dest.code
+      : where.point !== null && pointToken(where.point) === key)
   return lies ? 'lies' : bound ? 'bound' : where.kind === 'sailing' ? 'turn' : 'send'
 }
 
