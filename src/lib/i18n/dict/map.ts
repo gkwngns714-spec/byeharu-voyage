@@ -108,7 +108,6 @@ export const mapDict = defineDict({
     sendLine: 'Send {name}{insured}',
     // 2026-11-13 (owner): a far city is sent in one press; the row says the stops, the supplies, or why no way opens it
     sendVia: 'via {stops}',
-    sendSupplies: 'Supplies {amount}',
     // 0367: one Send for an armada: her fleets, the time and the cost of them all
     armadas: 'Armadas',
     armadaLine: '{count} fleets · {names}',
@@ -240,7 +239,6 @@ export const mapDict = defineDict({
     sending: '보내는 중…',
     sendLine: '{name} 출항{insured}',
     sendVia: '{stops} 경유',
-    sendSupplies: '보급 {amount}',
     armadas: '대함대',
     armadaLine: '선단 {count}개 · {names}',
     armadaCost: '비용 {amount}',

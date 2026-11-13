@@ -23,6 +23,12 @@ import { planLines, reachBoard, reachWords, tripRows } from './planLines'
 //
 // AND WHY, IN A SENTENCE (owner row 231, 2026-10-26: "i can't sell because i can't dock. and i can't move to that
 // location"): a button that will not press never speaks for itself. `why` is the plain sentence under it that says
+//
+// WHAT THE TRIP COSTS AND HOW LONG IT TAKES IS THE BOARD'S ROW, WHOLE (0361; the owner, 2026-11-13: "docking - resailing
+// takes time too", then "do all"). The served row's days carry the calls on the way, its supplies are her casks walked
+// along the trip, its wages are what the crew will be owed, its dock fee is every call's, and its profit takes all of
+// them off: the same walk the Map's Send fleet reads (world.trip_cost). Nothing is added up or asked again here.
+//
 // what stops it and what to do: the city does not buy the good; the board's own reach wording (planLines
 // `reachWords`, the plan card's) for a city too far, shut or past her stores; nothing aboard; the money short.
 

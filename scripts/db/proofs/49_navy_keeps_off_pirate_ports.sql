@@ -436,10 +436,12 @@ declare
   v_s    text;
   v_hold2 uuid;
   v_keep numeric := public.wc_num('battle_seconds');
+  v_keep_round jsonb := (select c.value from public.world_config c where c.key = 'battle_round_seconds');   -- 0357: null in a world before it, where both lines below write nothing
 begin
   perform pg_temp.clear_49();
   update public.world_config set value = 'true'::jsonb where key = 'attack_enabled';
   update public.world_config set value = '86400'::jsonb where key = 'battle_seconds';   -- a day-long battle, so both ships are in time and both are called (as proof 40 reads a call)
+  update public.world_config set value = '86400'::jsonb where key = 'battle_round_seconds';   -- 0357: an attack's clock is the lesser of battle_seconds and its rounds, so a day-long battle needs both
   a := pg_temp.house_49(1);
   d := pg_temp.ship_49(100000, v_t);
   v_nat := public.crown_nation(d);
@@ -476,6 +478,7 @@ begin
   perform pg_temp.hand_49(v_near, v_hold);
   perform pg_temp.close_49(b, v_t + interval '1 second', 'DRIVEN_OFF');
   update public.world_config set value = to_jsonb(v_keep) where key = 'battle_seconds';
+  update public.world_config set value = v_keep_round where key = 'battle_round_seconds';
   update public.world_config set value = 'false'::jsonb where key = 'attack_enabled';
   if pg_temp.purses() <> (select w0 from w_49) then
     raise exception 'PROOF 49 FAIL: the call moved gold';

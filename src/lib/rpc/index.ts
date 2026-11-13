@@ -116,6 +116,9 @@ import type {
   AttackReceipt,
   RaidOrderWord,
   RaidRead,
+  BattleRead,
+  BattleStanceReceipt,
+  BattleStanceWord,
   AllegianceView,
   CountryChanged,
   DonateReceipt,
@@ -147,6 +150,7 @@ import type {
   VerbSpec,
   WorldSnapshot,
   RouteLegAsk,
+  TripCost,
   RouteLegs,
 } from './types'
 
@@ -825,6 +829,12 @@ export function worldRouteLegs(fleetId: string, legs: readonly RouteLegAsk[]): P
   return call<RouteLegs | null>('worldRouteLegs', [fleetId, legs])
 }
 
+/** 0360 (owner, 2026-11-13) — what a trip of SAILs takes and costs for your fleet (`world.trip_cost`): the whole time with
+ *  the calls on the way, and supplies, wages and dock fees. null when the fleet is not yours. */
+export function worldTripCost(fleetId: string, legs: readonly RouteLegAsk[]): Promise<RpcResult<TripCost | null>> {
+  return call<TripCost | null>('worldTripCost', [fleetId, legs])
+}
+
 /** What your company holds in every city (0176): the register's rows, a share's price now, the dividends. */
 export function worldHoldings(): Promise<RpcResult<Holdings>> {
   return call<Holdings>('worldHoldings')
@@ -971,6 +981,16 @@ export function cmdRaidOrder(fleetId: string, order: RaidOrderWord): Promise<Rpc
 /** The read beside the order's picker (0353): her order, her guns, her slip, what Pay costs, the raiders' word by danger. */
 export function worldRaidRead(fleetId: string): Promise<RpcResult<RaidRead>> {
   return call<RaidRead>('worldRaidRead', [fleetId])
+}
+
+/** Her stance in a battle fought round by round (0357): FIGHT or FLEE. It takes hold from the next round. */
+export function cmdBattleStance(battleId: string, stance: BattleStanceWord): Promise<RpcResult<BattleStanceReceipt>> {
+  return call<BattleStanceReceipt>('cmdBattleStance', [battleId, stance])
+}
+
+/** The read the battle card polls (0357): her fleet's battle, its clock, her stance and the log so far. */
+export function worldBattle(fleetId: string): Promise<RpcResult<BattleRead>> {
+  return call<BattleRead>('worldBattle', [fleetId])
 }
 
 /** Your fleet attacks a cargo ship (0327). A battle opens; its end comes as a report. */

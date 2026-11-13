@@ -173,6 +173,10 @@ export function useRouteBuilder(fleet: FleetView | null) {
     edit((d) => (d.next !== null ? { next: null, refusal: null } : { kept: d.kept.slice(0, -1), refusal: null }))
   /** Out of route mode: the draft is dropped, nothing is sent. */
   const reset = () => setDraft(EMPTY)
+  /** A draft handed in from outside the map (routeSeed.ts): these stops are kept, up to the cap. Every leg is judged
+   *  by the server like a confirmed one; a shut leg holds Final back and says why, and Undo takes it away. */
+  const seed = (fleetId: string, stops: readonly string[]) =>
+    setDraft({ fleetId, kept: stopMax !== null ? stops.slice(0, stopMax) : [...stops], next: null, refusal: null })
   /** Every kept stop, one SAIL line each with its proposed course, queued all or none. True when queued. */
   const final = async (): Promise<boolean> => {
     if (!fleet || sending || kept.length === 0 || blocked) return false
@@ -205,6 +209,7 @@ export function useRouteBuilder(fleet: FleetView | null) {
     undo,
     final,
     reset,
+    seed,
   }
 }
 
