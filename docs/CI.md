@@ -220,7 +220,7 @@ None of these were loosened:
 - Every shard fails on any failed, skipped or flaky test. A shard that passed nothing is green only
   if its plan was empty, and only a PR's scoped selection can produce an empty plan.
   `shard-plan.mjs` refuses an empty plan on main.
-- The verdict requires all six shards to report. It also requires the passes to sum to a
+- The verdict requires all nine shards (db 1, plain 6, npc 2) to report. It also requires the passes to sum to a
   denominator counted from `playwright test --list`, never from the shard plan.
 - `select` first runs the selector's positive controls against real commits with known answers:
   docs-only selects nothing, 0136 selects the `trade_routes`/`port_offers` specs, #141 selects its

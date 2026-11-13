@@ -120,7 +120,8 @@ export function TownHallInfluence({
         <Row
           label={t('books.yourTax', {
             pct: formatPct(you.tax_rate, 1),
-            half: you.nation !== null && you.nation === influence.holder ? t('books.half') : '',
+            // a free port (a pirate home, 0338) asks 0 of everyone: there is no half of nothing to explain
+            half: you.tax_rate > 0 && you.nation !== null && you.nation === influence.holder ? t('books.half') : '',
           })}
           tone="muted"
           hairline={false}
