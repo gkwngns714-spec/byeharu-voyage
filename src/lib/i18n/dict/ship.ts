@@ -50,7 +50,7 @@ export const shipDict = defineDict({
     wornFittings: 'Worn fittings',
     wornCount: '{n} worn',
     wornWeakest: 'weakest works at {m}%',
-    wornHelp: 'Repair in port mends them.',
+    wornHelp: 'Repair them in port.',
     daysUnit: 'days',
     daysOf: 'days',
     damage: 'Damage',
