@@ -71,9 +71,14 @@ export function DeskPanes({
   return (
     // THE MIDDLE PANE KEEPS 16 REM (2026-11-11, S9): with `minmax(0,1fr)` the two side panes grew to their 22-rem caps first and the
     // middle took what was left — 272 px at 1,024 before the rail, 176 after it, where "Your cargo" and the small map were cut. A
-    // 16-rem floor makes the sides give way first (down to their own 19 / 20 rem); from 1,280 every pane is as it was.
+    // 16-rem floor makes the sides give way first (down to their own 19 / 20 rem).
+    // FROM 1,280 THE MIDDLE KEEPS 34 REM (2026-11-13, owner row 318): at 1,280 × 800 the sides stood at their 22-rem caps and the
+    // middle had 432 px: Trade's ten goods cards stood two to a line, five lines, 934 px in a 626-px pane. With 544 px the cards
+    // stand four to a line (TradeBoard.tsx) and the pane does not scroll. The left pane gives the room (17 rem at 1,280, its
+    // words grid keeps every name whole at any width); the right keeps its 20 rem, a phone's width, for the trade panel. From
+    // 1,440 the three panes are as they were (352 / 560 / 352).
     <div
-      className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,22rem)_minmax(16rem,1fr)_minmax(20rem,22rem)] gap-3 px-3 pb-3 min-[90rem]:gap-4 min-[90rem]:px-6 min-[90rem]:pb-4"
+      className="grid min-h-0 flex-1 grid-cols-[minmax(19rem,22rem)_minmax(16rem,1fr)_minmax(20rem,22rem)] xl:grid-cols-[minmax(17rem,22rem)_minmax(34rem,1fr)_minmax(20rem,22rem)] gap-3 px-3 pb-3 min-[90rem]:gap-4 min-[90rem]:px-6 min-[90rem]:pb-4"
       data-testid={testid}
       data-desk-frame=""
       data-face={face}

@@ -32,6 +32,14 @@ import { useInTray } from './trayContext'
 //
 // NO ⓘ ON A TITLE. §5's `Hint` budget: one per section, none on titles.
 
+// THE TITLE HOLDS ITS PLACE ONLY ONCE IT IS A BAR (2026-11-13, owner row 318; the HQ at 320 px in Korean). The header was
+// `sticky` at rest too, and at rest it has no ground of its own: between the first pixel of scroll and the pin (the large
+// header's own height, 56-76 px) the page's first content slid UNDER the large title, the two drawn over each other
+// ("리스본 수도" over the HQ's building tiles). At rest the title now goes up with the page like any other line; pinned it is
+// the opaque bar it was. The pin and its threshold are unchanged (the scroll handler below).
+const AT_REST = 'relative z-10'
+const PINNED = 'sticky top-0 z-10 bg-surface'
+
 export function Sheet({
   title,
   trailing,
@@ -90,7 +98,7 @@ export function Sheet({
           ref={head}
           data-testid="sheet-header"
           data-pinned={pinned}
-          className={['sticky top-0 z-10', pinned ? 'bg-surface' : ''].join(' ')}
+          className={pinned ? PINNED : AT_REST}
         >
           <div className={`flex items-center justify-between gap-x-4 gap-y-2 ${pinned ? 'py-2' : 'pb-3 pt-5 lg:pb-4 lg:pt-8'} ${pageColumnClass()}`}>
             <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-figure md:text-t-page'}>
@@ -105,13 +113,13 @@ export function Sheet({
           data-testid="sheet-header"
           data-pinned={pinned}
           className={[
-            'sticky top-0 z-10 flex items-center justify-between gap-3 px-gutter',
+            'flex items-center justify-between gap-3 px-gutter',
             'pb-2 pt-3',
             // AT REST THE TITLE STANDS ON THE WORLD; PINNED, IT IS A BAR. Measured on the gallery at
             // 390×844 (shots dark-1/light-1): an always-opaque header reads as a title bar even at
             // scrollTop 0, which is a header bar — the thing §3 rule 1 deletes — reintroduced by the
             // one primitive that replaced it. Opaque only when it is actually holding content back.
-            pinned ? 'bg-surface' : '',
+            pinned ? PINNED : AT_REST,
           ].join(' ')}
         >
           <h1 className={pinned ? 'min-w-0 text-t-body' : 'min-w-0 text-t-title'}>
