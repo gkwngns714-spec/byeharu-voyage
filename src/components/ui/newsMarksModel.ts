@@ -12,6 +12,15 @@
 // NewsDots gives the plot as it stands on the glass (CSS px), so 44 is 44 px of glass at any scale of the chart's sheet. With the `box`
 // the plot stands in, each target is kept inside that box (a mark at the plot's edge or on its floor would hang its target over the
 // chart's neighbours) and the targets are kept a side apart; the mark itself never moves, and it is always inside its own target.
+//
+// THE TARGET HOLDS STILL WHILE ITS MARK KEEPS TIME (2026-11-13, docs/dev-log/2026-11-13-news-dots-trays.md). A live chart's axis ends at
+// now, so every mark creeps left with the clock: measured on the HQ's market chart 0.14 px a second, on a Stats city page 0.10. The
+// target was centred on its mark, so the BUTTON crept with it, a fraction of a px each second: a control that is never at rest. (It is
+// what made tests/news.dotSize.spec.ts red about one run in twenty: Playwright found the dot "not stable" under its press, tried again,
+// and its second try scrolls the dot to the glass's foot; the spec read that scroll as "pressing moved its chart".) In a box, a target
+// now stands on a lattice of NEWS_HIT_STEP px: it holds still for a minute or more and then steps once, while its mark is drawn at its
+// own instant inside it, never more than half a step from the target's centre unless the box or a neighbour moved the target further.
+// The step divides the side, so targets a side apart before the lattice are a side apart on it.
 
 /** What a chart needs to know of a news item to draw it. */
 export interface ChartNewsMark {
@@ -41,6 +50,8 @@ export interface NewsDot {
 
 /** The side of a dot's press target, and so the distance under which two marks are one dot (px of the plot it is given). */
 export const NEWS_HIT_PX = 44
+/** The lattice a target stands on inside a box: a quarter of its side (it must divide the side, so neighbours stay a side apart). */
+export const NEWS_HIT_STEP = NEWS_HIT_PX / 4
 
 export function newsMarksModel(
   marks: readonly ChartNewsMark[],
@@ -69,7 +80,8 @@ export function newsMarksModel(
   // right of its last mark, nor left of its first), so the pass from the left moves a target at most half a side off its mark, and
   // the pass from the right the same: the mark stays inside its target.
   const half = NEWS_HIT_PX / 2
-  const hitX = [...xs]
+  // in a box the target stands on the lattice (it holds still while its mark creeps with the clock); without one it is its mark's centre
+  const hitX = box ? xs.map((x) => Math.round(x / NEWS_HIT_STEP) * NEWS_HIT_STEP) : [...xs]
   if (box) {
     for (let i = 0; i < hitX.length; i++) hitX[i] = Math.max(hitX[i], half, i > 0 ? hitX[i - 1] + NEWS_HIT_PX : -Infinity)
     for (let i = hitX.length - 1; i >= 0; i--) hitX[i] = Math.min(hitX[i], box.w - half, i < hitX.length - 1 ? hitX[i + 1] - NEWS_HIT_PX : Infinity)

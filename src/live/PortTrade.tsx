@@ -13,6 +13,7 @@ import { useStepOrder } from './useStepOrder'
 import { fleetCargoByCode } from '../domain/fleet'
 import { useManifestPreview } from './useManifestPreview'
 import { usePriceSeries } from './usePriceSeries'
+import { useTrendNews } from './useChartNews'
 import { useRequests } from './useRequests'
 import { useWorld } from './worldStore'
 import { useTrade } from './useTrade'
@@ -111,7 +112,8 @@ export function PortTrade({
   const wide = useWide()
 
   const pick = slot.kind === 'pick' ? slot.pick : null
-  const history = usePriceSeries(port.id, pick?.good.good_id ?? null)
+  // the tray's chart carries its news (owner row 216); the card a dot opens stands beside the tray, out of the flow
+  const { trend: history, card: newsCard } = useTrendNews(port.id, pick?.good.good_id ?? null, usePriceSeries(port.id, pick?.good.good_id ?? null))
   // A unit's bulk is a catalogue fact; the market row does not carry it, the snapshot does.
   const goodByCode = useWorld((s) => s.goodByCode)
   const aboard = useMemo(() => fleetCargoByCode(fleet), [fleet])
@@ -254,6 +256,7 @@ export function PortTrade({
           <CityGoodTrades portId={port.id} goodId={pick.good.good_id} refresh={fleet.version} />
         </TradeTray>
       )}
+      {newsCard}
 
       {shown === 'supplies' && (
         <StepQuestion

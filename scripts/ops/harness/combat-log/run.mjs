@@ -19,7 +19,7 @@ const files = []
 let mine = null
 for (const name of await migrationFiles()) {
   if (name.startsWith(NAME)) mine = name
-  if (name >= NAME) continue
+  if (name >= NAME && !process.argv.includes('--chain')) continue   // --chain: the whole chain as it stands (0353 and every later file), for a proof on a later chain
   files.push({ name, sql: await readFile(path.join(MIGRATIONS_DIR, name), 'utf8') })
 }
 const out = await applyWithPrefixCache({ variant: await preambleVariant(), files, cacheDir: PREFIX_CACHE_DIR, log: () => {}, required: true, snapshots: false })
