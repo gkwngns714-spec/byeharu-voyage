@@ -28,9 +28,16 @@ export const FIGHT_OTHER_COMPANY = 'Casa da Ronda Atlântica.'
 export const FIGHT_OTHER_FLEET = 'Ronda do Estreito Largo.'
 export const FIGHT_ROUND_SECONDS = 5
 
+// EVERY BUILT WORLD HAS ITS OWN DICE (0031's world_secret), so the spec that reads these worlds may assume no outcome of a fight. SPEC_WORLD_SECRET gives the copy
+// another secret, to prove that: scripts/ops/harness/fight-rings/dice.sh runs the specs under many.
+const SECRET_SQL = process.env.SPEC_WORLD_SECRET
+  ? `update public.world_config set value = to_jsonb('${process.env.SPEC_WORLD_SECRET.replace(/[^A-Za-z0-9_-]/g, '')}'::text) where key = 'world_secret';`
+  : ''
+
 export function fightWorld(mine: boolean): Promise<Buffer> {
   return patchedWorldImage(mine ? 'fight-world-mine' : 'fight-world-watch', async (pg) => {
     await pg.exec(`
+      ${SECRET_SQL}
       update public.world_config set value = 'true'::jsonb where key in ('attack_enabled', 'convoys_enabled', 'city_treasury_enabled');
       update public.world_config set value = '${FIGHT_ROUND_SECONDS}'::jsonb where key = 'battle_round_seconds';
       insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
@@ -104,6 +111,7 @@ export async function serveFightWorld(page: Page, mine = false): Promise<void> {
 export function instantFightWorld(kind: 'raid' | 'navy'): Promise<Buffer> {
   return patchedWorldImage(`fight-world-${kind}`, async (pg) => {
     await pg.exec(`
+      ${SECRET_SQL}
       update public.world_config set value = 'true'::jsonb where key in ('combat_bite', 'city_treasury_enabled', 'navy_enabled', 'pirates_bite');
       insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
       update public.port_treasury set ducats = 50000000, reserve = 0;
