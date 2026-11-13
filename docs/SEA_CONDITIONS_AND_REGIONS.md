@@ -504,3 +504,163 @@ restore every answer to its pre-image (asserted dark in S2 and S3).
   deleted it DARK** — the gate block, 0205's door CTE in reach_passage, `requires.exploration`, public.exploration_reach,
   regions.min_exploration_level and the two region_level knobs. Dark, the passage gate is the leg's length alone; lit,
   public.sea_gate as S2 wrote it. S2b has nothing left to do.
+
+---
+
+## 10. The version that is workable to light (2026-11-13; owner row 324: *"do all, make everything work. open them if everything is built and is workable."*)
+
+Sections 0 to 9 are the design as approved on 2026-10-20. This section is what was measured and decided on 2026-11-13, at chain head
+0367 (the `batch-6` line), before any switch is thrown. Every decision here is **decided by default**; the owner may reverse any of them.
+Figures marked LOCAL are from the cached local world (13 probe companies, 837 merchant loops): a first estimate, not prod. The prod
+figures come from `scripts/ops/harness/sea-conditions/impact.sql` (read-only, one statement), which the lead runs.
+
+### 10.1 What was built before today, and what was not
+
+- Built and on prod, dark: S1 (0215: the 64 seas, the ships' wave resistance, the title, the one rule `public.sea_refusal`), S2 (0216: the
+  passage gate asks the sea at plan time and at departure), the `sea` key on `world.good_board` rows (0219), a leg's seas kept (0222).
+- Not built before today: S3 (merchants), S4 (far-trader houses), S5 (start in Europe), S6 (the capital), client C3 (the Seas face, the
+  map's shading), and C2's figures on the remastered screens (no screen printed a ship's or a fleet's wave resistance).
+- Never measured: what lighting does to the companies and the merchants; whether the remastered screens say why a sea is closed.
+
+### 10.2 What lighting would do: the impact read
+
+`scripts/ops/harness/sea-conditions/impact.sql` answers, for the world as it stands: every human company's title and each fleet's wave
+resistance, how many seas and harbours are open to her, where she lies and whether that sea is open, how many harbours she can still
+reach from there and whether she can get back to her capital, and whether her voyage under way, her queued sails and her standing route
+cross a sea that would close. Then the same for merchants as if S3 were lit. `volatility.sql` beside it is run first.
+
+LOCAL answer (first estimate):
+
+| Figure | LOCAL |
+|---|---|
+| Human companies, by title | 13, all title 1 |
+| Seas open to a title-1 company | 12 of 64 (52 closed by title) |
+| Harbours open to her | 83 of 249 |
+| Fleets lying in a sea closed to them | **4 of 13** (one at Accra, three at Acapulco: probes the proofs left there) |
+| Of those, fleets with no harbour left to sail to | **4** (a title-1 fleet in a title-3 or title-8 sea is refused every departure) |
+| Voyages under way, queued sails, standing routes into a closed sea | 0, 0, 0 (the local world has none) |
+| Companies whose capital's sea is closed to them | 0 (all thirteen are Portuguese) |
+| Merchant loops with a leg the hull cannot hold (if S3 were lit) | 179 of 837: size 1, 2 of 158; size 2, 92 of 497; size 3, 85 of 182 |
+| Closed loops whose fleet has no open known leg from home | **0** |
+| The seas that close them | Indian Ocean crossing 72, Philippine Sea 66, Western Ocean 54, the Cape 31, Tasman 10, South Pacific 10, North Pacific 5, Roaring Forties 4 |
+| Harbours no merchant loop would still call at | 18: AMB BND CPT DIL HAG HAN HIR HOB JAF KOL MAN PLO QUE STA SYD TER TID YEO |
+
+The design's section 4 estimated 548 closed loops from the 2026-10-20 export. Today's loops are different loops (the planner has re-planned
+them since, 0186 to 0341): 179 is today's LOCAL figure and prod's own is the one that counts.
+
+**The ladder, measured** (harbours a fleet lying at Lisbon can sail to, hop by hop, with no navigation; LOCAL, from `public.sea_leg_asks`):
+
+| Hull (wave resistance) | Title 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| barca (12) | 82 | 91 | 104 | 104 | 112 | 138 | 187 | 187 |
+| caravel (26), also with two fittings (31) and the nau (39) | 82 | 91 | 107 | 132 | 140 | 166 | 222 | 240 |
+| nau with planking (44) | 82 | 91 | 107 | 132 | 141 | 167 | 224 | 242 |
+| galleon (51) | 82 | 91 | 107 | 132 | 141 | 167 | 224 | 243 |
+| ship of state (75) | 82 | 91 | 107 | 132 | 141 | 167 | 224 | 247 |
+
+Two things this table says that the design's prose did not. First, **the pair table lets a barca past the oceans** (187 harbours at title 7):
+the board's table judges the straight line between two roadsteads, and a straight line over Africa never samples the Cape. The sail door
+samples the real course and refuses it. Measured on the 1,061 merchant courses: 99 ask more wave resistance than their pair row and 44 more
+title; of the 703 a new company can sail in one leg, 11. So Trade can still show a far city as reachable that the door then refuses, with
+the reason, at the press. See 10.6, "the board and the door". Second, **the title, not the hull, is what a new company meets first**: at
+title 1 every hull reads 82.
+
+**What a title costs** (LOCAL knobs: 500 d. of buying and selling a point, 25 points a new harbour, 1 a 100 nm; level L asks 25 x (L-1)^2
+points; the title is the lower of the two levels):
+
+| Title | Buying and selling | New harbours called at | Opens |
+|---|---|---|---|
+| 2 | 12,500 d. | 1 | Macaronesia, the Norwegian Sea |
+| 3 | 50,000 d. | 4 | Guinea, Angola, the White and Barents seas, the Arctic |
+| 4 | 112,500 d. | 9 | the Americas |
+| 5 | 200,000 d. | 16 | the Cape, East Africa |
+| 6 | 312,500 d. | 25 | Arabia and India |
+| 7 | 450,000 d. | 36 | the Far East |
+| 8 | 612,500 d. | 49 | the Pacific |
+
+The design quoted these at 100 d. a point (title 8 for 122,500 d.). The local knob is 500, so every title costs five times the design's
+figure in trade. The impact read prints prod's four knobs in its first row; read them before quoting a price to the owner.
+
+**What a hull costs** (a Portuguese company, LOCAL `hull_recipes`): caravela latina, wave 26, 35,000 d., needs parts; nau, wave 39,
+150,000 d., needs parts; the galé, wave 30, 187,000 d., no parts, two skills; galeão, wave 51, 275,000 d. A new company starts with a
+barca (12) and 40,000 d. The 54 hulls of 0366 all carry a wave figure by the one rule (12 a size, plus rig and role); none is special.
+Gear adds 1 to 6 a fitting (65 fittings carry a wave row).
+
+### 10.3 The decision on the numbers: keep the 64 rows
+
+Lit as approved, a title-1 company holds 83 of 249 harbours: a third of the map, and all of Europe. That is by the owner's own decision
+(row 166: *"in order to sail far distance, one needs better ship and levels"*; section 7, Q7 accepted). The data says the approved numbers
+do what they were meant to and that the wall is climbable:
+
+- Day one: her home sea is open (all six starting capitals lie in title-1 seas), with 82 other harbours to trade in.
+- The next sea is one evening away: title 2 is 12,500 d. of buying and selling and one new harbour.
+- A barca is confined by her HULL to about 104 harbours whatever her title (she cannot cross the Doldrums at 24 or the Western Ocean at
+  30), so for the sixteen companies that own one ship the title wall costs at most 22 harbours beyond what the ship already costs, and
+  that for an evening.
+- The first ocean hull is the caravel at 35,000 d.: the Doldrums route to Brazil and the Caribbean coast.
+
+So the numbers stay. What the data does NOT support is the price of a title on a world where a point costs 500 d.: title 4 at 112,500 d.
+of trade is a week, not the design's weekend. **If the owner wants the first walls lower, the smallest change is data only** (a new slice,
+S1b, re-deriving `sea_leg_asks`): move rings 1 and 2 (Macaronesia, Norway, Guinea, Angola, the Arctic) to title 1 and the Americas to
+title 2. A title-1 barca then holds 104 harbours on day one and a title-1 caravel 132, more than half the map, and the ship becomes the
+first wall. Not built: it reverses an approved number and it is the owner's to choose.
+
+### 10.4 What makes lighting workable: five things the approved design did not have
+
+| # | Gap found | What was done |
+|---|---|---|
+| 1 | **A company founded far from Europe is born walled in.** Eleven countries' capitals lie in seas that ask a title (Japan's asks 7; the Brethren's Port Royal asks 4). S5 was not built, so a new company there could not leave her quay. | 0376: while the sea conditions bite, `cmd.found_house` refuses a country in `public.far_powers()` (derived from the sea table, no new column) with `E_FAR_POWER` and the open countries as fixes; the Start sheet does not offer them. Dark, founding is unchanged. This is S5 by derivation, and it covers the Brethren too. |
+| 2 | **A fleet already lying in a sea that closes cannot leave it.** LOCAL: 4 of 13. The design said "fleets at sea finish their trip" and stopped there. | The lighting file (0378) refuses to light while any human fleet lies in, or sails for, a sea that would refuse her. The lead reads `impact.sql` first; a fleet in that state is sailed home (or her company levelled) before the window. A standing rule for after the light ("a fleet may always sail to water that asks no more than where she lies") is a later slice, S7 below. |
+| 3 | **The fleet's figure is an average, and a company cannot split a fleet** while `fleet_room_bite` is dark: a caravel that sails with the starter barca reads 19 and cannot cross the Doldrums. | 0378 refuses to light unless `fleet_room_bite` is true. Light fleet room first. |
+| 4 | **Nobody could see the figures or the reason.** No remastered screen printed a wave resistance; a refusal was the server's English sentence; a far city behind a closed sea read "too far". | 0376 + the client: see 10.5. |
+| 5 | **Merchants roamed seas closed to players** (row 166: "NPCs under the same rule"). | 0377 (S3), behind its own switch, lit in its own window after the players' (10.7). |
+
+### 10.5 What a player is told and offered at a wall
+
+One reading of the server's answer (`src/lib/rpc/seaWall.ts`) and one wording (`src/components/ui/seaWallWords.ts`), in English and
+Korean, used by every screen. The server says which of the two asks is short (0376: `short_title`, `short_wave` in the rule's own
+figures); the client never compares a number.
+
+> **The Western Ocean is closed to this fleet. It asks wave resistance 30. This fleet has 12. Sail a sturdier ship, or fit anchors and planking.**
+>
+> **Gulf of Guinea is closed to this fleet. It asks title 3. Yours is 1. Raise Trading and Exploration to level 3.**
+
+| Where | What she sees |
+|---|---|
+| Codex, **Seas** (new face) | Her title, the fleet's wave resistance, and all 64 seas with what each asks and its harbours: an Open list and a Closed list, each closed sea with what it asks that she lacks and what to do. One chip a fleet when she has several. Dark: the asks only, and "Sea rules are not on yet". |
+| Map | The seas closed to the fleet in hand are shaded (the server's zone raster, `world.sea_zone_map`, and its verdicts). A place's tray names its sea and, when closed, the short reason on the title line and the wall above the fleets. |
+| Map, Send fleet row | The row is the real SAIL dry-run, so a closed sea is the door's own answer, in the wall's words; no passage figure and no price is shown. A far city that no chain of harbours opens says the sea on the direct course (0376, `world.route_legs` `sea`) in place of "too far". |
+| Map, armada row | The armada's dry run is every fleet's door; the refusal is printed in the same words. |
+| Map, route builder | A leg shut by a sea reads "sea name: Needs title 4" in the route's line; the button stays "Sea shut". |
+| Trade | A city the sea closes cannot be pressed and says the wall in place of "too far" (`reachWords`, the board's `sea.refusal`). No height is added to the Trade face. |
+| Standing routes, the queue | A refused save, a stopped route and a halted order print the wall. |
+| Codex ships, Fleets | A hull's wave resistance (Codex ship sheet); a fleet's (the fleet's totals line). |
+| Levels (already there) | The next title, what it asks, and the seas it opens. |
+| Start sheet | Lit, only the countries whose capital lies in open water are offered. |
+
+### 10.6 What is deliberately not in this version, and why
+
+| Slice | What | Why it can wait | Size |
+|---|---|---|---|
+| S4 | 24 far-trader houses with size-4 and size-5 hulls | Needed only once S3 is lit and only for the harbours that then lose every merchant (LOCAL: 18). Players are unaffected by its absence at the players' light. It must be measured on prod's loops first. | medium (data + founding path + proof) |
+| S5, the column | `great_powers.starting`, `nations[].starting` | Replaced by the derived rule of 10.4 (1). | none |
+| S6 + C5 | The capital, `cmd.move_capital` | A new verb with a 20,000 d. price; nothing about lighting needs it. | medium |
+| S7 (new) | **The way home**: a leg is never refused when every sea it touches asks no more than the sea she lies in. So a fleet whose wave drops abroad (a ship lost, a fitting unmounted) can always sail back toward easier water. | The lighting guard covers the day of the light. After it, a company can only strand herself by her own act, and is told why. Wanted before attacks are lit (a sunk nau can leave a barca alone in Asia). | small to medium (the gate, `reach_passage`, `sea_routes`: three cut bodies) |
+| The board and the door | Re-derive `sea_leg_asks` from sailed courses, not straight lines, so Trade never shows a city the door refuses (10.2: 11 of 703 one-leg courses) | The Map's row is already the door's own answer, and Trade's press is refused with the reason before anything is spent. | medium (246 x 246 courses; a derivation job, not a migration statement) |
+| S1b | The lower first walls of 10.3 | The owner's choice. | small (data, one derivation) |
+| A legend on the map | A word for the shade without a press | The tray says it on a press; the corner chrome is full at 320 px. | small |
+
+### 10.7 The order of lighting, and what stands in the way
+
+1. Deploy 0376 (player-side reads; dark) and the client. Nothing changes for a player but the new Seas face, the wave figures and, lit, the words.
+2. Deploy 0377 (S3; dark).
+3. Light `fleet_room_bite` (its own window; not this work).
+4. Run `volatility.sql`, then `impact.sql`, on prod. **Ready to light the players' switch when:** no human fleet lies in or sails for a sea
+   closed to her; every human fleet can reach her capital; no company's capital sea is closed to her title; no human standing route has a
+   closing leg (or its owner has been told); and the owner has seen the "company" row of his own company (title 10 by the last read: every
+   title wall is open to him, so his fleets' wave resistance decides where he may go).
+5. Light `sea_conditions_bite` with 0378 (its guards re-check step 4 inside the deploy and fail closed). 30-minute after-check.
+6. Merchants: run `impact.sql` again for the "merchants" rows; light `sea_conditions_bite_npc` with 0379 in its own window when "closed
+   loops with no open leg from home" is 0. Then decide S4 from "far_harbours".
+
+Rollback of either light is the switch set false: every answer returns to its pre-image at once (asserted dark in 0216, 0376 and 0377).

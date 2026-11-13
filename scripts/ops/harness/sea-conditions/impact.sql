@@ -2,7 +2,7 @@
 -- WHAT LIGHTING THE SEA CONDITIONS WOULD DO, read off the world as it stands (docs/SEA_CONDITIONS_AND_REGIONS.md section 10). It lights nothing and judges
 -- nothing through the switch: every verdict here is public.sea_refusal (the one rule), asked with her own title and her fleet's own wave.
 -- Rows, each {section, data}:
---   switches        the two switches and the knobs read
+--   switches        the two switches and the knobs read (the four a title is earned by: a level L asks level_points_per_step x (L-1)^2 points)
 --   ladder          for a fleet lying at Lisbon: the harbours she could sail to, by title 1-8 and by hull (barca 12, caravel 26, caravel + two fittings 31,
 --                   nau 39, nau + planking 44, galleon 51, a ship of state 75)
 --   company         ONE ROW A HUMAN COMPANY: her title and the two levels it is the lower of, her country and whether its capital's sea is open to her title,
@@ -159,6 +159,8 @@ select 'switches' as section, jsonb_build_object(
          'sea_conditions_bite_npc', (select value from public.world_config where key = 'sea_conditions_bite_npc'),
          'fleet_room_bite', (select value from public.world_config where key = 'fleet_room_bite'),
          'nav_leg_nm_base', public.wc_num('nav_leg_nm_base'), 'title_max', public.wc_int('title_max'),
+         'fame_ducats_per_point', public.wc_num('fame_ducats_per_point'), 'fame_per_port', public.wc_num('fame_per_port'),
+         'fame_nm_per_point', public.wc_num('fame_nm_per_point'), 'level_points_per_step', public.wc_num('level_points_per_step'),
          'seas', (select count(*) from z), 'harbours', (select count(*) from hz)) as data
 union all
 select 'ladder', (select jsonb_agg(jsonb_build_object('hull', hull, 'wave', w, 'harbours_by_title', by_title) order by w) from ladder)
