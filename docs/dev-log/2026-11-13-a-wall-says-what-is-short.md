@@ -1,4 +1,4 @@
-# 2026-11-13: a wall says what is short (migration 0391, branch `seas-wall`)
+# 2026-11-13: a wall says what is short (migration 0396, branch `seas-wall`)
 
 **Owner rows 166** ("in order to sail far distance, one needs better ship and levels") **and 324** ("do all, make everything work. open them if everything is built and is workable"). Design: docs/SEA_CONDITIONS_AND_REGIONS.md. The wall itself (0215, 0216, 0219, 0222) is on prod, dark behind `sea_conditions_bite`. This file serves what a screen needs before the wall can be lit. **It lights nothing and is not deployed by this PR.**
 
@@ -47,7 +47,7 @@ Not touched: `world.good_board` (0361), `voyage.settle` (0362, 0367), `public.se
 - Apply + self-assert on the cached world: green.
 - Proof 91 (`scripts/db/proofs/91_a_wall_says_what_is_short.sql`): 7 of 7 markers. Proofs 33, 45, 54, 56, 57, 62, 63 after the file: green.
 - `cmd.refusal_caught` is the only function that filters a refusal's figures (searched the live bodies of `public`, `cmd`, `world`, `voyage` for a read of `->'have'`): `cmd.execute_order`, `cmd.preview`, `cmd.issue` and `cmd.run_standing_provision` all call it.
-- `before.sql`, `after.sql`, `volatility.sql` answer as their headers say, before and after the file. `rollback-0391.sql` followed by `before.sql` in one scene: every `old_times` 1, `new_times` 0, `new_functions` 0.
+- `before.sql`, `after.sql`, `volatility.sql` answer as their headers say, before and after the file. `rollback-0396.sql` followed by `before.sql` in one scene: every `old_times` 1, `new_times` 0, `new_functions` 0.
 - `tsc -b`; the three specs named in the PR.
 
 ## Decided by default
@@ -71,9 +71,9 @@ Not touched: `world.good_board` (0361), `voyage.settle` (0362, 0367), `public.se
 - A company already sailing for a far power is not touched by this file (`before.sql` counts them: 0 locally). What happens to it at lighting is the lighting file's to judge.
 - The full proof suite and a from-zero chain were not run locally (CI's job).
 
-## Later the same day: renumbered to 0391, merged onto main (head 0375), and the way home
+## Later the same day: renumbered to 0396, merged onto main (head 0375), and the way home
 
-- **0376 became 0391** (the lead's order: 0379 to 0390 deploy first; 0391 meets 0390). The file, proof (now 91), the rollback draft and every check were renamed.
+- **0376 became 0396** (the lead's order: 0379 to 0390 deploy first; 0396 meets 0390). The file, proof (now 91), the rollback draft and every check were renamed.
   `origin/main` was merged in: five switches and attacks are lit on that chain. All ten hunks still occur once; the self-assert, proofs 91 and 68 and the three
   check files run green on it.
 - **The way home (two more hunks and one new function, `public.sea_floor`).** The lead read prod: one company, title 1, lies at Acapulco with two barcas, in a
@@ -89,3 +89,36 @@ Not touched: `world.good_board` (0361), `voyage.settle` (0362, 0367), `public.se
   the second fleet's hull to 0.6 and asserts she is then the slower; with an unlucky pair of rolls she is not. Measured on 400 random pairs: 8 are the wrong way
   round (2 %). The proof now makes the two rolls equal before it wears the hull. **0367's own self-assert has the same pattern (0.5 of a hull)**: it is an applied
   file, so a from-zero replay can fail there by the same chance; that wants a line in `src/lib/db/frozenAsserts.ts`, not done here.
+
+## 2026-11-14: renumbered to 0396, home waters, founding refused nowhere
+
+- **0391 became 0396** (it meets 0395, the armada's battle). Proof stays 91. `origin/main` merged (0380 in).
+- **Founding is refused nowhere.** The hunk on `cmd.found_house` (`E_FAR_POWER`) is gone. The lead's prod read: one company already sails for Japan, players
+  found under Japan and Joseon today, and pirate companies were opened on 2026-11-13; refusing eleven flags at the light was not workable.
+- **Home waters, the sibling of the way home.** `public.sea_floor` now answers two seas: the one a fleet LIES in and the one her company's CAPITAL lies in (the
+  capital of the country she sails for now). `public.sea_judge` (new) asks the one rule with both: a sea of the same title rank as either never asks her title,
+  and asks her hull no more than that sea asked. The door, the board's pathfinder and the conditions read all use it; the read also serves `home_sea`.
+  Figures in a refusal stay her true title and wave. Server facts only. Dark: no path enters it.
+- **The floors open a rank, not everything below it.** Read literally ("every sea asking no more"), a floor of title 7 opens every sea of title 1 to 7: a
+  title-1 barca of Japan would read 187 of 249 harbours on the board, a Mughal one 138. So both floors (lie-in and home) open only seas that ask the SAME title.
+  This also narrows yesterday's way home: a fleet lying in a far sea keeps the waters of that sea's rank, not all easier water.
+- **A change of country moves her home at once** (the floor reads `players.nation_id` live). It cannot strand her: the sea she lies in is the other floor, so
+  the waters of the rank she lies in stay open whatever flag she takes (proof 91, `WALL_HOME_WATERS`).
+- **Day one, a title-1 barca at her capital** (cached world, the board's pair table, legs within 1,700 nm; 249 harbours):
+
+  | Country (capital's sea asks title/wave) | Harbours on the board |
+  |---|---|
+  | Portugal, Spain, England, the Netherlands, France, the Ottomans and the seven minor European flags (1/0) | 82 |
+  | Russia (3/10) | 102 on the board; at the door about 20, and Europe is NOT joined to them until title 2 (the Norwegian Sea lies between) |
+  | The Brethren (4/12) | 23 |
+  | Mughal, Gujarat, Malabar, Persia (6/10 to 6/12) | 114 on the board; at the door about 26 |
+  | Japan, Joseon, Ming, Ayutthaya, Banten (7/8 to 7/12) | 66 |
+
+  The two "on the board" figures are too high because the pair table judges a straight line between two roadsteads: Suez to Alexandria is a straight line over
+  land whose seas are the Red Sea (her rank) and the Mediterranean (title 1), so the board joins Arabia to Europe; the door samples the real course and does not.
+  This is the board-and-door gap already listed in the design (re-derive the pair table from sailed courses); home waters make it matter for the six flags of
+  ranks 3 and 6. No country's home opens most of the map.
+- Cost: `world.sea_conditions` for five fleets 18 ms (it was 21). The first cut through `public.sea_judge` a zone at a time read 167 ms; the read now lays the
+  floors on inline, one call of the rule a zone as before.
+- Nine hunks, seven cut bodies, four new functions (`far_powers`, `sea_zone_map`, `sea_floor`, `sea_judge`). `public.far_powers` stays as a reading; nothing
+  refuses on it.
