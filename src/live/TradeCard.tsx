@@ -20,6 +20,12 @@ const NO_TRIP = () => {}
 
 /** ONE good's card. Named TradeCard, not TradeRow: `TradeRow` is the design system's row
  *  (components/ui) and a screen may not re-declare its name (tests/duplication.spec.ts). */
+/** THE CARD'S ONE COLUMN WHERE A BEST SALE'S CITY IS PRINTED (the Trade board). As wide as the card and no wider, as everywhere
+ *  (`grid-cols-1`), except from 1,280 to 1,600 px, where the board stands its cards four to a line at about 120 px
+ *  (TradeBoard.tsx, `CARDS_GRID`): there the column is never narrower than its lines' own words, so a city name longer than
+ *  the card (산타크루스데테네리페) widens its card, and with it the board's column, instead of standing out of the card. */
+const SALE_COLUMN = 'grid-cols-1 xl:grid-cols-[minmax(min-content,1fr)] min-[100rem]:grid-cols-1'
+
 export function TradeCard({
   portId,
   r,
@@ -68,7 +74,7 @@ export function TradeCard({
         // ONE COLUMN, AS WIDE AS THE CARD AND NO WIDER (`grid-cols-1` = minmax(0, 1fr)): a grid's own column is as wide as
         // its widest line wants, so in a 123-px card (the HQ Market at 320 px) the prices line stood 21 px past the card's
         // edge and "안 삼" crossed the next card's price (tests/city.phone.spec.ts caught it).
-        'row-span-4 grid min-w-0 grid-cols-1 grid-rows-subgrid gap-y-1 rounded-md p-2 text-left transition',
+        `row-span-4 grid min-w-0 ${onBest ? SALE_COLUMN : 'grid-cols-1'} grid-rows-subgrid gap-y-1 rounded-md p-2 text-left transition`,
         on ? 'bg-accent-soft ring-1 ring-accent' : 'bg-surface-2',
         wash,
       ].join(' ')}
@@ -196,7 +202,7 @@ function SaleBlock({
   const t = useT()
   const portByCode = useWorld((s) => s.portByCode)
   // two of the card's four shared rows: the prices, and the line under them
-  const block = 'row-span-2 grid w-full min-w-0 grid-cols-1 grid-rows-subgrid gap-y-0'
+  const block = `row-span-2 grid w-full min-w-0 ${canLand ? SALE_COLUMN : 'grid-cols-1'} grid-rows-subgrid gap-y-0`
   const top = 'flex h-[1.375rem] w-full items-baseline justify-between gap-1'
   // the line holds two lines' height where a sale can land (the Trade board); one where none ever does (the HQ Market)
   const line = `flex ${canLand ? 'min-h-9' : 'min-h-[1.125rem]'} w-full min-w-0 flex-wrap content-between items-center gap-x-1 text-t-caption tabular-nums`
@@ -205,7 +211,10 @@ function SaleBlock({
   // line below the cut), so in a 140-px card the day line goes first, then — only where a five-figure profit and an hours-long
   // time are a few px too many (measured at a 320-px glass: "+29,085" beside "1h02m") — the time, which the line's title still
   // says. At 390 px and wider all three stand. The figure never gives way.
-  const tail = 'ml-auto flex h-[1.125rem] min-w-0 max-w-full flex-wrap items-center justify-end gap-x-0.5 gap-y-4 overflow-hidden'
+  // THE ROW GAP IS 8 PX, NOT 16 (2026-11-13): in the wide desk's 120-px card (four to a line at 1,280 and 1,440) an hours-long
+  // time and the day line each wrap to a line of their own, and at 16 px the third stood 10 px under the card's foot (unseen,
+  // but outside its card: tests/trade.layout.spec.ts). At 8 px a wrapped line is still wholly under the cut.
+  const tail = 'ml-auto flex h-[1.125rem] min-w-0 max-w-full flex-wrap items-center justify-end gap-x-0.5 gap-y-2 overflow-hidden'
   if (!sale || sale.port === null || sale.profit === null) {
     return (
       <div className={block}>

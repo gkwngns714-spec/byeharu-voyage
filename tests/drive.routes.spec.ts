@@ -88,6 +88,6 @@ test('Routes: a two-stop route started on the desk closes a lap by itself, and H
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 120_000 })
   const entries = await page.locator('[data-testid="ledger"] [data-row-line], [data-testid="ledger"] [data-testid^="ledger-"]').allInnerTexts()
   const lapLines = entries.filter((e) => /lap|Lap|왕복/.test(e))
-  console.log(`History: ${entries.length} lines, ${lapLines.length} about a lap; first: ${(lapLines[0] ?? '').replace(/\s+/g, ' ').slice(0, 120)}`)
+  console.log(`History: ${entries.length} lines, ${lapLines.length} about a lap; first: ${[...(lapLines[0] ?? '').replace(/\s+/g, ' ')].slice(0, 120).join('')}`)
   expect(lapLines.length, 'History has no line for the lap').toBeGreaterThanOrEqual(1)
 })
