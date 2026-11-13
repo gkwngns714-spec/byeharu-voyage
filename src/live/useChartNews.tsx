@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import type { ChartNews } from '../components/ui'
+import type { ChartNews, PriceTrend } from '../components/ui'
 import { worldNewsMarks, type NewsChart, type NewsItem } from '../lib/rpc'
 import { NewsCard } from './NewsCard'
 import { newsAtMs } from './newsWords'
@@ -60,4 +60,16 @@ export function useChartNews(chart: NewsChart, portId: string | null, goodId: st
   }, [items, onPress])
   const shown = open === null ? null : open.flatMap((id) => items.filter((i) => Number(i.id) === id))
   return { news, card: <NewsCard items={shown} onClose={() => setOpen(null)} /> }
+}
+
+/** A PRICE TREND WITH ITS NEWS (owner row 216: the map's good panel and the quay's trays): the trend `usePriceSeries` read for one
+ *  good at one city, carrying that chart's dots, and the card a press opens. `PriceRows` draws the dots on its unfolded chart; the
+ *  folded sparkline draws none (too small to press). A null port or good, or a series still on the wire, asks nothing. */
+export function useTrendNews(portId: string | null, goodId: string | null, trend: PriceTrend): { trend: PriceTrend; card: ReactNode } {
+  const points = trend.series?.points
+  const fromMs = useMemo(() => firstAtMs((points ?? []).map((p) => ({ atMs: Date.parse(p.at) }))), [points])
+  const read = useChartNews('price', goodId === null || points === undefined ? null : portId, goodId, fromMs)
+  const { series, span, setSpan } = trend
+  const withNews = useMemo<PriceTrend>(() => ({ series, span, setSpan, news: read.news }), [series, span, setSpan, read.news])
+  return { trend: withNews, card: read.card }
 }
