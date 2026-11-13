@@ -15,6 +15,8 @@ export const foundDict = defineDict({
     try: 'Try',
     starting: 'Starting…',
     start: 'Start',
+    // 0380: what the skull costs, said before she picks (the country picker, at Start and in Profile)
+    skull: 'At war with every country: their ports tax you more and charge more to dock. Pirate ports are free. Their ports have no yard.',
   },
   ko: {
     title: '시작',
@@ -29,5 +31,6 @@ export const foundDict = defineDict({
     try: '해 볼 것',
     starting: '시작하는 중…',
     start: '시작',
+    skull: '모든 나라와 전쟁 중: 다른 나라 항구는 세금과 입항료가 더 비쌈. 해적 항구는 무료. 해적 항구에는 조선소 없음.',
   },
 })

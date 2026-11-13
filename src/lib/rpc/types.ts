@@ -280,6 +280,9 @@ export interface SnapshotNation {
   /** W16 (0338): a great power a company may sail for (public.nation_joinable): the ten, and the pirates only when the
    *  owner sets `pirates_joinable`. The country picker lists exactly these; `great` is the Codex's word, not the picker's. */
   joinable: boolean
+  /** 0380: the pirate power (public.pirate_power), the one great power with no crown: at war with every country. Optional: a
+   *  server before 0380 does not serve it, and the picker then says nothing more than it did. */
+  pirate?: boolean
 }
 
 export interface WorldSnapshot {
