@@ -170,6 +170,15 @@ export interface SnapshotShipClass {
   build_hours: number
   build_cost: number
   tier: number
+  /** 0074 / 0215 — what a hull fights and sails with, as the shipwright rates her (the class's own figures: no gear, no skill, no captain).
+   *  Columns of the row, so they have ridden the snapshot since 0074; typed here since 0366, whose hulls are chosen by them. */
+  armour?: number
+  attack?: number
+  accuracy?: number
+  reach?: number
+  sighting?: number
+  /** 0215 — wave resistance (`ship_classes.wave`). */
+  wave?: number
   /** 0130 — the shipbuilding line (`ship_lines.code`, e.g. "PRT"). Optional for the serve-order
    *  reason: a server before 0130 sends no key. */
   line?: string | null

@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// build-ships.mjs — WAVES A + B + C + D: the 100 hulls of docs/SHIPS_AND_SKILLS.md §4.3, generated
+// build-ships.mjs — WAVES A + B + C + D + E: the 100 hulls of docs/SHIPS_AND_SKILLS.md §4.3 and the 54 of 0366, generated
 //                   (S12 Wave A, 52 T1 hulls, 0135; S14 Wave B, 15 T1 capitals and flagships, 0138;
-//                    S15 Wave C, 22 T2 hulls, 0159; S17 Wave D, 11 famous ships, 0166)
+//                    S15 Wave C, 22 T2 hulls, 0159; S17 Wave D, 11 famous ships, 0166; Wave E, 54 job hulls, 0366)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // THE METHOD (§4.2): ONE archetype table (size × role — the Portuguese values) × ONE line table
@@ -82,8 +82,19 @@
 // of §4.2 — moves into the yard's labour (rounded UP to 500, so the all-in price never falls). The
 // hull costs what it cost; more of it is paid to the yard and less is carried to the shed.
 //
-// WAVE (`wave` on each row): A = 0135's 52, B = 0138's 15, C = 0159's 22, D = 0166's 11. `--sql A` /
-// `--sql B` / `--sql C` / `--sql D` print the VALUES of one wave — the rows that wave's migration pasted.
+// WAVE (`wave` on each row): A = 0135's 52, B = 0138's 15, C = 0159's 22, D = 0166's 11, E = 0366's 54. `--sql A` /
+// `--sql B` / `--sql C` / `--sql D` / `--sql E` print the VALUES of one wave — the rows that wave's migration pasted.
+//
+// MORE SHIPS (Wave E, 0366, owner row 322: "i need more trade ships, cargo, and especially combat related ships"):
+// 54 T1 hulls, each the archetype's (size, role) hull × its line × ONE JOB (JOBS below), the way a T2 hull is the
+// archetype × its line × TECH.T2. A job is a trade: it gives in one place and takes in another, and it is paid for
+// in yard labour, so no job hull is simply a better hull (NO HULL OUTCLASSES ANOTHER, checked below against every
+// hull of Waves A-D and the live three). Combat: raider, gunship, boarder, line. Support: escort. Trade: armed,
+// carrier (the Cargo ship); six plain trade hulls with no job fill the steps a line had no hull for.
+// A job hull is T1: it asks the line's hull skill of its size and nothing else (requirementsOf, unchanged).
+// Wave E is NOT offered to the merchants (S18's table is frozen at Waves A-D: no merchant changes her hull).
+// The job word is CLIENT data, written from here to src/live/hullJobs.generated.ts (HULL_JOBS_FILE): no rule
+// reads a job, the numbers are the job. `--check` holds that file to this one too.
 //
 // RUN:   node scripts/build-ships.mjs           writes data/ships.generated.json
 //        node scripts/build-ships.mjs --sql-merchant   the VALUES 0167 loads (public.npc_line_hulls)
@@ -98,6 +109,7 @@ import { FAMOUS } from './build-gear.mjs'
 import { waveResistance } from './lib/world-derive.mjs'   // 0215: the one rule for a hull's wave resistance
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
+export const HULL_JOBS_FILE = 'src/live/hullJobs.generated.ts'
 const readJson = (rel) => JSON.parse(readFileSync(join(ROOT, rel), 'utf8'))
 export const SHIPS_FILE = 'data/ships.generated.json'
 
@@ -335,6 +347,106 @@ export const WAVE_D = [
   ['geobuk',     'Geobukseon (turtle ship)',  'KOR', 3, 'combat',   'oared',  "Yi Sun-sin's turtle ship, its back plated and spiked against boarders, which led the Joseon fleet against Japan in 1592."],
 ]
 
+/** THE JOBS (Wave E, 0366): what a job hull trades away for what it is good at, in the engine as it is
+ *  (public.fight_sides, docs/COMBAT_LOG.md 2.5; the arithmetic of each is in docs/dev-log/2026-11-13-more-ships.md).
+ *  `role` is the archetype it is cut from; `mult` goes into the product before the one rounding (`crew` moves both
+ *  crew figures, `crewReq` / `crewMax` one each); `add` is added after the line's; `labour` multiplies the yard's
+ *  labour and `goods` the size template; `iron` × the size is the iron for her guns and ironwork.
+ *    raider   sees first and runs: the better sighting fires the first round alone and may slip away; a thin hull.
+ *    gunship  out-ranges: at LONG range only the longer reach fires (three rounds of six); few hands for a boarding.
+ *    boarder  a crowd: boarding power is crew x fight_hand_value; short guns and a light hull, so she takes the long rounds.
+ *    line     armour and hull: every hit is cut by armour x armour_turns_pct; slow, and her hold is small.
+ *    escort   guards a convoy: her reach silences shorter guns at LONG range for the whole fleet, her sighting is
+ *             the fleet's, and her big hull draws the shots (a shot falls on hulls by their size).
+ *    armed    a trader with a real battery and the crew to work it; less hold, more wages.
+ *    carrier  the Cargo ship: the most hold for the money; slow, clumsy and nearly unarmed. */
+export const JOBS = {
+  raider:  { role: 'combat',  labour: 1.10, goods: 0.9,  iron: 0, mult: { speed: 1.06, hull: 0.85, hold: 0.8 },                                  add: { handling: 4, sighting: 3, armour: -3 } },
+  gunship: { role: 'combat',  labour: 1.25, goods: 1.0,  iron: 4, mult: { attack: 1.2, crew: 0.65, hull: 0.92, speed: 0.97, hold: 0.85 },        add: { reach: 12, accuracy: 6, handling: -4 } },
+  boarder: { role: 'combat',  labour: 1.10, goods: 1.0,  iron: 2, mult: { crewReq: 1.2, crewMax: 1.5, hull: 0.9, attack: 0.7, hold: 0.7 },       add: { reach: -14, armour: -4, accuracy: -4 } },
+  line:    { role: 'combat',  labour: 1.40, goods: 1.25, iron: 6, mult: { hull: 1.25, attack: 1.1, speed: 0.92, hold: 0.7, crew: 1.1 },          add: { armour: 12, handling: -8, reach: 2 } },
+  escort:  { role: 'support', labour: 1.20, goods: 1.1,  iron: 3, mult: { hull: 1.25, attack: 1.3, hold: 0.8 },                                  add: { reach: 14, sighting: 6, accuracy: 8, armour: 6 } },
+  armed:   { role: 'trade',   labour: 1.20, goods: 1.0,  iron: 3, mult: { attack: 1.7, crewReq: 1.25, crewMax: 1.5, hold: 0.85, speed: 0.98, hull: 1.05 }, add: { accuracy: 6, reach: 6, armour: 5 } },
+  carrier: { role: 'trade',   labour: 1.15, goods: 1.2,  iron: 0, mult: { hold: 1.3, speed: 0.88, hull: 1.1, attack: 0.5 },                      add: { handling: -8, armour: -3, sighting: -1 } },
+}
+
+/** THE 54 (Wave E, 0366): code, name, line, size, role, rig, the yard's sentence, and the job (null = a plain hull
+ *  of its archetype). Every name is a real ship type of its coast in or near 1507; the Korean names are
+ *  src/lib/i18n/names/realms.ts KO_HULLS (tests/ships.more.spec.ts holds every one of these to an entry). */
+export const WAVE_E = [
+  // raiders (10)
+  ['bergantim',   'Bergantim',      'PRT', 1, 'combat',  'oared',  'A small Portuguese oared scout that runs ahead of the armada and raids along the coast.', 'raider'],
+  ['schnigge',    'Schnigge',       'NLD', 1, 'combat',  'mixed',  'The fast Hanseatic scout and raider of the Baltic, long and low under sail and oars.', 'raider'],
+  ['balinger',    'Balinger',       'ENG', 2, 'combat',  'mixed',  'An English oared sailing raider of the Channel wars, quick to chase and quick to run.', 'raider'],
+  ['brigantin',   'Brigantin',      'FRA', 1, 'combat',  'oared',  'A light French oared raider of the Provence coast, with a sharp lookout.', 'raider'],
+  ['galeotta',    'Galeotta',       'ITA', 2, 'combat',  'oared',  'The Italian galliot: a half-galley for the chase, the scout of every galley fleet.', 'raider'],
+  ['firkate',     'Firkate',        'OTT', 1, 'combat',  'oared',  'The small Ottoman oared raider of the Aegean corsairs.', 'raider'],
+  ['lancaran',    'Lancaran',       'IND', 2, 'combat',  'oared',  'The fast Malay and Javanese war boat of the Straits, under oars and two sails.', 'raider'],
+  ['shaochuan',   'Shaochuan',      'CHN', 1, 'combat',  'lateen', 'The Ming patrol boat that scouts ahead of the war junks.', 'raider'],
+  ['bahansen',    'Bahansen',       'JPN', 2, 'combat',  'mixed',  'The raiding ship of the wako sea rovers, fast and far-seeing.', 'raider'],
+  ['sahuseon',    'Sahuseon',       'KOR', 1, 'combat',  'oared',  'The Joseon scout boat that watches for the enemy ahead of the fleet.', 'raider'],
+  // gunships (5)
+  ['galeoncete',  'Galeoncete',     'ESP', 3, 'combat',  'square', 'A small Spanish galleon built round her guns, to fight at a distance.', 'gunship'],
+  ['greatgalley', 'Great Galley',   'ENG', 4, 'combat',  'oared',  'The English great galley: a long gun platform under sail and oars.', 'gunship'],
+  ['roberge',     'Roberge',        'FRA', 3, 'combat',  'mixed',  'The French roberge: a long, low gun ship under sail and oars, built to out-range a galley.', 'gunship'],
+  ['goke',        'Göke',           'OTT', 5, 'combat',  'square', 'The great Ottoman sailing ship of the Arsenal, built to carry the heaviest guns afloat.', 'gunship'],
+  ['wugong',      'Wugongchuan',    'CHN', 2, 'combat',  'oared',  'The Ming centipede ship: a narrow oared gun boat that carries guns of the Portuguese pattern.', 'gunship'],
+  // boarders (10)
+  ['gale',        'Galé',           'PRT', 3, 'combat',  'oared',  'The Portuguese war galley of the Strait fleets, packed with soldiers for the boarding.', 'boarder'],
+  ['galera',      'Galera',         'ESP', 3, 'combat',  'oared',  'The Spanish galley of the Mediterranean squadrons: oars, a ram and a deck full of soldiers.', 'boarder'],
+  ['galcapitana', 'Galea capitana', 'ITA', 4, 'combat',  'oared',  'The flagship galley of an Italian squadron, with the largest crew of any galley of her size.', 'boarder'],
+  ['kalyata',     'Kalyata',        'OTT', 2, 'combat',  'oared',  'The Ottoman galliot of the corsair captains, crowded with fighters.', 'boarder'],
+  ['parau',       'Parau',          'IND', 1, 'combat',  'oared',  "The Malabar war boat of the Zamorin's fleets, which swarms a ship and boards her.", 'boarder'],
+  ['ghali',       'Ghali',          'IND', 3, 'combat',  'oared',  'The Malay war galley of the Straits sultanates, long and heavily manned.', 'boarder'],
+  ['mengchong',   'Mengchong',      'CHN', 3, 'combat',  'oared',  'The covered assault ship of the Chinese fleets, its deck roofed over the boarders.', 'boarder'],
+  ['mekura',      'Mekurabune',     'JPN', 3, 'combat',  'oared',  'The Japanese blind ship: boxed in with planks, it closes under fire and boards.', 'boarder'],
+  ['geomseon',    'Geomseon',       'KOR', 2, 'combat',  'oared',  'The Joseon sword ship, its sides set with blades, built for the fight at close quarters.', 'boarder'],
+  ['daemaeng',    'Daemaengseon',   'KOR', 4, 'combat',  'oared',  'The great war ship of the early Joseon navy, with eighty fighting men aboard.', 'boarder'],
+  // ships of the line (6)
+  ['naucap',      'Nau capitânia',  'PRT', 5, 'combat',  'square', 'The flagship nau of a Portuguese armada: thick-sided, high-castled and slow.', 'line'],
+  ['kraweel',     'Kraweel',        'NLD', 4, 'combat',  'square', 'The great carvel-built warship of the Hanse towns, like the Peter von Danzig.', 'line'],
+  ['nef',         'Nef',            'FRA', 4, 'combat',  'square', 'The great French nef of war, high-castled and heavily timbered.', 'line'],
+  ['barza',       'Barza',          'ITA', 5, 'combat',  'square', 'The Venetian barza: a great round ship built for war, to hold the line where a galley cannot.', 'line'],
+  ['louchuan',    'Louchuan',       'CHN', 5, 'combat',  'lateen', 'The Chinese tower ship: decks stacked like a fortress and walled against shot.', 'line'],
+  ['tekkosen',    'Tekkōsen',       'JPN', 5, 'combat',  'oared',  'The iron-plated atakebune, a floating fortress that shot does not pierce.', 'line'],
+  // escorts (4)
+  ['friedeschiff', 'Friedeschiff',  'NLD', 3, 'support', 'square', "The Hanse's peace ship: a hired warship that sails with the merchant fleet and keeps raiders at a distance.", 'escort'],
+  ['wafter',      'Wafter',         'ENG', 2, 'support', 'mixed',  'An English wafter: the armed escort that sees the wool fleet across the Channel.', 'escort'],
+  ['almiranta',   'Almiranta',      'ESP', 4, 'support', 'square', 'The second warship of a Spanish fleet, which guards the rear of the convoy.', 'escort'],
+  ['jungmaeng',   'Jungmaengseon',  'KOR', 3, 'support', 'oared',  'The middle war ship of the early Joseon navy, which also guards the grain fleets.', 'escort'],
+  // plain traders (6): the steps a line had no hull for
+  ['caravelao',   'Caravelão',      'PRT', 2, 'trade',   'lateen', 'A small Portuguese caravel for the coast and the islands, the step between the barca and the nau.', null],
+  ['chalupa',     'Chalupa',        'ESP', 1, 'trade',   'mixed',  'The Basque shallop: a sturdy open boat for the coast trade and the fisheries.', null],
+  ['tartana',     'Tartana',        'ITA', 1, 'trade',   'lateen', 'A small lateen coaster of the Italian shores.', null],
+  ['boum',        'Boum',           'IND', 2, 'trade',   'lateen', 'The double-ended dhow of the Gulf, a middling trader of the monsoon.', null],
+  ['sayka',       'Şayka',          'OTT', 2, 'trade',   'mixed',  'The flat-bottomed trader of the Black Sea and its rivers.', null],
+  ['bezaisen',    'Bezaisen',       'JPN', 2, 'trade',   'square', 'The Japanese coastal freighter under one great square sail.', null],
+  // armed traders (5)
+  ['nao',         'Nao',            'ESP', 4, 'trade',   'square', 'The Biscayan nao, the Spanish ocean merchant, castled and gunned to defend herself.', 'armed'],
+  ['kogge',       'Kogge',          'NLD', 2, 'trade',   'square', 'The Hanseatic cog, with fighting castles fore and aft and room for crossbowmen and guns.', 'armed'],
+  ['byeongjo',    'Byeongjoseon',   'KOR', 3, 'trade',   'lateen', 'The Joseon ship built for both war and the grain run: a carrier that can fight.', 'armed'],
+  ['kenminsen',   'Kenminsen',      'JPN', 4, 'trade',   'square', 'The great ship of the Japanese missions to Ming China, armed against the sea rovers.', 'armed'],
+  ['kotia',       'Kotia',          'IND', 3, 'trade',   'lateen', 'The two-masted ocean trader of Kutch and Malabar, armed against the pirates of the coast.', 'armed'],
+  // cargo carriers (8)
+  ['hoy',         'Hoy',            'ENG', 1, 'trade',   'mixed',  'A small, tubby English hoy that lighters cargo along the coast.', 'carrier'],
+  ['holk',        'Holk',           'NLD', 3, 'trade',   'square', 'The round-bellied Hanseatic hulk, the bulk carrier of grain and timber: slow and very roomy.', 'carrier'],
+  ['cocca',       'Cocca',          'ITA', 3, 'trade',   'square', 'The Venetian cocca, a deep round ship for cotton, grain and salt.', 'carrier'],
+  ['caochuan',    'Caochuan',       'CHN', 3, 'trade',   'lateen', 'The Ming grain transport that feeds the capital: flat, slow and deep in the hold.', 'carrier'],
+  ['taforeia',    'Taforeia',       'PRT', 4, 'trade',   'square', 'The Portuguese transport nau that carries horses, stores and bulk cargo for the fleets.', 'carrier'],
+  ['hourque',     'Hourque',        'FRA', 4, 'trade',   'square', 'The French hourque: a broad, flat-floored carrier of salt, wine and grain.', 'carrier'],
+  ['jong',        'Jong',           'IND', 5, 'trade',   'mixed',  'The Javanese jong: a giant many-masted carrier of rice and spice, planked in four layers.', 'carrier'],
+  ['navegrossa',  'Nave grossa',    'ITA', 6, 'trade',   'square', 'The great Genoese nave, the largest cargo carrier afloat: slow and enormous.', 'carrier'],
+]
+
+/** NO HULL OUTCLASSES ANOTHER (0366): the figures a hull is chosen by. `1` more is better, `-1` fewer is better. */
+const RATED = [['hold', 1], ['speedKn', 1], ['durability', 1], ['armour', 1], ['attack', 1], ['accuracy', 1], ['reach', 1], ['sighting', 1],
+  ['handling', 1], ['waveResistance', 1], ['crewMax', 1], ['deck', 1], ['cabins', 1], ['crewRequired', -1], ['draft', -1]]
+/** True when `a` is at least as good as `b` on every rated figure and every rack, and better on one. */
+export function outclasses(a, b) {
+  const pairs = [...RATED.map(([k, s]) => [a[k] * s, b[k] * s]), ...Object.keys(a.racks).map((r) => [a.racks[r], b.racks[r]])]
+  return pairs.every(([x, y]) => x >= y) && pairs.some(([x, y]) => x > y)
+}
+
 /** The live three, as 0003:2089-2091 + data/ship_stats.json rate them — the anchors. */
 const LIVE_ANCHORS = {
   barca:  { key: '1/trade',    hold: 60,  speed: 5.0, crewReq: 8,  crewMax: 20,  hull: 400,  draft: 1, guns: 0 },
@@ -342,31 +454,34 @@ const LIVE_ANCHORS = {
   nau:    { key: '3/trade',    hold: 400, speed: 4.4, crewReq: 60, crewMax: 140, hull: 1800, draft: 3, guns: 12 },
 }
 
+/** The live three's rigs (0003:2089-2091), for their wave resistance in the 0366 comparison. */
+const LIVE_RIG = { barca: 'lateen', carlat: 'lateen', nau: 'square' }
 const RACKS = ['high', 'mid', 'low', 'refit']
 /** S18 (§8): how far a merchant's line hull may move from the live class she stands in for. */
 export const MERCHANT = { hold: 0.10, speed: 0.05 }
 
 /** One hull = archetype × line × tech (`up` = TECH[tech].role[role]; T1 is the identity). Pure. */
-function hullOf(archetype, line, size, up = NO_UPLIFT) {
+function hullOf(archetype, line, size, up = NO_UPLIFT, job = NO_UPLIFT) {
   const a = archetype
   const m = line.mult
   const d = line.add
-  const um = (k) => up.mult[k] ?? 1
-  const ud = (k) => up.add[k] ?? 0
+  // 0366: a job's figures ride beside the tech's (a product and a sum of two; a hull with no job has the identity)
+  const um = (k) => (up.mult[k] ?? 1) * (job.mult[k] ?? 1)
+  const ud = (k) => (up.add[k] ?? 0) + (job.add[k] ?? 0)
   const hold = a.hold * um('hold') * m.hold
   const racks = Object.fromEntries(RACKS.map((r, i) => [r, a.racks[i] + (up.rack === r ? 1 : 0)]))
   return {
     hold: roundTo(hold, hold >= 50 ? 5 : 1),
     speedKn: roundTo(a.speed * um('speed') * m.speed, 0.1),
-    crewRequired: roundHalfEven(a.crewReq * m.crew),
-    crewMax: roundHalfEven(a.crewMax * m.crew),
+    crewRequired: roundHalfEven(a.crewReq * um('crew') * um('crewReq') * m.crew),
+    crewMax: roundHalfEven(a.crewMax * um('crew') * um('crewMax') * m.crew),
     durability: roundTo(a.hull * um('hull') * m.hull, 10),
     draft: Math.min(6, Math.max(1, a.draft + d.draft)),
     handling: Math.min(100, Math.max(0, a.handling + ud('handling') + d.handling)),
     armour: Math.min(100, Math.max(0, a.armour + ud('armour') + d.armour)),
     attack: a.attack === 0 ? 0 : roundTo(a.attack * um('attack') * m.attack, 10),
     accuracy: a.accuracy === 0 ? 0 : Math.min(100, Math.max(0, a.accuracy + ud('accuracy') + d.accuracy)),
-    reach: Math.min(100, Math.max(0, a.reach + d.reach)),
+    reach: Math.min(100, Math.max(0, a.reach + ud('reach') + d.reach)),
     sighting: a.sighting + ud('sighting') + d.sighting,
     deck: a.deck + up.rackDeck * size,
     racks: { ...racks, flourish: size >= 3 ? 1 : 0 },
@@ -375,13 +490,14 @@ function hullOf(archetype, line, size, up = NO_UPLIFT) {
 
 /** The size template × the tech's goods factor (each line rounded) with the line's goods substituted
  *  (merged, first appearance first), then the tech's copper sheet. */
-function goodsOf(size, subs, tech) {
+function goodsOf(size, subs, tech, job = null) {
   const out = new Map()
   for (const [g, q] of [...TEMPLATES[size], ...tech.scaled(size)]) {
     const s = subs[g] ?? g
-    out.set(s, (out.get(s) ?? 0) + roundHalfEven(q * tech.goods))
+    out.set(s, (out.get(s) ?? 0) + roundHalfEven(q * tech.goods * (job?.goods ?? 1)))
   }
   for (const [g, q] of tech.extra(size)) out.set(g, (out.get(g) ?? 0) + q)
+  if (job?.iron) out.set('iron', (out.get('iron') ?? 0) + job.iron * size)   // 0366: her guns and ironwork
   return [...out].map(([g, qty]) => ({ in: g, qty }))
 }
 
@@ -448,14 +564,16 @@ export function generateShips() {
 
   const seen = new Set(Object.keys(LIVE_ANCHORS))
   const waves = [...WAVE_A.map((h) => ['A', 'T1', ...h]), ...WAVE_B.map((h) => ['B', 'T1', ...h]), ...WAVE_C.map((h) => ['C', 'T2', ...h]),
-    ...WAVE_D.map((h) => ['D', 'F', ...h])]
+    ...WAVE_D.map((h) => ['D', 'F', ...h]), ...WAVE_E.map((h) => ['E', 'T1', ...h])]
   // S17: a famous hull's fitting is its famous gear (scripts/build-gear.mjs FAMOUS names the hull), one piece
   const famousGear = new Map()
   for (const [item, , hull] of FAMOUS) {
     if (famousGear.has(hull)) throw new Error(`${hull}: two famous pieces name it`)
     famousGear.set(hull, item)
   }
-  const hulls = waves.map(([wave, tech, code, name, lineCode, size, role, rig, note]) => {
+  const hulls = waves.map(([wave, tech, code, name, lineCode, size, role, rig, note, jobCode = null]) => {
+    const job = jobCode === null ? null : JOBS[jobCode]
+    if (jobCode !== null && (!job || job.role !== role)) throw new Error(`${code}: job ${jobCode} is not a job of a ${role} hull`)
     const key = `${size}/${role}`
     const a = ARCHETYPES[key]
     const line = lines[lineCode]
@@ -468,17 +586,17 @@ export function generateShips() {
     seen.add(code)
     if (!['square', 'lateen', 'mixed', 'oared'].includes(rig)) throw new Error(`${code}: rig ${rig}`)
     if (note.length <= 12) throw new Error(`${code}: the note is too short for hull_recipes`)
-    const h = hullOf(a, line, size, t.role[role])
-    const shed = shedFit(goodsOf(size, yard.subs, t), bulk, mid)
+    const h = hullOf(a, line, size, t.role[role], job ?? NO_UPLIFT)
+    const shed = shedFit(goodsOf(size, yard.subs, t, job), bulk, mid)
     const goodsList = shed.goods
-    const ducats = roundTo(a.labour * t.labour * yard.labour, 500) + shed.moved
+    const ducats = roundTo(a.labour * t.labour * (job?.labour ?? 1) * yard.labour, 500) + shed.moved
     for (const g of goodsList) if (!goods.has(g.in)) throw new Error(`${code}: good ${g.in} is not in data/goods.json`)
     const requirements = requirementsOf(lineCode, size, role, tech)
     for (const r of requirements) if (!skills.has(r.skill)) throw new Error(`${code}: skill ${r.skill} is not in data/skills.json`)
     if ((tech === 'F') !== famousGear.has(code)) throw new Error(`${code}: a famous hull has exactly one famous piece, and no other hull has one`)
     const items = tech === 'F' ? [{ in: famousGear.get(code), qty: 1 }] : []
     return {
-      wave, class: code, name, line: lineCode, size, role, tech, anyYard: false,
+      wave, class: code, name, line: lineCode, size, role, tech, ...(wave === 'E' ? { job: jobCode } : {}), anyYard: false,
       family: yard.family, rig, tier: Math.min(size, 5),
       hold: h.hold, crewRequired: h.crewRequired, crewMax: h.crewMax, speedKn: h.speedKn, durability: h.durability,
       guns: h.attack / 10, draft: h.draft, buildHours: SIZE_BUILD_HOURS[size], buildCost: ducats * 4,
@@ -500,6 +618,26 @@ export function generateShips() {
   const nD = hulls.filter((h) => h.wave === 'D').length
   if (nD !== 11) throw new Error(`Wave D is 11 hulls; the list has ${nD}`)
   if (new Set(WAVE_D.map((h) => h[2])).size !== 11) throw new Error('Wave D is one famous ship per line')
+  const nE = hulls.filter((h) => h.wave === 'E').length
+  if (nE !== 54) throw new Error(`Wave E is 54 hulls; the list has ${nE}`)
+  // 0366: NO HULL OUTCLASSES ANOTHER. A Wave E hull is never at least as good as another hull of its size on every
+  // rated figure for the same labour or less; nor is it outclassed by a hull that costs no more (a hull with no
+  // reason to be built). The others are Waves A-D, the live three (as their archetypes rate them) and Wave E itself.
+  {
+    const liveRows = Object.entries(LIVE_ANCHORS).map(([code, live]) => {
+      const [size, role] = [Number(live.key[0]), live.key.slice(2)]
+      return { ...hullOf(ARCHETYPES[live.key], lines.PRT, size), class: code, size, ducats: liveHulls[code].ducats, cabins: SIZE_CABINS[size],
+        waveResistance: waveResistance(size, LIVE_RIG[code], role) }
+    })
+    const newer = hulls.filter((h) => h.wave === 'E')
+    for (const n of newer) {
+      for (const o of [...liveRows, ...hulls.filter((h) => h !== n)]) {
+        if (o.size !== n.size) continue
+        if (n.ducats <= o.ducats && outclasses(n, o)) throw new Error(`${n.class} outclasses ${o.class} for the same labour or less`)
+        if (o.ducats <= n.ducats && outclasses(o, n)) throw new Error(`${n.class} is outclassed by ${o.class}, which costs no more`)
+      }
+    }
+  }
   for (const h of hulls) if (h.tons > SHED_TUNS) throw new Error(`${h.class}: ${h.tons} t does not fit the shed`)
 
   // S18: MERCHANTS OF EVERY FLAG — see the header. One row per (live class, line) that has a hull to offer.
@@ -511,7 +649,7 @@ export function generateShips() {
     for (const lineCode of Object.keys(LINE_YARDS)) {
       if (lineCode === 'PRT') continue   // the live three ARE the Portuguese line
       const pick = hulls
-        .filter((h) => h.tech === 'T1' && h.line === lineCode
+        .filter((h) => h.tech === 'T1' && h.wave !== 'E' && h.line === lineCode   // 0366: S18's table is Waves A-D's; a new wave moves no merchant
           && Math.abs(h.hold - a.hold) <= MERCHANT.hold * a.hold + 1e-9
           && Math.abs(h.speedKn - a.speed) <= MERCHANT.speed * a.speed + 1e-9
           && h.crewRequired <= a.crewReq && h.crewMax >= a.crewMax && h.deck >= ld
@@ -522,10 +660,27 @@ export function generateShips() {
     }
   }
   if (new Set(merchant.map((m) => m.class)).size !== merchant.length) throw new Error('a line hull stands in for two live classes')
-  return { _: 'GENERATED by scripts/build-ships.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §4.2; S12 Wave A, migration 0135; S14 Wave B, migration 0138; S15 Wave C, migration 0159; S17 Wave D, migration 0165; S18 merchants, migration 0167).', hulls, merchant }
+  return { _: 'GENERATED by scripts/build-ships.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §4.2; S12 Wave A, migration 0135; S14 Wave B, migration 0138; S15 Wave C, migration 0159; S17 Wave D, migration 0165; S18 merchants, migration 0167; Wave E, migration 0366).', hulls, merchant }
 }
 
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`
+
+/** 0366: THE JOB WORDS' FILE (HULL_JOBS_FILE): each job hull's code and its job, for the faces. Written and checked
+ *  with data/ships.generated.json, so the client's table cannot drift from the hulls. */
+export function hullJobsSource(gen = generateShips()) {
+  const rows = gen.hulls.filter((h) => h.job)
+  return [
+    '// GENERATED by scripts/build-ships.mjs (Wave E, migration 0366): do not edit; edit the generator and re-run it.',
+    "// A hull's JOB: the finer word under her role, for the faces (src/live/hullJobWord.ts is the one reader). No rule reads it:",
+    '// the job is what her figures already are (scripts/build-ships.mjs JOBS). A hull with no entry has no job word.',
+    `export const HULL_JOB_CODES = [${Object.keys(JOBS).map((j) => `'${j}'`).join(', ')}] as const`,
+    'export type HullJobCode = (typeof HULL_JOB_CODES)[number]',
+    'export const HULL_JOBS: Readonly<Record<string, HullJobCode>> = {',
+    ...rows.map((h) => `  ${h.class}: '${h.job}',`),
+    '}',
+    '',
+  ].join('\n')
+}
 
 /** The SQL VALUES a wave's migration loads (`--sql A` → 0135, `--sql B` → 0138, `--sql C` → 0159, `--sql D` → 0166): pasted into the file verbatim, and the world guard holds
  *  the database to generateShips() on every apply, so the file and the generator cannot drift apart. */
@@ -559,19 +714,24 @@ export function merchantSql(gen = generateShips()) {
 }
 
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/build-ships.mjs')) {
-  const text = JSON.stringify(generateShips(), null, 1) + '\n'
+  const gen = generateShips()
+  const text = JSON.stringify(gen, null, 1) + '\n'
+  const jobs = hullJobsSource(gen)
+  const count = `${gen.hulls.length} hulls: Wave A 52, Wave B 15, Wave C 22, Wave D 11, Wave E 54`
   if (process.argv.includes('--sql-merchant')) {
     console.log(merchantSql())
   } else if (process.argv.includes('--sql')) {
     const wave = process.argv[process.argv.indexOf('--sql') + 1]
-    if (!['A', 'B', 'C', 'D'].includes(wave)) { console.error(`--sql takes A, B, C or D (got ${wave})`); process.exit(1) }
+    if (!['A', 'B', 'C', 'D', 'E'].includes(wave)) { console.error(`--sql takes A, B, C, D or E (got ${wave})`); process.exit(1) }
     console.log(shipsSql(undefined, wave))
   } else if (process.argv.includes('--check')) {
     const now = readFileSync(join(ROOT, SHIPS_FILE), 'utf8')
     if (now !== text) { console.error(`${SHIPS_FILE} is NOT what scripts/build-ships.mjs generates — re-run it.`); process.exit(1) }
-    console.log(`${SHIPS_FILE} equals the generator (100 hulls: Wave A 52, Wave B 15, Wave C 22, Wave D 11).`)
+    if (readFileSync(join(ROOT, HULL_JOBS_FILE), 'utf8') !== jobs) { console.error(`${HULL_JOBS_FILE} is NOT what scripts/build-ships.mjs generates — re-run it.`); process.exit(1) }
+    console.log(`${SHIPS_FILE} and ${HULL_JOBS_FILE} equal the generator (${count}).`)
   } else {
     writeFileSync(join(ROOT, SHIPS_FILE), text)
-    console.log(`wrote ${SHIPS_FILE}: LIVE ANCHORS OK, 100 hulls (Wave A 52, Wave B 15, Wave C 22, Wave D 11)`)
+    writeFileSync(join(ROOT, HULL_JOBS_FILE), jobs)
+    console.log(`wrote ${SHIPS_FILE} and ${HULL_JOBS_FILE}: LIVE ANCHORS OK, ${count}`)
   }
 }

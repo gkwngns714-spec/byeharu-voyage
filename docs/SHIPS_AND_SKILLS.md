@@ -400,6 +400,15 @@ Counts: live 3 · Wave A 52 · Wave B 15 · Wave C 22 · Wave D 11 = **103 hulls
 roles × 3 techs**. Every line has small, light, medium and heavy T1 in Wave A, one capital in Wave B
 (flagships for the four great naval powers PRT, ESP, ENG, OTT), two T2 and one famous ship.
 
+#### Wave E: job hulls (0366, owner row 322)
+
+54 more T1 hulls: 31 combat, 4 support, 19 trade. Each is the archetype of its size and role times its line times ONE JOB
+(`JOBS` in `scripts/build-ships.mjs`): raider, gunship, boarder, line, escort, armed trader, cargo carrier; six plain traders
+fill sizes a line had no trader at. A job gives in one place, takes in another and costs yard labour; the generator refuses a
+hull that outclasses another of its size for the same labour or less. They ask the T1 pattern of 4.4 and nothing new. Wave E
+is not offered to the merchants (S18's table stays Waves A to D). The list, every figure, its reason and the balance fought by
+the engine: `docs/dev-log/2026-11-13-more-ships.md`.
+
 ### 4.4 Hull requirements (the pattern, per line `X`)
 
 | hull | requires |

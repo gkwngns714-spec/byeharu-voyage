@@ -9,6 +9,10 @@ import { HullCountry } from '../../live/HullCountry'
 import { CROWN_WORD } from '../../live/crownWord'
 import { HullCrown } from '../../live/HullCrown'
 import { HullTech } from '../../live/HullTech'
+import { HullJob } from '../../live/HullJob'
+import { hullJobOf, hullJobWord } from '../../live/hullJobWord'
+import { HullFight } from '../../live/HullFight'
+import type { HullJobCode } from '../../live/hullJobs.generated'
 import { nationNameOf, useWorld } from '../../live/worldStore'
 import { optionsOf } from './codexFilters'
 import { NoAnswer } from './NoAnswer'
@@ -39,7 +43,7 @@ import { useT, t as tNow, translateMaybe, getLocale } from '../../lib/i18n'
 // THE GRID (0135, Wave A: 55 hulls): four filters — country (line), size, role, tech — each a picker
 // of the values the SERVED classes carry (`line`, `size`, `role`, `tech` on the snapshot), plus
 // "All". Nothing is offered that no served hull has; the words for a size, a role and a tech are
-// the ones below and nowhere else.
+// the ones below and nowhere else. 0366: a fifth, the JOB under the role (HullJob), for the classes that have one.
 
 const EMPTY: readonly SnapshotShipClass[] = []
 /** How many hulls a board ranks. */
@@ -54,9 +58,14 @@ const familyWord = (f: string) => word(`family_${f.toLowerCase().replace(/[^a-z]
 const rigWord = (r: string) => word(`rig_${r.toLowerCase().replace(/[^a-z]+/g, '_')}`, r)
 const techWord = (t: string | null | undefined) => (t == null ? null : word(`tech_${t}`, t))
 const crownWord = (c: CrownHull) => tNow(CROWN_WORD[c])
+/** 0366: the word of a class's job, or nothing: for the search. */
+const jobWordOf = (code: string) => {
+  const job = hullJobOf(code)
+  return job ? hullJobWord(job) : ''
+}
 
-type Filters = { line: string; size: string; role: string; tech: string; crown: string }
-const NO_FILTER: Filters = { line: ALL, size: ALL, role: ALL, tech: ALL, crown: ALL }
+type Filters = { line: string; size: string; role: string; job: string; tech: string; crown: string }
+const NO_FILTER: Filters = { line: ALL, size: ALL, role: ALL, job: ALL, tech: ALL, crown: ALL }
 
 /** 0310: THE CARGO SHIP, ONCE ONE EXISTS. The crown's fleet is no row of the list; asked once, on the face's mount. 0332: a company can build her class, and the card says which. */
 function CargoShipEntry({ classes }: { classes: readonly SnapshotShipClass[] }) {
@@ -126,6 +135,8 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
       line: optionsOf(tNow('codex.country'), classes, (s) => s.line ?? null, (v, s) => (s.line_nation ? nationNameOf(nationByCode, s.line_nation) : v)),
       size: optionsOf(tNow('codex.size'), classes, (s) => (s.size == null ? null : String(s.size)), (v) => sizeWord(Number(v)) ?? v, (a, b) => Number(a) - Number(b)),
       role: optionsOf(tNow('codex.role'), classes, (s) => s.role ?? null, (v) => roleWord(v) ?? v, (a, b) => a.localeCompare(b)),
+      // 0366: the job under the role (Raider, Gunship, Boarder, Line ship, Escort, Armed trader, Cargo), of the classes that have one
+      job: optionsOf(tNow('codex.hullJob'), classes, (s) => hullJobOf(s.code), (v) => hullJobWord(v as HullJobCode), (a, b) => a.localeCompare(b)),
       tech: optionsOf(tNow('codex.tech'), classes, (s) => s.tech ?? null, (v) => techWord(v) ?? v, (a, b) => a.localeCompare(b)),
       crown: optionsOf(tNow('codex.type'), classes, (s) => s.crown ?? null, (v) => crownWord(v as CrownHull), (a, b) => a.localeCompare(b)),
     }),
@@ -136,10 +147,11 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
     const needle = fold(query.trim())
     return classes.filter(
       (s) =>
-        foldedMatch(needle, s.name, s.code, s.family, s.rig, s.crown ? crownWord(s.crown) : '') &&
+        foldedMatch(needle, s.name, s.code, s.family, s.rig, s.crown ? crownWord(s.crown) : '', jobWordOf(s.code)) &&
         (filters.line === ALL || s.line === filters.line) &&
         (filters.size === ALL || String(s.size) === filters.size) &&
         (filters.role === ALL || s.role === filters.role) &&
+        (filters.job === ALL || hullJobOf(s.code) === filters.job) &&
         (filters.tech === ALL || s.tech === filters.tech) &&
         (filters.crown === ALL || s.crown === filters.crown),
     )
@@ -149,11 +161,11 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
   const byHold = useMemo(() => [...rows].sort((a, b) => b.hold - a.hold || a.name.localeCompare(b.name)).slice(0, BOARD), [rows])
   const bySpeed = useMemo(() => [...rows].sort((a, b) => b.speed_kn - a.speed_kn || a.name.localeCompare(b.name)).slice(0, BOARD), [rows])
 
-  const picks = (['line', 'size', 'role', 'tech', 'crown'] as const)
+  const picks = (['line', 'size', 'role', 'job', 'tech', 'crown'] as const)
     .filter((k) => facets[k].length > 2)
     .map((k) => ({
       id: k,
-      label: t(({ line: 'codex.country', size: 'codex.size', role: 'codex.role', tech: 'codex.tech', crown: 'codex.type' } as const)[k]),
+      label: t(({ line: 'codex.country', size: 'codex.size', role: 'codex.role', job: 'codex.hullJob', tech: 'codex.tech', crown: 'codex.type' } as const)[k]),
       options: facets[k],
       value: filters[k],
       onChange: (v: string) => setFilters((f) => ({ ...f, [k]: v })),
@@ -203,6 +215,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
                     {s.line_nation && <HullCountry nation={s.line_nation} compact />}
                     <HullTech tech={s.tech} />
                     <HullCrown crown={s.crown} />
+                    <HullJob code={s.code} />
                     <Facts items={[sizeWord(s.size), roleWord(s.role), familyWord(s.family), rigWord(s.rig)]} />
                     <span className="whitespace-nowrap">{t('codex.crewOf', { n: formatOfTotal(s.crew_required, s.crew_max) })}</span>
                   </FactsLine>
@@ -245,6 +258,7 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
           {open.line_nation && <Row label={t('codex.country')} value={<HullCountry nation={open.line_nation} />} />}
           {open.size != null && <Row label={t('codex.size')} value={sizeWord(open.size)} />}
           {open.role && <Row label={t('codex.role')} value={roleWord(open.role)} />}
+          {hullJobOf(open.code) && <Row label={t('codex.hullJob')} value={<HullJob code={open.code} />} data-testid="codex-ship-job" />}
           {open.tech && <Row label={t('codex.tech')} value={techWord(open.tech)} />}
           <Row label={t('codex.cargo')} value={<Figure value={formatInt(open.hold)} unit={t('codex.tons')} />} />
           <Row label={t('codex.speed')} value={<Figure value={formatFixed(open.speed_kn, 1)} unit={t('codex.knots')} />} />
@@ -252,6 +266,8 @@ export function ShipsFace({ query, search }: { query: string; search: ReactNode 
           <Row label={t('codex.crewNeeded')} value={<Figure value={formatOfTotal(open.crew_required, open.crew_max)} />} />
           <Row label={t('codex.draft')} value={<Figure value={formatInt(open.draft)} />} />
           <Row label={t('codex.hull')} value={<Figure value={formatInt(open.durability)} />} />
+          {/* 0366: the five figures the fight reads, as the class has them */}
+          <HullFight cls={open} />
           <Row label={t('codex.class')} value={<Figure value={formatInt(open.tier)} />} hairline={false} />
           {open.crown && (
             <Hint className="mt-2" data-testid="codex-crown-build">

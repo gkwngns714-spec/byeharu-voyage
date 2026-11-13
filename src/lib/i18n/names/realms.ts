@@ -36,6 +36,18 @@ export const KO_CULTURES: Readonly<Record<string, string>> = {
 export const KO_HULLS: Readonly<Record<string, string>> = {
   Hyeopseon: '협선', Sangseon: '상선', Byeongseon: '병선', Jounseon: '조운선', Panokseon: '판옥선',
   'Dae-panokseon': '대판옥선', Tamangseon: '탐망선', Bangpaeseon: '방패선', 'Geobukseon (turtle ship)': '거북선',
+  // 0366 (Wave E, scripts/build-ships.mjs WAVE_E): every one of the 54 has its Korean name (tests/ships.more.spec.ts holds the list whole).
+  // Korean and Chinese hulls by their own reading; the others as Korean writes the foreign word.
+  Bergantim: '베르간팅', Schnigge: '슈니게', Balinger: '밸린저', Brigantin: '브리강탱', Galeotta: '갈레오타', Firkate: '피르카테',
+  Lancaran: '란차란', Shaochuan: '초선', Bahansen: '바한선', Sahuseon: '사후선',
+  Galeoncete: '갈레온세테', 'Great Galley': '그레이트 갤리', Roberge: '로베르주', 'Göke': '괴케', Wugongchuan: '오공선',
+  'Galé': '갈레', Galera: '갈레라', 'Galea capitana': '갈레아 카피타나', Kalyata: '칼리아타', Parau: '파라우', Ghali: '갈리',
+  Mengchong: '몽충선', Mekurabune: '메쿠라부네', Geomseon: '검선', Daemaengseon: '대맹선',
+  'Nau capitânia': '나우 카피타니아', Kraweel: '크라벨', Nef: '네프', Barza: '바르차', Louchuan: '누선', 'Tekkōsen': '뎃코센',
+  Friedeschiff: '프리데시프', Wafter: '와프터', Almiranta: '알미란타', Jungmaengseon: '중맹선',
+  'Caravelão': '카라벨랑', Chalupa: '찰루파', Tartana: '타르타나', Boum: '붐', 'Şayka': '샤이카', Bezaisen: '벤자이센',
+  Nao: '나오', Kogge: '코게', Byeongjoseon: '병조선', Kenminsen: '겐민센', Kotia: '코티아',
+  Hoy: '호이', Holk: '홀크', Cocca: '코카', Caochuan: '조량선', Taforeia: '타포레이아', Hourque: '우르크', Jong: '종', 'Nave grossa': '나베 그로사',
 }
 
 // A COMPANY'S TITLE (`public.title_names`, eleven rungs), keyed by the served English name. They were the one English word on
