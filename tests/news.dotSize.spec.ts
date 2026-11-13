@@ -173,7 +173,8 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
     const card = page.getByTestId('news-card')
     await expect(card, `${where}: pressing "${dots[i].label}" opened no card`).toBeVisible({ timeout: 10_000 })
     const items = await card.getByTestId('news-item').count()
-    if (items !== dots[i].n) bad.push(`${where}: "${dots[i].label}" opened a card of ${items} news`)
+    // the card lists at most five (NewsCard's CARD_MAX) and says how many more the dot holds: every migration's own "Update" row lands in one dot, and 0362's made it six
+    if (items !== Math.min(dots[i].n, 5)) bad.push(`${where}: "${dots[i].label}" opened a card of ${items} news`)
     const after = await layer.evaluate(placeOf)
     if (JSON.stringify(after) !== JSON.stringify(before)) bad.push(`${where}: pressing "${dots[i].label}" moved its chart: ${JSON.stringify(before)} → ${JSON.stringify(after)}`)
     if (!(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))) bad.push(`${where}: the page scrolls sideways with the card of "${dots[i].label}" open`)
