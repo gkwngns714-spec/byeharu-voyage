@@ -1,4 +1,4 @@
--- 0377 / 0379 PROD CHECK (the merchants' window), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/after-lit.sql
+-- 0377 / 0383 PROD CHECK (the merchants' window), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/after-lit.sql
 -- Run it ONCE BEFORE sea_conditions_bite_npc is lit (the baseline), then at +5, +15 and +30 minutes. Run volatility.sql first. What to read:
 --   loops_closed            merchant loops with a leg her hull cannot hold. Lit it FALLS as each merchant reaches her lap start (the planner moves her); it need
 --                           not reach 0 inside 30 minutes (a Pacific lap is hours). It must never rise.
