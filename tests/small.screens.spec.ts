@@ -20,6 +20,12 @@ import { ready, settled } from './appReady.fixture'
 //       under it at the card's right edge. It was beside the name in one card and under it in the next.
 //   (4) ON THE WIDE DESK THE RIGHT PANE IS NOT EMPTY: with no good pressed it carries the ship block; a good pressed, the trade
 //       panel stands there instead; with the Orders page open the screen holds one ship block, not two.
+//   (5) AT 320 PX A SENTENCE OF THE HISTORY PAGE TURNS BETWEEN WORDS (the second slice, 2026-11-13): in Korean the founding line
+//       "Casa de Aveiro 설립(리스본)." stood as "설립" / "(리스본)." (lib/i18n/translate.ts joins a word to its bracket).
+//   (6) A PAGE'S LARGE TITLE NEVER STANDS OVER THE PAGE'S CONTENT: scrolled a little (before the title pins as a bar), the HQ's
+//       city name stood over its building tiles. At rest the title goes up with the page (components/ui/Sheet.tsx).
+//   (7) AT 1,280 × 800 AND 1,440 × 900 TRADE'S CENTRE AND RIGHT PANES DO NOT SCROLL with an empty hold and no good pressed, and
+//       the right pane does not print the hold's figure a second time (the top bar has it) nor "No cargo.".
 // Nothing here asserts a price, a count or which goods a city sells: only names, lines and boxes.
 
 const GOODS = (JSON.parse(readFileSync(path.resolve('data', 'goods.json'), 'utf8')) as { goods: { id: string; name: string }[] }).goods
@@ -130,6 +136,34 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
       }
     })
 
+    test('a sentence of the History page turns between words', async ({ page }) => {
+      await open(page, 'ledger')
+      await expect(page.getByTestId('ledger-row').first()).toBeVisible({ timeout: 120_000 })
+      const read = await page.evaluate(READ_NAMES, { selector: '[data-testid="ledger-row"] [data-row-cell="label"]', row: '[data-testid="ledger-row"]', names: null })
+      expect(read.count, 'the History page has no entry').toBeGreaterThan(0)
+      // READ_NAMES lets a word turn after its own hyphen; a sentence's word here is whatever stands between two spaces
+      expect(read.faults, `${locale}: a History sentence is turned inside a word`).toEqual([])
+    })
+
+    test("a page's large title never stands over the page's content", async ({ page }) => {
+      await open(page, 'city')
+      await expect(page.getByTestId('city-building-grid')).toBeVisible({ timeout: 120_000 })
+      for (const top of [20, 40, 60]) {
+        const over = await page.evaluate((y) => {
+          const sheet = document.querySelector('[data-testid="city-page"]')!.closest('[data-sheet]') ?? document.querySelector('[data-sheet]')!
+          sheet.scrollTop = y
+          const header = sheet.querySelector('[data-testid="sheet-header"]')!
+          const title = header.querySelector('h1')!.getBoundingClientRect()
+          const pinned = header.getAttribute('data-pinned') === 'true'
+          const tiles = [...document.querySelectorAll('[data-testid="city-building-grid"] button')].map((b) => b.getBoundingClientRect())
+          const hit = tiles.some((r) => r.top < title.bottom - 1 && r.bottom > title.top + 1 && r.left < title.right && r.right > title.left)
+          return { at: sheet.scrollTop, pinned, hit }
+        }, top)
+        // pinned, the title is an opaque bar and the page passes under it: that is the bar's job
+        if (!over.pinned) expect(over.hit, `${locale}: scrolled ${over.at} px, the title stands over a building tile`).toBe(false)
+      }
+    })
+
     test("the HQ Market's buy button is one line", async ({ page }) => {
       await open(page, 'city')
       await page.getByTestId('city-building-market').click()
@@ -191,6 +225,35 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         await page.getByTestId('command-queue').click()
         await expect(page.getByTestId('command-queue-page')).toBeVisible()
         await expect(page.getByTestId('buy-ship'), 'two ship blocks on one screen').toHaveCount(1)
+      })
+    })
+  }
+}
+
+for (const locale of ['en-US', 'ko-KR'] as const) {
+  for (const glass of [
+    { width: 1280, height: 800 },
+    { width: 1440, height: 900 },
+  ] as const) {
+    test.describe(`small screens — ${locale} at ${glass.width}×${glass.height}`, () => {
+      test.use({ locale, viewport: glass })
+
+      test("Trade's centre and right panes do not scroll, and the right pane does not repeat the hold", async ({ page }) => {
+        await open(page, 'command')
+        await expect(page.getByTestId('trade-good').first()).toBeVisible({ timeout: 120_000 })
+        const idle = page.getByTestId('desk-idle')
+        await expect(idle.getByTestId('buy-ship-crew')).toBeVisible()
+        await settled(idle)
+        // a new company's hold is empty: the pane prints neither the hold's figure nor "No cargo."
+        await expect(idle.getByTestId('cargo-bar'), "the right pane repeats the top bar's Cargo figure").toHaveCount(0)
+        await expect(idle.getByTestId('buy-ship-cargo')).toHaveCount(0)
+        const rows = await idle.locator('[data-row-cell="label"]').count()
+        expect(rows, 'the ship block lost a row, or gained the "No cargo." line').toBe(await idle.locator('[data-testid^="buy-ship-"]:has([data-row-cell="label"])').count())
+        for (const id of ['desk-pane-chart', 'desk-idle']) {
+          const box = await page.getByTestId(id).evaluate((e) => ({ content: e.scrollHeight, pane: e.clientHeight }))
+          console.log(`TRADE ${locale} @${glass.width}×${glass.height} ${id}: content ${box.content} px in ${box.pane} px`)
+          expect(box.content, `${locale} @${glass.width}: ${id} scrolls (${box.content} px of content in ${box.pane} px)`).toBeLessThanOrEqual(box.pane)
+        }
       })
     })
   }

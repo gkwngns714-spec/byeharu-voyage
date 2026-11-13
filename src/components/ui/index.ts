@@ -105,7 +105,7 @@ export { Chip, Segmented, type SegmentSpec } from './Chip'
 //    number of equal cells with aligned edges — one grid, composed by Segmented and by every
 //    filter row, never a ragged row of shrink-wrapped pills.
 export { TileChoice, TileGrid } from './TileGrid'
-export { KEEP_WORDS_CLASS, tileCellClass, type ChoiceColumns } from './tileStyles'
+export { KEEP_WORDS_CLASS, WRAP_ROW_CLASS, tileCellClass, type ChoiceColumns } from './tileStyles'
 //    THE BOUNDED PANE: a long list scrolls inside its own box while the tab's composition stands.
 export { ScrollPane } from './ScrollPane'
 //    THE LIST PANEL (owner, 2026-11-01: *"everything is folded … make things unfolded"*): a list that

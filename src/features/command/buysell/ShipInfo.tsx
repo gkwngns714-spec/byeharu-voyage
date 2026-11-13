@@ -19,7 +19,14 @@ import { useWorld } from '../../../live/worldStore'
 //             spread) and TRADE_CAP (Accounting: the daily buying cap) — that a rule reads (takes_effect). None → no row.
 const BUYING: readonly SkillEffect[] = ['SPREAD', 'TRADE_CAP']
 
-export function ShipInfo({ fleet }: { fleet: FleetView }) {
+//
+// IN THE WIDE DESK'S IDLE RIGHT PANE (`aside`, 2026-11-13) the block is the same readings, set to fit the pane without scrolling
+// at 1,280 × 800 (it was 892 px in a 626-px pane):
+//   · NO HOLD BAR: the desk's top bar, on the same glass, already prints "Cargo 4 / 180 tons" with the same bar;
+//   · NO "No cargo." LINE: an empty hold is said by that figure. Goods aboard are listed as before;
+//   · THE SKILLS STAND TWO TO A LINE at the block's own edges (they were one to a line, 32 px in from each side). A tile is never
+//     narrower than its name's longest word (`min-w-min`, `break-keep`), so a long name takes a line of its own and is not cut.
+export function ShipInfo({ fleet, aside = false }: { fleet: FleetView; aside?: boolean }) {
   const t = useT()
   const goodByCode = useWorld((s) => s.goodByCode)
   const book = useWorld((s) => s.skills)
@@ -32,23 +39,28 @@ export function ShipInfo({ fleet }: { fleet: FleetView }) {
   const wages = useCrewCost(fleet.id, null).cost
   const hold = fleetHoldBreakdown(fleet)
   const skills = book ? book.skills.filter((s) => BUYING.includes(s.effect) && s.takes_effect) : []
+  const cargo = fleetCargo(fleet)
 
   return (
     <SheetSection heading={t('desk.ship')} surface data-testid="buy-ship">
-      <div className="px-4 py-3">
-        <CargoBar used={fleetHoldUsed(fleet)} total={fleetHoldTotal(fleet)} free={fleet.free_hold} />
-      </div>
-      <CargoRows
-        rows={fleetCargo(fleet).map((line) => ({
-          code: line.code,
-          name: goodByCode[line.code]?.name ?? line.code,
-          category: goodByCode[line.code]?.category ?? '',
-          class: goodByCode[line.code]?.class,
-          qty: line.qty,
-        }))}
-        totalTons={hold.goodsT}
-        testId="buy-ship-cargo"
-      />
+      {!aside && (
+        <div className="px-4 py-3">
+          <CargoBar used={fleetHoldUsed(fleet)} total={fleetHoldTotal(fleet)} free={fleet.free_hold} />
+        </div>
+      )}
+      {(!aside || cargo.length > 0) && (
+        <CargoRows
+          rows={cargo.map((line) => ({
+            code: line.code,
+            name: goodByCode[line.code]?.name ?? line.code,
+            category: goodByCode[line.code]?.category ?? '',
+            class: goodByCode[line.code]?.class,
+            qty: line.qty,
+          }))}
+          totalTons={hold.goodsT}
+          testId="buy-ship-cargo"
+        />
+      )}
       <Row
         label={t('fleets.crew')}
         value={<Figure value={`${formatInt(crew.aboard)}/${formatInt(crew.max)}`} tone={crew.short > 0 ? 'danger' : 'ink'} />}
@@ -72,8 +84,8 @@ export function ShipInfo({ fleet }: { fleet: FleetView }) {
         // TWO TILES A LINE ONLY WHERE THE BLOCK ITSELF HAS THE ROOM (28 rem), asked of the block and not of the glass: in the wide
         // desk's right pane (2026-11-13) the block is 318 px on a 1,280-px glass, and two tiles there were 97 px each, a long
         // name standing past its tile (tests/names.whole.spec.ts).
-        <div className="@container px-4 pb-3" data-testid="buy-ship-skills" aria-label={t('port.skills')}>
-          <div className="grid grid-cols-1 gap-2 @md:grid-cols-2">
+        <div className={aside ? 'py-3' : '@container px-4 pb-3'} data-testid="buy-ship-skills" aria-label={t('port.skills')}>
+          <div className={aside ? 'flex flex-wrap gap-2 break-keep *:min-w-min *:flex-[1_1_7rem]' : 'grid grid-cols-1 gap-2 @md:grid-cols-2'}>
             {skills.map((sk) => (
               <SkillTile key={sk.code} code={sk.code} name={sk.name} level={sk.level} max={book.max_level} />
             ))}

@@ -137,13 +137,16 @@ export function RouteBar({
           <p className="text-t-caption text-ink-faint">{t('map.routeTap')}</p>
         )}
       </div>
+      {/* CONFIRM AND REPEAT HAVE NO SIDE PADDING (2026-11-13, owner row 318): a cell is 53 px on a 320-px glass and 67 at 390, and
+          with the button's 12 px a side "Confirm" (50 px) was clipped by 11 px at 320 and 4 at 390. Their words are centred, and
+          the gap between the cells keeps them apart. */}
       <div className="mt-2 grid grid-cols-5 gap-1.5">
         <Button size="sm" onClick={route.undo} disabled={kept.length === 0 && route.next === null} data-testid="route-undo">
           {t('map.routeUndo')}
         </Button>
         <Button
           size="sm"
-          className="min-w-0 truncate"
+          className="min-w-0 truncate px-0!"
           onClick={route.confirm}
           disabled={hold.kind !== 'open' && hold.kind !== 'via'}
           data-testid="route-confirm"
@@ -164,7 +167,7 @@ export function RouteBar({
         </Button>
         <Button
           size="sm"
-          className="min-w-0 truncate"
+          className="min-w-0 truncate px-0!"
           onClick={() => repeat.kind === 'open' && onRepeat(repeat.stops)}
           disabled={repeat.kind !== 'open'}
           data-testid="route-repeat"
