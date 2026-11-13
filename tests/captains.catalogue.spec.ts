@@ -9,6 +9,7 @@
 import { test, expect } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
+import { RANGE_OF_JOB } from '../src/live/captainWords'
 
 const read = (rel: string) => JSON.parse(readFileSync(path.join(process.cwd(), rel), 'utf8'))
 
@@ -102,4 +103,19 @@ test('D9 (0157): every hull role has a cabin rotation of the three typed cabins,
   const ships = read('data/ships.generated.json') as { hulls: { role: string }[] }
   const roles = new Set([...lines.profiles.map((p) => p.role), ...ships.hulls.map((h) => h.role)])
   expect([...roles].filter((r) => !(r in cabins.rotation))).toEqual([])
+})
+
+// THE RANGE A COMBAT CAPTAIN FIGHTS AT (owner row 66: "combat close, long range"). The faces tell it from her job by one small
+// table (src/live/captainWords.ts `RANGE_OF_JOB`); this holds that table to the catalogue, so a third combat job cannot ship
+// reading plain "Combat" unnoticed and a job cannot be given the wrong range.
+test('row 66: every combat job has a range on the faces: reach is long range, attack alone is close range, and each has a captain', () => {
+  const combat = cat.traits.filter((t) => t.focus === 'combat')
+  expect(combat.length, 'the catalogue has no combat job').toBeGreaterThan(0)
+  for (const t of combat) {
+    const fx = t.effects.map((e) => e.effect)
+    expect(RANGE_OF_JOB[t.code], `${t.code} (${fx.join(', ')})`).toBe(fx.includes('reach') ? 'long' : 'close')
+    expect(people.some((p) => p.specialty === t.code), `no captain's job is ${t.code}`).toBe(true)
+  }
+  expect(Object.keys(RANGE_OF_JOB).filter((code) => trait.get(code)?.focus !== 'combat'), 'a range is given to a job that is not a combat job').toEqual([])
+  expect(new Set(Object.values(RANGE_OF_JOB)), 'one of the two ranges has no job').toEqual(new Set(['long', 'close']))
 })

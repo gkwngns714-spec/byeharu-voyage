@@ -23,7 +23,7 @@ import { fleetCrew } from '../domain/fleet'
 import { useCrewCost } from './useCrewCost'
 import { useInn } from './useInn'
 import { useWorld } from './worldStore'
-import { focusWord, jobWord } from './captainWords'
+import { jobWord, roleWord } from './captainWords'
 import { cmdHireOfficer } from '../lib/rpc'
 import {
   formatDucats,
@@ -404,7 +404,8 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
           {open.grade && open.job_word ? (
             <>
               <Row label={t('inn.grade')} value={open.grade} data-testid="inn-grade" />
-              <Row label={t('inn.job')} value={`${jobWord(open.job_word)} · ${focusWord(open.focus_word) ?? ''}`} data-testid="inn-job" />
+              <Row label={t('inn.job')} value={jobWord(open.job_word)} data-testid="inn-job" />
+              <Row label={t('codex.role')} value={roleWord(open) ?? ''} data-testid="inn-role" />
               {/* A TRAIT IS ITS NAME ON LINE 1 AND ITS SENTENCE ON LINE 2 (2026-11-02, the same pattern as the captain tray's — CaptainsFace). The sentence is a clause
                   or two of prose ("−4.2% crew lost to pirates · −4.2 points of homesickness", 436 px) and `Row` keeps a `value` on one line, so as the value it
                   shoved the tray sideways and left the trait's name one letter wide; on line 2 it wraps under its label and the row is as wide as the tray. The
