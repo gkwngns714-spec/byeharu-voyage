@@ -1746,7 +1746,7 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // CONDITIONS — every zone's title and wave asks, the caller's title, her fleets' wave, the switch. A READ, no
       // arguments. Served dark (sea_conditions_bite false) ahead of the Codex "Seas" face and the map's shading (C3).
       'worldSeaConditions',
-      // Pin moved deliberately 2026-11-13 with migration 0391 (owner rows 166 and 324, the sea conditions made workable):
+      // Pin moved deliberately 2026-11-13 with migration 0396 (owner rows 166 and 324, the sea conditions made workable):
       // WHERE EACH SEA LIES — the zone raster run-length coded, for the map's shading of closed seas. A READ, no arguments.
       'worldSeaZoneMap',
     ].sort(),
