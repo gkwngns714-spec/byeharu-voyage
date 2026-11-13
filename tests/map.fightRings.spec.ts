@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { FIGHT_RING, fightAt, fightCountRadiusPx, fightRing, fightRings, fightTapWins, type MapFight } from '../src/chart/fightRings'
 import { mapFightsOf } from '../src/chart/liveWorld'
-import { keepPlaces } from '../src/live/useFights'
+import { keepPlaces, NO_FIGHTS, sameOrNext } from '../src/live/useFights'
 import { project } from '../src/lib/geo'
 import type { FightCard } from '../src/lib/rpc'
 
@@ -155,4 +155,20 @@ test('a raid and a navy fight are the same ring, on their own place, sized by th
   expect(fightRing(navy, 0.01).rPx).toBe(34)
   // a card with no kind (a server before raids were served) is a battle
   expect(mapFightsOf([card()])[0].kind).toBe('BATTLE')
+})
+
+test('the poll hands the map a new list only when the answer changed: the same answer is the same object, so nothing re-renders', () => {
+  const first = [card()]
+  // no fight, again no fight: the very list the map already holds
+  expect(sameOrNext([], NO_FIGHTS)).toBe(NO_FIGHTS)
+  // the same rings served again (a new array, the same content): the list the map already holds
+  expect(sameOrNext([card()], first)).toBe(first)
+  // a battle over and served without places: with its places kept it is what the map holds, unless its status changed
+  const still = keepPlaces([card()], first)
+  expect(sameOrNext(still, first)).toBe(first)
+  // a round fought, a ring gone, a ring come: a new list
+  expect(sameOrNext([card({ rounds_done: 2 })], first)).not.toBe(first)
+  expect(sameOrNext([], first)).toEqual([])
+  expect(sameOrNext([], first)).not.toBe(first)
+  expect(sameOrNext(first, NO_FIGHTS)).toBe(first)
 })
