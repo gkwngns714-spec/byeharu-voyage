@@ -69,6 +69,47 @@ Order of deploys first: 0376, 0377, 0378 (and 0379) in number order, each by `~/
 Rollback signals: a fleet of a company in a closed sea after the light; departures of companies at 0 with players online; the arrivals beat past its line;
 a company refused again and again from one screen (a page offering what the server refuses).
 
+## 0379: the merchants' guards and step list (`sea_conditions_bite_npc`)
+
+| Guard | Why |
+|---|---|
+| `players_lit`: `sea_conditions_bite` is on | the design's order (section 6: S3 is "lit after S2's window"): one change a window, so each after-check reads one thing. Decided by default; the code of the two switches is independent, so the lead can reverse the order by lighting with the plain Route A line instead of the step |
+| `merchants_with_no_open_leg` = 0 | the "no open loop" figure: a merchant on a loop the sea closes who has known legs out of the harbour her loop starts at and would keep none. Locally 0 of 837 |
+
+Told, not guarded: `loops_closed` (179 locally as founded; the planner moves each at her next lap start), `closed_at_sea` (they finish their trip),
+`courses_not_remembered` (sampled live).
+
+What the simulation says to expect (docs/dev-log/2026-11-13-merchants-under-the-sea-rule.md): every merchant on a closed loop moves to one her hull can hold
+at her next lap start; about one merchant in a hundred more waits in port than before (9 of 837 locally); fourteen far harbours lose every merchant call
+until the far traders (S4) exist; a lap start costs no more than before.
+
+Steps, after the players' window is closed and clean:
+1. Read-only, each one statement:
+   ```
+   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/volatility.sql
+   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-light/before-npc.sql
+   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/after-lit.sql
+   ```
+   Wanted: `guards.ready` true. Keep after-lit.sql's row: the baseline (`laid_up`, `no_buy`, `beats`).
+2. Light: `npx --yes supabase@2.120.0 db query --linked "select public.sea_conditions_npc_light()"`
+3. At +5, +15 and +30 minutes: `sea-merchants/after-lit.sql` and `bash scripts/ops/health.sh`. Wanted: `loops_closed` falling and never rising,
+   `closed_and_buying` falling to 0, `refused_at_the_door` 0, `laid_up` no more than the baseline plus about 1 % of the roster, beats inside their line.
+4. **Rollback, at once:** `npx --yes supabase@2.120.0 db query --linked "update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite_npc' returning key, value"`.
+   A merchant already moved keeps her new loop until the planner moves her again.
+
+Rollback signals: `laid_up` jumping well past the baseline; `refused_at_the_door` above 0; the arrivals beat past its line (the planner is in the beat).
+
+News, merchants: EN "Merchants keep to seas their ships hold", KO "상선도 내파에 맞는 바다만 항해". Posted because players will see it: fewer merchant sails
+on the far seas and no merchant calls at fourteen far harbours.
+
+Proved locally: 0379 applies in 3.3 s (its read walks every merchant loop; budget 30 s); the step probed and rolled back (refuses on the chain's world: the
+players' seas are dark). Proof 72 (5 markers): as shipped refused; every sea asking wave 99, 837 merchants with no leg, refused naming them; a ready world
+lit with one news row in both languages, asked again refused; lit by the step a merchant is offered 18 of her 19 known legs, none through a closed sea; the
+switch back. Proofs 70 and 71 green beside it.
+
+Not verified for 0379: the read's cost on prod (about 1.5 s locally); `merchants_with_no_open_leg` reads the sea alone with 400 days of stores, so a merchant
+whose only open legs are longer than her stores carry would not be counted (her stores rule is 0203's, unchanged, and she would be laid up as today).
+
 ## What was proved (local cached world, 0376 + 0377 + 0378)
 
 - 0378 applies in 0.12 s; its self-assert: the two functions server-only and of the declared volatility, nothing else moved; the step probed and rolled
