@@ -5,6 +5,7 @@
 -- remembered_crossing_a_sea_the_row_lacks is some hundreds (329 on the cached world: the gap this file closes); five: Suez-Alexandria and
 -- Arkhangelsk-Bergen ask wave 10, Ayutthaya-Malacca 10, Cebu-Ternate and Cebu-Tidore 12; news_rows 0.
 -- Functions called: public.sea_leg_asks_derive and public.course_zones (both stable). Then counts-0403.sql, and keep its answer.
+-- merchant_stops_with_no_memo_row: some tens (the memo is a cache; 0403 heals it); rows_not_asking_the_most_of_their_seas 0.
 begin transaction read only;
 select (select max(version) from supabase_migrations.schema_migrations) as head,
        coalesce(obj_description('public.sea_leg_asks'::regclass, 'pg_class'), '') like '%0403%' as applied,
@@ -22,5 +23,10 @@ select (select max(version) from supabase_migrations.schema_migrations) as head,
        (select jsonb_object_agg(a.code || '-' || b.code, jsonb_build_array(s.wave_min, s.title_min, array_to_string(s.zones, ' ')))
           from public.sea_leg_asks s join public.ports a on a.id = s.from_port join public.ports b on b.id = s.to_port
          where (a.code, b.code) in (('SUE', 'ALE'), ('ARK', 'BER'), ('CEB', 'TER'), ('CEB', 'TID'), ('AYU', 'MAL'))) as five,
+       (select count(*) from public.standing_route_stops st join public.npc_fleets nf on nf.route_id = st.route_id
+         where not exists (select 1 from public.npc_course_zones_memo m where m.course_md5 = md5(st.course::text))) as merchant_stops_with_no_memo_row,
+       (select count(*) from public.sea_leg_asks s join public.sea_leg_asks own on own.from_port = s.to_port and own.to_port = s.to_port
+         where s.wave_min <> (select max(z.wave_min) from public.sea_zones z where z.code = any (s.zones || own.zones))
+            or s.title_min <> (select max(z.title_min) from public.sea_zones z where z.code = any (s.zones || own.zones))) as rows_not_asking_the_most_of_their_seas,
        (select count(*) from public.world_news n where n.key = 'update:0403') as news_rows;
 commit;

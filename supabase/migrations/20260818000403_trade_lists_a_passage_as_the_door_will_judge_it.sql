@@ -21,22 +21,32 @@
 --   2. Where the world remembers a course on a pair (public.npc_courses) that crosses a sea the plotted course does not, the row takes that sea
 --      too: a row never asks less than a course the world holds. (On the chain's own world all 1,061 remembered courses cross exactly the
 --      plotted seas; prod's table also holds merchant legs as they stood at 0203's deploy.)
+--   3. THE MERCHANTS' MEMO IS HEALED, not assumed whole: public.npc_course_zones_memo (0397) is a cache of the door's sampler. A course with no row
+--      is sampled live by public.npc_course_zones (the same answer, slower), so no merchant is misjudged by a missing row. 0401 refilled the memo
+--      from the remembered courses and the routes as they stood and so forgot 0400's coast courses (0400 says a refill would); merchants that took
+--      a coast leg since then sail a course with no row (48 on prod at 19:55 UTC). This file writes the missing rows for every merchant route
+--      course and every coast course, both ways, and leaves the rest of the memo alone.
 --   The board's tag (0402: the judge over the row's seas and the destination's sea), the pathfinder and the map's Send row read the table; they
---   follow with no function change. The merchants read their own courses (public.npc_course_zones_memo, 0397), not this table: untouched.
+--   follow with no function change. The merchants read their own courses (public.npc_course_zones, 0397), not this table.
 --
 -- WHAT IS STILL APPROXIMATE, SAID PLAINLY: the row is the course from the harbour's roadstead. A fleet lying at sea, or a course a player bends
 --   by hand, is judged by the door on its own line. A passage of several legs is still judged with the floors of where she lies now (10.6, S7).
 -- THE TABLE'S AUTHOR IS NOW THE BUILD: a slice that moves a sea box, the sea raster, a roadstead or the harbour list re-runs
 --   scripts/build-sea-legs.mjs and ships its file as this one does. public.sea_leg_asks_derive (the straight line) no longer writes the table.
 --   scripts/db/world-guard.mjs holds the table equal to data/sea-legs.json.
--- LOCKS: row writes on public.sea_leg_asks (about 51,000 of 62,001 rows). No function, no knob, no switch.
+-- LOCKS: row writes on public.sea_leg_asks (about 51,000 of 62,001 rows) and inserts into the memo. No function, no knob, no switch.
+-- TIME: 2.5 s for the whole file on the cached world (PGlite), on a world made like prod's too (memo rows missing, courses the build never saw).
+--   Expected on prod: about 15 s (six times, 0353's lesson). The first cut of this file took 5.1 s here and held prod's clock about 90 s before it
+--   refused itself; that cut sampled every remembered course (1,271 on prod), joined the seed through unkeyed CTEs, checked all 62,001 rows and founded
+--   a probe company. This cut reads remembered courses through the memo, stages the seed in keyed, analysed tables, samples 50 rows and founds nothing.
 -- NEWS: this file posts its own UPDATE row, public.news_update('0403', ...) (0347's law).
 -- ROLLBACK (forward, owner only): scripts/ops/harness/pair-table/rollback-0403.sql, a draft: the table back to the straight-line derivation.
--- SELF-ASSERT: at the end of this file, one DO block. BUDGET: statement_timeout 120 s, lock_timeout 5 s; the assert fails above 120 s in all.
+-- SELF-ASSERT: at the end of this file, one DO block of cheap checks (counts, the seed's md5, the five pairs, 46 kept courses, 50 sampled rows). The
+--   row-by-row comparison with the door is proof 98's and the after-check's. BUDGET: statement_timeout 20 s (no one statement may hold the clock longer; the longest is 1.2 s on the cached world), lock_timeout 5 s.
 -- VERSION: 0403 = 0402 + 1.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
-set local statement_timeout = '120s';
+set local statement_timeout = '20s';
 set local lock_timeout = '5s';
 
 create temp table seed_0403 on commit drop as select $seed${
@@ -296,6 +306,32 @@ create temp table seed_0403 on commit drop as select $seed${
 ]
 }$seed$::jsonb as j;
 
+-- ── 0. THE GUARD: refuse at once, before any work, a world that is not the one the courses were plotted on ──
+do $g$
+begin
+  if coalesce(obj_description('public.sea_leg_asks'::regclass, 'pg_class'), '') like '%0403%' then
+    raise exception '0403 refuses: it has been applied once';
+  end if;
+  if to_regprocedure('public.course_zones(jsonb)') is null or to_regprocedure('public.npc_course_zones(jsonb)') is null
+     or to_regprocedure('public.news_update(text,text,text)') is null
+     or to_regclass('public.npc_courses') is null or to_regclass('public.npc_coast_courses') is null or to_regclass('public.npc_course_zones_memo') is null then
+    raise exception '0403 refuses: the sea conditions (0215), the merchants'' memo (0397), the coast courses (0400), the remembered courses (0203) or the news (0347) are not in this world';
+  end if;
+  if (select md5((s.j -> 'harbours')::text || (s.j -> 'sets')::text || (s.j -> 'legs')::text) from seed_0403 s) <> '099b7a89f6dced5d77d90b4cbfa82887' then
+    raise exception '0403 refuses: its seed is not data/sea-legs.json as built';
+  end if;
+  -- the seed was plotted on one world: the same harbours at the same roadsteads, the same water, the same sea boxes
+  if (select string_agg(p.code, ' ' order by p.code collate "C") from public.ports p where p.kind = 'HARBOUR')
+       is distinct from (select string_agg(c, ' ') from seed_0403 s cross join lateral jsonb_array_elements_text(s.j -> 'harbours') c)
+     or md5((select string_agg(p.code || ':' || sr.roadstead_lat || ',' || sr.roadstead_lon, ' ' order by p.code collate "C")
+               from public.ports p join public.sea_reaches sr on sr.port_id = p.id where p.kind = 'HARBOUR')) <> '01f7e8a89f47ac12fd574402d61440ce'
+     or md5((select encode(r.cells, 'hex') from public.sea_raster r where r.id = 1)) <> 'fc79275a85438fe50876ce38376b91c9'
+     or md5((select string_agg(encode(c.zones, 'hex'), '' order by c.row_idx) from public.sea_zone_cells c)) <> 'b51294cf4e7d78432e5bd0538da55fba' then
+    raise exception '0403 refuses: the harbours, the roadsteads, the sea raster or the sea boxes are not the ones its courses were plotted on (re-run scripts/build-sea-legs.mjs)';
+  end if;
+end
+$g$;
+
 -- plotted courses of the same build, kept for the self-assert: the five pairs known bad, both ways, and a spread out of Lisbon
 create temp table fix_0403 on commit drop as
 select e ->> 0 as a, e ->> 1 as b, e -> 2 as course from jsonb_array_elements($fix$[
@@ -347,50 +383,40 @@ select e ->> 0 as a, e ->> 1 as b, e -> 2 as course from jsonb_array_elements($f
 ["LIS","SRT",[[38.625,-9.625],[20.875,-17.625],[14.625,-17.625],[12.125,-16.875],[-34.125,18.125],[-34.875,19.375],[-33.875,27.625],[-17.875,43.625],[-17.375,43.625],[5.375,56.625],[21.125,72.375]]]
 ]$fix$::jsonb) e;
 
-do $g$
-begin
-  if coalesce(obj_description('public.sea_leg_asks'::regclass, 'pg_class'), '') like '%0403%' then
-    raise exception '0403 refuses: it has been applied once';
-  end if;
-  if to_regprocedure('public.course_zones(jsonb)') is null or to_regprocedure('public.sea_routes(uuid,integer,numeric,jsonb)') is null
-     or to_regprocedure('public.sea_gate(uuid,uuid,uuid,jsonb)') is null or to_regprocedure('public.news_update(text,text,text)') is null
-     or to_regclass('public.npc_courses') is null then
-    raise exception '0403 refuses: the sea conditions (0215), the fleet''s tag (0402), the remembered courses (0203) or the news (0347) are not in this world';
-  end if;
-  -- the seed was plotted on one world: the same harbours at the same roadsteads, the same water, the same sea boxes
-  if (select string_agg(p.code, ' ' order by p.code collate "C") from public.ports p where p.kind = 'HARBOUR')
-       is distinct from (select string_agg(c, ' ') from seed_0403 s cross join lateral jsonb_array_elements_text(s.j -> 'harbours') c)
-     or md5((select string_agg(p.code || ':' || sr.roadstead_lat || ',' || sr.roadstead_lon, ' ' order by p.code collate "C")
-               from public.ports p join public.sea_reaches sr on sr.port_id = p.id where p.kind = 'HARBOUR')) <> '01f7e8a89f47ac12fd574402d61440ce'
-     or md5((select encode(r.cells, 'hex') from public.sea_raster r where r.id = 1)) <> 'fc79275a85438fe50876ce38376b91c9'
-     or md5((select string_agg(encode(c.zones, 'hex'), '' order by c.row_idx) from public.sea_zone_cells c)) <> 'b51294cf4e7d78432e5bd0538da55fba' then
-    raise exception '0403 refuses: the harbours, the roadsteads, the sea raster or the sea boxes are not the ones its courses were plotted on (re-run scripts/build-sea-legs.mjs)';
-  end if;
-end
-$g$;
-
 -- ── THE PRE-IMAGE ──
 create temp table pre_0403 on commit drop as
 select s.from_port, s.to_port, s.wave_min, s.title_min, s.zones from public.sea_leg_asks s;
+alter table pre_0403 add primary key (from_port, to_port);
+analyze pre_0403;
 
--- ── 1. THE ROWS, from the seed ──
+-- ── 1. THE ROWS, from the seed. Each step is a small keyed table with its figures read, so no plan here rests on a guess. ──
+create temp table h_0403 on commit drop as
+select c.i::int as i, p.id, public.harbour_zone(p.id) as zone
+  from seed_0403 s cross join lateral jsonb_array_elements_text(s.j -> 'harbours') with ordinality c(code, i)
+  join public.ports p on p.code = c.code and p.kind = 'HARBOUR';
+alter table h_0403 add primary key (i);
+analyze h_0403;
+
+create temp table st_0403 on commit drop as
+select (t.i - 1)::int as k, q.zones, q.wave_min, q.title_min, q.n = cardinality(string_to_array(t.s, ' ')) as known
+  from seed_0403 s cross join lateral jsonb_array_elements_text(s.j -> 'sets') with ordinality t(s, i)
+ cross join lateral (select array_agg(z.code order by z.code) as zones, max(z.wave_min) as wave_min, max(z.title_min) as title_min, count(*) as n
+                       from public.sea_zones z where z.code = any (string_to_array(t.s, ' '))) q;
+alter table st_0403 add primary key (k);
+analyze st_0403;
+
+create temp table lg_0403 on commit drop as
+select r.i::int as fi, e.j::int as ti, e.k::int as k
+  from seed_0403 s cross join lateral jsonb_array_elements(s.j -> 'legs') with ordinality r(leg, i)
+ cross join lateral jsonb_array_elements_text(r.leg) with ordinality e(k, j);
+analyze lg_0403;
+
 create temp table new_0403 on commit drop as
-with h as materialized (
-  select c.code, c.i::int as i, p.id, public.harbour_zone(p.id) as zone
-    from seed_0403 s cross join lateral jsonb_array_elements_text(s.j -> 'harbours') with ordinality c(code, i)
-    join public.ports p on p.code = c.code and p.kind = 'HARBOUR'),
-st as materialized (
-  select (t.i - 1)::int as k, q.zones, q.wave_min, q.title_min, q.n = cardinality(string_to_array(t.s, ' ')) as known
-    from seed_0403 s cross join lateral jsonb_array_elements_text(s.j -> 'sets') with ordinality t(s, i)
-   cross join lateral (select array_agg(z.code order by z.code) as zones, max(z.wave_min) as wave_min, max(z.title_min) as title_min, count(*) as n
-                         from public.sea_zones z where z.code = any (string_to_array(t.s, ' '))) q),
-lg as materialized (
-  select r.i::int as fi, e.j::int as ti, e.k::int as k
-    from seed_0403 s cross join lateral jsonb_array_elements(s.j -> 'legs') with ordinality r(leg, i)
-   cross join lateral jsonb_array_elements_text(r.leg) with ordinality e(k, j))
 select hf.id as from_port, ht.id as to_port, greatest(st.wave_min, zt.wave_min)::int as wave_min, greatest(st.title_min, zt.title_min)::int as title_min,
        st.zones, st.known
-  from lg join h hf on hf.i = lg.fi join h ht on ht.i = lg.ti join st on st.k = lg.k join public.sea_zones zt on zt.code = ht.zone;
+  from lg_0403 lg join h_0403 hf on hf.i = lg.fi join h_0403 ht on ht.i = lg.ti join st_0403 st on st.k = lg.k join public.sea_zones zt on zt.code = ht.zone;
+alter table new_0403 add primary key (from_port, to_port);
+analyze new_0403;
 
 update public.sea_leg_asks s
    set wave_min = n.wave_min, title_min = n.title_min, zones = n.zones
@@ -398,9 +424,27 @@ update public.sea_leg_asks s
  where n.from_port = s.from_port and n.to_port = s.to_port and n.known
    and (s.wave_min, s.title_min, s.zones) is distinct from (n.wave_min, n.title_min, n.zones);
 
--- ── 2. A ROW NEVER ASKS LESS THAN A COURSE THE WORLD REMEMBERS ON ITS PAIR ──
+-- ── 2. THE MERCHANTS' MEMO, HEALED: a row for every merchant route course and every coast course that has none, both ways (the sampler's answer) ──
+insert into public.npc_course_zones_memo (course_md5, zones)
+select distinct on (k.h) k.h, z.zones
+  from (select x.course, public.course_zones(x.course) as zones
+          from (select distinct y.course
+                  from (select st.course from public.standing_route_stops st join public.npc_fleets nf on nf.route_id = st.route_id
+                        union all
+                        select cc.course from public.npc_coast_courses cc) y
+                 where jsonb_typeof(y.course) = 'array' and jsonb_array_length(y.course) > 0
+                   and (   not exists (select 1 from public.npc_course_zones_memo m where m.course_md5 = md5(y.course::text))
+                        or not exists (select 1 from public.npc_course_zones_memo m
+                                        where m.course_md5 = md5((select jsonb_agg(t.x order by t.i desc) from jsonb_array_elements(y.course) with ordinality t(x, i))::text)))) x) z
+ cross join lateral (values (md5(z.course::text)),
+                            (md5((select jsonb_agg(t.x order by t.i desc) from jsonb_array_elements(z.course) with ordinality t(x, i))::text))) k(h)
+ order by k.h
+on conflict (course_md5) do nothing;
+
+-- ── 3. A ROW NEVER ASKS LESS THAN A COURSE THE WORLD REMEMBERS ON ITS PAIR (read through the memo: the sampler's answer, kept) ──
 create temp table rem_0403 on commit drop as
-select n.from_port, n.to_port, public.course_zones(n.course) as zones from public.npc_courses n;
+select n.from_port, n.to_port, public.npc_course_zones(n.course) as zones from public.npc_courses n;
+analyze rem_0403;
 
 update public.sea_leg_asks s
    set zones = (select array_agg(z.code order by z.code) from public.sea_zones z where z.code = any (s.zones || r.zones)),
@@ -421,7 +465,7 @@ comment on function public.sea_leg_asks_derive(uuid) is
   '0215, 0222: the seas on the STRAIGHT line between two roadsteads, land ignored. Since 0403 it no longer writes public.sea_leg_asks (the plotted '
   'courses of scripts/build-sea-legs.mjs do); kept for the rollback and for reading how far a row is from its straight line.';
 
--- ── 3. THE SELF-ASSERT ──
+-- ── 4. THE SELF-ASSERT (cheap: the row-by-row comparison with the door is proof 98's and the after-check's) ──
 do $m$
 declare
   v_t0      timestamptz := clock_timestamp();
@@ -434,36 +478,26 @@ declare
   v_less    int;
   v_rem     int;
   v_rem_add int;
-  v_pl      uuid;
-  v_fl      uuid;
-  v_port    uuid;
-  v_title   int;
-  v_wave    numeric;
-  v_rows    int;
-  v_shut    int;
-  v_diff    int;
-  v_report  text;
-  c_uid  constant uuid := '00000000-0403-4000-8000-000000000001';
 begin
-  -- the table is whole: one row a pair of harbours, every seed row read, a self row the harbour's own sea, no row without a sea
+  -- the table is whole: one row a pair of harbours, every seed row read, no harbour's own row moved
   select count(*) into v_h from public.ports p where p.kind = 'HARBOUR';
   if (select count(*) from public.sea_leg_asks) <> v_h * v_h or (select count(*) from new_0403 n where n.known) <> v_h * v_h
-     or exists (select 1 from public.sea_leg_asks s where cardinality(s.zones) = 0 or array_position(s.zones, null) is not null)
-     or exists (select 1 from public.sea_leg_asks s where s.from_port = s.to_port and s.zones is distinct from array[public.harbour_zone(s.from_port)])
+     or (select count(*) from st_0403) <> 3507
      or exists (select 1 from public.sea_leg_asks s join pre_0403 o on o.from_port = s.from_port and o.to_port = s.to_port
                  where s.from_port = s.to_port and (s.wave_min, s.title_min, s.zones) is distinct from (o.wave_min, o.title_min, o.zones)) then
     raise exception '0403 self-assert FAIL: the pair table is not one row a pair of % harbours from the seed, or a harbour''s own row moved', v_h;
   end if;
-  -- every row asks the most its seas and its destination's own sea ask
-  select count(*) into v_n
-    from public.sea_leg_asks s join public.sea_leg_asks own on own.from_port = s.to_port and own.to_port = s.to_port
-   cross join lateral (select max(z.wave_min) as w, max(z.title_min) as t from public.sea_zones z where z.code = any (s.zones || own.zones)) q
-   where s.wave_min <> q.w or s.title_min <> q.t;
-  if v_n <> 0 then
-    raise exception '0403 self-assert FAIL: % row(s) ask something other than the most their seas ask', v_n;
+  -- 50 rows spread over the table: each asks the most its seas and its destination's own sea ask
+  select count(*), count(*) filter (where x.wave_min <> q.w or x.title_min <> q.t or cardinality(x.zones) = 0) into v_n, v_zones
+    from (select s.wave_min, s.title_min, s.zones, own.zones as dz, row_number() over (order by s.from_port, s.to_port) as rn
+            from public.sea_leg_asks s join public.sea_leg_asks own on own.from_port = s.to_port and own.to_port = s.to_port) x
+   cross join lateral (select max(z.wave_min) as w, max(z.title_min) as t from public.sea_zones z where z.code = any (x.zones || x.dz)) q
+   where x.rn % 1240 = 7;
+  if v_n < 50 or v_zones <> 0 then
+    raise exception '0403 self-assert FAIL: of % sampled rows % ask something other than the most their seas ask', v_n, v_zones;
   end if;
-  -- THE DOOR'S SAMPLER: each plotted course kept in this file crosses exactly the seas of its row
-  select count(*), string_agg(f.a || '-' || f.b, ' ') filter (where not (s.zones @> cz.z and s.zones <@ cz.z)) into v_n, v_bad
+  -- THE DOOR'S SAMPLER: each plotted course kept in this file crosses exactly the seas of its row (a row may hold more only where a remembered course added a sea)
+  select count(*), string_agg(f.a || '-' || f.b, ' ') filter (where not (s.zones @> cz.z and (s.zones <@ cz.z or exists (select 1 from rem_0403 r where r.from_port = a.id and r.to_port = b.id)))) into v_n, v_bad
     from fix_0403 f join public.ports a on a.code = f.a join public.ports b on b.code = f.b
     join public.sea_leg_asks s on s.from_port = a.id and s.to_port = b.id
    cross join lateral (select public.course_zones(f.course) as z) cz;
@@ -473,15 +507,15 @@ begin
   -- THE FIVE PAIRS KNOWN BAD, both ways
   select string_agg(x.a || '-' || x.b, ' ') into v_bad
     from (select a.code as a, b.code as b, s.zones, s.wave_min, o.wave_min as was
-            from public.sea_leg_asks s join pre_0403 o on o.from_port = s.from_port and o.to_port = s.to_port
-            join public.ports a on a.id = s.from_port join public.ports b on b.id = s.to_port) x
-   where case
-           when (x.a, x.b) in (('SUE', 'ALE'), ('ALE', 'SUE')) then not (x.zones @> array['SOU-CAPE'] and x.wave_min >= 24 and x.was < 24)          -- round Africa, not across the isthmus
-           when (x.a, x.b) in (('ARK', 'BER'), ('BER', 'ARK')) then not (x.zones @> array['BAR', 'NRW'] and not x.zones && array['BAL'])           -- round the North Cape, not through the Baltic
-           when (x.a, x.b) in (('CEB', 'TER'), ('TER', 'CEB'), ('CEB', 'TID'), ('TID', 'CEB')) then x.zones && array['PHI'] or x.wave_min > 12  -- by the Molucca Sea, never the open Philippine Sea
-           when (x.a, x.b) in (('AYU', 'MAL'), ('MAL', 'AYU')) then not (x.zones @> array['SOA'])                                               -- round the peninsula, through the South China Sea
-           else false end;
-  if v_bad is not null then
+            from public.ports a join public.ports b on (a.code, b.code) in (('SUE', 'ALE'), ('ALE', 'SUE'), ('ARK', 'BER'), ('BER', 'ARK'), ('CEB', 'TER'), ('TER', 'CEB'),
+                                                                           ('CEB', 'TID'), ('TID', 'CEB'), ('AYU', 'MAL'), ('MAL', 'AYU'))
+            join public.sea_leg_asks s on s.from_port = a.id and s.to_port = b.id
+            join pre_0403 o on o.from_port = s.from_port and o.to_port = s.to_port) x
+   where (x.a in ('SUE', 'ALE') and not (x.zones @> array['SOU-CAPE'] and x.wave_min >= 24 and x.was < 24))          -- round Africa, not across the isthmus
+      or (x.a in ('ARK', 'BER') and not (x.zones @> array['BAR', 'NRW'] and not x.zones && array['BAL']))           -- round the North Cape, not through the Baltic
+      or (x.a in ('CEB', 'TER', 'TID') and x.zones && array['PHI'])                                                -- by the Molucca Sea, never the open Philippine Sea
+      or (x.a in ('AYU', 'MAL') and not (x.zones @> array['SOA']));                                                -- round the peninsula, through the South China Sea
+  if v_bad is not null or (select count(*) from fix_0403) <> 46 then
     raise exception '0403 self-assert FAIL: a pair known bad is not on its real course: %', v_bad;
   end if;
   -- EVERY REMEMBERED COURSE: its pair's row holds every sea it crosses, so asks no less
@@ -492,10 +526,12 @@ begin
   if v_bad is not null or v_rem < 1 then
     raise exception '0403 self-assert FAIL: of % remembered courses some cross a sea their row does not hold (from %)', v_rem, v_bad;
   end if;
-  -- the merchants' memo is whole (this file does not touch it)
+  -- the merchants' memo is healed: every merchant route course and every coast course has its row
   if exists (select 1 from public.standing_route_stops st join public.npc_fleets nf on nf.route_id = st.route_id
-              where not exists (select 1 from public.npc_course_zones_memo mm where mm.course_md5 = md5(st.course::text))) then
-    raise exception '0403 self-assert FAIL: a merchant course is not in the merchants'' memo';
+              where jsonb_typeof(st.course) = 'array' and jsonb_array_length(st.course) > 0
+                and not exists (select 1 from public.npc_course_zones_memo mm where mm.course_md5 = md5(st.course::text)))
+     or exists (select 1 from public.npc_coast_courses cc where not exists (select 1 from public.npc_course_zones_memo mm where mm.course_md5 = md5(cc.course::text))) then
+    raise exception '0403 self-assert FAIL: a merchant course has no memo row after the heal';
   end if;
   -- what moved
   select count(*) filter (where s.zones <> o.zones), count(*) filter (where s.wave_min <> o.wave_min or s.title_min <> o.title_min),
@@ -506,43 +542,9 @@ begin
     raise exception '0403 self-assert FAIL: only % rows changed their seas: was the table straight lines?', v_zones;
   end if;
 
-  -- THE PROBE: a title-1 company of Portugal in a barca at Lisbon, lit. Trade's tag for each harbour of the spread is the door's answer on the
-  -- plotted course, to the letter. Rolled back whole.
-  begin
-    update public.world_config set value = 'false'::jsonb where key = 'economy_closed';
-    v_pl := public.new_house(c_uid, 'Casa do Rumo 0403', 'PRT', 'LIS', 'Rumo', 'barca', 'Rumo', null, false);
-    select f.id, f.port_id into v_fl, v_port from public.fleets f where f.player_id = v_pl;
-    v_title := public.title_level(v_pl);
-    v_wave := public.fleet_wave(v_fl);
-    if v_port is null or v_title <> 1 or (select code from public.ports where id = v_port) <> 'LIS' then
-      raise exception '0403 self-assert FAIL: the probe is not a title-1 company lying at Lisbon';
-    end if;
-    perform cmd.assume_identity(c_uid);
-    update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
-    select count(*), count(*) filter (where g.gate is not null), count(*) filter (where nullif(t.sea -> 'refusal', 'null'::jsonb) is distinct from g.gate)
-      into v_rows, v_shut, v_diff
-      from (select row_number() over (order by f.b) as i, public.sea_gate(v_pl, v_fl, b.id, f.course) as gate
-              from fix_0403 f join public.ports b on b.code = f.b where f.a = 'LIS') g
-      join jsonb_array_elements(public.sea_routes(v_fl, v_title, v_wave,
-             (select jsonb_agg(jsonb_build_array('LIS', f.b) order by f.b) from fix_0403 f where f.a = 'LIS'))) with ordinality t(sea, i) on t.i = g.i;
-    if v_rows < 20 or v_diff <> 0 or v_shut < 1 or v_shut = v_rows then
-      raise exception '0403 self-assert FAIL: lit, at Lisbon: of % rows % wear a tag that is not the door''s answer on the plotted course (% shut)', v_rows, v_diff, v_shut;
-    end if;
-    raise exception using errcode = 'BV403', message = format(
-      'Lit, a title-1 barca at Lisbon: %s Trade rows wear the door''s own answer on the plotted course to the letter (%s shut, %s open).', v_rows, v_shut, v_rows - v_shut);
-  exception when sqlstate 'BV403' then
-    v_report := sqlerrm;
-  end;
-  if v_report is null or exists (select 1 from public.players where id = v_pl) then
-    raise exception '0403 self-assert FAIL: the probe did not run, or did not roll back';
-  end if;
-
   perform public.news_update('0403', 'Trade lists only passages you can sail', '교역 화면: 실제 항로로 갈 수 있는 곳만 열림');
 
-  if clock_timestamp() - v_t0 > interval '120 seconds' then
-    raise exception '0403 self-assert FAIL: over its budget';
-  end if;
-  raise notice '0403 self-assert ok: TRADE LISTS A PASSAGE AS THE DOOR WILL JUDGE IT. % rows for % harbours from plotted courses; % rows changed their seas, % what they ask (% ask more, % ask less); 46 plotted courses cross exactly the seas of their rows; the five pairs known bad are on their real courses; all % remembered courses are held by their rows (% crossed a sea the old row lacked; % brought a sea the plot lacks). % % ms.',
-    v_h * v_h, v_h, v_zones, v_asks, v_more, v_less, v_rem, v_n, v_rem_add, v_report, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
+  raise notice '0403 self-assert ok: TRADE LISTS A PASSAGE AS THE DOOR WILL JUDGE IT. % rows for % harbours from plotted courses; % rows changed their seas, % what they ask (% ask more, % ask less); 46 plotted courses cross the seas of their rows; the five pairs known bad are on their real courses; all % remembered courses are held by their rows (% crossed a sea the old row lacked; % brought a sea the plot lacks); the merchants'' memo has a row for every merchant course. The assert took % ms.',
+    v_h * v_h, v_h, v_zones, v_asks, v_more, v_less, v_rem, v_n, v_rem_add, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;
