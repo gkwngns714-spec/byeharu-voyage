@@ -30,6 +30,10 @@ test.beforeAll(async () => {
   test.setTimeout(360_000)
   db = await openLocalDb({ loadChain, loadImage: builtWorldImage, dataDir: 'memory://', log: () => {} })
   setBackend(createLocalBackend(db))
+  // SPEC_WORLD_SECRET gives this throwaway world another secret (scripts/ops/harness/attacks/dice.mjs runs it under many): no test below assumes how a roll falls
+  if (process.env.SPEC_WORLD_SECRET) {
+    await db.callAs(`with u as (update public.world_config set value = to_jsonb($1::text) where key = 'world_secret' returning 1) select count(*)::int as result from u`, [process.env.SPEC_WORLD_SECRET])
+  }
   await db.callAs(`select cmd.found_house('Battle Spec', 'PRT') as result`)
   await db.callAs(`with t as (update public.port_treasury set ducats = 50000000, reserve = 0 returning 1) select count(*)::int as result from t`)
   await light(['city_treasury_enabled', 'convoys_enabled'], true)

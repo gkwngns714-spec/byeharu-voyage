@@ -1090,7 +1090,7 @@ begin
   if pg_temp.purses() <> v_sum or pg_temp.sheet_40() <> 2 then
     raise exception 'PROOF 40 FAIL: the real engine: sheet %, sum moved %', pg_temp.sheet_40(), pg_temp.purses() - v_sum;
   end if;
-  if (v_r ->> 'outcome') in ('PLUNDERED', 'RANSOM') and (v_r ->> 'loot')::bigint <= 0 then
+  if (v_r ->> 'outcome') in ('PLUNDERED', 'RANSOM') and (v_r ->> 'loot')::bigint <= 0 and floor(100000 * public.loot_risk(v_r)) >= 100 then   -- 0374: a fight that cost her no hull pays nothing
     raise exception 'PROOF 40 FAIL: the fight won and no gold: %', v_r;
   end if;
   raise notice 'PASS: NC_REAL — %, loot %, came %', v_r ->> 'outcome', v_r ->> 'loot', v_r #>> '{navy,came}';
