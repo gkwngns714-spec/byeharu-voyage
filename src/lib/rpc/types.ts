@@ -1894,6 +1894,19 @@ export interface ReputationCard {
   cap: number
   seq: number
   recent: ReputationRow[]
+  /** 0356 — the level of each track whose crossing was PAID (`public.house_level_marks`; no row reads 1). Not a level: a
+   *  level is `PlayerHouse.levels`. A served level above its mark is a crossing `cmd.level_up` will pay. Absent before 0356. */
+  level_marks?: { trading: number; exploration: number; combat: number }
+  /** 0356 — the gift a level (`rep_level_per_level`): reaching level L pays `level_gift × L`. 0: no gift. Absent before 0356. */
+  level_gift?: number
+}
+
+/** 0356 — one level crossing as `public.level_marks_settle` paid it: the `LEVEL_UP` event's payload, and a row of `cmd.level_up`'s answer. */
+export interface LevelCrossing {
+  track: 'trading' | 'exploration' | 'combat'
+  level: number
+  /** The Reputation the crossing booked (0 while the gift is off). */
+  reputation: number
 }
 
 /** One track of DESIGN 8. `level` is the same curve for all three, so "level 4" means one amount

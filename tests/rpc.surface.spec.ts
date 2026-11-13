@@ -1567,6 +1567,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       'cmdAttack', 'cmdPreviewAttack',
       // 0353: a fleet's standing order when raiders close, and the read beside its picker
       'cmdRaidOrder', 'worldRaidRead',
+      // Pin moved deliberately 2026-11-12 with migration 0356 (docs/REPUTATION.md section 5, R4): THE CALLER'S LEVEL CROSSINGS PAID, cmd.level_up().
+      // No argument and no player id. Asked by the shell alone (src/live/worldStore.ts), once, when a served level stands above its served mark.
+      'cmdLevelUp',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's
