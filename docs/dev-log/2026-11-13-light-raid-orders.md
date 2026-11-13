@@ -85,3 +85,12 @@ In the PR. Rollback, one line (owner only): `update public.world_config set valu
 - Nothing ran on prod. The knobs were not measured on prod's recorded raids (there are too few on companies); the table is the real engine on real hulls with seeded raids.
 - Pay to a NAMED raider through the real settle (unchanged from the 0353 dev-log).
 - A ransom moving on the local world as shipped: its purses are dark, so a Pay there is refused (NO_PAYEE). Proof 56 lights them and proves the money.
+
+## Found on the combined tree (batch-7): the picker moved the page under it
+`tests/fleets.page.spec.ts`, "the press on Move moved the page under it", at some sizes and not others. Cause: on a fleet's page `src/live/RaidOrder.tsx` drew nothing until `world.raid_read` answered, then appeared and pushed the foot (Command, Rename) down 351 px. The spec measured the foot, pressed Move, and measured again; when the picker's read landed in between, the foot had moved. It never showed on the fleet-room branch (no picker there) and I had not run `fleets.page` on this one.
+
+Fixed here, at the source: while the read is on its way the SAME rows stand with no figures (`RaidOrderWaiting`: the heading, the three orders unmarked and unpressable, Raiders, Slip, Pay, and the last line), and the last line keeps its place whether it says "No guns" or nothing. Measured by the lit spec at 390 and 320, EN and KO: **327 px waiting, 327 px landed**, the waiting state caught in all four. A world where orders are off draws nothing; that answer is remembered for the session, so only the first mount there holds the room open for a moment.
+
+On main with 0369, 0370 and 0371: `fleets.page` 18 of 18, `raid.order.lit` 8 of 8 (twice), `fight.log.page` 6 of 6.
+
+Seen while measuring, not changed: a fleet page's ship places (the locked and empty tiles of 0354 / #617) also land on their own read, `world.house_room`, and move the foot when they do. `fleets.page` waits for them before it measures, so no spec is red; it is the same kind of late landing and belongs to the Fleets page.
