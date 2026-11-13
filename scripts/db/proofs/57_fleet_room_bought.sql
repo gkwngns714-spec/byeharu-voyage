@@ -41,6 +41,8 @@ declare
   h      record;
   i      int;
 begin
+  -- 0370 lit fleet room in the chain. This proof starts from the dark world it was written for: the switch is set back here, for this rolled-back transaction only.
+  update public.world_config set value = 'false'::jsonb where key = 'fleet_room_bite';
   if public.fleet_room_on() then
     raise exception 'PROOF 57 FAIL: the room is not dark in this world';
   end if;
@@ -256,10 +258,10 @@ begin
   if v_r ->> 'error_code' is distinct from 'E_ROOM_TOP' then
     raise exception 'PROOF 57 FAIL: seven ships a fleet: %', v_r;
   end if;
-  update public.world_config set value = '[1, 99]'::jsonb where key = 'fleet_room_levels';   -- a rung reached: 2 + 1 + 2 = 5, the top
+  update public.world_config set value = '[1, 1]'::jsonb where key = 'fleet_room_levels';   -- both rungs reached: 2 + 2 + 2 = 6, the top (fleet_hard_max: 5 before 0370, 6 since)
   v_r := cmd.buy_room('FLEET');
   if v_r ->> 'error_code' is distinct from 'E_ROOM_TOP' or (public.earned_caps(v_a) ->> 'fleet_max')::int <> public.wc_int('fleet_hard_max') then
-    raise exception 'PROOF 57 FAIL: five fleets: %', v_r;
+    raise exception 'PROOF 57 FAIL: the top of the fleets: %', v_r;
   end if;
   update public.world_config set value = '[3, 6]'::jsonb where key = 'fleet_room_levels';
   v_r := cmd.buy_room('CABIN');
