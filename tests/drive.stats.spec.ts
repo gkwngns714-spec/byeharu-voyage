@@ -142,7 +142,7 @@ test('Stats: a counted world — every drawn series ends at its right edge on a 
       await expect(card, `${name} lacks its ${id} card`).toBeAttached()
       const text = (await card.innerText()).replace(/\s+/g, ' ')
       const drawn = (await card.locator('svg[role="img"]').count()) > 0
-      console.log(`  card ${id}: drawn=${drawn} "${text.slice(0, 80)}"`)
+      console.log(`  card ${id}: drawn=${drawn} "${[...text].slice(0, 80).join('')}"`)
     }
   }
   console.log(`chart findings: ${JSON.stringify(findings, null, 1)}`)
@@ -285,7 +285,7 @@ test('Report: its spans and its bars are real days (row 296)', async ({ page, re
   const spans = (await page.getByTestId('report-spans').getByRole('tab').allInnerTexts()).map((s) => s.trim())
   const bars = page.getByTestId('report-bars')
   const barWords = (await bars.count()) ? (await bars.first().innerText()).replace(/\s+/g, ' ') : '(no bars)'
-  console.log(`report spans: ${JSON.stringify(spans)}; bars: ${barWords.slice(0, 200)}`)
+  console.log(`report spans: ${JSON.stringify(spans)}; bars: ${[...barWords].slice(0, 200).join('')}`)
   expect(spans.length).toBe(3)
   for (const s of spans) expect(s.length, `a span word is not short: "${s}"`).toBeLessThanOrEqual(8)
   await shot(page, 'report-1280@2x')
