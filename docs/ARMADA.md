@@ -12,8 +12,8 @@ changes nothing about how many ships a fleet holds, and no player ever fights a 
 
 Every rule below that is mine and not the owner's is listed again in section 14, each as a default.
 
-Built: sections 1 to 11 for sailing and raids, migration 0367, **lit**. Not built: the battle she starts
-(section 7), designed here for migration 0368.
+Built: sections 1 to 11 for sailing and raids, migration 0367, **lit**; and the battle she starts (section 7),
+migration 0395, behind the owner's switch `attack_enabled` (off: nothing changes; on: a lone fleet fights as she did).
 
 ---
 
@@ -152,23 +152,44 @@ Read it this way:
 - **Plunder across holds:** each fleet loses her own roll's share of her own hold. In proof 68's run the
   lead lost 14 of 40 and 3 of 9 (35 %), her sister 5 of 21 (24 %), on the same PLUNDERED day.
 
-## 7. A battle she starts (designed, not built: 0368)
+## 7. A battle she starts (built: 0395, behind `attack_enabled`)
 
-Battles (`public.battles`, `public.battle_sides`) are dark (`attack_enabled` false) and their round-by-round
-form (0357) and the map's ring (0364) are still open. On top of them:
+Battles (`public.battles`, `public.battle_sides`) exist only behind `attack_enabled`. With the switch off
+nothing below runs for anyone; with it on, a fleet in no armada attacks exactly as she did. Built on the
+round-by-round battle (0357) and the map's ring (0364):
 
-- When a fleet of an armada attacks, every fleet of hers **that is there** (in the same port, or sailing
-  under the same lead voyage) joins as `ATTACKER` with `how = 'ARMADA'`, in `public.battle_open`, before
-  0357 freezes the sheet. The sheet's side `b` then holds all their hulls with no change to the freeze.
-- The fight ring (0364) already counts the fleets that are there, so it grows with the armada with no
-  change.
-- The fight sheet lists her fleets on her side, by name.
-- Loot is taken into the attacking fleet's hold as today; a split across the armada's holds is its own
-  decision.
-- A battle holds a fleet's voyage. A fleet of an armada that attacks alone today (dark) would fall behind
-  her sisters, so 0368 holds all of them.
+- **Who takes part.** When a fleet of an armada attacks, every other fleet of hers **that is there** and has
+  a ship fights on her side (`public.battle_armada`, the one reading):
+  - she lies in port: the fleets of hers docked in that same port;
+  - she is at sea: the fleets sailing under the same lead voyage **and** within `attack_reach_nm` (240) of
+    her, so a fleet turned for port alone is not there;
+  - she lies at anchor: nobody.
+  A fleet of hers that is elsewhere takes no part and is not held.
+- **All or none.** Each fleet that would take part is judged before anything moves: free to fight
+  (`E_FLEET_BUSY`), her hold empty (`E_HOLD_NOT_EMPTY`), no battle within the cooldown
+  (`E_ATTACK_COOLDOWN`). One refused refuses the attack, under her name. The fleet that attacks keeps the
+  gates she had (her own guns, the reach, the target's).
+- **The sheet.** Each joins as `ATTACKER` with `how = 'ARMADA'` in `public.battle_open`, before 0357 freezes
+  the sheet: the fleet that attacked first, then the armada's order (flagship fleet first). Side `b` holds
+  all their hulls; the sheet says the armada's name and her fleets. The engine and the freeze are not cut.
+- **Held and freed.** Every one of them is held for the battle (in port: in battle; at sea: a free hold)
+  and freed at its end. At sea they are held for the same span, so they still arrive together.
+- **The stance.** One for the side. Fight or Flee, pressed once from any of her fleets' cards, acts for all.
+- **Hull damage.** Each ship loses what the one fight says for her: the guns choose among all the hulls.
+- **Crew loss.** Thrown back, broken off or fled: every fleet on her side loses the same share of each
+  ship's hands (`attack_crew_lost.beaten`, 10 %), each softened by her own surgeon.
+- **Loot.** Loot is gold, and it goes to the company's one purse, once, as before (the day's cap once). The
+  report says each fleet's **share**: in proportion to the guns she brought, rounded down, the remainder to
+  the fleet that attacked.
+- **One report** a battle, under the fleet that attacked, with each fleet's share.
+- **The preview** (`cmd.preview_attack`) is the real attack rolled back, so it reads all of this: the
+  strength word is the armada's, it names her and her fleets, and a sister's refusal is its refusal.
+- **The ring** (0364) counts the fleets that are there, so it grows with the armada with no change to it.
+- **The card** of any fleet of hers in the battle shows the one battle: the armada's name, her fleets, the
+  side's stance and, at the end, each fleet's share.
+- **No player fights a player.** Both refusals (`E_HUMAN_TARGET`) are untouched and come first.
 
-Until 0368, a fleet of an armada attacks alone, exactly as a fleet does.
+Where this section used to be silent, and what was decided, is in section 14 (D21 to D28).
 
 ## 8. What the map draws
 
@@ -209,7 +230,8 @@ has no route of her own (section 12). Routes are dark today.
 
 | what | why not now |
 |---|---|
-| The battle she starts (section 7) | it stands on 0357 and 0364, both still open and dark |
+| A split of the loot into holds | loot is gold and a company has one purse; the report says each fleet's share instead |
+| A navy called against an armada in proportion to her size | the navy's call is 0333's, unchanged: it answers the ship set upon |
 | A fleet joining or leaving without disbanding | disband and form again is free and does the same |
 | An armada's own queue, and a trade route for an armada | a second order queue is a slice of its own |
 | A point of open sea as her destination, and a turn at sea | an armada re-forms only in port; a turn would need all fleets cut at one instant |
@@ -268,6 +290,14 @@ The owner's number is six. A company holds `fleet_max` = **2** fleets while `fle
 | D15 | The map | One mark at sea under her name with every hull; fleets at the quay in port |
 | D16 | Trade's sail | A one-passage trip sends the armada; longer trips are refused |
 | D17 | Lit or dark | Lit, with a switch `armada_enabled` for a forward rollback |
-| D18 | The battle | Designed (section 7), built later on 0357 + 0364 |
+| D18 | The battle | Built in 0395 on 0357 + 0364, behind `attack_enabled` |
 | D19 | Several armadas a company | Allowed |
 | D20 | Who sees the Armadas list | A company of two fleets or more |
+| D21 | Who is "there" for a battle | Same port; or the same lead voyage and within `attack_reach_nm` of her. Nobody for a fleet at anchor |
+| D22 | A sister that cannot fight (busy, cargo aboard, cooldown) | The whole attack is refused under her name. Nobody is left out silently |
+| D23 | A sister with no guns | She joins: her hulls and hands stand in the line. Only the fleet that attacks must have guns |
+| D24 | The cooldown | Every fleet that fought has it, so an armada cannot attack again by having another fleet open |
+| D25 | The stance | One for the whole side, set by the company from any of her fleets' cards |
+| D26 | Crew loss | The same beaten row (10 %) for every fleet on her side, each by her own surgeon |
+| D27 | Loot | Gold to the one purse, as before. Shares are said by the guns each fleet brought; the remainder to the fleet that attacked |
+| D28 | `armada_enabled` off | The battle does not read it: fleets still in an armada still fight together. `attack_enabled` is the switch |

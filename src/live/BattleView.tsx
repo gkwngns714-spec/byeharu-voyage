@@ -10,6 +10,9 @@ import { parseFightLog } from './fightLines'
 // The log is the one `FightLog`. Nothing here computes a round, a chance or an outcome.
 // 0364: A WATCHER'S READ (`world.fight`, `read.watch`) is drawn by this same face: the clock and the log, no stance
 // (none is served), no loot and no hands (they are hers alone), and the two sides named, not You and Them.
+// 0395: AN ARMADA'S BATTLE (`read.armada`, `read.fleets`): her name, every fleet of hers on her side by its whole name,
+// the stance said to act for all of them (the server keeps one stance a side) and, once it is over, each fleet's share
+// as the server counted it. A fleet that fights alone serves none of it and the card is what it was.
 
 const STANCES: readonly BattleStanceWord[] = ['FIGHT', 'FLEE', 'PAY']
 const RANGE_KEY = { LONG: 'fight.rangeL', MEDIUM: 'fight.rangeM', CLOSE: 'fight.rangeC' } as const
@@ -53,10 +56,39 @@ export function BattleView({
   const range = read.next_range === 'LONG' || read.next_range === 'MEDIUM' || read.next_range === 'CLOSE' ? read.next_range : null
   const next = range ? `${t('fight.round')} ${formatInt((read.rounds_done ?? 0) + 1)} · ${t(RANGE_KEY[range])}` : t('fight.boarding')
   const navyMs = navyAt ? Date.parse(navyAt) : NaN
+  const fleets = !watch && read.armada ? (read.fleets ?? []) : []
+  const shareOf = (id: string) => (fighting ? undefined : (read.shares ?? []).find((s) => s.fleet === id))
 
   return (
     <div className={`pb-2 ${className}`} data-testid="battle-card" data-status={read.status} data-stance={read.stance} data-rounds-done={read.rounds_done ?? 0} data-watch={watch || undefined}>
       {!watch && <Row hairline={false} label={t('fight.battle')} value={<span data-testid="battle-foe">{read.foe ?? ''}</span>} />}
+      {fleets.length > 0 && (
+        <div data-testid="battle-armada" data-fleets={fleets.length}>
+          <Row label={t('fight.armada')} value={<span className="break-words text-right" data-testid="battle-armada-name">{read.armada}</span>} />
+          {fleets.map((f) => {
+            const share = shareOf(f.id)
+            return (
+              <Row
+                key={f.id}
+                label={<span className="break-words" data-testid="battle-armada-fleet">{f.name}</span>}
+                value={share ? <Figure value={<span data-testid="battle-armada-loot">{formatDucats(share.loot)}</span>} /> : undefined}
+                data-testid="battle-armada-row"
+                data-lead={f.lead || undefined}
+              >
+                <span className="break-words text-t-caption text-ink-muted">
+                  {t('fight.shipsN', { n: formatInt(f.ships) })}
+                  {share && (
+                    <span data-testid="battle-armada-share">
+                      {' · '}
+                      {t('fight.crewLost')} {formatInt(share.crew_lost)} · {t('fight.hullLost')} {formatInt(Math.round(share.hull_lost))}
+                    </span>
+                  )}
+                </span>
+              </Row>
+            )
+          })}
+        </div>
+      )}
       {read.word && <Row label={t('map.attackFoe')} value={<span data-testid="battle-word" data-word={read.word}>{t(`map.attackWord_${read.word}`)}</span>} />}
       {fighting && (
         <>
@@ -67,7 +99,16 @@ export function BattleView({
           )}
           {read.stance && segments.length > 1 && (
             <>
-              <Row hairline={false} label={t('fight.stance')} value={<span className="text-t-caption text-ink-faint">{t('fight.nextRound')}</span>} />
+              <Row
+                hairline={false}
+                label={t('fight.stance')}
+                value={
+                  <span className="text-t-caption text-ink-faint">
+                    {fleets.length > 0 && <span data-testid="battle-stance-all">{t('fight.stanceAll')} · </span>}
+                    {t('fight.nextRound')}
+                  </span>
+                }
+              />
               <Segmented segments={segments} value={read.stance} onChange={(s) => onStance?.(s)} label={t('fight.stance')} fill columns={segments.length === 3 ? 3 : 2} />
             </>
           )}
