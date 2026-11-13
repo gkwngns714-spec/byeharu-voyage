@@ -116,8 +116,9 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
         segments={offered.map((f) => ({ id: f.id, label: f.label }))}
         value={shown.id}
         onChange={openFace}
-        // In the desk's narrow left pane every building stays in sight: the row wraps.
-        className="mt-3 lg:flex-wrap"
+        // In the desk's narrow left pane (272 px at 1,280) every building stays in sight: the row is a wrapping line there, each cell as wide as
+        // its word at least. It was four equal 53-px columns, and "Production" (67 px) stood against "Town" and "Craft" (2026-11-14).
+        className="mt-3 lg:flex lg:flex-wrap lg:*:min-w-11 lg:*:flex-auto lg:*:px-1!"
       />
       <QuayFair portId={port.id} />
       {/* 0255 (E6b, CLOSED_ECONOMY §4b): what this city wants now and pays a multiple for (absent while dark) */}

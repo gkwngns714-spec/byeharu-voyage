@@ -9,8 +9,12 @@ export type ChoiceColumns = 2 | 3 | 4 | 5 | 6
 export const COLUMN_CLASS: Record<ChoiceColumns, string> = {
   2: 'grid-cols-2',
   3: 'grid-cols-3',
-  4: 'grid-cols-4',
-  5: 'grid-cols-5',
+  // FOUR AND FIVE ACROSS ON A GLASS UNDER 375 PX: A COLUMN IS NEVER NARROWER THAN ITS WORD (2026-11-14, owner row 318). A fifth of a
+  // 320-px glass is 51 px, 35 inside the cell's padding, and 'Production' (72 px) stood over the cells beside it. There the columns
+  // are equal wherever every word fits its share; where one does not, it takes what it needs and the rest share what is left, and the
+  // cells keep 2 px a side (the words are centred: a roomy cell looks as it did).
+  4: 'grid-cols-4 max-[374px]:grid-cols-[repeat(4,minmax(min-content,1fr))] max-[374px]:*:px-0.5!',
+  5: 'grid-cols-5 max-[374px]:grid-cols-[repeat(5,minmax(min-content,1fr))] max-[374px]:*:px-0.5!',
   6: 'grid-cols-6',
 }
 

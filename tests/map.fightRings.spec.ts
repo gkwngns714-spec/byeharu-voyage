@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { FIGHT_RING, fightAt, fightCountRadiusPx, fightRing, fightRings, fightTapWins, type MapFight } from '../src/chart/fightRings'
+import { FIGHT_RING, fightAt, fightCountRadiusPx, fightRing, fightRimWins, fightRings, fightTapWins, type MapFight } from '../src/chart/fightRings'
 import { mapFightsOf } from '../src/chart/liveWorld'
 import { keepPlaces, NO_FIGHTS, sameOrNext } from '../src/live/useFights'
 import { project } from '../src/lib/geo'
@@ -94,6 +94,33 @@ test('what a press inside a ring means: open water and its own fleets are the fi
   expect(fightTapWins(wide, { kind: 'port' })).toBe(false)
   expect(fightTapWins(wide, { kind: 'merchant', id: 'stranger' })).toBe(false)
   expect(fightTapWins(wide, { kind: 'fleet', id: 'stranger' })).toBe(false)
+})
+
+test("a wide ring's rim is the fight over a harbour's reach, but not on the harbour's own mark; a small ring and the middle are as they were", () => {
+  const upp = 0.01
+  // seven fleets (an armada of six and the ship she set upon), all in one harbour: a 52-px ring round the harbour
+  const harbour = { lat: 38.5, lon: -9.6 }
+  const ring = fightRing(fight({ fleets: 7 }), upp)
+  expect(ring.rPx).toBe(52)
+  const c = project(harbour)
+  const at = (px: number) => ({ x: c.x + px * upp, y: c.y })
+  // the 12 px inside the line: the fight, though the harbour's 38-px reach found the harbour there
+  for (const px of [41, 46, 52, -41, -52]) expect(fightRimWins(ring, at(px), harbour, upp), String(px)).toBe(true)
+  // the middle is the harbour's, and past the line is open water
+  for (const px of [0, 20, 39, 53]) expect(fightRimWins(ring, at(px), harbour, upp), String(px)).toBe(false)
+  // a second harbour whose own mark lies under the rim keeps its press: within 22 px of its centre it is the harbour
+  const near = { lat: 38.5, lon: -9.6 + 50 * upp }
+  expect(fightRimWins(ring, at(46), near, upp)).toBe(false)
+  expect(fightRimWins(ring, { x: c.x, y: c.y + 46 * upp }, near, upp)).toBe(true)
+  // nothing known under the press, or a small ring: this rule says nothing (fightTapWins decides)
+  expect(fightRimWins(ring, at(46), null, upp)).toBe(false)
+  expect(fightRimWins(fightRing(fight(), upp), at(20), harbour, upp)).toBe(false)
+  // the same band at every zoom
+  for (const u of [0.001, 0.05, 3]) {
+    const r = fightRing(fight({ fleets: 7 }), u)
+    expect(fightRimWins(r, { x: c.x + 46 * u, y: c.y }, harbour, u)).toBe(true)
+    expect(fightRimWins(r, { x: c.x + 30 * u, y: c.y }, harbour, u)).toBe(false)
+  }
 })
 
 const card = (over: Partial<FightCard> = {}): FightCard => ({

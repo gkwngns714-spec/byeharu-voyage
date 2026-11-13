@@ -76,6 +76,7 @@ function PirateBody({ card }: { card: PirateShipCard }) {
           mark={<IconDisc name="compass" />}
           label={t('map.pirateHome')}
           value={<GoToLink to={{ kind: 'port', code: card.home }}>{portNameOf(portByCode, card.home)}</GoToLink>}
+          wholeName
           data-testid="pirate-home"
         />
         <Row
@@ -91,6 +92,7 @@ function PirateBody({ card }: { card: PirateShipCard }) {
             label={t('map.haunt')}
             value={<GoToLink to={{ kind: 'port', code: card.haunt }}>{portNameOf(portByCode, card.haunt)}</GoToLink>}
             hairline={false}
+            wholeName
             data-testid="pirate-haunt"
           />
         )}

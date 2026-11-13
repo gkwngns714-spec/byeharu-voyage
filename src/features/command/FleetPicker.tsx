@@ -120,7 +120,8 @@ export function FleetPicker({
   const trigger = (
     <Button
       variant="quiet"
-      className="min-w-0"
+      // under 375 px the button gives up 12 px at its right: beside "In port / Lisbon" an 11-letter name ("Flor do Mar") was 9 px short of one line
+      className="min-w-0 max-[374px]:pr-1!"
       aria-haspopup="dialog"
       aria-expanded={open}
       onClick={() => setOpen((o) => !o)}

@@ -78,11 +78,14 @@ function CargoBody({ card }: { card: CargoShipCard }) {
         <Tile name={t('map.funds')} figure={<Figure size="figure" value={formatDucats(card.funds)} />} data-testid="cargo-funds" />
       </TileField>
       <SheetSection surface>
+        {/* A CITY'S NAME AS THE FIGURE (2026-11-14, owner row 318): under 375 px the name goes under its word (Row, wholeName). Beside
+            "Sanlucar de Barrameda" the word "Shipment" stood a syllable a line. The navy and pirate sheets' rows are the same. */}
         <Row
           mark={<IconDisc name="compass" />}
           label={t('map.shipment')}
           value={<GoToLink to={{ kind: 'port', code: bound }}>{portNameOf(portByCode, bound)}</GoToLink>}
           hairline={card.next.length > 0}
+          wholeName
           data-testid="cargo-bound"
         />
         {card.next.length > 0 && (

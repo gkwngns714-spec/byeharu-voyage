@@ -10,9 +10,14 @@ import type { T, TKey } from '../lib/i18n'
 // the New fleet page (NewFleet). They share this read, this press and these words, so a price, a level and "can she pay" are said one way. Every figure is the server's
 // (`world.house_room`); nothing here decides one.
 
+/** THE ANSWER IS KEPT A MINUTE FOR THE NEXT FACE THAT DRAWS IT (2026-11-14, owner row 318). It was kept for none, so a fleet's page opened from the Fleets list drew her ships,
+ *  asked again, and its empty and locked places landed a moment later and pushed the page's foot down. The list's Room card has already been answered, so the page now draws
+ *  its places with its first frame; the world's beat asks again as before, and a Buy empties the kept answer (store/resourceCache.ts). */
+const ROOM_KEPT_MS = 60_000
+
 /** `world.house_room`, asked when a face that draws it opens and again on the world's beat. Null before the first answer. */
 export function useHouseRoom(): HouseRoom | null {
-  return useServedRead<HouseRoom>('house-room', () => worldHouseRoom(), { name: 'worldHouseRoom', cache: false }).view
+  return useServedRead<HouseRoom>('house-room', () => worldHouseRoom(), { name: 'worldHouseRoom', freshMs: ROOM_KEPT_MS }).view
 }
 
 /** The read, narrowed to a company's (a visitor with no company has no room to draw). */

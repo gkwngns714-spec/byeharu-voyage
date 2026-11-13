@@ -209,7 +209,7 @@ function DayView({ day }: { day: TradeDay }) {
           {ports.map((p) => (
             <li key={p.port} className="rounded-control bg-surface-2 p-3" data-testid="trade-day-port">
               <PortHead code={p.port} name={portNameOf(portByCode, p.port)} />
-              <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 gap-y-1 text-t-caption">
+              <div className="mt-2 grid grid-cols-[minmax(min-content,1fr)_auto_auto] gap-x-3 gap-y-1 text-t-caption max-[374px]:gap-x-2">
                 <span className="text-ink-faint">{tl('books.good')}</span>
                 <span className="text-right text-ink-faint">{tl('books.sold')}</span>
                 <span className="text-right text-ink-faint">{tl('books.bought')}</span>
@@ -311,7 +311,7 @@ function Stops({ stops }: { stops: readonly TradeStop[] }) {
           {s.sold.length === 0 && s.bought.length === 0 ? (
             <p className="mt-1.5 text-t-caption text-ink-faint">{tl('books.tradedNothing')}</p>
           ) : (
-            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto_auto] gap-x-3 gap-y-1 text-t-caption">
+            <div className="mt-2 grid grid-cols-[minmax(min-content,1fr)_auto_auto_auto] gap-x-3 gap-y-1 text-t-caption max-[374px]:gap-x-2">
               <span className="text-ink-faint">{tl('books.good')}</span>
               <span className="text-right text-ink-faint">{tl('books.qty')}</span>
               <span className="text-right text-ink-faint">{tl('books.price')}</span>

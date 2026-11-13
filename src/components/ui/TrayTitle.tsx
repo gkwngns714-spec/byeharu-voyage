@@ -19,6 +19,10 @@ import type { ReactNode } from 'react'
 // read as a heading rather than as a row. `Tray`'s peek stop (trayDetents.ts, TRAY_PEEK) is sized
 // for exactly this block: the handle row and this head, two lines, and nothing else.
 //
+// THE NAME IS NEVER NARROWER THAN ITS LONGEST WORD, AND THE CONTROL GOES UNDER IT WHERE THE TWO DO NOT FIT (2026-11-14, owner row 318):
+// the name's box could shrink under a long word, so on a 320-px glass 산루카르데바라메다 stood over "Send fleet", and at 390 px
+// "Sanlucar de Barrameda" pushed the button 23 px off the tray.
+//
 // `min-h-9` is the 36px of a `size="sm"` button, so a head without a control stands as tall as
 // one with it.
 export function TrayTitle({
@@ -35,8 +39,8 @@ export function TrayTitle({
   testId?: string
 }) {
   return (
-    <span className="flex min-h-9 items-center justify-between gap-3">
-      <span className="min-w-0 flex-1">
+    <span className="flex min-h-9 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+      <span className="min-w-min flex-1">
         <Clip data-testid={testId}>
           {name}
         </Clip>
@@ -46,7 +50,7 @@ export function TrayTitle({
           </span>
         )}
       </span>
-      {trailing !== undefined && <span className="shrink-0">{trailing}</span>}
+      {trailing !== undefined && <span className="ml-auto shrink-0">{trailing}</span>}
     </span>
   )
 }

@@ -26,6 +26,10 @@
 // `fightTapWins` says when a press inside a ring means the fight and when it means the mark under it: a SMALL ring
 // (its radius within a mark's own reach) is one target and always the fight; a WIDE ring gives a harbour, a merchant
 // or a fleet that is not in the battle its own press, and takes the open water and its own fleets.
+// THE RIM OF A WIDE RING (`fightRimWins`, 2026-11-14, owner row 318): a harbour's reach is 38 px, so an armada lying in port beside the
+// ship she set upon left a 52-px ring only a sliver of open ground to press, and a second harbour near by left none. The 12 px
+// just inside the line are the fight's whatever lies under them, EXCEPT within 22 px (half a touch) of another mark's own centre:
+// the thumb on a harbour is still the harbour.
 
 import { project, shortLonDelta, type LatLon, type Point } from '../lib/geo'
 
@@ -60,6 +64,10 @@ export const FIGHT_RING = {
   minHitPx: 22,
   /** A ring this small or smaller is one press target: it takes every press inside it. */
   smallPx: 44,
+  /** On a wide ring, a press this near the line (on its inner side) is the fight. */
+  rimPx: 12,
+  /** ...unless it is this near the centre of a mark that is not the fight's: that mark keeps its press. */
+  markOwnPx: 22,
 } as const
 
 /** The radius the count of fleets alone gives, in px. */
@@ -131,4 +139,15 @@ export function fightTapWins(ring: FightRing, under: { kind: 'fleet' | 'merchant
   if (under === null) return true
   if (ring.rPx <= FIGHT_RING.smallPx) return true
   return under.kind !== 'port' && ring.fleetIds.includes(under.id)
+}
+
+/** Whether a press at `at` is on a wide ring's rim and so opens the fight over the mark the chart found under it (`mark`: that mark's
+ *  place, or null where it is not known). See the header. */
+export function fightRimWins(ring: FightRing, at: Point, mark: LatLon | null, unitsPerPx: number): boolean {
+  if (ring.rPx <= FIGHT_RING.smallPx || mark === null) return false
+  const upp = unitsPerPx > 0 ? unitsPerPx : 1
+  const fromCentre = Math.hypot(shortLonDelta(ring.centre.x, at.x), at.y - ring.centre.y) / upp
+  if (fromCentre > ring.rPx || fromCentre < ring.rPx - FIGHT_RING.rimPx) return false
+  const m = project(mark)
+  return Math.hypot(shortLonDelta(m.x, at.x), at.y - m.y) / upp > FIGHT_RING.markOwnPx
 }

@@ -77,6 +77,7 @@ function NavyBody({ card }: { card: NavyShipCard }) {
           mark={<IconDisc name="compass" />}
           label={t('map.station')}
           value={<GoToLink to={{ kind: 'port', code: card.station }}>{portNameOf(portByCode, card.station)}</GoToLink>}
+          wholeName
           data-testid="navy-station"
         />
         <Row

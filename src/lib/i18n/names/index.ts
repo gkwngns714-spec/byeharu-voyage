@@ -1,13 +1,14 @@
-// PROPER NOUNS — one map each (ports, nations, regions, goods, categories, Korean hulls). In
+// PROPER NOUNS — one map each (ports, nations, regions, goods, categories, Korean hulls, skills). In
 // English every function returns the served name untouched; in Korean, the map's entry or, when
 // there is none, the served name (a truthful lesser answer, NO_SPAGHETTI §7C). Officer, captain
 // and fleet names are people's and players' and never pass through here.
 import { getLocale, type Locale } from '../locale'
 import { KO_PORTS } from './ports'
 import { KO_GOODS } from './goods'
+import { KO_SKILLS } from './skills'
 import { KO_CATEGORIES, KO_CULTURES, KO_HULLS, KO_NATIONS, KO_REGIONS, KO_SEAS, KO_TITLES } from './realms'
 
-export type NameKind = 'port' | 'nation' | 'region' | 'good' | 'category' | 'culture' | 'hull' | 'title' | 'sea'
+export type NameKind = 'port' | 'nation' | 'region' | 'good' | 'category' | 'culture' | 'hull' | 'title' | 'sea' | 'skill'
 
 const KO: Record<NameKind, Readonly<Record<string, string>>> = {
   port: KO_PORTS,
@@ -19,6 +20,7 @@ const KO: Record<NameKind, Readonly<Record<string, string>>> = {
   hull: KO_HULLS,
   title: KO_TITLES,
   sea: KO_SEAS,
+  skill: KO_SKILLS,
 }
 
 /** `key` is the map's key (a code, or for ports and hulls the served name); `served` is what the

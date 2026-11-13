@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Card, Icon, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, type IconName, type LoadStep } from '../../components/ui'
+import { Card, Icon, KEEP_WORDS_CLASS, LoadMeter, Note, PageSplit, Row, ScrollPane, Sheet, type IconName, type LoadStep } from '../../components/ui'
 import { ShellStateContext, useShellState } from '../../app/shellState'
 import { ShellFrame } from '../../app/ShellFrame'
 import { alongsideAt, fleetPortCode, housePortCode, whereabouts, whereLine } from '../../domain/fleet'
@@ -338,11 +338,17 @@ function CityFrame({
           layout="page"
           data-testid="city-page"
           title={
-            <span className="inline-flex items-center gap-3" data-testid="city-header">
-              <PortFlag code={port.code} size="title" />
-              <span data-testid="city-name">{port.name}</span>
+            // THE NAME TURNS ONLY AT A SPACE, AND THE KIND GOES UNDER IT WHOLE (2026-11-14, owner row 318): on a 320-px glass "Port Royal",
+            // "Island capital" and the day stood on one line, each of the two turned in half. The flag and the name are one piece.
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5" data-testid="city-header">
+              <span className="flex min-w-0 items-center gap-3">
+                <PortFlag code={port.code} size="title" />
+                <span className={KEEP_WORDS_CLASS} data-testid="city-name">
+                  {port.name}
+                </span>
+              </span>
               {kind && (
-                <span className="text-t-label font-normal text-ink-muted" data-testid="city-kind">
+                <span className="whitespace-nowrap text-t-label font-normal text-ink-muted" data-testid="city-kind">
                   {t(kind.label)}
                 </span>
               )}

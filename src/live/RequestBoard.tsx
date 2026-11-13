@@ -2,7 +2,7 @@ import { ActCell, Figure, GoodKind, goodClassRow, Row, Clip } from '../component
 import { useShellState } from '../app/shellState'
 import { formatCountdown, formatDucats, formatInt, formatPrice, formatPriceFigure } from '../lib/format'
 import type { TradeRequest } from '../lib/rpc'
-import { useT } from '../lib/i18n'
+import { properName, useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE REQUEST BOARD — what this port asks for, one row per request, shaped like the ledger.
@@ -65,7 +65,7 @@ export function RequestBoard({
             {...goodClassRow(r.class)}
             label={
               <span className="flex flex-wrap items-center gap-x-1.5 text-t-body">
-                <Clip>{r.name}</Clip>
+                <Clip>{properName('good', r.good, r.name)}</Clip>
                 <GoodKind compact rarity={r.rarity} goodClass={r.class} />
               </span>
             }
