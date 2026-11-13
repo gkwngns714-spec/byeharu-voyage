@@ -32,6 +32,10 @@ async function fleets() {
 }
 
 test('dark: the read offers nothing and the door refuses', async () => {
+  // 0370 lit fleet room in the built world: this test sets it back in its own database first (the lit test below lights it again)
+  await db.callAs(`
+    with dark as (update public.world_config set value = 'false'::jsonb where key = 'fleet_room_bite' returning 1)
+    select count(*)::int as result from dark`)
   const [fleet] = await fleets()
   const read = await worldShipMoves(fleet.id)
   expect(read.ok && read.value).toEqual({ on: false })
