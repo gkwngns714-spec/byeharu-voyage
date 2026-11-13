@@ -1,4 +1,4 @@
--- 0377 PROD CHECK (volatility), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/volatility.sql
+-- 0392 PROD CHECK (volatility), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/volatility.sql
 -- Run AFTER the deploy and before after.sql or after-lit.sql. Wanted: eight rows, every one provolatile 's' or 'i' (those two files call them).
 begin transaction read only;
 select p.oid::regprocedure::text as fn, p.provolatile
