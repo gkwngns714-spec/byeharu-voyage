@@ -32,6 +32,11 @@
 --        order is NOT changed), so a far city behind a closed sea is shut "too far" and voyage.reach_passage then finds no harbours between. For exactly
 --        that leg (the conditions bite, shut E_LEG_TOO_FAR or E_ENDURANCE, `via` null) `sea` is public.sea_gate(player, fleet, to, the leg's course):
 --        the sea on the direct course that refuses her, or null when no sea does. In every other case, and always while dark, `sea` is null.
+--   7. cmd.refusal_caught(text, text)   ONE HUNK. The one catcher of a raised refusal (cmd.preview, cmd.issue, cmd.issue_lines, cmd.execute_order and so
+--        public.orders.error_figures, the armada verbs) kept a DETAIL's figures only in cmd.figures' shape {have, need, unit} and dropped every other, so
+--        an order refused E_SEA_CLOSED reached the client with its sentence and no figures. It now ALSO keeps the sea rule's shape (an object whose `zone`
+--        is a string and whose `needs_title` and `needs_wave` are numbers). The {have, need, unit} test is the same text; every other shape is still
+--        dropped; the function stays IMMUTABLE. No other function filters figures (searched: it is the only body that reads ->'have').
 --
 -- DECIDED BY DEFAULT (the owner may reverse any of these afterwards):
 --   * public.far_powers() lists EVERY nation whose capital's sea asks a title, the minor ones too. Who may be joined stays public.nation_joinable's answer.
@@ -41,15 +46,15 @@
 --
 -- NOT TOUCHED: public.sea_gate, public.passage_gate, public.sea_routes, voyage.reach_passage, world.good_board (re-cut by 0361), voyage.settle (0362, 0367),
 --   every merchant reader, every table, every knob. Asserted below: no other function, no world_config row, no relation moves.
--- OVERLAPS: world.route_legs was written whole by 0346 and not cut since (0360 and 0361 read beside it). public.sea_refusal and world.sea_conditions were last written by 0215 (whole). cmd.found_house was last cut by 0338 (the E_MINOR_POWER door);
+-- OVERLAPS: cmd.refusal_caught was written whole by 0050 and not cut since. world.route_legs was written whole by 0346 and not cut since (0360 and 0361 read beside it). public.sea_refusal and world.sea_conditions were last written by 0215 (whole). cmd.found_house was last cut by 0338 (the E_MINOR_POWER door);
 --   0354 calls it and does not cut it. public.client_rpc_entry_points was last cut by 0367 (the armada rows) and before it 0360; this file's anchor is the
 --   world.sea_conditions row (0215).
--- LOCKS: CREATE OR REPLACE of five small functions and two creates. No ALTER, no table lock, no row written but the probe's (rolled back).
+-- LOCKS: CREATE OR REPLACE of six small functions and two creates. No ALTER, no table lock, no row written but the probe's (rolled back).
 -- COST: world.sea_conditions: one grouped read of the 249 harbour self rows, and per fleet one fleet_wave (as before) and 64 calls of the pure rule.
 --   Timed below on a probe company of five fleets. world.sea_zone_map: 720 rows of 1440 bytes walked once; timed below.
 -- news: none (nothing a player can see changes with this file: the screens that read these keys, and the news of the wall, come with the client and the
 --   file that lights sea_conditions_bite).
--- ROLLBACK (forward, owner only): scripts/ops/harness/sea-wall/rollback-0376.sql, a draft: it reverses the seven hunks and drops the two new functions.
+-- ROLLBACK (forward, owner only): scripts/ops/harness/sea-wall/rollback-0376.sql, a draft: it reverses the eight hunks and drops the two new functions.
 --   Safe at any time while dark; lit, it also removes the far-power door. A client that reads the new keys treats them as optional.
 -- SELF-ASSERT: the catalog, the hunks once and reversing, then a probe of its own rolled-back rows (the switch is turned INSIDE the rolled-back probe only).
 -- BUDGET (docs/OPS_HEALTH.md section 4): ONE DO block, statement_timeout 45 s, lock_timeout 5 s first. The self-assert fails above 45 s.
@@ -80,12 +85,13 @@ declare
   v_ms_map      numeric;
   v_map         jsonb;
   v_bad         text;
+  v_caught      text;
   i             int;
   c_uid   constant uuid := '00000000-0376-4000-8000-000000000001';
   c_uid2  constant uuid := '00000000-0376-4000-8000-000000000002';
   c_uid3  constant uuid := '00000000-0376-4000-8000-000000000003';
   c_cut   constant text[] := array['public.sea_refusal(integer,numeric,text[])', 'cmd.found_house(text,text)', 'world.sea_conditions()',
-                                   'public.client_rpc_entry_points()', 'world.route_legs(uuid,jsonb)'];
+                                   'public.client_rpc_entry_points()', 'world.route_legs(uuid,jsonb)', 'cmd.refusal_caught(text,text)'];
 begin
   perform set_config('statement_timeout', '45s', true);
   perform set_config('lock_timeout', '5s', true);
@@ -119,6 +125,12 @@ begin
     from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname in ('public', 'cmd', 'world', 'voyage') and c.relkind in ('r', 'v', 'm', 'S', 'i', 'f', 'p');
   v_before := world.sea_conditions();   -- nobody is signed in here: the zones and the names
+  -- the catcher's answers before the cut: cmd.figures' shape, another shape, a PostgreSQL DETAIL, none, a message with no code, half the sea's shape
+  v_caught := concat_ws('|', cmd.refusal_caught('E_INSUFFICIENT_FUNDS: you hold 5 d. and it costs 9 d.', '{"have": 5, "need": 9, "unit": "d."}')::text,
+                             cmd.refusal_caught('E_ENDURANCE: too long', '{"nm": 500, "leg_days": 3}')::text,
+                             cmd.refusal_caught('E_NAME_TAKEN: taken', 'Key (id)=(1) already exists')::text,
+                             cmd.refusal_caught('E_X: none', null)::text, cmd.refusal_caught('no code here', '{"have": 1, "need": 2, "unit": "t"}')::text,
+                             cmd.refusal_caught('E_SEA_CLOSED: half a shape', '{"zone": "NOR-MID", "needs_title": 4}')::text);
 
   -- ── 2. THE TWO NEW FUNCTIONS ──
   execute $f$
@@ -200,7 +212,7 @@ $body$
   comment on function world.sea_zone_map() is
     '0376: where each sea lies: the zone raster (0.25 degree cells, row 0 north, column 0 at -180) run-length coded by row, with the zone code of each byte value (0 = land or no zone). A read.';
 
-  -- ── 3. THE SEVEN HUNKS: each once on the live body, each reversing to its pre-image ──
+  -- ── 3. THE EIGHT HUNKS: each once on the live body, each reversing to its pre-image ──
   for h in
     select * from (values
       (1, 'public.sea_refusal(integer,numeric,text[])',
@@ -285,6 +297,16 @@ $h$      'via', v_via,
       -- `sea` is public.sea_gate's own refusal on the direct course, or null when the seas are not what stops her. Dark: always null.
       'sea', case when v_via is null and v_shut ->> 'code' in ('E_LEG_TOO_FAR', 'E_ENDURANCE') and public.sea_conditions_on()
                   then public.sea_gate(v_player, p_fleet, v_to, v_rows[i] -> 'course') end));
+$h$),
+      (8, 'cmd.refusal_caught(text,text)',
+$h$    if v_figs is null
+$h$,
+$h$    -- 0376: THE SEA RULE'S FIGURES ARE KEPT TOO (public.sea_refusal: an object whose `zone` is a string and whose `needs_title` and `needs_wave` are
+    -- numbers), so an order refused E_SEA_CLOSED reaches the client with what the sea asks and what she holds. Every other shape is dropped as before.
+    if v_figs is not null and jsonb_typeof(v_figs) = 'object' and jsonb_typeof(v_figs->'zone') = 'string'
+       and jsonb_typeof(v_figs->'needs_title') = 'number' and jsonb_typeof(v_figs->'needs_wave') = 'number' then
+      null;
+    elsif v_figs is null
 $h$)) as t(ord, fn, old, new)
     order by 1
   loop
@@ -320,6 +342,10 @@ $h$, '');
                                          order by f.created_at), '[]'::jsonb)
                  from public.fleets f where v_player is not null and f.player_id = v_player));
 $h$ || substr(v_def, position(E'end $function$' in v_def));
+    elsif h.fn = 'cmd.refusal_caught(text,text)' then
+      v_def := substr(v_def, 1, position($h$    -- 0376: THE SEA RULE'S FIGURES ARE KEPT TOO$h$ in v_def) - 1)
+               || $h$    if v_figs is null
+$h$ || substr(v_def, position($h$       or jsonb_typeof(v_figs) is distinct from 'object'$h$ in v_def));
     elsif h.fn = 'world.route_legs(uuid,jsonb)' then
       v_def := substr(v_def, 1, position($h$      'via', v_via,
       -- 0376: WHEN IT IS A SEA THAT STOPS HER$h$ in v_def) - 1)
@@ -387,6 +413,23 @@ $h$, '');
   end if;
   if public.sea_refusal(11, 99, (select array_agg(code) from public.sea_zones)) is not null then
     raise exception '0376 self-assert FAIL: title 11 and wave 99 are refused somewhere';
+  end if;
+
+  -- the catcher: every old answer is the same text; the sea rule's figures are kept whole; it is still IMMUTABLE
+  if concat_ws('|', cmd.refusal_caught('E_INSUFFICIENT_FUNDS: you hold 5 d. and it costs 9 d.', '{"have": 5, "need": 9, "unit": "d."}')::text,
+                             cmd.refusal_caught('E_ENDURANCE: too long', '{"nm": 500, "leg_days": 3}')::text,
+                             cmd.refusal_caught('E_NAME_TAKEN: taken', 'Key (id)=(1) already exists')::text,
+                             cmd.refusal_caught('E_X: none', null)::text, cmd.refusal_caught('no code here', '{"have": 1, "need": 2, "unit": "t"}')::text,
+                             cmd.refusal_caught('E_SEA_CLOSED: half a shape', '{"zone": "NOR-MID", "needs_title": 4}')::text) is distinct from v_caught
+     or cmd.refusal_caught('E_ENDURANCE: too long', '{"nm": 500, "leg_days": 3}') ? 'figures'
+     or cmd.refusal_caught('E_SEA_CLOSED: half a shape', '{"zone": "NOR-MID", "needs_title": 4}') ? 'figures'
+     or (cmd.refusal_caught('E_INSUFFICIENT_FUNDS: short', '{"have": 5, "need": 9, "unit": "d."}') -> 'figures') is distinct from '{"have": 5, "need": 9, "unit": "d."}'::jsonb then
+    raise exception '0376 self-assert FAIL: cmd.refusal_caught moved an old answer, or keeps a shape that is not the sea rule''s whole';
+  end if;
+  v_r := public.sea_refusal(1, 12, array['NOR-MID']);
+  if cmd.refusal_caught('E_SEA_CLOSED: ' || (v_r ->> 'sentence'), (v_r -> 'figures')::text) is distinct from v_r
+     or (select p.provolatile from pg_proc p where p.oid = 'cmd.refusal_caught(text,text)'::regprocedure) <> 'i' then
+    raise exception '0376 self-assert FAIL: a caught sea refusal is not the rule''s own refusal back, or the catcher is no longer IMMUTABLE';
   end if;
 
   -- ── 6. THE FAR POWERS: the derivation, said a second way through the raster reading (public.harbour_zone) ──
@@ -484,6 +527,15 @@ $h$, '');
       raise exception '0376 self-assert FAIL: her conditions: the port, the wave, or `seas` is not the rule''s verdict a zone: %', v_r -> 'fleets' -> 0;
     end if;
 
+    -- (c1) AN ORDER REFUSED BY THE SEA carries the rule's figures: the real preview of SAIL LPA (Las Palmas, Macaronesia: title 2) at title 1
+    v_r := cmd.preview(v_fl, 'SAIL LPA', null);
+    if (v_r ->> 'ok') <> 'false' or (v_r ->> 'error_code') is distinct from 'E_SEA_CLOSED'
+       or (v_r -> 'figures' ->> 'zone') is distinct from 'NOR-MAC' or (v_r -> 'figures' ->> 'needs_title')::int is distinct from 2
+       or (v_r -> 'figures' ->> 'title')::int is distinct from 1
+       or (v_r -> 'figures' -> 'short_title') is distinct from 'true'::jsonb or (v_r -> 'figures' -> 'short_wave') is distinct from 'false'::jsonb then
+      raise exception '0376 self-assert FAIL: lit, the preview of SAIL LPA at title 1: %', v_r;
+    end if;
+
     -- (c2) THE LEGS: lit, a far city behind a closed sea names the sea; a near city and a leg with harbours between say none. Dark: never.
     v_r := world.route_legs(v_fl, jsonb_build_array(jsonb_build_object('from', 'LIS', 'to', 'HNL'), jsonb_build_object('from', 'LIS', 'to', 'OPO'),
                                                     jsonb_build_object('from', 'LIS', 'to', 'STO'), jsonb_build_object('from', 'LIS', 'to', 'NAG')));
@@ -544,7 +596,7 @@ $h$, '');
   if clock_timestamp() - v_t0 > interval '45 seconds' then
     raise exception '0376 self-assert FAIL: the self-assert took % (budget 45 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0376 self-assert ok: A WALL SAYS WHAT IS SHORT. Seven hunks, each once and reversing; two new functions; no other function, knob or relation moved. The rule''s figures gain short_title and short_wave. Far powers: %. Dark, Japan founds as before; lit, E_FAR_POWER with figures, Portugal founds. world.sea_conditions: `harbours` adds up, `seas` is the rule''s verdict a zone; a leg behind a closed sea names it (lit only); five fleets: fleets read % ms before, whole read % ms after. world.sea_zone_map: % ms, % bytes. % ms in all.',
+  raise notice '0376 self-assert ok: A WALL SAYS WHAT IS SHORT. Eight hunks, each once and reversing; two new functions; no other function, knob or relation moved. The rule''s figures gain short_title and short_wave. Far powers: %. Dark, Japan founds as before; lit, E_FAR_POWER with figures, Portugal founds. world.sea_conditions: `harbours` adds up, `seas` is the rule''s verdict a zone; a leg behind a closed sea names it (lit only); an order the sea refuses carries the rule''s figures; five fleets: fleets read % ms before, whole read % ms after. world.sea_zone_map: % ms, % bytes. % ms in all.',
     array_to_string(v_far, ' '), v_ms_before, v_ms_after, v_ms_map, length(v_map::text), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;

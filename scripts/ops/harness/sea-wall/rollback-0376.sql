@@ -1,7 +1,7 @@
 -- 0376 FORWARD ROLLBACK, A DRAFT. NOT a prod check and NOT a migration yet: to use it, strip the guard line, give it the next number, add its news line
--- ("-- news: none") and deploy it as any migration (owner only). It swaps 0376's OLD and NEW: each of the five cut bodies loses exactly what 0376 added (each
+-- ("-- news: none") and deploy it as any migration (owner only). It swaps 0376's OLD and NEW: each of the six cut bodies loses exactly what 0376 added (each
 -- NEW text once, reversed, judged as a round trip on the live body: no fixed digest, a later file may have re-cut it), and the two new functions are dropped.
--- The rule's figures lose short_title / short_wave, the conditions read loses harbours / port / seas / far_powers, a leg loses `sea`, and founding under a far
+-- The rule's figures lose short_title / short_wave, the conditions read loses harbours / port / seas / far_powers, a leg loses `sea`, a refused order loses the sea's figures, and founding under a far
 -- power is no longer refused when the conditions bite: SO IF sea_conditions_bite IS TRUE, TURN IT OFF FIRST (or accept companies born behind a wall).
 -- The client reads every one of those keys as optional and falls back (no shading, no "which is short").
 -- Tested locally (run.mjs --apply=0376 on this file followed by before.sql in one scene): every old_times 1, new_times 0, new_functions 0.
@@ -91,6 +91,14 @@ $h$, $h$      'via', v_via,
       -- `sea` is public.sea_gate's own refusal on the direct course, or null when the seas are not what stops her. Dark: always null.
       'sea', case when v_via is null and v_shut ->> 'code' in ('E_LEG_TOO_FAR', 'E_ENDURANCE') and public.sea_conditions_on()
                   then public.sea_gate(v_player, p_fleet, v_to, v_rows[i] -> 'course') end));
+$h$),
+  ('cmd.refusal_caught(text,text)', 8, $h$    if v_figs is null
+$h$, $h$    -- 0376: THE SEA RULE'S FIGURES ARE KEPT TOO (public.sea_refusal: an object whose `zone` is a string and whose `needs_title` and `needs_wave` are
+    -- numbers), so an order refused E_SEA_CLOSED reaches the client with what the sea asks and what she holds. Every other shape is dropped as before.
+    if v_figs is not null and jsonb_typeof(v_figs) = 'object' and jsonb_typeof(v_figs->'zone') = 'string'
+       and jsonb_typeof(v_figs->'needs_title') = 'number' and jsonb_typeof(v_figs->'needs_wave') = 'number' then
+      null;
+    elsif v_figs is null
 $h$);
   for f in select distinct x.fn from hunks_back x order by 1 loop
     v_live := replace(pg_get_functiondef(f.fn::regprocedure), chr(13), '');
@@ -117,6 +125,6 @@ $h$);
   end loop;
   drop function world.sea_zone_map();
   drop function public.far_powers();
-  raise notice '0376 rollback ok: 5 bodies less 0376''s 7 hunks (a round trip on each), the 2 new functions gone';
+  raise notice '0376 rollback ok: 6 bodies less 0376''s 8 hunks (a round trip on each), the 2 new functions gone';
 end
 $r$;

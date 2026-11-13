@@ -1,5 +1,6 @@
 -- 0376 PROD CHECK (before), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-wall/before.sql
--- Wanted: 7 rows (1 of public.sea_refusal, 1 of cmd.found_house, 3 of world.sea_conditions, 1 of public.client_rpc_entry_points, 1 of world.route_legs); every
+-- Wanted: 8 rows (1 of public.sea_refusal, 1 of cmd.found_house, 3 of world.sea_conditions, 1 of public.client_rpc_entry_points, 1 of world.route_legs,
+-- 1 of cmd.refusal_caught); every
 -- old_times 1; every new_times 0; new_functions 0; sea_conditions_bite false; seas 64; map_rows 720; harbours_with_a_sea = harbours; head = the migration
 -- before 0376. far_powers is what the new function will answer (local: AYU BAN GUJ JOS JPN MLB MNG MUG PER PIR RUS); human_companies_of_a_far_power says how
 -- many companies already sail for one (they are not touched by this file; the lighting file judges them).
@@ -74,6 +75,14 @@ $h$, $h$      'via', v_via,
       -- `sea` is public.sea_gate's own refusal on the direct course, or null when the seas are not what stops her. Dark: always null.
       'sea', case when v_via is null and v_shut ->> 'code' in ('E_LEG_TOO_FAR', 'E_ENDURANCE') and public.sea_conditions_on()
                   then public.sea_gate(v_player, p_fleet, v_to, v_rows[i] -> 'course') end));
+$h$),
+  ('cmd.refusal_caught(text,text)'::text, 8, 0, $h$    if v_figs is null
+$h$, $h$    -- 0376: THE SEA RULE'S FIGURES ARE KEPT TOO (public.sea_refusal: an object whose `zone` is a string and whose `needs_title` and `needs_wave` are
+    -- numbers), so an order refused E_SEA_CLOSED reaches the client with what the sea asks and what she holds. Every other shape is dropped as before.
+    if v_figs is not null and jsonb_typeof(v_figs) = 'object' and jsonb_typeof(v_figs->'zone') = 'string'
+       and jsonb_typeof(v_figs->'needs_title') = 'number' and jsonb_typeof(v_figs->'needs_wave') = 'number' then
+      null;
+    elsif v_figs is null
 $h$)
 ), d as (
   select h.*, replace(pg_get_functiondef(to_regprocedure(h.fn)), chr(13), '') as def from h
