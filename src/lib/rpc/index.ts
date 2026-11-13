@@ -87,6 +87,7 @@ import type {
   PriceOutlook,
   PriceWhy,
   SeaConditions,
+  SeaZoneMap,
   GoodBoard,
   BestSales,
   Watchlist,
@@ -513,6 +514,7 @@ export type { RpcName, RpcSpec } from './catalog'
 export { expectOk, fromError, fromPayload, ok, refused } from './result'
 export { lineDelta, readManifestReceipt } from './manifest'
 export type { Refusal, RefusalFigures, RpcResult } from './result'
+export { SEA_CLOSED, readSeaWall, seaWallOf, type SeaWall } from './seaWall'
 export type * from './types'
 
 /**
@@ -796,6 +798,12 @@ export function worldPriceWhy(portId: string, goodId: string): Promise<RpcResult
  *  The client prints these figures and derives none of them. */
 export function worldSeaConditions(): Promise<RpcResult<SeaConditions>> {
   return call<SeaConditions>('worldSeaConditions', [])
+}
+
+/** Where each sea lies (0396, `world.sea_zone_map`): the zone raster on the client's own sea grid, run-length coded
+ *  by row, and the zone code of each byte value. World data; the map's shading decodes it and decides nothing. */
+export function worldSeaZoneMap(): Promise<RpcResult<SeaZoneMap>> {
+  return call<SeaZoneMap>('worldSeaZoneMap', [])
 }
 
 /** The best sale of every good a city sells, for your fleet (0348): the city and the served profit. */

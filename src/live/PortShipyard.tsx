@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Figure, Note, Row } from '../components/ui'
 import { StepQuestion } from './StepQuestion'
 import { useStepOrder } from './useStepOrder'
-import { worstHullFraction } from '../domain/fleet'
-import { formatPct } from '../lib/format'
+import { worstHullFraction, wornFittings } from '../domain/fleet'
+import { formatInt, formatPct } from '../lib/format'
 import type { FleetView, SnapshotPort } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 
@@ -54,6 +54,7 @@ function Repair({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
   const [open, setOpen] = useState(false)
   const step = useStepOrder(fleet, 'REPAIR', open, () => setOpen(false))
   const worst = worstHullFraction(fleet)
+  const worn = wornFittings(fleet)
 
   return (
     <div data-testid="port-shipyard">
@@ -67,9 +68,21 @@ function Repair({ port, fleet }: { port: SnapshotPort; fleet: FleetView }) {
         }
         chevron
         onClick={() => setOpen(true)}
-        hairline={false}
+        hairline={worn.units > 0}
         data-testid="shipyard-repair"
       />
+      {/* 0158: HER WORN FITTINGS — a repair mends them with the hull, so the yard says how many there are (served
+          only while gear wear bites; a whole hull with worn fittings is still a reason to press). */}
+      {worn.units > 0 && (
+        <Row
+          label={t('ship.wornFittings')}
+          value={<Figure value={formatInt(worn.units)} tone="warning" size="figure" />}
+          chevron
+          onClick={() => setOpen(true)}
+          hairline={false}
+          data-testid="shipyard-worn"
+        />
+      )}
       {open && (
         <StepQuestion
           fleet={fleet}

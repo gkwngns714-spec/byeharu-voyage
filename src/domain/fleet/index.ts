@@ -52,6 +52,8 @@ export {
   // TONS A CREW NEEDS FOR SO MANY DAYS AT SEA (owner row 183) — the server's consumption, for a plan.
   voyageFraction,
   worstHullFraction,
+  // THE WORN FITTINGS OF A FLEET (0158) — one count for the sheet, the yard and the tray.
+  wornFittings,
   type CargoLine,
   type CrewCount,
   type FleetSignal,

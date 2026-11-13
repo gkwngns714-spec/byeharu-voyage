@@ -1,8 +1,8 @@
-import { Button, KEEP_WORDS_CLASS } from '../../components/ui'
+import { Button, KEEP_WORDS_CLASS, seaName, seaWallTag } from '../../components/ui'
 import { CHART_CHROME } from '../../chart'
 import { formatVoyageDays } from '../../lib/format'
-import { useT } from '../../lib/i18n'
-import type { RouteLeg } from '../../lib/rpc'
+import { useLocale, useT } from '../../lib/i18n'
+import { seaWallOf, type RouteLeg } from '../../lib/rpc'
 import { LegLines, type LegLine } from '../../live/LegLines'
 import type { RouteBuilder, RouteHold, RouteRepeat } from './useRouteBuilder'
 
@@ -94,6 +94,9 @@ export function RouteBar({
 }) {
   const t = useT()
   const { legs, served, hold, kept, repeat } = route
+  const locale = useLocale()
+  // the first leg the server shuts by a sea (lib/rpc/seaWall.ts: the one reading of that answer)
+  const seaWall = served?.slice(0, legs.length).map((l) => seaWallOf(l.shut)).find((w) => w !== null) ?? null
   const lines: LegLine[] = legs.map((leg, i) => {
     const s = served?.[i] ?? null
     const pending = i >= kept.length
@@ -124,6 +127,11 @@ export function RouteBar({
       {route.refusal ? (
         <p className="truncate text-t-body text-warning" role="status" title={route.refusal} data-testid="route-refusal">
           {route.refusal}
+        </p>
+      ) : seaWall ? (
+        // A LEG SHUT BY A SEA says which sea and what it asks that she does not hold, in the line's own place (no height)
+        <p className={`${KEEP_WORDS_CLASS} text-t-body text-warning`} role="status" data-testid="route-sea-wall" data-sea-wall={seaWall.zone}>
+          {`${seaName(locale, seaWall)}: ${seaWallTag(locale, seaWall)}`}
         </p>
       ) : (
         <p data-name="" className={`${KEEP_WORDS_CLASS} text-t-body font-medium text-ink`} data-testid="route-summary">

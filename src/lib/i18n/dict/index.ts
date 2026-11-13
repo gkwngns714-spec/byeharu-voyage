@@ -23,6 +23,7 @@ import { portDict } from './port'
 import { profileDict } from './profile'
 import { rankDict } from './rank'
 import { routesDict } from './routes'
+import { seasDict } from './seas'
 import { shellDict } from './shell'
 import { shipDict } from './ship'
 import { statsDict } from './stats'
@@ -57,6 +58,7 @@ export const DICT = {
   profile: profileDict,
   rank: rankDict,
   routes: routesDict,
+  seas: seasDict,
   shell: shellDict,
   ship: shipDict,
   stats: statsDict,

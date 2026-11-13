@@ -7,6 +7,7 @@ import type { ShipSet, ShipBonus, ShipBudget, ShipRack, ShipRoll, ShipSeats } fr
 import { ShipCabins, type Seating } from './ShipCabins'
 import { ShipAugments } from './ShipAugments'
 import { useT, t as tNow, type TKey } from '../lib/i18n'
+import { wornFittings } from '../domain/fleet'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // ONE SHIP, OPENED FROM HER FLEET'S PANEL — the owner, 2026-10-15:
@@ -137,8 +138,8 @@ interface SlotBox {
   fitted: string | null
   /** 0127: the level that opens this box, or null for a box she has now. */
   opensAt: number | null
-  /** 0158: a fitted unit's wear as served (`wear` 0-100, `wear_words`), or null — nothing to draw. */
-  wear?: { wear: number; words: string } | null
+  /** 0158: a fitted unit's wear as served (`wear` 0-100, `works_pct`), or null — nothing to draw. */
+  wear?: { wear: number; works: number } | null
 }
 
 /** Every slot she has, one box each, filled in the order her fittings are mounted. A fitting
@@ -195,13 +196,18 @@ function Heading({ children, trailing }: { children: ReactNode; trailing?: React
 /** One square place: a fitted unit glows with its item's glyph; an empty one shows its rack's; a place a
  *  level opens later is dimmed with the level. */
 function Box({ b }: { b: SlotBox }) {
+  const t = useT()
+  // 0158: the wear in the reader's language, from the served figures (the server's own sentence is English only).
+  // A NEW piece draws nothing: the server serves a card for every piece that CAN wear, a merchant's included, and a
+  // full bar under every fitting of every hull would say nothing.
+  const worn = b.wear && b.wear.wear > 0 ? t('ship.wearWorn', { n: formatInt(Math.round(b.wear.wear)), m: formatInt(b.wear.works) }) : null
   const on = b.fitted !== null
   const shut = b.opensAt !== null
   return (
     <div
       data-fitted={on || undefined}
       data-locked={shut || undefined}
-      title={on ? `${b.word}: ${b.fitted}${b.wear ? ` — ${b.wear.words}` : ''}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
+      title={on ? `${b.word}: ${b.fitted}${worn ? ` — ${worn}` : ''}` : shut ? `${b.word} — level ${b.opensAt}` : `${b.word} — empty`}
       className={[
         'relative flex aspect-square min-w-0 flex-col items-center justify-center gap-1 rounded-control p-1.5 text-center',
         'shadow-[inset_0_1px_0_rgb(255_255_255/0.04),inset_0_-2px_4px_rgb(0_0_0/0.35)]',
@@ -213,12 +219,14 @@ function Box({ b }: { b: SlotBox }) {
       <span className={`break-words text-[0.6875rem] leading-tight ${on ? 'text-ink' : 'text-ink-faint/60'}`}>
         {on ? b.fitted : shut ? `Lv ${b.opensAt}` : b.word}
       </span>
-      {/* 0158 (S13): THE WEAR BAR — what is left of the piece (100 − its served wear), under the server's own
-          words; drawn only when the server serves a wear for it (gear wear on, and a piece that wears). */}
-      {on && b.wear && (
+      {/* 0158 (S13): THE WEAR BAR — what is left of the piece (100 − its served wear), named in the reader's
+          language; drawn only for a piece that is worn (gear wear on, and a wear above nothing). */}
+      {on && b.wear && worn && (
         <span
           data-testid="unit-wear"
-          aria-label={b.wear.words}
+          data-wear={b.wear.wear}
+          role="img"
+          aria-label={worn}
           className="absolute inset-x-1.5 bottom-1 h-0.5 overflow-hidden rounded-full bg-ink-faint/20"
         >
           <span
@@ -241,7 +249,7 @@ function rackBoxes(rack: ShipRack): SlotBox[] {
     word: rack.word,
     fitted: u.name,
     opensAt: null,
-    wear: u.wear !== undefined && u.wear_words !== undefined ? { wear: u.wear, words: u.wear_words } : null,
+    wear: u.wear !== undefined && u.works_pct !== undefined ? { wear: u.wear, works: u.works_pct } : null,
   }))
   for (let i = rack.fitted.length; i < rack.open; i++) {
     out.push({ key: `${rack.rack}-e-${i}`, kind: empty, word: rack.word, fitted: null, opensAt: null })
@@ -290,7 +298,23 @@ function RackEquipment({ ship, racks }: { ship: ShipView; racks: readonly ShipRa
           ))}
         </div>
       )}
+      <WornLine racks={racks} />
     </section>
+  )
+}
+
+/** 0158 — WHAT IS WORN ABOARD, IN WORDS: the bars under the places are two pixels high, so the sheet also says it.
+ *  Drawn only when a unit is served a wear above nothing (gear wear on, and something worn). */
+function WornLine({ racks }: { racks: readonly ShipRack[] }) {
+  const t = useT()
+  const { units, worstWorks } = wornFittings({ ships: [{ racks }] })
+  if (units === 0) return null
+  return (
+    <p data-testid="ship-worn" className="pt-3 text-t-caption text-ink-faint">
+      <span className="text-warning">{`${t('ship.wornFittings')}: ${t('ship.wornCount', { n: formatInt(units) })}`}</span>
+      {worstWorks !== null ? `, ${t('ship.wornWeakest', { m: formatInt(worstWorks) })}` : ''}
+      {`. ${t('ship.wornHelp')}`}
+    </p>
   )
 }
 

@@ -11,7 +11,8 @@ export function refusalWords(locale: Locale, code: string, figures: { have: numb
   if (locale === 'en') return null
   const sentence = translateMaybe(locale, 'codes', code)
   if (sentence === null) return null
-  if (!figures) return sentence
+  // figures of another shape (a closed sea's, 0396) are not a have / need pair: the sentence stands alone
+  if (!figures || typeof figures.have !== 'number' || typeof figures.need !== 'number') return sentence
   const unit = translateMaybe(locale, 'codes', `unit_${figures.unit}`) ?? figures.unit
   const fig = translateMaybe(locale, 'codes', 'figures', { have: figure(figures.have), need: figure(figures.need), unit })
   return `${sentence} (${fig})`

@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from 'react'
 import { useLocale } from '../../lib/i18n'
 import { refusalWords } from './refusalWords'
+import { seaWallWords } from './seaWallWords'
+import type { SeaWall } from '../../lib/rpc'
 
 // THE NOTE — one line, a tone, and at most one action.
 //
@@ -44,6 +46,7 @@ export function Note({
   figure,
   code,
   figures,
+  sea,
   children,
   className = '',
   ...rest
@@ -58,6 +61,9 @@ export function Note({
   /** The figures a refusal served beside its code (have / need / unit) — printed after the
    *  Korean sentence, which is written per code and so cannot carry them itself. */
   figures?: { have: number; need: number; unit: string }
+  /** A sea closed to her (a refusal's `sea`, lib/rpc/seaWall.ts): the note then says the sea, what it asks and what
+   *  to do, in the one wording (./seaWallWords.ts), in place of the server's sentence. */
+  sea?: SeaWall | null
   children: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
@@ -75,7 +81,9 @@ export function Note({
       {...rest}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-t-label">{(code && refusalWords(locale, code, figures)) || children}</p>
+        <p className="text-t-label" data-sea-wall={sea ? sea.zone : undefined}>
+          {sea ? seaWallWords(locale, sea) : (code && refusalWords(locale, code, figures)) || children}
+        </p>
         {figure !== undefined && <div className="mt-1">{figure}</div>}
       </div>
       {action !== undefined && <div className="shrink-0">{action}</div>}

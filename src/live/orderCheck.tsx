@@ -13,6 +13,7 @@ import { num, str } from '../lib/json'
 import { sailEstimate } from '../domain/order'
 import type { PreviewResult, Refusal } from '../lib/rpc'
 import { useT } from '../lib/i18n'
+import { seaWallOf } from '../lib/rpc'
 
 // THE CHECK, COMPACT — the server's dry run, drawn as Rows and one Note.
 //
@@ -50,7 +51,7 @@ export function OrderCheck({
 
   if (check.status === 'refused') {
     return (
-      <Note tone="danger" code={check.refusal.code} figures={check.refusal.figures} data-testid="order-check-refusal">
+      <Note tone="danger" code={check.refusal.code} figures={check.refusal.figures} sea={seaWallOf(check.refusal)} data-testid="order-check-refusal">
         {check.refusal.sentence}
       </Note>
     )
@@ -71,9 +72,9 @@ export function OrderCheck({
 }
 
 /** 0158: the gear a REPAIR also repaired, as served (`GearRepair`), or null. */
-function gearOf(estimate: Record<string, unknown>): { words: string } | null {
-  const g = estimate.gear
-  if (g && typeof g === 'object' && typeof (g as { words?: unknown }).words === 'string') return { words: (g as { words: string }).words }
+function gearOf(estimate: Record<string, unknown>): { units: number; cost: number } | null {
+  const g = estimate.gear as { units?: unknown; cost?: unknown } | null | undefined
+  if (g && typeof g === 'object' && typeof g.units === 'number' && typeof g.cost === 'number') return { units: g.units, cost: g.cost }
   return null
 }
 
@@ -143,9 +144,12 @@ function Estimate({
       return (
         <>
           {points !== null && <Row label={t('books.hullRepaired')} value={<Figure value={formatFixed(points, 1)} />} />}
-          {/* 0158 (S13): "Repair all" — the fleet's worn fittings go with the hull, in the server's words
-              (public.gear_repair_quote); served only while gear wear bites and something is worn. */}
-          {gear !== null && <Row label={t('books.fittings')} value={gear.words} data-testid="repair-gear" />}
+          {/* 0158 (S13): "Repair all" — the fleet's worn fittings go with the hull (public.gear_repair_quote: how
+              many, and their share of the price); served only while gear wear bites and something is worn. Worded
+              here from the figures: the server's own sentence is English only. */}
+          {gear !== null && (
+            <Row label={t('books.fittings')} value={t('books.fittingsRepaired', { n: formatInt(gear.units), cost: formatDucats(gear.cost) })} data-testid="repair-gear" />
+          )}
           {cost !== null && <Row label={t('books.itCosts')} value={<Figure value={formatDucats(cost)} />} hairline={false} />}
         </>
       )

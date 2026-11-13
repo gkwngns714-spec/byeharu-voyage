@@ -9,6 +9,7 @@ import type { FleetView, Refusal, StandingRoute } from '../lib/rpc'
 import { draftOfRoute, emptyStop, routeName, routePayload, seedRoute, type RouteStopDraft } from './standingRouteDraft'
 import { RouteStopBlock, StopLineRow, StopPortRow } from './RouteStop'
 import { useT } from '../lib/i18n'
+import { seaWallOf } from '../lib/rpc'
 
 // THE ROUTE EDITOR — inside RouteFold, on the route's page (docs/TRADE_ROUTES.md §7; the one
 // pop-up page since consistency row 38), and — the SAME editor, seeded — behind the map route builder's Repeat
@@ -207,7 +208,7 @@ export function RouteEditor({
         </Note>
       )}
       {refusal && (
-        <Note tone="danger" code={refusal.code} figures={refusal.figures} className="mt-2" data-testid="route-refusal">
+        <Note tone="danger" code={refusal.code} figures={refusal.figures} sea={seaWallOf(refusal)} className="mt-2" data-testid="route-refusal">
           {refusal.sentence}
         </Note>
       )}
