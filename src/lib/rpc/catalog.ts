@@ -443,6 +443,10 @@ const TABLE = {
   worldLevels: { schema: 'world', fn: 'levels', args: [] },
   worldShipMoves: { schema: 'world', fn: 'ship_moves', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdMoveShip: { schema: 'cmd', fn: 'move_ship', mutates: true, args: [{ name: 'p_ship', type: 'uuid' }, { name: 'p_to', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
+  // 0354 (docs/FLEETS_AND_SLOTS.md sections 2.2, 2.3): the room a company has and how more opens; one step bought with gold (dark: E_NOT_IN_USE); a fleet renamed.
+  worldHouseRoom: { schema: 'world', fn: 'house_room', args: [] },
+  cmdBuyRoom: { schema: 'cmd', fn: 'buy_room', mutates: true, args: [{ name: 'p_kind', type: 'text' }] },
+  cmdRenameFleet: { schema: 'cmd', fn: 'rename_fleet', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
   // 0327 (docs/WORLD_POWERS.md §4.2): a fleet attacks a cargo ship, now, wherever she is, and its dry run. Dark: E_NOT_IN_USE. Not a line of the grammar: a queue runs only in port.
   cmdAttack: {
     schema: 'cmd',

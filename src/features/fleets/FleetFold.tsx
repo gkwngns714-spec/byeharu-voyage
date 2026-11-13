@@ -9,6 +9,8 @@ import { voyageFraction, whereabouts, whereLine } from '../../domain/fleet'
 import { FleetCargo } from './FleetCargo'
 import { FleetShips } from './FleetShips'
 import { FleetStores } from './FleetStores'
+import { FleetTotals } from './FleetTotals'
+import { RenameFleet } from './RenameFleet'
 import { fleetDue } from './fleetLine'
 import { RaidOrder } from '../../live/RaidOrder'
 import { useT } from '../../lib/i18n'
@@ -90,8 +92,14 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       )}
 
       {fleet.ships.length === 0 ? (
-        <Row label={t('fleets.noShips')} tone="muted" hairline={false} data-testid="fleet-no-ships" />
+        <>
+          <Row label={t('fleets.noShips')} tone="muted" hairline={false} data-testid="fleet-no-ships" />
+          {/* 0354: an empty fleet keeps her name, and may take a new one */}
+          <RenameFleet fleet={fleet} className="mt-4 w-full" />
+        </>
       ) : <>
+      {/* 0354: what the fleet adds up to, above the ships it is the sum of */}
+      <FleetTotals fleet={fleet} />
       <SectionColumns count={3}>
         <SheetSection heading={t('fleets.ships')} data-testid="fleet-fold-section">
           <FleetShips fleet={fleet} />
@@ -107,14 +115,18 @@ export function FleetFold({ fleet }: { fleet: FleetView }) {
       {/* 0353: her standing order when raiders close (Fight, Flee, Pay). Draws nothing while orders are dark. */}
       <RaidOrder fleetId={fleet.id} className="mt-6" />
 
-      <Button
-        variant="primary"
-        className="mt-6 w-full"
-        onClick={() => command({ fleetId: fleet.id })}
-        data-testid="fleet-command"
-      >
-        {t('fleets.command', { name: fleet.name })}
-      </Button>
+      {/* 0354: Rename stands beside the hand-off, on its line: the foot grows by nothing */}
+      <div className="mt-6 flex flex-wrap gap-3">
+        <Button
+          variant="primary"
+          className="flex-1"
+          onClick={() => command({ fleetId: fleet.id })}
+          data-testid="fleet-command"
+        >
+          {t('fleets.command', { name: fleet.name })}
+        </Button>
+        <RenameFleet fleet={fleet} />
+      </div>
       </>}
     </div>
   )

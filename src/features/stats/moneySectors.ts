@@ -21,6 +21,7 @@ const BY_KIND: Readonly<Record<string, Sector>> = {
   CROWN_TAX: 'tax',
   PORT_FEE: 'fees',
   FINE: 'fees',
+  SLOT: 'fees',
   CAPITAL_GIFT: 'gifts',
   DONATION: 'gifts',
   GRANT: 'gifts',
