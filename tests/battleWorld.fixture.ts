@@ -8,7 +8,7 @@
 //     serves the crown's ships to the map (world.sea_roster is gated by that switch and by `standing_routes_enabled`) and no merchant is started;
 //   * `battle_round_seconds` is 5, so a battle is 35 s (six rounds and the boarding) instead of 7 minutes;
 //   * Spain's cargo ships exist (the real `public.tick_cargo_ships`), and ONE NAVY SHIP of Spain (the real `public.navy_commission`) lies at the harbour whose passage to
-//     the harbour nearest the cargo ship is nearest to two and a half rounds: the real `public.navy_call` then calls her at the press and she comes up in a LATER round by
+//     the harbour nearest the cargo ship is nearest to two and a half rounds (and never under a round and a half, nor over five and a half): the real `public.navy_call` then calls her at the press and she comes up in a LATER round by
 //     her own sailing (the real `public.navy_reinforce`);
 //   * THE SCENE IS LAID ON THE FIRST CALL OF A JOB THE LOCAL BACKEND PLAYS (`public.tick_arrivals` before a read of the sea's hulls, `public.tick_battles` before a read of the
 //     map's fights, as fightWorld's does), because a page spec cannot know how long the boot took: one of Spain's cargo ships SAILS with 100,000 aboard (the real `public.cargo_ship_step`, hands from the quay, then slowed so
@@ -107,8 +107,9 @@ export function battleWorld(kind: 'board' | 'flee'): Promise<Buffer> {
             perform public.cargo_ship_step(v_target, p_now);
             update public.voyages vo set speed_profile = (select jsonb_agg(to_jsonb(e::text::numeric / 100) order by o) from jsonb_array_elements(vo.speed_profile) with ordinality t(e, o))
              where vo.fleet_id = v_target and vo.status = 'SAILING';
-            -- ... and already six seconds of her own sailing down her leg, so her hull stands clear of the harbour she left (600 s at a hundredth of her speed)
-            update public.voyages vo set departed_at = p_now - interval '600 seconds' where vo.fleet_id = v_target and vo.status = 'SAILING';
+            -- ... and already three seconds of her own sailing down her leg (300 s at a hundredth of her speed): her hull stands clear of the harbour she left, and that harbour
+            -- stays the one nearest her for the whole test (half-way down the leg the nearest harbour flips to the one she is bound for, and the navy's call goes there)
+            update public.voyages vo set departed_at = p_now - interval '300 seconds' where vo.fleet_id = v_target and vo.status = 'SAILING';
             perform voyage.recompute_eta(vo.id) from public.voyages vo where vo.fleet_id = v_target and vo.status = 'SAILING';
             -- her fleet: guns, full complements, an empty hold, at anchor in open water four tenths of a degree west of the harbour the cargo ship is bound for
             update public.ships s set cargo = '{}'::jsonb, class_id = k.id, durability = k.durability from public.ship_classes k where k.code = v_class and s.fleet_id = v_fleet;
@@ -121,10 +122,10 @@ export function battleWorld(kind: 'board' | 'flee'): Promise<Buffer> {
             select n.fleet_id into v_navy from public.navy_ships n join public.nations x on x.id = n.nation_id where x.code = 'ESP' order by n.ord limit 1;
             select q.id into v_at
               from public.ports q cross join lateral (select public.navy_leg_seconds(v_navy, q.id, v_to) as s) l
-             where q.kind = 'HARBOUR' and q.id <> v_to and l.s is not null
+             where q.kind = 'HARBOUR' and q.id <> v_to and l.s between ${BATTLE_ROUND_SECONDS * 1.4} and ${BATTLE_ROUND_SECONDS * 5.4}
              order by abs(l.s - ${BATTLE_ROUND_SECONDS * 2.5}), q.code limit 1;
             if v_at is null then
-              raise exception 'battleWorld: no harbour has a passage to the harbour nearest the cargo ship';
+              raise exception 'battleWorld: no harbour lies between round 2 and round 6 of sailing from the harbour nearest the cargo ship';
             end if;
             update public.fleets f set port_id = v_at, ready_at = null where f.id = v_navy;
             update public.navy_ships n set station_port = v_at, last_port = v_at where n.fleet_id = v_navy;

@@ -17,7 +17,7 @@
 --   loot_risk_floor 0: the least a won fight pays, as a share. THE OWNER'S LEVERS: loot_risk_full 0 turns the rule off (the loot of 0327, exactly); a floor of 1 does the same.
 --   The risk is read from the battle's own kept result (battles.result.hull: b_start and b are the side that closed), which public.battle_resolve writes before it calls
 --   public.attack_close: nothing is recomputed and no dice are thrown.
--- NEW: public.loot_risk(jsonb) STABLE, server-only: the factor of one fight's answer. Two knobs. RE-CUT: public.loot_take, one line (its OLD text once in the live body, reversing).
+-- NEW: public.loot_risk(jsonb) STABLE, server-only: the factor of one fight's answer. Two knobs. RE-CUT: public.loot_take, one line, and public.battle_sheet_freeze, one line (each OLD text once in its live body, reversing).
 --   AND THE ONE READING OF "MAY ATTACKS BE LIT": public.attack_ready() STABLE, server-only: {ready, lived, checks{...}, cargo{...}, why[]}. The lighting file (0375) refuses unless it
 --   says ready, and scripts/ops/harness/attacks/before-light.sql prints it on production first, so the guard and the check before it cannot disagree. Its checks:
 --     loot_rule_on      this file's rule is on (loot_risk_full above 0, loot_risk_floor under 1)           clock_sane   battle_round_seconds is 30 to 120
@@ -26,6 +26,13 @@
 --     convoy_armed_lit  the cargo ship is the armed navire (0328)       navy_lit                         her country answers (0331, 0333)
 --     cargo_safe        the UNARMED cargo ships at sea are at most a tenth of the cargo ships at sea (the old hull is taken by any fleet with a gun: the sim).
 --   public.loot_due, public.attack_close, public.battle_resolve and the engine are not touched; the regard, the hands lost, WANTED and the wreck are as they were.
+-- AND A FAULT OF 0357 FOUND BY DRIVING THE BATTLE IN A BROWSER (tests/battle.live.spec.ts, 2026-11-13): A CALLED SHIP ALREADY THERE WAS PUT ON THE SHEET TWICE.
+--   A navy ship lying in the harbour nearest the battle when she is called has arrives_at = the press. public.battle_sheet_freeze froze her on the sheet at the open (every side
+--   with arrives_at <= now), with no mark of her fleet; public.battle_advance then found a CALLED ship "not on the sheet" (it looks for her fleet's mark) and added her again for
+--   round 1. She fought as two ships: the card said "Ships 3, Crew 320" for a cargo ship and ONE galleon, and the side set upon fired a galleon's broadside twice.
+--   THE FIX, one line of public.battle_sheet_freeze: a CALLED ship is never frozen at the open. public.battle_advance, the one place a called ship joins, puts her on the sheet
+--   for the first round she is there for (round 1 if she is there already), once, marked. An ESCORT (0333) is frozen at the open as before: battle_advance never adds one.
+--   Proof 74 CALLED_ONCE: red on the old line (3 hulls for 2 ships), green on the new.
 -- DARK: attack_enabled is false on prod and this file does not write it. public.loot_take is reached only at the close of a battle a company opened, so nothing changes for anyone
 --   until attacks are lit (0375). No player-visible change now:
 -- news: none
@@ -44,6 +51,13 @@ declare
   v_def    text;
   v_due0   text;
   v_n      int;
+  v_frz0   text;
+  c_frz    constant text := 'public.battle_sheet_freeze(uuid,timestamp with time zone)';
+  c_frz_old constant text := $o$            where bs.battle_id = p_battle and bs.arrives_at <= p_now
+$o$;
+  c_frz_new constant text := $n$            where bs.battle_id = p_battle and bs.arrives_at <= p_now
+              and bs.how <> 'CALLED'   -- 0374: a called ship joins through public.battle_advance alone (round 1 if she is there already), once and marked: frozen here too she fought as two
+$n$;
   c_fn     constant text := 'public.loot_take(uuid,uuid,text,timestamp with time zone)';
   c_old    constant text := $o$  v_take := public.loot_due(p_outcome, v_left, public.loot_today(p_player, p_now));
 $o$;
@@ -61,7 +75,7 @@ begin
   perform set_config('lock_timeout', '5s', true);
 
   -- ── 0. GUARD ──
-  if exists (select 1 from unnest(array[c_fn, 'public.loot_due(text,bigint,bigint)', 'public.attack_close(uuid,jsonb,timestamp with time zone)',
+  if exists (select 1 from unnest(array[c_fn, c_frz, 'public.battle_advance(uuid,timestamp with time zone)', 'public.loot_due(text,bigint,bigint)', 'public.attack_close(uuid,jsonb,timestamp with time zone)',
                                         'public.battle_resolve(uuid,timestamp with time zone)', 'public.wc_num(text)']) f where to_regprocedure(f) is null)
      or to_regclass('public.battles') is null or to_regclass('public.battle_sides') is null then
     raise exception '0374 refuses: the attack (0327) and its battles (0323, 0357) are not in this world';
@@ -78,6 +92,11 @@ begin
     raise exception '0374 refuses: public.loot_take already reads a battle''s result';
   end if;
   v_due0 := md5(replace(pg_get_functiondef('public.loot_due(text,bigint,bigint)'::regprocedure), E'\r', ''));
+  v_frz0 := replace(pg_get_functiondef(c_frz::regprocedure), E'\r', '');
+  v_n := (length(v_frz0) - length(replace(v_frz0, c_frz_old, ''))) / length(c_frz_old);
+  if v_n is distinct from 1 or position('bs.how <> ''CALLED''' in v_frz0) > 0 then
+    raise exception '0374 refuses: the line it re-cuts occurs % time(s) in public.battle_sheet_freeze, not once (or the fix is already there)', v_n;
+  end if;
 
   -- ── 1. THE KNOBS ──
   insert into public.world_config (key, value, description) values
@@ -164,13 +183,21 @@ $f$;
     '0374: may attack_enabled be lit: {ready, lived, checks, cargo, why}. The one reading: 0375''s guard and scripts/ops/harness/attacks/before-light.sql. Server-only.';
   revoke all on function public.attack_ready() from public, anon, authenticated;
 
-  -- ── 3. THE ONE LINE OF public.loot_take ──
+  -- ── 3. THE ONE LINE OF public.loot_take, AND THE ONE LINE OF public.battle_sheet_freeze ──
   execute replace(v_def0, c_old, c_new);
+  execute replace(v_frz0, c_frz_old, c_frz_new);
 
   -- ── 4. THE SELF-ASSERT ──
   v_def := replace(pg_get_functiondef(c_fn::regprocedure), E'\r', '');
   if (length(v_def) - length(replace(v_def, c_new, ''))) / length(c_new) is distinct from 1 or replace(v_def, c_new, c_old) is distinct from v_def0 then
     raise exception '0374 self-assert FAIL: the hunk is not in public.loot_take once, or does not reverse to the body it was cut from';
+  end if;
+  v_def := replace(pg_get_functiondef(c_frz::regprocedure), E'\r', '');
+  if (length(v_def) - length(replace(v_def, c_frz_new, ''))) / length(c_frz_new) is distinct from 1 or replace(v_def, c_frz_new, c_frz_old) is distinct from v_frz0 then
+    raise exception '0374 self-assert FAIL: the hunk is not in public.battle_sheet_freeze once, or does not reverse to the body it was cut from';
+  end if;
+  if has_function_privilege('anon', c_frz, 'execute') or has_function_privilege('authenticated', c_frz, 'execute') then
+    raise exception '0374 self-assert FAIL: public.battle_sheet_freeze can be called by a client';
   end if;
   if md5(replace(pg_get_functiondef('public.loot_due(text,bigint,bigint)'::regprocedure), E'\r', '')) is distinct from v_due0 then
     raise exception '0374 self-assert FAIL: public.loot_due moved: this file does not edit it';
@@ -223,6 +250,6 @@ $f$;
     raise exception '0374 self-assert FAIL: it took % (the limit is 20 s)', clock_timestamp() - v_t0;
   end if;
   raise notice '0374: may attacks be lit, as this world stands: %', public.attack_ready();
-  raise notice '0374 self-assert ok: LOOT FOLLOWS THE RISK TAKEN. public.attack_ready and public.loot_risk (STABLE, server-only) and two knobs (loot_risk_full 0.075, loot_risk_floor 0); one line of public.loot_take re-cut, once and reversing; public.loot_due unmoved. No hull lost pays nothing, 3.75 %% a half, 7.5 %% and more the whole; no fight and the rule off pay as 0327 did. attack_enabled %. % ms.',
+  raise notice '0374 self-assert ok: LOOT FOLLOWS THE RISK TAKEN. public.attack_ready and public.loot_risk (STABLE, server-only) and two knobs (loot_risk_full 0.075, loot_risk_floor 0); one line of public.loot_take and one of public.battle_sheet_freeze re-cut, each once and reversing; public.loot_due unmoved. No hull lost pays nothing, 3.75 %% a half, 7.5 %% and more the whole; no fight and the rule off pay as 0327 did. attack_enabled %. % ms.',
     public.attack_on(), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;

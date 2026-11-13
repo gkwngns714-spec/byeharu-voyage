@@ -261,6 +261,9 @@ test.describe('a battle fought to the boarding, 390×844, English', () => {
     await expect(report).toContainText(loot.toLocaleString('en-US'))
     await expect(list.getByTestId('ledger-row').filter({ hasText: 'thinks worse of you' }).first()).toBeVisible()
     await expect(list.getByTestId('ledger-row').filter({ hasText: 'wants you' }).first()).toBeVisible()
+    // a country is said by its name, never by its code
+    await expect(list.getByTestId('ledger-row').filter({ hasText: 'wants you' }).first()).toContainText('Castile-Spain')
+    await expect(list.getByTestId('ledger-row').filter({ hasText: 'wants you' }).first()).not.toContainText('ESP')
     await page.screenshot({ path: path.join(SHOTS, 'board-390-en-5-history.png') })
     await report.click()
     const tray = page.getByTestId('ledger-report')
@@ -384,5 +387,11 @@ for (const [size, lang, tag] of [
 // a failure prints what the page's console said in error (an RPC that raised is said there, with its SQL error)
 test.afterEach(async ({ page }, info) => {
   const errors = said.get(page) ?? []
-  if (info.status !== info.expectedStatus && errors.length > 0) console.log(`the page's console, in error:\n${errors.join('\n')}`)
+  if (info.status === info.expectedStatus) return
+  if (errors.length > 0) console.log(`the page's console, in error:\n${errors.join('\n')}`)
+  // what the glass said when it failed (the card, the defender's side of an open fight sheet), and under which world's dice
+  const text = async (id: string) => (await page.getByTestId(id).first().innerText({ timeout: 2000 }).catch(() => '(not there)')).split('\n').join(' | ').slice(0, 1500)
+  console.log(`the battle card when it failed: ${await text('battle-card')}`)
+  console.log(`the defender's side: ${await text('fight-side-defender')}`)
+  console.log(`world secret: ${process.env.SPEC_WORLD_SECRET ?? "(the built world's own)"}`)
 })

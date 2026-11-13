@@ -134,7 +134,7 @@ Level 1 against level 5, the same fleets: within the run-to-run spread for every
 
 ## 3. The fix: migration 0374, loot follows the risk taken (dark)
 
-**What changed, exactly.** One line of `public.loot_take` (the one place gold leaves a ship for a player), two knobs and two new server-only functions.
+**What changed, exactly.** One line of `public.loot_take` (the one place gold leaves a ship for a player), two knobs, two new server-only functions, and one line of `public.battle_sheet_freeze` (a fault of 0357, below).
 
 - What is aboard now counts for `least(1, greatest(loot_risk_floor, her own hull lost in the fight / loot_risk_full))` before `public.loot_due` takes its share under the caps it always had.
 - `loot_risk_full` 0.075: a fight that cost the attacker 7.5 % of her hull (half of the 15 % at which she breaks off) pays the whole share. 2 % pays about a quarter. Nothing lost pays nothing.
@@ -149,9 +149,18 @@ Level 1 against level 5, the same fleets: within the run-to-run spread for every
 
 **Not solved, and said plainly:** a strong fleet still has a small, nearly risk-free income (above). A player can raise her share by bringing a fleet that takes more fire, which is the point, but it also means fewer guns can pay better. The designed answer to a company that raids for a living is the navy's hunt (section 7), which is dark.
 
-- Self-assert: catalog and arithmetic, 20 ms locally. Proof 74 (`scripts/db/proofs/74_loot_follows_the_risk.sql`): 6 markers, real battles through `public.attack_for` and the real close, green under 10 other worlds' dice.
+### A fault of 0357 found by the browser: a called navy ship could fight as two
+
+- **What a player would have met:** a navy ship lying in the harbour nearest the battle when she is called is "already there". `public.battle_sheet_freeze` put her on the sheet at the open, with no mark of her fleet; `public.battle_advance` then found a called ship "not on the sheet" and added her again for round 1. The card said "Ships 3, Crew 320" for a cargo ship and one galleon, and the galleon's broadside was fired twice.
+- **How it was found:** `battle.live` failed about 1 run in 10. The cargo ship was half-way between two harbours, and when the nearer one happened to be the navy's, she was there at once and doubled. Reproduced in SQL: 3 hulls on the sheet for 2 ships.
+- **The fix, one line:** a CALLED ship is never frozen at the open. `public.battle_advance`, the one place a called ship joins, puts her on the sheet once, marked, for the first round she is there for. An escort is frozen at the open as before.
+- Proof 74 `CALLED_ONCE` holds it; proofs 40, 60 and 66 (the navy called, the rounds, the rings) stay green.
+- It was on production, dark. No battle was ever fought there, so nothing was wrong in play.
+
+- Self-assert: catalog and arithmetic, 20 ms locally. Proof 74 (`scripts/db/proofs/74_loot_follows_the_risk.sql`): 7 markers, real battles through `public.attack_for` and the real close, green under 10 other worlds' dice.
 - Proofs 34 and 40 each had one line that assumed the whole share for a real fight; both now read the rule. Both green under 10 dice.
-- Rollback: the knob. The file reversed is `scripts/ops/harness/attacks/rollback-0374.sql` (run locally: `public.loot_take` is its pre-image again).
+- Rollback: the knob. The file reversed is `scripts/ops/harness/attacks/rollback-0374.sql` (run locally: both bodies are their pre-images again).
+- Prod check, before and after: `scripts/ops/harness/attacks/before-0374.sql` (each of the two lines once in its live body; nothing of 0374 there, then all of it).
 - `-- news: none`: nothing a player can see changes while attacks are dark.
 
 ## 4. The battle in a real browser: `tests/battle.live.spec.ts`
@@ -174,6 +183,7 @@ What is driven: a cargo ship's hull on the map, her card, the Attack read, the p
 | 6 | A Korean card ended in an English sentence ("The navy came up before it ended.") | The four navy lines have their words in both languages |
 | 7 | "Hull −0 (0%)" | "Hull 0 (0%)" |
 | 8 | With 0374 the loot is smaller than 15 % and nothing said why | "By hull risked" under Loot |
+| 9 | History, in English: "ESP wants you, 48 h." and "ESP thinks worse of you" (the events name a country by its code) | `headline`: a country is said by its name ("Castile-Spain wants you") |
 
 Screenshots: `C:\Users\gkwng\dev\attacks-ready-shots\` on the builder's machine (not in the repo).
 
@@ -217,9 +227,9 @@ This figure is reasoned from the knobs, not measured. No sim of the hunt was run
 ## 8. Proven, and not proven
 
 **Proven (locally, PGlite, the cached chain; nothing was run on production):**
-- 0374 applies on the cached world; its self-assert passes; proof 74 green, and under 10 other worlds' dice; proofs 31, 34, 40, 41, 56, 60, 66 green on it.
+- 0374 applies on the cached world; its self-assert passes; proof 74 (7 markers) green, and under 10 other worlds' dice; proofs 31, 34, 40, 41, 56, 60, 66 green on it under 10 dice too.
 - The sim's tables before and after.
-- `battle.live` green 15 runs of 15 after the fixes (three passes of the five tests), and under 10 other worlds' dice.
+- `battle.live`: 15 runs of 15 after the nudge fix (three passes of the five tests); the two boarding tests under 12 other worlds' dice, where 1 failure in 24 led to the called-ship fault; after that fix the whole spec green under 2 other worlds' dice, and in 4 more worlds every test green but for one assertion I added to the spec while the run was going (the country's name in History, checked against a build that did not have it yet). Re-run once more on the final build: 5 of 5.
 - The seven after-check files and `before-light.sql` answer on a local scene of real battles.
 
 **Not proven:**

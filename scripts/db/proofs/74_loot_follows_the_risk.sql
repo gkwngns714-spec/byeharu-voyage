@@ -14,6 +14,7 @@
 -- @pass LOOT_RISK_OFF        the same battle closed twice, the rule on and the rule off (loot_risk_full 0): the same fight, and off it pays what 0327 paid
 -- @pass LOOT_RISK_CAPS       3,000,000 aboard: never above loot_per_ship; and a company's day never above loot_per_company_day
 -- @pass LOOT_RISK_ELSE_SAME  what the rule does not touch: the regard, the hands, the lap and the freed fleets are the same with the rule on and off
+-- @pass CALLED_ONCE          a navy ship lying in the harbour nearest the battle when she is called is on the sheet once, from round 1 (0357 froze her at the open and added her again: she fought as two ships)
 -- @pass ATTACK_READY         public.attack_ready, the one reading 0375's guard refuses by: in a world where cargo ships sail it is ready only with regard, the crown level (written), the armed cargo ship and the navy lit, the loot rule on, a sane clock and at most a tenth of the cargo ships at sea unarmed; each one off refuses and says why
 -- ═══════════════════════════════════════════════════════════════════════════════
 
@@ -364,4 +365,58 @@ begin
     raise exception 'PROOF 74 FAIL: everything put back and public.attack_ready says %', public.attack_ready();
   end if;
   raise notice 'PASS: ATTACK_READY — in a world where cargo ships sail: unarmed ships at sea above a tenth refuse; all lit and armed is ready; each of % switches off, the levels unwritten, the loot rule off and a 5 s round each refuse with their reason; put back, ready', v_n;
+end $$;
+
+-- ── CALLED_ONCE: a navy ship lying in the harbour nearest the battle when she is called is on the sheet ONCE (0357's fault: she was frozen at the open and added again for round 1) ──
+do $$
+declare
+  t0    timestamptz := now() + interval '3 days';
+  v_es  uuid := (select g.nation_id from public.great_powers g join public.nations n on n.id = g.nation_id where n.code = 'ESP');
+  v_cap uuid;
+  v_f   uuid;
+  v_p   uuid;
+  v_d   uuid;
+  v_n   uuid;
+  v_b   uuid;
+  v_s   jsonb;
+  v_log jsonb;
+begin
+  update public.world_config set value = 'true'::jsonb where key in ('convoy_armed_enabled', 'navy_enabled', 'attack_enabled');
+  v_cap := public.realm_capital(v_es);
+  perform public.tick_cargo_ships(t0, v_es);
+  insert into public.navy_realms (nation_id, ships, read_at) values (v_es, 25, t0) on conflict (nation_id) do update set ships = 25, read_at = t0;
+  v_n := public.navy_commission(v_es, 1, v_cap, public.refit_yard(v_cap), v_cap, t0);
+  update public.ships s set crew = k.crew_required from public.ship_classes k where k.id = s.class_id and s.fleet_id = v_n;
+  v_f := pg_temp.house_74(30, 'galion', 1);
+  v_p := (select f.player_id from public.fleets f where f.id = v_f);
+  -- a cargo ship just out of the capital: the harbour nearest the battle is the one the navy ship lies in
+  v_d := pg_temp.ship_74(100000, t0, 'ESP');
+  perform pg_temp.lie_by(v_f, v_d, t0);
+  v_b := (public.attack_for(v_p, v_f, v_d, null, t0) ->> 'battle_id')::uuid;
+  if not exists (select 1 from public.battle_sides bs where bs.battle_id = v_b and bs.fleet_id = v_n and bs.how = 'CALLED' and bs.arrives_at <= t0) then
+    raise exception 'PROOF 74 FAIL: the navy ship in the nearest harbour was not called as already there: %',
+      (select jsonb_agg(jsonb_build_array(bs.how, bs.arrives_at - t0)) from public.battle_sides bs where bs.battle_id = v_b);
+  end if;
+  -- at the open: the ship set upon alone (the called ship joins at her round, through public.battle_advance)
+  v_s := (select b.sheet -> 'a' from public.battles b where b.id = v_b);
+  if jsonb_array_length(v_s) <> 1 then
+    raise exception 'PROOF 74 FAIL: at the open the sheet holds % hull(s) of the side set upon, not the cargo ship alone', jsonb_array_length(v_s);
+  end if;
+  perform public.tick_battles(t0 + interval '60 seconds');
+  v_s := (select b.sheet -> 'a' from public.battles b where b.id = v_b);
+  v_log := (select public.battle_log(b.sheet, public.battle_fight(b.id, 1), 'ATTACKER') from public.battles b where b.id = v_b);
+  if jsonb_array_length(v_s) <> 2 or (select count(distinct e ->> 'id') from jsonb_array_elements(v_s) e) <> 2
+     or (select (e ->> 'from')::int from jsonb_array_elements(v_s) e where e ->> 'fleet' = v_n::text) is distinct from 1
+     or (v_log #>> '{foe,k}')::numeric <> 2
+     or (v_log #>> '{foe,crew}')::numeric <> (select sum(s.crew) from public.ships s where s.fleet_id in (v_d, v_n)) then
+    raise exception 'PROOF 74 FAIL: after round 1 the sheet holds % hull(s) for % ship(s); the log says % ship(s), % crew', jsonb_array_length(v_s),
+      (select count(distinct e ->> 'id') from jsonb_array_elements(v_s) e), v_log #>> '{foe,k}', v_log #>> '{foe,crew}';
+  end if;
+  perform public.tick_battles(t0 + interval '421 seconds');
+  if (select b.status from public.battles b where b.id = v_b) = 'FIGHTING'
+     or (select jsonb_array_length(b.sheet -> 'a') from public.battles b where b.id = v_b) <> 2 or exists (select 1 from public.navy_ships n where n.battle_id = v_b) then
+    raise exception 'PROOF 74 FAIL: the battle with a called ship already there did not close with her on the sheet once and freed';
+  end if;
+  raise notice 'PASS: CALLED_ONCE — a navy ship in the harbour nearest the battle is called as already there: the sheet holds the cargo ship alone at the open, both ships once from round 1 (the log: 2 ships, % crew), and the battle closes (%) with her freed',
+    v_log #>> '{foe,crew}', (select b.result ->> 'outcome' from public.battles b where b.id = v_b);
 end $$;

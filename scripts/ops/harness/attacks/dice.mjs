@@ -37,7 +37,7 @@ for (let i = 1; i <= n; i++) {
   const rpc = run('npx', ['playwright', 'test', 'tests/rpc.battle.spec.ts', 'tests/rpc.attack.spec.ts', 'tests/rpc.fights.spec.ts', '--reporter=line', '--trace=off'], { SPEC_WORLD_SECRET: secret })
   const web = browser ? run('npx', ['playwright', 'test', 'tests/battle.live.spec.ts', '--reporter=line', '--trace=off', '--workers=2'], { SPEC_WORLD_SECRET: secret }) : null
   const line = [
-    `${String(i).padStart(2)} ${secret.slice(0, 22)}…`,
+    `${String(i).padStart(2)} ${secret}`,
     `rpc ${rpc.ok ? last(rpc.out, /\d+ passed/g) : `RED ${last(rpc.out, /\d+ failed[^\n]*/g)}`}`,
     web ? `browser ${web.ok ? last(web.out, /\d+ passed/g) : `RED ${last(web.out, /\d+ failed[^\n]*/g)}`}` : null,
   ].filter(Boolean)
