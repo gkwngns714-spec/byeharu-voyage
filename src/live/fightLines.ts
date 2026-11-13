@@ -75,7 +75,15 @@ export function parseFightLog(v: unknown): FightLog | null {
     if (!Array.isArray(boardRaw) || boardRaw.length !== 3 || !boardRaw.every(isNum)) return null
     board = { crew: boardRaw[0], foeCrew: boardRaw[1], ratio: boardRaw[2] }
   }
+  // 0367: an armada's raid names her fleets, [[name, hulls]] in the order of `you`. Absent, or not adding up to `you`: no fleets are named (never a guess).
+  const fleetsRaw = v['fleets']
+  let fleets: FightLog['fleets'] = null
+  if (Array.isArray(fleetsRaw) && fleetsRaw.every((f) => Array.isArray(f) && f.length === 2 && typeof f[0] === 'string' && isNum(f[1]))) {
+    const named = (fleetsRaw as [string, number][]).map(([name, ships]) => ({ name, ships }))
+    if (named.reduce((n, f) => n + f.ships, 0) === you.length) fleets = named
+  }
   return {
+    fleets,
     order,
     noPay,
     first,

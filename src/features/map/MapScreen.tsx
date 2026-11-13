@@ -1,3 +1,5 @@
+import { armadaMarks } from './armadaMarks'
+import { useArmadas } from '../../live/armadas'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { unproject, type LatLon, type Point, type ViewBox } from '../../lib/geo'
 import type { FleetView, PortAllegiance, PortMerchant, SnapshotPort, TrafficFleet } from '../../lib/rpc'
@@ -227,7 +229,9 @@ function Chart({
   const backdrop = useBackdrop(snapshotPorts)
   const ports = backdrop.ports
   const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
-  const fleets = useMemo(() => mapFleetsOf(fleetViews), [fleetViews])
+  // 0367: an armada at sea is ONE mark, under her name, carrying every hull of her fleets (armadaMarks.ts).
+  const armadaList = useArmadas().armadas
+  const fleets = useMemo(() => armadaMarks(mapFleetsOf(fleetViews), armadaList), [fleetViews, armadaList])
   const [selection, setSelection] = useState<MapSelection>(null)
 
   // HER WHOLE PATH WHEN ONE OF YOURS IS PRESSED (owner row 225): the leg she is on is her track; the queued stops

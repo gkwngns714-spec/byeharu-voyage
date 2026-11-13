@@ -109,6 +109,11 @@ export const mapDict = defineDict({
     // 2026-11-13 (owner): a far city is sent in one press; the row says the stops, the supplies, or why no way opens it
     sendVia: 'via {stops}',
     sendSupplies: 'Supplies {amount}',
+    // 0367: one Send for an armada: her fleets, the time and the cost of them all
+    armadas: 'Armadas',
+    armadaLine: '{count} fleets · {names}',
+    armadaCost: 'Cost {amount}',
+    armadaSent: 'Under way to {dest}.',
     sendNoStops: 'No port to stop at on the way.',
     sendLegShut: 'No way through: {from} to {to} is shut.',
     insuredTag: ' · insured',
@@ -236,6 +241,10 @@ export const mapDict = defineDict({
     sendLine: '{name} 출항{insured}',
     sendVia: '{stops} 경유',
     sendSupplies: '보급 {amount}',
+    armadas: '대함대',
+    armadaLine: '선단 {count}개 · {names}',
+    armadaCost: '비용 {amount}',
+    armadaSent: '{dest}(으)로 출항.',
     sendNoStops: '가는 길에 들를 항구 없음.',
     sendLegShut: '길 없음: {from}에서 {to}까지 닫힘.',
     insuredTag: ' · 보험',

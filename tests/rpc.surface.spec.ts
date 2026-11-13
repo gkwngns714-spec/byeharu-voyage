@@ -1633,6 +1633,10 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // bought with gold (FLEET or SHIP; dark, E_NOT_IN_USE, until fleet_room_bite), and A FLEET RENAMED (the caller's own, E_NO_SUCH_FLEET otherwise). None takes a player id.
       // Landed WITH the faces (src/features/fleets/FleetRoom.tsx, RenameFleet.tsx).
       'worldHouseRoom', 'cmdBuyRoom', 'cmdRenameFleet',
+      // Pin moved deliberately 2026-11-13 with migration 0367 (docs/ARMADA.md; owner row 323): AN ARMADA, two to six of the caller's fleets as one: the read (no arguments), and the
+      // doors to form (her fleet ids and a name), disband, send on one order to a port, and that order's dry run (the real order, run and thrown away). None takes a player id:
+      // each acts on the caller's own (E_NO_SUCH_FLEET, E_NO_SUCH_ARMADA otherwise). Landed WITH the faces (src/features/fleets/Armadas.tsx, src/features/map/SendArmadaRow.tsx).
+      'worldArmadas', 'cmdArmadaForm', 'cmdArmadaDisband', 'cmdArmadaSail', 'cmdPreviewArmadaSail',
       // Pin moved deliberately 2026-11-06 with migration 0325: THE LEVELS PAGE's one read, world.levels(). A READ, no arguments, no player id. Landed WITH the face (src/features/command/levels/Levels.tsx).
       'worldLevels',
       // Pin moved deliberately 2026-10-18 with migration 0157 (docs/SKILLS_AND_CAPTAINS.md K5): SEAT A

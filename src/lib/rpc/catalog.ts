@@ -450,6 +450,32 @@ const TABLE = {
   worldHouseRoom: { schema: 'world', fn: 'house_room', args: [] },
   cmdBuyRoom: { schema: 'cmd', fn: 'buy_room', mutates: true, args: [{ name: 'p_kind', type: 'text' }] },
   cmdRenameFleet: { schema: 'cmd', fn: 'rename_fleet', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
+  // 0367 (docs/ARMADA.md): an armada, two to six fleets as one: the read, and the doors to form, disband and send one, and the send's dry run.
+  worldArmadas: { schema: 'world', fn: 'armadas', args: [] },
+  cmdArmadaForm: { schema: 'cmd', fn: 'armada_form', mutates: true, args: [{ name: 'p_fleets', type: 'jsonb' }, { name: 'p_name', type: 'text' }] },
+  cmdArmadaDisband: { schema: 'cmd', fn: 'armada_disband', mutates: true, args: [{ name: 'p_armada', type: 'uuid' }] },
+  cmdArmadaSail: {
+    schema: 'cmd',
+    fn: 'armada_sail',
+    mutates: true,
+    args: [
+      { name: 'p_armada', type: 'uuid' },
+      { name: 'p_dest', type: 'text' },
+      { name: 'p_path', type: 'jsonb' },
+      { name: 'p_insured', type: 'boolean' },
+    ],
+  },
+  // NOT `mutates`: the order is run and thrown away (the server rolls it back), so no kept read is dropped.
+  cmdPreviewArmadaSail: {
+    schema: 'cmd',
+    fn: 'preview_armada_sail',
+    args: [
+      { name: 'p_armada', type: 'uuid' },
+      { name: 'p_dest', type: 'text' },
+      { name: 'p_path', type: 'jsonb' },
+      { name: 'p_insured', type: 'boolean' },
+    ],
+  },
   // 0327 (docs/WORLD_POWERS.md §4.2): a fleet attacks a cargo ship, now, wherever she is, and its dry run. Dark: E_NOT_IN_USE. Not a line of the grammar: a queue runs only in port.
   cmdAttack: {
     schema: 'cmd',

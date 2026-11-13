@@ -124,6 +124,10 @@ import type {
   ShipMoves,
   ShipMoved,
   HouseRoom,
+  Armadas,
+  ArmadaFormed,
+  ArmadaDisbanded,
+  ArmadaSailed,
   RoomBought,
   FleetRenamed,
   FineReceipt,
@@ -926,6 +930,31 @@ export function cmdBuyRoom(kind: 'FLEET' | 'SHIP'): Promise<RpcResult<RoomBought
 /** Rename a fleet of yours (0354). The name's rules are the server's: 3 to 24 letters, not one you already use. */
 export function cmdRenameFleet(fleetId: string, name: string): Promise<RpcResult<FleetRenamed>> {
   return call<FleetRenamed>('cmdRenameFleet', [fleetId, name])
+}
+
+/** The caller's armadas (0367): groups of two to six of her fleets that sail and meet a raid as one. */
+export function worldArmadas(): Promise<RpcResult<Armadas>> {
+  return call<Armadas>('worldArmadas', [])
+}
+
+/** Form an armada of these fleets (0367); the first is the flagship fleet. All docked in one port; the server judges. */
+export function cmdArmadaForm(fleetIds: readonly string[], name: string): Promise<RpcResult<ArmadaFormed>> {
+  return call<ArmadaFormed>('cmdArmadaForm', [fleetIds, name])
+}
+
+/** Disband an armada (0367). Anywhere, at any time. */
+export function cmdArmadaDisband(armadaId: string): Promise<RpcResult<ArmadaDisbanded>> {
+  return call<ArmadaDisbanded>('cmdArmadaDisband', [armadaId])
+}
+
+/** Send an armada to a port on one order (0367): every fleet or none. */
+export function cmdArmadaSail(armadaId: string, dest: string, path: [number, number][] | null, insured: boolean): Promise<RpcResult<ArmadaSailed>> {
+  return call<ArmadaSailed>('cmdArmadaSail', [armadaId, dest, path, insured])
+}
+
+/** What `cmdArmadaSail` would do (0367): the same order run and thrown away: its arrival, speed and cost, or the refusal it would give. */
+export function cmdPreviewArmadaSail(armadaId: string, dest: string, path: [number, number][] | null, insured: boolean): Promise<RpcResult<ArmadaSailed>> {
+  return call<ArmadaSailed>('cmdPreviewArmadaSail', [armadaId, dest, path, insured])
 }
 
 /** What `cmdAttack` would do (0327): the real attack, rolled back: the words, or the refusal it would give. */

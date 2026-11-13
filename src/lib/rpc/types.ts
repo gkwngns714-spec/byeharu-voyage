@@ -3028,6 +3028,52 @@ export interface RoomBought {
   fleet_ship_max: number
 }
 
+/** 0367 (docs/ARMADA.md): one armada. `fleets` are fleet ids, the flagship fleet first; their names, ships and totals are `world.fleets()`'s.
+ *  `state`: PORT (all docked in one port: she may be sent), SEA (all at sea), APART (anything else: disband and form again). */
+export interface ArmadaView {
+  id: string
+  name: string
+  flagship: string
+  fleets: string[]
+  state: 'PORT' | 'SEA' | 'APART'
+  port: string | null
+  speed_kn: number
+}
+
+/** 0367: `world.armadas`. `on` false: armadas are switched off and none can be formed or sent. `max`: the most fleets in one. */
+export interface Armadas {
+  on: boolean
+  max: number
+  raid_scale: number
+  armadas: ArmadaView[]
+}
+
+/** 0367: `cmd.armada_form`. */
+export interface ArmadaFormed {
+  armada_id: string
+  name: string
+  fleets: string[]
+}
+
+/** 0367: `cmd.armada_disband`. */
+export interface ArmadaDisbanded {
+  armada_id: string
+  name: string
+}
+
+/** 0367: `cmd.armada_sail`. `cost` is what the order costs (every fleet's supplies and insurance): what left the purse plus `on_credit`, the part left owed. `dry` true: nothing was kept. */
+export interface ArmadaSailed {
+  armada_id: string
+  name: string
+  eta: string
+  speed_kn: number
+  lead_voyage_id: string
+  dry: boolean
+  cost: number
+  on_credit: number
+  voyages: { fleet_id: string; fleet: string; voyage_id: string; total_nm: number }[]
+}
+
 /** 0354: `cmd.rename_fleet`. `changed` false: the same name again, nothing written. */
 export interface FleetRenamed {
   fleet_id: string
@@ -4109,6 +4155,8 @@ export interface FightLog {
   end: FightEnd
   board: { crew: number; foeCrew: number; ratio: number } | null
   after: { name: string; hull: number }[]
+  /** 0367: an armada's raid: her fleets on this side, in the order of `you` (each takes the next `ships` rows of it). Null for a fleet that fought alone. */
+  fleets: { name: string; ships: number }[] | null
 }
 
 /** 0353: what a raid day cost, beside its log in the report: the hands before and lost, the units carried off, the ransom paid. */

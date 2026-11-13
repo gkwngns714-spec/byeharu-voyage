@@ -5,6 +5,8 @@ import { CHART_CHROME, GoToLink } from '../../chart'
 import { CityTabs } from './CityTabs'
 import { useCityTab } from './cityTab'
 import { SendFleetRow } from './SendFleetRow'
+import { SendArmadaRow } from './SendArmadaRow'
+import { useArmadas } from '../../live/armadas'
 import { canGo, type SailDest } from './sendRules'
 import { useSendFleet } from './useSendFleet'
 import { useT } from '../../lib/i18n'
@@ -61,7 +63,10 @@ export function SendFleet({
   const [detent, setDetent] = useState<TrayDetent>('peek')
   const open = detent !== 'peek'
   const flow = useSendFleet(dest, open)
-  const { fleets } = flow
+  // 0367: an armada is sent as ONE row (SendArmadaRow), and her fleets are not listed again under her: a fleet of an armada sails on the armada's order only.
+  const armadas = useArmadas()
+  const inArmada = new Set(armadas.armadas.flatMap((a) => a.fleets))
+  const fleets = inArmada.size === 0 ? flow.fleets : flow.fleets.filter((f) => !inArmada.has(f.id))
   const turnTo = useCityTab((s) => s.turnTo)
 
   const picked = fleets.find((f) => f.id === flow.picked) ?? null
@@ -80,7 +85,7 @@ export function SendFleet({
           passage is being chosen — above the tabs it was the first line of every city (2026-10-15,
           "stupid useless info"). The wording is domain/passage's. */}
       {flow.roads && <Hint data-testid="map-send-roads">{flow.roads}</Hint>}
-      {fleets.length === 0 && (
+      {flow.fleets.length === 0 && (
         <Row tone="muted" hairline={false} label={t('map.noFleetsYet')} data-testid="map-send-none" />
       )}
 
@@ -99,6 +104,7 @@ export function SendFleet({
         />
       )}
 
+      {dest.kind === 'port' && armadas.armadas.map((a) => <SendArmadaRow key={a.id} armada={a} dest={dest} open={open} />)}
       {fleets.map((f) => (
         <SendFleetRow key={f.id} fleet={f} flow={flow} />
       ))}
