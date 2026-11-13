@@ -87,13 +87,17 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
     <>
       {/* THE CITY PAGE'S DOOR (2026-10-30): the full-screen city, for the city in hand. The press
           navigates; it does not change this face, and the desk is exactly as it was when you return. */}
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="flex min-w-0 items-center gap-2 text-t-body font-semibold text-ink">
+      {/* A WRAPPING LINE (2026-11-13): the name is never narrower than its longest word, and where the name and the door do not
+          fit one line (the wide desk's left pane is 240 px inside at 1,280 px: "Machilipatnam" stood over "City view") the
+          door stands on the next line, at the right. */}
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+        <h2 className="flex min-w-min items-center gap-2 text-t-body font-semibold text-ink">
           <PortFlag code={port.code} />
           <Clip>{port.name}</Clip>
         </h2>
         <Button
           variant="secondary"
+          className="ml-auto"
           onClick={() => navigate(`/city?port=${encodeURIComponent(port.code)}`)}
           data-testid="desk-city-open"
         >

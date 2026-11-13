@@ -129,7 +129,8 @@ function useWordSpans(grid: { current: HTMLDivElement | null }, base: number | u
       }
       const needs = cells.map((c) => c.getBoundingClientRect().width)
       cells.forEach(clear)
-      const columns = wide !== undefined && window.matchMedia(WIDE_QUERY).matches ? wide : base
+      const onWide = wide !== undefined && window.matchMedia(WIDE_QUERY).matches
+      const columns = onWide ? wide : base
       const gap = parseFloat(getComputedStyle(el).columnGap) || 0
       const column = (el.clientWidth - gap * (columns - 1)) / columns
       if (!(column > 0)) return
@@ -148,7 +149,10 @@ function useWordSpans(grid: { current: HTMLDivElement | null }, base: number | u
       // NEVER A LINE MORE THAN THE PLAIN GRID: two or three long names would cost the picker a whole line (eight Brazilian
       // harbours in Korean stood on four lines and the Trade face scrolled under way, tests/trade.flow.spec.ts T3). Then the
       // wrapping line stands as it is, where a long cell is a little over its column and the line still holds its count.
-      if (lines > Math.ceil(cells.length / columns)) return
+      // ON THE WIDE DESK THE LINE IS THERE TO SPEND (2026-11-13): the picker stands in a pane of its own, as tall as the desk, and
+      // at 1,280 px that pane is 272 px wide: "Sanlucar de Barrameda" stood on three lines in one column. There a long name takes
+      // its two columns even where that costs the grid one more line.
+      if (!onWide && lines > Math.ceil(cells.length / columns)) return
       cells.forEach((c, i) => {
         const n = spans[i]
         if (n === 1) return

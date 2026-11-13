@@ -241,6 +241,9 @@ function Frame({
           label={t(otherSale.kind === 'far' ? 'desk.farSale' : 'desk.nearSale')}
           tone="muted"
           chevron
+          // under 375 px the city, the profit and the time are wider than the row leaves beside the word: the word kept one
+          // letter a line ("F / a / r"). There the row is a wrapping line and the figure stands under its word (Row.tsx).
+          wholeName
           onClick={otherSale.onPress}
           value={
             <span className="text-t-caption tabular-nums" data-testid="trade-other-sale-figure">

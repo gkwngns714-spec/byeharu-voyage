@@ -92,6 +92,19 @@ export function CityChips({ home, city, onCity }: { home: string | null; city: s
   )
 }
 
+/** THE GOODS CARDS' GRID: two to a line on a phone; from lg as many 9.5-rem cards as the desk's centre pane holds.
+ *
+ *  FOUR TO A LINE FROM 1,280 TO 1,600 PX (2026-11-13, owner row 318). There the pane held two (1,280) or three (1,440) of the
+ *  9.5-rem cards, so a quay's ten cards stood on five or four lines and the pane scrolled (934 px in 626 at 1,280 × 800). Four
+ *  to a line is three lines and no scrolling. A card is then about 120 px (the HQ Market's card on a 320-px glass is 123), and a
+ *  column is NEVER NARROWER THAN ITS WIDEST CARD'S WORDS (`min-content`): the one Korean city name longer than that
+ *  (산타크루스데테네리페, 120 px of letters) makes its own column wider and the other three give the room, so no name is cut
+ *  or stands out of its card (the card's own column keeps its words at these widths too: `SALE_COLUMN`,
+ *  live/TradeCard.tsx). The gap is 6 px there, not 8: a Korean card's Buy and Sell need 120 px, and four of them with 8-px
+ *  gaps were 504 px in the pane's 502 (it scrolled 2 px sideways). From 1,600 px the pane holds four or more 9.5-rem cards by itself, as before. */
+const CARDS_GRID =
+  'grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))] xl:grid-cols-[repeat(4,minmax(min-content,1fr))] xl:gap-1.5 min-[100rem]:gap-2 min-[100rem]:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]'
+
 export function TradeBoard({
   strip,
   city,
@@ -148,7 +161,7 @@ export function TradeBoard({
             quay.refusal ? (
               <Note tone="danger">{quay.refusal.sentence}</Note>
             ) : (
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
+              <div className={CARDS_GRID}>
                 {Array.from({ length: 6 }, (_, i) => (
                   <Skeleton key={i} className="h-28 w-full" />
                 ))}
@@ -164,7 +177,7 @@ export function TradeBoard({
             // is printed whole). At 9 rem (sized for the 151-px card) the row's Buy and Sell buttons stood 13 px under the
             // pane's edge, so a press on one first scrolled the cards 13 px (tests/desk.layout.spec.ts, "a press … moved the cards").
             <ScrollPane className="max-h-[10.5rem] lg:max-h-none">
-              <div className="grid grid-cols-2 gap-2 lg:grid-cols-[repeat(auto-fill,minmax(min(100%,9.5rem),1fr))]">
+              <div className={CARDS_GRID}>
                 {rows.map((r) => (
                   <TradeCard
                     key={r.code}

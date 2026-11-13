@@ -358,7 +358,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
               <p className="pt-4 text-t-caption text-ink-faint" data-testid="desk-slot-hint">
                 {t('desk.pickGood')}
               </p>
-              {page === null && <ShipInfo fleet={fleet} />}
+              {page === null && <ShipInfo fleet={fleet} aside />}
             </div>
           ),
         }
