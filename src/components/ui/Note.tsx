@@ -1,6 +1,6 @@
 import { useEffect, type ReactNode } from 'react'
-import { translateMaybe, useLocale } from '../../lib/i18n'
-import { formatFixed, formatInt } from '../../lib/format'
+import { useLocale } from '../../lib/i18n'
+import { refusalWords } from './refusalWords'
 
 // THE NOTE — one line, a tone, and at most one action.
 //
@@ -75,25 +75,10 @@ export function Note({
       {...rest}
     >
       <div className="min-w-0 flex-1">
-        <p className="text-t-label">{(code && localized(locale, code, figures)) || children}</p>
+        <p className="text-t-label">{(code && refusalWords(locale, code, figures)) || children}</p>
         {figure !== undefined && <div className="mt-1">{figure}</div>}
       </div>
       {action !== undefined && <div className="shrink-0">{action}</div>}
     </div>
   )
 }
-
-/** A REFUSAL IN THE VIEWER'S LANGUAGE. English is the server's own sentence (the children), always.
- *  Korean is the code's entry in codesDict, with the served figures after it; a code with no entry
- *  falls back to the server's English sentence rather than to nothing. */
-function localized(locale: 'en' | 'ko', code: string, figures: { have: number; need: number; unit: string } | undefined) {
-  if (locale === 'en') return null
-  const sentence = translateMaybe(locale, 'codes', code)
-  if (sentence === null) return null
-  if (!figures) return sentence
-  const unit = translateMaybe(locale, 'codes', `unit_${figures.unit}`) ?? figures.unit
-  const fig = translateMaybe(locale, 'codes', 'figures', { have: figure(figures.have), need: figure(figures.need), unit })
-  return `${sentence} (${fig})`
-}
-
-const figure = (n: number) => (Number.isInteger(n) ? formatInt(n) : formatFixed(n, 1))

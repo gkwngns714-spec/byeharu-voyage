@@ -175,6 +175,7 @@ export function CitiesFace() {
                 }
                 value={<Figure value={formatDucats(c.purse ?? 0)} />}
                 chevron
+                wholeName
                 onClick={() => setOpen(c)}
                 hairline={false}
                 data-testid="stats-city-open"

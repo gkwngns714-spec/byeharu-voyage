@@ -74,6 +74,19 @@ const FLOW = {
     chevron: 'pair:absolute pair:right-0 pair:top-2 pair:ml-0',
     line2: 'pair:ml-0 pair:basis-full',
   },
+  // A ROW THAT IS A NAME, ON A GLASS UNDER 375 PX (`wholeName`, below): the same wrapping line, asked of the GLASS and not of a
+  // container (in a card list each row is its own query container, and a box cannot ask itself). Two differences from the two
+  // above: the label is never narrower than its longest word and turns only at a space (`min-w-min`, `break-keep`), and the
+  // value stands at the right edge of whichever line it is on, so a list's figures still make one column.
+  slim: {
+    shell: 'max-[374px]:relative max-[374px]:flex max-[374px]:flex-wrap max-[374px]:gap-x-3',
+    pad: 'max-[374px]:pr-10!',
+    mark: 'max-[374px]:shrink-0',
+    label: 'max-[374px]:ml-0 max-[374px]:min-w-min max-[374px]:flex-[1_1_5rem] max-[374px]:break-keep',
+    value: 'max-[374px]:ml-auto max-[374px]:max-w-full max-[374px]:shrink-0',
+    chevron: 'max-[374px]:absolute max-[374px]:right-2 max-[374px]:top-2 max-[374px]:ml-0',
+    line2: 'max-[374px]:ml-0 max-[374px]:basis-full',
+  },
 } as const
 
 export function Row({
@@ -89,6 +102,7 @@ export function Row({
   className = '',
   under = 'row',
   pair = false,
+  wholeName = false,
   end = false,
   children,
   ...rest
@@ -117,6 +131,12 @@ export function Row({
   /** The value is a PAIR of act cells (`ActPair`, 14.25 rem). Such a row stands beside its label from 22 rem of room and wraps under it
    *  below (`pair:`, index.css); any other row wraps below 15 rem (`narrow:`). */
   pair?: boolean
+  /** THE LABEL IS A NAME, AND A NAME IS NEVER BROKEN INSIDE A WORD (owner, 2026-11-12: *"long words and sentences making new
+   *  messy lines... especially on phone"*). At 320 px a card list's row left a name 101 to 126 px beside its figure and its
+   *  chevron, and "Spiegelretourschip" (a hull) and 산타크루스데테네리페 (a city) were turned in the middle. With this, on a glass
+   *  under 375 px the row is a wrapping line: the name takes the width its longest word needs, and where the figure does not
+   *  fit beside it the figure stands on the next line, at the right. From 375 px the row is the grid it always was. */
+  wholeName?: boolean
   /** The value is the row's ACT, not its figure: it stands at the right edge, so a list's cells make one straight column. */
   end?: boolean
 } & { 'data-testid'?: string }) {
@@ -160,7 +180,7 @@ export function Row({
   const chevronCol = 5
   // the 12 px a cell keeps from the one before it (rule 1); a label and line 2 stand 12 px behind a mark
   const afterMark = mark !== undefined ? 'ml-3' : ''
-  const flow = FLOW[pair ? 'pair' : 'narrow']
+  const flow = FLOW[wholeName ? 'slim' : pair ? 'pair' : 'narrow']
   // ── THE NARROW ROW: ON A PHONE'S HALF GLASS THE FIGURE MOVES UNDER ITS LABEL ─────────────────
   // (2026-11-02, docs/dev-log/2026-11-02-city-phone.md; owner: *"you know that this game is also for mobile
   // right?"*). Inside a query container narrower than 15 rem (the HQ's panel on a phone: 139 px at 390, 104 at

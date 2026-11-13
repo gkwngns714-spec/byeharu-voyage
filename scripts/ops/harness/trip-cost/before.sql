@@ -1,6 +1,6 @@
 -- 0360 PROD CHECK BEFORE, read-only, one statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/trip-cost/before.sql
 -- Nothing is called but the catalog (to_regprocedure, pg_get_functiondef, pg_proc) and plain SELECTs of world_config. No game function runs.
--- Wanted: head 20260818000359 (0354 to 0359 are other branches': this file deploys after them); fn_absent true; registry_anchor_times 1 and
+-- Wanted: head 20260818000358 (the deploy order is by number: 0357, 0358, then this file; there is no 0359); fn_absent true; registry_anchor_times 1 and
 --         registry_row_present false; readers all 's' (or 'i'); sibling_acl and sibling_vol printed (the self-assert holds the new read to
 --         world.route_legs' own). `knobs` says what a trip will read on prod today: whether the economy is closed (dock fees and port time in
 --         force), the port time, the dock fee's base and share, the clock's compression.

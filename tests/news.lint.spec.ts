@@ -9,7 +9,7 @@
 import { test, expect } from '@playwright/test'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import { NEWS_HIT_PX, newsMarksModel } from '../src/components/ui/newsMarksModel'
+import { NEWS_HIT_PX, NEWS_HIT_STEP, newsMarksModel } from '../src/components/ui/newsMarksModel'
 import { newsHeadline, newsMove } from '../src/live/newsWords'
 import type { NewsItem } from '../src/lib/rpc'
 
@@ -84,6 +84,37 @@ test('a press target is 44 px square: inside the chart box, never over its neigh
       if (i > 0) expect(d.hitX - dots[i - 1].hitX, `${where}: its target lies over the one before`).toBeGreaterThanOrEqual(NEWS_HIT_PX)
     })
   }
+})
+
+test('a press target holds still while its mark creeps with the clock, and steps a lattice at a time', () => {
+  expect(NEWS_HIT_PX % NEWS_HIT_STEP, 'the lattice must divide the side, or neighbours a side apart could overlap on it').toBe(0)
+  const plot = { x: 30, y: 4, w: 250, h: 140 }
+  const box = { w: 286, h: 176 }
+  const marks = [{ id: 1, atMs: 300_000, importance: 3 }, { id: 2, atMs: 620_000, importance: 3 }]
+  // a quarter hour of record, read each second for two minutes: the axis ends at now
+  const reads = Array.from({ length: 120 }, (_, s) => newsMarksModel(marks, plot, { fromMs: s * 1000, toMs: 900_000 + s * 1000 }, box))
+  let moved = 0
+  let crept = 0
+  reads.forEach((dots, s) => {
+    expect(dots).toHaveLength(2)
+    dots.forEach((d, i) => {
+      expect(Math.abs(d.hitX / NEWS_HIT_STEP - Math.round(d.hitX / NEWS_HIT_STEP)), `second ${s}: the target is off the lattice`).toBeLessThan(1e-9)
+      expect(Math.abs(d.x - d.hitX), `second ${s}: the mark is more than half a step from its target's centre`).toBeLessThanOrEqual(NEWS_HIT_STEP / 2 + 1e-9)
+      if (s > 0) {
+        const was = reads[s - 1][i]
+        if (was.hitX !== d.hitX) {
+          moved++
+          expect(Math.abs(was.hitX - d.hitX), `second ${s}: a target moves one step at a time`).toBeCloseTo(NEWS_HIT_STEP, 9)
+        }
+        if (was.x !== d.x) crept++
+      }
+    })
+    expect(dots[1].hitX - dots[0].hitX, `second ${s}: the targets overlap`).toBeGreaterThanOrEqual(NEWS_HIT_PX)
+  })
+  // NON-VACUITY: the marks did creep every second (0.28 px), and the targets moved only a few times in the two minutes
+  expect(crept).toBe(2 * 119)
+  expect(moved).toBeGreaterThan(0)
+  expect(moved).toBeLessThanOrEqual(2 * 4)
 })
 
 const item = (en: string, ko: string, detail: NewsItem['detail']): NewsItem => ({
