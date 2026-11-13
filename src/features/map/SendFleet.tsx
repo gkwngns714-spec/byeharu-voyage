@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { Button, Hint, Note, Row, SheetSection, Tray, TrayTitle, seaName, seaWallTag, type TrayDetent } from '../../components/ui'
+import { Button, Hint, Row, SheetSection, Tray, TrayTitle, seaName, seaWallTag, type TrayDetent } from '../../components/ui'
 import type { SeaWall } from '../../lib/rpc'
 import { PortFlag } from '../../live/PortFlag'
 import { CHART_CHROME, GoToLink } from '../../chart'
@@ -54,8 +54,9 @@ export function SendFleet({
   onClose,
 }: {
   dest: SailDest
-  /** The sea this place is in, and the wall in it for the fleet in hand (null: open to her). Null while the sea
-   *  conditions are dark: the tray is then exactly as it was. */
+  /** The sea this place is in, and the wall in it for the fleet in hand (null: open to her): named on the title's line,
+   *  with the short reason when closed. Each fleet's own row says the whole wall. Null while the sea conditions are dark:
+   *  the tray is then exactly as it was. */
   sea?: { name: string; wall: SeaWall | null } | null
   /** The one line under the name — `Portugal · 27 merchants · 2 in port`, `Open sea`. */
   line: ReactNode
@@ -178,11 +179,6 @@ export function SendFleet({
       data-testid="map-detail-tray"
       {...CHART_CHROME}
     >
-      {sea?.wall && (
-        <Note tone="warning" sea={sea.wall} className="mb-2" data-testid="map-sea-wall">
-          {sea.name}
-        </Note>
-      )}
       {dest.kind === 'port' ? (
         <CityTabs
           portCode={dest.code}

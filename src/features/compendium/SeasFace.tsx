@@ -53,7 +53,7 @@ export function SeasFace({ query, search }: { query: string; search: ReactNode }
             <span className="block text-t-caption text-ink-faint">{t('seas.harbours', { n: formatInt(r.zone.harbours), count: r.zone.harbours })}</span>
           )}
           {walled && r.wall && (
-            <span className="block text-t-caption text-warning" data-testid="sea-row-why">
+            <span className="block text-t-caption text-ink-muted" data-testid="sea-row-why">
               {[seaWallAsks(locale, r.wall), seaWallFix(locale, r.wall)].filter((s) => s !== '').join(' ')}
             </span>
           )}
