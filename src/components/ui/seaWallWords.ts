@@ -6,7 +6,7 @@ import type { SeaWall } from '../../lib/rpc'
 //   The Western Ocean is closed to this fleet. It asks wave resistance 30. This fleet has 12.
 //   Sail a sturdier ship, or fit anchors and planking.
 //
-// The figures are the server's (lib/rpc/seaWall.ts): which ask is short is its answer (0376), never worked out here.
+// The figures are the server's (lib/rpc/seaWall.ts): which ask is short is its answer (0391), never worked out here.
 // On a world that does not say which is short yet, both asks are printed beside both of hers and no advice is given.
 // Read by `Note` (every refusal a screen prints), the Map's place tray, Trade and the Codex.
 

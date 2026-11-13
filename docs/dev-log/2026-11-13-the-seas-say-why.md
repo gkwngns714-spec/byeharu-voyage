@@ -23,7 +23,7 @@ Nothing here is deployed and no switch is thrown. `sea_conditions_bite` stays fa
 | Korean names for the 18 seas cut out of the oceans | `src/lib/i18n/names/realms.ts` |
 | The lit drive | `tests/seas.lit.spec.ts`, `tests/seasLit.fixture.ts` |
 
-The server side it reads is 0376 (PR #636, `seas-wall`, merged into this branch): `short_title` / `short_wave` in the rule's figures,
+The server side it reads is 0391 (PR #636, `seas-wall`, merged into this branch): `short_title` / `short_wave` in the rule's figures,
 `fleets[].seas`, `zones[].harbours`, `far_powers`, `world.route_legs` `sea`, `world.sea_zone_map`.
 
 ## One reading, not copies
@@ -31,7 +31,7 @@ The server side it reads is 0376 (PR #636, `seas-wall`, merged into this branch)
 Before this slice a closed sea reached a screen four ways and was read four ways: the order envelope dropped the sea's figures (it kept
 only `have / need / unit`), Trade read `sea.refusal.figures` in `planLines.ts`, the route builder switched on the code, and the Map printed
 the server's English sentence. Now every one goes through `seaWallOf` and is printed by `seaWallWords`. The client compares no number:
-which ask is short is the server's `short_title` / `short_wave`. On a world before 0376 the wall prints both asks beside both of hers and
+which ask is short is the server's `short_title` / `short_wave`. On a world before 0391 the wall prints both asks beside both of hers and
 gives no advice.
 
 ## What the screens did before, checked
@@ -39,7 +39,7 @@ gives no advice.
 | Screen | Before | Now |
 |---|---|---|
 | Map, Send fleet row | The dry run refused with the server's English sentence; in Korean the same English | The wall, EN and KO |
-| Map, a far city behind a closed sea | "Too far" and "no port to stop at" (the gate judges length first, and no chain exists) | The sea on the direct course, when the server names one (0376) |
+| Map, a far city behind a closed sea | "Too far" and "no port to stop at" (the gate judges length first, and no chain exists) | The sea on the direct course, when the server names one (0391) |
 | Map, a chain with a leg shut by a sea | "Too far" plus "A to B is shut" | The wall of that leg's sea |
 | Map, armada row | The server's sentence | The wall |
 | Map, route builder | The button "Sea shut", no sea named | The same button, and "sea: Needs title N" in the route's line |
@@ -53,7 +53,7 @@ See section 10.2 of the design for the impact figures and the ladder. `impact.sq
 
 ## Checks run (local; preview on port 4423, the private in-browser world)
 
-- `tsc -b`, `eslint src`, `npm run build` (the world image is built from the cached chain with 0376 applied, so its self-assert ran).
+- `tsc -b`, `eslint src`, `npm run build` (the world image is built from the cached chain with 0391 applied, so its self-assert ran).
 - `tests/seas.lit.spec.ts` (new), 9 of 9: the Codex's Seas face and the Map, lit, at 390 and 320 px in English and Korean (64 seas,
   12 open and 52 closed for the founding company; the shade covers 52 seas; Las Palmas is refused by Macaronesia with the wall's words
   and no passage figure; Funchal is priced and, at 390 px in English, sails); and the shipped dark world (no shade, no closed sea).
@@ -69,7 +69,7 @@ See section 10.2 of the design for the impact figures and the ladder. `impact.sq
 
 - Nothing was read on prod. Every figure is LOCAL.
 - The armada row and the route builder were not driven lit in a browser; they read the wall through the same `seaWallOf` the Send row does.
-- The far-city case (`world.route_legs` `sea`) was not driven in a browser; proof 69 holds the server side.
+- The far-city case (`world.route_legs` `sea`) was not driven in a browser; proof 91 holds the server side.
 - The veil's colour was judged on a headless Chromium screenshot at night and day; not on a phone.
 - The Korean names of the 18 cut seas and the Korean wall sentences are unchecked translations.
 - Trade can still list a far city as reachable that the door refuses at the press (design 10.2 and 10.6, "the board and the door").

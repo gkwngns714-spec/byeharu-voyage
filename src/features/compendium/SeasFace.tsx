@@ -10,7 +10,7 @@ import { NoAnswer } from './NoAnswer'
 
 // THE SEAS — every sea with what it asks, and whether it is open to the fleet in hand (design C3).
 //
-// Everything printed is served (world.sea_conditions, 0215 + 0376): the two asks, her title, the fleet's wave
+// Everything printed is served (world.sea_conditions, 0215 + 0391): the two asks, her title, the fleet's wave
 // resistance, and for each sea that refuses her the rule's own figures. A closed sea says what it asks that she does
 // not hold and what to do, in the one wording (components/ui/seaWallWords.ts). While the sea conditions are dark the
 // face lists what each sea asks and calls none closed.

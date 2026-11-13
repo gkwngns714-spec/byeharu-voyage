@@ -41,7 +41,7 @@ export function SignTheBook() {
   const capitalCode = nationByCode[nation]?.capital ?? null
   const capital = capitalCode ? (portByCode[capitalCode]?.name ?? capitalCode) : null
   // WHILE THE SEA CONDITIONS BITE a company is founded in open water only: the countries whose capital's sea asks a
-  // title above the first are not offered (the server's list, 0376; cmd.found_house refuses them with E_FAR_POWER).
+  // title above the first are not offered (the server's list, 0391; cmd.found_house refuses them with E_FAR_POWER).
   const sea = useSeaConditions().view
   const farPowers = sea?.bite ? sea.far_powers : undefined
   const [busy, setBusy] = useState(false)

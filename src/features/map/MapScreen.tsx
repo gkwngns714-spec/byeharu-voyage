@@ -245,7 +245,7 @@ function Chart({
   const [selection, setSelection] = useState<MapSelection>(null)
 
   // THE SEAS CLOSED TO THE FLEET IN HAND (docs/SEA_CONDITIONS_AND_REGIONS.md C3): shaded on the chart while the sea
-  // conditions bite. Which seas is the server's verdict (useFleetSeas), which cells its zone raster (0376).
+  // conditions bite. Which seas is the server's verdict (useFleetSeas), which cells its zone raster (0391).
   const seas = useFleetSeas()
   const seaCells = useSeaZoneCells(seas.bite && seas.judged)
   const veil = useClosedSeasVeil(seaCells, seas.closed)

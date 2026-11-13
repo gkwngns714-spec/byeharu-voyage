@@ -549,7 +549,7 @@ The design's section 4 estimated 548 closed loops from the 2026-10-20 export. Th
 179 is its figure. One planning pass with the rule dark moves merchants onto far loops and leaves 468 closed, so **prod, where the planner
 has run for weeks, will read nearer 468 to 548 than 179**. Prod's own figure is the one that counts.
 
-**The "no open loop" simulation** (0377's `scripts/ops/harness/sea-merchants/sim.mjs`; LOCAL, every one of the 837 merchants planned once
+**The "no open loop" simulation** (0392's `scripts/ops/harness/sea-merchants/sim.mjs`; LOCAL, every one of the 837 merchants planned once
 at a lap start by the real `public.npc_plan`, dark and then lit):
 
 | Hull size | Fleets | Closed loops before | Dark pass: closed after, laid up | Lit pass: closed after, laid up |
@@ -564,7 +564,7 @@ dark (seven small hulls, two naus): their only paying loops crossed closed water
 and re-planned at every tend. Fourteen harbours lose every merchant call after the pass (AMB BND CPT DIL GAL HAG HOB KOL MAK OLD PLO SYD
 TER TID: 115 of 3,302 stops, 3.5 %), and merchant stops fall by 10 % in all (2,857 lit against 3,175 dark). A lap start costs the same lit
 as dark (214 ms against 230 ms on PGlite) because the seas a course crosses are remembered (`public.npc_course_zones_memo`). A design
-correction found there: the live planner did not review an unsailable loop at once, as section 4 says; 0377 makes it do so, lit only.
+correction found there: the live planner did not review an unsailable loop at once, as section 4 says; 0392 makes it do so, lit only.
 
 **The ladder, measured** (harbours a fleet lying at Lisbon can sail to, hop by hop, with no navigation; LOCAL, from `public.sea_leg_asks`):
 
@@ -627,16 +627,16 @@ first wall. Not built: it reverses an approved number and it is the owner's to c
 
 | # | Gap found | What was done |
 |---|---|---|
-| 1 | **A company founded far from Europe is born walled in.** Eleven countries' capitals lie in seas that ask a title (Japan's asks 7; the Brethren's Port Royal asks 4). S5 was not built, so a new company there could not leave her quay. | 0376: while the sea conditions bite, `cmd.found_house` refuses a country in `public.far_powers()` (derived from the sea table, no new column) with `E_FAR_POWER` and the open countries as fixes; the Start sheet does not offer them. Dark, founding is unchanged. This is S5 by derivation, and it covers the Brethren too. |
-| 2 | **A fleet already lying in a sea that closes cannot leave it.** LOCAL: 4 of 13. The design said "fleets at sea finish their trip" and stopped there. | The lighting step (0378) refuses to light while any human fleet lies in, or sails for, a sea that would refuse her. The lead reads `impact.sql` first; a fleet in that state is sailed home (or her company levelled) before the window. A standing rule for after the light ("a fleet may always sail to water that asks no more than where she lies") is a later slice, S7 below. |
-| 3 | **The fleet's figure is an average, and a company cannot split a fleet** while `fleet_room_bite` is dark: a caravel that sails with the starter barca reads 19 and cannot cross the Doldrums. | 0378 refuses to light unless `fleet_room_bite` is true. Light fleet room first. |
-| 4 | **Nobody could see the figures or the reason.** No remastered screen printed a wave resistance; a refusal was the server's English sentence; a far city behind a closed sea read "too far". | 0376 + the client: see 10.5. |
-| 5 | **Merchants roamed seas closed to players** (row 166: "NPCs under the same rule"). | 0377 (S3), behind its own switch, lit in its own window after the players' (10.7). |
+| 1 | **A company founded far from Europe is born walled in.** Eleven countries' capitals lie in seas that ask a title (Japan's asks 7; the Brethren's Port Royal asks 4). S5 was not built, so a new company there could not leave her quay. | 0391: while the sea conditions bite, `cmd.found_house` refuses a country in `public.far_powers()` (derived from the sea table, no new column) with `E_FAR_POWER` and the open countries as fixes; the Start sheet does not offer them. Dark, founding is unchanged. This is S5 by derivation, and it covers the Brethren too. |
+| 2 | **A fleet already lying in a sea that closes cannot leave it.** LOCAL: 4 of 13. On prod (the lead's read, 2026-11-13): one, Casa Estaleiro, title 1, two barcas at Acapulco. The design said "fleets at sea finish their trip" and stopped there. | **The way home, built in 0391** (`public.sea_floor`): a fleet is judged as holding at least what the sea she lies in asks, so her own waters and any that ask no more never refuse her. Read at the door, by the board's pathfinder and in the conditions read (her own sea is not shaded). It does not carry her across water her hull cannot hold: she keeps her coast. A fleet lying in a far sea is therefore told by the lighting step, not a guard, and one idle company no longer holds the light. Not chosen: moving idle fleets home at the light (it moves a player's ships without her). |
+| 3 | **The fleet's figure is an average, and a company cannot split a fleet** while `fleet_room_bite` is dark: a caravel that sails with the starter barca reads 19 and cannot cross the Doldrums. | 0393 refuses to light unless `fleet_room_bite` is true. Light fleet room first. |
+| 4 | **Nobody could see the figures or the reason.** No remastered screen printed a wave resistance; a refusal was the server's English sentence; a far city behind a closed sea read "too far". | 0391 + the client: see 10.5. |
+| 5 | **Merchants roamed seas closed to players** (row 166: "NPCs under the same rule"). | 0392 (S3), behind its own switch, lit in its own window after the players' (10.7). |
 
 ### 10.5 What a player is told and offered at a wall
 
 One reading of the server's answer (`src/lib/rpc/seaWall.ts`) and one wording (`src/components/ui/seaWallWords.ts`), in English and
-Korean, used by every screen. The server says which of the two asks is short (0376: `short_title`, `short_wave` in the rule's own
+Korean, used by every screen. The server says which of the two asks is short (0391: `short_title`, `short_wave` in the rule's own
 figures); the client never compares a number.
 
 > **The Western Ocean is closed to this fleet. It asks wave resistance 30. This fleet has 12. Sail a sturdier ship, or fit anchors and planking.**
@@ -647,7 +647,7 @@ figures); the client never compares a number.
 |---|---|
 | Codex, **Seas** (new face) | Her title, the fleet's wave resistance, and all 64 seas with what each asks and its harbours: an Open list and a Closed list, each closed sea with what it asks that she lacks and what to do. One chip a fleet when she has several. Dark: the asks only, and "Sea rules are not on yet". |
 | Map | The seas closed to the fleet in hand are shaded (the server's zone raster, `world.sea_zone_map`, and its verdicts). A place's tray names its sea and, when closed, the short reason on the title line and the wall above the fleets. |
-| Map, Send fleet row | The row is the real SAIL dry-run, so a closed sea is the door's own answer, in the wall's words; no passage figure and no price is shown. A far city that no chain of harbours opens says the sea on the direct course (0376, `world.route_legs` `sea`) in place of "too far". |
+| Map, Send fleet row | The row is the real SAIL dry-run, so a closed sea is the door's own answer, in the wall's words; no passage figure and no price is shown. A far city that no chain of harbours opens says the sea on the direct course (0391, `world.route_legs` `sea`) in place of "too far". |
 | Map, armada row | The armada's dry run is every fleet's door; the refusal is printed in the same words. |
 | Map, route builder | A leg shut by a sea reads "sea name: Needs title 4" in the route's line; the button stays "Sea shut". |
 | Trade | A city the sea closes cannot be pressed and says the wall in place of "too far" (`reachWords`, the board's `sea.refusal`). No height is added to the Trade face. |
@@ -663,27 +663,28 @@ figures); the client never compares a number.
 | S4 | 24 far-trader houses with size-4 and size-5 hulls | Needed only once S3 is lit and only for the harbours that then lose every merchant (LOCAL: 14 after a planning pass, 3.5 % of merchant stops). Players are unaffected by its absence at the players' light. It must be measured on prod's loops first. | medium (data + founding path + proof) |
 | S5, the column | `great_powers.starting`, `nations[].starting` | Replaced by the derived rule of 10.4 (1). | none |
 | S6 + C5 | The capital, `cmd.move_capital` | A new verb with a 20,000 d. price; nothing about lighting needs it. | medium |
-| S7 (new) | **The way home**: a leg is never refused when every sea it touches asks no more than the sea she lies in. So a fleet whose wave drops abroad (a ship lost, a fitting unmounted) can always sail back toward easier water. | The lighting guard covers the day of the light. After it, a company can only strand herself by her own act, and is told why. Wanted before attacks are lit (a sunk nau can leave a barca alone in Asia). | small to medium (the gate, `reach_passage`, `sea_routes`: three cut bodies) |
+| S7 | **The way home**: BUILT in 0391 after the prod read (10.4, row 2). What is left of it: a Trade row's `sea` tag (`public.sea_routes`) still reads the plain rule, so a row in her own far sea can wear "Shut" while the passage is offered; and the pathfinder takes the sea of the harbour she LEAVES for the whole chain, where the door judges each leg from where she then lies. | The door is the last word and says why. | small |
 | The board and the door | Re-derive `sea_leg_asks` from sailed courses, not straight lines, so Trade never shows a city the door refuses (10.2: 11 of 703 one-leg courses) | The Map's row is already the door's own answer, and Trade's press is refused with the reason before anything is spent. | medium (246 x 246 courses; a derivation job, not a migration statement) |
 | S1b | The lower first walls of 10.3 | The owner's choice. | small (data, one derivation) |
 | A legend on the map | A word for the shade without a press | The tray says it on a press; the corner chrome is full at 320 px. | small |
 
 ### 10.7 The order of lighting, and what stands in the way
 
-1. Deploy 0376 (player-side reads; dark) and the client. Nothing changes for a player but the new Seas face, the wave figures and, lit, the words.
-2. Deploy 0377 (S3; dark).
-3. Light `fleet_room_bite` (its own window; not this work).
-4. Run `volatility.sql`, then `impact.sql`, on prod. **Ready to light the players' switch when:** no human fleet lies in or sails for a sea
-   closed to her; every human fleet can reach her capital; no company's capital sea is closed to her title; no human standing route has a
+0. Numbers: the four files are 0391 (the wall's reads and the way home), 0392 (merchants), 0393 (the players' step), 0394 (the merchants' step);
+   they deploy after 0379 to 0390 (the armada's battle, the pirate company, gear wear). Prod head on 2026-11-13: 0375, with five switches and attacks lit.
+1. Deploy 0391 (player-side reads; dark) and the client. Nothing changes for a player but the new Seas face, the wave figures and, lit, the words.
+2. Deploy 0392 (S3; dark).
+3. `fleet_room_bite` is lit on prod since 0370 (2026-11-13): that guard is met.
+4. Run `volatility.sql`, then `impact.sql`, on prod. **Ready to light the players' switch when:** no company's capital sea is closed to her title; no human standing route has a
    closing leg (or its owner has been told); and the owner has seen the "company" row of his own company (title 10 by the last read: every
    title wall is open to him, so his fleets' wave resistance decides where he may go).
-5. Light `sea_conditions_bite`. 0378 does NOT throw the switch when it is deployed: it installs `public.sea_conditions_ready()` (the
+5. Light `sea_conditions_bite`. 0393 does NOT throw the switch when it is deployed: it installs `public.sea_conditions_ready()` (the
    guard figures, read-only) and `public.sea_conditions_light()`, a step the lead calls once. The step re-checks step 4 itself and refuses,
    naming each failed guard, or lights the switch and posts the news row. (A migration that raised at apply would fail on every CI world,
    where fleet room is dark and probe fleets lie at Accra and Acapulco; one that lit at apply would close the far sails of every older
    proof.) 30-minute after-check.
-6. Merchants: run `impact.sql` again for the "merchants" rows; light `sea_conditions_bite_npc` with 0379's step
+6. Merchants: run `impact.sql` again for the "merchants" rows; light `sea_conditions_bite_npc` with 0394's step
    (`public.sea_conditions_npc_light()`) in its own window, after the players' light, when no merchant is left without a leg her hull can
    hold. Then decide S4 from the harbours that lost their callers.
 
-Rollback of either light is the switch set false: every answer returns to its pre-image at once (asserted dark in 0216, 0376 and 0377).
+Rollback of either light is the switch set false: every answer returns to its pre-image at once (asserted dark in 0216, 0391 and 0392).

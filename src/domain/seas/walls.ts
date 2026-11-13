@@ -2,8 +2,8 @@ import { readSeaWall, type SeaConditions, type SeaWall, type SeaZone } from '../
 
 // A FLEET'S SEAS — every sea with what it asks and, for one fleet, the wall the server says stands in it.
 //
-// Read off `world.sea_conditions` (0215, 0376): `fleets[].seas` holds `public.sea_refusal`'s own figures for each sea
-// that refuses her, so open or closed is the server's verdict and nothing is compared here. A world before 0376 serves
+// Read off `world.sea_conditions` (0215, 0391): `fleets[].seas` holds `public.sea_refusal`'s own figures for each sea
+// that refuses her, so open or closed is the server's verdict and nothing is compared here. A world before 0391 serves
 // no verdict: `judged` is false and no sea is called closed.
 
 export interface SeaRow {

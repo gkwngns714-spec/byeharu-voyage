@@ -18,7 +18,7 @@ export function useFleetSeas(fleetId?: string | null): FleetSeas & { loading: bo
   return useMemo(() => ({ ...fleetSeas(read.view, id), loading: read.loading }), [read.view, read.loading, id])
 }
 
-/** WHICH SEA EVERY CELL OF THE CHART IS IN (world.sea_zone_map, 0376). World data: asked once a session, and only
+/** WHICH SEA EVERY CELL OF THE CHART IS IN (world.sea_zone_map, 0391). World data: asked once a session, and only
  *  when `wanted` (a world whose sea conditions bite and that serves the read: before that nothing is shaded). */
 export function useSeaZoneCells(wanted: boolean): ZoneCells | null {
   const read = useServedRead(wanted ? 'sea-zone-map' : null, () => worldSeaZoneMap(), {
