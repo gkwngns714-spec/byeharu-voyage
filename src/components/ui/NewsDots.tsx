@@ -58,6 +58,8 @@ export function NewsDots({ news, plot, axis, width, height }: {
             onPointerDown={(e) => e.stopPropagation()}
             aria-label={t('news.dot', { n: d.ids.length })}
             data-testid="news-dot"
+            // which news it holds: a dot's own name, whatever its place among the others (marks regroup as a chart's time stretches)
+            data-news-ids={d.ids.join(' ')}
             data-importance={d.importance}
             className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-chip"
             style={{ left: d.hitX, top: d.hitY, width: NEWS_HIT_PX, height: NEWS_HIT_PX }}
