@@ -104,6 +104,12 @@ const STATS_READS: readonly RpcName[] = [
   'worldHistory',
 ]
 
+// AND THE BATTLES (0364, the map's rings). On Supabase byeharu-voyage:battles fights every round that is due, each minute
+// (public.tick_battles, 0323 / 0357); in this tab nothing does, so a battle somebody else is in would never move for a
+// watcher. So before a read of the battles on the map (world.fights, world.fight) this backend runs THE SAME FUNCTION:
+// one read of one partial index when no battle is due, which is every call while attacks are dark.
+const BATTLES_SQL = 'select public.tick_battles(now()) as result'
+
 /** The slice of LocalDb this needs — structural, so a spec can hand in its own engine. */
 export interface LocalCaller {
   callAs<T>(sql: string, params?: unknown[]): Promise<T>
@@ -133,6 +139,8 @@ export function createLocalBackend(db: LocalCaller): RpcBackend {
           ? db
               .callAs<unknown>('select public.tick_arrivals(now()) as result')
               .then(() => db.callAs<unknown>('call public.tick_lap_starts(false)'))
+          : name === 'worldFights' || name === 'worldFight'
+            ? db.callAs<unknown>(BATTLES_SQL)
           : due
             ? db.callAs<unknown>(RECORD_SQL)
             : statsDue

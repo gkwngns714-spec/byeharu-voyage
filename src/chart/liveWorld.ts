@@ -28,7 +28,8 @@
 // than a picture that is honest about being a reading.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import type { FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
+import type { FightCard, FleetShip, FleetView, SnapshotPort, TrafficFleet } from '../lib/rpc'
+import type { MapFight } from './fightRings'
 import { CARGO_HULL, NAVY_HULL, PIRATE_HULL, hullShapeOf } from './glyphs'
 import type { HullClass, MapFleet, MapPort, MapTraffic } from './mapTypes'
 import { heldUntilMs, whereabouts } from '../domain/fleet'
@@ -357,4 +358,19 @@ function mapFleetOf(f: ServedFleet): MapFleet | null {
     }
   }
   return null
+}
+
+/** 0364 — THE BATTLES THE CHART RINGS (`world.fights().fights`), field for field: the battle's own place, the
+ *  server's count of the fleets that are there, and where each of them lies now. Nothing is derived: the ring's
+ *  size and centre are ./fightRings.ts's, from exactly these. */
+export function mapFightsOf(cards: readonly FightCard[]): MapFight[] {
+  return cards.map((c) => ({
+    id: c.id,
+    at: { lat: c.lat, lon: c.lon },
+    fleets: c.fleets,
+    places: c.sides.flatMap((s) => (s.here && s.at ? [{ lat: s.at[0], lon: s.at[1] }] : [])),
+    fleetIds: c.sides.map((s) => s.fleet),
+    over: c.status !== 'FIGHTING',
+    mine: c.mine,
+  }))
 }

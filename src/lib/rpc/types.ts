@@ -4170,6 +4170,54 @@ export interface BattleRead {
   loot?: number
   crew_lost?: number
   navy?: string | null
+  /** 0364 `world.fight(battle)`: true on a watcher's read. It has no stance, word, loot, hands or navy line; the log is
+   *  from the deck of the side that attacked, and `you` names that side. */
+  watch?: boolean
+  you?: string | null
+  /** 0364: the caller's own fleet in this battle, or null. */
+  mine?: string | null
+}
+
+/** 0364: one fleet of a battle on the map's read. `at` is [lat, lon], served while the battle is fought and she is there. */
+export interface FightSide {
+  fleet: string
+  name: string
+  side: 'ATTACKER' | 'DEFENDER'
+  how: 'OPENED' | 'ESCORT' | 'CALLED'
+  kind: 'COMPANY' | 'MERCHANT' | 'CARGO_SHIP' | 'NAVY' | 'PIRATE'
+  company: string | null
+  nation: string | null
+  ships: number
+  here: boolean
+  at?: [number, number]
+}
+
+/** 0364: one battle as the map draws it (public.fight_card). `fleets` and `ships` count the sides that are there. */
+export interface FightCard {
+  id: string
+  status: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
+  lat: number
+  lon: number
+  started_at: string
+  resolves_at: string
+  round_seconds: number
+  rounds: number
+  rounds_done: number
+  next_at: string | null
+  fleets: number
+  ships: number
+  mine: string | null
+  sides: FightSide[]
+  /** How it ended, from the deck of the side that attacked; absent while it is fought. */
+  end?: string | null
+}
+
+/** 0364 `world.fights()`: the read the map polls. `on` false: attacks are dark and nothing is served. */
+export interface FightsRead {
+  on: boolean
+  now?: string
+  keep_seconds?: number
+  fights: FightCard[]
 }
 
 /** 0357 `cmd.battle_stance`: the stance kept, the round it takes hold from, and when that round is due. */

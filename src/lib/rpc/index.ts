@@ -119,6 +119,7 @@ import type {
   BattleRead,
   BattleStanceReceipt,
   BattleStanceWord,
+  FightsRead,
   AllegianceView,
   CountryChanged,
   DonateReceipt,
@@ -955,6 +956,16 @@ export function cmdBattleStance(battleId: string, stance: BattleStanceWord): Pro
 /** The read the battle card polls (0357): her fleet's battle, its clock, her stance and the log so far. */
 export function worldBattle(fleetId: string): Promise<RpcResult<BattleRead>> {
   return call<BattleRead>('worldBattle', [fleetId])
+}
+
+/** Every battle being fought, for the map's rings (0364). */
+export function worldFights(): Promise<RpcResult<FightsRead>> {
+  return call<FightsRead>('worldFights', [])
+}
+
+/** Any battle's log, for a watcher (0364): `world.battle`'s shape with `watch` true. */
+export function worldFight(battleId: string): Promise<RpcResult<BattleRead>> {
+  return call<BattleRead>('worldFight', [battleId])
 }
 
 /** Your fleet attacks a cargo ship (0327). A battle opens; its end comes as a report. */
