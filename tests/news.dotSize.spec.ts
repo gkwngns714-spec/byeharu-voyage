@@ -146,7 +146,8 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
   await expect(first, `${where}: the chart shows no news dot`).toBeVisible({ timeout: 90_000 })
   await first.scrollIntoViewIfNeeded({ timeout: STEP_MS })
   await page.waitForTimeout(300)
-  const bad = new Set<string>()
+  // a law is read again at every read of the chart: a sentence said twice is returned once
+  const bad: string[] = []
   const px = (b: readonly number[]) => `${Math.round(b[2] * 10) / 10}×${Math.round(b[3] * 10) / 10} at ${Math.round(b[0])},${Math.round(b[1])}`
   const pressed = new Set<string>()
   let regrouped = 0
@@ -157,37 +158,38 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
     dots.forEach((d, i) => {
       const [l, t, w, h] = d.box
       const [ll, lt, lw, lh] = d.layer
-      if (w < NEWS_HIT_PX - 0.5 || h < NEWS_HIT_PX - 0.5) bad.add(`${where}: the target of "${d.label}" is ${px(d.box)} — the law is ${NEWS_HIT_PX} × ${NEWS_HIT_PX}`)
-      if (l < ll - 0.5 || t < lt - 0.5 || l + w > ll + lw + 0.5 || t + h > lt + lh + 0.5) bad.add(`${where}: the target of "${d.label}" (${px(d.box)}) hangs out of its chart's box (${px(d.layer)})`)
-      if (l < -0.5 || l + w > glass + 0.5) bad.add(`${where}: the target of "${d.label}" (${px(d.box)}) hangs off the ${glass}-px glass`)
-      if (d.mark === null) bad.add(`${where}: "${d.label}" draws no mark`)
+      if (w < NEWS_HIT_PX - 0.5 || h < NEWS_HIT_PX - 0.5) bad.push(`${where}: the target of "${d.label}" is ${px(d.box)} — the law is ${NEWS_HIT_PX} × ${NEWS_HIT_PX}`)
+      if (l < ll - 0.5 || t < lt - 0.5 || l + w > ll + lw + 0.5 || t + h > lt + lh + 0.5) bad.push(`${where}: the target of "${d.label}" (${px(d.box)}) hangs out of its chart's box (${px(d.layer)})`)
+      if (l < -0.5 || l + w > glass + 0.5) bad.push(`${where}: the target of "${d.label}" (${px(d.box)}) hangs off the ${glass}-px glass`)
+      if (d.mark === null) bad.push(`${where}: "${d.label}" draws no mark`)
       else {
         const [ml, mt, mw, mh] = d.mark
-        if (ml < l - 0.5 || mt < t - 0.5 || ml + mw > l + w + 0.5 || mt + mh > t + h + 0.5) bad.add(`${where}: the mark of "${d.label}" (${px(d.mark)}) stands outside its target (${px(d.box)})`)
-        if (mw > 24 || mh > 24) bad.add(`${where}: the mark of "${d.label}" is ${px(d.mark)} — the mark stays small`)
+        if (ml < l - 0.5 || mt < t - 0.5 || ml + mw > l + w + 0.5 || mt + mh > t + h + 0.5) bad.push(`${where}: the mark of "${d.label}" (${px(d.mark)}) stands outside its target (${px(d.box)})`)
+        if (mw > 24 || mh > 24) bad.push(`${where}: the mark of "${d.label}" is ${px(d.mark)} — the mark stays small`)
       }
-      if (!Number.isFinite(d.n) || d.n < 1) bad.add(`${where}: the dot's label "${d.label}" carries no count`)
-      if (d.n !== d.ids.split(' ').length) bad.add(`${where}: the dot "${d.label}" holds ${d.ids.split(' ').length} news`)
+      if (!Number.isFinite(d.n) || d.n < 1) bad.push(`${where}: the dot's label "${d.label}" carries no count`)
+      if (d.n !== d.ids.split(' ').length) bad.push(`${where}: the dot "${d.label}" holds ${d.ids.split(' ').length} news`)
       for (const e of dots.slice(i + 1)) {
         if (e.chart !== d.chart) continue
         const ox = Math.min(l + w, e.box[0] + e.box[2]) - Math.max(l, e.box[0])
         const oy = Math.min(t + h, e.box[1] + e.box[3]) - Math.max(t, e.box[1])
-        if (ox > 0.5 && oy > 0.5) bad.add(`${where}: the targets of "${d.label}" and "${e.label}" overlap by ${Math.round(ox)} × ${Math.round(oy)} px`)
+        if (ox > 0.5 && oy > 0.5) bad.push(`${where}: the targets of "${d.label}" and "${e.label}" overlap by ${Math.round(ox)} × ${Math.round(oy)} px`)
       }
     })
     // the probe's headlines stand on every chart, each in one dot only: no dot of this chart was lost to another's target
     const charts = [...new Set(dots.map((d) => d.chart))]
     for (const c of charts) {
       const ids = dots.filter((d) => d.chart === c).flatMap((d) => d.ids.split(' '))
-      if (ids.length !== o.headlines || new Set(ids).size !== o.headlines) bad.add(`${where}: a chart's dots carry ${ids.length} news (${new Set(ids).size} different) — the probe wrote ${o.headlines}`)
+      if (ids.length !== o.headlines || new Set(ids).size !== o.headlines) bad.push(`${where}: a chart's dots carry ${ids.length} news (${new Set(ids).size} different) — the probe wrote ${o.headlines}`)
       o.most = Math.max(o.most, dots.filter((d) => d.chart === c).length)
     }
 
     // PRESS THE NEXT ONE NOT YET PRESSED: the card holds exactly that dot's news, and the chart's box does not move
-    const next = dots.find((d) => !pressed.has(`${d.chart}:${d.ids}`))
-    if (next === undefined) break
+    const i = dots.findIndex((d) => !pressed.has(`${d.chart}:${d.ids}`))
+    if (i < 0) break
+    const next = dots[i]
     if (round >= MAX_ROUNDS) {
-      bad.add(`${where}: the chart's dots did not settle in ${MAX_ROUNDS} reads (${regrouped} regroupings)`)
+      bad.push(`${where}: the chart's dots did not settle in ${MAX_ROUNDS} reads (${regrouped} regroupings)`)
       break
     }
     pressed.add(`${next.chart}:${next.ids}`)
@@ -200,7 +202,7 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
         return await run()
       } catch {
         if ((await dot.count()) === 0) regrouped++
-        else bad.add(`${where}: ${name} ${what}`)
+        else bad.push(`${where}: ${name} ${what}`)
         return undefined
       }
     }
@@ -218,7 +220,7 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
       ),
     )
     if (reaches === undefined) continue
-    if (reaches !== 'itself') bad.add(`${where}: a press at the centre of ${name} reaches ${reaches}`)
+    if (reaches !== 'itself') bad.push(`${where}: a press at the centre of ${name} reaches ${reaches}`)
     const before = await layer.evaluate(placeOf, undefined, { timeout: STEP_MS })
     // a dot another target lies over cannot be pressed: said as a sentence, not left to run the clock out
     if ((await step('cannot be pressed — something lies over it', () => dot.click({ timeout: STEP_MS }).then(() => true))) === undefined) continue
@@ -226,16 +228,16 @@ async function measure(page: Page, where: string, scope: string, o: { headlines:
     await expect(card, `${where}: pressing ${name} opened no card`).toBeVisible({ timeout: STEP_MS })
     const items = await card.getByTestId('news-item').count()
     // the card lists at most five (NewsCard's CARD_MAX) and says how many more the dot holds: every migration's own "Update" row lands in one dot, and 0362's made it six
-    if (items !== Math.min(next.n, 5)) bad.add(`${where}: ${name} opened a card of ${items} news`)
-    const after = await layer.evaluate(placeOf, undefined, { timeout: STEP_MS })
-    if (JSON.stringify(after) !== JSON.stringify(before)) bad.add(`${where}: pressing ${name} moved its chart: ${JSON.stringify(before)} → ${JSON.stringify(after)}`)
-    if (!(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))) bad.add(`${where}: the page scrolls sideways with the card of ${name} open`)
+    if (items !== Math.min(dots[i].n, 5)) bad.push(`${where}: "${dots[i].label}" opened a card of ${items} news`)
+    const after = await layer.evaluate(placeOf)
+    if (JSON.stringify(after) !== JSON.stringify(before)) bad.push(`${where}: pressing ${name} moved its chart: ${JSON.stringify(before)} → ${JSON.stringify(after)}`)
+    if (!(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))) bad.push(`${where}: the page scrolls sideways with the card of ${name} open`)
     await card.getByTestId('tray-close').click({ timeout: STEP_MS })
     await expect(card).toHaveCount(0, { timeout: STEP_MS })
   }
   if (regrouped > 0) console.log(`DOTS ${where}: regrouped ${regrouped} time(s) under the presses; read again each time`)
-  if (pressed.size === 0) bad.add(`${where}: no dot was pressed`)
-  return [...bad]
+  if (pressed.size === 0) bad.push(`${where}: no dot was pressed`)
+  return [...new Set(bad)]
 }
 
 /** THE WHOLE TEST'S TIME, STATED: five minutes. A run is about half a minute here and a minute on CI, and it does not grow with the
