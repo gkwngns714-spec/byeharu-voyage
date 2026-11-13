@@ -1,4 +1,4 @@
--- 0392 PROD CHECK (after the deploy), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/after.sql
+-- 0397 PROD CHECK (after the deploy), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/after.sql
 -- Run volatility.sql first. Wanted: switch false; reader false; old_function_gone true; new_functions 6; every new_* 1 (the new text of each hunk once on the
 -- live bodies); memo_rows > 0; courses_not_remembered 0 (a course the planner can be handed that the memo does not hold is sampled live: correct, slower);
 -- client_can_read_memo false; loops_the_sea_would_close is what lighting sea_conditions_bite_npc would re-plan (impact.sql's merchants row says the same).
@@ -10,7 +10,7 @@ with d as (
   select $h$public.npc_feasible_legs(p_home, p_fleet, p_speed, v_days_cap)$h$ as c1,
          $h$public.npc_feasible_legs((b->>'port_id')::uuid, p_fleet, p_speed, v_days_cap)$h$ as c2,
          $h$public.npc_feasible_legs((t->>'d')::uuid, p_fleet, p_speed, v_days_cap)$h$ as c3,
-         $h$  v_sea     boolean := false;   -- 0392 (S3)$h$ as p1,
+         $h$  v_sea     boolean := false;   -- 0397 (S3)$h$ as p1,
          $h$          v_sea := public.sea_conditions_npc_on() and public.npc_loop_sea_shut(r.fleet_id, v_loop);
           v_unsail := v_unsail or v_sea;
 $h$ as p2,

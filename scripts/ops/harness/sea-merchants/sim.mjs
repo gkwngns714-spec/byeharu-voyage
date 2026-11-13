@@ -1,8 +1,8 @@
-// sim.mjs: THE "NO OPEN LOOP" SIMULATION for 0392 (a merchant sails the seas her hull can hold). LOCAL ONLY; not in CI.
+// sim.mjs: THE "NO OPEN LOOP" SIMULATION for 0397 (a merchant sails the seas her hull can hold). LOCAL ONLY; not in CI.
 //
 //   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/sea-merchants/sim.mjs [--limit=N] [--fixture] [--json=<file>] [--scene=<file.sql>]
 //
-// Restores the cached world at the head before 0392 (never from zero; the cache is only read), applies 0392, then runs sim-scene.sql TWICE, each in its own
+// Restores the cached world at the head before 0397 (never from zero; the cache is only read), applies 0397, then runs sim-scene.sql TWICE, each in its own
 // rolled-back transaction: DARK (sea_conditions_bite_npc false) and LIT (true). The scene starts every merchant on her route where she lies and plans each one
 // alone at her lap start through the real planner (public.npc_plan), then reads what was written. It prints one table: by hull size, the loops with a leg the
 // sea closes before the plan, the fleets moved to another loop, the loops still closed after, the fleets left with no BUY, and the fleets laid up.
@@ -13,7 +13,7 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
-const NAME = '20260818000392'
+const NAME = '20260818000397'
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
 const say = (...a) => console.log(...a)
 const files = []
