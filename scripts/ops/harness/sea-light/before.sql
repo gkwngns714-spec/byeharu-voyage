@@ -1,7 +1,7 @@
--- 0393 PROD CHECK (before lighting sea_conditions_bite), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-light/before.sql
+-- 0398 PROD CHECK (before lighting sea_conditions_bite), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-light/before.sql
 -- Run volatility.sql first (public.sea_conditions_ready must read 's'). THE GUARDS OF THE STEP, as it will judge them, and the baseline of the window.
--- Wanted before the light: guards.ready true. That is: lit false, wall_reads_in true (0391 deployed), fleet_room true (fleet_room_bite lit first),
--- capitals_closed 0, route_legs_closed 0. HEAD IT MEETS: 20260818000392. fleets_in_closed_seas is TOLD, not a guard (the way home, 0391, carries them:
+-- Wanted before the light: guards.ready true. That is: lit false, wall_reads_in true (0396 deployed), fleet_room true (fleet_room_bite lit first),
+-- route_legs_closed 0. capitals_closed is TOLD, not a guard (home waters, 0396: prod read 1 on 2026-11-14, a company of Japan). HEAD IT MEETS: 20260818000397. fleets_in_closed_seas is TOLD, not a guard (the way home, 0396, carries them:
 -- prod read 1 on 2026-11-13, Casa Estaleiro at Acapulco). queued_sails_closed is told, not a guard: each such SAIL fails with its reason when it runs.
 -- Not ready: do NOT light; the step would refuse anyway, naming the same figures. scripts/ops/harness/sea-conditions/impact.sql says which company and why.
 -- The baseline: failed orders by code over the last hour (a plan refused at the press is written nowhere and is not in it), departures over the last hour, the arrivals beat over the last 30 minutes (after-check.sql reads the same).

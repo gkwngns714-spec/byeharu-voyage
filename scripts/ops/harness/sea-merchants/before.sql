@@ -1,7 +1,7 @@
--- 0392 PROD CHECK (before the deploy), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/before.sql
--- HEAD IT MEETS: 20260818000391 (0392 deploys after 0391, the wall; 0379 to 0390 deploy before both). Wanted head below: 20260818000391.
--- Wanted: nothing_of_0392 true; old_function true; other_callers 0; every hunk_* 1 (each of the six hunks occurs exactly once on the live bodies);
--- sea_rule_in true (0215 and 0216); switch_players is whatever it is (0392 does not read it); merchant_fleets and courses are the size of the memo's fill
+-- 0397 PROD CHECK (before the deploy), read-only, ONE statement: npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/sea-merchants/before.sql
+-- HEAD IT MEETS: 20260818000396 (0397 deploys after 0396, the wall; 0379 to 0395 deploy before both). Wanted head below: 20260818000396.
+-- Wanted: nothing_of_0397 true; old_function true; other_callers 0; every hunk_* 1 (each of the six hunks occurs exactly once on the live bodies);
+-- sea_rule_in true (0215 and 0216); switch_players is whatever it is (0397 does not read it); merchant_fleets and courses are the size of the memo's fill
 -- (one public.course_zones a distinct course, inside the file's 45 s budget). Any other answer: do not deploy, the file refuses or the body moved.
 begin transaction read only;
 with d as (
@@ -23,7 +23,7 @@ $h$ as p3
 select (select max(version) from supabase_migrations.schema_migrations) as head,
        to_regprocedure('public.sea_conditions_npc_on()') is null and to_regprocedure('public.npc_sea_shut(numeric, uuid, jsonb)') is null
          and to_regclass('public.npc_course_zones_memo') is null
-         and not exists (select 1 from public.world_config where key = 'sea_conditions_bite_npc') as nothing_of_0392,
+         and not exists (select 1 from public.world_config where key = 'sea_conditions_bite_npc') as nothing_of_0397,
        to_regprocedure('public.npc_feasible_legs(uuid, numeric, integer)') is not null as old_function,
        (select count(*) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
          where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prosrc like '%npc_feasible_legs(%'

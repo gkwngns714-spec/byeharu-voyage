@@ -1,12 +1,12 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 91 — A WALL SAYS WHAT IS SHORT  (migration 0391, owner rows 166 and 324)
+-- PROOF 91 — A WALL SAYS WHAT IS SHORT  (migration 0396, owner rows 166 and 324)
 --
 --   The migration's self-assert reads the rule with typed figures and one probe company. Here the companies are real (the real founding door, the real
 --   passage gate, the real leg judge), the switch is turned both ways, and each new key is held to the authority it copies. Everything rolls back with
 --   proof.mjs's transaction; every switch this proof needs it writes here.
 --
 -- @pass WALL_SHORT       the real passage gate, lit: a barca company at title 1 is refused the Western Ocean with short_title and short_wave true; in a nau (wave 39) the same sea says short_title only; the six old figures and the sentence are the rule's as before
--- @pass WALL_FAR_POWER   dark, the real founding door lets Japan in; lit, Japan and (pirates joinable) the Brethren are refused E_FAR_POWER with the sea and the title it asks, the fixes name only powers in open water, no row is written; Portugal and the Ottomans are let in; the doors before it answer first
+-- @pass WALL_HOME_WATERS  founding is refused nowhere, dark or lit: lit, a new company of Japan is founded at Sakai, her capital's sea and the seas of its rank that her barca holds are open to her at title 1 (the door and her read agree, and her read names her home sea), a sea of another rank still refuses her with her true title 1 in the figures; a country change moves her home with it at once
 -- @pass WALL_CONDITIONS  her read: every zone is in a fleet's `seas` exactly when the one rule refuses that zone alone, with the rule's own figures; the nau's fleet has fewer closed seas than the barca's and none of them short of wave below 39; `port` is where she lies; `harbours` adds up to every harbour; nobody signed in reads no fleet and the same far powers
 -- @pass WALL_ORDER       lit, the real order paths: cmd.preview and cmd.issue of SAIL LPA for the title-1 barca answer E_SEA_CLOSED with the rule's own figures (Macaronesia, title 2 asked, 1 held, short of title and not of wave); the catcher (cmd.refusal_caught) still keeps cmd.figures' shape (have, need, unit) and still drops every other: a leg's own figures, a PostgreSQL DETAIL, half the sea's shape, the sea's keys with the wrong types
 -- @pass WALL_LEGS        lit, a leg from Lisbon to Honolulu is shut by its length with no harbours between and names the sea the gate refuses on; Porto names none; no leg names a sea while it has harbours between; dark, no leg names a sea and the other keys are the same text as lit
@@ -17,10 +17,10 @@
 
 do $$
 declare
-  c_a constant uuid := '00000000-0391-4000-8000-0000000000a1';
-  c_b constant uuid := '00000000-0391-4000-8000-0000000000b1';
-  c_c constant uuid := '00000000-0391-4000-8000-0000000000c1';
-  c_d constant uuid := '00000000-0391-4000-8000-0000000000d1';
+  c_a constant uuid := '00000000-0396-4000-8000-0000000000a1';
+  c_b constant uuid := '00000000-0396-4000-8000-0000000000b1';
+  c_c constant uuid := '00000000-0396-4000-8000-0000000000c1';
+  c_d constant uuid := '00000000-0396-4000-8000-0000000000d1';
   v_pa  uuid;
   v_pb  uuid;
   v_fa  uuid;
@@ -68,39 +68,61 @@ begin
   end if;
   raise notice 'PASS: WALL_SHORT — the gate refuses % to both: the barca is short of title and wave, the nau of title only; eight figures, the sentence unmoved', v_ra -> 'figures' ->> 'zone_name';
 
-  -- ── WALL_FAR_POWER ──
-  update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
-  perform cmd.assume_identity(c_c);
-  v_r := cmd.found_house('Casa Muro Longe', 'JPN');
-  if (v_r ->> 'ok') <> 'true' then
-    raise exception 'PROOF 91 FAIL: dark, founding under Japan answered %', v_r;
-  end if;
-  update public.world_config set value = 'true'::jsonb where key in ('sea_conditions_bite', 'pirates_joinable');
-  select count(*) into v_n from public.players;
-  perform cmd.assume_identity(c_d);
-  v_r := cmd.found_house('Casa Muro Perto', 'JPN');
-  v_r2 := cmd.found_house('Casa Muro Perto', 'PIR');
-  if (v_r ->> 'error_code') is distinct from 'E_FAR_POWER' or (v_r2 ->> 'error_code') is distinct from 'E_FAR_POWER'
-     or (v_r ->> 'ok') <> 'false' or (v_r -> 'figures' ->> 'nation') <> 'JPN' or (v_r2 -> 'figures' ->> 'capital') <> 'POR'
-     or (v_r -> 'figures' ->> 'zone') is distinct from public.harbour_zone((select p.id from public.ports p join public.nations n on n.capital_port_code = p.code where n.code = 'JPN'))
-     or (v_r -> 'figures' ->> 'needs_title')::int is distinct from (select z.title_min from public.sea_zones z where z.code = v_r -> 'figures' ->> 'zone')
-     or (v_r ->> 'error_message') !~ ('^Japan lies in ' || (v_r -> 'figures' ->> 'zone_name') || ', which asks title ' || (v_r -> 'figures' ->> 'needs_title'))
-     or exists (select 1 from jsonb_array_elements_text(v_r -> 'fixes') x, unnest(public.far_powers()) fp where x like '(sail under ' || fp || ' %')
-     or (v_r -> 'fixes')::text !~ 'PRT' or (v_r -> 'fixes')::text !~ 'OTT'
-     or (select count(*) from public.players) <> v_n then
-    raise exception 'PROOF 91 FAIL: lit, founding under Japan % ; under the Brethren %', v_r, v_r2;
-  end if;
-  if (cmd.found_house('Casa Muro Perto', 'VEN') ->> 'error_code') <> 'E_MINOR_POWER' or (cmd.found_house('Casa Muro Perto', 'ZZZ') ->> 'error_code') <> 'E_NO_SUCH_NATION' then
-    raise exception 'PROOF 91 FAIL: lit, the doors before the far-power door moved';
-  end if;
-  v_r := cmd.found_house('Casa Muro Perto', 'OTT');
-  if (v_r ->> 'ok') <> 'true' then
-    raise exception 'PROOF 91 FAIL: lit, founding under the Ottomans answered %', v_r;
-  end if;
-  update public.world_config set value = 'false'::jsonb where key = 'pirates_joinable';
-  raise notice 'PASS: WALL_FAR_POWER — dark Japan is let in; lit Japan (her sea asks title %) and the Brethren are refused E_FAR_POWER, % fixes in open water, no row written; the Ottomans are let in',
-    (select z.title_min from public.sea_zones z where z.code = public.harbour_zone((select p.id from public.ports p join public.nations n on n.capital_port_code = p.code where n.code = 'JPN'))),
-    (select count(*) from public.nations o where public.nation_joinable(o.id) and not (o.code = any (public.far_powers())));
+  -- ── WALL_HOME_WATERS ──
+  declare
+    v_pj   uuid;
+    v_fj   uuid;
+    v_home record;
+    v_near uuid;
+    v_lpa  uuid := (select id from public.ports where code = 'LPA');
+    v_prt  uuid := (select id from public.nations where code = 'PRT');
+    v_jpn  uuid := (select id from public.nations where code = 'JPN');
+  begin
+    update public.world_config set value = 'false'::jsonb where key = 'sea_conditions_bite';
+    perform cmd.assume_identity(c_c);
+    v_r := cmd.found_house('Casa Muro Longe', 'JPN');
+    if (v_r ->> 'ok') <> 'true' then
+      raise exception 'PROOF 91 FAIL: dark, founding under Japan answered %', v_r;
+    end if;
+    update public.world_config set value = 'true'::jsonb where key = 'sea_conditions_bite';
+    perform cmd.assume_identity(c_d);
+    v_r := cmd.found_house('Casa Muro Perto', 'JPN');
+    if (v_r ->> 'ok') <> 'true' or (v_r ->> 'nation') <> 'JPN' then
+      raise exception 'PROOF 91 FAIL: lit, founding under Japan answered % (founding is refused nowhere)', v_r;
+    end if;
+    v_pj := (v_r ->> 'player_id')::uuid;
+    select f.id into v_fj from public.fleets f where f.player_id = v_pj;
+    select z.code, z.title_min, z.wave_min, cap.id as port into v_home
+      from public.nations n join public.ports cap on cap.code = n.capital_port_code
+      join public.sea_leg_asks a on a.from_port = cap.id and a.to_port = cap.id join public.sea_zones z on z.code = a.zones[1]
+     where n.code = 'JPN';
+    -- a harbour in ANOTHER sea of her home's rank that her barca holds
+    select p.id into v_near
+      from public.ports p join public.sea_leg_asks a on a.from_port = p.id and a.to_port = p.id join public.sea_zones z on z.code = a.zones[1]
+     where p.kind = 'HARBOUR' and z.title_min = v_home.title_min and z.code <> v_home.code and z.wave_min <= public.fleet_wave(v_fj)
+     order by p.code limit 1;
+    v_ra := world.sea_conditions();
+    v_rb := public.sea_gate(v_pj, v_fj, v_lpa, null);
+    if v_home.title_min <= 1 or public.title_level(v_pj) <> 1 or v_near is null
+       or public.sea_gate(v_pj, v_fj, v_home.port, null) is not null or public.sea_gate(v_pj, v_fj, v_near, null) is not null
+       or (v_ra -> 'home_sea' ->> 'code') is distinct from v_home.code or (v_ra -> 'fleets' -> 0 -> 'seas') ? v_home.code
+       or exists (select 1 from public.sea_zones z where z.title_min = v_home.title_min and z.wave_min <= public.fleet_wave(v_fj) and (v_ra -> 'fleets' -> 0 -> 'seas') ? z.code)
+       or v_rb is null or (v_rb -> 'figures' ->> 'title')::int <> 1 or (v_rb -> 'figures' -> 'short_title') <> 'true'::jsonb
+       or not ((v_ra -> 'fleets' -> 0 -> 'seas') ? 'NOR-MAC') or (v_ra -> 'fleets' -> 0 -> 'seas') ? 'MED' then
+      raise exception 'PROOF 91 FAIL: home waters for a title-1 company of Japan: own sea %, a sister sea %, Macaronesia %, her read %',
+        public.sea_gate(v_pj, v_fj, v_home.port, null), public.sea_gate(v_pj, v_fj, v_near, null), v_rb, v_ra - 'zones' - 'titles';
+    end if;
+    -- A COUNTRY CHANGE MOVES HER HOME AT ONCE: sailing for Portugal, Europe is home; she still LIES at Sakai, so the waters of that rank stay hers (the way home)
+    update public.players set nation_id = v_prt where id = v_pj;
+    v_ra := world.sea_conditions();
+    if (v_ra -> 'home_sea' ->> 'title_min')::int <> 1 or (v_ra -> 'fleets' -> 0 -> 'seas') ? 'MED' or (v_ra -> 'fleets' -> 0 -> 'seas') ? v_home.code
+       or public.sea_gate(v_pj, v_fj, v_near, null) is not null then
+      raise exception 'PROOF 91 FAIL: after a change of country to Portugal her home did not move, or the sea she lies in closed on her: %', v_ra - 'zones' - 'titles';
+    end if;
+    update public.players set nation_id = v_jpn where id = v_pj;
+    raise notice 'PASS: WALL_HOME_WATERS — lit, Japan founds; at title 1 her own sea % (asks title %) and its sister seas are open at the door and in her read, Macaronesia refuses her with title 1 in the figures; sailing for Portugal instead, Europe is home at once and the sea she lies in stays open',
+      v_home.code, v_home.title_min;
+  end;
 
   -- ── WALL_CONDITIONS ──
   perform cmd.assume_identity(c_a);
