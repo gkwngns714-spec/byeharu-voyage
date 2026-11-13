@@ -33,7 +33,7 @@ bash "$HERE/../raid/after-check.sh" "$1" "$2" || RC=1
 for f in "$HERE/after.sql" "$HERE/../two-sides/golden.sql" "$HERE/after-lit.sql"; do
   echo
   echo "== $(basename "$f") =="
-  head -c 400 "$f" | grep -qi "begin transaction read only" || { echo "REFUSING: $f is not read only"; exit 3; }
+  node "$HERE/../read-only.mjs" "$f" || exit 3   # the one judge of "read only": first statement, last statement, no write verb
   WIN="$f"; command -v cygpath >/dev/null && WIN="$(cygpath -w "$f")"
   (cd "$REPO" && npx --yes supabase@2.120.0 db query --linked -f "$WIN") || RC=1
 done

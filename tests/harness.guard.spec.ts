@@ -38,6 +38,7 @@
 import { test, expect } from '@playwright/test'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import path from 'node:path'
+import { gameCallsIn, isReadOnlyTransaction, readOnlyVerdict, statements, tokenize, writesIn } from '../scripts/ops/harness/read-only.mjs'
 
 const ROOT = path.resolve(process.cwd())
 const HARNESS = path.join(ROOT, 'scripts', 'ops', 'harness')
@@ -68,133 +69,13 @@ function filesUnder(dir: string, exts: RegExp): string[] {
 // 1. THE READER
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-interface Tokens {
-  /** The file's top-level text: comments gone, every literal AND every dollar-quoted body one word, so
-   *  splitting on ';' gives the top-level statements. */
-  top: string
-  /** The file's code: as `top`, but a `do` body and an `execute` literal inside one are inlined (their own
-   *  literals stripped, recursively), because that is where a scene writes. */
-  code: string
-}
-
-const LIT = ' LIT '
-
-function tokenize(text: string): Tokens {
-  let top = ''
-  let code = ''
-  let i = 0
-  let lastWord = ''
-  const n = text.length
-  const word = /[A-Za-z_][A-Za-z0-9_]*/y
-  while (i < n) {
-    const c = text[i]
-    const c2 = text[i + 1]
-    if (c === '-' && c2 === '-') {
-      const e = text.indexOf('\n', i)
-      i = e < 0 ? n : e
-      continue
-    }
-    if (c === '/' && c2 === '*') {
-      let depth = 1
-      i += 2
-      while (i < n && depth > 0) {
-        if (text[i] === '/' && text[i + 1] === '*') {
-          depth++
-          i += 2
-        } else if (text[i] === '*' && text[i + 1] === '/') {
-          depth--
-          i += 2
-        } else i++
-      }
-      top += ' '
-      code += ' '
-      continue
-    }
-    if (c === "'") {
-      let j = i + 1
-      while (j < n) {
-        if (text[j] === "'") {
-          if (text[j + 1] === "'") {
-            j += 2
-            continue
-          }
-          break
-        }
-        j++
-      }
-      top += LIT
-      code += LIT
-      i = j + 1
-      continue
-    }
-    if (c === '"') {
-      const j = text.indexOf('"', i + 1)
-      const e = j < 0 ? n : j + 1
-      top += text.slice(i, e)
-      code += text.slice(i, e)
-      i = e
-      continue
-    }
-    if (c === '$') {
-      const m = /^\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/.exec(text.slice(i, i + 64))
-      if (m) {
-        const tag = m[0]
-        const close = text.indexOf(tag, i + tag.length)
-        const body = text.slice(i + tag.length, close < 0 ? n : close)
-        top += LIT
-        if (lastWord === 'do' || lastWord === 'execute') code += ' ; ' + tokenize(body).code + ' ; '
-        else code += LIT
-        i = close < 0 ? n : close + tag.length
-        continue
-      }
-    }
-    word.lastIndex = i
-    const w = word.exec(text)
-    if (w) {
-      lastWord = w[0].toLowerCase()
-      top += w[0]
-      code += w[0]
-      i += w[0].length
-      continue
-    }
-    top += c
-    code += c
-    i++
-  }
-  return { top, code }
-}
-
-const statements = (top: string) =>
-  top
-    .split(';')
-    .map((s) => s.replace(/\s+/g, ' ').trim().toLowerCase())
-    .filter((s) => s !== '')
-
-/** The statements a read-only transaction refuses, plus the PL/pgSQL verbs that run anything. */
-const WRITE =
-  /\b(insert|update|delete|merge|truncate|create|alter|drop|grant|revoke|copy|refresh|call|perform|execute)\b/gi
-const EXPLAIN_ANALYZE = /\bexplain\s*(?:\([^)]*\banalyze\b[^)]*\)|analyze\b)/i
-const GAME_CALL = /\b(public|voyage|cmd|world)\.([a-z_][a-z0-9_]*)\s*\(/gi
-
-const writesIn = (code: string): string[] => {
-  const found = new Set<string>()
-  for (const m of code.matchAll(WRITE)) found.add(m[1].toLowerCase())
-  if (EXPLAIN_ANALYZE.test(code)) found.add('explain analyze')
-  return [...found].sort()
-}
-const gameCallsIn = (code: string): string[] => {
-  const found = new Set<string>()
-  for (const m of code.matchAll(GAME_CALL)) found.add(`${m[1]}.${m[2]}`.toLowerCase())
-  return [...found].sort()
-}
+// The reader lives in scripts/ops/harness/read-only.mjs (tokenize, statements, writesIn, gameCallsIn,
+// isReadOnlyTransaction, readOnlyVerdict): ONE reader, imported here and asked by every ops shell script
+// before it sends a file to production (`node read-only.mjs <file>`). Section 5 holds the scripts to it.
 
 /** The first statement as `proof-0343.mjs`'s `guarded()` reads it: the first line that is neither blank nor a `--` comment. */
 const firstLine = (text: string) => text.split('\n').find((l) => !l.startsWith('--') && l.trim() !== '') ?? ''
 const isGuarded = (text: string) => firstLine(text) === GUARD
-const isReadOnlyTransaction = (stmts: string[]) =>
-  stmts.length >= 2 &&
-  /^(?:begin|start) (?:transaction |work )?read only$/.test(stmts[0]) &&
-  /^(?:commit|rollback)$/.test(stmts[stmts.length - 1])
 
 test('the reader: a hunk is data, a do body is code, an execute inside it is code, a wrapper is seen', () => {
   // A prod check whose hunk literal is full of write words is still a pure read.
@@ -399,4 +280,87 @@ test('the guard passes on PGlite (no server address) and refuses where the addre
   } finally {
     await db.close()
   }
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// 5. THE SHELL SCRIPTS ASK THE SAME READER
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// A script that sends a FILE to production (`db query --linked … -f`) refuses a file that is not a read-only
+// prod check. Until 2026-11-12 each looked for the words in the file's first 40 or 400 BYTES; on 2026-11-12
+// 04:49 UTC the 30-minute after-check of 0353 refused its own `combat-log/after.sql`, whose header comment is
+// 700 bytes long. The rule is the first STATEMENT, and its one judge is `read-only.mjs` (readOnlyVerdict).
+
+test('the judge reads the first statement, not the first bytes: a long CRLF header passes, a write refuses', () => {
+  const header = `-- ${'a prod check with a long header. '.repeat(20)}\r\n-- its second line\r\n\r\n/* and a block\r\n   comment */\r\n`
+  expect(header.length, 'the header must be longer than the old 400-byte window').toBeGreaterThan(600)
+
+  // The file that stopped the after-check: a long header, CRLF line endings, mixed case.
+  expect(readOnlyVerdict(`${header}Begin Transaction READ ONLY;\r\nselect 1;\r\ncommit;\r\n`)).toEqual({ ok: true, reason: '' })
+  expect(readOnlyVerdict(`${header}begin transaction read only;\r\nselect 1;\r\nrollback;\r\n`).ok).toBe(true)
+
+  // A write first refuses, though the words the old guard looked for are in its first 40 bytes.
+  const updateFirst = readOnlyVerdict("update public.world_config set value = 'x'; -- begin transaction read only\nbegin transaction read only;\nselect 1;\ncommit;\n")
+  expect(updateFirst.ok).toBe(false)
+  expect(updateFirst.reason).toContain('its first statement is "update public.world_config')
+  // The words in a comment or a literal are not a statement.
+  expect(readOnlyVerdict('-- begin transaction read only\nselect 1;\ncommit;\n').ok).toBe(false)
+  expect(readOnlyVerdict("select 'begin transaction read only';\ncommit;\n").ok).toBe(false)
+  // A plain `begin` is not read only; a file left open is not a prod check.
+  expect(readOnlyVerdict('begin;\nselect 1;\ncommit;\n').ok).toBe(false)
+  expect(readOnlyVerdict('begin transaction read only;\nselect 1;\n').ok).toBe(false)
+  // A write verb inside the wrapper refuses too (Postgres would refuse it; the script says so first)…
+  expect(readOnlyVerdict('begin transaction read only;\nupdate public.ports set name = name;\ncommit;\n')).toEqual({ ok: false, reason: 'it writes: update' })
+  expect(readOnlyVerdict('begin transaction read only;\nexplain analyze select 1;\ncommit;\n').reason).toBe('it writes: explain analyze')
+  // …and a hunk full of write words is data, as it is for the tree.
+  expect(readOnlyVerdict('begin transaction read only;\nselect count(*) from (values ($h$ update x set y = 1; $h$)) h(old);\ncommit;\n').ok).toBe(true)
+})
+
+test('every ops shell script that sends a file to production asks read-only.mjs first, and none counts bytes', () => {
+  const OPS = path.join(ROOT, 'scripts', 'ops')
+  const scripts = filesUnder(OPS, /\.sh$/i)
+  expect(scripts.length, 'no ops shell script was read — the walker is broken').toBeGreaterThan(10)
+
+  const senders: string[] = []
+  const wrong: string[] = []
+  for (const rel of scripts) {
+    const lines = read(path.join(OPS, rel)).split('\n')
+    const code = lines.map((l) => (l.trimStart().startsWith('#') ? '' : l))
+    if (code.some((l) => /\bhead\s+-c\b/.test(l) && /read only/i.test(l))) wrong.push(`${rel}: judges "read only" by a byte count (head -c)`)
+    const send = code.findIndex((l) => /db query\b.*--linked\b.*\s-f\s/.test(l))
+    if (send < 0) continue
+    senders.push(rel)
+    const ask = code.findIndex((l) => /^\s*node ".*\/\.\.\/read-only\.mjs" "\$\w+" \|\| exit 3\b/.test(l))
+    if (ask < 0 || ask > send) wrong.push(`${rel}: sends a file to production without asking read-only.mjs before it`)
+  }
+  // The five that send a file today; a sixth must ask too (the loop above), this list only proves the scan sees them.
+  expect(senders).toEqual(['harness/arrfast/pq.sh', 'harness/combat-log/after-check.sh', 'harness/raid/after-check.sh', 'harness/raid/pq.sh', 'harness/sim/pq.sh'])
+  expect(
+    wrong,
+    'An ops script sends a SQL file to production and does not ask the one judge first. Put this line before the ' +
+      '`db query --linked -f`, with the file as its argument:\n  node "$(dirname "$0")/../read-only.mjs" "$1" || exit 3\n' +
+      wrong.join('\n'),
+  ).toEqual([])
+})
+
+test('read-only.mjs on the command line: exit 0 for a prod check, exit 3 and REFUSING for anything else', async () => {
+  const { spawnSync } = await import('node:child_process')
+  const judge = path.join(HARNESS, 'read-only.mjs')
+  const run = (file: string) => spawnSync(process.execPath, [judge, file], { encoding: 'utf8' })
+
+  // The three files the 0353 after-check sends, as they lie in this checkout (CRLF or LF).
+  for (const rel of ['combat-log/after.sql', 'two-sides/golden.sql', 'combat-log/after-lit.sql']) {
+    const r = run(path.join(HARNESS, rel))
+    expect(`${rel}: ${r.status} ${r.stdout}`).toBe(`${rel}: 0 `)
+  }
+  // `after.sql` is the file the 400-byte window missed: its wrapper opens after byte 400.
+  expect(readFileSync(path.join(HARNESS, 'combat-log', 'after.sql'), 'utf8').toLowerCase().indexOf('begin transaction read only')).toBeGreaterThan(400)
+
+  // A scene that writes, and a file that is not there, both refuse.
+  const scene = run(path.join(HARNESS, 'combat-log', 'cost.sql'))
+  expect(scene.status).toBe(3)
+  expect(scene.stdout).toMatch(/^REFUSING: .*cost\.sql is not a read-only prod check/)
+  const missing = run(path.join(HARNESS, 'combat-log', 'no-such-file.sql'))
+  expect(missing.status).toBe(3)
+  expect(missing.stdout).toMatch(/^REFUSING: /)
 })

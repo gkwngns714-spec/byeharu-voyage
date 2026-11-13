@@ -15,6 +15,7 @@ import {
 import { routeCaption, routeOfFleet } from '../../domain/route'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { FleetFold } from './FleetFold'
+import { FleetRoom } from './FleetRoom'
 import { fleetDue } from './fleetLine'
 import { tabWord } from '../../app/navTabs'
 import { useLocale, useT } from '../../lib/i18n'
@@ -149,6 +150,7 @@ function FleetsBody({ title }: { title: string }) {
           </ListPanel>
         }
         side={
+          <>
           <Card title={t('fleets.company')} data-testid="fleets-company">
             <div className="grid grid-cols-2 gap-4">
               <StatCell look="stacked" label={title} value={fleets.length} format={formatInt} data-testid="fleets-total" />
@@ -159,6 +161,9 @@ function FleetsBody({ title }: { title: string }) {
               <StatCell look="line" label={t('fleets.cargo')} text={`${formatOfTotal(holdUsed, holdTotal)} ${tonsWord(holdTotal)}`} data-testid="fleets-hold" />
             </div>
           </Card>
+          {/* 0354: the room she has and how more opens (world.house_room). Dark, it says "Not open yet" and offers no press. */}
+          <FleetRoom />
+          </>
         }
       />
       {openFleet !== null && (

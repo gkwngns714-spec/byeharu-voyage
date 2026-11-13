@@ -229,7 +229,9 @@ at 0218 or later). Each migration self-asserts on its own probe rows only, and i
 
 F2 and F3 can be built in parallel worktrees after F1; F4 and F5 after F2/F3.
 
-**F1 and F2 are built, migration 0321, dark, not deployed.** What differs from this section is in `docs/dev-log/2026-11-06-a-ship-changes-fleets.md`: `fleet_ship_max` is not written (a new key, `fleet_ship_top`, holds the 7); moving a ship is dark too, on the one switch; an empty fleet lies `UNABLE_TO_SAIL`, so she is no presence in port; captains go with the ship, since seats are per ship; the Move press from F5 came with it.
+**F1 and F2 are built, migration 0321, on main, dark (`fleet_room_bite` false).** What differs from this section is in `docs/dev-log/2026-11-06-a-ship-changes-fleets.md`: `fleet_ship_max` is not written (a new key, `fleet_ship_top`, holds the 7); moving a ship is dark too, on the one switch; an empty fleet lies `UNABLE_TO_SAIL`, so she is no presence in port; captains go with the ship, since seats are per ship; the Move press from F5 came with it.
+
+**F3 and F4 are built, migration 0354, dark, on branch `fleet-room`, not deployed.** With them: a door to rename a fleet (`cmd.rename_fleet`), and on the Fleets page the fleet's totals line, Rename, and the room rows (which say "Not open yet" while dark). What differs from this section is in `docs/dev-log/2026-11-11-fleet-room-f3-f4.md`: buying is dark with the room; a price belongs to a company's Nth bought step, not to "the 3rd fleet", because 0321 made levels and bought steps add up; the totals carry no berth count and no gun count; the gold is destroyed as designed, which the younger `docs/CLOSED_ECONOMY.md` section 2.3 does not expect (the owner's call before F6). Still to come: F5 (New fleet flow, 7 tiles, before and after, the You line, the map pill), F6 (light it: read `scripts/ops/harness/fleet-room/over-caps.sql` first, `after-light.sql` after), F7.
 
 ---
 
