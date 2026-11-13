@@ -17,7 +17,7 @@ export function FightRingsLayer({ rings, selectedId, unitsPerPx }: { rings: read
   return (
     <g pointerEvents="none" data-testid="map-fight-rings">
       {rings.map((ring) => (
-        <g key={ring.id} data-testid="map-fight-ring" data-fight={ring.id} data-over={ring.over || undefined} data-mine={ring.mine || undefined} data-r-px={Math.round(ring.rPx)}>
+        <g key={ring.id} data-testid="map-fight-ring" data-fight={ring.id} data-kind={ring.kind} data-over={ring.over || undefined} data-mine={ring.mine || undefined} data-r-px={Math.round(ring.rPx)}>
           <circle cx={ring.centre.x} cy={ring.centre.y} r={ring.r} className="fill-danger/10" />
           <circle
             cx={ring.centre.x}

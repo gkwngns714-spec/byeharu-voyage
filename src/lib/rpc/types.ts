@@ -4192,17 +4192,28 @@ export interface FightSide {
   at?: [number, number]
 }
 
-/** 0364: one battle as the map draws it (public.fight_card). `fleets` and `ships` count the sides that are there. */
+/** 0364: one fight as the map draws it. `kind` BATTLE (public.fight_card: a timed battle, `fleets` and `ships` count the
+ *  sides that are there), RAID (the caller's OWN raid day, just settled: served with its `log` and `loss`) or NAVY (a navy
+ *  ship against a pirate ship, just fought: served with its `log`, cut to nine keys). Absent `kind` is a battle. */
 export interface FightCard {
   id: string
+  kind?: 'BATTLE' | 'RAID' | 'NAVY'
+  /** What the ring is sized by: a battle's fleets that are there; a raid's fleet and its raiders' ships; a navy fight's ships. */
+  size?: number
   status: 'FIGHTING' | 'RESOLVED' | 'BROKEN_OFF'
   lat: number
   lon: number
   started_at: string
   resolves_at: string
-  round_seconds: number
-  rounds: number
+  /** RAID and NAVY: when the server stops serving it. */
+  until?: string
+  round_seconds?: number
+  rounds?: number
   rounds_done: number
+  /** RAID and NAVY: the whole log (shape v 1), read by `parseFightLog`. */
+  log?: unknown
+  /** RAID: what the day cost her, read by `parseFightLoss`. */
+  loss?: unknown
   next_at: string | null
   fleets: number
   ships: number
@@ -4217,6 +4228,8 @@ export interface FightsRead {
   on: boolean
   now?: string
   keep_seconds?: number
+  /** How long a raid's or a navy fight's ring stays, in seconds (300). */
+  raid_seconds?: number
   fights: FightCard[]
 }
 

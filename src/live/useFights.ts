@@ -6,9 +6,9 @@ import { worldFights, type FightCard } from '../lib/rpc'
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // The server decides everything a ring shows: which battles, where, who is in them, when one is over and for how long
 // it is still shown (`keep_seconds`). This hook only asks, on a pace that follows what the last answer said:
-//   · a battle is being shown ....... every 5 s (a round is a minute; a ring should come and go within a breath of it)
-//   · none, attacks in use (`on`) ... every 15 s
-//   · attacks dark (`on` false) ..... every 60 s: a dark world has no battle to find, so the map barely asks
+//   · a battle is being FOUGHT ...... every 5 s (a round is a minute; a ring should come and go within a breath of it)
+//   · fights are in use (`on`) ...... every 15 s: a raid's or a navy fight's ring stays 5 minutes, so it is found in time
+//   · nothing is in use (`on` false)  every 60 s: a world with no fight to find is barely asked
 // and never while the tab is hidden. A refused or failed read keeps the last answer and asks again at the slow pace.
 // A FLEET'S PLACE IS KEPT THROUGH THE END: the server serves `at` only while a battle is fought (afterwards the fleets
 // sail on), so the last places seen are kept on a battle that is over and its ring stays where it was.
@@ -43,7 +43,7 @@ export function useFights(active = true): readonly FightCard[] {
         if (r?.ok) {
           const served = r.value.fights ?? []
           setFights((prev) => (served.length === 0 && prev.length === 0 ? prev : keepPlaces(served, prev)))
-          wait = served.length > 0 ? FAST_MS : r.value.on ? IDLE_MS : DARK_MS
+          wait = served.some((c) => c.status === 'FIGHTING') ? FAST_MS : r.value.on || served.length > 0 ? IDLE_MS : DARK_MS
         }
       } else wait = FAST_MS
       if (live) timer = window.setTimeout(() => void ask(), wait)

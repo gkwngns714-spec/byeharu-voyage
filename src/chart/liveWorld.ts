@@ -367,10 +367,11 @@ export function mapFightsOf(cards: readonly FightCard[]): MapFight[] {
   return cards.map((c) => ({
     id: c.id,
     at: { lat: c.lat, lon: c.lon },
-    fleets: c.fleets,
+    fleets: c.size ?? c.fleets,
     places: c.sides.flatMap((s) => (s.here && s.at ? [{ lat: s.at[0], lon: s.at[1] }] : [])),
     fleetIds: c.sides.map((s) => s.fleet),
-    over: c.status !== 'FIGHTING',
+    over: (c.kind ?? 'BATTLE') === 'BATTLE' && c.status !== 'FIGHTING',
     mine: c.mine,
+    kind: c.kind ?? 'BATTLE',
   }))
 }

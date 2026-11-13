@@ -4,5 +4,5 @@ begin transaction read only;
 select jsonb_object_agg(f.fn, (select p.provolatile::text from pg_proc p where p.oid = to_regprocedure(f.fn))) as provolatile
   from (values ('pg_get_functiondef(oid)'), ('to_regprocedure(text)'), ('to_regclass(text)'), ('replace(text,text,text)'), ('md5(text)'),
                ('has_function_privilege(name,oid,text)'), ('public.client_rpc_entry_points()'), ('public.attack_on()'),
-               ('public.current_player_id()'), ('world.fights()')) f(fn);
+               ('public.current_player_id()'), ('public.navy_hunts_on()'), ('public.combat_bite_on()'), ('world.fights()')) f(fn);
 commit;

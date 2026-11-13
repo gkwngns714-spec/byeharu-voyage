@@ -13,7 +13,7 @@ import type { FightCard } from '../src/lib/rpc'
 //   the ring goes round every fleet's place; the press is the whole disc, never under a 22 px radius.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-const fight = (over: Partial<MapFight> = {}): MapFight => ({ id: 'f1', at: { lat: 38.5, lon: -9.6 }, fleets: 2, places: [], fleetIds: ['a', 'd'], over: false, mine: null, ...over })
+const fight = (over: Partial<MapFight> = {}): MapFight => ({ id: 'f1', at: { lat: 38.5, lon: -9.6 }, fleets: 2, places: [], fleetIds: ['a', 'd'], over: false, mine: null, kind: 'BATTLE', ...over })
 
 test('more fleets, a bigger circle: 22 px for two, 6 px a fleet, capped at 64', () => {
   expect(fightCountRadiusPx(2)).toBe(22)
@@ -109,7 +109,7 @@ const card = (over: Partial<FightCard> = {}): FightCard => ({
 
 test('the served card is the input of the ring field for field, and a battle that is over keeps the places it had', () => {
   const [f] = mapFightsOf([card()])
-  expect(f).toEqual({ id: 'b1', at: { lat: 38.5, lon: -9.6 }, fleets: 2, places: [{ lat: 38.8, lon: -9.6 }, { lat: 38.5, lon: -9.6 }], fleetIds: ['a', 'd', 'n'], over: false, mine: null })
+  expect(f).toEqual({ id: 'b1', at: { lat: 38.5, lon: -9.6 }, fleets: 2, places: [{ lat: 38.8, lon: -9.6 }, { lat: 38.5, lon: -9.6 }], fleetIds: ['a', 'd', 'n'], over: false, mine: null, kind: 'BATTLE' })
   // over: the server serves no place (the fleets sail on); the last places seen are kept, so the ring stays where it was
   const over = card({ status: 'RESOLVED', next_at: null, end: 'A_TOOK', sides: card().sides.map((s) => ({ ...s, at: undefined })) })
   const kept = keepPlaces([over], [card()])
@@ -122,4 +122,37 @@ test('the served card is the input of the ring field for field, and a battle tha
   // a battle first seen when it is already over stands on its own place
   expect(mapFightsOf(keepPlaces([over], []))[0].places).toEqual([])
   expect(fightRing(mapFightsOf(keepPlaces([over], []))[0], 0.002).centre).toEqual(project({ lat: 38.5, lon: -9.6 }))
+})
+
+test('a raid and a navy fight are the same ring, on their own place, sized by the ships: five xebecs draw bigger than one', () => {
+  const raid = (ships: number): FightCard =>
+    card({
+      id: `raid:v:${ships}`, kind: 'RAID', size: 1 + ships, status: 'RESOLVED', next_at: null, fleets: 2, ships: 1 + ships, mine: 'a', end: 'TAKEN', lat: 36, lon: -12,
+      sides: [
+        { fleet: 'raiders', name: 'Xebec', side: 'ATTACKER', how: 'OPENED', kind: 'PIRATE', company: null, nation: null, ships, here: true },
+        { fleet: 'a', name: 'Gaivota', side: 'DEFENDER', how: 'OPENED', kind: 'COMPANY', company: 'Casa de Aveiro', nation: 'PRT', ships: 1, here: true },
+      ],
+    })
+  const [one, five] = mapFightsOf([raid(1), raid(5)])
+  expect(one).toEqual({ id: 'raid:v:1', at: { lat: 36, lon: -12 }, fleets: 2, places: [], fleetIds: ['raiders', 'a'], over: false, mine: 'a', kind: 'RAID' })
+  expect(five.fleets).toBe(6)
+  for (const upp of [0.002, 0.05, 1]) {
+    const small = fightRing(one, upp)
+    const big = fightRing(five, upp)
+    expect(small.rPx).toBe(22)
+    expect(big.rPx).toBe(46)
+    expect(small.centre).toEqual(project({ lat: 36, lon: -12 }))
+    // settled in an instant: never drawn as over, the ring is at full strength for the minutes it is served
+    expect(small.over).toBe(false)
+    expect(small.mine).toBe(true)
+    expect(small.kind).toBe('RAID')
+  }
+  // a press on her own hull inside her raid's ring opens the raid
+  expect(fightTapWins(fightRing(five, 0.01), { kind: 'fleet', id: 'a' })).toBe(true)
+  const navy = mapFightsOf([card({ id: 'navy:n:1', kind: 'NAVY', size: 4, status: 'RESOLVED', next_at: null, fleets: 2, ships: 4, mine: null, end: 'A_TOOK', sides: [] })])[0]
+  expect(navy.kind).toBe('NAVY')
+  expect(navy.over).toBe(false)
+  expect(fightRing(navy, 0.01).rPx).toBe(34)
+  // a card with no kind (a server before raids were served) is a battle
+  expect(mapFightsOf([card()])[0].kind).toBe('BATTLE')
 })

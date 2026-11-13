@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import { reachable, ready } from './appReady.fixture'
-import { FIGHT_OTHER_COMPANY, FIGHT_OTHER_FLEET, serveFightWorld } from './fightWorld.fixture'
+import { FIGHT_OTHER_COMPANY, FIGHT_OTHER_FLEET, serveFightWorld, serveInstantFightWorld } from './fightWorld.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // A FIGHT ON THE MAP (0364, owner row 321: "i want a fight to be visible in map. in red circle surrounding all fleets
@@ -265,6 +265,127 @@ for (const lang of ['ko-KR', 'en-US'] as const) {
         }
         await page.screenshot({ path: path.join(SHOTS, `fight-${tag}.png`) })
         await holdsItsWidth(page, `the fight sheet, ${lang} at ${size.width} px`)
+      })
+    })
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE FIGHTS A PLAYER MEETS TODAY: HER OWN RAID, AND THE NAVY AGAINST PIRATES (0364's second half). Both are settled in
+// an instant, so the ring appears with the fight already over and a press opens the WHOLE log with its result. The
+// worlds are tests/fightWorld.fixture.ts `instantFightWorld`: a real raid day on her own voyage (the real settle, the
+// real fight), and a real `public.navy_fight`. The ring stays 5 minutes (proof 66 holds the clock); here it is still on
+// the map after the log has been read.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+async function openInstant(page: Page, kind: 'raid' | 'navy') {
+  await serveInstantFightWorld(page, kind)
+  await page.goto('map')
+  await ready(page)
+  await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: 300_000 })
+  const ring = page.locator(`[data-testid="map-fight-ring"][data-kind="${kind === 'raid' ? 'RAID' : 'NAVY'}"]`).first()
+  await expect(ring, `the ${kind}'s ring is on the map`).toBeVisible({ timeout: 90_000 })
+  return ring
+}
+
+/** Press the ring: its centre, or, if a city's name lies on the centre (a name is still the city), the open water of the disc. */
+async function pressRing(page: Page) {
+  const g = await ringOnGlass(page)
+  for (const [dx, dy] of [[0, 0], [-0.6, 0], [0, 0.6], [0, -0.6], [0.6, 0], [-0.45, 0.45], [-0.45, -0.45]] as const) {
+    await page.mouse.click(g.x + dx * g.r, g.y + dy * g.r)
+    if (await page.getByTestId('fight-sheet').isVisible().catch(() => false)) return
+    // whatever that press opened (a city, a hull), close it and try the next point of the disc
+    await page.keyboard.press('Escape')
+    const close = page.locator('[data-tray-mode] button[aria-label]').first()
+    if (await close.isVisible().catch(() => false)) await close.click().catch(() => {})
+  }
+  await expect(page.getByTestId('fight-sheet'), 'a press inside the ring opens the fight').toBeVisible()
+}
+
+for (const size of [PHONE, WIDE]) {
+  test.describe(`her own raid, at ${size.width}×${size.height}`, () => {
+    test.use({ viewport: size, locale: 'en-US' })
+
+    test('a raid day settles while she is at sea: the ring is where it happened, and a press opens that raid with its result and what it cost', async ({ page, request, baseURL }) => {
+      test.setTimeout(300_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      const ring = await openInstant(page, 'raid')
+      await expect(ring).toHaveAttribute('data-mine', 'true')
+      await expect(ring).not.toHaveAttribute('data-over', /.+/)
+      const g = await ringOnGlass(page)
+      expect(g.r * 2).toBeGreaterThanOrEqual(44 - 0.5)
+      await page.screenshot({ path: path.join(SHOTS, `ring-raid-${size.width}-en.png`) })
+      await pressRing(page)
+      const sheet = page.getByTestId('fight-sheet')
+      await expect(sheet).toHaveAttribute('data-kind', 'RAID')
+      await expect(page.getByTestId('fight-sheet-name')).toHaveText('Raid')
+      // the raiders set upon her: they are the attacker, her fleet the defender, a hull bar each
+      await expect(page.getByTestId('fight-side-attacker')).toContainText('Raiders')
+      await expect(page.getByTestId('fight-side-defender').getByTestId('fight-side-fleet')).toHaveCount(1)
+      await expect(page.getByTestId('fight-side-hull')).toHaveCount(2)
+      // the whole log, from her deck, with its result and the day's cost; no clock, no stance, nothing is asked again
+      const log = page.getByTestId('fight-log')
+      await expect(log).toBeVisible()
+      await expect(log).toHaveAttribute('data-deck', 'raided')
+      await expect(log).not.toHaveAttribute('data-end', 'OPEN')
+      await expect(page.getByTestId('fight-log-result')).toBeVisible()
+      await expect(page.getByTestId('fight-log-lost')).toContainText('Crew')
+      await expect(page.getByTestId('battle-clock')).toHaveCount(0)
+      await expect(page.locator('[data-testid^="battle-stance-"]')).toHaveCount(0)
+      await page.screenshot({ path: path.join(SHOTS, `fight-raid-${size.width}-en.png`) })
+      await holdsItsWidth(page, `her raid at ${size.width} px`)
+      // the ring is still on the map: it stays 5 minutes from the day's instant
+      await expect(page.locator('[data-testid="map-fight-ring"][data-kind="RAID"]').first()).toBeAttached()
+    })
+  })
+
+  test.describe(`the navy against pirates, at ${size.width}×${size.height}`, () => {
+    test.use({ viewport: size, locale: 'en-US' })
+
+    test('a navy ship fights a pirate ship: every player sees the ring, and a press opens the actual fight, watch-only', async ({ page, request, baseURL }) => {
+      test.setTimeout(300_000)
+      test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+      const ring = await openInstant(page, 'navy')
+      await expect(ring).not.toHaveAttribute('data-mine', /.+/)
+      await page.screenshot({ path: path.join(SHOTS, `ring-navy-${size.width}-en.png`) })
+      await pressRing(page)
+      const sheet = page.getByTestId('fight-sheet')
+      await expect(sheet).toHaveAttribute('data-kind', 'NAVY')
+      await expect(page.getByTestId('fight-sheet-name')).toHaveText('Navy fight')
+      await expect(page.getByTestId('fight-sheet-name-line')).toContainText('Watching')
+      await expect(page.getByTestId('fight-side-attacker')).toContainText('Navy ship')
+      await expect(page.getByTestId('fight-side-defender')).toContainText('Pirate ship')
+      await expect(page.getByTestId('fight-side-hull')).toHaveCount(2)
+      const log = page.getByTestId('fight-log')
+      await expect(log).toBeVisible()
+      await expect(log).toHaveAttribute('data-watch', 'true')
+      await expect(log).toHaveAttribute('data-deck', 'attacker')
+      await expect(page.getByTestId('fight-log-result')).toBeVisible()
+      expect(Number(await log.getAttribute('data-rounds'))).toBeGreaterThanOrEqual(0)
+      await expect(page.locator('[data-testid^="battle-stance-"]')).toHaveCount(0)
+      await expect(page.getByTestId('battle-loot')).toHaveCount(0)
+      await page.screenshot({ path: path.join(SHOTS, `fight-navy-${size.width}-en.png`) })
+      await holdsItsWidth(page, `the navy fight at ${size.width} px`)
+    })
+  })
+}
+
+for (const kind of ['raid', 'navy'] as const) {
+  for (const [lang, size] of [['ko-KR', PHONE], ['ko-KR', SMALL], ['en-US', SMALL]] as const) {
+    test.describe(`the words of a ${kind}, ${lang} at ${size.width}×${size.height}`, () => {
+      test.use({ viewport: size, locale: lang })
+
+      test('the open fight holds its width: nothing cut, nothing sideways', async ({ page, request, baseURL }) => {
+        test.setTimeout(300_000)
+        test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
+        await openInstant(page, kind)
+        const tag = `${kind}-${size.width}-${lang.slice(0, 2)}`
+        await page.screenshot({ path: path.join(SHOTS, `ring-${tag}.png`) })
+        await pressRing(page)
+        if (lang === 'ko-KR') await expect(page.getByTestId('fight-sheet-name')).toHaveText(kind === 'raid' ? '습격' : '해군 교전')
+        await expect(page.getByTestId('fight-log-result')).toBeVisible()
+        await page.screenshot({ path: path.join(SHOTS, `fight-${tag}.png`) })
+        await holdsItsWidth(page, `the ${kind}, ${lang} at ${size.width} px`)
       })
     })
   }

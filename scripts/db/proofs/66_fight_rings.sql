@@ -12,6 +12,9 @@
 -- @pass FIGHTS_KEPT     closed by the real job: the card carries the ending and no fleet's place, stays for keep_seconds and then leaves the map; its log can still be read
 -- @pass FIGHTS_STABLE   neither read writes or advances: with two rounds due and unfought, the battle's row, its rounds and its stances are the same text before and after both reads
 -- @pass FIGHTS_COST     the read with 0, 1 and 20 battles being fought, timed (printed, never judged): 20 battles are served, oldest first
+-- @pass RAID_RING       a real raid day of a voyage still at sea (voyage.settle, which 0364 does not cut): her own read serves it at once with the day's own log and cost, at her place at that day's end, sized by the raiders' ships; nobody else reads it; the read writes nothing; 300 s from the day's instant, through her arrival, then gone
+-- @pass NAVY_KEPT       one navy fight under the body before 0364 and after it: answer, hulls, fleets, stamps, event, voyages, purses and ledger the same text; a failing keeper leaves the fight as it was; the real pass keeps the fight and every player reads it with its place, its ships and its log cut to nine keys; gone at 301 s
+-- @pass FIGHTS_LIVE_COST the read with 75 navy rows, 5 of them recent, for a company at sea with a raid and for one in port, and the keeper's cost a navy fight, timed (printed, never judged)
 -- ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $$
@@ -128,7 +131,8 @@ begin
 
   -- ══ FIGHTS_DARK ══
   perform cmd.assume_identity(c_uid2);
-  if world.fights() - 'now' is distinct from '{"on": false, "keep_seconds": 60, "fights": []}'::jsonb or world.fight(gen_random_uuid()) is distinct from '{"on": false}'::jsonb then
+  update public.world_config set value = 'false'::jsonb where key = 'combat_bite';
+  if world.fights() - 'now' is distinct from '{"on": false, "keep_seconds": 60, "raid_seconds": 300, "fights": []}'::jsonb or world.fight(gen_random_uuid()) is distinct from '{"on": false}'::jsonb then
     raise exception 'PROOF 66 FAIL: dark, the reads: % and %', world.fights(), world.fight(gen_random_uuid());
   end if;
   if has_function_privilege('anon', 'world.fights()', 'execute') or has_function_privilege('anon', 'world.fight(uuid)', 'execute')
@@ -136,6 +140,10 @@ begin
      or has_function_privilege('authenticated', 'public.fight_card(uuid,uuid)', 'execute') or has_function_privilege('anon', 'public.fight_card(uuid,uuid)', 'execute')
      or (select count(*) from public.client_rpc_entry_points() e where e.fn = any (array['world.fights()'::regprocedure, 'world.fight(uuid)'::regprocedure])) is distinct from 2 then
     raise exception 'PROOF 66 FAIL: the doors'' grants or registry rows';
+  end if;
+  update public.world_config set value = 'true'::jsonb where key = 'combat_bite';
+  if (world.fights() ->> 'on')::boolean is not true then
+    raise exception 'PROOF 66 FAIL: with the fight at sea in use the read does not say on';
   end if;
   raise notice 'PASS: FIGHTS_DARK — attack_enabled false and no battle: a house reads {on: false, fights: []}, a battle that is none is {on: false}; anon may call neither door, no client may call the card, both doors are registered once';
 
@@ -175,7 +183,7 @@ begin
      or abs((v_c -> 'sides' -> 1 -> 'at' ->> 0)::numeric - (v_site ->> 'lat')::numeric) > 0.01 or abs((v_c -> 'sides' -> 1 -> 'at' ->> 1)::numeric - (v_site ->> 'lon')::numeric) > 0.01 then
     raise exception 'PROOF 66 FAIL: the card a neighbour reads: % (site %)', v_c, v_site;
   end if;
-  if exists (select 1 from jsonb_object_keys(v_c) k where k <> all (array['id', 'status', 'lat', 'lon', 'started_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'next_at', 'fleets', 'ships', 'mine', 'sides', 'end']))
+  if exists (select 1 from jsonb_object_keys(v_c) k where k <> all (array['id', 'kind', 'size', 'status', 'lat', 'lon', 'started_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'next_at', 'fleets', 'ships', 'mine', 'sides', 'end']))
      or exists (select 1 from jsonb_array_elements(v_c -> 'sides') s, jsonb_object_keys(s) k where k <> all (array['fleet', 'name', 'side', 'how', 'kind', 'company', 'nation', 'ships', 'here', 'at'])) then
     raise exception 'PROOF 66 FAIL: the card carries a key 0364 does not name: %', v_c;
   end if;
@@ -276,12 +284,12 @@ begin
      or world.fight(v_bat) -> 'log' ->> 'end' is distinct from v_c ->> 'end' then
     raise exception 'PROOF 66 FAIL: a battle over for 61 s is still on the map, or its log can no longer be read: %', v_r;
   end if;
-  update public.world_config set value = 'false'::jsonb where key = 'attack_enabled';
+  update public.world_config set value = 'false'::jsonb where key in ('attack_enabled', 'combat_bite');
   if (world.fights() ->> 'on')::boolean is not false then
     raise exception 'PROOF 66 FAIL: dark again and with nothing to serve, the read still says on';
   end if;
-  update public.world_config set value = 'true'::jsonb where key = 'attack_enabled';
-  raise notice 'PASS: FIGHTS_KEPT — closed by the real job (%): the card carries the ending and no fleet''s place, is on the map 59 s after its end and gone at 61 s (keep_seconds 60); its log can still be read; with the switch off again and nothing to serve the read says on: false',
+  update public.world_config set value = 'true'::jsonb where key in ('attack_enabled', 'combat_bite');
+  raise notice 'PASS: FIGHTS_KEPT — closed by the real job (%): the card carries the ending and no fleet''s place, is on the map 59 s after its end and gone at 61 s (keep_seconds 60); its log can still be read; with every switch of a fight off and nothing to serve the read says on: false',
     v_c ->> 'end';
 
   -- ══ FIGHTS_COST: the read with 0, 1 and 20 battles being fought (a measurement, printed) ══
@@ -317,5 +325,306 @@ begin
   end if;
   raise notice 'PASS: FIGHTS_COST — world.fights(), the mean of 20 calls on this machine: % ms with no battle, % ms with 1, % ms with 20 (each with 2 fleets, one of them a held voyage); 20 are served, oldest first',
     v_ms[1], v_ms[2], v_ms[3];
+end
+$p$;
+
+-- ══ HER OWN RAID, AND THE NAVY'S FIGHT ══
+
+-- THE SEA ON ONE SETTING (proofs 37, 38, 46, 56 and 60 stub it so): 'PIRATES' a raid every day, '' quiet
+alter function voyage.hazard_roll(uuid, integer) rename to hazard_roll_real_66;
+create function voyage.hazard_roll(p_voyage uuid, p_day integer)
+returns table (occurred boolean, kind text, magnitude numeric, p_hazard numeric)
+language plpgsql stable
+as $b$
+declare
+  v_s text := coalesce(current_setting('byeharu.proof_sea', true), '');
+begin
+  return query select v_s <> '', case when v_s <> '' then v_s end, 0.5::numeric, 1::numeric;
+end
+$b$;
+
+-- a navy ship of p_nation in service, lying at p_port, on duty, whole, with her hands (proof 48's)
+create function pg_temp.navy_66(p_nation uuid, p_port uuid, p_at timestamptz)
+returns uuid language plpgsql as $b$
+declare
+  v_cap uuid := public.realm_capital(p_nation);
+  v_ord int := coalesce((select max(n.ord) from public.navy_ships n where n.nation_id = p_nation), 0) + 1;
+  v_f   uuid;
+begin
+  insert into public.navy_realms (nation_id, ships, read_at) values (p_nation, v_ord + 24, p_at) on conflict (nation_id) do update set ships = v_ord + 24, read_at = p_at;
+  v_f := public.navy_commission(p_nation, v_ord, v_cap, public.refit_yard(v_cap), p_port, p_at);
+  update public.ships s set crew = c.crew_required from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_f;
+  return v_f;
+end
+$b$;
+
+-- a pirate ship of the Brethren cruising sea p_sea, lying at p_port (proof 48's)
+create function pg_temp.pirate_66(p_port uuid, p_sea uuid, p_at timestamptz)
+returns uuid language plpgsql as $b$
+declare
+  v_pir  uuid := (select n.id from public.nations n where n.code = 'PIR');
+  v_home uuid := (select p.id from public.ports p where p.code = 'POR');
+  v_ord  int := coalesce((select max(x.ord) from public.pirate_ships x), 0) + 1;
+  v_pl   uuid;
+  v_f    uuid;
+begin
+  insert into public.players (company_name, nation_id, ducats, is_npc) values (format('Brethren %s', v_ord), v_pir, 0, true) returning id into v_pl;
+  v_f := public.form_fleet(v_pl, format('Pirate ship %s', v_ord), p_port);
+  perform public.commission_ship(v_pl, v_f, public.wc_text('pirate_ship_class'), format('Pirate ship %s', v_ord), true, false);
+  update public.ships s set crew = c.crew_required from public.ship_classes c where c.id = s.class_id and s.fleet_id = v_f;
+  insert into public.pirate_ships (fleet_id, player_id, ord, home_port, sea_id, mission, haunt_port, last_port, created_at)
+  values (v_f, v_pl, v_ord, v_home, p_sea, 'CRUISE', p_port, p_port, p_at);
+  return v_f;
+end
+$b$;
+
+-- ONE NAVY FIGHT, in a subtransaction that is rolled back, under the body as it is or as it was before 0364 (the hunk reversed): everything it left, as jsonb
+create function pg_temp.navy_fight_66(p_navy uuid, p_pirate uuid, p_at timestamptz, p_old boolean)
+returns jsonb language plpgsql as $b$
+declare
+  c_new constant text := $h$  update public.pirate_ships x set fought_at = p_now where x.fleet_id = p_pirate;
+  perform public.navy_fight_keep(p_navy, p_pirate, v_a, v_b, v_f, p_now);   -- 0364: the fight's log and its place, kept for the map (it never raises and moves nothing of the fight)
+$h$;
+  c_old constant text := $h$  update public.pirate_ships x set fought_at = p_now where x.fleet_id = p_pirate;
+$h$;
+  v_def text := replace(pg_get_functiondef('public.navy_fight(uuid,uuid,timestamp with time zone)'::regprocedure), E'\r', '');
+  v_ev  uuid[] := array(select e.id from public.events e where e.kind = 'NAVY_FIGHT');
+  v_r   jsonb;
+  v_out jsonb;
+begin
+  begin
+    if p_old then
+      if (length(v_def) - length(replace(v_def, c_new, ''))) / length(c_new) is distinct from 1 then
+        raise exception 'PROOF 66 FAIL: the hunk of 0364 is not in public.navy_fight exactly once';
+      end if;
+      execute replace(v_def, c_new, c_old);
+    end if;
+    perform voyage.settle(p_navy, p_at);
+    perform voyage.settle(p_pirate, p_at);
+    v_r := public.navy_fight(p_navy, p_pirate, p_at);
+    v_out := jsonb_build_object(
+      'answer', v_r - 'event',
+      'ships', (select jsonb_agg(to_jsonb(s) order by s.id) from public.ships s where s.fleet_id in (p_navy, p_pirate)),
+      'fleets', (select jsonb_agg(to_jsonb(f) order by f.id) from public.fleets f where f.id in (p_navy, p_pirate)),
+      'navy', (select to_jsonb(n) from public.navy_ships n where n.fleet_id = p_navy),
+      'pirate', (select to_jsonb(x) from public.pirate_ships x where x.fleet_id = p_pirate),
+      'events', (select jsonb_agg(jsonb_build_object('kind', e.kind, 'player', e.player_id, 'payload', e.payload) order by e.payload::text) from public.events e where e.kind = 'NAVY_FIGHT' and e.id <> all (v_ev)),
+      'voyages', (select jsonb_agg(to_jsonb(v) order by v.id) from public.voyages v where v.fleet_id in (p_navy, p_pirate)),
+      'purses', (select sum(p.ducats) from public.players p)::text || ':' || (select sum(t.ducats) from public.port_treasury t)::text,
+      'ledger', (select count(*) from public.ledger));
+    if to_regclass('public.navy_fight_log') is not null then   -- (one scene takes the table away, to see the keeper fail)
+      execute 'select to_jsonb(l) from public.navy_fight_log l where l.fleet_id = $1' into v_r using p_navy;
+      v_out := v_out || jsonb_build_object('kept', v_r);
+    else
+      v_out := v_out || jsonb_build_object('kept', null);
+    end if;
+    raise exception using errcode = 'ZX366', message = 'SCENE_ROLLBACK_66';
+  exception when sqlstate 'ZX366' then
+    null;
+  end;
+  return v_out;
+end
+$b$;
+
+do $p$
+declare
+  c_uid   constant uuid := '00000000-0364-4000-8000-000000000001';
+  c_uid2  constant uuid := '00000000-0364-4000-8000-000000000002';
+  c_keys  constant text[] := array['v', 'atk', 'first', 'foe', 'you', 'r', 'board', 'after', 'end'];
+  a       uuid := (select f.id from public.fleets f join public.players p on p.id = f.player_id where p.auth_uid = c_uid);
+  v_pl    uuid := (select p.id from public.players p where p.auth_uid = c_uid);
+  v_lis   uuid := (select p.id from public.ports p where p.code = 'LIS');
+  v_sea   uuid := (select p.sea_id from public.ports p where p.code = 'LIS');
+  v_nat   uuid := (select g.nation_id from public.great_powers g join public.nations n on n.id = g.nation_id where n.code = 'PRT');
+  v_cap   uuid;
+  v_voy   uuid;
+  v_t     timestamptz;
+  v_r     jsonb;
+  v_c     jsonb;
+  v_day   public.voyage_events%rowtype;
+  v_pos   record;
+  v_txt   text;
+  v_new   jsonb;
+  v_old   jsonb;
+  n       uuid;
+  p       uuid;
+  v_k     int;
+  v_i     int;
+  v_tq    timestamptz;
+  v_ms    numeric[] := '{}';
+  v_raid_ms numeric;
+  v_keep_ms numeric;
+begin
+  update public.world_config set value = 'false'::jsonb where key = 'attack_enabled';
+
+  -- ══ RAID_RING: a real raid day. Her fleet back in Lisbon, whole, sails a three-day passage west that began 100 s ago; day 1 (90 s) is a raid; her own read settles it ══
+  update public.fleets f set status = 'DOCKED', port_id = v_lis, lat = null, lon = null, busy_until = null, ready_at = null, version = f.version + 1 where f.id = a;
+  update public.ships s set durability = (select b.durability from public.ship_base(s.id) b), crew = 100, water_t = 100000, food_t = 100000 where s.fleet_id = a;
+  v_t := now() - interval '100 seconds';
+  v_voy := voyage.depart(a, (select jsonb_agg(jsonb_build_object('a', jsonb_build_array(38.5, -9.6 - (d - 1)), 'b', jsonb_build_array(38.5, -9.6 - d), 'nm', voyage.fleet_speed(a) * 24, 'sea_id', v_sea, 'hazard_mult', 1000) order by d)
+                           from generate_series(1, 3) d), v_lis, v_lis, v_t);
+  perform cmd.assume_identity(c_uid);
+  if exists (select 1 from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'RAID') then
+    raise exception 'PROOF 66 FAIL: a raid is on her map before any day settled';
+  end if;
+  perform set_config('byeharu.proof_sea', 'PIRATES', true);
+  v_tq := clock_timestamp();
+  perform voyage.settle(a, now());
+  v_raid_ms := round(extract(epoch from clock_timestamp() - v_tq) * 1000, 1);
+  perform set_config('byeharu.proof_sea', '', true);
+  select * into v_day from public.voyage_events ve where ve.voyage_id = v_voy and ve.day_index = 1;
+  if v_day.kind is distinct from 'PIRATES' or not (v_day.payload -> 'fight' ? 'log') or (select count(*) from public.voyage_events ve where ve.voyage_id = v_voy) is distinct from 1
+     or (select v.status from public.voyages v where v.id = v_voy) is distinct from 'SAILING' then
+    raise exception 'PROOF 66 FAIL: day 1 is not a raid that kept its log while she is still at sea: %', to_jsonb(v_day);
+  end if;
+  -- the reads write nothing: her ships, her voyage, its days and her purse are the same text before and after
+  select md5((select string_agg(to_jsonb(s)::text, ',' order by s.id) from public.ships s where s.fleet_id = a) || (select to_jsonb(v)::text from public.voyages v where v.id = v_voy)
+             || (select string_agg(to_jsonb(ve)::text, ',' order by ve.day_index) from public.voyage_events ve where ve.voyage_id = v_voy) || (select to_jsonb(pl)::text from public.players pl where pl.id = v_pl)) into v_txt;
+  v_r := world.fights();
+  select e into v_c from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'RAID';
+  select ps.lat, ps.lon into v_pos from voyage.position(v_voy, v_day.resolved_at) ps;
+  if md5((select string_agg(to_jsonb(s)::text, ',' order by s.id) from public.ships s where s.fleet_id = a) || (select to_jsonb(v)::text from public.voyages v where v.id = v_voy)
+         || (select string_agg(to_jsonb(ve)::text, ',' order by ve.day_index) from public.voyage_events ve where ve.voyage_id = v_voy) || (select to_jsonb(pl)::text from public.players pl where pl.id = v_pl)) is distinct from v_txt then
+    raise exception 'PROOF 66 FAIL: world.fights() wrote something of hers';
+  end if;
+  if v_c is null or (select count(*) from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'RAID') is distinct from 1
+     or v_c ->> 'id' is distinct from 'raid:' || v_voy || ':1' or v_c ->> 'status' is distinct from 'RESOLVED' or v_c ->> 'mine' is distinct from a::text
+     or v_c -> 'log' is distinct from v_day.payload -> 'fight' -> 'log' or v_c ->> 'end' is distinct from v_day.payload -> 'fight' -> 'log' ->> 'end'
+     or (v_c ->> 'lat')::numeric is distinct from v_pos.lat or (v_c ->> 'lon')::numeric is distinct from v_pos.lon
+     -- one day west of Lisbon's roads: she is a degree along her course, not at either end of the voyage
+     or (v_c ->> 'lat')::numeric is distinct from 38.5 or abs((v_c ->> 'lon')::numeric - (-10.6)) > 0.01
+     or (v_c ->> 'started_at')::timestamptz is distinct from v_day.resolved_at or (v_c ->> 'until')::timestamptz is distinct from v_day.resolved_at + interval '300 seconds'
+     or (v_c ->> 'size')::int is distinct from 1 + greatest(1, ceil((v_day.payload -> 'fight' -> 'log' -> 'foe' ->> 'k')::numeric))::int
+     or (v_c -> 'sides' -> 0 ->> 'ships')::int is distinct from greatest(1, ceil((v_day.payload -> 'fight' -> 'log' -> 'foe' ->> 'k')::numeric))::int
+     or v_c -> 'sides' -> 0 ->> 'kind' is distinct from 'PIRATE' or v_c -> 'sides' -> 0 ->> 'side' is distinct from 'ATTACKER'
+     or v_c -> 'sides' -> 1 is distinct from jsonb_build_object('fleet', a, 'name', 'Ronda 1', 'side', 'DEFENDER', 'how', 'OPENED', 'kind', 'COMPANY', 'company', 'Casa Ronda 1', 'nation', 'PRT',
+                                               'ships', (select count(*)::int from public.ships s where s.fleet_id = a), 'here', true)
+     or v_c -> 'loss' is distinct from jsonb_build_object('crew_before', v_day.payload -> 'crew_before', 'crew', v_day.payload -> 'crew_lost', 'cargo', coalesce(v_day.payload -> 'cargo_lost', '{}'::jsonb),
+                                         'ransom', coalesce(v_day.payload -> 'ransom_paid', v_day.payload -> 'pirate' -> 'ransom', '0'::jsonb))
+     or (v_r ->> 'raid_seconds')::int is distinct from 300 or (v_r ->> 'on')::boolean is not true then
+    raise exception 'PROOF 66 FAIL: her own raid on her map: % (the day: %, her place %)', v_c, to_jsonb(v_day), to_jsonb(v_pos);
+  end if;
+  -- nobody else reads it; a bigger raid is a bigger ring (the same day with five raiders' ships in its log: a row of this proof)
+  perform cmd.assume_identity(c_uid2);
+  if exists (select 1 from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'RAID') then
+    raise exception 'PROOF 66 FAIL: a neighbour read her raid';
+  end if;
+  perform cmd.assume_identity(c_uid);
+  update public.voyage_events ve set payload = jsonb_set(ve.payload, '{fight,log,foe,k}', '4.4'::jsonb) where ve.voyage_id = v_voy and ve.day_index = 1;
+  select e into v_r from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'RAID';
+  if (v_r ->> 'size')::int is distinct from 6 or (v_r ->> 'size')::int <= (v_c ->> 'size')::int and (v_c ->> 'size')::int < 6 then
+    raise exception 'PROOF 66 FAIL: five raiders'' ships are not a size of six: %', v_r;
+  end if;
+  -- it stays raid_seconds from the day's own instant, and it is still there once she has arrived
+  update public.voyage_events ve set resolved_at = now() - interval '299 seconds' where ve.voyage_id = v_voy and ve.day_index = 1;
+  update public.voyages v set status = 'ARRIVED', eta = now() - interval '30 seconds' where v.id = v_voy;
+  update public.fleets f set status = 'DOCKED', port_id = v_lis, version = f.version + 1 where f.id = a;
+  if not exists (select 1 from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'RAID') then
+    raise exception 'PROOF 66 FAIL: a raid 299 s old, of a voyage that has since arrived, is not on her map';
+  end if;
+  update public.voyage_events ve set resolved_at = now() - interval '301 seconds' where ve.voyage_id = v_voy and ve.day_index = 1;
+  if exists (select 1 from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'RAID') then
+    raise exception 'PROOF 66 FAIL: a raid 301 s old is still on her map';
+  end if;
+  if pg_get_functiondef('voyage.settle(uuid,timestamp with time zone)'::regprocedure) like '%0364%' then
+    raise exception 'PROOF 66 FAIL: voyage.settle carries a line of 0364: it must not be cut';
+  end if;
+  raise notice 'PASS: RAID_RING — a real raid day (voyage.settle, uncut by 0364: no line of it names 0364) on a voyage still at sea: her own read serves it at once with the day''s own log and cost, at her place at that day''s end (38.5, % : one day west of Lisbon), sized 1 + the raiders'' ships (% here, 6 for five); her neighbour reads nothing; the read writes nothing of hers; it stays 300 s from the day''s instant, through her arrival, and is gone at 301 s. The settle of that raid day took % ms here',
+    v_c ->> 'lon', v_c ->> 'size', v_raid_ms;
+
+  -- ══ NAVY_KEPT: one navy ship and one pirate ship in Lisbon's sea. OLD AGAINST NEW, then the real pass ══
+  update public.world_config set value = 'true'::jsonb where key in ('navy_enabled', 'pirates_bite');
+  update public.ports set crew_pool = 2000;
+  v_cap := public.realm_capital(v_nat);
+  v_t := date_trunc('second', now()) - interval '20 seconds';
+  n := pg_temp.navy_66(v_nat, v_cap, v_t);
+  p := pg_temp.pirate_66(v_cap, (select x.sea_id from public.ports x where x.id = v_cap), v_t);
+  v_new := pg_temp.navy_fight_66(n, p, v_t, false);
+  v_old := pg_temp.navy_fight_66(n, p, v_t, true);
+  if v_new is null or v_old is null or (v_new - 'kept')::text is distinct from (v_old - 'kept')::text or v_old -> 'kept' is distinct from 'null'::jsonb or jsonb_typeof(v_new -> 'kept') is distinct from 'object'
+     or jsonb_array_length(v_new -> 'events') is distinct from 1 or (v_new -> 'navy' ->> 'fought_at')::timestamptz is distinct from v_t then
+    raise exception 'PROOF 66 FAIL: NAVY, OLD AGAINST NEW: % against %', v_old - 'kept', v_new - 'kept';
+  end if;
+  -- the keeper cannot hurt the fight: with its table gone (a subtransaction), the fight is the old fight and a warning
+  begin
+    alter table public.navy_fight_log rename to navy_fight_log_gone_66;
+    v_r := pg_temp.navy_fight_66(n, p, v_t, false);
+    if (v_r - 'kept')::text is distinct from (v_old - 'kept')::text then
+      raise exception 'PROOF 66 FAIL: with the keeper failing the fight is not the old fight';
+    end if;
+    raise exception using errcode = 'ZX367', message = 'SCENE_ROLLBACK_66';
+  exception when sqlstate 'ZX367' then
+    null;
+  end;
+  -- THE REAL PASS (the minute job's own function): it fights, and the fight is kept
+  v_k := public.navy_hunt_pass(v_t, v_nat);
+  perform cmd.assume_identity(c_uid2);
+  v_r := world.fights();
+  select e into v_c from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'NAVY';
+  if v_k is distinct from 1 or v_c is null or (select count(*) from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'NAVY') is distinct from 1
+     or (select count(*) from public.navy_fight_log) is distinct from 1
+     or v_c ->> 'status' is distinct from 'RESOLVED' or v_c -> 'mine' is distinct from 'null'::jsonb or v_c ? 'loss'
+     or (v_c ->> 'started_at')::timestamptz is distinct from v_t or (v_c ->> 'until')::timestamptz is distinct from v_t + interval '300 seconds'
+     or (v_c ->> 'lat')::numeric is distinct from (select pt.lat from voyage.fleet_point(n, v_t) pt) or (v_c ->> 'lon')::numeric is distinct from (select pt.lon from voyage.fleet_point(n, v_t) pt)
+     or (v_c ->> 'size')::int is distinct from (select count(*)::int from public.ships s where s.fleet_id in (n, p)) or (v_c ->> 'ships')::int is distinct from (v_c ->> 'size')::int
+     or v_c -> 'sides' -> 0 is distinct from jsonb_build_object('fleet', n, 'name', (select f.name from public.fleets f where f.id = n), 'side', 'ATTACKER', 'how', 'OPENED', 'kind', 'NAVY', 'company', null,
+                                               'nation', 'PRT', 'ships', (select count(*)::int from public.ships s where s.fleet_id = n), 'here', true)
+     or v_c -> 'sides' -> 1 is distinct from jsonb_build_object('fleet', p, 'name', (select f.name from public.fleets f where f.id = p), 'side', 'DEFENDER', 'how', 'OPENED', 'kind', 'PIRATE', 'company', null,
+                                               'nation', null, 'ships', (select count(*)::int from public.ships s where s.fleet_id = p), 'here', true)
+     or (v_c -> 'log' ->> 'v')::int is distinct from 1 or (v_c -> 'log' ->> 'atk')::boolean is not true
+     or coalesce(v_c ->> 'end', '') not in ('A_NONE', 'A_LOST', 'FLED', 'A_BROKE', 'A_THROWN', 'A_TERMS', 'A_TOOK') or v_c -> 'log' ->> 'end' is distinct from v_c ->> 'end'
+     or exists (select 1 from jsonb_object_keys(v_c -> 'log') k where k <> all (c_keys))
+     -- the log is the fight that was fought: the same log the old-against-new scene kept, and its hull after is the hull she has
+     or v_c -> 'log' is distinct from v_new -> 'kept' -> 'card' -> 'log'
+     or (select sum((e ->> 1)::numeric) from jsonb_array_elements(v_c -> 'log' -> 'after') e) is distinct from (select sum(round(s.durability, 2)) from public.ships s where s.fleet_id = n)
+     or v_c::text ~* '"[a-z_]*(ducat|cargo|purse|funds|loot)[a-z_]*":' then
+    raise exception 'PROOF 66 FAIL: the navy''s fight on a neighbour''s map: % (pass %)', v_c, v_k;
+  end if;
+  update public.navy_fight_log set at = now() - interval '301 seconds';
+  if exists (select 1 from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'NAVY') then
+    raise exception 'PROOF 66 FAIL: a navy fight 301 s old is still on the map';
+  end if;
+  raise notice 'PASS: NAVY_KEPT — one navy fight under the body before 0364 and after it: the answer, both ships'' hulls, both fleets, the navy ship''s row and stamp, the pirate ship''s, the NAVY_FIGHT event, both voyages, every purse and the ledger are the same text; only the kept row differs. With the keeper''s table gone the fight is still that fight. The real pass (public.navy_hunt_pass) fights once and keeps it: every player reads it at the navy ship''s place, sized by the % ships, both ships named, the log (% round(s), %) cut to nine keys and its hull after is the hull she has; gone at 301 s',
+    v_c ->> 'size', jsonb_array_length(v_c -> 'log' -> 'r'), v_c ->> 'end';
+
+  -- ══ FIGHTS_LIVE_COST: the read as prod would ask it (a measurement, printed): 75 navy ships' rows of which 5 fought in the last 300 s, and her fleet at sea with one raid day in it ══
+  -- (the twenty battles of FIGHTS_COST are put an hour in the past, rows of this proof: prod has none, attacks being dark)
+  update public.battles b set status = 'RESOLVED', result = coalesce(b.result, '{"outcome": "NO_FIGHT"}'::jsonb), started_at = now() - interval '2 hours', resolves_at = now() - interval '1 hour' where b.status = 'FIGHTING';
+  update public.navy_fight_log set at = now() - interval '10 seconds';
+  insert into public.navy_fight_log (fleet_id, at, lat, lon, card)
+  select f.id, now() - make_interval(secs => case when f.k <= 4 then 30 * f.k else 3600 end), 30 + f.k, -20, (select l.card from public.navy_fight_log l limit 1)
+    from (select x.id, row_number() over (order by x.id) as k from public.fleets x where not exists (select 1 from public.navy_fight_log l where l.fleet_id = x.id) limit 74) f;
+  update public.voyages v set status = 'SAILING', eta = now() + interval '3 minutes' where v.id = v_voy;
+  update public.voyage_events ve set resolved_at = now() - interval '20 seconds' where ve.voyage_id = v_voy and ve.day_index = 1;
+  perform cmd.assume_identity(c_uid);
+  v_tq := clock_timestamp();
+  for v_i in 1 .. 50 loop v_r := world.fights(); end loop;
+  v_ms := v_ms || round(extract(epoch from clock_timestamp() - v_tq) * 1000 / 50, 2);
+  if (select count(*) from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'NAVY') is distinct from 5 or (select count(*) from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'RAID') is distinct from 1
+     or (select count(*) from public.navy_fight_log) is distinct from 75 then
+    raise exception 'PROOF 66 FAIL: the cost scene: % navy, % raid, % rows', (select count(*) from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'NAVY'),
+      (select count(*) from jsonb_array_elements(v_r -> 'fights') e where e ->> 'kind' = 'RAID'), (select count(*) from public.navy_fight_log);
+  end if;
+  perform cmd.assume_identity(c_uid2);
+  v_tq := clock_timestamp();
+  for v_i in 1 .. 50 loop v_r := world.fights(); end loop;
+  v_ms := v_ms || round(extract(epoch from clock_timestamp() - v_tq) * 1000 / 50, 2);
+  update public.navy_fight_log set at = now() - interval '1 hour';
+  v_tq := clock_timestamp();
+  for v_i in 1 .. 50 loop v_r := world.fights(); end loop;
+  v_ms := v_ms || round(extract(epoch from clock_timestamp() - v_tq) * 1000 / 50, 2);
+  -- the keeper's own cost, a fight
+  v_tq := clock_timestamp();
+  for v_i in 1 .. 20 loop
+    perform public.navy_fight_keep(n, p, voyage.fleet_hulls(p), voyage.fleet_hulls(n), public.fight_sides(n, v_i, voyage.fleet_hulls(p), voyage.fleet_hulls(n), '{}'::jsonb), now());
+  end loop;
+  v_keep_ms := round(extract(epoch from clock_timestamp() - v_tq) * 1000 / 20, 2);
+  v_tq := clock_timestamp();
+  for v_i in 1 .. 20 loop
+    perform voyage.fleet_hulls(p), voyage.fleet_hulls(n), public.fight_sides(n, v_i, voyage.fleet_hulls(p), voyage.fleet_hulls(n), '{}'::jsonb);
+  end loop;
+  v_keep_ms := v_keep_ms - round(extract(epoch from clock_timestamp() - v_tq) * 1000 / 20, 2);
+  raise notice 'PASS: FIGHTS_LIVE_COST — world.fights() with 75 navy ships'' rows, the mean of 50 calls on this machine: % ms for a company at sea with one raid and 5 navy fights to serve, % ms for a company in port with the 5 navy fights, % ms with nothing to serve; the keeper adds about % ms to a navy fight',
+    v_ms[1], v_ms[2], v_ms[3], v_keep_ms;
 end
 $p$;

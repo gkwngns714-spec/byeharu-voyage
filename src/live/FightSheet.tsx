@@ -7,7 +7,8 @@ import type { BattleRead, FightCard, FightSide } from '../lib/rpc'
 import { useT } from '../lib/i18n'
 import { BattleCard } from './BattleCard'
 import { BattleView } from './BattleView'
-import { fightHull, fightRows, parseFightLog } from './fightLines'
+import { FightLog } from './FightLog'
+import { fightHull, fightRows, parseFightLog, parseFightLoss } from './fightLines'
 import { HullCountry } from './HullCountry'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -24,6 +25,10 @@ import { HullCountry } from './HullCountry'
 // Both draw the ONE `FightLog`; nothing here draws a round.
 // THE HULL BARS are the two sides' hull left, the log's own figures (`fightRows`): no second arithmetic.
 // A NAME IS NEVER CUT: fleet and company names wrap whole.
+// A RAID AND A NAVY FIGHT (the fights that are settled in an instant) open in this same sheet. They are over when their
+// ring appears, so the card itself carries the whole log and NOTHING MORE IS ASKED: her own raid is drawn as her History
+// draws it (her deck, with what the day cost her), a navy fight as a watcher's (Attacker the navy ship, Defender the
+// pirate ship).
 
 const POLL_MS = 5000
 
@@ -31,6 +36,8 @@ const POLL_MS = 5000
  *  line under its name instead (two long names side by side leave a phone no room for either). */
 function whose(side: FightSide, t: ReturnType<typeof useT>) {
   if (side.kind !== 'CARGO_SHIP' && side.kind !== 'NAVY' && side.kind !== 'PIRATE') return undefined
+  // a raid's raiders are no named ship of the Brethren: they are the sea's own
+  if (side.fleet === 'raiders') return <span>{t('fight.raiders')}</span>
   return (
     <span className="inline-flex flex-wrap items-center justify-end gap-x-1.5">
       <HullCountry nation={side.nation} compact />
@@ -74,8 +81,10 @@ export function FightSheet({ card, onClose, mode }: { card: FightCard; onClose: 
   const [got, setGot] = useState<{ value: BattleRead; at: number } | null>(null)
   const [tick, setTick] = useState(() => Date.now())
   const battle = card.id
-  const read = got?.value.battle === battle ? got.value : null
-  const fighting = read ? read.status === 'FIGHTING' : true
+  const kind = card.kind ?? 'BATTLE'
+  const instant = kind !== 'BATTLE'
+  const read = !instant && got?.value.battle === battle ? got.value : null
+  const fighting = instant ? false : read ? read.status === 'FIGHTING' : true
 
   useEffect(() => {
     if (!fighting) return
@@ -99,13 +108,17 @@ export function FightSheet({ card, onClose, mode }: { card: FightCard; onClose: 
   }, [fighting])
 
   const serverNow = got && read?.now ? Date.parse(read.now) + Math.max(0, tick - got.at) : tick
-  const log = read ? parseFightLog(read.log, { open: true }) : null
+  const log = instant ? parseFightLog(card.log) : read ? parseFightLog(read.log, { open: true }) : null
+  const loss = kind === 'RAID' ? parseFightLoss(card.loss) : null
   const rows = log ? fightRows(log) : []
   const last = rows.length > 0 ? rows[rows.length - 1] : null
   const hull = log ? fightHull(log) : null
-  // the side that attacked: her hull after the last round fought (closed: after the whole fight); the other side: theirs
-  const attackerPct = !log || !hull ? null : log.end !== 'OPEN' && hull.full > 0 ? Math.round((hull.after / hull.full) * 100) : last ? last.hullPct : hull.full > 0 ? Math.round((hull.before / hull.full) * 100) : null
-  const defenderPct = !log ? null : last ? last.foePct : 100
+  // the deck the log is told from: her hull after the last round fought (closed: after the whole fight); the other side: theirs
+  const youPct = !log || !hull ? null : log.end !== 'OPEN' && hull.full > 0 ? Math.round((hull.after / hull.full) * 100) : last ? last.hullPct : hull.full > 0 ? Math.round((hull.before / hull.full) * 100) : null
+  const foePct = !log ? null : last ? last.foePct : 100
+  // a battle's and a navy fight's log is told from the deck of the side that closed; a raid's from the deck of the fleet set upon
+  const attackerPct = log?.attacker === false ? foePct : youPct
+  const defenderPct = log?.attacker === false ? youPct : foePct
   const attackers = card.sides.filter((s) => s.side === 'ATTACKER')
   const defenders = card.sides.filter((s) => s.side === 'DEFENDER')
   const mine = card.mine
@@ -117,10 +130,11 @@ export function FightSheet({ card, onClose, mode }: { card: FightCard; onClose: 
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
       title={
         <TrayTitle
-          name={t('fight.battle')}
+          name={t(kind === 'RAID' ? 'fight.raid' : kind === 'NAVY' ? 'fight.navyFight' : 'fight.battle')}
           line={
             <>
-              {t('fight.fleetsShips', { f: formatInt(card.fleets), s: formatInt(card.ships) })} · {t(mine ? 'fight.yours' : 'fight.watching')}
+              {t('fight.fleetsShips', { f: formatInt(card.fleets), s: formatInt(card.ships) })}
+              {kind !== 'RAID' && <> · {t(mine ? 'fight.yours' : 'fight.watching')}</>}
             </>
           }
           testId="fight-sheet-name"
@@ -128,6 +142,7 @@ export function FightSheet({ card, onClose, mode }: { card: FightCard; onClose: 
       }
       data-testid="fight-sheet"
       data-fight={battle}
+      data-kind={kind}
       data-mine={mine ? 'true' : undefined}
       {...CHART_CHROME}
     >
@@ -135,7 +150,11 @@ export function FightSheet({ card, onClose, mode }: { card: FightCard; onClose: 
         <Side title={t('fight.sideA')} sides={attackers} hullPct={attackerPct} testId="fight-side-attacker" />
         <Side title={t('fight.sideD')} sides={defenders} hullPct={defenderPct} testId="fight-side-defender" />
         <SheetSection heading={t('fight.log')} data-testid="fight-sheet-fight">
-          {mine ? (
+          {instant ? (
+            log ? (
+              <FightLog log={log} loss={loss} watch={kind === 'NAVY'} />
+            ) : null
+          ) : mine ? (
             <BattleCard fleetId={mine} />
           ) : read ? (
             <BattleView read={read} nowMs={serverNow} />

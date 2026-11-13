@@ -17,6 +17,10 @@
 // THE CENTRE is the middle of the box round the fleets' served places (`world.fights().sides[].at`) and the battle's
 // own place; once the battle is over no place is served and the ring stands on the battle's place.
 // Nothing here knows the wire: ./liveWorld.ts turns the served rows into `MapFight`.
+// A RAID AND A NAVY FIGHT ARE THE SAME RING. They were settled in an instant, so they have no fleets' places and stand on
+// their own place; `fleets` is then the server's `size` (a raid: her fleet and the raiders' ships, so five xebecs are six
+// and draw 46 px; a navy fight: the ships on both sides). They are never `over`: the ring is shown for the minutes the
+// server serves it, at full strength.
 //
 // THE PRESS (`fightAt`): the whole disc, never less than a 22 px radius. Among several the nearest centre wins.
 // `fightTapWins` says when a press inside a ring means the fight and when it means the mark under it: a SMALL ring
@@ -39,6 +43,8 @@ export interface MapFight {
   readonly over: boolean
   /** The caller's own fleet in it, or null. */
   readonly mine: string | null
+  /** BATTLE (timed, being fought or just over), RAID (her own, just settled) or NAVY (a navy ship and a pirate ship, just fought). */
+  readonly kind: 'BATTLE' | 'RAID' | 'NAVY'
 }
 
 export const FIGHT_RING = {
@@ -72,6 +78,7 @@ export interface FightRing {
   readonly over: boolean
   readonly mine: boolean
   readonly fleetIds: readonly string[]
+  readonly kind: MapFight['kind']
 }
 
 /** One battle's ring at a zoom (`unitsPerPx`: chart units a screen pixel covers). */
@@ -99,6 +106,7 @@ export function fightRing(fight: MapFight, unitsPerPx: number): FightRing {
     over: fight.over,
     mine: fight.mine !== null,
     fleetIds: fight.fleetIds,
+    kind: fight.kind,
   }
 }
 

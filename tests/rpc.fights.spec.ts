@@ -5,7 +5,8 @@ import { builtWorldImage } from './builtWorld.fixture'
 import { clearBackend, createLocalBackend, setBackend, worldBattle, worldFight, worldFights } from '../src/lib/rpc'
 import { fightRing } from '../src/chart/fightRings'
 import { mapFightsOf } from '../src/chart/liveWorld'
-import { parseFightLog } from '../src/live/fightLines'
+import { parseFightLog, parseFightLoss } from '../src/live/fightLines'
+import { RAID_LOG } from './raidWorld.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE MAP'S TWO READS OF A BATTLE, THE SEAM (0364, owner row 321): `world.fights()` and `world.fight(battle)`, through
@@ -66,13 +67,15 @@ test.afterAll(async () => {
   await db?.close()
 })
 
-test('dark: the map reads no battle and asks seldom; a battle that is none reads nothing', async () => {
+test('attacks dark: the map reads no fight; `on` says only whether any kind of fight is in use; a battle that is none reads nothing', async () => {
   const read = await worldFights()
   expect(read.ok, JSON.stringify(read)).toBe(true)
   if (!read.ok) return
-  expect(read.value.on).toBe(false)
+  // the shipped world's fight at sea bites (combat_bite), so a raid can happen and the map asks at its idle pace
+  expect(read.value.on).toBe(await db.callAs<boolean>(`select public.attack_on() or public.navy_hunts_on() or public.combat_bite_on() as result`))
   expect(read.value.fights).toEqual([])
   expect(read.value.keep_seconds).toBe(60)
+  expect(read.value.raid_seconds).toBe(300)
   const none = await worldFight('00000000-0000-4000-8000-000000000364')
   expect(none.ok && none.value).toEqual({ on: false })
 })
@@ -119,7 +122,9 @@ test('lit: a battle another company opened is on the watcher’s map, with its p
     expect(ring.rPx).toBeGreaterThanOrEqual(22)
   }
   // only the keys 0364 names ride on a card and on a side
-  expect(Object.keys(card).sort()).toEqual(['fleets', 'id', 'lat', 'lon', 'mine', 'next_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'ships', 'sides', 'started_at', 'status'])
+  expect(card.kind).toBe('BATTLE')
+  expect(card.size).toBe(2)
+  expect(Object.keys(card).sort()).toEqual(['fleets', 'id', 'kind', 'lat', 'lon', 'mine', 'next_at', 'resolves_at', 'round_seconds', 'rounds', 'rounds_done', 'ships', 'sides', 'size', 'started_at', 'status'])
   for (const s of card.sides) expect(Object.keys(s).sort()).toEqual(['at', 'company', 'fleet', 'here', 'how', 'kind', 'name', 'nation', 'ships', 'side'])
 })
 
@@ -199,4 +204,84 @@ test('the log grows a round at a time for the watcher; over, the ring carries th
   expect(gone.ok && gone.value.fights).toEqual([])
   const still = await worldFight(battle)
   expect(still.ok && still.value.on).toBe(true)
+})
+
+test('her own raid: a PIRATES day that kept its log is on HER map for 300 s, with the log her History draws and what the day cost', async () => {
+  // a voyage of the watcher's own fleet with one raid day 20 s ago (rows of this spec: the real day is proof 66's), carrying a real raid's log
+  const fleets = await db.callAs<string>(`select f.id as result from public.fleets f join public.players p on p.id = f.player_id where p.auth_uid = $1`, [db.authUid])
+  const voyage = '00000000-0364-4000-8000-0000000000c1'
+  await db.callAs(
+    `with v as (insert into public.voyages (id, fleet_id, player_id, path, total_nm, speed_profile, departed_at, eta, status, origin_port_id, dest_port_id)
+                select $2::uuid, f.id, f.player_id, jsonb_build_array(jsonb_build_object('a', jsonb_build_array(38, -10), 'b', jsonb_build_array(38, -12), 'nm', 600,
+                         'sea_id', (select s.id from public.seas s order by s.code limit 1), 'danger', 0)), 600, '[5]', now() - interval '10 minutes', now() - interval '5 seconds', 'ARRIVED', f.port_id, f.port_id
+                  from public.fleets f where f.id = $1 returning id),
+          e as (insert into public.voyage_events (voyage_id, day_index, kind, payload, resolved_at)
+                select v.id, 1, 'PIRATES', jsonb_build_object('crew_before', 8, 'crew_lost', 2, 'cargo_lost', '{"SUGAR": 3}'::jsonb, 'fight', jsonb_build_object('log', $3::jsonb)), now() - interval '20 seconds' from v returning 1)
+     select count(*)::int as result from e`,
+    [fleets, voyage, JSON.stringify({ ...RAID_LOG, foe: { ...RAID_LOG.foe, k: 4.2 } })],
+  )
+  const read = await worldFights()
+  expect(read.ok, JSON.stringify(read)).toBe(true)
+  if (!read.ok) return
+  const raids = read.value.fights.filter((f) => f.kind === 'RAID')
+  expect(raids).toHaveLength(1)
+  const raid = raids[0]
+  expect(raid.id).toBe(`raid:${voyage}:1`)
+  expect(raid.mine).toBe(fleets)
+  expect(raid.status).toBe('RESOLVED')
+  expect(raid.size).toBe(6)
+  expect(raid.end).toBe('FLED')
+  expect(raid.lat).toBe(38)
+  expect(Date.parse(raid.until as string) - Date.parse(raid.started_at)).toBe(300_000)
+  expect(raid.sides.map((s) => [s.side, s.kind, s.ships])).toEqual([['ATTACKER', 'PIRATE', 5], ['DEFENDER', 'COMPANY', 1]])
+  // the log is the one shape the one FightLog parses, from her deck; and the day's cost
+  const log = parseFightLog(raid.log)
+  expect(log, JSON.stringify(raid.log)).not.toBeNull()
+  expect(log?.attacker).toBe(false)
+  expect(log?.rounds).toHaveLength(RAID_LOG.r.length)
+  expect(parseFightLoss(raid.loss)).toEqual({ crewBefore: 8, crew: 2, cargo: { SUGAR: 3 }, ransom: 0 })
+  // the ring: five raiders' ships and her fleet draw 46 px, on the raid's own place
+  const [ring] = mapFightsOf(raids).map((f) => fightRing(f, 0.01))
+  expect(ring.rPx).toBe(46)
+  expect(ring.over).toBe(false)
+  // the other company reads nothing of it
+  const theirs = await db.callAs<number>(
+    `with i as materialized (select cmd.assume_identity($1::uuid) as x)
+     select (select count(*)::int from jsonb_array_elements(world.fights() -> 'fights') e where e ->> 'kind' = 'RAID') as result from i`,
+    [OTHER],
+  )
+  expect(theirs).toBe(0)
+  // 301 s after the day's instant it has left her map
+  await db.callAs(`with u as (update public.voyage_events set resolved_at = now() - interval '301 seconds' where voyage_id = $1 returning 1) select count(*)::int as result from u`, [voyage])
+  const gone = await worldFights()
+  expect(gone.ok && gone.value.fights.filter((f) => f.kind === 'RAID')).toEqual([])
+})
+
+test('a navy fight kept by the server is on EVERY map for 300 s, with its two ships and its log cut to nine keys', async () => {
+  // the keeper on a real fight of two fleets of this world (the real pass and old-against-new are proof 66's)
+  await db.callAs(
+    `select public.navy_fight_keep($1::uuid, $2::uuid, voyage.fleet_hulls($2::uuid), voyage.fleet_hulls($1::uuid),
+                                    public.fight_sides($1::uuid, 7, voyage.fleet_hulls($2::uuid), voyage.fleet_hulls($1::uuid), '{}'::jsonb), now() - interval '10 seconds') is null as result`,
+    [attacker, target],
+  )
+  const read = await worldFights()
+  expect(read.ok, JSON.stringify(read)).toBe(true)
+  if (!read.ok) return
+  const navy = read.value.fights.filter((f) => f.kind === 'NAVY')
+  expect(navy).toHaveLength(1)
+  const card = navy[0]
+  expect(card.mine).toBeNull()
+  expect(card.status).toBe('RESOLVED')
+  expect(card.size).toBe(card.ships)
+  expect(card.sides.map((s) => [s.fleet, s.side, s.kind])).toEqual([[attacker, 'ATTACKER', 'NAVY'], [target, 'DEFENDER', 'PIRATE']])
+  expect('loss' in card).toBe(false)
+  const log = parseFightLog(card.log)
+  expect(log, JSON.stringify(card.log)).not.toBeNull()
+  expect(log?.attacker).toBe(true)
+  expect(card.end).toBe(log?.end)
+  expect(Object.keys(card.log as object).every((k) => ['v', 'atk', 'first', 'foe', 'you', 'r', 'board', 'after', 'end'].includes(k))).toBe(true)
+  expect(mapFightsOf(navy)[0].kind).toBe('NAVY')
+  await db.callAs(`with u as (update public.navy_fight_log set at = now() - interval '301 seconds' returning 1) select count(*)::int as result from u`)
+  const gone = await worldFights()
+  expect(gone.ok && gone.value.fights.filter((f) => f.kind === 'NAVY')).toEqual([])
 })
