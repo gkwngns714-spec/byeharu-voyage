@@ -118,7 +118,7 @@ begin
        set payload = ve.payload || jsonb_build_object(
              'held_from', p_at - ((p_at - (ve.payload->>'held_from')::timestamptz) * v_f::double precision),
              'delay_hours', trim_scale(round((extract(epoch from (ve.payload->>'held_until')::timestamptz - p_at)
-                                              + extract(epoch from p_at - (ve.payload->>'held_from')::timestamptz) * v_f) * p_compression / 3600, 10)),
+                                              + extract(epoch from p_at - (ve.payload->>'held_from')::timestamptz) * v_f) * p_compression / 3600, 3)),   -- three places, as voyages.delay_hours keeps them: a hold's free hours must not differ from the row's delay
              'retimed_from', ve.payload->'held_from')
       from public.voyages v
      where v.id = ve.voyage_id and v.status = 'SAILING' and ve.day_index >= voyage.hold_floor()
@@ -313,7 +313,7 @@ $h$);
        or abs(voyage.progress_nm(v_vb, v_at + (v_b - v_at) / 2) - v_pb_at) > 0.01 then
       raise exception '0412 self-assert FAIL: the held voyage moved inside her hold (% / % / % nm, was %)', voyage.progress_nm(v_vb, v_at), voyage.progress_nm(v_vb, v_at + (v_b - v_at) / 2), voyage.progress_nm(v_vb, v_b), v_pb_at;
     end if;
-    if abs(extract(epoch from v_e - (v_b + (v_eta_b - v_b) * 5))) > 0.005 then
+    if abs(extract(epoch from v_e - (v_b + (v_eta_b - v_b) * 5))) > 0.05 then   -- her hold's hours are kept to three places: a few milliseconds
       raise exception '0412 self-assert FAIL: the held voyage''s arrival is %, not five times what was left after her hold ended at % (was %)', v_e, v_b, v_eta_b;
     end if;
     if abs(voyage.progress_nm(v_vb, v_b + (v_post - v_b) * 5) - v_pb_post) > 0.01 then

@@ -461,10 +461,10 @@ declare
 begin
   update public.world_config set value = 'false'::jsonb where key = 'attack_enabled';
 
-  -- ══ RAID_RING: a real raid day. Her fleet back in Lisbon, whole, sails a three-day passage west that began 100 s ago; day 1 (90 s) is a raid; her own read settles it ══
+  -- ══ RAID_RING: a real raid day. Her fleet back in Lisbon, whole, sails a three-day passage west that began ten ninths of a voyage-day ago (100 s at 960); day 1 is a raid; her own read settles it ══
   update public.fleets f set status = 'DOCKED', port_id = v_lis, lat = null, lon = null, busy_until = null, ready_at = null, version = f.version + 1 where f.id = a;
   update public.ships s set durability = (select b.durability from public.ship_base(s.id) b), crew = 100, water_t = 100000, food_t = 100000 where s.fleet_id = a;
-  v_t := now() - interval '100 seconds';
+  v_t := now() - make_interval(secs => (100.0 / 90 * 86400 / public.wc_num('time_compression'))::double precision);   -- 0412: ten ninths of a voyage-day ago at the clock's rate as it stands (100 s at 960)
   v_voy := voyage.depart(a, (select jsonb_agg(jsonb_build_object('a', jsonb_build_array(38.5, -9.6 - (d - 1)), 'b', jsonb_build_array(38.5, -9.6 - d), 'nm', voyage.fleet_speed(a) * 24, 'sea_id', v_sea, 'hazard_mult', 1000) order by d)
                            from generate_series(1, 3) d), v_lis, v_lis, v_t);
   perform cmd.assume_identity(c_uid);

@@ -182,7 +182,7 @@ begin
   select eta into v_e from public.voyages where id = v_vb;
   if (v_r->>'holds')::int < 1 or abs(voyage.progress_nm(v_vb, v_at) - v_pb_at) > 0.01 or abs(voyage.progress_nm(v_vb, v_b) - v_pb_at) > 0.01
      or abs(voyage.progress_nm(v_vb, v_at + (v_b - v_at) / 2) - v_pb_at) > 0.01
-     or abs(extract(epoch from v_e - (v_b + (v_eta_b - v_b) * 5))) > 0.005
+     or abs(extract(epoch from v_e - (v_b + (v_eta_b - v_b) * 5))) > 0.05
      or abs(voyage.progress_nm(v_vb, v_b + (v_post - v_b) * 5) - v_pb_post) > 0.01 then
     raise exception 'proof 110 DH_HOLD: the held voyage moved inside her hold or is mis-timed after it (% / % nm, was %; eta %, wanted %)',
       voyage.progress_nm(v_vb, v_at), voyage.progress_nm(v_vb, v_b), v_pb_at, v_e, v_b + (v_eta_b - v_b) * 5;
@@ -193,7 +193,7 @@ begin
   perform public.clock_set(960, v_at);
   if (select abs(extract(epoch from v.departed_at - v_dep0)) > 0.001 or abs(extract(epoch from v.eta - v_eta_a)) > 0.001 from public.voyages v where v.id = v_va)
      or abs(voyage.progress_nm(v_va, v_mid) - v_pa_mid) > 0.01
-     or (select abs(extract(epoch from v.eta - v_eta_b)) > 0.001 from public.voyages v where v.id = v_vb)
+     or (select abs(extract(epoch from v.eta - v_eta_b)) > 0.05 from public.voyages v where v.id = v_vb)
      or abs(voyage.progress_nm(v_vb, v_post) - v_pb_post) > 0.01 or abs(voyage.progress_nm(v_vb, v_b) - v_pb_at) > 0.01 then
     raise exception 'proof 110 DH_BACK: moved back to 960 the voyages are not where they were (A eta %, was %; B eta %, was %)',
       (select eta from public.voyages where id = v_va), v_eta_a, (select eta from public.voyages where id = v_vb), v_eta_b;
