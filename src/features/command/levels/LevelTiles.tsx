@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar, Icon, Note, Tray, type TrayDetent } from '../../../components/ui'
+import { Bar, Icon, Note, Tile, Tray, type TrayDetent } from '../../../components/ui'
 import { formatInt, formatRelative } from '../../../lib/format'
 import { translateMaybe, useLocale, useT } from '../../../lib/i18n'
 import type { LevelSkill, LevelSkillsCard } from '../../../lib/rpc'
@@ -59,16 +59,17 @@ export function LevelTiles({
         const gift = nextGift(s)
         const on = selected === s.code
         return (
-          <button
+          // THE KIT'S TILE (2026-11-15; tests/duplication.spec.ts "no inline border+bg skin"): its skin, its selected wash and hairline;
+          // the body is the level's own (no head). A level tile is tighter than a catalogue tile and stands inset on its sheet.
+          <Tile
             key={s.code}
-            type="button"
+            tap="whole"
+            state={on ? 'selected' : 'rest'}
             onClick={() => onSelect(s.code)}
             aria-pressed={on}
             data-testid={`levels-${s.code}`}
             data-level={s.level}
-            className={`flex ${compact ? 'min-h-11' : 'min-h-tile'} min-w-0 flex-col gap-1 rounded-tile border p-2 text-left transition ${
-              on ? 'border-accent bg-accent-soft' : 'border-transparent bg-surface-2'
-            } ${s.counted ? '' : 'text-ink-faint'}`}
+            className={`${compact ? 'min-h-11!' : ''} min-w-0 gap-1! p-2! ${on ? '' : 'bg-surface-2!'} ${s.counted ? '' : 'text-ink-faint'}`}
           >
             <span className="flex items-center justify-between gap-2">
               <span className={s.counted ? 'text-accent' : 'text-ink-faint'}>
@@ -96,7 +97,7 @@ export function LevelTiles({
                 </>
               )}
             </span>
-          </button>
+          </Tile>
         )
       })}
     </div>

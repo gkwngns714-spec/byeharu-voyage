@@ -101,6 +101,7 @@ const STATS_READS: readonly RpcName[] = [
   'worldStatsCity',
   'worldStatsMerchants',
   'worldStatsMe',
+  'worldStatsFleets',
   'worldHistory',
 ]
 

@@ -104,6 +104,7 @@ import type {
   StatsCity,
   StatsCityPeople,
   StatsMerchants,
+  StatsFleets,
   StatsMe,
   StatsNow,
   NewsFeed,
@@ -888,6 +889,10 @@ export function worldStatsCityPeople(portId: string): Promise<RpcResult<StatsCit
 /** The merchant companies' day: where their fleets are, what they earned, the best and the worst. */
 export function worldStatsMerchants(span: PriceSpan | null = null): Promise<RpcResult<StatsMerchants>> {
   return call<StatsMerchants>('worldStatsMerchants', [span])
+}
+/** 0419: the merchants, the navy, the pirates and the cargo ships, from the newest Stats count and its last 24 hours. */
+export function worldStatsFleets(): Promise<RpcResult<StatsFleets>> {
+  return call<StatsFleets>('worldStatsFleets')
 }
 /** Your week — best sales, how much traded — and the leaderboard by rank and name. */
 export function worldStatsMe(): Promise<RpcResult<StatsMe>> {

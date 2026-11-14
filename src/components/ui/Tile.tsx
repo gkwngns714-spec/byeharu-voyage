@@ -87,8 +87,9 @@ export function Tile({
 }: {
   /** The identity glyph — a good's own drawn mark, a verb icon, a rarity mark. */
   mark?: ReactNode
-  /** What it is called, in `t-body`. */
-  name: ReactNode
+  /** What it is called, in `t-body`. Left out, the tile has no head and its `children` are its whole body (a level tile: its mark
+   *  and level on one line, its name in full under them; LevelTiles.tsx). */
+  name?: ReactNode
   /** One quiet line under the name (`t-caption`): a class, a nation, a category. */
   meta?: ReactNode
   /** The figure the tile is about — a `<Figure>`. */
@@ -105,7 +106,7 @@ export function Tile({
   className?: string
   /** The caller's own tap zones (a good's two price cells), under the figures. */
   children?: ReactNode
-} & { 'data-testid'?: string }) {
+} & { 'data-testid'?: string; 'data-level'?: number; 'aria-pressed'?: boolean }) {
   const inTray = useInTray()
   const head = (
     <>
@@ -121,7 +122,7 @@ export function Tile({
 
   const inside = (
     <>
-      {tap === 'head' ? (
+      {name === undefined ? null : tap === 'head' ? (
         <button
           type="button"
           onClick={onClick}
