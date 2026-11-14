@@ -347,7 +347,7 @@ function Room({ port, fleet, trayMode }: { port: SnapshotPort; fleet: FleetView 
       {/* WHEN THE ROOM TURNS OVER (0119: every inn_captain_rotate_minutes REAL minutes). A server
           that has not applied 0119 serves no instant, and the line says only what is true. */}
       <div className="flex items-baseline justify-between pb-2 pt-4" data-testid="inn-room-head">
-        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{t('inn.captainsHere')}</h3>
+        <h3 className="text-t-caption font-semibold text-ink-faint">{t('inn.captainsHere')}</h3>
         {turnsAt !== null && (
           <span className="text-t-caption tabular-nums text-ink-faint" data-testid="inn-turns">
             {turnsAt > nowMs ? t('inn.newFacesIn', { span: formatRealDuration(turnsAt - nowMs) }) : t('inn.newFaces')}

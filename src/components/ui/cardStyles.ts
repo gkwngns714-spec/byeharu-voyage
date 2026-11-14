@@ -22,8 +22,9 @@ export const CARD_PAD = 'p-4 md:p-6'
 /** A one-figure card's room: the same sides, a little less above and below from 768. */
 export const CARD_PAD_COMPACT = 'p-4 md:px-6 md:py-5'
 
-/** The card's head: its title line closed by a hairline, the content 16 px under it. */
-export const CARD_HEAD = 'mb-4 border-b border-edge pb-3'
+/** The card's head: its title line closed by a hairline, the title 12 px over it and the content 12 px under it: one rhythm
+ *  (2026-11-14, the second look pass; the content stood 16 under, and a row that centres its own words looked adrift). */
+export const CARD_HEAD = 'mb-3 border-b border-edge pb-3'
 
 /** The card's title: 16 px on a phone, the card size (20) from 768, semibold ink. */
 export const CARD_TITLE = 'text-t-body font-semibold text-ink md:text-t-card'

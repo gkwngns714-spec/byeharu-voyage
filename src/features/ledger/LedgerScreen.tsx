@@ -124,7 +124,7 @@ function LedgerBody({ title }: { title: string }) {
         value={face}
         onChange={setFace}
         label={title}
-        className="w-fit max-w-full"
+        className="w-fit max-w-full max-sm:w-full"
       />
       <PageSplit
         data-testid="ledger-page"

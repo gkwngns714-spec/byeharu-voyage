@@ -23,7 +23,7 @@ import {
   settleCoastPaper,
   type CoastPaper,
 } from './chartView'
-import { coastStrokeWidth, GLYPH } from './glyphs'
+import { coastStrokeWidth, GLYPH, WIDE_SCALE } from './glyphs'
 import { mapLabelRequests, planLabels, type LabelRequest, type Rect } from './labels'
 import type { MapPort, MapSea, MapSelection } from './mapTypes'
 import { regionNameRequests, type RegionTint } from './regions'
@@ -316,6 +316,8 @@ export function ChartCanvas({
       gapPx: GLYPH.labelGapX,
       glyphRadiusPx: GLYPH.fleetHaloRadius,
       keepOut: keepOutUnits,
+      // past a coast (the density scale's own start, ./glyphs.ts): a name over or under its own mark, or not at all
+      centredOnMark: unitsPerPx > WIDE_SCALE.fromUnitsPerPx,
     })
   }, [model, marksByCopy, seas, regions, portFlags, selection, box, unitsPerPx, keepOutUnits])
 

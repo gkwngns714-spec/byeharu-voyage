@@ -63,7 +63,7 @@ export function ShipAugments({
       {(sets ?? []).map((s) => (
         <div key={s.line} className="pt-4" data-testid={`ship-set-${s.line}`}>
           <div className="flex items-baseline justify-between pb-1.5">
-            <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{t('yard.set', { name: s.name })}</h3>
+            <h3 className="text-t-caption font-semibold text-ink-faint">{t('yard.set', { name: s.name })}</h3>
             <span className="text-t-caption tabular-nums text-ink-faint">{t('yard.pieces', { n: s.pieces, of: s.of })}</span>
           </div>
           <ul className="flex flex-col gap-0.5">
@@ -77,7 +77,7 @@ export function ShipAugments({
       ))}
       {units.length > 0 && (
         <div className="pt-4">
-          <h3 className="pb-2 text-t-caption uppercase tracking-wider text-ink-faint">{t('yard.perks')}</h3>
+          <h3 className="pb-2 text-t-caption font-semibold text-ink-faint">{t('yard.perks')}</h3>
           <ul className="flex flex-col gap-1.5">
             {units.map((u, i) => {
               const key = `${u.code}-${i}`

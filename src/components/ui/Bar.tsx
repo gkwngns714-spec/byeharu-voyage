@@ -46,6 +46,11 @@ const FILL: Record<BarTone, string> = {
   neutral: 'bg-ink-faint',
 }
 
+// THE TRACK IS SEEN WHEN IT IS EMPTY (2026-11-14, the second look pass). It was `surface-2`, one step off the card it lies on:
+// an empty hold or a store with nothing in it was a 4-px line nobody could tell from a divider. A fifth of the faint ink is a
+// groove on the card, on a tile and on the sea alike, and every fill still stands well clear of it.
+const TRACK = 'bg-ink-faint/20'
+
 export function Bar({
   pct,
   value,
@@ -108,11 +113,11 @@ export function Bar({
           Array.from({ length: of as number }, (_, i) => (
             <span
               key={i}
-              className={`h-full flex-1 rounded-chip ${i < filled ? FILL[tone] : 'bg-surface-2'}`}
+              className={`h-full flex-1 rounded-chip ${i < filled ? FILL[tone] : TRACK}`}
             />
           ))
         ) : (
-          <span className="relative block h-full w-full rounded-chip bg-surface-2">
+          <span className={`relative block h-full w-full rounded-chip ${TRACK}`}>
             <span
               className={`block h-full rounded-chip transition-[width] ${FILL[tone]}`}
               style={{ width: `${solidTo}%` }}

@@ -182,7 +182,7 @@ function RouteLaps({
   return (
     <section className="py-2" data-testid="tray-route-laps">
       <div className="flex items-baseline justify-between gap-2 pb-1.5">
-        <span className="min-w-0 break-words text-t-caption uppercase tracking-wider text-ink-faint">{t('map.tradingOf', { name })}</span>
+        <span className="min-w-0 break-words text-t-caption font-semibold text-ink-faint">{t('map.tradingOf', { name })}</span>
       </div>
       {total && (
         <div className="pb-1 text-t-caption tabular-nums text-ink-faint" data-testid="tray-month-laps">

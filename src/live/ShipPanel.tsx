@@ -187,7 +187,7 @@ function slotBoxes(ship: ShipView): SlotBox[] {
 function Heading({ children, trailing }: { children: ReactNode; trailing?: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between pb-2 pt-4">
-      <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{children}</h3>
+      <h3 className="text-t-caption font-semibold text-ink-faint">{children}</h3>
       {trailing}
     </div>
   )
