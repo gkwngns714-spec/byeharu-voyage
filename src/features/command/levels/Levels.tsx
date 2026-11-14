@@ -1,12 +1,12 @@
-import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { HullCountry } from '../../../live/HullCountry'
 import { Bar, Clip, FactsLine, Note, Row, ScrollPane, Skeleton, StatCell, useWide } from '../../../components/ui'
 import { regardBandWord } from '../../../domain/port'
-import { formatDucats, formatInt, formatMiles } from '../../../lib/format'
+import { formatInt } from '../../../lib/format'
 import { properName, useT } from '../../../lib/i18n'
 import { worldLevels, type CaptainLevel, type LevelCut, type LevelsView, type YourCaptain } from '../../../lib/rpc'
+import { LevelDetail, LevelTiles, LevelTray } from './LevelTiles'
 import { useServedRead } from '../../../live/useServedRead'
-import { useWorld } from '../../../live/worldStore'
 import { useYourCaptains } from '../../../live/useYourCaptains'
 import type { DeskLayout } from '../DeskFrame'
 
@@ -18,12 +18,16 @@ import type { DeskLayout } from '../DeskFrame'
 // level, a threshold or a room: the bars are fills of served figures. `bite` (levels_bite) is the truth about whether a hull's or a
 // captain's level acts yet; while it is false the page says so and shows what each one counts as.
 //
-// THE PRESS LAW: the page has no control, so nothing moves under a finger. The parts stand in the desk's panes (wide) or one under
-// the other (phone); the lists scroll inside themselves.
+// 0412: THE COMPANY'S LEVELS ARE TILES (LevelTiles.tsx): every level `level_skills` serves, the three old tracks among them. A
+// pressed level shows her experience, what raises it, what levels give and the experience table, all from the same read.
+//
+// THE PRESS LAW: a press selects and nothing moves under a finger: a pressed level opens in a tray docked over the page (phone) or
+// stands in the middle pane (wide). The parts stand in the desk's panes (wide) or one under the other (phone); the lists scroll
+// inside themselves.
 
 type Ready = Extract<LevelsView, { company: true }>
 
-/** How far a level's bar is filled: points since this level began, over the span to the next. A top level is full. */
+/** How far a hull's bar is filled: points since this level began, over the span to the next. A top level is full. */
 const fill = (c: Pick<LevelCut, 'points' | 'from' | 'next_at'>): number =>
   c.next_at === null || c.next_at <= c.from ? 100 : Math.max(0, Math.min(100, ((c.points - c.from) / (c.next_at - c.from)) * 100))
 
@@ -33,6 +37,8 @@ export function Levels({ layout }: { layout: DeskLayout }) {
   const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
   const captains = useYourCaptains().captains
   const v = read.view
+  // the level pressed. A wide glass always shows one (the first, until she presses another); a phone shows one only while its tray is open.
+  const [picked, setPicked] = useState<string | null>(null)
 
   if (!v) {
     return layout({
@@ -58,7 +64,8 @@ export function Levels({ layout }: { layout: DeskLayout }) {
       mainFill: true,
       main: (
         <ScrollPane className="flex-1">
-          <Company v={v} />
+          <Company v={v} picked={picked} onPick={setPicked} />
+          <LevelTray card={v.level_skills} code={picked} onClose={() => setPicked(null)} />
           <Room v={v} />
           <Countries v={v} />
           {banner}
@@ -68,11 +75,14 @@ export function Levels({ layout }: { layout: DeskLayout }) {
       ),
     })
   }
+  const shown = v.level_skills.skills.find((s) => s.code === picked) ?? v.level_skills.skills[0]
   return layout({
     testid: 'desk-levels',
-    list: <Company v={v} />,
+    list: <Company v={v} picked={shown?.code ?? null} onPick={setPicked} />,
     main: (
       <>
+        {shown && <LevelDetail card={v.level_skills} skill={shown} />}
+        <div className="mt-6" />
         {banner}
         <HullRows v={v} />
         <CaptainRows captains={captains} />
@@ -87,32 +97,6 @@ export function Levels({ layout }: { layout: DeskLayout }) {
   })
 }
 
-/** One ladder: its name and level, the bar to the next, and the line under it. `gift` (0356) is the served Reputation a level
- *  (`reputation.level_gift`): the next level's gift, gift x (level + 1), ends the line. No gift at the top level or while it is 0. */
-function Track({ name, level, cut, line, gift, testid, children }: { name: string; level: number; cut: LevelCut; line?: string; gift?: number | null; testid: string; children?: ReactNode }) {
-  const t = useT()
-  const toNext = cut.next_at === null ? t('command.lvTop') : t('command.lvToNext', { n: formatInt(Math.ceil(cut.next_at - cut.points)), next: level + 1 })
-  const nextGift = cut.next_at === null || !gift ? 0 : gift * (level + 1)
-  return (
-    <div className="min-w-0 py-2" data-testid={testid}>
-      <StatCell look="stacked" label={name} value={level} format={formatInt} />
-      <Bar pct={fill(cut)} label={t('you.levelOf', { name })} tone="accent" className="mt-1" />
-      <span className="mt-1 block text-t-caption text-ink-faint">
-        {[t('command.lvPoints', { n: formatInt(cut.points) }), toNext, line].filter(Boolean).join(' · ')}
-        {nextGift > 0 && (
-          <>
-            {' · '}
-            <span className="whitespace-nowrap text-accent" data-testid="levels-gift" data-value={nextGift}>
-              {t('command.lvNextGift', { n: formatInt(nextGift) })}
-            </span>
-          </>
-        )}
-      </span>
-      {children}
-    </div>
-  )
-}
-
 /** A label over a word figure (StatCell's value is a counting number). */
 function Words({ label, value }: { label: string; value: string }) {
   return (
@@ -123,30 +107,15 @@ function Words({ label, value }: { label: string; value: string }) {
   )
 }
 
-function Company({ v }: { v: Ready }) {
+function Company({ v, picked, onPick }: { v: Ready; picked: string | null; onPick: (code: string) => void }) {
   const t = useT()
-  const { trading, exploration, combat } = v.tracks
   const sea = v.skills.seamanship
-  // 0356: the Reputation a level, served on the house read (public.reputation_card). null before 0356: no gift is printed.
-  const gift = useWorld((s) => s.player?.reputation?.level_gift ?? null)
   return (
     <>
-      <Track name={t('command.lvTrading')} level={trading.level} cut={trading} line={t('command.lvTurnover', { n: formatDucats(trading.turnover) })} gift={gift} testid="levels-trading" />
-      <Track
-        name={t('command.lvExploration')}
-        level={exploration.level}
-        cut={exploration}
-        line={t('command.lvPorts', { ports: formatInt(exploration.ports_reached), nm: formatMiles(exploration.nm_sailed) })}
-        gift={gift}
-        testid="levels-exploration"
-      />
-      {combat.playable ? (
-        <Track name={t('command.lvCombat')} level={combat.level} cut={combat} gift={gift} testid="levels-combat" />
-      ) : (
-        <div className="py-2" data-testid="levels-combat">
-          <Words label={t('command.lvCombat')} value={t('command.lvCombatDark')} />
-        </div>
-      )}
+      <LevelTiles card={v.level_skills} selected={picked} onSelect={onPick} />
+      <span className="mt-2 block text-t-caption text-ink-faint" data-testid="levels-vs-skills">
+        {t('command.lvVsSkills')}
+      </span>
       <div className="min-w-0 py-2" data-testid="levels-seamanship">
         <StatCell look="stacked" label={t('command.lvSeamanship')} value={sea.level} format={(n) => `${formatInt(n)} ${t('command.lvOf', { max: sea.max })}`} />
         <Bar value={sea.level} of={sea.max} label={t('you.levelOf', { name: t('command.lvSeamanship') })} tone="accent" className="mt-1" />

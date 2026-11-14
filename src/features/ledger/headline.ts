@@ -11,6 +11,7 @@ import type { FightLog, FightLoss, LedgerEvent, RegardBand } from '../../lib/rpc
 import { parseFightLog, parseFightLoss } from '../../live/fightLines'
 import { getLocale, properName, t, type TKey } from '../../lib/i18n'
 import { skillWord } from '../../live/skillWords'
+import { levelName } from '../../live/levelWords'
 
 // ── THE ONE HEADLINE COMPOSER ───────────────────────────────────────────────────────────────────
 // One sentence per server kind, built from that kind's payload and nothing else. The payloads are
@@ -394,8 +395,8 @@ export function headline(event: LedgerEvent, portName: (code: string) => string,
       // 0356: {track, level, reputation}. The arrival card's own sentence (dict/feed.ts), so a level-up reads the same in both places.
       const track = str(p, 'track')
       const level = num(p, 'level')
-      const word =
-        track === 'trading' ? t('command.lvTrading') : track === 'exploration' ? t('command.lvExploration') : track === 'combat' ? t('command.lvCombat') : null
+      // 0412: any level's code, by the Levels page's own names (levelWords.ts)
+      const word = track === null || track === '' ? null : levelName(getLocale(), track)
       if (word === null || level === null) return t('history.bare', { what: kindWords(event.kind) })
       const rep = num(p, 'reputation') ?? 0
       return rep > 0 ? t('feed.levelUpRep', { track: word, n: level, rep: formatInt(rep) }) : t('feed.levelUp', { track: word, n: level })

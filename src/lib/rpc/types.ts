@@ -1964,7 +1964,8 @@ export interface ReputationCard {
 
 /** 0356 — one level crossing as `public.level_marks_settle` paid it: the `LEVEL_UP` event's payload, and a row of `cmd.level_up`'s answer. */
 export interface LevelCrossing {
-  track: 'trading' | 'exploration' | 'combat'
+  /** A level's code (`public.level_skills`): trading, exploration, combat, and since 0412 the levels raised by doing. */
+  track: string
   level: number
   /** The Reputation the crossing booked (0 while the gift is off). */
   reputation: number
@@ -4153,12 +4154,62 @@ export interface LevelCut {
   next_at: number | null
 }
 
+/** 0412: one thing that raises a level, as `public.level_activity_terms` reads it: `xp` experience for every `per` units of `unit`.
+ *  `most`: at most this much a grant. `once`: paid once ever for its thing. `at_gain`: only when it made a gain.
+ *  `voyage_nm`: only on a voyage of at least this many miles into a port. `word` is the server's English sentence. */
+export interface LevelActivity {
+  code: string
+  word: string
+  unit: 'each' | 'ducats' | 'nm' | 'day'
+  xp: number
+  per: number
+  most: number | null
+  once: boolean
+  at_gain: boolean
+  voyage_nm: number | null
+}
+
+/** 0412: what a level gives, read from the rule that applies it (`public.level_benefits`). `level` null = every level.
+ *  gift: `n` x the level in Reputation. captain_cap: her captains' level in this track may rise to hers. promote: a captain's
+ *  promotion to `grade` asks this level. fleet: one more fleet. title: the title `name`, held with `with` at the same level; `opens` the seas it opens. */
+export type LevelBenefit =
+  | { level: null; kind: 'gift'; n: number }
+  | { level: null; kind: 'captain_cap' }
+  | { level: number; kind: 'promote'; grade: string }
+  | { level: number; kind: 'fleet' }
+  | { level: number; kind: 'title'; name: string; with: string; opens: string[] }
+
+/** 0412: one level of the company on the Levels page. `kept` record: counted by `public.player_progress` from her whole record
+ *  (Trading, Exploration, Combat: no grant rows, `today`, `cap` and `recent` are null). `kept` book: granted by doing
+ *  (`public.level_grant`), at most `cap` a day. `counted` false: nothing raises it now (combat while it is not playable; the switch off). */
+export interface LevelSkill extends LevelCut {
+  code: string
+  word: string
+  kept: 'record' | 'book'
+  counted: boolean
+  today: number | null
+  cap: number | null
+  activities: LevelActivity[]
+  benefits: LevelBenefit[]
+  recent: Array<{ activity: string; xp: number; at: string }> | null
+}
+
+/** 0412: `public.level_skills_card`. `curve[L - 1]` is the experience at which level L begins, up to `top`. */
+export interface LevelSkillsCard {
+  on: boolean
+  top: number
+  curve: number[]
+  skills: LevelSkill[]
+}
+
 /** 0325: `world.levels()`. `bite` is levels_bite: false means a hull's or a captain's level changes no stat, slot or bonus yet. */
 export type LevelsView =
   | { company: false }
   | {
       company: true
       bite: boolean
+      /** 0412: every level of the company, raised by doing: the page's tiles, the experience table, activities and benefits. */
+      level_skills: LevelSkillsCard
       tracks: {
         trading: LevelCut & { turnover: number }
         exploration: LevelCut & { ports_reached: number; nm_sailed: number }
