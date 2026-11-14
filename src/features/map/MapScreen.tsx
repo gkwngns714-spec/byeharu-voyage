@@ -1,6 +1,7 @@
 import { armadaMarks } from './armadaMarks'
 import { useArmadas } from '../../live/armadas'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { PointerCoords } from './PointerCoords'
 import { unproject, type LatLon, type Point, type ViewBox } from '../../lib/geo'
 import type { FleetView, PortAllegiance, PortMerchant, SnapshotPort, TrafficFleet } from '../../lib/rpc'
 import type { SeaNav } from '../../lib/sea'
@@ -662,8 +663,10 @@ function Chart({
           testId="map-view-controls"
         />
 
-        {(zoomed || backdrop.error) && (
+        {/* THE CORNER: where the mouse is (./PointerCoords.tsx), a missing coast, and the minimap. */}
+        {(
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
+            <PointerCoords chart={chartRef} box={box} />
             {backdrop.error && <p className="text-t-caption text-ink-faint">{t('map.noCoast')}</p>}
             {zoomed && (
               <Minimap
