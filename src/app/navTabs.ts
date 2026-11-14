@@ -74,6 +74,13 @@ import { translateMaybe, type Locale } from '../lib/i18n'
 // is GONE (owner: *"it is a game you dick. and i told you to remove the command tab"*): the City is
 // the game's home and its Market building is the desk's door. The label is "HQ", the City rail's
 // own word; the bar was HQ · Fleets · Map · Stats · Menu; since 2026-11-11 it is HQ · Trade · Fleets · Map · Menu.
+//
+// ── THE RAIL HAS ROOM THE BAR HAS NOT (owner, 2026-11-14: *"make you, stats on the left side like hq, trade etc."*) ──
+// From `lg` the nav is a column down the window's left edge, and a column is not short of cells the way a 320-px row
+// is. So You and Stats stand on the RAIL as their own cells — HQ · Trade · Fleets · Map · You · Stats · Menu — and
+// are NOT in the Menu there (one place per destination on a given screen). The phone's bar is unchanged: five cells,
+// You and Stats inside the Menu (seven cells at 320 px is 45 px each, under what the labels need). It is one field on
+// the tab (`rail`), read by `navCells(wide)`; there is still exactly one table.
 
 export interface NavTab {
   to: string
@@ -99,7 +106,13 @@ const GROUPS: Record<NavGroupId, NavGroup> = {
   cabin: { label: 'Menu', icon: 'chevron' },
 }
 
-const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] = [
+const ALL_TABS: readonly (NavTab & {
+  enabled: boolean
+  group?: NavGroupId
+  /** ITS OWN CELL ON THE WIDE RAIL, in this order among the rail's promoted cells (after the ungrouped tabs, before
+   *  the group). On the phone's bar it stays a member of its `group`. Only a grouped tab may carry it. */
+  rail?: number
+})[] = [
   // HQ (owner, 2026-10-31: *"i press hq, then command, then hq disappears"*). The City page is the
   // game's home and sits OUTSIDE the shell, so without a cell here the desk's screens had no way
   // back to it — a navigation dead end. One press from every screen, as its OWN cell at the head of
@@ -118,7 +131,7 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   // STATS (owner, 2026-10-20) moved INTO the Menu on 2026-11-11 (S1): the top bar is for the loop you play
   // (Trade · Fleets · Map); the world's figures are consulted, so they sit with the cabin. Every Stats
   // face stays reachable from here.
-  { to: '/stats', label: 'Stats', icon: 'stats', enabled: true, group: 'cabin' },
+  { to: '/stats', label: 'Stats', icon: 'stats', enabled: true, group: 'cabin', rail: 2 },
   { to: '/ledger', label: 'History', icon: 'ledger', enabled: true, group: 'cabin' },
   { to: '/rank', label: 'Rank', icon: 'wreath', enabled: true, group: 'cabin' },
   // ROUTES (owner row 115, 2026-10-11): every lane the world sails, ranked. In the CABIN for this
@@ -138,7 +151,7 @@ const ALL_TABS: readonly (NavTab & { enabled: boolean; group?: NavGroupId })[] =
   // cells of nav.geometry.spec.ts stand. The word is "You", which is how every heading in this game
   // already addresses the player ("Your fleets", "Your week"); PROFILE stays the account beside it
   // (the papers that say who you are signed in as), and nothing is printed on both.
-  { to: '/you', label: 'You', icon: 'crew', enabled: true, group: 'cabin' },
+  { to: '/you', label: 'You', icon: 'crew', enabled: true, group: 'cabin', rail: 1 },
   { to: '/profile', label: 'Profile', icon: 'profile', enabled: true, group: 'cabin' },
 ]
 
@@ -163,11 +176,16 @@ export type NavCell =
  *  is exactly one table and a tab cannot be listed in the bar and in a group, listed twice, or
  *  listed nowhere. A second array naming the members is precisely the drift `docs/NO_SPAGHETTI.md`
  *  forbids, and it is unbuildable here: this list is computed from `ALL_TABS` and nothing else.
- *  Order follows the table, and a group takes the position of its FIRST member. */
-export const NAV_CELLS: readonly NavCell[] = (() => {
+ *  Order follows the table, and a group takes the position of its FIRST member.
+ *
+ *  `wide` is the rail (from `lg`): a tab marked `rail` leaves its group and stands as its own cell, in `rail` order,
+ *  just before the first group — so the group (the Menu) keeps the rail's foot. */
+function buildCells(wide: boolean): readonly NavCell[] {
   const cells: NavCell[] = []
   const members = new Map<NavGroupId, NavTab[]>()
+  const promoted = wide ? ENABLED.filter((t) => t.rail !== undefined).sort((a, b) => (a.rail ?? 0) - (b.rail ?? 0)) : []
   for (const t of ENABLED) {
+    if (promoted.includes(t)) continue
     const tab: NavTab = { to: t.to, label: t.label, icon: t.icon }
     if (!t.group) {
       cells.push({ kind: 'tab', ...tab })
@@ -181,8 +199,22 @@ export const NAV_CELLS: readonly NavCell[] = (() => {
     }
     list.push(tab)
   }
+  const firstGroup = cells.findIndex((c) => c.kind === 'group')
+  const own: NavCell[] = promoted.map((t) => ({ kind: 'tab', to: t.to, label: t.label, icon: t.icon }))
+  cells.splice(firstGroup === -1 ? cells.length : firstGroup, 0, ...own)
   return cells
-})()
+}
+
+/** The PHONE BAR's cells: HQ · Trade · Fleets · Map · Menu, with You and Stats inside the Menu. */
+export const NAV_CELLS: readonly NavCell[] = buildCells(false)
+
+/** The WIDE RAIL's cells: HQ · Trade · Fleets · Map · You · Stats · Menu, the Menu without those two. */
+export const NAV_RAIL_CELLS: readonly NavCell[] = buildCells(true)
+
+/** What the nav draws on this glass: the rail's cells from `lg` (`useWide()`), the bar's below it. */
+export function navCells(wide: boolean): readonly NavCell[] {
+  return wide ? NAV_RAIL_CELLS : NAV_CELLS
+}
 
 /** The landing destination: the TRADE desk (owner remaster, 2026-11-11, S1) — a player lands where the
  *  buy buttons are. The City page stays one press away on the HQ cell. */

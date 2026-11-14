@@ -39,7 +39,8 @@ import { useT } from '../../lib/i18n'
 // rail's width, the lit one on a soft gold plate, the GROUP (the Menu) at the rail's foot, where its tray
 // opens beside it. Where the rail stands and how wide it is is the shell's (screenLayout.ts THE SHELL,
 // src/app/ShellFrame.tsx); this primitive only draws the column. Below `lg` the bar is exactly as it was.
-// Driven only by `items`, so it holds whatever cells the shell passes.
+// Driven only by `items`, so it holds whatever cells the shell passes. A window too short for the column (seven
+// 64-px cells want about 500 px) scrolls the rail itself, so no cell and never the Menu is cut off.
 
 export interface NavItem {
   id: string
@@ -84,7 +85,7 @@ export function Nav({
   return (
     <nav
       aria-label={t('ui.tabs')}
-      className={`flex shrink-0 items-stretch border-t border-edge bg-surface lg:h-full lg:flex-col lg:gap-1 lg:border-r lg:border-t-0 lg:px-2 lg:py-3 ${className}`}
+      className={`flex shrink-0 items-stretch border-t border-edge bg-surface lg:h-full lg:flex-col lg:gap-1 lg:overflow-y-auto lg:border-r lg:border-t-0 lg:px-2 lg:py-3 ${className}`}
       {...rest}
     >
       {items.map((item) => {
