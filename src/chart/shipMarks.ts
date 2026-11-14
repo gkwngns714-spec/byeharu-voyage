@@ -90,11 +90,14 @@ export const THIN_TIERS: readonly { readonly fromSpanDeg: number; readonly keep:
  * the same ships at every pan and none blinks: all of them on a coast, three in eight once a phone
  * holds 40 degrees, a sea (or a desktop the world), one in eight from a third of a degree a pixel, none from two thirds.
  * Your fleets, and the kinds a player looks for (cargo, navy, pirate), are never in this rule (`thin`).
+ * 2026-11-15 (the owner: *"when i zoom out, the details of the map disappears, make it so that it stays as long as
+ * possible"*), each rung a step further out: every merchant to 50 degrees on a phone (was 40), one in eight from 0.4 of
+ * a degree a pixel (was 0.33), none from 0.8 (was 0.66).
  */
 export const THIN_DENSITY: readonly { readonly fromUnitsPerPx: number; readonly keep: number }[] = [
-  { fromUnitsPerPx: 0.66, keep: 0 },
-  { fromUnitsPerPx: 0.33, keep: 1 },
-  { fromUnitsPerPx: 40 / 390, keep: 3 },
+  { fromUnitsPerPx: 0.8, keep: 0 },
+  { fromUnitsPerPx: 0.4, keep: 1 },
+  { fromUnitsPerPx: 50 / 390, keep: 3 },
 ]
 
 function keptAtDensity(unitsPerPx: number | undefined): number {

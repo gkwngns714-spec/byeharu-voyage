@@ -80,7 +80,11 @@ interface Loaded {
   readonly error: string | null
 }
 
-export function useBackdrop(snapshotPorts: readonly SnapshotPort[]): BackdropState {
+export function useBackdrop(
+  snapshotPorts: readonly SnapshotPort[],
+  /** The countries' capitals: port code -> the nation code whose capital it is (2026-11-15, `MapPort.capital`); null marks none. */
+  capitals: ReadonlyMap<string, string> | null = null,
+): BackdropState {
   const [loaded, setLoaded] = useState<Loaded>({ coast: null, seas: NO_SEAS, regions: NO_REGIONS, error: null })
 
   useEffect(() => {
@@ -102,7 +106,7 @@ export function useBackdrop(snapshotPorts: readonly SnapshotPort[]): BackdropSta
     return () => controller.abort()
   }, [])
 
-  const served = useMemo(() => mapPortsOf(snapshotPorts), [snapshotPorts])
+  const served = useMemo(() => mapPortsOf(snapshotPorts, capitals), [snapshotPorts, capitals])
   const landed = useMemo(() => landfallPorts(served, loaded.coast), [served, loaded.coast])
 
   return {
