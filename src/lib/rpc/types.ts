@@ -3115,6 +3115,8 @@ export interface StarterPiece {
   deck: number
   hands: number
   effects: string[]
+  /** The same effects as figures, in the same order (a Korean screen words them: src/live/gearWords.ts). */
+  fx: { stat: string; delta: number }[]
 }
 
 /** 0425: one piece's state on one ship: she carries it, it can go on, every place of its rack is taken, or her hull has none. */

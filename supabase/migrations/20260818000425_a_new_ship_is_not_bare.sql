@@ -319,7 +319,10 @@ begin
                 'code', k.code, 'name', k.name, 'rack', ip.rack, 'word', gr.word, 'buys', k.buys, 'spends', k.spends, 'note', k.note,
                 'price', sg.price, 'deck', ip.deck, 'hands', ip.hands,
                 'effects', (select coalesce(jsonb_agg(public.stat_words(e.stat, e.delta, false) order by e.delta < 0, e.stat), '[]'::jsonb)
-                              from public.item_effects e where e.item_code = k.code))
+                              from public.item_effects e where e.item_code = k.code),
+                -- the same effects as figures, in the same order, so a Korean screen words them itself (the words above are English)
+                'fx', (select coalesce(jsonb_agg(jsonb_build_object('stat', e.stat, 'delta', e.delta) order by e.delta < 0, e.stat), '[]'::jsonb)
+                         from public.item_effects e where e.item_code = k.code))
                 order by gr.ord, k.code), '[]'::jsonb)
                 from public.starter_gear sg
                 join public.item_kinds k on k.code = sg.item_code
@@ -476,7 +479,8 @@ $h$);
     v_ms := round(extract(epoch from clock_timestamp() - v_tp) * 1000, 1);
     if jsonb_array_length(v_r -> 'items') <> 3 or (v_r ->> 'here')::boolean is not true or (v_r ->> 'purse')::bigint <> 2000
        or (select sum((i ->> 'price')::bigint) from jsonb_array_elements(v_r -> 'items') i) <> (select sum(price) from public.starter_gear)
-       or exists (select 1 from jsonb_array_elements(v_r -> 'items') i where jsonb_array_length(i -> 'effects') < 2)
+       or exists (select 1 from jsonb_array_elements(v_r -> 'items') i where jsonb_array_length(i -> 'effects') < 2
+                                                                         or jsonb_array_length(i -> 'fx') <> jsonb_array_length(i -> 'effects'))
        or (select s -> 'pieces' from jsonb_array_elements(v_r -> 'ships') s where s ->> 'name' = 'Primeira')
           <> '{"starter-guns": "open", "starter-sails": "open", "starter-planking": "no_place"}'::jsonb
        or (select s -> 'pieces' ->> 'starter-planking' from jsonb_array_elements(v_r -> 'ships') s where s ->> 'name' = 'Grande') <> 'open' then

@@ -3,7 +3,8 @@ import { Button, Figure, Icon, Note, Row, Tile, TileField, Tray, type TrayDetent
 import { formatDucats } from '../lib/format'
 import { cmdBuyStarter, worldStarterGear } from '../lib/rpc'
 import type { FleetView, Refusal, StarterGear, StarterPiece, StarterState } from '../lib/rpc'
-import { useT, type TKey } from '../lib/i18n'
+import { properName, useT, type TKey } from '../lib/i18n'
+import { gearEffectWord } from './gearWords'
 import { useServedRead } from './useServedRead'
 import { useWorld } from './worldStore'
 
@@ -19,6 +20,16 @@ import { useWorld } from './worldStore'
 //
 // THE SHAPE: the three pieces as a tile field (two abreast on a phone, the face's whole catalogue on one glass); a press opens
 // the piece's tray, which reads what it gives, its price and one row a ship with that ship's own act at the right edge.
+
+/** A piece's effects in the player's language: each served figure worded (gearWords.ts), or the served words where one is not. */
+function effectsOf(piece: StarterPiece): string {
+  return Array.isArray(piece.fx) && piece.fx.length === piece.effects.length
+    ? piece.fx.map((e, i) => gearEffectWord(e.stat, Number(e.delta)) ?? piece.effects[i]).join(' · ')
+    : piece.effects.join(' · ')
+}
+
+/** A piece's name in the player's language (names/gear.ts; the served name in English). */
+const pieceName = (piece: StarterPiece) => properName('gear', piece.code, piece.name)
 
 const STATE_WORD: Record<Exclude<StarterState, 'open'>, TKey> = {
   fitted: 'town.g_fitted',
@@ -52,8 +63,8 @@ export function PortGear({ fleet }: { fleet: FleetView | null }) {
           <Tile
             key={piece.code}
             mark={<Icon name="ship" size={20} />}
-            name={piece.name}
-            meta={piece.effects.join(' · ')}
+            name={pieceName(piece)}
+            meta={effectsOf(piece)}
             tap="whole"
             onClick={() => {
               setDetent('half')
@@ -68,7 +79,7 @@ export function PortGear({ fleet }: { fleet: FleetView | null }) {
         <Tray
           detent={detent}
           onDetentChange={(next) => (next === 'closed' ? setOpen(null) : setDetent(next))}
-          title={open.name}
+          title={pieceName(open)}
           data-testid="gear-tray"
         >
           <PieceTray piece={open} view={view} fleet={fleet} />
@@ -99,15 +110,14 @@ function PieceTray({ piece, view, fleet }: { piece: StarterPiece; view: StarterG
 
   return (
     <div data-testid={`gear-tray-${piece.code}`}>
+      {/* WHAT IT GIVES, THEN THE SHIPS AND THEIR ACT (2026-11-15): at 320 the tray's first view holds the ships' Buy rows; the
+          price, rack and note follow. */}
       <Row label={t('yard.gives')}>
-        <span className="block break-words text-t-label text-ink">{piece.effects.join(' · ')}</span>
+        <span className="block break-words text-t-label text-ink">{effectsOf(piece)}</span>
       </Row>
-      <Row label={t('town.g_price')} value={<Figure value={formatDucats(piece.price)} />} />
-      <Row label={t('town.g_rack')} value={<span className="text-t-label text-ink">{piece.word}</span>} />
-      <p className="my-2 break-words text-t-caption text-ink-faint">{piece.note}</p>
       {view.ships.length > 0 && (
         <>
-          <h3 className="mt-3 text-t-label font-semibold text-ink">{t('town.g_ships')}</h3>
+          <h3 className="mt-2 text-t-label font-semibold text-ink">{t('town.g_ships')}</h3>
           {view.ships.map((ship, i) => {
             const state = ship.pieces[piece.code] ?? 'no_place'
             return (
@@ -138,7 +148,7 @@ function PieceTray({ piece, view, fleet }: { piece: StarterPiece; view: StarterG
                 }
                 data-testid={`gear-ship-${i}`}
               >
-                <span className="text-t-caption text-ink-faint">{ship.class}</span>
+                <span className="text-t-caption text-ink-faint">{properName('hull', ship.class, ship.class)}</span>
               </Row>
             )
           })}
@@ -149,6 +159,9 @@ function PieceTray({ piece, view, fleet }: { piece: StarterPiece; view: StarterG
           {refusal.sentence}
         </Note>
       )}
+      <Row label={t('town.g_price')} value={<Figure value={formatDucats(piece.price)} />} />
+      <Row label={t('town.g_rack')} value={<span className="text-t-label text-ink">{properName('rack', piece.rack, piece.word)}</span>} />
+      <p className="my-2 break-words text-t-caption text-ink-faint">{properName('gearNote', piece.code, piece.note)}</p>
     </div>
   )
 }
