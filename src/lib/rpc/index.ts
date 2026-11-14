@@ -953,12 +953,12 @@ export function cmdBuyRoom(kind: 'FLEET' | 'SHIP'): Promise<RpcResult<RoomBought
   return call<RoomBought>('cmdBuyRoom', [kind])
 }
 
-/** The Gear face (0425): the starter pieces, their price, and each ship of `fleetId` (yours) with each piece's state. */
+/** The Gear face (0424): the starter pieces, their price, and each ship of `fleetId` (yours) with each piece's state. */
 export function worldStarterGear(fleetId: string | null): Promise<RpcResult<StarterGear>> {
   return call<StarterGear>('worldStarterGear', [fleetId])
 }
 
-/** Buy a starter piece and fit it on a ship of the fleet (0425). The fleet must be docked at a harbour; the server judges the rest. */
+/** Buy a starter piece and fit it on a ship of the fleet (0424). The fleet must be docked at a harbour; the server judges the rest. */
 export function cmdBuyStarter(fleetId: string, shipId: string, item: string): Promise<RpcResult<StarterBought>> {
   return call<StarterBought>('cmdBuyStarter', [fleetId, shipId, item])
 }

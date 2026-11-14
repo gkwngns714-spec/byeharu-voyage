@@ -3101,7 +3101,7 @@ export interface RoomBought {
   fleet_ship_max: number
 }
 
-/** 0425: one starter piece (`world.starter_gear`): its rack and the rack's word, the item's words, its price in ducats, what it costs
+/** 0424: one starter piece (`world.starter_gear`): its rack and the rack's word, the item's words, its price in ducats, what it costs
  *  of Deck and Hands, and its effects in the server's words ("+30 attack", "−4 handling"). */
 export interface StarterPiece {
   code: string
@@ -3119,10 +3119,10 @@ export interface StarterPiece {
   fx: { stat: string; delta: number }[]
 }
 
-/** 0425: one piece's state on one ship: she carries it, it can go on, every place of its rack is taken, or her hull has none. */
+/** 0424: one piece's state on one ship: she carries it, it can go on, every place of its rack is taken, or her hull has none. */
 export type StarterState = 'fitted' | 'open' | 'full' | 'no_place'
 
-/** 0425: `world.starter_gear(fleet)`: the pieces, the purse, whether the fleet is docked at a harbour (and which), and each ship's state
+/** 0424: `world.starter_gear(fleet)`: the pieces, the purse, whether the fleet is docked at a harbour (and which), and each ship's state
  *  for each piece. `ships` is empty for no fleet, or a fleet not yours. */
 export interface StarterGear {
   purse: number | null
@@ -3132,7 +3132,7 @@ export interface StarterGear {
   ships: { id: string; name: string; class: string; pieces: Record<string, StarterState> }[]
 }
 
-/** 0425: `cmd.buy_starter`: the piece fitted, its price, and her purse after. */
+/** 0424: `cmd.buy_starter`: the piece fitted, its price, and her purse after. */
 export interface StarterBought {
   ship: string
   item: string

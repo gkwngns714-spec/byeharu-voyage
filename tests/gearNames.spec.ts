@@ -1,4 +1,4 @@
-// PURE UNIT SPEC — the Gear face's words in Korean (0425, owner row 345: "every word in EN and KO"). The face prints each starter
+// PURE UNIT SPEC — the Gear face's words in Korean (0424, owner row 345: "every word in EN and KO"). The face prints each starter
 // piece's name and note, its rack's word and its effects. The server serves those in English; Korean prints names/gear.ts and
 // words the effects from their figures (src/live/gearWords.ts). This fails when a starter piece, a rack or a stat a starter piece
 // moves has no Korean word, so a new piece cannot reach a Korean screen in English.

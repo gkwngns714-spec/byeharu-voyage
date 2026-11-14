@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- 0425 - A NEW SHIP IS NOT BARE  (starter gear: three cheap, plain pieces sold at every harbour, bought and fitted in one press)
+-- 0424 - A NEW SHIP IS NOT BARE  (starter gear: three cheap, plain pieces sold at every harbour, bought and fitted in one press)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- THE OWNER, 2026-11-15, verbatim: "and in port, there should be a beginner's gear for ships."
 --   docs/dev-log/2026-11-15-starter-gear.md has the reasoning, the figures and what was decided by default.
@@ -15,7 +15,7 @@
 --   a new company's 40,000. Refit (permanent work on a hull) and Flourish (moves no stat) get none.
 --
 -- WHAT THIS FILE DOES:
---   1. THE THREE PIECES, as every item is written (scripts/build-gear.mjs --sql-0425, pasted): item_kinds, item_profile, item_effects
+--   1. THE THREE PIECES, as every item is written (scripts/build-gear.mjs --sql-0424, pasted): item_kinds, item_profile, item_effects
 --      (x the two scales), item_recipes (half the G1's goods: what a repair is priced from), item_use (they WEAR like their G1: guns
 --      in a fight, sails by the mile, planking in a storm), item_unmade (no workshop makes one: MAKE refuses, as for a Famous piece).
 --   2. public.starter_gear (NEW, 3 rows): the pieces sold at the quay and their price. No foreign key on purpose (an FK would hold
@@ -46,9 +46,9 @@
 --   no other knob moved); the pieces against their G1s; then a probe company in a rolled-back sub-transaction buys and fits each piece,
 --   pays the city, sees the stats move and the gear wear, is refused a second of a piece, a piece with no place, a short purse and
 --   at sea; UNFIT returns a piece for nothing; a merchant is refused; another item still mounts twice. CI's proof 125 holds the same.
--- ROLLBACK (forward, owner only): scripts/ops/harness/starter-gear/rollback-0425.sql, a draft (the hunks reversed, the door, the read
+-- ROLLBACK (forward, owner only): scripts/ops/harness/starter-gear/rollback-0424.sql, a draft (the hunks reversed, the door, the read
 --   and the table dropped; the catalogue rows stay while any is fitted).
--- VERSION: 0425 (production head 0421 on 2026-11-15; 0422-0424 are reserved for other builders and touch none of these bodies).
+-- VERSION: 0424 (production head 0421 on 2026-11-15; 0422-0424 are reserved for other builders and touch none of these bodies).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -56,7 +56,7 @@ declare
   c_cut constant text[] := array['public.mount_fitting(uuid,text)', 'world.workstation(uuid,uuid)', 'public.client_rpc_entry_points()'];
   c_new constant text[] := array['public.buy_starter_for(uuid,uuid,uuid,text)', 'cmd.buy_starter(uuid,uuid,text)', 'world.starter_gear(uuid)'];
   c_codes constant text[] := array['starter-guns', 'starter-sails', 'starter-planking'];
-  c_uid constant uuid := '00000000-0425-4000-8000-000000000001';
+  c_uid constant uuid := '00000000-0424-4000-8000-000000000001';
   v_t0        timestamptz := clock_timestamp();
   v_tp        timestamptz;
   h           record;
@@ -90,7 +90,7 @@ begin
   if to_regclass('public.starter_gear') is not null or to_regprocedure('public.buy_starter_for(uuid,uuid,uuid,text)') is not null
      or exists (select 1 from public.item_kinds k where k.code = any(c_codes))
      or exists (select 1 from public.stats_flow_words w where w.kind = 'GEAR') then
-    raise exception '0425 refuses: it has been applied once';
+    raise exception '0424 refuses: it has been applied once';
   end if;
   if exists (select 1 from unnest(c_cut) f where to_regprocedure(f) is null)
      or to_regprocedure('public.pay_city(uuid,uuid,text,bigint,uuid)') is null or to_regprocedure('public.fitting_lock(uuid)') is null
@@ -101,12 +101,12 @@ begin
      or (select count(*) from public.item_profile ip
           where ip.grade = 1 and ip.meta = 0 and ip.base_type in ('Long Guns', 'Sails', 'Planking')
             and ip.item_code in ('broadside-guns', 'suit-of-sails', 'deal-planking')) <> 3 then
-    raise exception '0425 refuses: a function it cuts or calls, or a grade-1 piece it halves, is not in this world';
+    raise exception '0424 refuses: a function it cuts or calls, or a grade-1 piece it halves, is not in this world';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
-  create temp table pre_0425 (fn text primary key, def text, meta text) on commit drop;
-  insert into pre_0425
+  create temp table pre_0424 (fn text primary key, def text, meta text) on commit drop;
+  insert into pre_0424
   select f, replace(pg_get_functiondef(f::regprocedure), E'\r', ''),
          (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
             from pg_proc p where p.oid = f::regprocedure)
@@ -118,7 +118,7 @@ begin
   select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
     into v_cfg_before from public.world_config c;
 
-  -- ── 2. THE THREE PIECES (scripts/build-gear.mjs --sql-0425; effects at design value, x the two scales here as every item's) ──
+  -- ── 2. THE THREE PIECES (scripts/build-gear.mjs --sql-0424; effects at design value, x the two scales here as every item's) ──
   insert into public.item_kinds (code, name, slot, buys, spends, note, volume, ws_tier) values
     ('starter-guns', 'Starter Guns', 'weapon', 'Attack, Reach', 'Hold, Handling', 'A few old iron guns from the quay: enough to answer a pirate, and no more.', 6, 1),
     ('starter-sails', 'Starter Sails', 'rig', 'Speed', 'Handling', 'A plain suit of second-hand canvas: a little more speed than bare yards.', 4, 1),
@@ -175,7 +175,7 @@ begin
     price     bigint not null check (price > 0)
   );
   comment on table public.starter_gear is
-    '0425: the starter pieces every harbour sells, and each one''s price in ducats (paid to the city, kind GEAR). One row a piece, authored in scripts/build-gear.mjs STARTER and held to it by the world guard. Read by public.buy_starter_for, world.starter_gear, public.mount_fitting (one a hull) and world.workstation (never listed as made). No FK to item_kinds on purpose (0425 header); every code is asserted.';
+    '0424: the starter pieces every harbour sells, and each one''s price in ducats (paid to the city, kind GEAR). One row a piece, authored in scripts/build-gear.mjs STARTER and held to it by the world guard. Read by public.buy_starter_for, world.starter_gear, public.mount_fitting (one a hull) and world.workstation (never listed as made). No FK to item_kinds on purpose (0424 header); every code is asserted.';
   alter table public.starter_gear enable row level security;
   revoke all on table public.starter_gear from public, anon, authenticated;
   insert into public.starter_gear (item_code, price) values
@@ -194,7 +194,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0425 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE one way a starter piece is had.
+-- 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE one way a starter piece is had.
 -- Her fleet docked at a harbour; the piece goes straight onto the ship through public.mount_fitting (the one core: rack, place,
 -- Deck, Hands, one starter piece of a kind a hull); then she pays THAT city its price (public.pay_city, kind GEAR: money moved,
 -- nothing minted). Refuses before anything moves; a refusal raised later rolls the whole press back. A merchant is refused.
@@ -254,7 +254,7 @@ $body$
   $f$;
   revoke all on function public.buy_starter_for(uuid, uuid, uuid, text) from public, anon, authenticated;
   comment on function public.buy_starter_for(uuid, uuid, uuid, text) is
-    '0425: THE one way a starter piece is had: bought at a harbour and fitted straight onto a ship of the fleet (public.mount_fitting), its price paid to that city (public.pay_city, kind GEAR). Server only; its door is cmd.buy_starter.';
+    '0424: THE one way a starter piece is had: bought at a harbour and fitted straight onto a ship of the fleet (public.mount_fitting), its price paid to that city (public.pay_city, kind GEAR). Server only; its door is cmd.buy_starter.';
 
   execute $f$
 create function cmd.buy_starter(p_fleet uuid, p_ship uuid, p_item text)
@@ -263,7 +263,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0425: the caller's company buys a starter piece and fits it on a ship of a fleet of hers. The core is public.buy_starter_for.
+-- 0424: the caller's company buys a starter piece and fits it on a ship of a fleet of hers. The core is public.buy_starter_for.
 declare
   v_player uuid := public.current_player_id();
   v_det    text;
@@ -285,7 +285,7 @@ $body$
   revoke all on function cmd.buy_starter(uuid, uuid, text) from public, anon;
   grant execute on function cmd.buy_starter(uuid, uuid, text) to authenticated;
   comment on function cmd.buy_starter(uuid, uuid, text) is
-    '0425: the door of public.buy_starter_for for the signed-in company (a refusal is the envelope, as every cmd door).';
+    '0424: the door of public.buy_starter_for for the signed-in company (a refusal is the envelope, as every cmd door).';
 
   -- ── 4. THE READ ──
   execute $f$
@@ -296,7 +296,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0425: THE GEAR FACE. The starter pieces (public.starter_gear) with their rack, words, price and effects in the server's words
+-- 0424: THE GEAR FACE. The starter pieces (public.starter_gear) with their rack, words, price and effects in the server's words
 -- (public.stat_words); the caller's purse; whether the fleet (hers, or none) is docked at a harbour; and for each of its ships each
 -- piece's state: fitted (she carries it), no_place (her hull has no place of its rack), full (every place of its rack is taken),
 -- open. Deck and Hands are judged at the press (public.mount_fitting). Three catalogue rows and the fleet's ships by key.
@@ -349,16 +349,16 @@ $body$
   revoke all on function world.starter_gear(uuid) from public, anon;
   grant execute on function world.starter_gear(uuid) to authenticated;
   comment on function world.starter_gear(uuid) is
-    '0425: the Gear face: the starter pieces, their price and effects, the purse, whether the fleet is at a harbour, and each ship''s state for each piece. A read.';
+    '0424: the Gear face: the starter pieces, their price and effects, the purse, whether the fleet is at a harbour, and each ship''s state for each piece. A read.';
 
   -- ── 5. THE HUNKS ──
-  create temp table hunk_0425 (ord int primary key, fn text, old text, new text) on commit drop;
-  insert into hunk_0425 values
+  create temp table hunk_0424 (ord int primary key, fn text, old text, new text) on commit drop;
+  insert into hunk_0424 values
   (1, c_cut[1],
 $h$  -- 0132: ONE ROW PER MOUNTED UNIT.
   insert into public.fitted_units (ship_id, item_code) values (v_ship.id, k.code);
 $h$,
-$h$  -- 0425: A STARTER PIECE IS ONE OF ITS KIND TO A HULL (public.starter_gear): a cheap piece cannot be stacked. Every other item as before.
+$h$  -- 0424: A STARTER PIECE IS ONE OF ITS KIND TO A HULL (public.starter_gear): a cheap piece cannot be stacked. Every other item as before.
   if exists (select 1 from public.starter_gear sg where sg.item_code = k.code)
      and exists (select 1 from public.fitted_units u where u.ship_id = v_ship.id and u.item_code = k.code) then
     perform cmd.refuse('E_STARTER_ONE', format('%s already carries %s; a ship takes one', v_ship.name, k.name));
@@ -371,52 +371,52 @@ $h$),
 $h$     where k.kind = 'fitting'));   -- 0135: once per item (0159: and its city); 0162: fittings only (a promotion item is never made)
 $h$,
 $h$     where k.kind = 'fitting'
-       and not exists (select 1 from public.starter_gear sg where sg.item_code = k.code)));   -- 0135: once per item (0159: and its city); 0162: fittings only (a promotion item is never made); 0425: a starter piece is bought at the quay, never made
+       and not exists (select 1 from public.starter_gear sg where sg.item_code = k.code)));   -- 0135: once per item (0159: and its city); 0162: fittings only (a promotion item is never made); 0424: a starter piece is bought at the quay, never made
 $h$),
   (3, c_cut[3],
 $h$      ('world',       'stats_fleets',          ''),
 $h$,
 $h$      ('world',       'stats_fleets',          ''),
-      -- 0425: the Gear face (the starter pieces) and its press: buy one and fit it.
+      -- 0424: the Gear face (the starter pieces) and its press: buy one and fit it.
       ('world',       'starter_gear',          'uuid'),
       ('cmd',         'buy_starter',           'uuid, uuid, text'),
 $h$);
-  for h in select * from hunk_0425 order by ord loop
+  for h in select * from hunk_0424 order by ord loop
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
     v_n := (length(v_def) - length(replace(v_def, h.old, ''))) / length(h.old);
     if v_n <> 1 then
-      raise exception '0425 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', h.ord, h.fn, v_n;
+      raise exception '0424 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', h.ord, h.fn, v_n;
     end if;
     execute replace(v_def, h.old, h.new);
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
     if (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new) <> 1 then
-      raise exception '0425 self-assert FAIL: hunk % of % is not in the new body once', h.ord, h.fn;
+      raise exception '0424 self-assert FAIL: hunk % of % is not in the new body once', h.ord, h.fn;
     end if;
     if (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
-          from pg_proc p where p.oid = h.fn::regprocedure) <> (select p.meta from pre_0425 p where p.fn = h.fn) then
-      raise exception '0425 self-assert FAIL: the grants, volatility, definer, search path or owner of % moved', h.fn;
+          from pg_proc p where p.oid = h.fn::regprocedure) <> (select p.meta from pre_0424 p where p.fn = h.fn) then
+      raise exception '0424 self-assert FAIL: the grants, volatility, definer, search path or owner of % moved', h.fn;
     end if;
   end loop;
 
   -- ── 6. THE SELF-ASSERT: the catalog ──
-  for h in select p.fn, p.def from pre_0425 p loop
+  for h in select p.fn, p.def from pre_0424 p loop
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
-    for v_z in select x.old, x.new from hunk_0425 x where x.fn = h.fn order by x.ord desc loop
+    for v_z in select x.old, x.new from hunk_0424 x where x.fn = h.fn order by x.ord desc loop
       v_def := replace(v_def, v_z.new, v_z.old);
     end loop;
     if v_def <> h.def then
-      raise exception '0425 self-assert FAIL: % does not reverse to its pre-image', h.fn;
+      raise exception '0424 self-assert FAIL: % does not reverse to its pre-image', h.fn;
     end if;
   end loop;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and not exists (select 1 from unnest(c_cut || c_new) f where f::regprocedure = p.oid)) <> v_fn_before then
-    raise exception '0425 self-assert FAIL: a function this file does not name moved';
+    raise exception '0424 self-assert FAIL: a function this file does not name moved';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c) <> v_cfg_before then
-    raise exception '0425 self-assert FAIL: a world_config row moved';
+    raise exception '0424 self-assert FAIL: a world_config row moved';
   end if;
   if not exists (select 1 from public.client_rpc_entry_points() e where e.schema_name = 'world' and e.function_name = 'starter_gear' and e.arg_types = 'uuid' and e.fn is not null)
      or not exists (select 1 from public.client_rpc_entry_points() e where e.schema_name = 'cmd' and e.function_name = 'buy_starter' and e.arg_types = 'uuid, uuid, text' and e.fn is not null)
@@ -427,7 +427,7 @@ $h$);
      or not (select c.relrowsecurity from pg_class c where c.oid = 'public.starter_gear'::regclass)
      or (select p.provolatile from pg_proc p where p.oid = 'world.starter_gear(uuid)'::regprocedure) <> 's'
      or (select count(*) from public.client_write_grants()) <> 0 then
-    raise exception '0425 self-assert FAIL: the door and the read are not registered and granted to authenticated alone, or a client reaches the core or the table';
+    raise exception '0424 self-assert FAIL: the door and the read are not registered and granted to authenticated alone, or a client reaches the core or the table';
   end if;
   -- THE PIECES: every code whole in every catalogue table; one a rack; each effect of its G1's sign and at most 55 % of it; each
   -- price under half of what its G1's goods are worth; made nowhere; in no hull recipe and no promotion
@@ -441,7 +441,7 @@ $h$);
      or exists (select 1 from public.hull_recipe_items hi where hi.item_code = any(c_codes))
      or exists (select 1 from public.promotion_items pi where pi.item_code = any(c_codes))
      or exists (select 1 from public.skill_requirements sr where sr.subject_kind = 'item' and sr.subject_code = any(c_codes)) then
-    raise exception '0425 self-assert FAIL: a starter piece is not whole in the catalogue, or is made, a hull''s part or a promotion';
+    raise exception '0424 self-assert FAIL: a starter piece is not whole in the catalogue, or is made, a hull''s part or a promotion';
   end if;
   for v_z in select sg.item_code as code, sg.price, ip.base_type, ip.deck, ip.hands,
                     (select g.item_code from public.item_profile g
@@ -455,7 +455,7 @@ $h$);
        or v_z.deck > (select g.deck from public.item_profile g where g.item_code = v_z.g1)
        or v_z.hands > (select g.hands from public.item_profile g where g.item_code = v_z.g1)
        or v_z.price * 2 >= public.item_recipe_value(v_z.g1) then
-      raise exception '0425 self-assert FAIL: % is not clearly below its grade-1 piece % (effects, deck, hands or price)', v_z.code, v_z.g1;
+      raise exception '0424 self-assert FAIL: % is not clearly below its grade-1 piece % (effects, deck, hands or price)', v_z.code, v_z.g1;
     end if;
   end loop;
 
@@ -465,9 +465,9 @@ $h$);
     -- the purses lit and the wear biting INSIDE the probe, whatever the world's switches say (rolled back with it)
     update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'gear_wear_bite') and value is distinct from 'true'::jsonb;
     insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc)
-    values (c_uid, 'Casa Inicial 0425', (select n.id from public.nations n where n.code = 'PRT'), 2000, false) returning id into v_pl;
+    values (c_uid, 'Casa Inicial 0424', (select n.id from public.nations n where n.code = 'PRT'), 2000, false) returning id into v_pl;
     insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc)
-    values (null, 'Casa Mercante 0425', (select n.id from public.nations n where n.code = 'PRT'), 5000, true) returning id into v_npc;
+    values (null, 'Casa Mercante 0424', (select n.id from public.nations n where n.code = 'PRT'), 5000, true) returning id into v_npc;
     v_fl := public.form_fleet(v_pl, 'Inicial', v_lis);
     v_sh := public.commission_ship(v_pl, v_fl, 'barca', 'Primeira', true, true);
     v_nau := public.commission_ship(v_pl, v_fl, 'nau', 'Grande', false, true);
@@ -484,10 +484,10 @@ $h$);
        or (select s -> 'pieces' from jsonb_array_elements(v_r -> 'ships') s where s ->> 'name' = 'Primeira')
           <> '{"starter-guns": "open", "starter-sails": "open", "starter-planking": "no_place"}'::jsonb
        or (select s -> 'pieces' ->> 'starter-planking' from jsonb_array_elements(v_r -> 'ships') s where s ->> 'name' = 'Grande') <> 'open' then
-      raise exception '0425 self-assert FAIL: the Gear face is not what the catalogue and the hulls say: %', v_r;
+      raise exception '0424 self-assert FAIL: the Gear face is not what the catalogue and the hulls say: %', v_r;
     end if;
     if (world.starter_gear(null) -> 'ships') <> '[]'::jsonb or (world.starter_gear(null) ->> 'here')::boolean then
-      raise exception '0425 self-assert FAIL: the face with no fleet serves ships or a harbour';
+      raise exception '0424 self-assert FAIL: the face with no fleet serves ships or a harbour';
     end if;
 
     -- (b) BUY AND FIT: the guns go on the barca, she pays 800, the city of Lisbon gets 800, attack and reach move by the piece
@@ -502,7 +502,7 @@ $h$);
        or (select count(*) from public.fitted_units u where u.ship_id = v_sh and u.item_code = 'starter-guns') <> 1
        or world.ship_stat(v_sh, 'attack') - v_a <> (select e.delta from public.item_effects e where e.item_code = 'starter-guns' and e.stat = 'attack')
        or world.ship_stat(v_sh, 'reach') - v_b <> (select e.delta from public.item_effects e where e.item_code = 'starter-guns' and e.stat = 'reach') then
-      raise exception '0425 self-assert FAIL: a buy did not fit the guns, take 800 and pay the city: % (attack % -> %)', v_r, v_a, world.ship_stat(v_sh, 'attack');
+      raise exception '0424 self-assert FAIL: a buy did not fit the guns, take 800 and pay the city: % (attack % -> %)', v_r, v_a, world.ship_stat(v_sh, 'attack');
     end if;
 
     -- (c) THE REFUSALS, each moving nothing: a second gun with no free High place, a piece with no place, an unknown piece, no such
@@ -514,13 +514,13 @@ $h$);
     if v_r <> '["E_SLOTS_FULL", "E_NO_SLOT", "E_NO_SUCH_ITEM", "E_NO_SUCH_SHIP"]'::jsonb
        or (select p.ducats from public.players p where p.id = v_pl) <> 1200
        or (select count(*) from public.fitted_units u where u.ship_id in (v_sh, v_nau)) <> 1 then
-      raise exception '0425 self-assert FAIL: a refused buy moved something, or was not refused with its code: %', v_r;
+      raise exception '0424 self-assert FAIL: a refused buy moved something, or was not refused with its code: %', v_r;
     end if;
     update public.players set ducats = 100 where id = v_pl;
     v_r := cmd.buy_starter(v_fl, v_nau, 'starter-planking');
     if v_r ->> 'error_code' <> 'E_INSUFFICIENT_FUNDS' or (select p.ducats from public.players p where p.id = v_pl) <> 100
        or exists (select 1 from public.fitted_units u where u.ship_id = v_nau) then
-      raise exception '0425 self-assert FAIL: a short purse bought a piece: %', v_r;
+      raise exception '0424 self-assert FAIL: a short purse bought a piece: %', v_r;
     end if;
     update public.players set ducats = 1200 where id = v_pl;
 
@@ -537,7 +537,7 @@ $h$);
        or (select sum(t.ducats) from public.treasury_flows t where t.player_id = v_pl and t.kind = 'GEAR') - v_city <> 800 + 300 + 150 + 300
        or abs(world.ship_stat(v_sh, 'speed') - v_a - (select e.delta from public.item_effects e where e.item_code = 'starter-sails' and e.stat = 'speed')) > 0.001
        or world.ship_stat(v_nau, 'armour') - v_b <> (select e.delta from public.item_effects e where e.item_code = 'starter-planking' and e.stat = 'armour') then
-      raise exception '0425 self-assert FAIL: the sails or the planking did not fit, pay or move their stat (presses %, purse %, speed % -> %, armour % -> %)',
+      raise exception '0424 self-assert FAIL: the sails or the planking did not fit, pay or move their stat (presses %, purse %, speed % -> %, armour % -> %)',
         v_r, (select p.ducats from public.players p where p.id = v_pl), v_a, world.ship_stat(v_sh, 'speed'), v_b, world.ship_stat(v_nau, 'armour');
     end if;
     v_purse := (select p.ducats from public.players p where p.id = v_pl);
@@ -547,7 +547,7 @@ $h$);
     v_r := cmd.do_unfit(v_fl, jsonb_build_object('item', 'starter-sails', 'ship', 'Primeira'));
     if (select p.ducats from public.players p where p.id = v_pl) <> v_purse
        or (select pi.qty from public.player_items pi where pi.player_id = v_pl and pi.port_id = v_lis and pi.item_code = 'starter-sails') <> 1 then
-      raise exception '0425 self-assert FAIL: UNFIT of a starter piece moved her purse or did not store the piece';
+      raise exception '0424 self-assert FAIL: UNFIT of a starter piece moved her purse or did not store the piece';
     end if;
     v_r := cmd.buy_starter(v_fl, v_sh, 'starter-sails');
     v_purse := v_purse - 300;
@@ -559,14 +559,14 @@ $h$);
     end;
     if v_note <> 'E_STARTER_ONE' or (v_r ->> 'ok')::boolean is not true or (select p.ducats from public.players p where p.id = v_pl) <> v_purse
        or (select count(*) from public.fitted_units u where u.ship_id = v_sh and u.item_code = 'starter-sails') <> 1 then
-      raise exception '0425 self-assert FAIL: FIT stacked a second starter piece on a hull (%), or a buy after UNFIT did not fit', v_note;
+      raise exception '0424 self-assert FAIL: FIT stacked a second starter piece on a hull (%), or a buy after UNFIT did not fit', v_note;
     end if;
 
     -- (f) ANOTHER ITEM IS NOT TOUCHED BY THE RULE: two suits of sails go on one hull as before (the nau's Mid has room)
     perform public.mount_fitting(v_nau, 'suit-of-sails');
     perform public.mount_fitting(v_nau, 'suit-of-sails');
     if (select count(*) from public.fitted_units u where u.ship_id = v_nau and u.item_code = 'suit-of-sails') <> 2 then
-      raise exception '0425 self-assert FAIL: a grade-1 piece could not be mounted twice';
+      raise exception '0424 self-assert FAIL: a grade-1 piece could not be mounted twice';
     end if;
 
     -- (g) IT WEARS like its G1: 2,000 miles wear the sails, two storm days the planking, no fight the guns
@@ -579,7 +579,7 @@ $h$);
     v_d := (select u.wear from public.fitted_units u where u.ship_id = v_nau and u.item_code = 'starter-planking');
     if v_c <> round(2 * public.wc_num('gear_wear_per_1000nm'), 2) or v_d <> round(2 * public.wc_num('gear_wear_per_storm'), 2)
        or (select u.wear from public.fitted_units u where u.ship_id = v_sh and u.item_code = 'starter-guns') <> 0 then
-      raise exception '0425 self-assert FAIL: the starter pieces did not wear as their kind: sails %, planking %', v_c, v_d;
+      raise exception '0424 self-assert FAIL: the starter pieces did not wear as their kind: sails %, planking %', v_c, v_d;
     end if;
 
     -- (h) A MERCHANT IS REFUSED; AT SEA IS REFUSED; THE WORKSHOP LISTS NONE; MAKE IS REFUSED
@@ -590,40 +590,40 @@ $h$);
       v_note := split_part(sqlerrm, ':', 1);
     end;
     if v_note <> 'E_NOT_IN_USE' then
-      raise exception '0425 self-assert FAIL: a merchant was not refused (%)', v_note;
+      raise exception '0424 self-assert FAIL: a merchant was not refused (%)', v_note;
     end if;
     if exists (select 1 from jsonb_array_elements(world.workstation(v_lis, v_fl) -> 'items') i where i ->> 'code' = any(c_codes))
        or public.made_only_in('starter-sails', v_lis) is null then
-      raise exception '0425 self-assert FAIL: a workshop lists or makes a starter piece';
+      raise exception '0424 self-assert FAIL: a workshop lists or makes a starter piece';
     end if;
     update public.fleets set status = 'ANCHORED', port_id = null, lat = 38.5, lon = -9.5 where id = v_fl;
     if cmd.buy_starter(v_fl, v_nau, 'starter-guns') ->> 'error_code' <> 'E_NOT_DOCKED' or (world.starter_gear(v_fl) ->> 'here')::boolean then
-      raise exception '0425 self-assert FAIL: a fleet at sea was sold a piece, or the face says she is at a harbour';
+      raise exception '0424 self-assert FAIL: a fleet at sea was sold a piece, or the face says she is at a harbour';
     end if;
     v_note := format('the face read in %s ms; five buys (the three pieces, sails twice) fitted for %s ducats paid to Lisbon; refusals E_STARTER_ONE, E_SLOTS_FULL, E_NO_SLOT, E_NO_SUCH_ITEM, E_NO_SUCH_SHIP, E_INSUFFICIENT_FUNDS, E_NOT_DOCKED, E_NOT_IN_USE; sails wore %s by the mile, planking %s by the storm',
                      v_ms, 800 + 300 + 150 + 300 + 300, v_c, v_d);
-    raise exception using errcode = 'ZX425', message = 'PROBE_ROLLBACK_0425';
-  exception when sqlstate 'ZX425' then
+    raise exception using errcode = 'ZX424', message = 'PROBE_ROLLBACK_0424';
+  exception when sqlstate 'ZX424' then
     v_lived := true;
   end;
   if not v_lived or v_note not like 'the face%' then
-    raise exception '0425 self-assert FAIL: the probe did not run to its end';
+    raise exception '0424 self-assert FAIL: the probe did not run to its end';
   end if;
-  if exists (select 1 from public.players p where p.company_name like 'Casa % 0425' or p.auth_uid = c_uid)
+  if exists (select 1 from public.players p where p.company_name like 'Casa % 0424' or p.auth_uid = c_uid)
      or exists (select 1 from public.fitted_units u where u.item_code = any(c_codes))
      or public.current_player_id() is not null then
-    raise exception '0425 self-assert FAIL: the probe left something behind';
+    raise exception '0424 self-assert FAIL: the probe left something behind';
   end if;
 
   -- THIS FILE'S OWN UPDATE ROW (0347's news law)
-  perform public.news_update('0425', 'Starter gear at every harbour', '모든 항구에서 초보 장비 판매');
-  if (select count(*) from public.world_news w where w.key = 'update:0425') <> 1 then
-    raise exception '0425 self-assert FAIL: this file''s UPDATE row is not one row';
+  perform public.news_update('0424', 'Starter gear at every harbour', '모든 항구에서 초보 장비 판매');
+  if (select count(*) from public.world_news w where w.key = 'update:0424') <> 1 then
+    raise exception '0424 self-assert FAIL: this file''s UPDATE row is not one row';
   end if;
   if clock_timestamp() - v_t0 > interval '15 seconds' then
-    raise exception '0425 self-assert FAIL: the file took % (budget 15 s)', clock_timestamp() - v_t0;
+    raise exception '0424 self-assert FAIL: the file took % (budget 15 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0425 self-assert ok: A NEW SHIP IS NOT BARE. Three starter pieces (guns, sails, planking: one a rack, every effect half its grade-1 piece''s, each under half its goods'' worth, made nowhere, in no hull recipe), public.starter_gear, a core and its door, a read; three hunks over three bodies, each once and reversing; grants, volatility, definer and search path unmoved; no other function and no knob moved. Probe (rolled back): %. In all % ms.',
+  raise notice '0424 self-assert ok: A NEW SHIP IS NOT BARE. Three starter pieces (guns, sails, planking: one a rack, every effect half its grade-1 piece''s, each under half its goods'' worth, made nowhere, in no hull recipe), public.starter_gear, a core and its door, a read; three hunks over three bodies, each once and reversing; grants, volatility, definer and search path unmoved; no other function and no knob moved. Probe (rolled back): %. In all % ms.',
     v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;

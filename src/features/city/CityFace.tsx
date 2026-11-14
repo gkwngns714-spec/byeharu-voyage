@@ -101,7 +101,7 @@ function PortFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null
   const [open, setOpen] = useState<'yard' | 'repair' | 'gear' | null>(null)
   const buildWord = faceWord('building_yard')
   const repairWord = faceWord('shipyard')
-  // 0425: the starter gear is sold at EVERY harbour (no building), so the Port always has this row
+  // 0424: the starter gear is sold at EVERY harbour (no building), so the Port always has this row
   const gearWord = faceWord('gear')
   const damage = fleet ? formatPct(1 - worstHullFraction(fleet), 0) : undefined
   return (

@@ -87,7 +87,7 @@
 //        node scripts/build-gear.mjs --sql-0159  the VALUES 0159 loaded (22 T2 + 12 Named, item_use, item_city)
 //        node scripts/build-gear.mjs --sql-0163  the VALUES 0163 loads (44 Country + 4 kits, item_use, item_line)
 //        node scripts/build-gear.mjs --sql-0166  the VALUES 0166 loads (11 Famous, item_use)
-//        node scripts/build-gear.mjs --sql-0425  the VALUES 0425 loads (3 starter pieces, item_use, starter_gear, item_unmade)
+//        node scripts/build-gear.mjs --sql-0424  the VALUES 0424 loads (3 starter pieces, item_use, starter_gear, item_unmade)
 // scripts/db/world-guard.mjs re-runs generateGear() on every apply and holds the database to it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -636,11 +636,11 @@ export function famousDelta(stat, delta) {
 }
 
 /**
- * 0425 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE STARTER PIECES, one a rack a
+ * 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE STARTER PIECES, one a rack a
  * new hull has a place in (High, Mid; Low for the bigger hulls). Refit is permanent work on the hull and Flourish moves no stat,
  * so neither has one. [code, name, base type, price in ducats, note]. The price is about 40 % of what the G1's goods are worth
  * (public.item_recipe_value: Broadside Guns 1,915, Suit of Sails 747, Deal Planking 395), for half its effect; a hull carries one
- * of each at most (public.mount_fitting, 0425). Sold at every harbour by public.buy_starter_for, the money to the city's purse.
+ * of each at most (public.mount_fitting, 0424). Sold at every harbour by public.buy_starter_for, the money to the city's purse.
  */
 export const STARTER = [
   ['starter-guns', 'Starter Guns', 'Long Guns', 800, 'A few old iron guns from the quay: enough to answer a pirate, and no more.'],
@@ -991,7 +991,7 @@ export function generateGear() {
   expectFx('ancla-de-la-esperanza', { wave: 5 })
   expectFx('doubled-frames-2', { durability: 320, speed: -0.2, wave: 3 })
 
-  // 0425 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE STARTER PIECES — STARTER_MULT
+  // 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE STARTER PIECES — STARTER_MULT
   // over a G1's effects (every one, buys and spends alike: a lighter piece of the same kind), Deck and Hands × the same (rounded
   // up), the G1's words, volume, rack and active flag, its recipe × the same (rounded up: a record of what it is, and what its
   // repair is priced from), no requirement, made in NO workshop (`made: false`, public.item_unmade) and sold for `price` ducats
@@ -1016,7 +1016,7 @@ export function generateGear() {
     })
     use.push({ code, ...useOf(code, base, g1.active) })
   }
-  if (new Set(STARTER.map((s) => BASE_TYPES.find((x) => x.base === s[2]).rack)).size !== STARTER.length) throw new Error('0425: one starter piece a rack')
+  if (new Set(STARTER.map((s) => BASE_TYPES.find((x) => x.base === s[2]).rack)).size !== STARTER.length) throw new Error('0424: one starter piece a rack')
   if (items.length !== 210 + STARTER.length) throw new Error(`the gear is 210 items through S17 + ${STARTER.length} starter pieces; the generator made ${items.length}`)
   expectFx('starter-guns', { attack: 30, reach: 8, hold: -10, handling: -3 })
   expectFx('starter-sails', { speed: 0.3, handling: -4 })
@@ -1053,7 +1053,7 @@ function itemRows(I) {
 /** Which migration an item's rows belong to: 0135 (Wave A, meta 0), 0158 (the refits), 0159 (T2 + Named, meta 1 / 5)
  *  or 0163 (Country, meta 6, and the kits). */
 const isS16 = (i) => i.meta === 6 || i.rack === 'kit'
-const isS12 = (i) => i.rack !== 'refit' && i.meta === 0 && !isS16(i) && !i.starter   // 0425: a starter piece is 0425's
+const isS12 = (i) => i.rack !== 'refit' && i.meta === 0 && !isS16(i) && !i.starter   // 0424: a starter piece is 0424's
 const isS17 = (i) => i.meta === 8
 const isS15 = (i) => i.meta > 0 && !isS16(i) && !isS17(i)
 const useRows = (list) => list.map((u) => `  (${q(u.code)}, ${u.trigger === null ? 'null' : q(u.trigger)}, ${q(JSON.stringify(u.consumes))})`).join(',' + NL)
@@ -1118,7 +1118,7 @@ export function s17Sql(gen = generateGear()) {
   ].join(NL)
 }
 
-/** The SQL VALUES migration 0425 loads (`--sql-0425`), pasted verbatim: the starter pieces, what works each (public.item_use),
+/** The SQL VALUES migration 0424 loads (`--sql-0424`), pasted verbatim: the starter pieces, what works each (public.item_use),
  *  their prices (public.starter_gear) and that no workshop makes them (public.item_unmade). */
 export function starterSql(gen = generateGear()) {
   const I = gen.items.filter((i) => i.starter)
@@ -1167,7 +1167,7 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/bui
     console.log(s17Sql(gen))
   } else if (process.argv.includes('--sql-0184')) {
     console.log(unmadeSql(gen))
-  } else if (process.argv.includes('--sql-0425')) {
+  } else if (process.argv.includes('--sql-0424')) {
     console.log(starterSql(gen))
   } else if (process.argv.includes('--sql-0215')) {
     console.log(waveSql(gen))

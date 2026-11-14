@@ -450,7 +450,7 @@ const TABLE = {
   worldHouseRoom: { schema: 'world', fn: 'house_room', args: [] },
   cmdBuyRoom: { schema: 'cmd', fn: 'buy_room', mutates: true, args: [{ name: 'p_kind', type: 'text' }] },
   cmdRenameFleet: { schema: 'cmd', fn: 'rename_fleet', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_name', type: 'text' }] },
-  // 0425 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): the Gear face and its press, buy a starter piece and fit it.
+  // 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): the Gear face and its press, buy a starter piece and fit it.
   worldStarterGear: { schema: 'world', fn: 'starter_gear', args: [{ name: 'p_fleet', type: 'uuid' }] },
   cmdBuyStarter: { schema: 'cmd', fn: 'buy_starter', mutates: true, args: [{ name: 'p_fleet', type: 'uuid' }, { name: 'p_ship', type: 'uuid' }, { name: 'p_item', type: 'text' }] },
   // 0367 (docs/ARMADA.md): an armada, two to six fleets as one: the read, and the doors to form, disband and send one, and the send's dry run.

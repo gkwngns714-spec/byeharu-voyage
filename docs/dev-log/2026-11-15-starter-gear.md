@@ -1,4 +1,4 @@
-# 2026-11-15 — Starter gear at every harbour (migration 0425, owner row 345)
+# 2026-11-15 — Starter gear at every harbour (migration 0424, owner row 345)
 
 The owner, verbatim: *"and in port, there should be a beginner's gear for ships."*
 
@@ -14,7 +14,7 @@ The owner, verbatim: *"and in port, there should be a beginner's gear for ships.
 
 So a new company's first ship (a barca: one High place, two Mid, Deck 12, Hands 16) sailed bare until it hauled goods to a workshop.
 
-## What 0425 adds
+## What 0424 adds
 
 | piece | rack | effects (as the database holds them) | Deck / Hands | price |
 |---|---|---|---|---|
@@ -57,9 +57,9 @@ So a new company's first ship (a barca: one High place, two Mid, Deck 12, Hands 
 
 ## Checks
 
-- Local chain (prefix cache at 0421 + 0425): `0425 self-assert ok` in ~250 ms (budget 15 s); the face's read 6 ms. The world
+- Local chain (prefix cache at 0421 + 0424): `0424 self-assert ok` in ~250 ms (budget 15 s); the face's read 6 ms. The world
   guard equals the data files (228 items, 228 item uses, 14 items made nowhere, the starter prices). Proof 125: 6/6 markers.
-- Rollback draft (`scripts/ops/harness/starter-gear/rollback-0425.sql`) run on the local world: three hunks reversed, the door, the
+- Rollback draft (`scripts/ops/harness/starter-gear/rollback-0424.sql`) run on the local world: three hunks reversed, the door, the
   read and the core dropped.
 - Production, read-only (2026-11-15, gate green: beat 89 ms mean, 903 MB, 0 io waits): `before.sql` — head 0421, no starter object,
   each hunk anchor occurs once, the three grade-1 pieces present, 254 harbours, purses lit, wear biting, economy closed, scales 3.

@@ -1,4 +1,4 @@
--- 0425 BEFORE-CHECK (a PROD CHECK: read-only, ONE static statement, no game table scanned beyond the small catalogue rows named).
+-- 0424 BEFORE-CHECK (a PROD CHECK: read-only, ONE static statement, no game table scanned beyond the small catalogue rows named).
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/starter-gear/before.sql
 -- Run scripts/ops/harness/db-health/gate.sql first; do not run this while the gate is red.
 -- WANT: head 421 (or the reserved 0422-0424 if they deployed first); no starter object yet (no_table, no_items 0, no_word 0,

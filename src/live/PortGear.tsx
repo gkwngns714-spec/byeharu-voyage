@@ -9,7 +9,7 @@ import { useServedRead } from './useServedRead'
 import { useWorld } from './worldStore'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// GEAR — the starter pieces every harbour sells (0425), bought and fitted in one press.
+// GEAR — the starter pieces every harbour sells (0424), bought and fitted in one press.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 //
 // The owner, 2026-11-15: *"and in port, there should be a beginner's gear for ships."* Three plain pieces, one for each rack a

@@ -92,7 +92,7 @@ export const townDict = defineDict({
     f_building_yard: 'Build',
     f_shipyard: 'Repair',
     f_academy: 'Skills',
-    // 0425: the Gear face (starter gear, sold at every harbour) and its words
+    // 0424: the Gear face (starter gear, sold at every harbour) and its words
     f_gear: 'Gear',
     g_intro: 'Plain gear for a new ship, sold at every harbour. One of each per ship.',
     g_notHere: 'Dock this fleet at a harbour to buy.',

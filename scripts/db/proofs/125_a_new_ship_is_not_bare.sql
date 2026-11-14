@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 125 — A NEW SHIP IS NOT BARE  (migration 0425: starter gear sold at every harbour)
+-- PROOF 125 — A NEW SHIP IS NOT BARE  (migration 0424: starter gear sold at every harbour)
 --
 --   The owner, 2026-11-15: "and in port, there should be a beginner's gear for ships." The migration's self-assert holds the pieces
 --   and the refusals on stubs. This proof plays it as a new player meets it: a company founded through public.new_house (its barca
@@ -17,7 +17,7 @@
 
 do $p$
 declare
-  c_a     constant uuid := '00000000-0425-4000-8000-0000000000a1';
+  c_a     constant uuid := '00000000-0424-4000-8000-0000000000a1';
   v_a     uuid;
   v_npc   uuid;
   v_fl    uuid;

@@ -1,9 +1,9 @@
-// THE GEAR'S KOREAN WORDS, by the served code (0425, the Gear face: owner row 345, "every word in EN and KO"). The server serves an
+// THE GEAR'S KOREAN WORDS, by the served code (0424, the Gear face: owner row 345, "every word in EN and KO"). The server serves an
 // item's name, its note and its rack's word in English (public.item_kinds, public.gear_racks); English prints them as served, and
 // Korean prints the entry here (a code with no entry prints the served word: names/index.ts). tests/gearNames.spec.ts fails when a
 // starter piece (scripts/build-gear.mjs STARTER) or a rack (data/gear.json) has no entry.
 
-/** The starter pieces (0425), by item code. */
+/** The starter pieces (0424), by item code. */
 export const KO_GEAR: Readonly<Record<string, string>> = {
   'starter-guns': '초보 대포',
   'starter-sails': '초보 돛',
