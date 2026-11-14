@@ -1,6 +1,6 @@
 -- health.sql: READ-ONLY. THE GUARD (the owner, 2026-11-14: "make it so that this problem does not occur again"): NPC ships unable to sail for more than 3 hours. Every figure should read 0.
 -- A pirate fleet is counted from the hour she was brought home (pirate_ships.wrecked_at); any other ship from the day her city was first told (npc_refit_waits.told_at).
--- On 2026-11-14, before 0410, it would have read: pirates 7 (five waiting on a refit their home could not pay), and no merchant, cargo ship or navy ship.
+-- On 2026-11-14, before 0409, it would have read: pirates 7 (five waiting on a refit their home could not pay), and no merchant, cargo ship or navy ship.
 -- `pirates_waiting_on_a_purse` above 0 means every pirate purse is short: they wait at home, loudly (a REFIT_WAITING event a day), until money comes in. Nothing is minted for them.
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/pacific-pirates/health.sql
 begin transaction read only;

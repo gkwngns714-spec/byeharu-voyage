@@ -1,4 +1,4 @@
-// gen-sea.mjs: THE WATER OF THE FIVE HUBS OF 0410, measured by the game's own grid and pathfinder (scripts/sea-grid.mjs, src/lib/sea), as
+// gen-sea.mjs: THE WATER OF THE FIVE HUBS OF 0409, measured by the game's own grid and pathfinder (scripts/sea-grid.mjs, src/lib/sea), as
 // scripts/build-sea-migration.mjs measures a new place (ADDS_PLACES_ONLY): the roadstead rule, one flood a hub, a course to and from each haunt.
 // LOCAL ONLY. Input: a read-only dump of prod's places and roadsteads (ports.json: code, kind, lat, lon, rlat, rlon, sea, nation, ice).
 //   node scripts/ops/harness/pacific-pirates/gen-sea.mjs <ports.json> <out.json>

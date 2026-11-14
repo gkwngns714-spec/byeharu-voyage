@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 106 - PIRATES HAVE HOMES AND GROUNDS  (migration 0410; docs/dev-log/2026-11-14-pacific-pirates.md)
+-- PROOF 106 - PIRATES HAVE HOMES AND GROUNDS  (migration 0409; docs/dev-log/2026-11-14-pacific-pirates.md)
 --
 --   THE GUARD THE OWNER ASKED FOR (2026-11-14, of the seven wrecks: "make it so that this problem does not occur again"): no pirate ship may sit
 --   unable to sail with no path to repair. Through the pirates' own job (public.tick_pirates), lit, rolled back with proof.mjs's transaction.

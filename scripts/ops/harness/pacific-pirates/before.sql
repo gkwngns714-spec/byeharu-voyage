@@ -1,4 +1,4 @@
--- before.sql: READ-ONLY, before 0410. Wanted: head 20260818000409 (0410 = head + 1); none of the five codes; no pirate_hubs; every `hunks` figure true.
+-- before.sql: READ-ONLY, before 0409. Wanted: head 20260818000408 (0409 = head + 1); none of the five codes; no pirate_hubs; every `hunks` figure true.
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/pacific-pirates/before.sql
 begin transaction read only;
 select jsonb_build_object(

@@ -1,4 +1,4 @@
--- scene-sail.sql: AFTER 0410, lit: the pirates' own job adds roster fleets and each sails from her hub for a haunt; one is wrecked at her haunt and comes home. Run by probe.mjs (rolled back).
+-- scene-sail.sql: AFTER 0409, lit: the pirates' own job adds roster fleets and each sails from her hub for a haunt; one is wrecked at her haunt and comes home. Run by probe.mjs (rolled back).
 do $s$
 declare
   v_now timestamptz := now();

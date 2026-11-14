@@ -1,9 +1,9 @@
-// roster.mjs: THE PIRATES' ROSTER OF 0410, AS DATA. Deterministic: no dice, no clock. One block is ten ships in six fleets:
+// roster.mjs: THE PIRATES' ROSTER OF 0409, AS DATA. Deterministic: no dice, no clock. One block is ten ships in six fleets:
 // three lone small ships, one lone xebec, a pair of xebecs, and a squadron (a lead ship and three xebecs). The pair and the squadron of a
 // hub's FIRST block sail for one house (a house of two fleets); Pitcairn's second block too. Every other fleet is a house of its own.
 export const HUBS = [
-  { code: 'PTC', ground: 'PACIFIC', ground_name: 'Pacific Ocean', ground_ko: '태평양', ships: 50, base: 1000, lead: 'galeoncete', reach: 3100 },
-  { code: 'MWY', ground: 'PACIFIC', ground_name: 'Pacific Ocean', ground_ko: '태평양', ships: 20, base: 2000, lead: 'galeoncete', reach: 2500 },
+  { code: 'PTC', ground: 'PACIFIC', ground_name: 'Pacific Ocean', ground_ko: '태평양', ships: 70, base: 1000, lead: 'galeoncete', reach: 3100 },
+  { code: 'MWY', ground: 'PACIFIC', ground_name: 'Pacific Ocean', ground_ko: '태평양', ships: 0, base: 2000, lead: 'galeoncete', reach: 2500 },
   { code: 'TDC', ground: 'SOUTH_ATLANTIC', ground_name: 'South Atlantic Ocean', ground_ko: '남대서양', ships: 40, base: 3000, lead: 'galeoncete', reach: 2400 },
   { code: 'FLO', ground: 'NORTH_ATLANTIC', ground_name: 'North Atlantic Ocean', ground_ko: '북대서양', ships: 40, base: 4000, lead: 'korsan', reach: 2400 },
   { code: 'DGA', ground: 'INDIAN', ground_name: 'Indian Ocean', ground_ko: '인도양', ships: 30, base: 5000, lead: 'galeoncete', reach: 2400 },

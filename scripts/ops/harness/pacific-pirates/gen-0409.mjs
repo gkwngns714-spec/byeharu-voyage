@@ -1,5 +1,5 @@
-// gen-0410.mjs: WRITES supabase/migrations/20260818000410_pirates_have_homes_and_grounds.sql from its parts. LOCAL ONLY; re-run, never hand-edit a literal.
-//   node scripts/ops/harness/pacific-pirates/gen-0410.mjs <sea.json from gen-sea> <legs.json from gen-legs>
+// gen-0409.mjs: WRITES supabase/migrations/20260818000409_pirates_have_homes_and_grounds.sql from its parts. LOCAL ONLY; re-run, never hand-edit a literal.
+//   node scripts/ops/harness/pacific-pirates/gen-0409.mjs <sea.json from gen-sea> <legs.json from gen-legs>
 // Parts: head.sql and tail.sql beside this file (typed), the harbours' literals (data/*.json through scripts/lib/world-derive.mjs, gen-sea, gen-legs,
 // scripts/build-population.mjs, data/captains.generated.json), the roster (roster.mjs), and 0338's own market arithmetic (its lines for a new
 // harbour's rows, lifted verbatim from the applied file so the two cannot drift).
@@ -17,11 +17,18 @@ const codes = HUBS.map((h) => h.code)
 const ports = codes.map((c) => W.ports.find((p) => p.code === c))
 const pop = JSON.parse(readFileSync(path.join(REPO_ROOT, 'data/port-population.json'), 'utf8')).ports
 const lang = JSON.parse(readFileSync(path.join(REPO_ROOT, 'data/captains.generated.json'), 'utf8')).harbours
-const PROD = { MWY: ['sea-cucumber', 'shark'], PTC: ['kumara', 'harakeke'], TDC: ['yams', 'millet'], FLO: ['archil-lichen', 'grapes'], DGA: ['zebu-cattle', 'sea-cucumber'] }
+const PROD = { MWY: ['sea-cucumber', 'shark'], PTC: ['kumara', 'harakeke'], TDC: ['yams', 'millet'], FLO: ['archil-lichen'], DGA: ['zebu-cattle', 'sea-cucumber'] }
 const m338 = readFileSync(path.join(REPO_ROOT, 'supabase/migrations/20260818000338_the_brethren.sql'), 'utf8').replaceAll('\r', '').split('\n')
 const a = m338.findIndex((l) => l.startsWith('  create temp table sc_h on commit drop as')); const b = m338.findIndex((l) => l.startsWith("  select n.id, k.kind from new_h n cross join (values ('docks')"))
 if (a < 0 || b < a) throw new Error('0338 market lines not found')
-const market = m338.slice(a, b + 1).join('\n')
+// 0409 does NOT re-derive the affinity, the max stock, the production or the stock of an EXISTING market row (0338's lines from "the EXISTING rows a new
+// maker moves" to that update's row count are left out): a live economy's markets are not reset because five islands were added. The HAUL of a row whose
+// nearest maker is now a hub IS re-derived: the world guard holds every row's haul to world.haul_rows(), and it moves no stock.
+const mk = m338.slice(a, b + 1)
+const cutA = mk.findIndex((l) => l.startsWith('  -- the EXISTING rows a new maker moves'))
+const cutB = mk.findIndex((l) => l.trim() === 'get diagnostics v_moved_h = row_count;')
+if (cutA < 0 || cutB < cutA) throw new Error('0338 existing-rows lines not found')
+const market = [...mk.slice(0, cutA), "  v_moved_h := 0;   -- 0409: no existing row's affinity, max stock, production or stock is touched", ...mk.slice(cutB + 1)].join('\n')
 const R = roster()
 const lines = {
   PORTS: ports.map((p) => `      (${q(p.code)}, ${q(p.name)}, ${q(p.country)}, ${p.nation_code ? q(p.nation_code) : 'null'}, ${p.lat}, ${p.lon}, ${q(p.sea_code)}, ${q(p.region_code)}, ${q(p.culture)}, ${p.size_tier}, ${p.max_draft}, ${p.yard_tier}, ${p.has_academy}, ${p.dev_industry}, ${p.dev_commerce}, ${p.dev_military}, ${p.crew_pool})`).join(',\n'),
@@ -42,6 +49,6 @@ const lines = {
 let sql = readFileSync(path.join(here, 'head.sql'), 'utf8').replaceAll('\r', '') + readFileSync(path.join(here, 'tail.sql'), 'utf8').replaceAll('\r', '')
 for (const [k, v] of Object.entries(lines)) { if (!sql.includes(`/*${k}*/`)) throw new Error(`no slot ${k}`); sql = sql.replaceAll(`/*${k}*/`, v) }
 if (/\/\*[A-Z]+\*\//.test(sql)) throw new Error('a slot is unfilled')
-const out = path.join(REPO_ROOT, 'supabase/migrations/20260818000410_pirates_have_homes_and_grounds.sql')
+const out = path.join(REPO_ROOT, 'supabase/migrations/20260818000409_pirates_have_homes_and_grounds.sql')
 writeFileSync(out, sql)
 console.log(`wrote ${out}: ${(sql.length / 1024).toFixed(0)} KiB, ${R.length} fleets, ${lines.NSHIPS} ships, ${lines.NCOURSES} courses, ${legs.rows.length} leg rows`)

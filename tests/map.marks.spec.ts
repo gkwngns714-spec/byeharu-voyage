@@ -116,7 +116,7 @@ async function marksOnSheet(page: Page) {
       // The zoom probe's subject: the first dot drawn ONCE. A harbour at the seam (Auckland, Wellington
       // since 0217) is drawn in both copies of the sheet, each copy translated by 360°, while its
       // data-port-x is the copy-local anchor — aiming the pointer there lands a world away from the mark
-      // (CI run 40196400409: the probe picked AUK's west copy and zoomed into empty sea). A harbour drawn
+      // (CI run 40196400410: the probe picked AUK's west copy and zoomed into empty sea). A harbour drawn
       // once sits where its anchor says, so the probe satisfies its own precondition (NO_SPAGHETTI §4).
       firstDot: harbours.find((g) => g.getAttribute('data-port-mark') === 'dot'
         && harbours.filter((h) => h.getAttribute('data-port-code') === g.getAttribute('data-port-code')).length === 1)
@@ -189,7 +189,7 @@ for (const scheme of ['dark'] as const) {
         // for 249 harbours, and the two drawn twice are still exactly AUK and WLG. Measured in a browser on 2026-11-07, all four glasses: 251.
         const distinct = new Set(world.codes)
         const twice = [...distinct].filter((c) => world.codes.filter((x) => x === c).length > 1).sort()
-        // Moved deliberately 2026-11-14: 249 → 254 harbours (the pirates' ocean havens, 0410). Midway (177.37° W) is 2.6° from the seam, nearer
+        // Moved deliberately 2026-11-14: 249 → 254 harbours (the pirates' ocean havens, 0409). Midway (177.37° W) is 2.6° from the seam, nearer
         // than Wellington, so it is the third harbour drawn in both copies: 257 marks for 254 harbours.
         expect(distinct.size, 'every harbour is on the sheet at the world view').toBe(254)
         expect(world.harbours, 'one mark per harbour per copy of the sheet').toBe(257)

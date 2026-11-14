@@ -1,4 +1,4 @@
-# 2026-11-14: pirates have homes and grounds (migration 0410)
+# 2026-11-14: pirates have homes and grounds (migration 0409)
 
 ## What the owner ordered, in his words, in order
 
@@ -11,11 +11,11 @@
 7. "make pirate fleets some strong, some weak, with multiple fleets, multiple ships and so on"
 8. Of the seven wrecked pirate ships: "find the root cause, make it so that this problem does not occur again".
 
-## What 0410 does, and what it does NOT do
+## What 0409 does, and what it does NOT do
 
-**In 0410:** the root cause of the wrecks and its fix (8, 5, 6); five hub harbours (2, 3); the roster of 180 ships in 108 fleets, varied (2, 3, 7); respawn at the home city (5); a capped figure for how much a sea's pirates raise its raids (4, the "more aggressively" half).
+**In 0409:** the root cause of the wrecks and its fix (8, 5, 6); five hub harbours (2, 3); the roster of 180 ships in 108 fleets, varied (2, 3, 7); respawn at the home city (5); a capped figure for how much a sea's pirates raise its raids (4, the "more aggressively" half).
 
-**NOT in 0410, and why (said plainly):** the ships of a ground do not trade yet, and a pirate ship's house is not topped up "like before" (4, 6). A pirate ship of 0339 is a house with a purse of 0 and no capital, moved by the pirates' own job; the merchants' planner moves a fleet by a standing route. Making one ship do both needs either the planner to move a pirate ship or the raid rule to name a merchant fleet, and both touch the functions migration 0409 is cutting today (the merchants' planner and lap book). Trading on today's planner would also lose money: 13 of the pirates' 24 merchant houses went broke in one to four days. So the trading half is the next file (0411), to be built on 0409, with the top-up through 0408's rule (which now pays a broke pirate merchant house her full capital from the hoard). Until then a ground ship cruises and raids as every pirate ship does, and her house holds no purse.
+**NOT in 0409, and why (said plainly):** the ships of a ground do not trade yet, and a pirate ship's house is not topped up "like before" (4, 6). A pirate ship of 0339 is a house with a purse of 0 and no capital, moved by the pirates' own job; the merchants' planner moves a fleet by a standing route. Making one ship do both needs either the planner to move a pirate ship or the raid rule to name a merchant fleet, and both touch the functions migration 0410 is cutting today (the merchants' planner and lap book). Trading on today's planner would also lose money: 13 of the pirates' 24 merchant houses went broke in one to four days. So the trading half is the next file (0411), to be built on 0410, with the top-up through 0408's rule (which now pays a broke pirate merchant house her full capital from the hoard). Until then a ground ship cruises and raids as every pirate ship does, and her house holds no purse.
 
 ## The root cause of the wrecks (prod, read-only, 2026-11-14, head 0407)
 
@@ -56,32 +56,32 @@ Not restocked: gear. The game mends hull, crew and stores for an NPC ship; guns 
 
 | Code | Name (KO) | Where | Sea zone | Ships | Cruises as far as |
 |---|---|---|---|---|---|
-| PTC | Pitcairn (핏케언) | 25.07 S 130.10 W, South Pacific | STH | 50 | 3,100 nm |
-| MWY | Midway (미드웨이) | 28.21 N 177.37 W, North Pacific | NRT | 20 | 2,500 nm |
+| PTC | Pitcairn (핏케언) | 25.07 S 130.10 W, South Pacific | STH | 70 | 3,100 nm |
+| MWY | Midway (미드웨이) | 28.21 N 177.37 W, North Pacific | NRT | 0 | 2,500 nm |
 | TDC | Tristan (트리스탄) | 37.07 S 12.31 W, South Atlantic | SOU | 40 | 2,400 nm |
 | FLO | Flores (플로르스) | 39.45 N 31.13 W, North Atlantic (western Azores) | NOR | 40 | 2,400 nm |
 | DGA | Diego Garcia (디에고가르시아) | 7.31 S 72.41 E, Indian Ocean | IND | 30 | 2,400 nm |
 
 Real islands, none a harbour before (Bermuda is: St. George's; Flores is 188 nm from Angra, which is no pirate harbour). Each stands on sailable water of the game's raster; the chart has no land for any of them, so each wears an islet (`src/chart/landfall.ts`, 30 to 35 islets).
 
-A data slice as 0338's three: tier 3, four existing goods each, purse 0, no seed, **no money moved by the file**. Generated, not typed: `scripts/ops/harness/pacific-pirates/gen-sea.mjs` (roadsteads, sailed distances to all 267 places, 80 courses to and from the nearest harbours, by the game's grid and pathfinder), `gen-legs.mjs` (the seas of the 2,510 plotted pairs, into `data/sea-legs.json`), `gen-0410.mjs` (the file).
+A data slice as 0338's three: tier 3, four existing goods each, purse 0, no seed, **no money moved by the file**. Generated, not typed: `scripts/ops/harness/pacific-pirates/gen-sea.mjs` (roadsteads, sailed distances to all 267 places, 80 courses to and from the nearest harbours, by the game's grid and pathfinder), `gen-legs.mjs` (the seas of the 2,510 plotted pairs, into `data/sea-legs.json`), `gen-0409.mjs` (the file).
 
 **Decided by default (the owner may reverse any):**
 - They are HELD by the pirates, not homes. A great power has four homes (`docs/INFLUENCE.md` D1; the world guard holds it). So a hub taxes (3 %), its market regenerates, and it can be contested by influence like any city. The Countries board now reads The Brethren 9 held, 4 home, 5 won.
 - Hub purses start at 0. They fill by the game's own rules: pay for a ship lying at her hub is paid into the hub, and ransom and loot land at the raider's home. Behind an empty hub stand the other pirate cities and Port Royal.
-- The Pacific's 70 are split Pitcairn 50, Midway 20: a wreck is reborn at her own home, so a hub with no ships would do nothing.
+- ALL 70 of the Pacific are homed at Pitcairn, so that they roam the SOUTH Pacific as the owner said (a first cut homed 20 at Midway; from there they cruised Honolulu, Tokyo and Japan's seas, which is the North Pacific). Pitcairn's eight haunts are Auckland, Concepcion, Paita, Valparaiso and Callao (South Pacific), Wellington (Tasman Sea), Navidad and Acapulco (North Pacific coast): no fence. Midway is the North Pacific haven: a pirate city on the map that pays in its turn behind an empty purse, with no fleet homed there. A fleet is homed there by adding a roster row.
 - No fence: an ocean is where a hub's ships mostly roam because their haunts are the harbours nearest the hub. Nothing turns a course back.
-- Goods: Midway tapa-cloth, pandanus-mats, sea-cucumber, shark; Pitcairn barkcloth, kumara, harakeke, abalone; Tristan yams, millet, ochre, plantains; Flores canary-sack, archil-lichen, grapes, sugar-cane; Diego Garcia toddy, zebu-cattle, sea-cucumber, shark. All existing, native, none in a fourth city.
+- Goods: Midway tapa-cloth, pandanus-mats, sea-cucumber, shark; Pitcairn barkcloth, kumara, harakeke, abalone; Tristan yams, millet, ochre, plantains; Flores canary-sack, archil-lichen, and as a named entrepot salt-cod and virginia-leaf (its region has only two native goods with a free place; `data/goods.json`); Diego Garcia toddy, zebu-cattle, sea-cucumber, shark. All existing goods that already have a roster maker, none in a fourth city. No good is given its first maker (a first cut gave Flores grapes and sugar-cane, which would have made two made-not-sold goods into traded ones everywhere).
 - Midway and Pitcairn speak English (a named exception in `data/captains.json`): by their region's culture they would be Malay, and two more Malay harbours changed the second language of three captains players may hold.
-- Each hub's quay is seeded with the hands its own fleets need once (Pitcairn about 1,800). After that it is the game's.
+- Each hub's quay is seeded with the hands its own fleets need once (Pitcairn about 2,500). After that it is the game's.
 
-**What the harbours change in live play** (local head world): 3,145 new market rows; 1,311 existing rows re-derived because a new maker is nearer (their stock reset to the new figure, as every growth does); 2,492 rows whose haul moves. Grapes and sugar-cane gain their first roster maker, so they become tradable goods. `lock_timeout` 5 s: deploy at a quiet minute.
+**What the harbours change in live play** (local head world): 3,145 new market rows, the hubs' own. **No existing market row's stock, max stock, production or affinity is touched** (0338 and 0217 re-derived the rows near a new maker and reset their stock: 572 rows for 0338's three harbours; a first cut of this file would have reset 1,311; that part is left out). What does move is the HAUL figure (the distance premium in a price) of 2,441 rows of the 18 goods, where a hub is now the nearest maker: the world guard holds every row's haul to `world.haul_rows()`, so it cannot be left stale. It lowers the distance premium of those goods at harbours nearer a hub than any other maker; it moves no stock. `lock_timeout` 5 s: deploy at a quiet minute.
 
 ## The roster: 180 ships in 108 fleets
 
 `public.pirate_hubs` (one row a hub), `public.pirate_roster` (one row a fleet: ord, hub, house, names in English and Korean), `public.pirate_roster_hulls` (class, count). Change a count by changing rows; no function reads a number.
 
-One block of ten ships is six fleets: two lone brigantins and a lone fusta (attack 20, hull 300: a beginner can beat or outrun them), a lone xebec (60), a pair of xebecs, and a squadron of four behind a lead ship (a galeoncete, attack 230, hull 2,120; at Flores a korsan, attack 70, because beginners start in the North Atlantic). Half the fleets are one weak ship, a third a xebec or a pair, a sixth a squadron. The pair and the squadron of a hub's first block sail for one house (two fleets); Pitcairn has two such houses. 108 fleets, 102 houses.
+One block of ten ships is six fleets: two lone brigantins and a lone fusta (attack 20, hull 300: a beginner can beat or outrun them), a lone xebec (60), a pair of xebecs, and a squadron of four behind a lead ship (a galeoncete, attack 230, hull 2,120; at Flores a korsan, attack 70, because beginners start in the North Atlantic). Half the fleets are one weak ship, a third a xebec or a pair, a sixth a squadron. The pair and the squadron of a hub's first block sail for one house (two fleets); Pitcairn has two such houses. 108 fleets (Pitcairn 42, Tristan 24, Flores 24, Diego Garcia 18), 103 houses.
 
 Weak and strong cannot be placed in different waters of one ocean: a pirate's position is her sea, and a sea is the whole ocean. What the code does give: the raider named for a raid is the lowest ord cruising that sea, and the weak fleets have the lowest ords of each block.
 
@@ -116,7 +116,7 @@ Hoard 980 M (Port Royal).
 
 No raid odds, damage, flight or loot rule is changed. One thing is: how much pirates in a sea raise that sea's danger.
 
-- **Before 0410:** 0.5 a ship, no cap (`voyage.sea_danger` = authored figure x (1 + pressure), at most 1). Forty fleets in the North Atlantic (authored 0.12) would have made its danger 1: every sailed day a pirate day.
+- **Before 0409:** 0.5 a ship, no cap (`voyage.sea_danger` = authored figure x (1 + pressure), at most 1). Forty fleets in the North Atlantic (authored 0.12) would have made its danger 1: every sailed day a pirate day.
 - **After:** at most `pirate_pressure_max` 1.0: a sea with two or more pirate fleets cruising it has twice its authored danger, never more. The most ever seen before was 1.5 times.
 - **Measured today** (24 h of `voyage_events`): 300 raids, 12.5 an hour in the whole world: merchants 254, cargo ships 33, navy ships 13, players 0 (no player sailed a day in those 24 hours). 0.16 % of sailed days.
 - **Expected after**, if every sea the pirates cruise is at the cap: at most twice, 25 an hour (merchants about 21). The local scene put 40 fleets over 13 seas, 10 of them at the cap.
@@ -147,4 +147,4 @@ Pictures (build machine): `C:\Users\gkwng\dev\pacific-pirates-shots\`: desktop, 
 
 ## Deploy
 
-0410 = 0409 + 1: after 0409. Before: `before.sql` (head 0409, hunks true). After: `after.sql` at once and hourly for a day; `health.sql` should read 0 from two hours on. Rollback: `rollback-0410.sql` (a draft); the fast lever is `pirates_bite` false or deleting roster rows.
+0409 = 0408 + 1 (it was written as 0410 and renumbered: the merchants' file is 0410 now and deploys after it). Before: `before.sql` (head 0408, hunks true). After: `after.sql` at once and hourly for a day; `health.sql` should read 0 from two hours on. Rollback: `rollback-0409.sql` (a draft); the fast lever is `pirates_bite` false or deleting roster rows.

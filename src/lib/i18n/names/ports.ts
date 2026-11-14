@@ -59,7 +59,7 @@ export const KO_PORTS: Readonly<Record<string, string>> = {
   Wellington: '웰링턴', Portland: '포틀랜드', Astoria: '아스토리아',
   // The pirate homes (0338, W16): an island of the Riau-Lingga archipelago, the Goto islands off Kyushu, the island of Djerba.
   Lingga: '링가', Goto: '고토', Djerba: '제르바',
-  // The pirates' ocean havens (0410): one island near the middle of each ocean (the Pacific has two).
+  // The pirates' ocean havens (0409): one island near the middle of each ocean (the Pacific has two).
   Midway: '미드웨이', Pitcairn: '핏케언', Tristan: '트리스탄', Flores: '플로르스', 'Diego Garcia': '디에고가르시아',
   // THE SEA'S OWN PLACES (data/sea-places.json: capes, straits, banks). They are served with the harbours and drawn on the same chart,
   // and they were the only English left on a Korean chart (2026-11-12).
