@@ -10,7 +10,7 @@ import { LiveNow } from './LiveNow'
 import { MarketsFace } from './Markets'
 import { MeFace } from './Me'
 import { MerchantsFace } from './Merchants'
-import { ShipsFace } from './Ships'
+import { FleetsByKindFace } from './Ships'
 import { NewsFace } from './News'
 import { OverviewFace } from './Overview'
 import { STATS_FACES, type StatsFace } from './statsFaces'
@@ -94,7 +94,7 @@ function StatsBody({ title }: { title: string }) {
       {face === 'markets' && <MarketsFace />}
       {face === 'cities' && <CitiesFace />}
       {face === 'merchants' && <MerchantsFace />}
-      {face === 'ships' && <ShipsFace />}
+      {face === 'ships' && <FleetsByKindFace />}
       {face === 'me' && <MeFace />}
     </Sheet>
   )

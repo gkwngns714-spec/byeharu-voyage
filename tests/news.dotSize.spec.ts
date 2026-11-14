@@ -8,7 +8,7 @@
 // the rest of the day; CI builds (or restores) the image long before the HQ's spec opens it. tests/news.chart.spec.ts did put news on
 // a chart, and asked 24 px of it.
 //
-// HERE THE NEWS IS PUT THERE, with fixed facts: the built world with its first count half an hour old (so the Stats charts' record
+// HERE THE NEWS IS PUT THERE, with fixed facts: the built world with its first count a quarter hour old (so the Stats charts' record
 // starts before the news) and FOUR world headlines written 10 min, 5 min, 1 min and 55 s before the seed (so they stand inside the
 // quarter hour a price chart draws; the first two stand apart as NEIGHBOURS, and the last two are always one dot). Then, at 390 and at 1,280, on EVERY surface that draws dots
 // — Stats Overview, Stats Merchants, a Stats city page, the HQ's market chart, the desk's good chart — every dot on the glass is read:
@@ -40,7 +40,7 @@ const WIDE = { width: 1280, height: 800 }
 const PROBE_AGO_S = [600, 300, 60, 55] as const
 const PROBE_KEY = 'probe:dot-size:'
 
-/** The built world, its first count half an hour old, with the four probe headlines. Seeded for each test: the facts are minutes old. */
+/** The built world, its first count a quarter hour old, with the four probe headlines. Seeded for each test: the facts are minutes old. */
 async function worldWithNews(): Promise<Buffer> {
   const dir = path.resolve('dist', 'db')
   const name = existsSync(dir) ? readdirSync(dir).find((f) => /^world-.*\.tar\.gz$/.test(f)) : undefined
@@ -48,8 +48,12 @@ async function worldWithNews(): Promise<Buffer> {
   const { PGlite } = await import('@electric-sql/pglite')
   const pg = await PGlite.create({ loadDataDir: asWorldImageFile(new Uint8Array(readFileSync(path.join(dir, name)))) })
   try {
-    // the Stats charts' record starts BEFORE the news (a built world has no count; a dot outside a chart's time is not drawn)
-    await pg.query(`select public.tick_stats(now() - interval '30 minutes')::text`)
+    // the Stats charts' record starts BEFORE the news (a built world has no count; a dot outside a chart's time is not drawn), and
+    // only a quarter hour before the seed (2026-11-15; it was half an hour): a Stats chart's time is this count to the page's now,
+    // so at 390 px the 5 minutes between the two NEIGHBOURS were ~48 px of a 30-minute chart, a hair over the 44-px target, and a
+    // run that reached the city page a minute and a half after the seed (CI, PR #694) drew them as ONE dot on every chart.
+    // On a 15-minute chart they stand ~80 px apart, and stay apart for as long as the test may run.
+    await pg.query(`select public.tick_stats(now() - interval '15 minutes')::text`)
     // THE PROBE'S HEADLINES ARE THE ONLY NEWS OF THIS WORLD (2026-11-13). The image carries one "Update" row per lit migration, written
     // when the image was BUILT: on an image minutes old they stand inside the charts' time and join, or bridge, the probe's dots (seen
     // as "no chart drew two dots", and as a fifth dot beside the probe's), and every migration adds one. This is the test's own copy
