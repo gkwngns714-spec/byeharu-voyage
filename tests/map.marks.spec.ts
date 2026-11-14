@@ -67,7 +67,9 @@ test.describe('every port is on the sheet; the zoom decides dot or mark', () => 
     expect(screen).toMatch(
       /hitTest\(model, tappable, at, GLYPH\.hitRadius \* unitsPerPx, dots, GLYPH\.dotHitRadius \* unitsPerPx, drawn\.traffic, placedNames\(\)\)/,
     )
-    expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view\)/)
+    // …and since 2026-11-14 (the map's look, THIN_DENSITY) the thinning reads the glass's degrees a pixel too, so the tap asks
+    // for the same ships the sheet drew at this density: a hull that is not drawn cannot be pressed.
+    expect(screen).toMatch(/const drawn = shipMarks\(model\.fleets, model\.traffic, view, unitsPerPx\)/)
     expect(screen).not.toContain('portMarks(')
     // The two halves partition the sheet: no harbour in both, none in neither.
     const roles = buildChartModel(mapFleetsOf([]), PORTS).portRoles
