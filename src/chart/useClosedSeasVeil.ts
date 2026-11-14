@@ -3,11 +3,11 @@ import { closedMask, type ZoneCells } from '../domain/seas'
 
 // THE PICTURE OF THE CLOSED SEAS (./ClosedSeasLayer.tsx paints it): one pixel a cell of the server's zone raster.
 
-/** The veil's colour: a dusk slate, mid-way between the two seas it has to read on (2026-11-14). The first veil was
- *  the night sea made darker, and the night sea is already near black: by night the shade could not be seen at all
- *  and its key named nothing. A mid tone at a little over half strength is LIGHTER than the night sea and DARKER and greyer than the
- *  day sea, so a closed sea is one fogged-over colour on both and never mistaken for deep water. */
-const VEIL: readonly [number, number, number, number] = [58, 56, 80, 140]
+/** The veil's colour: a faint dimming, and nothing more (owner, 2026-11-14: *"the map graphic of the sea, it is
+ *  messed up. when zoom out the color changes"*). The slate veil of the same morning painted every ocean a new
+ *  player may not enter a second, fogged colour with stepped edges, which showed as soon as the chart was pulled
+ *  back. The sea is ONE colour, by night and by day; a closed sea is that colour a shade dimmer. */
+const VEIL: readonly [number, number, number, number] = [6, 8, 14, 46]
 
 /** The same colour for CSS: the swatch of the map's key (the one place that names the shade). */
 export const CLOSED_SEAS_VEIL_CSS = `rgba(${VEIL[0]}, ${VEIL[1]}, ${VEIL[2]}, ${(VEIL[3] / 255).toFixed(2)})`
