@@ -70,6 +70,7 @@ select jsonb_build_object(
   'stats', (select jsonb_agg(jsonb_build_object('at', s.at, 'ms', s.ms, 'phases', s.receipt->'phases') order by s.at desc)
               from (select * from public.stats_runs order by at desc limit 2) s)
 ) as r;
+commit;
 `
 writeFileSync('scripts/ops/harness/slim-db/before.sql', check('before'))
 writeFileSync('scripts/ops/harness/slim-db/after.sql', check('after'))
