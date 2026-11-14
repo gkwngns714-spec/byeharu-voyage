@@ -279,6 +279,12 @@ export const GLYPH = {
   /** A REGION'S NAME (row 93), set on its tint while the filter is on: between a sea and an
    *  ocean, spaced like water — it is ground, and a bigger piece of ground than a sea. */
   regionNameSize: 13,
+  /** A SEA ZONE'S NAME (the Seas filter, 2026-11-15), and its ask on the line under it: a place's
+   *  size, not water's, because it is read for a figure; the ask a step smaller. */
+  zoneNameSize: 11,
+  zoneNoteSize: 9.5,
+  /** The border between two sea zones: a dashed hairline, quieter than the coast. */
+  zoneBorderStroke: 0.9,
   /**
    * THE DOT (row 94, 2026-09-14: "all the ports in the game when i zoom out, it can be a dot"):
    * a harbour below this zoom's full-mark tier is drawn as a filled dot of this radius, in the

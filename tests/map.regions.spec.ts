@@ -6,6 +6,7 @@ import {
   buildCoastline,
   LABEL_PRIORITY,
   REGION_FILL,
+  MAP_LAYER_KEY,
   REGIONS_FILTER_KEY,
   readRegionsFilter,
   regionNameRequests,
@@ -194,11 +195,17 @@ async function sheet(page: Page) {
       sea: fill('[data-testid="map-sea"]'),
       body: fill('[data-testid="map-coastline"]'),
       coast: stroke('[data-testid="map-coast"]'),
-      pressed: document.querySelector('[data-testid="map-regions-toggle"]')?.getAttribute('aria-pressed'),
+      pressed: document.querySelector('[data-testid="map-layer-filter"]')?.getAttribute('aria-pressed'),
     }
   })
 }
 
+
+/** The map's filter (2026-11-15: Off, Regions, Seas): open its list and pick one. */
+async function choose(page: Page, layer: 'off' | 'regions') {
+  await page.getByTestId('map-layer-filter').click()
+  await page.getByTestId(`map-layer-${layer}`).click()
+}
 
 async function openMap(page: Page) {
   await page.goto('map')
@@ -243,7 +250,7 @@ for (const scheme of ['dark'] as const) {
         const offAgain = await sheet(page)
         expect(offAgain.elements).toBe(off.elements)
 
-        await page.getByTestId('map-regions-toggle').click()
+        await choose(page, 'regions')
         await page.waitForTimeout(300)
         const on = await sheet(page)
         expect(on.pressed).toBe('true')
@@ -273,21 +280,21 @@ for (const scheme of ['dark'] as const) {
             `elements off ${off.elements} on ${on.elements}`,
         )
 
-        await page.getByTestId('map-regions-toggle').click()
+        await choose(page, 'off')
         await page.waitForTimeout(300)
         const back = await sheet(page)
         expect(back).toEqual(off)
 
         // Kept: on, reload, still on.
-        await page.getByTestId('map-regions-toggle').click()
+        await choose(page, 'regions')
         await page.waitForTimeout(100)
-        expect(await page.evaluate((k) => localStorage.getItem(k), REGIONS_FILTER_KEY)).toBe('1')
+        expect(await page.evaluate((k) => localStorage.getItem(k), MAP_LAYER_KEY)).toBe('regions')
         await openMap(page)
         const reloaded = await sheet(page)
         expect(reloaded.pressed).toBe('true')
         expect(reloaded.water).toBeGreaterThan(0)
-        await page.getByTestId('map-regions-toggle').click()
-        expect(await page.evaluate((k) => localStorage.getItem(k), REGIONS_FILTER_KEY)).toBeNull()
+        await choose(page, 'off')
+        expect(await page.evaluate((k) => localStorage.getItem(k), MAP_LAYER_KEY)).toBeNull()
       })
     })
   }
