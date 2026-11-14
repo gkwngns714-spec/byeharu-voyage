@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Button, glassBesideRailClass } from '../components/ui'
 import { formatInt, moneyFigure, moneyWord, type MoneyKind } from '../lib/format'
 import { num, str } from '../lib/json'
-import { useT } from '../lib/i18n'
+import { useLocale, useT } from '../lib/i18n'
+import { levelName } from '../live/levelWords'
 import type { LedgerEvent, PlayerHouse } from '../lib/rpc'
 import { portNameOf, useWorld } from '../live/worldStore'
 import { ArrivalRaids } from '../live/ArrivalRaids'
@@ -52,12 +53,11 @@ interface Card {
 }
 
 interface LevelLine {
-  track: 'trading' | 'exploration' | 'combat'
+  /** The level's code (`public.level_skills`): since 0412 every level raised by doing fires the same LEVEL_UP. */
+  track: string
   level: number
   reputation: number
 }
-
-const TRACK_WORD = { trading: 'command.lvTrading', exploration: 'command.lvExploration', combat: 'command.lvCombat' } as const
 
 /** The LEVEL_UP events among these, one line a track: the highest level, and the Reputation of all its crossings added. */
 function levelLines(events: LedgerEvent[], into: LevelLine[] = []): LevelLine[] {
@@ -66,7 +66,7 @@ function levelLines(events: LedgerEvent[], into: LevelLine[] = []): LevelLine[] 
     if (e.kind !== 'LEVEL_UP') continue
     const track = str(e.payload, 'track')
     const level = num(e.payload, 'level')
-    if ((track !== 'trading' && track !== 'exploration' && track !== 'combat') || level === null) continue
+    if (track === null || track === '' || level === null) continue
     const reputation = num(e.payload, 'reputation') ?? 0
     const at = lines.findIndex((l) => l.track === track)
     if (at < 0) lines.push({ track, level, reputation })
@@ -120,6 +120,7 @@ function merge(a: Card | null, b: Card): Card {
 
 export function ArrivalCard() {
   const t = useT()
+  const locale = useLocale()
   const navigate = useNavigate()
   const portByCode = useWorld((s) => s.portByCode)
   const [card, setCard] = useState<Card | null>(null)
@@ -209,8 +210,8 @@ export function ArrivalCard() {
         {card.levels.map((l) => (
           <p key={l.track} className="mt-1 text-t-body text-accent" data-testid="arrival-level" data-track={l.track} data-level={l.level} data-reputation={l.reputation}>
             {l.reputation > 0
-              ? t('feed.levelUpRep', { track: t(TRACK_WORD[l.track]), n: l.level, rep: formatInt(l.reputation) })
-              : t('feed.levelUp', { track: t(TRACK_WORD[l.track]), n: l.level })}
+              ? t('feed.levelUpRep', { track: levelName(locale, l.track), n: l.level, rep: formatInt(l.reputation) })
+              : t('feed.levelUp', { track: levelName(locale, l.track), n: l.level })}
           </p>
         ))}
         {card.reputation > 0 && (
