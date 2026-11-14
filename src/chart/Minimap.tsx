@@ -1,4 +1,5 @@
-import { useMemo, useRef, type MouseEvent } from 'react'
+import { useMemo, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent } from 'react'
+import { Icon } from '../components/ui/Icon'
 import {
   boundsOf,
   CHART_WIDTH,
@@ -15,6 +16,7 @@ import type { CoastlineData } from './coastlineBuild'
 import { CoastlineLayer } from './CoastlineLayer'
 import { GLYPH, shipPath, trianglePath } from './glyphs'
 import type { MapPort } from './mapTypes'
+import { MINIMAP_ASPECT, minimapWidth, setMinimapPrefs, useMinimapPrefs } from './minimapPrefs'
 import { CHART_CHROME } from './useChartSurface'
 import { useElementSize } from './useElementSize'
 
@@ -79,7 +81,22 @@ import { useElementSize } from './useElementSize'
 // one of those is the main chart's job, done properly there. And it invents no number: fleet
 // positions are the model's (`voyage.position`, the server's closed form, copied), the frame is
 // `fitToViewBox` over the port table's own bounds, and the window is the surface's real viewBox.
+//
+// ── ITS SIZE AND ITS FOLD ARE THE PLAYER'S (owner, 2026-11-14) ─────────────────────────────────
+// *"enable me to change the size of the minimap, and fold"*. A grip on its top-right corner is
+// dragged (mouse or finger; the arrow keys too) to make it larger or smaller in its one shape; a
+// button on its top-left folds it to a tab in the same corner, and the tab unfolds it. Both are
+// kept in this browser (./minimapPrefs.ts). The grip and the buttons sit INSIDE the chrome root,
+// so a drag on the grip is never a pan of the chart, and they are not the inset itself, so it is
+// never a jump either. The header's "nothing resizes" above is about a TAP: that still holds.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** One arrow key on the grip. */
+const KEY_STEP_PX = 16
+
+/** A corner control: a 32 px target with a small plate drawn in its corner. */
+const CONTROL = 'absolute top-0 flex h-8 w-8 touch-none select-none p-0.5 text-ink-muted hover:text-ink'
+const PLATE = 'flex h-5 w-5 items-center justify-center rounded-sm bg-surface/85'
 
 /** Breathing room around the world frame — enough that a mark on the outermost harbour
  *  (Arkhangelsk, 78°N) is not clipped by the inset's edge. */
@@ -102,7 +119,8 @@ export function Minimap({
   viewport,
   onJump,
   ariaLabel,
-  className = 'h-13 w-36',
+  glass,
+  words,
 }: {
   /** The SAME model the main chart draws — one classification of docked/at-sea, never a second. */
   model: ChartModel
@@ -115,10 +133,44 @@ export function Minimap({
   /** The tapped place — the caller's one camera move (`surface.centreOn`). Omit for an inert inset. */
   onJump?: (at: LatLon) => void
   ariaLabel: string
-  className?: string
+  /** The chart's glass in CSS px: what bounds how large the player may drag it. */
+  glass: { width: number; height: number }
+  /** The controls' accessible names, in the viewer's language (the caller owns the dictionary). */
+  words: { fold: string; open: string; size: string }
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const size = useElementSize(ref)
+  const prefs = useMinimapPrefs()
+  const width = minimapWidth(prefs, glass.width, glass.height)
+  /** A grip drag in progress: where the inset's fixed bottom-left corner is, and how far inside the
+   *  inset's top-right corner the press landed. */
+  const drag = useRef<{ left: number; bottom: number; dx: number; dy: number; from: number } | null>(null)
+
+  const gripDown = (event: PointerEvent<HTMLButtonElement>) => {
+    const rect = ref.current?.getBoundingClientRect()
+    if (!rect) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    drag.current = { left: rect.left, bottom: rect.bottom, dx: rect.right - event.clientX, dy: event.clientY - rect.top, from: rect.width }
+  }
+  const gripMove = (event: PointerEvent<HTMLButtonElement>) => {
+    const d = drag.current
+    if (!d) return
+    // The corner follows the pointer; of the two widths the pointer asks for (by its x, by its y), the one
+    // that moved further from where the drag began is the one meant.
+    const byX = event.clientX + d.dx - d.left
+    const byY = (d.bottom - event.clientY + d.dy) * MINIMAP_ASPECT
+    const want = Math.abs(byX - d.from) >= Math.abs(byY - d.from) ? byX : byY
+    setMinimapPrefs({ width: minimapWidth({ width: want, folded: null }, glass.width, glass.height) })
+  }
+  const gripUp = () => {
+    drag.current = null
+  }
+  const gripKey = (event: KeyboardEvent<HTMLButtonElement>) => {
+    const step = event.key === 'ArrowUp' || event.key === 'ArrowRight' ? KEY_STEP_PX : event.key === 'ArrowDown' || event.key === 'ArrowLeft' ? -KEY_STEP_PX : 0
+    if (step === 0) return
+    event.preventDefault()
+    setMinimapPrefs({ width: minimapWidth({ width: width + step, folded: null }, glass.width, glass.height) })
+  }
 
   // The WORLD frame: the port table's own bounds, fitted once to the inset's glass. A function of
   // the world, so it never moves — the fixity is the point.
@@ -147,6 +199,9 @@ export function Minimap({
   }, [viewport, box, unitsPerPx])
 
   const jump = (event: MouseEvent<HTMLDivElement>) => {
+    // the picture is pointer-transparent, so a press on the inset lands on the root; one on the grip or the
+    // fold button does not, and is theirs alone
+    if (event.target !== event.currentTarget) return
     if (!onJump || !box) return
     const rect = event.currentTarget.getBoundingClientRect()
     if (rect.width <= 0 || rect.height <= 0) return
@@ -155,6 +210,23 @@ export function Minimap({
         x: box.x + ((event.clientX - rect.left) / rect.width) * box.width,
         y: box.y + ((event.clientY - rect.top) / rect.height) * box.height,
       }),
+    )
+  }
+
+  // FOLDED: a tab in the same corner, and nothing else. It is chrome like the inset it stands for.
+  if (prefs.folded === true) {
+    return (
+      <button
+        type="button"
+        {...CHART_CHROME}
+        onClick={() => setMinimapPrefs({ folded: false })}
+        aria-label={words.open}
+        aria-expanded={false}
+        data-testid="map-minimap-tab"
+        className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-sm border border-edge bg-surface/90 text-ink-muted hover:text-ink"
+      >
+        <Icon name="chart" size={18} />
+      </button>
     )
   }
 
@@ -168,7 +240,8 @@ export function Minimap({
       // big chart's `.bv-sea` does.
       {...CHART_CHROME}
       onClick={jump}
-      className={`pointer-events-auto relative overflow-hidden rounded-sm border border-edge bg-chart-sea ${onJump ? 'cursor-pointer' : ''} ${className}`}
+      className={`pointer-events-auto relative overflow-hidden rounded-sm border border-edge bg-chart-sea ${onJump ? 'cursor-pointer' : ''}`}
+      style={{ width, height: Math.round(width / MINIMAP_ASPECT) }}
       data-testid="map-minimap"
     >
       {box && (
@@ -241,6 +314,33 @@ export function Minimap({
           </g>
         </svg>
       )}
+      <button
+        type="button"
+        onClick={() => setMinimapPrefs({ folded: true })}
+        aria-label={words.fold}
+        aria-expanded={true}
+        data-testid="map-minimap-fold"
+        className={`${CONTROL} left-0 items-start justify-start`}
+      >
+        <span className={PLATE}>
+          <Icon name="minus" size={14} />
+        </span>
+      </button>
+      <button
+        type="button"
+        onPointerDown={gripDown}
+        onPointerMove={gripMove}
+        onPointerUp={gripUp}
+        onPointerCancel={gripUp}
+        onKeyDown={gripKey}
+        aria-label={words.size}
+        data-testid="map-minimap-grip"
+        className={`${CONTROL} right-0 cursor-nesw-resize items-start justify-end`}
+      >
+        <span className={PLATE}>
+          <Icon name="resize" size={14} />
+        </span>
+      </button>
     </div>
   )
 }

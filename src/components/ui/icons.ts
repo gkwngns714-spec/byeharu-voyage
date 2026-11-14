@@ -25,6 +25,7 @@ export const ICON_NAMES = [
   'close',
   'plus',
   'minus',
+  'resize',
   'info',
   'search',
   'locate',
@@ -184,6 +185,8 @@ export const ICON_PATHS: Record<IconName, readonly string[]> = {
   // text glyphs this game drew its controls with (`▾ ▓ ⚑ ✕ > −`), and a stepper whose `+` is a drawn
   // stroke and whose `−` is a MINUS SIGN CHARACTER is the ban half-kept.
   minus: ['M5 12h14'],
+  // Two arrowheads on one diagonal: the minimap's grip (drag to make it larger or smaller).
+  resize: ['M14 4h6v6', 'M10 20H4v-6', 'M20 4 4 20'],
   info: ['M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Z', 'M12 11v5.5', 'M12 7.6v.9'],
   search: ['M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z', 'm16.2 16.2 4.3 4.3'],
   // Crosshair with a centre point — the chart's "find" control (ViewControls): bring what this
