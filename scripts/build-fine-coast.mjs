@@ -43,7 +43,7 @@ const FILES = ['ne_10m_land.geojson']
  * drawn at: the tolerance is then about one pixel at the level's loosest zoom.
  */
 const LEVELS = [
-  { name: 'mid', tolerance: 0.03, minSpan: 0.06, tileDeg: 20, quantum: 0.004, maxUnitsPerPx: 0.03 },
+  { name: 'mid', tolerance: 0.03, minSpan: 0.06, tileDeg: 20, quantum: 0.004, maxUnitsPerPx: 0.045 },
   { name: 'fine', tolerance: 0.003, minSpan: 0.01, tileDeg: 5, quantum: 0.0005, maxUnitsPerPx: 0.006 },
 ]
 

@@ -44,8 +44,11 @@ test.describe('the fine coast: levels and tiles', () => {
   test('(1) the wide chart has no level; the closest zoom is the fine one on every glass', () => {
     expect(fineLevelFor(LEVELS, 360 / 1280)).toBeNull()
     expect(fineLevelFor(LEVELS, 40 / 390)).toBeNull()
-    expect(fineLevelFor(LEVELS, 0.031)).toBeNull()
-    expect(fineLevelFor(LEVELS, 0.03)?.name).toBe('mid')
+    // the mid level's loosest zoom: 0.03 until 2026-11-15, now 0.045 (the owner: "when i zoom out, the details of the map
+    // disappears, make it so that it stays as long as possible"; its 0.03 degree tolerance is still 0.67 px there)
+    expect(fineLevelFor(LEVELS, 0.046)).toBeNull()
+    expect(fineLevelFor(LEVELS, 0.045)?.name).toBe('mid')
+    expect(fineLevelFor(LEVELS, 0.031)?.name).toBe('mid')
     expect(fineLevelFor(LEVELS, 0.0061)?.name).toBe('mid')
     expect(fineLevelFor(LEVELS, 0.006)?.name).toBe('fine')
     expect(fineLevelFor(LEVELS, MIN_SPAN_X / 390)?.name).toBe('fine')

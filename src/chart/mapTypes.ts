@@ -52,6 +52,15 @@ export interface MapPort extends LatLon {
    * at exactly the scale a chart exists to be trusted at).
    */
   readonly kind: 'HARBOUR' | 'SEA_PLACE'
+  /**
+   * A COUNTRY'S CAPITAL (`SnapshotNation.capital`, 2026-11-15, the owner's "make it stay as long as possible"): it wears
+   * its full mark at every zoom like a harbour of yours (./chartModel.ts `portMarks`), its name is asked for just above
+   * every other quiet harbour's (./labels.ts `LABEL_PRIORITY.capital`), and where its name cannot be set its FLAG alone
+   * is tried. The value is the NATION CODE whose capital it is: the flag a capital wears when the world's allegiance names no
+   * holder for it (Copenhagen, Hamburg, Genoa and Venice had none in the local world, so had no flag to fall back to). Absent
+   * on a chart handed no nations.
+   */
+  readonly capital?: string
   /** 0076 — THE ROADSTEAD: the one point of open water this port is reached from, and how far off
    *  the quay it lies. Both SERVED (`world.snapshot().ports[].roadstead`), copied field-for-field.
    *  For a port whose own cell is sailable water this IS the port's coordinate and `roadsteadNm` is
