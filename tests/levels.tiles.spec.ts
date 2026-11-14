@@ -15,6 +15,10 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 //   - Supplies says 2 a day at sea on a trip of 100 miles into a port, at most 300 a day; level 2 begins at 25 and gives
 //     Reputation +20; Trading says a fleet at level 3 and a captain's promotion to B at level 5;
 //   - on a phone the level opens in a tray and no tile moves; on a desktop it stands in the middle pane;
+//   - (0413) a level raised by doing lists its own benefit: what it is worth now or the level it begins at, and each step in the
+//     table with its running figure (Supplies: 1 % less at level 4, 5 % at level 20; Routes: one more route at 8, two at 16);
+//     Trading, counted from her record, lists none of those;
+//   - (0413) the You page shows the same ten tiles, small, under its three bars; a pressed one opens the same level in a tray;
 //   - nothing is cut and the page does not scroll sideways.
 // AND THE HOOK ON THE GLASS (390, EN): after a first voyage that made a port, Supplies holds the experience of its days at sea
 // (2 a day, a whole even number), today's figure is the same, and the newest grant is on the list.
@@ -45,6 +49,10 @@ const WORDS = {
     trade: /Buy or sell goods: 1 exp per 500/,
     noCap: 'No daily limit.',
     vs: 'Levels rise by doing. Academy skills are studied. A level never changes what a skill gives.',
+    perkFrom: 'Supplies cost 1% less: from level 4',
+    perk: (n: number) => `Supplies cost ${n}% less`,
+    room: (n: number) => `Routes you may keep: +${n}`,
+    lapRep: 'A profitable route lap gives 20% more Reputation',
   },
   ko: {
     names: ['교역', '탐험', '전투', '보급', '악천후', '조선', '의뢰', '제작', '항로', '투자'],
@@ -59,6 +67,10 @@ const WORDS = {
     trade: /교역품 사고팔기: 500.*마다 경험치 1/,
     noCap: '하루 제한 없음.',
     vs: '레벨은 직접 해서 오릅니다. 아카데미 기술은 배워서 오릅니다. 레벨은 기술의 효과를 바꾸지 않습니다.',
+    perkFrom: '보급 비용 1% 감소: 레벨 4부터',
+    perk: (n: number) => `보급 비용 ${n}% 감소`,
+    room: (n: number) => `둘 수 있는 항로 +${n}`,
+    lapRep: '이익 낸 항로 한 바퀴의 평판 20% 증가',
   },
 } as const
 
@@ -152,6 +164,14 @@ for (const size of SIZES) {
         await expect(rows.nth(2)).toContainText('100')
         await expect(rows.nth(19)).toContainText('9,025')
         await expect(rows.nth(19)).toContainText(words.gift(200))
+        // 0413: its own benefit: not hers yet at level 1, so it is named with the level it begins at; each step stands in the table
+        await expect(detail.getByTestId('level-detail-perks').locator('li')).toHaveCount(1)
+        await expect(detail.getByTestId('level-detail-perks').locator('li')).toHaveAttribute('data-has', 'false')
+        await expect(detail.getByTestId('level-detail-perks')).toHaveText(words.perkFrom)
+        await expect(rows.nth(2)).not.toContainText(words.perk(1))
+        await expect(rows.nth(3)).toContainText(words.perk(1))
+        await expect(rows.nth(7)).toContainText(words.perk(2))
+        await expect(rows.nth(19)).toContainText(words.perk(5))
         await nothingCut(page, detail, 'Supplies')
         await shot(page, `levels-supplies-${size.width}-${lang}`)
         await rows.nth(1).scrollIntoViewIfNeeded()
@@ -166,9 +186,44 @@ for (const size of SIZES) {
         await expect(detail.getByTestId('level-detail-today')).toHaveCount(0)
         await expect(rows.nth(2)).toContainText(words.fleet)
         await expect(rows.nth(4)).toContainText(words.promote)
+        await expect(detail.getByTestId('level-detail-perks')).toHaveCount(0)
         await nothingCut(page, detail, 'Trading')
         await rows.nth(1).scrollIntoViewIfNeeded()
         await shot(page, `levels-trading-table-${size.width}-${lang}`)
+
+        // ROUTES (0413): two benefits; the count of routes steps at 8 and 16, the lap's Reputation at 4
+        if (!wide) await page.getByTestId('tray-close').click()
+        await page.getByTestId('levels-routes').click()
+        await expect(detail).toHaveAttribute('data-level-code', 'routes')
+        await expect(detail.getByTestId('level-detail-perks').locator('li')).toHaveCount(2)
+        await expect(rows.nth(3)).toContainText(words.lapRep)
+        await expect(rows.nth(7)).toContainText(words.room(1))
+        await expect(rows.nth(15)).toContainText(words.room(2))
+        await nothingCut(page, detail, 'Routes')
+        await rows.nth(3).scrollIntoViewIfNeeded()
+        await shot(page, `levels-routes-table-${size.width}-${lang}`)
+
+        // THE YOU PAGE (0413): the same ten tiles, small, under the three bars; a pressed one opens the same level in a tray
+        await page.goto('you')
+        await ready(page)
+        const all = page.getByTestId('you-all-levels')
+        await expect(all).toBeVisible({ timeout: 60_000 })
+        const small = all.getByTestId('level-tiles').locator('button')
+        await expect(small).toHaveCount(CODES.length)
+        for (const [i, code] of CODES.entries()) {
+          await expect(small.nth(i)).toHaveAttribute('data-testid', `levels-${code}`)
+          await expect(small.nth(i)).toContainText(words.names[i])
+          expect((await small.nth(i).boundingBox())!.height, `${code}: a small tile is a press target`).toBeGreaterThanOrEqual(44)
+        }
+        await nothingCut(page, all, 'the You page tiles')
+        await all.scrollIntoViewIfNeeded()
+        await shot(page, `you-levels-${size.width}-${lang}`)
+        await all.getByTestId('levels-weather').click()
+        await expect(page.getByTestId('level-tray')).toBeVisible()
+        await expect(page.getByTestId('level-detail')).toHaveAttribute('data-level-code', 'weather')
+        await expect(page.getByTestId('level-detail').getByTestId('level-row')).toHaveCount(20)
+        await nothingCut(page, page.getByTestId('level-detail'), 'Weather on the You page')
+        await shot(page, `you-levels-weather-${size.width}-${lang}`)
       })
     })
   }

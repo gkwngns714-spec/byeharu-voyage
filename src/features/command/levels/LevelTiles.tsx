@@ -4,7 +4,7 @@ import { formatInt, formatRelative } from '../../../lib/format'
 import { translateMaybe, useLocale, useT } from '../../../lib/i18n'
 import type { LevelSkill, LevelSkillsCard } from '../../../lib/rpc'
 import { useShellState } from '../../../app/shellState'
-import { activityLine, everyLevelLine, levelFill, levelGives, levelMark, levelName } from '../../../live/levelWords'
+import { activityLine, everyLevelLine, levelFill, levelGives, levelMark, levelName, perksNow } from '../../../live/levelWords'
 
 // THE LEVELS, AS TILES (0411, docs/LEVELS.md; the owner, 2026-11-14: "like rs3, i want diverse skills related to this game" and
 // "with exp table, exp info, with benefits when leveling up, what activity needs done etc.").
@@ -37,8 +37,19 @@ const nextGift = (s: LevelSkill): number => {
   return g && g.kind === 'gift' ? g.n * (s.level + 1) : 0
 }
 
-/** Every level as a tile: two to a line on a phone and in the desk's left pane. */
-export function LevelTiles({ card, selected, onSelect }: { card: LevelSkillsCard; selected: string | null; onSelect: (code: string) => void }) {
+/** Every level as a tile: two to a line on a phone and in the desk's left pane. `compact` (the You page): the mark, the name, the
+ *  level and the bar, without the line under them. */
+export function LevelTiles({
+  card,
+  selected,
+  onSelect,
+  compact = false,
+}: {
+  card: LevelSkillsCard
+  selected: string | null
+  onSelect: (code: string) => void
+  compact?: boolean
+}) {
   const t = useT()
   const locale = useLocale()
   return (
@@ -55,7 +66,7 @@ export function LevelTiles({ card, selected, onSelect }: { card: LevelSkillsCard
             aria-pressed={on}
             data-testid={`levels-${s.code}`}
             data-level={s.level}
-            className={`flex min-h-tile min-w-0 flex-col gap-1 rounded-tile border p-2 text-left transition ${
+            className={`flex ${compact ? 'min-h-11' : 'min-h-tile'} min-w-0 flex-col gap-1 rounded-tile border p-2 text-left transition ${
               on ? 'border-accent bg-accent-soft' : 'border-transparent bg-surface-2'
             } ${s.counted ? '' : 'text-ink-faint'}`}
           >
@@ -69,7 +80,7 @@ export function LevelTiles({ card, selected, onSelect }: { card: LevelSkillsCard
             </span>
             <span className="block break-words text-t-body">{name}</span>
             <Bar pct={levelFill(s)} label={t('you.levelOf', { name })} tone={s.counted ? 'accent' : 'neutral'} />
-            <span className="flex flex-wrap gap-x-2 text-t-caption text-ink-faint">
+            <span className={compact ? 'hidden' : 'flex flex-wrap gap-x-2 text-t-caption text-ink-faint'}>
               {!s.counted ? (
                 t('command.lvCombatDark')
               ) : s.next_at === null ? (
@@ -103,6 +114,8 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
   const { nowMs } = useShellState()
   const name = levelName(locale, skill.code, skill.word)
   const every = skill.benefits.map((b) => everyLevelLine(locale, b, name)).filter((x): x is string => x !== null)
+  // 0413: her level's own benefits as they stand now (the served step at her level), or the level each begins at
+  const now = perksNow(locale, skill.level, skill.benefits)
   const levels = Array.from({ length: card.top }, (_, i) => i + 1)
   return (
     <section className="min-w-0" data-testid="level-detail" data-level-code={skill.code}>
@@ -179,7 +192,16 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
 
       {/* 3. WHAT LEVELS GIVE */}
       <Heading>{t('command.lvGives')}</Heading>
-      {every.length === 0 ? (
+      {now.length > 0 && (
+        <ul data-testid="level-detail-perks">
+          {now.map((p) => (
+            <li key={p.perk} data-perk={p.perk} data-has={p.has} className={`break-words py-0.5 text-t-body ${p.has ? 'text-accent' : 'text-ink-muted'}`}>
+              {p.line}
+            </li>
+          ))}
+        </ul>
+      )}
+      {every.length === 0 && now.length === 0 ? (
         <span className="block text-t-caption text-ink-faint">{t('command.lvGivesNothing')}</span>
       ) : (
         <ul data-testid="level-detail-benefits">

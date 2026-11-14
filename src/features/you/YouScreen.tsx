@@ -1,6 +1,9 @@
 import { Bar, Card, Clip, Facts, Figure, Icon, ListPanel, PageSplit, Row, Sheet, StatCell } from '../../components/ui'
 import { formatInt } from '../../lib/format'
-import type { FleetView, LevelTrack, PlayerHouse } from '../../lib/rpc'
+import { useState } from 'react'
+import { worldLevels, type FleetView, type LevelsView, type LevelTrack, type PlayerHouse } from '../../lib/rpc'
+import { useServedRead } from '../../live/useServedRead'
+import { LevelTiles, LevelTray } from '../command/levels/LevelTiles'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { CaptainRows, CaptainTray } from '../../live/YourCaptains'
@@ -162,7 +165,27 @@ function Levels({ player }: { player: PlayerHouse }) {
           {t('you.combat')} · {t('you.noFighting')}
         </p>
       )}
+      <AllLevels />
     </Card>
+  )
+}
+
+/** 0413: EVERY LEVEL OF THE COMPANY, as small tiles under the three bars (the owner's levels raised by doing, docs/LEVELS.md): the same
+ *  read the Levels page asks (`world.levels()`, the same kept answer) and the same tiles, without the line under each. A pressed tile
+ *  opens that level in a tray over the page: her experience, what raises it, what its levels give and the experience table. Nothing
+ *  is drawn until the read lands, and then nothing above it moves: it stands last in the card. */
+function AllLevels() {
+  const t = useT()
+  const read = useServedRead<LevelsView>('levels', () => worldLevels(), { name: 'worldLevels' })
+  const [picked, setPicked] = useState<string | null>(null)
+  const v = read.view
+  if (!v || !v.company) return null
+  return (
+    <div className="mt-4 border-t border-edge pt-3" data-testid="you-all-levels">
+      <h3 className="mb-2 text-t-caption font-semibold text-ink-faint">{t('command.lvAll')}</h3>
+      <LevelTiles card={v.level_skills} selected={picked} onSelect={setPicked} compact />
+      <LevelTray card={v.level_skills} code={picked} onClose={() => setPicked(null)} />
+    </div>
   )
 }
 

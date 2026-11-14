@@ -4171,13 +4171,16 @@ export interface LevelActivity {
 
 /** 0411: what a level gives, read from the rule that applies it (`public.level_benefits`). `level` null = every level.
  *  gift: `n` x the level in Reputation. captain_cap: her captains' level in this track may rise to hers. promote: a captain's
- *  promotion to `grade` asks this level. fleet: one more fleet. title: the title `name`, held with `with` at the same level; `opens` the seas it opens. */
+ *  promotion to `grade` asks this level. fleet: one more fleet. title: the title `name`, held with `with` at the same level; `opens` the seas it opens.
+ *  perk (0413, `public.level_perks`): at this level the benefit `perk` grows by `amount`; `total` is what it is worth from this level on
+ *  (`unit` pct_less / pct_more: per cent; count: a whole number). `word` is the server's English sentence. */
 export type LevelBenefit =
   | { level: null; kind: 'gift'; n: number }
   | { level: null; kind: 'captain_cap' }
   | { level: number; kind: 'promote'; grade: string }
   | { level: number; kind: 'fleet' }
   | { level: number; kind: 'title'; name: string; with: string; opens: string[] }
+  | { level: number; kind: 'perk'; perk: string; unit: 'pct_less' | 'pct_more' | 'count'; word: string; amount: number; total: number }
 
 /** 0411: one level of the company on the Levels page. `kept` record: counted by `public.player_progress` from her whole record
  *  (Trading, Exploration, Combat: no grant rows, `today`, `cap` and `recent` are null). `kept` book: granted by doing
