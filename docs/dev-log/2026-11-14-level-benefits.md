@@ -1,4 +1,4 @@
-# 2026-11-14: a level gives something as it rises (0413)
+# 2026-11-14: a level gives something as it rises (0417)
 
 **State: built, PR open (stacked on #682, the levels, 0411), not deployed.** The design is `docs/LEVELS.md` section 7.
 
@@ -55,7 +55,7 @@ Steps stand at levels 4, 8, 12, 16 and 20 (Routes: 4, 8, 12, 16, 20 between its 
 - `npx tsc -b --noEmit`, eslint on the touched files, `npx vite build`.
 - The migration applied on the local chain (373 restored, 1 applied); self-assert ok in 0.3 s. Wear was proved on a real storm
   piece and a real miles piece.
-- `node scripts/db/proof.mjs 108_level`: 5 of 5. A merchant's prices and cap are the same with the knob on and off. At Supplies
+- `node scripts/db/proof.mjs 113_level`: 5 of 5. A merchant's prices and cap are the same with the knob on and off. At Supplies
   level 20 a company resupplied through the door for 84 d. where the knob-off price is 89 d. The route cap's own trigger refused a
   fourth route at Routes level 7 and kept it at level 8. Ten shares earned 1.00 regard at level 1 and 1.50 at level 20.
 - `tests/levels.tiles.spec.ts` (tile tests at 320, 390, 1280, EN and KO: 6 of 6, now with the steps, Routes, and the You page);
@@ -65,7 +65,7 @@ Steps stand at levels 4, 8, 12, 16 and 20 (Routes: 4, 8, 12, 16, 20 between its 
 
 ## Reads still wanted on production (not run: held by the coordinator)
 
-1. `scripts/ops/harness/levels/before-0413.sql` after 0411 and 0412 are deployed: the ten OLD hunk texts once each. Written from
+1. `scripts/ops/harness/levels/before-0417.sql` after 0411 and 0412 are deployed: the ten OLD hunk texts once each. Written from
    the local world at 0408 + 0411; none of the eight functions is cut by #678 or #681 (their diffs were read), but 0412 is not
    open and was not read.
-2. `scripts/ops/harness/levels/after-0413.sql` after the deploy.
+2. `scripts/ops/harness/levels/after-0417.sql` after the deploy.

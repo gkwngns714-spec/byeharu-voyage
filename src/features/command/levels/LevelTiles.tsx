@@ -114,7 +114,7 @@ export function LevelDetail({ card, skill, titled = true }: { card: LevelSkillsC
   const { nowMs } = useShellState()
   const name = levelName(locale, skill.code, skill.word)
   const every = skill.benefits.map((b) => everyLevelLine(locale, b, name)).filter((x): x is string => x !== null)
-  // 0413: her level's own benefits as they stand now (the served step at her level), or the level each begins at
+  // 0417: her level's own benefits as they stand now (the served step at her level), or the level each begins at
   const now = perksNow(locale, skill.level, skill.benefits)
   const levels = Array.from({ length: card.top }, (_, i) => i + 1)
   return (

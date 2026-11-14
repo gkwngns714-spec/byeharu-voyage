@@ -15,10 +15,10 @@ import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 //   - Supplies says 2 a day at sea on a trip of 100 miles into a port, at most 300 a day; level 2 begins at 25 and gives
 //     Reputation +20; Trading says a fleet at level 3 and a captain's promotion to B at level 5;
 //   - on a phone the level opens in a tray and no tile moves; on a desktop it stands in the middle pane;
-//   - (0413) a level raised by doing lists its own benefit: what it is worth now or the level it begins at, and each step in the
+//   - (0417) a level raised by doing lists its own benefit: what it is worth now or the level it begins at, and each step in the
 //     table with its running figure (Supplies: 1 % less at level 4, 5 % at level 20; Routes: one more route at 8, two at 16);
 //     Trading, counted from her record, lists none of those;
-//   - (0413) the You page shows the same ten tiles, small, under its three bars; a pressed one opens the same level in a tray;
+//   - (0417) the You page shows the same ten tiles, small, under its three bars; a pressed one opens the same level in a tray;
 //   - nothing is cut and the page does not scroll sideways.
 // AND THE HOOK ON THE GLASS (390, EN): after a first voyage that made a port, Supplies holds the experience of its days at sea
 // (2 a day, a whole even number), today's figure is the same, and the newest grant is on the list.
@@ -164,7 +164,7 @@ for (const size of SIZES) {
         await expect(rows.nth(2)).toContainText('100')
         await expect(rows.nth(19)).toContainText('9,025')
         await expect(rows.nth(19)).toContainText(words.gift(200))
-        // 0413: its own benefit: not hers yet at level 1, so it is named with the level it begins at; each step stands in the table
+        // 0417: its own benefit: not hers yet at level 1, so it is named with the level it begins at; each step stands in the table
         await expect(detail.getByTestId('level-detail-perks').locator('li')).toHaveCount(1)
         await expect(detail.getByTestId('level-detail-perks').locator('li')).toHaveAttribute('data-has', 'false')
         await expect(detail.getByTestId('level-detail-perks')).toHaveText(words.perkFrom)
@@ -191,7 +191,7 @@ for (const size of SIZES) {
         await rows.nth(1).scrollIntoViewIfNeeded()
         await shot(page, `levels-trading-table-${size.width}-${lang}`)
 
-        // ROUTES (0413): two benefits; the count of routes steps at 8 and 16, the lap's Reputation at 4
+        // ROUTES (0417): two benefits; the count of routes steps at 8 and 16, the lap's Reputation at 4
         if (!wide) await page.getByTestId('tray-close').click()
         await page.getByTestId('levels-routes').click()
         await expect(detail).toHaveAttribute('data-level-code', 'routes')
@@ -203,7 +203,7 @@ for (const size of SIZES) {
         await rows.nth(3).scrollIntoViewIfNeeded()
         await shot(page, `levels-routes-table-${size.width}-${lang}`)
 
-        // THE YOU PAGE (0413): the same ten tiles, small, under the three bars; a pressed one opens the same level in a tray
+        // THE YOU PAGE (0417): the same ten tiles, small, under the three bars; a pressed one opens the same level in a tray
         await page.goto('you')
         await ready(page)
         const all = page.getByTestId('you-all-levels')

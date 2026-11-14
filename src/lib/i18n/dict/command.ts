@@ -113,7 +113,7 @@ export const commandDict = defineDict({
     lvGivePromote: 'Captain promotion to {grade}',
     lvGiveFleet: '+1 fleet',
     lvGiveTitle: 'Title {name}, with {other} {n}',
-    // 0413: a level's own benefit, by its served code; {n} is the served figure it is worth from that level on
+    // 0417: a level's own benefit, by its served code; {n} is the served figure it is worth from that level on
     lvPerkFrom: '{what}: from level {n}',
     lvPerk_supplies_price: 'Supplies cost {n}% less',
     lvPerk_storm_wear: 'Gear wears {n}% less on a storm day',

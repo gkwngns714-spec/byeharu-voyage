@@ -1,6 +1,6 @@
 # LEVELS: many, and each raised by doing
 
-**Status: built in two cuts, 2026-11-14. Migration 0411: the mechanism and ten levels. Migration 0413: a benefit of its own for each of the seven new levels, and the tiles on the You page. Three fight levels are designed and wait (section 5).**
+**Status: built in two cuts, 2026-11-14. Migration 0411: the mechanism and ten levels. Migration 0417: a benefit of its own for each of the seven new levels, and the tiles on the You page. Three fight levels are designed and wait (section 5).**
 
 The owner, 2026-11-14: *"levels we only have trading, exploration, combat. like rs3, i want diverse skills related to this game"* and
 *"with exp table, exp info, with benefits when leveling up, what activity needs done etc."*
@@ -19,7 +19,7 @@ experience, what raises it, what its levels give, and the experience table.
 *"Levels rise by doing. Academy skills are studied. A level never changes what a skill gives."*
 
 They stay two systems. A skill gives stat bonuses and opens hulls and gear. A level gives Reputation, titles, room, captains'
-ceilings and (0413) a small benefit on a figure no skill touches: the PRICE of supplies (a skill has their endurance), the WEAR of
+ceilings and (0417) a small benefit on a figure no skill touches: the PRICE of supplies (a skill has their endurance), the WEAR of
 gear (a skill has storm damage to the hull), the price of a REPAIR (a skill has the build yard's labour), Reputation and favour.
 One figure is shared on purpose: the count of routes, where a Routes level's one or two routes add to the Factorage skill's, in the
 one function both are read in. (Two Academy groups are called Seamanship and Shipwright: no level takes those names.)
@@ -45,7 +45,7 @@ The page prints this table for each level with her own level marked, the next on
 History. Level 2 gives 20, level 20 gives 200; a level taken from 1 to 20 gives 2,090 in all. Reputation buys captain skill steps
 (0355), so every level is worth something a player can spend.
 
-**And each of the seven new levels gives a benefit of its own, at five of its twenty levels** (0413; section 7 has the table). Every
+**And each of the seven new levels gives a benefit of its own, at five of its twenty levels** (0417; section 7 has the table). Every
 benefit the page lists is applied by the server and served from the same rows the server reads.
 
 No pay-to-win: nothing here is bought with real money. No PvP: no level is raised against another player.
@@ -156,7 +156,7 @@ One migration, after the pirate slices land: three rows in `level_skills`, their
 | Smuggling, Piracy for the pirate power | no record of a sale as contraband; Raiding (section 5) covers the attack. |
 | Banking | the bank is not lit (PR 484). Investment covers the shares. |
 
-## 7. The benefits of the seven new levels (0413)
+## 7. The benefits of the seven new levels (0417)
 
 A benefit is a list of STEPS (`public.level_perks`: benefit, level, amount). What it is worth to a company is the sum of the steps
 at or below her level (`public.level_perk`, the one reading). Each multiplies ONE figure in the ONE function that already owns it,
@@ -174,7 +174,7 @@ so what a screen quotes and what a door charges are the same number.
 | Investment | a stake wins more favour with the country | 10 % at 4, 8, 12, 16, 20 | 50 % | `public.invest_for` → `public.regard_gift` (`regard_per_100k` 10) |
 
 - **The old values are all still there.** No knob above was changed. A benefit is its step rows: set an amount, or switch every
-  benefit off at once with `level_perks_on` false (then every figure is exactly what it was before 0413).
+  benefit off at once with `level_perks_on` false (then every figure is exactly what it was before 0417).
 - **A merchant gets none:** she has no experience row, so the reading answers 0 after two index probes.
 - **Not pay-to-win, not PvP.** A better dividend share was judged and left out: a city pays its shareholders pro rata, so one
   company's better share would be another's worse one.
@@ -196,8 +196,8 @@ shows every step at its level with the figure it reaches there.
 | `public.level_xp`, `public.level_book` | a company's experience in a granted level, and every grant (append-only, a chain, the once-ever key) |
 | `public.level_grant(player, activity, units, key)` | THE ONE WRITER: merchant out, switch, rate, key, limit a day, book row, level crossed → Reputation and `LEVEL_UP` |
 | `public.level_arrival(player, voyage)` | one read of the voyage's days; grants Supplies and Weather |
-| `public.level_benefits(code, gift)` | what a level gives, read from the rules that apply it (0413: and the steps of `level_perks`) |
-| `public.level_perks`, `public.level_perk(player, perk)` | 0413: the steps of each benefit, and the one reading of what a benefit is worth to a company now; knob `level_perks_on` |
+| `public.level_benefits(code, gift)` | what a level gives, read from the rules that apply it (0417: and the steps of `level_perks`) |
+| `public.level_perks`, `public.level_perk(player, perk)` | 0417: the steps of each benefit, and the one reading of what a benefit is worth to a company now; knob `level_perks_on` |
 | `public.level_skills_card(player, progress)` | the page's data; `world.levels()` serves it as `level_skills` |
 | knob `level_skills_on` | false stops every grant at once |
 
@@ -207,11 +207,11 @@ A new level is two inserts and one hook line. The page needs no change: it draws
 The client: `src/features/command/levels/LevelTiles.tsx` (tiles, the level's detail, the phone's tray), `src/live/levelWords.ts`
 (names, marks, sentences; the arrival card and History name a level through it).
 
-**Where a player finds them:** Command → Levels (the tiles, whole), and the You page (0413: the same ten tiles, small, under its
+**Where a player finds them:** Command → Levels (the tiles, whole), and the You page (0417: the same ten tiles, small, under its
 three bars; a pressed one opens the same detail in a tray).
 
 ## 9. Reading it after a deploy
 
-`scripts/ops/harness/levels/after-0413.sql` for the benefits (the hooks, the steps, a merchant's price unmoved), and
+`scripts/ops/harness/levels/after-0417.sql` for the benefits (the hooks, the steps, a merchant's price unmoved), and
 `scripts/ops/harness/levels/after-0411.sql` for the levels (one read-only statement each): the hooks in place, the data, the tables' grants, the
 arrivals beat, and per level how many companies hold experience, the top level and the experience granted.

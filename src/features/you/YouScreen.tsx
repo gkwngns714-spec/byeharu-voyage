@@ -170,7 +170,7 @@ function Levels({ player }: { player: PlayerHouse }) {
   )
 }
 
-/** 0413: EVERY LEVEL OF THE COMPANY, as small tiles under the three bars (the owner's levels raised by doing, docs/LEVELS.md): the same
+/** 0417: EVERY LEVEL OF THE COMPANY, as small tiles under the three bars (the owner's levels raised by doing, docs/LEVELS.md): the same
  *  read the Levels page asks (`world.levels()`, the same kept answer) and the same tiles, without the line under each. A pressed tile
  *  opens that level in a tray over the page: her experience, what raises it, what its levels give and the experience table. Nothing
  *  is drawn until the read lands, and then nothing above it moves: it stands last in the card. */

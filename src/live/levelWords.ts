@@ -73,7 +73,7 @@ export function everyLevelLine(locale: Locale, b: LevelBenefit, name: string): s
   return translate(locale, 'command.lvGiveCaptains', { name })
 }
 
-/** A step of a level's own benefit (0413), as a sentence with what the benefit is worth from that level on: the served `total`. */
+/** A step of a level's own benefit (0417), as a sentence with what the benefit is worth from that level on: the served `total`. */
 export function perkLine(locale: Locale, b: Extract<LevelBenefit, { kind: 'perk' }>): string {
   return translateMaybe(locale, 'command', `lvPerk_${b.perk}`, { n: formatInt(b.total) }) ?? `${b.word} (${formatInt(b.total)})`
 }
