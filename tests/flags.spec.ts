@@ -191,9 +191,11 @@ for (const [glass, size] of [['1440', WIDE], ['390', PHONE]] as const) {
     await page.screenshot({ path: path.join(SHOTS, `map-${glass}.png`) })
     // …AND AT THE WORLD VIEW (the owner: "beside the name show flag" — PR #198 left them bare there).
     for (let i = 0; i < 14; i++) await page.getByLabel('Zoom out').click()
-    await expect.poll(async () => Number(await page.getByTestId('map-zoom-percent').getAttribute('data-zoom-percent'))).toBe(0)
+    // The phone stops where the world covers its height (chartView.ts maxSpanX, 2026-11-14): about 25 %, a third of the
+    // world across, so it names fewer great harbours than the desk's whole world does.
+    await expect.poll(async () => Number(await page.getByTestId('map-zoom-percent').getAttribute('data-zoom-percent'))).toBeLessThanOrEqual(glass === '390' ? 30 : 0)
     const world = await expectSnugFlags(page)
-    expect(world.flagged, 'at the world view every named harbour a country holds flies its flag').toBeGreaterThanOrEqual(10)
+    expect(world.flagged, 'at the world view every named harbour a country holds flies its flag').toBeGreaterThanOrEqual(glass === '390' ? 3 : 10)
     await page.waitForTimeout(800)
     await page.screenshot({ path: path.join(SHOTS, `map-world-${glass}.png`) })
 

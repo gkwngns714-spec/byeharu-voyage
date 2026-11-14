@@ -10,6 +10,7 @@ import {
   KIND_LOOK,
   kindMarkPath,
   shipKindOf,
+  wideScale,
   type ShipKind,
 } from './glyphs'
 import type { MerchantInk } from './mapTypes'
@@ -380,19 +381,22 @@ function HullGroup({
   kind: ShipKind
 }) {
   const look = KIND_LOOK[kind]
+  // HER SIZE ON THIS GLASS (./glyphs.ts `wideScale`): a ship of yours is always full size; everyone else's
+  // shrinks as a narrow glass takes in more world, so the sea is ships and not a pile of hulls.
+  const frame = unitsPerPx * (kind === 'yours' ? 1 : wideScale(unitsPerPx))
   const marks = hullGroup(fleet.fleet.hulls ?? [], unitsPerPx).map((m) => ({ ...m, halfLength: Math.max(m.halfLength, look.minHalfLength) }))
   // SHE GLIDES BETWEEN MODELS (./underway.ts): the same transform, written on a frame instead of on
   // a render, at ./drift.ts's point for that instant. Her `--night` is NOT rewritten with it — the
   // Sun moves a quarter of a degree a minute, and the group's night value is the model's.
   const group = useRef<SVGGElement | null>(null)
   useUnderway(fleet.voyage ? fleet.fleet.id : null, legOf(fleet), (at) => {
-    group.current?.setAttribute('transform', hullFrame(at ?? fleet.at, fleet.heading, unitsPerPx))
+    group.current?.setAttribute('transform', hullFrame(at ?? fleet.at, fleet.heading, frame))
   })
 
   return (
     <g
       ref={group}
-      transform={hullFrame(fleet.at, fleet.heading, unitsPerPx)}
+      transform={hullFrame(fleet.at, fleet.heading, frame)}
       data-fleet-heading={fleet.heading ?? 0}
       data-hulls={marks.length}
       style={nightStyle(fleet.at, sun)}

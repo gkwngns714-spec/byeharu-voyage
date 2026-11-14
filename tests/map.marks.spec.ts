@@ -127,8 +127,10 @@ async function marksOnSheet(page: Page) {
 
 
 for (const scheme of ['dark'] as const) {
+  // 2026-11-14 (tests/map.look.spec.ts law 2): a PORTRAIT glass no longer reaches the whole world (its loosest view covers the
+  // glass's height), so the world view's law is held on a phone lying on its side and on the desk.
   for (const viewport of [
-    { width: 390, height: 844 },
+    { width: 844, height: 390 },
     { width: 1440, height: 900 },
   ]) {
     test.describe(`all 249 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {

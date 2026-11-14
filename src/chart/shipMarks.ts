@@ -23,6 +23,8 @@
 //    Only at the widest spans (`THIN_TIERS`, measured: docs/dev-log/2026-10-26-ships-stay.md) are
 //    the merchants thinned, and then by a fact about the SHIP alone — `hash(id) % THIN_MOD < n` —
 //    so the same ships are kept wherever their neighbours sail. Never a cell contest on position.
+//    2026-11-14: the same slot also thins by the GLASS (`THIN_DENSITY`): a phone holding an ocean has no
+//    room for every merchant, and the land, your fleets and the battles must be seen first.
 // 3. YOURS ARE NEVER THINNED, AND NEITHER IS A CARGO SHIP (0310) OR A NAVY SHIP (0331): she is the thing a player looks for at the
 //    widest span. 0326: there may be 500 of her, but only the ones at sea are on the chart (tests/map.cargoload.spec.ts).
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
@@ -46,6 +48,8 @@ export function shipMarks(
   fleets: readonly FleetOnChart[],
   traffic: readonly TrafficOnChart[],
   view: ViewBox,
+  /** Chart degrees a CSS pixel on this glass; absent (a spec, a caller with no glass) thins by the span alone. */
+  unitsPerPx?: number,
 ): ShipMarks {
   const padX = view.width * MARGIN
   const padY = view.height * MARGIN
@@ -61,7 +65,7 @@ export function shipMarks(
   const mine: FleetOnChart[] = []
   for (const f of fleets) if (f.dockedAtCode === null && onSheet(f.at.lat, f.at.lon)) mine.push(f)
 
-  const keep = keptOf(view.width)
+  const keep = Math.min(keptOf(view.width), keptAtDensity(unitsPerPx))
   const out: TrafficOnChart[] = []
   for (const t of traffic) {
     if (onSheet(t.at.lat, t.at.lon) && (!KIND_LOOK[shipKindOf(t.merchant)].thin || stableSlot(t.fleet.id) < keep)) out.push(t)
@@ -77,6 +81,27 @@ export const THIN_MOD = 8
 export const THIN_TIERS: readonly { readonly fromSpanDeg: number; readonly keep: number }[] = [
   { fromSpanDeg: 250, keep: 6 },
 ]
+
+/**
+ * AND BY THE GLASS (2026-11-14, owner: *"fix the graphics overall, especially map. it is weird"*). The span
+ * rule above was measured on a wide glass. A phone holding the same water has a third of the room, and every
+ * merchant drawn there buried the land, the capitals, your own fleets and the battles' rings under hulls. So
+ * the merchants are also thinned by DENSITY (degrees a pixel), by the same stable slot, so the ones kept are
+ * the same ships at every pan and none blinks: all of them on a coast, three in eight once a phone
+ * holds 40 degrees, a sea (or a desktop the world), one in eight from a third of a degree a pixel, none from two thirds.
+ * Your fleets, and the kinds a player looks for (cargo, navy, pirate), are never in this rule (`thin`).
+ */
+export const THIN_DENSITY: readonly { readonly fromUnitsPerPx: number; readonly keep: number }[] = [
+  { fromUnitsPerPx: 0.66, keep: 0 },
+  { fromUnitsPerPx: 0.33, keep: 1 },
+  { fromUnitsPerPx: 40 / 390, keep: 3 },
+]
+
+function keptAtDensity(unitsPerPx: number | undefined): number {
+  if (unitsPerPx === undefined || !Number.isFinite(unitsPerPx)) return THIN_MOD
+  for (const t of THIN_DENSITY) if (unitsPerPx >= t.fromUnitsPerPx) return t.keep
+  return THIN_MOD
+}
 
 function keptOf(spanDeg: number): number {
   for (const t of THIN_TIERS) if (spanDeg >= t.fromSpanDeg) return t.keep

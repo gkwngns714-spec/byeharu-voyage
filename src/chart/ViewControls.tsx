@@ -62,7 +62,9 @@ export function ViewControls({
   return (
     <div
       {...CHART_CHROME}
-      className={`pointer-events-auto absolute z-10 ${cornerSlotClass('top-right')} flex flex-col gap-1`}
+      // ONE RIGHT EDGE (2026-11-14): everything in the column ends on the glass's own inset. The percent used to
+      // stretch to the width of the word under it and the three buttons hung left of both, a ragged stack.
+      className={`pointer-events-auto absolute z-10 ${cornerSlotClass('top-right')} flex flex-col items-end gap-1`}
       data-testid={testId}
     >
       {/* HOW FAR IN YOU ARE (owner, 2026-10-12: *"show me in map how much i zoomed in and zoomed
@@ -74,7 +76,7 @@ export function ViewControls({
           `aria-live="polite"` so it is announced when it changes rather than read out of order,
           and `tabular-nums` so 8% and 86% do not shuffle the column's width as you press. */}
       <div
-        className="rounded-md bg-surface/90 px-1 py-0.5 text-center text-t-caption tabular-nums text-ink-faint backdrop-blur"
+        className="min-w-11 rounded-md bg-surface/90 px-1 py-0.5 text-center text-t-caption tabular-nums text-ink-faint backdrop-blur"
         data-testid="map-zoom-percent"
         data-zoom-percent={zoom}
         aria-live="polite"

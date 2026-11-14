@@ -122,8 +122,14 @@ function Name({
       fontSize={size}
       textAnchor={label.flag ? 'start' : label.anchor}
       dominantBaseline="middle"
-      className={`bv-sun-name-halo stroke-chart-sea font-mono ${TONE[label.tone]}`}
+      // A FLEET OF YOURS KEEPS THE NIGHT SEA'S DARK HALO BY DAY TOO (2026-11-14): her brass on the day sea's blue halo
+      // was the faintest name on the glass, and she is the one a player looks for.
+      className={`${label.tone === 'fleet' ? '' : 'bv-sun-name-halo '}stroke-chart-sea font-mono ${TONE[label.tone]}`}
       strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
+      // ROUND, or the halo's default sharp corners leave a spike past the last stroke of an e, a k or an
+      // r: every name grew a stray dash ("Le Havre-", "Seville-", measured 2026-11-14).
+      strokeLinejoin="round"
+      strokeLinecap="round"
       style={{
         paintOrder: 'stroke',
         letterSpacing: label.spacingEm > 0 ? `${label.spacingEm}em` : undefined,

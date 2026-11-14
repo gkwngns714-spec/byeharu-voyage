@@ -38,6 +38,19 @@ export const MIN_SPAN_X = 1.5
 export const MAX_SPAN_X = CHART_WIDTH
 
 /**
+ * THE LOOSEST VIEW THIS GLASS ALLOWS (owner, 2026-11-14: *"fix the graphics overall, especially map. it is
+ * weird"*). On a glass wider than it is tall that is the whole world, as it always was. On a PORTRAIT glass
+ * (a phone) the whole world across the width is a strip a quarter of the glass tall with nothing above or
+ * below it, which is the weird picture: there the loosest view is the one whose HEIGHT is the world's, pole
+ * to pole, and the rest of the world is a pan east or west away (the sheet has no edge there) and on the
+ * minimap. `clampView` and `zoomAt` both read this, so no gesture, button or fit can pass it.
+ */
+export function maxSpanX(aspect: number): number {
+  if (!Number.isFinite(aspect) || aspect <= 0 || aspect >= 1) return MAX_SPAN_X
+  return Math.max(MIN_SPAN_X, Math.min(MAX_SPAN_X, CHART_HEIGHT * aspect))
+}
+
+/**
  * THE WIDE SHEET'S TWO RUNGS, IN DEGREES OF SPAN — not in pixels per degree (owner row 125).
  *
  * The first cut keyed both on `unitsPerPx`, which is a DENSITY, and that is right for deciding how
@@ -216,7 +229,7 @@ export function fitView(bounds: GeoBounds, aspect: number, padding = FIT_PADDING
  * clamped so the view never left [−180, 180], which is what put a wall at the antimeridian.
  */
 export function clampView(view: ChartView, aspect: number): ChartView {
-  const spanX = Math.min(MAX_SPAN_X, Math.max(MIN_SPAN_X, view.spanX))
+  const spanX = Math.min(maxSpanX(aspect), Math.max(MIN_SPAN_X, view.spanX))
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
   const spanY = spanX / safeAspect
 
@@ -247,7 +260,7 @@ export function zoomAt(view: ChartView, aspect: number, factor: number, u: numbe
   const anchorX = before.x + u * before.width
   const anchorY = before.y + v * before.height
 
-  const spanX = Math.min(MAX_SPAN_X, Math.max(MIN_SPAN_X, view.spanX / factor))
+  const spanX = Math.min(maxSpanX(aspect), Math.max(MIN_SPAN_X, view.spanX / factor))
   const safeAspect = Number.isFinite(aspect) && aspect > 0 ? aspect : 1
   const spanY = spanX / safeAspect
 

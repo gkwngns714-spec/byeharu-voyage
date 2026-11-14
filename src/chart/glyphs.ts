@@ -244,6 +244,9 @@ export const GLYPH = {
    */
   dotHitRadius: TOUCH_TARGET_PX / 2,
   labelSize: 10.5,
+  /** A STOP ON A PRESSED SHIP'S PATH OR A PLANNED ROUTE (./ShipPathLayer.tsx): the numbered disc's radius.
+   *  Here because two files read it: the layer draws it, and ./ChartCanvas.tsx keeps every name off it. */
+  pathStopDiscPx: 8,
   /** A GREAT harbour's name (row 90): one size up from the rest, so the marks' hierarchy reaches
    *  the names. Below `seaNameSize`'s spaced water type so a port never reads as a sea. */
   greatLabelSize: 12,
@@ -1036,13 +1039,40 @@ export function harbourLightStrength(sizeTier: number): number {
   return (t - 1) / 4
 }
 
+/**
+ * THE DENSITY SCALE — how big a mark that is a PICTURE (a hull, a harbour's light, the shallows) is drawn
+ * on this glass, 1 down to `WIDE_SCALE.floor` (owner, 2026-11-14: *"fix the graphics overall, especially
+ * map. it is weird"*).
+ *
+ * THE FAULT IT ENDS. Every one of those marks had one size in pixels at every zoom. That is right while
+ * the chart looks at a coast and wrong once it looks at the world: on a 390 px phone the whole world is
+ * 0.92 degrees a pixel, so a 14 px hull was 13 degrees long (bigger than Spain), 60 harbour lights 14 px
+ * wide fused into one cream blot over Europe, and the 40 px shallows made a blue tube of every coast.
+ * A 1280 px glass showing the same world has three times the room and did not have the fault, which is
+ * why the scale reads the DENSITY (degrees a pixel) and not the span: the same water on a wide glass
+ * keeps its marks.
+ *
+ * THE RULE. Full size while a phone holds 20 degrees or less (a coast), then falling evenly on the zoom's
+ * own (log) scale to the floor at the whole world on that phone: 0.83 at 45 degrees (a sea), 0.69 at 90,
+ * 0.54 at 180. A 1280 px glass reaches 0.72 at the whole world and no lower. One function, read by ./FleetsLayer.tsx (the merchants' hulls and their lamps),
+ * the harbour lights below and ./CoastlineLayer.tsx (the shallows): nothing else may shrink a mark.
+ * What is NOT scaled, on purpose: a fleet of yours (she is the thing you look for), a harbour's dot and
+ * triangle, a battle's ring and every name: those are signs, and a sign keeps its size.
+ */
+export const WIDE_SCALE = { fromUnitsPerPx: 20 / 390, toUnitsPerPx: 360 / 390, floor: 0.4 } as const
+export function wideScale(unitsPerPx: number): number {
+  if (!Number.isFinite(unitsPerPx) || unitsPerPx <= WIDE_SCALE.fromUnitsPerPx) return 1
+  const t = Math.min(1, Math.log(unitsPerPx / WIDE_SCALE.fromUnitsPerPx) / Math.log(WIDE_SCALE.toUnitsPerPx / WIDE_SCALE.fromUnitsPerPx))
+  return 1 - (1 - WIDE_SCALE.floor) * t
+}
+
 /** The halo radius for a harbour light, in chart units. The brightest tier gets the widest bloom;
  *  `harbourLightTierSpread` is how much of the halo is tier-dependent and how much every harbour
  *  gets for free — a tier-1 spark is still a light, just a small one. */
 export function harbourLightHalo(sizeTier: number, unitsPerPx: number): number {
   const base = GLYPH.portDotRadius * GLYPH.harbourLightHaloScale
   const lit = 1 - GLYPH.harbourLightTierSpread + GLYPH.harbourLightTierSpread * harbourLightStrength(sizeTier)
-  return base * lit * unitsPerPx
+  return base * lit * unitsPerPx * wideScale(unitsPerPx)
 }
 
 /**
@@ -1054,5 +1084,5 @@ export function harbourLightHalo(sizeTier: number, unitsPerPx: number): number {
 export function harbourLightGlow(sizeTier: number, unitsPerPx: number): number {
   const base = GLYPH.portDotRadius * GLYPH.harbourLightGlowScale
   const lit = 1 - GLYPH.harbourLightTierSpread + GLYPH.harbourLightTierSpread * harbourLightStrength(sizeTier)
-  return base * lit * unitsPerPx
+  return base * lit * unitsPerPx * wideScale(unitsPerPx)
 }

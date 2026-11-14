@@ -185,8 +185,10 @@ async function openMap(page: Page) {
   await page.waitForTimeout(250)
 }
 
+// 2026-11-14 (tests/map.look.spec.ts law 2): a PORTRAIT glass no longer reaches the whole world (its loosest view covers the
+// glass's height), so "every harbour, at the world view" is held on a phone lying on its side and on the desk.
 for (const viewport of [
-  { width: 390, height: 844 },
+  { width: 844, height: 390 },
   { width: 1440, height: 900 },
 ]) {
   test.describe(`no harbour mark stands in drawn water at ${viewport.width}×${viewport.height}`, () => {

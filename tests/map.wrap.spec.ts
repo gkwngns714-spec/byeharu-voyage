@@ -89,8 +89,10 @@ test('the view centre wraps east–west and the latitude still clamps', () => {
   const panned = panBy({ cx: 170, cy: 0, spanX: 30 }, aspect, -20, 0)
   expect(panned.cx).toBeCloseTo(-170, 9)
   expect(panned.spanX).toBe(30)
-  // The whole world is still the whole world.
-  expect(clampView({ cx: 0, cy: 0, spanX: MAX_SPAN_X }, aspect).spanX).toBe(MAX_SPAN_X)
+  // The whole world is still the whole world on a glass wider than tall; this portrait one stops where the world
+  // covers its height (chartView.ts maxSpanX, 2026-11-14).
+  expect(clampView({ cx: 0, cy: 0, spanX: MAX_SPAN_X }, 1280 / 768).spanX).toBe(MAX_SPAN_X)
+  expect(clampView({ cx: 0, cy: 0, spanX: MAX_SPAN_X }, aspect).spanX).toBeCloseTo(180 * aspect, 9)
 })
 
 const port = (code: string, lat: number, lon: number, tier = 5): MapPort => ({

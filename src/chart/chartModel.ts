@@ -29,7 +29,7 @@ import { project, xOnSheet, type LatLon, type ViewBox } from '../lib/geo'
 import type { MapFleet, MapPort, MapTraffic, MapVoyage } from './mapTypes'
 import { buildTrack, loopD as loopPathD, type TrackPaths } from './route'
 import { driftedPoint, type Drift } from './drift'
-import { headingDeg } from './glyphs'
+import { headingDeg, wideScale } from './glyphs'
 
 /** One fleet, resolved to ink. */
 export interface FleetOnChart {
@@ -492,4 +492,25 @@ export function fleetsAtPort(model: ChartModel, portCode: string): readonly Flee
 /** The fleets bound for a given port. */
 export function fleetsBoundFor(model: ChartModel, portCode: string): readonly FleetOnChart[] {
   return model.fleets.filter((f) => f.dockedAtCode === null && f.destinationCode === portCode)
+}
+
+/**
+ * THE HARBOURS DRAWN AS A QUIET DOT ON THIS GLASS (2026-11-14, owner: *"fix the graphics overall, especially map. it
+ * is weird"*). Past a coast's zoom (./glyphs.ts `wideScale` under 1) a harbour whose NAME the plan did not print keeps
+ * no triangle, no ring, no light and no roads: its full mark said nothing a reader could use, and six or eight of them
+ * with their lamps were one grey smudge along Iberia, the Channel and Gibraltar. Never quiet: a harbour a fleet of
+ * yours is using, and the one that is pressed. At a coast's zoom nothing is quiet; at the globe every city is already
+ * its lit dot (`dotsOnly`) and this rule stands aside. ONE author: ./PortsLayer.tsx and the roads both read this set.
+ */
+export function quietHarbours(
+  full: readonly MapPort[],
+  named: ReadonlySet<string>,
+  portRoles: ReadonlyMap<string, PortRole>,
+  selectedCode: string | null,
+  unitsPerPx: number,
+): ReadonlySet<string> {
+  const quiet = new Set<string>()
+  if (wideScale(unitsPerPx) >= 1) return quiet
+  for (const p of full) if (!named.has(p.code) && !portRoles.has(p.code) && p.code !== selectedCode) quiet.add(p.code)
+  return quiet
 }

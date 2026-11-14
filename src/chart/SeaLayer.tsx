@@ -1,5 +1,5 @@
 import { memo, useId } from 'react'
-import type { ViewBox } from '../lib/geo'
+import { CHART_HEIGHT, type ViewBox } from '../lib/geo'
 import { GLYPH } from './glyphs'
 
 // THE WATER — the ground everything else is measured against, with depth, the day's water where
@@ -108,11 +108,18 @@ export const GraticuleLayer = memo(function GraticuleLayer({ box }: { box: ViewB
   let grid = ''
   // Meridians and parallels are straight and evenly spaced on this projection (lib/geo), so a
   // graticule is a set of chart-unit lines at multiples of the step, clipped to the box.
-  for (let x = Math.ceil(box.x / step) * step; x <= box.x + box.width; x += step) {
-    grid += `M${x} ${box.y}L${x} ${box.y + box.height}`
-  }
-  for (let y = Math.ceil(box.y / step) * step; y <= box.y + box.height; y += step) {
-    grid += `M${box.x} ${y}L${box.x + box.width} ${y}`
+  // ONLY OVER THE WORLD (2026-11-14): north of 90 N and south of 90 S there is no water to rule, and a
+  // phone that holds the whole world has three quarters of its glass out there. The lines ran on and
+  // made an empty grid of it; now the sheet ends where the world does.
+  const top = Math.max(box.y, -CHART_HEIGHT / 2)
+  const foot = Math.min(box.y + box.height, CHART_HEIGHT / 2)
+  if (foot > top) {
+    for (let x = Math.ceil(box.x / step) * step; x <= box.x + box.width; x += step) {
+      grid += `M${x} ${top}L${x} ${foot}`
+    }
+    for (let y = Math.ceil(top / step) * step; y <= foot; y += step) {
+      grid += `M${box.x} ${y}L${box.x + box.width} ${y}`
+    }
   }
   if (grid === '') return null
   return (

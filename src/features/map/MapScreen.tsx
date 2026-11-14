@@ -395,7 +395,7 @@ function Chart({
       const dots = dotPorts(ports, model.portRoles, view, minTier)
       // THE MERCHANTS THE SHEET DREW — the same thinning the picture applied (shipMarks), so a tap
       // can only land on a hull that is actually on the paper.
-      const drawn = shipMarks(model.fleets, model.traffic, view)
+      const drawn = shipMarks(model.fleets, model.traffic, view, unitsPerPx)
       const hit = hitTest(model, tappable, at, GLYPH.hitRadius * unitsPerPx, dots, GLYPH.dotHitRadius * unitsPerPx, drawn.traffic, placedNames())
       // ROUTE MODE: only a harbour answers (no hull, no merchant can steal the tap), and it is the next stop.
       if (routeTap.current) {
@@ -673,12 +673,15 @@ function Chart({
               <p
                 {...CHART_CHROME}
                 data-testid="map-closed-seas-key"
-                className="pointer-events-none flex items-center gap-1 text-t-caption text-ink-muted"
+                // A CHIP LIKE THE REST OF THE CHROME, so the line reads on the day's sand as on the night sea; and the
+                // swatch is the shade itself laid on the sea (a filled sample), never an empty box, which read as an
+                // unticked checkbox.
+                className="pointer-events-none flex h-5 items-center gap-1.5 rounded-chip bg-surface/90 px-2 text-t-caption text-ink-muted"
               >
                 <span
                   aria-hidden
-                  className="inline-block h-3 w-3 rounded-sm border border-ink-faint"
-                  style={{ backgroundColor: CLOSED_SEAS_VEIL_CSS }}
+                  className="inline-block h-2.5 w-4 rounded-[3px] bg-chart-sea ring-1 ring-ink-faint/50"
+                  style={{ backgroundImage: `linear-gradient(${CLOSED_SEAS_VEIL_CSS}, ${CLOSED_SEAS_VEIL_CSS})` }}
                 />
                 {t('map.closedSeasKey')}
               </p>
