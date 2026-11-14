@@ -14,7 +14,9 @@
 -- 0413 (a game day lasts one hour): this proof's instants and amounts are written on the clock as it was before 0413 (the length of a market day, a drift
 -- slot and a population step; the drift job's spread; the rates per real day). So the rate is moved back through its one door, public.clock_set, and the
 -- anchors are emptied, inside this proof's own rolled-back transaction. What 0413 itself does is proof 110's.
-do $c$ begin perform public.clock_set(960, now()); update public.world_config set value = '{}'::jsonb where key in ('clock_anchor', 'market_clock_anchor'); end $c$;
+-- 0420: the door no longer moves drift_spread_runs (it is 15 since 0420, a pace in real minutes; proof 116 holds it), so 0409's 10 is put back here by hand.
+do $c$ begin perform public.clock_set(960, now()); update public.world_config set value = '{}'::jsonb where key in ('clock_anchor', 'market_clock_anchor');
+  update public.world_config set value = to_jsonb(10) where key = 'drift_spread_runs'; end $c$;
 do $p$
 declare
   v_n      int;

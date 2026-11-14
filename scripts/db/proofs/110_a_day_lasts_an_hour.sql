@@ -15,7 +15,7 @@
 -- @pass DH_COUNTERS    the four counters (game day, drift slot, want period, population slot) each read the same count at the switch, the same count for an instant three days back, end their period five times as far off, and come back to the same next start when the clock is moved back at the same instant
 -- @pass DH_REQUEST     an open request keeps its day number: the read serves its end five times as far off as it was (the same number of voyage-days); public.contracts_expire a second before that end leaves it open, a second after it expires it
 -- @pass DH_DIVIDEND    a share stamped six hours before the switch is due, at the first coupon after it, a fifth of what it was due before (the rate per real day is a fifth; the real days it is paid for are the same): not five times, and not nothing
--- @pass DH_RATES       the economy's rates per real time are a fifth and its half-lives five times: navy_upkeep_day, works_coupon_day, pirate_spend_day_pct, population_tax_per_1000; glut_half_life_hours, invested_half_life_hours; drift_spread_runs five times; moved back, each is what it was
+-- @pass DH_RATES       the economy's rates per real time are a fifth and its half-lives five times: navy_upkeep_day, works_coupon_day, pirate_spend_day_pct, population_tax_per_1000; glut_half_life_hours, invested_half_life_hours; moved back, each is what it was; drift_spread_runs NOT moved (0420: a pace in real minutes)
 -- @pass DH_STAYS    what paces a person stays in real time: port_prep_seconds, battle_seconds, attack_cooldown_minutes, gift_cooldown_hours, loot_per_company_day, skill_sp_per_hour, regard_half_life_hours, contract_npc_after_hours; and contract_deadline_days stays a count of market days
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════
 do $p$
@@ -120,8 +120,10 @@ begin
   perform public.clock_set(960, v_dep);
   update public.world_config set value = '{}'::jsonb where key in ('clock_anchor', 'market_clock_anchor');
   select jsonb_object_agg(key, value) into v_old_k from public.world_config where key = any (c_move);
-  if exists (select 1 from unnest(array['game_day_seconds', 'drift_slot_seconds', 'want_period_seconds', 'population_slot_seconds', 'drift_spread_runs', 'glut_half_life_hours', 'invested_half_life_hours']) k
+  -- 0420: drift_spread_runs is a pace in real minutes; the door no longer moves it
+  if exists (select 1 from unnest(array['game_day_seconds', 'drift_slot_seconds', 'want_period_seconds', 'population_slot_seconds', 'glut_half_life_hours', 'invested_half_life_hours']) k
               where (v_new_k ->> k)::numeric <> 5 * (v_old_k ->> k)::numeric)
+     or (v_new_k ->> 'drift_spread_runs')::numeric <> (v_old_k ->> 'drift_spread_runs')::numeric
      or exists (select 1 from unnest(array['navy_upkeep_day', 'works_coupon_day', 'pirate_spend_day_pct', 'population_tax_per_1000']) k
                  where (v_new_k ->> k)::numeric * 5 <> (v_old_k ->> k)::numeric)
      or world.game_day(v_dep) <> floor(extract(epoch from v_dep) / public.wc_num('game_day_seconds'))::int then
