@@ -1,4 +1,4 @@
-# 2026-11-15: a combat ship sails three times as fast as a merchant (0424, owner row 343)
+# 2026-11-15: a combat ship sails three times as fast as a merchant (0422, owner row 343)
 
 **The owner, verbatim:** "make combat ships(pirates, navy) at least 3 times faster than merchants."
 
@@ -62,7 +62,7 @@ The local proof (proof 119, the chain's world): Lisbon-Setubal-Lisbon, 76 nm. Th
   day is settled twice and none is skipped. No ship jumps. (0413 could stretch the whole clock about the instant; a speed for one kind cannot
   move the clock, so this is the exact continuous form for a speed. Most combat passages have 4 to 20 segments, so most of a passage at sea
   speeds up at once.)
-- **Rollback:** `scripts/ops/harness/combat-speed/rollback-0424.sql`, the same door with 1 (continuous too). Or a softer figure, e.g. 3.5.
+- **Rollback:** `scripts/ops/harness/combat-speed/rollback-0422.sql`, the same door with 1 (continuous too). Or a softer figure, e.g. 3.5.
 
 ## Raids and hunts
 
@@ -110,6 +110,6 @@ MB; this slice does not move it).
 
 ## Version
 
-0424 = production head 0421 + 0422/0423 (reserved for the at-sea builder, branch `at-sea`, not yet on GitHub when this was built) + 1. 0424
+0422 = production head 0421 + 0422/0423 (reserved for the at-sea builder, branch `at-sea`, not yet on GitHub when this was built) + 1. 0422
 cuts only `voyage.fleet_speed_at`, which the at-sea builder's navy patrol and rest bodies do not touch. If 0422/0423 do not land first, rename
 this file to the next number before the deploy.

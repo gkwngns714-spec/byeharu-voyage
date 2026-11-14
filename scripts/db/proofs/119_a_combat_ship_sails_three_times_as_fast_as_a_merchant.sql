@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════
--- PROOF 119 - A COMBAT SHIP SAILS THREE TIMES AS FAST AS A MERCHANT  (migration 0424; docs/dev-log/2026-11-15-combat-speed.md)
+-- PROOF 119 - A COMBAT SHIP SAILS THREE TIMES AS FAST AS A MERCHANT  (migration 0422; docs/dev-log/2026-11-15-combat-speed.md)
 --
 --   A navy ship (navy_ship_class, manned from the quay, as public.navy_commission makes one) and a pirate ship (pirate_ship_class, as
 --   public.pirate_commission makes one), and a player's house, put to sea Lisbon to Setubal and back, against the median merchant of this world
@@ -51,7 +51,7 @@ begin
      or has_function_privilege('authenticated', 'public.fleet_speed_mult(uuid)', 'execute')
      or exists (select 1 from public.npc_fleets n where public.fleet_kind(n.fleet_id) = 'MERCHANT' and public.fleet_speed_mult(n.fleet_id) <> 1)
      or exists (select 1 from public.cargo_ships c where public.fleet_speed_mult(c.fleet_id) <> 1) then
-    raise exception 'proof 119 CS_KNOB: the knob is % or a merchant, a cargo ship or a door is not as 0424 left it', v_knob;
+    raise exception 'proof 119 CS_KNOB: the knob is % or a merchant, a cargo ship or a door is not as 0422 left it', v_knob;
   end if;
   raise notice 'PASS: CS_KNOB — fleet_speed_by_kind %; every merchant and cargo ship reads 1; the door and the reader are server-only', v_knob;
 

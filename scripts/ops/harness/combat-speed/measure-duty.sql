@@ -1,4 +1,4 @@
--- COMBAT SPEED (0424), PROD READ 2 of 2: read-only, ONE statement, static. Run only after db-health/gate.sql is ok.
+-- COMBAT SPEED (0422), PROD READ 2 of 2: read-only, ONE statement, static. Run only after db-health/gate.sql is ok.
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/combat-speed/measure-duty.sql
 -- The knobs that pace a combat ship's duty (real-time lies, reach, steps) and where the navy and pirate ships stand now: the navy by mission and
 -- at sea or not, the pirates by mission, at work in a sea (sea_id set: THE position for "who raids" and for the hunt), lying at a haunt, laid up.

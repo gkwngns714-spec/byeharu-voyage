@@ -1,4 +1,4 @@
--- COMBAT SPEED (0424): THE AFTER CHECK. Read-only, ONE statement, static (no function called). Run once right after the deploy and once ~30 minutes
+-- COMBAT SPEED (0422): THE AFTER CHECK. Read-only, ONE statement, static (no function called). Run once right after the deploy and once ~30 minutes
 -- later (the owner's after-check for a change to live play), after db-health/gate.sql:
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/combat-speed/after.sql
 -- WANTED:

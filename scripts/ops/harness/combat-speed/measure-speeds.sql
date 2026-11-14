@@ -1,4 +1,4 @@
--- COMBAT SPEED (0424), PROD READ 1 of 2: read-only, ONE statement, static. Run only after db-health/gate.sql is ok.
+-- COMBAT SPEED (0422), PROD READ 1 of 2: read-only, ONE statement, static. Run only after db-health/gate.sql is ok.
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/combat-speed/measure-speeds.sql
 -- Per kind of fleet (public.fleet_kind's own tests, inlined as plain EXISTS probes: no function is called), over the voyages at sea now:
 --   the knots each departed at (voyages.speed_profile's first segment, the figure voyage.depart froze from voyage.fleet_speed), as
