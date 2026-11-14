@@ -87,11 +87,10 @@ export function TopBar() {
       <Clip cut className="text-t-caption text-ink-muted">
         {/* THE GAME CLOCK — the world's DATE and its hour (owner row 176, 2026-10-20: *"There is
             one right now showing the time only, but I want to see the date, year, months and so
-            on."*). Two clocks, side by side and in that order, because they run at different rates
-            and lib/format/time.ts says why: the date is the calendar clock, which is the day
-            `world.game_day` counts and every served `*_game_days` figure is in; the hour is the
-            game clock the Sun stands on (gameTimeOfDayMs). Neither is read from anywhere new —
-            both are pure functions of THE ONE CLOCK. */}
+            on."*). ONE clock since 0415 (the owner, 2026-11-14: a game day is one real hour): the date
+            turns when the hour passes midnight, and the Sun stands on the same hour
+            (lib/format/time.ts `gameClockDays`, from the served `clock_anchor`). Both are pure
+            functions of THE ONE CLOCK and of the served clock. */}
         {/* The date's word (row 195) is for a wide bar: on a phone it would push the hour out. */}
         <span className="hidden sm:inline">{t('shell.gameDate')} </span>
         <span data-testid="game-date" className="text-ink">

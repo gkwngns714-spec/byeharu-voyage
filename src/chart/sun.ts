@@ -201,9 +201,9 @@ export function daylightRaster(sun: LatLon): Uint8ClampedArray {
   return out
 }
 
-/** How often the picture re-reads the clock. The Sun runs on the GAME clock (GAME_CLOCK_RATE,
- *  120×: a full turn in 12 real minutes, ½° a second), so half a second is a ¼° step for the
- *  harbour lights. The day/night edge itself glides every frame (./DaylightSheet.tsx) — kept by
+/** How often the picture re-reads the clock. The Sun runs on the GAME clock (`gameClockRate()`,
+ *  24× since 0415: a full turn in one real hour, 0.1° a second; it was 120×, ½° a second), so half
+ *  a second is a 0.05° step for the harbour lights. The day/night edge itself glides every frame (./DaylightSheet.tsx) — kept by
  *  the owner's word; since 2026-10-17 a CSS mask moved over composited pictures, so the glide
  *  repaints the mask and never the coast under it. */
 export const SUN_REFRESH_MS = 500

@@ -16,7 +16,7 @@ import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
 import { isWaterAt, navFromServed } from '../src/lib/sea'
 import { haversineNm } from '../src/lib/geo'
-import { TIME_COMPRESSION } from '../src/lib/format'
+import { CLOCK_VOYAGE_DAYS, TIME_COMPRESSION } from '../src/lib/format'
 import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import { fleetCargoByCode } from '../src/domain/fleet'
 import { saleEstimate } from '../src/domain/order'
@@ -167,9 +167,13 @@ test('world.snapshot() carries the whole static world, and not the world secret'
 
   // 0045 x20: the served knob and the client's display mirror are ONE number, asserted equal
   // here so neither can move without the other (the mirror lives in src/lib/format/time.ts).
-  // 0100 handed back the x20 that 0045 took "for faster testing": a voyage-day is 90 real seconds.
-  expect(snap.config.time_compression).toBe(960)
+  // 0100 handed back the x20 that 0045 took "for faster testing"; 0415 (the owner, 2026-11-14: a game day is one
+  // real hour) made it 192: a voyage-day is 450 real seconds and a day of the clock clock_voyage_days of them.
   expect(snap.config.time_compression).toBe(TIME_COMPRESSION)
+  expect(snap.config.clock_voyage_days).toBe(CLOCK_VOYAGE_DAYS)
+  expect((86_400 * Number(snap.config.clock_voyage_days)) / snap.config.time_compression, 'a day of the clock, in real seconds').toBe(3600)
+  expect(typeof snap.config.clock_anchor?.at, 'the clock is anchored at the switch').toBe('string')
+  expect(Number.isFinite(snap.config.clock_anchor?.day)).toBe(true)
   // 0193: 48, so a long passage planned as a chain of legs (0188) can be queued whole (0175). Was 12.
   expect(snap.config.order_queue_max).toBe(48)
   for (const key of [
