@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # bv-deploy.sh <pr> -- deploy a migration PR to prod; merge ONLY if the push landed.
 # The deploy copy is origin/main + the PR's migration files that main lacks (a PR behind main still deploys cleanly).
+# THE GATES (docs/DATABASE_BUDGET.md, 2026-11-15). Before the clock is stopped it REFUSES, nothing pushed, when the PR's `build` check
+# (it runs tests/db.budget.spec.ts) is not green, or when ONE read of scripts/ops/harness/db-health/gate.sql says the beat is slow
+# (mean over 2 s), the database is over its 1,500 MB ceiling, or more than 5 sessions wait on the disk. The override is never silent:
+#   BV_DEPLOY_FORCE=1 BV_DEPLOY_REASON="why" ~/bin/bv-deploy.sh <pr>     (the reason goes into the push log)
+# After the push and the wind it prints the same read ONCE: the after-check. No loops.
 set -u
 mkdir -p ~/bv-push-logs  # push logs live outside the repo
 PR=$1; cd ~/dev/byeharu-voyage && git fetch -q || exit 1
@@ -18,13 +23,38 @@ for v in $(npx --yes supabase@2.120.0 db query --linked "select version from sup
 done
 echo "deploying: $(echo $new | tr ' ' '\n' | xargs -n1 basename | tr '\n' ' ')"
 Q(){ npx --yes supabase@2.120.0 db query --linked "$1" 2>&1; }
+# ── THE GATE (docs/DATABASE_BUDGET.md): before anything is stopped or pushed ──
+LOG=~/bv-push-logs/push-$want.log; : > $LOG
+force=${BV_DEPLOY_FORCE:-0}; reason=${BV_DEPLOY_REASON:-}
+bail(){ cd ~/dev/byeharu-voyage && git worktree remove --force ~/dev/bv-deploy; exit 4; }
+[ "$force" = 1 ] && [ -z "$reason" ] && { echo 'REFUSED: BV_DEPLOY_FORCE=1 needs BV_DEPLOY_REASON="why"'; bail; }
+G=~/dev/bv-deploy/scripts/ops/harness/db-health/gate.sql
+node "$HOME/dev/bv-deploy/scripts/ops/harness/db-health/../read-only.mjs" "$G" || exit 3   # the one judge of "read only"
+gate(){ npx --yes supabase@2.120.0 db query --linked --output-format json -f "$(cygpath -w "$G" 2>/dev/null || echo "$G")" 2>&1; }
+gline(){ echo "$1" | grep -o '"gate_line": *"[^"]*"' | sed 's/.*: *"//; s/"$//'; }
+red=""
+b=$(gh pr view $PR --json statusCheckRollup --jq '[.statusCheckRollup[]|select(.name=="build")|.conclusion][0]')
+[ "$b" = SUCCESS ] || red="the PR's build check is ${b:-missing} (it runs the budget spec tests/db.budget.spec.ts)"
+g=$(gate); echo "$g" > ~/bv-push-logs/gate-$want.log
+echo "GATE before: $(gline "$g")"
+if ! echo "$g" | grep -q '"gate_ok": *true'; then
+  why=$(echo "$g" | grep -o '"gate_why": *"[^"]*"' | sed 's/.*: *"//; s/"$//')
+  red="${red:+$red; }the database gate is red: ${why:-its read failed: $(echo "$g" | tail -2 | cut -c1-200)}"
+fi
+if [ -n "$red" ]; then
+  if [ "$force" = 1 ]; then echo "FORCED past a red gate (BV_DEPLOY_FORCE=1): $red. Reason: $reason" | tee -a $LOG
+  else echo "REFUSED, nothing pushed, the clock untouched: $red. Wait for it to clear (docs/DATABASE_BUDGET.md), or BV_DEPLOY_FORCE=1 BV_DEPLOY_REASON=\"why\"."; bail; fi
+fi
+echo "gate before: $(gline "$g")" >> $LOG
 Q "select public.unwind_the_clock()" >/dev/null
 for i in $(seq 1 30); do r=$(Q "select count(*) n from cron.job_run_details where status in ('running','starting')" | grep -o '"n": [0-9]*' | grep -o '[0-9]*$'); [ "$r" = 0 ] && break; sleep 10; done
-echo Y | npx --yes supabase@2.120.0 db push --linked > ~/bv-push-logs/push-$want.log 2>&1; rc=$?
-grep -viE "^\s*$|new version|recommend updating|Skipping migration|Initialising" ~/bv-push-logs/push-$want.log | tail -3 | cut -c1-400
+echo Y | npx --yes supabase@2.120.0 db push --linked >> $LOG 2>&1; rc=$?
+grep -viE "^\s*$|new version|recommend updating|Skipping migration|Initialising|^gate before|^FORCED" $LOG | tail -3 | cut -c1-400
 head=$(Q "select max(version) head from supabase_migrations.schema_migrations" | grep -o '"head": "[0-9]*"' | grep -o '[0-9]*')
 Q "select public.wind_the_clock()" >/dev/null
 echo "push_rc=$rc head=$head want=$want jobs=$(Q "select count(*) filter (where active) n from cron.job where jobname like 'byeharu-voyage:%'" | grep -o '"n": [0-9]*' | grep -o '[0-9]*$')"
+g=$(gate); echo "GATE after (the one after-check): $(gline "$g") ok=$(echo "$g" | grep -o '"gate_ok": *[a-z]*' | grep -o '[a-z]*$')"
+echo "gate after: $(gline "$g")" >> $LOG
 cd ~/dev/byeharu-voyage && git worktree remove --force ~/dev/bv-deploy
 if [ "$rc" = 0 ] && [ "$head" = "$want" ]; then gh pr merge $PR --squash 2>&1 | tail -1; gh pr merge $PR --squash --auto >/dev/null 2>&1; sleep 5; gh pr view $PR --json state --jq '"merged: "+.state'; else echo "NOT MERGING: push failed or head != $want"; exit 2; fi
 # AFTER THE MERGE, MAIN'S OWN NET (2026-10-25: 0218 merged green on its scoped PR run and turned main red on
