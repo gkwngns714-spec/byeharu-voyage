@@ -73,7 +73,7 @@ const TITLED = [
   ['you', '/you'],
 ] as const
 
-const STATS_FACES = ['Overview', 'News', 'Markets', 'Cities', 'Merchants', 'Me'] as const
+const STATS_FACES = ['Overview', 'News', 'Markets', 'Cities', 'Merchants', 'Ships', 'Me'] as const
 const DESK_FACES = ['Goods', 'City', 'Invest', 'Report', 'Levels'] as const
 
 /** THE ONE DECLARED PLACE FOR A SUB-44 CONTROL — NOW EMPTY (consistency row 33 fixed: the Command
