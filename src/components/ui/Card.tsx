@@ -37,6 +37,13 @@ import { StatCell } from './StatCell'
 /** A custom `data-*` hook a caller may put on a split (a face's own test id, its span). */
 type DataAttrs = { [K in `data-${string}`]?: string | number | boolean | undefined }
 
+// ON A PHONE THE STRIP IS ONE CARD (2026-11-14, the look pass). Its cards are one line each there, and four bordered boxes of one
+// line, a gutter apart, stood at the head of every Stats face: about 280 px of frames before the face's own content. Below `sm` the
+// strip wears the card's surface once and each stat is a line in it, closed by a hairline; from `sm` they are cards, as before.
+const STRIP_PHONE = 'max-sm:rounded-sheet max-sm:border max-sm:border-edge max-sm:bg-surface max-sm:shadow-raise'
+const STRIP_LINE_PHONE =
+  'max-sm:rounded-none! max-sm:border-x-0! max-sm:border-t-0! max-sm:bg-transparent! max-sm:px-0! max-sm:py-3! max-sm:shadow-none! max-sm:last:border-b-0!'
+
 /** THE STAT STRIP: a row of `StatCard`s across the whole page — one column on a phone (each a line), two from 640, four from
  *  1,280 (302 px a card at 1,440: the world's money, nine digits and a coin, is 188 px at 24 px and fits it with its padding). */
 export function StatStrip({
@@ -49,7 +56,11 @@ export function StatStrip({
   'aria-label'?: string
 } & { 'data-testid'?: string }) {
   return (
-    <section className={`grid grid-cols-1 ${PAGE_GAP} sm:grid-cols-2 xl:grid-cols-4 ${className}`} data-stat-strip="" {...rest}>
+    <section
+      className={`grid grid-cols-1 ${PAGE_GAP} max-sm:gap-0! max-sm:px-4 ${STRIP_PHONE} sm:grid-cols-2 xl:grid-cols-4 ${className}`}
+      data-stat-strip=""
+      {...rest}
+    >
       {children}
     </section>
   )
@@ -160,7 +171,7 @@ export function Card({
  *  56 px each and not 84. The figure counts to its new value (`StatCell` → `Counter`). Every other prop is a `StatCell`'s. */
 export function StatCard({ className = '', ...stat }: Omit<ComponentProps<typeof StatCell>, 'look'>) {
   return (
-    <Card compact>
+    <Card compact className={STRIP_LINE_PHONE}>
       <StatCell
         look="stacked"
         className={`max-sm:flex-row max-sm:flex-wrap max-sm:items-baseline max-sm:justify-between max-sm:gap-x-4 ${className}`}

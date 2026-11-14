@@ -177,7 +177,7 @@ function PlaceRow({
           // longest word does not fit beside the figures (a Korean name is one word: 산타크루스데테네리페 at 390 px)
           // the figures stand on the next line, still at the right, instead of the name running under them.
           'flex w-full flex-wrap items-baseline gap-x-3 rounded px-1.5 py-1.5 text-left transition active:scale-[0.99]',
-          on ? 'bg-accent-soft ring-1 ring-accent' : 'hover:bg-surface-1',
+          on ? 'bg-accent-soft ring-1 ring-accent' : 'hover:bg-surface-2',
         ].join(' ')}
         data-testid="cargo-place"
         data-port={port}

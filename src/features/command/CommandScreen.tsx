@@ -160,7 +160,7 @@ export function CommandScreen() {
     // 12-rem cap — for EVERY face, so pressing one never moves the title (the press law). A face taller than the glass scrolls this box.
     <div className="flex h-full min-h-0 flex-col" data-testid="command">
       <header className="flex shrink-0 items-center px-gutter pb-1 pt-2" data-testid="desk-header">
-        <h1 className="min-w-0 text-t-title">
+        <h1 className="min-w-0 text-t-figure">
           <Clip>{t('shell.tab_Trade')}</Clip>
         </h1>
       </header>

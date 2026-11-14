@@ -101,7 +101,7 @@ export function Segmented<T extends string>({
       label={label}
       columns={cols}
       words={words}
-      className={['rounded-control bg-surface-2 p-1', six && !words ? 'sm:grid-cols-6' : '', fill ? 'w-full' : 'w-fit max-w-full', className].filter(Boolean).join(' ')}
+      className={['rounded-control bg-bg/60 p-1 ring-1 ring-inset ring-edge', six && !words ? 'sm:grid-cols-6' : '', fill ? 'w-full' : 'w-fit max-w-full', className].filter(Boolean).join(' ')}
     >
       {segments.map((s) => {
         const on = s.id === value
@@ -112,7 +112,7 @@ export function Segmented<T extends string>({
             type="button"
             aria-selected={on}
             onClick={() => onChange(s.id)}
-            className={`${tileCellClass()} min-w-11 ${on ? 'bg-surface text-ink' : 'text-ink-muted'}`}
+            className={`${tileCellClass()} min-w-11 ${on ? 'bg-surface-2 text-ink shadow-raise' : 'text-ink-muted'}`}
           >
             {s.label}
           </button>

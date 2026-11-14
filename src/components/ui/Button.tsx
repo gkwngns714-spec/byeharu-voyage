@@ -22,13 +22,16 @@ import type { ButtonHTMLAttributes } from 'react'
 // moved — chips are `Chip`, selectable blocks are `Tile` — so that module and its branch are
 // deleted, and this file is the only author of a button's look.
 
-export type ButtonTone = 'primary' | 'secondary' | 'quiet' | 'destructive'
+export type ButtonTone = 'primary' | 'secondary' | 'tonal' | 'quiet' | 'destructive'
 
 const TONE: Record<ButtonTone, string> = {
   // The ONE interactive colour, filled. `text-bg` on it, which §4.4 measured at 9.92 : 1.
   primary: 'bg-accent text-bg hover:bg-accent-hover',
   // A tone step, not a border.
   secondary: 'bg-surface-2 text-ink',
+  // THE ACT ON A TILE (2026-11-14, the look pass): a `secondary` button is `surface-2`, and so is the tile it stands on (a
+  // goods card's Buy and Sell were bare words). The accent wash and the accent word read as a button on every layer.
+  tonal: 'bg-accent-soft text-accent hover:bg-accent/20',
   // Text only. It is a button because it does something, not because it looks like one.
   quiet: 'text-ink-muted hover:text-ink',
   destructive: 'bg-danger text-bg hover:bg-danger-hover',
