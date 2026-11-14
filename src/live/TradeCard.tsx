@@ -157,10 +157,10 @@ export function TradeCard({
           HQ Market at 320 px): Sell stood 21 px past the card, over the next card's Buy. At 8 px it is 48 px (still over the
           44-px reach floor) and two are 104. In every wider card the buttons are the same boxes as before. */}
       <span className="flex min-w-0 items-center gap-2">
-        <Button variant="secondary" className="min-w-0 flex-1 px-2!" onClick={() => onBuy(r.code)} disabled={buyDead} data-testid="trade-buy">
+        <Button variant="tonal" className="min-w-0 flex-1 px-2!" onClick={() => onBuy(r.code)} disabled={buyDead} data-testid="trade-buy">
           {t('desk.buy')}
         </Button>
-        <Button variant="secondary" className="min-w-0 flex-1 px-2!" onClick={() => onSell(r.code)} disabled={sellDead} data-testid="trade-sell">
+        <Button variant="tonal" className="min-w-0 flex-1 px-2!" onClick={() => onSell(r.code)} disabled={sellDead} data-testid="trade-sell">
           {t('desk.sell')}
         </Button>
       </span>
@@ -238,7 +238,7 @@ function SaleBlock({
   const cost = sale.cost != null && sale.basis !== 'on_board' ? `${t('desk.cost')} ${formatPriceDelta(-sale.cost)}` : null
   const words = [`${t('desk.bestSale')}: ${sale.pays ? '' : `${t('desk.noGain')} · `}${city} ${formatPriceDelta(sale.profit)}`, time, cost].filter(Boolean).join(' · ')
   return (
-    <button type="button" onClick={() => onPress(sale)} title={words} className={`${block} rounded text-left transition hover:bg-surface-1 active:scale-[0.99]`}>
+    <button type="button" onClick={() => onPress(sale)} title={words} className={`${block} rounded text-left transition hover:bg-surface active:scale-[0.99]`}>
       <span className={top}>{prices}</span>
       <span
         className={`${line} ${sale.pays ? 'text-success' : 'text-danger'}`}

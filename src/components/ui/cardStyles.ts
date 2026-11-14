@@ -27,3 +27,7 @@ export const CARD_HEAD = 'mb-4 border-b border-edge pb-3'
 
 /** The card's title: 16 px on a phone, the card size (20) from 768, semibold ink. */
 export const CARD_TITLE = 'text-t-body font-semibold text-ink md:text-t-card'
+
+/** Two summary rows (Detail.tsx `SummaryRow`) one over the other stand 8 px apart: each is a filled bar. Not inside a `narrow:`
+ *  container, where a row has no fill. The caller that stacks them says so; two side by side (Trade's doors) do not. */
+export const SUMMARY_STACK_CLASS = '[[data-summary-row]+&]:mt-2 narrow:[[data-summary-row]+&]:mt-0'

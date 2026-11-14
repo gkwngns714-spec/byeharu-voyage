@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { DetailPage, Note, SummaryRow } from '../../components/ui'
+import { DetailPage, Note, SUMMARY_STACK_CLASS, SummaryRow } from '../../components/ui'
 import { buildingTier, hasBuilding } from '../../domain/port'
 import { fleetCrew, worstHullFraction } from '../../domain/fleet'
 import { PortInn } from '../../live/PortInn'
@@ -104,8 +104,8 @@ function PortFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null
   const damage = fleet ? formatPct(1 - worstHullFraction(fleet), 0) : undefined
   return (
     <>
-      {yard && <SummaryRow className="min-h-row!" title={buildWord} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
-      {repair && <SummaryRow className="min-h-row!" title={repairWord} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
+      {yard && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={buildWord} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
+      {repair && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={repairWord} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
       {open === 'yard' && (
         <DetailPage title={buildWord} onClose={() => setOpen(null)} data-testid="city-port-yard-page">
           <PageBody>
@@ -136,14 +136,14 @@ function InnFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null 
   return (
     <>
       <SummaryRow
-          className="min-h-row!"
+          className={`min-h-row! ${SUMMARY_STACK_CLASS}`}
         title={t('inn.crew')}
         figure={crew ? formatOfTotal(crew.aboard, crew.max) : undefined}
         onClick={() => setOpen(true)}
         data-testid="city-inn-crew"
       />
       <SummaryRow
-          className="min-h-row!"
+          className={`min-h-row! ${SUMMARY_STACK_CLASS}`}
         title={t('inn.captainsHere')}
         figure={room.view ? formatInt(room.view.present.length) : undefined}
         onClick={() => setOpen(true)}

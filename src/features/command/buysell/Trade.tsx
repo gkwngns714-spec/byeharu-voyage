@@ -373,7 +373,7 @@ export function Trade({ fleet, layout }: { fleet: FleetView; layout: DeskLayout 
                   spare. The goods card is 14 px taller since its best sale's city is printed whole, and the cards' pane must
                   hold a whole row of them (TradeBoard.tsx); with the doors on one line the face still fits the glass without
                   scrolling (tests/onepage.spec.ts), with 22 px in hand. */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="mb-2 grid grid-cols-2 gap-2">
                 {cargoRow}
                 {mapRow}
               </div>

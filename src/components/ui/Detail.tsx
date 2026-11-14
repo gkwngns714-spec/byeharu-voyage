@@ -58,12 +58,16 @@ export function SummaryRow({
   // THE ROW IS A WRAPPING LINE ON EVERY GLASS: the title takes what the figure and the word leave (never under its longest word, never
   // over its own width, so the figure still hugs it), and where its longest word does not fit beside them (two rows side by side on a
   // phone: 187 px each on Trade) the word and the chevron stand on the next line, at the right, instead of the row running off the glass.
+  // THE ROW IS A BAR YOU CAN SEE (2026-11-14, the look pass). Its fill was `surface`, the card's own tone: inside a card (the Inn, the
+  // Port) the bar was invisible and its 12-px inset read as a row out of line with the card's title and with every plain row. It is
+  // `surface-2` now, the tone of every pressable inset, so it is a bar on the sea and in a card alike (two in a stack: `SUMMARY_STACK_CLASS`, cardStyles.ts).
+  // Inside a `narrow:` container the row has no inset and no fill, as before.
   return (
     <button
       type="button"
       onClick={onClick}
       data-summary-row=""
-      className={`flex min-h-11 w-full flex-wrap items-center justify-between gap-x-3 rounded-control bg-surface px-3 py-2 text-left transition hover:bg-surface-2 narrow:relative narrow:flex-wrap narrow:content-center narrow:justify-start narrow:gap-y-0 narrow:px-0 narrow:pr-6 ${className}`}
+      className={`flex min-h-11 w-full flex-wrap items-center justify-between gap-x-3 rounded-control bg-surface-2 px-3 py-2 text-left transition hover:bg-edge narrow:bg-transparent narrow:relative narrow:flex-wrap narrow:content-center narrow:justify-start narrow:gap-y-0 narrow:px-0 narrow:pr-6 ${className}`}
       {...rest}
     >
       <span

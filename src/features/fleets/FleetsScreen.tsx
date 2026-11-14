@@ -236,8 +236,8 @@ function FleetRow({
          the wide glass); when they do not, the where line drops UNDER the name and the name is whole. */
       label={
         <span className="flex flex-wrap items-baseline justify-between gap-x-3">
-          <Clip className="max-w-full">{fleet.name}</Clip>
-          <span className="min-w-0 max-w-full text-t-body text-ink">{where}</span>
+          <Clip className="max-w-full text-t-body font-semibold">{fleet.name}</Clip>
+          <span className="min-w-0 max-w-full text-t-label text-ink-muted">{where}</span>
         </span>
       }
       chevron
