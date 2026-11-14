@@ -36,7 +36,7 @@ import { portName } from './statsFaces'
 
 type View = 'navy' | 'homes'
 
-export function ShipsFace() {
+export function FleetsByKindFace() {
   const t = useT()
   const read = useLiveRead<StatsFleets>('stats:fleets', worldStatsFleets, '', true)
   const v = read.view
