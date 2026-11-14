@@ -70,8 +70,6 @@ import {
   type MapPort,
   type MapSelection,
   type PathStop,
-  useClosedSeasVeil,
-  CLOSED_SEAS_VEIL_CSS,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
 import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter } from '../../components/ui'
@@ -246,12 +244,12 @@ function Chart({
   const fleets = useMemo(() => armadaMarks(mapFleetsOf(fleetViews), armadaList), [fleetViews, armadaList])
   const [selection, setSelection] = useState<MapSelection>(null)
 
-  // THE SEAS CLOSED TO THE FLEET IN HAND (docs/SEA_CONDITIONS_AND_REGIONS.md C3): shaded on the chart while the sea
-  // conditions bite. Which seas is the server's verdict (useFleetSeas), which cells its zone raster (0396).
+  // THE SEAS, AS THE FLEET IN HAND MEETS THEM (useFleetSeas): which sea a pressed place lies in, and whether it is
+  // closed to her. The chart itself does NOT shade the closed seas (owner, 2026-11-14: "north pacific ocean, south
+  // pacific ocean color, square, not in sync"): the shade was the server's zone raster, squares of a second colour
+  // on the water. The sea is one colour; a closed sea is said in words where it is pressed and on the Seas face.
   const seas = useFleetSeas()
   const seaCells = useSeaZoneCells(seas.bite && seas.judged)
-  const veil = useClosedSeasVeil(seaCells, seas.closed)
-  const closedSeas = useMemo(() => (veil ? { url: veil, count: seas.closed.size } : null), [veil, seas.closed])
 
   // HER WHOLE PATH WHEN ONE OF YOURS IS PRESSED (owner row 225): the leg she is on is her track; the queued stops
   // after it, or her standing route's lap, are drawn as the planned course with each stop numbered.
@@ -615,7 +613,6 @@ function Chart({
           portFlags={portFlags}
           islets={backdrop.islets}
           fights={fights}
-          closedSeas={closedSeas}
           selection={selection}
           plannedD={routeView ? routeD : pathD}
           pathStops={routeView ? routeStops : shipPath.stops}
@@ -665,27 +662,9 @@ function Chart({
           testId="map-view-controls"
         />
 
-        {(zoomed || backdrop.error || closedSeas) && (
+        {(zoomed || backdrop.error) && (
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
             {backdrop.error && <p className="text-t-caption text-ink-faint">{t('map.noCoast')}</p>}
-            {/* THE KEY TO THE SHADE: one line, only while a sea is shaded for the fleet in hand. */}
-            {closedSeas && (
-              <p
-                {...CHART_CHROME}
-                data-testid="map-closed-seas-key"
-                // A CHIP LIKE THE REST OF THE CHROME, so the line reads on the day's sand as on the night sea; and the
-                // swatch is the shade itself laid on the sea (a filled sample), never an empty box, which read as an
-                // unticked checkbox.
-                className="pointer-events-none flex h-5 items-center gap-1.5 rounded-chip bg-surface/90 px-2 text-t-caption text-ink-muted"
-              >
-                <span
-                  aria-hidden
-                  className="inline-block h-2.5 w-4 rounded-[3px] bg-chart-sea ring-1 ring-ink-faint/50"
-                  style={{ backgroundImage: `linear-gradient(${CLOSED_SEAS_VEIL_CSS}, ${CLOSED_SEAS_VEIL_CSS})` }}
-                />
-                {t('map.closedSeasKey')}
-              </p>
-            )}
             {zoomed && (
               <Minimap
                 model={model}

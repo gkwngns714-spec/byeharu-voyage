@@ -77,8 +77,6 @@ export const mapDict = defineDict({
     loadShips: 'Ships',
     findFleets: 'Find fleets',
     noCoast: 'no coastline',
-    // the key to the chart's shade (the seas closed to the fleet in hand, chart/ClosedSeasLayer)
-    closedSeasKey: 'Closed seas',
     overview: 'Whole world. Tap a place to look.',
     showPanel: 'Show panel',
     openSea: 'Open sea',
@@ -212,7 +210,6 @@ export const mapDict = defineDict({
     loadShips: '배',
     findFleets: '선단 찾기',
     noCoast: '해안선 없음',
-    closedSeasKey: '닫힌 바다',
     overview: '세계 전체. 누르면 그곳으로.',
     showPanel: '패널 열기',
     openSea: '난바다',

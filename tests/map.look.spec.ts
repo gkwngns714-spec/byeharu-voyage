@@ -344,32 +344,15 @@ for (const lang of ['en', 'ko'] as const) {
     test.describe(`the closed seas and the chrome at ${glass.tag} px, ${lang}`, () => {
       test.use({ viewport: { width: glass.width, height: glass.height }, hasTouch: true, deviceScaleFactor: 2, locale: lang === 'ko' ? 'ko-KR' : 'en-US' })
 
-      test('the shade lies under every mark and name, and nothing on the glass covers anything else on it', async ({ page, request, baseURL }) => {
+      test('no shade on the water, and nothing on the glass covers anything else on it', async ({ page, request, baseURL }) => {
         test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
         test.setTimeout(600_000)
         await serveLitSeas(page)
         await openMap(page, lang)
-        const veil = page.getByTestId('map-closed-seas').first()
-        await expect(veil).toBeAttached({ timeout: 120_000 })
-
-        // (5a) the shade is painted before the harbours, the hulls, the rings and the names: under all of them
-        const order = await page.evaluate(() => {
-          const shade = document.querySelector('[data-testid="map-closed-seas"]')!
-          const after = (sel: string) => [...document.querySelectorAll(sel)].every((e) => (shade.compareDocumentPosition(e) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)
-          return {
-            first: shade.parentElement?.firstElementChild === shade,
-            ports: after('[data-testid="map-ports"]'),
-            fleets: after('[data-testid="map-fleets"]'),
-            rings: after('[data-testid="map-fight-rings"]'),
-            names: after('[data-testid="map-labels"]'),
-            waters: after('[data-testid="map-sea-names"]'),
-          }
-        })
-        expect(order).toEqual({ first: true, ports: true, fleets: true, rings: true, names: true, waters: true })
-
-        // (5b) its key is a filled sample of the shade, not an empty box
-        const swatch = await page.getByTestId('map-closed-seas-key').locator('span').first().evaluate((e) => getComputedStyle(e).backgroundImage)
-        expect(swatch).toContain('gradient')
+        // the sea is one colour: no shade on the water and no key for one (owner, 2026-11-14)
+        await page.waitForTimeout(3000)
+        await expect(page.getByTestId('map-closed-seas')).toHaveCount(0)
+        await expect(page.getByTestId('map-closed-seas-key')).toHaveCount(0)
 
         // (5c) the chrome, with the fleets list open and the chart pulled back so the minimap is up
         await press(page, 'out', 2)
@@ -377,7 +360,7 @@ for (const lang of ['en', 'ko'] as const) {
         await expect(page.getByTestId('map-fleet-row').first()).toBeVisible()
         await expect(page.getByTestId('map-minimap')).toBeVisible()
         const chrome = await page.evaluate(() =>
-          ['map-fleets-corner', 'map-view-controls', 'map-closed-seas-key', 'map-minimap'].map((id) => {
+          ['map-fleets-corner', 'map-view-controls', 'map-minimap'].map((id) => {
             const r = document.querySelector(`[data-testid="${id}"]`)!.getBoundingClientRect()
             return { x: r.x, y: r.y, w: r.width, h: r.height, name: id }
           }),
