@@ -8,7 +8,7 @@
     "url": "https://www.wikidata.org/",
     "fetchedAt": "2026-08-18T08:40:20.399Z"
   },
-  "count": 249,
+  "count": 254,
   "ports": [
     {
       "id": "acapulco",
@@ -7061,6 +7061,140 @@
       "source": {
         "wikidata": null,
         "enwiki": "Djerba"
+      }
+    },
+    {
+      "id": "midway",
+      "name": "Midway",
+      "localName": "Pihemanu",
+      "country": "US",
+      "countryName": "United States",
+      "lat": 28.21,
+      "lon": -177.37,
+      "sea": "north-pacific",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Pihemanu",
+        "Middlebrook Islands"
+      ],
+      "goods": [
+        "tapa-cloth",
+        "pandanus-mats",
+        "sea-cucumber",
+        "shark"
+      ],
+      "notes": "An atoll near the middle of the North Pacific, unknown to Europeans in the era; included as the pirates' North Pacific haven (migration 0410), outside the 1500-1650 record.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Midway Atoll"
+      }
+    },
+    {
+      "id": "pitcairn",
+      "name": "Pitcairn",
+      "localName": "Pitkern",
+      "country": "PN",
+      "countryName": "Pitcairn Islands",
+      "lat": -25.07,
+      "lon": -130.1,
+      "sea": "south-pacific",
+      "region": "oceania",
+      "tier": 3,
+      "historicalNames": [
+        "Pitcairn Island"
+      ],
+      "goods": [
+        "barkcloth",
+        "kumara",
+        "harakeke",
+        "abalone"
+      ],
+      "notes": "A lone volcanic island near the middle of the South Pacific, settled by Polynesians and empty again by the era; included as the pirates' South Pacific haven (migration 0410), outside the 1500-1650 record.",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Pitcairn Island"
+      }
+    },
+    {
+      "id": "tristan",
+      "name": "Tristan",
+      "localName": "Tristão da Cunha",
+      "country": "SH",
+      "countryName": "Saint Helena, Ascension and Tristan da Cunha",
+      "lat": -37.07,
+      "lon": -12.31,
+      "sea": "south-atlantic",
+      "region": "west-africa",
+      "tier": 3,
+      "historicalNames": [
+        "Tristan da Cunha",
+        "Ilha de Tristão da Cunha"
+      ],
+      "goods": [
+        "yams",
+        "millet",
+        "ochre",
+        "plantains"
+      ],
+      "notes": "The most remote island of the South Atlantic, sighted by Tristão da Cunha in 1506 and left unsettled; included as the pirates' South Atlantic haven (migration 0410).",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Tristan da Cunha"
+      }
+    },
+    {
+      "id": "flores",
+      "name": "Flores",
+      "localName": "Flores",
+      "country": "PT",
+      "countryName": "Portugal",
+      "lat": 39.45,
+      "lon": -31.13,
+      "sea": "north-atlantic",
+      "region": "atlantic-isles",
+      "tier": 3,
+      "historicalNames": [
+        "Ilha das Flores",
+        "Santa Cruz das Flores"
+      ],
+      "goods": [
+        "canary-sack",
+        "archil-lichen",
+        "grapes",
+        "sugar-cane"
+      ],
+      "notes": "The westernmost island of the Azores, where English and French corsairs lay in wait for the Indies fleets (the Revenge fought off Flores in 1591); the pirates' North Atlantic haven (migration 0410).",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Flores Island (Azores)"
+      }
+    },
+    {
+      "id": "diego-garcia",
+      "name": "Diego Garcia",
+      "localName": "Diego Garcia",
+      "country": "IO",
+      "countryName": "British Indian Ocean Territory",
+      "lat": -7.31,
+      "lon": 72.41,
+      "sea": "indian-ocean",
+      "region": "western-india",
+      "tier": 3,
+      "historicalNames": [
+        "Dom Garcia",
+        "Chagos"
+      ],
+      "goods": [
+        "toddy",
+        "zebu-cattle",
+        "sea-cucumber",
+        "shark"
+      ],
+      "notes": "The great atoll of the Chagos, near the middle of the Indian Ocean, charted by the Portuguese in the 1500s and left empty; the pirates' Indian Ocean haven (migration 0410).",
+      "source": {
+        "wikidata": null,
+        "enwiki": "Diego Garcia"
       }
     }
   ]

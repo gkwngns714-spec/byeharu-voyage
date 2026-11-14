@@ -323,6 +323,12 @@ const PORT_CODES = {
   'lingga': 'LGA',
   'goto': 'GOT',
   'djerba': 'DJE',
+  // 0410 (pacific-pirates, 2026-11-14): the pirates' five ocean havens. Authored free codes, first shipped by 0410; never change one.
+  'midway': 'MWY',
+  'pitcairn': 'PTC',
+  'tristan': 'TDC',
+  'flores': 'FLO',
+  'diego-garcia': 'DGA',
 }
 
 const fold = (s) =>
