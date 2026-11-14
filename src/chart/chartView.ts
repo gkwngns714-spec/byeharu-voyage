@@ -30,8 +30,10 @@ export interface ChartView {
 }
 
 /** The tightest zoom the chart allows: 1.5° of longitude across the surface, roughly a harbour
- *  approach. Tighter than that and the 110m coastline is visibly a polygon, which would be
- *  promising detail the data does not have. */
+ *  approach. THIS NUMBER AND THE COAST'S DATA ARE ONE DECISION (2026-11-14): at 1.5° the 110m world
+ *  file is 52 px of error on a phone and 171 on a desktop, so close in the coast is drawn from finer
+ *  tiles (./fineCoastBuild.ts). tests/map.fineCoast.spec.ts (6) fails if this limit is moved past
+ *  what the finest tiles can show; move it only together with the data. */
 export const MIN_SPAN_X = 1.5
 
 /** The loosest: the whole world. */
