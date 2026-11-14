@@ -12,7 +12,7 @@
 -- @pass NPC_NOT_A_WRECK    a calm day takes nothing, a merchant with a hull left is towed as today, a human is left alone
 -- @pass NPC_CARGO_RETURNS  a cargo ship's funds go back to the origin; book closed, purses and funds summed move 0, the fold finds no drift
 -- @pass NPC_CARGO_WAITS    a wreck is not patched by her own step and crown aid cannot load her
--- @pass NPC_BROKE_WAITS    a city under cost and reserve waits: no flow, no hull; REFIT_WAITING once a day; asked again it pays
+-- @pass NPC_BROKE_WAITS    a city under cost and reserve, every other city of her country dry (0415: they pay behind an empty home), waits: no flow, no hull; REFIT_WAITING once a day; asked again it pays
 -- @pass NPC_PAYS_ONCE      paid: origin less, yard more, moved, hull whole, crew from the quay, ready after the wait; a second run pays nothing
 -- @pass NPC_YARD           the yard is not the origin, its own country first; no yard, she waits
 -- @pass NPC_REJOINS        a refitted merchant comes back through her tend and sails; a refitted cargo ship closes her lap, loads and sails after the wait
@@ -403,7 +403,20 @@ begin
   end if;
   -- the other wrecks of this proof are paid for first, and the cargo ship's capital is empty until NPC_REJOINS, so the flows below are this one wreck's
   update public.port_treasury t set ducats = 0 where t.port_id = public.fleet_origin(current_setting('byeharu.proof_cargo')::uuid);
+  -- 0415: and every other city of the cargo ship's country (the payers behind her empty capital), so she waits until NPC_REJOINS as before
+  update public.port_treasury t set ducats = 0, reserve = 0
+   where t.port_id in (select a.port_id from public.port_allegiance a where a.nation_id = public.crown_nation(current_setting('byeharu.proof_cargo')::uuid));
+  insert into public.treasury_flows (port_id, kind, ducats)
+  select a.port_id, 'CROWN_CALL', -public.treasury_balance(a.port_id) from public.port_allegiance a
+   where a.nation_id = public.crown_nation(current_setting('byeharu.proof_cargo')::uuid) and public.treasury_balance(a.port_id) > 0;
   perform public.npc_refit_step(nf.fleet_id, v_now) from public.npc_fleets nf where nf.fleet_id <> v_f and public.npc_wrecked(nf.fleet_id);
+  v_flow := coalesce((select max(id) from public.treasury_flows), 0);
+  -- 0415: behind an empty home her country's capital, then its richest city, pays (public.npc_refit_payer): so EVERY other city of her country is dry here, and she waits on all of them
+  update public.port_treasury t set ducats = 0, reserve = 0
+   where t.port_id <> v_home and t.port_id in (select a.port_id from public.port_allegiance a where a.nation_id = (select pl.nation_id from public.players pl where pl.id = v_pl));
+  insert into public.treasury_flows (port_id, kind, ducats)
+  select a.port_id, 'CROWN_CALL', -public.treasury_balance(a.port_id) from public.port_allegiance a
+   where a.nation_id = (select pl.nation_id from public.players pl where pl.id = v_pl) and a.port_id <> v_home and public.treasury_balance(a.port_id) > 0;
   v_flow := coalesce((select max(id) from public.treasury_flows), 0);
   -- short by one ducat of cost + reserve: she has the cost, not the cost and the reserve
   update public.port_treasury t set ducats = v_cost + 500 - 1, reserve = 500 where t.port_id = v_home;
@@ -626,6 +639,12 @@ begin
   perform voyage.settle(v_f, voyage.day_ends_at(v_v, 1));
   perform set_config('byeharu.proof_sea', '', true);
   update public.port_treasury t set ducats = 0, reserve = 0 where t.port_id = v_home;
+  -- 0415: and every other city of her country (the payers behind an empty home)
+  update public.port_treasury t set ducats = 0, reserve = 0
+   where t.port_id in (select a.port_id from public.port_allegiance a where a.nation_id = (select pl.nation_id from public.fleets f join public.players pl on pl.id = f.player_id where f.id = v_f));
+  insert into public.treasury_flows (port_id, kind, ducats)
+  select a.port_id, 'CROWN_CALL', -public.treasury_balance(a.port_id) from public.port_allegiance a
+   where a.nation_id = (select pl.nation_id from public.fleets f join public.players pl on pl.id = f.player_id where f.id = v_f) and public.treasury_balance(a.port_id) > 0;
   if public.npc_refit_step(v_f) <> 'WAITING' then
     raise exception 'PROOF 30 FAIL: the probe did not wait';
   end if;
