@@ -1853,6 +1853,10 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.lap_start_plan(uuid)',
     'public.lap_start_open(uuid)',
     'public.lap_starts_due()',
+    // 0405: the waiting-asks job (a procedure) and its two steps. Server-only.
+    'public.tick_waiting_asks(boolean, uuid)',
+    'public.waiting_ask_plan(uuid)',
+    'public.waiting_ask_open(uuid, timestamptz)',
     // 0267: the companies' two passes cut at the company, and the quay's tally. Server-only.
     'public.npc_invest_roster(uuid)',
     'public.npc_invest_one(timestamptz, uuid)',
