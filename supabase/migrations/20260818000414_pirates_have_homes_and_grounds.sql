@@ -45,8 +45,12 @@
 --     Before: 0.5 a ship with no cap, so 40 fleets in one sea would have made every day there a raid day (danger 1). Now at most 1.0: a sea with two
 --     or more pirate fleets cruising it has twice its authored danger, never more. The fight itself, the flight, the loot: untouched.
 -- KNOBS: NEW pirate_respawn_minutes 60; pirate_add_minutes 10 (was navy_build_hours 24 h, which stays the navy's); pirate_pressure_max 1.0.
---   CHANGED (the owner ordered the ships; docs/dev-log has the arithmetic): pirate_spend_day_pct 0.005 -> 0.012 (the day's room of a 980 M hoard
---   4.9 M -> 11.8 M: 121 fleets' pay is 7.26 M a day). NOT changed: pirate_max, pirate_min, pirate_hoard_unit (public.pirate_size() is still 0339's).
+--   CHANGED (the owner ordered the ships; docs/dev-log has the arithmetic): pirate_spend_day_pct is MULTIPLIED BY 2.4, whatever stands (it is a rate per real
+--   day that public.clock_set, 0413, moves with the clock: 0.005 on the old clock, 0.001 since 0413, so 0.0024 here; the value it replaces is written into the knob's
+--   description for the rollback). On the one-hour day: the day's room of a 980 M hoard 0.98 M -> 2.35 M a real day; 121 fleets' pay (navy_upkeep_day 12,000) is
+--   1.45 M a real day. Per voyage-day both are what they were designed as on the old clock (room 11.8 M, pay 7.26 M a real day then).
+--   NOT changed: pirate_max, pirate_min, pirate_hoard_unit (public.pirate_size() is still 0339's). REAL-TIME PACING, not moved by the clock: pirate_respawn_minutes,
+--   pirate_add_minutes. NO NEW RATE PER REAL TIME is added here, so nothing is added to the list public.clock_set scales.
 -- NO PLAYER FIGHTS A PLAYER: nothing here touches it. NOTHING IS MINTED: every payment is public.pirate_pay, public.pay_city or a pair of
 --   public.treasury_post rows of the moved kind REFIT. The five purses are 0.
 -- THE RE-CUTS (hunks; each occurs exactly once in the live body and reverses to its pre-image; ACL, volatility, definer, config, owner unmoved):
@@ -76,6 +80,7 @@ declare
   v_n         int;
   v_m         int;
   v_fn_before text;
+  v_pct0      numeric;   -- pirate_spend_day_pct as it stood before this file (the clock's door, 0413, may have moved it)
   v_pir       uuid;
   v_fleet     uuid;
   v_s         text;
@@ -803,8 +808,14 @@ begin
     ('pirate_respawn_minutes', to_jsonb(60), '0414: how long a pirate wreck lies at her home city before she is mended, manned, stored and sails again (public.pirate_reborn).'),
     ('pirate_add_minutes', to_jsonb(10), '0414: the pirates add at most one fleet in this many minutes (public.pirate_add). Before 0414 it was navy_build_hours (24 hours), which stays the navy''s.'),
     ('pirate_pressure_max', to_jsonb(1.0), '0414: the most the pirate fleets cruising one sea add to its pressure (public.pirate_pressure_write: least(this, pirate_pressure x fleets)). 1.0 is at most twice the sea''s authored danger. Before 0414 there was no cap (0.5 a ship; the most ever seen was one ship in a sea).');
-  update public.world_config set value = to_jsonb(0.012), description = description || ' 0414: 0.005 -> 0.012 (the owner ordered 180 more ships; 121 fleets'' pay is 7.26 M a day of a 980 M hoard).'
-   where key = 'pirate_spend_day_pct' and value = to_jsonb(0.005);
+  -- a rate per real day, moved with the clock by public.clock_set (0413): so it is raised RELATIVE to what stands (x 2.4: 0.005 -> 0.012 on the old clock, 0.001 -> 0.0024 on the one-hour day), never typed
+  select (w.value)::text::numeric into v_pct0 from public.world_config w where w.key = 'pirate_spend_day_pct';
+  if v_pct0 is null or v_pct0 <= 0 then
+    raise exception '0414 refuses: pirate_spend_day_pct is % in this world', v_pct0;
+  end if;
+  update public.world_config set value = to_jsonb(round(v_pct0 * 2.4, 6)),
+         description = description || format(' 0414: x 2.4, %s -> %s (the owner ordered 180 more ships: 121 fleets'' pay is navy_upkeep_day a fleet a real day, and the room must hold it; the rollback sets %s back, or this value / 2.4 if the clock has moved since).', v_pct0, round(v_pct0 * 2.4, 6), v_pct0)
+   where key = 'pirate_spend_day_pct';
 
   -- ── 4. THE NEW FUNCTIONS ──
   execute $f$
@@ -1103,7 +1114,7 @@ $h$    'home', (select p.code from public.ports p where p.id = n.home_port),
   end if;
   if not public.pirate_ord_wanted(1) or not public.pirate_ord_wanted(1001) or public.pirate_ord_wanted(999) or public.pirate_ord_wanted(1000)
      or public.wc_num('pirate_pressure_max') <> 1.0 or public.wc_int('pirate_respawn_minutes') <> 60 or public.wc_int('pirate_add_minutes') <> 10
-     or public.wc_num('pirate_spend_day_pct') <> 0.012 then
+     or public.wc_num('pirate_spend_day_pct') <> round(v_pct0 * 2.4, 6) then
     raise exception '0414 self-assert FAIL: the wanted ords or the knobs are not this file''s';
   end if;
 
@@ -1112,7 +1123,7 @@ $h$    'home', (select p.code from public.ports p where p.id = n.home_port),
   begin
     update public.world_config set value = 'true'::jsonb where key in ('pirates_bite', 'city_treasury_enabled') and value is distinct from 'true'::jsonb;
     if public.pirates_on() then
-      update public.port_treasury t set ducats = greatest(t.ducats, 500000000) where t.port_id = public.pirate_capital();
+      update public.port_treasury t set ducats = greatest(t.ducats, 5000000000) where t.port_id = public.pirate_capital();   -- the day's room (pirate_spend_day_pct of the hoard, a fifth of what it was since 0413) must hold a squadron's build: the probe's own hoard, rolled back
       delete from public.pirate_spend_day d where d.day = (v_now at time zone 'UTC')::date;
       select r.ord into v_n from public.pirate_roster r join public.pirate_roster_hulls x on x.ord = r.ord group by r.ord having sum(x.n) = 4 order by r.ord limit 1;
       v_fleet := public.pirate_commission_fleet(v_n, public.refit_yard((select r.hub_port from public.pirate_roster r where r.ord = v_n)), v_now);

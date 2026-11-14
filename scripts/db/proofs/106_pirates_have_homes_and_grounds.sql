@@ -44,7 +44,7 @@ begin
   if not public.pirates_on() or not public.npc_refits_on() then
     raise exception 'PROOF 106 FAIL: the pirates or the refit rule could not be lit in this world';
   end if;
-  update public.port_treasury t set ducats = 900000000 where t.port_id = v_cap;
+  update public.port_treasury t set ducats = 1900000000 where t.port_id = v_cap;   -- the day's room is pirate_spend_day_pct of the hoard (a rate per real day the clock moves, 0413): the scene's hoard is sized so one day's room holds what the scene builds and mends
   update public.pirate_ships set laid_up_at = v_now where laid_up_at is null;   -- the proof's own fleets only are at work
 
   -- PH_BUILT
@@ -123,7 +123,7 @@ begin
      or not exists (select 1 from public.events e where e.kind = 'REFIT_WAITING' and e.player_id = (select player_id from public.pirate_ships where fleet_id = v_f)) then
     raise exception 'PROOF 106 FAIL: with every pirate purse empty she was mended unpaid, or she waits with no row and no event (a silent wreck)';
   end if;
-  update public.port_treasury t set ducats = 900000000 where t.port_id = v_cap;
+  update public.port_treasury t set ducats = 1900000000 where t.port_id = v_cap;   -- the day's room is pirate_spend_day_pct of the hoard (a rate per real day the clock moves, 0413): the scene's hoard is sized so one day's room holds what the scene builds and mends
   perform public.tick_pirates(v_now + interval '7 hours 5 minutes');
   if exists (select 1 from public.ships s where s.fleet_id = v_f and s.durability <= 0) or exists (select 1 from public.npc_refit_waits w where w.fleet_id = v_f) then
     raise exception 'PROOF 106 FAIL: the purse back, the job did not mend her';

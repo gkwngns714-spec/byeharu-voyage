@@ -96,7 +96,7 @@ A roster fleet is built by `public.pirate_commission_fleet`: the hoard pays the 
 | `pirate_respawn_minutes` | none | 60 |
 | `pirate_add_minutes` | `navy_build_hours` 24 h was used | 10 |
 | `pirate_pressure_max` | no cap | 1.0 |
-| `pirate_spend_day_pct` | 0.005 | 0.012 |
+| `pirate_spend_day_pct` | 0.005 on the old clock; 0.001 since 0413 | x 2.4 of what stands: 0.0024 on the one-hour day (0.012 on the old clock) |
 
 `pirate_max` 30, `pirate_min` 4, `pirate_hoard_unit` 100 M are unchanged: `public.pirate_size()` (13 today) still counts only 0339's lone ships. The roster stands beside it.
 
@@ -111,6 +111,26 @@ Hoard 980 M (Port Royal).
 - **The day's room** caps everything Port Royal pays: 0.5 % was 4.9 M, under the pay alone. 1.2 % is 11.8 M: pay 7.26 M, gifts about 2.6 M a day at the worst, the rest for building and refits. The roster fills in about a week, as the room allows.
 - **How long the hoard lasts if raids bring nothing:** it cannot fall faster than 1.2 % a day. At the full draw it is about 680 M after 30 days and half after 58; near day 40 the room falls under the pay and the last fleets go unpaid, sail home and are laid up (0339's rule). It does not reach zero; the pirates shrink.
 - If the navy keeps taking every pirate it meets, refits are the larger bill. Ship 1 alone cost 280,000 a day. The room is the brake: when it is spent, wrecks wait until the next UTC day.
+
+## The money on the one-hour day (0413 landed first; restated 2026-11-14)
+
+The section above was written on the old clock (a voyage-day 90 s). 0413 made a voyage-day 450 s and divided the economy's rates per real day by 5 through its one door, `public.clock_set`: `navy_upkeep_day` 60,000 -> 12,000 and `pirate_spend_day_pct` 0.005 -> 0.001. So this file no longer types 0.012: it **multiplies what stands by 2.4** (0.001 -> 0.0024) and writes the value it replaced into the knob's description for the rollback. Both knobs are already on the door's list, so a later clock move scales them again. This file adds no new rate per real time: `pirate_respawn_minutes` (60) and `pirate_add_minutes` (10) are real-time pacing and stay; `pirate_pressure_max` is not a rate.
+
+| A real day, hoard 980 M | old clock (as designed) | one-hour day |
+|---|---:|---:|
+| the day's room | 11.8 M | 2.35 M |
+| pay of 121 fleets | 7.26 M | 1.45 M |
+| left for building, refits and gifts | 4.5 M | 0.90 M |
+
+Per voyage-day every line is what it was. What does NOT scale is a price paid once: a hull's build cost, a refit, a gift.
+
+- **Building the roster (36.2 M) now takes about 40 real days**, not 8: the room left after pay is a fifth. `pirate_add_minutes` stays 10 real minutes (decided by default: it is a rollout pace), but the room is the brake, not the pace.
+- **A squadron (1,416,000 in one payment) is more than the 0.90 M a day left.** It fits the room only early in a UTC day, and it then takes part of that day's pay room: on a day a squadron is built the fleets paid last go unpaid for the day's last hours, sail home and are laid up until the next UTC day. Nothing is lost or minted, but it is a daily stall for 14 days of the rollout (14 squadrons). **This wants the owner's or the coordinator's decision**: a larger factor than 2.4 during the rollout, or building counted apart from the day's room. Not decided here: the brief fixed 2.4.
+- **Refits** are the same price a wreck. Whether wrecks are rarer per real day depends on the navy's hunt, which fights once a real hour a ship (real-time pacing, not moved by the clock); not measured.
+- **How long the hoard lasts if raids bring nothing:** it cannot fall faster than 0.24 % a real day: about 912 M after 30 real days, half after about 290.
+- 0408's gifts (250,000, at most 18 M a real week for 24 houses) are now more than a week's room (16.5 M): they wait their turn inside it.
+
+The probe of the file and proof 106 size their own hoard (rolled back) so that one day's room holds what they build.
 
 ## Raids: what players and merchants will meet
 

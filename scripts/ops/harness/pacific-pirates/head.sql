@@ -45,8 +45,12 @@
 --     Before: 0.5 a ship with no cap, so 40 fleets in one sea would have made every day there a raid day (danger 1). Now at most 1.0: a sea with two
 --     or more pirate fleets cruising it has twice its authored danger, never more. The fight itself, the flight, the loot: untouched.
 -- KNOBS: NEW pirate_respawn_minutes 60; pirate_add_minutes 10 (was navy_build_hours 24 h, which stays the navy's); pirate_pressure_max 1.0.
---   CHANGED (the owner ordered the ships; docs/dev-log has the arithmetic): pirate_spend_day_pct 0.005 -> 0.012 (the day's room of a 980 M hoard
---   4.9 M -> 11.8 M: 121 fleets' pay is 7.26 M a day). NOT changed: pirate_max, pirate_min, pirate_hoard_unit (public.pirate_size() is still 0339's).
+--   CHANGED (the owner ordered the ships; docs/dev-log has the arithmetic): pirate_spend_day_pct is MULTIPLIED BY 2.4, whatever stands (it is a rate per real
+--   day that public.clock_set, 0413, moves with the clock: 0.005 on the old clock, 0.001 since 0413, so 0.0024 here; the value it replaces is written into the knob's
+--   description for the rollback). On the one-hour day: the day's room of a 980 M hoard 0.98 M -> 2.35 M a real day; 121 fleets' pay (navy_upkeep_day 12,000) is
+--   1.45 M a real day. Per voyage-day both are what they were designed as on the old clock (room 11.8 M, pay 7.26 M a real day then).
+--   NOT changed: pirate_max, pirate_min, pirate_hoard_unit (public.pirate_size() is still 0339's). REAL-TIME PACING, not moved by the clock: pirate_respawn_minutes,
+--   pirate_add_minutes. NO NEW RATE PER REAL TIME is added here, so nothing is added to the list public.clock_set scales.
 -- NO PLAYER FIGHTS A PLAYER: nothing here touches it. NOTHING IS MINTED: every payment is public.pirate_pay, public.pay_city or a pair of
 --   public.treasury_post rows of the moved kind REFIT. The five purses are 0.
 -- THE RE-CUTS (hunks; each occurs exactly once in the live body and reverses to its pre-image; ACL, volatility, definer, config, owner unmoved):
@@ -78,6 +82,7 @@ declare
   v_n         int;
   v_m         int;
   v_fn_before text;
+  v_pct0      numeric;   -- pirate_spend_day_pct as it stood before this file (the clock's door, 0413, may have moved it)
   v_pir       uuid;
   v_fleet     uuid;
   v_s         text;
