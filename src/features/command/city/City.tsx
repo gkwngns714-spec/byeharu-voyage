@@ -7,6 +7,7 @@ import { CityTownHall } from '../../../live/CityTownHall'
 import { PortAcademy } from '../../../live/PortAcademy'
 import { QuayFair } from '../../../live/PortFair'
 import { PortFlag } from '../../../live/PortFlag'
+import { PortGear } from '../../../live/PortGear'
 import { PortInn } from '../../../live/PortInn'
 import { PortPrices } from '../../../live/PortPrices'
 import { PortShipyard } from '../../../live/PortShipyard'
@@ -179,6 +180,7 @@ export function City({ fleet, layout }: { fleet: FleetView; layout: DeskLayout }
           <PortYard portId={port.id} fleet={acting} tier={buildingTier(port, 'building_yard')} />
         )}
         {shown.id === 'academy' && <PortAcademy />}
+        {shown.id === 'gear' && <PortGear fleet={acting} />}
         </ScrollPane>
       </div>
     ),

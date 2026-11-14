@@ -56,7 +56,8 @@
 //   * named items (0159, S15) public.item_city EQUALS the gear generator's Named items' `city`, both
 //                 directions (a Named item is made only in that city's workshop)
 //   * items made nowhere (0184) public.item_unmade EQUALS the gear generator's items written `made: false`
-//                 (the Famous pieces while scripts/build-gear.mjs FAMOUS_MADE is false), both directions
+//                 (the Famous pieces while scripts/build-gear.mjs FAMOUS_MADE is false, and the starter pieces), both directions
+//   * starter pieces (0425) public.starter_gear EQUALS the gear generator's starter pieces and their prices, both directions
 //   * perks, sets, Country lines (0163, S16) public.perks, public.gear_set_bonuses and public.gear_set_names
 //                 EQUAL data/gear.json `perks` / `sets`, and public.item_line the gear generator's Country
 //                 items' `line`, every column, both directions
@@ -447,6 +448,12 @@ function drift(db_, want) {
       'data/gear.generated.json (made: false)')
   }
 
+  // starter pieces (0425) — each one's price, both directions
+  if (want.starterGear) {
+    both(keyed(db_.starterGear, (r) => r.code), keyed(want.starterGear, (r) => r.code), 'starter piece', [['price', 'price', 'price']],
+      'data/gear.generated.json (starter)')
+  }
+
   // merchants of every flag (0167) — the line hull a merchant sails in place of each live class, both directions
   if (want.npcLineHulls) {
     both(keyed(db_.npcLineHulls, (r) => `${r.live}/${r.line}`), keyed(want.npcLineHulls, (r) => `${r.live}/${r.line}`),
@@ -639,6 +646,9 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
   const hasUnmade = (await db.query(`select to_regclass('public.item_unmade') is not null as ok`)).rows[0].ok
   if (!hasUnmade) throw new Error('world-guard: public.item_unmade is missing — the chain no longer reaches 0184, so the items made nowhere cannot be checked')
   db_.itemUnmade = (await db.query(`select item_code as code from public.item_unmade order by 1`)).rows
+  // 0425: the starter pieces sold at every harbour, and each one's price (a world before 0425 has none, and its want is then judged against that)
+  const hasStarter = (await db.query(`select to_regclass('public.starter_gear') is not null as ok`)).rows[0].ok
+  db_.starterGear = hasStarter ? (await db.query(`select item_code as code, price::text as price from public.starter_gear order by 1`)).rows : []
   // 0167: the line hull a merchant sails in place of each live class (S18)
   const hasLineHulls = (await db.query(`select to_regclass('public.npc_line_hulls') is not null as ok`)).rows[0].ok
   if (!hasLineHulls) throw new Error('world-guard: public.npc_line_hulls is missing — the chain no longer reaches 0167, so the merchants of every flag cannot be checked')
@@ -761,6 +771,7 @@ export async function assertWorldMatchesData(db, { log = console.log } = {}) {
     }
     want.itemCity = gear.items.filter((i) => i.city).map((i) => ({ code: i.code, city: i.city }))   // 0159
     want.itemUnmade = gear.items.filter((i) => i.made === false).map((i) => ({ code: i.code }))   // 0184
+    want.starterGear = gear.items.filter((i) => i.starter).map((i) => ({ code: i.code, price: String(i.starter) }))   // 0425
     want.npcLineHulls = ships.merchant.map((m) => ({ live: m.live, line: m.line, class: m.class }))   // 0167
     want.itemUse = [
       ...gear.use.map((u) => ({ code: u.code, trigger: u.trigger ?? 'null', consumes: consumedKey(u.consumes) })),   // 0158

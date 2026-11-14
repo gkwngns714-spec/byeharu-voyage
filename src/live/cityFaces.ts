@@ -55,6 +55,9 @@ export const PORT_FACES = [
   // 0131: the academy's face is the SKILLS screen (docs/SHIPS_AND_SKILLS.md §8 S9) — groups of
   // skills and the training queue; the label is what it shows, as Repair and Build are acts.
   { id: 'academy', building: 'academy', get label() { return t('town.f_academy') } },
+  // 0425 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): the starter gear, sold at EVERY
+  // harbour (no building: fitting needs none), so `building` is null and every harbour turns to it.
+  { id: 'gear', building: null, get label() { return t('town.f_gear') } },
 ] as const satisfies readonly {
   id: string
   /** 0067 — the building this face IS, or null for a face that is not one. */
