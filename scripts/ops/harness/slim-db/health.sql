@@ -107,3 +107,4 @@ select jsonb_build_object(
   'compactor', (select jsonb_build_object('at', at, 'ms', ms, 'houses', receipt->'houses', 'due', receipt->'due', 'left', receipt->'left',
                                           'ms_house', receipt->'ms_house', 'failed', receipt->'failed', 'note', receipt->'note') from cr)
 ) as r;
+commit;
