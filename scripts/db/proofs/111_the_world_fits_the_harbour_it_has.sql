@@ -9,7 +9,7 @@
 -- @pass SD_WANTS   the compactor deletes the city wants past the window, a bounded batch a run: of 5,000 probe rows in periods long past, 2,000 go a run until none is left; the wants of the current period and the one before stay; a delete outside the compactor is refused; with the knob at 0 nothing goes
 -- @pass SD_LAPS    the compactor deletes a merchant's laps past the window, a bounded batch a visit: of 100 probe laps 75 are past both her newest 24 and the 26 hours; 40 go on the first visit (compact_trim_rows 40), 35 on the second, none on the third; her newest 24, the open lap and the lap closed 20 hours ago stay
 -- @pass SD_CITYGOOD the history trim deletes stats_city_good past stats_city_good_keep_days (3): probe rows ten days old go, probe rows two days old stay
--- @pass SD_KNOBS   every amount is a knob with the value 0409 gave it, the compactor's three limits at the values its constants had
+-- @pass SD_KNOBS   the knobs 0409 added that no later file moved hold its values, the compactor's three limits at the values its constants had
 -- ═════════════════════════════════════════════════════════════════════════════════════
 -- 0413 (a game day lasts one hour): this proof's instants and amounts are written on the clock as it was before 0413 (the length of a market day, a drift
 -- slot and a population step; the drift job's spread; the rates per real day). So the rate is moved back through its one door, public.clock_set, and the
@@ -33,13 +33,15 @@ declare
   v_at     timestamptz := now() - interval '3650 days';
 begin
   -- ── SD_KNOBS ──
-  if public.wc_int('drift_spread_runs') <> 10 or public.wc_int('city_wants_keep_periods') <> 10 or public.wc_int('npc_route_lap_keep') <> 24
-     or public.wc_int('npc_route_lap_keep_hours') <> 26 or public.wc_int('compact_trim_rows') <> 2000 or public.wc_int('compact_budget_ms') <> 8000
-     or public.wc_int('compact_hold_ms') <> 200 or public.wc_int('compact_batch_max') <> 25 or public.wc_int('stats_city_good_keep_days') <> 3
+  -- (0416 moved three of 0409's knobs: npc_route_lap_keep 24 -> 10, npc_route_lap_keep_hours 26 -> 0, stats_city_good_keep_days 3 -> 30. The scenes
+  --  below that read them set 0409's values themselves; proof 112 holds 0416's.)
+  if public.wc_int('drift_spread_runs') <> 10 or public.wc_int('city_wants_keep_periods') <> 10
+     or public.wc_int('compact_trim_rows') <> 2000 or public.wc_int('compact_budget_ms') <> 8000
+     or public.wc_int('compact_hold_ms') <> 200 or public.wc_int('compact_batch_max') <> 25
      or public.wc_int('stats_city_good_fine_hours') <> 26 or public.wc_int('npc_retention_hours') <> 3 then
     raise exception 'SD_KNOBS: a knob is not at the value 0409 gave it';
   end if;
-  raise notice 'PASS: SD_KNOBS drift_spread_runs 10, city_wants_keep_periods 10, npc_route_lap_keep 24 / 26 h, compact_trim_rows 2000, compact_budget_ms 8000, compact_hold_ms 200, compact_batch_max 25, stats_city_good_keep_days 3, stats_city_good_fine_hours 26, npc_retention_hours 3';
+  raise notice 'PASS: SD_KNOBS drift_spread_runs 10, city_wants_keep_periods 10, compact_trim_rows 2000, compact_budget_ms 8000, compact_hold_ms 200, compact_batch_max 25, stats_city_good_fine_hours 26, npc_retention_hours 3';
 
   -- ── SD_TURN ──
   select count(*) into v_ports from public.ports;
@@ -143,6 +145,8 @@ begin
   update public.standing_route_laps set closed_at = null where route_id = v_route and lap_no = 1000100;
   update public.standing_routes set lap_no = 1000100, lap_id = (select l.id from public.standing_route_laps l where l.route_id = v_route and l.lap_no = 1000100) where id = v_route;
   update public.world_config set value = to_jsonb(40) where key = 'compact_trim_rows';
+  update public.world_config set value = to_jsonb(24) where key = 'npc_route_lap_keep';         -- 0409's rule (0416 made it 10 and no hours)
+  update public.world_config set value = to_jsonb(26) where key = 'npc_route_lap_keep_hours';
   v_s := '';
   for v_n in 1 .. 3 loop
     perform public.npc_compact_houses(array[v_house], v_at);
@@ -162,6 +166,7 @@ begin
   insert into public.stats_city_good (port_id, good_id, slot, at, mid, stock, stock_target, sold, bought, sold_ducats, bought_ducats)
   select v_port, v_good, -g, now() - case when g <= 50 then interval '10 days' else interval '2 days' end, 1, 1, 1, 0, 0, 0, 0
     from generate_series(1, 100) g;
+  update public.world_config set value = to_jsonb(3) where key = 'stats_city_good_keep_days';   -- 0409's value (0416 made it 30)
   v_n := public.history_trim(now());
   select count(*) filter (where s.slot >= -50), count(*) filter (where s.slot < -50) into v_n, v_m
     from public.stats_city_good s where s.port_id = v_port and s.good_id = v_good and s.slot < 0;
