@@ -58,6 +58,8 @@ import {
   loopD,
   mapTrafficOf,
   Minimap,
+  minimapChosen,
+  useMinimapPrefs,
   minTierForSpan,
   openingBounds,
   shipMarks,
@@ -462,7 +464,9 @@ function Chart({
     if (openPort !== null) void loadAllegiance()
   }, [openPort, loadAllegiance])
 
-  // THE MINIMAP ONLY WHEN THE PLAYER HAS LEFT THE OPENING FRAME (./frame.ts says why).
+  // THE MINIMAP ONLY WHEN THE PLAYER HAS LEFT THE OPENING FRAME (./frame.ts says why), UNLESS THE PLAYER HAS
+  // RESIZED, FOLDED OR UNFOLDED IT ON PURPOSE (owner, 2026-11-14): then it obeys them at every zoom.
+  const minimapPrefs = useMinimapPrefs()
   const aspect = surface.width > 0 && surface.height > 0 ? surface.width / surface.height : null
   const zoomed =
     aspect !== null &&
@@ -668,7 +672,7 @@ function Chart({
           <div className="pointer-events-auto absolute bottom-3 left-3 flex flex-col items-start gap-1">
             <PointerCoords chart={chartRef} box={box} />
             {backdrop.error && <p className="text-t-caption text-ink-faint">{t('map.noCoast')}</p>}
-            {zoomed && (
+            {(zoomed || minimapChosen(minimapPrefs)) && surface.width > 0 && (
               <Minimap
                 model={model}
                 ports={ports}
@@ -676,6 +680,8 @@ function Chart({
                 viewport={box}
                 onJump={surface.centreOn}
                 ariaLabel={t('map.overview')}
+                glass={{ width: surface.width, height: surface.height }}
+                words={{ fold: t('map.miniFold'), open: t('map.miniOpen'), size: t('map.miniSize') }}
               />
             )}
           </div>
