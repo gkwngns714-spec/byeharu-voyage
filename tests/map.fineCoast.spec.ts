@@ -3,7 +3,9 @@ import path from 'node:path'
 import { test, expect } from '@playwright/test'
 import { reachable, ready } from './appReady.fixture'
 import { FINE_COAST_INDEX } from '../src/chart/fineCoast.generated'
-import { fineLevelFor, indexLevel, plainTilePaths, tilePaths, tilesCover, tilesOver, type FineLevel } from '../src/chart/fineCoastBuild'
+import { fineLevelFor, indexLevel, plainTilePaths, shoreOfTiles, tilePaths, tilesCover, tilesOver, type FineLevel } from '../src/chart/fineCoastBuild'
+import { LANDFALL_CAP_NM, landfallPoint, onDrawnLand } from '../src/chart/landfall'
+import { haversineNm, unproject, type Point } from '../src/lib/geo'
 import { MAX_SPAN_X, MIN_SPAN_X, paperOf } from '../src/chart/chartView'
 import { buildCoastline, COASTLINE_TOLERANCE_DEG } from '../src/chart/coastlineBuild'
 
@@ -126,10 +128,12 @@ test.describe('the fine coast: levels and tiles', () => {
     expect(island.d).toBe('M2 -8L3 -8L3 -7Z')
     expect(island.coastD).toBe('M2 -8L3 -8L3 -7Z')
     // all land: the square and no line; sea: nothing; rubbish: nothing, never a throw
-    expect(plainTilePaths(l, '18_9', 'land')).toEqual({ d: 'M0 -10L10 -10L10 0L0 0Z', coastD: '' })
-    expect(plainTilePaths(l, '18_9', 'sea')).toEqual({ d: '', coastD: '' })
-    expect(tilePaths(l, '18_9', { nope: true })).toEqual({ d: '', coastD: '' })
-    expect(tilePaths(l, '18_9', [[1, 2, 'x', 4, 5, 6], [1, 2, 3]])).toEqual({ d: '', coastD: '' })
+    expect(plainTilePaths(l, '18_9', 'land')).toMatchObject({ d: 'M0 -10L10 -10L10 0L0 0Z', coastD: '' })
+    expect(plainTilePaths(l, '18_9', 'sea')).toEqual({ d: '', coastD: '', rings: [] })
+    expect(tilePaths(l, '18_9', { nope: true })).toEqual({ d: '', coastD: '', rings: [] })
+    expect(tilePaths(l, '18_9', [[1, 2, 'x', 4, 5, 6], [1, 2, 3]])).toEqual({ d: '', coastD: '', rings: [] })
+    // the rings the landfall reads are the body's own points
+    expect(paths.rings).toEqual([[{ x: 0, y: -10 }, { x: 5, y: -10 }, { x: 5, y: 0 }, { x: 0, y: 0 }]])
   })
 })
 
@@ -240,6 +244,122 @@ test.describe('the guard: the zoom never outruns the coast', () => {
       // the same ruler on the 110m file: where it has a shore this near at all, it is over the bound
       if (old > 0) expect(old).toBeGreaterThan(COAST_SEGMENT_PX_MAX)
     }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// THE HARBOURS STAND ON THE SHORE THAT IS DRAWN (2026-11-14; docs/dev-log/2026-11-14-harbours-onshore.md)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// A harbour's mark is set on the drawn shore by the landfall (src/chart/landfall.ts). While the only
+// coast was the 110m world that was one answer; with the fine coast on the glass a mark left on the
+// 110m shore stood miles off it (Tainan 8 nm inland, Ceuta 2.5 nm out at sea). The landfall is now
+// run against the coast in hand. The law, on the real ports and the shipped tiles, in plain Node:
+//
+//   (8) AT THE CLOSEST ZOOM every harbour whose fine shore is within the landfall's cap is drawn
+//       within HARBOUR_OFFSHORE_PX_MAX pixels of it, on land; and the harbours beyond the cap are
+//       exactly the named list below (river cities), so a new one is a decision and not a surprise.
+
+/** How far from the drawn shore a harbour's mark may stand at the closest zoom, in CSS pixels on a
+ *  1,280 px glass. The landfall sets a mark 0.005 degrees inside the shore, which is 4.3 px there. */
+const HARBOUR_OFFSHORE_PX_MAX = 8
+/** THE RIVER CITIES: harbours whose true place is further than the cap from the fine shore. They
+ *  are drawn where the data puts them, inland. Add a name here only by deciding it belongs here. */
+const BEYOND_THE_CAP = [
+  'Amsterdam',
+  'Ayutthaya',
+  'Basra',
+  'Hanoi',
+  'Hooghly',
+  'Hoorn',
+  'Kaliningrad',
+  'London',
+  'Ningbo',
+  'Pustozersk',
+  'Rotterdam',
+  'Seville',
+]
+
+test.describe('the harbours stand on the drawn shore', () => {
+  test('(8) at the closest zoom every harbour within the cap is on the fine shore; the rest are named', () => {
+    const fine = level('fine')
+    const kindOf = indexLevel(fine).kindOf
+    const cache = new Map<string, readonly (readonly Point[])[]>()
+    const ringsOf = (id: string) => {
+      let rings = cache.get(id)
+      if (!rings) {
+        const kind = kindOf(id)
+        rings = kind === 'file' ? tilePaths(fine, id, JSON.parse(readFileSync(path.join(TILE_DIR, fine.name, `${id}.json`), 'utf8'))).rings : plainTilePaths(fine, id, kind).rings
+        cache.set(id, rings)
+      }
+      return rings
+    }
+    // every tile is "held": the whole world's fine shore
+    const everywhere = { has: () => true } as unknown as ReadonlySet<string>
+    const shore = shoreOfTiles(fine, everywhere, ringsOf)
+    const world = buildCoastline(JSON.parse(readFileSync(path.join(process.cwd(), 'data', 'world-110m.json'), 'utf8')))
+    const ports = (JSON.parse(readFileSync(path.join(process.cwd(), 'data', 'ports.json'), 'utf8')) as { ports: { name: string; lat: number; lon: number }[] }).ports
+    const unitsPerPx = MIN_SPAN_X / 1280
+
+    /** How far a point is from the fine shore: on the glass in pixels, and over the ground in miles. */
+    const offShore = (p: Point): { px: number; nm: number } => {
+      let best = Infinity
+      let at = p
+      for (const ring of shore.ringsNear(p) ?? []) {
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+          const a = ring[j]
+          const b = ring[i]
+          if (shore.isCut?.(a, b)) continue
+          const dx = b.x - a.x
+          const dy = b.y - a.y
+          const len2 = dx * dx + dy * dy
+          const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2))
+          const d = Math.hypot(a.x + t * dx - p.x, a.y + t * dy - p.y)
+          if (d < best) {
+            best = d
+            at = { x: a.x + t * dx, y: a.y + t * dy }
+          }
+        }
+      }
+      return { px: best / unitsPerPx, nm: best === Infinity ? Infinity : haversineNm(unproject(p), unproject(at)) }
+    }
+
+    const beyond: string[] = []
+    const table: string[] = []
+    let moved = 0
+    let worst = { px: 0, name: '' }
+    let worstBefore = { px: 0, name: '' }
+    let farBefore = 0
+    for (const port of ports) {
+      const served = { x: port.lon, y: -port.lat }
+      const rings = shore.ringsNear(served) ?? []
+      const truth = offShore(served)
+      // where the mark stood: on the 110m shore
+      const before = offShore(landfallPoint(world.rings, served).at)
+      // where it stands now: on the coast in hand
+      const landed = landfallPoint(rings, served, shore)
+      const after = offShore(landed.at)
+      if (landed.moved) moved++
+      if (truth.nm > LANDFALL_CAP_NM) {
+        beyond.push(port.name)
+        expect(landed.moved, `${port.name} is beyond the cap and stays where the data puts it`).toBe(false)
+        continue
+      }
+      if (before.px > HARBOUR_OFFSHORE_PX_MAX) farBefore++
+      if (before.px > worstBefore.px) worstBefore = { px: before.px, name: port.name }
+      if (after.px > worst.px) worst = { px: after.px, name: port.name }
+      if (/^(Tainan|Tripoli|Algiers|Ternate|Ceuta|Lisbon|Nagasaki|Venice)$/.test(port.name)) {
+        table.push(`${port.name}: ${before.px.toFixed(0)} px before (${before.nm.toFixed(1)} nm), ${after.px.toFixed(1)} px now`)
+      }
+      expect(after.px, `${port.name} stands ${after.px.toFixed(0)} px from the drawn shore at the closest zoom`).toBeLessThanOrEqual(HARBOUR_OFFSHORE_PX_MAX)
+      expect(onDrawnLand(rings, landed.at), `${port.name} stands on drawn land`).toBe(true)
+    }
+    console.log(table.join('\n'))
+    console.log(
+      `${ports.length} harbours: ${moved} set on the fine shore by the landfall, ${beyond.length} beyond the cap; ` +
+        `further than ${HARBOUR_OFFSHORE_PX_MAX} px before: ${farBefore} (worst ${worstBefore.name}, ${worstBefore.px.toFixed(0)} px); worst now ${worst.name}, ${worst.px.toFixed(1)} px`,
+    )
+    expect(beyond.sort()).toEqual([...BEYOND_THE_CAP].sort())
   })
 })
 

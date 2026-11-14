@@ -320,7 +320,14 @@ test.describe('wide glass', () => {
     const pageRoot = await fleetPage.evaluate((el) => ({ h: (el as HTMLElement).scrollHeight, ch: (el as HTMLElement).clientHeight }))
     expect(pageRoot.h, `the fleet page itself scrolls: ${pageRoot.h} > ${pageRoot.ch}`).toBeLessThanOrEqual(pageRoot.ch + 1)
 
-    const sections = await fleetPage.evaluate((el) =>
+    // TWO STEPS (owner, 2026-11-14: "when pressed a fleet, show only ships, then when i press the ship, show cargo and supplies"): the fleet's page carries no
+    // section; a ship's row opens her page, and THAT holds Cargo and Supplies side by side.
+    await expect(fleetPage.locator('[data-testid="fleet-fold-section"]')).toHaveCount(0)
+    await fleetPage.getByTestId('fleet-ship-row').first().click()
+    const shipPage = page.getByTestId('fleet-ship-page')
+    await expect(shipPage).toBeVisible()
+    await page.waitForTimeout(600)
+    const sections = await shipPage.evaluate((el) =>
       [...el.querySelectorAll('[data-testid="fleet-fold-section"]')].map((s) => {
         const r = s.getBoundingClientRect()
         return {
@@ -332,9 +339,9 @@ test.describe('wide glass', () => {
         }
       }),
     )
-    const pageBox = (await fleetPage.boundingBox())!
-    console.log(`FLEETS page @${WIDE.width}px: ${JSON.stringify(sections)}`)
-    expect(sections.map((s) => s.heading)).toEqual(['Ships', 'Cargo', 'Supplies'])
+    const pageBox = (await shipPage.boundingBox())!
+    console.log(`FLEETS ship page @${WIDE.width}px: ${JSON.stringify(sections)}`)
+    expect(sections.map((s) => s.heading)).toEqual(['Cargo', 'Supplies'])
 
     // 1. SIDE BY SIDE: three x ranges that do not overlap, left to right in the owner's order.
     for (let i = 1; i < sections.length; i++) {
@@ -356,7 +363,10 @@ test.describe('wide glass', () => {
     // No tray stands: the page IS the detail now (FleetTray.tsx is deleted).
     await expect(page.locator('[data-tray-mode]')).toHaveCount(0)
 
-    // THE BACK PRESS: the page is gone, the row is where it was.
+    // THE BACK PRESS, twice: the ship's page gives the ships back, the fleet's page gives the list back, and the row is where it was.
+    await page.locator('[data-detail-back]').last().click()
+    await expect(shipPage).toHaveCount(0)
+    await expect(fleetPage.getByTestId('fleet-ship-row').first()).toBeVisible()
     await page.locator('[data-detail-back]').last().click()
     await expect(page.locator('[data-testid="fleet-page"]')).toHaveCount(0)
     await page.waitForTimeout(400)

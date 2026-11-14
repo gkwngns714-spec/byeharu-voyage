@@ -589,9 +589,16 @@ test(`FLEETS: a fleet row opens her page, nothing behind it moves at ${PHONE.wid
   const fold = fleetPage.locator('[data-testid="fleet-fold"]')
   await expect(fold).toBeVisible()
 
-  // 2. THREE SECTIONS, STACKED, in the owner's order (row 89's shape, now on the page). On a phone
-  //    each is under the last: same left edge, each top at or below the previous bottom, inside the page.
-  const geometry = await fleetPage.evaluate((el) => {
+  // 2. TWO STEPS (owner, 2026-11-14: "when pressed a fleet, show only ships, then when i press the ship, show cargo and supplies"). The fleet's page
+  //    carries her ships as rows and no section; a ship's row opens HER page, where Cargo and Supplies are stacked on a phone: same left edge, each
+  //    top at or below the previous bottom, inside the page.
+  await expect(fold.locator('[data-testid="fleet-fold-section"]')).toHaveCount(0)
+  await expect(fold.locator('[data-testid="fleet-stores-days"]')).toHaveCount(0)
+  await fold.locator('[data-testid="fleet-ship-row"]').first().click()
+  const shipPage = page.getByTestId('fleet-ship-page')
+  await expect(shipPage).toBeVisible()
+  await page.waitForTimeout(600)
+  const geometry = await shipPage.evaluate((el) => {
     const r = (n: Element) => n.getBoundingClientRect()
     return {
       left: Math.round(r(el).left),
@@ -608,7 +615,7 @@ test(`FLEETS: a fleet row opens her page, nothing behind it moves at ${PHONE.wid
     }
   })
   console.log(`FLEETS page @${PHONE.width}px: ${JSON.stringify(geometry)}`)
-  expect(geometry.sections.map((s) => s.heading)).toEqual(['Ships', 'Cargo', 'Supplies'])
+  expect(geometry.sections.map((s) => s.heading)).toEqual(['Cargo', 'Supplies'])
   for (let i = 1; i < geometry.sections.length; i++) {
     const above = geometry.sections[i - 1]
     const here = geometry.sections[i]
@@ -623,17 +630,25 @@ test(`FLEETS: a fleet row opens her page, nothing behind it moves at ${PHONE.wid
 
   // 3. WHAT THE PAGE CARRIES: the supplies as one line (owner row 203 / 0225: no keep control), and the one
   //    hand-off at the foot. Every control on it clears the 44px reach floor.
-  await expect(fold.locator('[data-testid="fleet-stores-days"]')).toBeVisible()
-  await expect(fold.locator('[data-testid="fleet-keep-stepper"]')).toHaveCount(0)
-  await expect(fold.locator('[data-testid="fleet-keep"]')).toHaveCount(0)
-  await expect(fold.locator('[data-testid="fleet-command"]')).toBeVisible()
-  const short = await fold.evaluate((el) =>
+  await expect(shipPage.locator('[data-testid="fleet-stores-days"]')).toBeVisible()
+  await expect(shipPage.locator('[data-testid="fleet-keep-stepper"]')).toHaveCount(0)
+  await expect(shipPage.locator('[data-testid="fleet-keep"]')).toHaveCount(0)
+  const SHORT = (el: Element) =>
     [...el.querySelectorAll('button')]
       .map((b) => ({ text: (b.innerText || b.getAttribute('aria-label') || '').slice(0, 24), r: b.getBoundingClientRect() }))
       .filter(({ r }) => r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44))
-      .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`),
-  )
-  expect(short, 'a control on the page is under the 44px reach floor').toEqual([])
+      .map(({ text, r }) => `${text} ${Math.round(r.width)}×${Math.round(r.height)}`)
+  expect(await shipPage.evaluate(SHORT), "a control on the ship's page is under the 44px reach floor").toEqual([])
+  await shipPage.locator('[data-detail-back]').click()
+  await expect(shipPage).toHaveCount(0)
+  expect(await fold.evaluate(SHORT), "a control on the fleet's page is under the 44px reach floor").toEqual([])
+  // the hand-off is the fleet's, one row further (the More page)
+  await fold.locator('[data-testid="fleet-more"]').click()
+  const morePage = page.getByTestId('fleet-more-page')
+  await expect(morePage.locator('[data-testid="fleet-command"]')).toBeVisible()
+  expect(await morePage.evaluate(SHORT), 'a control on the More page is under the 44px reach floor').toEqual([])
+  await morePage.locator('[data-detail-back]').click()
+  await expect(morePage).toHaveCount(0)
 
 
   // 5. THE BACK PRESS CLOSES THE PAGE. It is gone from the DOM, and the list behind it is untouched.

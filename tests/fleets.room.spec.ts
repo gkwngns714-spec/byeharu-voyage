@@ -42,7 +42,10 @@ test('dark: the room says it is not open and offers no press; the fleet shows he
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
 
   await page.getByTestId('fleet-row').first().click()
-  const fold = page.getByTestId('fleet-fold')
+  await expect(page.getByTestId('fleet-fold')).toBeVisible()
+  // 2026-11-14 (owner: "when pressed a fleet, show only ships"): the totals and Rename are the fleet's, one row further
+  await page.getByTestId('fleet-more').click()
+  const fold = page.getByTestId('fleet-more-page')
   await expect(fold).toBeVisible()
   const totals = fold.getByTestId('fleet-totals')
   await expect(totals).toBeVisible()
@@ -60,6 +63,8 @@ test('dark: the room says it is not open and offers no press; the fleet shows he
   await renamePage.getByTestId('fleet-rename-name').fill('Armada de Sao Vicente')
   await renamePage.getByTestId('fleet-rename-save').click()
   await expect(renamePage).toHaveCount(0)
+  await page.keyboard.press('Escape')
+  await expect(fold).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(page.getByTestId('fleet-row').first()).toContainText('Armada de Sao Vicente')
 })

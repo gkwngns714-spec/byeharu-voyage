@@ -376,6 +376,8 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         requestAnimationFrame(tick)
       })
       await row.click()
+      // 2026-11-14 (owner: "when pressed a fleet, show only ships"): her places stand one row further, on the fleet's More page
+      await page.getByTestId('fleet-more').click()
       await expect(page.getByTestId('fleet-tiles')).toBeVisible()
       await expect(page.locator('[data-testid="fleet-place-empty"], [data-testid="fleet-place-locked"]').first(), 'the fleet page draws no place').toBeVisible()
       await page.waitForTimeout(1500)

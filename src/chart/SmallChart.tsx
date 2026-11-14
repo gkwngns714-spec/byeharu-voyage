@@ -14,6 +14,7 @@ import { loopD } from './route'
 import type { MapSelection } from './mapTypes'
 import { useRegionsFilter } from './regionsFilter'
 import { useBackdrop } from './useBackdrop'
+import { useChartShore } from './useChartShore'
 import { useChartSurface } from './useChartSurface'
 import { ViewControls } from './ViewControls'
 import type { PathStop } from './ShipPathLayer'
@@ -111,6 +112,9 @@ import type { PathStop } from './ShipPathLayer'
 /** A city press keeps the reader's zoom (row 231). */
 const keepZoom = (spanX: number) => spanX
 
+/** The view before the glass is measured: nothing, which is no fine coast. */
+const NO_VIEW: ViewBox = { x: 0, y: 0, width: 0, height: 0 }
+
 export function SmallChart({
   ports,
   fleets,
@@ -174,7 +178,9 @@ export function SmallChart({
   // tab draws — and the backdrop they stand on.
   const backdrop = useBackdrop(ports)
   const onlyKey = only ? only.join(' ') : null
-  const chartPorts = useMemo(
+  // The frame reads the ports on the WORLD coast (the backdrop's): the frame decides the view, and the
+  // shore on the glass (below) is decided by the view.
+  const framePorts = useMemo(
     () => (onlyKey === null ? backdrop.ports : backdrop.ports.filter((p) => onlyKey.split(' ').includes(p.code))),
     [backdrop.ports, onlyKey],
   )
@@ -182,9 +188,9 @@ export function SmallChart({
   // The same switch the Map tab wears (row 93): one store, both surfaces.
   const regionsOn = useRegionsFilter()
   const chartFleets = useMemo(() => mapFleetsOf(fleets), [fleets])
-  const model = useMemo(
-    () => buildChartModel(chartFleets, chartPorts, considering),
-    [chartFleets, chartPorts, considering],
+  const frameModel = useMemo(
+    () => buildChartModel(chartFleets, framePorts, considering),
+    [chartFleets, framePorts, considering],
   )
 
   // The frame is a FUNCTION of the current choice, not a value frozen at mount as the tab's is:
@@ -200,8 +206,24 @@ export function SmallChart({
           : WORLD_BOUNDS
         : wholeWorld
           ? WORLD_BOUNDS
-          : openingBounds(model.focusPoints, model.motionPoints, chartPorts, aspect),
-    [model, chartPorts, wholeWorld, still, frame],
+          : openingBounds(frameModel.focusPoints, frameModel.motionPoints, framePorts, aspect),
+    [frameModel, framePorts, wholeWorld, still, frame],
+  )
+  // THE SURFACE COMES BEFORE THE DRAWN MODEL (2026-11-14): the ports that are drawn are set on the shore
+  // on the glass (./useChartShore.ts), which is the view's. So the tap is handed over as one stable
+  // function that calls the real one (`onTap`, below, which needs the drawn model).
+  const tapRef = useRef<((at: Point, unitsPerPx: number, view: ViewBox) => void) | null>(null)
+  const tap = useCallback((at: Point, unitsPerPx: number, view: ViewBox) => tapRef.current?.(at, unitsPerPx, view), [])
+  const surface = useChartSurface(boxRef, frameBounds, !still && onPort ? tap : undefined, { scroll: still ? 'page-vertical' : 'wheel-zoom' })
+  const box = surface.viewBox
+  const shore = useChartShore(backdrop, box ?? NO_VIEW, surface.unitsPerPx)
+  const chartPorts = useMemo(
+    () => (onlyKey === null ? shore.ports : shore.ports.filter((p) => onlyKey.split(' ').includes(p.code))),
+    [shore.ports, onlyKey],
+  )
+  const model = useMemo(
+    () => buildChartModel(chartFleets, chartPorts, considering),
+    [chartFleets, chartPorts, considering],
   )
 
   // No tap handler unless `onPort` asks for one (row 218, the header). The posture follows `still`: the
@@ -218,8 +240,9 @@ export function SmallChart({
     },
     [still, onPort, chartPorts, model],
   )
-  const surface = useChartSurface(boxRef, frameBounds, !still && onPort ? onTap : undefined, { scroll: still ? 'page-vertical' : 'wheel-zoom' })
-  const box = surface.viewBox
+  useEffect(() => {
+    tapRef.current = onTap
+  }, [onTap])
 
   // ── THE CHART MOVES TO THE HARBOUR YOU CHOSE (the owner, 2026-08-23: "when i press corfu or
   // dubrovnik for example on sail, map, the map does not move to that location. make it move -
@@ -286,10 +309,10 @@ export function SmallChart({
           ports={chartPorts}
           box={box}
           unitsPerPx={surface.unitsPerPx}
-          coast={backdrop.coast}
+          coast={shore.coast}
           seas={backdrop.seas}
           regions={regionsOn ? backdrop.regions : null}
-          islets={backdrop.islets}
+          islets={shore.islets}
           selection={selection}
           // The zoom column is opaque and sits on the glass; these are its measured boxes, so the
           // label planner never prints a harbour's name underneath it (the Saint-Malo defect, found

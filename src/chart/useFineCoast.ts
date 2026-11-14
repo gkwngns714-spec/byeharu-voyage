@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ViewBox } from '../lib/geo'
 import { paperOf } from './chartView'
 import { FINE_COAST_INDEX } from './fineCoast.generated'
-import { fineLevelFor, indexLevel, plainTilePaths, tilePaths, tilesCover, tilesOver, type CoastPaths, type FineLevelIndex } from './fineCoastBuild'
+import { fineLevelFor, indexLevel, plainTilePaths, shoreOfTiles, tilePaths, tilesCover, tilesOver, type CoastPaths, type FineLevelIndex, type TilePaths } from './fineCoastBuild'
+import type { ShoreInHand } from './landfall'
 
 // THE FINE COAST, FETCHED (./fineCoastBuild.ts says what it is and why).
 //
@@ -26,7 +27,7 @@ const LEVEL_BY_NAME = new Map(LEVELS.map((level) => [level.name, level]))
 
 /** Every tile read this session, by "level/id". A failed fetch is remembered as null: that tile's
  *  neighbourhood stays on the 110m coast for the session and nothing is retried in a loop. */
-const cache = new Map<string, CoastPaths | null>()
+const cache = new Map<string, TilePaths | null>()
 const pending = new Map<string, Promise<void>>()
 
 function tileUrl(level: FineLevelIndex, id: string): string {
@@ -35,7 +36,7 @@ function tileUrl(level: FineLevelIndex, id: string): string {
 
 /** The tile if it is in hand (a tile with no file is made on the spot), null if its fetch failed,
  *  undefined if it has a file that has not arrived. */
-function tileNow(level: FineLevelIndex, id: string): CoastPaths | null | undefined {
+function tileNow(level: FineLevelIndex, id: string): TilePaths | null | undefined {
   const key = `${level.name}/${id}`
   if (cache.has(key)) return cache.get(key)
   const kind = level.kindOf(id)
@@ -68,7 +69,12 @@ function loadTile(level: FineLevelIndex, id: string): Promise<void> {
   return job
 }
 
-interface Shown extends CoastPaths {
+/** The fine coast in hand: what is drawn, and the same tiles as the shore a harbour is set on. */
+export interface FineCoast extends CoastPaths {
+  readonly shore: ShoreInHand
+}
+
+interface Shown extends FineCoast {
   readonly level: FineLevelIndex
   readonly ids: ReadonlySet<string>
 }
@@ -81,7 +87,7 @@ function parseWanted(wanted: string): { level: FineLevelIndex; ids: string[] } |
 }
 
 /** The coast for this view from the fine tiles, or null: draw the 110m coast. */
-export function useFineCoast(box: ViewBox, unitsPerPx: number): CoastPaths | null {
+export function useFineCoast(box: ViewBox, unitsPerPx: number): FineCoast | null {
   const level = fineLevelFor(LEVELS, unitsPerPx)
   // The set of tiles, as a name: the same string on every frame until the wide sheet reaches a new tile.
   const wanted = level ? `${level.name}:${tilesOver(level, paperOf(box)).join(' ')}` : ''
@@ -118,7 +124,9 @@ export function useFineCoast(box: ViewBox, unitsPerPx: number): CoastPaths | nul
     }
     // Open water has no land at all, and an empty body would read as "no coast yet" to the layer,
     // which then draws nothing, the islets and the regions' water with it. A lone move is no ink.
-    return { d: d === '' ? 'M0 0' : d, coastD, level: set.level, ids: new Set(set.ids) }
+    const at = set.level
+    const ids = new Set(set.ids)
+    return { d: d === '' ? 'M0 0' : d, coastD, level: at, ids, shore: shoreOfTiles(at, ids, (id) => tileNow(at, id)?.rings) }
   }, [wanted, arrivals])
 
   // The last whole set, kept for the frames in which the next one is still on its way (derived from

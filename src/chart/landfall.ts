@@ -40,6 +40,16 @@
 //              roadstead rings (0076, 0085) and a nav grid (0038) that were all derived from the
 //              110m land — the rings would then draw on land. Measured and rejected in the log.
 //
+// ── 2026-11-14: THE COAST IN HAND ─────────────────────────────────────────────────────────────
+// Close in, the chart draws a finer coast from tiles (./fineCoastBuild.ts), and a mark set on the
+// 110m shore then stood miles from the shore on the glass (Tainan 8 nm inland, Ceuta 2.5 nm out
+// to sea). The rule did not change, its INPUT did: the landfall is run against THE COAST THAT IS
+// DRAWN (`ShoreInHand`), by ./useChartShore.ts, in the same render that coast is handed to the
+// picture. Against a fine coast a harbour standing INLAND within the cap is brought to the shore
+// as well (`fromLand`): a real shore has a real quay, and Lübeck belongs on it. Against the 110m
+// world it is not, exactly as before: that shore is a guess 12 nm wide. Beyond the cap either
+// way the mark stays where the data put it: Seville, London and Hanoi are river cities.
+//
 // ── WHAT IT DOES NOT TOUCH ─────────────────────────────────────────────────────────────────────
 // `ports.lat/lon` on the server: sailing, the roadsteads, the sea membership and every distance
 // are computed there, from the served coordinate, and this file cannot reach any of them. The
@@ -82,10 +92,19 @@ export function onDrawnLand(rings: readonly (readonly Point[])[], p: Point): boo
   return inside
 }
 
+/** How one landfall is run: against which kind of coast. The 110m world needs neither. */
+export interface LandfallRule {
+  /** An edge of a ring that is NOT a shore: where a tile of the fine coast was cut. Never landed on. */
+  readonly isCut?: (a: Point, b: Point) => boolean
+  /** Bring a harbour that stands on drawn land to the shore too, when the shore is within the cap. */
+  readonly fromLand?: boolean
+}
+
 /** The nearest point of any drawn ring's edge to `p`, in chart units, with the segment's direction. */
 function nearestShore(
   rings: readonly (readonly Point[])[],
   p: Point,
+  isCut?: (a: Point, b: Point) => boolean,
 ): { at: Point; dir: Point } | null {
   let best: { at: Point; dir: Point } | null = null
   let bestD2 = Infinity
@@ -94,6 +113,7 @@ function nearestShore(
     for (let i = 0, j = n - 1; i < n; j = i++) {
       const a = ring[j]
       const b = ring[i]
+      if (isCut && isCut(a, b)) continue
       const dx = b.x - a.x
       const dy = b.y - a.y
       const len2 = dx * dx + dy * dy
@@ -128,13 +148,19 @@ export interface LandfallResult {
  * shore within `LANDFALL_CAP_NM` → the nearest shore point, set `LANDFALL_INSET_DEG` inside it
  * (tried along the approach, then either side of the edge, and the first that `onDrawnLand`
  * confirms is taken); in water with no shore in reach → unchanged and `stranded`.
+ * With `rule.fromLand` a point ON land is brought to the shore by the same steps when the shore
+ * is within the cap; beyond it (a river city) it is unchanged, and never `stranded`.
  */
-export function landfallPoint(rings: readonly (readonly Point[])[], p: Point): LandfallResult {
-  if (rings.length === 0 || onDrawnLand(rings, p)) return { at: p, nm: 0, moved: false, stranded: false }
-  const shore = nearestShore(rings, p)
-  if (!shore) return { at: p, nm: 0, moved: false, stranded: true }
+export function landfallPoint(rings: readonly (readonly Point[])[], p: Point, rule: LandfallRule = {}): LandfallResult {
+  if (rings.length === 0) return { at: p, nm: 0, moved: false, stranded: false }
+  const onLand = onDrawnLand(rings, p)
+  if (onLand && !rule.fromLand) return { at: p, nm: 0, moved: false, stranded: false }
+  const shore = nearestShore(rings, p, rule.isCut)
+  if (!shore) return { at: p, nm: 0, moved: false, stranded: !onLand }
   const nm = haversineNm(unproject(p), unproject(shore.at))
-  if (nm > LANDFALL_CAP_NM) return { at: p, nm, moved: false, stranded: true }
+  if (nm > LANDFALL_CAP_NM) return { at: p, nm, moved: false, stranded: !onLand }
+  // Already standing on the shore, to within the hair a moved mark is set inside it.
+  if (onLand && Math.hypot(shore.at.x - p.x, shore.at.y - p.y) <= LANDFALL_INSET_DEG) return { at: p, nm, moved: false, stranded: false }
 
   // Candidates a hair past the shore point: straight on from the water (which is inland for any
   // shore that faces the harbour), then the two normals of the edge.
@@ -150,7 +176,7 @@ export function landfallPoint(rings: readonly (readonly Point[])[], p: Point): L
   for (const c of candidates) {
     if (onDrawnLand(rings, c)) return { at: c, nm, moved: true, stranded: false }
   }
-  return { at: p, nm, moved: false, stranded: true }
+  return { at: p, nm, moved: false, stranded: !onLand }
 }
 
 /** What the landfall makes of a port table. */
@@ -166,20 +192,48 @@ export interface Landfall {
 const NO_ISLETS: readonly Point[] = []
 
 /**
+ * THE COAST IN HAND, when it is not the whole world at once: the fine coast is tiles, and only
+ * the ones under the sheet are held (./useChartShore.ts builds this from them).
+ */
+export interface ShoreInHand extends LandfallRule {
+  /** The drawn rings a landfall at `p` reads (every ring within the cap of it), or null when this
+   *  coast does not hold `p` at all: it is off the sheet, and is set by the world coast instead. */
+  readonly ringsNear: (p: Point) => readonly (readonly Point[])[] | null
+}
+
+/**
  * THE PORT TABLE, SET ON THE DRAWN SHORE. Every HARBOUR whose served coordinate falls in drawn
  * water is returned with `lat`/`lon` moved by `landfallPoint`; a harbour with no shore inside
  * the cap is returned as it came and listed in `islets`; everything else is returned as it
  * came. With no coast yet (`null`) the list is returned untouched — the marks are drawn at the
  * served coordinate until the shore arrives, and move onto it in the same frame the shore does.
+ *
+ * `coast` is the coast in hand: the 110m world's rings, or a `ShoreInHand` (the fine tiles). A
+ * harbour a `ShoreInHand` does not hold is taken from `elsewhere`, the SAME table already set on
+ * the world coast (same order), with its islet if it wears one; so off the sheet nothing moves.
  */
-export function landfallPorts(ports: readonly MapPort[], coast: Pick<CoastlineData, 'rings'> | null): Landfall {
-  if (!coast || coast.rings.length === 0) return { ports, islets: NO_ISLETS }
+export function landfallPorts(
+  ports: readonly MapPort[],
+  coast: Pick<CoastlineData, 'rings'> | ShoreInHand | null,
+  elsewhere?: Landfall,
+): Landfall {
+  if (!coast) return { ports, islets: NO_ISLETS }
+  const shore: ShoreInHand = 'ringsNear' in coast ? coast : { ringsNear: () => coast.rings }
+  if (!('ringsNear' in coast) && coast.rings.length === 0) return { ports, islets: NO_ISLETS }
   let changed = false
   const islets: Point[] = []
-  const out = ports.map((port) => {
+  const out = ports.map((port, index) => {
     if (port.kind !== 'HARBOUR') return port
     const at = project(port)
-    const result = landfallPoint(coast.rings, at)
+    const rings = shore.ringsNear(at)
+    if (!rings) {
+      const other = elsewhere?.ports[index]
+      if (!other || other.code !== port.code) return port
+      if (elsewhere.islets.some((i) => i.x === at.x && i.y === at.y)) islets.push(at)
+      if (other !== port) changed = true
+      return other
+    }
+    const result = landfallPoint(rings, at, shore)
     if (result.stranded) islets.push(at)
     if (!result.moved) return port
     changed = true

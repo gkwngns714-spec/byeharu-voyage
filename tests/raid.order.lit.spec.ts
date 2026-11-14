@@ -44,6 +44,7 @@ for (const glass of GLASSES) {
         await ready(page)
         await page.getByTestId('fleet-row').first().click()
         await expect(page.getByTestId('fleet-fold')).toBeVisible()
+        await page.getByTestId('fleet-more').click()   // 2026-11-14 (owner: "when pressed a fleet, show only ships"): the picker is the fleet's, one row further
         // THE PICKER LANDS IN PLACE: while its read is on its way the same rows stand with no figures (raid-order-waiting), and the answer fills them without changing
         // the picker's height by a pixel, so nothing under it moves. Measured as the picker's own height at first sight (waiting, when the read is still out) against its
         // height once the figures are in: other parts of the page land on their own reads and are not this law's.
