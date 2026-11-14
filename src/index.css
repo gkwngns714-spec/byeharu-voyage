@@ -759,7 +759,8 @@ html:lang(ko) body {
    gives halfway (measured: "Ponta Delgada" in the twilight band, illegible with a 0.375–0.625
    ramp). The one `--night` (src/chart/sun.ts) — nothing new. */
 .bv-sun-name-quiet,
-.bv-sun-name-active {
+.bv-sun-name-active,
+.bv-sun-name-closed {
   --bv-name-night: calc(clamp(0, (var(--night, 1) - 0.5) * 10000, 1) * 100%);
 }
 /* The halo behind a name, the keyline round a hull, and the disc under a fleet of yours are all
@@ -768,8 +769,14 @@ html:lang(ko) body {
 .bv-sun-name-halo {
   stroke: color-mix(in srgb, var(--color-chart-sea) calc(var(--night, 1) * 100%), var(--color-chart-day-sea));
 }
+/* A SEA ZONE CLOSED TO THE FLEET IN HAND (the Seas filter, 2026-11-15): its ask in the danger ink, deepened by day
+   toward the day mark so it still reads on the pale halo. */
+.bv-sun-name-closed {
+  fill: color-mix(in srgb, var(--color-danger) var(--bv-name-night), color-mix(in srgb, var(--color-danger) 55%, var(--color-chart-day-mark)));
+}
 .bv-sun-name-halo.bv-sun-name-quiet,
-.bv-sun-name-halo.bv-sun-name-active {
+.bv-sun-name-halo.bv-sun-name-active,
+.bv-sun-name-halo.bv-sun-name-closed {
   stroke: color-mix(in srgb, var(--color-chart-sea) var(--bv-name-night), var(--color-chart-day-name-halo));
 }
 /* THE CITY'S DAY LAMP (the owner, 2026-10-18: "give black light blink in cities like in night"):

@@ -260,7 +260,8 @@ export {
 // ROW 93 — the regions as ink, and the one switch that shows them. The decisions are exported
 // for the same reason `seaNameRequests` is; the paint is CoastlineLayer's and LabelsLayer's.
 export { REGION_FILL, regionNameRequests, regionTintsOf, type RegionTint } from './regions'
-export { readRegionsFilter, REGIONS_FILTER_KEY, setRegionsFilter, useRegionsFilter } from './regionsFilter'
+export { MAP_LAYER_KEY, MAP_LAYERS, readMapLayer, readRegionsFilter, REGIONS_FILTER_KEY, setMapLayer, useMapLayer, useRegionsFilter, type MapLayer } from './regionsFilter'
+export { zoneAnchors, zoneNameRequests, zoneOutline, zoneShapes, type ZoneLabel, type ZonesOnChart } from './seaZones'
 
 // ── GO TO (owner, 2026-10-15) ──────────────────────────────────────────────────────────────────
 // The one way a panel asks the chart to show a place, and the one link every panel draws a place
