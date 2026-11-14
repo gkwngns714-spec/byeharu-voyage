@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef, type RefObject } from 'react'
-import { project, shortLonDelta, unproject, type LatLon } from '../lib/geo'
+import { memo, useLayoutEffect, useRef, type RefObject } from 'react'
+import { CHART_WIDTH, project, shortLonDelta, unproject, type LatLon } from '../lib/geo'
 import { GLYPH } from './glyphs'
 import { MapFlagDefs } from './MapFlagDefs'
 import { flagSymbolId } from './flagSymbolStore'
@@ -85,18 +85,40 @@ function FleetName({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx:
   return <Name label={label} unitsPerPx={unitsPerPx} sun={sun} riding={riding} />
 }
 
-function Name({
-  label,
-  unitsPerPx,
-  sun,
-  riding,
-}: {
+/**
+ * THE SAME NAME, NOT DRAWN AGAIN (2026-11-15). The plan is made afresh on every frame of a pan (./ChartCanvas.tsx), so every
+ * label arrives as a new object; but a name's place is in CHART units and a pan moves the view, not the name, so almost every
+ * one is the same name in the same place. Since the names stay out further and are bigger (the owner, 2026-11-15) the widest
+ * desktop view sets ~60 names and ~35 flags where it set ~20: compared by value, a pan re-renders only the names that
+ * actually moved, came or went.
+ */
+function sameName(a: NameProps, b: NameProps): boolean {
+  if (a.unitsPerPx !== b.unitsPerPx || a.sun !== b.sun || a.riding !== b.riding) return false
+  const p = a.label
+  const q = b.label
+  if (p === q) return true
+  return (
+    p.id === q.id && p.text === q.text && p.tone === q.tone && p.side === q.side && p.x === q.x && p.y === q.y && p.anchor === q.anchor &&
+    p.sizePx === q.sizePx && p.spacingEm === q.spacingEm && p.flag === q.flag &&
+    p.box.x === q.box.x && p.box.y === q.box.y && p.box.width === q.box.width && p.box.height === q.box.height &&
+    p.leader?.x1 === q.leader?.x1 && p.leader?.y1 === q.leader?.y1 && p.leader?.x2 === q.leader?.x2 && p.leader?.y2 === q.leader?.y2
+  )
+}
+
+interface NameProps {
   label: PlacedLabel
   unitsPerPx: number
   sun: LatLon
   /** Set for a fleet's name only (`FleetName`): the group her glide moves. */
   riding?: RefObject<SVGGElement | null>
-}) {
+}
+
+const Name = memo(function Name({
+  label,
+  unitsPerPx,
+  sun,
+  riding,
+}: NameProps) {
   const size = label.sizePx * unitsPerPx
   // A NAME THAT STEPPED OUT OF THE CROWD CARRIES A HAIRLINE BACK TO ITS MARK (2026-10-20, the
   // owner: "Any way to see the cities all? Without overlapping?"). The planner decided the two
@@ -153,8 +175,15 @@ function Name({
     )
   }
   const flagHeight = FLAG_HEIGHT_EM * size
+  // A CAPITAL'S FLAG ALONE (./labels.ts `flagOnlyFallback`): no letters, so no <text>; the group carries the id.
+  const flagOnly = label.text === ''
   return (
-    <g ref={riding} data-label-flag={label.flag} style={nightStyle(unproject({ x: label.x, y: label.y }), sun)}>
+    <g
+      ref={riding}
+      data-label-flag={label.flag}
+      {...(flagOnly ? { 'data-label-id': label.id, 'data-label-flag-only': 'yes' } : {})}
+      style={nightStyle(unproject({ x: label.x, y: label.y }), sun)}
+    >
       {leader}
       {/* Drawn at a 30×20 box and scaled down to the label's size: the chart's units are tiny (a
           name is ~0.15 units tall), and Chrome rasterises a fraction of a unit to nothing. */}
@@ -165,10 +194,18 @@ function Name({
         transform={`translate(${label.box.x} ${label.y - flagHeight / 2}) scale(${flagHeight / 20})`}
         data-testid="map-label-flag"
       />
-      {text}
+      {!flagOnly && text}
     </g>
   )
-}
+}, sameName)
+
+/**
+ * A NAME'S KEY: its id AND the copy of the sheet it is set on (2026-11-15). A harbour near the edge of a copy's window is
+ * asked for on two copies at once (./ChartCanvas.tsx, THE COPIES) and planned twice, at x and x + 360; keyed by id alone
+ * the two shared one key, and React left the loser's element on the glass, never updated again: on the 1920 px desktop,
+ * zoomed in from the whole world, a flag planned at the globe's scale stood across the Mediterranean ten times its size.
+ */
+const keyOf = (label: PlacedLabel) => `${label.id}@${Math.floor((label.x + CHART_WIDTH / 2) / CHART_WIDTH)}`
 
 export function LabelsLayer({
   labels,
@@ -189,15 +226,15 @@ export function LabelsLayer({
       <MapFlagDefs codes={places.flatMap((l) => (l.flag ? [l.flag] : []))} />
       <g pointerEvents="none" data-testid="map-sea-names">
         {ground.map((label) => (
-          <Name key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
+          <Name key={keyOf(label)} label={label} unitsPerPx={unitsPerPx} sun={sun} />
         ))}
       </g>
       <g pointerEvents="none" data-testid="map-labels">
         {places.map((label) =>
           label.tone === 'fleet' ? (
-            <FleetName key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
+            <FleetName key={keyOf(label)} label={label} unitsPerPx={unitsPerPx} sun={sun} />
           ) : (
-            <Name key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
+            <Name key={keyOf(label)} label={label} unitsPerPx={unitsPerPx} sun={sun} />
           ),
         )}
       </g>

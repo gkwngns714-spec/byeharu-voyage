@@ -57,7 +57,7 @@
 // legibility on a 390 px phone, which is what these numbers were chosen against:
 //   · loud port  10 px across, 9 px tall            · a hull 5.7–10.7 px bow to stern (halved
 //                                                     2026-10-14 at the owner's word), in an 8 px halo
-//   · quiet port 7.2 px across                      · labels 10.5 px mono
+//   · quiet port 7.2 px across                      · labels 13 px mono (10.5 until 2026-11-15)
 //     (both are the TIER-3 size; `portMarkScale` runs them from 0.60× to 1.40× — 4.3 px to 10.1 px
 //      across for a quiet mark — and `portStrokeWidth` runs the line from 0.70 px to 1.58 px)
 //   · the reach a tap has for a glyph is `hitRadius`, DERIVED below rather than typed
@@ -153,9 +153,10 @@ export const GLYPH = {
   /** The halo round a lone class-less hull — halved with `shipHalfLength` (8 → 4), since
    *  `hullGroupHalo` sizes every halo off that ratio. */
   fleetHaloRadius: 4,
-  /** The ring round a GREAT harbour's mark (row 90): 1.9× the loud tier-5 half-width, so it
-   *  clears the triangle at every weight and is still well inside the destination ring (r 11). */
-  greatPortRingRadius: 9.5,
+  /** The ring round a GREAT harbour's mark (row 90): 1.9× the loud tier-5 half-width as drawn
+   *  (`markGrowth` included; 9.5 before it), so it clears the triangle at every weight and is still
+   *  inside the destination ring (r 11). */
+  greatPortRingRadius: 10.6,
   /** THE ARROWHEAD at the end of the water ahead: its half-width, in px. */
   arrowHalfWidth: 4,
   /**
@@ -243,17 +244,23 @@ export const GLYPH = {
    * no tap at all until now.
    */
   dotHitRadius: TOUCH_TARGET_PX / 2,
-  labelSize: 10.5,
+  /** A harbour's or a fleet's name, in CSS px. 10.5 until 2026-11-15 (the owner: *"the names of the cities as well as
+   *  regions, countries, flags, should be bigger"*): +24 %, and the flag beside it grows with it (labels.ts FLAG_HEIGHT_EM
+   *  is in ems of this size). Bigger names collide sooner; the planner (./labels.ts) hides the lesser one, never overprints. */
+  labelSize: 13,
   /** A STOP ON A PRESSED SHIP'S PATH OR A PLANNED ROUTE (./ShipPathLayer.tsx): the numbered disc's radius.
    *  Here because two files read it: the layer draws it, and ./ChartCanvas.tsx keeps every name off it. */
   pathStopDiscPx: 8,
   /** A GREAT harbour's name (row 90): one size up from the rest, so the marks' hierarchy reaches
-   *  the names. Below `seaNameSize`'s spaced water type so a port never reads as a sea. */
-  greatLabelSize: 12,
+   *  the names. 12 until 2026-11-15, +25 % with `labelSize`. A sea is told from a port by its spaced, thinned water type and
+   *  not by its size any more. */
+  greatLabelSize: 15,
   labelGapX: LABEL_GAP_X_PX,
   labelLineHeight: 12,
-  /** The halo stroke that keeps a label readable where it crosses a coastline. */
-  labelHaloWidth: 3.5,
+  /** The halo stroke that keeps a label readable where it crosses a coastline. 3.5 until 2026-11-15; it grew with the
+   *  names (4 px round a 13 px letter is the same share of the letter 3.5 was of 10.5 less a little: the halo separates the
+   *  name from land and sea, it is not a box). */
+  labelHaloWidth: 4,
   /** Hairline weights, drawn with vector-effect: non-scaling-stroke so they never fatten on zoom.
    *  `coastStroke` is the coast's weight over the GLOBE — the floor `coastStrokeWidth` rises from. */
   coastStroke: 0.9,
@@ -276,16 +283,18 @@ export const GLYPH = {
   seaNameSize: 11.5,
   oceanNameSize: 14,
   seaNameSpacingEm: 0.14,
-  /** A REGION'S NAME (row 93), set on its tint while the filter is on: between a sea and an
-   *  ocean, spaced like water — it is ground, and a bigger piece of ground than a sea. */
-  regionNameSize: 13,
+  /** A REGION'S NAME (row 93), set on its tint while the filter is on: above an ocean's, spaced
+   *  like water — it is ground, and a bigger piece of ground than a sea. 13 until 2026-11-15 (+23 %, the owner's order). */
+  regionNameSize: 16,
   /**
    * THE DOT (row 94, 2026-09-14: "all the ports in the game when i zoom out, it can be a dot"):
    * a harbour below this zoom's full-mark tier is drawn as a filled dot of this radius, in the
    * quiet ink, with no name. 1.6 px — the smallest thing on the sheet after the roadstead ring
    * (hollow, 2.6), so 224 of them on the globe read as a scatter of ports and not as marks.
+   * 1.8 since 2026-11-15 (the owner: *"city icon slightly bigger"*, +12.5 %); the lights round it are
+   * sized off it with their scales lowered by the same share, so a harbour's LIGHT did not grow.
    */
-  portDotRadius: 1.6,
+  portDotRadius: 1.8,
 
   /**
    * THE HARBOUR LIGHT (owner row 125, 2026-10-12): *"when i zoom out, i want cities to be bright
@@ -302,7 +311,7 @@ export const GLYPH = {
    * The CORE keeps `portDotRadius` — the dot row 94 already drew — so nothing moves position or
    * grows; what is added is the light around it.
    */
-  harbourLightHaloScale: 9,
+  harbourLightHaloScale: 8,
   /**
    * THE MIDDLE RING. A light is not a dot with one ring round it — that is a dot with a smudge,
    * which is exactly what the first cut of row 125 drew and what the owner said was not lights:
@@ -313,7 +322,7 @@ export const GLYPH = {
    * says why a filter is not affordable here, and three circles that do not move are cheaper than
    * one filtered region that repaints.
    */
-  harbourLightGlowScale: 4,
+  harbourLightGlowScale: 3.55,
   /** How far a tier-5 entrepôt out-burns a tier-1 coast. The halo scales by this between them, so
    *  the great ports read first on a wide sheet and a one-quay coast is a faint spark — which is
    *  the owner's "bright light" without a legend and without a second colour. */
@@ -334,6 +343,12 @@ export const GLYPH = {
    * and inside the great ring, so it is ground under the mark, never a mark of its own.
    */
   isletRadius: 4,
+  /**
+   * HOW MUCH BIGGER A CITY'S MARK IS DRAWN THAN THE RAMPS ABOVE SAY (2026-11-15, the owner: *"city icon slightly
+   * bigger"*): 1.12, applied where the triangle and the lozenge are drawn (./PortsLayer.tsx). A drawing size only: the
+   * tap's reach (`hitRadius`) and the roads' floor (`roadsteadMinPx`) stay derived from the ramps they were measured on.
+   */
+  markGrowth: 1.12,
 } as const
 
 /**

@@ -68,9 +68,12 @@ export function maxSpanX(aspect: number): number {
  * night side of the terminator, its light. They were `NIGHT_SPAN_DEG` and `PURE_LIGHT_SPAN_DEG`
  * until 2026-10-14, when night stopped being a zoom and became the Sun's (./sun.ts): the rungs
  * are density rules and keep their values; only the names stopped claiming to be the night.
+ * `DOT_SPAN_DEG` was 135 until 2026-11-15 (the owner: *"when i zoom out, the details of the map
+ * disappears, make it so that it stays as long as possible"*): the marks now stay to 180°, half the
+ * world, and the globe is still the lights alone.
  */
 export const LANE_SPAN_DEG = 45
-export const DOT_SPAN_DEG = 135
+export const DOT_SPAN_DEG = 180
 
 /**
  * HOW FAR IN THE CHART IS, 0..100 (owner, 2026-10-12: *"show me in map how much i zoomed in and
@@ -367,8 +370,15 @@ export function unitsPerPixel(view: ChartView, pixelWidth: number): number {
  * yours touches asks for a label. DESIGN §E.5 wants labels only once the chart is zoomed in and
  * only for ports that matter, so the world view stays a clean coastline with a few glyphs on it.
  * Above this span, only the ports your fleets are using are named.
+ *
+ * 70 UNTIL 2026-11-15, NOW NO LIMIT (the owner: *"when i zoom out, the details of the map disappears,
+ * make it so that it stays as long as possible"*). A fixed zoom past which a city may not ask for its
+ * name is the cut-off the owner saw as detail disappearing. Every harbour that wears its full mark
+ * (`PORT_TIER_BANDS`) asks at every zoom, and the planner (./labels.ts) decides by COLLISION which are
+ * set: in the priority order (yours first, then the capitals, then by size), a name is hidden only
+ * when it would touch a name or a mark already placed. Kept as a constant so the rule stays one place.
  */
-export const LABEL_SPAN_LIMIT = 70
+export const LABEL_SPAN_LIMIT = Number.POSITIVE_INFINITY
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // 224 PORTS ON ONE SHEET — the zoom decides which of them wear their FULL mark.
@@ -380,6 +390,9 @@ export const LABEL_SPAN_LIMIT = 70
 //   the world   (> 45° across)   the 35 great ports          size_tier 5
 //   a sea       (> ~28° across)  + the 79 middling ones       size_tier 3
 //   a coast     (≤ ~28° across)  + all the small ones         size_tier 2
+//
+// (2026-11-15, pushed out: the middling ones at every span, the small ones to 45°, and the names
+// hidden by collision rather than by span — `PORT_TIER_BANDS` below.)
 //
 // THE COAST RUNG IS THE OWNER'S 47 % (row 193, 2026-10-25: *"i want to see the city info on map at
 // zoom 47%, name and flag. do not make it overlapping with other cities"*). It was 12°, about 62 %
@@ -400,12 +413,24 @@ export const LABEL_SPAN_LIMIT = 70
 // destination wears its mark whatever size it is, because it is the reason the tab was opened.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+/** The widest span at which EVERY tier wears its full mark and asks for its name (2026-11-15; it was
+ *  `ALL_NAMES_SPAN`, the owner's 47 %, which stays the readout's figure for row 193). */
+export const ALL_NAMES_FULL_SPAN = 45
+
 /** Span (degrees of longitude on screen) → the smallest `size_tier` that earns its FULL mark at
- *  it (below: a dot). Ordered tightest first; the first row whose `maxSpanX` covers the view wins. */
+ *  it (below: a dot). Ordered tightest first; the first row whose `maxSpanX` covers the view wins.
+ *
+ *  2026-11-15 (the owner: *"when i zoom out, the details of the map disappears, make it so that it
+ *  stays as long as possible"*), the rungs pushed out: every tier full to 45° (was `ALL_NAMES_SPAN`,
+ *  ~28°), the middling tier 3 full at EVERY span (was to 45°; the great tier 5 alone beyond). With
+ *  `LABEL_SPAN_LIMIT` gone, being full is what lets a harbour ask for its name, and the planner hides
+ *  the ones that do not fit: past a coast's zoom an unnamed full harbour is a quiet dot
+ *  (./chartModel.ts `quietHarbours`), and past `DOT_SPAN_DEG` every harbour is its dot and light
+ *  whatever its band. The small tiers stay dots (with their lights) beyond 45°: a phone holding an
+ *  ocean has no room for their names, and their lights are the picture there. */
 export const PORT_TIER_BANDS: readonly { readonly maxSpanX: number; readonly minTier: number }[] = [
-  { maxSpanX: ALL_NAMES_SPAN, minTier: 1 },
-  { maxSpanX: 45, minTier: 3 },
-  { maxSpanX: Infinity, minTier: 5 },
+  { maxSpanX: ALL_NAMES_FULL_SPAN, minTier: 1 },
+  { maxSpanX: Infinity, minTier: 3 },
 ]
 
 /** The smallest port drawn FULL at this zoom; smaller ones are dots (row 94). */
@@ -425,9 +450,10 @@ export const GREAT_PORT_TIER = 5
 /**
  * WHERE THE SEAS ARE NAMED (row 90). An OCEAN's name is set at every zoom; a SEA's only once the
  * frame is this narrow, so the globe carries six words and a coast carries the waters around it.
- * Above `LABEL_SPAN_LIMIT` so the water is named a step before the quiet harbours are.
+ * 110 UNTIL 2026-11-15, NOW NO LIMIT (the owner's "stays as long as possible"): a sea's name is
+ * asked for at every zoom, at the lowest priority, so it is set only on water no place's name wants.
  */
-export const SEA_NAME_SPAN_LIMIT = 110
+export const SEA_NAME_SPAN_LIMIT = Number.POSITIVE_INFINITY
 
 
 /**

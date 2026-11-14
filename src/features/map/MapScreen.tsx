@@ -243,7 +243,13 @@ function Chart({
 
   // THE PORTS AS THE CHART DRAWS THEM (row 92): served, then set on the drawn shore the moment
   // the coast arrives — one list, read by the model, the hit test, the frame and the picture.
-  const backdrop = useBackdrop(snapshotPorts)
+  // THE COUNTRIES' CAPITALS (2026-11-15): their marks and names stay furthest out (src/chart/mapTypes.ts `capital`).
+  const nationByCode = useWorld((s) => s.nationByCode)
+  const capitals = useMemo(
+    () => new Map(Object.values(nationByCode).flatMap((n) => (n.capital ? [[n.capital, n.code] as const] : []))),
+    [nationByCode],
+  )
+  const backdrop = useBackdrop(snapshotPorts, capitals)
   // 0367: an armada at sea is ONE mark, under her name, carrying every hull of her fleets (armadaMarks.ts).
   const armadaList = useArmadas().armadas
   const fleets = useMemo(() => armadaMarks(mapFleetsOf(fleetViews), armadaList), [fleetViews, armadaList])

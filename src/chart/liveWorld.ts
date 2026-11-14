@@ -37,8 +37,9 @@ import { instantMs } from '../lib/format'
 
 /** The port table the chart draws. Field-for-field; nothing derived, nothing dropped but the
  *  columns a chart has no use for. */
-export function mapPortsOf(ports: readonly SnapshotPort[]): MapPort[] {
+export function mapPortsOf(ports: readonly SnapshotPort[], capitals: ReadonlyMap<string, string> | null = null): MapPort[] {
   return ports.map((p) => ({
+    ...(capitals?.has(p.code) ? { capital: capitals.get(p.code) } : {}),
     code: p.code,
     name: p.name,
     country: p.country,
