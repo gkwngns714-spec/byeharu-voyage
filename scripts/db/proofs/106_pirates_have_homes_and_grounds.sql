@@ -6,6 +6,7 @@
 --
 -- @pass PH_ORDER   the five hubs are held by the pirates and are not homes; the roster is the owner's order in SHIPS (Pacific 70, South Atlantic 40, North Atlantic 40, Indian 30) and every fleet has hulls; each hub has a haunt and a yard in reach
 -- @pass PH_BUILT   a roster squadron is built as ONE fleet of four hulls with one lead ship, of kind PIRATE, at her hub; the hoard fell by her hulls' build cost to the ducat and the world total did not move; a second fleet of her house joins the same house
+-- @pass PH_FOUNDING the roster's build is paid THOUGH THE DAY'S ROOM IS SPENT and does not count against it (nothing written to the day; kind BUILD_ROSTER, capital to yard, moved); nothing else uses that door: a fleet is built once, an ord off the roster is not built, the pirates' own slow build (public.pirate_commission) still waits on the room, and the hoard never goes below pirate_min x pirate_hoard_unit by it
 -- @pass PH_REBORN  a wreck whose home's purse is EMPTY is brought home by the job, lies pirate_respawn_minutes, and is whole, docked and stored again; another pirate purse paid the refit (her REFITTED event names the payer and the cost; the hoard falls by at least it, the world total does not move)
 -- @pass PH_OLD     a ship of 0339 (a lone xebec of a home with no purse, the six that were stuck) is reborn by the same rule
 -- @pass PH_LOUD    with EVERY pirate purse empty she is not mended unpaid and not left silent: she WAITS with a row in public.npc_refit_waits and a REFIT_WAITING event; the merchants' refit job does not touch her; the purse back, the job mends her
@@ -28,6 +29,7 @@ declare
   v_tot1  numeric;
   v_sea   uuid;
   v_s     text;
+  v_mark  bigint;
 begin
   -- PH_ORDER
   if (select count(*) from public.pirate_hubs hb join public.port_allegiance a on a.port_id = hb.port_id where a.nation_id = v_pir and not a.home) <> 5
@@ -44,10 +46,13 @@ begin
   if not public.pirates_on() or not public.npc_refits_on() then
     raise exception 'PROOF 106 FAIL: the pirates or the refit rule could not be lit in this world';
   end if;
-  update public.port_treasury t set ducats = 1900000000 where t.port_id = v_cap;   -- the day's room is pirate_spend_day_pct of the hoard (a rate per real day the clock moves, 0413): the scene's hoard is sized so one day's room holds what the scene builds and mends
+  update public.port_treasury t set ducats = 900000000 where t.port_id = v_cap;
   update public.pirate_ships set laid_up_at = v_now where laid_up_at is null;   -- the proof's own fleets only are at work
 
-  -- PH_BUILT
+  -- PH_BUILT, with the day's room SPENT before anything is built (PH_FOUNDING reads what that did)
+  insert into public.pirate_spend_day (day, spent) values ((v_now at time zone 'UTC')::date, 100000000000)
+  on conflict (day) do update set spent = excluded.spent;
+  v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   select r.ord, r.hub_port into v_ord, v_hub from public.pirate_roster r join public.pirate_roster_hulls x on x.ord = r.ord group by r.ord, r.hub_port having sum(x.n) = 4 order by r.ord limit 1;
   select sum(x.n * c.build_cost)::bigint into v_cost from public.pirate_roster_hulls x join public.ship_classes c on c.code = x.class where x.ord = v_ord;
   v_tot0 := (world.stats_now() ->> 'total')::numeric;
@@ -64,6 +69,49 @@ begin
     raise exception 'PROOF 106 FAIL: the squadron was not built as one fleet of four hulls paid by the hoard (hoard % then %, world % then %; fleets % %, cost %, capital %)', v_flow0, v_flow1, v_tot0, v_tot1, v_f, v_f2, v_cost, (select t.ducats from public.port_treasury t where t.port_id = v_cap);
   end if;
   raise notice 'PASS: PH_BUILT — roster fleet % is one PIRATE fleet of four hulls at her hub; the hoard paid the yard % and her house''s second fleet joined her house; the world total stayed %', v_ord, v_cost, v_tot1;
+
+  -- PH_FOUNDING
+  if public.pirate_spend_room(v_now) <> 0 or (select d.spent from public.pirate_spend_day d where d.day = (v_now at time zone 'UTC')::date) <> 100000000000 then
+    raise exception 'PROOF 106 FAIL: the roster''s build counted against the day''s room (room %, spent %)', public.pirate_spend_room(v_now), (select d.spent from public.pirate_spend_day d where d.day = (v_now at time zone 'UTC')::date);
+  end if;
+  if (select coalesce(-sum(t.ducats), 0) from public.treasury_flows t where t.id > v_mark and t.kind = 'BUILD_ROSTER' and t.port_id = v_cap) <> v_flow0 - v_flow1
+     or (select coalesce(sum(t.ducats), 0) from public.treasury_flows t where t.id > v_mark and t.kind = 'BUILD_ROSTER') <> 0
+     or exists (select 1 from public.treasury_flows t where t.id > v_mark and t.kind = 'BUILD_NAVY')
+     or not exists (select 1 from public.stats_flow_words w where w.kind = 'BUILD_ROSTER' and w.side = 'moved') then
+    raise exception 'PROOF 106 FAIL: the roster''s build is not its own moved kind BUILD_ROSTER, capital to yard';
+  end if;
+  v_mark := coalesce((select max(id) from public.treasury_flows), 0);
+  select a.port_id into v_old from public.port_allegiance a where a.nation_id = v_pir and a.home and a.port_id <> v_cap order by a.port_id limit 1;
+  if public.pirate_commission_fleet(v_ord, public.refit_yard(v_hub), v_now) is not null   -- built once
+     or public.pirate_commission_fleet(999, public.refit_yard(v_hub), v_now) is not null   -- an ord that is no roster row
+     or public.pirate_commission(29, v_old, public.refit_yard(v_old), v_now) is not null   -- the pirates' own slow build: inside the room, and the room is spent
+     or exists (select 1 from public.treasury_flows t where t.id > v_mark) or exists (select 1 from public.pirate_ships n where n.ord in (29, 999)) then
+    raise exception 'PROOF 106 FAIL: the door outside the day''s room was used twice for one fleet, for an ord off the roster, or by the pirates'' own build';
+  end if;
+  v_old := null;
+  begin   -- the floor: the hoard one ducat short of pirate_min x pirate_hoard_unit after the build, then exactly at it
+    select r.ord into v_ord from public.pirate_roster r where r.ord not in (select ord from public.pirate_ships) order by r.ord limit 1;
+    select sum(x.n * c.build_cost)::bigint into v_cost from public.pirate_roster_hulls x join public.ship_classes c on c.code = x.class where x.ord = v_ord;
+    update public.port_treasury t set ducats = 0 where t.port_id in (select a.port_id from public.port_allegiance a where a.nation_id = v_pir);
+    insert into public.treasury_flows (port_id, kind, ducats)
+    select a.port_id, 'CROWN_CALL', -public.treasury_balance(a.port_id) from public.port_allegiance a where a.nation_id = v_pir and public.treasury_balance(a.port_id) > 0;
+    update public.port_treasury t set ducats = public.wc_int('pirate_min')::bigint * public.wc_num('pirate_hoard_unit')::bigint + v_cost - 1 - public.treasury_balance(t.port_id) where t.port_id = v_cap;   -- less the flows not yet rolled, so the hoard is exactly one ducat short
+    if public.pirate_commission_fleet(v_ord, public.refit_yard((select r.hub_port from public.pirate_roster r where r.ord = v_ord)), v_now) is not null then
+      raise exception 'PROOF 106 FAIL: a roster build took the hoard below its floor (hoard % after)', public.pirate_hoard();
+    end if;
+    update public.port_treasury t set ducats = t.ducats + 1 where t.port_id = v_cap;
+    if public.pirate_commission_fleet(v_ord, public.refit_yard((select r.hub_port from public.pirate_roster r where r.ord = v_ord)), v_now) is null
+       or public.pirate_hoard() < public.wc_int('pirate_min')::bigint * public.wc_num('pirate_hoard_unit')::bigint then
+      raise exception 'PROOF 106 FAIL: at the floor exactly the roster build was refused, or the hoard is under it (%)', public.pirate_hoard();
+    end if;
+    raise exception using errcode = 'ZF414', message = 'undo';
+  exception when sqlstate 'ZF414' then
+    null;
+  end;
+  raise notice 'PASS: PH_FOUNDING — the day''s room spent to nothing, the roster''s two fleets were still built, paid % under BUILD_ROSTER (capital to yard, moved) with nothing written to the day; a second build of one fleet, an ord off the roster and the pirates'' own build (inside the room) were refused; the hoard is never taken below % by it',
+    v_flow0 - v_flow1, public.wc_int('pirate_min')::bigint * public.wc_num('pirate_hoard_unit')::bigint;
+  delete from public.pirate_spend_day d where d.day = (v_now at time zone 'UTC')::date;   -- the day's room back, for the refits below
+  select r.ord, r.hub_port into v_ord, v_hub from public.pirate_ships n join public.pirate_roster r on r.ord = n.ord where n.fleet_id = v_f;
 
   -- PH_REBORN: wrecked away from home, her home's purse EMPTY; the job brings her home and, an hour on, mends her
   update public.port_treasury t set ducats = 0 where t.port_id = v_hub;
@@ -123,7 +171,7 @@ begin
      or not exists (select 1 from public.events e where e.kind = 'REFIT_WAITING' and e.player_id = (select player_id from public.pirate_ships where fleet_id = v_f)) then
     raise exception 'PROOF 106 FAIL: with every pirate purse empty she was mended unpaid, or she waits with no row and no event (a silent wreck)';
   end if;
-  update public.port_treasury t set ducats = 1900000000 where t.port_id = v_cap;   -- the day's room is pirate_spend_day_pct of the hoard (a rate per real day the clock moves, 0413): the scene's hoard is sized so one day's room holds what the scene builds and mends
+  update public.port_treasury t set ducats = 900000000 where t.port_id = v_cap;   -- the day's room is pirate_spend_day_pct of the hoard (a rate per real day the clock moves, 0413): the scene's hoard is sized so one day's room holds what the scene builds and mends
   perform public.tick_pirates(v_now + interval '7 hours 5 minutes');
   if exists (select 1 from public.ships s where s.fleet_id = v_f and s.durability <= 0) or exists (select 1 from public.npc_refit_waits w where w.fleet_id = v_f) then
     raise exception 'PROOF 106 FAIL: the purse back, the job did not mend her';

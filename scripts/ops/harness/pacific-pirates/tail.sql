@@ -64,6 +64,9 @@ do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite
     ('pirate_respawn_minutes', to_jsonb(60), '0414: how long a pirate wreck lies at her home city before she is mended, manned, stored and sails again (public.pirate_reborn).'),
     ('pirate_add_minutes', to_jsonb(10), '0414: the pirates add at most one fleet in this many minutes (public.pirate_add). Before 0414 it was navy_build_hours (24 hours), which stays the navy''s.'),
     ('pirate_pressure_max', to_jsonb(1.0), '0414: the most the pirate fleets cruising one sea add to its pressure (public.pirate_pressure_write: least(this, pirate_pressure x fleets)). 1.0 is at most twice the sea''s authored danger. Before 0414 there was no cap (0.5 a ship; the most ever seen was one ship in a sea).');
+  -- THE ROSTER'S BUILD HAS ITS OWN KIND (public.pirate_commission_fleet): a founding of the owner's order, told apart from the running spend (BUILD_NAVY, NAVY_PAY, REFIT) in every flow and in Stats
+  insert into public.stats_flow_words (kind, side, word, ord) select 'BUILD_ROSTER', 'moved', 'Pirate fleets', coalesce(max(w.ord), 0) + 1 from public.stats_flow_words w;
+
   -- a rate per real day, moved with the clock by public.clock_set (0413): so it is raised RELATIVE to what stands (x 2.4: 0.005 -> 0.012 on the old clock, 0.001 -> 0.0024 on the one-hour day), never typed
   select (w.value)::text::numeric into v_pct0 from public.world_config w where w.key = 'pirate_spend_day_pct';
   if v_pct0 is null or v_pct0 <= 0 then
@@ -221,8 +224,12 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $$
--- 0414: THE one place a ROSTER fleet is made (public.pirate_roster; 0339's lone xebecs stay public.pirate_commission's): the hoard pays the yard every hull's build cost in one payment (public.pirate_pay BUILD_NAVY,
--- whole or nothing: answers null and makes nothing when it cannot), and she is laid at her hub by the hands every fleet is made by (public.form_fleet, public.commission_ship), crewless: her first departure brings hands
+-- 0414: THE one place a ROSTER fleet is made (public.pirate_roster; 0339's lone xebecs stay public.pirate_commission's, inside the day's room as before): the hoard pays the yard every hull's build cost in one payment,
+-- whole or nothing (answers null and makes nothing when it cannot). THIS PAYMENT IS OUTSIDE THE DAY'S ROOM (public.pirate_spend_room; nothing is written to public.pirate_spend_day): the owner ordered these ships, so
+-- their build is a one-time founding, not running spend; it must neither take forty real days nor take the room the fleets' pay needs (decided by default, 2026-11-14). It is bounded by the roster itself: a fleet is
+-- built ONCE (a row of public.pirate_ships with her ord stands for ever; a wreck is reborn, never rebuilt), only for a row of public.pirate_roster, only for her own hulls' cost, paced by public.pirate_add
+-- (pirate_add_minutes), and THE HOARD NEVER GOES BELOW pirate_min x pirate_hoard_unit BY IT (400 M: the hoard that keeps the pirates' own minimum), so a fault cannot drain it. Its kind is BUILD_ROSTER, its own,
+-- moved (capital to yard). No other function pays by this door: the payment is these lines and nothing calls them but the build. She is laid at her hub by the hands every fleet is made by (public.form_fleet, public.commission_ship), crewless: her first departure brings hands
 -- and stores. Her house is her roster house's (made with the first of its fleets, purse 0, no ledger row); her lead ship is the dearest class. Answers her fleet, or null.
 declare
   r        public.pirate_roster%rowtype;
@@ -231,14 +238,23 @@ declare
   v_player uuid;
   v_fleet  uuid;
   v_k      int := 0;
+  v_cap    uuid := public.pirate_capital();
 begin
   select * into r from public.pirate_roster q where q.ord = p_ord;
   if r.ord is null or exists (select 1 from public.pirate_ships n where n.ord = p_ord) then
     return null;
   end if;
   select sum(h.n * c.build_cost)::bigint into v_cost from public.pirate_roster_hulls h join public.ship_classes c on c.code = h.class where h.ord = p_ord;
-  if coalesce(v_cost, 0) <= 0 or public.pirate_pay('BUILD_NAVY', v_cost, p_now, p_yard, null) <= 0 then
+  if coalesce(v_cost, 0) <= 0 or v_cap is null or p_yard is null then
     return null;
+  end if;
+  if p_yard <> v_cap then   -- a yard that is the capital itself is paid nothing (public.pirate_pay's own rule)
+    if public.pirate_hoard() - v_cost < public.wc_int('pirate_min')::bigint * public.wc_num('pirate_hoard_unit')::bigint
+       or public.city_surplus(v_cap) < v_cost or not public.treasury_try_lock(v_cap) or public.city_surplus(v_cap) < v_cost then
+      return null;   -- the floor, the capital's surplus, or its purse busy: she is asked for again at the next turn
+    end if;
+    perform public.treasury_post(v_cap, 'BUILD_ROSTER', -v_cost, null, null);
+    perform public.treasury_post(p_yard, 'BUILD_ROSTER', v_cost, null, null);
   end if;
   select n.player_id into v_player
     from public.pirate_ships n join public.pirate_roster q on q.ord = n.ord
@@ -379,7 +395,7 @@ $h$    'home', (select p.code from public.ports p where p.id = n.home_port),
   begin
     update public.world_config set value = 'true'::jsonb where key in ('pirates_bite', 'city_treasury_enabled') and value is distinct from 'true'::jsonb;
     if public.pirates_on() then
-      update public.port_treasury t set ducats = greatest(t.ducats, 5000000000) where t.port_id = public.pirate_capital();   -- the day's room (pirate_spend_day_pct of the hoard, a fifth of what it was since 0413) must hold a squadron's build: the probe's own hoard, rolled back
+      update public.port_treasury t set ducats = greatest(t.ducats, 1000000000) where t.port_id = public.pirate_capital();   -- the probe's own hoard, rolled back: above the floor of a roster build, and a day's room that holds a squadron's refit
       delete from public.pirate_spend_day d where d.day = (v_now at time zone 'UTC')::date;
       select r.ord into v_n from public.pirate_roster r join public.pirate_roster_hulls x on x.ord = r.ord group by r.ord having sum(x.n) = 4 order by r.ord limit 1;
       v_fleet := public.pirate_commission_fleet(v_n, public.refit_yard((select r.hub_port from public.pirate_roster r where r.ord = v_n)), v_now);
@@ -389,8 +405,10 @@ $h$    'home', (select p.code from public.ports p where p.id = n.home_port),
         raise exception '0414 self-assert FAIL (probe): roster fleet % was not built as four hulls of one pirate fleet at her hub', v_n;
       end if;
       if public.pirate_commission_fleet(v_n - 1, public.refit_yard((select r.hub_port from public.pirate_roster r where r.ord = v_n)), v_now) is null
-         or (select count(distinct n.player_id) from public.pirate_ships n where n.ord in (v_n - 1, v_n)) <> 1 then
-        raise exception '0414 self-assert FAIL (probe): the second fleet of her house did not join the same house';
+         or (select count(distinct n.player_id) from public.pirate_ships n where n.ord in (v_n - 1, v_n)) <> 1
+         or exists (select 1 from public.pirate_spend_day d where d.day = (v_now at time zone 'UTC')::date)   -- a roster build is outside the day's room: nothing written to the day
+         or public.pirate_commission_fleet(v_n, public.refit_yard((select r.hub_port from public.pirate_roster r where r.ord = v_n)), v_now) is not null then   -- and she is built once
+        raise exception '0414 self-assert FAIL (probe): the second fleet of her house did not join the same house, a roster build was written to the day''s room, or she was built twice';
       end if;
       update public.ships s set durability = 0 where s.fleet_id = v_fleet;
       update public.fleets set status = 'UNABLE_TO_SAIL' where id = v_fleet;

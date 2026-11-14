@@ -49,6 +49,8 @@
 --   day that public.clock_set, 0413, moves with the clock: 0.005 on the old clock, 0.001 since 0413, so 0.0024 here; the value it replaces is written into the knob's
 --   description for the rollback). On the one-hour day: the day's room of a 980 M hoard 0.98 M -> 2.35 M a real day; 121 fleets' pay (navy_upkeep_day 12,000) is
 --   1.45 M a real day. Per voyage-day both are what they were designed as on the old clock (room 11.8 M, pay 7.26 M a real day then).
+--   THE ROSTER'S BUILD (36.2 M once) IS PAID OUTSIDE THAT ROOM, under its own kind BUILD_ROSTER, once a fleet, the hoard never below pirate_min x pirate_hoard_unit (400 M)
+--   by it (public.pirate_commission_fleet; decided by default 2026-11-14): the room then holds what it was designed for, the pay, the refits and the gifts.
 --   NOT changed: pirate_max, pirate_min, pirate_hoard_unit (public.pirate_size() is still 0339's). REAL-TIME PACING, not moved by the clock: pirate_respawn_minutes,
 --   pirate_add_minutes. NO NEW RATE PER REAL TIME is added here, so nothing is added to the list public.clock_set scales.
 -- NO PLAYER FIGHTS A PLAYER: nothing here touches it. NOTHING IS MINTED: every payment is public.pirate_pay, public.pay_city or a pair of

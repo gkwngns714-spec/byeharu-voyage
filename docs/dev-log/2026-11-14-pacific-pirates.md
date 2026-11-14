@@ -120,17 +120,27 @@ The section above was written on the old clock (a voyage-day 90 s). 0413 made a 
 |---|---:|---:|
 | the day's room | 11.8 M | 2.35 M |
 | pay of 121 fleets | 7.26 M | 1.45 M |
-| left for building, refits and gifts | 4.5 M | 0.90 M |
+| left after pay | 4.5 M | 0.90 M |
 
 Per voyage-day every line is what it was. What does NOT scale is a price paid once: a hull's build cost, a refit, a gift.
 
-- **Building the roster (36.2 M) now takes about 40 real days**, not 8: the room left after pay is a fifth. `pirate_add_minutes` stays 10 real minutes (decided by default: it is a rollout pace), but the room is the brake, not the pace.
-- **A squadron (1,416,000 in one payment) is more than the 0.90 M a day left.** It fits the room only early in a UTC day, and it then takes part of that day's pay room: on a day a squadron is built the fleets paid last go unpaid for the day's last hours, sail home and are laid up until the next UTC day. Nothing is lost or minted, but it is a daily stall for 14 days of the rollout (14 squadrons). **This wants the owner's or the coordinator's decision**: a larger factor than 2.4 during the rollout, or building counted apart from the day's room. Not decided here: the brief fixed 2.4.
-- **Refits** are the same price a wreck. Whether wrecks are rarer per real day depends on the navy's hunt, which fights once a real hour a ship (real-time pacing, not moved by the clock); not measured.
-- **How long the hoard lasts if raids bring nothing:** it cannot fall faster than 0.24 % a real day: about 912 M after 30 real days, half after about 290.
-- 0408's gifts (250,000, at most 18 M a real week for 24 houses) are now more than a week's room (16.5 M): they wait their turn inside it.
+**Decided by default (the coordinator, 2026-11-14; the owner may reverse it): THE ROSTER'S BUILD IS COUNTED APART FROM THE DAY'S ROOM.** The owner ordered the 180 ships; their 36.2 M is a one-time founding of his order, not running spend. Inside the room it would have taken about 40 real days (0.90 M a day left), and a squadron (1,416,000 in one payment) would have taken the pay's room on each of 14 days and left paid fleets unpaid. So:
 
-The probe of the file and proof 106 size their own hoard (rolled back) so that one day's room holds what they build.
+- `public.pirate_commission_fleet` pays a roster fleet's hulls from the hoard **outside** `public.pirate_spend_room`; nothing is written to `public.pirate_spend_day`.
+- **Bounded by the roster itself:** only a row of `public.pirate_roster`, only her own hulls' cost, and only ONCE (her row in `public.pirate_ships` stands for ever; a wreck is reborn, never rebuilt). 36.2 M in all.
+- **Paced by `pirate_add_minutes` alone** (10 real minutes, real-time pacing, kept): 108 fleets in about 18 real hours.
+- **A floor:** the hoard is never taken below `pirate_min` x `pirate_hoard_unit` (4 x 100 M = **400 M**) by a roster build: the hoard that keeps the pirates' own minimum. A fault cannot drain it. From 980 M the whole roster leaves 944 M.
+- **Its own kind, `BUILD_ROSTER`** (moved, capital to yard; Stats word "Pirate fleets" / "해적 함대"), so it is told apart from running spend (`BUILD_NAVY`, `NAVY_PAY`, `REFIT`) in every flow.
+- **Nothing else uses that door:** the payment is lines of that one function. The pirates' own slow growth (`public.pirate_size()`, `public.pirate_commission`, `BUILD_NAVY`) stays inside the room as before.
+
+**The day's room then covers the pay, the refits and the gifts, as designed:** room 2.35 M, pay 1.45 M, **0.90 M a real day for refits and gifts**.
+
+- **A normal day.** A refit is 20,000 (a brigantin or fusta), 40,000 (a xebec), 80,000 (a pair), 220,000 or 354,000 (a squadron). 0.90 M is 45 weak ships' refits, or 22 xebecs', or two squadrons' and nine xebecs'. On 2026-11-14 the navy wrecked one lone xebec about five times a day (the 13 old ships; the navy fights once a real hour a ship, real-time pacing). If a tenth of 121 fleets were taken once a day in the mix of the roster that is about 0.5 M: it fits, with room over for gifts.
+- **A bad day** (the navy takes most fleets it meets, or several squadrons): the room is spent before the day ends. Wrecks then wait at home, loudly (WAITING, a row in `npc_refit_waits`, one `REFIT_WAITING` a day), each asked again at her every step, and are mended from 00:00 UTC when the room is new. They are not queued by price: each wreck asks when her own step runs, and a payment is whole or nothing, so a 20,000 refit still fits a room a 354,000 one no longer does: in effect the cheap ones go first. A house with a purse pays her own refit and takes none of the room. Pay is hourly and is not kept back from refits: on a very bad day late pay slices can fail and those fleets are laid up until the next day (0339's rule; PR #685 keeps the pay's room back from gifts only).
+- **How long the hoard lasts if raids bring nothing:** the roster's 36.2 M once, then never faster than 0.24 % a real day: from 944 M about 878 M after 30 real days, half after about 290.
+- 0408's gifts (250,000, at most 18 M a real week for 24 houses) are more than a week's room left after pay (6.3 M): they wait their turn inside it.
+
+Proof 106 `PH_FOUNDING` holds all of it: the day's room spent to nothing, two roster fleets are still built (1,736,000 under BUILD_ROSTER, nothing written to the day); a second build of one fleet, an ord off the roster and the pirates' own build are refused; one ducat short of the floor the build is refused, at the floor exactly it is paid.
 
 ## Raids: what players and merchants will meet
 

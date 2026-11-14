@@ -10,6 +10,7 @@
 --      drop function public.pirate_commission_fleet, public.pirate_reborn, public.pirate_refit_pay, public.pirate_next_ord, public.pirate_ord_wanted;
 --      drop table public.pirate_roster_hulls, public.pirate_roster, public.pirate_hubs; alter table public.pirate_ships drop column wrecked_at
 --      (the unique key on player_id cannot return while a house owns two fleets).
+--      (the money the roster's builds moved, kind BUILD_ROSTER, stays where it is: the yards were paid; the word's row in public.stats_flow_words stays while a flow of that kind stands)
 --   3. the knobs: delete pirate_respawn_minutes, pirate_add_minutes, pirate_pressure_max; pirate_spend_day_pct = the standing value / 2.4 (0414 multiplied it; the value it replaced is in the description).
 --   4. THE FIVE HARBOURS ARE A ONE-WAY DOOR once a fleet, a merchant or a player has called there (0338 said the same of its three). Before that: delete their rows from
 --      sea_leg_asks, npc_courses, port_population, port_language, port_allegiance, city_works, port_treasury, port_buildings, port_goods, city_production, port_specialties and
