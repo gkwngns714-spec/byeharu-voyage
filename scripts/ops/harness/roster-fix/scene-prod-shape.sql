@@ -2,6 +2,8 @@
 -- LOCAL ONLY, inside probe.mjs's rolled-back transaction. Seven of 0339's ships (ords 1-7) wrecked at their homes, five of them unpaid, the day's room spent (4,215,000 against about 2.34 M),
 -- the hoard 975.9 M, pirate_clock.added_at a day old. Phase A: 40 minutes of today. Phase B: the next UTC day from 00:00, 120 minutes.
 -- Prints one row: per phase, the roster fleets built, the 0339 ships built, what each minute's run answered when it added, and the wrecks' fate.
+-- LOCAL SCENE (tests/harness.guard.spec.ts): it writes; the guard refuses anywhere but the local PGlite world.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 create temp table if not exists rf_log (phase text, t timestamptz, r jsonb, room bigint, roster int, old int, wrecks int, laid int);
 do $s$
 declare

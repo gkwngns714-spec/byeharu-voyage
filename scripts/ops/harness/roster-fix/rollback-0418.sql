@@ -1,6 +1,8 @@
 -- ROLLBACK DRAFT for 0418 (forward, OWNER ONLY; never run by an agent). Puts public.pirate_add back to its 0414 body (the two hunks reversed) and drops public.pirate_add_roster.
 -- After it, the add again stops while the head of the queue needs the day's room (0414's behaviour). Roster fleets already built stay (a built fleet stands for ever).
 -- As a migration it would be prod head + 1, with its own self-assert; this file is the body of that migration.
+-- LOCAL SCENE (tests/harness.guard.spec.ts): it writes; the guard refuses anywhere but the local PGlite world.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $r$
 declare
   v_def text := replace(pg_get_functiondef('public.pirate_add(timestamp with time zone)'::regprocedure), E'\r', '');
