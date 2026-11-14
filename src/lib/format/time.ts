@@ -2,12 +2,12 @@
 //
 // THE TWO CLOCKS, and why the UI must state both:
 //
-//   VOYAGE CLOCK   the served `time_compression` (192 since 0415: 1 voyage-day = 450 REAL SECONDS;
+//   VOYAGE CLOCK   the served `time_compression` (192 since 0412: 1 voyage-day = 450 REAL SECONDS;
 //                  960 = 90 s before it). Governs sailing, provisions, wages, hazard checkpoints.
 //   THE GAME'S CLOCK the top bar's date and hour and the Sun: a day of it is the served
-//                  `clock_voyage_days` (8) voyage-days = ONE REAL HOUR (0415; 12 minutes before).
+//                  `clock_voyage_days` (8) voyage-days = ONE REAL HOUR (0412; 12 minutes before).
 //
-// ONE AUTHORITY FOR THE DAY'S LENGTH (0415, the owner, 2026-11-14: *"change the game day - 1 hour"*):
+// ONE AUTHORITY FOR THE DAY'S LENGTH (0412, the owner, 2026-11-14: *"change the game day - 1 hour"*):
 // the server's `world_config.time_compression`, served in `snapshot.config` with `clock_voyage_days`
 // and `clock_anchor`. `setServedClock` below takes them in when a snapshot lands and every figure
 // here is derived from them; the constants are only what is drawn before the first snapshot.
@@ -23,12 +23,12 @@
 import { formatFixed, formatInt } from './numbers'
 import { localeTag, t, type TKey } from '../i18n'
 
-/** DESIGN.md §D.1 / §L.1 — the server's rate (world_config.time_compression; 192 since 0415), as
+/** DESIGN.md §D.1 / §L.1 — the server's rate (world_config.time_compression; 192 since 0412), as
  *  it is assumed BEFORE THE FIRST SNAPSHOT LANDS and for nothing else. tests/rpc.surface.spec.ts
  *  asserts the served knob EQUALS this, so the first paint and the served clock cannot differ. */
 export const TIME_COMPRESSION = 192
 
-/** The game's clock runs a day per this many voyage-days (world_config.clock_voyage_days, 0415):
+/** The game's clock runs a day per this many voyage-days (world_config.clock_voyage_days, 0412):
  *  the owner, 2026-10-15 and 2026-10-17, slowed the clock and the light to an eighth of the ships.
  *  As `TIME_COMPRESSION`: only what is assumed before the first snapshot. */
 export const CLOCK_VOYAGE_DAYS = 8
@@ -55,7 +55,7 @@ let served: { compression: number; clockVoyageDays: number; anchor: ClockAnchor 
 
 /** THE SERVED CLOCK COMES IN HERE, and nowhere else: `snapshot.config` as the world store received it
  *  (src/live/worldStore.ts). A field the server does not send keeps its default, so a client ahead of
- *  the server's 0415 draws the date and the hour exactly as before it. `null` puts the defaults back. */
+ *  the server's 0412 draws the date and the hour exactly as before it. `null` puts the defaults back. */
 export function setServedClock(config: ServedClockConfig | null): void {
   const k = Number(config?.time_compression)
   const n = Number(config?.clock_voyage_days)
@@ -94,7 +94,7 @@ export function instantMs(iso: string | null | undefined): number | null {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000
 
-/** One real day is one game month, on the calendar as it ran before 0415 (no anchor served). */
+/** One real day is one game month, on the calendar as it ran before 0412 (no anchor served). */
 export const REAL_MS_PER_GAME_MONTH = 24 * 60 * 60 * 1000
 
 export function voyageDaysToRealMs(days: number): number {
@@ -261,13 +261,13 @@ export function formatGameDate(d: GameDate): string {
 // it: those are real UTC days (public.real_day, 0312, 0317). The client reads no new thing to say
 // it: the shell's ONE CLOCK is the server's (src/lib/serverClock.ts).
 //
-// THE DATE AND THE HOUR ARE ONE CLOCK SINCE 0415 (the owner, 2026-11-14: *"change the game day -
+// THE DATE AND THE HOUR ARE ONE CLOCK SINCE 0412 (the owner, 2026-11-14: *"change the game day -
 // 1 hour"*). Before it the hour hand went round in 12 minutes and the date turned every 48: two
 // clocks printed side by side. The server now serves `clock_anchor` (the instant the rate moved and
 // the clock's reading then: the date as it was printed, the hour as it stood) and from that instant
 // `gameClockDays` below counts ONE day per `clockDayMs()` (an hour): the date turns when the hour
 // passes midnight, and neither jumped at the switch. A month is 30 of those days (30 real hours).
-// With no anchor served (a world before 0415) both run exactly as they did.
+// With no anchor served (a world before 0412) both run exactly as they did.
 
 /** Days of this date to its month: a month is one REAL day (D.1) and a day of it 2,880 real seconds,
  *  so 86,400 / 2,880 = 30. For DISPLAY ONLY, as TIME_COMPRESSION is — nothing is decided from it. */
@@ -285,13 +285,13 @@ export const CALENDAR_EPOCH_MS = Date.UTC(2026, 7, 18)
 export const CALENDAR_YEAR_0 = 1500
 
 /** THE GAME'S CLOCK, in its own days since 1 January `CALENDAR_YEAR_0` (the hour is the fraction), or
- *  null where the server serves no anchor (before 0415). One day per `clockDayMs()` from the anchor. */
+ *  null where the server serves no anchor (before 0412). One day per `clockDayMs()` from the anchor. */
 export function gameClockDays(nowMs: number): number | null {
   if (!served.anchor) return null
   return served.anchor.day + (nowMs - served.anchor.atMs) / clockDayMs()
 }
 
-/** The world's date NOW: the game's clock's whole days (0415), 30 to a month and 12 months to a year;
+/** The world's date NOW: the game's clock's whole days (0412), 30 to a month and 12 months to a year;
  *  with no anchor, the calendar as it ran before (a month a real day). */
 export function gameToday(nowMs: number): GameDate {
   const days = gameClockDays(nowMs)
@@ -330,7 +330,7 @@ export function formatRealDay(day: number): string {
  *  2026-10-15: *"make the clock twice slower, but keep the ship speed to where it is"*, then *"make
  *  the light zone time twice slower"*, and 2026-10-17 *"change the light zone dark zone area movement
  *  by 2 times slower"*: an eighth of the ships. The Sun stands where this clock puts it, so the clock
- *  and the light slow together. 0415 (2026-11-14, *"change the game day - 1 hour"*): 24× real time,
+ *  and the light slow together. 0412 (2026-11-14, *"change the game day - 1 hour"*): 24× real time,
  *  a game day is ONE REAL HOUR (it was 120×, 12 minutes). Derived from the served clock, never typed:
  *  a ship covers in one clock-hour what she covers in eight voyage-hours. */
 export function gameClockRate(): number {
@@ -340,7 +340,7 @@ export function gameClockRate(): number {
 /** THE GAME CLOCK — the same for every player. The owner, 2026-10-15: *"show game clock, no date,
  *  only time"* and the sunlight *"should match the speed of the game speed"*. ONE authority: the top
  *  bar prints it and the Sun (src/chart/useSunlight.ts) stands where this hour puts it. Returns ms
- *  into the game day: the fraction of `gameClockDays` (0415: the same clock as the date); with no
+ *  into the game day: the fraction of `gameClockDays` (0412: the same clock as the date); with no
  *  anchor served, real time since the Unix epoch run at `gameClockRate()`, as before. */
 export function gameTimeOfDayMs(nowMs: number): number {
   const days = gameClockDays(nowMs)

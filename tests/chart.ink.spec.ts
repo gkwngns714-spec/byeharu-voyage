@@ -313,7 +313,7 @@ test.describe('land reads as land at 390px', () => {
     const gameDayMs = clockDayMs()
     const holdSunOver = async (lon: number) => {
       // The Sun stands over longitude 0 at the game's noon and goes west 360 degrees a game day. Where the clock stands
-      // now is read off the top bar (its hour is the Sun's, lib/format gameTimeOfDayMs; since 0415 it counts from the
+      // now is read off the top bar (its hour is the Sun's, lib/format gameTimeOfDayMs; since 0412 it counts from the
       // served anchor, not from the Unix epoch), and the glass's clock is put forward to the hour wanted.
       const want = (((0.5 - lon / 360) % 1) + 1) % 1
       const [h, m] = ((await page.getByTestId('game-clock').textContent()) ?? '').split(':').map(Number)

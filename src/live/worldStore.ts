@@ -360,7 +360,7 @@ const servedMarkets = new Map<string, MarketView>()
 
 /** The snapshot in the viewer's language, and the lookups built once from it. */
 function snapshotLookups(served: WorldSnapshot) {
-  setServedClock(served.config)   // 0415: the clock's rate, ratio and anchor, into their one authority (lib/format/time.ts)
+  setServedClock(served.config)   // 0412: the clock's rate, ratio and anchor, into their one authority (lib/format/time.ts)
   const snapshot = namedSnapshot(served, getLocale())
   const portByCode: Record<string, SnapshotPort> = {}
   const portById: Record<string, SnapshotPort> = {}

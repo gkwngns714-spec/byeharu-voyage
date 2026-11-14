@@ -1,10 +1,10 @@
-// measure.mjs: THE BEAT'S EVENTS A REAL MINUTE, BEFORE AND AFTER 0415, in one local world. LOCAL ONLY; not in CI.
+// measure.mjs: THE BEAT'S EVENTS A REAL MINUTE, BEFORE AND AFTER 0412, in one local world. LOCAL ONLY; not in CI.
 //
 //   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/day-hour/measure.mjs [--n=150] [--warm=3] [--mins=6]
 //
-// Restores the cached world at the head before 0415 (never from zero; the cache is only read), installs the proofs' market (prices that pay), lights the
+// Restores the cached world at the head before 0412 (never from zero; the cache is only read), installs the proofs' market (prices that pay), lights the
 // merchants and keeps --n of them. Then it plays the clock by hand, as pg_cron does: public.tick_arrivals(now()) every second and one pass of the lap-start
-// job (public.tick_lap_starts(false)) every five seconds. --warm minutes to get the merchants to sea, --mins minutes counted at the old rate; then 0415 is
+// job (public.tick_lap_starts(false)) every five seconds. --warm minutes to get the merchants to sea, --mins minutes counted at the old rate; then 0412 is
 // applied (the ships at sea are re-timed by the file itself) and the same --mins are counted again. Printed per arm, a real minute: arrivals settled, voyage
 // days settled, lap starts, the mean and the largest beat. PGlite is one connection and two to three times slower than prod: only the ratio of the two arms
 // means anything. The world is thrown away.
@@ -15,7 +15,7 @@ import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
 const N = Number(arg('n') ?? 150), WARM = Number(arg('warm') ?? 3), MINS = Number(arg('mins') ?? 6)
-const NAME = '20260818000415'
+const NAME = '20260818000412'
 const files = []
 let mine = null
 for (const name of await migrationFiles()) {

@@ -167,7 +167,7 @@ test('world.snapshot() carries the whole static world, and not the world secret'
 
   // 0045 x20: the served knob and the client's display mirror are ONE number, asserted equal
   // here so neither can move without the other (the mirror lives in src/lib/format/time.ts).
-  // 0100 handed back the x20 that 0045 took "for faster testing"; 0415 (the owner, 2026-11-14: a game day is one
+  // 0100 handed back the x20 that 0045 took "for faster testing"; 0412 (the owner, 2026-11-14: a game day is one
   // real hour) made it 192: a voyage-day is 450 real seconds and a day of the clock clock_voyage_days of them.
   expect(snap.config.time_compression).toBe(TIME_COMPRESSION)
   expect(snap.config.clock_voyage_days).toBe(CLOCK_VOYAGE_DAYS)
@@ -1878,6 +1878,8 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.city_month_post(uuid, uuid, text, bigint)',
     // 0300: the hourly upkeep's hard end, a pure rule read by public.tick_reconcile alone. Server-only.
     'public.upkeep_hard_end(timestamptz, numeric, numeric)',
+    // 0412: the one door that moves the clock's rate (and re-times the voyages at sea with it). Owner only.
+    'public.clock_set(integer, timestamptz)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f
