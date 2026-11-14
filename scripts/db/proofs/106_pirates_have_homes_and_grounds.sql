@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════════
--- PROOF 105 - PIRATES HAVE HOMES AND GROUNDS  (migration 0410; docs/dev-log/2026-11-14-pacific-pirates.md)
+-- PROOF 106 - PIRATES HAVE HOMES AND GROUNDS  (migration 0410; docs/dev-log/2026-11-14-pacific-pirates.md)
 --
 --   THE GUARD THE OWNER ASKED FOR (2026-11-14, of the seven wrecks: "make it so that this problem does not occur again"): no pirate ship may sit
 --   unable to sail with no path to repair. Through the pirates' own job (public.tick_pirates), lit, rolled back with proof.mjs's transaction.
@@ -35,14 +35,14 @@ begin
                                                         join public.pirate_roster_hulls x on x.ord = r.ord group by 1) g)
         <> '{"PACIFIC": 70, "SOUTH_ATLANTIC": 40, "NORTH_ATLANTIC": 40, "INDIAN": 30}'::jsonb
      or exists (select 1 from public.pirate_hubs hb where not exists (select 1 from public.pirate_haunt_of(hb.port_id, 1001)) or public.refit_yard(hb.port_id) is null) then
-    raise exception 'PROOF 105 FAIL: the hubs or the roster are not the order';
+    raise exception 'PROOF 106 FAIL: the hubs or the roster are not the order';
   end if;
   raise notice 'PASS: PH_ORDER — five hubs held by the pirates, none a home; the roster is 70 / 40 / 40 / 30 ships; each hub has a haunt and a yard in reach';
 
   -- the world lit as prod is, the hoard able to pay
   update public.world_config set value = 'true'::jsonb where key in ('pirates_bite', 'city_treasury_enabled', 'npc_refits_enabled') and value is distinct from 'true'::jsonb;
   if not public.pirates_on() or not public.npc_refits_on() then
-    raise exception 'PROOF 105 FAIL: the pirates or the refit rule could not be lit in this world';
+    raise exception 'PROOF 106 FAIL: the pirates or the refit rule could not be lit in this world';
   end if;
   update public.port_treasury t set ducats = 900000000 where t.port_id = v_cap;
   update public.pirate_ships set laid_up_at = v_now where laid_up_at is null;   -- the proof's own fleets only are at work
@@ -61,7 +61,7 @@ begin
      or (select count(distinct n.player_id) from public.pirate_ships n where n.fleet_id in (v_f, v_f2)) <> 1
      or v_tot1 <> v_tot0
      or v_flow0 - v_flow1 <> v_cost + (select sum(x.n * c.build_cost)::bigint from public.pirate_roster_hulls x join public.ship_classes c on c.code = x.class where x.ord = v_ord - 1) then
-    raise exception 'PROOF 105 FAIL: the squadron was not built as one fleet of four hulls paid by the hoard (hoard % then %, world % then %; fleets % %, cost %, capital %)', v_flow0, v_flow1, v_tot0, v_tot1, v_f, v_f2, v_cost, (select t.ducats from public.port_treasury t where t.port_id = v_cap);
+    raise exception 'PROOF 106 FAIL: the squadron was not built as one fleet of four hulls paid by the hoard (hoard % then %, world % then %; fleets % %, cost %, capital %)', v_flow0, v_flow1, v_tot0, v_tot1, v_f, v_f2, v_cost, (select t.ducats from public.port_treasury t where t.port_id = v_cap);
   end if;
   raise notice 'PASS: PH_BUILT — roster fleet % is one PIRATE fleet of four hulls at her hub; the hoard paid the yard % and her house''s second fleet joined her house; the world total stayed %', v_ord, v_cost, v_tot1;
 
@@ -74,11 +74,11 @@ begin
   perform public.tick_pirates(v_now);
   if (select f.port_id from public.fleets f where f.id = v_f) <> v_hub or (select n.wrecked_at from public.pirate_ships n where n.fleet_id = v_f) is null
      or exists (select 1 from public.ships s where s.fleet_id = v_f and s.durability > 0) then
-    raise exception 'PROOF 105 FAIL: the job did not bring the wreck home and stamp her hour';
+    raise exception 'PROOF 106 FAIL: the job did not bring the wreck home and stamp her hour';
   end if;
   perform public.tick_pirates(v_now + interval '30 minutes');
   if exists (select 1 from public.ships s where s.fleet_id = v_f and s.durability > 0) then
-    raise exception 'PROOF 105 FAIL: she was mended before pirate_respawn_minutes';
+    raise exception 'PROOF 106 FAIL: she was mended before pirate_respawn_minutes';
   end if;
   perform public.tick_pirates(v_now + interval '61 minutes');
   v_flow1 := public.pirate_hoard();
@@ -87,7 +87,7 @@ begin
      or (select f.status from public.fleets f where f.id = v_f) not in ('DOCKED', 'SAILING') or v_flow0 - v_flow1 < public.npc_refit_cost(v_f) or v_tot1 <> v_tot0
      or not exists (select 1 from public.events e where e.kind = 'REFITTED' and e.player_id = (select player_id from public.pirate_ships where fleet_id = v_f) and e.payload ->> 'payer' in ('CITY', 'HOARD') and (e.payload ->> 'cost')::bigint = public.npc_refit_cost(v_f))
      or (select sum(s.crew) from public.ships s where s.fleet_id = v_f) <= 0 then
-    raise exception 'PROOF 105 FAIL: a wreck whose home''s purse is empty was not reborn whole, manned and paid for by another pirate purse (hoard % then %, world % then %)', v_flow0, v_flow1, v_tot0, v_tot1;
+    raise exception 'PROOF 106 FAIL: a wreck whose home''s purse is empty was not reborn whole, manned and paid for by another pirate purse (hoard % then %, world % then %)', v_flow0, v_flow1, v_tot0, v_tot1;
   end if;
   raise notice 'PASS: PH_REBORN — her home''s purse empty, the job brought the wreck home and an hour on she was whole, manned and at work; payer %; the hoard paid her refit cost to a yard and the world total stayed',
     (select e.payload ->> 'payer' from public.events e where e.kind = 'REFITTED' and e.player_id = (select player_id from public.pirate_ships where fleet_id = v_f) order by e.created_at desc limit 1);
@@ -106,7 +106,7 @@ begin
   perform public.tick_pirates(v_now + interval '2 hours');
   perform public.tick_pirates(v_now + interval '3 hours 1 minute');
   if exists (select 1 from public.ships s where s.fleet_id = v_old and s.durability <= 0) then
-    raise exception 'PROOF 105 FAIL: a ship of 0339 at a home with no purse was not reborn (the fault of 2026-11-14 is back)';
+    raise exception 'PROOF 106 FAIL: a ship of 0339 at a home with no purse was not reborn (the fault of 2026-11-14 is back)';
   end if;
   raise notice 'PASS: PH_OLD — a lone xebec of 0339, wrecked at a home with no purse, is whole an hour on by the same rule';
 
@@ -121,12 +121,12 @@ begin
   if exists (select 1 from public.ships s where s.fleet_id = v_f and s.durability > 0)
      or not exists (select 1 from public.npc_refit_waits w where w.fleet_id = v_f)
      or not exists (select 1 from public.events e where e.kind = 'REFIT_WAITING' and e.player_id = (select player_id from public.pirate_ships where fleet_id = v_f)) then
-    raise exception 'PROOF 105 FAIL: with every pirate purse empty she was mended unpaid, or she waits with no row and no event (a silent wreck)';
+    raise exception 'PROOF 106 FAIL: with every pirate purse empty she was mended unpaid, or she waits with no row and no event (a silent wreck)';
   end if;
   update public.port_treasury t set ducats = 900000000 where t.port_id = v_cap;
   perform public.tick_pirates(v_now + interval '7 hours 5 minutes');
   if exists (select 1 from public.ships s where s.fleet_id = v_f and s.durability <= 0) or exists (select 1 from public.npc_refit_waits w where w.fleet_id = v_f) then
-    raise exception 'PROOF 105 FAIL: the purse back, the job did not mend her';
+    raise exception 'PROOF 106 FAIL: the purse back, the job did not mend her';
   end if;
   raise notice 'PASS: PH_LOUD — every pirate purse empty: no hull restored unpaid, a row in npc_refit_waits and a REFIT_WAITING event, the merchants'' refit job leaves her; the purse back, the job mends her';
 
@@ -143,7 +143,7 @@ begin
   perform public.pirate_pressure_write(v_now);
   if (select count(*) from public.pirate_ships_cruising x where x.sea_id = v_sea) < 5 or (select sp.value from public.sea_pressure sp where sp.sea_id = v_sea) <> 1.0
      or voyage.sea_danger(v_sea, v_now) > 2 * voyage.sea_danger(v_sea, null) then
-    raise exception 'PROOF 105 FAIL: % fleets in one sea press on it by %, not the cap 1.0', (select count(*) from public.pirate_ships_cruising x where x.sea_id = v_sea), (select sp.value from public.sea_pressure sp where sp.sea_id = v_sea);
+    raise exception 'PROOF 106 FAIL: % fleets in one sea press on it by %, not the cap 1.0', (select count(*) from public.pirate_ships_cruising x where x.sea_id = v_sea), (select sp.value from public.sea_pressure sp where sp.sea_id = v_sea);
   end if;
   raise notice 'PASS: PH_CAP — % pirate fleets cruising the South Pacific press on it by 1.0: danger % against the authored %', (select count(*) from public.pirate_ships_cruising x where x.sea_id = v_sea),
     voyage.sea_danger(v_sea, v_now), voyage.sea_danger(v_sea, null);

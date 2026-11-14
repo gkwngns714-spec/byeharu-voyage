@@ -135,10 +135,10 @@ for (const scheme of ['dark'] as const) {
     { width: 844, height: 390 },
     { width: 1440, height: 900 },
   ]) {
-    test.describe(`all 249 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
+    test.describe(`all 254 harbours at the world view — ${scheme}, ${viewport.width}×${viewport.height}`, () => {
       test.use({ viewport, colorScheme: scheme })
 
-      test('249 harbours (251 marks: two at the seam) at the world view, and a dot becomes its full marker on the way in', async ({
+      test('254 harbours (257 marks: three at the seam) at the world view, and a dot becomes its full marker on the way in', async ({
         page,
         request,
         baseURL,
@@ -189,11 +189,13 @@ for (const scheme of ['dark'] as const) {
         // for 249 harbours, and the two drawn twice are still exactly AUK and WLG. Measured in a browser on 2026-11-07, all four glasses: 251.
         const distinct = new Set(world.codes)
         const twice = [...distinct].filter((c) => world.codes.filter((x) => x === c).length > 1).sort()
-        expect(distinct.size, 'every harbour is on the sheet at the world view').toBe(249)
-        expect(world.harbours, 'one mark per harbour per copy of the sheet').toBe(251)
-        expect(twice, 'the harbours drawn in both copies are the two at the seam').toEqual(['AUK', 'WLG'])
+        // Moved deliberately 2026-11-14: 249 → 254 harbours (the pirates' ocean havens, 0410). Midway (177.37° W) is 2.6° from the seam, nearer
+        // than Wellington, so it is the third harbour drawn in both copies: 257 marks for 254 harbours.
+        expect(distinct.size, 'every harbour is on the sheet at the world view').toBe(254)
+        expect(world.harbours, 'one mark per harbour per copy of the sheet').toBe(257)
+        expect(twice, 'the harbours drawn in both copies are the three at the seam').toEqual(['AUK', 'MWY', 'WLG'])
         expect(world.full, 'past the dot rung a city is its dot and nothing else').toBe(0)
-        expect(world.dots).toBe(251)
+        expect(world.dots).toBe(257)
         // The whole body is drawn at the world view — the same path as at the opening frame.
         expect(world.coastBytes).toBe(opening.coastBytes)
         expect(world.coastBytes).toBeGreaterThan(70_000)

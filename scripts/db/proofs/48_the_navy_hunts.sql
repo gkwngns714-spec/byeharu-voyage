@@ -24,6 +24,10 @@ do $$
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite');
   update public.world_config set value = 'false'::jsonb where key in ('attack_enabled', 'navy_enabled', 'pirates_bite', 'regard_enabled', 'npc_refits_enabled');
+  -- 0410: this proof is of 0339's lone ships and their arithmetic: the roster's fleets, the pirates' own pace and the wider day's room are proof 106's
+  delete from public.pirate_roster;
+  update public.world_config set value = to_jsonb(0.005) where key = 'pirate_spend_day_pct';
+  update public.world_config set value = to_jsonb(1440) where key = 'pirate_add_minutes';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set ducats = 50000000, reserve = 0;
   update public.ports p set crew_pool = 2000;
@@ -686,11 +690,14 @@ begin
   if pg_temp.purses() <> v_w then
     raise exception 'PROOF 48 FAIL: the sinking moved gold';
   end if;
-  -- her home pays her refit, moved, by 0322's hourly step
+  -- her home pays her refit, moved: since 0410 by her own step (public.pirate_reborn), an hour after she was brought home; 0322's hourly step leaves her
   v_yard := public.refit_yard(v_por);
   v_yard0 := public.treasury_balance(v_yard);
-  v_s := public.npc_refit_step(p, v_t + interval '2 seconds');
-  if v_s <> 'PAID' or public.treasury_balance(v_por) <> v_home0 - v_cost or public.treasury_balance(v_yard) <> v_yard0 + v_cost
+  if public.npc_refit_step(p, v_t + interval '2 seconds') <> 'NOT_A_WRECK' or public.pirate_ship_step(p, v_t + interval '2 seconds') <> 'WRECK' then
+    raise exception 'PROOF 48 FAIL: a fresh pirate wreck is not her own step''s';
+  end if;
+  v_s := public.pirate_ship_step(p, v_t + interval '62 minutes');
+  if v_s <> 'REBORN' or public.treasury_balance(v_por) <> v_home0 - v_cost or public.treasury_balance(v_yard) <> v_yard0 + v_cost
      or exists (select 1 from public.ships s where s.fleet_id = p and s.durability <= 0) or pg_temp.purses() <> v_w then
     raise exception 'PROOF 48 FAIL: her home did not pay her refit: % home % -> %, yard % -> %', v_s, v_home0, public.treasury_balance(v_por), v_yard0, public.treasury_balance(v_yard);
   end if;

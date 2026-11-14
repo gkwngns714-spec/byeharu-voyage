@@ -18,6 +18,7 @@
 // 1871), jamestown (tidal island, now a peninsula), pulicat (sand spit), kochi, luanda, mokpo, aden, gibraltar.
 // 2026-11-07 (0338, the pirate homes): +djerba (the island of Djerba, joined to the mainland by a Roman causeway but an island in fact), +goto (the
 // Goto islands, Fukue), +lingga (Lingga island, Daik): three island towns, so 249 harbours were read.
+// 2026-11-14 (0410, the pirates' ocean havens): +midway, +pitcairn, +tristan, +flores, +diego-garcia: five mid-ocean islands, so 254 harbours were read.
 
 export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   ambon: "Ambon",
@@ -36,10 +37,12 @@ export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   copenhagen: "Copenhagen",
   corfu: "Corfu",
   cork: "Cork",
+  "diego-garcia": "Diego Garcia",
   dili: "Dili",
   djerba: "Djerba",
   dublin: "Dublin",
   famagusta: "Famagusta",
+  flores: "Flores",
   fukuoka: "Fukuoka",
   funchal: "Funchal",
   galle: "Galle",
@@ -72,6 +75,7 @@ export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   massawa: "Massawa",
   matsumae: "Matsumae",
   messina: "Messina",
+  midway: "Midway",
   mombasa: "Mombasa",
   "mozambique-island": "Island of Mozambique",
   mumbai: "Mumbai",
@@ -82,6 +86,7 @@ export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   osaka: "Osaka",
   palermo: "Palermo",
   palma: "Palma de Mallorca",
+  pitcairn: "Pitcairn",
   plymouth: "Plymouth",
   "ponta-delgada": "Ponta Delgada",
   "port-louis": "Port Louis",
@@ -105,6 +110,7 @@ export const ISLAND_PORTS: Readonly<Record<string, string>> = {
   tidore: "Tidore",
   tokyo: "Tokyo",
   torshavn: "Torshavn",
+  tristan: "Tristan",
   tsushima: "Tsushima",
   valletta: "Valletta",
   visby: "Visby",

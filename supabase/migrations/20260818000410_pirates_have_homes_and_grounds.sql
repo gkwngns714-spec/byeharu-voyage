@@ -906,6 +906,9 @@ begin
     perform public.pay_city(n.player_id, v_yard, 'REFIT', p_cost, null);
     return 'SHIP';
   end if;
+  if n.home_port is not distinct from v_cap and public.pirate_pay('REFIT', p_cost, p_now, v_yard, null) > 0 then
+    return 'HOME';   -- her home is the capital: Port Royal pays first, as any home does
+  end if;
   for c in select a.port_id from public.port_allegiance a
             where a.nation_id = public.pirate_nation() and a.port_id is distinct from v_cap and a.port_id <> v_yard
             order by (a.port_id = n.home_port) desc, public.city_surplus(a.port_id) desc, a.port_id loop
@@ -918,7 +921,7 @@ begin
     on conflict (day) do update set spent = public.pirate_spend_day.spent + excluded.spent;
     return case when c.port_id = n.home_port then 'HOME' else 'CITY' end;
   end loop;
-  if public.pirate_pay('REFIT', p_cost, p_now, v_yard, null) > 0 then
+  if n.home_port is distinct from v_cap and public.pirate_pay('REFIT', p_cost, p_now, v_yard, null) > 0 then
     return 'HOARD';
   end if;
   return null;

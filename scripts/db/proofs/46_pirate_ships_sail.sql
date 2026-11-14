@@ -145,6 +145,10 @@ declare
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'npc_traders_enabled', 'standing_routes_enabled', 'combat_bite');
   update public.world_config set value = 'false'::jsonb where key in ('npc_refits_enabled', 'navy_enabled', 'pirates_bite', 'attack_enabled');
+  -- 0410: this proof is of 0339's lone ships and their arithmetic: the roster's fleets, the pirates' own pace and the wider day's room are proof 106's
+  delete from public.pirate_roster;
+  update public.world_config set value = to_jsonb(0.005) where key = 'pirate_spend_day_pct';
+  update public.world_config set value = to_jsonb(1440) where key = 'pirate_add_minutes';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set ducats = 0, reserve = 0;
   update public.ports p set crew_pool = 500;
@@ -619,10 +623,15 @@ begin
   update public.fleets f set status = 'UNABLE_TO_SAIL', ready_at = null where f.id = v_her;
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_s := public.pirate_ship_step(v_her, v_t + interval '12 hours');
-  v_a := (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT' and f.port_id = v_por);
-  perform public.npc_refit_step(v_her, v_t + interval '12 hours');
+  -- 0410: a pirate wreck is her own step's (public.pirate_reborn): 0322's hourly step leaves her, she lies pirate_respawn_minutes, and then her home pays (here Port Royal, through the hoard's payer)
+  if v_s <> 'WRECK' or public.npc_refit_step(v_her, v_t + interval '12 hours') <> 'NOT_A_WRECK'
+     or exists (select 1 from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') then
+    raise exception 'PROOF 46 FAIL: refits lit, a fresh pirate wreck was paid for at once or by 0322''s step: %', v_s;
+  end if;
+  v_s := public.pirate_ship_step(v_her, v_t + interval '13 hours 1 minute');
   v_a := (select coalesce(-sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT' and f.port_id = v_por);
-  if v_s <> 'WRECK' or v_a <= 0 or (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') <> 0 then
+  if v_s <> 'REBORN' or v_a <= 0 or (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') <> 0
+     or exists (select 1 from public.ships s where s.fleet_id = v_her and s.durability <= 0) then
     raise exception 'PROOF 46 FAIL: refits lit, her home did not pay the refit, moved: % (% d.)', v_s, v_a;
   end if;
   update public.world_config set value = 'false'::jsonb where key = 'npc_refits_enabled';
