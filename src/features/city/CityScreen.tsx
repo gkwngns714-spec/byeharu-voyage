@@ -373,15 +373,18 @@ function CityFrame({
           {/* THE FIVE PLACES — a row of cards across the page, always there: a press swaps the plan and the side panel and moves nothing here
               (owner, 2026-10-31: "in buildings 6 building tappable should always be inside"). */}
           <nav aria-label={t('city.buildings')} data-testid="city-buildings">
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 md:gap-4 xl:gap-6" data-testid="city-building-grid">
-              {CITY_TILES.map((b) => (
+            {/* FIVE TILES LEAVE NO HOLE (2026-11-14, the second look pass): on a phone the words do not fit five across ("Production" is
+                71 px in a 53-px cell at 320), and three columns left an empty sixth cell. So the phone's rail is two over three on six
+                tracks: the first two tiles take three tracks each, the rest two. From `sm` it is one row of five, as before. */}
+            <div className="grid grid-cols-6 gap-3 sm:grid-cols-5 md:gap-4 xl:gap-6" data-testid="city-building-grid">
+              {CITY_TILES.map((b, i) => (
                 <button
                   key={b.id}
                   type="button"
                   onClick={() => onSelect(b.id)}
                   aria-pressed={selected === b.id}
                   data-testid={`city-building-${b.id}`}
-                  className={`flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile px-1 py-2 transition ${
+                  className={`${i < 2 ? 'col-span-3' : 'col-span-2'} flex min-h-16 min-w-0 flex-col items-center justify-center gap-1.5 rounded-tile px-1 py-2 transition sm:col-span-1 ${
                     selected === b.id
                       ? 'bg-surface-2 text-ink ring-1 ring-inset ring-accent'
                       : 'bg-surface text-ink-muted hover:bg-surface-2 hover:text-ink'

@@ -5,6 +5,7 @@ import { serveLitSeas } from './seasLit.fixture'
 import { buildChartModel, quietHarbours, type PortRole } from '../src/chart/chartModel'
 import { clampView, maxSpanX, MAX_SPAN_X, viewBoxOf, zoomAt } from '../src/chart/chartView'
 import { GLYPH, harbourLightHalo, WIDE_SCALE, wideScale } from '../src/chart/glyphs'
+import { LABEL_PRIORITY, planLabels, type LabelRequest } from '../src/chart/labels'
 import type { MapFleet, MapPort, MapTraffic } from '../src/chart/mapTypes'
 import { shipMarks, stableSlot, THIN_DENSITY, THIN_MOD } from '../src/chart/shipMarks'
 import { CHART_HEIGHT, type ViewBox } from '../src/lib/geo'
@@ -141,6 +142,32 @@ test('past a coast, a harbour with no name on the glass is a quiet dot; yours an
   expect([...quietHarbours(full, named, roles, 'TNG', 45 / 390)]).toEqual(['CEU'])
 })
 
+/** A name over or under its mark: the gap (9 px), half a great name's line (8 px) and the mark's own lean, with room. */
+const NAME_REACH_PX = 26
+
+test('past a coast a name is set over or under its own mark, a lesser name gives way, and nothing steps out', () => {
+  const at = (id: string, text: string, x: number, y: number, priority: number): LabelRequest => ({ id, text, at: { x, y }, priority, tone: 'port-quiet' })
+  const view = { x: 0, y: 0, width: 40, height: 80 }
+  const upp = 40 / 390
+  // three harbours in a row, 3 px apart on the glass: a side placement of each would lie across its neighbours
+  const row = [at('port:A', 'Barcelona', 20, 40, 15), at('port:B', 'Valencia', 20.3, 40, 13), at('port:C', 'Tarragona', 19.7, 40, 12)]
+  const wide = planLabels(row, { viewBox: view, unitsPerPx: upp, centredOnMark: true })
+  expect(wide.map((l) => l.side).every((s) => s === 'above' || s === 'below'), wide.map((l) => `${l.text}:${l.side}`).join(' ')).toBe(true)
+  expect(wide.every((l) => l.leader === undefined)).toBe(true)
+  // the greatest is named, and its name's middle is on its own mark's meridian
+  const first = wide.find((l) => l.id === 'port:A')!
+  expect(first.side).toBe('above')
+  expect(first.box.x + first.box.width / 2).toBeCloseTo(20, 6)
+  // there are two places (over, under) for three names here: the least is the one that is not drawn
+  expect(wide.map((l) => l.id).sort()).toEqual(['port:A', 'port:B'])
+  // a harbour a fleet of yours is using may still take a side when over and under are taken
+  const mine = planLabels([...row, { ...at('port:D', 'Sagunto', 20.1, 40, LABEL_PRIORITY.anchorage), tone: 'port-active' }], { viewBox: view, unitsPerPx: upp, centredOnMark: true })
+  expect(mine.find((l) => l.id === 'port:D')?.side).toBe('above')
+  // and on a coast the rule is off: a harbour alone takes the right, as it always did, and with the rule on it is named over its mark
+  expect(planLabels([row[0]], { viewBox: view, unitsPerPx: upp })[0].side).toBe('right')
+  expect(planLabels([row[0]], { viewBox: view, unitsPerPx: upp, centredOnMark: true })[0].side).toBe('above')
+})
+
 // ── the running game ────────────────────────────────────────────────────────────────────────────
 type Box = { x: number; y: number; w: number; h: number; name: string }
 const hits = (a: Box, b: Box, slack = 0) => a.x + slack < b.x + b.w && b.x + slack < a.x + a.w && a.y + slack < b.y + b.h && b.y + slack < a.y + a.h
@@ -213,9 +240,30 @@ const measure = (page: Page) =>
       return Math.max(r.width, r.height)
     })
     const lights = [...document.querySelectorAll('[data-testid="map-ports"] circle.bv-sun-light')].map((c) => c.getBoundingClientRect().width / 2)
+    // every harbour's name, the side it was set on, and how far its middle is from its own mark (the nearest copy of the sheet)
+    const beside = [...document.querySelectorAll('[data-testid="map-labels"] text[data-label-id^="port:"]')].map((t) => {
+      const code = (t.getAttribute('data-label-id') ?? '').slice('port:'.length)
+      const flag = t.parentElement?.hasAttribute('data-label-flag') ? t.parentElement.querySelector('[data-testid="map-label-flag"]') : null
+      const a = t.getBoundingClientRect()
+      const f = flag ? flag.getBoundingClientRect() : a
+      const cx = (Math.min(a.left, f.left) + Math.max(a.right, f.right)) / 2
+      const cy = (Math.min(a.top, f.top) + Math.max(a.bottom, f.bottom)) / 2
+      let far = Infinity
+      for (const m of document.querySelectorAll(`[data-testid="map-ports"] [data-port-code="${code}"]`)) {
+        // the mark's own point: its smallest drawn piece is centred on it (a light's halo and a road are wider and may lean)
+        let best: DOMRect | null = null
+        for (const piece of m.querySelectorAll('circle, path, use')) {
+          const r = piece.getBoundingClientRect()
+          if (r.width > 0 && (!best || r.width * r.height < best.width * best.height)) best = r
+        }
+        const r = best ?? m.getBoundingClientRect()
+        far = Math.min(far, Math.hypot(r.left + r.width / 2 - cx, r.top + r.height / 2 - cy))
+      }
+      return { name: t.textContent ?? '', side: t.getAttribute('data-label-side') ?? '', far }
+    })
     const grid = document.querySelector('[data-testid="map-graticule"]') as SVGGraphicsElement | null
     const g = grid ? grid.getBBox() : null
-    return { names, joins, hulls, lights, grid: g ? { top: g.y, foot: g.y + g.height } : null, merchants: document.querySelectorAll('[data-testid="map-merchant"]').length, mine: document.querySelectorAll('[data-testid="map-ship"], [data-port-code] path.fill-accent').length }
+    return { beside, names, joins, hulls, lights, grid: g ? { top: g.y, foot: g.y + g.height } : null, merchants: document.querySelectorAll('[data-testid="map-merchant"]').length, mine: document.querySelectorAll('[data-testid="map-ship"], [data-port-code] path.fill-accent').length }
   })
 
 for (const glass of [
@@ -243,6 +291,15 @@ for (const glass of [
         for (let i = 0; i < seen.names.length; i++) for (let j = i + 1; j < seen.names.length; j++) if (hits(seen.names[i], seen.names[j], 2)) clash.push(`${seen.names[i].name} / ${seen.names[j].name}`)
         expect(clash, `names overlap at ${rung.name} (${glass.tag})`).toEqual([])
         expect(seen.names.length, `no names at ${rung.name}`).toBeGreaterThan(0)
+        // (4a') PAST A COAST A NAME STANDS AT ITS OWN CITY (2026-11-14, the second look pass): over or under its mark, its middle within
+        // NAME_REACH_PX of it. "Barcelona" stood beside Lisbon and "Bordeaux" off Galicia when a name was set to one side. Only a
+        // harbour a fleet of yours is using may take a side (the one fleet of this world lies in one harbour).
+        if (upp > WIDE_SCALE.fromUnitsPerPx) {
+          const aside = seen.beside.filter((b) => b.side !== 'above' && b.side !== 'below')
+          expect(aside.length, `names set to one side at ${rung.name}: ${aside.map((b) => b.name).join(', ')}`).toBeLessThanOrEqual(1)
+          const adrift = seen.beside.filter((b) => (b.side === 'above' || b.side === 'below') && !(b.far <= NAME_REACH_PX))
+          expect(adrift.map((b) => `${b.name} ${Math.round(b.far)} px`), `names away from their marks at ${rung.name}`).toEqual([])
+        }
         // (4b) every halo is round: no spike past a letter
         expect([...new Set(seen.joins)], `a name's halo is not round at ${rung.name}`).toEqual(['round'])
         // (4c) a merchant hull: never longer than the biggest class at this density (and its keyline), never a speck

@@ -119,7 +119,7 @@ export function CityHallPanel({
         aria-expanded={influenceOpen}
         onClick={() => setInfluenceOpen((v) => !v)}
         data-testid="city-hall-influence"
-        className="flex min-h-12 w-full shrink-0 items-center gap-2 rounded-control border-b border-edge text-left text-ink-muted transition hover:text-ink"
+        className="flex min-h-12 w-full shrink-0 items-center gap-2 border-b border-edge text-left text-ink-muted transition hover:text-ink"
       >
         <span className="text-t-label">{t('town.influence')}</span>
         <span className="shrink-0 text-t-label tabular-nums">{you ? formatInt(you.points) : null}</span>

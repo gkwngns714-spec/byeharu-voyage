@@ -59,6 +59,29 @@ export function Sparkline({
   const y = (v: number) => (span === 0 ? height / 2 : height - ((v - lo) / span) * (height - 2) - 1)
   const x = (i: number) => (i / (values.length - 1)) * width
 
+  // A FLAT LINE IS DRAWN AS A CHART, NOT AS A RULE (2026-11-14, the second look pass). A price that did not move was one thin
+  // stroke across its slot, and beside a figure it read as a stray divider. It is now a dashed baseline that ends in a dot: the
+  // dot is where the price stands now, the dashes say "a record, and it did not move". The dot is a zero-length stroke with a
+  // round cap, so it stays round whatever box the caller stretches the picture into.
+  if (span === 0) {
+    const mid = height / 2
+    return (
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        className={`inline-block align-middle ${className}`}
+        role="img"
+        aria-label={label ?? t('ui.readings', { n: values.length, lo, hi })}
+        preserveAspectRatio="none"
+        data-spark="flat"
+      >
+        <path d={`M1 ${mid} L${width - 7} ${mid}`} fill="none" strokeWidth={1.25} strokeLinecap="round" strokeDasharray="1 4" className={STROKE[tone]} opacity={0.7} vectorEffect="non-scaling-stroke" />
+        <path d={`M${width - 3} ${mid} L${width - 3} ${mid}`} fill="none" strokeWidth={4} strokeLinecap="round" className={STROKE[tone]} vectorEffect="non-scaling-stroke" />
+      </svg>
+    )
+  }
+
   const d = values.map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')
 
   return (

@@ -93,7 +93,11 @@ export function StatCell({
   children?: ReactNode
   className?: string
 } & { 'data-testid'?: string }) {
-  const drawn = trend !== undefined && trend.length > 1
+  // A TREND THAT DID NOT MOVE IS NOT DRAWN BESIDE A CARD'S FIGURE (2026-11-14, the second look pass): in the two card looks the
+  // line takes what the figure leaves, so a flat one was a hairline from the number to the card's edge and read as a stray
+  // rule ("Who holds it", every holder whose money stood still). The figure already says it. The plain cell keeps its line.
+  const flat = trend !== undefined && trend.every((v) => v === trend[0])
+  const drawn = trend !== undefined && trend.length > 1 && !(flat && look !== 'cell')
   // `text` wins: a caller that has a reading which is NOT a number ("—", "locked") passes it
   // beside the value it would otherwise have counted to.
   const figure =

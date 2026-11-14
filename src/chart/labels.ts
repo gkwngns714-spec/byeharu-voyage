@@ -227,6 +227,16 @@ export interface LabelLayoutOptions {
    * further rings may only ADD names, never move or lose one that fitted snug (tests/map.labels).
    */
   readonly rings?: readonly number[]
+  /**
+   * PAST A COAST, A NAME STANDS OVER OR UNDER ITS OWN MARK, AND NEVER STEPS OUT (2026-11-14, the second look pass). On a phone
+   * holding a sea a name is 80 px wide and Iberia is 110: a name set beside its mark ("Bordeaux" to the left, "Genoa" to the
+   * left) lay across another country, and one that had stepped out a ring ("Barcelona", 21 px from its mark, its hairline lost
+   * on the day land) read as a city in Portugal. With this set, the two placements centred on the mark are tried first, then the
+   * sides for a harbour a fleet of yours is using (`route` and up), and there are no further rings: a name with no place at its own
+   * mark is not drawn at this zoom, and comes back as the glass comes in. The lower name is the one that goes: a name gives way
+   * to the marks of its equals and betters only. A fleet's name keeps the usual order (she is on open water).
+   */
+  readonly centredOnMark?: boolean
 }
 
 /**
@@ -376,10 +386,13 @@ interface Candidate {
  * glyph, then the same eight on each further ring (`LABEL_RINGS`, header part 2b). A whole ring is
  * exhausted before the next is offered, so a name only steps out when it had nowhere to sit.
  */
-function candidates(at: Point, width: number, height: number, gap: number, rings: readonly number[]): Candidate[] {
+function candidates(at: Point, width: number, height: number, gap: number, rings: readonly number[], centredFirst = false, sidesToo = false): Candidate[] {
   const out: Candidate[] = []
   for (const [ring, step] of rings.entries()) {
-    for (const candidate of sides(at, width, height, gap * step)) {
+    const ringSides = sides(at, width, height, gap * step)
+    // over, under, then the two sides and the diagonals (`centredOnMark`)
+    const inOrder = centredFirst ? (sidesToo ? [ringSides[2], ringSides[3], ringSides[0], ringSides[1]] : [ringSides[2], ringSides[3]]) : ringSides
+    for (const candidate of inOrder) {
       out.push(ring === 0 ? candidate : { ...candidate, stepped: true })
     }
   }
@@ -485,10 +498,11 @@ export function planLabels(
   // were added: all eight candidates were rejected, four of them by the fleet's own dot.
   //
   // A CENTRED request has no glyph (row 90: a sea's name sits on water), so it registers none.
-  const glyphBoxes: { id: string; rect: Rect }[] = requests
+  const glyphBoxes: { id: string; priority: number; rect: Rect }[] = requests
     .filter((r) => r.placement !== 'centred')
     .map((r) => ({
       id: r.id,
+      priority: r.priority,
       rect: { x: r.at.x - glyph, y: r.at.y - glyph, width: 2 * glyph, height: 2 * glyph },
     }))
 
@@ -522,10 +536,11 @@ export function planLabels(
     const sizePx = request.sizePx ?? options.fontSizePx ?? DEFAULTS.fontSizePx
     const spacingEm = request.spacingEm ?? 0
     const size = sizePx * u
+    const overMark = (options.centredOnMark ?? false) && request.tone !== 'fleet'
     const width = textEm(request.text, spacingEm) * size + (request.flag ? FLAG_ADVANCE_EM * size : 0)
     const options_ = centredName
       ? centredNear(request.at, width, size, request.slackLines ?? 0)
-      : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, options.rings ?? LABEL_RINGS).filter(
+      : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, overMark ? [1] : (options.rings ?? LABEL_RINGS), overMark, request.priority >= LABEL_PRIORITY.route).filter(
           (c) => (c.stepped ?? false) === stepOut,
         )
 
@@ -538,7 +553,9 @@ export function planLabels(
       // chart that believes it printed a name it did not is worse than one that dropped it.
       if (keepOut.some((k) => intersects(candidate.box, k))) continue
       if (!request.force) {
-        if (glyphBoxes.some((g) => g.id !== request.id && intersects(candidate.box, g.rect))) continue
+        // past a coast (`centredOnMark`) a name gives way only to the marks of its equals and betters: a great harbour's name may
+        // lie over a lesser harbour's mark, which is then a quiet dot under it (./chartModel.ts `quietHarbours`)
+        if (glyphBoxes.some((g) => g.id !== request.id && !(overMark && g.priority < request.priority) && intersects(candidate.box, g.rect))) continue
         if (taken.some((t) => intersects(candidate.box, t))) continue
       }
       // A STEPPED-OUT NAME IS JOINED TO ITS MARK, and the join is held to the same promise as the

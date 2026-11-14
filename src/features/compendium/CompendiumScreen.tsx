@@ -94,7 +94,7 @@ function CompendiumBody({ title }: { title: string }) {
           setFace(next)
           setQuery('')
         }}
-        className="w-fit max-w-full"
+        className="w-fit max-w-full max-sm:w-full"
       />
       {face === 'goods' && <GoodsFace query={query} search={search} />}
       {face === 'ships' && <ShipsFace query={query} search={search} />}

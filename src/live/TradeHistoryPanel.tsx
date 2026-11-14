@@ -159,7 +159,7 @@ function OpenView({ open }: { open: NonNullable<FleetTrades['open']> }) {
   return (
     <div data-testid="trade-open">
       <div className="mt-2 rounded-sheet bg-gradient-to-br from-accent/15 via-surface-2 to-surface-2 p-4">
-        <div className="text-t-caption uppercase tracking-wider text-ink-faint">{tl('books.lapUnderWay', { n: formatInt(open.lap_no) })}</div>
+        <div className="text-t-caption font-semibold text-ink-faint">{tl('books.lapUnderWay', { n: formatInt(open.lap_no) })}</div>
         <div className="mt-1 text-t-body text-ink">{tl('books.startedAgo', { ago: formatRelative(Date.parse(open.started_at), nowMs) })}</div>
         <div className="mt-1 text-t-caption text-ink-faint">{tl('books.booksClose')}</div>
       </div>
@@ -252,7 +252,7 @@ function Plate({ net, title, caption }: { net: number; title: string; caption: s
   const wash = tone === 'success' ? 'from-success/15' : tone === 'danger' ? 'from-danger/15' : 'from-accent/15'
   return (
     <div className={`mt-2 rounded-sheet bg-gradient-to-br ${wash} via-surface-2 to-surface-2 p-4`} data-testid="trade-net">
-      <div className="text-t-caption uppercase tracking-wider text-ink-faint">{title}</div>
+      <div className="text-t-caption font-semibold text-ink-faint">{title}</div>
       <div className={`mt-1 text-t-title tabular-nums ${TONE_TEXT[tone]}`}>{formatDucatsDelta(net)}</div>
       <div className="mt-1 text-t-caption text-ink-faint">{caption}</div>
     </div>
@@ -379,7 +379,7 @@ function PortHead({ code, name, n }: { code: string; name: string; n?: number })
 function Heading({ children, trailing }: { children: ReactNode; trailing?: ReactNode }) {
   return (
     <div className="flex items-baseline justify-between gap-2 pb-2 pt-4">
-      <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{children}</h3>
+      <h3 className="text-t-caption font-semibold text-ink-faint">{children}</h3>
       {trailing}
     </div>
   )

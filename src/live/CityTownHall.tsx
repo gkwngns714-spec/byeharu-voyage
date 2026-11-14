@@ -163,7 +163,7 @@ export function CityTownHall({ port, trayMode }: { port: SnapshotPort; trayMode?
 }
 
 function Heading({ children }: { children: string }) {
-  return <h3 className="pb-1 pt-4 text-t-caption uppercase tracking-wider text-ink-faint">{children}</h3>
+  return <h3 className="pb-1 pt-4 text-t-caption font-semibold text-ink-faint">{children}</h3>
 }
 
 /** The one quiet line under the treasury: what the city does with its purse, and its tax. */

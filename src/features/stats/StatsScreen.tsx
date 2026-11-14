@@ -85,7 +85,7 @@ function StatsBody({ title }: { title: string }) {
         value={face}
         onChange={setFace}
         label={t('stats.facesLabel')}
-        className="w-fit max-w-full"
+        className="w-fit max-w-full max-sm:w-full"
       />
       <LiveNow live={live} />
       {face === 'overview' && <OverviewFace live={live} />}

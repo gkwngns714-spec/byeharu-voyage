@@ -59,7 +59,7 @@ export function ShipCabins({ seats, seating }: { seats: ShipSeats | undefined; s
   return (
     <section data-testid="ship-cabins">
       <div className="flex items-baseline justify-between pb-2 pt-4">
-        <h3 className="text-t-caption uppercase tracking-wider text-ink-faint">{t('yard.cabins')}</h3>
+        <h3 className="text-t-caption font-semibold text-ink-faint">{t('yard.cabins')}</h3>
         {seats.note && <span className="text-t-caption text-ink-faint">{seats.note}</span>}
       </div>
       <ul className="flex flex-col gap-1">

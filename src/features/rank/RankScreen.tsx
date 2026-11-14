@@ -132,7 +132,7 @@ function RankBody() {
         value={face}
         onChange={setFace}
         label={title}
-        className="w-fit max-w-full"
+        className="w-fit max-w-full max-sm:w-full"
       />
       {face === 'captains' ? <Board board={board} answered={answered} house={house} /> : <CountriesBoard />}
     </Sheet>

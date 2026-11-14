@@ -211,7 +211,10 @@
   --color-chart-shallow: color-mix(in srgb, var(--color-info) 22%, var(--color-chart-sea));
   --color-chart-relief: color-mix(in srgb, var(--color-chart-sea) 55%, var(--color-chart-land));
   --color-chart-grid: color-mix(in srgb, var(--color-ink-faint) 16%, transparent);
-  --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 62%, var(--color-chart-sea));
+  /* 62 % until 2026-11-14 (the second look pass): by night a sea's name often lies half on the land ("Red Sea", "Gulf of Oman"),
+     and the night land is the faint ink at 42 %, so the name was dark grey on grey. At 80 % it reads on the land and the water alike
+     and is still paler than a harbour's name (the faint ink whole) and set wider. */
+  --color-chart-sea-name: color-mix(in srgb, var(--color-ink-faint) 80%, var(--color-chart-sea));
 
   /* ── THE DAY SIDE OF THE TERMINATOR (2026-10-14, owner: "sunlight based on real science. The
      sunlight touching the earth should have colors similar to daytime earth") ─────────────────
@@ -896,7 +899,7 @@ html:lang(ko) body {
     opacity: 1;
   }
   50% {
-    opacity: 0.45;
+    opacity: 0.7;
   }
 }
 .bv-fight-ring {
