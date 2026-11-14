@@ -42,3 +42,4 @@ select jsonb_build_object(
                                                   'failed', c.receipt->'failed', 'note', c.receipt->'note') order by c.at desc)
                 from (select * from public.compact_runs order by at desc limit 3) c)
 ) as r;
+commit;
