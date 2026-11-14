@@ -10,7 +10,7 @@
 -- @pass PM_PAID        her founding is paid by Port Royal's purse as PIRATE_FOUND and nothing else: her ledger holds PIRATE_FOUND credits equal to the purse's PIRATE_FOUND outflow, 0339's spend book holds the same, no FOUNDING ledger row of hers, no CROWN_CALL, and W is unchanged to the ducat
 -- @pass PM_GATES       the gates, each said: a run a minute later is paced; pirate_merchants_max reached is full; the merchant roster full is no_berth; the day's room spent is room, and so is a room just under what founding_credit really pays (capital + tuition, 252,500) plus the ships' reserve; and a founding the hoard cannot pay is refused WHOLE (E_HOARD_SHORT) leaving no house
 -- @pass PM_SECOND      two hours later the second (slot 2) is founded at Goto: its home in the ring, Djerba, refuses (its courses pointed off the sphere: E_BAD_PATH inside npc_found) and the SAME run passes it over, saying what it tried
--- @pass PM_NO_GIFT     a broke merchant of the pirates is not on the capital's gift roster; a broke crown merchant is
+-- @pass PM_GIFT_ROSTER a broke merchant of the pirates is on the capital's gift roster as a broke crown merchant is (0408; before it she was on none: 0341's rule, reversed by the owner)
 -- @pass PM_INVESTS     lit she is on the invest roster and her turn in the real pass gives for the pirates at the closest race on her loop (a port_influence row under PIR, by her); dark she is off the roster
 -- @pass PM_COUNT       the daily count runs with 11 powers: the free city she gave to flies the skull, she is its mayor, the Countries board counts it won; the city is NOT free (tax quoted, dock fee charged, no crown)
 -- @pass PM_PLANNER     lit: the crown merchant's loops hold no pirate home; the pirate merchant's loops out of her home are offered, every destination a harbour that is no pirate home, her way home kept
@@ -241,21 +241,16 @@ begin
   end if;
   raise notice 'PASS: PM_SECOND — % (slot 2) founded at Goto three hours on: Djerba refused (%) and was passed over in the same run; W unchanged', v_r->>'company', v_r->'tried'->0->>'error';
 
-  -- ── 6 NO GIFT: the second is made broke (her purse to Goto, moved); a crown merchant made broke the same way is on the roster, she is not ──
+  -- ── 6 THE GIFT ROSTER (0408: 0341's "never gifted" is gone): the second is made broke (her purse to Goto, moved); she is on the roster as a crown merchant made broke the same way is. Her gift itself, from the hoard, is proof 103's ──
   perform public.pay_city(v_m2, v_got, 'TAX', 245000);
   perform public.pay_city(v_ctl.player_id, v_ctl.home_port_id, 'TAX', (select pl.ducats - 1000 from public.players pl where pl.id = v_ctl.player_id));
   if (select pl.ducats from public.players pl where pl.id = v_m2) <> 5000
-     or exists (select 1 from public.capital_gift_roster(v_t0 + interval '4 hours', v_m2) g)
-     or exists (select 1 from public.capital_gift_roster(v_t0 + interval '4 hours') g where g.player_id = v_m2)
+     or not exists (select 1 from public.capital_gift_roster(v_t0 + interval '4 hours', v_m2) g where g.cap_id = v_por)
+     or not exists (select 1 from public.capital_gift_roster(v_t0 + interval '4 hours') g where g.player_id = v_m2)
      or not exists (select 1 from public.capital_gift_roster(v_t0 + interval '4 hours', v_ctl.player_id) g) then
-    raise exception 'PROOF 47 FAIL: the broke pirate merchant is gifted, or the broke crown merchant is not';
+    raise exception 'PROOF 47 FAIL: the broke pirate merchant is not on the gift roster with Port Royal her payer, or the broke crown merchant is not on it';
   end if;
-  -- the pass itself, run for her alone: nothing gifted, nothing waiting, nothing failed
-  v_r := public.capital_gift_pass(v_t0 + interval '4 hours', v_m2);
-  if (v_r->>'gifted')::int <> 0 or (v_r->>'gift_waiting')::int <> 0 or (v_r->>'failed')::int <> 0 then
-    raise exception 'PROOF 47 FAIL: the gift pass touched the pirate merchant: %', v_r;
-  end if;
-  raise notice 'PASS: PM_NO_GIFT — the broke pirate merchant (5,000 d. of 250,000) is on no gift roster and the pass gives her nothing; the broke crown merchant is on it';
+  raise notice 'PASS: PM_GIFT_ROSTER — the broke pirate merchant (5,000 d. of 250,000) is on the gift roster, her payer Port Royal; the broke crown merchant is on it';
 
   -- ── 7 INVESTS: the first, made rich by her capital (a probe move, moved), is on the invest roster lit; her real turn gives at the closest race on her loop ──
   perform public.city_pays(v_por, v_m1, 'CAPITAL_GIFT', 2000000);

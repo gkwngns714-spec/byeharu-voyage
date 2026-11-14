@@ -606,6 +606,8 @@ The other seven havens of `PIRATES_AND_HAVENS` wait for later slices.
 
 **Built as W18, migration 0341, not deployed (`docs/dev-log/2026-11-07-pirate-merchants.md`). Where the build differs, each decided by default:** the money goes through W17's one payer `public.pirate_pay` (kind `PIRATE_FOUND`, inside `pirate_spend_room`), not `city_pays` on its own; her hull is a `carlat` (a merchant loadout is authored for barca, carlat and nau only); her loop starts out and back to the nearest known harbour of her home and the planner re-plans her over every harbour that is no pirate home (no course joins two homes, and the free cities near a home are what the courses reach); a founding leaves the ships' pay for the rest of the day in the room and comes at most one in two hours; she is never gifted by the capital's pass; the job is its own (`tick_pirate_merchants`, every ten minutes). The limits of 7.6 ship with it, lit with the pirates: the planner skips a pirate HOME (a city the pirates win is not skipped) and `pirate_port_day_cap` 0.05 of twice the target at a home.
 
+**Changed by migration 0408 (2026-11-14, `docs/dev-log/2026-11-14-pirate-gift.md`), decided by default:** a broke pirate merchant IS gifted, by the capital's gift pass and its limits, her capital paid from the hoard through `public.pirate_pay` inside `pirate_spend_room`. 0341's "never gifted" no longer holds.
+
 ### 7.5 Attacking a pirate port
 
 v1: **no.** A docked fleet is never attacked and no port is taken by force (law, section 10). `PIRATES_AND_HAVENS` §4's assault is a later slice; if lit, the loot comes from the purse, capped by `loot_per_company_day`, and that doc's waves become one battle row. Owner question 7.
