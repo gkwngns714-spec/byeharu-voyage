@@ -153,7 +153,7 @@ export const PortsLayer = memo(function PortsLayer({
         // A QUIET DOT (./chartModel.ts `quietHarbours`): the core alone, no light.
         if (full && quiet?.has(port.code)) {
           return (
-            <g key={port.code} data-port-code={port.code} data-port-tier={port.sizeTier} data-port-kind={port.kind} data-port-mark="quiet" data-port-x={x} data-port-y={y} style={night}>
+            <g key={port.code} data-port-code={port.code} data-port-tier={port.sizeTier} data-port-kind={port.kind} data-port-capital={port.capital ? 'yes' : undefined} data-port-mark="quiet" data-port-x={x} data-port-y={y} style={night}>
               <circle cx={x} cy={y} r={px(GLYPH.portDotRadius)} className="bv-sun-core bv-sun-day-dot fill-harbour-light" pointerEvents="none" />
             </g>
           )
@@ -179,7 +179,7 @@ export const PortsLayer = memo(function PortsLayer({
               key={port.code}
               data-port-code={port.code}
               data-port-tier={port.sizeTier}
-              data-port-kind={port.kind}
+              data-port-kind={port.kind} data-port-capital={port.capital ? 'yes' : undefined}
               data-port-mark="dot"
               data-port-lit="yes"
               data-port-x={x}
@@ -199,7 +199,8 @@ export const PortsLayer = memo(function PortsLayer({
         }
         const active = portRoles.has(port.code)
         const selected = selectedCode === port.code
-        const scale = portMarkScale(port.sizeTier)
+        // drawn a little bigger than the ramp (the owner, 2026-11-15: "city icon slightly bigger"; glyphs.ts `markGrowth`)
+        const scale = portMarkScale(port.sizeTier) * GLYPH.markGrowth
         // 0036: a SEA PLACE — a bank, a strait, a belt of wind — is a lozenge, never the harbour
         // triangle: the triangle promises a town, and out there is only water. Same ramps, same
         // weight rule, same everything else; the SHAPE is the one honest difference.
@@ -215,7 +216,7 @@ export const PortsLayer = memo(function PortsLayer({
             key={port.code}
             data-port-code={port.code}
             data-port-tier={port.sizeTier}
-            data-port-kind={port.kind}
+            data-port-kind={port.kind} data-port-capital={port.capital ? 'yes' : undefined}
             data-port-mark="full"
             data-port-lit="yes"
             data-port-x={x}

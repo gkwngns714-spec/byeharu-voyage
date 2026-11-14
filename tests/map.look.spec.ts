@@ -142,8 +142,11 @@ test('past a coast, a harbour with no name on the glass is a quiet dot; yours an
   expect([...quietHarbours(full, named, roles, 'TNG', 45 / 390)]).toEqual(['CEU'])
 })
 
-/** A name over or under its mark: the gap (9 px), half a great name's line (8 px) and the mark's own lean, with room. */
-const NAME_REACH_PX = 26
+/** A name over or under its mark: the gap (9 px), half a great name's line (9.4 px since the names grew, 2026-11-15) and the
+ *  mark's own lean, with room. 26 until the names grew 24 % (the owner: "the names of the cities ... should be bigger"); the
+ *  drawn face is narrower than the planned monospace box, so a long name's middle drifts with its size ("Santa Cruz de
+ *  Tenerife" measured 27 px). */
+const NAME_REACH_PX = 32
 
 test('past a coast a name is set over or under its own mark, a lesser name gives way, and nothing steps out', () => {
   const at = (id: string, text: string, x: number, y: number, priority: number): LabelRequest => ({ id, text, at: { x, y }, priority, tone: 'port-quiet' })

@@ -86,7 +86,7 @@ import type { MapPort, MapSelection } from './mapTypes'
 /** What a label is FOR, which is also how it is coloured. `sea` (row 90) is a water's name set on
  *  the water itself — ground, not a place to go, and drawn under every other name. `region`
  *  (row 93) is a region's name on its tint, only while the regions filter is on: ground too. */
-export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea' | 'region'
+export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea' | 'region' | 'zone' | 'zone-closed'
 
 /** Which side of the glyph a label ended up on. Tried in this order: the cardinals the map reads
  *  most naturally, then the diagonals as a last resort before dropping it. */
@@ -170,6 +170,20 @@ export interface LabelRequest {
    * FLAG_ADVANCE_EM so the flag is inside the box the collision rule kept clear.
    */
   readonly flag?: string
+  /**
+   * 2026-11-15 (the owner: *"the names of the cities as well as regions, countries, flags, should be bigger"*, and the
+   * detail kept as long as possible): when the name with its flag cannot be set anywhere it may go, try the FLAG ALONE
+   * in the same places, a box `FLAG_ADVANCE_EM` wide. A country's capital asks it, so the widest view still shows whose
+   * every capital is (./chartModel.ts `MapPort.capital`). Tried in the first pass, before any name steps out; a flag
+   * alone may take a side of its mark even past a coast (`centredOnMark`), being too small to lie across another country.
+   */
+  readonly flagOnlyFallback?: boolean
+  /**
+   * 2026-11-15 (the Seas filter) — A SECOND, SMALLER LINE under a CENTRED name: a sea zone's ask
+   * ("Title 3 · Waves 6"). The planned box holds both lines, so the planner keeps the ask clear too.
+   */
+  readonly note?: string
+  readonly noteSizePx?: number
 }
 
 /** A label's flag, in ems of its own type size: the flag's height (its width is 1.5 × that, the
@@ -200,6 +214,9 @@ export interface PlacedLabel {
   readonly leader?: Leader
   /** The nation code whose flag stands at the name's outer end inside the box (see LabelRequest). */
   readonly flag?: string
+  /** The second line (LabelRequest `note`), set centred under the name inside `box`. */
+  readonly note?: string
+  readonly noteSizePx?: number
 }
 
 export interface LabelLayoutOptions {
@@ -266,6 +283,12 @@ export const LABEL_PRIORITY = {
    */
   quiet: 10,
   /**
+   * A COUNTRY'S CAPITAL (2026-11-15, the owner's "stays as long as possible" and "flags bigger"): above every other quiet
+   * harbour (`quiet + 5` at most), below a region's name and every port of yours. Was: a capital asked as any harbour of
+   * its size.
+   */
+  capital: 16,
+  /**
    * A REGION'S NAME (row 93), only while the regions filter is on. ABOVE every quiet harbour's
    * name (`quiet + 5` at most) and below every port of yours: the filter was turned on to read
    * the regions, so a region's name is what the player asked for, and a quiet harbour's name is
@@ -303,6 +326,9 @@ const WIDE = /[ᄀ-ᇿ⺀-鿿가-힯豈-﫿＀-￯]/
  * flag. The box is now the flag's height (at 1.35 em five harbours lost their names at 47 %, tests/map.labels.spec.ts). A sea's or a region's name (ground, centred, no flag) keeps its em.
  */
 const NAME_HEIGHT_EM = 1.25
+
+/** A note's line (LabelRequest `note`), in ems of its own size: its letters and its halo. */
+export const NOTE_LINE_EM = 1.2
 
 /** The width of a name, in em, at the given letter-spacing: the planner's one measure of text. */
 export function textEm(text: string, spacingEm = 0): number {
@@ -522,7 +548,13 @@ export function planLabels(
   // was, and the rings only fill water no snug name wanted — the globe keeps its 30, and the coast
   // views, where the owner was reading names, go to every mark on the glass.
   const stranded: LabelRequest[] = []
-  for (const request of ordered) if (!set(request, false)) stranded.push(request)
+  for (const request of ordered) {
+    if (set(request, false)) continue
+    // a capital's flag alone, where its name will not go (`flagOnlyFallback`): still in the first pass, so it keeps its
+    // priority over every lesser name; beside its mark first, then on the further rings with a leader back to it
+    if (request.flagOnlyFallback && request.flag && (set({ ...request, text: '' }, false) || set({ ...request, text: '' }, true))) continue
+    stranded.push(request)
+  }
   for (const request of stranded) set(request, true)
 
   return placed
@@ -537,10 +569,17 @@ export function planLabels(
     const spacingEm = request.spacingEm ?? 0
     const size = sizePx * u
     const overMark = (options.centredOnMark ?? false) && request.tone !== 'fleet'
-    const width = textEm(request.text, spacingEm) * size + (request.flag ? FLAG_ADVANCE_EM * size : 0)
+    // a sea zone's ask (`note`) is a second line under its name: the box holds both, so the collision rule keeps both clear
+    const noteSizePx = request.note ? (request.noteSizePx ?? sizePx) : 0
+    const noteSize = noteSizePx * u
+    // a flag alone (`flagOnlyFallback`) is the flag's own 3:2 box, without the gap that would sit before a name
+    const width = Math.max(
+      textEm(request.text, spacingEm) * size + (request.flag ? (request.text ? FLAG_ADVANCE_EM : FLAG_HEIGHT_EM * 1.5) * size : 0),
+      request.note ? textEm(request.note) * noteSize : 0,
+    )
     const options_ = centredName
-      ? centredNear(request.at, width, size, request.slackLines ?? 0)
-      : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, overMark ? [1] : (options.rings ?? LABEL_RINGS), overMark, request.priority >= LABEL_PRIORITY.route).filter(
+      ? centredNear(request.at, width, size + (request.note ? noteSize * NOTE_LINE_EM : 0), request.slackLines ?? 0)
+      : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, overMark && request.text !== '' ? [1] : (options.rings ?? LABEL_RINGS), overMark, request.priority >= LABEL_PRIORITY.route || request.text === '').filter(
           (c) => (c.stepped ?? false) === stepOut,
         )
 
@@ -555,7 +594,13 @@ export function planLabels(
       if (!request.force) {
         // past a coast (`centredOnMark`) a name gives way only to the marks of its equals and betters: a great harbour's name may
         // lie over a lesser harbour's mark, which is then a quiet dot under it (./chartModel.ts `quietHarbours`)
-        if (glyphBoxes.some((g) => g.id !== request.id && !(overMark && g.priority < request.priority) && intersects(candidate.box, g.rect))) continue
+        // a capital's lone flag (`flagOnlyFallback`) gives way to the marks of its betters only: in Europe's corner of the whole
+        // world its equals' marks stand closer together than a flag is wide (Hamburg between Amsterdam and Copenhagen)
+        const lone = request.text === '' && request.flag !== undefined
+        // (a fleet's name too, past a coast: since 2026-11-15 the middling harbours keep their marks at every span, and their
+        // quiet dots boxed in the name of a fleet of yours at Lisbon on a phone holding the Atlantic)
+        const wide = options.centredOnMark ?? false
+        if (glyphBoxes.some((g) => g.id !== request.id && !(wide && (lone ? g.priority <= request.priority : g.priority < request.priority)) && intersects(candidate.box, g.rect))) continue
         if (taken.some((t) => intersects(candidate.box, t))) continue
       }
       // A STEPPED-OUT NAME IS JOINED TO ITS MARK, and the join is held to the same promise as the
@@ -583,12 +628,14 @@ export function planLabels(
       tone: request.tone,
       side: chosen.side,
       x: chosen.x,
-      y: chosen.y,
+      // with a second line the name stands on the box's first line, the note under it
+      y: request.note ? chosen.box.y + size / 2 : chosen.y,
       anchor: chosen.anchor,
       box: chosen.box,
       sizePx,
       spacingEm,
       ...(request.flag ? { flag: request.flag } : {}),
+      ...(request.note ? { note: request.note, noteSizePx } : {}),
       ...(leader ? { leader } : {}),
     })
     return true
@@ -666,6 +713,7 @@ export function mapLabelRequests(
    *  code; its flag is drawn beside the name. Null draws the bare names. */
   flags: ReadonlyMap<string, string> | null = null,
 ): LabelRequest[] {
+  // A capital (`MapPort.capital`) asks above every other quiet harbour, and may fall back to its flag alone.
   const requests: LabelRequest[] = []
 
   for (const port of ports) {
@@ -681,13 +729,17 @@ export function mapLabelRequests(
       text: port.name,
       // The flag rides with the name at EVERY zoom, the world view included (the owner, 2026-10-18:
       // "beside the name show flag"); its cost is one <symbol> per nation (./flagSymbolStore.ts).
-      ...(flags?.has(port.code) ? { flag: flags.get(port.code) } : {}),
+      // a capital no holder is recorded for wears its own nation's flag (`MapPort.capital`)
+      ...(flags?.has(port.code) ? { flag: flags.get(port.code) } : port.capital ? { flag: port.capital } : {}),
       at: project(port),
       priority: selected
         ? LABEL_PRIORITY.selected
         : role
           ? PORT_PRIORITY[role]
-          : LABEL_PRIORITY.quiet + port.sizeTier,
+          : port.capital
+            ? LABEL_PRIORITY.capital
+            : LABEL_PRIORITY.quiet + port.sizeTier,
+      ...(port.capital ? { flagOnlyFallback: true } : {}),
       tone: role ? 'port-active' : 'port-quiet',
       force: selected,
       // The hierarchy the marks carry (glyphs.ts's two ramps) reaches the names too: a great

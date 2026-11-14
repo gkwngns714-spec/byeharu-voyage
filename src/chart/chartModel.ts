@@ -436,7 +436,8 @@ export function portMarks(
     // periodicity (src/lib/geo); each harbour is listed ONCE, and the composer draws it in whichever
     // copy of the sheet it falls in.
     if (at.y < minY || at.y > maxY || !xOnSheet(at.x, minX, maxX)) continue
-    out.push({ port, full: port.sizeTier >= minTier || roles.has(port.code) })
+    // a capital wears its mark at every zoom too (2026-11-15, `MapPort.capital`)
+    out.push({ port, full: port.sizeTier >= minTier || roles.has(port.code) || port.capital !== undefined })
   }
   return out
 }

@@ -5,7 +5,6 @@ import {
   ALL_NAMES_ZOOM_PCT,
   buildChartModel,
   GLYPH,
-  GREAT_PORT_TIER,
   LABEL_PRIORITY,
   LABEL_RINGS,
   LABEL_SPAN_LIMIT,
@@ -151,21 +150,25 @@ test.describe('no two labels overprint', () => {
 
 test.describe('the zoom decides how much world is drawn', () => {
   test('the tier bands are a rule, not a hand-picked list of important ports', () => {
-    expect(minTierForSpan(360)).toBe(5) // the world
-    expect(minTierForSpan(46)).toBe(5)
-    expect(minTierForSpan(45)).toBe(3) // a sea
+    // Moved deliberately 2026-11-15 (the owner: "when i zoom out, the details of the map disappears, make it so that it
+    // stays as long as possible"): the middling tier is full at every span, every tier to 45°; the names are hidden by
+    // collision, not by span (docs/dev-log/2026-11-15-map-detail.md).
+    expect(minTierForSpan(360)).toBe(3) // the world
+    expect(minTierForSpan(46)).toBe(3)
+    expect(minTierForSpan(45)).toBe(1) // a sea: everything
     expect(minTierForSpan(12)).toBe(1) // a coast: everything
     expect(minTierForSpan(1.5)).toBe(1)
   })
 
-  test('pulled back to the globe, 35 marks are on the sheet — not 214', () => {
+  test('pulled back to the globe, the 114 great and middling marks are on the sheet — not 214', () => {
+    // 35 until 2026-11-15: the middling 79 now keep their marks (and ask for their names) at every span.
     const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
     const drawn = visiblePorts(PORTS, new Map(), world, minTierForSpan(world.width))
-    expect(drawn).toHaveLength(35)
-    for (const p of drawn) expect(p.sizeTier).toBe(5)
+    expect(drawn).toHaveLength(35 + 79)
+    for (const p of drawn) expect(p.sizeTier).toBeGreaterThanOrEqual(3)
 
-    // One band closer, the middling ports join them; closest in, all of them do.
-    expect(visiblePorts(PORTS, new Map(), world, minTierForSpan(40))).toHaveLength(35 + 79)
+    // From 45° in, all of them do.
+    expect(visiblePorts(PORTS, new Map(), world, minTierForSpan(40))).toHaveLength(REAL_PORT_COUNT)
     expect(visiblePorts(PORTS, new Map(), world, minTierForSpan(10))).toHaveLength(REAL_PORT_COUNT)
   })
 
@@ -176,7 +179,7 @@ test.describe('the zoom decides how much world is drawn', () => {
     const drawn = visiblePorts(PORTS, MODEL.portRoles, world, minTierForSpan(world.width))
     expect(drawn.map((p) => p.code)).toContain('CEU')
     // …and it is the ONLY reason a tier-2 port is on a world view.
-    for (const p of drawn) expect(p.sizeTier === 5 || MODEL.portRoles.has(p.code)).toBe(true)
+    for (const p of drawn) expect(p.sizeTier >= 3 || MODEL.portRoles.has(p.code)).toBe(true)
   })
 
   test('a port off the glass is not drawn, so it is not tappable and cannot be labelled', () => {
@@ -222,34 +225,36 @@ test.describe('the zoom decides how much world is drawn', () => {
     // ring with a leader back to their marks (labels.ts `LABEL_RINGS`), and the three-line check
     // above still holds — so at a coast zoom the answer to the owner's question is simply "all of
     // them". The globe is a different frame and still cannot name a cluster; see the test below.
+    //
+    // MOVED DELIBERATELY 2026-11-15 (the owner: "the names of the cities ... should be bigger"): the names are 24 % bigger,
+    // and a bigger name collides sooner. MEASURED: of these 14 marks one goes unnamed now (Venice, boxed in by its
+    // neighbours' bigger names; it keeps its mark and its tap, and one step in names it). The rule that hides it is the
+    // collision rule, never a zoom cut-off.
     const named = new Set(placed.map((l) => l.id))
-    for (const port of drawn) expect(named.has(`port:${port.code}`), port.name).toBe(true)
+    const unnamed = drawn.filter((port) => !named.has(`port:${port.code}`)).map((p) => p.name)
+    console.log(`crowded coast: ${drawn.length - unnamed.length} of ${drawn.length} named; unnamed: ${unnamed.join(', ')}`)
+    expect(unnamed.length, `unnamed: ${unnamed.join(', ')}`).toBeLessThanOrEqual(1)
   })
 
-  test('pulled back past LABEL_SPAN_LIMIT, only ports your fleets use — and the great harbours — ask for a name', () => {
-    // Pin moved deliberately 2026-09-13 (owner row 90, "it is too blank"): the world view drew
-    // 35 tier-5 marks and named none of them. A GREAT harbour (GREAT_PORT_TIER) now asks at every
-    // zoom, at quiet priority, so the planner still drops it for anything of yours. Everything
-    // smaller keeps §E.5's zoom rule exactly as before.
+  test('pulled back to a wide frame, every full harbour asks for its name, and a quiet one asks below every port of yours', () => {
+    // Moved deliberately 2026-11-15 (the owner: "when i zoom out, the details of the map disappears, make it so that it
+    // stays as long as possible"). Until then a harbour nothing of yours touched asked for its name only inside
+    // LABEL_SPAN_LIMIT (70°), and the great ones at every zoom (row 90). There is no span limit now: every harbour that
+    // wears its full mark asks, and the planner hides by collision, in the priority order this test still holds.
+    expect(LABEL_SPAN_LIMIT).toBe(Number.POSITIVE_INFINITY)
     const viewBox: ViewBox = { x: -60, y: -70, width: 120, height: 80 }
     const drawn = visiblePorts(PORTS, MODEL.portRoles, viewBox, minTierForSpan(viewBox.width))
     const requests = mapLabelRequests(MODEL, drawn, null, viewBox.width <= LABEL_SPAN_LIMIT)
-    expect(viewBox.width).toBeGreaterThan(LABEL_SPAN_LIMIT)
-    let great = 0
+    const asked = new Set(requests.filter((r) => r.id.startsWith('port:')).map((r) => r.id.slice(5)))
+    for (const port of drawn) expect(asked.has(port.code), port.name).toBe(true)
+    let quiet = 0
     for (const request of requests) {
-      if (!request.id.startsWith('port:')) continue
-      const code = request.id.slice(5)
-      const port = PORTS.find((p) => p.code === code)!
-      if (port.sizeTier >= GREAT_PORT_TIER && !MODEL.portRoles.has(code)) {
-        great++
-        // …and it asks BELOW every port of yours, so the old rule's spirit holds in a crowd.
-        expect(request.priority, request.text).toBeLessThan(LABEL_PRIORITY.route)
-        continue
-      }
-      expect(MODEL.portRoles.has(code), request.text).toBe(true)
+      if (!request.id.startsWith('port:') || MODEL.portRoles.has(request.id.slice(5))) continue
+      quiet++
+      expect(request.priority, request.text).toBeLessThan(LABEL_PRIORITY.route)
     }
-    // Non-vacuous: this frame holds great harbours nothing of yours touches, and they asked.
-    expect(great).toBeGreaterThan(0)
+    // Non-vacuous: this frame holds middling harbours nothing of yours touches, and they asked.
+    expect(quiet).toBeGreaterThan(10)
   })
 })
 
@@ -730,7 +735,8 @@ test.describe('row 193: every city named at 47 %', () => {
     expect(zoomPercent(ALL_NAMES_SPAN)).toBe(ALL_NAMES_ZOOM_PCT)
     expect(zoomPercent(ALL_NAMES_SPAN * 1.02), 'just wider reads below 47 %').toBeLessThan(ALL_NAMES_ZOOM_PCT)
     expect(minTierForSpan(ALL_NAMES_SPAN)).toBe(1)
-    expect(minTierForSpan(ALL_NAMES_SPAN * 1.02)).toBe(3)
+    // every tier stays full well past the rung since 2026-11-15 (ALL_NAMES_FULL_SPAN, 45°)
+    expect(minTierForSpan(ALL_NAMES_SPAN * 1.02)).toBe(1)
     expect(ALL_NAMES_SPAN, 'quiet harbours ask for a name at this span').toBeLessThanOrEqual(LABEL_SPAN_LIMIT)
   })
 
@@ -776,6 +782,11 @@ test.describe('row 193: every city named at 47 %', () => {
       }
     }
     expect(marks, 'non-vacuous: the frames hold thousands of marks').toBeGreaterThan(2500)
-    expect(unnamed.length, `unnamed: ${unnamed.join(', ')}`).toBeLessThanOrEqual(3)
+    // MOVED DELIBERATELY 2026-11-15 (the owner: "the names of the cities ... should be bigger"): 3 → 19 of ~2,900. A name 24 %
+    // bigger collides sooner; the planner hides the lesser one rather than overprint (still zero overlaps above), and each
+    // keeps its mark and its tap. MEASURED: Sanlúcar, Rotterdam, Gibraltar, Cádiz, Setúbal, Málaga, Middelburg and their like,
+    // each in the densest clusters (the Guadalquivir mouth, the Scheldt, the Strait), in a handful of the 214 frames.
+    console.log(`47 %: ${marks - unnamed.length} of ${marks} marks named; unnamed: ${unnamed.join(', ')}`)
+    expect(unnamed.length, `unnamed: ${unnamed.join(', ')}`).toBeLessThanOrEqual(20)
   })
 })

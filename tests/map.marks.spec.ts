@@ -27,19 +27,23 @@ const HARBOURS = PORTS.filter((p) => p.kind === 'HARBOUR').length
 const WORLD: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
 
 test.describe('every port is on the sheet; the zoom decides dot or mark', () => {
-  test('at the world view every harbour is drawn, 35 of them full; on a coast every one is full', () => {
+  // Moved deliberately 2026-11-15 (the owner: "when i zoom out, the details of the map disappears, make it so that it stays
+  // as long as possible"): 35 → 114 full at the world view (the middling tier keeps its mark at every span), and a sea's
+  // width (40°) is inside the rung where every tier is full. Past DOT_SPAN_DEG the sheet still DRAWS every one as its dot.
+  test('at the world view every harbour is drawn, 114 of them full; on a sea or a coast every one is full', () => {
     const none = new Map()
     const world = portMarks(PORTS, none, WORLD, minTierForSpan(WORLD.width))
     expect(world).toHaveLength(HARBOURS)
-    expect(world.filter((m) => m.full)).toHaveLength(35)
-    expect(world.filter((m) => !m.full)).toHaveLength(HARBOURS - 35)
+    expect(world.filter((m) => m.full)).toHaveLength(35 + 79)
+    expect(world.filter((m) => !m.full)).toHaveLength(HARBOURS - 35 - 79)
     // The full half IS `visiblePorts` — the list the label planner, the roads and the hit test read.
     expect(visiblePorts(PORTS, none, WORLD, minTierForSpan(WORLD.width)).map((p) => p.code)).toEqual(
       world.filter((m) => m.full).map((m) => m.port.code),
     )
-    // A sea's width: the middling ports join the full marks; the small ones stay dots.
+    // A sea's width: every port is a full mark; past 45° the small ones are dots.
     const sea = portMarks(PORTS, none, WORLD, minTierForSpan(40))
-    expect(sea.filter((m) => m.full)).toHaveLength(35 + 79)
+    expect(sea.every((m) => m.full)).toBe(true)
+    expect(portMarks(PORTS, none, WORLD, minTierForSpan(46)).filter((m) => m.full)).toHaveLength(35 + 79)
     // A coast: everything is a full mark, and nothing is a dot.
     const coast = portMarks(PORTS, none, WORLD, minTierForSpan(10))
     expect(coast.every((m) => m.full)).toBe(true)
@@ -196,8 +200,8 @@ for (const scheme of ['dark'] as const) {
         expect(twice, 'the harbours drawn in both copies are the two at the seam').toEqual(['AUK', 'WLG'])
         expect(world.full, 'past the dot rung a city is its dot and nothing else').toBe(0)
         expect(world.dots).toBe(256)
-        // The whole body is drawn at the world view — the same path as at the opening frame.
-        expect(world.coastBytes).toBe(opening.coastBytes)
+        // The whole body is drawn at the world view. (It was also the same path as at the opening frame until 2026-11-15, when
+        // the mid coast tiles were pushed out to 0.045 degrees a pixel and an opening desktop frame now draws those instead.)
         expect(world.coastBytes).toBeGreaterThan(70_000)
         const cost = await zoomStepMs(page)
         console.log(

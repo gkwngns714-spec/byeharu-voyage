@@ -1,9 +1,9 @@
-import { useLayoutEffect, useRef, type RefObject } from 'react'
-import { project, shortLonDelta, unproject, type LatLon } from '../lib/geo'
+import { memo, useLayoutEffect, useRef, type RefObject } from 'react'
+import { CHART_WIDTH, project, shortLonDelta, unproject, type LatLon } from '../lib/geo'
 import { GLYPH } from './glyphs'
 import { MapFlagDefs } from './MapFlagDefs'
 import { flagSymbolId } from './flagSymbolStore'
-import { FLAG_ADVANCE_EM, FLAG_HEIGHT_EM, type LabelTone, type PlacedLabel } from './labels'
+import { FLAG_ADVANCE_EM, FLAG_HEIGHT_EM, NOTE_LINE_EM, type LabelTone, type PlacedLabel } from './labels'
 import { setPlacedNames } from './placedNames'
 import { nightStyle } from './sun'
 import { useUnderway } from './underway'
@@ -54,6 +54,16 @@ const TONE: Record<LabelTone, string> = {
   sea: 'bv-sun-name-water fill-chart-sea-name',
   // A region's name (row 93) is ground like a sea's, in the same thinned ink, a size up.
   region: 'bv-sun-name-water fill-chart-sea-name',
+  // A sea zone's name (the Seas filter): read for its figures, so a place's ink and a city's pale day halo; a zone
+  // closed to the fleet in hand is set in the quiet ink and its ask (the note) in the danger ink.
+  zone: 'bv-sun-name-active fill-ink',
+  'zone-closed': 'bv-sun-name-quiet fill-ink-faint',
+}
+
+/** The note's ink: what a zone asks (quiet), or what it lacks for the fleet in hand (closed). */
+const NOTE_TONE: Partial<Record<LabelTone, string>> = {
+  zone: 'bv-sun-name-quiet fill-ink-faint',
+  'zone-closed': 'bv-sun-name-closed fill-danger',
 }
 
 /**
@@ -85,18 +95,40 @@ function FleetName({ label, unitsPerPx, sun }: { label: PlacedLabel; unitsPerPx:
   return <Name label={label} unitsPerPx={unitsPerPx} sun={sun} riding={riding} />
 }
 
-function Name({
-  label,
-  unitsPerPx,
-  sun,
-  riding,
-}: {
+/**
+ * THE SAME NAME, NOT DRAWN AGAIN (2026-11-15). The plan is made afresh on every frame of a pan (./ChartCanvas.tsx), so every
+ * label arrives as a new object; but a name's place is in CHART units and a pan moves the view, not the name, so almost every
+ * one is the same name in the same place. Since the names stay out further and are bigger (the owner, 2026-11-15) the widest
+ * desktop view sets ~60 names and ~35 flags where it set ~20: compared by value, a pan re-renders only the names that
+ * actually moved, came or went.
+ */
+function sameName(a: NameProps, b: NameProps): boolean {
+  if (a.unitsPerPx !== b.unitsPerPx || a.sun !== b.sun || a.riding !== b.riding) return false
+  const p = a.label
+  const q = b.label
+  if (p === q) return true
+  return (
+    p.id === q.id && p.text === q.text && p.tone === q.tone && p.side === q.side && p.x === q.x && p.y === q.y && p.anchor === q.anchor &&
+    p.sizePx === q.sizePx && p.spacingEm === q.spacingEm && p.flag === q.flag &&
+    p.box.x === q.box.x && p.box.y === q.box.y && p.box.width === q.box.width && p.box.height === q.box.height &&
+    p.leader?.x1 === q.leader?.x1 && p.leader?.y1 === q.leader?.y1 && p.leader?.x2 === q.leader?.x2 && p.leader?.y2 === q.leader?.y2
+  )
+}
+
+interface NameProps {
   label: PlacedLabel
   unitsPerPx: number
   sun: LatLon
   /** Set for a fleet's name only (`FleetName`): the group her glide moves. */
   riding?: RefObject<SVGGElement | null>
-}) {
+}
+
+const Name = memo(function Name({
+  label,
+  unitsPerPx,
+  sun,
+  riding,
+}: NameProps) {
   const size = label.sizePx * unitsPerPx
   // A NAME THAT STEPPED OUT OF THE CROWD CARRIES A HAIRLINE BACK TO ITS MARK (2026-10-20, the
   // owner: "Any way to see the cities all? Without overlapping?"). The planner decided the two
@@ -141,6 +173,29 @@ function Name({
       {label.text}
     </text>
   )
+  if (label.note) {
+    const noteSize = (label.noteSizePx ?? label.sizePx) * unitsPerPx
+    return (
+      <g style={nightStyle(unproject({ x: label.x, y: label.y }), sun)} data-zone-closed={label.tone === 'zone-closed' ? 'yes' : undefined}>
+        {text}
+        <text
+          x={label.x}
+          y={label.box.y + label.box.height - (noteSize * NOTE_LINE_EM) / 2}
+          fontSize={noteSize}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          className={`bv-sun-name-halo stroke-chart-sea font-mono ${NOTE_TONE[label.tone] ?? TONE[label.tone]}`}
+          strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          style={{ paintOrder: 'stroke' }}
+          data-label-note={label.id}
+        >
+          {label.note}
+        </text>
+      </g>
+    )
+  }
   if (!label.flag) {
     // A FLEET'S NAME ALWAYS GETS THE GROUP, leader or not: it is the element her glide moves.
     return leader || riding ? (
@@ -153,8 +208,15 @@ function Name({
     )
   }
   const flagHeight = FLAG_HEIGHT_EM * size
+  // A CAPITAL'S FLAG ALONE (./labels.ts `flagOnlyFallback`): no letters, so no <text>; the group carries the id.
+  const flagOnly = label.text === ''
   return (
-    <g ref={riding} data-label-flag={label.flag} style={nightStyle(unproject({ x: label.x, y: label.y }), sun)}>
+    <g
+      ref={riding}
+      data-label-flag={label.flag}
+      {...(flagOnly ? { 'data-label-id': label.id, 'data-label-flag-only': 'yes' } : {})}
+      style={nightStyle(unproject({ x: label.x, y: label.y }), sun)}
+    >
       {leader}
       {/* Drawn at a 30×20 box and scaled down to the label's size: the chart's units are tiny (a
           name is ~0.15 units tall), and Chrome rasterises a fraction of a unit to nothing. */}
@@ -165,10 +227,18 @@ function Name({
         transform={`translate(${label.box.x} ${label.y - flagHeight / 2}) scale(${flagHeight / 20})`}
         data-testid="map-label-flag"
       />
-      {text}
+      {!flagOnly && text}
     </g>
   )
-}
+}, sameName)
+
+/**
+ * A NAME'S KEY: its id AND the copy of the sheet it is set on (2026-11-15). A harbour near the edge of a copy's window is
+ * asked for on two copies at once (./ChartCanvas.tsx, THE COPIES) and planned twice, at x and x + 360; keyed by id alone
+ * the two shared one key, and React left the loser's element on the glass, never updated again: on the 1920 px desktop,
+ * zoomed in from the whole world, a flag planned at the globe's scale stood across the Mediterranean ten times its size.
+ */
+const keyOf = (label: PlacedLabel) => `${label.id}@${Math.floor((label.x + CHART_WIDTH / 2) / CHART_WIDTH)}`
 
 export function LabelsLayer({
   labels,
@@ -180,8 +250,9 @@ export function LabelsLayer({
   /** Where the Sun is overhead (./sun.ts). */
   sun: LatLon
 }) {
-  const ground = labels.filter((l) => l.tone === 'sea' || l.tone === 'region')
-  const places = labels.filter((l) => l.tone !== 'sea' && l.tone !== 'region')
+  const isGround = (l: PlacedLabel) => l.tone === 'sea' || l.tone === 'region' || l.tone === 'zone' || l.tone === 'zone-closed'
+  const ground = labels.filter(isGround)
+  const places = labels.filter((l) => !isGround(l))
   // The names actually drawn, for the map's tap (./placedNames.ts): a tap on a name opens its city.
   useLayoutEffect(() => setPlacedNames(labels), [labels])
   return (
@@ -189,15 +260,15 @@ export function LabelsLayer({
       <MapFlagDefs codes={places.flatMap((l) => (l.flag ? [l.flag] : []))} />
       <g pointerEvents="none" data-testid="map-sea-names">
         {ground.map((label) => (
-          <Name key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
+          <Name key={keyOf(label)} label={label} unitsPerPx={unitsPerPx} sun={sun} />
         ))}
       </g>
       <g pointerEvents="none" data-testid="map-labels">
         {places.map((label) =>
           label.tone === 'fleet' ? (
-            <FleetName key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
+            <FleetName key={keyOf(label)} label={label} unitsPerPx={unitsPerPx} sun={sun} />
           ) : (
-            <Name key={label.id} label={label} unitsPerPx={unitsPerPx} sun={sun} />
+            <Name key={keyOf(label)} label={label} unitsPerPx={unitsPerPx} sun={sun} />
           ),
         )}
       </g>

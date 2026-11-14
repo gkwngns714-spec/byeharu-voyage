@@ -161,6 +161,7 @@ export function toggleSelection(current: MapSelection, next: MapSelection): MapS
     if (current.kind === 'port' && next.kind === 'port' && current.code === next.code) return null
     if (current.kind === 'merchant' && next.kind === 'merchant' && current.id === next.id) return null
     if (current.kind === 'fight' && next.kind === 'fight' && current.id === next.id) return null
+    if (current.kind === 'zone' && next.kind === 'zone' && current.code === next.code) return null
   }
   return next
 }

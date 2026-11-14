@@ -67,8 +67,10 @@ import {
   useBackdrop,
   useChartShore,
   useChartSurface,
-  useRegionsFilter,
+  useMapLayer,
   ViewControls,
+  zoneShapes,
+  type ZonesOnChart,
   visiblePorts,
   type ChartModel,
   type MapPort,
@@ -76,13 +78,15 @@ import {
   type PathStop,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter } from '../../components/ui'
+import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter, seaName, seaWallTag } from '../../components/ui'
 import { worldLoadSteps } from '../../live/loadSteps'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
 import { VoyageTray } from './VoyageTray'
 import { SendFleet } from './SendFleet'
 import { useFleetSeas, useSeaZoneCells } from '../../live/useFleetSeas'
+import { useSeaConditions } from '../../live/useSeaConditions'
+import { ZoneTray } from './ZoneTray'
 import { zoneAt } from '../../domain/seas'
 import { RouteBar } from './RouteBar'
 import { RouteEditor } from '../../live/RouteEditor'
@@ -91,7 +95,8 @@ import { useRouteSeed } from './routeSeed'
 import { CityHarbour } from './CityHarbour'
 import { merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
-import { useT, t as tNow } from '../../lib/i18n'
+import { useLocale, useT, t as tNow } from '../../lib/i18n'
+import { formatInt } from '../../lib/format'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // MAP — the chart is the ground, and the chrome hides until it is summoned.
@@ -243,7 +248,13 @@ function Chart({
 
   // THE PORTS AS THE CHART DRAWS THEM (row 92): served, then set on the drawn shore the moment
   // the coast arrives — one list, read by the model, the hit test, the frame and the picture.
-  const backdrop = useBackdrop(snapshotPorts)
+  // THE COUNTRIES' CAPITALS (2026-11-15): their marks and names stay furthest out (src/chart/mapTypes.ts `capital`).
+  const nationByCode = useWorld((s) => s.nationByCode)
+  const capitals = useMemo(
+    () => new Map(Object.values(nationByCode).flatMap((n) => (n.capital ? [[n.capital, n.code] as const] : []))),
+    [nationByCode],
+  )
+  const backdrop = useBackdrop(snapshotPorts, capitals)
   // 0367: an armada at sea is ONE mark, under her name, carrying every hull of her fleets (armadaMarks.ts).
   const armadaList = useArmadas().armadas
   const fleets = useMemo(() => armadaMarks(mapFleetsOf(fleetViews), armadaList), [fleetViews, armadaList])
@@ -254,7 +265,15 @@ function Chart({
   // pacific ocean color, square, not in sync"): the shade was the server's zone raster, squares of a second colour
   // on the water. The sea is one colour; a closed sea is said in words where it is pressed and on the Seas face.
   const seas = useFleetSeas()
-  const seaCells = useSeaZoneCells(seas.bite && seas.judged)
+  // THE MAP'S FILTER (src/chart/regionsFilter.ts): off, Regions or Seas, one at a time. Seas asks the zone raster too
+  // (the same once-a-session read the press on a place already makes when the conditions bite).
+  const layer = useMapLayer()
+  const seasOn = layer === 'seas'
+  const seaCells = useSeaZoneCells((seas.bite && seas.judged) || seasOn)
+  const seaConditions = useSeaConditions()
+  const locale = useLocale()
+  // a press on the water while Seas is on: the zone under it (set below, once the raster is in hand)
+  const zoneTap = useRef<((at: Point) => string | null) | null>(null)
 
   // HER WHOLE PATH WHEN ONE OF YOURS IS PRESSED (owner row 225): the leg she is on is her track; the queued stops
   // after it, or her standing route's lap, are drawn as the planned course with each stop numbered.
@@ -454,7 +473,10 @@ function Chart({
       // surface's (useChartSurface's `presses`), so the rule is written once and the chart's other
       // targets are untouched: a harbour, a hull and a merchant all still answer the first press.
       if (presses < 2) {
-        setSelection(null)
+        // THE SEAS FILTER ON: a press on the water opens the sea it lies in (the server's zone raster), and the same
+        // sea again closes it.
+        const zone = zoneTap.current?.(at) ?? null
+        setSelection((current) => (zone ? toggleSelection(current, { kind: 'zone', code: zone }) : null))
         return
       }
       const sea = snapSeaPoint(seaNav, unproject(at))
@@ -467,8 +489,44 @@ function Chart({
     tapRef.current = onTap
   }, [onTap])
 
+  // THE SEAS FILTER (owner, 2026-11-15: "have option to see seas, showing waves, requirement to pass etc."): each zone's
+  // border and its name with what it asks; a zone closed to the fleet in hand says what it lacks, in the danger ink.
+  // Every figure is the server's (world.sea_conditions); the borders and the names' places come from its raster, worked
+  // out once per raster (src/chart/seaZones.ts).
+  const walledSeas = seas.bite && seas.judged
+  const zoneCode = seasOn && selection?.kind === 'zone' ? selection.code : null
+  const zones = useMemo<ZonesOnChart | null>(() => {
+    if (!seasOn || !seaCells) return null
+    const shape = zoneShapes(seaCells)
+    const labels = seas.rows.flatMap((r) => {
+      const at = shape.anchors.get(r.zone.code)
+      if (!at || at.length === 0) return []
+      const wall = walledSeas ? r.wall : null
+      return [
+        {
+          code: r.zone.code,
+          name: seaName(locale, { zoneName: r.zone.name }),
+          note: wall
+            ? seaWallTag(locale, wall)
+            : `${t('seas.asksTitle', { n: formatInt(r.zone.title_min) })} · ${t('seas.asksWaves', { n: formatInt(r.zone.wave_min) })}`,
+          closed: wall !== null,
+          at,
+          selected: r.zone.code === zoneCode,
+        },
+      ]
+    })
+    return { outline: shape.outline, labels }
+  }, [seasOn, seaCells, seas.rows, walledSeas, locale, t, zoneCode])
+  useEffect(() => {
+    zoneTap.current = seasOn && seaCells ? (at: Point) => {
+      const ll = unproject(at)
+      return zoneAt(seaCells, ll.lat, ll.lon)
+    } : null
+  }, [seasOn, seaCells])
+  const zoneRow = zoneCode !== null ? (seas.rows.find((r) => r.zone.code === zoneCode) ?? null) : null
+
   // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
-  const regionsOn = useRegionsFilter()
+  const regionsOn = layer === 'regions'
   // 0143 (D14) asked for the flags with Regions on only. The owner, 2026-10-18: "beside the name show
   // flag that are influenced by" — every harbour's name carries the bundled flag of the nation that
   // holds it, at every zoom; measured legible and clean at 1440×900 and 390×844 (PR screenshots).
@@ -536,7 +594,7 @@ function Chart({
   const [keptFight, setKeptFight] = useState(servedFight)
   if (servedFight !== null && servedFight !== keptFight) setKeptFight(servedFight)
   const openFight = fightId !== null ? (servedFight ?? (keptFight?.id === fightId ? keptFight : null)) : null
-  const panelOpen = selectedFleet !== null || selectedMerchant !== null || place !== null || openFight !== null
+  const panelOpen = selectedFleet !== null || selectedMerchant !== null || place !== null || openFight !== null || zoneRow !== null
 
   // ── GO TO (src/chart/goTo.ts) — this screen is the one taker ──────────────────────────────────
   // A request is resolved to a coordinate through THIS chart's model — `goToPoint`'s rule, handed
@@ -632,6 +690,7 @@ function Chart({
           coast={shore.coast}
           seas={backdrop.seas}
           regions={regionsOn ? backdrop.regions : null}
+          zones={zones}
           portFlags={portFlags}
           islets={shore.islets}
           fights={fights}
@@ -682,6 +741,7 @@ function Chart({
           findAriaLabel={t('map.findFleets')}
           findTestId="map-find"
           testId="map-view-controls"
+          seas
         />
 
         {/* THE CORNER: where the mouse is (./PointerCoords.tsx), a missing coast, and the minimap. */}
@@ -773,6 +833,16 @@ function Chart({
           mode="side"
           card={card && card.fleet.id === selectedMerchant.id ? card : null}
           line={<PlaceLine parts={merchantParts(selectedMerchant, (c) => portsByCode.get(c)?.name ?? c, nowMs)} />}
+          onClose={() => setSelection(null)}
+        />
+      )}
+      {zoneRow && !routeView && (
+        <ZoneTray
+          key={zoneRow.zone.code}
+          row={zoneRow}
+          seas={seas}
+          title={seaConditions.view?.title ?? null}
+          homeRank={seaConditions.view?.home_sea?.title_min ?? null}
           onClose={() => setSelection(null)}
         />
       )}

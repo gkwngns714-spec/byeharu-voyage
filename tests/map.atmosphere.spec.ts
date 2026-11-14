@@ -96,11 +96,15 @@ test.describe('the seas are read, not invented', () => {
     ).toEqual([{ id: 'ok', name: 'Ok Sea', at: { lat: 1, lon: 2 }, kind: 'sea' }])
   })
 
-  test('an ocean is named at every zoom; a sea only inside SEA_NAME_SPAN_LIMIT', () => {
+  // Moved deliberately 2026-11-15 (the owner: "when i zoom out, the details of the map disappears, make it so that it stays
+  // as long as possible"): a sea asked for its name only inside 110°; now every water asks at every zoom, at the lowest
+  // priority, and the planner sets it only on water no place's name wants.
+  test('every water asks for its name at every zoom, below every harbour', () => {
     const world: ViewBox = { x: -180, y: -90, width: 360, height: 180 }
     const atWorld = seaNameRequests(SEAS, world)
-    expect(atWorld.map((r) => r.id)).toEqual(SEAS.filter((s) => s.kind === 'ocean').map((s) => `sea:${s.id}`))
-    expect(SEA_NAME_SPAN_LIMIT).toBeGreaterThan(LABEL_SPAN_LIMIT) // the water is named a step before the quiet harbours
+    expect(atWorld.map((r) => r.id)).toEqual(SEAS.map((s) => `sea:${s.id}`))
+    expect(SEA_NAME_SPAN_LIMIT).toBe(Number.POSITIVE_INFINITY)
+    expect(LABEL_SPAN_LIMIT).toBe(Number.POSITIVE_INFINITY)
     const europe: ViewBox = { x: -30, y: -70, width: 80, height: 50 }
     const atEurope = seaNameRequests(SEAS, europe)
     expect(atEurope.map((r) => r.text)).toEqual(expect.arrayContaining(['Bay of Biscay', 'North Sea', 'Mediterranean Sea']))
