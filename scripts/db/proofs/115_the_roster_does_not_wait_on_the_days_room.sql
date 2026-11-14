@@ -20,6 +20,9 @@ declare
   i       int;
   v_r     jsonb;
 begin
+  -- 0421 moved pirate_add_minutes 10 -> 5. This proof counts three roster fleets in 25 minutes at 10: pinned to 10 here, rolled back with the
+  -- proof. Proof 118 is the same scene at the live pace (six in 25 minutes).
+  update public.world_config set value = to_jsonb(10) where key = 'pirate_add_minutes';
   update public.world_config set value = 'true'::jsonb where key in ('pirates_bite', 'city_treasury_enabled', 'npc_refits_enabled', 'economy_closed');
   v_cap := public.pirate_capital();
   update public.port_treasury t set ducats = 975934180 where t.port_id = v_cap;

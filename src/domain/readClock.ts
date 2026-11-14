@@ -37,9 +37,17 @@
 // of a kept answer. A second copy of either the constants or the arithmetic would let "how often
 // the world is read" and "how long an answer is kept" drift apart — the very thing the cache-once
 // slice exists to stop.
+//
+// THIRTY, SINCE 2026-11-15 (0421, docs/dev-log/2026-11-15-pace-up.md). 0413's one-hour day made a
+// voyage-day 450 real seconds: twelve reads of it is 37.5 s, so the 30-s ceiling ruled and the map,
+// the fleet tray and the purse were read twice a minute. The owner: "make everything as much as
+// more often, faster, as possible". Thirty reads of a voyage-day is a 15-s beat at 192 (still under
+// the ceiling, so the RULE decides again); were the clock put back to 960 it would be the 3-s
+// floor, not 7.5 s. A read settles only the reader's own fleets and is answered by key; the merchants' roster
+// keeps its own 30-s pace (worldStore ROSTER_ASK_EVERY_MS), being the dearest read a tab makes.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-export const READS_PER_VOYAGE_DAY = 12
+export const READS_PER_VOYAGE_DAY = 30
 export const READ_MIN_MS = 3_000
 export const READ_MAX_MS = 30_000
 
