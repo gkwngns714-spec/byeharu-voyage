@@ -191,39 +191,57 @@ for (const glass of GLASSES) {
         await page.getByTestId('fleet-row').first().click()
         const fleetPage = page.getByTestId('fleet-page')
         await expect(fleetPage).toBeVisible()
-        await expect(fleetPage.getByTestId('fleet-ship-tile')).toHaveCount(1)
-        await expect(fleetPage.getByTestId('fleet-place-empty')).toHaveCount(1)
-        await expect(fleetPage.getByTestId('fleet-place-locked')).toHaveCount(5)
-        await expect(fleetPage.getByTestId('fleet-totals')).toBeVisible()
-        await expect(fleetPage.getByTestId('fleet-rename')).toBeVisible()
-        // one Buy, on the first locked place, at the first price
-        await expect(fleetPage.getByTestId('fleet-place-buy')).toHaveCount(1)
-        await expect(fleetPage.getByTestId('fleet-place-locked').first()).toContainText('10,000')
-        await expect(fleetPage.getByTestId('fleet-place-locked').nth(1)).toContainText('20,000')
+        // TWO STEPS (owner, 2026-11-14: "when pressed a fleet, show only ships"): her page is her ships, one row each; her places, totals and Rename are one row further
+        await expect(fleetPage.getByTestId('fleet-ship-row')).toHaveCount(1)
         await laws(page, "the fleet's page")
+        await fleetPage.getByTestId('fleet-more').click()
+        const morePage = page.getByTestId('fleet-more-page')
+        await expect(morePage).toBeVisible()
+        await expect(morePage.getByTestId('fleet-place-empty')).toHaveCount(1)
+        await expect(morePage.getByTestId('fleet-place-locked')).toHaveCount(5)
+        await expect(morePage.getByTestId('fleet-totals')).toBeVisible()
+        await expect(morePage.getByTestId('fleet-rename')).toBeVisible()
+        // one Buy, on the first locked place, at the first price
+        await expect(morePage.getByTestId('fleet-place-buy')).toHaveCount(1)
+        await expect(morePage.getByTestId('fleet-place-locked').first()).toContainText('10,000')
+        await expect(morePage.getByTestId('fleet-place-locked').nth(1)).toContainText('20,000')
+        await laws(page, "the fleet's More page")
         await shot(page, `fleet-page-${name}`)
-        // The Buy is brought onto the glass first, so the press itself scrolls nothing. Where the tiles stand two across, the foot may not move either; in one column
-        // (320 px) the bought place's tile is a shorter one (Empty has no price and no Buy), so what stands under the places follows it and only what stands above is held.
-        await fleetPage.getByTestId('fleet-place-buy').scrollIntoViewIfNeeded()
-        const tiles = glass.width >= 390 ? ['fleet-ship-tile', 'fleet-totals', 'fleet-rename', 'fleet-command'] : ['fleet-ship-tile', 'fleet-totals']
+        // The Buy is brought onto the glass first, so the press itself scrolls nothing. The totals, Command and Rename stand ABOVE the places on the More page, so a
+        // bought place (a shorter tile: Empty has no price and no Buy) can move none of them at any width.
+        await morePage.getByTestId('fleet-place-buy').scrollIntoViewIfNeeded()
+        const tiles = ['fleet-totals', 'fleet-rename', 'fleet-command']
         const tilesBefore = await boxes(page, tiles)
         const purseBefore = await purse(page)
         expect(purseBefore, 'the purse the fixture paid').toBeGreaterThanOrEqual(EXTRA_PURSE)
-        await fleetPage.getByTestId('fleet-place-buy').click()
-        await expect(fleetPage.getByTestId('fleet-place-empty')).toHaveCount(2)
-        await expect(fleetPage.getByTestId('fleet-place-locked')).toHaveCount(4)
+        await morePage.getByTestId('fleet-place-buy').click()
+        await expect(morePage.getByTestId('fleet-place-empty')).toHaveCount(2)
+        await expect(morePage.getByTestId('fleet-place-locked')).toHaveCount(4)
         await expect.poll(() => purse(page), { message: 'the purse falls by the served price of a ship place' }).toBe(purseBefore - 10_000)
-        expect(await boxes(page, tiles), 'the Buy moved a ship tile or the foot').toEqual(tilesBefore)
-        await expect(fleetPage.getByTestId('fleet-place-locked').first()).toContainText('20,000')
+        expect(await boxes(page, tiles), 'the Buy moved the totals or the foot').toEqual(tilesBefore)
+        await expect(morePage.getByTestId('fleet-place-locked').first()).toContainText('20,000')
         await expect(page.locator('body')).not.toContainText('E_')
+        // the More page is left by Escape, to the same fleet
+        await page.keyboard.press('Escape')
+        await expect(morePage).toHaveCount(0)
+        await expect(fleetPage).toBeVisible()
 
-        // ── ONE SHIP'S SHEET: one press from the tile, and back to the same fleet both ways ─────────────────────────────────────────
-        const stats = fleetPage.getByTestId('ship-stats').first()
+        // ── ONE SHIP'S PAGE AND HER SHEET: a press on her row, Stats on her page, and back to the same fleet both ways ───────────────
+        await fleetPage.getByTestId('fleet-ship-row').first().click()
+        const shipPage = page.getByTestId('fleet-ship-page')
+        await expect(shipPage).toBeVisible()
+        await laws(page, "the ship's page")
+        // (her sheet carries a `ship-stats` block of its own, so the page under it is measured by its sections and its Power line; Stats is brought onto the glass
+        // first, so the press itself scrolls nothing)
+        const shipBoxes = ['fleet-fold-section', 'ship-power']
+        const stats = shipPage.getByTestId('ship-stats').first()
+        await stats.scrollIntoViewIfNeeded()
+        const shipBefore = await boxes(page, shipBoxes)
         await stats.click()
         const sheet = page.getByTestId('map-ship-panel')
         await expect(sheet).toBeVisible()
         await expect(sheet).toContainText('Gaivota')
-        expect(await boxes(page, tiles), 'opening the sheet moved the page under it').toEqual(tilesBefore)
+        if (glass.width < 1024) expect(await boxes(page, shipBoxes), 'opening the sheet moved the page under it').toEqual(shipBefore)
         await page.waitForTimeout(400)
         await laws(page, "the ship's sheet")
         await shot(page, `ship-sheet-${name}`)
@@ -234,20 +252,28 @@ for (const glass of GLASSES) {
         await expect(sheet).toBeVisible()
         await page.keyboard.press('Escape')
         await expect(sheet).toHaveCount(0)
-        await expect(fleetPage, 'Escape left the sheet AND the fleet').toBeVisible()
+        await expect(shipPage, "Escape left the sheet AND the ship's page").toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(shipPage).toHaveCount(0)
+        await expect(fleetPage, "Escape left the ship's page AND the fleet").toBeVisible()
         await page.keyboard.press('Escape')
         await expect(fleetPage).toHaveCount(0)
 
         // ── THE NEW FLEET'S PAGE: move her ship back, with the figures shown before the press ───────────────────────────────────────
         await page.getByTestId('fleet-row').filter({ hasText: NEW_FLEET }).click()
         await expect(fleetPage).toBeVisible()
-        await expect(fleetPage.getByTestId('fleet-ship-tile')).toHaveCount(1)
-        await expect(fleetPage.getByTestId('fleet-ship-tile')).toContainText(SECOND_SHIP)
-        await expect(fleetPage.getByTestId('fleet-place-empty')).toHaveCount(2)
-        // (the Move page prints two totals lines of its own, so the page under it is measured by its tiles and its foot)
-        const under = ['fleet-ship-tile', 'fleet-rename', 'fleet-command']
+        await expect(fleetPage.getByTestId('fleet-ship-row')).toHaveCount(1)
+        await expect(fleetPage.getByTestId('fleet-ship-row')).toContainText(SECOND_SHIP)
+        // Move is her own press, on the page her row opens
+        await fleetPage.getByTestId('fleet-ship-row').first().click()
+        await expect(shipPage).toBeVisible()
+        await expect(shipPage.locator('h1')).toHaveText(SECOND_SHIP)
+        // (the Move page prints two totals lines of its own, so the page under it is measured by its sections and its foot)
+        const under = ['fleet-fold-section', 'ship-stats', 'ship-move']
+        await expect(shipPage.getByTestId('ship-move')).toBeVisible()   // her moves are asked when her page opens; Move stands once they are answered
+        await shipPage.getByTestId('ship-move').scrollIntoViewIfNeeded()   // on the glass first, so the press itself scrolls nothing
         const before = await boxes(page, under)
-        await fleetPage.getByTestId('ship-move').click()
+        await shipPage.getByTestId('ship-move').click()
         const movePage = page.getByTestId('ship-move-page')
         await expect(movePage).toBeVisible()
         expect(await boxes(page, under), 'the press on Move moved the page under it').toEqual(before)
@@ -261,15 +287,17 @@ for (const glass of GLASSES) {
         // leavable both ways: the back press, then again by Escape, each to the same fleet
         await movePage.locator('[data-detail-back]').click()
         await expect(movePage).toHaveCount(0)
-        await expect(fleetPage).toBeVisible()
-        await fleetPage.getByTestId('ship-move').click()
+        await expect(shipPage).toBeVisible()
+        await shipPage.getByTestId('ship-move').click()
         await expect(movePage).toBeVisible()
         await page.keyboard.press('Escape')
         await expect(movePage).toHaveCount(0)
-        await expect(fleetPage).toBeVisible()
-        await fleetPage.getByTestId('ship-move').click()
+        await expect(shipPage).toBeVisible()
+        await shipPage.getByTestId('ship-move').click()
         await movePage.getByTestId('ship-move-target').click()
         await expect(movePage).toHaveCount(0)
+        // she has left this fleet, so her page here is gone with her and the fleet's page stands
+        await expect(shipPage).toHaveCount(0)
 
         // ── THE EMPTY FLEET: said plainly, with what to do ───────────────────────────────────────────────────────────────────────────
         await expect(fleetPage.getByTestId('fleet-no-ships')).toBeVisible()
@@ -337,23 +365,37 @@ for (const glass of GLASSES) {
         await page.getByTestId('fleet-row').first().click()
         const fleetPage = page.getByTestId('fleet-page')
         await expect(fleetPage).toBeVisible()
-        await expect(fleetPage.getByTestId('fleet-ship-tile')).toHaveCount(2)
-        await expect(fleetPage.getByTestId('fleet-place-locked')).toHaveCount(5)
-        await expect(fleetPage.getByTestId('fleet-place-dark')).toHaveCount(5)
-        await expect(fleetPage.getByTestId('fleet-place-dark').first()).toHaveText(w.notOpen)
+        await expect(fleetPage.getByTestId('fleet-ship-row')).toHaveCount(2)
+        await laws(page, "the dark fleet's ships")
+        // 2026-11-14: her places, totals, Rename and Command are one row further
+        await fleetPage.getByTestId('fleet-more').click()
+        const morePage = page.getByTestId('fleet-more-page')
+        await expect(morePage.getByTestId('fleet-place-locked')).toHaveCount(5)
+        await expect(morePage.getByTestId('fleet-place-dark')).toHaveCount(5)
+        await expect(morePage.getByTestId('fleet-place-dark').first()).toHaveText(w.notOpen)
         await laws(page, "the dark fleet's page")
         await shot(page, `fleet-page-dark-${name}`)
         for (const id of ['ship-move', 'fleet-place-buy', 'fleet-room-buy', 'fleet-new', 'fleet-new-buy', 'fleet-new-make']) {
           await expect(page.getByTestId(id), `dark: ${id} is drawn`).toHaveCount(0)
         }
         // what was there before is still there: her totals, Rename, Command, and each ship's Stats
-        await expect(fleetPage.getByTestId('fleet-totals')).toBeVisible()
-        await expect(fleetPage.getByTestId('fleet-rename')).toBeVisible()
-        await expect(fleetPage.getByTestId('fleet-command')).toBeVisible()
-        await fleetPage.getByTestId('ship-stats').nth(1).click()
+        await expect(morePage.getByTestId('fleet-totals')).toBeVisible()
+        await expect(morePage.getByTestId('fleet-rename')).toBeVisible()
+        await expect(morePage.getByTestId('fleet-command')).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(morePage).toHaveCount(0)
+        await fleetPage.getByTestId('fleet-ship-row').nth(1).click()
+        const shipPage = page.getByTestId('fleet-ship-page')
+        await expect(shipPage).toBeVisible()
+        await expect(shipPage.getByTestId('ship-move'), 'dark: Move is drawn on a ship').toHaveCount(0)
+        await laws(page, "the dark ship's page")
+        await shipPage.getByTestId('ship-stats').click()
         await expect(page.getByTestId('map-ship-panel')).toContainText(SECOND_SHIP)
         await page.keyboard.press('Escape')
         await expect(page.getByTestId('map-ship-panel')).toHaveCount(0)
+        await expect(shipPage).toBeVisible()
+        await page.keyboard.press('Escape')
+        await expect(shipPage).toHaveCount(0)
         await expect(fleetPage).toBeVisible()
 
         // You says the room she has now, dark or lit

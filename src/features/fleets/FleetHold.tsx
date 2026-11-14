@@ -2,7 +2,7 @@ import { Bar } from '../../components/ui'
 import { fleetHoldBreakdown, fleetStoresSpace } from '../../domain/fleet'
 import { formatInt, formatPct, tonsWord } from '../../lib/format'
 import { useT } from '../../lib/i18n'
-import type { FleetView } from '../../lib/rpc'
+import type { Hulls } from '../../domain/fleet'
 
 // WHAT THE HOLD IS MADE OF — the owner, 2026-10-20 (docs/OWNER_REQUESTS.md row 179):
 //
@@ -30,7 +30,8 @@ import type { FleetView } from '../../lib/rpc'
 // one face each. It is deliberately NOT called `HoldBreakdown`: that name belongs to the TYPE the
 // domain section exports, and tests/duplication.spec.ts fails a screen that re-declares a name a
 // section already owns. The data is a `HoldBreakdown`; this is the face that draws one.
-export function FleetHold({ fleet }: { fleet: FleetView }) {
+// ONE SHIP'S HOLD TOO (2026-11-14): the fold asks only for hulls, so the ship page hands it `{ ships: [ship] }` and reads her own split.
+export function FleetHold({ fleet }: { fleet: Hulls }) {
   const t = useT()
   const hold = fleetHoldBreakdown(fleet)
   if (hold.totalT <= 0) return null

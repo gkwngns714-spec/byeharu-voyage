@@ -158,13 +158,20 @@ test('Fleets: one fleet of seven ships — the company counts 7 hulls, her page 
   const fleetPage = page.getByTestId('fleet-page')
   await expect(fleetPage).toBeVisible({ timeout: 60_000 })
   await expect(page.locator('.animate-pulse')).toHaveCount(0, { timeout: 60_000 })
-  const tiles = page.getByTestId('fleet-ship-tile')
+  // 2026-11-14 (owner: "when pressed a fleet, show only ships, then when i press the ship, show cargo and supplies"): one row a ship, and her own page behind it
+  const tiles = page.getByTestId('fleet-ship-row')
   await expect(tiles).toHaveCount(7, { timeout: 60_000 })
-  const powers = await page.getByTestId('ship-power').allInnerTexts()
-  console.log(`ship tiles: ${await tiles.count()}; power lines: ${powers.length}; first: ${(powers[0] ?? '').replace(/\s+/g, ' ')}`)
+  const powers: string[] = []
+  for (let i = 0; i < 7; i++) {
+    await tiles.nth(i).click()
+    await expect(page.getByTestId('fleet-ship-page')).toBeVisible()
+    powers.push(await page.getByTestId('fleet-ship-page').getByTestId('ship-power').innerText())
+    if (i < 6) await page.locator('[data-detail-back]').last().click()
+  }
+  console.log(`ship rows: ${await tiles.count()}; power lines: ${powers.length}; first: ${(powers[0] ?? '').replace(/\s+/g, ' ')}`)
   expect(powers.length, 'not every ship shows its stats').toBe(7)
   for (const p of powers) expect(p).toMatch(/\d/)
-  // the fleet's own figures: her stores and her hold, as one fleet
+  // the last ship's page is still up: her stores and her hold
   const fleetFigures = await page.evaluate(() => {
     const t = (sel: string) => (document.querySelector(sel)?.textContent ?? '').replace(/\s+/g, ' ').trim()
     return { stores: t('[data-testid="fleet-stores-days"]'), hold: t('[data-testid="hold-breakdown"]'), passage: t('[data-testid="fleet-passage"]') }
@@ -175,6 +182,7 @@ test('Fleets: one fleet of seven ships — the company counts 7 hulls, her page 
   const unlock = await page.locator('[data-testid*="slot"], [data-testid*="unlock"]').count()
   console.log(`slot / unlock controls on the fleet page: ${unlock}`)
   await shot(page, 'fleet-seven-page-1280@2x')
+  await page.locator('[data-detail-back]').last().click()
   await page.locator('[data-detail-back]').last().click()
   await expect(page.locator('[data-detail-page]')).toHaveCount(0)
 })

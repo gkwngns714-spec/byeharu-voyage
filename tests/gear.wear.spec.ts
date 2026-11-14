@@ -74,7 +74,8 @@ for (const locale of ['en-US', 'ko-KR'] as const) {
         await page.goto('fleets')
         await ready(page)
         await page.getByTestId('fleet-row').first().click()
-        await page.getByTestId('fleet-page').getByTestId('ship-stats').first().click()
+        await page.getByTestId('fleet-page').getByTestId('fleet-ship-row').first().click()   // 2026-11-14: Stats is on the page a ship's row opens
+        await page.getByTestId('fleet-ship-page').getByTestId('ship-stats').click()
         const sheet = page.getByTestId('map-ship-panel')
         await expect(sheet).toBeVisible()
         const bars = sheet.getByTestId('unit-wear')
@@ -137,7 +138,8 @@ test.describe('gear wear dark, as the world ships', () => {
     await page.goto('fleets')
     await ready(page)
     await page.getByTestId('fleet-row').first().click()
-    await page.getByTestId('fleet-page').getByTestId('ship-stats').first().click()
+    await page.getByTestId('fleet-page').getByTestId('fleet-ship-row').first().click()   // 2026-11-14: Stats is on the page a ship's row opens
+        await page.getByTestId('fleet-ship-page').getByTestId('ship-stats').click()
     const sheet = page.getByTestId('map-ship-panel')
     await expect(sheet.getByTestId('ship-equipment')).toBeVisible({ timeout: 60_000 })
     await expect(sheet.getByTestId('ship-rack-mid').locator('[data-fitted]').first()).toBeVisible()

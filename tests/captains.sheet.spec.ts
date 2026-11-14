@@ -56,7 +56,9 @@ async function openPower(page: Page, glass: { width: number; height: number }) {
   await page.getByTestId('fleet-row').first().click()
   const fleetPage = page.getByTestId('fleet-page')
   await expect(fleetPage).toBeVisible()
-  const tile = fleetPage.getByTestId('fleet-ship-tile').first()
+  // 2026-11-14 (owner: "when pressed a fleet, show only ships"): the fleet's page is rows now, and the Power line stands on the page a ship's row opens
+  await fleetPage.getByTestId('fleet-ship-row').first().click()
+  const tile = page.getByTestId('fleet-ship-page')
   await expect(tile).toBeVisible()
   const line = tile.getByTestId('ship-power')
   await expect(line).toBeVisible()
@@ -133,7 +135,9 @@ for (const glass of GLASSES) {
       return { inside: l.left >= t.left - 1 && l.right <= t.right + 1, cut: el.scrollWidth > el.clientWidth + 1 }
     }, await tile.elementHandle())
     expect(fits, 'the Power line stands outside its tile or is cut').toEqual({ inside: true, cut: false })
-    // THE WAY BACK: the fleet's page has its Back, and the roster is whole behind it
+    // THE WAY BACK: the ship's page has its Back, then the fleet's page has its own, and the roster is whole behind it
+    await tile.locator('[data-detail-back]').click()
+    await expect(tile).toHaveCount(0)
     await fleetPage.locator('[data-detail-back]').last().click()
     await expect(fleetPage).toHaveCount(0)
     await expect(page.getByTestId('fleet-row').first()).toBeVisible()

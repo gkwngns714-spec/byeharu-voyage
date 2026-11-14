@@ -19,6 +19,9 @@ async function openFirstFleet(page: Page) {
   await ready(page)
   await page.getByTestId('fleet-row').first().click()
   await expect(page.getByTestId('fleet-page')).toBeVisible()
+  // 2026-11-14 (owner: "when pressed a fleet, show only ships"): Move is a ship's press, on the page her row opens
+  await page.getByTestId('fleet-ship-row').first().click()
+  await expect(page.getByTestId('fleet-ship-page')).toBeVisible()
 }
 
 test.use({ viewport: PHONE })
@@ -29,6 +32,7 @@ test('dark: no Move on a ship', async ({ page, request, baseURL }) => {
   await serveWorldImage(page, await dark())
   await openFirstFleet(page)
   await expect(page.getByTestId('fleet-fold')).toBeVisible()
+  await expect(page.getByTestId('ship-stats')).toBeVisible()
   await expect(page.getByTestId('ship-move')).toHaveCount(0)
 })
 
