@@ -1,5 +1,7 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-11-14 CI (branch `proof64-fix`): main's migration proof red since 0413 was proof 64 only: its scene planted two price samples an hour apart, and the chain's drift slot is now 4,500 s, so both fell in one slot (a duplicate key). The proof now takes both slots from the clock's authority. The live writer (tick_price_snapshot) already reads public.drift_slot_of and skips a taken slot: no live defect, no migration.
+
 - 2026-11-13 CI (row 325, branch `ci-six`): the browser suite's big pool runs on six runners instead of three, with every spec file timed again; about 21 minutes a shard expected instead of 33-40. CI only.
 
 ## HAND-OFF 2026-11-13 (PC gkwng → another computer): continue from here

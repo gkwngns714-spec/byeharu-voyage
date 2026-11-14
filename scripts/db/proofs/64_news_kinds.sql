@@ -244,16 +244,27 @@ declare
   v_b    jsonb;
   v_n1   jsonb;
   v_out  jsonb;
+  v_s1   bigint;
+  v_t2   timestamptz;
 begin
   begin
     if p_old then
       perform pg_temp.to_old_64();
     end if;
     update public.price_rollup set hour_done = c_t0, day_done = (c_t0 at time zone 'UTC')::date where one;
+    -- The two samples a pair keeps, one in each planted hour and each in its OWN drift slot, as the real writer keeps them (one sample a slot, the
+    -- first): the second at 09:10, or at the start of the slot after the first's when a slot is longer than the hour between them (0413: the
+    -- chain's slot is 4,500 s, so 08:10 and 09:10 can be one slot). Both instants and both slots come from the one authority, public.clock_count
+    -- and public.clock_start; the hour fold reads only the hours, so the scene is the same scene.
+    v_s1 := public.drift_slot_of(c_t0 + interval '10 minutes');
+    v_t2 := greatest(c_t0 + interval '70 minutes', public.clock_start('drift_slot', v_s1 + 1));
+    if v_t2 >= c_t0 + interval '2 hours' or public.drift_slot_of(v_t2) = v_s1 then
+      raise exception 'PROOF 64 SETUP: no second drift slot inside the second planted hour (first slot %, second sample at %)', v_s1, v_t2;
+    end if;
     insert into public.price_history (port_id, good_id, slot, at, mid, stock, ask, bid)
-    select x.port_id, x.good_id, public.drift_slot_of(c_t0 + interval '10 minutes'), c_t0 + interval '10 minutes', 100, 10, 110, 100 from pairs_64 x
+    select x.port_id, x.good_id, v_s1, c_t0 + interval '10 minutes', 100, 10, 110, 100 from pairs_64 x
     union all
-    select x.port_id, x.good_id, public.drift_slot_of(c_t0 + interval '70 minutes'), c_t0 + interval '70 minutes', x.then, 10, x.then * 1.1, x.then from pairs_64 x;
+    select x.port_id, x.good_id, public.drift_slot_of(v_t2), v_t2, x.then, 10, x.then * 1.1, x.then from pairs_64 x;
     v_a := public.tick_price_snapshot(c_t0 + interval '125 minutes');
     v_n1 := pg_temp.news_64(v_mark);
     v_b := public.tick_price_snapshot(c_t0 + interval '140 minutes');   -- the same hour, a later slot: no hour is folded, nothing more is told
