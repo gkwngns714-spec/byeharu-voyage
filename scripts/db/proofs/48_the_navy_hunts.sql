@@ -28,6 +28,9 @@ begin
   delete from public.pirate_roster;
   update public.world_config set value = to_jsonb(0.005) where key = 'pirate_spend_day_pct';
   update public.world_config set value = to_jsonb(1440) where key = 'pirate_add_minutes';
+  -- 0423: this proof is of 0340's hunt as written: six hours' lie, and at her own station when her own sea is the worst (proof 120 is 0423's)
+  update public.world_config set value = to_jsonb(6) where key = 'navy_hunt_hours';
+  update public.world_config set value = 'false'::jsonb where key = 'navy_own_sea_patrol';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set ducats = 50000000, reserve = 0;
   update public.ports p set crew_pool = 2000;

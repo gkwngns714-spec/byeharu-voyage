@@ -48,6 +48,9 @@ begin
   update public.world_config set value = to_jsonb(50000) where key = 'treasury_reserve_floor';
   update public.world_config set value = to_jsonb(100000) where key = 'city_reserve_per_tier';
   update public.world_config set value = to_jsonb(5) where key = 'city_reserve_capital_mult';
+  -- 0423: this proof sizes 0343's ONE load a capital a run; many loads in shares are proof 120's
+  update public.world_config set value = to_jsonb(1) where key = 'convoy_loads_per_run';
+  update public.world_config set value = to_jsonb(0) where key = 'convoy_load_max';
   update public.world_config set value = to_jsonb(0.1) where key = 'crown_call_share';
   update public.world_config set value = to_jsonb(20) where key = 'crown_call_cover';
   update public.world_config set value = to_jsonb(1) where key = 'convoy_idle_every';

@@ -33,6 +33,8 @@ begin
   update public.world_config set value = to_jsonb(60) where key = 'npc_replan_within_minutes';
   update public.world_config set value = to_jsonb(100) where key = 'npc_ask_broke_under';
   update public.world_config set value = to_jsonb(600000) where key = 'npc_ask_job_ms';
+  -- 0423: this proof is of 0407's back-off as written (10, 20, 40, then 50); the half-hour cap is proof 120's
+  update public.world_config set value = to_jsonb(0) where key = 'npc_ask_wait_max_minutes';
   update public.world_config set value = to_jsonb(greatest(public.wc_int('npc_fleet_max'), (select count(*)::int from public.npc_fleets))) where key = 'npc_fleet_max';
   update public.standing_routes sr set fleet_id = nf.fleet_id, lap_id = null, paused_reason = null, hold_until = null
     from public.npc_fleets nf where nf.route_id = sr.id;
