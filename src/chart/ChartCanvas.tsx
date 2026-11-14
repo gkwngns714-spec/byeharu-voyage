@@ -12,9 +12,7 @@ import { DaylightSheet } from './DaylightSheet'
 import { DaySeaLayer, GraticuleLayer, SEA_VIEWBOX, SeaLayer } from './SeaLayer'
 import { DOT_SPAN_DEG, LANE_SPAN_DEG } from './chartView'
 import { portMarks, quietHarbours, type ChartModel, type PortRole } from './chartModel'
-import type { CoastlineData } from './coastlineBuild'
 import type { CoastPaths } from './fineCoastBuild'
-import { useFineCoast } from './useFineCoast'
 import {
   coastPaperBox,
   LABEL_SPAN_LIMIT,
@@ -150,8 +148,11 @@ export function ChartCanvas({
   box: ViewBox
   /** Chart units per CSS pixel — every glyph and label size is in pixels and scaled by it. */
   unitsPerPx: number
-  /** The world's land, built, or null while it is still being fetched (./useBackdrop.ts). */
-  coast: CoastlineData | null
+  /** THE COAST THAT IS DRAWN (./useChartShore.ts): close in, Natural Earth 1:10m from the few tiles
+   *  under the sheet; wide, the 110m world; null while that is still being fetched. The same object
+   *  until the set of tiles changes, so a pan still only moves the sheet. The caller's `ports` were
+   *  set on THIS shore by the same hook, which is why the hook and not this component fetches it. */
+  coast: CoastPaths | null
   /** The named waters (row 90), or none while the backdrop is still being fetched — which draws
    *  no names, truthfully. Which of them are set at this zoom is ./seaNames.ts's decision. */
   seas?: readonly MapSea[]
@@ -341,11 +342,7 @@ export function ChartCanvas({
     [sheet.x, sheet.y, sheet.width, sheet.height],
   )
   const paperCopies = useMemo(() => sheetCopies(paper), [paper])
-  // THE COAST THAT IS DRAWN (./useFineCoast.ts, 2026-11-14): close in, Natural Earth 1:10m from the few
-  // tiles under the sheet; wide, or while those are still on their way, the 110m world. The same object
-  // until the set of tiles changes, so a pan still only moves the sheet.
-  const fineCoast = useFineCoast(box, unitsPerPx)
-  const drawnCoast: CoastPaths | null = fineCoast ?? coast
+  const drawnCoast = coast
 
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
   const selectedMerchantId = selection?.kind === 'merchant' ? selection.id : null

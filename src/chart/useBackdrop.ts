@@ -61,6 +61,9 @@ export interface BackdropState {
    *  set on the drawn shore once the coast is here. The one list every layer, the hit test and
    *  the frame read. */
   readonly ports: readonly MapPort[]
+  /** The same table as SERVED, before any landfall: what a landfall against another coast (the
+   *  fine tiles, ./useChartShore.ts) starts from. Same order as `ports`. */
+  readonly served: readonly MapPort[]
   /** Harbours the drawn coast has no land for within `LANDFALL_CAP_NM` — an island the file
    *  lacks — as chart points; a speck of land is drawn under each. Empty until the coast is here. */
   readonly islets: readonly Point[]
@@ -107,6 +110,7 @@ export function useBackdrop(snapshotPorts: readonly SnapshotPort[]): BackdropSta
     seas: loaded.seas,
     regions: loaded.regions,
     ports: landed.ports,
+    served,
     islets: landed.islets,
     error: loaded.error,
   }
