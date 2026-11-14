@@ -157,8 +157,13 @@
      …and the quiet port mark (`stroke-ink-faint/85`) then reads 2.75 : 1 against that land,
      which is the third assertion: a mark must always out-shout the ground it sits on. */
   --color-chart-sea: var(--color-sea-2);
-  --color-chart-land: color-mix(in srgb, var(--color-ink-faint) 42%, var(--color-chart-sea));
-  --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 65%, var(--color-chart-sea));
+  /* THE NIGHT LAND KEEPS A LITTLE OF THE LAND'S COLOUR, AND THE COAST A CLEARER EDGE (2026-11-14, the second look pass). The land
+     was the faint ink alone at 42 % (#3e4651): a flat grey, and with the coast at 65 % (3.37 : 1 on the sea, 1.64 on the land) a
+     night coast on a phone was a dim smear. The land is now a fifth of the day's boreal green in the faint ink at 36 %
+     (#3f4d4b, 2.22 : 1 on the sea: inside the same [1.9, 2.6) band, and the quiet mark still reads 2.58 on it, above the land's
+     own step, which is tests/chart.ink.spec.ts's third law). The coast is the faint ink at 75 % (#6a7481, 4.13 : 1 on the sea). */
+  --color-chart-land: color-mix(in srgb, var(--color-chart-day-boreal) 20%, color-mix(in srgb, var(--color-ink-faint) 36%, var(--color-chart-sea)));
+  --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 75%, var(--color-chart-sea));
 
   /* ── THE HARBOUR LIGHT (owner row 125, 2026-10-12) ───────────────────────────────────────────
      *"when i zoom out, i want cities to be bright light, in a dark map, visually beautiful."*
