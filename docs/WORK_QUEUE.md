@@ -1,5 +1,6 @@
 # WORK QUEUE: the owner's live list (rewritten clean 2026-10-18 ~14:05 UTC)
 
+- 2026-11-14 14:45 UTC **0418 OPEN (branch `roster-fix`, row 330): THE ROSTER DOES NOT WAIT ON THE DAY'S ROOM.** Prod built 0 of 108 roster fleets after 0414: the add's next fleet is ord 8, a 0339 xebec paid INSIDE the day's room (spent: 4.2 M against 2.34 M), so `public.pirate_add` returned null every ten minutes. 0418: when the head of the queue needs the room and it cannot pay, the next roster fleet is built (outside the room). Without it, it clears at 00:00 UTC (xebecs 8-13 by 00:50, the first roster fleet 01:00) and stops again any day the room runs out. `docs/dev-log/2026-11-14-roster-fix.md`.
 - 2026-11-13 CI (row 325, branch `ci-six`): the browser suite's big pool runs on six runners instead of three, with every spec file timed again; about 21 minutes a shard expected instead of 33-40. CI only.
 
 ## HAND-OFF 2026-11-13 (PC gkwng → another computer): continue from here
