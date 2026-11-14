@@ -573,11 +573,20 @@ as $b$ select false $b$
     raise exception 'PROOF 37 FAIL: a wreck stepped';
   end if;
   perform pg_temp.purse(v_st2, 0);
-  v_mark := coalesce((select max(id) from public.treasury_flows), 0);
-  v_step := public.npc_refit_step(v_fl2, v_t);
-  if v_step <> 'WAITING' or pg_temp.flows(v_mark, 'REFIT') <> '[]'::jsonb then
-    raise exception 'PROOF 37 FAIL: a station with no money refitted';
-  end if;
+  -- 0415: behind an empty station her realm's capital, then its richest city, pays (public.npc_refit_payer). So she waits only when every city of her realm is dry: tried in a block that is rolled back, the realm's purses as they were after it
+  begin
+    insert into public.treasury_flows (port_id, kind, ducats)
+    select a.port_id, 'CROWN_CALL', -public.city_surplus(a.port_id) from public.port_allegiance a
+     where a.nation_id = public.crown_nation(v_fl2) and public.city_surplus(a.port_id) > 0;
+    v_mark := coalesce((select max(id) from public.treasury_flows), 0);
+    v_step := public.npc_refit_step(v_fl2, v_t);
+    if v_step <> 'WAITING' or pg_temp.flows(v_mark, 'REFIT') <> '[]'::jsonb then
+      raise exception 'PROOF 37 FAIL: a station with no money, in a realm with no money, refitted';
+    end if;
+    raise exception using errcode = 'ZX415', message = 'undo';
+  exception when sqlstate 'ZX415' then
+    null;
+  end;
   v_a := public.npc_refit_cost(v_fl2);
   perform pg_temp.purse(v_st2, 5000000);
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);

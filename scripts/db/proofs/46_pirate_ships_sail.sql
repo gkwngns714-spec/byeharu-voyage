@@ -632,6 +632,8 @@ begin
      or exists (select 1 from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') then
     raise exception 'PROOF 46 FAIL: refits lit, a fresh pirate wreck was paid for at once or by 0322''s step: %', v_s;
   end if;
+  -- 0415: her house may hold a purse now (the pirate cities' gift, public.pirate_gift_hour) and a house with a purse pays her own refit first (0409's order); this arm is the HOME paying, so the purse goes back to the city it came from
+  perform public.pay_city(pl.id, v_por, 'TAX', pl.ducats) from public.players pl where pl.id = (select f.player_id from public.fleets f where f.id = v_her) and pl.ducats > 0;
   v_s := public.pirate_ship_step(v_her, v_t + interval '13 hours 1 minute');
   v_a := (select coalesce(-sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT' and f.port_id = v_por);
   if v_s <> 'REBORN' or v_a <= 0 or (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') <> 0
