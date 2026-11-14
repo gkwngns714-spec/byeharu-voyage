@@ -12,7 +12,7 @@ import { RoadsteadsLayer } from './RoadsteadsLayer'
 import { DaylightSheet } from './DaylightSheet'
 import { DaySeaLayer, GraticuleLayer, SEA_VIEWBOX, SeaLayer } from './SeaLayer'
 import { DOT_SPAN_DEG, LANE_SPAN_DEG } from './chartView'
-import { portMarks, type ChartModel, type PortRole } from './chartModel'
+import { portMarks, quietHarbours, type ChartModel, type PortRole } from './chartModel'
 import type { CoastlineData } from './coastlineBuild'
 import {
   coastPaperBox,
@@ -104,6 +104,8 @@ import { useSunlight } from './useSunlight'
 
 /** One frozen empty list, so a chart handed no seas does not allocate one per frame. */
 const NO_STOPS: readonly PathStop[] = []
+/** A letter's advance in a path stop's word or days, in em: generous, so a Korean word (a full em a letter) is covered too. */
+const LABEL_ADVANCE_EM = 0.9
 const NO_SEAS: readonly MapSea[] = []
 const NO_ISLETS: readonly Point[] = []
 const NO_FIGHTS: readonly MapFight[] = []
@@ -248,23 +250,39 @@ export function ChartCanvas({
   )
   // WHICH SHIPS, per copy — your fleets, and the merchants (all, or a stable subset at the widest spans; ./shipMarks.ts).
   const shipsByCopy = useMemo(
-    () => windows.map(({ k, window }) => ({ k, ships: shipMarks(model.fleets, model.traffic, window) })),
-    [windows, model],
+    () => windows.map(({ k, window }) => ({ k, ships: shipMarks(model.fleets, model.traffic, window, unitsPerPx) })),
+    [windows, model, unitsPerPx],
   )
 
   // THE SCREEN'S PIXELS, TURNED INTO CHART UNITS — the one line of arithmetic the keep-out contract
   // needs, done here so no screen ever has to hold a scale or a viewBox origin. `unitsPerPx` is the
   // same on both axes (viewBoxOf derives the height from the surface's aspect), so one factor does
   // both.
+  //
+  // AND THE STOPS OF THE PATH IN HAND (2026-11-14). A route's "Now" and its numbered discs are drawn by
+  // ./ShipPathLayer.tsx, outside the name plan, so the plan set a city's flag on top of "Now" and a
+  // fleet's name across a disc. They are the same kind of thing as the chrome (something already on the
+  // glass that no name may cover), so they join the same list, once per copy of the sheet.
   const keepOutUnits = useMemo<readonly Rect[] | undefined>(() => {
-    if (!keepOut || keepOut.length === 0) return undefined
-    return keepOut.map((r) => ({
+    const out: Rect[] = (keepOut ?? []).map((r) => ({
       x: box.x + r.x * unitsPerPx,
       y: box.y + r.y * unitsPerPx,
       width: r.width * unitsPerPx,
       height: r.height * unitsPerPx,
     }))
-  }, [keepOut, box, unitsPerPx])
+    const disc = (GLYPH.pathStopDiscPx + 1) * unitsPerPx
+    const em = GLYPH.labelSize * unitsPerPx
+    for (const stop of pathStops) {
+      const at = project(stop.at)
+      // a word is set centred on the point; a disc is a disc, with its days to the right of it
+      const half = stop.label ? Math.max(disc, (stop.label.length * LABEL_ADVANCE_EM * em) / 2 + GLYPH.labelHaloWidth * unitsPerPx) : disc
+      const tail = !stop.label && stop.days ? 3 * unitsPerPx + stop.days.length * LABEL_ADVANCE_EM * em : 0
+      // a word may stand lifted over a disc on its own point (ShipPathLayer): the box covers both places
+      const lift = stop.label ? disc + GLYPH.labelLineHeight * unitsPerPx : 0
+      for (const k of copies) out.push({ x: at.x + k * CHART_WIDTH - half, y: at.y - disc - lift, width: 2 * half + tail, height: 2 * disc + lift })
+    }
+    return out.length === 0 ? undefined : out
+  }, [keepOut, box, unitsPerPx, pathStops, copies])
 
   // ONE plan for every name on the sheet — the places AND the waters (row 90), on EVERY copy
   // (2026-10-14). Each copy's requests are built on its own window and shifted into place, so the
@@ -328,6 +346,11 @@ export function ChartCanvas({
   const selectedFleetId = selection?.kind === 'fleet' ? selection.id : null
   const selectedMerchantId = selection?.kind === 'merchant' ? selection.id : null
   const selectedPortCode = selection?.kind === 'port' ? selection.code : null
+  // WHICH HARBOURS ARE QUIET DOTS (./chartModel.ts `quietHarbours`): the ones the name plan left unnamed, past a coast's zoom.
+  const quiet = useMemo(() => {
+    const named = new Set(labels.flatMap((l) => (l.id.startsWith('port:') ? [l.id.slice('port:'.length)] : [])))
+    return quietHarbours(marksByCopy.flatMap((m) => m.marks.filter((x) => x.full).map((x) => x.port)), named, portRoles, selectedPortCode, unitsPerPx)
+  }, [labels, marksByCopy, portRoles, selectedPortCode, unitsPerPx])
   const selectedFightId = selection?.kind === 'fight' ? selection.id : null
   const rings = useMemo(() => fightRings(fights, unitsPerPx), [fights, unitsPerPx])
 
@@ -443,7 +466,7 @@ export function ChartCanvas({
                   standing on its own roads is the right picture. It is handed the FULL half of the
                   same list PortsLayer gets, so a line can never run out of a mark that was not drawn
                   — a dot (row 94) has no roads. */}
-              <RoadsteadsLayer ports={fullPorts} unitsPerPx={unitsPerPx} sun={sun} />
+              <RoadsteadsLayer ports={quiet.size === 0 ? fullPorts : fullPorts.filter((p) => !quiet.has(p.code))} unitsPerPx={unitsPerPx} sun={sun} />
               {/* THE PINPOINT (0039) — the tapped spot of open water, marked exactly like a selected
                   port is ringed, because it is the same act one step earlier: naming a destination. */}
               {selection?.kind === 'sea' &&
@@ -472,6 +495,7 @@ export function ChartCanvas({
                 selectedCode={selectedPortCode}
                 unitsPerPx={unitsPerPx}
                 dotsOnly={dotsOnly}
+                quiet={quiet}
                 sun={sun}
               />
               <FleetsLayer

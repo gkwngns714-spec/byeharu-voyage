@@ -1,7 +1,7 @@
 import { memo, useId } from 'react'
 import { CHART_WIDTH, type Point } from '../lib/geo'
 import type { CoastlineData } from './coastlineBuild'
-import { DAY_LAND_BANDS, GLYPH } from './glyphs'
+import { DAY_LAND_BANDS, GLYPH, wideScale } from './glyphs'
 import type { RegionTint } from './regions'
 
 // THE COAST — the shallows under it, one land body, its relief, and one stroke whose weight is the
@@ -122,7 +122,7 @@ export const CoastlineLayer = memo(function CoastlineLayer({
   regions?: readonly RegionTint[] | null
   /** Harbours with no drawn land (row 92): a speck of land is painted under each. */
   islets?: readonly Point[]
-  /** Chart units per CSS pixel — only the islets' radius needs it; 0 draws no islets. */
+  /** Chart units per CSS pixel — the islets' radius and the shallows' width (`wideScale`) need it; 0 draws no islets. */
   unitsPerPx?: number
   /** The copies of the sheet this layer is painted over (`sheetCopies` of the paper). */
   copies?: readonly number[]
@@ -130,6 +130,12 @@ export const CoastlineLayer = memo(function CoastlineLayer({
    *  the Earth's day colours — painted whole; the caller shows it where the Sun is up. */
   face?: 'night' | 'day'
 }) {
+  // THE SHALLOWS NARROW WITH THE DENSITY (./glyphs.ts `wideScale`): 40 px of pale water is a shore on a
+  // coast and a blue tube round every continent when a phone holds the world.
+  // Faster than the marks do (the cube), and fainter with it: a band the width of a small island outlines the
+  // island like a sticker, so past a coast's zoom the shallows are a thin soft rim (lead's look, 2026-11-14).
+  const dense = wideScale(unitsPerPx)
+  const shallows = dense * dense * dense
   const clipId = useId()
   const gradientId = useId()
   const baseId = useId()
@@ -167,7 +173,8 @@ export const CoastlineLayer = memo(function CoastlineLayer({
                     key={width}
                     d={coastD}
                     className={`fill-none ${SHALLOW_INK[i]}`}
-                    strokeWidth={width}
+                    strokeWidth={width * shallows}
+                    strokeOpacity={dense}
                     strokeLinejoin="round"
                     strokeLinecap="round"
                     vectorEffect="non-scaling-stroke"
@@ -273,7 +280,7 @@ export const CoastlineLayer = memo(function CoastlineLayer({
                 <path
                   d={coastD}
                   className={`fill-none ${DAY_SHALLOW_INK}`}
-                  strokeWidth={GLYPH.shallowHaloPx[1]}
+                  strokeWidth={GLYPH.shallowHaloPx[1] * shallows}
                   strokeLinejoin="round"
                   strokeLinecap="round"
                   vectorEffect="non-scaling-stroke"

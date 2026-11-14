@@ -40,7 +40,9 @@ export function FleetsCorner({
       slot="top-left"
       mark={<Icon name="ship" size={20} className="text-accent" />}
       label={String(fleets.length)}
-      className="pointer-events-auto"
+      // ON A PHONE THE OPEN LIST STOPS SHORT OF THE ZOOM COLUMN (2026-11-14): Corner's own 70 % ran 26 px under the
+      // Regions button at 320. 8.5rem is that column (its widest word, the two insets and a gap).
+      className="pointer-events-auto max-sm:max-w-[calc(100%-8.5rem)]!"
       data-testid="map-fleets-corner"
       {...CHART_CHROME}
     >

@@ -18,13 +18,19 @@ export interface PathStop {
   label?: string
 }
 
-const DISC_PX = 8
+const DISC_PX = GLYPH.pathStopDiscPx
+/** How far a word is lifted to clear a disc on its own point: the disc, half a line and the halo. */
+const pathWordLiftPx = DISC_PX + GLYPH.labelLineHeight / 2 + 3
+const sameSpot = (a: LatLon, b: LatLon) => Math.abs(a.lat - b.lat) < 1e-6 && Math.abs(a.lon - b.lon) < 1e-6
 
 export function ShipPathLayer({ stops, unitsPerPx }: { stops: readonly PathStop[]; unitsPerPx: number }) {
   return (
     <g pointerEvents="none" data-testid="map-ship-path">
       {stops.map((s) => {
-        const { x, y } = project(s.at)
+        const { x, y: at } = project(s.at)
+        // A WORD ON A DISC'S OWN POINT STANDS OVER IT (2026-11-14): a route that ends where it began put the last
+        // stop's disc on "Now" and hid it.
+        const y = s.label && stops.some((o) => !o.label && sameSpot(o.at, s.at)) ? at - pathWordLiftPx * unitsPerPx : at
         if (s.label) {
           // ROW 191: THE START, AS A WORD — the plan's map says where she is before stop 1 is numbered.
           return (
@@ -37,6 +43,7 @@ export function ShipPathLayer({ stops, unitsPerPx }: { stops: readonly PathStop[
               dominantBaseline="central"
               className="bv-sun-name-halo stroke-chart-sea fill-ink font-mono font-semibold"
               strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
+                strokeLinejoin="round"
               style={{ paintOrder: 'stroke' }}
               data-testid="map-path-now"
             >
@@ -65,6 +72,7 @@ export function ShipPathLayer({ stops, unitsPerPx }: { stops: readonly PathStop[
                 dominantBaseline="central"
                 className="bv-sun-name-halo stroke-chart-sea fill-ink font-mono"
                 strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
+                strokeLinejoin="round"
                 style={{ paintOrder: 'stroke' }}
                 data-testid="map-path-days"
               >

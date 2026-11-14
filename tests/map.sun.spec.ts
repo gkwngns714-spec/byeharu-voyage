@@ -313,7 +313,9 @@ test('at the globe the ships are hulls, the day picture is on the sheet, and eve
   test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL} — run \`npm run preview\` and re-run`)
   mkdirSync(SHOTS, { recursive: true })
   await serveNpcOn(page)
-  await page.setViewportSize(PHONE)
+  // THE GLOBE IS A LANDSCAPE GLASS'S (2026-11-14, tests/map.look.spec.ts law 2): a portrait phone's loosest view covers its
+  // height and stops short of the dot rung, so this law is read on a phone lying on its side.
+  await page.setViewportSize({ width: PHONE.height, height: PHONE.width })
   await page.goto('map')
   await ready(page)
 

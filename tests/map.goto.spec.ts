@@ -274,7 +274,8 @@ test.describe('a go-to lands inside the readable band (chartView.ts goToSpan)', 
 
         // 2 — zoomed all the way OUT: the go-to brings the reader in, no further than the band.
         await press(page, 'Zoom out', 12)
-        expect(await zoomNow(page)).toBe(0)
+        // a portrait glass stops where the world covers its height (chartView.ts maxSpanX): about 25 % on this phone
+        expect(await zoomNow(page)).toBeLessThanOrEqual(vp.name === 'phone' ? 30 : 0)
         await link.click()
         await expect.poll(() => zoomNow(page), { timeout: 4000 }).toBeGreaterThanOrEqual(widest - 1)
         expect(await zoomNow(page)).toBeLessThanOrEqual(closest + 1)

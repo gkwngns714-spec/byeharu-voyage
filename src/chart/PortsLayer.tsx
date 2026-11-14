@@ -119,6 +119,7 @@ export const PortsLayer = memo(function PortsLayer({
   selectedCode,
   unitsPerPx,
   dotsOnly,
+  quiet,
   sun,
 }: {
   marks: readonly PortMark[]
@@ -128,14 +129,18 @@ export const PortsLayer = memo(function PortsLayer({
   /** Pulled back past `DOT_SPAN_DEG`: a city is its dot (and, by night, its light) and NOTHING
    *  else — no triangle, no ring. Her LIGHT is drawn at every zoom either way (owner, 2026-10-12). */
   dotsOnly: boolean
+  /** The harbours drawn as a quiet dot on this glass (./chartModel.ts `quietHarbours`); absent: none. */
+  quiet?: ReadonlySet<string>
   /** Where the Sun is overhead (./sun.ts), for each harbour's `--night`. */
   sun: LatLon
 }) {
   const px = (n: number) => n * unitsPerPx
+  // YOURS LAST, so the brass mark of a harbour your fleet lies in is painted over every neighbour's light.
+  const ordered = [...marks].sort((a, b) => Number(portRoles.has(a.port.code)) - Number(portRoles.has(b.port.code)))
 
   return (
     <g data-testid="map-ports">
-      {marks.map(({ port, full: hasMark }) => {
+      {ordered.map(({ port, full: hasMark }) => {
         const { x, y } = project(port)
         const night = nightStyle(port, sun)
         // AT THE WIDEST SPAN A CITY IS ITS DOT AND NOTHING ELSE (owner, 2026-10-12, on seeing the
@@ -145,6 +150,14 @@ export const PortsLayer = memo(function PortsLayer({
         // the widest sheet exists to show. Past `DOT_SPAN_DEG` every harbour renders as its dot —
         // a lamp by night, a dark point by day.
         const full = hasMark && !dotsOnly
+        // A QUIET DOT (./chartModel.ts `quietHarbours`): the core alone, no light.
+        if (full && quiet?.has(port.code)) {
+          return (
+            <g key={port.code} data-port-code={port.code} data-port-tier={port.sizeTier} data-port-kind={port.kind} data-port-mark="quiet" data-port-x={x} data-port-y={y} style={night}>
+              <circle cx={x} cy={y} r={px(GLYPH.portDotRadius)} className="bv-sun-core bv-sun-day-dot fill-harbour-light" pointerEvents="none" />
+            </g>
+          )
+        }
         if (!full) {
           // THE DOT — the harbour at a zoom too wide for its mark. Nameless, roadless, and not
           // a target (chartModel.ts says why): zoom in, and it is the marker.
