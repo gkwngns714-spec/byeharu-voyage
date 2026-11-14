@@ -463,6 +463,18 @@ test('there is ONE scheme, dark: no light palette, no scheme switch, and the Sun
 
 // ── 5. THE NEW LAYER IS FURNITURE ──────────────────────────────────────────────────────────────
 
+// THE SEA IS FLAT (owner, 2026-11-14: "when zoom out the color changes"; "north pacific ocean, south pacific ocean
+// color, square, not in sync"): a point of water has one colour by night and one by day, wherever it is on the glass.
+// The fault was a vignette keyed to the glass; the law is that the sea's layer paints no gradient at all.
+test('the sea paints no gradient: its colour is of the place, never of the glass', () => {
+  const sea = read(path.join('src', 'chart', 'SeaLayer.tsx'))
+  const code = sea
+    .split(/\r?\n/)
+    .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*') && !l.trim().startsWith('/*'))
+    .join(' ')
+  expect(code).not.toMatch(/Gradient|url\(#|stopOpacity/)
+})
+
 test('SeaLayer is composed by ChartCanvas and reachable by nobody else', () => {
   const entrance = read('src/chart/index.ts')
   expect(entrance.includes('SeaLayer')).toBe(false)

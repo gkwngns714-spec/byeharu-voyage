@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Icon, NAV_TRAY_CEILING, Nav, Row, TapAway, Tray, navTrayAnchorClass, type NavItem, type TrayDetent } from '../components/ui'
-import { NAV_CELLS, navWord, tabHref } from './navTabs'
+import { Icon, NAV_TRAY_CEILING, Nav, Row, TapAway, Tray, navTrayAnchorClass, useWide, type NavItem, type TrayDetent } from '../components/ui'
+import { navCells, navWord, tabHref } from './navTabs'
 import { useT, useLocale } from '../lib/i18n'
 
 // THE ONE navigation. Extracted from AppShell so it can be RENDERED AND MEASURED on its own at a
@@ -98,13 +98,17 @@ export function NavBar() {
     return () => window.removeEventListener('keydown', onKey)
   }, [openGroup])
 
-  const cell = NAV_CELLS.find((c) => c.kind === 'group' && c.id === openGroup)
+  // THE BAR'S CELLS OR THE RAIL'S (navTabs.ts `navCells`): from `lg` You and Stats are their own cells on the rail
+  // and leave the Menu; on a phone the bar keeps its five and they stay in it. One table, read for this glass.
+  const cells = navCells(useWide())
+
+  const cell = cells.find((c) => c.kind === 'group' && c.id === openGroup)
   const openMembers = cell?.kind === 'group' ? cell : null
 
   // THE LIT CELL ANSWERS "WHERE AM I", and an open tray is not an answer to that. A group cell is
   // lit while you are STANDING ON one of its members — it keeps its own name in every state, since
   // a cell whose word changes with the route is not a name, and the screen prints its own title.
-  const here = NAV_CELLS.find((c) =>
+  const here = cells.find((c) =>
     c.kind === 'tab' ? c.to === pathname : c.members.some((m) => m.to === pathname),
   )
   const currentId = here === undefined ? undefined : here.kind === 'tab' ? here.to : here.id
@@ -115,7 +119,7 @@ export function NavBar() {
   const locale = useLocale()
   // THE WORD COMES FROM THE TABLE (navTabs.ts `navWord`), never a second spelling here.
   const word = (label: string) => navWord(locale, label)
-  const items: NavItem[] = NAV_CELLS.map((c) =>
+  const items: NavItem[] = cells.map((c) =>
     c.kind === 'tab'
       ? { id: c.to, label: word(c.label), icon: c.icon, href: tabHref(c.to) }
       : { id: c.id, label: word(c.label), icon: c.icon },

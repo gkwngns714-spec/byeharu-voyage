@@ -14,7 +14,8 @@ export const fightDict = defineDict({
     orderFight: 'Fight',
     orderFlee: 'Flee',
     orderPay: 'Pay',
-    orders: 'Raid order',
+    // owner, 2026-11-14: "what is this raid order? wtf?" — the label now says WHEN the choice applies
+    orders: 'If attacked',
     round: 'Round',
     rangeL: 'Long',
     rangeM: 'Medium',
@@ -109,7 +110,7 @@ export const fightDict = defineDict({
     orderFight: '전투',
     orderFlee: '도주',
     orderPay: '지불',
-    orders: '습격 명령',
+    orders: '습격당하면',
     round: '라운드',
     rangeL: '원거리',
     rangeM: '중거리',

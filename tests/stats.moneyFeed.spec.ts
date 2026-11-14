@@ -64,8 +64,8 @@ test('Stats › the money log panel shows my buy in red and the city’s side in
 
   await buyOne(page)
 
-  await page.getByTestId('nav-bar').getByText('Menu').click()
-  await page.getByTestId('nav-group-panel').getByRole('link', { name: 'Stats', exact: true }).click()
+  // the default glass is wide: Stats is the rail's own cell there (owner, 2026-11-14), not a Menu row
+  await page.getByTestId('nav-bar').getByTestId('nav-cell-/stats').click()
   await expect(page.getByTestId('stats-overview')).toBeVisible({ timeout: 120_000 })
   // the log is the Overview's list panel: its rows are there, nothing to open
   const log = page.getByTestId('money-log')

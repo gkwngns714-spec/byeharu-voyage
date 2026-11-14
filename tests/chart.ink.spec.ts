@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { GLYPH, portMarkScale, portStrokeWidth } from '../src/chart'
 import { ready, reachable } from './appReady.fixture'
+import { GAME_CLOCK_RATE } from '../src/lib/format/time'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CHART'S INK — how far land is from water, and how loud a great port is beside a small one.
@@ -17,6 +18,14 @@ import { ready, reachable } from './appReady.fixture'
 //      zoom (PORT_TIER_BANDS) and already scaled the mark — but only by 0.12 per tier, which put a
 //      tier-3 mark 6.77 px wide beside a tier-5 at 8.50 px, in identical colour and line weight.
 //      26% apart is 214 harbours told with equal emphasis.
+//
+//   3. THE NIGHT HALF WAS NEAR-BLACK, AND EVERY LAW HERE WAS GREEN (owner, 2026-11-14: "find the root cause, make it so
+//      that this problem does not occur again"; docs/dev-log/2026-11-14-night-look.md). The night sea was #070c14, a step
+//      of the page's background: 1.07 : 1 off pure black. This file measured only RATIOS against that ground (the coast
+//      3 : 1 on it, the land inside [1.9, 2.6) of it), so a ground nobody could see passed every one of them, and the
+//      land's ceiling on a black sea is a dull dark grey. Section 3 below measures what was missing: the ground's own
+//      light and colour, the land's colour, the coast against BOTH its sides, the step
+//      from night to day, and the painted glass itself with the Sun held on the far side of the world.
 //
 // TWO KINDS OF ASSERTION, deliberately. The mark hierarchy is arithmetic, so it is proved as
 // arithmetic, in a plain Node process. The colours are the browser's — `color-mix`, the theme
@@ -261,5 +270,93 @@ test.describe('land reads as land at 390px', () => {
         'a port mark no longer dominates the ground it sits on',
       ).toBeGreaterThan(landOnSea)
     }
+
+    // ── 3. THE NIGHT IS A NIGHT VERSION OF THE SAME WORLD (2026-11-14; the header's defect 3) ────────────────────────
+    // What the ratios above never said. Each floor is a number, beside the value measured the day it was written and
+    // the value of the near-black night it replaces, so a retune cannot quietly walk back to black.
+    const BLACK = 'rgb(0, 0, 0)'
+    const rgb = (css: string) => (css.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+    // THE GROUND IS SEEN: the night sea is lighter than black by a step the eye gets. Measured 1.22 (was 1.07).
+    const seaOnBlack = contrast(ink!.sea, BLACK)
+    expect(seaOnBlack, `the night sea is ${seaOnBlack.toFixed(2)} : 1 off black: that is black, not water`).toBeGreaterThanOrEqual(1.15)
+    // …AND IT IS WATER: blue before green before red, by a margin (11, 27, 51 today; 7, 12, 20 was a tinted black).
+    const [seaR, seaG, seaB] = rgb(ink!.sea)
+    expect(seaB - seaR, `the night sea ${ink!.sea} is not blue`).toBeGreaterThanOrEqual(30)
+    expect(seaB, `the night sea ${ink!.sea} is not blue`).toBeGreaterThan(seaG)
+    expect(seaG, `the night sea ${ink!.sea} is not blue`).toBeGreaterThan(seaR)
+    // THE LAND KEEPS THE LAND'S COLOUR: green leads red and blue (55, 82, 63 today; the grey before it led by 2).
+    const [landR, landG, landB] = rgb(ink!.land)
+    expect(landG - Math.max(landR, landB), `the night land ${ink!.land} is grey`).toBeGreaterThanOrEqual(12)
+    // THE COAST IS AN EDGE FROM BOTH SIDES. On the sea it was held to 3 above; on the land it was never measured, and it
+    // read 1.86 there: a line seen from the water only. Measured 6.35 on the sea, 3.17 on the land.
+    const coastOnLand = contrast(ink!.stroke, ink!.land)
+    expect(coastOnSea, `coast on sea is only ${coastOnSea.toFixed(2)} : 1`).toBeGreaterThanOrEqual(4.5)
+    expect(coastOnLand, `coast on land is only ${coastOnLand.toFixed(2)} : 1`).toBeGreaterThanOrEqual(2.5)
+    // AND IT IS STILL NIGHT: the day's water and land stand well above the night's. Measured 3.84 and 3.19. This is the
+    // ceiling on the floors above: a night lifted until it is a second day fails here.
+    const daySeaOverNight = contrast(ink!.daySea, ink!.sea)
+    const dayLandOverNight = contrast(ink!.dayLand, ink!.land)
+    expect(daySeaOverNight, 'the day sea over the night sea').toBeGreaterThanOrEqual(3)
+    expect(dayLandOverNight, 'the day land over the night land').toBeGreaterThanOrEqual(2.5)
+
+    // ── THE PAINTED GLASS, WITH THE SUN HELD (the pixels, not the tokens) ────────────────────────────────────────────
+    // Everything above reads a token off the element that wears it. This reads the picture: the Sun is put on the far
+    // side of the world from the middle of the glass (the game clock is real time at GAME_CLOCK_RATE, and local mode's
+    // serverNow() is Date.now(), so Playwright's clock holds it), the glass is photographed, and its DARK pixels are
+    // measured. A sea, a sheet or an overlay that paints the night black again fails here whatever its
+    // token says. Then the Sun is put overhead and the same glass must be clearly lighter.
+    const glass = page.getByTestId('map-chart')
+    const centreLon = await page.getByTestId('map-view').evaluate((svg) => {
+      const [x, , w] = (svg.getAttribute('viewBox') ?? '').split(/[\s,]+/).map(Number)
+      return x + w / 2
+    })
+    const gameDayMs = (24 * 60 * 60 * 1000) / GAME_CLOCK_RATE
+    const holdSunOver = async (lon: number) => {
+      // The Sun stands over longitude 0 at the game's noon and goes west 360 degrees a game day.
+      const dayFraction = (((0.5 - lon / 360) % 1) + 1) % 1
+      const now = await page.evaluate(() => Date.now())
+      await page.clock.setFixedTime(Math.floor(now / gameDayMs) * gameDayMs + dayFraction * gameDayMs)
+      await page.waitForTimeout(1500) // the glide re-places the mask on its next frames (DaylightSheet.tsx)
+    }
+    /** WCAG luminance of the glass's pixels: the 10th percentile (its dark end) and the median. */
+    const glassLight = async () => {
+      const shot = (await glass.screenshot()).toString('base64')
+      return page.evaluate(async (b64) => {
+        const img = new Image()
+        img.src = `data:image/png;base64,${b64}`
+        await img.decode()
+        const c = document.createElement('canvas')
+        c.width = img.naturalWidth
+        c.height = img.naturalHeight
+        const g = c.getContext('2d', { willReadFrequently: true })!
+        g.drawImage(img, 0, 0)
+        const px = g.getImageData(0, 0, c.width, c.height).data
+        const channel = (n: number) => {
+          const v = n / 255
+          return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4
+        }
+        const lum: number[] = []
+        for (let i = 0; i < px.length; i += 4 * 7) {
+          lum.push(0.2126 * channel(px[i]) + 0.7152 * channel(px[i + 1]) + 0.0722 * channel(px[i + 2]))
+        }
+        lum.sort((a, b) => a - b)
+        return { dark: lum[Math.floor(lum.length * 0.1)], median: lum[Math.floor(lum.length * 0.5)] }
+      }, shot)
+    }
+    await holdSunOver(centreLon + 180)
+    const nightGlass = await glassLight()
+    await holdSunOver(centreLon)
+    const dayGlass = await glassLight()
+    const darkOnBlack = (nightGlass.dark + 0.05) / 0.05
+    const dayOverNight = (dayGlass.median + 0.05) / (nightGlass.median + 0.05)
+    console.log(
+      `night glass: dark end ${darkOnBlack.toFixed(3)} : 1 off black; day over night ${dayOverNight.toFixed(2)} : 1; ` +
+        `sea ${ink!.sea} ${seaOnBlack.toFixed(2)}, land ${ink!.land} ${landOnSea.toFixed(2)}, ` +
+        `coast ${ink!.stroke} ${coastOnSea.toFixed(2)} / ${coastOnLand.toFixed(2)}, ` +
+        `mark on land ${ink!.markOnLand ? contrast(ink!.markOnLand, ink!.land).toFixed(2) : '-'}, ` +
+        `day sea ${daySeaOverNight.toFixed(2)}, day land ${dayLandOverNight.toFixed(2)}`,
+    )
+    expect(darkOnBlack, `the dark end of the night glass is ${darkOnBlack.toFixed(2)} : 1 off black`).toBeGreaterThanOrEqual(1.12)
+    expect(dayOverNight, `the day glass is only ${dayOverNight.toFixed(2)} : 1 over the night glass`).toBeGreaterThanOrEqual(2)
   })
 })
