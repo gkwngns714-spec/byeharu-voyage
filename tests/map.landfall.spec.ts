@@ -235,9 +235,10 @@ for (const viewport of [
       // Moved deliberately 2026-11-07: 246 → 249 harbours (the pirate homes Lingga, Goto and Djerba, migration
       // 0338, W16). None stands near the seam (the nearest to ±180° stays Wellington), so each is drawn once: 251 marks.
       // Moved deliberately 2026-11-14: 249 → 254 harbours (the pirates' ocean havens, migration 0409). Midway (177.37° W) stands 2.6° from
-      // the seam, nearer than Wellington, so it is drawn in both copies as Auckland and Wellington are: 254 + 3 = 257 marks.
+      // the seam but on its WEST side, and only the east edge is repeated at the world view, so it is drawn once: 254 + 2 = 256 marks
+      // (measured in a browser on 2026-11-14, both glasses).
       expect(new Set(world!.marks.map((m) => m.code)).size).toBe(254)
-      expect(world!.marks.length).toBe(257)
+      expect(world!.marks.length).toBe(256)
     })
   })
 }
