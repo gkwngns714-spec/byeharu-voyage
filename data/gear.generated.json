@@ -11484,6 +11484,158 @@
     }
    ],
    "made": false
+  },
+  {
+   "code": "starter-guns",
+   "name": "Starter Guns",
+   "slot": "weapon",
+   "buys": "Attack, Reach",
+   "spends": "Hold, Handling",
+   "note": "A few old iron guns from the quay: enough to answer a pirate, and no more.",
+   "volume": 6,
+   "wsTier": 1,
+   "baseType": "Long Guns",
+   "rack": "high",
+   "grade": 1,
+   "meta": 0,
+   "starter": 800,
+   "deck": 3,
+   "hands": 4,
+   "active": true,
+   "effects": [
+    {
+     "stat": "attack",
+     "delta": 30
+    },
+    {
+     "stat": "reach",
+     "delta": 8
+    },
+    {
+     "stat": "hold",
+     "delta": -10
+    },
+    {
+     "stat": "handling",
+     "delta": -3
+    }
+   ],
+   "recipe": [
+    {
+     "in": "bar-iron",
+     "qty": 3
+    },
+    {
+     "in": "timber",
+     "qty": 1
+    },
+    {
+     "in": "ships-nails",
+     "qty": 1
+    }
+   ],
+   "requirements": [],
+   "made": false
+  },
+  {
+   "code": "starter-sails",
+   "name": "Starter Sails",
+   "slot": "rig",
+   "buys": "Speed",
+   "spends": "Handling",
+   "note": "A plain suit of second-hand canvas: a little more speed than bare yards.",
+   "volume": 4,
+   "wsTier": 1,
+   "baseType": "Sails",
+   "rack": "mid",
+   "grade": 1,
+   "meta": 0,
+   "starter": 300,
+   "deck": 2,
+   "hands": 2,
+   "active": false,
+   "effects": [
+    {
+     "stat": "speed",
+     "delta": 0.3
+    },
+    {
+     "stat": "handling",
+     "delta": -4
+    }
+   ],
+   "recipe": [
+    {
+     "in": "flax",
+     "qty": 3
+    },
+    {
+     "in": "cordage",
+     "qty": 1
+    },
+    {
+     "in": "tar",
+     "qty": 1
+    }
+   ],
+   "requirements": [],
+   "made": false
+  },
+  {
+   "code": "starter-planking",
+   "name": "Starter Planking",
+   "slot": "hull",
+   "buys": "Armour, Hull",
+   "spends": "Speed, Cargo space",
+   "note": "Thin spruce planks nailed over the worst of the hull: a little stronger, a little slower.",
+   "volume": 4,
+   "wsTier": 1,
+   "baseType": "Planking",
+   "rack": "low",
+   "grade": 1,
+   "meta": 0,
+   "starter": 150,
+   "deck": 2,
+   "hands": 0,
+   "active": false,
+   "effects": [
+    {
+     "stat": "armour",
+     "delta": 5
+    },
+    {
+     "stat": "durability",
+     "delta": 80
+    },
+    {
+     "stat": "speed",
+     "delta": -0.23
+    },
+    {
+     "stat": "hold",
+     "delta": -6
+    }
+   ],
+   "recipe": [
+    {
+     "in": "norway-spruce",
+     "qty": 6
+    },
+    {
+     "in": "ships-nails",
+     "qty": 2
+    },
+    {
+     "in": "oakum",
+     "qty": 1
+    },
+    {
+     "in": "pine-pitch",
+     "qty": 1
+    }
+   ],
+   "requirements": [],
+   "made": false
   }
  ],
  "use": [
@@ -12685,6 +12837,30 @@
   {
    "code": "shipwrights-kit",
    "trigger": null,
+   "consumes": []
+  },
+  {
+   "code": "starter-guns",
+   "trigger": "PIRATES",
+   "consumes": [
+    {
+     "good": "shot-and-ball",
+     "qty": 1
+    },
+    {
+     "good": "gunpowder",
+     "qty": 1
+    }
+   ]
+  },
+  {
+   "code": "starter-planking",
+   "trigger": "STORM",
+   "consumes": []
+  },
+  {
+   "code": "starter-sails",
+   "trigger": "MILES",
    "consumes": []
   },
   {

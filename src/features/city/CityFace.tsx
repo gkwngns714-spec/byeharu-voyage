@@ -4,6 +4,7 @@ import { buildingTier, hasBuilding } from '../../domain/port'
 import { fleetCrew, worstHullFraction } from '../../domain/fleet'
 import { PortInn } from '../../live/PortInn'
 import { PORT_FACES } from '../../live/cityFaces'
+import { PortGear } from '../../live/PortGear'
 import { PortShipyard } from '../../live/PortShipyard'
 import { PortYard } from '../../live/PortYard'
 import { useInn } from '../../live/useInn'
@@ -59,7 +60,7 @@ const BUILDING_LABEL: Record<CityBuilding, TKey> = {
 }
 
 /** A face's own player word, read off the one face table (live/cityFaces.ts) — never restated. */
-function faceWord(id: 'building_yard' | 'shipyard'): string {
+function faceWord(id: 'building_yard' | 'shipyard' | 'gear'): string {
   return PORT_FACES.find((f) => f.id === id)!.label
 }
 
@@ -97,15 +98,25 @@ function PortFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null
   const t = useT()
   const yard = hasBuilding(port, 'building_yard')
   const repair = hasBuilding(port, 'shipyard')
-  const [open, setOpen] = useState<'yard' | 'repair' | null>(null)
-  if (!yard && !repair) return <Note tone="neutral">{t('city.noYard')}</Note>
+  const [open, setOpen] = useState<'yard' | 'repair' | 'gear' | null>(null)
   const buildWord = faceWord('building_yard')
   const repairWord = faceWord('shipyard')
+  // 0424: the starter gear is sold at EVERY harbour (no building), so the Port always has this row
+  const gearWord = faceWord('gear')
   const damage = fleet ? formatPct(1 - worstHullFraction(fleet), 0) : undefined
   return (
     <>
+      {!yard && !repair && <Note tone="neutral" className="mb-2">{t('city.noYard')}</Note>}
       {yard && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={buildWord} onClick={() => setOpen('yard')} data-testid="city-port-yard" />}
       {repair && <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={repairWord} figure={damage} onClick={() => setOpen('repair')} data-testid="city-port-repair" />}
+      <SummaryRow className={`min-h-row! ${SUMMARY_STACK_CLASS}`} title={gearWord} onClick={() => setOpen('gear')} data-testid="city-port-gear" />
+      {open === 'gear' && (
+        <DetailPage title={gearWord} onClose={() => setOpen(null)} data-testid="city-port-gear-page">
+          <PageBody>
+            <PortGear fleet={fleet} />
+          </PageBody>
+        </DetailPage>
+      )}
       {open === 'yard' && (
         <DetailPage title={buildWord} onClose={() => setOpen(null)} data-testid="city-port-yard-page">
           <PageBody>

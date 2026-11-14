@@ -87,6 +87,7 @@
 //        node scripts/build-gear.mjs --sql-0159  the VALUES 0159 loaded (22 T2 + 12 Named, item_use, item_city)
 //        node scripts/build-gear.mjs --sql-0163  the VALUES 0163 loads (44 Country + 4 kits, item_use, item_line)
 //        node scripts/build-gear.mjs --sql-0166  the VALUES 0166 loads (11 Famous, item_use)
+//        node scripts/build-gear.mjs --sql-0424  the VALUES 0424 loads (3 starter pieces, item_use, starter_gear, item_unmade)
 // scripts/db/world-guard.mjs re-runs generateGear() on every apply and holds the database to it.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -634,6 +635,25 @@ export function famousDelta(stat, delta) {
   return stat === 'speed' ? round2(v) : roundUp(v)
 }
 
+/**
+ * 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE STARTER PIECES, one a rack a
+ * new hull has a place in (High, Mid; Low for the bigger hulls). Refit is permanent work on the hull and Flourish moves no stat,
+ * so neither has one. [code, name, base type, price in ducats, note]. The price is about 40 % of what the G1's goods are worth
+ * (public.item_recipe_value: Broadside Guns 1,915, Suit of Sails 747, Deal Planking 395), for half its effect; a hull carries one
+ * of each at most (public.mount_fitting, 0424). Sold at every harbour by public.buy_starter_for, the money to the city's purse.
+ */
+export const STARTER = [
+  ['starter-guns', 'Starter Guns', 'Long Guns', 800, 'A few old iron guns from the quay: enough to answer a pirate, and no more.'],
+  ['starter-sails', 'Starter Sails', 'Sails', 300, 'A plain suit of second-hand canvas: a little more speed than bare yards.'],
+  ['starter-planking', 'Starter Planking', 'Planking', 150, 'Thin spruce planks nailed over the worst of the hull: a little stronger, a little slower.'],
+]
+export const STARTER_MULT = 0.5
+/** One effect of a starter piece: the G1's × STARTER_MULT, buys and spends alike, rounded half away from zero (speed to 0.01). */
+export function starterDelta(stat, delta) {
+  const v = Math.abs(delta) * STARTER_MULT
+  return Math.sign(delta) * (stat === 'speed' ? round2(v) : roundUp(v))
+}
+
 /** THE GENERATOR. Pure but for reading data/*.json; throws on any broken rule. */
 export function generateGear() {
   const fittings = Object.fromEntries(readJson('data/fittings.json').fittings.map((f) => [f.code, f]))
@@ -971,6 +991,37 @@ export function generateGear() {
   expectFx('ancla-de-la-esperanza', { wave: 5 })
   expectFx('doubled-frames-2', { durability: 320, speed: -0.2, wave: 3 })
 
+  // 0424 (the owner, 2026-11-15: "and in port, there should be a beginner's gear for ships"): THE STARTER PIECES — STARTER_MULT
+  // over a G1's effects (every one, buys and spends alike: a lighter piece of the same kind), Deck and Hands × the same (rounded
+  // up), the G1's words, volume, rack and active flag, its recipe × the same (rounded up: a record of what it is, and what its
+  // repair is priced from), no requirement, made in NO workshop (`made: false`, public.item_unmade) and sold for `price` ducats
+  // at any harbour (public.starter_gear). Added AFTER the wave rule on purpose: a starter piece keeps nothing of WAVE_BY_BASE.
+  for (const [code, name, base, price, note] of STARTER) {
+    const g1 = g1ByBase[base]
+    const b = BASE_TYPES.find((x) => x.base === base)
+    if (!g1 || !b) throw new Error(`${code}: ${base} is no base type`)
+    take(code, name)
+    checkNote(code, note)
+    const g1Recipe = g1.live ? readJson('data/fittings.json').fittings.find((f) => f.code === g1.code).recipe : g1.recipe
+    const recipe = g1Recipe.map((x) => ({ in: x.in, qty: Math.max(1, roundUp(x.qty * STARTER_MULT)) }))
+    checkRecipe(code, recipe)
+    const effects = g1.effects.map(([stat, delta]) => ({ stat, delta: starterDelta(stat, delta) }))
+    checkEffects(code, effects)
+    if (!(Number.isInteger(price) && price > 0)) throw new Error(`${code}: price ${price}`)
+    items.push({
+      code, name, slot: g1.slot, buys: g1.buys, spends: g1.spends, note, volume: g1.volume, wsTier: 1,
+      baseType: base, rack: b.rack, grade: 1, meta: 0, starter: price,
+      deck: roundUp(g1.deck * STARTER_MULT), hands: roundUp(g1.hands * STARTER_MULT), active: g1.active,
+      effects, recipe, requirements: [], made: false,
+    })
+    use.push({ code, ...useOf(code, base, g1.active) })
+  }
+  if (new Set(STARTER.map((s) => BASE_TYPES.find((x) => x.base === s[2]).rack)).size !== STARTER.length) throw new Error('0424: one starter piece a rack')
+  if (items.length !== 210 + STARTER.length) throw new Error(`the gear is 210 items through S17 + ${STARTER.length} starter pieces; the generator made ${items.length}`)
+  expectFx('starter-guns', { attack: 30, reach: 8, hold: -10, handling: -3 })
+  expectFx('starter-sails', { speed: 0.3, handling: -4 })
+  expectFx('starter-planking', { armour: 5, durability: 80, speed: -0.23, hold: -6 })
+
   use.sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
   return {
     _: 'GENERATED by scripts/build-gear.mjs — do not edit; edit the generator and re-run it (docs/SHIPS_AND_SKILLS.md §6.2-6.4, S12, migration 0135; §6.1 / §6.5 / §6.8, S13, migration 0158; §6.2 T2 + Named, S15, migration 0159; §6.2 Country + §6.6 kits + §6.7 sets, S16, migration 0163; §6.2 Famous, S17, migration 0166).',
@@ -1002,7 +1053,7 @@ function itemRows(I) {
 /** Which migration an item's rows belong to: 0135 (Wave A, meta 0), 0158 (the refits), 0159 (T2 + Named, meta 1 / 5)
  *  or 0163 (Country, meta 6, and the kits). */
 const isS16 = (i) => i.meta === 6 || i.rack === 'kit'
-const isS12 = (i) => i.rack !== 'refit' && i.meta === 0 && !isS16(i)
+const isS12 = (i) => i.rack !== 'refit' && i.meta === 0 && !isS16(i) && !i.starter   // 0424: a starter piece is 0424's
 const isS17 = (i) => i.meta === 8
 const isS15 = (i) => i.meta > 0 && !isS16(i) && !isS17(i)
 const useRows = (list) => list.map((u) => `  (${q(u.code)}, ${u.trigger === null ? 'null' : q(u.trigger)}, ${q(JSON.stringify(u.consumes))})`).join(',' + NL)
@@ -1016,7 +1067,7 @@ export function gearSql(gen = generateGear()) {
  *  every item 0158 knew (public.item_use — the 12 live + 103 Wave A + 14 refits; 0159 adds its own). The
  *  world guard holds the database to generateGear() on every apply. */
 export function s13Sql(gen = generateGear()) {
-  const later = new Set(gen.items.filter((i) => isS15(i) || isS16(i) || isS17(i)).map((i) => i.code))
+  const later = new Set(gen.items.filter((i) => isS15(i) || isS16(i) || isS17(i) || i.starter).map((i) => i.code))
   const use = gen.use.filter((u) => !later.has(u.code))
   return [
     ...itemRows(gen.items.filter((i) => i.rack === 'refit')),
@@ -1067,10 +1118,26 @@ export function s17Sql(gen = generateGear()) {
   ].join(NL)
 }
 
+/** The SQL VALUES migration 0424 loads (`--sql-0424`), pasted verbatim: the starter pieces, what works each (public.item_use),
+ *  their prices (public.starter_gear) and that no workshop makes them (public.item_unmade). */
+export function starterSql(gen = generateGear()) {
+  const I = gen.items.filter((i) => i.starter)
+  const s = new Set(I.map((i) => i.code))
+  return [
+    ...itemRows(I),
+    `-- item_use (${s.size})`,
+    useRows(gen.use.filter((u) => s.has(u.code))),
+    `-- starter_gear (${I.length})`,
+    I.map((i) => `  (${q(i.code)}, ${i.starter})`).join(',' + NL),
+    `-- item_unmade (${I.length})`,
+    I.map((i) => `  (${q(i.code)})`).join(',' + NL),
+  ].join(NL)
+}
+
 /** The SQL VALUES migration 0184 loads (`--sql-0184`), pasted verbatim: public.item_unmade, every item written
  *  `made: false` (the Famous pieces while FAMOUS_MADE is false). */
 export function unmadeSql(gen = generateGear()) {
-  return gen.items.filter((i) => i.made === false).map((i) => `  ('${i.code}')`).join(',' + NL)
+  return gen.items.filter((i) => i.made === false && !i.starter).map((i) => `  ('${i.code}')`).join(',' + NL)
 }
 
 /** The SQL VALUES migration 0215 loads (`--sql-0215`), pasted verbatim: every item's `wave` row of
@@ -1100,6 +1167,8 @@ if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('scripts/bui
     console.log(s17Sql(gen))
   } else if (process.argv.includes('--sql-0184')) {
     console.log(unmadeSql(gen))
+  } else if (process.argv.includes('--sql-0424')) {
+    console.log(starterSql(gen))
   } else if (process.argv.includes('--sql-0215')) {
     console.log(waveSql(gen))
   } else if (process.argv.includes('--check')) {

@@ -3101,6 +3101,47 @@ export interface RoomBought {
   fleet_ship_max: number
 }
 
+/** 0424: one starter piece (`world.starter_gear`): its rack and the rack's word, the item's words, its price in ducats, what it costs
+ *  of Deck and Hands, and its effects in the server's words ("+30 attack", "−4 handling"). */
+export interface StarterPiece {
+  code: string
+  name: string
+  rack: string
+  word: string
+  buys: string
+  spends: string
+  note: string
+  price: number
+  deck: number
+  hands: number
+  effects: string[]
+  /** The same effects as figures, in the same order (a Korean screen words them: src/live/gearWords.ts). */
+  fx: { stat: string; delta: number }[]
+}
+
+/** 0424: one piece's state on one ship: she carries it, it can go on, every place of its rack is taken, or her hull has none. */
+export type StarterState = 'fitted' | 'open' | 'full' | 'no_place'
+
+/** 0424: `world.starter_gear(fleet)`: the pieces, the purse, whether the fleet is docked at a harbour (and which), and each ship's state
+ *  for each piece. `ships` is empty for no fleet, or a fleet not yours. */
+export interface StarterGear {
+  purse: number | null
+  here: boolean
+  port: string | null
+  items: StarterPiece[]
+  ships: { id: string; name: string; class: string; pieces: Record<string, StarterState> }[]
+}
+
+/** 0424: `cmd.buy_starter`: the piece fitted, its price, and her purse after. */
+export interface StarterBought {
+  ship: string
+  item: string
+  name: string
+  price: number
+  purse: number
+  port: string
+}
+
 /** 0367 (docs/ARMADA.md): one armada. `fleets` are fleet ids, the flagship fleet first; their names, ships and totals are `world.fleets()`'s.
  *  `state`: PORT (all docked in one port: she may be sent), SEA (all at sea), APART (anything else: disband and form again). */
 export interface ArmadaView {
