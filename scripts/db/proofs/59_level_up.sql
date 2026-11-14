@@ -46,6 +46,7 @@ declare
   v_lap   uuid;
   v_w     bigint;
   v_calls bigint;
+  v_base  bigint;
   v_n     int;
   v_m     int;
   v_seq   int;
@@ -75,6 +76,10 @@ begin
   -- ── LEVEL_MERCHANT_NOTHING (asked first: the counters are this transaction's) ──
   v_npc := public.new_house(null, 'Casa Mercante 59', 'PRT', 'LIS', 'Mercante', 'barca', 'Mercante', 5000000, true);
   select id into v_nfl from public.fleets where player_id = v_npc;
+  -- THE COUNT STARTS HERE, after she is founded (2026-11-14). Founding her asks public.earned_caps twice (her fleet, her ship), and in a session that
+  -- has not planned public.fleet_room_caps yet the planner itself evaluates the stable public.player_progress in it while it plans: two reads that
+  -- are no part of a merchant's settle, arrival or lap. Run alone this proof was red by those two; after other proofs (CI's leg) it was green.
+  v_base := coalesce((select sum(f.calls) from pg_stat_xact_user_functions f where f.schemaname = 'public' and f.funcname = 'player_progress'), 0);
   select g.code into v_mcode
     from public.port_goods pg join public.goods g on g.id = pg.good_id
    where pg.port_id = v_lis and g.bulk <= 1 and pg.stock_target > 0
@@ -99,7 +104,7 @@ begin
     if (select x.net from public.standing_route_laps x where x.id = v_lap) > 0 then v_n := v_n + 1; end if;
   end loop;
   v_w := (select coalesce(sum(n_tup_ins + n_tup_upd + n_tup_del), 0) from pg_stat_xact_user_tables where schemaname = 'public' and relname = any (c_tabs));
-  v_calls := coalesce((select sum(f.calls) from pg_stat_xact_user_functions f where f.schemaname = 'public' and f.funcname = 'player_progress'), 0);
+  v_calls := coalesce((select sum(f.calls) from pg_stat_xact_user_functions f where f.schemaname = 'public' and f.funcname = 'player_progress'), 0) - v_base;
   if v_n <> 20 or v_w <> 0 or v_calls <> 0
      or (select count(*) from public.events e where e.player_id = v_npc and e.kind = 'ROUTE_LAP') <> 20
      or exists (select 1 from public.events e where e.player_id = v_npc and e.kind = 'LEVEL_UP') then
