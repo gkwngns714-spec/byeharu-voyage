@@ -1,4 +1,4 @@
--- SLIM-DB HEALTH (0414; docs/dev-log/2026-11-14-slim-db.md), THE GUARD: is the database still the size the instance can hold. Read-only, ONE statement:
+-- SLIM-DB HEALTH (0409; docs/dev-log/2026-11-14-slim-db.md), THE GUARD: is the database still the size the instance can hold. Read-only, ONE statement:
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/slim-db/health.sql
 -- One row, one jsonb column `r`. It reads the catalog (sizes, row estimates), the statistics views, the knobs, three small ring tables, and the
 -- FIRST entry of three indexes (an oldest row each). It scans no large table. Run it once a day, and before and after any maintenance.

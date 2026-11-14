@@ -1,4 +1,4 @@
-// slim-db (0414): writes before.sql, after.sql (read-only on prod) and rollback-0414.sql (a draft, local only) from the migration's own hunks,
+// slim-db (0409): writes before.sql, after.sql (read-only on prod) and rollback-0409.sql (a draft, local only) from the migration's own hunks,
 // so the three files can never disagree with it. Run from the repo root after any edit of the migration:
 //   node scripts/ops/harness/slim-db/gen.mjs
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
@@ -20,10 +20,10 @@ const check = (name) => `-- ${NUM} PROD CHECK, ${name === 'before' ? 'BEFORE the
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/slim-db/${name}.sql
 -- Written by gen.mjs from the migration's hunks. One row, one jsonb column \`r\`. It reads the catalog, world_config, cron.job, the ports and the
 -- newest rows of three small ring tables; no large table.
--- BEFORE, wanted: head = the migration before this file's number; applied false; hunks: every \`old\` 1 and every \`new\` 0 (prod's bodies are the
+-- BEFORE, wanted: head 2026081800${String(+NUM - 1).padStart(4, '0')}; applied false; hunks: every \`old\` 1 and every \`new\` 0 (prod's bodies are the
 --   pre-images); index_closed_at true; wants_trigger forbid_mutation; stats_schedule "6,21,36,51 * * * *"; knobs: npc_retention_hours 6,
 --   stats_city_good_keep_days 0, stats_city_good_fine_hours 48 (if the owner has set another value ${NUM} leaves it: say so in the after read).
--- AFTER, wanted: head = this file's number; applied true; hunks: every \`new\` 1 and every \`old\` 0, but hunk 5, whose new text ends with its old line
+-- AFTER, wanted: head 2026081800${NUM}; applied true; hunks: every \`new\` 1 and every \`old\` 0, but hunk 5, whose new text ends with its old line
 --   (its \`old\` reads 1); index_closed_at false; wants_trigger city_wants_guard; stats_schedule "6,36 * * * *"; knobs:
 --   drift_spread_runs 10, npc_retention_hours 3, stats_city_good_keep_days 3, stats_city_good_fine_hours 26, city_wants_keep_periods 10,
 --   npc_route_lap_keep 24, npc_route_lap_keep_hours 26, compact_trim_rows 2000, compact_budget_ms 8000, compact_hold_ms 200, compact_batch_max 25;
@@ -123,5 +123,5 @@ ${hunks.map((h) => `  (${h.ord}, '${h.fn}',\n$h$${h.new}$h$,\n$h$${h.old}$h$)`).
   raise notice '${NUM} rollback ok: the four bodies are their text before ${NUM}; city_wants is under public.forbid_mutation; the knobs, the index and the Stats schedule are back.';
 end $r$;
 `
-writeFileSync('scripts/ops/harness/slim-db/rollback-0414.sql'.replace('0414', NUM), rollback)
+writeFileSync('scripts/ops/harness/slim-db/rollback-0409.sql'.replace('0409', NUM), rollback)
 console.log(`slim-db: ${NUM}, ${hunks.length} hunks -> before.sql, after.sql, rollback-${NUM}.sql`)

@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- 0414 - THE WORLD FITS THE HARBOUR IT HAS  (the minute jobs read less, the old books go, the compactor's limits are knobs)
+-- 0409 - THE WORLD FITS THE HARBOUR IT HAS  (the minute jobs read less, the old books go, the compactor's limits are knobs)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 -- news: none
 --
@@ -57,10 +57,10 @@
 --   queue the beat behind it); CREATE OR REPLACE x4 by hunks. TIME: the probes run in rolled-back sub-transactions: one harbour's
 --   drift step twice, one compactor pass with its budget at 1 ms (it reads the due list and trims up to 2,000 old wants), one merchant house
 --   compacted as of ten years ago (her books are not read). Expected under 10 s on prod. BUDGET: statement_timeout 90 s; fails above 60 s.
--- ROLLBACK (forward, owner only): scripts/ops/harness/slim-db/rollback-0414.sql, a draft. At once, with no file: drift_spread_runs 1 steps every
+-- ROLLBACK (forward, owner only): scripts/ops/harness/slim-db/rollback-0409.sql, a draft. At once, with no file: drift_spread_runs 1 steps every
 --   harbour every run again; npc_route_lap_keep 0 and city_wants_keep_periods 0 stop those trims; stats_city_good_keep_days 0 stops that one.
 -- SELF-ASSERT: each hunk once and reversing; grants, volatility, definer, search path, owner unmoved; no other function moved; then the probes.
--- VERSION: 0414 (0409 to 0413 are other builders' open work). It re-cuts no function they re-cut.
+-- VERSION: 0409 = 0408 + 1. It re-cuts no function the open work behind it re-cuts (the pirates' homes, the purse-bound cargo, the levels).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -93,16 +93,16 @@ begin
 
   -- ── 0. GUARD ──
   if exists (select 1 from public.world_config where key = 'drift_spread_runs') or to_regprocedure('public.drift_ports_due(timestamp with time zone)') is not null then
-    raise exception '0414 refuses: it has been applied once';
+    raise exception '0409 refuses: it has been applied once';
   end if;
   if to_regprocedure('public.tick_compact(boolean,boolean)') is null or to_regprocedure('public.history_trim(timestamp with time zone)') is null
      or not exists (select 1 from pg_trigger where tgrelid = 'public.city_wants'::regclass and tgname = 'city_wants_append_only') then
-    raise exception '0414 refuses: the compactor (0265), the history trim (0316) or the wants'' append-only trigger (0255) is not in this world';
+    raise exception '0409 refuses: the compactor (0265), the history trim (0316) or the wants'' append-only trigger (0255) is not in this world';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
-  create temp table pre_0414 (fn text primary key, def text, meta text) on commit drop;
-  insert into pre_0414
+  create temp table pre_0409 (fn text primary key, def text, meta text) on commit drop;
+  insert into pre_0409
   select f, replace(pg_get_functiondef(f::regprocedure), E'\r', ''),
          (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
             from pg_proc p where p.oid = f::regprocedure)
@@ -115,32 +115,32 @@ begin
   -- ── 2. THE KNOBS ──
   insert into public.world_config (key, value, description) values
     ('drift_spread_runs', to_jsonb(10),
-     '0414: the drift job (pg_cron byeharu-voyage:drift, every minute) steps one harbour in this many a run, by its place in the port order (public.drift_ports_due); a harbour stepped after k missed slots takes one compounded step with the law of k steps (public.tick_market_drift), and a quay somebody opens is stepped on that read. 1 = every harbour every run (the rule before 0414).'),
+     '0409: the drift job (pg_cron byeharu-voyage:drift, every minute) steps one harbour in this many a run, by its place in the port order (public.drift_ports_due); a harbour stepped after k missed slots takes one compounded step with the law of k steps (public.tick_market_drift), and a quay somebody opens is stepped on that read. 1 = every harbour every run (the rule before 0409).'),
     ('city_wants_keep_periods', to_jsonb(10),
-     '0414: public.tick_compact deletes public.city_wants rows of a want-period older than this many periods before the current one, compact_trim_rows a run; never fewer than 2 are kept (the draw reads the period before). 0 = OFF, nothing is deleted (the rule before 0414: every period since 0255 was kept).'),
+     '0409: public.tick_compact deletes public.city_wants rows of a want-period older than this many periods before the current one, compact_trim_rows a run; never fewer than 2 are kept (the draw reads the period before). 0 = OFF, nothing is deleted (the rule before 0409: every period since 0255 was kept).'),
     ('npc_route_lap_keep', to_jsonb(24),
-     '0414: a MERCHANT route keeps its newest this-many laps whatever their age, and every lap closed inside npc_route_lap_keep_hours; a lap past both goes in public.npc_compact_houses. Never under 20 (public.npc_share_budget reads 20). 0 = OFF: a merchant route keeps standing_route_lap_keep laps like a player''s (the rule before 0414: 100).'),
+     '0409: a MERCHANT route keeps its newest this-many laps whatever their age, and every lap closed inside npc_route_lap_keep_hours; a lap past both goes in public.npc_compact_houses. Never under 20 (public.npc_share_budget reads 20). 0 = OFF: a merchant route keeps standing_route_lap_keep laps like a player''s (the rule before 0409: 100).'),
     ('npc_route_lap_keep_hours', to_jsonb(26),
-     '0414: see npc_route_lap_keep. Never under 25: the day figures read the last 24 hours and the lap before them.'),
+     '0409: see npc_route_lap_keep. Never under 25: the day figures read the last 24 hours and the lap before them.'),
     ('compact_trim_rows', to_jsonb(2000),
-     '0414: the most rows one trim statement of the compactor deletes (the merchants'' old laps a batch of houses; the past city wants a run).'),
+     '0409: the most rows one trim statement of the compactor deletes (the merchants'' old laps a batch of houses; the past city wants a run).'),
     ('compact_budget_ms', to_jsonb(8000),
-     '0414: public.tick_compact''s work a minute, at most (the constant c_budget before 0414: 8 s). Raising it lets a backlog be walked faster: more transactions a minute, each still holding its houses compact_hold_ms.'),
+     '0409: public.tick_compact''s work a minute, at most (the constant c_budget before 0409: 8 s). Raising it lets a backlog be walked faster: more transactions a minute, each still holding its houses compact_hold_ms.'),
     ('compact_hold_ms', to_jsonb(200),
-     '0414: the longest one compaction transaction should hold its houses, in ms; batches are sized to it (the constant c_hold before 0414: 200). A beat that touches one of those houses waits this long: raising it costs the beat.'),
+     '0409: the longest one compaction transaction should hold its houses, in ms; batches are sized to it (the constant c_hold before 0409: 200). A beat that touches one of those houses waits this long: raising it costs the beat.'),
     ('compact_batch_max', to_jsonb(25),
-     '0414: the most houses one compaction transaction cuts (the constant c_bmax before 0414: 25).');
+     '0409: the most houses one compaction transaction cuts (the constant c_bmax before 0409: 25).');
   update public.world_config
      set value = to_jsonb(3),
-         description = '0316: public.tick_history deletes stats_city_good rows older than this many days, 20,000 a run. 0 = OFF, nothing is deleted (its value before 0414). Never below 3 days. Nothing reads the old rows (docs/dev-log/2026-11-05-history-graphs.md). 0414: 3, by the owner''s order of 2026-11-14.'
+         description = '0316: public.tick_history deletes stats_city_good rows older than this many days, 20,000 a run. 0 = OFF, nothing is deleted (its value before 0409). Never below 3 days. Nothing reads the old rows (docs/dev-log/2026-11-05-history-graphs.md). 0409: 3, by the owner''s order of 2026-11-14.'
    where key = 'stats_city_good_keep_days' and value = to_jsonb(0);
   update public.world_config
      set value = to_jsonb(26),
-         description = '0214: the fine window of public.stats_city_good, the largest table (one row per city per good per slot), in hours; older rows are folded to one an hour. 48 before 0414; 26 since: its readers want the last 24 hours and the row at 24 hours.'
+         description = '0214: the fine window of public.stats_city_good, the largest table (one row per city per good per slot), in hours; older rows are folded to one an hour. 48 before 0409; 26 since: its readers want the last 24 hours and the row at 24 hours.'
    where key = 'stats_city_good_fine_hours' and value = to_jsonb(48);
   update public.world_config
      set value = to_jsonb(3),
-         description = '0097: merchant books (voyages, ledger, events, orders, trade_daily) are compacted past this window, in hours. 6 before 0414; 3 since.'
+         description = '0097: merchant books (voyages, ledger, events, orders, trade_daily) are compacted past this window, in hours. 6 before 0409; 3 since.'
    where key = 'npc_retention_hours' and value = to_jsonb(6);
 
   -- ── 3. WHOSE TURN IT IS, AND THE WANTS' GUARD ──
@@ -149,7 +149,7 @@ begin
   language sql stable
   set search_path = public, pg_temp
   as $f$
-    -- 0414: THE harbours the drift job steps in the run of p_now's minute: every harbour whose place in the port order (by id) falls on this
+    -- 0409: THE harbours the drift job steps in the run of p_now's minute: every harbour whose place in the port order (by id) falls on this
     -- minute, one in drift_spread_runs. Over drift_spread_runs consecutive minutes every harbour is given exactly once. 1 (or less): all.
     select x.id, x.code
       from (select po.id, po.code, row_number() over (order by po.id) as k from public.ports po) x
@@ -163,7 +163,7 @@ begin
   language plpgsql
   as $f$
   begin
-    -- 0414: public.city_wants IS APPEND-ONLY, WITH ONE EXEMPTION: a row of a period older than the keep may be DELETED by the compactor alone
+    -- 0409: public.city_wants IS APPEND-ONLY, WITH ONE EXEMPTION: a row of a period older than the keep may be DELETED by the compactor alone
     -- (byeharu.wants_trim is set transaction-locally by public.tick_compact and nowhere else). The period before the current one is read by
     -- the next draw (public.wants_draw), so no setting lets it or the current one go.
     if tg_op = 'DELETE'
@@ -183,14 +183,14 @@ begin
   drop index if exists public.standing_route_laps_closed_at;
 
   -- ── 5. THE HUNKS ──
-  create temp table hunk_0414 (ord int primary key, fn text, old text, new text) on commit drop;
-  insert into hunk_0414 values
+  create temp table hunk_0409 (ord int primary key, fn text, old text, new text) on commit drop;
+  insert into hunk_0409 values
   (1, c_cut[1],
 $h$     set drift = case when pg.drift_slot < v_slot then greatest(-v_clamp, least(v_clamp,
                    v_theta * pg.drift
                    + v_sigma * sqrt(-2 * ln(greatest(random(), 1e-12))) * cos(2 * pi() * random()))) else pg.drift end,
 $h$,
-$h$     -- 0414: ONE COMPOUNDED STEP FOR THE SLOTS MISSED. A row k slots behind (the drift job steps one harbour in drift_spread_runs a run; a
+$h$     -- 0409: ONE COMPOUNDED STEP FOR THE SLOTS MISSED. A row k slots behind (the drift job steps one harbour in drift_spread_runs a run; a
      -- skipped harbour; a job that was down) takes theta^k x drift + sigma x sqrt((1 - theta^2k) / (1 - theta^2)) x N(0,1): the law of k
      -- one-slot steps, so a price moves as far in a game day whatever the spread. k = 1 is the step as it always was (theta x drift +
      -- sigma x N). k is read to 10,000 slots: past that the walk has forgotten where it was.
@@ -204,7 +204,7 @@ $h$),
   (2, c_cut[2],
 $h$  for p in select po.id, po.code from public.ports po order by po.id loop
 $h$,
-$h$  -- 0414: the harbours whose turn this minute is (public.drift_ports_due: one in drift_spread_runs; the step is compounded over the slots missed)
+$h$  -- 0409: the harbours whose turn this minute is (public.drift_ports_due: one in drift_spread_runs; the step is compounded over the slots missed)
   for p in select d.id, d.code from public.drift_ports_due(v_now) d order by d.id loop
 $h$),
   (3, c_cut[3],
@@ -214,7 +214,7 @@ $h$  get diagnostics v_ev = row_count;
 $h$,
 $h$  get diagnostics v_ev = row_count;
 
-  -- 0414: A MERCHANT'S LAP HISTORY. A closed lap of one of these houses' routes that is BOTH past the route's newest npc_route_lap_keep AND
+  -- 0409: A MERCHANT'S LAP HISTORY. A closed lap of one of these houses' routes that is BOTH past the route's newest npc_route_lap_keep AND
   -- closed more than npc_route_lap_keep_hours ago goes, at most compact_trim_rows a batch (the rest at her next visit). What stays is what
   -- the game reads of a merchant's laps: the last 24 hours and the lap before them (public.route_earnings, world.fleet_trades,
   -- public.stats_merchants_window), the newest 20 inside three days (public.npc_share_budget), the newest few. A player's route is not read
@@ -240,7 +240,7 @@ $h$  c_budget constant interval := interval '8 seconds';   -- the minute's work,
   c_hold   constant numeric := 200;                     -- ms: the longest a transaction should hold its houses
   c_bmax   constant int := 25;                          -- houses a transaction, at most
 $h$,
-$h$  -- 0414: the three limits are knobs, at the values the constants had (8 s, 200 ms, 25)
+$h$  -- 0409: the three limits are knobs, at the values the constants had (8 s, 200 ms, 25)
   c_budget constant interval := make_interval(secs => greatest(public.wc_int('compact_budget_ms'), 1) / 1000.0);   -- the minute's work, at most
   c_hold   constant numeric := greatest(public.wc_int('compact_hold_ms'), 1);   -- ms: the longest a transaction should hold its houses
   c_bmax   constant int := greatest(public.wc_int('compact_batch_max'), 1);     -- houses a transaction, at most
@@ -248,7 +248,7 @@ $h$),
   (5, c_cut[4],
 $h$  insert into public.compact_runs (slot, at, ms, receipt)
 $h$,
-$h$  -- 0414: THE CITY WANTS OF PAST PERIODS, oldest first, compact_trim_rows a run. The game reads the current period and the one before
+$h$  -- 0409: THE CITY WANTS OF PAST PERIODS, oldest first, compact_trim_rows a run. The game reads the current period and the one before
   -- (public.wants_draw, world.city_wants_now, world.want_left); city_wants_keep_periods are kept, never fewer than 2. The table is
   -- append-only: public.city_wants_guard lets this delete through, and no other (byeharu.wants_trim, this transaction only). 0 = OFF.
   if public.wc_int('city_wants_keep_periods') > 0 then
@@ -268,46 +268,46 @@ $h$  -- 0414: THE CITY WANTS OF PAST PERIODS, oldest first, compact_trim_rows a 
   end if;
   insert into public.compact_runs (slot, at, ms, receipt)
 $h$);
-  for h in select * from hunk_0414 order by ord loop
+  for h in select * from hunk_0409 order by ord loop
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
     v_n := (length(v_def) - length(replace(v_def, h.old, ''))) / length(h.old);
     if v_n <> 1 then
-      raise exception '0414 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', h.ord, h.fn, v_n;
+      raise exception '0409 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', h.ord, h.fn, v_n;
     end if;
     execute replace(v_def, h.old, h.new);
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
     if (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new) <> 1 then
-      raise exception '0414 self-assert FAIL: hunk % of % is not in the new body once', h.ord, h.fn;
+      raise exception '0409 self-assert FAIL: hunk % of % is not in the new body once', h.ord, h.fn;
     end if;
     if (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
-          from pg_proc p where p.oid = h.fn::regprocedure) <> (select p.meta from pre_0414 p where p.fn = h.fn) then
-      raise exception '0414 self-assert FAIL: the grants, volatility, definer, search path or owner of % moved', h.fn;
+          from pg_proc p where p.oid = h.fn::regprocedure) <> (select p.meta from pre_0409 p where p.fn = h.fn) then
+      raise exception '0409 self-assert FAIL: the grants, volatility, definer, search path or owner of % moved', h.fn;
     end if;
   end loop;
-  for h in select p.fn, p.def from pre_0414 p loop
+  for h in select p.fn, p.def from pre_0409 p loop
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
-    for v_z in select x.old, x.new from hunk_0414 x where x.fn = h.fn order by x.ord desc loop
+    for v_z in select x.old, x.new from hunk_0409 x where x.fn = h.fn order by x.ord desc loop
       v_def := replace(v_def, v_z.new, v_z.old);
     end loop;
     if v_def <> h.def then
-      raise exception '0414 self-assert FAIL: % does not reverse to its pre-image', h.fn;
+      raise exception '0409 self-assert FAIL: % does not reverse to its pre-image', h.fn;
     end if;
   end loop;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and not exists (select 1 from unnest(c_cut || c_new) f where f::regprocedure = p.oid)) <> v_fn_before then
-    raise exception '0414 self-assert FAIL: another function moved';
+    raise exception '0409 self-assert FAIL: another function moved';
   end if;
   if public.wc_int('drift_spread_runs') <> 10 or public.wc_int('compact_budget_ms') <> 8000 or public.wc_int('compact_hold_ms') <> 200
      or public.wc_int('compact_batch_max') <> 25 or public.wc_int('npc_route_lap_keep') <> 24 or public.wc_int('npc_route_lap_keep_hours') <> 26
      or public.wc_int('city_wants_keep_periods') <> 10 or public.wc_int('compact_trim_rows') <> 2000 then
-    raise exception '0414 self-assert FAIL: the knobs are not this file''s';
+    raise exception '0409 self-assert FAIL: the knobs are not this file''s';
   end if;
   if to_regclass('public.standing_route_laps_closed_at') is not null
      or (select p.proname from pg_trigger t join pg_proc p on p.oid = t.tgfoid
           where t.tgrelid = 'public.city_wants'::regclass and t.tgname = 'city_wants_append_only') <> 'city_wants_guard' then
-    raise exception '0414 self-assert FAIL: the index stands or the wants'' trigger is not the guard';
+    raise exception '0409 self-assert FAIL: the index stands or the wants'' trigger is not the guard';
   end if;
 
   -- ── 6. THE STATS COUNT, TWICE AN HOUR (pg_cron only; the schedule alone, its `active` unmoved) ──
@@ -322,7 +322,7 @@ $h$);
        <> (select count(*) from public.ports)
      or (select count(distinct d.id) from generate_series(0, 9) g cross join lateral public.drift_ports_due(now() + make_interval(mins => g)) d)
        <> (select count(*) from public.ports) then
-    raise exception '0414 self-assert FAIL: ten runs in a row do not give every harbour exactly once';
+    raise exception '0409 self-assert FAIL: ten runs in a row do not give every harbour exactly once';
   end if;
 
   -- 7b THE COMPOUNDED STEP, with the noise put out (sigma 0) so the figure is exact: 3 slots behind, drift 0.1000 -> theta^3 x 0.1; 1 behind -> theta x 0.1.
@@ -336,20 +336,20 @@ $h$);
       perform public.tick_market_drift(now(), v_port);
       select pg.drift into v_d from public.port_goods pg where pg.port_id = v_port and pg.good_id = v_good;
       if v_d is distinct from 0.0729 then
-        raise exception '0414 self-assert FAIL: three slots behind, 0.1000 became % (theta 0.9, no noise: 0.0729)', v_d;
+        raise exception '0409 self-assert FAIL: three slots behind, 0.1000 became % (theta 0.9, no noise: 0.0729)', v_d;
       end if;
       update public.port_goods set drift = 0.1, drift_slot = v_slot - 1 where port_id = v_port and good_id = v_good;
       perform public.tick_market_drift(now(), v_port);
       select pg.drift into v_d from public.port_goods pg where pg.port_id = v_port and pg.good_id = v_good;
       if v_d is distinct from 0.09 then
-        raise exception '0414 self-assert FAIL: one slot behind, 0.1000 became % (0.0900)', v_d;
+        raise exception '0409 self-assert FAIL: one slot behind, 0.1000 became % (0.0900)', v_d;
       end if;
       v_note := v_note || 'the step: 0.1000 three slots behind 0.0729, one behind 0.0900 (theta 0.9, no noise)';
-      raise exception sqlstate 'BV414';
-    exception when sqlstate 'BV414' then null;
+      raise exception sqlstate 'BV409';
+    exception when sqlstate 'BV409' then null;
     end;
     if v_note not like 'the step:%' then
-      raise exception '0414 self-assert FAIL: the step''s probe did not run to its end';
+      raise exception '0409 self-assert FAIL: the step''s probe did not run to its end';
     end if;
   end if;
 
@@ -365,26 +365,26 @@ $h$);
       values (v_port, v_good, v_period - 1000000, 2, 1, 1, 1), (v_port, v_good, v_period - 1000001, 2, 1, 1, 1);
       begin
         delete from public.city_wants where period = v_period - 1000000;
-        raise exception '0414 self-assert FAIL: city_wants let a delete through outside the compactor';
+        raise exception '0409 self-assert FAIL: city_wants let a delete through outside the compactor';
       exception when insufficient_privilege then null;
       end;
       call public.tick_compact(false, false);
       if exists (select 1 from public.city_wants w where w.period in (v_period - 1000000, v_period - 1000001)) then
-        raise exception '0414 self-assert FAIL: the compactor left the probe wants of a period a million back (%)',
+        raise exception '0409 self-assert FAIL: the compactor left the probe wants of a period a million back (%)',
           (select c.receipt->>'note' from public.compact_runs c order by c.at desc limit 1);
       end if;
       if (select count(*) from public.city_wants w where w.period >= v_period - 1) <> v_live then
-        raise exception '0414 self-assert FAIL: the compactor took a want of the current period or the one before';
+        raise exception '0409 self-assert FAIL: the compactor took a want of the current period or the one before';
       end if;
       v_note := v_note || '; the wants: two probe rows a million periods back gone by the compactor, the ' || v_live || ' of now and the period before kept, a delete outside it refused';
-      raise exception sqlstate 'BV414';
-    exception when sqlstate 'BV414' then null;
+      raise exception sqlstate 'BV409';
+    exception when sqlstate 'BV409' then null;
     end;
     if v_note not like '%the wants:%' then
-      raise exception '0414 self-assert FAIL: the wants'' probe did not run to its end';
+      raise exception '0409 self-assert FAIL: the wants'' probe did not run to its end';
     end if;
     if exists (select 1 from public.city_wants w where w.period in (v_period - 1000000, v_period - 1000001)) or public.wc_int('compact_budget_ms') <> 8000 then
-      raise exception '0414 self-assert FAIL: the wants'' probe was not rolled back';
+      raise exception '0409 self-assert FAIL: the wants'' probe was not rolled back';
     end if;
   end if;
 
@@ -409,7 +409,7 @@ $h$);
         update public.world_config set value = to_jsonb(0) where key = 'npc_route_lap_keep';
         perform public.npc_compact_houses(array[v_house], v_at);
         if (select count(*) from public.standing_route_laps l where l.route_id = v_route and l.lap_no > 1000000) <> 100 then
-          raise exception '0414 self-assert FAIL: with npc_route_lap_keep 0 a merchant''s lap went';
+          raise exception '0409 self-assert FAIL: with npc_route_lap_keep 0 a merchant''s lap went';
         end if;
         update public.world_config set value = to_jsonb(24) where key = 'npc_route_lap_keep';
         perform public.npc_compact_houses(array[v_house], v_at);
@@ -420,25 +420,25 @@ $h$);
            or not exists (select 1 from public.standing_route_laps l where l.route_id = v_route and l.lap_no = 1000077)
            or not exists (select 1 from public.standing_route_laps l where l.route_id = v_route and l.lap_no = 1000100 and l.closed_at is null)
            or exists (select 1 from public.standing_route_laps l where l.route_id = v_route and l.lap_no = 1000076) then
-          raise exception '0414 self-assert FAIL: of 100 probe laps % are left (25: the newest 24 and the one closed 20 hours ago)', v_left;
+          raise exception '0409 self-assert FAIL: of 100 probe laps % are left (25: the newest 24 and the one closed 20 hours ago)', v_left;
         end if;
         v_note := v_note || '; the laps: of 100 probe laps of one merchant route 75 went and 25 stayed (her newest 24, the open one among them, and one closed 20 hours ago); none at knob 0';
       end if;
-      raise exception sqlstate 'BV414';
-    exception when sqlstate 'BV414' then null;
+      raise exception sqlstate 'BV409';
+    exception when sqlstate 'BV409' then null;
     end;
     if v_note not like '%the laps:%' then
-      raise exception '0414 self-assert FAIL: the laps'' probe did not run to its end';
+      raise exception '0409 self-assert FAIL: the laps'' probe did not run to its end';
     end if;
     if exists (select 1 from public.standing_route_laps l where l.route_id = v_route and l.lap_no > 1000000) or public.wc_int('npc_route_lap_keep') <> 24 then
-      raise exception '0414 self-assert FAIL: the laps'' probe was not rolled back';
+      raise exception '0409 self-assert FAIL: the laps'' probe was not rolled back';
     end if;
   end if;
 
   if clock_timestamp() - v_t0 > interval '60 seconds' then
-    raise exception '0414 self-assert FAIL: the file took % (budget 60 s)', clock_timestamp() - v_t0;
+    raise exception '0409 self-assert FAIL: the file took % (budget 60 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0414 self-assert ok: THE WORLD FITS THE HARBOUR IT HAS. Five hunks over four bodies, each once and reversing; grants and volatility unmoved; no other function moved; public.drift_ports_due and public.city_wants_guard; standing_route_laps_closed_at dropped; drift_spread_runs 10, npc_retention_hours %, stats_city_good_keep_days %, stats_city_good_fine_hours %. Probes: %; % ms.',
+  raise notice '0409 self-assert ok: THE WORLD FITS THE HARBOUR IT HAS. Five hunks over four bodies, each once and reversing; grants and volatility unmoved; no other function moved; public.drift_ports_due and public.city_wants_guard; standing_route_laps_closed_at dropped; drift_spread_runs 10, npc_retention_hours %, stats_city_good_keep_days %, stats_city_good_fine_hours %. Probes: %; % ms.',
     public.wc_int('npc_retention_hours'), public.wc_int('stats_city_good_keep_days'), public.wc_int('stats_city_good_fine_hours'),
     v_note, round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end $m$;

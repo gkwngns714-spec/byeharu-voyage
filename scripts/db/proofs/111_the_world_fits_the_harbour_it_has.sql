@@ -1,5 +1,5 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════
--- PROOF 108 - THE WORLD FITS THE HARBOUR IT HAS  (migration 0414; docs/dev-log/2026-11-14-slim-db.md)
+-- PROOF 111 - THE WORLD FITS THE HARBOUR IT HAS  (migration 0409; docs/dev-log/2026-11-14-slim-db.md)
 --
 --   On the world's own harbours and merchants, rolled back with proof.mjs's transaction. Every row that goes is a probe row staged here, and
 --   every one goes by the rule that lets real rows go: the compactor (public.tick_compact, public.npc_compact_houses) and the history trim.
@@ -9,7 +9,7 @@
 -- @pass SD_WANTS   the compactor deletes the city wants past the window, a bounded batch a run: of 5,000 probe rows in periods long past, 2,000 go a run until none is left; the wants of the current period and the one before stay; a delete outside the compactor is refused; with the knob at 0 nothing goes
 -- @pass SD_LAPS    the compactor deletes a merchant's laps past the window, a bounded batch a visit: of 100 probe laps 75 are past both her newest 24 and the 26 hours; 40 go on the first visit (compact_trim_rows 40), 35 on the second, none on the third; her newest 24, the open lap and the lap closed 20 hours ago stay
 -- @pass SD_CITYGOOD the history trim deletes stats_city_good past stats_city_good_keep_days (3): probe rows ten days old go, probe rows two days old stay
--- @pass SD_KNOBS   every amount is a knob with the value 0414 gave it, the compactor's three limits at the values its constants had
+-- @pass SD_KNOBS   every amount is a knob with the value 0409 gave it, the compactor's three limits at the values its constants had
 -- ═════════════════════════════════════════════════════════════════════════════════════
 do $p$
 declare
@@ -33,7 +33,7 @@ begin
      or public.wc_int('npc_route_lap_keep_hours') <> 26 or public.wc_int('compact_trim_rows') <> 2000 or public.wc_int('compact_budget_ms') <> 8000
      or public.wc_int('compact_hold_ms') <> 200 or public.wc_int('compact_batch_max') <> 25 or public.wc_int('stats_city_good_keep_days') <> 3
      or public.wc_int('stats_city_good_fine_hours') <> 26 or public.wc_int('npc_retention_hours') <> 3 then
-    raise exception 'SD_KNOBS: a knob is not at the value 0414 gave it';
+    raise exception 'SD_KNOBS: a knob is not at the value 0409 gave it';
   end if;
   raise notice 'PASS: SD_KNOBS drift_spread_runs 10, city_wants_keep_periods 10, npc_route_lap_keep 24 / 26 h, compact_trim_rows 2000, compact_budget_ms 8000, compact_hold_ms 200, compact_batch_max 25, stats_city_good_keep_days 3, stats_city_good_fine_hours 26, npc_retention_hours 3';
 
@@ -61,11 +61,11 @@ begin
   update public.world_config set value = to_jsonb(0.02) where key = 'drift_sigma';
   update public.world_config set value = to_jsonb(10.0) where key = 'drift_clamp';
   v_slot := floor(extract(epoch from now()) / public.wc_num('drift_slot_seconds'))::bigint;
-  create temp table sd108 on commit drop as
+  create temp table sd111 on commit drop as
   select pg.port_id from public.port_goods pg group by pg.port_id order by count(*) desc, pg.port_id limit 3;
-  update public.port_goods pg set drift = 0, drift_slot = v_slot - 50, last_regen_day = world.game_day(now()) from sd108 s where s.port_id = pg.port_id;
-  perform public.tick_market_drift(now(), s.port_id) from sd108 s;
-  select count(*), stddev_pop(pg.drift) into v_n, v_sd from public.port_goods pg join sd108 s on s.port_id = pg.port_id;
+  update public.port_goods pg set drift = 0, drift_slot = v_slot - 50, last_regen_day = world.game_day(now()) from sd111 s where s.port_id = pg.port_id;
+  perform public.tick_market_drift(now(), s.port_id) from sd111 s;
+  select count(*), stddev_pop(pg.drift) into v_n, v_sd from public.port_goods pg join sd111 s on s.port_id = pg.port_id;
   v_want := 0.02 * sqrt((1 - power(0.9, 100)) / (1 - 0.81));
   if v_n < 300 then
     raise exception 'SD_STEP: only % rows in the three largest harbours; 300 are wanted for the spread', v_n;
@@ -74,12 +74,12 @@ begin
     raise exception 'SD_STEP: 50 slots behind, the spread of % rows is %, not within a fifth of %', v_n, round(v_sd, 4), round(v_want, 4);
   end if;
   v_s := format('%s rows 50 slots behind: spread %s (the law: %s)', v_n, round(v_sd, 4), round(v_want, 4));
-  if exists (select 1 from public.port_goods pg join sd108 s on s.port_id = pg.port_id where pg.drift_slot <> v_slot) then
+  if exists (select 1 from public.port_goods pg join sd111 s on s.port_id = pg.port_id where pg.drift_slot <> v_slot) then
     raise exception 'SD_STEP: a stepped row is not on the current slot';
   end if;
-  update public.port_goods pg set drift = 0, drift_slot = v_slot - 1 from sd108 s where s.port_id = pg.port_id;
-  perform public.tick_market_drift(now(), s.port_id) from sd108 s;
-  select stddev_pop(pg.drift) into v_sd from public.port_goods pg join sd108 s on s.port_id = pg.port_id;
+  update public.port_goods pg set drift = 0, drift_slot = v_slot - 1 from sd111 s where s.port_id = pg.port_id;
+  perform public.tick_market_drift(now(), s.port_id) from sd111 s;
+  select stddev_pop(pg.drift) into v_sd from public.port_goods pg join sd111 s on s.port_id = pg.port_id;
   if v_sd not between 0.016 and 0.024 then
     raise exception 'SD_STEP: one slot behind, the spread is %, not within a fifth of 0.02', round(v_sd, 4);
   end if;
@@ -128,11 +128,11 @@ begin
 
   -- ── SD_LAPS ── (one merchant route; compacted as of ten years ago, so only the probe laps are before any cut)
   update public.world_config set value = 'true'::jsonb where key in ('npc_traders_enabled', 'standing_routes_enabled');
-  if not public.npc_traders_on() then raise exception 'proof 108: the merchants cannot be lit in this world'; end if;
+  if not public.npc_traders_on() then raise exception 'proof 111: the merchants cannot be lit in this world'; end if;
   select sr.player_id, sr.id into v_house, v_route
     from public.standing_routes sr join public.players p on p.id = sr.player_id and p.is_npc
    order by sr.id limit 1;
-  if v_route is null then raise exception 'proof 108: no merchant route in this world'; end if;
+  if v_route is null then raise exception 'proof 111: no merchant route in this world'; end if;
   insert into public.standing_route_laps (route_id, lap_no, started_at, closed_at)
   select v_route, 1000000 + g, v_at - interval '40 hours', v_at - case when g = 50 then interval '20 hours' else interval '30 hours' end
     from generate_series(1, 100) g;

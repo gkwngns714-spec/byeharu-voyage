@@ -1,4 +1,4 @@
-# Slim-db runbook: getting the space back (after 0414)
+# Slim-db runbook: getting the space back (after 0409)
 
 **Nothing here has been run. Every command below is the owner's to approve.** Deleting rows does not shrink a file: PostgreSQL keeps
 the freed space inside the table and reuses it. To make the files small again a table has to be rewritten. This file says which
@@ -10,7 +10,7 @@ while it is throttled, reckon 5 MB/s; when it is not, ten times that. Each time 
 
 ## 0. Before anything
 
-1. 0414 is deployed and `after.sql` reads as wanted.
+1. 0409 is deployed and `after.sql` reads as wanted.
 2. **Wait for the retention to drain.** A rewrite before the rows are gone copies them.
    - city_wants: 446,000 rows at 2,000 a minute: about 4 hours.
    - stats_city_good: 415,000 rows at 20,000 a history run (four an hour): about 5 hours; and its fine window folds 4 hours a Stats run.
@@ -144,7 +144,7 @@ the clock at all.
 2. `after.sql`: the beat's mean, the compactor's `left`, the Stats count's ms.
 3. Nothing needs repeating on a schedule. Autovacuum keeps what is there; `health.sql` once a day says if a table has started to grow.
 
-## If the index 0414 dropped is wanted back
+## If the index 0409 dropped is wanted back
 
 ```sql
 create index concurrently if not exists standing_route_laps_closed_at
