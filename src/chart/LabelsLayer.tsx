@@ -3,7 +3,7 @@ import { CHART_WIDTH, project, shortLonDelta, unproject, type LatLon } from '../
 import { GLYPH } from './glyphs'
 import { MapFlagDefs } from './MapFlagDefs'
 import { flagSymbolId } from './flagSymbolStore'
-import { FLAG_ADVANCE_EM, FLAG_HEIGHT_EM, type LabelTone, type PlacedLabel } from './labels'
+import { FLAG_ADVANCE_EM, FLAG_HEIGHT_EM, NOTE_LINE_EM, type LabelTone, type PlacedLabel } from './labels'
 import { setPlacedNames } from './placedNames'
 import { nightStyle } from './sun'
 import { useUnderway } from './underway'
@@ -54,6 +54,16 @@ const TONE: Record<LabelTone, string> = {
   sea: 'bv-sun-name-water fill-chart-sea-name',
   // A region's name (row 93) is ground like a sea's, in the same thinned ink, a size up.
   region: 'bv-sun-name-water fill-chart-sea-name',
+  // A sea zone's name (the Seas filter): read for its figures, so a place's ink and a city's pale day halo; a zone
+  // closed to the fleet in hand is set in the quiet ink and its ask (the note) in the danger ink.
+  zone: 'bv-sun-name-active fill-ink',
+  'zone-closed': 'bv-sun-name-quiet fill-ink-faint',
+}
+
+/** The note's ink: what a zone asks (quiet), or what it lacks for the fleet in hand (closed). */
+const NOTE_TONE: Partial<Record<LabelTone, string>> = {
+  zone: 'bv-sun-name-quiet fill-ink-faint',
+  'zone-closed': 'bv-sun-name-closed fill-danger',
 }
 
 /**
@@ -163,6 +173,29 @@ const Name = memo(function Name({
       {label.text}
     </text>
   )
+  if (label.note) {
+    const noteSize = (label.noteSizePx ?? label.sizePx) * unitsPerPx
+    return (
+      <g style={nightStyle(unproject({ x: label.x, y: label.y }), sun)} data-zone-closed={label.tone === 'zone-closed' ? 'yes' : undefined}>
+        {text}
+        <text
+          x={label.x}
+          y={label.box.y + label.box.height - (noteSize * NOTE_LINE_EM) / 2}
+          fontSize={noteSize}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          className={`bv-sun-name-halo stroke-chart-sea font-mono ${NOTE_TONE[label.tone] ?? TONE[label.tone]}`}
+          strokeWidth={GLYPH.labelHaloWidth * unitsPerPx}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          style={{ paintOrder: 'stroke' }}
+          data-label-note={label.id}
+        >
+          {label.note}
+        </text>
+      </g>
+    )
+  }
   if (!label.flag) {
     // A FLEET'S NAME ALWAYS GETS THE GROUP, leader or not: it is the element her glide moves.
     return leader || riding ? (
@@ -217,8 +250,9 @@ export function LabelsLayer({
   /** Where the Sun is overhead (./sun.ts). */
   sun: LatLon
 }) {
-  const ground = labels.filter((l) => l.tone === 'sea' || l.tone === 'region')
-  const places = labels.filter((l) => l.tone !== 'sea' && l.tone !== 'region')
+  const isGround = (l: PlacedLabel) => l.tone === 'sea' || l.tone === 'region' || l.tone === 'zone' || l.tone === 'zone-closed'
+  const ground = labels.filter(isGround)
+  const places = labels.filter((l) => !isGround(l))
   // The names actually drawn, for the map's tap (./placedNames.ts): a tap on a name opens its city.
   useLayoutEffect(() => setPlacedNames(labels), [labels])
   return (

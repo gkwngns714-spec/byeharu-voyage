@@ -283,4 +283,6 @@ export type MapSelection =
   | { readonly kind: 'merchant'; readonly id: string }
   /** A battle's ring (0364) — read-only: it opens the fight to watch. */
   | { readonly kind: 'fight'; readonly id: string }
+  /** A sea zone, pressed while the Seas filter is on (2026-11-15) — read-only: it opens what the sea asks. */
+  | { readonly kind: 'zone'; readonly code: string }
   | null

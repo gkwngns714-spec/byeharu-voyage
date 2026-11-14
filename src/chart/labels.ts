@@ -86,7 +86,7 @@ import type { MapPort, MapSelection } from './mapTypes'
 /** What a label is FOR, which is also how it is coloured. `sea` (row 90) is a water's name set on
  *  the water itself — ground, not a place to go, and drawn under every other name. `region`
  *  (row 93) is a region's name on its tint, only while the regions filter is on: ground too. */
-export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea' | 'region'
+export type LabelTone = 'fleet' | 'port-active' | 'port-quiet' | 'sea' | 'region' | 'zone' | 'zone-closed'
 
 /** Which side of the glyph a label ended up on. Tried in this order: the cardinals the map reads
  *  most naturally, then the diagonals as a last resort before dropping it. */
@@ -178,6 +178,12 @@ export interface LabelRequest {
    * alone may take a side of its mark even past a coast (`centredOnMark`), being too small to lie across another country.
    */
   readonly flagOnlyFallback?: boolean
+  /**
+   * 2026-11-15 (the Seas filter) — A SECOND, SMALLER LINE under a CENTRED name: a sea zone's ask
+   * ("Title 3 · Waves 6"). The planned box holds both lines, so the planner keeps the ask clear too.
+   */
+  readonly note?: string
+  readonly noteSizePx?: number
 }
 
 /** A label's flag, in ems of its own type size: the flag's height (its width is 1.5 × that, the
@@ -208,6 +214,9 @@ export interface PlacedLabel {
   readonly leader?: Leader
   /** The nation code whose flag stands at the name's outer end inside the box (see LabelRequest). */
   readonly flag?: string
+  /** The second line (LabelRequest `note`), set centred under the name inside `box`. */
+  readonly note?: string
+  readonly noteSizePx?: number
 }
 
 export interface LabelLayoutOptions {
@@ -317,6 +326,9 @@ const WIDE = /[ᄀ-ᇿ⺀-鿿가-힯豈-﫿＀-￯]/
  * flag. The box is now the flag's height (at 1.35 em five harbours lost their names at 47 %, tests/map.labels.spec.ts). A sea's or a region's name (ground, centred, no flag) keeps its em.
  */
 const NAME_HEIGHT_EM = 1.25
+
+/** A note's line (LabelRequest `note`), in ems of its own size: its letters and its halo. */
+export const NOTE_LINE_EM = 1.2
 
 /** The width of a name, in em, at the given letter-spacing: the planner's one measure of text. */
 export function textEm(text: string, spacingEm = 0): number {
@@ -557,10 +569,16 @@ export function planLabels(
     const spacingEm = request.spacingEm ?? 0
     const size = sizePx * u
     const overMark = (options.centredOnMark ?? false) && request.tone !== 'fleet'
+    // a sea zone's ask (`note`) is a second line under its name: the box holds both, so the collision rule keeps both clear
+    const noteSizePx = request.note ? (request.noteSizePx ?? sizePx) : 0
+    const noteSize = noteSizePx * u
     // a flag alone (`flagOnlyFallback`) is the flag's own 3:2 box, without the gap that would sit before a name
-    const width = textEm(request.text, spacingEm) * size + (request.flag ? (request.text ? FLAG_ADVANCE_EM : FLAG_HEIGHT_EM * 1.5) * size : 0)
+    const width = Math.max(
+      textEm(request.text, spacingEm) * size + (request.flag ? (request.text ? FLAG_ADVANCE_EM : FLAG_HEIGHT_EM * 1.5) * size : 0),
+      request.note ? textEm(request.note) * noteSize : 0,
+    )
     const options_ = centredName
-      ? centredNear(request.at, width, size, request.slackLines ?? 0)
+      ? centredNear(request.at, width, size + (request.note ? noteSize * NOTE_LINE_EM : 0), request.slackLines ?? 0)
       : candidates(request.at, width, size * NAME_HEIGHT_EM, gap, overMark && request.text !== '' ? [1] : (options.rings ?? LABEL_RINGS), overMark, request.priority >= LABEL_PRIORITY.route || request.text === '').filter(
           (c) => (c.stepped ?? false) === stepOut,
         )
@@ -610,12 +628,14 @@ export function planLabels(
       tone: request.tone,
       side: chosen.side,
       x: chosen.x,
-      y: chosen.y,
+      // with a second line the name stands on the box's first line, the note under it
+      y: request.note ? chosen.box.y + size / 2 : chosen.y,
       anchor: chosen.anchor,
       box: chosen.box,
       sizePx,
       spacingEm,
       ...(request.flag ? { flag: request.flag } : {}),
+      ...(request.note ? { note: request.note, noteSizePx } : {}),
       ...(leader ? { leader } : {}),
     })
     return true

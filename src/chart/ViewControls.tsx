@@ -1,6 +1,7 @@
-import { Button, cornerSlotClass, Icon } from '../components/ui'
+import { useRef, useState } from 'react'
+import { Button, cornerSlotClass, Icon, useDismiss } from '../components/ui'
 import { zoomPercent } from './chartView'
-import { setRegionsFilter, useRegionsFilter } from './regionsFilter'
+import { MAP_LAYERS, setMapLayer, useMapLayer, type MapLayer } from './regionsFilter'
 import { CHART_CHROME, type ChartSurface } from './useChartSurface'
 import { useT } from '../lib/i18n'
 
@@ -34,6 +35,14 @@ import { useT } from '../lib/i18n'
 // It is here, not on a screen, for the reason the other three are: two surfaces wear this
 // column, and a switch that lived on one of them would be a second switch on the other.
 //
+// ── 2026-11-15: THE FOURTH BUTTON IS A FILTER OF THREE ───────────────────────────────────────────
+// The owner: *"also in map, make filter, like regions, no in regions, have option to see seas, showing
+// waves, requirement to pass etc."* The same button, in the same place, now opens a short list: Off,
+// Regions, Seas — one at a time (./regionsFilter.ts keeps the choice). It reads the layer that is on
+// ("Regions", "Seas") or "Filter" when none is, and is pressed (brass) while one is. The list hangs
+// under it, right-aligned to the column's edge, out of the flow, gone on a pick, a press outside or
+// Escape. A surface that draws no seas (`SmallChart`) offers Off and Regions only (`seas` false).
+//
 // ── WHY IT IS SAFE TO SIT ON THE GLASS ─────────────────────────────────────────────────────────
 // `CHART_CHROME` makes it invisible to every gesture (a press here never pans), the corner is
 // `cornerSlotClass`'s — the same table every `Corner` reads, never a hand-written inset — and being
@@ -48,6 +57,7 @@ export function ViewControls({
   findAriaLabel,
   findTestId,
   testId,
+  seas = false,
 }: {
   /** The surface these buttons steer — `zoomIn`, `zoomOut` and `fit`— plus `view`, which they only
    *  READ, to print how far in the chart is. */
@@ -56,6 +66,8 @@ export function ViewControls({
   findAriaLabel: string
   findTestId?: string
   testId?: string
+  /** Whether this surface draws the sea zones (the Map tab): the filter then offers Seas too. */
+  seas?: boolean
 }) {
   const t = useT()
   const zoom = surface.view ? zoomPercent(surface.view.spanX) : 0
@@ -117,27 +129,80 @@ export function ViewControls({
       >
         <Icon name="locate" size={16} />
       </Button>
-      <RegionsToggle />
+      <LayerFilter seas={seas} />
     </div>
   )
 }
 
-/** The regions filter's one button — its own component so the store subscription re-renders
+const LAYER_WORD: Record<MapLayer, 'chart.filter' | 'chart.regions' | 'chart.seas'> = {
+  off: 'chart.filter',
+  regions: 'chart.regions',
+  seas: 'chart.seas',
+}
+const CHOICE_WORD: Record<MapLayer, 'chart.layerOff' | 'chart.regions' | 'chart.seas'> = {
+  off: 'chart.layerOff',
+  regions: 'chart.regions',
+  seas: 'chart.seas',
+}
+
+/** The filter's one button and its list — its own component so the store subscription re-renders
  *  the button alone, not the column. */
-function RegionsToggle() {
+function LayerFilter({ seas }: { seas: boolean }) {
   const t = useT()
-  const on = useRegionsFilter()
+  const stored = useMapLayer()
+  // a surface that draws no seas reads a kept "Seas" as off
+  const layer: MapLayer = stored === 'seas' && !seas ? 'off' : stored
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement | null>(null)
+  useDismiss(open, box, () => setOpen(false))
+  const choices = MAP_LAYERS.filter((l) => seas || l !== 'seas')
+  const on = layer !== 'off'
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      aria-pressed={on}
-      onClick={() => setRegionsFilter(!on)}
-      className={`min-h-11 gap-1.5 self-end bg-surface/90 backdrop-blur ${on ? 'border-accent text-accent' : ''}`}
-      data-testid="map-regions-toggle"
-    >
-      <Icon name="regions" size={16} />
-      {t('chart.regions')}
-    </Button>
+    <div ref={box} className="relative self-end">
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-pressed={on}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        className={`min-h-11 gap-1.5 bg-surface/90 backdrop-blur ${on ? 'border-accent text-accent' : ''}`}
+        data-testid="map-layer-filter"
+        data-layer={layer}
+      >
+        <Icon name="regions" size={16} />
+        {t(LAYER_WORD[layer])}
+      </Button>
+      {open && (
+        <div
+          role="menu"
+          aria-label={t('chart.filter')}
+          className="absolute right-0 top-full z-40 mt-1 flex min-w-full flex-col rounded-tile bg-surface-2 p-1 shadow-float"
+          data-testid="map-layer-menu"
+        >
+          {choices.map((l) => (
+            <button
+              key={l}
+              type="button"
+              role="menuitemradio"
+              aria-checked={l === layer}
+              onClick={() => {
+                setMapLayer(l)
+                setOpen(false)
+              }}
+              className={`flex min-h-11 items-center gap-2 whitespace-nowrap rounded-control px-3 text-left text-t-body ${
+                l === layer ? 'text-accent' : 'text-ink'
+              } hover:bg-surface`}
+              data-testid={`map-layer-${l}`}
+            >
+              <span aria-hidden="true" className="w-3 text-center">
+                {l === layer ? '●' : ''}
+              </span>
+              {t(CHOICE_WORD[l])}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
