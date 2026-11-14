@@ -1,4 +1,4 @@
--- SLIM-DB HEALTH (0409; docs/dev-log/2026-11-14-slim-db.md), THE GUARD: is the database still the size the instance can hold. Read-only, ONE statement:
+-- SLIM-DB HEALTH (0409 and 0416; docs/dev-log/2026-11-14-slim-db.md), THE GUARD: is the database still the size the instance can hold. Read-only, ONE statement:
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/slim-db/health.sql
 -- One row, one jsonb column `r`. It reads the catalog (sizes, row estimates), the statistics views, the knobs, three small ring tables, and the
 -- FIRST entry of three indexes (an oldest row each). It scans no large table. Run it once a day, and before and after any maintenance.
@@ -9,8 +9,10 @@
 --   kept[]           every table with a retention rule: its rows (estimate), its size, its oldest row against its keep window, and `ok`.
 --     city_wants          oldest period no older than city_wants_keep_periods + 15 periods (the trim runs every minute, 2,000 rows a run).
 --     stats_city_good     oldest row no older than stats_city_good_keep_days + 1 day.       rows under 300,000.
---     standing_route_laps merchants' laps closed over npc_route_lap_keep_hours + 6 h ago: under 24 a merchant route (her newest 24 stay at any age).
---                         rows under 100,000.
+--     standing_route_laps (0416) a merchant route keeps her newest npc_route_lap_keep (10) and what she closed since the compactor last
+--                         cut her house; a player's keeps 100. rows under 25,000. The figure `merchant_laps_over_a_day` (laps of
+--                         merchants closed over 30 hours ago) is only a quiet route's newest ten: under 10 a merchant route.
+--     route_hour_laps     (0416) the hour book: oldest hour no older than route_hour_keep_hours + 3 h. rows under 90,000.
 --     merchants' books    the compactor's own newest receipt: the oldest ledger row waiting is under 2 h past the cut, `left` under 60.
 --     events / ledger / voyages / voyage_events   rows (estimate) under 600,000 / 350,000 / 70,000 / 950,000 at npc_retention_hours 3.
 --     price_history_hour  rows under 1,150,000 (30 days of hours; it reaches that about 2026-11-25 and then stays).
@@ -26,6 +28,7 @@ with k as (
          (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'npc_route_lap_keep') as lap_keep,
          (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'npc_route_lap_keep_hours') as lap_hours,
          (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'npc_retention_hours') as npc_hours,
+         (select (c.value #>> '{}')::numeric from public.world_config c where c.key = 'route_hour_keep_hours') as hb_hours,
          (select (c.value #>> '{}')::int from public.world_config c where c.key = 'drift_spread_runs') as spread
 ), sz as (
   select c.relname as tbl, c.reltuples::bigint as rows, pg_total_relation_size(c.oid) / 1048576 as mb, pg_relation_size(c.oid) / 1048576 as heap_mb
@@ -43,7 +46,7 @@ with k as (
     from public.standing_route_laps l
     join public.standing_routes r on r.id = l.route_id
     join public.players p on p.id = r.player_id
-   where l.lap_no >= 2 and l.closed_at < now() - make_interval(hours => ((select lap_hours from k) + 6)::int)
+   where l.lap_no >= 2 and l.closed_at < now() - interval '30 hours'
 ), cr as (
   select c.at, c.ms, c.receipt from public.compact_runs c order by c.at desc limit 1
 )
@@ -65,10 +68,15 @@ select jsonb_build_object(
                        'ok', (select cg_days from k) > 0 and coalesce((select extract(epoch from now() - oldest) / 86400 from cg), 0) <= (select cg_days + 1 from k)),
     jsonb_build_object('table', 'standing_route_laps', 'rule', 'npc_route_lap_keep / npc_route_lap_keep_hours',
                        'keep', (select lap_keep from k), 'keep_hours', (select lap_hours from k),
-                       'rows', (select rows from sz where tbl = 'standing_route_laps'), 'rows_under', 100000, 'mb', (select mb from sz where tbl = 'standing_route_laps'),
-                       'merchant_laps_past_window', (select merchant_old from laps), 'on_routes', (select merchant_routes from laps),
-                       'under', (select 24 * greatest(merchant_routes, 1) from laps), 'player_laps_past_window', (select player_old from laps),
-                       'ok', (select lap_keep from k) > 0 and (select merchant_old <= greatest((select lap_keep from k), 20) * greatest(merchant_routes, 1) from laps)),
+                       'rows', (select rows from sz where tbl = 'standing_route_laps'), 'rows_under', 25000, 'mb', (select mb from sz where tbl = 'standing_route_laps'),
+                       'merchant_laps_over_a_day', (select merchant_old from laps), 'on_routes', (select merchant_routes from laps),
+                       'under', (select greatest((select lap_keep from k), 10) * greatest(merchant_routes, 1) from laps), 'player_laps_over_a_day', (select player_old from laps),
+                       'ok', (select lap_keep from k) > 0 and (select merchant_old <= greatest((select lap_keep from k), 10) * greatest(merchant_routes, 1) from laps)
+                             and (select rows < 25000 from sz where tbl = 'standing_route_laps')),
+    jsonb_build_object('table', 'route_hour_laps', 'rule', 'route_hour_keep_hours', 'keep_hours', (select hb_hours from k),
+                       'rows', (select rows from sz where tbl = 'route_hour_laps'), 'rows_under', 90000, 'mb', (select mb from sz where tbl = 'route_hour_laps'),
+                       'oldest', (select b.hour from public.route_hour_laps b order by b.hour limit 1), 'under_hours', (select hb_hours + 3 from k),
+                       'ok', coalesce((select extract(epoch from now() - b.hour) / 3600 <= (select hb_hours + 3 from k) from public.route_hour_laps b order by b.hour limit 1), true)),
     jsonb_build_object('table', 'the merchants'' books (events, ledger, voyages, voyage_events, orders)', 'rule', 'npc_retention_hours',
                        'keep_hours', (select npc_hours from k),
                        'rows', jsonb_build_object('events', (select rows from sz where tbl = 'events'), 'ledger', (select rows from sz where tbl = 'ledger'),
