@@ -8,6 +8,8 @@
 -- sails exactly as before 0422, to the digit, as 0422's own probe asserts).
 -- A softer step back (e.g. 3.5 instead of 4.5) is the same call with that figure: public.fleet_speed_set('NAVY', 3.5).
 -- news: a rollback says so in the news if the owner wants it: public.news_update('<number>', 'Navy and pirate ships sail at their own speed again', '해군과 해적선이 다시 원래 속도로 항해합니다').
+-- LOCAL SCENE (tests/harness.guard.spec.ts): it writes; the guard refuses anywhere but the local PGlite world.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $r$
 declare
   v_n jsonb;
