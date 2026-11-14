@@ -104,20 +104,14 @@ for (const glass of [
       await page.screenshot({ path: shot(`codex-seas-closed-${glass.tag}`) })
     })
 
-    test('the map shades the closed seas; a harbour in one says why and offers no passage; one in open water sails', async ({ page, request, baseURL }) => {
+    test('the map does not shade the closed seas; a harbour in one says why and offers no passage; one in open water sails', async ({ page, request, baseURL }) => {
       test.skip(!(await reachable(request, baseURL ?? '')), `nothing served at ${baseURL}`)
       await serveLitSeas(page)
       await openChart(page)
-      const veil = page.getByTestId('map-closed-seas').first()
-      await expect(veil).toBeAttached({ timeout: 120_000 })
-      expect(Number(await veil.getAttribute('data-closed'))).toBe(52)
-      // the shade has its key: one line in the chart's corner, inside the glass
-      const key = page.getByTestId('map-closed-seas-key')
-      await expect(key).toHaveText(ko ? '닫힌 바다' : 'Closed seas')
-      const keyBox = (await key.boundingBox())!
-      expect(keyBox.x).toBeGreaterThanOrEqual(0)
-      expect(keyBox.x + keyBox.width).toBeLessThanOrEqual(glass.width)
-      expect(keyBox.height).toBeLessThanOrEqual(20)
+      // the chart does not shade the closed seas (owner, 2026-11-14): the sea is one colour, a closed sea is said in words
+      await page.waitForTimeout(3000)
+      await expect(page.getByTestId('map-closed-seas')).toHaveCount(0)
+      await expect(page.getByTestId('map-closed-seas-key')).toHaveCount(0)
 
       // LAS PALMAS lies in Macaronesia (title 2): closed to a title-1 company
       await askCity(page, 'LPA')

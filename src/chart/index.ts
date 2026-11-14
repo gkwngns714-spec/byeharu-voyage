@@ -46,7 +46,6 @@
 
 // ── the picture ────────────────────────────────────────────────────────────────────────────────
 export { ChartCanvas } from './ChartCanvas'
-export { CLOSED_SEAS_VEIL_CSS, useClosedSeasVeil } from './useClosedSeasVeil'
 export type { PathStop } from './ShipPathLayer'
 export { loopD } from './route'
 export { SmallChart } from './SmallChart'
