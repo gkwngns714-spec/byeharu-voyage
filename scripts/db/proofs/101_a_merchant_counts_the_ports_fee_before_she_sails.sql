@@ -88,6 +88,8 @@ begin
   if not public.npc_traders_on() or not public.economy_closed() or not public.city_treasury_on() then
     raise exception 'proof 101: the closed economy, the purses or the merchants cannot be lit in this world';
   end if;
+  -- 0410: a merchant carries only what the city's purse can pay for, and this world's purses are empty: every city is made rich, so the fee is the test
+  update public.port_treasury set ducats = 1000000000000;
   update public.standing_routes sr set fleet_id = nf.fleet_id, lap_id = null, paused_reason = null, hold_until = null
     from public.npc_fleets nf where nf.route_id = sr.id;
   create temp table pf101 on commit drop as
