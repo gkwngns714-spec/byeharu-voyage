@@ -47,7 +47,7 @@
 --   above 30 s. SELF-ASSERT: its own rows and probes only, in a sub-transaction rolled back by a raised sentinel; no growing table counted or summed.
 -- ROLLBACK (forward, owner only): scripts/ops/harness/pirate-trade/rollback-0415.sql, a draft. Fast levers: `pirates_trade` false (no trading);
 --   `pirate_house_capital_pct` 0 (no pirate ship's house is gifted).
--- VERSION: 0415 = 0414 + 1 (production head 0413 on 2026-11-14; 0414 is the pirates' homes, PR #678). Built on pacific-pirates 4d52a559 (PR #678 merged with origin/main 517bf154).
+-- VERSION: 0415 = 0414 + 1 (production head 0413 on 2026-11-14; 0414 is the pirates' homes, PR #678). Built on pacific-pirates b5ea75b2 (PR #678 merged with origin/main 517bf154).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
