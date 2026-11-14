@@ -65,6 +65,7 @@ import {
   shipMarks,
   toggleSelection,
   useBackdrop,
+  useChartShore,
   useChartSurface,
   useRegionsFilter,
   ViewControls,
@@ -113,6 +114,9 @@ import { useT, t as tNow } from '../../lib/i18n'
 // glass, never to a coordinate (docs/CORE_REUSE.md §1.5). The chart is `role="img"` with no
 // focusable element; everything it says, the corner and the tray also say as ordinary controls.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
+
+/** The view before the glass is measured: nothing, which is no fine coast. */
+const NO_VIEW: ViewBox = { x: 0, y: 0, width: 0, height: 0 }
 
 export function MapScreen() {
   const t = useT()
@@ -240,8 +244,6 @@ function Chart({
   // THE PORTS AS THE CHART DRAWS THEM (row 92): served, then set on the drawn shore the moment
   // the coast arrives — one list, read by the model, the hit test, the frame and the picture.
   const backdrop = useBackdrop(snapshotPorts)
-  const ports = backdrop.ports
-  const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
   // 0367: an armada at sea is ONE mark, under her name, carrying every hull of her fleets (armadaMarks.ts).
   const armadaList = useArmadas().armadas
   const fleets = useMemo(() => armadaMarks(mapFleetsOf(fleetViews), armadaList), [fleetViews, armadaList])
@@ -363,19 +365,33 @@ function Chart({
       ),
     [trafficRows, card, merchantId],
   )
+  // THE OPENING VIEW frames WHAT YOU HAVE, taken from a model AT MOUNT, once: it is the frame
+  // ⌖ returns to, and a frame that moved with the fleets would re-frame the chart on every read.
+  // It reads the ports on the WORLD coast (the backdrop's), never the shore on the glass: the frame
+  // decides the view, and the shore on the glass is decided by the view.
+  const [openingModel] = useState(() => buildChartModel(fleets, backdrop.ports, [], { nowMs, readAtMs: readAt }, traffic, trafficReadAt))
+  const frameBounds = useCallback(
+    (aspect: number) => openingBounds(openingModel.focusPoints, openingModel.motionPoints, backdrop.ports, aspect),
+    [openingModel, backdrop.ports],
+  )
+  const chartRef = useRef<HTMLDivElement>(null)
+  // THE SURFACE COMES BEFORE THE MODEL (2026-11-14), because the ports the model is built from are
+  // set on the shore that is on the glass (useChartShore), and that shore is the view's. The tap is
+  // therefore handed over as one stable function that calls the real one (`onTap`, below, which
+  // needs the model): the surface never sees it change.
+  const tapRef = useRef<((at: Point, unitsPerPx: number, view: ViewBox, presses: number) => void) | null>(null)
+  const tap = useCallback((at: Point, unitsPerPx: number, view: ViewBox, presses: number) => tapRef.current?.(at, unitsPerPx, view, presses), [])
+  const surface = useChartSurface(chartRef, frameBounds, tap)
+  const box = surface.viewBox
+  // THE PORTS AS THIS VIEW DRAWS THEM: on the fine shore close in, on the world coast when wide
+  // (src/chart/useChartShore.ts). One list, read by the model, the hit test and the picture.
+  const shore = useChartShore(backdrop, box ?? NO_VIEW, surface.unitsPerPx)
+  const ports = shore.ports
+  const portsByCode = useMemo(() => new Map(ports.map((p) => [p.code, p])), [ports])
   const model = useMemo(
     () => buildChartModel(fleets, ports, [], { nowMs, readAtMs: readAt }, traffic, trafficReadAt),
     [fleets, ports, nowMs, readAt, traffic, trafficReadAt],
   )
-
-  // THE OPENING VIEW frames WHAT YOU HAVE, taken from the model AT MOUNT, once: it is the frame
-  // ⌖ returns to, and a frame that moved with the fleets would re-frame the chart on every read.
-  const [openingModel] = useState(() => model)
-  const frameBounds = useCallback(
-    (aspect: number) => openingBounds(openingModel.focusPoints, openingModel.motionPoints, ports, aspect),
-    [openingModel, ports],
-  )
-  const chartRef = useRef<HTMLDivElement>(null)
 
   // THE BATTLES BEING FOUGHT (0364, owner row 321): each is a red ring round its fleets (src/chart/fightRings.ts),
   // and a press on a ring opens the fight (src/live/FightSheet.tsx). Asked only while this screen is mounted.
@@ -447,8 +463,9 @@ function Chart({
     [model, ports, selectFleet, seaNav, fights],
   )
 
-  const surface = useChartSurface(chartRef, frameBounds, onTap)
-  const box = surface.viewBox
+  useEffect(() => {
+    tapRef.current = onTap
+  }, [onTap])
 
   // THE REGIONS FILTER (row 93): off is the map as it was; on hands the tints to the picture.
   const regionsOn = useRegionsFilter()
@@ -612,11 +629,11 @@ function Chart({
           ports={ports}
           box={box}
           unitsPerPx={surface.unitsPerPx}
-          coast={backdrop.coast}
+          coast={shore.coast}
           seas={backdrop.seas}
           regions={regionsOn ? backdrop.regions : null}
           portFlags={portFlags}
-          islets={backdrop.islets}
+          islets={shore.islets}
           fights={fights}
           selection={selection}
           plannedD={routeView ? routeD : pathD}

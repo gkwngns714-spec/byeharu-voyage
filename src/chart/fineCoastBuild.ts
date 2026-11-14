@@ -19,7 +19,8 @@
 // plain Node; ./useFineCoast.ts owns the network.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-import { CHART_WIDTH, type ViewBox } from '../lib/geo'
+import { CHART_WIDTH, type Point, type ViewBox } from '../lib/geo'
+import { LANDFALL_CAP_NM, type ShoreInHand } from './landfall'
 
 /** One level of detail, as the generated index states it (./fineCoast.generated.ts). */
 export interface FineLevel {
@@ -97,7 +98,13 @@ export interface CoastPaths {
   readonly coastD: string
 }
 
-const EMPTY: CoastPaths = { d: '', coastD: '' }
+/** One tile, decoded: the two strings, and THE SAME RINGS as points, which is what the landfall
+ *  reads (./landfall.ts): a harbour is set on exactly the shore the strings draw. */
+export interface TilePaths extends CoastPaths {
+  readonly rings: readonly (readonly Point[])[]
+}
+
+const EMPTY: TilePaths = { d: '', coastD: '', rings: [] }
 
 function origin(level: FineLevel, id: string): { west: number; top: number } {
   const [ix, iy] = id.split('_').map(Number)
@@ -105,11 +112,15 @@ function origin(level: FineLevel, id: string): { west: number; top: number } {
 }
 
 /** A tile with no file: the whole square for land, nothing for sea. Neither has a shore inside. */
-export function plainTilePaths(level: FineLevel, id: string, kind: 'land' | 'sea'): CoastPaths {
+export function plainTilePaths(level: FineLevel, id: string, kind: 'land' | 'sea'): TilePaths {
   if (kind === 'sea') return EMPTY
   const { west, top } = origin(level, id)
   const s = level.tileDeg
-  return { d: `M${west} ${top}L${west + s} ${top}L${west + s} ${top + s}L${west} ${top + s}Z`, coastD: '' }
+  return {
+    d: `M${west} ${top}L${west + s} ${top}L${west + s} ${top + s}L${west} ${top + s}Z`,
+    coastD: '',
+    rings: [[{ x: west, y: top }, { x: west + s, y: top }, { x: west + s, y: top + s }, { x: west, y: top + s }]],
+  }
 }
 
 /**
@@ -120,14 +131,17 @@ export function plainTilePaths(level: FineLevel, id: string, kind: 'land' | 'sea
  * shore, and stroked it would rule a square round every tile. Anything malformed is skipped, never
  * thrown: a bad tile may not take the chart down.
  */
-export function tilePaths(level: FineLevel, id: string, json: unknown): CoastPaths {
+export function tilePaths(level: FineLevel, id: string, json: unknown): TilePaths {
   if (!Array.isArray(json)) return EMPTY
   const { west, top } = origin(level, id)
   const q = level.quantum
   const side = Math.round(level.tileDeg / q)
   const digits = Math.max(0, Math.ceil(-Math.log10(q)))
-  const sx = (v: number) => String(+(west + v * q).toFixed(digits))
-  const sy = (v: number) => String(+(top + v * q).toFixed(digits))
+  const nx = (v: number) => +(west + v * q).toFixed(digits)
+  const ny = (v: number) => +(top + v * q).toFixed(digits)
+  const sx = (v: number) => String(nx(v))
+  const sy = (v: number) => String(ny(v))
+  const rings: Point[][] = []
   let d = ''
   let coastD = ''
   for (const ring of json as unknown[]) {
@@ -151,6 +165,7 @@ export function tilePaths(level: FineLevel, id: string, json: unknown): CoastPat
       ys[i] = y
     }
     if (!ok) continue
+    rings.push(xs.map((v, i) => ({ x: nx(v), y: ny(ys[i]) })))
     const at = (i: number) => `${sx(xs[i])} ${sy(ys[i])}`
 
     d += `M${at(0)}`
@@ -195,7 +210,40 @@ export function tilePaths(level: FineLevel, id: string, json: unknown): CoastPat
       coastD += `L${at((i + 1) % n)}`
     }
   }
-  return { d, coastD }
+  return { d, coastD, rings }
+}
+
+/**
+ * THE COAST IN HAND, FOR THE LANDFALL (./landfall.ts `ShoreInHand`): the held tiles of one level as
+ * the shore a harbour's mark is set on. A harbour is held when its own tile is; its landfall reads
+ * the rings of every held tile within the cap of it, so a shore just across a tile's border is
+ * found. A tile's own border is a cut, never landed on, and a harbour inland within the cap is
+ * brought to the shore (`fromLand`): this coast is real enough to have the quay.
+ */
+export function shoreOfTiles(
+  level: FineLevel,
+  ids: ReadonlySet<string>,
+  ringsOf: (id: string) => readonly (readonly Point[])[] | undefined,
+): ShoreInHand {
+  const size = level.tileDeg
+  const onGrid = (v: number) => Math.abs(v / size - Math.round(v / size)) < 1e-9
+  const capLat = LANDFALL_CAP_NM / 60
+  return {
+    fromLand: true,
+    isCut: (a, b) => (a.x === b.x && onGrid(a.x)) || (a.y === b.y && onGrid(a.y)),
+    ringsNear: (p) => {
+      const own = tilesOver(level, { x: p.x, y: p.y, width: 0, height: 0 })[0]
+      if (own === undefined || !ids.has(own)) return null
+      const capLon = capLat / Math.max(0.2, Math.cos((p.y * Math.PI) / 180))
+      const out: (readonly Point[])[] = []
+      for (const id of tilesOver(level, { x: p.x - capLon, y: p.y - capLat, width: 2 * capLon, height: 2 * capLat })) {
+        if (!ids.has(id)) continue
+        const rings = ringsOf(id)
+        if (rings) for (const ring of rings) out.push(ring)
+      }
+      return out
+    },
+  }
 }
 
 /** Is every tile a box needs among these ids? */

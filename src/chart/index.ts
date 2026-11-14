@@ -227,6 +227,7 @@ export {
 // and the pure specs that measure this section's own figures are plain Node processes.
 // `useBackdrop` reaches it dynamically, inside its effect; see ./useBackdrop.ts.
 export { useBackdrop, type BackdropState } from './useBackdrop'
+export { useChartShore, type ChartShore } from './useChartShore'
 
 // ── the surfaces a screen mounts ───────────────────────────────────────────────────────────────
 // `chromeBoxes` on the returned surface is the ONE thing a screen must now hand back to
