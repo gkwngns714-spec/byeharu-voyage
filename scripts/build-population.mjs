@@ -85,6 +85,11 @@ darwin|500|1871|L|founded 1869 as Palmerston
 dili|1000|1650|N|a small Timorese coastal settlement; analogue: Kupang
 diu|10000|1650|C|Portuguese Diu
 djerba|3000|1650|C|Houmt Souk beside the Borj el-Kebir, the corsairs' island; the island held ~30,000
+midway|300|1650|C|an empty atoll in the record; the pirates' camp
+pitcairn|300|1650|C|empty in the record since the Polynesians left; the pirates' camp
+tristan|300|1650|C|unsettled in the record; the pirates' camp
+flores|1500|1650|C|Santa Cruz and Lajes das Flores, a few hundred hearths
+diego-garcia|300|1650|C|an empty atoll in the record; the pirates' camp
 dublin|20000|1650|B|after the 1650 plague; ~45,000 by 1680
 dubrovnik|6000|1650|B|the city; the republic held ~30,000
 el-realejo|1000|1650|C|

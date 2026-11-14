@@ -1,7 +1,7 @@
 {
   "$doc": "../docs/dev-log/2026-11-04-city-population.md",
   "note": "Each harbour's real-world population c. 1650, the starting value and baseline of public.port_population (migration 0304). AUTHORED in scripts/build-population.mjs; the world guard holds the database equal to this file. confidence: A count/agreed, B scholarly estimate, C thin evidence, L later founding (year given), N analogue (named in note).",
-  "count": 249,
+  "count": 254,
   "ports": [
     {
       "code": "ACA",
@@ -490,6 +490,46 @@
       "year": 1650,
       "confidence": "C",
       "note": "Houmt Souk beside the Borj el-Kebir, the corsairs' island; the island held ~30,000"
+    },
+    {
+      "code": "MWY",
+      "id": "midway",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": "an empty atoll in the record; the pirates' camp"
+    },
+    {
+      "code": "PTC",
+      "id": "pitcairn",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": "empty in the record since the Polynesians left; the pirates' camp"
+    },
+    {
+      "code": "TDC",
+      "id": "tristan",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": "unsettled in the record; the pirates' camp"
+    },
+    {
+      "code": "FLO",
+      "id": "flores",
+      "population": 1500,
+      "year": 1650,
+      "confidence": "C",
+      "note": "Santa Cruz and Lajes das Flores, a few hundred hearths"
+    },
+    {
+      "code": "DGA",
+      "id": "diego-garcia",
+      "population": 300,
+      "year": 1650,
+      "confidence": "C",
+      "note": "an empty atoll in the record; the pirates' camp"
     },
     {
       "code": "DUB",

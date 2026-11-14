@@ -5551,6 +5551,10 @@
    "language": "ITALIAN"
   },
   {
+   "port": "DGA",
+   "language": "INDIC"
+  },
+  {
    "port": "DIL",
    "language": "MALAY"
   },
@@ -5577,6 +5581,10 @@
   {
    "port": "FEO",
    "language": "TURKISH"
+  },
+  {
+   "port": "FLO",
+   "language": "PORTUGUESE"
   },
   {
    "port": "FNC",
@@ -5907,6 +5915,10 @@
    "language": "ARABIC"
   },
   {
+   "port": "MWY",
+   "language": "ENGLISH"
+  },
+  {
    "port": "MYE",
    "language": "INDIC"
   },
@@ -6013,6 +6025,10 @@
   {
    "port": "PRT",
    "language": "SPANISH"
+  },
+  {
+   "port": "PTC",
+   "language": "ENGLISH"
   },
   {
    "port": "PTH",
@@ -6193,6 +6209,10 @@
   {
    "port": "TAN",
    "language": "ARABIC"
+  },
+  {
+   "port": "TDC",
+   "language": "GUINEAN"
   },
   {
    "port": "TEN",

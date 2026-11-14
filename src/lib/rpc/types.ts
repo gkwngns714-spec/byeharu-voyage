@@ -2792,6 +2792,10 @@ export interface PirateShipCard {
   fleet: { id: string; name: string; status: FleetStatus; port: string | null }
   nation_code: string | null
   home: string
+  /** 0414: a roster fleet's name in Korean, and her house's two names; null for one of 0339's lone ships. Names are data, shown whole. */
+  name_ko?: string | null
+  house?: string | null
+  house_ko?: string | null
   haunt: string | null
   /** HOME: at or bound for her home; CRUISE: out on her sea. Each has its word, `map.mission_*`. */
   mission: 'HOME' | 'CRUISE'
