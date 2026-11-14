@@ -92,7 +92,7 @@ const back = `-- 0415 FORWARD ROLLBACK, A DRAFT. NOT a prod check and NOT a migr
 -- THE DRAFT reverses the eleven hunks, last first (each hunk's NEW text must occur once in the live body, else it refuses: a later file re-cut the same lines and the draft is stale):
 --   a pirate ship no longer trades, the pirates' job no longer asks the gift for a pirate ship's house, the gift's roster and body are 0408's again, and a merchant's, cargo ship's or navy
 --   ship's refit is paid by her home alone again (THE FAULT OF 2026-11-14 RETURNS FOR THEM: a wreck behind an empty home waits for ever). To keep the refit rule, drop rows 9, 10 and 11.
---   The six new functions, the two knobs and public.pirate_clock.gifted_at STAY (nothing calls them then; proof 108 must be withdrawn and proofs 30, 37 and 46 put back with the same PR).
+--   The six new functions, the two knobs and public.pirate_clock.gifted_at STAY (nothing calls them then; proof 114 must be withdrawn and proofs 30, 37 and 46 put back with the same PR).
 --   Gifts given stay given; cargo aboard stays aboard.
 -- LOCAL PGlite WORLD ONLY while it carries this line (scripts/ops/harness/README.md): it writes. The first statement refuses a real server.
 do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;

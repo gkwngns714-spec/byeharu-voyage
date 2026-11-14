@@ -1,6 +1,6 @@
 # 2026-11-14: a pirate ship trades, the pirate cities fund an empty purse, no wreck waits on one empty purse (migration 0415)
 
-**State: built, PR open, not deployed.** It was written as 0412 and renumbered 0415 the same day (order: 0409 slimming, 0410 merchants, 0411 levels, 0412 the one-hour day, 0413 level benefits, 0414 the pirates' homes = PR #678, then this). Built on origin/main `fae2c15c` merged with `pacific-pirates` `4d1f66a7` (PR #678) and `under-water` `7026add9` (PR #681): the pre-images of its hunks are the bodies as those two leave them. **No production read was made for this slice** (the live database was IO-bound): everything below is from the code, the local world and what the earlier builders read. The reads still wanted are listed at the end.
+**State: built, PR open, not deployed.** Migration 0415 (written as 0412, renumbered). The order on production: 0409 slimming, 0410 merchants, 0411 levels, 0412 the sweeper, 0413 THE ONE-HOUR DAY (all live, head 0413), then 0414 the pirates' homes (PR #678), then this. **Rebuilt 2026-11-14 on `pacific-pirates` `4d52a559`** (PR #678 as merged with origin/main `517bf154`): the hunks' pre-images are main's bodies with 0414 on top. **No production read was made for this slice** (the live database was IO-bound): everything below is from the code, the local world and what the earlier builders read. The reads still wanted are listed at the end.
 
 ## What the owner ordered, in his words
 
@@ -28,11 +28,11 @@
 
 **How she buys** (`public.pirate_cargo_plan`, a plain read, then THE buy door `cmd.do_buy`): the merchants' own measures in the merchants' own order: the ranking `world.trade_routes`, the size the sink takes above cost plus the margin (`world.quote_priced`), the day's cap at both ends, the hold left, what her house can pay (`public.npc_affordable`), **and 0410's rule: no more than the sink's live purse can pay, by the door's own measure**, the purse falling with every parcel kept. A parcel is kept only if it pays `npc_min_return_pct` after the sink's profit tax; at most `npc_lines_per_stop` goods.
 
-**What she may spend:** what her house holds above the gift's broke line (`merchant_broke_pct`, 20 %, of her capital). So buying a cargo never makes her "broke", and a house at the line buys nothing until it is funded. (A first cut kept back her refit instead, half her capital: a house left between 20 % and 50 % then neither traded nor was gifted, for ever. Found before the PR; proof 108 holds it.)
+**What she may spend:** what her house holds above the gift's broke line (`merchant_broke_pct`, 20 %, of her capital). So buying a cargo never makes her "broke", and a house at the line buys nothing until it is funded. (A first cut kept back her refit instead, half her capital: a house left between 20 % and 50 % then neither traded nor was gifted, for ever. Found before the PR; proof 114 holds it.)
 
 **What it costs her:** nothing but the cargo. A pirate ship's house pays no wage and no dock fee (0339), her stores and hands are free, the hoard pays her upkeep. She pays the profit tax of the city she sells in. So the only way trading loses her money is a wreck with a cargo aboard.
 
-**The economy stays closed.** Every ducat is `public.pay_city` or `public.city_pays`; every tun is the doors'. Proof 108 holds the world total to the ducat through gifts, trades and refits.
+**The economy stays closed.** Every ducat is `public.pay_city` or `public.city_pays`; every tun is the doors'. proof 114 holds the world total to the ducat through gifts, trades and refits.
 
 **A hub starts with a purse of 0** (PR #678), so under 0410 nothing is planned INTO it. It fills by her own buying: what she pays for a cargo at her hub is the hub's purse, and the hub can then pay for what she brings back. In the proof's day the two hubs went from 0 to 87,450 and 40,321 d.
 
@@ -48,7 +48,7 @@ It is 0408's rule: the same roster (`public.capital_gift_roster`), the same body
 - **Who pays** (`public.pirate_gift_pay`), whole or nothing: her **home city**; else **another city the pirates hold, the richest first**; else **Port Royal's hoard** (`public.pirate_pay`). A city pays from its surplus only. All of it inside the day's room (`public.pirate_spend_room`) and written to the day's spend.
 - **A gift never takes the pay's room:** a house is paid only if the room left, less what the rest of the UTC day's pay of the ships at work still needs, covers it. Without this, a morning of gifts could leave the fleets unpaid by evening; an unpaid pirate sails home and is laid up.
 - A merchant house of the pirates is paid exactly as 0408 pays her (the hoard); nothing of hers changes.
-- `pirate_spend_day_pct` is **not** changed (PR #678's 0.012).
+- `pirate_spend_day_pct` is **not** changed (it is PR #678's: 2.4 times what the clock's door leaves, 0.0024 on the one-hour day).
 
 **Her capital** (`public.pirate_house_capital`): `pirate_house_capital_pct` (0.5) of what her hulls cost to build. The arithmetic: a refit is `npc_refit_share` 0.25 of the build cost and a house with a purse pays her own refit first (PR #678's order), so half the build cost is one refit and as much again to buy a cargo with. A lone carlat merchant of the pirates has 250,000 (0341), 1.8 times her hull; a pirate ship's house has less because she pays no wage, no dock fee and no upkeep.
 
@@ -67,9 +67,17 @@ It is 0408's rule: the same roster (`public.capital_gift_roster`), the same body
 
 **Worst case a week** (every house under the line three times in seven days): pirate ships' houses 3 x 19.16 M = **57.5 M**, the 24 merchant houses 18 M (0408): **75.5 M a week** asked for.
 
-**What can actually be paid.** The day's room is 1.2 % of the hoard: 11.8 M a day, 82.6 M a week, of a hoard of 980 M (read by the earlier builders). The pay of 121 fleets is 7.26 M a day (50.8 M a week) and is kept back first. So at most about **4.5 M a day, 31.8 M a week**, is left for gifts, refits and building together. The worst case asks for more than twice that: the houses then wait, cheapest first, and nothing is lost by waiting. The five hubs start at 0 and Djerba, Goto and Lingga hold little, so in practice the payer is the hoard until the hubs have earned.
+**What can actually be paid, on the one-hour day (0413).** 0413 divided the rates per real day by 5: `navy_upkeep_day` 12,000 and `pirate_spend_day_pct` 0.001, which 0414 multiplies by 2.4 to 0.0024. Of a hoard of 980 M (read by the earlier builders):
 
-**How long it lasts if the pirates keep losing.** The hoard cannot fall faster than the room: 1.2 % a day. From 980 M: about 680 M after 30 days, half after 58 days (PR #678's figures; this file does not change them). It does not reach zero: as the hoard falls the room falls, gifts wait first, then refits wait (loudly), and near day 40 the room falls under the pay and the last fleets are laid up. The gift does not add a new drain: a house with a purse pays her own refit, which the cities would otherwise have paid. What is new money out is cargo lost in wrecks, at most what a house holds above the broke line at each wreck.
+| A real day | old clock (as first written) | one-hour day |
+|---|---:|---:|
+| the day's room | 11.8 M | 2.35 M |
+| pay of 121 fleets, kept back first | 7.26 M | 1.45 M |
+| left for gifts, refits and building together | 4.5 M | 0.90 M |
+
+So about **6.3 M a real week** is left, against a worst case of 75.5 M asked (the gift's cooldown and weekly limit are real-time pacing and were not moved by the clock; a capital is a price paid once and does not scale either). The houses wait, cheapest first, and nothing is lost by waiting. In order of cost: the 54 lone weak ships need 2.1 M together, the 31 lone xebecs 2.5 M, the 13 pairs 2.1 M, the 18 houses with a squadron 12.5 M. If the room were spent on gifts alone the weak ships and xebecs are funded inside the first week and the squadrons take two more; but building the roster (36.2 M, PR #678) draws on the same 0.90 M a day, so in practice the squadrons' houses wait weeks. **This is the same shortage PR #678's dev-log now states for building, and it wants the same decision** (a larger room during the rollout, or one-off payments counted apart). This file adds no rate per real time, so nothing is added to the list `public.clock_set` scales: `pirates_trade` is a switch and `pirate_house_capital_pct` a share of a build cost. The five hubs start at 0 and Djerba, Goto and Lingga hold little, so in practice the payer is the hoard until the hubs have earned.
+
+**How long it lasts if the pirates keep losing.** The hoard cannot fall faster than the room: 0.24 % a real day on the one-hour day. From 980 M: about 912 M after 30 real days, half after about 290 (on the old clock it was 1.2 % a day: 680 M after 30 days, half after 58). It does not reach zero: as the hoard falls the room falls, gifts wait first, then refits wait (loudly), then the room falls under the pay and the last fleets are laid up. The gift does not add a new drain: a house with a purse pays her own refit, which the cities would otherwise have paid. What is new money out is cargo lost in wrecks, at most what a house holds above the broke line at each wreck.
 
 ## C. No wreck waits on one empty purse (merchants, cargo ships, navy ships)
 
@@ -86,12 +94,12 @@ Whole or nothing, city to yard, kind REFIT, moved. Her `REFITTED` event names wh
 
 ## The guards
 
-- **Proof 108** (`scripts/db/proofs/108_a_pirate_ship_trades_and_no_wreck_waits_on_one_empty_purse.sql`, 8 markers, 1 s):
+- **proof 114** (`scripts/db/proofs/114_a_pirate_ship_trades_and_no_wreck_waits_on_one_empty_purse.sql`, 8 markers, 1 s):
   - `PT_GIFT`: three empty houses paid 40,000 by the home, 80,000 by Djerba (the home short), 708,000 by the hoard; none on the merchants' roster; world total unchanged.
   - `PT_WEEK`: none inside the cooldown, three in seven days and no fourth; with a room that covers her gift but not the day's pay as well she waits and nothing is written.
   - `PT_PLAN`: bound for a harbour with no purse she plans and buys nothing; with 3,000 there every plan is within it; with a rich sink within what she holds above the line; at the line she plans nothing.
-  - `PT_DOOR`: a cargo of 17,593 met a purse of 1,500: she was paid 1,299, kept the rest, the purse never under nothing; no sale of hers below cost.
-  - `PT_DAY`: over a simulated day (home, haunt, home, haunt) six fleets of two hubs that trade net **+86,747 d.** together (a brigantin 3,681 to 12,028, a xebec 12,160 to 15,568, a squadron 38,992; no fleet at a loss); the same fleets with trading off net 0.
+  - `PT_DOOR`: a cargo of 17,974 met a purse of 1,500: she was paid 1,299, kept the rest, the purse never under nothing; no sale of hers below cost.
+  - `PT_DAY`: over 25 real hours of the job (home, haunt, home, haunt; arrivals set by hand) six fleets of two hubs that trade net **+87,057 d.** together (a brigantin 3,809 to 12,028, a xebec 10,787 to 15,682, a squadron 40,741; no fleet at a loss); the same fleets with trading off net 0.
   - `PT_JOB`: a run of the job steps no more ships after one that traded and leaves the pay and the gift to a later minute.
   - `PT_REFIT_M`, `PT_REFIT_N`: a merchant and a navy ship wrecked with an empty home are mended, the capital paying; every city of the country dry: a row and an event, no hull unpaid; a purse back, mended.
 - **The health check:** `scripts/ops/harness/pirate-trade/after.sql` (`waits.others_over_3h` should read `{}`), and PR #678's `health.sql`, which already counts every NPC ship waiting over three hours by kind (not edited: it is that PR's file).
@@ -103,14 +111,14 @@ Whole or nothing, city to yard, kind REFIT, moved. Her `REFITTED` event names wh
 
 - Nothing in the arrivals beat.
 - In the pirates' own job, measured on the local world (wasm; not on production): a plan 6 ms, a whole trade call about 20 ms; the gift pass 3 ms a house asked, 1 ms when nobody is under the line.
-- A cruise is two trade calls. With 121 fleets and a cruise of 12 real hours at the haunt plus two passages: about 20 trade calls an hour, **under 10 ms a minute on average**; a run with a trade is some tens of ms longer. The gift pass is about 0.35 s once (all 116 houses empty at the start), then near nothing. The passages follow the served game day: when the day becomes five times longer a cruise is longer and the trade calls fewer.
+- A cruise is two trade calls. A cruise is `pirate_haunt_hours` (12 real hours, real-time pacing) at the haunt plus two passages, and a passage is five times as long in real time since 0413 (a voyage-day is 450 s): a hub's haunts lie 190 to 3,100 miles out, so roughly 1 to 16 voyage-days, 8 minutes to 2 hours a passage. With 121 fleets that is 15 to 20 trade calls an hour, **under 10 ms a minute on average**; a run with a trade is some tens of ms longer. The gift pass is about 0.35 s once (all 116 houses empty at the start), then near nothing. Nothing here types a day's length.
 - **Locks.** A ship that traded holds the market rows she traded and the purse that paid her until the job's run commits. So the run steps no more ships after her and leaves the adding, the pay and the gift to the next minute (each has its own clock): at most one trading fleet a minute, 60 an hour against about 20 needed. A burst (many fleets ready at once) clears at one a minute.
 
 ## Checks run
 
-The file on the cached local world with PR #678 and PR #681 (150 ms, its probe); proofs 108, 30, 37, 46, 106, 103, 47, 48, 69 (a pirate company), 36, 18, 49, 64, 35, 50, 104; the rollback draft after the file restores the five pre-image md5s; eslint on the generator; `tests/news.lint.spec.ts`; `tests/harness.guard.spec.ts` (this slice's files pass; the spec is red on this branch for three files of PR #678: `pacific-pirates/head.sql`, `tail.sql`, `scene-sail.sql`, which write and carry no guard line. Not edited: they are that PR's).
+The file on the cached local world on main's chain (0409 to 0413) with 0414 (PR #678 at `4d52a559`): its eleven hunks each once on those bodies, its probe; proofs 114, 30, 37, 46, 106, 103 after the rebuild (before it, on the first base: also 47, 48, 69 a pirate company, 36, 18, 49, 64, 35, 50, 104); the rollback draft after the file restores the five pre-image md5s; eslint on the generator; `tests/news.lint.spec.ts`; `tests/harness.guard.spec.ts` (green: PR #678's three files now carry the guard).
 
-**Not run:** anything from zero, the whole proof suite, the world guard, any production read. No red-first run of proof 108 against the old bodies (it calls this file's functions); the old rule is shown by proofs 30 and 37, which were red until moved.
+**Not run:** anything from zero, the whole proof suite, the world guard, any production read. No red-first run of proof 114 against the old bodies (it calls this file's functions); the old rule is shown by proofs 30 and 37, which were red until moved.
 
 ## PROD CHECKS
 
@@ -137,4 +145,4 @@ The file on the cached local world with PR #678 and PR #681 (150 ms, its probe);
 6. The gift's book row and its news name the pirates' capital as the giver even when a hub paid (the row is what counts her week; the money's true path is in the ledger and the cities' flows).
 7. At most one trading fleet a minute.
 8. A merchant's second payer is her house's nation's capital even if her home has changed flag.
-9. The new proof is 108.
+9. The new proof is 114 (108 was taken while this was built).

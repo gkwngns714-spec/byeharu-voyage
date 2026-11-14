@@ -30,7 +30,7 @@
 --    another city the pirates hold, the richest first; else Port Royal's hoard (public.pirate_pay). All of it inside the day's room
 --    (public.pirate_spend_room) and written to the day (public.pirate_spend_day), and a gift never takes the room the rest of the day's pay of the
 --    ships needs (so a day of gifts cannot leave the fleets unpaid and laid up). A merchant house of the pirates is paid exactly as 0408 pays her.
---    `pirate_spend_day_pct` is NOT changed (0409's 0.012).
+--    `pirate_spend_day_pct` is NOT changed (it is 0414's, 2.4 times what the clock's door leaves).
 -- C. NO WRECK WAITS ON ONE EMPTY PURSE (the fault 0409 fixed for pirate ships, in the body it came from): public.npc_refit_step let ONLY the home
 --    of a merchant, cargo ship or navy ship (her station) pay. Now the payer is public.npc_refit_payer: her home; behind an empty home her
 --    country's capital, then the richest other city her country holds (a ship of the pirates' merchants: the hoard, inside the day's room). Whole or
@@ -47,7 +47,7 @@
 --   above 30 s. SELF-ASSERT: its own rows and probes only, in a sub-transaction rolled back by a raised sentinel; no growing table counted or summed.
 -- ROLLBACK (forward, owner only): scripts/ops/harness/pirate-trade/rollback-0415.sql, a draft. Fast levers: `pirates_trade` false (no trading);
 --   `pirate_house_capital_pct` 0 (no pirate ship's house is gifted).
--- VERSION: 0415 (the order on 2026-11-14: 0409 slimming, 0410 merchants, 0411 levels, 0412 the one-hour day, 0413 level benefits, 0414 the pirates' homes = PR #678, this). Built on origin/main fae2c15c + pacific-pirates 4d1f66a7 (PR #678) + under-water 7026add9 (PR #681).
+-- VERSION: 0415 = 0414 + 1 (production head 0413 on 2026-11-14; 0414 is the pirates' homes, PR #678). Built on pacific-pirates 4d52a559 (PR #678 merged with origin/main 517bf154).
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -570,7 +570,7 @@ $h$);
     update public.world_config set value = 'true'::jsonb
      where key in ('pirates_bite', 'city_treasury_enabled', 'npc_refits_enabled', 'economy_closed') and value is distinct from 'true'::jsonb;
     if v_cap is not null and public.pirates_on() then
-      update public.port_treasury t set ducats = greatest(t.ducats, 500000000) where t.port_id = v_cap;
+      update public.port_treasury t set ducats = greatest(t.ducats, ceil(5000000 / public.wc_num('pirate_spend_day_pct'))::bigint) where t.port_id = v_cap;   -- the probe's own hoard: a day's room of 5,000,000 whatever the clock (the room is a rate per real day the clock's door moves, 0413)
       select r.ord into v_n from public.pirate_roster r
        where not exists (select 1 from public.pirate_ships n where n.ord = r.ord) and (select sum(x.n) from public.pirate_roster_hulls x where x.ord = r.ord) = 1
          and not exists (select 1 from public.pirate_roster q join public.pirate_ships n on n.ord = q.ord where q.hub_port = r.hub_port and q.house = r.house)
