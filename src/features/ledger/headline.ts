@@ -395,7 +395,7 @@ export function headline(event: LedgerEvent, portName: (code: string) => string,
       // 0356: {track, level, reputation}. The arrival card's own sentence (dict/feed.ts), so a level-up reads the same in both places.
       const track = str(p, 'track')
       const level = num(p, 'level')
-      // 0412: any level's code, by the Levels page's own names (levelWords.ts)
+      // 0411: any level's code, by the Levels page's own names (levelWords.ts)
       const word = track === null || track === '' ? null : levelName(getLocale(), track)
       if (word === null || level === null) return t('history.bare', { what: kindWords(event.kind) })
       const rep = num(p, 'reputation') ?? 0

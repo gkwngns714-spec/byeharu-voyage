@@ -3,7 +3,7 @@ import { properName, translate, translateMaybe, type Locale } from '../lib/i18n'
 import type { IconName } from '../components/ui'
 import type { LevelActivity, LevelBenefit, LevelSkill } from '../lib/rpc'
 
-// THE WORDS OF A LEVEL (0412, docs/LEVELS.md): its name, its mark, what raises it and what a level gives, in the reader's language.
+// THE WORDS OF A LEVEL (0411, docs/LEVELS.md): its name, its mark, what raises it and what a level gives, in the reader's language.
 // ONE PLACE: the Levels page, the arrival card and History all name a level through `levelName`.
 // NO FIGURE IS TYPED HERE. Every number in a sentence is the served one (`public.level_activity_terms`, `public.level_benefits`):
 // this file holds only the words around it. A code this file has no word for prints the server's own English word.

@@ -4,7 +4,7 @@ import { arrivalCard, LANDING_TEST_TIMEOUT_MS } from './arrivalWait.fixture'
 import { buyHere, findCarry, sailAndSell } from './deskMap.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// THE LEVELS, AS TILES (migration 0412, docs/LEVELS.md). The owner, 2026-11-14: "like rs3, i want diverse skills related to
+// THE LEVELS, AS TILES (migration 0411, docs/LEVELS.md). The owner, 2026-11-14: "like rs3, i want diverse skills related to
 // this game" and "with exp table, exp info, with benefits when leveling up, what activity needs done etc."
 //
 // FIXED FACTS, on a new company, phone 320 and 390 and desktop 1280, EN and KO:

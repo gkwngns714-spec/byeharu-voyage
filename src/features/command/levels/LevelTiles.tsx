@@ -6,7 +6,7 @@ import type { LevelSkill, LevelSkillsCard } from '../../../lib/rpc'
 import { useShellState } from '../../../app/shellState'
 import { activityLine, everyLevelLine, levelFill, levelGives, levelMark, levelName } from '../../../live/levelWords'
 
-// THE LEVELS, AS TILES (0412, docs/LEVELS.md; the owner, 2026-11-14: "like rs3, i want diverse skills related to this game" and
+// THE LEVELS, AS TILES (0411, docs/LEVELS.md; the owner, 2026-11-14: "like rs3, i want diverse skills related to this game" and
 // "with exp table, exp info, with benefits when leveling up, what activity needs done etc.").
 //
 // ONE READ, NO SUM: everything here is `world.levels().level_skills` (`public.level_skills_card`). A tile is a level's mark, name,

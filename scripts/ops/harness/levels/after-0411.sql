@@ -1,10 +1,10 @@
--- 0412 PROD CHECK, AFTER the deploy (and again at +30 minutes and +24 hours), read-only, ONE statement:
---   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/levels/after-0412.sql
+-- 0411 PROD CHECK, AFTER the deploy (and again at +30 minutes and +24 hours), read-only, ONE statement:
+--   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/levels/after-0411.sql
 -- One row, one jsonb column `r`.
--- AFTER, wanted: head 20260818000412; applied true; old_hunks: every count 1 STILL (each NEW text holds its OLD text); new_hunks: every count 1;
+-- AFTER, wanted: head 20260818000411; applied true; old_hunks: every count 1 STILL (each NEW text holds its OLD text); new_hunks: every count 1;
 --   knobs.level_skills_on true; data: 10 levels (3 record, 7 book), 17 activities; tables: no client grant, row level security on;
 --   book: no rows at the deploy (no back-pay), and afterwards only humans' rows (merchant_rows 0, always).
--- beat[] and lap_starts[] against the before read: the same within noise. 0412 adds nothing to a sale, a buy or a merchant's arrival; a merchant's lap at
+-- beat[] and lap_starts[] against the before read: the same within noise. 0411 adds nothing to a sale, a buy or a merchant's arrival; a merchant's lap at
 --   a gain, repair or share gains one call that leaves after one players probe (8 microseconds on PGlite).
 -- book.by_level is each level's company count, top level and experience granted so far: small tables (one row a company a level; bounded by the caps).
 begin transaction read only;
@@ -19,15 +19,15 @@ with hk(ord, fn, old) as (values
   (8, 'public.invest_for(uuid,uuid,text,integer)', E'  v_after := public.pay_city(p_player, p_port, ''SHARE'', v_cost, v_event);\n'),
   (9, 'world.levels()', E'    ''bite'', public.levels_bite_on(),\n')
 ), hn(ord, fn, new) as (values
-  (1, 'voyage.settle(uuid,timestamp with time zone)', E'      perform public.reputation_arrival(f.player_id, v.id);\n      -- 0412: and her company''s levels raised by doing: days fed, storms and rough days come through (public.level_arrival)\n      perform public.level_arrival(f.player_id, v.id);\n'),
-  (2, 'cmd.do_build(uuid,jsonb)', E'  perform public.reputation_built(f.player_id, v_ship, jsonb_build_object(''class'', c.code));\n  perform public.level_grant(f.player_id, ''hull'', 1, ''hull:'' || v_ship);   -- 0412: Shipbuilding, once a ship\n'),
-  (3, 'cmd.do_repair(uuid,jsonb)', E'  perform public.level_grant(f.player_id, ''repair'', v_cost);   -- 0412: Shipbuilding, by the coin the yard was paid (a merchant leaves after one players probe)\n  return jsonb_build_object(''points'', round(v_points, 1), ''cost'', v_cost, ''sim_hours'', round(v_hours, 1))\n'),
-  (4, 'cmd.run_fulfil(uuid,uuid)', E'  perform public.reputation_request(f.player_id, v_pay, c.id, jsonb_build_object(''port'', v_port.code, ''good'', g.code));\n  perform public.level_grant(f.player_id, ''request'', v_pay);   -- 0412: Requests, by the bonus this delivery was paid\n'),
-  (5, 'cmd.do_make(uuid,jsonb)', E'    ''fleet'', f.name, ''item'', k.name, ''qty'', v_qty, ''spent'', v_spent));\n  perform public.level_grant(f.player_id, ''made'', v_qty);   -- 0412: Craft, by the fittings made\n'),
-  (6, 'cmd.forge_good(uuid,uuid,integer)', E'      ''product'', v_product.name, ''qty'', v_qty, ''spent'', v_spent));\n    perform public.level_grant(v_player, ''forged'', v_qty);   -- 0412: Craft, by the goods forged\n'),
-  (7, 'cmd.standing_route_close_lap(uuid,timestamp with time zone)', E'  perform public.reputation_lap(sr.player_id, l.id, l.net, sr.name, l.lap_no);\n  perform public.level_grant(sr.player_id, ''lap'', case when l.net > 0 then 1 else 0 end, ''lap:'' || l.id);   -- 0412: Routes, once a lap at a gain (no gain: 0 units, and the writer leaves before any read)\n'),
-  (8, 'public.invest_for(uuid,uuid,text,integer)', E'  v_after := public.pay_city(p_player, p_port, ''SHARE'', v_cost, v_event);\n  perform public.level_grant(p_player, ''share'', v_cost);   -- 0412: Investment, by the coin paid for shares (a merchant leaves after one players probe)\n'),
-  (9, 'world.levels()', E'    ''bite'', public.levels_bite_on(),\n    -- 0412: every level, raised by doing: points, the curve, activities, benefits, recent grants (public.level_skills_card, on the progress read above)\n    ''level_skills'', public.level_skills_card(v_id, v_pp),\n')
+  (1, 'voyage.settle(uuid,timestamp with time zone)', E'      perform public.reputation_arrival(f.player_id, v.id);\n      -- 0411: and her company''s levels raised by doing: days fed, storms and rough days come through (public.level_arrival)\n      perform public.level_arrival(f.player_id, v.id);\n'),
+  (2, 'cmd.do_build(uuid,jsonb)', E'  perform public.reputation_built(f.player_id, v_ship, jsonb_build_object(''class'', c.code));\n  perform public.level_grant(f.player_id, ''hull'', 1, ''hull:'' || v_ship);   -- 0411: Shipbuilding, once a ship\n'),
+  (3, 'cmd.do_repair(uuid,jsonb)', E'  perform public.level_grant(f.player_id, ''repair'', v_cost);   -- 0411: Shipbuilding, by the coin the yard was paid (a merchant leaves after one players probe)\n  return jsonb_build_object(''points'', round(v_points, 1), ''cost'', v_cost, ''sim_hours'', round(v_hours, 1))\n'),
+  (4, 'cmd.run_fulfil(uuid,uuid)', E'  perform public.reputation_request(f.player_id, v_pay, c.id, jsonb_build_object(''port'', v_port.code, ''good'', g.code));\n  perform public.level_grant(f.player_id, ''request'', v_pay);   -- 0411: Requests, by the bonus this delivery was paid\n'),
+  (5, 'cmd.do_make(uuid,jsonb)', E'    ''fleet'', f.name, ''item'', k.name, ''qty'', v_qty, ''spent'', v_spent));\n  perform public.level_grant(f.player_id, ''made'', v_qty);   -- 0411: Craft, by the fittings made\n'),
+  (6, 'cmd.forge_good(uuid,uuid,integer)', E'      ''product'', v_product.name, ''qty'', v_qty, ''spent'', v_spent));\n    perform public.level_grant(v_player, ''forged'', v_qty);   -- 0411: Craft, by the goods forged\n'),
+  (7, 'cmd.standing_route_close_lap(uuid,timestamp with time zone)', E'  perform public.reputation_lap(sr.player_id, l.id, l.net, sr.name, l.lap_no);\n  perform public.level_grant(sr.player_id, ''lap'', case when l.net > 0 then 1 else 0 end, ''lap:'' || l.id);   -- 0411: Routes, once a lap at a gain (no gain: 0 units, and the writer leaves before any read)\n'),
+  (8, 'public.invest_for(uuid,uuid,text,integer)', E'  v_after := public.pay_city(p_player, p_port, ''SHARE'', v_cost, v_event);\n  perform public.level_grant(p_player, ''share'', v_cost);   -- 0411: Investment, by the coin paid for shares (a merchant leaves after one players probe)\n'),
+  (9, 'world.levels()', E'    ''bite'', public.levels_bite_on(),\n    -- 0411: every level, raised by doing: points, the curve, activities, benefits, recent grants (public.level_skills_card, on the progress read above)\n    ''level_skills'', public.level_skills_card(v_id, v_pp),\n')
 ), body as (
   select f.fn, replace(pg_get_functiondef(f.fn::regprocedure), E'\r', '') as def
     from (values ('voyage.settle(uuid,timestamp with time zone)'), ('cmd.do_build(uuid,jsonb)'), ('cmd.do_repair(uuid,jsonb)'), ('cmd.run_fulfil(uuid,uuid)'), ('cmd.do_make(uuid,jsonb)'), ('cmd.forge_good(uuid,uuid,integer)'), ('cmd.standing_route_close_lap(uuid,timestamp with time zone)'), ('public.invest_for(uuid,uuid,text,integer)'), ('world.levels()')) f(fn)
