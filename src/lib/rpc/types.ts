@@ -4033,6 +4033,35 @@ export interface StatsMerchants {
   series: { at: string; n?: number; profit_day: number; purse: number; sailing: number; laid_up: number; losing_pct: number }[]
 }
 
+/** 0419: one kind of ship as the Stats count saw it. Every fleet is in ONE state (sea + port + laid_up + wrecked = fleets). */
+export interface StatsFleetKind {
+  fleets: number
+  ships: number
+  sea: number
+  port: number
+  laid_up: number
+  wrecked: number
+}
+
+/** 0419: world.stats_fleets — the merchants, the navy, the pirates and the cargo ships, from the newest Stats count (twice an hour), with the
+ *  last 24 hours of its windows summed from `day_from`. Before the first count only `at` and `counted_at` (null). */
+export interface StatsFleets {
+  at: string
+  counted_at: string | null
+  day_from?: string | null
+  merchants?: (StatsFleetKind & { houses: number; profit_day: number | null; laps_day: number | null }) | null
+  navy?: StatsFleetKind & { fights_day: number; sunk_day: number; nations: [code: string, fleets: number, ships: number][] }
+  pirates?: StatsFleetKind & {
+    roster: number
+    wrecks_day: number
+    reborn_day: number
+    plunder_day: number
+    raids_paid_day: number
+    homes: [code: string, name: string, fleets: number, ships: number][]
+  }
+  cargo?: StatsFleetKind & { tuns: number; tuns_at_sea: number; funds: number }
+}
+
 /** One money move in `world.money_feed` (0235): one purse's gain or loss. Both ends of a sale are two moves. */
 export interface MoneyMove {
   /** 'L' + ledger id or 'F' + flow id — unique; the list's dedupe key. */
