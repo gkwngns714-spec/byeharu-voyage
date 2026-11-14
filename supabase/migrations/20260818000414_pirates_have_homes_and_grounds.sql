@@ -333,6 +333,17 @@ begin
     if v_n_h <> 80 then
       raise exception '0414 (harbours) FAIL: % merchant course(s) inserted, 80 expected', v_n_h;
     end if;
+    -- the seas of each new course, remembered both ways (0397: public.npc_course_zones_memo, the planner's memo; proof 92 holds every remembered course to public.course_zones)
+    insert into public.npc_course_zones_memo (course_md5, zones)
+    select distinct on (k.h) k.h, k.zones
+      from (select md5(z.course::text) as h, z.zones from (select c.course, public.course_zones(c.course) as zones from public.npc_courses c
+                                                           where c.from_port in (select id from new_h) or c.to_port in (select id from new_h)) z
+            union all
+            select md5((select jsonb_agg(t.x order by t.i desc) from jsonb_array_elements(z.course) with ordinality t(x, i))::text), z.zones
+              from (select c.course, public.course_zones(c.course) as zones from public.npc_courses c
+                     where c.from_port in (select id from new_h) or c.to_port in (select id from new_h)) z) k
+     order by k.h
+    on conflict (course_md5) do nothing;
 
     -- (5) the market, (6) the buildings, (7.1) the purse at 0 and (7.2) the works: 0338's own lines for a new harbour, verbatim
   create temp table sc_h on commit drop as

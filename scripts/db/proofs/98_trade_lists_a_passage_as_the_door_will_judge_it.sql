@@ -6,6 +6,8 @@
 --   title-1 barca: one of Portugal moved to lie at Acapulco, one of Japan at her capital. Lit, Trade's tag for every harbour (public.sea_routes, the
 --   board's own reader) is compared with the real door, public.sea_gate, asked for the same fleet on the plotted course. Nothing here reads the
 --   market or the world's secret.
+--   0414 founded five harbours (PTC MWY TDC FLO DGA): their ten courses from Acapulco and Sakai are the first ten rows below, plotted the same way on the
+--   world with 0414 (scripts/ops/harness/pacific-pirates/plot-98.mjs), so the proof still holds a course to EVERY other harbour.
 --
 -- @pass DOOR_FAR_FLEET   lit, lying at Acapulco: every harbour's Trade tag is the door's answer on the course she would really sail, to the letter; the door answers otherwise on the straight line (what the pair table read before 0403) for some of them
 -- @pass DOOR_FAR_POWER   lit, a company of Japan at her capital: the same, harbour for harbour
@@ -14,6 +16,16 @@
 
 create temp table c98 on commit drop as
 select e ->> 0 as a, e ->> 1 as b, e -> 2 as course from jsonb_array_elements($fix$[
+["ACA","DGA",[[16.625,-99.875],[-0.625,128.625],[-5.875,122.875],[-5.875,105.875],[-7.31,72.41]]],
+["ACA","FLO",[[16.625,-99.875],[-52.375,-75.375],[-55.625,-72.125],[-55.625,-65.625],[-21.375,-34.375],[39.45,-31.13]]],
+["ACA","MWY",[[16.625,-99.875],[28.21,-177.37]]],
+["ACA","PTC",[[16.625,-99.875],[-25.07,-130.1]]],
+["ACA","TDC",[[16.625,-99.875],[-52.375,-75.375],[-55.625,-72.125],[-54.625,-29.875],[-37.07,-12.31]]],
+["SAK","DGA",[[34.3,135],[33.625,134.875],[1.625,104.375],[1.375,104.375],[1.125,104.125],[1.625,102.625],[5.625,96.875],[5.625,95.375],[-7.31,72.41]]],
+["SAK","FLO",[[34.3,135],[33.625,134.875],[3.625,106.375],[-4.875,106.375],[-34.875,73.625],[-34.875,18.875],[-3.875,-10.875],[39.45,-31.13]]],
+["SAK","MWY",[[34.3,135],[33.875,135.125],[33.375,135.625],[28.21,-177.37]]],
+["SAK","PTC",[[34.3,135],[33.875,135.125],[33.375,135.625],[-25.07,-130.1]]],
+["SAK","TDC",[[34.3,135],[33.625,134.875],[3.625,106.375],[-4.875,106.375],[-37.125,70.625],[-37.07,-12.31]]],
 ["ACA","ACC",[[16.625,-99.875],[-52.375,-75.375],[-55.625,-72.125],[-55.375,-60.875],[5.375,-0.125]]],
 ["ACA","ADE",[[16.625,-99.875],[-52.375,-75.375],[-55.625,-72.125],[-53.625,7.875],[-17.875,43.625],[-17.375,43.625],[10.875,51.375],[11.875,51.375],[12.625,50.375],[12.625,45.125]]],
 ["ACA","AGA",[[16.625,-99.875],[-52.375,-75.375],[-55.625,-72.125],[-55.625,-65.625],[-12.125,-25.375],[24.375,-16.625],[30.375,-10.625],[30.375,-9.875]]],

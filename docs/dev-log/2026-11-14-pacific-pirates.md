@@ -178,3 +178,10 @@ Pictures (build machine): `C:\Users\gkwng\dev\pacific-pirates-shots\`: desktop, 
 ## Deploy
 
 0414 = 0413 + 1 (it was written as 0410, renumbered 0409, and renumbered again to 0414 after "the world fits the harbour it has" took 0409 and deployed). Before: `before.sql` (head 0413, hunks true). After: `after.sql` at once and hourly for a day; `health.sql` should read 0 from two hours on. Rollback: `rollback-0414.sql` (a draft); the fast lever is `pirates_bite` false or deleting roster rows.
+
+## Two reds of this file's own, found by CI on 2026-11-14 and fixed in the file (not in the proofs' rules)
+
+- **Proof 92 (`SM_MEMO`: 80 remembered courses disagree).** Cause: the file adds 80 merchant courses for the five harbours (`public.npc_courses`) and did not write their seas into the planner's memo, `public.npc_course_zones_memo` (0397), which holds every remembered course both ways. No existing course or zone was changed (the 80 are exactly the new ones). On production the reader falls back to `public.course_zones` when a memo row is missing, so a merchant would not have been refused; the planner would have re-sampled those courses at every read. Fixed in the migration: the 80 courses' seas are written to the memo, forwards and backwards, with the same expression `public.npc_course_zones_fill` uses.
+- **Proof 98 (`FAR_FLEET is not ... lying at the harbour this proof holds every course from`).** Cause: the message misleads; she does lie at Acapulco. The check that failed is the count beside it: the proof holds, as data, the plotted course from Acapulco and from Sakai to EVERY other harbour (248 each, plotted for 0403), and there are five more harbours now. Nothing was moved or renumbered by 0414. Fixed by giving the proof the ten missing courses, plotted the same way on the world with 0414 (`scripts/ops/harness/pacific-pirates/plot-98.mjs`: the browser's pathfinder over the served raster). The check is unchanged, and the door and Trade's tag agree on all ten.
+
+Run after the fix: proofs 92, 95, 96, 97, 98, 99 and 106 green.
