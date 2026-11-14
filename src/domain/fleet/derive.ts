@@ -141,6 +141,10 @@ export function housePortCode(fleets: readonly FleetView[]): string | null {
   return null
 }
 
+/** SOME HULLS, READ TOGETHER: a whole fleet, or one ship of it as `{ ships: [ship] }` (the Fleets tab's ship page, 2026-11-14). The folds below
+ *  ask for nothing but the hulls, so one fold answers for a fleet and for a single ship and there is no second copy for the ship. */
+export type Hulls = Pick<FleetView, 'ships'>
+
 /** Hull condition, 0–1. `durability` and `max_durability` are both served; the ratio is not. */
 export function hullFraction(ship: Pick<FleetShip, 'durability' | 'max_durability'>): number {
   return ship.max_durability > 0 ? ship.durability / ship.max_durability : 0
@@ -161,7 +165,7 @@ export function shipStoresInHold(ship: Pick<FleetShip, 'water_t' | 'food_t' | 's
 }
 
 /** 0345: her stores space, when the server serves one (lit), as `aboard / cap` tuns. Null while the stores share the hold. */
-export function fleetStoresSpace(fleet: FleetView): { aboardT: number; capT: number } | null {
+export function fleetStoresSpace(fleet: Hulls): { aboardT: number; capT: number } | null {
   if (fleet.ships.length === 0 || fleet.ships.some((s) => s.stores_cap == null)) return null
   return {
     aboardT: fleet.ships.reduce((n, s) => n + s.water_t + s.food_t, 0),
@@ -186,7 +190,7 @@ export function shipHoldFree(ship: FleetShip): number {
 /** What the fleet can hold when empty — a fold of the served STOWED capacities (0017:156), which
  *  the server does not total anywhere. It is the denominator of the hold gauge, never a term in
  *  "how much room is left": that is `fleet.free_hold`. */
-export function fleetHoldTotal(fleet: FleetView): number {
+export function fleetHoldTotal(fleet: Hulls): number {
   return fleet.ships.reduce((n, s) => n + s.hold, 0)
 }
 
@@ -227,7 +231,7 @@ export interface HoldBreakdown {
   freeShare: number
 }
 
-export function fleetHoldBreakdown(fleet: FleetView): HoldBreakdown {
+export function fleetHoldBreakdown(fleet: Hulls): HoldBreakdown {
   const totalT = fleetHoldTotal(fleet)
   const goodsT = fleet.ships.reduce((n, s) => n + s.cargo_tuns, 0)
   const provisionsT = fleet.ships.reduce((n, s) => n + shipStoresInHold(s), 0)   // 0345: none, lit (their own space)
@@ -299,7 +303,7 @@ export interface CrewCount {
   short: number
 }
 
-export function fleetCrew(fleet: FleetView): CrewCount {
+export function fleetCrew(fleet: Hulls): CrewCount {
   const totals = fleet.ships.reduce(
     (acc, s) => ({
       aboard: acc.aboard + s.crew,
@@ -312,7 +316,7 @@ export function fleetCrew(fleet: FleetView): CrewCount {
   return { ...totals, berths: totals.max - totals.aboard }
 }
 
-export function fleetStores(fleet: FleetView): { waterT: number; foodT: number } {
+export function fleetStores(fleet: Hulls): { waterT: number; foodT: number } {
   return {
     waterT: fleet.ships.reduce((n, s) => n + s.water_t, 0),
     foodT: fleet.ships.reduce((n, s) => n + s.food_t, 0),
@@ -370,7 +374,7 @@ export function paidPerTun(fleet: FleetView, code: string): number | null {
 }
 
 /** The same manifest as a stable, code-sorted list — what a cargo table prints. */
-export function fleetCargo(fleet: FleetView): CargoLine[] {
+export function fleetCargo(fleet: Hulls): CargoLine[] {
   return Object.entries(fleetCargoByCode(fleet))
     .map(([code, qty]) => ({ code, qty }))
     .sort((a, b) => a.code.localeCompare(b.code))

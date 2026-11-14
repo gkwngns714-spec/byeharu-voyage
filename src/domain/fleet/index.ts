@@ -58,6 +58,7 @@ export {
   type CrewCount,
   type FleetSignal,
   type HoldBreakdown,
+  type Hulls,
 } from './derive'
 
 // WHERE SHE IS — the one classification (at sea / in port / at anchor) and the one line about it,

@@ -87,6 +87,7 @@ for (const run of RUNS) {
       // 1. THE PICKER, on the fleet's page: her order (Fight: she has none), and the server's read beside it
       await page.getByTestId('fleet-row').first().click()
       await expect(page.getByTestId('fleet-page')).toBeVisible()
+      await page.getByTestId('fleet-more').click()   // 2026-11-14: the fleet's page is her ships; the picker is one row further
       const picker = page.getByTestId('raid-order')
       await expect(picker).toBeVisible()
       await expect(picker).toHaveAttribute('data-order', 'FIGHT')
@@ -201,6 +202,7 @@ test.describe('a world set dark (before 0371, and after its rollback): standing 
     await ready(page)
     await page.getByTestId('fleet-row').first().click()
     await expect(page.getByTestId('fleet-fold')).toBeVisible()
+    await page.getByTestId('fleet-more').click()   // 2026-11-14: the fleet's page is her ships; the picker's place is one row further
     await expect(page.getByTestId('fleet-command')).toBeVisible()
     // the read has answered {on: false} by now: give it a beat, then hold that nothing was drawn
     await page.waitForTimeout(1500)

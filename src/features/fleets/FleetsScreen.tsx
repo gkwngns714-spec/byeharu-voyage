@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bar, CargoBar, Card, DetailPage, FactsLine, IconDisc, ListPanel, PageSplit, Row, Sheet, StatCell, type IconDiscTone, Clip } from '../../components/ui'
+import { CargoBar, Card, DetailPage, FactsLine, IconDisc, ListPanel, PageSplit, Row, Sheet, StatCell, type IconDiscTone, Clip } from '../../components/ui'
 import { formatInt, formatOfTotal, formatPct, formatVoyageDays, tonsWord } from '../../lib/format'
 import { useShellState } from '../../app/shellState'
 import { portNameOf, useWorld } from '../../live/worldStore'
@@ -17,7 +17,9 @@ import { WorldFailed, WorldLoading } from '../../live/WorldGate'
 import { Armadas } from './Armadas'
 import { FleetFold } from './FleetFold'
 import { FleetRoom } from './FleetRoom'
+import { FleetShipPage } from './FleetShipPage'
 import { FleetShipSheet } from './FleetShipSheet'
+import { HullGauge } from './HullGauge'
 import { NewFleet } from './NewFleet'
 import { fleetDue } from './fleetLine'
 import { tabWord } from '../../app/navTabs'
@@ -38,9 +40,14 @@ import { useLocale, useT } from '../../lib/i18n'
 // The owner's newest law, verbatim: *"everything has folded. enough with folding things. make
 // everything small, compact and once clicked show new page popping up."* Row 89's unfold-under-the-
 // row is therefore RETIRED — it re-flowed everything below the press, the one thing the press law
-// forbids — and the fleet's ships, cargo and supplies now stand whole on the ONE pop-up page every
-// other compact block uses (`DetailPage`): a fixed overlay with its own back press, so the row,
-// the rows below it and the rail keep their boxes to the pixel while it is open.
+// forbids — and the fleet now stands on the ONE pop-up page every other compact block uses
+// (`DetailPage`): a fixed overlay with its own back press, so the row, the rows below it and the
+// rail keep their boxes to the pixel while it is open.
+//
+// ── TWO STEPS (owner, 2026-11-14) ────────────────────────────────────────────────────────────
+// *"in fleets, when pressed a fleet, show only ships, then when i press the ship, show cargo and supplies."* The fleet's page is her
+// ships and nothing else (FleetFold.tsx); a press on a ship opens HER page with her own cargo and supplies (FleetShipPage.tsx); what
+// belongs to the fleet as a whole is one row further (FleetMore.tsx). docs/dev-log/2026-11-14-fleet-ships.md.
 //
 // The row still SELECTS: it lights `accent` while its page is up, and the page is keyed by ID (the
 // store hands out a new FleetView every half minute), so an open page survives a world read.
@@ -109,10 +116,17 @@ function FleetsBody({ title }: { title: string }) {
   // block; the row behind it never moves.
   const [openFleetId, setOpenFleetId] = useState<string | null>(null)
   const openFleet = fleets.find((f) => f.id === openFleetId) ?? null
-  // F5: ONE SHIP'S SHEET over her fleet's page, by id. It is a sibling of that page (never inside its scroller), so closing it gives the page back as it stood.
+  // THE SECOND STEP (owner, 2026-11-14: "when i press the ship, show cargo and supplies"): ONE SHIP'S PAGE over her fleet's page, by id (FleetShipPage.tsx).
+  // It is a sibling of that page (never inside its scroller), so its back press gives the ships list back as it stood.
   const [openShipId, setOpenShipId] = useState<string | null>(null)
-  const closeFleet = () => {
+  // F5: her whole sheet (Stats), over her own page; closing it gives that page back.
+  const [statsOpen, setStatsOpen] = useState(false)
+  const closeShip = () => {
+    setStatsOpen(false)
     setOpenShipId(null)
+  }
+  const closeFleet = () => {
+    closeShip()
     setOpenFleetId(null)
   }
   // The one authority for code → name (worldStore.portNameOf).
@@ -183,10 +197,11 @@ function FleetsBody({ title }: { title: string }) {
       />
       {openFleet !== null && (
         <DetailPage title={openFleet.name} onClose={closeFleet} data-testid="fleet-page">
-          <FleetFold fleet={openFleet} onOpenShip={setOpenShipId} />
+          <FleetFold fleet={openFleet} openShipId={openShipId} onOpenShip={setOpenShipId} />
         </DetailPage>
       )}
-      {openFleet !== null && openShipId !== null && <FleetShipSheet fleet={openFleet} shipId={openShipId} onClose={() => setOpenShipId(null)} />}
+      {openFleet !== null && openShipId !== null && <FleetShipPage fleet={openFleet} shipId={openShipId} onOpenStats={() => setStatsOpen(true)} onClose={closeShip} />}
+      {openFleet !== null && openShipId !== null && statsOpen && <FleetShipSheet fleet={openFleet} shipId={openShipId} onClose={() => setStatsOpen(false)} />}
     </Sheet>
   )
 }
@@ -261,18 +276,8 @@ function FleetRow({
           one line. The order is the order a phone reads them in; nothing is dropped. */}
       {fleet.ships.length > 0 && <FactsLine data-testid="fleet-row-bars">
         <span className="shrink-0 tabular-nums">{t('fleets.ofSupplies', { days: formatVoyageDays(fleet.endurance_days) })}</span>
-        {/* §4.4: a hull that is merely sound is NEUTRAL — green is for gain, and a whole fleet
-            painted green spends the one colour that means "cheap" on a hull that is fine. */}
-        <span className="flex min-w-32 flex-1 items-center gap-3">
-          <span className="shrink-0">{t('fleets.hull')}</span>
-          <Bar
-            pct={hull * 100}
-            tone={hull < 0.4 ? 'danger' : hull < 0.75 ? 'warning' : 'neutral'}
-            label={t('fleets.worstHull', { pct: formatPct(hull) })}
-            figure={<span className="tabular-nums">{formatPct(hull)}</span>}
-            className="min-w-0 flex-1"
-          />
-        </span>
+        {/* her WORST hull, on the one gauge a ship's own row draws too (HullGauge.tsx) */}
+        <HullGauge fraction={hull} label={t('fleets.worstHull', { pct: formatPct(hull) })} />
         {/* ONE cargo gauge for the game (CargoBar): the basket panel on PORT draws the same one
             with its staged change washed on. */}
         <CargoBar used={used} total={total} free={fleet.free_hold} className="min-w-48 grow basis-full sm:basis-auto" />

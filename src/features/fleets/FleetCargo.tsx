@@ -1,7 +1,6 @@
 import { CargoRows } from '../../components/ui'
 import { useWorld } from '../../live/worldStore'
-import type { FleetView } from '../../lib/rpc'
-import { fleetCargo } from '../../domain/fleet'
+import { fleetCargo, type Hulls } from '../../domain/fleet'
 import { FleetHold } from './FleetHold'
 // WHAT SHE CARRIES, AS ROWS.
 //
@@ -30,7 +29,11 @@ import { FleetHold } from './FleetHold'
 // closing tonnage row raises and does not settle, because provisions share that hold and are not a
 // cargo line. Mounted here rather than in the Supplies column because it is a reading of the HOLD,
 // and the hold is this column's subject; Supplies is about days of endurance.
-export function FleetCargo({ fleet }: { fleet: FleetView }) {
+//
+// ── ONE SHIP'S CARGO (owner, 2026-11-14: "when i press the ship, show cargo and supplies") ─────────────────
+// The server serves cargo PER SHIP (`FleetShip.cargo`, `cargo_tuns`), so the ship page hands this face `{ ships: [ship] }` and the rows are
+// her own goods, not a share worked out here. The same face still folds any number of hulls.
+export function FleetCargo({ fleet }: { fleet: Hulls }) {
   const goodByCode = useWorld((s) => s.goodByCode)
   return (
     <>

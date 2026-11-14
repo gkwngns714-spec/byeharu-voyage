@@ -66,3 +66,36 @@ export async function serveLitOneShip(page: Page): Promise<void> {
     }),
   )
 }
+
+// THE SAME FLEET WITH GOODS ABOARD (2026-11-14, tests/fleets.ships.spec.ts): the second ship is commissioned and three goods are loaded through the chain's one cargo
+// mover (`public.fleet_load`), so a ship's own cargo has something to print.
+const LADEN_TRIGGER = `
+  create function public.spec_second_ship_laden_fleet() returns trigger
+  language plpgsql security definer set search_path = public, pg_temp as $$
+  declare
+    g record;
+  begin
+    if pg_trigger_depth() > 1 then return null; end if;
+    if exists (select 1 from public.players p where p.id = new.player_id and p.is_npc) then return null; end if;
+    if exists (select 1 from public.ships s where s.player_id = new.player_id and s.name = '${SECOND_SHIP}') then return null; end if;
+    perform public.commission_ship(new.player_id, new.fleet_id, 'barca', '${SECOND_SHIP}', false, true);
+    perform public.credit(new.player_id, 'SPEC', ${EXTRA_PURSE});
+    for g in select gd.code from public.goods gd order by gd.code limit 3 loop
+      perform public.fleet_load(new.fleet_id, g.code, 15, 1);
+    end loop;
+    return null;
+  end $$;
+  create trigger spec_second_ship_laden_fleet after insert on public.ships
+    for each row when (new.is_flagship) execute function public.spec_second_ship_laden_fleet();
+`
+
+/** Fleet room lit, a founding fleet of two ships with three goods aboard. */
+export async function serveLitTwoShipsLaden(page: Page): Promise<void> {
+  await serveWorldImage(
+    page,
+    await patchedWorldImage('fleets-page-lit-two-laden', async (pg) => {
+      await pg.exec(LIGHT)
+      await pg.exec(LADEN_TRIGGER)
+    }),
+  )
+}

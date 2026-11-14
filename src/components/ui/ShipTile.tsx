@@ -29,6 +29,22 @@ export interface ShipPower {
 
 const POWER = ['attack', 'accuracy', 'reach', 'armour', 'sighting'] as const
 
+/** THE POWER LINE: the five figures a fight reads, one caption line. A tile prints it, and so does a ship's page on the Fleets tab
+ *  (features/fleets/FleetShipPage.tsx, 2026-11-14), which is where the fleet tile's line went when a fleet's page became rows. */
+export function ShipPowerLine({ power, className = 'mt-0' }: { power: ShipPower; className?: string }) {
+  const t = useT()
+  return (
+    <FactsLine className={className} data-testid="ship-power">
+      <span className="text-ink-muted">{t('ship.power')}</span>
+      {POWER.map((k) => (
+        <span key={k} className="whitespace-nowrap">
+          {t(`ship.${k}`)} <span className="tabular-nums text-ink-muted">{formatInt(power[k])}</span>
+        </span>
+      ))}
+    </FactsLine>
+  )
+}
+
 export function ShipTile({
   name,
   className,
@@ -88,16 +104,7 @@ export function ShipTile({
       }
       data-testid={testId}
     >
-      {power && (
-        <FactsLine className="mt-0" data-testid="ship-power">
-          <span className="text-ink-muted">{t('ship.power')}</span>
-          {POWER.map((k) => (
-            <span key={k} className="whitespace-nowrap">
-              {t(`ship.${k}`)} <span className="tabular-nums text-ink-muted">{formatInt(power[k])}</span>
-            </span>
-          ))}
-        </FactsLine>
-      )}
+      {power && <ShipPowerLine power={power} />}
       {fittings.length > 0 && (
         <span className="text-t-caption text-ink-faint">
           {fittings.map((f) => (f.qty > 1 ? `${f.name} ×${formatInt(f.qty)}` : f.name)).join(' · ')}

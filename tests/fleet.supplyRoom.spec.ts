@@ -21,7 +21,10 @@ for (const lang of ['en', 'ko'] as const) {
       await ready(page)
       expect(await page.evaluate(() => document.documentElement.lang)).toBe(lang)
       await page.getByTestId('fleet-row').first().click()
-      const fold = page.getByTestId('fleet-page').getByTestId('fleet-fold')
+      await expect(page.getByTestId('fleet-page').getByTestId('fleet-fold')).toBeVisible()
+      // 2026-11-14 (owner: "when i press the ship, show cargo and supplies"): the supply room is a ship's own, on her page
+      await page.getByTestId('fleet-page').getByTestId('fleet-ship-row').first().click()
+      const fold = page.getByTestId('fleet-ship-page')
       await expect(fold).toBeVisible()
       const room = fold.getByTestId('fleet-stores-space')
       await expect(room).toBeVisible()
