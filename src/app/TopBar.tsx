@@ -87,7 +87,7 @@ export function TopBar() {
       <Clip cut className="text-t-caption text-ink-muted">
         {/* THE GAME CLOCK — the world's DATE and its hour (owner row 176, 2026-10-20: *"There is
             one right now showing the time only, but I want to see the date, year, months and so
-            on."*). ONE clock since 0412 (the owner, 2026-11-14: a game day is one real hour): the date
+            on."*). ONE clock since 0413 (the owner, 2026-11-14: a game day is one real hour): the date
             turns when the hour passes midnight, and the Sun stands on the same hour
             (lib/format/time.ts `gameClockDays`, from the served `clock_anchor`). Both are pure
             functions of THE ONE CLOCK and of the served clock. */}

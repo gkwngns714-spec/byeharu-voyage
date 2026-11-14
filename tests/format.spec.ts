@@ -123,9 +123,9 @@ test('percentages: fractions and already-in-points both have a formatter, and th
   expect(formatPctDelta(-0.135)).toBe(`${MINUS}13%`)
 })
 
-test('the served clock is the one authority: 192 before a snapshot, a voyage-day 450 real seconds, a game day one hour (D.1, 0412)', () => {
+test('the served clock is the one authority: 192 before a snapshot, a voyage-day 450 real seconds, a game day one hour (D.1, 0413)', () => {
   // Pin moved deliberately THREE times. 2026-08-24, 0045: 480 -> 9600 for testing. 2026-10-11, 0100: 9600 -> 960.
-  // 2026-11-14, 0412: 960 -> 192, the owner: "change the game day - 1 hour". The constant is only what is assumed
+  // 2026-11-14, 0413: 960 -> 192, the owner: "change the game day - 1 hour". The constant is only what is assumed
   // before the first snapshot (rpc.surface.spec asserts it equals the served knob); every figure follows what
   // `setServedClock` was given, so a served rate is never retyped here.
   setServedClock(null)
@@ -136,7 +136,7 @@ test('the served clock is the one authority: 192 before a snapshot, a voyage-day
   expect(gameClockRate()).toBe(24)
   expect(voyageDaysToRealMs(1)).toBe(450_000)
   expect(realMsToVoyageDays(450_000)).toBe(1)
-  // the served rate wins over the constant, whatever it is: the clock as it was before 0412
+  // the served rate wins over the constant, whatever it is: the clock as it was before 0413
   setServedClock({ time_compression: 960 })
   expect(realMsPerVoyageDay()).toBe(90_000)
   expect(clockDayMs()).toBe(720_000)
@@ -148,7 +148,7 @@ test('the served clock is the one authority: 192 before a snapshot, a voyage-day
   setServedClock(null)
 })
 
-test('0412: from the anchor the date and the hour are one clock, an hour a day, and neither jumps at the switch', () => {
+test('0413: from the anchor the date and the hour are one clock, an hour a day, and neither jumps at the switch', () => {
   const DAY_MS = 24 * 60 * 60 * 1000
   const at = Date.UTC(2026, 10, 14, 10, 0, 10)
   // before the switch: the clock as the client drew it at 960 (the date a day per 2,880 s, the hour hand at 120x)
@@ -186,7 +186,7 @@ test('B.3 worked distances reproduce their real times at the 0100 clock', () => 
   // (0100). THE VOYAGE-DAYS NEVER MOVE — a passage is the same passage; only its real-time twin
   // follows the knob, which is the whole reason the two clocks are printed together (D.3).
   // Lisboa -> Cadiz, 188 nm at 5 kn = 1.567 voyage-days = 2.4 min real. The table is read at the rate it was
-  // written at (960, served); at the 192 of 0412 the same passages take five times as long.
+  // written at (960, served); at the 192 of 0413 the same passages take five times as long.
   setServedClock({ time_compression: 960 })
   const days = 188 / 5 / 24
   expect(formatRealDuration(voyageDaysToRealMs(days))).toBe('2.4 min')
@@ -262,7 +262,7 @@ test('0317: a real day number prints as its UTC date', () => {
   expect(formatRealDay(0)).toBe('01-01')
 })
 
-test('the world’s date is the CALENDAR clock’s where no anchor is served: the clock before 0412 (row 176)', () => {
+test('the world’s date is the CALENDAR clock’s where no anchor is served: the clock before 0413 (row 176)', () => {
   setServedClock(null)
   // The owner, 2026-10-20: *"I want to see the date, year, months and so on."* The date printed is
   // the calendar clock's — one game month per real day — which makes a day of it 2,880 real seconds.

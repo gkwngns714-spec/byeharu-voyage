@@ -1,4 +1,4 @@
--- LOCAL SCENE (0412, the day is an hour): a new house's first voyages out of Lisbon, by the game's own reach table and her fleet's own speed, at the clock's rate
+-- LOCAL SCENE (0413, the day is an hour): a new house's first voyages out of Lisbon, by the game's own reach table and her fleet's own speed, at the clock's rate
 -- as it stands. Run it before and after the file: node scripts/ops/harness/day-hour/q.mjs scripts/ops/harness/day-hour/first-voyages.sql [--apply]
 do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 begin;

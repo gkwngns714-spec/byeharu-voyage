@@ -97,7 +97,8 @@ test('world.price_outlook: its now is world.price on every side, and the path is
     expect(o.side).toBe(side)
     expect(o.horizon_slots).toBe(24)
     expect(o.points).toHaveLength(25)
-    expect(o.slot_seconds).toBe(900)
+    // the slot's length is the server's knob (0413 moved it with the clock's rate), read, not retyped
+    expect(o.slot_seconds).toBe(await db.callAs<number>(`select public.wc_int('drift_slot_seconds') as result`))
     expect(o.band_z).toBeCloseTo(1.2816, 4)
     expect(o.assumes).toBe('If nobody else trades here')
     expect(o.held.length).toBeGreaterThan(10)

@@ -1,5 +1,5 @@
 // q.mjs: run one SQL file (or --sql=) on the cached local world, print the rows. LOCAL ONLY; not in CI.
-//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/day-hour/q.mjs <file.sql> [--before=20260818000412] [--also=<file.sql>] [--apply] [--raw]
+//   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/day-hour/q.mjs <file.sql> [--before=20260818000413] [--also=<file.sql>] [--apply] [--raw]
 // The world is the chain below --before (restored from the cache as far as it reaches, the rest applied). --also applies one more file on top of it
 // (a migration of another branch that deploys first). --apply then applies the chain's files at or after --before (this slice's file). Thrown away.
 import { readFile } from 'node:fs/promises'
@@ -7,7 +7,7 @@ import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
 const arg = (k) => process.argv.find((a) => a.startsWith(`--${k}=`))?.slice(k.length + 3)
-const before = arg('before') ?? '20260818000412'
+const before = arg('before') ?? '20260818000413'
 const files = []
 const later = []
 for (const name of await migrationFiles()) (name < before ? files : later).push({ name, sql: await readFile(path.join(MIGRATIONS_DIR, name), 'utf8') })

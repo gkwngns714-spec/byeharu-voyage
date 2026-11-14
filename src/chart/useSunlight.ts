@@ -28,7 +28,7 @@ import { serverNow } from '../lib/serverClock'
 // WRONG SHAPE  a second clock. The Sun stands at the GAME CLOCK's hour (owner, 2026-10-15: the
 //              sunlight "should match the speed of the game speed"), read through the one
 //              authority `gameSunInstantMs`, so it turns 360° per game day: 0.1° a real second at
-//              the served clock's 24× (`gameClockRate()`, 0412: a game day is one real hour; ½° a
+//              the served clock's 24× (`gameClockRate()`, 0413: a game day is one real hour; ½° a
 //              second before it). One timer (SUN_REFRESH_MS), one raster per step, never per frame.
 //
 // THE IMAGE is a 360 × 180 greyscale PNG — one pixel per degree, the raster's own bytes — handed

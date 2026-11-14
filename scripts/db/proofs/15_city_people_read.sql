@@ -10,6 +10,10 @@
 -- @pass PEOPLE_SERIES    two steps logged: two points, oldest first, the last equal to the population now
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════
 
+-- 0413 (a game day lasts one hour): this proof's instants and amounts are written on the clock as it was before 0413 (the length of a market day, a drift
+-- slot and a population step; the drift job's spread; the rates per real day). So the rate is moved back through its one door, public.clock_set, and the
+-- anchors are emptied, inside this proof's own rolled-back transaction. What 0413 itself does is proof 110's.
+do $c$ begin perform public.clock_set(960, now()); update public.world_config set value = '{}'::jsonb where key in ('clock_anchor', 'market_clock_anchor'); end $c$;
 do $$
 declare
   c_t0 constant timestamptz := '2030-01-01 00:03:00+00';

@@ -1147,7 +1147,7 @@ begin
   v_u := pg_temp.passage_60(v_hfl, v_sea, v_seas, v_t, true, false);                 -- the twin never held
   v_h := pg_temp.passage_60(v_hfl, v_sea, v_seas, v_t, true, false, 600);            -- held
   v_o := pg_temp.passage_60(v_hfl, v_sea, v_seas, v_t, true, true, 600);             -- held, under the old bodies
-  v_c := pg_temp.passage_60(v_hfl, v_sea, v_seas, v_t, true, false, 600, 225);       -- held, and the hold cut at 225 s (0412: a cut whose hours are whole at the clock's rate, 12 at 192 and 60 at 960; a cut whose hours round UP in voyages.delay_hours settles one day more, a live fault this proof does not carry: docs/dev-log/2026-11-14-day-hour.md)
+  v_c := pg_temp.passage_60(v_hfl, v_sea, v_seas, v_t, true, false, 600, 225);       -- held, and the hold cut at 225 s (0413: a cut whose hours are whole at the clock's rate, 12 at 192 and 60 at 960; a cut whose hours round UP in voyages.delay_hours settles one day more, a live fault this proof does not carry: docs/dev-log/2026-11-14-day-hour.md)
   if (v_h ->> 'n_days')::int is distinct from (v_u ->> 'n_days')::int or v_h -> 'kinds' is distinct from v_u -> 'kinds' or v_h -> 'ships' is distinct from v_u -> 'ships'
      or (v_h -> 'fleet') - 'busy_until' is distinct from (v_u -> 'fleet') - 'busy_until' or v_h -> 'purse' is distinct from v_u -> 'purse' or v_h -> 'ledger' is distinct from v_u -> 'ledger' or v_h -> 'wages' is distinct from v_u -> 'wages'
      or (v_h ->> 'eta')::timestamptz is distinct from (v_u ->> 'eta')::timestamptz + interval '600 seconds' or (v_h ->> 'total_days')::int is distinct from (v_u ->> 'n_days')::int

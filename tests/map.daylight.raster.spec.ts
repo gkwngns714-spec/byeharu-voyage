@@ -2,7 +2,7 @@ import { test, expect, type CDPSession, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
 import { gameClockRate } from '../src/lib/format/time'
 
-/** The game clock's rate as the served clock has it (lib/format: 24 since 0412, a game day an hour). */
+/** The game clock's rate as the served clock has it (lib/format: 24 since 0413, a game day an hour). */
 const GAME_CLOCK_RATE = gameClockRate()
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
