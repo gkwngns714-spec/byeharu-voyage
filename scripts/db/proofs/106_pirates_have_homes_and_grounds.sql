@@ -10,6 +10,7 @@
 -- @pass PH_REBORN  a wreck whose home's purse is EMPTY is brought home by the job, lies pirate_respawn_minutes, and is whole, docked and stored again; another pirate purse paid the refit (her REFITTED event names the payer and the cost; the hoard falls by at least it, the world total does not move)
 -- @pass PH_OLD     a ship of 0339 (a lone xebec of a home with no purse, the six that were stuck) is reborn by the same rule
 -- @pass PH_LOUD    with EVERY pirate purse empty she is not mended unpaid and not left silent: she WAITS with a row in public.npc_refit_waits and a REFIT_WAITING event; the merchants' refit job does not touch her; the purse back, the job mends her
+-- @pass PH_NOT_BEHIND (0418) the roster is not kept waiting behind one of 0339's own ships that the day's room cannot build: the room spent and such a ship pending, the add builds a ROSTER fleet; the room open, 0339's ship is built first, as before
 -- @pass PH_CAP     five pirate fleets cruising one sea press on it by pirate_pressure_max (1.0), not 2.5: its danger is at most twice the authored figure
 -- ═══════════════════════════════════════════════════════════════════════════════
 do $p$
@@ -195,5 +196,27 @@ begin
   end if;
   raise notice 'PASS: PH_CAP — % pirate fleets cruising the South Pacific press on it by 1.0: danger % against the authored %', (select count(*) from public.pirate_ships_cruising x where x.sea_id = v_sea),
     voyage.sea_danger(v_sea, v_now), voyage.sea_danger(v_sea, null);
+
+  -- PH_NOT_BEHIND (0418; production, 2026-11-14: 7 of 0339's 13 ships stood, the day's room was spent, and no roster fleet was built: the add asked for ord 8 every minute and never reached the roster)
+  if not exists (select 1 from generate_series(1, public.pirate_size()) g(o) where not exists (select 1 from public.pirate_ships n where n.ord = g.o))
+     or not exists (select 1 from public.pirate_roster r where not exists (select 1 from public.pirate_ships n where n.ord = r.ord)) then
+    raise exception 'PROOF 106 FAIL: the scene has no ship of 0339 pending, or no roster fleet unbuilt (size %)', public.pirate_size();
+  end if;
+  update public.pirate_clock set added_at = v_now;
+  insert into public.pirate_spend_day (day, spent) values (((v_now + interval '3 days') at time zone 'UTC')::date, 1000000000000)
+  on conflict (day) do update set spent = excluded.spent;
+  select count(*) filter (where n.ord > 1000), count(*) filter (where n.ord <= 1000) into v_flow0, v_flow1 from public.pirate_ships n;
+  v_s := public.pirate_add(v_now + interval '3 days');
+  if v_s is distinct from 'BUILT' or (select count(*) from public.pirate_ships n where n.ord > 1000) <> v_flow0 + 1
+     or (select count(*) from public.pirate_ships n where n.ord <= 1000) <> v_flow1 or public.pirate_spend_room(v_now + interval '3 days') <> 0 then
+    raise exception 'PROOF 106 FAIL: the day''s room spent and one of 0339''s ships pending, the add answered % and built no roster fleet (the fault of 2026-11-14: the roster waits behind a ship the room cannot build)', v_s;
+  end if;
+  delete from public.pirate_spend_day d where d.day = ((v_now + interval '3 days') at time zone 'UTC')::date;
+  v_s := public.pirate_add(v_now + interval '3 days 11 minutes');
+  if v_s is distinct from 'BUILT' or (select count(*) from public.pirate_ships n where n.ord <= 1000) <> v_flow1 + 1
+     or (select count(*) from public.pirate_ships n where n.ord > 1000) <> v_flow0 + 1 then
+    raise exception 'PROOF 106 FAIL: the day''s room open, the add answered % and did not build 0339''s own ship first', v_s;
+  end if;
+  raise notice 'PASS: PH_NOT_BEHIND — the day''s room spent and one of 0339''s ships pending, the add built a roster fleet; the room open again, the next add built 0339''s ship first';
 end
 $p$;
