@@ -73,6 +73,24 @@ export function everyLevelLine(locale: Locale, b: LevelBenefit, name: string): s
   return translate(locale, 'command.lvGiveCaptains', { name })
 }
 
+/** A step of a level's own benefit (0417), as a sentence with what the benefit is worth from that level on: the served `total`. */
+export function perkLine(locale: Locale, b: Extract<LevelBenefit, { kind: 'perk' }>): string {
+  return translateMaybe(locale, 'command', `lvPerk_${b.perk}`, { n: formatInt(b.total) }) ?? `${b.word} (${formatInt(b.total)})`
+}
+
+/** What her level's own benefits are worth NOW: for each benefit, the step at the highest level she has reached (a pick of a
+ *  served row, no sum); a benefit she has no step of yet is named with the level it begins at. */
+export function perksNow(locale: Locale, level: number, benefits: readonly LevelBenefit[]): Array<{ perk: string; line: string; has: boolean }> {
+  const perks = benefits.filter((b): b is Extract<LevelBenefit, { kind: 'perk' }> => b.kind === 'perk')
+  const names = [...new Set(perks.map((b) => b.perk))]
+  return names.map((perk) => {
+    const steps = perks.filter((b) => b.perk === perk).sort((x, y) => x.level - y.level)
+    const mine = steps.filter((b) => b.level <= level).pop()
+    if (mine) return { perk, line: perkLine(locale, mine), has: true }
+    return { perk, line: translate(locale, 'command.lvPerkFrom', { what: perkLine(locale, steps[0]), n: steps[0].level }), has: false }
+  })
+}
+
 /** What ONE level gives, as short phrases: its Reputation gift first, then what the rules give at that level. */
 export function levelGives(locale: Locale, level: number, benefits: readonly LevelBenefit[]): string[] {
   const out: string[] = []
@@ -85,6 +103,7 @@ export function levelGives(locale: Locale, level: number, benefits: readonly Lev
     if (b.level !== level) continue
     if (b.kind === 'promote') out.push(translate(locale, 'command.lvGivePromote', { grade: b.grade }))
     else if (b.kind === 'fleet') out.push(translate(locale, 'command.lvGiveFleet'))
+    else if (b.kind === 'perk') out.push(perkLine(locale, b))
     else {
       out.push(translate(locale, 'command.lvGiveTitle', { name: properName('title', b.name, b.name), other: levelName(locale, b.with), n: level }))
       if (b.opens.length > 0) out.push(translate(locale, 'command.lvOpens', { what: b.opens.join(', ') }))
