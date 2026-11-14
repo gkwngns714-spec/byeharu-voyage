@@ -142,28 +142,25 @@
 
   /* ── THE CHART'S THREE INKS ─────────────────────────────────────────────────────────────────
      THE SEA IS THE GROUND: `ChartCanvas` paints `--color-chart-sea` as the first thing on the
-     sheet, so it is what is actually behind every coast, every mark and every label halo. The
-     other two are ONE PEN mixed into that water, so the whole chart is one water colour and one
-     pen and retuning either retunes the sheet.
+     sheet, so it is what is actually behind every coast, every mark and every label halo.
 
-     The percentages are not taste — they are contrast ratios, and tests/chart.ink.spec.ts
-     MEASURES them in the running game at 390px rather than trusting this comment:
-       land   ink-faint 42%   #3e4651   2.05 : 1   the BODY of the land. A step you can see, and
-                                                   deliberately far below the port marks: the
-                                                   coast is ground, the marks are the subject.
-                                                   The spec holds it inside [1.9, 2.6).
-       coast  ink-faint 65%   #5d6672   3.37 : 1   the BOUNDARY, at WCAG 1.4.11's 3 : 1 floor for
-                                                   a graphic that carries meaning.
-     …and the quiet port mark (`stroke-ink-faint/85`) then reads 2.75 : 1 against that land,
-     which is the third assertion: a mark must always out-shout the ground it sits on. */
-  --color-chart-sea: var(--color-sea-2);
-  /* THE NIGHT LAND KEEPS A LITTLE OF THE LAND'S COLOUR, AND THE COAST A CLEARER EDGE (2026-11-14, the second look pass). The land
-     was the faint ink alone at 42 % (#3e4651): a flat grey, and with the coast at 65 % (3.37 : 1 on the sea, 1.64 on the land) a
-     night coast on a phone was a dim smear. The land is now a fifth of the day's boreal green in the faint ink at 36 %
-     (#3f4d4b, 2.22 : 1 on the sea: inside the same [1.9, 2.6) band, and the quiet mark still reads 2.58 on it, above the land's
-     own step, which is tests/chart.ink.spec.ts's third law). The coast is the faint ink at 75 % (#6a7481, 4.13 : 1 on the sea). */
-  --color-chart-land: color-mix(in srgb, var(--color-chart-day-boreal) 20%, color-mix(in srgb, var(--color-ink-faint) 36%, var(--color-chart-sea)));
-  --color-chart-coast: color-mix(in srgb, var(--color-ink-faint) 75%, var(--color-chart-sea));
+     THE NIGHT IS A NIGHT VERSION OF THE SAME WORLD (2026-11-14, owner: "fix the graphics overall, especially map" and, of
+     the dim night half, "find the root cause, make it so that this problem does not occur again";
+     docs/dev-log/2026-11-14-night-look.md has the cause and the numbers). Until then the sea was `--color-sea-2` (#070c14), a
+     step of the PAGE's background and not a water colour: 1.07 : 1 off pure black. Every law on this chart was a RATIO
+     against that ground, so nothing ever said the ground itself must be seen, and the land's ceiling (2.6 : 1 on a black
+     sea) held the land to a dull dark grey. The three inks are now colours of their own, and tests/chart.ink.spec.ts
+     MEASURES them in the running game (the ratios, and since this change the ground's own light, its colour, and the
+     step from night to day):
+       sea    #0b1b33   a deep navy: 1.22 : 1 off black (the law's floor is 1.15), blue before green before red,
+                        and the day sea is 3.84 : 1 above it, so night is still night
+       land   #37523f   2.00 : 1 on the sea (the band is still [1.9, 2.6)), green before red and blue: the land's own
+                        colour at night. A quiet harbour's mark reads 2.49 on it, above the land's own step.
+       coast  #8aa0b0   the BOUNDARY: 6.35 : 1 on the sea and 3.17 on the land (it was 4.13 and 1.86: an edge on the
+                        water's side only). */
+  --color-chart-sea: #0b1b33;
+  --color-chart-land: #37523f;
+  --color-chart-coast: #8aa0b0;
 
   /* ── THE HARBOUR LIGHT (owner row 125, 2026-10-12) ───────────────────────────────────────────
      *"when i zoom out, i want cities to be bright light, in a dark map, visually beautiful."*
@@ -188,17 +185,21 @@
 
   /* ONE COLOUR FOR EVERY TRADING MERCHANT (owner, 2026-10-13: *"make trading npc the same color —
      darker than blue but blue. dark blue"*). Their nation inks come back with the Regions toggle. */
-  --color-merchant: #2a5bb8;
+  /* #2a5bb8 until 2026-11-14: that blue is 3 : 1 only on a near-black sea, which is one of the things that held the night sea black.
+     A step lighter, still the dark blue: 3.17 : 1 on the navy night sea (tests/map.kinds.spec.ts holds every hull to 3 : 1). */
+  --color-merchant: #3066c8;
   --color-kind-mark: #0b0f14;
   /* The ONE colour of every cargo ship's hull, day and night (glyphs.ts KIND_LOOK.cargo.fill.token). */
   --color-cargo-hull: #2fd4b0;
   /* The ONE colour of every navy ship's hull, day and night (glyphs.ts KIND_LOOK.navy.fill.token). Violet: no merchant, cargo ship, player's fleet or nation wears it. tests/map.kinds.spec.ts holds it to 3 : 1. */
-  --color-navy-hull: #c4a1ff;
+  /* #c4a1ff until 2026-11-14: on the navy night sea the twilight ground at --night 0.25 is a little lighter, and that violet fell to 2.97 : 1 there. This is 3.17. */
+  --color-navy-hull: #c9a8ff;
   /* The ONE colour of every pirate ship's hull, day and night (glyphs.ts KIND_LOOK.pirate.fill.token; docs/WORLD_POWERS.md section 9.3: red). Coral, not the design's #ff6b6b: on the day deep
      and at twilight 0.25 the dark keyline cannot carry a hull (1.98 and 2.5 to 1), so the fill must, and that takes a luminance near the navy violet's 0.44; #ff6b6b is 0.33 (2.97 on deep), this is 0.45
      (3.9 on deep, 3.2 at twilight 0.25, 9.3 at night and under the near-black mark). No merchant, cargo ship, navy ship, player's fleet or nation wears it. tests/map.kinds.spec.ts holds her to 3 : 1.
      0341: every pirate MERCHANT's hull wears the same token (KIND_LOOK.pirateMerchant.fill.token), under the same X. */
-  --color-pirate-hull: #ff9696;
+  /* #ff9696 until 2026-11-14, for the same reason as the navy violet above: 3.02 : 1 at twilight 0.25 on the navy night sea, with no room. This is 3.18. */
+  --color-pirate-hull: #ff9d9d;
 
   /* ── THE PICTURE (2026-09-13, owner row 90: "map should be much more graphic... it is too
      blank") — five more chart inks, and the three above are UNCHANGED, because
