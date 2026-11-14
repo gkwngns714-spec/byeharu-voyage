@@ -260,7 +260,11 @@ begin
      or (select ducats from public.players where id = v_pl) <> v_purse - v_labour or v_labour <= 0
      or exists (select 1 from public.player_storage ps where ps.player_id = v_pl and ps.port_id = v_lis)
      or exists (select 1 from public.player_items pi where pi.player_id = v_pl and pi.port_id = v_lis)
-     or coalesce((select balance from public.reputation_balance where player_id = v_pl), 0) - v_rep <> public.wc_int('rep_built')
+     -- 0411: a ship built also raises Shipbuilding, and each level it crosses gives its own Reputation (kind level, key level:shipbuilding:<L>): the
+     -- balance rose by rep_built and by exactly those gifts, and by nothing else
+     or coalesce((select balance from public.reputation_balance where player_id = v_pl), 0) - v_rep
+        <> public.wc_int('rep_built') + coalesce((select sum(k.delta) from public.reputation_book k
+                                                    where k.player_id = v_pl and k.kind = 'level' and k.key like 'level:shipbuilding:%'), 0)
      or (select k.delta from public.reputation_book k where k.player_id = v_pl and k.key = 'built:' || v_ship) is distinct from public.wc_int('rep_built')
      or coalesce((select sum(tf.ducats) from public.treasury_flows tf where tf.port_id = v_lis and tf.player_id = v_pl and tf.kind = 'BUILD'), 0) - v_flow <> v_labour then
     raise exception 'PROOF 61 FAILED: the build did not pay the labour, empty the storage and the parts, make 2 ships and book rep_built: %', v_r;
