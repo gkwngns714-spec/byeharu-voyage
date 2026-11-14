@@ -1,6 +1,9 @@
 import { test, expect, type CDPSession, type Page } from '@playwright/test'
 import { ready, reachable } from './appReady.fixture'
-import { GAME_CLOCK_RATE } from '../src/lib/format/time'
+import { gameClockRate } from '../src/lib/format/time'
+
+/** The game clock's rate as the served clock has it (lib/format: 24 since 0413, a game day an hour). */
+const GAME_CLOCK_RATE = gameClockRate()
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE DAYLIGHT MASK IS STILL WHEN NOTHING ON IT MOVED (2026-10-19, docs/dev-log/2026-10-19-daylight-raster.md).

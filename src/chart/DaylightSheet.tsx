@@ -79,8 +79,9 @@ function sunLonNow(): number {
 // 18.8/255 per degree — and a degree of longitude moves the elevation by at most a degree. A mask
 // that lags the Sun by 0.1° is therefore at most 1.9/255 off anywhere on the glass, even where the
 // day and night pictures differ by the full 255; measured on the opening view against the build
-// before it at the worst lag, 3/255 at most. The Sun travels 0.5° a real second (a game day is 12 minutes),
-// so the mask moves ~5 times a second instead of 60–144. A pan or a zoom (a new FRAME) is always
+// before it at the worst lag, 3/255 at most. The Sun travels 360° a game day, and a game day is what the
+// server's clock says it is (lib/format `clockDayMs()`: one real hour since 0413, 0.1° a real second; 12 minutes
+// and 0.5° before it), so the mask moves about once a second instead of 60–144 times. A pan or a zoom (a new FRAME) is always
 // placed at once, exactly, before the browser paints it.
 const GLIDE_STEP_DEG = 0.1
 

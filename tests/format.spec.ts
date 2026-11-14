@@ -8,7 +8,14 @@ import { test, expect } from '@playwright/test'
 import {
   COIN,
   MINUS,
-  REAL_MS_PER_VOYAGE_DAY,
+  clockDayMs,
+  formatGameClock,
+  gameClockDays,
+  gameClockRate,
+  gameSunInstantMs,
+  gameTimeOfDayMs,
+  realMsPerVoyageDay,
+  setServedClock,
   TIME_COMPRESSION,
   formatClock,
   formatCountdown,
@@ -116,23 +123,71 @@ test('percentages: fractions and already-in-points both have a formatter, and th
   expect(formatPctDelta(-0.135)).toBe(`${MINUS}13%`)
 })
 
-test('the compression constant is 960 and one voyage-day is ninety real seconds (D.1, 0100)', () => {
-  // Pin moved deliberately TWICE. 2026-08-24, migration 0045: 480 -> 9600, "the world runs twenty
-  // times faster", for testing. 2026-10-11, migration 0100: 9600 -> 960, the owner handing that
-  // testing speed back — "change the speed of the ship at least 10 times slower". The client mirror
-  // moves WITH the served knob, and rpc.surface.spec asserts the two are equal, so neither can move
-  // alone again.
-  expect(TIME_COMPRESSION).toBe(960)
-  expect(REAL_MS_PER_VOYAGE_DAY).toBe(90_000)
-  expect(voyageDaysToRealMs(1)).toBe(90 * 1000)
-  expect(realMsToVoyageDays(90_000)).toBe(1)
+test('the served clock is the one authority: 192 before a snapshot, a voyage-day 450 real seconds, a game day one hour (D.1, 0413)', () => {
+  // Pin moved deliberately THREE times. 2026-08-24, 0045: 480 -> 9600 for testing. 2026-10-11, 0100: 9600 -> 960.
+  // 2026-11-14, 0413: 960 -> 192, the owner: "change the game day - 1 hour". The constant is only what is assumed
+  // before the first snapshot (rpc.surface.spec asserts it equals the served knob); every figure follows what
+  // `setServedClock` was given, so a served rate is never retyped here.
+  setServedClock(null)
+  expect(TIME_COMPRESSION).toBe(192)
+  expect(realMsPerVoyageDay()).toBe(86_400_000 / TIME_COMPRESSION)
+  expect(realMsPerVoyageDay()).toBe(450_000)
+  expect(clockDayMs()).toBe(3_600_000)
+  expect(gameClockRate()).toBe(24)
+  expect(voyageDaysToRealMs(1)).toBe(450_000)
+  expect(realMsToVoyageDays(450_000)).toBe(1)
+  // the served rate wins over the constant, whatever it is: the clock as it was before 0413
+  setServedClock({ time_compression: 960 })
+  expect(realMsPerVoyageDay()).toBe(90_000)
+  expect(clockDayMs()).toBe(720_000)
+  expect(gameClockRate()).toBe(120)
+  // a field the server does not send keeps its default; rubbish is not a rate
+  setServedClock({ time_compression: 0, clock_voyage_days: null, clock_anchor: {} })
+  expect(realMsPerVoyageDay()).toBe(450_000)
+  expect(gameClockDays(0)).toBe(null)
+  setServedClock(null)
+})
+
+test('0413: from the anchor the date and the hour are one clock, an hour a day, and neither jumps at the switch', () => {
+  const DAY_MS = 24 * 60 * 60 * 1000
+  const at = Date.UTC(2026, 10, 14, 10, 0, 10)
+  // before the switch: the clock as the client drew it at 960 (the date a day per 2,880 s, the hour hand at 120x)
+  setServedClock({ time_compression: 960 })
+  const dateBefore = formatGameToday(at)
+  const hourBefore = gameTimeOfDayMs(at)
+  const sunBefore = gameSunInstantMs(at)
+  // what public.clock_set writes at that instant (proof 110 asserts the same figure from the SQL): whole days = the date, fraction = the hour
+  const day = Math.floor((at - CALENDAR_EPOCH_MS) / 2_880_000) + hourBefore / DAY_MS
+  expect(day).toBeCloseTo(2652.01388889, 7)
+  setServedClock({ time_compression: 192, clock_voyage_days: 8, clock_anchor: { at: new Date(at).toISOString(), day } })
+  expect(formatGameToday(at)).toBe(dateBefore)
+  expect(Math.abs(gameTimeOfDayMs(at) - hourBefore)).toBeLessThan(1)
+  expect(Math.abs(gameSunInstantMs(at) - sunBefore)).toBeLessThan(1)
+  // one real hour is one day of it; the date turns as the hour passes midnight, and at no other time
+  expect(gameClockDays(at + 3_600_000)! - gameClockDays(at)!).toBeCloseTo(1, 9)
+  const toMidnight = (1 - (day % 1)) * 3_600_000
+  expect(formatGameToday(at + toMidnight - 1000)).toBe(dateBefore)
+  expect(formatGameClock(at + toMidnight - 1000)).toBe('23:59')
+  expect(formatGameToday(at + toMidnight + 1000)).not.toBe(dateBefore)
+  expect(formatGameClock(at + toMidnight + 1000)).toBe('00:00')
+  // thirty of its days are a month and twelve months a year, every day of a month counted once
+  const d0 = Math.floor(day) + 1
+  const start = at + (d0 - day) * 3_600_000 + 1000
+  const seen = new Set<string>()
+  for (let i = 0; i < 360; i++) seen.add(formatGameToday(start + i * 3_600_000))
+  expect(seen.size).toBe(360)
+  expect(gameToday(start + 360 * 3_600_000).year).toBe(gameToday(start).year + 1)
+  expect(gameDayOfMonth(gameToday(start + 360 * 3_600_000))).toBe(gameDayOfMonth(gameToday(start)))
+  setServedClock(null)
 })
 
 test('B.3 worked distances reproduce their real times at the 0100 clock', () => {
   // The B.3 table was published at compression 480, read at 9600 under 0045, and reads at 960 now
   // (0100). THE VOYAGE-DAYS NEVER MOVE — a passage is the same passage; only its real-time twin
   // follows the knob, which is the whole reason the two clocks are printed together (D.3).
-  // Lisboa -> Cadiz, 188 nm at 5 kn = 1.567 voyage-days = 2.4 min real.
+  // Lisboa -> Cadiz, 188 nm at 5 kn = 1.567 voyage-days = 2.4 min real. The table is read at the rate it was
+  // written at (960, served); at the 192 of 0413 the same passages take five times as long.
+  setServedClock({ time_compression: 960 })
   const days = 188 / 5 / 24
   expect(formatRealDuration(voyageDaysToRealMs(days))).toBe('2.4 min')
   // Cadiz -> Havana, 3,944 nm at 5 kn = 32.9 days = 49.3 min.
@@ -140,6 +195,8 @@ test('B.3 worked distances reproduce their real times at the 0100 clock', () => 
   // Lisboa -> Malaca, 11,736 nm at 5 kn = 97.8 days = 2 h 27 min — an ocean crossing you leave and
   // come back to, which is what an idle trade sim is for.
   expect(formatRealDuration(voyageDaysToRealMs(11736 / 5 / 24))).toBe('2 h 27 min')
+  setServedClock(null)
+  expect(voyageDaysToRealMs(days)).toBe(5 * days * 90_000)
 })
 
 test('durations have a long form and a table-cell form', () => {
@@ -152,7 +209,10 @@ test('durations have a long form and a table-cell form', () => {
 })
 
 test('the two clocks are printed together, because one of them is a lie on its own (D.3)', () => {
+  setServedClock({ time_compression: 960 })
   expect(formatTwoClocks(1.567)).toBe('1.6 voyage-days · 2.4 min real')
+  setServedClock(null)
+  expect(formatTwoClocks(1.567)).toBe('1.6 voyage-days · 11.8 min real')
   // Pin moved deliberately 2026-08-22: "9.4 d" collided with formatDucats' "8,000 d." — one
   // letter, two units, side by side on two screens. The word is spelled now.
   expect(formatVoyageDays(9.44)).toBe('9.4 days')
@@ -202,7 +262,8 @@ test('0317: a real day number prints as its UTC date', () => {
   expect(formatRealDay(0)).toBe('01-01')
 })
 
-test('the world’s date is the CALENDAR clock’s (row 176)', () => {
+test('the world’s date is the CALENDAR clock’s where no anchor is served: the clock before 0413 (row 176)', () => {
+  setServedClock(null)
   // The owner, 2026-10-20: *"I want to see the date, year, months and so on."* The date printed is
   // the calendar clock's — one game month per real day — which makes a day of it 2,880 real seconds.
   // These hold the rate, the epoch and the ROLLOVER instant. Since 2026-10-30 the server's game day

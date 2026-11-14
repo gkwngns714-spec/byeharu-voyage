@@ -197,9 +197,16 @@ export interface SnapshotShipClass {
 
 /** The allow-listed knobs. `world_secret` is NOT among them and 0009 asserts that by value. */
 export interface SnapshotConfig {
-  /** THE VOYAGE CLOCK (DESIGN D.1). 480, so a voyage-day is 86_400 / 480 real seconds. It governs
-   *  sailing, provisions, wages and hazard checkpoints — everything `formatVoyageDays` prints. */
+  /** THE CLOCK'S ONE RATE (DESIGN D.1): 192 since 0413, so a voyage-day is 86_400 / 192 = 450 real
+   *  seconds. It governs sailing, provisions, wages and hazard checkpoints: everything
+   *  `formatVoyageDays` prints. Read through lib/format `setServedClock`, never retyped. */
   time_compression: number
+  /** 0413: a day of the game's clock (the top bar's date and hour, the Sun) is this many voyage-days
+   *  (8): 86_400 x this / time_compression real seconds, one hour. Absent before 0413. */
+  clock_voyage_days?: number
+  /** 0413: where the game's clock stood when its rate last moved (public.clock_set): `day` is days
+   *  since 1 January 1500 with the hour as its fraction, at the instant `at`. `{}` or absent: none. */
+  clock_anchor?: { at?: string; day?: number; was?: number; is?: number } | null
   /** THE CALENDAR CLOCK (DESIGN D.1), served from 0028. How many REAL seconds one game-day is, the
    *  market's tick: 60 since 2026-10-30. It governs the daily trade cap and stock regeneration. A
    *  figure a person reads as a day is a REAL day and never comes from this (0312, 0317).
@@ -1964,7 +1971,8 @@ export interface ReputationCard {
 
 /** 0356 — one level crossing as `public.level_marks_settle` paid it: the `LEVEL_UP` event's payload, and a row of `cmd.level_up`'s answer. */
 export interface LevelCrossing {
-  track: 'trading' | 'exploration' | 'combat'
+  /** A level's code (`public.level_skills`): trading, exploration, combat, and since 0411 the levels raised by doing. */
+  track: string
   level: number
   /** The Reputation the crossing booked (0 while the gift is off). */
   reputation: number
@@ -4157,12 +4165,62 @@ export interface LevelCut {
   next_at: number | null
 }
 
+/** 0411: one thing that raises a level, as `public.level_activity_terms` reads it: `xp` experience for every `per` units of `unit`.
+ *  `most`: at most this much a grant. `once`: paid once ever for its thing. `at_gain`: only when it made a gain.
+ *  `voyage_nm`: only on a voyage of at least this many miles into a port. `word` is the server's English sentence. */
+export interface LevelActivity {
+  code: string
+  word: string
+  unit: 'each' | 'ducats' | 'nm' | 'day'
+  xp: number
+  per: number
+  most: number | null
+  once: boolean
+  at_gain: boolean
+  voyage_nm: number | null
+}
+
+/** 0411: what a level gives, read from the rule that applies it (`public.level_benefits`). `level` null = every level.
+ *  gift: `n` x the level in Reputation. captain_cap: her captains' level in this track may rise to hers. promote: a captain's
+ *  promotion to `grade` asks this level. fleet: one more fleet. title: the title `name`, held with `with` at the same level; `opens` the seas it opens. */
+export type LevelBenefit =
+  | { level: null; kind: 'gift'; n: number }
+  | { level: null; kind: 'captain_cap' }
+  | { level: number; kind: 'promote'; grade: string }
+  | { level: number; kind: 'fleet' }
+  | { level: number; kind: 'title'; name: string; with: string; opens: string[] }
+
+/** 0411: one level of the company on the Levels page. `kept` record: counted by `public.player_progress` from her whole record
+ *  (Trading, Exploration, Combat: no grant rows, `today`, `cap` and `recent` are null). `kept` book: granted by doing
+ *  (`public.level_grant`), at most `cap` a day. `counted` false: nothing raises it now (combat while it is not playable; the switch off). */
+export interface LevelSkill extends LevelCut {
+  code: string
+  word: string
+  kept: 'record' | 'book'
+  counted: boolean
+  today: number | null
+  cap: number | null
+  activities: LevelActivity[]
+  benefits: LevelBenefit[]
+  recent: Array<{ activity: string; xp: number; at: string }> | null
+}
+
+/** 0411: `public.level_skills_card`. `curve[L - 1]` is the experience at which level L begins, up to `top`. */
+export interface LevelSkillsCard {
+  on: boolean
+  top: number
+  curve: number[]
+  skills: LevelSkill[]
+}
+
 /** 0325: `world.levels()`. `bite` is levels_bite: false means a hull's or a captain's level changes no stat, slot or bonus yet. */
 export type LevelsView =
   | { company: false }
   | {
       company: true
       bite: boolean
+      /** 0411: every level of the company, raised by doing: the page's tiles, the experience table, activities and benefits. */
+      level_skills: LevelSkillsCard
       tracks: {
         trading: LevelCut & { turnover: number }
         exploration: LevelCut & { ports_reached: number; nm_sailed: number }
