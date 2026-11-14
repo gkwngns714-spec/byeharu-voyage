@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { GLYPH, portMarkScale, portStrokeWidth } from '../src/chart'
 import { ready, reachable } from './appReady.fixture'
-import { GAME_CLOCK_RATE } from '../src/lib/format/time'
+import { clockDayMs } from '../src/lib/format/time'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE CHART'S INK — how far land is from water, and how loud a great port is beside a small one.
@@ -301,7 +301,7 @@ test.describe('land reads as land at 390px', () => {
 
     // ── THE PAINTED GLASS, WITH THE SUN HELD (the pixels, not the tokens) ────────────────────────────────────────────
     // Everything above reads a token off the element that wears it. This reads the picture: the Sun is put on the far
-    // side of the world from the middle of the glass (the game clock is real time at GAME_CLOCK_RATE, and local mode's
+    // side of the world from the middle of the glass (the game clock runs a day per `clockDayMs()` from the served anchor, and local mode's
     // serverNow() is Date.now(), so Playwright's clock holds it), the glass is photographed, and its DARK pixels are
     // measured. A sea, a sheet or an overlay that paints the night black again fails here whatever its
     // token says. Then the Sun is put overhead and the same glass must be clearly lighter.
@@ -310,12 +310,17 @@ test.describe('land reads as land at 390px', () => {
       const [x, , w] = (svg.getAttribute('viewBox') ?? '').split(/[\s,]+/).map(Number)
       return x + w / 2
     })
-    const gameDayMs = (24 * 60 * 60 * 1000) / GAME_CLOCK_RATE
+    const gameDayMs = clockDayMs()
     const holdSunOver = async (lon: number) => {
-      // The Sun stands over longitude 0 at the game's noon and goes west 360 degrees a game day.
-      const dayFraction = (((0.5 - lon / 360) % 1) + 1) % 1
+      // The Sun stands over longitude 0 at the game's noon and goes west 360 degrees a game day. Where the clock stands
+      // now is read off the top bar (its hour is the Sun's, lib/format gameTimeOfDayMs; since 0413 it counts from the
+      // served anchor, not from the Unix epoch), and the glass's clock is put forward to the hour wanted.
+      const want = (((0.5 - lon / 360) % 1) + 1) % 1
+      const [h, m] = ((await page.getByTestId('game-clock').textContent()) ?? '').split(':').map(Number)
+      expect(Number.isFinite(h) && Number.isFinite(m), 'the top bar shows the game clock').toBe(true)
+      const have = (h * 60 + m + 0.5) / 1440
       const now = await page.evaluate(() => Date.now())
-      await page.clock.setFixedTime(Math.floor(now / gameDayMs) * gameDayMs + dayFraction * gameDayMs)
+      await page.clock.setFixedTime(now + ((((want - have) % 1) + 1) % 1) * gameDayMs)
       await page.waitForTimeout(1500) // the glide re-places the mask on its next frames (DaylightSheet.tsx)
     }
     /** WCAG luminance of the glass's pixels: the 10th percentile (its dark end) and the median. */

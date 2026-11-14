@@ -197,9 +197,16 @@ export interface SnapshotShipClass {
 
 /** The allow-listed knobs. `world_secret` is NOT among them and 0009 asserts that by value. */
 export interface SnapshotConfig {
-  /** THE VOYAGE CLOCK (DESIGN D.1). 480, so a voyage-day is 86_400 / 480 real seconds. It governs
-   *  sailing, provisions, wages and hazard checkpoints — everything `formatVoyageDays` prints. */
+  /** THE CLOCK'S ONE RATE (DESIGN D.1): 192 since 0413, so a voyage-day is 86_400 / 192 = 450 real
+   *  seconds. It governs sailing, provisions, wages and hazard checkpoints: everything
+   *  `formatVoyageDays` prints. Read through lib/format `setServedClock`, never retyped. */
   time_compression: number
+  /** 0413: a day of the game's clock (the top bar's date and hour, the Sun) is this many voyage-days
+   *  (8): 86_400 x this / time_compression real seconds, one hour. Absent before 0413. */
+  clock_voyage_days?: number
+  /** 0413: where the game's clock stood when its rate last moved (public.clock_set): `day` is days
+   *  since 1 January 1500 with the hour as its fraction, at the instant `at`. `{}` or absent: none. */
+  clock_anchor?: { at?: string; day?: number; was?: number; is?: number } | null
   /** THE CALENDAR CLOCK (DESIGN D.1), served from 0028. How many REAL seconds one game-day is, the
    *  market's tick: 60 since 2026-10-30. It governs the daily trade cap and stock regeneration. A
    *  figure a person reads as a day is a REAL day and never comes from this (0312, 0317).
@@ -2785,6 +2792,10 @@ export interface PirateShipCard {
   fleet: { id: string; name: string; status: FleetStatus; port: string | null }
   nation_code: string | null
   home: string
+  /** 0414: a roster fleet's name in Korean, and her house's two names; null for one of 0339's lone ships. Names are data, shown whole. */
+  name_ko?: string | null
+  house?: string | null
+  house_ko?: string | null
   haunt: string | null
   /** HOME: at or bound for her home; CRUISE: out on her sea. Each has its word, `map.mission_*`. */
   mission: 'HOME' | 'CRUISE'

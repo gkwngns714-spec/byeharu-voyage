@@ -7,7 +7,7 @@ import { portNameOf, useWorld } from './worldStore'
 import { PirateHull } from './CargoHull'
 import { AttackSection } from './AttackSection'
 import { HullCountry } from './HullCountry'
-import { useT } from '../lib/i18n'
+import { useLocale, useT } from '../lib/i18n'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE PIRATE SHIP SHEET — one ship of the Brethren (0339, docs/WORLD_POWERS.md Part 5). Read-only, but for Attack.
@@ -31,6 +31,7 @@ export function PirateSheet({
   mode?: 'docked' | 'side'
 }) {
   const t = useT()
+  const locale = useLocale()
   const [detent, setDetent] = useState<TrayDetent>('peek')
   return (
     <Tray
@@ -43,7 +44,7 @@ export function PirateSheet({
             card ? (
               <span className="inline-flex max-w-full items-center gap-1.5" data-testid="pirate-sheet-flag">
                 <HullCountry nation={card.nation_code} compact size="title" />
-                <Clip>{card.fleet.name}</Clip>
+                <Clip>{locale === 'ko' && card.name_ko ? card.name_ko : card.fleet.name}</Clip>
               </span>
             ) : (
               '…'

@@ -27,6 +27,10 @@
 -- @pass PIR_MONEY       W (purses + companies + funds aboard) is unchanged to the ducat across everything above
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════
 
+-- 0413 (a game day lasts one hour): this proof's instants and amounts are written on the clock as it was before 0413 (the length of a market day, a drift
+-- slot and a population step; the drift job's spread; the rates per real day). So the rate is moved back through its one door, public.clock_set, and the
+-- anchors are emptied, inside this proof's own rolled-back transaction. What 0413 itself does is proof 110's.
+do $c$ begin perform public.clock_set(960, now()); update public.world_config set value = '{}'::jsonb where key in ('clock_anchor', 'market_clock_anchor'); end $c$;
 create function pg_temp.w_46() returns numeric language sql as $b$
   select (select coalesce(sum(public.treasury_balance(t.port_id)), 0) from public.port_treasury t)::numeric
        + (select coalesce(sum(p.ducats), 0) from public.players p)::numeric + public.funds_aboard()::numeric
@@ -145,6 +149,10 @@ declare
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'npc_traders_enabled', 'standing_routes_enabled', 'combat_bite');
   update public.world_config set value = 'false'::jsonb where key in ('npc_refits_enabled', 'navy_enabled', 'pirates_bite', 'attack_enabled');
+  -- 0414: this proof is of 0339's lone ships and their arithmetic: the roster's fleets, the pirates' own pace and the wider day's room are proof 106's
+  delete from public.pirate_roster;
+  update public.world_config set value = to_jsonb(0.005) where key = 'pirate_spend_day_pct';
+  update public.world_config set value = to_jsonb(1440) where key = 'pirate_add_minutes';
   insert into public.port_treasury (port_id) select p.id from public.ports p where p.kind = 'HARBOUR' on conflict (port_id) do nothing;
   update public.port_treasury set ducats = 0, reserve = 0;
   update public.ports p set crew_pool = 500;
@@ -619,10 +627,17 @@ begin
   update public.fleets f set status = 'UNABLE_TO_SAIL', ready_at = null where f.id = v_her;
   v_mark := coalesce((select max(id) from public.treasury_flows), 0);
   v_s := public.pirate_ship_step(v_her, v_t + interval '12 hours');
-  v_a := (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT' and f.port_id = v_por);
-  perform public.npc_refit_step(v_her, v_t + interval '12 hours');
+  -- 0414: a pirate wreck is her own step's (public.pirate_reborn): 0322's hourly step leaves her, she lies pirate_respawn_minutes, and then her home pays (here Port Royal, through the hoard's payer)
+  if v_s <> 'WRECK' or public.npc_refit_step(v_her, v_t + interval '12 hours') <> 'NOT_A_WRECK'
+     or exists (select 1 from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') then
+    raise exception 'PROOF 46 FAIL: refits lit, a fresh pirate wreck was paid for at once or by 0322''s step: %', v_s;
+  end if;
+  -- 0415: her house may hold a purse now (the pirate cities' gift, public.pirate_gift_hour) and a house with a purse pays her own refit first (0409's order); this arm is the HOME paying, so the purse goes back to the city it came from
+  perform public.pay_city(pl.id, v_por, 'TAX', pl.ducats) from public.players pl where pl.id = (select f.player_id from public.fleets f where f.id = v_her) and pl.ducats > 0;
+  v_s := public.pirate_ship_step(v_her, v_t + interval '13 hours 1 minute');
   v_a := (select coalesce(-sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT' and f.port_id = v_por);
-  if v_s <> 'WRECK' or v_a <= 0 or (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') <> 0 then
+  if v_s <> 'REBORN' or v_a <= 0 or (select coalesce(sum(f.ducats), 0) from public.treasury_flows f where f.id > v_mark and f.kind = 'REFIT') <> 0
+     or exists (select 1 from public.ships s where s.fleet_id = v_her and s.durability <= 0) then
     raise exception 'PROOF 46 FAIL: refits lit, her home did not pay the refit, moved: % (% d.)', v_s, v_a;
   end if;
   update public.world_config set value = 'false'::jsonb where key = 'npc_refits_enabled';

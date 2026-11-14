@@ -91,6 +91,7 @@ import { navFromServed, type SeaNav } from '../lib/sea'
 import { registerHullClasses } from '../chart'
 import { msUntilEdge, peekResource, readResource, SESSION_MS } from '../store/resourceCache'
 import { READ_MAX_MS, readIntervalMs } from '../domain/readClock'
+import { setServedClock } from '../lib/format'
 import { whereabouts } from '../domain/fleet'
 import { mergeRoster, readSavedRoster, rosterKey, savedRosterText, trafficRowAt } from './seaRoster'
 import { namedMarket, namedSnapshot } from './worldNames'
@@ -359,6 +360,7 @@ const servedMarkets = new Map<string, MarketView>()
 
 /** The snapshot in the viewer's language, and the lookups built once from it. */
 function snapshotLookups(served: WorldSnapshot) {
+  setServedClock(served.config)   // 0413: the clock's rate, ratio and anchor, into their one authority (lib/format/time.ts)
   const snapshot = namedSnapshot(served, getLocale())
   const portByCode: Record<string, SnapshotPort> = {}
   const portById: Record<string, SnapshotPort> = {}

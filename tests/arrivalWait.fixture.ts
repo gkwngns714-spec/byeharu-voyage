@@ -25,10 +25,15 @@
 // message says she lies in port).
 //
 // tests/trade.flow.spec.ts (PR #600) carries its own `LANDS_WITHIN_MS = 480_000`: it should import this one after it merges.
+//
+// 0413 (2026-11-14, a game day is one real hour): `time_compression` is 192 and a voyage-day 450 real seconds, so
+// every real-time figure above is five times as long (a near trip 45 s; one calm 450 to 1,800 s). The wait below is
+// still ten voyage-days, read from the clock's one authority (src/lib/format/time.ts), not retyped.
 import { expect, type Locator, type Page } from '@playwright/test'
+import { realMsPerVoyageDay } from '../src/lib/format/time'
 
-/** A voyage-day in real milliseconds (`time_compression` 960). */
-export const VOYAGE_DAY_MS = 90_000
+/** A voyage-day in real milliseconds, at the rate the clock's authority assumes before a snapshot (the served `time_compression`). */
+export const VOYAGE_DAY_MS = realMsPerVoyageDay()
 
 /** How long a near trip may take to land: ten voyage-days (see the arithmetic above). */
 export const LANDS_WITHIN_MS = 10 * VOYAGE_DAY_MS
