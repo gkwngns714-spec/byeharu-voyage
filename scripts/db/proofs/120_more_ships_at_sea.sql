@@ -199,6 +199,9 @@ declare
   v_room bigint;
   v_r2   jsonb;
 begin
+  -- 0425 moved a load to 250,000 and 20 a run (proof 126): this scene proves 0423's rule as written, so it pins 0423's values
+  update public.world_config set value = to_jsonb(1000000) where key = 'convoy_load_max';
+  update public.world_config set value = to_jsonb(10) where key = 'convoy_loads_per_run';
   v_cap := public.realm_capital(v_nat);
   for v_i in 1 .. 4 loop
     perform public.tick_cargo_ships(now(), v_nat);
