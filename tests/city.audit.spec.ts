@@ -28,7 +28,9 @@ import { ready, reachable, settled } from './appReady.fixture'
 // and 320×568 for the hall in BOTH fold states, with the state that fits and the state that
 // scrolls printed.
 
-const EXPECTED_RAIL = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
+/** The phone's bar; from `lg` the rail carries You and Stats as their own cells (owner, 2026-11-14; navTabs.ts `navCells`). */
+const EXPECTED_BAR = ['HQ', 'Trade', 'Fleets', 'Map', 'Menu']
+const EXPECTED_WIDE_RAIL = ['HQ', 'Trade', 'Fleets', 'Map', 'You', 'Stats', 'Menu']
 const SIZES = [
   { width: 390, height: 844 },
   { width: 1280, height: 800 },
@@ -144,7 +146,7 @@ for (const size of SIZES) {
       .locator('[data-testid^="nav-cell-"]')
       .evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)))
     console.log(`AUDIT @${size.width} rail: ${rail.join(' · ')} heights ${cells.join(', ')}`)
-    expect(rail, 'the City rail is not the one tab table').toEqual(EXPECTED_RAIL)
+    expect(rail, 'the City rail is not the one tab table').toEqual(size.width >= 1024 ? EXPECTED_WIDE_RAIL : EXPECTED_BAR)
     expect(Math.min(...cells), 'a City rail cell is under 44 px').toBeGreaterThanOrEqual(44)
 
     // THE FRAME NEVER MOVES; THE PLAN STAYS LEFT; ONLY ITS MARK AND THE RIGHT PANEL CHANGE.
