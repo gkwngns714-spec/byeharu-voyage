@@ -1,4 +1,6 @@
--- scene-sail.sql: AFTER 0409, lit: the pirates' own job adds roster fleets and each sails from her hub for a haunt; one is wrecked at her haunt and comes home. Run by probe.mjs (rolled back).
+-- scene-sail.sql: AFTER 0414, lit: the pirates' own job adds roster fleets and each sails from her hub for a haunt; one is wrecked at her haunt and comes home. Run by probe.mjs (rolled back).
+-- LOCAL SCENE (tests/harness.guard.spec.ts): it writes; the guard refuses anywhere but the local PGlite world.
+do $$ begin if inet_server_addr() is not null then raise exception 'local PGlite world only: this scene writes'; end if; end $$;
 do $s$
 declare
   v_now timestamptz := now();

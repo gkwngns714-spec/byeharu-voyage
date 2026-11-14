@@ -24,7 +24,7 @@ do $$
 begin
   update public.world_config set value = 'true'::jsonb where key in ('city_treasury_enabled', 'economy_closed', 'convoys_enabled', 'combat_bite');
   update public.world_config set value = 'false'::jsonb where key in ('attack_enabled', 'navy_enabled', 'pirates_bite', 'regard_enabled', 'npc_refits_enabled');
-  -- 0409: this proof is of 0339's lone ships and their arithmetic: the roster's fleets, the pirates' own pace and the wider day's room are proof 106's
+  -- 0414: this proof is of 0339's lone ships and their arithmetic: the roster's fleets, the pirates' own pace and the wider day's room are proof 106's
   delete from public.pirate_roster;
   update public.world_config set value = to_jsonb(0.005) where key = 'pirate_spend_day_pct';
   update public.world_config set value = to_jsonb(1440) where key = 'pirate_add_minutes';
@@ -690,7 +690,7 @@ begin
   if pg_temp.purses() <> v_w then
     raise exception 'PROOF 48 FAIL: the sinking moved gold';
   end if;
-  -- her home pays her refit, moved: since 0409 by her own step (public.pirate_reborn), an hour after she was brought home; 0322's hourly step leaves her
+  -- her home pays her refit, moved: since 0414 by her own step (public.pirate_reborn), an hour after she was brought home; 0322's hourly step leaves her
   v_yard := public.refit_yard(v_por);
   v_yard0 := public.treasury_balance(v_yard);
   if public.npc_refit_step(p, v_t + interval '2 seconds') <> 'NOT_A_WRECK' or public.pirate_ship_step(p, v_t + interval '2 seconds') <> 'WRECK' then

@@ -12,7 +12,7 @@
 -- @pass BRETHREN_NO_NAVY    navy lit: navy_read writes the ten and not the pirates; navy_plan_step plans no station for them and still plans another realm's
 -- @pass BRETHREN_DOORS      pirates_joinable false: found_house and change_country refuse PIR (E_MINOR_POWER, the fixes name the ten), a minor is refused alike, a great power is let in; true: PIR is let in at Port Royal, paid by Port Royal
 -- @pass BRETHREN_SNAPSHOT   world.snapshot serves great for 11 and joinable for 10 (PIR great, not joinable); the four homes fly PIR with tax 0
--- @pass BRETHREN_BOARDS     the Countries board lists 11 (The Brethren: 4 homes, and since 0409 the five ocean havens held beside them: 9 held, 4 home, 5 won); the Levels regard list names the ten crowns and not the pirates
+-- @pass BRETHREN_BOARDS     the Countries board lists 11 (The Brethren: 4 homes, and since 0414 the five ocean havens held beside them: 9 held, 4 home, 5 won); the Levels regard list names the ten crowns and not the pirates
 -- @pass BRETHREN_GUARD      the home guard is enabled and bites: a pirate home cannot stop being home
 -- @pass BRETHREN_INFLUENCE  a foreign point in a pirate home does not move the flag, makes no mayor, and reads as war to the population signal; the daily count decays it as it decays any
 -- @pass BRETHREN_MONEY      W (purses + companies + funds aboard) is unchanged to the ducat across every quote, crown run, cargo run, navy run and board above, and across a company founded under the pirates (moved from Port Royal)
@@ -80,7 +80,7 @@ begin
   exception when unique_violation then null;
   end;
   if (select array_agg(p.code order by p.code) from public.port_allegiance a join public.ports p on p.id = a.port_id where a.home and a.nation_id = v_pir) <> (select array_agg(c order by c) from unnest(c_homes) c)
-     or (select count(*) from public.port_allegiance a where a.nation_id = v_pir and not exists (select 1 from public.pirate_hubs hb where hb.port_id = a.port_id)) <> 4   -- 0409: the pirates also hold their five ocean havens (public.pirate_hubs), which are not homes
+     or (select count(*) from public.port_allegiance a where a.nation_id = v_pir and not exists (select 1 from public.pirate_hubs hb where hb.port_id = a.port_id)) <> 4   -- 0414: the pirates also hold their five ocean havens (public.pirate_hubs), which are not homes
      or (select count(*) from public.power_relations r where (r.a = v_pir or r.b = v_pir) and r.stance = 'war') <> 10
      or (select count(*) from public.great_powers g where g.nation_id <> v_pir and public.power_stance(v_pir, g.nation_id) = 'war') <> 10 then
     raise exception 'PROOF 45 FAIL: the homes or the ten wars are not as the plan says';
@@ -293,7 +293,7 @@ begin
   v_x := world.nation_standings() -> 'countries';
   select e into v_r from jsonb_array_elements(v_x) e where e ->> 'nation' = 'PIR';
   if jsonb_array_length(v_x) <> 11 or (v_r ->> 'held')::int <> 4 + (select count(*) from public.pirate_hubs) or (v_r ->> 'home')::int <> 4
-     or (v_r ->> 'won')::int <> (select count(*) from public.pirate_hubs) then   -- 0409: the five ocean havens are held and are not homes, so the board counts them as won
+     or (v_r ->> 'won')::int <> (select count(*) from public.pirate_hubs) then   -- 0414: the five ocean havens are held and are not homes, so the board counts them as won
     raise exception 'PROOF 45 FAIL: the Countries board lists % countries, The Brethren %', jsonb_array_length(v_x), v_r;
   end if;
   update public.world_config set value = 'true'::jsonb where key = 'regard_enabled';

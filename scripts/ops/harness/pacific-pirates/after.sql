@@ -1,4 +1,4 @@
--- after.sql: READ-ONLY, after 0409 (at once, then every hour of the first day). Wanted: head 20260818000409; five hubs; the roster 108 fleets; `built` rising toward 108;
+-- after.sql: READ-ONLY, after 0414 (at once, then every hour of the first day). Wanted: head 20260818000414; five hubs; the roster 108 fleets; `built` rising toward 108;
 -- `stuck` 0 from two hours after the deploy on (THE HEALTH FIGURE: a pirate fleet unable to sail for more than 3 hours); `pressure_over_cap` 0; the beat no slower than before.
 --   npx --yes supabase@2.120.0 db query --linked -f scripts/ops/harness/pacific-pirates/after.sql
 begin transaction read only;

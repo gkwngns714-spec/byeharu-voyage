@@ -1,4 +1,4 @@
-// roster.mjs: THE PIRATES' ROSTER OF 0409, AS DATA. Deterministic: no dice, no clock. One block is ten ships in six fleets:
+// roster.mjs: THE PIRATES' ROSTER OF 0414, AS DATA. Deterministic: no dice, no clock. One block is ten ships in six fleets:
 // three lone small ships, one lone xebec, a pair of xebecs, and a squadron (a lead ship and three xebecs). The pair and the squadron of a
 // hub's FIRST block sail for one house (a house of two fleets); Pitcairn's second block too. Every other fleet is a house of its own.
 export const HUBS = [

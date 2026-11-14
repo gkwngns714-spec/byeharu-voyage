@@ -323,7 +323,7 @@ const PORT_CODES = {
   'lingga': 'LGA',
   'goto': 'GOT',
   'djerba': 'DJE',
-  // 0409 (pacific-pirates, 2026-11-14): the pirates' five ocean havens. Authored free codes, first shipped by 0409; never change one.
+  // 0414 (pacific-pirates, 2026-11-14): the pirates' five ocean havens. Authored free codes, first shipped by 0414; never change one.
   'midway': 'MWY',
   'pitcairn': 'PTC',
   'tristan': 'TDC',

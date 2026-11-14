@@ -1,11 +1,11 @@
-// probe.mjs: 0409 ON THE CACHED HEAD WORLD, each scene in a rolled-back transaction. LOCAL ONLY; not in CI.
+// probe.mjs: 0414 ON THE CACHED HEAD WORLD, each scene in a rolled-back transaction. LOCAL ONLY; not in CI.
 //   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/pacific-pirates/probe.mjs [--guard] [scene.sql ...]
 // It applies the file as the cached world is, then (still inside the transaction) runs each scene file given and prints its notices and last rows.
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { MIGRATIONS_DIR, PREFIX_CACHE_DIR, migrationFiles, preambleVariant } from '../../../db/apply-chain.mjs'
 import { applyWithPrefixCache } from '../../../db/prefix-cache.mjs'
-const NAME = '20260818000409'
+const NAME = '20260818000414'
 const files = []
 let mine = null
 for (const name of await migrationFiles()) {

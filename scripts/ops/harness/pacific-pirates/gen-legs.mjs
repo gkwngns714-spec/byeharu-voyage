@@ -1,7 +1,7 @@
-// gen-legs.mjs: THE SEAS OF EVERY PAIR THAT TOUCHES A HUB OF 0409, as scripts/build-sea-legs.mjs names them (the browser's pathfinder, then the
+// gen-legs.mjs: THE SEAS OF EVERY PAIR THAT TOUCHES A HUB OF 0414, as scripts/build-sea-legs.mjs names them (the browser's pathfinder, then the
 // door's own sampler public.course_zones), for the new pairs only: the pairs of the 249 old harbours are kept as data/sea-legs.json has them.
 // LOCAL ONLY. It restores the cached head world (never from zero), reads its raster and roadsteads, adds the hubs' roadsteads from gen-sea's
-// file, and writes (1) data/sea-legs.json with the five harbours in code order and (2) the rows 0409 embeds ([from, to, "ZONES"]).
+// file, and writes (1) data/sea-legs.json with the five harbours in code order and (2) the rows 0414 embeds ([from, to, "ZONES"]).
 //   BYEHARU_PREFIX_CACHE=required node scripts/ops/harness/pacific-pirates/gen-legs.mjs <sea.json> <out-rows.json>
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'

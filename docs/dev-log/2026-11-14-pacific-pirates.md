@@ -1,4 +1,4 @@
-# 2026-11-14: pirates have homes and grounds (migration 0409)
+# 2026-11-14: pirates have homes and grounds (migration 0414)
 
 ## What the owner ordered, in his words, in order
 
@@ -11,11 +11,11 @@
 7. "make pirate fleets some strong, some weak, with multiple fleets, multiple ships and so on"
 8. Of the seven wrecked pirate ships: "find the root cause, make it so that this problem does not occur again".
 
-## What 0409 does, and what it does NOT do
+## What 0414 does, and what it does NOT do
 
-**In 0409:** the root cause of the wrecks and its fix (8, 5, 6); five hub harbours (2, 3); the roster of 180 ships in 108 fleets, varied (2, 3, 7); respawn at the home city (5); a capped figure for how much a sea's pirates raise its raids (4, the "more aggressively" half).
+**In 0414:** the root cause of the wrecks and its fix (8, 5, 6); five hub harbours (2, 3); the roster of 180 ships in 108 fleets, varied (2, 3, 7); respawn at the home city (5); a capped figure for how much a sea's pirates raise its raids (4, the "more aggressively" half).
 
-**NOT in 0409, and why (said plainly):** the ships of a ground do not trade yet, and a pirate ship's house is not topped up "like before" (4, 6). A pirate ship of 0339 is a house with a purse of 0 and no capital, moved by the pirates' own job; the merchants' planner moves a fleet by a standing route. Making one ship do both needs either the planner to move a pirate ship or the raid rule to name a merchant fleet, and both touch the functions migration 0410 is cutting today (the merchants' planner and lap book). Trading on today's planner would also lose money: 13 of the pirates' 24 merchant houses went broke in one to four days. So the trading half is the next file (0411), to be built on 0410, with the top-up through 0408's rule (which now pays a broke pirate merchant house her full capital from the hoard). Until then a ground ship cruises and raids as every pirate ship does, and her house holds no purse.
+**NOT in 0414, and why (said plainly):** the ships of a ground do not trade yet, and a pirate ship's house is not topped up "like before" (4, 6). A pirate ship of 0339 is a house with a purse of 0 and no capital, moved by the pirates' own job; the merchants' planner moves a fleet by a standing route. Making one ship do both needs either the planner to move a pirate ship or the raid rule to name a merchant fleet, and both touch the functions migration 0410 is cutting today (the merchants' planner and lap book). Trading on today's planner would also lose money: 13 of the pirates' 24 merchant houses went broke in one to four days. So the trading half is the next file (0411), to be built on 0410, with the top-up through 0408's rule (which now pays a broke pirate merchant house her full capital from the hoard). Until then a ground ship cruises and raids as every pirate ship does, and her house holds no purse.
 
 ## The root cause of the wrecks (prod, read-only, 2026-11-14, head 0407)
 
@@ -64,7 +64,7 @@ Not restocked: gear. The game mends hull, crew and stores for an NPC ship; guns 
 
 Real islands, none a harbour before (Bermuda is: St. George's; Flores is 188 nm from Angra, which is no pirate harbour). Each stands on sailable water of the game's raster; the chart has no land for any of them, so each wears an islet (`src/chart/landfall.ts`, 30 to 35 islets).
 
-A data slice as 0338's three: tier 3, four existing goods each, purse 0, no seed, **no money moved by the file**. Generated, not typed: `scripts/ops/harness/pacific-pirates/gen-sea.mjs` (roadsteads, sailed distances to all 267 places, 80 courses to and from the nearest harbours, by the game's grid and pathfinder), `gen-legs.mjs` (the seas of the 2,510 plotted pairs, into `data/sea-legs.json`), `gen-0409.mjs` (the file).
+A data slice as 0338's three: tier 3, four existing goods each, purse 0, no seed, **no money moved by the file**. Generated, not typed: `scripts/ops/harness/pacific-pirates/gen-sea.mjs` (roadsteads, sailed distances to all 267 places, 80 courses to and from the nearest harbours, by the game's grid and pathfinder), `gen-legs.mjs` (the seas of the 2,510 plotted pairs, into `data/sea-legs.json`), `gen-0414.mjs` (the file).
 
 **Decided by default (the owner may reverse any):**
 - They are HELD by the pirates, not homes. A great power has four homes (`docs/INFLUENCE.md` D1; the world guard holds it). So a hub taxes (3 %), its market regenerates, and it can be contested by influence like any city. The Countries board now reads The Brethren 9 held, 4 home, 5 won.
@@ -116,7 +116,7 @@ Hoard 980 M (Port Royal).
 
 No raid odds, damage, flight or loot rule is changed. One thing is: how much pirates in a sea raise that sea's danger.
 
-- **Before 0409:** 0.5 a ship, no cap (`voyage.sea_danger` = authored figure x (1 + pressure), at most 1). Forty fleets in the North Atlantic (authored 0.12) would have made its danger 1: every sailed day a pirate day.
+- **Before 0414:** 0.5 a ship, no cap (`voyage.sea_danger` = authored figure x (1 + pressure), at most 1). Forty fleets in the North Atlantic (authored 0.12) would have made its danger 1: every sailed day a pirate day.
 - **After:** at most `pirate_pressure_max` 1.0: a sea with two or more pirate fleets cruising it has twice its authored danger, never more. The most ever seen before was 1.5 times.
 - **Measured today** (24 h of `voyage_events`): 300 raids, 12.5 an hour in the whole world: merchants 254, cargo ships 33, navy ships 13, players 0 (no player sailed a day in those 24 hours). 0.16 % of sailed days.
 - **Expected after**, if every sea the pirates cruise is at the cap: at most twice, 25 an hour (merchants about 21). The local scene put 40 fleets over 13 seas, 10 of them at the cap.
@@ -147,4 +147,4 @@ Pictures (build machine): `C:\Users\gkwng\dev\pacific-pirates-shots\`: desktop, 
 
 ## Deploy
 
-0409 = 0408 + 1 (it was written as 0410 and renumbered: the merchants' file is 0410 now and deploys after it). Before: `before.sql` (head 0408, hunks true). After: `after.sql` at once and hourly for a day; `health.sql` should read 0 from two hours on. Rollback: `rollback-0409.sql` (a draft); the fast lever is `pirates_bite` false or deleting roster rows.
+0414 = 0413 + 1 (it was written as 0410, renumbered 0409, and renumbered again to 0414 after "the world fits the harbour it has" took 0409 and deployed). Before: `before.sql` (head 0413, hunks true). After: `after.sql` at once and hourly for a day; `health.sql` should read 0 from two hours on. Rollback: `rollback-0414.sql` (a draft); the fast lever is `pirates_bite` false or deleting roster rows.
