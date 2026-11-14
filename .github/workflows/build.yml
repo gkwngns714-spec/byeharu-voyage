@@ -140,6 +140,13 @@ jobs:
           fi
           echo "OK: ${#files[@]} migration(s), all versions unique."
 
+      # THE DATABASE BUDGET (owner, 2026-11-15; docs/DATABASE_BUDGET.md): a migration after 0418 may not set a tiny fixed
+      # autovacuum threshold, create a table with no retention line, add or reschedule a cron job without its rows a run, or set
+      # a fillfactor under 50, without the reasoned line next to it. Here because `build` is the required check that can block a
+      # merge, and bv-deploy.sh refuses a PR whose `build` is not green. A pure spec: it reads files, no browser, about a second.
+      - name: The database budget (tests/db.budget.spec.ts)
+        run: npx playwright test tests/db.budget.spec.ts --reporter=list
+
       - name: Typecheck (tsc -b)
         run: npx tsc -b
 

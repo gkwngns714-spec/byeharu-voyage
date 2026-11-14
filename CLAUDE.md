@@ -14,6 +14,7 @@ A **LIVE** text-and-tabs age-of-sail trading game with real players.
    - `gh pr list` and `gh pr checks <n>` (ALL checks, not only the required ones);
    - the prod head: `npx --yes supabase@2.120.0 db query --linked "select max(version) from supabase_migrations.schema_migrations"`;
    - main's suite: `gh run list --workflow="Acceptance (the whole spec suite, against a served build)" --branch main -L 3`.
+   - once a day (the lead): `npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/db-health/daily.sql`, and act on every line of its `over` list (`docs/DATABASE_BUDGET.md`).
 5. Background agents and timers from another computer do NOT carry over. Resume each "in progress" item from its queue entry or its open PR. Recreate the 10-minute status reminder.
 
 ## How the owner wants work done
@@ -33,6 +34,10 @@ A **LIVE** text-and-tabs age-of-sail trading game with real players.
 - **CI never rebuilds from scratch on a PR.** It tests only what changed; the full suite runs on main. A red on main goes to the top of the queue. Read every red to its last error.
 - **Changes that alter live play** (lighting a switch, the fight) get a 30-minute after-check, with a forward rollback ready. For the fight, use `scripts/ops/harness/raid/after-check.sh <start> <end>`.
 - Close finished worktrees and shells, but only AFTER the agent using them has reported.
+- **The database budget** (`docs/DATABASE_BUDGET.md`): a migration after 0418 that sets autovacuum under the floor, creates a table, adds or reschedules a cron job, or sets fillfactor under 50 needs its `-- budget:` / `-- retention:` line; `tests/db.budget.spec.ts` fails the `build` check otherwise.
+- **The deploy gate:** `bv-deploy.sh` refuses (nothing pushed) while `db-health/gate.sql` is red (beat over 2 s, database over 1,500 MB, over 5 sessions waiting on the disk). Override only with `BV_DEPLOY_FORCE=1 BV_DEPLOY_REASON="why"`.
+- **At most ONE builder reads production at a time**, and none while the gate is red.
+- **Never deploy load** (more ships, faster jobs) without first reading the gate and stating the expected extra rows a minute.
 
 ## Where things are
 - `supabase/migrations/`: the chain. `docs/dev-log/`: one file per slice, with measurements.
