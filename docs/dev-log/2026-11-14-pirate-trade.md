@@ -1,6 +1,6 @@
 # 2026-11-14: a pirate ship trades, the pirate cities fund an empty purse, no wreck waits on one empty purse (migration 0415)
 
-**State: built, PR open, not deployed.** Migration 0415 (written as 0412, renumbered). The order on production: 0409 slimming, 0410 merchants, 0411 levels, 0412 the sweeper, 0413 THE ONE-HOUR DAY (all live, head 0413), then 0414 the pirates' homes (PR #678), then this. **Rebuilt 2026-11-14 on `pacific-pirates` `b5ea75b2`** (PR #678 as merged with origin/main `517bf154`): the hunks' pre-images are main's bodies with 0414 on top. **No production read was made for this slice** (the live database was IO-bound): everything below is from the code, the local world and what the earlier builders read. The reads still wanted are listed at the end.
+**State: built, PR open, not deployed.** Migration 0415 (written as 0412, renumbered). The order on production: 0409 slimming, 0410 merchants, 0411 levels, 0412 the sweeper, 0413 THE ONE-HOUR DAY (all live, head 0413), then 0414 the pirates' homes (PR #678), then this. **Rebuilt 2026-11-14 on `pacific-pirates` `761cfc30`** (PR #678 as merged with origin/main `517bf154`): the hunks' pre-images are main's bodies with 0414 on top. **No production read was made for this slice** (the live database was IO-bound): everything below is from the code, the local world and what the earlier builders read. The reads still wanted are listed at the end.
 
 ## What the owner ordered, in his words
 
@@ -116,7 +116,7 @@ Whole or nothing, city to yard, kind REFIT, moved. Her `REFITTED` event names wh
 
 ## Checks run
 
-The file on the cached local world on main's chain (0409 to 0413) with 0414 (PR #678 at `b5ea75b2`): its eleven hunks each once on those bodies, its probe; proofs 114, 30, 37, 46, 106, 103 after the rebuild (before it, on the first base: also 47, 48, 69 a pirate company, 36, 18, 49, 64, 35, 50, 104); the rollback draft after the file restores the five pre-image md5s; eslint on the generator; `tests/news.lint.spec.ts`; `tests/harness.guard.spec.ts` (green: PR #678's three files now carry the guard).
+The file on the cached local world on main's chain (0409 to 0413) with 0414 (PR #678 at `761cfc30`): its eleven hunks each once on those bodies, its probe; proofs 114, 30, 37, 46, 106, 103 after the rebuild (before it, on the first base: also 47, 48, 69 a pirate company, 36, 18, 49, 64, 35, 50, 104); the rollback draft after the file restores the five pre-image md5s; eslint on the generator; `tests/news.lint.spec.ts`; `tests/harness.guard.spec.ts` (green: PR #678's three files now carry the guard).
 
 **Not run:** anything from zero, the whole proof suite, the world guard, any production read. No red-first run of proof 114 against the old bodies (it calls this file's functions); the old rule is shown by proofs 30 and 37, which were red until moved.
 
