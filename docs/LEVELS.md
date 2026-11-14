@@ -1,6 +1,6 @@
 # LEVELS: many, and each raised by doing
 
-**Status: the first cut is built (migration 0412, 2026-11-14): the mechanism and ten levels. Three more are designed and wait for the next migration.**
+**Status: the first cut is built (migration 0411, 2026-11-14): the mechanism and ten levels. Three more are designed and wait for the next migration.**
 
 The owner, 2026-11-14: *"levels we only have trading, exploration, combat. like rs3, i want diverse skills related to this game"* and
 *"with exp table, exp info, with benefits when leveling up, what activity needs done etc."*
@@ -130,14 +130,14 @@ of section 3.
 day, read on `public.real_day`, the game's one day. A ship and a lap pay once. A lap pays only at a profit. Past the limit
 nothing is written, so the limit also bounds the book.
 
-**No back-pay.** The seven new levels start at nothing for everyone on the day 0412 deploys (as 0352 and 0356 decided). The three
+**No back-pay.** The seven new levels start at nothing for everyone on the day 0411 deploys (as 0352 and 0356 decided). The three
 old levels keep what they have.
 
 ## 5. Designed, not built: the next migration
 
 | Level | Raises it | Why it waits |
 |---|---|---|
-| **Gunnery / 포술** | damage her guns deal in a battle she fought (`public.battle_resolve`, the fight's own result) | no company has fought a battle yet (0 `BATTLE_REPORT` rows from players on 2026-11-14), and migrations 0408 to 0411 re-cut the fight's and the pirates' functions now: two PRs slicing one body is the risk |
+| **Gunnery / 포술** | damage her guns deal in a battle she fought (`public.battle_resolve`, the fight's own result) | no company has fought a battle yet (0 `BATTLE_REPORT` rows from players on 2026-11-14), and migrations 0409 and 0412 (the pirates' homes, then their trade) re-cut the fight's and the pirates' functions now: two PRs slicing one body is the risk |
 | **Boarding / 백병전** | a boarding action won, from the same result | the same |
 | **Raiding / 약탈** | loot taken by an attack (`public.attack_close`) | the same; and it must be held to merchants and pirates only: never another player |
 
@@ -184,5 +184,5 @@ The client: `src/features/command/levels/LevelTiles.tsx` (tiles, the level's det
 
 ## 9. Reading it after a deploy
 
-`scripts/ops/harness/levels/after-0412.sql` (one read-only statement): the hooks in place, the data, the tables' grants, the
+`scripts/ops/harness/levels/after-0411.sql` (one read-only statement): the hooks in place, the data, the tables' grants, the
 arrivals beat, and per level how many companies hold experience, the top level and the experience granted.

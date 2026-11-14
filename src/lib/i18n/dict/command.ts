@@ -71,7 +71,7 @@ export const commandDict = defineDict({
     lvTrading: 'Trading',
     lvExploration: 'Exploration',
     lvCombat: 'Combat',
-    // 0412 (docs/LEVELS.md): the levels raised by doing, by their served code; an activity is lvAct_<code>. Every figure in a sentence is served.
+    // 0411 (docs/LEVELS.md): the levels raised by doing, by their served code; an activity is lvAct_<code>. Every figure in a sentence is served.
     lvSupplies: 'Supplies',
     lvWeather: 'Weather',
     lvShipbuilding: 'Shipbuilding',

@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
--- 0412 - LEVELS ARE MANY, AND EACH IS RAISED BY DOING  (docs/LEVELS.md; the first cut: the mechanism and ten levels)
+-- 0411 - LEVELS ARE MANY, AND EACH IS RAISED BY DOING  (docs/LEVELS.md; the first cut: the mechanism and ten levels)
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 --
 -- THE OWNER, 2026-11-14: "levels we only have trading, exploration, combat. like rs3, i want diverse skills related to this game"
@@ -44,11 +44,11 @@
 --   world.levels(): ten small rows. The self-assert measures each and prints it; docs/dev-log/2026-11-14-levels.md has the numbers.
 -- LOCKS: CREATE TABLE x4; CREATE OR REPLACE x9 by hunks; the two foreign keys to public.players are added LAST (a brief SHARE ROW
 --   EXCLUSIVE on players under lock_timeout 5 s, as 0356).
--- ROLLBACK (forward, owner only): scripts/ops/harness/levels/rollback-0412.sql, a draft. At once, with no file: level_skills_on false.
+-- ROLLBACK (forward, owner only): scripts/ops/harness/levels/rollback-0411.sql, a draft. At once, with no file: level_skills_on false.
 -- SELF-ASSERT: the catalog, then probe houses of this file's own rows, rolled back by a raised sentinel. No table is counted or summed.
 -- NEWS: this file posts its own UPDATE row once, outside the rolled-back probe (0347's law, tests/news.lint.spec.ts).
 -- BUDGET: ONE DO block, statement_timeout 30 s, lock_timeout 5 s; fails above 15 s.
--- VERSION: 0412. 0408 to 0411 (merchants' and pirates' own functions) are in flight ahead of it: see the PR for the heads it was built on.
+-- VERSION: 0411. 0409 (pirates have homes) and 0410 (a city's purse) go before it; 0410 cuts the lap close on another line. See the PR for the heads it was built on.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$
@@ -61,7 +61,7 @@ declare
     'public.level_activity_terms()', 'public.level_grant(uuid,text,numeric,text)', 'public.level_arrival(uuid,uuid)',
     'public.level_benefits(text,integer)', 'public.level_skills_card(uuid,jsonb)', 'public.level_book_chains()'];
   c_tabs constant text[] := array['level_skills', 'level_activities', 'level_xp', 'level_book'];
-  c_uid  constant uuid := '00000000-0412-4000-8000-000000000001';
+  c_uid  constant uuid := '00000000-0411-4000-8000-000000000001';
   v_t0        timestamptz := clock_timestamp();
   v_t         timestamptz;
   t1          timestamptz;
@@ -106,7 +106,7 @@ begin
   if exists (select 1 from unnest(c_tabs) x where to_regclass('public.' || x) is not null)
      or exists (select 1 from unnest(c_new) f where to_regprocedure(f) is not null)
      or exists (select 1 from public.world_config c where c.key = 'level_skills_on') then
-    raise exception '0412 refuses: it has been applied once';
+    raise exception '0411 refuses: it has been applied once';
   end if;
   if exists (select 1 from unnest(c_cut) f where to_regprocedure(f) is null)
      or to_regprocedure('public.player_progress(uuid)') is null or to_regprocedure('public.level_line(numeric)') is null
@@ -120,12 +120,12 @@ begin
      or not exists (select 1 from public.reputation_kinds k where k.code = 'level' and k.sign = 1 and not k.capped)
      or (select count(*) from public.world_config c where c.key in ('fame_ducats_per_point', 'fame_per_port', 'fame_nm_per_point', 'fame_per_mayor_day',
            'xp_evaded_points', 'xp_driven_off_points', 'rep_level_per_level', 'reputation_on', 'fleet_room_levels', 'title_max', 'level_points_per_step')) <> 11 then
-    raise exception '0412 refuses: a function, table, kind or knob it calls, cuts or serves is not in this world (0069 / 0127 / 0162 / 0215 / 0321 / 0325 / 0352 / 0356)';
+    raise exception '0411 refuses: a function, table, kind or knob it calls, cuts or serves is not in this world (0069 / 0127 / 0162 / 0215 / 0321 / 0325 / 0352 / 0356)';
   end if;
 
   -- ── 1. THE PRE-IMAGES ──
-  create temp table pre_0412 (fn text primary key, def text, meta text) on commit drop;
-  insert into pre_0412
+  create temp table pre_0411 (fn text primary key, def text, meta text) on commit drop;
+  insert into pre_0411
   select f, replace(pg_get_functiondef(f::regprocedure), E'\r', ''),
          (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
             from pg_proc p where p.oid = f::regprocedure)
@@ -148,7 +148,7 @@ begin
     check ((kept = 'book') = (day_cap is not null))
   );
   comment on table public.level_skills is
-    '0412: every level a company has, in the page''s order (docs/LEVELS.md). kept record: counted by public.player_progress from the append-only record (trading, exploration, combat: that function stays their one authority). kept book: granted by public.level_grant into public.level_xp, at most day_cap experience a day. word is the server''s English name.';
+    '0411: every level a company has, in the page''s order (docs/LEVELS.md). kept record: counted by public.player_progress from the append-only record (trading, exploration, combat: that function stays their one authority). kept book: granted by public.level_grant into public.level_xp, at most day_cap experience a day. word is the server''s English name.';
   alter table public.level_skills enable row level security;
   revoke all on table public.level_skills from public, anon, authenticated;
   insert into public.level_skills (code, ord, word, kept, day_cap) values
@@ -180,7 +180,7 @@ begin
     unique (skill, ord)
   );
   comment on table public.level_activities is
-    '0412: what raises a level: xp experience for every per units (unit says of what). xp_knob / per_knob name the world_config knob that holds the figure instead (the three levels public.player_progress counts: the knob is the authority and xp / per here are not read). most_xp: at most this much a grant. once: paid once ever for its thing. at_gain: only when it made a gain. voyage_nm: only on a voyage of at least this many miles into a port. Read through public.level_activity_terms() alone.';
+    '0411: what raises a level: xp experience for every per units (unit says of what). xp_knob / per_knob name the world_config knob that holds the figure instead (the three levels public.player_progress counts: the knob is the authority and xp / per here are not read). most_xp: at most this much a grant. once: paid once ever for its thing. at_gain: only when it made a gain. voyage_nm: only on a voyage of at least this many miles into a port. Read through public.level_activity_terms() alone.';
   alter table public.level_activities enable row level security;
   revoke all on table public.level_activities from public, anon, authenticated;
   insert into public.level_activities (code, skill, ord, word, unit, xp, per, xp_knob, per_knob, most_xp, once, at_gain, voyage_nm) values
@@ -212,7 +212,7 @@ begin
     primary key (player_id, skill)
   );
   comment on table public.level_xp is
-    '0412: a company''s experience in one book level (public.level_skills.kept = book). xp is the newest book row''s xp_after (seq names it). day is public.real_day of day_earned, what it earned that day against the level''s day_cap. Written by public.level_grant alone. A merchant never has a row. The level is public.level_from_points(xp): the one curve.';
+    '0411: a company''s experience in one book level (public.level_skills.kept = book). xp is the newest book row''s xp_after (seq names it). day is public.real_day of day_earned, what it earned that day against the level''s day_cap. Written by public.level_grant alone. A merchant never has a row. The level is public.level_from_points(xp): the one curve.';
   alter table public.level_xp enable row level security;
   revoke all on table public.level_xp from public, anon, authenticated;
 
@@ -229,13 +229,13 @@ begin
   );
   create unique index level_book_once on public.level_book (player_id, key) where key is not null;
   comment on table public.level_book is
-    '0412: every grant of experience, APPEND-ONLY (public.forbid_mutation) and a chain: each row follows the row before it (level_book_chains). key is the once-ever guard (hull:<ship>, lap:<lap>, fed:<voyage>). Written by public.level_grant alone. Bounded by the caps: at most day_cap rows a level a company a day.';
+    '0411: every grant of experience, APPEND-ONLY (public.forbid_mutation) and a chain: each row follows the row before it (level_book_chains). key is the once-ever guard (hull:<ship>, lap:<lap>, fed:<voyage>). Written by public.level_grant alone. Bounded by the caps: at most day_cap rows a level a company a day.';
   alter table public.level_book enable row level security;
   revoke all on table public.level_book from public, anon, authenticated;
 
   insert into public.world_config (key, value, description) values
     ('level_skills_on', 'true'::jsonb,
-     '0412: the levels raised by doing (public.level_skills, kept book) earn experience. false = public.level_grant writes nothing and the page shows them as not counted; what was earned is kept. It does not touch Trading, Exploration or Combat, which public.player_progress counts.');
+     '0411: the levels raised by doing (public.level_skills, kept book) earn experience. false = public.level_grant writes nothing and the page shows them as not counted; what was earned is kept. It does not touch Trading, Exploration or Combat, which public.player_progress counts.');
 
   -- ── 3. THE FUNCTIONS ──
   execute $f$
@@ -243,7 +243,7 @@ create function public.level_book_chains()
 returns trigger
 language plpgsql
 as $body$
--- 0412: a book row follows the row before it. One primary-key probe; no sum.
+-- 0411: a book row follows the row before it. One primary-key probe; no sum.
 begin
   if new.seq = 1 then
     if new.xp_after <> new.xp then
@@ -272,7 +272,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0412: THE ONE READING of what raises a level and by how much: the row's own figures, or the knob the row names (the three
+  -- 0411: THE ONE READING of what raises a level and by how much: the row's own figures, or the knob the row names (the three
   -- levels public.player_progress counts keep their figures in its knobs). The writer and the page both read this.
   select a.code, a.skill, a.ord, a.word, a.unit,
          case when a.xp_knob is null then a.xp else public.wc_num(a.xp_knob) end,
@@ -289,7 +289,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0412: THE ONE WRITER of a level's experience (docs/LEVELS.md). Returns what was granted (0 when nothing was).
+-- 0411: THE ONE WRITER of a level's experience (docs/LEVELS.md). Returns what was granted (0 when nothing was).
 -- Nothing asked: 0 before any read. A merchant: 0 after one players probe. level_skills_on false: 0.
 -- floor(units / per x xp), at most the activity's most_xp, inside the level's cap a day; past the cap nothing is written.
 -- A key pays once ever. A level crossed pays rep_level_per_level x the level (public.reputation_credit, kind level, key
@@ -376,7 +376,7 @@ language plpgsql
 security definer
 set search_path = public, pg_temp
 as $body$
--- 0412: WHAT A VOYAGE THAT HAS ENDED TAUGHT HER COMPANY (voyage.settle calls it for a player, beside public.reputation_arrival).
+-- 0411: WHAT A VOYAGE THAT HAS ENDED TAUGHT HER COMPANY (voyage.settle calls it for a player, beside public.reputation_arrival).
 -- ONE read of the voyage's own days (public.voyage_events, by its key): the storm days and the rough days (calm, foul water, shoal
 -- water) she came through, and the days at sea. Days fed count only when she made a port, sailed at least the activity's voyage_nm
 -- and no day was on short rations. Each is keyed by the voyage, so settling twice grants once. Returns what was granted.
@@ -428,7 +428,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0412: WHAT A LEVEL GIVES, and only what a rule already applies. level null = every level. Each row is read from the rule's own
+  -- 0411: WHAT A LEVEL GIVES, and only what a rule already applies. level null = every level. Each row is read from the rule's own
   -- table or knob, so the page cannot promise what the server does not do:
   --   gift         p_gift x the level in Reputation, once a level (0356; public.level_grant for a book level): the caller passes
   --                rep_level_per_level while reputation_on, else 0 (public.level_skills_card reads it once for every level)
@@ -472,7 +472,7 @@ stable
 security definer
 set search_path = public, pg_temp
 as $body$
-  -- 0412: THE LEVELS, ALL OF THEM, FOR THE PAGE (world.levels() serves it and passes the public.player_progress it has already read:
+  -- 0411: THE LEVELS, ALL OF THEM, FOR THE PAGE (world.levels() serves it and passes the public.player_progress it has already read:
   -- nothing is counted twice). curve[L-1] is the experience at which level L begins (public.level_points, the one curve), to `top`.
   -- Each level: public.level_line of its points (a record level's are public.player_progress's; a book level's are public.level_xp's),
   -- counted (false: combat while it is not playable; a book level while level_skills_on is false), today against cap (book levels),
@@ -523,113 +523,113 @@ $body$
   revoke all on function public.level_skills_card(uuid, jsonb) from public, anon, authenticated;
 
   -- ── 4. THE HUNKS (each OLD text once in its live body; each NEW is OLD and one line more) ──
-  create temp table hunk_0412 (ord int primary key, fn text, old text, new text) on commit drop;
-  insert into hunk_0412 values
+  create temp table hunk_0411 (ord int primary key, fn text, old text, new text) on commit drop;
+  insert into hunk_0411 values
   (1, c_cut[1],
 $h$      perform public.reputation_arrival(f.player_id, v.id);
 $h$,
 $h$      perform public.reputation_arrival(f.player_id, v.id);
-      -- 0412: and her company's levels raised by doing: days fed, storms and rough days come through (public.level_arrival)
+      -- 0411: and her company's levels raised by doing: days fed, storms and rough days come through (public.level_arrival)
       perform public.level_arrival(f.player_id, v.id);
 $h$),
   (2, c_cut[2],
 $h$  perform public.reputation_built(f.player_id, v_ship, jsonb_build_object('class', c.code));
 $h$,
 $h$  perform public.reputation_built(f.player_id, v_ship, jsonb_build_object('class', c.code));
-  perform public.level_grant(f.player_id, 'hull', 1, 'hull:' || v_ship);   -- 0412: Shipbuilding, once a ship
+  perform public.level_grant(f.player_id, 'hull', 1, 'hull:' || v_ship);   -- 0411: Shipbuilding, once a ship
 $h$),
   (3, c_cut[3],
 $h$  return jsonb_build_object('points', round(v_points, 1), 'cost', v_cost, 'sim_hours', round(v_hours, 1))
 $h$,
-$h$  perform public.level_grant(f.player_id, 'repair', v_cost);   -- 0412: Shipbuilding, by the coin the yard was paid (a merchant leaves after one players probe)
+$h$  perform public.level_grant(f.player_id, 'repair', v_cost);   -- 0411: Shipbuilding, by the coin the yard was paid (a merchant leaves after one players probe)
   return jsonb_build_object('points', round(v_points, 1), 'cost', v_cost, 'sim_hours', round(v_hours, 1))
 $h$),
   (4, c_cut[4],
 $h$  perform public.reputation_request(f.player_id, v_pay, c.id, jsonb_build_object('port', v_port.code, 'good', g.code));
 $h$,
 $h$  perform public.reputation_request(f.player_id, v_pay, c.id, jsonb_build_object('port', v_port.code, 'good', g.code));
-  perform public.level_grant(f.player_id, 'request', v_pay);   -- 0412: Requests, by the bonus this delivery was paid
+  perform public.level_grant(f.player_id, 'request', v_pay);   -- 0411: Requests, by the bonus this delivery was paid
 $h$),
   (5, c_cut[5],
 $h$    'fleet', f.name, 'item', k.name, 'qty', v_qty, 'spent', v_spent));
 $h$,
 $h$    'fleet', f.name, 'item', k.name, 'qty', v_qty, 'spent', v_spent));
-  perform public.level_grant(f.player_id, 'made', v_qty);   -- 0412: Craft, by the fittings made
+  perform public.level_grant(f.player_id, 'made', v_qty);   -- 0411: Craft, by the fittings made
 $h$),
   (6, c_cut[6],
 $h$      'product', v_product.name, 'qty', v_qty, 'spent', v_spent));
 $h$,
 $h$      'product', v_product.name, 'qty', v_qty, 'spent', v_spent));
-    perform public.level_grant(v_player, 'forged', v_qty);   -- 0412: Craft, by the goods forged
+    perform public.level_grant(v_player, 'forged', v_qty);   -- 0411: Craft, by the goods forged
 $h$),
   (7, c_cut[7],
 $h$  perform public.reputation_lap(sr.player_id, l.id, l.net, sr.name, l.lap_no);
 $h$,
 $h$  perform public.reputation_lap(sr.player_id, l.id, l.net, sr.name, l.lap_no);
-  perform public.level_grant(sr.player_id, 'lap', case when l.net > 0 then 1 else 0 end, 'lap:' || l.id);   -- 0412: Routes, once a lap at a gain (no gain: 0 units, and the writer leaves before any read)
+  perform public.level_grant(sr.player_id, 'lap', case when l.net > 0 then 1 else 0 end, 'lap:' || l.id);   -- 0411: Routes, once a lap at a gain (no gain: 0 units, and the writer leaves before any read)
 $h$),
   (8, c_cut[8],
 $h$  v_after := public.pay_city(p_player, p_port, 'SHARE', v_cost, v_event);
 $h$,
 $h$  v_after := public.pay_city(p_player, p_port, 'SHARE', v_cost, v_event);
-  perform public.level_grant(p_player, 'share', v_cost);   -- 0412: Investment, by the coin paid for shares (a merchant leaves after one players probe)
+  perform public.level_grant(p_player, 'share', v_cost);   -- 0411: Investment, by the coin paid for shares (a merchant leaves after one players probe)
 $h$),
   (9, c_cut[9],
 $h$    'bite', public.levels_bite_on(),
 $h$,
 $h$    'bite', public.levels_bite_on(),
-    -- 0412: every level, raised by doing: points, the curve, activities, benefits, recent grants (public.level_skills_card, on the progress read above)
+    -- 0411: every level, raised by doing: points, the curve, activities, benefits, recent grants (public.level_skills_card, on the progress read above)
     'level_skills', public.level_skills_card(v_id, v_pp),
 $h$);
-  for h in select * from hunk_0412 order by ord loop
+  for h in select * from hunk_0411 order by ord loop
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
     v_n := (length(v_def) - length(replace(v_def, h.old, ''))) / length(h.old);
     if v_n <> 1 then
-      raise exception '0412 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', h.ord, h.fn, v_n;
+      raise exception '0411 self-assert FAIL: hunk % of % occurs % time(s), not once: the deployed body is not what this file was written against', h.ord, h.fn, v_n;
     end if;
     execute replace(v_def, h.old, h.new);
     v_def := replace(pg_get_functiondef(h.fn::regprocedure), E'\r', '');
     if (length(v_def) - length(replace(v_def, h.new, ''))) / length(h.new) <> 1 then
-      raise exception '0412 self-assert FAIL: hunk % of % is not in the new body once', h.ord, h.fn;
+      raise exception '0411 self-assert FAIL: hunk % of % is not in the new body once', h.ord, h.fn;
     end if;
     if (select coalesce(p.proacl::text, '') || ':' || p.provolatile::text || p.prosecdef::text || coalesce(p.proconfig::text, '') || ':' || p.proowner::text
-          from pg_proc p where p.oid = h.fn::regprocedure) <> (select p.meta from pre_0412 p where p.fn = h.fn) then
-      raise exception '0412 self-assert FAIL: the grants, volatility, definer, search path or owner of % moved', h.fn;
+          from pg_proc p where p.oid = h.fn::regprocedure) <> (select p.meta from pre_0411 p where p.fn = h.fn) then
+      raise exception '0411 self-assert FAIL: the grants, volatility, definer, search path or owner of % moved', h.fn;
     end if;
   end loop;
   v_ms_make := extract(epoch from clock_timestamp() - v_t) * 1000;
 
   -- ── 5. THE SELF-ASSERT: the catalog ──
-  for d in select p.fn, p.def from pre_0412 p loop
+  for d in select p.fn, p.def from pre_0411 p loop
     v_def := replace(pg_get_functiondef(d.fn::regprocedure), E'\r', '');
-    for h in select x.old, x.new from hunk_0412 x where x.fn = d.fn order by x.ord desc loop
+    for h in select x.old, x.new from hunk_0411 x where x.fn = d.fn order by x.ord desc loop
       v_def := replace(v_def, h.new, h.old);
     end loop;
     if v_def <> d.def then
-      raise exception '0412 self-assert FAIL: % does not reverse to its pre-image', d.fn;
+      raise exception '0411 self-assert FAIL: % does not reverse to its pre-image', d.fn;
     end if;
   end loop;
   if (select md5(string_agg(p.oid::regprocedure::text || ':' || md5(replace(pg_get_functiondef(p.oid), E'\r', '')) || ':' || coalesce(p.proacl::text, ''), ',' order by p.oid::regprocedure::text))
         from pg_proc p join pg_namespace n on n.oid = p.pronamespace
        where n.nspname in ('public', 'cmd', 'world', 'voyage') and p.prokind in ('f', 'p')
          and not exists (select 1 from unnest(c_cut || c_new) f where f::regprocedure = p.oid)) <> v_fn_before then
-    raise exception '0412 self-assert FAIL: a function this file does not name moved';
+    raise exception '0411 self-assert FAIL: a function this file does not name moved';
   end if;
   if (select md5(string_agg(c.key || ':' || c.value::text || ':' || coalesce(c.description, '') || ':' || c.updated_at::text, ',' order by c.key))
         from public.world_config c where c.key <> 'level_skills_on') <> v_cfg_before
      or public.wc('level_skills_on') is distinct from 'true'::jsonb then
-    raise exception '0412 self-assert FAIL: an existing world_config row moved, or this file''s knob is not true';
+    raise exception '0411 self-assert FAIL: an existing world_config row moved, or this file''s knob is not true';
   end if;
   if exists (select 1 from unnest(c_new) f cross join unnest(array['anon', 'authenticated']) r(role) where has_function_privilege(r.role, f, 'execute')) then
-    raise exception '0412 self-assert FAIL: a client may call a function of this file';
+    raise exception '0411 self-assert FAIL: a client may call a function of this file';
   end if;
   if exists (select 1 from unnest(c_tabs) x cross join unnest(array['anon', 'authenticated']) r(role)
               where has_table_privilege(r.role, 'public.' || x, 'select,insert,update,delete'))
      or exists (select 1 from unnest(c_tabs) x where not (select c.relrowsecurity from pg_class c where c.oid = ('public.' || x)::regclass)) then
-    raise exception '0412 self-assert FAIL: a client can read or write a table of this file, or one has no row level security';
+    raise exception '0411 self-assert FAIL: a client can read or write a table of this file, or one has no row level security';
   end if;
   if (select count(*) from public.client_write_grants()) <> 0 then
-    raise exception '0412 self-assert FAIL: % client write grant(s)', (select count(*) from public.client_write_grants());
+    raise exception '0411 self-assert FAIL: % client write grant(s)', (select count(*) from public.client_write_grants());
   end if;
   -- THE DATA: every level has an activity; a record level is a track public.player_progress serves and every figure of it is a knob
   -- that exists; a book level's figures are its own; and no activity is granted that is not a book level's (the hooks' seven names).
@@ -642,22 +642,22 @@ $h$);
      or exists (select 1 from public.level_activity_terms() t where t.xp is null or t.per is null or t.xp <= 0 or t.per <= 0)
      or (select string_agg(a.code, ',' order by a.code) from public.level_activities a join public.level_skills s on s.code = a.skill where s.kept = 'book')
         is distinct from 'fed,forged,hull,lap,made,repair,request,rough,share,storm' then
-    raise exception '0412 self-assert FAIL: the levels'' data is not whole (a level with no activity, a record level player_progress does not serve, a knob that is not there, or a book activity no hook names)';
+    raise exception '0411 self-assert FAIL: the levels'' data is not whole (a level with no activity, a record level player_progress does not serve, a knob that is not there, or a book activity no hook names)';
   end if;
   -- THE HOT PATHS THIS FILE DOES NOT TOUCH: a sale and a buy name nothing of it; and the writer has no caller but the hooks and the arrival
   if exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
               where n.nspname = 'cmd' and (p.proname like 'do\_sell%' or p.proname = 'do_buy') and p.prosrc like '%level\_grant%') then
-    raise exception '0412 self-assert FAIL: a sale or a buy names the level writer';
+    raise exception '0411 self-assert FAIL: a sale or a buy names the level writer';
   end if;
   select string_agg(n.nspname || '.' || p.proname, ',' order by n.nspname, p.proname) into v_def
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.prokind in ('f', 'p') and p.prosrc like '%level\_grant(%';
   if v_def is distinct from 'cmd.do_build,cmd.do_make,cmd.do_repair,cmd.forge_good,cmd.run_fulfil,cmd.standing_route_close_lap,public.invest_for,public.level_arrival' then
-    raise exception '0412 self-assert FAIL: the writer''s callers are %', v_def;
+    raise exception '0411 self-assert FAIL: the writer''s callers are %', v_def;
   end if;
   select string_agg(n.nspname || '.' || p.proname, ',' order by n.nspname, p.proname) into v_def
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.prokind in ('f', 'p') and (p.prosrc like '%insert into public.level\_xp%' or p.prosrc like '%insert into public.level\_book%' or p.prosrc like '%update public.level\_xp%');
   if v_def is distinct from 'public.level_grant' then
-    raise exception '0412 self-assert FAIL: the experience has other writers than public.level_grant: %', v_def;
+    raise exception '0411 self-assert FAIL: the experience has other writers than public.level_grant: %', v_def;
   end if;
 
   -- ── 6. THE SELF-ASSERT: probe houses of this file's own rows, rolled back ──
@@ -665,9 +665,9 @@ $h$);
   begin
     select p.id into v_lis from public.ports p where p.code = 'LIS' and p.kind = 'HARBOUR';
     insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc)
-    values (c_uid, 'Casa dos Niveis 0412', (select n.id from public.nations n where n.code = 'PRT'), 0, false) returning id into v_pl;
+    values (c_uid, 'Casa dos Niveis 0411', (select n.id from public.nations n where n.code = 'PRT'), 0, false) returning id into v_pl;
     insert into public.players (auth_uid, company_name, nation_id, ducats, is_npc)
-    values (null, 'Casa Mercante 0412', (select n.id from public.nations n where n.code = 'PRT'), 0, true) returning id into v_npc;
+    values (null, 'Casa Mercante 0411', (select n.id from public.nations n where n.code = 'PRT'), 0, true) returning id into v_npc;
     update public.world_config set value = 'true'::jsonb where key = 'reputation_on' and value is distinct from 'true'::jsonb;
     v_gift := coalesce(public.wc_int('rep_level_per_level'), 0);
     select t.xp into v_hull from public.level_activity_terms() t where t.code = 'hull';
@@ -681,16 +681,16 @@ $h$);
        or public.level_grant(v_npc, 'hull', 1, 'hull:npc') <> 0 or public.level_grant(v_npc, 'share', 1000000) <> 0
        or public.level_arrival(v_npc, gen_random_uuid()) <> 0 or public.level_arrival(null, gen_random_uuid()) <> 0
        or exists (select 1 from public.level_xp x where x.player_id in (v_pl, v_npc)) or exists (select 1 from public.level_book b where b.player_id in (v_pl, v_npc)) then
-      raise exception '0412 self-assert FAIL: nothing asked or a merchant was granted, or a row was written';
+      raise exception '0411 self-assert FAIL: nothing asked or a merchant was granted, or a row was written';
     end if;
     begin
       perform public.level_grant(v_pl, 'no_such_thing', 1);
-      raise exception '0412 self-assert FAIL: an unknown activity was granted';
+      raise exception '0411 self-assert FAIL: an unknown activity was granted';
     exception when sqlstate '22023' then null;
     end;
     begin
       perform public.level_grant(v_pl, 'miles', 5000);
-      raise exception '0412 self-assert FAIL: a level counted from the record was granted';
+      raise exception '0411 self-assert FAIL: a level counted from the record was granted';
     exception when sqlstate '22023' then null;
     end;
 
@@ -703,17 +703,17 @@ $h$);
        or (select b.activity || ':' || b.xp || ':' || b.xp_after || ':' || b.key from public.level_book b where b.player_id = v_pl and b.skill = 'shipbuilding' and b.seq = 1)
           is distinct from 'hull:' || v_hull || ':' || v_hull || ':hull:probe'
        or exists (select 1 from public.level_book b where b.player_id = v_pl and b.skill = 'shipbuilding' and b.seq = 2) then
-      raise exception '0412 self-assert FAIL: a hull did not grant % once (% then %)', v_hull, v_n, v_m;
+      raise exception '0411 self-assert FAIL: a hull did not grant % once (% then %)', v_hull, v_n, v_m;
     end if;
     if v_l < 2 then
-      raise exception '0412 self-assert FAIL: a hull''s % experience crosses no level: the probe proves no crossing', v_hull;
+      raise exception '0411 self-assert FAIL: a hull''s % experience crosses no level: the probe proves no crossing', v_hull;
     end if;
     if coalesce((select string_agg((e.payload ->> 'track') || ':' || (e.payload ->> 'level') || ':' || (e.payload ->> 'reputation'), ',' order by (e.payload ->> 'level')::int)
                    from public.events e where e.player_id = v_pl and e.kind = 'LEVEL_UP'), '')
           is distinct from (select string_agg('shipbuilding:' || g || ':' || v_gift * g, ',' order by g) from generate_series(2, v_l) g)
        or (v_gift > 0 and coalesce((select string_agg(k.kind || ':' || k.delta || ':' || k.key, ',' order by k.seq) from public.reputation_book k where k.player_id = v_pl), '')
                           is distinct from (select string_agg('level:' || v_gift * g || ':level:shipbuilding:' || g, ',' order by g) from generate_series(2, v_l) g)) then
-      raise exception '0412 self-assert FAIL: a hull that reached Shipbuilding level % did not fire each crossing once with its gift', v_l;
+      raise exception '0411 self-assert FAIL: a hull that reached Shipbuilding level % did not fire each crossing once with its gift', v_l;
     end if;
 
     -- (c) THE CAP A DAY: a great sum is granted to the cap and no further; the next writes nothing; a new day opens it again
@@ -721,34 +721,34 @@ $h$);
     v_m := public.level_grant(v_pl, 'share', 1000000000);
     if v_n <> v_cap or v_m <> 0
        or (select x.xp || ':' || x.seq || ':' || x.day_earned from public.level_xp x where x.player_id = v_pl and x.skill = 'investment') is distinct from v_cap || ':1:' || v_cap then
-      raise exception '0412 self-assert FAIL: the cap a day did not hold at % (% then %)', v_cap, v_n, v_m;
+      raise exception '0411 self-assert FAIL: the cap a day did not hold at % (% then %)', v_cap, v_n, v_m;
     end if;
     update public.level_xp set day = day - 1 where player_id = v_pl and skill = 'investment';   -- the probe's own row: yesterday
     v_n := public.level_grant(v_pl, 'share', 5000);
     if v_n <> floor(5000 / (select t.per from public.level_activity_terms() t where t.code = 'share'))
        or (select x.day_earned from public.level_xp x where x.player_id = v_pl and x.skill = 'investment') <> v_n
        or (select x.xp from public.level_xp x where x.player_id = v_pl and x.skill = 'investment') <> v_cap + v_n then
-      raise exception '0412 self-assert FAIL: a new day did not open the cap (% granted)', v_n;
+      raise exception '0411 self-assert FAIL: a new day did not open the cap (% granted)', v_n;
     end if;
     -- most_xp: one request's bonus, however large, grants at most the row's most
     v_n := public.level_grant(v_pl, 'request', 1000000);
     if v_n <> (select t.most_xp from public.level_activity_terms() t where t.code = 'request') then
-      raise exception '0412 self-assert FAIL: a request granted %, not its most', v_n;
+      raise exception '0411 self-assert FAIL: a request granted %, not its most', v_n;
     end if;
     -- less than one point: nothing, and no row
     if public.level_grant(v_pl, 'repair', 1) <> 0 or exists (select 1 from public.level_book b where b.player_id = v_pl and b.activity = 'repair') then
-      raise exception '0412 self-assert FAIL: a repair of one ducat granted something';
+      raise exception '0411 self-assert FAIL: a repair of one ducat granted something';
     end if;
 
     -- (d) THE BOOK IS APPEND-ONLY AND A CHAIN
     begin
       update public.level_book set xp = xp + 1 where player_id = v_pl and skill = 'shipbuilding' and seq = 1;
-      raise exception '0412 self-assert FAIL: a book row was updated';
+      raise exception '0411 self-assert FAIL: a book row was updated';
     exception when sqlstate '42501' then null;
     end;
     begin
       insert into public.level_book (player_id, skill, seq, activity, xp, xp_after) values (v_pl, 'shipbuilding', 2, 'hull', 5, 999);
-      raise exception '0412 self-assert FAIL: a book row that does not follow the row before it was written';
+      raise exception '0411 self-assert FAIL: a book row that does not follow the row before it was written';
     exception when sqlstate '23514' then null;
     end;
 
@@ -767,7 +767,7 @@ $h$);
        or (select x.xp from public.level_xp x where x.player_id = v_pl and x.skill = 'weather') <> v_storm + v_rough
        or (select string_agg(b.activity || ':' || b.key, ',' order by b.activity) from public.level_book b where b.player_id = v_pl and b.skill in ('supplies', 'weather'))
           is distinct from format('fed:fed:%s,rough:rough:%s,storm:storm:%s', v_voy, v_voy, v_voy) then
-      raise exception '0412 self-assert FAIL: an arrival of seven fed days, a storm and a shoal did not grant % + % + % once (% then %)', floor(7 * v_fed), v_storm, v_rough, v_n, v_m;
+      raise exception '0411 self-assert FAIL: an arrival of seven fed days, a storm and a shoal did not grant % + % + % once (% then %)', floor(7 * v_fed), v_storm, v_rough, v_n, v_m;
     end if;
     -- a hungry day, a short voyage, and open water: no days fed
     for v_l in 1 .. 3 loop
@@ -778,7 +778,7 @@ $h$);
       insert into public.voyage_events (voyage_id, day_index, kind, payload)
       select v_voy, g, case when v_l = 1 and g = 2 then 'SHORT_RATIONS' else 'CLEAR' end, jsonb_build_object('short_rations', v_l = 1 and g = 2) from generate_series(1, 4) g;
       if public.level_arrival(v_pl, v_voy) <> 0 then
-        raise exception '0412 self-assert FAIL: days fed were granted to %', case v_l when 1 then 'a voyage with a hungry day' when 2 then 'a voyage of 50 nm' else 'a voyage that made no port' end;
+        raise exception '0411 self-assert FAIL: days fed were granted to %', case v_l when 1 then 'a voyage with a hungry day' when 2 then 'a voyage of 50 nm' else 'a voyage that made no port' end;
       end if;
     end loop;
 
@@ -793,20 +793,20 @@ $h$);
        or public.level_from_points(public.level_points((v_s ->> 'top')::int)) <> (v_s ->> 'top')::int
        or (select string_agg(e ->> 'code', ',' order by o) from jsonb_array_elements(v_s -> 'skills') with ordinality x(e, o))
           is distinct from 'trading,exploration,combat,supplies,weather,shipbuilding,requests,craft,routes,investment' then
-      raise exception '0412 self-assert FAIL: world.levels() does not serve the ten levels in order with the curve: %', left(v_s::text, 300);
+      raise exception '0411 self-assert FAIL: world.levels() does not serve the ten levels in order with the curve: %', left(v_s::text, 300);
     end if;
     if exists (select 1 from jsonb_array_elements(v_s -> 'skills') e
                 where jsonb_array_length(e -> 'activities') = 0 or not (e ? 'benefits') or not (e ? 'level') or not (e ? 'next_at') or not (e ? 'from')
                    or ((e ->> 'kept') = 'book') <> (jsonb_typeof(e -> 'recent') = 'array')
                    or ((e ->> 'kept') = 'book') <> (jsonb_typeof(e -> 'cap') = 'number')
                    or (v_gift > 0 and not exists (select 1 from jsonb_array_elements(e -> 'benefits') b where b ->> 'kind' = 'gift' and (b ->> 'n')::int = v_gift))) then
-      raise exception '0412 self-assert FAIL: a served level lacks its activities, its benefits, its line, its cap or its recent grants';
+      raise exception '0411 self-assert FAIL: a served level lacks its activities, its benefits, its line, its cap or its recent grants';
     end if;
     select e into v_s from jsonb_array_elements(v_r -> 'level_skills' -> 'skills') e where e ->> 'code' = 'supplies';
     if (v_s ->> 'points')::numeric <> floor(7 * v_fed) or (v_s ->> 'today')::int <> floor(7 * v_fed) or (v_s ->> 'cap')::int <> 300
        or (v_s -> 'recent' -> 0 ->> 'activity') <> 'fed' or (v_s -> 'recent' -> 0 ->> 'xp')::int <> floor(7 * v_fed)
        or (v_s -> 'activities' -> 0 ->> 'voyage_nm')::numeric <> 100 then
-      raise exception '0412 self-assert FAIL: the page does not serve Supplies as the book holds it: %', v_s;
+      raise exception '0411 self-assert FAIL: the page does not serve Supplies as the book holds it: %', v_s;
     end if;
     -- a record level is public.player_progress's, to the point, and its figures are the knobs'
     select e into v_s from jsonb_array_elements(v_r -> 'level_skills' -> 'skills') e where e ->> 'code' = 'trading';
@@ -818,7 +818,7 @@ $h$);
           <> (select count(*) from public.captain_grades g where g.promote_level is not null)
        or (select count(*) from jsonb_array_elements(v_s -> 'benefits') b where b ->> 'kind' = 'title') <> greatest(public.wc_int('title_max') - 1, 0)
        or (public.fleet_room_on() and (select count(*) from jsonb_array_elements(v_s -> 'benefits') b where b ->> 'kind' = 'fleet') <> jsonb_array_length(public.wc('fleet_room_levels'))) then
-      raise exception '0412 self-assert FAIL: Trading on the page is not the track world.levels() already serves, or its benefits are not the rules'': %', v_s;
+      raise exception '0411 self-assert FAIL: Trading on the page is not the track world.levels() already serves, or its benefits are not the rules'': %', v_s;
     end if;
 
     -- (g) THE SWITCH: off, nothing is granted and the page says the book levels are not counted; what was earned stands
@@ -830,7 +830,7 @@ $h$);
     select e into v_s from jsonb_array_elements(world.levels() -> 'level_skills' -> 'skills') e where e ->> 'code' = 'supplies';
     if public.level_grant(v_pl, 'made', 3) <> 0 or public.level_arrival(v_pl, v_voy) <> 0
        or (v_s ->> 'counted')::boolean is not false or (v_s ->> 'points')::numeric <> floor(7 * v_fed) then
-      raise exception '0412 self-assert FAIL: with level_skills_on false something was granted, or the page does not say so';
+      raise exception '0411 self-assert FAIL: with level_skills_on false something was granted, or the page does not say so';
     end if;
     update public.world_config set value = 'true'::jsonb where key = 'level_skills_on';
 
@@ -858,19 +858,19 @@ $h$);
         v_pairs := i;
       end loop;
       v_arr_ms := v_arr_ms / greatest(v_pairs, 1);
-      select p.def into v_old_def from pre_0412 p where p.fn = 'world.levels()';
-      execute replace(v_old_def, 'FUNCTION world.levels()', 'FUNCTION pg_temp.levels_old_0412()');
+      select p.def into v_old_def from pre_0411 p where p.fn = 'world.levels()';
+      execute replace(v_old_def, 'FUNCTION world.levels()', 'FUNCTION pg_temp.levels_old_0411()');
       v_pairs := 0;
       t1 := clock_timestamp();
       for i in 1 .. 30 loop
         exit when clock_timestamp() - t1 > interval '1.5 seconds';
         if i % 2 = 0 then
-          t2 := clock_timestamp(); perform pg_temp.levels_old_0412();
+          t2 := clock_timestamp(); perform pg_temp.levels_old_0411();
           t3 := clock_timestamp(); perform world.levels();
           v_old_ms := v_old_ms + extract(epoch from t3 - t2) * 1000; v_new_ms := v_new_ms + extract(epoch from clock_timestamp() - t3) * 1000;
         else
           t2 := clock_timestamp(); perform world.levels();
-          t3 := clock_timestamp(); perform pg_temp.levels_old_0412();
+          t3 := clock_timestamp(); perform pg_temp.levels_old_0411();
           v_new_ms := v_new_ms + extract(epoch from t3 - t2) * 1000; v_old_ms := v_old_ms + extract(epoch from clock_timestamp() - t3) * 1000;
         end if;
         v_pairs := i;
@@ -878,21 +878,21 @@ $h$);
     exception when others then
       v_note := ' (a measurement stopped: ' || left(sqlerrm, 100) || ')';
     end;
-    raise exception using errcode = 'ZX412', message = 'PROBE_ROLLBACK_0412';
-  exception when sqlstate 'ZX412' then
+    raise exception using errcode = 'ZX411', message = 'PROBE_ROLLBACK_0411';
+  exception when sqlstate 'ZX411' then
     v_lived := true;
   end;
   if not v_lived then
-    raise exception '0412 self-assert FAIL: the probe did not run to its end';
+    raise exception '0411 self-assert FAIL: the probe did not run to its end';
   end if;
-  if exists (select 1 from public.players p where p.company_name like 'Casa % 0412' or p.auth_uid = c_uid)
+  if exists (select 1 from public.players p where p.company_name like 'Casa % 0411' or p.auth_uid = c_uid)
      or public.wc('level_skills_on') is distinct from 'true'::jsonb
-     or to_regprocedure('pg_temp.levels_old_0412()') is not null
+     or to_regprocedure('pg_temp.levels_old_0411()') is not null
      or exists (select 1 from public.level_xp) or exists (select 1 from public.level_book) then
-    raise exception '0412 self-assert FAIL: the probe left something behind';
+    raise exception '0411 self-assert FAIL: the probe left something behind';
   end if;
   if public.current_player_id() is not null then
-    raise exception '0412 self-assert FAIL: the probe''s identity outlived its rollback';
+    raise exception '0411 self-assert FAIL: the probe''s identity outlived its rollback';
   end if;
   v_ms_probe := extract(epoch from clock_timestamp() - v_t) * 1000;
 
@@ -901,16 +901,16 @@ $h$);
   alter table public.level_book add constraint level_book_player_id_fkey foreign key (player_id) references public.players(id) on delete cascade;
 
   -- THIS FILE'S OWN UPDATE ROW (0347's news law), counted by its own key
-  perform public.news_update('0412', 'Levels: seven new ones', '레벨: 새로 일곱 가지');
-  if (select count(*) from public.world_news w where w.key = 'update:0412') <> 1 then
-    raise exception '0412 self-assert FAIL: this file''s UPDATE row is not one row';
+  perform public.news_update('0411', 'Levels: seven new ones', '레벨: 새로 일곱 가지');
+  if (select count(*) from public.world_news w where w.key = 'update:0411') <> 1 then
+    raise exception '0411 self-assert FAIL: this file''s UPDATE row is not one row';
   end if;
   if clock_timestamp() - v_t0 > interval '15 seconds' then
-    raise exception '0412 self-assert FAIL: the file took % (budget 15 s)', clock_timestamp() - v_t0;
+    raise exception '0411 self-assert FAIL: the file took % (budget 15 s)', clock_timestamp() - v_t0;
   end if;
-  raise notice '0412 cost: public.level_grant for a merchant (what a merchant''s lap at a gain, repair or share gains): % microseconds a call. public.level_arrival for a probe human (six days, one a storm: two grants): % ms an arrival; a merchant''s arrival does not reach it. world.levels() for a probe human, OLD and NEW interleaved, % pair(s): OLD % ms, NEW % ms a read%. A sale and a buy are not cut.',
+  raise notice '0411 cost: public.level_grant for a merchant (what a merchant''s lap at a gain, repair or share gains): % microseconds a call. public.level_arrival for a probe human (six days, one a storm: two grants): % ms an arrival; a merchant''s arrival does not reach it. world.levels() for a probe human, OLD and NEW interleaved, % pair(s): OLD % ms, NEW % ms a read%. A sale and a buy are not cut.',
     round(v_npc_us, 1), round(v_arr_ms, 2), v_pairs, case when v_pairs > 0 then round(v_old_ms / v_pairs, 2) end, case when v_pairs > 0 then round(v_new_ms / v_pairs, 2) end, v_note;
-  raise notice '0412 self-assert ok: LEVELS ARE MANY, AND EACH IS RAISED BY DOING. Four tables no client reads or writes (ten levels, seventeen activities), one knob (level_skills_on true), six functions no client calls; nine hunks over nine bodies, each once and reversing, grants, volatility, definer and search path unmoved; no other function and no existing knob moved; a sale and a buy name nothing of this file and public.level_grant is the one writer. Probe (rolled back): a merchant and nothing asked are granted nothing and write no row; a hull grants its experience once by its key and each level it crosses is ONE LEVEL_UP event with its Reputation gift; the cap a day holds and a new day opens it; the book refuses an update and a row that does not follow; an arrival grants days fed, a storm and a rough day once, and no days fed to a hungry, a short or an open-water voyage; world.levels() serves the ten levels in order with the curve, each with its activities, benefits and recent grants, and Trading there is the track it already served; with the switch off nothing is granted. Tables, functions and hunks % ms; probe % ms; in all % ms.',
+  raise notice '0411 self-assert ok: LEVELS ARE MANY, AND EACH IS RAISED BY DOING. Four tables no client reads or writes (ten levels, seventeen activities), one knob (level_skills_on true), six functions no client calls; nine hunks over nine bodies, each once and reversing, grants, volatility, definer and search path unmoved; no other function and no existing knob moved; a sale and a buy name nothing of this file and public.level_grant is the one writer. Probe (rolled back): a merchant and nothing asked are granted nothing and write no row; a hull grants its experience once by its key and each level it crosses is ONE LEVEL_UP event with its Reputation gift; the cap a day holds and a new day opens it; the book refuses an update and a row that does not follow; an arrival grants days fed, a storm and a rough day once, and no days fed to a hungry, a short or an open-water voyage; world.levels() serves the ten levels in order with the curve, each with its activities, benefits and recent grants, and Trading there is the track it already served; with the switch off nothing is granted. Tables, functions and hunks % ms; probe % ms; in all % ms.',
     round(v_ms_make), round(v_ms_probe), round(extract(epoch from clock_timestamp() - v_t0) * 1000);
 end
 $m$;

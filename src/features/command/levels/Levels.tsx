@@ -18,7 +18,7 @@ import type { DeskLayout } from '../DeskFrame'
 // level, a threshold or a room: the bars are fills of served figures. `bite` (levels_bite) is the truth about whether a hull's or a
 // captain's level acts yet; while it is false the page says so and shows what each one counts as.
 //
-// 0412: THE COMPANY'S LEVELS ARE TILES (LevelTiles.tsx): every level `level_skills` serves, the three old tracks among them. A
+// 0411: THE COMPANY'S LEVELS ARE TILES (LevelTiles.tsx): every level `level_skills` serves, the three old tracks among them. A
 // pressed level shows her experience, what raises it, what levels give and the experience table, all from the same read.
 //
 // THE PRESS LAW: a press selects and nothing moves under a finger: a pressed level opens in a tray docked over the page (phone) or

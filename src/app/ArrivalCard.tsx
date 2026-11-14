@@ -53,7 +53,7 @@ interface Card {
 }
 
 interface LevelLine {
-  /** The level's code (`public.level_skills`): since 0412 every level raised by doing fires the same LEVEL_UP. */
+  /** The level's code (`public.level_skills`): since 0411 every level raised by doing fires the same LEVEL_UP. */
   track: string
   level: number
   reputation: number
