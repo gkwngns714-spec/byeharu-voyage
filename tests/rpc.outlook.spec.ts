@@ -112,7 +112,7 @@ test('world.price_outlook: its now is world.price on every side, and the path is
     expect(Date.parse(o.points[1].at)).toBe(Date.parse(o.clock.next_change_at))
     for (let i = 1; i < o.points.length; i++) {
       expect(Date.parse(o.points[i].at) - Date.parse(o.points[i - 1].at)).toBeGreaterThan(0)
-      if (i > 1) expect(Date.parse(o.points[i].at) - Date.parse(o.points[i - 1].at)).toBe(900_000)
+      if (i > 1) expect(Date.parse(o.points[i].at) - Date.parse(o.points[i - 1].at)).toBe(o.slot_seconds * 1000)
       expect(o.points[i].lo).toBeLessThanOrEqual(o.points[i].value)
       expect(o.points[i].hi).toBeGreaterThanOrEqual(o.points[i].value)
     }
