@@ -27,6 +27,7 @@ import { mapLabelRequests, planLabels, type LabelRequest, type Rect } from './la
 import type { MapPort, MapSea, MapSelection } from './mapTypes'
 import { regionNameRequests, type RegionTint } from './regions'
 import { seaNameRequests } from './seaNames'
+import { zoneNameRequests, type ZonesOnChart } from './seaZones'
 import { shipMarks } from './shipMarks'
 import { ShipPathLayer, type PathStop } from './ShipPathLayer'
 import type { ChromeBox } from './useChartSurface'
@@ -131,6 +132,7 @@ export function ChartCanvas({
   coast,
   seas = NO_SEAS,
   regions = null,
+  zones = null,
   portFlags = null,
   islets = NO_ISLETS,
   fights = NO_FIGHTS,
@@ -159,6 +161,10 @@ export function ChartCanvas({
   /** The regions' tints and names (row 93) — null while the filter is off, which is the default
    *  and the map exactly as it was. */
   regions?: readonly RegionTint[] | null
+  /** THE SEAS FILTER (2026-11-15): the borders between the sea zones and each zone's name with what it asks
+   *  (./seaZones.ts). Null — the default — draws neither. While set, the backdrop's water names give way to them:
+   *  two sets of names for the same water would only crowd each other. */
+  zones?: ZonesOnChart | null
   /** 0143 — each harbour's flag by port code, set before its name (D14). The screen passes it only
    *  while the Regions filter is on; null is the map exactly as it was. */
   portFlags?: ReadonlyMap<string, string> | null
@@ -305,7 +311,8 @@ export function ChartCanvas({
         requests.push(shift(r))
       }
       if (regions) for (const r of regionNameRequests(regions, window)) requests.push(shift(r))
-      for (const r of seaNameRequests(seas, window)) requests.push(shift(r))
+      if (zones) for (const r of zoneNameRequests(zones.labels, window)) requests.push(shift(r))
+      else for (const r of seaNameRequests(seas, window)) requests.push(shift(r))
     }
     return planLabels(requests, {
       viewBox: box,
@@ -317,7 +324,7 @@ export function ChartCanvas({
       // past a coast (the density scale's own start, ./glyphs.ts): a name over or under its own mark, or not at all
       centredOnMark: unitsPerPx > WIDE_SCALE.fromUnitsPerPx,
     })
-  }, [model, marksByCopy, seas, regions, portFlags, selection, box, unitsPerPx, keepOutUnits])
+  }, [model, marksByCopy, seas, regions, zones, portFlags, selection, box, unitsPerPx, keepOutUnits])
 
   // THE COAST'S SHEET (./chartView.ts, `paperOf` and `nextCoastPaper`) — wide at rest and in a pan,
   // the view itself just after a zoom. The state is only "was the last change a zoom": it is advanced
@@ -409,6 +416,7 @@ export function ChartCanvas({
         top={sheetTop}
         strokeWidth={coastStrokeWidth(box.width)}
         regions={regions}
+        zoneOutline={zones?.outline ?? null}
         islets={islets}
         unitsPerPx={unitsPerPx}
       />
@@ -427,6 +435,7 @@ export function ChartCanvas({
             regions={regions}
             islets={islets}
             unitsPerPx={unitsPerPx}
+            zoneOutline={zones?.outline ?? null}
             face="day"
           />
         </DaylightSheet>
@@ -550,6 +559,7 @@ const CoastSheet = memo(function CoastSheet({
   top,
   strokeWidth,
   regions,
+  zoneOutline = null,
   islets,
   unitsPerPx,
   face = 'night',
@@ -562,6 +572,8 @@ const CoastSheet = memo(function CoastSheet({
   top: number
   strokeWidth: number
   regions: readonly RegionTint[] | null
+  /** The sea zones' borders (the Seas filter), over the water and under the coast, in this face's ink. */
+  zoneOutline?: string | null
   islets: readonly Point[]
   unitsPerPx: number
   face?: 'night' | 'day'
@@ -587,6 +599,26 @@ const CoastSheet = memo(function CoastSheet({
       >
         {/* The grid, on the night sheet only: it is over both waters and under every coast. */}
         {face === 'night' && <GraticuleLayer box={paper} />}
+        {/* THE SEA ZONES' BORDERS (the Seas filter): a dashed hairline on the water, one path per copy of the world,
+            under the coast so a border ends where the land begins. The same line at every zoom and pan. By night in
+            the water names' ink; the day face draws the same line in the day coast's ink, so it reads on the day sea. */}
+        {zoneOutline && (
+          <g pointerEvents="none" data-testid={face === 'night' ? 'map-zone-borders' : 'map-zone-borders-day'}>
+            {copies.map((k) => (
+              <path
+                key={k}
+                d={zoneOutline}
+                transform={k === 0 ? undefined : `translate(${k * CHART_WIDTH} 0)`}
+                className={face === 'night' ? 'fill-none stroke-chart-sea-name' : 'fill-none stroke-chart-day-coast'}
+                strokeOpacity={face === 'night' ? undefined : 0.45}
+                strokeWidth={GLYPH.zoneBorderStroke}
+                strokeDasharray="5 4"
+                strokeLinejoin="round"
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </g>
+        )}
         <CoastlineLayer
           coast={coast}
           strokeWidth={strokeWidth}

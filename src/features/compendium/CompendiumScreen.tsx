@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Field, Segmented, Sheet } from '../../components/ui'
 import { useWorld } from '../../live/worldStore'
 import { WorldFailed, WorldLoading } from '../../live/WorldGate'
@@ -62,7 +63,9 @@ function CompendiumBody({ title }: { title: string }) {
     }
   }, [loadOfficers])
 
-  const [face, setFace] = useState<FaceId>('goods')
+  // A LINK MAY NAME THE FACE (`?face=seas`: the Map's sea tray, 2026-11-15); anything else opens on Goods.
+  const [params] = useSearchParams()
+  const [face, setFace] = useState<FaceId>(() => FACES.find((f) => f.id === params.get('face'))?.id ?? 'goods')
   const [query, setQuery] = useState('')
   const current = FACES.find((f) => f.id === face) ?? FACES[0]
 
