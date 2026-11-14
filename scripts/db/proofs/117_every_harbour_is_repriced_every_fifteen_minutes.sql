@@ -1,5 +1,5 @@
 -- ═════════════════════════════════════════════════════════════════════════════════════
--- PROOF 116 - EVERY HARBOUR IS REPRICED EVERY FIFTEEN MINUTES  (migration 0420; docs/dev-log/2026-11-15-drift-15.md)
+-- PROOF 117 - EVERY HARBOUR IS REPRICED EVERY FIFTEEN MINUTES  (migration 0420; docs/dev-log/2026-11-15-drift-15.md)
 --
 --   On the world's own harbours, rolled back with proof.mjs's transaction. The drift slot is put at production's 300 s (this chain's is 4,500 s)
 --   where a scene needs production's clock.

@@ -54,10 +54,11 @@ export function trendOf<T>(rows: readonly T[], pick: (row: T) => number): number
   return rows.map(pick).filter((v) => Number.isFinite(v))
 }
 
-export type StatsFace = 'overview' | 'news' | 'markets' | 'cities' | 'merchants' | 'me'
+export type StatsFace = 'overview' | 'news' | 'markets' | 'cities' | 'merchants' | 'ships' | 'me'
 
-/** The faces in order; each one's words are `stats.<id>` in the dictionary. 0347: News after Overview (docs/NEWS_AND_MARKERS.md §4). */
-export const STATS_FACES: readonly { id: StatsFace }[] = [{ id: 'overview' }, { id: 'news' }, { id: 'markets' }, { id: 'cities' }, { id: 'merchants' }, { id: 'me' }]
+/** The faces in order; each one's words are `stats.<id>` in the dictionary. 0347: News after Overview (docs/NEWS_AND_MARKERS.md §4). 0419: Ships after
+ *  Merchants (the owner, 2026-11-15: "in stats, show like merchants navy, pirates, anad cargo"). */
+export const STATS_FACES: readonly { id: StatsFace }[] = [{ id: 'overview' }, { id: 'news' }, { id: 'markets' }, { id: 'cities' }, { id: 'merchants' }, { id: 'ships' }, { id: 'me' }]
 
 /** THE CHART OF A CARD (2026-11-02, owner row 267 — *"charts get room"*): a `SeriesChart` 176 px tall (its plot 150), drawn 1 : 1 at
  *  the width the card leaves, with its reading line above it — the unfold slice drew these as a 24-px sparkline. The large view

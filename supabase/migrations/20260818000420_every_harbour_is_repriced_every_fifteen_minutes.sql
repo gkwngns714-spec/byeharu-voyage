@@ -29,7 +29,7 @@
 --   stepped at 15-minute turns takes theta^3 x drift + sigma x sqrt((1 - theta^6) / (1 - theta^2)) x N at each turn; three turns (45 minutes)
 --   have the law of nine one-slot steps, as five 50-minute turns of ten slots have the law of fifty: the walk's position after a voyage-day
 --   is distributed the same at any spread. The self-assert shows it with the noise put out (an hour of four turns equals one turn after the hour,
---   theta^12); proof 116 shows the spread of the noise statistically and through the door.
+--   theta^12); proof 117 shows the spread of the noise statistically and through the door.
 --
 -- budget: the drift job (byeharu-voyage:drift, every minute, its schedule NOT changed) writes about 156,621 / 15 = ~10,400 port_goods rows per run
 --   (17 or 18 harbours of 268), up from ~3,130 rows per run at 50: +7,300 rows a minute, every minute, evenly (the 0408 world wrote 156,621 rows
