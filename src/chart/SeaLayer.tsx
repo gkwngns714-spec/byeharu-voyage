@@ -1,4 +1,4 @@
-import { memo, useId } from 'react'
+import { memo } from 'react'
 import { CHART_HEIGHT, type ViewBox } from '../lib/geo'
 import { GLYPH } from './glyphs'
 
@@ -59,43 +59,35 @@ import { GLYPH } from './glyphs'
 /** The viewBox of a sea's svg: the glass as a unit square, with `preserveAspectRatio="none"`. */
 export const SEA_VIEWBOX = '0 0 1 1'
 
-/** THE GROUND AND ITS DEPTH — the night sea. */
+// ── THE SEA IS FLAT: ITS COLOUR IS THE PLACE'S, NEVER THE GLASS'S (2026-11-14) ─────────────────
+// Owner: "the map graphic of the sea, it is messed up. when zoom out the color changes", then "north pacific ocean,
+// south pacific ocean color, square, not in sync". ROOT CAUSE: the DEPTH. Each sea carried a second rect, a radial
+// gradient from nothing at the centre of the GLASS to `chart-deep` at its edge (night 0.62, day 0.7 strong). It was
+// keyed to the glass on purpose ("the deep water is always at the edge of the glass"), so the same water changed
+// colour with every pan and zoom: mid-blue at the centre of the screen, navy at its edge, and a different shade
+// again one zoom step out. On the dark side its low-alpha ramp over a near-black ground quantised into visible rings,
+// which the graticule cut into squares of unequal shade over the widest empty water there is, the Pacific. Nothing on
+// the chart moved with it, so it read as the sea out of step with the map. The first two answers (the closed seas'
+// shade, #668 and #669) removed a different, fainter thing and were wrong about the cause.
+// THE RULE NOW: a point of water has ONE colour by night and ONE by day, wherever it is on the glass and at every
+// zoom; only the Sun (DaylightSheet) chooses between them. tests/map.atmosphere.spec.ts holds it: no gradient here.
+
+/** THE GROUND: the night sea. One rect, one token, the whole glass. */
 export const SeaLayer = memo(function SeaLayer() {
-  const gradientId = useId()
   return (
     <g pointerEvents="none">
-      <defs>
-        <radialGradient id={gradientId} cx="50%" cy="50%" r="72%">
-          <stop offset="0%" style={{ stopColor: 'var(--color-chart-deep)', stopOpacity: 0 }} />
-          <stop offset="60%" style={{ stopColor: 'var(--color-chart-deep)', stopOpacity: 0.18 }} />
-          <stop offset="100%" style={{ stopColor: 'var(--color-chart-deep)', stopOpacity: 0.62 }} />
-        </radialGradient>
-      </defs>
-      {/* THE GROUND — the whole glass, so there is never an unpainted edge mid-pan. Flat, in the
-          pinned token. */}
+      {/* The whole glass, so there is never an unpainted edge mid-pan. Flat, in the pinned token. */}
       <rect x={0} y={0} width={1} height={1} className="fill-chart-sea" data-testid="map-sea" />
-      {/* THE DEPTH — open water darkens toward the frame's edge. */}
-      <rect x={0} y={0} width={1} height={1} fill={`url(#${gradientId})`} data-testid="map-sea-depth" />
     </g>
   )
 })
 
-/** THE DAY SEA — the water by day, with its own deep vignette. Painted whole: ChartCanvas lays it
- *  in a `DaylightSheet`, which is what shows it only where the Sun is up. */
+/** THE DAY SEA: the water by day, flat. Painted whole: ChartCanvas lays it in a `DaylightSheet`, which is what shows
+ *  it only where the Sun is up. */
 export const DaySeaLayer = memo(function DaySeaLayer() {
-  const dayGradientId = useId()
   return (
     <g pointerEvents="none" data-testid="map-sea-day">
-      <defs>
-        {/* The day's depth: open ocean goes deeper toward the frame's edge, as the night's does. */}
-        <radialGradient id={dayGradientId} cx="50%" cy="50%" r="72%">
-          <stop offset="0%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0 }} />
-          <stop offset="60%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0.25 }} />
-          <stop offset="100%" style={{ stopColor: 'var(--color-chart-day-deep)', stopOpacity: 0.7 }} />
-        </radialGradient>
-      </defs>
       <rect x={0} y={0} width={1} height={1} className="fill-chart-day-sea" />
-      <rect x={0} y={0} width={1} height={1} fill={`url(#${dayGradientId})`} />
     </g>
   )
 })
