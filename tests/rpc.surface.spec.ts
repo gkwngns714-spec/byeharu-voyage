@@ -16,7 +16,7 @@ import { loadChain } from '../src/lib/db/chainSource.node.mjs'
 import { builtWorldImage } from './builtWorld.fixture'
 import { isWaterAt, navFromServed } from '../src/lib/sea'
 import { haversineNm } from '../src/lib/geo'
-import { TIME_COMPRESSION } from '../src/lib/format'
+import { CLOCK_VOYAGE_DAYS, TIME_COMPRESSION } from '../src/lib/format'
 import { courseBetweenPorts, seaNav } from './seaCourse.fixture'
 import { fleetCargoByCode } from '../src/domain/fleet'
 import { saleEstimate } from '../src/domain/order'
@@ -167,9 +167,13 @@ test('world.snapshot() carries the whole static world, and not the world secret'
 
   // 0045 x20: the served knob and the client's display mirror are ONE number, asserted equal
   // here so neither can move without the other (the mirror lives in src/lib/format/time.ts).
-  // 0100 handed back the x20 that 0045 took "for faster testing": a voyage-day is 90 real seconds.
-  expect(snap.config.time_compression).toBe(960)
+  // 0100 handed back the x20 that 0045 took "for faster testing"; 0413 (the owner, 2026-11-14: a game day is one
+  // real hour) made it 192: a voyage-day is 450 real seconds and a day of the clock clock_voyage_days of them.
   expect(snap.config.time_compression).toBe(TIME_COMPRESSION)
+  expect(snap.config.clock_voyage_days).toBe(CLOCK_VOYAGE_DAYS)
+  expect((86_400 * Number(snap.config.clock_voyage_days)) / snap.config.time_compression, 'a day of the clock, in real seconds').toBe(3600)
+  expect(typeof snap.config.clock_anchor?.at, 'the clock is anchored at the switch').toBe('string')
+  expect(Number.isFinite(snap.config.clock_anchor?.day)).toBe(true)
   // 0193: 48, so a long passage planned as a chain of legs (0188) can be queued whole (0175). Was 12.
   expect(snap.config.order_queue_max).toBe(48)
   for (const key of [
@@ -917,10 +921,16 @@ test('world.contracts() posts requests for goods a port does not sell, and cmd.f
     expect(r.expires_day).toBeGreaterThan(r.posted_day)
     expect(r.days_left).toBe(r.expires_day - board.game_day)
     expect(r.days_left).toBeGreaterThanOrEqual(1)
-    // The expiry lands on a game-day boundary (a game day is 2880 s, the clock authority), so compare
-    // it with the SERVED game clock, never the wall clock: a day tick during the test made a strict
-    // `> Date.now()` fail by the tick's own milliseconds (main red 2026-10-29 16:48 UTC).
-    expect(Date.parse(r.expires_at)).toBeGreaterThanOrEqual((board.game_day + 1) * 2880_000)
+    // The expiry lands on a game-day boundary, so compare it with the SERVED game clock, never the wall
+    // clock: a day tick during the test made a strict `> Date.now()` fail by the tick's own milliseconds
+    // (main red 2026-10-29 16:48 UTC). 0413: the instant a game day begins is the counter's own inverse
+    // (public.clock_start), no longer the day number times a length.
+    expect(Date.parse(r.expires_at)).toBeGreaterThanOrEqual(
+      await db.callAs<number>(`select (extract(epoch from public.clock_start('game_day', $1::bigint)) * 1000)::float8 as result`, [board.game_day + 1]),
+    )
+    expect(Date.parse(r.expires_at)).toBe(
+      await db.callAs<number>(`select (extract(epoch from public.clock_start('game_day', $1::bigint)) * 1000)::float8 as result`, [r.expires_day]),
+    )
     // NEVER a good this port sells — the rule that keeps a request from being an arbitrage on
     // one quay (0087's header).
     expect(offeredHere.has(r.good), `${r.good} is on this port's roster AND on its board`).toBe(false)
@@ -1876,6 +1886,11 @@ test('the registry and the client grants are one set, and the merchant cores are
     'public.city_month_post(uuid, uuid, text, bigint)',
     // 0300: the hourly upkeep's hard end, a pure rule read by public.tick_reconcile alone. Server-only.
     'public.upkeep_hard_end(timestamptz, numeric, numeric)',
+    // 0413: the one door that moves the clock's rate (and re-times the voyages at sea with it). Owner only.
+    'public.clock_set(integer, timestamptz)',
+    // 0413: the one counter of the market's periods and its inverse. Server-only: the readers that need them are definers.
+    'public.clock_count(text, timestamptz)',
+    'public.clock_start(text, bigint)',
   ]
   const reachable = await db.callAs<string[] | null>(
     `select jsonb_agg(f) as result from unnest($1::text[]) f

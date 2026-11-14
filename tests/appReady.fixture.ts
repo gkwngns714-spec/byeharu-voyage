@@ -117,7 +117,11 @@ export async function closeDetail(page: import('@playwright/test').Page) {
 }
 
 /**
- * THE DRIFT SLOT, IN WALL-CLOCK MS — `drift_slot_seconds` is 900 (0240's header: "900 → 600 → 900"; 16
+ * (0413, a game day lasts one hour: `drift_slot_seconds` is 4,500 in the chain now and a slot is counted from an anchor, public.clock_count, not from the
+ * epoch, so an edge is no longer at :00, :15, :30, :45. The wait below still steers a spec off those old instants; a true edge comes once in 75
+ * minutes and is not steered off. Left as it is: the tab cannot be asked from here before it is ready.)
+ *
+ * THE DRIFT SLOT, IN WALL-CLOCK MS — `drift_slot_seconds` was 900 (0240's header: "900 → 600 → 900"; 16
  * readers), and a slot is `floor(epoch / 900)`, so every tab on every machine crosses an edge at the same
  * instants: :00, :15, :30, :45.
  *
