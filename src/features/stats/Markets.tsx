@@ -27,7 +27,7 @@ import {
   useFilterChoice,
 } from '../../components/ui'
 import { formatDucats, formatInt, formatPctChange, formatPriceFigure } from '../../lib/format'
-import { t as tNow, useT } from '../../lib/i18n'
+import { useT } from '../../lib/i18n'
 import { worldStatsMarkets, type StatsGood, type StatsMarkets } from '../../lib/rpc'
 import { useWorld } from '../../live/worldStore'
 import { GoodTray } from './GoodTray'
@@ -221,8 +221,8 @@ export function MarketsFace() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-5">
               <StatCell look="stacked" label={t('stats.goodsTraded')} value={rows.filter((r) => r.traded > 0).length} format={formatInt} />
               <StatCell look="stacked" label={t('stats.unitsTraded')} value={unitsTraded} format={formatInt} />
-              <StatCell look="stacked" label={t('stats.rose', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) > 0).length} format={formatInt} tone="success" />
-              <StatCell look="stacked" label={t('stats.fell', { window: windowWord(win) })} value={moved.filter((r) => (r.move ?? 0) < 0).length} format={formatInt} tone="danger" />
+              <StatCell look="stacked" label={t('stats.rose')} value={moved.filter((r) => (r.move ?? 0) > 0).length} format={formatInt} tone="success" />
+              <StatCell look="stacked" label={t('stats.fell')} value={moved.filter((r) => (r.move ?? 0) < 0).length} format={formatInt} tone="danger" />
             </div>
           </Card>
           <Board
@@ -247,10 +247,6 @@ export function MarketsFace() {
       }
     />
   )
-}
-
-function windowWord(win: Window): string {
-  return win === '1h' ? tNow('stats.wHour') : win === '1d' ? tNow('stats.wDay') : tNow('stats.wWeek')
 }
 
 interface BoardRow {

@@ -19,7 +19,8 @@ test('You shows your captains — none yet for a new company, with where to find
   await ready(page)
   const section = page.getByTestId('your-captains')
   await expect(section).toBeVisible({ timeout: 60_000 })
-  await expect(section.getByTestId('your-captains-none')).toContainText('Hire one at an inn')
+  // 2026-11-15 owner: shorter words
+  await expect(section.getByTestId('your-captains-none')).toContainText('hire at an inn')
   await expect(section.getByTestId('your-captain')).toHaveCount(0)
 })
 
