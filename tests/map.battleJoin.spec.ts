@@ -18,8 +18,9 @@ import { fleetsInFight, joinOffers, joinRefusalKey, joinSides, type JoinFleet } 
 //   · RED: every fleet on a FIGHTING card that is there is drawn on a red ground; one on her way, one of a battle that
 //     is over and one in no battle are not.
 //   · THE RING of a tick battle is its join circle: centred on the site, `reach_nm` across, never under half a touch.
-//   · THE JOIN BAR lists only her fleets in reach that are free (not in a battle, not held, not at peace), nearest first;
-//     a side against a player is never offered (no PvP), and a raid is joined only on the side set upon.
+//   · JOIN is ONE button (owner 2026-11-15: "simplify all"); pressed, it offers only her fleets in reach that are free (not
+//     in a battle, not held, not at peace), nearest first; a side against a player is never offered (no PvP), and a raid is
+//     joined only on the side set upon.
 //   · THE REFUSALS: every code `cmd.battle_join` answers has its own short word, in English and Korean.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -133,25 +134,28 @@ const FLEETS: JoinFleet[] = [
   { id: 'lost', name: 'No Place', at: null, status: 'SAILING', busyUntil: null, peaceUntil: null },
 ]
 
-test('the Join bar lists her fleets in reach that are free, nearest first, each with the sides she may take', () => {
+test('Join is one button; pressed, it offers her fleets in reach that are free, nearest first, each with the sides she may take', () => {
   const offers = joinOffers(RAID, FLEETS, NOW, CARDS)
   expect(offers.map((o) => o.fleet.id)).toEqual(['nearer', 'near'])
   // a raid is joined only on the side set upon, against the pirates
   expect(offers.every((o) => o.sides.join() === 'DEFENDER')).toBe(true)
   render.setLocale('en')
-  const html = render.renderJoin({ card: RAID, fleets: FLEETS, nowMs: NOW, allCards: CARDS })
-  expect([...html.matchAll(/data-testid="join-row" data-fleet="([^"]+)"/g)].map((m) => m[1])).toEqual(['nearer', 'near'])
-  // names whole, the side choice and the Join button
+  // SHUT: one button, Join, and no other word
+  const shut = render.renderJoin({ card: RAID, fleets: FLEETS, nowMs: NOW, allCards: CARDS })
+  expect((shut.match(/data-testid="join-open"/g) ?? []).length).toBe(1)
+  expect(shut).toContain('data-fleets="nearer near"')
+  expect(shut.replace(/<[^>]+>/g, '').trim()).toBe('Join')
+  // PRESSED: one button a fleet, names whole; one side only, so no side word
+  const html = render.renderJoin({ card: RAID, fleets: FLEETS, nowMs: NOW, allCards: CARDS, startOpen: true })
+  expect([...html.matchAll(/data-testid="join-press" data-fleet="([^"]+)" data-side="([^"]+)"/g)].map((m) => `${m[1]} ${m[2]}`)).toEqual(['nearer DEFENDER', 'near DEFENDER'])
   expect(html).toContain('Boa Esperança')
   expect(html).toContain('Santa Clara')
   expect(html).not.toContain('Far Away')
-  expect(html).toContain('Defender')
   expect(html).not.toContain('Attacker')
-  expect((html.match(/data-testid="join-press"/g) ?? []).length).toBe(2)
+  expect(html).not.toContain('join-open')
   render.setLocale('ko')
   const ko = render.renderJoin({ card: RAID, fleets: FLEETS, nowMs: NOW, allCards: CARDS })
-  expect(ko).toContain('참전')
-  expect(ko).toContain('방어 측')
+  expect(ko.replace(/<[^>]+>/g, '').trim()).toBe('참전')
   render.setLocale('en')
 })
 
@@ -160,8 +164,9 @@ test('no PvP: a side against a player is never offered; a battle she may not joi
   // ship's side, which would set her against that player
   expect(joinSides(ATTACK)).toEqual(['ATTACKER'])
   const near = { ...FLEETS[0], id: 'n2', at: { lat: 10.2, lon: 10 } }
-  const html = render.renderJoin({ card: ATTACK, fleets: [near], nowMs: NOW, allCards: CARDS })
-  expect(html).toContain('data-sides="ATTACKER"')
+  const html = render.renderJoin({ card: ATTACK, fleets: [near], nowMs: NOW, allCards: CARDS, startOpen: true })
+  expect(html).toContain('data-side="ATTACKER"')
+  expect(html).not.toContain('data-side="DEFENDER"')
   expect(html).not.toContain('Defender')
   // players on both sides: nothing to offer, no bar
   const both = card('pvp', [side('x1', 'ATTACKER', 'COMPANY'), side('x2', 'DEFENDER', 'COMPANY')])
@@ -194,7 +199,7 @@ test('every refusal of cmd.battle_join has its own short word, in English and Ko
   // a code the contract does not name still says something short, never nothing
   expect(joinRefusalKey('E_SOMETHING_NEW')).toBe('join.E_OTHER')
   expect(translate('en', 'join.E_OTHER')).toBe('Refused')
-  for (const k of ['join.join', 'join.joined', 'join.watch'] as const) {
+  for (const k of ['join.join', 'join.joined', 'join.watch', 'join.vs'] as const) {
     for (const locale of ['en', 'ko'] as const) expect(translate(locale, k).split(/\s+/).length).toBeLessThanOrEqual(2)
   }
 })
