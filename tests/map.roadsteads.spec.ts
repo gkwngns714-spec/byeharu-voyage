@@ -183,7 +183,10 @@ test.describe('the layer is furniture, and it says so in the file', () => {
     // table. Pin moved deliberately 2026-09-14 (owner row 94): PortsLayer now draws every port
     // on the glass — a DOT below the zoom's tier floor — and `fullPorts` is `portMarks`' full
     // half (chartModel.ts); a dot has no roads, so the roads read the half that wears a mark.
-    expect(canvas).toMatch(/<RoadsteadsLayer\s+ports=\{fullPorts\}/)
+    // Moved deliberately 2026-11-14 (#664, "the map reads as one picture again"): past a coast, a full harbour the
+    // name plan left unnamed is a QUIET dot (chartModel.ts `quietHarbours`), and a quiet dot has no roads either —
+    // still the full half, less the quiet ones, never the whole table.
+    expect(canvas).toMatch(/<RoadsteadsLayer\s+ports=\{quiet\.size === 0 \? fullPorts : fullPorts\.filter\(\(p\) => !quiet\.has\(p\.code\)\)\}/)
     expect(canvas).toMatch(/<PortsLayer\s+marks=\{marks\}/)
     // Since 2026-10-14 the full half is taken per COPY of the sheet, from that copy's own marks.
     expect(canvas).toContain('const fullPorts = marks.filter((m) => m.full).map((m) => m.port)')

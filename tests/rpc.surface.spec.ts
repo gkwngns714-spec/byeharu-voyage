@@ -1746,6 +1746,11 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-15 with migration 0419 (the owner: "in stats, show like merchants navy, pirates, anad cargo"): the Stats face
       // Ships' one READ, world.stats_fleets, over the count's small row (public.stats_fleets). No arguments. Landed WITH the face (features/stats/Ships.tsx).
       'worldStatsFleets',
+      // Pin moved deliberately 2026-11-15 with migration 0424 (the owner: "in port, there should be a beginner's gear for ships"):
+      // STARTER GEAR, world.starter_gear(fleet) - a READ, no player id (her fleet's ships and each piece's state) - and its door
+      // cmd.buy_starter(fleet, ship, item), a quay verb like the basket's: client-direct, no orders row, a fleet that is not
+      // yours refused. Landed WITH the face that reads them (live/PortGear.tsx).
+      'worldStarterGear', 'cmdBuyStarter',
       // Pin moved deliberately 2026-10-26 with migration 0224 (owner row 200, "updated every second"): the Stats
       // tab's one LIVE read — the counters every writer keeps, asked each second while the tab is open. A READ.
       'worldStatsNow',

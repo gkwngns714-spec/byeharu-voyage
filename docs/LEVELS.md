@@ -204,7 +204,7 @@ shows every step at its level with the figure it reaches there.
 A new level is two inserts and one hook line. The page needs no change: it draws what is served. The words of a new level go in
 `src/lib/i18n/dict/command.ts` (`lv<Code>`, `lvAct_<activity>`); until then the server's English word is shown.
 
-The client: `src/features/command/levels/LevelTiles.tsx` (tiles, the level's detail, the phone's tray), `src/live/levelWords.ts`
+The client: `src/live/LevelTiles.tsx` (tiles, the level's detail, the phone's tray), `src/live/levelWords.ts`
 (names, marks, sentences; the arrival card and History name a level through it).
 
 **Where a player finds them:** Command → Levels (the tiles, whole), and the You page (0417: the same ten tiles, small, under its
