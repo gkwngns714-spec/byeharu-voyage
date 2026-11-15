@@ -148,7 +148,7 @@ export interface SeaPair {
 export function seaPairs(sea: BoardSea, held: SeaHeld | null): SeaPair[] {
   const f = sea.refusal?.figures
   const pair = (ask: 'wave' | 'title', need: number | null, have: number | null, flag: boolean | undefined): SeaPair | null => {
-    if (need === null) return null
+    if (need === null || need <= 0) return null   // an ask of 0 is no ask: never printed (the map and the Codex hide it too)
     const short = !!sea.refusal && (flag ?? (have !== null && have < need))
     return { ask, text: t(ask === 'wave' ? 'desk.seaTagWaves' : 'desk.seaTagTitle', { n: have === null ? String(need) : `${have} / ${need}` }), short }
   }
@@ -178,8 +178,8 @@ export function seaAsksWords(sea: BoardSea, held: SeaHeld | null = null): string
 export function seaTagWords(sea: BoardSea, bite: boolean): string | null {
   if (!bite) return t('desk.later')
   if (sea.refusal) return t('desk.shut')
-  if (sea.needs_title !== null) return t('desk.seaTagTitle', { n: sea.needs_title })
-  if (sea.needs_wave !== null) return t('desk.seaTagWaves', { n: sea.needs_wave })
+  if (sea.needs_title !== null && sea.needs_title > 0) return t('desk.seaTagTitle', { n: sea.needs_title })
+  if (sea.needs_wave !== null && sea.needs_wave > 0) return t('desk.seaTagWaves', { n: sea.needs_wave })
   return null
 }
 
