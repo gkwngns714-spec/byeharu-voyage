@@ -36,9 +36,12 @@
 --       convoy_ships_max, convoy_ships_span, convoy_ships_band. convoy_retire_per_run 3 -> 10 (an owner's own value is left and named).
 --
 -- THE PIRATES: their share is public.convoy_ships_of(<the Brethren>), written now. The crown cargo job still makes no ship for them (0338:
---   no circuit, no commission), so until the pirates' own cargo ships exist (0429, five gold ships from Port Royal) the world sails
---   cargo_fleet_total less the pirates' share. HOOK for 0429 or its follow-up: the pirates' gold ships count INSIDE their share, so the number of
---   them reads public.convoy_ships_of(<pirates>) and not a flat 5 (their share: 7 on the local world; on prod's flags of 2026-11-15 4 by harbours, so cargo_pirate_min holds it at 5).
+--   tick_cargo_ships skips the pirates), so they are made by ONE hand only: 0429's public.pirate_purse_step (home Port Royal, ords 1..n). It makes
+--   pirate_cargo_ships (5) while the fleet sizes carry no row for the pirates, and public.convoy_ships_of(<pirates>) once they do: this file
+--   writes that row, so from here the pirates' gold ships are their share, INSIDE cargo_fleet_total, never 5 on top of it (their share: 7 on
+--   the local world; on prod's flags of 2026-11-15 4 by harbours, so cargo_pirate_min holds it at 5, the same 5 ships 0429 made: none added).
+--   A pirate ship over a falling share lays up by the same retire (ord above the number, home, empty). An empty pirate ship away also sails
+--   home here (0429's circuit_plan hunk gives the pirates their own harbours as stops; p_to is home, Port Royal).
 --
 -- NOT DONE: no ship is deleted. A cargo ship's house and fleet are named by append-only rows (public.convoy_cargo, public.events), so 0326's law
 --   stands: a ship is laid up, never deleted. The database does not shrink by rows; it stops growing (no ship is ever made again until a share
@@ -55,7 +58,10 @@
 --   lays up (and the job makes ships up to it: set it to the ships in service, ~360, to hold the fleet where it stands).
 -- SELF-ASSERT: every hunk once and reversing; grants, volatility, definer, search path, owner unmoved; no other function moved; no body names a
 --   retired knob; the shares sum to the total, every harboured power (the pirates too) at least 1; then the probe, rolled back.
--- VERSION: 0430. 0427 (#706) and 0428 (#707) touch none of these bodies or knobs; 0429 (the pirates' gold ships) is not on main as written.
+-- VERSION: 0430, after 0429 (#720). 0427 (#706) and 0428 (#707) touch none of these bodies or knobs (0427's raids end a cargo ship's
+--   funds aboard: an emptied ship then sails home by S4). 0429 hunks public.cargo_ship_step twice (idle at home: a pirate ship never rebases;
+--   a delivery: a pirate city is topped up to pirate_city_purse); its hunks and this file's are disjoint, so each of this file's occurs once on
+--   either body, and reversing them gives back 0429's body.
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
 do $m$

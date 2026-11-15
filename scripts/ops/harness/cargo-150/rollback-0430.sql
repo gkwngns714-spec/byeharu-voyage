@@ -1,5 +1,7 @@
 -- 0430 FORWARD ROLLBACK, A DRAFT. NOT a prod check and NOT a migration yet: to use it, strip the guard line, give it the next number, add a news line
--- and deploy it as any migration (owner only). Tested on the local chain: after it the four re-cut bodies are 0426's to the byte.
+-- and deploy it as any migration (owner only). Tested on the local chain: after it the four re-cut bodies are the ones before 0430 to the byte
+-- (0326/0328/0343's, and public.cargo_ship_step with 0429's two pirate hunks still in: only 0430's hunks are reversed). With no pirate row,
+-- 0429's public.pirate_purse_step falls back to pirate_cargo_ships (5).
 -- Gives back public.convoy_ships_wanted (the curve, no pirates), public.convoy_ships_of (min for no row), public.convoy_fleet_settle (the dead band)
 -- and public.cargo_ship_step (an emptied ship sails the rest of her circuit): each of 0430's hunks reversed, checked once. Restores 0326's four
 -- knobs at 0326's values, convoy_retire_per_run 3, drops cargo_fleet_total, cargo_pirate_min and the pirates' fleet number. Ships laid up by 0430 are woken by the
