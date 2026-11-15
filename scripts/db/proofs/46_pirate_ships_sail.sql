@@ -27,6 +27,8 @@
 -- @pass PIR_MONEY       W (purses + companies + funds aboard) is unchanged to the ducat across everything above
 -- ═══════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = 'false'::jsonb where key = 'pirates_trade';   -- 0445: this proof's lone pirate steps in the job's loop, before the pressure is written (0339's order). With trading lit the job puts ONE ship aside to step last (public.pirate_trader_step), and her sea is pressed a minute later; trading is proof 114's
+
 -- 0413 (a game day lasts one hour): this proof's instants and amounts are written on the clock as it was before 0413 (the length of a market day, a drift
 -- slot and a population step; the drift job's spread; the rates per real day). So the rate is moved back through its one door, public.clock_set, and the
 -- anchors are emptied, inside this proof's own rolled-back transaction. What 0413 itself does is proof 110's.

@@ -15,6 +15,8 @@
 -- @pass FL_STATS   the Stats count's window counts the raids that ended with the ship gone (raids_fled), and world.stats_fleets serves fled_day
 -- ══════════════════════════════════════════════════════════════════════════════════════════════════════════════
 
+update public.world_config set value = case key when 'pirate_strike_from_port' then 'true'::jsonb else to_jsonb(720) end where key in ('pirate_strike_from_port', 'pirate_port_minutes');   -- 0445: this proof's pirate lies at her haunt and raids from it (0427's world, by 0445's two way-back knobs); the cruise and the raid under sail are proof 147's
+
 update public.world_config set value = '[]'::jsonb where key = 'tick_fight_kinds';   -- 0435: this proof drives the round-by-round battle (the rollback's engine); a tick battle is proof 136's
 
 create function pg_temp.lie_133(p_fleet uuid, p_lat numeric, p_lon numeric) returns void language sql as $f$
