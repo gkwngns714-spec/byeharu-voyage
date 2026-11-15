@@ -146,12 +146,12 @@ test('the Town Hall shows the treasury, offers no Invest away from your fleet, a
   // Four works; your fleet lies at Lisbon, so Invest is not offered here and one line says why.
   await expect(page.locator('[data-testid^="townhall-work-"]')).toHaveCount(4)
   await expect(page.locator('[data-testid^="townhall-invest-"][data-testid$="docks"]')).toHaveCount(0)
-  await expect(page.getByTestId('townhall-invest-none')).toHaveText('Dock here to invest.')
+  await expect(page.getByTestId('townhall-invest-none')).toHaveText('Dock here to invest') // 2026-11-15 owner: shorter words
   // The merchant who bought ten shares of the docks, by name.
   const row = page.getByTestId('townhall-investor').filter({ hasText: world.investor })
   await expect(row).toHaveCount(1)
   await expect(row).toContainText('Merchant')
-  await expect(page.getByTestId('townhall-work-docks')).toContainText('10 of 100 sold')
+  await expect(page.getByTestId('townhall-work-docks')).toContainText('10 / 100 sold') // 2026-11-15 owner: shorter words
   // 0144: Porto is a home city of Portugal; the merchant's investment is influence for its country;
   // the race is dark, so no Donate and one line that says so.
   await expect(page.getByTestId('townhall-holder')).toContainText('Portugal')
@@ -217,7 +217,7 @@ test('0313: a finished work still sells: Invest stands on it, with its open lot 
 
   await openCity(page, 'LIS', 'Lisbon')
   await page.getByTestId('map-city-tabs').getByText('Town Hall', { exact: true }).click()
-  await expect(page.getByTestId('townhall-work-docks')).toContainText('0 of 100 sold', { timeout: 30_000 })
+  await expect(page.getByTestId('townhall-work-docks')).toContainText('0 / 100 sold', { timeout: 30_000 })
   await expect(page.getByTestId('townhall-work-docks')).toContainText('10,486')
   await expect(page.getByTestId('townhall-invest-docks')).toBeVisible()
   await expect(page.getByTestId('townhall-work-docks')).not.toContainText('Built')

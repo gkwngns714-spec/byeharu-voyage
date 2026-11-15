@@ -39,5 +39,5 @@ test('your docked ship shows her cabins, seat 1 the Captain\'s cabin, and offers
   // 0179 lit crew_bite: cabin rates are in use, so the server serves no note and the panel prints none
   await expect(cabins).not.toContainText('Cabin rates are not in use yet.')
   await cabins.getByTestId('cabin-seat-1').click()
-  await expect(cabins.getByTestId('cabin-pick-1')).toContainText('Hire a captain at an inn first.')
+  await expect(cabins.getByTestId('cabin-pick-1')).toContainText('Hire one at an inn') // 2026-11-15 owner: shorter words
 })

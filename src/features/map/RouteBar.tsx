@@ -1,4 +1,5 @@
-import { Button, KEEP_WORDS_CLASS, seaName, seaWallTag } from '../../components/ui'
+import { Button, KEEP_WORDS_CLASS, seaName } from '../../components/ui'
+import { seaShortLine } from './seaLines'
 import { CHART_CHROME } from '../../chart'
 import { formatVoyageDays } from '../../lib/format'
 import { useLocale, useT } from '../../lib/i18n'
@@ -131,7 +132,7 @@ export function RouteBar({
       ) : seaWall ? (
         // A LEG SHUT BY A SEA says which sea and what it asks that she does not hold, in the line's own place (no height)
         <p className={`${KEEP_WORDS_CLASS} text-t-body text-warning`} role="status" data-testid="route-sea-wall" data-sea-wall={seaWall.zone}>
-          {`${seaName(locale, seaWall)}: ${seaWallTag(locale, seaWall)}`}
+          {`${seaName(locale, seaWall)}: ${seaShortLine(locale, seaWall)}`}
         </p>
       ) : (
         <p data-name="" className={`${KEEP_WORDS_CLASS} text-t-body font-medium text-ink`} data-testid="route-summary">
