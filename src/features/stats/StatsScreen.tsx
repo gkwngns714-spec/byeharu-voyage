@@ -86,7 +86,8 @@ function StatsBody({ title }: { title: string }) {
         value={face}
         onChange={setFace}
         label={t('stats.facesLabel')}
-        className="w-fit max-w-full max-sm:w-full"
+        // SEVEN FACES, ONE ROW from 1,024 px (2026-11-15 owner: shorter, cleaner) — four over three left a ragged second row on a wide glass
+        className="w-fit max-w-full max-sm:w-full lg:grid-cols-7"
       />
       <LiveNow live={live} />
       {face === 'overview' && <OverviewFace live={live} />}

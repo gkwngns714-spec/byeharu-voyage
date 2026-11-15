@@ -532,7 +532,7 @@ function SailAct({
       }
       extra={
         <div data-testid="plan-estimate">
-          <Row label={t('desk.days')} value={<Figure value={go.days !== null ? formatDaysReal(go.days) : '—'} />} data-testid="plan-days" />
+          <Row label={t('desk.time')} value={<Figure value={go.days !== null ? formatDaysReal(go.days) : '—'} />} data-testid="plan-days" />
           <Row
             label={t('desk.supplies')}
             value={<Figure value={go.supplies ? formatPriceDelta(-go.supplies.cost) : '—'} tone={go.supplies && !go.supplies.fits ? 'danger' : 'ink'} />}

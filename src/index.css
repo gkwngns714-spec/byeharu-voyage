@@ -227,7 +227,7 @@
      Where the Sun is up (src/chart/sun.ts) the chart is painted in THESE, through a mask whose
      value is the daylight at each point, over the night picture the tokens above make. So the
      night side is the chart as it was and the day side is the Earth from above: open ocean a
-     deep blue going deeper toward the frame's edge, shallows paler toward every shore, and the
+     deep blue, flat (2026-11-14, #672: the sea's colour is the place's, never the glass's), shallows paler toward every shore, and the
      land in the colours its latitude wears — ice at the poles, boreal and temperate green,
      the arid belt tan at ±25°, the tropics green again — laid as one gradient down the sheet.
      Daylight is the Sun's, not a colour scheme (there is one scheme, dark: it is what the
@@ -238,7 +238,6 @@
      FleetsLayer, LabelsLayer and RoadsteadsLayer mix toward them by each point's daylight
      (the `.bv-sun-*` rules at the end of this file). */
   --color-chart-day-sea: #3d7ab8;
-  --color-chart-day-deep: #1d4f8c;
   --color-chart-day-shallow: #8ec6e4;
   --color-chart-day-coast: #14283d;
   --color-chart-day-ice: #eef3f5;

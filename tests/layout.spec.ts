@@ -1167,7 +1167,7 @@ test(`PORT › Requests: the third face lists this port's requests as board rows
     const text = (el: HTMLElement) => (el.innerText || '').replace(/\s+/g, ' ').trim()
     return {
       rows: rows.length,
-      rowsWithLot: rows.filter((r) => /Wanted [\d,]+ · Held [\d,]+/.test(text(r))).length,
+      rowsWithLot: rows.filter((r) => /On board [\d,]+ \/ [\d,]+/.test(text(r))).length, // 2026-11-15 owner: shorter words (HAVE / NEED)
       rowsWithPremium: rows.filter((r) => /Bonus [\d,.]+ 🪙 each · [\d,]+ 🪙 left/.test(text(r))).length,
       rowsWithShare: rows.filter((r) => /Time left (\d+:)?\d+:\d\d/.test(text(r))).length,
       cells: cells.length,
@@ -1346,7 +1346,8 @@ test(`PORT: the Inn's crew face is a figure, a stepper, a served daily cost and 
   const face = page.locator('[data-testid="inn-crew-face"]')
   await expect(face, 'no crew face — is a fleet docked at the port PORT opened on?').toBeVisible()
   // 1. THE FIGURE PRINTS ITS WHOLE: `N / max crew`, never a bare count.
-  await expect(page.locator('[data-testid="inn-crew"]')).toContainText(/\d+\s*\/\s*\d+\s*crew/)
+  // 2026-11-15 owner: shorter words (the "crew" unit after the label Crew is gone)
+  await expect(page.locator('[data-testid="inn-crew"]')).toContainText(/Crew\s*\d+\s*\/\s*\d+/)
   // 2. THE STEPPER, and the served cost for the count it stands at.
   const stepper = page.locator('[data-testid="inn-crew-stepper"]')
   await expect(stepper).toBeVisible()

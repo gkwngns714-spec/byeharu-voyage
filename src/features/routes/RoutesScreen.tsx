@@ -176,7 +176,7 @@ function RoutesBody({ title }: { title: string }) {
                 data-testid="routes-list"
               >
                 {others.length === 0 && mine.length === 0 ? (
-                  <Row label={board.merchants ? t('routes.noneAnywhere') : t('routes.noneYours')} tone="muted" hairline={false} />
+                  <Row label={t('routes.none')} tone="muted" hairline={false} />
                 ) : mine.length === 0 ? (
                   others.map(lane)
                 ) : (
@@ -213,7 +213,7 @@ function Side({ board, rows, order }: { board: RouteBoard; rows: readonly RouteB
   const top = useMemo(() => topOf(rows, order, BOARD), [rows, order])
   const companies = useMemo(() => companiesOf(rows, BOARD), [rows])
   const flag = (code: string | null) => (code === null ? null : nationNameOf(nationByCode, code))
-  const empty = board.merchants ? t('routes.noneAnywhere') : t('routes.noneYours')
+  const empty = t('routes.none')
 
   // WITHIN REACH AND OUT OF REACH, as the parts of one bar (0108: the gate read forward against your own levels)
   const reach: StackedPart[] = [
@@ -371,13 +371,7 @@ function LaneTray({
             <Figure value={formatMiles(route.nm)} />
           )
         }
-      >
-        {route.nm === null && (
-          <span className="block text-t-caption text-ink-faint">
-            {t('routes.noDistance')}
-          </span>
-        )}
-      </Row>
+      />
       {route.regions > 1 && <Row label={t('routes.regions')} value={<Figure value={formatInt(route.regions)} />} />}
       <Row
         label={t('routes.asks')}
@@ -392,11 +386,8 @@ function LaneTray({
           )
         }
       >
-        <span className="block text-t-caption text-ink-faint">
-          {route.closed
-            ? t('routes.wouldRefuse')
-            : t('routes.within')}
-        </span>
+        {/* 2026-11-15 owner: shorter words. Within reach says nothing the plain figure does not; only the short one gets a line. */}
+        {route.closed && <span className="block text-t-caption text-warning">{t('routes.wouldRefuse')}</span>}
       </Row>
       <Row label={t('routes.state')} value={route.state} />
       <Row
@@ -411,7 +402,7 @@ function LaneTray({
       >
         <span className="block text-t-caption text-ink-faint">
           {route.earnings.lap === null
-            ? t('routes.twoLaps')
+            ? t('routes.twoLaps', { n: formatInt(route.earnings.lap_basis) })
             : t('routes.meanOf', { n: formatInt(route.earnings.lap_basis), count: route.earnings.lap_basis })}
         </span>
       </Row>

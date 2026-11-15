@@ -155,14 +155,17 @@ async function expectSnugFlags(page: Page): Promise<{ flagged: number }> {
       const id = (use.getAttribute('href') ?? '').slice(1)
       const symbol = document.getElementById(id)
       const f = use.getBoundingClientRect()
-      const t = g.querySelector('text')!.getBoundingClientRect()
-      return { id, defined: !!symbol && symbol.childElementCount > 0, gap: t.left - f.right, w: f.width, h: f.height }
+      // A capital's flag ALONE where its name will not fit (labels.ts `flagOnlyFallback`, 2026-11-15): no name to stand before.
+      const t = g.querySelector('text')?.getBoundingClientRect() ?? null
+      return { id, defined: !!symbol && symbol.childElementCount > 0, gap: t ? t.left - f.right : null, w: f.width, h: f.height }
     }),
   )
   for (const r of rows) {
     expect(r.defined, `${r.id} is drawn from a defined symbol`).toBe(true)
-    expect(r.gap, `${r.id}: the flag stands before the name, snug`).toBeGreaterThanOrEqual(1)
-    expect(r.gap, `${r.id}: the flag stands before the name, snug`).toBeLessThanOrEqual(7)
+    if (r.gap !== null) {
+      expect(r.gap, `${r.id}: the flag stands before the name, snug`).toBeGreaterThanOrEqual(1)
+      expect(r.gap, `${r.id}: the flag stands before the name, snug`).toBeLessThanOrEqual(7)
+    }
     // The 3:2 box's height; a flag of another shape (Genoa 2:1) is fitted inside it, so its box is
     // the larger of its height and two-thirds of its width.
     expect(Math.max(r.h, r.w / 1.5), `${r.id}: the flag is legible (a ≥ 12 px box)`).toBeGreaterThanOrEqual(12)

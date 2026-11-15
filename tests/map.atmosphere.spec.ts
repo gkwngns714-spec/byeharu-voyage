@@ -457,10 +457,11 @@ test('there is ONE scheme, dark: no light palette, no scheme switch, and the Sun
       expect(/dataset\.theme|data-theme|prefers-color-scheme/.test(source), `src/${dir}/${f} switches the scheme`).toBe(false)
     }
   }
-  // DAYLIGHT IS NOT THE LIGHT SCHEME: the twelve tokens the Sun paints the day side with are the
-  // @theme block's own, and they stay.
+  // DAYLIGHT IS NOT THE LIGHT SCHEME: the eleven tokens the Sun paints the day side with are the
+  // @theme block's own, and they stay. (Twelve until 2026-11-14: `day-deep` was the day sea's vignette, which #672
+  // took away — the sea is flat — and a token nobody paints is the second palette the law below forbids.)
   const night = declarationsIn(css, '@theme')
-  for (const t of ['sea', 'deep', 'shallow', 'coast', 'ice', 'boreal', 'temperate', 'arid', 'tropic', 'mark', 'hull', 'name-halo']) {
+  for (const t of ['sea', 'shallow', 'coast', 'ice', 'boreal', 'temperate', 'arid', 'tropic', 'mark', 'hull', 'name-halo']) {
     expect(night.has(`--color-chart-day-${t}`), `--color-chart-day-${t} is gone`).toBe(true)
   }
 })

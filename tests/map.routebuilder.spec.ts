@@ -30,17 +30,31 @@ async function openMap(page: Page) {
   await page.waitForSelector('[data-testid="map-ports"] > g', { timeout: WORLD_BOOT_MS })
 }
 
-/** The centres of the harbour names drawn on the glass (not Lisbon, not under the route bar), nearest the chart's
- *  middle first — what a player would put a thumb on. */
+/** The harbours NAMED on the glass (not Lisbon, not under the route bar), each at its own MARK, nearest the chart's
+ *  middle first — what a player would put a thumb on.
+ *
+ *  At the mark, not the word's centre, since 2026-11-15 (#696): the names are bigger and a word's centre can stand as
+ *  near a neighbour's mark as its own ("Gibraltar" over Ceuta's at 1280), and every tap re-plans the names (the pressed
+ *  city's is forced), so a word read before the loop may have moved. A tap is the nearest MARK's
+ *  (src/chart/hitTest.ts), and a mark never moves. */
 async function namedCities(page: Page): Promise<{ code: string; x: number; y: number }[]> {
   const bar = (await page.getByTestId('route-bar').count()) > 0 ? await page.getByTestId('route-bar').boundingBox() : null
   return page.evaluate((barTop) => {
     const chart = document.querySelector('[data-testid="map-chart"]')!.getBoundingClientRect()
     const mid = { x: chart.x + chart.width / 2, y: chart.y + chart.height / 2 }
+    // Every drawn harbour's point on the screen (PortsLayer's data-port-x/y, through its own copy of the sheet).
+    const marks = [...document.querySelectorAll('[data-testid="map-ports"] g[data-port-x]')].map((g) => {
+      const p = new DOMPoint(Number(g.getAttribute('data-port-x')), Number(g.getAttribute('data-port-y'))).matrixTransform((g as SVGGraphicsElement).getScreenCTM()!)
+      return { code: g.getAttribute('data-port-code') ?? '', x: p.x, y: p.y }
+    })
     return [...document.querySelectorAll('text[data-label-id^="port:"]')]
-      .map((el) => {
+      .flatMap((el) => {
+        const code = (el.getAttribute('data-label-id') ?? '').slice(5)
         const r = el.getBoundingClientRect()
-        return { code: (el.getAttribute('data-label-id') ?? '').slice(5), x: r.x + r.width / 2, y: r.y + r.height / 2 }
+        const word = { x: r.x + r.width / 2, y: r.y + r.height / 2 }
+        // the copy of its mark this word was set beside
+        const mark = marks.filter((m) => m.code === code).sort((a, b) => Math.hypot(a.x - word.x, a.y - word.y) - Math.hypot(b.x - word.x, b.y - word.y))[0]
+        return mark ? [{ code, x: mark.x, y: mark.y }] : []
       })
       .filter((c) => c.code !== 'LIS' && c.x > chart.x + 60 && c.x < chart.right - 60 && c.y > chart.y + 70 && c.y < Math.min(chart.bottom, barTop) - 16)
       .sort((a, b) => Math.hypot(a.x - mid.x, a.y - mid.y) - Math.hypot(b.x - mid.x, b.y - mid.y))
@@ -245,8 +259,15 @@ async function driveRepeat(page: Page, label: string) {
   const kept = await legs.count()
   const codes = [(await legs.first().getAttribute('data-from'))!]
   for (let i = 0; i < kept; i++) codes.push((await legs.nth(i).getAttribute('data-to'))!)
+  // …and their NAMES off the same lines ("1 Lisbon → Setubal · 0.3 days"), not off the chart: since 2026-11-14 (#664) a
+  // route's "Now" and numbered discs are keep-outs for the names, so the harbour she lies in carries no name on the
+  // glass while her route is planned (at 390 Lisbon has none).
   const names: string[] = []
-  for (const code of codes) names.push(((await page.locator(`text[data-label-id="port:${code}"]`).first().textContent()) ?? '').trim())
+  for (let i = 0; i < kept; i++) {
+    const [from, to] = ((await legs.nth(i).textContent()) ?? '').replace(/^\S+\s+/, '').split(' · ')[0].split(' → ')
+    if (i === 0) names.push(from.trim())
+    names.push(to.trim())
+  }
   const box0 = await bar.boundingBox()
 
   // REPEAT OPENS THE ROUTE EDITOR WITH THE SAME STOPS

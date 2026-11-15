@@ -26,9 +26,10 @@ test.afterAll(async () => {
 })
 
 test('the reader serves the hall block, a rank of all harbours and the day of steps', async () => {
-  // two steps, ten minutes apart, so the series has points (the step is the server's own job)
+  // two steps, one population slot apart, so the series has points (the step is the server's own job). The slot is the clock's own
+  // knob (population_slot_seconds, 3,000 s since 0413): ten minutes apart, the second step fell in the first one's slot and stepped nothing.
   await db.callAs(`select public.population_tick('2030-01-01 00:03:00+00'::timestamptz)::text as result`)
-  await db.callAs(`select public.population_tick('2030-01-01 00:13:00+00'::timestamptz)::text as result`)
+  await db.callAs(`select public.population_tick('2030-01-01 00:03:00+00'::timestamptz + make_interval(secs => public.wc_num('population_slot_seconds')::double precision))::text as result`)
   const r = await worldStatsCityPeople(lon)
   expect(r.ok).toBe(true)
   if (!r.ok) return
