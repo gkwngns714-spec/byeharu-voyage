@@ -315,7 +315,8 @@ test.describe('the whole send, driven on a phone', () => {
     // waits on queues behind it; on a slow CI runner the old 20 s wait below raced that cold check and
     // failed with "checking the route…" still on the row (PR #137 shard 2/3; main's own passes of this
     // drive took 32.5 s to 1.1 min). Wait for the check itself, on the drive's long clock, then assert.
-    await expect(row).not.toContainText('checking the route', { timeout: 120_000 })
+    // 2026-11-15 owner: shorter words ("checking the route…" is now "checking…")
+    await expect(row).not.toContainText('checking…', { timeout: 120_000 })
     const her = (await row.innerText()).split('\n')[0]
     await row.click()
 

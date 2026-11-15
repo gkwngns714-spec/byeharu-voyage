@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button, Hint, Row, SheetSection, Tray, TrayTitle, seaName, seaWallAsks, seaWallFix, type TrayDetent } from '../../components/ui'
+import { Button, Hint, Row, SheetSection, Tray, TrayTitle, seaName, seaWallFix, type TrayDetent } from '../../components/ui'
 import { CHART_CHROME } from '../../chart'
 import type { FleetSeas, SeaRow } from '../../domain/seas'
-import { formatInt } from '../../lib/format'
-import { properName, useLocale, useT } from '../../lib/i18n'
+import { formatInt, NBSP } from '../../lib/format'
+import { useLocale, useT } from '../../lib/i18n'
 import type { SeaConditions } from '../../lib/rpc'
 
 // A SEA, PRESSED WHILE THE SEAS FILTER IS ON (owner, 2026-11-15: *"have option to see seas, showing waves,
@@ -33,15 +33,26 @@ export function ZoneTray({
   const [detent, setDetent] = useState<TrayDetent>('half')
   const walled = seas.bite && seas.judged
   const wall = walled ? row.wall : null
-  const asks = `${t('seas.asksTitle', { n: formatInt(row.zone.title_min) })} · ${t('seas.asksWaves', { n: formatInt(row.zone.wave_min) })}`
   const home = homeRank !== null && row.zone.title_min === homeRank
+  // HAVE / NEED (2026-11-15 owner: "just tell me what i have, and what is required"): one row per ask, hers beside it,
+  // in the danger ink when the server calls it short. The tray's line is the sea's harbours (and home waters).
+  const short = (flag: boolean | null | undefined) => wall !== null && flag !== false
+  const pair = (have: number | null | undefined, need: number) =>
+    have === null || have === undefined ? formatInt(need) : `${formatInt(have)}${NBSP}/${NBSP}${formatInt(need)}`
+  const line = [
+    row.zone.harbours !== undefined ? t('seas.harbours', { n: formatInt(row.zone.harbours), count: row.zone.harbours }) : null,
+    home ? t('seas.homeWaters') : null,
+  ]
+    .filter((s): s is string => s !== null)
+    .join(' · ')
+  const fix = wall ? seaWallFix(locale, wall) : ''
 
   return (
     <Tray
       mode="side"
       detent={detent}
       onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
-      title={<TrayTitle name={seaName(locale, { zoneName: row.zone.name })} line={asks} testId="map-zone-name" />}
+      title={<TrayTitle name={seaName(locale, { zoneName: row.zone.name })} line={line || undefined} testId="map-zone-name" />}
       data-testid="map-zone-tray"
       data-sea={row.zone.code}
       data-open={walled ? (wall ? 'no' : 'yes') : undefined}
@@ -51,29 +62,24 @@ export function ZoneTray({
         {seas.fleet && walled && (
           <Row
             label={seas.fleet.name}
-            value={<span className={wall ? 'text-warning' : 'text-accent'}>{wall ? t('seas.closed') : t('seas.open')}</span>}
+            value={<span className={wall ? 'text-danger' : 'text-success'}>{wall ? t('seas.closed') : t('seas.open')}</span>}
             wholeName
             data-testid="map-zone-verdict"
-          >
-            {wall && (
-              <span className="block text-t-caption text-ink-muted">
-                {[seaWallAsks(locale, wall), seaWallFix(locale, wall)].filter((s) => s !== '').join(' ')}
-              </span>
-            )}
-          </Row>
-        )}
-        {!seas.bite && <Hint>{t('seas.dark')}</Hint>}
-        {home && <Row label={t('seas.homeWaters')} value="" hairline={false} />}
-        {title && (
-          <Row
-            label={t('seas.yourTitle')}
-            value={`${formatInt(title.level)}${title.name ? ` · ${properName('title', title.name, title.name)}` : ''}`}
           />
         )}
-        {seas.fleet && <Row label={t('seas.fleetWaves')} value={seas.fleet.wave === null ? '—' : formatInt(seas.fleet.wave)} />}
-        {row.zone.harbours !== undefined && (
-          <Row label={t('seas.harbours', { n: formatInt(row.zone.harbours), count: row.zone.harbours })} value="" hairline={false} />
-        )}
+        <Row
+          label={t('seas.title')}
+          value={<span className={`tabular-nums ${short(wall?.shortTitle) ? 'text-danger' : ''}`}>{pair(title?.level, row.zone.title_min)}</span>}
+          data-testid="map-zone-title"
+        />
+        <Row
+          label={t('seas.waves')}
+          value={<span className={`tabular-nums ${short(wall?.shortWave) ? 'text-danger' : ''}`}>{pair(seas.fleet?.wave, row.zone.wave_min)}</span>}
+          hairline={false}
+          data-testid="map-zone-waves"
+        />
+        {fix !== '' && <p className="pt-1 text-t-caption text-ink" data-testid="map-zone-fix">{fix}</p>}
+        {!seas.bite && <Hint>{t('seas.dark')}</Hint>}
         <Hint>{t('seas.howTitle')}</Hint>
         <Hint>{t('seas.howWaves')}</Hint>
         <Button variant="secondary" size="sm" className="mt-2" onClick={() => navigate('/compendium?face=seas')} data-testid="map-zone-codex">

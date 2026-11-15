@@ -78,7 +78,7 @@ import {
   type PathStop,
 } from '../../chart'
 // The one table that says where a side tray stands, and therefore where the chrome stops.
-import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter, seaName, seaWallTag } from '../../components/ui'
+import { chromeAsideSideTrayClass, DetailPage, Icon, LoadMeter, seaName } from '../../components/ui'
 import { worldLoadSteps } from '../../live/loadSteps'
 import { ChartMessage } from './ChartMessage'
 import { FleetsCorner } from './FleetsCorner'
@@ -95,8 +95,8 @@ import { useRouteSeed } from './routeSeed'
 import { CityHarbour } from './CityHarbour'
 import { merchantsSummary } from '../../live/merchantGroups'
 import { viewLeftFrame } from './frame'
+import { seaAsksLine, seaShortLine } from './seaLines'
 import { useLocale, useT, t as tNow } from '../../lib/i18n'
-import { formatInt } from '../../lib/format'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // MAP — the chart is the ground, and the chrome hides until it is summoned.
@@ -506,9 +506,7 @@ function Chart({
         {
           code: r.zone.code,
           name: seaName(locale, { zoneName: r.zone.name }),
-          note: wall
-            ? seaWallTag(locale, wall)
-            : `${t('seas.asksTitle', { n: formatInt(r.zone.title_min) })} · ${t('seas.asksWaves', { n: formatInt(r.zone.wave_min) })}`,
+          note: wall ? seaShortLine(locale, wall) : seaAsksLine(locale, r.zone),
           closed: wall !== null,
           at,
           selected: r.zone.code === zoneCode,
@@ -516,7 +514,7 @@ function Chart({
       ]
     })
     return { outline: shape.outline, labels }
-  }, [seasOn, seaCells, seas.rows, walledSeas, locale, t, zoneCode])
+  }, [seasOn, seaCells, seas.rows, walledSeas, locale, zoneCode])
   useEffect(() => {
     zoneTap.current = seasOn && seaCells ? (at: Point) => {
       const ll = unproject(at)
