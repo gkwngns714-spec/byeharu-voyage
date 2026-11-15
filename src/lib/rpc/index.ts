@@ -121,6 +121,8 @@ import type {
   BattleRead,
   BattleTicksRead,
   BattleEndReceipt,
+  BattleJoinReceipt,
+  BattleJoinSide,
   BattleStanceReceipt,
   BattleStanceWord,
   FightsRead,
@@ -1039,6 +1041,11 @@ export function worldBattleTicks(battleId: string): Promise<RpcResult<BattleTick
 /** The battle closes now if its timeline's end has come (0435); the screen calls it when its playback ends. */
 export function cmdBattleEnd(battleId: string): Promise<RpcResult<BattleEndReceipt>> {
   return call<BattleEndReceipt>('cmdBattleEnd', [battleId])
+}
+
+/** A fleet of yours inside a battle's circle joins a side (0436), from the next tick. Never against another player. */
+export function cmdBattleJoin(battleId: string, fleetId: string, side: BattleJoinSide): Promise<RpcResult<BattleJoinReceipt>> {
+  return call<BattleJoinReceipt>('cmdBattleJoin', [battleId, fleetId, side])
 }
 
 /** Your fleet attacks a cargo ship (0327). A battle opens; its end comes as a report. */

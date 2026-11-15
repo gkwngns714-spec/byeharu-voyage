@@ -1598,6 +1598,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately with migration 0357 (docs/COMBAT_LOG.md 3.3, 3.4): a battle fought round by round: her stance, and the read the battle card polls. No player id; dark
       // (E_NOT_IN_USE, {on: false}) until attack_enabled. Landed WITH the face (src/live/BattleCard.tsx).
       'cmdBattleStance', 'worldBattle',
+      // Pin moved deliberately 2026-11-15 with migration 0436 (docs/design/tick-combat.md 9.2): a fleet of hers inside a battle's circle joins a side. No player id;
+      // never against a player (E_HUMAN_TARGET). The Join button lands with the map's circle tray.
+      'cmdBattleJoin',
       // Pin moved deliberately 2026-11-13 with migration 0364 (owner row 321): every battle being fought, for the map's red rings, and any battle's log for a watcher. Reads, no
       // player id; dark ({on: false}) until attack_enabled. Landed WITH the faces (src/chart/FightRingsLayer.tsx, src/live/FightSheet.tsx).
       'worldFights', 'worldFight',
