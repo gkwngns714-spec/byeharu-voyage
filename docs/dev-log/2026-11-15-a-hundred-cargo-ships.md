@@ -39,37 +39,44 @@ second city, so most of the circuit was sailed empty.
 5. Knobs: + `cargo_fleet_total` 100; retired `convoy_ships_min`, `convoy_ships_max`, `convoy_ships_span`, `convoy_ships_band` (no body reads
    them after the file; the self-assert and proof 131 scan the catalog).
 
-## The shares (local world = the chain's flags; prod's are read by `scripts/ops/harness/cargo-150/before.sql`)
+## The shares on prod (`scripts/ops/harness/cargo-150/before.sql`, read by the lead 2026-11-15 02:26 UTC, head 0426, beat 115 ms, `bodies_pre` true)
 
-| country | harbours | share |
-|---|---|---|
-| Castile-Spain (ESP) | 40 | 26 |
-| Portugal (PRT) | 25 | 17 |
-| Ottoman Empire (OTT) | 20 | 14 |
-| Japan (JPN) | 11 | 8 |
-| The Brethren (PIR, the pirates) | 9 | 7 |
-| France (FRA) | 8 | 6 |
-| England (ENG) | 8 | 6 |
-| Joseon (JOS) | 7 | 5 |
-| Ming China (MNG) | 5 | 4 |
-| Mughal India (MUG) | 5 | 4 |
-| The Netherlands (NLD) | 4 | 3 |
-| **total** | 142 | **100** |
+Prod's flags differ from the chain's (flags have moved since): 254 harbours, all flagged; the great powers hold 246.
+
+| country | harbours | share | number now | in service | at sea (with funds) | roaming empty | idle at home | retire now | retire later |
+|---|---|---|---|---|---|---|---|---|---|
+| Ottoman Empire (OTT) | 40 | 16 | 34 | 34 | 7 (5) | 2 | 26 | 18 | 0 |
+| Castile-Spain (ESP) | 37 | 15 | 46 | 46 | 13 (8) | 4 | 33 | 31 | 0 |
+| Japan (JPN) | 25 | 10 | 32 | 32 | 12 (9) | 3 | 20 | 19 | 3 |
+| Mughal India (MUG) | 24 | 10 | 26 | 26 | 14 (6) | 8 | 12 | 11 | 5 |
+| The Netherlands (NLD) | 23 | 9 | 43 | 43 | 23 (5) | 18 | 19 | 16 | 18 |
+| Portugal (PRT) | 23 | 9 | 50 | 50 | 18 (7) | 11 | 32 | 32 | 9 |
+| England (ENG) | 20 | 8 | 23 | 23 | 15 (4) | 11 | 8 | 5 | 10 |
+| Ming China (MNG) | 20 | 8 | 39 (11 laid up) | 39 | 7 (4) | 3 | 32 | 27 | 4 |
+| Joseon (JOS) | 14 | 6 | 20 | 20 | 15 (2) | 12 | 5 | 2 | 12 |
+| France (FRA) | 11 | 5 | 48 | 48 | 12 (7) | 5 | 36 | 34 | 9 |
+| The Brethren (PIR) | 9 | 4 | - | 0 | 0 | 0 | 0 | 0 | 0 |
+| **world** | 246 | **100** | 361 | 361 | 136 (57) | 77 | | **195** | **70** |
+
+- 372 ships: 361 in service, 11 laid up. 96 stay in service (ord inside the share); 195 retire at once (idle at home, empty: ~20 minutes at
+  10 a minute); 70 retire later, as they come home empty (at sea, away or with funds: 9.97 M aboard world-wide, none of it lost).
+- 77 empty ships roaming (the root cause above); after 0430 each sails straight home at her next city.
+- The chain's flags (local world) gave ESP 26, PRT 17, OTT 14, JPN 8, PIR 7, FRA 6, ENG 6, JOS 5, MNG 4, MUG 4, NLD 3; prod's are the table.
 
 ## The pirates
 
 Their share is written (`public.convoy_ships_of(<the Brethren>)`), but the crown cargo job makes no ship for them (0338: no circuit, no
 commission). So until the pirates' own gold ships exist (0429: five from Port Royal), the world sails 100 less the pirates' share.
 **Hook for 0429 or its follow-up:** the pirates' gold ships count inside their share; their number reads `public.convoy_ships_of(<pirates>)`, not a
-flat 5 (the share is 7 on the chain's flags).
+flat 5. **On prod's flags the pirates' share is 4 (9 of 246 harbours), one under 0429's five gold ships**: either 0429 builds its share (4), or the owner raises `cargo_fleet_total` / grants the pirates a floor; not decided here.
 
 ## Rows
 
 - No ship is deleted: a ship's house and fleet are named by append-only rows (`convoy_cargo`, `events`), so 0326's law stands (laid up, never
   deleted). The database does not shrink by rows; it stops growing: no cargo ship is made again until a share rises above the laid-up ords.
 - Lay-ups: 1 row each, at most 10 a minute while the surplus comes home, then none.
-- The homeward legs replace the rest of each circuit: fewer legs (voyages, stores, arrivals) a minute than today. With ~90 ships in service
-  instead of ~360, the job's idle steps fall by about three quarters.
+- The homeward legs replace the rest of each circuit: fewer legs (voyages, stores, arrivals) a minute than today. With 96 ships in service
+  instead of 361, the job's idle steps fall by about three quarters.
 
 ## Proofs
 

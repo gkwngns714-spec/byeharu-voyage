@@ -37,7 +37,7 @@
 -- THE PIRATES: their share is public.convoy_ships_of(<the Brethren>), written now. The crown cargo job still makes no ship for them (0338:
 --   no circuit, no commission), so until the pirates' own cargo ships exist (0429, five gold ships from Port Royal) the world sails
 --   cargo_fleet_total less the pirates' share. HOOK for 0429 or its follow-up: the pirates' gold ships count INSIDE their share, so the number of
---   them reads public.convoy_ships_of(<pirates>) and not a flat 5 (their share is 7 on the local world, at least 5 on the prod flags read).
+--   them reads public.convoy_ships_of(<pirates>) and not a flat 5 (their share: 7 on the local world, 4 on prod's flags of 2026-11-15, one under five).
 --
 -- NOT DONE: no ship is deleted. A cargo ship's house and fleet are named by append-only rows (public.convoy_cargo, public.events), so 0326's law
 --   stands: a ship is laid up, never deleted. The database does not shrink by rows; it stops growing (no ship is ever made again until a share
