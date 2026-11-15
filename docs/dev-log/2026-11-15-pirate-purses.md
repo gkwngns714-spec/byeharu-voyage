@@ -79,3 +79,25 @@ steady.** One-time: 16 `treasury_flows` rows. No job added or rescheduled, no ta
 Quick, no file: `pirate_cargo_ships` 0, `pirate_wakes_per_run` 0, `pirate_hoard_floor` 2,000,000,000 (every payment back under the room),
 `pirate_spend_day_pct` 0.006. Whole: `scripts/ops/harness/pirate-war/rollback-0429.sql` (a draft: the nine hunks reversed, the two functions
 dropped). The allotment is not taken back: it was moved gold the cities now hold.
+
+## The first push failed (2026-11-15) and why
+
+`~/bin/bv-deploy.sh 720` pushed 0429; prod refused it and rolled back whole: `world_config key pirate_city_purse does not exist` (22023, at
+statement 0, the file's one DO statement). Nothing reached prod (head stayed 0428).
+
+- **Cause.** Section 6's check `exists (... where public.treasury_balance(p.id) < public.wc_num('pirate_city_purse'))`. The file is ONE
+  statement. PL/pgSQL plans a query before it takes the query's own snapshot, and to estimate a `<` comparison the planner evaluates the
+  STABLE `public.wc(...)` with the statement's FIRST snapshot, from before section 2 inserted the knob. So `public.wc` found no row and raised.
+  Plain expressions (`v := public.wc_num(...)`, `public.wc_int(...) <> 5`) and a knob in a select list are not affected.
+- **Why CI missed it.** That check sat inside `if public.city_treasury_on() and ...`. The chain world's purses are dark, so CI never planned it.
+  On prod the purses are lit, so the first time it was planned was on prod.
+- **Reproduced on PGlite.** Chain to 0428, lit as prod (purses, convoys, pirates_bite), Port Royal 949,568,351, the eight cities 5,000.
+  0429 then failed with the same error at the same check. A dark world with the check un-gated fails the same way, and the bug does not
+  depend on the data.
+- **Fix.** Section 2 reads the knobs into variables (`v_city_purse`, `v_cap_purse`) with plain expressions. Every section-6 check is one query
+  run on every world (the lit condition is inside the query, not an IF around it), so CI's dark apply plans each check the way prod will. The
+  live sum of every purse in the game was dropped, because other players' trades change it between two statements. The checks now count
+  only this file's own PIRATE_ALLOT rows: one row per city given, Port Royal's rows the negative of the total, and no gift over what the
+  city lacked. When lit, every city under 10 M is topped up exactly, unless Port Royal reached 30 M first.
+- **Proof.** 130 adds PP_ONE_STATEMENT. The knobs are deleted in a statement of their own, then one statement writes them and, with the
+  purses lit, runs the allotment and the minute's step. It also reports the engine hazard ("raised 22023").
