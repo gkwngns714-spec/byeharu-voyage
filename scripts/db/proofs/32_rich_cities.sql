@@ -67,6 +67,8 @@ begin
   update public.world_config set value = to_jsonb(20) where key = 'crown_call_cover';
   update public.world_config set value = 'false'::jsonb where key = 'npc_refits_enabled';
   update public.cargo_fleet_sizes set ships = 10, read_at = now();
+  -- 0426 cut a load to 100,000 a ship; this proof is of a whole need going out in one load, so it keeps 0425's 250,000 (as 126 does).
+  update public.world_config set value = to_jsonb(250000) where key = 'convoy_load_max';
   update public.world_config set value = to_jsonb(1) where key = 'convoy_idle_every';
   update public.world_config set value = to_jsonb(3) where key = 'convoy_rich_ports';
   v_k := 10;
