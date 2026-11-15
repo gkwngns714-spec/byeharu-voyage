@@ -103,7 +103,9 @@ function PortFace({ port, fleet }: { port: SnapshotPort; fleet: FleetView | null
   const repairWord = faceWord('shipyard')
   // 0424: the starter gear is sold at EVERY harbour (no building), so the Port always has this row
   const gearWord = faceWord('gear')
-  const damage = fleet ? formatPct(1 - worstHullFraction(fleet), 0) : undefined
+  // 2026-11-15: "Repair 0%" read as "0% repaired"; the figure shows only when there is damage to repair
+  const hurt = fleet ? 1 - worstHullFraction(fleet) : 0
+  const damage = hurt >= 0.005 ? formatPct(hurt, 0) : undefined
   return (
     <>
       {!yard && !repair && <Note tone="neutral" className="mb-2">{t('city.noYard')}</Note>}
