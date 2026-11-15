@@ -5,6 +5,9 @@
 //
 //   node scripts/db/audit-land-crossings.mjs [world-image.tar.gz] [--pairs [--raw]] [--all] [--json out.json]
 //                                            [--apply <migration.sql>] [--write-known]
+//                                            [--prod prod-courses.json [--legs prod-legs.json]]
+//   (--prod: audit PRODUCTION's own courses, exported read-only by scripts/ops/harness/no-land/prod-courses.sql
+//   and prod-legs.sql, on this image's raster; fails on anything not in land-crossings.prod-known.json)
 //   (--apply: apply a migration not yet in the image first, rolled back after; --write-known: write
 //   what is found as scripts/db/land-crossings.known.json, the list tests/sea.noLandCrossing.spec.ts
 //   holds the world to. Only ever to SHRINK it: a new crossing is fixed, never listed.)
@@ -19,6 +22,7 @@
 //             courses whole; nothing re-plans them)
 //   route     public.standing_route_stops.course: every standing route's legs (the merchant
 //             companies' loops; a player's own routes in a live world)
+//   coast     public.npc_coast_courses: a harbour with no lane to its nearest harbours (0400; 0440)
 //   roadstead public.sea_reaches: the point each harbour is reached from (the first and last point
 //             of every course to it). One on drawn land draws the harbour's approach over land.
 //   pair      (--pairs) the course the browser's course author proposes between every two
@@ -46,9 +50,10 @@ import { gunzipSync } from 'node:zlib'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { readFileSync } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { PGlite } from '@electric-sql/pglite'
 import { drawnLand, gcNm } from '../lib/drawn-land.mjs'
-import { preCarveGrid, rowOf as gridRow, colOf as gridCol, COLS as GRID_COLS } from '../sea-grid.mjs'
+import { riverCarvedCells, rowOf as gridRow, colOf as gridCol, COLS as GRID_COLS } from '../sea-grid.mjs'
 import { navFromServed, floodFrom, floodPathTo } from '../../src/lib/sea/index.ts'
 import { segmentLandRuns, refineCourse, LAND_TOLERANCE_NM } from '../../src/lib/sea/refine.ts'
 import { coastMaskFrom, coastLand } from '../../src/lib/sea/coastMask.ts'
@@ -57,6 +62,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.
 const CACHE = path.join(ROOT, 'node_modules', '.cache', 'byeharu-world-image')
 const MASK_FILE = path.join(ROOT, 'public', 'coast', 'mask.json')
 const KNOWN_FILE = path.join(ROOT, 'scripts', 'db', 'land-crossings.known.json')
+/** PROD'S known list: what a prod export (--prod) may still show crossing. Empty after 0440; it may only shrink. */
+const PROD_KNOWN_FILE = path.join(ROOT, 'scripts', 'db', 'land-crossings.prod-known.json')
 
 /** The pair sample the guard runs: every harbour to an origin in every Nth (by code). */
 export const PAIR_SAMPLE_EVERY = 22
@@ -109,17 +116,25 @@ export async function readWorldCourses(db) {
                       from public.standing_route_stops s join public.ports p on p.id = s.port_id
                      where s.course is not null order by s.route_id, s.ord`)
   ).rows
-  return { raster, ports, npc, routes }
+  // 0440: the coast courses (0400: a harbour with no lane, to its nearest harbours along the coast).
+  const coast = (
+    await db.query(`select a.code as a, b.code as b, c.course, c.course::text as text
+                      from public.npc_coast_courses c join public.ports a on a.id = c.from_port join public.ports b on b.id = c.to_port
+                     order by a.code, b.code`)
+  ).rows
+  return { raster, ports, npc, routes, coast }
 }
 
-/** THE LAND A COURSE IS HELD TO: drawn land, except a cell the game carved open on purpose. */
+/** THE LAND A COURSE IS HELD TO: drawn land, except a cell a RIVER carve opened on purpose (the
+ *  Thames, the Bosphorus: the chart draws land over water the game sails). A charted channel's cells
+ *  (0440: Corfu, the Wielingen) are held to their drawn land like any other water. */
 export function truthLand(nav, land = drawnLand('fine')) {
-  const pre = preCarveGrid()
+  const river = riverCarvedCells()
   return {
     blocked: (lat, lon) => {
       if (!land.isLand(lat, lon)) return false
       const k = gridRow(lat) * GRID_COLS + gridCol(lon)
-      return !(pre[k] === 0 && nav.cells[k] !== 0)
+      return !(river.has(k) && nav.cells[k] !== 0)
     },
   }
 }
@@ -158,6 +173,44 @@ export function nearestHarbour(ports, lat, lon) {
   return best ? `${best.name} (${best.code}) ${Math.round(best.d)} nm` : '?'
 }
 
+/**
+ * THE LIVE WORLD'S COURSES, from a prod export (scripts/ops/harness/no-land/prod-courses.sql and
+ * prod-legs.sql, read only), on the raster and ports of a world image. Prod holds rows no image has
+ * (lanes the image never seeded, players' routes, the cargo circuits' and navy patrols' frozen legs),
+ * so the audit must be run on prod's own set too. Refuses when prod serves another raster.
+ */
+export function worldFromExport(base, courses, legs = null) {
+  const served = createHash('md5').update(base.raster.cells_base64.replace(/\s+/g, '')).digest('hex')
+  if (courses.raster_md5 !== served) throw new Error(`audit: prod serves raster ${courses.raster_md5}, the image ${served}: use an image of prod's chain`)
+  const roads = new Map(courses.roads.map(([code, lat, lon]) => [code, { rlat: Number(lat), rlon: Number(lon) }]))
+  const ports = base.ports.map((p) => ({ ...p, ...(roads.get(p.code) ?? { rlat: null, rlon: null }) }))
+  const h8 = (t) => createHash('md5').update(t).digest('hex').slice(0, 8)
+  const one = ([a, b, text]) => ({ a, b, text, course: JSON.parse(text) })
+  const piecesToCourse = (text) => {
+    const out = []
+    for (const s of JSON.parse(text)) {
+      for (const p of [s.a, s.b]) {
+        const last = out[out.length - 1]
+        if (!last || last[0] !== Number(p[0]) || last[1] !== Number(p[1])) out.push([Number(p[0]), Number(p[1])])
+      }
+    }
+    return out
+  }
+  return {
+    raster: base.raster,
+    ports,
+    npc: courses.npc.map(one),
+    coast: (courses.coast ?? []).map(one),
+    routes: courses.stops.map(([code, n, text]) => ({ route: null, ord: null, from_code: code, to_code: code, rows: n, text, course: JSON.parse(text) })),
+    legs: legs
+      ? [
+          ...(legs.cargo ?? []).map(([n, text]) => ({ kind: 'cargo', key: `cargo ${h8(text)}`, rows: n, text, course: piecesToCourse(text) })),
+          ...(legs.patrol ?? []).map(([n, text]) => ({ kind: 'patrol', key: `patrol ${h8(text)}`, rows: n, text, course: piecesToCourse(text) })),
+        ]
+      : [],
+  }
+}
+
 /** The coast mask the browser's course author uses, decoded (for --pairs). */
 export function readMask() {
   return coastMaskFrom(JSON.parse(readFileSync(MASK_FILE, 'utf8')))
@@ -173,17 +226,17 @@ export function auditWorld(world, { pairs = false, raw = false, pairFilter = nul
   const truth = truthLand(nav)
   const crossings = []
   const seen = new Map()
-  const counted = { npc: 0, route: 0, roadstead: 0, pair: 0 }
-  const add = (kind, key, course) => {
+  const counted = { npc: 0, route: 0, coast: 0, leg: 0, roadstead: 0, pair: 0 }
+  const add = (kind, key, course, rows = 1, text = null) => {
     const c = crossingsOf(truth, course)
     if (!c.length) return
     const id = `${kind} ${key}`
     const had = seen.get(id)
     if (had) {
-      had.rows++
+      had.rows += rows
       return
     }
-    const entry = { kind, key: id, rows: 1, worst: c.reduce((m, x) => (x.nm > m.nm ? x : m)), runs: c.length, landNm: Math.round(c.reduce((s, x) => s + x.nm, 0) * 10) / 10 }
+    const entry = { kind, key: id, rows, text, worst: c.reduce((m, x) => (x.nm > m.nm ? x : m)), runs: c.length, landNm: Math.round(c.reduce((s, x) => s + x.nm, 0) * 10) / 10 }
     seen.set(id, entry)
     crossings.push(entry)
   }
@@ -192,8 +245,17 @@ export function auditWorld(world, { pairs = false, raw = false, pairFilter = nul
     add('npc', `${c.a}->${c.b}`, c.course)
   }
   for (const r of world.routes) {
-    counted.route++
-    add('route', `${r.from_code ?? r.to_code}->${r.to_code}`, r.course)
+    counted.route += r.rows ?? 1
+    // a stop's course leaves its own port (s.port_id) for the next stop; a prod export keys it by its text
+    add('route', r.route === null ? `${r.from_code} ${createHash('md5').update(r.text).digest('hex').slice(0, 8)}` : `${r.from_code ?? r.to_code}->${r.to_code}`, r.course, r.rows ?? 1, r.route === null ? r.text : null)
+  }
+  for (const l of world.legs ?? []) {
+    counted.leg += l.rows
+    add('leg', l.key, l.course, l.rows, l.text)
+  }
+  for (const c of world.coast ?? []) {
+    counted.coast++
+    add('coast', `${c.a}->${c.b}`, c.course)
   }
   const harbours = world.ports.filter((p) => Number.isFinite(p.rlat))
   const roadsteads = []
@@ -230,7 +292,9 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const valueOf = (flag) => (args.indexOf(flag) >= 0 ? args[args.indexOf(flag) + 1] : null)
   const jsonOut = valueOf('--json')
   const applySql = valueOf('--apply')
-  const valued = new Set(['--json', '--apply'].map((f) => args.indexOf(f) + 1).filter((i) => i > 0))
+  const prodFile = valueOf('--prod')
+  const legsFile = valueOf('--legs')
+  const valued = new Set(['--json', '--apply', '--prod', '--legs'].map((f) => args.indexOf(f) + 1).filter((i) => i > 0))
   const file = args.find((a, i) => !a.startsWith('--') && !valued.has(i)) ?? (await newestImage())
   console.log(`audit: world image ${path.basename(file)}; tolerance ${TOLERANCE_NM} nm; land = the chart's fine coast tiles`)
   const db = await openImage(file)
@@ -239,8 +303,14 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     await db.exec(readFileSync(applySql, 'utf8'))
     console.log(`audit: applied ${path.basename(applySql)} (rolled back after)`)
   }
-  const world = await readWorldCourses(db)
+  let world = await readWorldCourses(db)
   await db.close()
+  if (prodFile) {
+    // the CLI's json: { rows: [ { jsonb_build_object: {...} } ] }
+    const unwrap = (f) => Object.values(JSON.parse(readFileSync(f, 'utf8')).rows[0])[0]
+    world = worldFromExport(world, unwrap(prodFile), legsFile ? unwrap(legsFile) : null)
+    console.log(`audit: PROD's courses from ${path.basename(prodFile)}${legsFile ? ` and ${path.basename(legsFile)}` : ''} on this image's raster`)
+  }
   const t0 = Date.now()
   const out = auditWorld(world, { pairs: args.includes('--pairs'), raw: args.includes('--raw'), log: console.log })
   if (args.includes('--write-known')) {
@@ -248,7 +318,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const origins = new Set(codes.filter((_, i) => i % PAIR_SAMPLE_EVERY === 0))
     const sample = auditWorld(world, { pairs: true, pairFilter: (a) => origins.has(a.code) })
     const known = {
-      note: 'scripts/db/audit-land-crossings.mjs --write-known. Courses that still cross the drawn land: the water they need is land to the 0.25-degree raster (a strait or channel it closes), for the raster slice that opens it (owner row 352). This list may only shrink.',
+      note: 'scripts/db/audit-land-crossings.mjs --write-known. Courses and roadsteads still on the drawn land (owner row 352). EMPTY since 0440: a new crossing is fixed (scripts/build-land-channels.mjs), never listed. This list may only shrink.',
       toleranceNm: TOLERANCE_NM,
       crossings: [...new Set(out.crossings.filter((c) => c.kind !== 'pair').map((c) => c.key))].sort(),
       roadsteads: [...out.roadsteads].sort(),
@@ -272,5 +342,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     console.log(`  ${c.key.padEnd(18)} land ${String(c.landNm).padStart(6)} nm in ${c.runs} run(s); worst ${w.nm} nm at ${w.at.join(',')} near ${nearestHarbour(world.ports, w.at[0], w.at[1])}`)
   }
   if (jsonOut) await writeFile(jsonOut, JSON.stringify(out, null, 1))
+  if (prodFile) {
+    // THE DAILY PROD CHECK: anything crossing that the prod known list does not hold is NEW, and fails.
+    const known = JSON.parse(readFileSync(PROD_KNOWN_FILE, 'utf8'))
+    const isNew = out.crossings.filter((c) => !known.crossings.includes(c.key))
+    const roadsNew = out.roadsteads.filter((r) => !known.roadsteads.includes(r))
+    console.log(`audit: PROD — ${isNew.length} crossing(s) and ${roadsNew.length} roadstead(s) not on ${path.relative(ROOT, PROD_KNOWN_FILE)}${isNew.length ? ': ' + isNew.map((c) => c.key).join(', ') : ''}`)
+    process.exit(isNew.length || roadsNew.length ? 1 : 0)
+  }
   process.exit(out.crossings.length ? 1 : 0)
 }

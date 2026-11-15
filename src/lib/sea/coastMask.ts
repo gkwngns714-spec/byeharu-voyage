@@ -6,15 +6,17 @@
 // player sees: all of Socotra, Bangka, the Gallipoli peninsula, every cape a straight course clips.
 // This mask lists exactly those cells, each cut into SUB x SUB sub-cells (SUB = 20: 0.0125 degrees,
 // 0.75 nm, the land bitmap's own pixel, scripts/lib/drawn-land.mjs PX_PER_DEG), one bit a sub-cell: 1 = the
-// chart draws land there. A water cell that is not listed holds no drawn land. A cell the game
-// opened ON PURPOSE (a carved channel: land in 1:110m, water in the raster, the Thames or the
-// Bosphorus) is never listed, so a river the game sails is never "land" here.
+// chart draws land there. A water cell that is not listed holds no drawn land. A cell a RIVER carve
+// opened on purpose (land in 1:110m, water in the raster, the Thames or the Bosphorus: the chart
+// draws land over it) is never listed, so a river the game sails is never "land" here. A CHARTED
+// channel's cell (0440: Corfu, Tsugaru, the Wielingen: water the chart itself draws) is listed like
+// any other, so a course is steered down the strait and never across the island beside it.
 //
 // WHO MAKES IT: scripts/build-coast-mask.mjs, from the chart's own tiles (public/coast/fine) and
 // the raster the chain serves. It is written to public/coast/mask.json and stamped with the
 // raster it was cut for; tests/sea.noLandCrossing.spec.ts fails when the two drift apart.
 // WHO READS IT: the course author (src/domain/passage proposeCourse, through ./refine.ts) in the
-// browser, and the generator that re-sails every stored lane (scripts/build-clear-courses.mjs).
+// browser, and the generator that re-sails every stored lane (scripts/build-land-channels.mjs).
 // One mask, so a player's course and a merchant's lane are held off the same land.
 //
 // A PICTURE'S ANSWER, NOT THE LAW. The server's law is still the raster (voyage.path_refusal);

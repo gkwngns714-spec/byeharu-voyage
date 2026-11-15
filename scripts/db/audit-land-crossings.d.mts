@@ -21,10 +21,12 @@ export interface WorldCourses {
   ports: { code: string; name: string; kind: string; lat: number; lon: number; rlat: number | null; rlon: number | null }[]
   npc: { a: string; b: string; course: Course; text: string }[]
   routes: { route: string; ord: number; to_code: string; from_code: string | null; course: Course; text: string }[]
+  /** 0440: public.npc_coast_courses. */
+  coast?: { a: string; b: string; course: Course; text: string }[]
 }
 
 export interface Crossing {
-  kind: 'npc' | 'route' | 'pair'
+  kind: 'npc' | 'route' | 'coast' | 'pair'
   /** 'npc A->B', 'route A->B', 'pair A->B' */
   key: string
   /** How many rows hold a course that crosses under this key. */
@@ -35,7 +37,7 @@ export interface Crossing {
 }
 
 export interface AuditResult {
-  counted: { npc: number; route: number; roadstead: number; pair: number }
+  counted: { npc: number; route: number; coast: number; roadstead: number; pair: number }
   crossings: Crossing[]
   /** Harbour codes whose roadstead lies on drawn land. */
   roadsteads: string[]

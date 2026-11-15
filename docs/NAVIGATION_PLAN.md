@@ -267,7 +267,7 @@ water by BOTH the raster and the coast mask (`public/coast/mask.json`, `src/lib/
 the chart's 1:10m land inside every raster water cell, at 0.75 nm). The result is still raster
 water by `voyage.path_refusal`'s own rule, or the search's course is kept. One function, used by
 the browser's course author (`src/domain/passage` `proposeCourse`) and by the generator of the
-stored lanes (`scripts/build-clear-courses.mjs`). The server's law is unchanged: the raster.
+stored lanes (`scripts/build-land-channels.mjs`). The server's law is unchanged: the raster.
 
 **The guard.** `tests/sea.noLandCrossing.spec.ts` runs on every PR that touches the pathfinder,
 the coast, the sea grid, the ports, or a migration that writes `npc_courses`,
@@ -280,9 +280,59 @@ crosses (the list only shrinks), on a stale mask, and on the owner's own example
 
 1. Make the change, then `npm run build` (it writes the world image the tools read; no prod load).
 2. If the raster or the coast tiles changed: `node scripts/build-coast-mask.mjs`.
-3. If lanes or routes were seeded or the raster changed: `node scripts/build-clear-courses.mjs`
-   writes the re-sailing migration (rename it to prod head + 1).
+3. If lanes or routes were seeded, a channel was charted, a harbour was added, or the raster changed:
+   export prod's courses (read only: `scripts/ops/harness/no-land/prod-courses.sql`, gate green first),
+   then `node scripts/build-land-channels.mjs <image of the chain before your migration> --prod courses.json`
+   writes the re-sailing migration (set MIGRATION_NAME to prod head + 1). It re-sails prod's own rows too:
+   prod holds courses no image has.
 4. `node scripts/db/audit-land-crossings.mjs [image] [--apply <your migration>]` lists every
    crossing with its lane, its ports and where the land is. Zero new ones, or fix them.
    `--pairs` adds every harbour-to-harbour course the browser would propose (about 30 minutes).
 5. Only when a crossing is FIXED: `--write-known` rewrites the known list (it may only shrink).
+6. Every day (the lead), and after any deploy that writes courses: export prod's courses and legs
+   (`prod-courses.sql`, `prod-legs.sql`, read only) and run the audit with `--prod courses.json --legs legs.json`
+   on an image of prod's chain. It fails on anything not on `scripts/db/land-crossings.prod-known.json` (empty).
+
+### 0440, second half: the straits opened, the roads put on the water, production re-sailed (owner row 352)
+
+The first draft left 52 lanes and 50 route legs over land, and 57 roadsteads on it, and it was cut from the
+world image alone: production held 937 crossing lanes, 682 route-stop courses and 732 frozen legs of its own
+(`docs/dev-log/2026-11-15-land-channels.md`). One migration, 0440, now takes all of it. Three causes, three fixes:
+
+- **A turn on an island.** A course's turning points are raster cell centres, and the raster cannot see
+  an island, so a turn could sit on drawn land (Strangford Lough, Oland, Saaremaa). The refiner searched
+  segment by segment, so each half began or ended in a pocket of the coast the 1.5 nm grid cannot leave,
+  and the course was kept as it was. `src/lib/sea/refine.ts` now measures the land runs along the whole
+  course, so one search window spans the turn; a stretch kept from the old course whose samples touch a
+  raster land cell is searched again (`mend`); a course that runs exactly along an edge of the land
+  bitmap's pixels is read on both sides of it. This alone cleared the Hebrides, the North Channel,
+  Moon Sound, Oland and Chios.
+- **Water the raster closes and the chart draws.** `scripts/sea-grid.mjs` CHANNELS entries with
+  `charted: true`: `corfu` (both Corfu channels), `tsugaru` (the strait's northern half, which
+  1:110m draws as Hokkaido) and `western-scheldt` (the Wielingen). Unlike a river carve, a charted
+  channel's drawn land stays land in the coast mask and in the audit
+  (`riverCarvedCells()` is the cells the mask and the audit leave alone). Each new polyline runs down
+  the drawn water; the generator refuses one that touches drawn land. Eight straits carved long before
+  are charted too (Kerch, Bab-el-Mandeb, Hormuz, Malacca, Sunda, Seto, the White Sea's Gorlo, the Baltic
+  gulfs): their raster is unchanged, but the land the chart draws in their cells now counts, and 98
+  more stored courses that ran over it there are re-sailed. Measured and NOT charted: the Danish straits and
+  the Gulf of Suez (their drawn water is not continuous on the 1.5 nm grid inside a one-cell carve: 65
+  courses could not be re-sailed), the Dardanelles and the Bosphorus (narrower than the chart's pixel).
+- **A roadstead on the land, or in a pocket.** A harbour whose raster roadstead lies on drawn land, or in
+  drawn water the open sea cannot reach on the 1.5 nm grid (Toulon's inner harbour, New York's upper
+  bay), is reached from the nearest point to its quay that is drawn water with 1.5 nm of drawn water
+  round it and joined to the open sea. `voyage.drawn_roadsteads` holds the point; `voyage.water_roadstead`
+  answers it for that quay, and `scripts/build-sea-migration.mjs`'s `roadsteadOf` reads the same table,
+  so the rule stays one answer. Harbours that shared one raster roadstead (Hormuz, Bandar Abbas) share
+  one drawn point. No move is over 12 nm, so a stored route's first point stays inside course_join_nm.
+  Stockholm's own water (Saltsjon) is not joined to the sea even in the 1:10m drawing, so its roads are
+  in the archipelago, 15 nm off the quay.
+
+`node scripts/build-land-channels.mjs` does all three for the stored courses (lanes, route legs, coast
+courses, and the cargo circuits' and navy patrols' frozen pieces) and writes the migration, the mask, the
+prod checks and the forward rollback. Run it again, as the next migration, whenever a channel is charted
+or a harbour is added: it moves only what is on land or in a pocket.
+
+Not covered by the audit, by design: a RIVER carve's cells (the Thames, the Scheldt above Flushing, the
+Gironde), where the chart draws land over the water the game sails on purpose, and the three straits
+named above that the fine grid cannot pass.

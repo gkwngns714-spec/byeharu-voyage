@@ -22,13 +22,13 @@
 //   * the two ends are kept exactly (a course is joined to its roadsteads).
 // A course that crosses no land comes back unchanged, vertex for vertex.
 //
-// PURE: no I/O, no DOM. The generator (scripts/build-clear-courses.mjs) runs it over every stored
+// PURE: no I/O, no DOM. The generator (scripts/build-land-channels.mjs) runs it over every stored
 // course; the browser can run the same function once it holds the tiles along a course.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { lonLerp } from '../geo/index.ts'
 import { gcNm, type SeaNav } from './grid.ts'
-import { segmentIsWater, type SeaPath } from './pathfind.ts'
+import { findPath, segmentIsWater, type SeaPath } from './pathfind.ts'
 
 /** The fine grid's cells a degree: 0.025 degrees, 1.5 nm north-south. */
 export const FINE_PER_DEG = 40
@@ -339,6 +339,11 @@ export function fineSearch(
   })
 }
 
+/** The longest stretch of course one search window may cover (0440): clusters of land closer than
+ *  60 nm are searched as one, up to this length, so a long coast is still searched in boxes the
+ *  fine search can afford. */
+const MAX_WINDOW_NM = 300
+
 const PULL_AHEAD = 80
 const PULL_SPAN_NM = 400
 
@@ -361,72 +366,148 @@ function pull(nav: SeaNav, land: DrawnLand, pts: SeaPath, tolNm: number, head: b
 
 const round = (p: readonly [number, number]): [number, number] => [Math.round(p[0] * 10000) / 10000, Math.round(p[1] * 10000) / 10000]
 
+/** Every segment voyage.path_refusal would refuse, searched again under both rules; null when one
+ *  has no way (0440). */
+function mend(nav: SeaNav, land: DrawnLand, path: SeaPath, los: number): SeaPath | null {
+  const out: SeaPath = [path[0]]
+  const n = path.length - 1
+  for (let k = 1; k <= n; k++) {
+    const a = path[k - 1]
+    const b = path[k]
+    if (segmentIsWater(nav, a, b, k === 1 ? APPROACH_SLACK_NM : 0, k === n ? APPROACH_SLACK_NM : 0)) {
+      out.push(b)
+      continue
+    }
+    let fine: SeaPath | null = null
+    for (const margin of [0.4, 1.2, 3]) {
+      fine = fineSearch(nav, land, a, b, margin)
+      if (fine) break
+    }
+    if (!fine) {
+      // An ocean-long stretch is too big a box for the fine search: the raster's own search answers it,
+      // and is taken only when every one of its legs is raster water with no slack at all.
+      const coarse = findPath(nav, { lat: a[0], lon: a[1] }, { lat: b[0], lon: b[1] })
+      if (!coarse) return null
+      const legs: SeaPath = [a, ...coarse.path.slice(1, -1), b]
+      for (let j = 1; j < legs.length; j++) if (!segmentIsWater(nav, legs[j - 1], legs[j], 0, 0)) return null
+      for (let j = 1; j < legs.length - 1; j++) out.push(round(legs[j]))
+      out.push(b)
+      continue
+    }
+    const stretch = pull(nav, land, [a, ...fine, b], los, k === 1, k === n)
+    for (let j = 1; j < stretch.length - 1; j++) out.push(round(stretch[j]))
+    out.push(b)
+  }
+  return out
+}
+
+/** THE PIXEL EDGE (0440): a course that runs exactly along an edge of the land bitmap's pixels is
+ *  read on one side of it by one rounding and on the other by another (Chios: a meridian on the
+ *  west coast, 3 nm of land to the audit and none to the mask). The refiner asks both sides. */
+function edgeSafe(land: DrawnLand): DrawnLand {
+  const e = 1e-6
+  return { blocked: (lat, lon) => land.blocked(lat, lon) || land.blocked(lat + e, lon + e) || land.blocked(lat - e, lon - e) }
+}
+
 /**
  * THE REFINER. `toleranceNm` is what the result is held to; the line of sight inside it is held to
  * half of that, so a straightened stretch never sits right at the limit.
  */
 export function refineCourse(
   nav: SeaNav,
-  land: DrawnLand,
+  drawn: DrawnLand,
   course: SeaPath,
   toleranceNm = LAND_TOLERANCE_NM,
 ): RefineResult {
   if (course.length < 2) return { path: course, changed: false, residual: [] }
+  const land = edgeSafe(drawn)
   const los = toleranceNm / 2
+  const last = course.length - 1
+  // Distances along the course: cum[i] is the nm from the first point to vertex i.
+  const cum: number[] = [0]
+  for (let i = 1; i <= last; i++) cum.push(cum[i - 1] + gcNm(course[i - 1][0], course[i - 1][1], course[i][0], course[i][1]))
+  const total = cum[last]
+  // THE RUNS, along the whole course (0440): a run that ends on a vertex and goes on past it is ONE
+  // run. A course's turning point is a raster cell centre, and the raster cannot see an island, so a
+  // turn may lie on drawn land (Strangford, Oland): searched segment by segment, each half began or
+  // ended in a pocket of the coast that the fine grid cannot leave, and the course was kept as it was.
+  const runs: { from: number; to: number; nm: number }[] = []
+  for (let i = 0; i < last; i++) {
+    const segNm = cum[i + 1] - cum[i]
+    for (const r of segmentLandRuns(land, course[i], course[i + 1], i)) {
+      const from = cum[i] + r.f0 * segNm
+      const to = cum[i] + r.f1 * segNm
+      const prev = runs[runs.length - 1]
+      if (prev && r.f0 === 0 && prev.to >= cum[i] - 1e-9) {
+        prev.to = to
+        prev.nm += r.nm
+      } else runs.push({ from, to, nm: r.nm })
+    }
+  }
+  const landRuns = runs.filter((r) => r.nm > los)
+  if (!landRuns.length) return { path: course, changed: false, residual: courseLandRuns(land, course, toleranceNm) }
+  // THE WINDOWS: each cluster of land (runs closer than 60 nm are one), with 20 nm of open water
+  // either side, measured along the course. Only the windows are searched again and straightened;
+  // the rest of the course is kept as it was, so the work follows the land, not the ocean.
+  const windows: [number, number][] = []
+  for (const r of landRuns) {
+    const w0 = Math.max(0, r.from - 20)
+    const w1 = Math.min(total, r.to + 20)
+    const prev = windows[windows.length - 1]
+    if (prev && w0 <= prev[1] + 20 && w1 - prev[0] <= MAX_WINDOW_NM) prev[1] = Math.max(prev[1], w1)
+    else windows.push([w0, w1])
+  }
+  /** The point at `pos` nm along the course: a vertex itself when it falls on one. */
+  const at = (pos: number): [number, number] => {
+    if (pos <= 0) return course[0] as [number, number]
+    if (pos >= total) return course[last] as [number, number]
+    let i = 0
+    while (i < last - 1 && cum[i + 1] < pos) i++
+    const segNm = cum[i + 1] - cum[i]
+    if (segNm <= 1e-9) return course[i] as [number, number]
+    return round(pointAt(course[i], course[i + 1], (pos - cum[i]) / segNm))
+  }
   const path: SeaPath = [course[0]]
   let changed = false
-  const last = course.length - 2
-  for (let i = 0; i + 1 < course.length; i++) {
-    const a = course[i]
-    const b = course[i + 1]
-    const runs = segmentLandRuns(land, a, b, i).filter((r) => r.nm > los)
-    if (!runs.length) {
-      path.push(b)
-      continue
+
+  let next = 1 // the first vertex not yet passed
+  for (const [w0, w1] of windows) {
+    const p = at(w0)
+    const q = at(w1)
+    let fine: SeaPath | null = null
+    for (const margin of [0.4, 1.2, 3]) {
+      fine = fineSearch(nav, land, p, q, margin)
+      if (fine) break
     }
-    const nm = Math.max(gcNm(a[0], a[1], b[0], b[1]), 1e-9)
-    // THE WINDOWS: each cluster of land along the segment (runs closer than 60 nm are one), with
-    // 20 nm of open water either side. Only the windows are searched again and straightened; the
-    // rest of the segment is kept as it was, so the work follows the land, not the ocean.
-    const pad = 20 / nm
-    const windows: [number, number][] = []
-    for (const r of runs) {
-      const w0 = Math.max(0, r.f0 - pad)
-      const w1 = Math.min(1, r.f1 + pad)
-      const prev = windows[windows.length - 1]
-      if (prev && w0 <= prev[1] + 20 / nm) prev[1] = w1
-      else windows.push([w0, w1])
-    }
-    let at: [number, number] = a
-    for (const [f0, f1] of windows) {
-      const p: [number, number] = f0 === 0 ? a : round(pointAt(a, b, f0))
-      const q: [number, number] = f1 === 1 ? b : round(pointAt(a, b, f1))
-      let fine: SeaPath | null = null
-      for (const margin of [0.4, 1.2, 3]) {
-        fine = fineSearch(nav, land, p, q, margin)
-        if (fine) break
-      }
-      if (!fine) continue
-      if (p !== at) path.push(p)
-      const stretch = pull(nav, land, [p, ...fine, q], los, i === 0 && f0 === 0, i === last && f1 === 1)
-      for (let k = 1; k < stretch.length - 1; k++) path.push(round(stretch[k]))
-      if (q !== b) path.push(q)
-      at = q
-      changed = true
-    }
-    path.push(b)
+    if (!fine) continue
+    // The course as it was, up to the window.
+    while (next < last && cum[next] < w0) path.push(course[next++])
+    const tail = path[path.length - 1]
+    if (tail[0] !== p[0] || tail[1] !== p[1]) path.push(p)
+    const stretch = pull(nav, land, [p, ...fine, q], los, w0 <= 0, w1 >= total)
+    for (let k = 1; k < stretch.length - 1; k++) path.push(round(stretch[k]))
+    // Every vertex inside the window is replaced by the search.
+    while (next < last && cum[next] <= w1) next++
+    if (w1 < total) path.push(q)
+    changed = true
   }
+  while (next < last) path.push(course[next++])
+  path.push(course[last])
   if (!changed) return { path: course, changed: false, residual: courseLandRuns(land, course, toleranceNm) }
   // Two stretches may meet a kept vertex from either side: drop a point repeated in place. Then one
   // bounded pass of line of sight over the whole course, which also drops a kept vertex that sits on
   // the drawn land itself (a raster cell centre on an island the raster cannot see).
   const deduped = path.filter((p, k) => k === 0 || p[0] !== path[k - 1][0] || p[1] !== path[k - 1][1])
-  const pulled = pull(nav, land, deduped, los, true, true)
+  let pulled: SeaPath | null = pull(nav, land, deduped, los, true, true)
   pulled[0] = course[0]
   pulled[pulled.length - 1] = course[course.length - 1]
+  // A stretch kept from the old course and cut at a window's edge is sampled at other points than
+  // the whole segment was, so it may touch a raster land cell the whole segment's samples missed
+  // (0440, measured: Riga to Copenhagen by Gotland's south cape). Such a segment is searched again.
+  if (!courseIsWater(nav, pulled)) pulled = mend(nav, land, pulled, los)
   // THE SERVER'S RULE IS NEVER BROKEN: a re-sailed course that voyage.path_refusal would refuse is
   // not offered. The course comes back as it came, and its land stays listed in `residual`.
-  if (!courseIsWater(nav, pulled)) {
+  if (!pulled || !courseIsWater(nav, pulled)) {
     return { path: course, changed: false, residual: courseLandRuns(land, course, toleranceNm) }
   }
   return { path: pulled, changed: true, residual: courseLandRuns(land, pulled, toleranceNm) }

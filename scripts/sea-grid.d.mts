@@ -15,9 +15,17 @@ export interface Channel {
    *  Authored, never inferred: `assertCarveDeclared` refuses to build the raster when the world
    *  disagrees, so the number can only change when a person changes it. */
   opensLand: number
+  /** 0440: water the CHART draws (1:10m) that 1:110m closes. Its drawn land stays land: in the coast
+   *  mask and in the audit (scripts/db/audit-land-crossings.mjs). A channel without it is a river
+   *  carve, whose cells the chart draws as land and the game sails on purpose. */
+  charted?: boolean
 }
 
 export declare const CHANNELS: Channel[]
+
+/** The cells of dry land opened by a channel that is NOT charted (a river carve): the coast mask and
+ *  the audit leave the chart's land in these cells alone. */
+export declare function riverCarvedCells(): Set<number>
 
 export declare const CELL_DEG: number
 export declare const COLS: number
@@ -40,6 +48,8 @@ export declare function carveInventory(): {
   water: Uint8Array
   pre: Uint8Array
   opened: Map<string, number>
+  /** The cells of dry land each channel opened, as raster indices (row * COLS + col). */
+  carved: Map<string, number[]>
 }
 
 /** Refuses — throws — when a channel opens land its `opensLand` does not declare. */
