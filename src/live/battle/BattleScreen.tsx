@@ -3,20 +3,26 @@ import { Button, Empty, Skeleton, useBackLayer } from '../../components/ui'
 import { cmdBattleEnd, worldBattleTicks, worldFight } from '../../lib/rpc'
 import type { BattleEndReceipt, BattleRead, BattleTicksRead, RpcResult, TickAbilityCode, TickTimeline } from '../../lib/rpc'
 import { BATTLE_ACT_REFUSALS, cmdBattleAct, type BattleActReceipt } from '../../lib/rpc/battleAct'
-import { formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { FightLog } from '../FightLog'
 import { parseFightLog } from '../fightLines'
 import { BattleLog } from './BattleLog'
 import { BattleStage } from './BattleStage'
-import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents, stateAt, tickClock, type BarLock, type BattleEvent } from './timeline'
+import { eventLine, resultLine } from './lines'
+import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents, stateAt, type BarLock, type BattleEvent } from './timeline'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BATTLE SCREEN (0435, docs/design/tick-combat.md 9 and 11; owner 2026-11-15: a wide battle screen, ships enlarged,
 // circling, every detail in the log, no "wait a minute then wait more").
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-// Opened from the red circle on the map (the map passes its Join bar through `actions`, drawn in the header). A wide
-// overlay: full width on a desk, the whole glass on a phone.
+// Opened from the red circle on the map (the map passes its Join button through `actions`, drawn beside Log). A wide
+// sheet over a dark backdrop.
+// IT CLOSES FOUR WAYS (owner 2026-11-15: "after i press combat to view, i can't close it"): the big ✕ at the top right,
+// Escape, a press on the backdrop, and the browser's Back (the screen puts one step on the history when it opens, and every
+// close takes that step back, so Back never leaves the map). The map draws it BESIDE the chart's surface, never in it: in
+// it, the surface took the press on Close for its own gesture and the button never heard a click.
+// THE VIEW IS SMALL ON PURPOSE (the owner: "too much words. simplify all"): each side's name with its hull bar and a thin
+// Fury bar, the stage, ONE status line (./lines.ts), and Log (the short lines, shut until pressed). The end is one line.
 // THE DATA is one read, `world.battle_ticks(battle)`: the whole fight is on it as a timeline (the server ran it at the
 // open). PLAYBACK runs it tick by tick (600 ms) from the server's tick now, so a reader who opens late jumps to where the
 // fight is; Replay plays it again from tick 0. While it is fought the read is asked again every 10 s, and a new timeline
@@ -24,8 +30,8 @@ import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents,
 // playback reaches the end of a battle still FIGHTING it asks `cmd.battle_end` ONCE and reads once more, for the loot.
 // AN OLD BATTLE (`ticks` null: fought round by round) is drawn with its sides, its result and the round log
 // (`world.fight`, the FightLog the map's sheet draws).
-// THE ACTION BAR shows the eight abilities with the cooldown sweeps of the reader's side (or the side set upon). A watcher's
-// bar is disabled. For HER OWN fleet in a battle still fought (0439, slice 2) it is pressable: a button is grey while its
+// THE ACTION BAR is drawn ONLY for her own fleet in a battle still fought (0439, slice 2); a watcher sees none. Eight
+// icons with one word each and the cooldown sweeps of her side: a button is grey while its
 // cooldown sweeps, while her bar lacks its Fury (the cost lit when she has it), while she runs (only Brace and Patch), or when
 // it is not hers to order (Pay: only the ship set upon; Run: only a ship that began the fight). A press (or the keys 1-8 on
 // a desk) asks `cmd.battle_act` for the next tick; the answer is the re-run timeline, swapped in at the same tick (no jump:
@@ -60,7 +66,7 @@ function useReducedMotion(): boolean {
   )
 }
 
-/** The battle screen. `actions` (the map's Join bar) is drawn in the header. */
+/** The battle screen. `actions` (the map's Join button) is drawn beside Log. */
 export function BattleScreen({ battleId, onClose, actions }: { battleId: string; onClose: () => void; actions?: ReactNode }) {
   return <BattleScreenFrom source={SERVER} battleId={battleId} onClose={onClose} actions={actions} />
 }
@@ -68,7 +74,8 @@ export function BattleScreen({ battleId, onClose, actions }: { battleId: string;
 /** The same screen over any source (the gallery feeds it a fixture). */
 export function BattleScreenFrom({ source, battleId, onClose, actions }: { source: BattleSource; battleId: string; onClose: () => void; actions?: ReactNode }) {
   const t = useT()
-  useBackLayer(onClose)
+  const close = useCloseWays(onClose)
+  useBackLayer(close)
   const [read, setRead] = useState<BattleTicksRead | null>(null)
   const [failed, setFailed] = useState(false)
   // the device time at which tick 0 began: the server's time into the fight at the first read, laid on this device's clock
@@ -118,43 +125,63 @@ export function BattleScreenFrom({ source, battleId, onClose, actions }: { sourc
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col bg-app text-ink lg:inset-x-0 lg:inset-y-[4vh] lg:rounded-sheet lg:shadow-2xl"
-      role="dialog"
-      aria-modal="true"
-      aria-label={t('battle.title')}
-      data-testid="battle-screen"
+      className="fixed inset-0 z-[70] bg-black/70"
+      data-testid="battle-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close()
+      }}
     >
-      <BattleHeader read={read} onClose={onClose} actions={actions} />
-      {failed ? (
-        <Empty className="m-4">{t('battle.noBattle')}</Empty>
-      ) : !read ? (
-        <div className="flex flex-1 flex-col gap-3 p-4" aria-label={t('battle.loading')}>
-          <Skeleton className="h-2/3 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-      ) : tl && origin !== null ? (
-        <TickBattle read={read} tl={tl} origin={origin} source={source} battleId={battleId} reload={load} swap={swap} />
-      ) : (
-        <OldBattle read={read} source={source} battleId={battleId} />
-      )}
+      <div
+        className="absolute inset-x-0 bottom-0 top-10 flex flex-col overflow-hidden rounded-t-sheet bg-app text-ink shadow-2xl lg:inset-x-[3vw] lg:inset-y-[5vh] lg:rounded-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('battle.title')}
+        data-testid="battle-screen"
+      >
+        <button
+          type="button"
+          onClick={close}
+          aria-label={t('battle.close')}
+          data-testid="battle-close"
+          className="absolute right-2 top-2 z-10 grid size-12 place-items-center rounded-full bg-surface-2 text-2xl leading-none text-ink shadow-lg hover:bg-accent-soft"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+        {failed ? (
+          <Empty className="m-4 mr-16">{t('battle.noBattle')}</Empty>
+        ) : !read ? (
+          <div className="flex flex-1 flex-col gap-3 p-4 pt-16" aria-label={t('battle.loading')}>
+            <Skeleton className="h-2/3 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : tl && origin !== null ? (
+          <TickBattle read={read} tl={tl} origin={origin} source={source} battleId={battleId} reload={load} swap={swap} actions={actions} />
+        ) : (
+          <OldBattle read={read} source={source} battleId={battleId} />
+        )}
+      </div>
     </div>
   )
 }
 
-function BattleHeader({ read, onClose, actions }: { read: BattleTicksRead | null; onClose: () => void; actions?: ReactNode }) {
-  const t = useT()
-  return (
-    <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-      <h2 className="text-t-title">{t('battle.title')}</h2>
-      {read?.kind && <span className="text-t-caption text-ink-muted">{t(read.kind === 'RAID' ? 'fight.raid' : 'fight.battle')}</span>}
-      <div className="ml-auto flex flex-wrap items-center gap-2">
-        {actions}
-        <Button size="sm" onClick={onClose} data-testid="battle-close">
-          {t('battle.close')}
-        </Button>
-      </div>
-    </header>
-  )
+/** THE WAYS OUT. Opening puts one step on the browser's history; Back takes it and closes. Every other close (✕, Escape,
+ *  the backdrop) takes that same step back, so the history is left as it was and Back after a close leaves nothing open. */
+function useCloseWays(onClose: () => void): () => void {
+  const closeRef = useRef(onClose)
+  useEffect(() => {
+    closeRef.current = onClose
+  })
+  useEffect(() => {
+    const state = window.history.state as { bvBattle?: boolean } | null
+    if (!state?.bvBattle) window.history.pushState({ ...(state ?? {}), bvBattle: true }, '')
+    const onPop = () => closeRef.current()
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+  return useCallback(() => {
+    if ((window.history.state as { bvBattle?: boolean } | null)?.bvBattle) window.history.back()
+    else closeRef.current()
+  }, [])
 }
 
 /** The sides' display names: the first fleet of each side, else the side's word. Side 0 = DEFENDER. */
@@ -207,6 +234,7 @@ function TickBattle({
   battleId,
   reload,
   swap,
+  actions,
 }: {
   read: BattleTicksRead
   tl: TickTimeline
@@ -216,9 +244,11 @@ function TickBattle({
   battleId: string
   reload: () => Promise<BattleTicksRead | null>
   swap: (ticks: TickTimeline, resolvesAt: string | undefined) => void
+  actions?: ReactNode
 }) {
   const t = useT()
   const reduced = useReducedMotion()
+  const [logOpen, setLogOpen] = useState(false)
   const events = useMemo(() => readEvents(tl), [tl])
   const endTick = useMemo(() => lastTick(tl, events), [tl, events])
   const { tick, clock, replay } = usePlayback(tl, origin, endTick)
@@ -228,15 +258,10 @@ function TickBattle({
 
   // THE END: once, when playback reaches it and the battle is still open on the server; then one read for the loot
   const asked = useRef(false)
-  const [closing, setClosing] = useState(false)
   useEffect(() => {
     if (asked.current || tick < endTick || read.status !== 'FIGHTING') return
     asked.current = true
-    setClosing(true)
-    void source
-      .end(battleId)
-      .then(() => reload())
-      .finally(() => setClosing(false))
+    void source.end(battleId).then(() => reload())
   }, [tick, endTick, read.status, source, battleId, reload])
 
   // whose bar the action row shows: the reader's own side, else the side set upon
@@ -245,80 +270,83 @@ function TickBattle({
 
   const outcome = state.outcome ?? tl.out
   const result = read.result ?? null
+  // THE END, one line: "Plundered · 1,200 gold", "Escaped", "Driven off", "Sunk"
   const endWords = (
-    <>
-      <div className="text-t-title" data-testid="battle-outcome" data-outcome={outcome}>
-        {t(`battle.out_${outcome}` as never)}
-      </div>
-      {state.boarded?.surrender && <div className="text-t-label text-danger">{t('battle.surrendered')}</div>}
-      {result?.loot ? <div className="text-t-label text-accent">{t('battle.loot', { n: formatInt(result.loot) })}</div> : null}
-      {result?.crew_lost ? <div className="text-t-label text-ink-muted">{t('battle.crewLost', { n: formatInt(result.crew_lost) })}</div> : null}
-      {closing && <div className="text-t-caption text-ink-faint">{t('battle.closing')}</div>}
-    </>
+    <div className="text-t-title" data-testid="battle-outcome" data-outcome={outcome}>
+      {resultLine(t, outcome, result, state)}
+    </div>
   )
+  // THE ONE STATUS LINE: the newest event, said short; the end's line stands on the stage instead
+  const newest = state.ended ? null : (events.findLast((e) => e.t <= shown) ?? null)
+  const status = newest ? eventLine(newest, { t, tl, events }, true, result, state) : ''
 
   return (
     <div className="flex min-h-0 flex-1 flex-col lg:flex-row" data-motion={reduced ? 'reduced' : 'full'} data-tick={shown} data-testid="battle-body">
-      <div className="flex shrink-0 flex-col lg:min-h-0 lg:flex-[2] lg:shrink">
-        <FuryRow state={state} names={names} />
-        <div className="relative min-h-[42vh] flex-1 lg:min-h-[14rem]">
+      <div className="flex min-h-0 flex-1 flex-col">
+        <SideRow state={state} names={names} />
+        <div className="relative min-h-[30vh] flex-1 lg:min-h-[14rem]">
           <BattleStage tl={tl} events={events} state={state} tick={shown} clock={clock} reduced={reduced} endWords={endWords} />
         </div>
-        <div className="flex items-center gap-2 px-4 pt-2 text-t-caption text-ink-muted">
-          <span className="tabular-nums" data-testid="battle-clock">
-            {tickClock(shown, tl.ms)} / {tickClock(endTick, tl.ms)}
-          </span>
-          <span className="ml-auto">{tick >= endTick ? t('battle.end') : t('battle.live')}</span>
-          <Button size="sm" onClick={replay} data-testid="battle-replay">
-            {t('battle.replay')}
+        <div className="flex min-h-14 flex-wrap items-center gap-2 px-4 py-2">
+          <div className="min-w-0 flex-1 break-words text-t-title" role="status" data-testid="battle-status">
+            {status}
+          </div>
+          {tick >= endTick && (
+            <button
+              type="button"
+              onClick={replay}
+              aria-label={t('battle.replay')}
+              data-testid="battle-replay"
+              className="grid size-11 place-items-center rounded-full bg-surface-2 text-xl leading-none text-ink hover:bg-accent-soft"
+            >
+              <span aria-hidden="true">↻</span>
+            </button>
+          )}
+          {actions}
+          <Button size="sm" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen} data-testid="battle-log-toggle">
+            {t('battle.log')}
           </Button>
         </div>
-        <ActionBar tl={tl} state={state} side={mineSide} tick={shown} events={events} act={act} />
+        {act && <ActionBar tl={tl} state={state} side={mineSide} tick={shown} events={events} act={act} />}
       </div>
-      <section className="flex min-h-40 flex-1 flex-col px-4 pb-4 lg:min-h-0 lg:max-w-[26rem]">
-        <h3 className="py-2 text-t-label text-ink-muted">{t('battle.log')}</h3>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <BattleLog tl={tl} events={events} tick={shown} sideNames={names} result={result} />
-        </div>
-      </section>
+      {logOpen && (
+        <section className="max-h-[28vh] shrink-0 overflow-y-auto px-4 pb-4 lg:max-h-none lg:w-[20rem] lg:pt-16">
+          <BattleLog tl={tl} events={events} tick={shown} result={result} state={state} />
+        </section>
+      )}
     </div>
   )
 }
 
-function FuryRow({ state, names }: { state: ReturnType<typeof stateAt>; names: [string, string] }) {
+/** Each side: its name, its hull bar, and under it a thin Fury bar. No figures, no captions. */
+function SideRow({ state, names }: { state: ReturnType<typeof stateAt>; names: [string, string] }) {
   const t = useT()
   return (
-    <div className="grid grid-cols-2 gap-4 px-4 pb-2">
+    <div className="grid grid-cols-2 gap-4 py-3 pl-4 pr-16">
       {([0, 1] as const).map((s) => {
         const sd = state.sides[s]
-        const hull = state.ships[s].reduce((n, x) => n + x.hull, 0)
-        const max = state.ships[s].filter((x) => x.up).reduce((n, x) => n + x.ship.m, 0)
-        const running = sd.runFrom !== null && sd.rollAt === null
-        const braced = sd.bracedUntil > state.tick
+        const up = state.ships[s].filter((x) => x.up)
+        const hull = up.reduce((n, x) => n + Math.max(0, x.hull), 0)
+        const max = up.reduce((n, x) => n + x.ship.m, 0)
+        const pct = max > 0 ? Math.max(0, Math.min(100, (hull / max) * 100)) : 0
         return (
-          <div key={s} className={`flex min-w-0 flex-col gap-1 ${s === 1 ? 'items-end text-right' : ''}`} data-testid={`battle-side-${s}`}>
-            <div className="flex max-w-full flex-wrap items-baseline gap-x-2 text-t-label">
-              <span className={`break-words font-semibold ${s === 0 ? 'text-info' : 'text-danger'}`}>{names[s]}</span>
-              <span className="text-t-caption text-ink-muted">{t(s === 0 ? 'fight.sideD' : 'fight.sideA')}</span>
-              {sd.escaped && <span className="text-t-caption text-success">{t('battle.escaped')}</span>}
-              {running && <span className="text-t-caption text-warning">{t('battle.running')}</span>}
-              {braced && <span className="text-t-caption text-info">{t('battle.braced')}</span>}
+          <div key={s} className="flex min-w-0 flex-col gap-1" data-testid={`battle-side-${s}`}>
+            <span className={`break-words text-t-label font-semibold ${s === 0 ? 'text-info' : 'text-danger'}`}>{names[s]}</span>
+            <div className="h-3 overflow-hidden rounded-chip bg-surface-2" role="img" aria-label={`${t('battle.hull')} ${Math.round(pct)}%`}>
+              <div
+                className={`h-full rounded-chip transition-[width] duration-300 ${pct > 50 ? 'bg-success' : pct > 25 ? 'bg-warning' : 'bg-danger'}`}
+                style={{ width: `${pct}%` }}
+                data-testid={`battle-side-hp-${s}`}
+                data-pct={Math.round(pct)}
+              />
             </div>
-            <div className="text-t-caption text-ink-muted tabular-nums">
-              {t('battle.hull')} {formatInt(Math.round(hull))}
-              {max > 0 ? ` / ${formatInt(Math.round(max))}` : ''}
-            </div>
-            <div className="flex w-full items-center gap-2" title={t('battle.fury')}>
-              <span className="text-t-caption text-accent">{t('battle.fury')}</span>
-              <div className="h-2 flex-1 overflow-hidden rounded-chip bg-surface-2">
-                <div
-                  className="h-full rounded-chip bg-accent transition-[width] duration-300"
-                  style={{ width: `${Math.max(0, Math.min(100, sd.fury))}%` }}
-                  data-testid={`battle-fury-${s}`}
-                  data-fury={Math.round(sd.fury)}
-                />
-              </div>
-              <span className="w-8 text-t-caption tabular-nums">{Math.round(sd.fury)}</span>
+            <div className="h-1 overflow-hidden rounded-chip bg-surface-2" role="img" aria-label={`${t('battle.fury')} ${Math.round(sd.fury)}`}>
+              <div
+                className="h-full rounded-chip bg-accent transition-[width] duration-300"
+                style={{ width: `${Math.max(0, Math.min(100, sd.fury))}%` }}
+                data-testid={`battle-fury-${s}`}
+                data-fury={Math.round(sd.fury)}
+              />
             </div>
           </div>
         )
@@ -326,6 +354,9 @@ function FuryRow({ state, names }: { state: ReturnType<typeof stateAt>; names: [
     </div>
   )
 }
+
+/** The bar's icons: one an ability, read at a glance; its one word stands under it. */
+const ABILITY_ICON: Record<TickAbilityCode, string> = { BS: '💥', CH: '⛓️', RK: '🎯', GR: '🍇', BR: '🛡️', PT: '🔧', RN: '💨', PY: '💰' }
 
 /** What her own fleet may do from the bar (null: a watcher, a closed battle, or no door). */
 interface ActControl {
@@ -445,34 +476,33 @@ function ActionBar({
   side: 0 | 1
   tick: number
   events: BattleEvent[]
-  act: ActControl | null
+  act: ActControl
 }) {
   const t = useT()
   const sd = state.sides[side]
   const litNow = new Set<TickAbilityCode>(events.filter((e) => e.kind === 'use' && e.s === side && e.t === tick).map((e) => (e as { code: TickAbilityCode }).code))
   return (
-    <div className="px-4 py-2">
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8" data-testid="battle-actions" data-mode={act ? 'act' : 'watch'} title={act ? t('battle.keys') : t('battle.soon')}>
+    <div className="px-4 pb-3">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8" data-testid="battle-actions">
         {BAR_CODES.map((code, i) => {
           const cd = cooldownAt(tl, sd, code, tick)
           const deg = Math.round(cd.share * 360)
           const cost = Number(tl.ab?.[code]?.cost) || 0
-          const afford = sd.fury >= cost
-          const lock = act ? act.locks[code] : null
+          const lock = act.locks[code]
           return (
             <button
               key={code}
               type="button"
-              disabled={!act || act.waiting || lock !== 'ready'}
-              onClick={act ? () => act.press(code) : undefined}
-              aria-keyshortcuts={act ? String(i + 1) : undefined}
+              disabled={act.waiting || lock !== 'ready'}
+              onClick={() => act.press(code)}
+              aria-keyshortcuts={String(i + 1)}
               data-code={code}
               data-lit={litNow.has(code) ? '1' : '0'}
-              data-lock={lock ?? 'watch'}
-              data-afford={afford ? '1' : '0'}
-              className={`relative min-h-11 overflow-hidden rounded-control bg-surface-2 px-1 py-2 text-t-caption disabled:cursor-not-allowed data-[lit='1']:bg-accent-soft data-[lit='1']:text-accent ${
-                act ? 'text-ink enabled:hover:bg-accent-soft' : 'text-ink-muted'
-              } ${act && (lock === 'fury' || lock === 'role' || lock === 'running') ? 'opacity-50' : ''}`}
+              data-lock={lock}
+              data-afford={sd.fury >= cost ? '1' : '0'}
+              className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 overflow-hidden rounded-control bg-surface-2 px-1 py-1 text-t-caption text-ink enabled:hover:bg-accent-soft disabled:cursor-not-allowed data-[lit='1']:bg-accent-soft data-[lit='1']:text-accent ${
+                lock === 'fury' || lock === 'role' || lock === 'running' ? 'opacity-40' : ''
+              }`}
             >
               {deg > 0 && (
                 <span
@@ -481,18 +511,15 @@ function ActionBar({
                   style={{ background: `conic-gradient(color-mix(in srgb, var(--color-bg) 55%, transparent) ${deg}deg, transparent 0deg)` }}
                 />
               )}
+              <span aria-hidden="true" className="relative text-xl leading-none">
+                {ABILITY_ICON[code]}
+              </span>
               <span className="relative">{t(`battle.ab_${code}`)}</span>
-              {cost > 0 && (
-                <span className={`relative ml-1 tabular-nums ${afford ? 'text-accent' : 'text-ink-faint'}`} data-testid="battle-cost">
-                  {cost}
-                </span>
-              )}
-              {act && <span className="relative ml-1 hidden text-ink-faint lg:inline">{i + 1}</span>}
             </button>
           )
         })}
       </div>
-      {act?.refusal && (
+      {act.refusal && (
         <div className="pt-1 text-t-caption text-danger" role="status" data-testid="battle-act-refusal" data-code={act.refusal}>
           {t(actRefusalKey(act.refusal))}
         </div>
@@ -501,9 +528,11 @@ function ActionBar({
   )
 }
 
+/** An old round-by-round battle (`ticks` null): who against whom, how it ended in one line, its rounds behind Log. */
 function OldBattle({ read, source, battleId }: { read: BattleTicksRead; source: BattleSource; battleId: string }) {
   const t = useT()
   const [old, setOld] = useState<BattleRead | null>(null)
+  const [logOpen, setLogOpen] = useState(false)
   useEffect(() => {
     let live = true
     void source.old(battleId).then((r) => {
@@ -517,23 +546,27 @@ function OldBattle({ read, source, battleId }: { read: BattleTicksRead; source: 
   const log = old ? parseFightLog(old.log, { open: true }) : null
   const outcome = read.result?.outcome
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4" data-testid="battle-old">
-      <div className="text-t-caption text-ink-muted">{t('battle.oldBattle')}</div>
-      <div className="grid grid-cols-2 gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4 pt-3" data-testid="battle-old">
+      <div className="grid grid-cols-2 gap-4 pr-12">
         {names.map((n, s) => (
-          <div key={s} className={s === 1 ? 'text-right' : ''}>
-            <div className={`break-words text-t-body ${s === 0 ? 'text-info' : 'text-danger'}`}>{n}</div>
-            <div className="text-t-caption text-ink-muted">{t(s === 0 ? 'fight.sideD' : 'fight.sideA')}</div>
+          <div key={s} className={`break-words text-t-label font-semibold ${s === 0 ? 'text-info' : 'text-danger'}`}>
+            {n}
           </div>
         ))}
       </div>
       {outcome && (
         <div className="text-t-title" data-testid="battle-outcome" data-outcome={outcome}>
-          {t(`battle.out_${outcome}` as never) || outcome}
+          {resultLine(t, outcome, read.result ?? null)}
         </div>
       )}
-      {read.result?.loot ? <div className="text-t-label text-accent">{t('battle.loot', { n: formatInt(read.result.loot) })}</div> : null}
-      {log && <FightLog log={log} loss={null} watch />}
+      {log && (
+        <div>
+          <Button size="sm" onClick={() => setLogOpen((o) => !o)} aria-expanded={logOpen} data-testid="battle-log-toggle">
+            {t('battle.log')}
+          </Button>
+        </div>
+      )}
+      {log && logOpen && <FightLog log={log} loss={null} watch />}
     </div>
   )
 }

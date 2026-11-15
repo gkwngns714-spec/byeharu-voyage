@@ -868,24 +868,13 @@ function Chart({
           actions={
             <>
               {openFight.ticks && (
-                <Button size="sm" onClick={() => setBattleId(openFight.id)} data-testid="fight-sheet-watch">
+                <Button variant="primary" onClick={() => setBattleId(openFight.id)} data-testid="fight-sheet-watch">
                   {t('join.watch')}
                 </Button>
               )}
               <JoinBar card={openFight} fleets={joinFleets} nowMs={nowMs} allCards={fightCards} />
             </>
           }
-        />
-      )}
-      {battleId !== null && (
-        <BattleScreen
-          key={battleId}
-          battleId={battleId}
-          onClose={() => setBattleId(null)}
-          actions={(() => {
-            const card = fightCards.find((c) => c.id === battleId) ?? (openFight?.id === battleId ? openFight : null)
-            return card ? <JoinBar card={card} fleets={joinFleets} nowMs={nowMs} allCards={fightCards} /> : null
-          })()}
         />
       )}
       {place && (
@@ -921,6 +910,19 @@ function Chart({
         />
       )}
     </div>
+    {/* THE BATTLE SCREEN stands BESIDE the chart's surface too (owner 2026-11-15: "i can't close it"): drawn inside it, the
+        surface took the press on Close for a gesture of its own (it captures the pointer) and the button never heard its click. */}
+    {battleId !== null && (
+      <BattleScreen
+        key={battleId}
+        battleId={battleId}
+        onClose={() => setBattleId(null)}
+        actions={(() => {
+          const card = fightCards.find((c) => c.id === battleId) ?? (openFight?.id === battleId ? openFight : null)
+          return card ? <JoinBar card={card} fleets={joinFleets} nowMs={nowMs} allCards={fightCards} /> : null
+        })()}
+      />
+    )}
     {/* REPEAT'S PAGE stands BESIDE the chart's surface, not in it: a press or a wheel on the page is the page's, never
         a pan, a zoom or a tap on the sea under it. */}
     {routeView && repeatStops && (

@@ -229,12 +229,15 @@ export function BattleStage({
                   <rect width={100} height={10} rx={5} fill="var(--color-chart-deep)" opacity={0.85} />
                   <rect data-testid="battle-hp" data-hull={Math.round(sh.hull)} width={100 * share} height={10} rx={5} fill={hullTone(share)} />
                 </g>
-                <text y={-90} textAnchor="middle" fontSize={20} fontWeight={600} fill="var(--color-ink)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
-                  {sh.ship.n}
-                </text>
+                {/* her name only where a side has more than one ship: a lone ship's is the side's own, above the stage */}
+                {side.length > 1 && (
+                  <text y={-90} textAnchor="middle" fontSize={20} fontWeight={600} fill="var(--color-ink)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
+                    {sh.ship.n}
+                  </text>
+                )}
                 {sh.struck && (
                   <text y={8} textAnchor="middle" fontSize={22} fontWeight={700} fill="var(--color-danger)" stroke="var(--color-bg)" strokeWidth={4} paintOrder="stroke">
-                    {t('battle.struck')}
+                    {t('battle.sunk')}
                   </text>
                 )}
               </g>

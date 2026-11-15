@@ -75,8 +75,10 @@ function Side({ title, sides, hullPct, testId }: { title: string; sides: readonl
   )
 }
 
-/** `actions` (tick combat, docs/design/tick-combat.md 11): what the map puts on the circle's tray above the sides: the
- *  battle screen's Watch and her Join bar (src/live/battle/JoinBar.tsx). */
+/** `actions` (tick combat, docs/design/tick-combat.md 11): what the map puts on the circle's tray: the battle screen's
+ *  Watch and her Join button (src/live/battle/JoinBar.tsx). A TICK battle's tray is ONLY that under "who vs who" (owner
+ *  2026-11-15: "too much words. simplify all"); the fight itself is on the battle screen. An old round-by-round battle, a
+ *  raid and a navy fight have no battle screen, so their tray keeps the sides and the log. */
 export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; onClose: () => void; mode?: 'docked' | 'side'; actions?: ReactNode }) {
   const t = useT()
   const [detent, setDetent] = useState<TrayDetent>('peek')
@@ -85,8 +87,10 @@ export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; 
   const battle = card.id
   const kind = card.kind ?? 'BATTLE'
   const instant = kind !== 'BATTLE'
+  // A TICK BATTLE (0435) is watched on the battle screen: its card is only who against whom, Watch and Join
+  const lean = card.ticks === true
   const read = !instant && got?.value.battle === battle ? got.value : null
-  const fighting = instant ? false : read ? read.status === 'FIGHTING' : true
+  const fighting = instant || lean ? false : read ? read.status === 'FIGHTING' : true
 
   useEffect(() => {
     if (!fighting) return
@@ -124,6 +128,39 @@ export function FightSheet({ card, onClose, mode, actions }: { card: FightCard; 
   const attackers = card.sides.filter((s) => s.side === 'ATTACKER')
   const defenders = card.sides.filter((s) => s.side === 'DEFENDER')
   const mine = card.mine
+
+  if (lean) {
+    const names = (sides: readonly FightSide[], word: string) => (sides.length > 0 ? sides.map((s) => s.name).join(', ') : word)
+    return (
+      <Tray
+        mode={mode}
+        detent={detent}
+        onDetentChange={(next) => (next === 'closed' ? onClose() : setDetent(next))}
+        title={
+          <TrayTitle
+            name={
+              <span className="break-words">
+                <span className="text-danger">{names(attackers, t('fight.sideA'))}</span>
+                <span className="text-ink-muted"> {t('join.vs')} </span>
+                <span className="text-info">{names(defenders, t('fight.sideD'))}</span>
+              </span>
+            }
+            testId="fight-sheet-name"
+          />
+        }
+        data-testid="fight-sheet"
+        data-fight={battle}
+        data-kind={kind}
+        data-lean="true"
+        data-mine={mine ? 'true' : undefined}
+        {...CHART_CHROME}
+      >
+        <div data-testid="fight-sheet-body" data-status={card.status} className="flex flex-wrap items-center gap-2 py-2">
+          {actions}
+        </div>
+      </Tray>
+    )
+  }
 
   return (
     <Tray

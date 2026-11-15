@@ -5,11 +5,10 @@ import { defineDict } from '../define'
 // every refusal `cmd.battle_join` can answer (contract 9.2). Each is one or two words.
 export const joinDict = defineDict({
   en: {
-    title: 'Join',
     join: 'Join',
     joined: 'Joined',
-    side: 'Side',
     watch: 'Watch',
+    vs: 'vs',
     E_NO_BATTLE: 'No battle',
     E_BATTLE_OVER: 'Battle over',
     E_NOT_YOUR_FLEET: 'Not yours',
@@ -21,11 +20,10 @@ export const joinDict = defineDict({
     E_OTHER: 'Refused',
   },
   ko: {
-    title: '참전',
     join: '참전',
     joined: '참전함',
-    side: '편',
     watch: '관전',
+    vs: '대',
     E_NO_BATTLE: '해전 없음',
     E_BATTLE_OVER: '해전 종료',
     E_NOT_YOUR_FLEET: '남의 선단',
