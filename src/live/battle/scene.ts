@@ -41,9 +41,12 @@ const smooth = (x: number) => {
 
 function orbit(side: number, idx: number, count: number, sec: number, size: SceneSize) {
   const cx = size.w / 2
-  const cy = size.h * 0.54
+  // THE MIDDLE OF THE CIRCLE IS A LITTLE BELOW THE STAGE'S (owner 2026-11-15: "make the graphic of fight slightly lower"):
+  // 62 % down (it was 54 %), so there is clear air under the two sides' bars. The circle is no taller than the room
+  // left under it (a hull's half-length from the bottom edge), so no ship is pressed flat against the edge.
+  const cy = size.h * 0.62
   const rx = size.w * 0.3
-  const ry = Math.max(size.h * 0.26, 110)
+  const ry = Math.max(70, Math.min(Math.max(size.h * 0.26, 110), size.h - EDGE - cy))
   const spread = Math.min(0.9, 1.8 / Math.max(1, count))
   const theta = (side === 0 ? Math.PI : 0) + (sec / LAP_S) * Math.PI * 2 + (idx - (count - 1) / 2) * spread
   const k = 1 - 0.22 * (idx % 2)
