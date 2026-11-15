@@ -15,7 +15,6 @@ import {
   PageSplit,
   Row,
   Skeleton,
-  StackedBar,
   StatCell,
   Tray,
   ALL,
@@ -34,13 +33,14 @@ import {
   type StatsFleetList,
   type StatsFleetListRow,
   type StatsFleetPage,
-  type StatsFleetState,
 } from '../../lib/rpc'
 import { nationNameOf, portNameOf, useWorld } from '../../live/worldStore'
 import { useLiveRead } from '../../live/liveRead'
 import { cargoStateWordKey } from '../../live/cargoState'
 import { useShellState } from '../../app/shellState'
 import { portName } from './statsFaces'
+import { FleetStates } from './FleetStatesBar'
+import { fleetStateWord } from './fleetStates'
 import { countriesOf } from './statsFilters'
 
 // NAVY, PIRATES, CARGO — one face each, the Merchants face's pattern (0431; the owner, 2026-11-15: *"in stats, i would like to have a separate tab
@@ -172,7 +172,7 @@ export function FleetsFace({ kind }: { kind: StatsFleetKindId }) {
                 data-testid="stats-fleet"
               >
                 <FactsLine>
-                  <span>{stateWord(t, r.state)}</span>
+                  <span>{fleetStateWord(t, r.state)}</span>
                   {r.home && <span>{cityOf(r.home)}</span>}
                   <span>{t('stats.shipsN', { n: formatInt(r.ships), count: r.ships })}</span>
                   {fig(r.week, 'hull') > 0 && <span>{`${t('stats.damage')} ${formatInt(Math.round(fig(r.week, 'hull')))}`}</span>}
@@ -191,22 +191,8 @@ export function FleetsFace({ kind }: { kind: StatsFleetKindId }) {
       side={
         <>
           <Card title={kindWord} data-testid={`${testid}-figures`}>
-            <div className="grid grid-cols-2 gap-x-4">
-              <StatCell look="stacked" label={t('stats.shipsWord')} value={v.ships ?? 0} format={formatInt} />
-              <StatCell look="stacked" label={t('stats.fleetsWord')} value={v.fleets ?? 0} format={formatInt} />
-            </div>
-            <StackedBar
-              parts={[
-                { id: 'sea', label: t('stats.atSea'), value: v.sea ?? 0, tone: 'info' as const },
-                { id: 'port', label: t('stats.inPort'), value: v.port ?? 0, tone: 'success' as const },
-                { id: 'laid_up', label: t('stats.laidUp'), value: v.laid_up ?? 0, tone: 'neutral' as const },
-                { id: 'wrecked', label: t('stats.wrecked'), value: v.wrecked ?? 0, tone: 'danger' as const },
-              ]}
-              format={formatInt}
-              label={kindWord}
-              className="mt-4"
-              data-testid={`${testid}-states`}
-            />
+            {/* 0448: the same count, words and order as this kind's card on the Ships face (FleetStatesBar.tsx) */}
+            <FleetStates tally={v} label={kindWord} data-testid={`${testid}-states`} />
           </Card>
           <Card title={t('stats.totals')} data-testid={`${testid}-book`}>
             <BookTable kind={kind} day={v.day} week={v.week} />
@@ -219,10 +205,6 @@ export function FleetsFace({ kind }: { kind: StatsFleetKindId }) {
 
 type T = ReturnType<typeof useT>
 
-function stateWord(t: T, s: StatsFleetState): string {
-  return s === 'sea' ? t('stats.atSea') : s === 'port' ? t('stats.inPort') : s === 'laid_up' ? t('stats.laidUp') : t('stats.wrecked')
-}
-
 /** A kind's book as a table: one line a figure, its last 24 h and its 7 days side by side. Counts as counts, money as money, the hull lost
  *  rounded. The server's keys, the face's words. */
 function BookTable({ kind, day, week }: { kind: StatsFleetKindId; day: StatsFleetFigs | undefined; week: StatsFleetFigs | undefined }) {
@@ -233,13 +215,13 @@ function BookTable({ kind, day, week }: { kind: StatsFleetKindId; day: StatsFlee
   const cells =
     kind === 'NAVY'
       ? [n(t('stats.fights'), 'fights'), n(t('stats.won'), 'won'), n(t('stats.lost'), 'lost'), n(t('stats.pirateSunk'), 'sunk'), n(t('stats.stops'), 'stops'), hull,
-         n(t('stats.wrecked'), 'wrecks'), d(t('stats.fines'), 'fines'), d(t('stats.prizes'), 'prizes'), d(t('stats.upkeep'), 'upkeep'), d(t('stats.repairs'), 'repairs')]
+         n(t('stats.wrecks'), 'wrecks'), d(t('stats.fines'), 'fines'), d(t('stats.prizes'), 'prizes'), d(t('stats.upkeep'), 'upkeep'), d(t('stats.repairs'), 'repairs')]
       : kind === 'PIRATE'
         ? [n(t('stats.raids'), 'raids'), n(t('stats.won'), 'raids_won'), n(t('stats.lost'), 'raids_lost'), d(t('stats.loot'), 'loot'), d(t('stats.ransom'), 'ransom'),
-           d(t('stats.goldTaken'), 'gold'), n(t('stats.navyFights'), 'navy_fights'), hull, n(t('stats.wrecked'), 'wrecks'), n(t('stats.rebuilt'), 'refits'),
+           d(t('stats.goldTaken'), 'gold'), n(t('stats.navyFights'), 'navy_fights'), hull, n(t('stats.wrecks'), 'wrecks'), n(t('stats.rebuilt'), 'refits'),
            d(t('stats.upkeep'), 'upkeep'), d(t('stats.repairs'), 'repairs')]
         : [n(t('stats.deliveries'), 'delivered_n'), d(t('stats.delivered'), 'delivered'), n(t('stats.loads'), 'loaded_n'), d(t('stats.returned'), 'returned'),
-           d(t('stats.looted'), 'looted'), n(t('stats.attacked'), 'attacked'), n(t('stats.held'), 'held'), hull, n(t('stats.wrecked'), 'wrecks'), d(t('stats.repairs'), 'repairs')]
+           d(t('stats.looted'), 'looted'), n(t('stats.attacked'), 'attacked'), n(t('stats.held'), 'held'), hull, n(t('stats.wrecks'), 'wrecks'), d(t('stats.repairs'), 'repairs')]
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_max-content_max-content] items-baseline gap-x-4 gap-y-3" data-testid="stats-fleet-book">
       <span />
@@ -289,7 +271,7 @@ function FleetPage({ id }: { id: string }) {
         <Row
           mark={p.nation ? <Flag code={p.nation} name={nationNameOf(nationByCode, p.nation)} size="body" /> : <FlagSlot />}
           label={<Clip>{ko && p.house_ko ? p.house_ko : (p.house ?? (p.nation ? nationNameOf(nationByCode, p.nation) : ''))}</Clip>}
-          value={<Figure value={stateWord(t, p.state)} />}
+          value={<Figure value={fleetStateWord(t, p.state)} />}
           hairline={false}
         >
           <FactsLine>
@@ -419,7 +401,7 @@ function LogRow({ l, cityOf, nowMs }: { l: StatsFleetLine; cityOf: (code: string
       <FactsLine>
         {l.kind === 'STOP' && (l.fine ?? 0) > 0 && resultWord(t, l.result) && <span>{resultWord(t, l.result)}</span>}
         {l.sank && <span>{t('map.fight_SUNK')}</span>}
-        {l.wrecked && <span>{t('stats.wrecked')}</span>}
+        {l.wrecked && <span>{fleetStateWord(t, 'wrecked')}</span>}
         {(l.hull ?? 0) > 0 && <span>{`${t('stats.damage')} ${formatInt(Math.round(l.hull ?? 0))}`}</span>}
         {l.kind === 'STOP' && (l.prize ?? 0) > 0 && <span>{`${t('stats.prizes')} ${formatDucats(l.prize ?? 0)}`}</span>}
         {l.kind === 'REFIT' && l.port && <span>{cityOf(l.port)}</span>}
