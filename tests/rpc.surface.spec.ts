@@ -1049,7 +1049,9 @@ test('a refusal arrives as typed data: code, sentence, and DESIGN F.5 fixes', as
   // exceeds the second — which is precisely why it refused.
   expect(r.figures!.need).toBeGreaterThan(0)
   expect(r.figures!.have).toBeLessThan(r.figures!.need)
-  expect(r.sentence).not.toMatch(/\d/)
+  // 0433 (owner row 350, "just tell me what i have, and what is required"): the sentence IS the have / need line, in the words
+  // docs/WORDS.md asks for (tons, never t): the figures above stay the contract the bar is drawn from.
+  expect(r.sentence).toMatch(/^Hold [\d.,]+ \/ [\d.,]+ tons$/)
 
   // The queue comes back with the refusal, so a screen can redraw without a second round trip —
   // and it carries the SAME figures, so the halted row draws the same bar rather than a second,
