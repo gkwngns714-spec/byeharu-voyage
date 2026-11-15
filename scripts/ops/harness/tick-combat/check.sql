@@ -1,9 +1,9 @@
--- 0435 PROD CHECK, BEFORE and AFTER the deploy (the same read; its header says what each side wants).
+-- 0435 + 0436 PROD CHECK, BEFORE and AFTER the deploy (the same read; its header says what each side wants).
 --   npx --yes supabase@2.120.0 db query --linked --output-format json -f scripts/ops/harness/tick-combat/check.sql
 -- One row, one jsonb column `r`. Run scripts/ops/harness/db-health/gate.sql first (gate_ok true). One statement, read only.
 -- Reads public.battles of the last hour (RAID rows are kept 48 h; the hour is ~120 at the ceiling), the knobs and the beat's ring. No big table is scanned.
 -- BEFORE, wanted: applied false; raids_1h and their mean span (~600 s) as 0427-0432 left them; round_rows_1h ~7 a battle.
--- AFTER (30 minutes), wanted: applied true; tick_1h = every battle opened since the deploy; span_s mean 15-75 (max <= 75); stuck 0 (no FIGHTING battle
+-- AFTER (30 minutes), wanted: applied true; joined_1h: navy and pirates only (never MERCHANT / CARGO_SHIP; COMPANY only on the side against pirates); tick_1h = every battle opened since the deploy; span_s mean 15-75 (max <= 75); stuck 0 (no FIGHTING battle
 --   past its end by more than 2 minutes); round_rows_since 0 for tick battles; outcomes spread as before (PLUNDERED / EVADED / DRIVEN_OFF / RANSOM);
 --   ticks_kb mean 1-6; beat < 1,000 ms and no worse than BEFORE.
 begin transaction read only;
@@ -27,6 +27,9 @@ select jsonb_build_object(
   'round_rows_tick', (select count(*) from public.battle_rounds r join b on b.id = r.battle_id where b.ticks is not null and b.ticks <> 'null'::jsonb),
   'ticks_kb', (select round(avg(length(b.ticks::text)) / 1024.0, 2) from b where b.ticks is not null and b.ticks <> 'null'::jsonb),
   'stuck', (select count(*) from b where b.status = 'FIGHTING' and b.resolves_at < now() - interval '2 minutes'),
+  -- 0436: ships that chose to join (JOINED sides) in the hour, by kind of the joiner's fleet
+  'joined_1h', (select coalesce(jsonb_object_agg(z.k, z.n), '{}'::jsonb) from (select public.fleet_kind(bs.fleet_id) as k, count(*) as n
+                  from public.battle_sides bs join b on b.id = bs.battle_id where bs.how = 'JOINED' group by 1) z),
   'beat', (select jsonb_build_object('mean_ms', round(avg(a.ms)), 'n', count(*)) from public.arrivals_beats a where a.at > now() - interval '5 minutes')
 ) as r;
 commit;
