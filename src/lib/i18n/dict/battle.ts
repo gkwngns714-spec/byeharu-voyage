@@ -1,7 +1,7 @@
 import { defineDict } from '../define'
 
 // THE BATTLE SCREEN (0435, docs/design/tick-combat.md section 11): a fight played tick by tick (src/live/battle/). The
-// ability names, the action bar, the log's words and the end. Every label is one or two words; the numbers are the
+// ability names, the action bar (and, 0439, the short word for each refusal `cmd.battle_act` answers), the log's words and the end. Every label is one or two words; the numbers are the
 // server's timeline, and these are the words around them. The sides' names (Attacker, Defender) are `fight.sideA` /
 // `fight.sideD`, the one set.
 export const battleDict = defineDict({
@@ -55,6 +55,16 @@ export const battleDict = defineDict({
     out_PLUNDERED: 'Plundered',
     loot: 'Loot {n}',
     crewLost: 'Crew lost {n}',
+    keys: 'Keys 1-8',
+    act_E_NO_BATTLE: 'No battle',
+    act_E_BATTLE_OVER: 'Battle over',
+    act_E_NOT_YOUR_BATTLE: 'Not yours',
+    act_E_COOLDOWN: 'Not ready',
+    act_E_NO_FURY: 'No Fury',
+    act_E_PAST_TICK: 'Too late',
+    act_E_BAD_CODE: 'Not allowed',
+    act_E_TOO_SOON: 'Too fast',
+    act_E_OTHER: 'Refused',
   },
   ko: {
     title: '전투',
@@ -106,5 +116,15 @@ export const battleDict = defineDict({
     out_PLUNDERED: '약탈당함',
     loot: '전리품 {n}',
     crewLost: '선원 손실 {n}',
+    keys: '단축키 1-8',
+    act_E_NO_BATTLE: '전투 없음',
+    act_E_BATTLE_OVER: '전투 종료',
+    act_E_NOT_YOUR_BATTLE: '남의 전투',
+    act_E_COOLDOWN: '준비 중',
+    act_E_NO_FURY: '기세 부족',
+    act_E_PAST_TICK: '늦음',
+    act_E_BAD_CODE: '불가',
+    act_E_TOO_SOON: '너무 빠름',
+    act_E_OTHER: '거절됨',
   },
 })

@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
-import { OLD_FIGHT, OLD_READ, READ, RESULT } from './battleTicks.fixture'
+import { OLD_FIGHT, OLD_READ, READ, READ_MINE, RESULT } from './battleTicks.fixture'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BATTLE SCREEN, PLAYED FROM A FIXTURE (0435, docs/design/tick-combat.md 9 and 11; src/live/battle/).
@@ -15,6 +15,9 @@ import { OLD_FIGHT, OLD_READ, READ, RESULT } from './battleTicks.fixture'
 //   REDUCED      under prefers-reduced-motion the stage is still (`data-motion` reduced), a hit number stands at full
 //                strength, and the struck ship is drawn struck.
 //   OLD BATTLE   `ticks` null: the sides and the result, no stage.
+//   HER OWN SHIP (0439) the bar presses for her fleet: what her Fury cannot pay for is grey with its cost unlit, a cooling
+//                ability sweeps, a refusal says its word, a taken act swaps the re-run timeline in at the same tick (no
+//                jump; the log keeps its past), the keys 1-8 press on a desk; on a phone the bar fits.
 // Screenshots: test-results/battle-screen (or BATTLE_SCREEN_SHOTS).
 
 const SHOTS = process.env.BATTLE_SCREEN_SHOTS ? path.resolve(process.env.BATTLE_SCREEN_SHOTS) : path.resolve('test-results', 'battle-screen')
@@ -28,7 +31,8 @@ async function openFixture(page: Page, fixture: unknown) {
   await expect(page.getByTestId('battle-screen')).toBeVisible()
 }
 
-const calls = (page: Page) => page.evaluate(() => (window as unknown as { __BV_BATTLE_CALLS__: { read: number; end: number } }).__BV_BATTLE_CALLS__)
+const calls = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __BV_BATTLE_CALLS__: { read: number; end: number; act: { code: string; tick: number }[] } }).__BV_BATTLE_CALLS__)
 const logText = (page: Page) => page.getByTestId('battle-log').innerText()
 
 test('a late opener jumps to the tick now, the fight plays tick by tick to its end, and the end is asked once', async ({ page }) => {
@@ -47,8 +51,9 @@ test('a late opener jumps to the tick now, the fight plays tick by tick to its e
   expect(early).toContain('Navy brig · Joins · Santa Rosa, Navy brig')
   expect(early).toContain('Brace · Fury 0')
   expect(early).not.toContain('Struck')
-  // the Fury bar and the action row: the raiders used Chain Shot at 12 (Fury 20); the row is watch-only
+  // the Fury bar and the action row: the raiders used Chain Shot at 12 (Fury 20); a watcher's row is watch-only
   await expect(page.getByTestId('battle-fury-1')).toHaveAttribute('data-fury', '20')
+  await expect(page.getByTestId('battle-actions')).toHaveAttribute('data-mode', 'watch')
   await expect(page.getByTestId('battle-actions').getByRole('button')).toHaveCount(8)
   for (const b of await page.getByTestId('battle-actions').getByRole('button').all()) await expect(b).toBeDisabled()
   // the joiner is on the stage: four ships, two a side
@@ -128,4 +133,66 @@ test('an old round-by-round battle shows its sides and its result, with no stage
   await expect(page.getByTestId('battle-stage')).toHaveCount(0)
   expect((await calls(page)).end).toBe(0)
   await page.screenshot({ path: path.join(SHOTS, 'phone-old.png') })
+})
+
+test('her own ship: the action bar presses, greys what it cannot pay for, says a refusal, swaps the new timeline in without a jump, and answers the keys', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await openFixture(page, { read: READ_MINE, agoMs: 15_000, result: RESULT, actRefuse: ['E_COOLDOWN'] })
+  const body = page.getByTestId('battle-body')
+  const bar = page.getByTestId('battle-actions')
+  const btn = (code: string) => bar.locator(`button[data-code="${code}"]`)
+  await expect(bar).toHaveAttribute('data-mode', 'act')
+  await expect.poll(async () => Number(await body.getAttribute('data-tick'))).toBeGreaterThanOrEqual(25)
+  // her bar is empty: Rake, Grapeshot and Patch are grey, their cost unlit; Brace is cooling (used at 7); the rest are ready
+  for (const code of ['RK', 'GR', 'PT']) {
+    await expect(btn(code)).toBeDisabled()
+    await expect(btn(code)).toHaveAttribute('data-lock', 'fury')
+    await expect(btn(code)).toHaveAttribute('data-afford', '0')
+  }
+  await expect(btn('RK').getByTestId('battle-cost')).toHaveText('50')
+  await expect(btn('BR')).toHaveAttribute('data-lock', 'cooldown')
+  await expect(btn('BR')).toBeDisabled()
+  for (const code of ['BS', 'CH', 'RN', 'PY']) await expect(btn(code)).toBeEnabled()
+  await page.screenshot({ path: path.join(SHOTS, 'wide-act-bar.png') })
+
+  // THE REFUSAL: its short word under the bar; nothing changes
+  await btn('BS').click()
+  await expect(page.getByTestId('battle-act-refusal')).toHaveText('Not ready')
+  await expect(page.getByTestId('battle-act-refusal')).toHaveAttribute('data-code', 'E_COOLDOWN')
+
+  // TAKEN: asked for the next tick; the re-run timeline is swapped in at the same tick (the log keeps its past), and the
+  // Broadside is in it with her Fury after
+  const before = Number(await body.getAttribute('data-tick'))
+  await btn('BS').click()
+  await expect.poll(async () => (await calls(page)).act.length).toBe(2)
+  const asked = (await calls(page)).act[1]
+  expect(asked.code).toBe('BS')
+  expect(asked.tick).toBeGreaterThan(before)
+  expect(asked.tick).toBeLessThanOrEqual(before + 3)
+  const after = Number(await body.getAttribute('data-tick'))
+  expect(after).toBeGreaterThanOrEqual(before)
+  expect(after).toBeLessThan(before + 4)
+  await expect(page.getByTestId('battle-log')).toContainText('Santa Rosa, Navy brig · Broadside · Fury 10')
+  await expect(page.getByTestId('battle-log')).toContainText('Santa Rosa, Navy brig · Run 35% · Caught')
+  await expect(page.getByTestId('battle-fury-0')).toHaveAttribute('data-fury', '10')
+  await expect(btn('BS')).toHaveAttribute('data-lock', 'cooldown')
+  await expect(page.getByTestId('battle-act-refusal')).toHaveCount(0)
+
+  // THE KEYS: 2 is Chain Shot, once the spam cap (a global cooldown) has passed
+  await expect(btn('CH')).toBeEnabled({ timeout: 5_000 })
+  await page.keyboard.press('2')
+  await expect.poll(async () => (await calls(page)).act.length).toBe(3)
+  expect((await calls(page)).act[2].code).toBe('CH')
+  await expect(page.getByTestId('battle-fury-0')).toHaveAttribute('data-fury', '20', { timeout: 5_000 })
+  await page.screenshot({ path: path.join(SHOTS, 'wide-act-taken.png') })
+})
+
+test('her own ship on a phone: the bar fits, a watcher\'s bar stays disabled', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await openFixture(page, { read: READ_MINE, agoMs: 15_000, result: RESULT })
+  await expect(page.getByTestId('battle-actions')).toHaveAttribute('data-mode', 'act')
+  await expect(page.getByTestId('battle-actions').locator('button[data-code="BS"]')).toBeEnabled()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.screenshot({ path: path.join(SHOTS, 'phone-act-bar.png') })
 })

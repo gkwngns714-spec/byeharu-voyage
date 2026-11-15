@@ -99,3 +99,13 @@ export const RESULT: NonNullable<BattleTicksRead['result']> = {
 /** An old round-by-round battle: `ticks` null, closed, with its result. */
 export const OLD_READ: BattleTicksRead = { ...READ, status: 'RESOLVED', ticks: null, result: { ...RESULT, outcome: 'PLUNDERED', loot: 900 } }
 export const OLD_FIGHT: BattleRead = { on: false }
+
+/** 0439: the same raid, but the reader's own ship is Santa Rosa (the ship set upon) and the fight runs on to tick 100, so
+ *  her action bar is live: she ran at 3 (caught at 23), braced at 7; her Fury is 0. */
+export const TL_LONG: TickTimeline = { ...TL, n: 100, out: 'DRIVEN_OFF', e: [...TL.e.filter((e) => e[0] < 28), [100, -1, 'E', 'DRIVEN_OFF']] }
+export const READ_MINE: BattleTicksRead = {
+  ...READ,
+  ticks: TL_LONG,
+  mine: 'f-rosa',
+  sides: (READ.sides ?? []).map((s) => (s.fleet === 'f-rosa' ? { ...s, mine: true } : s)),
+}

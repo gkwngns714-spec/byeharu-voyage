@@ -127,7 +127,7 @@ Knobs: `tick_ms` 600, `tick_window` 20, `tick_gcd` 3, `tick_reload_base` 4, `tic
 | `world.battle_ticks` (read, any signed-in player; catalogue `worldBattleTicks`) | `p_battle uuid` | see below | 0435 |
 | `cmd.battle_end` (any signed-in player; catalogue `cmdBattleEnd`) | `p_battle uuid` | `{ok: true, status, resolves_at}`: closes the battle if its end has come (else nothing); refusal envelope `E_NO_HOUSE`, `E_NO_BATTLE` | 0435 |
 | `cmd.battle_join` | `p_battle uuid, p_fleet uuid, p_side text ('ATTACKER'\|'DEFENDER')` | `{ok: true, battle, side, from_tick}`; refusals `E_NO_BATTLE`, `E_BATTLE_OVER`, `E_NOT_YOUR_FLEET`, `E_NOT_IN_REACH`, `E_BAD_SIDE`, `E_HUMAN_TARGET` (no PvP), `E_FLEET_BUSY`, `E_AT_PEACE` | 0436 |
-| `cmd.battle_act` (abilities, incl. Run = flee and Pay) | `p_battle uuid, p_fleet uuid, p_code text, p_tick int` | `{ok: true, tick, k}`; refusals `E_NO_BATTLE`, `E_BATTLE_OVER`, `E_NOT_YOUR_BATTLE`, `E_COOLDOWN`, `E_NO_FURY`, `E_PAST_TICK` (`p_tick` < the server's tick now), `E_BAD_CODE` | slice 2 |
+| `cmd.battle_act` (abilities, incl. Run = flee and Pay) | `p_battle uuid, p_fleet uuid, p_code text, p_tick int` | `{ok: true, battle, tick, k, resolves_at, ticks}` (`tick` = where it landed, `ticks` = the re-run timeline); refusals `E_NO_BATTLE`, `E_BATTLE_OVER`, `E_NOT_YOUR_BATTLE`, `E_COOLDOWN`, `E_NO_FURY`, `E_PAST_TICK` (`p_tick` < the server's tick now), `E_BAD_CODE`, `E_TOO_SOON` (one act a fleet a `tick_gcd`) | 0439 |
 
 `world.battle_ticks(p_battle)` returns:
 ```
@@ -211,4 +211,7 @@ turn-away from a `U RN` to its `X`, sinking at `S`). Fury, cooldowns and the bra
    `public.battle_advance` read the timeline instead of rounds, `world.battle_ticks`, `cmd.battle_end`, `fight_card` serves `reach_nm` and `ticks`.
    Proof 136. Client: the battle screen and the map's red ships (parallel builders).
 2. **0436: joining.** `cmd.battle_join`, `battle_sides.how` JOINED, the NPC join rule in the navy's and pirates' steps; the Join button.
-3. **0437: the player acts.** `cmd.battle_act` (abilities, Run, Pay) into `sheet.acts`, the re-run, a player's side on HOLD (autos only) between acts.
+3. **0439: the player acts.** `cmd.battle_act` (abilities, Run, Pay) into `sheet.acts`, the re-run. As built (decided by default): the AI keeps her side's
+   commander between her acts (not HOLD); an act lands at greatest(asked, tick now + 1), then on to the side's global cooldown, and the answer says
+   where (`tick`) and carries the new timeline (`ticks`); `p_tick` under the tick now is E_PAST_TICK; one act a fleet a `tick_gcd` is the spam cap
+   (E_TOO_SOON, a code added to the list); Pay is only the ship set upon's, Run only a ship that began the fight (a joiner's is E_BAD_CODE).

@@ -1607,6 +1607,9 @@ test('one catalogue builds both backends, and only one backend is ever in use', 
       // Pin moved deliberately 2026-11-15 with migration 0436 (docs/design/tick-combat.md 8): JOINING A BATTLE is a choice, cmd.battle_join(battle, fleet, side).
       // No player id; a fleet not yours is E_NOT_YOUR_FLEET, a side against a player E_HUMAN_TARGET. Landed WITH the face that presses it (src/live/battle/JoinBar.tsx).
       'cmdBattleJoin',
+      // Pin moved deliberately 2026-11-15 with migration 0439 (docs/design/tick-combat.md 9.2): THE ACTION BAR, cmd.battle_act(battle, fleet, code, tick). No player id;
+      // a fleet not hers or not in the battle is E_NOT_YOUR_BATTLE, and an act adds no side (no PvP). Landed WITH the face that presses it (src/live/battle/BattleScreen.tsx).
+      'cmdBattleAct',
       // Pin moved deliberately 2026-10-11 with migration 0104 (owner row 121, docs/NPC_FLEET_SCALE.md
       // §1 slice E): ONE HARBOUR'S MERCHANTS — which merchant companies this quay concerns and what
       // each one is DOING there. A READ, no player id, dark until the owner's switch, and a player's

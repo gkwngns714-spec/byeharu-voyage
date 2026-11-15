@@ -213,6 +213,22 @@ export function cooldownAt(tl: TickTimeline, side: SideState, code: TickAbilityC
   return { left, share: left / cd }
 }
 
+/** Why a button of her action bar cannot be pressed for the next tick (0439), as the timeline tells it; the server judges. */
+export type BarLock = 'ready' | 'cooldown' | 'fury' | 'running' | 'role'
+
+/** Her side's lock on one ability for the tick after `tick`. `setUpon`: her fleet is the ship set upon (only she pays);
+ *  `opened`: her fleet began the fight (a run is her whole side's, so a ship that joined does not order it). */
+export function barLock(tl: TickTimeline, side: SideState, code: TickAbilityCode, tick: number, role: { setUpon: boolean; opened: boolean }): BarLock {
+  if ((code === 'PY' && !role.setUpon) || (code === 'RN' && !role.opened)) return 'role'
+  const next = tick + 1
+  if (cooldownAt(tl, side, code, next).left > 0) return 'cooldown'
+  const runFor = num(tl.ab?.RN?.for) || 20
+  const running = side.runFrom !== null && side.rollAt === null && side.runFrom + runFor >= next
+  if (running && code !== 'BR' && code !== 'PT') return 'running'
+  if (side.fury < num(tl.ab?.[code]?.cost)) return 'fury'
+  return 'ready'
+}
+
 /** The tick the server's clock is at, from a read: floor((now - started_at) / ms), never under 0. */
 export function serverTick(startedAt: string, now: string, ms: number): number {
   const d = Date.parse(now) - Date.parse(startedAt)

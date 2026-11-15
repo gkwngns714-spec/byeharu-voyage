@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Button, Empty, Skeleton, useBackLayer } from '../../components/ui'
 import { cmdBattleEnd, worldBattleTicks, worldFight } from '../../lib/rpc'
 import type { BattleEndReceipt, BattleRead, BattleTicksRead, RpcResult, TickAbilityCode, TickTimeline } from '../../lib/rpc'
+import { BATTLE_ACT_REFUSALS, cmdBattleAct, type BattleActReceipt } from '../../lib/rpc/battleAct'
 import { formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 import { FightLog } from '../FightLog'
 import { parseFightLog } from '../fightLines'
 import { BattleLog } from './BattleLog'
 import { BattleStage } from './BattleStage'
-import { BAR_CODES, cooldownAt, lastTick, playableTimeline, readEvents, stateAt, tickClock, type BattleEvent } from './timeline'
+import { BAR_CODES, barLock, cooldownAt, lastTick, playableTimeline, readEvents, stateAt, tickClock, type BarLock, type BattleEvent } from './timeline'
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 // THE BATTLE SCREEN (0435, docs/design/tick-combat.md 9 and 11; owner 2026-11-15: a wide battle screen, ships enlarged,
@@ -23,8 +24,12 @@ import { BAR_CODES, cooldownAt, lastTick, playableTimeline, readEvents, stateAt,
 // playback reaches the end of a battle still FIGHTING it asks `cmd.battle_end` ONCE and reads once more, for the loot.
 // AN OLD BATTLE (`ticks` null: fought round by round) is drawn with its sides, its result and the round log
 // (`world.fight`, the FightLog the map's sheet draws).
-// THE ACTION BAR shows the eight abilities with the cooldown sweeps of the reader's side (or the side set upon): slice 1
-// is watch-only, so every button is disabled (slice 2, `cmd.battle_act`, presses them).
+// THE ACTION BAR shows the eight abilities with the cooldown sweeps of the reader's side (or the side set upon). A watcher's
+// bar is disabled. For HER OWN fleet in a battle still fought (0439, slice 2) it is pressable: a button is grey while its
+// cooldown sweeps, while her bar lacks its Fury (the cost lit when she has it), while she runs (only Brace and Patch), or when
+// it is not hers to order (Pay: only the ship set upon; Run: only a ship that began the fight). A press (or the keys 1-8 on
+// a desk) asks `cmd.battle_act` for the next tick; the answer is the re-run timeline, swapped in at the same tick (no jump:
+// the past is the same). A refusal shows its short word under the bar.
 
 const POLL_MS = 10_000
 
@@ -33,9 +38,14 @@ export interface BattleSource {
   read: (battleId: string) => Promise<RpcResult<BattleTicksRead>>
   end: (battleId: string) => Promise<RpcResult<BattleEndReceipt>>
   old: (battleId: string) => Promise<RpcResult<BattleRead>>
+  /** Her side's commander acts (0439); absent: the bar is watch-only. */
+  act?: (battleId: string, fleetId: string, code: TickAbilityCode, tick: number) => Promise<RpcResult<BattleActReceipt>>
 }
 
-const SERVER: BattleSource = { read: worldBattleTicks, end: cmdBattleEnd, old: worldFight }
+const SERVER: BattleSource = { read: worldBattleTicks, end: cmdBattleEnd, old: worldFight, act: cmdBattleAct }
+
+/** How long a refusal's word stays under the bar. */
+const REFUSAL_MS = 3_000
 
 const motionQuery = () => (typeof window === 'undefined' ? null : window.matchMedia('(prefers-reduced-motion: reduce)'))
 function useReducedMotion(): boolean {
@@ -74,13 +84,17 @@ export function BattleScreenFrom({ source, battleId, onClose, actions }: { sourc
     const at = Date.now() - (Number.isFinite(into) ? Math.max(0, into) : 0)
     setOrigin((o) => o ?? at)
     setRead((old) => {
-      // the same timeline (same k) keeps its object, so playback does not restart
-      if (old?.ticks && v.ticks && old.ticks.k === v.ticks.k) return { ...v, ticks: old.ticks }
+      // the same timeline (same k) keeps its object, so playback does not restart; a read older than an act's answer keeps the newer
+      if (old?.ticks && v.ticks && old.ticks.k >= v.ticks.k) return { ...v, ticks: old.ticks }
       return v
     })
     return v
   }, [])
   const load = useCallback(() => source.read(battleId).then(apply), [source, battleId, apply])
+  // an act's answer: the re-run timeline, in place of the old one at the same tick
+  const swap = useCallback((ticks: TickTimeline, resolvesAt: string | undefined) => {
+    setRead((old) => (old ? { ...old, ticks, resolves_at: resolvesAt ?? old.resolves_at } : old))
+  }, [])
 
   useEffect(() => {
     let live = true
@@ -119,7 +133,7 @@ export function BattleScreenFrom({ source, battleId, onClose, actions }: { sourc
           <Skeleton className="h-10 w-full" />
         </div>
       ) : tl && origin !== null ? (
-        <TickBattle read={read} tl={tl} origin={origin} source={source} battleId={battleId} reload={load} />
+        <TickBattle read={read} tl={tl} origin={origin} source={source} battleId={battleId} reload={load} swap={swap} />
       ) : (
         <OldBattle read={read} source={source} battleId={battleId} />
       )}
@@ -192,6 +206,7 @@ function TickBattle({
   source,
   battleId,
   reload,
+  swap,
 }: {
   read: BattleTicksRead
   tl: TickTimeline
@@ -200,6 +215,7 @@ function TickBattle({
   source: BattleSource
   battleId: string
   reload: () => Promise<BattleTicksRead | null>
+  swap: (ticks: TickTimeline, resolvesAt: string | undefined) => void
 }) {
   const t = useT()
   const reduced = useReducedMotion()
@@ -225,6 +241,7 @@ function TickBattle({
 
   // whose bar the action row shows: the reader's own side, else the side set upon
   const mineSide = (read.sides ?? []).find((s) => s.mine || s.fleet === read.mine)?.side === 'ATTACKER' ? 1 : 0
+  const act = useActions({ read, tl, state, side: mineSide, tick: shown, endTick, clock, source, battleId, reload, swap })
 
   const outcome = state.outcome ?? tl.out
   const result = read.result ?? null
@@ -256,7 +273,7 @@ function TickBattle({
             {t('battle.replay')}
           </Button>
         </div>
-        <ActionBar tl={tl} state={state} side={mineSide} tick={shown} events={events} />
+        <ActionBar tl={tl} state={state} side={mineSide} tick={shown} events={events} act={act} />
       </div>
       <section className="flex min-h-40 flex-1 flex-col px-4 pb-4 lg:min-h-0 lg:max-w-[26rem]">
         <h3 className="py-2 text-t-label text-ink-muted">{t('battle.log')}</h3>
@@ -310,35 +327,176 @@ function FuryRow({ state, names }: { state: ReturnType<typeof stateAt>; names: [
   )
 }
 
-function ActionBar({ tl, state, side, tick, events }: { tl: TickTimeline; state: ReturnType<typeof stateAt>; side: 0 | 1; tick: number; events: BattleEvent[] }) {
+/** What her own fleet may do from the bar (null: a watcher, a closed battle, or no door). */
+interface ActControl {
+  locks: Record<TickAbilityCode, BarLock>
+  /** a press is on its way, or her own last act is under the spam cap (one a gcd) */
+  waiting: boolean
+  refusal: string | null
+  press: (code: TickAbilityCode) => void
+}
+
+type ActRefusalKey = `battle.act_${(typeof BATTLE_ACT_REFUSALS)[number] | 'E_OTHER'}`
+
+/** The dictionary key of a refusal's short word: its own for every code the contract names, else the one fallback. */
+function actRefusalKey(code: string): ActRefusalKey {
+  return (BATTLE_ACT_REFUSALS as readonly string[]).includes(code) ? (`battle.act_${code}` as ActRefusalKey) : 'battle.act_E_OTHER'
+}
+
+/** Her fleet's bar (0439): the locks for the next tick, the press (and the keys 1-8), the refusal's word. */
+function useActions({
+  read,
+  tl,
+  state,
+  side,
+  tick,
+  endTick,
+  clock,
+  source,
+  battleId,
+  reload,
+  swap,
+}: {
+  read: BattleTicksRead
+  tl: TickTimeline
+  state: ReturnType<typeof stateAt>
+  side: 0 | 1
+  tick: number
+  endTick: number
+  clock: () => number
+  source: BattleSource
+  battleId: string
+  reload: () => Promise<BattleTicksRead | null>
+  swap: (ticks: TickTimeline, resolvesAt: string | undefined) => void
+}): ActControl | null {
+  const mine = read.mine ? ((read.sides ?? []).find((s) => s.fleet === read.mine) ?? null) : null
+  const doAct = source.act
+  const live = !!doAct && !!mine && read.status === 'FIGHTING' && !state.ended && tick < endTick
+  const [busy, setBusy] = useState(false)
+  const [lastAt, setLastAt] = useState(-1_000)
+  const [refusal, setRefusal] = useState<string | null>(null)
+  const setUpon = mine?.side === 'DEFENDER' && mine.how === 'OPENED'
+  const opened = mine?.how === 'OPENED'
+  const sd = state.sides[side]
+  const locks = useMemo(
+    () => Object.fromEntries(BAR_CODES.map((c) => [c, barLock(tl, sd, c, tick, { setUpon, opened })])) as Record<TickAbilityCode, BarLock>,
+    [tl, sd, tick, setUpon, opened],
+  )
+  const waiting = busy || tick < lastAt + (tl.gcd || 3)
+  const fleet = mine?.fleet ?? null
+
+  useEffect(() => {
+    if (!refusal) return
+    const id = window.setTimeout(() => setRefusal(null), REFUSAL_MS)
+    return () => window.clearTimeout(id)
+  }, [refusal])
+
+  const press = useCallback(
+    (code: TickAbilityCode) => {
+      if (!doAct || !fleet || busy) return
+      const now = Math.floor(clock())
+      setBusy(true)
+      setRefusal(null)
+      void doAct(battleId, fleet, code, now + 1)
+        .then((r) => {
+          if (!r.ok) {
+            setRefusal(r.refusal.code)
+            return
+          }
+          setLastAt(now)
+          const next = playableTimeline(r.value.ticks)
+          if (next) swap(next, r.value.resolves_at)
+          else void reload()
+        })
+        .finally(() => setBusy(false))
+    },
+    [doAct, fleet, busy, clock, battleId, swap, reload],
+  )
+
+  // the keys 1-8 (a desk): the bar's order; never while typing, never with a modifier
+  useEffect(() => {
+    if (!live) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || !/^[1-8]$/.test(e.key)) return
+      const el = e.target instanceof HTMLElement ? e.target : null
+      if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return
+      const code = BAR_CODES[Number(e.key) - 1]
+      e.preventDefault()
+      if (!waiting && locks[code] === 'ready') press(code)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [live, waiting, locks, press])
+
+  if (!live) return null
+  return { locks, waiting, refusal, press }
+}
+
+function ActionBar({
+  tl,
+  state,
+  side,
+  tick,
+  events,
+  act,
+}: {
+  tl: TickTimeline
+  state: ReturnType<typeof stateAt>
+  side: 0 | 1
+  tick: number
+  events: BattleEvent[]
+  act: ActControl | null
+}) {
   const t = useT()
   const sd = state.sides[side]
   const litNow = new Set<TickAbilityCode>(events.filter((e) => e.kind === 'use' && e.s === side && e.t === tick).map((e) => (e as { code: TickAbilityCode }).code))
   return (
-    <div className="grid grid-cols-4 gap-2 px-4 py-2 sm:grid-cols-8" data-testid="battle-actions" title={t('battle.soon')}>
-      {BAR_CODES.map((code) => {
-        const cd = cooldownAt(tl, sd, code, tick)
-        const deg = Math.round(cd.share * 360)
-        return (
-          <button
-            key={code}
-            type="button"
-            disabled
-            data-code={code}
-            data-lit={litNow.has(code) ? '1' : '0'}
-            className="relative min-h-11 overflow-hidden rounded-control bg-surface-2 px-1 py-2 text-t-caption text-ink-muted disabled:cursor-not-allowed data-[lit='1']:bg-accent-soft data-[lit='1']:text-accent"
-          >
-            {deg > 0 && (
-              <span
-                aria-hidden="true"
-                className="absolute inset-0"
-                style={{ background: `conic-gradient(color-mix(in srgb, var(--color-bg) 55%, transparent) ${deg}deg, transparent 0deg)` }}
-              />
-            )}
-            <span className="relative">{t(`battle.ab_${code}`)}</span>
-          </button>
-        )
-      })}
+    <div className="px-4 py-2">
+      <div className="grid grid-cols-4 gap-2 sm:grid-cols-8" data-testid="battle-actions" data-mode={act ? 'act' : 'watch'} title={act ? t('battle.keys') : t('battle.soon')}>
+        {BAR_CODES.map((code, i) => {
+          const cd = cooldownAt(tl, sd, code, tick)
+          const deg = Math.round(cd.share * 360)
+          const cost = Number(tl.ab?.[code]?.cost) || 0
+          const afford = sd.fury >= cost
+          const lock = act ? act.locks[code] : null
+          return (
+            <button
+              key={code}
+              type="button"
+              disabled={!act || act.waiting || lock !== 'ready'}
+              onClick={act ? () => act.press(code) : undefined}
+              aria-keyshortcuts={act ? String(i + 1) : undefined}
+              data-code={code}
+              data-lit={litNow.has(code) ? '1' : '0'}
+              data-lock={lock ?? 'watch'}
+              data-afford={afford ? '1' : '0'}
+              className={`relative min-h-11 overflow-hidden rounded-control bg-surface-2 px-1 py-2 text-t-caption disabled:cursor-not-allowed data-[lit='1']:bg-accent-soft data-[lit='1']:text-accent ${
+                act ? 'text-ink enabled:hover:bg-accent-soft' : 'text-ink-muted'
+              } ${act && (lock === 'fury' || lock === 'role' || lock === 'running') ? 'opacity-50' : ''}`}
+            >
+              {deg > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-0"
+                  style={{ background: `conic-gradient(color-mix(in srgb, var(--color-bg) 55%, transparent) ${deg}deg, transparent 0deg)` }}
+                />
+              )}
+              <span className="relative">{t(`battle.ab_${code}`)}</span>
+              {cost > 0 && (
+                <span className={`relative ml-1 tabular-nums ${afford ? 'text-accent' : 'text-ink-faint'}`} data-testid="battle-cost">
+                  {cost}
+                </span>
+              )}
+              {act && <span className="relative ml-1 hidden text-ink-faint lg:inline">{i + 1}</span>}
+            </button>
+          )
+        })}
+      </div>
+      {act?.refusal && (
+        <div className="pt-1 text-t-caption text-danger" role="status" data-testid="battle-act-refusal" data-code={act.refusal}>
+          {t(actRefusalKey(act.refusal))}
+        </div>
+      )}
     </div>
   )
 }
