@@ -33,6 +33,7 @@
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
 import { haversineNm } from '../geo/index.ts'
+import type { DrawnLand } from './refine.ts'
 
 /** How many bits of mask each cell carries in the packed wire format. */
 export const SEA_BIT = 1
@@ -47,6 +48,10 @@ export interface SeaNav {
   readonly cells: Uint8Array
   /** cols × rows bytes: the full per-cell passability mask (SEA_BIT | POLAR_BIT | …). */
   readonly marks?: Uint8Array
+  /** THE LAND THE CHART DRAWS, where the raster is too coarse to see it (./coastMask.ts, owner row
+   *  352). When present, the course author re-sails every course off it (./refine.ts); a course
+   *  proposed before it arrives is still raster water, only not yet held off the drawn coast. */
+  readonly coast?: DrawnLand
 }
 
 /** Cell centre latitude of a grid row (row 0 is the north edge). */

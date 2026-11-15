@@ -66,20 +66,20 @@ export function gcNm(lat1, lon1, lat2, lon2) {
 export const CHANNELS = [
   { id: 'danish-straits', name: 'the Danish Straits', points: [[57.6, 10.6], [57.0, 11.3], [56.1, 12.6], [55.6, 12.9], [55.3, 13.5], [55.2, 15.0]], opensLand: 8 },
   { id: 'turkish-straits', name: 'the Dardanelles and the Bosphorus', points: [[39.9, 25.8], [40.1, 26.2], [40.4, 26.8], [40.7, 28.2], [41.0, 29.0], [41.3, 29.3], [41.6, 30.0]], opensLand: 4 },
-  { id: 'kerch', name: 'the Strait of Kerch', points: [[44.8, 36.4], [45.1, 36.5], [45.4, 36.7]], opensLand: 1 },
-  { id: 'bab-el-mandeb', name: 'the Bab-el-Mandeb', points: [[12.3, 44.0], [12.6, 43.4], [13.2, 42.9], [15.0, 41.5], [17.5, 40.0], [20.0, 38.5], [24.0, 36.0], [27.0, 34.5]], opensLand: 2 },
+  { id: 'kerch', name: 'the Strait of Kerch', points: [[44.8, 36.4], [45.1, 36.5], [45.4, 36.7]], opensLand: 1, charted: true },
+  { id: 'bab-el-mandeb', name: 'the Bab-el-Mandeb', points: [[12.3, 44.0], [12.6, 43.4], [13.2, 42.9], [15.0, 41.5], [17.5, 40.0], [20.0, 38.5], [24.0, 36.0], [27.0, 34.5]], opensLand: 2, charted: true },
   // Without this spur, Suez's nearest raster water is the MEDITERRANEAN, 72 nm north across the
   // isthmus — measured 2026-08-23, when suez->alexandria routed at 261 nm: a Suez Canal, three
   // centuries early. The gulf is 12-17 nm wide, under this raster's resolution, so it is a channel
   // like every other narrow water; the isthmus itself stays land and the two seas stay unjoined.
   { id: 'gulf-of-suez', name: 'the Gulf of Suez', points: [[27.0, 34.5], [27.8, 33.8], [28.5, 33.3], [29.2, 32.9], [29.9, 32.6]], opensLand: 12 },
-  { id: 'hormuz', name: 'the Strait of Hormuz', points: [[24.8, 57.4], [25.8, 56.8], [26.3, 56.5], [26.4, 55.5], [26.4, 54.5], [27.2, 52.0], [28.6, 49.9], [29.6, 48.9], [30.0, 48.6]], opensLand: 3 },
+  { id: 'hormuz', name: 'the Strait of Hormuz', points: [[24.8, 57.4], [25.8, 56.8], [26.3, 56.5], [26.4, 55.5], [26.4, 54.5], [27.2, 52.0], [28.6, 49.9], [29.6, 48.9], [30.0, 48.6]], opensLand: 3, charted: true },
   { id: 'khambhat', name: 'the Gulf of Khambhat', points: [[20.6, 71.8], [21.0, 72.0], [21.4, 72.3]], opensLand: 3 },
   { id: 'hooghly', name: 'the Hooghly approach', points: [[20.5, 88.3], [21.2, 88.2], [21.8, 88.1], [22.4, 88.2], [22.9, 88.4]], opensLand: 5 },
-  { id: 'malacca', name: 'the Strait of Malacca', points: [[6.0, 95.6], [5.8, 96.0], [5.4, 96.8], [4.8, 98.0], [4.2, 98.8], [3.0, 100.5], [2.0, 102.0], [1.5, 103.0], [1.3, 103.6], [1.2, 104.3], [1.2, 104.8]], opensLand: 11 },
-  { id: 'sunda', name: 'the Sunda Strait', points: [[-5.2, 105.8], [-5.7, 105.7], [-6.0, 105.6], [-6.4, 105.4], [-7.0, 105.2]], opensLand: 4 },
-  { id: 'seto', name: 'the Kii and Bungo channels', points: [[32.9, 132.4], [33.3, 132.2], [33.7, 132.5], [34.0, 133.0], [34.3, 133.8], [34.5, 134.6], [34.3, 135.0], [33.8, 135.2]], opensLand: 9 },
-  { id: 'white-sea', name: 'the Gorlo of the White Sea', points: [[68.8, 41.5], [67.8, 41.2], [66.8, 41.0], [66.0, 40.4], [65.6, 39.8], [64.9, 39.8]], opensLand: 6 },
+  { id: 'malacca', name: 'the Strait of Malacca', points: [[6.0, 95.6], [5.8, 96.0], [5.4, 96.8], [4.8, 98.0], [4.2, 98.8], [3.0, 100.5], [2.0, 102.0], [1.5, 103.0], [1.3, 103.6], [1.2, 104.3], [1.2, 104.8]], opensLand: 11, charted: true },
+  { id: 'sunda', name: 'the Sunda Strait', points: [[-5.2, 105.8], [-5.7, 105.7], [-6.0, 105.6], [-6.4, 105.4], [-7.0, 105.2]], opensLand: 4, charted: true },
+  { id: 'seto', name: 'the Kii and Bungo channels', points: [[32.9, 132.4], [33.3, 132.2], [33.7, 132.5], [34.0, 133.0], [34.3, 133.8], [34.5, 134.6], [34.3, 135.0], [33.8, 135.2]], opensLand: 9, charted: true },
+  { id: 'white-sea', name: 'the Gorlo of the White Sea', points: [[68.8, 41.5], [67.8, 41.2], [66.8, 41.0], [66.0, 40.4], [65.6, 39.8], [64.9, 39.8]], opensLand: 6, charted: true },
   { id: 'saint-lawrence', name: 'the River of Saint Lawrence', points: [[49.2, -64.5], [49.0, -65.5], [48.8, -66.5], [48.6, -67.6], [48.3, -68.8], [47.9, -69.6], [47.4, -70.2], [46.9, -70.9], [46.8, -71.2]], opensLand: 22 },
   { id: 'gironde', name: 'the Gironde and the Loire', points: [[45.6, -1.3], [45.4, -1.0], [45.0, -0.7], [44.9, -0.6], [47.2, -2.4], [47.3, -2.1], [47.2, -1.7]], opensLand: 15 },
   { id: 'thames-scheldt', name: 'the Thames and the Scheldt', points: [[51.5, 1.4], [51.5, 0.8], [51.5, 0.2], [51.5, -0.1], [51.6, 3.4], [51.4, 3.6], [51.3, 4.0], [51.2, 4.4]], opensLand: 17 },
@@ -105,7 +105,7 @@ export const CHANNELS = [
   { id: 'rio-de-la-plata', name: 'the Río de la Plata', points: [[-35.5, -56.0], [-35.0, -57.0], [-34.7, -58.0], [-34.6, -58.4]], opensLand: 3 },
   { id: 'amazon-para', name: 'the Pará and the Amazon mouth', points: [[-0.5, -47.5], [-1.0, -48.0], [-1.4, -48.5]], opensLand: 5 },
   { id: 'gambia-senegal', name: 'the Gambia and Senegal mouths', points: [[13.5, -16.8], [13.4, -16.5], [16.0, -16.6], [16.0, -16.4]], opensLand: 14 },
-  { id: 'baltic-gulfs', name: 'the Gulf of Finland and the Gulf of Riga', points: [[59.5, 22.0], [59.6, 23.5], [59.5, 24.8], [57.8, 22.5], [57.5, 23.5], [56.9, 24.0]], opensLand: 9 },
+  { id: 'baltic-gulfs', name: 'the Gulf of Finland and the Gulf of Riga', points: [[59.5, 22.0], [59.6, 23.5], [59.5, 24.8], [57.8, 22.5], [57.5, 23.5], [56.9, 24.0]], opensLand: 9, charted: true },
   // THE PACIFIC AMERICAS GROWTH (2026-09-14, migration 0091). Natural Earth 1:110m draws no San
   // Francisco Bay at all — three vertices along the outer coast — so at 0.25° the whole bay is
   // land and San Francisco's nearest water was 22.4 nm out in the Pacific off Point Reyes. The
@@ -116,7 +116,42 @@ export const CHANNELS = [
   // river and the Puná channel scan-fill as land, so the quay snapped 29.75 nm to the gulf. The
   // yard that built the Armada del Mar del Sur floated its galleons down this water.
   { id: 'guayas', name: 'the Guayas river and the Puná channel', points: [[-2.7, -80.2], [-2.5, -80.0], [-2.3, -79.9], [-2.19, -79.89]], opensLand: 3 },
+  // ── CHARTED CHANNELS (0440, owner row 352: "no ship crossing land") ─────────────────────────────
+  // `charted: true` — water the chart DRAWS (Natural Earth 1:10m, public/coast) that 1:110m closes.
+  // Eight straits above carry it too since 0440 (kerch, bab-el-mandeb, hormuz, malacca, sunda, seto,
+  // white-sea, baltic-gulfs): their raster is unchanged, but a course through them is held to the
+  // land the chart draws there. NOT charted, measured 2026-11-15: the Danish straits and the Gulf of
+  // Suez (their drawn water is not continuous on the course author's 1.5-nm grid inside a one-cell
+  // carve, so 65 courses could not be re-sailed through them), the Dardanelles and the Bosphorus
+  // (narrower than the chart's pixel), and every river.
+  // Unlike a river carve above, the land the chart draws inside these cells stays LAND: it is in
+  // the coast mask (public/coast/mask.json) the course author steers by, and the audit
+  // (scripts/db/audit-land-crossings.mjs) counts a course over it. Each polyline runs down the
+  // middle of the drawn water (scripts/build-land-channels.mjs refuses one that touches drawn land).
+  // Corfu stands in the strait between itself and Epirus; 1:110m joins the island's whole east
+  // coast to the mainland, so every course to the town crossed the island or its south cape.
+  { id: 'corfu', name: 'the Corfu channels', points: [[39.97, 19.72], [39.92, 19.85], [39.83, 19.93], [39.785, 19.968], [39.74, 19.975], [39.7, 19.96], [39.65, 20.0], [39.55, 20.06], [39.47, 20.12], [39.4, 20.15], [39.35, 20.1], [39.27, 20.02], [39.22, 19.97]], opensLand: 3, charted: true },
+  // The Wielingen, the mouth of the Western Scheldt by Flushing. 1:110m closes it, so the only raster
+  // water into the Scheldt was the river carve's straight line across Walcheren.
+  { id: 'western-scheldt', name: 'the Wielingen', points: [[51.44, 3.15], [51.44, 3.3], [51.43, 3.45], [51.43, 3.49]], opensLand: 1, charted: true },
+  // The Tsugaru strait: 1:110m draws Hokkaido's south coast across the strait's northern half, so the
+  // raster left one row of cells over Shimokita's cape and every course through crossed Oma.
+  { id: 'tsugaru', name: 'the Tsugaru strait', points: [[41.45, 140.6], [41.55, 140.85], [41.6, 141.0], [41.6, 141.2], [41.6, 141.35]], opensLand: 2, charted: true },
 ]
+
+/** THE CELLS A RIVER CARVE OPENED: cells of dry land in the land data that a channel the chart does
+ *  NOT draw (no `charted`) turned into sea. The chart draws land there (the Thames above Gravesend,
+ *  the Bosphorus) and the game sails it on purpose, so the coast mask and the audit leave these
+ *  cells alone. A charted channel's cells are not among them: its drawn land stays land. */
+export function riverCarvedCells() {
+  const pre = preCarveGrid()
+  const out = new Set()
+  for (const ch of CHANNELS) {
+    if (ch.charted) continue
+    for (const k of channelCells(ch)) if (pre[k] === 0) out.add(k)
+  }
+  return out
+}
 
 // ── THE ICE — the water the age of sail could never use ────────────────────────────────────────
 // The inverse authority of CHANNELS: named waters CLOSED by hand. The raster models land, not
