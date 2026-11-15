@@ -27,6 +27,10 @@ export function fleetDue(fleet: FleetView, nowMs: number): string | null {
     return navy !== null && navy > nowMs ? `${clock} · ${t('domain.navyArrives', { t: formatCountdown(navy - nowMs) })}` : clock
   }
   const at = voyageEtaMs(fleet) ?? busyUntilMs(fleet)
-  if (at === null) return null
-  return nowMs >= at ? t('domain.due') : formatRealShort(at - nowMs)
+  // 0432: after a battle she was set upon in, five minutes no pirate raids her: "Peace 4:12" beside her clock
+  const peace = instantMs(fleet.peace_until)
+  const calm = peace !== null && peace > nowMs ? t('domain.peace', { t: formatCountdown(peace - nowMs) }) : null
+  if (at === null) return calm
+  const due = nowMs >= at ? t('domain.due') : formatRealShort(at - nowMs)
+  return calm ? `${due} · ${calm}` : due
 }

@@ -45,7 +45,10 @@ $h$, $h$  -- 0395 (docs/ARMADA.md section 7): the fleets of her armada that are 
 $h$),
   ('public.battle_sheet_freeze(uuid,timestamp with time zone)', 1, $h$  v_st := public.battle_opening_stance(v_def);
 $h$, $h$  perform public.battle_armada_sheet(p_battle);   -- 0395: an armada's sheet names her and her fleets, and its word reads all of them; any other sheet: nothing
-  v_st := public.battle_opening_stance(v_def);
+  -- 0432: a ship of the world set upon by a pirate runs when she is outgunned (her side's score under the raider's x raid_flee_ratio)
+  v_st := case when b.kind = 'RAID' and public.fleet_kind(v_def) in ('MERCHANT', 'CARGO_SHIP')
+                    and voyage.escort_score(v_def) < voyage.escort_score(v_att) * coalesce(public.wc_num('raid_flee_ratio'), 0) then 'FLEE'
+               else public.battle_opening_stance(v_def) end;
 $h$),
   ('public.battle_resolve(uuid,timestamp with time zone)', 1, $h$    if s.side = 'ATTACKER' and not s.is_npc then
 $h$, $h$    if s.side = 'ATTACKER' and not s.is_npc   -- 0395: one report a battle, under the fleet that attacked: a fleet that joined as her armada sends none
