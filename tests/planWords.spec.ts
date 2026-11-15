@@ -94,18 +94,18 @@ test('lit, a city the sea closes says what the sea asks, not "too far"', () => {
   // the one wording of a closed sea (components/ui/seaWallWords.ts). These figures are a world's before 0396: it does
   // not say which ask is short, so both are printed beside both of hers and no advice is given
   // 2026-11-15 owner: shorter words (have / need)
-  expect(words).toBe('Macaronesia and the Canary Current closed. Title\u00a01\u00a0/\u00a02. Waves\u00a012\u00a0/\u00a010')
+  expect(words).toBe('Macaronesia and the Canary Current closed \u00b7 Title\u00a01\u00a0/\u00a02 \u00b7 Waves\u00a012\u00a0/\u00a010')
   expect(words).not.toContain('too far')
 })
 
 test('lit, the server says which ask is short (0396): the wall names that one and what to do', () => {
   const short = { ...closed, refusal: { ...closed.refusal, figures: { ...closed.refusal.figures, short_title: true, short_wave: false } } }
   expect(reachWords({ ...noLeg, needs: null, sea: short }, lit)).toBe(
-    'Macaronesia and the Canary Current closed. Title\u00a01\u00a0/\u00a02. Raise Trading and Exploration to 2',
+    'Macaronesia and the Canary Current closed \u00b7 Title\u00a01\u00a0/\u00a02 \u00b7 Trading & Exploration\u00a02',
   )
   const hull = { ...closed, refusal: { ...closed.refusal, figures: { ...closed.refusal.figures, needs_wave: 30, short_title: false, short_wave: true } } }
   expect(reachWords({ ...noLeg, needs: null, sea: hull }, lit)).toBe(
-    'Macaronesia and the Canary Current closed. Waves\u00a012\u00a0/\u00a030. Sturdier ship, or anchors and planking',
+    'Macaronesia and the Canary Current closed \u00b7 Waves\u00a012\u00a0/\u00a030 \u00b7 fit planking',
   )
 })
 

@@ -12,7 +12,8 @@ import { RenameFleet } from './RenameFleet'
 import { fleetDue } from './fleetLine'
 import { RaidOrder } from '../../live/RaidOrder'
 import { BattleCard } from '../../live/BattleCard'
-import { useT } from '../../lib/i18n'
+import { tabWord } from '../../app/navTabs'
+import { useLocale, useT } from '../../lib/i18n'
 
 // THE FLEET AS A WHOLE, ONE PRESS BEHIND HER SHIPS — the owner, 2026-11-14: *"in fleets, when pressed a fleet, show only ships"*.
 //
@@ -28,6 +29,7 @@ import { useT } from '../../lib/i18n'
 //   · her places (F5): the empty ones and the locked ones, with the one Buy.
 export function FleetMore({ fleet, onClose }: { fleet: FleetView; onClose: () => void }) {
   const t = useT()
+  const locale = useLocale()
   const portByCode = useWorld((s) => s.portByCode)
   const { nowMs } = useShellState()
   const navigate = useNavigate()
@@ -43,7 +45,7 @@ export function FleetMore({ fleet, onClose }: { fleet: FleetView; onClose: () =>
   const where = whereLine(whereabouts(fleet), (code) => portNameOf(portByCode, code))
 
   return (
-    <DetailPage title={fleet.name} word={t('fleets.more')} onClose={onClose} data-testid="fleet-more-page">
+    <DetailPage title={fleet.name} word={t('fleets.wholeFleet')} onClose={onClose} data-testid="fleet-more-page">
       <div className="flex flex-col pb-4">
         {/* THE VOYAGE, only while there is one: where it is heading, how far along, and when. The
             ETA is the server's and the position its closed form — nothing here interpolates. */}
@@ -71,7 +73,8 @@ export function FleetMore({ fleet, onClose }: { fleet: FleetView; onClose: () =>
         {/* 0354: Rename stands beside the hand-off, on its line */}
         <div className="mt-6 flex flex-wrap gap-3">
           <Button variant="primary" className="flex-1" onClick={() => command({ fleetId: fleet.id })} data-testid="fleet-command">
-            {t('fleets.command', { name: fleet.name })}
+            {/* 2026-11-15 owner: shorter words. The press goes to the Trade tab, so it says the tab's own word (navTabs.tabWord). */}
+            {tabWord(locale, '/command')}
           </Button>
           <RenameFleet fleet={fleet} />
         </div>

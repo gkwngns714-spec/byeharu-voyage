@@ -7,6 +7,7 @@ import { yardHref } from '../../live/cityFaces'
 import { companyRoom, lockedSteps, roomStepWord, useBuyRoom, useHouseRoom, type CompanyRoom } from '../../live/houseRoom'
 import { useWorld } from '../../live/worldStore'
 import { useShipMoves } from './useShipMoves'
+import { formatDucats, formatInt } from '../../lib/format'
 import { useT } from '../../lib/i18n'
 
 // A NEW FLEET, FROM THE FLEETS PAGE ITSELF (F5, 2026-11-11; owner rows 180 and 316: "create multiple fleet... assign multiple ships"). Until now the only way to a second
@@ -27,10 +28,12 @@ import { useT } from '../../lib/i18n'
 // Picking a ship lights her row and nothing else: the name field and the button are on the page from the start, so no box moves. The page is a `DetailPage`, a fixed layer
 // over the list, so the list behind keeps its boxes too.
 
-export function NewFleet() {
+// THE ROW AND ITS PAGE ARE TWO PIECES (2026-11-15): the row stands inside the fleets' `ListPanel`, the page beside that panel (FleetsScreen.tsx). A `DetailPage` is fixed
+// on the glass but it is still in the DOM where it is mounted, and the panel's row rules (`[&_[data-row-line]]:px-2`, ListPanel.tsx) reached into it: every row of the
+// New fleet page stood 8 px in from the line above it.
+export function NewFleet({ open, onOpen }: { open: boolean; onOpen: () => void }) {
   const t = useT()
   const room = companyRoom(useHouseRoom())
-  const [open, setOpen] = useState(false)
   if (!room) return null
   if (!room.on) {
     return (
@@ -44,28 +47,30 @@ export function NewFleet() {
       />
     )
   }
-  return (
-    <>
-      <Row mark={<IconDisc name="plus" tone="accent" />} label={t('fleets.moveNew')} chevron tone={open ? 'accent' : 'default'} onClick={() => setOpen(true)} hairline={false} data-testid="fleet-new" />
-      {open && <NewFleetPage room={room} onClose={() => setOpen(false)} />}
-    </>
-  )
+  return <Row mark={<IconDisc name="plus" tone="accent" />} label={t('fleets.moveNew')} chevron tone={open ? 'accent' : 'default'} onClick={onOpen} hairline={false} data-testid="fleet-new" />
 }
 
-function NewFleetPage({ room, onClose }: { room: CompanyRoom; onClose: () => void }) {
+/** The New fleet page, mounted by FleetsScreen beside the list panel (never inside it). Nothing while fleet room is dark or not read. */
+export function NewFleetPage({ onClose }: { onClose: () => void }) {
+  const room = companyRoom(useHouseRoom())
+  if (!room || !room.on) return null
+  return <NewFleetPageBody room={room} onClose={onClose} />
+}
+
+function NewFleetPageBody({ room, onClose }: { room: CompanyRoom; onClose: () => void }) {
   const t = useT()
   const fleets = useWorld((s) => s.fleets)
   const hulls = fleets.reduce((n, f) => n + f.ships.length, 0)
   const full = room.fleets.used >= room.fleets.have
   return (
     <DetailPage title={t('fleets.moveNew')} onClose={onClose} data-testid="fleet-new-page">
-      {hulls < 2 ? <NeedShip fleets={fleets} /> : full ? <NeedRoom room={room} /> : <PickLead fleets={fleets} onDone={onClose} />}
+      {hulls < 2 ? <NeedShip fleets={fleets} hulls={hulls} /> : full ? <NeedRoom room={room} /> : <PickLead fleets={fleets} onDone={onClose} />}
     </DetailPage>
   )
 }
 
 /** One ship in the company: the second comes from a build yard. The press goes to the HQ of the port a fleet of hers lies in, its Port place open. */
-function NeedShip({ fleets }: { fleets: readonly FleetView[] }) {
+function NeedShip({ fleets, hulls }: { fleets: readonly FleetView[]; hulls: number }) {
   const t = useT()
   const navigate = useNavigate()
   const port = fleets.find((f) => f.port !== null)?.port ?? null
@@ -79,7 +84,7 @@ function NeedShip({ fleets }: { fleets: readonly FleetView[] }) {
       }
       data-testid="fleet-new-need-ship"
     >
-      {t('fleets.newNeedShip')}
+      {t('fleets.newNeedShip', { have: formatInt(hulls) })}
     </Note>
   )
 }
@@ -100,21 +105,26 @@ function NeedRoom({ room }: { room: CompanyRoom }) {
   }
   return (
     <div data-testid="fleet-new-need-room">
-      <p className="text-t-body text-ink-muted">{t('fleets.newNeedRoom')}</p>
+      <p className="text-t-body text-danger tabular-nums">{t('fleets.newNeedRoom', { used: formatInt(room.fleets.used), have: formatInt(room.fleets.have) })}</p>
       {level && <Row label={roomStepWord(t, level)} hairline={price !== undefined} data-testid="fleet-new-level" />}
       {price && (
         <Row
-          label={<span className="tabular-nums">{roomStepWord(t, price)}</span>}
+          // 2026-11-15 owner: shorter words. Short of gold: HAVE / NEED in the danger tone, in place of the price (it is the NEED).
+          label={
+            price.can_pay ? (
+              <span className="tabular-nums">{roomStepWord(t, price)}</span>
+            ) : (
+              <span className="tabular-nums text-danger" data-testid="fleet-new-short">
+                {t('fleets.roomShort', { have: formatInt(room.purse), need: formatDucats(price.price) })}
+              </span>
+            )
+          }
           value={
             price.next && price.can_pay ? (
               <Button variant="primary" busy={busy} onClick={buy} data-testid="fleet-new-buy">
                 {t('fleets.roomBuy')}
               </Button>
-            ) : (
-              <span className="text-t-caption text-ink-faint" data-testid="fleet-new-short">
-                {t('fleets.roomShort')}
-              </span>
-            )
+            ) : undefined
           }
           hairline={false}
           data-testid="fleet-new-price"

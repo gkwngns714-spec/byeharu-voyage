@@ -25,9 +25,10 @@ const GLASSES = [
   { name: 'phone320', width: 320, height: 640 },
   { name: 'desktop', width: 1280, height: 800 },
 ] as const
+// 2026-11-15 owner: shorter words. The row under the ships says what it opens: the whole fleet.
 const WORDS = {
-  en: { more: 'More', wholeFleet: 'Whole fleet', water: 'Water', food: 'Food' },
-  ko: { more: '더 보기', wholeFleet: '선단 전체', water: '물', food: '식량' },
+  en: { more: 'Whole fleet', wholeFleet: 'Whole fleet', water: 'Water', food: 'Food' },
+  ko: { more: '선단 전체', wholeFleet: '선단 전체', water: '물', food: '식량' },
 } as const
 
 /** What a pressed fleet no longer shows on its first page. */
