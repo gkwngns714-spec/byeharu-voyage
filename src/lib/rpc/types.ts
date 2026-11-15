@@ -4101,6 +4101,9 @@ export interface StatsFleets {
     homes: [code: string, name: string, fleets: number, ships: number][]
   }
   cargo?: StatsFleetKind & { tuns: number; tuns_at_sea: number; funds: number }
+  /** 0427: the battles of the last 24 hours: raids pirates opened on merchants, won by the pirates, held by the merchants, the navy came to;
+   *  players' attacks; and the navy's fights with pirate ships. Absent before 0427. */
+  battles?: { raids_day: number; won_day: number; held_day: number; navy_day: number; attacks_day: number; navy_fights_day: number }
 }
 
 /** One money move in `world.money_feed` (0235): one purse's gain or loss. Both ends of a sale are two moves. */
