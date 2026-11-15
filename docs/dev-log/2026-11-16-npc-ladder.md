@@ -160,7 +160,13 @@ bodies (read 17:25 UTC; `dist.sql` checks it again before the deploy).
 
 ## Proofs amended (they drive the bodies as they were; each says so in its scene)
 
-See the PR.
+- Proof 36 (armed cargo): `npc_ladder_enabled` false in its scene. It proves 0328's own refit (one class for every cargo ship), which is
+  `public.cargo_hull`'s body with the ladder dark. Lit: proof 154.
+- Proof 114 (a pirate ship trades): the first squadron's roster row is put back to a galeoncete in its scene; its figures (a gift of
+  708,000) are that squadron's.
+- `tests/battleWorld.fixture.ts`: `npc_ladder_enabled` false; its specs' figures are an armed navire's and a galion's.
+- Not touched, and red on main without 0451: proof 152 (0450) raids from a quay, which 0445 stopped; it needs proof 136's own line
+  (`pirate_strike_from_port` true, `pirate_port_minutes` 720). With that line it passes with 0451 too (10/10, tried here, not committed).
 
 ## After the deploy (30 minutes; it alters live play)
 
